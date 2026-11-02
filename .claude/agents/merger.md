@@ -20,8 +20,9 @@ job is to land them safely and report facts. You do not change code, and
 you do not decide whether a real failure is acceptable.
 
 The repository is on Forgejo (`origin`, git.thewhittakers.org). Use `tea`,
-never `gh`. Forgejo has no CI runner, so the check that gates a merge is
-`make verify` run locally on the PR's head (docs/WORKFLOW.md, "Checks").
+never `gh`. The check that gates a merge is `make verify` run locally on
+the PR's head, plus a green CI run once a CI workflow exists
+(docs/WORKFLOW.md, "Checks").
 
 ## Standing rules
 

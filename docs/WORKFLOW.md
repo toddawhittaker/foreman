@@ -14,10 +14,40 @@ no command for, such as a PR's merge state or changed files.
 
 ## Checks
 
-Forgejo has no Actions runner, so nothing runs on the server. `make
-verify` run locally on a PR's head commit is the check that gates every
-merge, and the orchestrator or the merger agent runs it before merging.
-When a runner is added, CI runs the same `make` targets.
+`make verify` run locally on a PR's head commit is the check that gates
+every merge, and the orchestrator or the merger agent runs it before
+merging. Once the stack epic adds a CI workflow under `.forgejo/workflows/`,
+it runs the same `make` targets on the server and a green run is required
+as well.
+
+The Forgejo server has one shared runner, `forgejo-runner`, with the
+labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-latest`.
+Jobs run as root inside a Debian container with Node and `apt`. `tea`
+cannot read job logs on this Forgejo version; read them in the web
+interface.
+
+Jobs get the runner VM's own Docker daemon (the runner's `docker_host:
+"automount"` setting), shared with every other job on the VM. It is not an
+isolated Docker-in-Docker. So:
+
+- Name every container, network, volume and image a job creates, and
+  remove them by name when the job ends, even when it fails.
+- Never assume the daemon is empty, or remove anything a job did not
+  create.
+
+The job's workspace (`/workspace/todd/foreman`) is a Docker volume
+attached to the job container, not a folder on the VM. A plain
+`docker run -v "$PWD:/x"` makes the daemon look for that path on the VM,
+and it mounts an empty directory instead. This is the same host-path trap
+the vision describes for Foreman itself, and the runner has no setting to
+change it. Use one of these instead:
+
+- `docker run --volumes-from "$(hostname)" -w "$PWD" ...` gives the test
+  container the job's workspace at the same path, for reading and writing.
+  Inside a job, `hostname` is the job container's ID; check it with
+  `docker inspect "$(hostname)"` before relying on it.
+- `docker cp`, to copy files into or out of a container.
+- A named volume, filled from inside a container.
 
 ## Branches
 

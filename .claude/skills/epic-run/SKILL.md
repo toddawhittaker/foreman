@@ -38,8 +38,8 @@ line per step, so the run survives a context reset.
 7. **Verify each report** before merging: in the agent's worktree run
    `make verify`, read the diff, check that the files it claims are in the
    PR (`tea api /repos/todd/foreman/pulls/<n>/files`), and rule on anything
-   it did outside its file list. Forgejo has no CI runner, so this local
-   run is the only check.
+   it did outside its file list. Once a CI workflow exists, its run on the
+   PR must be green as well (WORKFLOW.md, "Checks").
 8. **Land with tea.** Once a task PR passes step 7, run
    `tea pr merge --style squash <n>`, confirm it merged, and delete its
    branch. A task PR into the epic has no human review; Todd reviews once,
