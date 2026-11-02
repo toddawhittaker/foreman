@@ -122,8 +122,8 @@ Orchestration rules:
   requests"), then report and stop.
 - The repository is on Forgejo (`origin`, git.thewhittakers.org). Use
   `tea`, never `gh`, for pull requests, issues and releases (WORKFLOW.md,
-  "Where the code lives"). Forgejo has no CI runner, so `make verify` run
-  locally is the merge gate (WORKFLOW.md, "Checks").
+  "Where the code lives"). `make verify` run locally is the merge gate,
+  plus CI once a workflow exists (WORKFLOW.md, "Checks").
 
 ## Project rules that override convenience
 

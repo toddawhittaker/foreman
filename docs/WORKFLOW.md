@@ -14,10 +14,24 @@ no command for, such as a PR's merge state or changed files.
 
 ## Checks
 
-Forgejo has no Actions runner, so nothing runs on the server. `make
-verify` run locally on a PR's head commit is the check that gates every
-merge, and the orchestrator or the merger agent runs it before merging.
-When a runner is added, CI runs the same `make` targets.
+`make verify` run locally on a PR's head commit is the check that gates
+every merge, and the orchestrator or the merger agent runs it before
+merging. Once the stack epic adds a CI workflow under `.forgejo/workflows/`,
+it runs the same `make` targets on the server and a green run is required
+as well.
+
+The Forgejo server has one shared runner, `forgejo-runner`, with the
+labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-latest`.
+Jobs run as root inside a Debian container with Node and `apt`. Jobs can
+reach a Docker daemon: they can run and build images, run
+`factoriotools/factorio`, and reach containers they start by name on a
+network they create.
+
+That daemon does not see the job container's files. A bind mount of a
+path inside the job's workspace arrives empty. This is the same host-path
+trap the vision describes for Foreman itself, so tests that need files in
+a container copy them in (`docker cp`) or use a named volume. `tea` cannot
+read job logs on this Forgejo version; read them in the web interface.
 
 ## Branches
 
