@@ -341,7 +341,8 @@ last save will be lost. (P0)
 7.9. **Switch** to another world, as one operation with these steps in
 order: graceful stop of the current world; snapshot of both worlds; the
 pre-start check on the new world; make the new world the one the
-container presents (4.3 in managed mode, 4.8 in adopted mode); start; confirm it is running (7.3).
+container presents (4.3 in managed mode, 4.8 in adopted mode); start;
+confirm it is running (7.3).
 If any step fails, Foreman stops, says which step failed, and offers to
 switch back, which restores the previous world as active. (P0)
 
