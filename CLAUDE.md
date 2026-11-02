@@ -56,19 +56,7 @@ The main session is an orchestrator: understand the request, write good
 prompts, spawn agents, verify their claims, and report in plain English.
 It does the work itself only for a one-line lookup or edit, or for
 drafting the vision, spec and stack with the user. Agents live in
-`.claude/agents/`:
-
-| Agent | Use for |
-|---|---|
-| explorer | Finding where things are. Cheap. Feed its report to other agents. |
-| architect | Spec and stack options, design before a feature epic's plan, and the whole-system review at each milestone gate. Read-only. |
-| builder | Implementing a scoped change against a named SPEC.md section. |
-| tester | Designing tests that pin SPEC.md and vision invariants, then running them. |
-| security-reviewer | Read-only review against the trust boundaries (sign-in, Docker API, RCON, file paths, secrets). |
-| code-reviewer | Read-only review for correctness, then YAGNI, KISS, DRY and SOLID quality. |
-| a11y-reviewer | Read-only accessibility and phone-use review of UI changes. |
-| ui-designer | Building or polishing UI, phone first. Review-only on request. |
-| merger | Landing a list of task PRs after `make verify`, and sorting a failure into flake, conflict or real failure. Cheap. |
+`.claude/agents/`; each one's description says when to use it.
 
 Running an epic (task PRs and how they land, which reviewers run, the
 fold, the epic PR) follows the `epic-run` skill.
