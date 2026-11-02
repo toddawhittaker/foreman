@@ -1,0 +1,9 @@
+# gitleaks configuration. Extends the built-in rules.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Files that legitimately contain secret-shaped strings"
+paths = [
+  '''\.env\.example$''',
+]

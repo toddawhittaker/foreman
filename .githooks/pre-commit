@@ -1,0 +1,8 @@
+#!/bin/sh
+# Blocks a commit that stages a secret.
+# Enable with: git config core.hooksPath .githooks
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed; see docs/WORKFLOW.md" >&2
+  exit 1
+fi
+exec gitleaks git --staged --no-banner --redact

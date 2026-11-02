@@ -1,0 +1,17 @@
+# Claude Code local state
+.claude/settings.local.json
+.claude/worktrees/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Screenshots taken by agents
+screenshots/
