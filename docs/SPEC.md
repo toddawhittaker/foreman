@@ -52,7 +52,9 @@ mechanism is open.
 ## 3. Deployment
 
 3.1. **One container.** Foreman ships as one container image, published
-with an exact version tag. It needs no other service to run. (P0)
+with an exact version tag. It needs no other service to run. Until v1 the
+image is published to the Forgejo registry; from v1 it is also published
+to GHCR (GitHub's container registry). (P0)
 
 3.2. **Configuration.** Everything an operator sets at install comes
 from environment variables. Any secret value can instead come from a file
@@ -112,7 +114,11 @@ other behaviour Foreman needs, it does itself. (P0)
 4.3. Foreman creates the game container from `factoriotools/factorio` at
 the active world's pinned version tag, with a Docker restart policy of
 `unless-stopped`, so the game comes back after a reboot whether or not
-Foreman is running. (P0)
+Foreman is running. The active world's directory is bind-mounted at
+`/factorio`. Switching worlds, or changing a world's game version,
+removes the container and creates it again with the new mount or tag.
+This also allows one container per world later, each on its own port,
+with no change to the layout (5.3). (P0)
 
 4.4. The game port (UDP, default 34197) is published on the host. The
 RCON port is never published; Foreman reaches it on a Docker network
@@ -134,10 +140,23 @@ logs and stats, and talks to it over RCON. It never recreates or
 reconfigures it. (P0)
 
 4.8. Foreman switches worlds by changing what the container's bind mount
-presents, without anyone editing the compose file per switch. A reboot
-during a switch leaves a state that Foreman can finish or roll back on its
-next start, and the game never starts with a half-switched world.
-**Decision D1.** (P0)
+presents, without anyone editing the compose file per switch. The
+container's folder for `/factorio` (the game folder) is also mounted into
+Foreman, at the path in `FOREMAN_GAME_DIR`, and holds:
+
+- `worlds/<world-id>/`, one directory per world (5.1);
+- `current`, a relative symbolic link to `worlds/<world-id>` for the
+  active world;
+- `saves`, `mods` and `config`, fixed relative links to `current/saves`,
+  `current/mods` and `current/config`.
+
+A switch, done only while the game is stopped, creates a new link
+`current.new` and renames it over `current`. That rename is atomic, so at
+every instant, including after a reboot mid-switch, the game folder
+presents exactly one whole world. The first time Foreman adopts a game
+folder that still has real `saves`, `mods` and `config` directories, it
+stops the game, snapshots them, and turns them into the first world, with
+a confirmation that says so. (P0)
 
 4.9. The game version belongs to whoever owns the container definition.
 Foreman shows the running version, warns when the active world's save was
@@ -174,10 +193,12 @@ A person can read, back up and move a world without Foreman. `world.json`
 is plain JSON, and Foreman ignores fields it does not know so a newer
 Foreman can add fields. (P0)
 
-5.2. The data directory holds `worlds/<world-id>/`, `snapshots/`, and the
-app database. A world's id is a short, safe directory name that never
-changes; its display name can. **Decisions D1 and D2** may add to this
-layout. (P0)
+5.2. The data directory holds `snapshots/` and the app database. In
+managed mode it also holds `worlds/<world-id>/`. In adopted mode the
+worlds live in the game folder instead (4.8), because the links that
+switch them must resolve inside the game container. A world's id is a
+short, safe directory name that never changes; its display name can.
+(P0)
 
 5.3. Exactly one world is active at a time in v1. Nothing in the data
 model, the API or the on-disk layout may assume only one could be: each
@@ -195,7 +216,8 @@ sync its mods from the portal (section 9.8). Import copies; it never moves
 or changes the source. (P0)
 
 5.6. **Generate** a new world from a preset, a map exchange string, or
-map-gen settings plus a seed, with Space Age on or off. (P0)
+map-gen settings plus a seed, with Space Age on or off. How a preset or
+an exchange string becomes a map is **Decision D9**. (P0)
 
 5.7. **Clone** a world's mods and settings into a new world, then either
 start a fresh map or keep the save. (P1)
@@ -239,11 +261,26 @@ snapshots per world (default 20). Manual snapshots and the final snapshot
 of a deleted world are never removed automatically. Foreman shows total
 snapshot disk use. (P0)
 
-6.7. A snapshot is plain files a person can read or restore by hand,
-documented in the operator guide. How they are stored on disk is
-**Decision D2**. (P0)
+6.7. **How snapshots are stored.** A snapshot is a plain directory,
+`snapshots/<world-id>/<time>/`, with the same shape as the world, plus a
+`snapshot.json` manifest (6.1) that records each file's modification
+time. A person can read it, copy it, or restore it by hand, as the
+operator guide shows. (P0)
 
-6.8. A snapshot of a running world is taken after a `/server-save` over
+6.8. Save and mod zips are hardlinked into the snapshot rather than
+copied; small files (JSON, `.dat`, `rconpw`) are copied. This is safe
+because Factorio writes every save as a new file. Foreman itself never
+changes a zip in place. If a hardlink fails, for example because the
+snapshot directory is on another filesystem, Foreman copies the file
+instead, and the status page says snapshots are using full copies. In
+adopted mode the operator guide says to keep the data directory on the
+same filesystem as the game folder, outside the game's mount. (P0)
+
+6.9. A restore puts every file's modification time back from the
+manifest, because hardlinked saves share their time with the world
+(7.11). (P0)
+
+6.10. A snapshot of a running world is taken after a `/server-save` over
 RCON, so it holds the current game state. (P0)
 
 ## 7. Server control
@@ -269,7 +306,7 @@ failed start with the reason if it can name one (section 8.7). (P0)
 7.4. **The pre-start check.** Factorio loads a save whose mods are
 missing, or whose Space Age content is turned off, with no error, and
 deletes that content from the save the next time it saves. So before
-every start, Foreman reads the save that will load (section 9.8) and
+every start, Foreman reads the save that will load (section 9.9) and
 compares it with the world. It refuses to start, and says why, when:
 
 - a mod in the save is missing or disabled in the world, or the world's
@@ -304,7 +341,7 @@ last save will be lost. (P0)
 7.9. **Switch** to another world, as one operation with these steps in
 order: graceful stop of the current world; snapshot of both worlds; the
 pre-start check on the new world; make the new world the one the
-container presents (**Decision D1**); start; confirm it is running (7.3).
+container presents (4.3 in managed mode, 4.8 in adopted mode); start; confirm it is running (7.3).
 If any step fails, Foreman stops, says which step failed, and offers to
 switch back, which restores the previous world as active. (P0)
 
@@ -315,7 +352,13 @@ never leaves the game running a world that is only partly switched in.
 (P0)
 
 7.11. **Which save loads** is set per world: the latest save, or a named
-save file. How Foreman makes the game load it is **Decision D3**. (P0)
+save file. The game always loads the save with the newest modification
+time. To load a named save, Foreman sets that file's modification time to
+now, while the game is stopped, just before start. It never sets a time
+in the future, which would pin that save above every later autosave.
+After a crash, the game therefore restarts from the newest autosave.
+One function decides "the newest save", and the pre-start check (7.4)
+uses it, so the check reads the save the game will load. (P0)
 
 ### Scheduled restarts
 
@@ -359,10 +402,17 @@ out-of-memory flag, start error, restart count), since every game
 failure exits with the same code. It names the reason when it can: a mod
 that failed to load, a corrupt save, a version mismatch, a port in use,
 or out of memory. Otherwise it says the reason is unknown and shows the
-last 20 log lines. How reasons are recognised is **Decision D5**. (P0 to
-detect a crash; P1 to name the reason)
+last 20 log lines; it never guesses a reason. (P0 to detect a crash; P1
+to name the reason)
 
-8.8. **Crash loops.** If the game crashes three times within ten minutes,
+8.8. **The reason catalogue** is a data file of log patterns, each
+naming a reason. Patterns match message text, never source file and
+line numbers, which change between game versions. Each entry has a test
+fixture captured from a real game container. The catalogue's scenarios
+are re-run against every image tag Foreman supports before that tag is
+listed as supported. (P1)
+
+8.9. **Crash loops.** If the game crashes three times within ten minutes,
 Foreman marks it crash-looping and stops it (in managed mode by stopping
 the container; in adopted mode the same, since Docker's restart policy
 would otherwise keep it spinning). An admin must start it again by hand.
@@ -370,14 +420,14 @@ would otherwise keep it spinning). An admin must start it again by hand.
 
 ### Notifications
 
-8.9. Webhooks on: start, stop, crash, crash loop, player join, player
+8.10. Webhooks on: start, stop, crash, crash loop, player join, player
 leave, and scheduled restart. Each event can be turned on or off per
 webhook. (P1)
 
-8.10. Presets for Discord and ntfy, plus a generic JSON webhook whose body
+8.11. Presets for Discord and ntfy, plus a generic JSON webhook whose body
 format is documented. (P1)
 
-8.11. A failed webhook delivery is logged and retried at most twice; it
+8.12. A failed webhook delivery is logged and retried at most twice; it
 never blocks or delays a server operation. (P1)
 
 ## 9. Mods (per world)
@@ -414,11 +464,25 @@ every DLC mod, off enables only `base`. (P0)
 world's mods match: install missing ones, change versions, and disable
 extras. The plan is shown before it applies (as in 9.2). Mods the portal
 no longer has are listed by name as unresolved, and the admin decides.
-How the mod list is read from a save, and the choices offered for
-unresolved mods, are **Decision D4**. The same save reader serves the
-pre-start check (7.4) and the version warning in adopted mode (4.9). (P0)
+(P0)
 
-9.9. **Portal credentials.** The factorio.com username and token come
+9.9. **The save reader.** Foreman reads a save's game version and mod
+list itself, from the header of `level.dat0` inside the save zip, without
+running the game. (`level-init.dat` is not used: it lists the mods from
+when the map was created.) The format is undocumented and changes between
+versions, so the reader has a test save for every game minor version
+Foreman supports, and refuses a save it cannot parse rather than
+guessing. The same reader serves the pre-start check (7.4) and the
+version warning in adopted mode (4.9). (P0)
+
+9.10. **Unresolved mods.** By default an unresolved mod blocks the sync,
+and Foreman offers an upload of that mod's zip. Two other choices, each
+explicit: use the nearest release compatible with the world's game
+version, shown as a change in the plan; or continue without the mod,
+only after a confirmation that the game will delete that mod's content
+from the world, and a snapshot. (P0)
+
+9.11. **Portal credentials.** The factorio.com username and token come
 from `FOREMAN_FACTORIO_USERNAME` and `FOREMAN_FACTORIO_TOKEN` (or their
 `_FILE` forms) first. If those are absent, an admin can enter them in the
 UI, where they are stored encrypted with a key from
@@ -426,7 +490,7 @@ UI, where they are stored encrypted with a key from
 neither source has them, mod downloads are disabled with an explanation;
 search still works. (P0)
 
-9.10. Downloaded mods are checked against the SHA-1 checksum the portal
+9.12. Downloaded mods are checked against the SHA-1 checksum the portal
 publishes, and a mismatch is refused. (P0)
 
 ## 10. Game versions (managed mode)
@@ -656,8 +720,9 @@ snapshots and restore (section 6).
 18.3. **Epic 3: Server control in managed mode.** Creating the game
 container (4.3 to 4.6); status (7.1, 7.2); start, stop, restart (7.3 to
 7.8), including the pre-start check and the save reader it needs
-(7.4, and the reading half of 9.8); save selection (7.11); the log
-stream and crash detection (8.6 to 8.8); the player list (8.1); the RCON console (8.4) and its audit entries.
+(7.4, and 9.9); save selection (7.11); the log stream and crash
+detection (8.6, 8.7, 8.9); the player list (8.1); the RCON console (8.4)
+and its audit entries.
 
 18.4. **Epic 4: World switching and adopted mode.** Switching (7.9, 7.10);
 adopted mode (4.7 to 4.12).
@@ -670,11 +735,12 @@ clone (5.7), and section 11.
 18.7. **Epic 7: Game versions.** Section 10.
 
 18.8. **Epic 8: Live operations.** Players (8.2, 8.3), chat (8.5), crash
-reasons (8.7), scheduled restarts (7.12), notifications (8.9 to 8.11).
+reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12).
 
 18.9. **Epic 9: Release.** OIDC (12.7), the full audit log (12.9),
 archive (5.9), Foreman's settings page (13.1), the operator guide with the
-socket proxy example (14.2), the license, and the first public image.
+socket proxy example (14.2), the MIT license, and the first public image
+on GHCR (3.1).
 
 ## 19. Milestone gates
 
@@ -703,14 +769,6 @@ it, and the decision is removed from this list.
 
 | Id | Question | Needed by | Sections |
 |---|---|---|---|
-| D1 | How world switching works on disk, in both modes (vision question 1) | Epic 2 (layout), Epic 4 | 4.8, 5.2, 7.9 |
-| D2 | How snapshots are stored (vision question 2) | Epic 2 | 5.2, 6.7 |
-| D3 | How Foreman makes the game load the chosen save (vision question 3) | Epic 3 | 7.11 |
-| D4 | How the mod list is read from a save, and unresolved mods (vision question 4) | Epic 3 (reader), Epic 5 (sync) | 7.4, 9.8 |
-| D5 | How crash reasons are recognised (vision question 5) | Epic 3 (detection), Epic 8 (reasons) | 8.7 |
-| D6 | License, MIT or Apache-2.0 (vision question 7) | Epic 9 | 18.9 |
-| D7 | Where the image is published: GHCR as the vision says, or Forgejo's registry while the code lives there | Epic 1 | 3.1 |
-| D9 | How Generate turns a preset or map exchange string into a map, given the image only generates from `map-gen-settings.json` | Epic 6 | 5.6 |
-| D8 | Whether both modes are P0, or adopted mode first since the reference deployment uses it | Before Epic 3 | 4, 18 |
+| D9 | How Generate makes a map from a preset or a map exchange string, given that the image generates only from `map-gen-settings.json` and `map-settings.json` | Epic 6 | 5.6 |
 
 The tech stack (vision question 6) is settled in docs/STACK.md, not here.

@@ -116,8 +116,9 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
   upload and download it.
 - **Sync from save**: read the mod list and versions from a save and make the world's
   mods match it.
-- Built-in and DLC mods (`base`, `space-age`, `quality`, `elevated-rails`) are
-  handled correctly, never offered for download, and follow the world's Space Age flag.
+- Built-in and DLC mods (`base`, `space-age`, `quality`, `elevated-rails`, and
+  `recycler` from game 2.1) are handled correctly, never offered for
+  download, and follow the world's Space Age flag.
 - Portal credentials (factorio.com username and token) **come from env vars or
   `*_FILE` paths first**, so they work with sops or Docker secrets. If those are absent,
   they can be entered in the UI and stored encrypted with a key supplied by env. They
@@ -202,18 +203,18 @@ required group. Existing hand-renamed save and mod folders are imported as world
 
 ## Open questions for the spec
 
-1. **How world switching works in adopted mode**: symlinks inside the bound directory
+1. *(Answered in SPEC 4.3 and 4.8.)* **How world switching works in adopted mode**: symlinks inside the bound directory
    (relative, so they resolve in the container), moving directories, or the factoriotools
    `SAVES`/`MODS`/`CONFIG` env paths. The answer must not require editing the compose
    file, and it must survive a reboot mid-switch.
-2. **How snapshots are stored**: plain copies, hardlink dedup, or compressed archives.
+2. *(Answered in SPEC 6.7 to 6.9.)* **How snapshots are stored**: plain copies, hardlink dedup, or compressed archives.
    Autosaves are around 30 MB × 30 slots per world, so space matters.
-3. **Which save loads**: drive factoriotools' `LOAD_LATEST_SAVE`/`SAVE_NAME`, or have
+3. *(Answered in SPEC 7.11.)* **Which save loads**: drive factoriotools' `LOAD_LATEST_SAVE`/`SAVE_NAME`, or have
    Foreman place the chosen save so that "latest" is right.
-4. **How to read a save's mod list** for "sync from save" (the level header inside the
+4. *(Answered in SPEC 9.9 and 9.10.)* **How to read a save's mod list** for "sync from save" (the level header inside the
    zip), and what to do with mods that no longer exist on the portal.
-5. **Crash-reason detection**: a log-pattern catalogue versus exit-code heuristics, and
+5. *(Answered in SPEC 8.7 and 8.8.)* **Crash-reason detection**: a log-pattern catalogue versus exit-code heuristics, and
    how to keep the catalogue current across game versions.
 6. **Tech stack**: deliberately left open. The constraints are one small container, a
    responsive UI, and no runtime downloads.
-7. **License**: MIT or Apache-2.0.
+7. *(Answered: MIT, SPEC 18.9.)* **License**: MIT or Apache-2.0.
