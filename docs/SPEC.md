@@ -65,8 +65,8 @@ both are set, Foreman refuses to start and says which one to remove. (P0)
 3.3. **The data directory** is one mounted path. It holds the worlds, the
 snapshots, and the app database. Its layout is in section 5.2. (P0)
 
-3.4. **The app database** holds only users, sessions, app settings,
-notification settings and the audit log. It never holds game data: saves,
+3.4. **The app database** holds only users, sessions, API token hashes,
+app settings, notification settings and the audit log. It never holds game data: saves,
 mods and game settings live only in world directories. (P0)
 
 3.5. **Host paths.** In managed mode, Foreman creates containers with
@@ -578,6 +578,14 @@ and every RCON command. Viewable and filterable in the UI. Never holds a
 secret. (P1, except RCON commands, which are recorded from the first
 version that has a console: P0)
 
+12.10. **API tokens.** A user can create, name, list and revoke their own
+API tokens in the UI. A token acts as that user: everything it does is
+recorded in the audit log under that user and the token's name. A token
+is shown once when created, stored only as a hash, can have an expiry
+date, and has one of two scopes: **read** (only the read tools in 21.3)
+or **operate** (also the actions in 21.4). Tokens are rate-limited. A
+token cannot create tokens, manage users, or sign in to the UI. (P1)
+
 ## 13. Foreman's own settings
 
 13.1. App settings an admin changes in the UI: snapshot retention, the
@@ -602,6 +610,7 @@ reviews against.
 | Game container | Factorio and its RCON port | Nothing; its logs and files are input |
 | Data directory on the host | Worlds, snapshots, database | Files Foreman wrote itself |
 | Internet | Mod portal, image registry, release list, webhook targets | Nothing |
+| AI client | An assistant calling the MCP endpoint (section 21) | Only its token's scope; steerable by text it reads (14.12) |
 
 14.2. **Docker access is root on the host.** Whoever controls Foreman's
 Docker access controls the host. A socket proxy narrows which endpoints
@@ -661,6 +670,15 @@ configured. It does not follow redirects for webhooks. (P0)
 14.11. **Least privilege.** Foreman's container runs as non-root with a
 read-only root filesystem except its data directory and a temporary
 directory. (P0)
+
+14.12. **AI clients.** An AI client connected through MCP (section 21) is
+its own trust zone: trusted only for its token's scope, and assumed to
+be steerable by any text it reads. Players control chat, player names,
+and much of the game log, so a player can write instructions aimed at
+the AI. Every tool result that carries such text marks it as untrusted
+player content, and no MCP tool can delete, force-stop, restore, change
+mods or settings, run raw RCON commands, or manage users and tokens.
+(P1)
 
 ## 15. Logging
 
@@ -738,7 +756,10 @@ clone (5.7), and section 11.
 18.8. **Epic 8: Live operations.** Players (8.2, 8.3), chat (8.5), crash
 reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12).
 
-18.9. **Epic 9: Release.** OIDC (12.7), the full audit log (12.9),
+18.9. **Epic 9: AI access.** API tokens (12.10) and the MCP endpoint
+(section 21).
+
+18.10. **Epic 10: Release.** OIDC (12.7), the full audit log (12.9),
 archive (5.9), Foreman's settings page (13.1), the operator guide with the
 socket proxy example (14.2), the MIT license, and the first public image
 on GHCR (3.1).
@@ -758,7 +779,7 @@ lost. Todd retires OFSM only after this gate passes.
 to a running Space Age server with three portal mods in under ten
 minutes, following only Foreman's own operator guide.
 
-19.3. **Gate C, after Epic 9: v1.** Every P0 and P1 requirement is met; a
+19.3. **Gate C, after Epic 10: v1.** Every P0 and P1 requirement is met; a
 bad mod update is undone in one click; security-reviewer finds nothing
 open in section 14; the image is published.
 
@@ -770,6 +791,36 @@ it, and the decision is removed from this list.
 
 | Id | Question | Needed by | Sections |
 |---|---|---|---|
+| D10 | Whether the chat-message tool (21.4) is in v1 or waits, given that it lets an AI speak to players | Epic 9 | 21.4 |
 | D9 | How Generate makes a map from a preset or a map exchange string, given that the image generates only from `map-gen-settings.json` and `map-settings.json` | Epic 6 | 5.6 |
 
 The tech stack (vision question 6) is settled in docs/STACK.md, not here.
+
+## 21. AI access (MCP)
+
+21.1. Foreman serves an MCP (Model Context Protocol) endpoint, so an AI
+assistant can check on and run the server as tools. It is part of the
+one Foreman container, not a separate service, and is off unless
+`FOREMAN_MCP=on`. (P1)
+
+21.2. The endpoint accepts only API tokens (12.10), never a browser
+session. Every tool calls the same code the UI uses, so snapshots before
+risky operations, graceful stops, the pre-start check and the audit log
+apply exactly as they do for a person. (P1)
+
+21.3. **Read tools** (read or operate scope): server status (7.1, 7.2);
+list worlds (5.4); players online (8.1); the most recent log lines,
+with secrets removed (8.6); list snapshots (6.4); list a world's mods
+and available updates (9.3). Player-written text in any result is marked
+untrusted (14.12). (P1)
+
+21.4. **Action tools** (operate scope only): start (7.3); graceful stop
+(7.6); graceful restart (7.8); switch world (7.9); take a snapshot
+(6.3); and send an in-game message as the server (8.5), which is
+**Decision D10**. Each action returns what happened, including the
+snapshot it took. (P1)
+
+21.5. **Never through MCP**, whatever the scope: delete a world, forced
+stop, restore a snapshot, mod changes, settings changes, game version
+changes, raw RCON commands, and user or token management. These stay
+with a person in the UI. (P1)
