@@ -257,7 +257,7 @@ starts it again. Restore is itself undoable: the snapshot taken before it
 is the undo. (P0)
 
 6.6. **Retention** is an app setting: keep the newest *n* automatic
-snapshots per world (default 20). Manual snapshots and the final snapshot
+snapshots per world (default 10). Manual snapshots and the final snapshot
 of a deleted world are never removed automatically. Foreman shows total
 snapshot disk use. (P0)
 
