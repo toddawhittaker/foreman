@@ -44,7 +44,8 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
    It never downloads anything at startup to stay current.
 4. **Plain files on disk.** Worlds are ordinary directories (saves, mods, config) that
    a human can read, back up and move without Foreman. No opaque database holds game
-   data. The app database holds only users, sessions and app settings.
+   data. The app database holds only users, sessions, app settings,
+   notification settings and the audit log.
 5. **Least privilege.** It doesn't run as root. It talks to Docker through a restricted
    socket proxy where possible and documents exactly which API calls it needs.
 6. **Small and boring.** One container, a small image, no runtime downloads beyond
