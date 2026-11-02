@@ -1,18 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr merge:*)",
-      "Bash(gh pr update-branch:*)",
-      "Bash(gh run list:*)",
-      "Bash(gh run view:*)",
-      "Bash(gh run watch:*)",
-      "Bash(gh run rerun:*)",
-      "Bash(gh issue view:*)",
-      "Bash(gh issue list:*)"
+      "Bash(tea pr list:*)",
+      "Bash(tea pr create:*)",
+      "Bash(tea pr merge:*)",
+      "Bash(tea pulls list:*)",
+      "Bash(tea pulls create:*)",
+      "Bash(tea pulls merge:*)",
+      "Bash(tea issues list:*)",
+      "Bash(tea issues create:*)",
+      "Bash(tea api /repos/todd/foreman/pulls:*)",
+      "Bash(tea api /repos/todd/foreman/issues:*)",
+      "Bash(make verify)"
     ]
   },
   "model": "claude-opus-5-5",
