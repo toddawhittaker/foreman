@@ -162,7 +162,11 @@ func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label st
 // running game is stopped gracefully first and started again after; the
 // world package takes the "Before restore" snapshot, which is returned as
 // the undo, with any error.
-func (c *Controller) Restore(ctx context.Context, id string, by Actor, name string) (world.Snapshot, error) {
+func (c *Controller) Restore(ctx context.Context, id string, by Actor, name string, stop StopOptions) (world.Snapshot, error) {
+	countdown, err := c.stopCountdown(stop)
+	if err != nil {
+		return world.Snapshot{}, err
+	}
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return world.Snapshot{}, err
@@ -173,12 +177,12 @@ func (c *Controller) Restore(ctx context.Context, id string, by Actor, name stri
 		return world.Snapshot{}, err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, startSteps)
-	before, err := c.restoreLocked(ctx, o, by, name)
+	before, err := c.restoreLocked(ctx, o, by, name, countdown)
 	return before, o.end(err)
 }
 
-func (c *Controller) restoreLocked(ctx context.Context, o *opRun, by Actor, name string) (world.Snapshot, error) {
-	err := c.stopLocked(ctx, o)
+func (c *Controller) restoreLocked(ctx context.Context, o *opRun, by Actor, name string, countdown time.Duration) (world.Snapshot, error) {
+	err := c.stopLocked(ctx, o, countdown)
 	wasRunning := err == nil
 	if err != nil && !errors.Is(err, ErrNotRunning) {
 		return world.Snapshot{}, err

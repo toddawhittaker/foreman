@@ -383,11 +383,43 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	return nil
 }
 
+// MaxStopCountdown is the longest countdown a stop may ask for.
+const MaxStopCountdown = 10 * time.Minute
+
+// ErrCountdown refuses a countdown outside 0 to MaxStopCountdown.
+var ErrCountdown = errors.New("the stop countdown must be between 0 and 10 minutes")
+
+// StopOptions changes how a graceful stop warns players (SPEC 7.6: the
+// countdown is configurable per action).
+type StopOptions struct {
+	// Countdown is how long players are warned; zero means StopCountdown.
+	Countdown time.Duration
+	// NoCountdown stops without warning players, whatever Countdown says.
+	NoCountdown bool
+}
+
+// stopCountdown returns the countdown to use, or ErrCountdown.
+func (c *Controller) stopCountdown(o StopOptions) (time.Duration, error) {
+	switch {
+	case o.NoCountdown:
+		return 0, nil
+	case o.Countdown == 0:
+		return c.countdown, nil
+	case o.Countdown < 0 || o.Countdown > MaxStopCountdown:
+		return 0, ErrCountdown
+	}
+	return o.Countdown, nil
+}
+
 // Stop stops the world's game gracefully (SPEC 7.5, 7.6): it warns players
 // with a countdown, saves, then stops the container. When RCON cannot be
 // reached it stops nothing and returns ErrRCONUnreachable, so the admin can
 // choose a forced stop.
-func (c *Controller) Stop(ctx context.Context, id string, by Actor) error {
+func (c *Controller) Stop(ctx context.Context, id string, by Actor, stop StopOptions) error {
+	countdown, err := c.stopCountdown(stop)
+	if err != nil {
+		return err
+	}
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err
@@ -397,13 +429,13 @@ func (c *Controller) Stop(ctx context.Context, id string, by Actor) error {
 		return err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStop, stopSteps)
-	err = c.stopLocked(ctx, o)
+	err = c.stopLocked(ctx, o, countdown)
 	return o.end(err)
 }
 
 // stopLocked runs the stop steps. It returns ErrNotRunning, with the steps
 // skipped, when there is no game to stop. The caller holds the world's lock.
-func (c *Controller) stopLocked(ctx context.Context, o *opRun) error {
+func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Duration) error {
 	w := o.w
 	cont, found, err := c.ourContainer(ctx, w.id)
 	if err != nil {
@@ -427,10 +459,10 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun) error {
 		if err != nil {
 			return err
 		}
-		if len(names) == 0 {
+		if len(names) == 0 || countdown == 0 {
 			o.skip(StepWarn)
 		} else {
-			if err := c.warnPlayers(ctx, rc); err != nil {
+			if err := c.warnPlayers(ctx, rc, countdown); err != nil {
 				return err
 			}
 			o.done(StepWarn)
@@ -459,8 +491,8 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun) error {
 }
 
 // warnPlayers counts down in game before a stop (SPEC 7.6).
-func (c *Controller) warnPlayers(ctx context.Context, rc *rcon.Client) error {
-	marks := warningMarks(c.countdown)
+func (c *Controller) warnPlayers(ctx context.Context, rc *rcon.Client, countdown time.Duration) error {
+	marks := warningMarks(countdown)
 	for i, m := range marks {
 		if err := c.exec(ctx, rc, warningText(m)); err != nil {
 			return err
@@ -575,7 +607,11 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 // Restart is a graceful stop followed by a start (SPEC 7.8). The pre-start
 // check runs first too, so a start that would be refused never stops the
 // game. A stopped game is just started.
-func (c *Controller) Restart(ctx context.Context, id string, by Actor, opts StartOptions) error {
+func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop StopOptions, opts StartOptions) error {
+	countdown, err := c.stopCountdown(stop)
+	if err != nil {
+		return err
+	}
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return err
@@ -588,7 +624,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, opts Star
 		return err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps)
-	err = c.stopLocked(ctx, o)
+	err = c.stopLocked(ctx, o, countdown)
 	if errors.Is(err, ErrNotRunning) {
 		err = nil
 	}

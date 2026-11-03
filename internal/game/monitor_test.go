@@ -165,7 +165,7 @@ func TestReattachAfterForemanRestart(t *testing.T) {
 	} else {
 		stop()
 	}
-	if err := c2.Stop(context.Background(), id, admin); err != nil {
+	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Fatalf("the re-attached game cannot be stopped: %v", err)
 	}
 }

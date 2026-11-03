@@ -325,7 +325,7 @@ func TestStartRecreatesContainer(t *testing.T) {
 	id := r.newWorld("Fresh")
 	r.start(id)
 	first := r.container(id).ID
-	if err := r.c.Stop(context.Background(), id, admin); err != nil {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	r.start(id)
@@ -425,7 +425,7 @@ func TestTwoWorldsAreSeparate(t *testing.T) {
 	a, b := r.newWorld("Alpha"), r.newWorld("Beta")
 	r.start(a)
 	r.start(b)
-	if err := r.c.Stop(context.Background(), a, admin); err != nil {
+	if err := r.c.Stop(context.Background(), a, admin, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	r.waitState(a, StateStopped)

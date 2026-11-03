@@ -24,7 +24,7 @@ func TestGracefulStopWarnsAndSaves(t *testing.T) {
 	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.c.Stop(context.Background(), id, admin); err != nil {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	cmds := r.commands(id)
@@ -55,7 +55,7 @@ func TestStopWithNobodyOnSkipsWarning(t *testing.T) {
 	r := newRig(t, rigOptions{countdwn: time.Hour})
 	id := r.newWorld("Empty server")
 	r.start(id)
-	if err := r.c.Stop(context.Background(), id, admin); err != nil {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range r.commands(id) {
@@ -93,7 +93,7 @@ func TestStopRefusedWithoutRCON(t *testing.T) {
 	id := r.newWorld("Deaf")
 	r.start(id)
 	r.game.SetRCONRefuse(ContainerName(id), true)
-	if err := r.c.Stop(context.Background(), id, admin); !errors.Is(err, ErrRCONUnreachable) {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); !errors.Is(err, ErrRCONUnreachable) {
 		t.Fatalf("got %v, want ErrRCONUnreachable", err)
 	}
 	if r.container(id).Status != "running" {
@@ -109,7 +109,7 @@ func TestStopRefusedWhenSaveHangs(t *testing.T) {
 	r.start(id)
 	r.c.saveTimeout = 100 * time.Millisecond
 	r.game.SetSaveHangs(ContainerName(id), true)
-	if err := r.c.Stop(context.Background(), id, admin); !errors.Is(err, ErrSaveTimeout) {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); !errors.Is(err, ErrSaveTimeout) {
 		t.Fatalf("got %v, want ErrSaveTimeout", err)
 	}
 	if r.container(id).Status != "running" {
@@ -120,7 +120,7 @@ func TestStopRefusedWhenSaveHangs(t *testing.T) {
 func TestStopWhenStopped(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Idle")
-	if err := r.c.Stop(context.Background(), id, admin); !errors.Is(err, ErrNotRunning) {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("got %v", err)
 	}
 	if err := r.c.ForceStop(context.Background(), id, admin); !errors.Is(err, ErrNotRunning) {
@@ -165,7 +165,7 @@ func TestForceStopInterruptsCountdown(t *testing.T) {
 		t.Fatal(err)
 	}
 	done := make(chan error, 1)
-	go func() { done <- r.c.Stop(context.Background(), id, admin) }()
+	go func() { done <- r.c.Stop(context.Background(), id, admin, StopOptions{}) }()
 	eventually(t, func() bool {
 		op := r.c.Status(id).Operation
 		return op != nil && op.Action == AuditStop && op.Steps[0].State == StepProgress
@@ -191,7 +191,7 @@ func TestRestart(t *testing.T) {
 	id := r.newWorld("Again")
 	r.start(id)
 	first := r.container(id).ID
-	if err := r.c.Restart(context.Background(), id, admin, StartOptions{}); err != nil {
+	if err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if r.container(id).ID == first {
@@ -219,7 +219,7 @@ func TestRestartRefusedBeforeStopping(t *testing.T) {
 	}
 	r.writeFile(id, world.SavesDir+"/base.zip", []byte("now broken"))
 	var pe *PrecheckError
-	if err := r.c.Restart(context.Background(), id, admin, StartOptions{}); !errors.As(err, &pe) {
+	if err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{}); !errors.As(err, &pe) {
 		t.Fatalf("got %v, want a pre-start refusal", err)
 	}
 	if r.container(id).Status != "running" {
@@ -283,7 +283,7 @@ func TestRestoreRunningWorld(t *testing.T) {
 	}
 	r.start(id)
 	first := r.container(id).ID
-	before, err := r.c.Restore(context.Background(), id, admin, snap.Name)
+	before, err := r.c.Restore(context.Background(), id, admin, snap.Name, StopOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestRestoreStoppedWorldStaysStopped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.c.Restore(context.Background(), id, admin, snap.Name); err != nil {
+	if _, err := r.c.Restore(context.Background(), id, admin, snap.Name, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if len(r.calls("POST /containers/create")) != 0 {
@@ -321,10 +321,75 @@ func TestRestoreMissingSnapshotKeepsGameRunning(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Restore none")
 	r.start(id)
-	if _, err := r.c.Restore(context.Background(), id, admin, "20260101T000000Z"); err == nil {
+	if _, err := r.c.Restore(context.Background(), id, admin, "20260101T000000Z", StopOptions{}); err == nil {
 		t.Fatal("restored a snapshot that does not exist")
 	}
 	if r.container(id).Status != "running" {
 		t.Error("the game was stopped for a restore that could not happen")
+	}
+}
+
+// SPEC 7.6: the countdown is chosen per action; zero means the default.
+func TestStopCountdownPerAction(t *testing.T) {
+	r := newRig(t, rigOptions{countdwn: time.Hour})
+	id := r.newWorld("Per action")
+	r.start(id)
+	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{Countdown: 20 * time.Millisecond}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(r.commands(id), "The server will save and stop in 1 second.") {
+		t.Errorf("the chosen countdown was not used: %q", r.commands(id))
+	}
+}
+
+func TestStopWithoutCountdown(t *testing.T) {
+	r := newRig(t, rigOptions{countdwn: time.Hour})
+	id := r.newWorld("No countdown")
+	r.start(id)
+	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.Restart(context.Background(), id, admin, StopOptions{NoCountdown: true}, StartOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	cmds := r.commands(id)
+	if slices.ContainsFunc(cmds, func(c string) bool { return strings.HasPrefix(c, "The server") }) {
+		t.Errorf("warned with no countdown: %q", cmds)
+	}
+	if !slices.Contains(cmds, "/server-save") {
+		t.Error("did not save")
+	}
+	if st := r.c.Status(id); st.Operation.Steps[0].State != StepSkipped {
+		t.Errorf("warn step %+v", st.Operation.Steps[0])
+	}
+}
+
+func TestStopCountdownOutOfRange(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Range")
+	r.start(id)
+	for _, d := range []time.Duration{-time.Second, MaxStopCountdown + time.Second} {
+		if err := r.c.Stop(context.Background(), id, admin, StopOptions{Countdown: d}); !errors.Is(err, ErrCountdown) {
+			t.Errorf("countdown %s: got %v", d, err)
+		}
+		if err := r.c.Restart(context.Background(), id, admin, StopOptions{Countdown: d}, StartOptions{}); !errors.Is(err, ErrCountdown) {
+			t.Errorf("restart countdown %s: got %v", d, err)
+		}
+		if _, err := r.c.Restore(context.Background(), id, admin, "x", StopOptions{Countdown: d}); !errors.Is(err, ErrCountdown) {
+			t.Errorf("restore countdown %s: got %v", d, err)
+		}
+	}
+	if a := r.actions(); !slices.Equal(a, []string{AuditStart}) {
+		t.Errorf("refused stops were acted on: %v", a)
+	}
+	if r.container(id).Status != "running" {
+		t.Error("the game stopped")
+	}
+	// Nobody is on, so the longest countdown is accepted without a wait.
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{Countdown: MaxStopCountdown}); err != nil {
+		t.Errorf("the longest countdown was refused: %v", err)
 	}
 }
