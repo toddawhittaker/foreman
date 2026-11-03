@@ -36,7 +36,13 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 		return Snapshot{}, err
 	}
 	defer unlock()
+	return m.RestoreHeld(ctx, id, name, by)
+}
 
+// RestoreHeld is Restore for a caller that already holds Lock(id), such as
+// server control restoring a running world: it stops the game, restores and
+// starts it again under one lock (SPEC 6.5).
+func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapshot, error) {
 	snap, err := m.Snapshot(id, name)
 	if err != nil {
 		return Snapshot{}, err
