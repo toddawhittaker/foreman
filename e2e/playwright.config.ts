@@ -9,10 +9,13 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: { baseURL: `http://127.0.0.1:${port}` },
+  // DESIGN 10: every screen is checked in both themes, at desktop and at
+  // 320 CSS pixels (SPEC 17.2).
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    // SPEC 17.2: every page works at 320 CSS pixels wide.
-    { name: "phone", use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 } } },
+    { name: "desktop-dark", use: { ...devices["Desktop Chrome"], colorScheme: "dark" } },
+    { name: "desktop-light", use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
+    { name: "phone-dark", use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, colorScheme: "dark" } },
+    { name: "phone-light", use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, colorScheme: "light" } },
   ],
   webServer: {
     // A fresh data directory per run. Foreman shares a user ID with the "game"
