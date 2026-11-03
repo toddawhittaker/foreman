@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -120,14 +121,25 @@ func TestPragmasOnEveryConnection(t *testing.T) {
 	}
 }
 
+// latestVersion is the number of the newest embedded migration, as the
+// string PRAGMA user_version returns.
+func latestVersion(t *testing.T) string {
+	t.Helper()
+	ms, err := loadMigrations(migrationFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strconv.Itoa(len(ms))
+}
+
 func TestMigrateIsIdempotent(t *testing.T) {
 	s, path := openTemp(t)
 	ctx := context.Background()
 	if _, err := s.CreateFirstAdmin(ctx, "ann", "h", t0); err != nil {
 		t.Fatal(err)
 	}
-	if v := pragma(t, s.db, "user_version"); v != "2" {
-		t.Fatalf("user_version = %s, want 2", v)
+	if v := pragma(t, s.db, "user_version"); v != latestVersion(t) {
+		t.Fatalf("user_version = %s, want %s", v, latestVersion(t))
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -138,8 +150,8 @@ func TestMigrateIsIdempotent(t *testing.T) {
 		t.Fatalf("second Open: %v", err)
 	}
 	defer func() { _ = s2.Close() }()
-	if v := pragma(t, s2.db, "user_version"); v != "2" {
-		t.Errorf("user_version after reopen = %s, want 2", v)
+	if v := pragma(t, s2.db, "user_version"); v != latestVersion(t) {
+		t.Errorf("user_version after reopen = %s, want %s", v, latestVersion(t))
 	}
 	if _, found, err := s2.UserByUsername(ctx, "ann"); err != nil || !found {
 		t.Errorf("data lost on reopen: found=%v err=%v", found, err)
@@ -169,18 +181,18 @@ func TestOpenRefusesNewerDatabase(t *testing.T) {
 func TestFailedMigrationRollsBack(t *testing.T) {
 	s, _ := openTemp(t)
 	ctx := context.Background()
-	migrations := []migration{
-		{version: 1, name: "0001_init.sql", sql: "SELECT 1"},
-		{version: 2, name: "0002_active_worlds.sql", sql: "SELECT 1"},
-		{version: 3, name: "0003_bad.sql", sql: "CREATE TABLE half (id INTEGER); THIS IS NOT SQL;"},
+	// The real schema is already at the latest version, so only the bad one runs.
+	real, err := loadMigrations(migrationFiles)
+	if err != nil {
+		t.Fatal(err)
 	}
-	// The real schema already set user_version to 2, so only 0003 runs.
-	err := applyMigrations(ctx, s.db, migrations)
-	if err == nil || !strings.Contains(err.Error(), "0003_bad.sql") {
-		t.Fatalf("err = %v, want a failure naming 0003_bad.sql", err)
+	bad := migration{version: len(real) + 1, name: "9999_bad.sql", sql: "CREATE TABLE half (id INTEGER); THIS IS NOT SQL;"}
+	err = applyMigrations(ctx, s.db, append(real, bad))
+	if err == nil || !strings.Contains(err.Error(), "9999_bad.sql") {
+		t.Fatalf("err = %v, want a failure naming 9999_bad.sql", err)
 	}
-	if v := pragma(t, s.db, "user_version"); v != "2" {
-		t.Errorf("user_version = %s after failure, want 2", v)
+	if v := pragma(t, s.db, "user_version"); v != latestVersion(t) {
+		t.Errorf("user_version = %s after failure, want %s", v, latestVersion(t))
 	}
 	var n int
 	if err := s.db.QueryRow("SELECT count(*) FROM sqlite_master WHERE name = 'half'").Scan(&n); err != nil {
