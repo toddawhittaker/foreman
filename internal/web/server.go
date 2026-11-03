@@ -10,19 +10,22 @@ import (
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // HealthPath answers 200 while the process can serve requests; the image's
 // health check calls it.
 const HealthPath = "/healthz"
 
-// maxFormBytes caps every request body; the forms hold a few short fields.
+// maxFormBytes caps every request body except uploads (see handleUpload);
+// the forms hold a few short fields.
 const maxFormBytes = 64 << 10
 
 // Deps is what the handler needs from the rest of the app.
 type Deps struct {
 	Config *config.Config
 	Store  *store.Store
+	Worlds *world.Manager
 	Log    *slog.Logger
 	Now    func() time.Time // time.Now when nil
 }
@@ -30,6 +33,7 @@ type Deps struct {
 type server struct {
 	cfg      *config.Config
 	store    *store.Store
+	worlds   *world.Manager
 	log      *slog.Logger
 	now      func() time.Time
 	render   *Renderer
@@ -37,6 +41,8 @@ type server struct {
 	limiter  *auth.Limiter
 	headers  auth.HeaderConfig
 	mux      *http.ServeMux
+	// uploadLimits holds the body limit of each upload route, by pattern.
+	uploadLimits map[string]int64
 }
 
 // NewHandler returns the HTTP handler for the whole app.
@@ -52,6 +58,7 @@ func NewHandler(d Deps) (http.Handler, error) {
 	s := &server{
 		cfg:      d.Config,
 		store:    d.Store,
+		worlds:   d.Worlds,
 		log:      d.Log,
 		now:      now,
 		render:   renderer,
@@ -63,7 +70,8 @@ func NewHandler(d Deps) (http.Handler, error) {
 			RequiredGroup: d.Config.RequiredGroup,
 			Trusted:       d.Config.TrustedProxies,
 		},
-		mux: http.NewServeMux(),
+		mux:          http.NewServeMux(),
+		uploadLimits: map[string]int64{},
 	}
 	s.routes()
 
@@ -79,7 +87,7 @@ func NewHandler(d Deps) (http.Handler, error) {
 	}
 	var h http.Handler = s.mux
 	h = cop.Handler(h)
-	h = limitBody(h)
+	h = s.limitBody(h)
 	h = s.recoverPanic(h)
 	h = s.accessLog(h)
 	return h, nil
@@ -93,7 +101,12 @@ func (s *server) routes() {
 	s.mux.Handle("GET "+PathStatic, s.render.Static())
 	s.mux.HandleFunc("GET "+PathSignedOut, s.handleSignedOut)
 	s.mux.HandleFunc("POST "+PathSignOut, s.handleSignOut)
-	s.mux.HandleFunc("GET /{$}", s.requireUser(s.handleHome))
+	s.mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, PathWorlds, http.StatusSeeOther)
+	})
+	s.worldRoutes()
+	s.saveRoutes()
+	s.snapshotRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
@@ -154,10 +167,6 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user s
 func (s *server) fail(w http.ResponseWriter, r *http.Request, what string, err error) {
 	s.log.Error(what, "method", r.Method, "path", r.URL.Path, "error", err)
 	s.page(w, r, http.StatusInternalServerError, "", ErrorPage{Status: http.StatusInternalServerError})
-}
-
-func (s *server) handleHome(w http.ResponseWriter, r *http.Request, u store.User) {
-	s.page(w, r, http.StatusOK, u.Username, HomePage{})
 }
 
 func (s *server) handleSignedOut(w http.ResponseWriter, r *http.Request) {

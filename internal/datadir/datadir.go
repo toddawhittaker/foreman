@@ -22,6 +22,15 @@ const (
 // Database returns the path of the app database inside dataDir.
 func Database(dataDir string) string { return filepath.Join(dataDir, "foreman.db") }
 
+// Worlds returns the folder that holds managed mode's worlds (SPEC 5.2).
+func Worlds(dataDir string) string { return filepath.Join(dataDir, "worlds") }
+
+// Snapshots returns the folder that holds every world's snapshots (SPEC 5.2).
+func Snapshots(dataDir string) string { return filepath.Join(dataDir, "snapshots") }
+
+// Imports returns the inbox that worlds are imported from.
+func Imports(dataDir string) string { return filepath.Join(dataDir, "import") }
+
 // Inspector reads a container's mounts. *docker.Client satisfies it.
 type Inspector interface {
 	InspectContainer(ctx context.Context, id string) (docker.Container, error)

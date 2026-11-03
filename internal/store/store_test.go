@@ -126,8 +126,8 @@ func TestMigrateIsIdempotent(t *testing.T) {
 	if _, err := s.CreateFirstAdmin(ctx, "ann", "h", t0); err != nil {
 		t.Fatal(err)
 	}
-	if v := pragma(t, s.db, "user_version"); v != "1" {
-		t.Fatalf("user_version = %s, want 1", v)
+	if v := pragma(t, s.db, "user_version"); v != "2" {
+		t.Fatalf("user_version = %s, want 2", v)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -138,8 +138,8 @@ func TestMigrateIsIdempotent(t *testing.T) {
 		t.Fatalf("second Open: %v", err)
 	}
 	defer func() { _ = s2.Close() }()
-	if v := pragma(t, s2.db, "user_version"); v != "1" {
-		t.Errorf("user_version after reopen = %s, want 1", v)
+	if v := pragma(t, s2.db, "user_version"); v != "2" {
+		t.Errorf("user_version after reopen = %s, want 2", v)
 	}
 	if _, found, err := s2.UserByUsername(ctx, "ann"); err != nil || !found {
 		t.Errorf("data lost on reopen: found=%v err=%v", found, err)
@@ -171,15 +171,16 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	ctx := context.Background()
 	migrations := []migration{
 		{version: 1, name: "0001_init.sql", sql: "SELECT 1"},
-		{version: 2, name: "0002_bad.sql", sql: "CREATE TABLE half (id INTEGER); THIS IS NOT SQL;"},
+		{version: 2, name: "0002_active_worlds.sql", sql: "SELECT 1"},
+		{version: 3, name: "0003_bad.sql", sql: "CREATE TABLE half (id INTEGER); THIS IS NOT SQL;"},
 	}
-	// The real schema already set user_version to 1, so only 0002 runs.
+	// The real schema already set user_version to 2, so only 0003 runs.
 	err := applyMigrations(ctx, s.db, migrations)
-	if err == nil || !strings.Contains(err.Error(), "0002_bad.sql") {
-		t.Fatalf("err = %v, want a failure naming 0002_bad.sql", err)
+	if err == nil || !strings.Contains(err.Error(), "0003_bad.sql") {
+		t.Fatalf("err = %v, want a failure naming 0003_bad.sql", err)
 	}
-	if v := pragma(t, s.db, "user_version"); v != "1" {
-		t.Errorf("user_version = %s after failure, want 1", v)
+	if v := pragma(t, s.db, "user_version"); v != "2" {
+		t.Errorf("user_version = %s after failure, want 2", v)
 	}
 	var n int
 	if err := s.db.QueryRow("SELECT count(*) FROM sqlite_master WHERE name = 'half'").Scan(&n); err != nil {

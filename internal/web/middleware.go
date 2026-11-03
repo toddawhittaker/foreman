@@ -75,10 +75,40 @@ func (s *server) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-// limitBody caps every request body (see maxFormBytes).
-func limitBody(next http.Handler) http.Handler {
+// limitBody caps every request body at maxFormBytes, or at the route's own
+// limit for an upload route (SPEC 14.6).
+func (s *server) limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
+		limit := int64(maxFormBytes)
+		if _, pattern := s.mux.Handler(r); s.uploadLimits[pattern] > 0 {
+			limit = s.uploadLimits[pattern]
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// handleLong registers a route that may run longer than the server's read
+// and write timeouts: a download, import or restore. It lifts both
+// deadlines for that request only.
+func (s *server) handleLong(pattern string, h http.HandlerFunc) {
+	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		rc := http.NewResponseController(w)
+		if err := rc.SetReadDeadline(time.Time{}); err != nil {
+			s.fail(w, r, "lift read deadline", err)
+			return
+		}
+		if err := rc.SetWriteDeadline(time.Time{}); err != nil {
+			s.fail(w, r, "lift write deadline", err)
+			return
+		}
+		h(w, r)
+	})
+}
+
+// handleUpload registers an upload route with its own body limit instead of
+// maxFormBytes, and without the read and write deadlines.
+func (s *server) handleUpload(pattern string, limit int64, h http.HandlerFunc) {
+	s.uploadLimits[pattern] = limit
+	s.handleLong(pattern, h)
 }

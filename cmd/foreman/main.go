@@ -22,6 +22,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/web"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 func main() {
@@ -60,7 +61,7 @@ func listenAddr() string {
 }
 
 // serve starts in a fixed order: data directory check, host path (managed
-// mode only), database, then the server.
+// mode only), database, world recovery, then the server.
 func serve(cfg *config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -81,7 +82,20 @@ func serve(cfg *config.Config) error {
 	}
 	defer func() { _ = st.Close() }()
 
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Log: slog.Default()})
+	worlds, err := world.NewManager(world.Dirs{
+		Worlds:    datadir.Worlds(cfg.DataDir),
+		Snapshots: datadir.Snapshots(cfg.DataDir),
+		Imports:   datadir.Imports(cfg.DataDir),
+	}, st, nil)
+	if err != nil {
+		return err
+	}
+	// Recovery finishes before the first request, so no page sees half-done work.
+	if err := worlds.Recover(slog.Default()); err != nil {
+		return err
+	}
+
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Log: slog.Default()})
 	if err != nil {
 		return err
 	}

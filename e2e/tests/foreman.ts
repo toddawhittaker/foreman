@@ -28,6 +28,7 @@ function freePort(): Promise<number> {
 
 export interface Foreman {
   url: string;
+  dataDir: string;
   logs: () => string;
 }
 
@@ -43,7 +44,9 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
       FOREMAN_DATA_DIR: dataDir,
       FOREMAN_GAME_UID: String(process.getuid?.() ?? 0),
       FOREMAN_GAME_GID: String(process.getgid?.() ?? 0),
-      FOREMAN_MODE: "adopted",
+      // Managed mode with the host path given, so no Docker call is made.
+      FOREMAN_MODE: "managed",
+      FOREMAN_HOST_DATA_DIR: dataDir,
       FOREMAN_LISTEN: `127.0.0.1:${port}`,
       ...env,
     },
@@ -65,6 +68,7 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
   }
   return {
     url,
+    dataDir,
     logs: () => out,
     stop: async () => {
       if (proc.exitCode === null) {

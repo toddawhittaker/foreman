@@ -12,11 +12,14 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // Paths the templates link to or post to. The router serves these.
 const (
-	PathHome      = "/"
+	PathWorlds    = "/worlds"
+	PathHome      = PathWorlds // where sign-in lands; "/" redirects here
 	PathSignIn    = "/signin"
 	PathSetup     = "/setup"
 	PathSignOut   = "/signout"
@@ -45,9 +48,10 @@ type Problem struct {
 	Message string
 }
 
-// HomePage is the signed-in landing page. Until worlds exist it shows only
-// the empty state.
-type HomePage struct{}
+// WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).
+type WorldsPage struct {
+	Worlds []world.Summary
+}
 
 // SignedOutPage confirms that sign-out ended the session (SPEC 12.8).
 type SignedOutPage struct{}
@@ -87,7 +91,7 @@ type ErrorPage struct {
 	Detail string
 }
 
-func (HomePage) templateName() string      { return "home" }
+func (WorldsPage) templateName() string    { return "worlds" }
 func (SignedOutPage) templateName() string { return "signedout" }
 func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
@@ -95,6 +99,8 @@ func (ErrorPage) templateName() string     { return "error" }
 
 func (p SignInPage) hasErrors() bool { return p.RateLimited || p.Busy || len(p.Problems()) > 0 }
 func (p SetupPage) hasErrors() bool  { return len(p.Problems()) > 0 }
+
+func (WorldsPage) navItem() string { return PathWorlds }
 
 // Problems lists the field errors in the order the fields appear.
 func (p SignInPage) Problems() []Problem {
@@ -189,6 +195,13 @@ type view struct {
 	Page Page
 }
 
+// Current is true when the nav link to path names this page, so it gets
+// aria-current (DESIGN 6).
+func (v view) Current(path string) bool {
+	n, ok := v.Page.(interface{ navItem() string })
+	return ok && n.navItem() == path
+}
+
 // Failed is true when a form page is showing errors, so the title can say
 // so first (WCAG 3.3.1 and 2.4.2).
 func (v view) Failed() bool {
@@ -223,13 +236,24 @@ func NewRenderer() (*Renderer, error) {
 	funcs := template.FuncMap{
 		"static":        r.staticURL,
 		"homePath":      func() string { return PathHome },
+		"worldsPath":    func() string { return PathWorlds },
+		"bytes":         world.FormatBytes,
+		"utc":           func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
+		"isoTime":       func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		"signInPath":    func() string { return PathSignIn },
 		"setupPath":     func() string { return PathSetup },
 		"signOutPath":   func() string { return PathSignOut },
 		"signedOutPath": func() string { return PathSignedOut },
 	}
-	for _, p := range []Page{HomePage{}, SignedOutPage{}, SignInPage{}, SetupPage{}, ErrorPage{}} {
-		name := p.templateName()
+	files, err := fs.Glob(templateFS, "templates/*.html")
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range files {
+		name := strings.TrimSuffix(path.Base(f), ".html")
+		if name == "layout" {
+			continue
+		}
 		t, err := template.New(name).Funcs(funcs).ParseFS(templateFS,
 			"templates/layout.html", "templates/"+name+".html")
 		if err != nil {
