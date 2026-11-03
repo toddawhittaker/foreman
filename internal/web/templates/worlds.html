@@ -1,0 +1,30 @@
+{{define "title"}}Worlds{{end}}
+
+{{define "content" -}}
+<h1>Worlds</h1>
+<section aria-labelledby="worlds-heading">
+  <h2 id="worlds-heading">All worlds</h2>
+  {{- with .Page.Worlds}}
+  <ul class="worlds">
+    {{- range .}}
+    <li>
+      <h3>{{.Name}}{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>
+      {{- if .Unreadable}}
+      <p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.ID}}</code>.</p>
+      {{- else if .Newer}}
+      <p>A newer version of Foreman wrote this world, so this version cannot change it.</p>
+      {{- end}}
+      <dl class="facts">
+        <div><dt>Game version</dt><dd>{{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
+        <div><dt>Space Age</dt><dd>{{if .SpaceAge}}On{{else}}Off{{end}}</dd></div>
+        <div><dt>Last played</dt><dd>{{if .LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .LastPlayed}}">{{utc .LastPlayed}}</time>{{end}}</dd></div>
+        <div><dt>Disk use</dt><dd>{{bytes .DiskBytes}}</dd></div>
+      </dl>
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty">No worlds yet. Import a folder of saves or upload a save file to make your first world.</p>
+  {{- end}}
+</section>
+{{- end}}

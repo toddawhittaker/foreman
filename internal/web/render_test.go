@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 func newTestRenderer(t *testing.T) *Renderer {
@@ -37,8 +39,14 @@ type pageCase struct {
 
 func pageCases() []pageCase {
 	return []pageCase{
-		{"home signed in", "todd", 200, HomePage{}},
-		{"home long user", longName, 200, HomePage{}},
+		{"worlds empty", "todd", 200, WorldsPage{}},
+		{"worlds long user", longName, 200, WorldsPage{}},
+		{"worlds listed", "todd", 200, WorldsPage{Worlds: []world.Summary{
+			{ID: "base", Name: longName, GameVersion: "2.0.72", SpaceAge: true, Active: true, DiskBytes: 2_100_000_000,
+				LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)},
+			{ID: "future", Name: "Future", Newer: true},
+			{ID: "broken", Name: "broken", Unreadable: true},
+		}}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
@@ -422,7 +430,7 @@ func TestStaticHandler(t *testing.T) {
 // Every asset URL a page links to is served by the static handler.
 func TestPageAssetsResolve(t *testing.T) {
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 200, page: HomePage{}, user: "todd"})
+	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
 	found := re.FindAllStringSubmatch(body, -1)
 	if len(found) != 2 {

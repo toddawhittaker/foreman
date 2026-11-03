@@ -77,8 +77,9 @@ image:
 
 run:
 	@mkdir -p .dev-data
-	FOREMAN_MODE=adopted FOREMAN_GAME_UID=$(shell id -u) FOREMAN_GAME_GID=$(shell id -g) \
-		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data go run ./cmd/foreman serve
+	FOREMAN_MODE=managed FOREMAN_GAME_UID=$(shell id -u) FOREMAN_GAME_GID=$(shell id -g) \
+		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
+		go run ./cmd/foreman serve
 
 e2e: build e2e-deps
 	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
