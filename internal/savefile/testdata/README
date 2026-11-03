@@ -1,0 +1,48 @@
+Test saves for the save reader (SPEC 9.9)
+
+Every .zip here is a real save made by the real game, not built by hand.
+Each was made by running the game binary in a throwaway container with
+`--create` on a 64 by 64 map (gen/mapgen.json, seed 1). Nothing was
+downloaded from the mod portal.
+
+Images, pinned by digest:
+
+  1.1.110  factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb
+  2.0.77   factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef
+  2.1.24   factoriotools/factorio:2.1.24@sha256:0ef394757b906f8e2e42d7e1f05332ad7cf7575c40d9b2412fa4c477189bdea7
+
+1.1.110 is the newest 1.1 tag and 2.0.77 the newest 2.0 tag on Docker Hub
+as of 2026-11-03.
+
+To reproduce, pull the three images, then from this folder run
+
+  ./gen/gen.sh "$(pwd)"
+
+gen.sh runs, for each save, as the image's root user and with the
+entrypoint replaced:
+
+  /opt/factorio/bin/x64/factorio --create /out/<save>.zip \
+      --map-gen-settings /in/mapgen.json [--mod-directory /in/<mods>]
+
+then gives the file to the calling user. Containers are named
+foreman-e3-1c-* and removed with --rm.
+
+The saves:
+
+  1.1.110-vanilla.zip           1.1.110, no mod directory (base only).
+  1.1.110-testmod.zip           1.1.110, gen/mods11: base and foreman-test.
+  2.0.77-space-age.zip          2.0.77, no mod directory, so Space Age and
+                                its built-in mods are on (the default).
+  2.0.77-no-space-age.zip       2.0.77, gen/mods20-nosa: space-age, quality
+                                and elevated-rails disabled.
+  2.1.24-space-age.zip          2.1.24, default mods (Space Age on).
+  2.1.24-no-space-age.zip       2.1.24, gen/mods20-nosa (the same list).
+  2.1.24-space-age-testmod.zip  2.1.24, gen/mods21-sa-mod: Space Age on
+                                plus foreman-test.
+
+foreman-test is a mod written for these tests: an info.json and nothing
+else. It declares factorio_version 1.1 or 2.1 to match the game. Note that
+2.1.24 lists a built-in "recycler" mod even with Space Age off.
+
+Saves are not reproducible byte for byte (the game writes timestamps and
+checksums), but the version and mod list are.
