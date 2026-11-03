@@ -1,0 +1,52 @@
+2026-11-03T22:26:04.734731691Z    0.000 2026-11-03 22:26:04; Factorio 1.1.110 (build 62357, linux64, headless)
+2026-11-03T22:26:04.734780133Z    0.000 Operating system: Linux
+2026-11-03T22:26:04.734784722Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server" "/factorio/saves/spike.zip" "--server-settings" "/factorio/config/server-settings.json" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> 
+2026-11-03T22:26:04.734789702Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-03T22:26:04.734792547Z    0.000 Read data path: /opt/factorio/data
+2026-11-03T22:26:04.734795543Z    0.000 Write data path: /opt/factorio [546364/928723MB]
+2026-11-03T22:26:04.734798308Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-03T22:26:04.739866888Z    0.005 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+2026-11-03T22:26:04.739884371Z    0.005 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-03T22:26:04.739888609Z    0.005 Running in headless mode
+2026-11-03T22:26:04.742749909Z    0.008 Loading mod core 0.0.0 (data.lua)
+2026-11-03T22:26:04.760413556Z    0.026 Loading mod base 1.1.110 (data.lua)
+2026-11-03T22:26:04.884719536Z    0.150 Loading mod base 1.1.110 (data-updates.lua)
+2026-11-03T22:26:04.948725694Z    0.214 Checksum for core: 607699937
+2026-11-03T22:26:04.948752235Z    0.214 Checksum of base: 2464433227
+2026-11-03T22:26:05.091151603Z    0.357 Prototype list checksum: 3034860339
+2026-11-03T22:26:05.128015685Z    0.393 Info PlayerData.cpp:78: Local player-data.json unavailable
+2026-11-03T22:26:05.128043638Z    0.393 Info PlayerData.cpp:83: Cloud player-data.json unavailable
+2026-11-03T22:26:05.128649346Z    0.394 Factorio initialised
+2026-11-03T22:26:05.128868625Z    0.394 Info ServerSynchronizer.cpp:29: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-03T22:26:05.128877212Z    0.394 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(Ready) to(PreparedToHostGame)
+2026-11-03T22:26:05.128880919Z    0.394 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-03T22:26:05.129049581Z    0.394 Loading map /factorio/saves/spike.zip: 729344 bytes.
+2026-11-03T22:26:05.139808198Z    0.405 Loading level.dat: 1238832 bytes.
+2026-11-03T22:26:05.143878920Z    0.409 Info Scenario.cpp:204: Map version 1.1.110-0
+2026-11-03T22:26:05.162477865Z    0.428 Loading script.dat: 1171 bytes.
+2026-11-03T22:26:05.164747012Z    0.430 Checksum for script /opt/factorio/temp/currently-playing/control.lua: 3702463597
+2026-11-03T22:26:05.165619099Z    0.431 Info UDPSocket.cpp:33: Opening socket at (IP ADDR:({0.0.0.0:34197}))
+2026-11-03T22:26:05.165737947Z    0.431 Hosting game at IP ADDR:({0.0.0.0:34197})
+2026-11-03T22:26:05.165744018Z    0.431 Info ServerMultiplayerManager.cpp:814: updateTick(0) changing state from(CreatingGame) to(InGame)
+2026-11-03T22:26:05.165944391Z    0.431 Info RemoteCommandProcessor.cpp:133: Starting RCON interface at IP ADDR:({0.0.0.0:27015})
+2026-11-03T22:26:06.818779013Z    2.084 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:59644})
+2026-11-03T22:26:06.874924564Z    2.140 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:59658})
+2026-11-03T22:26:06.924417658Z    2.190 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:59666})
+2026-11-03T22:26:06.949462716Z    2.215 Info AppManager.cpp:444: Saving game as /factorio/saves/spike.zip
+2026-11-03T22:26:07.016304334Z    2.282 Info AppManagerStates.cpp:2007: Saving finished
+2026-11-03T22:27:05.266140713Z   60.532 Info AppManager.cpp:327: Saving to _autosave1 (blocking).
+2026-11-03T22:27:05.316229796Z   60.582 Info AppManagerStates.cpp:2007: Saving finished
+2026-11-03T22:27:09.177615459Z   64.443 Received SIGTERM, shutting down
+2026-11-03T22:27:09.177638403Z   64.443 Quitting: signal.
+2026-11-03T22:27:09.177643172Z   64.443 Info MainLoop.cpp:446: Saving map as /factorio/saves/spike.zip
+2026-11-03T22:27:09.212465109Z   64.478 Info MainLoop.cpp:457: Saving progress: 0.250000%
+2026-11-03T22:27:09.214395860Z   64.480 Info MainLoop.cpp:457: Saving progress: 100.000000%
+2026-11-03T22:27:09.230140218Z   64.496 Info ServerMultiplayerManager.cpp:127: Disconnecting multiplayer connection.
+2026-11-03T22:27:09.230153684Z   64.496 Info ServerMultiplayerManager.cpp:814: updateTick(3833) changing state from(InGame) to(DisconnectingScheduled)
+2026-11-03T22:27:09.263589672Z   64.529 Info ServerMultiplayerManager.cpp:814: updateTick(3833) changing state from(DisconnectingScheduled) to(Disconnecting)
+2026-11-03T22:27:09.297036641Z   64.562 Info ServerMultiplayerManager.cpp:814: updateTick(3833) changing state from(Disconnecting) to(Disconnected)
+2026-11-03T22:27:09.297052371Z   64.562 Info ServerMultiplayerManager.cpp:154: Quitting multiplayer connection.
+2026-11-03T22:27:09.297055738Z   64.562 Info ServerMultiplayerManager.cpp:814: updateTick(3833) changing state from(Disconnected) to(Closed)
+2026-11-03T22:27:09.679048516Z   64.944 Info UDPSocket.cpp:233: Closing socket
+2026-11-03T22:27:09.679068324Z   64.944 Info UDPSocket.cpp:263: Socket closed
+2026-11-03T22:27:09.702803929Z   64.968 Goodbye

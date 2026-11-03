@@ -1,0 +1,30 @@
+2026-11-03T22:27:58.794866950Z    0.000 2026-11-03 22:27:58; Factorio 1.1.110 (build 62357, linux64, headless)
+2026-11-03T22:27:58.794887359Z    0.000 Operating system: Linux
+2026-11-03T22:27:58.794889974Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server" "/factorio/saves/corrupt.zip" "--server-settings" "/factorio/config/server-settings.json" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> 
+2026-11-03T22:27:58.794892690Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-03T22:27:58.794894413Z    0.000 Read data path: /opt/factorio/data
+2026-11-03T22:27:58.794896026Z    0.000 Write data path: /opt/factorio [545760/928723MB]
+2026-11-03T22:27:58.794897639Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-03T22:27:58.799056760Z    0.004 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+2026-11-03T22:27:58.799069133Z    0.004 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-03T22:27:58.799074614Z    0.004 Running in headless mode
+2026-11-03T22:27:58.801242298Z    0.006 Loading mod core 0.0.0 (data.lua)
+2026-11-03T22:27:58.817617401Z    0.022 Loading mod base 1.1.110 (data.lua)
+2026-11-03T22:27:58.935786039Z    0.140 Loading mod base 1.1.110 (data-updates.lua)
+2026-11-03T22:27:58.994798912Z    0.200 Checksum for core: 607699937
+2026-11-03T22:27:58.994816656Z    0.200 Checksum of base: 2464433227
+2026-11-03T22:27:59.124627820Z    0.329 Prototype list checksum: 3034860339
+2026-11-03T22:27:59.154691521Z    0.359 Info PlayerData.cpp:78: Local player-data.json unavailable
+2026-11-03T22:27:59.154708193Z    0.359 Info PlayerData.cpp:83: Cloud player-data.json unavailable
+2026-11-03T22:27:59.155281108Z    0.360 Factorio initialised
+2026-11-03T22:27:59.155498484Z    0.360 Info ServerSynchronizer.cpp:29: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-03T22:27:59.155501600Z    0.360 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(Ready) to(PreparedToHostGame)
+2026-11-03T22:27:59.155503794Z    0.360 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-03T22:27:59.155745146Z    0.360 Loading map /factorio/saves/corrupt.zip: 4096 bytes.
+2026-11-03T22:27:59.155861768Z    0.361 Error ServerMultiplayerManager.cpp:92: MultiplayerManager failed: "Opening zip /factorio/saves/corrupt.zip failed: Bad zip file"
+2026-11-03T22:27:59.155866207Z    0.361 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(CreatingGame) to(InitializationFailed)
+2026-11-03T22:27:59.155868842Z    0.361 Info CommandLineMultiplayer.cpp:219: Exit point.
+2026-11-03T22:27:59.157621933Z    0.362 Info ServerMultiplayerManager.cpp:154: Quitting multiplayer connection.
+2026-11-03T22:27:59.157639787Z    0.362 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(InitializationFailed) to(Closed)
+2026-11-03T22:27:59.175294978Z    0.380 Info UDPSocket.cpp:233: Closing socket
+2026-11-03T22:27:59.176617967Z    0.381 Goodbye
