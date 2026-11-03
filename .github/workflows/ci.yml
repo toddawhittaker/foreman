@@ -13,11 +13,25 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# The three jobs run in parallel. Together they are `make ci`.
+# The jobs run in parallel; together they are `make ci`. The `ci` job at the
+# end is the one check the ruleset on main requires, so adding a job here
+# needs no change to the ruleset.
 jobs:
+  # `make verify`, split so its slow parts run side by side.
   verify:
+    name: verify (${{ matrix.check }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: vet
+            run: make check-go fmt-check vet
+          - check: lint
+            run: make lint
+          - check: test
+            run: make test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -30,15 +44,14 @@ jobs:
           go-version: ${{ steps.go.outputs.version }}
           cache-dependency-path: go.sum
 
-      # The lint and type-check containers keep their caches in .cache/.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # The lint container keeps its caches in .cache/.
+      - if: matrix.check == 'lint'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            .cache
-            e2e/node_modules
-          key: verify-${{ hashFiles('go.sum', 'Makefile', '.golangci.yml', 'e2e/package-lock.json') }}
+          path: .cache
+          key: lint-${{ hashFiles('go.sum', 'Makefile', '.golangci.yml') }}
 
-      - run: make verify
+      - run: ${{ matrix.run }}
 
   e2e:
     runs-on: ubuntu-24.04
@@ -62,7 +75,9 @@ jobs:
             e2e/node_modules
           key: e2e-${{ hashFiles('Makefile', 'e2e/package-lock.json') }}
 
-      - run: make e2e
+      # The type check is part of `make verify`; it runs here because it
+      # needs the same Playwright image and packages.
+      - run: make typecheck e2e
 
   image:
     runs-on: ubuntu-24.04
@@ -91,3 +106,15 @@ jobs:
           size=$(docker save foreman:ci | gzip | wc -c)
           echo "Compressed image: $size bytes (limit 30000000)"
           [ "$size" -le 30000000 ]
+
+  # The single required check: green only when every job above is green.
+  ci:
+    if: always()
+    needs: [verify, e2e, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed
+        run: |
+          echo '${{ toJSON(needs.*.result) }}'
+          [ '${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}' = false ]

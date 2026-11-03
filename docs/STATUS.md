@@ -15,7 +15,7 @@ Serves SPEC 18.1. Everything below is built and tested.
   and a `/healthz` endpoint. Every make target in STACK 13 exists;
   `test-game` and `e2e-game` are stubs until Epic 3. The container image
   is distroless, runs as 845:845, and is about 7 MB compressed (limit
-  30 MB, checked in CI). CI is GitHub Actions on `ubuntu-24.04`, in three
+  30 MB, checked in CI). CI is GitHub Actions on `ubuntu-24.04`, in
   parallel jobs with caching and every action pinned by commit (STACK 1
   and 9). `make run` starts Foreman locally in adopted mode.
   The toolchain is pinned (STACK 1, ADR 0001), and `make verify` fails on

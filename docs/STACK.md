@@ -181,8 +181,9 @@ Cheap to change.
   switching, snapshots, mods or game versions (CLAUDE.md, "Testing
   rules"), not on every task, because the image is large and each start
   takes tens of seconds.
-- **In CI**: three parallel jobs, `verify`, `e2e` and `image`, which
-  together are `make ci`. Go modules and build output, the lint and npm
+- **In CI**: parallel jobs that together are `make ci`, with `make
+  verify` split into `vet`, `lint` and `test` so its slow parts do not
+  wait on each other, since they grow with the code. Go modules and build output, the lint and npm
   caches, and the image's build layers are cached between runs. Each job
   gets a fresh runner, so nothing needs cleaning up afterwards.
 
@@ -232,7 +233,7 @@ Rejected:
 | `make test-game TAG=x` | Integration tests against a real `factoriotools/factorio:<TAG>` container. |
 | `make e2e-game` | The vision's success scenarios against a real game, for milestone gates and epic pull requests. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
-| `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as three parallel jobs. |
+| `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as parallel jobs. |
 | `make tidy` | `go mod tidy`. |
 
 ## 14. Left out on purpose

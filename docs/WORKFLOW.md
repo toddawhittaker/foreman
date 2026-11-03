@@ -16,10 +16,12 @@ for anything `gh` has no command for, such as a PR's changed files.
 `make verify` run locally on a PR's head commit is the check that gates
 every merge, and the orchestrator or the merger agent runs it before
 merging. The CI workflow in `.github/workflows/ci.yml` runs on every
-pull request and every push to `main`, in three parallel jobs: `verify`,
-`e2e` and `image` (the same checks as `make ci`, plus the image size
-limit). A ruleset on `main` requires a pull request and all three jobs
-to pass. Read a failing run's log with `gh run view --log-failed`.
+pull request and every push to `main`. Its jobs run in parallel and
+together check the same things as `make ci`, plus the image size limit:
+`make verify` is split into `vet`, `lint` and `test` jobs, the type check
+runs with `e2e`, and `image` builds the container. A final `ci` job passes
+only when every other job passed. A ruleset on `main` requires a pull
+request and the `ci` job, so adding a job never needs a ruleset change. Read a failing run's log with `gh run view --log-failed`.
 
 CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
 system changes only when we change it. A push to a pull request cancels
