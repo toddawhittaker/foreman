@@ -113,27 +113,51 @@ func TestAtMostTwoUploadsRunAtOnce(t *testing.T) {
 	bigBody := bytes.Repeat([]byte("z"), 512<<10)
 
 	// Two uploads in progress: headers and a first part of the body sent.
+	// The server starts a connection's handler when it gets to it, so a
+	// probe sent at once can take a place before the second upload has its
+	// own. A taken-over upload is answered 429; then the round is thrown
+	// away and begun again, so the round that counts has both uploads
+	// holding a place when the third arrives.
 	var held [2]net.Conn
 	var rest [2][]byte
-	for i := range held {
-		held[i], rest[i] = sc.slowUpload(t, path, fmt.Sprintf("held%d.zip", i), saveZip(t))
-		if _, err := held[i].Write(rest[i][:10]); err != nil {
-			t.Fatal(err)
-		}
-		rest[i] = rest[i][10:]
-	}
-	// The third declares more than the server would drain and sends
-	// headers only. It gets its answer anyway, so its body was not read.
 	var status int
 	var body string
-	for range 50 {
-		third, _ := sc.slowUpload(t, path, "third.zip", bigBody)
-		var ok bool
-		status, body, ok = answer(third, 200*time.Millisecond)
-		_ = third.Close()
-		if ok {
-			break
+	settled := false
+	for round := 0; round < 10 && !settled; round++ {
+		for i := range held {
+			held[i], rest[i] = sc.slowUpload(t, path, fmt.Sprintf("held%d-%d.zip", round, i), saveZip(t))
+			if _, err := held[i].Write(rest[i][:10]); err != nil {
+				t.Fatal(err)
+			}
+			rest[i] = rest[i][10:]
 		}
+		// The third declares more than the server would drain and sends
+		// headers only. It gets its answer anyway, so its body was not read.
+		status, body = 0, ""
+		for range 20 {
+			third, _ := sc.slowUpload(t, path, "third.zip", bigBody)
+			var ok bool
+			status, body, ok = answer(third, 200*time.Millisecond)
+			_ = third.Close()
+			if ok {
+				break
+			}
+		}
+		settled = true
+		for _, conn := range held {
+			if _, _, answered := answer(conn, 100*time.Millisecond); answered {
+				settled = false
+			}
+		}
+		if !settled {
+			for _, conn := range held {
+				_ = conn.Close()
+			}
+			time.Sleep(300 * time.Millisecond) // let the places come back
+		}
+	}
+	if !settled {
+		t.Fatal("the two uploads never both held a place")
 	}
 	if status != http.StatusTooManyRequests || !strings.Contains(body, msgTooMany) {
 		t.Fatalf("third upload: status %d, want 429 with the message:\n%s", status, body)
