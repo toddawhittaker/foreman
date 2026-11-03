@@ -3,21 +3,17 @@
 package datadir
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 )
 
-const (
-	// MountinfoPath is where Foreman finds its own container ID.
-	MountinfoPath = "/proc/self/mountinfo"
-)
+// MountinfoPath is where Foreman finds its own container ID.
+const MountinfoPath = docker.MountinfoPath
 
 // Database returns the path of the app database inside dataDir.
 func Database(dataDir string) string { return filepath.Join(dataDir, "foreman.db") }
@@ -43,10 +39,7 @@ func HostDir(ctx context.Context, dataDir, configured string, d Inspector, mount
 	if configured != "" {
 		return configured, nil
 	}
-	id := containerIDFromMountinfo(mountinfoPath)
-	if id == "" {
-		id = hostname
-	}
+	id := docker.SelfID(mountinfoPath, hostname)
 	if id == "" {
 		return "", errHostDir("foreman could not tell which container it is running in")
 	}
@@ -65,26 +58,6 @@ func HostDir(ctx context.Context, dataDir, configured string, d Inspector, mount
 
 func errHostDir(why string) error {
 	return fmt.Errorf("%s, so it cannot find the host path of its data directory. Set FOREMAN_HOST_DATA_DIR to that host path", why)
-}
-
-var containerIDPattern = regexp.MustCompile(`/containers/([0-9a-f]{64})/`)
-
-// containerIDFromMountinfo returns the first container ID found in a
-// mountinfo file, or "" if the file is missing or holds none.
-func containerIDFromMountinfo(path string) string {
-	f, err := os.Open(path) // #nosec G304 -- a fixed system path, injectable only for tests
-	if err != nil {
-		return ""
-	}
-	defer func() { _ = f.Close() }()
-	s := bufio.NewScanner(f)
-	s.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for s.Scan() {
-		if m := containerIDPattern.FindStringSubmatch(s.Text()); m != nil {
-			return m[1]
-		}
-	}
-	return ""
 }
 
 // Probe checks that dataDir exists, is a directory and is writable, and
