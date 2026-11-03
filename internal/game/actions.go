@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/rcon"
+	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -280,7 +284,8 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
 // has a mod list (R34). It returns a *PrecheckError unless the world may
-// start, with or without "Start anyway".
+// start, with or without "Start anyway", and ErrSaveNewerThanImage when
+// the pinned image is older than the save.
 func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, error) {
 	if err := c.worlds.EnsureModList(id); err != nil {
 		return world.PreCheck{}, err
@@ -293,7 +298,65 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	if !allowed {
 		return world.PreCheck{}, &PrecheckError{Check: check}
 	}
+	if err := c.checkSaveAgainstImage(id, check.SaveVersion); err != nil {
+		return world.PreCheck{}, err
+	}
 	return check, nil
+}
+
+// ErrSaveNewerThanImage refuses a save made by a newer game than the one
+// the world's pinned image runs, which could not load it. It is a plain
+// refusal, never "Start anyway".
+var ErrSaveNewerThanImage = errors.New("the save was made by a newer Factorio than the game image Foreman runs for this world, so the game could not load it")
+
+// checkSaveAgainstImage refuses a save newer than the game version in the
+// pinned image's tag. A save that could not be read has no version and is
+// left to the pre-start check's own refusal.
+func (c *Controller) checkSaveAgainstImage(id string, save savefile.Version) error {
+	if save == (savefile.Version{}) {
+		return nil
+	}
+	meta, err := c.readMeta(id)
+	if err != nil {
+		return err
+	}
+	ref, err := c.imageFor(meta.GameVersion)
+	if err != nil {
+		return err
+	}
+	image, ok := imageVersion(ref)
+	if !ok {
+		return fmt.Errorf("cannot tell which Factorio version the game image %s runs", ref)
+	}
+	saved := [3]uint16{save.Major, save.Minor, save.Patch}
+	if slices.Compare(saved[:], image[:]) > 0 {
+		return fmt.Errorf("%w: the save is from Factorio %s, and the image runs Factorio %d.%d.%d",
+			ErrSaveNewerThanImage, save, image[0], image[1], image[2])
+	}
+	return nil
+}
+
+// imageVersion reads major.minor.patch from an image reference's tag, as in
+// factoriotools/factorio:2.0.77@sha256:...
+func imageVersion(ref string) ([3]uint16, bool) {
+	ref, _, _ = strings.Cut(ref, "@")
+	i := strings.LastIndex(ref, ":")
+	if i < 0 || i < strings.LastIndex(ref, "/") {
+		return [3]uint16{}, false
+	}
+	parts := strings.Split(ref[i+1:], ".")
+	if len(parts) != 3 {
+		return [3]uint16{}, false
+	}
+	var out [3]uint16
+	for k, p := range parts {
+		n, err := strconv.ParseUint(p, 10, 16)
+		if err != nil {
+			return [3]uint16{}, false
+		}
+		out[k] = uint16(n)
+	}
+	return out, true
 }
 
 // waitInGame waits for the log to say the game is in game, or that it

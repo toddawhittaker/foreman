@@ -294,6 +294,61 @@ func TestPullFailureShown(t *testing.T) {
 	}
 }
 
+// Fail safe: a save newer than the pinned image's game is a plain refusal,
+// before anything is created, and a restart refuses before stopping.
+func TestStartRefusesSaveNewerThanImage(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Too new") // world 2.1.24, save from 2.1.24
+	r.start(id)
+	older := "factoriotools/factorio:2.1.20@sha256:" + strings.Repeat("0", 64)
+	r.c.images = map[string]string{"1.1": image11, "2.0": image20, "2.1": older}
+
+	err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{Anyway: true})
+	if !errors.Is(err, ErrSaveNewerThanImage) {
+		t.Fatalf("got %v, want ErrSaveNewerThanImage", err)
+	}
+	for _, v := range []string{"2.1.24", "2.1.20"} {
+		if !strings.Contains(err.Error(), v) {
+			t.Errorf("message %q does not name %s", err, v)
+		}
+	}
+	var pe *PrecheckError
+	if errors.As(err, &pe) {
+		t.Error("offered start anyway")
+	}
+	if r.container(id).Status != "running" {
+		t.Error("the restart stopped the game before refusing")
+	}
+	if err := r.c.ForceStop(context.Background(), id, admin); err != nil {
+		t.Fatal(err)
+	}
+	creates := len(r.calls("POST /containers/create"))
+	if err := r.c.Start(context.Background(), id, admin, StartOptions{}); !errors.Is(err, ErrSaveNewerThanImage) {
+		t.Fatalf("start got %v", err)
+	}
+	if len(r.calls("POST /containers/create")) != creates {
+		t.Error("a container was created for a save the image cannot load")
+	}
+
+	// An image as new as the save starts.
+	r.c.images = testImages
+	r.start(id)
+}
+
+func TestImageVersion(t *testing.T) {
+	if v, ok := imageVersion(image20); !ok || v != [3]uint16{2, 0, 77} {
+		t.Errorf("got %v, %v", v, ok)
+	}
+	if v, ok := imageVersion("registry:5000/factorio:1.1.110"); !ok || v != [3]uint16{1, 1, 110} {
+		t.Errorf("got %v, %v", v, ok)
+	}
+	for _, ref := range []string{"registry:5000/factorio", "factorio:latest", "factorio:2.0", "factorio@sha256:ab"} {
+		if _, ok := imageVersion(ref); ok {
+			t.Errorf("%q read as a version", ref)
+		}
+	}
+}
+
 // R2: a container with the name that Foreman did not make is refused.
 func TestStartRefusesForeignContainer(t *testing.T) {
 	r := newRig(t, rigOptions{})

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/savefile"
 )
 
 // checkWorld makes a world with the given version and Space Age flag.
@@ -242,6 +244,20 @@ func TestPreCheckUnreadableSave(t *testing.T) {
 	wantKinds(t, p, ProblemSaveUnreadable)
 	if !p.CanStartAnyway() || !strings.Contains(p.Problems[0].Text, "could not be checked") {
 		t.Fatalf("%+v", p)
+	}
+	if p.SaveVersion != (savefile.Version{}) {
+		t.Errorf("an unreadable save has version %s", p.SaveVersion)
+	}
+}
+
+// The controller compares the save's version with the game image's.
+func TestPreCheckReportsSaveVersion(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.1.24", false)
+	putFixture(t, dir, "2.1.24-no-space-age.zip", "a.zip", t0)
+	putModList(t, dir, "base", "recycler")
+	p := runCheck(t, m, id)
+	if got := p.SaveVersion.String(); got != "2.1.24" {
+		t.Errorf("save version %q, want 2.1.24", got)
 	}
 }
 
