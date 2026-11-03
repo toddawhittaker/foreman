@@ -21,6 +21,10 @@ const (
 	MaxOtherUpload = 200 << 20
 )
 
+// maxZipRatio caps a zip's stated unpacked size at this many times its own
+// size; every caller of checkZip passes that cap.
+const maxZipRatio = 50
+
 // uploadError carries words safe to show the admin.
 type uploadError struct{ msg string }
 

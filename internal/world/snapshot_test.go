@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -118,7 +119,7 @@ func TestFailedSnapshotLeavesNothingAndBlocksRestore(t *testing.T) {
 	if _, err := m.TakeSnapshot(id, "", "alice"); err == nil {
 		t.Fatal("snapshot of an unreadable file succeeded")
 	}
-	if _, err := m.Restore(id, good.Name, "alice"); err == nil {
+	if _, err := m.Restore(context.Background(), id, good.Name, "alice"); err == nil {
 		t.Fatal("restore ran although its snapshot failed")
 	}
 	entries, err := os.ReadDir(filepath.Join(m.dirs.Snapshots, id))
