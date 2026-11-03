@@ -10,6 +10,9 @@
   <p><strong>Error:</strong> {{.}}</p>
 </div>
 {{- end}}
+{{- with .Refusal}}
+<p>{{.}}</p>
+{{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">Delete the world "{{.World.Name}}"?</h2>
   <p>This will:</p>
@@ -37,5 +40,6 @@
     </div>
   </form>
 </section>
+{{- end}}
 {{- end}}
 {{- end}}

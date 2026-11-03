@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -21,6 +22,32 @@ const MaxSaveUpload = 1 << 30
 // maxZipRatio caps a zip's stated unpacked size at this many times its own
 // size; every caller of checkZip passes that cap.
 const maxZipRatio = 50
+
+// maxUploads is how many uploads may run at once across the whole server;
+// each holds a disk reserve and a temp file (SPEC 14.6).
+const maxUploads = 2
+
+// guardUpload wraps an upload handler. Before the body is read it refuses a
+// request that does not say how big it is (411) and one that arrives while
+// maxUploads others run (429). The place is given back on every way out.
+func (s *server) guardUpload(h func(http.ResponseWriter, *http.Request, store.User)) func(http.ResponseWriter, *http.Request, store.User) {
+	return func(w http.ResponseWriter, r *http.Request, u store.User) {
+		if r.ContentLength < 0 {
+			s.page(w, r, http.StatusLengthRequired, u.Username, ErrorPage{Status: http.StatusLengthRequired,
+				Detail: "Your browser did not say how big the file is. Try again from the upload form."})
+			return
+		}
+		select {
+		case s.uploadSlots <- struct{}{}:
+			defer func() { <-s.uploadSlots }()
+		default:
+			s.page(w, r, http.StatusTooManyRequests, u.Username, ErrorPage{Status: http.StatusTooManyRequests,
+				Detail: "Two uploads are already running. Wait for one to finish and try again."})
+			return
+		}
+		h(w, r, u)
+	}
+}
 
 // uploadError carries words safe to show the admin.
 type uploadError struct{ msg string }

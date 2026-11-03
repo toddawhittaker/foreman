@@ -38,7 +38,7 @@ const msgSaveGone = "Choose a save from the list. That save is no longer in the 
 
 func (s *server) saveRoutes() {
 	s.mux.HandleFunc("GET "+patternSaves, s.requireUser(s.handleSaves))
-	s.handleUpload("POST "+patternSaves, MaxSaveUpload, s.requireUser(s.handleSaveUpload))
+	s.handleUpload("POST "+patternSaves, MaxSaveUpload, s.requireUser(s.guardUpload(s.handleSaveUpload)))
 	s.handleLong("GET "+patternSave, s.requireUser(s.handleSaveDownload))
 	s.mux.HandleFunc("POST "+patternLoadSave, s.requireUser(s.handleLoadSave))
 }

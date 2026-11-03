@@ -15,7 +15,7 @@
     <div><dt>Folder</dt><dd><code>{{.World.ID}}</code></dd></div>
     <div><dt>Game version</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
     <div><dt>Space Age</dt><dd>{{if .World.SpaceAge}}On{{else}}Off{{end}}</dd></div>
-    <div><dt>Last played</dt><dd>{{if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
+    <div><dt>Last played</dt><dd>{{if .World.LastPlayedUnknown}}unknown{{else if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
     <div><dt>Disk use</dt><dd>{{if .World.SizeUnknown}}unknown{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
   </dl>
   <div class="actions">
@@ -25,10 +25,14 @@
 </section>
 <section class="panel" aria-labelledby="delete-heading">
   <h2 id="delete-heading">Delete</h2>
+  {{- with .DeleteRefusal}}
+  <p>{{.}}</p>
+  {{- else}}
   <p>Deleting removes the world's folder. Its snapshots stay, so it can be restored.</p>
   <div class="actions">
-    <a href="{{.DeletePath}}" class="button button--danger">Delete world</a>
+    <a href="{{.DeletePath}}" class="button">Delete world</a>
   </div>
+  {{- end}}
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
 <form method="post" action="{{.RenamePath}}" class="panel" novalidate aria-labelledby="rename-heading">

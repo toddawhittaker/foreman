@@ -20,7 +20,8 @@ func TestWorldErrorMapsEveryRefusal(t *testing.T) {
 		status int
 		want   string
 	}{
-		{world.ErrWorldChanged, http.StatusConflict, msgWorldChanged},
+		{world.ErrWorldChanged, http.StatusConflict, world.ErrWorldChanged.Error()},
+		{world.ErrUnreadable, http.StatusConflict, "world.json cannot be read"},
 		{fmt.Errorf("%w: mods/link is a symlink", world.ErrUnsupportedFile), http.StatusConflict, "mods/link"},
 		{world.ErrRestoreNameTaken, http.StatusConflict, "Rename that world"},
 		{fmt.Errorf("%w: saves/a.zip has changed", world.ErrDamaged), http.StatusConflict, "saves/a.zip has changed"},

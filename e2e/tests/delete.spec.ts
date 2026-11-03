@@ -49,7 +49,12 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   const dir = seedPair(foreman);
 
   await page.goto("/worlds/family-base");
-  await page.getByRole("link", { name: "Delete world" }).click();
+  // The button only leads to the confirmation, so it is grey; the
+  // confirmation's own button is the red one.
+  const open = page.getByRole("link", { name: "Delete world" });
+  await expect(open).toHaveClass(/button/);
+  await expect(open).not.toHaveClass(/button--danger/);
+  await open.click();
   await expect(page).toHaveURL("/worlds/family-base/delete");
   await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete Family base");
@@ -78,7 +83,8 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await expect(rows.first().locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
   // Three columns, the reason above the label (DESIGN 8.3).
   await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
-  await expect(rows.first().locator("td").first()).toContainText(/^Before delete/);
+  // The reason is not repeated above a label that says the same.
+  await expect(rows.first().locator("td").first()).toHaveText(/^Before delete\s*Restore/);
   await checkPage(page);
 
   await page.getByRole("link", { name: /^Restore/ }).click();
@@ -106,6 +112,36 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await page.goto("/deleted");
   await expect(page.getByText(/No deleted worlds/)).toBeVisible();
   await checkPage(page);
+});
+
+// DESIGN 7.1: say why, instead of offering an action that will be refused.
+test("a world that cannot be deleted says why instead of offering the button", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedPair(foreman);
+  const future = seedWorld(foreman, "future", "Future");
+  writeFileSync(join(future, "world.json"), JSON.stringify({ format_version: 9, name: "Future" }));
+  const broken = seedWorld(foreman, "broken", "Broken");
+  writeFileSync(join(broken, "world.json"), "not json");
+
+  const cases: [string, RegExp][] = [
+    ["base", /This is the active world\. Switch to another world before deleting it\./],
+    ["future", /This world is from a newer Foreman, so this version will not delete it\./],
+    ["broken", /Because its world\.json cannot be read, Foreman will not delete this world\./],
+  ];
+  for (const [id, reason] of cases) {
+    await page.goto(`/worlds/${id}`);
+    const panel = page.locator("section", { has: page.getByRole("heading", { name: "Delete", exact: true }) });
+    await expect(panel.getByText(reason)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Delete world" })).toHaveCount(0);
+    await checkPage(page);
+
+    // The confirmation page says the same, with no form.
+    await page.goto(`/worlds/${id}/delete`);
+    await expect(page.getByText(reason)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete world" })).toHaveCount(0);
+    await expect(page.getByLabel("Type the world's name to confirm")).toHaveCount(0);
+    await checkPage(page);
+  }
 });
 
 test("delete without a final snapshot keeps no snapshot", async ({ page, foreman }) => {
@@ -143,18 +179,17 @@ test("a wrong name is refused and the world stays", async ({ page, foreman }) =>
   expect(existsSync(join(dir, "saves", "base.zip"))).toBe(true);
 });
 
-test("the active world cannot be deleted", async ({ page, foreman }) => {
+// The page no longer offers the form for the active world (see the test
+// above), so the refusal is checked with a request sent straight to the server.
+test("a delete request for the active world is refused and changes nothing", async ({ page, foreman }) => {
   await createAdmin(page);
   seedPair(foreman);
 
-  await page.goto("/worlds/base/delete");
-  await page.getByLabel("Type the world's name to confirm").fill("Base");
-  await page.getByRole("button", { name: "Delete world" }).click();
-
-  await expect(page.locator("#action-error")).toContainText("the active world cannot be deleted");
+  const res = await page.request.post("/worlds/base/delete", { form: { confirm_name: "Base", final_snapshot: "on" } });
+  expect(res.status()).toBe(409);
+  expect(await res.text()).toContain("the active world cannot be deleted");
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "saves", "base.zip"))).toBe(true);
   expect(existsSync(join(foreman.dataDir, "snapshots", "base"))).toBe(false);
-  await checkPage(page);
 });
 
 test("a deleted world's name taken by another world blocks the restore", async ({ page, foreman }) => {

@@ -12,10 +12,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// msgWorldChanged is shown when a world was restored or deleted while a
-// file for it was uploading.
-const msgWorldChanged = "This world was changed or deleted while your upload was running. Nothing was saved; upload it again."
-
 // worldError turns an error from the world manager or an upload into a
 // status and words for the admin that say what to do next. A 500 means the
 // error is not the admin's to fix: the caller logs it and shows the plain
@@ -28,14 +24,14 @@ func worldError(err error) (int, string) {
 	case errors.Is(err, fs.ErrNotExist), errors.Is(err, world.ErrNoSnapshot), errors.Is(err, world.ErrNotFolder):
 		return http.StatusNotFound, ""
 	case errors.Is(err, world.ErrWorldChanged):
-		return http.StatusConflict, msgWorldChanged
+		return http.StatusConflict, world.ErrWorldChanged.Error() // already written for the admin
 	case errors.Is(err, world.ErrNoSpace):
 		return http.StatusInsufficientStorage, "Nothing was changed: " + sentence(err)
 	case errors.Is(err, world.ErrDamaged):
 		return http.StatusConflict, sentence(err) + " The world was not changed. Restore a different snapshot."
 	case errors.Is(err, world.ErrUnsupportedFile), errors.Is(err, world.ErrRestoreNameTaken),
 		errors.Is(err, world.ErrBusy), errors.Is(err, world.ErrNewerFormat),
-		errors.Is(err, world.ErrActive), errors.Is(err, world.ErrSaveExists):
+		errors.Is(err, world.ErrActive), errors.Is(err, world.ErrSaveExists), errors.Is(err, world.ErrUnreadable):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, world.ErrSaveName), errors.Is(err, world.ErrSaveNotFound):
 		return http.StatusUnprocessableEntity, sentence(err)

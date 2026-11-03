@@ -324,7 +324,10 @@ test("choosing a save that has since gone is refused in words", async ({ page, f
   const link = page.locator("#error-summary").getByRole("link", { name: msg });
   await expect(link).toHaveAttribute("href", "#load-newest");
   const radios = page.getByRole("group", { name: "Save to load" }).getByRole("radio");
-  for (const radio of await radios.all()) await expect(radio).toHaveAttribute("aria-invalid", "true");
+  for (const radio of await radios.all()) {
+    await expect(radio).toHaveAttribute("aria-invalid", "true");
+    await expect(radio).toHaveAccessibleDescription("Error: " + msg);
+  }
   await link.click();
   await expect(page.getByRole("radio", { name: "The newest save" })).toBeFocused();
   await checkPage(page);

@@ -57,7 +57,7 @@
     <tbody>
       {{- range .Snapshots}}
       <tr>
-        <td>{{$.Page.Reason .Reason}}<br>{{.Label}}<br><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></td>
+        <td>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<br><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></td>
         <td>{{template "when" .TakenAt}}</td>
         <td class="num">{{bytes .Size}}</td>
       </tr>

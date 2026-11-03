@@ -243,6 +243,29 @@ test("the Worlds tab marks the current page and hovers grey", async ({ page, for
   expect(idle).not.toBe(current);
 });
 
+// DESIGN 7.2: each radio of a group with an error points at the error text.
+test("an import with no folder chosen describes the error on every radio", async ({ page, foreman }) => {
+  await createAdmin(page);
+  for (const name of ["one", "two"]) {
+    mkdirSync(join(foreman.dataDir, "import", name), { recursive: true });
+    writeFileSync(join(foreman.dataDir, "import", name, "a.zip"), "x");
+  }
+  await page.goto("/import");
+  const folderForm = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await folderForm.getByLabel("World name").fill("Imported");
+  await folderForm.getByLabel("Game version").fill("2.0.72");
+  await folderForm.getByRole("button", { name: "Import folder" }).click();
+  await expect(page.locator("#folder-source-error")).toBeVisible();
+  const radios = folderForm.getByRole("radio");
+  await expect(radios).toHaveCount(2);
+  for (const radio of await radios.all()) {
+    await expect(radio).toHaveAttribute("aria-invalid", "true");
+    await expect(radio).toHaveAttribute("aria-describedby", "folder-source-error");
+    await expect(radio).toHaveAccessibleDescription(/^Error: /);
+  }
+  await checkPage(page);
+});
+
 test("import radio groups have no default fieldset border", async ({ page, foreman }) => {
   await createAdmin(page);
   mkdirSync(join(foreman.dataDir, "import", "my-folder"), { recursive: true });
