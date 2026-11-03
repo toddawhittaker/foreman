@@ -12,8 +12,8 @@ COVERAGE_FLOOR  := 70
 # Never let the go command fetch a different toolchain.
 export GOTOOLCHAIN := local
 
-# CI overrides these: it names everything foreman-ci-<run>-* and shares its
-# workspace volume, because bind mounts from a job arrive empty (WORKFLOW.md, "Checks").
+# CI overrides NAME_PREFIX and IMAGE: it names everything foreman-ci-<run>-*
+# (WORKFLOW.md, "Checks").
 NAME_PREFIX ?= foreman-dev-$(shell od -An -N4 -tx4 /dev/urandom | tr -d ' ')
 WORKSPACE   ?= -v $(CURDIR):$(CURDIR)
 DOCKER_USER ?= -u $(shell id -u):$(shell id -g)
