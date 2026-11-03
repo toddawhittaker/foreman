@@ -3,7 +3,8 @@
 ARG GO_IMAGE
 FROM ${GO_IMAGE} AS build
 WORKDIR /src
-COPY go.mod go.sum* ./
+COPY go.mod go.sum ./
+RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath -ldflags='-s -w' -o /out/foreman ./cmd/foreman

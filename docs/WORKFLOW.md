@@ -76,7 +76,9 @@ The targets (STACK.md, section 13):
 - `make test`: the unit tests and the coverage floor alone.
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
-- `make run`: serve locally on port 8080, with data in `.dev-data/`.
+- `make run`: serve locally on port 8080, with data in `.dev-data/`. It
+  runs in adopted mode with your own user and group IDs as the game's,
+  so it needs no Docker socket.
 - `make e2e`: build the binary and run the Playwright and axe tests in
   the Playwright image.
 - `make image`: build the container image as `foreman:dev`.
@@ -85,6 +87,8 @@ The targets (STACK.md, section 13):
 - `make ci`: `verify`, `e2e` and `image` in turn, as CI runs them.
 - `make ci-clean RUN=<id>`: remove the containers, volumes, networks and
   images a CI run named `foreman-ci-<id>-*`.
+- `make ci-leftovers RUN=<id>`: fail if any of those still exist. CI runs
+  it after the clean-up.
 - `make tidy`: `go mod tidy`.
 - `make test-game` and `make e2e-game`: placeholders until the real-game
   tests arrive.

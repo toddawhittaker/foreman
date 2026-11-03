@@ -27,7 +27,7 @@ DOCKER_RUN := docker run --rm --init $(WORKSPACE) -w $(CURDIR) $(DOCKER_USER) \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test typecheck build image run e2e e2e-deps \
-	test-game e2e-game vuln ci ci-clean tidy
+	test-game e2e-game vuln ci ci-clean ci-leftovers tidy
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -51,7 +51,7 @@ fmt:
 vet:
 	go vet ./...
 
-lint: fmt-check
+lint:
 	@mkdir -p $(CACHE)/home
 	$(DOCKER_RUN) --name $(NAME_PREFIX)-lint $(LINT_IMAGE) golangci-lint run ./...
 
@@ -82,7 +82,8 @@ image:
 
 run:
 	@mkdir -p .dev-data
-	FOREMAN_DATA_DIR=$(CURDIR)/.dev-data go run ./cmd/foreman serve
+	FOREMAN_MODE=adopted FOREMAN_GAME_UID=$(shell id -u) FOREMAN_GAME_GID=$(shell id -g) \
+		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data go run ./cmd/foreman serve
 
 e2e: build e2e-deps
 	$(DOCKER_RUN) --name $(NAME_PREFIX)-e2e --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
@@ -106,6 +107,17 @@ ci-clean:
 	docker network ls -q --filter "name=$$p" | xargs -r docker network rm; \
 	docker image ls --format '{{.Repository}}:{{.Tag}}' | grep "$$p" | xargs -r docker image rm; \
 	true
+
+# Fails when anything named for the run survives ci-clean.
+ci-leftovers:
+	@[ -n "$(RUN)" ] || { echo "Usage: make ci-leftovers RUN=<id>"; exit 1; }
+	@p='^foreman-ci-$(RUN)-'; \
+	left=$$( { docker ps -a --format 'container {{.Names}}' --filter "name=$$p"; \
+		docker volume ls --format 'volume {{.Name}}' --filter "name=$$p"; \
+		docker network ls --format 'network {{.Name}}' --filter "name=$$p"; \
+		docker image ls --format 'image {{.Repository}}:{{.Tag}}' | grep "$$p"; } || true ); \
+	if [ -n "$$left" ]; then echo "CI run $(RUN) left these behind:"; echo "$$left"; exit 1; fi; \
+	echo "Nothing left behind by CI run $(RUN)."
 
 tidy:
 	go mod tidy

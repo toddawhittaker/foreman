@@ -7,7 +7,7 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GO_VERSION: "1.27.3"
       GO_SHA256: 65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
@@ -17,7 +17,7 @@ jobs:
       IMAGE: foreman-ci-${{ github.run_id }}-image:ci
       DOCKER_USER: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install make and the Docker client
         run: |
@@ -35,8 +35,15 @@ jobs:
         run: make ci WORKSPACE="--volumes-from $(hostname)"
 
       - name: Image size
-        run: docker save "$IMAGE" | gzip | wc -c
+        run: |
+          size=$(docker save "$IMAGE" | gzip | wc -c)
+          echo "Compressed image: $size bytes (limit 30000000)"
+          [ "$size" -le 30000000 ]
 
       - name: Clean up
         if: always()
         run: make ci-clean RUN=${{ github.run_id }}
+
+      - name: Check nothing is left behind
+        if: always()
+        run: make ci-leftovers RUN=${{ github.run_id }}
