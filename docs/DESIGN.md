@@ -435,6 +435,18 @@ That is why every frame and control keeps one.
   padding). Every component lays itself out from its container with
   `container-type: inline-size` and `@container` queries.
 
+### Forced colours
+
+Windows high contrast (`forced-colors: active`) replaces every fill and
+colour with the user's system colours, so the orange tab would look like
+the others. `@media (forced-colors: active)` therefore gives the current
+tab a 2px `Highlight` border (every tab carries a transparent 2px border
+so nothing shifts) and a 3px underline, so "selected" is still a drawn
+shape. The "Active" badge keeps its border and its word, and buttons,
+fields and message boxes keep their borders, so they need nothing more.
+Anything new that marks a state with a fill alone needs a rule here. Check
+a screen with Playwright's `forcedColors: "active"`.
+
 ### The 320 px rules
 
 These hold for every page (SPEC 17.2), checked in end-to-end tests at a
@@ -564,8 +576,12 @@ nothing animates.
   `min-block-size: var(--target-min)`, so the whole row is the target.
 - A group of radios or checkboxes is a `fieldset` with a `legend` styled
   like a label. "Which save loads" (SPEC 7.11) is a radio group.
-- **File inputs** are native. `::file-selector-button` is styled as a
-  secondary button. The hint names the accepted type and size limit.
+- **File inputs** are native, inside the same 44 px sunken box as other
+  fields. `::file-selector-button` is styled as a secondary button (7.1):
+  face `button`, text `on-button`, weight 600, raised bevel, `button-hover`
+  on hover, `padding-inline: var(--space-4)`, a 1px `border` rule on its
+  inline end, and filling the box's full height so it stays a 44 px target.
+  The hint names the accepted type and size limit.
 
 **Error summary.** When a submitted form has errors, the page shows a
 message (7.3, error kind) at the top of the form, headed "Fix N problems
@@ -798,6 +814,14 @@ one of which may be actions. The name column wraps with
 row: `--text-sm`, weight 600, bottom border 1px `border`. Body rows:
 bottom border 1px `rule`. No zebra stripes. If a table needs more than
 four columns, it becomes a list with a `dl` per row (8.2) instead.
+A size cell (`class="num"`) never wraps, so "125" is not parted from
+"B". A timestamp must not split at its hyphens, but a whole `2026-11-03
+14:25 UTC` is too wide beside other columns at 320 px (it crushed the
+name column to 24 px), so a template wraps the date and the time each in
+`<span class="nowrap">`, and the timestamp breaks only between them.
+With four columns even that is too wide at 320 px, so a four-column
+table moves its second column (such as a snapshot's reason) into the
+first cell, above the label, and drops to three.
 A link that stands alone in a cell, such as a save's name, is padded to
 `--target-min` tall; a badge may follow it in the same cell. A button in
 a cell is an ordinary button (7.1). Sizes have one decimal and a unit ("2.1 GB"). Times use `time` with a
