@@ -13,6 +13,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 const (
@@ -38,14 +39,14 @@ func newRig(t *testing.T, cfg fakegame.Config) *rig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	world := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(world, "config"), 0o750); err != nil {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, world.ConfigDir), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(world, "config", "rcon-password"), []byte(password+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, world.RCONPasswordFile), []byte(password+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return &rig{t: t, game: g, docker: c, world: world}
+	return &rig{t: t, game: g, docker: c, world: dir}
 }
 
 func (r *rig) spec(img, policy string) docker.ContainerSpec {

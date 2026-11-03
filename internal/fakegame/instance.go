@@ -17,6 +17,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/rcon/rcontest"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // instance is one run of the game process inside a container. Docker's
@@ -355,7 +356,7 @@ func saveName(spec docker.ContainerSpec) string {
 func rconPassword(c dockertest.Container) string {
 	for _, m := range c.Mounts {
 		if m.Destination == "/factorio" {
-			b, err := os.ReadFile(filepath.Join(m.Source, "config", "rcon-password"))
+			b, err := os.ReadFile(filepath.Join(m.Source, world.RCONPasswordFile))
 			if err != nil {
 				return ""
 			}
