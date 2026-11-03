@@ -224,14 +224,15 @@ func TestImportUploadRoute(t *testing.T) {
 		filename string
 		content  []byte
 		want     string
+		status   int
 	}{
-		{good, ".hidden.zip", saveZip(t), "does not start with a dot"},
-		{good, "save.txt", saveZip(t), "ends in .zip"},
-		{good, "save.zip", []byte("not a zip"), "not a zip file"},
-		{map[string]string{"name": " ", "game_version": "x"}, "save.zip", saveZip(t), "Fix 2 problems"},
+		{good, ".hidden.zip", saveZip(t), "does not start with a dot", http.StatusBadRequest},
+		{good, "save.txt", saveZip(t), "ends in .zip", http.StatusBadRequest},
+		{good, "save.zip", []byte("not a zip"), "not a zip file", http.StatusUnprocessableEntity},
+		{map[string]string{"name": " ", "game_version": "x"}, "save.zip", saveZip(t), "Fix 2 problems", http.StatusBadRequest},
 	} {
 		rec := hn.postImportUpload(c, tc.fields, tc.filename, tc.content)
-		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), tc.want) {
+		if rec.Code != tc.status || !strings.Contains(rec.Body.String(), tc.want) {
 			t.Errorf("%s: %d, want %q\n%s", tc.filename, rec.Code, tc.want, rec.Body.String())
 		}
 	}

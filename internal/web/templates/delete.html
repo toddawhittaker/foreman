@@ -2,6 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">Back to {{.World.Name}}</a></div>
 <h1>Delete {{.World.Name}}</h1>
 {{template "summary" .Problems}}
 {{- with .Error}}
@@ -13,13 +14,13 @@
   <h2 id="confirm-heading" tabindex="-1">Delete the world "{{.World.Name}}"?</h2>
   <p>This will:</p>
   <ul>
-    <li>Delete the folder <code>worlds/{{.World.ID}}</code>, with its saves, mods and settings ({{bytes .World.DiskBytes}}).</li>
+    <li>Delete the folder <code>worlds/{{.World.ID}}</code>, with its saves, mods and settings ({{if .World.SizeUnknown}}size unknown{{else}}{{bytes .World.DiskBytes}}{{end}}).</li>
     <li>Keep its snapshots. They stay listed under Deleted worlds and can be restored.</li>
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     <label class="check">
       <input type="checkbox" name="final_snapshot"{{if .FinalSnapshot}} checked{{end}}>
-      Take a final snapshot first, labelled "Before delete" (about {{bytes .World.DiskBytes}}, never removed automatically). If the snapshot fails, nothing else happens.
+      Take a final snapshot first, labelled "Before delete" ({{if .World.SizeUnknown}}size unknown{{else}}about {{bytes .World.DiskBytes}}{{end}}, never removed automatically). If the snapshot fails, nothing else happens.
     </label>
     <div class="field">
       <label for="confirm-name">Type the world's name to confirm</label>

@@ -2,7 +2,18 @@
 
 {{define "content" -}}
 <h1>Worlds</h1>
-<p><a href="{{.Page.ImportPath}}" class="button">Import a world</a></p>
+{{- with .Page.Deleted}}
+<div class="message message--success">
+  <p><strong>Done:</strong> Deleted {{.}}.{{if $.Page.DeletedKept}} Its snapshots are under Deleted worlds.{{else}} It had no snapshots, so it cannot be restored.{{end}}</p>
+  {{- if $.Page.DeletedKept}}
+  <div class="actions"><a href="{{deletedPath}}">Go to Deleted worlds</a></div>
+  {{- end}}
+</div>
+{{- end}}
+<div class="actions">
+  <a href="{{.Page.ImportPath}}" class="button">Import a world</a>
+  <a href="{{deletedPath}}">Deleted worlds</a>
+</div>
 <section class="panel" aria-labelledby="worlds-heading">
   <h2 id="worlds-heading">All worlds</h2>
   {{- with .Page.Worlds}}
@@ -19,7 +30,7 @@
         <div><dt>Game version</dt><dd>{{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
         <div><dt>Space Age</dt><dd>{{if .SpaceAge}}On{{else}}Off{{end}}</dd></div>
         <div><dt>Last played</dt><dd>{{if .LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .LastPlayed}}">{{utc .LastPlayed}}</time>{{end}}</dd></div>
-        <div><dt>Disk use</dt><dd>{{bytes .DiskBytes}}</dd></div>
+        <div><dt>Disk use</dt><dd>{{if .SizeUnknown}}unknown{{else}}{{bytes .DiskBytes}}{{end}}</dd></div>
       </dl>
     </li>
     {{- end}}

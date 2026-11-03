@@ -202,8 +202,9 @@ func FormatBytes(n uint64) string {
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "kMGTPE"[exp])
 }
 
-// errNotFolder is returned by openDir for a name that is not a real folder.
-var errNotFolder = errors.New("not a folder")
+// ErrNotFolder is returned by openDir for a name that is not a real
+// folder, such as a symlink. To a visitor such a world is not there.
+var ErrNotFolder = errors.New("not a folder")
 
 // openDir opens the folder name inside parent as a root, refusing a
 // symlink even one that stays inside parent, so one world's folder can
@@ -214,7 +215,7 @@ func openDir(parent *os.Root, name string) (*os.Root, error) {
 		return nil, err
 	}
 	if !before.IsDir() {
-		return nil, fmt.Errorf("%s: %w", name, errNotFolder)
+		return nil, fmt.Errorf("%s: %w", name, ErrNotFolder)
 	}
 	r, err := parent.OpenRoot(name)
 	if err != nil {
@@ -223,7 +224,7 @@ func openDir(parent *os.Root, name string) (*os.Root, error) {
 	// The name could be swapped for a link between the Lstat and the open.
 	after, err := r.Stat(".")
 	if err == nil && !os.SameFile(before, after) {
-		err = fmt.Errorf("%s: %w", name, errNotFolder)
+		err = fmt.Errorf("%s: %w", name, ErrNotFolder)
 	}
 	if err != nil {
 		_ = r.Close()

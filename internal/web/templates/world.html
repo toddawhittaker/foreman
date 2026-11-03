@@ -2,7 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p><a href="{{worldsPath}}" class="button">All worlds</a></p>
+<div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">Active</span>{{end}}</h1>
 {{- if .World.Unreadable}}
 <p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.World.ID}}</code>.</p>
@@ -16,11 +16,18 @@
     <div><dt>Game version</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
     <div><dt>Space Age</dt><dd>{{if .World.SpaceAge}}On{{else}}Off{{end}}</dd></div>
     <div><dt>Last played</dt><dd>{{if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
-    <div><dt>Disk use</dt><dd>{{bytes .World.DiskBytes}}</dd></div>
+    <div><dt>Disk use</dt><dd>{{if .World.SizeUnknown}}unknown{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
   </dl>
   <div class="actions">
     <a href="{{.SavesPath}}" class="button">Saves</a>
     <a href="{{.SnapshotsPath}}" class="button">Snapshots</a>
+  </div>
+</section>
+<section class="panel" aria-labelledby="delete-heading">
+  <h2 id="delete-heading">Delete</h2>
+  <p>Deleting removes the world's folder. Its snapshots stay, so it can be restored.</p>
+  <div class="actions">
+    <a href="{{.DeletePath}}" class="button button--danger">Delete world</a>
   </div>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}

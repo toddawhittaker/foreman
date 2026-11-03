@@ -307,8 +307,8 @@ func TestHostileZipsAreRefused(t *testing.T) {
 			t.Errorf("save upload of %s: status %d, want 422", name, got.StatusCode)
 		}
 		got = sc.upload(t, PathImportUpload, hostileImportFields, "hostile.zip", z)
-		if got.StatusCode != http.StatusBadRequest {
-			t.Errorf("import upload of %s: status %d, want 400", name, got.StatusCode)
+		if got.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("import upload of %s: status %d, want 422", name, got.StatusCode)
 		}
 		sameData(t, name, sc.tree(t), before)
 	}
@@ -376,7 +376,6 @@ func (sc *secCase) rawPost(t *testing.T, path, ct string, body []byte, declared 
 // header malformed. That is the client's fault and must be refused in
 // words, not logged and answered as a server fault.
 func TestMalformedMultipartHeaderIsARefusal(t *testing.T) {
-	t.Skip("BUG: a malformed multipart part header (NUL in the file name) answers 500 and logs a server error instead of refusing the request; see PR body")
 	sc := newSecCase(t)
 	before := sc.tree(t)
 	for _, path := range []string{"/worlds/" + sc.id + "/saves", PathImportUpload} {

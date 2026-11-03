@@ -40,14 +40,20 @@ func TestDeleteWithFinalSnapshotThenRestore(t *testing.T) {
 	}
 
 	rec := hn.post(deletePath(id), url.Values{"final_snapshot": {"on"}, "confirm_name": {"Second"}}, withCookie(c))
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != PathDeleted+"?deleted="+id {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != PathWorlds+"?deleted="+id {
 		t.Fatalf("delete: %d %q\n%s", rec.Code, rec.Header().Get("Location"), rec.Body)
 	}
 	if _, err := os.Stat(filepath.Join(hn.worlds.Dirs().Worlds, id)); !os.IsNotExist(err) {
 		t.Errorf("world folder remains: %v", err)
 	}
 	body := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
-	for _, want := range []string{`The world &#34;Second&#34; is deleted`, "Before delete", "Restore"} {
+	for _, want := range []string{"Deleted Second. Its snapshots are under", `href="/deleted"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("world list lacks %q:\n%s", want, body)
+		}
+	}
+	body = hn.get(PathDeleted, withCookie(c)).Body.String()
+	for _, want := range []string{"Before delete", "Restore"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("deleted page lacks %q:\n%s", want, body)
 		}
@@ -118,7 +124,7 @@ func TestDeleteRefusals(t *testing.T) {
 	}
 	rec = hn.post(deletePath(id), url.Values{"confirm_name": {"Second"}}, withCookie(c))
 	unlock()
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "another operation is running") {
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "nother operation is running") {
 		t.Errorf("busy: %d", rec.Code)
 	}
 	for _, p := range []string{deletePath("nope"), restorePath("nope", "20261103T142500Z"), restorePath(id, "20261103T142500Z")} {
@@ -136,12 +142,12 @@ func TestDeleteRefusals(t *testing.T) {
 }
 
 // A crafted link must not claim a world that still exists is deleted.
-func TestDeletedPageDoesNotClaimALiveWorldIsGone(t *testing.T) {
+func TestWorldListDoesNotClaimALiveWorldIsGone(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()
 	_, id := hn.seedTwo()
-	body := hn.get(PathDeleted+"?deleted="+id, withCookie(c)).Body.String()
-	if strings.Contains(body, "is deleted") {
+	body := hn.get(PathWorlds+"?deleted="+id, withCookie(c)).Body.String()
+	if strings.Contains(body, "Deleted Second") {
 		t.Errorf("deleted page:\n%s", body)
 	}
 }

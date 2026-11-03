@@ -165,15 +165,15 @@ func TestLongRoutesRelaxLimitsOnlyForSignedInRequests(t *testing.T) {
 		return spy.ResponseRecorder, spy.lifted
 	}
 
-	// Signed in: both deadlines lifted and the upload limit applies.
-	if rec, lifted := do("POST", "/up", 512<<10, true); rec.Code != 200 || rec.Header().Get("X-Read") != strconv.Itoa(512<<10) || lifted != 2 {
+	// Signed in: the fixed deadlines give way to idle ones and the upload limit applies.
+	if rec, lifted := do("POST", "/up", 512<<10, true); rec.Code != 200 || rec.Header().Get("X-Read") != strconv.Itoa(512<<10) || lifted < 2 {
 		t.Errorf("signed-in upload under its limit: %d, read %s, lifted %d", rec.Code, rec.Header().Get("X-Read"), lifted)
 	}
 	if rec, _ := do("POST", "/up", limit+1, true); rec.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("signed-in upload over its limit: %d", rec.Code)
 	}
-	if _, lifted := do("GET", "/down", 0, true); lifted != 2 {
-		t.Errorf("signed-in download lifted %d deadlines, want 2", lifted)
+	if _, lifted := do("GET", "/down", 0, true); lifted < 2 {
+		t.Errorf("signed-in download changed %d deadlines, want at least 2", lifted)
 	}
 
 	// Anonymous: nothing lifted, and the body stops at the form cap.

@@ -48,7 +48,10 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await createAdmin(page);
   const dir = seedPair(foreman);
 
-  await page.goto("/worlds/family-base/delete");
+  await page.goto("/worlds/family-base");
+  await page.getByRole("link", { name: "Delete world" }).click();
+  await expect(page).toHaveURL("/worlds/family-base/delete");
+  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete Family base");
   await expect(page.getByRole("heading", { name: 'Delete the world "Family base"?' })).toBeVisible();
   await expect(page.getByLabel(/Take a final snapshot first/)).toBeChecked();
@@ -59,22 +62,31 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await page.getByLabel("Type the world's name to confirm").fill("Family base");
   await page.getByRole("button", { name: "Delete world" }).click();
 
-  await expect(page).toHaveURL("/deleted?deleted=family-base");
-  await expect(page.getByText('The world "Family base" is deleted.')).toBeVisible();
+  await expect(page).toHaveURL("/worlds?deleted=family-base");
+  const done = page.locator(".message--success");
+  await expect(done.locator("p")).toHaveText("Done: Deleted Family base. Its snapshots are under Deleted worlds.");
   expect(existsSync(dir)).toBe(false);
+  // The world list no longer shows it.
+  await expect(page.getByRole("link", { name: "Family base" })).toHaveCount(0);
+  await checkPage(page);
+  await done.getByRole("link", { name: "Go to Deleted worlds" }).click();
+  await expect(page).toHaveURL("/deleted");
+  await expect(page.getByRole("link", { name: "Back to worlds" })).toHaveAttribute("href", "/worlds");
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Before delete");
   await expect(rows.first().locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+  // Three columns, the reason above the label (DESIGN 8.3).
+  await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
+  await expect(rows.first().locator("td").first()).toContainText(/^Before delete/);
   await checkPage(page);
 
-  // The world list no longer shows it.
-  await page.goto("/worlds");
-  await expect(page.getByRole("link", { name: "Family base" })).toHaveCount(0);
-
-  await page.goto("/deleted");
   await page.getByRole("link", { name: /^Restore/ }).click();
   await expect(page.getByRole("heading", { name: /Restore the snapshot "Before delete"/ })).toBeVisible();
+  // A deleted world is recreated; no "Before restore" snapshot is promised.
+  await expect(page.getByText(/Foreman will recreate this world from the snapshot/)).toBeVisible();
+  await expect(page.locator(".confirm")).not.toContainText("Before restore");
+  await expect(page.getByRole("link", { name: "Back to worlds" })).toHaveAttribute("href", "/worlds");
   await checkPage(page);
   await page.getByRole("button", { name: "Restore snapshot" }).click();
 
@@ -105,9 +117,8 @@ test("delete without a final snapshot keeps no snapshot", async ({ page, foreman
   await page.getByLabel("Type the world's name to confirm").fill("Family base");
   await page.getByRole("button", { name: "Delete world" }).click();
 
-  await expect(page).toHaveURL("/deleted?deleted=family-base");
-  await expect(page.getByText(/It had no snapshots, so it cannot be restored/)).toBeVisible();
-  await expect(page.locator("tbody tr")).toHaveCount(0);
+  await expect(page).toHaveURL("/worlds?deleted=family-base");
+  await expect(page.locator(".message--success")).toHaveText("Done: Deleted family-base. It had no snapshots, so it cannot be restored.");
   expect(existsSync(dir)).toBe(false);
   expect(readdirSync(join(foreman.dataDir, "snapshots", "family-base"))).toEqual([]);
   await checkPage(page);
@@ -152,12 +163,23 @@ test("a deleted world's name taken by another world blocks the restore", async (
   await page.goto("/worlds/family-base/delete");
   await page.getByLabel("Type the world's name to confirm").fill("Family base");
   await page.getByRole("button", { name: "Delete world" }).click();
-  await expect(page).toHaveURL("/deleted?deleted=family-base");
+  await expect(page).toHaveURL("/worlds?deleted=family-base");
 
   seedWorld(foreman, "newer", "family BASE");
+  await page.goto("/deleted");
   await page.getByRole("link", { name: /^Restore/ }).click();
   await page.getByRole("button", { name: "Restore snapshot" }).click();
-  await expect(page.locator("#action-error")).toContainText("another world now has this world's name");
+  await expect(page.locator("#action-error")).toContainText("Another world now has this world's name");
   expect(existsSync(join(foreman.dataDir, "worlds", "family-base"))).toBe(false);
+  await checkPage(page);
+});
+
+test("the world list links to the deleted worlds", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedPair(foreman);
+  await page.goto("/worlds");
+  await page.getByRole("link", { name: "Deleted worlds" }).click();
+  await expect(page).toHaveURL("/deleted");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Deleted worlds");
   await checkPage(page);
 });

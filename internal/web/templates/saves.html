@@ -2,10 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
+<div class="actions"><a href="{{.WorldHref}}">Back to {{.WorldName}}</a></div>
 <h1>Saves of {{.WorldName}}</h1>
-<div class="actions">
-  <a href="{{.WorldHref}}">Back to {{.WorldName}}</a>
-</div>
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
 <div class="message message--success">
@@ -36,7 +34,7 @@
       <tr>
         <td><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">Loads next</span>{{end}}</td>
         <td class="num">{{bytes .Size}}</td>
-        <td><time datetime="{{isoTime .Saved}}">{{utc .Saved}}</time></td>
+        <td>{{template "when" .Saved}}</td>
       </tr>
       {{- end}}
     </tbody>
@@ -78,11 +76,12 @@
       <p><strong>Note:</strong> The chosen save <code>{{.LoadSave}}</code> is no longer in the saves folder, so the newest save loads.</p>
     </div>
     {{- end}}
-    <fieldset id="load-save"{{if .LoadError}} aria-describedby="load-save-error"{{end}}>
+    {{- $invalid := .LoadError}}
+    <fieldset{{if .LoadError}} aria-describedby="load-save-error"{{end}}>
       <legend>Save to load</legend>
-      <label class="check"><input type="radio" name="load" value=""{{if .NewestSelected}} checked{{end}}> The newest save</label>
+      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true"{{end}}> The newest save</label>
       {{- range .Rows}}
-      <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}> {{.Name}}</label>
+      <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}{{if $invalid}} aria-invalid="true"{{end}}> {{.Name}}</label>
       {{- end}}
       {{- with .LoadError}}
       <p class="error" id="load-save-error"><strong>Error:</strong> {{.}}</p>

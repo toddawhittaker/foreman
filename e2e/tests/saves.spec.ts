@@ -1,6 +1,6 @@
 import { test, expect, checkPage, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
+import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { crc32 } from "node:zlib";
@@ -305,5 +305,27 @@ test("success and note messages have their own colours", async ({ page, foreman 
   await expect(ok).toBeVisible();
   expect(await bg(ok)).not.toBe(noteBg);
   expect(await bg(ok)).not.toBe(plain);
+  await checkPage(page);
+});
+
+// DESIGN 7.2: a save that vanished between showing the page and choosing it
+// is refused in words, the summary leads to the first radio, and every
+// radio in the group is marked invalid.
+test("choosing a save that has since gone is refused in words", async ({ page, foreman }) => {
+  await createAdmin(page);
+  const dir = seedTwoSaves(foreman);
+  await page.goto("/worlds/family-base/saves");
+  await page.getByRole("radio", { name: "old.zip" }).check();
+  rmSync(join(dir, "saves", "old.zip"));
+  await page.getByRole("button", { name: "Use this choice" }).click();
+
+  const msg = "Choose a save from the list. That save is no longer in the saves folder.";
+  await expect(page.locator("#load-save-error")).toHaveText("Error: " + msg);
+  const link = page.locator("#error-summary").getByRole("link", { name: msg });
+  await expect(link).toHaveAttribute("href", "#load-newest");
+  const radios = page.getByRole("group", { name: "Save to load" }).getByRole("radio");
+  for (const radio of await radios.all()) await expect(radio).toHaveAttribute("aria-invalid", "true");
+  await link.click();
+  await expect(page.getByRole("radio", { name: "The newest save" })).toBeFocused();
   await checkPage(page);
 });
