@@ -3,6 +3,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -26,8 +27,9 @@ const (
 
 // Client talks to one Docker daemon. Create it with New.
 type Client struct {
-	http *http.Client
-	base string // scheme and host, for example "http://docker"
+	http *http.Client // short calls: a 30-second total limit
+	long *http.Client // log follow, pull and stop: no total limit, each caller sets a deadline
+	base string       // scheme and host, for example "http://docker"
 
 	mu         sync.Mutex
 	apiVersion string // agreed with the daemon; empty until first needed
@@ -50,58 +52,125 @@ func New(dockerHost string) (*Client, error) {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", sock)
 		}}
-		return &Client{http: newHTTPClient(tr), base: "http://docker"}, nil
+		return newClient(tr, "http://docker"), nil
 	case "tcp":
 		if u.Host == "" {
 			return nil, fmt.Errorf("DOCKER_HOST %q names no host", dockerHost)
 		}
-		return &Client{http: newHTTPClient(nil), base: "http://" + u.Host}, nil
+		return newClient(nil, "http://"+u.Host), nil
 	default:
 		return nil, fmt.Errorf("DOCKER_HOST %q must start with unix:// or tcp://", dockerHost)
 	}
 }
 
+func newClient(tr http.RoundTripper, base string) *Client {
+	return &Client{
+		http: newHTTPClient(tr, shortCallLimit),
+		long: newHTTPClient(tr, 0),
+		base: base,
+	}
+}
+
+// shortCallLimit bounds every call that is not a stream or a wait.
+const shortCallLimit = 30 * time.Second
+
 // newHTTPClient refuses redirects: a daemon or proxy must not be able to
-// steer a request to a path the SPEC 14.3 check never saw.
-func newHTTPClient(tr http.RoundTripper) *http.Client {
+// steer a request to a path the SPEC 14.3 check never saw. A limit of zero
+// means no total limit.
+func newHTTPClient(tr http.RoundTripper, limit time.Duration) *http.Client {
 	return &http.Client{
 		Transport: tr,
-		Timeout:   30 * time.Second,
+		Timeout:   limit,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return errors.New("the Docker daemon answered with a redirect, which Foreman does not follow")
 		},
 	}
 }
 
-// do sends one request after checking it against SPEC 14.3. Versioned
-// requests carry the agreed API version. The caller closes the body.
-func (c *Client) do(ctx context.Context, method, path string, versioned bool) (*http.Response, error) {
-	if !allowed(method, path) {
-		return nil, fmt.Errorf("refusing Docker API call %s %s: it is not on Foreman's allowed list (SPEC 14.3)", method, path)
+// request is one call. The path is checked against SPEC 14.3; the query and
+// body are not part of that check.
+type request struct {
+	method string
+	path   string     // without the /vX.Y prefix or a query string
+	query  url.Values // may be nil
+	body   any        // encoded as JSON when not nil
+	long   bool       // use the client with no total limit
+}
+
+// do sends one request after checking it against SPEC 14.3. Every path but
+// /version and /_ping carries the agreed API version. The caller closes the
+// body of a successful response.
+func (c *Client) do(ctx context.Context, r request) (*http.Response, error) {
+	if !Allowed(r.method, r.path) {
+		return nil, fmt.Errorf("refusing Docker API call %s %s: it is not on Foreman's allowed list (SPEC 14.3)", r.method, r.path)
 	}
-	full := c.base + path
-	if versioned {
+	u, err := url.Parse(c.base)
+	if err != nil {
+		return nil, err
+	}
+	u.Path = r.path
+	if r.path != "/version" && r.path != "/_ping" {
 		v, err := c.APIVersion(ctx)
 		if err != nil {
 			return nil, err
 		}
-		full = c.base + "/v" + v + path
+		u.Path = "/v" + v + r.path
 	}
-	req, err := http.NewRequestWithContext(ctx, method, full, nil)
+	u.RawQuery = r.query.Encode()
+	var body io.Reader
+	if r.body != nil {
+		b, err := json.Marshal(r.body)
+		if err != nil {
+			return nil, fmt.Errorf("could not encode the request to the Docker daemon: %w", err)
+		}
+		body = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, r.method, u.String(), body)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.http.Do(req)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	hc := c.http
+	if r.long {
+		hc = c.long
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("could not reach the Docker daemon: %w", err)
 	}
 	if resp.StatusCode >= 300 {
 		defer func() { _ = resp.Body.Close() }()
-		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, &APIError{Status: resp.StatusCode, Message: strings.TrimSpace(string(msg))}
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, &APIError{Status: resp.StatusCode, Message: errorMessage(raw)}
 	}
 	return resp, nil
 }
+
+// errorMessage reads the daemon's {"message": "..."} error body, or falls
+// back to the raw text.
+func errorMessage(raw []byte) string {
+	var m struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(raw, &m) == nil && m.Message != "" {
+		return m.Message
+	}
+	return strings.TrimSpace(string(raw))
+}
+
+// Errors a caller can test for with errors.Is.
+var (
+	// ErrNotFound is a 404: no such container, image or endpoint.
+	ErrNotFound = errors.New("not found")
+	// ErrNotModified is a 304: starting a started container, or stopping a
+	// stopped one.
+	ErrNotModified = errors.New("already in that state")
+	// ErrConflict is a 409: for example the container name is taken, or the
+	// container is not running.
+	ErrConflict = errors.New("conflict")
+)
 
 // APIError is a non-success answer from the daemon.
 type APIError struct {
@@ -113,6 +182,28 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("the Docker daemon answered %d: %s", e.Status, e.Message)
 }
 
+// Is makes errors.Is(err, ErrNotFound) and its two siblings work.
+func (e *APIError) Is(target error) bool {
+	switch target {
+	case ErrNotFound:
+		return e.Status == http.StatusNotFound
+	case ErrNotModified:
+		return e.Status == http.StatusNotModified
+	case ErrConflict:
+		return e.Status == http.StatusConflict
+	}
+	return false
+}
+
+// Ping asks the daemon whether it is up.
+func (c *Client) Ping(ctx context.Context) error {
+	resp, err := c.do(ctx, request{method: http.MethodGet, path: "/_ping"})
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
 // VersionInfo is the part of GET /version Foreman uses.
 type VersionInfo struct {
 	Version    string `json:"Version"`
@@ -122,7 +213,7 @@ type VersionInfo struct {
 // Version returns the daemon's version.
 func (c *Client) Version(ctx context.Context) (VersionInfo, error) {
 	var v VersionInfo
-	resp, err := c.do(ctx, http.MethodGet, "/version", false)
+	resp, err := c.do(ctx, request{method: http.MethodGet, path: "/version"})
 	if err != nil {
 		return v, err
 	}
@@ -186,34 +277,4 @@ func versionLess(a, b string) bool {
 		return am < bm
 	}
 	return an < bn
-}
-
-// Mount is one mount of a container.
-type Mount struct {
-	Source      string `json:"Source"`
-	Destination string `json:"Destination"`
-}
-
-// Container is the part of GET /containers/{id}/json Foreman uses.
-type Container struct {
-	Mounts []Mount
-}
-
-// InspectContainer reads one container's mounts.
-func (c *Client) InspectContainer(ctx context.Context, id string) (Container, error) {
-	if id == "" || strings.ContainsAny(id, "/?#%") || strings.Contains(id, "..") {
-		return Container{}, fmt.Errorf("container id %q is not valid", id)
-	}
-	resp, err := c.do(ctx, http.MethodGet, "/containers/"+id+"/json", true)
-	if err != nil {
-		return Container{}, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	var raw struct {
-		Mounts []Mount `json:"Mounts"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return Container{}, fmt.Errorf("could not read container %s from the Docker daemon: %w", id, err)
-	}
-	return Container{Mounts: raw.Mounts}, nil
 }
