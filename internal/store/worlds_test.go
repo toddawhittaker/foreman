@@ -26,13 +26,4 @@ func TestActiveWorld(t *testing.T) {
 	if id, found, err := s.ActiveWorld(ctx); err != nil || !found || id != "beta" {
 		t.Fatalf("active = %q found=%v err=%v, want beta", id, found, err)
 	}
-	if err := s.ClearActiveWorld(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if _, found, err := s.ActiveWorld(ctx); err != nil || found {
-		t.Fatalf("after clear: found=%v err=%v", found, err)
-	}
-	if err := s.ClearActiveWorld(ctx); err != nil {
-		t.Errorf("clearing twice: %v", err)
-	}
 }

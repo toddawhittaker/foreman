@@ -162,15 +162,17 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 	for _, f := range slices.Concat(saves, mods) {
 		need += f.size
 	}
-	if err := CheckSpace(m.dirs.Worlds, need); err != nil {
-		return "", err
-	}
-
-	staging, err := m.NewStaging()
+	release, err := Reserve(m.dirs.Worlds, need)
 	if err != nil {
 		return "", err
 	}
-	id, err := m.fillAndCreate(ctx, staging, name, gameVersion, spaceAge, func(dst *os.Root) error {
+	defer release()
+	return m.create(ctx, name, gameVersion, spaceAge, func(worlds *os.Root, dir string) error {
+		dst, err := worlds.OpenRoot(dir)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = dst.Close() }()
 		for _, f := range saves {
 			if err := copyFile(src, f.path, dst, path.Join(SavesDir, f.path)); err != nil {
 				return err
@@ -183,111 +185,44 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 		}
 		return nil
 	})
+}
+
+// ImportSave makes a new world from one uploaded save (SPEC 5.5). temp is
+// the upload's temp file, made with CreateTemp in the worlds folder (its
+// name relative to that folder), so moving it into the new world is a
+// rename. temp is removed whatever happens.
+func (m *Manager) ImportSave(ctx context.Context, name, gameVersion string, spaceAge bool, saveName, temp string) (string, error) {
+	worlds, err := os.OpenRoot(m.dirs.Worlds)
 	if err != nil {
 		return "", err
 	}
-	return id, nil
+	defer func() { _ = worlds.Close() }()
+	defer func() { _ = worlds.Remove(temp) }() // gone already after a good import
+
+	if !strings.HasPrefix(temp, PrefixPartial) || path.Base(temp) != temp {
+		return "", fmt.Errorf("not an upload temp file: %q", temp)
+	}
+	if !ValidSaveName(saveName) {
+		return "", ErrSaveName
+	}
+	if err := m.checkNew(ctx, name, gameVersion); err != nil {
+		return "", err
+	}
+	return m.create(ctx, name, gameVersion, spaceAge, func(worlds *os.Root, dir string) error {
+		return worlds.Rename(temp, path.Join(dir, SavesDir, saveName))
+	})
 }
 
 // checkNew refuses a new world's name or game version before any work is
-// done. Create checks the name again when it makes the world.
+// done. create checks the name again when it makes the world.
 func (m *Manager) checkNew(ctx context.Context, name, gameVersion string) error {
 	if !ValidGameVersion(gameVersion) {
 		return ErrBadGameVersion
 	}
 	m.createMu.Lock()
 	defer m.createMu.Unlock()
-	_, err := m.checkName(ctx, name)
+	_, err := m.checkName(ctx, "", name)
 	return err
-}
-
-// NewStaging makes an empty work folder in the worlds folder, holding saves/
-// and mods/, for a new world's files to land in before the world exists.
-// It returns the folder's name inside the worlds folder. Startup recovery
-// removes one a crash leaves behind.
-func (m *Manager) NewStaging() (string, error) {
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = worlds.Close() }()
-	name := PrefixStaging + "import-" + randomSuffix()
-	if err := Mkdir(worlds, name); err != nil {
-		return "", err
-	}
-	for _, sub := range []string{SavesDir, ModsDir} {
-		if err := Mkdir(worlds, path.Join(name, sub)); err != nil {
-			_ = worlds.RemoveAll(name)
-			return "", err
-		}
-	}
-	return name, nil
-}
-
-// DiscardStaging removes a work folder NewStaging made.
-func (m *Manager) DiscardStaging(staging string) error {
-	if !strings.HasPrefix(staging, PrefixStaging) || path.Base(staging) != staging {
-		return fmt.Errorf("not a staging folder: %q", staging)
-	}
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = worlds.Close() }()
-	return worlds.RemoveAll(staging)
-}
-
-// CreateFromStaging makes a new world with Create and moves the staged
-// saves/ and mods/ into it. The staging folder is removed either way.
-func (m *Manager) CreateFromStaging(ctx context.Context, staging, name, gameVersion string, spaceAge bool) (string, error) {
-	return m.fillAndCreate(ctx, staging, name, gameVersion, spaceAge, func(*os.Root) error { return nil })
-}
-
-// fillAndCreate runs fill on the staging folder, where a failure leaves no
-// world behind, then makes the world and moves the staged folders in with
-// two renames on one filesystem.
-func (m *Manager) fillAndCreate(ctx context.Context, staging, name, gameVersion string, spaceAge bool, fill func(*os.Root) error) (id string, err error) {
-	defer func() {
-		if derr := m.DiscardStaging(staging); err == nil {
-			err = derr
-		}
-	}()
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = worlds.Close() }()
-	st, err := worlds.OpenRoot(staging)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = st.Close() }()
-	if err := fill(st); err != nil {
-		return "", err
-	}
-	if err := ctx.Err(); err != nil {
-		return "", err
-	}
-
-	id, err = m.Create(ctx, name, gameVersion, spaceAge)
-	if err != nil {
-		return "", err
-	}
-	unlock, err := m.Lock(id)
-	if err != nil {
-		return "", err
-	}
-	defer unlock()
-	for _, sub := range []string{SavesDir, ModsDir} {
-		// Remove refuses a folder that is not empty, so nothing is lost.
-		if err := worlds.Remove(path.Join(id, sub)); err != nil {
-			return "", err
-		}
-		if err := worlds.Rename(path.Join(staging, sub), path.Join(id, sub)); err != nil {
-			return "", fmt.Errorf("move %s into world %s: %w", sub, id, err)
-		}
-	}
-	return id, syncDir(worlds, id)
 }
 
 // copyFile copies one regular file from src to dst through a temp file,

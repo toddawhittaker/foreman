@@ -38,6 +38,7 @@ var (
 	ErrSaveName     = errors.New("a save's name must end in .zip, must not start with a dot, and must not contain a slash")
 	ErrSaveExists   = errors.New("this world already has a save with that name. Rename the file and upload it again")
 	ErrSaveNotFound = errors.New("this world has no save with that name")
+	ErrWorldChanged = errors.New("the world was restored or deleted while the file was uploading, so the upload was not added. Upload it again")
 )
 
 // maxSaveNameLength is the longest file name most filesystems allow.
@@ -120,9 +121,9 @@ func (m *Manager) Saves(id string) (SaveList, error) {
 	}
 	defer func() { _ = root.Close() }()
 
-	out := SaveList{WorldName: id}
-	if meta, err := ReadMeta(root); err == nil {
-		out.WorldName = meta.Name
+	meta, err := ReadMeta(root)
+	out := SaveList{WorldName: displayName(id, meta, err)}
+	if err == nil {
 		out.LoadSave = meta.LoadSave
 		out.Newer = meta.Newer()
 	}
@@ -140,15 +141,26 @@ func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
 		return nil, nil, err
 	}
 	defer func() { _ = root.Close() }()
-	f, err := root.Open(path.Join(SavesDir, name))
+	// Lstat first: a symlink, even one that stays inside the world, could
+	// serve another file such as the RCON password (SPEC 14.8).
+	p := path.Join(SavesDir, name)
+	linfo, err := root.Lstat(p)
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && !linfo.Mode().IsRegular()) {
+		return nil, nil, ErrSaveNotFound
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	f, err := root.Open(p)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil, ErrSaveNotFound
 	}
 	if err != nil {
 		return nil, nil, err
 	}
+	// The name could be swapped for a link between the Lstat and the open.
 	info, err := f.Stat()
-	if err == nil && !info.Mode().IsRegular() {
+	if err == nil && !os.SameFile(info, linfo) {
 		err = ErrSaveNotFound
 	}
 	if err != nil {
@@ -158,24 +170,6 @@ func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
 	return f, info, nil
 }
 
-// changeable opens a world for a change: its root and world.json, refusing
-// one a newer Foreman wrote. The caller closes the root.
-func (m *Manager) changeable(id string) (*os.Root, Meta, error) {
-	root, err := m.OpenWorld(id)
-	if err != nil {
-		return nil, Meta{}, err
-	}
-	meta, err := ReadMeta(root)
-	if err == nil && meta.Newer() {
-		err = ErrNewerFormat
-	}
-	if err != nil {
-		_ = root.Close()
-		return nil, Meta{}, err
-	}
-	return root, meta, nil
-}
-
 // AddSave moves an uploaded temp file, named relative to the world's folder
 // as the upload helper returns it, into the saves folder as name. It refuses
 // a name that already exists: no upload overwrites a save (SPEC 5.11). The
@@ -183,6 +177,9 @@ func (m *Manager) changeable(id string) (*os.Root, Meta, error) {
 // up.
 func (m *Manager) AddSave(id, name, temp string) error {
 	root, err := m.OpenWorld(id)
+	if errors.Is(err, fs.ErrNotExist) {
+		return ErrWorldChanged
+	}
 	if err != nil {
 		return err
 	}
@@ -198,12 +195,15 @@ func (m *Manager) AddSave(id, name, temp string) error {
 	}
 	defer unlock()
 
-	meta, err := ReadMeta(root)
-	if err != nil {
+	if _, err := readChangeable(root); err != nil {
 		return err
 	}
-	if meta.Newer() {
-		return ErrNewerFormat
+	// A restore or delete while the upload streamed replaced the folder
+	// the temp file was in.
+	if _, err := root.Lstat(temp); errors.Is(err, fs.ErrNotExist) {
+		return ErrWorldChanged
+	} else if err != nil {
+		return err
 	}
 	final := path.Join(SavesDir, name)
 	if _, err := root.Lstat(final); err == nil {
@@ -223,11 +223,15 @@ func (m *Manager) SetLoadSave(id, name string) error {
 	}
 	defer unlock()
 
-	root, meta, err := m.changeable(id)
+	root, err := m.OpenWorld(id)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = root.Close() }()
+	meta, err := readChangeable(root)
+	if err != nil {
+		return err
+	}
 
 	if name != "" {
 		if !ValidSaveName(name) {

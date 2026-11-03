@@ -1,10 +1,6 @@
 package world
 
-import (
-	"context"
-
-	"strings"
-)
+import "context"
 
 // Rename changes a world's display name only; its id and folder never
 // change (SPEC 5.2, 5.8). It refuses a name another world has, ignoring
@@ -19,40 +15,19 @@ func (m *Manager) Rename(ctx context.Context, id, name string) error {
 	m.createMu.Lock()
 	defer m.createMu.Unlock()
 
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return ErrNameEmpty
-	}
 	w, err := m.OpenWorld(id)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = w.Close() }()
-	meta, err := ReadMeta(w)
+	meta, err := readChangeable(w)
 	if err != nil {
 		return err
 	}
-	if meta.Newer() {
-		return ErrNewerFormat
-	}
-	if err := m.nameTakenByOther(ctx, id, name); err != nil {
+	name, err = m.checkName(ctx, id, name)
+	if err != nil {
 		return err
 	}
 	meta.Name = name
 	return WriteMeta(w, meta)
-}
-
-// nameTakenByOther returns ErrNameTaken when a world other than id has
-// name, ignoring case.
-func (m *Manager) nameTakenByOther(ctx context.Context, id, name string) error {
-	worlds, err := m.List(ctx)
-	if err != nil {
-		return err
-	}
-	for _, w := range worlds {
-		if w.ID != id && strings.EqualFold(w.Name, name) {
-			return ErrNameTaken
-		}
-	}
-	return nil
 }

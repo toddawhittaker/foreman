@@ -18,10 +18,14 @@ var ErrRestoreNameTaken = errors.New("another world now has this world's name. R
 
 // Restore puts a world back exactly as snapshot name recorded it, file
 // contents and modification times both (SPEC 6.5, 6.9). It returns the
-// "Before restore" snapshot, which is the undo.
+// "Before restore" snapshot, which is the undo. When the restore fails
+// after that snapshot was taken, it is still returned with the error, so
+// the admin can be told an undo exists.
 //
 // The restored world is built beside the live one first, then swapped in
 // by two renames, so the path worlds/<id> only ever holds a whole world.
+// Once the swap is done the restore has worked; cleanup that fails after
+// it is logged, not returned.
 //
 // When the world's folder is gone (a deleted world) there is nothing to
 // snapshot, so the returned snapshot is empty. The world is recreated and
@@ -32,6 +36,10 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 		return Snapshot{}, err
 	}
 	defer unlock()
+	// Held from the name check to the swap, so no world made or renamed
+	// meanwhile can take the restored name (R12).
+	m.createMu.Lock()
+	defer m.createMu.Unlock()
 
 	snap, err := m.Snapshot(id, name)
 	if err != nil {
@@ -44,24 +52,22 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 	if err != nil {
 		return Snapshot{}, err
 	}
-	meta, err := ReadMeta(live)
+	_, err = readChangeable(live)
 	_ = live.Close()
-	if err == nil && meta.Newer() {
-		return Snapshot{}, ErrNewerFormat
-	}
-	if err := CheckSpace(m.dirs.Worlds, copyBytes(snap.Files)); err != nil {
+	if errors.Is(err, ErrNewerFormat) {
 		return Snapshot{}, err
 	}
+	release, err := m.checkRestore(ctx, id, snap)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer release()
 
 	worlds, err := os.OpenRoot(m.dirs.Worlds)
 	if err != nil {
 		return Snapshot{}, err
 	}
 	defer func() { _ = worlds.Close() }()
-
-	if err := m.checkFiles(id, snap); err != nil {
-		return Snapshot{}, err
-	}
 
 	// The automatic snapshot comes first: staging sets times on zips that
 	// share an inode with the live world (SPEC 6.2, 6.9).
@@ -74,45 +80,64 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 		_ = worlds.RemoveAll(staging)
 		return before, err
 	}
-	if err := swapIn(worlds, staging, id); err != nil {
+	old, err := swapIn(worlds, staging, id)
+	if err != nil {
 		return before, err
+	}
+	if err := syncDir(worlds, "."); err != nil {
+		m.log.Warn("restore: could not sync the worlds folder", "world", id, "error", err)
+	}
+	// Startup recovery removes the old copy if this fails.
+	if err := worlds.RemoveAll(old); err != nil {
+		m.log.Warn("restore: could not remove the replaced world", "world", id, "error", err)
 	}
 	// Retention runs last, so it can never remove the snapshot being
 	// restored while its files are still needed.
-	if err := m.prune(id); err != nil {
-		return before, fmt.Errorf("remove old automatic snapshots: %w", err)
-	}
+	m.pruneOrWarn(id)
 	return before, nil
 }
 
-// restoreDeleted recreates a deleted world from a snapshot. The checks come
-// first and nothing is written until they pass.
-func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) error {
-	// Held so a world made meanwhile cannot take the same name.
-	m.createMu.Lock()
-	defer m.createMu.Unlock()
-
+// checkRestore runs every check a restore needs before it writes anything:
+// the snapshot's world.json is not newer than this Foreman and its name is
+// not another world's (R12), there is room for the copies (R19), and the
+// snapshot's files match its manifest (R20). Call with createMu held. On
+// success the space stays reserved until release is called.
+func (m *Manager) checkRestore(ctx context.Context, id string, snap Snapshot) (release func(), err error) {
+	// A snapshot whose world.json cannot be read restores under the id.
 	if meta, err := m.snapshotMeta(id, snap.Name); err == nil {
 		if meta.Newer() {
-			return ErrNewerFormat
+			return nil, ErrNewerFormat
 		}
-		if err := m.nameTakenByOther(ctx, id, meta.Name); errors.Is(err, ErrNameTaken) {
-			return ErrRestoreNameTaken
-		} else if err != nil {
-			return err
+		if _, err := m.checkName(ctx, id, meta.Name); errors.Is(err, ErrNameTaken) {
+			return nil, ErrRestoreNameTaken
+		} else if err != nil && !errors.Is(err, ErrNameEmpty) {
+			return nil, err
 		}
 	}
-	if err := CheckSpace(m.dirs.Worlds, copyBytes(snap.Files)); err != nil {
+	release, err = Reserve(m.dirs.Worlds, copyBytes(snap.Files))
+	if err != nil {
+		return nil, err
+	}
+	if err := m.checkFiles(id, snap); err != nil {
+		release()
+		return nil, err
+	}
+	return release, nil
+}
+
+// restoreDeleted recreates a deleted world from a snapshot. The checks come
+// first and nothing is written until they pass. Call with createMu held.
+func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) error {
+	release, err := m.checkRestore(ctx, id, snap)
+	if err != nil {
 		return err
 	}
+	defer release()
 	worlds, err := os.OpenRoot(m.dirs.Worlds)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = worlds.Close() }()
-	if err := m.checkFiles(id, snap); err != nil {
-		return err
-	}
 	staging := PrefixStaging + id + "-" + randomSuffix()
 	if err := m.stage(worlds, staging, id, snap); err != nil {
 		_ = worlds.RemoveAll(staging)
@@ -123,7 +148,7 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		return err
 	}
 	if err := syncDir(worlds, "."); err != nil {
-		return err
+		m.log.Warn("restore: could not sync the worlds folder", "world", id, "error", err)
 	}
 	return m.activateIfNone(ctx, id)
 }
@@ -136,7 +161,7 @@ func (m *Manager) checkFiles(id string, snap Snapshot) error {
 		return err
 	}
 	defer func() { _ = snaps.Close() }()
-	src, err := snaps.OpenRoot(snap.Name)
+	src, err := openDir(snaps, snap.Name)
 	if err != nil {
 		return err
 	}
@@ -155,6 +180,17 @@ func (m *Manager) checkFiles(id string, snap Snapshot) error {
 		if !info.Mode().IsRegular() || info.Size() != f.Size {
 			return fmt.Errorf("%w: %s has changed", ErrDamaged, f.Path)
 		}
+		// Older snapshots have no hash, so there is nothing to check (R20).
+		if f.SHA256 == "" {
+			continue
+		}
+		sum, err := hashFile(src, f.Path)
+		if err != nil {
+			return err
+		}
+		if sum != f.SHA256 {
+			return fmt.Errorf("%w: %s has changed since the snapshot was taken", ErrDamaged, f.Path)
+		}
 	}
 	return nil
 }
@@ -167,7 +203,7 @@ func (m *Manager) stage(worlds *os.Root, dir, id string, snap Snapshot) error {
 		return err
 	}
 	defer func() { _ = snaps.Close() }()
-	src, err := snaps.OpenRoot(snap.Name)
+	src, err := openDir(snaps, snap.Name)
 	if err != nil {
 		return err
 	}
@@ -199,24 +235,22 @@ func (m *Manager) stage(worlds *os.Root, dir, id string, snap Snapshot) error {
 	return syncDir(dst, ".")
 }
 
-// swapIn moves the live world aside, renames the staged one into its place,
-// then removes the old one.
-func swapIn(worlds *os.Root, staging, id string) error {
-	old := PrefixRestoreOld + id + "-" + randomSuffix()
+// swapIn moves the live world aside and renames the staged one into its
+// place. It returns the old world's name for the caller to remove. On
+// failure the live world is put back and the staged one removed.
+func swapIn(worlds *os.Root, staging, id string) (old string, err error) {
+	old = PrefixRestoreOld + id + "-" + randomSuffix()
 	if err := worlds.Rename(id, old); err != nil {
 		_ = worlds.RemoveAll(staging)
-		return err
+		return "", err
 	}
 	if err := worlds.Rename(staging, id); err != nil {
 		// Put the live world back; recovery does the same after a crash.
 		if berr := worlds.Rename(old, id); berr != nil {
-			return fmt.Errorf("swap in the restored world: %w; put the old one back: %w", err, berr)
+			return "", fmt.Errorf("swap in the restored world: %w; put the old one back: %w", err, berr)
 		}
 		_ = worlds.RemoveAll(staging)
-		return err
+		return "", err
 	}
-	if err := syncDir(worlds, "."); err != nil {
-		return err
-	}
-	return worlds.RemoveAll(old)
+	return old, nil
 }

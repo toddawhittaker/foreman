@@ -45,12 +45,3 @@ func (s *Store) SetActiveWorld(ctx context.Context, id string, now time.Time) (e
 	}
 	return nil
 }
-
-// ClearActiveWorld leaves no world active. Clearing when none is active is
-// not an error.
-func (s *Store) ClearActiveWorld(ctx context.Context) error {
-	if _, err := s.db.ExecContext(ctx, "DELETE FROM active_worlds"); err != nil {
-		return fmt.Errorf("clear active world: %w", err)
-	}
-	return nil
-}

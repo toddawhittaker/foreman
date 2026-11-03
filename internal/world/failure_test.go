@@ -31,6 +31,8 @@ const tinyFSEnv = "FOREMAN_TEST_TINY_FS"
 func onTinyFS(t *testing.T, opts string) bool {
 	t.Helper()
 	if os.Getenv(tinyFSEnv) != "" {
+		// The 2 GB reserve would refuse everything on a tiny filesystem.
+		t.Cleanup(SetSpaceReserveForTest(0))
 		return true
 	}
 	mnt := t.TempDir()

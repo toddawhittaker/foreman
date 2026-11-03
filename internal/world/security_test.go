@@ -165,11 +165,6 @@ func TestHostileNamesAreRefusedEverywhere(t *testing.T) {
 			t.Errorf("ImportFolder(%q) worked", bad)
 		}
 	}
-	for _, bad := range []string{"..", "../worlds", ".staging-/../..", ".staging-x/../../" + id, "/tmp", id} {
-		if err := m.DiscardStaging(bad); err == nil {
-			t.Errorf("DiscardStaging(%q) worked", bad)
-		}
-	}
 
 	sameDisk(t, "data folder", diskTree(t, dataDir(m)), before)
 	sameDisk(t, "outside folder", diskTree(t, filepath.Dir(secret)), secretBefore)
@@ -253,29 +248,22 @@ func TestSymlinksInsideAWorldAreNeverFollowed(t *testing.T) {
 		t.Errorf("NewestSave = %+v, %v, %v", s, ok, err)
 	}
 
-	snap, err := m.TakeSnapshot(id, "with links", "alice")
-	if err != nil {
-		t.Fatal(err)
+	// A snapshot would lose the links, so it refuses (fail safe), and so
+	// would a restore or delete, which need one first.
+	worldBefore := diskTree(t, filepath.Join(m.dirs.Worlds, id))
+	if _, err := m.TakeSnapshot(id, "with links", "alice"); err == nil {
+		t.Error("snapshot of a world with symlinks worked")
 	}
-	for _, f := range snap.Files {
-		if strings.Contains(f.Path, "evil") || strings.Contains(f.Path, "peer") || strings.Contains(f.Path, "rel") || strings.Contains(f.Path, "outside") {
-			t.Errorf("manifest lists symlink %s", f.Path)
-		}
+	if dirs := snapshotDirs(t, m, id); len(dirs) != 0 {
+		t.Errorf("a refused snapshot left %v", dirs)
 	}
-	noLinksUnder(t, filepath.Join(m.dirs.Snapshots, id))
 	if n := linkCount(t, secret); n != 1 {
 		t.Errorf("outside file has %d links; a snapshot hard-linked it", n)
 	}
 	if n := linkCount(t, filepath.Join(m.dirs.Worlds, other, "saves", "other.zip")); n != 1 {
 		t.Errorf("other world's save has %d links; a snapshot hard-linked it", n)
 	}
-
-	// Restore removes the live world, symlinks and all; it must remove the
-	// links themselves, never what they point at.
-	if _, err := m.Restore(context.Background(), id, snap.Name, "alice"); err != nil {
-		t.Fatal(err)
-	}
-	noLinksUnder(t, filepath.Join(m.dirs.Worlds, id))
+	sameDisk(t, "world", diskTree(t, filepath.Join(m.dirs.Worlds, id)), worldBefore)
 	sameDisk(t, "other world", diskTree(t, filepath.Join(m.dirs.Worlds, other)), otherBefore)
 	sameDisk(t, "outside folder", diskTree(t, secretDir), outsideBefore)
 }
@@ -401,7 +389,6 @@ func TestRestoreRefusesSymlinksPlantedInASnapshot(t *testing.T) {
 // snapshots folder must not let a snapshot of one world land among the
 // other's, nor a restore read the other's.
 func TestSnapshotsFolderSymlinkedToAnotherWorld(t *testing.T) {
-	t.Skip("BUG: a world's snapshots folder symlinked to another world's is followed, so snapshots land in and restore reads from the other world; see PR body")
 	m, _ := newTestManager(t)
 	id := seedWorld(t, m)
 	other := otherWorld(t, m)

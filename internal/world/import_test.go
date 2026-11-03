@@ -221,34 +221,6 @@ func TestInboxListsRealFoldersOnly(t *testing.T) {
 	}
 }
 
-func TestCreateFromStaging(t *testing.T) {
-	m, _ := newTestManager(t)
-	ctx := context.Background()
-	staging, err := m.NewStaging()
-	if err != nil {
-		t.Fatal(err)
-	}
-	write(t, filepath.Join(m.dirs.Worlds, staging, "saves", "up.zip"), "up", t0)
-	id, err := m.CreateFromStaging(ctx, staging, "Uploaded", "1.1.110", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if b, err := os.ReadFile(filepath.Join(m.dirs.Worlds, id, "saves", "up.zip")); err != nil || string(b) != "up" { //nolint:gosec // a test temp file
-		t.Errorf("save not moved in: %q %v", b, err)
-	}
-	assertNoStaging(t, m)
-
-	// A refused name discards the staging folder and makes no world.
-	staging, _ = m.NewStaging()
-	if _, err := m.CreateFromStaging(ctx, staging, "uploaded", "1.1.110", false); !errors.Is(err, ErrNameTaken) {
-		t.Errorf("got %v", err)
-	}
-	assertNoStaging(t, m)
-	if err := m.DiscardStaging("../x"); err == nil {
-		t.Error("DiscardStaging accepted a path outside staging")
-	}
-}
-
 func TestValidNames(t *testing.T) {
 	for v, ok := range map[string]bool{"2.0.72": true, "1.1.110": true, "2.0": false, "v2.0.72": false, "2.0.72 ": false, "": false} {
 		if ValidGameVersion(v) != ok {
