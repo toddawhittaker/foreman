@@ -33,7 +33,6 @@ type HeaderConfig struct {
 type HeaderIdentity struct {
 	Outcome  HeaderOutcome
 	Username string
-	Groups   []string
 }
 
 // Identify reads the identity headers. Headers are honoured only when the
@@ -57,7 +56,7 @@ func (c HeaderConfig) Identify(r *http.Request) HeaderIdentity {
 			}
 		}
 	}
-	id := HeaderIdentity{Outcome: HeaderOK, Username: name, Groups: groups}
+	id := HeaderIdentity{Outcome: HeaderOK, Username: name}
 	if c.RequiredGroup != "" && !slices.Contains(groups, c.RequiredGroup) {
 		id.Outcome = HeaderNotAllowed
 	}

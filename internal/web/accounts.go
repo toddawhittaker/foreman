@@ -18,6 +18,7 @@ const (
 	maxLoggedUsername = 64
 
 	msgBadLogin = "The username or password is not right. Check both and try again."
+	msgBusy     = "Foreman is busy. Wait a moment and try again."
 )
 
 // checkUsername trims name and returns a problem in plain words, or "".
@@ -91,7 +92,9 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	case auth.CheckPassword(password) != nil:
 		pg.PasswordError = fmt.Sprintf("Use at least %d characters", auth.MinPasswordChars)
 	}
-	if pg.PasswordError == "" && confirm != password {
+	if confirm == "" {
+		pg.ConfirmError = "Enter the password again"
+	} else if pg.PasswordError == "" && confirm != password {
 		pg.ConfirmError = "Enter the same password in both fields"
 	}
 	if pg.UsernameError != "" || pg.PasswordError != "" || pg.ConfirmError != "" {
@@ -136,12 +139,6 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	password := r.PostFormValue("password")
 	client := auth.ClientAddr(r, s.cfg.TrustedProxies)
 
-	if ok, wait := s.limiter.Allow(username, client); !ok {
-		s.log.Info("sign-in refused: too many failures", "username", clip(username), "client", client)
-		w.Header().Set("Retry-After", fmt.Sprint(int(wait.Seconds())+1))
-		s.page(w, r, http.StatusTooManyRequests, "", SignInPage{Username: username, RateLimited: true, RetryAfter: wait})
-		return
-	}
 	pg := SignInPage{Username: username}
 	if username == "" {
 		pg.UsernameError = "Enter your username"
@@ -153,19 +150,35 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		s.page(w, r, http.StatusBadRequest, "", pg)
 		return
 	}
+	// Allow counts this attempt now, so parallel guesses cannot all pass
+	// before any of them fails (SPEC 12.4).
+	if ok, wait := s.limiter.Allow(username, client); !ok {
+		s.log.Info("sign-in refused: too many failures", "client", client)
+		w.Header().Set("Retry-After", fmt.Sprint(int(wait.Seconds())+1))
+		s.page(w, r, http.StatusTooManyRequests, "", SignInPage{Username: username, RateLimited: true, RetryAfter: wait})
+		return
+	}
 
 	u, found, err := s.store.UserByUsername(ctx, username)
 	if err != nil {
+		s.limiter.Release(username, client)
 		s.fail(w, r, "look up user", err)
 		return
 	}
 	// Header-created users have no password and cannot sign in here.
 	if !found || u.PasswordHash == "" {
-		auth.VerifyDummy(password)
+		if err := auth.VerifyDummy(password); errors.Is(err, auth.ErrBusy) {
+			s.signInBusy(w, r, pg, client)
+			return
+		}
 		s.signInFailed(w, r, pg, client)
 		return
 	}
 	ok, needsRehash, err := auth.Verify(password, u.PasswordHash)
+	if errors.Is(err, auth.ErrBusy) {
+		s.signInBusy(w, r, pg, client)
+		return
+	}
 	if err != nil {
 		s.log.Error("stored password hash is unusable", "username", clip(username), "error", err)
 	}
@@ -174,7 +187,7 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.limiter.Succeed(username)
+	s.limiter.Succeed(username, client)
 	if needsRehash {
 		s.rehash(r, u.ID, password)
 	}
@@ -185,11 +198,22 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, PathHome, http.StatusSeeOther)
 }
 
+// signInFailed keeps the attempt Allow counted. The log names the client
+// only: a mistyped password often lands in the username field.
 func (s *server) signInFailed(w http.ResponseWriter, r *http.Request, pg SignInPage, client string) {
-	s.limiter.Fail(pg.Username, client)
-	s.log.Info("sign-in failed", "username", clip(pg.Username), "client", client)
+	s.log.Info("sign-in failed", "client", client)
 	pg.PasswordError = msgBadLogin
 	s.page(w, r, http.StatusUnauthorized, "", pg)
+}
+
+// signInBusy answers when too many password checks are already running.
+// No password was checked, so the attempt is given back to the limiter.
+func (s *server) signInBusy(w http.ResponseWriter, r *http.Request, pg SignInPage, client string) {
+	s.limiter.Release(pg.Username, client)
+	s.log.Info("sign-in refused: busy", "client", client)
+	pg.PasswordError = msgBusy
+	w.Header().Set("Retry-After", "1")
+	s.page(w, r, http.StatusServiceUnavailable, "", pg)
 }
 
 // rehash stores a fresh hash after a good sign-in with an older one. A

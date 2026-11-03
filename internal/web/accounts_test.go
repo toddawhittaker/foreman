@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -58,6 +60,7 @@ func TestSetupRefusesBadInput(t *testing.T) {
 		{"no password", url.Values{"username": {"alice"}}, "Enter a password"},
 		{"short password", url.Values{"username": {"alice"}, "password": {"short"}, "confirm": {"short"}}, "Use at least 12 characters"},
 		{"huge password", url.Values{"username": {"alice"}, "password": {strings.Repeat("p", 2000)}, "confirm": {strings.Repeat("p", 2000)}}, "at most 1024 bytes"},
+		{"no confirm", url.Values{"username": {"alice"}, "password": {testPassword}}, "Enter the password again"},
 		{"mismatch", url.Values{"username": {"alice"}, "password": {testPassword}, "confirm": {testPassword + "x"}}, "same password in both fields"},
 	}
 	for _, c := range cases {
@@ -178,8 +181,46 @@ func TestSignInRateLimitReturns429(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "Too many failed sign-ins") || rec.Header().Get("Retry-After") == "" {
 		t.Error("no wait message or Retry-After")
 	}
+	if strings.Contains(hn.logs.String(), `"username"`) {
+		t.Error("a failed or refused sign-in logged the username")
+	}
 	hn.clock.Advance(auth.LimitWindow + time.Minute)
 	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword)), PathHome)
+}
+
+// SPEC 12.4: a burst of parallel guesses cannot check more passwords than
+// the per-username limit allows. A 401 is the only answer that means a
+// password was checked.
+func TestSignInParallelBurstStaysWithinLimit(t *testing.T) {
+	hn := newHarness(t, nil)
+	hn.addUser("alice", testPassword)
+	const n = 50
+	recs := make([]*httptest.ResponseRecorder, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Go(func() {
+			recs[i] = hn.post(PathSignIn, signInForm("alice", "wrong password"),
+				withPeer(fmt.Sprintf("192.0.2.%d:1234", i+1)))
+		})
+	}
+	wg.Wait()
+	checked := 0
+	for i, rec := range recs {
+		switch rec.Code {
+		case http.StatusUnauthorized:
+			checked++
+		case http.StatusTooManyRequests:
+		case http.StatusServiceUnavailable:
+			if rec.Header().Get("Retry-After") != "1" || !strings.Contains(rec.Body.String(), "Foreman is busy") {
+				t.Errorf("request %d: busy answer lacks Retry-After 1 or the busy message", i)
+			}
+		default:
+			t.Errorf("request %d: unexpected status %d", i, rec.Code)
+		}
+	}
+	if checked > auth.LimitPerUsername {
+		t.Fatalf("%d passwords were checked, limit is %d", checked, auth.LimitPerUsername)
+	}
 }
 
 func TestSignOutEndsSession(t *testing.T) {

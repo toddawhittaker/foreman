@@ -127,6 +127,29 @@ func TestCheckPassword(t *testing.T) {
 }
 
 func TestVerifyDummyDoesNotPanic(t *testing.T) {
-	VerifyDummy("anything at all")
-	VerifyDummy("")
+	_ = VerifyDummy("anything at all")
+	_ = VerifyDummy("")
+}
+
+// At most maxHashing checks run at once; the next is refused, not queued.
+func TestVerifyRefusesWhenAllSlotsAreTaken(t *testing.T) {
+	hash, err := Hash("a long enough password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range maxHashing {
+		hashSlots <- struct{}{}
+	}
+	if _, _, err := Verify("a long enough password", hash); !errors.Is(err, ErrBusy) {
+		t.Errorf("Verify: got %v, want ErrBusy", err)
+	}
+	if err := VerifyDummy("x"); !errors.Is(err, ErrBusy) {
+		t.Errorf("VerifyDummy: got %v, want ErrBusy", err)
+	}
+	for range maxHashing {
+		<-hashSlots
+	}
+	if ok, _, err := Verify("a long enough password", hash); !ok || err != nil {
+		t.Errorf("after slots freed: ok=%v err=%v", ok, err)
+	}
 }

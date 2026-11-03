@@ -2,6 +2,7 @@ package auth
 
 import (
 	"container/list"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -15,9 +16,12 @@ const (
 	limitMaxEntries  = 10000
 )
 
-// Limiter counts failed sign-ins per username and per client address. A
-// window starts at the first failure; once a key reaches its limit it is
-// refused until the window ends. State is in memory, so a restart clears it.
+// Limiter counts sign-in attempts per username and per client address. An
+// attempt is counted when Allow lets it through, before the password is
+// checked, so parallel guesses cannot outrun the limit; a success, or an
+// attempt that never checked a password, gives its count back. A window
+// starts at the first attempt; once a key reaches its limit it is refused
+// until the window ends. State is in memory, so a restart clears it.
 type Limiter struct {
 	now   func() time.Time
 	mu    sync.Mutex
@@ -40,32 +44,51 @@ func newLimiter(now func() time.Time, maxEntries int) *Limiter {
 
 func userKey(username string) string { return strings.ToLower(strings.TrimSpace(username)) }
 
-// Allow reports whether a sign-in attempt may proceed. When it may not,
-// retryAfter is the time left in the longer of the two blocking windows.
+// addrKey groups IPv6 clients by their /64, since one host usually holds
+// a whole /64. IPv4 addresses and unparsable strings are used as given.
+func addrKey(addr string) string {
+	a, err := netip.ParseAddr(addr)
+	if err != nil || !a.Is6() || a.Is4In6() {
+		return addr
+	}
+	return netip.PrefixFrom(a.WithZone(""), 64).Masked().String()
+}
+
+// Allow reports whether a sign-in attempt may proceed and, if so, counts it
+// against the username and the address. When it may not, retryAfter is the
+// time left in the longer of the two blocking windows.
 func (l *Limiter) Allow(username, addr string) (ok bool, retryAfter time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
-	ru := l.users.remaining(userKey(username), now)
-	ra := l.addrs.remaining(addr, now)
-	return ru == 0 && ra == 0, max(ru, ra)
+	uk, ak := userKey(username), addrKey(addr)
+	ru := l.users.remaining(uk, now)
+	ra := l.addrs.remaining(ak, now)
+	if ru > 0 || ra > 0 {
+		return false, max(ru, ra)
+	}
+	l.users.add(uk, now)
+	l.addrs.add(ak, now)
+	return true, 0
 }
 
-// Fail records a failed sign-in against the username and the address.
-func (l *Limiter) Fail(username, addr string) {
+// Release gives back an attempt that Allow counted but that never checked
+// a password, for example because the server was busy.
+func (l *Limiter) Release(username, addr string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	now := l.now()
-	l.users.add(userKey(username), now)
-	l.addrs.add(addr, now)
+	l.users.release(userKey(username))
+	l.addrs.release(addrKey(addr))
 }
 
-// Succeed clears the username's count. The address count stays, so one
-// valid account cannot be used to reset an address's failures.
-func (l *Limiter) Succeed(username string) {
+// Succeed clears the username's count and gives back this attempt's address
+// count. Earlier address failures stay, so one valid account cannot be used
+// to reset an address's failures.
+func (l *Limiter) Succeed(username, addr string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.users.clear(userKey(username))
+	l.addrs.release(addrKey(addr))
 }
 
 type failure struct {
@@ -125,6 +148,18 @@ func (t *failureTable) add(key string, now time.Time) {
 		t.remove(t.order.Front())
 	}
 	t.byKey[key] = t.order.PushBack(&failure{key: key, start: now, count: 1})
+}
+
+func (t *failureTable) release(key string) {
+	e, ok := t.byKey[key]
+	if !ok {
+		return
+	}
+	if f := e.Value.(*failure); f.count > 1 {
+		f.count--
+		return
+	}
+	t.remove(e)
 }
 
 func (t *failureTable) clear(key string) {

@@ -44,7 +44,8 @@ func TestAccessLogHasOneLinePerRequestWithoutQuery(t *testing.T) {
 	}
 }
 
-func TestSignInFailureIsLoggedWithUsernameAndClient(t *testing.T) {
+// The username is left out: users often type a password into it.
+func TestSignInFailureIsLoggedWithClientOnly(t *testing.T) {
 	hn := newHarness(t, nil)
 	hn.addUser("alice", testPassword)
 	hn.post(PathSignIn, signInForm("alice", "wrong password"))
@@ -52,7 +53,7 @@ func TestSignInFailureIsLoggedWithUsernameAndClient(t *testing.T) {
 	for _, l := range logLines(t, hn) {
 		if l["msg"] == "sign-in failed" {
 			found = true
-			if l["level"] != "INFO" || l["username"] != "alice" || l["client"] != "192.0.2.10" {
+			if l["level"] != "INFO" || l["username"] != nil || l["client"] != "192.0.2.10" {
 				t.Errorf("failure line: %v", l)
 			}
 		}

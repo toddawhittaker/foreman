@@ -109,14 +109,31 @@ func parsePHC(encoded string) (phc, error) {
 	return p, nil
 }
 
+// maxHashing caps password checks running at once, so a burst of sign-ins
+// cannot exhaust memory: each check allocates about 19 MiB.
+const maxHashing = 4
+
+var hashSlots = make(chan struct{}, maxHashing)
+
+// ErrBusy means too many password checks are already running and this one
+// did not run. The caller should ask the user to try again shortly.
+var ErrBusy = errors.New("auth: too many password checks at once")
+
 // Verify checks a password against a stored hash in constant time.
 // needsRehash is true when the hash was made with settings below the
 // current ones, so the caller can store a fresh hash after a good sign-in.
-// An error means the stored string is unusable, not that the password is wrong.
+// An error means the stored string is unusable or, for ErrBusy, that no
+// check ran; never that the password is wrong.
 func Verify(pw, encoded string) (ok bool, needsRehash bool, err error) {
 	p, err := parsePHC(encoded)
 	if err != nil {
 		return false, false, err
+	}
+	select {
+	case hashSlots <- struct{}{}:
+		defer func() { <-hashSlots }()
+	default:
+		return false, false, ErrBusy
 	}
 	got := argon2.IDKey([]byte(pw), p.salt, p.passes, p.memory, p.threads, uint32(len(p.key))) //nolint:gosec // parsePHC caps the key at maxKeyBytes
 	if subtle.ConstantTimeCompare(got, p.key) != 1 {
@@ -134,11 +151,12 @@ var (
 
 // VerifyDummy spends the same time as a real Verify and always fails. Call
 // it for an unknown username so response time does not reveal which
-// usernames exist.
-func VerifyDummy(pw string) {
+// usernames exist. Its only error is ErrBusy.
+func VerifyDummy(pw string) error {
 	dummyOnce.Do(func() {
 		// The fixed password is long enough, so Hash cannot fail on it.
 		dummyHash, _ = Hash("dummy-password-for-timing")
 	})
-	_, _, _ = Verify(pw, dummyHash)
+	_, _, err := Verify(pw, dummyHash)
+	return err
 }
