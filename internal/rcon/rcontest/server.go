@@ -1,6 +1,7 @@
 // Package rcontest is a fake RCON server for tests. It frames packets on its
 // own, so it checks the client against the protocol and not against the
-// client's own code.
+// client's own code. It behaves like the real game: an empty command gets no
+// reply, and every other command gets exactly one reply packet of any length.
 package rcontest
 
 import (
@@ -26,9 +27,6 @@ type Config struct {
 	RefuseLogin bool
 	// Reply returns the reply to a command. Nil means an empty reply.
 	Reply func(command string) string
-	// ChunkSize splits each reply into packets of at most this many bytes.
-	// Zero sends it in one packet.
-	ChunkSize int
 	// Hang makes the server read commands and never answer them.
 	Hang bool
 }
@@ -141,8 +139,7 @@ func (s *Server) command(conn net.Conn, id int32, body string) bool {
 		return true
 	}
 	if body == "" {
-		// The empty command that marks the end of a reply.
-		return write(conn, id, typeResponse, "") == nil
+		return true // the real game never answers an empty command
 	}
 	s.mu.Lock()
 	s.commands = append(s.commands, body)
@@ -151,17 +148,7 @@ func (s *Server) command(conn net.Conn, id int32, body string) bool {
 	if s.cfg.Reply != nil {
 		reply = s.cfg.Reply(body)
 	}
-	if s.cfg.ChunkSize <= 0 || len(reply) <= s.cfg.ChunkSize {
-		return write(conn, id, typeResponse, reply) == nil
-	}
-	for len(reply) > 0 {
-		n := min(s.cfg.ChunkSize, len(reply))
-		if write(conn, id, typeResponse, reply[:n]) != nil {
-			return false
-		}
-		reply = reply[n:]
-	}
-	return true
+	return write(conn, id, typeResponse, reply) == nil
 }
 
 func read(r io.Reader) (id, kind int32, body string, err error) {

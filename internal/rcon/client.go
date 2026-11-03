@@ -20,9 +20,6 @@ import (
 // DefaultTimeout bounds a call whose context has no deadline.
 const DefaultTimeout = 10 * time.Second
 
-// maxReply stops a runaway reply from filling memory.
-const maxReply = 4 << 20
-
 // ErrLogin is returned when the server refuses the password.
 var ErrLogin = errors.New("rcon: the server refused the login")
 
@@ -62,7 +59,7 @@ func (c *Client) drop() error {
 	return err
 }
 
-// Exec runs one command and returns the whole reply. The context's deadline
+// Exec runs one command and returns its reply. The context's deadline
 // covers dialling, login and the reply; without one, DefaultTimeout applies.
 func (c *Client) Exec(ctx context.Context, command string) (string, error) {
 	if strings.IndexByte(command, 0) >= 0 {
@@ -108,30 +105,17 @@ func (c *Client) exec(ctx context.Context, command string) (string, error) {
 	}
 
 	id := c.nextID()
-	sentinel := c.nextID()
 	if err := writePacket(conn, packet{id: id, kind: typeCommand, body: command}); err != nil {
 		return "", fmt.Errorf("rcon: send command: %w", err)
 	}
-	// An empty command is answered after the real reply, so its answer marks
-	// the end of a reply the server split across packets.
-	if err := writePacket(conn, packet{id: sentinel, kind: typeCommand}); err != nil {
-		return "", fmt.Errorf("rcon: send command: %w", err)
-	}
-
-	var reply strings.Builder
+	// The game answers every non-empty command with one packet, however long.
 	for {
 		p, err := readPacket(conn)
 		if err != nil {
 			return "", fmt.Errorf("rcon: read reply: %w", err)
 		}
-		switch {
-		case p.id == sentinel:
-			return reply.String(), nil
-		case p.id == id && p.kind == typeResponse:
-			if reply.Len()+len(p.body) > maxReply {
-				return "", errors.New("rcon: the reply is too large")
-			}
-			reply.WriteString(p.body)
+		if p.id == id && p.kind == typeResponse {
+			return p.body, nil
 		}
 	}
 }

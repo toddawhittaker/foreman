@@ -75,12 +75,12 @@ func TestExecEmptyReply(t *testing.T) {
 	}
 }
 
-func TestExecReassemblesSplitReply(t *testing.T) {
-	long := strings.Repeat("0123456789", 50)
+func TestExecReadsLongReplyInOnePacket(t *testing.T) {
+	// The real game sent 63,000 bytes as a single packet.
+	long := strings.Repeat("0123456789", 6300)
 	srv := rcontest.Start(t, rcontest.Config{
-		Password:  testPassword,
-		ChunkSize: 7,
-		Reply:     func(string) string { return long },
+		Password: testPassword,
+		Reply:    func(string) string { return long },
 	})
 	c := newClient(t, srv.Addr())
 	got, err := c.Exec(ctxWithTimeout(t, 5*time.Second), "/big")
@@ -90,9 +90,28 @@ func TestExecReassemblesSplitReply(t *testing.T) {
 	if got != long {
 		t.Errorf("reply has %d bytes, want %d", len(got), len(long))
 	}
-	// The next command must not see the end of the last reply.
-	if _, err := c.Exec(ctxWithTimeout(t, 5*time.Second), "/again"); err != nil {
-		t.Fatal(err)
+	// Back-to-back commands are answered in order, one packet each.
+	for _, cmd := range []string{"/a", "/b"} {
+		if _, err := c.Exec(ctxWithTimeout(t, 5*time.Second), cmd); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestExecSendsOnlyTheCommand(t *testing.T) {
+	// A server that answers only non-empty commands must not be asked an empty one.
+	srv := rcontest.Start(t, rcontest.Config{
+		Password: testPassword,
+		Reply:    func(cmd string) string { return "ok " + cmd },
+	})
+	c := newClient(t, srv.Addr())
+	start := time.Now()
+	got, err := c.Exec(ctxWithTimeout(t, 5*time.Second), "/players")
+	if err != nil || got != "ok /players" {
+		t.Fatalf("reply = %q, err = %v", got, err)
+	}
+	if d := time.Since(start); d > time.Second {
+		t.Errorf("took %v", d)
 	}
 }
 
@@ -194,9 +213,8 @@ func TestExpiredContextFailsAtOnce(t *testing.T) {
 
 func TestCommandsRunOneAtATime(t *testing.T) {
 	srv := rcontest.Start(t, rcontest.Config{
-		Password:  testPassword,
-		ChunkSize: 3,
-		Reply:     func(cmd string) string { return "echo:" + cmd },
+		Password: testPassword,
+		Reply:    func(cmd string) string { return "echo:" + cmd },
 	})
 	c := newClient(t, srv.Addr())
 	var wg sync.WaitGroup

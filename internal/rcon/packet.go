@@ -18,9 +18,9 @@ const (
 const (
 	// A packet is id, type, body and two zero bytes after the size field.
 	minPacketSize = 10
-	// Larger than any reply the game sends; stops a bad peer from making us
-	// allocate without limit.
-	maxPacketSize = 1 << 20
+	// The game sends a reply of any length as one packet, so this is also the
+	// largest reply. It stops a bad peer from making us allocate without limit.
+	maxPacketSize = 4 << 20
 )
 
 type packet struct {
