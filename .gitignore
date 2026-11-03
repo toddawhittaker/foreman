@@ -15,3 +15,12 @@
 
 # Screenshots taken by agents
 screenshots/
+
+# Build and tool output
+/bin/
+/.cache/
+/.dev-data/
+/coverage.out
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
