@@ -275,3 +275,35 @@ test("a long list ends in Show older", async ({ page, foreman }) => {
   await expect(page.locator("tbody tr")).toHaveCount(52);
   await expect(page.getByRole("link", { name: "Show older saves" })).toHaveCount(0);
 });
+
+// DESIGN 6, "The 320 px rules": a long save name wraps instead of widening the page.
+test("a very long save name wraps in the table and the radio list", async ({ page, foreman }) => {
+  await createAdmin(page);
+  const name = "autosave-with-a-very-long-name-".repeat(4) + ".zip";
+  seedWorld(foreman, "longs", { name: "Long " + "w".repeat(80) }, [{ name, content: newSave, at: "2026-11-03T14:25:00Z" }]);
+  await page.goto("/worlds/longs/saves");
+  await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Save to load" })).toBeVisible();
+  expect(await page.locator("fieldset").evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+  await checkPage(page);
+});
+
+// DESIGN 7.3: the success and note kinds are drawn, not left as plain text.
+test("success and note messages have their own colours", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedTwoSaves(foreman, { load_save: "gone.zip" });
+  await page.goto("/worlds/family-base/saves");
+  const note = page.locator(".message--note");
+  await expect(note).toBeVisible();
+  const bg = (loc: typeof note) => loc.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const plain = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const noteBg = await bg(note);
+  expect(noteBg).not.toBe(plain);
+  await page.getByRole("radio", { name: "old.zip" }).check();
+  await page.getByRole("button", { name: "Use this choice" }).click();
+  const ok = page.locator(".message--success");
+  await expect(ok).toBeVisible();
+  expect(await bg(ok)).not.toBe(noteBg);
+  expect(await bg(ok)).not.toBe(plain);
+  await checkPage(page);
+});

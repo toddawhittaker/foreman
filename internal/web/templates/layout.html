@@ -15,6 +15,11 @@
 <header class="site">
   <a href="{{homePath}}" class="product">Foreman</a>
   {{- if .User}}
+  <nav aria-label="Main">
+    <ul class="tabs">
+      <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>Worlds</a></li>
+    </ul>
+  </nav>
   <form method="post" action="{{signOutPath}}" class="signout">
     <span class="user">Signed in as {{.User}}</span>
     <button type="submit" class="button">Sign out</button>

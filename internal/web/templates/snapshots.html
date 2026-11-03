@@ -16,7 +16,7 @@
 </div>
 {{- end}}
 
-<section aria-labelledby="disk-heading">
+<section class="panel" aria-labelledby="disk-heading">
   <h2 id="disk-heading">Disk use</h2>
   <dl class="facts">
     <div><dt>Snapshots use</dt><dd>{{bytes .UsedBytes}}</dd></div>
@@ -46,7 +46,7 @@
   </div>
 </form>
 
-<section aria-labelledby="list-heading">
+<section class="panel" aria-labelledby="list-heading">
   <h2 id="list-heading">All snapshots</h2>
   {{- if .Snapshots}}
   <table>

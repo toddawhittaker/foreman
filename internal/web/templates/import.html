@@ -12,17 +12,14 @@
   <p>Put a folder of saves in <code>{{.InboxDir}}</code>. Foreman copies the save files (<code>.zip</code>) at its top level, and its <code>mods</code> folder if it has one.</p>
   {{- with .Folder}}
   {{- if $.Page.Inbox}}
-  <fieldset class="field"{{with .SourceError}} aria-describedby="folder-source-error"{{end}}>
+  <fieldset{{with .SourceError}} aria-describedby="folder-source-error"{{end}}>
     <legend>Folder</legend>
     {{- with .SourceError}}
     <p class="error" id="folder-source-error"><strong>Error:</strong> {{.}}</p>
     {{- end}}
     {{- $chosen := .Source}}
     {{- range $i, $f := $.Page.Inbox}}
-    <div class="check">
-      <input type="radio" style="inline-size: 1.5rem; block-size: 1.5rem" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}>
-      <label for="folder-source-{{$i}}"><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</label>
-    </div>
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</span></label>
     {{- end}}
   </fieldset>
   {{- else}}
@@ -58,8 +55,6 @@
 {{end}}
 {{- end}}
 
-{{/* The inline sizes lift the radios and the checkbox to SPEC 17.2's 24 px
-   floor, since .check input in foreman.css draws them at 20 px. */}}
 {{/* Name, game version and Space Age, shared by both forms. Takes ImportForm. */}}
 {{define "import-fields" -}}
 <div class="field">
@@ -80,8 +75,5 @@
   <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
 </div>
-<div class="check">
-  <input type="checkbox" style="inline-size: 1.5rem; block-size: 1.5rem" id="{{.IDPrefix}}-space-age" name="space_age"{{if .SpaceAge}} checked{{end}}>
-  <label for="{{.IDPrefix}}-space-age">Space Age is on</label>
-</div>
+<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
 {{- end}}
