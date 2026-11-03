@@ -35,6 +35,7 @@ test("first run: setup, sign out, sign in again", async ({ page }) => {
   await expect(page).toHaveURL("/setup");
   await expect(page.locator("#error-summary")).toBeFocused();
   await expect(page.locator("#error-summary")).toContainText("Use at least 12 characters");
+  await expect(page).toHaveTitle(/^Error: Create the first admin account/);
   await checkPage(page);
 
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -112,16 +113,15 @@ test("the skip link is the first tab stop", async ({ page }) => {
   }
 });
 
-// SPEC 17.1 and 17.2 (WCAG 2.5.8): the error summary's links are touch
-// targets too. They stand alone in a list, so the inline exception does not apply.
-test("error summary links are at least 24 px", async ({ page }) => {
-  test.fixme(true, "bug: error summary links render 20 px tall, under the SPEC 17.2 floor of 24");
+// SPEC 17.2 and DESIGN 7: the error summary's links stand alone in a list,
+// so they are full-size touch targets, not inline text.
+test("error summary links are 44 px tall", async ({ page }) => {
   await page.goto("/setup");
   await page.getByRole("button", { name: "Create admin account" }).click();
   const links = await page.locator("#error-summary a").all();
   expect(links.length).toBeGreaterThan(0);
   for (const link of links) {
     const box = await link.boundingBox();
-    expect(box && Math.min(box.width, box.height), await link.innerText()).toBeGreaterThanOrEqual(24);
+    expect(box && box.height, await link.innerText()).toBeGreaterThanOrEqual(44);
   }
 });

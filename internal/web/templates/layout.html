@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
-<title>{{template "title" .}} – Foreman</title>
+<title>{{if .Failed}}Error: {{end}}{{template "title" .}} – Foreman</title>
 <link rel="stylesheet" href="{{static "foreman.css"}}">
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
 </head>
@@ -32,7 +32,7 @@
 {{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}
 {{define "summary" -}}
 {{with .}}
-<div class="message message--error" id="error-summary" tabindex="-1" autofocus aria-labelledby="error-summary-heading">
+<div class="message message--error" id="error-summary" tabindex="-1" autofocus>
   <h2 id="error-summary-heading"><strong>Error:</strong> {{if eq (len .) 1}}Fix this problem to continue{{else}}Fix {{len .}} problems to continue{{end}}</h2>
   <ul>
     {{- range .}}

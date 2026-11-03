@@ -53,11 +53,6 @@ type HomePage struct{}
 type SignedOutPage struct{}
 
 // SignInPage is the local-account sign-in form (SPEC 12.3, 12.4).
-//
-// Suggested wording for the errors, so every screen says the same thing:
-// UsernameError "Enter your username"; PasswordError "Enter your password",
-// or, when the pair does not match, "The username or password is not right.
-// Check both and try again." Never say which of the two was wrong.
 type SignInPage struct {
 	// Username refills the field after a failed attempt. The password is
 	// never sent back.
@@ -71,10 +66,6 @@ type SignInPage struct {
 }
 
 // SetupPage creates the first admin account on first run (SPEC 12.3).
-//
-// Suggested wording: UsernameError "Enter a username"; PasswordError "Enter
-// a password" or "Use at least N characters"; ConfirmError "Enter the same
-// password in both fields".
 type SetupPage struct {
 	Username      string
 	UsernameError string
@@ -98,6 +89,9 @@ func (SignedOutPage) templateName() string { return "signedout" }
 func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
 func (ErrorPage) templateName() string     { return "error" }
+
+func (p SignInPage) hasErrors() bool { return p.RateLimited || len(p.Problems()) > 0 }
+func (p SetupPage) hasErrors() bool  { return len(p.Problems()) > 0 }
 
 // Problems lists the field errors in the order the fields appear.
 func (p SignInPage) Problems() []Problem {
@@ -190,6 +184,13 @@ func (p ErrorPage) Explanation() string {
 type view struct {
 	User string
 	Page Page
+}
+
+// Failed is true when a form page is showing errors, so the title can say
+// so first (WCAG 3.3.1 and 2.4.2).
+func (v view) Failed() bool {
+	f, ok := v.Page.(interface{ hasErrors() bool })
+	return ok && f.hasErrors()
 }
 
 type staticFile struct {
@@ -286,6 +287,9 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, user string, p Page
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	// Pages can show who is signed in; the back button after sign-out must not.
 	h.Set("Cache-Control", "no-store")
+	// Pages carry sign-in forms, so no other site may frame them.
+	h.Set("Content-Security-Policy", "frame-ancestors 'none'")
+	h.Set("X-Frame-Options", "DENY")
 	w.WriteHeader(status)
 	_, err := buf.WriteTo(w)
 	return err

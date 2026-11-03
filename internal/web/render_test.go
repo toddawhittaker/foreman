@@ -217,6 +217,47 @@ func TestErrorSummary(t *testing.T) {
 	}
 }
 
+// A form with errors says so first in the title, and the summary is named
+// by its own content, not by aria-labelledby (WCAG 3.3.1).
+func TestErrorTitleAndSummaryName(t *testing.T) {
+	r := newTestRenderer(t)
+	cases := []struct {
+		page  Page
+		title string
+	}{
+		{SignInPage{}, "Sign in – Foreman"},
+		{SignInPage{PasswordError: "x"}, "Error: Sign in – Foreman"},
+		{SignInPage{RateLimited: true}, "Error: Sign in – Foreman"},
+		{SetupPage{}, "Create the first admin account – Foreman"},
+		{SetupPage{ConfirmError: "x"}, "Error: Create the first admin account – Foreman"},
+		{ErrorPage{Status: 404}, "Page not found – Foreman"},
+	}
+	for _, c := range cases {
+		_, body := render(t, r, pageCase{page: c.page, status: 400})
+		m := reTitle.FindStringSubmatch(body)
+		if m == nil || m[1] != c.title {
+			t.Errorf("%T %+v: title %v, want %q", c.page, c.page, m, c.title)
+		}
+		if strings.Contains(body, "aria-labelledby") {
+			t.Errorf("%T: aria-labelledby on the page", c.page)
+		}
+	}
+}
+
+// Pages must not be framed by another site (clickjacking on the sign-in form).
+func TestPagesRefuseFraming(t *testing.T) {
+	r := newTestRenderer(t)
+	for _, c := range pageCases() {
+		rec, _ := render(t, r, c)
+		if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
+			t.Errorf("%s: Content-Security-Policy %q", c.name, got)
+		}
+		if got := rec.Header().Get("X-Frame-Options"); got != "DENY" {
+			t.Errorf("%s: X-Frame-Options %q", c.name, got)
+		}
+	}
+}
+
 func TestSignInRateLimit(t *testing.T) {
 	cases := []struct {
 		after time.Duration

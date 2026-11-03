@@ -414,6 +414,13 @@ label {
   padding-inline-start: var(--space-5);
 }
 
+/* A link standing alone in a list is a full-size target (DESIGN 7 rule 3). */
+.message ul a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
 .message--error {
   background: var(--color-danger-bg);
   border-color: var(--color-danger-text);

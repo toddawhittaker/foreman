@@ -111,16 +111,11 @@ export async function checkPage(page: Page) {
       })
       .map((el) => {
         const r = el.getBoundingClientRect();
-        return { what: el.outerHTML.slice(0, 80), w: r.width, h: r.height, inSummary: !!el.closest("#error-summary") };
+        return { what: el.outerHTML.slice(0, 80), w: r.width, h: r.height };
       }),
   );
   for (const t of targets) {
     const least = Math.min(t.w, t.h);
-    if (t.inSummary && least < 24) {
-      // Known bug, pinned by its own fixme test in accounts.spec.ts.
-      test.info().annotations.push({ type: "bug", description: `${t.what} is ${Math.round(t.h)} px tall` });
-      continue;
-    }
     // SPEC 17.2 sets 24 px as the floor.
     expect(least, `target size of ${t.what} on ${page.url()}`).toBeGreaterThanOrEqual(24);
     // DESIGN asks for 44 px; a smaller target is reported, not failed.
