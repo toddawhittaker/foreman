@@ -1,7 +1,9 @@
 package web
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net/http"
 	"runtime/debug"
 	"time"
@@ -75,39 +77,65 @@ func (s *server) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-// limitBody caps every request body at maxFormBytes, or at the route's own
-// limit for an upload route (SPEC 14.6).
+// uploadBody is an upload route's real request body and its limit, kept
+// beside the 64 KB cap every request starts with. Only a signed-in request
+// gets the larger limit.
+type uploadBody struct {
+	raw   io.ReadCloser
+	limit int64
+}
+
+type uploadBodyKey struct{}
+
+// limitBody caps every request body at maxFormBytes. An upload route's own
+// limit is applied later, by handleLong, once the request is signed in
+// (SPEC 14.6).
 func (s *server) limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		limit := int64(maxFormBytes)
+		raw := r.Body
+		r.Body = http.MaxBytesReader(w, raw, maxFormBytes)
 		if _, pattern := s.mux.Handler(r); s.uploadLimits[pattern] > 0 {
-			limit = s.uploadLimits[pattern]
+			ctx := context.WithValue(r.Context(), uploadBodyKey{}, uploadBody{raw: raw, limit: s.uploadLimits[pattern]})
+			r = r.WithContext(ctx)
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		next.ServeHTTP(w, r)
 	})
 }
 
 // handleLong registers a route that may run longer than the server's read
-// and write timeouts: a download, import or restore. It lifts both
-// deadlines for that request only.
+// and write timeouts: a download, import or restore. For a signed-in
+// request it lifts both deadlines and, on an upload route, swaps in the
+// route's body limit. Anyone else keeps the short deadlines and the 64 KB
+// cap, and h refuses them. h checks the sign-in again (requireUser); the
+// second check is cheap and keeps h's signature plain.
 func (s *server) handleLong(pattern string, h http.HandlerFunc) {
 	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		rc := http.NewResponseController(w)
-		if err := rc.SetReadDeadline(time.Time{}); err != nil {
-			s.fail(w, r, "lift read deadline", err)
+		_, state, err := s.identify(r)
+		if err != nil {
+			s.fail(w, r, "identify user", err)
 			return
 		}
-		if err := rc.SetWriteDeadline(time.Time{}); err != nil {
-			s.fail(w, r, "lift write deadline", err)
-			return
+		if state == isSignedIn {
+			rc := http.NewResponseController(w)
+			if err := rc.SetReadDeadline(time.Time{}); err != nil {
+				s.fail(w, r, "lift read deadline", err)
+				return
+			}
+			if err := rc.SetWriteDeadline(time.Time{}); err != nil {
+				s.fail(w, r, "lift write deadline", err)
+				return
+			}
+			if ub, ok := r.Context().Value(uploadBodyKey{}).(uploadBody); ok {
+				r.Body = http.MaxBytesReader(w, ub.raw, ub.limit)
+			}
 		}
 		h(w, r)
 	})
 }
 
 // handleUpload registers an upload route with its own body limit instead of
-// maxFormBytes, and without the read and write deadlines.
+// maxFormBytes, and without the read and write deadlines, for signed-in
+// requests only.
 func (s *server) handleUpload(pattern string, limit int64, h http.HandlerFunc) {
 	s.uploadLimits[pattern] = limit
 	s.handleLong(pattern, h)

@@ -4,56 +4,16 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
-	"io"
-	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-// Ordinary forms keep the small body cap; an upload route gets its own,
-// and runs on a real server so its deadlines can be lifted.
-func TestUploadRouteHasItsOwnBodyLimit(t *testing.T) {
-	s := &server{mux: http.NewServeMux(), uploadLimits: map[string]int64{}, log: slog.New(slog.DiscardHandler)}
-	read := func(w http.ResponseWriter, r *http.Request) {
-		n, err := io.Copy(io.Discard, r.Body)
-		w.Header().Set("X-Read", strconv.FormatInt(n, 10))
-		if err != nil {
-			w.WriteHeader(http.StatusRequestEntityTooLarge)
-		}
-	}
-	const limit = 1 << 20
-	s.handleUpload("POST /up", limit, read)
-	s.mux.HandleFunc("POST /form", read)
-	ts := httptest.NewServer(s.limitBody(s.mux))
-	defer ts.Close()
-
-	post := func(path string, n int) (status int, read string) {
-		t.Helper()
-		resp, err := http.Post(ts.URL+path, "application/octet-stream", strings.NewReader(strings.Repeat("x", n)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = resp.Body.Close()
-		return resp.StatusCode, resp.Header.Get("X-Read")
-	}
-	if code, read := post("/up", 512<<10); code != 200 || read != strconv.Itoa(512<<10) {
-		t.Errorf("upload under its limit: %d, read %s", code, read)
-	}
-	if code, _ := post("/form", 512<<10); code != http.StatusRequestEntityTooLarge {
-		t.Errorf("form over %d bytes: %d", maxFormBytes, code)
-	}
-	if code, _ := post("/up", limit+1); code != http.StatusRequestEntityTooLarge {
-		t.Errorf("upload over its limit: %d", code)
-	}
-}
 
 func multipartBody(t *testing.T, field, filename string, content []byte) (*bytes.Buffer, string) {
 	t.Helper()

@@ -47,6 +47,19 @@ func pageCases() []pageCase {
 			{ID: "future", Name: "Future", Newer: true},
 			{ID: "broken", Name: "broken", Unreadable: true},
 		}}},
+		{"saves empty", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
+			LoadHref: "/worlds/base/saves", NewestSelected: true, UploadLimit: MaxSaveUpload}},
+		{"saves listed", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
+			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, LoadSave: "a.zip", OlderHref: "/worlds/base/saves?all=1",
+			Uploaded: "a.zip", Chosen: true, Rows: []SaveRow{
+				{Name: "a.zip", Href: "/worlds/base/saves/a.zip", Size: 2_100_000_000, Loads: true, Selected: true,
+					Saved: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)},
+				{Name: longName, Href: "/worlds/base/saves/x.zip", Size: 12},
+			}}},
+		{"saves errors", "todd", 422, SavesPage{WorldName: "Base", WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
+			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, LoadSave: "gone.zip", LoadMissing: true, NewestSelected: true,
+			UploadError: "This file is not a zip file.", LoadError: "Choose which save loads."}},
+		{"saves newer", "todd", 200, SavesPage{WorldName: "Base", Newer: true, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves"}},
 		{"world", "todd", 200, WorldPage{World: world.Summary{ID: "base", Name: longName, Active: true}, Name: longName}},
 		{"world rename error", "todd", 400, WorldPage{World: world.Summary{ID: "base", Name: "Base"}, Name: "Other",
 			NameError: "Another world already has this name. Choose a different name."}},
@@ -136,6 +149,10 @@ func TestEveryPageRenders(t *testing.T) {
 				}
 			}
 			for _, in := range reInput.FindAllString(body, -1) {
+				// Radios and checkboxes sit inside their label (DESIGN 7.2).
+				if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) {
+					continue
+				}
 				m := reID.FindStringSubmatch(in)
 				if m == nil {
 					t.Errorf("input without id: %s", in)
