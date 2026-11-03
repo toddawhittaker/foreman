@@ -39,6 +39,16 @@ type uploaded struct {
 // filesystem, used to refuse up front an upload larger than the free space.
 // On any failure the temp file is removed and nothing else has changed.
 func receiveFile(r *http.Request, root *os.Root, dir, field, spaceDir string, limit int64) (uploaded, error) {
+	return receiveFileWithFields(r, root, dir, field, spaceDir, limit, nil)
+}
+
+// maxFieldBytes caps each text field read beside an upload.
+const maxFieldBytes = 1 << 10
+
+// receiveFileWithFields is receiveFile for a form that also has text
+// fields: each part named in values, sent before the file, is read into
+// values. Text fields sent after the file are not read.
+func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir string, limit int64, values map[string]string) (uploaded, error) {
 	if r.ContentLength > limit {
 		return uploaded{}, uploadError{fmt.Sprintf("The file is larger than the limit of %s.", world.FormatBytes(uint64(limit)))} //nolint:gosec // limit is a positive constant
 	}
@@ -63,6 +73,17 @@ func receiveFile(r *http.Request, root *os.Root, dir, field, spaceDir string, li
 		}
 		if err != nil {
 			return uploaded{}, bodyError(err, limit)
+		}
+		if _, want := values[part.FormName()]; want && part.FileName() == "" {
+			b, err := io.ReadAll(io.LimitReader(part, maxFieldBytes+1))
+			if err != nil {
+				return uploaded{}, bodyError(err, limit)
+			}
+			if len(b) > maxFieldBytes {
+				return uploaded{}, uploadError{"A form field is too long."}
+			}
+			values[part.FormName()] = string(b)
+			continue
 		}
 		if part.FormName() != field || part.FileName() == "" {
 			continue
