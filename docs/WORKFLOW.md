@@ -1,7 +1,7 @@
 # Branching, review, and checks
 
-Local development commands and the real-game test procedure are added
-here once docs/STACK.md settles the stack.
+The real-game test procedure is added here once the real-game tests
+arrive (Epic 3).
 
 ## Where the code lives
 
@@ -15,8 +15,8 @@ for anything `gh` has no command for, such as a PR's changed files.
 
 `make verify` run locally on a PR's head commit is the check that gates
 every merge, and the orchestrator or the merger agent runs it before
-merging. Once the stack epic adds a CI workflow under `.github/workflows/`,
-it runs the same `make` targets on the server and a green run is required
+merging. The CI workflow in `.github/workflows/ci.yml` runs `make ci` on
+every pull request and every push to `main`, and a green run is required
 as well. Read a failing run's log with `gh run view --log-failed`.
 
 CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
