@@ -69,8 +69,8 @@ The targets (STACK.md, section 13):
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It
-  runs in adopted mode with your own user and group IDs as the game's,
-  so it needs no Docker socket.
+  runs in managed mode, with `FOREMAN_HOST_DATA_DIR` set, and your own user
+  and group IDs as the game's, so it needs no Docker socket.
 - `make e2e`: build the binary and run the Playwright and axe tests in
   the Playwright image.
 - `make image`: build the container image as `foreman:dev`.

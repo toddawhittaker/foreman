@@ -89,8 +89,10 @@ with Foreman, never across a network you do not control (14.2).
 snapshots, and the app database. Its layout is in section 5.2. (P0)
 
 3.4. **The app database** holds only users, sessions, API token hashes,
-app settings, notification settings and the audit log. It never holds game data: saves,
-mods and game settings live only in world directories. (P0)
+app settings, notification settings, the audit log, and which world is
+active (a table of world ids, so that several could be active later). It
+never holds other game data: saves, mods and game settings live only in
+world directories. (P0)
 
 3.5. **Host paths.** In managed mode, Foreman creates containers with
 bind mounts, which the Docker daemon resolves on the host. Foreman must
@@ -218,19 +220,25 @@ publishes its RCON port on the host. (P0)
   `map-settings.json`, `server-adminlist.json`, `server-banlist.json`,
   `server-whitelist.json`, and (managed mode) `rconpw`;
 - `world.json`: Foreman's metadata for the world: display name, pinned
-  game version, Space Age flag, which save to load (section 7.11), and the
-  time it was created.
+  game version, Space Age flag, which save to load (section 7.11; if
+  missing, the newest save), and the time it was created.
 
 A person can read, back up and move a world without Foreman. `world.json`
-is plain JSON, and Foreman ignores fields it does not know so a newer
-Foreman can add fields. (P0)
+is plain JSON with snake_case keys and a `format_version` (1 today). Fields
+are only ever added. Foreman keeps fields it does not know when it
+rewrites the file. A world whose `format_version` is newer than Foreman
+knows is listed but cannot be changed, and the page says a newer Foreman
+wrote it. (P0)
 
 5.2. The data directory holds `snapshots/` and the app database. In
 managed mode it also holds `worlds/<world-id>/`. In adopted mode the
 worlds live in the game folder instead (4.8), because the links that
 switch them must resolve inside the game container. A world's id is a
-short, safe directory name that never changes; its display name can.
-(P0)
+short, safe directory name that never changes; its display name can. The
+id is made from the name (lowercase letters, digits and hyphens, at most
+40 characters, with `-2`, `-3` and so on when taken), and an id is never
+reused, even after the world is deleted. Two worlds may not share a name,
+ignoring case. (P0)
 
 5.3. Exactly one world is active at a time in v1. Nothing in the data
 model, the API or the on-disk layout may assume only one could be: each
@@ -245,7 +253,10 @@ time, disk use, and which one is active. (P0)
 5.5. **Import** an existing directory of saves and mods (for example a
 hand-renamed `saves-2025` folder) as a new world, or upload a save zip and
 sync its mods from the portal (section 9.8). Import copies; it never moves
-or changes the source. (P0)
+or changes the source. Foreman reads a folder to import only from the inbox,
+`<data>/import/`, never from a path the admin types. It copies the
+folder's top-level save zips and its `mods/` folder. A save zip can also
+be uploaded to make a new world. (P0)
 
 5.6. **Generate** a new world from a preset, a map exchange string, or
 map-gen settings plus a seed, with Space Age on or off. How a preset or
@@ -286,7 +297,12 @@ time and size. (P0)
 in one click with a confirmation. Restoring the active world stops it
 gracefully first (section 7.6), snapshots its current state, restores, and
 starts it again. Restore is itself undoable: the snapshot taken before it
-is the undo. (P0)
+is the undo. Foreman restores by building the restored world in a
+staging folder, renaming the live folder aside, and renaming the staged
+folder into place, so the path `worlds/<world-id>` never holds a half
+restored world. If Foreman stops partway, startup recovery finishes or
+reverses the swap. Before it writes anything, restore checks that every
+file still matches the snapshot (6.7). (P0)
 
 6.6. **Retention** is an app setting: keep the newest *n* automatic
 snapshots per world (default 10). Manual snapshots and the final snapshot
@@ -295,9 +311,16 @@ snapshot disk use. (P0)
 
 6.7. **How snapshots are stored.** A snapshot is a plain directory,
 `snapshots/<world-id>/<time>/`, with the same shape as the world, plus a
-`snapshot.json` manifest (6.1) that records each file's modification
-time. A person can read it, copy it, or restore it by hand, as the
-operator guide shows. (P0)
+`snapshot.json` manifest (6.1). The folder is named by its UTC time, for
+example `20261103T142501Z`, with `-2` added on a clash. The manifest
+holds the label, the reason (`manual`, `before-delete`, `before-restore`,
+or the risky operation), the time, who took it, and for each file its
+path, size and modification time to the nanosecond. For each save and mod
+zip it also holds a SHA-256 hash, which Foreman reuses from the previous
+snapshot when the file's inode, size and modification time are unchanged.
+Restore checks every hash first and refuses a changed snapshot, naming the
+file. Disk use is read from manifests. A person can read it, copy it, or
+restore it by hand, as the operator guide shows. (P0)
 
 6.8. Save and mod zips are hardlinked into the snapshot rather than
 copied; small files (JSON, `.dat`, `rconpw`) are copied. This is safe
@@ -306,7 +329,10 @@ changes a zip in place. If a hardlink fails, for example because the
 snapshot directory is on another filesystem, Foreman copies the file
 instead, and the status page says snapshots are using full copies. In
 adopted mode the operator guide says to keep the data directory on the
-same filesystem as the game folder, outside the game's mount. (P0)
+same filesystem as the game folder, outside the game's mount. A snapshot
+keeps hidden files, and refuses (naming the path) when a world holds a
+symlink or other special file, because it cannot be restored exactly.
+(P0)
 
 6.9. A restore puts every file's modification time back from the
 manifest, because hardlinked saves share their time with the world
@@ -314,6 +340,16 @@ manifest, because hardlinked saves share their time with the world
 
 6.10. A snapshot of a running world is taken after a `/server-save` over
 RCON, so it holds the current game state. (P0)
+
+6.11. **Fail safe on disk space.** Before a snapshot, restore, import or
+upload, Foreman works out how many bytes the write needs (nothing for a
+hardlink, the full size for a copy or an upload) and refuses, with a clear
+message, when the filesystem's free space minus the bytes already promised
+to writes in flight is short of that plus a fixed reserve of 2 GB. The
+reserve is kept for the game's autosaves. An upload with no declared
+length is refused, and at most two uploads run at once. If the disk fills
+anyway, the partial file is removed and nothing changes. The snapshot page
+shows free space beside snapshot disk use. (P0)
 
 ## 7. Server control
 
@@ -462,6 +498,10 @@ format is documented. (P1)
 
 8.12. A failed webhook delivery is logged and retried at most twice; it
 never blocks or delays a server operation. (P1)
+
+8.13. **Low disk space.** While the game runs, the status page and the
+notifications (8.10) warn when free space approaches the reserve in 6.11,
+because the game's autosaves can then fail. (P1)
 
 ## 9. Mods (per world)
 
@@ -827,14 +867,15 @@ clone (5.7), and section 11.
 18.7. **Epic 7: Game versions.** Section 10.
 
 18.8. **Epic 8: Live operations.** Players (8.2, 8.3), chat (8.5), crash
-reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12).
+reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12),
+the low-disk warning (8.13).
 
 18.9. **Epic 9: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).
 
 18.10. **Epic 10: Release.** OIDC (12.7), the full audit log (12.9),
 archive (5.9), Foreman's settings page (13.1), the operator guide with the
-socket proxy example (14.2), the MIT license, and the first public image
+socket proxy example (14.2), and the first public image
 on GHCR (3.1).
 
 ## 19. Milestone gates

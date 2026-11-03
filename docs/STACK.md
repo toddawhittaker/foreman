@@ -26,8 +26,10 @@ is a copy and goes stale if they change without it.
   end-to-end tests.
 - htmx 2.0.11, vendored as `internal/web/static/vendor/htmx.min.js`; its
   SHA-256 is in `SHA256SUMS` beside it, and a test checks it.
-- Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1 and
-  `golang.org/x/crypto` v0.58.0.
+- Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1,
+  `golang.org/x/crypto` v0.58.0 and `golang.org/x/sys` v0.49.0 (direct
+  since Epic 2: hardlinks into a snapshot folder, which the standard
+  library cannot make relative to an open folder).
 - govulncheck v1.9.0, run by `make vuln`.
 - CI: GitHub Actions on the `ubuntu-24.04` runner. Every action is
   pinned to a full commit: `actions/checkout` v7.0.1,
@@ -228,8 +230,8 @@ Rejected:
 | `make fmt` | Rewrite formatting. |
 | `make build` | The static binary, with frontend files embedded. |
 | `make image` | Build the container image with a local tag. |
-| `make run` | Run Foreman from source in adopted mode against `./.dev-data`, with your own user and group as the game's. It does not contact Docker. |
-| `make e2e` | Playwright and axe against the built binary, at desktop width and 320 px, in dark and light. The fake Docker and fake RCON arrive in Epic 3. |
+| `make run` | Run Foreman from source in managed mode against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It does not contact Docker. |
+| `make e2e` | Playwright and axe against the built binary, at desktop width and 320 px, in dark and light. The fixture runs Foreman in managed mode with `FOREMAN_HOST_DATA_DIR` set, so no Docker call is made. The fake Docker and fake RCON arrive in Epic 3. |
 | `make test-game TAG=x` | Integration tests against a real `factoriotools/factorio:<TAG>` container. |
 | `make e2e-game` | The vision's success scenarios against a real game, for milestone gates and epic pull requests. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
