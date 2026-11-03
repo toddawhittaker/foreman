@@ -17,18 +17,33 @@ document is wrong, change it in the same pull request and say why.
 
 Foreman is a tool for keeping a game server alive, used in a hurry, often
 from a phone. It should look like a well-labelled control panel, not a
-marketing page.
+marketing page, and it should feel at home next to the game it runs.
 
-- **Warm grey and one amber.** Neutrals are warm greys, like painted
-  steel. The single accent is an amber taken from the game's hazard
-  colour. It marks the one main action on a screen and links; it never
-  decorates.
-- **A dark header bar in both themes**, with a thin amber rule under it.
-  That is the only branding. There is no logo, no hero and no
-  illustration.
-- **Flat.** No gradients, glows, blurred glass or shadows. Edges come from
-  1 px borders. Corners are 3 px, which is enough to soften a button
-  without turning it into a pill.
+The look is inspired by Factorio's in-game interface: dark warm-grey
+panels with bevelled edges, lighter sunken areas for content, cream
+headings, orange for what is selected, green for go and red for
+destroy. Foreman is not made by, affiliated with or endorsed by Wube
+Software. It uses its own colour values and none of the game's artwork,
+icons, logos, fonts or textures, and nothing in it should suggest it is
+an official product.
+
+- **Frames, not cards.** The page is built from a few nested frames: a
+  raised outer frame, a lighter sunken inner panel for content, and a
+  deep sunken box for fields and the log (section 6). The frames hold
+  lists and tables; they do not turn each item into a box.
+- **Warm grey, with colour that means something.** Neutrals are warm
+  greys, like painted steel. Orange marks what is selected or active and
+  what is under the pointer. Green is the one main "go" action on a
+  screen. Red is the final step of a destructive action. Yellow-orange is
+  a warning. None of them decorates.
+- **Dark first.** Dark is the main look, as in the game. The light theme
+  is the same frames in pale warm grey, not an inverted afterthought.
+- **The bevel is the only depth.** Frames, buttons and fields get a 1 px
+  light and dark inset edge (section 4, "Bevels"). There are no
+  gradients, glows, blurred glass or drop shadows. Corners are 2 px:
+  square enough to read as a panel, soft enough not to look sharp.
+- **No logo, hero or illustration.** The product name in the header is
+  the only branding.
 - **Monospace for what the game prints**: versions, file names, world
   ids, seeds, the console and the log. Everything a person wrote, or
   Foreman wrote for a person, is in the system sans-serif.
@@ -88,54 +103,71 @@ Rules:
 
 ### How themes work
 
-Both themes are defined as CSS custom properties. The light values sit on
-`:root`; the dark values replace them inside
-`@media (prefers-color-scheme: dark)`. `:root` also sets
-`color-scheme: light dark` so native controls (checkboxes, scroll bars,
+Both themes are defined as CSS custom properties. The dark values sit on
+`:root`, because dark is the main look; the light values replace them
+inside `@media (prefers-color-scheme: light)`. `:root` also sets
+`color-scheme: dark light` so native controls (checkboxes, scroll bars,
 the file picker) follow the theme. There is no theme switch in the
-interface; the system setting decides (SPEC 17.3).
+interface; the system setting decides (SPEC 17.3). Both themes must meet
+every ratio below (SPEC 17.1).
 
 Every colour in the CSS comes from a token below. A raw hex value
 anywhere else in the stylesheet is a bug.
 
 ### Tokens
 
-| Token | Light | Dark | Use |
+| Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#f5f4f0` | `#161513` | Page background |
-| `--color-surface` | `#ffffff` | `#201f1c` | Form fields, secondary buttons, table body, dialogs |
-| `--color-sunken` | `#ebe9e4` | `#0e0d0c` | Log and console, the "stopped" badge, secondary button hover |
-| `--color-text` | `#1d1c1a` | `#ebe8e1` | Body text, headings, secondary button text |
-| `--color-text-muted` | `#57544e` | `#aaa59c` | Hints, timestamps, table captions, the "stopped" badge |
-| `--color-border` | `#7c7870` | `#87827a` | Borders of fields and secondary buttons, table header rule |
-| `--color-rule` | `#d6d3cc` | `#34322e` | Decorative dividers between rows; never the only edge of a control |
-| `--color-link` | `#9a4300` | `#f5aa5c` | Links (always underlined) |
-| `--color-accent` | `#a84a00` | `#eba13c` | Primary button background |
-| `--color-accent-hover` | `#8c3d00` | `#f2b866` | Primary button hover |
-| `--color-on-accent` | `#ffffff` | `#1a1105` | Primary button text |
-| `--color-danger` | `#b0261c` | `#f4848e` | Danger button background, "crash-looping" badge background |
-| `--color-danger-hover` | `#921d15` | `#f8a3ab` | Danger button hover |
-| `--color-on-danger` | `#ffffff` | `#1f0604` | Danger button text, "crash-looping" badge text |
-| `--color-danger-text` | `#a3231a` | `#ff9d93` | Error words, field error text, invalid field border, "crashed" badge |
-| `--color-danger-bg` | `#fbe6e3` | `#3a1714` | Error message and "crashed" badge background, confirmation box |
-| `--color-ok` | `#1d6a33` | `#74d08c` | "Done" word, "running" badge |
-| `--color-ok-bg` | `#e3f1e6` | `#16301d` | Success message and "running" badge background |
-| `--color-warn` | `#7f5300` | `#e9bb52` | "Warning" word, "starting" and "stopping" badges |
-| `--color-warn-bg` | `#f8eed9` | `#33280f` | Warning message and "starting"/"stopping" badge background |
-| `--color-info` | `#174ea6` | `#9cc2ff` | "Note" word |
-| `--color-info-bg` | `#e6eefb` | `#14243d` | Notice background |
-| `--color-focus` | `#0a56c8` | `#8ab4ff` | Focus outline |
-| `--color-header-bg` | `#1d1c1a` | `#0e0d0c` | Header bar |
-| `--color-header-text` | `#f5f4f0` | `#ebe8e1` | Header links and product name |
-| `--color-header-muted` | `#b8b3a9` | `#aaa59c` | Signed-in user name in the header |
-| `--color-header-rule` | `#d9822b` | `#eba13c` | The 3 px rule under the header |
-| `--color-header-focus` | `#8ab4ff` | `#8ab4ff` | Focus outline inside the header |
+| `--color-bg` | `#141312` | `#bab3a8` | Backdrop behind the frames; seen only in the gaps between them |
+| `--color-frame` | `#2f2d2a` | `#e3ded6` | Outer frame: the header and `main` |
+| `--color-frame-light` | `#57534d` | `#fbf9f6` | Light side of a bevel (decorative) |
+| `--color-frame-dark` | `#0c0b0a` | `#8c857b` | Dark side of a bevel, and the 1 px outline of frames (decorative) |
+| `--color-inner` | `#3d3a36` | `#f3f0ea` | Inner panel: the sunken, lighter area that holds a section's content |
+| `--color-deep` | `#1b1a18` | `#ffffff` | Deep sunken box: form fields, the log and console, the "stopped" badge |
+| `--color-text` | `#ebe6dd` | `#1c1a17` | Body text, field text, header links |
+| `--color-heading` | `#f5dcb0` | `#4b3010` | Headings and the product name: pale cream in dark, deep brown in light |
+| `--color-text-muted` | `#b8b0a4` | `#58534b` | Hints, timestamps, table captions, `dt`, empty states, the "stopped" badge |
+| `--color-border` | `#958c80` | `#7a7369` | Edge of fields; edge of secondary buttons in light; table header rule |
+| `--color-rule` | `#57534d` | `#cdc7bd` | Decorative dividers between rows; never the only edge of a control |
+| `--color-link` | `#ffbd6b` | `#9a4800` | Links (always underlined) |
+| `--color-highlight` | `#f39a2a` | `#b05a00` | Selected or active: current nav tab, "Active" badge, checked boxes, secondary button hover |
+| `--color-on-highlight` | `#1a1004` | `#ffffff` | Text on `highlight` |
+| `--color-button` | `#a8a198` | `#d2ccc2` | Secondary button face |
+| `--color-on-button` | `#161412` | `#1c1a17` | Secondary button text |
+| `--color-confirm` | `#62b04f` | `#2d7621` | Primary ("go") button face |
+| `--color-confirm-hover` | `#7cc768` | `#235f19` | Primary button hover |
+| `--color-on-confirm` | `#0c1808` | `#ffffff` | Primary button text |
+| `--color-danger` | `#ea6248` | `#b3301d` | Danger button face, "crash-looping" badge background |
+| `--color-danger-hover` | `#f2836f` | `#932616` | Danger button hover |
+| `--color-on-danger` | `#1a0503` | `#ffffff` | Danger button text, "crash-looping" badge text |
+| `--color-danger-text` | `#ff978a` | `#a32a18` | Error words, field error text, invalid field border, "crashed" badge |
+| `--color-danger-bg` | `#45201a` | `#f9e3de` | Error message, "crashed" badge and confirmation box background |
+| `--color-ok` | `#8fd77c` | `#22662a` | "Done" word, "running" badge |
+| `--color-ok-bg` | `#21361b` | `#e2efdc` | Success message and "running" badge background |
+| `--color-warn` | `#f7c548` | `#7a5000` | "Warning" word, "starting" and "stopping" badges |
+| `--color-warn-bg` | `#3d3112` | `#f6ebcf` | Warning message and "starting"/"stopping" badge background |
+| `--color-info` | `#a3c6ff` | `#174ea6` | "Note" word |
+| `--color-info-bg` | `#1c2a3e` | `#e3ebf8` | Notice background |
+| `--color-focus` | `#8fb8ff` | `#0a56c8` | Focus outline |
 
-The focus colour is blue, not amber, on purpose: amber is already the
-primary button and links, and red is danger, so a blue ring is never
-mistaken for either. Inside the dark header the light theme's blue is
-too dark, so the header sets `--color-focus: var(--color-header-focus)`
-for its own children.
+How the colours divide the work:
+
+- **Orange means "this one".** The current page's tab, the active world,
+  a checked box, the button under the pointer. It is never the colour of
+  an action's face, so a person never wonders whether orange is a
+  button.
+- **Green means go.** Only the primary button (7.1) is green, plus the
+  "Done" word and the "running" badge, which say an action or the server
+  succeeded.
+- **Red means destroy or failed.** The final button of a destructive
+  action, errors, and the crashed states.
+- **Yellow-orange means warning**: the "Warning" word and the in-between
+  server states. It is lighter and yellower than the orange highlight in
+  dark, and browner in light, and it always comes with its word.
+- **The focus ring is blue**, the one hue none of the above uses, so it
+  cannot be mistaken for selection (orange), go (green) or danger (red).
+  It works on every surface in both themes, so the header needs no
+  focus colour of its own.
 
 ### Contrast
 
@@ -149,74 +181,99 @@ The script that produced them is short enough to rerun when a token
 changes: compute each colour's relative luminance L, then
 `(L_lighter + 0.05) / (L_darker + 0.05)`.
 
+The lowest text ratio is 5.27:1 in dark (`text-muted` on `inner`) and
+4.75:1 in light (`link` on `frame`). The lowest edge or focus ratio is
+3.41:1 in dark (`border` on `inner`, and `danger` on `inner`) and 3.18:1
+in light (`focus` on `bg`).
+
 **Text pairings (need 4.5:1)**
 
-| Foreground | Background | Light | Dark |
+| Foreground | Background | Dark | Light |
 |---|---|---|---|
-| `text` | `bg` | 15.47 | 14.91 |
-| `text` | `surface` | 17.03 | 13.47 |
-| `text` | `sunken` | 14.03 | 15.87 |
-| `text-muted` | `bg` | 6.86 | 7.45 |
-| `text-muted` | `surface` | 7.54 | 6.73 |
-| `text-muted` | `sunken` | 6.22 | 7.93 |
-| `link` | `bg` | 6.01 | 9.37 |
-| `link` | `surface` | 6.61 | 8.47 |
-| `link` | `sunken` | 5.45 | 9.97 |
-| `on-accent` | `accent` | 5.76 | 8.61 |
-| `on-accent` | `accent-hover` | 7.55 | 10.50 |
-| `on-danger` | `danger` | 6.69 | 7.86 |
-| `on-danger` | `danger-hover` | 8.72 | 9.96 |
-| `danger-text` | `bg` | 6.78 | 9.12 |
-| `danger-text` | `surface` | 7.47 | 8.24 |
-| `danger-text` | `danger-bg` | 6.23 | 8.00 |
-| `ok` | `bg` | 6.04 | 9.68 |
-| `ok` | `surface` | 6.64 | 8.75 |
-| `ok` | `ok-bg` | 5.69 | 7.56 |
-| `warn` | `bg` | 6.08 | 10.16 |
-| `warn` | `surface` | 6.69 | 9.18 |
-| `warn` | `warn-bg` | 5.80 | 8.06 |
-| `info` | `info-bg` | 6.72 | 8.58 |
-| `text` | `danger-bg` | 14.21 | 13.08 |
-| `text` | `ok-bg` | 14.59 | 11.64 |
-| `text` | `warn-bg` | 14.78 | 11.83 |
-| `text` | `info-bg` | 14.59 | 12.72 |
-| `text-muted` | `ok-bg` | 6.46 | 5.81 |
-| `link` | `danger-bg` | 5.52 | 8.22 |
-| `link` | `ok-bg` | 5.66 | 7.31 |
-| `link` | `warn-bg` | 5.74 | 7.43 |
-| `link` | `info-bg` | 5.66 | 7.99 |
-| `header-text` | `header-bg` | 15.47 | 15.87 |
-| `header-muted` | `header-bg` | 8.16 | 7.93 |
+| `text` | `frame` | 11.05 | 12.97 |
+| `text` | `inner` | 9.10 | 15.26 |
+| `text` | `deep` | 13.99 | 17.36 |
+| `heading` | `frame` | 10.29 | 9.07 |
+| `heading` | `inner` | 8.48 | 10.68 |
+| `heading` | `danger-bg` (confirmation heading) | 10.68 | 9.87 |
+| `text-muted` | `frame` | 6.40 | 5.70 |
+| `text-muted` | `inner` | 5.27 | 6.70 |
+| `text-muted` | `deep` | 8.10 | 7.63 |
+| `link` | `frame` | 8.33 | 4.75 |
+| `link` | `inner` | 6.86 | 5.59 |
+| `link` | `deep` | 10.55 | 6.36 |
+| `on-button` | `button` | 7.19 | 10.88 |
+| `on-highlight` | `highlight` | 8.45 | 4.87 |
+| `on-confirm` | `confirm` | 6.82 | 5.64 |
+| `on-confirm` | `confirm-hover` | 8.89 | 7.71 |
+| `on-danger` | `danger` | 5.94 | 6.26 |
+| `on-danger` | `danger-hover` | 7.73 | 8.30 |
+| `danger-text` | `inner` | 5.41 | 6.36 |
+| `danger-text` | `deep` | 8.32 | 7.24 |
+| `danger-text` | `danger-bg` | 6.81 | 5.88 |
+| `ok` | `inner` | 6.56 | 6.15 |
+| `ok` | `ok-bg` | 7.57 | 5.87 |
+| `warn` | `inner` | 7.02 | 6.21 |
+| `warn` | `warn-bg` | 7.92 | 5.95 |
+| `info` | `info-bg` | 8.33 | 6.54 |
+| `text` | `danger-bg` | 11.46 | 14.11 |
+| `text` | `ok-bg` | 10.51 | 14.56 |
+| `text` | `warn-bg` | 10.26 | 14.64 |
+| `text` | `info-bg` | 11.65 | 14.47 |
+| `link` | `danger-bg` | 8.64 | 5.17 |
+| `link` | `ok-bg` | 7.92 | 5.34 |
+| `link` | `warn-bg` | 7.74 | 5.36 |
+| `link` | `info-bg` | 8.79 | 5.30 |
 
 **Control edges and focus (need 3:1)**
 
-| Foreground | Background | Light | Dark |
+| Foreground | Background | Dark | Light |
 |---|---|---|---|
-| `border` (field, secondary button) | `bg` | 3.99 | 4.78 |
-| `border` | `surface` | 4.40 | 4.32 |
-| `accent` (primary button edge) | `bg` | 5.24 | 8.43 |
-| `accent` | `surface` | 5.76 | 7.61 |
-| `danger` (danger button edge) | `bg` | 6.08 | 7.42 |
-| `danger` | `surface` | 6.69 | 6.70 |
-| `danger-text` (invalid field border) | `surface` | 7.47 | 8.24 |
-| `focus` | `bg` | 6.00 | 8.74 |
-| `focus` | `surface` | 6.61 | 7.89 |
-| `focus` | `sunken` | 5.45 | 9.30 |
-| `focus` | `danger-bg` (inside a confirmation) | 5.52 | 7.66 |
-| `focus` | `ok-bg` | 5.66 | 6.82 |
-| `focus` | `warn-bg` | 5.73 | 6.93 |
-| `focus` | `info-bg` | 5.66 | 7.45 |
-| `header-focus` | `header-bg` | 8.15 | 9.30 |
-| `header-rule` | `header-bg` | 5.82 | 8.96 |
+| `border` (field edge) | `frame` | 4.15 | 3.50 |
+| `border` | `inner` | 3.41 | 4.12 |
+| `border` | `deep` | 5.25 | 4.68 |
+| Secondary button edge (see below) | `frame` | 5.37 | 3.50 |
+| Secondary button edge | `inner` | 4.42 | 4.12 |
+| `highlight` (selected tab, "Active" badge) | `frame` | 6.19 | 3.64 |
+| `highlight` | `inner` | 5.10 | 4.29 |
+| `confirm` (primary button face) | `frame` | 5.13 | 4.21 |
+| `confirm` | `inner` | 4.22 | 4.96 |
+| `danger` (danger button face) | `frame` | 4.14 | 4.67 |
+| `danger` | `inner` | 3.41 | 5.50 |
+| `danger-text` (invalid field border) | `inner` | 5.41 | 6.36 |
+| `danger-text` | `deep` | 8.32 | 7.24 |
+| `focus` | `bg` | 9.25 | 3.18 |
+| `focus` | `frame` | 6.84 | 4.94 |
+| `focus` | `inner` | 5.64 | 5.81 |
+| `focus` | `deep` | 8.67 | 6.61 |
+| `focus` | `danger-bg` (inside a confirmation) | 7.10 | 5.37 |
+| `focus` | `ok-bg` | 6.51 | 5.54 |
+| `focus` | `warn-bg` | 6.36 | 5.57 |
+| `focus` | `info-bg` | 7.22 | 5.51 |
+| `ok` (badge border and shape) | `ok-bg` | 7.57 | 5.87 |
+| `warn` | `warn-bg` | 7.92 | 5.95 |
+| `danger-text` | `danger-bg` | 6.81 | 5.88 |
+| `info` (message border) | `info-bg` | 8.33 | 6.54 |
+| `text-muted` ("stopped" badge) | `deep` | 8.10 | 7.63 |
+| `on-danger` ("crash-looping" shape) | `danger` | 5.94 | 6.26 |
 
-The "crash-looping" badge uses `on-danger` on `danger` (6.69 light, 7.86
-dark). `--color-rule` is decorative and has no ratio to meet; it is
-never the only thing that shows where a control is.
+The secondary button's edge is its face in dark (`button`, a light grey
+on dark frames) and its 1 px `border` in light, where a pale face on a
+pale frame cannot carry the edge alone. The rows above use whichever
+one draws the edge in that theme.
 
-Not covered by a ratio, on purpose: a disabled control (exempt under
-1.4.3, and this design avoids disabled controls, see 7.1), and native
-checkboxes and radios, whose edges the browser draws for the
-`color-scheme` in use.
+Not covered by a ratio, on purpose:
+
+- The bevel colours (`frame-light`, `frame-dark`) and the steps between
+  `bg`, `frame`, `inner` and `deep`. They give depth, not information.
+  For the record, `inner` on `frame` is 1.21 in dark and 1.18 in light.
+  No control relies on them: every control's edge is one of the rows
+  above.
+- `--color-rule`, which is decorative and never the only thing that
+  shows where a control is.
+- A disabled control (exempt under 1.4.3; this design avoids disabled
+  controls, see 7.1), and native checkboxes and radios, whose edges the
+  browser draws for the `color-scheme` in use.
 
 ## 4. Spacing
 
@@ -224,25 +281,49 @@ A 4 px base, in `rem` so it scales with text size.
 
 | Token | Value | Typical use |
 |---|---|---|
-| `--space-1` | 0.25rem (4 px) | Gap between a badge's shape and its word |
+| `--space-1` | 0.25rem (4 px) | Gap between a badge's shape and its word; gap between the header and `main` frames |
 | `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block |
-| `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; message padding |
-| `--space-4` | 1rem (16 px) | Gap between form fields; page padding at phone width |
-| `--space-5` | 1.5rem (24 px) | Gap between sections inside `main` |
-| `--space-6` | 2rem (32 px) | Page padding from 40rem up; gap before a page's closing actions |
+| `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; message padding; inner panel padding; `main` frame padding at phone width |
+| `--space-4` | 1rem (16 px) | Gap between form fields; confirmation box padding; page padding from 40rem up |
+| `--space-5` | 1.5rem (24 px) | Gap between sections inside `main`; `main` frame padding from 40rem up |
+| `--space-6` | 2rem (32 px) | Gap before a page's closing actions |
 
 Other fixed values, also tokens:
 
 | Token | Value | Use |
 |---|---|---|
-| `--radius` | 3px | Buttons, fields, messages, badges |
+| `--radius` | 2px | Frames, panels, buttons, fields, messages, badges |
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--measure` | 70ch | Maximum line length of prose |
 | `--page-max` | 64rem | Maximum width of `main` |
 
-Rules:
+### Bevels
+
+The frame effect is the one place a shadow is allowed. It is two 1 px
+inset `box-shadow`s, never a blurred or offset shadow outside the box:
+
+```css
+--bevel-raised: inset 1px 1px 0 var(--color-frame-light),
+  inset -1px -1px 0 var(--color-frame-dark);
+--bevel-sunken: inset 1px 1px 0 var(--color-frame-dark),
+  inset -1px -1px 0 var(--color-frame-light);
+```
+
+| Element | Bevel | Outline |
+|---|---|---|
+| Header and `main` frames | raised | 1px `frame-dark` border |
+| Inner panel (a section's content) | sunken | none |
+| Field, log, console | sunken | 1px `border` (the edge that counts for contrast) |
+| Button | raised; sunken while pressed (`:active`) | 1px border, see 7.1 |
+| Message, badge, confirmation box | none (flat) | 1px border in their own colour |
+
+The bevel is decoration. In forced-colours mode box-shadows are not
+drawn, and the 1 px borders in the "Outline" column are what remain.
+That is why every frame and control keeps one.
+
+### Rules
 
 - A component never sets its own outer margin. The parent spaces its
   children with `gap` (flex or grid). The one exception is prose flow
@@ -265,16 +346,21 @@ Rules:
 - Never `outline: none` without this replacement. Fields show the ring on
   any focus, because browsers treat text fields as `:focus-visible`
   whether reached by mouse or keyboard.
-- The 2 px offset puts the ring on the background around the control,
-  which is why the focus ratios in section 3 are measured against
-  backgrounds, not against button fills.
+- The 2 px offset puts the ring on the surface around the control
+  (`frame`, `inner`, `deep` or a message background), which is why the
+  focus ratios in section 3 are measured against those, not against
+  button faces.
+- The ring is blue in both themes, so it stays distinct from the orange
+  highlight, the green primary button and the red danger button (3,
+  "How the colours divide the work"). A focused button that is also
+  hovered shows both its orange face and the blue ring.
 - A 3 px ring around a control at least 44 px tall meets WCAG 2.2 focus
   appearance (2.4.13, AAA) as well as focus visible (2.4.7, AA).
 - Nothing sticky may cover the focused element (2.4.11). The header is
   not sticky.
 - In Windows high-contrast mode (`forced-colors: active`) the outline
-  still shows, and every button keeps a 1 px border (transparent in
-  normal mode) so its edge shows too.
+  still shows. Bevels disappear there, and every frame, button and field
+  keeps a 1 px border (section 4, "Bevels") so its edge shows too.
 
 ## 6. Page layout
 
@@ -309,21 +395,39 @@ Rules:
   form wrap below it. There is no hamburger menu: Epics 1 to 3 have at
   most four nav items, and a menu would hide them behind an extra tap.
   Revisit only above six items.
-- The current page's nav link has `aria-current="page"`, shown as a 2 px
-  underline in `--color-header-rule` plus bold weight, so it is not
-  colour alone.
+- The header is a frame (section 4, "Bevels"): background `frame`,
+  raised bevel, 1px `frame-dark` border. The product name is `heading`,
+  weight 650; nav links and the user name are `text` and `text-muted`.
+  The sign-out button is a secondary button (7.1).
+- Nav links are tabs: no underline, padded to `--target-min` tall,
+  `--radius`. The current page's link has `aria-current="page"` and is
+  drawn as the selected tab: background `highlight`, text
+  `on-highlight`, bold weight. The filled tab is a shape as well as a
+  colour, and the bold weight is a third cue. Other tabs show the same
+  orange only on hover.
 - Sign out is a `POST` form with a button, never a link, so a crawler or
   prefetch cannot sign anyone out.
 - The skip link is the first focusable element. It is visually hidden
   until focused, then appears at the top-left of the header.
-- `main` is a single column, `max-inline-size: var(--page-max)`, centred,
-  with `padding-inline: var(--space-4)` at narrow widths and
-  `var(--space-6)` from 40rem. Its children are a grid with
-  `gap: var(--space-5)`.
+- `body` is the backdrop (`bg`): a grid with `gap: var(--space-1)` and no
+  padding at phone width, so the frames run edge to edge; from 40rem it
+  gets `padding: var(--space-4)`.
+- `main` is a frame like the header: background `frame`, raised bevel,
+  1px `frame-dark` border, `max-inline-size: var(--page-max)`, centred,
+  `padding: var(--space-3)` at phone width and `var(--space-5)` from
+  40rem. Its `h1` sits on the frame in `heading`. Its children are a
+  grid with `gap: var(--space-5)`.
+- Each `section` inside `main` is an **inner panel**: background
+  `inner`, sunken bevel, `padding: var(--space-3)`, a grid with
+  `gap: var(--space-3)`. Its `h2` is inside the panel, in `heading`.
+  Panels never nest; inside a panel, structure comes from headings,
+  lists and rules. At 320 px this leaves about 270 px for content.
+- A page with a single form and no sections (sign-in, setup) puts the
+  form itself in one inner panel.
 - The `#announcer` region is where htmx swaps short results ("Snapshot
   taken", "Server started") so screen readers hear them. Errors are not
   announced from here; see 7.3.
-- Viewport media queries are used only for the shell (header and `main`
+- Viewport media queries are used only for the shell (`body`, header and `main`
   padding). Every component lays itself out from its container with
   `container-type: inline-size` and `@container` queries.
 
@@ -371,15 +475,22 @@ tokens. Classes are short, flat and named for what the thing is (`button`,
 <button type="submit" class="button button--danger">Delete world</button>
 ```
 
-| Kind | Background | Text | Border | Hover | Use |
+| Kind | Face | Text | Border | Hover | Use |
 |---|---|---|---|---|---|
-| Primary | `accent` | `on-accent` | 1px `accent` | `accent-hover` | The one main action on a screen or in a form. At most one per form. |
-| Secondary | `surface` | `text` | 1px `border` | background `sunken` | Every other action. The default. |
-| Danger | `danger` | `on-danger` | 1px `danger` | `danger-hover` | Only the final, confirming button of a destructive action (7.4). |
+| Primary (green, "go") | `confirm` | `on-confirm` | 1px `confirm` | face `confirm-hover` | The one main action on a screen or in a form: "Start server", "Sign in", "Create world". At most one per form. |
+| Secondary (grey) | `button` | `on-button` | 1px `border` | face `highlight`, text `on-highlight` | Every other action. The default. |
+| Danger (red) | `danger` | `on-danger` | 1px `danger` | face `danger-hover` | Only the final, confirming button of a destructive action (7.4). |
 
 All buttons: `min-block-size: var(--target-min)`, `min-inline-size:
 var(--target-min)`, `padding-inline: var(--space-4)`, `--text-md`,
-weight 600, `--radius`, `cursor: pointer`.
+weight 600, `--radius`, `cursor: pointer`, `box-shadow:
+var(--bevel-raised)`. While pressed (`:active`) the bevel flips to
+`var(--bevel-sunken)`, so the button looks pushed in. Nothing moves and
+nothing animates.
+
+- Hover is a colour change only; it is never the sole sign of anything,
+  because a phone has no hover. The secondary button's orange hover
+  follows the game's habit of lighting up what is under the pointer.
 
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **secondary**, not danger. Red is kept for
@@ -418,8 +529,9 @@ weight 600, `--radius`, `cursor: pointer`.
   before typing, and so a phone keyboard does not cover it.
 - The label is always visible, `--text-md`, weight 600. Never a
   placeholder in place of a label. Placeholders are not used.
-- Text inputs, `select` and `textarea`: background `surface`, text
-  `text`, 1px `border`, `--radius`, `min-block-size: var(--target-min)`,
+- Text inputs, `select` and `textarea` are **sunken boxes**: background
+  `deep`, text `text`, 1px `border`, `box-shadow: var(--bevel-sunken)`,
+  `--radius`, `min-block-size: var(--target-min)`,
   `padding-inline: var(--space-3)`, `--text-md`, `inline-size: 100%` up
   to a `max-inline-size` that suits the content (`20ch` for a seed or
   port, `40ch` for names).
@@ -439,7 +551,8 @@ weight 600, `--radius`, `cursor: pointer`.
   `inputmode="numeric"` for a port) so phones show the right keyboard
   and password managers work.
 - **Checkboxes and radios** are native, with `accent-color:
-  var(--color-accent)` and `inline-size` and `block-size` of 1.25rem. The
+  var(--color-highlight)`, so a checked box is orange like any other
+  selected thing, and `inline-size` and `block-size` of 1.25rem. The
   input sits inside its `label`, and the label is a flex row with
   `min-block-size: var(--target-min)`, so the whole row is the target.
 - A group of radios or checkboxes is a `fieldset` with a `legend` styled
@@ -478,7 +591,7 @@ never depends on colour.
 - Body text inside a message is `text`, not the kind colour; only the
   leading word is coloured. Links inside are `link` and underlined.
 - Padding `var(--space-3)`, `--radius`, `max-inline-size: var(--measure)`.
-  No icon, no left stripe, no close button: a message stays until the
+  Messages are flat (no bevel) so they never look like a control. No icon, no left stripe, no close button: a message stays until the
   page changes.
 - `role="alert"` only on an error that appears after an action without a
   page load. A message that is part of a freshly loaded page has no role.
@@ -536,9 +649,11 @@ is harder to get right on a phone and adds nothing here.
 
 Rules:
 
-- The box: background `danger-bg`, 1px `danger-text` border, `--radius`,
-  padding `var(--space-4)`, a grid with `gap: var(--space-3)`. It is the
-  only place where danger colour fills an area larger than a button.
+- The box is a section, so it takes an inner panel's place (section 6),
+  but flat: background `danger-bg`, 1px `danger-text` border, no bevel,
+  `--radius`, padding `var(--space-4)`, a grid with
+  `gap: var(--space-3)`. Its heading stays `heading`. It is the only
+  place where danger colour fills an area larger than a button.
 - **The heading is a question that names the thing**: the world, the
   snapshot, the save. Never "Are you sure?".
 - **The list says what will happen, in order, with real numbers**: which
@@ -583,7 +698,7 @@ SPEC 7.1 and 17.4: state is never shown by colour alone.
 
 | State | Word | Text | Background | Shape (drawn in CSS) |
 |---|---|---|---|---|
-| stopped | "Stopped" | `text-muted` | `sunken` | Hollow square |
+| stopped | "Stopped" | `text-muted` | `deep` | Hollow square |
 | starting | "Starting" | `warn` | `warn-bg` | Square, left half filled |
 | running | "Running" | `ok` | `ok-bg` | Filled square |
 | stopping | "Stopping" | `warn` | `warn-bg` | Square, right half filled |
@@ -660,10 +775,13 @@ end, never floating in a corner.
 A `ul`, one `li` per world, each holding an `h2` or `h3` with the world's
 name (a link to the world's page), then a `dl.facts` with game version,
 Space Age, last played and disk use. The active world carries the word
-"Active" in a plain badge (text `text`, background `sunken`) beside its
-name, and is listed first. A list with a `dl` per item reflows at any
-width, where a six-column table would not fit 320 px. Rows are separated
-by a 1px `rule` border, not boxed as cards.
+"Active" in a badge drawn as selected (text `on-highlight`, background
+`highlight`, the same shape as the state badge in 7.5 but with no drawn
+square) beside its name, and is listed first. The word carries the
+meaning; the orange matches the selected tab. A list with a `dl` per item
+reflows at any width, where a six-column table would not fit 320 px. The
+list sits in one inner panel and its rows are separated by a 1px `rule`
+border, not boxed as cards.
 
 ### 8.3 Tables (saves, snapshots, players)
 
@@ -693,7 +811,8 @@ No infinite scroll.
 </section>
 ```
 
-- Background `sunken`, text `text`, `--font-mono` at `--text-sm`,
+- A deep sunken box: background `deep`, `box-shadow: var(--bevel-sunken)`,
+  1px `border`, text `text`, `--font-mono` at `--text-sm`,
   `white-space: pre-wrap`, `overflow-wrap: anywhere`, so lines wrap and
   never scroll sideways.
 - The box has a fixed `block-size: min(60vh, 32rem)` and scrolls
@@ -726,7 +845,7 @@ No infinite scroll.
 ## 10. Checks every screen passes
 
 The end-to-end tests for each screen check, in both themes
-(`colorScheme: 'light'` and `'dark'` in Playwright):
+(`colorScheme: 'dark'` and `'light'` in Playwright):
 
 - an axe scan with no violations (SPEC 17.1);
 - at 320 px wide, no horizontal scroll (6, rule 1);
@@ -737,7 +856,8 @@ The end-to-end tests for each screen check, in both themes
 ## 11. CSS file layout
 
 One stylesheet, `internal/web/static/foreman.css`, in this order: tokens
-(light, then the dark media query), a small reset, base elements
+(dark on `:root`, then the light media query, then the two bevel
+tokens), a small reset, base elements
 (`body`, headings, links, `code`, `table`), the shell, then one block per
 component in the order of section 7. No preprocessor, no `@import`.
 
@@ -748,7 +868,8 @@ screen does, in this document first.
 
 - A manual theme switch. The system setting decides (SPEC 17.3).
 - Icons of any kind.
-- Modal dialogs, pop-overs, menus, tabs and toasts. The confirmation step
+- Modal dialogs, pop-overs, menus, tab panels and toasts. (The nav links
+  only look like tabs; they are ordinary links.) The confirmation step
   (7.4) and the message (7.3) cover Epics 1 to 3.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
   SPEC 7.2.
