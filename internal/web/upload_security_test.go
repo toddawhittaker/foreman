@@ -527,7 +527,6 @@ func TestBusyWorldOverHTTP(t *testing.T) {
 		},
 		"snapshot": func() reply { return sc.ls.do("POST", snapshotsPath(sc.id), url.Values{"label": {"x"}}, sc.cookie) },
 		"restore":  func() reply { return sc.ls.do("POST", restorePath(sc.id, sc.snap), url.Values{}, sc.cookie) },
-		"upload":   func() reply { return sc.upload(t, "/worlds/"+sc.id+"/saves", nil, "busy.zip", saveZip(t)) },
 	}
 	for name, do := range reqs {
 		got := do()
@@ -539,4 +538,29 @@ func TestBusyWorldOverHTTP(t *testing.T) {
 		}
 	}
 	sameData(t, "data folder", sc.tree(t), before)
+}
+
+// R15: a finished save upload waits for a busy world instead of throwing
+// the file away, and is saved once the world is free. (Giving up after the
+// wait is tested in internal/world, which can shorten the wait.)
+func TestSaveUploadWaitsForABusyWorld(t *testing.T) {
+	sc := newSecCase(t)
+	unlock, err := sc.ls.worlds.Lock(sc.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	released := make(chan struct{})
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		unlock()
+		close(released)
+	}()
+	got := sc.upload(t, "/worlds/"+sc.id+"/saves", nil, "waited.zip", saveZip(t))
+	<-released
+	if got.StatusCode != http.StatusSeeOther {
+		t.Fatalf("upload to a world that was busy for a moment: status %d\n%s", got.StatusCode, got.body)
+	}
+	if _, err := os.Stat(filepath.Join(sc.ls.worlds.Dirs().Worlds, sc.id, "saves", "waited.zip")); err != nil {
+		t.Errorf("the waited-for save is missing: %v", err)
+	}
 }

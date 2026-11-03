@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -170,5 +171,28 @@ func TestSnapshotReasonShownOnlyWhenItAddsWords(t *testing.T) {
 		if strings.Contains(body, "<td>Before restore<br>Before restore<br>") || !strings.Contains(body, "<td>Before restore<br><a") {
 			t.Errorf("a repeated reason is shown:\n%s", body)
 		}
+	}
+}
+
+// The page offers no delete for a world whose world.json cannot be read;
+// a request sent anyway is refused in words and removes nothing.
+func TestDeletePostRefusedForUnreadableWorld(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	hn.seedTwo()
+	broken, err := hn.worlds.Create(t.Context(), "Broken", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(hn.worlds.Dirs().Worlds, broken)
+	if err := os.WriteFile(filepath.Join(dir, "world.json"), []byte("not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rec := hn.post(deletePath(broken), url.Values{"confirm_name": {broken}}, withCookie(c))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "world.json cannot be read") {
+		t.Errorf("delete: %d\n%s", rec.Code, rec.Body)
+	}
+	if _, err := os.Stat(dir); err != nil {
+		t.Errorf("the refused delete changed the world: %v", err)
 	}
 }

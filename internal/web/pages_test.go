@@ -66,6 +66,19 @@ func TestWorldLinksAndUnknownSize(t *testing.T) {
 	wantIn(t, "world list", body, `href="/deleted"`, "<dd>unknown</dd>")
 }
 
+// A saves folder that cannot be read says "unknown", not "Never".
+func TestUnknownLastPlayed(t *testing.T) {
+	r := newTestRenderer(t)
+	sums := []world.Summary{{ID: "a", Name: "A", LastPlayedUnknown: true}}
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldPage{World: sums[0]}})
+	wantIn(t, "world page", body, "<dt>Last played</dt><dd>unknown</dd>")
+	_, body = render(t, r, pageCase{status: 200, user: "todd", page: WorldsPage{Worlds: sums}})
+	wantIn(t, "world list", body, "<dt>Last played</dt><dd>unknown</dd>")
+	// A world with no saves, and nothing wrong, still says Never.
+	_, body = render(t, r, pageCase{status: 200, user: "todd", page: WorldPage{World: world.Summary{ID: "b", Name: "B"}}})
+	wantIn(t, "world page", body, "<dt>Last played</dt><dd>Never</dd>")
+}
+
 // SPEC 6.6: restoring a deleted world recreates it and takes no "Before
 // restore" snapshot, so the page must not promise one.
 func TestRestorePageForDeletedWorld(t *testing.T) {

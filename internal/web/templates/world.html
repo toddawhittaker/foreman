@@ -15,7 +15,7 @@
     <div><dt>Folder</dt><dd><code>{{.World.ID}}</code></dd></div>
     <div><dt>Game version</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
     <div><dt>Space Age</dt><dd>{{if .World.SpaceAge}}On{{else}}Off{{end}}</dd></div>
-    <div><dt>Last played</dt><dd>{{if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
+    <div><dt>Last played</dt><dd>{{if .World.LastPlayedUnknown}}unknown{{else if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
     <div><dt>Disk use</dt><dd>{{if .World.SizeUnknown}}unknown{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
   </dl>
   <div class="actions">
