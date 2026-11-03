@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -100,4 +101,63 @@ func presentMods(root *os.Root) (map[string]bool, error) {
 		}
 	}
 	return out, nil
+}
+
+// modListEntry is one mod in mod-list.json, in the game's own shape.
+type modListEntry struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
+// defaultModList builds the list the game would write for a new world of
+// this game version, with the Space Age mods on or off by the flag.
+// The game lists base first, then the rest by name.
+func defaultModList(gameVersion string, spaceAge bool) []byte {
+	entries := []modListEntry{{Name: ModBase, Enabled: true}}
+	var rest []modListEntry
+	for _, name := range alwaysOnMods[gameMinor(gameVersion)] {
+		rest = append(rest, modListEntry{Name: name, Enabled: true})
+	}
+	for _, name := range SpaceAgeMods(gameVersion) {
+		rest = append(rest, modListEntry{Name: name, Enabled: spaceAge})
+	}
+	slices.SortFunc(rest, func(a, b modListEntry) int { return strings.Compare(a.Name, b.Name) })
+	entries = append(entries, rest...)
+	// Marshalling a slice of plain structs cannot fail.
+	b, _ := json.MarshalIndent(struct {
+		Mods []modListEntry `json:"mods"`
+	}{entries}, "", "  ")
+	return append(b, '\n')
+}
+
+// EnsureModList writes mods/mod-list.json for a world that has none, so
+// the game does not enable every built-in mod, Space Age included.
+// An existing file is left as it is. The caller holds Lock(id).
+func (m *Manager) EnsureModList(id string) error {
+	root, err := m.OpenWorld(id)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := ReadMeta(root)
+	if err != nil {
+		return err
+	}
+	if !SupportedGameVersion(meta.GameVersion) {
+		return fmt.Errorf("no mod list for game version %q", meta.GameVersion)
+	}
+	p := path.Join(ModsDir, ModListFile)
+	info, err := root.Lstat(p)
+	switch {
+	case err == nil && info.Mode().IsRegular():
+		return nil
+	case err == nil:
+		return fmt.Errorf("%s is not a regular file", p)
+	case !errors.Is(err, fs.ErrNotExist):
+		return err
+	}
+	if err := Mkdir(root, ModsDir); err != nil && !errors.Is(err, fs.ErrExist) {
+		return err
+	}
+	return WriteFileAtomic(root, p, defaultModList(meta.GameVersion, meta.SpaceAge))
 }
