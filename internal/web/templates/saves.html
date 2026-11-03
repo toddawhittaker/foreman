@@ -23,38 +23,36 @@
 </div>
 {{- end}}
 
-<section aria-labelledby="saves-heading">
+<section class="panel" aria-labelledby="saves-heading">
   <h2 id="saves-heading">Saves</h2>
   {{- if .Rows}}
-  <div class="panel">
-    <table>
-      <caption>Saves in {{.WorldName}}, newest first</caption>
-      <thead>
-        <tr><th scope="col">Name</th><th scope="col" class="num">Size</th><th scope="col">Saved</th></tr>
-      </thead>
-      <tbody>
-        {{- range .Rows}}
-        <tr>
-          <td><div class="actions"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">Loads next</span>{{end}}</div></td>
-          <td class="num">{{bytes .Size}}</td>
-          <td><time datetime="{{isoTime .Saved}}">{{utc .Saved}}</time></td>
-        </tr>
-        {{- end}}
-      </tbody>
-    </table>
-    {{- if .OlderHref}}
-    <div class="actions"><a href="{{.OlderHref}}">Show older saves</a></div>
-    {{- end}}
-  </div>
+  <table>
+    <caption>Saves in {{.WorldName}}, newest first</caption>
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col" class="num">Size</th><th scope="col">Saved</th></tr>
+    </thead>
+    <tbody>
+      {{- range .Rows}}
+      <tr>
+        <td><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">Loads next</span>{{end}}</td>
+        <td class="num">{{bytes .Size}}</td>
+        <td><time datetime="{{isoTime .Saved}}">{{utc .Saved}}</time></td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+  {{- if .OlderHref}}
+  <div class="actions"><a href="{{.OlderHref}}">Show older saves</a></div>
+  {{- end}}
   {{- else}}
   <p class="empty">This world has no saves yet.{{if not .Newer}} Upload a save file below.{{end}}</p>
   {{- end}}
 </section>
 
 {{- if not .Newer}}
-<section aria-labelledby="upload-heading">
+<section class="panel" aria-labelledby="upload-heading">
   <h2 id="upload-heading">Upload a save</h2>
-  <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" class="panel" novalidate>
+  <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" novalidate>
     <div class="field">
       <label for="save-file">Save file</label>
       <p class="hint" id="save-file-hint">A Factorio save: a .zip file of up to {{bytes .UploadLimit}}. A save never replaces one with the same name.</p>
@@ -71,12 +69,14 @@
   </form>
 </section>
 
-<section aria-labelledby="load-heading">
+<section class="panel" aria-labelledby="load-heading">
   <h2 id="load-heading">Which save loads</h2>
-  <form method="post" action="{{.LoadHref}}" class="panel">
+  <form method="post" action="{{.LoadHref}}">
     <p>The game loads the newest save when the server starts. To load an older one, choose it here.</p>
     {{- if .LoadMissing}}
-    <p><strong>Note:</strong> The chosen save <code>{{.LoadSave}}</code> is no longer in the saves folder, so the newest save loads.</p>
+    <div class="message message--note">
+      <p><strong>Note:</strong> The chosen save <code>{{.LoadSave}}</code> is no longer in the saves folder, so the newest save loads.</p>
+    </div>
     {{- end}}
     <fieldset id="load-save"{{if .LoadError}} aria-describedby="load-save-error"{{end}}>
       <legend>Save to load</legend>

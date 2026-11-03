@@ -405,8 +405,10 @@ That is why every frame and control keeps one.
   `--radius`. The current page's link has `aria-current="page"` and is
   drawn as the selected tab: background `highlight`, text
   `on-highlight`, bold weight. The filled tab is a shape as well as a
-  colour, and the bold weight is a third cue. Other tabs show the same
-  orange only on hover.
+  colour, and the bold weight is a third cue. Other tabs show the grey
+  `button-hover` face with `on-button` text on hover (`on-button` on
+  `button-hover` is 9.96:1 dark, 13.33:1 light, in the table above), so
+  orange means only "selected".
 - Sign out is a `POST` form with a button, never a link, so a crawler or
   prefetch cannot sign anyone out.
 - The skip link is the first focusable element. It is visually hidden
@@ -440,7 +442,10 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
 
 1. `document.documentElement.scrollWidth` is not larger than the
    viewport. No element may force horizontal scrolling of the page.
-2. Text wraps. Long strings use `overflow-wrap: anywhere`. Flex children
+2. Text wraps. `body` sets `overflow-wrap: anywhere`, so a long name or
+   file name breaks instead of widening the page; table cells after the
+   first reset it (8.3). The shell grids use `minmax(0, 1fr)` columns.
+   Long strings use `overflow-wrap: anywhere`. Flex children
    holding text get `min-width: 0`.
 3. Every button and field is at least `--target-min` (44 px) tall and
    44 px wide. Links inside running text are exempt (WCAG 2.5.8 inline
@@ -793,7 +798,9 @@ one of which may be actions. The name column wraps with
 row: `--text-sm`, weight 600, bottom border 1px `border`. Body rows:
 bottom border 1px `rule`. No zebra stripes. If a table needs more than
 four columns, it becomes a list with a `dl` per row (8.2) instead.
-Sizes have one decimal and a unit ("2.1 GB"). Times use `time` with a
+A link that stands alone in a cell, such as a save's name, is padded to
+`--target-min` tall; a badge may follow it in the same cell. A button in
+a cell is an ordinary button (7.1). Sizes have one decimal and a unit ("2.1 GB"). Times use `time` with a
 `datetime` attribute; the displayed format is Epic 2's choice.
 
 ### 8.4 Long lists
