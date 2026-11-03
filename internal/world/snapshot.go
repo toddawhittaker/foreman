@@ -110,6 +110,12 @@ func (m *Manager) TakeSnapshot(id, label, by string) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 	defer unlock()
+	return m.TakeSnapshotHeld(id, label, by)
+}
+
+// TakeSnapshotHeld is TakeSnapshot for a caller that already holds
+// Lock(id), such as server control after a /server-save (SPEC 6.10).
+func (m *Manager) TakeSnapshotHeld(id, label, by string) (Snapshot, error) {
 	return m.snapshot(id, ReasonManual, label, by)
 }
 
