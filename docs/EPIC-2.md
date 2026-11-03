@@ -75,6 +75,15 @@ Settled by the orchestrator (easy to change):
 - **R18.** Secondary-button hover changes from orange to grey (approved
   by Todd after Epic 1): token `--color-button-hover`, `#c4beb5` dark and
   `#e6e1d8` light, used by `.button:hover`; DESIGN.md updated to match.
+- **R19. Fail safe on disk space** (Todd: fail safe as a general rule,
+  without undue complexity). Before a snapshot or an import, Foreman
+  estimates the bytes it will write (nothing for a hardlink, the full size
+  for a copy) and refuses to start, with a clear message, when the
+  filesystem's free space is short of that plus a 1% margin. An upload is
+  refused up front when its declared length exceeds free space; if the
+  disk fills anyway, the temp file is removed and nothing changes. The
+  snapshot page shows free space beside snapshot disk use. Free space comes
+  from `syscall.Statfs`; no new dependency.
 
 ## Tasks
 
@@ -85,30 +94,33 @@ previous wave lands. No two tasks in a wave touch the same file.
 
 | Task | Owner, model | Files | Done means |
 |---|---|---|---|
-| 1a. World core and the list | builder, Opus | `internal/world/` (`world.go`, `meta.go`, `fsutil.go`, `lock.go`, `list.go`, `recover.go` and tests); `internal/datadir/datadir.go`; `internal/store/migrations/0002_active_worlds.sql`; `internal/store/worlds.go`; `cmd/foreman/main.go`; `internal/web/` (`server.go`, `render.go`, `middleware.go`, `upload.go`, `worlds.go`, stub `saves.go` and `snapshots.go`); templates `layout.html`, `worlds.html` (replaces `home.html`); `e2e/tests/foreman.ts`, `e2e/tests/worlds.spec.ts`; `Makefile` (`run` target, R7) | The list (5.4) shows worlds found on disk, the active one marked. `/` goes to `/worlds`. `render.go` loads every template without a hard-coded list. Upload routes get their own body limit and deadline (R8, R13). The upload helper streams and checks zips (R17). Unit tests: id rules (R2), `world.json` round trip with unknown fields and a newer `format_version` (R3), recovery of leftover temp folders. End-to-end: list, empty state, axe, 320 px, both themes. |
+| 1a. World core and the list | builder, Opus | `internal/world/` (`world.go`, `meta.go`, `fsutil.go`, `lock.go`, `list.go`, `recover.go` and tests); `internal/datadir/datadir.go`; `internal/store/migrations/0002_active_worlds.sql`; `internal/store/worlds.go`; `cmd/foreman/main.go`; `internal/web/` (`server.go`, `render.go`, `middleware.go`, `upload.go`, `worlds.go`, stub `saves.go` and `snapshots.go`); templates `layout.html`, `worlds.html` (replaces `home.html`); `e2e/tests/foreman.ts`, `e2e/tests/worlds.spec.ts`; `Makefile` (`run` target, R7) | The list (5.4) shows worlds found on disk, the active one marked. `/` goes to `/worlds`. `render.go` loads every template without a hard-coded list. Upload routes get their own body limit and deadline (R8, R13). The upload helper streams and checks zips (R17). Unit tests: id rules (R2), `world.json` round trip with unknown fields and a newer `format_version` (R3), recovery of leftover temp folders. `fsutil.go` provides the free-space
+check (R19) and the upload helper uses it. End-to-end: list, empty state, axe, 320 px, both themes. |
 | 1b. Styles for the epic's components, and grey hover | ui-designer, Sonnet | `internal/web/static/foreman.css`; `docs/DESIGN.md` (R18 lines only) | DESIGN 7.4, 7.6, 8.2, 8.3 components and the "Active" badge exist, written from DESIGN.md's HTML examples. R18 done, with contrast checked in both themes. |
 
 ### Wave 2
 
 | Task | Owner, model | Files | Done means |
 |---|---|---|---|
-| 2a. Import and rename | builder, Opus | `internal/world/import.go`, `rename.go` and tests; `internal/web/worlds.go`; templates `world.html`, `import.html`; `e2e/tests/worlds.spec.ts` | Import from the inbox (R5) and by save upload (5.5, 5.8), by copying. End-to-end: import, rename, duplicate name refused (R12), source folder unchanged. |
+| 2a. Import and rename | builder, Opus | `internal/world/import.go`, `rename.go` and tests; `internal/web/worlds.go`; templates `world.html`, `import.html`; `e2e/tests/worlds.spec.ts` | Import from the inbox (R5) and by save upload (5.5, 5.8), by copying, with the free-space check (R19). End-to-end: import, rename, duplicate name refused (R12), source folder unchanged. |
 | 2b. Saves | builder, Sonnet | `internal/world/saves.go` and tests; `internal/web/saves.go`; template `saves.html`; `e2e/tests/saves.spec.ts` | List, download, upload and choose the save that loads (5.11); the newest-save function (R16). End-to-end: upload, download, bad zip refused, oversized upload refused, duplicate name refused (R10). |
-| 2c. Snapshots and restore | builder, Opus | `internal/world/snapshot.go`, `restore.go`, `recover.go` and tests; `internal/web/snapshots.go`; templates `snapshots.html`, `restore.html`; `e2e/tests/snapshots.spec.ts` | Section 6 except 6.10: manual and automatic snapshots, hardlinks with a copy fallback and a note when copying, times restored exactly (6.9), retention (R13), disk use (R11), restore by swap (R9). Unit tests prove restored contents and times match. |
+| 2c. Snapshots and restore | builder, Opus | `internal/world/snapshot.go`, `restore.go`, `recover.go` and tests; `internal/web/snapshots.go`; templates `snapshots.html`, `restore.html`; `e2e/tests/snapshots.spec.ts` | Section 6 except 6.10: manual and automatic snapshots, hardlinks with a copy fallback and a note when copying, times restored exactly (6.9), retention (R13), disk use (R11), restore by swap (R9), the free-space check before a snapshot and free
+space shown on the page (R19). Unit tests prove restored contents and times match. |
 
 ### Wave 3
 
 | Task | Owner, model | Files | Done means |
 |---|---|---|---|
 | 3a. Delete, and snapshots of deleted worlds | builder, Sonnet | `internal/world/delete.go` and tests; `internal/web/worlds.go`; templates `delete.html`, `deleted.html`; `e2e/tests/delete.spec.ts` | Delete per 5.10 and DESIGN 7.4: final snapshot on by default, name typed exactly, active world refused. A deleted world's snapshots stay listed; restoring one recreates the world. |
-| 3b. Security and failure tests | tester, Opus | `internal/world/security_test.go`, `failure_test.go`; `internal/web/upload_security_test.go` | Tests for `..` and absolute paths, planted symlinks in a world and the inbox, hostile zip names and sizes, disk full mid-snapshot, a crash mid-restore, and two admins at once. Reports bugs; fixes none. |
+| 3b. Security and failure tests | tester, Opus | `internal/world/security_test.go`, `failure_test.go`; `internal/web/upload_security_test.go` | Tests for `..` and absolute paths, planted symlinks in a world and the inbox, hostile zip names and sizes, a snapshot refused for lack of space, disk
+full mid-snapshot and mid-upload, a crash mid-restore, and two admins at once. Reports bugs; fixes none. |
 | 3c. UI polish | ui-designer, Sonnet | `internal/web/static/foreman.css`; every template except `delete.html` and `deleted.html` | Every new page passes DESIGN 10. |
 
 ### Wave 4
 
 | Task | Owner, model | Files | Done means |
 |---|---|---|---|
-| 4a. Fold | builder, Sonnet | `docs/STATUS.md`, `docs/SPEC.md`, `docs/adr/0002-world-and-snapshot-formats.md`, `docs/STACK.md` and `docs/WORKFLOW.md` if `make run` changed, this plan (deleted) | Epic 2's STATUS section from the task PR bodies; R1 to R5 and R9 folded into SPEC 3.4, 5.1, 5.2, 5.5 and section 6; drop "the MIT license" from SPEC 18.10; ADR 0002 records R1 to R5. |
+| 4a. Fold | builder, Sonnet | `docs/STATUS.md`, `docs/SPEC.md`, `docs/adr/0002-world-and-snapshot-formats.md`, `docs/STACK.md` and `docs/WORKFLOW.md` if `make run` changed, this plan (deleted) | Epic 2's STATUS section from the task PR bodies; R1 to R5 and R9 folded into SPEC 3.4, 5.1, 5.2, 5.5 and section 6; drop "the MIT license" from SPEC 18.10; ADR 0002 records R1 to R5. SPEC gains a P0 rule for R19 in section 6 and a P1 low-disk warning on the status page and in notifications (section 8), to be built in Epic 8. |
 
 ## Checks
 
@@ -123,6 +135,6 @@ previous wave lands. No two tasks in a wave touch the same file.
 ## Left out on purpose
 
 Mod sync (9.8, Epic 5); reading a save file (9.9) and snapshotting a
-running world (6.10), both Epic 3; archive (5.9); audit log entries
-(12.9, Epic 10); a settings table; a free-space check before a snapshot;
-deleting a single save.
+running world (6.10), both Epic 3; a low-disk warning while the game
+runs (P1, added to SPEC section 8 by the fold, built in Epic 8); archive (5.9); audit log entries
+(12.9, Epic 10); a settings table; deleting a single save.
