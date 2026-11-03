@@ -81,8 +81,9 @@ Serves SPEC 18.1. Everything below is built and tested.
 - The session sweeper lives in `internal/web`, not beside the session
   code in `internal/auth`.
 - `cmd/foreman` startup and graceful shutdown have no automated test.
-- Nothing has run against a real Docker daemon; Epic 1 only inspects
-  Foreman's own container.
+- Host path discovery (SPEC 3.5) was checked once by hand against a real
+  Docker daemon (Engine 29.9.2): the image found its data directory's host
+  path in managed mode. There is no automated test against a real daemon.
 - `make ci-clean` cannot remove Docker build cache, which has no name.
 - No tables yet for API tokens, app settings or the audit log; later
   epics add them as migrations 0002 and up.
