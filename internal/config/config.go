@@ -125,7 +125,7 @@ func load(e env) (*Config, error) {
 		}
 	}
 
-	if raw, ok := e.getenv(varAuthMethods); !ok {
+	if raw, ok := e.get(varAuthMethods); !ok {
 		c.AuthLocal = true
 	} else if c.AuthLocal, c.AuthHeaders, err = parseAuthMethods(raw); err != nil {
 		errs = append(errs, err)
@@ -141,8 +141,11 @@ func load(e env) (*Config, error) {
 		if c.UserHeader == "" {
 			fail("%s must be set when %s includes headers", varUserHeader, varAuthMethods)
 		}
-		if c.RequiredGroup != "" && c.GroupsHeader == "" {
-			fail("%s is set, so %s must be set too; without it no header user could sign in", varGroup, varGroupHeader)
+		if c.GroupsHeader == "" {
+			fail("%s must be set when %s includes headers", varGroupHeader, varAuthMethods)
+		}
+		if c.RequiredGroup == "" {
+			fail("%s must be set when %s includes headers; without it anyone the proxy lets through could sign in", varGroup, varAuthMethods)
 		}
 		if len(c.TrustedProxies) == 0 {
 			fail("%s must list at least one address range when %s includes headers", varProxies, varAuthMethods)

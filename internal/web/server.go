@@ -2,6 +2,7 @@
 package web
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -70,6 +71,12 @@ func NewHandler(d Deps) (http.Handler, error) {
 	cop.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.page(w, r, http.StatusForbidden, "", ErrorPage{Status: http.StatusForbidden})
 	}))
+	// Behind a proxy that rewrites Host, the browser's Origin is the public URL.
+	if u := s.cfg.PublicURL; u != nil {
+		if err := cop.AddTrustedOrigin(u.Scheme + "://" + u.Host); err != nil {
+			return nil, fmt.Errorf("trust FOREMAN_PUBLIC_URL as an origin: %w", err)
+		}
+	}
 	var h http.Handler = s.mux
 	h = cop.Handler(h)
 	h = limitBody(h)

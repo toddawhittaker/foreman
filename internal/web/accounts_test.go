@@ -94,6 +94,7 @@ func TestSecondSetupIsRefused(t *testing.T) {
 func TestNoSetupOrSignInWithoutLocalMethod(t *testing.T) {
 	hn := newHarness(t, map[string]string{
 		"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "X-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8",
+		"FOREMAN_AUTH_GROUPS_HEADER": "X-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "foreman",
 	})
 	for _, p := range []string{PathSetup, PathSignIn} {
 		if rec := hn.get(p); rec.Code != http.StatusNotFound {

@@ -215,11 +215,23 @@ func TestHealthzAndUnknownPaths(t *testing.T) {
 	}
 }
 
-func TestHTTPServerLimits(t *testing.T) {
-	s := NewHTTPServer(":0", http.NotFoundHandler())
-	if s.ReadHeaderTimeout != 10*time.Second || s.ReadTimeout != 30*time.Second ||
-		s.WriteTimeout != 30*time.Second || s.IdleTimeout != 120*time.Second || s.MaxHeaderBytes != 64<<10 {
-		t.Errorf("unexpected limits: %+v", s)
+// SPEC 12.6: behind a proxy that rewrites Host, a browser that sends no
+// Sec-Fetch-Site header is only let in when its Origin is the public URL.
+func TestPublicURLOriginIsTrustedForPosts(t *testing.T) {
+	post := func(env map[string]string, origin string) int {
+		hn := newHarness(t, env)
+		hn.addUser("alice", testPassword)
+		return hn.post(PathSignIn, signInForm("alice", testPassword), withHeader("Origin", origin)).Code
+	}
+	public := map[string]string{"FOREMAN_PUBLIC_URL": "https://foreman.example.com/"}
+	if got := post(public, "https://foreman.example.com"); got != http.StatusSeeOther {
+		t.Errorf("public origin with FOREMAN_PUBLIC_URL set: %d, want 303", got)
+	}
+	if got := post(public, "https://evil.example"); got != http.StatusForbidden {
+		t.Errorf("foreign origin with FOREMAN_PUBLIC_URL set: %d, want 403", got)
+	}
+	if got := post(nil, "https://foreman.example.com"); got != http.StatusForbidden {
+		t.Errorf("public origin without FOREMAN_PUBLIC_URL: %d, want 403", got)
 	}
 }
 

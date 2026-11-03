@@ -109,8 +109,10 @@ func TestSecureCookies(t *testing.T) {
 
 func TestLoadAuthMethods(t *testing.T) {
 	headersOK := map[string]string{
-		"FOREMAN_AUTH_USER_HEADER": "Remote-User",
-		"FOREMAN_TRUSTED_PROXIES":  "10.0.0.0/8",
+		"FOREMAN_AUTH_USER_HEADER":    "Remote-User",
+		"FOREMAN_AUTH_GROUPS_HEADER":  "Remote-Groups",
+		"FOREMAN_AUTH_REQUIRED_GROUP": "factorio",
+		"FOREMAN_TRUSTED_PROXIES":     "10.0.0.0/8",
 	}
 	with := func(methods string) map[string]string {
 		m := map[string]string{"FOREMAN_AUTH_METHODS": methods}
@@ -132,7 +134,7 @@ func TestLoadAuthMethods(t *testing.T) {
 		{name: "duplicates", vars: map[string]string{"FOREMAN_AUTH_METHODS": "local,local"}, local: true},
 		{name: "unknown", vars: map[string]string{"FOREMAN_AUTH_METHODS": "local,ldap"}, wantErr: "FOREMAN_AUTH_METHODS has unknown methods \"ldap\""},
 		{name: "oidc is not yet known", vars: map[string]string{"FOREMAN_AUTH_METHODS": "oidc"}, wantErr: "unknown methods \"oidc\""},
-		{name: "empty", vars: map[string]string{"FOREMAN_AUTH_METHODS": ""}, wantErr: "FOREMAN_AUTH_METHODS lists no methods"},
+		{name: "empty means the default", vars: map[string]string{"FOREMAN_AUTH_METHODS": ""}, local: true},
 		{name: "only commas", vars: map[string]string{"FOREMAN_AUTH_METHODS": " , ,"}, wantErr: "lists no methods"},
 	}
 	for _, tt := range tests {
@@ -179,10 +181,11 @@ func TestLoadErrors(t *testing.T) {
 		{"proxy bad cidr", map[string]string{"FOREMAN_TRUSTED_PROXIES": "10.0.0.0/33"}, `FOREMAN_TRUSTED_PROXIES has entries that are not an address or range (like 10.0.0.0/8): "10.0.0.0/33"`},
 		{"proxy hostname", map[string]string{"FOREMAN_TRUSTED_PROXIES": "10.0.0.1,authentik"}, `"authentik"`},
 		{"proxy zone", map[string]string{"FOREMAN_TRUSTED_PROXIES": "fe80::1%eth0"}, "FOREMAN_TRUSTED_PROXIES"},
-		{"headers without proxies", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User"}, "FOREMAN_TRUSTED_PROXIES must list at least one address range"},
-		{"headers with only blank proxies", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": " , "}, "FOREMAN_TRUSTED_PROXIES must list at least one"},
-		{"required group without groups header", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_REQUIRED_GROUP is set, so FOREMAN_AUTH_GROUPS_HEADER must be set too"},
-		{"headers without user header", map[string]string{"FOREMAN_AUTH_METHODS": "local,headers", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8"}, "FOREMAN_AUTH_USER_HEADER must be set"},
+		{"headers without proxies", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_TRUSTED_PROXIES must list at least one address range"},
+		{"headers with only blank proxies", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio", "FOREMAN_TRUSTED_PROXIES": " , "}, "FOREMAN_TRUSTED_PROXIES must list at least one"},
+		{"headers without required group", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups"}, "FOREMAN_AUTH_REQUIRED_GROUP must be set when FOREMAN_AUTH_METHODS includes headers"},
+		{"headers without groups header", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_GROUPS_HEADER must be set when FOREMAN_AUTH_METHODS includes headers"},
+		{"headers without user header", map[string]string{"FOREMAN_AUTH_METHODS": "local,headers", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_USER_HEADER must be set"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -228,14 +231,15 @@ func TestLoadReportsAllProblems(t *testing.T) {
 	}
 	for _, v := range []string{
 		"FOREMAN_MODE", "FOREMAN_GAME_UID", "FOREMAN_LISTEN", "FOREMAN_PUBLIC_URL",
-		"FOREMAN_AUTH_USER_HEADER", "FOREMAN_SESSION_IDLE", "FOREMAN_TRUSTED_PROXIES",
+		"FOREMAN_AUTH_USER_HEADER", "FOREMAN_AUTH_GROUPS_HEADER", "FOREMAN_AUTH_REQUIRED_GROUP",
+		"FOREMAN_SESSION_IDLE", "FOREMAN_TRUSTED_PROXIES",
 	} {
 		if !strings.Contains(err.Error(), v) {
 			t.Errorf("error does not mention %s:\n%v", v, err)
 		}
 	}
-	if lines := strings.Count(err.Error(), "\n") + 1; lines < 7 {
-		t.Errorf("want at least 7 problems, got %d:\n%v", lines, err)
+	if lines := strings.Count(err.Error(), "\n") + 1; lines < 9 {
+		t.Errorf("want at least 9 problems, got %d:\n%v", lines, err)
 	}
 }
 
@@ -253,7 +257,7 @@ func TestProxiesAreNormalised(t *testing.T) {
 func TestEmptyValuesAreUnset(t *testing.T) {
 	c, err := load(map[string]string{
 		"FOREMAN_MODE": "", "FOREMAN_DATA_DIR": "", "FOREMAN_GAME_UID": "", "FOREMAN_LISTEN": "",
-		"FOREMAN_PUBLIC_URL": "", "FOREMAN_SESSION_IDLE": "", "DOCKER_HOST": "", "FOREMAN_TRUSTED_PROXIES": "",
+		"FOREMAN_PUBLIC_URL": "", "FOREMAN_AUTH_METHODS": "", "FOREMAN_SESSION_IDLE": "", "DOCKER_HOST": "", "FOREMAN_TRUSTED_PROXIES": "",
 	})
 	if err != nil {
 		t.Fatal(err)

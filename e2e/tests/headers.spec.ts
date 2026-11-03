@@ -8,15 +8,26 @@ test.use({
   foremanEnv: {
     FOREMAN_AUTH_METHODS: "headers",
     FOREMAN_AUTH_USER_HEADER: "X-Test-User",
+    FOREMAN_AUTH_GROUPS_HEADER: "X-Test-Groups",
+    FOREMAN_AUTH_REQUIRED_GROUP: "factorio",
     FOREMAN_TRUSTED_PROXIES: "127.0.0.1/32",
   },
 });
 
 test("a trusted header signs the user in", async ({ page }) => {
-  await page.setExtraHTTPHeaders({ "X-Test-User": "alice" });
+  await page.setExtraHTTPHeaders({ "X-Test-User": "alice", "X-Test-Groups": "staff, factorio" });
   await page.goto("/");
   await expect(page).toHaveURL("/");
   await expect(page.getByText("Signed in as alice")).toBeVisible();
+  await checkPage(page);
+});
+
+// SPEC 12.5: a user outside the required group is refused, not signed in.
+test("a user without the required group gets the 403 page", async ({ page }) => {
+  await page.setExtraHTTPHeaders({ "X-Test-User": "mallory", "X-Test-Groups": "staff" });
+  const home = await page.goto("/");
+  expect(home?.status()).toBe(403);
+  await expect(page.getByText("Signed in as")).toHaveCount(0);
   await checkPage(page);
 });
 

@@ -90,10 +90,11 @@ func TestLiveSpoofedIdentityFromUntrustedPeerIsIgnored(t *testing.T) {
 	for _, methods := range []string{"headers", "local,headers"} {
 		t.Run(methods, func(t *testing.T) {
 			ls := newLiveServer(t, map[string]string{
-				"FOREMAN_AUTH_METHODS":       methods,
-				"FOREMAN_AUTH_USER_HEADER":   "X-Authentik-Username",
-				"FOREMAN_AUTH_GROUPS_HEADER": "X-Authentik-Groups",
-				"FOREMAN_TRUSTED_PROXIES":    "10.0.0.0/8",
+				"FOREMAN_AUTH_METHODS":        methods,
+				"FOREMAN_AUTH_USER_HEADER":    "X-Authentik-Username",
+				"FOREMAN_AUTH_GROUPS_HEADER":  "X-Authentik-Groups",
+				"FOREMAN_AUTH_REQUIRED_GROUP": "foreman",
+				"FOREMAN_TRUSTED_PROXIES":     "10.0.0.0/8",
 			})
 			h := http.Header{}
 			h.Set("X-Authentik-Username", "mallory")

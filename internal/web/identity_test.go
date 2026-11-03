@@ -14,20 +14,32 @@ var headerEnv = map[string]string{
 	"FOREMAN_TRUSTED_PROXIES":    "10.0.0.0/8",
 }
 
+// testGroup is the required group of a harness that does not name its own.
+const testGroup = "foreman"
+
 func headerHarness(t *testing.T, methods, group string) *harness {
-	env := map[string]string{"FOREMAN_AUTH_METHODS": methods}
+	if group == "" {
+		group = testGroup
+	}
+	env := map[string]string{"FOREMAN_AUTH_METHODS": methods, "FOREMAN_AUTH_REQUIRED_GROUP": group}
 	for k, v := range headerEnv {
 		env[k] = v
-	}
-	if group != "" {
-		env["FOREMAN_AUTH_REQUIRED_GROUP"] = group
 	}
 	return newHarness(t, env)
 }
 
+// asUser is a request from the trusted proxy for name, in the test group.
+func asUser(name string) []func(*http.Request) {
+	return []func(*http.Request){
+		withPeer(peerProxy),
+		withHeader("X-Authentik-Username", name),
+		withHeader("X-Authentik-Groups", testGroup),
+	}
+}
+
 func TestHeaderSignInFromTrustedPeerCreatesUsers(t *testing.T) {
 	hn := headerHarness(t, "headers", "")
-	asAlice := []func(*http.Request){withPeer(peerProxy), withHeader("X-Authentik-Username", "alice")}
+	asAlice := asUser("alice")
 	rec := hn.get("/", asAlice...)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "alice") {
 		t.Fatalf("first request: %d", rec.Code)
@@ -42,7 +54,7 @@ func TestHeaderSignInFromTrustedPeerCreatesUsers(t *testing.T) {
 	}
 	// A second visit finds the same user; a second name makes a second user.
 	hn.get("/", asAlice...)
-	rec = hn.get("/", withPeer(peerProxy), withHeader("X-Authentik-Username", "bob"))
+	rec = hn.get("/", asUser("bob")...)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("second user: %d", rec.Code)
 	}
@@ -98,7 +110,7 @@ func TestRequiredGroupRefusesWithForbidden(t *testing.T) {
 
 func TestHeaderUserCannotSignInWithAPassword(t *testing.T) {
 	hn := headerHarness(t, "local,headers", "")
-	hn.get("/", withPeer(peerProxy), withHeader("X-Authentik-Username", "alice"))
+	hn.get("/", asUser("alice")...)
 	rec := hn.post(PathSignIn, signInForm("alice", testPassword))
 	if rec.Code != http.StatusUnauthorized || sessionCookie(rec) != nil {
 		t.Fatalf("got %d", rec.Code)
@@ -107,7 +119,7 @@ func TestHeaderUserCannotSignInWithAPassword(t *testing.T) {
 
 func TestHeaderNameThatIsNotAUsernameIsRefused(t *testing.T) {
 	hn := headerHarness(t, "headers", "")
-	rec := hn.get("/", withPeer(peerProxy), withHeader("X-Authentik-Username", strings.Repeat("a", 65)))
+	rec := hn.get("/", asUser(strings.Repeat("a", 65))...)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("got %d", rec.Code)
 	}
