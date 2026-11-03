@@ -17,7 +17,7 @@ test.use({
 test("a trusted header signs the user in", async ({ page }) => {
   await page.setExtraHTTPHeaders({ "X-Test-User": "alice", "X-Test-Groups": "staff, factorio" });
   await page.goto("/");
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/worlds");
   await expect(page.getByText("Signed in as alice")).toBeVisible();
   await checkPage(page);
 });

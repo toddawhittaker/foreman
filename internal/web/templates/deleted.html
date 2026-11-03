@@ -1,0 +1,35 @@
+{{define "title"}}Deleted worlds{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldsPath}}">Back to worlds</a></div>
+<h1>Deleted worlds</h1>
+<p>A deleted world keeps its snapshots. Restoring one makes the world again, exactly as the snapshot recorded it.</p>
+{{- range .Worlds}}
+<section aria-labelledby="world-{{.ID}}">
+  <h2 id="world-{{.ID}}">{{.Name}}</h2>
+  <table>
+    <caption>Snapshots of the deleted world {{.Name}}, newest first</caption>
+    <thead>
+      <tr><th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th></tr>
+    </thead>
+    <tbody>
+      {{- $id := .ID}}
+      {{- range .Snapshots}}
+      <tr>
+        <td>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<br><a class="button" href="{{$.Page.RestorePath $id .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></td>
+        <td>{{template "when" .TakenAt}}</td>
+        <td class="num">{{bytes .Size}}</td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+</section>
+{{- else}}
+<p class="empty">No deleted worlds. When you delete a world and keep its snapshots, it is listed here.</p>
+{{- end}}
+{{- if .More}}
+<div class="actions"><a href="{{.AllPath}}">Show older</a></div>
+{{- end}}
+{{- end}}
+{{- end}}

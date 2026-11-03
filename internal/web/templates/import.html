@@ -1,0 +1,79 @@
+{{define "title"}}Import a world{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
+<h1>Import a world</h1>
+<p>Importing copies files into a new world. The original files are never moved or changed.</p>
+
+<form method="post" action="{{.FolderPath}}" class="panel" novalidate aria-labelledby="folder-heading">
+  <h2 id="folder-heading">Import a folder</h2>
+  {{template "summary" .Folder.Problems}}
+  <p>Put a folder of saves in <code>{{.InboxDir}}</code>. Foreman copies the save files (<code>.zip</code>) at its top level, and its <code>mods</code> folder if it has one.</p>
+  {{- with .Folder}}
+  {{- if $.Page.Inbox}}
+  <fieldset{{with .SourceError}} aria-describedby="folder-source-error"{{end}}>
+    <legend>Folder</legend>
+    {{- with .SourceError}}
+    <p class="error" id="folder-source-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+    {{- $chosen := .Source}}
+    {{- range $i, $f := $.Page.Inbox}}
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</span></label>
+    {{- end}}
+  </fieldset>
+  {{- else}}
+  <p class="empty" id="folder-source-0" tabindex="-1">The import folder is empty. Add a folder of saves to it, then reload this page.</p>
+  {{- end}}
+  {{template "import-fields" .}}
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">Import folder</button>
+  </div>
+</form>
+
+<form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" class="panel" novalidate aria-labelledby="upload-heading">
+  <h2 id="upload-heading">Upload a save</h2>
+  {{template "summary" .Upload.Problems}}
+  <p>Make a new world from one save file. Its mods are not added.</p>
+  {{- with .Upload}}
+  {{template "import-fields" .}}
+  {{/* The file comes last: the server reads the text fields before it. */}}
+  <div class="field">
+    <label for="upload-source">Save file</label>
+    <input id="upload-source" name="save" type="file" accept=".zip" required
+      {{- with .SourceError}} aria-invalid="true" aria-describedby="upload-source-error"{{end}}>
+    {{- with .SourceError}}
+    <p class="error" id="upload-source-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">Upload and import</button>
+  </div>
+</form>
+{{end}}
+{{- end}}
+
+{{/* Name, game version and Space Age, shared by both forms. Takes ImportForm. */}}
+{{define "import-fields" -}}
+<div class="field">
+  <label for="{{.IDPrefix}}-name">World name</label>
+  <input id="{{.IDPrefix}}-name" name="name" type="text" value="{{.Name}}" required maxlength="100"
+    {{- with .NameError}} aria-invalid="true" aria-describedby="{{$.IDPrefix}}-name-error"{{end}}>
+  {{- with .NameError}}
+  <p class="error" id="{{$.IDPrefix}}-name-error"><strong>Error:</strong> {{.}}</p>
+  {{- end}}
+</div>
+<div class="field">
+  <label for="{{.IDPrefix}}-version">Game version</label>
+  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72.</p>
+  <input id="{{.IDPrefix}}-version" name="game_version" type="text" value="{{.GameVersion}}" required
+    inputmode="decimal" autocomplete="off" spellcheck="false"
+    {{- if .VersionError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-version-hint {{.IDPrefix}}-version-error"{{else}} aria-describedby="{{.IDPrefix}}-version-hint"{{end}}>
+  {{- with .VersionError}}
+  <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
+  {{- end}}
+</div>
+<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
+{{- end}}

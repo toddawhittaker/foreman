@@ -28,6 +28,7 @@ function freePort(): Promise<number> {
 
 export interface Foreman {
   url: string;
+  dataDir: string;
   logs: () => string;
 }
 
@@ -43,7 +44,9 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
       FOREMAN_DATA_DIR: dataDir,
       FOREMAN_GAME_UID: String(process.getuid?.() ?? 0),
       FOREMAN_GAME_GID: String(process.getgid?.() ?? 0),
-      FOREMAN_MODE: "adopted",
+      // Managed mode with the host path given, so no Docker call is made.
+      FOREMAN_MODE: "managed",
+      FOREMAN_HOST_DATA_DIR: dataDir,
       FOREMAN_LISTEN: `127.0.0.1:${port}`,
       ...env,
     },
@@ -65,6 +68,7 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
   }
   return {
     url,
+    dataDir,
     logs: () => out,
     stop: async () => {
       if (proc.exitCode === null) {
@@ -101,6 +105,19 @@ export async function checkPage(page: Page) {
   }));
   expect(size.scroll, `horizontal scroll on ${page.url()}`).toBeLessThanOrEqual(size.client);
 
+  // DESIGN 8.3: a date, a time or a size never breaks inside itself.
+  const broken = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".nowrap, td.num")]
+      .filter((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const tops = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)));
+        return tops.size > 1;
+      })
+      .map((el) => el.textContent),
+  );
+  expect(broken, `text that wraps inside itself on ${page.url()}`).toEqual([]);
+
   const targets = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
       .filter((el) => {
@@ -110,7 +127,9 @@ export async function checkPage(page: Page) {
         return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.clipPath === "none";
       })
       .map((el) => {
-        const r = el.getBoundingClientRect();
+        // A radio or checkbox inside its label is tapped through the label (DESIGN 7.2).
+        const box = el instanceof HTMLInputElement ? (el.closest("label") ?? el) : el;
+        const r = box.getBoundingClientRect();
         return { what: el.outerHTML.slice(0, 80), w: r.width, h: r.height };
       }),
   );

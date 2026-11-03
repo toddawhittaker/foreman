@@ -1,0 +1,97 @@
+{{define "title"}}Saves of {{.Page.WorldName}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldHref}}">Back to {{.WorldName}}</a></div>
+<h1>Saves of {{.WorldName}}</h1>
+{{template "summary" .Problems}}
+{{- if .Uploaded}}
+<div class="message message--success">
+  <p><strong>Done:</strong> Uploaded <code>{{.Uploaded}}</code>.</p>
+</div>
+{{- end}}
+{{- if .Chosen}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{if .LoadSave}}The server will load <code>{{.LoadSave}}</code> the next time it starts.{{else}}The server will load the newest save the next time it starts.{{end}}</p>
+</div>
+{{- end}}
+{{- if .Newer}}
+<div class="message message--note">
+  <p><strong>Note:</strong> A newer version of Foreman wrote this world, so this version cannot change it. You can still download its saves.</p>
+</div>
+{{- end}}
+
+<section class="panel" aria-labelledby="saves-heading">
+  <h2 id="saves-heading">Saves</h2>
+  {{- if .Rows}}
+  <table>
+    <caption>Saves in {{.WorldName}}, newest first</caption>
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col" class="num">Size</th><th scope="col">Saved</th></tr>
+    </thead>
+    <tbody>
+      {{- range .Rows}}
+      <tr>
+        <td><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">Loads next</span>{{end}}</td>
+        <td class="num">{{bytes .Size}}</td>
+        <td>{{template "when" .Saved}}</td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+  {{- if .OlderHref}}
+  <div class="actions"><a href="{{.OlderHref}}">Show older saves</a></div>
+  {{- end}}
+  {{- else}}
+  <p class="empty">This world has no saves yet.{{if not .Newer}} Upload a save file below.{{end}}</p>
+  {{- end}}
+</section>
+
+{{- if not .Newer}}
+<section class="panel" aria-labelledby="upload-heading">
+  <h2 id="upload-heading">Upload a save</h2>
+  <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" novalidate>
+    <div class="field">
+      <label for="save-file">Save file</label>
+      <p class="hint" id="save-file-hint">A Factorio save: a .zip file of up to {{bytes .UploadLimit}}. A save never replaces one with the same name.</p>
+      <input id="save-file" name="save" type="file" accept=".zip,application/zip" required
+        aria-describedby="save-file-hint{{if .UploadError}} save-file-error{{end}}"
+        {{- if .UploadError}} aria-invalid="true"{{end}}>
+      {{- with .UploadError}}
+      <p class="error" id="save-file-error"><strong>Error:</strong> {{.}}</p>
+      {{- end}}
+    </div>
+    <div class="actions">
+      <button type="submit" class="button button--primary">Upload save</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel" aria-labelledby="load-heading">
+  <h2 id="load-heading">Which save loads</h2>
+  <form method="post" action="{{.LoadHref}}">
+    <p>The game loads the newest save when the server starts. To load an older one, choose it here.</p>
+    {{- if .LoadMissing}}
+    <div class="message message--note">
+      <p><strong>Note:</strong> The chosen save <code>{{.LoadSave}}</code> is no longer in the saves folder, so the newest save loads.</p>
+    </div>
+    {{- end}}
+    {{- $invalid := .LoadError}}
+    <fieldset{{if .LoadError}} aria-describedby="load-save-error"{{end}}>
+      <legend>Save to load</legend>
+      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> The newest save</label>
+      {{- range .Rows}}
+      <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> {{.Name}}</label>
+      {{- end}}
+      {{- with .LoadError}}
+      <p class="error" id="load-save-error"><strong>Error:</strong> {{.}}</p>
+      {{- end}}
+    </fieldset>
+    <div class="actions">
+      <button type="submit" class="button button--primary">Use this choice</button>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{end}}
+{{- end}}

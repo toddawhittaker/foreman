@@ -1,0 +1,253 @@
+package web
+
+import (
+	"errors"
+	"io/fs"
+	"mime"
+	"net/http"
+	"net/url"
+	"slices"
+	"time"
+
+	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
+)
+
+// Routes of the saves screens (SPEC 5.11). A world's own page is
+// /worlds/{id}.
+const (
+	patternSaves    = "/worlds/{id}/saves"
+	patternSave     = "/worlds/{id}/saves/{name}"
+	patternLoadSave = "/worlds/{id}/load-save"
+)
+
+// Names of the form fields: the file on the upload form and the radio group
+// on the load form.
+const (
+	saveUploadField = "save"
+	saveLoadField   = "load"
+)
+
+// loadFirstID is the id of the first radio in the load choice, where the
+// error summary sends focus (DESIGN 7.2).
+const loadFirstID = "load-newest"
+
+// msgSaveGone is the load choice's error when the chosen save was removed
+// after the page was shown.
+const msgSaveGone = "Choose a save from the list. That save is no longer in the saves folder."
+
+func (s *server) saveRoutes() {
+	s.mux.HandleFunc("GET "+patternSaves, s.requireUser(s.handleSaves))
+	s.handleUpload("POST "+patternSaves, MaxSaveUpload, s.requireUser(s.guardUpload(s.handleSaveUpload)))
+	s.handleLong("GET "+patternSave, s.requireUser(s.handleSaveDownload))
+	s.mux.HandleFunc("POST "+patternLoadSave, s.requireUser(s.handleLoadSave))
+}
+
+// SaveRow is one row of the saves table.
+type SaveRow struct {
+	Name     string
+	Href     string
+	Size     uint64
+	Saved    time.Time
+	Loads    bool // the save the game loads next
+	Selected bool // checked in the load choice
+}
+
+// SavesPage is a world's saves (SPEC 5.11, DESIGN 8.3).
+type SavesPage struct {
+	WorldName string
+	WorldHref string
+	SavesHref string
+	LoadHref  string
+	// Newer is true when a newer Foreman wrote the world: the saves can be
+	// downloaded but nothing can be changed.
+	Newer bool
+	Rows  []SaveRow
+	// OlderHref is set when more saves exist than the table shows.
+	OlderHref string
+	// LoadSave is the chosen save's name, empty for the newest.
+	LoadSave string
+	// LoadMissing is true when the chosen save is no longer in the folder.
+	LoadMissing bool
+	// NewestSelected checks the "newest save" choice.
+	NewestSelected bool
+	UploadLimit    uint64
+	// Uploaded and Chosen report what the last request did.
+	Uploaded string
+	Chosen   bool
+
+	UploadError string
+	LoadError   string
+}
+
+func (SavesPage) templateName() string { return "saves" }
+func (SavesPage) navItem() string      { return PathWorlds }
+
+func (p SavesPage) hasErrors() bool { return len(p.Problems()) > 0 }
+
+// Problems lists the form errors in the order the forms appear.
+func (p SavesPage) Problems() []Problem {
+	return problems(
+		Problem{"save-file", p.UploadError},
+		Problem{loadFirstID, p.LoadError},
+	)
+}
+
+func saveHref(id, name string) string {
+	return "/worlds/" + url.PathEscape(id) + "/saves/" + url.PathEscape(name)
+}
+
+// buildSavesPage reads a world and lays out its page. all shows every save
+// instead of the newest maxListRows.
+func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
+	list, err := s.worlds.Saves(id)
+	if err != nil {
+		return SavesPage{}, err
+	}
+	base := "/worlds/" + id
+	p := SavesPage{
+		WorldName:   list.WorldName,
+		WorldHref:   base,
+		SavesHref:   base + "/saves",
+		LoadHref:    base + "/load-save",
+		Newer:       list.Newer,
+		LoadSave:    list.LoadSave,
+		UploadLimit: MaxSaveUpload,
+	}
+	chosen := slices.IndexFunc(list.Saves, func(sv world.Save) bool { return sv.Name == list.LoadSave })
+	p.LoadMissing = list.LoadSave != "" && chosen < 0
+	p.NewestSelected = list.LoadSave == "" || p.LoadMissing
+	// The save that loads next: the chosen one, else the newest.
+	loads := max(chosen, 0)
+	shown := list.Saves
+	if !all && len(shown) > maxListRows {
+		shown = shown[:maxListRows]
+		p.OlderHref = p.SavesHref + "?all=1"
+	}
+	for i, sv := range shown {
+		p.Rows = append(p.Rows, SaveRow{
+			Name:     sv.Name,
+			Href:     saveHref(id, sv.Name),
+			Size:     uint64(sv.Size), //nolint:gosec // a file size is never negative
+			Saved:    sv.ModTime,
+			Loads:    i == loads,
+			Selected: i == chosen,
+		})
+	}
+	return p, nil
+}
+
+// showSaves renders a world's saves page. edit adds what the request did.
+func (s *server) showSaves(w http.ResponseWriter, r *http.Request, u store.User, status int, edit func(*SavesPage)) {
+	p, err := s.buildSavesPage(r.PathValue("id"), r.URL.Query().Get("all") != "")
+	if err != nil {
+		s.notFoundOrFail(w, r, u, "list saves", err)
+		return
+	}
+	if edit != nil {
+		edit(&p)
+	}
+	s.page(w, r, status, u.Username, p)
+}
+
+// handleSaves lists a world's saves (SPEC 5.11).
+func (s *server) handleSaves(w http.ResponseWriter, r *http.Request, u store.User) {
+	s.showSaves(w, r, u, http.StatusOK, func(p *SavesPage) {
+		q := r.URL.Query()
+		if name := q.Get("uploaded"); slices.ContainsFunc(p.Rows, func(row SaveRow) bool { return row.Name == name }) {
+			p.Uploaded = name
+		}
+		p.Chosen = q.Get("chosen") != ""
+	})
+}
+
+// handleSaveUpload adds an uploaded save to a world (SPEC 5.11). It never
+// replaces a save that has the name.
+func (s *server) handleSaveUpload(w http.ResponseWriter, r *http.Request, u store.User) {
+	id := r.PathValue("id")
+	refuse := func(err error) {
+		status, msg, ok := s.refusal(w, r, u, "upload save", err)
+		if ok {
+			s.showSaves(w, r, u, status, func(p *SavesPage) { p.UploadError = msg })
+		}
+	}
+
+	root, err := s.worlds.OpenWorld(id)
+	if err != nil {
+		s.notFoundOrFail(w, r, u, "open world", err)
+		return
+	}
+	defer func() { _ = root.Close() }()
+	if list, err := s.worlds.Saves(id); err == nil && list.Newer {
+		refuse(world.ErrNewerFormat)
+		return
+	}
+
+	up, err := receiveFile(r, root, world.SavesDir, saveUploadField, root.Name(), MaxSaveUpload)
+	if err != nil {
+		refuse(err)
+		return
+	}
+	// AddSave takes over the temp file once it is called.
+	if !world.ValidSaveName(up.FileName) {
+		_ = root.Remove(up.Temp)
+		refuse(world.ErrSaveName)
+		return
+	}
+	if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a file size is never negative
+		_ = root.Remove(up.Temp)
+		refuse(err)
+		return
+	}
+	if err := s.worlds.AddSave(id, up.FileName, up.Temp); err != nil {
+		refuse(err)
+		return
+	}
+	http.Redirect(w, r, "/worlds/"+id+"/saves?uploaded="+url.QueryEscape(up.FileName), http.StatusSeeOther)
+}
+
+// handleSaveDownload sends a save as a file, with the read and write
+// deadlines already lifted by the route (SPEC 5.11).
+func (s *server) handleSaveDownload(w http.ResponseWriter, r *http.Request, u store.User) {
+	f, info, err := s.worlds.OpenSave(r.PathValue("id"), r.PathValue("name"))
+	if errors.Is(err, world.ErrSaveNotFound) {
+		err = fs.ErrNotExist
+	}
+	if err != nil {
+		s.notFoundOrFail(w, r, u, "open save", err)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	h := w.Header()
+	h.Set("Content-Type", "application/zip")
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": info.Name()}))
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Cache-Control", "private, no-cache")
+	http.ServeContent(w, r, info.Name(), info.ModTime(), f)
+}
+
+// handleLoadSave sets which save the game loads: a named one, or the
+// newest (SPEC 7.11). It changes only world.json.
+func (s *server) handleLoadSave(w http.ResponseWriter, r *http.Request, u store.User) {
+	id := r.PathValue("id")
+	if !s.readForm(w, r) {
+		return
+	}
+	choice, sent := r.PostForm[saveLoadField]
+	if !sent {
+		s.showSaves(w, r, u, http.StatusUnprocessableEntity, func(p *SavesPage) { p.LoadError = "Choose which save loads." })
+		return
+	}
+	if err := s.worlds.SetLoadSave(id, choice[0]); err != nil {
+		status, msg, ok := s.refusal(w, r, u, "choose save", err)
+		if !ok {
+			return
+		}
+		if errors.Is(err, world.ErrSaveNotFound) {
+			msg = msgSaveGone
+		}
+		s.showSaves(w, r, u, status, func(p *SavesPage) { p.LoadError = msg })
+		return
+	}
+	http.Redirect(w, r, "/worlds/"+id+"/saves?chosen=1", http.StatusSeeOther)
+}

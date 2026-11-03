@@ -1,0 +1,75 @@
+{{define "title"}}Snapshots of {{.Page.WorldName}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">Back to {{.WorldName}}</a></div>
+<h1>Snapshots of {{.WorldName}}</h1>
+{{- with .Done}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{.}}</p>
+  <div class="actions"><a href="#restore-{{$.Page.DoneSnap}}">Go to the snapshot</a></div>
+</div>
+{{- end}}
+{{- with .Error}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.LabelError}} autofocus{{end}}>
+  <p><strong>Error:</strong> {{.}}</p>
+</div>
+{{- end}}
+
+<section class="panel" aria-labelledby="disk-heading">
+  <h2 id="disk-heading">Disk use</h2>
+  <dl class="facts">
+    <div><dt>Snapshots use</dt><dd>{{bytes .UsedBytes}}</dd></div>
+    <div><dt>Free space</dt><dd>{{bytes .FreeBytes}}</dd></div>
+  </dl>
+  {{- if .Copied}}
+  <div class="message message--note">
+    <p><strong>Note:</strong> Some snapshots hold full copies of save and mod files, not hardlinks, so they take more space. This happens when the snapshots folder is on a different filesystem from the worlds folder.</p>
+  </div>
+  {{- end}}
+</section>
+
+<form method="post" action="{{.Path}}" class="panel" novalidate>
+  <h2>Take a snapshot</h2>
+  {{template "summary" .Problems}}
+  <div class="field">
+    <label for="label">Label (optional)</label>
+    <p class="hint" id="label-hint">Up to 100 characters, such as "Before the rocket launch".</p>
+    <input id="label" name="label" type="text" value="{{.Label}}" maxlength="100" autocomplete="off"
+      {{- if .LabelError}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
+    {{- with .LabelError}}
+    <p class="error" id="label-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary">Take snapshot</button>
+  </div>
+</form>
+
+<section class="panel" aria-labelledby="list-heading">
+  <h2 id="list-heading">All snapshots</h2>
+  {{- if .Snapshots}}
+  <table>
+    <caption>Snapshots of {{.WorldName}}, newest first</caption>
+    <thead>
+      <tr><th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th></tr>
+    </thead>
+    <tbody>
+      {{- range .Snapshots}}
+      <tr>
+        <td>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<br><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></td>
+        <td>{{template "when" .TakenAt}}</td>
+        <td class="num">{{bytes .Size}}</td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+  {{- if .More}}
+  <div class="actions"><a href="{{.AllPath}}">Show older</a></div>
+  {{- end}}
+  {{- else}}
+  <p class="empty">No snapshots yet. Take one above before you try something risky.</p>
+  {{- end}}
+</section>
+{{- end}}
+{{- end}}

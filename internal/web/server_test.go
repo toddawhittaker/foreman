@@ -16,6 +16,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 const (
@@ -62,13 +63,14 @@ func (s *syncBuffer) String() string {
 }
 
 type harness struct {
-	t     *testing.T
-	h     http.Handler
-	store *store.Store
-	clock *fakeClock
-	logs  *syncBuffer
-	cfg   *config.Config
-	slog  *slog.Logger
+	t      *testing.T
+	h      http.Handler
+	store  *store.Store
+	clock  *fakeClock
+	logs   *syncBuffer
+	cfg    *config.Config
+	worlds *world.Manager
+	slog   *slog.Logger
 }
 
 // newHarness builds the handler over a real store in a temporary directory.
@@ -87,11 +89,20 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 	clock := &fakeClock{t: time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)}
 	logs := &syncBuffer{}
 	logger := slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	h, err := NewHandler(Deps{Config: cfg, Store: st, Log: logger, Now: clock.Now})
+	data := t.TempDir()
+	worlds, err := world.NewManager(world.Dirs{
+		Worlds:    filepath.Join(data, "worlds"),
+		Snapshots: filepath.Join(data, "snapshots"),
+		Imports:   filepath.Join(data, "import"),
+	}, st, clock.Now)
+	if err != nil {
+		t.Fatalf("world manager: %v", err)
+	}
+	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Log: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}
-	return &harness{t: t, h: h, store: st, clock: clock, logs: logs, cfg: cfg, slog: logger}
+	return &harness{t: t, h: h, store: st, clock: clock, logs: logs, cfg: cfg, worlds: worlds, slog: logger}
 }
 
 func (hn *harness) serve(r *http.Request) *httptest.ResponseRecorder {

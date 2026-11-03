@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 func newTestRenderer(t *testing.T) *Renderer {
@@ -37,8 +39,60 @@ type pageCase struct {
 
 func pageCases() []pageCase {
 	return []pageCase{
-		{"home signed in", "todd", 200, HomePage{}},
-		{"home long user", longName, 200, HomePage{}},
+		{"worlds empty", "todd", 200, WorldsPage{}},
+		{"worlds after delete", "todd", 200, WorldsPage{Deleted: longName}},
+		{"worlds long user", longName, 200, WorldsPage{}},
+		{"worlds listed", "todd", 200, WorldsPage{Worlds: []world.Summary{
+			{ID: "base", Name: longName, GameVersion: "2.0.72", SpaceAge: true, Active: true, DiskBytes: 2_100_000_000,
+				LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)},
+			{ID: "future", Name: "Future", Newer: true},
+			{ID: "broken", Name: "broken", Unreadable: true},
+			{ID: "odd", Name: "Odd", SizeUnknown: true},
+		}}},
+		{"snapshots empty", "todd", 200, SnapshotsPage{WorldID: "base", WorldName: longName}},
+		{"snapshots listed", "todd", 200, snapshotsCase()},
+		{"snapshots label error", "todd", 400, SnapshotsPage{WorldID: "base", WorldName: "Base",
+			Label: longName, LabelError: "Use at most 100 characters", Error: "The world was not changed: busy."}},
+		{"restore", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0]}},
+		{"restore error", "todd", 409, RestorePage{WorldID: "base", WorldName: "Base",
+			Snapshot: snapshotsCase().Snapshots[0], Error: "The world was not changed."}},
+		{"restore failed with undo", "todd", 500, RestorePage{WorldID: "base", WorldName: "Base",
+			Snapshot: snapshotsCase().Snapshots[0], Error: "Foreman could not finish the restore.", Undo: "20261103T142500Z"}},
+		{"saves empty", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
+			LoadHref: "/worlds/base/saves", NewestSelected: true, UploadLimit: MaxSaveUpload}},
+		{"saves listed", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
+			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, LoadSave: "a.zip", OlderHref: "/worlds/base/saves?all=1",
+			Uploaded: "a.zip", Chosen: true, Rows: []SaveRow{
+				{Name: "a.zip", Href: "/worlds/base/saves/a.zip", Size: 2_100_000_000, Loads: true, Selected: true,
+					Saved: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)},
+				{Name: longName, Href: "/worlds/base/saves/x.zip", Size: 12},
+			}}},
+		{"saves errors", "todd", 422, SavesPage{WorldName: "Base", WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
+			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, LoadSave: "gone.zip", LoadMissing: true, NewestSelected: true,
+			UploadError: "This file is not a zip file.", LoadError: "Choose which save loads."}},
+		{"saves newer", "todd", 200, SavesPage{WorldName: "Base", Newer: true, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves"}},
+		{"world", "todd", 200, WorldPage{World: world.Summary{ID: "base", Name: longName, Active: true}, Name: longName}},
+		{"world rename error", "todd", 400, WorldPage{World: world.Summary{ID: "base", Name: "Base"}, Name: "Other",
+			NameError: "Another world already has this name. Choose a different name."}},
+		{"world newer", "todd", 200, WorldPage{World: world.Summary{ID: "future", Name: "Future", Newer: true}}},
+		{"delete", "todd", 200, DeletePage{World: world.Summary{ID: "base", Name: longName, DiskBytes: 2_100_000_000}, FinalSnapshot: true}},
+		{"delete name error", "todd", 400, DeletePage{World: world.Summary{ID: "base", Name: "Base"}, ConfirmName: "base",
+			NameError: "Type Base exactly, or cancel"}},
+		{"delete refused", "todd", 409, DeletePage{World: world.Summary{ID: "base", Name: "Base", Active: true},
+			Error: "The world was not changed: this is the active world, and the active world cannot be deleted."}},
+		{"deleted empty", "todd", 200, DeletedPage{}},
+		{"deleted listed", "todd", 200, DeletedPage{More: true, Worlds: []world.DeletedWorld{
+			{ID: "base", Name: longName, Snapshots: snapshotsCase().Snapshots},
+			{ID: "other", Name: "Other", Snapshots: snapshotsCase().Snapshots[1:]},
+		}}},
+		{"restore deleted", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0], Deleted: true}},
+		{"import empty", "todd", 200, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"}, Upload: ImportForm{IDPrefix: "upload"}}},
+		{"import errors", "todd", 400, ImportPage{InboxDir: "/data/import",
+			Inbox:  []world.InboxFolder{{Name: longName, Saves: 1, Bytes: 10}, {Name: "b", Saves: 2, HasMods: true}},
+			Folder: ImportForm{IDPrefix: "folder", Source: "b", SourceError: "Choose a folder.", NameError: "Enter a name.", VersionError: "Bad version."},
+			Upload: ImportForm{IDPrefix: "upload"}}},
+		{"import upload errors", "todd", 400, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"},
+			Upload: ImportForm{IDPrefix: "upload", SourceError: "Not a zip.", NameError: "Enter a name.", VersionError: "Bad version."}}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
@@ -117,6 +171,10 @@ func TestEveryPageRenders(t *testing.T) {
 				}
 			}
 			for _, in := range reInput.FindAllString(body, -1) {
+				// Radios and checkboxes sit inside their label (DESIGN 7.2).
+				if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) {
+					continue
+				}
 				m := reID.FindStringSubmatch(in)
 				if m == nil {
 					t.Errorf("input without id: %s", in)
@@ -422,7 +480,7 @@ func TestStaticHandler(t *testing.T) {
 // Every asset URL a page links to is served by the static handler.
 func TestPageAssetsResolve(t *testing.T) {
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 200, page: HomePage{}, user: "todd"})
+	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
 	found := re.FindAllStringSubmatch(body, -1)
 	if len(found) != 2 {

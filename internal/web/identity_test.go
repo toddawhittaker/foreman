@@ -40,7 +40,7 @@ func asUser(name string) []func(*http.Request) {
 func TestHeaderSignInFromTrustedPeerCreatesUsers(t *testing.T) {
 	hn := headerHarness(t, "headers", "")
 	asAlice := asUser("alice")
-	rec := hn.get("/", asAlice...)
+	rec := hn.get(PathHome, asAlice...)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "alice") {
 		t.Fatalf("first request: %d", rec.Code)
 	}
@@ -53,8 +53,8 @@ func TestHeaderSignInFromTrustedPeerCreatesUsers(t *testing.T) {
 		t.Fatalf("alice: %+v ok=%v", alice, ok)
 	}
 	// A second visit finds the same user; a second name makes a second user.
-	hn.get("/", asAlice...)
-	rec = hn.get("/", asUser("bob")...)
+	hn.get(PathHome, asAlice...)
+	rec = hn.get(PathHome, asUser("bob")...)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("second user: %d", rec.Code)
 	}
@@ -73,7 +73,7 @@ func TestSpoofedHeadersFromUntrustedPeerAreIgnored(t *testing.T) {
 	}
 	t.Run("headers only", func(t *testing.T) {
 		hn := headerHarness(t, "headers", "")
-		rec := hn.get("/", spoof...)
+		rec := hn.get(PathHome, spoof...)
 		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "through the proxy") {
 			t.Fatalf("got %d", rec.Code)
 		}
@@ -83,19 +83,19 @@ func TestSpoofedHeadersFromUntrustedPeerAreIgnored(t *testing.T) {
 	})
 	t.Run("with local sign-in", func(t *testing.T) {
 		hn := headerHarness(t, "local,headers", "")
-		hn.wantRedirect(hn.get("/", spoof...), PathSetup)
+		hn.wantRedirect(hn.get(PathHome, spoof...), PathSetup)
 		if has, _ := hn.store.HasUsers(context.Background()); has {
 			t.Error("a spoofed header created a user")
 		}
 		hn.addUser("alice", testPassword)
-		hn.wantRedirect(hn.get("/", spoof...), PathSignIn)
+		hn.wantRedirect(hn.get(PathHome, spoof...), PathSignIn)
 	})
 }
 
 func TestRequiredGroupRefusesWithForbidden(t *testing.T) {
 	hn := headerHarness(t, "headers", "foreman-admins")
 	as := func(groups string) *httptest.ResponseRecorder {
-		return hn.get("/", withPeer(peerProxy), withHeader("X-Authentik-Username", "alice"), withHeader("X-Authentik-Groups", groups))
+		return hn.get(PathHome, withPeer(peerProxy), withHeader("X-Authentik-Username", "alice"), withHeader("X-Authentik-Groups", groups))
 	}
 	if rec := as("staff, other"); rec.Code != http.StatusForbidden {
 		t.Fatalf("outside the group: %d", rec.Code)
@@ -110,7 +110,7 @@ func TestRequiredGroupRefusesWithForbidden(t *testing.T) {
 
 func TestHeaderUserCannotSignInWithAPassword(t *testing.T) {
 	hn := headerHarness(t, "local,headers", "")
-	hn.get("/", asUser("alice")...)
+	hn.get(PathHome, asUser("alice")...)
 	rec := hn.post(PathSignIn, signInForm("alice", testPassword))
 	if rec.Code != http.StatusUnauthorized || sessionCookie(rec) != nil {
 		t.Fatalf("got %d", rec.Code)
@@ -119,7 +119,7 @@ func TestHeaderUserCannotSignInWithAPassword(t *testing.T) {
 
 func TestHeaderNameThatIsNotAUsernameIsRefused(t *testing.T) {
 	hn := headerHarness(t, "headers", "")
-	rec := hn.get("/", asUser(strings.Repeat("a", 65))...)
+	rec := hn.get(PathHome, asUser(strings.Repeat("a", 65))...)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("got %d", rec.Code)
 	}

@@ -1,0 +1,238 @@
+package world
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"sync"
+	"sync/atomic"
+	"syscall"
+)
+
+// Modes for everything Foreman writes into a world or snapshot, so the
+// game's group can use it whatever the process umask is (SPEC 3.6).
+const (
+	FileMode fs.FileMode = 0o664
+	DirMode  fs.FileMode = 0o775
+)
+
+// Name prefixes of work in progress. Startup recovery clears them, so a
+// crash never leaves one behind as if it were real.
+const (
+	PrefixPartial  = ".partial-"  // a file being written
+	PrefixStaging  = ".staging-"  // a folder being built
+	PrefixDeleting = ".deleting-" // a folder being removed
+)
+
+// randomSuffix returns 16 hex characters for temp names.
+func randomSuffix() string {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
+}
+
+// Mkdir makes one folder inside root with DirMode.
+func Mkdir(root *os.Root, name string) error {
+	if err := root.Mkdir(name, DirMode); err != nil {
+		return err
+	}
+	return root.Chmod(name, DirMode)
+}
+
+// CreateTemp creates an empty file with FileMode beside where its final
+// name will go (in dir inside root), so the final rename stays on one
+// filesystem. It returns the open file and its name relative to root.
+func CreateTemp(root *os.Root, dir string) (*os.File, string, error) {
+	name := path.Join(dir, PrefixPartial+randomSuffix())
+	f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, FileMode)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := f.Chmod(FileMode); err != nil {
+		_ = f.Close()
+		_ = root.Remove(name)
+		return nil, "", err
+	}
+	return f, name, nil
+}
+
+// Commit renames a finished temp file to its final name and syncs the
+// folder, so the rename survives a crash. The temp file must already be
+// synced and closed.
+func Commit(root *os.Root, temp, final string) error {
+	if err := root.Rename(temp, final); err != nil {
+		return err
+	}
+	return syncDir(root, path.Dir(final))
+}
+
+// WriteFileAtomic writes data to name inside root: temp file, fsync,
+// rename, fsync the folder. Readers see the old file or the new one, never
+// half of either.
+func WriteFileAtomic(root *os.Root, name string, data []byte) error {
+	f, temp, err := CreateTemp(root, path.Dir(name))
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = Commit(root, temp, name)
+	}
+	if err != nil {
+		_ = root.Remove(temp)
+	}
+	return err
+}
+
+func syncDir(root *os.Root, dir string) error {
+	d, err := root.Open(dir)
+	if err != nil {
+		return err
+	}
+	err = d.Sync()
+	if cerr := d.Close(); err == nil {
+		err = cerr
+	}
+	return err
+}
+
+// FreeBytes returns the space an unprivileged process can still use on the
+// filesystem holding dir.
+func FreeBytes(dir string) (uint64, error) {
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(dir, &st); err != nil {
+		return 0, fmt.Errorf("read free space: %w", err)
+	}
+	return st.Bavail * uint64(st.Bsize), nil //nolint:gosec // Bsize is a positive block size
+}
+
+// SpaceReserve is the free space every write must leave for the game's
+// own autosaves (R19).
+const SpaceReserve uint64 = 2_000_000_000
+
+// reserveBytes is SpaceReserve; tests on a tiny filesystem lower it.
+var reserveBytes atomic.Uint64
+
+func init() { reserveBytes.Store(SpaceReserve) }
+
+// SetSpaceReserveForTest sets the reserve for a test that runs on a
+// filesystem smaller than SpaceReserve. It returns a function that puts
+// the reserve back. Never call it outside tests.
+func SetSpaceReserveForTest(n uint64) (restore func()) {
+	reserveBytes.Store(n)
+	return func() { reserveBytes.Store(SpaceReserve) }
+}
+
+// ErrNoSpace is wrapped by Reserve and CheckSpace when the disk is too full.
+var ErrNoSpace = errors.New("not enough free disk space")
+
+// promised counts bytes that writes in flight said they will write, so
+// writes running side by side cannot together eat into the reserve (R19).
+// One count for the process: the data folder is one filesystem.
+var promised struct {
+	mu sync.Mutex
+	n  uint64
+}
+
+// Reserve refuses a write of n bytes on dir's filesystem unless the free
+// space, less what other writes in flight have promised, covers n plus
+// SpaceReserve. On success n stays promised until release is called;
+// release is safe to call more than once.
+func Reserve(dir string, n uint64) (release func(), err error) {
+	free, err := FreeBytes(dir)
+	if err != nil {
+		return nil, err
+	}
+	promised.mu.Lock()
+	defer promised.mu.Unlock()
+	if err := checkSpace(free, promised.n, n); err != nil {
+		return nil, err
+	}
+	promised.n += n
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			promised.mu.Lock()
+			promised.n -= n
+			promised.mu.Unlock()
+		})
+	}, nil
+}
+
+// CheckSpace is Reserve for a caller that only wants to refuse up front.
+func CheckSpace(dir string, need uint64) error {
+	release, err := Reserve(dir, need)
+	if err != nil {
+		return err
+	}
+	release()
+	return nil
+}
+
+func checkSpace(free, inFlight, need uint64) error {
+	avail := uint64(0)
+	if free > inFlight {
+		avail = free - inFlight
+	}
+	reserve := reserveBytes.Load()
+	if want := need + reserve; avail < want {
+		return fmt.Errorf("%w: this needs %s, including %s kept free for the game, but only %s is free. Free some space and try again",
+			ErrNoSpace, FormatBytes(want), FormatBytes(reserve), FormatBytes(avail))
+	}
+	return nil
+}
+
+// FormatBytes shows a size with one decimal and a unit, as in "2.1 GB".
+func FormatBytes(n uint64) string {
+	const unit = 1000
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := uint64(unit), 0
+	for m := n / unit; m >= unit; m /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "kMGTPE"[exp])
+}
+
+// ErrNotFolder is returned by openDir for a name that is not a real
+// folder, such as a symlink. To a visitor such a world is not there.
+var ErrNotFolder = errors.New("not a folder")
+
+// openDir opens the folder name inside parent as a root, refusing a
+// symlink even one that stays inside parent, so one world's folder can
+// never stand in for another's (R17).
+func openDir(parent *os.Root, name string) (*os.Root, error) {
+	before, err := parent.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if !before.IsDir() {
+		return nil, fmt.Errorf("%s: %w", name, ErrNotFolder)
+	}
+	r, err := parent.OpenRoot(name)
+	if err != nil {
+		return nil, err
+	}
+	// The name could be swapped for a link between the Lstat and the open.
+	after, err := r.Stat(".")
+	if err == nil && !os.SameFile(before, after) {
+		err = fmt.Errorf("%s: %w", name, ErrNotFolder)
+	}
+	if err != nil {
+		_ = r.Close()
+		return nil, err
+	}
+	return r, nil
+}

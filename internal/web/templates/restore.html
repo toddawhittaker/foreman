@@ -1,0 +1,37 @@
+{{define "title"}}Restore a snapshot of {{.Page.WorldName}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions">{{if .Deleted}}<a href="{{worldsPath}}">Back to worlds</a>{{else}}<a href="{{.WorldPath}}">Back to {{.WorldName}}</a>{{end}}</div>
+<h1>Restore a snapshot of {{.WorldName}}</h1>
+{{- with .Error}}
+<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+  <p><strong>Error:</strong> {{.}}</p>
+  {{- if $.Page.Undo}}
+  <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot.</p>
+  <div class="actions"><a href="{{$.Page.UndoPath}}">Restore the "Before restore" snapshot</a></div>
+  {{- end}}
+</div>
+{{- end}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Restore the snapshot "{{.Snapshot.Label}}" from <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utc .Snapshot.TakenAt}}</time>?</h2>
+  <p>This will:</p>
+  <ul>
+    {{- if .Deleted}}
+    <li>Foreman will recreate this world from the snapshot: the folder <code>worlds/{{.WorldID}}</code> with the {{len .Snapshot.Files}} files in this snapshot ({{bytes .Snapshot.Size}}), with their original modification times.</li>
+    <li>Keep this snapshot.</li>
+    {{- else}}
+    <li>First, take a snapshot of {{.WorldName}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
+    <li>Replace everything in the folder <code>worlds/{{.WorldID}}</code> with the {{len .Snapshot.Files}} files in this snapshot ({{bytes .Snapshot.Size}}), with their original modification times. Saves made since the snapshot will be gone from the world.</li>
+    <li>Keep this snapshot. To undo, restore the "Before restore" snapshot from the Snapshots page.</li>
+    {{- end}}
+  </ul>
+  <form method="post" action="{{.Path}}">
+    <div class="actions">
+      <button type="submit" class="button button--danger">Restore snapshot</button>
+      <a href="{{.SnapshotsPath}}">Cancel, keep the world as it is</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}
