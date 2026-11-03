@@ -15,7 +15,7 @@ Serves SPEC 18.1. Everything below is built and tested.
   and a `/healthz` endpoint. Every make target in STACK 13 exists;
   `test-game` and `e2e-game` are stubs until Epic 3. The container image
   is distroless, runs as 845:845, and is about 7 MB compressed (limit
-  30 MB, checked in CI). CI runs on the shared runner (`ubuntu-24.04`),
+  30 MB, checked in CI). CI runs on a GitHub-hosted runner (`ubuntu-24.04`),
   pins `actions/checkout` by commit, cleans up everything it created by
   name, and fails if anything is left behind or if Docker cannot be
   reached to check. `make run` starts Foreman locally in adopted mode.

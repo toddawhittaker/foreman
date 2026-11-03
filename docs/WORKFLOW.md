@@ -5,54 +5,29 @@ here once docs/STACK.md settles the stack.
 
 ## Where the code lives
 
-The repository is on Forgejo: `origin` is
-`ssh://git@git.thewhittakers.org/todd/foreman.git` (SSH port 2222, set in
-`~/.ssh/config`). Use `tea` (login `forgejo`, the default) for pull
-requests, issues and releases. Add `--output json` for machine-readable
-output, and use `tea api /repos/todd/foreman/...` for anything `tea` has
-no command for, such as a PR's merge state or changed files.
+The repository is on GitHub: `origin` is
+`https://github.com/toddawhittaker/foreman` (private). Use `gh` for pull
+requests, issues and releases. Add `--json` with a field list for
+machine-readable output, and use `gh api repos/toddawhittaker/foreman/...`
+for anything `gh` has no command for, such as a PR's changed files.
 
 ## Checks
 
 `make verify` run locally on a PR's head commit is the check that gates
 every merge, and the orchestrator or the merger agent runs it before
-merging. Once the stack epic adds a CI workflow under `.forgejo/workflows/`,
+merging. Once the stack epic adds a CI workflow under `.github/workflows/`,
 it runs the same `make` targets on the server and a green run is required
-as well.
+as well. Read a failing run's log with `gh run view --log-failed`.
 
-The Forgejo server has one shared runner, `forgejo-runner`, with the
-labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-24.04`,
-so the job's operating system changes only when we change it.
-Jobs run as root inside a Debian container with Node and `apt`. `tea`
-cannot read job logs on this Forgejo version; read them in the web
-interface.
+CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
+system changes only when we change it.
 
-CI runs whatever code a push or pull request brings, with access to the
-runner's shared Docker daemon, so only people we trust may push to this
-repository. Today that is one person.
+CI runs whatever code a push or pull request brings, so only people we
+trust may push to this repository. Today that is one person.
 
-Jobs get the runner VM's own Docker daemon (the runner's `docker_host:
-"automount"` setting), shared with every other job on the VM. It is not an
-isolated Docker-in-Docker. So:
-
-- Name every container, network, volume and image a job creates, and
-  remove them by name when the job ends, even when it fails.
-- Never assume the daemon is empty, or remove anything a job did not
-  create.
-
-The job's workspace (`/workspace/todd/foreman`) is a Docker volume
-attached to the job container, not a folder on the VM. A plain
-`docker run -v "$PWD:/x"` makes the daemon look for that path on the VM,
-and it mounts an empty directory instead. This is the same host-path trap
-the vision describes for Foreman itself, and the runner has no setting to
-change it. Use one of these instead:
-
-- `docker run --volumes-from "$(hostname)" -w "$PWD" ...` gives the test
-  container the job's workspace at the same path, for reading and writing.
-  Inside a job, `hostname` is the job container's ID; check it with
-  `docker inspect "$(hostname)"` before relying on it.
-- `docker cp`, to copy files into or out of a container.
-- A named volume, filled from inside a container.
+Every job names the containers, networks, volumes and images it creates
+`foreman-ci-<run>-*`, removes them by name when it ends, even when it
+fails, and fails if any are left.
 
 ## Local development
 
@@ -109,8 +84,8 @@ The first `make verify` or `make e2e` pulls the pinned images and runs
   only through a pull request.
 - Work happens on short-lived task branches cut from the epic branch,
   named `<epic-slug>/<task>`. A task branch is merged into its epic by
-  pull request, squash merge. The orchestrator merges it with `tea pr
-  merge --style squash` once it has checked the work and `make verify`
+  pull request, squash merge. The orchestrator merges it with `gh pr
+  merge --squash` once it has checked the work and `make verify`
   passes; no person reviews a task pull request.
 - When an epic's acceptance criteria are met and its epic-level review is
   done, the epic branch is merged into `main` by pull request with a merge
@@ -161,10 +136,10 @@ have bent. The user picks which findings become an epic.
 
 Every pull request cites the SPEC.md and STACK.md sections it serves and
 says how it was verified. The template, in
-`.forgejo/pull_request_template.md`, asks for both. `make verify` must
+`.github/pull_request_template.md`, asks for both. `make verify` must
 pass. An epic pull request must be up to date with `main` before it is
 merged. Task pull requests into an epic need not be; they are updated only
-when Forgejo reports a conflict.
+when GitHub reports a conflict.
 
 There are two kinds of pull request, merged by different people:
 

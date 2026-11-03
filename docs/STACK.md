@@ -180,10 +180,8 @@ Cheap to change.
   switching, snapshots, mods or game versions (CLAUDE.md, "Testing
   rules"), not on every task, because the image is large and each start
   takes tens of seconds.
-- **On the shared Forgejo runner**: everything a job creates is named
-  `foreman-ci-<run>-*` and removed when the job ends. Bind mounts from the
-  job's workspace arrive empty, so the data directory is a named volume and
-  the test container uses `--volumes-from`. CI proves this on every run.
+- **In CI**: everything a job creates is named `foreman-ci-<run>-*` and
+  removed when the job ends. CI proves this on every run.
 
 ## 10. Image
 
