@@ -86,3 +86,129 @@ Serves SPEC 18.1. Everything below is built and tested.
 - Signing out a header user ends nothing; the proxy decides (SPEC 12.8).
 - A `tcp://` `DOCKER_HOST` is unencrypted (SPEC 3.2); the operator guide
   in Epic 10 must say so.
+
+## Epic 2: Worlds and snapshots
+
+Serves SPEC 18.2: the world model (5.1 to 5.3); list, import, rename,
+delete and saves (5.4, 5.5, 5.8, 5.10, 5.11); snapshots and restore
+(section 6, except 6.10). Everything below is built and tested. Coverage
+across `internal/` is about 89%. The format decisions are in ADR 0002.
+
+### Delivered
+
+- **World model (SPEC 5.1 to 5.3).** The new `internal/world` package.
+  `world.json` has a `format_version`, keeps fields Foreman does not know,
+  and is listed but never changed when a newer Foreman wrote it. A world's
+  id is made from its name and is never reused. Names are unique ignoring
+  case. Each world has a try-lock (`Manager.Lock`), so Epic 3 can hold it
+  across stop, snapshot, restore and start. Startup recovery clears
+  leftover `.partial-*`, `.staging-*` and `.deleting-*` folders. Every file
+  operation inside a world, a snapshot or the inbox goes through `os.Root`.
+  Which world is active is a row in a new table, `active_worlds` (SPEC
+  3.4); the first world created becomes active.
+- **List, world page, rename (SPEC 5.4, 5.8).** The world list at
+  `/worlds` (the home page now redirects there) shows the active world
+  first, and a world page shows its facts. Rename changes only the display
+  name. "Last played" comes from the newest save, and shows "unknown" when
+  it cannot be read.
+- **Import (SPEC 5.5).** From the inbox `<data>/import/`, copying a
+  folder's top-level save zips and its `mods/` folder, or by uploading one
+  save zip. Imports copy, keep times, never hardlink and never change the
+  source. A new world is built in one staging folder and renamed into
+  place, so a refused or failed import leaves no world behind. Mod sync
+  for an uploaded save is Epic 5.
+- **Saves (SPEC 5.11, 7.11).** List (newest first), download, upload and
+  choose which save loads. An upload with a name that exists is refused.
+  `NewestSave` is the one function for the newest save; Epic 3's pre-start
+  check must use it.
+- **Snapshots (SPEC 6.1 to 6.4, 6.7 to 6.9).** Manual and automatic
+  snapshots in `snapshots/<world-id>/<UTC time>/`, with `snapshot.json`
+  holding label, reason, time, who, and each file's size, time to the
+  nanosecond and (for zips) SHA-256. Zips are hardlinked, with a recorded
+  copy fallback and a note on the page. Hidden files are kept; a symlink or
+  other special file in a world makes the snapshot refuse. Retention keeps
+  the newest 10 automatic snapshots and never removes manual or
+  before-delete ones. Disk use counts each file once by inode.
+- **Restore (SPEC 6.5).** Under the world's lock, restore checks the
+  manifest and every hash, takes a "Before restore" snapshot (and stops if
+  that fails), builds the world in a staging folder with every time set
+  from the manifest, then swaps folders through `.restore-old-*`. Startup
+  recovery finishes or reverses a half-done swap. A failure after the
+  "Before restore" snapshot says so and links to it. Restore refuses when
+  another world has the snapshot's name.
+- **Delete (SPEC 5.10, 6.6).** Final snapshot on by default (aborts the
+  delete if it fails), name typed exactly, active world refused, and the
+  page says why when a world cannot be deleted. The `snapshots/<id>` folder
+  is always made so an id is never reused. `/deleted` lists deleted worlds
+  and their snapshots; restoring one recreates the world.
+- **Fail safe on disk space (SPEC 6.11).** Snapshot, restore, import and
+  upload refuse up front when free space minus the bytes already promised
+  to writes in flight is short of the write plus a fixed 2 GB reserve. All
+  checks share one in-process count. Uploads without a declared length get
+  411, and at most two uploads run at once (a third gets 429).
+- **Uploads and long requests (SPEC 14.6).** Save uploads are limited to
+  1 GB and other uploads to 200 MB, streamed to a temp file beside the
+  destination. A zip's entry names and stated sizes are checked (50 times
+  the zip's size at most) but a zip is never unpacked. Long routes (upload,
+  download, import, restore) use a 60-second idle deadline instead of the
+  short one, only for a signed-in request. A malformed upload header is
+  refused with 422 in words.
+- **Managed mode for `make run` and the end-to-end fixture.** Both run in
+  managed mode with `FOREMAN_HOST_DATA_DIR` set, so no Docker call is made.
+  `golang.org/x/sys` is now a direct dependency (hardlinks across
+  snapshot folders).
+- **UI.** Styles for confirmation, steps, world list, facts, the Active
+  badge, tables, fieldsets and message kinds; the header "Worlds" tab; long
+  names wrap at 320 px; the secondary button hovers grey. Forced-colours
+  tab marking and a styled file picker. Every new page passes axe at
+  desktop and 320 px in both themes.
+- **Tests.** Unit tests for ids, `world.json`, copies, restore contents and
+  times, and recovery of a half-done swap. Security and failure tests for
+  hostile names, symlinks, hostile zips, a lying upload length, a full disk
+  (a tmpfs under `unshare`; skipped when the machine cannot mount one),
+  a crash at each restore step, and two admins at once. End-to-end tests
+  for every page and flow.
+- **Real-game check.** Against `factoriotools/factorio` (Factorio 2.1.24,
+  image digest `sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28`):
+  import, snapshot, upload, the load choice and restore all through
+  Foreman's routes. The world matched the snapshot's manifest in size,
+  time and SHA-256, and a real server loaded the save and reached InGame.
+
+### Gaps left
+
+- A session that expires during a long upload, download, import or restore
+  does not stop it.
+- The idle limit is 60 seconds without progress, not a minimum speed. A
+  client that sends a byte just under every 60 seconds keeps an upload open
+  (it needs a signed-in session). One signed-in session trickling two
+  uploads holds both upload places, so every other admin gets 429, and
+  keeps their declared bytes promised. When the disk is fairly full,
+  snapshots, restores and imports needing more than free space minus
+  (promised bytes plus 2 GB) are refused until the connections close or
+  Foreman restarts. Nothing is damaged.
+- Snapshot hashes are checked before restore stages files, not again
+  while linking; a file changed in that window is not caught. Reusing a
+  hash when the inode, size and time are unchanged can be fooled by a
+  deliberate same-size rewrite with the time set back (it needs write
+  access to the world).
+- Free space is briefly counted twice while a write runs. This errs on
+  the safe side.
+- Warnings go only to the log: skipped unreadable snapshot folders, and
+  retention or cleanup failures after a success.
+- The failed-restore undo link has a render test only, because no handler
+  test can make a restore fail after its snapshot.
+- Taking a snapshot (POST) when `snapshots/<id>` is a symlink answers 500,
+  not 404. Nothing is written.
+- Restore's final name re-check lists every world while holding the create
+  lock.
+- Test helpers (tree readers, zip builders) are duplicated across test
+  files.
+- A restored running world (stop, snapshot, restore, start) and a snapshot
+  of a running world (SPEC 6.10) wait for Epic 3.
+- No delete of a single save. The Worlds tab covers the import page, and
+  there is no Import tab.
+- The 7.5 state badge (`.state`) is still unstyled.
+- The `factoriotools/factorio` image's entrypoint fails when run as a uid
+  other than its own (its `sed` on `/opt/factorio/config`), and the server
+  exits on stdin EOF unless it is started with `-i`. Epic 3 must handle
+  both (found in the real-game check).
