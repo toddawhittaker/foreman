@@ -2,13 +2,14 @@
 
 {{define "content" -}}
 <h1>Worlds</h1>
+<p><a href="{{.Page.ImportPath}}" class="button">Import a world</a></p>
 <section aria-labelledby="worlds-heading">
   <h2 id="worlds-heading">All worlds</h2>
   {{- with .Page.Worlds}}
   <ul class="worlds">
     {{- range .}}
     <li>
-      <h3>{{.Name}}{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>
+      <h3><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>
       {{- if .Unreadable}}
       <p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.ID}}</code>.</p>
       {{- else if .Newer}}

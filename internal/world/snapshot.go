@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -276,7 +275,7 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 	if !fs.ValidPath(f.Path) {
 		return false, fmt.Errorf("bad path %q", f.Path)
 	}
-	if err := mkdirParents(dst, path.Dir(f.Path)); err != nil {
+	if err := mkdirAll(dst, path.Dir(f.Path)); err != nil {
 		return false, err
 	}
 	if isZip(f.Path) {
@@ -285,24 +284,15 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 		}
 		zipCopied = true
 	}
-	if err := copyFile(src, dst, f); err != nil {
+	// A copy is checked for space on its own, since only a failed link
+	// makes a zip cost bytes (R19).
+	if err := CheckSpace(dst.Name(), uint64(f.Size)); err != nil { //nolint:gosec // a file size is never negative
+		return false, err
+	}
+	if err := copyFile(src, f.Path, dst, f.Path); err != nil {
 		return false, err
 	}
 	return zipCopied, nil
-}
-
-// mkdirParents makes dir and its parents inside root with DirMode.
-func mkdirParents(root *os.Root, dir string) error {
-	if dir == "." {
-		return nil
-	}
-	if err := mkdirParents(root, path.Dir(dir)); err != nil {
-		return err
-	}
-	if err := Mkdir(root, dir); err != nil && !errors.Is(err, fs.ErrExist) {
-		return err
-	}
-	return nil
 }
 
 // linkFile hardlinks name from one root into another. Each side's folder is
@@ -329,37 +319,6 @@ func linkFile(src, dst *os.Root, name string) error {
 		return fmt.Errorf("%s is not a regular file", name)
 	}
 	return unix.Linkat(int(sd.Fd()), base, int(dd.Fd()), base, 0) //nolint:gosec // an fd fits in an int
-}
-
-// copyFile copies f from src to dst with FileMode, syncs it and sets its
-// modification time. It refuses the copy if the disk is too full (R19).
-func copyFile(src, dst *os.Root, f ManifestEntry) error {
-	in, err := src.OpenFile(f.Path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = in.Close() }()
-	if err := CheckSpace(dst.Name(), uint64(f.Size)); err != nil { //nolint:gosec // a file size is never negative
-		return err
-	}
-	out, err := dst.OpenFile(f.Path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, FileMode)
-	if err != nil {
-		return err
-	}
-	err = out.Chmod(FileMode)
-	if err == nil {
-		_, err = io.Copy(out, in)
-	}
-	if err == nil {
-		err = out.Sync()
-	}
-	if cerr := out.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = dst.Chtimes(f.Path, f.ModTime, f.ModTime)
-	}
-	return err
 }
 
 // Snapshots lists a world's snapshots, newest first (SPEC 6.4). It works

@@ -16,8 +16,8 @@ type fileState struct {
 	modTime time.Time
 }
 
-// tree reads every regular file under dir with its contents and time.
-func tree(t *testing.T, dir string) map[string]fileState {
+// fileTree reads every regular file under dir with its contents and time.
+func fileTree(t *testing.T, dir string) map[string]fileState {
 	t.Helper()
 	out := map[string]fileState{}
 	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
@@ -65,7 +65,7 @@ func TestRestoreGivesBackExactContentsAndTimes(t *testing.T) {
 	m, _ := newTestManager(t)
 	id := seedWorld(t, m)
 	world := filepath.Join(m.dirs.Worlds, id)
-	want := tree(t, world)
+	want := fileTree(t, world)
 
 	now := t0
 	m.now = func() time.Time { now = now.Add(time.Minute); return now }
@@ -85,13 +85,13 @@ func TestRestoreGivesBackExactContentsAndTimes(t *testing.T) {
 	if err := os.Chtimes(filepath.Join(world, "saves/base.zip"), later, later); err != nil {
 		t.Fatal(err)
 	}
-	played := tree(t, world)
+	played := fileTree(t, world)
 
 	before, err := m.Restore(id, snap.Name, "bob")
 	if err != nil {
 		t.Fatal(err)
 	}
-	sameTree(t, tree(t, world), want)
+	sameTree(t, fileTree(t, world), want)
 	if before.Reason != ReasonBeforeRestore || before.Label != LabelBeforeRestore || before.TakenBy != "bob" {
 		t.Errorf("before-restore snapshot %+v", before)
 	}
@@ -104,13 +104,13 @@ func TestRestoreGivesBackExactContentsAndTimes(t *testing.T) {
 	if _, err := m.Restore(id, snap.Name, "bob"); err != nil {
 		t.Fatal(err)
 	}
-	sameTree(t, tree(t, world), want)
+	sameTree(t, fileTree(t, world), want)
 
 	// Undo: restoring the first before-restore snapshot brings back play.
 	if _, err := m.Restore(id, before.Name, "bob"); err != nil {
 		t.Fatal(err)
 	}
-	sameTree(t, tree(t, world), played)
+	sameTree(t, fileTree(t, world), played)
 
 	entries, _ := os.ReadDir(m.dirs.Worlds)
 	if len(entries) != 1 {
@@ -161,7 +161,7 @@ func TestRecoverHalfDoneSwap(t *testing.T) {
 		m, _ := newTestManager(t)
 		id := seedWorld(t, m)
 		world := filepath.Join(m.dirs.Worlds, id)
-		oldState := tree(t, world)
+		oldState := fileTree(t, world)
 		old := filepath.Join(m.dirs.Worlds, PrefixRestoreOld+id+"-0123456789abcdef")
 		if err := os.Rename(world, old); err != nil {
 			t.Fatal(err)
@@ -184,9 +184,9 @@ func TestRecoverHalfDoneSwap(t *testing.T) {
 			t.Errorf("liveThere=%v: worlds folder holds %v", liveThere, entries)
 		}
 		if liveThere {
-			sameTree(t, tree(t, world), map[string]fileState{"saves/new.zip": {"new", t0}})
+			sameTree(t, fileTree(t, world), map[string]fileState{"saves/new.zip": {"new", t0}})
 		} else {
-			sameTree(t, tree(t, world), oldState)
+			sameTree(t, fileTree(t, world), oldState)
 		}
 	}
 }

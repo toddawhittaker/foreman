@@ -27,7 +27,6 @@ const (
 	defaultLabel = "Manual snapshot"
 )
 
-func worldPath(id string) string     { return "/worlds/" + id }
 func snapshotsPath(id string) string { return worldPath(id) + "/snapshots" }
 func restorePath(id, snap string) string {
 	return snapshotsPath(id) + "/" + snap + "/restore"

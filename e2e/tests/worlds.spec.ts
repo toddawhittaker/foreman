@@ -1,6 +1,6 @@
 import { test, expect, checkPage, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -78,5 +78,120 @@ test("world list shows each world, the active one first", async ({ page, foreman
   await expect(items.nth(2)).toContainText("A newer version of Foreman wrote this world");
   await expect(page.locator(".badge--active")).toHaveCount(1);
   await expect(page.getByText("No worlds yet")).toHaveCount(0);
+  await checkPage(page);
+});
+
+// The smallest valid zip: an end-of-central-directory record and no entries.
+const emptyZip = Buffer.concat([Buffer.from("PK\x05\x06"), Buffer.alloc(18)]);
+
+// Every path under dir with its size and modification time, to prove an
+// import left its source exactly as it was (SPEC 5.5).
+function listing(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, encoding: "utf8" })
+    .sort()
+    .map((p) => {
+      const s = statSync(join(dir, p));
+      return `${p} ${s.size} ${s.mtimeMs}`;
+    });
+}
+
+test("imports a folder from the inbox and leaves it unchanged", async ({ page, foreman }) => {
+  await createAdmin(page);
+  const src = join(foreman.dataDir, "import", "saves-2025");
+  mkdirSync(join(src, "mods"), { recursive: true });
+  const old = new Date("2025-06-01T12:00:00Z");
+  for (const f of ["base.zip", "later.zip", "notes.txt", join("mods", "mod-list.json")]) {
+    writeFileSync(join(src, f), f.endsWith(".zip") ? emptyZip : "{}");
+    utimesSync(join(src, f), old, old);
+  }
+  const before = listing(src);
+
+  await page.goto("/worlds");
+  await page.getByRole("link", { name: "Import a world" }).click();
+  await expect(page).toHaveURL("/import");
+  await expect(page.getByLabel(/saves-2025: 2 saves and mods/)).toBeVisible();
+  await checkPage(page);
+
+  // A wrong version is refused with the error summary (DESIGN 7.2).
+  const folderForm = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await folderForm.getByLabel(/saves-2025/).check();
+  await folderForm.getByLabel("World name").fill("Old game");
+  await folderForm.getByLabel("Game version").fill("2.0");
+  await folderForm.getByRole("button", { name: "Import folder" }).click();
+  await expect(page.locator("#error-summary")).toContainText("Enter the game version as three numbers");
+  await expect(page).toHaveTitle(/^Error: /);
+  await checkPage(page);
+
+  await folderForm.getByLabel("Game version").fill("2.0.72");
+  await folderForm.getByLabel("Space Age is on").check();
+  await folderForm.getByRole("button", { name: "Import folder" }).click();
+  await expect(page).toHaveURL("/worlds/old-game");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Old game Active");
+  await expect(page.locator("dl.facts")).toContainText("2.0.72");
+  await expect(page.locator("time")).toHaveAttribute("datetime", "2025-06-01T12:00:00Z");
+  await checkPage(page);
+
+  expect(listing(src)).toEqual(before);
+  const world = join(foreman.dataDir, "worlds", "old-game");
+  expect(readdirSync(join(world, "saves")).sort()).toEqual(["base.zip", "later.zip"]);
+  expect(readdirSync(join(world, "mods"))).toEqual(["mod-list.json"]);
+});
+
+test("imports a world by uploading a save", async ({ page, foreman }) => {
+  await createAdmin(page);
+  await page.goto("/import");
+  await expect(page.getByText("The import folder is empty")).toBeVisible();
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Upload a save" }) });
+  await form.getByLabel("World name").fill("Uploaded");
+  await form.getByLabel("Game version").fill("1.1.110");
+  await form.getByLabel("Save file").setInputFiles({ name: "my save.zip", mimeType: "application/zip", buffer: emptyZip });
+  await form.getByRole("button", { name: "Upload and import" }).click();
+  await expect(page).toHaveURL("/worlds/uploaded");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Uploaded Active");
+  expect(readdirSync(join(foreman.dataDir, "worlds", "uploaded", "saves"))).toEqual(["my save.zip"]);
+
+  // A file that is not a zip is refused and no world is made.
+  await page.goto("/import");
+  await form.getByLabel("World name").fill("Second");
+  await form.getByLabel("Game version").fill("1.1.110");
+  await form.getByLabel("Save file").setInputFiles({ name: "fake.zip", mimeType: "application/zip", buffer: Buffer.from("nope") });
+  await form.getByRole("button", { name: "Upload and import" }).click();
+  await expect(page.locator("#error-summary")).toContainText("This file is not a zip file.");
+  await checkPage(page);
+  expect(readdirSync(join(foreman.dataDir, "worlds"))).toEqual(["uploaded"]);
+});
+
+// SPEC 5.8 and R12: the display name changes, the id does not, and two
+// worlds may not share a name ignoring case.
+test("renames a world and refuses a duplicate name", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "base", { name: "Base", game_version: "2.0.72", space_age: false });
+  seedWorld(foreman, "other", { name: "Other", game_version: "2.0.72", space_age: false });
+
+  await page.goto("/worlds");
+  await page.getByRole("link", { name: "Base" }).click();
+  await expect(page).toHaveURL("/worlds/base");
+  await expect(page.getByRole("link", { name: "Saves" })).toHaveAttribute("href", "/worlds/base/saves");
+  await expect(page.getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
+  await checkPage(page);
+
+  await page.getByLabel("Name", { exact: true }).fill("OTHER");
+  await page.getByRole("button", { name: "Rename world" }).click();
+  await expect(page.locator("#error-summary")).toContainText("Another world already has this name");
+  await expect(page.getByLabel("Name", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await checkPage(page);
+
+  await page.getByLabel("Name", { exact: true }).fill("Main base");
+  await page.getByRole("button", { name: "Rename world" }).click();
+  await expect(page).toHaveURL("/worlds/base");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Main base");
+});
+
+test("a world a newer Foreman wrote cannot be renamed", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "future", { name: "Future", game_version: "3.0.0", space_age: false, format_version: 9 });
+  await page.goto("/worlds/future");
+  await expect(page.getByText("A newer version of Foreman wrote this world")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Rename world" })).toHaveCount(0);
   await checkPage(page);
 });
