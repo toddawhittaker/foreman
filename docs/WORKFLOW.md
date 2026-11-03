@@ -21,10 +21,15 @@ it runs the same `make` targets on the server and a green run is required
 as well.
 
 The Forgejo server has one shared runner, `forgejo-runner`, with the
-labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-latest`.
+labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-24.04`,
+so the job's operating system changes only when we change it.
 Jobs run as root inside a Debian container with Node and `apt`. `tea`
 cannot read job logs on this Forgejo version; read them in the web
 interface.
+
+CI runs whatever code a push or pull request brings, with access to the
+runner's shared Docker daemon, so only people we trust may push to this
+repository. Today that is one person.
 
 Jobs get the runner VM's own Docker daemon (the runner's `docker_host:
 "automount"` setting), shared with every other job on the VM. It is not an

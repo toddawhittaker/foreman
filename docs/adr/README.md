@@ -30,3 +30,4 @@ record has four parts:
 
 | Record | Decision |
 |---|---|
+| [0001](0001-toolchain.md) | Go runs locally and is pinned in the Makefile; the linter and Playwright run in pinned images. |

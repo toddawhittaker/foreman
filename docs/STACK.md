@@ -8,16 +8,35 @@ an ADR (decision record) in `docs/adr/`.
 ## 1. Versions
 
 Every version is pinned exactly, and images are pinned by digest (CLAUDE.md,
-"Project rules"). The exact versions are chosen and checked at the start of
-Epic 1 and recorded in `go.mod`, `package-lock.json` and the Dockerfile,
-which are the source of truth. Constraints that hold until then:
+"Project rules"). The files named below are the source of truth; this list
+is a copy and goes stale if they change without it.
 
-- Go: the newest stable release when Epic 1 starts, and at least 1.25
-  (section 7 needs `http.CrossOriginProtection`).
-- htmx: the newest stable 2.x. If a later major version is stable by then,
-  it is chosen on purpose, not by default.
-- Node: the current LTS release, used only to run end-to-end tests.
-- Test game images: one 2.0.x and one 2.1.x tag of `factoriotools/factorio`.
+- Go 1.27.3, set once as `GO_VERSION` in the `Makefile`. `go.mod` states
+  only the language minimum, `go 1.27.0` (ADR 0001).
+- Build image: `golang:1.27.3-trixie@sha256:c65ecfe613b539ac74c62a4c3b2c27e8f8a6076384c8f27e8a3c0f3be17cc385`.
+- golangci-lint: `golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481`.
+- Runtime image: `gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f`,
+  run as `USER 845:845`.
+- Playwright image: `mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f`.
+- npm packages in `e2e/package.json`, with `e2e/package-lock.json`:
+  `@playwright/test` 1.64.1, `@axe-core/playwright` 4.14.0, `typescript`
+  7.0.2 and `@types/node` 26.6.6 (the test fixture starts the binary with
+  Node's `child_process`).
+- Node: the version inside the Playwright image. It runs only the
+  end-to-end tests.
+- htmx 2.0.11, vendored as `internal/web/static/vendor/htmx.min.js`; its
+  SHA-256 is in `SHA256SUMS` beside it, and a test checks it.
+- Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1 and
+  `golang.org/x/crypto` v0.58.0.
+- govulncheck v1.9.0, run by `make vuln`.
+- CI: `actions/checkout` pinned to commit
+  `11d5960a326750d5838078e36cf38b85af677262` (v4.4.0), on the
+  `ubuntu-24.04` runner. CI installs the same Go and checks its checksum.
+- Test game images: still to choose, one 2.0.x and one 2.1.x tag of
+  `factoriotools/factorio`, when Epic 3 starts.
+
+Known gap: CI installs `make`, `docker-cli` and `gzip` with `apt`, and
+those packages are not pinned.
 
 ## 2. Backend: Go
 
@@ -164,8 +183,7 @@ Cheap to change.
 - **On the shared Forgejo runner**: everything a job creates is named
   `foreman-ci-<run>-*` and removed when the job ends. Bind mounts from the
   job's workspace arrive empty, so the data directory is a named volume and
-  the test container uses `--volumes-from`. Epic 1 must prove this works on
-  the runner before anything relies on it.
+  the test container uses `--volumes-from`. CI proves this on every run.
 
 ## 10. Image
 
@@ -200,19 +218,23 @@ Rejected:
 
 | Target | What it does |
 |---|---|
-| `make verify` | Format check, `go vet`, golangci-lint, `go test -race ./...`, and a type check of the end-to-end tests. Fast. The Stop hook and the merge gate run it. |
-| `make test` | Unit tests only, with the coverage floor set in Epic 1. |
-| `make lint` | golangci-lint and the format check. |
+| `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. The Stop hook and the merge gate run it. |
+| `make check-go` | Fails when the local Go, or the Go in the build image, differs from `GO_VERSION` (ADR 0001). |
+| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. |
+| `make lint` | golangci-lint, in its pinned image. |
+| `make fmt-check` | Fails when a Go file is not formatted. This is the only place format is checked. |
 | `make fmt` | Rewrite formatting. |
 | `make build` | The static binary, with frontend files embedded. |
 | `make image` | Build the container image with a local tag. |
-| `make run` | Run locally against `./.dev-data` with the fake Docker. |
-| `make e2e` | Playwright and axe against the built binary, with fake Docker and fake RCON. |
+| `make run` | Run Foreman from source in adopted mode against `./.dev-data`, with your own user and group as the game's. It does not contact Docker. |
+| `make e2e` | Playwright and axe against the built binary, at desktop width and 320 px, in dark and light. The fake Docker and fake RCON arrive in Epic 3. |
 | `make test-game TAG=x` | Integration tests against a real `factoriotools/factorio:<TAG>` container. |
 | `make e2e-game` | The vision's success scenarios against a real game, for milestone gates and epic pull requests. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
 | `make ci` | `verify`, then `e2e`, then `image`. The CI workflow runs this. |
-| `make ci-clean RUN=id` | Remove containers, networks and volumes named `foreman-ci-<id>-*`. |
+| `make ci-clean RUN=id` | Remove containers, networks, volumes and images named `foreman-ci-<id>-*`. Docker's build cache cannot be removed by name and is left alone. |
+| `make ci-leftovers RUN=id` | Fail if anything named `foreman-ci-<id>-*` is left, or if Docker cannot be reached. CI runs it after `ci-clean`. |
+| `make tidy` | `go mod tidy`. |
 
 ## 14. Left out on purpose
 

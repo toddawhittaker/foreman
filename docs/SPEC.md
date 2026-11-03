@@ -62,6 +62,29 @@ named by the same variable with a `_FILE` suffix (for example
 `FOREMAN_OIDC_CLIENT_SECRET_FILE`), so Docker secrets and sops work. When
 both are set, Foreman refuses to start and says which one to remove. (P0)
 
+These variables are read at start. A variable that is set but empty counts
+as unset. Foreman reports every problem with them at once, in plain words.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `FOREMAN_MODE` | `managed` | `managed` or `adopted` (section 4) |
+| `FOREMAN_DATA_DIR` | `/data` | The data directory inside the container (3.3) |
+| `FOREMAN_HOST_DATA_DIR` | discovered | The same directory's path on the host (3.5) |
+| `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6) |
+| `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
+| `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
+| `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local` and `headers`. Empty means `local`. `oidc` joins the list with OIDC (12.7) |
+| `FOREMAN_AUTH_USER_HEADER` | none | Header that names the user. Required when `headers` is on (12.5) |
+| `FOREMAN_AUTH_GROUPS_HEADER` | none | Header that lists the user's groups. Required when `headers` is on (12.5) |
+| `FOREMAN_AUTH_REQUIRED_GROUP` | none | Group a user must belong to. Required when `headers` is on (12.5) |
+| `FOREMAN_TRUSTED_PROXIES` | none | Address ranges whose headers are honoured. Required when `headers` is on (12.6) |
+| `FOREMAN_SESSION_IDLE` | `168h` | Idle time before a session ends, as a Go duration (12.8) |
+| `DOCKER_HOST` | `unix:///var/run/docker.sock` | The Docker socket, or a socket proxy |
+
+A `tcp://` `DOCKER_HOST` is not encrypted and not authenticated. Use it
+only for a socket proxy on the same host or on a Docker network shared
+with Foreman, never across a network you do not control (14.2).
+
 3.3. **The data directory** is one mounted path. It holds the worlds, the
 snapshots, and the app database. Its layout is in section 5.2. (P0)
 
@@ -81,7 +104,12 @@ writes into a world is readable and writable by the game's user and group,
 which default to 845:845 (the `factoriotools/factorio` default) and are
 configurable. Foreman's image runs as 845:845 by default, because a
 non-root process cannot change a file's owner: whatever user Foreman runs
-as owns every file it writes. (P0)
+as owns every file it writes. Foreman refuses to start only when neither
+its user ID nor its group ID matches the game's, because then the game
+could not use what Foreman writes. When only the group matches, files
+Foreman writes into a world are group-writable (files 0664, folders 0775).
+Foreman's own database file is the exception: it is 0660, because it holds
+password hashes and session hashes and the game has no need of it. (P0)
 
 3.7. **No downloads at startup.** Foreman never downloads anything when it
 starts. It downloads only a game image or a mod the admin asked for, and
@@ -131,7 +159,9 @@ the world directory's config, readable by the game, and never shown. (P0)
 
 4.6. The game container's shape is fixed by Foreman: no privileged mode,
 no host network, no added capabilities, and bind mounts only from inside
-the data directory. Nothing an admin types in the UI changes that shape
+the data directory. The game container is never given the data
+directory's root, only its world's directory, because the app database
+lives at the root. Nothing an admin types in the UI changes that shape
 except the published game port. (P0)
 
 ### Adopted mode
@@ -550,29 +580,37 @@ local accounts (12.3), trusted proxy headers (12.5), and OpenID Connect
 
 12.3. **Local accounts**: username and password. On first run with no
 users, Foreman shows a one-time setup page to create the first admin; the
-page is reachable only until an admin exists. (P0)
+page is reachable only until an admin exists. When `local` is not an
+enabled sign-in method there is no setup page, and the first user to
+arrive through trusted headers (12.5) becomes the admin. (P0)
 
 12.4. Passwords are stored with a slow, salted password hash, chosen in
-docs/STACK.md. Sign-in failures are rate-limited per username and per
-address. (P0)
+docs/STACK.md. A password has at least 12 characters. Sign-in failures
+are rate-limited per username and per address (limits in 12.11). (P0)
 
 12.5. **Trusted proxy headers** (forward auth from Authentik, Authelia or
-oauth2-proxy): a configured header names the user, and an optional
-configured header lists groups, with an optional required group. Foreman
-honours these headers **only** on requests whose direct peer address is
+oauth2-proxy): a configured header names the user, a second configured
+header lists groups, and a required group names who may sign in. All
+three are required: without a required group, anyone the proxy lets
+through would become an admin. A user outside the group gets a 403 page.
+Foreman honours these headers **only** on requests whose direct peer address is
 inside `FOREMAN_TRUSTED_PROXIES` (a list of address ranges). From any
 other address the headers are ignored. A user seen for the first time is
 created automatically. (P0)
 
-12.6. If trusted headers are enabled and `FOREMAN_TRUSTED_PROXIES` is
-empty, Foreman refuses to start. (P0)
+12.6. Sign-in methods are turned on with `FOREMAN_AUTH_METHODS` (3.2). If
+trusted headers are enabled and `FOREMAN_TRUSTED_PROXIES` is empty,
+Foreman refuses to start. (P0)
 
 12.7. **OpenID Connect**: discovery URL, client ID and client secret
 (env or `_FILE`), and an optional required group claim. (P1)
 
 12.8. Sessions are server-side, expire after a configurable idle time,
-and end on sign-out. Session cookies are `HttpOnly`, `SameSite=Lax`, and
-`Secure` when served over HTTPS. (P0)
+and end on sign-out. The default idle time is 7 days
+(`FOREMAN_SESSION_IDLE`). Session cookies are `HttpOnly`, `SameSite=Lax`,
+and `Secure` when `FOREMAN_PUBLIC_URL` starts with `https://`. Users who
+arrive through trusted headers get no session cookie: the proxy decides
+who is signed in, and signing out of Foreman ends nothing for them. (P0)
 
 12.9. **Audit log**: who did what and when, for start, stop, restart,
 switch, snapshot and restore, mod changes, settings changes, user changes,
@@ -587,6 +625,19 @@ is shown once when created, stored only as a hash, can have an expiry
 date, and has one of two scopes: **read** (only the read tools in 21.3)
 or **operate** (also the actions in 21.4). Tokens are rate-limited. A
 token cannot create tokens, manage users, or sign in to the UI. (P1)
+
+12.11. **Sign-in limits.** A username is allowed 5 failed attempts and an
+address 20, in a fixed 15-minute window that starts at the first failure.
+Usernames are compared without regard to case, in ASCII only, to match the
+database. IPv6 addresses are counted by their /64, since one host usually
+holds a whole /64. Each attempt is counted before its password is checked,
+so a burst of parallel requests cannot get past the limit; a success
+clears the username's count. At most 4 password checks run at once, and a
+sign-in beyond that gets a 503 page saying Foreman is busy, with
+`Retry-After: 1`. The counts are in memory and start again when Foreman
+restarts. Because the limit is per username, anyone who can reach the
+sign-in page can keep a known username locked out by failing on purpose;
+the per-address limit does not prevent this. (P0)
 
 ## 13. Foreman's own settings
 
@@ -635,7 +686,10 @@ endpoints:
   `DELETE /containers/{id}`.
 
 Never: exec, build, volumes, networks, image delete, or anything under
-`/system` or `/auth`. Adding an endpoint changes this section first. (P0)
+`/system` or `/auth`. Adding an endpoint changes this section first. The
+client refuses any path with a `.` or `..` segment, and refuses every
+redirect, so a daemon or proxy cannot send a request to a path this list
+never checked. (P0)
 
 To share a network with the game (4.4), Foreman reads its own container
 with `GET /containers/{id}/json` and names that network in the
@@ -658,7 +712,10 @@ save, 200 MB for a mod) and are written to a temporary file and checked
 before they replace anything. (P0)
 
 14.7. **Requests that change state** require a signed-in session and
-protection against cross-site request forgery. (P0)
+protection against cross-site request forgery. A browser post is accepted
+only from Foreman's own origin, or from the origin of
+`FOREMAN_PUBLIC_URL` when that is set, which covers a proxy that rewrites
+the `Host` header. (P0)
 
 14.8. **Secrets** (the RCON password, the portal token, the OIDC client
 secret, the game password, `FOREMAN_SECRET_KEY`, and session tokens) never
@@ -686,6 +743,15 @@ the AI. Every tool result that carries such text marks it as untrusted
 player content, and no MCP tool can delete, force-stop, restore, change
 mods or settings, run raw RCON commands, or manage users and tokens.
 (P1)
+
+14.13. **Pages refuse framing.** Every page carries
+`Content-Security-Policy: frame-ancestors 'none'` and
+`X-Frame-Options: DENY`, so no other site can show Foreman inside a frame
+and trick a click. (P0)
+
+14.14. **Sign-in logs name the client, never the username.** A failed or
+refused sign-in is logged with the client address and no username,
+because people sometimes type a password into the username field. (P0)
 
 ## 15. Logging
 
