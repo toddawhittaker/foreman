@@ -20,8 +20,11 @@ pull request and every push to `main`. Its jobs run in parallel and
 together check the same things as `make ci`, plus the image size limit:
 `make verify` is split into `vet`, `lint` and `test` jobs, the type check
 runs with `e2e`, and `image` builds the container. A final `ci` job passes
-only when every other job passed. A ruleset on `main` requires a pull
-request and the `ci` job, so adding a job never needs a ruleset change. Read a failing run's log with `gh run view --log-failed`.
+only when every other job passed. A ruleset on `main` blocks direct
+pushes, force pushes and deletion, and requires a pull request whose
+branch is up to date with `main` and whose `ci` job passed. Adding a job
+never needs a ruleset change. Read a failing run's log with
+`gh run view --log-failed`.
 
 CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
 system changes only when we change it. A push to a pull request cancels
