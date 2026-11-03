@@ -195,3 +195,56 @@ test("a world a newer Foreman wrote cannot be renamed", async ({ page, foreman }
   await expect(page.getByRole("button", { name: "Rename world" })).toHaveCount(0);
   await checkPage(page);
 });
+
+// DESIGN 6, "The 320 px rules": a long name wraps; checkPage fails on sideways scroll at 320 px.
+test("a very long world name wraps on the list and the world page", async ({ page, foreman }) => {
+  await createAdmin(page);
+  const long = "Family-base-".repeat(8) + "x".repeat(40);
+  seedWorld(foreman, "long", { name: long, game_version: "2.0.72", space_age: true });
+  await page.goto("/worlds");
+  await expect(page.getByRole("link", { name: long })).toBeVisible();
+  await checkPage(page);
+  await page.goto("/worlds/long");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(long);
+  await checkPage(page);
+});
+
+// DESIGN 6, Shell: the current tab is orange, a hovered tab is grey.
+test("the Worlds tab marks the current page and hovers grey", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
+  const tab = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" });
+  for (const path of ["/worlds", "/worlds/alpha", "/import"]) {
+    await page.goto(path);
+    await expect(tab).toHaveAttribute("aria-current", "page");
+  }
+  const face = () => tab.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const current = await face();
+  await page.goto("/worlds/alpha/saves");
+  await expect(tab).not.toHaveAttribute("aria-current", "page");
+  const idle = await face();
+  await tab.hover();
+  const hover = await face();
+  const button = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.background = "var(--color-button-hover)";
+    document.body.append(probe);
+    const c = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return c;
+  });
+  expect(hover).toBe(button);
+  expect(hover).not.toBe(current);
+  expect(idle).not.toBe(current);
+});
+
+test("import radio groups have no default fieldset border", async ({ page, foreman }) => {
+  await createAdmin(page);
+  mkdirSync(join(foreman.dataDir, "import", "my-folder"), { recursive: true });
+  writeFileSync(join(foreman.dataDir, "import", "my-folder", "a.zip"), "x");
+  await page.goto("/import");
+  const fieldset = page.locator("fieldset").first();
+  await expect(fieldset).toBeVisible();
+  expect(await fieldset.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+  await checkPage(page);
+});
