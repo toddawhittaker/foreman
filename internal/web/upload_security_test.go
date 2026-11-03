@@ -436,9 +436,9 @@ func TestUploadWithLyingContentLength(t *testing.T) {
 	sc.ls.noStaging()
 }
 
-// R19: when the disk fills partway through an upload with no declared
-// length, the temp file is removed, no save or world appears, and the
-// space is given back.
+// R19: when the disk fills partway through an upload (here another writer
+// takes the rest of the space after the upload began), the temp file is
+// removed, no save or world appears, and the space is given back.
 func TestDiskFullMidUpload(t *testing.T) {
 	if !onTinyFS(t, "size=3m") {
 		return
@@ -450,29 +450,36 @@ func TestDiskFullMidUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"/worlds/" + sc.id + "/saves", PathImportUpload} {
-		pr, pw := io.Pipe()
-		mw := multipart.NewWriter(pw)
-		go func() {
-			if path == PathImportUpload {
-				_ = mw.WriteField("name", "Imported")
-				_ = mw.WriteField("game_version", "2.0.72")
-			}
-			fw, _ := mw.CreateFormFile("save", "big.zip")
-			chunk := bytes.Repeat([]byte("z"), 64<<10)
-			for range 100 { // 6.4 MB, more than the disk holds
-				if _, err := fw.Write(chunk); err != nil {
-					return
-				}
-			}
-			_ = pw.CloseWithError(mw.Close())
-		}()
-		got := sc.send(t, path, mw.FormDataContentType(), pr, -1)
-		_ = pr.Close()
-		if got.StatusCode == http.StatusSeeOther || got.StatusCode == http.StatusOK || got.StatusCode >= 500 {
-			t.Errorf("%s: status %d, want a refusal in words", path, got.StatusCode)
+		conn, rest := sc.slowUpload(t, path, "big.zip", bytes.Repeat([]byte("z"), 2<<20))
+		// Send enough to start the temp file, then wait until it has grown.
+		if _, err := conn.Write(rest[:600<<10]); err != nil {
+			t.Fatal(err)
 		}
-		if !strings.Contains(got.body, "disk filled up") {
+		rest = rest[600<<10:]
+		for range 100 {
+			if now, _ := world.FreeBytes(sc.data); now+256<<10 < free {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		// Another writer takes whatever is left.
+		filler := filepath.Join(sc.data, "filler")
+		fillDisk(t, filler)
+		_, _ = conn.Write(rest)
+		status, body, ok := answer(conn, 10*time.Second)
+		_ = conn.Close()
+		if err := os.Remove(filler); err != nil {
+			t.Fatal(err)
+		}
+		if !ok || status == http.StatusSeeOther || status == http.StatusOK || status >= 500 {
+			t.Errorf("%s: status %d (answered %v), want a refusal in words", path, status, ok)
+		}
+		if !strings.Contains(body, "disk filled up") {
 			t.Errorf("%s: the page does not say the disk filled up", path)
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) && len(sc.tree(t)) != len(before) {
+			time.Sleep(50 * time.Millisecond)
 		}
 		sameData(t, path, sc.tree(t), before)
 		after, err := world.FreeBytes(sc.data)
@@ -481,6 +488,22 @@ func TestDiskFullMidUpload(t *testing.T) {
 		}
 		if after+64<<10 < free {
 			t.Errorf("%s: free space went from %d to %d; the partial upload was kept", path, free, after)
+		}
+	}
+}
+
+// fillDisk writes to name until the filesystem has no room left.
+func fillDisk(t *testing.T, name string) {
+	t.Helper()
+	f, err := os.Create(name) //nolint:gosec // a test temp file
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	chunk := make([]byte, 64<<10)
+	for {
+		if _, err := f.Write(chunk); err != nil {
+			return
 		}
 	}
 }

@@ -122,7 +122,7 @@ func TestLoadChoiceError(t *testing.T) {
 		t.Errorf("status %d", rec.Code)
 	}
 	wantIn(t, "saves page", body, msgSaveGone, `href="#load-newest"`, `id="load-newest"`)
-	if n := strings.Count(body, `name="load"`); n == 0 || strings.Count(body, `aria-invalid="true"> `) < n {
+	if n := strings.Count(body, `name="load"`); n == 0 || strings.Count(body, `aria-invalid="true" aria-describedby="load-save-error">`) < n {
 		t.Errorf("not every radio of %d is marked invalid", n)
 	}
 }

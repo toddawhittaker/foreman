@@ -31,7 +31,7 @@ func (s *server) worldRoutes() {
 	s.mux.HandleFunc("GET "+PathDeleted, s.requireUser(s.handleDeleted))
 	s.mux.HandleFunc("GET "+PathImport, s.requireUser(s.handleImportForm))
 	s.handleLong("POST "+PathImportFolder, s.requireUser(s.handleImportFolder))
-	s.handleUpload("POST "+PathImportUpload, MaxSaveUpload, s.requireUser(s.handleImportUpload))
+	s.handleUpload("POST "+PathImportUpload, MaxSaveUpload, s.requireUser(s.guardUpload(s.handleImportUpload)))
 }
 
 // WorldPage is one world's page (SPEC 5.4, 5.8; DESIGN 8.2).
@@ -83,6 +83,23 @@ func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/ren
 func (p WorldPage) SavesPath() string     { return worldPath(p.World.ID) + "/saves" }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
+
+// DeleteRefusal says why the world cannot be deleted, or is "" when it can.
+func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World) }
+
+// deleteRefusal says, in words, why a world cannot be deleted, so the page
+// can show that instead of a button that would be refused (DESIGN 7.1).
+func deleteRefusal(w world.Summary) string {
+	switch {
+	case w.Active:
+		return "This is the active world. Switch to another world before deleting it."
+	case w.Newer:
+		return "This world is from a newer Foreman, so this version will not delete it."
+	case w.Unreadable:
+		return "Because its world.json cannot be read, Foreman will not delete this world."
+	}
+	return ""
+}
 
 // FolderPath and UploadPath are where the two forms post.
 func (ImportPage) FolderPath() string { return PathImportFolder }
@@ -349,6 +366,9 @@ func (p DeletePage) hasErrors() bool { return p.NameError != "" || p.Error != ""
 // Problems lists the name field's error for the summary.
 func (p DeletePage) Problems() []Problem { return problems(Problem{"confirm-name", p.NameError}) }
 
+// Refusal says why the world cannot be deleted, or is "" when it can.
+func (p DeletePage) Refusal() string { return deleteRefusal(p.World) }
+
 // Path is where the confirmation posts.
 func (p DeletePage) Path() string { return deletePath(p.World.ID) }
 
@@ -364,8 +384,8 @@ func (DeletedPage) AllPath() string { return PathDeleted + "?all=1" }
 // RestorePath is the confirmation page for one snapshot.
 func (DeletedPage) RestorePath(id, snap string) string { return restorePath(id, snap) }
 
-// Reason says why a snapshot was taken, in words.
-func (DeletedPage) Reason(reason string) string { return reasonText(reason) }
+// Reason says why a snapshot was taken, or "" when its label already says so.
+func (DeletedPage) Reason(reason, label string) string { return showReason(reason, label) }
 
 func (s *server) handleDeleteForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.findWorld(w, r, u)

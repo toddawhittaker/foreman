@@ -73,11 +73,24 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
   await expect(page.getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
   await expect(rows).toHaveCount(2);
-  await expect(rows.first()).toContainText("Before restore");
+  await expect(rows.first().locator("td").first()).toHaveText(/^Before restore\s*Restore/);
   expect(readFileSync(save, "utf8")).toBe("the first save");
   expect(statSync(save).mtime.getTime()).toBe(savedAt.getTime());
   expect(() => statSync(join(dir, "saves", "later.zip"))).toThrow();
   await checkPage(page);
+});
+
+// The reason shows above the label only when it adds words the label lacks.
+test("a snapshot's reason is not repeated by its label", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "family-base");
+  await page.goto("/worlds/family-base/snapshots");
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  const cell = page.locator("tbody tr").first().locator("td").first();
+  await expect(cell).toHaveText(/^Manual snapshot\s*Restore/);
+  await page.getByLabel("Label (optional)").fill("Before the rocket");
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  await expect(page.locator("tbody tr").first().locator("td").first()).toHaveText(/^Manual\s*Before the rocket\s*Restore/);
 });
 
 test("cancel leaves the world as it is", async ({ page, foreman }) => {

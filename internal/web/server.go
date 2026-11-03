@@ -43,6 +43,8 @@ type server struct {
 	mux      *http.ServeMux
 	// uploadLimits holds the body limit of each upload route, by pattern.
 	uploadLimits map[string]int64
+	// uploadSlots holds one entry per upload in progress (see guardUpload).
+	uploadSlots chan struct{}
 }
 
 // NewHandler returns the HTTP handler for the whole app.
@@ -72,6 +74,7 @@ func NewHandler(d Deps) (http.Handler, error) {
 		},
 		mux:          http.NewServeMux(),
 		uploadLimits: map[string]int64{},
+		uploadSlots:  make(chan struct{}, maxUploads),
 	}
 	s.routes()
 

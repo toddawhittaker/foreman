@@ -1,10 +1,9 @@
 package web
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"net/http"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -100,8 +99,8 @@ func (p RestorePage) UndoPath() string { return restorePath(p.WorldID, p.Undo) }
 // SnapshotsPath is where cancelling goes.
 func (p RestorePage) SnapshotsPath() string { return snapshotsPath(p.WorldID) }
 
-// Reason says why a snapshot was taken, in words.
-func (SnapshotsPage) Reason(reason string) string { return reasonText(reason) }
+// Reason says why a snapshot was taken, or "" when its label already says so.
+func (SnapshotsPage) Reason(reason, label string) string { return showReason(reason, label) }
 
 // reasonText says why a snapshot was taken, in words.
 func reasonText(reason string) string {
@@ -116,29 +115,22 @@ func reasonText(reason string) string {
 	return "Before " + strings.ReplaceAll(strings.TrimPrefix(reason, "before-"), "-", " ")
 }
 
+// showReason returns the reason in words, or "" when the label starts with
+// the same words, so "Manual" is not shown above "Manual snapshot".
+func showReason(reason, label string) string {
+	text := reasonText(reason)
+	have, lead := strings.Fields(strings.ToLower(label)), strings.Fields(strings.ToLower(text))
+	if len(have) >= len(lead) && slices.Equal(have[:len(lead)], lead) {
+		return ""
+	}
+	return text
+}
+
 func (s *server) snapshotRoutes() {
 	s.mux.HandleFunc("GET "+PathWorldSnapshots, s.requireUser(s.handleSnapshots))
 	s.mux.HandleFunc("POST "+PathWorldSnapshots, s.requireUser(s.handleTakeSnapshot))
 	s.mux.HandleFunc("GET "+PathSnapshotRestore, s.requireUser(s.handleRestoreForm))
 	s.handleLong("POST "+PathSnapshotRestore, s.requireUser(s.handleRestore))
-}
-
-// worldName returns the world's name, or its id when world.json cannot be
-// read. found is false when there is no such world.
-func (s *server) worldName(id string) (name string, found bool, err error) {
-	w, err := s.worlds.OpenWorld(id)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, world.ErrNotFolder) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	defer func() { _ = w.Close() }()
-	meta, err := world.ReadMeta(w)
-	if err != nil {
-		return id, true, nil
-	}
-	return meta.Name, true, nil
 }
 
 func (s *server) notFound(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -167,17 +159,12 @@ func (s *server) snapshotsPage(r *http.Request, id, name string) (SnapshotsPage,
 }
 
 func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store.User) {
-	id := r.PathValue("id")
-	name, found, err := s.worldName(id)
-	if err != nil {
-		s.fail(w, r, "read world", err)
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
 		return
 	}
-	if !found {
-		s.notFound(w, r, u)
-		return
-	}
-	p, err := s.snapshotsPage(r, id, name)
+	id := sum.ID
+	p, err := s.snapshotsPage(r, id, sum.Name)
 	if err != nil {
 		s.notFoundOrFail(w, r, u, "list snapshots", err)
 		return
@@ -220,21 +207,17 @@ func checkLabel(label string) (clean, problem string) {
 
 // handleTakeSnapshot takes a manual snapshot (SPEC 6.3).
 func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u store.User) {
-	id := r.PathValue("id")
-	name, found, err := s.worldName(id)
-	if err != nil {
-		s.fail(w, r, "read world", err)
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
 		return
 	}
-	if !found {
-		s.notFound(w, r, u)
-		return
-	}
+	id, name := sum.ID, sum.Name
 	if !s.readForm(w, r) {
 		return
 	}
 	label, problem := checkLabel(r.PostFormValue("label"))
 	var snap world.Snapshot
+	var err error
 	if problem == "" {
 		snap, err = s.worlds.TakeSnapshot(id, label, u.Username)
 	}
@@ -266,11 +249,13 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		s.notFound(w, r, u)
 		return RestorePage{}, false
 	}
-	name, found, err := s.worldName(id)
-	if err != nil {
+	sum, err := s.worlds.Get(r.Context(), id)
+	found := err == nil
+	if status, _ := worldError(err); err != nil && status != http.StatusNotFound {
 		s.fail(w, r, "read world", err)
 		return RestorePage{}, false
 	}
+	name := sum.Name
 	snap, err := s.worlds.Snapshot(id, snapName)
 	if err != nil {
 		s.notFoundOrFail(w, r, u, "read snapshot", err)

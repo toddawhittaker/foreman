@@ -79,9 +79,9 @@
     {{- $invalid := .LoadError}}
     <fieldset{{if .LoadError}} aria-describedby="load-save-error"{{end}}>
       <legend>Save to load</legend>
-      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true"{{end}}> The newest save</label>
+      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> The newest save</label>
       {{- range .Rows}}
-      <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}{{if $invalid}} aria-invalid="true"{{end}}> {{.Name}}</label>
+      <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> {{.Name}}</label>
       {{- end}}
       {{- with .LoadError}}
       <p class="error" id="load-save-error"><strong>Error:</strong> {{.}}</p>
