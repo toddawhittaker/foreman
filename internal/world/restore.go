@@ -36,10 +36,6 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 		return Snapshot{}, err
 	}
 	defer unlock()
-	// Held from the name check to the swap, so no world made or renamed
-	// meanwhile can take the restored name (R12).
-	m.createMu.Lock()
-	defer m.createMu.Unlock()
 
 	snap, err := m.Snapshot(id, name)
 	if err != nil {
@@ -80,7 +76,11 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 		_ = worlds.RemoveAll(staging)
 		return before, err
 	}
-	old, err := swapIn(worlds, staging, id)
+	var old string
+	err = m.commitStaged(ctx, worlds, staging, id, snap, func() (err error) {
+		old, err = swapIn(worlds, staging, id)
+		return err
+	})
 	if err != nil {
 		return before, err
 	}
@@ -100,19 +100,12 @@ func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, e
 // checkRestore runs every check a restore needs before it writes anything:
 // the snapshot's world.json is not newer than this Foreman and its name is
 // not another world's (R12), there is room for the copies (R19), and the
-// snapshot's files match its manifest (R20). Call with createMu held. On
+// snapshot's files match its manifest (R20). It takes no lock, so it never
+// holds up other worlds; commitStaged checks the name again at the swap. On
 // success the space stays reserved until release is called.
 func (m *Manager) checkRestore(ctx context.Context, id string, snap Snapshot) (release func(), err error) {
-	// A snapshot whose world.json cannot be read restores under the id.
-	if meta, err := m.snapshotMeta(id, snap.Name); err == nil {
-		if meta.Newer() {
-			return nil, ErrNewerFormat
-		}
-		if _, err := m.checkName(ctx, id, meta.Name); errors.Is(err, ErrNameTaken) {
-			return nil, ErrRestoreNameTaken
-		} else if err != nil && !errors.Is(err, ErrNameEmpty) {
-			return nil, err
-		}
+	if err := m.checkRestoreName(ctx, id, snap); err != nil {
+		return nil, err
 	}
 	release, err = Reserve(m.dirs.Worlds, copyBytes(snap.Files))
 	if err != nil {
@@ -125,8 +118,45 @@ func (m *Manager) checkRestore(ctx context.Context, id string, snap Snapshot) (r
 	return release, nil
 }
 
+// checkRestoreName refuses a snapshot written by a newer Foreman and one
+// whose world name another world now has (R12).
+func (m *Manager) checkRestoreName(ctx context.Context, id string, snap Snapshot) error {
+	// A snapshot whose world.json cannot be read restores under the id.
+	meta, err := m.snapshotMeta(id, snap.Name)
+	if err != nil {
+		return nil //nolint:nilerr // nothing to compare; the id is the name
+	}
+	if meta.Newer() {
+		return ErrNewerFormat
+	}
+	if _, err := m.checkName(ctx, id, meta.Name); errors.Is(err, ErrNameTaken) {
+		return ErrRestoreNameTaken
+	} else if err != nil && !errors.Is(err, ErrNameEmpty) {
+		return err
+	}
+	return nil
+}
+
+// commitStaged runs swap, which puts the staged world in place. The name is
+// checked again first, with createMu held until swap is done, so no world
+// made or renamed meanwhile can take the restored name (R12). The lock is
+// held only for this step, not for the copying before it. A refused name
+// removes the staged world.
+func (m *Manager) commitStaged(ctx context.Context, worlds *os.Root, staging, id string, snap Snapshot, swap func() error) error {
+	if m.afterStage != nil {
+		m.afterStage()
+	}
+	m.createMu.Lock()
+	defer m.createMu.Unlock()
+	if err := m.checkRestoreName(ctx, id, snap); err != nil {
+		_ = worlds.RemoveAll(staging)
+		return err
+	}
+	return swap()
+}
+
 // restoreDeleted recreates a deleted world from a snapshot. The checks come
-// first and nothing is written until they pass. Call with createMu held.
+// first and nothing is written until they pass.
 func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) error {
 	release, err := m.checkRestore(ctx, id, snap)
 	if err != nil {
@@ -143,7 +173,10 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		_ = worlds.RemoveAll(staging)
 		return err
 	}
-	if err := worlds.Rename(staging, id); err != nil {
+	err = m.commitStaged(ctx, worlds, staging, id, snap, func() error {
+		return worlds.Rename(staging, id)
+	})
+	if err != nil {
 		_ = worlds.RemoveAll(staging)
 		return err
 	}

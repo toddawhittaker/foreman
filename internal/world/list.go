@@ -17,13 +17,15 @@ type Summary struct {
 	GameVersion string
 	SpaceAge    bool
 	// LastPlayed is the newest save's modification time; zero when the
-	// world has no saves.
+	// world has no saves or LastPlayedUnknown is set.
 	LastPlayed time.Time
 	DiskBytes  uint64
 	// SizeUnknown is true when DiskBytes could not be measured, for one
 	// because a folder in the world cannot be read.
 	SizeUnknown bool
-	Active      bool
+	// LastPlayedUnknown is true when the saves folder cannot be read.
+	LastPlayedUnknown bool
+	Active            bool
 	// Newer is true when a newer Foreman wrote world.json; the world is
 	// listed but cannot be changed.
 	Newer bool
@@ -114,8 +116,10 @@ func summarize(worlds *os.Root, id string) (Summary, error) {
 	if s.DiskBytes, err = diskUse(w); err != nil {
 		s.DiskBytes, s.SizeUnknown = 0, true
 	}
-	s.LastPlayed, err = lastPlayed(w)
-	return s, err
+	if s.LastPlayed, err = lastPlayed(w); err != nil {
+		s.LastPlayed, s.LastPlayedUnknown = time.Time{}, true
+	}
+	return s, nil
 }
 
 // diskUse adds up the sizes of the regular files under root. Symlinks are

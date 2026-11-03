@@ -55,6 +55,12 @@ type Manager struct {
 	// createMu is held while a new world's id is chosen and its folder made,
 	// so two creations cannot pick the same id or name.
 	createMu sync.Mutex
+
+	// addSaveWait is how long AddSave waits for a busy world.
+	addSaveWait time.Duration
+	// afterStage is a test seam, called once a restore has staged its world
+	// and before the final name check. Nil in production.
+	afterStage func()
 }
 
 // ErrNameTaken is returned when another world already has the name,
@@ -78,7 +84,7 @@ func NewManager(dirs Dirs, active ActiveStore, now func() time.Time) (*Manager, 
 			return nil, fmt.Errorf("set mode of %s: %w", d, err)
 		}
 	}
-	return &Manager{dirs: dirs, active: active, now: now, log: slog.Default()}, nil
+	return &Manager{dirs: dirs, active: active, now: now, log: slog.Default(), addSaveWait: AddSaveWait}, nil
 }
 
 // Dirs returns the folders the Manager works in.

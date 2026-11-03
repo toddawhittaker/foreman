@@ -14,6 +14,10 @@ import (
 // ErrActive is returned when deleting the active world (SPEC 5.10).
 var ErrActive = errors.New("this is the active world, and the active world cannot be deleted")
 
+// ErrUnreadable is returned when a world's world.json cannot be read. Fail
+// safe: the world is not deleted.
+var ErrUnreadable = errors.New("this world's world.json cannot be read, so Foreman will not delete it")
+
 // ErrWrongName is returned when the name typed to confirm a delete does not
 // match the world's name.
 var ErrWrongName = errors.New("the name typed does not match the world's name")
@@ -34,13 +38,15 @@ func (m *Manager) Delete(ctx context.Context, id, typedName string, finalSnapsho
 	if err != nil {
 		return err
 	}
-	// A world whose world.json is unreadable can still be deleted, by id.
 	meta, err := readChangeable(w)
 	_ = w.Close()
 	if errors.Is(err, ErrNewerFormat) {
 		return err
 	}
-	name := displayName(id, meta, err)
+	if err != nil {
+		return ErrUnreadable
+	}
+	name := displayName(id, meta, nil)
 	activeID, _, err := m.active.ActiveWorld(ctx)
 	if err != nil {
 		return err

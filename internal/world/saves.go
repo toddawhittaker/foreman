@@ -38,8 +38,12 @@ var (
 	ErrSaveName     = errors.New("a save's name must end in .zip, must not start with a dot, and must not contain a slash")
 	ErrSaveExists   = errors.New("this world already has a save with that name. Rename the file and upload it again")
 	ErrSaveNotFound = errors.New("this world has no save with that name")
-	ErrWorldChanged = errors.New("the world was restored or deleted while the file was uploading, so the upload was not added. Upload it again")
+	// ErrWorldChanged's text is the wording shown to the user as it is.
+	ErrWorldChanged = errors.New("This world was changed or deleted while your upload was running. Nothing was saved; upload it again.") //nolint:staticcheck // shown to the user as written
 )
+
+// AddSaveWait is how long AddSave waits for a busy world before giving up.
+const AddSaveWait = 60 * time.Second
 
 // maxSaveNameLength is the longest file name most filesystems allow.
 const maxSaveNameLength = 255
@@ -174,7 +178,8 @@ func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
 // as the upload helper returns it, into the saves folder as name. It refuses
 // a name that already exists: no upload overwrites a save (SPEC 5.11). The
 // temp file is removed whatever happens, so the caller has nothing to clean
-// up.
+// up. A busy world is waited for, up to AddSaveWait, so a finished upload is
+// not thrown away.
 func (m *Manager) AddSave(id, name, temp string) error {
 	root, err := m.OpenWorld(id)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -189,20 +194,20 @@ func (m *Manager) AddSave(id, name, temp string) error {
 	if !ValidSaveName(name) {
 		return ErrSaveName
 	}
-	unlock, err := m.Lock(id)
+	unlock, err := m.lockWait(id, m.addSaveWait)
 	if err != nil {
 		return err
 	}
 	defer unlock()
 
-	if _, err := readChangeable(root); err != nil {
-		return err
-	}
-	// A restore or delete while the upload streamed replaced the folder
-	// the temp file was in.
+	// A restore or delete while the upload streamed or while this waited
+	// replaced the folder the temp file was in; root is then the old one.
 	if _, err := root.Lstat(temp); errors.Is(err, fs.ErrNotExist) {
 		return ErrWorldChanged
 	} else if err != nil {
+		return err
+	}
+	if _, err := readChangeable(root); err != nil {
 		return err
 	}
 	final := path.Join(SavesDir, name)

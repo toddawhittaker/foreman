@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 	"syscall"
 )
 
@@ -120,14 +121,16 @@ func FreeBytes(dir string) (uint64, error) {
 const SpaceReserve uint64 = 2_000_000_000
 
 // reserveBytes is SpaceReserve; tests on a tiny filesystem lower it.
-var reserveBytes = SpaceReserve
+var reserveBytes atomic.Uint64
+
+func init() { reserveBytes.Store(SpaceReserve) }
 
 // SetSpaceReserveForTest sets the reserve for a test that runs on a
 // filesystem smaller than SpaceReserve. It returns a function that puts
 // the reserve back. Never call it outside tests.
 func SetSpaceReserveForTest(n uint64) (restore func()) {
-	reserveBytes = n
-	return func() { reserveBytes = SpaceReserve }
+	reserveBytes.Store(n)
+	return func() { reserveBytes.Store(SpaceReserve) }
 }
 
 // ErrNoSpace is wrapped by Reserve and CheckSpace when the disk is too full.
@@ -181,9 +184,10 @@ func checkSpace(free, inFlight, need uint64) error {
 	if free > inFlight {
 		avail = free - inFlight
 	}
-	if want := need + reserveBytes; avail < want {
+	reserve := reserveBytes.Load()
+	if want := need + reserve; avail < want {
 		return fmt.Errorf("%w: this needs %s, including %s kept free for the game, but only %s is free. Free some space and try again",
-			ErrNoSpace, FormatBytes(want), FormatBytes(reserveBytes), FormatBytes(avail))
+			ErrNoSpace, FormatBytes(want), FormatBytes(reserve), FormatBytes(avail))
 	}
 	return nil
 }
