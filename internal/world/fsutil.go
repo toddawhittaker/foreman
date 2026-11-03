@@ -107,27 +107,40 @@ func syncDir(root *os.Root, dir string) error {
 // FreeBytes returns the space an unprivileged process can still use on the
 // filesystem holding dir.
 func FreeBytes(dir string) (uint64, error) {
+	free, _, err := diskSpace(dir)
+	return free, err
+}
+
+// diskSpace returns the free bytes and the total size of dir's filesystem.
+func diskSpace(dir string) (free, total uint64, err error) {
 	var st syscall.Statfs_t
 	if err := syscall.Statfs(dir, &st); err != nil {
-		return 0, fmt.Errorf("read free space: %w", err)
+		return 0, 0, fmt.Errorf("read free space: %w", err)
 	}
-	return st.Bavail * uint64(st.Bsize), nil //nolint:gosec // Bsize is a positive block size
+	bsize := uint64(st.Bsize) //nolint:gosec // Bsize is a positive block size
+	return st.Bavail * bsize, st.Blocks * bsize, nil
 }
 
 // ErrNoSpace is wrapped by CheckSpace when the disk is too full.
 var ErrNoSpace = errors.New("not enough free disk space")
 
 // CheckSpace refuses an operation that will write need bytes on dir's
-// filesystem unless that much plus a 1% margin is free, so it is refused
-// up front rather than failing halfway.
+// filesystem unless that much plus 1% of the filesystem would stay free.
+// The reserve leaves room for the game's own autosaves, and refusing up
+// front beats failing halfway.
 func CheckSpace(dir string, need uint64) error {
-	free, err := FreeBytes(dir)
+	free, total, err := diskSpace(dir)
 	if err != nil {
 		return err
 	}
-	if want := need + need/100; free < want {
-		return fmt.Errorf("%w: this needs %s but only %s is free. Free some space and try again",
-			ErrNoSpace, FormatBytes(want), FormatBytes(free))
+	return checkSpace(free, total, need)
+}
+
+func checkSpace(free, total, need uint64) error {
+	reserve := total / 100
+	if want := need + reserve; free < want {
+		return fmt.Errorf("%w: this needs %s, including %s kept free for the game, but only %s is free. Free some space and try again",
+			ErrNoSpace, FormatBytes(want), FormatBytes(reserve), FormatBytes(free))
 	}
 	return nil
 }
