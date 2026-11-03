@@ -79,7 +79,9 @@ so in plain words. (P0)
 3.6. **File ownership.** Foreman runs as a non-root user. Everything it
 writes into a world is readable and writable by the game's user and group,
 which default to 845:845 (the `factoriotools/factorio` default) and are
-configurable. (P0)
+configurable. Foreman's image runs as 845:845 by default, because a
+non-root process cannot change a file's owner: whatever user Foreman runs
+as owns every file it writes. (P0)
 
 3.7. **No downloads at startup.** Foreman never downloads anything when it
 starts. It downloads only a game image or a mod the admin asked for, and
@@ -632,8 +634,13 @@ endpoints:
   `GET /images/{name}/json`, `POST /containers/create`, and
   `DELETE /containers/{id}`.
 
-Never: exec, build, volumes, image delete, or anything under `/system`
-or `/auth`. Adding an endpoint changes this section first. (P0)
+Never: exec, build, volumes, networks, image delete, or anything under
+`/system` or `/auth`. Adding an endpoint changes this section first. (P0)
+
+To share a network with the game (4.4), Foreman reads its own container
+with `GET /containers/{id}/json` and names that network in the
+`POST /containers/create` request. It never creates or connects networks;
+the network comes from the admin's compose file.
 
 14.4. **What Foreman will never do with Docker**: create a privileged
 container, use the host network or PID namespace, add capabilities, mount
