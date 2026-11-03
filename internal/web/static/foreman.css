@@ -135,9 +135,11 @@ input {
 /* Base elements */
 body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--space-1);
   min-block-size: 100dvh;
+  overflow-wrap: anywhere;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -246,6 +248,41 @@ main {
   text-decoration: none;
 }
 
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tabs li {
+  max-inline-size: none;
+}
+
+.tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  color: var(--color-text);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+/* Grey on hover keeps orange meaning only "selected" (DESIGN 6, Shell). */
+.tabs a:hover {
+  background: var(--color-button-hover);
+  color: var(--color-on-button);
+}
+
+.tabs a[aria-current="page"] {
+  background: var(--color-highlight);
+  color: var(--color-on-highlight);
+  font-weight: 700;
+}
+
 .signout {
   display: flex;
   flex-wrap: wrap;
@@ -263,6 +300,7 @@ main {
 
 main {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--space-5);
   padding: var(--space-3);
@@ -289,7 +327,9 @@ main {
   box-shadow: var(--bevel-sunken);
 }
 
-form.panel {
+form.panel,
+.panel > form {
+  display: grid;
   gap: var(--space-4);
 }
 
@@ -383,6 +423,22 @@ label {
   font-weight: 600;
 }
 
+/* A radio group: no browser border, the legend reads like a label. */
+fieldset {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .hint {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
@@ -450,6 +506,24 @@ label {
   color: var(--color-danger-text);
 }
 
+.message--success {
+  background: var(--color-ok-bg);
+  border-color: var(--color-ok);
+}
+
+.message--success :is(h2, p):first-child > strong:first-child {
+  color: var(--color-ok);
+}
+
+.message--note {
+  background: var(--color-info-bg);
+  border-color: var(--color-info);
+}
+
+.message--note :is(h2, p):first-child > strong:first-child {
+  color: var(--color-info);
+}
+
 /* 7.4 Confirming risky actions: a flat danger box, no bevel. */
 .confirm {
   container-type: inline-size;
@@ -478,6 +552,7 @@ label {
   gap: var(--space-3);
   min-block-size: var(--target-min);
   font-weight: 400;
+  overflow-wrap: anywhere;
 }
 
 .check input {
@@ -621,6 +696,12 @@ td {
   border-block-end: var(--border-width) solid var(--color-rule);
   text-align: start;
   vertical-align: middle;
+  overflow-wrap: normal;
+}
+
+/* Only the name column breaks inside words, so dates and sizes stay whole (DESIGN 8.3). */
+th:first-child,
+td:first-child {
   overflow-wrap: anywhere;
 }
 
@@ -628,6 +709,18 @@ th {
   font-size: var(--text-sm);
   font-weight: 600;
   border-block-end-color: var(--color-border);
+}
+
+/* A button in a cell keeps its word whole; the label column gives way instead. */
+td > .button {
+  white-space: nowrap;
+}
+
+/* A link alone in a cell is a full-size target (DESIGN 8.3). */
+td > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
 }
 
 th:first-child,
@@ -643,4 +736,12 @@ td:last-child {
 .num {
   text-align: end;
   font-variant-numeric: tabular-nums;
+}
+
+/* Four columns at phone width need tighter gutters (DESIGN 8.3). */
+@container (max-width: 24rem) {
+  th,
+  td {
+    padding-inline: var(--space-2);
+  }
 }
