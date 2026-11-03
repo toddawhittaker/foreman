@@ -109,8 +109,10 @@ func parsePHC(encoded string) (phc, error) {
 	return p, nil
 }
 
-// maxHashing caps password checks running at once, so a burst of sign-ins
-// cannot exhaust memory: each check allocates about 19 MiB.
+// maxHashing caps the password checks that Verify and VerifyDummy (sign-in)
+// run at once, so a burst of sign-ins cannot exhaust memory: each check
+// allocates about 19 MiB. Hash (setup and rehash) is not capped, because it
+// runs at most once per account.
 const maxHashing = 4
 
 var hashSlots = make(chan struct{}, maxHashing)

@@ -18,7 +18,6 @@ const (
 	maxLoggedUsername = 64
 
 	msgBadLogin = "The username or password is not right. Check both and try again."
-	msgBusy     = "Foreman is busy. Wait a moment and try again."
 )
 
 // checkUsername trims name and returns a problem in plain words, or "".
@@ -211,7 +210,7 @@ func (s *server) signInFailed(w http.ResponseWriter, r *http.Request, pg SignInP
 func (s *server) signInBusy(w http.ResponseWriter, r *http.Request, pg SignInPage, client string) {
 	s.limiter.Release(pg.Username, client)
 	s.log.Info("sign-in refused: busy", "client", client)
-	pg.PasswordError = msgBusy
+	pg.Busy = true
 	w.Header().Set("Retry-After", "1")
 	s.page(w, r, http.StatusServiceUnavailable, "", pg)
 }

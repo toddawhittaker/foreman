@@ -228,6 +228,7 @@ func TestErrorTitleAndSummaryName(t *testing.T) {
 		{SignInPage{}, "Sign in – Foreman"},
 		{SignInPage{PasswordError: "x"}, "Error: Sign in – Foreman"},
 		{SignInPage{RateLimited: true}, "Error: Sign in – Foreman"},
+		{SignInPage{Busy: true}, "Error: Sign in – Foreman"},
 		{SetupPage{}, "Create the first admin account – Foreman"},
 		{SetupPage{ConfirmError: "x"}, "Error: Create the first admin account – Foreman"},
 		{ErrorPage{Status: 404}, "Page not found – Foreman"},
@@ -281,6 +282,22 @@ func TestSignInRateLimit(t *testing.T) {
 	}
 	if strings.Contains(body, "Fix this problem") {
 		t.Error("rate limit should replace the field error summary")
+	}
+}
+
+// A busy server is a form-level message: no field is marked invalid, and
+// the message takes focus like the rate-limit one.
+func TestSignInBusyIsFormLevel(t *testing.T) {
+	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 503, page: SignInPage{Busy: true}})
+	if !strings.Contains(body, "Foreman is busy. Wait a moment and try again.") {
+		t.Error("no busy message")
+	}
+	if strings.Contains(body, "aria-invalid") {
+		t.Error("a busy page marks a field invalid")
+	}
+	if !strings.Contains(body, `id="error-summary" tabindex="-1" autofocus`) {
+		t.Error("busy message does not take focus")
 	}
 }
 

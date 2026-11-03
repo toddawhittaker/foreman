@@ -42,7 +42,16 @@ func newLimiter(now func() time.Time, maxEntries int) *Limiter {
 	}
 }
 
-func userKey(username string) string { return strings.ToLower(strings.TrimSpace(username)) }
+// userKey folds ASCII A to Z only, as SQLite NOCASE does in the store, so two
+// names the database keeps apart never share a limiter key.
+func userKey(username string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + 'a' - 'A'
+		}
+		return r
+	}, strings.TrimSpace(username))
+}
 
 // addrKey groups IPv6 clients by their /64, since one host usually holds
 // a whole /64. IPv4 addresses and unparsable strings are used as given.

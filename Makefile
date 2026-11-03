@@ -112,10 +112,13 @@ ci-clean:
 ci-leftovers:
 	@[ -n "$(RUN)" ] || { echo "Usage: make ci-leftovers RUN=<id>"; exit 1; }
 	@p='^foreman-ci-$(RUN)-'; \
-	left=$$( { docker ps -a --format 'container {{.Names}}' --filter "name=$$p"; \
+	left=$$( set -e; \
+		docker ps -a --format 'container {{.Names}}' --filter "name=$$p"; \
 		docker volume ls --format 'volume {{.Name}}' --filter "name=$$p"; \
 		docker network ls --format 'network {{.Name}}' --filter "name=$$p"; \
-		docker image ls --format 'image {{.Repository}}:{{.Tag}}' | grep "$$p"; } || true ); \
+		images=$$(docker image ls --format 'image {{.Repository}}:{{.Tag}}'); \
+		printf '%s\n' "$$images" | grep "$$p" || [ $$? -eq 1 ] ) \
+		|| { echo "Could not list Docker resources. Is Docker reachable?"; exit 1; }; \
 	if [ -n "$$left" ]; then echo "CI run $(RUN) left these behind:"; echo "$$left"; exit 1; fi; \
 	echo "Nothing left behind by CI run $(RUN)."
 

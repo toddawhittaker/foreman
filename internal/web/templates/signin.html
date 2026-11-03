@@ -8,6 +8,10 @@
   <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
     <p><strong>Error:</strong> Too many failed sign-ins. Wait {{.Wait}}, then try again.</p>
   </div>
+  {{- else if .Busy}}
+  <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
+    <p><strong>Error:</strong> Foreman is busy. Wait a moment and try again.</p>
+  </div>
   {{- end}}
   {{template "summary" .Problems}}
   <div class="field">

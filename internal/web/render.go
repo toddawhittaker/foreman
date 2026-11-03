@@ -63,6 +63,9 @@ type SignInPage struct {
 	// (SPEC 12.4). RetryAfter is how long; zero means unknown.
 	RateLimited bool
 	RetryAfter  time.Duration
+	// Busy replaces the field errors with a message to try again shortly:
+	// too many password checks were already running.
+	Busy bool
 }
 
 // SetupPage creates the first admin account on first run (SPEC 12.3).
@@ -90,12 +93,12 @@ func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
 func (ErrorPage) templateName() string     { return "error" }
 
-func (p SignInPage) hasErrors() bool { return p.RateLimited || len(p.Problems()) > 0 }
+func (p SignInPage) hasErrors() bool { return p.RateLimited || p.Busy || len(p.Problems()) > 0 }
 func (p SetupPage) hasErrors() bool  { return len(p.Problems()) > 0 }
 
 // Problems lists the field errors in the order the fields appear.
 func (p SignInPage) Problems() []Problem {
-	if p.RateLimited {
+	if p.RateLimited || p.Busy {
 		return nil
 	}
 	return problems(

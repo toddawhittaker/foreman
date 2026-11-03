@@ -180,3 +180,15 @@ func TestLimiterExpiredEntriesAreDropped(t *testing.T) {
 		t.Errorf("expired entries remain: %d users, %d addrs", len(l.users.byKey), len(l.addrs.byKey))
 	}
 }
+
+// The store compares usernames with SQLite NOCASE, which folds ASCII A to Z
+// only. The limiter key must fold the same way, so names the database treats
+// as different accounts never share a key.
+func TestUserKeyFoldsASCIIOnly(t *testing.T) {
+	if userKey("Kate") != userKey("kate") {
+		t.Error(`"Kate" and "kate" should share a key`)
+	}
+	if userKey("Kate") == userKey("kate") {
+		t.Error("the Kelvin sign must not share a key with ASCII k")
+	}
+}
