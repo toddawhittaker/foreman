@@ -119,6 +119,9 @@ across `internal/` is about 89%. The format decisions are in ADR 0002.
   for an uploaded save is Epic 5.
 - **Saves (SPEC 5.11, 7.11).** List (newest first), download, upload and
   choose which save loads. An upload with a name that exists is refused.
+  An upload to a busy world waits up to 60 seconds for it. If the world
+  was restored or deleted meanwhile, the upload is refused and nothing is
+  saved, even when the old folder survived a failed clean-up.
   `NewestSave` is the one function for the newest save; Epic 3's pre-start
   check must use it.
 - **Snapshots (SPEC 6.1 to 6.4, 6.7 to 6.9).** Manual and automatic
