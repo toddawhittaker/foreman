@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -115,7 +116,7 @@ func TestHostileNamesAreRefusedEverywhere(t *testing.T) {
 		if _, err := m.TakeSnapshot(bad, "x", "x"); err == nil {
 			t.Errorf("TakeSnapshot(%q) worked", bad)
 		}
-		if _, err := m.Restore(bad, snap.Name, "x"); err == nil {
+		if _, err := m.Restore(context.Background(), bad, snap.Name, "x"); err == nil {
 			t.Errorf("Restore(%q, good) worked", bad)
 		}
 		if err := m.Rename(ctx, bad, "New name"); err == nil {
@@ -155,7 +156,7 @@ func TestHostileNamesAreRefusedEverywhere(t *testing.T) {
 		if _, err := m.Snapshot(id, bad); !errors.Is(err, ErrNoSnapshot) {
 			t.Errorf("Snapshot(%q) = %v, want ErrNoSnapshot", bad, err)
 		}
-		if _, err := m.Restore(id, bad, "x"); err == nil {
+		if _, err := m.Restore(context.Background(), id, bad, "x"); err == nil {
 			t.Errorf("Restore(id, %q) worked", bad)
 		}
 	}
@@ -271,7 +272,7 @@ func TestSymlinksInsideAWorldAreNeverFollowed(t *testing.T) {
 
 	// Restore removes the live world, symlinks and all; it must remove the
 	// links themselves, never what they point at.
-	if _, err := m.Restore(id, snap.Name, "alice"); err != nil {
+	if _, err := m.Restore(context.Background(), id, snap.Name, "alice"); err != nil {
 		t.Fatal(err)
 	}
 	noLinksUnder(t, filepath.Join(m.dirs.Worlds, id))
@@ -382,7 +383,7 @@ func TestRestoreRefusesSymlinksPlantedInASnapshot(t *testing.T) {
 			outsideBefore := diskTree(t, secretDir)
 			count := len(snapshotDirs(t, m, id))
 
-			if _, err := m.Restore(id, snap.Name, "alice"); err == nil {
+			if _, err := m.Restore(context.Background(), id, snap.Name, "alice"); err == nil {
 				t.Fatal("restore of a tampered snapshot worked")
 			}
 			sameDisk(t, "world", diskTree(t, filepath.Join(m.dirs.Worlds, id)), worldBefore)
@@ -415,7 +416,7 @@ func TestSnapshotsFolderSymlinkedToAnotherWorld(t *testing.T) {
 	before := diskTree(t, otherSnaps)
 	worldBefore := diskTree(t, filepath.Join(m.dirs.Worlds, id))
 
-	if _, err := m.Restore(id, theirs.Name, "alice"); err == nil {
+	if _, err := m.Restore(context.Background(), id, theirs.Name, "alice"); err == nil {
 		t.Error("restored world " + id + " from another world's snapshot")
 	}
 	_, _ = m.TakeSnapshot(id, "mine", "alice")
@@ -515,7 +516,7 @@ func TestRestoreRefusesManifestPointingOutside(t *testing.T) {
 			defer editManifest(t, m, id, snap.Name, func(man *Manifest) { man.Files = man.Files[:len(man.Files)-1] })
 			worldBefore := diskTree(t, filepath.Join(m.dirs.Worlds, id))
 			count := len(snapshotDirs(t, m, id))
-			if _, err := m.Restore(id, snap.Name, "alice"); err == nil {
+			if _, err := m.Restore(context.Background(), id, snap.Name, "alice"); err == nil {
 				t.Fatal("restore of a manifest naming an outside file worked")
 			}
 			sameDisk(t, "world", diskTree(t, filepath.Join(m.dirs.Worlds, id)), worldBefore)
@@ -527,7 +528,7 @@ func TestRestoreRefusesManifestPointingOutside(t *testing.T) {
 	}
 	// The untouched snapshot still restores, so the refusals were for the
 	// planted entries, not a broken fixture.
-	if _, err := m.Restore(id, snap.Name, "alice"); err != nil {
+	if _, err := m.Restore(context.Background(), id, snap.Name, "alice"); err != nil {
 		t.Errorf("clean restore: %v", err)
 	}
 }

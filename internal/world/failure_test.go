@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -177,7 +178,7 @@ func TestDiskFullMidRestore(t *testing.T) {
 	failures := 0
 	for free := 0; ; free++ {
 		fill.leave(free)
-		_, err := m.Restore(id, snap.Name, "alice")
+		_, err := m.Restore(context.Background(), id, snap.Name, "alice")
 		fill.release()
 		if err == nil {
 			break
@@ -371,7 +372,7 @@ func TestCrashAtEachRestoreStepIsRecovered(t *testing.T) {
 					t.Fatal(err)
 				}
 				sameDisk(t, "second recovery", diskTree(t, dataDir(m)), again)
-				if _, err := m.Restore(id, snap.Name, "alice"); err != nil {
+				if _, err := m.Restore(context.Background(), id, snap.Name, "alice"); err != nil {
 					t.Errorf("restore after recovery: %v", err)
 				}
 			})
@@ -397,7 +398,7 @@ func TestBusyWorldRefusesEveryChange(t *testing.T) {
 	}
 	ops := map[string]func() error{
 		"rename":    func() error { return m.Rename(t.Context(), id, "Taken over") },
-		"restore":   func() error { _, err := m.Restore(id, snap.Name, "bob"); return err },
+		"restore":   func() error { _, err := m.Restore(context.Background(), id, snap.Name, "bob"); return err },
 		"snapshot":  func() error { _, err := m.TakeSnapshot(id, "x", "bob"); return err },
 		"load save": func() error { return m.SetLoadSave(id, "base.zip") },
 		"add save":  func() error { return m.AddSave(id, "new.zip", temp) },
@@ -434,7 +435,7 @@ func TestConcurrentChangesNeverCorruptAWorld(t *testing.T) {
 			})
 		}
 		for i := range 3 {
-			run("restore", func() error { _, err := m.Restore(id, snap.Name, "a"); return err })
+			run("restore", func() error { _, err := m.Restore(context.Background(), id, snap.Name, "a"); return err })
 			run("rename", func() error { return m.Rename(t.Context(), id, fmt.Sprintf("Name %d-%d", round, i)) })
 			run("snapshot", func() error { _, err := m.TakeSnapshot(id, "x", "b"); return err })
 			run("load save", func() error { return m.SetLoadSave(id, "base.zip") })
