@@ -15,20 +15,9 @@ import (
 )
 
 const (
-	// FileMode and DirMode keep everything Foreman writes readable and
-	// writable by the game's group when the users differ (SPEC 3.6).
-	FileMode os.FileMode = 0o664
-	DirMode  os.FileMode = 0o775
-
 	// MountinfoPath is where Foreman finds its own container ID.
 	MountinfoPath = "/proc/self/mountinfo"
 )
-
-// Snapshots returns the snapshots directory inside dataDir.
-func Snapshots(dataDir string) string { return filepath.Join(dataDir, "snapshots") }
-
-// Worlds returns the managed-mode worlds directory inside dataDir.
-func Worlds(dataDir string) string { return filepath.Join(dataDir, "worlds") }
 
 // Database returns the path of the app database inside dataDir.
 func Database(dataDir string) string { return filepath.Join(dataDir, "foreman.db") }

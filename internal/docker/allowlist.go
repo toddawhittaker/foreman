@@ -1,6 +1,9 @@
 package docker
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // endpoint is one Docker Engine API call Foreman may make. A "{x}" segment
 // matches one non-empty path segment; "{name}" under /images matches an
@@ -32,6 +35,9 @@ var allowlist = []endpoint{
 // query string) are on the SPEC 14.3 list.
 func allowed(method, path string) bool {
 	if strings.Contains(path, "..") || strings.ContainsAny(path, "?#%") {
+		return false
+	}
+	if slices.Contains(strings.Split(path, "/"), ".") {
 		return false
 	}
 	for _, e := range allowlist {

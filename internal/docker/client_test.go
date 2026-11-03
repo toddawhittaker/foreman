@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -59,9 +60,6 @@ func newFake(t *testing.T, apiVersion string) (*Client, *fakeDaemon) {
 func TestEveryMethodStaysOnAllowlist(t *testing.T) {
 	c, f := newFake(t, "1.47")
 	ctx := context.Background()
-	if err := c.Ping(ctx); err != nil {
-		t.Fatal(err)
-	}
 	v, err := c.Version(ctx)
 	if err != nil || v.APIVersion != "1.47" {
 		t.Fatalf("Version = %+v, %v", v, err)
@@ -73,10 +71,7 @@ func TestEveryMethodStaysOnAllowlist(t *testing.T) {
 	if len(got.Mounts) != 1 || got.Mounts[0].Source != "/srv/foreman" || got.Mounts[0].Destination != "/data" {
 		t.Errorf("mounts = %+v", got.Mounts)
 	}
-	if strings.Join(got.Networks, ",") != "bridge,game" {
-		t.Errorf("networks = %v", got.Networks)
-	}
-	want := []string{"GET /_ping", "GET /version", "GET /version", "GET /v1.47/containers/self/json"}
+	want := []string{"GET /version", "GET /version", "GET /v1.47/containers/self/json"}
 	if strings.Join(f.seen, "|") != strings.Join(want, "|") {
 		t.Errorf("daemon saw %v, want %v", f.seen, want)
 	}
@@ -85,8 +80,9 @@ func TestEveryMethodStaysOnAllowlist(t *testing.T) {
 func TestInspectNotFound(t *testing.T) {
 	c, _ := newFake(t, "1.47")
 	_, err := c.InspectContainer(context.Background(), "missing")
-	if !IsNotFound(err) {
-		t.Fatalf("want not found, got %v", err)
+	var ae *APIError
+	if !errors.As(err, &ae) || ae.Status != http.StatusNotFound {
+		t.Fatalf("want a 404 APIError, got %v", err)
 	}
 }
 
@@ -107,6 +103,11 @@ func TestRefusesOutsideAllowlistWithoutSending(t *testing.T) {
 		{"POST", "/containers/x/json"},
 		{"GET", "/containers//json"},
 		{"GET", "/images//json"},
+		{"GET", "/containers/./json"},
+		{"GET", "/./version"},
+		{"POST", "/containers/x/./start"},
+		{"GET", "/images/./json"},
+		{"GET", "/images/a/./b/json"},
 	}
 	for _, tc := range cases {
 		resp, err := c.do(context.Background(), tc.method, tc.path, true)
@@ -117,6 +118,45 @@ func TestRefusesOutsideAllowlistWithoutSending(t *testing.T) {
 	}
 	if len(f.seen) != 0 {
 		t.Errorf("refused calls reached the daemon: %v", f.seen)
+	}
+}
+
+func TestRefusesRedirects(t *testing.T) {
+	var mu sync.Mutex
+	var seen []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seen = append(seen, r.URL.Path)
+		mu.Unlock()
+		if r.URL.Path == "/version" {
+			http.Redirect(w, r, "/volumes", http.StatusFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c, err := New("tcp://" + strings.TrimPrefix(srv.URL, "http://"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Version(context.Background()); err == nil {
+		t.Fatal("a redirect was followed")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if strings.Join(seen, "|") != "/version" {
+		t.Errorf("daemon saw %v, want only /version", seen)
+	}
+}
+
+func TestUnixClientRefusesRedirects(t *testing.T) {
+	c, err := New("unix:///nonexistent.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.http.CheckRedirect == nil {
+		t.Fatal("unix client follows redirects")
+	}
+	if err := c.http.CheckRedirect(nil, nil); err == nil {
+		t.Error("CheckRedirect allowed a redirect")
 	}
 }
 
@@ -192,7 +232,7 @@ func TestUnixSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Ping(context.Background()); err != nil {
+	if _, err := c.Version(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }

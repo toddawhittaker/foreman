@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,14 +50,26 @@ func New(dockerHost string) (*Client, error) {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", sock)
 		}}
-		return &Client{http: &http.Client{Transport: tr, Timeout: 30 * time.Second}, base: "http://docker"}, nil
+		return &Client{http: newHTTPClient(tr), base: "http://docker"}, nil
 	case "tcp":
 		if u.Host == "" {
 			return nil, fmt.Errorf("DOCKER_HOST %q names no host", dockerHost)
 		}
-		return &Client{http: &http.Client{Timeout: 30 * time.Second}, base: "http://" + u.Host}, nil
+		return &Client{http: newHTTPClient(nil), base: "http://" + u.Host}, nil
 	default:
 		return nil, fmt.Errorf("DOCKER_HOST %q must start with unix:// or tcp://", dockerHost)
+	}
+}
+
+// newHTTPClient refuses redirects: a daemon or proxy must not be able to
+// steer a request to a path the SPEC 14.3 check never saw.
+func newHTTPClient(tr http.RoundTripper) *http.Client {
+	return &http.Client{
+		Transport: tr,
+		Timeout:   30 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errors.New("the Docker daemon answered with a redirect, which Foreman does not follow")
+		},
 	}
 }
 
@@ -100,21 +111,6 @@ type APIError struct {
 
 func (e *APIError) Error() string {
 	return fmt.Sprintf("the Docker daemon answered %d: %s", e.Status, e.Message)
-}
-
-// IsNotFound reports whether err is the daemon saying the object does not exist.
-func IsNotFound(err error) bool {
-	var ae *APIError
-	return errors.As(err, &ae) && ae.Status == http.StatusNotFound
-}
-
-// Ping checks that the daemon answers.
-func (c *Client) Ping(ctx context.Context) error {
-	resp, err := c.do(ctx, http.MethodGet, "/_ping", false)
-	if err != nil {
-		return err
-	}
-	return resp.Body.Close()
 }
 
 // VersionInfo is the part of GET /version Foreman uses.
@@ -200,12 +196,10 @@ type Mount struct {
 
 // Container is the part of GET /containers/{id}/json Foreman uses.
 type Container struct {
-	ID       string
-	Mounts   []Mount
-	Networks []string // names of the networks the container is attached to, sorted
+	Mounts []Mount
 }
 
-// InspectContainer reads one container's mounts and networks.
+// InspectContainer reads one container's mounts.
 func (c *Client) InspectContainer(ctx context.Context, id string) (Container, error) {
 	if id == "" || strings.ContainsAny(id, "/?#%") || strings.Contains(id, "..") {
 		return Container{}, fmt.Errorf("container id %q is not valid", id)
@@ -216,19 +210,10 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 	}
 	defer func() { _ = resp.Body.Close() }()
 	var raw struct {
-		ID              string  `json:"Id"`
-		Mounts          []Mount `json:"Mounts"`
-		NetworkSettings struct {
-			Networks map[string]json.RawMessage `json:"Networks"`
-		} `json:"NetworkSettings"`
+		Mounts []Mount `json:"Mounts"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return Container{}, fmt.Errorf("could not read container %s from the Docker daemon: %w", id, err)
 	}
-	out := Container{ID: raw.ID, Mounts: raw.Mounts}
-	for name := range raw.NetworkSettings.Networks {
-		out.Networks = append(out.Networks, name)
-	}
-	sort.Strings(out.Networks)
-	return out, nil
+	return Container{Mounts: raw.Mounts}, nil
 }

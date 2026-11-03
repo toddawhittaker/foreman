@@ -18,15 +18,9 @@ type holder struct {
 	Token secret.Secret `json:"token"`
 }
 
-func TestRevealAndIsZero(t *testing.T) {
+func TestReveal(t *testing.T) {
 	if got := secret.New(plain).Reveal(); got != plain {
 		t.Errorf("Reveal() = %q, want %q", got, plain)
-	}
-	if secret.New(plain).IsZero() {
-		t.Error("IsZero() = true for a non-empty secret")
-	}
-	if !secret.New("").IsZero() || !(secret.Secret{}).IsZero() {
-		t.Error("IsZero() = false for an empty secret")
 	}
 }
 

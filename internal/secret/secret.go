@@ -22,9 +22,6 @@ func New(v string) Secret { return Secret{v: v} }
 // Reveal returns the wrapped value. Call it only where the value is used.
 func (s Secret) Reveal() string { return s.v }
 
-// IsZero reports whether the Secret holds the empty string.
-func (s Secret) IsZero() bool { return s.v == "" }
-
 // String implements fmt.Stringer.
 func (Secret) String() string { return Redacted }
 

@@ -42,7 +42,7 @@ var self = docker.Container{Mounts: []docker.Mount{
 }}
 
 func TestLayout(t *testing.T) {
-	if Snapshots("/data") != "/data/snapshots" || Worlds("/data") != "/data/worlds" || Database("/data") != "/data/foreman.db" {
+	if Database("/data") != "/data/foreman.db" {
 		t.Error("layout does not match SPEC 5.2")
 	}
 }
