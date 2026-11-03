@@ -40,12 +40,14 @@ type pageCase struct {
 func pageCases() []pageCase {
 	return []pageCase{
 		{"worlds empty", "todd", 200, WorldsPage{}},
+		{"worlds after delete", "todd", 200, WorldsPage{Deleted: longName}},
 		{"worlds long user", longName, 200, WorldsPage{}},
 		{"worlds listed", "todd", 200, WorldsPage{Worlds: []world.Summary{
 			{ID: "base", Name: longName, GameVersion: "2.0.72", SpaceAge: true, Active: true, DiskBytes: 2_100_000_000,
 				LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)},
 			{ID: "future", Name: "Future", Newer: true},
 			{ID: "broken", Name: "broken", Unreadable: true},
+			{ID: "odd", Name: "Odd", SizeUnknown: true},
 		}}},
 		{"snapshots empty", "todd", 200, SnapshotsPage{WorldID: "base", WorldName: longName}},
 		{"snapshots listed", "todd", 200, snapshotsCase()},
@@ -54,6 +56,8 @@ func pageCases() []pageCase {
 		{"restore", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0]}},
 		{"restore error", "todd", 409, RestorePage{WorldID: "base", WorldName: "Base",
 			Snapshot: snapshotsCase().Snapshots[0], Error: "The world was not changed."}},
+		{"restore failed with undo", "todd", 500, RestorePage{WorldID: "base", WorldName: "Base",
+			Snapshot: snapshotsCase().Snapshots[0], Error: "Foreman could not finish the restore.", Undo: "20261103T142500Z"}},
 		{"saves empty", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
 			LoadHref: "/worlds/base/saves", NewestSelected: true, UploadLimit: MaxSaveUpload}},
 		{"saves listed", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
@@ -77,7 +81,7 @@ func pageCases() []pageCase {
 		{"delete refused", "todd", 409, DeletePage{World: world.Summary{ID: "base", Name: "Base", Active: true},
 			Error: "The world was not changed: this is the active world, and the active world cannot be deleted."}},
 		{"deleted empty", "todd", 200, DeletedPage{}},
-		{"deleted listed", "todd", 200, DeletedPage{Done: "The world is deleted.", More: true, Worlds: []world.DeletedWorld{
+		{"deleted listed", "todd", 200, DeletedPage{More: true, Worlds: []world.DeletedWorld{
 			{ID: "base", Name: longName, Snapshots: snapshotsCase().Snapshots},
 			{ID: "other", Name: "Other", Snapshots: snapshotsCase().Snapshots[1:]},
 		}}},

@@ -15,11 +15,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// Upload size limits (SPEC 14.6).
-const (
-	MaxSaveUpload  = 1 << 30
-	MaxOtherUpload = 200 << 20
-)
+// MaxSaveUpload is the size limit of a save upload (SPEC 14.6).
+const MaxSaveUpload = 1 << 30
 
 // maxZipRatio caps a zip's stated unpacked size at this many times its own
 // size; every caller of checkZip passes that cap.
@@ -40,8 +37,9 @@ type uploaded struct {
 
 // receiveFile streams the file in form field into a temp file in dir inside
 // root, without holding it in memory. spaceDir is a real path on the same
-// filesystem, used to refuse up front an upload larger than the free space.
-// On any failure the temp file is removed and nothing else has changed.
+// filesystem: the upload holds a world.Reserve for its declared length
+// until it is on disk (R19). On
+// any failure the temp file is removed and nothing else has changed.
 func receiveFile(r *http.Request, root *os.Root, dir, field, spaceDir string, limit int64) (uploaded, error) {
 	return receiveFileWithFields(r, root, dir, field, spaceDir, limit, nil)
 }
@@ -56,16 +54,13 @@ func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir 
 	if r.ContentLength > limit {
 		return uploaded{}, uploadError{fmt.Sprintf("The file is larger than the limit of %s.", world.FormatBytes(uint64(limit)))} //nolint:gosec // limit is a positive constant
 	}
-	if r.ContentLength > 0 {
-		free, err := world.FreeBytes(spaceDir)
-		if err != nil {
-			return uploaded{}, err
-		}
-		if uint64(r.ContentLength) > free {
-			return uploaded{}, uploadError{fmt.Sprintf("There is not enough free disk space for this file: it is %s and only %s is free.",
-				world.FormatBytes(uint64(r.ContentLength)), world.FormatBytes(free))}
-		}
+	// A body of unknown length still needs the reserve free; if it then
+	// fills the disk, bodyError says so and the temp file goes.
+	release, err := world.Reserve(spaceDir, uint64(max(r.ContentLength, 0))) //nolint:gosec // not negative
+	if err != nil {
+		return uploaded{}, err
 	}
+	defer release()
 	mr, err := r.MultipartReader()
 	if err != nil {
 		return uploaded{}, uploadError{"Choose a file to upload."}
@@ -76,7 +71,7 @@ func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir 
 			return uploaded{}, uploadError{"Choose a file to upload."}
 		}
 		if err != nil {
-			return uploaded{}, bodyError(err, limit)
+			return uploaded{}, partError(err, limit)
 		}
 		if _, want := values[part.FormName()]; want && part.FileName() == "" {
 			b, err := io.ReadAll(io.LimitReader(part, maxFieldBytes+1))
@@ -125,6 +120,16 @@ func bodyError(err error, limit int64) error {
 		return uploadError{"The disk filled up during the upload, so it was stopped and nothing was changed. Free some space and try again."}
 	}
 	return err
+}
+
+// partError turns a failure to read the next part's header into words.
+// Reading a header writes nothing, so every cause is the request's: a
+// malformed form, or a body cut short or too large.
+func partError(err error, limit int64) error {
+	if err = bodyError(err, limit); errors.As(err, new(uploadError)) {
+		return err
+	}
+	return uploadError{"Foreman could not read the upload. Reload the page and try again."}
 }
 
 // checkZip reads only a zip's directory, never unpacking it, and refuses

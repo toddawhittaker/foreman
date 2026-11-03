@@ -51,7 +51,7 @@ func TestSnapshotTakeListAndRestore(t *testing.T) {
 	}
 	loc := rec.Header().Get("Location")
 	body := hn.get(loc, withCookie(c)).Body.String()
-	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, "<td>Manual</td>") {
+	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, "<td>Manual<br>First<br>") {
 		t.Errorf("list after take:\n%s", body)
 	}
 	list, _ := hn.worlds.Snapshots(id)
@@ -115,7 +115,7 @@ func TestSnapshotRoutesRefuseBadInput(t *testing.T) {
 	}
 	rec = hn.post(snapshotsPath(id), url.Values{}, withCookie(c))
 	unlock()
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "another operation is running") {
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "nother operation is running") {
 		t.Errorf("busy: %d", rec.Code)
 	}
 	hn.wantRedirect(hn.get(snapshotsPath(id)), PathSignIn)

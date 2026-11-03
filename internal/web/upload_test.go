@@ -124,7 +124,7 @@ func TestReceiveFileRefusals(t *testing.T) {
 	body, ct = multipartBody(t, "save", "a.zip", []byte("z"))
 	r = uploadRequest(t, body, ct, 1<<62)
 	r.ContentLength = 1 << 61
-	if _, err := receiveFile(r, root, ".", "save", dir, 1<<62); !errors.As(err, &ue) || !strings.Contains(ue.msg, "free") {
+	if _, err := receiveFile(r, root, ".", "save", dir, 1<<62); !errors.Is(err, world.ErrNoSpace) {
 		t.Errorf("no space: %v", err)
 	}
 

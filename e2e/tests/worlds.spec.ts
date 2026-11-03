@@ -214,14 +214,19 @@ test("the Worlds tab marks the current page and hovers grey", async ({ page, for
   await createAdmin(page);
   seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
   const tab = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" });
-  for (const path of ["/worlds", "/worlds/alpha", "/import"]) {
+  await page.goto("/worlds/alpha/snapshots");
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  const restore = await page.getByRole("link", { name: /^Restore/ }).getAttribute("href");
+  // Every page about worlds marks the tab (DESIGN 7.3).
+  for (const path of ["/worlds", "/worlds/alpha", "/import", "/worlds/alpha/saves", "/worlds/alpha/snapshots",
+    restore!, "/worlds/alpha/delete", "/deleted"]) {
     await page.goto(path);
-    await expect(tab).toHaveAttribute("aria-current", "page");
+    await expect(tab, path).toHaveAttribute("aria-current", "page");
   }
   const face = () => tab.evaluate((el) => getComputedStyle(el).backgroundColor);
   const current = await face();
-  await page.goto("/worlds/alpha/saves");
-  await expect(tab).not.toHaveAttribute("aria-current", "page");
+  // Every signed-in page is about worlds, so drop the mark to see the idle tab.
+  await tab.evaluate((el) => el.removeAttribute("aria-current"));
   const idle = await face();
   await tab.hover();
   const hover = await face();

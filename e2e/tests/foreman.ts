@@ -105,6 +105,19 @@ export async function checkPage(page: Page) {
   }));
   expect(size.scroll, `horizontal scroll on ${page.url()}`).toBeLessThanOrEqual(size.client);
 
+  // DESIGN 8.3: a date, a time or a size never breaks inside itself.
+  const broken = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".nowrap, td.num")]
+      .filter((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const tops = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)));
+        return tops.size > 1;
+      })
+      .map((el) => el.textContent),
+  );
+  expect(broken, `text that wraps inside itself on ${page.url()}`).toEqual([]);
+
   const targets = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
       .filter((el) => {

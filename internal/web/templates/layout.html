@@ -34,6 +34,12 @@
 </html>
 {{end}}
 
+{{/* A timestamp in a table: the date and the time each stay whole, and it
+     breaks only between them (DESIGN 8.3). Takes time.Time. */}}
+{{define "when" -}}
+<time datetime="{{isoTime .}}"><span class="nowrap">{{day .}}</span> <span class="nowrap">{{clock .}}</span></time>
+{{- end}}
+
 {{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}
 {{define "summary" -}}
 {{with .}}

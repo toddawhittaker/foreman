@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -77,26 +76,17 @@ func (s *server) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-// uploadBody is an upload route's real request body and its limit, kept
-// beside the 64 KB cap every request starts with. Only a signed-in request
-// gets the larger limit.
-type uploadBody struct {
-	raw   io.ReadCloser
-	limit int64
-}
+// idleLimit is how long a long request may go without reading or writing
+// a byte before it ends (SPEC 14.6). Tests shorten it.
+var idleLimit = 60 * time.Second
 
-type uploadBodyKey struct{}
-
-// limitBody caps every request body at maxFormBytes. An upload route's own
-// limit is applied later, by handleLong, once the request is signed in
-// (SPEC 14.6).
+// limitBody caps every request body at maxFormBytes, except on an upload
+// route, which applies its own limit once it knows who is asking (see
+// handleLong).
 func (s *server) limitBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		raw := r.Body
-		r.Body = http.MaxBytesReader(w, raw, maxFormBytes)
-		if _, pattern := s.mux.Handler(r); s.uploadLimits[pattern] > 0 {
-			ctx := context.WithValue(r.Context(), uploadBodyKey{}, uploadBody{raw: raw, limit: s.uploadLimits[pattern]})
-			r = r.WithContext(ctx)
+		if _, pattern := s.mux.Handler(r); s.uploadLimits[pattern] == 0 {
+			r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -104,12 +94,19 @@ func (s *server) limitBody(next http.Handler) http.Handler {
 
 // handleLong registers a route that may run longer than the server's read
 // and write timeouts: a download, import or restore. For a signed-in
-// request it lifts both deadlines and, on an upload route, swaps in the
-// route's body limit. Anyone else keeps the short deadlines and the 64 KB
-// cap, and h refuses them. h checks the sign-in again (requireUser); the
-// second check is cheap and keeps h's signature plain.
+// request it swaps the fixed deadlines for an idle one: each read or write
+// gets idleLimit to make progress, so a slow transfer that keeps moving
+// runs to the end and a stalled one ends. On an upload route a signed-in
+// request gets the route's body limit; anyone else keeps the short
+// deadlines and the 64 KB cap, and h refuses them. h checks the sign-in
+// again (requireUser); the second check is cheap and keeps h's signature
+// plain.
 func (s *server) handleLong(pattern string, h http.HandlerFunc) {
-	s.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+	s.mux.HandleFunc(pattern, func(rw http.ResponseWriter, r *http.Request) {
+		// rw is the server's own writer, which MaxBytesReader tells to
+		// close the connection after a body that is too large.
+		w := rw
+		limit := int64(maxFormBytes)
 		_, state, err := s.identify(r)
 		if err != nil {
 			s.fail(w, r, "identify user", err)
@@ -117,6 +114,8 @@ func (s *server) handleLong(pattern string, h http.HandlerFunc) {
 		}
 		if state == isSignedIn {
 			rc := http.NewResponseController(w)
+			// Lifted until the first read or write; a handler that is
+			// working, not waiting on the client, is not idle.
 			if err := rc.SetReadDeadline(time.Time{}); err != nil {
 				s.fail(w, r, "lift read deadline", err)
 				return
@@ -125,18 +124,55 @@ func (s *server) handleLong(pattern string, h http.HandlerFunc) {
 				s.fail(w, r, "lift write deadline", err)
 				return
 			}
-			if ub, ok := r.Context().Value(uploadBodyKey{}).(uploadBody); ok {
-				r.Body = http.MaxBytesReader(w, ub.raw, ub.limit)
+			r.Body = idleBody{ReadCloser: r.Body, rc: rc}
+			w = idleWriter{ResponseWriter: w, rc: rc}
+			if l := s.uploadLimits[pattern]; l > 0 {
+				limit = l
 			}
+		}
+		if s.uploadLimits[pattern] > 0 {
+			r.Body = http.MaxBytesReader(rw, r.Body, limit)
 		}
 		h(w, r)
 	})
 }
 
 // handleUpload registers an upload route with its own body limit instead of
-// maxFormBytes, and without the read and write deadlines, for signed-in
-// requests only.
+// maxFormBytes, for signed-in requests only.
 func (s *server) handleUpload(pattern string, limit int64, h http.HandlerFunc) {
 	s.uploadLimits[pattern] = limit
 	s.handleLong(pattern, h)
 }
+
+// idleBody gives each read of a long request idleLimit to make progress.
+// Once the body is read to the end the deadline is lifted again, because
+// the server's own wait for the next request must not cut short a handler
+// still at work.
+type idleBody struct {
+	io.ReadCloser
+	rc *http.ResponseController
+}
+
+func (b idleBody) Read(p []byte) (int, error) {
+	_ = b.rc.SetReadDeadline(time.Now().Add(idleLimit))
+	n, err := b.ReadCloser.Read(p)
+	if errors.Is(err, io.EOF) {
+		_ = b.rc.SetReadDeadline(time.Time{})
+	}
+	return n, err
+}
+
+// idleWriter gives each write of a long response idleLimit to make
+// progress.
+type idleWriter struct {
+	http.ResponseWriter
+	rc *http.ResponseController
+}
+
+func (w idleWriter) Write(p []byte) (int, error) {
+	_ = w.rc.SetWriteDeadline(time.Now().Add(idleLimit))
+	return w.ResponseWriter.Write(p)
+}
+
+// Unwrap lets http.ResponseController reach the real writer.
+func (w idleWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }

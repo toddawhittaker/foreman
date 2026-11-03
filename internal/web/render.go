@@ -48,9 +48,17 @@ type Problem struct {
 	Message string
 }
 
+// maxListRows is how many rows a saves or snapshots table shows before
+// "Show older" (R14).
+const maxListRows = 50
+
 // WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).
 type WorldsPage struct {
 	Worlds []world.Summary
+	// Deleted names the world a delete just removed, for the message, and
+	// DeletedKept says whether its snapshots remain under Deleted worlds.
+	Deleted     string
+	DeletedKept bool
 }
 
 // SignedOutPage confirms that sign-out ended the session (SPEC 12.8).
@@ -234,12 +242,19 @@ func NewRenderer() (*Renderer, error) {
 		return nil, err
 	}
 	funcs := template.FuncMap{
-		"static":        r.staticURL,
-		"homePath":      func() string { return PathHome },
-		"worldsPath":    func() string { return PathWorlds },
-		"bytes":         world.FormatBytes,
-		"utc":           func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
-		"isoTime":       func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+		"static":     r.staticURL,
+		"homePath":   func() string { return PathHome },
+		"worldsPath": func() string { return PathWorlds },
+		"bytes":      world.FormatBytes,
+		"utc":        func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
+		"isoTime":    func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+		// day and clock are a table's timestamp in two parts that each
+		// never wrap (DESIGN 8.3); utcSeconds tells apart two snapshots
+		// taken in the same minute.
+		"day":           func(t time.Time) string { return t.UTC().Format("2006-01-02") },
+		"clock":         func(t time.Time) string { return t.UTC().Format("15:04 UTC") },
+		"utcSeconds":    func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05 UTC") },
+		"deletedPath":   func() string { return PathDeleted },
 		"signInPath":    func() string { return PathSignIn },
 		"setupPath":     func() string { return PathSetup },
 		"signOutPath":   func() string { return PathSignOut },

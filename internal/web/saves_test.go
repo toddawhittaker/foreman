@@ -54,8 +54,8 @@ func zipBytes(t *testing.T, entries map[string]int) []byte {
 	return b.Bytes()
 }
 
-// deadlineSpy lets the long routes lift their deadlines, which a plain
-// recorder refuses, and counts how many they lifted.
+// deadlineSpy lets the long routes set their deadlines, which a plain
+// recorder refuses, and counts every change.
 type deadlineSpy struct {
 	*httptest.ResponseRecorder
 	lifted int
@@ -122,7 +122,7 @@ func TestSavesPageListsNewestFirst(t *testing.T) {
 	for _, want := range []string{
 		`href="/worlds/` + id + `"`,               // back to the world
 		`href="/worlds/` + id + `/saves/new.zip"`, // download link
-		"2026-11-03 13:25 UTC", "Loads next", "15 B",
+		`<span class="nowrap">2026-11-03</span> <span class="nowrap">13:25 UTC</span>`, "Loads next", "15 B",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
@@ -322,7 +322,7 @@ func TestChooseSave(t *testing.T) {
 		"none":    {},
 	} {
 		rec := hn.chooseSave(c, id, form)
-		if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `href="#load-save"`) {
+		if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `href="#load-newest"`) {
 			t.Errorf("%s: %d", name, rec.Code)
 		}
 	}

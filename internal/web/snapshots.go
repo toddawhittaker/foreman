@@ -21,8 +21,6 @@ const (
 
 const (
 	maxLabelChars = 100
-	// maxListRows is how many snapshots show before "Show older" (R14).
-	maxListRows = 50
 	// defaultLabel names a manual snapshot taken without a label.
 	defaultLabel = "Manual snapshot"
 )
@@ -63,10 +61,17 @@ type RestorePage struct {
 	// Deleted is true when the world's folder is gone, so restoring makes
 	// the world again and takes no "Before restore" snapshot.
 	Deleted bool
+	// Undo names the "Before restore" snapshot a failed restore took.
+	Undo string
 }
 
 func (SnapshotsPage) templateName() string { return "snapshots" }
-func (RestorePage) templateName() string   { return "restore" }
+func (SnapshotsPage) navItem() string      { return PathWorlds }
+func (RestorePage) navItem() string        { return PathWorlds }
+
+// WorldPath links back to the world page.
+func (p RestorePage) WorldPath() string  { return worldPath(p.WorldID) }
+func (RestorePage) templateName() string { return "restore" }
 
 func (p SnapshotsPage) hasErrors() bool { return p.LabelError != "" || p.Error != "" }
 func (p RestorePage) hasErrors() bool   { return p.Error != "" }
@@ -88,6 +93,9 @@ func (p SnapshotsPage) RestorePath(snap string) string { return restorePath(p.Wo
 
 // Path is where the confirmation posts.
 func (p RestorePage) Path() string { return restorePath(p.WorldID, p.Snapshot.Name) }
+
+// UndoPath restores the "Before restore" snapshot a failed restore took.
+func (p RestorePage) UndoPath() string { return restorePath(p.WorldID, p.Undo) }
 
 // SnapshotsPath is where cancelling goes.
 func (p RestorePage) SnapshotsPath() string { return snapshotsPath(p.WorldID) }
@@ -119,7 +127,7 @@ func (s *server) snapshotRoutes() {
 // read. found is false when there is no such world.
 func (s *server) worldName(id string) (name string, found bool, err error) {
 	w, err := s.worlds.OpenWorld(id)
-	if errors.Is(err, fs.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, world.ErrNotFolder) {
 		return "", false, nil
 	}
 	if err != nil {
@@ -171,7 +179,7 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	}
 	p, err := s.snapshotsPage(r, id, name)
 	if err != nil {
-		s.fail(w, r, "list snapshots", err)
+		s.notFoundOrFail(w, r, u, "list snapshots", err)
 		return
 	}
 	q := r.URL.Query()
@@ -236,33 +244,18 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	}
 	status, msg := http.StatusBadRequest, ""
 	if err != nil {
-		if status, msg = actionError(err); status == http.StatusInternalServerError {
-			s.fail(w, r, "take snapshot", err)
+		var ok bool
+		if status, msg, ok = s.refusal(w, r, u, "take snapshot", err); !ok {
 			return
 		}
 	}
 	p, perr := s.snapshotsPage(r, id, name)
 	if perr != nil {
-		s.fail(w, r, "list snapshots", perr)
+		s.notFoundOrFail(w, r, u, "list snapshots", perr)
 		return
 	}
 	p.Label, p.LabelError, p.Error = r.PostFormValue("label"), problem, msg
 	s.page(w, r, status, u.Username, p)
-}
-
-// actionError turns an error an admin can act on into a status and its
-// message. Anything else is a 500 whose detail stays in the log.
-func actionError(err error) (int, string) {
-	switch {
-	case errors.Is(err, world.ErrNoSpace):
-		return http.StatusInsufficientStorage, "The world was not changed: " + err.Error()
-	case errors.Is(err, world.ErrBusy), errors.Is(err, world.ErrNewerFormat),
-		errors.Is(err, world.ErrActive), errors.Is(err, world.ErrRestoreNameTaken):
-		return http.StatusConflict, "The world was not changed: " + err.Error() + "."
-	case errors.Is(err, world.ErrDamaged):
-		return http.StatusConflict, "The world was not changed: " + world.ErrDamaged.Error() + "."
-	}
-	return http.StatusInternalServerError, ""
 }
 
 // restoreTarget reads the world and snapshot named in the path, answering
@@ -279,12 +272,8 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		return RestorePage{}, false
 	}
 	snap, err := s.worlds.Snapshot(id, snapName)
-	if errors.Is(err, world.ErrNoSnapshot) {
-		s.notFound(w, r, u)
-		return RestorePage{}, false
-	}
 	if err != nil {
-		s.fail(w, r, "read snapshot", err)
+		s.notFoundOrFail(w, r, u, "read snapshot", err)
 		return RestorePage{}, false
 	}
 	if !found {
@@ -315,12 +304,21 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 	}
 	before, err := s.worlds.Restore(r.Context(), p.WorldID, p.Snapshot.Name, u.Username)
 	if err != nil {
-		status, msg := actionError(err)
-		if status == http.StatusInternalServerError {
-			s.fail(w, r, "restore snapshot", err)
+		if before.Name == "" {
+			if status, msg, ok := s.refusal(w, r, u, "restore snapshot", err); ok {
+				p.Error = msg
+				s.page(w, r, status, u.Username, p)
+			}
 			return
 		}
-		p.Error = msg
+		// The undo snapshot exists, so the admin must hear of it whatever
+		// went wrong (SPEC 6.5); a fault's detail stays in the log.
+		status, msg := worldError(err)
+		if status == http.StatusInternalServerError || status == http.StatusNotFound {
+			s.log.Error("restore snapshot", "method", r.Method, "path", r.URL.Path, "error", err)
+			status, msg = http.StatusInternalServerError, "Foreman could not finish the restore."
+		}
+		p.Error, p.Undo = msg, before.Name
 		s.page(w, r, status, u.Username, p)
 		return
 	}

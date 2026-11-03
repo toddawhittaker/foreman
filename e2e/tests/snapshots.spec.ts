@@ -52,6 +52,9 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Before the rocket");
   await expect(rows.first()).toContainText("Manual");
+  // Three columns, the reason above the label (DESIGN 8.3).
+  await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
+  await expect(rows.first().locator("td").first()).toContainText(/^Manual\s*Before the rocket/);
   await expect(rows.first().locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
   await checkPage(page);
 
@@ -98,5 +101,32 @@ test("an over-long label is refused with a field error", async ({ page, foreman 
   await page.getByRole("button", { name: "Take snapshot" }).click();
   await expect(page.locator("#label-error")).toHaveText("Error: Use at most 100 characters");
   await expect(page.locator("tbody tr")).toHaveCount(0);
+  await checkPage(page);
+});
+
+// "Go to the snapshot" lands on that row's Restore link, and Restore links
+// tell apart snapshots taken in the same minute by their seconds.
+test("the done message leads to the snapshot's Restore link", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "family-base");
+  await page.goto("/worlds/family-base/snapshots");
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  await page.waitForTimeout(1100);
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  await page.getByRole("link", { name: "Go to the snapshot" }).click();
+  await expect(page).toHaveURL(/#restore-\d{8}T\d{6}Z$/);
+  const target = page.locator(":target");
+  await expect(target).toHaveText(/^Restore/);
+  await expect(target).toHaveAttribute("href", /\/restore$/);
+  const names = await page.getByRole("link", { name: /^Restore Manual snapshot, taken/ }).evaluateAll((els) =>
+    els.map((el) => el.textContent),
+  );
+  expect(names).toHaveLength(2);
+  expect(names[0]).toMatch(/\d{2}:\d{2}:\d{2} UTC$/);
+  expect(new Set(names).size).toBe(2);
+  await checkPage(page);
+
+  await target.click();
+  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
   await checkPage(page);
 });

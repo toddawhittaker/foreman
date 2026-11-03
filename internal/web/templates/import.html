@@ -2,7 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p><a href="{{worldsPath}}" class="button">All worlds</a></p>
+<div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
 <h1>Import a world</h1>
 <p>Importing copies files into a new world. The original files are never moved or changed.</p>
 
@@ -19,7 +19,7 @@
     {{- end}}
     {{- $chosen := .Source}}
     {{- range $i, $f := $.Page.Inbox}}
-    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</span></label>
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</span></label>
     {{- end}}
   </fieldset>
   {{- else}}
