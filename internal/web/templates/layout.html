@@ -1,0 +1,44 @@
+{{define "layout" -}}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
+<title>{{template "title" .}} – Foreman</title>
+<link rel="stylesheet" href="{{static "foreman.css"}}">
+<script src="{{static "vendor/htmx.min.js"}}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site">
+  <a href="{{homePath}}" class="product">Foreman</a>
+  {{- if .User}}
+  <form method="post" action="{{signOutPath}}" class="signout">
+    <span class="user">Signed in as {{.User}}</span>
+    <button type="submit" class="button">Sign out</button>
+  </form>
+  {{- end}}
+</header>
+<main id="main" tabindex="-1">
+{{template "content" .}}
+</main>
+<div id="announcer" class="visually-hidden" aria-live="polite"></div>
+</body>
+</html>
+{{end}}
+
+{{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}
+{{define "summary" -}}
+{{with .}}
+<div class="message message--error" id="error-summary" tabindex="-1" autofocus aria-labelledby="error-summary-heading">
+  <h2 id="error-summary-heading"><strong>Error:</strong> {{if eq (len .) 1}}Fix this problem to continue{{else}}Fix {{len .}} problems to continue{{end}}</h2>
+  <ul>
+    {{- range .}}
+    <li><a href="#{{.FieldID}}">{{.Message}}</a></li>
+    {{- end}}
+  </ul>
+</div>
+{{end}}
+{{- end}}

@@ -1,0 +1,35 @@
+{{define "title"}}Sign in{{end}}
+
+{{define "content" -}}
+<h1>Sign in</h1>
+{{with .Page}}
+<form method="post" action="{{signInPath}}" class="panel" novalidate>
+  {{- if .RateLimited}}
+  <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
+    <p><strong>Error:</strong> Too many failed sign-ins. Wait {{.Wait}}, then try again.</p>
+  </div>
+  {{- end}}
+  {{template "summary" .Problems}}
+  <div class="field">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" value="{{.Username}}" required
+      autocomplete="username" autocapitalize="none" spellcheck="false"
+      {{- with .UsernameError}} aria-invalid="true" aria-describedby="username-error"{{end}}>
+    {{- with .UsernameError}}
+    <p class="error" id="username-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password"
+      {{- with .PasswordError}} aria-invalid="true" aria-describedby="password-error"{{end}}>
+    {{- with .PasswordError}}
+    <p class="error" id="password-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary">Sign in</button>
+  </div>
+</form>
+{{end}}
+{{- end}}

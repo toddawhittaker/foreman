@@ -1,0 +1,44 @@
+{{define "title"}}Create the first admin account{{end}}
+
+{{define "content" -}}
+<h1>Create the first admin account</h1>
+{{with .Page}}
+<form method="post" action="{{setupPath}}" class="panel" novalidate>
+  {{template "summary" .Problems}}
+  <p>Foreman has no accounts yet. The account you create here can do everything in Foreman. This page closes as soon as the account exists.</p>
+  <div class="field">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" value="{{.Username}}" required
+      autocomplete="username" autocapitalize="none" spellcheck="false"
+      {{- with .UsernameError}} aria-invalid="true" aria-describedby="username-error"{{end}}>
+    {{- with .UsernameError}}
+    <p class="error" id="username-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    {{- if gt .MinPasswordLength 0}}
+    <p class="hint" id="password-hint">Use at least {{.MinPasswordLength}} characters.</p>
+    {{- end}}
+    <input id="password" name="password" type="password" required autocomplete="new-password"
+      {{- if gt .MinPasswordLength 0}} minlength="{{.MinPasswordLength}}"{{end}}
+      {{- if .PasswordError}} aria-invalid="true"{{end}}
+      {{- with .PasswordDescribedBy}} aria-describedby="{{.}}"{{end}}>
+    {{- with .PasswordError}}
+    <p class="error" id="password-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="field">
+    <label for="confirm">Confirm password</label>
+    <input id="confirm" name="confirm" type="password" required autocomplete="new-password"
+      {{- with .ConfirmError}} aria-invalid="true" aria-describedby="confirm-error"{{end}}>
+    {{- with .ConfirmError}}
+    <p class="error" id="confirm-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary">Create admin account</button>
+  </div>
+</form>
+{{end}}
+{{- end}}
