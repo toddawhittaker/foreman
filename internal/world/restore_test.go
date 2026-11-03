@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"errors"
 	"io"
 	"io/fs"
@@ -87,7 +88,7 @@ func TestRestoreGivesBackExactContentsAndTimes(t *testing.T) {
 	}
 	played := fileTree(t, world)
 
-	before, err := m.Restore(id, snap.Name, "bob")
+	before, err := m.Restore(context.Background(), id, snap.Name, "bob")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,13 +102,13 @@ func TestRestoreGivesBackExactContentsAndTimes(t *testing.T) {
 	if err := os.Chtimes(filepath.Join(world, "saves/base.zip"), later, later); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Restore(id, snap.Name, "bob"); err != nil {
+	if _, err := m.Restore(context.Background(), id, snap.Name, "bob"); err != nil {
 		t.Fatal(err)
 	}
 	sameTree(t, fileTree(t, world), want)
 
 	// Undo: restoring the first before-restore snapshot brings back play.
-	if _, err := m.Restore(id, before.Name, "bob"); err != nil {
+	if _, err := m.Restore(context.Background(), id, before.Name, "bob"); err != nil {
 		t.Fatal(err)
 	}
 	sameTree(t, fileTree(t, world), played)
@@ -129,7 +130,7 @@ func TestRestoreRefusesBusyMissingAndDamaged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Restore(id, snap.Name, "a"); !errors.Is(err, ErrBusy) {
+	if _, err := m.Restore(context.Background(), id, snap.Name, "a"); !errors.Is(err, ErrBusy) {
 		t.Errorf("locked: %v", err)
 	}
 	if _, err := m.TakeSnapshot(id, "", "a"); !errors.Is(err, ErrBusy) {
@@ -137,7 +138,7 @@ func TestRestoreRefusesBusyMissingAndDamaged(t *testing.T) {
 	}
 	unlock()
 	for _, name := range []string{"../x", "20991231T000000Z"} {
-		if _, err := m.Restore(id, name, "a"); !errors.Is(err, ErrNoSnapshot) {
+		if _, err := m.Restore(context.Background(), id, name, "a"); !errors.Is(err, ErrNoSnapshot) {
 			t.Errorf("%q: %v", name, err)
 		}
 	}
@@ -145,7 +146,7 @@ func TestRestoreRefusesBusyMissingAndDamaged(t *testing.T) {
 	if err := os.WriteFile(p, []byte("longer than before"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Restore(id, snap.Name, "a"); !errors.Is(err, ErrDamaged) {
+	if _, err := m.Restore(context.Background(), id, snap.Name, "a"); !errors.Is(err, ErrDamaged) {
 		t.Errorf("damaged: %v", err)
 	}
 	list, _ := m.Snapshots(id)

@@ -1,6 +1,7 @@
 package world
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -11,13 +12,21 @@ import (
 // (R9). Startup recovery finishes or reverses the swap.
 const PrefixRestoreOld = ".restore-old-"
 
+// ErrRestoreNameTaken is returned when restoring a deleted world whose name
+// another world now has (R12).
+var ErrRestoreNameTaken = errors.New("another world now has this world's name. Rename that world, then restore this snapshot")
+
 // Restore puts a world back exactly as snapshot name recorded it, file
 // contents and modification times both (SPEC 6.5, 6.9). It returns the
 // "Before restore" snapshot, which is the undo.
 //
 // The restored world is built beside the live one first, then swapped in
 // by two renames, so the path worlds/<id> only ever holds a whole world.
-func (m *Manager) Restore(id, name, by string) (Snapshot, error) {
+//
+// When the world's folder is gone (a deleted world) there is nothing to
+// snapshot, so the returned snapshot is empty. The world is recreated and
+// becomes active only if no world is (R6).
+func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, error) {
 	unlock, err := m.Lock(id)
 	if err != nil {
 		return Snapshot{}, err
@@ -29,6 +38,9 @@ func (m *Manager) Restore(id, name, by string) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 	live, err := m.OpenWorld(id)
+	if errors.Is(err, fs.ErrNotExist) {
+		return Snapshot{}, m.restoreDeleted(ctx, id, snap)
+	}
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -71,6 +83,49 @@ func (m *Manager) Restore(id, name, by string) (Snapshot, error) {
 		return before, fmt.Errorf("remove old automatic snapshots: %w", err)
 	}
 	return before, nil
+}
+
+// restoreDeleted recreates a deleted world from a snapshot. The checks come
+// first and nothing is written until they pass.
+func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) error {
+	// Held so a world made meanwhile cannot take the same name.
+	m.createMu.Lock()
+	defer m.createMu.Unlock()
+
+	if meta, err := m.snapshotMeta(id, snap.Name); err == nil {
+		if meta.Newer() {
+			return ErrNewerFormat
+		}
+		if err := m.nameTakenByOther(ctx, id, meta.Name); errors.Is(err, ErrNameTaken) {
+			return ErrRestoreNameTaken
+		} else if err != nil {
+			return err
+		}
+	}
+	if err := CheckSpace(m.dirs.Worlds, copyBytes(snap.Files)); err != nil {
+		return err
+	}
+	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = worlds.Close() }()
+	if err := m.checkFiles(id, snap); err != nil {
+		return err
+	}
+	staging := PrefixStaging + id + "-" + randomSuffix()
+	if err := m.stage(worlds, staging, id, snap); err != nil {
+		_ = worlds.RemoveAll(staging)
+		return err
+	}
+	if err := worlds.Rename(staging, id); err != nil {
+		_ = worlds.RemoveAll(staging)
+		return err
+	}
+	if err := syncDir(worlds, "."); err != nil {
+		return err
+	}
+	return m.activateIfNone(ctx, id)
 }
 
 // checkFiles refuses a snapshot whose files no longer match its manifest,

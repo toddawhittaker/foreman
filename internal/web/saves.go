@@ -223,9 +223,7 @@ func (s *server) handleSaveUpload(w http.ResponseWriter, r *http.Request, u stor
 		refuse(world.ErrSaveName)
 		return
 	}
-	// The zip's directory may state at most 50 times its size once unpacked.
-	const unpackedFactor = 50
-	if err := checkZip(root, up.Temp, unpackedFactor*uint64(up.Size)); err != nil { //nolint:gosec // a file size is never negative
+	if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a file size is never negative
 		_ = root.Remove(up.Temp)
 		refuse(err)
 		return

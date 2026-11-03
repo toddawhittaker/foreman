@@ -60,6 +60,9 @@ type RestorePage struct {
 	WorldName string
 	Snapshot  world.Snapshot
 	Error     string
+	// Deleted is true when the world's folder is gone, so restoring makes
+	// the world again and takes no "Before restore" snapshot.
+	Deleted bool
 }
 
 func (SnapshotsPage) templateName() string { return "snapshots" }
@@ -175,6 +178,9 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("taken")); ok {
 		p.Done, p.DoneSnap = fmt.Sprintf("Foreman took the snapshot \"%s\".", sn.Label), sn.Name
 	}
+	if sn, ok := findSnapshot(p.Snapshots, q.Get("restored")); ok {
+		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored from the snapshot \"%s\".", sn.Label), sn.Name
+	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
 		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored. Foreman took the snapshot \"%s\" first; to undo the restore, restore that snapshot.", sn.Label), sn.Name
 	}
@@ -250,7 +256,8 @@ func actionError(err error) (int, string) {
 	switch {
 	case errors.Is(err, world.ErrNoSpace):
 		return http.StatusInsufficientStorage, "The world was not changed: " + err.Error()
-	case errors.Is(err, world.ErrBusy), errors.Is(err, world.ErrNewerFormat):
+	case errors.Is(err, world.ErrBusy), errors.Is(err, world.ErrNewerFormat),
+		errors.Is(err, world.ErrActive), errors.Is(err, world.ErrRestoreNameTaken):
 		return http.StatusConflict, "The world was not changed: " + err.Error() + "."
 	case errors.Is(err, world.ErrDamaged):
 		return http.StatusConflict, "The world was not changed: " + world.ErrDamaged.Error() + "."
@@ -271,10 +278,6 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		s.fail(w, r, "read world", err)
 		return RestorePage{}, false
 	}
-	if !found {
-		s.notFound(w, r, u)
-		return RestorePage{}, false
-	}
 	snap, err := s.worlds.Snapshot(id, snapName)
 	if errors.Is(err, world.ErrNoSnapshot) {
 		s.notFound(w, r, u)
@@ -284,7 +287,11 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		s.fail(w, r, "read snapshot", err)
 		return RestorePage{}, false
 	}
-	return RestorePage{WorldID: id, WorldName: name, Snapshot: snap}, true
+	if !found {
+		// A deleted world's snapshots stay restorable (SPEC 6.6).
+		name = s.worlds.SnapshotWorldName(id, snapName)
+	}
+	return RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found}, true
 }
 
 func (s *server) handleRestoreForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -296,7 +303,8 @@ func (s *server) handleRestoreForm(w http.ResponseWriter, r *http.Request, u sto
 }
 
 // handleRestore restores a snapshot (SPEC 6.5). Nothing runs a world in
-// this version, so there is no server to stop first.
+// this version, so there is no server to stop first. A deleted world's
+// snapshot recreates the world.
 func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.User) {
 	p, ok := s.restoreTarget(w, r, u)
 	if !ok {
@@ -305,7 +313,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 	if !s.readForm(w, r) {
 		return
 	}
-	before, err := s.worlds.Restore(p.WorldID, p.Snapshot.Name, u.Username)
+	before, err := s.worlds.Restore(r.Context(), p.WorldID, p.Snapshot.Name, u.Username)
 	if err != nil {
 		status, msg := actionError(err)
 		if status == http.StatusInternalServerError {
@@ -314,6 +322,10 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		}
 		p.Error = msg
 		s.page(w, r, status, u.Username, p)
+		return
+	}
+	if p.Deleted {
+		http.Redirect(w, r, snapshotsPath(p.WorldID)+"?restored="+p.Snapshot.Name, http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, snapshotsPath(p.WorldID)+"?undo="+before.Name, http.StatusSeeOther)
