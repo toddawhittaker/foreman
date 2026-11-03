@@ -24,7 +24,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test typecheck build image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame image run e2e e2e-deps \
 	test-game e2e-game vuln ci tidy
 
 verify: check-go fmt-check vet lint test typecheck
@@ -75,6 +75,10 @@ typecheck: e2e-deps
 build:
 	CGO_ENABLED=0 go build -trimpath -o bin/foreman ./cmd/foreman
 
+# The fake game for the end-to-end tests. It is never copied into the image.
+build-fakegame:
+	CGO_ENABLED=0 go build -trimpath -o bin/fakegame ./cmd/fakegame
+
 image:
 	docker build --build-arg GO_IMAGE=$(GO_IMAGE) -t $(IMAGE) .
 
@@ -84,7 +88,7 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
-e2e: build e2e-deps
+e2e: build build-fakegame e2e-deps
 	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
 
 test-game:
