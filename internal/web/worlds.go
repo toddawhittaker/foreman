@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -19,18 +20,20 @@ const (
 	PathImport       = "/import"
 	PathImportFolder = "/import/folder"
 	PathImportUpload = "/import/upload"
+	PathWorldDelete  = "/worlds/{id}/delete"
+	PathDeleted      = "/deleted"
 )
 
-// maxZipRatio caps a zip's stated unpacked size at this many times its
-// own size (the Epic 2 zip check).
-const maxZipRatio = 50
-
-func worldPath(id string) string { return PathWorlds + "/" + id }
+func worldPath(id string) string  { return PathWorlds + "/" + id }
+func deletePath(id string) string { return worldPath(id) + "/delete" }
 
 func (s *server) worldRoutes() {
 	s.mux.HandleFunc("GET "+PathWorlds, s.requireUser(s.handleWorlds))
 	s.mux.HandleFunc("GET "+PathWorlds+"/{id}", s.requireUser(s.handleWorld))
 	s.mux.HandleFunc("POST "+PathWorlds+"/{id}/rename", s.requireUser(s.handleRename))
+	s.mux.HandleFunc("GET "+PathWorldDelete, s.requireUser(s.handleDeleteForm))
+	s.mux.HandleFunc("POST "+PathWorldDelete, s.requireUser(s.handleDelete))
+	s.mux.HandleFunc("GET "+PathDeleted, s.requireUser(s.handleDeleted))
 	s.mux.HandleFunc("GET "+PathImport, s.requireUser(s.handleImportForm))
 	s.handleLong("POST "+PathImportFolder, s.requireUser(s.handleImportFolder))
 	s.handleUpload("POST "+PathImportUpload, MaxSaveUpload, s.requireUser(s.handleImportUpload))
@@ -310,6 +313,141 @@ func (s *server) receiveImport(r *http.Request, staging string) (string, ImportF
 		return "", f, err
 	}
 	return id, f, nil
+}
+
+// DeletePage confirms deleting a world (SPEC 5.10, DESIGN 7.4).
+type DeletePage struct {
+	World world.Summary
+	// FinalSnapshot is whether the box is ticked; it starts ticked.
+	FinalSnapshot bool
+	// ConfirmName refills the typed name after a mistake.
+	ConfirmName string
+	NameError   string
+	// Error says why the delete was refused, in plain words.
+	Error string
+}
+
+// DeletedPage lists deleted worlds, each with the snapshots that remain
+// (SPEC 6.6, DESIGN 8.3).
+type DeletedPage struct {
+	Worlds []world.DeletedWorld
+	// More is true when rows past maxListRows are hidden for some world.
+	More bool
+	// Done says what the delete that led here did.
+	Done string
+}
+
+func (DeletePage) templateName() string  { return "delete" }
+func (DeletedPage) templateName() string { return "deleted" }
+func (DeletePage) navItem() string       { return PathWorlds }
+func (DeletedPage) navItem() string      { return PathWorlds }
+
+func (p DeletePage) hasErrors() bool { return p.NameError != "" || p.Error != "" }
+
+// Problems lists the name field's error for the summary.
+func (p DeletePage) Problems() []Problem { return problems(Problem{"confirm-name", p.NameError}) }
+
+// Path is where the confirmation posts.
+func (p DeletePage) Path() string { return deletePath(p.World.ID) }
+
+// WorldPath is where cancelling goes.
+func (p DeletePage) WorldPath() string { return worldPath(p.World.ID) }
+
+// WorldsPath links back to the world list.
+func (DeletedPage) WorldsPath() string { return PathWorlds }
+
+// AllPath shows every snapshot.
+func (DeletedPage) AllPath() string { return PathDeleted + "?all=1" }
+
+// RestorePath is the confirmation page for one snapshot.
+func (DeletedPage) RestorePath(id, snap string) string { return restorePath(id, snap) }
+
+// Reason says why a snapshot was taken, in words.
+func (DeletedPage) Reason(reason string) string { return reasonText(reason) }
+
+func (s *server) handleDeleteForm(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.findWorld(w, r)
+	if !ok {
+		return
+	}
+	s.page(w, r, http.StatusOK, u.Username, DeletePage{World: sum, FinalSnapshot: true})
+}
+
+// handleDelete deletes a world after its final snapshot (SPEC 5.10). A
+// refusal shows the confirmation page again with the reason.
+func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	sum, ok := s.findWorld(w, r)
+	if !ok {
+		return
+	}
+	p := DeletePage{
+		World:         sum,
+		FinalSnapshot: r.PostFormValue("final_snapshot") == "on",
+		ConfirmName:   r.PostFormValue("confirm_name"),
+	}
+	err := s.worlds.Delete(r.Context(), sum.ID, p.ConfirmName, p.FinalSnapshot, u.Username)
+	if err == nil {
+		http.Redirect(w, r, PathDeleted+"?deleted="+sum.ID, http.StatusSeeOther)
+		return
+	}
+	status := http.StatusBadRequest
+	switch {
+	case errors.Is(err, world.ErrWrongName):
+		p.NameError = "Type " + sum.Name + " exactly, or cancel"
+	case errors.Is(err, fs.ErrNotExist):
+		s.page(w, r, http.StatusNotFound, u.Username, ErrorPage{Status: http.StatusNotFound})
+		return
+	default:
+		var msg string
+		if status, msg = actionError(err); status == http.StatusInternalServerError {
+			s.fail(w, r, "delete world", err)
+			return
+		}
+		p.Error = msg
+	}
+	s.page(w, r, status, u.Username, p)
+}
+
+func (s *server) handleDeleted(w http.ResponseWriter, r *http.Request, u store.User) {
+	list, err := s.worlds.Deleted()
+	if err != nil {
+		s.fail(w, r, "list deleted worlds", err)
+		return
+	}
+	p := DeletedPage{Worlds: list}
+	if r.URL.Query().Get("all") == "" {
+		for i := range p.Worlds {
+			if len(p.Worlds[i].Snapshots) > maxListRows {
+				p.Worlds[i].Snapshots, p.More = p.Worlds[i].Snapshots[:maxListRows], true
+			}
+		}
+	}
+	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
+		// The message is only true while the world is gone.
+		_, found, err := s.worldName(id)
+		if err != nil {
+			s.fail(w, r, "read world", err)
+			return
+		}
+		if !found {
+			p.Done = deletedMessage(id, list)
+		}
+	}
+	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// deletedMessage says what deleting world id did. A world that kept no
+// snapshot is not in the list, so it is named by its id.
+func deletedMessage(id string, list []world.DeletedWorld) string {
+	for _, d := range list {
+		if d.ID == id {
+			return fmt.Sprintf("The world \"%s\" is deleted. Its snapshots stay, listed below, and can be restored.", d.Name)
+		}
+	}
+	return fmt.Sprintf("The world %s is deleted. It had no snapshots, so it cannot be restored.", id)
 }
 
 // sentence turns a world error into a sentence for a field error.

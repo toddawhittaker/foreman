@@ -1,0 +1,40 @@
+{{define "title"}}Delete {{.Page.World.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>Delete {{.World.Name}}</h1>
+{{template "summary" .Problems}}
+{{- with .Error}}
+<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+  <p><strong>Error:</strong> {{.}}</p>
+</div>
+{{- end}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Delete the world "{{.World.Name}}"?</h2>
+  <p>This will:</p>
+  <ul>
+    <li>Delete the folder <code>worlds/{{.World.ID}}</code>, with its saves, mods and settings ({{bytes .World.DiskBytes}}).</li>
+    <li>Keep its snapshots. They stay listed under Deleted worlds and can be restored.</li>
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    <label class="check">
+      <input type="checkbox" name="final_snapshot"{{if .FinalSnapshot}} checked{{end}}>
+      Take a final snapshot first, labelled "Before delete" (about {{bytes .World.DiskBytes}}, never removed automatically). If the snapshot fails, nothing else happens.
+    </label>
+    <div class="field">
+      <label for="confirm-name">Type the world's name to confirm</label>
+      <p class="hint" id="confirm-name-hint">Type <strong>{{.World.Name}}</strong>, with the same capital letters.</p>
+      <input id="confirm-name" name="confirm_name" type="text" value="{{.ConfirmName}}" autocomplete="off" required
+        {{- if .NameError}} aria-invalid="true" aria-describedby="confirm-name-hint confirm-name-error"{{else}} aria-describedby="confirm-name-hint"{{end}}>
+      {{- with .NameError}}
+      <p class="error" id="confirm-name-error"><strong>Error:</strong> {{.}}</p>
+      {{- end}}
+    </div>
+    <div class="actions">
+      <button type="submit" class="button button--danger">Delete world</button>
+      <a href="{{.WorldPath}}">Cancel, keep the world</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}
