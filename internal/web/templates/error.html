@@ -1,0 +1,12 @@
+{{define "title"}}{{.Page.Heading}}{{end}}
+
+{{define "content" -}}
+<h1>{{.Page.Heading}}</h1>
+<div class="panel">
+  <p>{{.Page.Explanation}}</p>
+  <p class="hint">Error code {{.Page.Status}}</p>
+  <div class="actions">
+    <a class="button" href="{{homePath}}">Go to the home page</a>
+  </div>
+</div>
+{{- end}}

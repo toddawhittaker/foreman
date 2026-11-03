@@ -21,10 +21,15 @@ it runs the same `make` targets on the server and a green run is required
 as well.
 
 The Forgejo server has one shared runner, `forgejo-runner`, with the
-labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-latest`.
+labels `ubuntu-latest`, `ubuntu-24.04` and `docker`. Use `ubuntu-24.04`,
+so the job's operating system changes only when we change it.
 Jobs run as root inside a Debian container with Node and `apt`. `tea`
 cannot read job logs on this Forgejo version; read them in the web
 interface.
+
+CI runs whatever code a push or pull request brings, with access to the
+runner's shared Docker daemon, so only people we trust may push to this
+repository. Today that is one person.
 
 Jobs get the runner VM's own Docker daemon (the runner's `docker_host:
 "automount"` setting), shared with every other job on the VM. It is not an
@@ -48,6 +53,53 @@ change it. Use one of these instead:
   `docker inspect "$(hostname)"` before relying on it.
 - `docker cp`, to copy files into or out of a container.
 - A named volume, filled from inside a container.
+
+## Local development
+
+You need Go 1.27.3, Docker and `make`. golangci-lint and Playwright run
+in pinned images, so you do not install them. `make verify` refuses to
+run when your Go differs from `GO_VERSION` in the Makefile, which also
+names the build image, so install exactly that version:
+
+```sh
+curl -fsSLo /tmp/go.tgz https://go.dev/dl/go1.27.3.linux-amd64.tar.gz
+echo "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40  /tmp/go.tgz" | sha256sum -c -
+mkdir -p ~/.local/go1.27.3 && tar -C ~/.local/go1.27.3 --strip-components=1 -xzf /tmp/go.tgz
+export PATH="$HOME/.local/go1.27.3/bin:$PATH"   # add this line to your shell profile
+```
+
+The Makefile sets `GOTOOLCHAIN=local`, so Go never downloads another
+toolchain behind your back. Tool caches live in `.cache/` and the
+end-to-end packages in `e2e/node_modules/`; both are ignored.
+
+The targets (STACK.md, section 13):
+
+- `make verify`: the Go version check, the format check, `go vet`,
+  golangci-lint, the unit tests with the race detector and the 70%
+  coverage floor across `internal/`, and a type check of `e2e/`. Run it
+  before every commit.
+- `make test`: the unit tests and the coverage floor alone.
+- `make lint` and `make fmt`: check or rewrite formatting, and lint.
+- `make build`: the static binary at `bin/foreman`.
+- `make run`: serve locally on port 8080, with data in `.dev-data/`. It
+  runs in adopted mode with your own user and group IDs as the game's,
+  so it needs no Docker socket.
+- `make e2e`: build the binary and run the Playwright and axe tests in
+  the Playwright image.
+- `make image`: build the container image as `foreman:dev`.
+- `make vuln`: govulncheck. It needs the network, so it is not in
+  `verify`.
+- `make ci`: `verify`, `e2e` and `image` in turn, as CI runs them.
+- `make ci-clean RUN=<id>`: remove the containers, volumes, networks and
+  images a CI run named `foreman-ci-<id>-*`.
+- `make ci-leftovers RUN=<id>`: fail if any of those still exist. CI runs
+  it after the clean-up.
+- `make tidy`: `go mod tidy`.
+- `make test-game` and `make e2e-game`: placeholders until the real-game
+  tests arrive.
+
+The first `make verify` or `make e2e` pulls the pinned images and runs
+`npm ci` in `e2e/`; later runs reuse them.
 
 ## Branches
 
