@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"sync"
 	"syscall"
 )
 
@@ -107,40 +108,82 @@ func syncDir(root *os.Root, dir string) error {
 // FreeBytes returns the space an unprivileged process can still use on the
 // filesystem holding dir.
 func FreeBytes(dir string) (uint64, error) {
-	free, _, err := diskSpace(dir)
-	return free, err
-}
-
-// diskSpace returns the free bytes and the total size of dir's filesystem.
-func diskSpace(dir string) (free, total uint64, err error) {
 	var st syscall.Statfs_t
 	if err := syscall.Statfs(dir, &st); err != nil {
-		return 0, 0, fmt.Errorf("read free space: %w", err)
+		return 0, fmt.Errorf("read free space: %w", err)
 	}
-	bsize := uint64(st.Bsize) //nolint:gosec // Bsize is a positive block size
-	return st.Bavail * bsize, st.Blocks * bsize, nil
+	return st.Bavail * uint64(st.Bsize), nil //nolint:gosec // Bsize is a positive block size
 }
 
-// ErrNoSpace is wrapped by CheckSpace when the disk is too full.
+// SpaceReserve is the free space every write must leave for the game's
+// own autosaves (R19).
+const SpaceReserve uint64 = 2_000_000_000
+
+// reserveBytes is SpaceReserve; tests on a tiny filesystem lower it.
+var reserveBytes = SpaceReserve
+
+// SetSpaceReserveForTest sets the reserve for a test that runs on a
+// filesystem smaller than SpaceReserve. It returns a function that puts
+// the reserve back. Never call it outside tests.
+func SetSpaceReserveForTest(n uint64) (restore func()) {
+	reserveBytes = n
+	return func() { reserveBytes = SpaceReserve }
+}
+
+// ErrNoSpace is wrapped by Reserve and CheckSpace when the disk is too full.
 var ErrNoSpace = errors.New("not enough free disk space")
 
-// CheckSpace refuses an operation that will write need bytes on dir's
-// filesystem unless that much plus 1% of the filesystem would stay free.
-// The reserve leaves room for the game's own autosaves, and refusing up
-// front beats failing halfway.
+// promised counts bytes that writes in flight said they will write, so
+// writes running side by side cannot together eat into the reserve (R19).
+// One count for the process: the data folder is one filesystem.
+var promised struct {
+	mu sync.Mutex
+	n  uint64
+}
+
+// Reserve refuses a write of n bytes on dir's filesystem unless the free
+// space, less what other writes in flight have promised, covers n plus
+// SpaceReserve. On success n stays promised until release is called;
+// release is safe to call more than once.
+func Reserve(dir string, n uint64) (release func(), err error) {
+	free, err := FreeBytes(dir)
+	if err != nil {
+		return nil, err
+	}
+	promised.mu.Lock()
+	defer promised.mu.Unlock()
+	if err := checkSpace(free, promised.n, n); err != nil {
+		return nil, err
+	}
+	promised.n += n
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			promised.mu.Lock()
+			promised.n -= n
+			promised.mu.Unlock()
+		})
+	}, nil
+}
+
+// CheckSpace is Reserve for a caller that only wants to refuse up front.
 func CheckSpace(dir string, need uint64) error {
-	free, total, err := diskSpace(dir)
+	release, err := Reserve(dir, need)
 	if err != nil {
 		return err
 	}
-	return checkSpace(free, total, need)
+	release()
+	return nil
 }
 
-func checkSpace(free, total, need uint64) error {
-	reserve := total / 100
-	if want := need + reserve; free < want {
+func checkSpace(free, inFlight, need uint64) error {
+	avail := uint64(0)
+	if free > inFlight {
+		avail = free - inFlight
+	}
+	if want := need + reserveBytes; avail < want {
 		return fmt.Errorf("%w: this needs %s, including %s kept free for the game, but only %s is free. Free some space and try again",
-			ErrNoSpace, FormatBytes(want), FormatBytes(reserve), FormatBytes(free))
+			ErrNoSpace, FormatBytes(want), FormatBytes(reserveBytes), FormatBytes(avail))
 	}
 	return nil
 }
@@ -157,4 +200,34 @@ func FormatBytes(n uint64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "kMGTPE"[exp])
+}
+
+// errNotFolder is returned by openDir for a name that is not a real folder.
+var errNotFolder = errors.New("not a folder")
+
+// openDir opens the folder name inside parent as a root, refusing a
+// symlink even one that stays inside parent, so one world's folder can
+// never stand in for another's (R17).
+func openDir(parent *os.Root, name string) (*os.Root, error) {
+	before, err := parent.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if !before.IsDir() {
+		return nil, fmt.Errorf("%s: %w", name, errNotFolder)
+	}
+	r, err := parent.OpenRoot(name)
+	if err != nil {
+		return nil, err
+	}
+	// The name could be swapped for a link between the Lstat and the open.
+	after, err := r.Stat(".")
+	if err == nil && !os.SameFile(before, after) {
+		err = fmt.Errorf("%s: %w", name, errNotFolder)
+	}
+	if err != nil {
+		_ = r.Close()
+		return nil, err
+	}
+	return r, nil
 }

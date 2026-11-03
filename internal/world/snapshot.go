@@ -2,9 +2,12 @@ package world
 
 import (
 	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -49,6 +52,10 @@ func ValidSnapshotName(name string) bool { return snapshotNameRE.MatchString(nam
 // ErrNoSnapshot is returned for a snapshot that does not exist.
 var ErrNoSnapshot = errors.New("there is no such snapshot")
 
+// ErrUnsupportedFile is returned when a world holds a file a snapshot
+// cannot keep, such as a symlink.
+var ErrUnsupportedFile = errors.New("this world holds a file Foreman cannot snapshot")
+
 // ErrDamaged is returned when a snapshot's files do not match its manifest.
 var ErrDamaged = errors.New("this snapshot's files do not match its snapshot.json, so Foreman will not restore it")
 
@@ -58,6 +65,10 @@ type ManifestEntry struct {
 	Path    string    `json:"path"`
 	Size    int64     `json:"size"`
 	ModTime time.Time `json:"mod_time"`
+	// SHA256 is the hex hash of a zip, which is hard-linked and so could be
+	// changed in place through the live world (R20). Other files are
+	// copies and have none; snapshots from before R20 have none either.
+	SHA256 string `json:"sha256,omitempty"`
 }
 
 // Manifest is snapshot.json.
@@ -110,10 +121,17 @@ func (m *Manager) AutoSnapshot(id, reason, label, by string) (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, err
 	}
-	if err := m.prune(id); err != nil {
-		return s, fmt.Errorf("remove old automatic snapshots: %w", err)
-	}
+	m.pruneOrWarn(id)
 	return s, nil
+}
+
+// pruneOrWarn applies retention after a snapshot that worked. A failure
+// leaves an extra snapshot behind, which harms nothing, so it is only
+// logged rather than failing the operation the snapshot came before.
+func (m *Manager) pruneOrWarn(id string) {
+	if err := m.prune(id); err != nil {
+		m.log.Warn("could not remove old automatic snapshots", "world", id, "error", err)
+	}
 }
 
 // snapshot copies a world into snapshots/<id>/<time>. It builds in a
@@ -130,9 +148,11 @@ func (m *Manager) snapshot(id, reason, label, by string) (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("list the world's files: %w", err)
 	}
-	if err := CheckSpace(m.dirs.Snapshots, copyBytes(files)); err != nil {
+	release, err := Reserve(m.dirs.Snapshots, copyBytes(files))
+	if err != nil {
 		return Snapshot{}, err
 	}
+	defer release()
 
 	snaps, err := m.openSnapshots(id, true)
 	if err != nil {
@@ -174,18 +194,74 @@ func (m *Manager) fillSnapshot(w, snaps *os.Root, dir string, man *Manifest) err
 			return err
 		}
 	}
-	for _, f := range man.Files {
+	prev := m.previousHashes(snaps)
+	for i, f := range man.Files {
 		copied, err := placeFile(w, dst, f)
 		if err != nil {
 			return fmt.Errorf("snapshot %s: %w", f.Path, err)
 		}
 		man.Copied = man.Copied || copied
+		if isZip(f.Path) {
+			if man.Files[i].SHA256, err = prev.hash(snaps, dst, f); err != nil {
+				return fmt.Errorf("snapshot %s: %w", f.Path, err)
+			}
+		}
 	}
 	b, err := json.MarshalIndent(man, "", "  ")
 	if err != nil {
 		return err
 	}
 	return WriteFileAtomic(dst, ManifestFile, append(b, '\n'))
+}
+
+// prevSnapshot is the newest earlier snapshot, whose hashes a new one may
+// reuse (R20).
+type prevSnapshot struct {
+	name  string
+	files map[string]ManifestEntry
+}
+
+// previousHashes returns the newest readable snapshot in snaps, or an empty
+// one when there is none or the list cannot be read: then every zip is
+// hashed afresh.
+func (m *Manager) previousHashes(snaps *os.Root) prevSnapshot {
+	list, err := m.listSnapshots(snaps)
+	if err != nil || len(list) == 0 {
+		return prevSnapshot{}
+	}
+	p := prevSnapshot{name: list[0].Name, files: map[string]ManifestEntry{}}
+	for _, f := range list[0].Files {
+		p.files[f.Path] = f
+	}
+	return p
+}
+
+// hash returns the SHA-256 of f as placed in dst. The previous snapshot's
+// hash is reused when its copy is the same inode with the same size and
+// time, so an unchanged save is not read again (R20).
+func (p prevSnapshot) hash(snaps, dst *os.Root, f ManifestEntry) (string, error) {
+	if old, ok := p.files[f.Path]; ok && old.SHA256 != "" && old.Size == f.Size && old.ModTime.Equal(f.ModTime) {
+		a, aerr := snaps.Lstat(path.Join(p.name, f.Path))
+		b, berr := dst.Lstat(f.Path)
+		if aerr == nil && berr == nil && os.SameFile(a, b) {
+			return old.SHA256, nil
+		}
+	}
+	return hashFile(dst, f.Path)
+}
+
+// hashFile returns the hex SHA-256 of a regular file inside root.
+func hashFile(root *os.Root, name string) (string, error) {
+	f, err := root.Open(name)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // freeSnapshotName returns the folder name for time t, with -2, -3 and so
@@ -222,28 +298,33 @@ func (m *Manager) openSnapshots(id string, create bool) (*os.Root, error) {
 			return nil, err
 		}
 	}
-	return all.OpenRoot(id)
+	return openDir(all, id)
 }
 
 // isZip reports whether a file is hard-linked rather than copied (SPEC 6.8).
 func isZip(p string) bool { return strings.HasSuffix(p, ".zip") }
 
-// worldFiles lists the regular files of a world with their sizes and times.
-// Symlinks and other special files are left out, as is unfinished work.
+// worldFiles lists the files of a world with their sizes and times, hidden
+// ones included. Foreman's own unfinished work is left out. A symlink or
+// other special file cannot be kept by a snapshot, so rather than lose it
+// silently the snapshot is refused, naming it.
 func worldFiles(w *os.Root) ([]ManifestEntry, error) {
 	var out []ManifestEntry
 	err := fs.WalkDir(w.FS(), ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if p != "." && (strings.HasPrefix(d.Name(), ".") || isLeftover(d.Name())) {
+		if p != "." && (isLeftover(d.Name()) || strings.HasPrefix(d.Name(), PrefixRestoreOld)) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		if !d.Type().IsRegular() {
+		if d.IsDir() {
 			return nil
+		}
+		if !d.Type().IsRegular() {
+			return fmt.Errorf("%w: %s is a symlink or special file, which a snapshot cannot keep. Remove it or replace it with a copy, then try again", ErrUnsupportedFile, p)
 		}
 		info, err := d.Info()
 		if err != nil {
@@ -284,10 +365,14 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 		}
 		zipCopied = true
 	}
-	// A copy is checked for space on its own, since only a failed link
-	// makes a zip cost bytes (R19).
-	if err := CheckSpace(dst.Name(), uint64(f.Size)); err != nil { //nolint:gosec // a file size is never negative
-		return false, err
+	if zipCopied {
+		// The caller reserved space for the copies it expected; only a
+		// failed link makes a zip cost bytes too (R19).
+		release, err := Reserve(dst.Name(), uint64(f.Size)) //nolint:gosec // a file size is never negative
+		if err != nil {
+			return false, err
+		}
+		defer release()
 	}
 	if err := copyFile(src, f.Path, dst, f.Path); err != nil {
 		return false, err
@@ -332,6 +417,13 @@ func (m *Manager) Snapshots(id string) ([]Snapshot, error) {
 		return nil, err
 	}
 	defer func() { _ = snaps.Close() }()
+	return m.listSnapshots(snaps)
+}
+
+// listSnapshots reads every snapshot in snaps, newest first. A folder
+// whose snapshot.json cannot be read is logged and skipped, so one damaged
+// snapshot does not hide the rest or block new ones.
+func (m *Manager) listSnapshots(snaps *os.Root) ([]Snapshot, error) {
 	entries, err := fs.ReadDir(snaps.FS(), ".")
 	if err != nil {
 		return nil, err
@@ -343,7 +435,8 @@ func (m *Manager) Snapshots(id string) ([]Snapshot, error) {
 		}
 		man, err := readManifest(snaps, e.Name())
 		if err != nil {
-			return nil, err
+			m.log.Warn("skipped a snapshot that cannot be read", "folder", path.Join(snaps.Name(), e.Name()), "error", err)
+			continue
 		}
 		out = append(out, Snapshot{Name: e.Name(), Manifest: man})
 	}
@@ -377,7 +470,12 @@ func (m *Manager) Snapshot(id, name string) (Snapshot, error) {
 }
 
 func readManifest(snaps *os.Root, name string) (Manifest, error) {
-	b, err := snaps.ReadFile(path.Join(name, ManifestFile))
+	dir, err := openDir(snaps, name)
+	if err != nil {
+		return Manifest{}, err
+	}
+	defer func() { _ = dir.Close() }()
+	b, err := dir.ReadFile(ManifestFile)
 	if err != nil {
 		return Manifest{}, err
 	}

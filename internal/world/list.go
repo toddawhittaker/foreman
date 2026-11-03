@@ -20,7 +20,10 @@ type Summary struct {
 	// world has no saves.
 	LastPlayed time.Time
 	DiskBytes  uint64
-	Active     bool
+	// SizeUnknown is true when DiskBytes could not be measured, for one
+	// because a folder in the world cannot be read.
+	SizeUnknown bool
+	Active      bool
 	// Newer is true when a newer Foreman wrote world.json; the world is
 	// listed but cannot be changed.
 	Newer bool
@@ -72,25 +75,44 @@ func (m *Manager) List(ctx context.Context) ([]Summary, error) {
 	return out, nil
 }
 
-func summarize(worlds *os.Root, id string) (Summary, error) {
-	s := Summary{ID: id, Name: id}
-	w, err := worlds.OpenRoot(id)
+// Get returns one world's row, as List would show it (SPEC 5.4).
+func (m *Manager) Get(ctx context.Context, id string) (Summary, error) {
+	if !ValidID(id) {
+		return Summary{}, fs.ErrNotExist
+	}
+	activeID, _, err := m.active.ActiveWorld(ctx)
 	if err != nil {
-		return s, err
+		return Summary{}, err
+	}
+	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	if err != nil {
+		return Summary{}, err
+	}
+	defer func() { _ = worlds.Close() }()
+	s, err := summarize(worlds, id)
+	if err != nil {
+		return Summary{}, err
+	}
+	s.Active = id == activeID
+	return s, nil
+}
+
+func summarize(worlds *os.Root, id string) (Summary, error) {
+	w, err := openDir(worlds, id)
+	if err != nil {
+		return Summary{}, err
 	}
 	defer func() { _ = w.Close() }()
 
 	meta, err := ReadMeta(w)
-	if err != nil {
-		s.Unreadable = true
-	} else {
-		s.Name = meta.Name
+	s := Summary{ID: id, Name: displayName(id, meta, err), Unreadable: err != nil}
+	if err == nil {
 		s.GameVersion = meta.GameVersion
 		s.SpaceAge = meta.SpaceAge
 		s.Newer = meta.Newer()
 	}
 	if s.DiskBytes, err = diskUse(w); err != nil {
-		return s, err
+		s.DiskBytes, s.SizeUnknown = 0, true
 	}
 	s.LastPlayed, err = lastPlayed(w)
 	return s, err

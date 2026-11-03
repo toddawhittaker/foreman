@@ -48,6 +48,7 @@ func newTestManager(t *testing.T) (*Manager, *fakeActive) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.log = slog.New(slog.NewTextHandler(io.Discard, nil))
 	return m, active
 }
 
@@ -405,34 +406,6 @@ func TestCheckSpace(t *testing.T) {
 	}
 	if _, err := FreeBytes(filepath.Join(dir, "missing")); err == nil {
 		t.Error("FreeBytes on a missing folder succeeded")
-	}
-}
-
-// The reserve is 1% of the filesystem, so even a write of nothing (a
-// snapshot of hardlinks) is refused on a nearly full disk.
-func TestCheckSpaceReserve(t *testing.T) {
-	const total = 100_000_000_000 // a 1 GB reserve
-	cases := []struct {
-		free, need uint64
-		ok         bool
-	}{
-		{1_000_000_000, 0, true},
-		{999_999_999, 0, false},
-		{3_000_000_000, 2_000_000_000, true},
-		{2_999_999_999, 2_000_000_000, false},
-	}
-	for _, c := range cases {
-		err := checkSpace(c.free, total, c.need)
-		if (err == nil) != c.ok {
-			t.Errorf("free %d need %d: %v, want ok=%v", c.free, c.need, err, c.ok)
-		}
-		if err != nil && !errors.Is(err, ErrNoSpace) {
-			t.Errorf("not ErrNoSpace: %v", err)
-		}
-	}
-	err := checkSpace(2_999_999_999, total, 2_000_000_000)
-	if err == nil || !strings.Contains(err.Error(), "needs 3.0 GB, including 1.0 GB kept free") {
-		t.Errorf("message should give the need with the reserve: %v", err)
 	}
 }
 

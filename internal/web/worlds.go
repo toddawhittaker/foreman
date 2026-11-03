@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -253,21 +252,10 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 }
 
 // handleImportUpload makes a new world from one uploaded save (SPEC 5.5).
-// The save lands in a staging folder, so a refused upload leaves no world.
-// Syncing the save's mods from the portal comes with Epic 5.
+// A refused upload leaves no world. Syncing the save's mods from the
+// portal comes with Epic 5.
 func (s *server) handleImportUpload(w http.ResponseWriter, r *http.Request, u store.User) {
-	staging, err := s.worlds.NewStaging()
-	if err != nil {
-		s.fail(w, r, "make staging folder", err)
-		return
-	}
-	id, f, err := s.receiveImport(r, staging)
-	if id == "" {
-		// Removing an already-removed staging folder is harmless.
-		if derr := s.worlds.DiscardStaging(staging); derr != nil && err == nil {
-			err = derr
-		}
-	}
+	id, f, err := s.receiveImport(r)
 	switch {
 	case err != nil && !f.placeError(err):
 		s.fail(w, r, "import upload", err)
@@ -278,10 +266,10 @@ func (s *server) handleImportUpload(w http.ResponseWriter, r *http.Request, u st
 	}
 }
 
-// receiveImport receives the upload form into staging and makes the world.
-// It returns the new world's id, or the form with its field errors, or an
-// error.
-func (s *server) receiveImport(r *http.Request, staging string) (string, ImportForm, error) {
+// receiveImport receives the upload form into a temp file in the worlds
+// folder and makes the world. It returns the new world's id, or the form
+// with its field errors, or an error.
+func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	worldsDir := s.worlds.Dirs().Worlds
 	root, err := os.OpenRoot(worldsDir)
 	if err != nil {
@@ -290,8 +278,7 @@ func (s *server) receiveImport(r *http.Request, staging string) (string, ImportF
 	defer func() { _ = root.Close() }()
 
 	values := map[string]string{"name": "", "game_version": "", "space_age": ""}
-	saves := path.Join(staging, world.SavesDir)
-	up, err := receiveFileWithFields(r, root, saves, "save", worldsDir, MaxSaveUpload, values)
+	up, err := receiveFileWithFields(r, root, ".", "save", worldsDir, MaxSaveUpload, values)
 	f := importFields(values["name"], values["game_version"], values["space_age"])
 	if err != nil {
 		return "", f, err
@@ -300,15 +287,15 @@ func (s *server) receiveImport(r *http.Request, staging string) (string, ImportF
 	if !world.ValidSaveName(up.FileName) {
 		f.SourceError = "Choose a save file whose name ends in .zip and does not start with a dot."
 	} else if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a size is never negative
+		_ = root.Remove(up.Temp)
 		return "", f, err
 	}
 	if f.failed() {
+		_ = root.Remove(up.Temp)
 		return "", f, nil
 	}
-	if err := world.Commit(root, up.Temp, path.Join(saves, up.FileName)); err != nil {
-		return "", f, err
-	}
-	id, err := s.worlds.CreateFromStaging(r.Context(), staging, f.Name, f.GameVersion, f.SpaceAge)
+	// ImportSave removes the temp file whatever happens.
+	id, err := s.worlds.ImportSave(r.Context(), f.Name, f.GameVersion, f.SpaceAge, up.FileName, up.Temp)
 	if err != nil {
 		return "", f, err
 	}

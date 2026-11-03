@@ -34,15 +34,13 @@ func (m *Manager) Delete(ctx context.Context, id, typedName string, finalSnapsho
 	if err != nil {
 		return err
 	}
-	name := id
-	meta, err := ReadMeta(w)
+	// A world whose world.json is unreadable can still be deleted, by id.
+	meta, err := readChangeable(w)
 	_ = w.Close()
-	if err == nil {
-		if meta.Newer() {
-			return ErrNewerFormat
-		}
-		name = meta.Name
+	if errors.Is(err, ErrNewerFormat) {
+		return err
 	}
+	name := displayName(id, meta, err)
 	activeID, _, err := m.active.ActiveWorld(ctx)
 	if err != nil {
 		return err
@@ -157,10 +155,7 @@ func (m *Manager) SnapshotWorldName(id, name string) string {
 
 func (m *Manager) snapshotWorldName(id string, snap Snapshot) string {
 	meta, err := m.snapshotMeta(id, snap.Name)
-	if err != nil || meta.Name == "" {
-		return id
-	}
-	return meta.Name
+	return displayName(id, meta, err)
 }
 
 // snapshotMeta reads the world.json a snapshot holds.
@@ -170,7 +165,7 @@ func (m *Manager) snapshotMeta(id, name string) (Meta, error) {
 		return Meta{}, err
 	}
 	defer func() { _ = snaps.Close() }()
-	src, err := snaps.OpenRoot(name)
+	src, err := openDir(snaps, name)
 	if err != nil {
 		return Meta{}, err
 	}

@@ -131,3 +131,22 @@ func WriteMeta(root *os.Root, m Meta) error {
 	}
 	return WriteFileAtomic(root, MetaFile, append(b, '\n'))
 }
+
+// readChangeable reads world.json for a change, refusing a world a newer
+// Foreman wrote (R3).
+func readChangeable(root *os.Root) (Meta, error) {
+	meta, err := ReadMeta(root)
+	if err == nil && meta.Newer() {
+		return Meta{}, ErrNewerFormat
+	}
+	return meta, err
+}
+
+// displayName is the world's name from world.json, or its id when
+// world.json could not be read or has no name.
+func displayName(id string, meta Meta, err error) string {
+	if err != nil || meta.Name == "" {
+		return id
+	}
+	return meta.Name
+}
