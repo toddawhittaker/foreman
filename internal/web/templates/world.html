@@ -1,0 +1,45 @@
+{{define "title"}}{{.Page.World.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<p><a href="{{worldsPath}}" class="button">All worlds</a></p>
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">Active</span>{{end}}</h1>
+{{- if .World.Unreadable}}
+<p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.World.ID}}</code>.</p>
+{{- else if .World.Newer}}
+<p>A newer version of Foreman wrote this world, so this version cannot change it.</p>
+{{- end}}
+<section class="panel" aria-labelledby="facts-heading">
+  <h2 id="facts-heading">About this world</h2>
+  <dl class="facts">
+    <div><dt>Folder</dt><dd><code>{{.World.ID}}</code></dd></div>
+    <div><dt>Game version</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
+    <div><dt>Space Age</dt><dd>{{if .World.SpaceAge}}On{{else}}Off{{end}}</dd></div>
+    <div><dt>Last played</dt><dd>{{if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
+    <div><dt>Disk use</dt><dd>{{bytes .World.DiskBytes}}</dd></div>
+  </dl>
+  <div class="actions">
+    <a href="{{.SavesPath}}" class="button">Saves</a>
+    <a href="{{.SnapshotsPath}}" class="button">Snapshots</a>
+  </div>
+</section>
+{{- if not (or .World.Newer .World.Unreadable)}}
+<form method="post" action="{{.RenamePath}}" class="panel" novalidate aria-labelledby="rename-heading">
+  <h2 id="rename-heading">Rename</h2>
+  {{template "summary" .Problems}}
+  <p>The new name is shown everywhere in Foreman. The world's folder keeps its name.</p>
+  <div class="field">
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" value="{{.Name}}" required maxlength="100"
+      {{- with .NameError}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+    {{- with .NameError}}
+    <p class="error" id="name-error"><strong>Error:</strong> {{.}}</p>
+    {{- end}}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary">Rename world</button>
+  </div>
+</form>
+{{- end}}
+{{end}}
+{{- end}}
