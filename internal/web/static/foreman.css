@@ -458,6 +458,30 @@ legend {
   font-size: var(--text-md);
 }
 
+/* The file picker button is drawn as a secondary button (DESIGN 7.2). */
+.field input[type="file"] {
+  padding-inline: 0 var(--space-3);
+}
+
+.field input[type="file"]::file-selector-button {
+  min-block-size: calc(var(--target-min) - 2 * var(--border-width));
+  margin-inline-end: var(--space-3);
+  padding-inline: var(--space-4);
+  background: var(--color-button);
+  color: var(--color-on-button);
+  border: 0;
+  border-inline-end: var(--border-width) solid var(--color-border);
+  border-radius: 0;
+  box-shadow: var(--bevel-raised);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field input[type="file"]::file-selector-button:hover {
+  background: var(--color-button-hover);
+}
+
 .field input:focus {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: 2px;
@@ -705,6 +729,13 @@ td:first-child {
   overflow-wrap: anywhere;
 }
 
+/* A size never splits before its unit, and a template wraps each half of a
+   timestamp in .nowrap so it breaks only between date and time (DESIGN 8.3). */
+td.num,
+.nowrap {
+  white-space: nowrap;
+}
+
 th {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -743,5 +774,23 @@ td:last-child {
   th,
   td {
     padding-inline: var(--space-2);
+  }
+}
+
+/* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
+@media (forced-colors: active) {
+  .tabs a {
+    border: 2px solid transparent;
+  }
+
+  .tabs a[aria-current="page"] {
+    border-color: Highlight;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 0.25em;
+  }
+
+  .field input[type="file"]::file-selector-button {
+    border-inline-end-color: ButtonText;
   }
 }
