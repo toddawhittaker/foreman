@@ -37,13 +37,6 @@ var gameVersionRE = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 // ValidGameVersion reports whether v looks like x.y.z.
 func ValidGameVersion(v string) bool { return gameVersionRE.MatchString(v) }
 
-// ValidSaveName reports whether name can be a save file's name: one path
-// element, ending in .zip, not hidden (a leading dot marks work in progress).
-func ValidSaveName(name string) bool {
-	return name != "" && path.Base(name) == name && !strings.ContainsRune(name, '\\') &&
-		!strings.HasPrefix(name, ".") && strings.HasSuffix(name, ".zip") && len(name) > len(".zip")
-}
-
 // importFile is a regular file to copy, by its path inside the source folder.
 type importFile struct {
 	path string
