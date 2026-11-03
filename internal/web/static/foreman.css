@@ -31,6 +31,7 @@
   --color-on-highlight: #1a1004;
   --color-button: #a8a198;
   --color-on-button: #161412;
+  --color-button-hover: #c4beb5;
   --color-confirm: #62b04f;
   --color-confirm-hover: #7cc768;
   --color-on-confirm: #0c1808;
@@ -80,6 +81,7 @@
     --color-on-highlight: #ffffff;
     --color-button: #d2ccc2;
     --color-on-button: #1c1a17;
+    --color-button-hover: #e6e1d8;
     --color-confirm: #2d7621;
     --color-confirm-hover: #235f19;
     --color-on-confirm: #ffffff;
@@ -316,8 +318,8 @@ form.panel {
 }
 
 .button:hover {
-  background: var(--color-highlight);
-  color: var(--color-on-highlight);
+  background: var(--color-button-hover);
+  color: var(--color-on-button);
 }
 
 .button:active {
@@ -335,6 +337,17 @@ form.panel {
   color: var(--color-on-confirm);
 }
 
+.button--danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+  border-color: var(--color-danger);
+}
+
+.button--danger:hover {
+  background: var(--color-danger-hover);
+  color: var(--color-on-danger);
+}
+
 .button:disabled {
   cursor: progress;
 }
@@ -344,6 +357,13 @@ form.panel {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
+}
+
+/* A plain link beside a button, such as Cancel, is a full-size target. */
+.actions > a:not(.button) {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
 }
 
 /* On a narrow panel the buttons stack full width, primary first. */
@@ -428,4 +448,199 @@ label {
 
 .message--error :is(h2, p):first-child > strong:first-child {
   color: var(--color-danger-text);
+}
+
+/* 7.4 Confirming risky actions: a flat danger box, no bevel. */
+.confirm {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-danger-bg);
+  border: var(--border-width) solid var(--color-danger-text);
+  border-radius: var(--radius);
+}
+
+.confirm ul {
+  display: grid;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-5);
+}
+
+.confirm form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--target-min);
+  font-weight: 400;
+}
+
+.check input {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+  accent-color: var(--color-highlight);
+}
+
+/* 7.6 Long-running operations */
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  max-inline-size: none;
+}
+
+.steps li[aria-current="step"] {
+  font-weight: 600;
+}
+
+.steps progress {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-highlight);
+}
+
+.step-state {
+  min-inline-size: 6rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.step-state--done {
+  color: var(--color-ok);
+}
+
+.step-state--progress {
+  color: var(--color-warn);
+}
+
+.step-state--failed {
+  color: var(--color-danger-text);
+}
+
+/* 8.2 The world list: rows divided by a rule, not boxed. */
+.worlds {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.worlds > li {
+  display: grid;
+  gap: var(--space-2);
+  max-inline-size: none;
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-rule);
+}
+
+.worlds > li:first-child {
+  padding-block-start: 0;
+}
+
+.worlds > li:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+.worlds :is(h2, h3) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+/* The status facts: label and value pairs that reflow at any width (7.5). */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.facts > div {
+  min-inline-size: 0;
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.facts dd {
+  overflow-wrap: anywhere;
+}
+
+/* The "Active" badge is drawn as selected, like the current tab. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--space-2);
+  border: var(--border-width) solid;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.badge--active {
+  background: var(--color-highlight);
+  color: var(--color-on-highlight);
+}
+
+/* 8.3 Tables */
+table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  padding-block-end: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: start;
+}
+
+th,
+td {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-rule);
+  text-align: start;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+th {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border-block-end-color: var(--color-border);
+}
+
+th:first-child,
+td:first-child {
+  padding-inline-start: 0;
+}
+
+th:last-child,
+td:last-child {
+  padding-inline-end: 0;
+}
+
+.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }

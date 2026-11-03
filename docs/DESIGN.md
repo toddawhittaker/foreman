@@ -130,10 +130,11 @@ anywhere else in the stylesheet is a bug.
 | `--color-border` | `#958c80` | `#7a7369` | Edge of fields; edge of secondary buttons in light; table header rule |
 | `--color-rule` | `#57534d` | `#cdc7bd` | Decorative dividers between rows; never the only edge of a control |
 | `--color-link` | `#ffbd6b` | `#9a4800` | Links (always underlined) |
-| `--color-highlight` | `#f39a2a` | `#b05a00` | Selected or active: current nav tab, "Active" badge, checked boxes, secondary button hover |
+| `--color-highlight` | `#f39a2a` | `#b05a00` | Selected or active: current nav tab, "Active" badge, checked boxes |
 | `--color-on-highlight` | `#1a1004` | `#ffffff` | Text on `highlight` |
 | `--color-button` | `#a8a198` | `#d2ccc2` | Secondary button face |
 | `--color-on-button` | `#161412` | `#1c1a17` | Secondary button text |
+| `--color-button-hover` | `#c4beb5` | `#e6e1d8` | Secondary button hover face |
 | `--color-confirm` | `#62b04f` | `#2d7621` | Primary ("go") button face |
 | `--color-confirm-hover` | `#7cc768` | `#235f19` | Primary button hover |
 | `--color-on-confirm` | `#0c1808` | `#ffffff` | Primary button text |
@@ -153,7 +154,7 @@ anywhere else in the stylesheet is a bug.
 How the colours divide the work:
 
 - **Orange means "this one".** The current page's tab, the active world,
-  a checked box, the button under the pointer. It is never the colour of
+  a checked box. It is never the colour of
   an action's face, so a person never wonders whether orange is a
   button.
 - **Green means go.** Only the primary button (7.1) is green, plus the
@@ -203,6 +204,7 @@ in light (`focus` on `bg`).
 | `link` | `inner` | 6.86 | 5.59 |
 | `link` | `deep` | 10.55 | 6.36 |
 | `on-button` | `button` | 7.19 | 10.88 |
+| `on-button` | `button-hover` | 9.96 | 13.33 |
 | `on-highlight` | `highlight` | 8.45 | 4.87 |
 | `on-confirm` | `confirm` | 6.82 | 5.64 |
 | `on-confirm` | `confirm-hover` | 8.89 | 7.71 |
@@ -353,7 +355,7 @@ That is why every frame and control keeps one.
 - The ring is blue in both themes, so it stays distinct from the orange
   highlight, the green primary button and the red danger button (3,
   "How the colours divide the work"). A focused button that is also
-  hovered shows both its orange face and the blue ring.
+  hovered shows both its lighter grey face and the blue ring.
 - A 3 px ring around a control at least 44 px tall meets WCAG 2.2 focus
   appearance (2.4.13, AAA) as well as focus visible (2.4.7, AA).
 - Nothing sticky may cover the focused element (2.4.11). The header is
@@ -478,7 +480,7 @@ tokens. Classes are short, flat and named for what the thing is (`button`,
 | Kind | Face | Text | Border | Hover | Use |
 |---|---|---|---|---|---|
 | Primary (green, "go") | `confirm` | `on-confirm` | 1px `confirm` | face `confirm-hover` | The one main action on a screen or in a form: "Start server", "Sign in", "Create world". At most one per form. |
-| Secondary (grey) | `button` | `on-button` | 1px `border` | face `highlight`, text `on-highlight` | Every other action. The default. |
+| Secondary (grey) | `button` | `on-button` | 1px `border` | face `button-hover`, text `on-button` | Every other action. The default. |
 | Danger (red) | `danger` | `on-danger` | 1px `danger` | face `danger-hover` | Only the final, confirming button of a destructive action (7.4). |
 
 All buttons: `min-block-size: var(--target-min)`, `min-inline-size:
@@ -489,8 +491,8 @@ var(--bevel-raised)`. While pressed (`:active`) the bevel flips to
 nothing animates.
 
 - Hover is a colour change only; it is never the sole sign of anything,
-  because a phone has no hover. The secondary button's orange hover
-  follows the game's habit of lighting up what is under the pointer.
+  because a phone has no hover. The secondary button's hover is a
+  lighter grey, so orange keeps meaning only "selected".
 
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **secondary**, not danger. Red is kept for
