@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/crypto/argon2"
 
-	"git.thewhittakers.org/todd/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/auth"
 )
 
 func signInForm(user, pw string) url.Values {

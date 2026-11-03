@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"git.thewhittakers.org/todd/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/auth"
 )
 
 // statusWriter remembers the status so the access log can report it.

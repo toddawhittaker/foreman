@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"git.thewhittakers.org/todd/foreman/internal/auth"
-	"git.thewhittakers.org/todd/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 type signedIn int

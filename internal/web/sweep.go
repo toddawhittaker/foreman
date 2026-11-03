@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"git.thewhittakers.org/todd/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 const sweepEvery = time.Hour

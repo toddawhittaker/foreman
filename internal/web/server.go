@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"git.thewhittakers.org/todd/foreman/internal/auth"
-	"git.thewhittakers.org/todd/foreman/internal/config"
-	"git.thewhittakers.org/todd/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 // HealthPath answers 200 while the process can serve requests; the image's

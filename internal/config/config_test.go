@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"git.thewhittakers.org/todd/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/config"
 )
 
 func load(vars map[string]string) (*config.Config, error) {

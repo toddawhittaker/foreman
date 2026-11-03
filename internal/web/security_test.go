@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.thewhittakers.org/todd/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/auth"
 )
 
 // These tests drive the whole handler over a real TCP listener, so the
