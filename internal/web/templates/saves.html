@@ -8,17 +8,17 @@
 </div>
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
-<div class="message message--ok">
+<div class="message message--success">
   <p><strong>Done:</strong> Uploaded <code>{{.Uploaded}}</code>.</p>
 </div>
 {{- end}}
 {{- if .Chosen}}
-<div class="message message--ok">
+<div class="message message--success">
   <p><strong>Done:</strong> {{if .LoadSave}}The server will load <code>{{.LoadSave}}</code> the next time it starts.{{else}}The server will load the newest save the next time it starts.{{end}}</p>
 </div>
 {{- end}}
 {{- if .Newer}}
-<div class="message message--info">
+<div class="message message--note">
   <p><strong>Note:</strong> A newer version of Foreman wrote this world, so this version cannot change it. You can still download its saves.</p>
 </div>
 {{- end}}

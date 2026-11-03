@@ -54,19 +54,22 @@ func zipBytes(t *testing.T, entries map[string]int) []byte {
 	return b.Bytes()
 }
 
-// deadlineRecorder lets the long routes lift their deadlines, which a plain
-// recorder refuses.
-type deadlineRecorder struct{ *httptest.ResponseRecorder }
+// deadlineSpy lets the long routes lift their deadlines, which a plain
+// recorder refuses, and counts how many they lifted.
+type deadlineSpy struct {
+	*httptest.ResponseRecorder
+	lifted int
+}
 
-func (deadlineRecorder) SetReadDeadline(time.Time) error  { return nil }
-func (deadlineRecorder) SetWriteDeadline(time.Time) error { return nil }
+func (d *deadlineSpy) SetReadDeadline(time.Time) error  { d.lifted++; return nil }
+func (d *deadlineSpy) SetWriteDeadline(time.Time) error { d.lifted++; return nil }
 
 func (hn *harness) serveLong(r *http.Request) *httptest.ResponseRecorder {
 	hn.t.Helper()
 	r.RemoteAddr = peerUntrusted
-	rec := httptest.NewRecorder()
-	hn.h.ServeHTTP(deadlineRecorder{rec}, r)
-	return rec
+	spy := &deadlineSpy{ResponseRecorder: httptest.NewRecorder()}
+	hn.h.ServeHTTP(spy, r)
+	return spy.ResponseRecorder
 }
 
 func (hn *harness) getLong(path string, c *http.Cookie) *httptest.ResponseRecorder {

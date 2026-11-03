@@ -114,7 +114,9 @@ export async function checkPage(page: Page) {
         return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.clipPath === "none";
       })
       .map((el) => {
-        const r = el.getBoundingClientRect();
+        // A radio or checkbox inside its label is tapped through the label (DESIGN 7.2).
+        const box = el instanceof HTMLInputElement ? (el.closest("label") ?? el) : el;
+        const r = box.getBoundingClientRect();
         return { what: el.outerHTML.slice(0, 80), w: r.width, h: r.height };
       }),
   );
