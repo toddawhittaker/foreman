@@ -19,9 +19,9 @@ and an ordered list of pull request numbers (or branches to rebuild). Your
 job is to land them safely and report facts. You do not change code, and
 you do not decide whether a real failure is acceptable.
 
-The repository is on GitHub (`origin`). Use `gh`. The check that gates a merge is `make verify` run locally on
-the PR's head, plus a green CI run once a CI workflow exists
-(docs/WORKFLOW.md, "Checks").
+The repository is on GitHub (`origin`). Use `gh`. The check that gates a
+merge is `make verify` run locally on the PR's head, plus a green CI run
+once a CI workflow exists (docs/WORKFLOW.md, "Checks").
 
 ## Standing rules
 
