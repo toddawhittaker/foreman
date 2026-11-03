@@ -384,7 +384,9 @@ func TestErrorPageCopy(t *testing.T) {
 	}
 }
 
-// The vendored htmx is exactly the pinned release (STACK 3, SPEC 3.7).
+// The vendored htmx 2.0.11 and its SSE extension (npm htmx-ext-sse 2.2.4,
+// dist/sse.min.js, tarball integrity sha512-LJmxVhyk...EI8O2wXXn4ZZtBdpEMqmEQ==)
+// are exactly the pinned releases (STACK 3, SPEC 3.7).
 func TestVendoredChecksums(t *testing.T) {
 	sums, err := staticFS.ReadFile("static/vendor/SHA256SUMS")
 	if err != nil {
@@ -407,8 +409,21 @@ func TestVendoredChecksums(t *testing.T) {
 		}
 		listed[name] = true
 	}
-	if !listed["htmx.min.js"] {
-		t.Error("htmx.min.js is not in SHA256SUMS")
+	for name, marker := range map[string]string{
+		"htmx.min.js":         `version:"2.0.11"`,
+		"htmx-ext-sse.min.js": `defineExtension("sse"`,
+	} {
+		if !listed[name] {
+			t.Errorf("%s is not in SHA256SUMS", name)
+			continue
+		}
+		body, err := staticFS.ReadFile("static/vendor/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Contains(body, []byte(marker)) {
+			t.Errorf("%s does not contain %s", name, marker)
+		}
 	}
 	entries, err := fs.ReadDir(staticFS, "static/vendor")
 	if err != nil {
