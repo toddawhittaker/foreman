@@ -47,8 +47,11 @@ type Problem struct {
 // PreCheck is the result of the pre-start check.
 type PreCheck struct {
 	// Save is the save that will load, or empty when there is none.
-	Save     string
-	Problems []Problem
+	Save string
+	// SaveVersion is the game version that wrote Save; zero when the save
+	// could not be read.
+	SaveVersion savefile.Version
+	Problems    []Problem
 }
 
 // OK reports whether the world can start with no confirmation.
@@ -129,6 +132,7 @@ func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 	case err != nil:
 		return PreCheck{}, err
 	}
+	out.SaveVersion = save.Version
 	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save)...)
 	return out, nil
 }
