@@ -1,0 +1,43 @@
+   0.000 2026-11-03 22:26:03; Factorio 2.0.77 (build 84539, linux64, headless, space-age)
+   0.000 Operating system: Linux
+   0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--create" "/factorio/saves/spike.zip" 
+   0.000 Config path: /opt/factorio/config/config.ini
+   0.000 Read data path: /opt/factorio/data
+   0.000 Write data path: /opt/factorio [546366/928723MB]
+   0.000 Binaries path: /opt/factorio/bin
+   0.009 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+   0.009 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEODRIVER=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+   0.009 Running in headless mode
+   0.009 Audio is disabled
+   0.010 Info ModManager.cpp:449: FeatureFlag expansion-shaders = true
+   0.010 Info ModManager.cpp:449: FeatureFlag freezing = true
+   0.010 Info ModManager.cpp:449: FeatureFlag quality = true
+   0.010 Info ModManager.cpp:449: FeatureFlag rail-bridges = true
+   0.010 Info ModManager.cpp:449: FeatureFlag segmented-units = true
+   0.010 Info ModManager.cpp:449: FeatureFlag space-travel = true
+   0.010 Info ModManager.cpp:449: FeatureFlag spoiling = true
+   0.013 Loading mod core 0.0.0 (data.lua)
+   0.025 Loading mod base 2.0.77 (data.lua)
+   0.157 Loading mod elevated-rails 2.0.77 (data.lua)
+   0.185 Loading mod quality 2.0.77 (data.lua)
+   0.199 Loading mod space-age 2.0.77 (data.lua)
+   0.399 Loading mod base 2.0.77 (data-updates.lua)
+   0.412 Loading mod quality 2.0.77 (data-updates.lua)
+   0.432 Loading mod space-age 2.0.77 (data-updates.lua)
+   0.544 Checksum for core: 4187927925
+   0.544 Checksum of base: 1879415942
+   0.544 Checksum of elevated-rails: 70351106
+   0.544 Checksum of quality: 1142589254
+   0.544 Checksum of space-age: 1510664043
+   0.936 Prototype list checksum: 3295867752
+   1.016 Info PlayerData.cpp:66: Local player-data.json unavailable
+   1.016 Info PlayerData.cpp:71: Cloud player-data.json unavailable
+   1.018 Factorio initialised
+   1.018 Info Create.cpp:31: Creating new map /factorio/saves/spike.zip
+   1.027 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+   1.272 Loading level.dat: 666366 bytes.
+   1.272 Info Scenario.cpp:154: Map version 2.0.77-0
+   1.288 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+   1.293 Checksum for script __level__/control.lua: 2722821277
+Done.
+   1.412 Goodbye

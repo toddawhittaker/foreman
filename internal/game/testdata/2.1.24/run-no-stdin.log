@@ -1,0 +1,45 @@
+2026-11-03T22:28:18.381544239Z    0.000 2026-11-03 22:28:18; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+2026-11-03T22:28:18.381569658Z    0.000 Operating system: Linux
+2026-11-03T22:28:18.381574367Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server" "/factorio/saves/spike.zip" "--server-settings" "/factorio/config/server-settings.json" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> 
+2026-11-03T22:28:18.381580098Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-03T22:28:18.381583605Z    0.000 Read data path: /opt/factorio/data
+2026-11-03T22:28:18.381586891Z    0.000 Write data path: /opt/factorio [545756/928723MB]
+2026-11-03T22:28:18.381590428Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-03T22:28:18.388476882Z    0.007 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+2026-11-03T22:28:18.388485859Z    0.007 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-03T22:28:18.394923977Z    0.013 Running in headless mode
+2026-11-03T22:28:18.394936200Z    0.013 Audio is disabled
+2026-11-03T22:28:18.395688048Z    0.014 Info ModManager.cpp:455: FeatureFlag: expansion, expansion-shaders, freezing, quality, rail-bridges, segmented-units, space-travel, spoiling
+2026-11-03T22:28:18.398396315Z    0.016 Loading mod core 0.0.0 (data.lua)
+2026-11-03T22:28:18.409753416Z    0.028 Loading mod base 2.1.24 (data.lua)
+2026-11-03T22:28:18.537131899Z    0.155 Loading mod elevated-rails 2.1.24 (data.lua)
+2026-11-03T22:28:18.550490356Z    0.169 Loading mod recycler 2.1.24 (data.lua)
+2026-11-03T22:28:18.556834334Z    0.175 Loading mod quality 2.1.24 (data.lua)
+2026-11-03T22:28:18.562361710Z    0.180 Loading mod space-age 2.1.24 (data.lua)
+2026-11-03T22:28:18.747297434Z    0.365 Loading mod base 2.1.24 (data-updates.lua)
+2026-11-03T22:28:18.755518830Z    0.374 Loading mod recycler 2.1.24 (data-updates.lua)
+2026-11-03T22:28:18.769116855Z    0.387 Loading mod quality 2.1.24 (data-updates.lua)
+2026-11-03T22:28:18.776732914Z    0.395 Loading mod space-age 2.1.24 (data-updates.lua)
+2026-11-03T22:28:18.847589237Z    0.466 Checksum for core: 3668028660
+2026-11-03T22:28:18.847608675Z    0.466 Checksum of base: 3864816957
+2026-11-03T22:28:18.847612702Z    0.466 Checksum of elevated-rails: 1429039930
+2026-11-03T22:28:18.847615748Z    0.466 Checksum of recycler: 3293728126
+2026-11-03T22:28:18.847617892Z    0.466 Checksum of quality: 4220722184
+2026-11-03T22:28:18.847619936Z    0.466 Checksum of space-age: 3636981730
+2026-11-03T22:28:19.218361126Z    0.836 Prototype list checksum: 1446647465
+2026-11-03T22:28:19.266882662Z    0.885 Info PlayerData.cpp:582: Local player-data.json unavailable
+2026-11-03T22:28:19.267496957Z    0.886 Factorio initialised
+2026-11-03T22:28:19.267621415Z    0.886 Info ServerSynchronizer.cpp:22: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-03T22:28:19.267627326Z    0.886 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(Ready) to(PreparedToHostGame)
+2026-11-03T22:28:19.267630362Z    0.886 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-03T22:28:19.267835133Z    0.886 Loading map /factorio/saves/spike.zip: 826054 bytes.
+2026-11-03T22:28:19.280409341Z    0.898 Loading level.dat: 978245 bytes.
+2026-11-03T22:28:19.280422466Z    0.899 Info Scenario.cpp:152: Map version 2.1.24-1
+2026-11-03T22:28:19.295763352Z    0.914 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+2026-11-03T22:28:19.295817947Z    0.914 Loading script.dat: 1211 bytes.
+2026-11-03T22:28:19.297839090Z    0.916 Checksum for script __level__/control.lua: 2385776952
+2026-11-03T22:28:19.298584726Z    0.917 Info UDPSocket.cpp:38: Opening socket at (IP ADDR:({0.0.0.0:34197}))
+2026-11-03T22:28:19.298675038Z    0.917 Hosting game at IP ADDR:({0.0.0.0:34197})
+2026-11-03T22:28:19.298679116Z    0.917 Info ServerMultiplayerManager.cpp:809: updateTick(3942) changing state from(CreatingGame) to(InGame)
+2026-11-03T22:28:19.298787864Z    0.917 Error InterruptibleStdioStream.cpp:72: Got EOF on stdin; closing
+2026-11-03T22:28:19.298839293Z    0.917 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})
