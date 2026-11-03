@@ -216,6 +216,6 @@ required group. Existing hand-renamed save and mod folders are imported as world
    zip), and what to do with mods that no longer exist on the portal.
 5. *(Answered in SPEC 8.7 and 8.8.)* **Crash-reason detection**: a log-pattern catalogue versus exit-code heuristics, and
    how to keep the catalogue current across game versions.
-6. **Tech stack**: deliberately left open. The constraints are one small container, a
+6. *(Answered: docs/STACK.md.)* **Tech stack**: deliberately left open. The constraints are one small container, a
    responsive UI, and no runtime downloads.
 7. *(Answered: MIT, SPEC 18.10.)* **License**: MIT or Apache-2.0.
