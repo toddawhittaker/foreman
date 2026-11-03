@@ -79,11 +79,23 @@ Settled by the orchestrator (easy to change):
   without undue complexity). Before a snapshot or an import, Foreman
   estimates the bytes it will write (nothing for a hardlink, the full size
   for a copy) and refuses to start, with a clear message, when the
-  filesystem's free space is short of that plus a 1% margin. An upload is
+  filesystem's free space is short of that plus a fixed 2 GB reserve
+  kept for the game's autosaves (revised after review: 1% of a very large
+  disk refused every snapshot). All checks share one in-process count of
+  bytes already promised to writes in flight, so parallel writes cannot
+  together overrun the reserve. An upload is
   refused up front when its declared length exceeds free space; if the
   disk fills anyway, the temp file is removed and nothing changes. The
   snapshot page shows free space beside snapshot disk use. Free space comes
   from `syscall.Statfs`; no new dependency.
+
+- **R20. Snapshots detect tampering** (Todd, after the security review:
+  SPEC 6.8 trusts the game to write saves as new files, SPEC 14.1 does
+  not trust the game). `snapshot.json` records each zip's SHA-256. A hash
+  is reused from the previous snapshot when the file's inode, size and
+  modification time are unchanged, so only new files are read. Restore
+  checks every hash first and refuses a changed snapshot, naming the
+  file.
 
 ## Tasks
 
