@@ -190,6 +190,10 @@ func (m *Manager) AddSave(id, name, temp string) error {
 	}
 	defer func() { _ = root.Close() }()
 	defer func() { _ = root.Remove(temp) }() // gone already after a good commit
+	opened, err := root.Stat(".")
+	if err != nil {
+		return err
+	}
 
 	if !ValidSaveName(name) {
 		return ErrSaveName
@@ -200,8 +204,13 @@ func (m *Manager) AddSave(id, name, temp string) error {
 	}
 	defer unlock()
 
-	// A restore or delete while the upload streamed or while this waited
-	// replaced the folder the temp file was in; root is then the old one.
+	// A restore or delete while this waited moved the folder aside. The old
+	// folder can survive, temp file and all, so check the name still leads
+	// to the folder opened above. The temp file is missing when the swap came
+	// before the upload finished.
+	if err := m.sameWorld(id, opened); err != nil {
+		return err
+	}
 	if _, err := root.Lstat(temp); errors.Is(err, fs.ErrNotExist) {
 		return ErrWorldChanged
 	} else if err != nil {
@@ -217,6 +226,27 @@ func (m *Manager) AddSave(id, name, temp string) error {
 		return err
 	}
 	return Commit(root, temp, final)
+}
+
+// sameWorld returns ErrWorldChanged unless worlds/<id> is the folder that
+// opened describes.
+func (m *Manager) sameWorld(id string, opened fs.FileInfo) error {
+	now, err := m.OpenWorld(id)
+	if errors.Is(err, fs.ErrNotExist) {
+		return ErrWorldChanged
+	}
+	if err != nil {
+		return err
+	}
+	defer func() { _ = now.Close() }()
+	info, err := now.Stat(".")
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(opened, info) {
+		return ErrWorldChanged
+	}
+	return nil
 }
 
 // SetLoadSave sets which save loads: a save's name, or empty for the newest
