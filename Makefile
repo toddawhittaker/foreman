@@ -9,7 +9,7 @@ PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734
 GAME_IMAGE_1_1  := factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb
 GAME_IMAGE_2_0  := factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef
 GAME_IMAGE_2_1  := factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28
-GOVULNCHECK     :=golang.org/x/vuln/cmd/govulncheck@v1.9.0
+GOVULNCHECK     := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 COVERAGE_FLOOR  := 70
 
 # Never let the go command fetch a different toolchain.
