@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"git.thewhittakers.org/todd/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 // env reads variables, and the files named by their _FILE variants.

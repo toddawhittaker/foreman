@@ -1,0 +1,120 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels that pull request's older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The jobs run in parallel; together they are `make ci`. The `ci` job at the
+# end is the one check the ruleset on main requires, so adding a job here
+# needs no change to the ruleset.
+jobs:
+  # `make verify`, split so its slow parts run side by side.
+  verify:
+    name: verify (${{ matrix.check }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: vet
+            run: make check-go fmt-check vet
+          - check: lint
+            run: make lint
+          - check: test
+            run: make test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache-dependency-path: go.sum
+
+      # The lint container keeps its caches in .cache/.
+      - if: matrix.check == 'lint'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache
+          key: lint-${{ hashFiles('go.sum', 'Makefile', '.golangci.yml') }}
+
+      - run: ${{ matrix.run }}
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache-dependency-path: go.sum
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/npm
+            e2e/node_modules
+          key: e2e-${{ hashFiles('Makefile', 'e2e/package-lock.json') }}
+
+      # The type check is part of `make verify`; it runs here because it
+      # needs the same Playwright image and packages.
+      - run: make typecheck e2e
+
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the build image from the Makefile
+        id: go
+        run: echo "image=$(sed -n 's/^GO_IMAGE *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # The same build as `make image`, with layers cached between runs.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          build-args: GO_IMAGE=${{ steps.go.outputs.image }}
+          tags: foreman:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image size (SPEC 16.1)
+        run: |
+          size=$(docker save foreman:ci | gzip | wc -c)
+          echo "Compressed image: $size bytes (limit 30000000)"
+          [ "$size" -le 30000000 ]
+
+  # The single required check: green only when every job above is green.
+  ci:
+    if: always()
+    needs: [verify, e2e, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed
+        run: |
+          echo '${{ toJSON(needs.*.result) }}'
+          [ '${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}' = false ]

@@ -1,16 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tea pr list:*)",
-      "Bash(tea pr create:*)",
-      "Bash(tea pr merge:*)",
-      "Bash(tea pulls list:*)",
-      "Bash(tea pulls create:*)",
-      "Bash(tea pulls merge:*)",
-      "Bash(tea issues list:*)",
-      "Bash(tea issues create:*)",
-      "Bash(tea api /repos/todd/foreman/pulls:*)",
-      "Bash(tea api /repos/todd/foreman/issues:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api repos/toddawhittaker/foreman/pulls:*)",
+      "Bash(gh api repos/toddawhittaker/foreman/issues:*)",
       "Bash(make verify)"
     ]
   },

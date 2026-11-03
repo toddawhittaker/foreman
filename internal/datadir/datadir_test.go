@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.thewhittakers.org/todd/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker"
 )
 
 const ownID = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

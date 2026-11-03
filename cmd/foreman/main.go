@@ -17,11 +17,11 @@ import (
 	"syscall"
 	"time"
 
-	"git.thewhittakers.org/todd/foreman/internal/config"
-	"git.thewhittakers.org/todd/foreman/internal/datadir"
-	"git.thewhittakers.org/todd/foreman/internal/docker"
-	"git.thewhittakers.org/todd/foreman/internal/store"
-	"git.thewhittakers.org/todd/foreman/internal/web"
+	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/datadir"
+	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/web"
 )
 
 func main() {

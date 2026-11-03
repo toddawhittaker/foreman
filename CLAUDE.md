@@ -39,12 +39,12 @@ silently. Use the architect agent to draft spec and stack options.
 - `docs/STATUS.md` (to come, written by each epic's fold task): what each
   epic delivered and the gaps it left.
 - `docs/WORKFLOW.md`: branching, epic plans, code style, pull requests,
-  secret scanning, and Forgejo use. Local development is added once the stack is
+  secret scanning, and GitHub use. Local development is added once the stack is
   chosen.
 - `docs/adr/`: decision records, one for any choice a reader asks "why"
   of. Copy `docs/adr/0000-template.md`.
-- Forgejo issues (labels `enhancement` and `bug`): wanted work that is
-  not yet an epic or task. File one with `tea issues create` when the user
+- GitHub issues (labels `enhancement` and `bug`): wanted work that is
+  not yet an epic or task. File one with `gh issue create` when the user
   defers something.
 
 Before implementing any subsystem, read the SPEC.md and STACK.md sections
@@ -108,10 +108,9 @@ Orchestration rules:
   decision. Prepare the pull request, citing the SPEC.md and STACK.md
   sections it serves and how it was verified (WORKFLOW.md, "Pull
   requests"), then report and stop.
-- The repository is on Forgejo (`origin`, git.thewhittakers.org). Use
-  `tea`, never `gh`, for pull requests, issues and releases (WORKFLOW.md,
-  "Where the code lives"). `make verify` run locally is the merge gate,
-  plus CI once a workflow exists (WORKFLOW.md, "Checks").
+- The repository is on GitHub (`origin`). Use `gh` for pull requests,
+  issues and releases (WORKFLOW.md, "Where the code lives"). `make verify` run locally is the merge gate,
+  plus the CI checks (WORKFLOW.md, "Checks").
 
 ## Project rules that override convenience
 

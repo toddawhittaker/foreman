@@ -1,4 +1,4 @@
-module git.thewhittakers.org/todd/foreman
+module github.com/toddawhittaker/foreman
 
 go 1.27.0
 

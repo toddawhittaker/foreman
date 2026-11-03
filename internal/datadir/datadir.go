@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"git.thewhittakers.org/todd/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker"
 )
 
 const (

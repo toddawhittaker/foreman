@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"git.thewhittakers.org/todd/foreman/internal/auth"
-	"git.thewhittakers.org/todd/foreman/internal/config"
-	"git.thewhittakers.org/todd/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 const (

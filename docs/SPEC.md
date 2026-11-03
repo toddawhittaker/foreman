@@ -52,9 +52,9 @@ mechanism is open.
 ## 3. Deployment
 
 3.1. **One container.** Foreman ships as one container image, published
-with an exact version tag. It needs no other service to run. Until v1 the
-image is published to the Forgejo registry; from v1 it is also published
-to GHCR (GitHub's container registry). (P0)
+with an exact version tag. It needs no other service to run. The
+image is published to GHCR (GitHub's container registry) as
+`ghcr.io/toddawhittaker/foreman`. (P0)
 
 3.2. **Configuration.** Everything an operator sets at install comes
 from environment variables. Any secret value can instead come from a file

@@ -12,22 +12,17 @@ COVERAGE_FLOOR  := 70
 # Never let the go command fetch a different toolchain.
 export GOTOOLCHAIN := local
 
-# CI overrides these: it names everything foreman-ci-<run>-* and shares its
-# workspace volume, because bind mounts from a job arrive empty (WORKFLOW.md, "Checks").
-NAME_PREFIX ?= foreman-dev-$(shell od -An -N4 -tx4 /dev/urandom | tr -d ' ')
-WORKSPACE   ?= -v $(CURDIR):$(CURDIR)
-DOCKER_USER ?= -u $(shell id -u):$(shell id -g)
-IMAGE       ?= foreman:dev
+IMAGE ?= foreman:dev
 
 CACHE := $(CURDIR)/.cache
 # Tool containers see the repository at its own path and keep caches in .cache/.
-DOCKER_RUN := docker run --rm --init $(WORKSPACE) -w $(CURDIR) $(DOCKER_USER) \
+DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(shell id -u):$(shell id -g) \
 	-e HOME=$(CACHE)/home -e GOTOOLCHAIN=local \
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test typecheck build image run e2e e2e-deps \
-	test-game e2e-game vuln ci ci-clean ci-leftovers tidy
+	test-game e2e-game vuln ci tidy
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -53,7 +48,7 @@ vet:
 
 lint:
 	@mkdir -p $(CACHE)/home
-	$(DOCKER_RUN) --name $(NAME_PREFIX)-lint $(LINT_IMAGE) golangci-lint run ./...
+	$(DOCKER_RUN) $(LINT_IMAGE) golangci-lint run ./...
 
 # One race-enabled run gives both the test result and the coverage floor.
 test:
@@ -66,13 +61,13 @@ test:
 
 e2e/node_modules/.package-lock.json: e2e/package.json e2e/package-lock.json
 	@mkdir -p $(CACHE)/home
-	$(DOCKER_RUN) --name $(NAME_PREFIX)-npm -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npm ci --no-audit --no-fund
+	$(DOCKER_RUN) -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npm ci --no-audit --no-fund
 	@touch $@
 
 e2e-deps: e2e/node_modules/.package-lock.json
 
 typecheck: e2e-deps
-	$(DOCKER_RUN) --name $(NAME_PREFIX)-tsc -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install tsc --noEmit
+	$(DOCKER_RUN) -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install tsc --noEmit
 
 build:
 	CGO_ENABLED=0 go build -trimpath -o bin/foreman ./cmd/foreman
@@ -86,7 +81,7 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data go run ./cmd/foreman serve
 
 e2e: build e2e-deps
-	$(DOCKER_RUN) --name $(NAME_PREFIX)-e2e --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
+	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
 
 test-game:
 	@echo "make test-game arrives in Epic 3, with server control."
@@ -97,30 +92,8 @@ e2e-game:
 vuln:
 	go run $(GOVULNCHECK) ./...
 
+# Everything CI checks, in one local run.
 ci: verify e2e image
-
-ci-clean:
-	@[ -n "$(RUN)" ] || { echo "Usage: make ci-clean RUN=<id>"; exit 1; }
-	@p='^foreman-ci-$(RUN)-'; \
-	docker ps -aq --filter "name=$$p" | xargs -r docker rm -f; \
-	docker volume ls -q --filter "name=$$p" | xargs -r docker volume rm; \
-	docker network ls -q --filter "name=$$p" | xargs -r docker network rm; \
-	docker image ls --format '{{.Repository}}:{{.Tag}}' | grep "$$p" | xargs -r docker image rm; \
-	true
-
-# Fails when anything named for the run survives ci-clean.
-ci-leftovers:
-	@[ -n "$(RUN)" ] || { echo "Usage: make ci-leftovers RUN=<id>"; exit 1; }
-	@p='^foreman-ci-$(RUN)-'; \
-	left=$$( set -e; \
-		docker ps -a --format 'container {{.Names}}' --filter "name=$$p"; \
-		docker volume ls --format 'volume {{.Name}}' --filter "name=$$p"; \
-		docker network ls --format 'network {{.Name}}' --filter "name=$$p"; \
-		images=$$(docker image ls --format 'image {{.Repository}}:{{.Tag}}'); \
-		printf '%s\n' "$$images" | grep "$$p" || [ $$? -eq 1 ] ) \
-		|| { echo "Could not list Docker resources. Is Docker reachable?"; exit 1; }; \
-	if [ -n "$$left" ]; then echo "CI run $(RUN) left these behind:"; echo "$$left"; exit 1; fi; \
-	echo "Nothing left behind by CI run $(RUN)."
 
 tidy:
 	go mod tidy

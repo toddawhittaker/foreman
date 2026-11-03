@@ -37,11 +37,10 @@ line per step, so the run survives a context reset.
    commit, the files in scope, and what done looks like.
 7. **Verify each report** before merging: in the agent's worktree run
    `make verify`, read the diff, check that the files it claims are in the
-   PR (`tea api /repos/todd/foreman/pulls/<n>/files`), and rule on anything
-   it did outside its file list. Once a CI workflow exists, its run on the
-   PR must be green as well (WORKFLOW.md, "Checks").
-8. **Land with tea.** Once a task PR passes step 7, run
-   `tea pr merge --style squash <n>`, confirm it merged, and delete its
+   PR (`gh pr view <n> --json files`), and rule on anything
+   it did outside its file list. The PR's CI run must be green as well (WORKFLOW.md, "Checks").
+8. **Land with gh.** Once a task PR passes step 7, run
+   `gh pr merge --squash <n>`, confirm it merged, and delete its
    branch. A task PR into the epic has no human review; Todd reviews once,
    at the epic level. Never merge a PR into `main`. Main-into-epic and
    epic-into-main use merge commits. Hand a list of PRs to merger when
@@ -68,8 +67,8 @@ line per step, so the run survives a context reset.
     ADR, delete the plan, and carry a `Fixes #N` line for each issue.
 13. **Epic PR into main.** Cite the SPEC.md and STACK.md sections and how
     it was verified (WORKFLOW.md, "Pull requests"). Keep the body in the
-    scratchpad and create the PR with `tea pr create --base main
-    --description-file <path>`.
+    scratchpad and create the PR with `gh pr create --base main
+    --body-file <path>`.
 14. **Check it yourself.** Run the full local checks on the epic head
     after merging `main` in, not just on the merger's word.
 15. **Stop.** Report the PR and wait. Todd merges main.
@@ -85,8 +84,7 @@ line per step, so the run survives a context reset.
 - Tell running agents not to wait for their PR to land; waiting on a
   merge can deadlock.
 - Never echo "merged" without checking the PR's state
-  (`tea api /repos/todd/foreman/pulls/<n>`, `"merged": true`).
-- Use `tea`, never `gh`; the repository is on Forgejo.
+  (`gh pr view <n> --json state`, `"state": "MERGED"`).
 
 ## Shared rules file template
 
@@ -109,8 +107,8 @@ docs/EPIC-<n>.md on the epic branch; read your task's row.
   proposed STATUS line (delivered, gaps left) in the PR body.
 - Never `git add -A`. No attribution lines. Never force-push; merge the
   epic branch in to catch up.
-- PR into `epic/<n>-<name>`, not main, with `tea pr create --base
-  epic/<n>-<name> --description-file <path>`. Body: `Refs #N`, the SPEC.md
+- PR into `epic/<n>-<name>`, not main, with `gh pr create --base
+  epic/<n>-<name> --body-file <path>`. Body: `Refs #N`, the SPEC.md
   section served, how it was verified, the STATUS line. Do not merge.
 - Stay inside your listed files; name any exception in the report.
 - Never touch a real deployment or a container you did not create.

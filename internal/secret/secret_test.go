@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.thewhittakers.org/todd/foreman/internal/secret"
+	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 const plain = "hunter2-very-secret"
