@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // These tests break the disk and the process partway through an operation
@@ -394,6 +395,7 @@ func TestBusyWorldRefusesEveryChange(t *testing.T) {
 	temp := uploadTemp(t, m, id, "upload")
 	before := diskTree(t, dataDir(m))
 	delete(before, filepath.Join("worlds", id, temp))
+	m.addSaveWait = 10 * time.Millisecond
 	unlock, err := m.Lock(id)
 	if err != nil {
 		t.Fatal(err)
@@ -444,7 +446,9 @@ func TestConcurrentChangesNeverCorruptAWorld(t *testing.T) {
 			temp := uploadTemp(t, m, id, "u")
 			run("add save", func() error {
 				err := m.AddSave(id, fmt.Sprintf("u-%d-%d.zip", round, i), temp)
-				if errors.Is(err, ErrSaveExists) {
+				// A restore that ran first replaced the folder the upload's temp
+				// file was in; AddSave now waits for it, so it sees that.
+				if errors.Is(err, ErrSaveExists) || errors.Is(err, ErrWorldChanged) {
 					return nil
 				}
 				return err

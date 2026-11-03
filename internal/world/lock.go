@@ -3,6 +3,7 @@ package world
 import (
 	"errors"
 	"sync"
+	"time"
 )
 
 // ErrBusy is returned by Lock when another operation holds the world.
@@ -37,4 +38,20 @@ func (m *Manager) Lock(id string) (unlock func(), err error) {
 			l.mu.Unlock()
 		})
 	}, nil
+}
+
+// lockPoll is how often lockWait tries the lock again.
+const lockPoll = 50 * time.Millisecond
+
+// lockWait is Lock, but a held world is retried until wait has passed
+// before ErrBusy is returned.
+func (m *Manager) lockWait(id string, wait time.Duration) (unlock func(), err error) {
+	deadline := time.Now().Add(wait)
+	for {
+		unlock, err = m.Lock(id)
+		if !errors.Is(err, ErrBusy) || !time.Now().Before(deadline) {
+			return unlock, err
+		}
+		time.Sleep(lockPoll)
+	}
 }

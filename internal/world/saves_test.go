@@ -266,7 +266,8 @@ func TestAddSaveRefusals(t *testing.T) {
 	m, _ := newTestManager(t)
 	id, dir := madeWorld(t, m)
 
-	// Busy: another operation holds the world.
+	// Busy: another operation holds the world past the wait.
+	m.addSaveWait = 20 * time.Millisecond
 	unlock, err := m.Lock(id)
 	if err != nil {
 		t.Fatal(err)
