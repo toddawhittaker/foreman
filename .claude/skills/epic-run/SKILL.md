@@ -38,8 +38,7 @@ line per step, so the run survives a context reset.
 7. **Verify each report** before merging: in the agent's worktree run
    `make verify`, read the diff, check that the files it claims are in the
    PR (`gh pr view <n> --json files`), and rule on anything
-   it did outside its file list. Once a CI workflow exists, its run on the
-   PR must be green as well (WORKFLOW.md, "Checks").
+   it did outside its file list. The PR's CI run must be green as well (WORKFLOW.md, "Checks").
 8. **Land with gh.** Once a task PR passes step 7, run
    `gh pr merge --squash <n>`, confirm it merged, and delete its
    branch. A task PR into the epic has no human review; Todd reviews once,

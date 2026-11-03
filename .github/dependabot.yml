@@ -1,0 +1,35 @@
+# Weekly pull requests for pinned dependencies, one per ecosystem.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go:
+        patterns: ["*"]
+
+  # @playwright/test must match the Playwright image in the Makefile,
+  # so it is updated by hand together with that image.
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "@playwright/test"
+    groups:
+      e2e:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

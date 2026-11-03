@@ -110,7 +110,7 @@ Orchestration rules:
   requests"), then report and stop.
 - The repository is on GitHub (`origin`). Use `gh` for pull requests,
   issues and releases (WORKFLOW.md, "Where the code lives"). `make verify` run locally is the merge gate,
-  plus CI once a workflow exists (WORKFLOW.md, "Checks").
+  plus the CI checks (WORKFLOW.md, "Checks").
 
 ## Project rules that override convenience
 

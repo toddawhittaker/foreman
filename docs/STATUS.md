@@ -15,10 +15,9 @@ Serves SPEC 18.1. Everything below is built and tested.
   and a `/healthz` endpoint. Every make target in STACK 13 exists;
   `test-game` and `e2e-game` are stubs until Epic 3. The container image
   is distroless, runs as 845:845, and is about 7 MB compressed (limit
-  30 MB, checked in CI). CI runs on a GitHub-hosted runner (`ubuntu-24.04`),
-  pins `actions/checkout` by commit, cleans up everything it created by
-  name, and fails if anything is left behind or if Docker cannot be
-  reached to check. `make run` starts Foreman locally in adopted mode.
+  30 MB, checked in CI). CI is GitHub Actions on `ubuntu-24.04`, in three
+  parallel jobs with caching and every action pinned by commit (STACK 1
+  and 9). `make run` starts Foreman locally in adopted mode.
   The toolchain is pinned (STACK 1, ADR 0001), and `make verify` fails on
   a wrong local Go. A 70% coverage floor across `internal/` is enforced
   inside `make verify`; coverage is about 91%.
@@ -62,8 +61,7 @@ Serves SPEC 18.1. Everything below is built and tested.
   `FOREMAN_AUTH_METHODS` means `local`; the public URL's origin is
   trusted for form posts; unused exports were removed. The limiter folds
   usernames in ASCII only, to match the database, and the "busy" message
-  shows at form level. `make ci-leftovers` fails when Docker is
-  unreachable, and the hash-cap comment now says only what is true.
+  shows at form level. The hash-cap comment now says only what is true.
 
 ### Gaps left
 
@@ -72,9 +70,6 @@ Serves SPEC 18.1. Everything below is built and tested.
 - The limiter is in memory and resets when Foreman restarts.
 - Anyone who can reach the sign-in page can keep a known username locked
   out by failing on purpose (SPEC 12.11).
-- CI installs `make`, `docker-cli` and `gzip` with `apt`, unpinned.
-- CI trusts whoever can push to the repository. Only one person can today
-  (WORKFLOW.md, "Checks").
 - No browser test of forced-colours mode.
 - Idle session expiry is tested at unit level only, not in a browser.
 - The "busy" sign-in page has no end-to-end test.
@@ -84,7 +79,6 @@ Serves SPEC 18.1. Everything below is built and tested.
 - Host path discovery (SPEC 3.5) was checked once by hand against a real
   Docker daemon (Engine 29.9.2): the image found its data directory's host
   path in managed mode. There is no automated test against a real daemon.
-- `make ci-clean` cannot remove Docker build cache, which has no name.
 - No tables yet for API tokens, app settings or the audit log; later
   epics add them as migrations 0002 and up.
 - No user management or password change. Only the placeholder home page

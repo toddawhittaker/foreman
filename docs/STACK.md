@@ -29,14 +29,15 @@ is a copy and goes stale if they change without it.
 - Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1 and
   `golang.org/x/crypto` v0.58.0.
 - govulncheck v1.9.0, run by `make vuln`.
-- CI: `actions/checkout` pinned to commit
-  `11d5960a326750d5838078e36cf38b85af677262` (v4.4.0), on the
-  `ubuntu-24.04` runner. CI installs the same Go and checks its checksum.
+- CI: GitHub Actions on the `ubuntu-24.04` runner. Every action is
+  pinned to a full commit: `actions/checkout` v7.0.1,
+  `actions/setup-go` v7.0.0, `actions/cache` v6.1.0,
+  `docker/setup-buildx-action` v4.4.1 and `docker/build-push-action`
+  v7.4.0. CI reads `GO_VERSION` and `GO_IMAGE` from the Makefile, so the
+  Go pin stays in one place. Dependabot proposes updates weekly
+  (`.github/dependabot.yml`).
 - Test game images: still to choose, one 2.0.x and one 2.1.x tag of
   `factoriotools/factorio`, when Epic 3 starts.
-
-Known gap: CI installs `make`, `docker-cli` and `gzip` with `apt`, and
-those packages are not pinned.
 
 ## 2. Backend: Go
 
@@ -180,8 +181,10 @@ Cheap to change.
   switching, snapshots, mods or game versions (CLAUDE.md, "Testing
   rules"), not on every task, because the image is large and each start
   takes tens of seconds.
-- **In CI**: everything a job creates is named `foreman-ci-<run>-*` and
-  removed when the job ends. CI proves this on every run.
+- **In CI**: three parallel jobs, `verify`, `e2e` and `image`, which
+  together are `make ci`. Go modules and build output, the lint and npm
+  caches, and the image's build layers are cached between runs. Each job
+  gets a fresh runner, so nothing needs cleaning up afterwards.
 
 ## 10. Image
 
@@ -229,9 +232,7 @@ Rejected:
 | `make test-game TAG=x` | Integration tests against a real `factoriotools/factorio:<TAG>` container. |
 | `make e2e-game` | The vision's success scenarios against a real game, for milestone gates and epic pull requests. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
-| `make ci` | `verify`, then `e2e`, then `image`. The CI workflow runs this. |
-| `make ci-clean RUN=id` | Remove containers, networks, volumes and images named `foreman-ci-<id>-*`. Docker's build cache cannot be removed by name and is left alone. |
-| `make ci-leftovers RUN=id` | Fail if anything named `foreman-ci-<id>-*` is left, or if Docker cannot be reached. CI runs it after `ci-clean`. |
+| `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as three parallel jobs. |
 | `make tidy` | `go mod tidy`. |
 
 ## 14. Left out on purpose

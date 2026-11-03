@@ -6,7 +6,7 @@ arrive (Epic 3).
 ## Where the code lives
 
 The repository is on GitHub: `origin` is
-`https://github.com/toddawhittaker/foreman` (private). Use `gh` for pull
+`https://github.com/toddawhittaker/foreman` (public). Use `gh` for pull
 requests, issues and releases. Add `--json` with a field list for
 machine-readable output, and use `gh api repos/toddawhittaker/foreman/...`
 for anything `gh` has no command for, such as a PR's changed files.
@@ -15,19 +15,26 @@ for anything `gh` has no command for, such as a PR's changed files.
 
 `make verify` run locally on a PR's head commit is the check that gates
 every merge, and the orchestrator or the merger agent runs it before
-merging. The CI workflow in `.github/workflows/ci.yml` runs `make ci` on
-every pull request and every push to `main`, and a green run is required
-as well. Read a failing run's log with `gh run view --log-failed`.
+merging. The CI workflow in `.github/workflows/ci.yml` runs on every
+pull request and every push to `main`, in three parallel jobs: `verify`,
+`e2e` and `image` (the same checks as `make ci`, plus the image size
+limit). A ruleset on `main` requires a pull request and all three jobs
+to pass. Read a failing run's log with `gh run view --log-failed`.
 
 CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
-system changes only when we change it.
+system changes only when we change it. A push to a pull request cancels
+that pull request's older run, and each job stops after 15 minutes.
 
-CI runs whatever code a push or pull request brings, so only people we
-trust may push to this repository. Today that is one person.
+The repository is public. CI runs whatever code a pull request brings,
+so a pull request from anyone outside the repository waits for a
+maintainer's approval before its CI runs. The workflow's token can only
+read, and pull requests from forks get no secrets.
 
-Every job names the containers, networks, volumes and images it creates
-`foreman-ci-<run>-*`, removes them by name when it ends, even when it
-fails, and fails if any are left.
+Dependabot opens weekly pull requests for GitHub Actions, Go modules,
+the end-to-end npm packages and the Dockerfile's base image. The
+Makefile's tool images, and `@playwright/test` with them, are updated by
+hand. GitHub's secret scanning and push protection are on, beside the
+local gitleaks hook.
 
 ## Local development
 
@@ -64,11 +71,8 @@ The targets (STACK.md, section 13):
 - `make image`: build the container image as `foreman:dev`.
 - `make vuln`: govulncheck. It needs the network, so it is not in
   `verify`.
-- `make ci`: `verify`, `e2e` and `image` in turn, as CI runs them.
-- `make ci-clean RUN=<id>`: remove the containers, volumes, networks and
-  images a CI run named `foreman-ci-<id>-*`.
-- `make ci-leftovers RUN=<id>`: fail if any of those still exist. CI runs
-  it after the clean-up.
+- `make ci`: `verify`, `e2e` and `image` in turn: everything CI checks,
+  in one local run.
 - `make tidy`: `go mod tidy`.
 - `make test-game` and `make e2e-game`: placeholders until the real-game
   tests arrive.

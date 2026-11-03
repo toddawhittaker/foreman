@@ -21,7 +21,7 @@ you do not decide whether a real failure is acceptable.
 
 The repository is on GitHub (`origin`). Use `gh`. The check that gates a
 merge is `make verify` run locally on the PR's head, plus a green CI run
-once a CI workflow exists (docs/WORKFLOW.md, "Checks").
+(docs/WORKFLOW.md, "Checks").
 
 ## Standing rules
 

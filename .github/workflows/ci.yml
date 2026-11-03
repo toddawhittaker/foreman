@@ -8,39 +8,86 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that pull request's older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The three jobs run in parallel. Together they are `make ci`.
 jobs:
-  ci:
+  verify:
     runs-on: ubuntu-24.04
-    env:
-      GO_VERSION: "1.27.3"
-      GO_SHA256: 65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
-      # Everything this job makes is named after the run and removed by name,
-      # and the job fails if anything is left (docs/WORKFLOW.md, "Checks").
-      NAME_PREFIX: foreman-ci-${{ github.run_id }}
-      IMAGE: foreman-ci-${{ github.run_id }}-image:ci
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Go
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache-dependency-path: go.sum
+
+      # The lint and type-check containers keep their caches in .cache/.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache
+            e2e/node_modules
+          key: verify-${{ hashFiles('go.sum', 'Makefile', '.golangci.yml', 'e2e/package-lock.json') }}
+
+      - run: make verify
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the Go version from the Makefile
+        id: go
+        run: echo "version=$(sed -n 's/^GO_VERSION *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.go.outputs.version }}
+          cache-dependency-path: go.sum
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/npm
+            e2e/node_modules
+          key: e2e-${{ hashFiles('Makefile', 'e2e/package-lock.json') }}
+
+      - run: make e2e
+
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the build image from the Makefile
+        id: go
+        run: echo "image=$(sed -n 's/^GO_IMAGE *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # The same build as `make image`, with layers cached between runs.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          build-args: GO_IMAGE=${{ steps.go.outputs.image }}
+          tags: foreman:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image size (SPEC 16.1)
         run: |
-          curl -fsSLo /tmp/go.tgz "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-          echo "${GO_SHA256}  /tmp/go.tgz" | sha256sum -c -
-          tar -C "$RUNNER_TEMP" -xzf /tmp/go.tgz
-          echo "$RUNNER_TEMP/go/bin" >> "$GITHUB_PATH"
-
-      - name: make ci
-        run: make ci
-
-      - name: Image size
-        run: |
-          size=$(docker save "$IMAGE" | gzip | wc -c)
+          size=$(docker save foreman:ci | gzip | wc -c)
           echo "Compressed image: $size bytes (limit 30000000)"
           [ "$size" -le 30000000 ]
-
-      - name: Clean up
-        if: always()
-        run: make ci-clean RUN=${{ github.run_id }}
-
-      - name: Check nothing is left behind
-        if: always()
-        run: make ci-leftovers RUN=${{ github.run_id }}
