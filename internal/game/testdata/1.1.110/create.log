@@ -1,0 +1,25 @@
+   0.000 2026-11-03 22:26:03; Factorio 1.1.110 (build 62357, linux64, headless)
+   0.000 Operating system: Linux
+   0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--create" "/factorio/saves/spike.zip" 
+   0.000 Config path: /opt/factorio/config/config.ini
+   0.000 Read data path: /opt/factorio/data
+   0.000 Write data path: /opt/factorio [546362/928723MB]
+   0.000 Binaries path: /opt/factorio/bin
+   0.004 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+   0.004 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+   0.004 Running in headless mode
+   0.007 Loading mod core 0.0.0 (data.lua)
+   0.027 Loading mod base 1.1.110 (data.lua)
+   0.179 Loading mod base 1.1.110 (data-updates.lua)
+   0.248 Checksum for core: 607699937
+   0.248 Checksum of base: 2464433227
+   0.413 Prototype list checksum: 3034860339
+   0.478 Info PlayerData.cpp:78: Local player-data.json unavailable
+   0.478 Info PlayerData.cpp:83: Cloud player-data.json unavailable
+   0.478 Factorio initialised
+   0.479 Info Main.cpp:787: Creating new map /factorio/saves/spike.zip
+   0.803 Loading level.dat: 1238812 bytes.
+   0.803 Info Scenario.cpp:204: Map version 1.1.110-0
+   0.823 Checksum for script /opt/factorio/temp/currently-playing/control.lua: 3702463597
+Done.
+   0.926 Goodbye

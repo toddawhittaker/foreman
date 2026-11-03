@@ -1,0 +1,21 @@
+== 1. main run, stdin open no tty, SIGTERM stop
+players online: 'Online players (0):\n'
+players: 'Players (0):\n'
+server-save: 'Saving the map\n'
+waiting for autosave
+before stop: running running=true exit=0 restarts=0 started=2026-11-03T22:26:04.617550531Z finished=0001-01-01T00:00:00Z
+docker stop (SIGTERM) took .660255251 s
+after docker stop +5s: exited running=false exit=0 restarts=0 started=2026-11-03T22:26:04.617550531Z finished=2026-11-03T22:27:09.714397371Z
+== 2. SIGINT stop
+SIGINT exit took 1.211863778 s
+after kill -s INT +5s: exited running=false exit=0 restarts=0 started=2026-11-03T22:27:14.94517449Z finished=2026-11-03T22:27:18.900607159Z
+== 3. docker kill (SIGKILL) under unless-stopped
+after docker kill +8s: exited running=false exit=137 restarts=0 started=2026-11-03T22:27:24.564812304Z finished=2026-11-03T22:27:25.916581973Z
+== 4. stdin closed (no -i)
+no -i after 15s: running running=true exit=0 restarts=0 started=2026-11-03T22:27:43.497344402Z finished=0001-01-01T00:00:00Z
+== 5. corrupt save under unless-stopped
+corrupt save after 30s: running running=true exit=0 restarts=8 started=2026-11-03T22:28:28.513093281Z finished=2026-11-03T22:28:15.689917403Z
+== 6. truncated real save under unless-stopped
+truncated save after 30s: running running=true exit=0 restarts=8 started=2026-11-03T22:28:58.763287877Z finished=2026-11-03T22:28:45.937995579Z
+== 7. unreadable save (mode 000) under unless-stopped
+unreadable save after 30s: running running=true exit=0 restarts=8 started=2026-11-03T22:29:28.942094093Z finished=2026-11-03T22:29:16.119043201Z

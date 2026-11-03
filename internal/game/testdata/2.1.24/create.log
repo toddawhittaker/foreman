@@ -1,0 +1,39 @@
+   0.000 2026-11-03 22:26:38; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+   0.000 Operating system: Linux
+   0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--create" "/factorio/saves/spike.zip" 
+   0.000 Config path: /opt/factorio/config/config.ini
+   0.000 Read data path: /opt/factorio/data
+   0.000 Write data path: /opt/factorio [545709/928723MB]
+   0.000 Binaries path: /opt/factorio/bin
+   0.006 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+   0.006 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+   0.012 Running in headless mode
+   0.012 Audio is disabled
+   0.013 Info ModManager.cpp:455: FeatureFlag: expansion, expansion-shaders, freezing, quality, rail-bridges, segmented-units, space-travel, spoiling
+   0.015 Loading mod core 0.0.0 (data.lua)
+   0.027 Loading mod base 2.1.24 (data.lua)
+   0.163 Loading mod elevated-rails 2.1.24 (data.lua)
+   0.184 Loading mod recycler 2.1.24 (data.lua)
+   0.191 Loading mod quality 2.1.24 (data.lua)
+   0.196 Loading mod space-age 2.1.24 (data.lua)
+   0.361 Loading mod base 2.1.24 (data-updates.lua)
+   0.369 Loading mod recycler 2.1.24 (data-updates.lua)
+   0.381 Loading mod quality 2.1.24 (data-updates.lua)
+   0.388 Loading mod space-age 2.1.24 (data-updates.lua)
+   0.468 Checksum for core: 3668028660
+   0.468 Checksum of base: 3864816957
+   0.468 Checksum of elevated-rails: 1429039930
+   0.468 Checksum of recycler: 3293728126
+   0.468 Checksum of quality: 4220722184
+   0.468 Checksum of space-age: 3636981730
+   0.848 Prototype list checksum: 1446647465
+   0.893 Info PlayerData.cpp:582: Local player-data.json unavailable
+   0.894 Factorio initialised
+   0.894 Info Create.cpp:32: Creating new map /factorio/saves/spike.zip
+   0.903 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+   1.149 Loading level.dat: 978030 bytes.
+   1.149 Info Scenario.cpp:152: Map version 2.1.24-1
+   1.161 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+   1.163 Checksum for script __level__/control.lua: 2385776952
+Done.
+   1.265 Goodbye
