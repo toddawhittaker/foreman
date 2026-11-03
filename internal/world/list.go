@@ -3,7 +3,6 @@ package world
 import (
 	"cmp"
 	"context"
-	"errors"
 	"io/fs"
 	"os"
 	"slices"
@@ -118,28 +117,12 @@ func diskUse(root *os.Root) (uint64, error) {
 	return total, err
 }
 
-// lastPlayed returns the newest modification time of a save zip, the
-// game's own record of when the world was last saved.
+// lastPlayed returns the newest save's modification time, the game's own
+// record of when the world was last saved.
 func lastPlayed(root *os.Root) (time.Time, error) {
-	entries, err := fs.ReadDir(root.FS(), SavesDir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return time.Time{}, nil
-	}
-	if err != nil {
+	save, found, err := newestSave(root)
+	if err != nil || !found {
 		return time.Time{}, err
 	}
-	var newest time.Time
-	for _, e := range entries {
-		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), ".zip") || strings.HasPrefix(e.Name(), ".") {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			return time.Time{}, err
-		}
-		if info.ModTime().After(newest) {
-			newest = info.ModTime()
-		}
-	}
-	return newest, nil
+	return save.ModTime, nil
 }
