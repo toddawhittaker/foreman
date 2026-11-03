@@ -35,23 +35,23 @@ func TestUploadRouteHasItsOwnBodyLimit(t *testing.T) {
 	ts := httptest.NewServer(s.limitBody(s.mux))
 	defer ts.Close()
 
-	post := func(path string, n int) *http.Response {
+	post := func(path string, n int) (status int, read string) {
 		t.Helper()
 		resp, err := http.Post(ts.URL+path, "application/octet-stream", strings.NewReader(strings.Repeat("x", n)))
 		if err != nil {
 			t.Fatal(err)
 		}
 		_ = resp.Body.Close()
-		return resp
+		return resp.StatusCode, resp.Header.Get("X-Read")
 	}
-	if r := post("/up", 512<<10); r.StatusCode != 200 || r.Header.Get("X-Read") != strconv.Itoa(512<<10) {
-		t.Errorf("upload under its limit: %d, read %s", r.StatusCode, r.Header.Get("X-Read"))
+	if code, read := post("/up", 512<<10); code != 200 || read != strconv.Itoa(512<<10) {
+		t.Errorf("upload under its limit: %d, read %s", code, read)
 	}
-	if r := post("/form", 512<<10); r.StatusCode != http.StatusRequestEntityTooLarge {
-		t.Errorf("form over %d bytes: %d", maxFormBytes, r.StatusCode)
+	if code, _ := post("/form", 512<<10); code != http.StatusRequestEntityTooLarge {
+		t.Errorf("form over %d bytes: %d", maxFormBytes, code)
 	}
-	if r := post("/up", limit+1); r.StatusCode != http.StatusRequestEntityTooLarge {
-		t.Errorf("upload over its limit: %d", r.StatusCode)
+	if code, _ := post("/up", limit+1); code != http.StatusRequestEntityTooLarge {
+		t.Errorf("upload over its limit: %d", code)
 	}
 }
 
@@ -108,7 +108,7 @@ func dirNames(t *testing.T, dir string) []string {
 
 func TestReceiveFileStreamsToTempBesideDestination(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(dir, "saves"), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(dir, "saves"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	root := openRoot(t, dir)

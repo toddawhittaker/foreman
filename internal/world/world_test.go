@@ -102,10 +102,10 @@ func TestValidID(t *testing.T) {
 // (a deleted world's) gets the next suffix.
 func TestNewIDSkipsWorldsAndSnapshots(t *testing.T) {
 	m, _ := newTestManager(t)
-	if err := os.Mkdir(filepath.Join(m.dirs.Worlds, "base"), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(m.dirs.Worlds, "base"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Mkdir(filepath.Join(m.dirs.Snapshots, "base-2"), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(m.dirs.Snapshots, "base-2"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	id, err := m.newID("Base")
@@ -114,7 +114,7 @@ func TestNewIDSkipsWorldsAndSnapshots(t *testing.T) {
 	}
 
 	long := strings.Repeat("y", 40)
-	if err := os.Mkdir(filepath.Join(m.dirs.Worlds, long), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(m.dirs.Worlds, long), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	id, err = m.newID(long)
@@ -148,7 +148,7 @@ func TestMetaRoundTripKeepsUnknownFields(t *testing.T) {
 	if err := WriteMeta(root, m); err != nil {
 		t.Fatal(err)
 	}
-	b, err := os.ReadFile(filepath.Join(dir, MetaFile))
+	b, err := os.ReadFile(filepath.Join(dir, MetaFile)) //nolint:gosec // a test temp file
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestMetaRoundTripKeepsUnknownFields(t *testing.T) {
 	if err := WriteMeta(root, m); err != nil {
 		t.Fatal(err)
 	}
-	b, _ = os.ReadFile(filepath.Join(dir, MetaFile))
+	b, _ = os.ReadFile(filepath.Join(dir, MetaFile)) //nolint:gosec // a test temp file
 	if strings.Contains(string(b), "load_save") {
 		t.Errorf("empty load_save written: %s", b)
 	}
@@ -194,7 +194,7 @@ func TestMetaNewerFormatIsReadOnly(t *testing.T) {
 	if err := WriteMeta(root, m); !errors.Is(err, ErrNewerFormat) {
 		t.Fatalf("WriteMeta = %v, want ErrNewerFormat", err)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, MetaFile))
+	b, _ := os.ReadFile(filepath.Join(dir, MetaFile)) //nolint:gosec // a test temp file
 	if string(b) != in {
 		t.Error("world.json changed")
 	}
@@ -226,7 +226,7 @@ func TestWriteFileAtomicModeAndNoTemp(t *testing.T) {
 	if err := WriteFileAtomic(root, "f.txt", []byte("two")); err != nil {
 		t.Fatal(err)
 	}
-	b, _ := os.ReadFile(filepath.Join(dir, "f.txt"))
+	b, _ := os.ReadFile(filepath.Join(dir, "f.txt")) //nolint:gosec // a test temp file
 	if string(b) != "two" {
 		t.Errorf("content %q", b)
 	}
@@ -284,7 +284,7 @@ func TestCreateAndList(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, d := range []string{".staging-x", "Not-An-Id"} {
-		if err := os.Mkdir(filepath.Join(m.dirs.Worlds, d), 0o755); err != nil {
+		if err := os.Mkdir(filepath.Join(m.dirs.Worlds, d), 0o750); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -292,7 +292,7 @@ func TestCreateAndList(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A world without a readable world.json is still listed, by id.
-	if err := os.Mkdir(filepath.Join(m.dirs.Worlds, "broken"), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(m.dirs.Worlds, "broken"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 
@@ -364,7 +364,7 @@ func TestRecoverRemovesLeftovers(t *testing.T) {
 		filepath.Join(m.dirs.Snapshots, "base", ".staging-20261103T150000Z", "snapshot.json"),
 	}
 	for _, p := range append(append([]string{}, keep...), gone...) {
-		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
