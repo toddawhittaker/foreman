@@ -414,3 +414,24 @@ func TestRecoveryForgetsAnUnbegunAdoptionWhileTheGameRuns(t *testing.T) {
 		t.Errorf("reserve after recovery = %v", err)
 	}
 }
+
+// SPEC 4.8: a begun cut-over cannot be finished while the game runs, so a
+// later adoption is refused with what to do: stop the game, then restart
+// Foreman.
+func TestRecoveryOfABegunAdoptionWhileTheGameRunsSaysStopTheGame(t *testing.T) {
+	ctx := context.Background()
+	r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
+	if err := r.store.SetAdoption(ctx, "gate", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, gamedir.CurrentDir+".new"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.Recover(ctx); err != nil {
+		t.Fatal(err)
+	}
+	_, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
+	if !errors.Is(err, ErrAdoptionInProgress) || !strings.Contains(err.Error(), "Stop the game container, then restart Foreman to finish the adoption") {
+		t.Errorf("reserve = %v", err)
+	}
+}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"net"
-	"net/netip"
 	"os"
 	"path"
 	"path/filepath"
@@ -41,7 +40,6 @@ type adoptedView struct {
 	networkWarning   string
 	networkRefusals  int    // refusals in a row
 	networkUnchecked string // the last "could not check", logged once
-	addrs            []netip.Addr
 }
 
 // networkStrikes is how many network refusals in a row raise the warning,
@@ -143,32 +141,10 @@ func (c *Controller) inspectAdopted(ctx context.Context) (docker.Container, erro
 	if port, err := containerRCONPort(cont); err == nil && cont.PublishesTCP(port) {
 		published = true
 	}
-	var addrs []netip.Addr
-	for _, n := range cont.Networks {
-		for _, a := range []string{n.IPAddress, n.GlobalIPv6Address} {
-			if ip, err := netip.ParseAddr(a); err == nil {
-				addrs = append(addrs, ip.WithZone("").Unmap())
-			}
-		}
-	}
 	c.mu.Lock()
-	c.aview.version, c.aview.rconPublished, c.aview.addrs = version, published, addrs
+	c.aview.version, c.aview.rconPublished = version, published
 	c.mu.Unlock()
 	return cont, nil
-}
-
-// GameAddresses returns the adopted game container's addresses on every
-// network at the last look, for trusted-header sign-in to refuse requests
-// from the game (SPEC 12.6). In managed mode it returns none: each game
-// there is on the game network, which FOREMAN_TRUSTED_PROXIES may not
-// overlap (SPEC 4.4). It makes no call.
-func (c *Controller) GameAddresses() []netip.Addr {
-	if c.adopted == nil {
-		return nil
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return slices.Clone(c.aview.addrs)
 }
 
 // layout reads the game folder's shape and keeps it for Status.
@@ -714,6 +690,7 @@ func (c *Controller) writeEnvRCONPassword(id string) error {
 func (c *Controller) tickAdopted(ctx context.Context) {
 	cont, err := c.inspectAdopted(ctx)
 	if err == nil {
+		c.refreshAdoptedSubnets(ctx, cont)
 		// The network can change while the game runs; this catches it at
 		// the next look rather than preventing it (SPEC 4.4).
 		// A refusal does not stop the monitor watching the game, so a

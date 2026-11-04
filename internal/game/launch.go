@@ -121,6 +121,8 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	if err != nil {
 		return err
 	}
+	// Before the next monitor look, so a new game's range is refused at once.
+	c.noteGameSubnets(cont)
 	addr, err := c.rconAddress(ctx, cont)
 	if err != nil {
 		return err

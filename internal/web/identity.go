@@ -67,26 +67,35 @@ func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Requ
 	return u, isSignedIn, false, nil
 }
 
-// GameAddresser gives the adopted game container's current addresses.
-type GameAddresser interface {
-	GameAddresses() []netip.Addr
+// GameSubnetter gives the address ranges of the networks a game can send
+// from; known is false until they have been read (game.Controller).
+type GameSubnetter interface {
+	GameSubnets() (subnets []netip.Prefix, known bool)
 }
 
-// fromGame reports whether the direct peer is the game container. The game
-// is never the proxy, so its headers count for nothing, however trusted its
-// address looks (SPEC 12.6). It is checked on every request, not only while
-// a network refusal stands. Each address is logged once.
+// fromGame reports whether trusted headers must be ignored because the
+// direct peer may be a game. A game is never the proxy, and with NET_RAW it
+// can take any free address on its network, so every peer inside a game
+// network's range is refused, as is every peer while those ranges are not
+// yet known (SPEC 4.4, 12.6). Each range, and the unknown case, is logged
+// once; header values never are.
 func (s *server) fromGame(r *http.Request) bool {
-	if s.gameAddrs == nil {
+	if s.gameNets == nil {
 		return false
 	}
-	addrs := s.gameAddrs.GameAddresses()
-	if !auth.PeerIs(r, addrs) {
+	subnets, known := s.gameNets.GameSubnets()
+	if !known {
+		if _, seen := s.gameSeen.LoadOrStore("unknown", true); !seen {
+			s.log.Warn("refused trusted-header sign-in: the game networks are not yet known")
+		}
+		return true
+	}
+	p, in := auth.PeerIn(r, subnets)
+	if !in {
 		return false
 	}
-	peer := auth.ClientAddr(r, nil) // the direct peer, unmapped, without the port
-	if _, seen := s.gameSeen.LoadOrStore(peer, true); !seen {
-		s.log.Warn("refused trusted-header sign-in from the game container's address", "address", peer)
+	if _, seen := s.gameSeen.LoadOrStore(p.String(), true); !seen {
+		s.log.Warn("refused trusted-header sign-in from a game network's address range", "range", p.String())
 	}
 	return true
 }

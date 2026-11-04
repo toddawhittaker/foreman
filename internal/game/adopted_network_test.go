@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"net/netip"
 	"slices"
 	"strings"
@@ -298,28 +299,84 @@ func TestAdoptedNetworkDNSBlipRaisesNoWarning(t *testing.T) {
 	}
 }
 
-// SPEC 12.6: GameAddresses gives the adopted container's address on every
-// network at the last look, and none in managed mode.
-func TestGameAddresses(t *testing.T) {
+func prefixes(s ...string) []netip.Prefix {
+	out := make([]netip.Prefix, len(s))
+	for i, p := range s {
+		out[i] = netip.MustParsePrefix(p)
+	}
+	return out
+}
+
+// SPEC 12.6: GameSubnets gives the whole range of every network Foreman
+// shares with the adopted container, from both ends, and not the others;
+// it is unknown until the monitor has looked, and a failed look keeps the
+// last value.
+func TestGameSubnetsAdopted(t *testing.T) {
 	ctx := context.Background()
 	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": "10.251.0.20/24", "other-net": "10.77.0.4/24"})
-	if got := r.c.GameAddresses(); len(got) != 0 {
-		t.Errorf("before any look = %v, want none", got)
+	if got, known := r.c.GameSubnets(); known || len(got) != 0 {
+		t.Errorf("before any look = %v, %v; want none, unknown", got, known)
 	}
-	if _, err := r.c.inspectAdopted(ctx); err != nil {
-		t.Fatal(err)
+	r.c.tickAdopted(ctx)
+	got, known := r.c.GameSubnets()
+	want := prefixes("10.251.0.0/24")
+	if !known || !slices.Equal(got, want) {
+		t.Errorf("subnets = %v, %v; want %v, known", got, known, want)
 	}
-	got := r.c.GameAddresses()
-	slices.SortFunc(got, netip.Addr.Compare)
-	want := []netip.Addr{netip.MustParseAddr("10.77.0.4"), netip.MustParseAddr("10.251.0.20")}
-	if !slices.Equal(got, want) {
-		t.Errorf("addresses = %v, want %v", got, want)
-	}
-	got[0] = netip.Addr{}
-	if r.c.GameAddresses()[0] == (netip.Addr{}) && r.c.GameAddresses()[1] == (netip.Addr{}) {
+	got[0] = netip.Prefix{}
+	if again, _ := r.c.GameSubnets(); again[0] != want[0] {
 		t.Error("the caller's copy changed the controller's")
 	}
-	if got := newRig(t, rigOptions{}).c.GameAddresses(); got != nil {
-		t.Errorf("managed mode = %v, want none", got)
+	r.game.Daemon().SetFailure(http.StatusInternalServerError, "down")
+	r.c.tickAdopted(ctx)
+	r.game.Daemon().SetFailure(0, "")
+	if got, known := r.c.GameSubnets(); !known || !slices.Equal(got, want) {
+		t.Errorf("after a failed look = %v, %v; want the last value", got, known)
+	}
+}
+
+// SPEC 12.6: both IPv4 and IPv6 ranges of an endpoint count, masked to the
+// network, and an endpoint with no address adds none.
+func TestAppendSubnets(t *testing.T) {
+	got := appendSubnets(nil, docker.Network{IPAddress: "10.0.1.9", IPPrefixLen: 24, GlobalIPv6Address: "fd00:1::9", GlobalIPv6PrefixLen: 64})
+	if want := prefixes("10.0.1.0/24", "fd00:1::/64"); !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if got := appendSubnets(nil, docker.Network{}); len(got) != 0 {
+		t.Errorf("no address: %v", got)
+	}
+}
+
+// SPEC 12.6: in managed mode with Foreman in a container, the range is
+// Foreman's own on the game network.
+func TestGameSubnetsManagedInAContainer(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.game.Daemon().Seed(dockertest.Container{Name: "foreman-self", Status: "running",
+		Networks: map[string]string{"games": "10.252.0.2/24", "proxy-net": "10.253.0.2/24"}})
+	seeded, _ := r.game.Daemon().Container("foreman-self")
+	r.c = r.newController(rigOptions{selfID: seeded.ID, network: "games"})
+	r.c.tick(context.Background())
+	if got, known := r.c.GameSubnets(); !known || !slices.Equal(got, prefixes("10.252.0.0/24")) {
+		t.Errorf("subnets = %v, %v", got, known)
+	}
+}
+
+// SPEC 12.6: in managed mode outside a container, the ranges are known
+// once every game container was looked at, and a started game's range is
+// added before the next look.
+func TestGameSubnetsManagedOnTheHost(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if _, known := r.c.GameSubnets(); known {
+		t.Error("known before any look")
+	}
+	r.c.tick(context.Background())
+	if got, known := r.c.GameSubnets(); !known || len(got) != 0 {
+		t.Errorf("with no game = %v, %v; want none, known", got, known)
+	}
+	id := r.newWorld("Base")
+	r.start(id)
+	// The fake gives each game a loopback address, read as a /16.
+	if got, _ := r.c.GameSubnets(); len(got) != 1 || got[0].Bits() != 16 {
+		t.Errorf("after a start = %v", got)
 	}
 }

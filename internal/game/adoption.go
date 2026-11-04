@@ -34,6 +34,16 @@ const (
 // while one that Foreman stopped during is still recorded (SPEC 4.8).
 var ErrAdoptionInProgress = errors.New("an adoption of the game folder is already in progress. Wait for it to finish, or restart Foreman to recover one it stopped during")
 
+// adoptionWaitsForStop is ErrAdoptionInProgress when startup found a
+// cut-over left part way but could not finish it with the game running.
+type adoptionWaitsForStop struct{}
+
+func (adoptionWaitsForStop) Error() string {
+	return "an adoption Foreman stopped during is still recorded, and the game container was running when Foreman started, so it could not be finished. Stop the game container, then restart Foreman to finish the adoption"
+}
+
+func (adoptionWaitsForStop) Is(target error) bool { return target == ErrAdoptionInProgress }
+
 // AdoptionDefaults is what the adoption form starts from (SPEC 4.8).
 type AdoptionDefaults struct {
 	// Unadopted is true when the game folder still has its own saves, mods
@@ -178,6 +188,12 @@ func (c *Controller) adoptionBusy(ctx context.Context) error {
 	if _, found, err := c.switches.Adoption(ctx); err != nil {
 		return err
 	} else if found {
+		c.mu.Lock()
+		waits := c.adoptionWaits
+		c.mu.Unlock()
+		if waits {
+			return adoptionWaitsForStop{}
+		}
 		return ErrAdoptionInProgress
 	}
 	return nil
@@ -493,6 +509,11 @@ func (c *Controller) recoverGameDir(ctx context.Context) error {
 	switch cont.State.Status {
 	case "running", "restarting", "paused":
 		c.log.Warn("the game container is running, so the game folder was not checked for a change left part way")
+		if begun {
+			c.mu.Lock()
+			c.adoptionWaits = true
+			c.mu.Unlock()
+		}
 		return nil
 	}
 	if err := gamedir.Recover(c.adopted.dir); err != nil {
