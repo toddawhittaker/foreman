@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"path"
 	"strings"
@@ -245,6 +246,15 @@ func gameLive(status string) bool {
 	return status == "running" || status == "restarting" || status == "paused"
 }
 
+// passwords checks that the world has an RCON password and returns it with
+// every secret to keep out of the relayed log.
+func (c *Controller) passwords(id string) (secret.Secret, []secret.Secret, error) {
+	if err := c.needRCONPassword(id); err != nil {
+		return secret.Secret{}, nil, err
+	}
+	return c.secrets(id)
+}
+
 // adopt takes on a container Foreman did not start in this run, such as a
 // game left running across a Foreman restart (SPEC 3.8). A live game's own
 // RCON password is needed both to talk to it and to keep it out of the
@@ -260,11 +270,10 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 		// Re-attaching changes no world file (SPEC 3.8): a missing password
 		// file is not made here, since the running game could not be using it.
 		addr, err = c.rconAddress(c.ctx, cont)
-		if err == nil {
-			err = c.needRCONPassword(w.id)
-		}
-		if err == nil {
-			rconPW, secrets, err = c.secrets(w.id)
+		if err != nil {
+			err = fmt.Errorf("cannot find the game's RCON address, so it cannot watch the game: %w", err)
+		} else if rconPW, secrets, err = c.passwords(w.id); err != nil {
+			err = fmt.Errorf("cannot read this world's RCON password, so it cannot watch the game: %w", err)
 		}
 	}
 	if err != nil {
@@ -279,7 +288,7 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 		w.mu.Unlock()
 		closeRCON(old)
 		if warn {
-			c.log.Warn("cannot read the world's passwords, so its game's log is not shown", "world", w.id, "error", err)
+			c.log.Warn("cannot watch the game, so its log is not shown", "world", w.id, "error", err)
 		}
 		return
 	}

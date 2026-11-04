@@ -10,6 +10,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
+	"github.com/toddawhittaker/foreman/internal/gamedir"
 )
 
 // These tests pin down the adopted container's privilege and network
@@ -137,5 +138,32 @@ func TestAdoptedRCONUsesTheNamedNetwork(t *testing.T) {
 	want := cont.Networks["extra"].IPAddress
 	if err != nil || want == "" || addr != net.JoinHostPort(want, "27015") {
 		t.Errorf("RCON address %q, %v; want %s on extra (networks %+v)", addr, err, want, cont.Networks)
+	}
+}
+
+// SPEC 4.4, 7.1: when the shared network cannot be chosen, the monitor's
+// Unknown reason gives that cause, not a claim about the RCON password.
+func TestAdoptedUnknownReasonNamesTheNetworkRefusal(t *testing.T) {
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24", "extra": "10.252.0.9/24"}, map[string]string{"shared": "", "extra": ""})
+	a := r.newWorld("Alpha")
+	if err := gamedir.Present(r.c.adopted.dir, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.docker.StartContainer(context.Background(), "other"); err != nil {
+		t.Fatal(err)
+	}
+	defer r.run(r.c)()
+	eventually(t, func() bool {
+		w := r.c.world(a)
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return w.adoptErr != nil
+	}, "the monitor to refuse the container")
+	st := r.c.Status(a)
+	if st.State != StateUnknown || !strings.Contains(st.Reason, "Set FOREMAN_GAME_NETWORK") {
+		t.Errorf("status = %s (%s), want unknown naming FOREMAN_GAME_NETWORK", st.State, st.Reason)
+	}
+	if strings.Contains(st.Reason, "RCON password") {
+		t.Errorf("reason blames the RCON password: %s", st.Reason)
 	}
 }
