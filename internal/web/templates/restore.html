@@ -4,6 +4,7 @@
 {{with .Page}}
 <div class="actions">{{if .Deleted}}<a href="{{worldsPath}}">Back to worlds</a>{{else}}<a href="{{.WorldPath}}">Back to {{.WorldName}}</a>{{end}}</div>
 <h1>Restore a snapshot of {{.WorldName}}</h1>
+{{template "summary" .Problems}}
 {{- with .Error}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
   <p><strong>Error:</strong> {{.}}</p>
@@ -21,12 +22,23 @@
     <li>Foreman will recreate this world from the snapshot: the folder <code>worlds/{{.WorldID}}</code> with the {{len .Snapshot.Files}} files in this snapshot ({{bytes .Snapshot.Size}}), with their original modification times.</li>
     <li>Keep this snapshot.</li>
     {{- else}}
+    {{- if .Running}}
+    <li>First, stop the game: warn players online with the countdown below, save, then stop. If the game cannot be saved, nothing else happens.</li>
+    <li>Then take a snapshot of {{.WorldName}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
+    {{- else}}
     <li>First, take a snapshot of {{.WorldName}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
+    {{- end}}
     <li>Replace everything in the folder <code>worlds/{{.WorldID}}</code> with the {{len .Snapshot.Files}} files in this snapshot ({{bytes .Snapshot.Size}}), with their original modification times. Saves made since the snapshot will be gone from the world.</li>
+    {{- if .Running}}
+    <li>Start the game again with the restored world. The Server page shows each step.</li>
+    {{- end}}
     <li>Keep this snapshot. To undo, restore the "Before restore" snapshot from the Snapshots page.</li>
     {{- end}}
   </ul>
-  <form method="post" action="{{.Path}}">
+  <form method="post" action="{{.Path}}" novalidate>
+    {{- if .Running}}
+    {{template "countdown" .CountdownForm}}
+    {{- end}}
     <div class="actions">
       <button type="submit" class="button button--danger">Restore snapshot</button>
       <a href="{{.SnapshotsPath}}">Cancel, keep the world as it is</a>

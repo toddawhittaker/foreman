@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"net/http"
 	"path"
@@ -19,7 +20,7 @@ import (
 // Paths the templates link to or post to. The router serves these.
 const (
 	PathWorlds    = "/worlds"
-	PathHome      = PathWorlds // where sign-in lands; "/" redirects here
+	PathHome      = PathWorlds // where sign-in lands
 	PathSignIn    = "/signin"
 	PathSetup     = "/setup"
 	PathSignOut   = "/signout"
@@ -210,6 +211,16 @@ func (v view) Current(path string) bool {
 	return ok && n.navItem() == path
 }
 
+// LiveURL is where the page's live updates stream from, or "" for a page
+// that has none (SPEC 16.3).
+func (v view) LiveURL() string {
+	l, ok := v.Page.(interface{ liveURL() string })
+	if !ok {
+		return ""
+	}
+	return l.liveURL()
+}
+
 // Failed is true when a form page is showing errors, so the title can say
 // so first (WCAG 3.3.1 and 2.4.2).
 func (v view) Failed() bool {
@@ -244,6 +255,7 @@ func NewRenderer() (*Renderer, error) {
 	funcs := template.FuncMap{
 		"static":     r.staticURL,
 		"homePath":   func() string { return PathHome },
+		"serverPath": func() string { return PathServer },
 		"worldsPath": func() string { return PathWorlds },
 		"bytes":      world.FormatBytes,
 		"utc":        func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
@@ -335,6 +347,16 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, user string, p Page
 	w.WriteHeader(status)
 	_, err := buf.WriteTo(w)
 	return err
+}
+
+// Fragment writes one named template of page p on its own, for a live
+// update of part of the page.
+func (r *Renderer) Fragment(w io.Writer, p Page, name string) error {
+	t, ok := r.pages[p.templateName()]
+	if !ok {
+		return fmt.Errorf("no template for %T", p)
+	}
+	return t.ExecuteTemplate(w, name, p)
 }
 
 // Static serves the embedded CSS and JavaScript under PathStatic. A request

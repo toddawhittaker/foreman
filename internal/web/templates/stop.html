@@ -1,0 +1,51 @@
+{{define "title"}}{{.Page.Verb}} the server{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{serverPath}}">Back to the server</a></div>
+<h1>{{.Verb}} the server</h1>
+{{template "summary" .Problems}}
+{{- if .Anyway}}
+{{- with .Refusal}}
+<p>{{.}}</p>
+{{- with $.Page.CheckProblems}}
+<ul>
+  {{- range .}}
+  <li>{{.}}</li>
+  {{- end}}
+</ul>
+{{- end}}
+{{- else}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Restart {{.World.Name}} anyway?</h2>
+  <p>This will:</p>
+  <ul>
+    <li>Warn players online with the countdown below, save the game and stop it.</li>
+    <li>Take a snapshot of {{.World.Name}}, labelled "Before start anyway". If the snapshot fails, nothing else happens.</li>
+    {{- range .CheckProblems}}
+    <li>{{.}}</li>
+    {{- end}}
+    <li>Start the game. To undo what it deletes, restore that snapshot from the Snapshots page.</li>
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    {{template "countdown" .CountdownForm}}
+    <div class="actions">
+      <button type="submit" name="anyway" value="1" class="button button--danger">Restart anyway</button>
+      <a href="{{serverPath}}">Cancel, keep the server as it is</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- else}}
+<form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="stop-heading">
+  <h2 id="stop-heading">{{if .Restart}}Restart{{else}}Stop{{end}} {{.World.Name}}</h2>
+  <p>{{if .Restart}}Foreman warns players online, saves the game and stops it, then starts it again with the same world. Players can rejoin once it is running.{{else}}Foreman warns players online, saves the game, then stops it. Nothing is lost.{{end}}</p>
+  {{template "countdown" .CountdownForm}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">{{.Verb}} server</button>
+    <a href="{{serverPath}}">Cancel, keep it running</a>
+  </div>
+</form>
+{{- end}}
+{{- end}}
+{{- end}}

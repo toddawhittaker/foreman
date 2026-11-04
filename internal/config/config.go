@@ -47,6 +47,7 @@ const (
 	varProxies     = "FOREMAN_TRUSTED_PROXIES"
 	varSessionIdle = "FOREMAN_SESSION_IDLE"
 	varDockerHost  = "DOCKER_HOST"
+	varGameNetwork = "FOREMAN_GAME_NETWORK"
 )
 
 // Config is Foreman's validated configuration.
@@ -65,6 +66,7 @@ type Config struct {
 	TrustedProxies   []netip.Prefix
 	SessionIdle      time.Duration
 	DockerHost       string
+	GameNetwork      string // the Docker network the game joins; empty means work it out (SPEC 4.4)
 }
 
 // SecureCookies reports whether session cookies carry the Secure flag,
@@ -98,6 +100,7 @@ func load(e env) (*Config, error) {
 		GroupsHeader:  canonicalHeader(str(varGroupHeader, "")),
 		RequiredGroup: str(varGroup, ""),
 		DockerHost:    str(varDockerHost, DefaultDockerHost),
+		GameNetwork:   str(varGameNetwork, ""),
 	}
 
 	switch mode := strings.ToLower(strings.TrimSpace(str(varMode, ModeManaged))); mode {

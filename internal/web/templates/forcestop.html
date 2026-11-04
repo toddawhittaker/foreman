@@ -1,0 +1,24 @@
+{{define "title"}}Force stop {{.Page.World.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{serverPath}}">Back to the server</a></div>
+<h1>Force stop {{.World.Name}}</h1>
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Force stop the game running {{.World.Name}}?</h2>
+  <p>This will:</p>
+  <ul>
+    <li>Stop the game at once, without warning players and without saving.</li>
+    <li>Lose all progress since the last save{{if not .World.LastPlayed.IsZero}}, made at <time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}. Players online are disconnected.</li>
+    <li>Interrupt any start, stop, restart or restore that is running now.</li>
+    <li>Take no snapshot: nothing in the world's folder is changed.</li>
+  </ul>
+  <form method="post" action="{{.Path}}">
+    <div class="actions">
+      <button type="submit" class="button button--danger">Force stop</button>
+      <a href="{{serverPath}}">Cancel, keep the game running</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}

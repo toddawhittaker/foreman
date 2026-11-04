@@ -1,0 +1,168 @@
+{{define "title"}}Server{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>Server</h1>
+{{- if not .HasWorld}}
+<section class="panel" aria-labelledby="none-heading">
+  <h2 id="none-heading">No active world</h2>
+  <p class="empty">No world is active yet, so there is no server to run. Import a world or upload a save on the Worlds page; the first world becomes the active one.</p>
+  <div class="actions"><a href="{{worldsPath}}" class="button">Go to Worlds</a></div>
+</section>
+{{- else}}
+<div class="actions"><a href="{{.WorldPath}}">Active world: {{.World.Name}}</a></div>
+<section class="panel" aria-labelledby="status-heading">
+  <h2 id="status-heading">Status</h2>
+  <div sse-swap="facts">{{template "server-facts" .}}</div>
+</section>
+<section class="panel" aria-labelledby="players-heading">
+  <h2 id="players-heading">Players online</h2>
+  <div sse-swap="players">{{template "server-players" .}}</div>
+</section>
+<section class="panel" aria-labelledby="control-heading">
+  <h2 id="control-heading">Start and stop</h2>
+  <div sse-swap="control">{{template "server-control" .}}</div>
+</section>
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
+     focus, because it is replaced whenever a figure changes. */}}
+{{define "server-facts" -}}
+<dl class="facts">
+  <div><dt>State</dt><dd><span class="state state--{{.Status.State}}">{{.StateWord}}</span></dd></div>
+  <div><dt>Uptime</dt><dd>{{if .Running}}<time datetime="{{.UptimeISO}}">{{.Uptime}}</time>{{else}}Not running{{end}}</dd></div>
+  <div><dt>Game version</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}Unknown{{end}}</dd></div>
+  {{- with .Status.Save}}
+  <div><dt>Save loaded</dt><dd>{{.}}</dd></div>
+  {{- end}}
+  {{- if .Status.HaveUsage}}
+  <div><dt>CPU</dt><dd>{{.CPU}}</dd></div>
+  <div><dt>Memory</dt><dd>{{bytes .Status.MemoryBytes}}</dd></div>
+  {{- end}}
+</dl>
+{{- with .Status.Reason}}
+<p>{{.}}</p>
+{{- end}}
+{{- end}}
+
+{{/* Who is online now and for how long (SPEC 8.1). */}}
+{{define "server-players" -}}
+{{- if .PlayersKnown}}
+{{- if .Players}}
+<table>
+  <caption>{{len .Players}} online</caption>
+  <thead><tr><th scope="col">Player</th><th scope="col" class="num">Online for</th></tr></thead>
+  <tbody>
+    {{- range .Players}}
+    <tr><td>{{.Name}}</td><td class="num">{{if .Joined.IsZero}}unknown{{else}}{{$.Since .Duration}}{{end}}</td></tr>
+    {{- end}}
+  </tbody>
+</table>
+{{- else}}
+<p class="empty">Nobody is online.</p>
+{{- end}}
+{{- else if .PlayersError}}
+<p class="empty">Foreman could not ask the game who is online. It tries again with the next update.</p>
+{{- else}}
+<p class="empty">Nobody can be online while the game is not running.</p>
+{{- end}}
+{{- end}}
+
+{{/* The last action's error and what can be done next. Takes *Failure. */}}
+{{define "server-failure" -}}
+<div class="message message--error">
+  <p><strong>Error:</strong> {{.Message}}</p>
+  {{- with .Problems}}
+  <ul>
+    {{- range .}}
+    <li>{{.}}</li>
+    {{- end}}
+  </ul>
+  {{- end}}
+  {{- if .Undo}}
+  <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot from the Snapshots page.</p>
+  {{- end}}
+  {{- if .AnywayPath}}
+  <p>You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above.</p>
+  <div class="actions"><a href="{{.AnywayPath}}" class="button">Start anyway</a></div>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* One step list (DESIGN 7.6). Takes the page, the operation and where a
+     failure goes. */}}
+{{define "server-steps" -}}
+<ol class="steps">
+  {{- range .Op.Steps}}
+  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.Page.StepClass .State}}">{{$.Page.StepWord .State}}</span> {{.Name}}
+    {{- if eq .State "progress"}}
+    <progress aria-label="{{.Name}}"></progress>
+    {{- end}}
+    {{- if and (eq .State "failed") $.Failure}}{{if eq $.Failure.In $.In}}
+    {{template "server-failure" $.Failure}}
+    {{- end}}{{end}}
+  </li>
+  {{- end}}
+</ol>
+{{- end}}
+
+{{/* Operations, crashes and the actions for the current state. */}}
+{{define "server-control" -}}
+{{- $failure := .Failure}}
+{{- if and $failure (eq $failure.In "")}}
+{{template "server-failure" $failure}}
+{{- end}}
+{{- with .Done}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{.}}</p>
+  <div class="actions"><a href="{{$.SnapshotsPath}}">Go to Snapshots</a></div>
+</div>
+{{- end}}
+{{- if .ShowOperation}}
+<h3>{{.OperationHeading}}</h3>
+{{template "server-steps" .OperationList}}
+{{- end}}
+{{- if .ShowDownload}}
+<h3>{{if .Status.Download.Done}}The download failed{{else}}Downloading the game image{{end}}</h3>
+{{template "server-steps" .DownloadList}}
+{{- end}}
+{{- if eq .Status.State "crash-looping"}}
+<div class="message message--error">
+  <p><strong>Error:</strong> The game crashed again and again, so Foreman stopped it. Read the last log lines, fix the world, then start it again.</p>
+</div>
+{{- else if eq .Status.State "crashed"}}
+<div class="message message--error">
+  <p><strong>Error:</strong> The game crashed{{if not .Status.LastCrash.IsZero}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}. Docker is starting it again.</p>
+</div>
+{{- end}}
+{{- with .Status.CrashLines}}
+<div class="log" tabindex="0" role="region" aria-label="The last log lines before the crash"><pre>{{range .}}{{.}}
+{{end}}</pre></div>
+{{- end}}
+{{- if or .CanStart .CanStop .CanRestart .CanForceStop}}
+<div class="actions">
+  {{- if .CanStart}}
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button button--primary">Start server</button></form>
+  {{- end}}
+  {{- if .CanStop}}
+  <a href="{{.StopPath}}" class="button">Stop server</a>
+  {{- end}}
+  {{- if .CanRestart}}
+  <a href="{{.RestartPath}}" class="button">Restart server</a>
+  {{- end}}
+  {{- if .CanForceStop}}
+  <a href="{{.ForceStopPath}}" class="button">Force stop</a>
+  {{- end}}
+</div>
+{{- end}}
+{{- with .ActionsNote}}
+<p>{{.}}</p>
+{{- end}}
+{{- if and $failure $failure.Download (not .Busy)}}
+<form method="post" action="{{.PullPath}}" class="actions">
+  <button type="submit" class="button button--primary">Download game image</button>
+</form>
+{{- end}}
+{{- end}}
