@@ -156,7 +156,7 @@ func (r *rig) newController(opts rigOptions) *Controller {
 		r.t.Fatal(err)
 	}
 	// The test host's own /.dockerenv and DNS must not decide the game network.
-	c.dockerEnv = filepath.Join(r.data, "no-dockerenv")
+	c.containerEnvs = []string{filepath.Join(r.data, "no-dockerenv")}
 	c.lookupHost = func(context.Context, string) ([]string, error) { return nil, errors.New("no DNS in tests") }
 	c.pollInterval = 20 * time.Millisecond
 	c.startTimeout = 5 * time.Second

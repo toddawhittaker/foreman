@@ -13,6 +13,10 @@ const MountinfoPath = "/proc/self/mountinfo"
 // presence says Foreman is in a container even when SelfID cannot say which.
 const DockerEnvPath = "/.dockerenv"
 
+// PodmanEnvPath is the file Podman puts in every container it runs, as
+// DockerEnvPath is for Docker.
+const PodmanEnvPath = "/run/.containerenv"
+
 var containerIDPattern = regexp.MustCompile(`/containers/([0-9a-f]{64})/`)
 
 // SelfID returns the ID of the container Foreman runs in: the first container

@@ -178,6 +178,10 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 			// earlier did not happen; its exit would be a crash again.
 			w.stopping, w.expectRunning = false, !w.crashLoop
 		}
+		// A new run, including a `docker restart` that leaves the restart
+		// count alone: nothing the last run knew still holds.
+		w.run = runState{}
+		w.joins.Reset()
 		w.startedAt = cont.State.StartedAt
 	}
 	active := w.dockerStatus == "running" || w.dockerStatus == "restarting"
@@ -451,10 +455,10 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 			// A game process loads its map once, and observe resets the run
 			// on a restart, so this is a re-attach replaying the log after
 			// the RCON probe found the game in game (SPEC 3.8).
-			w.run.save = loadedSave(line)
+			w.run.save = w.saveName(raw)
 			break
 		}
-		w.run = runState{save: loadedSave(line)}
+		w.run = runState{save: w.saveName(raw)}
 	case KindInGame:
 		w.run.inGame = true
 		w.crashedRun = false
@@ -480,6 +484,19 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 // for text that a page may show (SPEC 8.6, 14.8). w.mu is held.
 func (w *worldRun) redact(s string) string {
 	return maskSecretCommand(Redact(s, w.secrets...))
+}
+
+// saveName reads the save's name from the unredacted line, so a short
+// password inside it does not mask it, and hides it only when it is itself
+// a secret. w.mu is held.
+func (w *worldRun) saveName(raw string) string {
+	name := loadedSave(raw)
+	for _, s := range w.secrets {
+		if name == s.Reveal() {
+			return w.redact(name)
+		}
+	}
+	return name
 }
 
 // loadedSave reads the save's file name from a "Loading map" line.

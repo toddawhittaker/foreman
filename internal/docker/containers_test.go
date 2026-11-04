@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -327,5 +328,33 @@ func TestDaemonDownAndFailing(t *testing.T) {
 	d.Close()
 	if err := c.Ping(ctx); err == nil || !strings.Contains(err.Error(), "could not reach the Docker daemon") {
 		t.Errorf("closed daemon: %v", err)
+	}
+}
+
+// SPEC 4.4: Foreman lists what else shares the game network.
+func TestListContainersOnNetwork(t *testing.T) {
+	c, d := newClient(t)
+	d.AddImage(testImage)
+	ctx := context.Background()
+	games := docker.ContainerSpec{Image: testImage, HostConfig: docker.HostConfig{NetworkMode: "games"}}
+	idRun, _ := c.CreateContainer(ctx, "running-on-games", games)
+	_ = c.StartContainer(ctx, idRun)
+	_, _ = c.CreateContainer(ctx, "created-on-games", games)
+	_, _ = c.CreateContainer(ctx, "elsewhere", docker.ContainerSpec{Image: testImage})
+	got, err := c.ListContainersOnNetwork(ctx, "games")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, s := range got {
+		names = append(names, s.Names[0])
+	}
+	sort.Strings(names)
+	if want := []string{"/created-on-games", "/running-on-games"}; !reflect.DeepEqual(names, want) {
+		t.Errorf("got %v, want %v", names, want)
+	}
+	last := d.Calls()[len(d.Calls())-1]
+	if last.Query.Get("all") != "true" || !strings.Contains(last.Query.Get("filters"), `"network":["games"]`) {
+		t.Errorf("list call = %+v", last.Query)
 	}
 }

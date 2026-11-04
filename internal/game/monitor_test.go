@@ -609,3 +609,47 @@ func TestReplayedLoadAfterProbeKeepsInGame(t *testing.T) {
 		t.Errorf("players refused after the replayed line: %v", err)
 	}
 }
+
+// SPEC 8.7: a `docker restart` by hand starts a new run without raising the
+// restart count; the old run's "in game" must not carry over to it.
+func TestManualRestartResetsRun(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("ByHand")
+	r.start(id)
+	if st := r.c.Status(id); st.State != StateRunning {
+		t.Fatalf("state %s after start", st.State)
+	}
+	r.game.Daemon().RestartByHand(ContainerName(id))
+	eventually(t, func() bool {
+		w := r.c.world(id)
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return !w.run.inGame
+	}, "the new run to be seen as not yet in game")
+}
+
+// SPEC 8.6: the save name comes from the raw line, so a short password
+// that appears inside it does not mask it; a name that is a password is.
+func TestLoadedSaveNotMaskedByShortPassword(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Short")
+	r.writeFile(id, filepath.Join(world.ConfigDir, "server-settings.json"), []byte(`{"game_password":"1"}`))
+	r.start(id)
+	cid := r.container(id).ID
+	w := r.c.world(id)
+	save := func(name string) string {
+		w.mu.Lock()
+		w.run = runState{}
+		w.mu.Unlock()
+		r.c.handleLine(w, cid, "2026-01-01T00:00:00.000000000Z    0.900 Loading map /factorio/saves/"+name+": 123 bytes.")
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return w.run.save
+	}
+	if got := save("base1.zip"); got != "base1.zip" {
+		t.Errorf("save %q, want base1.zip", got)
+	}
+	if got := save("1"); got == "1" {
+		t.Error("a save named as the password was shown")
+	}
+}

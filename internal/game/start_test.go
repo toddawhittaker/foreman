@@ -140,8 +140,12 @@ func TestContainerShape(t *testing.T) {
 // from the Docker socket proxy and from posing as a trusted proxy.
 func TestGameNetwork(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
+	// Both stand-ins for Foreman share "games"; each carries this install's
+	// labels so that, while the other is self, it passes the members check.
+	ours := map[string]string{LabelInstall: r.data, LabelWorld: "stand-in"}
 	seed := func(name string, nets map[string]string) string {
-		r.game.Daemon().Seed(dockertest.Container{Name: name, Status: "running", Networks: nets})
+		r.game.Daemon().Seed(dockertest.Container{Name: name, Status: "running", Networks: nets,
+			Spec: docker.ContainerSpec{Labels: ours}})
 		c, _ := r.game.Daemon().Container(name)
 		return c.ID
 	}
@@ -156,6 +160,9 @@ func TestGameNetwork(t *testing.T) {
 		"172.30.0.7":     {"172.30.0.7"},
 		"mapped":         {"::ffff:172.30.0.5"},
 		"garbled":        {"not-an-address"},
+		"lan-proxy":      {"192.168.1.10"},
+		"loopback":       {"127.0.0.1"},
+		"half-apart":     {"172.31.0.5", "192.168.1.10"},
 	}
 	r.c.lookupHost = func(_ context.Context, host string) ([]string, error) {
 		if a, ok := hosts[host]; ok {
@@ -167,7 +174,7 @@ func TestGameNetwork(t *testing.T) {
 	if err := os.WriteFile(dockerenv, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	noDockerenv := r.c.dockerEnv
+	noDockerenv := r.c.containerEnvs
 
 	const lost = "cannot tell which networks it is on"
 	cases := []struct {
@@ -192,7 +199,10 @@ func TestGameNetwork(t *testing.T) {
 		{"tcp by address on the game network", "games", two, false, "172.30.0.7", nil, "", "172.30.0.7, which is on the game network"},
 		{"tcp, IPv4 in IPv6 form", "games", two, false, "mapped", nil, "", "172.30.0.5, which is on the game network"},
 		{"tcp, proxy elsewhere", "games", two, false, "proxy-apart", nil, "games", ""},
-		{"tcp, proxy elsewhere, one network", "games", one, false, "proxy-apart", nil, "games", ""},
+		{"tcp, proxy elsewhere, one network", "games", one, false, "proxy-apart", nil, "", "not on any of Foreman's networks other than"},
+		{"tcp, proxy published on the LAN", "games", two, false, "lan-proxy", nil, "", "192.168.1.10, which is not on any"},
+		{"tcp, proxy on loopback", "games", two, false, "loopback", nil, "", "127.0.0.1, which is not on any"},
+		{"tcp, one address outside", "games", two, false, "half-apart", nil, "", "192.168.1.10, which is not on any"},
 		{"tcp, host does not resolve", "games", two, false, "gone", nil, "", "cannot look up"},
 		{"tcp, unreadable address", "games", two, false, "garbled", nil, "", "cannot read"},
 		{"apart from trusted proxies", "games", two, false, "proxy-apart", proxies, "games", ""},
@@ -203,9 +213,9 @@ func TestGameNetwork(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r.c.network, r.c.selfID, r.c.proxies = tc.network, tc.self, tc.proxies
 			r.c.dockerTCP, r.c.dockerHost = tc.tcpHost != "", tc.tcpHost
-			r.c.dockerEnv = noDockerenv
+			r.c.containerEnvs = noDockerenv
 			if tc.dockerenv {
-				r.c.dockerEnv = dockerenv
+				r.c.containerEnvs = []string{filepath.Join(t.TempDir(), "absent"), dockerenv}
 			}
 			got, err := r.c.gameNetwork(context.Background())
 			if tc.wantErr != "" {
@@ -233,6 +243,43 @@ func TestGameNetwork(t *testing.T) {
 	}
 }
 
+// SPEC 4.4: only Foreman and this install's games may be on the game
+// network.
+func TestGameNetworkMembers(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	d := r.game.Daemon()
+	d.Seed(dockertest.Container{Name: "foreman-self", Status: "running", Networks: map[string]string{"games": "172.30.0.9/24"}})
+	self, _ := d.Container("foreman-self")
+	r.c.network, r.c.selfID = "games", self.ID
+	check := func(want string) {
+		t.Helper()
+		got, err := r.c.gameNetwork(context.Background())
+		if want == "" {
+			if err != nil || got != "games" {
+				t.Fatalf("got %q, %v; want games", got, err)
+			}
+			return
+		}
+		if !errors.Is(err, ErrNetwork) || !strings.Contains(err.Error(), want) {
+			t.Fatalf("got %q, %v; want an ErrNetwork with %q", got, err, want)
+		}
+	}
+	check("")
+	d.Seed(dockertest.Container{Name: "foreman-mine", Status: "exited", Networks: map[string]string{"games": ""},
+		Spec: docker.ContainerSpec{Labels: map[string]string{LabelInstall: r.data, LabelWorld: "mine"}}})
+	check("")
+	d.Seed(dockertest.Container{Name: "foreman-theirs", Status: "running", Networks: map[string]string{"games": "172.30.0.10/24"},
+		Spec: docker.ContainerSpec{Labels: map[string]string{LabelInstall: "/srv/other", LabelWorld: "theirs"}}})
+	d.Seed(dockertest.Container{Name: "socket-proxy", Status: "running", Networks: map[string]string{"games": "172.30.0.11/24"}})
+	check("also holds foreman-theirs, socket-proxy")
+	// Outside a container the default bridge is shared with anything, and
+	// nothing is checked.
+	r.c.selfID, r.c.network = "", ""
+	if got, err := r.c.gameNetwork(context.Background()); err != nil || got != "bridge" {
+		t.Errorf("outside a container: %q, %v", got, err)
+	}
+}
+
 // R36, SPEC 12.6, 14.4: the game network's IPv6 range is checked too.
 func TestGameNetworkIPv6(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
@@ -244,6 +291,7 @@ func TestGameNetworkIPv6(t *testing.T) {
 		}[host], nil
 	}
 	games := docker.Network{IPAddress: "172.30.0.9", IPPrefixLen: 24, GlobalIPv6Address: "fd00:30::9", GlobalIPv6PrefixLen: 64}
+	proxyNet := docker.Network{IPAddress: "172.31.0.9", IPPrefixLen: 24, GlobalIPv6Address: "fd00:31::9", GlobalIPv6PrefixLen: 64}
 	noLen := games
 	noLen.GlobalIPv6PrefixLen = 0
 	cases := []struct {
@@ -263,7 +311,7 @@ func TestGameNetworkIPv6(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r.c.network, r.c.proxies = "games", tc.proxies
 			r.c.dockerTCP, r.c.dockerHost = tc.tcpHost != "", tc.tcpHost
-			self := docker.Container{Networks: map[string]docker.Network{"games": tc.net}}
+			self := docker.Container{Networks: map[string]docker.Network{"games": tc.net, "proxy": proxyNet}}
 			got, err := r.c.checkGameNetwork(context.Background(), self)
 			if tc.wantErr == "" {
 				if err != nil || got != "games" {
