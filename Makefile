@@ -98,8 +98,24 @@ test-game:
 	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) \
 		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -timeout 30m -v -run TestRealGame ./internal/game/
 
-e2e-game:
-	@echo "make e2e-game arrives in Epic 3, with server control."
+# The phone scenario against the real game: Playwright in its pinned image,
+# with the host's Docker socket, starts bin/foreman, which starts the pinned
+# 2.1 image on the default bridge. The repository is mounted at its own path,
+# so the bind paths Foreman gives Docker are the host's. The game is a sibling
+# container that Foreman leaves running, so this target removes it, even on failure.
+DOCKER_SOCK ?= /var/run/docker.sock
+
+e2e-game: build e2e-deps
+	@docker image inspect $(GAME_IMAGE_2_1) >/dev/null 2>&1 || { \
+		echo "The game image $(GAME_IMAGE_2_1) is not on this host. Pull it with: docker pull $(GAME_IMAGE_2_1)"; exit 1; }
+	@test -S $(DOCKER_SOCK) || { echo "$(DOCKER_SOCK) is not a Docker socket. Set DOCKER_SOCK to the host's."; exit 1; }
+	@mkdir -p $(CACHE)/home $(CACHE)/e2e-game
+	@clean() { \
+		docker ps -aq --filter name=foreman-e3game- | xargs -r docker rm -f -v >/dev/null; \
+		rm -rf $(CACHE)/e2e-game; }; \
+	trap clean EXIT; trap 'exit 130' INT TERM; \
+	$(DOCKER_RUN) --ipc=host -v $(DOCKER_SOCK):/var/run/docker.sock --group-add $$(stat -c %g $(DOCKER_SOCK)) \
+		-w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) sh -c 'npx --no-install tsc --noEmit -p game && npx --no-install playwright test -c game'
 
 vuln:
 	go run $(GOVULNCHECK) ./...
