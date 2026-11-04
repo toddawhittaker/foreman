@@ -146,6 +146,25 @@ func TestPausedAndNotReadyAreWorded(t *testing.T) {
 	}
 }
 
+// networkRefusal stands for a game network refusal, which carries its own
+// plain-English text and matches game.ErrNetwork.
+type networkRefusal string
+
+func (e networkRefusal) Error() string        { return string(e) }
+func (e networkRefusal) Is(target error) bool { return target == game.ErrNetwork }
+
+// A refused game network says what to change, not "see the log".
+func TestNetworkRefusalIsShown(t *testing.T) {
+	err := fmt.Errorf("start: %w", networkRefusal("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: choose a network"))
+	want := "Foreman could not"
+	if status, msg := gameError(err); status != http.StatusConflict || msg != sentence(err) {
+		t.Errorf("gameError: %d %q", status, msg)
+	}
+	if got := failureText(err); got != sentence(err) || strings.HasPrefix(got, want) {
+		t.Errorf("shown as %q", got)
+	}
+}
+
 var reAnnounce = regexp.MustCompile(`<div hx-swap-oob="innerHTML:#announcer">([^<]*)</div>`)
 
 // DESIGN 7.5, A2: a live page reads out a state change, and a failed or

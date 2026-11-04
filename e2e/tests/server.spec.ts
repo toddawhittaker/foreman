@@ -149,6 +149,11 @@ test.describe("with the fake game", () => {
     const refusal = page.locator(".message--error").filter({ hasText: "does not match the world" });
     await expect(refusal).toContainText("foreman-test", live);
     await expect(badge(page)).toHaveText("Stopped");
+    // Steps that will never run read Skipped, not Waiting.
+    const steps = page.locator(".steps li");
+    await expect(steps.filter({ hasText: "Check the world" })).toContainText("Failed");
+    await expect(steps.filter({ hasText: "Check RCON answers" })).toContainText("Skipped");
+    await expect(page.locator(".steps")).not.toContainText("Waiting");
     await checkPage(page);
 
     await refusal.getByRole("link", { name: "Start anyway" }).click();
