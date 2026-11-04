@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -828,15 +829,22 @@ func TestStopDuringRestartIsNotLost(t *testing.T) {
 // hide the restart's result.
 func TestRefusedStopKeepsTheRestartsResult(t *testing.T) {
 	g := newSecRig(t)
-	id := g.newWorld("Base", "2.1.24-space-age-testmod.zip", true)
-	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}}))
-	g.waitPage(running)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.startGame(id)
 	if err := g.fake.Join(game.ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	// The restart warns bob first, so the stop arrives while it runs and is
-	// refused; the restart's start then fails the pre-start check.
+	// The restart warns bob for 2 seconds, so the stop arrives while it runs
+	// and is refused. The image goes away meanwhile, so the restart's start
+	// then fails.
 	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"countdown": {"2"}}))
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
-	g.waitPage("does not match the world", "The stop asked for during another action did not finish: ")
+	g.fake.SetImage(image21, false)
+	if err := g.waitResult(id, game.AuditRestart); !errors.Is(err, game.ErrImageMissing) {
+		t.Fatalf("the restart ended with %v, want the missing image", err)
+	}
+	if err := g.waitResult(id, game.AuditStop); err == nil {
+		t.Fatal("the stop was not refused, so the check proves nothing")
+	}
+	g.waitPage("is not downloaded", "The stop asked for during another action did not finish: ")
 }
