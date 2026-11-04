@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 	"time"
@@ -225,9 +223,9 @@ func (s faultyStore) ListSwitches(ctx context.Context) ([]store.Switch, error) {
 	return s.SwitchStore.ListSwitches(ctx)
 }
 
-func (s faultyStore) Adoption(ctx context.Context) (string, bool, error) {
+func (s faultyStore) Adoption(ctx context.Context) (store.AdoptionRecord, bool, error) {
 	if s.failAdoption {
-		return "", false, errDatabase
+		return store.AdoptionRecord{}, false, errDatabase
 	}
 	return s.SwitchStore.Adoption(ctx)
 }
@@ -245,10 +243,7 @@ func (s faultyStore) EndSwitch(ctx context.Context, from string) error {
 func TestRecoveryFaultsDoNotStopStartup(t *testing.T) {
 	ctx := context.Background()
 	t.Run("the records cannot be read", func(t *testing.T) {
-		r, dir := newAdoptedRig(t, adoptedOptions{noRun: true, prepare: unadoptedFolder(t)})
-		if err := os.WriteFile(filepath.Join(dir, adoptionMarker), []byte("gate\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
+		r, _ := newAdoptedRig(t, adoptedOptions{noRun: true, prepare: unadoptedFolder(t)})
 		r.c.switches = faultyStore{SwitchStore: r.store, failList: true, failAdoption: true}
 		if err := r.c.Recover(ctx); err != nil {
 			t.Fatalf("recover = %v", err)

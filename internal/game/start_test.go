@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -431,6 +432,33 @@ func TestStartRefusesUnreadableServerSettings(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "hunter2") {
 		t.Error("the message shows the password")
+	}
+	if len(r.calls("POST /containers/create")) != 0 {
+		t.Error("a container was created")
+	}
+}
+
+// SPEC 14.5, 14.8: the game can write server-settings.json, so a named pipe
+// or an oversized file there is refused at once rather than waited on or
+// read whole.
+func TestStartRefusesServerSettingsThatAreNotASmallFile(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	pipe := r.newWorld("Pipe")
+	p := filepath.Join(r.worldDir(pipe), world.ConfigDir, "server-settings.json")
+	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(p, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.Start(context.Background(), pipe, admin, StartOptions{}); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Errorf("pipe: got %v, want a refusal", err)
+	}
+	r = newRig(t, rigOptions{})
+	big := r.newWorld("Big")
+	r.writeFile(big, filepath.Join(world.ConfigDir, "server-settings.json"), make([]byte, maxSettings+1))
+	if err := r.c.Start(context.Background(), big, admin, StartOptions{}); err == nil || !strings.Contains(err.Error(), "too big") {
+		t.Errorf("big: got %v, want a refusal", err)
 	}
 	if len(r.calls("POST /containers/create")) != 0 {
 		t.Error("a container was created")

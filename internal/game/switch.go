@@ -36,7 +36,7 @@ type SwitchStore interface {
 	// The record of a first adoption in progress, in adopted mode only
 	// (SPEC 4.8).
 	SetAdoption(ctx context.Context, id string, now time.Time) error
-	Adoption(ctx context.Context) (id string, found bool, err error)
+	Adoption(ctx context.Context) (rec store.AdoptionRecord, found bool, err error)
 	ClearAdoption(ctx context.Context) error
 }
 

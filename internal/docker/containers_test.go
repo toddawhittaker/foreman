@@ -237,6 +237,16 @@ func TestInspectContainer(t *testing.T) {
 	if got, err := c.InspectContainer(ctx, "caps"); err != nil || len(got.CapAdd) != 1 || got.CapAdd[0] != "NET_ADMIN" || got.PidMode != "host" {
 		t.Errorf("container with capabilities read as %+v, %v", got, err)
 	}
+	d.Seed(dockertest.Container{
+		Name: "loose", Devices: []docker.Device{{PathOnHost: "/dev/kvm", PathInContainer: "/dev/kvm"}},
+		SecurityOpt: []string{"seccomp=unconfined"}, UsernsMode: "host", IpcMode: "host", UTSMode: "host",
+	})
+	got, err = c.InspectContainer(ctx, "loose")
+	if err != nil || len(got.Devices) != 1 || got.Devices[0].PathOnHost != "/dev/kvm" ||
+		len(got.SecurityOpt) != 1 || got.SecurityOpt[0] != "seccomp=unconfined" ||
+		got.UsernsMode != "host" || got.IpcMode != "host" || got.UTSMode != "host" {
+		t.Errorf("container with loose host settings read as %+v, %v", got, err)
+	}
 }
 
 func TestInspectRejectsBadIDWithoutSending(t *testing.T) {

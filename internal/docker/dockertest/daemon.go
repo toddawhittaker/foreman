@@ -34,6 +34,10 @@ type Container struct {
 	Privileged   bool     // HostConfig.Privileged, for a seeded container
 	CapAdd       []string // HostConfig.CapAdd, for a seeded container
 	PidMode      string   // HostConfig.PidMode, for a seeded container
+	// The other HostConfig settings an adopted container is checked for.
+	Devices                      []docker.Device
+	SecurityOpt                  []string
+	UsernsMode, IpcMode, UTSMode string
 	// Networks maps a network name to the address on it, set while running.
 	// "172.18.0.5/24" also gives the prefix length; a bare address has 16.
 	Networks map[string]string

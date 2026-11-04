@@ -1383,7 +1383,7 @@ func (tr *tracer) SetAdoption(ctx context.Context, id string, now time.Time) err
 	return tr.inner.SetAdoption(ctx, id, now)
 }
 
-func (tr *tracer) Adoption(ctx context.Context) (string, bool, error) {
+func (tr *tracer) Adoption(ctx context.Context) (store.AdoptionRecord, bool, error) {
 	return tr.inner.Adoption(ctx)
 }
 

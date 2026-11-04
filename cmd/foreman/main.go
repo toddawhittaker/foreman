@@ -122,9 +122,6 @@ func serve(cfg *config.Config) error {
 	if err := games.Recover(ctx); err != nil {
 		return fmt.Errorf("foreman could not recover from its last stop, so it did not start: %w", err)
 	}
-	if err := games.CheckAdoptedNetwork(ctx); err != nil {
-		return fmt.Errorf("foreman did not start because the game container's network is unsafe: %w", err)
-	}
 	// The monitor writes to the store, so it stops before the store closes.
 	// Stopping it leaves every game running (SPEC 3.8).
 	monitorCtx, stopMonitor := context.WithCancel(context.Background())

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net"
+	"net/netip"
 	"os"
 	"path"
 	"path/filepath"
@@ -35,8 +36,17 @@ type adoptedView struct {
 	layoutErr     string // the last error reading the folder, logged once
 	version       string // the container's VERSION; "" when it has none
 	rconPublished bool
-	networkErr    string // the last network refusal, logged once
+	// networkWarning is the network refusal the last two checks in a row
+	// found; "" when there is none (SPEC 4.4).
+	networkWarning   string
+	networkRefusals  int    // refusals in a row
+	networkUnchecked string // the last "could not check", logged once
+	addrs            []netip.Addr
 }
+
+// networkStrikes is how many network refusals in a row raise the warning,
+// so one odd look at a changing network does not.
+const networkStrikes = 2
 
 func newAdoptedMode(cfg Config) (*adoptedMode, error) {
 	if cfg.GameContainer == "" {
@@ -133,10 +143,32 @@ func (c *Controller) inspectAdopted(ctx context.Context) (docker.Container, erro
 	if port, err := containerRCONPort(cont); err == nil && cont.PublishesTCP(port) {
 		published = true
 	}
+	var addrs []netip.Addr
+	for _, n := range cont.Networks {
+		for _, a := range []string{n.IPAddress, n.GlobalIPv6Address} {
+			if ip, err := netip.ParseAddr(a); err == nil {
+				addrs = append(addrs, ip.WithZone("").Unmap())
+			}
+		}
+	}
 	c.mu.Lock()
-	c.aview.version, c.aview.rconPublished = version, published
+	c.aview.version, c.aview.rconPublished, c.aview.addrs = version, published, addrs
 	c.mu.Unlock()
 	return cont, nil
+}
+
+// GameAddresses returns the adopted game container's addresses on every
+// network at the last look, for trusted-header sign-in to refuse requests
+// from the game (SPEC 12.6). In managed mode it returns none: each game
+// there is on the game network, which FOREMAN_TRUSTED_PROXIES may not
+// overlap (SPEC 4.4). It makes no call.
+func (c *Controller) GameAddresses() []netip.Addr {
+	if c.adopted == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.aview.addrs)
 }
 
 // layout reads the game folder's shape and keeps it for Status.
@@ -275,6 +307,21 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 	if cont.PidMode == "host" {
 		return refuseContainer("the game container uses the host's process namespace (pid: host), so a game in it could see and signal the host's processes. Remove that setting from the container's definition")
 	}
+	if len(cont.Devices) > 0 {
+		return refuseContainer("the game container maps host devices in (devices), which a game does not need and could use against the host. Remove devices from the container's definition")
+	}
+	for _, opt := range cont.SecurityOpt {
+		if unconfinedOpts[opt] {
+			return refuseContainer("the game container turns off a host protection with security_opt %s, so a game in it would be less confined. Remove it from the container's definition", opt)
+		}
+	}
+	for _, ns := range []struct{ setting, mode string }{
+		{"userns_mode", cont.UsernsMode}, {"ipc", cont.IpcMode}, {"uts", cont.UTSMode},
+	} {
+		if ns.mode == "host" {
+			return refuseContainer("the game container shares a host namespace (%s: host), so a game in it would be less separated from the host. Remove that setting from the container's definition", ns.setting)
+		}
+	}
 	src, found := "", false
 	for _, m := range cont.Mounts {
 		dest := path.Clean(m.Destination)
@@ -331,37 +378,47 @@ func (c *Controller) checkAdoptedNetwork(ctx context.Context, cont docker.Contai
 	return c.checkSharedNetwork(ctx, self, network, func(s docker.ContainerSummary) bool { return s.ID == cont.ID })
 }
 
-// CheckAdoptedNetwork applies the SPEC 4.4 network rules to the adopted
-// container before Foreman serves. It returns only a refusal: when Docker
-// cannot be asked or the container is missing, the monitor reports that.
-func (c *Controller) CheckAdoptedNetwork(ctx context.Context) error {
-	if c.adopted == nil {
-		return nil
+// noteNetworkCheck keeps the result of the monitor's network check for
+// Status (SPEC 4.4). A refusal raises the warning only when the check
+// before it refused too; a check that could not be made leaves the count
+// and the warning as they were. It reports whether the warning changed.
+func (c *Controller) noteNetworkCheck(err error) bool {
+	refused := err != nil && !errors.Is(err, errNetworkUnchecked) &&
+		(errors.Is(err, ErrNetwork) || errors.Is(err, ErrContainerRefused))
+	c.mu.Lock()
+	v := &c.aview
+	before := v.networkWarning
+	logUnchecked := false
+	switch {
+	case err == nil:
+		v.networkRefusals, v.networkWarning, v.networkUnchecked = 0, "", ""
+	case refused:
+		v.networkUnchecked = ""
+		v.networkRefusals++
+		if v.networkRefusals >= networkStrikes {
+			v.networkWarning = err.Error()
+		}
+	default:
+		logUnchecked = v.networkUnchecked != err.Error()
+		v.networkUnchecked = err.Error()
 	}
-	cont, err := c.inspectAdopted(ctx)
-	if err != nil {
-		return nil
+	after := v.networkWarning
+	c.mu.Unlock()
+	if logUnchecked {
+		c.log.Warn("could not check the game container's network", "error", err)
 	}
-	err = c.checkAdoptedNetwork(ctx, cont)
-	if errors.Is(err, ErrNetwork) {
-		return err
+	if after != before && after != "" {
+		c.log.Error("the game container's network is refused", "reason", after)
 	}
-	return nil
+	return after != before
 }
 
-// noteNetworkRefusal logs a network refusal once each time it changes.
-func (c *Controller) noteNetworkRefusal(err error) {
-	text := ""
-	if errors.Is(err, ErrNetwork) {
-		text = err.Error()
-	}
-	c.mu.Lock()
-	changed := c.aview.networkErr != text
-	c.aview.networkErr = text
-	c.mu.Unlock()
-	if changed && text != "" {
-		c.log.Error("the game container's network is refused", "reason", text)
-	}
+// unconfinedOpts are the security_opt entries that turn off AppArmor,
+// seccomp or SELinux labels for the container (SPEC 4.6, 14).
+var unconfinedOpts = map[string]bool{
+	"apparmor=unconfined": true, "apparmor:unconfined": true,
+	"seccomp=unconfined": true, "seccomp:unconfined": true,
+	"label=disable": true, "label:disable": true,
 }
 
 // mountsDockerSocket reports whether a mount gives the container the Docker
@@ -659,8 +716,19 @@ func (c *Controller) tickAdopted(ctx context.Context) {
 	if err == nil {
 		// The network can change while the game runs; this catches it at
 		// the next look rather than preventing it (SPEC 4.4).
-		err = c.checkAdoptedNetwork(ctx, cont)
-		c.noteNetworkRefusal(err)
+		// A refusal does not stop the monitor watching the game, so a
+		// crash is still seen and Stop still works (SPEC 4.4, 7.1).
+		nerr := c.checkAdoptedNetwork(ctx, cont)
+		if ctx.Err() != nil {
+			return
+		}
+		if c.noteNetworkCheck(nerr) {
+			defer func() {
+				for _, w := range c.allRuns() {
+					c.publish(w)
+				}
+			}()
+		}
 	}
 	if ctx.Err() != nil {
 		return
