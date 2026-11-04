@@ -219,7 +219,11 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 		others = append(others, name)
 	}
 	if len(others) > 0 {
-		return refuseNetwork("the game network %q also holds %s, which Foreman did not make, so a game could reach them. Give the game a network that only Foreman and its games are on", network, strings.Join(others, ", "))
+		what := "which Foreman did not make"
+		if c.adopted != nil {
+			what = "which is not Foreman or the game container"
+		}
+		return refuseNetwork("the game network %q also holds %s, %s, so a game could reach them. Give the game a network that only Foreman and its games are on", network, strings.Join(others, ", "), what)
 	}
 	return nil
 }

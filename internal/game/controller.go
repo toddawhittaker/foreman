@@ -610,6 +610,9 @@ type Status struct {
 	// still watched and can be stopped; Start, Restart and Switch are
 	// refused.
 	NetworkWarning string
+	// NetworkCleanAt is when the last network check found nothing wrong,
+	// so a page can drop an older network refusal (SPEC 4.4).
+	NetworkCleanAt time.Time
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -658,7 +661,7 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	if c.adopted != nil {
 		v := c.adoptedViewNow()
 		st.Adopted, st.Layout, st.RCONPublished = true, v.layout, v.rconPublished
-		st.RunningVersion, st.NetworkWarning = v.version, v.networkWarning
+		st.RunningVersion, st.NetworkWarning, st.NetworkCleanAt = v.version, v.networkWarning, v.networkCleanAt
 		if st.RunningVersion == "" {
 			st.RunningVersion = "unknown"
 		}

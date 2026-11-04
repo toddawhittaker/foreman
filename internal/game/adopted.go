@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/gamedir"
@@ -38,8 +39,9 @@ type adoptedView struct {
 	// networkWarning is the network refusal the last two checks in a row
 	// found; "" when there is none (SPEC 4.4).
 	networkWarning   string
-	networkRefusals  int    // refusals in a row
-	networkUnchecked string // the last "could not check", logged once
+	networkRefusals  int       // refusals in a row
+	networkUnchecked string    // the last "could not check", logged once
+	networkCleanAt   time.Time // the last check that found nothing wrong
 }
 
 // networkStrikes is how many network refusals in a row raise the warning,
@@ -280,6 +282,11 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 	if len(cont.CapAdd) > 0 {
 		return refuseContainer("the game container adds the Linux capability %s, which a game does not need and could use against the host. Remove cap_add from the container's definition", cont.CapAdd[0])
 	}
+	// NET_RAW lets a game send from any address on its network, which
+	// would fool the trusted-header guard's per-address checks (SPEC 12.6).
+	if !dropsNetRaw(cont.CapDrop) {
+		return refuseContainer("the game container keeps the NET_RAW capability, so a game in it could pretend to be another machine on the network. Add `cap_drop: [NET_RAW]` to the container's definition")
+	}
 	if cont.PidMode == "host" {
 		return refuseContainer("the game container uses the host's process namespace (pid: host), so a game in it could see and signal the host's processes. Remove that setting from the container's definition")
 	}
@@ -373,11 +380,13 @@ func (c *Controller) noteNetworkCheck(err error) bool {
 	switch {
 	case err == nil:
 		v.networkRefusals, v.networkWarning, v.networkUnchecked = 0, "", ""
+		v.networkCleanAt = c.now()
 	case refused:
 		v.networkUnchecked = ""
 		v.networkRefusals++
 		if v.networkRefusals >= networkStrikes {
-			v.networkWarning = err.Error()
+			// Shown as a sentence on the Server page.
+			v.networkWarning = strings.TrimSuffix(err.Error(), ".") + "."
 		}
 	default:
 		logUnchecked = v.networkUnchecked != err.Error()
@@ -743,4 +752,16 @@ func (c *Controller) tickAdopted(ctx context.Context) {
 		}
 		c.observeInspect(ctx, w, cont, nil)
 	}
+}
+
+// dropsNetRaw reports whether a CapDrop list removes NET_RAW, by name or
+// with ALL; Docker accepts either case and an optional CAP_ prefix.
+func dropsNetRaw(capDrop []string) bool {
+	for _, c := range capDrop {
+		c = strings.TrimPrefix(strings.ToUpper(c), "CAP_")
+		if c == "NET_RAW" || c == "ALL" {
+			return true
+		}
+	}
+	return false
 }

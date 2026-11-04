@@ -154,7 +154,7 @@ func (e *adoptedEnv) createContainer(t *testing.T, spaceAge *bool, start bool) {
 		verb = []string{"run", "-d"}
 	}
 	args := append(verb, "--name", e.container, "--network", e.network,
-		"--restart", "unless-stopped",
+		"--restart", "unless-stopped", "--cap-drop", "NET_RAW",
 		"-e", "PUID="+strconv.Itoa(e.uid), "-e", "PGID="+strconv.Itoa(e.gid),
 		"-v", e.game+":/factorio")
 	if spaceAge != nil {

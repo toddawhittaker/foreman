@@ -62,6 +62,21 @@ func (c *Controller) refreshManagedSubnets(ctx context.Context, allSeen bool) {
 	}
 }
 
+// noteSelfGameSubnet adds, before a managed game first starts, Foreman's
+// own range on the game network, so the game is never running while its
+// range is unknown. Outside a container Foreman has no endpoint there, and
+// noteGameSubnets adds the range once the started game is inspected.
+func (c *Controller) noteSelfGameSubnet(ctx context.Context) {
+	if c.adopted != nil {
+		return
+	}
+	self, inContainer, err := c.selfContainer(ctx)
+	if err != nil || !inContainer {
+		return
+	}
+	c.setSubnets(appendSubnets(nil, self.Networks[c.network]), false)
+}
+
 // noteGameSubnets adds a managed game container's range on its network.
 // Ranges are only added in managed mode, never dropped: a network keeps
 // its range, and refusing an old one is the safe side.
@@ -93,6 +108,9 @@ func (c *Controller) setSubnets(subnets []netip.Prefix, replace bool) {
 	c.subnets, c.subnetsKnown = slices.Compact(subnets), true
 }
 
+// linkLocalV6 is fe80::/10, the IPv6 link-local range.
+var linkLocalV6 = netip.MustParsePrefix("fe80::/10")
+
 // appendSubnets adds the IPv4 and IPv6 ranges of one network endpoint. An
 // endpoint with no address, such as a stopped container's, adds none.
 func appendSubnets(out []netip.Prefix, n docker.Network) []netip.Prefix {
@@ -104,6 +122,11 @@ func appendSubnets(out []netip.Prefix, n docker.Network) []netip.Prefix {
 		if err == nil {
 			out = append(out, p.Masked())
 		}
+	}
+	// An IPv6 network also carries link-local addresses, which a game can
+	// send from too (SPEC 12.6).
+	if n.GlobalIPv6Address != "" {
+		out = append(out, linkLocalV6)
 	}
 	return out
 }

@@ -176,11 +176,26 @@ func TestAdoptedContainerAcceptsTheImageDefaults(t *testing.T) {
 	r.start(a)
 }
 
+// SPEC 4.8: only a .new link is evidence of a folder change left part way,
+// so a normal start with the game running does not warn.
+func TestChangeLeftOver(t *testing.T) {
+	r, dir := newAdoptedRig(t, adoptedOptions{noRun: true})
+	if r.c.changeLeftOver() {
+		t.Error("a folder with no .new link counts as a change left part way")
+	}
+	if err := os.Symlink("worlds/x", filepath.Join(dir, gamedir.CurrentDir+".new")); err != nil {
+		t.Fatal(err)
+	}
+	if !r.c.changeLeftOver() {
+		t.Error("a leftover current.new does not count")
+	}
+}
+
 // seedContainer adds a container beside the adopted one, valid apart from
 // what mounts says.
 func (r *rig) seedContainer(name string, mounts []docker.Mount) {
 	r.game.Daemon().Seed(dockertest.Container{
-		Name: name, Status: "exited",
+		Name: name, Status: "exited", CapDrop: []string{"NET_RAW"},
 		Spec:     docker.ContainerSpec{Image: "factoriotools/factorio:2.1.24", Env: []string{"PUID=845", "PGID=845", "DLC_SPACE_AGE=false", "VERSION=2.1.24"}},
 		Mounts:   mounts,
 		Networks: map[string]string{testNetwork: ""},

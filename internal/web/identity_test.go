@@ -180,6 +180,28 @@ func TestHeadersFromAGameNetworkAreIgnored(t *testing.T) {
 			t.Errorf("logged %d times, want once", n)
 		}
 	})
+	t.Run("the refusal page says why while the networks are unknown", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", fakeNets{})
+		body := hn.get(PathWorlds, asPeer(peerProxy)...).Body.String()
+		if !strings.Contains(body, "not yet seen the game container") {
+			t.Errorf("headers only: the page does not say why: %s", body)
+		}
+		if strings.Contains(body, "Password sign-in") || strings.Contains(body, "alice") {
+			t.Error("headers only: the page offers password sign-in or shows a header value")
+		}
+		hn = headerHarnessWithGame(t, "local,headers", fakeNets{})
+		hn.addUser("bob", testPassword)
+		rec := hn.get(PathWorlds, asPeer(peerProxy)...)
+		body = rec.Body.String()
+		if rec.Code != http.StatusForbidden || !strings.Contains(body, "not yet seen the game container") || !strings.Contains(body, "Password sign-in still works") {
+			t.Errorf("local and headers: %d %s", rec.Code, body)
+		}
+		if strings.Contains(body, "alice") {
+			t.Error("the page shows a header value")
+		}
+		// With no proxy headers, a visitor is sent to sign in as usual.
+		hn.wantRedirect(hn.get(PathWorlds, withPeer(peerProxy)), PathSignIn)
+	})
 	t.Run("password sign-in and sessions still work", func(t *testing.T) {
 		hn := headerHarnessWithGame(t, "local,headers", fakeNets{})
 		hn.addUser("alice", testPassword)

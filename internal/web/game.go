@@ -72,6 +72,8 @@ type actionResult struct {
 	Undo     string
 	// Target is the world a switch was asked to go to.
 	Target string
+	// At is when the action ended.
+	At time.Time
 }
 
 func newGameRuns() *gameRuns {
@@ -144,6 +146,7 @@ func (g *gameRuns) runOn(ids []string, holdsLock bool, do func(ctx context.Conte
 	go func() {
 		defer g.wg.Done()
 		res := do(g.ctx)
+		res.At = time.Now()
 		g.mu.Lock()
 		defer g.mu.Unlock()
 		for i, id := range ids {

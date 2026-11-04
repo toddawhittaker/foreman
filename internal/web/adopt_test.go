@@ -397,6 +397,26 @@ func TestNetworkWarningOnTheServerPage(t *testing.T) {
 	}
 }
 
+// SPEC 4.4: a network refusal is dropped once a later check finds the
+// network clean, and kept until then.
+func TestNetworkRefusalClearsAfterACleanCheck(t *testing.T) {
+	at := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	p := ServerPage{HaveResult: true, Result: actionResult{Action: game.AuditSwitch, Err: fmt.Errorf("refused: %w", game.ErrNetwork), At: at}}
+	p.Status.Adopted = true
+	p.Status.NetworkCleanAt = at.Add(-time.Minute)
+	if p.Failure() == nil {
+		t.Error("the refusal is hidden before any later clean check")
+	}
+	p.Status.NetworkCleanAt = at.Add(time.Minute)
+	if f := p.Failure(); f != nil {
+		t.Errorf("the refusal %+v outlived a clean check", f)
+	}
+	p.Result.Err = game.ErrImageMissing
+	if p.Failure() == nil {
+		t.Error("a clean network check hid a failure that was not about the network")
+	}
+}
+
 // SPEC 4.9: in adopted mode the image is the container owner's, so a
 // failure about it never offers a download.
 func TestNoImageDownloadInAdoptedMode(t *testing.T) {

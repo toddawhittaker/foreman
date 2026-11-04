@@ -44,7 +44,7 @@ func TestAdoptedContainerPrivilegeRefusals(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r, dir := newAdoptedRig(t, adoptedOptions{gameContainer: "other", noRun: true})
 			r.game.Daemon().Seed(dockertest.Container{
-				Name: "other", Status: "exited", Privileged: tc.privileged, CapAdd: tc.capAdd, PidMode: tc.pidMode,
+				Name: "other", Status: "exited", CapDrop: []string{"NET_RAW"}, Privileged: tc.privileged, CapAdd: tc.capAdd, PidMode: tc.pidMode,
 				Spec:     docker.ContainerSpec{Image: "factoriotools/factorio:2.1.24", Env: []string{"PUID=845", "PGID=845", "DLC_SPACE_AGE=false", "VERSION=2.1.24"}},
 				Mounts:   append([]docker.Mount{{Source: dir, Destination: "/factorio"}}, tc.extra...),
 				Networks: map[string]string{testNetwork: ""},
@@ -83,12 +83,14 @@ func TestAdoptedContainerHostSettingRefusals(t *testing.T) {
 			c.Spec.HostConfig.NetworkMode = "host"
 			c.Networks = map[string]string{"host": ""}
 		}, "network_mode: host"},
+		{"NET_RAW kept", func(c *dockertest.Container) { c.CapDrop = nil }, "cap_drop: [NET_RAW]"},
+		{"other caps dropped", func(c *dockertest.Container) { c.CapDrop = []string{"NET_ADMIN", "MKNOD"} }, "NET_RAW capability"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r, dir := newAdoptedRig(t, adoptedOptions{gameContainer: "other", noRun: true})
 			cont := dockertest.Container{
-				Name: "other", Status: "exited",
+				Name: "other", Status: "exited", CapDrop: []string{"NET_RAW"},
 				Spec:     docker.ContainerSpec{Image: "factoriotools/factorio:2.1.24", Env: []string{"PUID=845", "PGID=845", "DLC_SPACE_AGE=false", "VERSION=2.1.24"}},
 				Mounts:   []docker.Mount{{Source: dir, Destination: "/factorio"}},
 				Networks: map[string]string{testNetwork: ""},
@@ -104,6 +106,28 @@ func TestAdoptedContainerHostSettingRefusals(t *testing.T) {
 	}
 }
 
+// TestDropsNetRaw checks the spellings Docker accepts for dropping NET_RAW.
+func TestDropsNetRaw(t *testing.T) {
+	for _, tc := range []struct {
+		drop []string
+		want bool
+	}{
+		{nil, false},
+		{[]string{"MKNOD"}, false},
+		{[]string{"NET_RAW"}, true},
+		{[]string{"net_raw"}, true},
+		{[]string{"CAP_NET_RAW"}, true},
+		{[]string{"cap_net_raw"}, true},
+		{[]string{"ALL"}, true},
+		{[]string{"all"}, true},
+		{[]string{"MKNOD", "CAP_ALL"}, true},
+	} {
+		if got := dropsNetRaw(tc.drop); got != tc.want {
+			t.Errorf("dropsNetRaw(%q) = %v, want %v", tc.drop, got, tc.want)
+		}
+	}
+}
+
 // sharedNetworkRig is an adopted rig inside a container: Foreman is
 // "foreman-self" on selfNets and the game is "other" on gameNets, both with
 // the game folder (SPEC 4.4, 4.8).
@@ -111,7 +135,7 @@ func sharedNetworkRig(t *testing.T, selfNets, gameNets map[string]string) *rig {
 	t.Helper()
 	r, dir := newAdoptedRig(t, adoptedOptions{gameContainer: "other", noRun: true})
 	r.game.Daemon().Seed(dockertest.Container{
-		Name: "other", Status: "exited",
+		Name: "other", Status: "exited", CapDrop: []string{"NET_RAW"},
 		Spec:     docker.ContainerSpec{Image: "factoriotools/factorio:2.1.24", Env: []string{"PUID=845", "PGID=845", "DLC_SPACE_AGE=false", "VERSION=2.1.24"}},
 		Mounts:   []docker.Mount{{Source: dir, Destination: "/factorio"}},
 		Networks: gameNets,
@@ -241,6 +265,9 @@ func TestAdoptedNetworkChangeWarnsAndKeepsStop(t *testing.T) {
 	if !strings.Contains(st.NetworkWarning, "intruder") {
 		t.Fatalf("warning after two looks = %q, want one naming the intruder", st.NetworkWarning)
 	}
+	if !strings.HasSuffix(st.NetworkWarning, ".") || !strings.Contains(st.NetworkWarning, "which is not Foreman or the game container") {
+		t.Errorf("warning = %q, want a sentence that fits adopted mode", st.NetworkWarning)
+	}
 	if st.State == StateUnknown {
 		t.Fatalf("state = unknown (%s), want the game still watched", st.Reason)
 	}
@@ -340,11 +367,16 @@ func TestGameSubnetsAdopted(t *testing.T) {
 }
 
 // SPEC 12.6: both IPv4 and IPv6 ranges of an endpoint count, masked to the
-// network, and an endpoint with no address adds none.
+// network, link-local IPv6 counts on an IPv6 network, and an endpoint with
+// no address adds none.
 func TestAppendSubnets(t *testing.T) {
 	got := appendSubnets(nil, docker.Network{IPAddress: "10.0.1.9", IPPrefixLen: 24, GlobalIPv6Address: "fd00:1::9", GlobalIPv6PrefixLen: 64})
-	if want := prefixes("10.0.1.0/24", "fd00:1::/64"); !slices.Equal(got, want) {
+	if want := prefixes("10.0.1.0/24", "fd00:1::/64", "fe80::/10"); !slices.Equal(got, want) {
 		t.Errorf("got %v, want %v", got, want)
+	}
+	got = appendSubnets(nil, docker.Network{IPAddress: "10.0.1.9", IPPrefixLen: 24})
+	if want := prefixes("10.0.1.0/24"); !slices.Equal(got, want) {
+		t.Errorf("IPv4 only: got %v, want %v", got, want)
 	}
 	if got := appendSubnets(nil, docker.Network{}); len(got) != 0 {
 		t.Errorf("no address: %v", got)
@@ -362,6 +394,25 @@ func TestGameSubnetsManagedInAContainer(t *testing.T) {
 	r.c.tick(context.Background())
 	if got, known := r.c.GameSubnets(); !known || !slices.Equal(got, prefixes("10.252.0.0/24")) {
 		t.Errorf("subnets = %v, %v", got, known)
+	}
+}
+
+// SPEC 12.6: in managed mode in a container, the game network's range is
+// known before the first game starts, even before any monitor look. The
+// start call fails here so nothing after it can be what added the range.
+func TestGameSubnetsManagedKnownBeforeFirstStart(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.game.Daemon().Seed(dockertest.Container{Name: "foreman-self", Status: "running",
+		Networks: map[string]string{"games": "10.252.0.2/24"}})
+	seeded, _ := r.game.Daemon().Container("foreman-self")
+	r.c = r.newController(rigOptions{selfID: seeded.ID, network: "games"})
+	r.game.Daemon().SetCallFailure("POST", "start", 500, "daemon busy")
+	id := r.newWorld("Base")
+	if err := r.c.Start(context.Background(), id, admin, StartOptions{}); err == nil {
+		t.Fatal("start worked with a failing start call")
+	}
+	if got, known := r.c.GameSubnets(); !known || !slices.Equal(got, prefixes("10.252.0.0/24")) {
+		t.Errorf("subnets = %v, %v; want the game network's range", got, known)
 	}
 }
 

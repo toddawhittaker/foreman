@@ -296,7 +296,12 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 		}
 		w.mu.Unlock()
 		closeRCON(old)
-		if warn {
+		switch {
+		case warn && w.id == "":
+			// An unadopted folder belongs to no world, so it has no
+			// password of Foreman's to watch with; that is expected.
+			c.log.Debug("not watching the game: the game folder is not adopted yet", "error", err)
+		case warn:
 			c.log.Warn("cannot watch the game, so its log is not shown", "world", w.id, "error", err)
 		}
 		return

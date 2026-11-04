@@ -114,6 +114,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	w.mu.Unlock()
 	closeRCON(stale)
 	o.show(StateStarting)
+	c.noteSelfGameSubnet(ctx)
 	if err := c.docker.StartContainer(ctx, cid); err != nil {
 		return err
 	}

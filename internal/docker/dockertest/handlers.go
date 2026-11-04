@@ -315,7 +315,7 @@ func inspectBody(c *Container) map[string]any {
 		},
 		"HostConfig": map[string]any{
 			"PortBindings": c.Spec.HostConfig.PortBindings, "NetworkMode": mode,
-			"Privileged": c.Privileged, "CapAdd": c.CapAdd, "PidMode": c.PidMode,
+			"Privileged": c.Privileged, "CapAdd": c.CapAdd, "CapDrop": c.CapDrop, "PidMode": c.PidMode,
 			"Devices": c.Devices, "SecurityOpt": c.SecurityOpt,
 			"UsernsMode": c.UsernsMode, "IpcMode": c.IpcMode, "UTSMode": c.UTSMode,
 		},
