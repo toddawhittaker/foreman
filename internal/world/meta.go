@@ -105,13 +105,14 @@ func (m *Meta) UnmarshalJSON(b []byte) error {
 
 // ReadMeta reads world.json from a world's root.
 func ReadMeta(root *os.Root) (Meta, error) {
-	b, err := root.ReadFile(MetaFile)
+	b, err := ReadSmallFile(root, MetaFile, maxMetaFile)
 	if err != nil {
 		return Meta{}, err
 	}
 	var m Meta
 	if err := json.Unmarshal(b, &m); err != nil {
-		return Meta{}, fmt.Errorf("read %s: %w", MetaFile, err)
+		// The decoder's message quotes file contents; say only what is wrong.
+		return Meta{}, fmt.Errorf("read %s: it is not valid JSON of the expected shape", MetaFile)
 	}
 	if m.FormatVersion < 1 {
 		return Meta{}, fmt.Errorf("read %s: format_version is missing", MetaFile)
