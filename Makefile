@@ -91,8 +91,12 @@ run:
 e2e: build build-fakegame e2e-deps
 	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
 
+# The controller against the real Docker daemon and the pinned game images,
+# one image at a time (they share the game port). TAG=1.1, 2.0 or 2.1 runs one.
 test-game:
-	@echo "make test-game arrives in Epic 3, with server control."
+	@case "$(TAG)" in ""|1.1|2.0|2.1) ;; *) echo "TAG must be 1.1, 2.0 or 2.1."; exit 1;; esac
+	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) \
+		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -timeout 30m -v -run TestRealGame ./internal/game/
 
 e2e-game:
 	@echo "make e2e-game arrives in Epic 3, with server control."
