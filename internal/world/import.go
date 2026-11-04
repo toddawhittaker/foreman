@@ -231,18 +231,11 @@ func copyFile(src *os.Root, from string, dst *os.Root, to string) error {
 	if err := mkdirAll(dst, path.Dir(to)); err != nil {
 		return err
 	}
-	in, err := src.Open(from)
+	in, info, err := openRegular(src, from)
 	if err != nil {
-		return err
+		return fmt.Errorf("copy %s: %w", from, err)
 	}
 	defer func() { _ = in.Close() }()
-	info, err := in.Stat()
-	if err != nil {
-		return err
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("copy %s: not a regular file", from)
-	}
 	out, temp, err := CreateTemp(dst, path.Dir(to))
 	if err != nil {
 		return err
