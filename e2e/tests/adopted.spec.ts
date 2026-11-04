@@ -68,7 +68,7 @@ test.describe("an unadopted game folder", () => {
     // The page follows the new world once it is the active one.
     await expect(page.getByRole("link", { name: "Active world: Gate" })).toBeVisible(live);
     await expect(badge(page)).toHaveText("Running", live);
-    await expect(page.getByText("The game folder is adopted")).toBeVisible(live);
+    await expect(page.locator("main").getByText("The game folder is adopted")).toBeVisible(live);
     await expect(page.getByText("Running version")).toBeVisible();
     await expect(page.getByRole("button", { name: "Download game image" })).toHaveCount(0);
     await checkPage(page);
@@ -100,7 +100,7 @@ test.describe("an unadopted game folder, stopped", () => {
 
     await expect(page.getByRole("link", { name: "Active world: Gate" })).toBeVisible(live);
     await expect(badge(page)).toHaveText("Stopped", live);
-    await expect(page.getByText("The game folder is adopted")).toBeVisible(live);
+    await expect(page.locator("main").getByText("The game folder is adopted")).toBeVisible(live);
     await expectFollowed(page, "Gate is now the active world. The game folder is adopted.");
     await checkPage(page);
 

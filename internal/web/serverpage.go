@@ -332,6 +332,11 @@ func (p ServerPage) Failure() *Failure {
 		f.Message = failureText(err)
 	}
 	text := err.Error()
+	// A forced stop that interrupted a switch says in the operation's own
+	// error which world it stopped.
+	if o := p.Status.Operation; errors.Is(err, game.ErrCancelled) && o != nil && o.Done && o.Error != "" {
+		f.Message, text = sentence(errors.New(o.Error)), o.Error
+	}
 	switch {
 	case p.Status.Operation != nil && p.Status.Operation.Done && p.Status.Operation.Error == text:
 		f.In = "operation"

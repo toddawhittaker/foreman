@@ -81,7 +81,8 @@ test.describe("with the fake game", () => {
     // The page follows the active world, which is now Second.
     await expect(active(page, "Second")).toBeVisible(live);
     await expect(badge(page)).toHaveText("Running", live);
-    await expect(page.getByText("The worlds are switched")).toBeVisible(live);
+    // Within main: the announcer says the same sentence, so a page-wide match is two elements.
+    await expect(page.locator("main").getByText("The worlds are switched")).toBeVisible(live);
     await checkPage(page);
     expect((await g.state()).containers.find((c) => c.name === "foreman-second")?.status).toBe("running");
     expect((await g.state()).containers.find((c) => c.name === "foreman-base")?.status).not.toBe("running");
@@ -115,7 +116,7 @@ test.describe("with the fake game", () => {
 
     await expect(active(page, "Second")).toBeVisible(live);
     await expect(badge(page)).toHaveText("Stopped", live);
-    await expect(page.getByText("The worlds are switched")).toBeVisible();
+    await expect(page.locator("main").getByText("The worlds are switched")).toBeVisible();
     await expectFollowed(page, "Second is now the active world. The worlds are switched.");
     // The hidden event targets leave no blank band (DESIGN 6).
     for (const name of ["announce", "moved"]) {
@@ -184,7 +185,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
     await confirm.getByRole("button", { name: "Switch to Second anyway" }).click();
     await expect(active(page, "Second")).toBeVisible(live);
-    await expect(page.getByText("The worlds are switched")).toBeVisible(live);
+    await expect(page.locator("main").getByText("The worlds are switched")).toBeVisible(live);
     await page.goto("/worlds/second/snapshots");
     await expect(page.getByRole("table")).toContainText("Before start anyway");
   });

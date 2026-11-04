@@ -146,6 +146,56 @@ func TestPausedAndNotReadyAreWorded(t *testing.T) {
 	}
 }
 
+// notActive stands for the controller's refusal to start a world that is
+// not the active one, which names the world.
+type notActive string
+
+func (e notActive) Error() string        { return string(e) + " is not the active world. Switch to it first" }
+func (e notActive) Is(target error) bool { return target == game.ErrWorldNotActive }
+
+// SPEC 7.9, 4.12: a start of a world that is not active, and an adoption
+// that is already running, are refusals with their own words, not a 500.
+func TestNotActiveAndAdoptionInProgressAreWorded(t *testing.T) {
+	for _, c := range []struct {
+		err  error
+		want string
+	}{
+		{notActive("Bravo"), "Bravo is not the active world. Switch to it first."},
+		{game.ErrAdoptionInProgress, "adoption of the game folder is already in progress"},
+		{fmt.Errorf("start: %w", game.ErrAdoptionInProgress), "already in progress"},
+	} {
+		status, msg := gameError(c.err)
+		if status != http.StatusConflict || !strings.Contains(msg, c.want) {
+			t.Errorf("%v: %d %q, want 409 containing %q", c.err, status, msg, c.want)
+		}
+		if got := failureText(c.err); got != msg {
+			t.Errorf("%v shown as %q", c.err, got)
+		}
+	}
+}
+
+// SPEC 7.7: a forced stop that interrupted a switch shows the operation's
+// error, which names the world it stopped, not the bare cancellation.
+func TestForcedStopInterruptingASwitchNamesTheWorld(t *testing.T) {
+	opError := game.ErrCancelled.Error() + ". It stopped the game of Alpha."
+	st := game.Status{Operation: &game.Operation{Action: game.AuditSwitch, Done: true, Error: opError}}
+	p := ServerPage{World: worldSummary("alpha"), HasWorld: true, Status: st, HaveResult: true,
+		Result: actionResult{Action: game.AuditSwitch, Err: game.ErrCancelled}}
+	f := p.Failure()
+	if f == nil || f.Message != "A forced stop interrupted this. It stopped the game of Alpha." || f.In != "operation" {
+		t.Fatalf("failure: %+v", f)
+	}
+	if got := resultAnnouncement(p); got != "Error: "+f.Message {
+		t.Errorf("announcement: %q", got)
+	}
+
+	// Without an operation error to name, the plain cancellation shows.
+	p.Status = game.Status{}
+	if f := p.Failure(); f == nil || f.Message != sentence(game.ErrCancelled) {
+		t.Errorf("plain: %+v", f)
+	}
+}
+
 // networkRefusal stands for a game network refusal, which carries its own
 // plain-English text and matches game.ErrNetwork.
 type networkRefusal string
