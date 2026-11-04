@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -67,7 +68,7 @@ func Commit(root *os.Root, temp, final string) error {
 	if err := root.Rename(temp, final); err != nil {
 		return err
 	}
-	return syncDir(root, path.Dir(final))
+	return SyncDir(root, path.Dir(final))
 }
 
 // WriteFileAtomic writes data to name inside root: temp file, fsync,
@@ -94,7 +95,9 @@ func WriteFileAtomic(root *os.Root, name string, data []byte) error {
 	return err
 }
 
-func syncDir(root *os.Root, dir string) error {
+// SyncDir flushes folder dir inside root to disk, so a rename or new file
+// in it survives a crash.
+func SyncDir(root *os.Root, dir string) error {
 	d, err := root.Open(dir)
 	if err != nil {
 		return err
@@ -153,6 +156,11 @@ func Reserve(dir string, n uint64) (release func(), err error) {
 	if err != nil {
 		return nil, err
 	}
+	return reserveFree(free, n)
+}
+
+// reserveFree is Reserve given the free space already read.
+func reserveFree(free, n uint64) (release func(), err error) {
 	promised.mu.Lock()
 	defer promised.mu.Unlock()
 	if err := checkSpace(free, promised.n, n); err != nil {
@@ -204,6 +212,36 @@ func FormatBytes(n uint64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "kMGTPE"[exp])
+}
+
+// openFolder opens the folder at p as a root, refusing a link at p itself.
+// The worlds folder is inside the game folder in adopted mode, where the
+// game container can swap it for a link at any time, so it is checked on
+// every open, never once at startup (SPEC 14.5). The parent is opened by
+// path; it is the game folder itself, which the game cannot replace.
+func openFolder(p string) (*os.Root, error) {
+	parent, err := os.OpenRoot(filepath.Dir(p))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = parent.Close() }()
+	return openDir(parent, filepath.Base(p))
+}
+
+// chmodFolder sets the mode of the folder at p through the opened folder,
+// so a link swapped in after the check is not followed.
+func chmodFolder(p string, mode fs.FileMode) error {
+	r, err := openFolder(p)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = r.Close() }()
+	f, err := r.Open(".")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return f.Chmod(mode)
 }
 
 // ErrNotFolder is returned by openDir for a name that is not a real

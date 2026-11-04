@@ -60,31 +60,32 @@ func errHostDir(why string) error {
 	return fmt.Errorf("%s, so it cannot find the host path of its data directory. Set FOREMAN_HOST_DATA_DIR to that host path", why)
 }
 
-// Probe checks that dataDir exists, is a directory and is writable, and
-// that Foreman shares a user or group ID with the game (SPEC 3.6).
-func Probe(dataDir string, gameUID, gameGID int) error {
-	return probe(dataDir, os.Getuid(), os.Getgid(), gameUID, gameGID)
+// Probe checks that dir exists, is a directory and is writable, and that
+// Foreman shares a user or group ID with the game (SPEC 3.6). what names
+// the folder in the messages, such as "the data directory".
+func Probe(what, dir string, gameUID, gameGID int) error {
+	return probe(what, dir, os.Getuid(), os.Getgid(), gameUID, gameGID)
 }
 
-func probe(dataDir string, uid, gid, gameUID, gameGID int) error {
-	info, err := os.Stat(dataDir)
+func probe(what, dir string, uid, gid, gameUID, gameGID int) error {
+	info, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("the data directory %s does not exist. Mount a directory there", dataDir)
+		return fmt.Errorf("%s %s does not exist. Mount a directory there", what, dir)
 	}
 	if err != nil {
-		return fmt.Errorf("foreman cannot read the data directory %s: %w", dataDir, err)
+		return fmt.Errorf("foreman cannot read %s %s: %w", what, dir, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("the data directory %s is a file, not a directory", dataDir)
+		return fmt.Errorf("%s %s is a file, not a directory", what, dir)
 	}
-	f, err := os.CreateTemp(dataDir, ".foreman-probe-*")
+	f, err := os.CreateTemp(dir, ".foreman-probe-*")
 	if err != nil {
-		return fmt.Errorf("foreman (user %d, group %d) cannot write to the data directory %s. Give that user or group write access", uid, gid, dataDir)
+		return fmt.Errorf("foreman (user %d, group %d) cannot write to %s %s. Give that user or group write access", uid, gid, what, dir)
 	}
 	name := f.Name()
 	_ = f.Close()
 	if err := os.Remove(name); err != nil {
-		return fmt.Errorf("foreman cannot remove files in the data directory %s: %w", dataDir, err)
+		return fmt.Errorf("foreman cannot remove files in %s %s: %w", what, dir, err)
 	}
 	if uid != gameUID && gid != gameGID {
 		return fmt.Errorf("foreman runs as user %d and group %d, but the game runs as %d:%d. "+

@@ -181,7 +181,7 @@ func (m *Manager) snapshot(id, reason, label, by string) (Snapshot, error) {
 		err = snaps.Rename(partial, name)
 	}
 	if err == nil {
-		err = syncDir(snaps, ".")
+		err = SyncDir(snaps, ".")
 	}
 	if err != nil {
 		_ = snaps.RemoveAll(partial)
@@ -298,7 +298,7 @@ func (m *Manager) openSnapshots(id string, create bool) (*os.Root, error) {
 	if !ValidID(id) {
 		return nil, fs.ErrNotExist
 	}
-	all, err := os.OpenRoot(m.dirs.Snapshots)
+	all, err := openFolder(m.dirs.Snapshots)
 	if err != nil {
 		return nil, err
 	}

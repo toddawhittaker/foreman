@@ -202,7 +202,7 @@ func TestAdoptedStartFollowsTheLinksAndLogsThePassword(t *testing.T) {
 
 	r.begin(id)
 	log := r.log(id)
-	if !strings.Contains(log, "Loading map /factorio/saves/new.zip: ") {
+	if !strings.Contains(log, "Loading map /factorio/worlds/a/saves/new.zip: ") {
 		t.Errorf("world a loads the wrong save:\n%s", log)
 	}
 	// Shaped like the last line of the real image's trace.
@@ -227,7 +227,7 @@ func TestAdoptedStartFollowsTheLinksAndLogsThePassword(t *testing.T) {
 	link(t, filepath.Join("worlds", "b"), filepath.Join(dir, "current"))
 	r.begin(id)
 	log = r.log(id)
-	if !strings.Contains(log, "Loading map /factorio/saves/other.zip: ") {
+	if !strings.Contains(log, "Loading map /factorio/worlds/b/saves/other.zip: ") {
 		t.Errorf("world b loads the wrong save:\n%s", log)
 	}
 	if got := r.exec2(id, "pw-b", "/players online"); got != "Online players (0):\n" {
@@ -253,7 +253,7 @@ func TestAdoptedWithoutASaveGetsTheEntrypointsFirstAutosave(t *testing.T) {
 	r := adoptedRig(t, fakegame.Adopted{Name: "factorio", GameDir: gameFolder(t)})
 	id := r.adoptedID("factorio")
 	r.begin(id)
-	if log := r.log(id); !strings.Contains(log, "Loading map /factorio/saves/_autosave1.zip: ") {
+	if log := r.log(id); !strings.Contains(log, "Loading map /factorio/worlds/a/saves/_autosave1.zip: ") {
 		t.Errorf("log:\n%s", log)
 	}
 }
@@ -380,7 +380,7 @@ func TestAdoptedRunningSeedsAStartedGame(t *testing.T) {
 		t.Fatalf("status = %q", st)
 	}
 	id := r.adoptedID("factorio")
-	if log := r.log(id); !strings.Contains(log, "Loading map /factorio/saves/w.zip: ") {
+	if log := r.log(id); !strings.Contains(log, "Loading map /factorio/worlds/a/saves/w.zip: ") {
 		t.Errorf("log:\n%s", log)
 	}
 	if got := r.exec2(id, "pw-a", "/players online"); got != "Online players (0):\n" {

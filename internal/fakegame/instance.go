@@ -27,6 +27,7 @@ type instance struct {
 	id, name string
 	ip       string
 	save     string // file name of the save the container loads
+	savesDir string // container path of the folder it loads it from
 	password string
 	rconPort string
 	v        *version
@@ -64,7 +65,7 @@ func (g *Game) boot(id string) {
 	if id == g.adoptedID {
 		r := runEntrypoint(c.Spec.Env, c.Mounts)
 		run = &r
-		in.save, in.password, in.rconPort = r.save, r.password, r.rconPort
+		in.save, in.password, in.rconPort, in.savesDir = r.save, r.password, r.rconPort, r.savesDir
 	}
 	g.mu.Lock()
 	if g.closed || g.insts[id] != nil {
@@ -222,7 +223,11 @@ func (in *instance) elapsedLocked() float64 { return in.base + time.Since(in.bas
 
 func (in *instance) writeLocked(text, saveFrom string) {
 	if saveFrom != "" {
-		text = strings.ReplaceAll(text, "/factorio/saves/"+saveFrom, "/factorio/saves/"+in.save)
+		dir := "/factorio/saves"
+		if in.savesDir != "" {
+			dir = in.savesDir
+		}
+		text = strings.ReplaceAll(text, "/factorio/saves/"+saveFrom, dir+"/"+in.save)
 	}
 	in.g.daemon.EmitLog(in.id, docker.Stdout, text)
 }

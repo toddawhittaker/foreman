@@ -34,7 +34,7 @@ func (m *Manager) Recover(log *slog.Logger) error {
 }
 
 func narrowPasswords(dir string, depth int) error {
-	root, err := os.OpenRoot(dir)
+	root, err := openFolder(dir)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func narrowFolders(root *os.Root, dir string, depth int) error {
 // removeLeftovers deletes every file or folder under dir whose name starts
 // with a leftover prefix.
 func removeLeftovers(dir string, log *slog.Logger) error {
-	root, err := os.OpenRoot(dir)
+	root, err := openFolder(dir)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func isLeftover(name string) bool {
 // old one is removed. If not, the old one is put back; the staged
 // replacement is a leftover the next step removes.
 func (m *Manager) finishSwaps(log *slog.Logger) error {
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return err
 	}

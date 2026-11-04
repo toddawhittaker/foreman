@@ -65,7 +65,7 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 	}
 	defer release()
 
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -90,7 +90,7 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 	if err != nil {
 		return before, err
 	}
-	if err := syncDir(worlds, "."); err != nil {
+	if err := SyncDir(worlds, "."); err != nil {
 		m.log.Warn("restore: could not sync the worlds folder", "world", id, "error", err)
 	}
 	// Startup recovery removes the old copy if this fails.
@@ -169,7 +169,7 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		return err
 	}
 	defer release()
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		_ = worlds.RemoveAll(staging)
 		return err
 	}
-	if err := syncDir(worlds, "."); err != nil {
+	if err := SyncDir(worlds, "."); err != nil {
 		m.log.Warn("restore: could not sync the worlds folder", "world", id, "error", err)
 	}
 	return m.activateIfNone(ctx, id)
@@ -271,7 +271,7 @@ func (m *Manager) stage(worlds *os.Root, dir, id string, snap Snapshot) error {
 			return err
 		}
 	}
-	return syncDir(dst, ".")
+	return SyncDir(dst, ".")
 }
 
 // swapIn moves the live world aside and renames the staged one into its

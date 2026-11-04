@@ -201,7 +201,7 @@ func placeFixed(root *os.Root, name, pre string) error {
 		if err := root.Rename(name, kept); err != nil {
 			return err
 		}
-		if err := syncDir(root, pre); err != nil {
+		if err := world.SyncDir(root, pre); err != nil {
 			return err
 		}
 		if err := stepDone(root, "."); err != nil {
@@ -278,24 +278,11 @@ func newestPreForeman(root *os.Root) (string, error) {
 // stepDone syncs dir, so the change before it survives a crash, then calls
 // the test seam.
 func stepDone(root *os.Root, dir string) error {
-	if err := syncDir(root, dir); err != nil {
+	if err := world.SyncDir(root, dir); err != nil {
 		return err
 	}
 	if afterStep != nil {
 		return afterStep()
 	}
 	return nil
-}
-
-// syncDir is world's folder sync; copied because world keeps it unexported.
-func syncDir(root *os.Root, dir string) error {
-	d, err := root.Open(dir)
-	if err != nil {
-		return err
-	}
-	err = d.Sync()
-	if cerr := d.Close(); err == nil {
-		err = cerr
-	}
-	return err
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -153,7 +154,10 @@ func (g *Game) seedAdopted(a Adopted, network string) {
 // entrypoint is what one run of the image's entrypoint leaves for the game
 // to use, and what it printed on the way.
 type entrypoint struct {
-	save     string // file name of the newest save
+	save string // file name of the newest save
+	// savesDir is the container path of the saves folder with links
+	// resolved, which is what the game prints (/factorio/worlds/a/saves).
+	savesDir string
 	password string
 	rconPort string
 	log      []string
@@ -211,8 +215,28 @@ func runEntrypoint(env []string, mounts []docker.Mount) entrypoint {
 	e.log = append(e.log, lines...)
 
 	e.save = newestSave(host(saves))
+	e.savesDir = resolvedInContainer(root, host(saves), saves)
 	e.log = append(e.log, "++ cat "+config+"/rconpw", "+ exec "+gameCommand(env, e.password))
 	return e
+}
+
+// resolvedInContainer maps a folder in the game folder to the path the
+// container sees once links are followed. A link that leaves the game
+// folder, or cannot be resolved, leaves fallback, the unresolved path.
+func resolvedInContainer(root, dir, fallback string) string {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return fallback
+	}
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return fallback
+	}
+	rel, err := filepath.Rel(realRoot, realDir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fallback
+	}
+	return path.Join(volume, rel)
 }
 
 func newPassword() ([]byte, error) {

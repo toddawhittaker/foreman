@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"slices"
 	"strings"
 )
@@ -80,7 +79,7 @@ func (m *Manager) keepID(id string) error {
 // removeWorld renames the folder out of sight and removes it. A crash
 // between the two leaves a .deleting-* folder that startup recovery clears.
 func (m *Manager) removeWorld(id string) error {
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return err
 	}
@@ -89,7 +88,7 @@ func (m *Manager) removeWorld(id string) error {
 	if err := worlds.Rename(id, gone); err != nil {
 		return err
 	}
-	if err := syncDir(worlds, "."); err != nil {
+	if err := SyncDir(worlds, "."); err != nil {
 		return err
 	}
 	return worlds.RemoveAll(gone)
@@ -107,7 +106,7 @@ type DeletedWorld struct {
 // Deleted lists the worlds that have snapshots but no folder, by name
 // ignoring case (SPEC 6.6).
 func (m *Manager) Deleted() ([]DeletedWorld, error) {
-	all, err := os.OpenRoot(m.dirs.Snapshots)
+	all, err := openFolder(m.dirs.Snapshots)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,7 @@ func (m *Manager) Deleted() ([]DeletedWorld, error) {
 	if err != nil {
 		return nil, err
 	}
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return nil, err
 	}
