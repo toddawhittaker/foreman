@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/secret"
@@ -38,6 +39,9 @@ func (m *Manager) RCONPassword(id string) (secret.Secret, error) {
 	if err := createRCONPassword(root); err != nil {
 		return secret.Secret{}, err
 	}
+	if err := narrowRCONPassword(root); err != nil {
+		return secret.Secret{}, fmt.Errorf("narrow the RCON password file to 0640: %w", err)
+	}
 	return readRCONPassword(root)
 }
 
@@ -53,15 +57,12 @@ func createRCONPassword(root *os.Root) error {
 	// Write a finished temp file, then link it into place: the password
 	// file only ever appears complete, and a file made meanwhile by another
 	// process is never replaced (link fails if the target exists).
-	f, temp, err := CreateTemp(root, ConfigDir)
+	f, temp, err := createPasswordTemp(root, ConfigDir)
 	if err != nil {
 		return fmt.Errorf("create the RCON password file: %w", err)
 	}
 	defer func() { _ = root.Remove(temp) }()
 	_, err = f.WriteString(hex.EncodeToString(buf) + "\n")
-	if err == nil {
-		err = f.Chmod(rconPasswordMode)
-	}
 	if err == nil {
 		err = f.Sync()
 	}
@@ -78,6 +79,76 @@ func createRCONPassword(root *os.Root) error {
 		return fmt.Errorf("create the RCON password file: %w", err)
 	}
 	return syncDir(root, ConfigDir)
+}
+
+// createPasswordTemp is CreateTemp for the password: the file is 0640 from
+// the moment it exists, since anyone who opens it while it is wider can
+// read what is written later (SPEC 14.8).
+func createPasswordTemp(root *os.Root, dir string) (*os.File, string, error) {
+	name := path.Join(dir, PrefixPartial+randomSuffix())
+	f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, rconPasswordMode)
+	if err != nil {
+		return nil, "", err
+	}
+	// The umask may have narrowed it; the game's group still needs to read.
+	if err := f.Chmod(rconPasswordMode); err != nil {
+		_ = f.Close()
+		_ = root.Remove(name)
+		return nil, "", err
+	}
+	return f, name, nil
+}
+
+// copyRCONPassword copies the password file from one world folder to
+// another, at 0640 throughout, keeping its modification time.
+func copyRCONPassword(src, dst *os.Root) error {
+	in, err := src.Open(RCONPasswordFile)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("copy %s: not a regular file", RCONPasswordFile)
+	}
+	out, temp, err := createPasswordTemp(dst, ConfigDir)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(out, in)
+	if err == nil {
+		err = out.Sync()
+	}
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = dst.Chtimes(temp, info.ModTime(), info.ModTime())
+	}
+	if err == nil {
+		err = Commit(dst, temp, RCONPasswordFile)
+	}
+	if err != nil {
+		_ = dst.Remove(temp)
+	}
+	return err
+}
+
+// narrowRCONPassword takes away any permission beyond 0640 from an existing
+// password file, such as one restored before restores narrowed it.
+func narrowRCONPassword(root *os.Root) error {
+	info, err := root.Lstat(RCONPasswordFile)
+	if err != nil || !info.Mode().IsRegular() {
+		return nil // readRCONPassword reports it
+	}
+	perm := info.Mode().Perm()
+	if perm&^rconPasswordMode == 0 {
+		return nil
+	}
+	return root.Chmod(RCONPasswordFile, perm&rconPasswordMode)
 }
 
 // readRCONPassword reads the password file, refusing anything but a

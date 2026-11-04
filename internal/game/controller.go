@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/netip"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -125,8 +127,9 @@ type Config struct {
 	// Network is FOREMAN_GAME_NETWORK. Outside a container empty means
 	// Docker's default bridge; inside one it is required (R36).
 	Network string
-	// DockerHost is DOCKER_HOST. Only its scheme is used: over tcp:// a
-	// socket proxy shares a network with Foreman (R36).
+	// DockerHost is DOCKER_HOST. Over tcp:// a socket proxy shares a
+	// network with Foreman, so the game network must not hold its address
+	// (R36).
 	DockerHost string
 	// TrustedProxies is FOREMAN_TRUSTED_PROXIES; the game network must not
 	// overlap it (R36, SPEC 12.6).
@@ -151,11 +154,17 @@ type Controller struct {
 	images   map[string]string
 	network  string
 	selfID   string
-	// dockerTCP and proxies are what the game network is checked against (R36).
-	dockerTCP bool
-	proxies   []netip.Prefix
-	now       func() time.Time
-	log       *slog.Logger
+	// What the game network is checked against (R36). dockerHost is the
+	// host DOCKER_HOST names over tcp://.
+	dockerTCP  bool
+	dockerHost string
+	proxies    []netip.Prefix
+	// dockerEnv is docker.DockerEnvPath, and lookupHost the DNS lookup;
+	// tests change both.
+	dockerEnv  string
+	lookupHost func(ctx context.Context, host string) ([]string, error)
+	now        func() time.Time
+	log        *slog.Logger
 
 	// Limits, shortened by tests.
 	pollInterval  time.Duration
@@ -213,7 +222,8 @@ func New(cfg Config) (*Controller, error) {
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
 		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
-		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), proxies: cfg.TrustedProxies,
+		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
+		proxies: cfg.TrustedProxies, dockerEnv: docker.DockerEnvPath, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
@@ -222,6 +232,15 @@ func New(cfg Config) (*Controller, error) {
 		poke: make(chan struct{}, 1),
 		runs: map[string]*worldRun{},
 	}, nil
+}
+
+// tcpHost returns the host a tcp:// DOCKER_HOST names, else "".
+func tcpHost(dockerHost string) string {
+	u, err := url.Parse(dockerHost)
+	if err != nil || u.Scheme != "tcp" {
+		return ""
+	}
+	return u.Hostname()
 }
 
 // worldRun is what the controller knows about one world's game.
@@ -240,6 +259,7 @@ type worldRun struct {
 	expectRunning bool // the game should be running: an exit nobody asked for is a crash
 	stopping      bool // Foreman asked the container to stop: its exit is never a crash (SPEC 7.6)
 	crashLoop     bool
+	crashStopping bool        // a crash-loop stop is waiting on Docker; one at a time (SPEC 8.9)
 	crashes       []time.Time // crashes seen within the crash-loop window
 	lastCrash     time.Time
 	crashedRun    bool // Docker restarted the game after a crash and it is not back in game

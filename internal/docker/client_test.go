@@ -40,7 +40,7 @@ func (f *fakeDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"Version":"29.0.0","ApiVersion":"` + f.apiVersion + `"}`))
 	case "/containers/self/json":
 		_, _ = w.Write([]byte(`{"Id":"abc","Mounts":[{"Type":"bind","Source":"/srv/foreman","Destination":"/data"}],
-			"NetworkSettings":{"Networks":{"game":{"IPAddress":"172.18.0.2"},"bridge":{}}}}`))
+			"NetworkSettings":{"Networks":{"game":{"IPAddress":"172.18.0.2","IPPrefixLen":16,"GlobalIPv6Address":"fd00:18::2","GlobalIPv6PrefixLen":64},"bridge":{}}}}`))
 	default:
 		http.Error(w, `{"message":"No such container"}`, http.StatusNotFound)
 	}
@@ -68,6 +68,9 @@ func TestEveryMethodStaysOnAllowlist(t *testing.T) {
 	got, err := c.InspectContainer(ctx, "self")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if n := got.Networks["game"]; n.IPPrefixLen != 16 || n.GlobalIPv6Address != "fd00:18::2" || n.GlobalIPv6PrefixLen != 64 {
+		t.Errorf("game network = %+v", n)
 	}
 	if len(got.Mounts) != 1 || got.Mounts[0].Source != "/srv/foreman" || got.Mounts[0].Destination != "/data" {
 		t.Errorf("mounts = %+v", got.Mounts)

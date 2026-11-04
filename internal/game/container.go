@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"net/netip"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -136,6 +137,12 @@ func (c *Controller) gameNetwork(ctx context.Context) (string, error) {
 		}
 		return "bridge", nil
 	}
+	return c.checkGameNetwork(ctx, self)
+}
+
+// checkGameNetwork checks FOREMAN_GAME_NETWORK against Foreman's own
+// container, self.
+func (c *Controller) checkGameNetwork(ctx context.Context, self docker.Container) (string, error) {
 	if c.network == "" {
 		return "", refuseNetwork("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: it names the Docker network the game joins. Choose a network Foreman is on that the Docker socket proxy is not on")
 	}
@@ -143,43 +150,109 @@ func (c *Controller) gameNetwork(ctx context.Context) (string, error) {
 	if !ok {
 		return "", refuseNetwork("FOREMAN_GAME_NETWORK names the %q network, but the Foreman container is not on it, so Foreman could not reach the game. Connect Foreman to that network, or name one it is on", c.network)
 	}
-	if c.dockerTCP && len(self.Networks) == 1 {
-		return "", refuseNetwork("DOCKER_HOST uses tcp://, and the game network %q is the Foreman container's only network, so the Docker socket proxy is on it too and a game could reach it. Put the game on a network of its own that Foreman also joins", c.network)
-	}
-	if len(c.proxies) == 0 {
+	if !c.dockerTCP && len(c.proxies) == 0 {
 		return c.network, nil
 	}
-	addr, err := netip.ParseAddr(n.IPAddress)
-	if err != nil || n.IPPrefixLen <= 0 {
-		return "", refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
-	}
-	subnet, err := addr.Prefix(n.IPPrefixLen)
+	subnets, err := networkSubnets(n)
 	if err != nil {
-		return "", refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
+		return "", refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check that a game on it stays away from the Docker socket proxy and FOREMAN_TRUSTED_PROXIES", c.network)
 	}
-	for _, p := range c.proxies {
-		if p.Overlaps(subnet) {
-			return "", refuseNetwork("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", c.network, subnet, p)
+	if c.dockerTCP {
+		if err := c.checkDockerHost(ctx, subnets); err != nil {
+			return "", err
+		}
+	}
+	for _, subnet := range subnets {
+		for _, p := range c.proxies {
+			if p.Overlaps(subnet) {
+				return "", refuseNetwork("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", c.network, subnet, p)
+			}
 		}
 	}
 	return c.network, nil
 }
 
+// checkDockerHost refuses when the Docker socket proxy that DOCKER_HOST
+// names has an address on the game network, where a game could reach it.
+// However many networks Foreman is on, this is what decides it (SPEC 14.4).
+func (c *Controller) checkDockerHost(ctx context.Context, subnets []netip.Prefix) error {
+	var addrs []string
+	err := errors.New("DOCKER_HOST names no host")
+	if c.dockerHost != "" {
+		addrs, err = c.lookupHost(ctx, c.dockerHost)
+	}
+	if err != nil || len(addrs) == 0 {
+		return refuseNetwork("DOCKER_HOST uses tcp://, but Foreman cannot look up the address of %q, so it cannot check that a game on the %q network could not reach the Docker socket proxy. Check DOCKER_HOST, then try again", c.dockerHost, c.network)
+	}
+	for _, a := range addrs {
+		ip, err := netip.ParseAddr(a)
+		if err != nil {
+			return refuseNetwork("DOCKER_HOST uses tcp://, but %q gave the address %q, which Foreman cannot read, so it cannot check that a game could not reach the Docker socket proxy. Check DOCKER_HOST, then try again", c.dockerHost, a)
+		}
+		ip = ip.WithZone("").Unmap()
+		for _, subnet := range subnets {
+			if subnet.Contains(ip) {
+				return refuseNetwork("DOCKER_HOST reaches the Docker socket proxy at %s, which is on the game network %q (%s), so a game could reach it. Put the game on a network of its own that Foreman also joins and the proxy does not", ip, c.network, subnet)
+			}
+		}
+	}
+	return nil
+}
+
+// networkSubnets returns the address ranges of Foreman's place on a
+// network: IPv4 always, and IPv6 when the network has it.
+func networkSubnets(n docker.Network) ([]netip.Prefix, error) {
+	v4, err := subnetOf(n.IPAddress, n.IPPrefixLen)
+	if err != nil {
+		return nil, err
+	}
+	out := []netip.Prefix{v4}
+	if n.GlobalIPv6Address != "" {
+		v6, err := subnetOf(n.GlobalIPv6Address, n.GlobalIPv6PrefixLen)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v6)
+	}
+	return out, nil
+}
+
+func subnetOf(ip string, bits int) (netip.Prefix, error) {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return netip.Prefix{}, err
+	}
+	if bits <= 0 {
+		return netip.Prefix{}, errors.New("no prefix length")
+	}
+	return addr.Prefix(bits)
+}
+
 // selfContainer reads Foreman's own container. inContainer is false when
 // Foreman does not run in one.
 func (c *Controller) selfContainer(ctx context.Context) (self docker.Container, inContainer bool, err error) {
-	if c.selfID == "" {
-		return docker.Container{}, false, nil
+	if c.selfID != "" {
+		self, err = c.docker.InspectContainer(ctx, c.selfID)
+		if err == nil {
+			return self, true, nil
+		}
+		if !errors.Is(err, docker.ErrNotFound) {
+			return docker.Container{}, false, err
+		}
 	}
-	self, err = c.docker.InspectContainer(ctx, c.selfID)
-	if errors.Is(err, docker.ErrNotFound) {
-		// SelfID fell back to the hostname, and no container has it.
-		return docker.Container{}, false, nil
+	// No container is Foreman's. Fail safe: when Foreman may still be in
+	// one, its networks are unknown, so none can be checked (SPEC 14.4).
+	if c.dockerTCP || exists(c.dockerEnv) {
+		return docker.Container{}, false, refuseNetwork("Foreman seems to run in a container (DOCKER_HOST uses tcp://, or %s exists), but Docker has no container with Foreman's ID or hostname, so Foreman cannot tell which networks it is on. Keep the hostname Docker gave the Foreman container, and make sure DOCKER_HOST reaches the Docker that runs Foreman", c.dockerEnv)
 	}
-	if err != nil {
-		return docker.Container{}, false, err
-	}
-	return self, true, nil
+	return docker.Container{}, false, nil
+}
+
+// exists reports whether path may exist; an error other than "not there"
+// counts as there.
+func exists(path string) bool {
+	_, err := os.Lstat(path)
+	return !errors.Is(err, fs.ErrNotExist)
 }
 
 // containerIP is the game's address on its network. The container is

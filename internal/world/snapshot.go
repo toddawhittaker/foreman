@@ -365,6 +365,11 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 	if err := mkdirAll(dst, path.Dir(f.Path)); err != nil {
 		return false, err
 	}
+	if f.Path == RCONPasswordFile {
+		// Its own copy, at 0640 before the password is written, whatever
+		// mode the source had (SPEC 14.8).
+		return false, copyRCONPassword(src, dst)
+	}
 	if isZip(f.Path) {
 		if linkFile(src, dst, f.Path) == nil {
 			return false, nil
@@ -382,14 +387,6 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 	}
 	if err := copyFile(src, f.Path, dst, f.Path); err != nil {
 		return false, err
-	}
-	// copyFile gives every file FileMode, which would make the RCON password
-	// readable by anyone. Set the mode here, not from the source, so a copy
-	// made when it was wider is narrowed again on restore (SPEC 14.8).
-	if f.Path == RCONPasswordFile {
-		if err := dst.Chmod(f.Path, rconPasswordMode); err != nil {
-			return false, err
-		}
 	}
 	return zipCopied, nil
 }
