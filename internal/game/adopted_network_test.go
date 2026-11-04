@@ -435,3 +435,72 @@ func TestGameSubnetsManagedOnTheHost(t *testing.T) {
 		t.Errorf("after a start = %v", got)
 	}
 }
+
+// keepNetRaw changes the adopted container's definition to keep NET_RAW, as
+// compose does when it starts the game with Docker's default capabilities,
+// or to drop it again.
+func keepNetRaw(r *rig, keep bool) {
+	drop := []string{"NET_RAW"}
+	if keep {
+		drop = nil
+	}
+	r.game.Daemon().SetCapDrop("other", drop)
+}
+
+// SPEC 4.4, 12.6: a running adopted game that keeps NET_RAW is attached to,
+// but raises a warning naming the setting and makes the game ranges
+// unknown, so trusted-header sign-in is refused until it drops NET_RAW.
+func TestAdoptedGameKeepingNetRawWarnsAndRefusesHeaders(t *testing.T) {
+	ctx := context.Background()
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": ""})
+	a := r.newWorld("Alpha")
+	r.start(a)
+	r.c.tickAdopted(ctx)
+	if _, known := r.c.GameSubnets(); !known {
+		t.Fatal("game ranges unknown before the change")
+	}
+	if w := r.c.Status(a).NetworkWarning; w != "" {
+		t.Fatalf("warning before the change = %q", w)
+	}
+
+	keepNetRaw(r, true)
+	r.c.tickAdopted(ctx)
+	st := r.c.Status(a)
+	if !strings.Contains(st.NetworkWarning, "cap_drop: [NET_RAW]") {
+		t.Fatalf("warning after one look = %q, want one naming cap_drop: [NET_RAW]", st.NetworkWarning)
+	}
+	if subnets, known := r.c.GameSubnets(); known || len(subnets) != 0 {
+		t.Errorf("GameSubnets = %v, %v; want unknown while NET_RAW is kept", subnets, known)
+	}
+	if st.State == StateUnknown {
+		t.Errorf("state = unknown (%s), want the game still watched", st.Reason)
+	}
+	if err := r.c.ForceStop(ctx, a, admin); err != nil {
+		t.Fatalf("force stop with the warning standing: %v", err)
+	}
+
+	keepNetRaw(r, false)
+	r.c.tickAdopted(ctx)
+	if w := r.c.Status(a).NetworkWarning; w != "" {
+		t.Errorf("warning after NET_RAW is dropped = %q, want none", w)
+	}
+	if _, known := r.c.GameSubnets(); !known {
+		t.Error("game ranges still unknown after NET_RAW is dropped")
+	}
+}
+
+// SPEC 4.4: a graceful stop works while the NET_RAW warning stands.
+func TestAdoptedGracefulStopWithNetRawWarning(t *testing.T) {
+	ctx := context.Background()
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": ""})
+	a := r.newWorld("Alpha")
+	r.start(a)
+	defer r.run(r.c)()
+	r.waitState(a, StateRunning)
+	keepNetRaw(r, true)
+	eventually(t, func() bool { return strings.Contains(r.c.Status(a).NetworkWarning, "NET_RAW") }, "the NET_RAW warning")
+	if err := r.c.Stop(ctx, a, admin, StopOptions{}); err != nil {
+		t.Fatalf("stop with the warning standing: %v", err)
+	}
+	r.waitState(a, StateStopped)
+}

@@ -13,7 +13,8 @@ import (
 // 12.6). A game with NET_RAW can claim any free address on its network, so
 // the whole range counts, not only the game's own address. known is false
 // until the ranges have been read once; a later failed read keeps the last
-// value. It makes no call.
+// value. It is also false while the adopted container keeps NET_RAW, since
+// the guard cannot then be trusted. It makes no call.
 //
 // The ranges come from container inspect (SPEC 14.3 allows no network
 // call). Foreman can only answer a peer on a range it has an address in,
@@ -21,6 +22,9 @@ import (
 func (c *Controller) GameSubnets() (subnets []netip.Prefix, known bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.aview.netRawWarning != "" {
+		return nil, false
+	}
 	return slices.Clone(c.subnets), c.subnetsKnown
 }
 
