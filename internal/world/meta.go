@@ -133,7 +133,7 @@ func WriteMeta(root *os.Root, m Meta) error {
 }
 
 // readChangeable reads world.json for a change, refusing a world a newer
-// Foreman wrote (R3).
+// Foreman wrote (SPEC 5.1).
 func readChangeable(root *os.Root) (Meta, error) {
 	meta, err := ReadMeta(root)
 	if err == nil && meta.Newer() {

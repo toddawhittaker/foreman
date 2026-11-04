@@ -13,8 +13,7 @@ import (
 	"strings"
 )
 
-// InboxFolder is one subfolder of the import inbox (R5 in the Epic 2 plan,
-// SPEC 5.5).
+// InboxFolder is one subfolder of the import inbox (SPEC 5.5).
 type InboxFolder struct {
 	Name    string
 	Saves   int
@@ -129,7 +128,7 @@ func importPlan(src *os.Root) (saves, mods []importFile, err error) {
 // ImportFolder makes a new world from the inbox folder named folder: its
 // top-level save zips and its mods/ folder are copied, never linked or
 // moved, so the source is left exactly as it was (SPEC 5.5). It refuses
-// up front when the disk lacks room for the copy (R19).
+// up front when the disk lacks room for the copy (SPEC 6.11).
 func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion string, spaceAge bool) (string, error) {
 	if err := m.checkNew(ctx, name, gameVersion); err != nil {
 		return "", err

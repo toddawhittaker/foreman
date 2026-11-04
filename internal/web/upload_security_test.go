@@ -296,7 +296,7 @@ func (sc *secCase) send(t *testing.T, path, ct string, body io.Reader, length in
 
 var hostileImportFields = map[string]string{"name": "Imported", "game_version": "2.0.72"}
 
-// SPEC 14.6, R17: a hostile or broken zip is refused, as a save upload and
+// SPEC 14.5, 14.6: a hostile or broken zip is refused, as a save upload and
 // as an import, and leaves no file and no world behind.
 func TestHostileZipsAreRefused(t *testing.T) {
 	sc := newSecCase(t)
@@ -387,7 +387,7 @@ func TestMalformedMultipartHeaderIsARefusal(t *testing.T) {
 	sameData(t, "data folder", sc.tree(t), before)
 }
 
-// SPEC 14.6, R19: an upload whose Content-Length lies, high or low, never
+// SPEC 6.11, 14.6: an upload whose Content-Length lies, high or low, never
 // leaves a partial file, temp file or world behind. A body cut short by a
 // low length is refused; a complete body under a high length may be kept,
 // but only whole.
@@ -436,7 +436,7 @@ func TestUploadWithLyingContentLength(t *testing.T) {
 	sc.ls.noStaging()
 }
 
-// R19: when the disk fills partway through an upload (here another writer
+// SPEC 6.11: when the disk fills partway through an upload (here another writer
 // takes the rest of the space after the upload began), the temp file is
 // removed, no save or world appears, and the space is given back.
 func TestDiskFullMidUpload(t *testing.T) {
@@ -508,7 +508,7 @@ func fillDisk(t *testing.T, name string) {
 	}
 }
 
-// R15: while another operation holds a world, every change to it over
+// While another operation holds a world, every change to it over
 // HTTP is refused with the busy message and changes nothing.
 func TestBusyWorldOverHTTP(t *testing.T) {
 	sc := newSecCase(t)
@@ -540,7 +540,7 @@ func TestBusyWorldOverHTTP(t *testing.T) {
 	sameData(t, "data folder", sc.tree(t), before)
 }
 
-// R15: a finished save upload waits for a busy world instead of throwing
+// A finished save upload waits for a busy world instead of throwing
 // the file away, and is saved once the world is free. (Giving up after the
 // wait is tested in internal/world, which can shorten the wait.)
 func TestSaveUploadWaitsForABusyWorld(t *testing.T) {

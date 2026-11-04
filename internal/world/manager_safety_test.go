@@ -187,7 +187,7 @@ func TestListShowsSizeUnknown(t *testing.T) {
 	}
 }
 
-// R19: writes in flight share one count of promised bytes, so two that
+// SPEC 6.11: writes in flight share one count of promised bytes, so two that
 // each fit cannot together eat into the reserve.
 func TestReserveCountsWritesInFlight(t *testing.T) {
 	dir := t.TempDir()
@@ -221,7 +221,7 @@ func TestReserveCountsWritesInFlight(t *testing.T) {
 	r2()
 }
 
-// R19: the reserve is a fixed 2 GB, whatever the disk's size.
+// SPEC 6.11: the reserve is a fixed 2 GB, whatever the disk's size.
 func TestCheckSpaceReserveIsFixed(t *testing.T) {
 	cases := []struct {
 		free, inFlight, need uint64

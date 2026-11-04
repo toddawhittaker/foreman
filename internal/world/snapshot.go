@@ -24,7 +24,7 @@ import (
 // ManifestFile is the snapshot's record of what it holds (SPEC 6.1, 6.7).
 const ManifestFile = "snapshot.json"
 
-// Reasons a snapshot was taken (R4). Any other reason names the risky
+// Reasons a snapshot was taken (SPEC 6.7). Any other reason names the risky
 // operation it came before.
 const (
 	ReasonManual        = "manual"
@@ -32,7 +32,7 @@ const (
 	ReasonBeforeRestore = "before-restore"
 )
 
-// Labels of the automatic snapshots (R14).
+// Labels of the automatic snapshots (SPEC 6.5, 5.10).
 const (
 	LabelBeforeRestore = "Before restore"
 	LabelBeforeDelete  = "Before delete"
@@ -41,7 +41,7 @@ const (
 // KeepAutomatic is how many automatic snapshots each world keeps (SPEC 6.6).
 const KeepAutomatic = 10
 
-// snapshotTimeFormat names a snapshot folder by its UTC time (R4).
+// snapshotTimeFormat names a snapshot folder by its UTC time (SPEC 6.7).
 const snapshotTimeFormat = "20060102T150405Z"
 
 var snapshotNameRE = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z(-[0-9]{1,4})?$`)
@@ -66,8 +66,8 @@ type ManifestEntry struct {
 	Size    int64     `json:"size"`
 	ModTime time.Time `json:"mod_time"`
 	// SHA256 is the hex hash of a zip, which is hard-linked and so could be
-	// changed in place through the live world (R20). Other files are
-	// copies and have none; snapshots from before R20 have none either.
+	// changed in place through the live world (SPEC 6.7). Other files are
+	// copies and have none; snapshots from before hashes were recorded have none either.
 	SHA256 string `json:"sha256,omitempty"`
 }
 
@@ -221,7 +221,7 @@ func (m *Manager) fillSnapshot(w, snaps *os.Root, dir string, man *Manifest) err
 }
 
 // prevSnapshot is the newest earlier snapshot, whose hashes a new one may
-// reuse (R20).
+// reuse (SPEC 6.7).
 type prevSnapshot struct {
 	name  string
 	files map[string]ManifestEntry
@@ -244,7 +244,7 @@ func (m *Manager) previousHashes(snaps *os.Root) prevSnapshot {
 
 // hash returns the SHA-256 of f as placed in dst. The previous snapshot's
 // hash is reused when its copy is the same inode with the same size and
-// time, so an unchanged save is not read again (R20).
+// time, so an unchanged save is not read again (SPEC 6.7).
 func (p prevSnapshot) hash(snaps, dst *os.Root, f ManifestEntry) (string, error) {
 	if old, ok := p.files[f.Path]; ok && old.SHA256 != "" && old.Size == f.Size && old.ModTime.Equal(f.ModTime) {
 		a, aerr := snaps.Lstat(path.Join(p.name, f.Path))
@@ -271,7 +271,7 @@ func hashFile(root *os.Root, name string) (string, error) {
 }
 
 // freeSnapshotName returns the folder name for time t, with -2, -3 and so
-// on when it is taken (R4).
+// on when it is taken (SPEC 6.7).
 func freeSnapshotName(snaps *os.Root, t time.Time) (string, error) {
 	base := t.UTC().Format(snapshotTimeFormat)
 	for n := 1; ; n++ {
@@ -343,7 +343,7 @@ func worldFiles(w *os.Root) ([]ManifestEntry, error) {
 }
 
 // copyBytes is what placing files will write: everything but the zips,
-// which are hard-linked (R19).
+// which are hard-linked (SPEC 6.11).
 func copyBytes(files []ManifestEntry) uint64 {
 	var n uint64
 	for _, f := range files {
@@ -378,7 +378,7 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 	}
 	if zipCopied {
 		// The caller reserved space for the copies it expected; only a
-		// failed link makes a zip cost bytes too (R19).
+		// failed link makes a zip cost bytes too (SPEC 6.11).
 		release, err := Reserve(dst.Name(), uint64(f.Size)) //nolint:gosec // a file size is never negative
 		if err != nil {
 			return false, err
@@ -531,8 +531,8 @@ func (m *Manager) prune(id string) error {
 }
 
 // SnapshotDiskUse is the space a world's snapshots take, counting each
-// file once by inode since zips are hard-linked between them (R11), and the
-// free space on the snapshots folder's filesystem (R19).
+// file once by inode since zips are hard-linked between them (SPEC 6.7), and the
+// free space on the snapshots folder's filesystem (SPEC 6.11).
 func (m *Manager) SnapshotDiskUse(id string, list []Snapshot) (used, free uint64, err error) {
 	free, err = FreeBytes(m.dirs.Snapshots)
 	if err != nil || len(list) == 0 {

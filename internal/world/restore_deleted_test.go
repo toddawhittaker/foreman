@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// SPEC 6.5, 6.9, 6.6 and R6: a deleted world comes back exactly from its
+// SPEC 6.5, 6.9, 6.6: a deleted world comes back exactly from its
 // final snapshot, with no "Before restore" snapshot, and does not become
 // active while another world is.
 func TestRestoreDeletedWorldIsExact(t *testing.T) {

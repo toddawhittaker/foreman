@@ -20,7 +20,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// The pinned images (the Makefile's GAME_IMAGE_* values, R32).
+// The pinned images (the Makefile's GAME_IMAGE_* values, STACK 1).
 const (
 	image11 = "factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb"
 	image20 = "factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef"

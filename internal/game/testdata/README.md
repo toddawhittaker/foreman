@@ -93,7 +93,7 @@ They did not exit (container still running after 15 seconds):
 
 So EOF closes the console reader only, not the server. The Epic 2 note
 that the server exits on EOF came from the image's entrypoint, not the
-binary. Keeping `-i` (R14) still costs nothing and keeps a console open.
+binary. Keeping `-i` (SPEC 4.3) still costs nothing and keeps a console open.
 
 ## 3. Stop signal and timeout
 
@@ -182,7 +182,7 @@ Crash loop under `unless-stopped`: yes, all three. After 30 seconds each
 had restarted 7 or 8 times (Docker's backoff doubles from 100 ms). The
 exit code differs: 2.0.77 and 2.1.24 exit 1, but **1.1.110 exits 0 after
 a failed load**. A crash detector cannot rely on a non-zero exit code; it
-must watch the restart count (R13) or the `InitializationFailed` line.
+must watch the restart count (SPEC 8.7) or the `InitializationFailed` line.
 
 ## 6. RCON replies
 

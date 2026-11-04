@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// These tests attack the file-path trust boundary (SPEC 14, R17): a name
+// These tests attack the file-path trust boundary (SPEC 14.5): a name
 // from a request or a link on disk must never reach outside the world,
 // snapshot or inbox folder it names, and a refusal must change nothing.
 
@@ -212,7 +212,7 @@ func noLinksUnder(t *testing.T, dir string) {
 	}
 }
 
-// R17: symlinks planted inside a world are never followed: not by the save
+// SPEC 14.5: symlinks planted inside a world are never followed: not by the save
 // list, download, load choice or upload, and a snapshot and a restore
 // neither copy them nor touch what they point at.
 func TestSymlinksInsideAWorldAreNeverFollowed(t *testing.T) {
@@ -268,7 +268,7 @@ func TestSymlinksInsideAWorldAreNeverFollowed(t *testing.T) {
 	sameDisk(t, "outside folder", diskTree(t, secretDir), outsideBefore)
 }
 
-// R17: a world whose saves folder is itself a symlink into another world
+// SPEC 14.5: a world whose saves folder is itself a symlink into another world
 // cannot list, open, receive or snapshot that world's saves.
 func TestSavesFolderSymlinkedToAnotherWorld(t *testing.T) {
 	m, _ := newTestManager(t)
@@ -314,7 +314,7 @@ func snapPath(m *Manager, id, snap, rel string) string {
 	return filepath.Join(m.dirs.Snapshots, id, snap, rel)
 }
 
-// SPEC 6.5 and R17: restore refuses a snapshot with a symlink planted in
+// SPEC 6.5 and 14.5: restore refuses a snapshot with a symlink planted in
 // it, before it takes the "Before restore" snapshot or touches the world,
 // and never reads what the link points at.
 func TestRestoreRefusesSymlinksPlantedInASnapshot(t *testing.T) {
@@ -385,7 +385,7 @@ func TestRestoreRefusesSymlinksPlantedInASnapshot(t *testing.T) {
 	}
 }
 
-// R17: a world's snapshots folder that is a symlink to another world's
+// SPEC 14.5: a world's snapshots folder that is a symlink to another world's
 // snapshots folder must not let a snapshot of one world land among the
 // other's, nor a restore read the other's.
 func TestSnapshotsFolderSymlinkedToAnotherWorld(t *testing.T) {
@@ -520,7 +520,7 @@ func TestRestoreRefusesManifestPointingOutside(t *testing.T) {
 	}
 }
 
-// SPEC 5.5, R17: symlinks in the import inbox, whether they name a folder
+// SPEC 5.5, 14.5: symlinks in the import inbox, whether they name a folder
 // or a file inside one, and whether they point outside the data folder or
 // at another world, are neither listed nor imported, and the source is not
 // changed.

@@ -19,7 +19,7 @@ import (
 )
 
 // SPEC 7.3: a start succeeds only once the game is in game and answers
-// over RCON; every step is shown and the start is audited (R11).
+// over RCON; every step is shown and the start is audited (SPEC 12.9).
 func TestStartReachesRunning(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Base")
@@ -58,7 +58,7 @@ func TestStartReachesRunning(t *testing.T) {
 	}
 }
 
-// SPEC 4.3 to 4.6, R1, R2, R14, R15, R28, R30, R33: the container's fixed
+// SPEC 4.3 to 4.6: the container's fixed
 // shape, and the RCON password nowhere in its settings.
 func TestContainerShape(t *testing.T) {
 	r := newRig(t, rigOptions{})
@@ -90,10 +90,10 @@ func TestContainerShape(t *testing.T) {
 		}
 	}
 	if strings.Contains(script, "--start-server ") {
-		t.Error("the script names a save; it must load the latest (R33)")
+		t.Error("the script names a save; it must load the latest (SPEC 4.3)")
 	}
 	if !s.OpenStdin {
-		t.Error("stdin is not open (R14)")
+		t.Error("stdin is not open (SPEC 4.3)")
 	}
 	h := s.HostConfig
 	if h.RestartPolicy.Name != "unless-stopped" {
@@ -118,7 +118,7 @@ func TestContainerShape(t *testing.T) {
 		}
 	}
 	if h.NetworkMode != "bridge" {
-		t.Errorf("network %q, want bridge outside a container (R3)", h.NetworkMode)
+		t.Errorf("network %q, want bridge outside a container (SPEC 4.4)", h.NetworkMode)
 	}
 	if s.StopTimeout == nil || *s.StopTimeout != StopGraceSeconds {
 		t.Errorf("stop timeout %v", s.StopTimeout)
@@ -132,11 +132,11 @@ func TestContainerShape(t *testing.T) {
 	}
 	raw, _ := json.Marshal(s)
 	if strings.Contains(string(raw), strings.TrimSpace(string(pw))) {
-		t.Error("the RCON password is in the container's settings (R1)")
+		t.Error("the RCON password is in the container's settings (SPEC 4.5)")
 	}
 }
 
-// R36: the network the game joins, and the refusals that keep a game away
+// SPEC 4.4: the network the game joins, and the refusals that keep a game away
 // from the Docker socket proxy and from posing as a trusted proxy.
 func TestGameNetwork(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
@@ -280,7 +280,7 @@ func TestGameNetworkMembers(t *testing.T) {
 	}
 }
 
-// R36, SPEC 12.6, 14.4: the game network's IPv6 range is checked too.
+// SPEC 4.4, 12.6, 14.4: the game network's IPv6 range is checked too.
 func TestGameNetworkIPv6(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	r.c.lookupHost = func(_ context.Context, host string) ([]string, error) {
@@ -347,7 +347,7 @@ func TestImageFor(t *testing.T) {
 	}
 }
 
-// SPEC 7.4, R17: the pre-start check refuses, and nothing is created.
+// SPEC 7.4: the pre-start check refuses, and nothing is created.
 func TestStartRefusedByPrecheck(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id, err := r.worlds.Create(context.Background(), "Empty", "2.1.24", false)
@@ -372,7 +372,7 @@ func TestStartRefusedByPrecheck(t *testing.T) {
 	}
 }
 
-// R5: an unreadable save refuses, and "Start anyway" snapshots first.
+// SPEC 7.4: an unreadable save refuses, and "Start anyway" snapshots first.
 func TestStartAnyway(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Odd")
@@ -437,7 +437,7 @@ func TestStartRefusesUnreadableServerSettings(t *testing.T) {
 	}
 }
 
-// R7: Start never downloads; the download is its own audited action.
+// SPEC 3.7: Start never downloads; the download is its own audited action.
 func TestImageMissingAndDownload(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Pull")
@@ -540,7 +540,7 @@ func TestImageVersion(t *testing.T) {
 	}
 }
 
-// R2: a container with the name that Foreman did not make is refused.
+// SPEC 4.3: a container with the name that Foreman did not make is refused.
 func TestStartRefusesForeignContainer(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Taken")
@@ -565,7 +565,7 @@ func TestStartRefusesWhenRunning(t *testing.T) {
 	}
 }
 
-// R12: every start makes a fresh container.
+// ADR 0003: every start makes a fresh container.
 func TestStartRecreatesContainer(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Fresh")
@@ -583,7 +583,7 @@ func TestStartRecreatesContainer(t *testing.T) {
 	}
 }
 
-// SPEC 7.11, R4: a chosen save loads once, then the newest loads again.
+// SPEC 7.11: a chosen save loads once, then the newest loads again.
 func TestChosenSaveAppliesOnce(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Choose")
@@ -606,7 +606,7 @@ func TestChosenSaveAppliesOnce(t *testing.T) {
 	defer func() { _ = root.Close() }()
 	meta, err := world.ReadMeta(root)
 	if err != nil || meta.LoadSave != "" {
-		t.Errorf("load_save is %q after the start reached the game (R4), %v", meta.LoadSave, err)
+		t.Errorf("load_save is %q after the start reached the game (SPEC 7.11), %v", meta.LoadSave, err)
 	}
 }
 

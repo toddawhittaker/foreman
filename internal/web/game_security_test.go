@@ -570,7 +570,7 @@ func TestOnlyListedDockerCalls(t *testing.T) {
 	}
 }
 
-// SPEC 4.3 to 4.6, 14.4, R1, R2, R14, R28: the game container's shape.
+// SPEC 4.3 to 4.6, 14.4: the game container's shape.
 func TestGameContainerShape(t *testing.T) {
 	g := newSecRig(t)
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
@@ -627,10 +627,10 @@ func TestGameContainerShape(t *testing.T) {
 		t.Errorf("restart policy %q", s.HostConfig.RestartPolicy.Name)
 	}
 	if s.StopTimeout == nil || *s.StopTimeout != 120 {
-		t.Errorf("stop timeout %v, want 120 (R28)", s.StopTimeout)
+		t.Errorf("stop timeout %v, want 120 (SPEC 4.3)", s.StopTimeout)
 	}
 	if !s.OpenStdin {
-		t.Error("stdin is not kept open (R14, R29)")
+		t.Error("stdin is not kept open (SPEC 4.3)")
 	}
 }
 
@@ -643,7 +643,7 @@ func TestAskedForStopIsNeverACrash(t *testing.T) {
 		g.startGame(id)
 		g.wantRedirectHome(g.post(gamePath(id, action), url.Values{"no_countdown": {"on"}}))
 		g.waitPage(stopped)
-		time.Sleep(6 * time.Second) // past one monitor poll (R13)
+		time.Sleep(6 * time.Second) // past one monitor poll (SPEC 8.7)
 		if st := g.ctrl.Status(id).State; st != game.StateStopped {
 			t.Errorf("after %s the state is %s", action, st)
 		}
@@ -737,7 +737,7 @@ func TestConcurrentStartsMakeOneContainer(t *testing.T) {
 	}
 }
 
-// SPEC 12.9, R11: each action is audited under the user who asked, and a
+// SPEC 12.9: each action is audited under the user who asked, and a
 // start the pre-start check refuses is still audited.
 func TestServerActionsAuditTheUser(t *testing.T) {
 	g := newSecRig(t)
@@ -825,7 +825,7 @@ func TestStopDuringRestartIsNotLost(t *testing.T) {
 	}
 }
 
-// R38: a stop refused while a restart ran is shown on its own and does not
+// A stop refused while a restart ran is shown on its own and does not
 // hide the restart's result.
 func TestRefusedStopKeepsTheRestartsResult(t *testing.T) {
 	g := newSecRig(t)

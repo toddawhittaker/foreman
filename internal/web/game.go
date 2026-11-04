@@ -56,7 +56,7 @@ type gameRuns struct {
 	running   map[string]int            // actions in flight, by world id
 	locking   map[string]int            // those of them that hold the world's lock
 	results   map[string]actionResult   // by world id
-	asides    map[string][]actionResult // actions asked for while another ran (R38)
+	asides    map[string][]actionResult // actions asked for while another ran
 	changed   chan struct{}             // closed and replaced when a result is stored
 	closeOnce sync.Once
 }
@@ -110,7 +110,7 @@ func (g *gameRuns) trackLocked() bool {
 // stop) and false for an image download. When no lock-holding action runs
 // on the world, a new one forgets the world's last results, so the page
 // shows only what it does. A lock-holding action asked for while another
-// runs keeps its result apart, so it never hides the first one's (R38). A
+// runs keeps its result apart, so it never hides the first one's. A
 // download never takes the main place from a lock-holding action.
 func (g *gameRuns) run(id string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	g.mu.Lock()
@@ -357,7 +357,7 @@ type CountdownForm struct {
 }
 
 // readCountdown reads the countdown fields. A problem is worded for the
-// field; an empty field means the default countdown (R40).
+// field; an empty field means the default countdown (SPEC 7.6).
 func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
 	f := CountdownForm{Countdown: strings.TrimSpace(r.PostFormValue("countdown")), NoCountdown: r.PostFormValue("no_countdown") != ""}
 	if f.NoCountdown {

@@ -117,7 +117,7 @@ func FreeBytes(dir string) (uint64, error) {
 }
 
 // SpaceReserve is the free space every write must leave for the game's
-// own autosaves (R19).
+// own autosaves (SPEC 6.11).
 const SpaceReserve uint64 = 2_000_000_000
 
 // reserveBytes is SpaceReserve; tests on a tiny filesystem lower it.
@@ -137,7 +137,7 @@ func SetSpaceReserveForTest(n uint64) (restore func()) {
 var ErrNoSpace = errors.New("not enough free disk space")
 
 // promised counts bytes that writes in flight said they will write, so
-// writes running side by side cannot together eat into the reserve (R19).
+// writes running side by side cannot together eat into the reserve (SPEC 6.11).
 // One count for the process: the data folder is one filesystem.
 var promised struct {
 	mu sync.Mutex
@@ -212,7 +212,7 @@ var ErrNotFolder = errors.New("not a folder")
 
 // openDir opens the folder name inside parent as a root, refusing a
 // symlink even one that stays inside parent, so one world's folder can
-// never stand in for another's (R17).
+// never stand in for another's (SPEC 14.5).
 func openDir(parent *os.Root, name string) (*os.Root, error) {
 	before, err := parent.Lstat(name)
 	if err != nil {

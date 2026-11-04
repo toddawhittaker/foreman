@@ -65,7 +65,7 @@ type uploaded struct {
 // receiveFile streams the file in form field into a temp file in dir inside
 // root, without holding it in memory. spaceDir is a real path on the same
 // filesystem: the upload holds a world.Reserve for its declared length
-// until it is on disk (R19). On
+// until it is on disk (SPEC 6.11). On
 // any failure the temp file is removed and nothing else has changed.
 func receiveFile(r *http.Request, root *os.Root, dir, field, spaceDir string, limit int64) (uploaded, error) {
 	return receiveFileWithFields(r, root, dir, field, spaceDir, limit, nil)

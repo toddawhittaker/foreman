@@ -20,7 +20,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// State is the game's state as Foreman shows it (SPEC 7.1, R16). The values
+// State is the game's state as Foreman shows it (SPEC 7.1). The values
 // match the badge classes in DESIGN 7.5.
 type State string
 
@@ -41,10 +41,10 @@ const (
 	// over RCON (SPEC 7.3).
 	StartTimeout = 5 * time.Minute
 	// StopCountdown is how long players are warned before a graceful stop
-	// (SPEC 7.6, R21: a constant until the settings page).
+	// (SPEC 7.6: a constant until the settings page).
 	StopCountdown = 60 * time.Second
 	// StopGraceSeconds is how long Docker waits for the game to save and
-	// exit after SIGTERM before it kills it (R28).
+	// exit after SIGTERM before it kills it (SPEC 7.6).
 	StopGraceSeconds = 120
 	// CrashLoopCount crashes within CrashLoopWindow make a crash loop (SPEC 8.9).
 	CrashLoopCount  = 3
@@ -55,14 +55,14 @@ const (
 
 // Defaults that the spec leaves to Foreman.
 const (
-	pollInterval = 5 * time.Second        // how often the monitor inspects each container (R13)
+	pollInterval = 5 * time.Second        // how often the monitor inspects each container (SPEC 8.7)
 	saveTimeout  = 2 * time.Minute        // how long /server-save may take to finish
 	rconRetry    = 500 * time.Millisecond // how often a start retries RCON after InGame
 	hubBuffer    = 256                    // events a slow page may fall behind by before it is dropped
 	followMinRun = time.Second            // a log stream that broke off sooner is retried at the next poll
 )
 
-// Audit actions this package records (SPEC 12.9, R11).
+// Audit actions this package records (SPEC 12.9).
 const (
 	AuditStart         = "start"
 	AuditStop          = "stop"
@@ -87,7 +87,7 @@ var (
 )
 
 // PrecheckError is a start refused by the pre-start check (SPEC 7.4). The
-// caller may offer "Start anyway" when Check.CanStartAnyway() (R5, R17).
+// caller may offer "Start anyway" when Check.CanStartAnyway() (SPEC 7.4).
 type PrecheckError struct {
 	Check world.PreCheck
 }
@@ -117,22 +117,22 @@ type Config struct {
 	Worlds *world.Manager
 	Audit  AuditLog
 	// HostDataDir is the data directory's path on the Docker host, for the
-	// bind mount and the install label (SPEC 3.5, R2).
+	// bind mount and the install label (SPEC 3.5, 4.3).
 	HostDataDir string
-	// GameUID and GameGID are what the game runs as (SPEC 3.6, R1).
+	// GameUID and GameGID are what the game runs as (SPEC 3.6, 4.6).
 	GameUID, GameGID int
 	// Images maps a game's major.minor version ("2.0") to the pinned image
-	// reference that runs it (R8, R32).
+	// reference that runs it (SPEC 4.2, STACK 1).
 	Images map[string]string
 	// Network is FOREMAN_GAME_NETWORK. Outside a container empty means
-	// Docker's default bridge; inside one it is required (R36).
+	// Docker's default bridge; inside one it is required (SPEC 4.4).
 	Network string
 	// DockerHost is DOCKER_HOST. Over tcp:// a socket proxy shares a
 	// network with Foreman, so the game network must not hold its address
-	// (R36).
+	// (SPEC 4.4).
 	DockerHost string
 	// TrustedProxies is FOREMAN_TRUSTED_PROXIES; the game network must not
-	// overlap it (R36, SPEC 12.6).
+	// overlap it (SPEC 4.4, 12.6).
 	TrustedProxies []netip.Prefix
 	// SelfID is Foreman's own container (docker.SelfID); empty outside one.
 	SelfID string
@@ -154,7 +154,7 @@ type Controller struct {
 	images   map[string]string
 	network  string
 	selfID   string
-	// What the game network is checked against (R36). dockerHost is the
+	// What the game network is checked against (SPEC 4.4). dockerHost is the
 	// host DOCKER_HOST names over tcp://.
 	dockerTCP  bool
 	dockerHost string
@@ -472,7 +472,7 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 }
 
 // stateLocked decides the state from what Docker and the log said
-// (SPEC 7.1, 8.7, 8.9, R16, R27). The exit code is never used: 1.1 exits 0
+// (SPEC 7.1, 8.7, 8.9). The exit code is never used: 1.1 exits 0
 // after a failed load. w.mu is held.
 func (c *Controller) stateLocked(w *worldRun) (State, string) {
 	if w.opDone != nil && w.opState != "" {

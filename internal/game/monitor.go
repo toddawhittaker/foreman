@@ -16,7 +16,7 @@ import (
 
 // Run watches every game container this install made until ctx ends: it
 // re-attaches to games already running when Foreman starts, polls Docker
-// (R13), follows each game's log, and stops a crash-looping game
+// (SPEC 8.7), follows each game's log, and stops a crash-looping game
 // (SPEC 8.9). It never stops or removes a game when Foreman starts or
 // stops (SPEC 3.8). Call it once.
 func (c *Controller) Run(ctx context.Context) {
@@ -130,7 +130,7 @@ func (c *Controller) busy(w *worldRun) bool {
 }
 
 // observe takes in one look at the world's container (nil when it has
-// none) and acts on what changed since the last look (R13).
+// none) and acts on what changed since the last look (SPEC 8.7).
 func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	if cont != nil && c.isNewContainer(w, cont.ID) {
 		c.adopt(w, *cont)
@@ -161,7 +161,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	now := c.now()
 	if n := cont.RestartCount - w.seenRestarts; n > 0 {
 		// Docker restarted the game, which it only does after an exit
-		// nobody asked for (R27): each restart is one crash.
+		// nobody asked for (SPEC 8.7): each restart is one crash.
 		for range n {
 			w.crashes = append(w.crashes, now)
 		}
@@ -331,7 +331,7 @@ func (c *Controller) stopCrashLoopLocked(w *worldRun, cid string) {
 }
 
 // stopCrashLoop stops a crash-looping game, which keeps it stopped under
-// unless-stopped (SPEC 8.9, R28). When Docker refuses, the stopping mark is
+// unless-stopped (SPEC 4.3, 8.9). When Docker refuses, the stopping mark is
 // dropped so the next poll tries again; the state stays crash-looping.
 func (c *Controller) stopCrashLoop(w *worldRun, cid string) {
 	err := c.docker.StopContainer(c.ctx, cid, StopGraceSeconds)
@@ -386,7 +386,7 @@ func (c *Controller) followLocked(w *worldRun, cid string, since time.Time) {
 			w.following, w.followCancel = false, nil
 		}
 		w.mu.Unlock()
-		// The stream ends when the game exits: look at once (R13). A
+		// The stream ends when the game exits: look at once (SPEC 8.7). A
 		// stream that failed at once waits for the next poll instead, so a
 		// broken log does not make a tight loop.
 		if err == nil || time.Since(began) >= followMinRun {

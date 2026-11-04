@@ -19,7 +19,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// Labels on every game container (R2). Foreman finds its containers by
+// Labels on every game container (SPEC 4.3). Foreman finds its containers by
 // them after a restart, with no database row.
 const (
 	labelPrefix  = "io.github.toddawhittaker.foreman."
@@ -27,7 +27,7 @@ const (
 	LabelInstall = labelPrefix + "install" // the host data path, so two installs never share a container
 )
 
-// The container's fixed parts (SPEC 4.3 to 4.6, R1, R14, R15, R28, R30, R33).
+// The container's fixed parts (SPEC 4.3 to 4.6).
 const (
 	gameMount      = "/factorio"
 	gameBinary     = "/opt/factorio/bin/x64/factorio"
@@ -41,7 +41,7 @@ const (
 
 // startScript runs the game with Foreman's flags. It reads the RCON
 // password from the world's file inside the container, so the password is
-// never in the container's settings (R1). Server settings are passed when
+// never in the container's settings (SPEC 4.5). Server settings are passed when
 // the world has them, as the spike's command line does.
 var startScript = strings.Join([]string{
 	`pw=$(cat ` + gameMount + "/" + world.RCONPasswordFile + `) || exit 1`,
@@ -51,7 +51,7 @@ var startScript = strings.Join([]string{
 	`exec ` + gameBinary + ` "$@"`,
 }, "\n")
 
-// ContainerName is the name of a world's game container (R2).
+// ContainerName is the name of a world's game container (SPEC 4.3).
 func ContainerName(id string) string { return "foreman-" + id }
 
 // containerSpec builds the game container for a world (SPEC 4.3 to 4.6).
@@ -84,7 +84,7 @@ func (c *Controller) containerSpec(id, image, network string) docker.ContainerSp
 
 // ourContainer reads the world's container. found is false when there is
 // none. A container with the name that Foreman did not make for this world
-// and this install is ErrForeign (R2).
+// and this install is ErrForeign (SPEC 4.3).
 func (c *Controller) ourContainer(ctx context.Context, id string) (cont docker.Container, found bool, err error) {
 	cont, err = c.docker.InspectContainer(ctx, ContainerName(id))
 	if errors.Is(err, docker.ErrNotFound) {
@@ -121,7 +121,7 @@ func refuseNetwork(format string, args ...any) error {
 	return networkRefusal(fmt.Sprintf(format, args...))
 }
 
-// gameNetwork returns the Docker network the game joins (R36, SPEC 4.4).
+// gameNetwork returns the Docker network the game joins (SPEC 4.4).
 // Outside a container it is FOREMAN_GAME_NETWORK, or Docker's default
 // bridge. Inside one FOREMAN_GAME_NETWORK is required, and refused when a
 // game on it could reach the Docker socket proxy or pose as a trusted
@@ -341,7 +341,7 @@ func (c *Controller) readMeta(id string) (world.Meta, error) {
 }
 
 // imageFor returns the pinned image for a game version, by its major and
-// minor number (R8).
+// minor number (SPEC 4.2).
 func (c *Controller) imageFor(gameVersion string) (string, error) {
 	parts := strings.SplitN(gameVersion, ".", 3)
 	if len(parts) >= 2 {
@@ -353,7 +353,7 @@ func (c *Controller) imageFor(gameVersion string) (string, error) {
 }
 
 // ImageFor returns the pinned image reference a world runs, and whether
-// Docker has it (R7). The server page uses it to offer the download.
+// Docker has it (SPEC 3.7). The server page uses it to offer the download.
 func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, present bool, err error) {
 	meta, err := c.readMeta(id)
 	if err != nil {
@@ -375,7 +375,7 @@ func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, prese
 
 // secrets returns the world's RCON password and, when its server settings
 // set one, the game password: every secret the game might print
-// (SPEC 8.6, 14.8). It creates the RCON password file when missing (R20).
+// (SPEC 8.6, 14.8). It creates the RCON password file when missing (SPEC 4.5).
 func (c *Controller) secrets(id string) (rconPW secret.Secret, all []secret.Secret, err error) {
 	rconPW, err = c.worlds.RCONPassword(id)
 	if err != nil {

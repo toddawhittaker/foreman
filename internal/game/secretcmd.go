@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// SetsSecret lists the console commands whose argument is a secret (R6,
-// SPEC 14.8). The game has no other command that sets a password or token:
+// SetsSecret lists the console commands whose argument is a secret (SPEC 8.4,
+// 14.8). The game has no other command that sets a password or token:
 // /config set takes one option at a time and "password" is the only secret
 // among them.
 var SetsSecret = []string{"config set password"}
