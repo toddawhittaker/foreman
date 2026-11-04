@@ -150,45 +150,55 @@ func (c *Controller) checkGameNetwork(ctx context.Context, self docker.Container
 	if c.network == "" {
 		return "", refuseNetwork("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: it names the Docker network the game joins. Choose a network Foreman is on that the Docker socket proxy is not on")
 	}
-	n, ok := self.Networks[c.network]
-	if !ok {
+	if _, ok := self.Networks[c.network]; !ok {
 		return "", refuseNetwork("FOREMAN_GAME_NETWORK names the %q network, but the Foreman container is not on it, so Foreman could not reach the game. Connect Foreman to that network, or name one it is on", c.network)
 	}
-	if c.dockerTCP || len(c.proxies) > 0 {
-		subnets, err := networkSubnets(n)
-		if err != nil {
-			return "", refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check that a game on it stays away from the Docker socket proxy and FOREMAN_TRUSTED_PROXIES", c.network)
-		}
-		if c.dockerTCP {
-			if err := c.checkDockerHost(ctx, self, subnets); err != nil {
-				return "", err
-			}
-		}
-		for _, subnet := range subnets {
-			for _, p := range c.proxies {
-				if p.Overlaps(subnet) {
-					return "", refuseNetwork("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", c.network, subnet, p)
-				}
-			}
-		}
+	isGame := func(s docker.ContainerSummary) bool {
+		return s.Labels[LabelInstall] == c.hostData && s.Labels[LabelWorld] != ""
 	}
-	if err := c.checkNetworkMembers(ctx, self); err != nil {
+	if err := c.checkSharedNetwork(ctx, self, c.network, isGame); err != nil {
 		return "", err
 	}
 	return c.network, nil
 }
 
-// checkNetworkMembers refuses when a container other than Foreman and this
-// install's games is on the game network: the network is shared only by
-// Foreman and the game (SPEC 4.4).
-func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Container) error {
-	list, err := c.docker.ListContainersOnNetwork(ctx, c.network)
+// checkSharedNetwork refuses a network Foreman shares with the game when a
+// game on it could reach the Docker socket proxy or pose as a trusted proxy,
+// or when a container other than Foreman and those isGame accepts is on it
+// (SPEC 4.4, 12.6, 14.4). self is on the network.
+func (c *Controller) checkSharedNetwork(ctx context.Context, self docker.Container, network string, isGame func(docker.ContainerSummary) bool) error {
+	if c.dockerTCP || len(c.proxies) > 0 {
+		subnets, err := networkSubnets(self.Networks[network])
+		if err != nil {
+			return refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check that a game on it stays away from the Docker socket proxy and FOREMAN_TRUSTED_PROXIES", network)
+		}
+		if c.dockerTCP {
+			if err := c.checkDockerHost(ctx, self, network, subnets); err != nil {
+				return err
+			}
+		}
+		for _, subnet := range subnets {
+			for _, p := range c.proxies {
+				if p.Overlaps(subnet) {
+					return refuseNetwork("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", network, subnet, p)
+				}
+			}
+		}
+	}
+	return c.checkNetworkMembers(ctx, self, network, isGame)
+}
+
+// checkNetworkMembers refuses when a container other than Foreman and the
+// games isGame accepts is on the game network: the network is shared only
+// by Foreman and the game (SPEC 4.4).
+func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Container, network string, isGame func(docker.ContainerSummary) bool) error {
+	list, err := c.docker.ListContainersOnNetwork(ctx, network)
 	if err != nil {
 		return err
 	}
 	var others []string
 	for _, s := range list {
-		if s.ID == self.ID || (s.Labels[LabelInstall] == c.hostData && s.Labels[LabelWorld] != "") {
+		if s.ID == self.ID || isGame(s) {
 			continue
 		}
 		name := s.ID
@@ -198,7 +208,7 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 		others = append(others, name)
 	}
 	if len(others) > 0 {
-		return refuseNetwork("the game network %q also holds %s, which Foreman did not make, so a game could reach them. Give the game a network that only Foreman and its games are on", c.network, strings.Join(others, ", "))
+		return refuseNetwork("the game network %q also holds %s, which Foreman did not make, so a game could reach them. Give the game a network that only Foreman and its games are on", network, strings.Join(others, ", "))
 	}
 	return nil
 }
@@ -210,14 +220,14 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 // container that also joined the game network is caught here by its
 // address when DOCKER_HOST resolves to it, and by checkNetworkMembers
 // whatever address DOCKER_HOST names.
-func (c *Controller) checkDockerHost(ctx context.Context, self docker.Container, subnets []netip.Prefix) error {
+func (c *Controller) checkDockerHost(ctx context.Context, self docker.Container, network string, subnets []netip.Prefix) error {
 	var addrs []string
 	err := errors.New("DOCKER_HOST names no host")
 	if c.dockerHost != "" {
 		addrs, err = c.lookupHost(ctx, c.dockerHost)
 	}
 	if err != nil || len(addrs) == 0 {
-		return refuseNetwork("DOCKER_HOST uses tcp://, but Foreman cannot look up the address of %q, so it cannot check that a game on the %q network could not reach the Docker socket proxy. Check DOCKER_HOST, then try again", c.dockerHost, c.network)
+		return refuseNetwork("DOCKER_HOST uses tcp://, but Foreman cannot look up the address of %q, so it cannot check that a game on the %q network could not reach the Docker socket proxy. Check DOCKER_HOST, then try again", c.dockerHost, network)
 	}
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, a := range addrs {
@@ -228,14 +238,14 @@ func (c *Controller) checkDockerHost(ctx context.Context, self docker.Container,
 		ip = ip.WithZone("").Unmap()
 		for _, subnet := range subnets {
 			if subnet.Contains(ip) {
-				return refuseNetwork("DOCKER_HOST reaches the Docker socket proxy at %s, which is on the game network %q (%s), so a game could reach it. Put the game on a network of its own that Foreman also joins and the proxy does not", ip, c.network, subnet)
+				return refuseNetwork("DOCKER_HOST reaches the Docker socket proxy at %s, which is on the game network %q (%s), so a game could reach it. Put the game on a network of its own that Foreman also joins and the proxy does not", ip, network, subnet)
 			}
 		}
 		ips = append(ips, ip)
 	}
 	for _, ip := range ips {
-		if !onOtherNetwork(self, c.network, ip) {
-			return refuseNetwork("DOCKER_HOST reaches Docker at %s, which is not on any of Foreman's networks other than the game network %q, so a game might reach it through that network's gateway. Reach Docker over a network the game is not on, such as a socket proxy on a network Foreman shares with it", ip, c.network)
+		if !onOtherNetwork(self, network, ip) {
+			return refuseNetwork("DOCKER_HOST reaches Docker at %s, which is not on any of Foreman's networks other than the game network %q, so a game might reach it through that network's gateway. Reach Docker over a network the game is not on, such as a socket proxy on a network Foreman shares with it", ip, network)
 		}
 	}
 	return nil
@@ -398,23 +408,31 @@ func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, prese
 // set one, the game password: every secret the game might print
 // (SPEC 8.6, 14.8). It creates the RCON password file when missing (SPEC 4.5).
 // In adopted mode FOREMAN_RCON_PASSWORD, when set, is the one Foreman logs in
-// with, and the world's file is still hidden, because the image's entrypoint
-// prints the password it reads from that file (SPEC 4.10).
+// with; the world's file is then never created here, and is still hidden
+// when it holds another value, because the image's entrypoint prints the
+// password it reads from that file (SPEC 4.10).
 func (c *Controller) secrets(id string) (rconPW secret.Secret, all []secret.Secret, err error) {
-	filePW, err := c.worlds.RCONPassword(id)
-	if err != nil {
-		return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
+	if env, ok := c.envRCONPassword(); ok {
+		rconPW, all = env, []secret.Secret{env}
+		if c.hasRCONPassword(id) == nil {
+			filePW, err := c.worlds.RCONPassword(id)
+			if err != nil {
+				return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
+			}
+			if filePW.Reveal() != env.Reveal() {
+				all = append(all, filePW)
+			}
+		}
+	} else {
+		rconPW, err = c.worlds.RCONPassword(id)
+		if err != nil {
+			return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
+		}
+		all = []secret.Secret{rconPW}
 	}
 	gamePW, err := c.gamePassword(id)
 	if err != nil {
 		return secret.Secret{}, nil, err
-	}
-	rconPW, all = filePW, []secret.Secret{filePW}
-	if c.adopted != nil && c.adopted.rconPW.Reveal() != "" {
-		rconPW = c.adopted.rconPW
-		if rconPW.Reveal() != filePW.Reveal() {
-			all = append(all, rconPW)
-		}
 	}
 	if gamePW.Reveal() != "" {
 		all = append(all, gamePW)
@@ -422,13 +440,32 @@ func (c *Controller) secrets(id string) (rconPW secret.Secret, all []secret.Secr
 	return rconPW, all, nil
 }
 
+// envRCONPassword returns FOREMAN_RCON_PASSWORD in adopted mode, when set
+// (SPEC 4.10).
+func (c *Controller) envRCONPassword() (secret.Secret, bool) {
+	if c.adopted == nil || c.adopted.rconPW.Reveal() == "" {
+		return secret.Secret{}, false
+	}
+	return c.adopted.rconPW, true
+}
+
 // rconPassword is the password Foreman logs in to the world's game with
 // (SPEC 4.5, 4.10).
 func (c *Controller) rconPassword(id string) (secret.Secret, error) {
-	if c.adopted != nil && c.adopted.rconPW.Reveal() != "" {
-		return c.adopted.rconPW, nil
+	if env, ok := c.envRCONPassword(); ok {
+		return env, nil
 	}
 	return c.worlds.RCONPassword(id)
+}
+
+// needRCONPassword reports, as an error, that Foreman cannot know the
+// password a running game uses: the world has no password file and
+// FOREMAN_RCON_PASSWORD is not set.
+func (c *Controller) needRCONPassword(id string) error {
+	if _, ok := c.envRCONPassword(); ok {
+		return nil
+	}
+	return c.hasRCONPassword(id)
 }
 
 // hasRCONPassword reports, as an error, whether the world lacks its RCON

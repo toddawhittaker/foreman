@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
+	"os"
 	"path"
 	"path/filepath"
 	"slices"
@@ -104,6 +106,15 @@ func (c *Controller) adoptedViewNow() adoptedView {
 	return c.aview
 }
 
+// Layout returns the game folder's shape at the last look in adopted mode
+// (SPEC 4.8), and the zero State in managed mode. It makes no call.
+func (c *Controller) Layout() gamedir.State {
+	if c.adopted == nil {
+		return gamedir.State{}
+	}
+	return c.adoptedViewNow().layout
+}
+
 // inspectAdopted reads the named container and keeps what Status shows.
 func (c *Controller) inspectAdopted(ctx context.Context) (docker.Container, error) {
 	cont, err := c.docker.InspectContainer(ctx, c.adopted.container)
@@ -188,6 +199,9 @@ func (c *Controller) checkContainer(ctx context.Context) (docker.Container, erro
 	if err := c.checkContainerMounts(ctx, cont); err != nil {
 		return docker.Container{}, err
 	}
+	if err := c.checkAdoptedNetwork(ctx, cont); err != nil {
+		return docker.Container{}, err
+	}
 	return cont, nil
 }
 
@@ -250,9 +264,16 @@ func containerRCONPort(cont docker.Container) (int, error) {
 // Foreman changes, and only it, at /factorio, and that Foreman can reach it
 // (SPEC 4.4, 4.8).
 func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Container) error {
+	// A game that can reach Docker could take over the host (SPEC 4.6, 14).
+	if cont.Privileged {
+		return refuseContainer("the game container is privileged, so a game in it could take over the host. Remove privileged mode from the container's definition")
+	}
 	src, found := "", false
 	for _, m := range cont.Mounts {
 		dest := path.Clean(m.Destination)
+		if mountsDockerSocket(m) {
+			return refuseContainer("the game container mounts the Docker socket at %s, so a game in it could control Docker. Remove that mount", dest)
+		}
 		switch {
 		case dest == gameMount:
 			src, found = m.Source, true
@@ -285,26 +306,59 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 	if own != src {
 		return refuseContainer("the folder mounted at FOREMAN_GAME_DIR in the Foreman container is not the one the game container has at /factorio. Mount the same folder in both")
 	}
-	if sharedNetwork(self, cont) == "" {
-		return refuseContainer("the Foreman container shares no Docker network with the game container, so Foreman cannot reach the game's RCON port. Put both containers on one network")
-	}
 	return nil
 }
 
-// sharedNetwork names the first network, by name, that both containers are
-// on, or "".
-func sharedNetwork(self, cont docker.Container) string {
-	names := make([]string, 0, len(cont.Networks))
-	for name := range cont.Networks {
-		if _, ok := self.Networks[name]; ok {
-			names = append(names, name)
+// checkAdoptedNetwork applies the game network rules of managed mode to the
+// network Foreman shares with the adopted container (SPEC 4.4). Outside a
+// container there is no shared network to check, as in managed mode.
+func (c *Controller) checkAdoptedNetwork(ctx context.Context, cont docker.Container) error {
+	self, inContainer, err := c.selfContainer(ctx)
+	if err != nil || !inContainer {
+		return err
+	}
+	network, err := c.adoptedNetwork(self, cont)
+	if err != nil {
+		return err
+	}
+	return c.checkSharedNetwork(ctx, self, network, func(s docker.ContainerSummary) bool { return s.ID == cont.ID })
+}
+
+// mountsDockerSocket reports whether a mount gives the container the Docker
+// socket: a docker.sock at either end, or the run folder that holds it.
+func mountsDockerSocket(m docker.Mount) bool {
+	for _, p := range []string{path.Clean(m.Source), path.Clean(m.Destination)} {
+		if path.Base(p) == "docker.sock" {
+			return true
 		}
 	}
-	slices.Sort(names)
-	if len(names) == 0 {
-		return ""
+	src := path.Clean(m.Source)
+	return src == "/run" || src == "/var/run"
+}
+
+// adoptedNetwork names the network Foreman shares with the game: the only
+// one, or the one FOREMAN_GAME_NETWORK names, which is required when they
+// share several (SPEC 4.4).
+func (c *Controller) adoptedNetwork(self, cont docker.Container) (string, error) {
+	var shared []string
+	for name := range cont.Networks {
+		if _, ok := self.Networks[name]; ok {
+			shared = append(shared, name)
+		}
 	}
-	return names[0]
+	slices.Sort(shared)
+	switch {
+	case len(shared) == 0:
+		return "", refuseContainer("the Foreman container shares no Docker network with the game container, so Foreman cannot reach the game's RCON port. Put both containers on one network")
+	case c.network != "":
+		if !slices.Contains(shared, c.network) {
+			return "", refuseNetwork("FOREMAN_GAME_NETWORK names the %q network, but the Foreman and game containers do not share it. Name a network both are on", c.network)
+		}
+		return c.network, nil
+	case len(shared) > 1:
+		return "", refuseNetwork("the Foreman container shares several Docker networks with the game container (%s), so Foreman cannot tell which one to check and reach RCON on. Set FOREMAN_GAME_NETWORK to one of them", strings.Join(shared, ", "))
+	}
+	return shared[0], nil
 }
 
 // adoptedRCONAddress is the container's address on the network it shares
@@ -320,7 +374,11 @@ func (c *Controller) adoptedRCONAddress(ctx context.Context, cont docker.Contain
 	}
 	ip := containerIP(cont)
 	if inContainer {
-		ip = cont.Networks[sharedNetwork(self, cont)].IPAddress
+		network, err := c.adoptedNetwork(self, cont)
+		if err != nil {
+			return "", err
+		}
+		ip = cont.Networks[network].IPAddress
 	}
 	if ip == "" {
 		return "", nil
@@ -482,6 +540,9 @@ func (c *Controller) prepareAdopted(ctx context.Context, id string) (launch, err
 			return launch{}, err
 		}
 	}
+	if err := c.writeEnvRCONPassword(id); err != nil {
+		return launch{}, err
+	}
 	// The password is read for the world presented now (SPEC 4.10).
 	rconPW, secrets, err := c.secrets(id)
 	if err != nil {
@@ -497,8 +558,56 @@ func (c *Controller) prepareAdopted(ctx context.Context, id string) (launch, err
 	}
 	return launch{
 		cid: cont.ID, status: cont.State.Status, restarts: cont.RestartCount,
-		save: save, meta: meta, image: cont.Image, rconPW: rconPW, secrets: secrets, fromRun: true,
+		save: save, meta: meta, image: cont.Image, rconPW: rconPW, secrets: secrets,
 	}, nil
+}
+
+// rconTempFile is where writeEnvRCONPassword writes before the rename.
+const rconTempFile = world.ConfigDir + "/" + world.PrefixPartial + "rconpw-foreman"
+
+// writeEnvRCONPassword writes FOREMAN_RCON_PASSWORD, when set, into the
+// world's config/rconpw, since the image's entrypoint always gives the game
+// the password in that file (SPEC 4.10). The file is 0640 from the moment it
+// exists and appears complete (SPEC 4.5). The caller holds the world's lock.
+func (c *Controller) writeEnvRCONPassword(id string) error {
+	env, ok := c.envRCONPassword()
+	if !ok {
+		return nil
+	}
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	if err := world.Mkdir(root, world.ConfigDir); err != nil && !errors.Is(err, fs.ErrExist) {
+		return err
+	}
+	if err := root.Remove(rconTempFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	f, err := root.OpenFile(rconTempFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
+	if err != nil {
+		return fmt.Errorf("write FOREMAN_RCON_PASSWORD into the world: %w", err)
+	}
+	// The umask may have narrowed it; the game's group still needs to read.
+	err = f.Chmod(0o640)
+	if err == nil {
+		_, err = f.WriteString(env.Reveal() + "\n")
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = world.Commit(root, rconTempFile, world.RCONPasswordFile)
+	}
+	if err != nil {
+		_ = root.Remove(rconTempFile)
+		return fmt.Errorf("write FOREMAN_RCON_PASSWORD into the world: %w", err)
+	}
+	return nil
 }
 
 // tickAdopted is the monitor's look in adopted mode: the named container

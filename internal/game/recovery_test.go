@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
+	"github.com/toddawhittaker/foreman/internal/store"
 )
 
 // These tests pin down that no failed or interrupted action leaves the
@@ -167,7 +170,7 @@ func TestPausedGameRefusesStopAndRestore(t *testing.T) {
 func TestForceStopOfOperationWithNothingRunning(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Cancelled")
-	ctx, o := r.c.beginOp(context.Background(), r.c.world(id), AuditStart, startStepsFor(StartOptions{}))
+	ctx, o := r.c.beginOp(context.Background(), r.c.world(id), AuditStart, r.c.startSteps(StartOptions{}))
 	go func() {
 		<-ctx.Done()
 		_ = o.end(ctx.Err())
@@ -206,4 +209,71 @@ func TestCrashLoopStopRetriedAfterRefusal(t *testing.T) {
 			}
 		})
 	}
+}
+
+// faultyStore fails the calls a test names, to show that recovery goes on.
+type faultyStore struct {
+	SwitchStore
+	failList, failAdoption bool
+	failEndFrom            string
+}
+
+func (s faultyStore) ListSwitches(ctx context.Context) ([]store.Switch, error) {
+	if s.failList {
+		return nil, errDatabase
+	}
+	return s.SwitchStore.ListSwitches(ctx)
+}
+
+func (s faultyStore) Adoption(ctx context.Context) (string, bool, error) {
+	if s.failAdoption {
+		return "", false, errDatabase
+	}
+	return s.SwitchStore.Adoption(ctx)
+}
+
+func (s faultyStore) EndSwitch(ctx context.Context, from string) error {
+	if from == s.failEndFrom {
+		return errDatabase
+	}
+	return s.SwitchStore.EndSwitch(ctx, from)
+}
+
+// SPEC 7.1, 3.8: a fault during startup recovery is logged and recovery
+// goes on, so Foreman still serves pages; only a cancelled startup is an
+// error.
+func TestRecoveryFaultsDoNotStopStartup(t *testing.T) {
+	ctx := context.Background()
+	t.Run("the records cannot be read", func(t *testing.T) {
+		r, dir := newAdoptedRig(t, adoptedOptions{noRun: true, prepare: unadoptedFolder(t)})
+		if err := os.WriteFile(filepath.Join(dir, adoptionMarker), []byte("gate\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		r.c.switches = faultyStore{SwitchStore: r.store, failList: true, failAdoption: true}
+		if err := r.c.Recover(ctx); err != nil {
+			t.Fatalf("recover = %v", err)
+		}
+	})
+	t.Run("one switch record fails and the next is still recovered", func(t *testing.T) {
+		r := newRig(t, rigOptions{noRun: true})
+		a, b := r.twoWorlds()
+		c, d := r.newWorld("Gamma"), r.newWorld("Delta")
+		r.recordSwitch(a, b, store.StepStopped)
+		r.recordSwitch(c, d, store.StepStopped)
+		r.c.switches = faultyStore{SwitchStore: r.store, failEndFrom: a}
+		if err := r.c.Recover(ctx); err != nil {
+			t.Fatalf("recover = %v", err)
+		}
+		if r.c.Status(c).Notice == nil {
+			t.Error("the second record was not recovered")
+		}
+	})
+	t.Run("a cancelled startup", func(t *testing.T) {
+		r := newRig(t, rigOptions{noRun: true})
+		cancelled, cancel := context.WithCancel(ctx)
+		cancel()
+		if err := r.c.Recover(cancelled); !errors.Is(err, context.Canceled) {
+			t.Errorf("recover = %v", err)
+		}
+	})
 }

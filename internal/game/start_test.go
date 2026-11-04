@@ -670,7 +670,7 @@ func TestTwoWorldsAreSeparate(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	a, b := r.newWorld("Alpha"), r.newWorld("Beta")
 	r.start(a)
-	r.start(b)
+	r.startAsActive(b)
 	if err := r.c.Stop(context.Background(), a, admin, StopOptions{}); err != nil {
 		t.Fatal(err)
 	}

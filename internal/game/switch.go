@@ -33,6 +33,11 @@ type SwitchStore interface {
 	// when startup finds the game folder presenting another world
 	// (SPEC 4.8).
 	SetActiveWorld(ctx context.Context, id string, now time.Time) error
+	// The record of a first adoption in progress, in adopted mode only
+	// (SPEC 4.8).
+	SetAdoption(ctx context.Context, id string, now time.Time) error
+	Adoption(ctx context.Context) (id string, found bool, err error)
+	ClearAdoption(ctx context.Context) error
 }
 
 // SwitchInfo says which worlds a switch is between and whether the new one
@@ -49,7 +54,6 @@ type SwitchInfo struct {
 // Start of From.
 type SwitchNotice struct {
 	SwitchInfo
-	Step string // the last step the record held, one of store.Step*
 	Text string
 }
 
@@ -94,6 +98,11 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 		return err
 	}
 	if err := c.switchChecks(ctx, from, to, opts); err != nil {
+		return err
+	}
+	// A record from an earlier switch from this world is stale: from's lock
+	// is held, so no switch from it is running (SPEC 7.10).
+	if err := c.switches.EndSwitch(ctx, from); err != nil {
 		return err
 	}
 	if err := c.switches.BeginSwitch(ctx, from, to, by.Username, c.now()); err != nil {
@@ -162,10 +171,9 @@ func (c *Controller) switchChecks(ctx context.Context, from, to string, opts Sta
 		if _, err := c.checkAdoptedStart(ctx, to, from); err != nil {
 			return err
 		}
-		_, err := c.precheck(to, opts)
-		return err
+		return c.precheckReadOnly(to, opts)
 	}
-	if _, err := c.precheck(to, opts); err != nil {
+	if err := c.precheckReadOnly(to, opts); err != nil {
 		return err
 	}
 	if _, _, err := c.gameImage(ctx, to); err != nil {
@@ -285,25 +293,26 @@ func (c *Controller) worldName(id string) string {
 	return meta.Name
 }
 
-// RecoverSwitches finds every switch left unfinished by a stop of Foreman
+// recoverSwitches finds every switch left unfinished by a stop of Foreman
 // and reports it (SPEC 7.10). It never starts or stops a game (SPEC 3.8):
 // it clears each record, logs what it found, and keeps a notice on the
 // world that is active, which Status shows until the next operation on that
-// world. Call it before Run.
-func (c *Controller) RecoverSwitches(ctx context.Context) error {
+// world. A record it cannot recover is logged and left for the next switch
+// from that world to replace.
+func (c *Controller) recoverSwitches(ctx context.Context) {
 	if c.switches == nil {
-		return nil
+		return
 	}
 	list, err := c.switches.ListSwitches(ctx)
 	if err != nil {
-		return err
+		c.log.Error("cannot read the switch records, so an unfinished switch is not reported", "error", err)
+		return
 	}
 	for _, sw := range list {
 		if err := c.recoverSwitch(ctx, sw); err != nil {
-			return err
+			c.log.Error("could not recover an unfinished world switch", "from", sw.From, "to", sw.To, "step", sw.Step, "error", err)
 		}
 	}
-	return nil
 }
 
 func (c *Controller) recoverSwitch(ctx context.Context, sw store.Switch) error {
@@ -321,7 +330,7 @@ func (c *Controller) recoverSwitch(ctx context.Context, sw store.Switch) error {
 	fromName, toName := c.worldName(sw.From), c.worldName(sw.To)
 	// In managed mode the active row and the presented step change in one
 	// transaction, so the step alone says which world is active.
-	n := &SwitchNotice{SwitchInfo: SwitchInfo{From: sw.From, To: sw.To}, Step: sw.Step}
+	n := &SwitchNotice{SwitchInfo: SwitchInfo{From: sw.From, To: sw.To}}
 	active := sw.From
 	switch sw.Step {
 	case store.StepPresented, store.StepStarted:

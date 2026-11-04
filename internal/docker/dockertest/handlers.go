@@ -315,6 +315,7 @@ func inspectBody(c *Container) map[string]any {
 		},
 		"HostConfig": map[string]any{
 			"PortBindings": c.Spec.HostConfig.PortBindings, "NetworkMode": mode,
+			"Privileged": c.Privileged,
 		},
 		"Mounts":          c.Mounts,
 		"NetworkSettings": map[string]any{"Networks": nets},

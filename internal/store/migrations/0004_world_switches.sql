@@ -11,3 +11,13 @@ CREATE TABLE world_switches (
     started_at INTEGER NOT NULL,
     by_user    TEXT    NOT NULL
 );
+
+-- A first adoption in progress (SPEC 4.8). The game folder's marker file
+-- counts at startup only when it names this world, because the game
+-- container can write that folder and the database it cannot reach. At most
+-- one row: one adoption at a time.
+CREATE TABLE adoption (
+    one        INTEGER PRIMARY KEY CHECK (one = 1),
+    world_id   TEXT    NOT NULL,
+    started_at INTEGER NOT NULL
+);

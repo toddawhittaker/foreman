@@ -21,7 +21,7 @@ func TestSwitchLifecycle(t *testing.T) {
 	if err != nil || len(got) != 1 {
 		t.Fatalf("list = %v err=%v", got, err)
 	}
-	want := Switch{From: "alpha", To: "beta", Step: StepBegun, StartedAt: t0, ByUser: "todd"}
+	want := Switch{From: "alpha", To: "beta", Step: StepBegun}
 	if got[0] != want {
 		t.Errorf("switch = %+v, want %+v", got[0], want)
 	}

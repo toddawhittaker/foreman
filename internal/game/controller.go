@@ -205,6 +205,7 @@ type Controller struct {
 	listed    bool  // the monitor has listed Foreman's containers at least once
 	dockerErr error // the last listing failed
 	aview     adoptedView
+	adopting  bool // a first adoption runs now; one at a time (SPEC 4.8)
 }
 
 // New checks cfg and returns a Controller. It contacts nothing; Run starts
@@ -294,9 +295,13 @@ type worldRun struct {
 	changed       chan struct{} // closed and replaced whenever the game's state moves
 	rc            *rcon.Client
 	secrets       []secret.Secret // removed from every relayed line (SPEC 8.6)
-	gameVersion   string
-	image         string
-	usage         usage
+	// noSecrets is set when the container was taken on while stopped,
+	// without its world's passwords; it is taken on again before its log
+	// is followed.
+	noSecrets   bool
+	gameVersion string
+	image       string
+	usage       usage
 
 	following    bool
 	followGen    int
@@ -308,6 +313,7 @@ type worldRun struct {
 	opState  State      // what the operation shows while it runs; "" to let the container decide
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
+	opRun    *opRun        // the operation running now; nil when none
 	download *Operation
 	notice   *SwitchNotice // an unfinished switch found at startup; cleared by the next operation
 
@@ -435,8 +441,10 @@ func newOperation(action string, steps ...[]string) *Operation {
 // opRun is one operation in progress. A switch holds two worlds; every
 // other operation holds one.
 type opRun struct {
-	c      *Controller
-	w      *worldRun   // the world the current step acts on
+	c *Controller
+	// w is the world the current step acts on. Only the operation's own
+	// goroutine changes it; others read it once ended is closed.
+	w      *worldRun
 	ws     []*worldRun // every world the operation holds, in id order
 	op     *Operation  // shared by every world in ws
 	cancel context.CancelFunc
@@ -458,7 +466,7 @@ func (c *Controller) beginOpOn(ctx context.Context, ws []*worldRun, op *Operatio
 	o := &opRun{c: c, w: ws[0], ws: ws, op: op, cancel: cancel, ended: make(chan struct{})}
 	o.lockAll()
 	for _, w := range ws {
-		w.op, w.opState, w.opCancel, w.opDone = op, "", cancel, o.ended
+		w.op, w.opState, w.opCancel, w.opDone, w.opRun = op, "", cancel, o.ended, o
 		w.notice = nil
 		c.changedLocked(w, true)
 	}
@@ -541,7 +549,7 @@ func (o *opRun) end(err error) error {
 	}
 	o.cancel()
 	for _, w := range o.ws {
-		w.opState, w.opCancel, w.opDone = "", nil, nil
+		w.opState, w.opCancel, w.opDone, w.opRun = "", nil, nil, nil
 	}
 	o.publishLocked()
 	o.unlockAll()
