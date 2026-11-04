@@ -279,6 +279,13 @@ export function seedWorld(
   }
 }
 
+// After a switch or adoption the Server page loads again; the sentence is
+// read out on the new page and focus is on the control heading (DESIGN 5, 7.5).
+export async function expectFollowed(page: Page, sentence: string) {
+  await expect(page.locator("#announcer")).toContainText(sentence, { timeout: 5000 });
+  expect(await page.evaluate(() => document.activeElement?.id)).toBe("control-heading");
+}
+
 // Every page visited passes these (SPEC 17.1 and 17.2, DESIGN 10).
 export async function checkPage(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();

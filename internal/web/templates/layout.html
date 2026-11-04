@@ -80,8 +80,9 @@
 {{define "import-fields" -}}
 <div class="field">
   <label for="{{.IDPrefix}}-name">World name</label>
+  <p class="hint" id="{{.IDPrefix}}-name-hint">Shown in Foreman. Up to 100 characters.</p>
   <input id="{{.IDPrefix}}-name" name="name" type="text" value="{{.Name}}" required maxlength="100"
-    {{- with .NameError}} aria-invalid="true" aria-describedby="{{$.IDPrefix}}-name-error"{{end}}>
+    {{- if .NameError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-name-hint {{.IDPrefix}}-name-error"{{else}} aria-describedby="{{.IDPrefix}}-name-hint"{{end}}>
   {{- with .NameError}}
   <p class="error" id="{{$.IDPrefix}}-name-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
@@ -96,5 +97,6 @@
   <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
 </div>
-<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
+<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age" aria-describedby="{{.IDPrefix}}-space-age-hint"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
+<p class="hint" id="{{.IDPrefix}}-space-age-hint">Space Age only applies to Factorio 2.0 and later.</p>
 {{- end}}

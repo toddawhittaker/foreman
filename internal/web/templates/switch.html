@@ -6,19 +6,31 @@
 <h1>Switch to {{.To.Name}}</h1>
 {{template "summary" .Problems}}
 {{- with .Refusal}}
-<p>{{.}}</p>
-{{- with $.Page.CheckProblems}}
-<ul>
-  {{- range .}}
-  <li>{{.}}</li>
+<div class="message message--error">
+  <p><strong>Error:</strong> {{.}}</p>
+  {{- with $.Page.CheckProblems}}
+  <ul>
+    {{- range .}}
+    <li>{{.}}</li>
+    {{- end}}
+  </ul>
   {{- end}}
-</ul>
-{{- end}}
+</div>
+<div class="actions"><a href="{{$.Page.WorldPath}}">Back to {{$.Page.To.Name}}</a></div>
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Switch from {{.From.Name}} to {{.To.Name}}{{if .Anyway}} although its save does not match the world{{end}}?</h2>
+  <h2 id="confirm-heading" tabindex="-1">{{if .Anyway}}Switch to {{.To.Name}} anyway?{{else}}Switch from {{.From.Name}} to {{.To.Name}}?{{end}}</h2>
   <p>This will:</p>
   <ul>
+    {{- if .Anyway}}
+    <li>The save that would load in {{.To.Name}} does not match its world, so the game will delete:
+      <ul>
+        {{- range .CheckProblems}}
+        <li>{{.}}</li>
+        {{- end}}
+      </ul>
+    </li>
+    {{- end}}
     {{- if .Running}}
     <li>Warn players online with the countdown below, save the game and stop {{.From.Name}}.</li>
     {{- else}}
@@ -27,9 +39,6 @@
     <li>Take a snapshot of {{.From.Name}} and of {{.To.Name}}, both labelled "Before switch". If a snapshot fails, nothing else happens.</li>
     {{- if .Anyway}}
     <li>Take one more snapshot of {{.To.Name}}, labelled "Before start anyway".</li>
-    {{- range .CheckProblems}}
-    <li>{{.}}</li>
-    {{- end}}
     {{- end}}
     <li>Make {{.To.Name}} the active world.</li>
     {{- if .Running}}

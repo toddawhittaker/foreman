@@ -26,10 +26,15 @@
 {{- if .CanSwitch}}
 <section class="panel" aria-labelledby="switch-heading">
   <h2 id="switch-heading">Switch</h2>
-  <p>Make this the active world. Foreman snapshots both worlds first, and starts this one if the server is running.</p>
+  <p>Make this the active world. Foreman snapshots both worlds first. It starts this world if the server is running, and leaves the server stopped if it is stopped.</p>
   <div class="actions">
     <a href="{{.SwitchPath}}" class="button" id="act-switch">Switch to this world</a>
   </div>
+</section>
+{{- else if .SwitchNote}}
+<section class="panel" aria-labelledby="switch-heading">
+  <h2 id="switch-heading">Switch</h2>
+  <p>{{.SwitchNote}}{{if .SwitchBusy}} See <a href="{{serverPath}}">the Server page</a>.{{end}}</p>
 </section>
 {{- end}}
 <section class="panel" aria-labelledby="delete-heading">

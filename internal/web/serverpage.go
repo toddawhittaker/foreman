@@ -117,6 +117,12 @@ func (p ServerPage) LayoutBroken() bool {
 	return p.Status.Adopted && p.Status.Layout.Kind == gamedir.Broken
 }
 
+// LayoutProblem is what is wrong with a broken game folder, as the end of a
+// sentence. The reason already names the path, so the path is not added.
+func (p ServerPage) LayoutProblem() string {
+	return strings.TrimSuffix(p.Status.Layout.Reason, ".")
+}
+
 // CanAdopt reports whether the page offers to adopt the game folder.
 func (p ServerPage) CanAdopt() bool {
 	return p.Status.Adopted && p.Status.Layout.Kind == gamedir.Unadopted && !p.Busy()
@@ -172,6 +178,8 @@ func (p ServerPage) ActionsNote() string {
 	switch {
 	case p.Status.State == game.StateUnknown:
 		return "Foreman cannot start or stop the game until it can ask Docker about it."
+	case p.Busy() && p.Status.Operation.Action == game.AuditSwitch:
+		return "Wait for the switch to finish, or use Force stop. Force stop ends the switch; the game is stopped without saving."
 	case p.Busy():
 		return "Wait for this to finish, or use Force stop to stop the game now without saving."
 	case p.Status.State == game.StateStarting || p.Status.State == game.StateStopping:

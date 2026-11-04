@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, checkPage, expectFollowed, createAdmin, seedWorld, image21, type Foreman, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -116,6 +116,12 @@ test.describe("with the fake game", () => {
     await expect(active(page, "Second")).toBeVisible(live);
     await expect(badge(page)).toHaveText("Stopped", live);
     await expect(page.getByText("The worlds are switched")).toBeVisible();
+    await expectFollowed(page, "Second is now the active world. The worlds are switched.");
+    // The hidden event targets leave no blank band (DESIGN 6).
+    for (const name of ["announce", "moved"]) {
+      await expect(page.locator(`[sse-swap="${name}"]`)).toBeHidden();
+      expect(await page.locator(`[sse-swap="${name}"]`).evaluate((el) => getComputedStyle(el).display)).toBe("none");
+    }
     expect(await creates(g)).toBe(before);
     await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
     await checkPage(page);
@@ -125,7 +131,10 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!);
 
     await page.goto("/worlds/base/switch");
-    await expect(page.getByText("This is already the active world.")).toBeVisible();
+    const refusal = page.locator(".message--error");
+    await expect(refusal).toContainText("Error: This is already the active world.");
+    await expect(refusal.locator("p strong")).toHaveText("Error:");
+    await expect(page.getByRole("link", { name: "Back to Base" }).last()).toBeVisible();
     await expect(page.getByRole("button", { name: /Switch to/ })).toHaveCount(0);
     await checkPage(page);
 
@@ -134,9 +143,16 @@ test.describe("with the fake game", () => {
     expect(stale.status()).toBe(409);
     expect(await stale.text()).toContain("no longer the active world");
     await expect.poll(() => creates(fakeGame!)).toBe(0);
-    // The active world has no Switch button on its own page.
+    // A form that does not say which world was active is refused outright.
+    const bare = await page.request.post("/worlds/second/switch", { form: {}, maxRedirects: 0 });
+    expect(bare.status()).toBe(400);
+    // The active world has no Switch button on its own page, and says why.
     await page.goto("/worlds/base");
     await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Switch" })).toContainText("This is the active world.");
+    await checkPage(page);
+    await page.goto("/worlds/second");
+    await expect(page.getByRole("region", { name: "Switch" })).toContainText("leaves the server stopped if it is stopped");
   });
 
   test("a bad countdown keeps the form with the field's error", async ({ page, foreman, fakeGame }) => {
@@ -163,7 +179,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
     await refusal.getByRole("link", { name: "Switch anyway" }).click();
 
-    const confirm = page.getByRole("region", { name: /although its save does not match the world/ });
+    const confirm = page.getByRole("region", { name: "Switch to Second anyway?" });
     await expect(confirm).toContainText('"Before start anyway"');
     await checkPage(page);
     await confirm.getByRole("button", { name: "Switch to Second anyway" }).click();

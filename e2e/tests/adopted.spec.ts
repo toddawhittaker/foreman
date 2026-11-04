@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, adoptedContainer, type FakeGame } from "./foreman.js";
+import { test, expect, checkPage, expectFollowed, createAdmin, adoptedContainer, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, lstatSync, readdirSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
@@ -29,6 +29,8 @@ test.describe("an unadopted game folder", () => {
     await openServerPage(page, () => expect(adoptLink(page)).toBeVisible({ timeout: 1000 }));
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Download game image" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: "Adopt the game folder" })).toBeVisible();
+    await expect(page.getByText("No active world")).toHaveCount(0);
     await checkPage(page);
 
     await adoptLink(page).click();
@@ -36,8 +38,9 @@ test.describe("an unadopted game folder", () => {
     const confirm = page.getByRole("region", { name: "Adopt the game folder as a new world?" });
     await expect(confirm).toContainText("Warn players online with the countdown below, save the game and stop it");
     await expect(confirm).toContainText('"Before adoption"');
-    await expect(confirm).toContainText("pre-foreman-");
-    await expect(confirm).toContainText("Start the game again");
+    await expect(confirm).toContainText("pre-foreman-20");
+    await expect(confirm).toContainText("Start the game again, on the new world.");
+    await expect(page.getByLabel("Space Age is on")).toHaveAccessibleDescription("Space Age only applies to Factorio 2.0 and later.");
     await expect(page.getByLabel("Game version")).toHaveValue("2.1.24");
     await expect(page.getByLabel("Countdown in seconds")).toHaveValue("60");
     await expect(confirm.getByRole("button", { name: "Adopt the game folder" })).toHaveClass(/button--danger/);
@@ -98,6 +101,7 @@ test.describe("an unadopted game folder, stopped", () => {
     await expect(page.getByRole("link", { name: "Active world: Gate" })).toBeVisible(live);
     await expect(badge(page)).toHaveText("Stopped", live);
     await expect(page.getByText("The game folder is adopted")).toBeVisible(live);
+    await expectFollowed(page, "Gate is now the active world. The game folder is adopted.");
     await checkPage(page);
 
     await page.getByRole("button", { name: "Start server" }).click();
@@ -137,7 +141,7 @@ test.describe("a container that publishes its RCON port", () => {
   test.use({ adoptedOn: { folder: "unadopted", rconHostPort: "27015" } });
 
   test("the Server page warns, with and without a world", async ({ page }) => {
-    const warning = page.getByText("publishes its RCON port on the host");
+    const warning = page.getByText("publishes its RCON port (27015 unless RCON_PORT says otherwise) on the host");
     await openServerPage(page, () => expect(warning).toBeVisible({ timeout: 1000 }));
     await expect(page.getByText("Remove the port mapping from the container's definition")).toBeVisible();
     await checkPage(page);
@@ -157,8 +161,8 @@ test.describe("a game folder Foreman cannot use", () => {
   test("the Server page names the path and offers no control", async ({ page }) => {
     const message = page.locator(".message--error");
     await openServerPage(page, () => expect(message).toBeVisible({ timeout: 1000 }));
-    await expect(message).toContainText("saves");
-    await expect(message).toContainText("is a file, not a folder or link");
+    await expect(page.getByRole("heading", { level: 2, name: "The game folder needs fixing" })).toBeVisible();
+    await expect(message).toContainText("Foreman cannot control the game yet. In the game folder, saves is a file, not a folder or link. Fix it by hand, then reload this page.");
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await expect(adoptLink(page)).toHaveCount(0);
     await checkPage(page);

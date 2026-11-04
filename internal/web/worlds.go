@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"os"
@@ -41,8 +42,12 @@ type WorldPage struct {
 	Name      string
 	NameError string
 	// CanSwitch offers "Switch to this world": this mode has server control
-	// and the world is not the active one (SPEC 7.9).
-	CanSwitch bool
+	// and the world is not the active one (SPEC 7.9). SwitchNote says in a
+	// line why it does not, when that is worth saying; SwitchBusy adds a
+	// link to the Server page (DESIGN 7.1).
+	CanSwitch  bool
+	SwitchNote string
+	SwitchBusy bool
 }
 
 // ImportPage offers both ways to import a world (SPEC 5.5).
@@ -183,13 +188,24 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, WorldPage{World: sum, Name: sum.Name, CanSwitch: s.canSwitch(sum)})
+	s.page(w, r, http.StatusOK, u.Username, s.worldPage(r.Context(), sum, sum.Name, ""))
 }
 
-// canSwitch reports whether the world's page offers a switch to it. A world
-// this Foreman cannot start is left out.
-func (s *server) canSwitch(sum world.Summary) bool {
-	return s.game != nil && !sum.Active && !sum.Unreadable && !sum.Newer
+// worldPage builds a world's page, with its Switch panel's state. A world
+// this Foreman cannot start gets no panel, because the page already says
+// why above.
+func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
+	p := WorldPage{World: sum, Name: name, NameError: nameError}
+	switch {
+	case s.game == nil || sum.Unreadable || sum.Newer:
+	case sum.Active:
+		p.SwitchNote = "This is the active world."
+	case s.switchBusy(ctx, sum.ID):
+		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch or an adoption.", true
+	default:
+		p.CanSwitch = true
+	}
+	return p
 }
 
 // handleRename changes a world's display name only (SPEC 5.8). It is not a
@@ -212,7 +228,7 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	s.page(w, r, status, u.Username, WorldPage{World: sum, Name: name, NameError: msg, CanSwitch: s.canSwitch(sum)})
+	s.page(w, r, status, u.Username, s.worldPage(r.Context(), sum, name, msg))
 }
 
 func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u store.User) {

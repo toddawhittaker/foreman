@@ -135,14 +135,16 @@ func TestUnadoptedFolderOffersAdoption(t *testing.T) {
 	a := newAdoptedRig(t, adoptedOptions{folder: unadoptedFolder, running: true})
 
 	body := a.waitPage("Adopt this game folder")
-	a.wantContains("server page", body, `href="`+PathAdopt+`"`, "No active world")
-	a.wantMissing("server page", body, "Start server", "Download game image", "Stop server")
+	a.wantContains("server page", body, `href="`+PathAdopt+`"`, "<h2 id=\"none-heading\">Adopt the game folder</h2>")
+	a.wantMissing("server page", body, "Start server", "Download game image", "Stop server", "No active world")
 
 	form := a.get(PathAdopt)
 	a.wantContains("adoption page", form,
 		"Adopt the game folder as a new world?", "button--danger", `name="name"`, `name="game_version"`, `value="2.1.24"`,
 		`name="space_age"`, `name="countdown"`, `value="60"`, "Warn players online with the countdown", "stop it",
-		`"Before adoption"`, "pre-foreman-", "kept", "Start the game again")
+		`"Before adoption"`, "pre-foreman-20261104T153000Z", "kept", "Start the game again, on the new world.",
+		"Link the game folder's saves, mods and config to the new world", `aria-describedby="adopt-space-age-hint"`, `id="adopt-space-age-hint"`,
+		"Shown in Foreman. Up to 100 characters.")
 	a.wantMissing("adoption page", form, " checked>")
 }
 
@@ -161,13 +163,14 @@ func TestAdoptionFormForAStoppedGame(t *testing.T) {
 func TestBrokenFolderIsNamedAndRefusesControls(t *testing.T) {
 	a := newAdoptedRig(t, adoptedOptions{folder: brokenFolder})
 	body := a.waitPage("message--error")
-	a.wantContains("no-world page", body, "<code>saves</code>", "saves is a file, not a folder or link", "fix this by hand")
-	a.wantMissing("no-world page", body, "Start server", "Adopt this game folder")
+	a.wantContains("no-world page", body, "The game folder needs fixing",
+		"Foreman cannot control the game yet. In the game folder, saves is a file, not a folder or link. Fix it by hand, then reload this page.")
+	a.wantMissing("no-world page", body, "Start server", "Adopt this game folder", "No active world", "saves saves")
 
 	// With a world on record the page still names the problem and leaves out every control.
 	a.newWorld("Alpha", fixtureNoSA, false)
 	body = a.waitPage("message--error")
-	a.wantContains("server page", body, "<code>saves</code>", "Active world: Alpha")
+	a.wantContains("server page", body, "In the game folder, saves is a file, not a folder or link.", "Active world: Alpha")
 	a.wantMissing("server page", body, "Start server", "Force stop", "Stop server", "Restart server", "Adopt this game folder")
 
 	form := a.get(PathAdopt)
@@ -298,11 +301,13 @@ func TestVersionWarningOnTheServerPage(t *testing.T) {
 // world and on the one without.
 func TestRCONPublishedWarning(t *testing.T) {
 	a := newAdoptedRig(t, adoptedOptions{folder: unadoptedFolder, rconHostPort: "27015"})
-	body := a.waitPage("publishes its RCON port on the host")
+	body := a.waitPage("publishes its RCON port (27015 unless RCON_PORT says otherwise) on the host")
 	a.wantContains("no-world page", body, "Remove the port mapping")
+	// The warning is read once, with the page. Nothing live may repeat it.
+	a.wantMissing("no-world page", body[strings.Index(body, "<main"):strings.Index(body, `id="announcer"`)], "aria-live", "role=")
 
 	a.wantRedirectHome(a.post(PathAdopt, adoptForm))
-	body = a.waitPage("Active world: Gate", "publishes its RCON port on the host")
+	body = a.waitPage("Active world: Gate", "publishes its RCON port (27015 unless RCON_PORT says otherwise) on the host")
 	a.wantContains("server page", body, "message--warning")
 
 	clean := newAdoptedRig(t, adoptedOptions{folder: unadoptedFolder})
