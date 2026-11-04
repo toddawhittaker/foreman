@@ -102,18 +102,11 @@ func createPasswordTemp(root *os.Root, dir string) (*os.File, string, error) {
 // copyRCONPassword copies the password file from one world folder to
 // another, at 0640 throughout, keeping its modification time.
 func copyRCONPassword(src, dst *os.Root) error {
-	in, err := src.Open(RCONPasswordFile)
+	in, info, err := openRegular(src, RCONPasswordFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("copy %s: %w", RCONPasswordFile, err)
 	}
 	defer func() { _ = in.Close() }()
-	info, err := in.Stat()
-	if err != nil {
-		return err
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("copy %s: not a regular file", RCONPasswordFile)
-	}
 	out, temp, err := createPasswordTemp(dst, ConfigDir)
 	if err != nil {
 		return err

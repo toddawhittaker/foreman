@@ -260,9 +260,11 @@ func (p prevSnapshot) hash(snaps, dst *os.Root, f ManifestEntry) (string, error)
 	return hashFile(dst, f.Path)
 }
 
-// hashFile returns the hex SHA-256 of a regular file inside root.
+// hashFile returns the hex SHA-256 of a regular file inside root. A zip
+// is hard-linked from the world, so a pipe swapped in for it there would
+// arrive here as a link; openRegular refuses it rather than wait on it.
 func hashFile(root *os.Root, name string) (string, error) {
-	f, err := root.Open(name)
+	f, _, err := openRegular(root, name)
 	if err != nil {
 		return "", err
 	}
