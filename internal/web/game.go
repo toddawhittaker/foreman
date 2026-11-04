@@ -368,7 +368,7 @@ func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	opts := game.StartOptions{Anyway: r.PostFormValue("anyway") == "1"}
+	opts := anywayOptions(r)
 	by := actor(u)
 	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditStart, s.game.Start(ctx, sum.ID, by, opts))
@@ -458,35 +458,24 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 		return
 	}
 	form, stop := readCountdown(r)
-	anyway := restart && r.PostFormValue("anyway") == "1"
 	if form.CountdownError != "" {
 		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
 		return
 	}
-	by := actor(u)
+	by, opts := actor(u), anywayOptions(r)
 	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		if restart {
-			err := s.game.Restart(ctx, sum.ID, by, stop, game.StartOptions{Anyway: anyway})
+			err := s.game.Restart(ctx, sum.ID, by, stop, opts)
 			return s.finish(sum.ID, game.AuditRestart, err)
 		}
 		return s.finish(sum.ID, game.AuditStop, s.game.Stop(ctx, sum.ID, by, stop))
 	})
 }
 
-// anywayCheck runs the pre-start check again before a switch anyway. It
-// changes nothing. refusal is set when going ahead anyway is not allowed.
-func (s *server) anywayCheck(id string) (refusal string, err error) {
-	check, err := s.game.PreStartCheck(id)
-	if err != nil {
-		return "", err
-	}
-	switch {
-	case check.OK():
-		refusal = "The pre-start check now finds no problems, so there is nothing to go ahead past. Switch again from the world's page."
-	case !check.CanStartAnyway():
-		refusal = "At least one of the problems cannot be gone past. Fix the world first."
-	}
-	return refusal, nil
+// anywayOptions reads a go-ahead anyway and the fingerprint of what its box
+// showed; the controller refuses it when that no longer holds (SPEC 7.4).
+func anywayOptions(r *http.Request) game.StartOptions {
+	return game.StartOptions{Anyway: r.PostFormValue("anyway") == "1", Seen: r.PostFormValue("seen")}
 }
 
 // ForceStopPage confirms a forced stop (SPEC 7.7).

@@ -384,7 +384,8 @@ func TestStartAnyway(t *testing.T) {
 	if !errors.As(err, &pe) || !pe.Check.CanStartAnyway() {
 		t.Fatalf("got %v, want a refusal that allows start anyway", err)
 	}
-	if err := r.c.Start(context.Background(), id, admin, StartOptions{Anyway: true}); err != nil {
+	seen := AnywayFingerprint(pe.Check, false)
+	if err := r.c.Start(context.Background(), id, admin, StartOptions{Anyway: true, Seen: seen}); err != nil {
 		t.Fatal(err)
 	}
 	snaps, err := r.worlds.Snapshots(id)

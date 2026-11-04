@@ -49,7 +49,7 @@ func TestControlActionsHaveStableIDs(t *testing.T) {
 	}{
 		{serverCase(game.StateStopped, func(*ServerPage) {}), []string{"act-start"}},
 		{serverCase(game.StateRunning, func(*ServerPage) {}), []string{"act-stop", "act-restart", "act-force-stop"}},
-		{failed, []string{"act-start", "act-start-anyway"}},
+		{failed, []string{"act-start", "act-anyway"}},
 		{missing, []string{"act-start", "act-pull"}},
 		{restored, []string{"act-snapshots"}},
 		{crashed, []string{"act-console", "act-stop", "act-force-stop"}},
@@ -329,6 +329,18 @@ func TestRefusalBoxAndStepWord(t *testing.T) {
 		{"restart anyway", refused(true, game.AuditRestart, game.StateRunning),
 			[]string{`action="/worlds/base/restart"`, `name="countdown" value="60"`, "60-second countdown", ">Restart anyway</button>"},
 			[]string{"Fix the world first"}},
+		{"restart anyway of a stopped game", refused(true, game.AuditRestart, game.StateStopped),
+			[]string{">Restart anyway</button>", `"Before start anyway"`},
+			[]string{"countdown, save the game and stop it"}},
+		{"save newer than the image", serverCase(game.StateStopped, func(p *ServerPage) {
+			p.Status.Operation = &game.Operation{Action: game.AuditStart, Done: true, Error: game.ErrSaveNewerThanImage.Error(), Steps: []game.Step{
+				{Name: game.StepCheck, State: game.StepFailed}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: game.ErrSaveNewerThanImage}, true
+		}), []string{`step-state--failed">Refused<`}, []string{"Failed"}},
+		{"changed since shown", serverCase(game.StateStopped, func(p *ServerPage) {
+			err := &game.PrecheckError{Changed: true, Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveUnreadable, Text: "x", StartAnyway: true}}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: err}, true
+		}), []string{"changed since the page showed it", "Read the message again", `name="seen" value="save-unreadable:;running=false"`}, nil},
 		{"plain refusal", refused(false, game.AuditStart, game.StateStopped),
 			[]string{`step-state--failed">Refused<`, "<strong>Error:</strong>", "Fix the world first", "Try to start again"},
 			[]string{"Start anyway", `name="anyway"`, "Failed"}},
@@ -347,5 +359,19 @@ func TestRefusalBoxAndStepWord(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// DESIGN 7.5: the read-out of a refusal with a choice says the choice is
+// there, so a screen reader user knows to look for the button.
+func TestRefusalAnnouncementNamesTheChoice(t *testing.T) {
+	for action, verb := range map[string]string{game.AuditStart: "start anyway", game.AuditRestart: "restart anyway", game.AuditSwitch: "switch anyway"} {
+		p := serverCase(game.StateStopped, func(p *ServerPage) {
+			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveUnreadable, Text: "x", StartAnyway: true}}}}
+			p.Result, p.HaveResult = actionResult{Action: action, Err: err, Target: "other"}, true
+		})
+		if got, want := resultAnnouncement(p), "You can "+verb+"; the button is below."; !strings.Contains(got, want) {
+			t.Errorf("%s: %q lacks %q", action, got, want)
+		}
 	}
 }

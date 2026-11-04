@@ -3,12 +3,14 @@ package web
 import (
 	"bufio"
 	"context"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -220,7 +222,13 @@ func TestStartAnyway(t *testing.T) {
 			t.Errorf("page offers start anyway but has %q:\n%s", unwanted, body)
 		}
 	}
-	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}}))
+	// A box that no longer matches is refused, and the page says so.
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}, "seen": {"stale"}}))
+	body = g.waitPage("changed since the page showed it")
+	if list, _ := g.worlds.Snapshots(id); len(list) != 0 {
+		t.Errorf("a stale start anyway took snapshots: %+v", list)
+	}
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}, "seen": {seenIn(t, body)}}))
 	g.waitPage(running)
 	list, err := g.worlds.Snapshots(id)
 	if err != nil || len(list) != 1 || list[0].Label != game.LabelStartAnyway {
@@ -502,4 +510,14 @@ func TestDurationText(t *testing.T) {
 	if got := durationISO(3*time.Hour + 12*time.Minute); got != "PT3H12M" {
 		t.Errorf("ISO %q", got)
 	}
+}
+
+// seenIn returns the fingerprint the refusal box's form sends.
+func seenIn(t *testing.T, body string) string {
+	t.Helper()
+	m := regexp.MustCompile(`name="seen" value="([^"]*)"`).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("no fingerprint in the box:\n%s", body)
+	}
+	return html.UnescapeString(m[1])
 }

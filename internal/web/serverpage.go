@@ -326,6 +326,10 @@ func (f *Failure) Class() string {
 	return "message--error"
 }
 
+// changedLead says why a go-ahead anyway did not run: what the box showed
+// was no longer true, so the admin must read it again (SPEC 7.4, 17.5).
+const changedLead = "The world or the server changed since the page showed it, so Foreman did not go ahead. Read the message again before you choose."
+
 // precheckLead opens the message for a start the pre-start check refused.
 const precheckLead = "Foreman did not start the game, because the save that would load does not match the world:"
 
@@ -372,18 +376,21 @@ func (p ServerPage) Failure() *Failure {
 			name = p.WorldNames[p.Result.Target]
 		}
 		f.Message = precheckLeadFor(pe.Check, switching, name)
+		if pe.Changed {
+			f.Message = changedLead + " " + f.Message
+		}
 		for _, pr := range pe.Check.Problems {
 			f.Problems = append(f.Problems, pr.Text)
 		}
-		f.Refused = true
 		if pe.Check.CanStartAnyway() {
-			f.Anyway = p.anyway(pe.Check.Problems)
+			f.Anyway = p.anyway(pe.Check)
 		}
 	case errors.Is(err, game.ErrImageMissing):
 		f.Message, f.Download = sentence(err), true
 	default:
 		f.Message = failureText(err)
 	}
+	f.Refused = game.IsRefusal(err)
 	text := err.Error()
 	// A forced stop that interrupted a switch says in the operation's own
 	// error which world it stopped.
@@ -414,24 +421,27 @@ type Anyway struct {
 	Running bool
 	// Countdown is the warning players get before the stop, in seconds.
 	Countdown int
+	// Seen fingerprints what the box shows, so a stale box is refused.
+	Seen string
 	// Advice says how to keep what missing mods built, or is "".
 	Advice string
 }
 
 // anyway builds the offer for the last refused action.
-func (p ServerPage) anyway(problems []world.Problem) *Anyway {
+func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	a := &Anyway{
 		Path: p.StartPath(), Verb: "Start anyway", World: p.World.Name,
-		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(problems),
+		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems),
+		Running: game.IsRunning(p.Status.State),
 	}
 	switch p.Result.Action {
 	case game.AuditRestart:
-		a.Path, a.Verb, a.Restart, a.Running = p.RestartPath(), "Restart anyway", true, true
+		a.Path, a.Verb, a.Restart = p.RestartPath(), "Restart anyway", true
 	case game.AuditSwitch:
 		a.Path, a.Verb, a.Switch = switchPath(p.Result.Target), "Switch anyway", true
 		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
-		a.Running = p.Status.State == game.StateRunning || p.Status.State == game.StateCrashed
 	}
+	a.Seen = game.AnywayFingerprint(check, a.Running)
 	return a
 }
 
@@ -515,6 +525,9 @@ func resultAnnouncement(p ServerPage) string {
 	var said []string
 	if f := p.Failure(); f != nil {
 		said = append(said, f.Word()+" "+f.Message)
+		if f.Anyway != nil {
+			said = append(said, "You can "+strings.ToLower(f.Anyway.Verb)+"; the button is below.")
+		}
 	}
 	for _, e := range p.OtherErrors() {
 		said = append(said, "Error: "+e)

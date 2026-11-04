@@ -149,12 +149,12 @@ func TestSwitchAnyway(t *testing.T) {
 		t.Errorf("a refused switch took snapshots: %+v", list)
 	}
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}}))
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}, "seen": {seenIn(t, body)}}))
 	g.waitPage("Active world: Bravo", "The worlds are switched")
 }
 
-// A switch anyway whose problems no longer allow it is refused, and nothing
-// changes.
+// A switch anyway whose problems no longer allow it is refused by the
+// controller under its lock, and nothing changes.
 func TestSwitchAnywayRefusedWhenNotAllowed(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
@@ -162,11 +162,9 @@ func TestSwitchAnywayRefusedWhenNotAllowed(t *testing.T) {
 	if err := removeSaves(g, b); err != nil {
 		t.Fatal(err)
 	}
-	rep := g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}})
-	if rep.StatusCode != http.StatusConflict {
-		t.Fatalf("switch anyway past a plain refusal: %d", rep.StatusCode)
-	}
-	g.wantContains("page", rep.body, "cannot be gone past")
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}, "seen": {"x"}}))
+	body := g.waitPage("Foreman did not switch", "The world has no save.")
+	g.wantMissing("server page", body, "Switch anyway")
 	if list, _ := g.worlds.Snapshots(a); len(list) != 0 {
 		t.Errorf("a refused switch took snapshots: %+v", list)
 	}

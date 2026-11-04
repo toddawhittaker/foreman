@@ -254,6 +254,7 @@ test.describe("with the fake game", () => {
     expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
     await expect(page.locator(".message--warning")).toContainText("does not match the world", live);
     await expect(page.locator("#announcer")).toHaveText(/^Warning: Foreman did not start the game, because the save that would load does not match the world/);
+    await expect(page.locator("#announcer")).toContainText("You can start anyway; the button is below.");
     await expect(page.locator("#announcer")).not.toContainText("Server is now");
   });
 

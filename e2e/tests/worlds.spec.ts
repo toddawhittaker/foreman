@@ -179,12 +179,12 @@ test("choosing a folder fills the version, but not over typed text", async ({ pa
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
   await expect(form.getByLabel("Space Age is on")).toBeChecked();
-  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.1.24 from the save, with Space Age on.");
+  await expect(page.locator("#announcer")).toHaveText("World name suggested: one. Game version set to 2.1.24 from the save, with Space Age on.");
   await checkPage(page);
   await form.getByLabel(/two: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.0.77");
   await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
-  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.0.77 from the save.");
+  await expect(page.locator("#announcer")).toHaveText("World name suggested: two. Game version set to 2.0.77 from the save.");
   await form.getByLabel("Game version").fill("2.0.1");
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.0.1");
@@ -248,6 +248,7 @@ test("the world name is suggested from the folder or the file, but not over type
   const upload = page.locator("form", { has: page.getByRole("heading", { name: "Upload a save" }) });
   await upload.getByLabel("Save file").setInputFiles({ name: "my save.zip", mimeType: "application/zip", buffer: emptyZip });
   await expect(upload.getByLabel("World name")).toHaveValue("my save");
+  await expect(page.locator("#announcer")).toHaveText("World name suggested: my save.");
   await upload.getByLabel("World name").fill("Typed");
   await upload.getByLabel("Save file").setInputFiles({ name: "other.zip", mimeType: "application/zip", buffer: emptyZip });
   await expect(upload.getByLabel("World name")).toHaveValue("Typed");

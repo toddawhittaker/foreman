@@ -94,6 +94,10 @@ var (
 // caller may offer "Start anyway" when Check.CanStartAnyway() (SPEC 7.4).
 type PrecheckError struct {
 	Check world.PreCheck
+	// Changed is set when a go-ahead anyway was refused because the
+	// problems, or whether the game runs, differ from what the admin
+	// confirmed (SPEC 7.4, 17.5).
+	Changed bool
 }
 
 func (e *PrecheckError) Error() string {

@@ -102,25 +102,15 @@ func (s *server) switchBusy(ctx context.Context, id string) bool {
 
 // switchPage builds the confirmation for a switch to to. from is the
 // world the form named, or "" for the active one.
-func (s *server) switchPage(ctx context.Context, from string, to world.Summary, form CountdownForm, anyway bool) (SwitchPage, error) {
+func (s *server) switchPage(ctx context.Context, from string, to world.Summary, form CountdownForm) (SwitchPage, error) {
 	p := SwitchPage{To: to, CountdownForm: form}
-	active, found, err := s.activeWorld(ctx)
+	active, _, err := s.activeWorld(ctx)
 	if err != nil {
 		return p, err
 	}
 	p.From = active
-	if p.Refusal, p.Running, err = s.switchRefusal(ctx, from, to); err != nil || p.Refusal != "" || !found {
-		return p, err
-	}
-	if anyway {
-		refusal, err := s.anywayCheck(to.ID)
-		p.Refusal = refusal
-		if err != nil {
-			s.log.Error("pre-start check", "world", to.ID, "error", err)
-			p.Refusal = "Foreman could not run the pre-start check. The details are in Foreman's log."
-		}
-	}
-	return p, nil
+	p.Refusal, p.Running, err = s.switchRefusal(ctx, from, to)
+	return p, err
 }
 
 func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -128,7 +118,7 @@ func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	p, err := s.switchPage(r.Context(), "", to, defaultCountdown(), false)
+	p, err := s.switchPage(r.Context(), "", to, defaultCountdown())
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)
 		return
@@ -154,8 +144,7 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	form, stop := readCountdown(r)
-	anyway := r.PostFormValue("anyway") == "1"
-	p, err := s.switchPage(r.Context(), from, to, form, anyway)
+	p, err := s.switchPage(r.Context(), from, to, form)
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)
 		return
@@ -168,9 +157,9 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	by := actor(u)
+	by, opts := actor(u), anywayOptions(r)
 	s.beginOn(w, r, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
-		err := s.game.Switch(ctx, from, to.ID, by, stop, game.StartOptions{Anyway: anyway})
+		err := s.game.Switch(ctx, from, to.ID, by, stop, opts)
 		res := s.finish(from, game.AuditSwitch, err)
 		res.Target = to.ID
 		return res

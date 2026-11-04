@@ -109,7 +109,7 @@
     {{- end}}
     <li>To undo, switch back to {{.From}}, or restore a snapshot from the Snapshots page.</li>
     {{- else}}
-    {{- if .Restart}}
+    {{- if and .Restart .Running}}
     <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop it.</li>
     {{- end}}
     <li>Take a snapshot of {{.World}}, labelled "Before start anyway". If the snapshot fails, nothing else happens.</li>
@@ -119,13 +119,14 @@
   </ul>
   <form method="post" action="{{.Path}}" class="actions">
     <input type="hidden" name="anyway" value="1">
+    <input type="hidden" name="seen" value="{{.Seen}}">
     {{- if .Switch}}
     <input type="hidden" name="from" value="{{.FromID}}">
     {{- end}}
     {{- if or .Switch .Restart}}
     <input type="hidden" name="countdown" value="{{.Countdown}}">
     {{- end}}
-    <button type="submit" class="button button--danger" id="act-start-anyway">{{.Verb}}</button>
+    <button type="submit" class="button button--danger" id="act-anyway">{{.Verb}}</button>
   </form>
   {{- end}}
 </div>

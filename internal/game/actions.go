@@ -68,7 +68,33 @@ type StartOptions struct {
 	// Anyway starts despite problems that each allow it (SPEC 7.4), after a
 	// snapshot. The caller asks only after the admin confirmed.
 	Anyway bool
+	// Seen is the AnywayFingerprint of what the admin confirmed. The first
+	// check refuses an Anyway whose fingerprint no longer matches.
+	Seen string
+	// running is whether the game the action stops runs now; confirmed is
+	// set once the first check has compared Seen, so later checks, after
+	// the stop, do not compare again.
+	running, confirmed bool
 }
+
+// AnywayFingerprint names what a go-ahead anyway confirms: the kinds of
+// problem and the mods they name, and whether the game runs, since that
+// changes the steps. Problem texts are left out, as their wording may
+// change without the plan changing.
+func AnywayFingerprint(check world.PreCheck, running bool) string {
+	parts := make([]string, 0, len(check.Problems)+1)
+	for _, p := range check.Problems {
+		mods := slices.Clone(p.Mods)
+		slices.Sort(mods)
+		parts = append(parts, string(p.Kind)+":"+strings.Join(mods, ","))
+	}
+	slices.Sort(parts)
+	parts = append(parts, fmt.Sprintf("running=%t", running))
+	return strings.Join(parts, ";")
+}
+
+// IsRunning reports whether a game in state s is one a stop would stop.
+func IsRunning(s State) bool { return s == StateRunning || s == StateCrashed }
 
 func (o StartOptions) auditDetail() string {
 	if o.Anyway {
@@ -95,6 +121,7 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	// list, and is audited as a refusal rather than a start (SPEC 12.9).
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps(opts))
 	o.begin(StepCheck)
+	opts.running = IsRunning(c.Status(id).State)
 	check, err := c.precheck(id, opts)
 	if err != nil {
 		return o.end(c.checkFailed(ctx, by, AuditStart, id, opts.auditDetail(), err))
@@ -240,6 +267,11 @@ func (c *Controller) precheckReadOnly(id string, opts StartOptions) error {
 func (c *Controller) allowStart(id string, check world.PreCheck, opts StartOptions) error {
 	if allowed := check.OK() || (opts.Anyway && check.CanStartAnyway()); !allowed {
 		return &PrecheckError{Check: check}
+	}
+	// A go-ahead confirms one plan; refuse it when the plan has changed, so
+	// the page shows the new one to confirm (SPEC 7.4, 17.5).
+	if opts.Anyway && !opts.confirmed && !check.OK() && AnywayFingerprint(check, opts.running) != opts.Seen {
+		return &PrecheckError{Check: check, Changed: true}
 	}
 	return c.checkSaveAgainstImage(id, check.SaveVersion)
 }
@@ -605,9 +637,13 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
+	// Compared before the stop, so a restart never refuses with the game
+	// already stopped.
+	opts.running = IsRunning(c.Status(id).State)
 	if _, err := c.precheck(id, opts); err != nil {
 		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)
 	}
+	opts.confirmed = true
 	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}

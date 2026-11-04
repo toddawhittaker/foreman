@@ -521,7 +521,11 @@ Each problem says what the game would delete. The admin can fix the world
 unreadable save only, **start anyway**. The refusal itself is the
 confirmation: it names exactly what the game will delete, the snapshot
 taken first and how to undo it, and its button starts at once, with no
-second page. A restart offers restart anyway the same way. A save from a newer or
+second page. A restart offers restart anyway the same way. The button
+carries what the box showed (the kinds of problem, the mods they name and
+whether the game runs); when the check before anything changes finds
+otherwise, Foreman refuses, shows the box again with what is true now, and
+says it changed. A save from a newer or
 unsupported version, a world with no save, and a mod list that disagrees
 with the Space Age flag are plain refusals with no start-anyway, because
 the game could not load the save or would load the wrong mods. A save
