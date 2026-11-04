@@ -220,6 +220,9 @@ type Failure struct {
 	In string
 }
 
+// precheckLead opens the message for a start the pre-start check refused.
+const precheckLead = "Foreman did not start the game, because the save that would load does not match the world:"
+
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
 	if !p.HaveResult || p.Result.Err == nil {
@@ -230,7 +233,7 @@ func (p ServerPage) Failure() *Failure {
 	var pe *game.PrecheckError
 	switch {
 	case errors.As(err, &pe):
-		f.Message = "Foreman did not start the game, because the save that would load does not match the world:"
+		f.Message = precheckLead
 		for _, pr := range pe.Check.Problems {
 			f.Problems = append(f.Problems, pr.Text)
 		}

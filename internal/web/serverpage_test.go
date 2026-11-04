@@ -206,8 +206,19 @@ func TestLiveAnnouncements(t *testing.T) {
 	if got := send(l, failed(game.StateStopped, startFailed)); got != "" {
 		t.Errorf("the same failure again: %q", got)
 	}
-	if got := send(l, failed(game.StateRunning, startFailed)); got != "" {
-		t.Errorf("a state change beside a failure: %q", got)
+	if got := send(l, failed(game.StateRunning, startFailed)); got != "Server is now running" {
+		t.Errorf("a state change after a failure: %q", got)
+	}
+	if got := send(l, failed(game.StateCrashed, startFailed)); got != "Server is now crashed" {
+		t.Errorf("a crash after a failure: %q", got)
+	}
+
+	// A new result and a state change together: the result is said, and the
+	// state is on the page.
+	l = &liveStream{render: r, sent: map[string]string{}}
+	send(l, serverCase(game.StateRunning, func(*ServerPage) {}))
+	if got := send(l, failed(game.StateStopped, startFailed)); got != want {
+		t.Errorf("a new failure with a state change: %q, want %q", got, want)
 	}
 
 	l = &liveStream{render: r, sent: map[string]string{}}
