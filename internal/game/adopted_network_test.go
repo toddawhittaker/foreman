@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 
@@ -47,6 +48,48 @@ func TestAdoptedContainerPrivilegeRefusals(t *testing.T) {
 				Mounts:   append([]docker.Mount{{Source: dir, Destination: "/factorio"}}, tc.extra...),
 				Networks: map[string]string{testNetwork: ""},
 			})
+			a := r.newWorld("Alpha")
+			err := r.c.Start(context.Background(), a, admin, StartOptions{})
+			if !errors.Is(err, ErrContainerRefused) || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("start = %v, want a refusal naming %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// SPEC 4.6, 14: Foreman also refuses an adopted container that maps host
+// devices, turns off AppArmor, seccomp or SELinux labels, or shares the
+// host's user, IPC or UTS namespace.
+func TestAdoptedContainerHostSettingRefusals(t *testing.T) {
+	cases := []struct {
+		name string
+		set  func(*dockertest.Container)
+		want string
+	}{
+		{"devices", func(c *dockertest.Container) {
+			c.Devices = []docker.Device{{PathOnHost: "/dev/kvm", PathInContainer: "/dev/kvm"}}
+		}, "devices"},
+		{"apparmor equals", func(c *dockertest.Container) { c.SecurityOpt = []string{"apparmor=unconfined"} }, "apparmor=unconfined"},
+		{"apparmor colon", func(c *dockertest.Container) { c.SecurityOpt = []string{"no-new-privileges", "apparmor:unconfined"} }, "apparmor:unconfined"},
+		{"seccomp equals", func(c *dockertest.Container) { c.SecurityOpt = []string{"seccomp=unconfined"} }, "seccomp=unconfined"},
+		{"seccomp colon", func(c *dockertest.Container) { c.SecurityOpt = []string{"seccomp:unconfined"} }, "seccomp:unconfined"},
+		{"label equals", func(c *dockertest.Container) { c.SecurityOpt = []string{"label=disable"} }, "label=disable"},
+		{"label colon", func(c *dockertest.Container) { c.SecurityOpt = []string{"label:disable"} }, "label:disable"},
+		{"userns host", func(c *dockertest.Container) { c.UsernsMode = "host" }, "userns_mode: host"},
+		{"ipc host", func(c *dockertest.Container) { c.IpcMode = "host" }, "ipc: host"},
+		{"uts host", func(c *dockertest.Container) { c.UTSMode = "host" }, "uts: host"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, dir := newAdoptedRig(t, adoptedOptions{gameContainer: "other", noRun: true})
+			cont := dockertest.Container{
+				Name: "other", Status: "exited",
+				Spec:     docker.ContainerSpec{Image: "factoriotools/factorio:2.1.24", Env: []string{"PUID=845", "PGID=845", "DLC_SPACE_AGE=false", "VERSION=2.1.24"}},
+				Mounts:   []docker.Mount{{Source: dir, Destination: "/factorio"}},
+				Networks: map[string]string{testNetwork: ""},
+			}
+			tc.set(&cont)
+			r.game.Daemon().Seed(cont)
 			a := r.newWorld("Alpha")
 			err := r.c.Start(context.Background(), a, admin, StartOptions{})
 			if !errors.Is(err, ErrContainerRefused) || !strings.Contains(err.Error(), tc.want) {
@@ -148,9 +191,10 @@ func TestAdoptedRCONUsesTheNamedNetwork(t *testing.T) {
 	}
 }
 
-// SPEC 4.4, 7.1: when the shared network cannot be chosen, the monitor's
-// Unknown reason gives that cause, not a claim about the RCON password.
-func TestAdoptedUnknownReasonNamesTheNetworkRefusal(t *testing.T) {
+// SPEC 4.4, 7.1: when the shared network cannot be chosen, the Server page
+// shows that cause as the network warning, not a claim about the RCON
+// password.
+func TestAdoptedNetworkWarningNamesTheRefusal(t *testing.T) {
 	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24", "extra": "10.252.0.9/24"}, map[string]string{"shared": "", "extra": ""})
 	a := r.newWorld("Alpha")
 	if err := gamedir.Present(r.c.adopted.dir, a); err != nil {
@@ -160,42 +204,81 @@ func TestAdoptedUnknownReasonNamesTheNetworkRefusal(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer r.run(r.c)()
-	eventually(t, func() bool { return strings.Contains(r.c.Status(a).Reason, "FOREMAN_GAME_NETWORK") }, "the monitor to refuse the container")
+	eventually(t, func() bool { return r.c.Status(a).NetworkWarning != "" }, "the network warning")
 	st := r.c.Status(a)
-	if st.State != StateUnknown || !strings.Contains(st.Reason, "Set FOREMAN_GAME_NETWORK") {
-		t.Errorf("status = %s (%s), want unknown naming FOREMAN_GAME_NETWORK", st.State, st.Reason)
+	if !strings.Contains(st.NetworkWarning, "Set FOREMAN_GAME_NETWORK") || strings.Contains(st.NetworkWarning, "RCON password") {
+		t.Errorf("warning = %q, want one naming FOREMAN_GAME_NETWORK", st.NetworkWarning)
 	}
 	if strings.Contains(st.Reason, "RCON password") {
 		t.Errorf("reason blames the RCON password: %s", st.Reason)
 	}
 }
 
-// SPEC 4.4: a running game on a network that breaks the rules stops
-// Foreman at startup; a missing container does not.
-func TestCheckAdoptedNetworkAtStartup(t *testing.T) {
+// SPEC 4.4, 7.1: a stranger that joins the shared network while the game
+// runs raises the warning after two looks in a row. The game is still
+// watched and can be stopped; it cannot be started again.
+func TestAdoptedNetworkChangeWarnsAndKeepsStop(t *testing.T) {
 	ctx := context.Background()
 	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": ""})
-	if err := r.docker.StartContainer(ctx, "other"); err != nil {
-		t.Fatal(err)
+	a := r.newWorld("Alpha")
+	r.start(a)
+	r.c.tickAdopted(ctx)
+	if st := r.c.Status(a); st.State != StateStarting && st.State != StateRunning {
+		t.Fatalf("state = %s (%s) before the change", st.State, st.Reason)
 	}
-	if err := r.c.CheckAdoptedNetwork(ctx); err != nil {
-		t.Fatalf("accepted network refused: %v", err)
+	r.game.Daemon().Seed(dockertest.Container{Name: "intruder", Status: "running", Networks: map[string]string{"shared": ""}})
+	r.c.tickAdopted(ctx)
+	if w := r.c.Status(a).NetworkWarning; w != "" {
+		t.Fatalf("warning after one look = %q, want none yet", w)
 	}
-	r.c.proxies = []netip.Prefix{netip.MustParsePrefix("10.251.0.0/16")}
-	if err := r.c.CheckAdoptedNetwork(ctx); !errors.Is(err, ErrNetwork) || !strings.Contains(err.Error(), "FOREMAN_TRUSTED_PROXIES") {
-		t.Fatalf("check = %v, want a refusal naming FOREMAN_TRUSTED_PROXIES", err)
+	r.c.tickAdopted(ctx)
+	st := r.c.Status(a)
+	if !strings.Contains(st.NetworkWarning, "intruder") {
+		t.Fatalf("warning after two looks = %q, want one naming the intruder", st.NetworkWarning)
 	}
-	r.c.adopted.container = "missing"
-	if err := r.c.CheckAdoptedNetwork(ctx); err != nil {
-		t.Errorf("missing container refused startup: %v", err)
+	if st.State == StateUnknown {
+		t.Fatalf("state = unknown (%s), want the game still watched", st.Reason)
+	}
+	if err := r.c.ForceStop(ctx, a, admin); err != nil {
+		t.Fatalf("force stop with the warning standing: %v", err)
+	}
+	if err := r.c.Start(ctx, a, admin, StartOptions{}); !errors.Is(err, ErrNetwork) || !strings.Contains(err.Error(), "intruder") {
+		t.Errorf("start = %v, want a network refusal naming the intruder", err)
 	}
 }
 
-// SPEC 4.4: a network change while the game runs is caught at the next
-// monitor tick, which marks the world Unknown with the refusal.
-func TestAdoptedNetworkChangeMarksUnknown(t *testing.T) {
+// SPEC 4.4: a graceful stop works while the network warning stands.
+func TestAdoptedGracefulStopWithNetworkWarning(t *testing.T) {
 	ctx := context.Background()
 	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": ""})
+	a := r.newWorld("Alpha")
+	r.start(a)
+	defer r.run(r.c)()
+	r.waitState(a, StateRunning)
+	r.game.Daemon().Seed(dockertest.Container{Name: "intruder", Status: "running", Networks: map[string]string{"shared": ""}})
+	eventually(t, func() bool { return r.c.Status(a).NetworkWarning != "" }, "the network warning")
+	if st := r.c.Status(a); st.State != StateRunning {
+		t.Fatalf("state = %s (%s), want running", st.State, st.Reason)
+	}
+	if err := r.c.Stop(ctx, a, admin, StopOptions{}); err != nil {
+		t.Fatalf("stop with the warning standing: %v", err)
+	}
+	r.waitState(a, StateStopped)
+}
+
+// SPEC 4.4: a DNS lookup that fails once is a check that could not be made,
+// not a refusal, so it raises no warning; the next good look keeps none.
+func TestAdoptedNetworkDNSBlipRaisesNoWarning(t *testing.T) {
+	ctx := context.Background()
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24", "proxy-net": "10.9.0.2/24"}, map[string]string{"shared": ""})
+	r.c.dockerTCP, r.c.dockerHost = true, "proxy"
+	fail := true
+	r.c.lookupHost = func(context.Context, string) ([]string, error) {
+		if fail {
+			return nil, errors.New("temporary DNS failure")
+		}
+		return []string{"10.9.0.5"}, nil
+	}
 	a := r.newWorld("Alpha")
 	if err := gamedir.Present(r.c.adopted.dir, a); err != nil {
 		t.Fatal(err)
@@ -203,11 +286,40 @@ func TestAdoptedNetworkChangeMarksUnknown(t *testing.T) {
 	if err := r.docker.StartContainer(ctx, "other"); err != nil {
 		t.Fatal(err)
 	}
-	defer r.run(r.c)()
-	eventually(t, func() bool { listed, err := r.c.dockerState(); return listed && err == nil }, "the first look")
-	r.game.Daemon().Seed(dockertest.Container{Name: "intruder", Status: "running", Networks: map[string]string{"shared": ""}})
-	eventually(t, func() bool {
-		st := r.c.Status(a)
-		return st.State == StateUnknown && strings.Contains(st.Reason, "intruder")
-	}, "the world to turn unknown naming the intruder")
+	r.c.tickAdopted(ctx)
+	r.c.tickAdopted(ctx)
+	if w := r.c.Status(a).NetworkWarning; w != "" {
+		t.Fatalf("warning after DNS failures = %q, want none", w)
+	}
+	fail = false
+	r.c.tickAdopted(ctx)
+	if w := r.c.Status(a).NetworkWarning; w != "" {
+		t.Errorf("warning after a good look = %q, want none", w)
+	}
+}
+
+// SPEC 12.6: GameAddresses gives the adopted container's address on every
+// network at the last look, and none in managed mode.
+func TestGameAddresses(t *testing.T) {
+	ctx := context.Background()
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": "10.251.0.20/24", "other-net": "10.77.0.4/24"})
+	if got := r.c.GameAddresses(); len(got) != 0 {
+		t.Errorf("before any look = %v, want none", got)
+	}
+	if _, err := r.c.inspectAdopted(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got := r.c.GameAddresses()
+	slices.SortFunc(got, netip.Addr.Compare)
+	want := []netip.Addr{netip.MustParseAddr("10.77.0.4"), netip.MustParseAddr("10.251.0.20")}
+	if !slices.Equal(got, want) {
+		t.Errorf("addresses = %v, want %v", got, want)
+	}
+	got[0] = netip.Addr{}
+	if r.c.GameAddresses()[0] == (netip.Addr{}) && r.c.GameAddresses()[1] == (netip.Addr{}) {
+		t.Error("the caller's copy changed the controller's")
+	}
+	if got := newRig(t, rigOptions{}).c.GameAddresses(); got != nil {
+		t.Errorf("managed mode = %v, want none", got)
+	}
 }

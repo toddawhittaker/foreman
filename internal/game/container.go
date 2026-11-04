@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net"
 	"net/netip"
@@ -125,6 +124,18 @@ func refuseNetwork(format string, args ...any) error {
 	return networkRefusal(fmt.Sprintf(format, args...))
 }
 
+// errNetworkUnchecked matches a network check that could not be made, such
+// as a failed DNS lookup. It refuses an action as ErrNetwork does, but the
+// monitor does not count it as a refusal.
+var errNetworkUnchecked = errors.New("the game network could not be checked")
+
+type networkUnchecked string
+
+func (e networkUnchecked) Error() string { return string(e) }
+func (e networkUnchecked) Is(target error) bool {
+	return target == ErrNetwork || target == errNetworkUnchecked
+}
+
 // gameNetwork returns the Docker network the game joins (SPEC 4.4).
 // Outside a container it is FOREMAN_GAME_NETWORK, or Docker's default
 // bridge. Inside one FOREMAN_GAME_NETWORK is required, and refused when a
@@ -227,7 +238,7 @@ func (c *Controller) checkDockerHost(ctx context.Context, self docker.Container,
 		addrs, err = c.lookupHost(ctx, c.dockerHost)
 	}
 	if err != nil || len(addrs) == 0 {
-		return refuseNetwork("DOCKER_HOST uses tcp://, but Foreman cannot look up the address of %q, so it cannot check that a game on the %q network could not reach the Docker socket proxy. Check DOCKER_HOST, then try again", c.dockerHost, network)
+		return networkUnchecked(fmt.Sprintf("DOCKER_HOST uses tcp://, but Foreman cannot look up the address of %q, so it cannot check that a game on the %q network could not reach the Docker socket proxy. Check DOCKER_HOST, then try again", c.dockerHost, network))
 	}
 	ips := make([]netip.Addr, 0, len(addrs))
 	for _, a := range addrs {
@@ -488,22 +499,10 @@ func (c *Controller) gamePassword(id string) (secret.Secret, error) {
 		return secret.Secret{}, err
 	}
 	defer func() { _ = root.Close() }()
-	info, err := root.Lstat(serverSettings)
+	b, err := world.ReadSmallFile(root, serverSettings, maxSettings)
 	if errors.Is(err, fs.ErrNotExist) {
 		return secret.Secret{}, nil
 	}
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	if !info.Mode().IsRegular() {
-		return secret.Secret{}, fmt.Errorf("%s is not a regular file", path.Clean(serverSettings))
-	}
-	f, err := root.Open(serverSettings)
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	defer func() { _ = f.Close() }()
-	b, err := io.ReadAll(io.LimitReader(f, maxSettings))
 	if err != nil {
 		return secret.Secret{}, err
 	}

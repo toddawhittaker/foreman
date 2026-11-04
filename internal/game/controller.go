@@ -599,6 +599,11 @@ type Status struct {
 	// RCONPublished is set when the container's RCON port can be reached
 	// from the host's network (SPEC 4.12).
 	RCONPublished bool
+	// NetworkWarning is set while the network Foreman shares with the
+	// game container breaks SPEC 4.4: it says what to change. The game is
+	// still watched and can be stopped; Start, Restart and Switch are
+	// refused.
+	NetworkWarning string
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -647,7 +652,7 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	if c.adopted != nil {
 		v := c.adoptedViewNow()
 		st.Adopted, st.Layout, st.RCONPublished = true, v.layout, v.rconPublished
-		st.RunningVersion = v.version
+		st.RunningVersion, st.NetworkWarning = v.version, v.networkWarning
 		if st.RunningVersion == "" {
 			st.RunningVersion = "unknown"
 		}
@@ -678,7 +683,7 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 	}
 	listed, dockerErr := c.dockerState()
 	if w.opDone == nil {
-		if errors.Is(dockerErr, ErrNoGameContainer) || errors.Is(dockerErr, ErrNetwork) {
+		if errors.Is(dockerErr, ErrNoGameContainer) {
 			return StateUnknown, dockerErr.Error()
 		}
 		if dockerErr != nil {

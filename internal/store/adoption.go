@@ -23,17 +23,26 @@ func (s *Store) SetAdoption(ctx context.Context, id string, now time.Time) error
 	return requireOneRow(res, "record adoption", ErrAdoptionExists)
 }
 
-// Adoption returns the world a recorded adoption is building. found is
-// false when none is recorded.
-func (s *Store) Adoption(ctx context.Context) (id string, found bool, err error) {
-	err = s.db.QueryRowContext(ctx, "SELECT world_id FROM adoption WHERE one = 1").Scan(&id)
+// AdoptionRecord is a first adoption in progress.
+type AdoptionRecord struct {
+	WorldID string
+	// StartedAt is when it was recorded, to the second.
+	StartedAt time.Time
+}
+
+// Adoption returns the recorded adoption. found is false when none is
+// recorded.
+func (s *Store) Adoption(ctx context.Context) (rec AdoptionRecord, found bool, err error) {
+	var started int64
+	err = s.db.QueryRowContext(ctx, "SELECT world_id, started_at FROM adoption WHERE one = 1").Scan(&rec.WorldID, &started)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", false, nil
+		return AdoptionRecord{}, false, nil
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("read adoption: %w", err)
+		return AdoptionRecord{}, false, fmt.Errorf("read adoption: %w", err)
 	}
-	return id, true, nil
+	rec.StartedAt = time.Unix(started, 0)
+	return rec, true, nil
 }
 
 // ClearAdoption forgets the recorded adoption. None recorded is not an error.

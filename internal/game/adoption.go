@@ -18,9 +18,10 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// adoptionMarker records, in the game folder, which world a first adoption
-// is building, so startup can finish it (SPEC 3.8, 4.8).
-const adoptionMarker = ".foreman-adoption"
+// oldAdoptionMarker is a file an older build wrote in the game folder. The
+// database row is the only record now (SPEC 4.8); startup removes a
+// leftover one and nothing reads it.
+const oldAdoptionMarker = ".foreman-adoption"
 
 // Steps of a first adoption besides the stop and start steps (SPEC 4.8).
 const (
@@ -166,10 +167,7 @@ func (c *Controller) Adopt(ctx context.Context, a Adoption, by Actor, stop StopO
 }
 
 // adoptionBusy refuses while an adoption runs in this Foreman or the
-// database records one, before anything is stopped (SPEC 4.8). The marker
-// alone never counts, since the game can write the folder (SPEC 14); a
-// stale one is cleared here so writing the new marker cannot fail after
-// the game has stopped.
+// database records one, before anything is stopped (SPEC 4.8).
 func (c *Controller) adoptionBusy(ctx context.Context) error {
 	c.mu.Lock()
 	running := c.adopting
@@ -181,17 +179,6 @@ func (c *Controller) adoptionBusy(ctx context.Context) error {
 		return err
 	} else if found {
 		return ErrAdoptionInProgress
-	}
-	info, err := c.lstatGameDir(adoptionMarker)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	c.log.Warn("the game folder holds an adoption marker Foreman has no record of; it is ignored and removed", "type", info.Mode().Type().String())
-	if err := c.removeAdoptionMarker(); err != nil {
-		return fmt.Errorf("the game folder holds %s, which Foreman has no record of and cannot remove. Remove it from the game folder: %w", adoptionMarker, err)
 	}
 	return nil
 }
@@ -213,16 +200,6 @@ func (c *Controller) claimAdoption(ctx context.Context) (release func(), err err
 		c.adopting = false
 		c.mu.Unlock()
 	}, nil
-}
-
-// lstatGameDir is Lstat of a name in the game folder.
-func (c *Controller) lstatGameDir(name string) (fs.FileInfo, error) {
-	root, err := os.OpenRoot(c.adopted.dir)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = root.Close() }()
-	return root.Lstat(name)
 }
 
 func adoptDetail(a Adoption) string {
@@ -309,31 +286,20 @@ func (c *Controller) finishAdoption(ctx context.Context, id string) error {
 	return nil
 }
 
-// recordAdoption records the world being adopted, first in the app database
-// and then in the game folder. The marker counts at startup only when the
-// database names the same world, since the game can write the folder
-// (SPEC 4.8, 14).
+// recordAdoption records the world being adopted in the app database, which
+// the game container cannot reach (SPEC 4.8, 14).
 func (c *Controller) recordAdoption(ctx context.Context, id string) error {
 	if err := c.switches.SetAdoption(ctx, id, c.now()); errors.Is(err, store.ErrAdoptionExists) {
 		return ErrAdoptionInProgress
 	} else if err != nil {
 		return err
 	}
-	if err := c.writeAdoptionMarker(id); err != nil {
-		if cerr := c.switches.ClearAdoption(ctx); cerr != nil {
-			c.log.Warn("could not clear the adoption record from the database", "error", cerr)
-		}
-		return err
-	}
 	return nil
 }
 
-// forgetAdoption removes the marker, then the database record. A failure is
-// logged: startup removes a marker the database does not match.
+// forgetAdoption clears the database record. A failure is logged: startup
+// forgets an adoption that never began.
 func (c *Controller) forgetAdoption(ctx context.Context) {
-	if err := c.removeAdoptionMarker(); err != nil {
-		c.log.Warn("could not remove the adoption marker from the game folder", "error", err)
-	}
 	if err := c.switches.ClearAdoption(ctx); err != nil {
 		c.log.Warn("could not clear the adoption record from the database", "error", err)
 	}
@@ -454,81 +420,22 @@ func (c *Controller) unadoptedPassword() (secret.Secret, error) {
 	return world.ReadRCONPassword(root)
 }
 
-// writeAdoptionMarker records the world being adopted. It fails when a
-// marker exists: one adoption at a time.
-func (c *Controller) writeAdoptionMarker(id string) error {
+// removeOldAdoptionMarker removes the marker file an older build left in
+// the game folder when it is a regular file; anything else of that name is
+// the game's and is left alone.
+func (c *Controller) removeOldAdoptionMarker() {
 	root, err := os.OpenRoot(c.adopted.dir)
 	if err != nil {
-		return err
+		return
 	}
 	defer func() { _ = root.Close() }()
-	f, err := root.OpenFile(adoptionMarker, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
-	if errors.Is(err, fs.ErrExist) {
-		return ErrAdoptionInProgress
+	info, err := root.Lstat(oldAdoptionMarker)
+	if err != nil || !info.Mode().IsRegular() {
+		return
 	}
-	if err != nil {
-		return fmt.Errorf("record the adoption in the game folder: %w", err)
+	if err := root.Remove(oldAdoptionMarker); err != nil {
+		c.log.Warn("could not remove an adoption marker an older Foreman left in the game folder", "error", err)
 	}
-	_, err = f.WriteString(id + "\n")
-	if err == nil {
-		err = f.Sync()
-	}
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	if err == nil {
-		err = world.SyncDir(root, ".")
-	}
-	if err != nil {
-		_ = root.Remove(adoptionMarker)
-		return fmt.Errorf("record the adoption in the game folder: %w", err)
-	}
-	return nil
-}
-
-// readAdoptionMarker returns the world an unfinished adoption was building.
-func (c *Controller) readAdoptionMarker() (id string, found bool, err error) {
-	root, err := os.OpenRoot(c.adopted.dir)
-	if err != nil {
-		return "", false, err
-	}
-	defer func() { _ = root.Close() }()
-	b, err := world.ReadSmallFile(root, adoptionMarker, 256)
-	if errors.Is(err, fs.ErrNotExist) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	id = strings.TrimSpace(string(b))
-	if !world.ValidID(id) {
-		return "", false, fmt.Errorf("%s in the game folder does not name a world", adoptionMarker)
-	}
-	return id, true, nil
-}
-
-func (c *Controller) removeAdoptionMarker() error {
-	root, err := os.OpenRoot(c.adopted.dir)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = root.Close() }()
-	info, err := root.Lstat(adoptionMarker)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	// Remove never empties a folder, so a non-empty one is left in place.
-	t := info.Mode().Type()
-	if t != 0 && t != fs.ModeSymlink && t != fs.ModeDir {
-		return fmt.Errorf("%s is not a file or a folder, so Foreman leaves it", adoptionMarker)
-	}
-	if err := root.Remove(adoptionMarker); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-	return world.SyncDir(root, ".")
 }
 
 // Recover finishes or reports what a stop of Foreman left part way. Call it
@@ -558,18 +465,24 @@ func (c *Controller) Recover(ctx context.Context) error {
 }
 
 // recoverGameDir forgets an adoption that never began whatever the
-// container's state, since that changes only the marker and the database
-// record. It changes the game folder only while the container is stopped,
-// since the game may be reading it.
+// container's state, since that changes only the database record. It
+// changes the game folder only while the container is stopped, since the
+// game may be reading it.
 func (c *Controller) recoverGameDir(ctx context.Context) error {
-	// Read before gamedir.Recover, which removes a leftover current.new.
-	begun, err := c.cutOverBegun()
+	c.removeOldAdoptionMarker()
+	rec, haveRecord, err := c.switches.Adoption(ctx)
 	if err != nil {
 		return err
 	}
-	if !begun {
-		if err := c.recoverAdoption(ctx, false); err != nil {
+	// Read before gamedir.Recover, which removes a leftover current.new.
+	begun := false
+	if haveRecord {
+		if begun, err = c.cutOverBegun(rec.StartedAt); err != nil {
 			return err
+		}
+		if !begun {
+			c.log.Warn("an adoption stopped before the game folder was changed; the folder is unchanged and the world it built is left inactive", "world", rec.WorldID)
+			c.forgetAdoption(ctx)
 		}
 	}
 	cont, err := c.inspectAdopted(ctx)
@@ -589,28 +502,19 @@ func (c *Controller) recoverGameDir(ctx context.Context) error {
 	if !begun {
 		return nil
 	}
-	return c.recoverAdoption(ctx, true)
+	return c.recoverAdoption(ctx, rec.WorldID)
 }
 
-// cutOverBegun reports whether the folder shows that an adoption's cut-over
-// had begun: current.new exists, or a pre-foreman folder is no older than
-// the adoption marker (SPEC 4.8). Without a marker it is false.
-func (c *Controller) cutOverBegun() (bool, error) {
+// cutOverBegun reports whether the folder shows that the cut-over of an
+// adoption recorded at started had begun: current.new exists, or a
+// pre-foreman folder is no older than the record (SPEC 4.8). The record is
+// kept to the second, so a folder made in that second counts.
+func (c *Controller) cutOverBegun(started time.Time) (bool, error) {
 	root, err := os.OpenRoot(c.adopted.dir)
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = root.Close() }()
-	marker, err := root.Lstat(adoptionMarker)
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	if !marker.Mode().IsRegular() {
-		return false, nil // not a marker; recoverAdoption forgets it
-	}
 	if _, err := root.Lstat(gamedir.CurrentDir + ".new"); err == nil {
 		return true, nil
 	} else if !errors.Is(err, fs.ErrNotExist) {
@@ -635,44 +539,18 @@ func (c *Controller) cutOverBegun() (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if info.IsDir() && !info.ModTime().Before(marker.ModTime()) {
+		if info.IsDir() && !info.ModTime().Before(started.Truncate(time.Second)) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-// recoverAdoption finishes a first adoption whose cut-over had begun, from
-// what is on disk: the snapshot is taken if it is missing and the originals
-// are moved aside, as the admin confirmed (SPEC 3.8, 4.8). An adoption that
-// stopped before its cut-over is forgotten: the folder is unchanged, and
-// the world it built stays, inactive. The marker counts only when the
-// database names the same world.
-func (c *Controller) recoverAdoption(ctx context.Context, begun bool) error {
-	recorded, haveRecord, err := c.switches.Adoption(ctx)
-	if err != nil {
-		return err
-	}
-	id, found, err := c.readAdoptionMarker()
-	switch {
-	case err != nil:
-		c.log.Warn("the adoption marker in the game folder is not a readable file; it is ignored, and removed unless it is a folder with something in it", "error", err)
-		c.forgetAdoption(ctx)
-		return nil
-	case !found:
-		if haveRecord {
-			c.forgetAdoption(ctx)
-		}
-		return nil
-	case !haveRecord || recorded != id:
-		c.log.Warn("the adoption marker in the game folder does not match Foreman's record; it was removed and nothing was adopted", "marker", id)
-		c.forgetAdoption(ctx)
-		return nil
-	case !begun:
-		c.log.Warn("an adoption stopped before the game folder was changed; the folder is unchanged and the world it built is left inactive", "world", id)
-		c.forgetAdoption(ctx)
-		return nil
-	}
+// recoverAdoption finishes the first adoption of world id, whose cut-over
+// had begun, from what is on disk: the snapshot is taken if it is missing
+// and the originals are moved aside, as the admin confirmed (SPEC 3.8,
+// 4.8).
+func (c *Controller) recoverAdoption(ctx context.Context, id string) error {
 	st, err := c.layout()
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 // SPEC 4.8: one adoption is recorded at a time, and clearing it is safe
@@ -20,8 +21,8 @@ func TestAdoptionRecord(t *testing.T) {
 	if err := s.SetAdoption(ctx, "other", t0); !errors.Is(err, ErrAdoptionExists) {
 		t.Fatalf("second adoption: %v, want ErrAdoptionExists", err)
 	}
-	if id, found, err := s.Adoption(ctx); id != "gate" || !found || err != nil {
-		t.Errorf("adoption = %q %v %v, want gate", id, found, err)
+	if rec, found, err := s.Adoption(ctx); rec.WorldID != "gate" || !rec.StartedAt.Equal(t0.Truncate(time.Second)) || !found || err != nil {
+		t.Errorf("adoption = %+v %v %v, want gate at %v", rec, found, err, t0)
 	}
 	for range 2 {
 		if err := s.ClearAdoption(ctx); err != nil {

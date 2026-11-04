@@ -87,8 +87,8 @@ func TestAdoptionOfARunningGame(t *testing.T) {
 	if err1 != nil || err2 != nil || !os.SameFile(kept, adopted) {
 		t.Errorf("save not linked into the world: %v, %v", err1, err2)
 	}
-	if _, err := os.Lstat(filepath.Join(dir, adoptionMarker)); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("adoption record left behind: %v", err)
+	if _, found, _ := r.store.Adoption(ctx); found {
+		t.Error("adoption record left behind")
 	}
 	if _, err := r.c.ReserveAdoption(ctx, "Again", "2.1.24", false); !errors.Is(err, ErrAlreadyAdopted) {
 		t.Errorf("second adoption = %v", err)
@@ -158,12 +158,11 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 	}
 	cases := []struct {
 		name     string
-		noRecord bool // only the marker is written, as the game could
 		after    func(t *testing.T, r *rig, dir, id string)
 		finished bool // recovery finishes the adoption
 	}{
-		{"record written", false, func(*testing.T, *rig, string, string) {}, false},
-		{"world built, no snapshot", false, func(t *testing.T, r *rig, dir, id string) {
+		{"record written", func(*testing.T, *rig, string, string) {}, false},
+		{"world built, no snapshot", func(t *testing.T, r *rig, dir, id string) {
 			build(t, r, dir, id)
 			snapDir := filepath.Join(datadir.Snapshots(r.data), id)
 			entries, err := os.ReadDir(snapDir)
@@ -176,18 +175,18 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 				}
 			}
 		}, false},
-		{"snapshot taken", false, build, false},
-		{"snapshot taken, an older pre-foreman folder", false, func(t *testing.T, r *rig, dir, id string) {
+		{"snapshot taken", build, false},
+		{"snapshot taken, an older pre-foreman folder", func(t *testing.T, r *rig, dir, id string) {
 			oldPre(t, dir)
 			build(t, r, dir, id)
 		}, false},
-		{"cut-over begun, nothing moved", false, func(t *testing.T, r *rig, dir, id string) {
+		{"cut-over begun, nothing moved", func(t *testing.T, r *rig, dir, id string) {
 			build(t, r, dir, id)
 			if err := os.Mkdir(filepath.Join(dir, gamedir.PreForemanPrefix+"20260101T000000Z"), 0o750); err != nil {
 				t.Fatal(err)
 			}
 		}, true},
-		{"cut-over part way", false, func(t *testing.T, r *rig, dir, id string) {
+		{"cut-over part way", func(t *testing.T, r *rig, dir, id string) {
 			build(t, r, dir, id)
 			if err := os.Mkdir(filepath.Join(dir, gamedir.PreForemanPrefix+"20260101T000000Z"), 0o750); err != nil {
 				t.Fatal(err)
@@ -202,15 +201,15 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 				t.Fatal(err)
 			}
 		}, true},
-		{"cut over, not active", false, func(t *testing.T, r *rig, dir, id string) {
+		{"cut over, not active", func(t *testing.T, r *rig, dir, id string) {
 			build(t, r, dir, id)
 			if _, err := gamedir.CutOver(dir, id, time.Now()); err != nil {
 				t.Fatal(err)
 			}
 		}, true},
-		{"marker without the database record", true, func(t *testing.T, r *rig, dir, id string) {
+		{"an older build's marker file is left", func(t *testing.T, r *rig, dir, id string) {
 			build(t, r, dir, id)
-			if err := os.Mkdir(filepath.Join(dir, gamedir.PreForemanPrefix+"20260101T000000Z"), 0o750); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, oldAdoptionMarker), []byte(id+"\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 		}, false},
@@ -222,12 +221,7 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if tc.noRecord {
-				err = r.c.writeAdoptionMarker(a.ID)
-			} else {
-				err = r.c.recordAdoption(ctx, a.ID)
-			}
-			if err != nil {
+			if err := r.c.recordAdoption(ctx, a.ID); err != nil {
 				t.Fatal(err)
 			}
 			tc.after(t, r, dir, a.ID)
@@ -235,8 +229,8 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 			if err := r.c.Recover(ctx); err != nil {
 				t.Fatalf("recover: %v", err)
 			}
-			if _, err := os.Lstat(filepath.Join(dir, adoptionMarker)); !errors.Is(err, os.ErrNotExist) {
-				t.Errorf("adoption marker left behind: %v", err)
+			if _, err := os.Lstat(filepath.Join(dir, oldAdoptionMarker)); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("old adoption marker left behind: %v", err)
 			}
 			if _, found, err := r.store.Adoption(ctx); found || err != nil {
 				t.Errorf("adoption record left behind: %v", err)
@@ -271,16 +265,17 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 
 // SPEC 4.8, 14: one adoption at a time. A second is refused while the
 // database records another or one runs, and nothing is stopped or moved.
-// A marker alone, which the game could write, does not count.
+// The game can write the folder, so nothing it puts there counts.
 func TestAdoptionOneAtATime(t *testing.T) {
 	ctx := context.Background()
-	t.Run("a marker without a record is cleared", func(t *testing.T) {
+	t.Run("the game made a folder named as the old marker", func(t *testing.T) {
 		r, dir := newAdoptedRig(t, adoptedOptions{prepare: unadoptedFolder(t)})
 		a, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, adoptionMarker), []byte("other\n"), 0o600); err != nil {
+		keep := filepath.Join(dir, oldAdoptionMarker, "x")
+		if err := os.MkdirAll(keep, 0o750); err != nil {
 			t.Fatal(err)
 		}
 		if err := r.c.Adopt(ctx, a, admin, StopOptions{}); err != nil {
@@ -288,27 +283,7 @@ func TestAdoptionOneAtATime(t *testing.T) {
 		}
 		presents(t, dir, a.ID)
 	})
-	t.Run("a folder with something in it, named as the marker", func(t *testing.T) {
-		r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
-		a, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		keep := filepath.Join(dir, adoptionMarker, "keep")
-		if err := os.MkdirAll(keep, 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := r.c.Adopt(ctx, a, admin, StopOptions{}); err == nil || !strings.Contains(err.Error(), adoptionMarker) {
-			t.Fatalf("adopt = %v, want a refusal naming the marker", err)
-		}
-		if cs := r.adoptedState(); cs.Status != "running" {
-			t.Errorf("container status %q", cs.Status)
-		}
-		if _, err := os.Stat(keep); err != nil {
-			t.Errorf("the folder's contents were touched: %v", err)
-		}
-	})
-	t.Run("a record without a marker is refused before the stop", func(t *testing.T) {
+	t.Run("a record is refused before the stop", func(t *testing.T) {
 		r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
 		a, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
 		if err != nil {
@@ -344,9 +319,6 @@ func TestAdoptionOneAtATime(t *testing.T) {
 		}
 		if st, _ := gamedir.Inspect(dir); st.Kind != gamedir.Unadopted {
 			t.Errorf("folder is %s", st.Kind)
-		}
-		if _, err := os.Lstat(filepath.Join(dir, adoptionMarker)); !errors.Is(err, os.ErrNotExist) {
-			t.Errorf("marker written: %v", err)
 		}
 	})
 	t.Run("one is running", func(t *testing.T) {
@@ -389,9 +361,6 @@ func TestAdoptionFailedCutOverForgetsTheAdoption(t *testing.T) {
 	if op := r.c.Status(a.ID).Operation; stepState(op, StepKeepOriginals) != StepFailed {
 		t.Fatalf("the adoption failed elsewhere: %+v", op)
 	}
-	if _, err := os.Lstat(filepath.Join(dir, adoptionMarker)); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("adoption marker left behind: %v", err)
-	}
 	if _, found, _ := r.store.Adoption(ctx); found {
 		t.Error("adoption record left behind")
 	}
@@ -428,11 +397,8 @@ func TestUnadoptedPasswordRefusesAFIFO(t *testing.T) {
 // not block adoption for good.
 func TestRecoveryForgetsAnUnbegunAdoptionWhileTheGameRuns(t *testing.T) {
 	ctx := context.Background()
-	r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
+	r, _ := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
 	if err := r.store.SetAdoption(ctx, "gate", time.Now()); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, adoptionMarker), []byte("gate\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.c.Recover(ctx); err != nil {
@@ -440,9 +406,6 @@ func TestRecoveryForgetsAnUnbegunAdoptionWhileTheGameRuns(t *testing.T) {
 	}
 	if _, found, err := r.store.Adoption(ctx); err != nil || found {
 		t.Errorf("record kept: %v, %v", found, err)
-	}
-	if _, err := os.Lstat(filepath.Join(dir, adoptionMarker)); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("marker kept: %v", err)
 	}
 	if cs := r.adoptedState(); cs.Status != "running" {
 		t.Errorf("container status %q", cs.Status)

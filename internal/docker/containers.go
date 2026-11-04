@@ -187,6 +187,19 @@ type Container struct {
 	CapAdd []string
 	// PidMode is HostConfig.PidMode; "host" shares the host's processes.
 	PidMode string
+	// Devices is HostConfig.Devices, the host devices mapped in.
+	Devices []Device
+	// SecurityOpt is HostConfig.SecurityOpt, such as "seccomp=unconfined".
+	SecurityOpt []string
+	// UsernsMode, IpcMode and UTSMode are the HostConfig namespace modes;
+	// "host" shares the host's.
+	UsernsMode, IpcMode, UTSMode string
+}
+
+// Device is one entry of HostConfig.Devices.
+type Device struct {
+	PathOnHost      string
+	PathInContainer string
 }
 
 // EnvValue returns the value of an environment variable. When the name is
@@ -235,6 +248,11 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 			Privileged   bool
 			CapAdd       []string
 			PidMode      string
+			Devices      []Device
+			SecurityOpt  []string
+			UsernsMode   string
+			IpcMode      string
+			UTSMode      string
 		}
 		Mounts          []Mount
 		NetworkSettings struct {
@@ -260,6 +278,11 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		Privileged:   raw.HostConfig.Privileged,
 		CapAdd:       raw.HostConfig.CapAdd,
 		PidMode:      raw.HostConfig.PidMode,
+		Devices:      raw.HostConfig.Devices,
+		SecurityOpt:  raw.HostConfig.SecurityOpt,
+		UsernsMode:   raw.HostConfig.UsernsMode,
+		IpcMode:      raw.HostConfig.IpcMode,
+		UTSMode:      raw.HostConfig.UTSMode,
 	}, nil
 }
 
