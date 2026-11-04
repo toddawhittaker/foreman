@@ -485,7 +485,11 @@ container rules are strict, is in ADR 0004.
   for a pipe, and every open of the worlds folder refuses a link swapped in
   later. Startup warns about a change left part way only when there is
   evidence of one. (The NET_RAW, `fe80::/10`, first-start range and
-  refusal-page items come from #80.)
+  refusal-page items come from #80.) While a running adopted container
+  keeps NET_RAW, the monitor shows a Server-page warning from its first
+  look and refuses every trusted-header sign-in, with a refusal page that
+  names `cap_drop: [NET_RAW]`; both clear once the container is recreated
+  with NET_RAW dropped (#82).
 - **Test tools.** The fake game can seed an adopted container that follows
   the game folder's links, prints the entrypoint's trace with the password,
   and applies `DLC_SPACE_AGE`. The fake Docker fails a test that makes a

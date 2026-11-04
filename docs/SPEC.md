@@ -382,7 +382,11 @@ Starting a 2.x world whose Space Age flag disagrees with the container's
 rewrites `mods/mod-list.json` from that variable at every start. So one
 adopted container serves either Space Age worlds or worlds without it.
 Foreman reads only these named variables from the container's environment
-and never logs or shows the rest. (P0)
+and never logs or shows the rest. The `NET_RAW` rule is also checked on
+every monitor look at a running container: while the container keeps
+`NET_RAW`, the Server page shows a warning from the first look and every
+trusted-header sign-in is refused (12.6), until the container is recreated
+with `NET_RAW` dropped. (P0)
 
 4.12. Foreman warns, on the status page, when the adopted container
 publishes its RCON port on the host, or uses the host network. (P0)
@@ -946,7 +950,10 @@ whenever a game network has IPv6. While those ranges are not yet known
 header sign-in is refused, the reason is logged once, and the refusal page
 says so in plain words without any header value. Existing sessions and
 local password sign-in are unaffected. The monitor refreshes the ranges.
-(P0)
+In adopted mode, while the running game container keeps `NET_RAW` (4.11),
+the ranges count as unknown, so every header sign-in is refused and the
+refusal page names `cap_drop: [NET_RAW]`; this clears once the container
+is recreated with `NET_RAW` dropped. (P0)
 
 12.7. **OpenID Connect**: discovery URL, client ID and client secret
 (env or `_FILE`), and an optional required group claim. (P1)
