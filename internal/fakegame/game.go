@@ -51,6 +51,9 @@ type Config struct {
 	// so a Foreman started beside the fake finds its own container in it.
 	// State leaves it out: it is not a game.
 	SelfNetwork string
+	// Adopted, when set, seeds one pre-existing game container on
+	// SelfNetwork and forbids the calls adopted mode never makes.
+	Adopted *Adopted
 }
 
 // SelfAddress is the seeded self container's address on SelfNetwork, in a
@@ -77,6 +80,9 @@ type Game struct {
 	claim  net.Listener // holds this run's address prefix against other runs
 	prefix string       // "127.A.B.": containers get the addresses after it
 	selfID string       // the seeded self container, "" without one
+	// adoptedID is the seeded adopted container, whose starts run the
+	// image's entrypoint; "" without one.
+	adoptedID string
 
 	mu       sync.Mutex
 	closed   bool
@@ -109,6 +115,11 @@ func New(t testing.TB, cfg Config) *Game {
 }
 
 func start(cfg Config, report func(string)) (*Game, error) {
+	if cfg.Adopted != nil {
+		if err := cfg.Adopted.validate(cfg.SelfNetwork); err != nil {
+			return nil, err
+		}
+	}
 	g := &Game{
 		cfg:      cfg,
 		behave:   map[string]behaviour{},
@@ -164,6 +175,9 @@ func start(cfg Config, report func(string)) (*Game, error) {
 	}
 	if cfg.SelfNetwork != "" {
 		g.seedSelf(cfg.SelfNetwork)
+	}
+	if cfg.Adopted != nil {
+		g.seedAdopted(*cfg.Adopted, cfg.SelfNetwork)
 	}
 	g.srv = &http.Server{Handler: http.HandlerFunc(g.serveDocker), ReadHeaderTimeout: 10 * time.Second}
 	g.spawn(func() { _ = g.srv.Serve(ln) })
