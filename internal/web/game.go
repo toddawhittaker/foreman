@@ -349,14 +349,16 @@ func (s *server) begin(w http.ResponseWriter, r *http.Request, id string, holdsL
 	s.beginOn(w, r, []string{id}, holdsLock, do)
 }
 
-// beginOn is begin for an action on several worlds.
-func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) {
+// beginOn is begin for an action on several worlds. It reports whether the
+// action started; if not, the page has been answered.
+func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	if !s.runs.runOn(ids, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
 			Detail: "Foreman is shutting down. Try again once it is back."})
-		return
+		return false
 	}
 	http.Redirect(w, r, PathServer, http.StatusSeeOther)
+	return true
 }
 
 // finish logs an action's error that the admin cannot fix, then returns

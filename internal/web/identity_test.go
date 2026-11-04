@@ -4,8 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 var headerEnv = map[string]string{
@@ -89,6 +93,65 @@ func TestSpoofedHeadersFromUntrustedPeerAreIgnored(t *testing.T) {
 		}
 		hn.addUser("alice", testPassword)
 		hn.wantRedirect(hn.get(PathWorlds, spoof...), PathSignIn)
+	})
+}
+
+// fakeAddrs stands in for the adopted game container's addresses.
+type fakeAddrs []netip.Addr
+
+func (f fakeAddrs) GameAddresses() []netip.Addr { return f }
+
+func headerHarnessWithGame(t *testing.T, methods string, addrs ...netip.Addr) *harness {
+	env := map[string]string{"FOREMAN_AUTH_METHODS": methods, "FOREMAN_AUTH_REQUIRED_GROUP": testGroup}
+	for k, v := range headerEnv {
+		env[k] = v
+	}
+	return newHarnessAddrs(t, env, func(data string) world.Dirs {
+		return world.Dirs{Worlds: filepath.Join(data, "worlds"), Snapshots: filepath.Join(data, "snapshots"), Imports: filepath.Join(data, "import")}
+	}, nil, fakeAddrs(addrs))
+}
+
+// SPEC 12.6: the game container is never taken for the proxy, even when its
+// address lies inside FOREMAN_TRUSTED_PROXIES.
+func TestHeadersFromTheGameContainerAreIgnored(t *testing.T) {
+	gameAddr := netip.MustParseAddr("10.0.0.9")
+	asGame := func(peer string) []func(*http.Request) {
+		return []func(*http.Request){withPeer(peer), withHeader("X-Authentik-Username", "alice"), withHeader("X-Authentik-Groups", testGroup)}
+	}
+	t.Run("headers only", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", gameAddr)
+		rec := hn.get(PathWorlds, asGame("10.0.0.9:4000")...)
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "through the proxy") {
+			t.Fatalf("from the game: %d", rec.Code)
+		}
+		if _, ok, _ := hn.store.UserByUsername(context.Background(), "alice"); ok {
+			t.Error("a header from the game created a user")
+		}
+		hn.get(PathWorlds, asGame("10.0.0.9:4001")...)
+		if n := strings.Count(hn.logs.String(), "refused trusted-header sign-in"); n != 1 {
+			t.Errorf("the refusal was logged %d times, want once: %s", n, hn.logs.String())
+		}
+		if strings.Contains(hn.logs.String(), "alice") {
+			t.Error("the log holds a header value")
+		}
+		// The same request from another trusted address signs in.
+		if rec := hn.get(PathWorlds, asUser("alice")...); rec.Code != http.StatusOK {
+			t.Fatalf("from the proxy: %d", rec.Code)
+		}
+	})
+	t.Run("an IPv4-mapped peer is the same address", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", gameAddr)
+		if rec := hn.get(PathWorlds, asGame("[::ffff:10.0.0.9]:4000")...); rec.Code != http.StatusForbidden {
+			t.Fatalf("mapped peer: %d", rec.Code)
+		}
+	})
+	t.Run("local sign-in still works from the game", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "local,headers", gameAddr)
+		hn.addUser("alice", testPassword)
+		rec := hn.post(PathSignIn, signInForm("alice", testPassword), withPeer("10.0.0.9:4000"))
+		if sessionCookie(rec) == nil {
+			t.Fatalf("password sign-in from the game: %d", rec.Code)
+		}
 	})
 }
 

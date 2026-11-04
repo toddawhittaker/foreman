@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strings"
 )
 
@@ -39,6 +40,13 @@ func inPrefixes(a netip.Addr, prefixes []netip.Prefix) bool {
 func PeerTrusted(r *http.Request, trusted []netip.Prefix) bool {
 	peer, ok := peerAddr(r)
 	return ok && inPrefixes(peer, trusted)
+}
+
+// PeerIs reports whether the request's direct peer is one of addrs, which
+// the caller gives unmapped. The forwarded address plays no part.
+func PeerIs(r *http.Request, addrs []netip.Addr) bool {
+	peer, ok := peerAddr(r)
+	return ok && slices.Contains(addrs, peer)
 }
 
 // ClientAddr returns the address to rate-limit and log. It is the direct

@@ -155,6 +155,25 @@ test.describe("a container that publishes its RCON port", () => {
   });
 });
 
+// SPEC 4.4: the shared network overlaps the trusted proxies, so the Server
+// page warns (after two checks in a row) and the pages keep serving.
+test.describe("a game network that overlaps the trusted proxies", () => {
+  test.use({ adoptedOn: { folder: "unadopted" }, foremanEnv: { FOREMAN_TRUSTED_PROXIES: "10.250.0.0/24" } });
+
+  test("the Server page shows a warning, and Adopt is refused with it", async ({ page }) => {
+    const warning = page.locator(".message--warning").filter({ hasText: "FOREMAN_TRUSTED_PROXIES" });
+    await openServerPage(page, () => expect(warning).toBeVisible({ timeout: 1000 }));
+    await expect(warning).toContainText("Warning:");
+    await checkPage(page);
+
+    await adoptLink(page).click();
+    await page.getByLabel("World name").fill("Gate");
+    await page.getByRole("button", { name: "Adopt the game folder" }).click();
+    await expect(page.locator(".message--error")).toContainText("FOREMAN_TRUSTED_PROXIES");
+    await checkPage(page);
+  });
+});
+
 test.describe("a game folder Foreman cannot use", () => {
   test.use({ adoptedOn: { folder: "broken" } });
 

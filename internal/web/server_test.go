@@ -98,6 +98,13 @@ func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Ma
 // directory, as adopted mode puts the worlds inside the game folder.
 func newHarnessIn(t *testing.T, env map[string]string, dirsIn func(data string) world.Dirs, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
 	t.Helper()
+	return newHarnessAddrs(t, env, dirsIn, makeGame, nil)
+}
+
+// newHarnessAddrs is newHarnessIn with the game's addresses given by addrs,
+// when it is not nil, in place of the controller's.
+func newHarnessAddrs(t *testing.T, env map[string]string, dirsIn func(data string) world.Dirs, makeGame func(*world.Manager, *store.Store) *game.Controller, addrs GameAddresser) *harness {
+	t.Helper()
 	cfg, err := config.Load(func(k string) (string, bool) { v, ok := env[k]; return v, ok })
 	if err != nil {
 		t.Fatalf("config: %v", err)
@@ -119,7 +126,7 @@ func newHarnessIn(t *testing.T, env map[string]string, dirsIn func(data string) 
 	if makeGame != nil {
 		ctrl = makeGame(worlds, st)
 	}
-	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Game: ctrl, Log: logger, Now: clock.Now})
+	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Game: ctrl, GameAddrs: addrs, Log: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}

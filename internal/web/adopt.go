@@ -192,10 +192,13 @@ func (s *server) handleAdopt(w http.ResponseWriter, r *http.Request, u store.Use
 	}
 	by := actor(u)
 	s.adoption.named(a.ID, a.Name)
-	s.beginOn(w, r, []string{a.ID}, true, func(ctx context.Context) actionResult {
+	started := s.beginOn(w, r, []string{a.ID}, true, func(ctx context.Context) actionResult {
 		defer s.adoption.finish()
 		return s.finish(a.ID, game.AuditAdopt, s.game.Adopt(ctx, a, by, stop))
 	})
+	if !started {
+		s.adoption.finish() // shutting down: the action that would release it never runs
+	}
 }
 
 // adoptFailed shows why ReserveAdoption refused: on the field it is about,

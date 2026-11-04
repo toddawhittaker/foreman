@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
@@ -35,7 +36,7 @@ func (s *server) identify(r *http.Request) (store.User, signedIn, error) {
 // trusted headers named the user.
 func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Request) (int64, bool, error)) (u store.User, state signedIn, byProxy bool, err error) {
 	ctx := r.Context()
-	if s.cfg.AuthHeaders {
+	if s.cfg.AuthHeaders && !s.fromGame(r) {
 		id := s.headers.Identify(r)
 		switch id.Outcome {
 		case auth.HeaderNotAllowed:
@@ -64,6 +65,30 @@ func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Requ
 		return store.User{}, nobody, false, err
 	}
 	return u, isSignedIn, false, nil
+}
+
+// GameAddresser gives the adopted game container's current addresses.
+type GameAddresser interface {
+	GameAddresses() []netip.Addr
+}
+
+// fromGame reports whether the direct peer is the game container. The game
+// is never the proxy, so its headers count for nothing, however trusted its
+// address looks (SPEC 12.6). It is checked on every request, not only while
+// a network refusal stands. Each address is logged once.
+func (s *server) fromGame(r *http.Request) bool {
+	if s.gameAddrs == nil {
+		return false
+	}
+	addrs := s.gameAddrs.GameAddresses()
+	if !auth.PeerIs(r, addrs) {
+		return false
+	}
+	peer := auth.ClientAddr(r, nil) // the direct peer, unmapped, without the port
+	if _, seen := s.gameSeen.LoadOrStore(peer, true); !seen {
+		s.log.Warn("refused trusted-header sign-in from the game container's address", "address", peer)
+	}
+	return true
 }
 
 // stillSignedIn is a live stream's check at each heartbeat (SPEC 12.8,
