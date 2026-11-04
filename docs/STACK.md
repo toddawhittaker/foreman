@@ -127,7 +127,10 @@ can last minutes; each of those calls sets its own deadline. Both refuse
 redirects. Calls carry query strings and JSON bodies, and only the path is
 checked against SPEC 14.3. It reads Docker's framed log output into separate
 standard output and error lines, and reports an error that Docker sends
-inside a 200 reply while pulling an image.
+inside a 200 reply while pulling an image. In adopted mode the client is
+built with a narrower list that also refuses container create and remove
+and every image call before contacting the daemon (SPEC 4.7), and the fake
+daemon can fail a test that makes one.
 
 Rejected: **the official moby client package**. It is complete, but brings
 a heavy dependency tree and can reach endpoints outside SPEC 14.3 without
@@ -262,8 +265,8 @@ Rejected:
 | `make image` | Build the container image with a local tag. |
 | `make run` | Run Foreman from source in managed mode against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It contacts Docker at `DOCKER_HOST` (the default socket unless you set it) to show and control the game. If Docker cannot be reached the Server page shows "Unknown" with the reason and the other pages work. |
 | `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. The fixture runs Foreman in managed mode; a test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. |
-| `make test-game` | The game controller against the real Docker daemon and the three pinned game images (`GAME_IMAGE_*`), one after another, because they share the game port. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game. `TAG=1.1`, `2.0` or `2.1` runs one image. Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
-| `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
+| `make test-game` | The game controller against the real Docker daemon and the three pinned game images (`GAME_IMAGE_*`), one after another, because they share the game port. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game. It also runs adopted mode against each image with the image's own entrypoint: adoption, import, switch and back with save manifests compared, the Space Age refusal, and no password in relayed lines. `TAG=1.1`, `2.0` or `2.1` runs one image. Containers are named `foreman-e3test-*` (managed) and `foreman-e4-t14-*` (adopted, with a network of the same prefix) and removed afterwards. Nothing is downloaded: an image must already be on the host. |
+| `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image, and a switch from one world to another and back: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
 | `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as parallel jobs. |
 | `make tidy` | `go mod tidy`. |

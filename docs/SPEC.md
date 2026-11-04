@@ -71,7 +71,10 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_DATA_DIR` | `/data` | The data directory inside the container (3.3) |
 | `FOREMAN_HOST_DATA_DIR` | discovered | The same directory's path on the host (3.5) |
 | `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6). Never 0 (14.11) |
-| `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required in managed mode when Foreman runs in a container |
+| `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required in managed mode when Foreman runs in a container. In adopted mode, names which shared network to use when Foreman shares several with the game |
+| `FOREMAN_GAME_CONTAINER` | none | The container to adopt (4.7). Required in adopted mode, refused in managed mode |
+| `FOREMAN_GAME_DIR` | none | The game folder inside Foreman's container, an absolute path (4.8). Required in adopted mode, refused in managed mode |
+| `FOREMAN_RCON_PASSWORD` | none | The adopted game's RCON password (4.10), or `FOREMAN_RCON_PASSWORD_FILE`. Optional in adopted mode, refused in managed mode |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
 | `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
 | `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local` and `headers`. Empty means `local`. `oidc` joins the list with OIDC (12.7) |
@@ -90,8 +93,10 @@ with Foreman, never across a network you do not control (14.2).
 snapshots, and the app database. Its layout is in section 5.2. (P0)
 
 3.4. **The app database** holds only users, sessions, API token hashes,
-app settings, notification settings, the audit log, and which world is
-active (a table of world ids, so that several could be active later). It
+app settings, notification settings, the audit log, which world is
+active (a table of world ids, so that several could be active later), the
+record of a switch in progress (7.10), and, in adopted mode, the record of
+an adoption in progress (4.8). It
 never holds other game data: saves, mods and game settings live only in
 world directories. (P0)
 
@@ -114,7 +119,9 @@ Foreman writes into a world are group-writable (files 0664, folders 0775).
 Foreman's own database file is the exception: it is 0660, because it holds
 password hashes and session hashes and the game has no need of it. The
 game's user and group ID may not be 0: Foreman refuses to start and names
-the setting, because the game would run as root (14.11). (P0)
+the setting, because the game would run as root (14.11). In adopted mode
+the game folder (4.8) gets the same ownership and write check as the data
+directory. (P0)
 
 3.7. **No downloads at startup.** Foreman never downloads anything when it
 starts. It downloads only a game image or a mod the admin asked for, and
@@ -151,7 +158,8 @@ settings. Foreman supports game versions 1.1, 2.0 and 2.1, each with one
 image pinned by digest in docs/STACK.md; a save made by any other version is
 refused at start (7.4). Foreman makes new maps itself (5.6) and never relies
 on the image generating one. It never downloads the image when it starts a
-game (3.7). (P0)
+game (3.7). All of this is managed mode; an adopted container runs the
+image's own entrypoint, which 4.11 constrains. (P0)
 
 ### Managed mode
 
@@ -209,11 +217,26 @@ Foreman never creates or connects networks (14.3). (P0)
   - the game network's address range, IPv4 or IPv6, read from Foreman's own
     container, overlaps `FOREMAN_TRUSTED_PROXIES`, because a game could
     then pose as the proxy that signs users in (12.5).
-- These checks run when a game is created, not while it runs. Two limits are
-  known: a socket proxy that also publishes a port on the host cannot be
-  seen from inside Foreman, so the operator guide says never to publish it;
-  and a runtime that creates neither marker file, reached over a `unix://`
-  socket, gives Foreman no sign that it is in a container.
+- In managed mode these checks run when a game is created, not while it
+  runs. Adopted mode applies the same rules to the network Foreman shares
+  with the game (4.7), at every action and on every monitor tick. A
+  refusal there never stops Foreman starting or serving pages (7.1): after
+  two in a row the Server page shows a warning, Start, Restart and Switch
+  are refused, and Stop and Force stop keep working while the monitor
+  keeps watching the game. A failed lookup or listing is logged as "could
+  not check", not counted as a refusal. Known limits:
+  - a socket proxy that also publishes a port on the host cannot be seen
+    from inside Foreman, so the operator guide says never to publish it;
+  - a runtime that creates neither marker file, reached over a `unix://`
+    socket, gives Foreman no sign that it is in a container;
+  - Foreman cannot see how the proxy reaches it. When the proxy runs on the
+    host, publish Foreman's port on `127.0.0.1` only, never `0.0.0.0` or a
+    LAN address. `FOREMAN_TRUSTED_PROXIES` is then the single address the
+    proxy's connections arrive from, as a `/32` (with Docker's port
+    forwarder, the gateway of the network that carries the published
+    port), never a whole bridge range, and that network must not be one the
+    game is on. Better still, do not publish Foreman's port: run the proxy
+    in a container on a network Foreman shares and the game does not.
 
 4.5. Foreman generates and owns the RCON password. It is created when
 missing, as a random value in the world's `config/rconpw`, readable by the
@@ -239,7 +262,15 @@ except the published game port. (P0)
 4.7. The operator names an existing container with
 `FOREMAN_GAME_CONTAINER`. Foreman starts, stops and restarts it, reads its
 logs and stats, and talks to it over RCON. It never recreates or
-reconfigures it. (P0)
+reconfigures it. It never creates or removes the container, pulls or
+inspects images, or changes the container's environment, command or
+networks, and it never stops the container at startup; the Docker client
+in adopted mode refuses those calls. The game runs the image's own
+entrypoint, so the container rules in 4.11 exist to stop that entrypoint
+loading the wrong save, changing mods without a snapshot, or running with
+more privilege than 4.6 allows a managed game. Foreman must share a Docker
+network with the container (4.4 applies to it); RCON uses the container's
+address on that network and its `RCON_PORT` (default 27015). (P0)
 
 4.8. Foreman switches worlds by changing what the container's bind mount
 presents, without anyone editing the compose file per switch. The
@@ -255,26 +286,106 @@ Foreman, at the path in `FOREMAN_GAME_DIR`, and holds:
 A switch, done only while the game is stopped, creates a new link
 `current.new` and renames it over `current`. That rename is atomic, so at
 every instant, including after a reboot mid-switch, the game folder
-presents exactly one whole world. The first time Foreman adopts a game
-folder that still has real `saves`, `mods` and `config` directories, it
-stops the game, snapshots them, and turns them into the first world, with
-a confirmation that says so. (P0)
+presents exactly one whole world. Missing fixed links are made the same
+way, as `<name>.new` renamed into place, and the folder is synced after.
+`worlds/` is `FOREMAN_GAME_DIR/worlds`; snapshots, `import/` and the app
+database stay in `FOREMAN_DATA_DIR`, and Foreman refuses to start when
+either folder is inside the other, comparing them with links resolved.
+
+Foreman sorts the game folder into one of four states, reading links with
+Readlink and checking them exactly, never following them:
+
+- **Fresh**: none of `saves`, `mods`, `config` or `current` exists. The
+  links are made at the first start.
+- **Unadopted**: real `saves`, `mods` and `config` directories. The Server
+  page offers adoption.
+- **Ready**: `current` is a relative link to `worlds/<id>` of a valid
+  world and the fixed links are right. The link decides the active world;
+  if the database disagrees, the database is corrected and the correction
+  logged.
+- **Broken**: anything else. Server control is refused and the page names
+  the path and what is wrong.
+
+A leftover `current.new` or `<name>.new` link is removed at startup
+recovery, which only ever removes links.
+
+The first time Foreman adopts a game folder that still has real `saves`,
+`mods` and `config` directories, it turns them into the first world, after
+a confirmation that says what will be stopped, snapshotted and moved. The
+form asks for the name, game version and Space Age flag (defaults from the
+container's `VERSION` and `DLC_SPACE_AGE`) and the countdown. The steps:
+reserve the world id; check the container (4.11); stop the game gracefully,
+using the folder's own `config/rconpw`; build `worlds/<id>` in staging,
+with save and mod zips hardlinked and small files copied; write
+`world.json` and rename the world into place; take a "Before adoption"
+snapshot; then cut over each of `saves`, `mods` and `config` by linking
+`<name>.new`, moving the real directory into `pre-foreman-<UTC time>/`
+(for example `pre-foreman-20261104T142501Z/`) inside the game folder, and
+renaming the link in; make the world active; and start the game again if
+it was running. Nothing is deleted: the originals stay in
+`pre-foreman-*`. The adoption is recorded in the app database (3.4) before
+it begins, and only one runs at a time. At startup, an adoption whose
+cut-over had begun (a `current.new` link, or a `pre-foreman-*` folder no
+older than the record) is finished from what is on disk, taking the
+"Before adoption" snapshot first if it is missing. One that had not begun
+is forgotten, and the world it built stays inactive. (P0)
 
 4.9. The game version belongs to whoever owns the container definition.
 Foreman shows the running version, warns when the active world's save was
-made by a different version, and never tries to change the image. (P0)
+made by a different version, and never tries to change the image. The
+running version is the container's `VERSION` variable, else "unknown". A
+save newer than the running version is refused at start (7.4); when the
+version is unknown that check is skipped. A save from a different version
+is a warning on the Server and switch pages. (P0)
 
 4.10. The RCON password comes from the active world's `config/rconpw`,
 re-read after every switch, or from `FOREMAN_RCON_PASSWORD` (or its
-`_FILE` form). (P0)
+`_FILE` form). The image always reads `config/rconpw`, so when the
+setting is used Foreman writes it into the presented world's
+`config/rconpw` (mode 0640) before each start. Without the setting, a
+missing `config/rconpw` is created at 0640. A password file named by
+`_FILE` is opened without blocking and must be a regular file. (P0)
 
-4.11. Foreman refuses to adopt a container whose environment sets
-`SAVES`, `MODS`, `CONFIG` or any `SERVER_*_FILE` variable, because those
-move the game's files away from where switching puts them. It says which
-variable to remove. (P0)
+4.11. **Container refusals.** Before it stops anything, Foreman reads the
+adopted container with inspect only and refuses it, naming the setting to
+change and never its value, when:
+
+- `SAVES`, `MODS` or `CONFIG` is set to anything but the image's default
+  (`/factorio/saves`, `/factorio/mods`, `/factorio/config`), or any
+  `SERVER_*_FILE` variable is set, because those move the game's files
+  away from where switching puts them;
+- `LOAD_LATEST_SAVE` is anything but `true`, or `GENERATE_NEW_SAVE` or
+  `UPDATE_MODS_ON_START` is `true`, because the game could load the wrong
+  save, overwrite autosaves, or change mods with no snapshot;
+- `PUID` or `PGID` differs from `FOREMAN_GAME_UID` or `FOREMAN_GAME_GID`,
+  because the image runs `chown -R` over the whole game folder to them;
+- `RCON_PORT` is not a port number;
+- there is no mount at `/factorio`, its source is not Foreman's
+  `FOREMAN_GAME_DIR` mount (outside a container, the same path), or any
+  other mount is under `/factorio`;
+- the container is privileged, adds any Linux capability, or does not drop
+  `NET_RAW` (compose `cap_drop: [NET_RAW]`, or `ALL`), because a game with
+  `NET_RAW` can claim another address on its network;
+- it maps devices, or a `security_opt` turns off AppArmor, seccomp or
+  SELinux labels (`apparmor=unconfined`, `seccomp=unconfined`,
+  `label=disable`);
+- it shares the host's PID, IPC, UTS or user namespace;
+- a mount's source or destination is the Docker socket
+  (`docker.sock`, `/var/run/docker.sock`, `/run/docker.sock`), or a mount's
+  source is `/` or a folder that holds `/run` or `/var/run`, such as
+  `/var`;
+- Foreman shares no Docker network with it, or shares several and
+  `FOREMAN_GAME_NETWORK` does not name one.
+
+Starting a 2.x world whose Space Age flag disagrees with the container's
+`DLC_SPACE_AGE` is a plain pre-start refusal (7.4), because the image
+rewrites `mods/mod-list.json` from that variable at every start. So one
+adopted container serves either Space Age worlds or worlds without it.
+Foreman reads only these named variables from the container's environment
+and never logs or shows the rest. (P0)
 
 4.12. Foreman warns, on the status page, when the adopted container
-publishes its RCON port on the host. (P0)
+publishes its RCON port on the host, or uses the host network. (P0)
 
 ## 5. Worlds
 
@@ -286,7 +397,7 @@ publishes its RCON port on the host. (P0)
 - `mods/`: mod zips, `mod-list.json` and `mod-settings.dat`;
 - `config/`: `server-settings.json`, `map-gen-settings.json`,
   `map-settings.json`, `server-adminlist.json`, `server-banlist.json`,
-  `server-whitelist.json`, and (managed mode) `rconpw`;
+  `server-whitelist.json`, and `rconpw` (4.5, 4.10);
 - `world.json`: Foreman's metadata for the world: display name, pinned
   game version, Space Age flag, which save to load (section 7.11; if
   missing, the newest save), and the time it was created.
@@ -354,7 +465,9 @@ they were at one moment, plus a label, the time, who took it, and why
 
 6.2. Foreman takes a snapshot automatically before every risky operation,
 before the operation changes any file. If the snapshot fails, the
-operation does not run. (P0)
+operation does not run. A switch snapshots both worlds, labelled "Before
+switch" with reason `switch` (7.9); a first adoption snapshots the new
+world, labelled "Before adoption" with reason `adoption` (4.8). (P0)
 
 6.3. An admin can take a snapshot by hand at any time. (P0)
 
@@ -396,8 +509,11 @@ because Factorio writes every save as a new file. Foreman itself never
 changes a zip in place. If a hardlink fails, for example because the
 snapshot directory is on another filesystem, Foreman copies the file
 instead, and the status page says snapshots are using full copies. In
-adopted mode the operator guide says to keep the data directory on the
-same filesystem as the game folder, outside the game's mount. A snapshot
+adopted mode the data directory stays outside the game's mount (4.8).
+Linux refuses a hardlink across two mount points even on one filesystem,
+so when Foreman runs in a container with the game folder and the data
+directory as separate mounts, adopted-mode snapshots are full copies. A
+snapshot
 keeps hidden files, and refuses (naming the path) when a world holds a
 symlink or other special file, because it cannot be restored exactly.
 (P0)
@@ -439,7 +555,8 @@ save, and CPU and memory use. (P0)
 ### Start, stop, restart
 
 7.3. **Start** runs the pre-start check (7.4), then starts the game
-container with the active world. It reports success only when the server
+container with the active world. Start and restart of a world that is not
+active are refused; the admin switches to it instead (7.9). It reports success only when the server
 has reached "InGame" **and** answers over RCON; reaching "InGame" alone is
 not enough, because the RCON port can fail to open after it. If that does
 not happen within a time limit (default 5 minutes), Foreman reports a
@@ -510,10 +627,53 @@ confirm it is running (7.3).
 If any step fails, Foreman stops, says which step failed, and offers to
 switch back, which restores the previous world as active. (P0)
 
+Before the graceful stop, Foreman runs everything that would refuse the
+new world's start: its pre-start check, the image check (managed mode) or
+the container checks (4.11, adopted mode), and the game network checks
+(4.4), as restart does (7.8). The pre-start check runs again after the
+snapshots. A switch leaves the running state as it found it: a running
+game ends up running the new world, and a stopped one ends up stopped with
+the new world active, skipping the stop and start steps. In managed mode
+the old container is left stopped, since every start creates a new one
+(4.3). The operation is busy on both worlds, both pages show it, and a
+forced stop on either ends it. A switch back is a full switch, with its
+own snapshots and confirmation; when the new world never became active,
+Foreman offers only Start of the old world. A switch names the world it
+switches from and is refused when that world is no longer active. The
+audit action is `switch`.
+
 7.10. Foreman records a switch in progress (from which world, to which
 world, and the last step done) before its first step. On startup it
 finds any unfinished switch and either completes it or reports it, and
 never leaves the game running a world that is only partly switched in.
+(P0)
+
+The record is a row in the app database (3.4), written before the first
+step, updated as each step ends (`begun`, `stopped`, `snapshotted`,
+`checked`, `presented`, `started`), and removed when the switch ends,
+whether it worked or failed. The order alone keeps this section true: the
+new world passes its check, and the old game is stopped, before anything
+changes what the container presents. In managed mode one database
+transaction swaps the active world and records `presented`; in adopted
+mode the `current` link is renamed first, then the same transaction runs.
+
+Recovery at startup never starts or stops a game (3.8). For an unfinished
+switch it clears the record and puts a notice on the Server page, which is
+logged and cleared by the next action:
+
+- If the last step is before `presented` (and, in adopted mode, `current`
+  still names the old world), the old world stays active. The notice says
+  the switch from A to B stopped at that step, A is still active and was
+  not started again, and offers Start of A.
+- If the last step is `checked` but `current` already names the new world
+  (Foreman stopped between the rename and the database write), it is
+  treated as `presented`: the new world is made active, then as below.
+- If the last step is `presented` or `started`, the new world is active.
+  The notice says B is active and the switch did not confirm it running,
+  and offers Start of B and Switch back to A.
+
+A fault during recovery is logged and Foreman keeps serving pages (7.1);
+the world it affects is left unstarted, with a notice where one exists.
 (P0)
 
 7.11. **Which save loads** is set per world: the latest save, or a named
@@ -587,7 +747,11 @@ new lines only while scrolled to the bottom and offers "Jump to newest"
 otherwise. The game prints its RCON password as `<private>`, but Foreman
 still removes the RCON password and the game password from every line before
 showing or keeping it, and masks a printed password command (8.4, 14.8).
-(P0)
+In adopted mode one container keeps one log across switches, and the
+image's entrypoint prints the RCON password at every start. So Foreman
+follows the log only from the current run's start, and one world's lines
+never show on another world's page. Any `--rcon-password` value in a line
+is always masked. (P0)
 
 8.7. **Crash detection.** When the game stops without being asked to,
 Foreman marks it crashed. It polls Docker every few seconds, and again when
@@ -770,6 +934,18 @@ created automatically. (P0)
 trusted headers are enabled and `FOREMAN_TRUSTED_PROXIES` is empty,
 Foreman refuses to start. (P0)
 
+Trusted-header sign-in also ignores the headers when the direct peer is
+inside the address range of a game network, IPv4 or IPv6, because a game
+is never the proxy. The ranges are the networks Foreman shares with the
+adopted game container, or in managed mode the game network (4.4), which
+Foreman records before the first start. `fe80::/10` counts as a game range
+whenever a game network has IPv6. While those ranges are not yet known
+(Docker unreachable, the container missing, or not yet inspected),
+header sign-in is refused, the reason is logged once, and the refusal page
+says so in plain words without any header value. Existing sessions and
+local password sign-in are unaffected. The monitor refreshes the ranges.
+(P0)
+
 12.7. **OpenID Connect**: discovery URL, client ID and client secret
 (env or `_FILE`), and an optional required group claim. (P1)
 
@@ -785,7 +961,8 @@ switch, snapshot and restore, mod changes, settings changes, user changes,
 and every RCON command. Viewable and filterable in the UI. Never holds a
 secret. Each entry holds the time, the user (the name stays on the entry
 after the user is deleted), the action, the world and a detail. Server
-control records start, stop, restart, forced stop, game image download and
+control records start, stop, restart, forced stop, switch (on the world
+switched from, with both ids), adoption (`adopt`), game image download and
 every console command (8.4). (P1, except RCON commands, which are recorded
 from the first version that has a console: P0)
 
@@ -873,7 +1050,10 @@ their address ranges. It names the game network in the
 with `GET /containers/json` and a network filter, to check that only
 Foreman and its own games are on it. It never creates or connects networks;
 the network comes from the admin's compose file. Outside a container it
-makes none of these checks and uses Docker's default `bridge`.
+makes none of these checks and uses Docker's default `bridge`. In adopted
+mode it reads the game container the same way to find the networks they
+share and their ranges (4.4, 12.6), and its Docker client refuses the
+managed-only calls before they reach the daemon (4.7).
 
 14.4. **What Foreman will never do with Docker**: create a privileged
 container, use the host network or PID namespace, add capabilities, mount
@@ -906,7 +1086,9 @@ console follows one list of commands that carry a secret: `/config set
 password` has its argument masked in the audit log, on the page and in
 relayed log lines, and the reply to `/config get password` is masked. A Lua
 command is recorded as typed (8.4). The one place the RCON password is
-visible is the game process's arguments, an accepted risk (4.5). (P0)
+visible is the game process's arguments, an accepted risk (4.5). In
+adopted mode the image's entrypoint also prints it into the container's
+own `docker logs`; Foreman masks it in every line it relays (8.6). (P0)
 
 14.9. **RCON input.** Commands built by Foreman from user text (chat
 messages, player names) are escaped so the text cannot become a different
@@ -938,6 +1120,27 @@ and trick a click. (P0)
 14.14. **Sign-in logs name the client, never the username.** A failed or
 refused sign-in is logged with the client address and no username,
 because people sometimes type a password into the username field. (P0)
+
+14.15. **The adopted game folder.** **Accepted risk:** in adopted mode the
+game container can read and write every world, because the links that
+switch worlds must resolve inside it (4.8), and it can choose which world
+is active by changing the `current` link. Managed mode, where the game sees
+only its own world, stays the safer public default. The defences:
+
+- Foreman opens the game folder through a rooted file handle and never
+  follows a link out of it. It refuses a `worlds` folder that is itself a
+  link, on every open, and refuses server control while the folder's
+  links are not exactly as 4.8 describes (Broken).
+- Snapshots, `import/` and the app database stay in `FOREMAN_DATA_DIR`,
+  outside the game's mount.
+- Every file the game can write (`world.json`, `mods/mod-list.json`,
+  saves, `config/rconpw`, `config/server-settings.json`) is read without
+  following a link, opened without blocking, checked to be a regular file
+  after it is opened, and refused above a size cap. Snapshot, import and
+  adoption copies refuse a file or folder swapped for a pipe or a link.
+- The container refusals in 4.11 keep the game as unprivileged as a
+  managed game, and trusted-header sign-in ignores the game's network
+  (12.6). (P0)
 
 ## 15. Logging
 
