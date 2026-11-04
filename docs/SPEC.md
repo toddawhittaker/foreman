@@ -937,8 +937,10 @@ Foreman refuses to start. (P0)
 Trusted-header sign-in also ignores the headers when the direct peer is
 inside the address range of a game network, IPv4 or IPv6, because a game
 is never the proxy. The ranges are the networks Foreman shares with the
-adopted game container, or in managed mode the game network (4.4), which
-Foreman records before the first start. `fe80::/10` counts as a game range
+adopted game container, or in managed mode the game network (4.4). Foreman
+in a container records that range before the first start; outside a
+container it learns a game's range right after the game starts.
+`fe80::/10` counts as a game range
 whenever a game network has IPv6. While those ranges are not yet known
 (Docker unreachable, the container missing, or not yet inspected),
 header sign-in is refused, the reason is logged once, and the refusal page

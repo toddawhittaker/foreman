@@ -33,11 +33,11 @@ test.describe("with the fake game", () => {
 
   test("start, see a player join, then stop with a countdown", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
-    await expect(page.getByText("Nobody can be online while the game is not running.")).toBeVisible();
+    await expect(page.locator("main").getByText("Nobody can be online while the game is not running.")).toBeVisible();
     await checkPage(page);
 
     await start(page);
-    await expect(page.getByText("Nobody is online.")).toBeVisible(live);
+    await expect(page.locator("main").getByText("Nobody is online.")).toBeVisible(live);
     await fakeGame!.call("/join", { name: container, player: "alice" });
     // The list follows the game without a reload (SPEC 8.1, 16.3).
     await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
@@ -122,7 +122,7 @@ test.describe("with the fake game", () => {
     await start(page);
     await fakeGame!.call("/crash", { name: container });
     await expect(badge(page)).toHaveText("Crashed", live);
-    await expect(page.getByText(/The game crashed/)).toBeVisible();
+    await expect(page.locator("main").getByText(/The game crashed/)).toBeVisible();
     await checkPage(page);
   });
 
@@ -132,7 +132,7 @@ test.describe("with the fake game", () => {
     await start(page);
     await fakeGame!.call("/crash-loop", { name: container, on: true });
     await expect(badge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
-    await expect(page.getByText(/crashed again and again, so Foreman stopped it/)).toBeVisible();
+    await expect(page.locator("main").getByText(/crashed again and again, so Foreman stopped it/)).toBeVisible();
     const crashLog = page.getByRole("region", { name: "The last log lines before the crash" });
     await expect(crashLog).not.toBeEmpty();
     await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
@@ -178,7 +178,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("link", { name: "Stop server" }).focus();
     await fakeGame!.call("/crash", { name: container });
     await expect(badge(page)).toHaveText("Crashed", live);
-    await expect(page.getByText(/The game crashed/)).toBeVisible();
+    await expect(page.locator("main").getByText(/The game crashed/)).toBeVisible();
     expect(await focused()).toBe("act-stop");
 
     // Force stop goes away with the game: focus moves to the section's heading.
@@ -254,7 +254,7 @@ test.describe("with the fake game", () => {
   test("a missing image is downloaded as its own action", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { image: false });
     await page.getByRole("button", { name: "Start server" }).click();
-    await expect(page.getByText(/game image for this world's Factorio version is not downloaded/)).toBeVisible(live);
+    await expect(page.locator("main").getByText(/game image for this world's Factorio version is not downloaded/)).toBeVisible(live);
     await checkPage(page);
     await page.getByRole("button", { name: "Download game image" }).click();
     await expect(page.getByRole("button", { name: "Download game image" })).toHaveCount(0, live);
@@ -269,7 +269,7 @@ test.describe("with the fake game", () => {
     await page.goto("/worlds/base/snapshots");
     await page.getByLabel(/Label/).fill("While running");
     await page.getByRole("button", { name: "Take snapshot" }).click();
-    await expect(page.getByText('Foreman took the snapshot "While running".')).toBeVisible();
+    await expect(page.locator("main").getByText('Foreman took the snapshot "While running".')).toBeVisible();
     expect(await commands(fakeGame!)).toContain("/server-save");
 
     await page.getByRole("link", { name: /^Restore/ }).first().click();
@@ -296,7 +296,7 @@ test.describe("with Docker unreachable", () => {
     await expect(badge(page)).toHaveText("Unknown", live);
     await expect(page.getByRole("region", { name: "Status" })).toContainText("Foreman cannot reach Docker");
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
-    await expect(page.getByText("Foreman cannot start or stop the game until it can ask Docker about it.")).toBeVisible();
+    await expect(page.locator("main").getByText("Foreman cannot start or stop the game until it can ask Docker about it.")).toBeVisible();
     await checkPage(page);
   });
 });

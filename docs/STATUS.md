@@ -474,8 +474,8 @@ container rules are strict, is in ADR 0004.
   keep working. Trusted-header sign-in ignores any direct peer inside a
   game network's address range (IPv4, IPv6 and `fe80::/10`), in both modes,
   and is refused, with a page that says why, while those ranges are not
-  yet known. Managed mode records the game network's range before the
-  first start. An adopted container that keeps NET_RAW, adds
+  yet known. Managed mode with Foreman in a container records the game
+  network's range before the first start. An adopted container that keeps NET_RAW, adds
   capabilities, is privileged, maps devices, turns off AppArmor or
   seccomp, shares a host namespace, or mounts the Docker socket, `/` or
   `/var` is refused. Every file the game can write (`world.json`,
@@ -483,9 +483,9 @@ container rules are strict, is in ADR 0004.
   following a link, opened without blocking, checked to be a regular file
   and size-capped. Snapshots and imports refuse a file or folder swapped
   for a pipe, and every open of the worlds folder refuses a link swapped in
-  later. Startup warnings are quieter: each is logged once. (The NET_RAW,
-  `fe80::/10`, first-start range and refusal-page items come from
-  #80 or the round-5 PR.)
+  later. Startup warns about a change left part way only when there is
+  evidence of one. (The NET_RAW, `fe80::/10`, first-start range and
+  refusal-page items come from #80.)
 - **Test tools.** The fake game can seed an adopted container that follows
   the game folder's links, prints the entrypoint's trace with the password,
   and applies `DLC_SPACE_AGE`. The fake Docker fails a test that makes a
@@ -560,6 +560,9 @@ container rules are strict, is in ADR 0004.
   not prevented.
 - An adopted game on the host network gets the warning but no RCON
   address, and the header range guard does not cover it.
+- In managed mode with Foreman outside a container, a new game's range is
+  recorded only right after its container starts, so for that moment the
+  header range guard does not cover it.
 - In a container the game folder and the data directory are separate
   mounts, so hard links between them fail and adopted-mode snapshots are
   full copies. The snapshot page's note blames a different filesystem,

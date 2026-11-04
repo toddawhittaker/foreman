@@ -633,7 +633,8 @@ never depends on colour.
   the visible message rendered beside the thing that changed.
 - On the Server page, the unfinished-switch notice (SPEC 7.10) and the
   game-network warning (SPEC 4.4) are Warnings in the page, outside any
-  live region, with the actions they offer beside them.
+  live region. The notice sits in the control panel with its Switch back
+  button after it; the network warning sits with the status facts.
 - **Empty states** are plain paragraphs in `text-muted`, never an
   illustration: "No worlds yet. Import a folder of saves or upload a save
   file to make your first world." followed by the action buttons. The
