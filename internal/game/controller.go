@@ -70,6 +70,7 @@ const (
 	AuditForceStop     = "force-stop"
 	AuditImageDownload = "image-download"
 	AuditConsole       = "console"
+	AuditSwitch        = "switch"
 )
 
 // Errors a caller can test for with errors.Is. The text is shown to the admin.
@@ -116,6 +117,9 @@ type Config struct {
 	Docker *docker.Client
 	Worlds *world.Manager
 	Audit  AuditLog
+	// Switches records switches in progress and the active world (SPEC 5.3,
+	// 7.10). Without it Switch refuses.
+	Switches SwitchStore
 	// HostDataDir is the data directory's path on the Docker host, for the
 	// bind mount and the install label (SPEC 3.5, 4.3).
 	HostDataDir string
@@ -149,6 +153,7 @@ type Controller struct {
 	docker   *docker.Client
 	worlds   *world.Manager
 	auditLog AuditLog
+	switches SwitchStore
 	hostData string
 	user     string
 	images   map[string]string
@@ -218,7 +223,7 @@ func New(cfg Config) (*Controller, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Controller{
-		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit,
+		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
 		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
@@ -283,6 +288,7 @@ type worldRun struct {
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
 	download *Operation
+	notice   *SwitchNotice // an unfinished switch found at startup; cleared by the next operation
 
 	adoptFailed string // a container whose world's secrets could not be read, warned about once
 	adoptErr    error  // why that container could not be taken on
@@ -370,13 +376,15 @@ type Step struct {
 	State StepState
 }
 
-// Operation is a start, stop, restart, restore or image download in
-// progress, or the last one to finish.
+// Operation is a start, stop, restart, restore, switch or image download
+// in progress, or the last one to finish.
 type Operation struct {
 	Action string // one of the Audit* actions, or "restore"
 	Steps  []Step
 	Done   bool
 	Error  string // why it failed; empty when it worked or is running
+	// Switch is set on a switch, which both worlds show (SPEC 7.9).
+	Switch *SwitchInfo
 }
 
 func (o *Operation) clone() *Operation {
@@ -385,7 +393,140 @@ func (o *Operation) clone() *Operation {
 	}
 	out := *o
 	out.Steps = append([]Step(nil), o.Steps...)
+	if o.Switch != nil {
+		sw := *o.Switch
+		out.Switch = &sw
+	}
 	return &out
+}
+
+// newOperation makes an operation whose steps all wait.
+func newOperation(action string, steps ...[]string) *Operation {
+	op := &Operation{Action: action}
+	for _, list := range steps {
+		for _, s := range list {
+			op.Steps = append(op.Steps, Step{Name: s, State: StepWaiting})
+		}
+	}
+	return op
+}
+
+// opRun is one operation in progress. A switch holds two worlds; every
+// other operation holds one.
+type opRun struct {
+	c      *Controller
+	w      *worldRun   // the world the current step acts on
+	ws     []*worldRun // every world the operation holds, in id order
+	op     *Operation  // shared by every world in ws
+	cancel context.CancelFunc
+	ended  chan struct{}
+}
+
+// beginOp records an operation on one world and shows its steps. The
+// returned context ends when ForceStop interrupts the operation. Call end
+// when done.
+func (c *Controller) beginOp(ctx context.Context, w *worldRun, action string, steps ...[]string) (context.Context, *opRun) {
+	return c.beginOpOn(ctx, []*worldRun{w}, newOperation(action, steps...))
+}
+
+// beginOpOn records op on every world in ws, which must be in id order. Each
+// world shows it and is busy until it ends, and a forced stop on any of them
+// interrupts it. Starting an action clears a world's switch notice.
+func (c *Controller) beginOpOn(ctx context.Context, ws []*worldRun, op *Operation) (context.Context, *opRun) {
+	ctx, cancel := context.WithCancel(ctx)
+	o := &opRun{c: c, w: ws[0], ws: ws, op: op, cancel: cancel, ended: make(chan struct{})}
+	o.lockAll()
+	for _, w := range ws {
+		w.op, w.opState, w.opCancel, w.opDone = op, "", cancel, o.ended
+		w.notice = nil
+		c.changedLocked(w, true)
+	}
+	o.unlockAll()
+	return ctx, o
+}
+
+// lockAll takes every world's mu in id order, so two operations never
+// deadlock and a page never sees a step change on one world only.
+func (o *opRun) lockAll() {
+	for _, w := range o.ws {
+		w.mu.Lock()
+	}
+}
+
+func (o *opRun) unlockAll() {
+	for i := len(o.ws) - 1; i >= 0; i-- {
+		o.ws[i].mu.Unlock()
+	}
+}
+
+// publishLocked sends the status of every world; lockAll is held.
+func (o *opRun) publishLocked() {
+	for _, w := range o.ws {
+		o.c.changedLocked(w, true)
+	}
+}
+
+func (o *opRun) set(state StepState, names ...string) {
+	o.lockAll()
+	defer o.unlockAll()
+	for i := range o.op.Steps {
+		for _, n := range names {
+			if o.op.Steps[i].Name == n {
+				o.op.Steps[i].State = state
+			}
+		}
+	}
+	o.publishLocked()
+}
+
+func (o *opRun) begin(name string)    { o.set(StepProgress, name) }
+func (o *opRun) done(name string)     { o.set(StepDone, name) }
+func (o *opRun) skip(names ...string) { o.set(StepSkipped, names...) }
+
+// show sets the state the current world's page shows while the operation
+// runs.
+func (o *opRun) show(s State) {
+	o.w.mu.Lock()
+	defer o.w.mu.Unlock()
+	o.w.opState = s
+	o.c.changedLocked(o.w, true)
+}
+
+// end finishes the operation, marking the step in progress failed when err
+// is set, and lets the monitor look after the containers again. It returns
+// err, with an interruption by ForceStop as ErrCancelled.
+func (o *opRun) end(err error) error {
+	if errors.Is(err, context.Canceled) {
+		err = ErrCancelled
+	}
+	o.lockAll()
+	for i := range o.op.Steps {
+		switch o.op.Steps[i].State {
+		case StepProgress:
+			o.op.Steps[i].State = StepDone
+			if err != nil {
+				o.op.Steps[i].State = StepFailed
+			}
+		case StepWaiting:
+			// A step that will never run must not read as waiting.
+			if err != nil {
+				o.op.Steps[i].State = StepSkipped
+			}
+		}
+	}
+	o.op.Done = true
+	if err != nil {
+		o.op.Error = err.Error()
+	}
+	o.cancel()
+	for _, w := range o.ws {
+		w.opState, w.opCancel, w.opDone = "", nil, nil
+	}
+	o.publishLocked()
+	o.unlockAll()
+	close(o.ended)
+	o.c.pokeMonitor()
+	return err
 }
 
 // Status is everything the server page shows about a world's game
@@ -413,6 +554,9 @@ type Status struct {
 	Operation *Operation
 	// Download is the image download running now, or the last one.
 	Download *Operation
+	// Notice reports an unfinished switch found at startup, on the world
+	// that is active after it (SPEC 7.10); nil when there is none.
+	Notice *SwitchNotice
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -453,6 +597,10 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	st := Status{
 		World: w.id, LastCrash: w.lastCrash, GameVersion: w.gameVersion, Image: w.image,
 		Save: w.run.save, Operation: w.op.clone(), Download: w.download.clone(),
+	}
+	if w.notice != nil {
+		n := *w.notice
+		st.Notice = &n
 	}
 	st.State, st.Reason = c.stateLocked(w)
 	if st.State == StateRunning || st.State == StateStarting || st.State == StateStopping || st.State == StateCrashed {
