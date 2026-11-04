@@ -241,6 +241,10 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 		s.fail(w, r, "list import folder", err)
 		return
 	}
+	// A fresh form with one folder to choose starts filled in from its save.
+	if status == http.StatusOK && folder == (ImportForm{}) && len(inbox) == 1 && inbox[0].Read {
+		folder = ImportForm{Source: inbox[0].Name, GameVersion: inbox[0].GameVersion, SpaceAge: inbox[0].SpaceAge}
+	}
 	folder.IDPrefix, upload.IDPrefix = "folder", "upload"
 	s.page(w, r, status, u.Username, ImportPage{
 		InboxDir: s.worlds.Dirs().Imports,
@@ -256,10 +260,26 @@ func importFields(name, version, spaceAge string) ImportForm {
 	if strings.TrimSpace(name) == "" {
 		f.NameError = sentence(world.ErrNameEmpty)
 	}
-	if !world.ValidGameVersion(f.GameVersion) {
+	// An empty version is filled in from the save later (fillFromSave).
+	if f.GameVersion != "" && !world.ValidGameVersion(f.GameVersion) {
 		f.VersionError = sentence(world.ErrBadGameVersion)
 	}
 	return f
+}
+
+// fillFromSave takes the version from the save when the admin left it
+// empty. Space Age then is on if the save uses it or the box is ticked. A
+// save that could not be read leaves the version required.
+func (f *ImportForm) fillFromSave(info world.SaveInfo, ok bool) {
+	if f.GameVersion != "" || f.VersionError != "" {
+		return
+	}
+	if !ok {
+		f.VersionError = sentence(world.ErrBadGameVersion)
+		return
+	}
+	f.GameVersion = info.GameVersion
+	f.SpaceAge = f.SpaceAge || info.SpaceAge
 }
 
 func (f ImportForm) failed() bool {
@@ -287,6 +307,15 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 	f.Source = r.PostFormValue("folder")
 	if f.Source == "" {
 		f.SourceError = sentence(world.ErrNoFolder)
+	}
+	if f.GameVersion == "" && f.Source != "" {
+		// A folder that is gone is reported by the import below.
+		folder, err := s.worlds.InboxEntry(f.Source)
+		if err != nil && !errors.Is(err, world.ErrNoFolder) {
+			s.fail(w, r, "read import folder", err)
+			return
+		}
+		f.fillFromSave(world.SaveInfo{GameVersion: folder.GameVersion, SpaceAge: folder.SpaceAge}, folder.Read)
 	}
 	if f.failed() {
 		s.importPage(w, r, u, http.StatusBadRequest, f, ImportForm{})
@@ -348,6 +377,10 @@ func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	} else if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a size is never negative
 		_ = root.Remove(up.Temp)
 		return "", f, err
+	}
+	if f.SourceError == "" {
+		info, ok := world.ReadSaveInfo(root, up.Temp)
+		f.fillFromSave(info, ok)
 	}
 	if f.failed() {
 		_ = root.Remove(up.Temp)

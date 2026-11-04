@@ -91,12 +91,22 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
-	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
-		return err
-	}
+	// The check runs as the first step, so a refusal shows in the step
+	// list, and is audited as a refusal rather than a start (SPEC 12.9).
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps(opts))
-	err = c.startLocked(ctx, o, by, opts)
-	return o.end(err)
+	o.begin(StepCheck)
+	check, err := c.precheck(id, opts)
+	if err != nil {
+		return o.end(c.checkFailed(ctx, by, AuditStart, id, opts.auditDetail(), err))
+	}
+	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
+		return o.end(err)
+	}
+	o.done(StepCheck)
+	if err := c.anywaySnapshot(o, by, check); err != nil {
+		return o.end(err)
+	}
+	return o.end(c.launchLocked(ctx, o))
 }
 
 // ErrWorldNotActive matches the refusal to start a world that is not the
@@ -145,12 +155,18 @@ func (c *Controller) checkLocked(ctx context.Context, o *opRun, by Actor, opts S
 		return err
 	}
 	o.done(StepCheck)
+	return c.anywaySnapshot(o, by, check)
+}
+
+// anywaySnapshot takes the snapshot a start anyway needs, or skips the step
+// when the check found nothing (SPEC 7.4).
+func (c *Controller) anywaySnapshot(o *opRun, by Actor, check world.PreCheck) error {
 	if check.OK() {
 		o.skip(StepSnapshot)
 		return nil
 	}
 	o.begin(StepSnapshot)
-	if _, err := c.worlds.AutoSnapshot(id, ReasonStartAnyway, LabelStartAnyway, by.Username); err != nil {
+	if _, err := c.worlds.AutoSnapshot(o.w.id, ReasonStartAnyway, LabelStartAnyway, by.Username); err != nil {
 		return fmt.Errorf("take the snapshot before starting anyway: %w", err)
 	}
 	o.done(StepSnapshot)
@@ -589,10 +605,10 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
-	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
-		return err
-	}
 	if _, err := c.precheck(id, opts); err != nil {
+		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)
+	}
+	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps(opts))

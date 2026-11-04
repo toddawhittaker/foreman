@@ -9,6 +9,24 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 )
 
+// A blocked start is said with the state that blocks it, so a screen reader
+// user learns why Start server is gone.
+func TestBlockedStartIsAnnounced(t *testing.T) {
+	l := &liveStream{render: newTestRenderer(t), sent: map[string]string{}}
+	rec := httptest.NewRecorder()
+	l.w, l.rc = rec, http.NewResponseController(rec)
+	if err := l.send(serverCase(game.StateRunning, func(*ServerPage) {})); err != nil {
+		t.Fatal(err)
+	}
+	rec.Body.Reset()
+	if err := l.send(serverCase(game.StateCrashLooping, func(*ServerPage) {})); err != nil {
+		t.Fatal(err)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "Server is now crash-looping "+blockedAnnouncement) {
+		t.Errorf("the blocked start is not read out:\n%s", body)
+	}
+}
+
 // DESIGN 7.5: a new result is announced even when no region's HTML changed,
 // and on an event of its own, so a missing region cannot lose it.
 func TestAnnouncementIsItsOwnEvent(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 // InboxFolder is one subfolder of the import inbox (SPEC 5.5).
@@ -20,6 +21,11 @@ type InboxFolder struct {
 	HasMods bool
 	// Bytes is what an import would copy.
 	Bytes uint64
+	// Read is true when the newest save's header was read; GameVersion and
+	// SpaceAge are set only then.
+	Read        bool
+	GameVersion string
+	SpaceAge    bool
 }
 
 // ErrBadGameVersion is returned for a game version not shaped like 2.0.72.
@@ -38,8 +44,9 @@ func ValidGameVersion(v string) bool { return gameVersionRE.MatchString(v) }
 
 // importFile is a regular file to copy, by its path inside the source folder.
 type importFile struct {
-	path string
-	size uint64
+	path  string
+	size  uint64
+	mtime time.Time
 }
 
 // Inbox lists the import inbox's subfolders. Hidden folders and anything
@@ -68,6 +75,30 @@ func (m *Manager) Inbox() ([]InboxFolder, error) {
 	return out, nil
 }
 
+// InboxEntry describes one inbox folder by name, as Inbox does, without
+// reading the others. A name that is not a folder directly in the inbox is
+// ErrNoFolder.
+func (m *Manager) InboxEntry(name string) (InboxFolder, error) {
+	if !inboxName(name) {
+		return InboxFolder{}, ErrNoFolder
+	}
+	inbox, err := openFolder(m.dirs.Imports)
+	if err != nil {
+		return InboxFolder{}, err
+	}
+	defer func() { _ = inbox.Close() }()
+	if info, err := inbox.Lstat(name); err != nil || !info.IsDir() {
+		return InboxFolder{}, ErrNoFolder
+	}
+	return inboxFolder(inbox, name)
+}
+
+// inboxName reports whether name can be an inbox folder: one path element,
+// not hidden.
+func inboxName(name string) bool {
+	return name != "" && path.Base(name) == name && !strings.HasPrefix(name, ".")
+}
+
 func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 	src, err := inbox.OpenRoot(name)
 	if err != nil {
@@ -81,6 +112,17 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 	f := InboxFolder{Name: name, Saves: len(saves), HasMods: mods != nil}
 	for _, x := range slices.Concat(saves, mods) {
 		f.Bytes += x.size
+	}
+	if len(saves) > 0 {
+		newest := saves[0]
+		for _, s := range saves[1:] {
+			if s.mtime.After(newest.mtime) {
+				newest = s
+			}
+		}
+		if info, ok := ReadSaveInfo(src, newest.path); ok {
+			f.Read, f.GameVersion, f.SpaceAge = true, info.GameVersion, info.SpaceAge
+		}
 	}
 	return f, nil
 }
@@ -101,7 +143,7 @@ func importPlan(src *os.Root) (saves, mods []importFile, err error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		saves = append(saves, importFile{e.Name(), uint64(info.Size())}) //nolint:gosec // a file size is never negative
+		saves = append(saves, importFile{e.Name(), uint64(info.Size()), info.ModTime()}) //nolint:gosec // a file size is never negative
 	}
 	info, err := src.Lstat(ModsDir)
 	if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.IsDir()) {
@@ -119,7 +161,7 @@ func importPlan(src *os.Root) (saves, mods []importFile, err error) {
 		if err != nil {
 			return err
 		}
-		mods = append(mods, importFile{p, uint64(info.Size())}) //nolint:gosec // a file size is never negative
+		mods = append(mods, importFile{p, uint64(info.Size()), info.ModTime()}) //nolint:gosec // a file size is never negative
 		return nil
 	})
 	return saves, mods, err
@@ -133,7 +175,7 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 	if err := m.checkNew(ctx, name, gameVersion); err != nil {
 		return "", err
 	}
-	if folder == "" || path.Base(folder) != folder || strings.HasPrefix(folder, ".") {
+	if !inboxName(folder) {
 		return "", ErrNoFolder
 	}
 	inbox, err := openFolder(m.dirs.Imports)

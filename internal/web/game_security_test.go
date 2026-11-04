@@ -473,10 +473,11 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 	g.startGame(id)
 	g.emitSecrets(id, rconPW, gamePW)
 	g.fake.SetCrashLoop(name, true)
-	if crash := g.waitPage(`state--crash`); !strings.Contains(crash, game.Mask) {
-		t.Errorf("the crash page does not show the masked log lines, so the check proves nothing:\n%s", crash)
-	} else {
-		seen.WriteString(crash)
+	// The Server page names only the game's reason (SPEC 8.7); the masked
+	// lines themselves are on the Console page.
+	seen.WriteString(g.waitPage(`state--crash`))
+	if console := g.get(PathConsole); !strings.Contains(console, game.Mask) {
+		t.Errorf("the console does not show the masked log lines, so the check proves nothing:\n%s", console)
 	}
 	look(pages...)
 	g.fake.SetCrashLoop(name, false)
@@ -800,7 +801,7 @@ func TestRefusedStartIsAudited(t *testing.T) {
 	}
 	var found bool
 	for _, e := range g.audit() {
-		found = found || (e.Action == game.AuditStart && e.Username == "alice" && e.WorldID == id)
+		found = found || (e.Action == game.AuditStartRefused && e.Username == "alice" && e.WorldID == id && strings.Contains(e.Detail, "no save"))
 	}
 	if !found {
 		t.Errorf("the refused start is not audited: %+v", g.audit())

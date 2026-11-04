@@ -126,28 +126,53 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 
-  test("a crash loop is stopped and shown with the last log lines", async ({ page, foreman, fakeGame }) => {
+  // SPEC 8.7, 8.9: a crash loop names the game's reason, links to the full
+  // log, and says why a start would not run instead of offering Start server.
+  test("a crash loop is stopped and shown with the game's reason", async ({ page, foreman, fakeGame }) => {
     test.setTimeout(60_000);
     await setUp(page, foreman, fakeGame!);
     await start(page);
     await fakeGame!.call("/crash-loop", { name: container, on: true });
     await expect(badge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
-    await expect(page.locator("main").getByText(/crashed again and again, so Foreman stopped it/)).toBeVisible();
-    const crashLog = page.getByRole("region", { name: "The last log lines before the crash" });
-    await expect(crashLog).not.toBeEmpty();
-    await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
-    // The button is not flush under the log (DESIGN 6, rule 4).
-    const logRect = (await crashLog.boundingBox())!;
-    const buttonRect = (await page.getByRole("button", { name: "Start server" }).boundingBox())!;
-    expect(buttonRect.y - (logRect.y + logRect.height)).toBeGreaterThanOrEqual(8);
+    const crash = page.locator(".message--warning").filter({ hasText: "crashed again and again, so Foreman stopped it" });
+    await expect(crash).toBeVisible();
+    await expect(page.locator("main pre")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
+    await expect(page.locator(".message--note")).toContainText("crashed again and again the last time it ran");
+    const retry = page.getByRole("button", { name: "Try to start again" });
+    await expect(retry).toBeVisible();
+    // The button is not flush under the message (DESIGN 6, rule 4).
+    const noteRect = (await page.locator(".message--note").boundingBox())!;
+    const buttonRect = (await retry.boundingBox())!;
+    expect(buttonRect.y - (noteRect.y + noteRect.height)).toBeGreaterThanOrEqual(8);
     await checkPage(page);
+    await expect(page.locator("#announcer")).toContainText("Start server is replaced by Try to start again");
+    await crash.getByRole("link", { name: "Read the full log on the Console page" }).click();
+    await expect(page).toHaveURL(/\/console/);
+  });
+
+  // SPEC 8.9: a blocked start can still be started by hand once fixed.
+  test("Try to start again starts the world by hand", async ({ page, foreman, fakeGame }) => {
+    test.setTimeout(60_000);
+    await setUp(page, foreman, fakeGame!);
+    await start(page);
+    await fakeGame!.call("/crash-loop", { name: container, on: true });
+    await expect(badge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
+    await expect(page.locator(".button--primary")).toHaveCount(0);
+    await checkPage(page);
+    await fakeGame!.call("/crash-loop", { name: container, on: false });
+    await page.getByRole("button", { name: "Try to start again" }).click();
+    await expect(badge(page)).toHaveText("Running", live);
+    await expect(page.getByRole("button", { name: "Try to start again" })).toHaveCount(0);
   });
 
   test("a refused start lists the problems, and start anyway takes a snapshot first", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await page.getByRole("button", { name: "Start server" }).click();
-    const refusal = page.locator(".message--error").filter({ hasText: "does not match the world" });
+    // A refusal that offers a choice is a warning, not an error (DESIGN 7.3).
+    const refusal = page.locator(".message--warning").filter({ hasText: "does not match the world" });
     await expect(refusal).toContainText("foreman-test", live);
+    await expect(refusal.locator("p strong").first()).toHaveText("Warning:");
     await expect(refusal).toContainText("This world does not have the file of the mod the save base.zip was last played with: foreman-test.");
     await expect(refusal).toContainText("Foreman cannot add or turn on a world's mods yet.");
     await expect(badge(page)).toHaveText("Stopped");
@@ -162,6 +187,8 @@ test.describe("with the fake game", () => {
     const confirm = page.getByRole("region", { name: /Start Base although its save does not match the world/ });
     await expect(confirm).toContainText('labelled "Before start anyway"');
     await expect(confirm).toContainText("foreman-test");
+    await expect(confirm).toContainText("When the game loads it, it drops from the save whatever depends on these problems");
+    await expect(confirm).not.toContainText("will delete");
     await checkPage(page);
     await confirm.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
@@ -182,6 +209,10 @@ test.describe("with the fake game", () => {
     await expect(refusal).toContainText("Foreman did not start the game, because Base cannot run in this game:");
     await expect(refusal.getByRole("link", { name: "Start anyway" })).toHaveCount(0);
     await expect(badge(page)).toHaveText("Stopped");
+    // A start known to be refused is not offered as if it would run.
+    await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
+    await expect(page.locator(".message--note")).toContainText("Foreman refused the last start of Base");
+    await expect(page.getByRole("button", { name: "Try to start again" })).toBeVisible();
     await checkPage(page);
   });
 
@@ -211,8 +242,8 @@ test.describe("with the fake game", () => {
   test("a failed start is announced", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
-    await expect(page.locator(".message--error")).toContainText("does not match the world", live);
-    await expect(page.locator("#announcer")).toHaveText(/^Error: Foreman did not start the game, because the save that would load does not match the world/);
+    await expect(page.locator(".message--warning")).toContainText("does not match the world", live);
+    await expect(page.locator("#announcer")).toHaveText(/^Warning: Foreman did not start the game, because the save that would load does not match the world/);
     await expect(page.locator("#announcer")).not.toContainText("Server is now");
   });
 

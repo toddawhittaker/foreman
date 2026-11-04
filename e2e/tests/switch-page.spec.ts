@@ -175,7 +175,7 @@ test.describe("with the fake game", () => {
     await openSwitch(page, "second", "Second");
     await page.getByRole("button", { name: "Switch to Second" }).click();
 
-    const refusal = page.locator(".message--error").filter({ hasText: "Foreman did not switch" });
+    const refusal = page.locator(".message--warning").filter({ hasText: "Foreman did not switch" });
     await expect(refusal).toContainText("foreman-test", live);
     await expect(active(page, "Base")).toBeVisible();
     await checkPage(page);
@@ -183,6 +183,8 @@ test.describe("with the fake game", () => {
 
     const confirm = page.getByRole("region", { name: "Switch to Second anyway?" });
     await expect(confirm).toContainText('"Before start anyway"');
+    await expect(confirm).toContainText("When the game loads it, it drops from the save whatever depends on these problems");
+    await expect(confirm).not.toContainText("will delete");
     await checkPage(page);
     await confirm.getByRole("button", { name: "Switch to Second anyway" }).click();
     await expect(active(page, "Second")).toBeVisible(live);

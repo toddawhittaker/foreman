@@ -649,8 +649,9 @@ func TestStartLoadFailure(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 	st := r.waitState(id, StateCrashLooping)
-	if len(st.CrashLines) == 0 || len(st.CrashLines) > CrashLines {
-		t.Errorf("%d crash lines", len(st.CrashLines))
+	// SPEC 8.7: the page names the game's reason, not raw log lines.
+	if !strings.HasPrefix(st.CrashReason, ". Factorio said: ") || !strings.Contains(st.CrashReason, "Opening zip") {
+		t.Errorf("crash reason %q, want the game's error line", st.CrashReason)
 	}
 	eventually(t, func() bool { return r.container(id).Status == "exited" }, "the container to stop")
 }

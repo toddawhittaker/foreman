@@ -255,7 +255,7 @@ func (p ServerPage) SwitchBack() *SwitchOffer {
 // switch found at startup brings its own words in the notice.
 func (p ServerPage) SwitchNote() string {
 	o := p.Status.Operation
-	if o == nil || o.Switch == nil || !o.Done || o.Error == "" {
+	if o == nil || o.Switch == nil || !o.Done || o.Error == "" || p.opSuperseded() {
 		return ""
 	}
 	if o.Switch.Presented {

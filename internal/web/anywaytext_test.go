@@ -21,8 +21,8 @@ func TestAnywayText(t *testing.T) {
 		{"switch, missing and turned-off mods", both, true, "Foreman cannot add or turn on a world's mods yet. To keep what those mods built, put the mod files in the import folder's mods/ and import the world again. Or switch anyway: Foreman takes a snapshot of both worlds first, so you can undo it from the Snapshots page."},
 		{"start, mods only turned off", off, false, "Foreman cannot turn on a world's mods yet. Or start anyway: Foreman takes a snapshot first, so you can undo it from the Snapshots page."},
 		{"switch, mods only turned off", off, true, "Foreman cannot turn on a world's mods yet. Or switch anyway: Foreman takes a snapshot of both worlds first, so you can undo it from the Snapshots page."},
-		{"start, Space Age", spaceAge, false, "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above."},
-		{"switch, Space Age", spaceAge, true, "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then deletes what is listed above."},
+		{"start, Space Age", spaceAge, false, "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then drops from the save whatever depends on the problems above."},
+		{"switch, Space Age", spaceAge, true, "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then drops from the save whatever depends on the problems above."},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

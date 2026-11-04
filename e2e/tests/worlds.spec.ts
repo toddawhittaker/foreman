@@ -1,6 +1,6 @@
 import { test, expect, checkPage, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { mkdirSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -144,6 +144,87 @@ test("imports a folder from the inbox and leaves it unchanged", async ({ page, f
   const world = join(foreman.dataDir, "worlds", "old-game");
   expect(readdirSync(join(world, "saves")).sort()).toEqual(["base.zip", "later.zip"]);
   expect(readdirSync(join(world, "mods"))).toEqual(["mod-list.json"]);
+});
+
+const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
+
+function inboxFixture(f: Foreman, folder: string, fixture: string) {
+  mkdirSync(join(f.dataDir, "import", folder), { recursive: true });
+  copyFileSync(join(fixtures, fixture), join(f.dataDir, "import", folder, "a.zip"));
+}
+
+// SPEC 5.5: the version and Space Age come from the save.
+test("a single inbox folder fills in the version and Space Age, and imports", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "only", "2.1.24-space-age.zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await expect(form.getByLabel(/only: 1 save.*made with Factorio 2.1.24, Space Age/)).toBeChecked();
+  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await expect(form.getByLabel("Space Age is on")).toBeChecked();
+  await checkPage(page);
+  await form.getByLabel("World name").fill("Prefilled");
+  await form.getByRole("button", { name: "Import folder" }).click();
+  await expect(page).toHaveURL("/worlds/prefilled");
+  await expect(page.locator("dl.facts")).toContainText("2.1.24");
+});
+
+test("choosing a folder fills the version, but not over typed text", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "one", "2.1.24-space-age.zip");
+  inboxFixture(foreman, "two", "2.0.77-no-space-age.zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await expect(form.getByLabel("Game version")).toHaveValue("");
+  await form.getByLabel(/one: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await expect(form.getByLabel("Space Age is on")).toBeChecked();
+  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.1.24 from the save, with Space Age on.");
+  await checkPage(page);
+  await form.getByLabel(/two: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("2.0.77");
+  await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
+  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.0.77 from the save.");
+  await form.getByLabel("Game version").fill("2.0.1");
+  await form.getByLabel(/one: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("2.0.1");
+});
+
+// A folder whose save cannot be read clears what the script filled in, so
+// the previous folder's version is never imported by mistake.
+test("choosing an unreadable folder after a readable one clears the filled fields", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "good", "2.1.24-space-age.zip");
+  mkdirSync(join(foreman.dataDir, "import", "junk"), { recursive: true });
+  writeFileSync(join(foreman.dataDir, "import", "junk", "a.zip"), "not a zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await form.getByLabel(/good: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await form.getByLabel(/junk: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("");
+  await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
+  await expect(page.locator("#announcer")).toContainText("could not read this folder's save");
+  await checkPage(page);
+});
+
+// After a failed submit the server fills the version from the save; that
+// value is still cleared when an unreadable folder is chosen next.
+test("a version the server filled after a failed submit is cleared for an unreadable folder", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "good", "2.1.24-space-age.zip");
+  mkdirSync(join(foreman.dataDir, "import", "junk"), { recursive: true });
+  writeFileSync(join(foreman.dataDir, "import", "junk", "a.zip"), "not a zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await form.getByLabel(/good: /).check();
+  await form.getByLabel("Game version").fill("");
+  await form.getByRole("button", { name: "Import folder" }).click();
+  const back = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await expect(back.getByLabel("Game version")).toHaveValue("2.1.24");
+  await back.getByLabel(/junk: /).check();
+  await expect(back.getByLabel("Game version")).toHaveValue("");
+  await expect(back.getByLabel("Space Age is on")).not.toBeChecked();
 });
 
 test("imports a world by uploading a save", async ({ page, foreman }) => {

@@ -42,7 +42,7 @@ func TestControlActionsHaveStableIDs(t *testing.T) {
 	restored := serverCase(game.StateRunning, func(p *ServerPage) {
 		p.Result, p.HaveResult = actionResult{Action: game.ActionRestore}, true
 	})
-	crashed := serverCase(game.StateCrashed, func(p *ServerPage) { p.Status.CrashLines = []string{"oops"} })
+	crashed := serverCase(game.StateCrashed, func(p *ServerPage) { p.Status.CrashReason = ". Factorio said: oops" })
 	cases := []struct {
 		page ServerPage
 		ids  []string
@@ -52,7 +52,7 @@ func TestControlActionsHaveStableIDs(t *testing.T) {
 		{failed, []string{"act-start", "act-start-anyway"}},
 		{missing, []string{"act-start", "act-pull"}},
 		{restored, []string{"act-snapshots"}},
-		{crashed, []string{"crash-log", "act-stop", "act-force-stop"}},
+		{crashed, []string{"act-console", "act-stop", "act-force-stop"}},
 	}
 	for _, c := range cases {
 		html := controlHTML(t, c.page)

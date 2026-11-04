@@ -93,7 +93,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	}
 	stale := c.dropContainerLocked(w)
 	// The container is fresh: Docker reports it created, with no restarts.
-	w.containerID, w.dockerStatus = cid, "created"
+	w.containerID, w.dockerStatus, w.logMark = cid, "created", w.logs.Mark()
 	w.seenRestarts, w.crashes, w.lastCrash = 0, nil, time.Time{}
 	w.stopping, w.crashLoop, w.crashedRun = false, false, false
 	w.run = runState{save: p.save}

@@ -49,8 +49,6 @@ const (
 	// CrashLoopCount crashes within CrashLoopWindow make a crash loop (SPEC 8.9).
 	CrashLoopCount  = 3
 	CrashLoopWindow = 10 * time.Minute
-	// CrashLines is how many log lines are shown with a crash (SPEC 8.7).
-	CrashLines = 20
 )
 
 // Defaults that the spec leaves to Foreman.
@@ -71,6 +69,11 @@ const (
 	AuditImageDownload = "image-download"
 	AuditConsole       = "console"
 	AuditSwitch        = "switch"
+	// A start, restart or switch the checks refused before anything was
+	// done is recorded under its own action, with the reason (SPEC 12.9).
+	AuditStartRefused   = "start-refused"
+	AuditRestartRefused = "restart-refused"
+	AuditSwitchRefused  = "switch-refused"
 )
 
 // Errors a caller can test for with errors.Is. The text is shown to the admin.
@@ -259,8 +262,11 @@ type worldRun struct {
 	logs  *LogBuffer
 	joins *JoinTimes
 
-	mu            sync.Mutex
-	containerID   string // "" when there is no container
+	mu          sync.Mutex
+	containerID string // "" when there is no container
+	// logMark is where the current container's lines begin in logs, so a
+	// crash reason is never taken from an older container (SPEC 8.7).
+	logMark       uint64
 	dockerStatus  string // Docker's State.Status at the last look; "" without a container
 	inspectErr    error  // the last inspect failed
 	startedAt     time.Time
@@ -545,12 +551,14 @@ func (o *opRun) end(err error) error {
 type Status struct {
 	World string
 	State State
-	// Reason says why the state is Unknown. A crash's reason is not named
-	// in this version (SPEC 8.7 P1): CrashLines are shown instead.
+	// Reason says why the state is Unknown.
 	Reason string
-	// CrashLines are the last log lines while crashed or crash-looping.
-	CrashLines []string
-	LastCrash  time.Time
+	// CrashReason is the game's own reason for a crash, from its log, while
+	// crashed or crash-looping; "" when the log names none (SPEC 8.7). It
+	// is masked like every line a page shows, and is a sentence's end:
+	// ": 2 mods were made for..." or ". Factorio said: ...".
+	CrashReason string
+	LastCrash   time.Time
 	// StartedAt is when the current run began; zero when not running.
 	StartedAt   time.Time
 	Uptime      time.Duration
@@ -624,8 +632,11 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		st.HaveUsage, st.CPUPercent, st.MemoryBytes = true, w.usage.cpu, w.usage.memory
 	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
-		lines := w.logs.Lines()
-		st.CrashLines = lines[max(len(lines)-CrashLines, 0):]
+		var f loadFailure
+		for _, l := range w.logs.LinesSince(w.logMark) {
+			f.add(l)
+		}
+		st.CrashReason = strings.TrimSuffix(f.reason(w.redact), ".")
 	}
 	return st
 }
@@ -708,6 +719,50 @@ func (c *Controller) pokeMonitor() {
 	case c.poke <- struct{}{}:
 	default:
 	}
+}
+
+// refusedActions names the audit action of each refusable action.
+var refusedActions = map[string]string{
+	AuditStart: AuditStartRefused, AuditRestart: AuditRestartRefused, AuditSwitch: AuditSwitchRefused,
+}
+
+// IsRefusal reports whether err is a check refusing the world as it is,
+// rather than a fault such as Docker or the disk failing: the pre-start
+// check (SPEC 7.4), a save newer than the game image, or a switch refusal.
+func IsRefusal(err error) bool {
+	var pe *PrecheckError
+	return errors.As(err, &pe) || errors.Is(err, ErrSaveNewerThanImage) ||
+		errors.Is(err, ErrSwitchSame) || errors.Is(err, ErrSwitchNotActive) ||
+		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning)
+}
+
+// checkFailed handles an error from the checks a start, restart or switch
+// runs before it does anything. A refusal is recorded as such; any other
+// error is audited as the action itself, which then failed.
+func (c *Controller) checkFailed(ctx context.Context, by Actor, action, id, detail string, err error) error {
+	if IsRefusal(err) {
+		return c.refused(ctx, by, action, id, detail, err)
+	}
+	if aerr := c.audit(ctx, by, action, id, detail); aerr != nil {
+		return aerr
+	}
+	return err
+}
+
+// refused records a start, restart or switch that the checks refused before
+// anything was done: one log line and one audit entry, each with the
+// reason, under the action's own refused name (SPEC 12.9). The reason is the
+// refusal's text, which names problems and never a secret. It returns err.
+func (c *Controller) refused(ctx context.Context, by Actor, action, id, detail string, err error) error {
+	reason := err.Error()
+	if detail != "" {
+		reason = detail + ": " + reason
+	}
+	c.log.Warn(action+" refused", "world", id, "user", by.Username, "reason", reason)
+	if aerr := c.audit(ctx, by, refusedActions[action], id, reason); aerr != nil {
+		c.log.Error("could not record the refusal in the audit log", "world", id, "action", action, "error", aerr)
+	}
+	return err
 }
 
 // audit records an action. When it cannot, the action does not go ahead,

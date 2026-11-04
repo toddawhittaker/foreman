@@ -1,5 +1,7 @@
 {{define "title"}}Import a world{{end}}
 
+{{define "scripts"}}<script src="{{static "import.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
@@ -19,7 +21,7 @@
     {{- end}}
     {{- $chosen := .Source}}
     {{- range $i, $f := $.Page.Inbox}}
-    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</span></label>
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if $f.Read}} data-game-version="{{$f.GameVersion}}"{{if $f.SpaceAge}} data-space-age{{end}}{{end}}{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}{{if $f.Read}}, made with Factorio {{$f.GameVersion}}{{if $f.SpaceAge}}, Space Age{{end}}{{end}}</span></label>
     {{- end}}
   </fieldset>
   {{- else}}
@@ -68,8 +70,8 @@
 </div>
 <div class="field">
   <label for="{{.IDPrefix}}-version">Game version</label>
-  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72.</p>
-  <input id="{{.IDPrefix}}-version" name="game_version" type="text" value="{{.GameVersion}}" required
+  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. Leave it empty to use the version the save was made with.</p>
+  <input id="{{.IDPrefix}}-version" name="game_version" type="text" value="{{.GameVersion}}"
     inputmode="decimal" autocomplete="off" spellcheck="false"
     {{- if .VersionError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-version-hint {{.IDPrefix}}-version-error"{{else}} aria-describedby="{{.IDPrefix}}-version-hint"{{end}}>
   {{- with .VersionError}}
