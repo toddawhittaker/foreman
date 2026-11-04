@@ -105,7 +105,7 @@ func TestSwitchRefusals(t *testing.T) {
 		"the active world":   {http.MethodGet, switchPath(a), nil, http.StatusOK, "This is already the active world."},
 		"post to the active": {http.MethodPost, switchPath(a), url.Values{"from": {a}}, http.StatusConflict, "This is already the active world."},
 		"a stale form":       {http.MethodPost, switchPath(b), url.Values{"from": {b}}, http.StatusConflict, "no longer the active world"},
-		"no from":            {http.MethodPost, switchPath(b), url.Values{}, http.StatusConflict, "no longer the active world"},
+		"no from":            {http.MethodPost, switchPath(b), url.Values{}, http.StatusBadRequest, "does not say which world is active"},
 		"a bad countdown":    {http.MethodPost, switchPath(b), url.Values{"from": {a}, "countdown": {"601"}}, http.StatusBadRequest, ""},
 		"an unknown world":   {http.MethodPost, switchPath("nope"), url.Values{"from": {a}}, http.StatusNotFound, ""},
 	} {

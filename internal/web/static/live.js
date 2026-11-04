@@ -43,9 +43,35 @@
 
   // The active world changed in a switch, so this page's world is no longer
   // the one the Server page shows: load the page again to show the new one.
+  // The reload would drop the announcement, so the sentence is kept for the
+  // next page to read out (SPEC 16.3).
+  const movedKey = "foreman-moved";
   document.addEventListener("htmx:sseMessage", (e) => {
-    if (e.target.getAttribute("sse-swap") === "moved") location.reload();
+    if (e.target.getAttribute("sse-swap") !== "moved") return;
+    try {
+      sessionStorage.setItem(movedKey, e.target.textContent || "The active world changed.");
+    } catch (_) {
+      // Without storage the page still reloads, only silently.
+    }
+    location.reload();
   });
+
+  // After a reload that followed a switch, focus goes to the control heading
+  // and the sentence is read out. The pause lets a screen reader settle on
+  // the new page first.
+  try {
+    const said = sessionStorage.getItem(movedKey);
+    if (said !== null) {
+      sessionStorage.removeItem(movedKey);
+      document.getElementById("control-heading")?.focus();
+      setTimeout(() => {
+        const announcer = document.getElementById("announcer");
+        if (announcer) announcer.textContent = said;
+      }, 500);
+    }
+  } catch (_) {
+    // Storage is blocked, so there is nothing to read out.
+  }
 
   // A region swap removes the element that had focus. htmx gives focus back
   // to the new element with the same id; when there is none, focus goes to

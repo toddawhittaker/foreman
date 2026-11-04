@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -91,6 +92,24 @@ func (s *server) switchRefusal(ctx context.Context, from string, to world.Summar
 	return "The game is starting or stopping, or Foreman cannot tell its state. Wait until it is running or stopped, or use Force stop.", false, nil
 }
 
+// switchBusy reports whether an adoption is running, or an operation is
+// running on this world or the active one, so a switch would be refused.
+func (s *server) switchBusy(ctx context.Context, id string) bool {
+	if _, _, adopting := s.adoption.get(); adopting {
+		return true
+	}
+	ids := []string{id}
+	if active, found, err := s.activeWorld(ctx); err == nil && found {
+		ids = append(ids, active.ID)
+	}
+	for _, id := range ids {
+		if op := s.game.Status(id).Operation; op != nil && !op.Done {
+			return true
+		}
+	}
+	return false
+}
+
 // switchPage builds the confirmation for a switch to to. from is the
 // world the form named, or "" for the active one.
 func (s *server) switchPage(ctx context.Context, from string, to world.Summary, form CountdownForm, anyway bool) (SwitchPage, error) {
@@ -140,7 +159,9 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	from := r.PostFormValue("from")
 	if from == "" {
 		// A form without it cannot say what the admin was shown.
-		from = to.ID
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest,
+			Detail: "The form does not say which world is active. Go back, reload the page and try again."})
+		return
 	}
 	form, stop := readCountdown(r)
 	anyway := r.PostFormValue("anyway") == "1"
@@ -244,6 +265,16 @@ func (p ServerPage) SwitchNote() string {
 		return p.name(o.Switch.To) + " is now the active world, but the switch did not finish."
 	}
 	return "Nothing was switched. " + p.name(o.Switch.From) + " is still the active world."
+}
+
+// movedSentence is what the reloaded page reads out: which world is now the
+// active one, then how the action ended when that is known.
+func (p ServerPage) movedSentence() string {
+	name := p.World.Name
+	if sw := p.Status.Operation.Switch; !p.Adopting && sw != nil {
+		name = p.name(sw.To)
+	}
+	return strings.TrimSpace(name + " is now the active world. " + resultAnnouncement(p))
 }
 
 // Moved reports whether this page's world stopped being the active one in a

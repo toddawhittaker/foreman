@@ -168,9 +168,10 @@ func (l *liveStream) send(p ServerPage) error {
 		wrote = true
 	}
 	// The world switched away from is no longer the one the Server page
-	// shows, so the page loads again to show the new one (SPEC 7.9).
+	// shows, so the page loads again to show the new one (SPEC 7.9). The
+	// sentence goes along, because the reload would drop the announce event.
 	if p.Moved() && !l.moved {
-		if err := l.event("moved", "The active world changed."); err != nil {
+		if err := l.event("moved", html.EscapeString(p.movedSentence())); err != nil {
 			return err
 		}
 		l.moved, wrote = true, true

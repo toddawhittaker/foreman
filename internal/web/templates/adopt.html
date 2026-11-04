@@ -20,16 +20,16 @@
     {{- else}}
     <li>Leave the game stopped, because it is not running now.</li>
     {{- end}}
-    <li>Copy the game folder's saves, mods and config into the new world, and take a snapshot of it labelled "Before adoption". If the snapshot fails, nothing else happens.</li>
-    <li>Move the original <code>saves</code>, <code>mods</code> and <code>config</code> folders into a folder named <code>pre-foreman-</code> and the time, inside the game folder. They are kept, and nothing is deleted.</li>
-    <li>Make the game folder show the new world. From then on the game reads its saves, mods and config from that world.</li>
+    <li>Copy the game folder's saves, mods and config into the new world.</li>
+    <li>Take a snapshot of the new world, labelled "Before adoption". If the snapshot fails, nothing else happens.</li>
+    <li>Move the original <code>saves</code>, <code>mods</code> and <code>config</code> folders into a folder inside the game folder, named <code>pre-foreman-</code> and the time, such as <code>pre-foreman-20261104T153000Z</code>. They are kept, and nothing is deleted.</li>
+    <li>Link the game folder's saves, mods and config to the new world, so the game reads them from there.</li>
     {{- if .Running}}
-    <li>Start the game again.</li>
+    <li>Start the game again, on the new world.</li>
     {{- end}}
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     {{template "import-fields" .Form}}
-    <p class="hint">Space Age only applies to Factorio 2.0 and later.</p>
     {{- if .Running}}
     {{template "countdown" .CountdownForm}}
     {{- end}}
