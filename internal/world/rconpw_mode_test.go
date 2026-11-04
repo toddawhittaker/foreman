@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -109,5 +110,60 @@ func TestRCONPasswordConcurrentCreatesAgree(t *testing.T) {
 		if got := <-out; got != first {
 			t.Fatalf("passwords differ: %q vs %q", got, first)
 		}
+	}
+}
+
+// SPEC 14.8: the temp file a password is written into is 0640 from the
+// moment it exists, so no other user can open it and read the password
+// once it is written. umask 0 makes a wider creation mode show.
+func TestPasswordTempIs0640BeforeAnythingIsWritten(t *testing.T) {
+	old := syscall.Umask(0)
+	defer syscall.Umask(old)
+	root, err := os.OpenRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	f, name, err := createPasswordTemp(root, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	info, err := root.Lstat(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o640 || info.Size() != 0 {
+		t.Errorf("new temp file: mode %v, %d bytes; want 0640 and empty", info.Mode().Perm(), info.Size())
+	}
+}
+
+// SPEC 14.8: a live password file left wider than 0640 (a world restored
+// before the restore narrowed it) is narrowed the next time it is read.
+// A narrower one is left alone.
+func TestRCONPasswordNarrowsAWideFile(t *testing.T) {
+	for before, want := range map[os.FileMode]os.FileMode{0o664: 0o640, 0o644: 0o640, 0o606: 0o600, 0o600: 0o600, 0o640: 0o640} {
+		t.Run(before.String(), func(t *testing.T) {
+			m, _ := newTestManager(t)
+			id, dir := madeWorld(t, m)
+			pw, err := m.RCONPassword(id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := filepath.Join(dir, RCONPasswordFile)
+			if err := os.Chmod(p, before); err != nil {
+				t.Fatal(err)
+			}
+			again, err := m.RCONPassword(id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := mode(t, p); got != want {
+				t.Errorf("mode %v after reading, want %v", got, want)
+			}
+			if again.Reveal() != pw.Reveal() {
+				t.Error("the password changed")
+			}
+		})
 	}
 }

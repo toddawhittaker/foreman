@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 )
 
@@ -44,7 +45,17 @@ type Config struct {
 	// LoadDelay is how long a start takes between the "Loading map" line and
 	// InGame. Zero loads at once, before the start call returns.
 	LoadDelay time.Duration
+	// SelfNetwork, when set, seeds a running container that stands for the
+	// container this process runs in, on a network of this name with the
+	// address SelfAddress. Its ID and name are what docker.SelfID finds here,
+	// so a Foreman started beside the fake finds its own container in it.
+	// State leaves it out: it is not a game.
+	SelfNetwork string
 }
+
+// SelfAddress is the seeded self container's address on SelfNetwork, in a
+// range apart from the tests' trusted proxies.
+const SelfAddress = "10.250.0.2/24"
 
 // behaviour is what the hooks set for a container name. It outlives the
 // container, because Foreman makes a new container for every start.
@@ -65,6 +76,7 @@ type Game struct {
 	ownDir bool
 	claim  net.Listener // holds this run's address prefix against other runs
 	prefix string       // "127.A.B.": containers get the addresses after it
+	selfID string       // the seeded self container, "" without one
 
 	mu       sync.Mutex
 	closed   bool
@@ -150,9 +162,30 @@ func start(cfg Config, report func(string)) (*Game, error) {
 	for _, ref := range cfg.Images {
 		g.daemon.AddImage(ref)
 	}
+	if cfg.SelfNetwork != "" {
+		g.seedSelf(cfg.SelfNetwork)
+	}
 	g.srv = &http.Server{Handler: http.HandlerFunc(g.serveDocker), ReadHeaderTimeout: 10 * time.Second}
 	g.spawn(func() { _ = g.srv.Serve(ln) })
 	return g, nil
+}
+
+// seedSelf adds the container this process runs in, found the way Foreman
+// finds its own: by the ID in mountinfo, else by the hostname.
+func (g *Game) seedSelf(network string) {
+	hostname, _ := os.Hostname()
+	id := docker.SelfID(docker.MountinfoPath, hostname)
+	if id == "" {
+		return // Foreman could not look for itself either
+	}
+	c := dockertest.Container{Name: hostname, Status: "running", Networks: map[string]string{network: SelfAddress}}
+	if id != hostname {
+		c.ID = id
+	}
+	g.daemon.Seed(c)
+	if seeded, ok := g.daemon.Container(id); ok {
+		g.selfID = seeded.ID
+	}
 }
 
 // claimPrefix picks a random 127.A.B. prefix and holds 127.A.B.1:27015, so a

@@ -185,12 +185,12 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	case len(w.crashes) >= CrashLoopCount && !w.crashLoop && !w.stopping:
 		w.crashLoop, w.stopping, w.expectRunning = true, true, false
 		c.log.Warn("the game crashed again and again, so Foreman stopped it", "world", w.id)
-		c.spawn(func() { c.stopCrashLoop(w, cont.ID) })
-	case w.crashLoop && !w.stopping && active:
+		c.stopCrashLoopLocked(w, cont.ID)
+	case w.crashLoop && !w.stopping && !w.crashStopping && active:
 		// Docker refused the earlier stop, or the game ran again: ask once
 		// more, at most once a poll (SPEC 8.9).
 		w.stopping = true
-		c.spawn(func() { c.stopCrashLoop(w, cont.ID) })
+		c.stopCrashLoopLocked(w, cont.ID)
 	}
 	if w.dockerStatus == "running" && !w.following && !w.stopping {
 		since := w.startedAt
@@ -315,21 +315,35 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	return rc
 }
 
+// stopCrashLoopLocked starts a crash-loop stop unless one is still waiting
+// on Docker, which can take the whole stop grace. w.mu is held.
+func (c *Controller) stopCrashLoopLocked(w *worldRun, cid string) {
+	if w.crashStopping {
+		return
+	}
+	if c.spawn(func() { c.stopCrashLoop(w, cid) }) {
+		w.crashStopping = true
+	}
+}
+
 // stopCrashLoop stops a crash-looping game, which keeps it stopped under
 // unless-stopped (SPEC 8.9, R28). When Docker refuses, the stopping mark is
 // dropped so the next poll tries again; the state stays crash-looping.
 func (c *Controller) stopCrashLoop(w *worldRun, cid string) {
 	err := c.docker.StopContainer(c.ctx, cid, StopGraceSeconds)
-	if err != nil && !errors.Is(err, docker.ErrNotModified) && !errors.Is(err, docker.ErrNotFound) {
+	refused := err != nil && !errors.Is(err, docker.ErrNotModified) && !errors.Is(err, docker.ErrNotFound)
+	if refused {
 		c.log.Warn("could not stop the crash-looping game, will try again", "world", w.id, "container", cid, "error", err)
-		w.mu.Lock()
-		if w.containerID == cid && w.crashLoop && w.opDone == nil {
-			w.stopping = false
-		}
-		w.mu.Unlock()
-		return
 	}
-	c.pokeMonitor()
+	w.mu.Lock()
+	w.crashStopping = false
+	if refused && w.containerID == cid && w.crashLoop && w.opDone == nil {
+		w.stopping = false
+	}
+	w.mu.Unlock()
+	if !refused {
+		c.pokeMonitor()
+	}
 }
 
 // spawn runs f in a goroutine that shutdown waits for. After shutdown it
@@ -415,15 +429,17 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	if w.containerID != cid {
 		return
 	}
-	stamped := maskSecretCommand(Redact(text, w.secrets...))
-	at, line := splitDockerTime(stamped)
+	// Only what is kept and shown is redacted: a short password such as
+	// "0" also matches inside the timestamps the line is understood by.
+	at, raw := splitDockerTime(text)
 	if !at.IsZero() {
 		w.lastLineAt = at
 	}
+	line := w.redact(raw)
 	w.logs.Add(line)
 	w.hub.Publish(Update{Kind: UpdateLine, Line: line})
 
-	ev := ParseLine(stamped)
+	ev := ParseLine(text)
 	publish := true
 	switch ev.Kind {
 	case KindOther:
@@ -436,7 +452,7 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 		w.run.inGame = true
 		w.crashedRun = false
 	case KindLoadError:
-		w.run.loadError = ev.Detail
+		w.run.loadError = w.redact(ev.Detail)
 		publish = false
 	case KindLoadFailed:
 		w.run.loadFailed, w.run.inGame = true, false
@@ -451,6 +467,12 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 		publish = false
 	}
 	c.changedLocked(w, publish)
+}
+
+// redact hides the world's secrets and any secret a printed command set,
+// for text that a page may show (SPEC 8.6, 14.8). w.mu is held.
+func (w *worldRun) redact(s string) string {
+	return maskSecretCommand(Redact(s, w.secrets...))
 }
 
 // loadedSave reads the save's file name from a "Loading map" line.

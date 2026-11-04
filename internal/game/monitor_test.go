@@ -557,3 +557,31 @@ func TestFailingLogFollowBacksOff(t *testing.T) {
 		t.Errorf("%d log calls in 300 ms: the follow retries in a tight loop", n)
 	}
 }
+
+// SPEC 8.6, 8.7: a game password that also appears in Docker's timestamp
+// or the game's seconds prefix is hidden from pages, yet the lines are
+// still understood: the game is seen in game and its saves are seen.
+func TestPasswordInTimestampStillUnderstood(t *testing.T) {
+	year := strconv.Itoa(time.Now().UTC().Year())
+	for _, pw := range []string{"0", "2", "11", year, ".", ":", "T"} {
+		t.Run(pw, func(t *testing.T) {
+			r := newRig(t, rigOptions{})
+			id := r.newWorld("Digits")
+			r.writeFile(id, filepath.Join(world.ConfigDir, "server-settings.json"), []byte(`{"game_password":"`+pw+`"}`))
+			r.start(id)
+			if st := r.c.Status(id); st.State != StateRunning {
+				t.Fatalf("state %s after start", st.State)
+			}
+			if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+				t.Fatalf("stop: %v", err)
+			}
+			v, _, stop := r.c.Watch(id)
+			defer stop()
+			for _, l := range v.Lines {
+				if strings.Contains(l, pw) {
+					t.Fatalf("the game password is in the kept log: %q", l)
+				}
+			}
+		})
+	}
+}

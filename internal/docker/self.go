@@ -9,6 +9,10 @@ import (
 // MountinfoPath is where Foreman finds its own container ID.
 const MountinfoPath = "/proc/self/mountinfo"
 
+// DockerEnvPath is a file Docker puts in every container it runs. Its
+// presence says Foreman is in a container even when SelfID cannot say which.
+const DockerEnvPath = "/.dockerenv"
+
 var containerIDPattern = regexp.MustCompile(`/containers/([0-9a-f]{64})/`)
 
 // SelfID returns the ID of the container Foreman runs in: the first container

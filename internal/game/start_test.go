@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -148,28 +149,64 @@ func TestGameNetwork(t *testing.T) {
 	two := seed("foreman-two", map[string]string{"games": "172.30.0.9/24", "proxy": "172.31.0.9/24"})
 	proxies := []netip.Prefix{netip.MustParsePrefix("172.31.0.0/16")}
 	wide := []netip.Prefix{netip.MustParsePrefix("172.16.0.0/12")}
+	// What DOCKER_HOST's host resolves to; a host not listed does not resolve.
+	hosts := map[string][]string{
+		"proxy-apart":    {"172.31.0.5"},
+		"proxy-on-games": {"172.31.0.5", "172.30.0.5"},
+		"172.30.0.7":     {"172.30.0.7"},
+		"mapped":         {"::ffff:172.30.0.5"},
+		"garbled":        {"not-an-address"},
+	}
+	r.c.lookupHost = func(_ context.Context, host string) ([]string, error) {
+		if a, ok := hosts[host]; ok {
+			return a, nil
+		}
+		return nil, errors.New("no such host")
+	}
+	dockerenv := filepath.Join(t.TempDir(), "dockerenv")
+	if err := os.WriteFile(dockerenv, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	noDockerenv := r.c.dockerEnv
 
+	const lost = "cannot tell which networks it is on"
 	cases := []struct {
 		name, network, self string
-		tcp                 bool
+		dockerenv           bool
+		tcpHost             string // "" means DOCKER_HOST is a unix socket
 		proxies             []netip.Prefix
 		want, wantErr       string
 	}{
-		{"outside a container", "", "", false, nil, "bridge", ""},
-		{"outside a container, set", "chosen", "", false, nil, "chosen", ""},
-		{"hostname of no container", "", "my-laptop", false, nil, "bridge", ""},
-		{"inside a container, unset", "", one, false, nil, "", "FOREMAN_GAME_NETWORK must be set"},
-		{"inside, one network, socket", "games", one, false, nil, "games", ""},
-		{"inside, not on it", "elsewhere", two, false, nil, "", "not on it"},
-		{"tcp and the only network", "games", one, true, nil, "", "socket proxy is on it too"},
-		{"tcp and another network", "games", two, true, nil, "games", ""},
-		{"apart from trusted proxies", "games", two, true, proxies, "games", ""},
-		{"overlaps trusted proxies", "games", two, true, wide, "", "overlaps FOREMAN_TRUSTED_PROXIES"},
-		{"overlap on the proxy network", "proxy", two, false, proxies, "", "172.31.0.0/24"},
+		{"outside a container", "", "", false, "", nil, "bridge", ""},
+		{"outside a container, set", "chosen", "", false, "", nil, "chosen", ""},
+		{"hostname of no container", "", "my-laptop", false, "", nil, "bridge", ""},
+		{"hostname of no container, but /.dockerenv", "games", "my-laptop", true, "", nil, "", lost},
+		{"hostname of no container, but tcp", "games", "my-laptop", false, "proxy-apart", nil, "", lost},
+		{"no ID at all, but /.dockerenv", "games", "", true, "", nil, "", lost},
+		{"no ID at all, but tcp", "games", "", false, "proxy-apart", nil, "", lost},
+		{"inside a container, unset", "", one, true, "", nil, "", "FOREMAN_GAME_NETWORK must be set"},
+		{"inside, one network, socket", "games", one, true, "", nil, "games", ""},
+		{"inside, not on it", "elsewhere", two, false, "", nil, "", "not on it"},
+		{"tcp, proxy on the only network", "games", one, false, "proxy-on-games", nil, "", "172.30.0.5, which is on the game network"},
+		{"tcp, proxy on the game network of two", "games", two, false, "proxy-on-games", nil, "", "172.30.0.5, which is on the game network"},
+		{"tcp by address on the game network", "games", two, false, "172.30.0.7", nil, "", "172.30.0.7, which is on the game network"},
+		{"tcp, IPv4 in IPv6 form", "games", two, false, "mapped", nil, "", "172.30.0.5, which is on the game network"},
+		{"tcp, proxy elsewhere", "games", two, false, "proxy-apart", nil, "games", ""},
+		{"tcp, proxy elsewhere, one network", "games", one, false, "proxy-apart", nil, "games", ""},
+		{"tcp, host does not resolve", "games", two, false, "gone", nil, "", "cannot look up"},
+		{"tcp, unreadable address", "games", two, false, "garbled", nil, "", "cannot read"},
+		{"apart from trusted proxies", "games", two, false, "proxy-apart", proxies, "games", ""},
+		{"overlaps trusted proxies", "games", two, false, "proxy-apart", wide, "", "overlaps FOREMAN_TRUSTED_PROXIES"},
+		{"overlap on the proxy network", "proxy", two, false, "", proxies, "", "172.31.0.0/24"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			r.c.network, r.c.selfID, r.c.dockerTCP, r.c.proxies = tc.network, tc.self, tc.tcp, tc.proxies
+			r.c.network, r.c.selfID, r.c.proxies = tc.network, tc.self, tc.proxies
+			r.c.dockerTCP, r.c.dockerHost = tc.tcpHost != "", tc.tcpHost
+			r.c.dockerEnv = noDockerenv
+			if tc.dockerenv {
+				r.c.dockerEnv = dockerenv
+			}
 			got, err := r.c.gameNetwork(context.Background())
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
@@ -187,12 +224,57 @@ func TestGameNetwork(t *testing.T) {
 	}
 	c, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: r.data,
 		Images: testImages, DockerHost: "tcp://socket-proxy:2375", TrustedProxies: proxies})
-	if err != nil || !c.dockerTCP || len(c.proxies) != 1 {
+	if err != nil || !c.dockerTCP || c.dockerHost != "socket-proxy" || len(c.proxies) != 1 {
 		t.Errorf("Config's DockerHost and TrustedProxies were not taken: %v", err)
 	}
 	if _, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: r.data,
 		Images: testImages, Network: "host"}); err == nil {
 		t.Error("FOREMAN_GAME_NETWORK=host was accepted (SPEC 14.4)")
+	}
+}
+
+// R36, SPEC 12.6, 14.4: the game network's IPv6 range is checked too.
+func TestGameNetworkIPv6(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.lookupHost = func(_ context.Context, host string) ([]string, error) {
+		return map[string][]string{
+			"proxy-v6-on-games": {"fd00:30::5"},
+			"proxy-v6-zoned":    {"fd00:30::5%eth0"},
+			"proxy-v6-apart":    {"fd00:31::5"},
+		}[host], nil
+	}
+	games := docker.Network{IPAddress: "172.30.0.9", IPPrefixLen: 24, GlobalIPv6Address: "fd00:30::9", GlobalIPv6PrefixLen: 64}
+	noLen := games
+	noLen.GlobalIPv6PrefixLen = 0
+	cases := []struct {
+		name    string
+		net     docker.Network
+		tcpHost string
+		proxies []netip.Prefix
+		wantErr string
+	}{
+		{"apart", games, "proxy-v6-apart", []netip.Prefix{netip.MustParsePrefix("fd00:31::/64")}, ""},
+		{"trusted proxies overlap the IPv6 range", games, "", []netip.Prefix{netip.MustParsePrefix("fd00:30::/48")}, "overlaps FOREMAN_TRUSTED_PROXIES"},
+		{"proxy's IPv6 address on the game network", games, "proxy-v6-on-games", nil, "which is on the game network"},
+		{"zoned IPv6 address on the game network", games, "proxy-v6-zoned", nil, "which is on the game network"},
+		{"IPv6 range unreadable", noLen, "proxy-v6-apart", nil, "cannot read the address range"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r.c.network, r.c.proxies = "games", tc.proxies
+			r.c.dockerTCP, r.c.dockerHost = tc.tcpHost != "", tc.tcpHost
+			self := docker.Container{Networks: map[string]docker.Network{"games": tc.net}}
+			got, err := r.c.checkGameNetwork(context.Background(), self)
+			if tc.wantErr == "" {
+				if err != nil || got != "games" {
+					t.Fatalf("got %q, %v; want games", got, err)
+				}
+				return
+			}
+			if !errors.Is(err, ErrNetwork) || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("got %q, %v; want an ErrNetwork with %q", got, err, tc.wantErr)
+			}
+		})
 	}
 }
 

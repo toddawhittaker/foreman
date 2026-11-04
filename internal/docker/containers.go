@@ -142,6 +142,10 @@ type Mount struct {
 type Network struct {
 	IPAddress   string
 	IPPrefixLen int // the network's prefix length, as in 172.18.0.0/16
+	// The IPv6 address and prefix length; empty and 0 when the network has
+	// no IPv6.
+	GlobalIPv6Address   string
+	GlobalIPv6PrefixLen int
 }
 
 // State is a container's run state.
