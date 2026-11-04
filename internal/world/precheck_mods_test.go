@@ -82,7 +82,7 @@ func TestPreCheckModsForAnotherFactorio(t *testing.T) {
 		t.Fatalf("%+v", p.Problems)
 	}
 	want := "Check cannot run on Factorio 2.1.24: 1 of its mods was made for Factorio 2.0, and the game refuses to load it: old-mod. " +
-		"Set the world's game version to 2.0.x, or update its mods."
+		"Update its mods to versions made for Factorio 2.1."
 	if got[0].Text != want {
 		t.Fatalf("text:\n%s\nwant:\n%s", got[0].Text, want)
 	}
@@ -97,7 +97,7 @@ func TestPreCheckModsThatDisagreeAreGroupedLargestFirst(t *testing.T) {
 	}
 	want := "Check cannot run on Factorio 2.0.77: 2 of its mods were made for Factorio 2.1, and the game refuses to load them: b, c. " +
 		"1 of its mods was made for Factorio 1.1, and the game refuses to load it: a. " +
-		"Set the world's game version to 2.1.x, or update its mods."
+		"Update the world's game version to a 2.1 release, or update its mods."
 	if got[0].Text != want {
 		t.Fatalf("text:\n%s\nwant:\n%s", got[0].Text, want)
 	}
