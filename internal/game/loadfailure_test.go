@@ -60,6 +60,19 @@ func TestLoadFailureCountsAModWithNoBulletWithoutAName(t *testing.T) {
 	}
 }
 
+// The log holds every run of a crash-looping start, so the same nameless
+// reason repeated by each run counts once.
+func TestLoadFailureCountsANamelessModOnceAcrossRuns(t *testing.T) {
+	var lines []string
+	for range 3 {
+		lines = append(lines, "• named", incompatible, incompatible)
+	}
+	got := reasonOf(masking(), lines...)
+	if want := ": 2 mods were made for Factorio 2.0, and this game runs 2.1: named and 1 more"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
 func TestLoadFailureTakesTheLargestGroupOfIncompatibleMods(t *testing.T) {
 	got := reasonOf(masking(),
 		"• x", "    • Incompatible Factorio version (current: 2.1, required: 1.1)",
@@ -238,51 +251,4 @@ func TestStartLoadFailureWithNothingToShowKeepsThePlainText(t *testing.T) {
 	if want := "the game did not start: the game stopped while it was loading"; err == nil || err.Error() != want {
 		t.Fatalf("got %v, want %q", err, want)
 	}
-}
-
-// An adopted container keeps one log across runs, so a line written before
-// this start is not this start's reason, and one written after it is.
-func TestAdoptedLoadFailureReadsOnlyThisRunsLog(t *testing.T) {
-	run := func(t *testing.T, afterStart ...string) error {
-		t.Helper()
-		r, _ := newAdoptedRig(t, adoptedOptions{loadDelay: 30 * time.Second})
-		a := r.newWorld("Alpha")
-		r.game.Daemon().EmitLog(adoptedName, docker.Stderr, "   1.000 Error Old.cpp:1: from the run before")
-		time.Sleep(20 * time.Millisecond)
-		done := make(chan error, 1)
-		go func() { done <- r.c.Start(context.Background(), a, admin, StartOptions{}) }()
-		eventually(t, func() bool {
-			for _, c := range r.game.State().Containers {
-				if c.Name == adoptedName && c.Status == "running" {
-					return true
-				}
-			}
-			return false
-		}, "the game to be loading")
-		for _, l := range afterStart {
-			r.game.Daemon().EmitLog(adoptedName, docker.Stderr, l)
-		}
-		if err := r.game.Crash(adoptedName, 1, false); err != nil {
-			t.Fatal(err)
-		}
-		select {
-		case err := <-done:
-			return err
-		case <-time.After(10 * time.Second):
-			t.Fatal("start did not end")
-			return nil
-		}
-	}
-	t.Run("a line from before the start is not shown", func(t *testing.T) {
-		err := run(t)
-		if want := "the game did not start: the game stopped while it was loading"; err == nil || err.Error() != want {
-			t.Fatalf("got %v, want %q", err, want)
-		}
-	})
-	t.Run("a line from after the start is shown", func(t *testing.T) {
-		err := run(t, "   2.000 Error New.cpp:2: from this run")
-		if want := "the game did not start. Factorio said: from this run"; err == nil || err.Error() != want {
-			t.Fatalf("got %v, want %q", err, want)
-		}
-	})
 }

@@ -168,7 +168,7 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 				Detail: "Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.",
 			})
 		case state == proxyWaiting:
-			detail := "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks, or because the game container still has the NET_RAW capability (it needs `cap_drop: [NET_RAW]`). Try again in a minute."
+			detail := "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute."
 			if s.cfg.AuthLocal {
 				detail += " Password sign-in still works: open " + PathSignIn + " to use it."
 			}

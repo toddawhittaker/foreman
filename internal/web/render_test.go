@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
-	"github.com/toddawhittaker/foreman/internal/gamedir"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -162,49 +161,6 @@ func pageCases() []pageCase {
 			Running: true, CountdownForm: defaultCountdown(), Anyway: true, CheckProblems: []string{longName}}},
 		{"switch refused", "todd", 409, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
 			Refusal: "This is already the active world."}},
-		{"server adopted ready", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Status.Adopted, p.Status.RunningVersion, p.Status.RCONPublished = true, "2.1.30", true
-			p.Status.Layout = gamedir.State{Kind: gamedir.Ready, ActiveID: "base"}
-			p.VersionWarning = "The save that will load was made by Factorio 2.1.24, but the game container runs Factorio 2.1.30."
-		})},
-		{"server adopted unknown version", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Status.Adopted, p.Status.RunningVersion = true, "unknown"
-			p.Status.Layout = gamedir.State{Kind: gamedir.Fresh}
-		})},
-		{"server adopted unadopted", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Status.Adopted, p.Status.RunningVersion = true, "2.1.24"
-			p.Status.Layout = gamedir.State{Kind: gamedir.Unadopted}
-		})},
-		{"server adopted broken", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Status.Adopted, p.Status.RunningVersion = true, "2.1.24"
-			p.Status.Layout = gamedir.State{Kind: gamedir.Broken, Path: longName, Reason: longName + " is a file, not a folder or link"}
-		})},
-		{"server adopting", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Adopting = true
-			p.World.Active = false
-			p.Status.Adopted, p.Status.Layout = true, gamedir.State{Kind: gamedir.Unadopted}
-			p.Status.Operation = &game.Operation{Action: game.AuditAdopt, Steps: []game.Step{
-				{Name: game.StepContainerCheck, State: game.StepDone}, {Name: game.StepWarn, State: game.StepProgress}}}
-		})},
-		{"server adoption failed", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Adopting = true
-			p.World.Active = false
-			p.Status.Adopted, p.Status.Layout = true, gamedir.State{Kind: gamedir.Unadopted}
-			err := game.ErrAdoptRCON
-			p.Status.Operation = &game.Operation{Action: game.AuditAdopt, Done: true, Error: err.Error(),
-				Steps: []game.Step{{Name: game.StepContainerCheck, State: game.StepFailed}}}
-			p.HaveResult, p.Result = true, actionResult{Action: game.AuditAdopt, Err: err}
-		})},
-		{"server no world unadopted", "todd", 200, ServerPage{Status: game.Status{Adopted: true, RCONPublished: true,
-			Layout: gamedir.State{Kind: gamedir.Unadopted}}}},
-		{"server no world broken", "todd", 200, ServerPage{Status: game.Status{Adopted: true,
-			Layout: gamedir.State{Kind: gamedir.Broken, Path: "saves", Reason: "saves is a file, not a folder or link"}}}},
-		{"adopt running", "todd", 200, AdoptPage{Form: ImportForm{IDPrefix: "adopt", GameVersion: "2.1.24"}, Running: true, CountdownForm: defaultCountdown()}},
-		{"adopt stopped", "todd", 200, AdoptPage{Form: ImportForm{IDPrefix: "adopt", GameVersion: "2.1.24", SpaceAge: true}, CountdownForm: defaultCountdown()}},
-		{"adopt field errors", "todd", 400, AdoptPage{Running: true, Form: ImportForm{IDPrefix: "adopt", Name: longName, GameVersion: "x",
-			NameError: "Enter a name", VersionError: "Enter a version"},
-			CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
-		{"adopt refused", "todd", 409, AdoptPage{Form: ImportForm{IDPrefix: "adopt"}, Refusal: "Foreman cannot use the game container as it is set up: " + longName}},
 		{"start anyway", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: longName}, CheckProblems: []string{longName}}},
 		{"start anyway refused", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: "Base"}, Refusal: "Nothing to confirm."}},
 		{"force stop", "todd", 200, ForceStopPage{World: world.Summary{ID: "base", Name: longName,

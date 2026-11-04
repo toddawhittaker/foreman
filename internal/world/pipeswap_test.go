@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// SPEC 14.5, 6.2: in adopted mode the game can swap a file for a named pipe
+// SPEC 14.5, 6.2: the game can write its world, so it can swap a file for a named pipe
 // after the snapshot listed it. The snapshot must fail promptly, not hold
 // the world's lock on a blocked open, and leave nothing half-written.
 func TestSnapshotRefusesAFileSwappedForAPipe(t *testing.T) {

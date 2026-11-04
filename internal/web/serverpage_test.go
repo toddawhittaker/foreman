@@ -153,16 +153,15 @@ type notActive string
 func (e notActive) Error() string        { return string(e) + " is not the active world. Switch to it first" }
 func (e notActive) Is(target error) bool { return target == game.ErrWorldNotActive }
 
-// SPEC 7.9, 4.12: a start of a world that is not active, and an adoption
-// that is already running, are refusals with their own words, not a 500.
-func TestNotActiveAndAdoptionInProgressAreWorded(t *testing.T) {
+// SPEC 7.3, 7.9: a start of a world that is not active is a refusal with
+// its own words, not a 500.
+func TestNotActiveIsWorded(t *testing.T) {
 	for _, c := range []struct {
 		err  error
 		want string
 	}{
 		{notActive("Bravo"), "Bravo is not the active world. Switch to it first."},
-		{game.ErrAdoptionInProgress, "adoption of the game folder is already in progress"},
-		{fmt.Errorf("start: %w", game.ErrAdoptionInProgress), "already in progress"},
+		{fmt.Errorf("start: %w", notActive("Bravo")), "Bravo is not the active world."},
 	} {
 		status, msg := gameError(c.err)
 		if status != http.StatusConflict || !strings.Contains(msg, c.want) {

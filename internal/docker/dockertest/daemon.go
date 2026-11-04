@@ -31,14 +31,6 @@ type Container struct {
 	StartedAt    time.Time
 	FinishedAt   time.Time
 	Mounts       []docker.Mount
-	Privileged   bool     // HostConfig.Privileged, for a seeded container
-	CapAdd       []string // HostConfig.CapAdd, for a seeded container
-	CapDrop      []string // HostConfig.CapDrop, for a seeded container
-	PidMode      string   // HostConfig.PidMode, for a seeded container
-	// The other HostConfig settings an adopted container is checked for.
-	Devices                      []docker.Device
-	SecurityOpt                  []string
-	UsernsMode, IpcMode, UTSMode string
 	// Networks maps a network name to the address on it, set while running.
 	// "172.18.0.5/24" also gives the prefix length; a bare address has 16.
 	Networks map[string]string
@@ -83,9 +75,7 @@ type Daemon struct {
 	failStatus int
 	failMsg    string
 	callFail   map[string]failure // by "METHOD action", for container calls
-	// forbidManaged fails the test on create, remove and image calls.
-	forbidManaged bool
-	changed       chan struct{} // closed and replaced whenever state or a log changes
+	changed    chan struct{}      // closed and replaced whenever state or a log changes
 }
 
 // New starts a fake daemon that speaks API version docker.MaxAPIVersion and
@@ -146,15 +136,6 @@ func (d *Daemon) SetCallFailure(method, action string, status int, message strin
 	d.callFail[method+" "+action] = failure{status, message}
 }
 
-// ForbidManagedCalls makes the fake fail the test on any call to create or
-// remove a container or to pull or inspect images. Use it where the
-// code under test holds an adopted container (SPEC 4.11).
-func (d *Daemon) ForbidManagedCalls() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.forbidManaged = true
-}
-
 // DropLog forgets a container's output so far, as Docker's log rotation
 // does.
 func (d *Daemon) DropLog(ref string) {
@@ -162,16 +143,6 @@ func (d *Daemon) DropLog(ref string) {
 	defer d.mu.Unlock()
 	if c := d.find(ref); c != nil {
 		c.Log = nil
-	}
-}
-
-// SetCapDrop changes the capabilities a container drops, as recreating it
-// with a different definition would.
-func (d *Daemon) SetCapDrop(ref string, drop []string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if c := d.find(ref); c != nil {
-		c.CapDrop = drop
 	}
 }
 
@@ -320,16 +291,10 @@ func (d *Daemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
 	d.calls = append(d.calls, Call{Method: r.Method, Path: path, Query: r.URL.Query()})
 	failStatus, failMsg := d.failStatus, d.failMsg
-	forbidManaged := d.forbidManaged
 	d.mu.Unlock()
 	if !docker.Allowed(r.Method, path) {
 		d.t.Errorf("dockertest: %s %s is outside SPEC 14.3", r.Method, r.URL.Path)
 		reply(w, http.StatusForbidden, "outside SPEC 14.3")
-		return
-	}
-	if forbidManaged && !docker.AllowedAdopted(r.Method, path) {
-		d.t.Errorf("dockertest: %s %s is a create, remove or image call, which adopted mode never makes (SPEC 4.11)", r.Method, r.URL.Path)
-		reply(w, http.StatusForbidden, "not made in adopted mode")
 		return
 	}
 	if failStatus != 0 {

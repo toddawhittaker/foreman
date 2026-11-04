@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -73,38 +72,39 @@ func listenAddr() string {
 	return config.DefaultListen
 }
 
-// serve starts in a fixed order: folder checks, host path (managed mode
-// only), database, world recovery, game recovery, the game monitor, then
-// the server. It stops in the reverse order.
+// serve starts in a fixed order: data directory check, host path, database,
+// world recovery, game recovery, the game monitor, then the server. It
+// stops in the reverse order.
 func serve(cfg *config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := probeFolders(cfg); err != nil {
+	if err := datadir.Probe(cfg.DataDir, cfg.GameUID, cfg.GameGID); err != nil {
 		return err
 	}
 	hostname, _ := os.Hostname()
 	// Making the client contacts nothing, so an unreachable Docker never
 	// stops Foreman from serving pages.
-	dockerClient, err := newDockerClient(cfg)
+	dockerClient, err := docker.New(cfg.DockerHost)
 	if err != nil {
 		return err
 	}
-	var hostDir string
-	if cfg.Mode == config.ModeManaged {
-		hostDir, err = datadir.HostDir(ctx, cfg.DataDir, cfg.HostDataDir, dockerClient, datadir.MountinfoPath, hostname)
-		if err != nil {
-			return err
-		}
-		slog.Info("data directory", "container_path", cfg.DataDir, "host_path", hostDir)
+	hostDir, err := datadir.HostDir(ctx, cfg.DataDir, cfg.HostDataDir, dockerClient, datadir.MountinfoPath, hostname)
+	if err != nil {
+		return err
 	}
+	slog.Info("data directory", "container_path", cfg.DataDir, "host_path", hostDir)
 	st, err := store.Open(ctx, datadir.Database(cfg.DataDir))
 	if err != nil {
 		return err
 	}
 	defer func() { _ = st.Close() }()
 
-	worlds, err := world.NewManager(worldDirs(cfg), st, nil)
+	worlds, err := world.NewManager(world.Dirs{
+		Worlds:    datadir.Worlds(cfg.DataDir),
+		Snapshots: datadir.Snapshots(cfg.DataDir),
+		Imports:   datadir.Imports(cfg.DataDir),
+	}, st, nil)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func serve(cfg *config.Config) error {
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	slog.Info("listening", "addr", cfg.Listen, "mode", cfg.Mode)
+	slog.Info("listening", "addr", cfg.Listen)
 	select {
 	case err := <-errc:
 		return err
@@ -166,77 +166,15 @@ func serve(cfg *config.Config) error {
 	return nil
 }
 
-// probeFolders checks the data directory and, in adopted mode, the game
-// folder (SPEC 3.6).
-func probeFolders(cfg *config.Config) error {
-	if err := datadir.Probe("the data directory", cfg.DataDir, cfg.GameUID, cfg.GameGID); err != nil {
-		return err
-	}
-	if cfg.Mode != config.ModeAdopted {
-		return nil
-	}
-	if err := datadir.Probe("the game folder (FOREMAN_GAME_DIR)", cfg.GameDir, cfg.GameUID, cfg.GameGID); err != nil {
-		return err
-	}
-	return checkNesting(cfg)
-}
-
-// checkNesting refuses a data directory and game folder that overlap once
-// links are resolved; config.Load cannot see links (SPEC 3.2).
-func checkNesting(cfg *config.Config) error {
-	data, err := filepath.EvalSymlinks(cfg.DataDir)
-	if err != nil {
-		return fmt.Errorf("resolve the data directory %s: %w", cfg.DataDir, err)
-	}
-	game, err := filepath.EvalSymlinks(cfg.GameDir)
-	if err != nil {
-		return fmt.Errorf("resolve the game folder %s: %w", cfg.GameDir, err)
-	}
-	if msg := config.NestingProblem(data, game); msg != "" {
-		return errors.New(msg)
-	}
-	return nil
-}
-
-// worldDirs puts the worlds in the game folder in adopted mode, so the
-// game can reach them, and everything else in the data directory
-// (SPEC 3.2, 5.2).
-func worldDirs(cfg *config.Config) world.Dirs {
-	dirs := world.Dirs{
-		Worlds:    datadir.Worlds(cfg.DataDir),
-		Snapshots: datadir.Snapshots(cfg.DataDir),
-		Imports:   datadir.Imports(cfg.DataDir),
-	}
-	if cfg.Mode == config.ModeAdopted {
-		dirs.Worlds = filepath.Join(cfg.GameDir, "worlds")
-	}
-	return dirs
-}
-
-// newDockerClient gives adopted mode the client that refuses to create or
-// remove containers or touch images (SPEC 4.11, 14.3).
-func newDockerClient(cfg *config.Config) (*docker.Client, error) {
-	if cfg.Mode == config.ModeAdopted {
-		return docker.NewAdopted(cfg.DockerHost)
-	}
-	return docker.New(cfg.DockerHost)
-}
-
-// gameConfig fills the controller's settings. Giving it a game container
-// is what turns adopted mode on (SPEC 4.7); that mode needs no image pins.
+// gameConfig fills the controller's settings.
 func gameConfig(cfg *config.Config, d *docker.Client, worlds *world.Manager, st *store.Store, hostDir, selfID string) game.Config {
-	gc := game.Config{
+	return game.Config{
 		Docker: d, Worlds: worlds, Audit: st, Switches: st,
-		GameUID: cfg.GameUID, GameGID: cfg.GameGID,
-		Network: cfg.GameNetwork, DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
+		HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
+		Images: gameImages, Network: cfg.GameNetwork,
+		DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
 		SelfID: selfID, Log: slog.Default(),
 	}
-	if cfg.Mode == config.ModeAdopted {
-		gc.GameContainer, gc.GameDir, gc.RCONPassword = cfg.GameContainer, cfg.GameDir, cfg.RCONPassword
-	} else {
-		gc.HostDataDir, gc.Images = hostDir, gameImages
-	}
-	return gc
 }
 
 // healthcheck exists because the runtime image has no shell or curl (STACK 10).

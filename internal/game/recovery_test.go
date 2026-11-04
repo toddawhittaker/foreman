@@ -168,7 +168,7 @@ func TestPausedGameRefusesStopAndRestore(t *testing.T) {
 func TestForceStopOfOperationWithNothingRunning(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Cancelled")
-	ctx, o := r.c.beginOp(context.Background(), r.c.world(id), AuditStart, r.c.startSteps(StartOptions{}))
+	ctx, o := r.c.beginOp(context.Background(), r.c.world(id), AuditStart, startSteps(StartOptions{}))
 	go func() {
 		<-ctx.Done()
 		_ = o.end(ctx.Err())
@@ -212,8 +212,8 @@ func TestCrashLoopStopRetriedAfterRefusal(t *testing.T) {
 // faultyStore fails the calls a test names, to show that recovery goes on.
 type faultyStore struct {
 	SwitchStore
-	failList, failAdoption bool
-	failEndFrom            string
+	failList    bool
+	failEndFrom string
 }
 
 func (s faultyStore) ListSwitches(ctx context.Context) ([]store.Switch, error) {
@@ -221,13 +221,6 @@ func (s faultyStore) ListSwitches(ctx context.Context) ([]store.Switch, error) {
 		return nil, errDatabase
 	}
 	return s.SwitchStore.ListSwitches(ctx)
-}
-
-func (s faultyStore) Adoption(ctx context.Context) (store.AdoptionRecord, bool, error) {
-	if s.failAdoption {
-		return store.AdoptionRecord{}, false, errDatabase
-	}
-	return s.SwitchStore.Adoption(ctx)
 }
 
 func (s faultyStore) EndSwitch(ctx context.Context, from string) error {
@@ -243,8 +236,8 @@ func (s faultyStore) EndSwitch(ctx context.Context, from string) error {
 func TestRecoveryFaultsDoNotStopStartup(t *testing.T) {
 	ctx := context.Background()
 	t.Run("the records cannot be read", func(t *testing.T) {
-		r, _ := newAdoptedRig(t, adoptedOptions{noRun: true, prepare: unadoptedFolder(t)})
-		r.c.switches = faultyStore{SwitchStore: r.store, failList: true, failAdoption: true}
+		r := newRig(t, rigOptions{noRun: true})
+		r.c.switches = faultyStore{SwitchStore: r.store, failList: true}
 		if err := r.c.Recover(ctx); err != nil {
 			t.Fatalf("recover = %v", err)
 		}
@@ -271,4 +264,16 @@ func TestRecoveryFaultsDoNotStopStartup(t *testing.T) {
 			t.Errorf("recover = %v", err)
 		}
 	})
+}
+
+// recordSwitch leaves a switch record at step, as a stop of Foreman would.
+func (r *rig) recordSwitch(from, to, step string) {
+	r.t.Helper()
+	ctx := context.Background()
+	if err := r.store.BeginSwitch(ctx, from, to, admin.Username, time.Now()); err != nil {
+		r.t.Fatal(err)
+	}
+	if err := r.store.SetSwitchStep(ctx, from, step); err != nil {
+		r.t.Fatal(err)
+	}
 }

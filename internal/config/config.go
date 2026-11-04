@@ -11,12 +11,9 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 // Defaults for variables that have one.
@@ -28,15 +25,8 @@ const (
 	DefaultDockerHost  = "unix:///var/run/docker.sock"
 )
 
-// Run modes (SPEC 4.1).
-const (
-	ModeManaged = "managed"
-	ModeAdopted = "adopted"
-)
-
 // Variable names.
 const (
-	varMode        = "FOREMAN_MODE"
 	varDataDir     = "FOREMAN_DATA_DIR"
 	varHostDataDir = "FOREMAN_HOST_DATA_DIR"
 	varGameUID     = "FOREMAN_GAME_UID"
@@ -51,14 +41,10 @@ const (
 	varSessionIdle = "FOREMAN_SESSION_IDLE"
 	varDockerHost  = "DOCKER_HOST"
 	varGameNetwork = "FOREMAN_GAME_NETWORK"
-	varContainer   = "FOREMAN_GAME_CONTAINER"
-	varGameDir     = "FOREMAN_GAME_DIR"
-	varRCONPass    = "FOREMAN_RCON_PASSWORD" //nolint:gosec // a variable name, not a credential
 )
 
 // Config is Foreman's validated configuration.
 type Config struct {
-	Mode             string // ModeManaged or ModeAdopted
 	DataDir          string
 	HostDataDir      string // empty means discover it from the container
 	GameUID, GameGID int
@@ -73,11 +59,6 @@ type Config struct {
 	SessionIdle      time.Duration
 	DockerHost       string
 	GameNetwork      string // the Docker network the game joins; empty means work it out (SPEC 4.4)
-
-	// Adopted mode only (SPEC 4.7, 4.10).
-	GameContainer string        // name or id of the container Foreman controls
-	GameDir       string        // the game folder as mounted inside Foreman; absolute and clean
-	RCONPassword  secret.Secret // zero when unset: the world's own config/rconpw is used
 }
 
 // SecureCookies reports whether session cookies carry the Secure flag,
@@ -112,15 +93,6 @@ func load(e env) (*Config, error) {
 		RequiredGroup: str(varGroup, ""),
 		DockerHost:    str(varDockerHost, DefaultDockerHost),
 		GameNetwork:   str(varGameNetwork, ""),
-		GameContainer: str(varContainer, ""),
-		GameDir:       str(varGameDir, ""),
-	}
-
-	switch mode := strings.ToLower(strings.TrimSpace(str(varMode, ModeManaged))); mode {
-	case ModeManaged, ModeAdopted:
-		c.Mode = mode
-	default:
-		fail("%s must be %q or %q, not %q", varMode, ModeManaged, ModeAdopted, mode)
 	}
 
 	var err error
@@ -168,13 +140,6 @@ func load(e env) (*Config, error) {
 		}
 	}
 
-	if pw, ok, err := e.lookupSecret(varRCONPass); err != nil {
-		errs = append(errs, err)
-	} else if ok {
-		c.RCONPassword = pw
-	}
-	errs = append(errs, validateAdopted(c, e)...)
-
 	c.SessionIdle = DefaultSessionIdle
 	if raw, ok := e.get(varSessionIdle); ok {
 		if d, err := time.ParseDuration(raw); err != nil || d <= 0 {
@@ -188,71 +153,6 @@ func load(e env) (*Config, error) {
 		return nil, errors.Join(errs...)
 	}
 	return c, nil
-}
-
-// validateAdopted checks the settings that belong to adopted mode (SPEC 4.7,
-// 4.10) and reports the ones set in managed mode, so a misplaced setting is
-// visible instead of silently ignored.
-func validateAdopted(c *Config, e env) []error {
-	var errs []error
-	fail := func(format string, args ...any) {
-		errs = append(errs, fmt.Errorf(format, args...))
-	}
-
-	switch c.Mode {
-	case ModeManaged:
-		for _, name := range []string{varContainer, varGameDir, varRCONPass, varRCONPass + "_FILE"} {
-			if _, ok := e.get(name); ok {
-				fail("%s is only used when %s is %s; remove it or switch modes", name, varMode, ModeAdopted)
-			}
-		}
-		return errs
-	case ModeAdopted:
-	default:
-		return errs // the mode error is already reported
-	}
-
-	if c.GameContainer == "" {
-		fail("%s must be set when %s is %s: it names the game container Foreman controls", varContainer, varMode, ModeAdopted)
-	}
-	switch {
-	case c.GameDir == "":
-		fail("%s must be set when %s is %s: it is the game folder as Foreman sees it", varGameDir, varMode, ModeAdopted)
-	case !filepath.IsAbs(c.GameDir):
-		fail("%s must be an absolute path, not %q", varGameDir, c.GameDir)
-	case filepath.Clean(c.GameDir) != c.GameDir:
-		fail("%s must be a clean path with no trailing slash, dots or doubled slashes; use %q", varGameDir, filepath.Clean(c.GameDir))
-	default:
-		data, err := filepath.Abs(c.DataDir)
-		if err != nil {
-			break
-		}
-		if msg := NestingProblem(data, c.GameDir); msg != "" {
-			fail("%s", msg)
-		}
-	}
-	return errs
-}
-
-// NestingProblem returns the sentence refusing a data directory and a game
-// folder when one is the other or inside it, or "" when they are apart
-// (SPEC 3.2). It compares the paths as given and never touches the
-// filesystem; a caller that can resolve links does so first.
-func NestingProblem(dataDir, gameDir string) string {
-	switch {
-	case within(dataDir, gameDir):
-		return fmt.Sprintf("%s must not be the game folder or inside it (%s): the game's files and Foreman's would mix", varDataDir, varGameDir)
-	case within(gameDir, dataDir):
-		return fmt.Sprintf("%s must not be inside %s: snapshots of the data directory would include the game folder", varGameDir, varDataDir)
-	}
-	return ""
-}
-
-// within reports whether path is dir or inside it. It compares cleaned
-// paths and never touches the filesystem.
-func within(path, dir string) bool {
-	rel, err := filepath.Rel(dir, path)
-	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func canonicalHeader(name string) string {

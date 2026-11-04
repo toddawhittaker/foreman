@@ -175,7 +175,6 @@ func serverActionRoutes(snap string) []actionRoute {
 		{http.MethodPost, p("force-stop")},
 		{http.MethodPost, p("pull-image")},
 		{http.MethodPost, p("switch")},
-		{http.MethodPost, func(string) string { return PathAdopt }},
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},
@@ -515,7 +514,7 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 	}
 }
 
-// allowedDocker is SPEC 14.3 for managed mode, as "METHOD path".
+// allowedDocker is SPEC 14.3, as "METHOD path".
 var allowedDocker = regexp.MustCompile(`^(GET /_ping|GET /version|GET /containers/json|` +
 	`GET /containers/[^/]+/(json|logs|stats)|POST /containers/[^/]+/(start|stop|kill)|` +
 	`POST /containers/create|DELETE /containers/[^/]+|POST /images/create|GET /images/.+/json|GET /events)$`)

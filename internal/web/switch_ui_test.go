@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
-	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // SPEC 16.3: the reload after a switch would drop the announce event, so
@@ -26,13 +25,6 @@ func TestMovedSentence(t *testing.T) {
 	p.HaveResult, p.Result = true, actionResult{Action: game.AuditSwitch}
 	if got, want := p.movedSentence(), "Bravo is now the active world. The worlds are switched."; got != want {
 		t.Errorf("finished switch: %q, want %q", got, want)
-	}
-
-	adopt := game.Status{Operation: &game.Operation{Action: game.AuditAdopt, Done: true}}
-	a := ServerPage{World: world.Summary{ID: "gate", Name: "Gate"}, HasWorld: true, Adopting: true, Status: adopt}
-	a.HaveResult, a.Result = true, actionResult{Action: game.AuditAdopt}
-	if got, want := a.movedSentence(), "Gate is now the active world. The game folder is adopted."; got != want {
-		t.Errorf("adoption: %q, want %q", got, want)
 	}
 }
 
@@ -97,7 +89,7 @@ func TestWorldPageSaysWhyThereIsNoSwitch(t *testing.T) {
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"30"}}))
 	g.waitPage("Switching from Alpha to Bravo")
 	busy := g.get(worldPath(b))
-	g.wantContains("busy world", busy, "An operation is running on the server, such as a switch or an adoption.", `href="/"`)
+	g.wantContains("busy world", busy, "An operation is running on the server, such as a switch.", `href="/"`)
 	g.wantMissing("busy world", busy, "Switch to this world")
 }
 

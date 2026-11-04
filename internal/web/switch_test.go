@@ -323,7 +323,7 @@ func TestSwitchRefusalsHaveWords(t *testing.T) {
 
 // SPEC 6.2: the snapshot list words the reasons switching adds.
 func TestSwitchSnapshotReasons(t *testing.T) {
-	for reason, want := range map[string]string{world.ReasonSwitch: "Before switch", world.ReasonAdoption: "Before adoption"} {
+	for reason, want := range map[string]string{world.ReasonSwitch: "Before switch"} {
 		if got := reasonText(reason); got != want {
 			t.Errorf("reasonText(%q) = %q, want %q", reason, got, want)
 		}

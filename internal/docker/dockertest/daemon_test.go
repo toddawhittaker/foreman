@@ -43,45 +43,6 @@ func TestFakeFailsTheTestOnCallsOutsideSpec14_3(t *testing.T) {
 	}
 }
 
-func TestForbidManagedCallsFailsTheTestOnCreateRemoveAndImages(t *testing.T) {
-	calls := []struct{ method, path string }{
-		{"POST", "/v1.52/containers/create"},
-		{"DELETE", "/v1.52/containers/x"},
-		{"POST", "/v1.52/images/create"},
-		{"GET", "/v1.52/images/a/json"},
-	}
-	for _, tc := range calls {
-		rec := &recorder{TB: t}
-		d := New(rec)
-		d.ForbidManagedCalls()
-		req, _ := http.NewRequest(tc.method, d.srv.URL+tc.path, nil)
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = resp.Body.Close()
-		if len(rec.errs) == 0 || !strings.Contains(rec.errs[0], "adopted mode") {
-			t.Errorf("%s %s: test failures = %v", tc.method, tc.path, rec.errs)
-		}
-	}
-}
-
-func TestForbidManagedCallsLeavesOtherCallsAlone(t *testing.T) {
-	rec := &recorder{TB: t}
-	d := New(rec)
-	d.ForbidManagedCalls()
-	for _, p := range []string{"/_ping", "/version", "/v1.52/containers/json"} {
-		resp, err := http.Get(d.srv.URL + p)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_ = resp.Body.Close()
-	}
-	if len(rec.errs) != 0 {
-		t.Errorf("unexpected failures: %v", rec.errs)
-	}
-}
-
 func TestFakeAcceptsAllowedCalls(t *testing.T) {
 	rec := &recorder{TB: t}
 	d := New(rec)

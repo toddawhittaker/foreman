@@ -27,7 +27,7 @@ const reconnectAfter = 2 * time.Second
 // is no longer signed in, when the page falls too far behind, and first of
 // all at shutdown.
 func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, ok := s.watchedWorld(w, r, u)
+	sum, ok := s.findWorld(w, r, u)
 	if !ok {
 		return
 	}

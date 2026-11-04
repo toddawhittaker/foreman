@@ -30,16 +30,14 @@ const (
 	ReasonManual        = "manual"
 	ReasonBeforeDelete  = "before-delete"
 	ReasonBeforeRestore = "before-restore"
-	ReasonAdoption      = "adoption"
 	ReasonSwitch        = "switch"
 )
 
 // Labels of the automatic snapshots (SPEC 6.5, 5.10).
 const (
-	LabelBeforeRestore  = "Before restore"
-	LabelBeforeDelete   = "Before delete"
-	LabelBeforeAdoption = "Before adoption"
-	LabelBeforeSwitch   = "Before switch"
+	LabelBeforeRestore = "Before restore"
+	LabelBeforeDelete  = "Before delete"
+	LabelBeforeSwitch  = "Before switch"
 )
 
 // KeepAutomatic is how many automatic snapshots each world keeps (SPEC 6.6).
@@ -181,7 +179,7 @@ func (m *Manager) snapshot(id, reason, label, by string) (Snapshot, error) {
 		err = snaps.Rename(partial, name)
 	}
 	if err == nil {
-		err = SyncDir(snaps, ".")
+		err = syncDir(snaps, ".")
 	}
 	if err != nil {
 		_ = snaps.RemoveAll(partial)

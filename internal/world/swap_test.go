@@ -9,10 +9,9 @@ import (
 	"time"
 )
 
-// SPEC 14.5: in adopted mode the game container can write the folder that
-// holds the worlds folder, so it can swap worlds for a link after startup.
-// Every operation must then refuse, and the link's target must stay as it
-// was.
+// SPEC 14.5: the worlds folder is checked on every open, not once at
+// startup, so a link swapped in for it later is refused by every operation,
+// and the link's target stays as it was.
 func TestWorldsFolderSwappedForALinkAfterStartupIsRefused(t *testing.T) {
 	m, _ := newTestManager(t)
 	id, dir := madeWorld(t, m)
@@ -105,7 +104,7 @@ func TestReadRCONPasswordRefusesAPipe(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := ReadRCONPassword(root)
+		_, err := readRCONPassword(root)
 		done <- err
 	}()
 	select {

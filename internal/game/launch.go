@@ -14,41 +14,28 @@ import (
 
 // launch is what a start needs to run the container it prepared.
 type launch struct {
-	cid      string
-	status   string // Docker's status before the start
-	restarts int    // Docker's restart count before the start
-	save     string // the save chosen to load, or ""
-	meta     world.Meta
-	image    string
-	rconPW   secret.Secret
-	secrets  []secret.Secret
+	cid     string
+	save    string // the save chosen to load, or ""
+	meta    world.Meta
+	image   string
+	rconPW  secret.Secret
+	secrets []secret.Secret
 }
 
 // launchLocked starts the world's container, then waits until the game is
 // in game and answers over RCON (SPEC 7.3). The caller holds the world's
 // lock.
 func (c *Controller) launchLocked(ctx context.Context, o *opRun) error {
-	var p launch
-	var err error
-	if c.adopted != nil {
-		// The container's checks run again here, so a refusal shows on this
-		// step.
-		o.begin(StepStartContainer)
-		p, err = c.prepareAdopted(ctx, o.w.id)
-	} else {
-		p, err = c.prepareManaged(ctx, o)
-		if err == nil {
-			o.begin(StepStartContainer)
-		}
-	}
+	p, err := c.prepareContainer(ctx, o)
 	if err != nil {
 		return err
 	}
+	o.begin(StepStartContainer)
 	return c.runContainer(ctx, o, p)
 }
 
-// prepareManaged creates a fresh container for the world (ADR 0003).
-func (c *Controller) prepareManaged(ctx context.Context, o *opRun) (launch, error) {
+// prepareContainer creates a fresh container for the world (ADR 0003).
+func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, error) {
 	id := o.w.id
 	o.begin(StepImage)
 	meta, ref, err := c.gameImage(ctx, id)
@@ -91,7 +78,7 @@ func (c *Controller) prepareManaged(ctx context.Context, o *opRun) (launch, erro
 		return launch{}, err
 	}
 	o.done(StepCreate)
-	return launch{cid: cid, status: "created", save: save, meta: meta, image: ref, rconPW: rconPW, secrets: secrets}, nil
+	return launch{cid: cid, save: save, meta: meta, image: ref, rconPW: rconPW, secrets: secrets}, nil
 }
 
 // runContainer starts the prepared container and waits for the game.
@@ -105,8 +92,9 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 		return err
 	}
 	stale := c.dropContainerLocked(w)
-	w.containerID, w.dockerStatus = cid, p.status
-	w.seenRestarts, w.crashes, w.lastCrash = p.restarts, nil, time.Time{}
+	// The container is fresh: Docker reports it created, with no restarts.
+	w.containerID, w.dockerStatus = cid, "created"
+	w.seenRestarts, w.crashes, w.lastCrash = 0, nil, time.Time{}
 	w.stopping, w.crashLoop, w.crashedRun = false, false, false
 	w.run = runState{save: p.save}
 	w.joins.Reset()
@@ -124,10 +112,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	}
 	// Before the next monitor look, so a new game's range is refused at once.
 	c.noteGameSubnets(cont)
-	addr, err := c.rconAddress(ctx, cont)
-	if err != nil {
-		return err
-	}
+	addr := rconAddress(cont)
 	w.mu.Lock()
 	if err := ctx.Err(); err != nil {
 		w.mu.Unlock()
@@ -139,13 +124,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	if addr != "" {
 		w.rc = rcon.New(addr, p.rconPW)
 	}
-	since := time.Time{}
-	if c.adopted != nil {
-		// An adopted container keeps one log across worlds, so only this
-		// run's lines belong to this world (SPEC 8.6).
-		since = cont.State.StartedAt
-	}
-	c.followLocked(w, cid, since)
+	c.followLocked(w, cid, time.Time{})
 	c.changedLocked(w, true)
 	w.mu.Unlock()
 	o.done(StepStartContainer)
@@ -153,7 +132,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	deadline := time.NewTimer(c.startTimeout)
 	defer deadline.Stop()
 	o.begin(StepLoad)
-	if err := c.waitInGame(ctx, w, cid, cont.RestartCount, since, deadline.C); err != nil {
+	if err := c.waitInGame(ctx, w, cid, cont.RestartCount, deadline.C); err != nil {
 		return err
 	}
 	// The chosen save applies once (SPEC 7.11).
@@ -174,10 +153,8 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 
 // waitInGame waits for the log to say the game is in game, or that it
 // failed to load (SPEC 7.3, 8.7).
-// restarts is Docker's restart count when this run began: an adopted
-// container keeps the count it had before. since is where this run's log
-// begins, for the reason a stopped game gives.
-func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, restarts int, since time.Time, deadline <-chan time.Time) error {
+// restarts is Docker's restart count when this run began.
+func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, restarts int, deadline <-chan time.Time) error {
 	poll := time.NewTicker(c.pollInterval)
 	defer poll.Stop()
 	for {
@@ -197,7 +174,7 @@ func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, re
 		case <-poll.C:
 			cont, err := c.docker.InspectContainer(ctx, cid)
 			if err == nil && (cont.State.Status != "running" || cont.RestartCount > restarts) {
-				tail := c.loadFailureReason(ctx, w, cid, since)
+				tail := c.loadFailureReason(ctx, w, cid)
 				if tail == "" {
 					tail = ": the game stopped while it was loading"
 				}
@@ -250,11 +227,11 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	if err != nil {
 		return err
 	}
-	addr, err := c.rconAddress(ctx, cont)
-	if err != nil || addr == "" {
-		return err
+	addr := rconAddress(cont)
+	if addr == "" {
+		return nil
 	}
-	pw, err := c.rconPassword(w.id)
+	pw, err := c.worlds.RCONPassword(w.id)
 	if err != nil {
 		return err
 	}

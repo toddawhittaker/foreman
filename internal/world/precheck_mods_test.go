@@ -55,9 +55,9 @@ func modCheckWorld(t *testing.T, version string, mods map[string]string) (*Manag
 	return m, id, dir
 }
 
-func checkWith(t *testing.T, m *Manager, id string, run GameRun) PreCheck {
+func checkWith(t *testing.T, m *Manager, id string) PreCheck {
 	t.Helper()
-	p, err := m.PreStartCheck(id, run)
+	p, err := m.PreStartCheck(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,29 +74,9 @@ func modVersionProblems(p PreCheck) []Problem {
 	return out
 }
 
-func TestPreCheckModsForAnotherFactorioInAdoptedMode(t *testing.T) {
-	mods := map[string]string{}
-	for i := range 7 {
-		mods[fmt.Sprintf("mod-%d", i)] = "2.0"
-	}
-	// The container's version decides, not the world's recorded one.
-	m, id, _ := modCheckWorld(t, "2.0.77", mods)
-	p := checkWith(t, m, id, GameRun{Adopted: true, Version: "2.1.24"})
-	got := modVersionProblems(p)
-	if len(got) != 1 || got[0].StartAnyway || p.CanStartAnyway() {
-		t.Fatalf("%+v", p.Problems)
-	}
-	want := "Check cannot run on Factorio 2.1.24: 7 of its mods were made for Factorio 2.0, and the game refuses to load them: " +
-		"mod-0, mod-1, mod-2, mod-3, mod-4 and 2 more. Your game container runs Factorio 2.1.24. " +
-		"Updating the mods for 2.1 will come with mod management; until then this world cannot run in this container."
-	if got[0].Text != want {
-		t.Fatalf("text:\n%s\nwant:\n%s", got[0].Text, want)
-	}
-}
-
-func TestPreCheckModsForAnotherFactorioInManagedMode(t *testing.T) {
+func TestPreCheckModsForAnotherFactorio(t *testing.T) {
 	m, id, _ := modCheckWorld(t, "2.1.24", map[string]string{"old-mod": "2.0"})
-	p := checkWith(t, m, id, GameRun{})
+	p := checkWith(t, m, id)
 	got := modVersionProblems(p)
 	if len(got) != 1 {
 		t.Fatalf("%+v", p.Problems)
@@ -110,7 +90,7 @@ func TestPreCheckModsForAnotherFactorioInManagedMode(t *testing.T) {
 
 func TestPreCheckModsThatDisagreeAreGroupedLargestFirst(t *testing.T) {
 	m, id, _ := modCheckWorld(t, "2.0.77", map[string]string{"a": "1.1", "b": "2.1", "c": "2.1", "d": "2.0"})
-	p := checkWith(t, m, id, GameRun{})
+	p := checkWith(t, m, id)
 	got := modVersionProblems(p)
 	if len(got) != 1 {
 		t.Fatalf("%+v", p.Problems)
@@ -125,18 +105,7 @@ func TestPreCheckModsThatDisagreeAreGroupedLargestFirst(t *testing.T) {
 
 func TestPreCheckModsMatchingTheGameAreFine(t *testing.T) {
 	m, id, _ := modCheckWorld(t, "2.0.77", map[string]string{"a": "2.0", "b": "2.0"})
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
-		t.Fatalf("%+v", got)
-	}
-	// Adopted: the container's minor version is what counts.
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{Adopted: true, Version: "2.0.9"})); len(got) != 0 {
-		t.Fatalf("%+v", got)
-	}
-}
-
-func TestPreCheckSkipsModVersionsWhenAdoptedVersionUnknown(t *testing.T) {
-	m, id, _ := modCheckWorld(t, "2.0.77", map[string]string{"a": "1.1"})
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{Adopted: true})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -151,7 +120,7 @@ func TestPreCheckModVersionIgnoresWhatItCannotRead(t *testing.T) {
 	putModZip(t, dir, "badjson_1.0.0.zip", "badjson_1.0.0", `{"factorio_version":`)
 	putModFor(t, dir, "disabled", "1.0.0", "1.1")
 	putModListOff(t, dir, []string{"base", "junk", "noinfo", "nover", "badjson", "ghost-without-a-zip"}, "disabled")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -162,7 +131,7 @@ func TestPreCheckModVersionReadsOnlyTheFirstBytesOfInfo(t *testing.T) {
 	big := `{"description":"` + strings.Repeat("x", maxInfoJSON) + `","factorio_version":"1.1"}`
 	putModZip(t, dir, "big_1.0.0.zip", "big_1.0.0", big)
 	putModList(t, dir, "base", "big")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -172,7 +141,7 @@ func TestPreCheckModVersionUsesTheNewestZip(t *testing.T) {
 	putModFor(t, dir, "multi", "1.9.0", "1.1")
 	putModFor(t, dir, "multi", "1.10.0", "2.0")
 	putModList(t, dir, "base", "multi")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -181,20 +150,18 @@ func TestPreCheckBuiltinModsAreNotRead(t *testing.T) {
 	m, id, dir := modCheckWorld(t, "2.0.77", nil)
 	putModFor(t, dir, "space-age", "1.0.0", "1.1")
 	putModList(t, dir, "base", "space-age")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
 
-// In adopted mode the container decides the version, so the world's recorded
-// one does not gate the save (SPEC 4.9); the controller checks the container.
-func TestPreCheckAdoptedIgnoresWorldVersionForSave(t *testing.T) {
+// The world's pinned version decides: a save from a newer patch release is
+// refused (SPEC 7.4).
+func TestPreCheckSaveNewerThanWorldVersion(t *testing.T) {
 	m, id, dir := checkWorld(t, "2.1.9", false)
 	putFixture(t, dir, "2.1.24-no-space-age.zip", "a.zip", t0)
 	putModList(t, dir, "base", "recycler")
-	wantKinds(t, checkWith(t, m, id, GameRun{Adopted: true, Version: "2.1.24"}))
-	wantKinds(t, checkWith(t, m, id, GameRun{Adopted: true}))
-	wantKinds(t, checkWith(t, m, id, GameRun{}), ProblemSaveNewer)
+	wantKinds(t, checkWith(t, m, id), ProblemSaveNewer)
 }
 
 func TestPreCheckMissingModText(t *testing.T) {
@@ -230,7 +197,7 @@ func TestCompareSaveManyMissingAndDisabledModsUsePlurals(t *testing.T) {
 	meta := Meta{GameVersion: "2.0.77"}
 	mods := modList{found: true, enabled: map[string]bool{"base": true}, disabled: map[string]bool{"off-a": true, "off-b": true}}
 	present := map[string]bool{"off-a": true, "off-b": true}
-	got := compareSave(meta, mods, present, "a.zip", save, false)
+	got := compareSave(meta, mods, present, "a.zip", save)
 	if len(got) != 2 {
 		t.Fatalf("%+v", got)
 	}

@@ -80,7 +80,7 @@ func kinds(p PreCheck) []ProblemKind {
 
 func runCheck(t *testing.T, m *Manager, id string) PreCheck {
 	t.Helper()
-	p, err := m.PreStartCheck(id, GameRun{})
+	p, err := m.PreStartCheck(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,11 +328,11 @@ func TestPreCheckHostileModList(t *testing.T) {
 	m, id, dir := checkWorld(t, "1.1.110", false)
 	putFixture(t, dir, "1.1.110-vanilla.zip", "a.zip", t0)
 	writeFile(t, filepath.Join(dir, ModsDir, ModListFile), `{"mods":[`+strings.Repeat(" ", maxModList)+`]}`)
-	if _, err := m.PreStartCheck(id, GameRun{}); err == nil {
+	if _, err := m.PreStartCheck(id); err == nil {
 		t.Fatal("an oversized mod-list.json was accepted")
 	}
 	writeFile(t, filepath.Join(dir, ModsDir, ModListFile), `{"mods":`)
-	if _, err := m.PreStartCheck(id, GameRun{}); err == nil {
+	if _, err := m.PreStartCheck(id); err == nil {
 		t.Fatal("a broken mod-list.json was accepted")
 	}
 	if err := os.Remove(filepath.Join(dir, ModsDir, ModListFile)); err != nil {
@@ -341,7 +341,7 @@ func TestPreCheckHostileModList(t *testing.T) {
 	if err := os.Symlink("../world.json", filepath.Join(dir, ModsDir, ModListFile)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.PreStartCheck(id, GameRun{}); err == nil {
+	if _, err := m.PreStartCheck(id); err == nil {
 		t.Fatal("a symlinked mod-list.json was followed")
 	}
 }

@@ -75,10 +75,9 @@ func (p PreCheck) CanStartAnyway() bool {
 }
 
 // PreStartCheck reads the save that will load and compares it with the
-// world's mods, Space Age flag and game version (SPEC 7.4). run says which
-// Factorio the game will run, for the check of the mods' own versions. It
-// changes nothing. An error means the check itself could not run.
-func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
+// world's mods, Space Age flag and game version (SPEC 7.4). It changes
+// nothing. An error means the check itself could not run.
+func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 	root, err := m.OpenWorld(id)
 	if err != nil {
 		return PreCheck{}, err
@@ -109,10 +108,10 @@ func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 	// The mod version problem is worded once the save's version is known,
 	// and sits where the mod checks are.
 	modAt := len(out.Problems)
-	running, wrong := modVersionMismatch(root, meta, mods, run)
+	running, wrong := modVersionMismatch(root, meta, mods)
 	finish := func() (PreCheck, error) {
 		if len(wrong) > 0 {
-			p := modVersionProblem(meta.Name, run, running, wrong, out.SaveVersion)
+			p := modVersionProblem(meta.Name, running, wrong, out.SaveVersion)
 			out.Problems = slices.Insert(out.Problems, modAt, p)
 		}
 		return out, nil
@@ -152,7 +151,7 @@ func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 		return PreCheck{}, err
 	}
 	out.SaveVersion = save.Version
-	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save, run.Adopted)...)
+	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save)...)
 	return finish()
 }
 
@@ -202,12 +201,10 @@ func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 }
 
 // compareSave lists what the game would delete from save, and refuses a
-// save newer than the world's game version, except in adopted mode, where
-// the container decides the version and the game side checks the save
-// against it (SPEC 4.9).
-func compareSave(meta Meta, mods modList, present map[string]bool, name string, save savefile.Save, adopted bool) []Problem {
+// save newer than the world's game version.
+func compareSave(meta Meta, mods modList, present map[string]bool, name string, save savefile.Save) []Problem {
 	world := parseGameVersion(meta.GameVersion)
-	if !adopted && compareVersion(save.Version, world) > 0 {
+	if compareVersion(save.Version, world) > 0 {
 		return []Problem{{Kind: ProblemSaveNewer,
 			Text: fmt.Sprintf("The save %s was made by Factorio %s, newer than this world's Factorio %s. An older game cannot load it.", name, save.Version, meta.GameVersion)}}
 	}

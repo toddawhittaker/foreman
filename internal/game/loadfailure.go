@@ -69,7 +69,9 @@ func (f *loadFailure) add(raw string) {
 }
 
 // addIncompatible records the mod of the last bullet, if any, as made for
-// the required version. A mod without a bullet is still counted.
+// the required version. A mod without a bullet is still counted, once: the
+// log holds every run of this start, and the same nameless line from each
+// run must not raise the count.
 func (f *loadFailure) addIncompatible(current, required string) {
 	mod := f.mod
 	f.mod = ""
@@ -81,7 +83,7 @@ func (f *loadFailure) addIncompatible(current, required string) {
 		return
 	}
 	f.current = current
-	if len(names) >= maxRecordedMods || (mod != "" && slices.Contains(names, mod)) {
+	if len(names) >= maxRecordedMods || slices.Contains(names, mod) {
 		return
 	}
 	f.byRequired[required] = append(names, mod)
@@ -147,14 +149,15 @@ func cut(s string, n int) string {
 	return s
 }
 
-// loadFailureReason reads the log of the container's run since the given
-// time and returns the game's own reason it stopped while loading, as the
-// end of the start failure's message, or "" when the log gives none or
-// cannot be read.
-func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string, since time.Time) string {
+// loadFailureReason reads the log of the container's run and returns the
+// game's own reason it stopped while loading, as the end of the start
+// failure's message, or "" when the log gives none or cannot be read. Every
+// start makes a fresh container (ADR 0003), so its log holds every run of
+// this start, Docker's restarts after a crash included, and nothing older.
+func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string) string {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
-	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Since: since})
+	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{})
 	if err != nil {
 		return ""
 	}

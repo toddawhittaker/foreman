@@ -1344,11 +1344,7 @@ func TestInvariantRefusedSwitchWritesNoWorldFile(t *testing.T) {
 	}
 }
 
-func (tr *tracer) SetActiveWorld(ctx context.Context, id string, now time.Time) error {
-	return tr.inner.SetActiveWorld(ctx, id, now)
-}
-
-// SPEC 7.3, 7.9: in managed mode a start or restart of a world that is not
+// SPEC 7.3, 7.9: a start or restart of a world that is not
 // the active one is refused before anything runs, so a container only ever
 // runs the active world.
 func TestInvariantStartOfANonActiveWorldRunsNoContainer(t *testing.T) {
@@ -1373,16 +1369,4 @@ func TestInvariantStartOfANonActiveWorldRunsNoContainer(t *testing.T) {
 			}
 		})
 	}
-}
-
-func (tr *tracer) SetAdoption(ctx context.Context, id string, now time.Time) error {
-	return tr.inner.SetAdoption(ctx, id, now)
-}
-
-func (tr *tracer) Adoption(ctx context.Context) (store.AdoptionRecord, bool, error) {
-	return tr.inner.Adoption(ctx)
-}
-
-func (tr *tracer) ClearAdoption(ctx context.Context) error {
-	return tr.inner.ClearAdoption(ctx)
 }

@@ -31,9 +31,6 @@ type Client struct {
 	long *http.Client // log follow, pull and stop: no total limit, each caller sets a deadline
 	base string       // scheme and host, for example "http://docker"
 
-	// adopted drops the create, remove and image calls (SPEC 4.11).
-	adopted bool
-
 	mu         sync.Mutex
 	apiVersion string // agreed with the daemon; empty until first needed
 }
@@ -64,18 +61,6 @@ func New(dockerHost string) (*Client, error) {
 	default:
 		return nil, fmt.Errorf("DOCKER_HOST %q must start with unix:// or tcp://", dockerHost)
 	}
-}
-
-// NewAdopted is New for a daemon that holds a container Foreman did not
-// make. The client refuses, without contacting the daemon, to create or
-// remove containers or touch images (SPEC 4.11, 14.3).
-func NewAdopted(dockerHost string) (*Client, error) {
-	c, err := New(dockerHost)
-	if err != nil {
-		return nil, err
-	}
-	c.adopted = true
-	return c, nil
 }
 
 func newClient(tr http.RoundTripper, base string) *Client {
@@ -118,9 +103,6 @@ type request struct {
 func (c *Client) do(ctx context.Context, r request) (*http.Response, error) {
 	if !Allowed(r.method, r.path) {
 		return nil, fmt.Errorf("refusing Docker API call %s %s: it is not on Foreman's allowed list (SPEC 14.3)", r.method, r.path)
-	}
-	if c.adopted && !AllowedAdopted(r.method, r.path) {
-		return nil, fmt.Errorf("refusing Docker API call %s %s: Foreman does not create or remove containers or touch images in adopted mode (SPEC 4.11)", r.method, r.path)
 	}
 	u, err := url.Parse(c.base)
 	if err != nil {

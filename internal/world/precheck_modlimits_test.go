@@ -27,9 +27,9 @@ func modWorldWithSave(t *testing.T, version, fixture string, mods map[string]str
 	return m, id, dir
 }
 
-func modText(t *testing.T, m *Manager, id string, run GameRun) string {
+func modText(t *testing.T, m *Manager, id string) string {
 	t.Helper()
-	got := modVersionProblems(checkWith(t, m, id, run))
+	got := modVersionProblems(checkWith(t, m, id))
 	if len(got) != 1 {
 		t.Fatalf("mod version problems %+v", got)
 	}
@@ -42,21 +42,12 @@ func TestPreCheckModVersionCountsUnlistedZips(t *testing.T) {
 	m, id, dir := modCheckWorld(t, "2.0.77", nil)
 	putModFor(t, dir, "unlisted", "1.0.0", "1.1")
 	putModListOff(t, dir, []string{"base"})
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 1 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 1 {
 		t.Fatalf("unlisted zip: %+v", got)
 	}
 	putModListOff(t, dir, []string{"base"}, "unlisted")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("zip listed as off: %+v", got)
-	}
-}
-
-// VersionWarning needs only the save, so it opens no mod zip.
-func TestPreCheckSkipMods(t *testing.T) {
-	m, id, _ := modCheckWorld(t, "2.0.77", map[string]string{"a": "1.1"})
-	p := checkWith(t, m, id, GameRun{SkipMods: true})
-	if got := modVersionProblems(p); len(got) != 0 || p.SaveVersion.String() != "2.0.77" {
-		t.Fatalf("%+v, save %s", got, p.SaveVersion)
 	}
 }
 
@@ -76,7 +67,7 @@ func TestPreCheckModZipWithTooManyEntriesIsLeftUnread(t *testing.T) {
 	}
 	writeFile(t, filepath.Join(dir, ModsDir, "many_1.0.0.zip"), buf.String())
 	putModList(t, dir, "base", "many")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -107,7 +98,7 @@ func TestPreCheckModZipOverTheSizeLimitIsLeftUnread(t *testing.T) {
 		t.Fatal(err)
 	}
 	putModList(t, dir, "base", "big")
-	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
+	if got := modVersionProblems(checkWith(t, m, id)); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -115,16 +106,12 @@ func TestPreCheckModZipOverTheSizeLimitIsLeftUnread(t *testing.T) {
 // 2.10 is not 2.1.
 func TestPreCheckModVersionComparesMinorNumbersWhole(t *testing.T) {
 	m, id, _ := modCheckWorld(t, "2.1.24", map[string]string{"future": "2.10"})
-	if got := modText(t, m, id, GameRun{}); !strings.Contains(got, "made for Factorio 2.10") {
+	if got := modText(t, m, id); !strings.Contains(got, "made for Factorio 2.10") {
 		t.Fatalf("2.1 game, 2.10 mod: %s", got)
-	}
-	m, id, _ = modCheckWorld(t, "2.1.24", map[string]string{"now": "2.1"})
-	if got := modText(t, m, id, GameRun{Adopted: true, Version: "2.10.0"}); !strings.Contains(got, "made for Factorio 2.1,") {
-		t.Fatalf("2.10 container, 2.1 mod: %s", got)
 	}
 }
 
-func TestPreCheckModVersionAdviceInManagedMode(t *testing.T) {
+func TestPreCheckModVersionAdvice(t *testing.T) {
 	cases := []struct {
 		name, world, fixture string
 		mod                  string
@@ -142,7 +129,7 @@ func TestPreCheckModVersionAdviceInManagedMode(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			m, id, _ := modWorldWithSave(t, c.world, c.fixture, map[string]string{"x": c.mod})
-			if got := modText(t, m, id, GameRun{}); !strings.HasSuffix(got, c.want) {
+			if got := modText(t, m, id); !strings.HasSuffix(got, c.want) {
 				t.Fatalf("got %q, want it to end %q", got, c.want)
 			}
 		})
@@ -155,7 +142,7 @@ func TestPreCheckModVersionAdviceWithAnUnreadableSave(t *testing.T) {
 		t.Fatal(err)
 	}
 	putSave(t, dir, "a.zip", "not a zip", t0)
-	if got := modText(t, m, id, GameRun{}); !strings.HasSuffix(got, "Update its mods to versions made for Factorio 2.1.") {
+	if got := modText(t, m, id); !strings.HasSuffix(got, "Update its mods to versions made for Factorio 2.1.") {
 		t.Fatalf("got %q", got)
 	}
 }
@@ -163,7 +150,7 @@ func TestPreCheckModVersionAdviceWithAnUnreadableSave(t *testing.T) {
 func TestPreCheckLongModNamesAreCut(t *testing.T) {
 	name := strings.Repeat("a", 150)
 	m, id, _ := modCheckWorld(t, "2.1.24", map[string]string{name: "2.0"})
-	got := modText(t, m, id, GameRun{})
+	got := modText(t, m, id)
 	if !strings.Contains(got, strings.Repeat("a", maxShownModName)+"…") || strings.Contains(got, strings.Repeat("a", maxShownModName+1)) {
 		t.Fatalf("got %q", got)
 	}

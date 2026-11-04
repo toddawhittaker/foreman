@@ -84,7 +84,7 @@ image:
 
 run:
 	@mkdir -p .dev-data
-	FOREMAN_MODE=managed FOREMAN_GAME_UID=$(shell id -u) FOREMAN_GAME_GID=$(shell id -g) \
+	FOREMAN_GAME_UID=$(shell id -u) FOREMAN_GAME_GID=$(shell id -g) \
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
