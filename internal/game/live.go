@@ -4,17 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-func (c *Controller) newRCON(ip string, pw secret.Secret) *rcon.Client {
-	return rcon.New(net.JoinHostPort(ip, RCONPort), pw)
-}
 
 // exec runs one RCON command within the per-call limit. A failure is
 // ErrRCONUnreachable, with RCON's own reason, which never holds the
@@ -178,7 +173,7 @@ func (c *Controller) Restore(ctx context.Context, id string, by Actor, name stri
 	if _, err := c.worlds.Snapshot(id, name); err != nil {
 		return world.Snapshot{}, err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, startStepsFor(StartOptions{}))
+	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, c.startSteps(StartOptions{}))
 	before, err := c.restoreLocked(ctx, o, by, name, countdown)
 	return before, o.end(err)
 }
@@ -198,7 +193,7 @@ func (c *Controller) restoreLocked(ctx context.Context, o *opRun, by Actor, name
 	}
 	o.done(StepRestore)
 	if !wasRunning {
-		o.skip(startStepsFor(StartOptions{})...)
+		o.skip(c.startSteps(StartOptions{})...)
 		return before, nil
 	}
 	return before, c.startLocked(ctx, o, by, StartOptions{})

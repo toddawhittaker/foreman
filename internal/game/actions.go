@@ -43,12 +43,29 @@ func checkStepsFor(opts StartOptions) []string {
 	return []string{StepCheck}
 }
 
-// launchSteps are the steps of launchLocked.
+// launchSteps are the steps of launchLocked in managed mode.
 var launchSteps = []string{StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
 
-// startStepsFor lists a start's steps.
+// adoptedLaunchSteps are the steps of launchLocked in adopted mode, where
+// the container already exists and its checks run with the world's.
+var adoptedLaunchSteps = []string{StepStartContainer, StepLoad, StepRCON}
+
+// startStepsFor lists a start's steps in managed mode.
 func startStepsFor(opts StartOptions) []string {
 	return append(checkStepsFor(opts), launchSteps...)
+}
+
+// launchSteps lists the steps of launchLocked in this controller's mode.
+func (c *Controller) launchSteps() []string {
+	if c.adopted != nil {
+		return adoptedLaunchSteps
+	}
+	return launchSteps
+}
+
+// startSteps lists a start's steps in this controller's mode.
+func (c *Controller) startSteps(opts StartOptions) []string {
+	return append(checkStepsFor(opts), c.launchSteps()...)
 }
 
 // The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4).
@@ -89,24 +106,32 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startStepsFor(opts))
+	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, c.startSteps(opts))
 	err = c.startLocked(ctx, o, by, opts)
 	return o.end(err)
 }
 
 // startLocked runs the start steps. The caller holds the world's lock.
 func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
-	if err := c.checkLocked(o, by, opts); err != nil {
+	if err := c.checkLocked(ctx, o, by, opts, o.w.id); err != nil {
 		return err
 	}
 	return c.launchLocked(ctx, o)
 }
 
 // checkLocked runs the pre-start check and takes the snapshot a start
-// anyway needs (SPEC 7.4). The caller holds the world's lock.
-func (c *Controller) checkLocked(o *opRun, by Actor, opts StartOptions) error {
+// anyway needs (SPEC 7.4). In adopted mode it also checks the container,
+// and that the game folder still presents the world named presented: the
+// world itself, or the one a switch is leaving (SPEC 4.8, 4.11). The
+// caller holds the world's lock.
+func (c *Controller) checkLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions, presented string) error {
 	id := o.w.id
 	o.begin(StepCheck)
+	if c.adopted != nil {
+		if _, err := c.checkAdoptedStart(ctx, id, presented); err != nil {
+			return err
+		}
+	}
 	check, err := c.precheck(id, opts)
 	if err != nil {
 		return err
@@ -121,117 +146,6 @@ func (c *Controller) checkLocked(o *opRun, by Actor, opts StartOptions) error {
 		return fmt.Errorf("take the snapshot before starting anyway: %w", err)
 	}
 	o.done(StepSnapshot)
-	return nil
-}
-
-// launchLocked creates and starts the container, then waits until the game
-// is in game and answers over RCON (SPEC 7.3). The caller holds the
-// world's lock.
-func (c *Controller) launchLocked(ctx context.Context, o *opRun) error {
-	w, id := o.w, o.w.id
-
-	o.begin(StepImage)
-	meta, ref, err := c.gameImage(ctx, id)
-	if err != nil {
-		return err
-	}
-	o.done(StepImage)
-
-	o.begin(StepCreate)
-	network, err := c.gameNetwork(ctx)
-	if err != nil {
-		return err
-	}
-	old, found, err := c.ourContainer(ctx, id)
-	if err != nil {
-		return err
-	}
-	if found {
-		if s := old.State.Status; s == "running" || s == "restarting" {
-			return ErrAlreadyRunning
-		}
-		// A fresh container for every start, so its settings never drift (ADR 0003).
-		if err := c.docker.RemoveContainer(ctx, old.ID, false); err != nil && !errors.Is(err, docker.ErrNotFound) {
-			return err
-		}
-	}
-	rconPW, secrets, err := c.secrets(id)
-	if err != nil {
-		return err
-	}
-	save, err := c.worlds.PrepareLoad(id)
-	if err != nil {
-		return err
-	}
-	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network))
-	if errors.Is(err, docker.ErrConflict) {
-		return ErrForeign
-	}
-	if err != nil {
-		return err
-	}
-	o.done(StepCreate)
-
-	o.begin(StepStartContainer)
-	w.mu.Lock()
-	// A forced stop sets its own marks once this operation has ended, so
-	// none may be set here after it asked.
-	if err := ctx.Err(); err != nil {
-		w.mu.Unlock()
-		return err
-	}
-	stale := c.dropContainerLocked(w)
-	w.containerID, w.dockerStatus = cid, "created"
-	w.seenRestarts, w.crashes, w.lastCrash = 0, nil, time.Time{}
-	w.stopping, w.crashLoop, w.crashedRun = false, false, false
-	w.run = runState{save: save}
-	w.joins.Reset()
-	w.secrets, w.gameVersion, w.image = secrets, meta.GameVersion, ref
-	w.mu.Unlock()
-	closeRCON(stale)
-	o.show(StateStarting)
-	if err := c.docker.StartContainer(ctx, cid); err != nil {
-		return err
-	}
-	cont, err := c.docker.InspectContainer(ctx, cid)
-	if err != nil {
-		return err
-	}
-	w.mu.Lock()
-	if err := ctx.Err(); err != nil {
-		w.mu.Unlock()
-		return err
-	}
-	// Only a container Docker started can crash.
-	w.expectRunning = true
-	w.dockerStatus, w.startedAt, w.seenRestarts = cont.State.Status, cont.State.StartedAt, cont.RestartCount
-	if ip := containerIP(cont); ip != "" {
-		w.rc = c.newRCON(ip, rconPW)
-	}
-	c.followLocked(w, cid, time.Time{})
-	c.changedLocked(w, true)
-	w.mu.Unlock()
-	o.done(StepStartContainer)
-
-	deadline := time.NewTimer(c.startTimeout)
-	defer deadline.Stop()
-	o.begin(StepLoad)
-	if err := c.waitInGame(ctx, w, cid, deadline.C); err != nil {
-		return err
-	}
-	// The chosen save applies once (SPEC 7.11).
-	if save != "" {
-		if err := c.worlds.ClearLoadSave(id, save); err != nil {
-			c.log.Warn("could not reset which save loads to the newest", "world", id, "error", err)
-		}
-	}
-	o.done(StepLoad)
-
-	o.begin(StepRCON)
-	if err := c.waitRCON(ctx, w, cid, deadline.C); err != nil {
-		return err
-	}
-	o.done(StepRCON)
 	return nil
 }
 
@@ -289,6 +203,9 @@ func (c *Controller) checkSaveAgainstImage(id string, save savefile.Version) err
 	if save == (savefile.Version{}) {
 		return nil
 	}
+	if c.adopted != nil {
+		return c.checkSaveAgainstContainer(save)
+	}
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return err
@@ -317,7 +234,12 @@ func imageVersion(ref string) ([3]uint16, bool) {
 	if i < 0 || i < strings.LastIndex(ref, "/") {
 		return [3]uint16{}, false
 	}
-	parts := strings.Split(ref[i+1:], ".")
+	return parseVersion(ref[i+1:])
+}
+
+// parseVersion reads major.minor.patch, as in 2.0.77.
+func parseVersion(v string) ([3]uint16, bool) {
+	parts := strings.Split(v, ".")
 	if len(parts) != 3 {
 		return [3]uint16{}, false
 	}
@@ -330,93 +252,6 @@ func imageVersion(ref string) ([3]uint16, bool) {
 		out[k] = uint16(n)
 	}
 	return out, true
-}
-
-// waitInGame waits for the log to say the game is in game, or that it
-// failed to load (SPEC 7.3, 8.7).
-func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, deadline <-chan time.Time) error {
-	poll := time.NewTicker(c.pollInterval)
-	defer poll.Stop()
-	for {
-		w.mu.Lock()
-		run, changed := w.run, w.changed
-		w.mu.Unlock()
-		switch {
-		case run.loadFailed && run.loadError != "":
-			return fmt.Errorf("%w: it could not load the save (%s)", ErrStartFailed, run.loadError)
-		case run.loadFailed:
-			return fmt.Errorf("%w: it could not load the save", ErrStartFailed)
-		case run.inGame:
-			return nil
-		}
-		select {
-		case <-changed:
-		case <-poll.C:
-			cont, err := c.docker.InspectContainer(ctx, cid)
-			if err == nil && (cont.State.Status != "running" || cont.RestartCount > 0) {
-				return fmt.Errorf("%w: the game stopped while it was loading", ErrStartFailed)
-			}
-		case <-deadline:
-			return fmt.Errorf("%w: it did not finish loading within %s", ErrStartFailed, durationWords(c.startTimeout))
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-}
-
-// waitRCON waits until the game answers over RCON: being in game is not
-// enough, because the RCON port can fail to open (SPEC 7.3).
-func (c *Controller) waitRCON(ctx context.Context, w *worldRun, cid string, deadline <-chan time.Time) error {
-	for {
-		w.mu.Lock()
-		rc := w.rc
-		w.mu.Unlock()
-		if rc != nil {
-			callCtx, cancel := context.WithTimeout(ctx, c.rconCallLimit)
-			_, err := rc.Exec(callCtx, "/players online")
-			cancel()
-			if err == nil {
-				return nil
-			}
-			if errors.Is(err, rcon.ErrLogin) {
-				return fmt.Errorf("%w: the game is in game, but it refused Foreman's RCON password", ErrStartFailed)
-			}
-		} else if err := c.connectRCON(ctx, w, cid); err != nil {
-			return err
-		}
-		t := time.NewTimer(c.rconRetry)
-		select {
-		case <-t.C:
-		case <-deadline:
-			t.Stop()
-			return fmt.Errorf("%w: it is in game but did not answer over RCON within %s", ErrStartFailed, durationWords(c.startTimeout))
-		case <-ctx.Done():
-			t.Stop()
-			return ctx.Err()
-		}
-	}
-}
-
-// connectRCON makes the RCON client once the container has an address.
-func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) error {
-	cont, err := c.docker.InspectContainer(ctx, cid)
-	if err != nil {
-		return err
-	}
-	ip := containerIP(cont)
-	if ip == "" {
-		return nil
-	}
-	pw, err := c.worlds.RCONPassword(w.id)
-	if err != nil {
-		return err
-	}
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.containerID == cid && w.rc == nil {
-		w.rc = c.newRCON(ip, pw)
-	}
-	return nil
 }
 
 // MaxStopCountdown is the longest countdown a stop may ask for.
@@ -687,10 +522,15 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}
+	if c.adopted != nil {
+		if _, err := c.checkAdoptedStart(ctx, id, id); err != nil {
+			return err
+		}
+	}
 	if _, err := c.precheck(id, opts); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startStepsFor(opts))
+	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, c.startSteps(opts))
 	err = c.stopLocked(ctx, o, countdown)
 	if errors.Is(err, ErrNotRunning) {
 		err = nil
@@ -704,6 +544,9 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 // PullImage downloads the pinned image for the world's game version, as an
 // action of its own (SPEC 3.7). It is audited, and shown as a step.
 func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
+	if c.adopted != nil {
+		return ErrAdoptedImages
+	}
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return err
