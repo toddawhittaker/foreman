@@ -29,20 +29,6 @@ const (
 	maxShownModName = 100
 )
 
-// GameRun says which Factorio the game will run, for the check of mods
-// against it (SPEC 7.4).
-type GameRun struct {
-	// Adopted is true when a container the admin owns runs the game
-	// (SPEC 4.9). Version is then that container's version, or "" when it
-	// is unknown. In managed mode Version is not used: the game runs the
-	// world's pinned game version.
-	Adopted bool
-	Version string
-	// SkipMods leaves out the check of the mods' own versions, for a caller
-	// that needs only the save (it opens no mod zip).
-	SkipMods bool
-}
-
 // modGameVersions returns, for each mod the game would load that has a zip
 // in the world's mods folder, the Factorio version its info.json declares,
 // as major.minor. The game loads a zip that mod-list.json does not mention
@@ -159,17 +145,13 @@ func infoFactorioVersion(zf *zip.File) string {
 	return doc.FactorioVersion
 }
 
-// modVersionMismatch finds mods made for another Factorio than the one the
-// game will run: the container's version in adopted mode (unknown skips the
-// check), else the world's pinned game version. It returns the version the
-// game runs and each mismatched mod with the major.minor it was made for.
-func modVersionMismatch(root *os.Root, meta Meta, mods modList, run GameRun) (running string, wrong map[string]string) {
+// modVersionMismatch finds mods made for another Factorio than the world's
+// pinned game version, which the game runs. It returns that version and
+// each mismatched mod with the major.minor it was made for.
+func modVersionMismatch(root *os.Root, meta Meta, mods modList) (running string, wrong map[string]string) {
 	running = meta.GameVersion
-	if run.Adopted {
-		running = run.Version
-	}
 	want := gameMinor(running)
-	if want == "" || run.SkipMods {
+	if want == "" {
 		return running, nil
 	}
 	for name, v := range modGameVersions(root, mods, running) {
@@ -188,7 +170,7 @@ func modVersionMismatch(root *os.Root, meta Meta, mods modList, run GameRun) (ru
 // major.minor it was made for. save is the version of the save that will
 // load, or zero when it is not known; it decides whether lowering the
 // world's game version is good advice.
-func modVersionProblem(worldName string, run GameRun, running string, mods map[string]string, save savefile.Version) Problem {
+func modVersionProblem(worldName string, running string, mods map[string]string, save savefile.Version) Problem {
 	byVersion := map[string][]string{}
 	for name, v := range mods {
 		byVersion[v] = append(byVersion[v], name)
@@ -221,9 +203,6 @@ func modVersionProblem(worldName string, run GameRun, running string, mods map[s
 		fmt.Fprintf(&text, "%s made for Factorio %s, and the game refuses to load %s: %s.", count, v, object, listNames(names))
 	}
 	switch {
-	case run.Adopted:
-		fmt.Fprintf(&text, " Your game container runs Factorio %s. Updating the mods for %s will come with mod management; until then this world cannot run in this container.",
-			running, gameMinor(running))
 	case canLowerGameVersion(versions[0], save):
 		fmt.Fprintf(&text, " Set the world's game version to %s.x, or update its mods.", versions[0])
 	default:

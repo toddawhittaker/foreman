@@ -1,18 +1,14 @@
 package config_test
 
 import (
-	"fmt"
 	"net/netip"
 	"net/url"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/config"
-	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 func load(vars map[string]string) (*config.Config, error) {
@@ -25,7 +21,6 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := &config.Config{
-		Mode:        "managed",
 		DataDir:     "/data",
 		GameUID:     845,
 		GameGID:     845,
@@ -44,7 +39,6 @@ func TestLoadDefaults(t *testing.T) {
 
 func TestLoadAllSet(t *testing.T) {
 	c, err := load(map[string]string{
-		"FOREMAN_MODE":                "Adopted",
 		"FOREMAN_DATA_DIR":            "/srv/foreman",
 		"FOREMAN_HOST_DATA_DIR":       "/host/foreman",
 		"FOREMAN_GAME_UID":            "1000",
@@ -59,16 +53,12 @@ func TestLoadAllSet(t *testing.T) {
 		"FOREMAN_SESSION_IDLE":        "30m",
 		"DOCKER_HOST":                 "tcp://socket-proxy:2375",
 		"FOREMAN_GAME_NETWORK":        "games",
-		"FOREMAN_GAME_CONTAINER":      "factorio",
-		"FOREMAN_GAME_DIR":            "/srv/factorio",
-		"FOREMAN_RCON_PASSWORD":       "s3cret-rcon",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pub, _ := url.Parse("https://foreman.example.com")
 	want := &config.Config{
-		Mode:          "adopted",
 		DataDir:       "/srv/foreman",
 		HostDataDir:   "/host/foreman",
 		GameUID:       1000,
@@ -88,10 +78,6 @@ func TestLoadAllSet(t *testing.T) {
 		SessionIdle: 30 * time.Minute,
 		DockerHost:  "tcp://socket-proxy:2375",
 		GameNetwork: "games",
-
-		GameContainer: "factorio",
-		GameDir:       "/srv/factorio",
-		RCONPassword:  secret.New("s3cret-rcon"),
 	}
 	if !reflect.DeepEqual(c, want) {
 		t.Errorf("\n got %+v\nwant %+v", c, want)
@@ -175,7 +161,6 @@ func TestLoadErrors(t *testing.T) {
 		vars map[string]string
 		want string
 	}{
-		{"bad mode", map[string]string{"FOREMAN_MODE": "swarm"}, `FOREMAN_MODE must be "managed" or "adopted"`},
 		{"uid negative", map[string]string{"FOREMAN_GAME_UID": "-1"}, "FOREMAN_GAME_UID must be a whole number"},
 		{"uid text", map[string]string{"FOREMAN_GAME_UID": "factorio"}, "FOREMAN_GAME_UID must be a whole number"},
 		{"uid too large", map[string]string{"FOREMAN_GAME_UID": "99999999999999"}, "FOREMAN_GAME_UID must be a whole number"},
@@ -233,7 +218,6 @@ func TestHeadersOffIgnoresHeaderSettings(t *testing.T) {
 
 func TestLoadReportsAllProblems(t *testing.T) {
 	_, err := load(map[string]string{
-		"FOREMAN_MODE":            "swarm",
 		"FOREMAN_GAME_UID":        "x",
 		"FOREMAN_LISTEN":          "nope",
 		"FOREMAN_PUBLIC_URL":      "nope",
@@ -245,7 +229,7 @@ func TestLoadReportsAllProblems(t *testing.T) {
 		t.Fatal("want errors")
 	}
 	for _, v := range []string{
-		"FOREMAN_MODE", "FOREMAN_GAME_UID", "FOREMAN_LISTEN", "FOREMAN_PUBLIC_URL",
+		"FOREMAN_GAME_UID", "FOREMAN_LISTEN", "FOREMAN_PUBLIC_URL",
 		"FOREMAN_AUTH_USER_HEADER", "FOREMAN_AUTH_GROUPS_HEADER", "FOREMAN_AUTH_REQUIRED_GROUP",
 		"FOREMAN_SESSION_IDLE", "FOREMAN_TRUSTED_PROXIES",
 	} {
@@ -271,7 +255,7 @@ func TestProxiesAreNormalised(t *testing.T) {
 
 func TestEmptyValuesAreUnset(t *testing.T) {
 	c, err := load(map[string]string{
-		"FOREMAN_MODE": "", "FOREMAN_DATA_DIR": "", "FOREMAN_GAME_UID": "", "FOREMAN_LISTEN": "",
+		"FOREMAN_DATA_DIR": "", "FOREMAN_GAME_UID": "", "FOREMAN_LISTEN": "",
 		"FOREMAN_PUBLIC_URL": "", "FOREMAN_AUTH_METHODS": "", "FOREMAN_SESSION_IDLE": "", "DOCKER_HOST": "", "FOREMAN_TRUSTED_PROXIES": "",
 	})
 	if err != nil {
@@ -283,141 +267,21 @@ func TestEmptyValuesAreUnset(t *testing.T) {
 	}
 }
 
-// adoptedVars is a valid adopted-mode setup; tests change one thing.
-func adoptedVars(extra map[string]string) map[string]string {
-	m := map[string]string{
-		"FOREMAN_MODE":           "adopted",
-		"FOREMAN_DATA_DIR":       "/srv/foreman",
-		"FOREMAN_GAME_CONTAINER": "factorio",
-		"FOREMAN_GAME_DIR":       "/srv/factorio",
-	}
-	for k, v := range extra {
-		m[k] = v
-	}
-	return m
-}
-
-func TestAdoptedSettings(t *testing.T) {
-	c, err := load(adoptedVars(nil))
+// Adopted mode and its settings were removed (ADR 0005); Foreman no longer
+// reads them, so a leftover one changes nothing.
+func TestRemovedSettingsAreIgnored(t *testing.T) {
+	c, err := load(map[string]string{
+		"FOREMAN_MODE":               "adopted",
+		"FOREMAN_GAME_CONTAINER":     "factorio",
+		"FOREMAN_GAME_DIR":           "/srv/factorio",
+		"FOREMAN_RCON_PASSWORD":      "hunter2-pw",
+		"FOREMAN_RCON_PASSWORD_FILE": "/nonexistent/rconpw",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.GameContainer != "factorio" || c.GameDir != "/srv/factorio" {
-		t.Errorf("container %q dir %q", c.GameContainer, c.GameDir)
-	}
-	if c.RCONPassword.Reveal() != "" {
-		t.Error("RCONPassword should be zero when unset")
-	}
-}
-
-func TestAdoptedErrors(t *testing.T) {
-	tests := []struct {
-		name  string
-		vars  map[string]string
-		wants []string
-	}{
-		{"container missing", adoptedVars(map[string]string{"FOREMAN_GAME_CONTAINER": ""}),
-			[]string{"FOREMAN_GAME_CONTAINER must be set when FOREMAN_MODE is adopted"}},
-		{"dir missing", adoptedVars(map[string]string{"FOREMAN_GAME_DIR": ""}),
-			[]string{"FOREMAN_GAME_DIR must be set when FOREMAN_MODE is adopted"}},
-		{"dir relative", adoptedVars(map[string]string{"FOREMAN_GAME_DIR": "factorio"}),
-			[]string{"FOREMAN_GAME_DIR must be an absolute path"}},
-		{"dir not clean", adoptedVars(map[string]string{"FOREMAN_GAME_DIR": "/srv/factorio/"}),
-			[]string{"FOREMAN_GAME_DIR must be a clean path", `"/srv/factorio"`}},
-		{"dir with dots", adoptedVars(map[string]string{"FOREMAN_GAME_DIR": "/srv/x/../factorio"}),
-			[]string{"FOREMAN_GAME_DIR must be a clean path"}},
-		{"data dir is game dir", adoptedVars(map[string]string{"FOREMAN_DATA_DIR": "/srv/factorio"}),
-			[]string{"FOREMAN_DATA_DIR", "FOREMAN_GAME_DIR", "must not be the game folder or inside it"}},
-		{"data dir inside game dir", adoptedVars(map[string]string{"FOREMAN_DATA_DIR": "/srv/factorio/foreman"}),
-			[]string{"FOREMAN_DATA_DIR", "FOREMAN_GAME_DIR", "must not be the game folder or inside it"}},
-		{"data dir unclean inside game dir", adoptedVars(map[string]string{"FOREMAN_DATA_DIR": "/srv/factorio/a/../b/"}),
-			[]string{"must not be the game folder or inside it"}},
-		{"game dir inside data dir", adoptedVars(map[string]string{"FOREMAN_DATA_DIR": "/srv", "FOREMAN_GAME_DIR": "/srv/factorio"}),
-			[]string{"FOREMAN_GAME_DIR", "FOREMAN_DATA_DIR", "must not be inside"}},
-		{"game dir inside default data dir", map[string]string{"FOREMAN_MODE": "adopted", "FOREMAN_GAME_CONTAINER": "f", "FOREMAN_GAME_DIR": "/data/factorio"},
-			[]string{"must not be inside"}},
-		{"both missing reported together", map[string]string{"FOREMAN_MODE": "adopted"},
-			[]string{"FOREMAN_GAME_CONTAINER must be set", "FOREMAN_GAME_DIR must be set"}},
-		{"managed container", map[string]string{"FOREMAN_GAME_CONTAINER": "factorio"},
-			[]string{"FOREMAN_GAME_CONTAINER is only used when FOREMAN_MODE is adopted"}},
-		{"managed dir", map[string]string{"FOREMAN_GAME_DIR": "/srv/factorio"},
-			[]string{"FOREMAN_GAME_DIR is only used when FOREMAN_MODE is adopted"}},
-		{"managed password", map[string]string{"FOREMAN_RCON_PASSWORD": "hunter2-pw"},
-			[]string{"FOREMAN_RCON_PASSWORD is only used when FOREMAN_MODE is adopted"}},
-		{"password both forms", adoptedVars(map[string]string{"FOREMAN_RCON_PASSWORD": "hunter2-pw", "FOREMAN_RCON_PASSWORD_FILE": "/nope"}),
-			[]string{"FOREMAN_RCON_PASSWORD and FOREMAN_RCON_PASSWORD_FILE are both set"}},
-		{"password file unreadable", adoptedVars(map[string]string{"FOREMAN_RCON_PASSWORD_FILE": "/nonexistent/rconpw"}),
-			[]string{"FOREMAN_RCON_PASSWORD_FILE: cannot read the file"}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c, err := load(tt.vars)
-			if err == nil {
-				t.Fatalf("want an error, got config %+v", c)
-			}
-			if c != nil {
-				t.Errorf("config should be nil on error, got %+v", c)
-			}
-			for _, w := range tt.wants {
-				if !strings.Contains(err.Error(), w) {
-					t.Errorf("error = %q, want containing %q", err, w)
-				}
-			}
-			if strings.Contains(err.Error(), "hunter2-pw") {
-				t.Errorf("error leaks the password: %q", err)
-			}
-		})
-	}
-}
-
-func TestAdoptedNestingAllowsSiblings(t *testing.T) {
-	// A shared name prefix is not nesting.
-	for _, dirs := range [][2]string{
-		{"/srv/foreman", "/srv/foreman-game"},
-		{"/srv/foreman-data", "/srv/foreman"},
-		{"/data", "/games/factorio"},
-	} {
-		_, err := load(adoptedVars(map[string]string{"FOREMAN_DATA_DIR": dirs[0], "FOREMAN_GAME_DIR": dirs[1]}))
-		if err != nil {
-			t.Errorf("data %s, game %s: %v", dirs[0], dirs[1], err)
-		}
-	}
-}
-
-func TestRCONPasswordForms(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "rconpw")
-	if err := os.WriteFile(file, []byte("from-file-pw\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for name, vars := range map[string]map[string]string{
-		"value": {"FOREMAN_RCON_PASSWORD": "from-file-pw"}, //nolint:gosec // a test value
-		"file":  {"FOREMAN_RCON_PASSWORD_FILE": file},
-	} {
-		c, err := load(adoptedVars(vars))
-		if err != nil {
-			t.Fatalf("%s: %v", name, err)
-		}
-		if got := c.RCONPassword.Reveal(); got != "from-file-pw" {
-			t.Errorf("%s: password = %q", name, got)
-		}
-	}
-}
-
-func TestRCONPasswordNeverPrinted(t *testing.T) {
-	const pw = "hunter2-very-secret"
-	c, err := load(adoptedVars(map[string]string{"FOREMAN_RCON_PASSWORD": pw}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, out := range []string{fmt.Sprintf("%v", c), fmt.Sprintf("%+v", c), fmt.Sprintf("%#v", c), fmt.Sprint(*c)} {
-		if strings.Contains(out, pw) {
-			t.Errorf("Config prints the password: %s", out)
-		}
-	}
-
-	// A config that fails for another reason must not echo it either.
-	_, err = load(adoptedVars(map[string]string{"FOREMAN_RCON_PASSWORD": pw, "FOREMAN_GAME_DIR": "relative", "FOREMAN_LISTEN": "nope"}))
-	if err == nil || strings.Contains(err.Error(), pw) {
-		t.Errorf("error = %v", err)
+	d, _ := load(nil)
+	if !reflect.DeepEqual(c, d) {
+		t.Errorf("removed settings changed the config:\n got %+v\nwant %+v", c, d)
 	}
 }

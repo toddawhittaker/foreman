@@ -68,7 +68,7 @@ func Commit(root *os.Root, temp, final string) error {
 	if err := root.Rename(temp, final); err != nil {
 		return err
 	}
-	return SyncDir(root, path.Dir(final))
+	return syncDir(root, path.Dir(final))
 }
 
 // WriteFileAtomic writes data to name inside root: temp file, fsync,
@@ -122,9 +122,9 @@ func openDirFile(root *os.Root, dir string) (*os.File, error) {
 	return f, nil
 }
 
-// SyncDir flushes folder dir inside root to disk, so a rename or new file
+// syncDir flushes folder dir inside root to disk, so a rename or new file
 // in it survives a crash.
-func SyncDir(root *os.Root, dir string) error {
+func syncDir(root *os.Root, dir string) error {
 	d, err := openDirFile(root, dir)
 	if err != nil {
 		return err
@@ -242,10 +242,8 @@ func FormatBytes(n uint64) string {
 }
 
 // openFolder opens the folder at p as a root, refusing a link at p itself.
-// The worlds folder is inside the game folder in adopted mode, where the
-// game container can swap it for a link at any time, so it is checked on
-// every open, never once at startup (SPEC 14.5). The parent is opened by
-// path; it is the game folder itself, which the game cannot replace.
+// It is checked on every open, never once at startup (SPEC 14.5). The
+// parent is opened by path.
 func openFolder(p string) (*os.Root, error) {
 	parent, err := os.OpenRoot(filepath.Dir(p))
 	if err != nil {

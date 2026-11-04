@@ -12,12 +12,3 @@ CREATE TABLE world_switches (
     by_user    TEXT    NOT NULL
 );
 
--- A first adoption in progress (SPEC 4.8). It is the only record, kept here
--- because the game container can write the game folder and cannot reach
--- the database; started_at tells startup whether the cut-over had begun.
--- At most one row: one adoption at a time.
-CREATE TABLE adoption (
-    one        INTEGER PRIMARY KEY CHECK (one = 1),
-    world_id   TEXT    NOT NULL,
-    started_at INTEGER NOT NULL
-);

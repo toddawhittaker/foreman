@@ -42,7 +42,7 @@ func (m *Manager) RCONPassword(id string) (secret.Secret, error) {
 	if err := narrowRCONPassword(root); err != nil {
 		return secret.Secret{}, fmt.Errorf("narrow the RCON password file to 0640: %w", err)
 	}
-	return ReadRCONPassword(root)
+	return readRCONPassword(root)
 }
 
 // createRCONPassword writes a new password file unless one exists.
@@ -78,7 +78,7 @@ func createRCONPassword(root *os.Root) error {
 	if err != nil {
 		return fmt.Errorf("create the RCON password file: %w", err)
 	}
-	return SyncDir(root, ConfigDir)
+	return syncDir(root, ConfigDir)
 }
 
 // createPasswordTemp is CreateTemp for the password: the file is 0640 from
@@ -135,7 +135,7 @@ func copyRCONPassword(src, dst *os.Root) error {
 func narrowRCONPassword(root *os.Root) error {
 	info, err := root.Lstat(RCONPasswordFile)
 	if err != nil || !info.Mode().IsRegular() {
-		return nil // ReadRCONPassword reports it
+		return nil // readRCONPassword reports it
 	}
 	perm := info.Mode().Perm()
 	if perm&^rconPasswordMode == 0 {
@@ -144,10 +144,10 @@ func narrowRCONPassword(root *os.Root) error {
 	return root.Chmod(RCONPasswordFile, perm&rconPasswordMode)
 }
 
-// ReadRCONPassword reads the password file in a world or game folder.
+// readRCONPassword reads the password file in a world.
 // Anything but a small regular file, a link included, is an error
 // (SPEC 14.8).
-func ReadRCONPassword(root *os.Root) (secret.Secret, error) {
+func readRCONPassword(root *os.Root) (secret.Secret, error) {
 	b, err := ReadSmallFile(root, RCONPasswordFile, maxRCONPassword)
 	if err != nil {
 		return secret.Secret{}, err

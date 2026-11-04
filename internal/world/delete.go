@@ -88,7 +88,7 @@ func (m *Manager) removeWorld(id string) error {
 	if err := worlds.Rename(id, gone); err != nil {
 		return err
 	}
-	if err := SyncDir(worlds, "."); err != nil {
+	if err := syncDir(worlds, "."); err != nil {
 		return err
 	}
 	return worlds.RemoveAll(gone)
