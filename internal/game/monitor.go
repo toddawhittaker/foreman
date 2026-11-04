@@ -60,6 +60,10 @@ func closeRCON(rc *rcon.Client) {
 
 // tick looks at every container of this install once.
 func (c *Controller) tick(ctx context.Context) {
+	if c.adopted != nil {
+		c.tickAdopted(ctx)
+		return
+	}
 	list, err := c.docker.ListContainers(ctx, true, []string{LabelInstall + "=" + c.hostData, LabelWorld})
 	if ctx.Err() != nil {
 		return
@@ -95,19 +99,24 @@ func (c *Controller) tick(ctx context.Context) {
 			continue
 		}
 		cont, err := c.docker.InspectContainer(ctx, cid)
-		switch {
-		case errors.Is(err, docker.ErrNotFound):
-			c.observe(w, nil)
-		case err != nil:
-			w.mu.Lock()
-			w.inspectErr = err
-			c.changedLocked(w, true)
-			w.mu.Unlock()
-		default:
-			c.observe(w, &cont)
-			if cont.State.Status == "running" {
-				c.readUsage(ctx, w, cont.ID)
-			}
+		c.observeInspect(ctx, w, cont, err)
+	}
+}
+
+// observeInspect takes in one inspect of the world's container.
+func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docker.Container, err error) {
+	switch {
+	case errors.Is(err, docker.ErrNotFound):
+		c.observe(w, nil)
+	case err != nil:
+		w.mu.Lock()
+		w.inspectErr = err
+		c.changedLocked(w, true)
+		w.mu.Unlock()
+	default:
+		c.observe(w, &cont)
+		if cont.State.Status == "running" {
+			c.readUsage(ctx, w, cont.ID)
 		}
 	}
 }
@@ -232,7 +241,10 @@ func (c *Controller) isNewContainer(w *worldRun, cid string) bool {
 func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 	// Re-attaching changes no world file (SPEC 3.8): a missing password
 	// file is not made here, since the running game could not be using it.
-	err := c.hasRCONPassword(w.id)
+	addr, err := c.rconAddress(c.ctx, cont)
+	if err == nil {
+		err = c.hasRCONPassword(w.id)
+	}
 	var rconPW secret.Secret
 	var secrets []secret.Secret
 	if err == nil {
@@ -273,8 +285,8 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 	w.secrets = secrets
 	w.gameVersion = meta.GameVersion
 	w.image = cont.Image
-	if ip := containerIP(cont); ip != "" {
-		w.rc = c.newRCON(ip, rconPW)
+	if addr != "" {
+		w.rc = rcon.New(addr, rconPW)
 		if cont.State.Status == "running" {
 			rc := w.rc
 			c.spawn(func() { c.probeInGame(w, cont.ID, rc) })

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/gamedir"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -71,6 +72,7 @@ const (
 	AuditImageDownload = "image-download"
 	AuditConsole       = "console"
 	AuditSwitch        = "switch"
+	AuditAdopt         = "adopt"
 )
 
 // Errors a caller can test for with errors.Is. The text is shown to the admin.
@@ -140,6 +142,16 @@ type Config struct {
 	TrustedProxies []netip.Prefix
 	// SelfID is Foreman's own container (docker.SelfID); empty outside one.
 	SelfID string
+	// GameContainer, when set, turns on adopted mode (SPEC 4.7): it names
+	// the container Foreman controls but never creates or removes. Images
+	// and HostDataDir are then not used.
+	GameContainer string
+	// GameDir is the game folder as mounted inside Foreman (SPEC 4.8);
+	// required in adopted mode.
+	GameDir string
+	// RCONPassword is FOREMAN_RCON_PASSWORD; zero means each world's own
+	// config/rconpw (SPEC 4.10).
+	RCONPassword secret.Secret
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 	// Log takes Foreman's own messages; nil means slog.Default.
@@ -159,6 +171,8 @@ type Controller struct {
 	images   map[string]string
 	network  string
 	selfID   string
+	// adopted is set in adopted mode (SPEC 4.7); nil in managed mode.
+	adopted *adoptedMode
 	// What the game network is checked against (SPEC 4.4). dockerHost is the
 	// host DOCKER_HOST names over tcp://.
 	dockerTCP  bool
@@ -190,6 +204,7 @@ type Controller struct {
 	runs      map[string]*worldRun
 	listed    bool  // the monitor has listed Foreman's containers at least once
 	dockerErr error // the last listing failed
+	aview     adoptedView
 }
 
 // New checks cfg and returns a Controller. It contacts nothing; Run starts
@@ -198,17 +213,23 @@ func New(cfg Config) (*Controller, error) {
 	if cfg.Docker == nil || cfg.Worlds == nil || cfg.Audit == nil {
 		return nil, errors.New("game controller: Docker, Worlds and Audit are required")
 	}
-	// The path goes into a "host:container" bind, so a colon or comma would
-	// change the mount (SPEC 4.6).
-	if !filepath.IsAbs(cfg.HostDataDir) || filepath.Clean(cfg.HostDataDir) != cfg.HostDataDir ||
-		strings.ContainsAny(cfg.HostDataDir, ":,") {
-		return nil, fmt.Errorf("the host data directory %q must be a clean absolute path without a colon or comma", cfg.HostDataDir)
-	}
 	if cfg.GameUID < 0 || cfg.GameGID < 0 {
 		return nil, errors.New("the game's user and group IDs must not be negative")
 	}
-	if len(cfg.Images) == 0 {
-		return nil, errors.New("game controller: no game images are configured")
+	adopted, err := newAdoptedMode(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if adopted == nil {
+		// The path goes into a "host:container" bind, so a colon or comma
+		// would change the mount (SPEC 4.6).
+		if !filepath.IsAbs(cfg.HostDataDir) || filepath.Clean(cfg.HostDataDir) != cfg.HostDataDir ||
+			strings.ContainsAny(cfg.HostDataDir, ":,") {
+			return nil, fmt.Errorf("the host data directory %q must be a clean absolute path without a colon or comma", cfg.HostDataDir)
+		}
+		if len(cfg.Images) == 0 {
+			return nil, errors.New("game controller: no game images are configured")
+		}
 	}
 	if err := checkNetworkName(cfg.Network); err != nil {
 		return nil, err
@@ -226,7 +247,7 @@ func New(cfg Config) (*Controller, error) {
 		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
-		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
+		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID, adopted: adopted,
 		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
 		proxies: cfg.TrustedProxies, containerEnvs: []string{docker.DockerEnvPath, docker.PodmanEnvPath}, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
@@ -557,6 +578,19 @@ type Status struct {
 	// Notice reports an unfinished switch found at startup, on the world
 	// that is active after it (SPEC 7.10); nil when there is none.
 	Notice *SwitchNotice
+
+	// The rest is set in adopted mode only (SPEC 4.7 to 4.12), where image
+	// downloads are not offered.
+	Adopted bool
+	// Layout is the game folder's shape at the last look (SPEC 4.8). When
+	// it is Broken, its Path and Reason say what is wrong and server
+	// control is refused; when Unadopted, the adoption form is offered.
+	Layout gamedir.State
+	// RunningVersion is the container's VERSION, or "unknown" (SPEC 4.9).
+	RunningVersion string
+	// RCONPublished is set when the container's RCON port can be reached
+	// from the host's network (SPEC 4.12).
+	RCONPublished bool
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -602,6 +636,14 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		n := *w.notice
 		st.Notice = &n
 	}
+	if c.adopted != nil {
+		v := c.adoptedViewNow()
+		st.Adopted, st.Layout, st.RCONPublished = true, v.layout, v.rconPublished
+		st.RunningVersion = v.version
+		if st.RunningVersion == "" {
+			st.RunningVersion = "unknown"
+		}
+	}
 	st.State, st.Reason = c.stateLocked(w)
 	if st.State == StateRunning || st.State == StateStarting || st.State == StateStopping || st.State == StateCrashed {
 		if w.dockerStatus == "running" && !w.startedAt.IsZero() {
@@ -628,6 +670,9 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 	}
 	listed, dockerErr := c.dockerState()
 	if w.opDone == nil {
+		if errors.Is(dockerErr, ErrNoGameContainer) {
+			return StateUnknown, dockerErr.Error()
+		}
 		if dockerErr != nil {
 			return StateUnknown, "Foreman cannot reach Docker: " + dockerErr.Error()
 		}
