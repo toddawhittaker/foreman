@@ -32,8 +32,10 @@ type LogLine struct {
 // LogOptions picks what Logs returns.
 type LogOptions struct {
 	Follow bool      // keep the stream open for new output
-	Tail   int       // only the last Tail lines; zero means all
-	Since  time.Time // only output after this time; zero means from the start
+	Since  time.Time // only output at or after this time; zero means from the start
+	// Timestamps asks Docker to start each line with the time it was
+	// written, in RFC 3339 with nanoseconds, and a space.
+	Timestamps bool
 }
 
 const (
@@ -63,8 +65,8 @@ func (c *Client) Logs(ctx context.Context, id string, opts LogOptions) (*LogStre
 		"follow": {strconv.FormatBool(opts.Follow)},
 		"tail":   {"all"},
 	}
-	if opts.Tail > 0 {
-		q.Set("tail", strconv.Itoa(opts.Tail))
+	if opts.Timestamps {
+		q.Set("timestamps", "1")
 	}
 	if !opts.Since.IsZero() {
 		q.Set("since", fmt.Sprintf("%d.%09d", opts.Since.Unix(), opts.Since.Nanosecond()))

@@ -1,6 +1,6 @@
-// Package game holds the pure helpers for controlling a game container:
-// reading its log, its player list, and fanning events out to pages
-// (SPEC 8.1, 8.6, 8.7).
+// Package game runs each world's game container: start, stop, restart,
+// forced stop and restore, the monitor that watches the containers, the
+// game's log and RCON (SPEC 4.3 to 4.6, 7, 8.1, 8.4, 8.6, 8.7, 8.9).
 package game
 
 import (
@@ -27,7 +27,6 @@ const (
 	KindOther        Kind = iota
 	KindLoadStarted       // the game began loading the save
 	KindInGame            // the map is loaded and the server is hosting
-	KindRCONReady         // the RCON port is open
 	KindSaveFinished      // an autosave or /server-save completed
 	KindLoadFailed        // the game gave up loading the save
 	KindLoadError         // the reason for a failed load, in Detail
@@ -58,12 +57,8 @@ var (
 // source line numbers change between game versions.
 func ParseLine(line string) Event {
 	var ev Event
-	rest := line
-	if first, after, ok := strings.Cut(rest, " "); ok {
-		if t, err := time.Parse(time.RFC3339Nano, first); err == nil {
-			ev.Time, rest = t, after
-		}
-	}
+	var rest string
+	ev.Time, rest = splitDockerTime(line)
 	rest = strings.TrimSuffix(secondsPrefix.ReplaceAllString(rest, ""), "\r")
 	rest = strings.TrimLeft(rest, " ")
 
@@ -98,12 +93,25 @@ func ParseLine(line string) Event {
 	case strings.HasPrefix(msg, "MultiplayerManager failed: "):
 		ev.Kind = KindLoadError
 		ev.Detail = strings.Trim(strings.TrimPrefix(msg, "MultiplayerManager failed: "), `"`)
-	case strings.HasPrefix(msg, "Starting RCON interface"):
-		ev.Kind = KindRCONReady
 	case msg == "Saving finished":
 		ev.Kind = KindSaveFinished
 	}
 	return ev
+}
+
+// splitDockerTime takes the timestamp Docker puts before a line when asked
+// for timestamps. It returns the zero time and the line unchanged when
+// there is none.
+func splitDockerTime(line string) (time.Time, string) {
+	first, after, ok := strings.Cut(line, " ")
+	if !ok {
+		return time.Time{}, line
+	}
+	t, err := time.Parse(time.RFC3339Nano, first)
+	if err != nil {
+		return time.Time{}, line
+	}
+	return t, after
 }
 
 // Redact removes every secret from a log line before it is relayed or

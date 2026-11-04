@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/netip"
 	"path"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/datadir"
@@ -107,39 +107,66 @@ func checkNetworkName(n string) error {
 	return nil
 }
 
-// gameNetwork picks the Docker network the game joins (R3, SPEC 4.4):
-// FOREMAN_GAME_NETWORK when set; else the one network Foreman's own
-// container is on; else, outside a container, Docker's default bridge.
+// gameNetwork returns the Docker network the game joins (R36, SPEC 4.4).
+// Outside a container it is FOREMAN_GAME_NETWORK, or Docker's default
+// bridge. Inside one FOREMAN_GAME_NETWORK is required, and refused when a
+// game on it could reach the Docker socket proxy or pose as a trusted
+// proxy (SPEC 12.6, 14.4).
 func (c *Controller) gameNetwork(ctx context.Context) (string, error) {
-	if c.network != "" {
-		return c.network, nil
-	}
-	if c.selfID == "" {
-		return "bridge", nil
-	}
-	self, err := c.docker.InspectContainer(ctx, c.selfID)
-	if errors.Is(err, docker.ErrNotFound) {
-		// SelfID fell back to the hostname, and no container has it.
-		return "bridge", nil
-	}
+	self, inContainer, err := c.selfContainer(ctx)
 	if err != nil {
 		return "", err
 	}
-	names := make([]string, 0, len(self.Networks))
-	for n := range self.Networks {
-		names = append(names, n)
-	}
-	slices.Sort(names)
-	switch len(names) {
-	case 0:
-		return "", errors.New("the Foreman container is on no Docker network, so the game cannot share one with it. Put Foreman on a network, or set FOREMAN_GAME_NETWORK")
-	case 1:
-		if err := checkNetworkName(names[0]); err != nil {
-			return "", fmt.Errorf("the Foreman container uses the %q network, which the game cannot share. Put Foreman on its own network, or set FOREMAN_GAME_NETWORK", names[0])
+	if !inContainer {
+		if c.network != "" {
+			return c.network, nil
 		}
-		return names[0], nil
+		return "bridge", nil
 	}
-	return "", fmt.Errorf("the Foreman container is on several Docker networks (%s). Set FOREMAN_GAME_NETWORK to the one the game should join", strings.Join(names, ", "))
+	if c.network == "" {
+		return "", errors.New("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: it names the Docker network the game joins. Choose a network Foreman is on that the Docker socket proxy is not on")
+	}
+	n, ok := self.Networks[c.network]
+	if !ok {
+		return "", fmt.Errorf("FOREMAN_GAME_NETWORK names the %q network, but the Foreman container is not on it, so Foreman could not reach the game. Connect Foreman to that network, or name one it is on", c.network)
+	}
+	if c.dockerTCP && len(self.Networks) == 1 {
+		return "", fmt.Errorf("DOCKER_HOST uses tcp://, and the game network %q is the Foreman container's only network, so the Docker socket proxy is on it too and a game could reach it. Put the game on a network of its own that Foreman also joins", c.network)
+	}
+	if len(c.proxies) == 0 {
+		return c.network, nil
+	}
+	addr, err := netip.ParseAddr(n.IPAddress)
+	if err != nil || n.IPPrefixLen <= 0 {
+		return "", fmt.Errorf("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
+	}
+	subnet, err := addr.Prefix(n.IPPrefixLen)
+	if err != nil {
+		return "", fmt.Errorf("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
+	}
+	for _, p := range c.proxies {
+		if p.Overlaps(subnet) {
+			return "", fmt.Errorf("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", c.network, subnet, p)
+		}
+	}
+	return c.network, nil
+}
+
+// selfContainer reads Foreman's own container. inContainer is false when
+// Foreman does not run in one.
+func (c *Controller) selfContainer(ctx context.Context) (self docker.Container, inContainer bool, err error) {
+	if c.selfID == "" {
+		return docker.Container{}, false, nil
+	}
+	self, err = c.docker.InspectContainer(ctx, c.selfID)
+	if errors.Is(err, docker.ErrNotFound) {
+		// SelfID fell back to the hostname, and no container has it.
+		return docker.Container{}, false, nil
+	}
+	if err != nil {
+		return docker.Container{}, false, err
+	}
+	return self, true, nil
 }
 
 // containerIP is the game's address on its network. The container is
@@ -257,9 +284,10 @@ func (c *Controller) gamePassword(id string) (secret.Secret, error) {
 	var doc struct {
 		GamePassword string `json:"game_password"`
 	}
-	// A file the game itself cannot read holds no password Foreman must hide.
+	// Fail safe: a file Foreman cannot read may still hold a password the
+	// game reads, which Foreman could then not hide (SPEC 14.8).
 	if json.Unmarshal(b, &doc) != nil {
-		return secret.Secret{}, nil
+		return secret.Secret{}, fmt.Errorf("%s is not valid JSON, so Foreman cannot tell whether it sets a game password to keep out of the log. Fix the file, then start again", path.Clean(serverSettings))
 	}
 	return secret.New(doc.GamePassword), nil
 }

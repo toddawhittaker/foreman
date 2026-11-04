@@ -38,7 +38,7 @@ func TestAuditText(t *testing.T) {
 }
 
 func TestSecretListIsUsed(t *testing.T) {
-	for _, words := range setsSecret {
+	for _, words := range game.SetsSecret {
 		if got := auditText("/" + words + " s3cret"); strings.Contains(got, "s3cret") {
 			t.Errorf("%q leaks its argument: %q", words, got)
 		}
@@ -53,21 +53,6 @@ func TestSecretListIsUsed(t *testing.T) {
 	for _, c := range []string{"/config get", "/config get password2", "/config set password x", "/players online"} {
 		if hidesReply(c) {
 			t.Errorf("the reply to %q is hidden", c)
-		}
-	}
-}
-
-// The game may print the command it was given; the relayed line must not
-// show the new password (SPEC 14.8).
-func TestMaskLogLine(t *testing.T) {
-	cases := map[string]string{
-		"2026-11-03 10:00:00 [COMMAND] <server> (command): /config set password hunter2": "2026-11-03 10:00:00 [COMMAND] <server> (command): /config set password " + game.Mask,
-		"... /Config  Set Password hunter2":                                              "... /Config  Set Password " + game.Mask,
-		"2026-11-03 10:00:00 [CHAT] alice: hello":                                        "2026-11-03 10:00:00 [CHAT] alice: hello",
-	}
-	for line, want := range cases {
-		if got := maskLogLine(line); got != want {
-			t.Errorf("maskLogLine(%q) = %q, want %q", line, got, want)
 		}
 	}
 }

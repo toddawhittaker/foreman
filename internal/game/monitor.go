@@ -3,11 +3,13 @@ package game
 import (
 	"context"
 	"errors"
+	"io"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -42,10 +44,17 @@ func (c *Controller) shutdown() {
 	c.wg.Wait()
 	for _, w := range c.allRuns() {
 		w.mu.Lock()
-		if w.rc != nil {
-			_ = w.rc.Close()
-		}
+		rc := w.rc
 		w.mu.Unlock()
+		closeRCON(rc)
+	}
+}
+
+// closeRCON closes an RCON connection, if there is one. Closing waits for a
+// command in flight, so it is never done while holding a world's mu.
+func closeRCON(rc *rcon.Client) {
+	if rc != nil {
+		_ = rc.Close()
 	}
 }
 
@@ -126,6 +135,8 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	if cont != nil && c.isNewContainer(w, cont.ID) {
 		c.adopt(w, *cont)
 	}
+	var old *rcon.Client
+	defer func() { closeRCON(old) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.opDone != nil {
@@ -135,7 +146,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	if cont == nil {
 		w.adoptFailed, w.adoptErr = "", nil
 		if w.containerID != "" {
-			c.dropContainerLocked(w)
+			old = c.dropContainerLocked(w)
 		}
 		c.changedLocked(w, true)
 		return
@@ -162,6 +173,11 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	w.crashes = keepSince(w.crashes, now.Add(-c.crashWindow))
 	w.dockerStatus = cont.State.Status
 	if !cont.State.StartedAt.Equal(w.startedAt) {
+		if w.stopping && w.dockerStatus == "running" {
+			// The same container runs a new run, so a stop asked for
+			// earlier did not happen; its exit would be a crash again.
+			w.stopping, w.expectRunning = false, !w.crashLoop
+		}
 		w.startedAt = cont.State.StartedAt
 	}
 	if len(w.crashes) >= CrashLoopCount && !w.crashLoop && !w.stopping {
@@ -172,8 +188,10 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	if w.dockerStatus == "running" && !w.following && !w.stopping {
 		since := w.startedAt
 		if w.followedRun.Equal(w.startedAt) && !w.lastLineAt.IsZero() {
-			// The stream broke while the same run went on.
-			since = w.lastLineAt
+			// The stream broke while the same run went on: resume after the
+			// last line by Docker's own time, since Docker keeps a line
+			// written at the since time itself.
+			since = w.lastLineAt.Add(time.Nanosecond)
 		}
 		c.followLocked(w, cont.ID, since)
 	}
@@ -223,12 +241,14 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 	if err != nil {
 		c.log.Warn("cannot read the world's settings", "world", w.id, "error", err)
 	}
+	var old *rcon.Client
+	defer func() { closeRCON(old) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.opDone != nil || w.containerID == cont.ID {
 		return
 	}
-	c.dropContainerLocked(w)
+	old = c.dropContainerLocked(w)
 	w.adoptFailed, w.adoptErr = "", nil
 	w.containerID = cont.ID
 	w.seenRestarts = cont.RestartCount
@@ -244,25 +264,48 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 	w.image = cont.Image
 	if ip := containerIP(cont); ip != "" {
 		w.rc = c.newRCON(ip, rconPW)
+		if cont.State.Status == "running" {
+			rc := w.rc
+			c.spawn(func() { c.probeInGame(w, cont.ID, rc) })
+		}
 	}
 }
 
-// dropContainerLocked forgets the current container: its log follower and
-// RCON connection end. w.mu is held.
-func (c *Controller) dropContainerLocked(w *worldRun) {
+// probeInGame marks a re-attached game in game when it answers over RCON.
+// The game opens RCON only once in game, and the log line that said so may
+// be gone from Docker's rotated log (SPEC 3.8).
+func (c *Controller) probeInGame(w *worldRun, cid string, rc *rcon.Client) {
+	ctx, cancel := context.WithTimeout(c.ctx, c.rconCallLimit)
+	_, err := rc.Exec(ctx, "/players online")
+	cancel()
+	if err != nil {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.containerID != cid || w.rc != rc || w.run.inGame || w.run.loadFailed || w.crashedRun {
+		return
+	}
+	w.run.inGame = true
+	c.changedLocked(w, true)
+}
+
+// dropContainerLocked forgets the current container: its log follower
+// ends. It returns the container's RCON connection, which the caller
+// closes with closeRCON once w.mu is released. w.mu is held.
+func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	if w.followCancel != nil {
 		w.followCancel()
 	}
 	w.following, w.followCancel = false, nil
 	w.followedRun, w.lastLineAt = time.Time{}, time.Time{}
-	if w.rc != nil {
-		_ = w.rc.Close()
-		w.rc = nil
-	}
+	rc := w.rc
+	w.rc = nil
 	w.containerID, w.dockerStatus = "", ""
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false
+	return rc
 }
 
 // stopCrashLoop stops a crash-looping game, which keeps it stopped under
@@ -304,14 +347,19 @@ func (c *Controller) followLocked(w *worldRun, cid string, since time.Time) {
 	w.followedRun = w.startedAt
 	started := c.spawn(func() {
 		defer cancel()
-		c.follow(ctx, w, cid, since)
+		began := time.Now()
+		err := c.follow(ctx, w, cid, since)
 		w.mu.Lock()
 		if w.followGen == gen {
 			w.following, w.followCancel = false, nil
 		}
 		w.mu.Unlock()
-		// The stream ends when the game exits: look at once (R13).
-		c.pokeMonitor()
+		// The stream ends when the game exits: look at once (R13). A
+		// stream that failed at once waits for the next poll instead, so a
+		// broken log does not make a tight loop.
+		if err == nil || time.Since(began) >= followMinRun {
+			c.pokeMonitor()
+		}
 	})
 	if !started {
 		cancel()
@@ -319,40 +367,49 @@ func (c *Controller) followLocked(w *worldRun, cid string, since time.Time) {
 	}
 }
 
-// follow relays the container's log until it ends or ctx does.
-func (c *Controller) follow(ctx context.Context, w *worldRun, cid string, since time.Time) {
-	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Follow: true, Since: since})
+// follow relays the container's log until it ends or ctx does. It returns
+// nil when the stream ended as it does when the game exits, and the error
+// when it could not be opened or broke off.
+func (c *Controller) follow(ctx context.Context, w *worldRun, cid string, since time.Time) error {
+	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Follow: true, Since: since, Timestamps: true})
 	if err != nil {
 		if ctx.Err() == nil {
 			c.log.Warn("cannot follow the game's log", "world", w.id, "error", err)
 		}
-		return
+		return err
 	}
 	defer func() { _ = s.Close() }()
 	for {
 		l, err := s.Next()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
 		if err != nil {
-			return
+			return err
 		}
 		c.handleLine(w, cid, l.Text)
 	}
 }
 
 // handleLine redacts one log line, keeps it for pages, and acts on what it
-// says (SPEC 8.6). The line is added and published under w.mu, so Watch
-// never misses or repeats it.
+// says (SPEC 8.6). The line comes with Docker's timestamp, which is kept
+// to resume from and left off what pages show. The line is added and
+// published under w.mu, so Watch never misses or repeats it.
 func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.containerID != cid {
 		return
 	}
-	line := Redact(text, w.secrets...)
-	w.lastLineAt = c.now()
+	stamped := maskSecretCommand(Redact(text, w.secrets...))
+	at, line := splitDockerTime(stamped)
+	if !at.IsZero() {
+		w.lastLineAt = at
+	}
 	w.logs.Add(line)
 	w.hub.Publish(Update{Kind: UpdateLine, Line: line})
 
-	ev := ParseLine(line)
+	ev := ParseLine(stamped)
 	publish := true
 	switch ev.Kind {
 	case KindOther:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"slices"
@@ -134,35 +135,41 @@ func TestContainerShape(t *testing.T) {
 	}
 }
 
-// R3: the network the game joins.
+// R36: the network the game joins, and the refusals that keep a game away
+// from the Docker socket proxy and from posing as a trusted proxy.
 func TestGameNetwork(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
-	seed := func(name string, nets ...string) string {
-		m := map[string]string{}
-		for _, n := range nets {
-			m[n] = "172.30.0.9"
-		}
-		r.game.Daemon().Seed(dockertest.Container{Name: name, Status: "running", Networks: m})
+	seed := func(name string, nets map[string]string) string {
+		r.game.Daemon().Seed(dockertest.Container{Name: name, Status: "running", Networks: nets})
 		c, _ := r.game.Daemon().Container(name)
 		return c.ID
 	}
-	one := seed("foreman-one", "foreman_net")
-	two := seed("foreman-two", "net_a", "net_b")
-	host := seed("foreman-host", "host")
+	one := seed("foreman-one", map[string]string{"games": "172.30.0.9/24"})
+	two := seed("foreman-two", map[string]string{"games": "172.30.0.9/24", "proxy": "172.31.0.9/24"})
+	proxies := []netip.Prefix{netip.MustParsePrefix("172.31.0.0/16")}
+	wide := []netip.Prefix{netip.MustParsePrefix("172.16.0.0/12")}
 
 	cases := []struct {
-		name, network, self, want, wantErr string
+		name, network, self string
+		tcp                 bool
+		proxies             []netip.Prefix
+		want, wantErr       string
 	}{
-		{"setting wins", "chosen", two, "chosen", ""},
-		{"outside a container", "", "", "bridge", ""},
-		{"hostname of no container", "", "my-laptop", "bridge", ""},
-		{"one network", "", one, "foreman_net", ""},
-		{"several networks", "", two, "", "net_a, net_b"},
-		{"host network", "", host, "", "cannot share"},
+		{"outside a container", "", "", false, nil, "bridge", ""},
+		{"outside a container, set", "chosen", "", false, nil, "chosen", ""},
+		{"hostname of no container", "", "my-laptop", false, nil, "bridge", ""},
+		{"inside a container, unset", "", one, false, nil, "", "FOREMAN_GAME_NETWORK must be set"},
+		{"inside, one network, socket", "games", one, false, nil, "games", ""},
+		{"inside, not on it", "elsewhere", two, false, nil, "", "not on it"},
+		{"tcp and the only network", "games", one, true, nil, "", "socket proxy is on it too"},
+		{"tcp and another network", "games", two, true, nil, "games", ""},
+		{"apart from trusted proxies", "games", two, true, proxies, "games", ""},
+		{"overlaps trusted proxies", "games", two, true, wide, "", "overlaps FOREMAN_TRUSTED_PROXIES"},
+		{"overlap on the proxy network", "proxy", two, false, proxies, "", "172.31.0.0/24"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			r.c.network, r.c.selfID = tc.network, tc.self
+			r.c.network, r.c.selfID, r.c.dockerTCP, r.c.proxies = tc.network, tc.self, tc.tcp, tc.proxies
 			got, err := r.c.gameNetwork(context.Background())
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
@@ -174,6 +181,11 @@ func TestGameNetwork(t *testing.T) {
 				t.Fatalf("got %q, %v; want %q", got, err, tc.want)
 			}
 		})
+	}
+	c, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: r.data,
+		Images: testImages, DockerHost: "tcp://socket-proxy:2375", TrustedProxies: proxies})
+	if err != nil || !c.dockerTCP || len(c.proxies) != 1 {
+		t.Errorf("Config's DockerHost and TrustedProxies were not taken: %v", err)
 	}
 	if _, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: r.data,
 		Images: testImages, Network: "host"}); err == nil {
@@ -243,6 +255,47 @@ func TestStartAnyway(t *testing.T) {
 	entries := r.audit.list()
 	if last := entries[len(entries)-1]; last.Detail != "start anyway" {
 		t.Errorf("audit detail %q", last.Detail)
+	}
+	if !hasStep(r.c.Status(id).Operation, StepSnapshot) {
+		t.Error("a start anyway does not show its snapshot step")
+	}
+}
+
+func hasStep(op *Operation, name string) bool {
+	return op != nil && slices.ContainsFunc(op.Steps, func(s Step) bool { return s.Name == name })
+}
+
+// DESIGN 7.6: the snapshot step belongs to a start anyway only.
+func TestPlainStartHasNoSnapshotStep(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Plain")
+	r.start(id)
+	if hasStep(r.c.Status(id).Operation, StepSnapshot) {
+		t.Error("a plain start lists the start-anyway snapshot step")
+	}
+	if err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if hasStep(r.c.Status(id).Operation, StepSnapshot) {
+		t.Error("a plain restart lists the start-anyway snapshot step")
+	}
+}
+
+// Fail safe (SPEC 14.8): server settings Foreman cannot read may hold a
+// game password it could not hide, so the game is not started.
+func TestStartRefusesUnreadableServerSettings(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Bad settings")
+	r.writeFile(id, filepath.Join(world.ConfigDir, "server-settings.json"), []byte(`{"game_password": "hunter2",`))
+	err := r.c.Start(context.Background(), id, admin, StartOptions{})
+	if err == nil || !strings.Contains(err.Error(), "server-settings.json") {
+		t.Fatalf("got %v, want a refusal naming server-settings.json", err)
+	}
+	if strings.Contains(err.Error(), "hunter2") {
+		t.Error("the message shows the password")
+	}
+	if len(r.calls("POST /containers/create")) != 0 {
+		t.Error("a container was created")
 	}
 }
 

@@ -32,10 +32,16 @@ const (
 	StepDownload       = "Download the game image"
 )
 
-var (
-	stopSteps  = []string{StepWarn, StepSave, StepStopContainer}
-	startSteps = []string{StepCheck, StepSnapshot, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
-)
+var stopSteps = []string{StepWarn, StepSave, StepStopContainer}
+
+// startStepsFor lists a start's steps. Only a start anyway takes the
+// snapshot, so only it shows that step (DESIGN 7.6).
+func startStepsFor(opts StartOptions) []string {
+	if opts.Anyway {
+		return []string{StepCheck, StepSnapshot, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+	}
+	return []string{StepCheck, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+}
 
 // The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4, R5).
 const (
@@ -154,7 +160,7 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps)
+	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startStepsFor(opts))
 	err = c.startLocked(ctx, o, by, opts)
 	return o.end(err)
 }
@@ -233,15 +239,21 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 
 	o.begin(StepStartContainer)
 	w.mu.Lock()
-	c.dropContainerLocked(w)
+	// A forced stop sets its own marks once this operation has ended, so
+	// none may be set here after it asked.
+	if err := ctx.Err(); err != nil {
+		w.mu.Unlock()
+		return err
+	}
+	stale := c.dropContainerLocked(w)
 	w.containerID, w.dockerStatus = cid, "created"
 	w.seenRestarts, w.crashes, w.lastCrash = 0, nil, time.Time{}
 	w.stopping, w.crashLoop, w.crashedRun = false, false, false
-	w.expectRunning = true
 	w.run = runState{save: save}
 	w.joins.Reset()
 	w.secrets, w.gameVersion, w.image = secrets, meta.GameVersion, ref
 	w.mu.Unlock()
+	closeRCON(stale)
 	o.show(StateStarting)
 	if err := c.docker.StartContainer(ctx, cid); err != nil {
 		return err
@@ -251,6 +263,12 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 		return err
 	}
 	w.mu.Lock()
+	if err := ctx.Err(); err != nil {
+		w.mu.Unlock()
+		return err
+	}
+	// Only a container Docker started can crash.
+	w.expectRunning = true
 	w.dockerStatus, w.startedAt, w.seenRestarts = cont.State.Status, cont.State.StartedAt, cont.RestartCount
 	if ip := containerIP(cont); ip != "" {
 		w.rc = c.newRCON(ip, rconPW)
@@ -453,33 +471,31 @@ const MaxStopCountdown = 10 * time.Minute
 var ErrCountdown = errors.New("the stop countdown must be between 0 and 10 minutes")
 
 // StopOptions changes how a graceful stop warns players (SPEC 7.6: the
-// countdown is configurable per action).
+// countdown is configurable per action, R40).
 type StopOptions struct {
-	// Countdown is how long players are warned; zero means StopCountdown.
+	// Countdown is how long players are warned; zero warns nobody. Callers
+	// pass StopCountdown for the default.
 	Countdown time.Duration
-	// NoCountdown stops without warning players, whatever Countdown says.
-	NoCountdown bool
 }
 
 // stopCountdown returns the countdown to use, or ErrCountdown.
-func (c *Controller) stopCountdown(o StopOptions) (time.Duration, error) {
-	switch {
-	case o.NoCountdown:
-		return 0, nil
-	case o.Countdown == 0:
-		return c.countdown, nil
-	case o.Countdown < 0 || o.Countdown > MaxStopCountdown:
+func stopCountdown(o StopOptions) (time.Duration, error) {
+	if o.Countdown < 0 || o.Countdown > MaxStopCountdown {
 		return 0, ErrCountdown
 	}
 	return o.Countdown, nil
 }
+
+// ErrPaused refuses to act on a game container someone paused in Docker:
+// the game is still live, so its files must not change under it.
+var ErrPaused = errors.New("the game container is paused in Docker. Foreman never pauses it; unpause it with Docker, then try again")
 
 // Stop stops the world's game gracefully (SPEC 7.5, 7.6): it warns players
 // with a countdown, saves, then stops the container. When RCON cannot be
 // reached it stops nothing and returns ErrRCONUnreachable, so the admin can
 // choose a forced stop.
 func (c *Controller) Stop(ctx context.Context, id string, by Actor, stop StopOptions) error {
-	countdown, err := c.stopCountdown(stop)
+	countdown, err := stopCountdown(stop)
 	if err != nil {
 		return err
 	}
@@ -505,17 +521,31 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 		return err
 	}
 	status := cont.State.Status
+	if found && status == "paused" {
+		o.skip(stopSteps...)
+		return ErrPaused
+	}
 	if !found || (status != "running" && status != "restarting") {
 		o.skip(stopSteps...)
 		return ErrNotRunning
 	}
-	if status == "running" {
-		w.mu.Lock()
-		rc, inGame := w.rc, w.run.inGame && w.containerID == cont.ID
-		w.mu.Unlock()
-		if rc == nil || !inGame {
-			return ErrRCONUnreachable
-		}
+	w.mu.Lock()
+	ours := w.containerID == cont.ID
+	rc, inGame := w.rc, ours && w.run.inGame
+	// A restart count above the last look is a crash the monitor has not seen yet.
+	crashed := ours && (w.crashedRun || w.run.loadFailed || cont.RestartCount > w.seenRestarts)
+	w.mu.Unlock()
+	switch {
+	case status == "restarting" || crashed:
+		// Docker is restarting the game after a crash, or it crashed and is
+		// not back in game: there is no game to warn or save.
+		o.skip(StepWarn, StepSave)
+	case ours && !inGame:
+		o.skip(stopSteps...)
+		return ErrNotReady
+	case rc == nil || !ours:
+		return ErrRCONUnreachable
+	default:
 		o.show(StateStopping)
 		o.begin(StepWarn)
 		names, err := c.online(ctx, rc)
@@ -535,17 +565,13 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 			return err
 		}
 		o.done(StepSave)
-	} else {
-		// Docker is between restarts after a crash: no game to warn or save.
-		o.skip(StepWarn, StepSave)
 	}
 
 	o.show(StateStopping)
 	o.begin(StepStopContainer)
-	w.mu.Lock()
-	w.stopping, w.expectRunning = true, false
-	w.mu.Unlock()
+	restore := c.markStopping(w)
 	if err := c.docker.StopContainer(ctx, cont.ID, StopGraceSeconds); err != nil && !errors.Is(err, docker.ErrNotModified) {
+		restore()
 		return err
 	}
 	c.refresh(ctx, w, cont.ID)
@@ -629,10 +655,12 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	}
 	w := c.world(id)
 	w.mu.Lock()
-	w.stopping, w.expectRunning = true, false
 	cancel, done := w.opCancel, w.opDone
 	w.mu.Unlock()
-	if cancel != nil {
+	interrupted := cancel != nil
+	if interrupted {
+		// The operation's last marks are set before done closes, so the
+		// marks set below are not overwritten.
 		cancel()
 		select {
 		case <-done:
@@ -645,33 +673,54 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	if err != nil {
 		return err
 	}
-	if !found {
+	status := cont.State.Status
+	if !found || (status != "running" && status != "restarting") {
+		if interrupted {
+			// Ending what was in progress was what the admin asked for.
+			return nil
+		}
 		return ErrNotRunning
 	}
-	switch cont.State.Status {
-	case "running":
+	restore := c.markStopping(w)
+	if status == "running" {
 		err = c.docker.KillContainer(ctx, cont.ID, "")
 		if errors.Is(err, docker.ErrConflict) {
 			// It exited meanwhile; make sure Docker does not restart it.
 			err = c.docker.StopContainer(ctx, cont.ID, 0)
 		}
-	case "restarting":
+	} else {
 		err = c.docker.StopContainer(ctx, cont.ID, 0)
-	default:
-		return ErrNotRunning
 	}
 	if err != nil && !errors.Is(err, docker.ErrNotModified) {
+		restore()
 		return err
 	}
 	c.refresh(ctx, w, cont.ID)
 	return nil
 }
 
+// markStopping marks the game as stopped on purpose, so its exit is not a
+// crash (SPEC 7.6). The returned function puts the earlier marks back, for
+// when Docker refused the stop.
+func (c *Controller) markStopping(w *worldRun) (restore func()) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	stopping, expect := w.stopping, w.expectRunning
+	w.stopping, w.expectRunning = true, false
+	c.changedLocked(w, true)
+	return func() {
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		w.stopping, w.expectRunning = stopping, expect
+		c.changedLocked(w, true)
+	}
+}
+
 // Restart is a graceful stop followed by a start (SPEC 7.8). The pre-start
 // check runs first too, so a start that would be refused never stops the
 // game. A stopped game is just started.
 func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop StopOptions, opts StartOptions) error {
-	countdown, err := c.stopCountdown(stop)
+	countdown, err := stopCountdown(stop)
 	if err != nil {
 		return err
 	}
@@ -686,7 +735,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if _, err := c.precheck(id, opts); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps)
+	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startStepsFor(opts))
 	err = c.stopLocked(ctx, o, countdown)
 	if errors.Is(err, ErrNotRunning) {
 		err = nil

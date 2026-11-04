@@ -74,24 +74,26 @@ func (c *Controller) Players(ctx context.Context, id string) ([]Player, error) {
 
 // Console sends one command the admin typed and returns the game's reply
 // (SPEC 8.4). The command is recorded in the audit log before it is sent,
-// and is not sent if it cannot be recorded (SPEC 12.9). auditText is what
-// the audit log records: the caller must already have replaced any secret
-// in the command with Mask (R6, SPEC 14.8); this method does not. Known
-// secrets are removed from the reply.
-func (c *Controller) Console(ctx context.Context, id string, by Actor, command, auditText string) (string, error) {
+// and is not sent if it cannot be recorded (SPEC 12.9). auditText is the
+// command with any secret argument already replaced with Mask by the
+// caller (R6, SPEC 14.8). The world's known passwords are also removed
+// from it here, and from the reply. shown is auditText as recorded, for
+// the page's history.
+func (c *Controller) Console(ctx context.Context, id string, by Actor, command, auditText string) (shown, reply string, err error) {
 	w := c.world(id)
 	rc, secrets, err := c.liveRCON(w)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	if err := c.audit(ctx, by, AuditConsole, id, auditText); err != nil {
-		return "", err
+	shown = Redact(auditText, secrets...)
+	if err := c.audit(ctx, by, AuditConsole, id, shown); err != nil {
+		return "", "", err
 	}
-	reply, err := c.execReply(ctx, rc, command)
+	reply, err = c.execReply(ctx, rc, command)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return Redact(reply, secrets...), nil
+	return shown, Redact(reply, secrets...), nil
 }
 
 // saveGame sends /server-save and waits for the log to say the save
@@ -163,7 +165,7 @@ func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label st
 // world package takes the "Before restore" snapshot, which is returned as
 // the undo, with any error.
 func (c *Controller) Restore(ctx context.Context, id string, by Actor, name string, stop StopOptions) (world.Snapshot, error) {
-	countdown, err := c.stopCountdown(stop)
+	countdown, err := stopCountdown(stop)
 	if err != nil {
 		return world.Snapshot{}, err
 	}
@@ -176,7 +178,7 @@ func (c *Controller) Restore(ctx context.Context, id string, by Actor, name stri
 	if _, err := c.worlds.Snapshot(id, name); err != nil {
 		return world.Snapshot{}, err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, startSteps)
+	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, startStepsFor(StartOptions{}))
 	before, err := c.restoreLocked(ctx, o, by, name, countdown)
 	return before, o.end(err)
 }
@@ -196,7 +198,7 @@ func (c *Controller) restoreLocked(ctx context.Context, o *opRun, by Actor, name
 	}
 	o.done(StepRestore)
 	if !wasRunning {
-		o.skip(startSteps...)
+		o.skip(startStepsFor(StartOptions{})...)
 		return before, nil
 	}
 	return before, c.startLocked(ctx, o, by, StartOptions{})

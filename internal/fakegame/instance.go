@@ -137,11 +137,12 @@ func (g *Game) scheduleRestart(id string) {
 	}
 	g.backoff[id] = min(2*delay, maxBackoff)
 	g.mu.Unlock()
+	g.daemon.WillRestart(id)
 
 	g.after(delay, func() {
 		g.mu.Lock()
 		c, ok := g.daemon.Container(id)
-		again := ok && c.Status == "exited" && !g.manual[id] && !g.closed
+		again := ok && c.Status == "restarting" && !g.manual[id] && !g.closed
 		if again {
 			g.daemon.Restart(id)
 		}

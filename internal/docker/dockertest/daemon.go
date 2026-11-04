@@ -31,8 +31,10 @@ type Container struct {
 	StartedAt    time.Time
 	FinishedAt   time.Time
 	Mounts       []docker.Mount
-	Networks     map[string]string // network name to IP address, set while running
-	Log          []LogEntry
+	// Networks maps a network name to the address on it, set while running.
+	// "172.18.0.5/24" also gives the prefix length; a bare address has 16.
+	Networks map[string]string
+	Log      []LogEntry
 }
 
 // clone copies the parts a later call could change under the caller.
@@ -47,6 +49,7 @@ func (c *Container) clone() Container {
 type LogEntry struct {
 	Stream docker.Stream
 	Text   string
+	Time   time.Time // when it was written; logs' since and timestamps use it
 }
 
 // Call is one request the fake received.
@@ -71,7 +74,8 @@ type Daemon struct {
 	calls      []Call
 	failStatus int
 	failMsg    string
-	changed    chan struct{} // closed and replaced whenever state or a log changes
+	callFail   map[string]failure // by "METHOD action", for container calls
+	changed    chan struct{}      // closed and replaced whenever state or a log changes
 }
 
 // New starts a fake daemon that speaks API version docker.MaxAPIVersion and
@@ -83,6 +87,7 @@ func New(t testing.TB) *Daemon {
 		apiVersion: docker.MaxAPIVersion,
 		images:     map[string]bool{},
 		pullFail:   map[string]string{},
+		callFail:   map[string]failure{},
 		changed:    make(chan struct{}),
 	}
 	d.srv = httptest.NewServer(d)
@@ -111,6 +116,34 @@ func (d *Daemon) SetFailure(status int, message string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.failStatus, d.failMsg = status, message
+}
+
+type failure struct {
+	status int
+	msg    string
+}
+
+// SetCallFailure makes every container call with this method and action
+// (such as POST start, POST kill or GET logs) answer with status and
+// message, until it is called again with status 0.
+func (d *Daemon) SetCallFailure(method, action string, status int, message string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if status == 0 {
+		delete(d.callFail, method+" "+action)
+		return
+	}
+	d.callFail[method+" "+action] = failure{status, message}
+}
+
+// DropLog forgets a container's output so far, as Docker's log rotation
+// does.
+func (d *Daemon) DropLog(ref string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if c := d.find(ref); c != nil {
+		c.Log = nil
+	}
 }
 
 // AddImage makes an image present under ref.
@@ -197,7 +230,7 @@ func (d *Daemon) EmitLog(ref string, stream docker.Stream, text string) bool {
 	if c == nil {
 		return false
 	}
-	c.Log = append(c.Log, LogEntry{Stream: stream, Text: text})
+	c.Log = append(c.Log, LogEntry{Stream: stream, Text: text, Time: time.Now().UTC()})
 	d.broadcast()
 	return true
 }
@@ -209,6 +242,18 @@ func (d *Daemon) Exit(ref string, code int, oomKilled bool) {
 	if c := d.find(ref); c != nil && c.Status == "running" {
 		d.markExited(c, code)
 		c.OOMKilled = oomKilled
+	}
+}
+
+// WillRestart shows an exited container as "restarting", as Docker does
+// while its restart policy waits to start it again. A stop then keeps it
+// exited.
+func (d *Daemon) WillRestart(ref string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if c := d.find(ref); c != nil && c.Status == "exited" {
+		c.Status = "restarting"
+		d.broadcast()
 	}
 }
 
@@ -269,6 +314,13 @@ func (d *Daemon) route(w http.ResponseWriter, r *http.Request, path string) {
 	case parts[1] == "containers" && r.Method == http.MethodDelete:
 		d.remove(w, r, parts[2])
 	case parts[1] == "containers" && len(parts) == 4:
+		d.mu.Lock()
+		f, failing := d.callFail[r.Method+" "+parts[3]]
+		d.mu.Unlock()
+		if failing {
+			reply(w, f.status, f.msg)
+			return
+		}
 		d.containerCall(w, r, parts[2], parts[3])
 	default:
 		d.t.Errorf("dockertest: %s %s is allowed by SPEC 14.3 but not implemented", r.Method, path)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -242,6 +243,13 @@ func (d *Daemon) containerCall(w http.ResponseWriter, r *http.Request, ref, acti
 		d.markRunning(c)
 		w.WriteHeader(http.StatusNoContent)
 	case "stop":
+		if c.Status == "restarting" {
+			// The stop cancels the pending restart.
+			c.Status = "exited"
+			d.broadcast()
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if c.Status != "running" {
 			w.WriteHeader(http.StatusNotModified)
 			return
@@ -262,8 +270,14 @@ func (d *Daemon) containerCall(w http.ResponseWriter, r *http.Request, ref, acti
 
 func inspectBody(c *Container) map[string]any {
 	nets := map[string]any{}
-	for name, ip := range c.Networks {
-		nets[name] = map[string]string{"IPAddress": ip}
+	for name, addr := range c.Networks {
+		ip, prefixLen := addr, 0
+		if p, err := netip.ParsePrefix(addr); err == nil {
+			ip, prefixLen = p.Addr().String(), p.Bits()
+		} else if addr != "" {
+			prefixLen = 16
+		}
+		nets[name] = map[string]any{"IPAddress": ip, "IPPrefixLen": prefixLen}
 	}
 	return map[string]any{
 		"Id":           c.ID,
@@ -301,6 +315,18 @@ func statsBody() map[string]any {
 func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 	q := r.URL.Query()
 	follow := q.Get("follow") == "true"
+	stamps := q.Get("timestamps") == "1" || q.Get("timestamps") == "true"
+	var since time.Time
+	if v := q.Get("since"); v != "" {
+		secs, frac, _ := strings.Cut(v, ".")
+		s, err1 := strconv.ParseInt(secs, 10, 64)
+		ns, err2 := strconv.ParseInt((frac + "000000000")[:9], 10, 64)
+		if err1 != nil || err2 != nil {
+			reply(w, http.StatusBadRequest, "bad since: "+v)
+			return
+		}
+		since = time.Unix(s, ns)
+	}
 	d.mu.Lock()
 	c := d.find(ref)
 	if c == nil {
@@ -324,17 +350,26 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 			d.mu.Unlock()
 			return
 		}
+		next = min(next, len(c.Log)) // DropLog may have emptied it
 		entries := append([]LogEntry(nil), c.Log[next:]...)
 		running := c.Status == "running"
 		changed := d.changed
 		d.mu.Unlock()
 
 		for _, e := range entries {
+			// Docker keeps a line written at the since time itself.
+			if e.Time.Before(since) {
+				continue
+			}
+			text := e.Text
+			if stamps {
+				text = e.Time.UTC().Format(dockerTime) + " " + text
+			}
 			var hdr [8]byte
 			hdr[0] = byte(e.Stream)
-			binary.BigEndian.PutUint32(hdr[4:], uint32(len(e.Text)+1)) //nolint:gosec // a test line is short
+			binary.BigEndian.PutUint32(hdr[4:], uint32(len(text)+1)) //nolint:gosec // a test line is short
 			_, _ = w.Write(hdr[:])
-			_, _ = w.Write([]byte(e.Text + "\n"))
+			_, _ = w.Write([]byte(text + "\n"))
 		}
 		next += len(entries)
 		flush(w)
@@ -348,6 +383,10 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		}
 	}
 }
+
+// dockerTime is how Docker writes a log line's timestamp: RFC 3339 with
+// all nine digits of the nanoseconds.
+const dockerTime = "2006-01-02T15:04:05.000000000Z07:00"
 
 func flush(w http.ResponseWriter) {
 	if f, ok := w.(http.Flusher); ok {

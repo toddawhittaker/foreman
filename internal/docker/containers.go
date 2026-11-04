@@ -140,7 +140,8 @@ type Mount struct {
 
 // Network is a container's place on one Docker network.
 type Network struct {
-	IPAddress string
+	IPAddress   string
+	IPPrefixLen int // the network's prefix length, as in 172.18.0.0/16
 }
 
 // State is a container's run state.
