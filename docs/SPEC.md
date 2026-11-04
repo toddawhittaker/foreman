@@ -518,8 +518,10 @@ compares it with the world. It refuses to start, and says why, when:
 
 Each problem says what the game would delete. The admin can fix the world
 (for example with sync from save) or, for the first bullet and for an
-unreadable save only, **start anyway**: a confirmation that names exactly
-what the game will delete, with a snapshot first. A save from a newer or
+unreadable save only, **start anyway**. The refusal itself is the
+confirmation: it names exactly what the game will delete, the snapshot
+taken first and how to undo it, and its button starts at once, with no
+second page. A restart offers restart anyway the same way. A save from a newer or
 unsupported version, a world with no save, and a mod list that disagrees
 with the Space Age flag are plain refusals with no start-anyway, because
 the game could not load the save or would load the wrong mods. A save
@@ -562,7 +564,10 @@ switch back, which restores the previous world as active. (P0)
 Before the graceful stop, Foreman runs everything that would refuse the
 new world's start: its pre-start check, the image check (3.7), the game
 network checks (4.4) and the VPN sidecar checks (4.13), as restart does
-(7.8). The pre-start check runs again after the snapshots. A switch leaves
+(7.8). When the check's problems all allow it, the refusal offers
+switch anyway the same way (7.4): the refusal is the confirmation, and it
+also names the "Before switch" snapshots of both worlds. The pre-start
+check runs again after the snapshots. A switch leaves
 the running state as it found it: a running game ends up running the new
 world, and a stopped one ends up stopped with the new world active,
 skipping the stop and start steps. The old container is left stopped, since every start creates a new one

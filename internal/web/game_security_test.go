@@ -169,7 +169,6 @@ func serverActionRoutes(snap string) []actionRoute {
 	}
 	return []actionRoute{
 		{http.MethodPost, p("start")},
-		{http.MethodGet, p("start-anyway")},
 		{http.MethodPost, p("stop")},
 		{http.MethodPost, p("restart")},
 		{http.MethodPost, p("force-stop")},
@@ -447,7 +446,7 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 		}
 	}
 	pages := []string{PathServer, gamePath(id, "stop"), gamePath(id, "restart"), gamePath(id, "force-stop"),
-		gamePath(id, "start-anyway"), snapshotsPath(id), PathWorlds, PathConsole}
+		snapshotsPath(id), PathWorlds, PathConsole}
 
 	g.startGame(id)
 	g.emitSecrets(id, rconPW, gamePW)
@@ -688,17 +687,12 @@ func TestForemanStopAndStartLeaveTheGameRunning(t *testing.T) {
 	}
 }
 
-// SPEC 7.3: only the active world starts, and the confirmation page for
-// "start anyway" refuses an inactive world too.
+// SPEC 7.3: only the active world starts, also when started anyway.
 func TestInactiveWorldStartAnywayRefused(t *testing.T) {
 	g := newSecRig(t)
 	g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	other := g.newWorld("Other", "2.1.24-no-space-age.zip", false)
-	rep := g.do(http.MethodGet, gamePath(other, "start-anyway"), nil, http.Header{"Cookie": {g.cookie.String()}})
-	if rep.StatusCode != http.StatusConflict {
-		t.Errorf("start anyway of an inactive world: %d", rep.StatusCode)
-	}
-	rep = g.post(gamePath(other, "start"), url.Values{"anyway": {"1"}})
+	rep := g.post(gamePath(other, "start"), url.Values{"anyway": {"1"}})
 	if rep.StatusCode != http.StatusConflict {
 		t.Errorf("start anyway post of an inactive world: %d", rep.StatusCode)
 	}

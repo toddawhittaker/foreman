@@ -303,3 +303,49 @@ func TestOtherActionsErrorShownApart(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 7.4, 8.9, 17.4: a refusal with a choice is a Warning whose box is the
+// confirmation, with no advice to fix the world first; a plain refusal is an
+// Error with the blocked-start note. The check step reads "Refused" in words.
+func TestRefusalBoxAndStepWord(t *testing.T) {
+	refused := func(anyway bool, action string, state game.State) ServerPage {
+		return serverCase(state, func(p *ServerPage) {
+			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemModMissing,
+				Text: "a.zip uses m, but this world has no file for it.", Mods: []string{"m"}, StartAnyway: anyway}}}}
+			p.Status.Operation = &game.Operation{Action: action, Done: true, Error: err.Error(), Steps: []game.Step{
+				{Name: game.StepCheck, State: game.StepFailed}, {Name: game.StepLoad, State: game.StepSkipped}}}
+			p.Result, p.HaveResult = actionResult{Action: action, Err: err}, true
+		})
+	}
+	cases := []struct {
+		name       string
+		page       ServerPage
+		want, nots []string
+	}{
+		{"start anyway", refused(true, game.AuditStart, game.StateStopped),
+			[]string{`step-state--warning">Refused<`, "<strong>Warning:</strong>", `"Before start anyway"`,
+				`action="/worlds/base/start"`, `name="anyway" value="1"`, ">Start anyway</button>", "To undo, restore that snapshot"},
+			[]string{"Fix the world first", "Try to start again", "button--primary", `name="countdown"`, "Failed"}},
+		{"restart anyway", refused(true, game.AuditRestart, game.StateRunning),
+			[]string{`action="/worlds/base/restart"`, `name="countdown" value="60"`, "60-second countdown", ">Restart anyway</button>"},
+			[]string{"Fix the world first"}},
+		{"plain refusal", refused(false, game.AuditStart, game.StateStopped),
+			[]string{`step-state--failed">Refused<`, "<strong>Error:</strong>", "Fix the world first", "Try to start again"},
+			[]string{"Start anyway", `name="anyway"`, "Failed"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			html := controlHTML(t, c.page)
+			for _, w := range c.want {
+				if !strings.Contains(html, w) {
+					t.Errorf("lacks %q:\n%s", w, html)
+				}
+			}
+			for _, n := range c.nots {
+				if strings.Contains(html, n) {
+					t.Errorf("has %q:\n%s", n, html)
+				}
+			}
+		})
+	}
+}

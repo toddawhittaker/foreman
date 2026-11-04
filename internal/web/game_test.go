@@ -201,21 +201,23 @@ func TestServerPageStartsAndStops(t *testing.T) {
 }
 
 // SPEC 7.4, 17.5: a refused start lists each problem and, when every one
-// allows it, offers "Start anyway" through a confirmation that names the
-// snapshot taken first.
+// allows it, the refusal box is the confirmation: it names the snapshot
+// taken first and how to undo, and its button starts at once.
 func TestStartAnyway(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", "2.1.24-space-age-testmod.zip", true)
 
 	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
 	body := g.waitPage("the save that would load does not match the world", "foreman-test", "Start anyway")
-	if !strings.Contains(body, `href="/worlds/`+id+`/start-anyway"`) {
-		t.Errorf("no link to the confirmation:\n%s", body)
+	for _, want := range []string{`"Before start anyway"`, "restore that snapshot from the Snapshots page",
+		`<form method="post" action="/worlds/` + id + `/start" class="actions">`, `name="anyway" value="1"`, "Refused"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("refusal box lacks %q:\n%s", want, body)
+		}
 	}
-	confirm := g.get(gamePath(id, "start-anyway"))
-	for _, want := range []string{"Before start anyway", "foreman-test", `name="anyway" value="1"`} {
-		if !strings.Contains(confirm, want) {
-			t.Errorf("confirmation lacks %q:\n%s", want, confirm)
+	for _, unwanted := range []string{"Fix the world first", "Try to start again", "/start-anyway"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("page offers start anyway but has %q:\n%s", unwanted, body)
 		}
 	}
 	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}}))

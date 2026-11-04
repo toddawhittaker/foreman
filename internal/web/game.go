@@ -20,7 +20,6 @@ import (
 const (
 	PathServer      = "/"
 	PathGameStart   = "/worlds/{id}/start"
-	PathGameAnyway  = "/worlds/{id}/start-anyway"
 	PathGameStop    = "/worlds/{id}/stop"
 	PathGameRestart = "/worlds/{id}/restart"
 	PathGameForce   = "/worlds/{id}/force-stop"
@@ -218,7 +217,6 @@ func (s *server) gameRoutes() {
 	}
 	s.mux.HandleFunc("GET /{$}", s.requireUser(s.handleServer))
 	s.mux.HandleFunc("POST "+PathGameStart, s.requireUser(s.handleStart))
-	s.mux.HandleFunc("GET "+PathGameAnyway, s.requireUser(s.handleStartAnywayForm))
 	s.mux.HandleFunc("GET "+PathGameStop, s.requireUser(s.handleStopForm))
 	s.mux.HandleFunc("POST "+PathGameStop, s.requireUser(s.handleStop))
 	s.mux.HandleFunc("GET "+PathGameRestart, s.requireUser(s.handleStopForm))
@@ -361,7 +359,7 @@ func (s *server) finish(id, action string, err error) actionResult {
 }
 
 // handleStart starts the active world (SPEC 7.3). "anyway" starts despite
-// the pre-start check's problems; the confirmation page sends it (7.4).
+// the pre-start check's problems; the refusal box sends it (7.4).
 func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) {
 		return
@@ -407,17 +405,11 @@ func defaultCountdown() CountdownForm {
 }
 
 // StopPage asks how to warn players before a stop or restart (SPEC 7.5,
-// 7.6, 7.8). With Anyway it also confirms a restart despite the pre-start
-// check's problems (7.4).
+// 7.6, 7.8).
 type StopPage struct {
 	World   world.Summary
 	Restart bool
 	CountdownForm
-	Anyway bool
-	// CheckProblems are the pre-start check's findings, for Anyway.
-	CheckProblems []string
-	// Refusal replaces the form when the restart cannot go ahead anyway.
-	Refusal string
 }
 
 func (StopPage) templateName() string { return "stop" }
@@ -468,11 +460,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 	form, stop := readCountdown(r)
 	anyway := restart && r.PostFormValue("anyway") == "1"
 	if form.CountdownError != "" {
-		p := StopPage{World: sum, Restart: restart, CountdownForm: form, Anyway: anyway}
-		if anyway {
-			p = s.anywayProblems(p)
-		}
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
 		return
 	}
 	by := actor(u)
@@ -485,67 +473,20 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 	})
 }
 
-// StartAnywayPage confirms a start despite the pre-start check (SPEC 7.4,
-// DESIGN 7.4): it names what the game will delete and the snapshot taken
-// first.
-type StartAnywayPage struct {
-	World         world.Summary
-	CheckProblems []string
-	// Refusal replaces the form when the start cannot go ahead anyway.
-	Refusal string
-}
-
-func (StartAnywayPage) templateName() string { return "startanyway" }
-func (StartAnywayPage) navItem() string      { return PathServer }
-
-// Path is where the confirmation posts.
-func (p StartAnywayPage) Path() string { return gamePath(p.World.ID, "start") }
-
-// anywayCheck runs the pre-start check again for a confirmation page. It
-// changes nothing. refusal is set when "Start anyway" is not allowed.
-func (s *server) anywayCheck(id string) (problems []string, refusal string, err error) {
+// anywayCheck runs the pre-start check again before a switch anyway. It
+// changes nothing. refusal is set when going ahead anyway is not allowed.
+func (s *server) anywayCheck(id string) (refusal string, err error) {
 	check, err := s.game.PreStartCheck(id)
 	if err != nil {
-		return nil, "", err
-	}
-	for _, pr := range check.Problems {
-		problems = append(problems, pr.Text)
+		return "", err
 	}
 	switch {
 	case check.OK():
-		refusal = "The pre-start check now finds no problems, so there is nothing to confirm. Start the server from the Server page."
+		refusal = "The pre-start check now finds no problems, so there is nothing to go ahead past. Switch again from the world's page."
 	case !check.CanStartAnyway():
-		refusal = "At least one of these problems cannot be started past. Fix the world first."
+		refusal = "At least one of the problems cannot be gone past. Fix the world first."
 	}
-	return problems, refusal, nil
-}
-
-func (s *server) anywayProblems(p StopPage) StopPage {
-	problems, refusal, err := s.anywayCheck(p.World.ID)
-	if err != nil {
-		s.log.Error("pre-start check", "world", p.World.ID, "error", err)
-		refusal = "Foreman could not run the pre-start check. The details are in Foreman's log."
-	}
-	p.CheckProblems, p.Refusal = problems, refusal
-	return p
-}
-
-func (s *server) handleStartAnywayForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, ok := s.startable(w, r, u)
-	if !ok {
-		return
-	}
-	if r.URL.Query().Get("then") == "restart" {
-		p := s.anywayProblems(StopPage{World: sum, Restart: true, Anyway: true, CountdownForm: defaultCountdown()})
-		s.page(w, r, http.StatusOK, u.Username, p)
-		return
-	}
-	problems, refusal, err := s.anywayCheck(sum.ID)
-	if err != nil {
-		s.notFoundOrFail(w, r, u, "pre-start check", err)
-		return
-	}
-	s.page(w, r, http.StatusOK, u.Username, StartAnywayPage{World: sum, CheckProblems: problems, Refusal: refusal})
+	return refusal, nil
 }
 
 // ForceStopPage confirms a forced stop (SPEC 7.7).

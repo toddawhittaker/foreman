@@ -16,27 +16,20 @@ import (
 
 func switchPath(id string) string { return gamePath(id, "switch") }
 
-// switchAnywayPath is the confirmation for a switch the pre-start check
-// refused but allows to go ahead (SPEC 7.4).
-func switchAnywayPath(id string) string { return switchPath(id) + "?anyway=1" }
-
 func (s *server) switchRoutes() {
 	s.mux.HandleFunc("GET "+PathGameSwitch, s.requireUser(s.handleSwitchForm))
 	s.mux.HandleFunc("POST "+PathGameSwitch, s.requireUser(s.handleSwitch))
 }
 
 // SwitchPage confirms a switch and asks how to warn players (SPEC 7.5,
-// 7.6, 7.9). With Anyway it also confirms the switch despite the pre-start
-// check's problems (7.4).
+// 7.6, 7.9). A switch anyway is confirmed by the Server page's refusal box
+// (7.4); this page then shows only why it could not go ahead.
 type SwitchPage struct {
 	From, To world.Summary
 	// Running is true when the game runs in From, so a switch stops it and
 	// starts To; otherwise the worlds are switched and the game stays stopped.
 	Running bool
 	CountdownForm
-	Anyway bool
-	// CheckProblems are the pre-start check's findings, for Anyway.
-	CheckProblems []string
 	// Refusal replaces the form when the switch cannot go ahead.
 	Refusal string
 }
@@ -110,7 +103,7 @@ func (s *server) switchBusy(ctx context.Context, id string) bool {
 // switchPage builds the confirmation for a switch to to. from is the
 // world the form named, or "" for the active one.
 func (s *server) switchPage(ctx context.Context, from string, to world.Summary, form CountdownForm, anyway bool) (SwitchPage, error) {
-	p := SwitchPage{To: to, CountdownForm: form, Anyway: anyway}
+	p := SwitchPage{To: to, CountdownForm: form}
 	active, found, err := s.activeWorld(ctx)
 	if err != nil {
 		return p, err
@@ -120,8 +113,8 @@ func (s *server) switchPage(ctx context.Context, from string, to world.Summary, 
 		return p, err
 	}
 	if anyway {
-		problems, refusal, err := s.anywayCheck(to.ID)
-		p.CheckProblems, p.Refusal = problems, refusal
+		refusal, err := s.anywayCheck(to.ID)
+		p.Refusal = refusal
 		if err != nil {
 			s.log.Error("pre-start check", "world", to.ID, "error", err)
 			p.Refusal = "Foreman could not run the pre-start check. The details are in Foreman's log."
@@ -135,7 +128,7 @@ func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	p, err := s.switchPage(r.Context(), "", to, defaultCountdown(), r.URL.Query().Get("anyway") == "1")
+	p, err := s.switchPage(r.Context(), "", to, defaultCountdown(), false)
 	if err != nil {
 		s.fail(w, r, "build the switch page", err)
 		return
@@ -207,10 +200,15 @@ func (s *server) switchNames(p *ServerPage) {
 	} else if n := p.Status.Notice; n != nil {
 		sw = &n.SwitchInfo
 	}
-	if sw == nil {
-		return
+	p.WorldNames = map[string]string{}
+	if sw != nil {
+		p.WorldNames[sw.From], p.WorldNames[sw.To] = s.worldName(sw.From), s.worldName(sw.To)
 	}
-	p.WorldNames = map[string]string{sw.From: s.worldName(sw.From), sw.To: s.worldName(sw.To)}
+	// A switch the checks refused never began an operation, but its box
+	// still names the world it would switch to.
+	if t := p.Result.Target; p.HaveResult && t != "" && p.WorldNames[t] == "" {
+		p.WorldNames[t] = s.worldName(t)
+	}
 }
 
 // name returns a world's name for a sentence, or its id when unknown.

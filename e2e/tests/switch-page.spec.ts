@@ -170,6 +170,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running");
   });
 
+  // SPEC 7.9, 7.4, 17.5: the refusal box is the confirmation for switch anyway.
   test("a new world the check refuses can be switched to anyway", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await openSwitch(page, "second", "Second");
@@ -178,15 +179,12 @@ test.describe("with the fake game", () => {
     const refusal = page.locator(".message--warning").filter({ hasText: "Foreman did not switch" });
     await expect(refusal).toContainText("foreman-test", live);
     await expect(active(page, "Base")).toBeVisible();
+    await expect(refusal).toContainText('both labelled "Before switch"');
+    await expect(refusal).toContainText('labelled "Before start anyway"');
+    await expect(refusal).toContainText("To undo, switch back to Base");
+    await expect(page.locator("main")).not.toContainText("Fix the world first");
     await checkPage(page);
-    await refusal.getByRole("link", { name: "Switch anyway" }).click();
-
-    const confirm = page.getByRole("region", { name: "Switch to Second anyway?" });
-    await expect(confirm).toContainText('"Before start anyway"');
-    await expect(confirm).toContainText("When the game loads it, it drops from the save whatever depends on these problems");
-    await expect(confirm).not.toContainText("will delete");
-    await checkPage(page);
-    await confirm.getByRole("button", { name: "Switch to Second anyway" }).click();
+    await refusal.getByRole("button", { name: "Switch anyway" }).click();
     await expect(active(page, "Second")).toBeVisible(live);
     await expect(page.locator("main").getByText("The worlds are switched")).toBeVisible(live);
     await page.goto("/worlds/second/snapshots");

@@ -57,6 +57,17 @@ type ImportPage struct {
 	Upload   ImportForm
 }
 
+// Importable reports whether any inbox folder has a save at its top level;
+// a folder without one cannot be imported (SPEC 5.5).
+func (p ImportPage) Importable() bool {
+	for _, f := range p.Inbox {
+		if f.Saves > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // ImportForm is one of the two import forms. Source is the chosen inbox
 // folder or the uploaded file.
 type ImportForm struct {
@@ -241,9 +252,13 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 		s.fail(w, r, "list import folder", err)
 		return
 	}
-	// A fresh form with one folder to choose starts filled in from its save.
-	if status == http.StatusOK && folder == (ImportForm{}) && len(inbox) == 1 && inbox[0].Read {
-		folder = ImportForm{Source: inbox[0].Name, GameVersion: inbox[0].GameVersion, SpaceAge: inbox[0].SpaceAge}
+	// A fresh form with one folder to choose starts with it chosen, named
+	// after it, and filled in from its save.
+	if only, ok := onlyImportable(inbox); ok && status == http.StatusOK && folder == (ImportForm{}) {
+		folder = ImportForm{Source: only.Name, Name: only.Name}
+		if only.Read {
+			folder.GameVersion, folder.SpaceAge = only.GameVersion, only.SpaceAge
+		}
 	}
 	folder.IDPrefix, upload.IDPrefix = "folder", "upload"
 	s.page(w, r, status, u.Username, ImportPage{
@@ -252,6 +267,19 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 		Folder:   folder,
 		Upload:   upload,
 	})
+}
+
+// onlyImportable returns the one inbox folder with a save at its top
+// level, when there is exactly one.
+func onlyImportable(inbox []world.InboxFolder) (world.InboxFolder, bool) {
+	var only world.InboxFolder
+	n := 0
+	for _, f := range inbox {
+		if f.Saves > 0 {
+			only, n = f, n+1
+		}
+	}
+	return only, n == 1
 }
 
 // importFields reads and checks the fields both import forms share.

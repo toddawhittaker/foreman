@@ -6,27 +6,26 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-func TestAnywayText(t *testing.T) {
+// The advice never repeats what the lead already says the game drops, and
+// mods that are only turned off get none (SPEC 7.4).
+func TestAnywayAdvice(t *testing.T) {
 	spaceAge := []world.Problem{{Kind: world.ProblemSpaceAgeOff}}
 	missing := []world.Problem{{Kind: world.ProblemModMissing, Mods: []string{"a"}}}
-	both := []world.Problem{{Kind: world.ProblemModMissing, Mods: []string{"a"}}, {Kind: world.ProblemModDisabled, Mods: []string{"b"}}}
+	both := []world.Problem{{Kind: world.ProblemModMissing, Mods: []string{"a"}}, {Kind: world.ProblemModMissing, Mods: []string{"c"}}, {Kind: world.ProblemModDisabled, Mods: []string{"b"}}}
 	off := []world.Problem{{Kind: world.ProblemModDisabled, Mods: []string{"a", "b"}}}
 	cases := []struct {
-		name      string
-		problems  []world.Problem
-		switching bool
-		want      string
+		name     string
+		problems []world.Problem
+		want     string
 	}{
-		{"start, one missing mod", missing, false, "Foreman cannot add or turn on a world's mods yet. To keep what that mod built, put the mod files in the import folder's mods/ and import the world again. Or start anyway: Foreman takes a snapshot first, so you can undo it from the Snapshots page."},
-		{"switch, missing and turned-off mods", both, true, "Foreman cannot add or turn on a world's mods yet. To keep what those mods built, put the mod files in the import folder's mods/ and import the world again. Or switch anyway: Foreman takes a snapshot of both worlds first, so you can undo it from the Snapshots page."},
-		{"start, mods only turned off", off, false, "Foreman cannot turn on a world's mods yet. Or start anyway: Foreman takes a snapshot first, so you can undo it from the Snapshots page."},
-		{"switch, mods only turned off", off, true, "Foreman cannot turn on a world's mods yet. Or switch anyway: Foreman takes a snapshot of both worlds first, so you can undo it from the Snapshots page."},
-		{"start, Space Age", spaceAge, false, "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then drops from the save whatever depends on the problems above."},
-		{"switch, Space Age", spaceAge, true, "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then drops from the save whatever depends on the problems above."},
+		{"one missing mod", missing, "Foreman cannot add mods to a world yet. To keep what that mod built, put the mod files in the import folder's mods/ and import the world again."},
+		{"two missing mods", both, "Foreman cannot add mods to a world yet. To keep what those mods built, put the mod files in the import folder's mods/ and import the world again."},
+		{"mods only turned off", off, ""},
+		{"Space Age", spaceAge, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := anywayText(c.problems, c.switching); got != c.want {
+			if got := anywayAdvice(c.problems); got != c.want {
 				t.Errorf("got %q\nwant %q", got, c.want)
 			}
 		})

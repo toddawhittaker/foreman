@@ -132,8 +132,8 @@ func TestSwitchRefusals(t *testing.T) {
 }
 
 // SPEC 7.9, 7.4: a new world the pre-start check refuses is shown on the
-// Server page with its problems and, when every one allows it, a way to
-// switch anyway that names the extra snapshot.
+// Server page with its problems and, when every one allows it, a box that
+// is the confirmation: it names the snapshots, and its button switches.
 func TestSwitchAnyway(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
@@ -141,29 +141,35 @@ func TestSwitchAnyway(t *testing.T) {
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}}))
 	body := g.waitPage("Foreman did not switch", "foreman-test", "Switch anyway")
-	g.wantContains("server page", body, `href="`+switchPath(b)+`?anyway=1"`, "Active world: Alpha")
+	g.wantContains("server page", body, `<form method="post" action="`+switchPath(b)+`" class="actions">`,
+		`name="from" value="`+a+`"`, `name="anyway" value="1"`, `"Before switch"`, `"Before start anyway"`,
+		"Take a snapshot of Alpha and of Bravo", "To undo, switch back to Alpha", "Active world: Alpha")
+	g.wantMissing("server page", body, "?anyway=1", "Fix the world first")
 	if list, _ := g.worlds.Snapshots(a); len(list) != 0 {
 		t.Errorf("a refused switch took snapshots: %+v", list)
 	}
 
-	confirm := g.get(switchPath(b) + "?anyway=1")
-	g.wantContains("anyway form", confirm, `"Before start anyway"`, "foreman-test", `name="anyway" value="1"`, "Switch to Bravo anyway")
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}}))
 	g.waitPage("Active world: Bravo", "The worlds are switched")
 }
 
-// A problem that cannot be started past is a refusal on the form itself.
+// A switch anyway whose problems no longer allow it is refused, and nothing
+// changes.
 func TestSwitchAnywayRefusedWhenNotAllowed(t *testing.T) {
 	g := newGameRig(t, image21)
-	g.newWorld("Alpha", fixtureNoSA, false)
+	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 	if err := removeSaves(g, b); err != nil {
 		t.Fatal(err)
 	}
-	form := g.get(switchPath(b) + "?anyway=1")
-
-	g.wantContains("form", form, "cannot be started past", "The world has no save.")
-	g.wantMissing("form", form, "Switch to Bravo anyway")
+	rep := g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}})
+	if rep.StatusCode != http.StatusConflict {
+		t.Fatalf("switch anyway past a plain refusal: %d", rep.StatusCode)
+	}
+	g.wantContains("page", rep.body, "cannot be gone past")
+	if list, _ := g.worlds.Snapshots(a); len(list) != 0 {
+		t.Errorf("a refused switch took snapshots: %+v", list)
+	}
 }
 
 func removeSaves(g *gameRig, id string) error {

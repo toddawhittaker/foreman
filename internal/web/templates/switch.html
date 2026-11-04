@@ -8,41 +8,22 @@
 {{- with .Refusal}}
 <div class="message message--error">
   <p><strong>Error:</strong> {{.}}</p>
-  {{- with $.Page.CheckProblems}}
-  <ul>
-    {{- range .}}
-    <li>{{.}}</li>
-    {{- end}}
-  </ul>
-  {{- end}}
 </div>
 <div class="actions"><a href="{{$.Page.WorldPath}}">Back to {{$.Page.To.Name}}</a></div>
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{if .Anyway}}Switch to {{.To.Name}} anyway?{{else}}Switch from {{.From.Name}} to {{.To.Name}}?{{end}}</h2>
+  <h2 id="confirm-heading" tabindex="-1">Switch from {{.From.Name}} to {{.To.Name}}?</h2>
   <p>This will:</p>
   <ul>
-    {{- if .Anyway}}
-    <li>Load a save that does not match {{.To.Name}}. When the game loads it, it drops from the save whatever depends on these problems, such as what a missing mod built:
-      <ul>
-        {{- range .CheckProblems}}
-        <li>{{.}}</li>
-        {{- end}}
-      </ul>
-    </li>
-    {{- end}}
     {{- if .Running}}
     <li>Warn players online with the countdown below, save the game and stop {{.From.Name}}.</li>
     {{- else}}
     <li>Leave the server stopped, because {{.From.Name}} is not running now.</li>
     {{- end}}
     <li>Take a snapshot of {{.From.Name}} and of {{.To.Name}}, both labelled "Before switch". If a snapshot fails, nothing else happens.</li>
-    {{- if .Anyway}}
-    <li>Take one more snapshot of {{.To.Name}}, labelled "Before start anyway".</li>
-    {{- end}}
     <li>Make {{.To.Name}} the active world.</li>
     {{- if .Running}}
-    <li>Start the game on {{.To.Name}}.{{if .Anyway}} The next time it saves, what it dropped is gone from the save for good.{{end}}</li>
+    <li>Start the game on {{.To.Name}}.</li>
     {{- end}}
     <li>To undo, switch back to {{.From.Name}}, or restore a snapshot from the Snapshots page.</li>
   </ul>
@@ -52,7 +33,7 @@
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
-      <button type="submit"{{if .Anyway}} name="anyway" value="1"{{end}} class="button button--danger">Switch to {{.To.Name}}{{if .Anyway}} anyway{{end}}</button>
+      <button type="submit" class="button button--danger">Switch to {{.To.Name}}</button>
       <a href="{{.ActivePath}}">Cancel, keep {{.From.Name}} active</a>
     </div>
   </form>

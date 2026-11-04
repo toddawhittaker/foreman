@@ -145,7 +145,7 @@ func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 		return finish()
 	case isSaveFormatError(err):
 		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true,
-			Text: fmt.Sprintf("Foreman could not read the save %s (%v), so its mods could not be checked. The game may delete content from mods the world lacks.", name, err)})
+			Text: fmt.Sprintf("Foreman could not read the save %s (%v), so its mods could not be checked.", name, err)})
 		return finish()
 	case err != nil:
 		return PreCheck{}, err
@@ -233,25 +233,23 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 	var out []Problem
 	if len(usesDLC) > 0 {
 		out = append(out, Problem{Kind: ProblemSpaceAgeOff, StartAnyway: true,
-			Text: fmt.Sprintf("The save %s uses Space Age (%s), but Space Age is off for this world. The game would delete all Space Age content from the save.", name, strings.Join(usesDLC, ", "))})
+			Text: fmt.Sprintf("%s uses Space Age (%s), but Space Age is off for this world.", name, strings.Join(usesDLC, ", "))})
 	}
 	if len(missing) > 0 {
-		files, noun, they := "file", "mod", "it"
+		files := "no file for it"
 		if len(missing) > 1 {
-			files, noun, they = "files", "mods", "they"
+			files = "no files for them"
 		}
 		out = append(out, Problem{Kind: ProblemModMissing, StartAnyway: true, Mods: missing,
-			Text: fmt.Sprintf("This world does not have the %s of the %s the save %s was last played with: %s. Switching or starting anyway removes everything %s built from the save.",
-				files, noun, name, strings.Join(missing, ", "), they)})
+			Text: fmt.Sprintf("%s uses %s, but this world has %s.", name, strings.Join(missing, ", "), files)})
 	}
 	if len(disabled) > 0 {
-		is, they := "is", "it"
+		is := "it is"
 		if len(disabled) > 1 {
-			is, they = "are", "they"
+			is = "they are"
 		}
 		out = append(out, Problem{Kind: ProblemModDisabled, StartAnyway: true, Mods: disabled,
-			Text: fmt.Sprintf("The save %s was last played with %s, which %s turned off in this world. Switching or starting anyway removes everything %s built from the save.",
-				name, strings.Join(disabled, ", "), is, they)})
+			Text: fmt.Sprintf("%s uses %s, but %s turned off in this world.", name, strings.Join(disabled, ", "), is)})
 	}
 	return out
 }
