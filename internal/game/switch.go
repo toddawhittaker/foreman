@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/gamedir"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -28,6 +29,10 @@ type SwitchStore interface {
 	ListSwitches(ctx context.Context) ([]store.Switch, error)
 	EndSwitch(ctx context.Context, from string) error
 	ReplaceActiveWorldForSwitch(ctx context.Context, from, to string, now time.Time) error
+	// SetActiveWorld is used in adopted mode only, after an adoption and
+	// when startup finds the game folder presenting another world
+	// (SPEC 4.8).
+	SetActiveWorld(ctx context.Context, id string, now time.Time) error
 }
 
 // SwitchInfo says which worlds a switch is between and whether the new one
@@ -58,8 +63,8 @@ var (
 )
 
 // switchSteps lists a switch's steps in the order of SPEC 7.9.
-func switchSteps(opts StartOptions) [][]string {
-	return [][]string{stopSteps, {StepSnapshotBoth}, checkStepsFor(opts), {StepPresent}, launchSteps}
+func (c *Controller) switchSteps(opts StartOptions) [][]string {
+	return [][]string{stopSteps, {StepSnapshotBoth}, checkStepsFor(opts), {StepPresent}, c.launchSteps()}
 }
 
 // Switch makes to the active world in place of from (SPEC 7.9, 7.10). The
@@ -96,7 +101,7 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 	}
 	ws := []*worldRun{c.world(from), c.world(to)}
 	slices.SortFunc(ws, func(a, b *worldRun) int { return strings.Compare(a.id, b.id) })
-	op := newOperation(AuditSwitch, switchSteps(opts)...)
+	op := newOperation(AuditSwitch, c.switchSteps(opts)...)
 	op.Switch = &SwitchInfo{From: from, To: to}
 	ctx, o := c.beginOpOn(ctx, ws, op)
 	err = c.switchLocked(ctx, o, from, to, by, countdown, opts)
@@ -151,6 +156,15 @@ func (c *Controller) switchChecks(ctx context.Context, from, to string, opts Sta
 	} else if err != nil {
 		return err
 	}
+	if c.adopted != nil {
+		// One container presents one world at a time, so there is no other
+		// game of to's to find.
+		if _, err := c.checkAdoptedStart(ctx, to, from); err != nil {
+			return err
+		}
+		_, err := c.precheck(to, opts)
+		return err
+	}
 	if _, err := c.precheck(to, opts); err != nil {
 		return err
 	}
@@ -201,7 +215,7 @@ func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string
 	o.done(StepSnapshotBoth)
 
 	o.w = c.world(to)
-	if err := c.checkLocked(o, by, opts); err != nil {
+	if err := c.checkLocked(ctx, o, by, opts, from); err != nil {
 		return err
 	}
 
@@ -221,7 +235,7 @@ func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string
 	o.done(StepPresent)
 
 	if !wasRunning {
-		o.skip(launchSteps...)
+		o.skip(c.launchSteps()...)
 		return nil
 	}
 	if err := c.launchLocked(ctx, o); err != nil {
@@ -238,9 +252,27 @@ func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string
 // present makes to the world the game runs in place of from, and records
 // the step in the same transaction (SPEC 7.9, 7.10). In managed mode that
 // is only the active row: every start creates a fresh container for the
-// active world (SPEC 4.3, ADR 0003).
+// active world (SPEC 4.3, ADR 0003). In adopted mode the game folder's
+// current link is swapped first; startup follows the link if Foreman stops
+// between the two (SPEC 4.8).
 func (c *Controller) present(ctx context.Context, from, to string) error {
-	return c.switches.ReplaceActiveWorldForSwitch(ctx, from, to, c.now())
+	if c.adopted == nil {
+		return c.switches.ReplaceActiveWorldForSwitch(ctx, from, to, c.now())
+	}
+	if err := gamedir.Present(c.adopted.dir, to); err != nil {
+		return err
+	}
+	err := c.switches.ReplaceActiveWorldForSwitch(ctx, from, to, c.now())
+	if err != nil {
+		// Put the old world back, so the folder and the database agree and
+		// the offer to start from holds.
+		if rerr := gamedir.Present(c.adopted.dir, from); rerr != nil {
+			c.log.Error("could not present the old world again after the database refused the switch; startup will follow the game folder",
+				"from", from, "to", to, "error", rerr)
+		}
+	}
+	_, _ = c.layout()
+	return err
 }
 
 // worldName returns the world's name for a message, or its id when the
@@ -275,6 +307,17 @@ func (c *Controller) RecoverSwitches(ctx context.Context) error {
 }
 
 func (c *Controller) recoverSwitch(ctx context.Context, sw store.Switch) error {
+	if c.adopted != nil && sw.Step != store.StepPresented && sw.Step != store.StepStarted {
+		// Foreman stopped between the link swap and the database write: the
+		// link decides (SPEC 4.8), so the switch did reach presented.
+		if st, err := c.layout(); err == nil && st.Kind == gamedir.Ready && st.ActiveID == sw.To {
+			err := c.switches.ReplaceActiveWorldForSwitch(ctx, sw.From, sw.To, c.now())
+			if err != nil && !errors.Is(err, store.ErrNotActive) {
+				return err
+			}
+			sw.Step = store.StepPresented
+		}
+	}
 	fromName, toName := c.worldName(sw.From), c.worldName(sw.To)
 	// In managed mode the active row and the presented step change in one
 	// transaction, so the step alone says which world is active.

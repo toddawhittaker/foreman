@@ -1,6 +1,7 @@
 package game
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"io"
@@ -151,6 +152,11 @@ type rigOptions struct {
 	network string
 	selfID  string
 	noRun   bool
+	// gameDir, when set, runs the rig in adopted mode on the container
+	// fake.Adopted seeds, with the worlds in gameDir/worlds (SPEC 4.8).
+	gameDir string
+	// gameContainer names the adopted container; empty means adoptedName.
+	gameContainer string
 }
 
 func newRig(t *testing.T, opts rigOptions) *rig {
@@ -170,8 +176,12 @@ func newRig(t *testing.T, opts rigOptions) *rig {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	rs := &rigStore{Store: st}
+	worlds := datadir.Worlds(data)
+	if opts.gameDir != "" {
+		worlds = filepath.Join(opts.gameDir, "worlds")
+	}
 	m, err := world.NewManager(world.Dirs{
-		Worlds:    datadir.Worlds(data),
+		Worlds:    worlds,
 		Snapshots: datadir.Snapshots(data),
 		Imports:   datadir.Imports(data),
 	}, rs, nil)
@@ -190,12 +200,17 @@ func newRig(t *testing.T, opts rigOptions) *rig {
 // short limits.
 func (r *rig) newController(opts rigOptions) *Controller {
 	r.t.Helper()
-	c, err := New(Config{
+	cfg := Config{
 		Docker: r.docker, Worlds: r.worlds, Audit: r.audit, Switches: r.store,
 		HostDataDir: r.data, GameUID: 845, GameGID: 845,
 		Images: testImages, Network: opts.network, SelfID: opts.selfID,
 		Now: r.clock.Now, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	})
+	}
+	if opts.gameDir != "" {
+		cfg.GameContainer, cfg.GameDir = cmp.Or(opts.gameContainer, adoptedName), opts.gameDir
+		cfg.HostDataDir, cfg.Images = "", nil
+	}
+	c, err := New(cfg)
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -241,7 +256,7 @@ func (r *rig) newWorld(name string) string {
 	return id
 }
 
-func (r *rig) worldDir(id string) string { return filepath.Join(datadir.Worlds(r.data), id) }
+func (r *rig) worldDir(id string) string { return filepath.Join(r.worlds.Dirs().Worlds, id) }
 
 func (r *rig) putSave(id, fixture, name string, at time.Time) {
 	r.t.Helper()
