@@ -30,12 +30,16 @@ const (
 	ReasonManual        = "manual"
 	ReasonBeforeDelete  = "before-delete"
 	ReasonBeforeRestore = "before-restore"
+	ReasonAdoption      = "adoption"
+	ReasonSwitch        = "switch"
 )
 
 // Labels of the automatic snapshots (SPEC 6.5, 5.10).
 const (
-	LabelBeforeRestore = "Before restore"
-	LabelBeforeDelete  = "Before delete"
+	LabelBeforeRestore  = "Before restore"
+	LabelBeforeDelete   = "Before delete"
+	LabelBeforeAdoption = "Before adoption"
+	LabelBeforeSwitch   = "Before switch"
 )
 
 // KeepAutomatic is how many automatic snapshots each world keeps (SPEC 6.6).
@@ -314,13 +318,17 @@ func isZip(p string) bool { return strings.HasSuffix(p, ".zip") }
 // ones included. Foreman's own unfinished work is left out. A symlink or
 // other special file cannot be kept by a snapshot, so rather than lose it
 // silently the snapshot is refused, naming it.
-func worldFiles(w *os.Root) ([]ManifestEntry, error) {
+func worldFiles(w *os.Root) ([]ManifestEntry, error) { return filesUnder(w, ".") }
+
+// filesUnder is worldFiles for the part of w at start, with paths
+// relative to w.
+func filesUnder(w *os.Root, start string) ([]ManifestEntry, error) {
 	var out []ManifestEntry
-	err := fs.WalkDir(w.FS(), ".", func(p string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(w.FS(), start, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if p != "." && (isLeftover(d.Name()) || strings.HasPrefix(d.Name(), PrefixRestoreOld)) {
+		if p != start && (isLeftover(d.Name()) || strings.HasPrefix(d.Name(), PrefixRestoreOld)) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
