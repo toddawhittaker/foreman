@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/gamedir"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -30,6 +31,12 @@ type ServerPage struct {
 	// WorldNames holds the names of the worlds a switch, or the notice of
 	// an unfinished one, speaks of, by id.
 	WorldNames map[string]string
+	// Adopting is set when World is the one a first adoption is building,
+	// which is not the active world yet (SPEC 4.8).
+	Adopting bool
+	// VersionWarning is SPEC 4.9's warning for the world's save, in adopted
+	// mode; "" when there is none.
+	VersionWarning string
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -38,6 +45,11 @@ func (ServerPage) navItem() string      { return PathServer }
 func (p ServerPage) liveURL() string {
 	if !p.HasWorld {
 		return ""
+	}
+	if p.Adopting {
+		// The stream must know the page shows the adoption, so it can tell
+		// the page to load again whenever the world has become the active one.
+		return gamePath(p.World.ID, "events") + "?" + adoptingParam + "=1"
 	}
 	return gamePath(p.World.ID, "events")
 }
@@ -50,6 +62,7 @@ func (p ServerPage) StopPath() string      { return gamePath(p.World.ID, "stop")
 func (p ServerPage) RestartPath() string   { return gamePath(p.World.ID, "restart") }
 func (p ServerPage) ForceStopPath() string { return gamePath(p.World.ID, "force-stop") }
 func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-image") }
+func (ServerPage) AdoptPath() string       { return PathAdopt }
 
 // StateWord is the badge's word (DESIGN 7.5).
 func (p ServerPage) StateWord() string { return stateWord(p.Status.State) }
@@ -73,12 +86,45 @@ func stateWord(s game.State) string {
 }
 
 // GameVersion is the version the running game reports, else the world's.
+// In adopted mode the container's owner chooses the version, so it is the
+// container's, or unknown (SPEC 4.9).
 func (p ServerPage) GameVersion() string {
-	if p.Status.GameVersion != "" {
+	switch {
+	case p.Status.Adopted && p.Status.RunningVersion != "unknown":
+		return p.Status.RunningVersion
+	case p.Status.Adopted:
+		return ""
+	case p.Status.GameVersion != "":
 		return p.Status.GameVersion
 	}
 	return p.World.GameVersion
 }
+
+// controllable reports whether the game folder lets Foreman control the
+// game. Outside adopted mode it always does. Otherwise only a fresh or
+// ready folder does; an unadopted or broken one, or one not yet looked at,
+// does not (SPEC 4.8).
+func (p ServerPage) controllable() bool {
+	if !p.Status.Adopted {
+		return true
+	}
+	k := p.Status.Layout.Kind
+	return k == gamedir.Fresh || k == gamedir.Ready
+}
+
+// LayoutBroken reports an adopted-mode game folder Foreman cannot use.
+func (p ServerPage) LayoutBroken() bool {
+	return p.Status.Adopted && p.Status.Layout.Kind == gamedir.Broken
+}
+
+// CanAdopt reports whether the page offers to adopt the game folder.
+func (p ServerPage) CanAdopt() bool {
+	return p.Status.Adopted && p.Status.Layout.Kind == gamedir.Unadopted && !p.Busy()
+}
+
+// NeedsLayoutStep reports whether the game folder, not the game, is what
+// the page must talk about.
+func (p ServerPage) NeedsLayoutStep() bool { return p.LayoutBroken() || p.CanAdopt() }
 
 // Running reports whether the game has a run to show uptime for.
 func (p ServerPage) Running() bool { return !p.Status.StartedAt.IsZero() }
@@ -98,17 +144,22 @@ func (p ServerPage) Busy() bool { return p.Status.Operation != nil && !p.Status.
 // be refused is left out, and ActionsNote says why (DESIGN 7.1).
 func (p ServerPage) CanStart() bool {
 	s := p.Status.State
-	return !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
+	return p.controllable() && !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
 }
 
 func (p ServerPage) CanStop() bool {
 	s := p.Status.State
-	return !p.Busy() && (s == game.StateRunning || s == game.StateCrashed)
+	return p.controllable() && !p.Busy() && (s == game.StateRunning || s == game.StateCrashed)
 }
 
-func (p ServerPage) CanRestart() bool { return !p.Busy() && p.Status.State == game.StateRunning }
+func (p ServerPage) CanRestart() bool {
+	return p.controllable() && !p.Busy() && p.Status.State == game.StateRunning
+}
 
 func (p ServerPage) CanForceStop() bool {
+	if !p.controllable() {
+		return false
+	}
 	switch p.Status.State {
 	case game.StateStopped, game.StateCrashLooping, game.StateUnknown:
 		return false
@@ -151,6 +202,8 @@ func (p ServerPage) OperationHeading() string {
 		return choose(failed, "The restart failed", "Restarting the server")
 	case game.ActionRestore:
 		return choose(failed, "The restore failed", "Restoring a snapshot")
+	case game.AuditAdopt:
+		return choose(failed, "The adoption failed", "Adopting the game folder")
 	case game.AuditSwitch:
 		if sw := o.Switch; sw != nil {
 			return choose(failed, "The switch from "+p.name(sw.From)+" to "+p.name(sw.To)+" failed",
@@ -265,7 +318,8 @@ func (p ServerPage) Failure() *Failure {
 			}
 		}
 	case errors.Is(err, game.ErrImageMissing):
-		f.Message, f.Download = sentence(err), true
+		// In adopted mode the container's owner supplies the image.
+		f.Message, f.Download = sentence(err), !p.Status.Adopted
 	default:
 		f.Message = failureText(err)
 	}
@@ -293,7 +347,7 @@ func failureText(err error) string {
 var actionNames = map[string]string{
 	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
 	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
-	game.AuditSwitch: "switch",
+	game.AuditSwitch: "switch", game.AuditAdopt: "adoption",
 }
 
 // OtherErrors words the errors of the actions asked for while another ran.
@@ -322,8 +376,18 @@ func (p ServerPage) Done() string {
 		return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
 	case game.AuditSwitch:
 		return "The worlds are switched. Foreman took the snapshot \"Before switch\" of both worlds first; to undo, switch back, or restore that snapshot from the Snapshots page."
+	case game.AuditAdopt:
+		return "The game folder is adopted. Foreman took the snapshot \"Before adoption\" first. The original saves, mods and config folders are kept in a pre-foreman folder inside the game folder."
 	}
 	return ""
+}
+
+// doneAnnouncement is what a live page reads out when an action that
+// shows a "Done" message finishes.
+var doneAnnouncement = map[string]string{
+	game.ActionRestore: "The world is restored.",
+	game.AuditSwitch:   "The worlds are switched.",
+	game.AuditAdopt:    "The game folder is adopted.",
 }
 
 // resultAnnouncement is what a live page reads out for the results the
@@ -337,7 +401,7 @@ func resultAnnouncement(p ServerPage) string {
 		said = append(said, "Error: "+e)
 	}
 	if p.Done() != "" {
-		said = append(said, choose(p.Result.Action == game.AuditSwitch, "The worlds are switched.", "The world is restored."))
+		said = append(said, doneAnnouncement[p.Result.Action])
 	}
 	return strings.Join(said, " ")
 }

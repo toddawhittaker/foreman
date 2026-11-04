@@ -85,6 +85,19 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 // it is not nil.
 func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
 	t.Helper()
+	return newHarnessIn(t, env, func(data string) world.Dirs {
+		return world.Dirs{
+			Worlds:    filepath.Join(data, "worlds"),
+			Snapshots: filepath.Join(data, "snapshots"),
+			Imports:   filepath.Join(data, "import"),
+		}
+	}, makeGame)
+}
+
+// newHarnessIn is newHarnessWith with the folders chosen from the data
+// directory, as adopted mode puts the worlds inside the game folder.
+func newHarnessIn(t *testing.T, env map[string]string, dirsIn func(data string) world.Dirs, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
+	t.Helper()
 	cfg, err := config.Load(func(k string) (string, bool) { v, ok := env[k]; return v, ok })
 	if err != nil {
 		t.Fatalf("config: %v", err)
@@ -98,11 +111,7 @@ func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Ma
 	logs := &syncBuffer{}
 	logger := slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	data := t.TempDir()
-	worlds, err := world.NewManager(world.Dirs{
-		Worlds:    filepath.Join(data, "worlds"),
-		Snapshots: filepath.Join(data, "snapshots"),
-		Imports:   filepath.Join(data, "import"),
-	}, st, clock.Now)
+	worlds, err := world.NewManager(dirsIn(data), st, clock.Now)
 	if err != nil {
 		t.Fatalf("world manager: %v", err)
 	}

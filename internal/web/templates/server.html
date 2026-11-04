@@ -8,21 +8,32 @@
 {{- if not .HasWorld}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">No active world</h2>
+  {{- template "server-warnings" .}}
+  {{- if .NeedsLayoutStep}}
+  {{template "server-layout" .}}
+  {{- else}}
   <p class="empty">No world is active yet, so there is no server to run. Import a world or upload a save on the Worlds page; the first world becomes the active one.</p>
   <div class="actions"><a href="{{worldsPath}}" class="button">Go to Worlds</a></div>
+  {{- end}}
 </section>
 {{- else}}
 <div sse-swap="announce" hidden></div>
 <div sse-swap="moved" hidden></div>
+{{- if .Adopting}}
+<p>Adopting the game folder as {{.World.Name}}. It becomes the active world when the adoption finishes.</p>
+{{- else}}
 <div class="actions"><a href="{{.WorldPath}}">Active world: {{.World.Name}}</a></div>
+{{- end}}
 <section class="panel" aria-labelledby="status-heading">
   <h2 id="status-heading">Status</h2>
   <div sse-swap="facts">{{template "server-facts" .}}</div>
 </section>
+{{- if not .Adopting}}
 <section class="panel" aria-labelledby="players-heading">
   <h2 id="players-heading">Players online</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
+{{- end}}
 <section class="panel" aria-labelledby="control-heading">
   <h2 id="control-heading" tabindex="-1">Start and stop</h2>
   <div sse-swap="control">{{template "server-control" .}}</div>
@@ -37,7 +48,7 @@
 <dl class="facts">
   <div><dt>State</dt><dd><span class="state state--{{.Status.State}}">{{.StateWord}}</span></dd></div>
   <div><dt>Uptime</dt><dd>{{if .Running}}<time datetime="{{.UptimeISO}}">{{.Uptime}}</time>{{else}}Not running{{end}}</dd></div>
-  <div><dt>Game version</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}Unknown{{end}}</dd></div>
+  <div><dt>{{if .Status.Adopted}}Running version{{else}}Game version{{end}}</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}Unknown{{end}}</dd></div>
   {{- with .Status.Save}}
   <div><dt>Save loaded</dt><dd>{{.}}</dd></div>
   {{- end}}
@@ -48,6 +59,35 @@
 </dl>
 {{- with .Status.Reason}}
 <p>{{.}}</p>
+{{- end}}
+{{- template "server-warnings" .}}
+{{- end}}
+
+{{/* Warnings about the adopted container and the save it will load (SPEC
+     4.9, 4.12). */}}
+{{define "server-warnings" -}}
+{{- with .VersionWarning}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- if .Status.RCONPublished}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> The game container publishes its RCON port on the host, so anything that can reach the host can try the RCON password. Remove the port mapping from the container's definition.</p>
+</div>
+{{- end}}
+{{- end}}
+
+{{/* What the game folder needs before Foreman can control the game (SPEC
+     4.8). */}}
+{{define "server-layout" -}}
+{{- if .LayoutBroken}}
+<div class="message message--error">
+  <p><strong>Error:</strong> The game folder is not laid out as Foreman expects, at <code>{{.Status.Layout.Path}}</code>: {{.Status.Layout.Reason}}. Foreman does not start or stop the game until you fix this by hand. Then reload this page.</p>
+</div>
+{{- else if .CanAdopt}}
+<p>The game folder still holds its own saves, mods and config. Foreman can control the game only after you adopt the folder, which turns what is in it into a world.</p>
+<div class="actions"><a href="{{.AdoptPath}}" class="button button--primary" id="act-adopt">Adopt this game folder</a></div>
 {{- end}}
 {{- end}}
 
@@ -164,6 +204,7 @@
 <div class="log" id="crash-log" tabindex="0" role="region" aria-label="The last log lines before the crash"><pre>{{range .}}{{.}}
 {{end}}</pre></div>
 {{- end}}
+{{- template "server-layout" .}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop}}
 <div class="actions">
   {{- if .CanStart}}

@@ -224,6 +224,7 @@ func (s *server) gameRoutes() {
 	s.mux.HandleFunc("POST "+PathGameForce, s.requireUser(s.handleForceStop))
 	s.mux.HandleFunc("POST "+PathGamePull, s.requireUser(s.handlePull))
 	s.switchRoutes()
+	s.adoptRoutes()
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
 }
 
@@ -243,7 +244,12 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture),
 		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
 		errors.Is(err, game.ErrSwitchNoTarget), errors.Is(err, game.ErrSwitchTargetRunning),
-		errors.Is(err, game.ErrSwitchUnavailable):
+		errors.Is(err, game.ErrSwitchUnavailable),
+		errors.Is(err, game.ErrContainerRefused), errors.Is(err, game.ErrNoGameContainer),
+		errors.Is(err, game.ErrNotAdopted), errors.Is(err, game.ErrAlreadyAdopted),
+		errors.Is(err, game.ErrNotPresented), errors.Is(err, game.ErrGameFolderBroken),
+		errors.Is(err, game.ErrSpaceAgeMismatch), errors.Is(err, game.ErrAdoptedImages),
+		errors.Is(err, game.ErrAdoptRCON):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)
@@ -288,9 +294,17 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 // the game who is online when it is running.
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
 	p := ServerPage{World: sum, HasWorld: true, Status: st}
+	p.Adopting = !sum.Active && s.adoption.is(sum.ID)
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	p.Others = s.runs.others(sum.ID)
 	s.switchNames(&p)
+	if p.controllable() && !p.Adopting {
+		warning, err := s.game.VersionWarning(sum.ID)
+		if err != nil {
+			s.log.Debug("version warning", "world", sum.ID, "error", err)
+		}
+		p.VersionWarning = warning
+	}
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()
@@ -301,13 +315,13 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 }
 
 func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, found, err := s.activeWorld(r.Context())
+	sum, found, err := s.serverWorld(r.Context())
 	if err != nil {
 		s.fail(w, r, "find the active world", err)
 		return
 	}
 	if !found {
-		s.page(w, r, http.StatusOK, u.Username, ServerPage{})
+		s.page(w, r, http.StatusOK, u.Username, s.noWorldPage())
 		return
 	}
 	s.page(w, r, http.StatusOK, u.Username, s.serverPage(r.Context(), sum, s.game.Status(sum.ID)))

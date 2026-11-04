@@ -174,7 +174,11 @@ func start(cfg Config, report func(string)) (*Game, error) {
 		g.daemon.AddImage(ref)
 	}
 	if cfg.SelfNetwork != "" {
-		g.seedSelf(cfg.SelfNetwork)
+		gameDir := ""
+		if cfg.Adopted != nil {
+			gameDir = cfg.Adopted.GameDir
+		}
+		g.seedSelf(cfg.SelfNetwork, gameDir)
 	}
 	if cfg.Adopted != nil {
 		g.seedAdopted(*cfg.Adopted, cfg.SelfNetwork)
@@ -185,14 +189,19 @@ func start(cfg Config, report func(string)) (*Game, error) {
 }
 
 // seedSelf adds the container this process runs in, found the way Foreman
-// finds its own: by the ID in mountinfo, else by the hostname.
-func (g *Game) seedSelf(network string) {
+// finds its own: by the ID in mountinfo, else by the hostname. When gameDir
+// is set, the container has the game folder mounted at the same path, as an
+// adopted-mode Foreman does (SPEC 4.8).
+func (g *Game) seedSelf(network, gameDir string) {
 	hostname, _ := os.Hostname()
 	id := docker.SelfID(docker.MountinfoPath, hostname)
 	if id == "" {
 		return // Foreman could not look for itself either
 	}
 	c := dockertest.Container{Name: hostname, Status: "running", Networks: map[string]string{network: SelfAddress}}
+	if gameDir != "" {
+		c.Mounts = []docker.Mount{{Source: gameDir, Destination: gameDir}}
+	}
 	if id != hostname {
 		c.ID = id
 	}

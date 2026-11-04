@@ -247,8 +247,15 @@ func (p ServerPage) SwitchNote() string {
 }
 
 // Moved reports whether this page's world stopped being the active one in a
-// switch, so the page must load the Server page again to show the new one.
+// switch, or the world a first adoption was building became the active one,
+// so the page must load the Server page again to show the right world.
 func (p ServerPage) Moved() bool {
 	o := p.Status.Operation
-	return o != nil && o.Switch != nil && o.Switch.Presented && o.Switch.From == p.World.ID
+	if o == nil {
+		return false
+	}
+	if p.Adopting {
+		return o.Action == game.AuditAdopt && o.Done && o.Error == ""
+	}
+	return o.Switch != nil && o.Switch.Presented && o.Switch.From == p.World.ID
 }
