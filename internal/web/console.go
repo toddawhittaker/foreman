@@ -1,0 +1,399 @@
+package web
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+	"unicode/utf8"
+
+	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
+)
+
+// The Console tab (SPEC 8.4, 8.6): the game's log and an RCON console.
+const (
+	PathConsole       = "/console"
+	PathConsoleSend   = "/worlds/{id}/console"
+	PathConsoleEvents = "/worlds/{id}/console/events"
+)
+
+func consolePath(id, tail string) string { return worldPath(id) + "/console" + tail }
+
+const (
+	// maxCommandLength is the most characters a console command may have.
+	maxCommandLength = 1000
+	// historyEntries is how many commands a world's console remembers, and
+	// maxReplyBytes how much of one reply is kept.
+	historyEntries = 20
+	maxReplyBytes  = 100_000
+	// announceRunes bounds the reply read out to a screen reader.
+	announceRunes = 200
+)
+
+// Commands that carry a secret (R6, SPEC 14.8). A command in setsSecret has
+// its argument replaced in the audit log and on the page; one in
+// showsSecret has its reply hidden. The game has no other command that
+// sets or prints a password or token: /config set takes one option at a
+// time and "password" is the only secret among them. The Lua commands
+// (/c, /sc, /silent-command) can hold anything, so they cannot be told
+// apart and are recorded as typed.
+var (
+	setsSecret  = []string{"config set password"}
+	showsSecret = []string{"config get password"}
+)
+
+// commandPattern matches the words in any case with any whitespace between.
+func commandPattern(words string) string {
+	return strings.Join(strings.Fields(words), `\s+`)
+}
+
+func commandPatterns(list []string) string {
+	parts := make([]string, len(list))
+	for i, words := range list {
+		parts[i] = commandPattern(words)
+	}
+	return "(?:" + strings.Join(parts, "|") + ")"
+}
+
+var (
+	// secretArgument finds the typed command up to its secret.
+	secretArgument = regexp.MustCompile(`(?is)^(\s*/?\s*` + commandPatterns(setsSecret) + `)\s+\S.*$`)
+	// secretInLog finds the same command anywhere in a log line, since the
+	// game may print what it was given.
+	secretInLog = regexp.MustCompile(`(?i)(` + commandPatterns(setsSecret) + `)\s+\S.*$`)
+	secretReply = regexp.MustCompile(`(?i)^\s*/?\s*` + commandPatterns(showsSecret) + `(?:\s|$)`)
+)
+
+// auditText is the command as the audit log and the page record it: with
+// the surrounding space gone and a secret argument replaced by the mask.
+// The game is sent the command unchanged.
+func auditText(command string) string {
+	command = strings.TrimSpace(command)
+	return secretArgument.ReplaceAllString(command, "${1} "+game.Mask)
+}
+
+// hidesReply reports whether the game's reply to command prints a secret.
+func hidesReply(command string) bool { return secretReply.MatchString(command) }
+
+// maskLogLine hides a secret the game printed in a log line.
+func maskLogLine(line string) string {
+	return secretInLog.ReplaceAllString(line, "${1} "+game.Mask)
+}
+
+// checkCommand returns the words for the command field's error, or "".
+func checkCommand(command string) string {
+	switch {
+	case strings.TrimSpace(command) == "":
+		return "Enter a command to send"
+	case utf8.RuneCountInString(command) > maxCommandLength:
+		return fmt.Sprintf("Enter a command of at most %d characters", maxCommandLength)
+	case strings.ContainsAny(command, "\x00"):
+		return "A command cannot contain a NUL character"
+	case strings.ContainsAny(command, "\r\n"):
+		return "A command must be on one line"
+	}
+	return ""
+}
+
+// consoleEntry is one command and the game's reply, as shown.
+type consoleEntry struct {
+	Command string // already masked
+	Reply   string
+	Cut     bool // the reply was longer than maxReplyBytes
+	Last    bool // the newest entry; the page links to it
+}
+
+// consoleHistory keeps each world's recent commands and replies in memory,
+// so a page without JavaScript can show the reply after its post. It is
+// lost at restart, like the log (R19).
+type consoleHistory struct {
+	mu      sync.Mutex
+	byWorld map[string][]consoleEntry
+}
+
+func newConsoleHistory() *consoleHistory {
+	return &consoleHistory{byWorld: map[string][]consoleEntry{}}
+}
+
+func (h *consoleHistory) add(id string, e consoleEntry) {
+	if len(e.Reply) > maxReplyBytes {
+		cut := maxReplyBytes
+		for cut > 0 && !utf8.RuneStart(e.Reply[cut]) {
+			cut--
+		}
+		e.Reply, e.Cut = e.Reply[:cut], true
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	list := append(h.byWorld[id], e)
+	if len(list) > historyEntries {
+		list = list[len(list)-historyEntries:]
+	}
+	h.byWorld[id] = list
+}
+
+// list returns a copy, oldest first, with the newest marked.
+func (h *consoleHistory) list(id string) []consoleEntry {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := append([]consoleEntry(nil), h.byWorld[id]...)
+	if len(out) > 0 {
+		out[len(out)-1].Last = true
+	}
+	return out
+}
+
+// announceReply is what a screen reader hears for the admin's own command
+// (DESIGN 8.5): the reply on one line, cut short.
+func announceReply(command, reply string) string {
+	reply = strings.Join(strings.Fields(reply), " ")
+	if reply == "" {
+		return "The game sent no reply to " + command
+	}
+	if r := []rune(reply); len(r) > announceRunes {
+		reply = string(r[:announceRunes]) + "…"
+	}
+	return "Reply to " + command + ": " + reply
+}
+
+// ConsolePage is the log and console of the active world (SPEC 8.4, 8.6,
+// DESIGN 8.5).
+type ConsolePage struct {
+	World    world.Summary
+	HasWorld bool
+	Lines    []string
+	History  []consoleEntry
+	// Command refills the field after a refusal; it is empty when the
+	// command carried a secret.
+	Command      string
+	CommandError string
+	// Failure says why a command was not sent or answered.
+	Failure string
+	// Announce is read out by #announcer when a script swaps in the panel.
+	Announce string
+}
+
+func (ConsolePage) templateName() string { return "console" }
+func (ConsolePage) navItem() string      { return PathConsole }
+func (p ConsolePage) hasErrors() bool    { return p.CommandError != "" }
+
+func (p ConsolePage) Problems() []Problem {
+	return problems(Problem{"command", p.CommandError})
+}
+
+func (p ConsolePage) WorldPath() string  { return worldPath(p.World.ID) }
+func (p ConsolePage) SendPath() string   { return consolePath(p.World.ID, "") }
+func (p ConsolePage) EventsPath() string { return consolePath(p.World.ID, "/events") }
+
+// CommandLimit is the longest command, for the hint.
+func (ConsolePage) CommandLimit() int { return maxCommandLength }
+
+// MaxLines is how many log lines the page keeps (R19), for the script.
+func (ConsolePage) MaxLines() int { return game.LogBufferLines }
+
+func (s *server) consoleRoutes() {
+	if s.game == nil {
+		s.mux.HandleFunc("GET "+PathConsole, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, PathWorlds, http.StatusSeeOther)
+		})
+		return
+	}
+	s.mux.HandleFunc("GET "+PathConsole, s.requireUser(s.handleConsole))
+	s.mux.HandleFunc("POST "+PathConsoleSend, s.requireUser(s.handleConsoleSend))
+	s.handleLong("GET "+PathConsoleEvents, s.requireUser(s.handleConsoleEvents))
+}
+
+// consolePage fills the page for a world with the log so far and the
+// recent commands.
+func (s *server) consolePage(sum world.Summary) ConsolePage {
+	view, _, stop := s.game.Watch(sum.ID)
+	stop()
+	lines := make([]string, len(view.Lines))
+	for i, l := range view.Lines {
+		lines[i] = maskLogLine(l)
+	}
+	return ConsolePage{World: sum, HasWorld: true, Lines: lines, History: s.console.list(sum.ID)}
+}
+
+func (s *server) handleConsole(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, found, err := s.activeWorld(r.Context())
+	if err != nil {
+		s.fail(w, r, "find the active world", err)
+		return
+	}
+	if !found {
+		s.page(w, r, http.StatusOK, u.Username, ConsolePage{})
+		return
+	}
+	s.page(w, r, http.StatusOK, u.Username, s.consolePage(sum))
+}
+
+// refill is the text to put back in the command field after a refusal:
+// never a command that carries a secret (SPEC 14.8).
+func refill(command string) string {
+	if auditText(command) != strings.TrimSpace(command) {
+		return ""
+	}
+	return command
+}
+
+// respond answers a console post. A script (htmx) gets the panel alone, and
+// always with 200 so that it swaps a refusal in as it does a reply.
+func (s *server) respond(w http.ResponseWriter, r *http.Request, status int, user string, p ConsolePage) {
+	if r.Header.Get("HX-Request") != "true" {
+		s.page(w, r, status, user, p)
+		return
+	}
+	var b strings.Builder
+	if err := s.render.Fragment(&b, p, "console-response"); err != nil {
+		s.fail(w, r, "render console panel", err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(b.String()))
+}
+
+// handleConsoleSend sends one command and records it (SPEC 8.4, 12.9).
+func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	command := r.PostFormValue("command")
+	p := s.consolePage(sum)
+	p.Command = refill(command)
+	if msg := checkCommand(command); msg != "" {
+		p.CommandError = msg
+		s.respond(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	shown := auditText(command)
+	reply, err := s.game.Console(r.Context(), sum.ID, actor(u), command, shown)
+	switch {
+	case err == nil:
+	case errors.Is(err, game.ErrNotRunning):
+		p.Failure = "The game is not running, so it cannot take commands. Start it from the Server page."
+	case errors.Is(err, game.ErrRCONUnreachable):
+		p.Failure = "Foreman could not reach the game over RCON, so the command may not have been sent. Check the game's state on the Server page."
+	default:
+		s.fail(w, r, "send console command", err)
+		return
+	}
+	if err != nil {
+		p.Announce = "Error: " + p.Failure
+		s.respond(w, r, http.StatusConflict, u.Username, p)
+		return
+	}
+	if hidesReply(command) {
+		reply = game.Mask
+	}
+	s.console.add(sum.ID, consoleEntry{Command: shown, Reply: reply})
+	if r.Header.Get("HX-Request") != "true" {
+		// The fragment makes a browser without JavaScript scroll the
+		// history box to the reply.
+		http.Redirect(w, r, PathConsole+"#last-reply", http.StatusSeeOther)
+		return
+	}
+	p.Command, p.History = "", s.console.list(sum.ID)
+	p.Announce = announceReply(shown, reply)
+	s.respond(w, r, http.StatusOK, u.Username, p)
+}
+
+// handleConsoleEvents streams a world's log lines as server-sent events
+// (SPEC 8.6, R22): "reset" with every line so far, then "lines" with each
+// batch of new ones, so a page that reconnects misses and repeats nothing.
+// The lines are JSON, so the page can only ever set them as text. The
+// stream ends when its user is no longer signed in, when the page falls
+// too far behind, and first of all at shutdown.
+func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	if !s.runs.track() {
+		http.Error(w, "Foreman is shutting down.", http.StatusServiceUnavailable)
+		return
+	}
+	defer s.runs.wg.Done()
+
+	h := w.Header()
+	h.Set("Content-Type", "text/event-stream")
+	h.Set("Cache-Control", "no-store")
+	h.Set("X-Accel-Buffering", "no") // proxies must pass each event on at once
+	w.WriteHeader(http.StatusOK)
+	out := &liveStream{w: w, rc: http.NewResponseController(w)}
+
+	view, updates, stop := s.game.Watch(sum.ID)
+	defer stop()
+	lines := make([]string, len(view.Lines))
+	for i, l := range view.Lines {
+		lines[i] = maskLogLine(l)
+	}
+	if out.lines("reset", lines) != nil {
+		return
+	}
+	beat := time.NewTicker(heartbeatEvery)
+	defer beat.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-s.runs.live.Done():
+			return
+		case up, open := <-updates:
+			if !open {
+				return
+			}
+			var batch []string
+			if up.Kind == game.UpdateLine {
+				batch = append(batch, maskLogLine(up.Line))
+			}
+			// Whatever else is waiting goes in the same event.
+			for drained := false; !drained; {
+				select {
+				case up, open := <-updates:
+					if !open {
+						return
+					}
+					if up.Kind == game.UpdateLine {
+						batch = append(batch, maskLogLine(up.Line))
+					}
+				default:
+					drained = true
+				}
+			}
+			if len(batch) > 0 && out.lines("lines", batch) != nil {
+				return
+			}
+		case <-beat.C:
+			if _, state, err := s.identify(r); err != nil || state != isSignedIn {
+				return
+			}
+			if out.comment() != nil {
+				return
+			}
+		}
+	}
+}
+
+// lines sends log lines as one event holding a JSON array.
+func (l *liveStream) lines(event string, lines []string) error {
+	data, err := json.Marshal(lines)
+	if err != nil {
+		return err
+	}
+	if err := l.event(event, string(data)); err != nil {
+		return err
+	}
+	return l.rc.Flush()
+}

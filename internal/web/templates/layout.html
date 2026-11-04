@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{{static "foreman.css"}}">
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
+{{block "scripts" .}}{{end}}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -19,6 +20,7 @@
   <nav aria-label="Main">
     <ul class="tabs">
       <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>Server</a></li>
+      <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>Console</a></li>
       <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>Worlds</a></li>
     </ul>
   </nav>

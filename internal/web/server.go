@@ -40,6 +40,7 @@ type server struct {
 	worlds   *world.Manager
 	game     *game.Controller
 	runs     *gameRuns
+	console  *consoleHistory
 	log      *slog.Logger
 	now      func() time.Time
 	render   *Renderer
@@ -81,6 +82,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		worlds:   d.Worlds,
 		game:     d.Game,
 		runs:     newGameRuns(),
+		console:  newConsoleHistory(),
 		log:      d.Log,
 		now:      now,
 		render:   renderer,
@@ -125,6 +127,7 @@ func (s *server) routes() {
 	s.mux.HandleFunc("GET "+PathSignedOut, s.handleSignedOut)
 	s.mux.HandleFunc("POST "+PathSignOut, s.handleSignOut)
 	s.gameRoutes()
+	s.consoleRoutes()
 	s.worldRoutes()
 	s.saveRoutes()
 	s.snapshotRoutes()

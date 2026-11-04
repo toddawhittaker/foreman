@@ -160,6 +160,17 @@ func pageCases() []pageCase {
 			Running: true, CountdownForm: defaultCountdown()}},
 		{"restore countdown error", "todd", 400, RestorePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[0],
 			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+		{"console no world", "todd", 200, ConsolePage{}},
+		{"console empty", "todd", 200, ConsolePage{World: world.Summary{ID: "base", Name: longName}, HasWorld: true}},
+		{"console log and history", "todd", 200, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
+			Lines: []string{"2026-11-03 10:00:00 [JOIN] alice joined the game", longName},
+			History: []consoleEntry{{Command: "/players online", Reply: "Online players (1):\n  alice (online)\n"},
+				{Command: longName, Reply: longName, Cut: true},
+				{Command: "/server-save", Last: true}}}},
+		{"console command refused", "todd", 400, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
+			Command: "/c game.print(1)", CommandError: "Enter a command of at most 1000 characters"}},
+		{"console not running", "todd", 409, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
+			Failure: "The game is not running, so it cannot take commands. Start it from the Server page."}},
 	}
 }
 

@@ -253,13 +253,14 @@ func NewRenderer() (*Renderer, error) {
 		return nil, err
 	}
 	funcs := template.FuncMap{
-		"static":     r.staticURL,
-		"homePath":   func() string { return PathHome },
-		"serverPath": func() string { return PathServer },
-		"worldsPath": func() string { return PathWorlds },
-		"bytes":      world.FormatBytes,
-		"utc":        func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
-		"isoTime":    func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+		"static":      r.staticURL,
+		"homePath":    func() string { return PathHome },
+		"serverPath":  func() string { return PathServer },
+		"consolePath": func() string { return PathConsole },
+		"worldsPath":  func() string { return PathWorlds },
+		"bytes":       world.FormatBytes,
+		"utc":         func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
+		"isoTime":     func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
 		// never wrap (DESIGN 8.3); utcSeconds tells apart two snapshots
 		// taken in the same minute.
