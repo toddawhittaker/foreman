@@ -24,7 +24,12 @@ type liveServer struct {
 
 func newLiveServer(t *testing.T, env map[string]string) *liveServer {
 	t.Helper()
-	hn := newHarness(t, env)
+	return newLiveServerFor(t, newHarness(t, env))
+}
+
+// newLiveServerFor serves hn over a real TCP listener.
+func newLiveServerFor(t *testing.T, hn *harness) *liveServer {
+	t.Helper()
 	ts := httptest.NewServer(hn.h)
 	t.Cleanup(ts.Close)
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

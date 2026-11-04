@@ -54,6 +54,7 @@ func TestLoadAllSet(t *testing.T) {
 		"FOREMAN_TRUSTED_PROXIES":     "10.0.0.0/8, 192.168.1.5 ,fd00::1",
 		"FOREMAN_SESSION_IDLE":        "30m",
 		"DOCKER_HOST":                 "tcp://socket-proxy:2375",
+		"FOREMAN_GAME_NETWORK":        "games",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +80,7 @@ func TestLoadAllSet(t *testing.T) {
 		},
 		SessionIdle: 30 * time.Minute,
 		DockerHost:  "tcp://socket-proxy:2375",
+		GameNetwork: "games",
 	}
 	if !reflect.DeepEqual(c, want) {
 		t.Errorf("\n got %+v\nwant %+v", c, want)

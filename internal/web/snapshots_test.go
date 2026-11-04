@@ -39,17 +39,18 @@ func (hn *harness) seedSnapshotWorld() string {
 }
 
 func TestSnapshotTakeListAndRestore(t *testing.T) {
-	// Restore lifts the server's deadlines, which needs a real connection.
+	// Taking and restoring lift the server's deadlines, which needs a real
+	// connection.
 	ls := newLiveServer(t, nil)
 	hn := ls.harness
 	c := hn.signIn()
 	id := hn.seedSnapshotWorld()
 
-	rec := hn.post(snapshotsPath(id), url.Values{"label": {"  First  "}}, withCookie(c))
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("take: status %d\n%s", rec.Code, rec.Body)
+	rec := ls.do(http.MethodPost, snapshotsPath(id), url.Values{"label": {"  First  "}}, http.Header{"Cookie": {c.String()}})
+	if rec.StatusCode != http.StatusSeeOther {
+		t.Fatalf("take: status %d\n%s", rec.StatusCode, rec.body)
 	}
-	loc := rec.Header().Get("Location")
+	loc := rec.Header.Get("Location")
 	body := hn.get(loc, withCookie(c)).Body.String()
 	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, "<td>Manual<br>First<br>") {
 		t.Errorf("list after take:\n%s", body)
@@ -87,7 +88,8 @@ func TestSnapshotTakeListAndRestore(t *testing.T) {
 }
 
 func TestSnapshotRoutesRefuseBadInput(t *testing.T) {
-	hn := newHarness(t, nil)
+	ls := newLiveServer(t, nil)
+	hn := ls.harness
 	c := hn.signIn()
 	id := hn.seedSnapshotWorld()
 
@@ -101,9 +103,10 @@ func TestSnapshotRoutesRefuseBadInput(t *testing.T) {
 			t.Errorf("GET %s: %d", p, rec.Code)
 		}
 	}
-	rec := hn.post(snapshotsPath(id), url.Values{"label": {strings.Repeat("x", 101)}}, withCookie(c))
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Use at most 100 characters") {
-		t.Errorf("long label: %d", rec.Code)
+	cookie := http.Header{"Cookie": {c.String()}}
+	rec := ls.do(http.MethodPost, snapshotsPath(id), url.Values{"label": {strings.Repeat("x", 101)}}, cookie)
+	if rec.StatusCode != http.StatusBadRequest || !strings.Contains(rec.body, "Use at most 100 characters") {
+		t.Errorf("long label: %d", rec.StatusCode)
 	}
 	if list, _ := hn.worlds.Snapshots(id); len(list) != 0 {
 		t.Errorf("a refused label took a snapshot")
@@ -113,10 +116,10 @@ func TestSnapshotRoutesRefuseBadInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec = hn.post(snapshotsPath(id), url.Values{}, withCookie(c))
+	rec = ls.do(http.MethodPost, snapshotsPath(id), url.Values{}, cookie)
 	unlock()
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "nother operation is running") {
-		t.Errorf("busy: %d", rec.Code)
+	if rec.StatusCode != http.StatusConflict || !strings.Contains(rec.body, "nother operation is running") {
+		t.Errorf("busy: %d", rec.StatusCode)
 	}
 	hn.wantRedirect(hn.get(snapshotsPath(id)), PathSignIn)
 }

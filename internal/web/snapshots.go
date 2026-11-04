@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"slices"
@@ -8,6 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -62,6 +64,10 @@ type RestorePage struct {
 	Deleted bool
 	// Undo names the "Before restore" snapshot a failed restore took.
 	Undo string
+	// Running is true when the world's game may be running, so the restore
+	// stops it gracefully first and starts it again after (SPEC 6.5).
+	Running bool
+	CountdownForm
 }
 
 func (SnapshotsPage) templateName() string { return "snapshots" }
@@ -73,7 +79,10 @@ func (p RestorePage) WorldPath() string  { return worldPath(p.WorldID) }
 func (RestorePage) templateName() string { return "restore" }
 
 func (p SnapshotsPage) hasErrors() bool { return p.LabelError != "" || p.Error != "" }
-func (p RestorePage) hasErrors() bool   { return p.Error != "" }
+func (p RestorePage) hasErrors() bool   { return p.Error != "" || p.CountdownError != "" }
+
+// Problems lists the countdown field's error for the summary.
+func (p RestorePage) Problems() []Problem { return problems(Problem{"countdown", p.CountdownError}) }
 
 // Problems lists the field errors for the summary (DESIGN 7.2).
 func (p SnapshotsPage) Problems() []Problem { return problems(Problem{"label", p.LabelError}) }
@@ -128,7 +137,9 @@ func showReason(reason, label string) string {
 
 func (s *server) snapshotRoutes() {
 	s.mux.HandleFunc("GET "+PathWorldSnapshots, s.requireUser(s.handleSnapshots))
-	s.mux.HandleFunc("POST "+PathWorldSnapshots, s.requireUser(s.handleTakeSnapshot))
+	// A running game saves before its snapshot (SPEC 6.10), which can outlast
+	// the usual deadlines.
+	s.handleLong("POST "+PathWorldSnapshots, s.requireUser(s.handleTakeSnapshot))
 	s.mux.HandleFunc("GET "+PathSnapshotRestore, s.requireUser(s.handleRestoreForm))
 	s.handleLong("POST "+PathSnapshotRestore, s.requireUser(s.handleRestore))
 }
@@ -218,7 +229,11 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	label, problem := checkLabel(r.PostFormValue("label"))
 	var snap world.Snapshot
 	var err error
-	if problem == "" {
+	switch {
+	case problem != "":
+	case s.game != nil:
+		snap, err = s.game.Snapshot(r.Context(), id, actor(u), label)
+	default:
 		snap, err = s.worlds.TakeSnapshot(id, label, u.Username)
 	}
 	if problem == "" && err == nil {
@@ -228,7 +243,7 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	status, msg := http.StatusBadRequest, ""
 	if err != nil {
 		var ok bool
-		if status, msg, ok = s.refusal(w, r, u, "take snapshot", err); !ok {
+		if status, msg, ok = s.gameRefusal(w, r, u, "take snapshot", err); !ok {
 			return
 		}
 	}
@@ -265,7 +280,14 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		// A deleted world's snapshots stay restorable (SPEC 6.6).
 		name = s.worlds.SnapshotWorldName(id, snapName)
 	}
-	return RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found}, true
+	p := RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found, CountdownForm: defaultCountdown()}
+	if found && s.game != nil {
+		switch s.game.Status(id).State {
+		case game.StateRunning, game.StateStarting, game.StateStopping, game.StateCrashed:
+			p.Running = true
+		}
+	}
+	return p, true
 }
 
 func (s *server) handleRestoreForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -276,9 +298,11 @@ func (s *server) handleRestoreForm(w http.ResponseWriter, r *http.Request, u sto
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
-// handleRestore restores a snapshot (SPEC 6.5). Nothing runs a world in
-// this version, so there is no server to stop first. A deleted world's
-// snapshot recreates the world.
+// handleRestore restores a snapshot (SPEC 6.5). A deleted world's snapshot
+// recreates the world. With server control, a world whose game may be
+// running is stopped gracefully, restored and started again in the
+// background, and the server page follows it; any other restore is done
+// before the reply.
 func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.User) {
 	p, ok := s.restoreTarget(w, r, u)
 	if !ok {
@@ -287,10 +311,32 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 	if !s.readForm(w, r) {
 		return
 	}
-	before, err := s.worlds.Restore(r.Context(), p.WorldID, p.Snapshot.Name, u.Username)
+	var before world.Snapshot
+	var err error
+	switch {
+	case s.game == nil:
+		before, err = s.worlds.Restore(r.Context(), p.WorldID, p.Snapshot.Name, u.Username)
+	case p.Running:
+		form, stop := readCountdown(r)
+		if form.CountdownError != "" {
+			p.CountdownForm = form
+			s.page(w, r, http.StatusBadRequest, u.Username, p)
+			return
+		}
+		id, snap, by := p.WorldID, p.Snapshot.Name, actor(u)
+		s.begin(w, r, id, func(ctx context.Context) actionResult {
+			before, err := s.game.Restore(ctx, id, by, snap, stop)
+			res := s.finish(id, game.ActionRestore, err)
+			res.Restored, res.Undo = snap, before.Name
+			return res
+		})
+		return
+	default:
+		before, err = s.game.Restore(r.Context(), p.WorldID, actor(u), p.Snapshot.Name, game.StopOptions{})
+	}
 	if err != nil {
 		if before.Name == "" {
-			if status, msg, ok := s.refusal(w, r, u, "restore snapshot", err); ok {
+			if status, msg, ok := s.gameRefusal(w, r, u, "restore snapshot", err); ok {
 				p.Error = msg
 				s.page(w, r, status, u.Username, p)
 			}
@@ -298,7 +344,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		}
 		// The undo snapshot exists, so the admin must hear of it whatever
 		// went wrong (SPEC 6.5); a fault's detail stays in the log.
-		status, msg := worldError(err)
+		status, msg := gameError(err)
 		if status == http.StatusInternalServerError || status == http.StatusNotFound {
 			s.log.Error("restore snapshot", "method", r.Method, "path", r.URL.Path, "error", err)
 			status, msg = http.StatusInternalServerError, "Foreman could not finish the restore."
