@@ -69,11 +69,14 @@ const (
 	AuditImageDownload = "image-download"
 	AuditConsole       = "console"
 	AuditSwitch        = "switch"
+	AuditUpdate        = "game-update"
+	AuditRollback      = "rollback"
 	// A start, restart or switch the checks refused before anything was
 	// done is recorded under its own action, with the reason (SPEC 12.9).
 	AuditStartRefused   = "start-refused"
 	AuditRestartRefused = "restart-refused"
 	AuditSwitchRefused  = "switch-refused"
+	AuditUpdateRefused  = "game-update-refused"
 )
 
 // Errors a caller can test for with errors.Is. The text is shown to the admin.
@@ -728,6 +731,7 @@ func (c *Controller) pokeMonitor() {
 // refusedActions names the audit action of each refusable action.
 var refusedActions = map[string]string{
 	AuditStart: AuditStartRefused, AuditRestart: AuditRestartRefused, AuditSwitch: AuditSwitchRefused,
+	AuditUpdate: AuditUpdateRefused,
 }
 
 // IsRefusal reports whether err is a check refusing the world as it is,
