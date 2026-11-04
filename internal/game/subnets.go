@@ -13,8 +13,7 @@ import (
 // 12.6). A game with NET_RAW can claim any free address on its network, so
 // the whole range counts, not only the game's own address. known is false
 // until the ranges have been read once; a later failed read keeps the last
-// value. It is also false while the adopted container keeps NET_RAW, since
-// the guard cannot then be trusted. It makes no call.
+// value. It makes no call.
 //
 // The ranges come from container inspect (SPEC 14.3 allows no network
 // call). Foreman can only answer a peer on a range it has an address in,
@@ -22,87 +21,53 @@ import (
 func (c *Controller) GameSubnets() (subnets []netip.Prefix, known bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.aview.netRawWarning != "" {
-		return nil, false
-	}
 	return slices.Clone(c.subnets), c.subnetsKnown
 }
 
-// refreshAdoptedSubnets sets the ranges from the adopted container at this
-// look: those of every network Foreman shares with it, from both ends, or
-// of all its networks when Foreman is not in a container.
-func (c *Controller) refreshAdoptedSubnets(ctx context.Context, cont docker.Container) {
-	self, inContainer, err := c.selfContainer(ctx)
-	if err != nil {
-		return
-	}
-	var all []netip.Prefix
-	for name, n := range cont.Networks {
-		mine, shared := self.Networks[name]
-		if inContainer && !shared {
-			continue
-		}
-		all = appendSubnets(all, n)
-		if shared {
-			all = appendSubnets(all, mine)
-		}
-	}
-	c.setSubnets(all, true)
-}
-
-// refreshManagedSubnets ends the monitor's look in managed mode, once it
-// has listed and inspected every game container (allSeen). In a container
+// refreshSubnets ends the monitor's look, once it has listed and inspected
+// every game container (allSeen). In a container
 // the range is Foreman's own on the game network; with no game network no
 // game can start (SPEC 4.4). Outside one it is what the game containers
 // report (noteGameSubnets), so it is known only once all were inspected.
-func (c *Controller) refreshManagedSubnets(ctx context.Context, allSeen bool) {
+func (c *Controller) refreshSubnets(ctx context.Context, allSeen bool) {
 	self, inContainer, err := c.selfContainer(ctx)
 	switch {
 	case err != nil:
 	case inContainer:
-		c.setSubnets(appendSubnets(nil, self.Networks[c.network]), false)
+		c.addSubnets(appendSubnets(nil, self.Networks[c.network]))
 	case allSeen:
-		c.setSubnets(nil, false)
+		c.addSubnets(nil)
 	}
 }
 
-// noteSelfGameSubnet adds, before a managed game first starts, Foreman's
+// noteSelfGameSubnet adds, before a game first starts, Foreman's
 // own range on the game network, so the game is never running while its
 // range is unknown. Outside a container Foreman has no endpoint there, and
 // noteGameSubnets adds the range once the started game is inspected.
 func (c *Controller) noteSelfGameSubnet(ctx context.Context) {
-	if c.adopted != nil {
-		return
-	}
 	self, inContainer, err := c.selfContainer(ctx)
 	if err != nil || !inContainer {
 		return
 	}
-	c.setSubnets(appendSubnets(nil, self.Networks[c.network]), false)
+	c.addSubnets(appendSubnets(nil, self.Networks[c.network]))
 }
 
-// noteGameSubnets adds a managed game container's range on its network.
-// Ranges are only added in managed mode, never dropped: a network keeps
-// its range, and refusing an old one is the safe side.
+// noteGameSubnets adds a game container's range on its network. Ranges
+// are only added here, never dropped: a network keeps its range, and
+// refusing an old one is the safe side.
 func (c *Controller) noteGameSubnets(cont docker.Container) {
-	if c.adopted != nil {
-		return // refreshAdoptedSubnets owns the ranges there
-	}
 	var add []netip.Prefix
 	for _, n := range cont.Networks {
 		add = appendSubnets(add, n)
 	}
-	c.setSubnets(add, false)
+	c.addSubnets(add)
 }
 
-// setSubnets marks the ranges known and either replaces them or adds to
-// them.
-func (c *Controller) setSubnets(subnets []netip.Prefix, replace bool) {
+// addSubnets marks the ranges known and adds subnets to them.
+func (c *Controller) addSubnets(subnets []netip.Prefix) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !replace {
-		subnets = append(subnets, c.subnets...)
-	}
+	subnets = append(subnets, c.subnets...)
 	slices.SortFunc(subnets, func(a, b netip.Prefix) int {
 		if d := a.Addr().Compare(b.Addr()); d != 0 {
 			return d

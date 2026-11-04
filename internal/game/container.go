@@ -86,9 +86,6 @@ func (c *Controller) containerSpec(id, image, network string) docker.ContainerSp
 // none. A container with the name that Foreman did not make for this world
 // and this install is ErrForeign (SPEC 4.3).
 func (c *Controller) ourContainer(ctx context.Context, id string) (cont docker.Container, found bool, err error) {
-	if c.adopted != nil {
-		return c.adoptedContainer(ctx, id)
-	}
 	cont, err = c.docker.InspectContainer(ctx, ContainerName(id))
 	if errors.Is(err, docker.ErrNotFound) {
 		return docker.Container{}, false, nil
@@ -219,11 +216,7 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 		others = append(others, name)
 	}
 	if len(others) > 0 {
-		what := "which Foreman did not make"
-		if c.adopted != nil {
-			what = "which is not Foreman or the game container"
-		}
-		return refuseNetwork("the game network %q also holds %s, %s, so a game could reach them. Give the game a network that only Foreman and its games are on", network, strings.Join(others, ", "), what)
+		return refuseNetwork("the game network %q also holds %s, which Foreman did not make, so a game could reach them. Give the game a network that only Foreman and its games are on", network, strings.Join(others, ", "))
 	}
 	return nil
 }
@@ -349,18 +342,13 @@ func exists(path string) bool {
 }
 
 // rconAddress is where the game's RCON listens, or "" while the container
-// has no address. A managed container is on one network only; an adopted
-// one is reached on the network it shares with Foreman, at its RCON_PORT
-// (SPEC 4.4, 4.7).
-func (c *Controller) rconAddress(ctx context.Context, cont docker.Container) (string, error) {
-	if c.adopted != nil {
-		return c.adoptedRCONAddress(ctx, cont)
-	}
+// has no address. The container is on one network only (SPEC 4.4).
+func (c *Controller) rconAddress(cont docker.Container) string {
 	ip := containerIP(cont)
 	if ip == "" {
-		return "", nil
+		return ""
 	}
-	return net.JoinHostPort(ip, RCONPort), nil
+	return net.JoinHostPort(ip, RCONPort)
 }
 
 // containerIP is the game's address on the first network that gave it one.
@@ -398,9 +386,6 @@ func (c *Controller) imageFor(gameVersion string) (string, error) {
 // ImageFor returns the pinned image reference a world runs, and whether
 // Docker has it (SPEC 3.7). The server page uses it to offer the download.
 func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, present bool, err error) {
-	if c.adopted != nil {
-		return "", false, ErrAdoptedImages
-	}
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return "", false, err
@@ -422,29 +407,12 @@ func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, prese
 // secrets returns the world's RCON password and, when its server settings
 // set one, the game password: every secret the game might print
 // (SPEC 8.6, 14.8). It creates the RCON password file when missing (SPEC 4.5).
-// In adopted mode FOREMAN_RCON_PASSWORD, when set, is the one Foreman logs in
-// with; the world's file is then never created here, and is still hidden
-// when it holds another value, because the image's entrypoint prints the
-// password it reads from that file (SPEC 4.10).
 func (c *Controller) secrets(id string) (rconPW secret.Secret, all []secret.Secret, err error) {
-	if env, ok := c.envRCONPassword(); ok {
-		rconPW, all = env, []secret.Secret{env}
-		if c.hasRCONPassword(id) == nil {
-			filePW, err := c.worlds.RCONPassword(id)
-			if err != nil {
-				return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
-			}
-			if filePW.Reveal() != env.Reveal() {
-				all = append(all, filePW)
-			}
-		}
-	} else {
-		rconPW, err = c.worlds.RCONPassword(id)
-		if err != nil {
-			return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
-		}
-		all = []secret.Secret{rconPW}
+	rconPW, err = c.worlds.RCONPassword(id)
+	if err != nil {
+		return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
 	}
+	all = []secret.Secret{rconPW}
 	gamePW, err := c.gamePassword(id)
 	if err != nil {
 		return secret.Secret{}, nil, err
@@ -453,34 +421,6 @@ func (c *Controller) secrets(id string) (rconPW secret.Secret, all []secret.Secr
 		all = append(all, gamePW)
 	}
 	return rconPW, all, nil
-}
-
-// envRCONPassword returns FOREMAN_RCON_PASSWORD in adopted mode, when set
-// (SPEC 4.10).
-func (c *Controller) envRCONPassword() (secret.Secret, bool) {
-	if c.adopted == nil || c.adopted.rconPW.Reveal() == "" {
-		return secret.Secret{}, false
-	}
-	return c.adopted.rconPW, true
-}
-
-// rconPassword is the password Foreman logs in to the world's game with
-// (SPEC 4.5, 4.10).
-func (c *Controller) rconPassword(id string) (secret.Secret, error) {
-	if env, ok := c.envRCONPassword(); ok {
-		return env, nil
-	}
-	return c.worlds.RCONPassword(id)
-}
-
-// needRCONPassword reports, as an error, that Foreman cannot know the
-// password a running game uses: the world has no password file and
-// FOREMAN_RCON_PASSWORD is not set.
-func (c *Controller) needRCONPassword(id string) error {
-	if _, ok := c.envRCONPassword(); ok {
-		return nil
-	}
-	return c.hasRCONPassword(id)
 }
 
 // hasRCONPassword reports, as an error, whether the world lacks its RCON

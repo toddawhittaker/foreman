@@ -27,9 +27,7 @@ type instance struct {
 	id, name string
 	ip       string
 	save     string // file name of the save the container loads
-	savesDir string // container path of the folder it loads it from
 	password string
-	rconPort string
 	v        *version
 
 	mu      sync.Mutex
@@ -58,14 +56,8 @@ func (g *Game) boot(id string) {
 	}
 	in := &instance{
 		g: g, id: id, name: c.Name, v: versionFor(c.Spec.Image),
-		save: saveName(c.Spec), password: rconPassword(c), rconPort: rconPort,
+		save: saveName(c.Spec), password: rconPassword(c),
 		baseAt: time.Now(), conns: map[net.Conn]struct{}{},
-	}
-	var run *entrypoint
-	if id == g.adoptedID {
-		r := runEntrypoint(c.Spec.Env, c.Mounts)
-		run = &r
-		in.save, in.password, in.rconPort, in.savesDir = r.save, r.password, r.rconPort, r.savesDir
 	}
 	g.mu.Lock()
 	if g.closed || g.insts[id] != nil {
@@ -80,16 +72,6 @@ func (g *Game) boot(id string) {
 	}
 	g.mu.Unlock()
 
-	if run != nil {
-		for _, l := range run.log {
-			in.emitText(l)
-		}
-		if run.err != nil {
-			in.emitText(run.err.Error())
-			g.died(in, 1, false)
-			return
-		}
-	}
 	if loops {
 		in.emit(in.v.failed, failedSave)
 		g.died(in, in.v.failExit, false)
@@ -223,11 +205,7 @@ func (in *instance) elapsedLocked() float64 { return in.base + time.Since(in.bas
 
 func (in *instance) writeLocked(text, saveFrom string) {
 	if saveFrom != "" {
-		dir := "/factorio/saves"
-		if in.savesDir != "" {
-			dir = in.savesDir
-		}
-		text = strings.ReplaceAll(text, "/factorio/saves/"+saveFrom, dir+"/"+in.save)
+		text = strings.ReplaceAll(text, "/factorio/saves/"+saveFrom, "/factorio/saves/"+in.save)
 	}
 	in.g.daemon.EmitLog(in.id, docker.Stdout, text)
 }
@@ -265,7 +243,7 @@ func (in *instance) reply(command string) string {
 // sits in front of an rcontest server, because rcontest only listens on
 // 127.0.0.1.
 func (in *instance) startRCON() error {
-	ln, err := net.Listen("tcp", net.JoinHostPort(in.ip, in.rconPort))
+	ln, err := net.Listen("tcp", net.JoinHostPort(in.ip, rconPort))
 	if err != nil {
 		return fmt.Errorf("RCON for %s cannot listen on %s: %w", in.name, in.ip, err)
 	}

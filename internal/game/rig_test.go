@@ -1,7 +1,6 @@
 package game
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"io"
@@ -17,7 +16,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
-	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -153,13 +151,6 @@ type rigOptions struct {
 	network string
 	selfID  string
 	noRun   bool
-	// gameDir, when set, runs the rig in adopted mode on the container
-	// fake.Adopted seeds, with the worlds in gameDir/worlds (SPEC 4.8).
-	gameDir string
-	// gameContainer names the adopted container; empty means adoptedName.
-	gameContainer string
-	// rconPassword is FOREMAN_RCON_PASSWORD in adopted mode.
-	rconPassword string
 }
 
 func newRig(t *testing.T, opts rigOptions) *rig {
@@ -179,12 +170,8 @@ func newRig(t *testing.T, opts rigOptions) *rig {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	rs := &rigStore{Store: st}
-	worlds := datadir.Worlds(data)
-	if opts.gameDir != "" {
-		worlds = filepath.Join(opts.gameDir, "worlds")
-	}
 	m, err := world.NewManager(world.Dirs{
-		Worlds:    worlds,
+		Worlds:    datadir.Worlds(data),
 		Snapshots: datadir.Snapshots(data),
 		Imports:   datadir.Imports(data),
 	}, rs, nil)
@@ -218,11 +205,6 @@ func (r *rig) newController(opts rigOptions) *Controller {
 		HostDataDir: r.data, GameUID: 845, GameGID: 845,
 		Images: testImages, Network: opts.network, SelfID: opts.selfID,
 		Now: r.clock.Now, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
-	if opts.gameDir != "" {
-		cfg.GameContainer, cfg.GameDir = cmp.Or(opts.gameContainer, adoptedName), opts.gameDir
-		cfg.RCONPassword = secret.New(opts.rconPassword)
-		cfg.HostDataDir, cfg.Images = "", nil
 	}
 	c, err := New(cfg)
 	if err != nil {

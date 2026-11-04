@@ -45,24 +45,12 @@ func checkStepsFor(opts StartOptions) []string {
 	return []string{StepCheck}
 }
 
-// launchSteps are the steps of launchLocked in managed mode.
+// launchSteps are the steps of launchLocked.
 var launchSteps = []string{StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
 
-// adoptedLaunchSteps are the steps of launchLocked in adopted mode, where
-// the container already exists and its checks run with the world's.
-var adoptedLaunchSteps = []string{StepStartContainer, StepLoad, StepRCON}
-
-// launchSteps lists the steps of launchLocked in this controller's mode.
-func (c *Controller) launchSteps() []string {
-	if c.adopted != nil {
-		return adoptedLaunchSteps
-	}
-	return launchSteps
-}
-
-// startSteps lists a start's steps in this controller's mode.
-func (c *Controller) startSteps(opts StartOptions) []string {
-	return append(checkStepsFor(opts), c.launchSteps()...)
+// startSteps lists a start's steps.
+func startSteps(opts StartOptions) []string {
+	return append(checkStepsFor(opts), launchSteps...)
 }
 
 // The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4).
@@ -106,7 +94,7 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, c.startSteps(opts))
+	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps(opts))
 	err = c.startLocked(ctx, o, by, opts)
 	return o.end(err)
 }
@@ -122,13 +110,11 @@ func (e notActiveError) Error() string {
 }
 func (e notActiveError) Is(target error) bool { return target == ErrWorldNotActive }
 
-// checkActive refuses, in managed mode, a start of a world that is not the
-// active one: a start runs the active world (SPEC 7.3), and only a switch
-// changes which that is (SPEC 7.9). In adopted mode the game folder decides,
-// and checkLayout refuses instead (SPEC 4.8). The caller holds the world's
-// lock.
+// checkActive refuses a start of a world that is not the active one: a
+// start runs the active world (SPEC 7.3), and only a switch changes which
+// that is (SPEC 7.9). The caller holds the world's lock.
 func (c *Controller) checkActive(ctx context.Context, id string) error {
-	if c.adopted != nil || c.switches == nil {
+	if c.switches == nil {
 		return nil
 	}
 	active, found, err := c.switches.ActiveWorld(ctx)
@@ -143,25 +129,17 @@ func (c *Controller) checkActive(ctx context.Context, id string) error {
 
 // startLocked runs the start steps. The caller holds the world's lock.
 func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
-	if err := c.checkLocked(ctx, o, by, opts, o.w.id); err != nil {
+	if err := c.checkLocked(ctx, o, by, opts); err != nil {
 		return err
 	}
 	return c.launchLocked(ctx, o)
 }
 
 // checkLocked runs the pre-start check and takes the snapshot a start
-// anyway needs (SPEC 7.4). In adopted mode it also checks the container,
-// and that the game folder still presents the world named presented: the
-// world itself, or the one a switch is leaving (SPEC 4.8, 4.11). The
-// caller holds the world's lock.
-func (c *Controller) checkLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions, presented string) error {
+// anyway needs (SPEC 7.4). The caller holds the world's lock.
+func (c *Controller) checkLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
 	id := o.w.id
 	o.begin(StepCheck)
-	if c.adopted != nil {
-		if _, err := c.checkAdoptedStart(ctx, id, presented); err != nil {
-			return err
-		}
-	}
 	check, err := c.precheck(id, opts)
 	if err != nil {
 		return err
@@ -197,6 +175,12 @@ func (c *Controller) gameImage(ctx context.Context, id string) (world.Meta, stri
 		return world.Meta{}, "", err
 	}
 	return meta, ref, nil
+}
+
+// PreStartCheck runs the pre-start check of SPEC 7.4 against the world's
+// pinned game version.
+func (c *Controller) PreStartCheck(id string) (world.PreCheck, error) {
+	return c.worlds.PreStartCheck(id)
 }
 
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
@@ -269,9 +253,6 @@ var ErrSaveNewerThanImage = errors.New("the save was made by a newer Factorio th
 func (c *Controller) checkSaveAgainstImage(id string, save savefile.Version) error {
 	if save == (savefile.Version{}) {
 		return nil
-	}
-	if c.adopted != nil {
-		return c.checkSaveAgainstContainer(save)
 	}
 	meta, err := c.readMeta(id)
 	if err != nil {
@@ -611,15 +592,10 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}
-	if c.adopted != nil {
-		if _, err := c.checkAdoptedStart(ctx, id, id); err != nil {
-			return err
-		}
-	}
 	if _, err := c.precheck(id, opts); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, c.startSteps(opts))
+	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps(opts))
 	err = c.stopLocked(ctx, o, countdown)
 	if errors.Is(err, ErrNotRunning) {
 		err = nil
@@ -633,9 +609,6 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 // PullImage downloads the pinned image for the world's game version, as an
 // action of its own (SPEC 3.7). It is audited, and shown as a step.
 func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
-	if c.adopted != nil {
-		return ErrAdoptedImages
-	}
 	meta, err := c.readMeta(id)
 	if err != nil {
 		return err

@@ -147,14 +147,14 @@ func cut(s string, n int) string {
 	return s
 }
 
-// loadFailureReason reads the log of the container's run since the given
-// time and returns the game's own reason it stopped while loading, as the
-// end of the start failure's message, or "" when the log gives none or
-// cannot be read.
-func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string, since time.Time) string {
+// loadFailureReason reads the log of the container's run and returns the
+// game's own reason it stopped while loading, as the end of the start
+// failure's message, or "" when the log gives none or cannot be read. Every
+// start makes a fresh container (ADR 0003), so its whole log is this run's.
+func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string) string {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
-	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Since: since})
+	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{})
 	if err != nil {
 		return ""
 	}

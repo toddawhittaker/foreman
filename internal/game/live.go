@@ -173,7 +173,7 @@ func (c *Controller) Restore(ctx context.Context, id string, by Actor, name stri
 	if _, err := c.worlds.Snapshot(id, name); err != nil {
 		return world.Snapshot{}, err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, c.startSteps(StartOptions{}))
+	ctx, o := c.beginOp(ctx, c.world(id), ActionRestore, stopSteps, []string{StepRestore}, startSteps(StartOptions{}))
 	before, err := c.restoreLocked(ctx, o, by, name, countdown)
 	return before, o.end(err)
 }
@@ -193,7 +193,7 @@ func (c *Controller) restoreLocked(ctx context.Context, o *opRun, by Actor, name
 	}
 	o.done(StepRestore)
 	if !wasRunning {
-		o.skip(c.startSteps(StartOptions{})...)
+		o.skip(startSteps(StartOptions{})...)
 		return before, nil
 	}
 	return before, c.startLocked(ctx, o, by, StartOptions{})
