@@ -37,10 +37,24 @@ type adoptionRecord struct {
 	running bool
 }
 
-func (a *adoptionRecord) start(id, name string) {
+// tryStart claims the one adoption slot before the world is reserved, so two
+// posts cannot both go on. It forgets the last adoption, since the new one
+// replaces it on the page.
+func (a *adoptionRecord) tryStart() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.id, a.name, a.running = id, name, true
+	if a.running {
+		return false
+	}
+	a.id, a.name, a.running = "", "", true
+	return true
+}
+
+// named records the world the claimed adoption builds.
+func (a *adoptionRecord) named(id, name string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.id, a.name = id, name
 }
 
 func (a *adoptionRecord) finish() {
@@ -164,27 +178,24 @@ func (s *server) handleAdopt(w http.ResponseWriter, r *http.Request, u store.Use
 	case f.failed() || form.CountdownError != "":
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
-	case s.adoptionRunning():
+	}
+	if !s.adoption.tryStart() {
 		p.Refusal = "An adoption is already running. Wait for it to finish."
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
 	a, err := s.game.ReserveAdoption(r.Context(), f.Name, f.GameVersion, f.SpaceAge)
 	if err != nil {
+		s.adoption.finish()
 		s.adoptFailed(w, r, u, p, err)
 		return
 	}
 	by := actor(u)
-	s.adoption.start(a.ID, a.Name)
+	s.adoption.named(a.ID, a.Name)
 	s.beginOn(w, r, []string{a.ID}, true, func(ctx context.Context) actionResult {
 		defer s.adoption.finish()
 		return s.finish(a.ID, game.AuditAdopt, s.game.Adopt(ctx, a, by, stop))
 	})
-}
-
-func (s *server) adoptionRunning() bool {
-	_, _, running := s.adoption.get()
-	return running
 }
 
 // adoptFailed shows why ReserveAdoption refused: on the field it is about,
