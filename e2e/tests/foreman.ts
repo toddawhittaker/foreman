@@ -103,9 +103,9 @@ export interface FakeGame {
 // so Foreman can check the game network as it does in a real install (SPEC 14.4).
 const fakeGameNetwork = "foreman-games";
 
-async function startFakeGame(): Promise<FakeGame & { stop: () => Promise<void> }> {
+async function startFakeGame(extraArgs: string[] = []): Promise<FakeGame & { stop: () => Promise<void> }> {
   const dir = mkdtempSync(join(tmpdir(), "fakegame-e2e-"));
-  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork], { stdio: ["ignore", "pipe", "pipe"] });
+  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork, ...extraArgs], { stdio: ["ignore", "pipe", "pipe"] });
   let err = "";
   proc.stderr.on("data", (d) => (err += d));
   const lines = createInterface({ input: proc.stdout })[Symbol.asyncIterator]();
@@ -136,27 +136,93 @@ async function startFakeGame(): Promise<FakeGame & { stop: () => Promise<void> }
   };
 }
 
+// Adopted mode (SPEC 4.7): the game container was there before Foreman, and
+// the game folder is bind-mounted into both.
+export interface AdoptedSetup {
+  // What the game folder holds before the first adoption.
+  folder: "unadopted" | "broken";
+  // Added to the container's environment.
+  env?: string[];
+  // Publishes the container's RCON port on this host port.
+  rconHostPort?: string;
+  // The container is running when Foreman starts.
+  running?: boolean;
+}
+
+// The name of the container the fake seeds in adopted mode.
+export const adoptedContainer = "factorio";
+
+// Lays out a game folder the way the image leaves it (unadopted: real saves,
+// mods and config, with one save) or in a shape Foreman refuses.
+function prepareGameDir(setup: AdoptedSetup): string {
+  const dir = mkdtempSync(join(tmpdir(), "foreman-gamedir-"));
+  if (setup.folder === "broken") {
+    writeFileSync(join(dir, "saves"), "not a folder");
+    return dir;
+  }
+  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub));
+  const save = join(dir, "saves", "base.zip");
+  copyFileSync(join(repo, "internal", "savefile", "testdata", "2.1.24-no-space-age.zip"), save);
+  const at = new Date(Date.now() - 3_600_000);
+  utimesSync(save, at, at);
+  writeFileSync(join(dir, "config", "rconpw"), "pw-original\n", { mode: 0o640 });
+  return dir;
+}
+
 export const test = base.extend<{
   foreman: Foreman;
   foremanEnv: Record<string, string>;
   // Opt in with test.use({ fakeGameOn: true }): Foreman then gets the fake as its Docker host.
   fakeGameOn: boolean;
   fakeGame: FakeGame | undefined;
+  // Opt in with test.use({ adoptedOn: {...} }): Foreman runs in adopted mode on a
+  // seeded container, and the fake game is on without fakeGameOn.
+  adoptedOn: AdoptedSetup | undefined;
+  // The game folder in adopted mode.
+  gameDir: string | undefined;
 }>({
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
-  fakeGame: async ({ fakeGameOn }, use) => {
-    if (!fakeGameOn) {
+  adoptedOn: [undefined, { option: true }],
+  gameDir: async ({ adoptedOn }, use) => {
+    if (!adoptedOn) {
       await use(undefined);
       return;
     }
-    const g = await startFakeGame();
+    const dir = prepareGameDir(adoptedOn);
+    await use(dir);
+    rmSync(dir, { recursive: true, force: true });
+  },
+  fakeGame: async ({ fakeGameOn, adoptedOn, gameDir }, use) => {
+    if (!fakeGameOn && !adoptedOn) {
+      await use(undefined);
+      return;
+    }
+    const args: string[] = [];
+    if (adoptedOn) {
+      // The image's PUID and PGID must be the user Foreman runs the game as (SPEC 3.6).
+      const ids = [`PUID=${process.getuid?.() ?? 0}`, `PGID=${process.getgid?.() ?? 0}`];
+      args.push(
+        "-adopted",
+        JSON.stringify({
+          name: adoptedContainer,
+          gameDir,
+          env: ["DLC_SPACE_AGE=false", ...ids, ...(adoptedOn.env ?? [])],
+          rconHostPort: adoptedOn.rconHostPort,
+          running: adoptedOn.running ?? false,
+        }),
+      );
+    }
+    const g = await startFakeGame(args);
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame }, use) => {
+  foreman: async ({ foremanEnv, fakeGame, gameDir }, use) => {
+    const adopted: Record<string, string> = gameDir
+      ? { FOREMAN_MODE: "adopted", FOREMAN_GAME_CONTAINER: adoptedContainer, FOREMAN_GAME_DIR: gameDir }
+      : {};
     const env = fakeGame
-      ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork, ...foremanEnv }
+      ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork, ...adopted, ...foremanEnv }
       : foremanEnv;
     const f = await startForeman(env);
     await use(f);

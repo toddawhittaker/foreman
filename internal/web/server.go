@@ -40,6 +40,7 @@ type server struct {
 	worlds   *world.Manager
 	game     *game.Controller
 	runs     *gameRuns
+	adoption *adoptionRecord
 	console  *consoleHistory
 	log      *slog.Logger
 	now      func() time.Time
@@ -82,6 +83,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		worlds:   d.Worlds,
 		game:     d.Game,
 		runs:     newGameRuns(),
+		adoption: &adoptionRecord{},
 		console:  newConsoleHistory(),
 		log:      d.Log,
 		now:      now,
