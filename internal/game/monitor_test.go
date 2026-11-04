@@ -585,3 +585,27 @@ func TestPasswordInTimestampStillUnderstood(t *testing.T) {
 		})
 	}
 }
+
+// SPEC 3.8: after a re-attach the follower replays the run's log from its
+// start. A replayed "Loading map" line that arrives after the RCON probe
+// marked the game in game must not undo that.
+func TestReplayedLoadAfterProbeKeepsInGame(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Replay")
+	r.start(id)
+	cid := r.container(id).ID
+	w := r.c.world(id)
+	r.c.handleLine(w, cid, "2026-01-01T00:00:00.000000000Z    0.900 Loading map /factorio/saves/replay.zip: 123 bytes.")
+	w.mu.Lock()
+	inGame, save := w.run.inGame, w.run.save
+	w.mu.Unlock()
+	if !inGame {
+		t.Error("a replayed load line cleared in game")
+	}
+	if save != "replay.zip" {
+		t.Errorf("save %q, want replay.zip", save)
+	}
+	if _, err := r.c.Players(context.Background(), id); err != nil {
+		t.Errorf("players refused after the replayed line: %v", err)
+	}
+}
