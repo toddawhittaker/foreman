@@ -83,6 +83,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
     // Within main: the announcer says the same sentence, so a page-wide match is two elements.
     await expect(page.locator("main").getByText("The worlds are switched")).toBeVisible(live);
+    await expectFollowed(page, "Second is now the active world. The worlds are switched.");
     await checkPage(page);
     expect((await g.state()).containers.find((c) => c.name === "foreman-second")?.status).toBe("running");
     expect((await g.state()).containers.find((c) => c.name === "foreman-base")?.status).not.toBe("running");
@@ -203,6 +204,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("heading", { name: "The switch from Base to Second failed" })).toBeVisible(live);
     await expect(active(page, "Second")).toBeVisible();
     await expect(page.getByText("Second is now the active world, but the switch did not finish.")).toBeVisible();
+    await expectFollowed(page, "Second is now the active world. Error:");
     await expect(page.getByRole("listitem").filter({ hasText: "Failed" })).toBeVisible();
     await checkPage(page);
 

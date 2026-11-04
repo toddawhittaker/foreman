@@ -225,6 +225,43 @@ func TestAdoptionShowsItsStepsWhileRunning(t *testing.T) {
 	a.wantContains("done", body, "The game folder is adopted")
 }
 
+// SPEC 4.8: a double-submitted adoption form starts one adoption. Every
+// other post is refused as already running, and the page keeps following
+// the first.
+func TestConcurrentAdoptionPostsStartOne(t *testing.T) {
+	a := newAdoptedRig(t, adoptedOptions{folder: unadoptedFolder, running: true})
+	a.waitPage("Adopt this game folder")
+
+	const posts = 6
+	form := url.Values{"name": {"Gate"}, "game_version": {"2.1.24"}, "countdown": {"2"}}
+	replies := make(chan reply, posts)
+	start := make(chan struct{})
+	for range posts {
+		go func() {
+			<-start
+			replies <- a.post(PathAdopt, form)
+		}()
+	}
+	close(start)
+	started, refused := 0, 0
+	for range posts {
+		rep := <-replies
+		switch {
+		case rep.StatusCode == http.StatusSeeOther:
+			started++
+		case rep.StatusCode == http.StatusConflict && strings.Contains(rep.body, "An adoption is already running"):
+			refused++
+		default:
+			t.Errorf("status %d\n%s", rep.StatusCode, rep.body)
+		}
+	}
+	if started != 1 || refused != posts-1 {
+		t.Fatalf("%d adoptions started and %d refused, want 1 and %d", started, refused, posts-1)
+	}
+	a.waitPage("Adopting the game folder as Gate", "/events?adopting=1")
+	a.waitPage("Active world: Gate", "The game folder is adopted")
+}
+
 // SPEC 4.11: a refused container is explained on the adoption page, names
 // the variable and never its value, and changes nothing.
 func TestAdoptionRefusalNamesTheVariableNotItsValue(t *testing.T) {
