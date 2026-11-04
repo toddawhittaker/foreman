@@ -120,6 +120,10 @@ func reasonText(reason string) string {
 		return world.LabelBeforeRestore
 	case world.ReasonBeforeDelete:
 		return world.LabelBeforeDelete
+	case world.ReasonSwitch:
+		return world.LabelBeforeSwitch
+	case world.ReasonAdoption:
+		return world.LabelBeforeAdoption
 	}
 	return "Before " + strings.ReplaceAll(strings.TrimPrefix(reason, "before-"), "-", " ")
 }

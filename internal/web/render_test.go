@@ -152,6 +152,15 @@ func pageCases() []pageCase {
 			CountdownForm: defaultCountdown(), CheckProblems: []string{longName}}},
 		{"restart anyway refused", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true, Anyway: true,
 			CheckProblems: []string{"newer"}, Refusal: "At least one of these problems cannot be started past."}},
+		{"switch running", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: longName}, To: world.Summary{ID: "other", Name: longName},
+			Running: true, CountdownForm: defaultCountdown()}},
+		{"switch stopped", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"}}},
+		{"switch countdown error", "todd", 400, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
+			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+		{"switch anyway", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: longName},
+			Running: true, CountdownForm: defaultCountdown(), Anyway: true, CheckProblems: []string{longName}}},
+		{"switch refused", "todd", 409, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
+			Refusal: "This is already the active world."}},
 		{"start anyway", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: longName}, CheckProblems: []string{longName}}},
 		{"start anyway refused", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: "Base"}, Refusal: "Nothing to confirm."}},
 		{"force stop", "todd", 200, ForceStopPage{World: world.Summary{ID: "base", Name: longName,
@@ -242,8 +251,9 @@ func TestEveryPageRenders(t *testing.T) {
 				}
 			}
 			for _, in := range reInput.FindAllString(body, -1) {
-				// Radios and checkboxes sit inside their label (DESIGN 7.2).
-				if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) {
+				// Radios and checkboxes sit inside their label (DESIGN 7.2); a
+				// hidden field is never shown, so has none.
+				if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) || strings.Contains(in, `type="hidden"`) {
 					continue
 				}
 				m := reID.FindStringSubmatch(in)

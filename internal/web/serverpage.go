@@ -27,6 +27,9 @@ type ServerPage struct {
 	HaveResult bool
 	// Others are the actions asked for while it ran, shown apart.
 	Others []actionResult
+	// WorldNames holds the names of the worlds a switch, or the notice of
+	// an unfinished one, speaks of, by id.
+	WorldNames map[string]string
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -148,6 +151,12 @@ func (p ServerPage) OperationHeading() string {
 		return choose(failed, "The restart failed", "Restarting the server")
 	case game.ActionRestore:
 		return choose(failed, "The restore failed", "Restoring a snapshot")
+	case game.AuditSwitch:
+		if sw := o.Switch; sw != nil {
+			return choose(failed, "The switch from "+p.name(sw.From)+" to "+p.name(sw.To)+" failed",
+				"Switching from "+p.name(sw.From)+" to "+p.name(sw.To))
+		}
+		return choose(failed, "The switch failed", "Switching worlds")
 	}
 	return choose(failed, "This failed", "Working")
 }
@@ -209,8 +218,11 @@ type Failure struct {
 	Message string
 	// Problems are the pre-start check's findings (SPEC 7.4).
 	Problems []string
-	// AnywayPath confirms "Start anyway", when every problem allows it.
+	// AnywayPath confirms "Start anyway" or "Switch anyway", when every
+	// problem allows it; AnywayVerb and AnywayText word the offer.
 	AnywayPath string
+	AnywayVerb string
+	AnywayText string
 	// Download offers to download the missing game image (SPEC 3.7).
 	Download bool
 	// Undo names the "Before restore" snapshot a failed restore took.
@@ -223,6 +235,10 @@ type Failure struct {
 // precheckLead opens the message for a start the pre-start check refused.
 const precheckLead = "Foreman did not start the game, because the save that would load does not match the world:"
 
+// switchPrecheckLead opens the message for a switch the pre-start check of
+// the new world refused. Nothing was stopped or changed.
+const switchPrecheckLead = "Foreman did not switch, because the save that would load in the new world does not match that world:"
+
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
 	if !p.HaveResult || p.Result.Err == nil {
@@ -233,14 +249,19 @@ func (p ServerPage) Failure() *Failure {
 	var pe *game.PrecheckError
 	switch {
 	case errors.As(err, &pe):
-		f.Message = precheckLead
+		f.Message = choose(p.Result.Action == game.AuditSwitch, switchPrecheckLead, precheckLead)
 		for _, pr := range pe.Check.Problems {
 			f.Problems = append(f.Problems, pr.Text)
 		}
 		if pe.Check.CanStartAnyway() {
-			f.AnywayPath = gamePath(p.World.ID, "start-anyway")
-			if p.Result.Action == game.AuditRestart {
+			f.AnywayPath, f.AnywayVerb = gamePath(p.World.ID, "start-anyway"), "Start anyway"
+			f.AnywayText = "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above."
+			switch p.Result.Action {
+			case game.AuditRestart:
 				f.AnywayPath += "?then=restart"
+			case game.AuditSwitch:
+				f.AnywayPath, f.AnywayVerb = switchAnywayPath(p.Result.Target), "Switch anyway"
+				f.AnywayText = "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then deletes what is listed above."
 			}
 		}
 	case errors.Is(err, game.ErrImageMissing):
@@ -272,6 +293,7 @@ func failureText(err error) string {
 var actionNames = map[string]string{
 	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
 	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
+	game.AuditSwitch: "switch",
 }
 
 // OtherErrors words the errors of the actions asked for while another ran.
@@ -292,10 +314,16 @@ func (p ServerPage) OtherErrors() []string {
 
 // Done says what the last action did, when that is not otherwise visible.
 func (p ServerPage) Done() string {
-	if !p.HaveResult || p.Result.Err != nil || p.Result.Action != game.ActionRestore {
+	if !p.HaveResult || p.Result.Err != nil {
 		return ""
 	}
-	return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
+	switch p.Result.Action {
+	case game.ActionRestore:
+		return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
+	case game.AuditSwitch:
+		return "The worlds are switched. Foreman took the snapshot \"Before switch\" of both worlds first; to undo, switch back, or restore that snapshot from the Snapshots page."
+	}
+	return ""
 }
 
 // resultAnnouncement is what a live page reads out for the results the
@@ -309,7 +337,7 @@ func resultAnnouncement(p ServerPage) string {
 		said = append(said, "Error: "+e)
 	}
 	if p.Done() != "" {
-		said = append(said, "The world is restored.")
+		said = append(said, choose(p.Result.Action == game.AuditSwitch, "The worlds are switched.", "The world is restored."))
 	}
 	return strings.Join(said, " ")
 }

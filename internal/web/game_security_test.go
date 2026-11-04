@@ -43,7 +43,7 @@ func startController(t *testing.T, dockerHost string, worlds *world.Manager, st 
 		t.Fatal(err)
 	}
 	c, err := game.New(game.Config{
-		Docker: dc, Worlds: worlds, Audit: st,
+		Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 		HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
 		Images: map[string]string{"2.1": image21},
 		Log:    slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
@@ -174,6 +174,7 @@ func serverActionRoutes(snap string) []actionRoute {
 		{http.MethodPost, p("restart")},
 		{http.MethodPost, p("force-stop")},
 		{http.MethodPost, p("pull-image")},
+		{http.MethodPost, p("switch")},
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},

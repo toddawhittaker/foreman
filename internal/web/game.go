@@ -24,6 +24,7 @@ const (
 	PathGameStop    = "/worlds/{id}/stop"
 	PathGameRestart = "/worlds/{id}/restart"
 	PathGameForce   = "/worlds/{id}/force-stop"
+	PathGameSwitch  = "/worlds/{id}/switch"
 	PathGamePull    = "/worlds/{id}/pull-image"
 	PathGameEvents  = "/worlds/{id}/events"
 )
@@ -69,6 +70,8 @@ type actionResult struct {
 	// "Before restore" snapshot it took first.
 	Restored string
 	Undo     string
+	// Target is the world a switch was asked to go to.
+	Target string
 }
 
 func newGameRuns() *gameRuns {
@@ -105,28 +108,37 @@ func (g *gameRuns) trackLocked() bool {
 	return true
 }
 
-// run starts an action in the background. holdsLock is true for the
-// actions that take the world's lock (start, stop, restart, restore, force
-// stop) and false for an image download. When no lock-holding action runs
-// on the world, a new one forgets the world's last results, so the page
-// shows only what it does. A lock-holding action asked for while another
-// runs keeps its result apart, so it never hides the first one's. A
-// download never takes the main place from a lock-holding action.
+// run starts an action in the background on one world.
 func (g *gameRuns) run(id string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
+	return g.runOn([]string{id}, holdsLock, do)
+}
+
+// runOn starts an action in the background on every world in ids; a switch
+// holds two, and each world's page shows its result. holdsLock is true for
+// the actions that take the world's lock (start, stop, restart, restore,
+// switch, force stop) and false for an image download. When no lock-holding
+// action runs on a world, a new one forgets the world's last results, so
+// the page shows only what it does. A lock-holding action asked for while
+// another runs keeps its result apart, so it never hides the first one's. A
+// download never takes the main place from a lock-holding action.
+func (g *gameRuns) runOn(ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	g.mu.Lock()
 	if !g.trackLocked() {
 		g.mu.Unlock()
 		return false
 	}
-	other := holdsLock && g.locking[id] > 0
-	if holdsLock && !other || !holdsLock && g.running[id] == 0 {
-		delete(g.results, id)
-		delete(g.asides, id)
-		g.changedLocked()
-	}
-	g.running[id]++
-	if holdsLock {
-		g.locking[id]++
+	other := make([]bool, len(ids))
+	for i, id := range ids {
+		other[i] = holdsLock && g.locking[id] > 0
+		if holdsLock && !other[i] || !holdsLock && g.running[id] == 0 {
+			delete(g.results, id)
+			delete(g.asides, id)
+			g.changedLocked()
+		}
+		g.running[id]++
+		if holdsLock {
+			g.locking[id]++
+		}
 	}
 	g.mu.Unlock()
 	go func() {
@@ -134,21 +146,23 @@ func (g *gameRuns) run(id string, holdsLock bool, do func(ctx context.Context) a
 		res := do(g.ctx)
 		g.mu.Lock()
 		defer g.mu.Unlock()
-		if g.running[id]--; g.running[id] == 0 {
-			delete(g.running, id)
-		}
-		if holdsLock {
-			if g.locking[id]--; g.locking[id] == 0 {
-				delete(g.locking, id)
+		for i, id := range ids {
+			if g.running[id]--; g.running[id] == 0 {
+				delete(g.running, id)
 			}
-		} else {
-			_, has := g.results[id]
-			other = g.locking[id] > 0 || has
-		}
-		if other {
-			g.asides[id] = append(g.asides[id], res)
-		} else {
-			g.results[id] = res
+			if holdsLock {
+				if g.locking[id]--; g.locking[id] == 0 {
+					delete(g.locking, id)
+				}
+			} else {
+				_, has := g.results[id]
+				other[i] = g.locking[id] > 0 || has
+			}
+			if other[i] {
+				g.asides[id] = append(g.asides[id], res)
+			} else {
+				g.results[id] = res
+			}
 		}
 		g.changedLocked()
 	}()
@@ -209,6 +223,7 @@ func (s *server) gameRoutes() {
 	s.mux.HandleFunc("GET "+PathGameForce, s.requireUser(s.handleForceStopForm))
 	s.mux.HandleFunc("POST "+PathGameForce, s.requireUser(s.handleForceStop))
 	s.mux.HandleFunc("POST "+PathGamePull, s.requireUser(s.handlePull))
+	s.switchRoutes()
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
 }
 
@@ -226,7 +241,9 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
 		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
 		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture),
-		errors.Is(err, game.ErrNetwork):
+		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
+		errors.Is(err, game.ErrSwitchNoTarget), errors.Is(err, game.ErrSwitchTargetRunning),
+		errors.Is(err, game.ErrSwitchUnavailable):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)
@@ -273,6 +290,7 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 	p := ServerPage{World: sum, HasWorld: true, Status: st}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	p.Others = s.runs.others(sum.ID)
+	s.switchNames(&p)
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()
@@ -313,7 +331,12 @@ func (s *server) startable(w http.ResponseWriter, r *http.Request, u store.User)
 // begin runs an action in the background and sends the admin to the
 // server page, which follows it live.
 func (s *server) begin(w http.ResponseWriter, r *http.Request, id string, holdsLock bool, do func(ctx context.Context) actionResult) {
-	if !s.runs.run(id, holdsLock, do) {
+	s.beginOn(w, r, []string{id}, holdsLock, do)
+}
+
+// beginOn is begin for an action on several worlds.
+func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) {
+	if !s.runs.runOn(ids, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
 			Detail: "Foreman is shutting down. Try again once it is back."})
 		return

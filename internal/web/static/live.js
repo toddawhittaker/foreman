@@ -41,6 +41,12 @@
   document.addEventListener("htmx:sseError", lost);
   document.addEventListener("htmx:sseOpen", back);
 
+  // The active world changed in a switch, so this page's world is no longer
+  // the one the Server page shows: load the page again to show the new one.
+  document.addEventListener("htmx:sseMessage", (e) => {
+    if (e.target.getAttribute("sse-swap") === "moved") location.reload();
+  });
+
   // A region swap removes the element that had focus. htmx gives focus back
   // to the new element with the same id; when there is none, focus goes to
   // the region's heading instead of the top of the page (DESIGN 5).

@@ -40,6 +40,9 @@ type WorldPage struct {
 	// Name refills the rename field.
 	Name      string
 	NameError string
+	// CanSwitch offers "Switch to this world": this mode has server control
+	// and the world is not the active one (SPEC 7.9).
+	CanSwitch bool
 }
 
 // ImportPage offers both ways to import a world (SPEC 5.5).
@@ -83,6 +86,7 @@ func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/ren
 func (p WorldPage) SavesPath() string     { return worldPath(p.World.ID) + "/saves" }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
+func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
 
 // DeleteRefusal says why the world cannot be deleted, or is "" when it can.
 func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World) }
@@ -179,7 +183,13 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, WorldPage{World: sum, Name: sum.Name})
+	s.page(w, r, http.StatusOK, u.Username, WorldPage{World: sum, Name: sum.Name, CanSwitch: s.canSwitch(sum)})
+}
+
+// canSwitch reports whether the world's page offers a switch to it. A world
+// this Foreman cannot start is left out.
+func (s *server) canSwitch(sum world.Summary) bool {
+	return s.game != nil && !sum.Active && !sum.Unreadable && !sum.Newer
 }
 
 // handleRename changes a world's display name only (SPEC 5.8). It is not a
@@ -202,7 +212,7 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	s.page(w, r, status, u.Username, WorldPage{World: sum, Name: name, NameError: msg})
+	s.page(w, r, status, u.Username, WorldPage{World: sum, Name: name, NameError: msg, CanSwitch: s.canSwitch(sum)})
 }
 
 func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u store.User) {

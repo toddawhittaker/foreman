@@ -13,6 +13,7 @@
 </section>
 {{- else}}
 <div sse-swap="announce" hidden></div>
+<div sse-swap="moved" hidden></div>
 <div class="actions"><a href="{{.WorldPath}}">Active world: {{.World.Name}}</a></div>
 <section class="panel" aria-labelledby="status-heading">
   <h2 id="status-heading">Status</h2>
@@ -90,8 +91,8 @@
   <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot from the Snapshots page.</p>
   {{- end}}
   {{- if .AnywayPath}}
-  <p>You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above.</p>
-  <div class="actions"><a href="{{.AnywayPath}}" class="button" id="act-start-anyway">Start anyway</a></div>
+  <p>{{.AnywayText}}</p>
+  <div class="actions"><a href="{{.AnywayPath}}" class="button" id="act-start-anyway">{{.AnywayVerb}}</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -134,6 +135,17 @@
 {{- if .ShowOperation}}
 <h3>{{.OperationHeading}}</h3>
 {{template "server-steps" .OperationList}}
+{{- end}}
+{{- with .SwitchNote}}
+<p>{{.}}</p>
+{{- end}}
+{{- with .Status.Notice}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> {{.Text}}</p>
+</div>
+{{- end}}
+{{- with .SwitchBack}}
+<div class="actions"><a href="{{.Path}}" class="button" id="act-switch-back">Switch back to {{.Name}}</a></div>
 {{- end}}
 {{- if .ShowDownload}}
 <h3>{{if .Status.Download.Done}}The download failed{{else}}Downloading the game image{{end}}</h3>
