@@ -180,10 +180,17 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 		}
 		w.startedAt = cont.State.StartedAt
 	}
-	if len(w.crashes) >= CrashLoopCount && !w.crashLoop && !w.stopping {
+	active := w.dockerStatus == "running" || w.dockerStatus == "restarting"
+	switch {
+	case len(w.crashes) >= CrashLoopCount && !w.crashLoop && !w.stopping:
 		w.crashLoop, w.stopping, w.expectRunning = true, true, false
 		c.log.Warn("the game crashed again and again, so Foreman stopped it", "world", w.id)
-		c.spawn(func() { c.stopCrashLoop(cont.ID) })
+		c.spawn(func() { c.stopCrashLoop(w, cont.ID) })
+	case w.crashLoop && !w.stopping && active:
+		// Docker refused the earlier stop, or the game ran again: ask once
+		// more, at most once a poll (SPEC 8.9).
+		w.stopping = true
+		c.spawn(func() { c.stopCrashLoop(w, cont.ID) })
 	}
 	if w.dockerStatus == "running" && !w.following && !w.stopping {
 		since := w.startedAt
@@ -309,11 +316,18 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 }
 
 // stopCrashLoop stops a crash-looping game, which keeps it stopped under
-// unless-stopped (SPEC 8.9, R28).
-func (c *Controller) stopCrashLoop(cid string) {
+// unless-stopped (SPEC 8.9, R28). When Docker refuses, the stopping mark is
+// dropped so the next poll tries again; the state stays crash-looping.
+func (c *Controller) stopCrashLoop(w *worldRun, cid string) {
 	err := c.docker.StopContainer(c.ctx, cid, StopGraceSeconds)
 	if err != nil && !errors.Is(err, docker.ErrNotModified) && !errors.Is(err, docker.ErrNotFound) {
-		c.log.Error("could not stop the crash-looping game", "container", cid, "error", err)
+		c.log.Warn("could not stop the crash-looping game, will try again", "world", w.id, "container", cid, "error", err)
+		w.mu.Lock()
+		if w.containerID == cid && w.crashLoop && w.opDone == nil {
+			w.stopping = false
+		}
+		w.mu.Unlock()
+		return
 	}
 	c.pokeMonitor()
 }
