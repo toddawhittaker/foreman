@@ -74,8 +74,8 @@ async function startForeman() {
       FOREMAN_HOST_DATA_DIR: dataDir,
       FOREMAN_GAME_UID: String(process.getuid?.() ?? 0),
       FOREMAN_GAME_GID: String(process.getgid?.() ?? 0),
-      // The Playwright container is on the default bridge, which the game joins too.
-      FOREMAN_GAME_NETWORK: "bridge",
+      // The Playwright container is on this run's own network, which the game joins too.
+      FOREMAN_GAME_NETWORK: process.env.FOREMAN_E2E_GAME_NETWORK ?? "",
       FOREMAN_LISTEN: `127.0.0.1:${port}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
