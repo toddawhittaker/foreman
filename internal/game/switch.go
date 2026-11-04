@@ -84,9 +84,12 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 		return err
 	}
 	defer unlock()
+	opts.running = IsRunning(c.Status(from).State)
 	if err := c.switchChecks(ctx, from, to, opts); err != nil {
 		return c.checkFailed(ctx, by, AuditSwitch, from, switchDetail(from, to, opts), err)
 	}
+	// Compared before the stop; the check after the snapshots does not.
+	opts.confirmed = true
 	if err := c.audit(ctx, by, AuditSwitch, from, switchDetail(from, to, opts)); err != nil {
 		return err
 	}

@@ -3,12 +3,14 @@ package web
 import (
 	"bufio"
 	"context"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -201,24 +203,32 @@ func TestServerPageStartsAndStops(t *testing.T) {
 }
 
 // SPEC 7.4, 17.5: a refused start lists each problem and, when every one
-// allows it, offers "Start anyway" through a confirmation that names the
-// snapshot taken first.
+// allows it, the refusal box is the confirmation: it names the snapshot
+// taken first and how to undo, and its button starts at once.
 func TestStartAnyway(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", "2.1.24-space-age-testmod.zip", true)
 
 	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
 	body := g.waitPage("the save that would load does not match the world", "foreman-test", "Start anyway")
-	if !strings.Contains(body, `href="/worlds/`+id+`/start-anyway"`) {
-		t.Errorf("no link to the confirmation:\n%s", body)
-	}
-	confirm := g.get(gamePath(id, "start-anyway"))
-	for _, want := range []string{"Before start anyway", "foreman-test", `name="anyway" value="1"`} {
-		if !strings.Contains(confirm, want) {
-			t.Errorf("confirmation lacks %q:\n%s", want, confirm)
+	for _, want := range []string{`"Before start anyway"`, "restore that snapshot from the Snapshots page",
+		`<form method="post" action="/worlds/` + id + `/start" class="actions">`, `name="anyway" value="1"`, "Refused"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("refusal box lacks %q:\n%s", want, body)
 		}
 	}
-	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}}))
+	for _, unwanted := range []string{"Fix the world first", "Try to start again", "/start-anyway"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("page offers start anyway but has %q:\n%s", unwanted, body)
+		}
+	}
+	// A box that no longer matches is refused, and the page says so.
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}, "seen": {"stale"}}))
+	body = g.waitPage("changed since the page showed it")
+	if list, _ := g.worlds.Snapshots(id); len(list) != 0 {
+		t.Errorf("a stale start anyway took snapshots: %+v", list)
+	}
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{"anyway": {"1"}, "seen": {seenIn(t, body)}}))
 	g.waitPage(running)
 	list, err := g.worlds.Snapshots(id)
 	if err != nil || len(list) != 1 || list[0].Label != game.LabelStartAnyway {
@@ -500,4 +510,14 @@ func TestDurationText(t *testing.T) {
 	if got := durationISO(3*time.Hour + 12*time.Minute); got != "PT3H12M" {
 		t.Errorf("ISO %q", got)
 	}
+}
+
+// seenIn returns the fingerprint the refusal box's form sends.
+func seenIn(t *testing.T, body string) string {
+	t.Helper()
+	m := regexp.MustCompile(`name="seen" value="([^"]*)"`).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("no fingerprint in the box:\n%s", body)
+	}
+	return html.UnescapeString(m[1])
 }

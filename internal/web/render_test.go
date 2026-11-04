@@ -128,6 +128,24 @@ func pageCases() []pageCase {
 				{Name: game.StepCheck, State: game.StepFailed}, {Name: game.StepLoad, State: game.StepWaiting}}}
 			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: err}, true
 		})},
+		{"server restart refused by the check", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
+			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{
+				{Kind: world.ProblemModMissing, Text: longName, Mods: []string{longName}, StartAnyway: true}}}}
+			p.Status.Operation = &game.Operation{Action: game.AuditRestart, Done: true, Error: err.Error(), Steps: []game.Step{
+				{Name: game.StepCheck, State: game.StepFailed}, {Name: game.StepLoad, State: game.StepWaiting}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditRestart, Err: err}, true
+		})},
+		{"server switch refused by the check", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
+			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{
+				{Kind: world.ProblemModDisabled, Text: longName, StartAnyway: true}}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditSwitch, Err: err, Target: "other"}, true
+			p.WorldNames = map[string]string{"other": longName}
+		})},
+		{"server plain refusal", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
+			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{
+				{Kind: world.ProblemSaveNewer, Text: longName}}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: err}, true
+		})},
 		{"server image missing", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
 			p.Status.Download = &game.Operation{Action: game.AuditImageDownload, Done: true, Error: "no route to registry",
 				Steps: []game.Step{{Name: game.StepDownload, State: game.StepFailed}}}
@@ -148,21 +166,13 @@ func pageCases() []pageCase {
 		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
 		{"restart countdown error", "todd", 400, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true,
 			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
-		{"restart anyway", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, Restart: true, Anyway: true,
-			CountdownForm: defaultCountdown(), CheckProblems: []string{longName}}},
-		{"restart anyway refused", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true, Anyway: true,
-			CheckProblems: []string{"newer"}, Refusal: "At least one of these problems cannot be started past."}},
 		{"switch running", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: longName}, To: world.Summary{ID: "other", Name: longName},
 			Running: true, CountdownForm: defaultCountdown()}},
 		{"switch stopped", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"}}},
 		{"switch countdown error", "todd", 400, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
 			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
-		{"switch anyway", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: longName},
-			Running: true, CountdownForm: defaultCountdown(), Anyway: true, CheckProblems: []string{longName}}},
 		{"switch refused", "todd", 409, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
 			Refusal: "This is already the active world."}},
-		{"start anyway", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: longName}, CheckProblems: []string{longName}}},
-		{"start anyway refused", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: "Base"}, Refusal: "Nothing to confirm."}},
 		{"force stop", "todd", 200, ForceStopPage{World: world.Summary{ID: "base", Name: longName,
 			LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)}}},
 		{"restore running", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0],

@@ -166,6 +166,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("button", { name: "Try to start again" })).toHaveCount(0);
   });
 
+  // SPEC 7.4, 17.5: the refusal box is the confirmation for start anyway.
   test("a refused start lists the problems, and start anyway takes a snapshot first", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await page.getByRole("button", { name: "Start server" }).click();
@@ -173,24 +174,30 @@ test.describe("with the fake game", () => {
     const refusal = page.locator(".message--warning").filter({ hasText: "does not match the world" });
     await expect(refusal).toContainText("foreman-test", live);
     await expect(refusal.locator("p strong").first()).toHaveText("Warning:");
-    await expect(refusal).toContainText("This world does not have the file of the mod the save base.zip was last played with: foreman-test.");
-    await expect(refusal).toContainText("Foreman cannot add or turn on a world's mods yet.");
+    await expect(refusal).toContainText("base.zip uses foreman-test, but this world has no file for it.");
+    await expect(refusal).not.toContainText("removes everything");
+    await expect(refusal).toContainText("Foreman cannot add mods to a world yet.");
+    await expect(refusal).toContainText('labelled "Before start anyway"');
+    await expect(refusal).toContainText("To undo, restore that snapshot from the Snapshots page.");
     await expect(badge(page)).toHaveText("Stopped");
-    // Steps that will never run read Skipped, not Waiting.
+    // The box alone leads: nothing tells the admin to fix the world first.
+    await expect(page.locator("main")).not.toContainText("Fix the world first");
+    await expect(page.getByRole("button", { name: "Try to start again" })).toHaveCount(0);
+    await expect(page.locator(".message--note")).toHaveCount(0);
+    // One reading width for all the text in the box.
+    const widths = await refusal.locator("p, li").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
+    // Steps that will never run read Skipped, not Waiting; the check reads
+    // Refused, styled as a warning like the box.
     const steps = page.locator(".steps li");
-    await expect(steps.filter({ hasText: "Check the world" })).toContainText("Failed");
+    const check = steps.filter({ hasText: "Check the world" }).locator(".step-state");
+    await expect(check).toHaveText("Refused");
+    await expect(check).toHaveClass(/step-state--warning/);
     await expect(steps.filter({ hasText: "Check RCON answers" })).toContainText("Skipped");
     await expect(page.locator(".steps")).not.toContainText("Waiting");
     await checkPage(page);
 
-    await refusal.getByRole("link", { name: "Start anyway" }).click();
-    const confirm = page.getByRole("region", { name: /Start Base although its save does not match the world/ });
-    await expect(confirm).toContainText('labelled "Before start anyway"');
-    await expect(confirm).toContainText("foreman-test");
-    await expect(confirm).toContainText("When the game loads it, it drops from the save whatever depends on these problems");
-    await expect(confirm).not.toContainText("will delete");
-    await checkPage(page);
-    await confirm.getByRole("button", { name: "Start anyway" }).click();
+    await refusal.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
 
     await page.goto("/worlds/base/snapshots");
@@ -207,8 +214,11 @@ test.describe("with the fake game", () => {
     await expect(refusal).toContainText("1 of its mods was made for Factorio 2.0, and the game refuses to load it: old-mod.");
     await expect(refusal).toContainText("Update its mods to versions made for Factorio 2.1.");
     await expect(refusal).toContainText("Foreman did not start the game, because Base cannot run in this game:");
-    await expect(refusal.getByRole("link", { name: "Start anyway" })).toHaveCount(0);
+    await expect(refusal.getByRole("button", { name: "Start anyway" })).toHaveCount(0);
     await expect(badge(page)).toHaveText("Stopped");
+    const check = page.locator(".steps li").filter({ hasText: "Check the world" }).locator(".step-state");
+    await expect(check).toHaveText("Refused");
+    await expect(check).toHaveClass(/step-state--failed/);
     // A start known to be refused is not offered as if it would run.
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await expect(page.locator(".message--note")).toContainText("Foreman refused the last start of Base");
@@ -244,6 +254,7 @@ test.describe("with the fake game", () => {
     expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
     await expect(page.locator(".message--warning")).toContainText("does not match the world", live);
     await expect(page.locator("#announcer")).toHaveText(/^Warning: Foreman did not start the game, because the save that would load does not match the world/);
+    await expect(page.locator("#announcer")).toContainText("You can start anyway; the button is below.");
     await expect(page.locator("#announcer")).not.toContainText("Server is now");
   });
 

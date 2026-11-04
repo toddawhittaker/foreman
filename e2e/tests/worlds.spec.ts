@@ -179,12 +179,12 @@ test("choosing a folder fills the version, but not over typed text", async ({ pa
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
   await expect(form.getByLabel("Space Age is on")).toBeChecked();
-  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.1.24 from the save, with Space Age on.");
+  await expect(page.locator("#announcer")).toHaveText("World name suggested: one. Game version set to 2.1.24 from the save, with Space Age on.");
   await checkPage(page);
   await form.getByLabel(/two: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.0.77");
   await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
-  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.0.77 from the save.");
+  await expect(page.locator("#announcer")).toHaveText("World name suggested: two. Game version set to 2.0.77 from the save.");
   await form.getByLabel("Game version").fill("2.0.1");
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.0.1");
@@ -218,6 +218,7 @@ test("a version the server filled after a failed submit is cleared for an unread
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await form.getByLabel(/good: /).check();
+  await form.getByLabel("World name").fill("");
   await form.getByLabel("Game version").fill("");
   await form.getByRole("button", { name: "Import folder" }).click();
   const back = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
@@ -225,6 +226,55 @@ test("a version the server filled after a failed submit is cleared for an unread
   await back.getByLabel(/junk: /).check();
   await expect(back.getByLabel("Game version")).toHaveValue("");
   await expect(back.getByLabel("Space Age is on")).not.toBeChecked();
+});
+
+// SPEC 5.5: the world name is suggested from the folder or file name, and
+// a name the admin typed is never overwritten.
+test("the world name is suggested from the folder or the file, but not over typed text", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "one", "2.1.24-space-age.zip");
+  inboxFixture(foreman, "two", "2.0.77-no-space-age.zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await expect(form.getByLabel("World name")).toHaveValue("");
+  await form.getByLabel(/one: /).check();
+  await expect(form.getByLabel("World name")).toHaveValue("one");
+  await form.getByLabel(/two: /).check();
+  await expect(form.getByLabel("World name")).toHaveValue("two");
+  await form.getByLabel("World name").fill("Mine");
+  await form.getByLabel(/one: /).check();
+  await expect(form.getByLabel("World name")).toHaveValue("Mine");
+
+  const upload = page.locator("form", { has: page.getByRole("heading", { name: "Upload a save" }) });
+  await upload.getByLabel("Save file").setInputFiles({ name: "my save.zip", mimeType: "application/zip", buffer: emptyZip });
+  await expect(upload.getByLabel("World name")).toHaveValue("my save");
+  await expect(page.locator("#announcer")).toHaveText("World name suggested: my save.");
+  await upload.getByLabel("World name").fill("Typed");
+  await upload.getByLabel("Save file").setInputFiles({ name: "other.zip", mimeType: "application/zip", buffer: emptyZip });
+  await expect(upload.getByLabel("World name")).toHaveValue("Typed");
+  await checkPage(page);
+});
+
+// SPEC 5.5: a folder with no save at its top level cannot be chosen, and
+// says so in words; when no folder can be imported the form says so.
+test("a folder with no save at its top level is listed as not importable", async ({ page, foreman }) => {
+  await createAdmin(page);
+  mkdirSync(join(foreman.dataDir, "import", "current", "mods"), { recursive: true });
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  const empty = form.getByLabel(/current: no save at its top level, so it cannot be imported/);
+  await expect(empty).toBeDisabled();
+  await expect(form).toContainText("There is nothing to import");
+  await expect(form).not.toContainText("0 saves");
+  await checkPage(page);
+
+  inboxFixture(foreman, "good", "2.1.24-space-age.zip");
+  await page.reload();
+  await expect(form).not.toContainText("There is nothing to import");
+  await expect(form.getByLabel(/good: 1 save/)).toBeChecked();
+  await expect(form.getByLabel("World name")).toHaveValue("good");
+  await expect(form.getByLabel(/current: /)).toBeDisabled();
+  await checkPage(page);
 });
 
 test("imports a world by uploading a save", async ({ page, foreman }) => {

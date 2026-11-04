@@ -506,7 +506,11 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		junk := make([]byte, 4096)
 		_, _ = rand.Read(junk)
 		e.putSave(t, bad, "corrupt.zip", junk, time.Now().Add(-time.Hour))
-		err := c3.Start(ctx, bad, admin, StartOptions{Anyway: true})
+		var pe *PrecheckError
+		if err := c3.Start(ctx, bad, admin, StartOptions{}); !errors.As(err, &pe) {
+			t.Fatalf("start without anyway = %v, want a pre-start refusal", err)
+		}
+		err := c3.Start(ctx, bad, admin, StartOptions{Anyway: true, Seen: AnywayFingerprint(pe.Check, false)})
 		if !errors.Is(err, ErrStartFailed) {
 			t.Fatalf("start error = %v, want ErrStartFailed", err)
 		}

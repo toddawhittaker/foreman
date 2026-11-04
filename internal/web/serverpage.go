@@ -115,10 +115,17 @@ func (p ServerPage) StartBlocked() string {
 	if p.Status.State == game.StateCrashLooping {
 		return p.World.Name + " crashed again and again the last time it ran. Fix what the game reported, for example the world's mods or its save, then try to start it again. Or switch to another world from the Worlds page."
 	}
-	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && game.IsRefusal(p.Result.Err) {
+	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && game.IsRefusal(p.Result.Err) && !p.OffersAnyway() {
 		return "Foreman refused the last start of " + p.World.Name + ", for the reason above. Fix the world first, then try to start it again."
 	}
 	return ""
+}
+
+// OffersAnyway reports whether the last result's box offers to go ahead
+// anyway; the box then leads alone, with no advice to fix the world first.
+func (p ServerPage) OffersAnyway() bool {
+	f := p.Failure()
+	return f != nil && f.Anyway != nil
 }
 
 // blockedAnnouncement is read out with the page's results while a start is
@@ -241,14 +248,24 @@ func (p ServerPage) DownloadList() stepList {
 // Since says how long a player has been online.
 func (ServerPage) Since(d time.Duration) string { return durationText(d) }
 
-// StepWord is the word beside a step (DESIGN 7.6).
-func (ServerPage) StepWord(s game.StepState) string {
+// refused reports whether this list's failed step is a refusal by the
+// pre-start check, not a fault.
+func (l stepList) refused() bool {
+	return l.Failure != nil && l.Failure.Refused && l.Failure.In == l.In
+}
+
+// StepWord is the word beside a step (DESIGN 7.6). A step the pre-start
+// check refused reads "Refused", since nothing went wrong.
+func (l stepList) StepWord(s game.StepState) string {
 	switch s {
 	case game.StepDone:
 		return "Done"
 	case game.StepProgress:
 		return "In progress"
 	case game.StepFailed:
+		if l.refused() {
+			return "Refused"
+		}
 		return "Failed"
 	case game.StepSkipped:
 		return "Skipped"
@@ -256,8 +273,12 @@ func (ServerPage) StepWord(s game.StepState) string {
 	return "Waiting"
 }
 
-// StepClass is the step word's modifier class, or "".
-func (ServerPage) StepClass(s game.StepState) string {
+// StepClass is the step word's modifier class, or "". A refusal that
+// offers a choice is a warning, matching its message (DESIGN 7.3).
+func (l stepList) StepClass(s game.StepState) string {
+	if s == game.StepFailed && l.refused() && l.Failure.Anyway != nil {
+		return "step-state--warning"
+	}
 	switch s {
 	case game.StepDone, game.StepProgress, game.StepFailed:
 		return "step-state--" + string(s)
@@ -271,11 +292,11 @@ type Failure struct {
 	Message string
 	// Problems are the pre-start check's findings (SPEC 7.4).
 	Problems []string
-	// AnywayPath confirms "Start anyway" or "Switch anyway", when every
-	// problem allows it; AnywayVerb and AnywayText word the offer.
-	AnywayPath string
-	AnywayVerb string
-	AnywayText string
+	// Refused is true when the pre-start check refused the action.
+	Refused bool
+	// Anyway offers to go ahead past the problems, when every problem
+	// allows it. The box is then the confirmation (SPEC 7.4, 17.5).
+	Anyway *Anyway
 	// Download offers to download the missing game image (SPEC 3.7).
 	Download bool
 	// Undo names the "Before restore" snapshot a failed restore took.
@@ -291,7 +312,7 @@ type Failure struct {
 // Word is the message's leading word. A refusal that offers a choice is a
 // warning, not an error: going ahead is the admin's call (DESIGN 7.3).
 func (f *Failure) Word() string {
-	if f.AnywayPath != "" {
+	if f.Anyway != nil {
 		return "Warning:"
 	}
 	return "Error:"
@@ -299,11 +320,15 @@ func (f *Failure) Word() string {
 
 // Class is the message's kind class, matching Word.
 func (f *Failure) Class() string {
-	if f.AnywayPath != "" {
+	if f.Anyway != nil {
 		return "message--warning"
 	}
 	return "message--error"
 }
+
+// changedLead says why a go-ahead anyway did not run: what the box showed
+// was no longer true, so the admin must read it again (SPEC 7.4, 17.5).
+const changedLead = "The world or the server changed since the page showed it, so Foreman did not go ahead. Read the message again before you choose."
 
 // precheckLead opens the message for a start the pre-start check refused.
 const precheckLead = "Foreman did not start the game, because the save that would load does not match the world:"
@@ -351,24 +376,21 @@ func (p ServerPage) Failure() *Failure {
 			name = p.WorldNames[p.Result.Target]
 		}
 		f.Message = precheckLeadFor(pe.Check, switching, name)
+		if pe.Changed {
+			f.Message = changedLead + " " + f.Message
+		}
 		for _, pr := range pe.Check.Problems {
 			f.Problems = append(f.Problems, pr.Text)
 		}
 		if pe.Check.CanStartAnyway() {
-			f.AnywayPath, f.AnywayVerb = gamePath(p.World.ID, "start-anyway"), "Start anyway"
-			switch p.Result.Action {
-			case game.AuditRestart:
-				f.AnywayPath += "?then=restart"
-			case game.AuditSwitch:
-				f.AnywayPath, f.AnywayVerb = switchAnywayPath(p.Result.Target), "Switch anyway"
-			}
-			f.AnywayText = anywayText(pe.Check.Problems, p.Result.Action == game.AuditSwitch)
+			f.Anyway = p.anyway(pe.Check)
 		}
 	case errors.Is(err, game.ErrImageMissing):
 		f.Message, f.Download = sentence(err), true
 	default:
 		f.Message = failureText(err)
 	}
+	f.Refused = game.IsRefusal(err)
 	text := err.Error()
 	// A forced stop that interrupted a switch says in the operation's own
 	// error which world it stopped.
@@ -384,37 +406,63 @@ func (p ServerPage) Failure() *Failure {
 	return f
 }
 
-// anywayText words the offer to go ahead past problems that allow it. When
-// mods are missing or turned off, it says how to keep what they built.
-func anywayText(problems []world.Problem, switching bool) string {
-	missing, mods := 0, 0
+// Anyway is the offer to start, restart or switch past the pre-start
+// check's problems. It names every step and the snapshots taken first, so
+// its button acts at once (SPEC 7.4, 17.5).
+type Anyway struct {
+	// Path is where the button posts; Verb is the button's words.
+	Path, Verb string
+	// Switch is set for a switch; Restart for a restart of a running game.
+	Switch, Restart bool
+	// World is the world that loads the save. From is the world a switch
+	// leaves, and FromID its id, which the form sends.
+	World, From, FromID string
+	// Running is true when the game runs now, so it is stopped first.
+	Running bool
+	// Countdown is the warning players get before the stop, in seconds.
+	Countdown int
+	// Seen fingerprints what the box shows, so a stale box is refused.
+	Seen string
+	// Advice says how to keep what missing mods built, or is "".
+	Advice string
+}
+
+// anyway builds the offer for the last refused action.
+func (p ServerPage) anyway(check world.PreCheck) *Anyway {
+	a := &Anyway{
+		Path: p.StartPath(), Verb: "Start anyway", World: p.World.Name,
+		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems),
+		Running: game.IsRunning(p.Status.State),
+	}
+	switch p.Result.Action {
+	case game.AuditRestart:
+		a.Path, a.Verb, a.Restart = p.RestartPath(), "Restart anyway", true
+	case game.AuditSwitch:
+		a.Path, a.Verb, a.Switch = switchPath(p.Result.Target), "Switch anyway", true
+		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
+	}
+	a.Seen = game.AnywayFingerprint(check, a.Running)
+	return a
+}
+
+// anywayAdvice says how to keep what missing mods built; the lead already
+// says what the game drops. Mods that are only turned off need no file.
+func anywayAdvice(problems []world.Problem) string {
+	missing := 0
 	for _, pr := range problems {
-		mods += len(pr.Mods)
 		if pr.Kind == world.ProblemModMissing {
 			missing += len(pr.Mods)
 		}
 	}
-	if mods == 0 {
-		if switching {
-			return "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then drops from the save whatever depends on the problems above."
-		}
-		return "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then drops from the save whatever depends on the problems above."
-	}
-	anyway := "start anyway: Foreman takes a snapshot first"
-	if switching {
-		anyway = "switch anyway: Foreman takes a snapshot of both worlds first"
-	}
-	undo := ", so you can undo it from the Snapshots page."
-	// A mod that is only turned off needs no file, so no import advice.
 	if missing == 0 {
-		return "Foreman cannot turn on a world's mods yet. Or " + anyway + undo
+		return ""
 	}
 	built := "that mod built"
-	if mods > 1 {
+	if missing > 1 {
 		built = "those mods built"
 	}
-	return "Foreman cannot add or turn on a world's mods yet. To keep what " + built +
-		", put the mod files in the import folder's mods/ and import the world again. Or " + anyway + undo
+	return "Foreman cannot add mods to a world yet. To keep what " + built +
+		", put the mod files in the import folder's mods/ and import the world again."
 }
 
 // failureText words an action's error; one the admin cannot fix is logged
@@ -477,6 +525,9 @@ func resultAnnouncement(p ServerPage) string {
 	var said []string
 	if f := p.Failure(); f != nil {
 		said = append(said, f.Word()+" "+f.Message)
+		if f.Anyway != nil {
+			said = append(said, "You can "+strings.ToLower(f.Anyway.Verb)+"; the button is below.")
+		}
 	}
 	for _, e := range p.OtherErrors() {
 		said = append(said, "Error: "+e)

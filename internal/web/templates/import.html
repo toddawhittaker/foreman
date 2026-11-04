@@ -19,9 +19,16 @@
     {{- with .SourceError}}
     <p class="error" id="folder-source-error"><strong>Error:</strong> {{.}}</p>
     {{- end}}
+    {{- if not $.Page.Importable}}
+    <p class="empty">There is nothing to import: no folder here has a save at its top level. Put the save files (<code>.zip</code>) directly in a folder, then reload this page.</p>
+    {{- end}}
     {{- $chosen := .Source}}
     {{- range $i, $f := $.Page.Inbox}}
+    {{- if $f.Saves}}
     <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if $f.Read}} data-game-version="{{$f.GameVersion}}"{{if $f.SpaceAge}} data-space-age{{end}}{{end}}{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}{{if $f.Read}}, made with Factorio {{$f.GameVersion}}{{if $f.SpaceAge}}, Space Age{{end}}{{end}}</span></label>
+    {{- else}}
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}" disabled> <span><code>{{$f.Name}}</code>: no save at its top level, so it cannot be imported</span></label>
+    {{- end}}
     {{- end}}
   </fieldset>
   {{- else}}

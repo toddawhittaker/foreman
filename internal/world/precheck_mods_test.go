@@ -170,8 +170,7 @@ func TestPreCheckMissingModText(t *testing.T) {
 	putModList(t, dir, "base", "elevated-rails", "quality", "recycler", "space-age")
 	p := runCheck(t, m, id)
 	wantKinds(t, p, ProblemModMissing)
-	want := "This world does not have the file of the mod the save a.zip was last played with: foreman-test. " +
-		"Switching or starting anyway removes everything it built from the save."
+	want := "a.zip uses foreman-test, but this world has no file for it."
 	if p.Problems[0].Text != want || len(p.Problems[0].Mods) != 1 {
 		t.Fatalf("%+v", p.Problems[0])
 	}
@@ -184,8 +183,7 @@ func TestPreCheckDisabledModText(t *testing.T) {
 	putModListOff(t, dir, []string{"base", "elevated-rails", "quality", "recycler", "space-age"}, "foreman-test")
 	p := runCheck(t, m, id)
 	wantKinds(t, p, ProblemModDisabled)
-	want := "The save a.zip was last played with foreman-test, which is turned off in this world. " +
-		"Switching or starting anyway removes everything it built from the save."
+	want := "a.zip uses foreman-test, but it is turned off in this world."
 	if p.Problems[0].Text != want || !p.CanStartAnyway() {
 		t.Fatalf("%+v", p.Problems[0])
 	}
@@ -201,10 +199,8 @@ func TestCompareSaveManyMissingAndDisabledModsUsePlurals(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("%+v", got)
 	}
-	wantMissing := "This world does not have the files of the mods the save a.zip was last played with: gone-a, gone-b. " +
-		"Switching or starting anyway removes everything they built from the save."
-	wantOff := "The save a.zip was last played with off-a, off-b, which are turned off in this world. " +
-		"Switching or starting anyway removes everything they built from the save."
+	wantMissing := "a.zip uses gone-a, gone-b, but this world has no files for them."
+	wantOff := "a.zip uses off-a, off-b, but they are turned off in this world."
 	if got[0].Text != wantMissing || got[1].Text != wantOff {
 		t.Fatalf("%q\n%q", got[0].Text, got[1].Text)
 	}

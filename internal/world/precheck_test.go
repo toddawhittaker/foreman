@@ -136,7 +136,7 @@ func TestPreCheckSpaceAgeOffButSaveUsesIt(t *testing.T) {
 	putModList(t, dir, "base")
 	p := runCheck(t, m, id)
 	wantKinds(t, p, ProblemSpaceAgeOff)
-	if !p.CanStartAnyway() || !strings.Contains(p.Problems[0].Text, "delete") {
+	if !p.CanStartAnyway() || !strings.Contains(p.Problems[0].Text, "but Space Age is off for this world") {
 		t.Fatalf("%+v", p)
 	}
 }
