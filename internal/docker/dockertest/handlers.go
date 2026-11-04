@@ -296,6 +296,10 @@ func inspectBody(c *Container) map[string]any {
 		}
 		nets[name] = map[string]any{"IPAddress": ip, "IPPrefixLen": prefixLen}
 	}
+	mode := c.Spec.HostConfig.NetworkMode
+	if mode == "" {
+		mode = "default" // what Docker reports when none was asked for
+	}
 	return map[string]any{
 		"Id":           c.ID,
 		"Name":         "/" + c.Name,
@@ -305,7 +309,13 @@ func inspectBody(c *Container) map[string]any {
 			"ExitCode": c.ExitCode, "OOMKilled": c.OOMKilled, "Error": "",
 			"StartedAt": c.StartedAt, "FinishedAt": c.FinishedAt,
 		},
-		"Config":          map[string]any{"Image": c.Spec.Image, "Labels": c.Spec.Labels},
+		"Config": map[string]any{
+			"Image": c.Spec.Image, "Labels": c.Spec.Labels,
+			"Env": c.Spec.Env, "User": c.Spec.User,
+		},
+		"HostConfig": map[string]any{
+			"PortBindings": c.Spec.HostConfig.PortBindings, "NetworkMode": mode,
+		},
 		"Mounts":          c.Mounts,
 		"NetworkSettings": map[string]any{"Networks": nets},
 	}
