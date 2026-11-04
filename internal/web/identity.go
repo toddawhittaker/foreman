@@ -17,6 +17,9 @@ const (
 	nobody signedIn = iota
 	isSignedIn
 	refused // a trusted proxy named a user Foreman will not admit
+	// proxyWaiting: a trusted proxy named a user, but its headers were
+	// ignored because the game networks are not yet known (SPEC 12.6).
+	proxyWaiting
 )
 
 // proxyStreamLimit is how long a live stream signed in by trusted headers
@@ -36,7 +39,12 @@ func (s *server) identify(r *http.Request) (store.User, signedIn, error) {
 // trusted headers named the user.
 func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Request) (int64, bool, error)) (u store.User, state signedIn, byProxy bool, err error) {
 	ctx := r.Context()
-	if s.cfg.AuthHeaders && !s.fromGame(r) {
+	none := nobody
+	fromGame := s.cfg.AuthHeaders && s.fromGame(r)
+	if fromGame && s.gameNetsUnknown() && s.headers.Identify(r).Outcome != auth.HeaderNone {
+		none = proxyWaiting
+	}
+	if s.cfg.AuthHeaders && !fromGame {
 		id := s.headers.Identify(r)
 		switch id.Outcome {
 		case auth.HeaderNotAllowed:
@@ -54,15 +62,15 @@ func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Requ
 		}
 	}
 	if !s.cfg.AuthLocal {
-		return store.User{}, nobody, false, nil
+		return store.User{}, none, false, nil
 	}
 	id, ok, err := session(ctx, r)
 	if err != nil || !ok {
-		return store.User{}, nobody, false, err
+		return store.User{}, none, false, err
 	}
 	u, found, err := s.store.UserByID(ctx, id)
 	if err != nil || !found {
-		return store.User{}, nobody, false, err
+		return store.User{}, none, false, err
 	}
 	return u, isSignedIn, false, nil
 }
@@ -98,6 +106,15 @@ func (s *server) fromGame(r *http.Request) bool {
 		s.log.Warn("refused trusted-header sign-in from a game network's address range", "range", p.String())
 	}
 	return true
+}
+
+// gameNetsUnknown reports whether the game networks have not yet been read.
+func (s *server) gameNetsUnknown() bool {
+	if s.gameNets == nil {
+		return false
+	}
+	_, known := s.gameNets.GameSubnets()
+	return !known
 }
 
 // stillSignedIn is a live stream's check at each heartbeat (SPEC 12.8,
@@ -150,6 +167,12 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 				Status: http.StatusForbidden,
 				Detail: "Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.",
 			})
+		case state == proxyWaiting:
+			detail := "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute."
+			if s.cfg.AuthLocal {
+				detail += " Password sign-in still works: open " + PathSignIn + " to use it."
+			}
+			s.page(w, r, http.StatusForbidden, "", ErrorPage{Status: http.StatusForbidden, Detail: detail})
 		case s.cfg.AuthLocal:
 			s.redirectToSignIn(w, r)
 		default:

@@ -185,6 +185,8 @@ type Container struct {
 	Privileged bool
 	// CapAdd is HostConfig.CapAdd, the Linux capabilities added.
 	CapAdd []string
+	// CapDrop is HostConfig.CapDrop, the Linux capabilities dropped.
+	CapDrop []string
 	// PidMode is HostConfig.PidMode; "host" shares the host's processes.
 	PidMode string
 	// Devices is HostConfig.Devices, the host devices mapped in.
@@ -247,6 +249,7 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 			NetworkMode  string
 			Privileged   bool
 			CapAdd       []string
+			CapDrop      []string
 			PidMode      string
 			Devices      []Device
 			SecurityOpt  []string
@@ -277,6 +280,7 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		NetworkMode:  raw.HostConfig.NetworkMode,
 		Privileged:   raw.HostConfig.Privileged,
 		CapAdd:       raw.HostConfig.CapAdd,
+		CapDrop:      raw.HostConfig.CapDrop,
 		PidMode:      raw.HostConfig.PidMode,
 		Devices:      raw.HostConfig.Devices,
 		SecurityOpt:  raw.HostConfig.SecurityOpt,

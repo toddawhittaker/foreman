@@ -508,7 +508,12 @@ func (c *Controller) recoverGameDir(ctx context.Context) error {
 	}
 	switch cont.State.Status {
 	case "running", "restarting", "paused":
-		c.log.Warn("the game container is running, so the game folder was not checked for a change left part way")
+		// A normal start finds nothing left part way; warn only on evidence.
+		if haveRecord || c.changeLeftOver() {
+			c.log.Warn("the game container is running, so the game folder was not checked for a change left part way")
+		} else {
+			c.log.Debug("the game container is running and the game folder shows no change left part way")
+		}
 		if begun {
 			c.mu.Lock()
 			c.adoptionWaits = true
@@ -628,4 +633,20 @@ func (c *Controller) correctActive(ctx context.Context) error {
 	}
 	c.log.Warn("the active world in the database did not match the game folder; it now matches the folder", "was", active, "now", st.ActiveID)
 	return c.switches.SetActiveWorld(ctx, st.ActiveID, c.now())
+}
+
+// changeLeftOver reports whether the game folder holds a .new link, which
+// only a change to the folder stopped part way leaves (gamedir.Recover).
+func (c *Controller) changeLeftOver() bool {
+	root, err := os.OpenRoot(c.adopted.dir)
+	if err != nil {
+		return true // cannot tell, so say so
+	}
+	defer func() { _ = root.Close() }()
+	for _, name := range append([]string{gamedir.CurrentDir}, gamedir.FixedLinks...) {
+		if _, err := root.Lstat(name + ".new"); !errors.Is(err, fs.ErrNotExist) {
+			return true
+		}
+	}
+	return false
 }
