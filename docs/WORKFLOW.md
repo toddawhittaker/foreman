@@ -69,7 +69,7 @@ The targets (STACK.md, section 13):
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It
-  runs in managed mode, with `FOREMAN_HOST_DATA_DIR` set, and your own user
+  runs with `FOREMAN_HOST_DATA_DIR` set, and your own user
   and group IDs as the game's. It talks to Docker through `DOCKER_HOST`
   (the default socket if unset), so you need a Docker socket you can use to
   start a game. Without one the Server page shows "Unknown" with the
@@ -83,12 +83,11 @@ The targets (STACK.md, section 13):
   in one local run.
 - `make tidy`: `go mod tidy`.
 - `make test-game`: run the game controller against the real Docker daemon
-  and the three pinned game images, one after another, in managed and then
-  adopted mode (about two minutes in all). `TAG=1.1`, `2.0` or `2.1` runs
-  one. It does not download the game images: pull each one first with the
-  `docker pull` command in the error it prints. It starts containers named
-  `foreman-e3test-*` and `foreman-e4-t14-*` (and a network with that
-  prefix) and removes them, with their data under `.cache/test-game/`.
+  and the three game test images (STACK.md, section 1), one after another.
+  `TAG=1.1`, `2.0` or `2.1` runs one. It does not download the game
+  images: pull each one first with the `docker pull` command in the error
+  it prints. It starts containers named `foreman-e3test-*` and removes
+  them, with their data under `.cache/test-game/`.
 - `make e2e-game`: run the phone scenario against the real 2.1 game image.
   It needs that image on the host (it prints the `docker pull` to run) and
   a Docker socket (`DOCKER_SOCK`, `/var/run/docker.sock` by default).
@@ -198,6 +197,7 @@ strings are allowlisted in `.gitleaks.toml`.
 
 ## Dependencies
 
-Versions are pinned exactly and the lockfile is committed. Game images are
-pinned by exact tag in each world, per the vision's "Pinned, never
-drifting" principle.
+Versions are pinned exactly and the lockfile is committed. Each world
+records its exact game version and runs the game image by that version tag
+(ADR 0005), per the vision's "Pinned, never drifting" principle. The game
+test images are pinned by digest (STACK.md, section 1).

@@ -3,6 +3,9 @@
 - **Status**: Accepted
 - **Date**: 2026-11-03
 - **References**: STACK.md sections 1, 5; SPEC.md sections 4.2 to 4.6, 8.7, 14.3, 14.4
+- **Amended 2026-11-04**: the image is the world's exact version by tag,
+  not one pinned image per line (ADR 0005). The game may share a VPN
+  sidecar's network instead of joining the game network (ADR 0006).
 
 ## Context
 

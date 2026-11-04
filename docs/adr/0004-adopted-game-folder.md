@@ -1,6 +1,6 @@
 # 0004. Adopted mode: the game folder and the container rules
 
-- **Status**: Accepted
+- **Status**: Superseded by ADR 0005 (adopted mode was dropped)
 - **Date**: 2026-11-04
 - **References**: STACK.md section 5; SPEC.md sections 3.4, 4.4, 4.7 to 4.12, 7.1, 7.9, 7.10, 12.6, 14.15
 
