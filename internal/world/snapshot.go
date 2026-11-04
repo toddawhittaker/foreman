@@ -383,6 +383,14 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 	if err := copyFile(src, f.Path, dst, f.Path); err != nil {
 		return false, err
 	}
+	// copyFile gives every file FileMode, which would make the RCON password
+	// readable by anyone. Set the mode here, not from the source, so a copy
+	// made when it was wider is narrowed again on restore (SPEC 14.8).
+	if f.Path == RCONPasswordFile {
+		if err := dst.Chmod(f.Path, rconPasswordMode); err != nil {
+			return false, err
+		}
+	}
 	return zipCopied, nil
 }
 

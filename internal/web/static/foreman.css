@@ -548,6 +548,15 @@ legend {
   color: var(--color-info);
 }
 
+.message--warning {
+  background: var(--color-warn-bg);
+  border-color: var(--color-warn);
+}
+
+.message--warning :is(h2, p):first-child > strong:first-child {
+  color: var(--color-warn);
+}
+
 /* 7.4 Confirming risky actions: a flat danger box, no bevel. */
 .confirm {
   container-type: inline-size;
@@ -694,6 +703,13 @@ legend {
   accent-color: var(--color-highlight);
 }
 
+/* The indeterminate bar always moves; the "In progress" word says the same (DESIGN 6, Motion). */
+@media (prefers-reduced-motion: reduce) {
+  .steps progress {
+    display: none;
+  }
+}
+
 .step-state {
   min-inline-size: 6rem;
   font-weight: 600;
@@ -712,9 +728,26 @@ legend {
   color: var(--color-danger-text);
 }
 
-/* A failed step's message sits on its own line under the word. */
+/* A failed step's message sits on its own line under the word, at any width. */
 .steps li > .message {
-  flex-basis: 100%;
+  flex: 1 1 100%;
+  max-inline-size: none;
+}
+
+/* On a narrow panel the word has its own line, so every step lines up. */
+@container (max-width: 24rem) {
+  .step-state {
+    flex-basis: 100%;
+  }
+}
+
+/* Parts the server swaps in stack with room between them, so a button is
+   never flush under a step list or log (DESIGN 6, rule 4). */
+[sse-swap],
+#console-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
 /* 8.2 The world list: rows divided by a rule, not boxed. */
@@ -863,11 +896,6 @@ td:last-child {
 }
 
 /* 8.5 Log and console: a deep sunken mono box that scrolls inside itself. */
-.log-frame {
-  position: relative;
-  min-inline-size: 0;
-}
-
 .log {
   min-inline-size: 0;
   block-size: min(60vh, 32rem);
@@ -901,16 +929,26 @@ td:last-child {
   max-inline-size: none;
 }
 
-/* Over the corner of the box, so showing it moves nothing (DESIGN 6, rule 7). */
+/* The button sits under the box, so it never covers a line. Its row is kept
+   while it is hidden, so showing it moves nothing (DESIGN 6, rule 7). */
+.log-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
 .log-frame > .button {
-  position: absolute;
-  inset-block-end: var(--space-3);
-  inset-inline-end: var(--space-5);
+  justify-self: end;
 }
 
 /* A button's display would otherwise beat the hidden attribute. */
 .button[hidden] {
   display: none;
+}
+
+.log-frame > .button[hidden] {
+  display: inline-flex;
+  visibility: hidden;
 }
 
 /* The console: a label, then the field and Send on one row that wraps. */
@@ -948,6 +986,11 @@ td:last-child {
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
 @media (forced-colors: active) {
+  /* The panel's sunken bevel is a box-shadow, which is not drawn here. */
+  .panel {
+    border: var(--border-width) solid CanvasText;
+  }
+
   .tabs a {
     border: 2px solid transparent;
   }
