@@ -207,7 +207,8 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrRCONUnreachable), errors.Is(err, game.ErrSaveTimeout),
 		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
 		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
-		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture):
+		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture),
+		errors.Is(err, game.ErrNetwork):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)

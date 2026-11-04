@@ -107,6 +107,19 @@ func checkNetworkName(n string) error {
 	return nil
 }
 
+// ErrNetwork matches every refusal of the game network. Each carries its
+// own text, which says what to change.
+var ErrNetwork = errors.New("the game network cannot be used")
+
+type networkRefusal string
+
+func (e networkRefusal) Error() string        { return string(e) }
+func (e networkRefusal) Is(target error) bool { return target == ErrNetwork }
+
+func refuseNetwork(format string, args ...any) error {
+	return networkRefusal(fmt.Sprintf(format, args...))
+}
+
 // gameNetwork returns the Docker network the game joins (R36, SPEC 4.4).
 // Outside a container it is FOREMAN_GAME_NETWORK, or Docker's default
 // bridge. Inside one FOREMAN_GAME_NETWORK is required, and refused when a
@@ -124,29 +137,29 @@ func (c *Controller) gameNetwork(ctx context.Context) (string, error) {
 		return "bridge", nil
 	}
 	if c.network == "" {
-		return "", errors.New("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: it names the Docker network the game joins. Choose a network Foreman is on that the Docker socket proxy is not on")
+		return "", refuseNetwork("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: it names the Docker network the game joins. Choose a network Foreman is on that the Docker socket proxy is not on")
 	}
 	n, ok := self.Networks[c.network]
 	if !ok {
-		return "", fmt.Errorf("FOREMAN_GAME_NETWORK names the %q network, but the Foreman container is not on it, so Foreman could not reach the game. Connect Foreman to that network, or name one it is on", c.network)
+		return "", refuseNetwork("FOREMAN_GAME_NETWORK names the %q network, but the Foreman container is not on it, so Foreman could not reach the game. Connect Foreman to that network, or name one it is on", c.network)
 	}
 	if c.dockerTCP && len(self.Networks) == 1 {
-		return "", fmt.Errorf("DOCKER_HOST uses tcp://, and the game network %q is the Foreman container's only network, so the Docker socket proxy is on it too and a game could reach it. Put the game on a network of its own that Foreman also joins", c.network)
+		return "", refuseNetwork("DOCKER_HOST uses tcp://, and the game network %q is the Foreman container's only network, so the Docker socket proxy is on it too and a game could reach it. Put the game on a network of its own that Foreman also joins", c.network)
 	}
 	if len(c.proxies) == 0 {
 		return c.network, nil
 	}
 	addr, err := netip.ParseAddr(n.IPAddress)
 	if err != nil || n.IPPrefixLen <= 0 {
-		return "", fmt.Errorf("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
+		return "", refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
 	}
 	subnet, err := addr.Prefix(n.IPPrefixLen)
 	if err != nil {
-		return "", fmt.Errorf("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
+		return "", refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check it against FOREMAN_TRUSTED_PROXIES", c.network)
 	}
 	for _, p := range c.proxies {
 		if p.Overlaps(subnet) {
-			return "", fmt.Errorf("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", c.network, subnet, p)
+			return "", refuseNetwork("the game network %q (%s) overlaps FOREMAN_TRUSTED_PROXIES (%s), so a game could pose as the proxy that signs users in. Use a game network outside those ranges, or narrow FOREMAN_TRUSTED_PROXIES", c.network, subnet, p)
 		}
 	}
 	return c.network, nil

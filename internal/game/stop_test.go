@@ -183,6 +183,11 @@ func TestForceStopInterruptsCountdown(t *testing.T) {
 	if op := r.c.Status(id).Operation; op.Steps[0].State != StepFailed || op.Error == "" {
 		t.Errorf("operation %+v", op)
 	}
+	for _, st := range r.c.Status(id).Operation.Steps[1:] {
+		if st.State != StepSkipped {
+			t.Errorf("step %q reads %q after the interruption, want skipped", st.Name, st.State)
+		}
+	}
 }
 
 // SPEC 7.8: restart is a graceful stop then a start, in a new container.

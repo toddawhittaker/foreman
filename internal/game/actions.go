@@ -125,10 +125,16 @@ func (o *opRun) end(err error) error {
 	w := o.w
 	w.mu.Lock()
 	for i := range w.op.Steps {
-		if w.op.Steps[i].State == StepProgress {
+		switch w.op.Steps[i].State {
+		case StepProgress:
 			w.op.Steps[i].State = StepDone
 			if err != nil {
 				w.op.Steps[i].State = StepFailed
+			}
+		case StepWaiting:
+			// A step that will never run must not read as waiting.
+			if err != nil {
+				w.op.Steps[i].State = StepSkipped
 			}
 		}
 	}

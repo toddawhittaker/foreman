@@ -175,6 +175,9 @@ func TestGameNetwork(t *testing.T) {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("got %q, %v; want an error with %q", got, err, tc.wantErr)
 				}
+				if !errors.Is(err, ErrNetwork) {
+					t.Errorf("%q is not an ErrNetwork, so the page cannot show it", err)
+				}
 				return
 			}
 			if err != nil || got != tc.want {
@@ -231,6 +234,11 @@ func TestStartRefusedByPrecheck(t *testing.T) {
 	}
 	if st := r.c.Status(id); st.Operation == nil || !st.Operation.Done || st.Operation.Steps[0].State != StepFailed {
 		t.Errorf("the check step is not shown failed: %+v", st.Operation)
+	}
+	for _, st := range r.c.Status(id).Operation.Steps[1:] {
+		if st.State != StepSkipped {
+			t.Errorf("step %q reads %q after the refusal, want skipped", st.Name, st.State)
+		}
 	}
 }
 
