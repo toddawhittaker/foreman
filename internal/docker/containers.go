@@ -169,6 +169,37 @@ type Container struct {
 	RestartCount int
 	Mounts       []Mount
 	Networks     map[string]Network // by network name
+
+	// Env is the raw "NAME=value" list. It can hold secrets such as the
+	// RCON password, so callers pick out the names they know with EnvValue
+	// and never log, show or return the list.
+	Env []string
+	// User is Config.User, such as "845:845"; empty when the image decides.
+	User string
+	// PortBindings is the configured host publishing, keyed like "27015/tcp".
+	PortBindings map[string][]PortBinding
+	// NetworkMode is HostConfig.NetworkMode: a network name, "bridge",
+	// "host", "none", or "default" for an unset one.
+	NetworkMode string
+}
+
+// EnvValue returns the value of an environment variable. When the name is
+// set more than once, the last one wins, as it does in the container.
+func (c Container) EnvValue(name string) (string, bool) {
+	var value string
+	var found bool
+	for _, kv := range c.Env {
+		if k, v, ok := strings.Cut(kv, "="); ok && k == name {
+			value, found = v, true
+		}
+	}
+	return value, found
+}
+
+// PublishesTCP reports whether the container's TCP port is published on the
+// host, on any host address.
+func (c Container) PublishesTCP(port int) bool {
+	return len(c.PortBindings[strconv.Itoa(port)+"/tcp"]) > 0
 }
 
 // InspectContainer reads one container. A missing one is ErrNotFound.
@@ -189,6 +220,12 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		Config       struct {
 			Image  string
 			Labels map[string]string
+			Env    []string
+			User   string
+		}
+		HostConfig struct {
+			PortBindings map[string][]PortBinding
+			NetworkMode  string
 		}
 		Mounts          []Mount
 		NetworkSettings struct {
@@ -207,6 +244,10 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		RestartCount: raw.RestartCount,
 		Mounts:       raw.Mounts,
 		Networks:     raw.NetworkSettings.Networks,
+		Env:          raw.Config.Env,
+		User:         raw.Config.User,
+		PortBindings: raw.HostConfig.PortBindings,
+		NetworkMode:  raw.HostConfig.NetworkMode,
 	}, nil
 }
 
