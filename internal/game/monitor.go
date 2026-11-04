@@ -446,8 +446,15 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 		return
 	case KindLoadStarted:
 		// Every run of the game starts here; players from the last run are gone.
-		w.run = runState{save: loadedSave(line)}
 		w.joins.Reset()
+		if w.run.inGame {
+			// A game process loads its map once, and observe resets the run
+			// on a restart, so this is a re-attach replaying the log after
+			// the RCON probe found the game in game (SPEC 3.8).
+			w.run.save = loadedSave(line)
+			break
+		}
+		w.run = runState{save: loadedSave(line)}
 	case KindInGame:
 		w.run.inGame = true
 		w.crashedRun = false
