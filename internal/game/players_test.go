@@ -29,8 +29,9 @@ func TestParseOnlineEmptyIsInTheTranscripts(t *testing.T) {
 	}
 }
 
-// The populated reply is the documented form; no real server has shown it yet.
-func TestParseOnlineFormatNotYetSeenOnARealServer(t *testing.T) {
+// The real-game check listed a joined player from the live reply, so this
+// form parses on a real 2.1.24 server; the raw reply was not saved.
+func TestParseOnlinePopulated(t *testing.T) {
 	cases := []struct {
 		name  string
 		reply string
@@ -122,7 +123,6 @@ func TestJoinTimesOnline(t *testing.T) {
 }
 
 func TestJoinTimesFedFromParsedLines(t *testing.T) {
-	// Format not yet seen on a real server.
 	j := NewJoinTimes()
 	for _, l := range []string{
 		"2026-11-03 22:00:00 [JOIN] alice joined the game",

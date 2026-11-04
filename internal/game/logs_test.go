@@ -125,9 +125,9 @@ func TestParseLineRealLines(t *testing.T) {
 	}
 }
 
-// The [JOIN] and [LEAVE] form is the documented one; no real server has
-// shown it yet.
-func TestParseLinePlayersFormatNotYetSeenOnARealServer(t *testing.T) {
+// The real [JOIN] and [LEAVE] lines are in testdata/2.1.24/join-leave.log;
+// these cases add edge forms a real log cannot show on demand.
+func TestParseLinePlayerEdgeCases(t *testing.T) {
 	at := time.Date(2026, 11, 3, 22, 30, 1, 0, time.UTC)
 	cases := []struct {
 		name string
@@ -149,6 +149,27 @@ func TestParseLinePlayersFormatNotYetSeenOnARealServer(t *testing.T) {
 				t.Errorf("ParseLine = %+v, want %+v", got, c.want)
 			}
 		})
+	}
+}
+
+// join-leave.log is the output of a real 2.1.24 server that a real client
+// joined, left and rejoined (testdata/README.md, section 5). It also holds
+// the server's own stop warnings as [CHAT] lines, which must not count.
+func TestParseLineRealJoinLeave(t *testing.T) {
+	at := func(h, m, s int) time.Time { return time.Date(2026, 11, 4, h, m, s, 0, time.UTC) }
+	want := []Event{
+		{Kind: KindPlayerJoined, Time: at(3, 53, 41), Player: "toddawhittaker"},
+		{Kind: KindPlayerLeft, Time: at(3, 54, 1), Player: "toddawhittaker"},
+		{Kind: KindPlayerJoined, Time: at(3, 54, 17), Player: "toddawhittaker"},
+	}
+	var got []Event
+	for _, l := range transcript(t, "2.1.24", "join-leave.log") {
+		if ev := ParseLine(l); ev.Kind == KindPlayerJoined || ev.Kind == KindPlayerLeft {
+			got = append(got, ev)
+		}
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("player events = %+v, want %+v", got, want)
 	}
 }
 

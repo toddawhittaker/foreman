@@ -26,6 +26,9 @@ is a copy and goes stale if they change without it.
   end-to-end tests.
 - htmx 2.0.11, vendored as `internal/web/static/vendor/htmx.min.js`; its
   SHA-256 is in `SHA256SUMS` beside it, and a test checks it.
+- htmx-ext-sse 2.2.4 (the server-sent events extension for htmx 2.0.x),
+  vendored as `internal/web/static/vendor/htmx-ext-sse.min.js`, with its
+  SHA-256 in the same `SHA256SUMS`, checked by the same test.
 - Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1,
   `golang.org/x/crypto` v0.58.0 and `golang.org/x/sys` v0.49.0 (direct
   since Epic 2: hardlinks into a snapshot folder, which the standard
@@ -38,8 +41,16 @@ is a copy and goes stale if they change without it.
   v7.4.0. CI reads `GO_VERSION` and `GO_IMAGE` from the Makefile, so the
   Go pin stays in one place. Dependabot proposes updates weekly
   (`.github/dependabot.yml`).
-- Test game images: still to choose, one 2.0.x and one 2.1.x tag of
-  `factoriotools/factorio`, when Epic 3 starts.
+- Game images, one per supported game version (SPEC 4.2), pinned by
+  digest. The `GAME_IMAGE_1_1`, `GAME_IMAGE_2_0` and `GAME_IMAGE_2_1`
+  variables in the `Makefile` are the source of truth; `cmd/foreman/main.go`
+  holds the same values and a test fails if they differ:
+  - `factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb`
+    (the last 1.1 release);
+  - `factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef`;
+  - `factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28`.
+  A tag can be rebuilt upstream (2.1.24 was), which is why the digest is
+  the pin. Foreman never downloads one at startup (SPEC 3.7).
 
 ## 2. Backend: Go
 
@@ -110,6 +121,14 @@ that list. It agrees an API version with the daemon through `GET /version`
 rather than hard-coding one; recent Docker Engine releases refuse old API
 versions.
 
+The client has two HTTP clients. The first has a total timeout and serves
+queries. The second has none, because a log follow, an image pull or a stop
+can last minutes; each of those calls sets its own deadline. Both refuse
+redirects. Calls carry query strings and JSON bodies, and only the path is
+checked against SPEC 14.3. It reads Docker's framed log output into separate
+standard output and error lines, and reports an error that Docker sends
+inside a 200 reply while pulling an image.
+
 Rejected: **the official moby client package**. It is complete, but brings
 a heavy dependency tree and can reach endpoints outside SPEC 14.3 without
 anyone noticing.
@@ -120,7 +139,10 @@ Cheap to change.
 
 RCON (the game's remote console protocol) is small: about 150 lines with
 our own timeouts, tested against a fake server. Escaping commands built
-from user text (SPEC 14.9) lives in our code either way.
+from user text (SPEC 14.9) lives in our code either way. The client runs
+one command at a time and reads one reply packet per command, up to
+4 MiB, because the real game answers every non-empty command with exactly
+one packet of any length and never answers an empty one.
 
 Rejected: **gorcon/rcon**. It is fine, but one more dependency for little
 saved.
@@ -174,15 +196,23 @@ Cheap to change.
   during a job. Node is used only here. Rejected: playwright-go and
   chromedp, which keep one language but are community projects and need
   axe injected by hand.
-- **Fakes**: a test-only fake Docker Engine that serves only the SPEC 14.3
-  endpoints and fails on anything else, and a fake RCON server. With
-  these, ordinary end-to-end tests need no game.
+- **Fakes**: a test-only fake Docker Engine (`internal/docker/dockertest`)
+  that serves only the SPEC 14.3 endpoints and fails on anything else, and
+  a fake RCON server (`internal/rcon/rcontest`) that answers like the real
+  game. On top of them, `internal/fakegame` is a fake game: a start replays
+  the real log lines kept in `internal/game/testdata`, serves RCON on the
+  container's own loopback address, and follows `unless-stopped`. With
+  these, ordinary tests and the end-to-end tests need no game. The fake
+  game is built by `make e2e` and is never in the image. It is not the real
+  Docker: its restart delay is capped at 3 seconds (Docker backs off to a
+  minute) and the `on-failure` restart policy is not modelled.
 - **Real game**: Go integration tests behind the `game` build tag run
-  against a real `factoriotools/factorio` container. They run on demand
-  and before every epic pull request that touches server control, world
-  switching, snapshots, mods or game versions (CLAUDE.md, "Testing
-  rules"), not on every task, because the image is large and each start
-  takes tens of seconds.
+  against a real `factoriotools/factorio` container (`make test-game`),
+  and a Playwright scenario runs against the real 2.1 image (`make
+  e2e-game`). They run on demand and before every epic pull request that
+  touches server control, world switching, snapshots, mods or game versions
+  (CLAUDE.md, "Testing rules"), not on every task, because the images are
+  large and each start takes tens of seconds.
 - **In CI**: parallel jobs that together are `make ci`, with `make
   verify` split into `vet`, `lint` and `test` so its slow parts do not
   wait on each other, since they grow with the code. Go modules and build output, the lint and npm
@@ -230,10 +260,10 @@ Rejected:
 | `make fmt` | Rewrite formatting. |
 | `make build` | The static binary, with frontend files embedded. |
 | `make image` | Build the container image with a local tag. |
-| `make run` | Run Foreman from source in managed mode against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It does not contact Docker. |
-| `make e2e` | Playwright and axe against the built binary, at desktop width and 320 px, in dark and light. The fixture runs Foreman in managed mode with `FOREMAN_HOST_DATA_DIR` set, so no Docker call is made. The fake Docker and fake RCON arrive in Epic 3. |
-| `make test-game TAG=x` | Integration tests against a real `factoriotools/factorio:<TAG>` container. |
-| `make e2e-game` | The vision's success scenarios against a real game, for milestone gates and epic pull requests. |
+| `make run` | Run Foreman from source in managed mode against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It contacts Docker at `DOCKER_HOST` (the default socket unless you set it) to show and control the game. If Docker cannot be reached the Server page shows "Unknown" with the reason and the other pages work. |
+| `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. The fixture runs Foreman in managed mode; a test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. |
+| `make test-game` | The game controller against the real Docker daemon and the three pinned game images (`GAME_IMAGE_*`), one after another, because they share the game port. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game. `TAG=1.1`, `2.0` or `2.1` runs one image. Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
+| `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
 | `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as parallel jobs. |
 | `make tidy` | `go mod tidy`. |

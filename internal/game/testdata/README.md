@@ -30,6 +30,18 @@ release; 2.0.77 the newest 2.0.x on Docker Hub.
 - `rcon.log`: raw RCON replies (item 9).
 - `run-summary.log`: container state, timings and RCON replies per step.
 - `mod-list.json`: what the game wrote into an empty `mods/`.
+- `2.1.24/join-leave.log` (that folder only): the game's output from
+  Foreman's own real-game check on 2026-11-03, with a real Factorio 2.1.24
+  client joining, leaving and rejoining, and a stop with a 30-second
+  countdown. It was started by Foreman, not by the spike, so it has no
+  Docker timestamps. The player lines are `YYYY-MM-DD HH:MM:SS [JOIN]
+  <name> joined the game` and `... [LEAVE] <name> left the game`, in
+  server local time (UTC in the container). The stop warnings appear as
+  `[CHAT] <server>: ...` lines. The RCON password is absent. Two things
+  were replaced because the repository is public: the client's LAN address
+  (now the documentation address 192.0.2.10) and the server padlock hash
+  (now 32 X characters). Everything else, including the public user name,
+  is as captured.
 
 ## 1. Command line
 
@@ -142,9 +154,14 @@ Info AppManagerStates.cpp:NNN: Saving finished
 With `non_blocking_saving` true the first line would say otherwise; the
 spike used false.
 
-Player join and leave: not observed. There was no game client, so no
-`[JOIN]` or `[LEAVE]` lines are in these transcripts. They must be
-captured with a real client before the parser relies on their exact form.
+Player join and leave: the spike had no game client, so the other
+transcripts hold no `[JOIN]` or `[LEAVE]` lines. They were captured later
+with a real 2.1.24 client and are in `2.1.24/join-leave.log`:
+
+```
+2026-11-04 03:53:41 [JOIN] toddawhittaker joined the game
+2026-11-04 03:54:01 [LEAVE] toddawhittaker left the game
+```
 
 Crash on a bad save (corrupt or truncated zip, or a file the game cannot
 read), all three:

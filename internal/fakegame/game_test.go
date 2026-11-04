@@ -218,7 +218,7 @@ func TestPlayers(t *testing.T) {
 	if err := r.game.Join("foreman-w1", "bob"); err != nil {
 		t.Fatal(err)
 	}
-	// The reply format is not yet seen on a real server.
+	// The populated reply form parsed on a real 2.1.24 server.
 	if got, want := r.exec(id, "/players online"), "Online players (2):\n  alice (online)\n  bob (online)\n"; got != want {
 		t.Errorf("reply = %q, want %q", got, want)
 	}
