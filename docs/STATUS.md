@@ -17,7 +17,8 @@ Serves SPEC 18.1. Everything below is built and tested.
   is distroless, runs as 845:845, and is about 7 MB compressed (limit
   30 MB, checked in CI). CI is GitHub Actions on `ubuntu-24.04`, in
   parallel jobs with caching and every action pinned by commit (STACK 1
-  and 9). `make run` starts Foreman locally in adopted mode.
+  and 9). `make run` starts Foreman locally with `go run ./cmd/foreman serve`,
+  using a `.dev-data` folder and your own user and group ids.
   The toolchain is pinned (STACK 1, ADR 0001), and `make verify` fails on
   a wrong local Go. A 70% coverage floor across `internal/` is enforced
   inside `make verify`; coverage is about 91%.
@@ -398,153 +399,111 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
 - `GET /events` stays on the SPEC 14.3 list but is not wrapped or used;
   Foreman polls (ADR 0003).
 
-## Epic 4: World switching and adopted mode
+## Epic 4: World switching
 
-Serves SPEC 18.4: switching worlds (7.9, 7.10) and adopted mode (4.7 to
-4.12), where Foreman drives a game container the operator already runs.
-Everything below is built and tested. Coverage across `internal/` is about
-89%. Why the adopted game folder is laid out as it is, and why the
-container rules are strict, is in ADR 0004.
+Serves SPEC 18.4: switching worlds (7.9, 7.10) and removing adopted mode.
+Adopted mode was built first, then dropped before release (ADR 0005), so
+Foreman now has one mode: it creates and owns the game container. Game
+versions are now exact patch tags (SPEC 4.2). Everything below is built and
+tested. Coverage across `internal/` is about 90%.
 
 ### Delivered
 
 - **Switching (SPEC 7.9).** A non-active world's page offers "Switch to
-  this world". Its confirmation (the danger box, with the stop countdown
-  when the game runs) says which world stops, that both worlds get a
-  "Before switch" snapshot, and whether the new world starts. Everything
-  that would refuse the new world's start (the pre-start check, a missing
-  image, the game network, the container checks) runs before the old
-  world is stopped. The steps are: graceful stop, snapshots of both
-  worlds, the pre-start check, make the new world active, then start and
-  confirm it runs, only if the old world was running. A switch leaves the
-  game running or stopped as it found it. The operation holds both worlds,
-  both pages show its step list, and a forced stop on either ends it.
-  After a failure the page offers "Switch back", a full switch with its
-  own confirmation, when the new world had become active, and otherwise
-  says nothing was switched. "Switch anyway" is offered when every
-  pre-start problem allows "Start anyway". The old world's open page
-  reloads onto the Server page once the switch ends, speaks how it ended,
-  and puts focus on the control heading. The audit action is `switch`.
-  Managed mode refuses Start and Restart of a world that is not active.
+  this world". Everything that would refuse the new world's start (the
+  pre-start check, a missing image, the game network, the container
+  checks) runs before the old world is stopped. The steps are: graceful
+  stop, "Before switch" snapshots of both worlds, the pre-start check,
+  make the new world active, then start it and confirm it runs, only if
+  the old world was running. A switch leaves the game running or stopped
+  as it found it. The operation holds both worlds, both pages show its
+  step list, and a forced stop on either ends it. After a failure the page
+  offers "Switch back", or says nothing was switched. The old world's open
+  page reloads onto the Server page when the switch ends and speaks how it
+  ended. Start and Restart of a world that is not active are refused. A
+  switch is audited as `switch` only after its checks pass; a refusal is
+  audited as `switch-refused`.
 - **Switch record and recovery (SPEC 7.10, 3.8).** The switch is recorded
   in the app database (table `world_switches`, migration 0004) before its
   first step, then each step as it completes, and the row is removed when
-  the switch ends. At startup an unfinished switch becomes a notice on the
-  world that is active afterwards ("A is still active and was not started
-  again", or "B is active; the switch did not confirm it running"), with
-  Start or Switch back offered. Recovery never starts or stops a game.
-  Recovery faults are logged and Foreman keeps serving pages.
-- **Adopted mode (SPEC 4.7 to 4.12).** Three settings:
+  it ends. At startup an unfinished switch becomes a notice on the active
+  world, with Start or Switch back offered. Recovery never starts or stops
+  a game, and its faults are logged while pages keep serving.
+- **The refusal box is the confirmation (SPEC 7.4, 7.9).** When a start,
+  restart or switch is refused and a choice exists, the Warning on the
+  Server page lists the problems and the steps: the "Before start anyway"
+  snapshot (for a switch, the "Before switch" snapshots of both worlds),
+  what the game drops, and how to undo. Its danger button posts the action
+  at once. There is no separate anyway page. Restart anyway and a switch
+  anyway of a running game use the default 60-second countdown, and the
+  box says so. A step the check refused reads "Refused": warning style
+  with a choice, error style without. After a crash loop or a plain
+  refusal, a note says why a start would not run and the primary button
+  becomes "Try to start again" (SPEC 8.9). The newest message leads; an
+  older one is marked "Earlier, at <time>".
+- **Pre-start check (SPEC 7.4).** Mods made for another Factorio than the
+  world's pinned version are refused before anything stops, using
+  `factorio_version` from each enabled mod's zip. Missing mod files and
+  mods that are present but turned off are two separate problems, with
+  plain one-line texts. A refused start, restart or switch is audited
+  (`start-refused`, `restart-refused`, `switch-refused`) with its reason.
+- **Crash reason (SPEC 8.7).** A game that stops while loading gives the
+  game's own reason, read from the run's log, trimmed and masked with the
+  world's secrets. The Server page shows that reason (or says it is
+  unknown) and links to the Console, not raw log lines.
+- **Managed only (ADR 0005).** The settings `FOREMAN_MODE`,
   `FOREMAN_GAME_CONTAINER`, `FOREMAN_GAME_DIR` and `FOREMAN_RCON_PASSWORD`
-  (or its `_FILE` form). Worlds live in the game folder; snapshots, the
-  import inbox and the database stay in the data directory, and startup
-  refuses one folder inside the other (links resolved first). The game
-  folder gets the same ownership check as the data directory. The Docker
-  client in adopted mode refuses create, remove and every image call, and
-  "Download game image" is never offered. The game folder is sorted into
-  fresh, unadopted, ready or broken; a broken folder names the path and
-  offers no controls. A switch renames a new `current` link into place,
-  and every change to the folder was crash-tested after every step. The
-  container is checked by inspect only, before anything stops, against the
-  full list in SPEC 4.11; each refusal names the setting, never its value.
-  When `FOREMAN_RCON_PASSWORD` is set it is written into the presented
-  world's `config/rconpw` before each start. The log is followed from the
-  current run's start, so one world's lines never show on another's page,
-  and any `--rcon-password` value in a line is masked. The Server page
-  shows the running version, a warning when the save was made by a
-  different version, and a warning when the RCON port is published or the
-  network mode is `host`. A 2.x world whose Space Age flag disagrees with
-  the container's `DLC_SPACE_AGE` is refused before anything stops.
-- **Adoption (SPEC 4.8).** An unadopted game folder offers "Adopt this
-  game folder". The form asks for name, game version and Space Age, with
-  defaults from the container, and the countdown when the game runs. The
-  adoption stops the game, builds the world in staging (save and mod zips
-  hard-linked, small files copied), takes a "Before adoption" snapshot,
-  moves the real `saves`, `mods` and `config` into
-  `pre-foreman-<UTC time>/` and links them to the new world, makes it
-  active, and starts the game again if it was running. Nothing is deleted.
-  The adoption is recorded in the database; only one runs at a time, a
-  double-submitted form starts one, and startup finishes a cut-over that
-  had begun or forgets one that had not. The audit action is `adopt`.
-- **Security hardening (SPEC 4.4, 12.5, 14).** The SPEC 4.4 network rules
-  apply to the network Foreman shares with an adopted game
-  (`FOREMAN_GAME_NETWORK` names it when there are several). They run on
-  every monitor tick. Two refusals in a row raise a warning on the Server
-  page; Start, Restart and Switch are refused while Stop and Force stop
-  keep working. Trusted-header sign-in ignores any direct peer inside a
-  game network's address range (IPv4, IPv6 and `fe80::/10`), in both modes,
-  and is refused, with a page that says why, while those ranges are not
-  yet known. Managed mode with Foreman in a container records the game
-  network's range before the first start. An adopted container that keeps NET_RAW, adds
-  capabilities, is privileged, maps devices, turns off AppArmor or
-  seccomp, shares a host namespace, or mounts the Docker socket, `/` or
-  `/var` is refused. Every file the game can write (`world.json`,
-  `mod-list.json`, saves, `rconpw`, `server-settings.json`) is read without
-  following a link, opened without blocking, checked to be a regular file
-  and size-capped. Snapshots and imports refuse a file or folder swapped
-  for a pipe, and every open of the worlds folder refuses a link swapped in
-  later. Startup warns about a change left part way only when there is
-  evidence of one. (The NET_RAW, `fe80::/10`, first-start range and
-  refusal-page items come from #80.) While a running adopted container
-  keeps NET_RAW, the monitor shows a Server-page warning from its first
-  look and refuses every trusted-header sign-in, with a refusal page that
-  names `cap_drop: [NET_RAW]`; both clear once the container is recreated
-  with NET_RAW dropped (#82).
-- **Test tools.** The fake game can seed an adopted container that follows
-  the game folder's links, prints the entrypoint's trace with the password,
-  and applies `DLC_SPACE_AGE`. The fake Docker fails a test that makes a
-  call adopted mode forbids.
+  are no longer read, and a leftover one changes nothing. The adopted
+  client, game folder, adoption, adopted checks and pages, the `gamedir`
+  package, and the `adoption` table are gone. The SPEC 4.4 network checks
+  and the trusted-header refusal for game ranges (12.5, 12.6) stay.
+- **Game versions by tag (SPEC 4.2, ADR 0005).** A world's version is an
+  exact patch release of the 1.1, 2.0 or 2.1 line, and its image is
+  `factoriotools/factorio:<version>`. The three game images pinned in the
+  Makefile are test images only.
+- **VPN sidecars (SPEC 4.13, ADR 0006).** The game can share the network
+  of an operator-run sidecar container. A start is refused when the
+  sidecar is missing, stopped, on the host network, or off the game
+  network. A sidecar's ranges count as game ranges for trusted-header
+  sign-in.
+- **Import (SPEC 5.5).** The version and Space Age flag are read from the
+  newest save and prefill the form; an empty version field means "use the
+  save's version". Names are suggested from the chosen folder or file
+  name and never overwrite typed text. A single importable folder is
+  picked for you. A folder with no save at its top level is listed as not
+  importable, with its radio disabled.
+- **Test tools.** The fake game and fake Docker no longer model an adopted
+  container.
 
 ### Verified
 
-- `make verify` is green: lint with 0 issues, race tests, coverage about
-  89% against the 70% floor.
+- Checks on 58507de: `make verify`, `make e2e`, `make test-game` (1.1.110,
+  2.0.77, 2.1.24). Results are to be confirmed by Todd.
 - Switch invariant tests (`internal/game/switch_invariants_test.go`): a
   crash before and after every record write, a cancel at every point,
-  eleven injected failures, twelve kinds of refusal, a random walk over
-  three worlds, and recovery against five container layouts. Each ends
-  with one active world, no save lost or changed, and a way back that
-  works. `internal/gamedir` stops every folder change after each step and
-  checks that one whole world is always presented.
-- `make e2e`: 360 tests pass in four projects (desktop and 320 px, dark and
-  light), including switch, switch back, adoption and refusals, with axe.
-- `make e2e-game`: the phone scenario at 320 px switches A to B and back
-  to A against the real 2.1 image in managed mode, with every save kept.
-- `make test-game` runs adopted mode against the real 1.1.110, 2.0.77 and
-  2.1.24 images with the image's own entrypoint: adoption with the
-  originals kept byte for byte, import, switch and back with save
-  manifests compared, the Space Age refusal, and no password in anything
-  Foreman relays.
-- Code, security, accessibility and design reviews ran over the epic
-  head, and five fix rounds closed their findings.
-- **Real-game check.** On 2026-11-04: adopted mode, the 2.1.24 image, and
-  Foreman's own image in a container. The game had `cap_drop: [NET_RAW]`
-  and no published ports; sign-in was local and no game client joined.
-  All six checks passed:
-  1. Startup.
-  2. Adoption of the running game: the originals were kept byte for byte
-     in `pre-foreman-*`, the links were right, and the game reached InGame
-     on the adopted world.
-  3. Import, then switch A to C and back to A, with save manifests compared
-     and "Before switch" snapshots for both worlds.
-  4. A Space Age mismatch was refused before anything stopped.
-  5. The RCON password appeared 0 times in Foreman's log, 66 saved pages
-     and the database. It was only in the game's own `docker logs`, and the
-     Console masked it. Foreman, restarted between switches, re-attached
-     without touching the game.
-  6. A stranger container on the game network raised the warning within
-     about 9 seconds, Stop still worked, and the warning cleared after the
-     stranger was removed.
+  injected failures, many kinds of refusal, a random walk over three
+  worlds, and recovery. Each ends with one active world, no save lost or
+  changed, and a way back that works.
+- `make e2e` covers switch, switch back, the refusal box in each state,
+  import and the axe scan, at desktop and 320 px, in dark and light.
+- `make e2e-game`: the phone scenario switches A to B and back to A
+  against the real 2.1 image with every save kept.
+- Code, security, accessibility and design reviews ran over the epic, and
+  fix rounds closed their findings.
 
 ### Gaps left
 
 - No game client joined in Epic 4's checks, so the in-game stop warning on
   a switch and live updates through a real proxy are untested. Todd joins
   at Gate A.
-- Start and Switch buttons still show while a network warning refuses
-  them; the refusal comes when the form is submitted.
-- A refused switch is audited as `switch` with no word that it was
-  refused.
+- Restart runs the pre-start check twice.
+- Pass-1 fix 10 (the dropped report of a superseded failed switch, and the
+  "Earlier" marking) is covered by unit tests only, with no end-to-end
+  test.
+- The start-anyway fingerprint leaves out the save name. This is an
+  accepted trade-off.
+- Restart anyway and a switch anyway use the default countdown, with no
+  field to change it.
 - "Last played" shows the import time for a world that was never played.
 - `mods/mod-list.json` differs in every snapshot, because the game and the
   image's entrypoint rewrite it at each start.
@@ -552,40 +511,13 @@ container rules are strict, is in ADR 0004.
   the world, after the switch snapshot was taken.
 - The server keeps no limit on a world name's length; only the form's
   `maxlength` (100) does.
-- The Server page with no active world still asks the controller for
-  `Status("")`, for the RCON-port warning.
-- The version warning opens a save each time the Server page renders.
-- A forced stop cannot kill the container while the folder is unadopted or
-  an adoption runs.
 - A running switch is silent to screen readers until it ends (DESIGN 7.6).
-  When it is still running at the old page's reload, only "X is now the
-  active world." is spoken then.
-- A network change while the game runs is caught at the next monitor tick,
-  not prevented.
-- An adopted game on the host network gets the warning but no RCON
-  address, and the header range guard does not cover it.
-- In managed mode with Foreman outside a container, a new game's range is
-  recorded only right after its container starts, so for that moment the
-  header range guard does not cover it.
-- In a container the game folder and the data directory are separate
-  mounts, so hard links between them fail and adopted-mode snapshots are
-  full copies. The snapshot page's note blames a different filesystem,
-  which is not the whole reason.
-- A world built by an adoption that stopped part way is not compared with
-  saves the game made afterwards, if someone ran the game in between.
-- An empty `pre-foreman-*` folder can be left if a cut-over stops right
-  after making it.
-- The RCON warning also shows for a port published on loopback only.
-- The game folder check reuses the data directory probe, so some of its
-  messages say "data directory" after naming the game folder.
-- The no-world Server page does not update live; reload it after fixing a
-  broken folder.
-- `fs.ReadDir` over a folder the game can write still uses a plain open.
-- The adopted crash and restart paths are not run against the real image,
-  and the fake game does not model `chown`, `LOAD_LATEST_SAVE=false`,
+- With Foreman outside a container, a new game's range is recorded only
+  right after its container starts, so for that moment the header range
+  guard does not cover it.
+- The fake game does not model `chown`, `LOAD_LATEST_SAVE=false`,
   `GENERATE_NEW_SAVE` or `UPDATE_MODS_ON_START`.
 - The header refusal for a peer in a game range has Go tests but no
   end-to-end test, because a browser cannot connect from a game address.
-- `TestUploadsHoldTheSpaceReserve` and the first `make test-game` adopted
-  run each failed once under load and passed on rerun; neither failure's
-  output was kept.
+- The mod-version check and the crash-reason reader are not checked
+  against a real container's log.
