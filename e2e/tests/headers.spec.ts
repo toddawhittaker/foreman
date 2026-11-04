@@ -3,8 +3,11 @@ import { test, expect, checkPage } from "./foreman.js";
 // SPEC 12.5: a trusted proxy's identity header signs the user in. The
 // browser connects from 127.0.0.1, which is the trusted range here; the
 // untrusted case cannot be produced from a browser and is covered in Go
-// (internal/web/security_test.go).
+// (internal/web/security_test.go). Header sign-in waits until Foreman knows
+// the game network's range (SPEC 12.6), so the fake Docker host is on; the
+// browser is outside that range.
 test.use({
+  fakeGameOn: true,
   foremanEnv: {
     FOREMAN_AUTH_METHODS: "headers",
     FOREMAN_AUTH_USER_HEADER: "X-Test-User",

@@ -206,6 +206,12 @@ type Controller struct {
 	dockerErr error // the last listing failed
 	aview     adoptedView
 	adopting  bool // a first adoption runs now; one at a time (SPEC 4.8)
+	// adoptionWaits: startup left a begun cut-over because the game ran.
+	adoptionWaits bool
+	// subnets are the game networks' address ranges at the last good read;
+	// subnetsKnown says there has been one (SPEC 12.6).
+	subnets      []netip.Prefix
+	subnetsKnown bool
 }
 
 // New checks cfg and returns a Controller. It contacts nothing; Run starts

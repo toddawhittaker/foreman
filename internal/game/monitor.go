@@ -90,8 +90,11 @@ func (c *Controller) tick(ctx context.Context) {
 			c.world(id)
 		}
 	}
+	allSeen := true
 	for _, w := range c.allRuns() {
 		if c.busy(w) {
+			_, exists := found[w.id]
+			allSeen = allSeen && !exists
 			continue
 		}
 		cid, ok := found[w.id]
@@ -100,8 +103,14 @@ func (c *Controller) tick(ctx context.Context) {
 			continue
 		}
 		cont, err := c.docker.InspectContainer(ctx, cid)
+		if err == nil {
+			c.noteGameSubnets(cont)
+		} else {
+			allSeen = false
+		}
 		c.observeInspect(ctx, w, cont, err)
 	}
+	c.refreshManagedSubnets(ctx, allSeen)
 }
 
 // observeInspect takes in one inspect of the world's container.

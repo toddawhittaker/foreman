@@ -63,26 +63,28 @@ func TestClientAddr(t *testing.T) {
 	}
 }
 
-func TestPeerIs(t *testing.T) {
-	addrs := []netip.Addr{netip.MustParseAddr("10.0.0.9")}
+func TestPeerIn(t *testing.T) {
+	prefixes := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/24"), netip.MustParsePrefix("fd00:1::/64")}
 	cases := []struct {
 		name   string
 		remote string
 		hdr    http.Header
-		want   bool
+		want   string
 	}{
-		{"the address", "10.0.0.9:4000", nil, true},
-		{"mapped", "[::ffff:10.0.0.9]:4000", nil, true},
-		{"another address", "10.0.0.8:4000", nil, false},
-		{"forwarded for the address", "10.0.0.8:4000", http.Header{"X-Forwarded-For": {"10.0.0.9"}}, false},
-		{"unparsable", "nonsense", nil, false},
+		{"inside", "10.0.0.77:4000", nil, "10.0.0.0/24"},
+		{"mapped", "[::ffff:10.0.0.9]:4000", nil, "10.0.0.0/24"},
+		{"IPv6", "[fd00:1::5]:4000", nil, "fd00:1::/64"},
+		{"outside", "10.0.1.8:4000", nil, ""},
+		{"forwarded from inside", "10.0.1.8:4000", http.Header{"X-Forwarded-For": {"10.0.0.9"}}, ""},
+		{"unparsable", "nonsense", nil, ""},
 	}
 	for _, c := range cases {
-		if got := PeerIs(reqFrom(c.remote, c.hdr), addrs); got != c.want {
-			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		p, ok := PeerIn(reqFrom(c.remote, c.hdr), prefixes)
+		if got := map[bool]string{true: p.String(), false: ""}[ok]; got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
 	}
-	if PeerIs(reqFrom("10.0.0.9:4000", nil), nil) {
-		t.Error("no addresses matched")
+	if _, ok := PeerIn(reqFrom("10.0.0.9:4000", nil), nil); ok {
+		t.Error("no prefixes matched")
 	}
 }

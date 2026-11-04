@@ -31,11 +31,11 @@ type Deps struct {
 	// Game runs the game servers; nil means this mode has no server
 	// control, and "/" shows the world list.
 	Game *game.Controller
-	// GameAddrs names the adopted game container's addresses, which may not
+	// GameNets gives the game networks, whose addresses may not
 	// sign in by trusted headers (SPEC 12.6). Game answers when it is nil.
-	GameAddrs GameAddresser
-	Log       *slog.Logger
-	Now       func() time.Time // time.Now when nil
+	GameNets GameSubnetter
+	Log      *slog.Logger
+	Now      func() time.Time // time.Now when nil
 }
 
 type server struct {
@@ -52,11 +52,11 @@ type server struct {
 	sessions *auth.SessionManager
 	limiter  *auth.Limiter
 	headers  auth.HeaderConfig
-	// gameAddrs and gameSeen: the addresses to refuse headers from, and the
+	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
-	gameAddrs GameAddresser
-	gameSeen  sync.Map
-	mux       *http.ServeMux
+	gameNets GameSubnetter
+	gameSeen sync.Map
+	mux      *http.ServeMux
 	// uploadLimits holds the body limit of each upload route, by pattern.
 	uploadLimits map[string]int64
 	// uploadSlots holds one entry per upload in progress (see guardUpload).
@@ -86,19 +86,19 @@ func NewHandler(d Deps) (*Handler, error) {
 		now = time.Now
 	}
 	s := &server{
-		cfg:       d.Config,
-		store:     d.Store,
-		worlds:    d.Worlds,
-		game:      d.Game,
-		runs:      newGameRuns(),
-		adoption:  &adoptionRecord{},
-		gameAddrs: d.GameAddrs,
-		console:   newConsoleHistory(),
-		log:       d.Log,
-		now:       now,
-		render:    renderer,
-		sessions:  auth.NewSessionManager(d.Store, d.Config.SessionIdle, d.Config.SecureCookies(), now),
-		limiter:   auth.NewLimiter(now),
+		cfg:      d.Config,
+		store:    d.Store,
+		worlds:   d.Worlds,
+		game:     d.Game,
+		runs:     newGameRuns(),
+		adoption: &adoptionRecord{},
+		gameNets: d.GameNets,
+		console:  newConsoleHistory(),
+		log:      d.Log,
+		now:      now,
+		render:   renderer,
+		sessions: auth.NewSessionManager(d.Store, d.Config.SessionIdle, d.Config.SecureCookies(), now),
+		limiter:  auth.NewLimiter(now),
 		headers: auth.HeaderConfig{
 			UserHeader:    d.Config.UserHeader,
 			GroupsHeader:  d.Config.GroupsHeader,
@@ -109,8 +109,8 @@ func NewHandler(d Deps) (*Handler, error) {
 		uploadLimits: map[string]int64{},
 		uploadSlots:  make(chan struct{}, maxUploads),
 	}
-	if s.gameAddrs == nil && d.Game != nil {
-		s.gameAddrs = d.Game
+	if s.gameNets == nil && d.Game != nil {
+		s.gameNets = d.Game
 	}
 	s.routes()
 
