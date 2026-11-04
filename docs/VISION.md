@@ -59,16 +59,10 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
 - **Active world**: the one world currently running. **Exactly one at a time in v1.**
   The data model doesn't assume one, so running several worlds at once, each on its own
   port, can come later without a migration.
-- **Runtime mode**, chosen at install:
-  - **Managed** (the default for the public product): Foreman creates, configures and
-    owns the game container (a `factoriotools/factorio` image at the world's pinned
-    version), with its own ports and restart policy.
-  - **Adopted**: Foreman controls an existing container that someone else defined, for
-    example in a compose file, by name. It starts, stops and restarts it, and switches
-    worlds by changing what the container's bind mount presents, **without anyone
-    editing the compose file per switch**. In this mode the game version belongs to
-    whoever owns the container definition. Foreman shows the version, warns on a
-    save/version mismatch, and doesn't try to change it.
+- **The game container**: Foreman creates, configures and owns it (a
+  `factoriotools/factorio` image at the world's exact game version), with its own ports
+  and restart policy. There is one runtime mode. An earlier "adopted" mode, which drove
+  a container someone else defined, was dropped (docs/adr/0005).
 - **Snapshot**: a point-in-time copy of a world (saves, mods, config), taken
   automatically before risky operations or by hand, and restorable in one click.
 
@@ -100,7 +94,7 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
     seed, with Space Age on or off.
   - **Clone**: copy an existing world's mods and settings, then start a fresh map or
     keep the save.
-  - **Import**: adopt an existing directory of saves and mods (the `saves-2025`
+  - **Import**: bring in an existing directory of saves and mods (the `saves-2025`
     style), or upload a save zip and sync its mods from the portal.
 - Rename, archive and delete. Delete always offers a final snapshot first.
 - Saves: list the slots with timestamps and sizes, download any save, upload a save,
@@ -125,7 +119,7 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
   they can be entered in the UI and stored encrypted with a key supplied by env. They
   are never shown back in the UI.
 
-### Game versions (per world, managed mode)
+### Game versions (per world)
 - Each world shows its pinned version, and a notice when a newer stable or
   experimental release exists, with its changelog.
 - Updating takes a snapshot, pulls the exact image, restarts and verifies. Rollback
@@ -167,17 +161,15 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
 
 ## Constraints the spec must respect
 
-- **Host paths.** In managed mode Foreman creates containers with bind mounts, which
+- **Host paths.** Foreman creates containers with bind mounts, which
   the Docker daemon resolves on the *host*. Foreman must know the host path of its
   worlds directory (configured, or discovered from its own mounts) and refuse to start
   if it can't resolve it. This is the classic Docker-in-Docker path trap.
 - **File ownership.** `factoriotools/factorio` runs as PUID/PGID 845 by default. Worlds
   that Foreman writes must stay readable and writable by the game's uid/gid, and both
   are configurable. Foreman itself runs as non-root.
-- **RCON** is how Foreman talks to the game: save, chat, players, commands. In managed
-  mode Foreman owns the RCON password. In adopted mode it reads the password from the
-  world's `config/rconpw`, or takes it from config. RCON is never published beyond
-  Foreman's network.
+- **RCON** is how Foreman talks to the game: save, chat, players, commands. Foreman
+  owns the RCON password. RCON is never published beyond Foreman's network.
 - **Docker API surface.** Document the minimum set of endpoints (containers, images
   pull, logs, stats) so that a socket proxy (e.g. Tecnativa or LinuxServer
   socket-proxy) can be locked down to exactly those.
@@ -197,14 +189,15 @@ Apache-2.0, decided at the spec). The first deployment is a homelab, but nothing
 
 ## Reference deployment
 
-The first real deployment uses **adopted mode**: the game stays a compose stack whose
-image is pinned and updated by Renovate, and Foreman runs as its own stack behind a
-forward-auth proxy (Caddy + Authentik), signing users in by **trusted headers** with a
-required group. Existing hand-renamed save and mod folders are imported as worlds.
+The first real deployment runs Foreman as its own compose stack behind a forward-auth
+proxy (Caddy + Authentik), signing users in by **trusted headers** with a required
+group. Foreman creates the game container itself. Existing hand-renamed save and mod
+folders are imported as worlds, each on its own game version.
 
 ## Open questions for the spec
 
-1. *(Answered in SPEC 4.3 and 4.8.)* **How world switching works in adopted mode**: symlinks inside the bound directory
+1. *(Answered in SPEC 4.3; adopted mode itself was later dropped, ADR 0005.)* **How
+   world switching works in adopted mode**: symlinks inside the bound directory
    (relative, so they resolve in the container), moving directories, or the factoriotools
    `SAVES`/`MODS`/`CONFIG` env paths. The answer must not require editing the compose
    file, and it must survive a reboot mid-switch.

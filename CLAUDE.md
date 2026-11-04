@@ -114,13 +114,13 @@ Orchestration rules:
 
 ## Project rules that override convenience
 
-- Pin exact versions of dependencies and images, and commit the lockfile.
-  Nothing downloads at startup.
+- Pin exact versions of dependencies and Foreman's own images, and commit
+  the lockfile. Game images are referenced by exact Factorio version tag
+  (ADR 0005). Nothing downloads at startup.
 - Never write a world's files without the snapshot the spec requires.
 - Never log, display or return a secret: the RCON password, portal token,
   OIDC secret or game password.
 - Nothing in the product may be specific to the reference deployment in
-  the vision (adopted mode behind Caddy and Authentik). Managed mode is the
-  public default.
+  the vision (Caddy and Authentik in front of Foreman).
 - Don't design or build the vision's non-goals. Several worlds running at
   once is the one the data model must leave room for, unbuilt.

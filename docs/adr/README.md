@@ -33,4 +33,6 @@ record has four parts:
 | [0001](0001-toolchain.md) | Go runs locally and is pinned in the Makefile; the linter and Playwright run in pinned images. |
 | [0002](0002-world-and-snapshot-formats.md) | World and snapshot formats on disk: ids, `world.json`, `snapshot.json` with hashes, restore by swap, hardlinks kept. |
 | [0003](0003-game-container.md) | The game container: binary run directly, labelled name, fresh per start, polling, load-latest, game network rules. |
-| [0004](0004-adopted-game-folder.md) | Adopted mode: a link layout switched by one rename, originals kept, records in the database, strict container rules, a network warning, header refusal by range. |
+| [0004](0004-adopted-game-folder.md) | Superseded by 0005. Adopted mode: a link layout switched by one rename, originals kept, records in the database, strict container rules, a network warning, header refusal by range. |
+| [0005](0005-managed-only-versions-by-tag.md) | Managed mode only; a world runs any patch release of a supported line, by version tag. |
+| [0006](0006-vpn-sidecar-network.md) | Optionally, the game shares a VPN sidecar's network, with RCON bound to the game-network address. |

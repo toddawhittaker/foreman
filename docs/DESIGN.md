@@ -722,9 +722,8 @@ Rules:
 Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
-delete), switching worlds (7.9) and adopting a game folder (4.8), and in
-later epics destructive player actions (8.2). The switch and adoption
-boxes carry the stop countdown fields only when the game is running. A graceful stop or restart does not need a danger
+delete), switching worlds (7.9), and in later epics destructive player
+actions (8.2). The switch box carries the stop countdown fields only when the game is running. A graceful stop or restart does not need a danger
 confirmation, because nothing is lost. Its button opens a short form at its
 own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
 countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
@@ -832,7 +831,7 @@ A failed step's message goes inside that `li` as
 (`flex: 1 1 100%`, no `max-inline-size`) at any width. The words carry the state, so forced
 colours needs no rule.
 
-When an operation changes the active world (a switch or an adoption), the
+When an operation changes the active world (a switch), the
 old world's open page reloads onto the Server page after the operation
 ends, moves focus to the control heading, and writes the result sentence
 to `#announcer`.
@@ -1014,7 +1013,7 @@ screen does, in this document first.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
   SPEC 7.2.
 - Pagination. See 8.4.
-- Mod search results, dependency plans and the mod list (Epic 5).
+- Mod search results, dependency plans and the mod list (Epic 6).
 - The world-switch progress screen beyond the step list in 7.6 (Epic 4).
 - Chat (Epic 8).
 - A print stylesheet.

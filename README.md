@@ -12,72 +12,56 @@ a save is never lost.
 
 Early development; no image is published yet, so you build it yourself
 (`make image`). Built so far: sign-in, worlds and snapshots, server
-control, switching worlds, and adopted mode. Mods, generating worlds and
-game versions come in later epics. See [docs/STATUS.md](docs/STATUS.md)
+control and switching worlds. Game versions, mods and generating worlds
+come in later epics. See [docs/STATUS.md](docs/STATUS.md)
 for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
 
-## Running Foreman beside a game you already run (adopted mode)
+## Running Foreman
 
-In adopted mode Foreman drives a `factoriotools/factorio` container you
-already have, and switches worlds by changing what that container's
-`/factorio` folder presents (SPEC 4.7 to 4.12, ADR 0004). This section is
-enough to try it; the full operator guide comes later.
+Foreman creates and owns the game container itself (SPEC section 4, ADR
+0003, ADR 0005). You run Foreman and a Docker socket proxy; you do not
+define a game service. Each world runs the `factoriotools/factorio` image
+for its own exact game version. This section is enough to try it; the full
+operator guide comes later.
 
 ### What Foreman needs
 
-- **The game folder mounted into both containers.** The game sees it at
-  `/factorio`; Foreman sees the same host folder at `FOREMAN_GAME_DIR`.
-  Foreman's data directory is a separate folder, never inside the game
-  folder or holding it.
-- **The same user and group.** Set the game's `PUID` and `PGID` to
-  `FOREMAN_GAME_UID` and `FOREMAN_GAME_GID` (845 by default, which is also
-  the user Foreman's image runs as). The image changes the owner of the
-  whole game folder to `PUID:PGID` at each start.
-- **`cap_drop: [NET_RAW]` on the game.** Without it a game could claim
-  another address on its network, and Foreman refuses the container.
-- **A game network holding only Foreman and the game.** Foreman reaches
-  RCON there, so do not publish the RCON port. Foreman checks this network
-  all the time and shows a warning if anything else joins it.
+- **A data directory** mounted into Foreman (`FOREMAN_DATA_DIR`, `/data` by
+  default), owned by 845:845. It holds the worlds, the snapshots and the
+  app database. Foreman creates the game with a bind mount of one world's
+  folder, so it must know the folder's path on the host: it reads it from
+  its own mounts, or you set `FOREMAN_HOST_DATA_DIR` (SPEC 3.5).
+- **The same user and group as the game.** `FOREMAN_GAME_UID` and
+  `FOREMAN_GAME_GID` default to 845, which is also the user Foreman's image
+  runs as (SPEC 3.6).
+- **A game network holding only Foreman and its game**, named by
+  `FOREMAN_GAME_NETWORK`. Foreman puts the game on it and reaches RCON
+  there; RCON is never published. Foreman refuses to create a game when
+  anything else is on that network (SPEC 4.4).
 - **The Docker API through a socket proxy** on a network of its own that
   the game is not on, rather than mounting `/var/run/docker.sock` into
-  Foreman. Docker access is root on the host (SPEC 14.2).
+  Foreman. Docker access is root on the host (SPEC 14.2). Foreman calls
+  only the endpoints in SPEC 14.3: ping and version; list, inspect, create,
+  start, stop, kill and remove containers, and read their logs and stats;
+  inspect an image and pull an exact tag. With the Tecnativa proxy that
+  means `CONTAINERS=1`, `IMAGES=1` and `POST=1`; turn `EVENTS` off.
 - **The reverse proxy on another network**, never on the game network.
-- Leave the game's `SAVES`, `MODS`, `CONFIG`, `LOAD_LATEST_SAVE`,
-  `GENERATE_NEW_SAVE` and `UPDATE_MODS_ON_START` at the image's defaults.
-  Foreman refuses a container that changes them, a privileged one, and one
-  that mounts the Docker socket, and the Server page names the setting to
-  fix. SPEC 4.11 has the full list.
+- **The game image on the host.** Foreman never downloads at startup. When
+  a world's image is missing, the Server page offers **Download game
+  image**, which pulls that exact tag (SPEC 3.7).
 
 ### Example compose file
 
 Build Foreman first with `make image` (it is tagged `foreman:dev`), and make
-`./game` and `./data` owned by 845:845.
+`./data` owned by 845:845.
 
 ```yaml
 services:
-  game:
-    image: factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28
-    container_name: factorio
-    restart: unless-stopped
-    environment:
-      PUID: "845"            # = FOREMAN_GAME_UID
-      PGID: "845"            # = FOREMAN_GAME_GID
-      DLC_SPACE_AGE: "false" # must match each world's Space Age flag
-    volumes:
-      - ./game:/factorio
-    ports:
-      - "34197:34197/udp"    # the game port only; never RCON
-    cap_drop: [NET_RAW]
-    networks: [game]
-
   foreman:
     image: foreman:dev
     restart: unless-stopped
     environment:
-      FOREMAN_MODE: adopted
-      FOREMAN_GAME_CONTAINER: factorio
-      FOREMAN_GAME_DIR: /game
       FOREMAN_DATA_DIR: /data
       FOREMAN_GAME_NETWORK: foreman-game
       DOCKER_HOST: tcp://socket-proxy:2375
@@ -88,7 +72,6 @@ services:
       FOREMAN_AUTH_REQUIRED_GROUP: factorio-admins
       FOREMAN_TRUSTED_PROXIES: 172.30.0.10/32   # the proxy's fixed address below
     volumes:
-      - ./game:/game
       - ./data:/data
     networks: [game, docker, front]
 
@@ -97,6 +80,7 @@ services:
     restart: unless-stopped
     environment:
       CONTAINERS: "1"
+      IMAGES: "1"
       POST: "1"
       EVENTS: "0"
     volumes:
@@ -119,6 +103,9 @@ networks:
         - subnet: 172.30.0.0/24
 ```
 
+Foreman creates the game container itself, named `foreman-<world-id>`, on
+`foreman-game`, and publishes the game port (UDP 34197) on the host.
+
 Notes on the example:
 
 - The header names and group are examples; use what your forward-auth
@@ -126,13 +113,9 @@ Notes on the example:
   header settings and `FOREMAN_TRUSTED_PROXIES`.
 - Do not set `hostname:` on Foreman; it finds its own container by the
   default hostname.
-- The socket proxy has no way to allow start and stop without also
-  allowing container create, so it narrows the Docker API (no images,
-  networks, volumes or exec) but is not a full boundary. Never publish its
-  port.
-- One adopted container serves either Space Age worlds or worlds without
-  it, set by `DLC_SPACE_AGE`. Foreman refuses to start a world that
-  disagrees.
+- The socket proxy cannot inspect a container-create request, so it
+  narrows the Docker API (no networks, volumes or exec) but is not a full
+  boundary. Never publish its port.
 
 ### Reaching Foreman through the proxy
 
@@ -149,30 +132,51 @@ from a game network's address range (SPEC 12.5, 12.6).
   (for example `172.30.0.1/32`), never a whole bridge range. That network
   must not be one the game is on.
 
-### Adopting, importing and switching
+### Importing and switching
 
 1. Start the stack and open Foreman. With local sign-in on, the first visit
    creates the admin.
-2. If the game folder still has real `saves`, `mods` and `config` folders,
-   the Server page offers **Adopt this game folder**. Give the world a name,
-   check the game version and Space Age flag, and confirm. Foreman stops
-   the game, takes a "Before adoption" snapshot, moves the originals into
-   `pre-foreman-<UTC time>/` inside the game folder (nothing is deleted),
-   links the folder to the new world, and starts the game again if it was
-   running. An empty game folder needs no adoption: import a world, then
-   Start.
-3. To import other folders, such as hand-renamed `saves-2025` folders, copy
-   each into `<data>/import/<name>/` (here `./data/import/<name>/`), with
-   the save zip at the top level and the mods in `mods/`
+2. To import a folder, such as a hand-renamed `saves-2025` folder, copy it
+   into `<data>/import/<name>/` (here `./data/import/<name>/`), with the
+   save zip at the top level and the mods in `mods/`
    (`./data/import/family-2025/family.zip`,
    `./data/import/family-2025/mods/...`). Then choose **Import a world** on
-   the Worlds page, pick the folder, and choose **Import folder**. Import
-   copies; the source is never changed (SPEC 5.5).
+   the Worlds page, pick the folder, give the exact game version the save
+   was made with (such as `2.0.77`) and the Space Age flag, and choose
+   **Import folder**. Import copies; the source is never changed (SPEC
+   5.5).
+3. Choose **Start** on the Server page to run the active world, or switch
+   to another world (step 4). If a world's game image is not on the host
+   yet, the Server page offers **Download game image** first.
 4. To switch, open a world that is not active and choose **Switch to this
    world**. The confirmation says which world stops and that both get a
-   "Before switch" snapshot. The game is stopped gracefully, the folder is
-   switched in one step, and the game starts again on the new world if it
-   was running. To go back, switch to the first world the same way.
+   "Before switch" snapshot. The game is stopped gracefully and started
+   again on the new world, with that world's game version, if it was
+   running. To go back, switch to the first world the same way.
+
+### Optionally, a VPN sidecar (coming in Epic 5)
+
+Nothing above needs a VPN. Optionally, if you want players to join through
+Tailscale, Netbird or another VPN that runs as a sidecar container, you
+will be able to name that container in `FOREMAN_GAME_NETWORK_CONTAINER`.
+The game then runs inside the sidecar's network, and RCON stays reachable
+only from the game network (SPEC 4.13, ADR 0006). VPN players join through
+the VPN. LAN players can join at the same time through the game port, but
+Docker lets only the sidecar publish it, so you add the port to the
+sidecar's own definition, and the sidecar joins the game network:
+
+```yaml
+  vpn:
+    # your VPN sidecar's image and settings
+    ports:
+      - "34197:34197/udp"   # LAN players; Foreman cannot publish this for you
+    networks: [game]
+```
+
+Without that port line the game is VPN-only, and the Server page warns
+that LAN players cannot reach it. If you restart or recreate the sidecar
+while the game runs, restart the game from Foreman afterwards, because the
+game may lose its network until then.
 
 ## Documentation
 
