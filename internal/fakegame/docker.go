@@ -73,10 +73,15 @@ func (g *Game) afterCall(action, id string, code int, body []byte) []byte {
 	case "stop":
 		if code < 300 {
 			g.endInstance(id)
+		} else if code >= 400 {
+			// Docker refused the stop, so its restart policy still applies.
+			g.setManual(id, false)
 		}
 	case "kill":
 		if code == http.StatusNoContent {
 			g.endInstance(id)
+		} else if code >= 400 {
+			g.setManual(id, false)
 		}
 	case "remove":
 		if code == http.StatusNoContent {
@@ -135,7 +140,8 @@ func (in *instance) shutdownLog() {
 }
 
 // rewriteInspect replaces the address Docker's fake reports with the
-// loopback address the container's RCON listens on.
+// loopback address the container's RCON listens on. A container the fake
+// never ran a game in, such as one a test seeded, keeps its own address.
 func (g *Game) rewriteInspect(body []byte) []byte {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
@@ -144,6 +150,12 @@ func (g *Game) rewriteInspect(body []byte) []byte {
 		return body
 	}
 	id, _ := doc["Id"].(string)
+	g.mu.Lock()
+	_, ran := g.addrs[id]
+	g.mu.Unlock()
+	if !ran {
+		return body
+	}
 	settings, _ := doc["NetworkSettings"].(map[string]any)
 	nets, _ := settings["Networks"].(map[string]any)
 	for _, n := range nets {

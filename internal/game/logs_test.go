@@ -35,8 +35,8 @@ func kinds(lines []string) []Kind {
 }
 
 func TestParseLineSigtermTranscripts(t *testing.T) {
-	// Start, RCON up, /server-save, one autosave, then SIGTERM.
-	want := []Kind{KindLoadStarted, KindInGame, KindRCONReady, KindSaveFinished, KindSaveFinished}
+	// Start, /server-save, one autosave, then SIGTERM.
+	want := []Kind{KindLoadStarted, KindInGame, KindSaveFinished, KindSaveFinished}
 	for _, v := range versions {
 		t.Run(v, func(t *testing.T) {
 			got := kinds(transcript(t, v, "run-sigterm.log"))
@@ -68,7 +68,7 @@ func TestParseLineFailedLoadTranscripts(t *testing.T) {
 						if !strings.HasPrefix(ev.Detail, c.reason) {
 							t.Errorf("detail = %q, want prefix %q", ev.Detail, c.reason)
 						}
-					case KindInGame, KindRCONReady:
+					case KindInGame:
 						inGame++
 					}
 				}
@@ -76,7 +76,7 @@ func TestParseLineFailedLoadTranscripts(t *testing.T) {
 					t.Errorf("failed loads = %d, load errors = %d; want equal and non-zero", failed, errs)
 				}
 				if inGame != 0 {
-					t.Errorf("a failed load reported InGame or RCON ready %d times", inGame)
+					t.Errorf("a failed load reported InGame %d times", inGame)
 				}
 			})
 		}
@@ -106,7 +106,7 @@ func TestParseLineRealLines(t *testing.T) {
 		{"1.1 load", "2026-11-03T22:26:05.129049581Z    0.394 Loading map /factorio/saves/spike.zip: 729344 bytes.", Event{Kind: KindLoadStarted, Time: time.Date(2026, 11, 3, 22, 26, 5, 129049581, time.UTC)}},
 		{"1.1 in game", "   0.431 Info ServerMultiplayerManager.cpp:814: updateTick(0) changing state from(CreatingGame) to(InGame)", Event{Kind: KindInGame}},
 		{"in game, save tick not zero", "   9.000 Info ServerMultiplayerManager.cpp:808: updateTick(3814) changing state from(CreatingGame) to(InGame)", Event{Kind: KindInGame}},
-		{"2.1 rcon", "2026-11-03T22:26:40.787585323Z    1.112 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})", Event{Kind: KindRCONReady, Time: docker}},
+		{"2.1 rcon", "2026-11-03T22:26:40.787585323Z    1.112 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})", Event{Time: docker}},
 		{"server-save", "   3.279 Info AppManagerStates.cpp:2131: Saving finished", Event{Kind: KindSaveFinished}},
 		{"hosting line is not in game", "   1.112 Hosting game at IP ADDR:({0.0.0.0:34197})", Event{}},
 		{"save start is not finished", "   3.229 Info AppManager.cpp:424: Saving game as /factorio/saves/spike.zip", Event{}},

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ func nextLine(t *testing.T, s *docker.LogStream) docker.LogLine {
 	return l
 }
 
-func TestLogsHistoryAndTail(t *testing.T) {
+func TestLogsHistory(t *testing.T) {
 	c, d := newClient(t)
 	d.AddImage(testImage)
 	ctx := context.Background()
@@ -49,18 +50,48 @@ func TestLogsHistoryAndTail(t *testing.T) {
 	if len(all) != 6 || all[0].Text != "line 1" || all[5] != (docker.LogLine{Stream: docker.Stderr, Text: "warning"}) {
 		t.Errorf("history = %v", all)
 	}
+	last := d.Calls()[len(d.Calls())-1]
+	if last.Query.Get("tail") != "all" || last.Query.Get("stdout") != "1" || last.Query.Get("stderr") != "1" {
+		t.Errorf("logs query = %v", last.Query)
+	}
+}
 
-	s2, err := c.Logs(ctx, id, docker.LogOptions{Tail: 2})
+// Docker's own timestamps let a broken stream resume where it stopped,
+// whatever Foreman's clock says.
+func TestLogsTimestampsAndSince(t *testing.T) {
+	c, d := newClient(t)
+	d.AddImage(testImage)
+	ctx := context.Background()
+	id, _ := c.CreateContainer(ctx, "foreman-w1", fullSpec())
+	d.EmitLog(id, docker.Stdout, "first")
+	time.Sleep(time.Millisecond)
+	d.EmitLog(id, docker.Stdout, "second")
+
+	s, err := c.Logs(ctx, id, docker.LogOptions{Timestamps: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := nextLine(t, s)
+	_ = s.Close()
+	if last := d.Calls()[len(d.Calls())-1]; last.Query.Get("timestamps") != "1" {
+		t.Errorf("logs query = %v", last.Query)
+	}
+	stamp, text, ok := strings.Cut(first.Text, " ")
+	if !ok || text != "first" {
+		t.Fatalf("line %q, want a timestamp then the text", first.Text)
+	}
+	at, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		t.Fatalf("timestamp %q: %v", stamp, err)
+	}
+
+	s2, err := c.Logs(ctx, id, docker.LogOptions{Since: at.Add(time.Nanosecond)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = s2.Close() }()
-	if l := nextLine(t, s2); l.Text != "line 5" {
-		t.Errorf("tail 2 began with %v", l)
-	}
-	last := d.Calls()[len(d.Calls())-1]
-	if last.Query.Get("tail") != "2" || last.Query.Get("stdout") != "1" || last.Query.Get("stderr") != "1" {
-		t.Errorf("logs query = %v", last.Query)
+	if l := nextLine(t, s2); l.Text != "second" {
+		t.Errorf("after the first line's time came %q", l.Text)
 	}
 }
 

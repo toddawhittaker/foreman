@@ -304,23 +304,19 @@ type CountdownForm struct {
 }
 
 // readCountdown reads the countdown fields. A problem is worded for the
-// field; zero seconds means no countdown, since the controller reads zero
-// as "the default".
+// field; an empty field means the default countdown (R40).
 func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
 	f := CountdownForm{Countdown: strings.TrimSpace(r.PostFormValue("countdown")), NoCountdown: r.PostFormValue("no_countdown") != ""}
 	if f.NoCountdown {
-		return f, game.StopOptions{NoCountdown: true}
+		return f, game.StopOptions{}
 	}
 	if f.Countdown == "" {
-		return f, game.StopOptions{}
+		return f, game.StopOptions{Countdown: game.StopCountdown}
 	}
 	n, err := strconv.Atoi(f.Countdown)
 	if err != nil || n < 0 || n > maxCountdownSeconds {
 		f.CountdownError = fmt.Sprintf("Enter a whole number of seconds from 0 to %d", maxCountdownSeconds)
 		return f, game.StopOptions{}
-	}
-	if n == 0 {
-		return f, game.StopOptions{NoCountdown: true}
 	}
 	return f, game.StopOptions{Countdown: time.Duration(n) * time.Second}
 }

@@ -24,7 +24,7 @@ func TestGracefulStopWarnsAndSaves(t *testing.T) {
 	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{Countdown: 30 * time.Millisecond}); err != nil {
 		t.Fatal(err)
 	}
 	cmds := r.commands(id)
@@ -52,10 +52,10 @@ func TestGracefulStopWarnsAndSaves(t *testing.T) {
 }
 
 func TestStopWithNobodyOnSkipsWarning(t *testing.T) {
-	r := newRig(t, rigOptions{countdwn: time.Hour})
+	r := newRig(t, rigOptions{})
 	id := r.newWorld("Empty server")
 	r.start(id)
-	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{Countdown: MaxStopCountdown}); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range r.commands(id) {
@@ -158,14 +158,14 @@ func TestForceStop(t *testing.T) {
 
 // A forced stop interrupts a graceful stop's countdown.
 func TestForceStopInterruptsCountdown(t *testing.T) {
-	r := newRig(t, rigOptions{countdwn: time.Hour})
+	r := newRig(t, rigOptions{})
 	id := r.newWorld("Interrupt")
 	r.start(id)
 	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
 	done := make(chan error, 1)
-	go func() { done <- r.c.Stop(context.Background(), id, admin, StopOptions{}) }()
+	go func() { done <- r.c.Stop(context.Background(), id, admin, StopOptions{Countdown: MaxStopCountdown}) }()
 	eventually(t, func() bool {
 		op := r.c.Status(id).Operation
 		return op != nil && op.Action == AuditStop && op.Steps[0].State == StepProgress
@@ -329,9 +329,9 @@ func TestRestoreMissingSnapshotKeepsGameRunning(t *testing.T) {
 	}
 }
 
-// SPEC 7.6: the countdown is chosen per action; zero means the default.
+// SPEC 7.6, R40: the countdown is chosen per action.
 func TestStopCountdownPerAction(t *testing.T) {
-	r := newRig(t, rigOptions{countdwn: time.Hour})
+	r := newRig(t, rigOptions{})
 	id := r.newWorld("Per action")
 	r.start(id)
 	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
@@ -345,14 +345,15 @@ func TestStopCountdownPerAction(t *testing.T) {
 	}
 }
 
+// R40: a zero countdown warns nobody.
 func TestStopWithoutCountdown(t *testing.T) {
-	r := newRig(t, rigOptions{countdwn: time.Hour})
+	r := newRig(t, rigOptions{})
 	id := r.newWorld("No countdown")
 	r.start(id)
 	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.c.Restart(context.Background(), id, admin, StopOptions{NoCountdown: true}, StartOptions{}); err != nil {
+	if err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	cmds := r.commands(id)

@@ -337,7 +337,8 @@ func TestCrashRestartsUnderUnlessStopped(t *testing.T) {
 	if err := r.game.Crash("foreman-w1", 139, true); err != nil {
 		t.Fatal(err)
 	}
-	if c := r.inspect(id); c.State.Status != "exited" || c.State.ExitCode != 139 || !c.State.OOMKilled {
+	// Docker shows "restarting" while the policy waits to start it again.
+	if c := r.inspect(id); c.State.Status != "restarting" || c.State.ExitCode != 139 || !c.State.OOMKilled {
 		t.Errorf("right after the crash: %+v", c.State)
 	}
 	eventually(t, "restart", func() bool { return r.inspect(id).RestartCount == 1 && r.status(id) == "running" })
@@ -379,7 +380,7 @@ func TestCrashLoopRestartsUntilStopped(t *testing.T) {
 				t.Error("a looping start must not reach InGame again")
 			}
 			// Wait for a moment when it is between restarts, then stop it.
-			eventually(t, "exited", func() bool { return r.status(id) == "exited" })
+			eventually(t, "restarting", func() bool { return r.status(id) == "restarting" })
 			if c := r.inspect(id); c.State.ExitCode != tc.wantExit {
 				t.Errorf("exit code = %d, want %d", c.State.ExitCode, tc.wantExit)
 			}

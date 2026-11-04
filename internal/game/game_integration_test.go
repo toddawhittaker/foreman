@@ -321,7 +321,7 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		if cont := e.inspect(t, main); !cont.State.Running || cont.RestartCount != 0 {
 			t.Fatalf("container status %s, restarts %d", cont.State.Status, cont.RestartCount)
 		}
-		if _, err := c.Console(ctx, main, admin, "/version", "/version"); err != nil {
+		if _, _, err := c.Console(ctx, main, admin, "/version", "/version"); err != nil {
 			t.Fatalf("RCON did not answer: %v", err)
 		}
 	})
@@ -346,7 +346,7 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 
 	step("4 console reply and the stop warning as chat", func(t *testing.T) {
 		// The game answers /time to the console with an empty line; record it.
-		reply, err := c.Console(ctx, main, admin, "/time", "/time")
+		_, reply, err := c.Console(ctx, main, admin, "/time", "/time")
 		if err != nil {
 			t.Fatalf("/time: %v", err)
 		}
@@ -355,21 +355,21 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		// the second must answer.
 		lua := "/c rcon.print(1 + 1)"
 		for range 2 {
-			if reply, err = c.Console(ctx, main, admin, lua, lua); err != nil || strings.TrimSpace(reply) != "" {
+			if _, reply, err = c.Console(ctx, main, admin, lua, lua); err != nil || strings.TrimSpace(reply) != "" {
 				break
 			}
 		}
 		if err != nil || strings.TrimSpace(reply) != "2" {
 			t.Fatalf("a Lua command replied %q, err %v, want 2", reply, err)
 		}
-		reply, err = c.Console(ctx, main, admin, "/version", "/version")
+		_, reply, err = c.Console(ctx, main, admin, "/version", "/version")
 		if err != nil || !strings.Contains(reply, version) {
 			t.Fatalf("/version reply %q, err %v, want it to name %s", reply, err, version)
 		}
 		// Evidence for the stop warning: how the game logs a plain RCON message.
 		warning := warningText(30 * time.Second)
 		before := len(logLines(c, main))
-		if _, err := c.Console(ctx, main, admin, warning, "(stop warning)"); err != nil {
+		if _, _, err := c.Console(ctx, main, admin, warning, "(stop warning)"); err != nil {
 			t.Fatal(err)
 		}
 		time.Sleep(2 * time.Second)

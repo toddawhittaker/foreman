@@ -109,11 +109,10 @@ type rig struct {
 }
 
 type rigOptions struct {
-	fake     fakegame.Config
-	network  string
-	selfID   string
-	noRun    bool
-	countdwn time.Duration
+	fake    fakegame.Config
+	network string
+	selfID  string
+	noRun   bool
 }
 
 func newRig(t *testing.T, opts rigOptions) *rig {
@@ -159,10 +158,6 @@ func (r *rig) newController(opts rigOptions) *Controller {
 	c.pollInterval = 20 * time.Millisecond
 	c.startTimeout = 5 * time.Second
 	c.saveTimeout = time.Second
-	c.countdown = 30 * time.Millisecond
-	if opts.countdwn > 0 {
-		c.countdown = opts.countdwn
-	}
 	c.rconRetry = 20 * time.Millisecond
 	c.rconCallLimit = 2 * time.Second
 	return c

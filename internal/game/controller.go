@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -56,6 +57,7 @@ const (
 	saveTimeout  = 2 * time.Minute        // how long /server-save may take to finish
 	rconRetry    = 500 * time.Millisecond // how often a start retries RCON after InGame
 	hubBuffer    = 256                    // events a slow page may fall behind by before it is dropped
+	followMinRun = time.Second            // a log stream that broke off sooner is retried at the next poll
 )
 
 // Audit actions this package records (SPEC 12.9, R11).
@@ -120,8 +122,15 @@ type Config struct {
 	// Images maps a game's major.minor version ("2.0") to the pinned image
 	// reference that runs it (R8, R32).
 	Images map[string]string
-	// Network is FOREMAN_GAME_NETWORK; empty means work it out (R3).
+	// Network is FOREMAN_GAME_NETWORK. Outside a container empty means
+	// Docker's default bridge; inside one it is required (R36).
 	Network string
+	// DockerHost is DOCKER_HOST. Only its scheme is used: over tcp:// a
+	// socket proxy shares a network with Foreman (R36).
+	DockerHost string
+	// TrustedProxies is FOREMAN_TRUSTED_PROXIES; the game network must not
+	// overlap it (R36, SPEC 12.6).
+	TrustedProxies []netip.Prefix
 	// SelfID is Foreman's own container (docker.SelfID); empty outside one.
 	SelfID string
 	// Now is the clock; nil means time.Now.
@@ -142,14 +151,16 @@ type Controller struct {
 	images   map[string]string
 	network  string
 	selfID   string
-	now      func() time.Time
-	log      *slog.Logger
+	// dockerTCP and proxies are what the game network is checked against (R36).
+	dockerTCP bool
+	proxies   []netip.Prefix
+	now       func() time.Time
+	log       *slog.Logger
 
 	// Limits, shortened by tests.
 	pollInterval  time.Duration
 	startTimeout  time.Duration
 	saveTimeout   time.Duration
-	countdown     time.Duration
 	rconRetry     time.Duration
 	crashWindow   time.Duration
 	rconCallLimit time.Duration
@@ -202,9 +213,10 @@ func New(cfg Config) (*Controller, error) {
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
 		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
+		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), proxies: cfg.TrustedProxies,
 		now: now, log: log,
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
-		countdown: StopCountdown, rconRetry: rconRetry, crashWindow: CrashLoopWindow,
+		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
 		rconCallLimit: rcon.DefaultTimeout,
 		ctx:           ctx, cancel: cancel,
 		poke: make(chan struct{}, 1),
@@ -244,7 +256,7 @@ type worldRun struct {
 	followGen    int
 	followCancel context.CancelFunc
 	followedRun  time.Time // the run the follower reads
-	lastLineAt   time.Time
+	lastLineAt   time.Time // Docker's time for the last line read, to resume from
 
 	op       *Operation // the operation running now, or the last one
 	opState  State      // what the operation shows while it runs; "" to let the container decide
@@ -410,6 +422,12 @@ func (c *Controller) Watch(id string) (View, <-chan Update, func()) {
 	return v, ch, stop
 }
 
+// Lines returns the world's log so far, for a page that does not follow
+// it live.
+func (c *Controller) Lines(id string) []string {
+	return c.world(id).logs.Lines()
+}
+
 // statusLocked builds the status. w.mu is held.
 func (c *Controller) statusLocked(w *worldRun) Status {
 	st := Status{
@@ -478,6 +496,9 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 		return StateCrashed, ""
 	case "paused":
 		return StateUnknown, "The game container is paused in Docker. Foreman never pauses it; unpause it with Docker."
+	case "created":
+		// Docker never ran it, so it cannot have crashed.
+		return StateStopped, ""
 	}
 	if w.expectRunning && !w.stopping {
 		return StateCrashed, ""

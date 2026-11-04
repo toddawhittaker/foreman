@@ -332,7 +332,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		})
 		return
 	default:
-		before, err = s.game.Restore(r.Context(), p.WorldID, actor(u), p.Snapshot.Name, game.StopOptions{})
+		before, err = s.game.Restore(r.Context(), p.WorldID, actor(u), p.Snapshot.Name, game.StopOptions{Countdown: game.StopCountdown})
 	}
 	if err != nil {
 		if before.Name == "" {

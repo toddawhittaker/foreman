@@ -36,38 +36,18 @@ const (
 	announceRunes = 200
 )
 
-// Commands that carry a secret (R6, SPEC 14.8). A command in setsSecret has
-// its argument replaced in the audit log and on the page; one in
-// showsSecret has its reply hidden. The game has no other command that
-// sets or prints a password or token: /config set takes one option at a
-// time and "password" is the only secret among them. The Lua commands
-// (/c, /sc, /silent-command) can hold anything, so they cannot be told
-// apart and are recorded as typed.
-var (
-	setsSecret  = []string{"config set password"}
-	showsSecret = []string{"config get password"}
-)
-
-// commandPattern matches the words in any case with any whitespace between.
-func commandPattern(words string) string {
-	return strings.Join(strings.Fields(words), `\s+`)
-}
-
-func commandPatterns(list []string) string {
-	parts := make([]string, len(list))
-	for i, words := range list {
-		parts[i] = commandPattern(words)
-	}
-	return "(?:" + strings.Join(parts, "|") + ")"
-}
+// Commands that carry a secret (R6, SPEC 14.8). A command in
+// game.SetsSecret has its argument replaced in the audit log and on the
+// page; one in showsSecret has its reply hidden. The game has no other
+// command that prints a password or token. The Lua commands (/c, /sc,
+// /silent-command) can hold anything, so they cannot be told apart and are
+// recorded as typed.
+var showsSecret = []string{"config get password"}
 
 var (
 	// secretArgument finds the typed command up to its secret.
-	secretArgument = regexp.MustCompile(`(?is)^(\s*/?\s*` + commandPatterns(setsSecret) + `)\s+\S.*$`)
-	// secretInLog finds the same command anywhere in a log line, since the
-	// game may print what it was given.
-	secretInLog = regexp.MustCompile(`(?i)(` + commandPatterns(setsSecret) + `)\s+\S.*$`)
-	secretReply = regexp.MustCompile(`(?i)^\s*/?\s*` + commandPatterns(showsSecret) + `(?:\s|$)`)
+	secretArgument = regexp.MustCompile(`(?is)^(\s*/?\s*` + game.CommandPatterns(game.SetsSecret) + `)\s+\S.*$`)
+	secretReply    = regexp.MustCompile(`(?i)^\s*/?\s*` + game.CommandPatterns(showsSecret) + `(?:\s|$)`)
 )
 
 // auditText is the command as the audit log and the page record it: with
@@ -80,11 +60,6 @@ func auditText(command string) string {
 
 // hidesReply reports whether the game's reply to command prints a secret.
 func hidesReply(command string) bool { return secretReply.MatchString(command) }
-
-// maskLogLine hides a secret the game printed in a log line.
-func maskLogLine(line string) string {
-	return secretInLog.ReplaceAllString(line, "${1} "+game.Mask)
-}
 
 // checkCommand returns the words for the command field's error, or "".
 func checkCommand(command string) string {
@@ -212,13 +187,7 @@ func (s *server) consoleRoutes() {
 // consolePage fills the page for a world with the log so far and the
 // recent commands.
 func (s *server) consolePage(sum world.Summary) ConsolePage {
-	view, _, stop := s.game.Watch(sum.ID)
-	stop()
-	lines := make([]string, len(view.Lines))
-	for i, l := range view.Lines {
-		lines[i] = maskLogLine(l)
-	}
-	return ConsolePage{World: sum, HasWorld: true, Lines: lines, History: s.console.list(sum.ID)}
+	return ConsolePage{World: sum, HasWorld: true, Lines: s.game.Lines(sum.ID), History: s.console.list(sum.ID)}
 }
 
 func (s *server) handleConsole(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -277,8 +246,7 @@ func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u sto
 		s.respond(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	shown := auditText(command)
-	reply, err := s.game.Console(r.Context(), sum.ID, actor(u), command, shown)
+	shown, reply, err := s.game.Console(r.Context(), sum.ID, actor(u), command, auditText(command))
 	switch {
 	case err == nil:
 	case errors.Is(err, game.ErrNotRunning):
@@ -335,11 +303,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
-	lines := make([]string, len(view.Lines))
-	for i, l := range view.Lines {
-		lines[i] = maskLogLine(l)
-	}
-	if out.lines("reset", lines) != nil {
+	if out.lines("reset", view.Lines) != nil {
 		return
 	}
 	beat := time.NewTicker(heartbeatEvery)
@@ -356,7 +320,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 			}
 			var batch []string
 			if up.Kind == game.UpdateLine {
-				batch = append(batch, maskLogLine(up.Line))
+				batch = append(batch, up.Line)
 			}
 			// Whatever else is waiting goes in the same event.
 			for drained := false; !drained; {
@@ -366,7 +330,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 						return
 					}
 					if up.Kind == game.UpdateLine {
-						batch = append(batch, maskLogLine(up.Line))
+						batch = append(batch, up.Line)
 					}
 				default:
 					drained = true

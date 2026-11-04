@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,6 +16,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
+	"github.com/toddawhittaker/foreman/internal/rcon"
+	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -270,6 +273,9 @@ func TestWatchHasNoGapsOrRepeats(t *testing.T) {
 			t.Fatalf("timed out; got %d lines", len(got))
 		}
 	}
+	if got[0] != 0 {
+		t.Fatalf("the first line seen is line %d", got[0])
+	}
 	for i := 1; i < len(got); i++ {
 		if got[i] != got[i-1]+1 {
 			t.Fatalf("lines %d then %d: a gap or a repeat", got[i-1], got[i])
@@ -318,15 +324,15 @@ func TestPlayers(t *testing.T) {
 func TestConsole(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Console")
-	if _, err := r.c.Console(context.Background(), id, admin, "/help", "/help"); !errors.Is(err, ErrNotRunning) {
+	if _, _, err := r.c.Console(context.Background(), id, admin, "/help", "/help"); !errors.Is(err, ErrNotRunning) {
 		t.Errorf("console of a stopped game: %v", err)
 	}
 	r.start(id)
-	reply, err := r.c.Console(context.Background(), id, admin, "/players online", "/players online")
+	_, reply, err := r.c.Console(context.Background(), id, admin, "/players online", "/players online")
 	if err != nil || !strings.HasPrefix(reply, "Online players") {
 		t.Fatalf("reply %q, %v", reply, err)
 	}
-	if _, err := r.c.Console(context.Background(), id, admin, "/config set password s3cret", "/config set password "+Mask); err != nil {
+	if _, _, err := r.c.Console(context.Background(), id, admin, "/config set password s3cret", "/config set password "+Mask); err != nil {
 		t.Fatal(err)
 	}
 	entries := r.audit.list()
@@ -341,7 +347,7 @@ func TestConsole(t *testing.T) {
 	}
 
 	r.audit.setFail(true)
-	if _, err := r.c.Console(context.Background(), id, admin, "/unaudited", "/unaudited"); err == nil {
+	if _, _, err := r.c.Console(context.Background(), id, admin, "/unaudited", "/unaudited"); err == nil {
 		t.Error("a command ran without an audit entry")
 	}
 	if slices.Contains(r.commands(id), "/unaudited") {
@@ -442,5 +448,112 @@ func TestReattachWritesNoWorldFile(t *testing.T) {
 		t.Errorf("relayed %d log lines without the password to redact", len(v.Lines))
 	} else {
 		stop()
+	}
+}
+
+// SPEC 3.8: a re-attached game is in game when it answers over RCON, even
+// when Docker's log rotation dropped the line that said so.
+func TestReattachAfterLogRotated(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Rotated")
+	r.start(id)
+	r.stop()
+	r.game.Daemon().DropLog(r.container(id).ID)
+	c2 := r.newController(rigOptions{})
+	r.run(c2)
+	eventually(t, func() bool { return c2.Status(id).State == StateRunning }, "the re-attached game to be running, got %s",
+		func() any { return c2.Status(id).State })
+}
+
+// SPEC 8.6: a log stream that breaks while the game runs resumes where it
+// stopped, by Docker's own time for the last line, not Foreman's clock:
+// nothing is lost or repeated, and no line shows Docker's timestamp.
+func TestLogResumesByDockerTime(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Resume")
+	r.start(id)
+	r.clock.Advance(time.Hour) // Foreman's clock is ahead of Docker's
+	cid := r.container(id).ID
+	r.game.Daemon().EmitLog(cid, docker.Stdout, "before the break")
+	eventually(t, func() bool { return slices.Contains(r.c.Lines(id), "before the break") }, "the first line")
+
+	w := r.c.world(id)
+	w.mu.Lock()
+	w.followCancel()
+	w.mu.Unlock()
+	r.game.Daemon().EmitLog(cid, docker.Stdout, "after the break")
+	eventually(t, func() bool { return slices.Contains(r.c.Lines(id), "after the break") }, "the line written during the break")
+	time.Sleep(100 * time.Millisecond)
+	count := map[string]int{}
+	for _, l := range r.c.Lines(id) {
+		count[l]++
+		if _, err := time.Parse(time.RFC3339Nano, strings.SplitN(l, " ", 2)[0]); err == nil {
+			t.Errorf("line %q carries Docker's timestamp", l)
+		}
+	}
+	for l, n := range count {
+		if n > 1 && strings.Contains(l, "break") {
+			t.Errorf("line %q relayed %d times", l, n)
+		}
+	}
+}
+
+// Closing an RCON connection can wait for a command in flight; pages must
+// not wait for it.
+func TestDroppingContainerDoesNotBlockStatus(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		if conn, err := ln.Accept(); err == nil {
+			accepted <- conn // held open, never answered
+		}
+	}()
+	rc := rcon.New(ln.Addr().String(), secret.New("pw"))
+	w := r.c.world("held")
+	w.mu.Lock()
+	w.containerID, w.dockerStatus, w.rc = "cid", "running", rc
+	w.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	go func() { _, _ = rc.Exec(ctx, "/hang") }()
+	conn := <-accepted
+	defer func() { _ = conn.Close() }()
+
+	go r.c.observe(w, nil)
+	time.Sleep(100 * time.Millisecond)
+	done := make(chan struct{})
+	go func() {
+		r.c.Status("held")
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Status waited for the RCON connection to close")
+	}
+}
+
+// A log follow that fails at once is retried at the next poll, not in a
+// tight loop.
+func TestFailingLogFollowBacksOff(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.pollInterval = time.Hour // only pokes make the monitor look
+	r.run(r.c)
+	id := r.newWorld("Backoff")
+	r.start(id)
+	cid := r.container(id).ID
+	r.game.Daemon().SetCallFailure("GET", "logs", 500, "log driver broken")
+	w := r.c.world(id)
+	w.mu.Lock()
+	w.followCancel()
+	w.mu.Unlock()
+	time.Sleep(300 * time.Millisecond)
+	if n := len(r.calls("GET /containers/" + cid + "/logs")); n > 3 {
+		t.Errorf("%d log calls in 300 ms: the follow retries in a tight loop", n)
 	}
 }

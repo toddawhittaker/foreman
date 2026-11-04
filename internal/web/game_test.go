@@ -265,12 +265,12 @@ func TestReadCountdown(t *testing.T) {
 		want game.StopOptions
 		bad  bool
 	}{
-		{url.Values{}, game.StopOptions{}, false},
+		{url.Values{}, game.StopOptions{Countdown: game.StopCountdown}, false},
 		{url.Values{"countdown": {" 90 "}}, game.StopOptions{Countdown: 90 * time.Second}, false},
-		{url.Values{"countdown": {"0"}}, game.StopOptions{NoCountdown: true}, false},
+		{url.Values{"countdown": {"0"}}, game.StopOptions{}, false},
 		{url.Values{"countdown": {"600"}}, game.StopOptions{Countdown: 10 * time.Minute}, false},
-		{url.Values{"countdown": {"30"}, "no_countdown": {"on"}}, game.StopOptions{NoCountdown: true}, false},
-		{url.Values{"countdown": {"x"}, "no_countdown": {"on"}}, game.StopOptions{NoCountdown: true}, false},
+		{url.Values{"countdown": {"30"}, "no_countdown": {"on"}}, game.StopOptions{}, false},
+		{url.Values{"countdown": {"x"}, "no_countdown": {"on"}}, game.StopOptions{}, false},
 		{url.Values{"countdown": {"601"}}, game.StopOptions{}, true},
 	}
 	for _, c := range cases {
