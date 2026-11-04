@@ -28,6 +28,7 @@ type instance struct {
 	ip       string
 	save     string // file name of the save the container loads
 	password string
+	rconPort string
 	v        *version
 
 	mu      sync.Mutex
@@ -56,8 +57,14 @@ func (g *Game) boot(id string) {
 	}
 	in := &instance{
 		g: g, id: id, name: c.Name, v: versionFor(c.Spec.Image),
-		save: saveName(c.Spec), password: rconPassword(c),
+		save: saveName(c.Spec), password: rconPassword(c), rconPort: rconPort,
 		baseAt: time.Now(), conns: map[net.Conn]struct{}{},
+	}
+	var run *entrypoint
+	if id == g.adoptedID {
+		r := runEntrypoint(c.Spec.Env, c.Mounts)
+		run = &r
+		in.save, in.password, in.rconPort = r.save, r.password, r.rconPort
 	}
 	g.mu.Lock()
 	if g.closed || g.insts[id] != nil {
@@ -72,6 +79,16 @@ func (g *Game) boot(id string) {
 	}
 	g.mu.Unlock()
 
+	if run != nil {
+		for _, l := range run.log {
+			in.emitText(l)
+		}
+		if run.err != nil {
+			in.emitText(run.err.Error())
+			g.died(in, 1, false)
+			return
+		}
+	}
 	if loops {
 		in.emit(in.v.failed, failedSave)
 		g.died(in, in.v.failExit, false)
@@ -243,7 +260,7 @@ func (in *instance) reply(command string) string {
 // sits in front of an rcontest server, because rcontest only listens on
 // 127.0.0.1.
 func (in *instance) startRCON() error {
-	ln, err := net.Listen("tcp", net.JoinHostPort(in.ip, rconPort))
+	ln, err := net.Listen("tcp", net.JoinHostPort(in.ip, in.rconPort))
 	if err != nil {
 		return fmt.Errorf("RCON for %s cannot listen on %s: %w", in.name, in.ip, err)
 	}

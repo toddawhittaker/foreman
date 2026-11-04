@@ -4,7 +4,9 @@
 // -dir, serves the test hooks (internal/fakegame, HookHandler) on a loopback
 // TCP port, and prints one line of JSON, {"socket": "...", "hook":
 // "http://127.0.0.1:PORT"}, once both are ready. It stops on SIGINT or
-// SIGTERM.
+// SIGTERM. -adopted takes the JSON of a fakegame.Adopted, for example
+// {"name":"factorio","gameDir":"/srv/factorio","env":["DLC_SPACE_AGE=false"]},
+// and needs -self-network.
 package main
 
 import (
@@ -36,11 +38,20 @@ func run() error {
 	images := flag.String("images", "", "comma-separated image references that are present at the start")
 	loadDelay := flag.Duration("load-delay", 0, "time a start takes between loading the map and InGame")
 	selfNetwork := flag.String("self-network", "", "seed a container for the one this runs in, on this network")
+	adopted := flag.String("adopted", "", "JSON of a fakegame.Adopted: seed one pre-existing game container (needs -self-network)")
 	flag.Parse()
 	if *dir == "" {
 		return errors.New("-dir is required")
 	}
 	cfg := fakegame.Config{Dir: *dir, LoadDelay: *loadDelay, SelfNetwork: *selfNetwork}
+	if *adopted != "" {
+		dec := json.NewDecoder(strings.NewReader(*adopted))
+		dec.DisallowUnknownFields()
+		cfg.Adopted = &fakegame.Adopted{}
+		if err := dec.Decode(cfg.Adopted); err != nil {
+			return fmt.Errorf("-adopted: %w", err)
+		}
+	}
 	if *images != "" {
 		cfg.Images = strings.Split(*images, ",")
 	}
