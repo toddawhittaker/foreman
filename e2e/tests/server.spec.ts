@@ -199,6 +199,19 @@ test.describe("with the fake game", () => {
     await expect(page.locator("#announcer")).not.toContainText("Server is now");
   });
 
+  // DESIGN 7.5: a refused action's error stays on the page, and a crash
+  // after it is still read out.
+  test("a crash is announced after a refused action", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await start(page);
+    expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
+    await expect(page.locator(".message--error")).toBeVisible(live);
+    await expect(page.locator("#announcer")).toHaveText(/^Error: /);
+    await fakeGame!.call("/crash", { name: container });
+    await expect(badge(page)).toHaveText("Crashed", live);
+    await expect(page.locator("#announcer")).toHaveText("Server is now crashed");
+  });
+
   // SPEC 17.1: the step list passes the checks while an operation runs.
   test("the step list of a stop in progress passes the page checks", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);

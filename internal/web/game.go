@@ -54,6 +54,7 @@ type gameRuns struct {
 	mu        sync.Mutex
 	closed    bool
 	running   map[string]int            // actions in flight, by world id
+	locking   map[string]int            // those of them that hold the world's lock
 	results   map[string]actionResult   // by world id
 	asides    map[string][]actionResult // actions asked for while another ran (R38)
 	changed   chan struct{}             // closed and replaced when a result is stored
@@ -71,7 +72,7 @@ type actionResult struct {
 }
 
 func newGameRuns() *gameRuns {
-	g := &gameRuns{running: map[string]int{}, results: map[string]actionResult{},
+	g := &gameRuns{running: map[string]int{}, locking: map[string]int{}, results: map[string]actionResult{},
 		asides: map[string][]actionResult{}, changed: make(chan struct{})}
 	g.ctx, g.cancel = context.WithCancel(context.Background())
 	return g
@@ -104,22 +105,28 @@ func (g *gameRuns) trackLocked() bool {
 	return true
 }
 
-// run starts an action in the background. When nothing else runs on the
-// world it forgets the world's last results, so the page shows only what
-// this action does. An action asked for while another runs keeps its
-// result apart, so it never hides the first one's (R38).
-func (g *gameRuns) run(id string, do func(ctx context.Context) actionResult) bool {
+// run starts an action in the background. holdsLock is true for the
+// actions that take the world's lock (start, stop, restart, restore, force
+// stop) and false for an image download. When no lock-holding action runs
+// on the world, a new one forgets the world's last results, so the page
+// shows only what it does. A lock-holding action asked for while another
+// runs keeps its result apart, so it never hides the first one's (R38). A
+// download never takes the main place from a lock-holding action.
+func (g *gameRuns) run(id string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	g.mu.Lock()
 	if !g.trackLocked() {
 		g.mu.Unlock()
 		return false
 	}
-	other := g.running[id] > 0
-	g.running[id]++
-	if !other {
+	other := holdsLock && g.locking[id] > 0
+	if holdsLock && !other || !holdsLock && g.running[id] == 0 {
 		delete(g.results, id)
 		delete(g.asides, id)
 		g.changedLocked()
+	}
+	g.running[id]++
+	if holdsLock {
+		g.locking[id]++
 	}
 	g.mu.Unlock()
 	go func() {
@@ -129,6 +136,14 @@ func (g *gameRuns) run(id string, do func(ctx context.Context) actionResult) boo
 		defer g.mu.Unlock()
 		if g.running[id]--; g.running[id] == 0 {
 			delete(g.running, id)
+		}
+		if holdsLock {
+			if g.locking[id]--; g.locking[id] == 0 {
+				delete(g.locking, id)
+			}
+		} else {
+			_, has := g.results[id]
+			other = g.locking[id] > 0 || has
 		}
 		if other {
 			g.asides[id] = append(g.asides[id], res)
@@ -201,6 +216,9 @@ func (s *server) gameRoutes() {
 // the admin. Anything it does not know goes to worldError; a 500 means the
 // caller logs the error and shows no detail.
 func gameError(err error) (int, string) {
+	if pe, ok := errors.AsType[*game.PrecheckError](err); ok {
+		return http.StatusConflict, precheckLead + " " + pe.Error()
+	}
 	switch {
 	case errors.Is(err, game.ErrAlreadyRunning), errors.Is(err, game.ErrNotRunning),
 		errors.Is(err, game.ErrNotReady), errors.Is(err, game.ErrImageMissing),
@@ -294,8 +312,8 @@ func (s *server) startable(w http.ResponseWriter, r *http.Request, u store.User)
 
 // begin runs an action in the background and sends the admin to the
 // server page, which follows it live.
-func (s *server) begin(w http.ResponseWriter, r *http.Request, id string, do func(ctx context.Context) actionResult) {
-	if !s.runs.run(id, do) {
+func (s *server) begin(w http.ResponseWriter, r *http.Request, id string, holdsLock bool, do func(ctx context.Context) actionResult) {
+	if !s.runs.run(id, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
 			Detail: "Foreman is shutting down. Try again once it is back."})
 		return
@@ -326,7 +344,7 @@ func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.Use
 	}
 	opts := game.StartOptions{Anyway: r.PostFormValue("anyway") == "1"}
 	by := actor(u)
-	s.begin(w, r, sum.ID, func(ctx context.Context) actionResult {
+	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditStart, s.game.Start(ctx, sum.ID, by, opts))
 	})
 }
@@ -430,7 +448,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 		return
 	}
 	by := actor(u)
-	s.begin(w, r, sum.ID, func(ctx context.Context) actionResult {
+	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		if restart {
 			err := s.game.Restart(ctx, sum.ID, by, stop, game.StartOptions{Anyway: anyway})
 			return s.finish(sum.ID, game.AuditRestart, err)
@@ -531,7 +549,7 @@ func (s *server) handleForceStop(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	by := actor(u)
-	s.begin(w, r, sum.ID, func(ctx context.Context) actionResult {
+	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditForceStop, s.game.ForceStop(ctx, sum.ID, by))
 	})
 }
@@ -546,7 +564,7 @@ func (s *server) handlePull(w http.ResponseWriter, r *http.Request, u store.User
 		return
 	}
 	by := actor(u)
-	s.begin(w, r, sum.ID, func(ctx context.Context) actionResult {
+	s.begin(w, r, sum.ID, false, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditImageDownload, s.game.PullImage(ctx, sum.ID, by))
 	})
 }
