@@ -1,9 +1,9 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -40,6 +40,13 @@ type WorldPage struct {
 	// Name refills the rename field.
 	Name      string
 	NameError string
+	// CanSwitch offers "Switch to this world": this mode has server control
+	// and the world is not the active one (SPEC 7.9). SwitchNote says in a
+	// line why it does not, when that is worth saying; SwitchBusy adds a
+	// link to the Server page (DESIGN 7.1).
+	CanSwitch  bool
+	SwitchNote string
+	SwitchBusy bool
 }
 
 // ImportPage offers both ways to import a world (SPEC 5.5).
@@ -48,6 +55,17 @@ type ImportPage struct {
 	Inbox    []world.InboxFolder
 	Folder   ImportForm
 	Upload   ImportForm
+}
+
+// Importable reports whether any inbox folder has a save at its top level;
+// a folder without one cannot be imported (SPEC 5.5).
+func (p ImportPage) Importable() bool {
+	for _, f := range p.Inbox {
+		if f.Saves > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // ImportForm is one of the two import forms. Source is the chosen inbox
@@ -83,6 +101,7 @@ func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/ren
 func (p WorldPage) SavesPath() string     { return worldPath(p.World.ID) + "/saves" }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
+func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
 
 // DeleteRefusal says why the world cannot be deleted, or is "" when it can.
 func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World) }
@@ -179,7 +198,24 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, WorldPage{World: sum, Name: sum.Name})
+	s.page(w, r, http.StatusOK, u.Username, s.worldPage(r.Context(), sum, sum.Name, ""))
+}
+
+// worldPage builds a world's page, with its Switch panel's state. A world
+// this Foreman cannot start gets no panel, because the page already says
+// why above.
+func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
+	p := WorldPage{World: sum, Name: name, NameError: nameError}
+	switch {
+	case s.game == nil || sum.Unreadable || sum.Newer:
+	case sum.Active:
+		p.SwitchNote = "This is the active world."
+	case s.switchBusy(ctx, sum.ID):
+		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
+	default:
+		p.CanSwitch = true
+	}
+	return p
 }
 
 // handleRename changes a world's display name only (SPEC 5.8). It is not a
@@ -202,7 +238,7 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	s.page(w, r, status, u.Username, WorldPage{World: sum, Name: name, NameError: msg})
+	s.page(w, r, status, u.Username, s.worldPage(r.Context(), sum, name, msg))
 }
 
 func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -216,6 +252,14 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 		s.fail(w, r, "list import folder", err)
 		return
 	}
+	// A fresh form with one folder to choose starts with it chosen, named
+	// after it, and filled in from its save.
+	if only, ok := onlyImportable(inbox); ok && status == http.StatusOK && folder == (ImportForm{}) {
+		folder = ImportForm{Source: only.Name, Name: only.Name}
+		if only.Read {
+			folder.GameVersion, folder.SpaceAge = only.GameVersion, only.SpaceAge
+		}
+	}
 	folder.IDPrefix, upload.IDPrefix = "folder", "upload"
 	s.page(w, r, status, u.Username, ImportPage{
 		InboxDir: s.worlds.Dirs().Imports,
@@ -225,16 +269,45 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 	})
 }
 
+// onlyImportable returns the one inbox folder with a save at its top
+// level, when there is exactly one.
+func onlyImportable(inbox []world.InboxFolder) (world.InboxFolder, bool) {
+	var only world.InboxFolder
+	n := 0
+	for _, f := range inbox {
+		if f.Saves > 0 {
+			only, n = f, n+1
+		}
+	}
+	return only, n == 1
+}
+
 // importFields reads and checks the fields both import forms share.
 func importFields(name, version, spaceAge string) ImportForm {
 	f := ImportForm{Name: name, GameVersion: strings.TrimSpace(version), SpaceAge: spaceAge == "on"}
 	if strings.TrimSpace(name) == "" {
 		f.NameError = sentence(world.ErrNameEmpty)
 	}
-	if !world.ValidGameVersion(f.GameVersion) {
+	// An empty version is filled in from the save later (fillFromSave).
+	if f.GameVersion != "" && !world.ValidGameVersion(f.GameVersion) {
 		f.VersionError = sentence(world.ErrBadGameVersion)
 	}
 	return f
+}
+
+// fillFromSave takes the version from the save when the admin left it
+// empty. Space Age then is on if the save uses it or the box is ticked. A
+// save that could not be read leaves the version required.
+func (f *ImportForm) fillFromSave(info world.SaveInfo, ok bool) {
+	if f.GameVersion != "" || f.VersionError != "" {
+		return
+	}
+	if !ok {
+		f.VersionError = sentence(world.ErrBadGameVersion)
+		return
+	}
+	f.GameVersion = info.GameVersion
+	f.SpaceAge = f.SpaceAge || info.SpaceAge
 }
 
 func (f ImportForm) failed() bool {
@@ -262,6 +335,15 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 	f.Source = r.PostFormValue("folder")
 	if f.Source == "" {
 		f.SourceError = sentence(world.ErrNoFolder)
+	}
+	if f.GameVersion == "" && f.Source != "" {
+		// A folder that is gone is reported by the import below.
+		folder, err := s.worlds.InboxEntry(f.Source)
+		if err != nil && !errors.Is(err, world.ErrNoFolder) {
+			s.fail(w, r, "read import folder", err)
+			return
+		}
+		f.fillFromSave(world.SaveInfo{GameVersion: folder.GameVersion, SpaceAge: folder.SpaceAge}, folder.Read)
 	}
 	if f.failed() {
 		s.importPage(w, r, u, http.StatusBadRequest, f, ImportForm{})
@@ -305,7 +387,7 @@ func (s *server) handleImportUpload(w http.ResponseWriter, r *http.Request, u st
 // with its field errors, or an error.
 func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	worldsDir := s.worlds.Dirs().Worlds
-	root, err := os.OpenRoot(worldsDir)
+	root, err := s.worlds.OpenWorlds()
 	if err != nil {
 		return "", ImportForm{}, err
 	}
@@ -323,6 +405,10 @@ func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	} else if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a size is never negative
 		_ = root.Remove(up.Temp)
 		return "", f, err
+	}
+	if f.SourceError == "" {
+		info, ok := world.ReadSaveInfo(root, up.Temp)
+		f.fillFromSave(info, ok)
 	}
 	if f.failed() {
 		_ = root.Remove(up.Temp)

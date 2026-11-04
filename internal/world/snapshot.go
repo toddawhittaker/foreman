@@ -30,12 +30,14 @@ const (
 	ReasonManual        = "manual"
 	ReasonBeforeDelete  = "before-delete"
 	ReasonBeforeRestore = "before-restore"
+	ReasonSwitch        = "switch"
 )
 
 // Labels of the automatic snapshots (SPEC 6.5, 5.10).
 const (
 	LabelBeforeRestore = "Before restore"
 	LabelBeforeDelete  = "Before delete"
+	LabelBeforeSwitch  = "Before switch"
 )
 
 // KeepAutomatic is how many automatic snapshots each world keeps (SPEC 6.6).
@@ -256,9 +258,11 @@ func (p prevSnapshot) hash(snaps, dst *os.Root, f ManifestEntry) (string, error)
 	return hashFile(dst, f.Path)
 }
 
-// hashFile returns the hex SHA-256 of a regular file inside root.
+// hashFile returns the hex SHA-256 of a regular file inside root. A zip
+// is hard-linked from the world, so a pipe swapped in for it there would
+// arrive here as a link; openRegular refuses it rather than wait on it.
 func hashFile(root *os.Root, name string) (string, error) {
-	f, err := root.Open(name)
+	f, _, err := openRegular(root, name)
 	if err != nil {
 		return "", err
 	}
@@ -294,7 +298,7 @@ func (m *Manager) openSnapshots(id string, create bool) (*os.Root, error) {
 	if !ValidID(id) {
 		return nil, fs.ErrNotExist
 	}
-	all, err := os.OpenRoot(m.dirs.Snapshots)
+	all, err := openFolder(m.dirs.Snapshots)
 	if err != nil {
 		return nil, err
 	}
@@ -314,13 +318,17 @@ func isZip(p string) bool { return strings.HasSuffix(p, ".zip") }
 // ones included. Foreman's own unfinished work is left out. A symlink or
 // other special file cannot be kept by a snapshot, so rather than lose it
 // silently the snapshot is refused, naming it.
-func worldFiles(w *os.Root) ([]ManifestEntry, error) {
+func worldFiles(w *os.Root) ([]ManifestEntry, error) { return filesUnder(w, ".") }
+
+// filesUnder is worldFiles for the part of w at start, with paths
+// relative to w.
+func filesUnder(w *os.Root, start string) ([]ManifestEntry, error) {
 	var out []ManifestEntry
-	err := fs.WalkDir(w.FS(), ".", func(p string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(w.FS(), start, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if p != "." && (isLeftover(d.Name()) || strings.HasPrefix(d.Name(), PrefixRestoreOld)) {
+		if p != start && (isLeftover(d.Name()) || strings.HasPrefix(d.Name(), PrefixRestoreOld)) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
@@ -396,12 +404,12 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 // without following symlinks, so the link can never reach outside a root.
 // os.Root.Link only links within one root, hence golang.org/x/sys.
 func linkFile(src, dst *os.Root, name string) error {
-	sd, err := src.Open(path.Dir(name))
+	sd, err := openDirFile(src, path.Dir(name))
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sd.Close() }()
-	dd, err := dst.Open(path.Dir(name))
+	dd, err := openDirFile(dst, path.Dir(name))
 	if err != nil {
 		return err
 	}

@@ -25,7 +25,14 @@ func CommandPatterns(list []string) string {
 // the game may print the command it was given.
 var secretInLog = regexp.MustCompile(`(?i)(` + CommandPatterns(SetsSecret) + `)\s+\S.*$`)
 
-// maskSecretCommand hides the secret argument of a command the game printed.
+// rconFlagInLog finds the game's --rcon-password argument, which the image's
+// entrypoint prints with the command line. The value is one shell word:
+// quoted parts, escaped characters and plain characters, in any mix.
+var rconFlagInLog = regexp.MustCompile(`(--rcon-password)(?:\s+|=)(?:'[^']*'|"(?:[^"\\]|\\.)*"|\\.|[^\s'"\\])+`)
+
+// maskSecretCommand hides the secret argument of a command the game printed,
+// and any RCON password on a printed command line (SPEC 8.6, 14.8).
 func maskSecretCommand(line string) string {
+	line = rconFlagInLog.ReplaceAllString(line, "${1} "+Mask)
 	return secretInLog.ReplaceAllString(line, "${1} "+Mask)
 }

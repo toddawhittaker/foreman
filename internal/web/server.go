@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
@@ -30,8 +31,11 @@ type Deps struct {
 	// Game runs the game servers; nil means this mode has no server
 	// control, and "/" shows the world list.
 	Game *game.Controller
-	Log  *slog.Logger
-	Now  func() time.Time // time.Now when nil
+	// GameNets gives the game networks, whose addresses may not
+	// sign in by trusted headers (SPEC 12.6). Game answers when it is nil.
+	GameNets GameSubnetter
+	Log      *slog.Logger
+	Now      func() time.Time // time.Now when nil
 }
 
 type server struct {
@@ -47,6 +51,10 @@ type server struct {
 	sessions *auth.SessionManager
 	limiter  *auth.Limiter
 	headers  auth.HeaderConfig
+	// gameNets and gameSeen: the ranges to refuse headers from, and the
+	// ones already logged.
+	gameNets GameSubnetter
+	gameSeen sync.Map
 	mux      *http.ServeMux
 	// uploadLimits holds the body limit of each upload route, by pattern.
 	uploadLimits map[string]int64
@@ -82,6 +90,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		worlds:   d.Worlds,
 		game:     d.Game,
 		runs:     newGameRuns(),
+		gameNets: d.GameNets,
 		console:  newConsoleHistory(),
 		log:      d.Log,
 		now:      now,
@@ -97,6 +106,9 @@ func NewHandler(d Deps) (*Handler, error) {
 		mux:          http.NewServeMux(),
 		uploadLimits: map[string]int64{},
 		uploadSlots:  make(chan struct{}, maxUploads),
+	}
+	if s.gameNets == nil && d.Game != nil {
+		s.gameNets = d.Game
 	}
 	s.routes()
 

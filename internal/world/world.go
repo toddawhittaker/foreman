@@ -70,17 +70,26 @@ var ErrNameTaken = errors.New("another world already has this name. Choose a dif
 // ErrNameEmpty is returned for a blank name.
 var ErrNameEmpty = errors.New("enter a name for the world")
 
+// ErrWorldsIsLink is returned by NewManager when the worlds folder is a
+// symbolic link.
+var ErrWorldsIsLink = errors.New("the worlds folder is a symbolic link, which Foreman refuses to use. Replace it with a real folder")
+
 // NewManager makes the worlds, snapshots and imports folders if they are
 // missing. now may be nil for time.Now.
 func NewManager(dirs Dirs, active ActiveStore, now func() time.Time) (*Manager, error) {
 	if now == nil {
 		now = time.Now
 	}
+	// A link here would send every world's files, and the chmod below,
+	// somewhere else (SPEC 14.5).
+	if info, err := os.Lstat(dirs.Worlds); err == nil && info.Mode()&fs.ModeSymlink != 0 {
+		return nil, fmt.Errorf("%w: %s", ErrWorldsIsLink, dirs.Worlds)
+	}
 	for _, d := range []string{dirs.Worlds, dirs.Snapshots, dirs.Imports} {
 		if err := os.Mkdir(d, DirMode); err != nil && !errors.Is(err, fs.ErrExist) {
 			return nil, fmt.Errorf("make folder %s: %w", d, err)
 		}
-		if err := os.Chmod(d, DirMode); err != nil {
+		if err := chmodFolder(d, DirMode); err != nil {
 			return nil, fmt.Errorf("set mode of %s: %w", d, err)
 		}
 	}
@@ -95,12 +104,18 @@ func (m *Manager) OpenWorld(id string) (*os.Root, error) {
 	if !ValidID(id) {
 		return nil, fs.ErrNotExist
 	}
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = worlds.Close() }()
 	return openDir(worlds, id)
+}
+
+// OpenWorlds opens the worlds folder, refusing a link in its place. The
+// caller closes it (SPEC 14.5).
+func (m *Manager) OpenWorlds() (*os.Root, error) {
+	return openFolder(m.dirs.Worlds)
 }
 
 // ValidID reports whether id has the shape IDFromName makes.
@@ -211,7 +226,7 @@ func (m *Manager) Create(ctx context.Context, name, gameVersion string, spaceAge
 // folder's name in it, and runs before createMu is taken, so a long copy
 // does not hold up other worlds.
 func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge bool, fill func(worlds *os.Root, dir string) error) (string, error) {
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return "", err
 	}

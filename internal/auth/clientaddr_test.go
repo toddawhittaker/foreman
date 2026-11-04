@@ -62,3 +62,29 @@ func TestClientAddr(t *testing.T) {
 		t.Errorf("no trusted prefixes: got %q", got)
 	}
 }
+
+func TestPeerIn(t *testing.T) {
+	prefixes := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/24"), netip.MustParsePrefix("fd00:1::/64")}
+	cases := []struct {
+		name   string
+		remote string
+		hdr    http.Header
+		want   string
+	}{
+		{"inside", "10.0.0.77:4000", nil, "10.0.0.0/24"},
+		{"mapped", "[::ffff:10.0.0.9]:4000", nil, "10.0.0.0/24"},
+		{"IPv6", "[fd00:1::5]:4000", nil, "fd00:1::/64"},
+		{"outside", "10.0.1.8:4000", nil, ""},
+		{"forwarded from inside", "10.0.1.8:4000", http.Header{"X-Forwarded-For": {"10.0.0.9"}}, ""},
+		{"unparsable", "nonsense", nil, ""},
+	}
+	for _, c := range cases {
+		p, ok := PeerIn(reqFrom(c.remote, c.hdr), prefixes)
+		if got := map[bool]string{true: p.String(), false: ""}[ok]; got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+	if _, ok := PeerIn(reqFrom("10.0.0.9:4000", nil), nil); ok {
+		t.Error("no prefixes matched")
+	}
+}

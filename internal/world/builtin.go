@@ -1,6 +1,6 @@
 package world
 
-import "strings"
+import "regexp"
 
 // ModBase is the game's own mod, enabled in every world.
 const ModBase = "base"
@@ -19,13 +19,16 @@ var alwaysOnMods = map[string][]string{
 	"2.1": {"recycler"},
 }
 
-// gameMinor returns "2.0" for "2.0.72".
+var gameMinorRE = regexp.MustCompile(`^(\d+)\.(\d+)(?:\.\d+)*$`)
+
+// gameMinor returns "2.0" for "2.0.72" and for "2.0", and "" for anything
+// that is not dotted numbers.
 func gameMinor(gameVersion string) string {
-	parts := strings.SplitN(gameVersion, ".", 3)
-	if len(parts) < 2 {
+	m := gameMinorRE.FindStringSubmatch(gameVersion)
+	if m == nil {
 		return ""
 	}
-	return parts[0] + "." + parts[1]
+	return m[1] + "." + m[2]
 }
 
 // SupportedGameVersion reports whether Foreman runs this game version:

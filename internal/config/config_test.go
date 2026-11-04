@@ -21,7 +21,6 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := &config.Config{
-		Mode:        "managed",
 		DataDir:     "/data",
 		GameUID:     845,
 		GameGID:     845,
@@ -40,7 +39,6 @@ func TestLoadDefaults(t *testing.T) {
 
 func TestLoadAllSet(t *testing.T) {
 	c, err := load(map[string]string{
-		"FOREMAN_MODE":                "Adopted",
 		"FOREMAN_DATA_DIR":            "/srv/foreman",
 		"FOREMAN_HOST_DATA_DIR":       "/host/foreman",
 		"FOREMAN_GAME_UID":            "1000",
@@ -61,7 +59,6 @@ func TestLoadAllSet(t *testing.T) {
 	}
 	pub, _ := url.Parse("https://foreman.example.com")
 	want := &config.Config{
-		Mode:          "adopted",
 		DataDir:       "/srv/foreman",
 		HostDataDir:   "/host/foreman",
 		GameUID:       1000,
@@ -164,7 +161,6 @@ func TestLoadErrors(t *testing.T) {
 		vars map[string]string
 		want string
 	}{
-		{"bad mode", map[string]string{"FOREMAN_MODE": "swarm"}, `FOREMAN_MODE must be "managed" or "adopted"`},
 		{"uid negative", map[string]string{"FOREMAN_GAME_UID": "-1"}, "FOREMAN_GAME_UID must be a whole number"},
 		{"uid text", map[string]string{"FOREMAN_GAME_UID": "factorio"}, "FOREMAN_GAME_UID must be a whole number"},
 		{"uid too large", map[string]string{"FOREMAN_GAME_UID": "99999999999999"}, "FOREMAN_GAME_UID must be a whole number"},
@@ -222,7 +218,6 @@ func TestHeadersOffIgnoresHeaderSettings(t *testing.T) {
 
 func TestLoadReportsAllProblems(t *testing.T) {
 	_, err := load(map[string]string{
-		"FOREMAN_MODE":            "swarm",
 		"FOREMAN_GAME_UID":        "x",
 		"FOREMAN_LISTEN":          "nope",
 		"FOREMAN_PUBLIC_URL":      "nope",
@@ -234,7 +229,7 @@ func TestLoadReportsAllProblems(t *testing.T) {
 		t.Fatal("want errors")
 	}
 	for _, v := range []string{
-		"FOREMAN_MODE", "FOREMAN_GAME_UID", "FOREMAN_LISTEN", "FOREMAN_PUBLIC_URL",
+		"FOREMAN_GAME_UID", "FOREMAN_LISTEN", "FOREMAN_PUBLIC_URL",
 		"FOREMAN_AUTH_USER_HEADER", "FOREMAN_AUTH_GROUPS_HEADER", "FOREMAN_AUTH_REQUIRED_GROUP",
 		"FOREMAN_SESSION_IDLE", "FOREMAN_TRUSTED_PROXIES",
 	} {
@@ -260,7 +255,7 @@ func TestProxiesAreNormalised(t *testing.T) {
 
 func TestEmptyValuesAreUnset(t *testing.T) {
 	c, err := load(map[string]string{
-		"FOREMAN_MODE": "", "FOREMAN_DATA_DIR": "", "FOREMAN_GAME_UID": "", "FOREMAN_LISTEN": "",
+		"FOREMAN_DATA_DIR": "", "FOREMAN_GAME_UID": "", "FOREMAN_LISTEN": "",
 		"FOREMAN_PUBLIC_URL": "", "FOREMAN_AUTH_METHODS": "", "FOREMAN_SESSION_IDLE": "", "DOCKER_HOST": "", "FOREMAN_TRUSTED_PROXIES": "",
 	})
 	if err != nil {
@@ -269,5 +264,24 @@ func TestEmptyValuesAreUnset(t *testing.T) {
 	d, _ := load(nil)
 	if !reflect.DeepEqual(c, d) {
 		t.Errorf("empty values should equal defaults:\n got %+v\nwant %+v", c, d)
+	}
+}
+
+// Adopted mode and its settings were removed (ADR 0005); Foreman no longer
+// reads them, so a leftover one changes nothing.
+func TestRemovedSettingsAreIgnored(t *testing.T) {
+	c, err := load(map[string]string{
+		"FOREMAN_MODE":               "adopted",
+		"FOREMAN_GAME_CONTAINER":     "factorio",
+		"FOREMAN_GAME_DIR":           "/srv/factorio",
+		"FOREMAN_RCON_PASSWORD":      "hunter2-pw",
+		"FOREMAN_RCON_PASSWORD_FILE": "/nonexistent/rconpw",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, _ := load(nil)
+	if !reflect.DeepEqual(c, d) {
+		t.Errorf("removed settings changed the config:\n got %+v\nwant %+v", c, d)
 	}
 }

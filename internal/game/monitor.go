@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"path"
 	"strings"
@@ -85,8 +86,11 @@ func (c *Controller) tick(ctx context.Context) {
 			c.world(id)
 		}
 	}
+	allSeen := true
 	for _, w := range c.allRuns() {
 		if c.busy(w) {
+			_, exists := found[w.id]
+			allSeen = allSeen && !exists
 			continue
 		}
 		cid, ok := found[w.id]
@@ -95,19 +99,30 @@ func (c *Controller) tick(ctx context.Context) {
 			continue
 		}
 		cont, err := c.docker.InspectContainer(ctx, cid)
-		switch {
-		case errors.Is(err, docker.ErrNotFound):
-			c.observe(w, nil)
-		case err != nil:
-			w.mu.Lock()
-			w.inspectErr = err
-			c.changedLocked(w, true)
-			w.mu.Unlock()
-		default:
-			c.observe(w, &cont)
-			if cont.State.Status == "running" {
-				c.readUsage(ctx, w, cont.ID)
-			}
+		if err == nil {
+			c.noteGameSubnets(cont)
+		} else {
+			allSeen = false
+		}
+		c.observeInspect(ctx, w, cont, err)
+	}
+	c.refreshSubnets(ctx, allSeen)
+}
+
+// observeInspect takes in one inspect of the world's container.
+func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docker.Container, err error) {
+	switch {
+	case errors.Is(err, docker.ErrNotFound):
+		c.observe(w, nil)
+	case err != nil:
+		w.mu.Lock()
+		w.inspectErr = err
+		c.changedLocked(w, true)
+		w.mu.Unlock()
+	default:
+		c.observe(w, &cont)
+		if cont.State.Status == "running" {
+			c.readUsage(ctx, w, cont.ID)
 		}
 	}
 }
@@ -132,8 +147,8 @@ func (c *Controller) busy(w *worldRun) bool {
 // observe takes in one look at the world's container (nil when it has
 // none) and acts on what changed since the last look (SPEC 8.7).
 func (c *Controller) observe(w *worldRun, cont *docker.Container) {
-	if cont != nil && c.isNewContainer(w, cont.ID) {
-		c.adopt(w, *cont)
+	if cont != nil && c.needsAttach(w, *cont) {
+		c.attach(w, *cont)
 	}
 	var old *rcon.Client
 	defer func() { closeRCON(old) }() // runs after the unlock below
@@ -144,7 +159,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 	}
 	w.inspectErr = nil
 	if cont == nil {
-		w.adoptFailed, w.adoptErr = "", nil
+		w.attachFailed, w.attachErr = "", nil
 		if w.containerID != "" {
 			old = c.dropContainerLocked(w)
 		}
@@ -152,7 +167,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 		return
 	}
 	if cont.ID != w.containerID {
-		// adopt could not read the world's secrets; without them the log
+		// attach could not read the world's secrets; without them the log
 		// cannot be relayed safely, so it is not followed.
 		w.dockerStatus = cont.State.Status
 		c.changedLocked(w, true)
@@ -196,7 +211,7 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container) {
 		w.stopping = true
 		c.stopCrashLoopLocked(w, cont.ID)
 	}
-	if w.dockerStatus == "running" && !w.following && !w.stopping {
+	if w.dockerStatus == "running" && !w.following && !w.stopping && !w.noSecrets {
 		since := w.startedAt
 		if w.followedRun.Equal(w.startedAt) && !w.lastLineAt.IsZero() {
 			// The stream broke while the same run went on: resume after the
@@ -219,32 +234,64 @@ func keepSince(times []time.Time, since time.Time) []time.Time {
 	return out
 }
 
-func (c *Controller) isNewContainer(w *worldRun, cid string) bool {
+// needsAttach reports whether the container is new to the world, or was
+// taken on while stopped and now runs a game whose passwords are needed.
+func (c *Controller) needsAttach(w *worldRun, cont docker.Container) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.containerID != cid && w.opDone == nil
+	if w.opDone != nil {
+		return false
+	}
+	return w.containerID != cont.ID || (w.noSecrets && gameLive(cont.State.Status))
 }
 
-// adopt takes on a container Foreman did not start in this run, such as a
-// game left running across a Foreman restart (SPEC 3.8). The game's own
+// gameLive reports whether a container in this Docker state has a game
+// process that may print secrets or answer over RCON.
+func gameLive(status string) bool {
+	return status == "running" || status == "restarting" || status == "paused"
+}
+
+// passwords checks that the world has an RCON password and returns it with
+// every secret to keep out of the relayed log.
+func (c *Controller) passwords(id string) (secret.Secret, []secret.Secret, error) {
+	if err := c.hasRCONPassword(id); err != nil {
+		return secret.Secret{}, nil, err
+	}
+	return c.secrets(id)
+}
+
+// attach takes on a container Foreman did not start in this run, such as a
+// game left running across a Foreman restart (SPEC 3.8). A live game's own
 // RCON password is needed both to talk to it and to keep it out of the
-// relayed log, so without it nothing is adopted.
-func (c *Controller) adopt(w *worldRun, cont docker.Container) {
-	// Re-attaching changes no world file (SPEC 3.8): a missing password
-	// file is not made here, since the running game could not be using it.
-	err := c.hasRCONPassword(w.id)
+// relayed log, so without it nothing is taken on. A stopped container needs
+// none: it is shown as stopped, and taken on again if it starts.
+func (c *Controller) attach(w *worldRun, cont docker.Container) {
+	live := gameLive(cont.State.Status)
+	var addr string
 	var rconPW secret.Secret
 	var secrets []secret.Secret
-	if err == nil {
-		rconPW, secrets, err = c.secrets(w.id)
+	var err error
+	if live {
+		// Re-attaching changes no world file (SPEC 3.8): a missing password
+		// file is not made here, since the running game could not be using it.
+		addr = rconAddress(cont)
+		if rconPW, secrets, err = c.passwords(w.id); err != nil {
+			err = fmt.Errorf("cannot read this world's RCON password, so it cannot watch the game: %w", err)
+		}
 	}
 	if err != nil {
+		var old *rcon.Client
 		w.mu.Lock()
-		warn := w.adoptFailed != cont.ID
-		w.adoptFailed, w.adoptErr = cont.ID, err
+		warn := w.attachFailed != cont.ID
+		w.attachFailed, w.attachErr = cont.ID, err
+		if w.containerID == cont.ID && w.opDone == nil {
+			// Taken on while stopped: its log must not be followed now.
+			old = c.dropContainerLocked(w)
+		}
 		w.mu.Unlock()
+		closeRCON(old)
 		if warn {
-			c.log.Warn("cannot read the world's passwords, so its game's log is not shown", "world", w.id, "error", err)
+			c.log.Warn("cannot watch the game, so its log is not shown", "world", w.id, "error", err)
 		}
 		return
 	}
@@ -256,12 +303,13 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 	defer func() { closeRCON(old) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.opDone != nil || w.containerID == cont.ID {
+	if w.opDone != nil || (w.containerID == cont.ID && !w.noSecrets) {
 		return
 	}
 	old = c.dropContainerLocked(w)
-	w.adoptFailed, w.adoptErr = "", nil
-	w.containerID = cont.ID
+	w.noSecrets = !live
+	w.attachFailed, w.attachErr = "", nil
+	w.containerID, w.logMark = cont.ID, w.logs.Mark()
 	w.seenRestarts = cont.RestartCount
 	w.startedAt = cont.State.StartedAt
 	w.dockerStatus = cont.State.Status
@@ -273,8 +321,8 @@ func (c *Controller) adopt(w *worldRun, cont docker.Container) {
 	w.secrets = secrets
 	w.gameVersion = meta.GameVersion
 	w.image = cont.Image
-	if ip := containerIP(cont); ip != "" {
-		w.rc = c.newRCON(ip, rconPW)
+	if live && addr != "" {
+		w.rc = rcon.New(addr, rconPW)
 		if cont.State.Status == "running" {
 			rc := w.rc
 			c.spawn(func() { c.probeInGame(w, cont.ID, rc) })
@@ -313,6 +361,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	rc := w.rc
 	w.rc = nil
 	w.containerID, w.dockerStatus = "", ""
+	w.noSecrets = false
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false

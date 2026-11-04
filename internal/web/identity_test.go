@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 )
@@ -89,6 +90,124 @@ func TestSpoofedHeadersFromUntrustedPeerAreIgnored(t *testing.T) {
 		}
 		hn.addUser("alice", testPassword)
 		hn.wantRedirect(hn.get(PathWorlds, spoof...), PathSignIn)
+	})
+}
+
+// fakeNets stands in for the game networks the controller reports.
+type fakeNets struct {
+	subnets []netip.Prefix
+	known   bool
+}
+
+func (f fakeNets) GameSubnets() ([]netip.Prefix, bool) { return f.subnets, f.known }
+
+func gameNets(subnets ...string) fakeNets {
+	f := fakeNets{known: true}
+	for _, s := range subnets {
+		f.subnets = append(f.subnets, netip.MustParsePrefix(s))
+	}
+	return f
+}
+
+func headerHarnessWithGame(t *testing.T, methods string, nets fakeNets) *harness {
+	env := map[string]string{"FOREMAN_AUTH_METHODS": methods, "FOREMAN_AUTH_REQUIRED_GROUP": testGroup}
+	for k, v := range headerEnv {
+		env[k] = v
+	}
+	env["FOREMAN_TRUSTED_PROXIES"] = "10.0.0.0/8,fd00::/16"
+	return newHarnessNets(t, env, nil, nets)
+}
+
+func asPeer(peer string) []func(*http.Request) {
+	return []func(*http.Request){withPeer(peer), withHeader("X-Authentik-Username", "alice"), withHeader("X-Authentik-Groups", testGroup)}
+}
+
+// SPEC 4.4, 12.6: a game is never taken for the proxy. With NET_RAW it can
+// take any free address on its network, so every peer in a game network's
+// range is refused, even inside FOREMAN_TRUSTED_PROXIES, and every peer is
+// refused while the ranges are not known.
+func TestHeadersFromAGameNetworkAreIgnored(t *testing.T) {
+	t.Run("an address in the game range that is not the game's own", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", gameNets("10.0.1.0/24"))
+		rec := hn.get(PathWorlds, asPeer("10.0.1.200:4000")...)
+		if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "through the proxy") {
+			t.Fatalf("from the game range: %d", rec.Code)
+		}
+		if _, ok, _ := hn.store.UserByUsername(context.Background(), "alice"); ok {
+			t.Error("a header from the game range created a user")
+		}
+		hn.get(PathWorlds, asPeer("10.0.1.9:4001")...)
+		if n := strings.Count(hn.logs.String(), "refused trusted-header sign-in"); n != 1 {
+			t.Errorf("the refusal was logged %d times, want once: %s", n, hn.logs.String())
+		}
+		if strings.Contains(hn.logs.String(), "alice") {
+			t.Error("the log holds a header value")
+		}
+	})
+	t.Run("a trusted proxy outside the game ranges signs in", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", gameNets("10.0.1.0/24", "fd00:1::/64"))
+		if rec := hn.get(PathWorlds, asPeer(peerProxy)...); rec.Code != http.StatusOK {
+			t.Fatalf("from the proxy: %d", rec.Code)
+		}
+	})
+	t.Run("an IPv4-mapped peer is in the range", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", gameNets("10.0.1.0/24"))
+		if rec := hn.get(PathWorlds, asPeer("[::ffff:10.0.1.9]:4000")...); rec.Code != http.StatusForbidden {
+			t.Fatalf("mapped peer: %d", rec.Code)
+		}
+	})
+	t.Run("an IPv6 game range", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", gameNets("10.0.1.0/24", "fd00:1::/64"))
+		if rec := hn.get(PathWorlds, asPeer("[fd00:1::abcd]:4000")...); rec.Code != http.StatusForbidden {
+			t.Fatalf("IPv6 peer in the game range: %d", rec.Code)
+		}
+		if rec := hn.get(PathWorlds, asPeer("[fd00:2::5]:4000")...); rec.Code != http.StatusOK {
+			t.Fatalf("IPv6 proxy outside the game range: %d", rec.Code)
+		}
+	})
+	t.Run("unknown game networks refuse every header sign-in", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", fakeNets{})
+		if rec := hn.get(PathWorlds, asPeer(peerProxy)...); rec.Code != http.StatusForbidden {
+			t.Fatalf("from the proxy while unknown: %d", rec.Code)
+		}
+		hn.get(PathWorlds, asPeer(peerProxy)...)
+		if n := strings.Count(hn.logs.String(), "game networks are not yet known"); n != 1 {
+			t.Errorf("logged %d times, want once", n)
+		}
+	})
+	t.Run("the refusal page says why while the networks are unknown", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "headers", fakeNets{})
+		body := hn.get(PathWorlds, asPeer(peerProxy)...).Body.String()
+		if !strings.Contains(body, "not yet seen the game container") {
+			t.Errorf("headers only: the page does not say why: %s", body)
+		}
+		if strings.Contains(body, "Password sign-in") || strings.Contains(body, "alice") {
+			t.Error("headers only: the page offers password sign-in or shows a header value")
+		}
+		hn = headerHarnessWithGame(t, "local,headers", fakeNets{})
+		hn.addUser("bob", testPassword)
+		rec := hn.get(PathWorlds, asPeer(peerProxy)...)
+		body = rec.Body.String()
+		if rec.Code != http.StatusForbidden || !strings.Contains(body, "not yet seen the game container") || !strings.Contains(body, "Password sign-in still works") {
+			t.Errorf("local and headers: %d %s", rec.Code, body)
+		}
+		if strings.Contains(body, "alice") {
+			t.Error("the page shows a header value")
+		}
+		// With no proxy headers, a visitor is sent to sign in as usual.
+		hn.wantRedirect(hn.get(PathWorlds, withPeer(peerProxy)), PathSignIn)
+	})
+	t.Run("password sign-in and sessions still work", func(t *testing.T) {
+		hn := headerHarnessWithGame(t, "local,headers", fakeNets{})
+		hn.addUser("alice", testPassword)
+		rec := hn.post(PathSignIn, signInForm("alice", testPassword), withPeer("10.0.1.9:4000"))
+		c := sessionCookie(rec)
+		if c == nil {
+			t.Fatalf("password sign-in from the game range: %d", rec.Code)
+		}
+		if rec := hn.get(PathWorlds, withPeer("10.0.1.9:4000"), withCookie(c)); rec.Code != http.StatusOK {
+			t.Fatalf("session while the networks are unknown: %d", rec.Code)
+		}
 	})
 }
 

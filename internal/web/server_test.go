@@ -85,6 +85,13 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 // it is not nil.
 func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
 	t.Helper()
+	return newHarnessNets(t, env, makeGame, nil)
+}
+
+// newHarnessNets is newHarnessWith with the game networks given by nets,
+// when it is not nil, in place of the controller's.
+func newHarnessNets(t *testing.T, env map[string]string, makeGame func(*world.Manager, *store.Store) *game.Controller, nets GameSubnetter) *harness {
+	t.Helper()
 	cfg, err := config.Load(func(k string) (string, bool) { v, ok := env[k]; return v, ok })
 	if err != nil {
 		t.Fatalf("config: %v", err)
@@ -110,7 +117,7 @@ func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Ma
 	if makeGame != nil {
 		ctrl = makeGame(worlds, st)
 	}
-	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Game: ctrl, Log: logger, Now: clock.Now})
+	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Game: ctrl, GameNets: nets, Log: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}

@@ -17,7 +17,8 @@ Serves SPEC 18.1. Everything below is built and tested.
   is distroless, runs as 845:845, and is about 7 MB compressed (limit
   30 MB, checked in CI). CI is GitHub Actions on `ubuntu-24.04`, in
   parallel jobs with caching and every action pinned by commit (STACK 1
-  and 9). `make run` starts Foreman locally in adopted mode.
+  and 9). `make run` starts Foreman locally with `go run ./cmd/foreman serve`,
+  using a `.dev-data` folder and your own user and group ids.
   The toolchain is pinned (STACK 1, ADR 0001), and `make verify` fails on
   a wrong local Go. A 70% coverage floor across `internal/` is enforced
   inside `make verify`; coverage is about 91%.
@@ -397,3 +398,127 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
   accepted, by design of Go's cross-origin protection.
 - `GET /events` stays on the SPEC 14.3 list but is not wrapped or used;
   Foreman polls (ADR 0003).
+
+## Epic 4: World switching
+
+Serves SPEC 18.4: switching worlds (7.9, 7.10) and removing adopted mode.
+Adopted mode was built first, then dropped before release (ADR 0005), so
+Foreman now has one mode: it creates and owns the game container. Game
+versions are now exact patch tags (SPEC 4.2). Everything below is built and
+tested. Coverage across `internal/` is about 90%.
+
+### Delivered
+
+- **Switching (SPEC 7.9).** A non-active world's page offers "Switch to
+  this world". Everything that would refuse the new world's start (the
+  pre-start check, a missing image, the game network, the container
+  checks) runs before the old world is stopped. The steps are: graceful
+  stop, "Before switch" snapshots of both worlds, the pre-start check,
+  make the new world active, then start it and confirm it runs, only if
+  the old world was running. A switch leaves the game running or stopped
+  as it found it. The operation holds both worlds, both pages show its
+  step list, and a forced stop on either ends it. After a failure the page
+  offers "Switch back", or says nothing was switched. The old world's open
+  page reloads onto the Server page when the switch ends and speaks how it
+  ended. Start and Restart of a world that is not active are refused. A
+  switch is audited as `switch` only after its checks pass; a refusal is
+  audited as `switch-refused`.
+- **Switch record and recovery (SPEC 7.10, 3.8).** The switch is recorded
+  in the app database (table `world_switches`, migration 0004) before its
+  first step, then each step as it completes, and the row is removed when
+  it ends. At startup an unfinished switch becomes a notice on the active
+  world, with Start or Switch back offered. Recovery never starts or stops
+  a game, and its faults are logged while pages keep serving.
+- **The refusal box is the confirmation (SPEC 7.4, 7.9).** When a start,
+  restart or switch is refused and a choice exists, the Warning on the
+  Server page lists the problems and the steps: the "Before start anyway"
+  snapshot (for a switch, the "Before switch" snapshots of both worlds),
+  what the game drops, and how to undo. Its danger button posts the action
+  at once. There is no separate anyway page. Restart anyway and a switch
+  anyway of a running game use the default 60-second countdown, and the
+  box says so. A step the check refused reads "Refused": warning style
+  with a choice, error style without. After a crash loop or a plain
+  refusal, a note says why a start would not run and the primary button
+  becomes "Try to start again" (SPEC 8.9). The newest message leads; an
+  older one is marked "Earlier, at <time>".
+- **Pre-start check (SPEC 7.4).** Mods made for another Factorio than the
+  world's pinned version are refused before anything stops, using
+  `factorio_version` from each enabled mod's zip. Missing mod files and
+  mods that are present but turned off are two separate problems, with
+  plain one-line texts. A refused start, restart or switch is audited
+  (`start-refused`, `restart-refused`, `switch-refused`) with its reason.
+- **Crash reason (SPEC 8.7).** A game that stops while loading gives the
+  game's own reason, read from the run's log, trimmed and masked with the
+  world's secrets. The Server page shows that reason (or says it is
+  unknown) and links to the Console, not raw log lines.
+- **Managed only (ADR 0005).** The settings `FOREMAN_MODE`,
+  `FOREMAN_GAME_CONTAINER`, `FOREMAN_GAME_DIR` and `FOREMAN_RCON_PASSWORD`
+  are no longer read, and a leftover one changes nothing. The adopted
+  client, game folder, adoption, adopted checks and pages, the `gamedir`
+  package, and the `adoption` table are gone. The SPEC 4.4 network checks
+  and the trusted-header refusal for game ranges (12.5, 12.6) stay.
+- **Game versions by tag (SPEC 4.2, ADR 0005).** A world's version is an
+  exact patch release of the 1.1, 2.0 or 2.1 line, and its image is
+  `factoriotools/factorio:<version>`. The three game images pinned in the
+  Makefile are test images only.
+- **VPN sidecars (SPEC 4.13, ADR 0006).** The game can share the network
+  of an operator-run sidecar container. A start is refused when the
+  sidecar is missing, stopped, on the host network, or off the game
+  network. A sidecar's ranges count as game ranges for trusted-header
+  sign-in.
+- **Import (SPEC 5.5).** The version and Space Age flag are read from the
+  newest save and prefill the form; an empty version field means "use the
+  save's version". Names are suggested from the chosen folder or file
+  name and never overwrite typed text. A single importable folder is
+  picked for you. A folder with no save at its top level is listed as not
+  importable, with its radio disabled.
+- **Test tools.** The fake game and fake Docker no longer model an adopted
+  container.
+
+### Verified
+
+- Checks on 58507de, all green: `make verify` (coverage 90.7%), `make e2e`
+  (368 passed), and `make test-game` (33 cases across 1.1.110, 2.0.77 and
+  2.1.24).
+- Switch invariant tests (`internal/game/switch_invariants_test.go`): a
+  crash before and after every record write, a cancel at every point,
+  injected failures, many kinds of refusal, a random walk over three
+  worlds, and recovery. Each ends with one active world, no save lost or
+  changed, and a way back that works.
+- `make e2e` covers switch, switch back, the refusal box in each state,
+  import and the axe scan, at desktop and 320 px, in dark and light.
+- `make e2e-game`: the phone scenario switches A to B and back to A
+  against the real 2.1 image with every save kept.
+- Code, security, accessibility and design reviews ran over the epic, and
+  fix rounds closed their findings.
+
+### Gaps left
+
+- No game client joined in Epic 4's checks, so the in-game stop warning on
+  a switch and live updates through a real proxy are untested. Todd joins
+  at Gate A.
+- Restart runs the pre-start check twice.
+- Pass-1 fix 10 (the dropped report of a superseded failed switch, and the
+  "Earlier" marking) is covered by unit tests only, with no end-to-end
+  test.
+- The start-anyway fingerprint leaves out the save name. This is an
+  accepted trade-off.
+- Restart anyway and a switch anyway use the default countdown, with no
+  field to change it.
+- "Last played" shows the import time for a world that was never played.
+- `mods/mod-list.json` differs in every snapshot, because the game and the
+  image's entrypoint rewrite it at each start.
+- On a world's first start the image writes its example config files into
+  the world, after the switch snapshot was taken.
+- The server keeps no limit on a world name's length; only the form's
+  `maxlength` (100) does.
+- A running switch is silent to screen readers until it ends (DESIGN 7.6).
+- With Foreman outside a container, a new game's range is recorded only
+  right after its container starts, so for that moment the header range
+  guard does not cover it.
+- The fake game does not model `chown`, `LOAD_LATEST_SAVE=false`,
+  `GENERATE_NEW_SAVE` or `UPDATE_MODS_ON_START`.
+- The header refusal for a peer in a game range has Go tests but no
+  end-to-end test, because a browser cannot connect from a game address.
+- The mod-version check and the crash-reason reader are not checked
+  against a real container's log.

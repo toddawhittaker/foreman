@@ -506,14 +506,18 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		junk := make([]byte, 4096)
 		_, _ = rand.Read(junk)
 		e.putSave(t, bad, "corrupt.zip", junk, time.Now().Add(-time.Hour))
-		err := c3.Start(ctx, bad, admin, StartOptions{Anyway: true})
+		var pe *PrecheckError
+		if err := c3.Start(ctx, bad, admin, StartOptions{}); !errors.As(err, &pe) {
+			t.Fatalf("start without anyway = %v, want a pre-start refusal", err)
+		}
+		err := c3.Start(ctx, bad, admin, StartOptions{Anyway: true, Seen: AnywayFingerprint(pe.Check, false)})
 		if !errors.Is(err, ErrStartFailed) {
 			t.Fatalf("start error = %v, want ErrStartFailed", err)
 		}
 		t.Logf("start said: %v", err)
 		st := waitState(t, c3, bad, StateCrashLooping, 90*time.Second)
-		if len(st.CrashLines) == 0 || len(st.CrashLines) > CrashLines {
-			t.Fatalf("crash lines = %d, want 1 to %d", len(st.CrashLines), CrashLines)
+		if !strings.HasPrefix(st.CrashReason, ". Factorio said: ") {
+			t.Fatalf("crash reason = %q, want the game's error line", st.CrashReason)
 		}
 		waitFor(t, 60*time.Second, "the crash-looping container to be stopped", func() bool {
 			return !e.inspect(t, bad).State.Running && e.inspect(t, bad).State.Status != "restarting"

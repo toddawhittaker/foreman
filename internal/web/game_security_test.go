@@ -43,7 +43,7 @@ func startController(t *testing.T, dockerHost string, worlds *world.Manager, st 
 		t.Fatal(err)
 	}
 	c, err := game.New(game.Config{
-		Docker: dc, Worlds: worlds, Audit: st,
+		Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 		HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
 		Images: map[string]string{"2.1": image21},
 		Log:    slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
@@ -169,11 +169,11 @@ func serverActionRoutes(snap string) []actionRoute {
 	}
 	return []actionRoute{
 		{http.MethodPost, p("start")},
-		{http.MethodGet, p("start-anyway")},
 		{http.MethodPost, p("stop")},
 		{http.MethodPost, p("restart")},
 		{http.MethodPost, p("force-stop")},
 		{http.MethodPost, p("pull-image")},
+		{http.MethodPost, p("switch")},
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},
@@ -446,7 +446,7 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 		}
 	}
 	pages := []string{PathServer, gamePath(id, "stop"), gamePath(id, "restart"), gamePath(id, "force-stop"),
-		gamePath(id, "start-anyway"), snapshotsPath(id), PathWorlds, PathConsole}
+		snapshotsPath(id), PathWorlds, PathConsole}
 
 	g.startGame(id)
 	g.emitSecrets(id, rconPW, gamePW)
@@ -472,10 +472,11 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 	g.startGame(id)
 	g.emitSecrets(id, rconPW, gamePW)
 	g.fake.SetCrashLoop(name, true)
-	if crash := g.waitPage(`state--crash`); !strings.Contains(crash, game.Mask) {
-		t.Errorf("the crash page does not show the masked log lines, so the check proves nothing:\n%s", crash)
-	} else {
-		seen.WriteString(crash)
+	// The Server page names only the game's reason (SPEC 8.7); the masked
+	// lines themselves are on the Console page.
+	seen.WriteString(g.waitPage(`state--crash`))
+	if console := g.get(PathConsole); !strings.Contains(console, game.Mask) {
+		t.Errorf("the console does not show the masked log lines, so the check proves nothing:\n%s", console)
 	}
 	look(pages...)
 	g.fake.SetCrashLoop(name, false)
@@ -513,7 +514,7 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 	}
 }
 
-// allowedDocker is SPEC 14.3 for managed mode, as "METHOD path".
+// allowedDocker is SPEC 14.3, as "METHOD path".
 var allowedDocker = regexp.MustCompile(`^(GET /_ping|GET /version|GET /containers/json|` +
 	`GET /containers/[^/]+/(json|logs|stats)|POST /containers/[^/]+/(start|stop|kill)|` +
 	`POST /containers/create|DELETE /containers/[^/]+|POST /images/create|GET /images/.+/json|GET /events)$`)
@@ -686,17 +687,12 @@ func TestForemanStopAndStartLeaveTheGameRunning(t *testing.T) {
 	}
 }
 
-// SPEC 7.3: only the active world starts, and the confirmation page for
-// "start anyway" refuses an inactive world too.
+// SPEC 7.3: only the active world starts, also when started anyway.
 func TestInactiveWorldStartAnywayRefused(t *testing.T) {
 	g := newSecRig(t)
 	g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	other := g.newWorld("Other", "2.1.24-no-space-age.zip", false)
-	rep := g.do(http.MethodGet, gamePath(other, "start-anyway"), nil, http.Header{"Cookie": {g.cookie.String()}})
-	if rep.StatusCode != http.StatusConflict {
-		t.Errorf("start anyway of an inactive world: %d", rep.StatusCode)
-	}
-	rep = g.post(gamePath(other, "start"), url.Values{"anyway": {"1"}})
+	rep := g.post(gamePath(other, "start"), url.Values{"anyway": {"1"}})
 	if rep.StatusCode != http.StatusConflict {
 		t.Errorf("start anyway post of an inactive world: %d", rep.StatusCode)
 	}
@@ -799,7 +795,7 @@ func TestRefusedStartIsAudited(t *testing.T) {
 	}
 	var found bool
 	for _, e := range g.audit() {
-		found = found || (e.Action == game.AuditStart && e.Username == "alice" && e.WorldID == id)
+		found = found || (e.Action == game.AuditStartRefused && e.Username == "alice" && e.WorldID == id && strings.Contains(e.Detail, "no save"))
 	}
 	if !found {
 		t.Errorf("the refused start is not audited: %+v", g.audit())

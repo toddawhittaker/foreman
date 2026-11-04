@@ -20,10 +20,10 @@ import (
 const (
 	PathServer      = "/"
 	PathGameStart   = "/worlds/{id}/start"
-	PathGameAnyway  = "/worlds/{id}/start-anyway"
 	PathGameStop    = "/worlds/{id}/stop"
 	PathGameRestart = "/worlds/{id}/restart"
 	PathGameForce   = "/worlds/{id}/force-stop"
+	PathGameSwitch  = "/worlds/{id}/switch"
 	PathGamePull    = "/worlds/{id}/pull-image"
 	PathGameEvents  = "/worlds/{id}/events"
 )
@@ -69,6 +69,10 @@ type actionResult struct {
 	// "Before restore" snapshot it took first.
 	Restored string
 	Undo     string
+	// Target is the world a switch was asked to go to.
+	Target string
+	// At is when the action ended.
+	At time.Time
 }
 
 func newGameRuns() *gameRuns {
@@ -105,50 +109,62 @@ func (g *gameRuns) trackLocked() bool {
 	return true
 }
 
-// run starts an action in the background. holdsLock is true for the
-// actions that take the world's lock (start, stop, restart, restore, force
-// stop) and false for an image download. When no lock-holding action runs
-// on the world, a new one forgets the world's last results, so the page
-// shows only what it does. A lock-holding action asked for while another
-// runs keeps its result apart, so it never hides the first one's. A
-// download never takes the main place from a lock-holding action.
+// run starts an action in the background on one world.
 func (g *gameRuns) run(id string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
+	return g.runOn([]string{id}, holdsLock, do)
+}
+
+// runOn starts an action in the background on every world in ids; a switch
+// holds two, and each world's page shows its result. holdsLock is true for
+// the actions that take the world's lock (start, stop, restart, restore,
+// switch, force stop) and false for an image download. When no lock-holding
+// action runs on a world, a new one forgets the world's last results, so
+// the page shows only what it does. A lock-holding action asked for while
+// another runs keeps its result apart, so it never hides the first one's. A
+// download never takes the main place from a lock-holding action.
+func (g *gameRuns) runOn(ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	g.mu.Lock()
 	if !g.trackLocked() {
 		g.mu.Unlock()
 		return false
 	}
-	other := holdsLock && g.locking[id] > 0
-	if holdsLock && !other || !holdsLock && g.running[id] == 0 {
-		delete(g.results, id)
-		delete(g.asides, id)
-		g.changedLocked()
-	}
-	g.running[id]++
-	if holdsLock {
-		g.locking[id]++
+	other := make([]bool, len(ids))
+	for i, id := range ids {
+		other[i] = holdsLock && g.locking[id] > 0
+		if holdsLock && !other[i] || !holdsLock && g.running[id] == 0 {
+			delete(g.results, id)
+			delete(g.asides, id)
+			g.changedLocked()
+		}
+		g.running[id]++
+		if holdsLock {
+			g.locking[id]++
+		}
 	}
 	g.mu.Unlock()
 	go func() {
 		defer g.wg.Done()
 		res := do(g.ctx)
+		res.At = time.Now()
 		g.mu.Lock()
 		defer g.mu.Unlock()
-		if g.running[id]--; g.running[id] == 0 {
-			delete(g.running, id)
-		}
-		if holdsLock {
-			if g.locking[id]--; g.locking[id] == 0 {
-				delete(g.locking, id)
+		for i, id := range ids {
+			if g.running[id]--; g.running[id] == 0 {
+				delete(g.running, id)
 			}
-		} else {
-			_, has := g.results[id]
-			other = g.locking[id] > 0 || has
-		}
-		if other {
-			g.asides[id] = append(g.asides[id], res)
-		} else {
-			g.results[id] = res
+			if holdsLock {
+				if g.locking[id]--; g.locking[id] == 0 {
+					delete(g.locking, id)
+				}
+			} else {
+				_, has := g.results[id]
+				other[i] = g.locking[id] > 0 || has
+			}
+			if other[i] {
+				g.asides[id] = append(g.asides[id], res)
+			} else {
+				g.results[id] = res
+			}
 		}
 		g.changedLocked()
 	}()
@@ -201,7 +217,6 @@ func (s *server) gameRoutes() {
 	}
 	s.mux.HandleFunc("GET /{$}", s.requireUser(s.handleServer))
 	s.mux.HandleFunc("POST "+PathGameStart, s.requireUser(s.handleStart))
-	s.mux.HandleFunc("GET "+PathGameAnyway, s.requireUser(s.handleStartAnywayForm))
 	s.mux.HandleFunc("GET "+PathGameStop, s.requireUser(s.handleStopForm))
 	s.mux.HandleFunc("POST "+PathGameStop, s.requireUser(s.handleStop))
 	s.mux.HandleFunc("GET "+PathGameRestart, s.requireUser(s.handleStopForm))
@@ -209,6 +224,7 @@ func (s *server) gameRoutes() {
 	s.mux.HandleFunc("GET "+PathGameForce, s.requireUser(s.handleForceStopForm))
 	s.mux.HandleFunc("POST "+PathGameForce, s.requireUser(s.handleForceStop))
 	s.mux.HandleFunc("POST "+PathGamePull, s.requireUser(s.handlePull))
+	s.switchRoutes()
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
 }
 
@@ -217,7 +233,7 @@ func (s *server) gameRoutes() {
 // caller logs the error and shows no detail.
 func gameError(err error) (int, string) {
 	if pe, ok := errors.AsType[*game.PrecheckError](err); ok {
-		return http.StatusConflict, precheckLead + " " + pe.Error()
+		return http.StatusConflict, precheckLeadFor(pe.Check, false, "") + " " + pe.Error()
 	}
 	switch {
 	case errors.Is(err, game.ErrAlreadyRunning), errors.Is(err, game.ErrNotRunning),
@@ -226,7 +242,9 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
 		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
 		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture),
-		errors.Is(err, game.ErrNetwork):
+		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
+		errors.Is(err, game.ErrSwitchNoTarget), errors.Is(err, game.ErrSwitchTargetRunning),
+		errors.Is(err, game.ErrSwitchUnavailable), errors.Is(err, game.ErrWorldNotActive):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)
@@ -273,6 +291,7 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 	p := ServerPage{World: sum, HasWorld: true, Status: st}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	p.Others = s.runs.others(sum.ID)
+	s.switchNames(&p)
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()
@@ -313,12 +332,19 @@ func (s *server) startable(w http.ResponseWriter, r *http.Request, u store.User)
 // begin runs an action in the background and sends the admin to the
 // server page, which follows it live.
 func (s *server) begin(w http.ResponseWriter, r *http.Request, id string, holdsLock bool, do func(ctx context.Context) actionResult) {
-	if !s.runs.run(id, holdsLock, do) {
+	s.beginOn(w, r, []string{id}, holdsLock, do)
+}
+
+// beginOn is begin for an action on several worlds. It reports whether the
+// action started; if not, the page has been answered.
+func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
+	if !s.runs.runOn(ids, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
 			Detail: "Foreman is shutting down. Try again once it is back."})
-		return
+		return false
 	}
 	http.Redirect(w, r, PathServer, http.StatusSeeOther)
+	return true
 }
 
 // finish logs an action's error that the admin cannot fix, then returns
@@ -333,7 +359,7 @@ func (s *server) finish(id, action string, err error) actionResult {
 }
 
 // handleStart starts the active world (SPEC 7.3). "anyway" starts despite
-// the pre-start check's problems; the confirmation page sends it (7.4).
+// the pre-start check's problems; the refusal box sends it (7.4).
 func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) {
 		return
@@ -342,7 +368,7 @@ func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	opts := game.StartOptions{Anyway: r.PostFormValue("anyway") == "1"}
+	opts := anywayOptions(r)
 	by := actor(u)
 	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditStart, s.game.Start(ctx, sum.ID, by, opts))
@@ -379,17 +405,11 @@ func defaultCountdown() CountdownForm {
 }
 
 // StopPage asks how to warn players before a stop or restart (SPEC 7.5,
-// 7.6, 7.8). With Anyway it also confirms a restart despite the pre-start
-// check's problems (7.4).
+// 7.6, 7.8).
 type StopPage struct {
 	World   world.Summary
 	Restart bool
 	CountdownForm
-	Anyway bool
-	// CheckProblems are the pre-start check's findings, for Anyway.
-	CheckProblems []string
-	// Refusal replaces the form when the restart cannot go ahead anyway.
-	Refusal string
 }
 
 func (StopPage) templateName() string { return "stop" }
@@ -438,86 +458,24 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 		return
 	}
 	form, stop := readCountdown(r)
-	anyway := restart && r.PostFormValue("anyway") == "1"
 	if form.CountdownError != "" {
-		p := StopPage{World: sum, Restart: restart, CountdownForm: form, Anyway: anyway}
-		if anyway {
-			p = s.anywayProblems(p)
-		}
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
 		return
 	}
-	by := actor(u)
+	by, opts := actor(u), anywayOptions(r)
 	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
 		if restart {
-			err := s.game.Restart(ctx, sum.ID, by, stop, game.StartOptions{Anyway: anyway})
+			err := s.game.Restart(ctx, sum.ID, by, stop, opts)
 			return s.finish(sum.ID, game.AuditRestart, err)
 		}
 		return s.finish(sum.ID, game.AuditStop, s.game.Stop(ctx, sum.ID, by, stop))
 	})
 }
 
-// StartAnywayPage confirms a start despite the pre-start check (SPEC 7.4,
-// DESIGN 7.4): it names what the game will delete and the snapshot taken
-// first.
-type StartAnywayPage struct {
-	World         world.Summary
-	CheckProblems []string
-	// Refusal replaces the form when the start cannot go ahead anyway.
-	Refusal string
-}
-
-func (StartAnywayPage) templateName() string { return "startanyway" }
-func (StartAnywayPage) navItem() string      { return PathServer }
-
-// Path is where the confirmation posts.
-func (p StartAnywayPage) Path() string { return gamePath(p.World.ID, "start") }
-
-// anywayCheck runs the pre-start check again for a confirmation page. It
-// changes nothing. refusal is set when "Start anyway" is not allowed.
-func (s *server) anywayCheck(id string) (problems []string, refusal string, err error) {
-	check, err := s.worlds.PreStartCheck(id)
-	if err != nil {
-		return nil, "", err
-	}
-	for _, pr := range check.Problems {
-		problems = append(problems, pr.Text)
-	}
-	switch {
-	case check.OK():
-		refusal = "The pre-start check now finds no problems, so there is nothing to confirm. Start the server from the Server page."
-	case !check.CanStartAnyway():
-		refusal = "At least one of these problems cannot be started past. Fix the world first."
-	}
-	return problems, refusal, nil
-}
-
-func (s *server) anywayProblems(p StopPage) StopPage {
-	problems, refusal, err := s.anywayCheck(p.World.ID)
-	if err != nil {
-		s.log.Error("pre-start check", "world", p.World.ID, "error", err)
-		refusal = "Foreman could not run the pre-start check. The details are in Foreman's log."
-	}
-	p.CheckProblems, p.Refusal = problems, refusal
-	return p
-}
-
-func (s *server) handleStartAnywayForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, ok := s.startable(w, r, u)
-	if !ok {
-		return
-	}
-	if r.URL.Query().Get("then") == "restart" {
-		p := s.anywayProblems(StopPage{World: sum, Restart: true, Anyway: true, CountdownForm: defaultCountdown()})
-		s.page(w, r, http.StatusOK, u.Username, p)
-		return
-	}
-	problems, refusal, err := s.anywayCheck(sum.ID)
-	if err != nil {
-		s.notFoundOrFail(w, r, u, "pre-start check", err)
-		return
-	}
-	s.page(w, r, http.StatusOK, u.Username, StartAnywayPage{World: sum, CheckProblems: problems, Refusal: refusal})
+// anywayOptions reads a go-ahead anyway and the fingerprint of what its box
+// showed; the controller refuses it when that no longer holds (SPEC 7.4).
+func anywayOptions(r *http.Request) game.StartOptions {
+	return game.StartOptions{Anyway: r.PostFormValue("anyway") == "1", Seen: r.PostFormValue("seen")}
 }
 
 // ForceStopPage confirms a forced stop (SPEC 7.7).

@@ -25,15 +25,8 @@ const (
 	DefaultDockerHost  = "unix:///var/run/docker.sock"
 )
 
-// Run modes (SPEC 4.1).
-const (
-	ModeManaged = "managed"
-	ModeAdopted = "adopted"
-)
-
 // Variable names.
 const (
-	varMode        = "FOREMAN_MODE"
 	varDataDir     = "FOREMAN_DATA_DIR"
 	varHostDataDir = "FOREMAN_HOST_DATA_DIR"
 	varGameUID     = "FOREMAN_GAME_UID"
@@ -52,7 +45,6 @@ const (
 
 // Config is Foreman's validated configuration.
 type Config struct {
-	Mode             string // ModeManaged or ModeAdopted
 	DataDir          string
 	HostDataDir      string // empty means discover it from the container
 	GameUID, GameGID int
@@ -101,13 +93,6 @@ func load(e env) (*Config, error) {
 		RequiredGroup: str(varGroup, ""),
 		DockerHost:    str(varDockerHost, DefaultDockerHost),
 		GameNetwork:   str(varGameNetwork, ""),
-	}
-
-	switch mode := strings.ToLower(strings.TrimSpace(str(varMode, ModeManaged))); mode {
-	case ModeManaged, ModeAdopted:
-		c.Mode = mode
-	default:
-		fail("%s must be %q or %q, not %q", varMode, ModeManaged, ModeAdopted, mode)
 	}
 
 	var err error

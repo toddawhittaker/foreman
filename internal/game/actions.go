@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -34,13 +36,21 @@ const (
 
 var stopSteps = []string{StepWarn, StepSave, StepStopContainer}
 
-// startStepsFor lists a start's steps. Only a start anyway takes the
-// snapshot, so only it shows that step (DESIGN 7.6).
-func startStepsFor(opts StartOptions) []string {
+// checkStepsFor lists the steps of checkLocked. Only a start anyway takes
+// the snapshot, so only it shows that step (DESIGN 7.6).
+func checkStepsFor(opts StartOptions) []string {
 	if opts.Anyway {
-		return []string{StepCheck, StepSnapshot, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+		return []string{StepCheck, StepSnapshot}
 	}
-	return []string{StepCheck, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+	return []string{StepCheck}
+}
+
+// launchSteps are the steps of launchLocked.
+var launchSteps = []string{StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+
+// startSteps lists a start's steps.
+func startSteps(opts StartOptions) []string {
+	return append(checkStepsFor(opts), launchSteps...)
 }
 
 // The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4).
@@ -58,98 +68,39 @@ type StartOptions struct {
 	// Anyway starts despite problems that each allow it (SPEC 7.4), after a
 	// snapshot. The caller asks only after the admin confirmed.
 	Anyway bool
+	// Seen is the AnywayFingerprint of what the admin confirmed. The first
+	// check refuses an Anyway whose fingerprint no longer matches.
+	Seen string
+	// running is whether the game the action stops runs now; confirmed is
+	// set once the first check has compared Seen, so later checks, after
+	// the stop, do not compare again.
+	running, confirmed bool
 }
+
+// AnywayFingerprint names what a go-ahead anyway confirms: the kinds of
+// problem and the mods they name, and whether the game runs, since that
+// changes the steps. Problem texts are left out, as their wording may
+// change without the plan changing.
+func AnywayFingerprint(check world.PreCheck, running bool) string {
+	parts := make([]string, 0, len(check.Problems)+1)
+	for _, p := range check.Problems {
+		mods := slices.Clone(p.Mods)
+		slices.Sort(mods)
+		parts = append(parts, string(p.Kind)+":"+strings.Join(mods, ","))
+	}
+	slices.Sort(parts)
+	parts = append(parts, fmt.Sprintf("running=%t", running))
+	return strings.Join(parts, ";")
+}
+
+// IsRunning reports whether a game in state s is one a stop would stop.
+func IsRunning(s State) bool { return s == StateRunning || s == StateCrashed }
 
 func (o StartOptions) auditDetail() string {
 	if o.Anyway {
 		return "start anyway"
 	}
 	return ""
-}
-
-// opRun is one operation in progress on a world.
-type opRun struct {
-	c *Controller
-	w *worldRun
-}
-
-// beginOp records an operation and shows its steps. The returned context
-// ends when ForceStop interrupts the operation. Call end when done.
-func (c *Controller) beginOp(ctx context.Context, w *worldRun, action string, steps ...[]string) (context.Context, *opRun) {
-	ctx, cancel := context.WithCancel(ctx)
-	op := &Operation{Action: action}
-	for _, list := range steps {
-		for _, s := range list {
-			op.Steps = append(op.Steps, Step{Name: s, State: StepWaiting})
-		}
-	}
-	w.mu.Lock()
-	w.op, w.opState, w.opCancel, w.opDone = op, "", cancel, make(chan struct{})
-	c.changedLocked(w, true)
-	w.mu.Unlock()
-	return ctx, &opRun{c: c, w: w}
-}
-
-func (o *opRun) set(state StepState, names ...string) {
-	o.w.mu.Lock()
-	defer o.w.mu.Unlock()
-	for i := range o.w.op.Steps {
-		for _, n := range names {
-			if o.w.op.Steps[i].Name == n {
-				o.w.op.Steps[i].State = state
-			}
-		}
-	}
-	o.c.changedLocked(o.w, true)
-}
-
-func (o *opRun) begin(name string)    { o.set(StepProgress, name) }
-func (o *opRun) done(name string)     { o.set(StepDone, name) }
-func (o *opRun) skip(names ...string) { o.set(StepSkipped, names...) }
-
-// show sets the state the page shows while the operation runs.
-func (o *opRun) show(s State) {
-	o.w.mu.Lock()
-	defer o.w.mu.Unlock()
-	o.w.opState = s
-	o.c.changedLocked(o.w, true)
-}
-
-// end finishes the operation, marking the step in progress failed when err
-// is set, and lets the monitor look after the container again. It returns
-// err, with an interruption by ForceStop as ErrCancelled.
-func (o *opRun) end(err error) error {
-	if errors.Is(err, context.Canceled) {
-		err = ErrCancelled
-	}
-	w := o.w
-	w.mu.Lock()
-	for i := range w.op.Steps {
-		switch w.op.Steps[i].State {
-		case StepProgress:
-			w.op.Steps[i].State = StepDone
-			if err != nil {
-				w.op.Steps[i].State = StepFailed
-			}
-		case StepWaiting:
-			// A step that will never run must not read as waiting.
-			if err != nil {
-				w.op.Steps[i].State = StepSkipped
-			}
-		}
-	}
-	w.op.Done = true
-	if err != nil {
-		w.op.Error = err.Error()
-	}
-	done := w.opDone
-	w.opCancel()
-	w.opState, w.opCancel, w.opDone = "", nil, nil
-	o.c.changedLocked(w, true)
-	w.mu.Unlock()
-	close(done)
-	o.c.pokeMonitor()
-	return err
 }
 
 // Start starts the world's game (SPEC 7.3, 7.4, 7.11). It holds the
@@ -163,147 +114,116 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 		return err
 	}
 	defer unlock()
-	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
+	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startStepsFor(opts))
-	err = c.startLocked(ctx, o, by, opts)
-	return o.end(err)
+	// The check runs as the first step, so a refusal shows in the step
+	// list, and is audited as a refusal rather than a start (SPEC 12.9).
+	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps(opts))
+	o.begin(StepCheck)
+	opts.running = IsRunning(c.Status(id).State)
+	check, err := c.precheck(id, opts)
+	if err != nil {
+		return o.end(c.checkFailed(ctx, by, AuditStart, id, opts.auditDetail(), err))
+	}
+	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
+		return o.end(err)
+	}
+	o.done(StepCheck)
+	if err := c.anywaySnapshot(o, by, check); err != nil {
+		return o.end(err)
+	}
+	return o.end(c.launchLocked(ctx, o))
+}
+
+// ErrWorldNotActive matches the refusal to start a world that is not the
+// active one; its text names the world.
+var ErrWorldNotActive = errors.New("the world is not the active world. Switch to it first")
+
+type notActiveError struct{ name string }
+
+func (e notActiveError) Error() string {
+	return e.name + " is not the active world. Switch to it first"
+}
+func (e notActiveError) Is(target error) bool { return target == ErrWorldNotActive }
+
+// checkActive refuses a start of a world that is not the active one: a
+// start runs the active world (SPEC 7.3), and only a switch changes which
+// that is (SPEC 7.9). The caller holds the world's lock.
+func (c *Controller) checkActive(ctx context.Context, id string) error {
+	if c.switches == nil {
+		return nil
+	}
+	active, found, err := c.switches.ActiveWorld(ctx)
+	if err != nil {
+		return err
+	}
+	if !found || active != id {
+		return notActiveError{name: c.worldName(id)}
+	}
+	return nil
 }
 
 // startLocked runs the start steps. The caller holds the world's lock.
 func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
-	w, id := o.w, o.w.id
+	if err := c.checkLocked(ctx, o, by, opts); err != nil {
+		return err
+	}
+	return c.launchLocked(ctx, o)
+}
 
+// checkLocked runs the pre-start check and takes the snapshot a start
+// anyway needs (SPEC 7.4). The caller holds the world's lock.
+func (c *Controller) checkLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
+	id := o.w.id
 	o.begin(StepCheck)
 	check, err := c.precheck(id, opts)
 	if err != nil {
 		return err
 	}
 	o.done(StepCheck)
+	return c.anywaySnapshot(o, by, check)
+}
+
+// anywaySnapshot takes the snapshot a start anyway needs, or skips the step
+// when the check found nothing (SPEC 7.4).
+func (c *Controller) anywaySnapshot(o *opRun, by Actor, check world.PreCheck) error {
 	if check.OK() {
 		o.skip(StepSnapshot)
-	} else {
-		o.begin(StepSnapshot)
-		if _, err := c.worlds.AutoSnapshot(id, ReasonStartAnyway, LabelStartAnyway, by.Username); err != nil {
-			return fmt.Errorf("take the snapshot before starting anyway: %w", err)
-		}
-		o.done(StepSnapshot)
+		return nil
 	}
+	o.begin(StepSnapshot)
+	if _, err := c.worlds.AutoSnapshot(o.w.id, ReasonStartAnyway, LabelStartAnyway, by.Username); err != nil {
+		return fmt.Errorf("take the snapshot before starting anyway: %w", err)
+	}
+	o.done(StepSnapshot)
+	return nil
+}
 
-	o.begin(StepImage)
+// gameImage returns the world's metadata and pinned image, or
+// ErrImageMissing when Docker does not have the image: a start never
+// downloads it (SPEC 3.7).
+func (c *Controller) gameImage(ctx context.Context, id string) (world.Meta, string, error) {
 	meta, err := c.readMeta(id)
 	if err != nil {
-		return err
+		return world.Meta{}, "", err
 	}
 	ref, err := c.imageFor(meta.GameVersion)
 	if err != nil {
-		return err
+		return world.Meta{}, "", err
 	}
-	// Start never downloads the image (SPEC 3.7).
 	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
-		return ErrImageMissing
+		return world.Meta{}, "", ErrImageMissing
 	} else if err != nil {
-		return err
+		return world.Meta{}, "", err
 	}
-	o.done(StepImage)
+	return meta, ref, nil
+}
 
-	o.begin(StepCreate)
-	network, err := c.gameNetwork(ctx)
-	if err != nil {
-		return err
-	}
-	old, found, err := c.ourContainer(ctx, id)
-	if err != nil {
-		return err
-	}
-	if found {
-		if s := old.State.Status; s == "running" || s == "restarting" {
-			return ErrAlreadyRunning
-		}
-		// A fresh container for every start, so its settings never drift (ADR 0003).
-		if err := c.docker.RemoveContainer(ctx, old.ID, false); err != nil && !errors.Is(err, docker.ErrNotFound) {
-			return err
-		}
-	}
-	rconPW, secrets, err := c.secrets(id)
-	if err != nil {
-		return err
-	}
-	save, err := c.worlds.PrepareLoad(id)
-	if err != nil {
-		return err
-	}
-	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network))
-	if errors.Is(err, docker.ErrConflict) {
-		return ErrForeign
-	}
-	if err != nil {
-		return err
-	}
-	o.done(StepCreate)
-
-	o.begin(StepStartContainer)
-	w.mu.Lock()
-	// A forced stop sets its own marks once this operation has ended, so
-	// none may be set here after it asked.
-	if err := ctx.Err(); err != nil {
-		w.mu.Unlock()
-		return err
-	}
-	stale := c.dropContainerLocked(w)
-	w.containerID, w.dockerStatus = cid, "created"
-	w.seenRestarts, w.crashes, w.lastCrash = 0, nil, time.Time{}
-	w.stopping, w.crashLoop, w.crashedRun = false, false, false
-	w.run = runState{save: save}
-	w.joins.Reset()
-	w.secrets, w.gameVersion, w.image = secrets, meta.GameVersion, ref
-	w.mu.Unlock()
-	closeRCON(stale)
-	o.show(StateStarting)
-	if err := c.docker.StartContainer(ctx, cid); err != nil {
-		return err
-	}
-	cont, err := c.docker.InspectContainer(ctx, cid)
-	if err != nil {
-		return err
-	}
-	w.mu.Lock()
-	if err := ctx.Err(); err != nil {
-		w.mu.Unlock()
-		return err
-	}
-	// Only a container Docker started can crash.
-	w.expectRunning = true
-	w.dockerStatus, w.startedAt, w.seenRestarts = cont.State.Status, cont.State.StartedAt, cont.RestartCount
-	if ip := containerIP(cont); ip != "" {
-		w.rc = c.newRCON(ip, rconPW)
-	}
-	c.followLocked(w, cid, time.Time{})
-	c.changedLocked(w, true)
-	w.mu.Unlock()
-	o.done(StepStartContainer)
-
-	deadline := time.NewTimer(c.startTimeout)
-	defer deadline.Stop()
-	o.begin(StepLoad)
-	if err := c.waitInGame(ctx, w, cid, deadline.C); err != nil {
-		return err
-	}
-	// The chosen save applies once (SPEC 7.11).
-	if save != "" {
-		if err := c.worlds.ClearLoadSave(id, save); err != nil {
-			c.log.Warn("could not reset which save loads to the newest", "world", id, "error", err)
-		}
-	}
-	o.done(StepLoad)
-
-	o.begin(StepRCON)
-	if err := c.waitRCON(ctx, w, cid, deadline.C); err != nil {
-		return err
-	}
-	o.done(StepRCON)
-	return nil
+// PreStartCheck runs the pre-start check of SPEC 7.4 against the world's
+// pinned game version.
+func (c *Controller) PreStartCheck(id string) (world.PreCheck, error) {
+	return c.worlds.PreStartCheck(id)
 }
 
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
@@ -314,18 +234,60 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	if err := c.worlds.EnsureModList(id); err != nil {
 		return world.PreCheck{}, err
 	}
-	check, err := c.worlds.PreStartCheck(id)
+	check, err := c.PreStartCheck(id)
 	if err != nil {
 		return world.PreCheck{}, err
 	}
-	allowed := check.OK() || (opts.Anyway && check.CanStartAnyway())
-	if !allowed {
-		return world.PreCheck{}, &PrecheckError{Check: check}
+	return check, c.allowStart(id, check, opts)
+}
+
+// precheckReadOnly is precheck for a switch's checks before the stop, which
+// may change no world file before the switch's snapshots (SPEC 6.2, 7.9). A
+// missing mod list is not written: the start writes one that matches the
+// Space Age flag, so the problem it would cause is left out.
+func (c *Controller) precheckReadOnly(id string, opts StartOptions) error {
+	check, err := c.PreStartCheck(id)
+	if err != nil {
+		return err
 	}
-	if err := c.checkSaveAgainstImage(id, check.SaveVersion); err != nil {
-		return world.PreCheck{}, err
+	missing, err := c.modListMissing(id)
+	if err != nil {
+		return err
 	}
-	return check, nil
+	if missing {
+		check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
+			return p.Kind == world.ProblemModListSpaceAge
+		})
+	}
+	return c.allowStart(id, check, opts)
+}
+
+// allowStart returns a *PrecheckError unless the check lets the world start,
+// and ErrSaveNewerThanImage when the game is older than the save.
+func (c *Controller) allowStart(id string, check world.PreCheck, opts StartOptions) error {
+	if allowed := check.OK() || (opts.Anyway && check.CanStartAnyway()); !allowed {
+		return &PrecheckError{Check: check}
+	}
+	// A go-ahead confirms one plan; refuse it when the plan has changed, so
+	// the page shows the new one to confirm (SPEC 7.4, 17.5).
+	if opts.Anyway && !opts.confirmed && !check.OK() && AnywayFingerprint(check, opts.running) != opts.Seen {
+		return &PrecheckError{Check: check, Changed: true}
+	}
+	return c.checkSaveAgainstImage(id, check.SaveVersion)
+}
+
+// modListMissing reports whether the world has no mods/mod-list.json.
+func (c *Controller) modListMissing(id string) (bool, error) {
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = root.Close() }()
+	_, err = root.Lstat(path.Join(world.ModsDir, world.ModListFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return true, nil
+	}
+	return false, err
 }
 
 // ErrSaveNewerThanImage refuses a save made by a newer game than the one
@@ -368,7 +330,12 @@ func imageVersion(ref string) ([3]uint16, bool) {
 	if i < 0 || i < strings.LastIndex(ref, "/") {
 		return [3]uint16{}, false
 	}
-	parts := strings.Split(ref[i+1:], ".")
+	return parseVersion(ref[i+1:])
+}
+
+// parseVersion reads major.minor.patch, as in 2.0.77.
+func parseVersion(v string) ([3]uint16, bool) {
+	parts := strings.Split(v, ".")
 	if len(parts) != 3 {
 		return [3]uint16{}, false
 	}
@@ -381,93 +348,6 @@ func imageVersion(ref string) ([3]uint16, bool) {
 		out[k] = uint16(n)
 	}
 	return out, true
-}
-
-// waitInGame waits for the log to say the game is in game, or that it
-// failed to load (SPEC 7.3, 8.7).
-func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, deadline <-chan time.Time) error {
-	poll := time.NewTicker(c.pollInterval)
-	defer poll.Stop()
-	for {
-		w.mu.Lock()
-		run, changed := w.run, w.changed
-		w.mu.Unlock()
-		switch {
-		case run.loadFailed && run.loadError != "":
-			return fmt.Errorf("%w: it could not load the save (%s)", ErrStartFailed, run.loadError)
-		case run.loadFailed:
-			return fmt.Errorf("%w: it could not load the save", ErrStartFailed)
-		case run.inGame:
-			return nil
-		}
-		select {
-		case <-changed:
-		case <-poll.C:
-			cont, err := c.docker.InspectContainer(ctx, cid)
-			if err == nil && (cont.State.Status != "running" || cont.RestartCount > 0) {
-				return fmt.Errorf("%w: the game stopped while it was loading", ErrStartFailed)
-			}
-		case <-deadline:
-			return fmt.Errorf("%w: it did not finish loading within %s", ErrStartFailed, durationWords(c.startTimeout))
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-}
-
-// waitRCON waits until the game answers over RCON: being in game is not
-// enough, because the RCON port can fail to open (SPEC 7.3).
-func (c *Controller) waitRCON(ctx context.Context, w *worldRun, cid string, deadline <-chan time.Time) error {
-	for {
-		w.mu.Lock()
-		rc := w.rc
-		w.mu.Unlock()
-		if rc != nil {
-			callCtx, cancel := context.WithTimeout(ctx, c.rconCallLimit)
-			_, err := rc.Exec(callCtx, "/players online")
-			cancel()
-			if err == nil {
-				return nil
-			}
-			if errors.Is(err, rcon.ErrLogin) {
-				return fmt.Errorf("%w: the game is in game, but it refused Foreman's RCON password", ErrStartFailed)
-			}
-		} else if err := c.connectRCON(ctx, w, cid); err != nil {
-			return err
-		}
-		t := time.NewTimer(c.rconRetry)
-		select {
-		case <-t.C:
-		case <-deadline:
-			t.Stop()
-			return fmt.Errorf("%w: it is in game but did not answer over RCON within %s", ErrStartFailed, durationWords(c.startTimeout))
-		case <-ctx.Done():
-			t.Stop()
-			return ctx.Err()
-		}
-	}
-}
-
-// connectRCON makes the RCON client once the container has an address.
-func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) error {
-	cont, err := c.docker.InspectContainer(ctx, cid)
-	if err != nil {
-		return err
-	}
-	ip := containerIP(cont)
-	if ip == "" {
-		return nil
-	}
-	pw, err := c.worlds.RCONPassword(w.id)
-	if err != nil {
-		return err
-	}
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.containerID == cid && w.rc == nil {
-		w.rc = c.newRCON(ip, pw)
-	}
-	return nil
 }
 
 // MaxStopCountdown is the longest countdown a stop may ask for.
@@ -661,7 +541,7 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	}
 	w := c.world(id)
 	w.mu.Lock()
-	cancel, done := w.opCancel, w.opDone
+	cancel, done, run := w.opCancel, w.opDone, w.opRun
 	w.mu.Unlock()
 	interrupted := cancel != nil
 	if interrupted {
@@ -673,15 +553,19 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+		// A switch holds two worlds: the game to stop is the one its last
+		// step acted on, whichever world was named (SPEC 7.7, 7.9).
+		w = run.w
 	}
 	defer c.pokeMonitor()
-	cont, found, err := c.ourContainer(ctx, id)
+	cont, found, err := c.ourContainer(ctx, w.id)
 	if err != nil {
 		return err
 	}
 	status := cont.State.Status
 	if !found || (status != "running" && status != "restarting") {
 		if interrupted {
+			run.noteForceStop(fmt.Sprintf("No game of %s was running.", c.worldName(w.id)))
 			// Ending what was in progress was what the admin asked for.
 			return nil
 		}
@@ -702,7 +586,22 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 		return err
 	}
 	c.refresh(ctx, w, cont.ID)
+	if interrupted {
+		run.noteForceStop(fmt.Sprintf("It stopped the game of %s.", c.worldName(w.id)))
+	}
 	return nil
+}
+
+// noteForceStop adds to the result of an operation on several worlds which
+// one a forced stop acted on. The operation has ended.
+func (o *opRun) noteForceStop(text string) {
+	if len(o.ws) < 2 {
+		return
+	}
+	o.lockAll()
+	defer o.unlockAll()
+	o.op.Error = ErrCancelled.Error() + ". " + text
+	o.publishLocked()
 }
 
 // markStopping marks the game as stopped on purpose, so its exit is not a
@@ -735,13 +634,20 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 		return err
 	}
 	defer unlock()
+	if err := c.checkActive(ctx, id); err != nil {
+		return err
+	}
+	// Compared before the stop, so a restart never refuses with the game
+	// already stopped.
+	opts.running = IsRunning(c.Status(id).State)
+	if _, err := c.precheck(id, opts); err != nil {
+		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)
+	}
+	opts.confirmed = true
 	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}
-	if _, err := c.precheck(id, opts); err != nil {
-		return err
-	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startStepsFor(opts))
+	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps(opts))
 	err = c.stopLocked(ctx, o, countdown)
 	if errors.Is(err, ErrNotRunning) {
 		err = nil

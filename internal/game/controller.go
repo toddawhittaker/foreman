@@ -49,8 +49,6 @@ const (
 	// CrashLoopCount crashes within CrashLoopWindow make a crash loop (SPEC 8.9).
 	CrashLoopCount  = 3
 	CrashLoopWindow = 10 * time.Minute
-	// CrashLines is how many log lines are shown with a crash (SPEC 8.7).
-	CrashLines = 20
 )
 
 // Defaults that the spec leaves to Foreman.
@@ -70,6 +68,12 @@ const (
 	AuditForceStop     = "force-stop"
 	AuditImageDownload = "image-download"
 	AuditConsole       = "console"
+	AuditSwitch        = "switch"
+	// A start, restart or switch the checks refused before anything was
+	// done is recorded under its own action, with the reason (SPEC 12.9).
+	AuditStartRefused   = "start-refused"
+	AuditRestartRefused = "restart-refused"
+	AuditSwitchRefused  = "switch-refused"
 )
 
 // Errors a caller can test for with errors.Is. The text is shown to the admin.
@@ -90,6 +94,10 @@ var (
 // caller may offer "Start anyway" when Check.CanStartAnyway() (SPEC 7.4).
 type PrecheckError struct {
 	Check world.PreCheck
+	// Changed is set when a go-ahead anyway was refused because the
+	// problems, or whether the game runs, differ from what the admin
+	// confirmed (SPEC 7.4, 17.5).
+	Changed bool
 }
 
 func (e *PrecheckError) Error() string {
@@ -116,6 +124,9 @@ type Config struct {
 	Docker *docker.Client
 	Worlds *world.Manager
 	Audit  AuditLog
+	// Switches records switches in progress and the active world (SPEC 5.3,
+	// 7.10). Without it Switch refuses.
+	Switches SwitchStore
 	// HostDataDir is the data directory's path on the Docker host, for the
 	// bind mount and the install label (SPEC 3.5, 4.3).
 	HostDataDir string
@@ -149,6 +160,7 @@ type Controller struct {
 	docker   *docker.Client
 	worlds   *world.Manager
 	auditLog AuditLog
+	switches SwitchStore
 	hostData string
 	user     string
 	images   map[string]string
@@ -185,6 +197,10 @@ type Controller struct {
 	runs      map[string]*worldRun
 	listed    bool  // the monitor has listed Foreman's containers at least once
 	dockerErr error // the last listing failed
+	// subnets are the game networks' address ranges at the last good read;
+	// subnetsKnown says there has been one (SPEC 12.6).
+	subnets      []netip.Prefix
+	subnetsKnown bool
 }
 
 // New checks cfg and returns a Controller. It contacts nothing; Run starts
@@ -193,14 +209,14 @@ func New(cfg Config) (*Controller, error) {
 	if cfg.Docker == nil || cfg.Worlds == nil || cfg.Audit == nil {
 		return nil, errors.New("game controller: Docker, Worlds and Audit are required")
 	}
-	// The path goes into a "host:container" bind, so a colon or comma would
-	// change the mount (SPEC 4.6).
+	if cfg.GameUID < 0 || cfg.GameGID < 0 {
+		return nil, errors.New("the game's user and group IDs must not be negative")
+	}
+	// The path goes into a "host:container" bind, so a colon or comma
+	// would change the mount (SPEC 4.6).
 	if !filepath.IsAbs(cfg.HostDataDir) || filepath.Clean(cfg.HostDataDir) != cfg.HostDataDir ||
 		strings.ContainsAny(cfg.HostDataDir, ":,") {
 		return nil, fmt.Errorf("the host data directory %q must be a clean absolute path without a colon or comma", cfg.HostDataDir)
-	}
-	if cfg.GameUID < 0 || cfg.GameGID < 0 {
-		return nil, errors.New("the game's user and group IDs must not be negative")
 	}
 	if len(cfg.Images) == 0 {
 		return nil, errors.New("game controller: no game images are configured")
@@ -218,7 +234,7 @@ func New(cfg Config) (*Controller, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Controller{
-		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit,
+		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
 		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
@@ -250,8 +266,11 @@ type worldRun struct {
 	logs  *LogBuffer
 	joins *JoinTimes
 
-	mu            sync.Mutex
-	containerID   string // "" when there is no container
+	mu          sync.Mutex
+	containerID string // "" when there is no container
+	// logMark is where the current container's lines begin in logs, so a
+	// crash reason is never taken from an older container (SPEC 8.7).
+	logMark       uint64
 	dockerStatus  string // Docker's State.Status at the last look; "" without a container
 	inspectErr    error  // the last inspect failed
 	startedAt     time.Time
@@ -268,9 +287,13 @@ type worldRun struct {
 	changed       chan struct{} // closed and replaced whenever the game's state moves
 	rc            *rcon.Client
 	secrets       []secret.Secret // removed from every relayed line (SPEC 8.6)
-	gameVersion   string
-	image         string
-	usage         usage
+	// noSecrets is set when the container was taken on while stopped,
+	// without its world's passwords; it is taken on again before its log
+	// is followed.
+	noSecrets   bool
+	gameVersion string
+	image       string
+	usage       usage
 
 	following    bool
 	followGen    int
@@ -282,10 +305,12 @@ type worldRun struct {
 	opState  State      // what the operation shows while it runs; "" to let the container decide
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
+	opRun    *opRun        // the operation running now; nil when none
 	download *Operation
+	notice   *SwitchNotice // an unfinished switch found at startup; cleared by the next operation
 
-	adoptFailed string // a container whose world's secrets could not be read, warned about once
-	adoptErr    error  // why that container could not be taken on
+	attachFailed string // a container whose world's secrets could not be read, warned about once
+	attachErr    error  // why that container could not be taken on
 }
 
 // runState is what the log said about the current run of the game.
@@ -370,13 +395,15 @@ type Step struct {
 	State StepState
 }
 
-// Operation is a start, stop, restart, restore or image download in
-// progress, or the last one to finish.
+// Operation is a start, stop, restart, restore, switch or image download
+// in progress, or the last one to finish.
 type Operation struct {
 	Action string // one of the Audit* actions, or "restore"
 	Steps  []Step
 	Done   bool
 	Error  string // why it failed; empty when it worked or is running
+	// Switch is set on a switch, which both worlds show (SPEC 7.9).
+	Switch *SwitchInfo
 }
 
 func (o *Operation) clone() *Operation {
@@ -385,7 +412,142 @@ func (o *Operation) clone() *Operation {
 	}
 	out := *o
 	out.Steps = append([]Step(nil), o.Steps...)
+	if o.Switch != nil {
+		sw := *o.Switch
+		out.Switch = &sw
+	}
 	return &out
+}
+
+// newOperation makes an operation whose steps all wait.
+func newOperation(action string, steps ...[]string) *Operation {
+	op := &Operation{Action: action}
+	for _, list := range steps {
+		for _, s := range list {
+			op.Steps = append(op.Steps, Step{Name: s, State: StepWaiting})
+		}
+	}
+	return op
+}
+
+// opRun is one operation in progress. A switch holds two worlds; every
+// other operation holds one.
+type opRun struct {
+	c *Controller
+	// w is the world the current step acts on. Only the operation's own
+	// goroutine changes it; others read it once ended is closed.
+	w      *worldRun
+	ws     []*worldRun // every world the operation holds, in id order
+	op     *Operation  // shared by every world in ws
+	cancel context.CancelFunc
+	ended  chan struct{}
+}
+
+// beginOp records an operation on one world and shows its steps. The
+// returned context ends when ForceStop interrupts the operation. Call end
+// when done.
+func (c *Controller) beginOp(ctx context.Context, w *worldRun, action string, steps ...[]string) (context.Context, *opRun) {
+	return c.beginOpOn(ctx, []*worldRun{w}, newOperation(action, steps...))
+}
+
+// beginOpOn records op on every world in ws, which must be in id order. Each
+// world shows it and is busy until it ends, and a forced stop on any of them
+// interrupts it. Starting an action clears a world's switch notice.
+func (c *Controller) beginOpOn(ctx context.Context, ws []*worldRun, op *Operation) (context.Context, *opRun) {
+	ctx, cancel := context.WithCancel(ctx)
+	o := &opRun{c: c, w: ws[0], ws: ws, op: op, cancel: cancel, ended: make(chan struct{})}
+	o.lockAll()
+	for _, w := range ws {
+		w.op, w.opState, w.opCancel, w.opDone, w.opRun = op, "", cancel, o.ended, o
+		w.notice = nil
+		c.changedLocked(w, true)
+	}
+	o.unlockAll()
+	return ctx, o
+}
+
+// lockAll takes every world's mu in id order, so two operations never
+// deadlock and a page never sees a step change on one world only.
+func (o *opRun) lockAll() {
+	for _, w := range o.ws {
+		w.mu.Lock()
+	}
+}
+
+func (o *opRun) unlockAll() {
+	for i := len(o.ws) - 1; i >= 0; i-- {
+		o.ws[i].mu.Unlock()
+	}
+}
+
+// publishLocked sends the status of every world; lockAll is held.
+func (o *opRun) publishLocked() {
+	for _, w := range o.ws {
+		o.c.changedLocked(w, true)
+	}
+}
+
+func (o *opRun) set(state StepState, names ...string) {
+	o.lockAll()
+	defer o.unlockAll()
+	for i := range o.op.Steps {
+		for _, n := range names {
+			if o.op.Steps[i].Name == n {
+				o.op.Steps[i].State = state
+			}
+		}
+	}
+	o.publishLocked()
+}
+
+func (o *opRun) begin(name string)    { o.set(StepProgress, name) }
+func (o *opRun) done(name string)     { o.set(StepDone, name) }
+func (o *opRun) skip(names ...string) { o.set(StepSkipped, names...) }
+
+// show sets the state the current world's page shows while the operation
+// runs.
+func (o *opRun) show(s State) {
+	o.w.mu.Lock()
+	defer o.w.mu.Unlock()
+	o.w.opState = s
+	o.c.changedLocked(o.w, true)
+}
+
+// end finishes the operation, marking the step in progress failed when err
+// is set, and lets the monitor look after the containers again. It returns
+// err, with an interruption by ForceStop as ErrCancelled.
+func (o *opRun) end(err error) error {
+	if errors.Is(err, context.Canceled) {
+		err = ErrCancelled
+	}
+	o.lockAll()
+	for i := range o.op.Steps {
+		switch o.op.Steps[i].State {
+		case StepProgress:
+			o.op.Steps[i].State = StepDone
+			if err != nil {
+				o.op.Steps[i].State = StepFailed
+			}
+		case StepWaiting:
+			// A step that will never run must not read as waiting.
+			if err != nil {
+				o.op.Steps[i].State = StepSkipped
+			}
+		}
+	}
+	o.op.Done = true
+	if err != nil {
+		o.op.Error = err.Error()
+	}
+	o.cancel()
+	for _, w := range o.ws {
+		w.opState, w.opCancel, w.opDone, w.opRun = "", nil, nil, nil
+	}
+	o.publishLocked()
+	o.unlockAll()
+	close(o.ended)
+	o.c.pokeMonitor()
+	return err
 }
 
 // Status is everything the server page shows about a world's game
@@ -393,12 +555,14 @@ func (o *Operation) clone() *Operation {
 type Status struct {
 	World string
 	State State
-	// Reason says why the state is Unknown. A crash's reason is not named
-	// in this version (SPEC 8.7 P1): CrashLines are shown instead.
+	// Reason says why the state is Unknown.
 	Reason string
-	// CrashLines are the last log lines while crashed or crash-looping.
-	CrashLines []string
-	LastCrash  time.Time
+	// CrashReason is the game's own reason for a crash, from its log, while
+	// crashed or crash-looping; "" when the log names none (SPEC 8.7). It
+	// is masked like every line a page shows, and is a sentence's end:
+	// ": 2 mods were made for..." or ". Factorio said: ...".
+	CrashReason string
+	LastCrash   time.Time
 	// StartedAt is when the current run began; zero when not running.
 	StartedAt   time.Time
 	Uptime      time.Duration
@@ -413,6 +577,9 @@ type Status struct {
 	Operation *Operation
 	// Download is the image download running now, or the last one.
 	Download *Operation
+	// Notice reports an unfinished switch found at startup, on the world
+	// that is active after it (SPEC 7.10); nil when there is none.
+	Notice *SwitchNotice
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -454,6 +621,10 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		World: w.id, LastCrash: w.lastCrash, GameVersion: w.gameVersion, Image: w.image,
 		Save: w.run.save, Operation: w.op.clone(), Download: w.download.clone(),
 	}
+	if w.notice != nil {
+		n := *w.notice
+		st.Notice = &n
+	}
 	st.State, st.Reason = c.stateLocked(w)
 	if st.State == StateRunning || st.State == StateStarting || st.State == StateStopping || st.State == StateCrashed {
 		if w.dockerStatus == "running" && !w.startedAt.IsZero() {
@@ -465,8 +636,11 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		st.HaveUsage, st.CPUPercent, st.MemoryBytes = true, w.usage.cpu, w.usage.memory
 	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
-		lines := w.logs.Lines()
-		st.CrashLines = lines[max(len(lines)-CrashLines, 0):]
+		var f loadFailure
+		for _, l := range w.logs.LinesSince(w.logMark) {
+			f.add(l)
+		}
+		st.CrashReason = strings.TrimSuffix(f.reason(w.redact), ".")
 	}
 	return st
 }
@@ -486,8 +660,8 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 		if w.inspectErr != nil {
 			return StateUnknown, "Foreman cannot read the game container from Docker: " + w.inspectErr.Error()
 		}
-		if w.adoptErr != nil && w.containerID == "" {
-			return StateUnknown, "Foreman cannot read this world's RCON password, so it cannot watch the game: " + w.adoptErr.Error()
+		if w.attachErr != nil && w.containerID == "" {
+			return StateUnknown, "Foreman " + w.attachErr.Error()
 		}
 		if !listed && w.containerID == "" {
 			return StateUnknown, "Foreman is still asking Docker about the game."
@@ -549,6 +723,50 @@ func (c *Controller) pokeMonitor() {
 	case c.poke <- struct{}{}:
 	default:
 	}
+}
+
+// refusedActions names the audit action of each refusable action.
+var refusedActions = map[string]string{
+	AuditStart: AuditStartRefused, AuditRestart: AuditRestartRefused, AuditSwitch: AuditSwitchRefused,
+}
+
+// IsRefusal reports whether err is a check refusing the world as it is,
+// rather than a fault such as Docker or the disk failing: the pre-start
+// check (SPEC 7.4), a save newer than the game image, or a switch refusal.
+func IsRefusal(err error) bool {
+	var pe *PrecheckError
+	return errors.As(err, &pe) || errors.Is(err, ErrSaveNewerThanImage) ||
+		errors.Is(err, ErrSwitchSame) || errors.Is(err, ErrSwitchNotActive) ||
+		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning)
+}
+
+// checkFailed handles an error from the checks a start, restart or switch
+// runs before it does anything. A refusal is recorded as such; any other
+// error is audited as the action itself, which then failed.
+func (c *Controller) checkFailed(ctx context.Context, by Actor, action, id, detail string, err error) error {
+	if IsRefusal(err) {
+		return c.refused(ctx, by, action, id, detail, err)
+	}
+	if aerr := c.audit(ctx, by, action, id, detail); aerr != nil {
+		return aerr
+	}
+	return err
+}
+
+// refused records a start, restart or switch that the checks refused before
+// anything was done: one log line and one audit entry, each with the
+// reason, under the action's own refused name (SPEC 12.9). The reason is the
+// refusal's text, which names problems and never a secret. It returns err.
+func (c *Controller) refused(ctx context.Context, by Actor, action, id, detail string, err error) error {
+	reason := err.Error()
+	if detail != "" {
+		reason = detail + ": " + reason
+	}
+	c.log.Warn(action+" refused", "world", id, "user", by.Username, "reason", reason)
+	if aerr := c.audit(ctx, by, refusedActions[action], id, reason); aerr != nil {
+		c.log.Error("could not record the refusal in the audit log", "world", id, "action", action, "error", aerr)
+	}
+	return err
 }
 
 // audit records an action. When it cannot, the action does not go ahead,

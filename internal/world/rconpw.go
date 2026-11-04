@@ -21,7 +21,7 @@ const RCONPasswordFile = ConfigDir + "/rconpw"
 // rconPasswordMode lets the game's group read the file and nobody else.
 const rconPasswordMode fs.FileMode = 0o640
 
-// maxRCONPassword caps how much of the file is read.
+// maxRCONPassword is the largest password file that is read.
 const maxRCONPassword = 1024
 
 // errRCONPasswordEmpty is returned when the file holds no password.
@@ -102,18 +102,11 @@ func createPasswordTemp(root *os.Root, dir string) (*os.File, string, error) {
 // copyRCONPassword copies the password file from one world folder to
 // another, at 0640 throughout, keeping its modification time.
 func copyRCONPassword(src, dst *os.Root) error {
-	in, err := src.Open(RCONPasswordFile)
+	in, info, err := openRegular(src, RCONPasswordFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("copy %s: %w", RCONPasswordFile, err)
 	}
 	defer func() { _ = in.Close() }()
-	info, err := in.Stat()
-	if err != nil {
-		return err
-	}
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("copy %s: not a regular file", RCONPasswordFile)
-	}
 	out, temp, err := createPasswordTemp(dst, ConfigDir)
 	if err != nil {
 		return err
@@ -151,22 +144,11 @@ func narrowRCONPassword(root *os.Root) error {
 	return root.Chmod(RCONPasswordFile, perm&rconPasswordMode)
 }
 
-// readRCONPassword reads the password file, refusing anything but a
-// regular file.
+// readRCONPassword reads the password file in a world.
+// Anything but a small regular file, a link included, is an error
+// (SPEC 14.8).
 func readRCONPassword(root *os.Root) (secret.Secret, error) {
-	info, err := root.Lstat(RCONPasswordFile)
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	if !info.Mode().IsRegular() {
-		return secret.Secret{}, fmt.Errorf("%s is not a regular file", RCONPasswordFile)
-	}
-	f, err := root.Open(RCONPasswordFile)
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	defer func() { _ = f.Close() }()
-	b, err := io.ReadAll(io.LimitReader(f, maxRCONPassword))
+	b, err := ReadSmallFile(root, RCONPasswordFile, maxRCONPassword)
 	if err != nil {
 		return secret.Secret{}, err
 	}

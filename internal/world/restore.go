@@ -65,7 +65,7 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 	}
 	defer release()
 
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -169,7 +169,7 @@ func (m *Manager) restoreDeleted(ctx context.Context, id string, snap Snapshot) 
 		return err
 	}
 	defer release()
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return err
 	}

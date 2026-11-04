@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -94,8 +95,37 @@ func WriteFileAtomic(root *os.Root, name string, data []byte) error {
 	return err
 }
 
+// openDirFile opens folder dir inside root as a file, for a caller that
+// needs its descriptor. The game can swap a folder for a named pipe at any
+// time, so the open is non-blocking and directory-only, and the opened
+// file must be the folder that Lstat saw (SPEC 14.5). The caller closes it.
+func openDirFile(root *os.Root, dir string) (*os.File, error) {
+	linfo, err := root.Lstat(dir)
+	if err != nil {
+		return nil, err
+	}
+	if !linfo.IsDir() {
+		return nil, fmt.Errorf("%s: %w", dir, ErrNotFolder)
+	}
+	f, err := root.OpenFile(dir, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_DIRECTORY, 0)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil || !info.IsDir() || !os.SameFile(info, linfo) {
+		_ = f.Close()
+		if err == nil {
+			err = fmt.Errorf("%s: %w", dir, ErrNotFolder)
+		}
+		return nil, err
+	}
+	return f, nil
+}
+
+// syncDir flushes folder dir inside root to disk, so a rename or new file
+// in it survives a crash.
 func syncDir(root *os.Root, dir string) error {
-	d, err := root.Open(dir)
+	d, err := openDirFile(root, dir)
 	if err != nil {
 		return err
 	}
@@ -153,6 +183,11 @@ func Reserve(dir string, n uint64) (release func(), err error) {
 	if err != nil {
 		return nil, err
 	}
+	return reserveFree(free, n)
+}
+
+// reserveFree is Reserve given the free space already read.
+func reserveFree(free, n uint64) (release func(), err error) {
 	promised.mu.Lock()
 	defer promised.mu.Unlock()
 	if err := checkSpace(free, promised.n, n); err != nil {
@@ -204,6 +239,35 @@ func FormatBytes(n uint64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "kMGTPE"[exp])
+}
+
+// openFolder opens the folder at p as a root, refusing a link at p itself.
+// It checks on every open, not once at startup, so a link swapped in for
+// the folder after startup is refused too (SPEC 14.5). The parent is
+// opened by path.
+func openFolder(p string) (*os.Root, error) {
+	parent, err := os.OpenRoot(filepath.Dir(p))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = parent.Close() }()
+	return openDir(parent, filepath.Base(p))
+}
+
+// chmodFolder sets the mode of the folder at p through the opened folder,
+// so a link swapped in after the check is not followed.
+func chmodFolder(p string, mode fs.FileMode) error {
+	r, err := openFolder(p)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = r.Close() }()
+	f, err := r.Open(".")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return f.Chmod(mode)
 }
 
 // ErrNotFolder is returned by openDir for a name that is not a real

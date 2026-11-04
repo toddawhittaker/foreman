@@ -1,5 +1,7 @@
 {{define "title"}}Import a world{{end}}
 
+{{define "scripts"}}<script src="{{static "import.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
@@ -17,9 +19,16 @@
     {{- with .SourceError}}
     <p class="error" id="folder-source-error"><strong>Error:</strong> {{.}}</p>
     {{- end}}
+    {{- if not $.Page.Importable}}
+    <p class="empty">There is nothing to import: no folder here has a save at its top level. Put the save files (<code>.zip</code>) directly in a folder, then reload this page.</p>
+    {{- end}}
     {{- $chosen := .Source}}
     {{- range $i, $f := $.Page.Inbox}}
-    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}</span></label>
+    {{- if $f.Saves}}
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if $f.Read}} data-game-version="{{$f.GameVersion}}"{{if $f.SpaceAge}} data-space-age{{end}}{{end}}{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}{{if $f.Read}}, made with Factorio {{$f.GameVersion}}{{if $f.SpaceAge}}, Space Age{{end}}{{end}}</span></label>
+    {{- else}}
+    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}" disabled> <span><code>{{$f.Name}}</code>: no save at its top level, so it cannot be imported</span></label>
+    {{- end}}
     {{- end}}
   </fieldset>
   {{- else}}
@@ -59,21 +68,23 @@
 {{define "import-fields" -}}
 <div class="field">
   <label for="{{.IDPrefix}}-name">World name</label>
+  <p class="hint" id="{{.IDPrefix}}-name-hint">Shown in Foreman. Up to 100 characters.</p>
   <input id="{{.IDPrefix}}-name" name="name" type="text" value="{{.Name}}" required maxlength="100"
-    {{- with .NameError}} aria-invalid="true" aria-describedby="{{$.IDPrefix}}-name-error"{{end}}>
+    {{- if .NameError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-name-hint {{.IDPrefix}}-name-error"{{else}} aria-describedby="{{.IDPrefix}}-name-hint"{{end}}>
   {{- with .NameError}}
   <p class="error" id="{{$.IDPrefix}}-name-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
 </div>
 <div class="field">
   <label for="{{.IDPrefix}}-version">Game version</label>
-  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72.</p>
-  <input id="{{.IDPrefix}}-version" name="game_version" type="text" value="{{.GameVersion}}" required
+  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. Leave it empty to use the version the save was made with.</p>
+  <input id="{{.IDPrefix}}-version" name="game_version" type="text" value="{{.GameVersion}}"
     inputmode="decimal" autocomplete="off" spellcheck="false"
     {{- if .VersionError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-version-hint {{.IDPrefix}}-version-error"{{else}} aria-describedby="{{.IDPrefix}}-version-hint"{{end}}>
   {{- with .VersionError}}
   <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
 </div>
-<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
+<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age" aria-describedby="{{.IDPrefix}}-space-age-hint"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
+<p class="hint" id="{{.IDPrefix}}-space-age-hint">Space Age only applies to Factorio 2.0 and later.</p>
 {{- end}}

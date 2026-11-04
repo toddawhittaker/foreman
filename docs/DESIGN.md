@@ -631,6 +631,10 @@ never depends on colour.
   page load. A message that is part of a freshly loaded page has no role.
   Success messages from htmx go to `#announcer` instead (section 6), with
   the visible message rendered beside the thing that changed.
+- On the Server page, the unfinished-switch notice (SPEC 7.10) and the
+  game-network warning (SPEC 4.4) are Warnings in the page, outside any
+  live region. The notice sits in the control panel with its Switch back
+  button after it; the network warning sits with the status facts.
 - **Empty states** are plain paragraphs in `text-muted`, never an
   illustration: "No worlds yet. Import a folder of saves or upload a save
   file to make your first world." followed by the action buttons. The
@@ -718,8 +722,13 @@ Rules:
 Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
-delete), and in later epics switching (7.9) and destructive player
-actions (8.2). A graceful stop or restart does not need a danger
+delete), switching worlds (7.9), and in later epics destructive player
+actions (8.2). Start, restart and switch anyway have no page of their
+own: the Warning that reports the refusal on the Server page is the
+confirmation (SPEC 7.4). It lists what the game drops, then the steps,
+the snapshots and the undo as above, and its danger button posts the
+action at once. Restart and a switch of a running game use the default
+60-second countdown there. The switch box carries the stop countdown fields only when the game is running. A graceful stop or restart does not need a danger
 confirmation, because nothing is lost. Its button opens a short form at its
 own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
 countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
@@ -811,7 +820,10 @@ steps, each with a word:
 ```
 
 Step words are "Done", "In progress", "Waiting", "Failed" and "Skipped",
-coloured `ok`, `warn`, `text-muted`, `danger-text` and `text-muted`. The
+coloured `ok`, `warn`, `text-muted`, `danger-text` and `text-muted`. A step
+the pre-start check refused reads "Refused", coloured like its message:
+`warn` (`step-state--warning`) when the message offers going ahead anyway,
+`danger-text` otherwise. The
 in-progress step may carry a native `<progress>` with no value
 (indeterminate). A failed step is followed by an error message (7.3)
 that says what to do next, as SPEC 7.9 requires for switching.
@@ -823,9 +835,16 @@ modifiers `step-state--done`, `step-state--progress` and
 current step has `aria-current="step"` and is bold. In a panel narrower
 than 24rem the word takes its own line, so every step reads the same way.
 A failed step's message goes inside that `li` as
-`<div class="message message--error">`; it takes its own full-width line
-(`flex: 1 1 100%`, no `max-inline-size`) at any width. The words carry the state, so forced
+`<div class="message message--error">` (or `message--warning` for a refusal
+with a choice); it takes its own line (`flex: 1 1 100%`) at any width, up
+to the message's reading width. Text inside a message fills that one width,
+so a paragraph and a nested list item wrap alike. The words carry the state, so forced
 colours needs no rule.
+
+When an operation changes the active world (a switch), the
+old world's open page reloads onto the Server page after the operation
+ends, moves focus to the control heading, and writes the result sentence
+to `#announcer`.
 
 ## 8. Patterns for later screens
 
@@ -1004,7 +1023,7 @@ screen does, in this document first.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
   SPEC 7.2.
 - Pagination. See 8.4.
-- Mod search results, dependency plans and the mod list (Epic 5).
+- Mod search results, dependency plans and the mod list (Epic 6).
 - The world-switch progress screen beyond the step list in 7.6 (Epic 4).
 - Chat (Epic 8).
 - A print stylesheet.

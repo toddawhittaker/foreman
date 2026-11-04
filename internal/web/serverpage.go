@@ -27,6 +27,9 @@ type ServerPage struct {
 	HaveResult bool
 	// Others are the actions asked for while it ran, shown apart.
 	Others []actionResult
+	// WorldNames holds the names of the worlds a switch, or the notice of
+	// an unfinished one, speaks of, by id.
+	WorldNames map[string]string
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -47,6 +50,7 @@ func (p ServerPage) StopPath() string      { return gamePath(p.World.ID, "stop")
 func (p ServerPage) RestartPath() string   { return gamePath(p.World.ID, "restart") }
 func (p ServerPage) ForceStopPath() string { return gamePath(p.World.ID, "force-stop") }
 func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-image") }
+func (p ServerPage) ConsolePath() string   { return consolePath(p.World.ID, "") }
 
 // StateWord is the badge's word (DESIGN 7.5).
 func (p ServerPage) StateWord() string { return stateWord(p.Status.State) }
@@ -98,12 +102,69 @@ func (p ServerPage) CanStart() bool {
 	return !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
 }
 
+// StartBlocked says why the last attempt to run the world did not, and what
+// the admin can do, or is "". It uses what Foreman already knows: the crash
+// loop (SPEC 8.9) and the last start or restart the checks refused
+// (SPEC 7.4). The page then offers a plain "Try to start again" for after
+// the fix, in place of the main Start button; an admin must still be able
+// to start by hand (SPEC 8.9).
+func (p ServerPage) StartBlocked() string {
+	if !p.CanStart() {
+		return ""
+	}
+	if p.Status.State == game.StateCrashLooping {
+		return p.World.Name + " crashed again and again the last time it ran. Fix what the game reported, for example the world's mods or its save, then try to start it again. Or switch to another world from the Worlds page."
+	}
+	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && game.IsRefusal(p.Result.Err) && !p.OffersAnyway() {
+		return "Foreman refused the last start of " + p.World.Name + ", for the reason above. Fix the world first, then try to start it again."
+	}
+	return ""
+}
+
+// OffersAnyway reports whether the last result's box offers to go ahead
+// anyway; the box then leads alone, with no advice to fix the world first.
+func (p ServerPage) OffersAnyway() bool {
+	f := p.Failure()
+	return f != nil && f.Anyway != nil
+}
+
+// blockedAnnouncement is read out with the page's results while a start is
+// blocked, so a screen reader user learns why Start server is gone.
+const blockedAnnouncement = "Start server is replaced by Try to start again, for after the world is fixed."
+
+// Crashed reports whether the page shows the crash message.
+func (p ServerPage) Crashed() bool {
+	return p.Status.State == game.StateCrashed || p.Status.State == game.StateCrashLooping
+}
+
+// CrashLeads reports whether the crash is the newest thing the page reports,
+// so its message comes first; otherwise it is marked as earlier.
+func (p ServerPage) CrashLeads() bool {
+	// A crash whose time is not known yet is the current state, so it leads.
+	c := p.Status.LastCrash
+	return p.Crashed() && (!p.HaveResult || c.IsZero() || p.Result.At.Before(c))
+}
+
+// opSuperseded reports whether the failed operation the status still holds
+// is older than the last result, as when a later switch was refused before
+// it began: its step list and note are then dropped.
+func (p ServerPage) opSuperseded() bool {
+	o := p.Status.Operation
+	if o == nil || !o.Done || o.Error == "" || !p.HaveResult {
+		return false
+	}
+	f := p.Failure()
+	return f == nil || f.In != "operation"
+}
+
 func (p ServerPage) CanStop() bool {
 	s := p.Status.State
 	return !p.Busy() && (s == game.StateRunning || s == game.StateCrashed)
 }
 
-func (p ServerPage) CanRestart() bool { return !p.Busy() && p.Status.State == game.StateRunning }
+func (p ServerPage) CanRestart() bool {
+	return !p.Busy() && p.Status.State == game.StateRunning
+}
 
 func (p ServerPage) CanForceStop() bool {
 	switch p.Status.State {
@@ -118,6 +179,8 @@ func (p ServerPage) ActionsNote() string {
 	switch {
 	case p.Status.State == game.StateUnknown:
 		return "Foreman cannot start or stop the game until it can ask Docker about it."
+	case p.Busy() && p.Status.Operation.Action == game.AuditSwitch:
+		return "Wait for the switch to finish, or use Force stop. Force stop ends the switch; the game is stopped without saving."
 	case p.Busy():
 		return "Wait for this to finish, or use Force stop to stop the game now without saving."
 	case p.Status.State == game.StateStarting || p.Status.State == game.StateStopping:
@@ -128,7 +191,7 @@ func (p ServerPage) ActionsNote() string {
 
 // ShowOperation reports whether the step list is shown: while the
 // operation runs, and after it failed.
-func (p ServerPage) ShowOperation() bool { return showOp(p.Status.Operation) }
+func (p ServerPage) ShowOperation() bool { return showOp(p.Status.Operation) && !p.opSuperseded() }
 
 // ShowDownload is ShowOperation for the image download.
 func (p ServerPage) ShowDownload() bool { return showOp(p.Status.Download) }
@@ -148,6 +211,12 @@ func (p ServerPage) OperationHeading() string {
 		return choose(failed, "The restart failed", "Restarting the server")
 	case game.ActionRestore:
 		return choose(failed, "The restore failed", "Restoring a snapshot")
+	case game.AuditSwitch:
+		if sw := o.Switch; sw != nil {
+			return choose(failed, "The switch from "+p.name(sw.From)+" to "+p.name(sw.To)+" failed",
+				"Switching from "+p.name(sw.From)+" to "+p.name(sw.To))
+		}
+		return choose(failed, "The switch failed", "Switching worlds")
 	}
 	return choose(failed, "This failed", "Working")
 }
@@ -179,14 +248,24 @@ func (p ServerPage) DownloadList() stepList {
 // Since says how long a player has been online.
 func (ServerPage) Since(d time.Duration) string { return durationText(d) }
 
-// StepWord is the word beside a step (DESIGN 7.6).
-func (ServerPage) StepWord(s game.StepState) string {
+// refused reports whether this list's failed step is a refusal by the
+// pre-start check, not a fault.
+func (l stepList) refused() bool {
+	return l.Failure != nil && l.Failure.Refused && l.Failure.In == l.In
+}
+
+// StepWord is the word beside a step (DESIGN 7.6). A step the pre-start
+// check refused reads "Refused", since nothing went wrong.
+func (l stepList) StepWord(s game.StepState) string {
 	switch s {
 	case game.StepDone:
 		return "Done"
 	case game.StepProgress:
 		return "In progress"
 	case game.StepFailed:
+		if l.refused() {
+			return "Refused"
+		}
 		return "Failed"
 	case game.StepSkipped:
 		return "Skipped"
@@ -194,8 +273,12 @@ func (ServerPage) StepWord(s game.StepState) string {
 	return "Waiting"
 }
 
-// StepClass is the step word's modifier class, or "".
-func (ServerPage) StepClass(s game.StepState) string {
+// StepClass is the step word's modifier class, or "". A refusal that
+// offers a choice is a warning, matching its message (DESIGN 7.3).
+func (l stepList) StepClass(s game.StepState) string {
+	if s == game.StepFailed && l.refused() && l.Failure.Anyway != nil {
+		return "step-state--warning"
+	}
 	switch s {
 	case game.StepDone, game.StepProgress, game.StepFailed:
 		return "step-state--" + string(s)
@@ -209,8 +292,11 @@ type Failure struct {
 	Message string
 	// Problems are the pre-start check's findings (SPEC 7.4).
 	Problems []string
-	// AnywayPath confirms "Start anyway", when every problem allows it.
-	AnywayPath string
+	// Refused is true when the pre-start check refused the action.
+	Refused bool
+	// Anyway offers to go ahead past the problems, when every problem
+	// allows it. The box is then the confirmation (SPEC 7.4, 17.5).
+	Anyway *Anyway
 	// Download offers to download the missing game image (SPEC 3.7).
 	Download bool
 	// Undo names the "Before restore" snapshot a failed restore took.
@@ -218,10 +304,58 @@ type Failure struct {
 	// In says which step list holds the message: "operation", "download",
 	// or "" for on its own.
 	In string
+	// Earlier is when the action ended, set when a crash after it leads
+	// the page.
+	Earlier time.Time
 }
+
+// Word is the message's leading word. A refusal that offers a choice is a
+// warning, not an error: going ahead is the admin's call (DESIGN 7.3).
+func (f *Failure) Word() string {
+	if f.Anyway != nil {
+		return "Warning:"
+	}
+	return "Error:"
+}
+
+// Class is the message's kind class, matching Word.
+func (f *Failure) Class() string {
+	if f.Anyway != nil {
+		return "message--warning"
+	}
+	return "message--error"
+}
+
+// changedLead says why a go-ahead anyway did not run: what the box showed
+// was no longer true, so the admin must read it again (SPEC 7.4, 17.5).
+const changedLead = "The world or the server changed since the page showed it, so Foreman did not go ahead. Read the message again before you choose."
 
 // precheckLead opens the message for a start the pre-start check refused.
 const precheckLead = "Foreman did not start the game, because the save that would load does not match the world:"
+
+// switchPrecheckLead opens the message for a switch the pre-start check of
+// the new world refused. Nothing was stopped or changed.
+const switchPrecheckLead = "Foreman did not switch, because the save that would load in the new world does not match that world:"
+
+// precheckLeadFor opens the message for a refused start or switch. When the
+// only problems are mods made for another Factorio, the save is not what
+// fails, so the lead says the world cannot run instead. name is the world
+// that cannot run; "" says "the world".
+func precheckLeadFor(check world.PreCheck, switching bool, name string) string {
+	if len(check.Problems) == 0 {
+		return choose(switching, switchPrecheckLead, precheckLead)
+	}
+	for _, pr := range check.Problems {
+		if pr.Kind != world.ProblemModGameVersion {
+			return choose(switching, switchPrecheckLead, precheckLead)
+		}
+	}
+	if name == "" {
+		name = "the world"
+	}
+	return choose(switching, "Foreman did not switch", "Foreman did not start the game") +
+		", because " + name + " cannot run in this game:"
+}
 
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
@@ -230,25 +364,39 @@ func (p ServerPage) Failure() *Failure {
 	}
 	err := p.Result.Err
 	f := &Failure{Undo: p.Result.Undo}
+	if p.Crashed() && p.CrashLeads() {
+		f.Earlier = p.Result.At
+	}
 	var pe *game.PrecheckError
 	switch {
 	case errors.As(err, &pe):
-		f.Message = precheckLead
+		switching := p.Result.Action == game.AuditSwitch
+		name := p.World.Name
+		if switching {
+			name = p.WorldNames[p.Result.Target]
+		}
+		f.Message = precheckLeadFor(pe.Check, switching, name)
+		if pe.Changed {
+			f.Message = changedLead + " " + f.Message
+		}
 		for _, pr := range pe.Check.Problems {
 			f.Problems = append(f.Problems, pr.Text)
 		}
 		if pe.Check.CanStartAnyway() {
-			f.AnywayPath = gamePath(p.World.ID, "start-anyway")
-			if p.Result.Action == game.AuditRestart {
-				f.AnywayPath += "?then=restart"
-			}
+			f.Anyway = p.anyway(pe.Check)
 		}
 	case errors.Is(err, game.ErrImageMissing):
 		f.Message, f.Download = sentence(err), true
 	default:
 		f.Message = failureText(err)
 	}
+	f.Refused = game.IsRefusal(err)
 	text := err.Error()
+	// A forced stop that interrupted a switch says in the operation's own
+	// error which world it stopped.
+	if o := p.Status.Operation; errors.Is(err, game.ErrCancelled) && o != nil && o.Done && o.Error != "" {
+		f.Message, text = sentence(errors.New(o.Error)), o.Error
+	}
 	switch {
 	case p.Status.Operation != nil && p.Status.Operation.Done && p.Status.Operation.Error == text:
 		f.In = "operation"
@@ -256,6 +404,65 @@ func (p ServerPage) Failure() *Failure {
 		f.In = "download"
 	}
 	return f
+}
+
+// Anyway is the offer to start, restart or switch past the pre-start
+// check's problems. It names every step and the snapshots taken first, so
+// its button acts at once (SPEC 7.4, 17.5).
+type Anyway struct {
+	// Path is where the button posts; Verb is the button's words.
+	Path, Verb string
+	// Switch is set for a switch; Restart for a restart of a running game.
+	Switch, Restart bool
+	// World is the world that loads the save. From is the world a switch
+	// leaves, and FromID its id, which the form sends.
+	World, From, FromID string
+	// Running is true when the game runs now, so it is stopped first.
+	Running bool
+	// Countdown is the warning players get before the stop, in seconds.
+	Countdown int
+	// Seen fingerprints what the box shows, so a stale box is refused.
+	Seen string
+	// Advice says how to keep what missing mods built, or is "".
+	Advice string
+}
+
+// anyway builds the offer for the last refused action.
+func (p ServerPage) anyway(check world.PreCheck) *Anyway {
+	a := &Anyway{
+		Path: p.StartPath(), Verb: "Start anyway", World: p.World.Name,
+		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems),
+		Running: game.IsRunning(p.Status.State),
+	}
+	switch p.Result.Action {
+	case game.AuditRestart:
+		a.Path, a.Verb, a.Restart = p.RestartPath(), "Restart anyway", true
+	case game.AuditSwitch:
+		a.Path, a.Verb, a.Switch = switchPath(p.Result.Target), "Switch anyway", true
+		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
+	}
+	a.Seen = game.AnywayFingerprint(check, a.Running)
+	return a
+}
+
+// anywayAdvice says how to keep what missing mods built; the lead already
+// says what the game drops. Mods that are only turned off need no file.
+func anywayAdvice(problems []world.Problem) string {
+	missing := 0
+	for _, pr := range problems {
+		if pr.Kind == world.ProblemModMissing {
+			missing += len(pr.Mods)
+		}
+	}
+	if missing == 0 {
+		return ""
+	}
+	built := "that mod built"
+	if missing > 1 {
+		built = "those mods built"
+	}
+	return "Foreman cannot add mods to a world yet. To keep what " + built +
+		", put the mod files in the import folder's mods/ and import the world again."
 }
 
 // failureText words an action's error; one the admin cannot fix is logged
@@ -272,6 +479,7 @@ func failureText(err error) string {
 var actionNames = map[string]string{
 	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
 	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
+	game.AuditSwitch: "switch",
 }
 
 // OtherErrors words the errors of the actions asked for while another ran.
@@ -292,10 +500,23 @@ func (p ServerPage) OtherErrors() []string {
 
 // Done says what the last action did, when that is not otherwise visible.
 func (p ServerPage) Done() string {
-	if !p.HaveResult || p.Result.Err != nil || p.Result.Action != game.ActionRestore {
+	if !p.HaveResult || p.Result.Err != nil {
 		return ""
 	}
-	return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
+	switch p.Result.Action {
+	case game.ActionRestore:
+		return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
+	case game.AuditSwitch:
+		return "The worlds are switched. Foreman took the snapshot \"Before switch\" of both worlds first; to undo, switch back, or restore that snapshot from the Snapshots page."
+	}
+	return ""
+}
+
+// doneAnnouncement is what a live page reads out when an action that
+// shows a "Done" message finishes.
+var doneAnnouncement = map[string]string{
+	game.ActionRestore: "The world is restored.",
+	game.AuditSwitch:   "The worlds are switched.",
 }
 
 // resultAnnouncement is what a live page reads out for the results the
@@ -303,13 +524,16 @@ func (p ServerPage) Done() string {
 func resultAnnouncement(p ServerPage) string {
 	var said []string
 	if f := p.Failure(); f != nil {
-		said = append(said, "Error: "+f.Message)
+		said = append(said, f.Word()+" "+f.Message)
+		if f.Anyway != nil {
+			said = append(said, "You can "+strings.ToLower(f.Anyway.Verb)+"; the button is below.")
+		}
 	}
 	for _, e := range p.OtherErrors() {
 		said = append(said, "Error: "+e)
 	}
 	if p.Done() != "" {
-		said = append(said, "The world is restored.")
+		said = append(said, doneAnnouncement[p.Result.Action])
 	}
 	return strings.Join(said, " ")
 }

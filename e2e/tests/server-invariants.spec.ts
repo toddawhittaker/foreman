@@ -9,7 +9,7 @@ import { join } from "node:path";
 const gamePassword = "e2e-game-pw-Vb93";
 const live = { timeout: 20_000 };
 
-// SPEC 14.3, managed mode, as "METHOD path".
+// SPEC 14.3, as "METHOD path".
 const allowed =
   /^(GET \/_ping|GET \/version|GET \/containers\/json|GET \/containers\/[^/]+\/(json|logs|stats)|POST \/containers\/[^/]+\/(start|stop|kill)|POST \/containers\/create|DELETE \/containers\/[^/]+|POST \/images\/create|GET \/images\/.+\/json|GET \/events)$/;
 

@@ -72,9 +72,9 @@ func listenAddr() string {
 	return config.DefaultListen
 }
 
-// serve starts in a fixed order: data directory check, host path (managed
-// mode only), database, world recovery, the game monitor (managed mode
-// only), then the server. It stops in the reverse order.
+// serve starts in a fixed order: data directory check, host path, database,
+// world recovery, game recovery, the game monitor, then the server. It
+// stops in the reverse order.
 func serve(cfg *config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -83,21 +83,17 @@ func serve(cfg *config.Config) error {
 		return err
 	}
 	hostname, _ := os.Hostname()
-	var dockerClient *docker.Client
-	var hostDir string
-	if cfg.Mode == config.ModeManaged {
-		var err error
-		// Making the client contacts nothing, so an unreachable Docker never
-		// stops Foreman from serving pages.
-		if dockerClient, err = docker.New(cfg.DockerHost); err != nil {
-			return err
-		}
-		hostDir, err = datadir.HostDir(ctx, cfg.DataDir, cfg.HostDataDir, dockerClient, datadir.MountinfoPath, hostname)
-		if err != nil {
-			return err
-		}
-		slog.Info("data directory", "container_path", cfg.DataDir, "host_path", hostDir)
+	// Making the client contacts nothing, so an unreachable Docker never
+	// stops Foreman from serving pages.
+	dockerClient, err := docker.New(cfg.DockerHost)
+	if err != nil {
+		return err
 	}
+	hostDir, err := datadir.HostDir(ctx, cfg.DataDir, cfg.HostDataDir, dockerClient, datadir.MountinfoPath, hostname)
+	if err != nil {
+		return err
+	}
+	slog.Info("data directory", "container_path", cfg.DataDir, "host_path", hostDir)
 	st, err := store.Open(ctx, datadir.Database(cfg.DataDir))
 	if err != nil {
 		return err
@@ -117,27 +113,20 @@ func serve(cfg *config.Config) error {
 		return err
 	}
 
-	var games *game.Controller
-	if cfg.Mode == config.ModeManaged {
-		games, err = game.New(game.Config{
-			Docker: dockerClient, Worlds: worlds, Audit: st,
-			HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
-			Images: gameImages, Network: cfg.GameNetwork,
-			DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
-			SelfID: docker.SelfID(docker.MountinfoPath, hostname),
-			Log:    slog.Default(),
-		})
-		if err != nil {
-			return err
-		}
+	games, err := game.New(gameConfig(cfg, dockerClient, worlds, st, hostDir, docker.SelfID(docker.MountinfoPath, hostname)))
+	if err != nil {
+		return err
+	}
+	// Recovery reports what a stop left part way and never starts or stops
+	// a game (SPEC 3.8). It finishes before the monitor and the first request.
+	if err := games.Recover(ctx); err != nil {
+		return fmt.Errorf("foreman could not recover from its last stop, so it did not start: %w", err)
 	}
 	// The monitor writes to the store, so it stops before the store closes.
 	// Stopping it leaves every game running (SPEC 3.8).
 	monitorCtx, stopMonitor := context.WithCancel(context.Background())
 	var monitoring sync.WaitGroup
-	if games != nil {
-		monitoring.Go(func() { games.Run(monitorCtx) })
-	}
+	monitoring.Go(func() { games.Run(monitorCtx) })
 	defer func() { stopMonitor(); monitoring.Wait() }()
 
 	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Log: slog.Default()})
@@ -160,7 +149,7 @@ func serve(cfg *config.Config) error {
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	slog.Info("listening", "addr", cfg.Listen, "mode", cfg.Mode)
+	slog.Info("listening", "addr", cfg.Listen)
 	select {
 	case err := <-errc:
 		return err
@@ -175,6 +164,17 @@ func serve(cfg *config.Config) error {
 		return err
 	}
 	return nil
+}
+
+// gameConfig fills the controller's settings.
+func gameConfig(cfg *config.Config, d *docker.Client, worlds *world.Manager, st *store.Store, hostDir, selfID string) game.Config {
+	return game.Config{
+		Docker: d, Worlds: worlds, Audit: st, Switches: st,
+		HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
+		Images: gameImages, Network: cfg.GameNetwork,
+		DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
+		SelfID: selfID, Log: slog.Default(),
+	}
 }
 
 // healthcheck exists because the runtime image has no shell or curl (STACK 10).

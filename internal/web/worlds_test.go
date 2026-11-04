@@ -251,3 +251,49 @@ func TestImportUploadRoute(t *testing.T) {
 	}
 	hn.noStaging()
 }
+
+// SPEC 5.5: a folder with no save at its top level is listed in words as
+// not importable, with its radio button disabled. The one importable folder
+// starts chosen, with the world named after it. With nothing importable the
+// form says so.
+func TestImportListsFoldersWithoutSaves(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	empty := filepath.Join(hn.worlds.Dirs().Imports, "current")
+	if err := os.MkdirAll(filepath.Join(empty, "mods"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := hn.get(PathImport, withCookie(c)).Body.String()
+	for _, want := range []string{`value="current" disabled>`, "<code>current</code>: no save at its top level, so it cannot be imported",
+		"There is nothing to import"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "0 saves") {
+		t.Errorf("empty folder listed by count:\n%s", body)
+	}
+
+	src := filepath.Join(hn.worlds.Dirs().Imports, "saves-2025")
+	if err := os.MkdirAll(src, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "a.zip"), saveZip(t), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	body = hn.get(PathImport, withCookie(c)).Body.String()
+	for _, want := range []string{`value="saves-2025"`, " checked", `id="folder-name" name="name" type="text" value="saves-2025"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "There is nothing to import") {
+		t.Errorf("says nothing to import beside an importable folder:\n%s", body)
+	}
+
+	// The server still refuses the empty folder.
+	rec := hn.postLive(PathImportFolder, url.Values{"folder": {"current"}, "name": {"Cur"}, "game_version": {"2.0.72"}}, c)
+	if rec.Code == http.StatusSeeOther {
+		t.Errorf("imported a folder with no save")
+	}
+}

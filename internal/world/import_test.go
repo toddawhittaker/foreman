@@ -19,7 +19,7 @@ func write(t *testing.T, p, body string, mtime time.Time) {
 	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+	if err := os.WriteFile(p, []byte(body), 0o600); err != nil { //nolint:gosec // a test temp folder
 		t.Fatal(err)
 	}
 	if err := os.Chtimes(p, mtime, mtime); err != nil {

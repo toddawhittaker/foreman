@@ -508,6 +508,11 @@ legend {
   border-radius: var(--radius);
 }
 
+/* The box sets one reading width; its paragraphs and nested items fill it. */
+.message :is(p, li) {
+  max-inline-size: none;
+}
+
 .message ul {
   display: grid;
   gap: var(--space-2);
@@ -728,10 +733,13 @@ legend {
   color: var(--color-danger-text);
 }
 
+.step-state--warning {
+  color: var(--color-warn);
+}
+
 /* A failed step's message sits on its own line under the word, at any width. */
 .steps li > .message {
   flex: 1 1 100%;
-  max-inline-size: none;
 }
 
 /* On a narrow panel the word has its own line, so every step lines up. */
@@ -748,6 +756,12 @@ legend {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+}
+
+/* The hidden event targets must stay hidden: the grid above would show them
+   as an empty band. */
+[sse-swap][hidden] {
+  display: none;
 }
 
 /* 8.2 The world list: rows divided by a rule, not boxed. */
