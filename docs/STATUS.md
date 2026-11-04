@@ -477,8 +477,9 @@ tested. Coverage across `internal/` is about 90%.
 
 ### Verified
 
-- Checks on 58507de: `make verify`, `make e2e`, `make test-game` (1.1.110,
-  2.0.77, 2.1.24). Results are to be confirmed by Todd.
+- Checks on 58507de, all green: `make verify` (coverage 90.7%), `make e2e`
+  (368 passed), and `make test-game` (33 cases across 1.1.110, 2.0.77 and
+  2.1.24).
 - Switch invariant tests (`internal/game/switch_invariants_test.go`): a
   crash before and after every record write, a cancel at every point,
   injected failures, many kinds of refusal, a random walk over three
