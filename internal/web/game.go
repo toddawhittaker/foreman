@@ -249,7 +249,8 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrNotAdopted), errors.Is(err, game.ErrAlreadyAdopted),
 		errors.Is(err, game.ErrNotPresented), errors.Is(err, game.ErrGameFolderBroken),
 		errors.Is(err, game.ErrSpaceAgeMismatch), errors.Is(err, game.ErrAdoptedImages),
-		errors.Is(err, game.ErrAdoptRCON):
+		errors.Is(err, game.ErrAdoptRCON), errors.Is(err, game.ErrWorldNotActive),
+		errors.Is(err, game.ErrAdoptionInProgress):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)

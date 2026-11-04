@@ -279,14 +279,18 @@ func (p ServerPage) movedSentence() string {
 
 // Moved reports whether this page's world stopped being the active one in a
 // switch, or the world a first adoption was building became the active one,
-// so the page must load the Server page again to show the right world.
+// so the page must load the Server page again to show the right world. It
+// waits until the operation has ended and the result is stored, so the
+// sentence the next page reads out always says how the action ended. Until
+// then both worlds' pages show the same step list, so the old page is not
+// stale.
 func (p ServerPage) Moved() bool {
 	o := p.Status.Operation
-	if o == nil {
+	if o == nil || !o.Done || !p.HaveResult {
 		return false
 	}
 	if p.Adopting {
-		return o.Action == game.AuditAdopt && o.Done && o.Error == ""
+		return o.Action == game.AuditAdopt && o.Error == ""
 	}
 	return o.Switch != nil && o.Switch.Presented && o.Switch.From == p.World.ID
 }

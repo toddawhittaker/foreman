@@ -95,10 +95,9 @@ func adoptSpaceAge(version string, spaceAge bool) bool {
 }
 
 // folderLayout is the game folder's shape at the monitor's last look, for
-// the pages that have no world to ask about. The controller answers for any
-// id in adopted mode.
+// the pages that have no world to ask about.
 func (s *server) folderLayout() gamedir.State {
-	return s.game.Status("").Layout
+	return s.game.Layout()
 }
 
 // adoptRefusal words why the game folder cannot be adopted, or "" when it

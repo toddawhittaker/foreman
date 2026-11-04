@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/url"
 	"strings"
 	"testing"
@@ -14,9 +15,10 @@ import (
 // the moved event carries the sentence the next page reads out.
 func TestMovedSentence(t *testing.T) {
 	names := map[string]string{"alpha": "Alpha", "bravo": "Bravo"}
-	running := game.Status{Operation: &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "alpha", To: "bravo", Presented: true}}}
-	if got, want := switchPageOf("alpha", running, names).movedSentence(), "Bravo is now the active world."; got != want {
-		t.Errorf("running switch: %q, want %q", got, want)
+	f := switchPageOf("alpha", failedSwitch(true), names)
+	f.HaveResult, f.Result = true, actionResult{Action: game.AuditSwitch, Err: errors.New("start the game: it failed")}
+	if got := f.movedSentence(); !strings.HasPrefix(got, "Bravo is now the active world. Error: ") {
+		t.Errorf("failed switch: %q", got)
 	}
 
 	done := game.Status{Operation: &game.Operation{Action: game.AuditSwitch, Done: true, Switch: &game.SwitchInfo{From: "alpha", To: "bravo", Presented: true}}}
@@ -31,6 +33,32 @@ func TestMovedSentence(t *testing.T) {
 	a.HaveResult, a.Result = true, actionResult{Action: game.AuditAdopt}
 	if got, want := a.movedSentence(), "Gate is now the active world. The game folder is adopted."; got != want {
 		t.Errorf("adoption: %q, want %q", got, want)
+	}
+}
+
+// SPEC 7.9, 16.3: the old page is told to follow only once the operation has
+// ended and its result is stored, so the sentence always says how it ended.
+func TestMovedWaitsForTheEndOfTheOperation(t *testing.T) {
+	sw := &game.SwitchInfo{From: "alpha", To: "bravo", Presented: true}
+	for name, c := range map[string]struct {
+		op     game.Operation
+		result bool
+		want   bool
+	}{
+		"running":         {game.Operation{Action: game.AuditSwitch, Switch: sw}, false, false},
+		"running, result": {game.Operation{Action: game.AuditSwitch, Switch: sw}, true, false},
+		"done, no result": {game.Operation{Action: game.AuditSwitch, Switch: sw, Done: true}, false, false},
+		"done":            {game.Operation{Action: game.AuditSwitch, Switch: sw, Done: true}, true, true},
+		"failed":          {game.Operation{Action: game.AuditSwitch, Switch: sw, Done: true, Error: "boom"}, true, true},
+		"not presented":   {game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "alpha", To: "bravo"}, Done: true, Error: "boom"}, true, false},
+		"the other world": {game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "bravo", To: "alpha", Presented: true}, Done: true}, true, false},
+	} {
+		op := c.op
+		p := switchPageOf("alpha", game.Status{Operation: &op}, switchNames)
+		p.HaveResult = c.result
+		if got := p.Moved(); got != c.want {
+			t.Errorf("%s: Moved = %v, want %v", name, got, c.want)
+		}
 	}
 }
 
@@ -50,7 +78,7 @@ func TestMovedEventCarriesTheSentence(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if got := buf.String(); !strings.Contains(got, "event: moved\ndata: &lt;i&gt;Bravo&lt;/i&gt; is now the active world.") {
+	if got := buf.String(); !strings.Contains(got, "event: moved\ndata: &lt;i&gt;Bravo&lt;/i&gt; is now the active world. The worlds are switched.") {
 		t.Errorf("moved sentence:\n%s", got)
 	}
 }
