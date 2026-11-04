@@ -23,6 +23,15 @@
     <a href="{{.SnapshotsPath}}" class="button">Snapshots</a>
   </div>
 </section>
+{{- if .CanSwitch}}
+<section class="panel" aria-labelledby="switch-heading">
+  <h2 id="switch-heading">Switch</h2>
+  <p>Make this the active world. Foreman snapshots both worlds first, and starts this one if the server is running.</p>
+  <div class="actions">
+    <a href="{{.SwitchPath}}" class="button" id="act-switch">Switch to this world</a>
+  </div>
+</section>
+{{- end}}
 <section class="panel" aria-labelledby="delete-heading">
   <h2 id="delete-heading">Delete</h2>
   {{- with .DeleteRefusal}}

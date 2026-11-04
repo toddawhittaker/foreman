@@ -123,6 +123,7 @@ type liveStream struct {
 	started bool
 	state   game.State // the last state sent
 	result  string     // the last results sent, as read out
+	moved   bool       // the page was told to follow a switch
 }
 
 // send writes each region of p that changed since the last send. A new
@@ -165,6 +166,14 @@ func (l *liveStream) send(p ServerPage) error {
 			return err
 		}
 		wrote = true
+	}
+	// The world switched away from is no longer the one the Server page
+	// shows, so the page loads again to show the new one (SPEC 7.9).
+	if p.Moved() && !l.moved {
+		if err := l.event("moved", "The active world changed."); err != nil {
+			return err
+		}
+		l.moved, wrote = true, true
 	}
 	if !wrote {
 		return nil

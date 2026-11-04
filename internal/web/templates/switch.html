@@ -1,0 +1,53 @@
+{{define "title"}}Switch to {{.Page.To.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">Back to {{.To.Name}}</a></div>
+<h1>Switch to {{.To.Name}}</h1>
+{{template "summary" .Problems}}
+{{- with .Refusal}}
+<p>{{.}}</p>
+{{- with $.Page.CheckProblems}}
+<ul>
+  {{- range .}}
+  <li>{{.}}</li>
+  {{- end}}
+</ul>
+{{- end}}
+{{- else}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Switch from {{.From.Name}} to {{.To.Name}}{{if .Anyway}} although its save does not match the world{{end}}?</h2>
+  <p>This will:</p>
+  <ul>
+    {{- if .Running}}
+    <li>Warn players online with the countdown below, save the game and stop {{.From.Name}}.</li>
+    {{- else}}
+    <li>Leave the server stopped, because {{.From.Name}} is not running now.</li>
+    {{- end}}
+    <li>Take a snapshot of {{.From.Name}} and of {{.To.Name}}, both labelled "Before switch". If a snapshot fails, nothing else happens.</li>
+    {{- if .Anyway}}
+    <li>Take one more snapshot of {{.To.Name}}, labelled "Before start anyway".</li>
+    {{- range .CheckProblems}}
+    <li>{{.}}</li>
+    {{- end}}
+    {{- end}}
+    <li>Make {{.To.Name}} the active world.</li>
+    {{- if .Running}}
+    <li>Start the game on {{.To.Name}}.{{if .Anyway}} The next time it saves, what is listed above is gone from the save.{{end}}</li>
+    {{- end}}
+    <li>To undo, switch back to {{.From.Name}}, or restore a snapshot from the Snapshots page.</li>
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    <input type="hidden" name="from" value="{{.From.ID}}">
+    {{- if .Running}}
+    {{template "countdown" .CountdownForm}}
+    {{- end}}
+    <div class="actions">
+      <button type="submit"{{if .Anyway}} name="anyway" value="1"{{end}} class="button button--danger">Switch to {{.To.Name}}{{if .Anyway}} anyway{{end}}</button>
+      <a href="{{.ActivePath}}">Cancel, keep {{.From.Name}} active</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}
+{{- end}}

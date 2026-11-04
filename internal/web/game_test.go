@@ -49,7 +49,7 @@ func newGameRigOn(t *testing.T, dockerHost string, fake *fakegame.Game) *gameRig
 			t.Fatal(err)
 		}
 		c, err := game.New(game.Config{
-			Docker: dc, Worlds: worlds, Audit: st,
+			Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 			HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
 			Images: map[string]string{"2.1": image21},
 			Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
