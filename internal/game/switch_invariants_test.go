@@ -906,11 +906,7 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 		}},
 		{name: "game network refused", audited: 1, setup: func(v *invRig, a, b string) (string, string) {
 			// Inside a container, and no way to tell which networks it is on.
-			dockerenv := filepath.Join(v.data, "dockerenv")
-			if err := os.WriteFile(dockerenv, nil, 0o600); err != nil {
-				v.t.Fatal(err)
-			}
-			v.c.containerEnvs = []string{dockerenv}
+			v.seemInContainer()
 			return a, b
 		}, wantErr: ErrNetwork},
 	}
@@ -1322,7 +1318,7 @@ func TestInvariantRefusedSwitchWritesNoWorldFile(t *testing.T) {
 		}},
 		{"the game network is refused", func(v *invRig, a, b string) (string, string) {
 			// Foreman looks as if it runs in a container it cannot find (SPEC 4.4).
-			v.c.containerEnvs = []string{v.worldDir(a)}
+			v.seemInContainer()
 			return a, b
 		}},
 	}

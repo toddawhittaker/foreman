@@ -199,6 +199,16 @@ func newRig(t *testing.T, opts rigOptions) *rig {
 	return r
 }
 
+// seemInContainer creates the marker file the rig's controllers look for,
+// so Foreman appears to run in a container. It changes no controller field,
+// which the running monitor reads.
+func (r *rig) seemInContainer() {
+	r.t.Helper()
+	if err := os.WriteFile(filepath.Join(r.data, "no-dockerenv"), nil, 0o600); err != nil {
+		r.t.Fatal(err)
+	}
+}
+
 // newController makes a controller on the rig's Docker and data, with
 // short limits.
 func (r *rig) newController(opts rigOptions) *Controller {
