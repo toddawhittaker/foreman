@@ -1357,3 +1357,7 @@ func TestInvariantRefusedSwitchWritesNoWorldFile(t *testing.T) {
 		})
 	}
 }
+
+func (tr *tracer) SetActiveWorld(ctx context.Context, id string, now time.Time) error {
+	return tr.inner.SetActiveWorld(ctx, id, now)
+}
