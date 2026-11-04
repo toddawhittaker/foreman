@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -456,33 +454,6 @@ func (c *Controller) unadoptedPassword() (secret.Secret, error) {
 	return world.ReadRCONPassword(root)
 }
 
-// readSmallFile reads at most limit bytes of a regular file in the game
-// folder. The game can write that folder, so a link is refused, and the
-// file is opened without blocking and checked once open, since a FIFO put
-// there would otherwise hang the read (SPEC 14).
-func readSmallFile(root *os.Root, name string, limit int64) ([]byte, error) {
-	info, err := root.Lstat(name)
-	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file", name)
-	}
-	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = f.Close() }()
-	info, err = f.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file", name)
-	}
-	return io.ReadAll(io.LimitReader(f, limit))
-}
-
 // writeAdoptionMarker records the world being adopted. It fails when a
 // marker exists: one adoption at a time.
 func (c *Controller) writeAdoptionMarker(id string) error {
@@ -522,7 +493,7 @@ func (c *Controller) readAdoptionMarker() (id string, found bool, err error) {
 		return "", false, err
 	}
 	defer func() { _ = root.Close() }()
-	b, err := readSmallFile(root, adoptionMarker, 256)
+	b, err := world.ReadSmallFile(root, adoptionMarker, 256)
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", false, nil
 	}
