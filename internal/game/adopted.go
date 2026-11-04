@@ -283,6 +283,11 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 	if cont.PidMode == "host" {
 		return refuseContainer("the game container uses the host's process namespace (pid: host), so a game in it could see and signal the host's processes. Remove that setting from the container's definition")
 	}
+	// A host-network game has no RCON address of its own, and its requests
+	// look like the host's, outside the trusted-header guard (SPEC 12.6).
+	if cont.NetworkMode == "host" {
+		return refuseContainer("the game container uses the host's network (network_mode: host), so Foreman cannot tell a game from the host. Put the game on a Docker network it shares with Foreman")
+	}
 	if len(cont.Devices) > 0 {
 		return refuseContainer("the game container maps host devices in (devices), which a game does not need and could use against the host. Remove devices from the container's definition")
 	}

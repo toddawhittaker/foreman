@@ -79,6 +79,10 @@ func TestAdoptedContainerHostSettingRefusals(t *testing.T) {
 		{"userns host", func(c *dockertest.Container) { c.UsernsMode = "host" }, "userns_mode: host"},
 		{"ipc host", func(c *dockertest.Container) { c.IpcMode = "host" }, "ipc: host"},
 		{"uts host", func(c *dockertest.Container) { c.UTSMode = "host" }, "uts: host"},
+		{"network host", func(c *dockertest.Container) {
+			c.Spec.HostConfig.NetworkMode = "host"
+			c.Networks = map[string]string{"host": ""}
+		}, "network_mode: host"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
