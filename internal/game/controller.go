@@ -688,7 +688,7 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 			return StateUnknown, "Foreman cannot read the game container from Docker: " + w.inspectErr.Error()
 		}
 		if w.adoptErr != nil && w.containerID == "" {
-			return StateUnknown, "Foreman cannot read this world's RCON password, so it cannot watch the game: " + w.adoptErr.Error()
+			return StateUnknown, "Foreman " + w.adoptErr.Error()
 		}
 		if !listed && w.containerID == "" {
 			return StateUnknown, "Foreman is still asking Docker about the game."

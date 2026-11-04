@@ -430,9 +430,6 @@ func (c *Controller) saveUnadopted(ctx context.Context, cid string, rc *rcon.Cli
 	}
 }
 
-// maxPasswordFile caps how much of an RCON password file is read.
-const maxPasswordFile = 1024
-
 // unadoptedPassword is FOREMAN_RCON_PASSWORD, else the game folder's own
 // config/rconpw, which the image made (SPEC 4.10).
 func (c *Controller) unadoptedPassword() (secret.Secret, error) {
@@ -444,15 +441,7 @@ func (c *Controller) unadoptedPassword() (secret.Secret, error) {
 		return secret.Secret{}, err
 	}
 	defer func() { _ = root.Close() }()
-	b, err := readSmallFile(root, world.RCONPasswordFile, maxPasswordFile)
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	pw := strings.TrimSpace(string(b))
-	if pw == "" {
-		return secret.Secret{}, fmt.Errorf("%s is empty", world.RCONPasswordFile)
-	}
-	return secret.New(pw), nil
+	return world.ReadRCONPassword(root)
 }
 
 // readSmallFile reads at most limit bytes of a regular file in the game
@@ -505,7 +494,7 @@ func (c *Controller) writeAdoptionMarker(id string) error {
 		err = cerr
 	}
 	if err == nil {
-		err = syncRoot(root)
+		err = world.SyncDir(root, ".")
 	}
 	if err != nil {
 		_ = root.Remove(adoptionMarker)
@@ -544,19 +533,7 @@ func (c *Controller) removeAdoptionMarker() error {
 	if err := root.Remove(adoptionMarker); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	return syncRoot(root)
-}
-
-func syncRoot(root *os.Root) error {
-	d, err := root.Open(".")
-	if err != nil {
-		return err
-	}
-	err = d.Sync()
-	if cerr := d.Close(); err == nil {
-		err = cerr
-	}
-	return err
+	return world.SyncDir(root, ".")
 }
 
 // Recover finishes or reports what a stop of Foreman left part way. Call it
