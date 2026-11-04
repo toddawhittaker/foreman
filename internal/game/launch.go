@@ -197,11 +197,11 @@ func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, re
 		case <-poll.C:
 			cont, err := c.docker.InspectContainer(ctx, cid)
 			if err == nil && (cont.State.Status != "running" || cont.RestartCount > restarts) {
-				reason := c.loadFailureReason(ctx, w, cid, since)
-				if reason == "" {
-					reason = "the game stopped while it was loading"
+				tail := c.loadFailureReason(ctx, w, cid, since)
+				if tail == "" {
+					tail = ": the game stopped while it was loading"
 				}
-				return fmt.Errorf("%w: %s", ErrStartFailed, reason)
+				return fmt.Errorf("%w%s", ErrStartFailed, tail)
 			}
 		case <-deadline:
 			return fmt.Errorf("%w: it did not finish loading within %s", ErrStartFailed, durationWords(c.startTimeout))

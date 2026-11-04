@@ -19,8 +19,11 @@ type modList struct {
 	// found is false when there is no mod-list.json; the game then writes
 	// one with every built-in mod enabled.
 	found bool
-	// enabled holds the names of enabled mods.
+	// enabled holds the names of mods listed as on.
 	enabled map[string]bool
+	// disabled holds the names of mods listed as off. The game loads a mod
+	// zip the list does not mention and turns it on, so only these are off.
+	disabled map[string]bool
 }
 
 // readModList reads mods/mod-list.json from a world's root.
@@ -28,7 +31,7 @@ func readModList(root *os.Root) (modList, error) {
 	p := path.Join(ModsDir, ModListFile)
 	b, err := ReadSmallFile(root, p, maxModList)
 	if errors.Is(err, fs.ErrNotExist) {
-		return modList{enabled: map[string]bool{}}, nil
+		return modList{enabled: map[string]bool{}, disabled: map[string]bool{}}, nil
 	}
 	if err != nil {
 		return modList{}, err
@@ -43,10 +46,12 @@ func readModList(root *os.Root) (modList, error) {
 		// The decoder's message quotes file contents; say only what is wrong.
 		return modList{}, fmt.Errorf("read %s: it is not valid JSON of the expected shape", ModListFile)
 	}
-	out := modList{found: true, enabled: map[string]bool{}}
+	out := modList{found: true, enabled: map[string]bool{}, disabled: map[string]bool{}}
 	for _, m := range doc.Mods {
 		if m.Enabled {
 			out.enabled[m.Name] = true
+		} else {
+			out.disabled[m.Name] = true
 		}
 	}
 	return out, nil

@@ -150,7 +150,7 @@ func TestPreCheckModVersionIgnoresWhatItCannotRead(t *testing.T) {
 	putModZip(t, dir, "nover_1.0.0.zip", "nover_1.0.0", `{"name":"nover"}`)
 	putModZip(t, dir, "badjson_1.0.0.zip", "badjson_1.0.0", `{"factorio_version":`)
 	putModFor(t, dir, "disabled", "1.0.0", "1.1")
-	putModList(t, dir, "base", "junk", "noinfo", "nover", "badjson", "ghost-without-a-zip")
+	putModListOff(t, dir, []string{"base", "junk", "noinfo", "nover", "badjson", "ghost-without-a-zip"}, "disabled")
 	if got := modVersionProblems(checkWith(t, m, id, GameRun{})); len(got) != 0 {
 		t.Fatalf("%+v", got)
 	}
@@ -203,7 +203,7 @@ func TestPreCheckMissingModText(t *testing.T) {
 	putModList(t, dir, "base", "elevated-rails", "quality", "recycler", "space-age")
 	p := runCheck(t, m, id)
 	wantKinds(t, p, ProblemModMissing)
-	want := "The save a.zip was last played with foreman-test, and this world does not have that mod's file. " +
+	want := "This world does not have the file of the mod the save a.zip was last played with: foreman-test. " +
 		"Switching or starting anyway removes everything it built from the save."
 	if p.Problems[0].Text != want || len(p.Problems[0].Mods) != 1 {
 		t.Fatalf("%+v", p.Problems[0])
@@ -214,11 +214,11 @@ func TestPreCheckDisabledModText(t *testing.T) {
 	m, id, dir := checkWorld(t, "2.1.24", true)
 	putFixture(t, dir, "2.1.24-space-age-testmod.zip", "a.zip", t0)
 	writeFile(t, filepath.Join(dir, ModsDir, "foreman-test_0.1.0.zip"), "zip")
-	putModList(t, dir, "base", "elevated-rails", "quality", "recycler", "space-age")
+	putModListOff(t, dir, []string{"base", "elevated-rails", "quality", "recycler", "space-age"}, "foreman-test")
 	p := runCheck(t, m, id)
 	wantKinds(t, p, ProblemModDisabled)
 	want := "The save a.zip was last played with foreman-test, which is turned off in this world. " +
-		"Starting anyway removes everything it built from the save."
+		"Switching or starting anyway removes everything it built from the save."
 	if p.Problems[0].Text != want || !p.CanStartAnyway() {
 		t.Fatalf("%+v", p.Problems[0])
 	}
@@ -228,16 +228,16 @@ func TestCompareSaveManyMissingAndDisabledModsUsePlurals(t *testing.T) {
 	save := savefile.Save{Version: savefile.Version{Major: 2, Minor: 0, Patch: 77},
 		Mods: []savefile.Mod{{Name: "base"}, {Name: "gone-a"}, {Name: "gone-b"}, {Name: "off-a"}, {Name: "off-b"}}}
 	meta := Meta{GameVersion: "2.0.77"}
-	mods := modList{found: true, enabled: map[string]bool{"base": true}}
+	mods := modList{found: true, enabled: map[string]bool{"base": true}, disabled: map[string]bool{"off-a": true, "off-b": true}}
 	present := map[string]bool{"off-a": true, "off-b": true}
 	got := compareSave(meta, mods, present, "a.zip", save, false)
 	if len(got) != 2 {
 		t.Fatalf("%+v", got)
 	}
-	wantMissing := "The save a.zip was last played with gone-a, gone-b, and this world does not have those mods' files. " +
+	wantMissing := "This world does not have the files of the mods the save a.zip was last played with: gone-a, gone-b. " +
 		"Switching or starting anyway removes everything they built from the save."
 	wantOff := "The save a.zip was last played with off-a, off-b, which are turned off in this world. " +
-		"Starting anyway removes everything they built from the save."
+		"Switching or starting anyway removes everything they built from the save."
 	if got[0].Text != wantMissing || got[1].Text != wantOff {
 		t.Fatalf("%q\n%q", got[0].Text, got[1].Text)
 	}

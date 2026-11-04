@@ -588,11 +588,15 @@ func (c *Controller) checkSaveAgainstContainer(save savefile.Version) error {
 // controller's game will run: the container's version in adopted mode, the
 // world's pinned version otherwise.
 func (c *Controller) PreStartCheck(id string) (world.PreCheck, error) {
-	run := world.GameRun{}
-	if c.adopted != nil {
-		run = world.GameRun{Adopted: true, Version: c.adoptedViewNow().version}
+	return c.worlds.PreStartCheck(id, c.gameRun())
+}
+
+// gameRun says which Factorio the game will run (SPEC 4.9).
+func (c *Controller) gameRun() world.GameRun {
+	if c.adopted == nil {
+		return world.GameRun{}
 	}
-	return c.worlds.PreStartCheck(id, run)
+	return world.GameRun{Adopted: true, Version: c.adoptedViewNow().version}
 }
 
 // VersionWarning returns, in adopted mode, the warning of SPEC 4.9 for a
@@ -607,7 +611,11 @@ func (c *Controller) VersionWarning(id string) (string, error) {
 	if running == "" {
 		return "", nil
 	}
-	check, err := c.PreStartCheck(id)
+	// Only the save's version matters here, so no mod zip is opened on a
+	// page render.
+	run := c.gameRun()
+	run.SkipMods = true
+	check, err := c.worlds.PreStartCheck(id, run)
 	if err != nil {
 		return "", err
 	}

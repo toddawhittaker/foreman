@@ -106,8 +106,16 @@ func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 	if p, bad := modListSpaceAge(meta, mods); bad {
 		out.Problems = append(out.Problems, p)
 	}
-	if p, bad := modGameVersionCheck(root, meta, mods, run); bad {
-		out.Problems = append(out.Problems, p)
+	// The mod version problem is worded once the save's version is known,
+	// and sits where the mod checks are.
+	modAt := len(out.Problems)
+	running, wrong := modVersionMismatch(root, meta, mods, run)
+	finish := func() (PreCheck, error) {
+		if len(wrong) > 0 {
+			p := modVersionProblem(meta.Name, run, running, wrong, out.SaveVersion)
+			out.Problems = slices.Insert(out.Problems, modAt, p)
+		}
+		return out, nil
 	}
 
 	name := meta.LoadSave
@@ -119,7 +127,7 @@ func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 		if !found {
 			out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave,
 				Text: "The world has no save. Upload a save first; without one the game would make a new map."})
-			return out, nil
+			return finish()
 		}
 		name = newest.Name
 	}
@@ -127,7 +135,7 @@ func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 	if errors.Is(err, ErrSaveNotFound) {
 		out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave,
 			Text: fmt.Sprintf("The save chosen to load, %s, is no longer in the world. Choose another save.", name)})
-		return out, nil
+		return finish()
 	}
 	out.Save = name
 	var unsupported *savefile.UnsupportedVersionError
@@ -135,17 +143,17 @@ func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 	case errors.As(err, &unsupported):
 		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnsupported,
 			Text: fmt.Sprintf("The save %s was made by Factorio %s. Foreman runs only saves from Factorio 1.1, 2.0 and 2.1.", name, unsupported.Version)})
-		return out, nil
+		return finish()
 	case isSaveFormatError(err):
 		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true,
 			Text: fmt.Sprintf("Foreman could not read the save %s (%v), so its mods could not be checked. The game may delete content from mods the world lacks.", name, err)})
-		return out, nil
+		return finish()
 	case err != nil:
 		return PreCheck{}, err
 	}
 	out.SaveVersion = save.Version
 	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save, run.Adopted)...)
-	return out, nil
+	return finish()
 }
 
 // readSave opens and reads one save of the world.
@@ -221,7 +229,7 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 		case builtin[mod.Name]:
 		case !present[mod.Name]:
 			missing = append(missing, mod.Name)
-		case !mods.enabled[mod.Name]:
+		case mods.disabled[mod.Name]:
 			disabled = append(disabled, mod.Name)
 		}
 	}
@@ -231,13 +239,13 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 			Text: fmt.Sprintf("The save %s uses Space Age (%s), but Space Age is off for this world. The game would delete all Space Age content from the save.", name, strings.Join(usesDLC, ", "))})
 	}
 	if len(missing) > 0 {
-		files, they := "that mod's file", "it"
+		files, noun, they := "file", "mod", "it"
 		if len(missing) > 1 {
-			files, they = "those mods' files", "they"
+			files, noun, they = "files", "mods", "they"
 		}
 		out = append(out, Problem{Kind: ProblemModMissing, StartAnyway: true, Mods: missing,
-			Text: fmt.Sprintf("The save %s was last played with %s, and this world does not have %s. Switching or starting anyway removes everything %s built from the save.",
-				name, strings.Join(missing, ", "), files, they)})
+			Text: fmt.Sprintf("This world does not have the %s of the %s the save %s was last played with: %s. Switching or starting anyway removes everything %s built from the save.",
+				files, noun, name, strings.Join(missing, ", "), they)})
 	}
 	if len(disabled) > 0 {
 		is, they := "is", "it"
@@ -245,7 +253,7 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 			is, they = "are", "they"
 		}
 		out = append(out, Problem{Kind: ProblemModDisabled, StartAnyway: true, Mods: disabled,
-			Text: fmt.Sprintf("The save %s was last played with %s, which %s turned off in this world. Starting anyway removes everything %s built from the save.",
+			Text: fmt.Sprintf("The save %s was last played with %s, which %s turned off in this world. Switching or starting anyway removes everything %s built from the save.",
 				name, strings.Join(disabled, ", "), is, they)})
 	}
 	return out

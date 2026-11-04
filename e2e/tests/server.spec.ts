@@ -148,7 +148,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Start server" }).click();
     const refusal = page.locator(".message--error").filter({ hasText: "does not match the world" });
     await expect(refusal).toContainText("foreman-test", live);
-    await expect(refusal).toContainText("was last played with foreman-test, and this world does not have that mod's file");
+    await expect(refusal).toContainText("This world does not have the file of the mod the save base.zip was last played with: foreman-test.");
     await expect(refusal).toContainText("Foreman cannot add or turn on a world's mods yet.");
     await expect(badge(page)).toHaveText("Stopped");
     // Steps that will never run read Skipped, not Waiting.
@@ -175,10 +175,11 @@ test.describe("with the fake game", () => {
   test("mods made for another Factorio refuse the start, with no Start anyway", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { mods: { "old-mod": "2.0", "older-mod": "1.1" } });
     await page.getByRole("button", { name: "Start server" }).click();
-    const refusal = page.locator(".message--error").filter({ hasText: "does not match the world" });
+    const refusal = page.locator(".message--error").filter({ hasText: "cannot run in this game" });
     await expect(refusal).toContainText("Base cannot run on Factorio 2.1.24: 1 of its mods was made for Factorio 1.1, and the game refuses to load it: older-mod.", live);
     await expect(refusal).toContainText("1 of its mods was made for Factorio 2.0, and the game refuses to load it: old-mod.");
-    await expect(refusal).toContainText("Set the world's game version to");
+    await expect(refusal).toContainText("Update its mods to versions made for Factorio 2.1.");
+    await expect(refusal).toContainText("Foreman did not start the game, because Base cannot run in this game:");
     await expect(refusal.getByRole("link", { name: "Start anyway" })).toHaveCount(0);
     await expect(badge(page)).toHaveText("Stopped");
     await checkPage(page);

@@ -300,6 +300,26 @@ const precheckLead = "Foreman did not start the game, because the save that woul
 // the new world refused. Nothing was stopped or changed.
 const switchPrecheckLead = "Foreman did not switch, because the save that would load in the new world does not match that world:"
 
+// precheckLeadFor opens the message for a refused start or switch. When the
+// only problems are mods made for another Factorio, the save is not what
+// fails, so the lead says the world cannot run instead. name is the world
+// that cannot run; "" says "the world".
+func precheckLeadFor(check world.PreCheck, switching bool, name string) string {
+	if len(check.Problems) == 0 {
+		return choose(switching, switchPrecheckLead, precheckLead)
+	}
+	for _, pr := range check.Problems {
+		if pr.Kind != world.ProblemModGameVersion {
+			return choose(switching, switchPrecheckLead, precheckLead)
+		}
+	}
+	if name == "" {
+		name = "the world"
+	}
+	return choose(switching, "Foreman did not switch", "Foreman did not start the game") +
+		", because " + name + " cannot run in this game:"
+}
+
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
 	if !p.HaveResult || p.Result.Err == nil {
@@ -315,7 +335,12 @@ func (p ServerPage) Failure() *Failure {
 	var pe *game.PrecheckError
 	switch {
 	case errors.As(err, &pe):
-		f.Message = choose(p.Result.Action == game.AuditSwitch, switchPrecheckLead, precheckLead)
+		switching := p.Result.Action == game.AuditSwitch
+		name := p.World.Name
+		if switching {
+			name = p.WorldNames[p.Result.Target]
+		}
+		f.Message = precheckLeadFor(pe.Check, switching, name)
 		for _, pr := range pe.Check.Problems {
 			f.Problems = append(f.Problems, pr.Text)
 		}
@@ -353,9 +378,12 @@ func (p ServerPage) Failure() *Failure {
 // anywayText words the offer to go ahead past problems that allow it. When
 // mods are missing or turned off, it says how to keep what they built.
 func anywayText(problems []world.Problem, switching bool) string {
-	mods := 0
+	missing, mods := 0, 0
 	for _, pr := range problems {
 		mods += len(pr.Mods)
+		if pr.Kind == world.ProblemModMissing {
+			missing += len(pr.Mods)
+		}
 	}
 	if mods == 0 {
 		if switching {
@@ -363,17 +391,21 @@ func anywayText(problems []world.Problem, switching bool) string {
 		}
 		return "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above."
 	}
-	built := "that mod built"
-	if mods > 1 {
-		built = "those mods built"
-	}
 	anyway := "start anyway: Foreman takes a snapshot first"
 	if switching {
 		anyway = "switch anyway: Foreman takes a snapshot of both worlds first"
 	}
+	undo := ", so you can undo it from the Snapshots page."
+	// A mod that is only turned off needs no file, so no import advice.
+	if missing == 0 {
+		return "Foreman cannot turn on a world's mods yet. Or " + anyway + undo
+	}
+	built := "that mod built"
+	if mods > 1 {
+		built = "those mods built"
+	}
 	return "Foreman cannot add or turn on a world's mods yet. To keep what " + built +
-		", put the mod files in the import folder's mods/ and import the world again. Or " + anyway +
-		", so you can undo it from the Snapshots page."
+		", put the mod files in the import folder's mods/ and import the world again. Or " + anyway + undo
 }
 
 // failureText words an action's error; one the admin cannot fix is logged

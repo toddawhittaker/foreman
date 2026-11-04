@@ -9,19 +9,28 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
-	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 const (
 	// loadFailureReadLimit bounds the one-shot log read made after a game
-	// stopped while loading.
+	// stopped while loading, in time, lines and bytes.
 	loadFailureReadLimit = 5 * time.Second
+	maxLoadFailureLines  = 20000
+	maxLoadFailureBytes  = 4 << 20
 	// listedMods is how many mod names the message names.
 	listedMods = 5
-	// maxErrorLine is the longest game error line shown, in characters.
-	maxErrorLine = 300
-	// maxRecordedMods bounds the names kept from one log.
-	maxRecordedMods = 1000
+	// maxShownModName and maxErrorLine are the longest mod name and game
+	// error line shown, in characters.
+	maxShownModName = 100
+	maxErrorLine    = 300
+	// maxRecordedMods, maxRequiredVersions and maxVersionText bound what is
+	// kept from one log: names per version, distinct versions, and the
+	// length of a version.
+	maxRecordedMods     = 1000
+	maxRequiredVersions = 16
+	maxVersionText      = 32
+	// maxKeptText bounds a name or line kept before it is redacted and cut.
+	maxKeptText = 4096
 )
 
 var (
@@ -37,7 +46,7 @@ var (
 // and keeps only what the patterns above match, never any other line
 // (SPEC 14.8).
 type loadFailure struct {
-	mod     string // the last mod bullet seen
+	mod     string // the last mod bullet seen, until its reason
 	current string
 	// byRequired lists the mods by the version they were made for.
 	byRequired map[string][]string
@@ -47,28 +56,42 @@ type loadFailure struct {
 func (f *loadFailure) add(raw string) {
 	line := strings.TrimSpace(secondsPrefix.ReplaceAllString(strings.TrimSuffix(raw, "\r"), ""))
 	if m := modBullet.FindStringSubmatch(line); m != nil {
-		f.mod = m[1]
+		f.mod = cut(m[1], maxKeptText)
 		return
 	}
 	if m := incompatibleLine.FindStringSubmatch(line); m != nil {
-		if f.byRequired == nil {
-			f.byRequired = map[string][]string{}
-		}
-		f.current = m[1]
-		names := f.byRequired[m[2]]
-		if len(names) < maxRecordedMods && !slices.Contains(names, f.mod) {
-			f.byRequired[m[2]] = append(names, f.mod)
-		}
+		f.addIncompatible(cut(m[1], maxVersionText), cut(m[2], maxVersionText))
 		return
 	}
 	if m := errorLine.FindStringSubmatch(line); m != nil {
-		f.errLine = m[1]
+		f.errLine = cut(m[1], maxKeptText)
 	}
 }
 
-// reason words why the game stopped, or returns "" when the log said
-// nothing it may show. Each piece taken from the log is redacted here.
-func (f *loadFailure) reason(secrets []secret.Secret) string {
+// addIncompatible records the mod of the last bullet, if any, as made for
+// the required version. A mod without a bullet is still counted.
+func (f *loadFailure) addIncompatible(current, required string) {
+	mod := f.mod
+	f.mod = ""
+	if f.byRequired == nil {
+		f.byRequired = map[string][]string{}
+	}
+	names, known := f.byRequired[required]
+	if !known && len(f.byRequired) >= maxRequiredVersions {
+		return
+	}
+	f.current = current
+	if len(names) >= maxRecordedMods || (mod != "" && slices.Contains(names, mod)) {
+		return
+	}
+	f.byRequired[required] = append(names, mod)
+}
+
+// reason words why the game stopped, as the end of the start failure's
+// message, or returns "" when the log said nothing it may show. redact is
+// the page-safe masking of a log line (SPEC 8.6, 14.8); every piece taken
+// from the log goes through it before it is cut to length.
+func (f *loadFailure) reason(redact func(string) string) string {
 	if len(f.byRequired) > 0 {
 		var required string
 		for r, names := range f.byRequired {
@@ -82,9 +105,9 @@ func (f *loadFailure) reason(secrets []secret.Secret) string {
 		if len(names) == 1 {
 			count = "1 mod was"
 		}
-		out := fmt.Sprintf("%s made for Factorio %s, and this game runs %s",
-			count, Redact(required, secrets...), Redact(f.current, secrets...))
-		if shown := shownNames(names, secrets); shown != "" {
+		out := fmt.Sprintf(": %s made for Factorio %s, and this game runs %s",
+			count, redact(required), redact(f.current))
+		if shown := shownNames(names, redact); shown != "" {
 			out += ": " + shown
 		}
 		return out
@@ -92,20 +115,22 @@ func (f *loadFailure) reason(secrets []secret.Secret) string {
 	if f.errLine == "" {
 		return ""
 	}
-	line := f.errLine
-	if r := []rune(line); len(r) > maxErrorLine {
-		line = string(r[:maxErrorLine])
-	}
-	return strings.TrimSpace(Redact(line, secrets...))
+	return ". Factorio said: " + strings.TrimSpace(cut(redact(f.errLine), maxErrorLine))
 }
 
-// shownNames names the first listedMods mods, redacted, and counts the rest.
-func shownNames(names []string, secrets []secret.Secret) string {
+// shownNames names the first listedMods named mods, redacted and cut to
+// length, and counts the rest.
+func shownNames(names []string, redact func(string) string) string {
 	var shown []string
 	for _, n := range names {
-		if n != "" && len(shown) < listedMods {
-			shown = append(shown, Redact(n, secrets...))
+		if n == "" || len(shown) >= listedMods {
+			continue
 		}
+		n = redact(n)
+		if r := []rune(n); len(r) > maxShownModName {
+			n = string(r[:maxShownModName]) + "…"
+		}
+		shown = append(shown, n)
 	}
 	out := strings.Join(shown, ", ")
 	if rest := len(names) - len(shown); out != "" && rest > 0 {
@@ -114,9 +139,18 @@ func shownNames(names []string, secrets []secret.Secret) string {
 	return out
 }
 
+// cut keeps at most n characters of s.
+func cut(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
+}
+
 // loadFailureReason reads the log of the container's run since the given
-// time and returns the game's own reason it stopped while loading, or ""
-// when the log gives none or cannot be read.
+// time and returns the game's own reason it stopped while loading, as the
+// end of the start failure's message, or "" when the log gives none or
+// cannot be read.
 func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string, since time.Time) string {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
@@ -126,15 +160,16 @@ func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid str
 	}
 	defer func() { _ = s.Close() }()
 	var f loadFailure
-	for {
+	read := 0
+	for lines := 0; lines < maxLoadFailureLines && read < maxLoadFailureBytes; lines++ {
 		l, err := s.Next()
 		if err != nil {
 			break
 		}
+		read += len(l.Text) + 1
 		f.add(l.Text)
 	}
 	w.mu.Lock()
-	secrets := w.secrets
-	w.mu.Unlock()
-	return f.reason(secrets)
+	defer w.mu.Unlock()
+	return f.reason(w.redact)
 }

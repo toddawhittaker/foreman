@@ -236,7 +236,7 @@ func (s *server) gameRoutes() {
 // caller logs the error and shows no detail.
 func gameError(err error) (int, string) {
 	if pe, ok := errors.AsType[*game.PrecheckError](err); ok {
-		return http.StatusConflict, precheckLead + " " + pe.Error()
+		return http.StatusConflict, precheckLeadFor(pe.Check, false, "") + " " + pe.Error()
 	}
 	switch {
 	case errors.Is(err, game.ErrAlreadyRunning), errors.Is(err, game.ErrNotRunning),
