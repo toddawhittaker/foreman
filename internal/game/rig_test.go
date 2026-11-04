@@ -96,12 +96,50 @@ func (n *noActive) SetActiveWorld(_ context.Context, id string, _ time.Time) err
 	return nil
 }
 
+// rigStore is the app database, with failures a test can inject into the
+// switch record.
+type rigStore struct {
+	*store.Store
+	mu          sync.Mutex
+	failStep    string // SetSwitchStep to this step fails
+	failPresent bool   // ReplaceActiveWorldForSwitch fails
+}
+
+var errDatabase = errors.New("the database is gone")
+
+func (s *rigStore) SetSwitchStep(ctx context.Context, from, step string) error {
+	s.mu.Lock()
+	fail := s.failStep == step
+	s.mu.Unlock()
+	if fail {
+		return errDatabase
+	}
+	return s.Store.SetSwitchStep(ctx, from, step)
+}
+
+func (s *rigStore) ReplaceActiveWorldForSwitch(ctx context.Context, from, to string, now time.Time) error {
+	s.mu.Lock()
+	fail := s.failPresent
+	s.mu.Unlock()
+	if fail {
+		return errDatabase
+	}
+	return s.Store.ReplaceActiveWorldForSwitch(ctx, from, to, now)
+}
+
+func (s *rigStore) setFail(step string, present bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failStep, s.failPresent = step, present
+}
+
 type rig struct {
 	t      *testing.T
 	game   *fakegame.Game
 	docker *docker.Client
 	worlds *world.Manager
 	audit  *memAudit
+	store  *rigStore
 	clock  *clock
 	data   string
 	c      *Controller
@@ -126,15 +164,21 @@ func newRig(t *testing.T, opts rigOptions) *rig {
 		t.Fatal(err)
 	}
 	data := t.TempDir()
+	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "foreman.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	rs := &rigStore{Store: st}
 	m, err := world.NewManager(world.Dirs{
 		Worlds:    datadir.Worlds(data),
 		Snapshots: datadir.Snapshots(data),
 		Imports:   datadir.Imports(data),
-	}, &noActive{}, nil)
+	}, rs, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := &rig{t: t, game: g, docker: dc, worlds: m, audit: &memAudit{}, clock: &clock{}, data: data}
+	r := &rig{t: t, game: g, docker: dc, worlds: m, audit: &memAudit{}, store: rs, clock: &clock{}, data: data}
 	r.c = r.newController(opts)
 	if !opts.noRun {
 		r.stop = r.run(r.c)
@@ -147,7 +191,7 @@ func newRig(t *testing.T, opts rigOptions) *rig {
 func (r *rig) newController(opts rigOptions) *Controller {
 	r.t.Helper()
 	c, err := New(Config{
-		Docker: r.docker, Worlds: r.worlds, Audit: r.audit,
+		Docker: r.docker, Worlds: r.worlds, Audit: r.audit, Switches: r.store,
 		HostDataDir: r.data, GameUID: 845, GameGID: 845,
 		Images: testImages, Network: opts.network, SelfID: opts.selfID,
 		Now: r.clock.Now, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),

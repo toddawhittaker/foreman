@@ -120,7 +120,7 @@ func serve(cfg *config.Config) error {
 	var games *game.Controller
 	if cfg.Mode == config.ModeManaged {
 		games, err = game.New(game.Config{
-			Docker: dockerClient, Worlds: worlds, Audit: st,
+			Docker: dockerClient, Worlds: worlds, Audit: st, Switches: st,
 			HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
 			Images: gameImages, Network: cfg.GameNetwork,
 			DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,

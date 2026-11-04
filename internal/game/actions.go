@@ -34,13 +34,21 @@ const (
 
 var stopSteps = []string{StepWarn, StepSave, StepStopContainer}
 
-// startStepsFor lists a start's steps. Only a start anyway takes the
-// snapshot, so only it shows that step (DESIGN 7.6).
-func startStepsFor(opts StartOptions) []string {
+// checkStepsFor lists the steps of checkLocked. Only a start anyway takes
+// the snapshot, so only it shows that step (DESIGN 7.6).
+func checkStepsFor(opts StartOptions) []string {
 	if opts.Anyway {
-		return []string{StepCheck, StepSnapshot, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+		return []string{StepCheck, StepSnapshot}
 	}
-	return []string{StepCheck, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+	return []string{StepCheck}
+}
+
+// launchSteps are the steps of launchLocked.
+var launchSteps = []string{StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
+
+// startStepsFor lists a start's steps.
+func startStepsFor(opts StartOptions) []string {
+	return append(checkStepsFor(opts), launchSteps...)
 }
 
 // The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4).
@@ -67,91 +75,6 @@ func (o StartOptions) auditDetail() string {
 	return ""
 }
 
-// opRun is one operation in progress on a world.
-type opRun struct {
-	c *Controller
-	w *worldRun
-}
-
-// beginOp records an operation and shows its steps. The returned context
-// ends when ForceStop interrupts the operation. Call end when done.
-func (c *Controller) beginOp(ctx context.Context, w *worldRun, action string, steps ...[]string) (context.Context, *opRun) {
-	ctx, cancel := context.WithCancel(ctx)
-	op := &Operation{Action: action}
-	for _, list := range steps {
-		for _, s := range list {
-			op.Steps = append(op.Steps, Step{Name: s, State: StepWaiting})
-		}
-	}
-	w.mu.Lock()
-	w.op, w.opState, w.opCancel, w.opDone = op, "", cancel, make(chan struct{})
-	c.changedLocked(w, true)
-	w.mu.Unlock()
-	return ctx, &opRun{c: c, w: w}
-}
-
-func (o *opRun) set(state StepState, names ...string) {
-	o.w.mu.Lock()
-	defer o.w.mu.Unlock()
-	for i := range o.w.op.Steps {
-		for _, n := range names {
-			if o.w.op.Steps[i].Name == n {
-				o.w.op.Steps[i].State = state
-			}
-		}
-	}
-	o.c.changedLocked(o.w, true)
-}
-
-func (o *opRun) begin(name string)    { o.set(StepProgress, name) }
-func (o *opRun) done(name string)     { o.set(StepDone, name) }
-func (o *opRun) skip(names ...string) { o.set(StepSkipped, names...) }
-
-// show sets the state the page shows while the operation runs.
-func (o *opRun) show(s State) {
-	o.w.mu.Lock()
-	defer o.w.mu.Unlock()
-	o.w.opState = s
-	o.c.changedLocked(o.w, true)
-}
-
-// end finishes the operation, marking the step in progress failed when err
-// is set, and lets the monitor look after the container again. It returns
-// err, with an interruption by ForceStop as ErrCancelled.
-func (o *opRun) end(err error) error {
-	if errors.Is(err, context.Canceled) {
-		err = ErrCancelled
-	}
-	w := o.w
-	w.mu.Lock()
-	for i := range w.op.Steps {
-		switch w.op.Steps[i].State {
-		case StepProgress:
-			w.op.Steps[i].State = StepDone
-			if err != nil {
-				w.op.Steps[i].State = StepFailed
-			}
-		case StepWaiting:
-			// A step that will never run must not read as waiting.
-			if err != nil {
-				w.op.Steps[i].State = StepSkipped
-			}
-		}
-	}
-	w.op.Done = true
-	if err != nil {
-		w.op.Error = err.Error()
-	}
-	done := w.opDone
-	w.opCancel()
-	w.opState, w.opCancel, w.opDone = "", nil, nil
-	o.c.changedLocked(w, true)
-	w.mu.Unlock()
-	close(done)
-	o.c.pokeMonitor()
-	return err
-}
-
 // Start starts the world's game (SPEC 7.3, 7.4, 7.11). It holds the
 // world's lock until the game is in game and answers over RCON, or the
 // start has failed, which can take StartTimeout; run it with a context
@@ -173,8 +96,16 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 
 // startLocked runs the start steps. The caller holds the world's lock.
 func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
-	w, id := o.w, o.w.id
+	if err := c.checkLocked(o, by, opts); err != nil {
+		return err
+	}
+	return c.launchLocked(ctx, o)
+}
 
+// checkLocked runs the pre-start check and takes the snapshot a start
+// anyway needs (SPEC 7.4). The caller holds the world's lock.
+func (c *Controller) checkLocked(o *opRun, by Actor, opts StartOptions) error {
+	id := o.w.id
 	o.begin(StepCheck)
 	check, err := c.precheck(id, opts)
 	if err != nil {
@@ -183,27 +114,25 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 	o.done(StepCheck)
 	if check.OK() {
 		o.skip(StepSnapshot)
-	} else {
-		o.begin(StepSnapshot)
-		if _, err := c.worlds.AutoSnapshot(id, ReasonStartAnyway, LabelStartAnyway, by.Username); err != nil {
-			return fmt.Errorf("take the snapshot before starting anyway: %w", err)
-		}
-		o.done(StepSnapshot)
+		return nil
 	}
+	o.begin(StepSnapshot)
+	if _, err := c.worlds.AutoSnapshot(id, ReasonStartAnyway, LabelStartAnyway, by.Username); err != nil {
+		return fmt.Errorf("take the snapshot before starting anyway: %w", err)
+	}
+	o.done(StepSnapshot)
+	return nil
+}
+
+// launchLocked creates and starts the container, then waits until the game
+// is in game and answers over RCON (SPEC 7.3). The caller holds the
+// world's lock.
+func (c *Controller) launchLocked(ctx context.Context, o *opRun) error {
+	w, id := o.w, o.w.id
 
 	o.begin(StepImage)
-	meta, err := c.readMeta(id)
+	meta, ref, err := c.gameImage(ctx, id)
 	if err != nil {
-		return err
-	}
-	ref, err := c.imageFor(meta.GameVersion)
-	if err != nil {
-		return err
-	}
-	// Start never downloads the image (SPEC 3.7).
-	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
-		return ErrImageMissing
-	} else if err != nil {
 		return err
 	}
 	o.done(StepImage)
@@ -304,6 +233,26 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 	}
 	o.done(StepRCON)
 	return nil
+}
+
+// gameImage returns the world's metadata and pinned image, or
+// ErrImageMissing when Docker does not have the image: a start never
+// downloads it (SPEC 3.7).
+func (c *Controller) gameImage(ctx context.Context, id string) (world.Meta, string, error) {
+	meta, err := c.readMeta(id)
+	if err != nil {
+		return world.Meta{}, "", err
+	}
+	ref, err := c.imageFor(meta.GameVersion)
+	if err != nil {
+		return world.Meta{}, "", err
+	}
+	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
+		return world.Meta{}, "", ErrImageMissing
+	} else if err != nil {
+		return world.Meta{}, "", err
+	}
+	return meta, ref, nil
 }
 
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
