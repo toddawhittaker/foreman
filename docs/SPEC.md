@@ -586,7 +586,14 @@ compares it with the world. It refuses to start, and says why, when:
   (otherwise the game would make one on its own);
 - `mods/mod-list.json` disagrees with the world's Space Age flag, because
   that file is what the game loads until mod management (section 9) takes
-  over.
+  over;
+- an enabled mod in the world declares a Factorio major.minor different
+  from the game that will run (the container's version in adopted mode,
+  the world's version in managed mode); this refusal has no start anyway,
+  since the game cannot load such a mod;
+
+In adopted mode the container decides the version (4.9), so the save is
+compared with the container's version, not the world's.
 
 Each problem says what the game would delete. The admin can fix the world
 (for example with sync from save) or, for the first bullet and for an

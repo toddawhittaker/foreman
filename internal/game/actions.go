@@ -207,7 +207,7 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	if err := c.worlds.EnsureModList(id); err != nil {
 		return world.PreCheck{}, err
 	}
-	check, err := c.worlds.PreStartCheck(id)
+	check, err := c.PreStartCheck(id)
 	if err != nil {
 		return world.PreCheck{}, err
 	}
@@ -219,7 +219,7 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 // missing mod list is not written: the start writes one that matches the
 // Space Age flag, so the problem it would cause is left out.
 func (c *Controller) precheckReadOnly(id string, opts StartOptions) error {
-	check, err := c.worlds.PreStartCheck(id)
+	check, err := c.PreStartCheck(id)
 	if err != nil {
 		return err
 	}

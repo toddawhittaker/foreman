@@ -55,6 +55,8 @@ type AdoptionDefaults struct {
 	SpaceAge bool
 	// Running is true when the adoption would stop the game first.
 	Running bool
+	// Folder names the game container and where its /factorio is.
+	Folder GameFolder
 }
 
 // AdoptionDefaults reads the defaults for the adoption form. It only
@@ -71,7 +73,10 @@ func (c *Controller) AdoptionDefaults(ctx context.Context) (AdoptionDefaults, er
 	if err != nil {
 		return AdoptionDefaults{}, err
 	}
-	out := AdoptionDefaults{Unadopted: st.Kind == gamedir.Unadopted, GameVersion: c.adoptedViewNow().version}
+	out := AdoptionDefaults{
+		Unadopted: st.Kind == gamedir.Unadopted, GameVersion: c.adoptedViewNow().version,
+		Folder: gameFolderOf(c.adopted.container, cont.Mounts),
+	}
 	out.SpaceAge, _ = containerSpaceAge(cont)
 	switch cont.State.Status {
 	case "running", "restarting", "paused":

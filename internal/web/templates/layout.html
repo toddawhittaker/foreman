@@ -44,6 +44,14 @@
 <time datetime="{{isoTime .}}"><span class="nowrap">{{day .}}</span> <span class="nowrap">{{clock .}}</span></time>
 {{- end}}
 
+{{/* Which folder adoption is about: the container's name and where /factorio
+     is on the host (SPEC 4.7, 4.8). Takes game.GameFolder. */}}
+{{define "game-folder" -}}
+{{- if .Container}}
+<p>The game folder is <code>/factorio</code> in the game container <code>{{.Container}}</code>{{if .HostPath}}, which is <code>{{.HostPath}}</code> on the host{{else if .Volume}}, which is the Docker volume <code>{{.Volume}}</code>{{end}}.</p>
+{{- end}}
+{{- end}}
+
 {{/* How long players are warned before a graceful stop (SPEC 7.6). Takes
      CountdownForm. */}}
 {{define "countdown" -}}

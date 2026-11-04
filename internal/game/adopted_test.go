@@ -37,6 +37,8 @@ type adoptedOptions struct {
 	// gameContainer is what Foreman is told to use; empty means adoptedName.
 	gameContainer string
 	rconPassword  string // FOREMAN_RCON_PASSWORD
+	// loadDelay is how long the fake game takes to load after a start.
+	loadDelay time.Duration
 }
 
 // newAdoptedRig runs the controller in adopted mode, outside a container,
@@ -54,7 +56,7 @@ func newAdoptedRig(t *testing.T, o adoptedOptions) (*rig, string) {
 		mount = o.mount
 	}
 	r := newRig(t, rigOptions{
-		fake: fakegame.Config{SelfNetwork: testNetwork, Adopted: &fakegame.Adopted{
+		fake: fakegame.Config{SelfNetwork: testNetwork, LoadDelay: o.loadDelay, Adopted: &fakegame.Adopted{
 			Name: adoptedName, GameDir: mount, Env: append([]string{"DLC_SPACE_AGE=false"}, o.env...),
 			RCONHostPort: o.rconHostPort, Running: o.running,
 		}},

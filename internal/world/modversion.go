@@ -1,0 +1,262 @@
+package world
+
+import (
+	"archive/zip"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"path"
+	"slices"
+	"strconv"
+	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/savefile"
+)
+
+const (
+	// maxInfoJSON caps what is read from a mod's info.json.
+	maxInfoJSON = 64 << 10
+	// maxModZip is the largest mod zip opened (SPEC 14.6).
+	maxModZip = 200 << 20
+	// maxModZipEntries is the most files a mod zip may list before it is
+	// left unread.
+	maxModZipEntries = 10000
+	// listedMods is how many mod names the mod version problem names.
+	listedMods = 5
+	// maxShownModName is the longest mod name shown, in characters.
+	maxShownModName = 100
+)
+
+// GameRun says which Factorio the game will run, for the check of mods
+// against it (SPEC 7.4).
+type GameRun struct {
+	// Adopted is true when a container the admin owns runs the game
+	// (SPEC 4.9). Version is then that container's version, or "" when it
+	// is unknown. In managed mode Version is not used: the game runs the
+	// world's pinned game version.
+	Adopted bool
+	Version string
+	// SkipMods leaves out the check of the mods' own versions, for a caller
+	// that needs only the save (it opens no mod zip).
+	SkipMods bool
+}
+
+// modGameVersions returns, for each mod the game would load that has a zip
+// in the world's mods folder, the Factorio version its info.json declares,
+// as major.minor. The game loads a zip that mod-list.json does not mention
+// and turns it on, so only a mod listed as off is left out. A mod whose zip
+// or info.json cannot be read, or that names no version, is left out too:
+// no information is not a problem.
+func modGameVersions(root *os.Root, mods modList, running string) map[string]string {
+	builtin := BuiltinMods(running)
+	out := map[string]string{}
+	for name, file := range newestZips(root) {
+		if mods.disabled[name] || slices.Contains(builtin, name) {
+			continue
+		}
+		if v := gameMinor(zipFactorioVersion(root, path.Join(ModsDir, file))); v != "" {
+			out[name] = v
+		}
+	}
+	return out
+}
+
+// newestZips maps each mod name to the file name of its highest-version
+// zip in the mods folder.
+func newestZips(root *os.Root) map[string]string {
+	entries, err := fs.ReadDir(root.FS(), ModsDir)
+	if err != nil {
+		return nil
+	}
+	out := map[string]string{}
+	versions := map[string]string{}
+	for _, e := range entries {
+		file := e.Name()
+		if !e.Type().IsRegular() || !strings.HasSuffix(file, ".zip") {
+			continue
+		}
+		base := strings.TrimSuffix(file, ".zip")
+		i := strings.LastIndexByte(base, '_')
+		if i <= 0 {
+			continue
+		}
+		name, version := base[:i], base[i+1:]
+		if _, seen := out[name]; !seen || compareDotted(version, versions[name]) > 0 {
+			out[name], versions[name] = file, version
+		}
+	}
+	return out
+}
+
+// compareDotted compares two dotted numbers such as "1.10.2"; a part that
+// is not a number counts as 0.
+func compareDotted(a, b string) int {
+	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
+	for i := range max(len(pa), len(pb)) {
+		var x, y uint64
+		if i < len(pa) {
+			x, _ = strconv.ParseUint(pa[i], 10, 32)
+		}
+		if i < len(pb) {
+			y, _ = strconv.ParseUint(pb[i], 10, 32)
+		}
+		if x != y {
+			if x < y {
+				return -1
+			}
+			return 1
+		}
+	}
+	return 0
+}
+
+// zipFactorioVersion reads "factorio_version" from the info.json inside a
+// mod's zip: the zip holds one top-level folder, and the file is in it.
+// It returns "" when anything is missing or unreadable, and for a zip over
+// the size or entry limit.
+func zipFactorioVersion(root *os.Root, name string) string {
+	f, info, err := openRegular(root, name)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }()
+	if info.Size() > maxModZip {
+		return ""
+	}
+	zr, err := zip.NewReader(f, info.Size())
+	if err != nil || len(zr.File) > maxModZipEntries {
+		return ""
+	}
+	for _, zf := range zr.File {
+		dir, file, ok := strings.Cut(zf.Name, "/")
+		if !ok || dir == "" || file != "info.json" {
+			continue
+		}
+		return infoFactorioVersion(zf)
+	}
+	return ""
+}
+
+// infoFactorioVersion reads an info.json inside a zip, up to maxInfoJSON bytes.
+func infoFactorioVersion(zf *zip.File) string {
+	rc, err := zf.Open()
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = rc.Close() }()
+	b, err := io.ReadAll(io.LimitReader(rc, maxInfoJSON))
+	if err != nil {
+		return ""
+	}
+	var doc struct {
+		FactorioVersion string `json:"factorio_version"`
+	}
+	if json.Unmarshal(b, &doc) != nil {
+		return ""
+	}
+	return doc.FactorioVersion
+}
+
+// modVersionMismatch finds mods made for another Factorio than the one the
+// game will run: the container's version in adopted mode (unknown skips the
+// check), else the world's pinned game version. It returns the version the
+// game runs and each mismatched mod with the major.minor it was made for.
+func modVersionMismatch(root *os.Root, meta Meta, mods modList, run GameRun) (running string, wrong map[string]string) {
+	running = meta.GameVersion
+	if run.Adopted {
+		running = run.Version
+	}
+	want := gameMinor(running)
+	if want == "" || run.SkipMods {
+		return running, nil
+	}
+	for name, v := range modGameVersions(root, mods, running) {
+		if v != want {
+			if wrong == nil {
+				wrong = map[string]string{}
+			}
+			wrong[name] = v
+		}
+	}
+	return running, wrong
+}
+
+// modVersionProblem words the refusal for mods made for another Factorio
+// than the one the game runs. mods maps each mismatched mod to the
+// major.minor it was made for. save is the version of the save that will
+// load, or zero when it is not known; it decides whether lowering the
+// world's game version is good advice.
+func modVersionProblem(worldName string, run GameRun, running string, mods map[string]string, save savefile.Version) Problem {
+	byVersion := map[string][]string{}
+	for name, v := range mods {
+		byVersion[v] = append(byVersion[v], name)
+	}
+	versions := make([]string, 0, len(byVersion))
+	for v, names := range byVersion {
+		slices.Sort(names)
+		versions = append(versions, v)
+	}
+	// Largest group first.
+	slices.SortFunc(versions, func(a, b string) int {
+		if d := len(byVersion[b]) - len(byVersion[a]); d != 0 {
+			return d
+		}
+		return compareDotted(a, b)
+	})
+
+	var text strings.Builder
+	for i, v := range versions {
+		names := byVersion[v]
+		count, object := fmt.Sprintf("%d of its mods were", len(names)), "them"
+		if len(names) == 1 {
+			count, object = "1 of its mods was", "it"
+		}
+		if i == 0 {
+			fmt.Fprintf(&text, "%s cannot run on Factorio %s: ", worldName, running)
+		} else {
+			text.WriteString(" ")
+		}
+		fmt.Fprintf(&text, "%s made for Factorio %s, and the game refuses to load %s: %s.", count, v, object, listNames(names))
+	}
+	switch {
+	case run.Adopted:
+		fmt.Fprintf(&text, " Your game container runs Factorio %s. Updating the mods for %s will come with mod management; until then this world cannot run in this container.",
+			running, gameMinor(running))
+	case canLowerGameVersion(versions[0], save):
+		fmt.Fprintf(&text, " Set the world's game version to %s.x, or update its mods.", versions[0])
+	default:
+		fmt.Fprintf(&text, " Update its mods to versions made for Factorio %s.", gameMinor(running))
+	}
+	return Problem{Kind: ProblemModGameVersion, Text: text.String()}
+}
+
+// canLowerGameVersion reports whether moving the world to Factorio minor
+// (such as "2.0") is real advice: Foreman runs that version, and it is not
+// older than the save, which an older game cannot load.
+func canLowerGameVersion(minor string, save savefile.Version) bool {
+	if !SupportedGameVersion(minor+".0") || save == (savefile.Version{}) {
+		return false
+	}
+	v := parseGameVersion(minor + ".0")
+	return slices.Compare([]uint16{v.Major, v.Minor}, []uint16{save.Major, save.Minor}) >= 0
+}
+
+// listNames joins the first listedMods names, each cut to a sensible length,
+// and counts the rest.
+func listNames(names []string) string {
+	shown := names[:min(len(names), listedMods)]
+	cut := make([]string, len(shown))
+	for i, n := range shown {
+		cut[i] = n
+		if r := []rune(n); len(r) > maxShownModName {
+			cut[i] = string(r[:maxShownModName]) + "…"
+		}
+	}
+	out := strings.Join(cut, ", ")
+	if rest := len(names) - len(shown); rest > 0 {
+		out += fmt.Sprintf(" and %d more", rest)
+	}
+	return out
+}

@@ -82,6 +82,8 @@ type AdoptPage struct {
 	// Running is true when the game runs now, so the adoption stops it,
 	// warns players first, and starts it again.
 	Running bool
+	// Folder names the game container and where its /factorio is.
+	Folder game.GameFolder
 	CountdownForm
 	// Refusal replaces the form when the adoption cannot go ahead.
 	Refusal string
@@ -131,7 +133,7 @@ func (s *server) adoptRefusal(defaults game.AdoptionDefaults) string {
 func (s *server) adoptPage(w http.ResponseWriter, r *http.Request, u store.User) (AdoptPage, bool) {
 	d, err := s.game.AdoptionDefaults(r.Context())
 	p := AdoptPage{Form: ImportForm{IDPrefix: "adopt", GameVersion: d.GameVersion, SpaceAge: adoptSpaceAge(d.GameVersion, d.SpaceAge)},
-		Running: d.Running, CountdownForm: defaultCountdown()}
+		Running: d.Running, Folder: d.Folder, CountdownForm: defaultCountdown()}
 	switch {
 	case errors.Is(err, game.ErrNotAdoptedMode):
 		s.notFound(w, r, u)
