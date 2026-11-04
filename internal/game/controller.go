@@ -606,7 +606,8 @@ type Status struct {
 	// from the host's network (SPEC 4.12).
 	RCONPublished bool
 	// NetworkWarning is set while the network Foreman shares with the
-	// game container breaks SPEC 4.4: it says what to change. The game is
+	// game container breaks SPEC 4.4, or while the container keeps NET_RAW
+	// (SPEC 12.6): it says what to change. The game is
 	// still watched and can be stopped; Start, Restart and Switch are
 	// refused.
 	NetworkWarning string
@@ -664,6 +665,10 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		st.RunningVersion, st.NetworkWarning, st.NetworkCleanAt = v.version, v.networkWarning, v.networkCleanAt
 		if st.RunningVersion == "" {
 			st.RunningVersion = "unknown"
+		}
+		// A game that keeps NET_RAW is the more pressing warning.
+		if v.netRawWarning != "" {
+			st.NetworkWarning = v.netRawWarning
 		}
 	}
 	st.State, st.Reason = c.stateLocked(w)
