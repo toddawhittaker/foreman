@@ -173,7 +173,7 @@ test("from a phone: start, see who is on, restart with a warning, stop", async (
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByLabel("Confirm password").fill(password);
     await page.getByRole("button", { name: "Create admin account" }).click();
-    await expect(page).toHaveURL(foreman.url + "/worlds");
+    await expect(page).toHaveURL(foreman.url + "/");
     seedWorld();
     await page.context().clearCookies();
     await page.goto(foreman.url + "/");
