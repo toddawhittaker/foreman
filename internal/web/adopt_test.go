@@ -351,6 +351,52 @@ func TestRCONPublishedWarning(t *testing.T) {
 	a.wantMissing("page", clean.waitPage("Adopt this game folder"), "RCON port")
 }
 
+// An adoption refused because Foreman is shutting down does not hold the
+// adoption slot, so a later try is not told one is running (SPEC 4.8).
+func TestAdoptionRefusedInShutdownReleasesTheSlot(t *testing.T) {
+	a := newAdoptedRig(t, adoptedOptions{folder: unadoptedFolder})
+	a.waitPage("Adopt this game folder")
+	a.h.(*Handler).Close()
+	for i := range 2 {
+		rep := a.post(PathAdopt, adoptForm)
+		if rep.StatusCode != http.StatusServiceUnavailable && i == 0 {
+			t.Fatalf("adopt while shutting down: %d\n%s", rep.StatusCode, rep.body)
+		}
+		if strings.Contains(rep.body, "An adoption is already running") {
+			t.Errorf("try %d was told an adoption is running:\n%s", i+1, rep.body)
+		}
+	}
+}
+
+// SPEC 4.4, DESIGN 7.3: a refused game network is a warning on the server
+// page, and the world stays stoppable.
+func TestNetworkWarningOnTheServerPage(t *testing.T) {
+	r := newTestRenderer(t)
+	p := serverCase(game.StateRunning, func(p *ServerPage) {
+		p.Status.Adopted, p.Status.RunningVersion = true, "2.1.24"
+		p.Status.Layout = gamedir.State{Kind: gamedir.Ready, ActiveID: "base"}
+		p.Status.NetworkWarning = "The game network overlaps FOREMAN_TRUSTED_PROXIES. Change one of them."
+	})
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+	for _, want := range []string{
+		`<strong>Warning:</strong> The game network overlaps FOREMAN_TRUSTED_PROXIES. Change one of them.`,
+		`id="act-stop"`, `id="act-force-stop"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	main := body[strings.Index(body, "<main"):strings.Index(body, `id="announcer"`)]
+	if i := strings.Index(main, "overlaps FOREMAN_TRUSTED_PROXIES"); strings.Contains(main[:i], "aria-live") {
+		t.Error("the warning sits in a live region")
+	}
+	p.Status.NetworkWarning = ""
+	_, body = render(t, r, pageCase{status: 200, user: "todd", page: p})
+	if strings.Contains(body, "FOREMAN_TRUSTED_PROXIES") {
+		t.Error("a warning shows with none set")
+	}
+}
+
 // SPEC 4.9: in adopted mode the image is the container owner's, so a
 // failure about it never offers a download.
 func TestNoImageDownloadInAdoptedMode(t *testing.T) {

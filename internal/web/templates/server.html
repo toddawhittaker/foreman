@@ -64,9 +64,14 @@
 {{- end}}
 
 {{/* Warnings about the adopted container and the save it will load (SPEC
-     4.9, 4.12). */}}
+     4.4, 4.9, 4.12). */}}
 {{define "server-warnings" -}}
 {{- with .VersionWarning}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- with .Status.NetworkWarning}}
 <div class="message message--warning">
   <p><strong>Warning:</strong> {{.}}</p>
 </div>

@@ -62,3 +62,27 @@ func TestClientAddr(t *testing.T) {
 		t.Errorf("no trusted prefixes: got %q", got)
 	}
 }
+
+func TestPeerIs(t *testing.T) {
+	addrs := []netip.Addr{netip.MustParseAddr("10.0.0.9")}
+	cases := []struct {
+		name   string
+		remote string
+		hdr    http.Header
+		want   bool
+	}{
+		{"the address", "10.0.0.9:4000", nil, true},
+		{"mapped", "[::ffff:10.0.0.9]:4000", nil, true},
+		{"another address", "10.0.0.8:4000", nil, false},
+		{"forwarded for the address", "10.0.0.8:4000", http.Header{"X-Forwarded-For": {"10.0.0.9"}}, false},
+		{"unparsable", "nonsense", nil, false},
+	}
+	for _, c := range cases {
+		if got := PeerIs(reqFrom(c.remote, c.hdr), addrs); got != c.want {
+			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
+		}
+	}
+	if PeerIs(reqFrom("10.0.0.9:4000", nil), nil) {
+		t.Error("no addresses matched")
+	}
+}
