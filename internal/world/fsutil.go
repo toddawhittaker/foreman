@@ -242,8 +242,9 @@ func FormatBytes(n uint64) string {
 }
 
 // openFolder opens the folder at p as a root, refusing a link at p itself.
-// It is checked on every open, never once at startup (SPEC 14.5). The
-// parent is opened by path.
+// It checks on every open, not once at startup, so a link swapped in for
+// the folder after startup is refused too (SPEC 14.5). The parent is
+// opened by path.
 func openFolder(p string) (*os.Root, error) {
 	parent, err := os.OpenRoot(filepath.Dir(p))
 	if err != nil {

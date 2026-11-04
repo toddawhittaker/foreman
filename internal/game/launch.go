@@ -14,14 +14,12 @@ import (
 
 // launch is what a start needs to run the container it prepared.
 type launch struct {
-	cid      string
-	status   string // Docker's status before the start
-	restarts int    // Docker's restart count before the start
-	save     string // the save chosen to load, or ""
-	meta     world.Meta
-	image    string
-	rconPW   secret.Secret
-	secrets  []secret.Secret
+	cid     string
+	save    string // the save chosen to load, or ""
+	meta    world.Meta
+	image   string
+	rconPW  secret.Secret
+	secrets []secret.Secret
 }
 
 // launchLocked starts the world's container, then waits until the game is
@@ -80,7 +78,7 @@ func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, er
 		return launch{}, err
 	}
 	o.done(StepCreate)
-	return launch{cid: cid, status: "created", save: save, meta: meta, image: ref, rconPW: rconPW, secrets: secrets}, nil
+	return launch{cid: cid, save: save, meta: meta, image: ref, rconPW: rconPW, secrets: secrets}, nil
 }
 
 // runContainer starts the prepared container and waits for the game.
@@ -94,8 +92,9 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 		return err
 	}
 	stale := c.dropContainerLocked(w)
-	w.containerID, w.dockerStatus = cid, p.status
-	w.seenRestarts, w.crashes, w.lastCrash = p.restarts, nil, time.Time{}
+	// The container is fresh: Docker reports it created, with no restarts.
+	w.containerID, w.dockerStatus = cid, "created"
+	w.seenRestarts, w.crashes, w.lastCrash = 0, nil, time.Time{}
 	w.stopping, w.crashLoop, w.crashedRun = false, false, false
 	w.run = runState{save: p.save}
 	w.joins.Reset()
@@ -113,7 +112,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	}
 	// Before the next monitor look, so a new game's range is refused at once.
 	c.noteGameSubnets(cont)
-	addr := c.rconAddress(cont)
+	addr := rconAddress(cont)
 	w.mu.Lock()
 	if err := ctx.Err(); err != nil {
 		w.mu.Unlock()
@@ -228,7 +227,7 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	if err != nil {
 		return err
 	}
-	addr := c.rconAddress(cont)
+	addr := rconAddress(cont)
 	if addr == "" {
 		return nil
 	}

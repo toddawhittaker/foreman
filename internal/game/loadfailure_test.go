@@ -60,6 +60,19 @@ func TestLoadFailureCountsAModWithNoBulletWithoutAName(t *testing.T) {
 	}
 }
 
+// The log holds every run of a crash-looping start, so the same nameless
+// reason repeated by each run counts once.
+func TestLoadFailureCountsANamelessModOnceAcrossRuns(t *testing.T) {
+	var lines []string
+	for range 3 {
+		lines = append(lines, "• named", incompatible, incompatible)
+	}
+	got := reasonOf(masking(), lines...)
+	if want := ": 2 mods were made for Factorio 2.0, and this game runs 2.1: named and 1 more"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
 func TestLoadFailureTakesTheLargestGroupOfIncompatibleMods(t *testing.T) {
 	got := reasonOf(masking(),
 		"• x", "    • Incompatible Factorio version (current: 2.1, required: 1.1)",

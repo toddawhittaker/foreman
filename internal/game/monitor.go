@@ -274,7 +274,7 @@ func (c *Controller) attach(w *worldRun, cont docker.Container) {
 	if live {
 		// Re-attaching changes no world file (SPEC 3.8): a missing password
 		// file is not made here, since the running game could not be using it.
-		addr = c.rconAddress(cont)
+		addr = rconAddress(cont)
 		if rconPW, secrets, err = c.passwords(w.id); err != nil {
 			err = fmt.Errorf("cannot read this world's RCON password, so it cannot watch the game: %w", err)
 		}

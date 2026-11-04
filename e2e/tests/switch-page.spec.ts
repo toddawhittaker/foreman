@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Switching worlds from the web pages (SPEC 7.9, 7.10, DESIGN 7.4, 7.6)
-// against the fake game, in managed mode.
+// against the fake game.
 
 const live = { timeout: 20_000 };
 const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");

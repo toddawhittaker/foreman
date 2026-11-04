@@ -18,7 +18,7 @@ const MountinfoPath = docker.MountinfoPath
 // Database returns the path of the app database inside dataDir.
 func Database(dataDir string) string { return filepath.Join(dataDir, "foreman.db") }
 
-// Worlds returns the folder that holds managed mode's worlds (SPEC 5.2).
+// Worlds returns the folder that holds the worlds (SPEC 5.2).
 func Worlds(dataDir string) string { return filepath.Join(dataDir, "worlds") }
 
 // Snapshots returns the folder that holds every world's snapshots (SPEC 5.2).
@@ -32,7 +32,7 @@ type Inspector interface {
 	InspectContainer(ctx context.Context, id string) (docker.Container, error)
 }
 
-// HostDir returns the host path of dataDir for managed mode. It uses
+// HostDir returns the host path of dataDir, for the game bind mounts. It uses
 // configured when set; otherwise it finds Foreman's own container (from
 // mountinfoPath, then hostname) and reads the source of the mount at dataDir.
 func HostDir(ctx context.Context, dataDir, configured string, d Inspector, mountinfoPath, hostname string) (string, error) {

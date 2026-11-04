@@ -343,7 +343,7 @@ func exists(path string) bool {
 
 // rconAddress is where the game's RCON listens, or "" while the container
 // has no address. The container is on one network only (SPEC 4.4).
-func (c *Controller) rconAddress(cont docker.Container) string {
+func rconAddress(cont docker.Container) string {
 	ip := containerIP(cont)
 	if ip == "" {
 		return ""

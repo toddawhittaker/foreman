@@ -48,7 +48,7 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
       FOREMAN_DATA_DIR: dataDir,
       FOREMAN_GAME_UID: String(process.getuid?.() ?? 0),
       FOREMAN_GAME_GID: String(process.getgid?.() ?? 0),
-      // Managed mode with the host path given, so no Docker call is made.
+      // The host path is given, so no Docker call is made.
       FOREMAN_HOST_DATA_DIR: dataDir,
       FOREMAN_LISTEN: `127.0.0.1:${port}`,
       ...env,
@@ -175,7 +175,7 @@ export const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(joi
 export const adminPassword = "correct horse battery";
 
 // Creates the first admin, "admin", through the setup page; it lands on the
-// Server page (managed mode has server control).
+// Server page.
 export async function createAdmin(page: Page) {
   await page.goto("/setup");
   await page.getByLabel("Username").fill("admin");

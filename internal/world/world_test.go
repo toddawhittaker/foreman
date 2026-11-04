@@ -427,3 +427,27 @@ func TestOpenWorldRefusesBadIDs(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 14.5: a worlds folder that is a link is refused at startup, and the
+// link's target is left as it was.
+func TestNewManagerRefusesAWorldsFolderThatIsALink(t *testing.T) {
+	data, elsewhere := t.TempDir(), t.TempDir()
+	if err := os.Chmod(elsewhere, 0o700); err != nil { //nolint:gosec // a test folder
+		t.Fatal(err)
+	}
+	link := filepath.Join(data, "worlds")
+	if err := os.Symlink(elsewhere, link); err != nil {
+		t.Fatal(err)
+	}
+	_, err := NewManager(Dirs{
+		Worlds:    link,
+		Snapshots: filepath.Join(data, "snapshots"),
+		Imports:   filepath.Join(data, "import"),
+	}, &fakeActive{}, nil)
+	if !errors.Is(err, ErrWorldsIsLink) {
+		t.Fatalf("err %v, want ErrWorldsIsLink", err)
+	}
+	if m := mode(t, elsewhere); m != 0o700 {
+		t.Errorf("the link's target was chmodded to %o", m)
+	}
+}

@@ -111,7 +111,7 @@ func TestPreCheckModVersionComparesMinorNumbersWhole(t *testing.T) {
 	}
 }
 
-func TestPreCheckModVersionAdviceInManagedMode(t *testing.T) {
+func TestPreCheckModVersionAdvice(t *testing.T) {
 	cases := []struct {
 		name, world, fixture string
 		mod                  string
