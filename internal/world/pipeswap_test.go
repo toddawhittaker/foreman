@@ -95,3 +95,43 @@ func TestCopyFileRefusesAPipeAndALink(t *testing.T) {
 		}
 	}
 }
+
+// SPEC 14.5, 6.2: the game can also swap the save's parent folder for a
+// pipe after the listing. The link step must not wait on it.
+func TestSnapshotRefusesAFolderSwappedForAPipe(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	writeAt(t, filepath.Join(dir, "saves", "a.zip"), "real", t0)
+
+	w, err := m.OpenWorld(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = w.Close() }()
+	files, err := worldFiles(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saves := filepath.Join(dir, SavesDir)
+	if err := os.Rename(saves, saves+".real"); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(saves, 0o640); err != nil {
+		t.Fatal(err)
+	}
+
+	snaps, err := m.openSnapshots(id, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = snaps.Close() }()
+	man := Manifest{Files: files}
+	partial := PrefixPartial + "x"
+	err = withTimeout(t, func() error { return m.fillSnapshot(w, snaps, partial, &man) })
+	if err == nil {
+		t.Fatal("a pipe was snapshotted as a folder")
+	}
+	if err := snaps.RemoveAll(partial); err != nil {
+		t.Fatal(err)
+	}
+}
