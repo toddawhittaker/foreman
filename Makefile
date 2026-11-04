@@ -100,7 +100,8 @@ test-game:
 
 # The phone scenario against the real game: Playwright in its pinned image,
 # with the host's Docker socket, starts bin/foreman, which starts the pinned
-# 2.1 image on the default bridge. The repository is mounted at its own path,
+# 2.1 image on a network of this run's own: SPEC 4.4 refuses a game network
+# that other containers share, as the default bridge may. The repository is mounted at its own path,
 # so the bind paths Foreman gives Docker are the host's. The game is a sibling
 # container that Foreman leaves running, so this target removes it, even on failure.
 DOCKER_SOCK ?= /var/run/docker.sock
@@ -110,11 +111,14 @@ e2e-game: build e2e-deps
 		echo "The game image $(GAME_IMAGE_2_1) is not on this host. Pull it with: docker pull $(GAME_IMAGE_2_1)"; exit 1; }
 	@test -S $(DOCKER_SOCK) || { echo "$(DOCKER_SOCK) is not a Docker socket. Set DOCKER_SOCK to the host's."; exit 1; }
 	@mkdir -p $(CACHE)/home $(CACHE)/e2e-game
-	@clean() { \
+	@net=foreman-e3game-net-$$$$; \
+	clean() { \
 		docker ps -aq --filter name=foreman-e3game- | xargs -r docker rm -f -v >/dev/null; \
+		docker network rm $$net >/dev/null 2>&1; \
 		rm -rf $(CACHE)/e2e-game; }; \
 	trap clean EXIT; trap 'exit 130' INT TERM; \
-	$(DOCKER_RUN) --ipc=host -v $(DOCKER_SOCK):/var/run/docker.sock --group-add $$(stat -c %g $(DOCKER_SOCK)) \
+	docker network create $$net >/dev/null && \
+	$(DOCKER_RUN) --network $$net -e FOREMAN_E2E_GAME_NETWORK=$$net --ipc=host -v $(DOCKER_SOCK):/var/run/docker.sock --group-add $$(stat -c %g $(DOCKER_SOCK)) \
 		-w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) sh -c 'npx --no-install tsc --noEmit -p game && npx --no-install playwright test -c game'
 
 vuln:

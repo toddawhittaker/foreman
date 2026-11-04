@@ -267,6 +267,17 @@ func (d *Daemon) Restart(ref string) {
 	}
 }
 
+// RestartByHand is `docker restart`: a new run of a running container,
+// with a new start time and no rise in the restart count.
+func (d *Daemon) RestartByHand(ref string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if c := d.find(ref); c != nil && c.Status == "running" {
+		d.markExited(c, 0)
+		d.markRunning(c)
+	}
+}
+
 var versionPrefix = regexp.MustCompile(`^/v\d+\.\d+(/.*)$`)
 
 func (d *Daemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {

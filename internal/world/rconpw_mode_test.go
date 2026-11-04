@@ -2,6 +2,8 @@ package world
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,5 +167,52 @@ func TestRCONPasswordNarrowsAWideFile(t *testing.T) {
 				t.Error("the password changed")
 			}
 		})
+	}
+}
+
+// SPEC 14.8: password files copied before copies kept 0640 are narrowed at
+// startup, in live worlds and in snapshots, and a symlink is not followed.
+func TestRecoverNarrowsOldRCONPasswords(t *testing.T) {
+	m, _ := newTestManager(t)
+	outside := filepath.Join(t.TempDir(), "elsewhere")
+	if err := os.WriteFile(outside, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(outside, 0o664); err != nil { // #nosec G302 -- the too-wide mode under test
+		t.Fatal(err)
+	}
+	wide := []string{
+		filepath.Join(m.dirs.Worlds, "base", RCONPasswordFile),
+		filepath.Join(m.dirs.Snapshots, "base", "20261103T142501Z", RCONPasswordFile),
+		filepath.Join(m.dirs.Snapshots, "base", "20261104T142501Z", RCONPasswordFile),
+	}
+	for _, p := range wide {
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("pw"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(p, 0o664); err != nil { // #nosec G302 -- the too-wide mode under test
+			t.Fatal(err)
+		}
+	}
+	link := filepath.Join(m.dirs.Snapshots, "base", "20261105T142501Z", RCONPasswordFile)
+	if err := os.MkdirAll(filepath.Dir(link), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Recover(slog.New(slog.NewTextHandler(io.Discard, nil))); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range wide {
+		if got := mode(t, p); got != 0o640 {
+			t.Errorf("%s has mode %v, want 0640", p, got)
+		}
+	}
+	if got := mode(t, outside); got != 0o664 {
+		t.Errorf("the symlink was followed: target mode %v", got)
 	}
 }

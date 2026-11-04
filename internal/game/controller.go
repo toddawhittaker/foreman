@@ -159,12 +159,12 @@ type Controller struct {
 	dockerTCP  bool
 	dockerHost string
 	proxies    []netip.Prefix
-	// dockerEnv is docker.DockerEnvPath, and lookupHost the DNS lookup;
-	// tests change both.
-	dockerEnv  string
-	lookupHost func(ctx context.Context, host string) ([]string, error)
-	now        func() time.Time
-	log        *slog.Logger
+	// containerEnvs are the files that mark a container (Docker's and
+	// Podman's), and lookupHost the DNS lookup; tests change both.
+	containerEnvs []string
+	lookupHost    func(ctx context.Context, host string) ([]string, error)
+	now           func() time.Time
+	log           *slog.Logger
 
 	// Limits, shortened by tests.
 	pollInterval  time.Duration
@@ -223,7 +223,7 @@ func New(cfg Config) (*Controller, error) {
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
 		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
 		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
-		proxies: cfg.TrustedProxies, dockerEnv: docker.DockerEnvPath, lookupHost: net.DefaultResolver.LookupHost,
+		proxies: cfg.TrustedProxies, containerEnvs: []string{docker.DockerEnvPath, docker.PodmanEnvPath}, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,

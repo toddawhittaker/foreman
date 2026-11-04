@@ -100,7 +100,7 @@ func (d *Daemon) list(w http.ResponseWriter, r *http.Request) {
 	defer d.mu.Unlock()
 	out := []docker.ContainerSummary{}
 	for _, c := range d.containers {
-		if (!all && c.Status != "running") || !hasLabels(c.Spec.Labels, filters["label"]) {
+		if (!all && c.Status != "running") || !hasLabels(c.Spec.Labels, filters["label"]) || !onNetworks(c, filters["network"]) {
 			continue
 		}
 		out = append(out, docker.ContainerSummary{
@@ -109,6 +109,23 @@ func (d *Daemon) list(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, out)
+}
+
+// onNetworks reports whether c is attached to one of names, as Docker's
+// network filter does; a container never started counts by its network mode.
+func onNetworks(c *Container, names []string) bool {
+	if len(names) == 0 {
+		return true
+	}
+	for _, n := range names {
+		if _, ok := c.Networks[n]; ok {
+			return true
+		}
+		if len(c.Networks) == 0 && n == c.Spec.HostConfig.NetworkMode {
+			return true
+		}
+	}
+	return false
 }
 
 // hasLabels reports whether labels satisfies every "key" or "key=value" want.

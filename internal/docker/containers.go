@@ -222,9 +222,23 @@ type ContainerSummary struct {
 // ListContainers lists containers that carry every one of labels, each
 // "key" or "key=value". With all false, only running ones are listed.
 func (c *Client) ListContainers(ctx context.Context, all bool, labels []string) ([]ContainerSummary, error) {
-	q := url.Values{"all": {strconv.FormatBool(all)}}
+	var filters map[string][]string
 	if len(labels) > 0 {
-		f, err := json.Marshal(map[string][]string{"label": labels})
+		filters = map[string][]string{"label": labels}
+	}
+	return c.listContainers(ctx, all, filters)
+}
+
+// ListContainersOnNetwork lists every container, running or not, attached
+// to the named network.
+func (c *Client) ListContainersOnNetwork(ctx context.Context, network string) ([]ContainerSummary, error) {
+	return c.listContainers(ctx, true, map[string][]string{"network": {network}})
+}
+
+func (c *Client) listContainers(ctx context.Context, all bool, filters map[string][]string) ([]ContainerSummary, error) {
+	q := url.Values{"all": {strconv.FormatBool(all)}}
+	if len(filters) > 0 {
+		f, err := json.Marshal(filters)
 		if err != nil {
 			return nil, err
 		}
