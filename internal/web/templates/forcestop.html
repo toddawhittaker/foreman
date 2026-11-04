@@ -10,7 +10,7 @@
   <ul>
     <li>Stop the game at once, without warning players and without saving.</li>
     <li>Lose all progress since the last save{{if not .World.LastPlayed.IsZero}}, made at <time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}. Players online are disconnected.</li>
-    <li>Interrupt any start, stop, restart, restore, switch or adoption that is running now. A switch that is interrupted does not finish.</li>
+    <li>Interrupt any start, stop, restart, restore or switch that is running now. A switch that is interrupted does not finish.</li>
     <li>Take no snapshot: nothing in the world's folder is changed.</li>
   </ul>
   <form method="post" action="{{.Path}}">

@@ -79,7 +79,6 @@ async function startForeman() {
   const proc = spawn(join(repo, "bin", "foreman"), ["serve"], {
     env: {
       ...process.env,
-      FOREMAN_MODE: "managed",
       FOREMAN_DATA_DIR: dataDir,
       FOREMAN_HOST_DATA_DIR: dataDir,
       FOREMAN_GAME_UID: String(process.getuid?.() ?? 0),

@@ -200,7 +200,7 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameErr
 	case sum.Active:
 		p.SwitchNote = "This is the active world."
 	case s.switchBusy(ctx, sum.ID):
-		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch or an adoption.", true
+		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
 	default:
 		p.CanSwitch = true
 	}

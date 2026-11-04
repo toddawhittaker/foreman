@@ -85,25 +85,12 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 // it is not nil.
 func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
 	t.Helper()
-	return newHarnessIn(t, env, func(data string) world.Dirs {
-		return world.Dirs{
-			Worlds:    filepath.Join(data, "worlds"),
-			Snapshots: filepath.Join(data, "snapshots"),
-			Imports:   filepath.Join(data, "import"),
-		}
-	}, makeGame)
+	return newHarnessNets(t, env, makeGame, nil)
 }
 
-// newHarnessIn is newHarnessWith with the folders chosen from the data
-// directory, as adopted mode puts the worlds inside the game folder.
-func newHarnessIn(t *testing.T, env map[string]string, dirsIn func(data string) world.Dirs, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
-	t.Helper()
-	return newHarnessNets(t, env, dirsIn, makeGame, nil)
-}
-
-// newHarnessNets is newHarnessIn with the game networks given by nets,
+// newHarnessNets is newHarnessWith with the game networks given by nets,
 // when it is not nil, in place of the controller's.
-func newHarnessNets(t *testing.T, env map[string]string, dirsIn func(data string) world.Dirs, makeGame func(*world.Manager, *store.Store) *game.Controller, nets GameSubnetter) *harness {
+func newHarnessNets(t *testing.T, env map[string]string, makeGame func(*world.Manager, *store.Store) *game.Controller, nets GameSubnetter) *harness {
 	t.Helper()
 	cfg, err := config.Load(func(k string) (string, bool) { v, ok := env[k]; return v, ok })
 	if err != nil {
@@ -118,7 +105,11 @@ func newHarnessNets(t *testing.T, env map[string]string, dirsIn func(data string
 	logs := &syncBuffer{}
 	logger := slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	data := t.TempDir()
-	worlds, err := world.NewManager(dirsIn(data), st, clock.Now)
+	worlds, err := world.NewManager(world.Dirs{
+		Worlds:    filepath.Join(data, "worlds"),
+		Snapshots: filepath.Join(data, "snapshots"),
+		Imports:   filepath.Join(data, "import"),
+	}, st, clock.Now)
 	if err != nil {
 		t.Fatalf("world manager: %v", err)
 	}

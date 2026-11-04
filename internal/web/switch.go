@@ -92,12 +92,9 @@ func (s *server) switchRefusal(ctx context.Context, from string, to world.Summar
 	return "The game is starting or stopping, or Foreman cannot tell its state. Wait until it is running or stopped, or use Force stop.", false, nil
 }
 
-// switchBusy reports whether an adoption is running, or an operation is
-// running on this world or the active one, so a switch would be refused.
+// switchBusy reports whether an operation is running on this world or the
+// active one, so a switch would be refused.
 func (s *server) switchBusy(ctx context.Context, id string) bool {
-	if _, _, adopting := s.adoption.get(); adopting {
-		return true
-	}
 	ids := []string{id}
 	if active, found, err := s.activeWorld(ctx); err == nil && found {
 		ids = append(ids, active.ID)
@@ -271,15 +268,15 @@ func (p ServerPage) SwitchNote() string {
 // active one, then how the action ended when that is known.
 func (p ServerPage) movedSentence() string {
 	name := p.World.Name
-	if sw := p.Status.Operation.Switch; !p.Adopting && sw != nil {
+	if sw := p.Status.Operation.Switch; sw != nil {
 		name = p.name(sw.To)
 	}
 	return strings.TrimSpace(name + " is now the active world. " + resultAnnouncement(p))
 }
 
 // Moved reports whether this page's world stopped being the active one in a
-// switch, or the world a first adoption was building became the active one,
-// so the page must load the Server page again to show the right world. It
+// switch, so the page must load the Server page again to show the right
+// world. It
 // waits until the operation has ended and the result is stored, so the
 // sentence the next page reads out always says how the action ended. Until
 // then both worlds' pages show the same step list, so the old page is not
@@ -288,9 +285,6 @@ func (p ServerPage) Moved() bool {
 	o := p.Status.Operation
 	if o == nil || !o.Done || !p.HaveResult {
 		return false
-	}
-	if p.Adopting {
-		return o.Action == game.AuditAdopt && o.Error == ""
 	}
 	return o.Switch != nil && o.Switch.Presented && o.Switch.From == p.World.ID
 }
