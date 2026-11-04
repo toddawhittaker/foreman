@@ -548,6 +548,15 @@ legend {
   color: var(--color-info);
 }
 
+.message--warning {
+  background: var(--color-warn-bg);
+  border-color: var(--color-warn);
+}
+
+.message--warning :is(h2, p):first-child > strong:first-child {
+  color: var(--color-warn);
+}
+
 /* 7.4 Confirming risky actions: a flat danger box, no bevel. */
 .confirm {
   container-type: inline-size;
@@ -587,6 +596,86 @@ legend {
   accent-color: var(--color-highlight);
 }
 
+/* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.125rem var(--space-2);
+  background: var(--color-deep);
+  color: var(--color-text-muted);
+  border: var(--border-width) solid currentColor;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Fills are background-image so forced-colours mode keeps them. */
+.state::before {
+  content: "";
+  flex: none;
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  margin-inline: 0.125rem;
+  border: 2px solid currentColor;
+}
+
+.state--starting {
+  background-color: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.state--starting::before {
+  background-image: linear-gradient(to right, currentColor 50%, transparent 50%);
+}
+
+.state--running {
+  background-color: var(--color-ok-bg);
+  color: var(--color-ok);
+}
+
+.state--running::before {
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+.state--stopping {
+  background-color: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.state--stopping::before {
+  background-image: linear-gradient(to left, currentColor 50%, transparent 50%);
+}
+
+.state--crashed {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.state--crashed::before {
+  background-image: linear-gradient(currentColor, currentColor);
+  transform: rotate(45deg);
+}
+
+.state--crash-looping {
+  background-color: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.state--crash-looping::before {
+  background-image: linear-gradient(currentColor, currentColor);
+}
+
+/* "Unknown" is a hollow circle and a dashed edge: Foreman cannot tell. */
+.state--unknown {
+  border-style: dashed;
+}
+
+.state--unknown::before {
+  border-radius: 50%;
+}
+
 /* 7.6 Long-running operations */
 .steps {
   display: grid;
@@ -614,6 +703,13 @@ legend {
   accent-color: var(--color-highlight);
 }
 
+/* The indeterminate bar always moves; the "In progress" word says the same (DESIGN 6, Motion). */
+@media (prefers-reduced-motion: reduce) {
+  .steps progress {
+    display: none;
+  }
+}
+
 .step-state {
   min-inline-size: 6rem;
   font-weight: 600;
@@ -630,6 +726,28 @@ legend {
 
 .step-state--failed {
   color: var(--color-danger-text);
+}
+
+/* A failed step's message sits on its own line under the word, at any width. */
+.steps li > .message {
+  flex: 1 1 100%;
+  max-inline-size: none;
+}
+
+/* On a narrow panel the word has its own line, so every step lines up. */
+@container (max-width: 24rem) {
+  .step-state {
+    flex-basis: 100%;
+  }
+}
+
+/* Parts the server swaps in stack with room between them, so a button is
+   never flush under a step list or log (DESIGN 6, rule 4). */
+[sse-swap],
+#console-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
 /* 8.2 The world list: rows divided by a rule, not boxed. */
@@ -777,8 +895,102 @@ td:last-child {
   }
 }
 
+/* 8.5 Log and console: a deep sunken mono box that scrolls inside itself. */
+.log {
+  min-inline-size: 0;
+  block-size: min(60vh, 32rem);
+  padding: var(--space-2) var(--space-3);
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--bevel-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.log :is(pre, ol) {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+/* Only the text itself keeps its line breaks; the list's markup whitespace must not show. */
+.log pre {
+  white-space: pre-wrap;
+}
+
+.log li {
+  max-inline-size: none;
+}
+
+/* The button sits under the box, so it never covers a line. Its row is kept
+   while it is hidden, so showing it moves nothing (DESIGN 6, rule 7). */
+.log-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.log-frame > .button {
+  justify-self: end;
+}
+
+/* A button's display would otherwise beat the hidden attribute. */
+.button[hidden] {
+  display: none;
+}
+
+.log-frame > .button[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+}
+
+/* The console: a label, then the field and Send on one row that wraps. */
+.console-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.console-row input {
+  flex: 1 1 10rem;
+  inline-size: auto;
+  min-inline-size: 0;
+  max-inline-size: none;
+  font-family: var(--font-mono);
+}
+
+.console-row .button {
+  flex: 0 0 auto;
+}
+
+/* Past commands: the command is bold behind a drawn prompt, the reply plain. */
+.console-command {
+  font-weight: 600;
+}
+
+.console-command::before {
+  content: "> ";
+  content: "> " / "";
+}
+
+.console-history li + li {
+  margin-block-start: var(--space-2);
+}
+
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
 @media (forced-colors: active) {
+  /* The panel's sunken bevel is a box-shadow, which is not drawn here. */
+  .panel {
+    border: var(--border-width) solid CanvasText;
+  }
+
   .tabs a {
     border: 2px solid transparent;
   }
@@ -792,5 +1004,28 @@ td:last-child {
 
   .field input[type="file"]::file-selector-button {
     border-inline-end-color: ButtonText;
+  }
+
+  /* The shape's fill must survive: draw it in the system text colour. */
+  .state::before {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+  }
+
+  .state--starting::before {
+    background-image: linear-gradient(to right, CanvasText 50%, transparent 50%);
+  }
+
+  .state--stopping::before {
+    background-image: linear-gradient(to left, CanvasText 50%, transparent 50%);
+  }
+
+  :is(.state--running, .state--crashed, .state--crash-looping)::before {
+    background-image: linear-gradient(CanvasText, CanvasText);
+  }
+
+  /* The solid crash-looping badge loses its fill, so it keeps a heavy edge. */
+  .state--crash-looping {
+    border-width: 3px;
   }
 }

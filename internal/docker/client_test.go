@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -29,7 +30,7 @@ func (f *fakeDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.seen = append(f.seen, r.Method+" "+r.URL.Path)
 	f.mu.Unlock()
 	path := versionPrefix.ReplaceAllString(r.URL.Path, "/")
-	if !allowed(r.Method, path) {
+	if !Allowed(r.Method, path) {
 		f.t.Errorf("daemon received %s %s, which is outside SPEC 14.3", r.Method, r.URL.Path)
 	}
 	switch path {
@@ -39,7 +40,7 @@ func (f *fakeDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"Version":"29.0.0","ApiVersion":"` + f.apiVersion + `"}`))
 	case "/containers/self/json":
 		_, _ = w.Write([]byte(`{"Id":"abc","Mounts":[{"Type":"bind","Source":"/srv/foreman","Destination":"/data"}],
-			"NetworkSettings":{"Networks":{"game":{"IPAddress":"172.18.0.2"},"bridge":{}}}}`))
+			"NetworkSettings":{"Networks":{"game":{"IPAddress":"172.18.0.2","IPPrefixLen":16,"GlobalIPv6Address":"fd00:18::2","GlobalIPv6PrefixLen":64},"bridge":{}}}}`))
 	default:
 		http.Error(w, `{"message":"No such container"}`, http.StatusNotFound)
 	}
@@ -67,6 +68,9 @@ func TestEveryMethodStaysOnAllowlist(t *testing.T) {
 	got, err := c.InspectContainer(ctx, "self")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if n := got.Networks["game"]; n.IPPrefixLen != 16 || n.GlobalIPv6Address != "fd00:18::2" || n.GlobalIPv6PrefixLen != 64 {
+		t.Errorf("game network = %+v", n)
 	}
 	if len(got.Mounts) != 1 || got.Mounts[0].Source != "/srv/foreman" || got.Mounts[0].Destination != "/data" {
 		t.Errorf("mounts = %+v", got.Mounts)
@@ -110,7 +114,7 @@ func TestRefusesOutsideAllowlistWithoutSending(t *testing.T) {
 		{"GET", "/images/a/./b/json"},
 	}
 	for _, tc := range cases {
-		resp, err := c.do(context.Background(), tc.method, tc.path, true)
+		resp, err := c.do(context.Background(), request{method: tc.method, path: tc.path})
 		if err == nil {
 			_ = resp.Body.Close()
 			t.Errorf("%s %s was allowed", tc.method, tc.path)
@@ -178,7 +182,7 @@ func TestAllowlistCoversSpec14_3(t *testing.T) {
 		{"DELETE", "/containers/abc"},
 	}
 	for _, tc := range cases {
-		if !allowed(tc.method, tc.path) {
+		if !Allowed(tc.method, tc.path) {
 			t.Errorf("%s %s should be allowed", tc.method, tc.path)
 		}
 	}
@@ -242,5 +246,73 @@ func TestNewRejectsBadHosts(t *testing.T) {
 		if _, err := New(h); err == nil {
 			t.Errorf("New(%q) succeeded", h)
 		}
+	}
+}
+
+func TestLongCallsHaveNoTotalTimeout(t *testing.T) {
+	for _, host := range []string{"unix:///x.sock", "tcp://127.0.0.1:1"} {
+		c, err := New(host)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.http.Timeout != shortCallLimit {
+			t.Errorf("%s: short client timeout = %v", host, c.http.Timeout)
+		}
+		if c.long.Timeout != 0 {
+			t.Errorf("%s: long client timeout = %v, want none", host, c.long.Timeout)
+		}
+		if c.long.CheckRedirect == nil || c.long.CheckRedirect(nil, nil) == nil {
+			t.Errorf("%s: long client follows redirects", host)
+		}
+	}
+}
+
+func TestErrorMessage(t *testing.T) {
+	cases := map[string]string{
+		`{"message":"No such container: x"}`: "No such container: x",
+		"  plain text from a proxy \n":       "plain text from a proxy",
+		`{"other":1}`:                        `{"other":1}`,
+		"":                                   "",
+	}
+	for in, want := range cases {
+		if got := errorMessage([]byte(in)); got != want {
+			t.Errorf("errorMessage(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestAPIErrorIs(t *testing.T) {
+	cases := []struct {
+		status int
+		is     error
+	}{
+		{404, ErrNotFound}, {304, ErrNotModified}, {409, ErrConflict},
+	}
+	for _, tc := range cases {
+		err := error(&APIError{Status: tc.status})
+		for _, named := range []error{ErrNotFound, ErrNotModified, ErrConflict} {
+			if want := errors.Is(named, tc.is); errors.Is(err, named) != want {
+				t.Errorf("status %d: errors.Is(%v) should be %v", tc.status, named, want)
+			}
+		}
+	}
+	if errors.Is(&APIError{Status: 500}, ErrNotFound) {
+		t.Error("a 500 matched ErrNotFound")
+	}
+}
+
+func TestQueryDoesNotWidenThePath(t *testing.T) {
+	c, f := newFake(t, "1.47")
+	// This small fake has no container list, so the answer is a 404; only
+	// the request it received matters here.
+	resp, _ := c.do(context.Background(), request{
+		method: "GET", path: "/containers/json",
+		query: url.Values{"filters": {`{"label":["a=b"]}`}, "x": {"/volumes?"}},
+	})
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if got := f.seen[len(f.seen)-1]; got != "GET /v1.47/containers/json" {
+		t.Errorf("daemon saw %q", got)
 	}
 }

@@ -26,7 +26,7 @@ var ErrWrongName = errors.New("the name typed does not match the world's name")
 // world's name exactly. With finalSnapshot set, the snapshot comes first
 // (SPEC 6.2): if it fails the world is left untouched. The world's earlier
 // snapshots stay, and so does the folder snapshots/<id>, so the id is never
-// handed to another world (R2).
+// handed to another world (SPEC 5.2).
 func (m *Manager) Delete(ctx context.Context, id, typedName string, finalSnapshot bool, by string) error {
 	unlock, err := m.Lock(id)
 	if err != nil {

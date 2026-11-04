@@ -283,3 +283,70 @@ func (m *Manager) SetLoadSave(id, name string) error {
 	meta.LoadSave = name
 	return WriteMeta(root, meta)
 }
+
+// ErrSaveInFuture is returned when PrepareLoad cannot make the chosen save
+// the newest because another save has a modification time in the future.
+var ErrSaveInFuture = errors.New("another save in this world has a modification time in the future, so the chosen save cannot be made the one that loads. Fix the computer's clock or remove that save")
+
+// PrepareLoad makes the world's chosen save the one the game loads, by
+// setting its modification time to now (SPEC 7.11). It never sets a time
+// in the future. With no chosen save it does nothing. It returns the name
+// of the save that will load, empty when the world has none. The caller
+// holds Lock(id) and the game is stopped.
+func (m *Manager) PrepareLoad(id string) (string, error) {
+	root, err := m.OpenWorld(id)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := ReadMeta(root)
+	if err != nil {
+		return "", err
+	}
+	if meta.LoadSave != "" {
+		if !ValidSaveName(meta.LoadSave) {
+			return "", ErrSaveNotFound
+		}
+		p := path.Join(SavesDir, meta.LoadSave)
+		info, err := root.Lstat(p)
+		if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.Mode().IsRegular()) {
+			return "", ErrSaveNotFound
+		}
+		if err != nil {
+			return "", err
+		}
+		now := m.now()
+		if err := root.Chtimes(p, now, now); err != nil {
+			return "", fmt.Errorf("set the chosen save's time: %w", err)
+		}
+	}
+	newest, found, err := newestSave(root)
+	if err != nil || !found {
+		return "", err
+	}
+	if meta.LoadSave != "" && newest.Name != meta.LoadSave {
+		return "", ErrSaveInFuture
+	}
+	return newest.Name, nil
+}
+
+// ClearLoadSave resets which save loads to the newest, once the start that
+// loaded name has reached the game (SPEC 7.11). It does nothing when the choice
+// has changed since, so a choice made after the start is kept. The caller
+// holds Lock(id).
+func (m *Manager) ClearLoadSave(id, name string) error {
+	root, err := m.OpenWorld(id)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := readChangeable(root)
+	if err != nil {
+		return err
+	}
+	if meta.LoadSave == "" || meta.LoadSave != name {
+		return nil
+	}
+	meta.LoadSave = ""
+	return WriteMeta(root, meta)
+}

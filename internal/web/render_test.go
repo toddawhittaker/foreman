@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -108,7 +109,77 @@ func pageCases() []pageCase {
 		{"error 404", "", 404, ErrorPage{Status: 404}},
 		{"error 500", "", 500, ErrorPage{Status: 500}},
 		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: "Choose a file that ends in .zip."}},
+		{"server no world", "todd", 200, ServerPage{}},
+		{"server running", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
+			p.Status.Uptime, p.Status.StartedAt = 3*time.Hour+12*time.Minute, time.Date(2026, 11, 3, 11, 0, 0, 0, time.UTC)
+			p.Status.Save, p.Status.HaveUsage, p.Status.CPUPercent, p.Status.MemoryBytes = longName, true, 12.5, 1_500_000_000
+			p.PlayersKnown = true
+			p.Players = []game.Player{{Name: longName, Joined: time.Date(2026, 11, 3, 13, 0, 0, 0, time.UTC), Duration: 85 * time.Minute}, {Name: "bob"}}
+		})},
+		{"server starting", "todd", 200, serverCase(game.StateStarting, func(p *ServerPage) {
+			p.Status.Operation = &game.Operation{Action: game.AuditStart, Steps: []game.Step{
+				{Name: game.StepCheck, State: game.StepDone}, {Name: game.StepSnapshot, State: game.StepSkipped},
+				{Name: game.StepLoad, State: game.StepProgress}, {Name: game.StepRCON, State: game.StepWaiting}}}
+		})},
+		{"server refused by the check", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
+			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{
+				{Kind: world.ProblemModMissing, Text: longName, StartAnyway: true}}}}
+			p.Status.Operation = &game.Operation{Action: game.AuditStart, Done: true, Error: err.Error(), Steps: []game.Step{
+				{Name: game.StepCheck, State: game.StepFailed}, {Name: game.StepLoad, State: game.StepWaiting}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: err}, true
+		})},
+		{"server image missing", "todd", 200, serverCase(game.StateStopped, func(p *ServerPage) {
+			p.Status.Download = &game.Operation{Action: game.AuditImageDownload, Done: true, Error: "no route to registry",
+				Steps: []game.Step{{Name: game.StepDownload, State: game.StepFailed}}}
+			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: game.ErrImageMissing}, true
+		})},
+		{"server crash-looping", "todd", 200, serverCase(game.StateCrashLooping, func(p *ServerPage) {
+			p.Status.CrashLines = []string{"Error: " + longName, "line two"}
+		})},
+		{"server crashed", "todd", 200, serverCase(game.StateCrashed, func(p *ServerPage) {
+			p.Status.LastCrash, p.Status.CrashLines = time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), []string{"oops"}
+		})},
+		{"server unknown", "todd", 200, serverCase(game.StateUnknown, func(p *ServerPage) {
+			p.Status.Reason = "Foreman cannot reach Docker: " + longName
+		})},
+		{"server restored", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
+			p.Result, p.HaveResult = actionResult{Action: game.ActionRestore, Restored: "a", Undo: "b"}, true
+		})},
+		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
+		{"restart countdown error", "todd", 400, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true,
+			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+		{"restart anyway", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, Restart: true, Anyway: true,
+			CountdownForm: defaultCountdown(), CheckProblems: []string{longName}}},
+		{"restart anyway refused", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true, Anyway: true,
+			CheckProblems: []string{"newer"}, Refusal: "At least one of these problems cannot be started past."}},
+		{"start anyway", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: longName}, CheckProblems: []string{longName}}},
+		{"start anyway refused", "todd", 200, StartAnywayPage{World: world.Summary{ID: "base", Name: "Base"}, Refusal: "Nothing to confirm."}},
+		{"force stop", "todd", 200, ForceStopPage{World: world.Summary{ID: "base", Name: longName,
+			LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)}}},
+		{"restore running", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0],
+			Running: true, CountdownForm: defaultCountdown()}},
+		{"restore countdown error", "todd", 400, RestorePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[0],
+			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+		{"console no world", "todd", 200, ConsolePage{}},
+		{"console empty", "todd", 200, ConsolePage{World: world.Summary{ID: "base", Name: longName}, HasWorld: true}},
+		{"console log and history", "todd", 200, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
+			Lines: []string{"2026-11-03 10:00:00 [JOIN] alice joined the game", longName},
+			History: []consoleEntry{{Command: "/players online", Reply: "Online players (1):\n  alice (online)\n"},
+				{Command: longName, Reply: longName, Cut: true},
+				{Command: "/server-save", Last: true}}}},
+		{"console command refused", "todd", 400, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
+			Command: "/c game.print(1)", CommandError: "Enter a command of at most 1000 characters"}},
+		{"console not running", "todd", 409, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
+			Failure: "The game is not running, so it cannot take commands. Start it from the Server page."}},
 	}
+}
+
+// serverCase is the server page for an active world in state s.
+func serverCase(s game.State, edit func(*ServerPage)) ServerPage {
+	p := ServerPage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.1.24", Active: true}, HasWorld: true,
+		Status: game.Status{World: "base", State: s}}
+	edit(&p)
+	return p
 }
 
 func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, string) {
@@ -384,7 +455,9 @@ func TestErrorPageCopy(t *testing.T) {
 	}
 }
 
-// The vendored htmx is exactly the pinned release (STACK 3, SPEC 3.7).
+// The vendored htmx 2.0.11 and its SSE extension (npm htmx-ext-sse 2.2.4,
+// dist/sse.min.js, tarball integrity sha512-LJmxVhyk...EI8O2wXXn4ZZtBdpEMqmEQ==)
+// are exactly the pinned releases (STACK 3, SPEC 3.7).
 func TestVendoredChecksums(t *testing.T) {
 	sums, err := staticFS.ReadFile("static/vendor/SHA256SUMS")
 	if err != nil {
@@ -407,8 +480,21 @@ func TestVendoredChecksums(t *testing.T) {
 		}
 		listed[name] = true
 	}
-	if !listed["htmx.min.js"] {
-		t.Error("htmx.min.js is not in SHA256SUMS")
+	for name, marker := range map[string]string{
+		"htmx.min.js":         `version:"2.0.11"`,
+		"htmx-ext-sse.min.js": `defineExtension("sse"`,
+	} {
+		if !listed[name] {
+			t.Errorf("%s is not in SHA256SUMS", name)
+			continue
+		}
+		body, err := staticFS.ReadFile("static/vendor/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Contains(body, []byte(marker)) {
+			t.Errorf("%s does not contain %s", name, marker)
+		}
 	}
 	entries, err := fs.ReadDir(staticFS, "static/vendor")
 	if err != nil {
@@ -483,8 +569,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 2 {
-		t.Fatalf("want the stylesheet and htmx, found %v", found)
+	if len(found) != 3 {
+		t.Fatalf("want the stylesheet, htmx and its SSE extension, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

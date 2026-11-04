@@ -215,3 +215,185 @@ across `internal/` is about 89%. The format decisions are in ADR 0002.
   other than its own (its `sed` on `/opt/factorio/config`), and the server
   exits on stdin EOF unless it is started with `-i`. Epic 3 must handle
   both (found in the real-game check).
+
+## Epic 3: Server control in managed mode
+
+Serves SPEC 18.3: creating the game container (4.2 to 4.6); status (7.1,
+7.2); start, stop and restart (7.3 to 7.8) with the pre-start check and
+the save reader it needs (7.4, 9.9); save selection (7.11); the log stream
+and crash detection (8.6, 8.7, 8.9); the player list (8.1); the RCON
+console (8.4) and its audit entries; and snapshot and restore of a running
+world (6.5, 6.10). Everything below is built and tested. Coverage across
+`internal/` is about 89.8%. The container's shape and identity are in ADR
+0003.
+
+### Delivered
+
+- **Docker client (SPEC 14.3, STACK 5).** Every endpoint the epic uses is
+  wrapped: ping, version, list (by label and by network), inspect, create,
+  start, stop, kill, remove, logs with follow, stats, image inspect and
+  image pull. Long calls (log follow, pull, stop) use a second HTTP client
+  with no total timeout and set their own deadline. Docker's framed log
+  output is split into standard output and error lines. An error inside a
+  200 pull reply is returned. A pull reference with no tag or digest is
+  refused. 404, 304 and 409 are named errors. `docker.Allowed` is exported
+  and the `dockertest` fake daemon fails any call outside 14.3.
+- **RCON client and audit log (SPEC 8.4, 12.9, 14.8).** One command at a
+  time, dial and read timeouts, one reply packet per command up to 4 MiB
+  (the real game never answers an empty command), a distinct login error,
+  and the password as a `Secret` that no error holds. The audit log table
+  (migration 0003) is shaped for all of 12.9: time, user (null once the user
+  is deleted, the name stays), action, world and detail.
+- **Save reader (SPEC 9.9).** `internal/savefile` reads the game version
+  and mod list from `level.dat0` in 1.1, 2.0 and 2.1 saves, compressed or
+  not, with typed errors and a fuzz test whose seeds run in `make verify`.
+  Seven real saves are the fixtures.
+- **Game container (SPEC 4.2 to 4.6, ADR 0003).** The game binary runs
+  directly as `FOREMAN_GAME_UID:FOREMAN_GAME_GID` through a small wrapper
+  that reads the RCON password from `config/rconpw`. All capabilities are
+  dropped, `no-new-privileges` is set, stdin is open, the restart policy is
+  `unless-stopped`, UDP 34197 is published, RCON is not, and the one bind
+  mount is the world's folder. The name is `foreman-<world-id>`, with labels
+  for the world and install. Every start makes a fresh container. Three
+  images, for 1.1.110, 2.0.77 and 2.1.24, are pinned by digest (STACK 1), and
+  a test fails if `cmd/foreman` and the Makefile differ. A game user or
+  group of 0 is refused (3.6, 14.11). `FOREMAN_GAME_NETWORK` is required in
+  a container, with the refusals in 4.4: Foreman not on the network, other
+  containers on it, a `tcp://` Docker host not on another of Foreman's
+  networks, an overlap with `FOREMAN_TRUSTED_PROXIES` (IPv4 and IPv6), and
+  Foreman unable to find its own container while a marker file or `tcp://`
+  shows it is in one. The RCON password file is created 0640 and written
+  atomically; startup recovery narrows older, wider copies in worlds and
+  snapshots (4.5).
+- **State, start, stop, restart (SPEC 7.1 to 7.8).** The states are
+  stopped, starting, running, stopping, crashed, crash-looping and unknown
+  (with the reason, when Docker cannot be asked). Start runs under the world
+  lock: write a default `mod-list.json` if missing (9.7), run the pre-start
+  check, take a snapshot for "Start anyway", check the image (never a
+  pull), set which save loads, create and start the container, then wait for
+  InGame and an RCON answer within 5 minutes. A graceful stop checks RCON
+  first, warns players in game (the countdown, then 30 and 10 seconds),
+  runs `/server-save`, waits for "Saving finished", then calls Docker's stop
+  (SIGTERM, 120-second timeout). A stop that Docker refuses puts the earlier
+  state back. A forced stop kills, takes no lock and leaves the container
+  stopped. Restart runs the check before it stops anything. Foreman starting
+  or stopping never touches a running game: it finds the container by label
+  and trusts an RCON answer (3.8).
+- **Pre-start check and save selection (SPEC 7.4, 7.11).** The check returns
+  problems that each say what the game would delete. "Start anyway" is
+  offered only for missing or disabled mods, Space Age off with a Space Age
+  save, and an unreadable save. A newer or unsupported save, no save, and a
+  mod list that disagrees with the Space Age flag are plain refusals. A
+  chosen save is made newest once, then the choice resets when the start
+  reaches InGame. Built-in mods follow the game version.
+- **Log and crashes (SPEC 8.6, 8.7, 8.9, 14.8).** The log is followed with
+  Docker's timestamps and resumes by them. Each line is classified before
+  it is redacted, so a short numeric game password cannot hide what a line
+  is. Then the RCON and game passwords are removed and a printed `/config
+  set password` is masked. The last 1,000 lines are kept. A crash is seen
+  from the restart count, start time and the failed-load line, never the
+  exit code. Three crashes in ten minutes make a crash loop, and Foreman
+  stops the container, one stop at a time, retrying at each poll if Docker
+  refuses.
+- **Players and console (SPEC 8.1, 8.4).** RCON's `/players online` decides
+  who is on, and join times come from `[JOIN]` log lines since the container
+  started. A console command is 1 to 1,000 characters on one line with no
+  NUL, and is audited before it is sent. `/config set password` and the
+  reply to `/config get password` are masked, known secrets are removed from
+  audit text, and Lua commands are recorded as typed.
+- **Running-world snapshot and restore (SPEC 6.5, 6.10).** A snapshot of a
+  running world runs `/server-save` and waits for it. A restore of a running
+  world stops it gracefully, snapshots, restores and starts it again.
+- **Server page and Console tab (SPEC 7, 8.1, 8.4, 8.6, 16.3, 17).** The
+  Server page is where setup and sign-in land. It shows the state badge,
+  uptime, version, save, CPU and memory, players with time online, step
+  lists, and start, stop, restart (each with a countdown form), forced stop,
+  "Start anyway" and "Download game image" (audited, and the only way an
+  image is pulled). Live updates use server-sent events: heartbeats check
+  the session without extending it, streams for header-signed users
+  reconnect every 5 minutes, and a connection down for 5 seconds shows a
+  note. Failures and finished restores are announced, focus survives
+  updates, and steps that never run read "Skipped". The Console tab shows
+  the log and the console, works without JavaScript, follows only at the
+  bottom and offers "Jump to newest". Every page state passes axe at desktop
+  and 320 px in both themes.
+- **Test tools.** `internal/fakegame` and `cmd/fakegame` (a fake Docker
+  socket plus a fake game with RCON, replaying real transcripts, with hooks
+  for crashes, joins, a hanging save and a missing image) back `make e2e`.
+  `make test-game` runs the controller against the three pinned images.
+  `make e2e-game` runs the phone scenario against the real 2.1 image.
+  `internal/game/testdata` holds real transcripts for all three versions.
+
+### Verified
+
+- `make verify` is green: lint with 0 issues, race tests, coverage about
+  89.8% against the 70% floor, and the end-to-end type check.
+- `make e2e`: 308 tests pass in four projects (desktop and 320 px, dark and
+  light), including axe on each page state.
+- `make test-game` passed against 1.1.110, 2.0.77 and 2.1.24 (about 70
+  seconds for all three), and against 2.1.24 again after the fix rounds.
+  `make e2e-game` passed against 2.1.24.
+- Code, security and accessibility reviews ran over the epic head, and
+  three fix rounds closed their findings.
+- **Real-game check.** On 2026-11-03 Todd joined from a Factorio 2.1.24
+  client: setup, start to Running, join, the player listed with time
+  online, a console command, leave and rejoin, and a stop with a 30-second
+  countdown whose warnings showed in chat at 30 and 10 seconds, then the
+  save and "Goodbye". The real `[JOIN]` and `[LEAVE]` lines matched the
+  documented format exactly and are now test data
+  (`internal/game/testdata/2.1.24/join-leave.log`). The RCON password was in
+  neither the game's log nor Foreman's, and the audit rows for start,
+  console and stop were right.
+
+### Gaps left
+
+- While the game runs, `mods/mod-list.json` is mode 0646, because the game
+  rewrites it that way, so any local user on the host can edit it. Every
+  Foreman start re-checks it. Low risk, host-local.
+- The RCON password is in the game's process arguments, because Factorio
+  takes it only on the command line (SPEC 4.5). The operator guide in Epic 10
+  must give the `hidepid=2` advice.
+- Snapshot and restore are refused while Docker cannot be reached, because
+  Foreman cannot tell whether the game is running.
+- The check that nothing else shares the game network runs at start only,
+  so a container that joins later is not noticed until the next start.
+- A socket proxy that also publishes a host port cannot be seen from inside
+  Foreman, so the operator guide must say never to publish it.
+- A runtime that creates neither `/.dockerenv` nor `/run/.containerenv`,
+  used with a `unix://` socket, gives Foreman no sign that it is in a
+  container, so none of the network checks run.
+- A game password set through the console is masked by pattern only. The
+  log redaction does not learn it, so a later line that prints it is not
+  masked. A secret typed inside a Lua command is not hidden either.
+- The console history (the last 20 commands per world) is in memory only.
+  The log history is the container's log and is lost when the container is
+  recreated at the next start.
+- The "Jump to newest" row keeps its space while the button is hidden, which
+  leaves a blank strip under the log.
+- A stop's time on a large map is unmeasured. On the small test map
+  `docker stop` took under a second; the 120-second timeout is a generous
+  guess for big worlds.
+- No Space Age world (flag on) was started against a real game. The save
+  reader reads real Space Age saves, and the real check ran 2.1.24 with
+  Space Age off.
+- There is no audit viewer, filter or retention yet (Epic 10), and audit
+  rows have no token name (Epic 9).
+- Crash reasons are not named; a crash says "unknown" and shows the last 20
+  lines (Epic 8). A crash loop is not remembered across a Foreman restart:
+  the game stays stopped and shows as stopped.
+- Nothing builds an RCON command from user text yet, so there is no
+  escaping helper for SPEC 14.9. It arrives with chat in Epic 8.
+- The save reader skips six bytes of the 2.x header whose meaning is
+  unknown. A save whose layout differs there is refused, not misread.
+- The game port, 34197, is fixed. A per-world port is an additive
+  `world.json` field for later (SPEC 5.3).
+- The fakes differ from Docker: the fake game's restart delay stops at 3
+  seconds (Docker's reaches a minute), the `on-failure` restart policy is
+  not modelled, and a kill with a chosen signal writes no shutdown log.
+- The game network refusals have Go tests but no end-to-end test, because
+  the fake game runs outside a container. The test for a dropped live
+  connection routes the stream to a 503; it does not stop Foreman.
+- A form post with neither an Origin nor a Sec-Fetch-Site header is
+  accepted, by design of Go's cross-origin protection.
+- `GET /events` stays on the SPEC 14.3 list but is not wrapped or used;
+  Foreman polls (ADR 0003).

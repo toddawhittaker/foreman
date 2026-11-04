@@ -6,6 +6,9 @@ GO_VERSION      := 1.27.3
 GO_IMAGE        := golang:1.27.3-trixie@sha256:c65ecfe613b539ac74c62a4c3b2c27e8f8a6076384c8f27e8a3c0f3be17cc385
 LINT_IMAGE      := golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481
 PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+GAME_IMAGE_1_1  := factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb
+GAME_IMAGE_2_0  := factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef
+GAME_IMAGE_2_1  := factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28
 GOVULNCHECK     := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 COVERAGE_FLOOR  := 70
 
@@ -21,7 +24,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test typecheck build image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame image run e2e e2e-deps \
 	test-game e2e-game vuln ci tidy
 
 verify: check-go fmt-check vet lint test typecheck
@@ -72,6 +75,10 @@ typecheck: e2e-deps
 build:
 	CGO_ENABLED=0 go build -trimpath -o bin/foreman ./cmd/foreman
 
+# The fake game for the end-to-end tests. It is never copied into the image.
+build-fakegame:
+	CGO_ENABLED=0 go build -trimpath -o bin/fakegame ./cmd/fakegame
+
 image:
 	docker build --build-arg GO_IMAGE=$(GO_IMAGE) -t $(IMAGE) .
 
@@ -81,14 +88,38 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
-e2e: build e2e-deps
+e2e: build build-fakegame e2e-deps
 	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
 
+# The controller against the real Docker daemon and the pinned game images,
+# one image at a time (they share the game port). TAG=1.1, 2.0 or 2.1 runs one.
 test-game:
-	@echo "make test-game arrives in Epic 3, with server control."
+	@case "$(TAG)" in ""|1.1|2.0|2.1) ;; *) echo "TAG must be 1.1, 2.0 or 2.1."; exit 1;; esac
+	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) \
+		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -timeout 30m -v -run TestRealGame ./internal/game/
 
-e2e-game:
-	@echo "make e2e-game arrives in Epic 3, with server control."
+# The phone scenario against the real game: Playwright in its pinned image,
+# with the host's Docker socket, starts bin/foreman, which starts the pinned
+# 2.1 image on a network of this run's own: SPEC 4.4 refuses a game network
+# that other containers share, as the default bridge may. The repository is mounted at its own path,
+# so the bind paths Foreman gives Docker are the host's. The game is a sibling
+# container that Foreman leaves running, so this target removes it, even on failure.
+DOCKER_SOCK ?= /var/run/docker.sock
+
+e2e-game: build e2e-deps
+	@docker image inspect $(GAME_IMAGE_2_1) >/dev/null 2>&1 || { \
+		echo "The game image $(GAME_IMAGE_2_1) is not on this host. Pull it with: docker pull $(GAME_IMAGE_2_1)"; exit 1; }
+	@test -S $(DOCKER_SOCK) || { echo "$(DOCKER_SOCK) is not a Docker socket. Set DOCKER_SOCK to the host's."; exit 1; }
+	@mkdir -p $(CACHE)/home $(CACHE)/e2e-game
+	@net=foreman-e3game-net-$$$$; \
+	clean() { \
+		docker ps -aq --filter name=foreman-e3game- | xargs -r docker rm -f -v >/dev/null; \
+		docker network rm $$net >/dev/null 2>&1; \
+		rm -rf $(CACHE)/e2e-game; }; \
+	trap clean EXIT; trap 'exit 130' INT TERM; \
+	docker network create $$net >/dev/null && \
+	$(DOCKER_RUN) --network $$net -e FOREMAN_E2E_GAME_NETWORK=$$net --ipc=host -v $(DOCKER_SOCK):/var/run/docker.sock --group-add $$(stat -c %g $(DOCKER_SOCK)) \
+		-w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) sh -c 'npx --no-install tsc --noEmit -p game && npx --no-install playwright test -c game'
 
 vuln:
 	go run $(GOVULNCHECK) ./...

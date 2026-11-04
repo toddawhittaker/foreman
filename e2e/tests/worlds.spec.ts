@@ -4,6 +4,10 @@ import { mkdirSync, readdirSync, statSync, utimesSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+// Taking a snapshot asks Docker whether the game is running first
+// (SPEC 6.10), so these tests use the fake game as Docker.
+test.use({ fakeGameOn: true });
+
 const admin = "admin";
 const password = "correct horse battery";
 
@@ -13,7 +17,8 @@ async function createAdmin(page: Page) {
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
+  await page.goto("/worlds");
 }
 
 // Worlds are folders a person can make by hand (SPEC 5.1), so the list is
@@ -38,9 +43,13 @@ function setActive(f: Foreman, id: string) {
   }
 }
 
-test("/ goes to the world list", async ({ page }) => {
+// DESIGN 6: "/" is the Server page; the world list stays at /worlds.
+test("/ is the Server page and the world list is at /worlds", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/");
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Server");
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" }).click();
   await expect(page).toHaveURL("/worlds");
 });
 
@@ -161,7 +170,7 @@ test("imports a world by uploading a save", async ({ page, foreman }) => {
   expect(readdirSync(join(foreman.dataDir, "worlds"))).toEqual(["uploaded"]);
 });
 
-// SPEC 5.8 and R12: the display name changes, the id does not, and two
+// SPEC 5.2, 5.8: the display name changes, the id does not, and two
 // worlds may not share a name ignoring case.
 test("renames a world and refuses a duplicate name", async ({ page, foreman }) => {
   await createAdmin(page);

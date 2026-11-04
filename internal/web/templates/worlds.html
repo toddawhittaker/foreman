@@ -17,7 +17,7 @@
 <section class="panel" aria-labelledby="worlds-heading">
   <h2 id="worlds-heading">All worlds</h2>
   {{- with .Page.Worlds}}
-  <ul class="worlds">
+  <ul class="worlds" role="list">
     {{- range .}}
     <li>
       <h3><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>

@@ -20,10 +20,22 @@ import (
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/web"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
+
+// The pinned game images, one per supported game version, by tag and
+// digest (SPEC 10). They must equal the Makefile's GAME_IMAGE_* values,
+// which the real-game tests use; a test compares them.
+const (
+	gameImage11 = "factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb"
+	gameImage20 = "factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef"
+	gameImage21 = "factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28"
+)
+
+var gameImages = map[string]string{"1.1": gameImage11, "2.0": gameImage20, "2.1": gameImage21}
 
 func main() {
 	cmd := "serve"
@@ -61,7 +73,8 @@ func listenAddr() string {
 }
 
 // serve starts in a fixed order: data directory check, host path (managed
-// mode only), database, world recovery, then the server.
+// mode only), database, world recovery, the game monitor (managed mode
+// only), then the server. It stops in the reverse order.
 func serve(cfg *config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -69,8 +82,17 @@ func serve(cfg *config.Config) error {
 	if err := datadir.Probe(cfg.DataDir, cfg.GameUID, cfg.GameGID); err != nil {
 		return err
 	}
+	hostname, _ := os.Hostname()
+	var dockerClient *docker.Client
+	var hostDir string
 	if cfg.Mode == config.ModeManaged {
-		hostDir, err := resolveHostDir(ctx, cfg)
+		var err error
+		// Making the client contacts nothing, so an unreachable Docker never
+		// stops Foreman from serving pages.
+		if dockerClient, err = docker.New(cfg.DockerHost); err != nil {
+			return err
+		}
+		hostDir, err = datadir.HostDir(ctx, cfg.DataDir, cfg.HostDataDir, dockerClient, datadir.MountinfoPath, hostname)
 		if err != nil {
 			return err
 		}
@@ -95,10 +117,35 @@ func serve(cfg *config.Config) error {
 		return err
 	}
 
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Log: slog.Default()})
+	var games *game.Controller
+	if cfg.Mode == config.ModeManaged {
+		games, err = game.New(game.Config{
+			Docker: dockerClient, Worlds: worlds, Audit: st,
+			HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
+			Images: gameImages, Network: cfg.GameNetwork,
+			DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
+			SelfID: docker.SelfID(docker.MountinfoPath, hostname),
+			Log:    slog.Default(),
+		})
+		if err != nil {
+			return err
+		}
+	}
+	// The monitor writes to the store, so it stops before the store closes.
+	// Stopping it leaves every game running (SPEC 3.8).
+	monitorCtx, stopMonitor := context.WithCancel(context.Background())
+	var monitoring sync.WaitGroup
+	if games != nil {
+		monitoring.Go(func() { games.Run(monitorCtx) })
+	}
+	defer func() { stopMonitor(); monitoring.Wait() }()
+
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Log: slog.Default()})
 	if err != nil {
 		return err
 	}
+	// Live pages and actions in flight end before the monitor stops.
+	defer handler.Close()
 	srv := web.NewHTTPServer(cfg.Listen, handler)
 
 	sweepCtx, stopSweep := context.WithCancel(ctx)
@@ -119,27 +166,15 @@ func serve(cfg *config.Config) error {
 		return err
 	case <-ctx.Done():
 	}
+	// Live pages never finish on their own, so they end before the server
+	// waits for its requests to finish.
+	handler.Close()
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdown); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
-}
-
-// resolveHostDir finds the data directory's host path (SPEC 3.5). The Docker
-// client is made only when the path has to be discovered.
-func resolveHostDir(ctx context.Context, cfg *config.Config) (string, error) {
-	var inspector datadir.Inspector
-	if cfg.HostDataDir == "" {
-		client, err := docker.New(cfg.DockerHost)
-		if err != nil {
-			return "", err
-		}
-		inspector = client
-	}
-	hostname, _ := os.Hostname()
-	return datadir.HostDir(ctx, cfg.DataDir, cfg.HostDataDir, inspector, datadir.MountinfoPath, hostname)
 }
 
 // healthcheck exists because the runtime image has no shell or curl (STACK 10).

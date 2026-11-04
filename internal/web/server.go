@@ -9,6 +9,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -26,14 +27,20 @@ type Deps struct {
 	Config *config.Config
 	Store  *store.Store
 	Worlds *world.Manager
-	Log    *slog.Logger
-	Now    func() time.Time // time.Now when nil
+	// Game runs the game servers; nil means this mode has no server
+	// control, and "/" shows the world list.
+	Game *game.Controller
+	Log  *slog.Logger
+	Now  func() time.Time // time.Now when nil
 }
 
 type server struct {
 	cfg      *config.Config
 	store    *store.Store
 	worlds   *world.Manager
+	game     *game.Controller
+	runs     *gameRuns
+	console  *consoleHistory
 	log      *slog.Logger
 	now      func() time.Time
 	render   *Renderer
@@ -47,8 +54,20 @@ type server struct {
 	uploadSlots chan struct{}
 }
 
+// Handler is the HTTP handler for the whole app.
+type Handler struct {
+	http.Handler
+	runs *gameRuns
+}
+
+// Close ends the live pages, then interrupts the server control actions
+// still running, and waits for both. Call it before the server shuts down,
+// which would otherwise wait on the live pages, and before the store
+// closes. It never stops a game (SPEC 3.8).
+func (h *Handler) Close() { h.runs.close() }
+
 // NewHandler returns the HTTP handler for the whole app.
-func NewHandler(d Deps) (http.Handler, error) {
+func NewHandler(d Deps) (*Handler, error) {
 	renderer, err := NewRenderer()
 	if err != nil {
 		return nil, err
@@ -61,6 +80,9 @@ func NewHandler(d Deps) (http.Handler, error) {
 		cfg:      d.Config,
 		store:    d.Store,
 		worlds:   d.Worlds,
+		game:     d.Game,
+		runs:     newGameRuns(),
+		console:  newConsoleHistory(),
 		log:      d.Log,
 		now:      now,
 		render:   renderer,
@@ -93,7 +115,7 @@ func NewHandler(d Deps) (http.Handler, error) {
 	h = s.limitBody(h)
 	h = s.recoverPanic(h)
 	h = s.accessLog(h)
-	return h, nil
+	return &Handler{Handler: h, runs: s.runs}, nil
 }
 
 func (s *server) routes() {
@@ -104,9 +126,8 @@ func (s *server) routes() {
 	s.mux.Handle("GET "+PathStatic, s.render.Static())
 	s.mux.HandleFunc("GET "+PathSignedOut, s.handleSignedOut)
 	s.mux.HandleFunc("POST "+PathSignOut, s.handleSignOut)
-	s.mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, PathWorlds, http.StatusSeeOther)
-	})
+	s.gameRoutes()
+	s.consoleRoutes()
 	s.worldRoutes()
 	s.saveRoutes()
 	s.snapshotRoutes()

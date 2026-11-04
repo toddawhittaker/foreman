@@ -1,0 +1,33 @@
+== first: /players online | second (id 11): ''
+auth reply: size=10 id=1 type=2 body=''
+reply: size=30 id=10 type=0 bodylen=20 body='Online players (0):\n'
+no more packets within 5s
+== first: /server-save | second (id 11): ''
+auth reply: size=10 id=1 type=2 body=''
+reply: size=25 id=10 type=0 bodylen=15 body='Saving the map\n'
+no more packets within 5s
+== first: /help | second (id 11): ''
+auth reply: size=10 id=1 type=2 body=''
+reply: size=140 id=10 type=0 bodylen=130 body='- Server console commands.\n/quit - Terminates the server cleanly.\n/save <name> - Saves the current game with the specifi...'
+no more packets within 5s
+== first:  | second (id 11): ''
+auth reply: size=10 id=1 type=2 body=''
+no more packets within 5s
+== first: /c for i=1,3000 do rcon.print(string.rep('x',20)) end | second (id 11): ''
+auth reply: size=10 id=1 type=2 body=''
+reply: size=10 id=10 type=0 bodylen=0 body=''
+no more packets within 5s
+== first: /c for i=1,3000 do rcon.print(string.rep('x',20)) end | second (id 11): ''
+auth reply: size=10 id=1 type=2 body=''
+reply: size=63010 id=10 type=0 bodylen=63000 body='xxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxx...'
+no more packets within 5s
+== first: /c for i=1,3000 do rcon.print(string.rep('x',20)) end | second (id 11): '/players online'
+auth reply: size=10 id=1 type=2 body=''
+reply: size=63010 id=10 type=0 bodylen=63000 body='xxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxx...'
+reply: size=30 id=11 type=0 bodylen=20 body='Online players (0):\n'
+no more packets within 5s
+== first: /server-save | second (id 11): '/players online'
+auth reply: size=10 id=1 type=2 body=''
+reply: size=25 id=10 type=0 bodylen=15 body='Saving the map\n'
+reply: size=30 id=11 type=0 bodylen=20 body='Online players (0):\n'
+no more packets within 5s

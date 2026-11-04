@@ -27,6 +27,50 @@ func (m *Manager) Recover(log *slog.Logger) error {
 			return err
 		}
 	}
+	if err := narrowPasswords(m.dirs.Worlds, 1); err != nil {
+		return err
+	}
+	return narrowPasswords(m.dirs.Snapshots, 2)
+}
+
+func narrowPasswords(dir string, depth int) error {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	return narrowFolders(root, dir, depth)
+}
+
+// narrowFolders narrows the RCON password file of every world folder depth
+// levels below dir: worlds/<id> is 1, snapshots/<id>/<name> is 2. Copies
+// made before copies kept 0640 may still be wider (SPEC 14.8). Symlinks
+// are skipped, never followed.
+func narrowFolders(root *os.Root, dir string, depth int) error {
+	if depth == 0 {
+		if err := narrowRCONPassword(root); err != nil {
+			return fmt.Errorf("narrow %s to 0640: %w", path.Join(dir, RCONPasswordFile), err)
+		}
+		return nil
+	}
+	entries, err := fs.ReadDir(root.FS(), ".")
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if !e.IsDir() { // a symlink's type is not a folder, so it is skipped
+			continue
+		}
+		sub, err := root.OpenRoot(e.Name())
+		if err != nil {
+			return err
+		}
+		err = narrowFolders(sub, path.Join(dir, e.Name()), depth-1)
+		_ = sub.Close()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -72,7 +116,7 @@ func isLeftover(name string) bool {
 	return false
 }
 
-// finishSwaps settles a restore that stopped between its renames (R9). If
+// finishSwaps settles a restore that stopped between its renames (SPEC 6.5). If
 // the world's folder is there, the restored world was swapped in and the
 // old one is removed. If not, the old one is put back; the staged
 // replacement is a leftover the next step removes.

@@ -44,7 +44,7 @@ func TestLoadAllSet(t *testing.T) {
 		"FOREMAN_DATA_DIR":            "/srv/foreman",
 		"FOREMAN_HOST_DATA_DIR":       "/host/foreman",
 		"FOREMAN_GAME_UID":            "1000",
-		"FOREMAN_GAME_GID":            "0",
+		"FOREMAN_GAME_GID":            "1001",
 		"FOREMAN_LISTEN":              "127.0.0.1:9000",
 		"FOREMAN_PUBLIC_URL":          "https://foreman.example.com",
 		"FOREMAN_AUTH_METHODS":        " Local , HEADERS ",
@@ -54,6 +54,7 @@ func TestLoadAllSet(t *testing.T) {
 		"FOREMAN_TRUSTED_PROXIES":     "10.0.0.0/8, 192.168.1.5 ,fd00::1",
 		"FOREMAN_SESSION_IDLE":        "30m",
 		"DOCKER_HOST":                 "tcp://socket-proxy:2375",
+		"FOREMAN_GAME_NETWORK":        "games",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +65,7 @@ func TestLoadAllSet(t *testing.T) {
 		DataDir:       "/srv/foreman",
 		HostDataDir:   "/host/foreman",
 		GameUID:       1000,
-		GameGID:       0,
+		GameGID:       1001,
 		Listen:        "127.0.0.1:9000",
 		PublicURL:     pub,
 		AuthLocal:     true,
@@ -79,6 +80,7 @@ func TestLoadAllSet(t *testing.T) {
 		},
 		SessionIdle: 30 * time.Minute,
 		DockerHost:  "tcp://socket-proxy:2375",
+		GameNetwork: "games",
 	}
 	if !reflect.DeepEqual(c, want) {
 		t.Errorf("\n got %+v\nwant %+v", c, want)
@@ -166,6 +168,8 @@ func TestLoadErrors(t *testing.T) {
 		{"uid negative", map[string]string{"FOREMAN_GAME_UID": "-1"}, "FOREMAN_GAME_UID must be a whole number"},
 		{"uid text", map[string]string{"FOREMAN_GAME_UID": "factorio"}, "FOREMAN_GAME_UID must be a whole number"},
 		{"uid too large", map[string]string{"FOREMAN_GAME_UID": "99999999999999"}, "FOREMAN_GAME_UID must be a whole number"},
+		{"uid zero", map[string]string{"FOREMAN_GAME_UID": "0"}, "FOREMAN_GAME_UID must not be 0"},
+		{"gid zero", map[string]string{"FOREMAN_GAME_GID": "0"}, "FOREMAN_GAME_GID must not be 0"},
 		{"gid decimal", map[string]string{"FOREMAN_GAME_GID": "1.5"}, "FOREMAN_GAME_GID must be a whole number"},
 		{"listen no port", map[string]string{"FOREMAN_LISTEN": "localhost"}, "FOREMAN_LISTEN is not a valid listen address"},
 		{"listen bad port", map[string]string{"FOREMAN_LISTEN": ":http"}, "FOREMAN_LISTEN is not a valid listen address"},

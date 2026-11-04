@@ -316,14 +316,16 @@ inset `box-shadow`s, never a blurred or offset shadow outside the box:
 | Element | Bevel | Outline |
 |---|---|---|
 | Header and `main` frames | raised | 1px `frame-dark` border |
-| Inner panel (a section's content) | sunken | none |
+| Inner panel (a section's content) | sunken | none; 1px `CanvasText` in forced colours only |
 | Field, log, console | sunken | 1px `border` (the edge that counts for contrast) |
 | Button | raised; sunken while pressed (`:active`) | 1px border, see 7.1 |
 | Message, badge, confirmation box | none (flat) | 1px border in their own colour |
 
 The bevel is decoration. In forced-colours mode box-shadows are not
 drawn, and the 1 px borders in the "Outline" column are what remain.
-That is why every frame and control keeps one.
+That is why every frame and control keeps one. The inner panel has no
+border in the normal look, so `@media (forced-colors: active)` gives it a
+1px `CanvasText` border (section 6, "Forced colours").
 
 ### Rules
 
@@ -362,7 +364,8 @@ That is why every frame and control keeps one.
   not sticky.
 - In Windows high-contrast mode (`forced-colors: active`) the outline
   still shows. Bevels disappear there, and every frame, button and field
-  keeps a 1 px border (section 4, "Bevels") so its edge shows too.
+  keeps a 1 px border (section 4, "Bevels") so its edge shows too; the
+  inner panel, which has only a bevel, gets its border in that mode.
 
 ## 6. Page layout
 
@@ -444,7 +447,10 @@ tab a 2px `Highlight` border (every tab carries a transparent 2px border
 so nothing shifts) and a 3px underline, so "selected" is still a drawn
 shape. The "Active" badge keeps its border and its word, and buttons,
 fields and message boxes keep their borders, so they need nothing more.
-Anything new that marks a state with a fill alone needs a rule here. Check
+The inner panel has only a bevel, so it gets a 1px `CanvasText` border in
+this mode.
+The state badge's shapes (7.5) are redrawn in `CanvasText` so their fills
+survive. Anything new that marks a state with a fill alone needs a rule here. Check
 a screen with Playwright's `forcedColors: "active"`.
 
 ### The 320 px rules
@@ -466,6 +472,9 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
 4. Adjacent targets are separated by at least `--space-2`, so two 24 px
    minimum targets can never overlap even when a person's text size
    shrinks things.
+   The parts the server swaps in (`[sse-swap]`) and `#console-panel` are
+   grids with `gap: var(--space-3)`, so a button is never flush under a
+   step list, message or log.
 5. Button rows wrap (`flex-wrap: wrap`). Each button may grow to the full
    width when its row wraps, so a phone shows them stacked, primary first.
 6. Tables follow 8.3. The log and console wrap their lines (8.5); they
@@ -477,7 +486,9 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
 
 Only `opacity` and `transform` may animate, for at most 150 ms. Under
 `prefers-reduced-motion: reduce`, nothing animates, including the
-indeterminate progress bar. Nothing on these screens needs motion to be
+indeterminate progress bar, which is hidden in that mode (`.steps
+progress { display: none }`) because the browser animates it itself; the
+"In progress" word carries the meaning. Nothing on these screens needs motion to be
 understood.
 
 ## 7. Components
@@ -708,8 +719,14 @@ Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
 delete), and in later epics switching (7.9) and destructive player
-actions (8.2). A graceful stop or restart does not need a confirmation
-page; its button says "Stop server (players get a 60-second warning)".
+actions (8.2). A graceful stop or restart does not need a danger
+confirmation, because nothing is lost. Its button opens a short form at its
+own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
+countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
+60, and a checkbox for no countdown. The form is a plain `panel` with a
+primary button ("Stop server", "Restart server"), not the danger box, and
+its Cancel link says the server keeps running. The result is shown on the
+Server page.
 
 ### 7.5 Server-state badge
 
@@ -727,6 +744,18 @@ SPEC 7.1 and 17.4: state is never shown by colour alone.
 | stopping | "Stopping" | `warn` | `warn-bg` | Square, right half filled |
 | crashed | "Crashed" | `danger-text` | `danger-bg` | Filled diamond (the square turned 45 degrees) |
 | crash-looping | "Crash-looping" | `on-danger` | `danger` | Filled square; the whole badge is solid |
+| unknown | "Unknown" | `text-muted` | `deep` | Hollow circle; the badge edge is dashed |
+
+"Unknown" is for when Foreman cannot ask Docker (SPEC 7.1). It uses the
+same pair of colours as "Stopped" (8.10 and 7.63 on dark and light), so
+no new contrast row is needed; the circle and the dashed edge tell the
+two apart without colour.
+
+Classes: `state` (the badge, also the "Stopped" look) plus one modifier,
+`state--stopped`, `state--starting`, `state--running`, `state--stopping`,
+`state--crashed`, `state--crash-looping` or `state--unknown`. The element
+holds only the word. A template always writes the modifier, even for
+"Stopped", so the class names a state.
 
 - The word is the badge's content. It is real text, read by screen
   readers and kept in forced-colours mode.
@@ -735,6 +764,10 @@ SPEC 7.1 and 17.4: state is never shown by colour alone.
   `linear-gradient` hard stop at 50% for the half fills (a hard-stop fill,
   not a visual gradient). It is a second cue for people scanning a list,
   and it is decorative: the word alone carries the meaning.
+- The fills are `background-image`, not `background-color`, because
+  forced-colours mode (6) removes background colours. A rule there draws
+  the shape in `CanvasText`, so "Running" stays a filled square and
+  "Stopped" a hollow one. The solid crash-looping badge gets a 3px edge.
 - `display: inline-flex`, `gap: var(--space-1)`, `--text-sm`, weight 600,
   padding `0.125rem var(--space-2)`, 1px border in `currentColor`,
   `--radius`. Sentence case, never all capitals.
@@ -770,8 +803,9 @@ steps, each with a word:
 
 ```html
 <ol class="steps">
-  <li><span class="step-state">Done</span> Snapshot taken</li>
-  <li aria-current="step"><span class="step-state">In progress</span> Waiting for the game to reach InGame</li>
+  <li><span class="step-state step-state--done">Done</span> Snapshot taken</li>
+  <li aria-current="step"><span class="step-state step-state--progress">In progress</span> Waiting for the game to reach InGame
+    <progress aria-label="Waiting for the game"></progress></li>
   <li><span class="step-state">Waiting</span> Check RCON answers</li>
 </ol>
 ```
@@ -781,6 +815,17 @@ coloured `ok`, `warn`, `text-muted`, `danger-text` and `text-muted`. The
 in-progress step may carry a native `<progress>` with no value
 (indeterminate). A failed step is followed by an error message (7.3)
 that says what to do next, as SPEC 7.9 requires for switching.
+
+Classes: `steps` (the `ol`; no numbers, one row per step), `step-state`
+(the word, a fixed 6rem column so the step text lines up) and its
+modifiers `step-state--done`, `step-state--progress` and
+`step-state--failed`. "Waiting" and "Skipped" take no modifier. The
+current step has `aria-current="step"` and is bold. In a panel narrower
+than 24rem the word takes its own line, so every step reads the same way.
+A failed step's message goes inside that `li` as
+`<div class="message message--error">`; it takes its own full-width line
+(`flex: 1 1 100%`, no `max-inline-size`) at any width. The words carry the state, so forced
+colours needs no rule.
 
 ## 8. Patterns for later screens
 
@@ -838,16 +883,68 @@ No infinite scroll.
 ```html
 <section aria-labelledby="log-heading">
   <h2 id="log-heading">Game log</h2>
-  <div class="log" tabindex="0" role="region" aria-label="Game log lines">
-    <pre>…</pre>
+  <div class="log-frame">
+    <div class="log" tabindex="0" role="region" aria-label="Game log lines">
+      <pre>…</pre>
+    </div>
+    <button type="button" class="button" hidden>Jump to newest</button>
   </div>
 </section>
 ```
 
+Console, above its history:
+
+```html
+<section aria-labelledby="console-heading">
+  <h2 id="console-heading">Console</h2>
+  <form class="field" method="post" action="…">
+    <label for="command">Command</label>
+    <div class="console-row">
+      <input id="command" name="command" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="submit" class="button button--primary">Send</button>
+    </div>
+    <p class="hint">…</p>
+  </form>
+  <div class="log" tabindex="0" role="region" aria-label="Console history">
+    <ol class="console-history">
+      <li>
+        <p class="console-command"><span class="visually-hidden">You sent </span>/players online</p>
+        <pre>Online players (2): …</pre>
+      </li>
+    </ol>
+  </div>
+</section>
+```
+
+Classes and their contract:
+
+- `log`: the scroll box. Holds one `pre` (the game log) or one `ol.console-history`. It
+  must keep `tabindex="0"`, `role="region"` and an `aria-label`, because a
+  scrolling box needs a name and a keyboard stop. Nothing inside it may set
+  its own width; lines wrap.
+- `log-frame`: optional wrapper, used only when the box carries a "Jump to
+  newest" button. It is a grid: the box, then the button under it, at the
+  end edge, so the button never covers a line (at 320 px an overlay hid the
+  last lines). While `hidden`, the button is `visibility: hidden` and keeps
+  its row, so showing or hiding it moves nothing below it, and it is out of
+  the tab order and the accessibility tree. The script toggles the
+  button's `hidden` attribute. The markup is unchanged: the button stays a
+  sibling of `log`.
+- `console-row`: the field and "Send" on one row. They sit side by side
+  and wrap onto two lines when the panel is too narrow. The field's text is
+  mono at 16px, so a phone does not zoom in on focus.
+- `console-history`: the `ol` of past commands, newest last.
+  `console-command` is the sent command, bold, with a drawn "> " prompt
+  (ignored by screen readers) and a visually hidden "You sent" in front, so
+  a command and its reply are told apart without colour. The reply is a
+  `pre` in the same `li`.
+- `button[hidden]` is hidden even though `.button` sets `display`.
+
 - A deep sunken box: background `deep`, `box-shadow: var(--bevel-sunken)`,
   1px `border`, text `text`, `--font-mono` at `--text-sm`,
-  `white-space: pre-wrap`, `overflow-wrap: anywhere`, so lines wrap and
-  never scroll sideways.
+  `white-space: pre-wrap` on the `pre`, `overflow-wrap: anywhere`, so lines
+  wrap and never scroll sideways. (The `ol` of the console history keeps
+  normal white space, or the markup's line breaks would show as blank lines.)
 - The box has a fixed `block-size: min(60vh, 32rem)` and scrolls
   vertically. It is focusable so keyboard users can scroll it.
 - It is not a live region. A game log can print many lines a second; a

@@ -107,7 +107,7 @@ func TestStalledUploadEnds(t *testing.T) {
 	sameData(t, "after stalled uploads", sc.tree(t), before)
 }
 
-// R19, S1, S2: both upload routes hold a reserve for the declared length
+// SPEC 6.11: both upload routes hold a reserve for the declared length
 // for the whole upload, so the space they need is counted against other
 // writes in flight, and an upload that does not fit is refused before any
 // byte is written.

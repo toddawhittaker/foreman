@@ -31,9 +31,9 @@ var allowlist = []endpoint{
 	{"DELETE", "/containers/{id}"},
 }
 
-// allowed reports whether method and path (without the /vX.Y prefix or a
+// Allowed reports whether method and path (without the /vX.Y prefix or a
 // query string) are on the SPEC 14.3 list.
-func allowed(method, path string) bool {
+func Allowed(method, path string) bool {
 	if strings.Contains(path, "..") || strings.ContainsAny(path, "?#%") {
 		return false
 	}

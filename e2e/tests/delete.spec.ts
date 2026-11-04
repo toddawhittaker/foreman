@@ -4,6 +4,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, utimesSync,
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+// Restores ask Docker whether the game is running first (SPEC 6.5), so
+// these tests use the fake game as Docker.
+test.use({ fakeGameOn: true });
+
 const password = "correct horse battery";
 
 async function createAdmin(page: Page) {
@@ -12,7 +16,8 @@ async function createAdmin(page: Page) {
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
+  await page.goto("/worlds");
 }
 
 const savedAt = new Date("2026-11-03T14:25:00.123Z");

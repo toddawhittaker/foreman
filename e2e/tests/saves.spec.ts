@@ -13,7 +13,8 @@ async function createAdmin(page: Page) {
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
+  await page.goto("/worlds");
 }
 
 interface SeedSave {

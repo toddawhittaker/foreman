@@ -9,14 +9,18 @@
 <title>{{if .Failed}}Error: {{end}}{{template "title" .}} – Foreman</title>
 <link rel="stylesheet" href="{{static "foreman.css"}}">
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
+<script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
+{{block "scripts" .}}{{end}}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site">
-  <a href="{{homePath}}" class="product">Foreman</a>
+  <a href="{{serverPath}}" class="product">Foreman</a>
   {{- if .User}}
   <nav aria-label="Main">
-    <ul class="tabs">
+    <ul class="tabs" role="list">
+      <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>Server</a></li>
+      <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>Console</a></li>
       <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>Worlds</a></li>
     </ul>
   </nav>
@@ -26,7 +30,7 @@
   </form>
   {{- end}}
 </header>
-<main id="main" tabindex="-1">
+<main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{template "content" .}}
 </main>
 <div id="announcer" class="visually-hidden" aria-live="polite"></div>
@@ -38,6 +42,24 @@
      breaks only between them (DESIGN 8.3). Takes time.Time. */}}
 {{define "when" -}}
 <time datetime="{{isoTime .}}"><span class="nowrap">{{day .}}</span> <span class="nowrap">{{clock .}}</span></time>
+{{- end}}
+
+{{/* How long players are warned before a graceful stop (SPEC 7.6). Takes
+     CountdownForm. */}}
+{{define "countdown" -}}
+<div class="field">
+  <label for="countdown">Countdown in seconds</label>
+  <p class="hint" id="countdown-hint">Players online see a warning in game, then the game saves and stops. From 0 to 600 seconds; 0 means no countdown. Nobody is warned if nobody is online.</p>
+  <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
+    {{- if .CountdownError}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
+  {{- with .CountdownError}}
+  <p class="error" id="countdown-error"><strong>Error:</strong> {{.}}</p>
+  {{- end}}
+</div>
+<label class="check">
+  <input type="checkbox" name="no_countdown"{{if .NoCountdown}} checked{{end}}>
+  No countdown: save and stop as soon as possible
+</label>
 {{- end}}
 
 {{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}

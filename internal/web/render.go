@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"net/http"
 	"path"
@@ -19,7 +20,6 @@ import (
 // Paths the templates link to or post to. The router serves these.
 const (
 	PathWorlds    = "/worlds"
-	PathHome      = PathWorlds // where sign-in lands; "/" redirects here
 	PathSignIn    = "/signin"
 	PathSetup     = "/setup"
 	PathSignOut   = "/signout"
@@ -49,7 +49,7 @@ type Problem struct {
 }
 
 // maxListRows is how many rows a saves or snapshots table shows before
-// "Show older" (R14).
+// "Show older".
 const maxListRows = 50
 
 // WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).
@@ -210,6 +210,16 @@ func (v view) Current(path string) bool {
 	return ok && n.navItem() == path
 }
 
+// LiveURL is where the page's live updates stream from, or "" for a page
+// that has none (SPEC 16.3).
+func (v view) LiveURL() string {
+	l, ok := v.Page.(interface{ liveURL() string })
+	if !ok {
+		return ""
+	}
+	return l.liveURL()
+}
+
 // Failed is true when a form page is showing errors, so the title can say
 // so first (WCAG 3.3.1 and 2.4.2).
 func (v view) Failed() bool {
@@ -242,12 +252,13 @@ func NewRenderer() (*Renderer, error) {
 		return nil, err
 	}
 	funcs := template.FuncMap{
-		"static":     r.staticURL,
-		"homePath":   func() string { return PathHome },
-		"worldsPath": func() string { return PathWorlds },
-		"bytes":      world.FormatBytes,
-		"utc":        func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
-		"isoTime":    func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+		"static":      r.staticURL,
+		"serverPath":  func() string { return PathServer },
+		"consolePath": func() string { return PathConsole },
+		"worldsPath":  func() string { return PathWorlds },
+		"bytes":       world.FormatBytes,
+		"utc":         func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
+		"isoTime":     func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
 		// never wrap (DESIGN 8.3); utcSeconds tells apart two snapshots
 		// taken in the same minute.
@@ -335,6 +346,16 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, user string, p Page
 	w.WriteHeader(status)
 	_, err := buf.WriteTo(w)
 	return err
+}
+
+// Fragment writes one named template of page p on its own, for a live
+// update of part of the page.
+func (r *Renderer) Fragment(w io.Writer, p Page, name string) error {
+	t, ok := r.pages[p.templateName()]
+	if !ok {
+		return fmt.Errorf("no template for %T", p)
+	}
+	return t.ExecuteTemplate(w, name, p)
 }
 
 // Static serves the embedded CSS and JavaScript under PathStatic. A request

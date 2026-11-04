@@ -15,6 +15,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -77,6 +78,13 @@ type harness struct {
 // env holds FOREMAN_ settings on top of the defaults.
 func newHarness(t *testing.T, env map[string]string) *harness {
 	t.Helper()
+	return newHarnessWith(t, env, nil)
+}
+
+// newHarnessWith is newHarness with server control made by makeGame, when
+// it is not nil.
+func newHarnessWith(t *testing.T, env map[string]string, makeGame func(*world.Manager, *store.Store) *game.Controller) *harness {
+	t.Helper()
 	cfg, err := config.Load(func(k string) (string, bool) { v, ok := env[k]; return v, ok })
 	if err != nil {
 		t.Fatalf("config: %v", err)
@@ -98,10 +106,16 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 	if err != nil {
 		t.Fatalf("world manager: %v", err)
 	}
-	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Log: logger, Now: clock.Now})
+	var ctrl *game.Controller
+	if makeGame != nil {
+		ctrl = makeGame(worlds, st)
+	}
+	h, err := NewHandler(Deps{Config: cfg, Store: st, Worlds: worlds, Game: ctrl, Log: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("handler: %v", err)
 	}
+	// Live pages and actions end before the store closes, as in main.
+	t.Cleanup(h.Close)
 	return &harness{t: t, h: h, store: st, clock: clock, logs: logs, cfg: cfg, worlds: worlds, slog: logger}
 }
 
