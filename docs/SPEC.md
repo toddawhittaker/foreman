@@ -89,12 +89,6 @@ A `tcp://` `DOCKER_HOST` is not encrypted and not authenticated. Use it
 only for a socket proxy on the same host or on a Docker network shared
 with Foreman, never across a network you do not control (14.2).
 
-Adopted mode was removed (ADR 0005). When `FOREMAN_MODE`,
-`FOREMAN_GAME_CONTAINER`, `FOREMAN_GAME_DIR` or `FOREMAN_RCON_PASSWORD`
-(or its `_FILE` form) is set, Foreman refuses to start and says that
-adopted mode was removed, so an old configuration never runs half
-understood.
-
 3.3. **The data directory** is one mounted path. It holds the worlds, the
 snapshots, and the app database. Its layout is in section 5.2. (P0)
 
@@ -323,7 +317,9 @@ When an operator sets one:
   sidecar as it is then.
 - Known limit: when the sidecar is restarted or recreated while the game
   runs, the game may lose its network until Foreman starts it again.
-  Foreman does not watch the sidecar for this.
+  Foreman does not watch the sidecar for this. The README and the operator
+  guide say to restart the game from Foreman after restarting the
+  sidecar.
 
 The sidecar is a container Foreman did not create; 14.16 states the risk
 this accepts.
@@ -695,7 +691,8 @@ naming a reason. Patterns match message text, never source file and
 line numbers, which change between game versions. Each entry has a test
 fixture captured from a real game container. The catalogue's scenarios
 are re-run against the test image of each supported line (docs/STACK.md,
-section 1) whenever a test image changes. (P1)
+section 1) whenever a test image changes, and on demand against any
+version an operator names (`make test-catalogue VERSION=2.1.22`). (P1)
 
 8.9. **Crash loops.** If the game crashes three times within ten minutes,
 Foreman marks it crash-looping and stops the container, since Docker's
@@ -792,11 +789,17 @@ supported line (10.8), such as `2.0.77`. The world runs the image
 a notice with the release's changelog. Foreman checks only when an admin
 opens a page that shows it, never on a timer at startup. (P1)
 
-10.3. **Update** a world's game version to another patch release chosen
-with the version picker (10.7): snapshot, pull the exact image tag,
-restart, and confirm "InGame". The pre-start check (7.4) applies as at any
-start, so a save made by a newer version than the one chosen is refused.
-(P0)
+10.3. **Update** a world's game version to a newer release chosen with
+the version picker (10.7), for example from 2.1.19 to 2.1.24, or from a
+2.0 release to a 2.1 release: snapshot, download that version's image when
+the local Docker does not hold it (a tag already held is not downloaded
+again; "Download game image" downloads it again on request, 3.7), restart,
+and confirm "InGame". A world's version only ever moves up: Factorio cannot
+load a save in an older version than the one that wrote it, so the picker
+offers only newer releases and Foreman refuses an older one. The only way
+back is rollback (10.4), which restores the save from before the update.
+The pre-start check (7.4) applies as at any start, so mods made for the old
+line refuse an update to a new line until they are updated. (P0)
 
 10.4. **Rollback** restores the pre-update snapshot and the previous
 version together, as one action. When the local Docker no longer holds the
@@ -814,7 +817,7 @@ of the supported lines. It fetches the list only when the admin opens a
 page that shows the picker, like the release check in 10.2, never at
 startup or on a timer. The admin may also type a version; Foreman accepts
 only an exact patch release of a supported line. When Docker Hub cannot be
-reached, the page says so and the typed version still works. (P1)
+reached, the page says so and the typed version still works. (P0)
 
 10.8. **Supported lines.** Foreman supports the 1.1, 2.0 and 2.1 lines,
 and every patch release within them. A new line (for example 2.2) needs a
@@ -1148,7 +1151,7 @@ and its audit entries. It also finishes snapshot and restore of a running
 world (6.5, 6.10).
 
 18.4. **Epic 4: World switching.** Switching (7.9, 7.10), and removing
-adopted mode (ADR 0005), including the refusal of its old settings (3.2).
+adopted mode (ADR 0005).
 
 18.5. **Epic 5: Game versions.** Section 10, including the version picker
 (10.7), and VPN sidecars (4.13, ADR 0006).

@@ -16,9 +16,10 @@ it was made with.
 ## Decision
 
 - Foreman has one runtime mode: it creates and owns the game container.
-  Adopted mode and its settings are removed; old settings refuse a start.
+  Adopted mode and its settings are removed.
 - A world's game version is any exact patch release of the 1.1, 2.0 or 2.1
   line. Its image is `factoriotools/factorio:<version>`, by tag, not digest.
+  A world's version only moves up; rollback is the way back (SPEC 10.3).
 - Accepted risk: upstream can rebuild a tag, so the image behind a version
   can change when downloaded again. Foreman uses what the local Docker holds
   under that tag and downloads only when the admin asks (SPEC 3.7).

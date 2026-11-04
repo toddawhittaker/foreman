@@ -31,7 +31,8 @@ on the host and no VPN is needed. Foreman must not prevent a sidecar.
 
 - Accepted risk: the sidecar sees all game traffic and usually holds
   `NET_ADMIN`; Foreman does not police it (SPEC 14.16).
-- A sidecar restart may cut the game off until Foreman starts it again.
+- A sidecar restart may cut the game off until Foreman starts it again;
+  the operator restarts the game after restarting the sidecar.
 - Rejected: **a VPN on the host only, with normal port publishing**. No
   change needed and LAN play works, but Todd wants sidecars allowed.
 - Not possible: **Foreman publishing the port on the sidecar**; Docker

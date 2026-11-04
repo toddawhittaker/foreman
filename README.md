@@ -174,7 +174,9 @@ sidecar's own definition, and the sidecar joins the game network:
 ```
 
 Without that port line the game is VPN-only, and the Server page warns
-that LAN players cannot reach it.
+that LAN players cannot reach it. If you restart or recreate the sidecar
+while the game runs, restart the game from Foreman afterwards, because the
+game may lose its network until then.
 
 ## Documentation
 
