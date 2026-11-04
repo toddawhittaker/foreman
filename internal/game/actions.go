@@ -43,19 +43,19 @@ func startStepsFor(opts StartOptions) []string {
 	return []string{StepCheck, StepImage, StepCreate, StepStartContainer, StepLoad, StepRCON}
 }
 
-// The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4, R5).
+// The automatic snapshot taken before "Start anyway" (SPEC 6.2, 7.4).
 const (
 	ReasonStartAnyway = "start-anyway"
 	LabelStartAnyway  = "Before start anyway"
 )
 
 // ActionRestore names a restore in Operation.Action. Restores are not in
-// this version's audit log (R11).
+// this version's audit log (SPEC 12.9).
 const ActionRestore = "restore"
 
 // StartOptions changes how Start treats the pre-start check.
 type StartOptions struct {
-	// Anyway starts despite problems that each allow it (R5, R17), after a
+	// Anyway starts despite problems that each allow it (SPEC 7.4), after a
 	// snapshot. The caller asks only after the admin confirmed.
 	Anyway bool
 }
@@ -200,7 +200,7 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 	if err != nil {
 		return err
 	}
-	// Start never downloads the image (R7, SPEC 3.7).
+	// Start never downloads the image (SPEC 3.7).
 	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
 		return ErrImageMissing
 	} else if err != nil {
@@ -221,7 +221,7 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 		if s := old.State.Status; s == "running" || s == "restarting" {
 			return ErrAlreadyRunning
 		}
-		// A fresh container for every start, so its settings never drift (R12).
+		// A fresh container for every start, so its settings never drift (ADR 0003).
 		if err := c.docker.RemoveContainer(ctx, old.ID, false); err != nil && !errors.Is(err, docker.ErrNotFound) {
 			return err
 		}
@@ -290,7 +290,7 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 	if err := c.waitInGame(ctx, w, cid, deadline.C); err != nil {
 		return err
 	}
-	// The chosen save applies once (R4).
+	// The chosen save applies once (SPEC 7.11).
 	if save != "" {
 		if err := c.worlds.ClearLoadSave(id, save); err != nil {
 			c.log.Warn("could not reset which save loads to the newest", "world", id, "error", err)
@@ -307,7 +307,7 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 }
 
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
-// has a mod list (R34). It returns a *PrecheckError unless the world may
+// has a mod list (SPEC 7.3). It returns a *PrecheckError unless the world may
 // start, with or without "Start anyway", and ErrSaveNewerThanImage when
 // the pinned image is older than the save.
 func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, error) {
@@ -477,7 +477,7 @@ const MaxStopCountdown = 10 * time.Minute
 var ErrCountdown = errors.New("the stop countdown must be between 0 and 10 minutes")
 
 // StopOptions changes how a graceful stop warns players (SPEC 7.6: the
-// countdown is configurable per action, R40).
+// countdown is configurable per action, SPEC 7.6).
 type StopOptions struct {
 	// Countdown is how long players are warned; zero warns nobody. Callers
 	// pass StopCountdown for the default.
@@ -654,7 +654,7 @@ func (c *Controller) refresh(ctx context.Context, w *worldRun, cid string) {
 // ForceStop stops the game without saving (SPEC 7.7). It interrupts any
 // start, stop, restart or restore in progress, and takes no world lock, so
 // it works while one of those holds it. Docker keeps a killed container
-// stopped (R28).
+// stopped (SPEC 7.7).
 func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	if err := c.audit(ctx, by, AuditForceStop, id, ""); err != nil {
 		return err
@@ -753,7 +753,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 }
 
 // PullImage downloads the pinned image for the world's game version, as an
-// action of its own (R7). It is audited, and shown as a step.
+// action of its own (SPEC 3.7). It is audited, and shown as a step.
 func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
 	meta, err := c.readMeta(id)
 	if err != nil {

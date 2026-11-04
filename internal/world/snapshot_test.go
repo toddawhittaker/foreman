@@ -88,7 +88,7 @@ func TestSnapshotLinksZipsCopiesTheRestAndRecordsTimes(t *testing.T) {
 		}
 	}
 
-	// A second snapshot in the same second gets -2 (R4).
+	// A second snapshot in the same second gets -2 (SPEC 6.7).
 	s2, err := m.TakeSnapshot(id, "", "alice")
 	if err != nil {
 		t.Fatal(err)

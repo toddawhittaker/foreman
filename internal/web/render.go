@@ -49,7 +49,7 @@ type Problem struct {
 }
 
 // maxListRows is how many rows a saves or snapshots table shows before
-// "Show older" (R14).
+// "Show older".
 const maxListRows = 50
 
 // WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).

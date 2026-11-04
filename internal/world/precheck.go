@@ -40,7 +40,7 @@ type Problem struct {
 	// Text says what the game would delete, or why it cannot start.
 	Text string
 	// StartAnyway is true when the admin may start after a confirmation
-	// (R17): only mod and Space Age mismatches and an unreadable save.
+	// (SPEC 7.4): only mod and Space Age mismatches and an unreadable save.
 	StartAnyway bool
 }
 
@@ -159,7 +159,7 @@ func isSaveFormatError(err error) bool {
 }
 
 // modListSpaceAge checks that mod-list.json enables the Space Age mods
-// exactly when the world's flag is on (R17). With no mod-list.json the
+// exactly when the world's flag is on (SPEC 7.4). With no mod-list.json the
 // game enables every built-in mod.
 func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 	dlc := SpaceAgeMods(meta.GameVersion)

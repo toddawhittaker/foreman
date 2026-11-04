@@ -25,7 +25,7 @@ func leftovers(t *testing.T, m *Manager) []string {
 	return out
 }
 
-// R12: a restore in progress must not stop other worlds from being renamed,
+// SPEC 5.2: a restore in progress must not stop other worlds from being renamed,
 // made or imported; the create lock is held only for the swap.
 func TestRestoreDoesNotHoldTheCreateLockWhileItRuns(t *testing.T) {
 	m, _ := newTestManager(t)
@@ -61,7 +61,7 @@ func TestRestoreDoesNotHoldTheCreateLockWhileItRuns(t *testing.T) {
 	}
 }
 
-// R12: a name taken after the restore's first check but before its swap is
+// SPEC 5.2: a name taken after the restore's first check but before its swap is
 // still refused, and the live world is left as it was.
 func TestRestoreRefusesANameTakenWhileItRuns(t *testing.T) {
 	m, _ := newTestManager(t)

@@ -178,7 +178,7 @@ func (m *Manager) idTaken(id string) (bool, error) {
 }
 
 // checkName trims name and refuses a blank one or one that a world other
-// than id has, ignoring case (R12). id is empty for a new world. Call with
+// than id has, ignoring case (SPEC 5.2). id is empty for a new world. Call with
 // createMu held, so no other world can take the name meanwhile.
 func (m *Manager) checkName(ctx context.Context, id, name string) (string, error) {
 	name = strings.TrimSpace(name)

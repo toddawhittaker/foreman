@@ -363,7 +363,7 @@ func TestNoRestartWithoutThePolicy(t *testing.T) {
 func TestCrashLoopRestartsUntilStopped(t *testing.T) {
 	for _, tc := range []struct {
 		image    string
-		wantExit int // R27: 1.1 exits 0 after a failed load
+		wantExit int // SPEC 8.7: 1.1 exits 0 after a failed load
 	}{{image21, 1}, {image11, 0}} {
 		t.Run(tc.image, func(t *testing.T) {
 			r := newRig(t, fakegame.Config{})

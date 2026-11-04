@@ -36,7 +36,7 @@ const (
 	announceRunes = 200
 )
 
-// Commands that carry a secret (R6, SPEC 14.8). A command in
+// Commands that carry a secret (SPEC 8.4, 14.8). A command in
 // game.SetsSecret has its argument replaced in the audit log and on the
 // page; one in showsSecret has its reply hidden. The game has no other
 // command that prints a password or token. The Lua commands (/c, /sc,
@@ -86,7 +86,7 @@ type consoleEntry struct {
 
 // consoleHistory keeps each world's recent commands and replies in memory,
 // so a page without JavaScript can show the reply after its post. It is
-// lost at restart, like the log (R19).
+// lost at restart, like the log (SPEC 8.6).
 type consoleHistory struct {
 	mu      sync.Mutex
 	byWorld map[string][]consoleEntry
@@ -169,7 +169,7 @@ func (p ConsolePage) EventsPath() string { return consolePath(p.World.ID, "/even
 // CommandLimit is the longest command, for the hint.
 func (ConsolePage) CommandLimit() int { return maxCommandLength }
 
-// MaxLines is how many log lines the page keeps (R19), for the script.
+// MaxLines is how many log lines the page keeps (SPEC 8.6), for the script.
 func (ConsolePage) MaxLines() int { return game.LogBufferLines }
 
 func (s *server) consoleRoutes() {
@@ -278,7 +278,7 @@ func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u sto
 }
 
 // handleConsoleEvents streams a world's log lines as server-sent events
-// (SPEC 8.6, R22): "reset" with every line so far, then "lines" with each
+// (SPEC 8.6): "reset" with every line so far, then "lines" with each
 // batch of new ones, so a page that reconnects misses and repeats nothing.
 // The lines are JSON, so the page can only ever set them as text. The
 // stream ends when its user is no longer signed in, when the page falls

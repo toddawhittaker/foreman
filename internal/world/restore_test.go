@@ -155,7 +155,7 @@ func TestRestoreRefusesBusyMissingAndDamaged(t *testing.T) {
 	}
 }
 
-// R9: a crash between the swap's renames is finished or reversed at startup.
+// SPEC 6.5: a crash between the swap's renames is finished or reversed at startup.
 func TestRecoverHalfDoneSwap(t *testing.T) {
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for _, liveThere := range []bool{false, true} {

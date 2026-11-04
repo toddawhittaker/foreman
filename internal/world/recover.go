@@ -116,7 +116,7 @@ func isLeftover(name string) bool {
 	return false
 }
 
-// finishSwaps settles a restore that stopped between its renames (R9). If
+// finishSwaps settles a restore that stopped between its renames (SPEC 6.5). If
 // the world's folder is there, the restored world was swapped in and the
 // old one is removed. If not, the old one is put back; the staged
 // replacement is a leftover the next step removes.

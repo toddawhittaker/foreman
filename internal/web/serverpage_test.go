@@ -240,7 +240,7 @@ func TestLiveAnnouncements(t *testing.T) {
 	}
 }
 
-// R38: the error of an action asked for while another ran is shown on its
+// The error of an action asked for while another ran is shown on its
 // own, and never in place of the first action's result.
 func TestOtherActionsErrorShownApart(t *testing.T) {
 	p := serverCase(game.StateStopped, func(p *ServerPage) {

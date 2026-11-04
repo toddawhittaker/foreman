@@ -25,7 +25,7 @@ type ServerPage struct {
 	// Result is how the last action ended, when HaveResult.
 	Result     actionResult
 	HaveResult bool
-	// Others are the actions asked for while it ran, shown apart (R38).
+	// Others are the actions asked for while it ran, shown apart.
 	Others []actionResult
 }
 

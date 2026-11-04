@@ -37,7 +37,7 @@ func (c *Controller) execReply(ctx context.Context, rc *rcon.Client, command str
 	return reply, nil
 }
 
-// online asks the game who is on (SPEC 8.1, R18).
+// online asks the game who is on (SPEC 8.1).
 func (c *Controller) online(ctx context.Context, rc *rcon.Client) ([]string, error) {
 	reply, err := c.execReply(ctx, rc, "/players online")
 	if err != nil {
@@ -58,7 +58,7 @@ func (c *Controller) liveRCON(w *worldRun) (*rcon.Client, []secret.Secret, error
 }
 
 // Players lists who is online now and for how long (SPEC 8.1). RCON
-// decides who is on; the log's join lines only say since when (R18).
+// decides who is on; the log's join lines only say since when (SPEC 8.1).
 func (c *Controller) Players(ctx context.Context, id string) ([]Player, error) {
 	w := c.world(id)
 	rc, _, err := c.liveRCON(w)
@@ -76,7 +76,7 @@ func (c *Controller) Players(ctx context.Context, id string) ([]Player, error) {
 // (SPEC 8.4). The command is recorded in the audit log before it is sent,
 // and is not sent if it cannot be recorded (SPEC 12.9). auditText is the
 // command with any secret argument already replaced with Mask by the
-// caller (R6, SPEC 14.8). The world's known passwords are also removed
+// caller (SPEC 8.4, 14.8). The world's known passwords are also removed
 // from it here, and from the reply. shown is auditText as recorded, for
 // the page's history.
 func (c *Controller) Console(ctx context.Context, id string, by Actor, command, auditText string) (shown, reply string, err error) {
@@ -129,7 +129,7 @@ func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 
 // Snapshot takes a manual snapshot of the world (SPEC 6.3). When the game
 // is running it saves first, so the snapshot holds the current game
-// (SPEC 6.10, R9).
+// (SPEC 6.10).
 func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label string) (world.Snapshot, error) {
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
@@ -160,7 +160,7 @@ func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label st
 	return c.worlds.TakeSnapshotHeld(id, label, by.Username)
 }
 
-// Restore puts the world back as a snapshot recorded it (SPEC 6.5, R9). A
+// Restore puts the world back as a snapshot recorded it (SPEC 6.5). A
 // running game is stopped gracefully first and started again after; the
 // world package takes the "Before restore" snapshot, which is returned as
 // the undo, with any error.

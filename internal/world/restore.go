@@ -9,11 +9,11 @@ import (
 )
 
 // PrefixRestoreOld names a live world moved aside during a restore's swap
-// (R9). Startup recovery finishes or reverses the swap.
+// (SPEC 6.5). Startup recovery finishes or reverses the swap.
 const PrefixRestoreOld = ".restore-old-"
 
 // ErrRestoreNameTaken is returned when restoring a deleted world whose name
-// another world now has (R12).
+// another world now has (SPEC 5.2).
 var ErrRestoreNameTaken = errors.New("another world now has this world's name. Rename that world, then restore this snapshot")
 
 // Restore puts a world back exactly as snapshot name recorded it, file
@@ -29,7 +29,7 @@ var ErrRestoreNameTaken = errors.New("another world now has this world's name. R
 //
 // When the world's folder is gone (a deleted world) there is nothing to
 // snapshot, so the returned snapshot is empty. The world is recreated and
-// becomes active only if no world is (R6).
+// becomes active only if no world is.
 func (m *Manager) Restore(ctx context.Context, id, name, by string) (Snapshot, error) {
 	unlock, err := m.Lock(id)
 	if err != nil {
@@ -105,8 +105,8 @@ func (m *Manager) RestoreHeld(ctx context.Context, id, name, by string) (Snapsho
 
 // checkRestore runs every check a restore needs before it writes anything:
 // the snapshot's world.json is not newer than this Foreman and its name is
-// not another world's (R12), there is room for the copies (R19), and the
-// snapshot's files match its manifest (R20). It takes no lock, so it never
+// not another world's (SPEC 5.2), there is room for the copies (SPEC 6.11), and the
+// snapshot's files match its manifest (SPEC 6.7). It takes no lock, so it never
 // holds up other worlds; commitStaged checks the name again at the swap. On
 // success the space stays reserved until release is called.
 func (m *Manager) checkRestore(ctx context.Context, id string, snap Snapshot) (release func(), err error) {
@@ -125,7 +125,7 @@ func (m *Manager) checkRestore(ctx context.Context, id string, snap Snapshot) (r
 }
 
 // checkRestoreName refuses a snapshot written by a newer Foreman and one
-// whose world name another world now has (R12).
+// whose world name another world now has (SPEC 5.2).
 func (m *Manager) checkRestoreName(ctx context.Context, id string, snap Snapshot) error {
 	// A snapshot whose world.json cannot be read restores under the id.
 	meta, err := m.snapshotMeta(id, snap.Name)
@@ -145,7 +145,7 @@ func (m *Manager) checkRestoreName(ctx context.Context, id string, snap Snapshot
 
 // commitStaged runs swap, which puts the staged world in place. The name is
 // checked again first, with createMu held until swap is done, so no world
-// made or renamed meanwhile can take the restored name (R12). The lock is
+// made or renamed meanwhile can take the restored name (SPEC 5.2). The lock is
 // held only for this step, not for the copying before it. A refused name
 // removes the staged world.
 func (m *Manager) commitStaged(ctx context.Context, worlds *os.Root, staging, id string, snap Snapshot, swap func() error) error {
@@ -219,7 +219,7 @@ func (m *Manager) checkFiles(id string, snap Snapshot) error {
 		if !info.Mode().IsRegular() || info.Size() != f.Size {
 			return fmt.Errorf("%w: %s has changed", ErrDamaged, f.Path)
 		}
-		// Older snapshots have no hash, so there is nothing to check (R20).
+		// Older snapshots have no hash, so there is nothing to check (SPEC 6.7).
 		if f.SHA256 == "" {
 			continue
 		}

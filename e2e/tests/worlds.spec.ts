@@ -170,7 +170,7 @@ test("imports a world by uploading a save", async ({ page, foreman }) => {
   expect(readdirSync(join(foreman.dataDir, "worlds"))).toEqual(["uploaded"]);
 });
 
-// SPEC 5.8 and R12: the display name changes, the id does not, and two
+// SPEC 5.2, 5.8: the display name changes, the id does not, and two
 // worlds may not share a name ignoring case.
 test("renames a world and refuses a duplicate name", async ({ page, foreman }) => {
   await createAdmin(page);

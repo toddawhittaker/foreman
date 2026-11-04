@@ -10,7 +10,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 )
 
-// SPEC 14.8, R6: a command that sets a secret is audited and shown with the
+// SPEC 8.4, 14.8: a command that sets a secret is audited and shown with the
 // secret replaced; every spelling the game accepts is covered.
 func TestAuditText(t *testing.T) {
 	cases := []struct{ command, want string }{
@@ -152,7 +152,7 @@ func TestConsoleSendsAndAudits(t *testing.T) {
 	}
 }
 
-// SPEC 14.8, R6: the game gets the command unchanged; the audit log, the
+// SPEC 8.4, 14.8: the game gets the command unchanged; the audit log, the
 // history and the page show it masked.
 func TestConsoleHidesASecret(t *testing.T) {
 	g := newGameRig(t, image21)
@@ -257,7 +257,7 @@ func (g *gameRig) openConsoleEvents(id string, cookie bool) *http.Response {
 	return resp
 }
 
-// SPEC 8.6, R19, R22: the log stream starts with the lines so far, then
+// SPEC 8.6: the log stream starts with the lines so far, then
 // sends each new line once; it turns away anyone not signed in.
 func TestConsoleLogStream(t *testing.T) {
 	g := newGameRig(t, image21)

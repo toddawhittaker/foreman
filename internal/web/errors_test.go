@@ -48,7 +48,7 @@ func TestWorldErrorMapsEveryRefusal(t *testing.T) {
 }
 
 // A world or snapshot folder that is a symlink is not a world or snapshot:
-// its pages answer 404, not a server fault (R17).
+// its pages answer 404, not a server fault (SPEC 14.5).
 func TestSymlinkedFoldersAreNotFound(t *testing.T) {
 	sc := newSecCase(t)
 	hn := sc.ls.harness

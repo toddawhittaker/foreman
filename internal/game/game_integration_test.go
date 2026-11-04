@@ -3,8 +3,7 @@
 package game
 
 // These tests run the real controller against the real Docker daemon and the
-// three pinned factoriotools/factorio images (SPEC 7, 8.1, 8.6, 8.7, 8.9,
-// R25 to R35). They are run by `make test-game`, never by `make verify`.
+// three pinned factoriotools/factorio images (SPEC 7, 8.1, 8.6, 8.7, 8.9). They are run by `make test-game`, never by `make verify`.
 // No game client can join, so a player's join and leave are not covered.
 
 import (
@@ -43,7 +42,7 @@ var gameTags = []struct {
 func TestRealGame(t *testing.T) {
 	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
 	e := newGameEnv(t)
-	// The Makefile passes its pinned images, so the pins are written down once (R32).
+	// The Makefile passes its pinned images, so the pins are written down once (STACK 1).
 	e.images = map[string]string{}
 	for _, g := range gameTags {
 		e.images[g.tag] = g.image
@@ -292,7 +291,7 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 	ctx := context.Background()
 	c, stopMonitor := e.controller(t)
 
-	// Two saves; the newer one is not named like any fixed name (R33).
+	// Two saves; the newer one is not named like any fixed name (SPEC 4.3).
 	main := e.newWorld(t, tag, version, "main", fixture, map[string]time.Duration{
 		"older.zip": 3 * time.Hour, "newer.zip": 2 * time.Hour,
 	})
@@ -326,7 +325,7 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		}
 	})
 
-	step("2a latest-save start loads the newest save (R33)", func(t *testing.T) {
+	step("2a latest-save start loads the newest save (SPEC 4.3)", func(t *testing.T) {
 		st := c.Status(main)
 		if st.Save != "newer.zip" {
 			t.Fatalf("loaded %q, want newer.zip", st.Save)
@@ -351,7 +350,7 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 			t.Fatalf("/time: %v", err)
 		}
 		t.Logf("/time replied: %q", reply)
-		// The first /c on a fresh save may reply with nothing (SPEC R25 evidence);
+		// The first /c on a fresh save may reply with nothing (internal/game/testdata/README.md);
 		// the second must answer.
 		lua := "/c rcon.print(1 + 1)"
 		for range 2 {
@@ -434,7 +433,7 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		}
 	})
 
-	step("2b a chosen save loads, then the choice is cleared (R4)", func(t *testing.T) {
+	step("2b a chosen save loads, then the choice is cleared (SPEC 7.11)", func(t *testing.T) {
 		if err := e.worlds.SetLoadSave(main, "older.zip"); err != nil {
 			t.Fatal(err)
 		}

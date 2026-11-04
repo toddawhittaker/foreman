@@ -331,7 +331,7 @@ func (m *Manager) PrepareLoad(id string) (string, error) {
 }
 
 // ClearLoadSave resets which save loads to the newest, once the start that
-// loaded name has reached the game (R4). It does nothing when the choice
+// loaded name has reached the game (SPEC 7.11). It does nothing when the choice
 // has changed since, so a choice made after the start is kept. The caller
 // holds Lock(id).
 func (m *Manager) ClearLoadSave(id, name string) error {

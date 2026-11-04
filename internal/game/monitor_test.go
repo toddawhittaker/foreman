@@ -21,7 +21,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// SPEC 8.7, R13, R27: an exit nobody asked for is a crash, found by the
+// SPEC 8.7: an exit nobody asked for is a crash, found by the
 // restart count, even when the exit code is 0 (as 1.1 gives).
 func TestCrashDetected(t *testing.T) {
 	r := newRig(t, rigOptions{})
@@ -173,7 +173,7 @@ func TestReattachAfterForemanRestart(t *testing.T) {
 	}
 }
 
-// R2: containers of another install are not this Foreman's.
+// SPEC 4.3: containers of another install are not this Foreman's.
 func TestOtherInstallIgnored(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	r.game.Daemon().Seed(dockertest.Container{Name: "foreman-elsewhere", Status: "running",
@@ -181,7 +181,7 @@ func TestOtherInstallIgnored(t *testing.T) {
 	eventually(t, func() bool { return r.c.Status("elsewhere").State == StateStopped }, "the first look")
 }
 
-// R16: when Docker cannot be reached the state is unknown, with the reason.
+// SPEC 7.1: when Docker cannot be reached the state is unknown, with the reason.
 func TestDockerUnreachable(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Lost")
@@ -283,7 +283,7 @@ func TestWatchHasNoGapsOrRepeats(t *testing.T) {
 	}
 }
 
-// SPEC 8.1, R18: RCON decides who is on; the log gives since when.
+// SPEC 8.1: RCON decides who is on; the log gives since when.
 func TestPlayers(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Players")

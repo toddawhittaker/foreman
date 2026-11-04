@@ -26,7 +26,7 @@ func waitRuns(t *testing.T, ok func() bool) {
 	}
 }
 
-// R38: an image download holds no world lock, so a start asked for during
+// An image download holds no world lock, so a start asked for during
 // it is the world's result, not an aside.
 func TestStartDuringDownloadIsTheResult(t *testing.T) {
 	g := newGameRuns()
@@ -51,7 +51,7 @@ func TestStartDuringDownloadIsTheResult(t *testing.T) {
 	}
 }
 
-// R38: a download asked for while a start runs, and one that finishes after
+// A download asked for while a start runs, and one that finishes after
 // it, never hide the start's result.
 func TestDownloadNeverHidesAnActionsResult(t *testing.T) {
 	g := newGameRuns()

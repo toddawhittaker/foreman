@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// R12: restoring a live world to a snapshot whose name another world now
+// SPEC 5.2: restoring a live world to a snapshot whose name another world now
 // has would give two worlds one name, so it is refused before anything is
 // written, the "Before restore" snapshot included.
 func TestRestoreLiveWorldRefusesANameAnotherWorldNowHas(t *testing.T) {
@@ -170,7 +170,7 @@ func TestAutoSnapshotSucceedsWhenRetentionFails(t *testing.T) {
 	}
 }
 
-// R20: a save hard-linked into a snapshot and rewritten in place changes
+// SPEC 6.7: a save hard-linked into a snapshot and rewritten in place changes
 // the snapshot too. Restore notices by the recorded hash and refuses,
 // naming the file, before it writes anything.
 func TestRestoreRefusesASnapshotRewrittenInPlace(t *testing.T) {
@@ -213,7 +213,7 @@ func TestRestoreRefusesASnapshotRewrittenInPlace(t *testing.T) {
 	}
 }
 
-// R20: a hash is reused when the file's inode, size and time are
+// SPEC 6.7: a hash is reused when the file's inode, size and time are
 // unchanged, and read afresh when they are not.
 func TestSnapshotHashReuse(t *testing.T) {
 	m, _ := newTestManager(t)
@@ -259,7 +259,7 @@ func TestSnapshotHashReuse(t *testing.T) {
 	}
 }
 
-// R20: a snapshot from before hashes were recorded still restores.
+// SPEC 6.7: a snapshot from before hashes were recorded still restores.
 func TestRestoreSnapshotWithoutHashes(t *testing.T) {
 	m, _ := newTestManager(t)
 	id := seedWorld(t, m)

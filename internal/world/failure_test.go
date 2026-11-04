@@ -19,7 +19,7 @@ import (
 // These tests break the disk and the process partway through an operation
 // and check the vision's "never lose a save": a failed snapshot means the
 // operation does not run (SPEC 6.2), a failure leaves nothing half-done,
-// and startup recovery settles a crash (R9).
+// and startup recovery settles a crash (SPEC 6.5).
 
 // tinyFSEnv marks a test process already running on a small filesystem.
 const tinyFSEnv = "FOREMAN_TEST_TINY_FS"
@@ -157,7 +157,7 @@ func TestDiskFullMidSnapshot(t *testing.T) {
 	}
 }
 
-// SPEC 6.2, 6.5, R9: a disk that fills partway through a restore leaves the
+// SPEC 6.2, 6.5: a disk that fills partway through a restore leaves the
 // world either exactly as it was or exactly as the snapshot recorded it,
 // with no leftovers; and the world never changes unless the "Before
 // restore" snapshot exists first.
@@ -224,7 +224,7 @@ func TestDiskFullMidRestore(t *testing.T) {
 	}
 }
 
-// SPEC 5.5, R19: a disk that fills partway through an import leaves no
+// SPEC 5.5, 6.11: a disk that fills partway through an import leaves no
 // world, no staging folder, and the inbox folder as it was.
 func TestDiskFullMidImport(t *testing.T) {
 	if !onTinyFS(t, "size=8m,nr_inodes=400") {
@@ -277,7 +277,7 @@ func copyTree(t *testing.T, from, to string) map[string]string {
 	return diskTree(t, to)
 }
 
-// R9: a crash at each step of a restore is settled by Recover: before the
+// SPEC 6.5: a crash at each step of a restore is settled by Recover: before the
 // swap the world is as it was, after it the world is the snapshot, and
 // nothing half-done is left. Recover run twice changes nothing more.
 func TestCrashAtEachRestoreStepIsRecovered(t *testing.T) {
@@ -383,7 +383,7 @@ func TestCrashAtEachRestoreStepIsRecovered(t *testing.T) {
 	}
 }
 
-// R15: while one admin's operation holds a world, every other change to it
+// While one admin's operation holds a world, every other change to it
 // is refused at once with the busy error and changes nothing.
 func TestBusyWorldRefusesEveryChange(t *testing.T) {
 	m, _ := newTestManager(t)
@@ -416,7 +416,7 @@ func TestBusyWorldRefusesEveryChange(t *testing.T) {
 	sameDisk(t, "data folder", diskTree(t, dataDir(m)), before)
 }
 
-// R15 and "never lose a save": two admins hammering one world at once get
+// Never lose a save: two admins hammering one world at once get
 // either success or the busy error, and the world is whole afterwards, with
 // every snapshot restorable.
 func TestConcurrentChangesNeverCorruptAWorld(t *testing.T) {

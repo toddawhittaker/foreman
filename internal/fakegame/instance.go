@@ -210,8 +210,9 @@ func (in *instance) writeLocked(text, saveFrom string) {
 	in.g.daemon.EmitLog(in.id, docker.Stdout, text)
 }
 
-// The format of a player's reply and of join and leave lines has not been
-// seen on a real server yet (internal/game/testdata/README.md, section 5).
+// The join and leave lines follow what a real 2.1.24 server printed
+// (internal/game/testdata/2.1.24/join-leave.log). The reply to
+// "/players online" with players listed has not been seen on a real server.
 func (in *instance) reply(command string) string {
 	in.g.mu.Lock()
 	in.g.commands[in.name] = append(in.g.commands[in.name], command)

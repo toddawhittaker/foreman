@@ -128,7 +128,7 @@ func TestStopWhenStopped(t *testing.T) {
 	}
 }
 
-// SPEC 7.7, R28: a forced stop kills, does not save, and stays stopped.
+// SPEC 7.7: a forced stop kills, does not save, and stays stopped.
 func TestForceStop(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Force")
@@ -232,7 +232,7 @@ func TestRestartRefusedBeforeStopping(t *testing.T) {
 	}
 }
 
-// SPEC 6.10, R9: a snapshot of a running world saves first.
+// SPEC 6.10: a snapshot of a running world saves first.
 func TestSnapshotOfRunningWorld(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Snap")
@@ -277,7 +277,7 @@ func TestSnapshotOfStoppedWorld(t *testing.T) {
 	}
 }
 
-// SPEC 6.5, R9: restoring a running world stops it gracefully, restores
+// SPEC 6.5: restoring a running world stops it gracefully, restores
 // (with the before-restore snapshot as the undo) and starts it again.
 func TestRestoreRunningWorld(t *testing.T) {
 	r := newRig(t, rigOptions{})
@@ -334,7 +334,7 @@ func TestRestoreMissingSnapshotKeepsGameRunning(t *testing.T) {
 	}
 }
 
-// SPEC 7.6, R40: the countdown is chosen per action.
+// SPEC 7.6: the countdown is chosen per action.
 func TestStopCountdownPerAction(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Per action")
@@ -350,7 +350,7 @@ func TestStopCountdownPerAction(t *testing.T) {
 	}
 }
 
-// R40: a zero countdown warns nobody.
+// SPEC 7.6: a zero countdown warns nobody.
 func TestStopWithoutCountdown(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("No countdown")
