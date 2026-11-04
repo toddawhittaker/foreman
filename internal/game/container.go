@@ -371,19 +371,19 @@ func (c *Controller) readMeta(id string) (world.Meta, error) {
 	return world.ReadMeta(root)
 }
 
-// imageFor returns the pinned image for a game version, by its major and
-// minor number (SPEC 4.2).
+// ImageRef is the image that runs a game version: the exact tag, as the
+// images are named on Docker Hub (SPEC 4.2, 10.1; ADR 0005).
+func ImageRef(version string) string { return "factoriotools/factorio:" + version }
+
+// imageFor returns the image for a supported game version.
 func (c *Controller) imageFor(gameVersion string) (string, error) {
-	parts := strings.SplitN(gameVersion, ".", 3)
-	if len(parts) >= 2 {
-		if ref, ok := c.images[parts[0]+"."+parts[1]]; ok {
-			return ref, nil
-		}
+	if !world.SupportedGameVersion(gameVersion) {
+		return "", fmt.Errorf("there is no game image for Factorio %s", gameVersion)
 	}
-	return "", fmt.Errorf("there is no game image for Factorio %s", gameVersion)
+	return ImageRef(gameVersion), nil
 }
 
-// ImageFor returns the pinned image reference a world runs, and whether
+// ImageFor returns the image reference a world runs, and whether
 // Docker has it (SPEC 3.7). The server page uses it to offer the download.
 func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, present bool, err error) {
 	meta, err := c.readMeta(id)

@@ -234,12 +234,12 @@ func TestGameNetwork(t *testing.T) {
 		})
 	}
 	c, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: r.data,
-		Images: testImages, DockerHost: "tcp://socket-proxy:2375", TrustedProxies: proxies})
+		DockerHost: "tcp://socket-proxy:2375", TrustedProxies: proxies})
 	if err != nil || !c.dockerTCP || c.dockerHost != "socket-proxy" || len(c.proxies) != 1 {
 		t.Errorf("Config's DockerHost and TrustedProxies were not taken: %v", err)
 	}
 	if _, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: r.data,
-		Images: testImages, Network: "host"}); err == nil {
+		Network: "host"}); err == nil {
 		t.Error("FOREMAN_GAME_NETWORK=host was accepted (SPEC 14.4)")
 	}
 }
@@ -330,21 +330,9 @@ func TestGameNetworkIPv6(t *testing.T) {
 func TestNewRefusesBadHostPath(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	for _, p := range []string{"relative/data", "/srv/da:ta", "/srv/data/", "/srv/a,b"} {
-		if _, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: p, Images: testImages}); err == nil {
+		if _, err := New(Config{Docker: r.docker, Worlds: r.worlds, Audit: r.audit, HostDataDir: p}); err == nil {
 			t.Errorf("host data path %q was accepted", p)
 		}
-	}
-}
-
-func TestImageFor(t *testing.T) {
-	r := newRig(t, rigOptions{noRun: true})
-	for v, want := range map[string]string{"1.1.110": image11, "2.0.72": image20, "2.1.24": image21} {
-		if got, err := r.c.imageFor(v); err != nil || got != want {
-			t.Errorf("imageFor(%s) = %q, %v", v, got, err)
-		}
-	}
-	if _, err := r.c.imageFor("3.0.1"); err == nil {
-		t.Error("an unknown version got an image")
 	}
 }
 
@@ -514,27 +502,35 @@ func TestPullFailureShown(t *testing.T) {
 	}
 }
 
-// Fail safe: a save newer than the pinned image's game is a plain refusal,
-// before anything is created, and a restart refuses before stopping.
-func TestStartRefusesSaveNewerThanImage(t *testing.T) {
+// Fail safe: a save newer than the world's game version is a plain refusal
+// from the pre-start check, with no "Start anyway", before anything is
+// created; a restart refuses before stopping (SPEC 7.4, 10.1).
+func TestStartRefusesSaveNewerThanWorld(t *testing.T) {
 	r := newRig(t, rigOptions{})
-	id := r.newWorld("Too new") // world 2.1.24, save from 2.1.24
+	id := r.newWorld("Too new")
 	r.start(id)
-	older := "factoriotools/factorio:2.1.20@sha256:" + strings.Repeat("0", 64)
-	r.c.images = map[string]string{"1.1": image11, "2.0": image20, "2.1": older}
+	// The world's game goes back to 2.1.20, below the 2.1.24 save.
+	root, err := r.worlds.OpenWorld(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta, err := world.ReadMeta(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta.GameVersion = "2.1.20"
+	if err := world.WriteMeta(root, meta); err != nil {
+		t.Fatal(err)
+	}
+	_ = root.Close()
 
-	err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{Anyway: true})
-	if !errors.Is(err, ErrSaveNewerThanImage) {
-		t.Fatalf("got %v, want ErrSaveNewerThanImage", err)
-	}
-	for _, v := range []string{"2.1.24", "2.1.20"} {
-		if !strings.Contains(err.Error(), v) {
-			t.Errorf("message %q does not name %s", err, v)
-		}
-	}
+	err = r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{Anyway: true})
 	var pe *PrecheckError
-	if errors.As(err, &pe) {
-		t.Error("offered start anyway")
+	if !errors.As(err, &pe) || pe.Check.CanStartAnyway() {
+		t.Fatalf("got %v, want a refusal without Start anyway", err)
+	}
+	if len(pe.Check.Problems) != 1 || pe.Check.Problems[0].Kind != world.ProblemSaveNewer {
+		t.Errorf("problems %+v", pe.Check.Problems)
 	}
 	if r.container(id).Status != "running" {
 		t.Error("the restart stopped the game before refusing")
@@ -543,28 +539,27 @@ func TestStartRefusesSaveNewerThanImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	creates := len(r.calls("POST /containers/create"))
-	if err := r.c.Start(context.Background(), id, admin, StartOptions{}); !errors.Is(err, ErrSaveNewerThanImage) {
+	err = r.c.Start(context.Background(), id, admin, StartOptions{Anyway: true})
+	if !errors.As(err, &pe) || pe.Check.CanStartAnyway() {
 		t.Fatalf("start got %v", err)
 	}
 	if len(r.calls("POST /containers/create")) != creates {
-		t.Error("a container was created for a save the image cannot load")
+		t.Error("a container was created for a save the game cannot load")
 	}
-
-	// An image as new as the save starts.
-	r.c.images = testImages
-	r.start(id)
 }
 
-func TestImageVersion(t *testing.T) {
-	if v, ok := imageVersion(image20); !ok || v != [3]uint16{2, 0, 77} {
-		t.Errorf("got %v, %v", v, ok)
+func TestImageRef(t *testing.T) {
+	for v, want := range map[string]string{"1.1.110": image11, "2.0.72": "factoriotools/factorio:2.0.72", "2.1.24": image21} {
+		if got := ImageRef(v); got != want {
+			t.Errorf("ImageRef(%s) = %q, want %q", v, got, want)
+		}
+		if got, err := (&Controller{}).imageFor(v); err != nil || got != want {
+			t.Errorf("imageFor(%s) = %q, %v", v, got, err)
+		}
 	}
-	if v, ok := imageVersion("registry:5000/factorio:1.1.110"); !ok || v != [3]uint16{1, 1, 110} {
-		t.Errorf("got %v, %v", v, ok)
-	}
-	for _, ref := range []string{"registry:5000/factorio", "factorio:latest", "factorio:2.0", "factorio@sha256:ab"} {
-		if _, ok := imageVersion(ref); ok {
-			t.Errorf("%q read as a version", ref)
+	for _, v := range []string{"3.0.1", "2.1", "latest", "2.1.24@sha256:ab", ""} {
+		if _, err := (&Controller{}).imageFor(v); err == nil {
+			t.Errorf("imageFor(%q) gave an image", v)
 		}
 	}
 }

@@ -310,7 +310,7 @@ func TestRunningSwitchShowsSteps(t *testing.T) {
 func TestSwitchRefusalsHaveWords(t *testing.T) {
 	for _, err := range []error{
 		game.ErrSwitchSame, game.ErrSwitchNotActive, game.ErrSwitchNoTarget, game.ErrSwitchTargetRunning,
-		game.ErrSwitchUnavailable, world.ErrBusy, game.ErrSaveNewerThanImage, game.ErrImageMissing, game.ErrNetwork,
+		game.ErrSwitchUnavailable, world.ErrBusy, game.ErrImageMissing, game.ErrNetwork,
 	} {
 		status, msg := gameError(err)
 		if status != http.StatusConflict || msg == "" || !strings.HasSuffix(msg, ".") {

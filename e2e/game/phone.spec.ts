@@ -19,8 +19,9 @@ const password = "correct horse battery";
 const repo = join(import.meta.dirname, "..", "..");
 const dockerSocket = process.env.DOCKER_HOST?.replace(/^unix:\/\//, "") || "/var/run/docker.sock";
 
-// The pinned image, read from the one place it is written.
-const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
+// The image Foreman runs for a 2.1.24 world: the exact tag. make e2e-game has checked that the
+// tag on this host is the Makefile's pinned digest.
+const image21 = /^GAME_IMAGE_2_1\s*:=\s*([^\s@]+)/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
 
 // Not a world id anyone would pick, so the container is foreman-e3game-<random>.
 const worldID = "e3game-" + randomBytes(3).toString("hex");
@@ -86,6 +87,8 @@ async function startForeman() {
       // The Playwright container is on this run's own network, which the game joins too.
       FOREMAN_GAME_NETWORK: process.env.FOREMAN_E2E_GAME_NETWORK ?? "",
       FOREMAN_LISTEN: `127.0.0.1:${port}`,
+      HTTPS_PROXY: "http://127.0.0.1:9",
+      HTTP_PROXY: "http://127.0.0.1:9",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

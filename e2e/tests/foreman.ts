@@ -51,6 +51,9 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
       // The host path is given, so no Docker call is made.
       FOREMAN_HOST_DATA_DIR: dataDir,
       FOREMAN_LISTEN: `127.0.0.1:${port}`,
+      // Nothing in these tests may reach Docker Hub or factorio.com; port 9 refuses the connection.
+      HTTPS_PROXY: "http://127.0.0.1:9",
+      HTTP_PROXY: "http://127.0.0.1:9",
       ...env,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -169,8 +172,8 @@ export { expect };
 
 const repo = join(import.meta.dirname, "..", "..");
 
-// The image Foreman runs for 2.1 worlds, read from the one place it is pinned.
-export const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
+// The image Foreman runs for 2.1.24 worlds: the exact tag, with the Makefile's digest left off (SPEC 10.1).
+export const image21 = /^GAME_IMAGE_2_1\s*:=\s*([^\s@]+)/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
 
 export const adminPassword = "correct horse battery";
 
