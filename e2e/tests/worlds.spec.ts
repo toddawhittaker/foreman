@@ -208,6 +208,25 @@ test("choosing an unreadable folder after a readable one clears the filled field
   await checkPage(page);
 });
 
+// After a failed submit the server fills the version from the save; that
+// value is still cleared when an unreadable folder is chosen next.
+test("a version the server filled after a failed submit is cleared for an unreadable folder", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "good", "2.1.24-space-age.zip");
+  mkdirSync(join(foreman.dataDir, "import", "junk"), { recursive: true });
+  writeFileSync(join(foreman.dataDir, "import", "junk", "a.zip"), "not a zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await form.getByLabel(/good: /).check();
+  await form.getByLabel("Game version").fill("");
+  await form.getByRole("button", { name: "Import folder" }).click();
+  const back = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await expect(back.getByLabel("Game version")).toHaveValue("2.1.24");
+  await back.getByLabel(/junk: /).check();
+  await expect(back.getByLabel("Game version")).toHaveValue("");
+  await expect(back.getByLabel("Space Age is on")).not.toBeChecked();
+});
+
 test("imports a world by uploading a save", async ({ page, foreman }) => {
   await createAdmin(page);
   await page.goto("/import");

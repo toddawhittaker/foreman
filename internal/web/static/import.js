@@ -7,7 +7,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!version || !spaceAge) return;
   let edited = false;
   // filled is set while the fields hold values this script put there.
-  let filled = false;
+  // A form the server sent back after a failed submit may hold the chosen
+  // folder's values, filled from its save: those count as filled, not typed.
+  const checked = document.querySelector('input[name="folder"]:checked');
+  let filled = !!checked && !!checked.dataset.gameVersion &&
+    version.value === checked.dataset.gameVersion &&
+    spaceAge.checked === ("spaceAge" in checked.dataset);
   version.addEventListener("input", () => { edited = true; });
   spaceAge.addEventListener("change", () => { edited = true; });
 
