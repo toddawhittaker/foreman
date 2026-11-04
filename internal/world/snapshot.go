@@ -406,12 +406,12 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 // without following symlinks, so the link can never reach outside a root.
 // os.Root.Link only links within one root, hence golang.org/x/sys.
 func linkFile(src, dst *os.Root, name string) error {
-	sd, err := src.Open(path.Dir(name))
+	sd, err := openDirFile(src, path.Dir(name))
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sd.Close() }()
-	dd, err := dst.Open(path.Dir(name))
+	dd, err := openDirFile(dst, path.Dir(name))
 	if err != nil {
 		return err
 	}

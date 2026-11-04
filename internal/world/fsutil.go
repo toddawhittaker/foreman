@@ -95,10 +95,37 @@ func WriteFileAtomic(root *os.Root, name string, data []byte) error {
 	return err
 }
 
+// openDirFile opens folder dir inside root as a file, for a caller that
+// needs its descriptor. The game can swap a folder for a named pipe at any
+// time, so the open is non-blocking and directory-only, and the opened
+// file must be the folder that Lstat saw (SPEC 14.5). The caller closes it.
+func openDirFile(root *os.Root, dir string) (*os.File, error) {
+	linfo, err := root.Lstat(dir)
+	if err != nil {
+		return nil, err
+	}
+	if !linfo.IsDir() {
+		return nil, fmt.Errorf("%s: %w", dir, ErrNotFolder)
+	}
+	f, err := root.OpenFile(dir, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_DIRECTORY, 0)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil || !info.IsDir() || !os.SameFile(info, linfo) {
+		_ = f.Close()
+		if err == nil {
+			err = fmt.Errorf("%s: %w", dir, ErrNotFolder)
+		}
+		return nil, err
+	}
+	return f, nil
+}
+
 // SyncDir flushes folder dir inside root to disk, so a rename or new file
 // in it survives a crash.
 func SyncDir(root *os.Root, dir string) error {
-	d, err := root.Open(dir)
+	d, err := openDirFile(root, dir)
 	if err != nil {
 		return err
 	}
