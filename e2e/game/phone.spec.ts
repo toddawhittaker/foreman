@@ -10,7 +10,8 @@ import { randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 
 // The vision's phone scenario against the real 2.1 game: see who is on, warn
-// them, restart (VISION "Success looks like", SPEC 7, 8.1). It runs through
+// them, restart, and switch to another world and back with no save lost
+// (VISION "Success looks like", SPEC 7, 7.9, 8.1, 19.1). It runs through
 // `make e2e-game`, inside the Playwright image with the host's Docker socket.
 // No game client can join, so the list is only ever seen empty.
 
@@ -24,6 +25,9 @@ const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(join(repo,
 // Not a world id anyone would pick, so the container is foreman-e3game-<random>.
 const worldID = "e3game-" + randomBytes(3).toString("hex");
 const container = "foreman-" + worldID;
+// A second world for the switch scenario; its container shares the prefix make e2e-game cleans up.
+const worldBID = worldID + "-b";
+const containerB = "foreman-" + worldBID;
 // The path Foreman gives Docker for binds, so it must be the host's path:
 // the Makefile mounts the repository at its own path.
 const dataDir = join(repo, ".cache", "e2e-game", worldID);
@@ -56,10 +60,16 @@ function dockerCall(method: string, path: string): Promise<{ status: number; bod
   });
 }
 
-async function removeContainer() {
+// A container that is gone is not running.
+async function isRunning(name: string): Promise<boolean> {
+  const r = await dockerCall("GET", `/containers/${name}/json`);
+  return r.status === 200 && JSON.parse(r.body).State.Running === true;
+}
+
+async function removeContainer(name = container) {
   // Not found is fine: the test may have failed before it was made.
-  const r = await dockerCall("DELETE", `/containers/${container}?force=true&v=true`);
-  if (r.status !== 204 && r.status !== 404) throw new Error(`could not remove ${container}: ${r.status} ${r.body}`);
+  const r = await dockerCall("DELETE", `/containers/${name}?force=true&v=true`);
+  if (r.status !== 204 && r.status !== 404) throw new Error(`could not remove ${name}: ${r.status} ${r.body}`);
 }
 
 async function startForeman() {
@@ -107,21 +117,23 @@ async function startForeman() {
   };
 }
 
-// The active world, holding one real 2.1 save made without Space Age (SPEC 5.1).
-function seedWorld() {
-  const dir = join(dataDir, "worlds", worldID);
+// A world holding one real 2.1 save made without Space Age (SPEC 5.1). The
+// active one is also recorded as active.
+function seedWorld(id = worldID, name = "Phone", active = true) {
+  const dir = join(dataDir, "worlds", id);
   for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
   writeFileSync(
     join(dir, "world.json"),
-    JSON.stringify({ format_version: 1, name: "Phone", game_version: "2.1.24", space_age: false, created_at: "2026-11-01T10:00:00Z" }),
+    JSON.stringify({ format_version: 1, name, game_version: "2.1.24", space_age: false, created_at: "2026-11-01T10:00:00Z" }),
   );
-  const save = join(dir, "saves", "phone.zip");
+  const save = join(dir, "saves", id === worldID ? "phone.zip" : "other.zip");
   copyFileSync(join(repo, "internal", "savefile", "testdata", "2.1.24-no-space-age.zip"), save);
   const at = new Date(Date.now() - 3_600_000);
   utimesSync(save, at, at);
+  if (!active) return;
   const db = new DatabaseSync(join(dataDir, "foreman.db"));
   try {
-    db.prepare("INSERT INTO active_worlds (world_id, since) VALUES (?, ?)").run(worldID, 0);
+    db.prepare("INSERT INTO active_worlds (world_id, since) VALUES (?, ?)").run(id, 0);
   } finally {
     db.close();
   }
@@ -157,6 +169,13 @@ const stepsSeen = (page: Page): Promise<string[]> => page.evaluate(() => JSON.pa
 async function checkMidOperation(page: Page) {
   if (await page.locator(".steps").isVisible()) await checkPage(page);
   else console.log("NOTE the operation ended before its step list could be checked");
+}
+
+// The names on a world's Saves page, as a person sees them.
+async function savesOf(page: Page, base: string, id: string): Promise<string[]> {
+  await page.goto(`${base}/worlds/${id}/saves`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Saves of /);
+  return (await page.locator("table tbody tr td:first-child a").allTextContents()).map((t) => t.trim()).sort();
 }
 
 test("from a phone: start, see who is on, restart with a warning, stop", async ({ page }) => {
@@ -251,6 +270,97 @@ test("from a phone: start, see who is on, restart with a warning, stop", async (
     // The game outlives Foreman (SPEC 3.8), so remove it through Docker.
     await foreman.stop();
     await removeContainer();
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("from a phone: switch to another world and back with no save lost", async ({ page }) => {
+  const image = await dockerCall("GET", `/images/${encodeURIComponent(image21)}/json`);
+  expect(image.status, `the game image ${image21} is not on this host. Pull it with docker pull, then run again`).toBe(200);
+
+  const foreman = await startForeman();
+  try {
+    await page.addInitScript(noteSteps);
+    await page.goto(foreman.url + "/setup");
+    await page.getByLabel("Username").fill("admin");
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    await page.getByLabel("Confirm password").fill(password);
+    await page.getByRole("button", { name: "Create admin account" }).click();
+    await expect(page).toHaveURL(foreman.url + "/");
+    seedWorld();
+    seedWorld(worldBID, "Other", false);
+
+    const active = (name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+    await page.goto(foreman.url + "/");
+    await expect(badge(page)).toHaveText("Stopped", { timeout: 20_000 });
+    await page.getByRole("button", { name: "Start server" }).click();
+    await expect(badge(page)).toHaveText("Running", gameTimeout);
+    await expect(page.getByText("Nobody is online.")).toBeVisible({ timeout: 30_000 });
+
+    const aBefore = await savesOf(page, foreman.url, worldID);
+    const bBefore = await savesOf(page, foreman.url, worldBID);
+    expect(aBefore).toEqual(["phone.zip"]);
+    expect(bBefore).toEqual(["other.zip"]);
+
+    // Switch from A to B with a short countdown (SPEC 7.9).
+    const t0 = Date.now();
+    await page.goto(foreman.url + `/worlds/${worldBID}`);
+    await page.getByRole("link", { name: "Switch to this world" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Other");
+    await expect(page.getByRole("region", { name: /Switch from Phone to Other/ })).toBeVisible();
+    await checkPage(page);
+    await page.getByLabel("Countdown in seconds").fill("5");
+    await page.getByRole("button", { name: "Switch to Other" }).click();
+    await expect(page).toHaveURL(foreman.url + "/");
+    await checkMidOperation(page);
+    await expect(active("Other")).toBeVisible(gameTimeout);
+    await expect(badge(page)).toHaveText("Running", gameTimeout);
+    await expect(page.locator(".message--success").filter({ hasText: "The worlds are switched" })).toBeVisible(gameTimeout);
+    expect(await stepsSeen(page)).toEqual(
+      expect.arrayContaining([expect.stringContaining("Save the game"), expect.stringContaining("Take a snapshot of both worlds")]),
+    );
+    const toB = `switch A to B, to Running: ${Math.round((Date.now() - t0) / 1000)} s`;
+    test.info().annotations.push({ type: "timing", description: toB });
+    console.log("TIMING " + toB);
+    await expect(page.getByText("Nobody is online.")).toBeVisible({ timeout: 30_000 });
+    await checkPage(page);
+    expect(await isRunning(containerB)).toBe(true);
+    expect(await isRunning(container)).toBe(false);
+
+    // And back again.
+    const t1 = Date.now();
+    await page.goto(foreman.url + `/worlds/${worldID}`);
+    await page.getByRole("link", { name: "Switch to this world" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Phone");
+    await checkPage(page);
+    await page.getByLabel("Countdown in seconds").fill("5");
+    await page.getByRole("button", { name: "Switch to Phone" }).click();
+    await expect(page).toHaveURL(foreman.url + "/");
+    await expect(active("Phone")).toBeVisible(gameTimeout);
+    await expect(badge(page)).toHaveText("Running", gameTimeout);
+    await expect(page.locator(".message--success").filter({ hasText: "The worlds are switched" })).toBeVisible(gameTimeout);
+    const back = `switch B back to A, to Running: ${Math.round((Date.now() - t1) / 1000)} s`;
+    test.info().annotations.push({ type: "timing", description: back });
+    console.log("TIMING " + back);
+    await expect(page.getByRole("region", { name: "Status" })).toContainText("2.1.24");
+    await expect(page.getByText("Nobody is online.")).toBeVisible({ timeout: 30_000 });
+    await checkPage(page);
+    expect(await isRunning(container)).toBe(true);
+    expect(await isRunning(containerB)).toBe(false);
+
+    // No save was lost: every save from before is still listed (autosaves may be new).
+    for (const [id, before] of [[worldID, aBefore], [worldBID, bBefore]] as const) {
+      const after = await savesOf(page, foreman.url, id);
+      expect(after, `saves of ${id} after the round trip`).toEqual(expect.arrayContaining(before));
+    }
+    expect(foreman.logs()).not.toMatch(/"level":"ERROR"/);
+  } catch (e) {
+    await test.info().attach("foreman-log", { body: foreman.logs(), contentType: "text/plain" });
+    throw e;
+  } finally {
+    await foreman.stop();
+    await removeContainer(container);
+    await removeContainer(containerB);
     rmSync(dataDir, { recursive: true, force: true });
   }
 });
