@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -17,40 +18,63 @@ const (
 	refused // a trusted proxy named a user Foreman will not admit
 )
 
+// proxyStreamLimit is how long a live stream signed in by trusted headers
+// stays open. Its own headers never change, so only a reconnect through
+// the proxy checks the user again (SPEC 12.5, 16.3).
+const proxyStreamLimit = 5 * time.Minute
+
 // identify works out who made the request (SPEC 12.5, 12.8). Trusted
 // headers come first and need no cookie, since the proxy vouches for every
 // request. Otherwise the session cookie counts, when local sign-in is on.
 func (s *server) identify(r *http.Request) (store.User, signedIn, error) {
+	u, state, _, err := s.whoIs(r, s.sessions.Lookup)
+	return u, state, err
+}
+
+// whoIs is identify with the session check given. byProxy reports that
+// trusted headers named the user.
+func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Request) (int64, bool, error)) (u store.User, state signedIn, byProxy bool, err error) {
 	ctx := r.Context()
 	if s.cfg.AuthHeaders {
 		id := s.headers.Identify(r)
 		switch id.Outcome {
 		case auth.HeaderNotAllowed:
-			return store.User{}, refused, nil
+			return store.User{}, refused, false, nil
 		case auth.HeaderOK:
 			name, problem := checkUsername(id.Username)
 			if problem != "" {
-				return store.User{}, refused, nil
+				return store.User{}, refused, false, nil
 			}
 			u, err := s.headerUser(ctx, name)
 			if err != nil {
-				return store.User{}, nobody, err
+				return store.User{}, nobody, false, err
 			}
-			return u, isSignedIn, nil
+			return u, isSignedIn, true, nil
 		}
 	}
 	if !s.cfg.AuthLocal {
-		return store.User{}, nobody, nil
+		return store.User{}, nobody, false, nil
 	}
-	id, ok, err := s.sessions.Lookup(ctx, r)
+	id, ok, err := session(ctx, r)
 	if err != nil || !ok {
-		return store.User{}, nobody, err
+		return store.User{}, nobody, false, err
 	}
 	u, found, err := s.store.UserByID(ctx, id)
 	if err != nil || !found {
-		return store.User{}, nobody, err
+		return store.User{}, nobody, false, err
 	}
-	return u, isSignedIn, nil
+	return u, isSignedIn, false, nil
+}
+
+// stillSignedIn is a live stream's check at each heartbeat (SPEC 12.8,
+// 16.3). It never refreshes the session, since the user did not act, and
+// it ends a stream signed in by trusted headers after proxyStreamLimit.
+func (s *server) stillSignedIn(r *http.Request, opened time.Time) bool {
+	_, state, byProxy, err := s.whoIs(r, s.sessions.Check)
+	if err != nil || state != isSignedIn {
+		return false
+	}
+	return !byProxy || s.now().Sub(opened) < proxyStreamLimit
 }
 
 // headerUser finds the user a trusted proxy named, creating it on first

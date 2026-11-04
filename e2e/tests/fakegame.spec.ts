@@ -24,7 +24,8 @@ test("Foreman serves /worlds with the fake game as its Docker host", async ({ pa
   await page.getByLabel("Password", { exact: true }).fill("correct horse battery");
   await page.getByLabel("Confirm password").fill("correct horse battery");
   await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
+  await page.goto("/worlds");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Worlds");
   expect(foreman.logs()).not.toMatch(/level=ERROR/);
   // Reported, not asserted: with FOREMAN_HOST_DATA_DIR set Foreman makes no

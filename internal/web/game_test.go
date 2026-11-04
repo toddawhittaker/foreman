@@ -474,6 +474,18 @@ func TestEventsStream(t *testing.T) {
 	}
 }
 
+// With server control, setup and sign-in land on the Server page; without
+// it (TestSetupCreatesAdminAndSignsIn) they land on the world list.
+func TestSignInLandsOnTheServerPage(t *testing.T) {
+	fake := fakegame.New(t, fakegame.Config{Images: []string{image21}})
+	hn := newHarnessWith(t, nil, func(worlds *world.Manager, st *store.Store) *game.Controller {
+		c, _ := startController(t, fake.Host(), worlds, st, io.Discard)
+		return c
+	})
+	hn.wantRedirect(hn.post(PathSetup, url.Values{"username": {"alice"}, "password": {testPassword}, "confirm": {testPassword}}), PathServer)
+	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword)), PathServer)
+}
+
 func TestDurationText(t *testing.T) {
 	cases := map[time.Duration]string{
 		0:                                 "less than 1 min",

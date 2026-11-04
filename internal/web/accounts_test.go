@@ -23,7 +23,7 @@ func signInForm(user, pw string) url.Values {
 
 func TestEmptyDatabaseSendsVisitorsToSetup(t *testing.T) {
 	hn := newHarness(t, nil)
-	hn.wantRedirect(hn.get(PathHome), PathSetup)
+	hn.wantRedirect(hn.get(PathWorlds), PathSetup)
 }
 
 func TestSetupCreatesAdminAndSignsIn(t *testing.T) {
@@ -32,7 +32,7 @@ func TestSetupCreatesAdminAndSignsIn(t *testing.T) {
 		t.Fatalf("setup form: %d", rec.Code)
 	}
 	rec := hn.post(PathSetup, url.Values{"username": {"  alice "}, "password": {testPassword}, "confirm": {testPassword}})
-	hn.wantRedirect(rec, PathHome)
+	hn.wantRedirect(rec, PathWorlds)
 	c := sessionCookie(rec)
 	if c == nil || c.Value == "" {
 		t.Fatal("setup set no session cookie")
@@ -41,7 +41,7 @@ func TestSetupCreatesAdminAndSignsIn(t *testing.T) {
 	if err != nil || !ok || u.Role != "admin" || u.PasswordHash == "" || strings.Contains(u.PasswordHash, testPassword) {
 		t.Fatalf("stored user: %+v ok=%v err=%v", u, ok, err)
 	}
-	home := hn.get(PathHome, withCookie(c))
+	home := hn.get(PathWorlds, withCookie(c))
 	if home.Code != http.StatusOK || !strings.Contains(home.Body.String(), "alice") {
 		t.Fatalf("home after setup: %d", home.Code)
 	}
@@ -116,12 +116,12 @@ func TestSignInSucceeds(t *testing.T) {
 		t.Fatalf("sign-in form: %d", rec.Code)
 	}
 	rec := hn.post(PathSignIn, signInForm(" alice ", testPassword))
-	hn.wantRedirect(rec, PathHome)
+	hn.wantRedirect(rec, PathWorlds)
 	c := sessionCookie(rec)
 	if c == nil || !c.HttpOnly || c.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("cookie: %+v", c)
 	}
-	if home := hn.get(PathHome, withCookie(c)); home.Code != http.StatusOK {
+	if home := hn.get(PathWorlds, withCookie(c)); home.Code != http.StatusOK {
 		t.Fatalf("home: %d", home.Code)
 	}
 }
@@ -185,7 +185,7 @@ func TestSignInRateLimitReturns429(t *testing.T) {
 		t.Error("a failed or refused sign-in logged the username")
 	}
 	hn.clock.Advance(auth.LimitWindow + time.Minute)
-	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword)), PathHome)
+	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword)), PathWorlds)
 }
 
 // SPEC 12.4: a burst of parallel guesses cannot check more passwords than
@@ -233,7 +233,7 @@ func TestSignOutEndsSession(t *testing.T) {
 		t.Errorf("cookie not cleared: %+v", cleared)
 	}
 	// The old cookie is dead on the server side too.
-	hn.wantRedirect(hn.get(PathHome, withCookie(c)), PathSignIn)
+	hn.wantRedirect(hn.get(PathWorlds, withCookie(c)), PathSignIn)
 	// Signing out with no session is harmless.
 	hn.wantRedirect(hn.post(PathSignOut, nil), PathSignedOut)
 }
@@ -244,16 +244,16 @@ func TestIdleSessionExpires(t *testing.T) {
 	c := sessionCookie(hn.post(PathSignIn, signInForm("alice", testPassword)))
 
 	hn.clock.Advance(6 * 24 * time.Hour)
-	if rec := hn.get(PathHome, withCookie(c)); rec.Code != http.StatusOK {
+	if rec := hn.get(PathWorlds, withCookie(c)); rec.Code != http.StatusOK {
 		t.Fatalf("after 6 days idle: %d", rec.Code)
 	}
 	// That request refreshed the session, so another 6 days is still fine.
 	hn.clock.Advance(6 * 24 * time.Hour)
-	if rec := hn.get(PathHome, withCookie(c)); rec.Code != http.StatusOK {
+	if rec := hn.get(PathWorlds, withCookie(c)); rec.Code != http.StatusOK {
 		t.Fatalf("activity did not extend the session: %d", rec.Code)
 	}
 	hn.clock.Advance(7*24*time.Hour + time.Minute)
-	hn.wantRedirect(hn.get(PathHome, withCookie(c)), PathSignIn)
+	hn.wantRedirect(hn.get(PathWorlds, withCookie(c)), PathSignIn)
 }
 
 func TestSignInRehashesOldHash(t *testing.T) {
@@ -266,7 +266,7 @@ func TestSignInRehashesOldHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword)), PathHome)
+	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword)), PathWorlds)
 	got, _, _ := hn.store.UserByID(context.Background(), u.ID)
 	if got.PasswordHash == weak {
 		t.Fatal("the weak hash was not replaced")
@@ -311,7 +311,7 @@ func TestCrossOriginPostsAreRefused(t *testing.T) {
 	if rec := hn.post(PathSignOut, nil, withCookie(c), cross); rec.Code != http.StatusForbidden {
 		t.Fatalf("cross-site sign-out: %d", rec.Code)
 	}
-	if rec := hn.get(PathHome, withCookie(c)); rec.Code != http.StatusOK {
+	if rec := hn.get(PathWorlds, withCookie(c)); rec.Code != http.StatusOK {
 		t.Error("the refused sign-out still ended the session")
 	}
 	// A foreign Origin is refused too, and the same-origin form works.
@@ -320,7 +320,7 @@ func TestCrossOriginPostsAreRefused(t *testing.T) {
 		t.Fatalf("foreign origin: %d", rec.Code)
 	}
 	same := withHeader("Sec-Fetch-Site", "same-origin")
-	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword), same), PathHome)
+	hn.wantRedirect(hn.post(PathSignIn, signInForm("alice", testPassword), same), PathWorlds)
 }
 
 func TestSweepOnceRemovesIdleSessions(t *testing.T) {

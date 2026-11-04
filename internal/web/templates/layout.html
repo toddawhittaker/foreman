@@ -18,7 +18,7 @@
   <a href="{{serverPath}}" class="product">Foreman</a>
   {{- if .User}}
   <nav aria-label="Main">
-    <ul class="tabs">
+    <ul class="tabs" role="list">
       <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>Server</a></li>
       <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>Console</a></li>
       <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>Worlds</a></li>

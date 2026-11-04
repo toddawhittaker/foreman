@@ -303,3 +303,27 @@ type failingWrites struct {
 
 func (f *failingWrites) TouchSession(context.Context, string, time.Time) error { return f.err }
 func (f *failingWrites) DeleteSession(context.Context, string) error           { return f.err }
+
+// SPEC 12.8: a live page's heartbeat checks its session without using it,
+// so a page left open does not keep the session alive for ever.
+func TestCheckDoesNotKeepSessionAlive(t *testing.T) {
+	ctx := context.Background()
+	m, st, clk := setup(false)
+	ck := start(t, m)
+	for range 47 { // every 30 minutes for 23.5 hours
+		clk.Advance(30 * time.Minute)
+		if id, ok, err := m.Check(ctx, withCookie(ck)); id != 7 || !ok || err != nil {
+			t.Fatalf("id=%d ok=%v err=%v", id, ok, err)
+		}
+	}
+	if st.touches != 0 {
+		t.Errorf("Check touched the session %d times", st.touches)
+	}
+	clk.Advance(time.Hour)
+	if _, ok, err := m.Check(ctx, withCookie(ck)); ok || err != nil {
+		t.Errorf("after the idle limit: ok=%v err=%v", ok, err)
+	}
+	if _, ok, _ := m.Lookup(ctx, withCookie(ck)); ok {
+		t.Error("the session outlived its idle limit")
+	}
+}

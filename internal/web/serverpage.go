@@ -25,6 +25,8 @@ type ServerPage struct {
 	// Result is how the last action ended, when HaveResult.
 	Result     actionResult
 	HaveResult bool
+	// Others are the actions asked for while it ran, shown apart (R38).
+	Others []actionResult
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -263,12 +265,50 @@ func failureText(err error) string {
 	return msg
 }
 
+// actionNames name each action in a sentence.
+var actionNames = map[string]string{
+	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
+	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
+}
+
+// OtherErrors words the errors of the actions asked for while another ran.
+func (p ServerPage) OtherErrors() []string {
+	var out []string
+	for _, res := range p.Others {
+		if res.Err == nil {
+			continue
+		}
+		name := actionNames[res.Action]
+		if name == "" {
+			name = "action"
+		}
+		out = append(out, "The "+name+" asked for during another action did not finish: "+failureText(res.Err))
+	}
+	return out
+}
+
 // Done says what the last action did, when that is not otherwise visible.
 func (p ServerPage) Done() string {
 	if !p.HaveResult || p.Result.Err != nil || p.Result.Action != game.ActionRestore {
 		return ""
 	}
 	return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
+}
+
+// resultAnnouncement is what a live page reads out for the results the
+// page shows: errors first, then a restore that finished (DESIGN 7.5).
+func resultAnnouncement(p ServerPage) string {
+	var said []string
+	if f := p.Failure(); f != nil {
+		said = append(said, "Error: "+f.Message)
+	}
+	for _, e := range p.OtherErrors() {
+		said = append(said, "Error: "+e)
+	}
+	if p.Done() != "" {
+		said = append(said, "The world is restored.")
+	}
+	return strings.Join(said, " ")
 }
 
 // Announcement is the sentence a live page reads out when the state

@@ -73,7 +73,7 @@ func TestLogsNeverHoldSecrets(t *testing.T) {
 	const wrong = "wrong password entirely"
 	rec := hn.post(PathSetup, url.Values{"username": {"alice"}, "password": {testPassword}, "confirm": {testPassword}})
 	setupToken := sessionCookie(rec).Value
-	hn.get(PathHome, withCookie(sessionCookie(rec)), withHeader("Authorization", "Bearer sekrit-bearer"))
+	hn.get(PathWorlds, withCookie(sessionCookie(rec)), withHeader("Authorization", "Bearer sekrit-bearer"))
 	hn.post(PathSignOut, nil, withCookie(sessionCookie(rec)))
 	in := hn.post(PathSignIn, signInForm("alice", testPassword))
 	signInToken := sessionCookie(in).Value

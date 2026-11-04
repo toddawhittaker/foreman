@@ -2,11 +2,12 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { createInterface } from "node:readline";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 // Shared by every spec that needs a Foreman process of its own.
 
@@ -159,6 +160,52 @@ export const test = base.extend<{
 });
 
 export { expect };
+
+const repo = join(import.meta.dirname, "..", "..");
+
+// The image Foreman runs for 2.1 worlds, read from the one place it is pinned.
+export const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
+
+export const adminPassword = "correct horse battery";
+
+// Creates the first admin, "admin", through the setup page; it lands on the
+// Server page (managed mode has server control).
+export async function createAdmin(page: Page) {
+  await page.goto("/setup");
+  await page.getByLabel("Username").fill("admin");
+  await page.getByLabel("Password", { exact: true }).fill(adminPassword);
+  await page.getByLabel("Confirm password").fill(adminPassword);
+  await page.getByRole("button", { name: "Create admin account" }).click();
+  await expect(page).toHaveURL("/");
+}
+
+// Makes the active world "base", a 2.1 world holding one real save (SPEC
+// 5.1: a world is a folder a person can make by hand), with a game password
+// when one is given.
+export function seedWorld(
+  f: Foreman,
+  opts: { fixture?: string; spaceAge?: boolean; gamePassword?: string } = {},
+) {
+  const dir = join(f.dataDir, "worlds", "base");
+  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
+  writeFileSync(
+    join(dir, "world.json"),
+    JSON.stringify({ format_version: 1, name: "Base", game_version: "2.1.24", space_age: opts.spaceAge ?? false, created_at: "2026-11-01T10:00:00Z" }),
+  );
+  if (opts.gamePassword) {
+    writeFileSync(join(dir, "config", "server-settings.json"), JSON.stringify({ name: "Base", game_password: opts.gamePassword }));
+  }
+  const save = join(dir, "saves", "base.zip");
+  copyFileSync(join(repo, "internal", "savefile", "testdata", opts.fixture ?? "2.1.24-no-space-age.zip"), save);
+  const at = new Date(Date.now() - 3_600_000);
+  utimesSync(save, at, at);
+  const db = new DatabaseSync(join(f.dataDir, "foreman.db"));
+  try {
+    db.prepare("INSERT INTO active_worlds (world_id, since) VALUES (?, ?)").run("base", 0);
+  } finally {
+    db.close();
+  }
+}
 
 // Every page visited passes these (SPEC 17.1 and 17.2, DESIGN 10).
 export async function checkPage(page: Page) {

@@ -20,7 +20,6 @@ import (
 // Paths the templates link to or post to. The router serves these.
 const (
 	PathWorlds    = "/worlds"
-	PathHome      = PathWorlds // where sign-in lands
 	PathSignIn    = "/signin"
 	PathSetup     = "/setup"
 	PathSignOut   = "/signout"
@@ -254,7 +253,6 @@ func NewRenderer() (*Renderer, error) {
 	}
 	funcs := template.FuncMap{
 		"static":      r.staticURL,
-		"homePath":    func() string { return PathHome },
 		"serverPath":  func() string { return PathServer },
 		"consolePath": func() string { return PathConsole },
 		"worldsPath":  func() string { return PathWorlds },

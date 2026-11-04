@@ -1,6 +1,7 @@
 {{define "title"}}Console{{end}}
 
-{{define "scripts"}}<script src="{{static "log.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
+<script src="{{static "log.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -60,7 +61,7 @@
   </form>
   {{- if .History}}
   <div class="log" tabindex="0" role="region" aria-label="Console history" data-follow-end>
-    <ol class="console-history">
+    <ol class="console-history" role="list">
       {{- range .History}}
       <li{{if .Last}} id="last-reply"{{end}}>
         <p class="console-command"><span class="visually-hidden">You sent </span>{{.Command}}</p>

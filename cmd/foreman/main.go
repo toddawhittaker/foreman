@@ -123,6 +123,7 @@ func serve(cfg *config.Config) error {
 			Docker: dockerClient, Worlds: worlds, Audit: st,
 			HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
 			Images: gameImages, Network: cfg.GameNetwork,
+			DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
 			SelfID: docker.SelfID(docker.MountinfoPath, hostname),
 			Log:    slog.Default(),
 		})

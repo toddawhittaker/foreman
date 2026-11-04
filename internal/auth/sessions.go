@@ -95,6 +95,16 @@ func requestTokenHash(r *http.Request) string {
 // expired session is deleted). A live session has its last-seen time
 // refreshed at most once a minute. err means the store failed.
 func (m *SessionManager) Lookup(ctx context.Context, r *http.Request) (userID int64, ok bool, err error) {
+	return m.lookup(ctx, r, true)
+}
+
+// Check is Lookup without the refresh, for a request the user did not
+// make, such as a live page's heartbeat (SPEC 12.8).
+func (m *SessionManager) Check(ctx context.Context, r *http.Request) (userID int64, ok bool, err error) {
+	return m.lookup(ctx, r, false)
+}
+
+func (m *SessionManager) lookup(ctx context.Context, r *http.Request, touch bool) (userID int64, ok bool, err error) {
 	h := requestTokenHash(r)
 	if h == "" {
 		return 0, false, nil
@@ -114,7 +124,7 @@ func (m *SessionManager) Lookup(ctx context.Context, r *http.Request) (userID in
 		}
 		return 0, false, nil
 	}
-	if idle >= touchEvery {
+	if touch && idle >= touchEvery {
 		if err := m.store.TouchSession(ctx, h, now); err != nil {
 			return 0, false, fmt.Errorf("auth: touch session: %w", err)
 		}

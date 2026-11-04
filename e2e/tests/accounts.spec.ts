@@ -10,7 +10,7 @@ async function createAdmin(page: Page) {
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
 }
 
 async function signIn(page: Page, user: string, pw: string) {
@@ -41,7 +41,7 @@ test("first run: setup, sign out, sign in again", async ({ page }) => {
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
   await expect(page.getByText(`Signed in as ${admin}`)).toBeVisible();
   await checkPage(page);
 
@@ -66,7 +66,7 @@ test("first run: setup, sign out, sign in again", async ({ page }) => {
   await expect(page.locator("main")).not.toContainText(/password is (wrong|incorrect)/i);
 
   await signIn(page, admin, password);
-  await expect(page).toHaveURL("/worlds");
+  await expect(page).toHaveURL("/");
   await expect(page.getByText(`Signed in as ${admin}`)).toBeVisible();
 });
 
