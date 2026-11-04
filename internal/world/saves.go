@@ -9,6 +9,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 )
@@ -155,7 +156,9 @@ func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := root.Open(p)
+	// Non-blocking so a pipe swapped in after the Lstat cannot hang the open;
+	// reads of the regular file that SameFile confirms never block.
+	f, err := root.OpenFile(p, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil, ErrSaveNotFound
 	}

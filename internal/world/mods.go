@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -14,13 +13,6 @@ import (
 
 // ModListFile is the game's list of enabled mods, inside the mods folder.
 const ModListFile = "mod-list.json"
-
-// maxModList caps how much of mod-list.json is read: a real one is about
-// 50 bytes a mod, so this is far above any real list.
-const maxModList = 4 << 20
-
-// errModListTooBig is returned for a mod-list.json over maxModList.
-var errModListTooBig = errors.New("mod-list.json is too big to be a real mod list")
 
 // modList is what the world's mods folder will load.
 type modList struct {
@@ -34,27 +26,12 @@ type modList struct {
 // readModList reads mods/mod-list.json from a world's root.
 func readModList(root *os.Root) (modList, error) {
 	p := path.Join(ModsDir, ModListFile)
-	info, err := root.Lstat(p)
+	b, err := ReadSmallFile(root, p, maxModList)
 	if errors.Is(err, fs.ErrNotExist) {
 		return modList{enabled: map[string]bool{}}, nil
 	}
 	if err != nil {
 		return modList{}, err
-	}
-	if !info.Mode().IsRegular() {
-		return modList{}, fmt.Errorf("%s is not a regular file", p)
-	}
-	f, err := root.Open(p)
-	if err != nil {
-		return modList{}, err
-	}
-	defer func() { _ = f.Close() }()
-	b, err := io.ReadAll(io.LimitReader(f, maxModList+1))
-	if err != nil {
-		return modList{}, err
-	}
-	if len(b) > maxModList {
-		return modList{}, errModListTooBig
 	}
 	var doc struct {
 		Mods []struct {
@@ -63,7 +40,8 @@ func readModList(root *os.Root) (modList, error) {
 		} `json:"mods"`
 	}
 	if err := json.Unmarshal(b, &doc); err != nil {
-		return modList{}, fmt.Errorf("read %s: %w", ModListFile, err)
+		// The decoder's message quotes file contents; say only what is wrong.
+		return modList{}, fmt.Errorf("read %s: it is not valid JSON of the expected shape", ModListFile)
 	}
 	out := modList{found: true, enabled: map[string]bool{}}
 	for _, m := range doc.Mods {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -331,7 +330,7 @@ func (s *server) handleImportUpload(w http.ResponseWriter, r *http.Request, u st
 // with its field errors, or an error.
 func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	worldsDir := s.worlds.Dirs().Worlds
-	root, err := os.OpenRoot(worldsDir)
+	root, err := s.worlds.OpenWorlds()
 	if err != nil {
 		return "", ImportForm{}, err
 	}

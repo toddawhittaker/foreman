@@ -112,6 +112,12 @@ func (m *Manager) OpenWorld(id string) (*os.Root, error) {
 	return openDir(worlds, id)
 }
 
+// OpenWorlds opens the worlds folder, refusing a link in its place. The
+// caller closes it (SPEC 14.5).
+func (m *Manager) OpenWorlds() (*os.Root, error) {
+	return openFolder(m.dirs.Worlds)
+}
+
 // ValidID reports whether id has the shape IDFromName makes.
 func ValidID(id string) bool {
 	if id == "" || len(id) > MaxIDLength || id[0] == '-' || id[len(id)-1] == '-' {

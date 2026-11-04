@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"syscall"
 
 	"github.com/toddawhittaker/foreman/internal/secret"
 )
@@ -22,7 +21,7 @@ const RCONPasswordFile = ConfigDir + "/rconpw"
 // rconPasswordMode lets the game's group read the file and nobody else.
 const rconPasswordMode fs.FileMode = 0o640
 
-// maxRCONPassword caps how much of the file is read.
+// maxRCONPassword is the largest password file that is read.
 const maxRCONPassword = 1024
 
 // errRCONPasswordEmpty is returned when the file holds no password.
@@ -152,31 +151,11 @@ func narrowRCONPassword(root *os.Root) error {
 	return root.Chmod(RCONPasswordFile, perm&rconPasswordMode)
 }
 
-// ReadRCONPassword reads the password file in a world or game folder. The
-// file is opened without blocking and checked once opened, so a named pipe
-// put there is refused instead of waited on (SPEC 14.8). Anything but a
-// regular file, a link included, is an error.
+// ReadRCONPassword reads the password file in a world or game folder.
+// Anything but a small regular file, a link included, is an error
+// (SPEC 14.8).
 func ReadRCONPassword(root *os.Root) (secret.Secret, error) {
-	// A link is refused up front; the check on the opened file below catches
-	// a pipe swapped in after this one.
-	if info, err := root.Lstat(RCONPasswordFile); err != nil {
-		return secret.Secret{}, err
-	} else if !info.Mode().IsRegular() {
-		return secret.Secret{}, fmt.Errorf("%s is not a regular file", RCONPasswordFile)
-	}
-	f, err := root.OpenFile(RCONPasswordFile, os.O_RDONLY|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	if !info.Mode().IsRegular() {
-		return secret.Secret{}, fmt.Errorf("%s is not a regular file", RCONPasswordFile)
-	}
-	b, err := io.ReadAll(io.LimitReader(f, maxRCONPassword))
+	b, err := ReadSmallFile(root, RCONPasswordFile, maxRCONPassword)
 	if err != nil {
 		return secret.Secret{}, err
 	}
