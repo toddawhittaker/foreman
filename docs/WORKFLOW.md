@@ -83,11 +83,12 @@ The targets (STACK.md, section 13):
   in one local run.
 - `make tidy`: `go mod tidy`.
 - `make test-game`: run the game controller against the real Docker daemon
-  and the three pinned game images, one after another (about 70 seconds in
-  all). `TAG=1.1`, `2.0` or `2.1` runs one. It does not download the game
-  images: pull each one first with the `docker pull` command in the error it
-  prints. It starts containers named `foreman-e3test-*` and removes them,
-  with their data under `.cache/test-game/`.
+  and the three pinned game images, one after another, in managed and then
+  adopted mode (about two minutes in all). `TAG=1.1`, `2.0` or `2.1` runs
+  one. It does not download the game images: pull each one first with the
+  `docker pull` command in the error it prints. It starts containers named
+  `foreman-e3test-*` and `foreman-e4-t14-*` (and a network with that
+  prefix) and removes them, with their data under `.cache/test-game/`.
 - `make e2e-game`: run the phone scenario against the real 2.1 game image.
   It needs that image on the host (it prints the `docker pull` to run) and
   a Docker socket (`DOCKER_SOCK`, `/var/run/docker.sock` by default).

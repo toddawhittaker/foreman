@@ -631,6 +631,10 @@ never depends on colour.
   page load. A message that is part of a freshly loaded page has no role.
   Success messages from htmx go to `#announcer` instead (section 6), with
   the visible message rendered beside the thing that changed.
+- On the Server page, the unfinished-switch notice (SPEC 7.10) and the
+  game-network warning (SPEC 4.4) are Warnings in the page, outside any
+  live region. The notice sits in the control panel with its Switch back
+  button after it; the network warning sits with the status facts.
 - **Empty states** are plain paragraphs in `text-muted`, never an
   illustration: "No worlds yet. Import a folder of saves or upload a save
   file to make your first world." followed by the action buttons. The
@@ -718,8 +722,9 @@ Rules:
 Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
-delete), and in later epics switching (7.9) and destructive player
-actions (8.2). A graceful stop or restart does not need a danger
+delete), switching worlds (7.9) and adopting a game folder (4.8), and in
+later epics destructive player actions (8.2). The switch and adoption
+boxes carry the stop countdown fields only when the game is running. A graceful stop or restart does not need a danger
 confirmation, because nothing is lost. Its button opens a short form at its
 own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
 countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
@@ -826,6 +831,11 @@ A failed step's message goes inside that `li` as
 `<div class="message message--error">`; it takes its own full-width line
 (`flex: 1 1 100%`, no `max-inline-size`) at any width. The words carry the state, so forced
 colours needs no rule.
+
+When an operation changes the active world (a switch or an adoption), the
+old world's open page reloads onto the Server page after the operation
+ends, moves focus to the control heading, and writes the result sentence
+to `#announcer`.
 
 ## 8. Patterns for later screens
 
