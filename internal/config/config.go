@@ -184,7 +184,10 @@ func parseID(e env, name string) (int, error) {
 	}
 	n, err := strconv.ParseUint(raw, 10, 31)
 	if err != nil {
-		return 0, fmt.Errorf("%s must be a whole number, zero or more, not %q", name, raw)
+		return 0, fmt.Errorf("%s must be a whole number above zero, not %q", name, raw)
+	}
+	if n == 0 {
+		return 0, fmt.Errorf("%s must not be 0, because the game would run as root. Use the id of an unprivileged user", name)
 	}
 	return int(n), nil
 }

@@ -50,14 +50,18 @@ func createRCONPassword(root *os.Root) error {
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
-	f, err := root.OpenFile(RCONPasswordFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, rconPasswordMode)
-	if errors.Is(err, fs.ErrExist) {
-		return nil
-	}
+	// Write a finished temp file, then link it into place: the password
+	// file only ever appears complete, and a file made meanwhile by another
+	// process is never replaced (link fails if the target exists).
+	f, temp, err := CreateTemp(root, ConfigDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("create the RCON password file: %w", err)
 	}
+	defer func() { _ = root.Remove(temp) }()
 	_, err = f.WriteString(hex.EncodeToString(buf) + "\n")
+	if err == nil {
+		err = f.Chmod(rconPasswordMode)
+	}
 	if err == nil {
 		err = f.Sync()
 	}
@@ -65,11 +69,12 @@ func createRCONPassword(root *os.Root) error {
 		err = cerr
 	}
 	if err == nil {
-		// The umask may have narrowed the mode; the game's group must read it.
-		err = root.Chmod(RCONPasswordFile, rconPasswordMode)
+		err = root.Link(temp, RCONPasswordFile)
+	}
+	if errors.Is(err, fs.ErrExist) {
+		return nil
 	}
 	if err != nil {
-		_ = root.Remove(RCONPasswordFile)
 		return fmt.Errorf("create the RCON password file: %w", err)
 	}
 	return syncDir(root, ConfigDir)
