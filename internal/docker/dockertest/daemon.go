@@ -33,6 +33,7 @@ type Container struct {
 	Mounts       []docker.Mount
 	Privileged   bool     // HostConfig.Privileged, for a seeded container
 	CapAdd       []string // HostConfig.CapAdd, for a seeded container
+	CapDrop      []string // HostConfig.CapDrop, for a seeded container
 	PidMode      string   // HostConfig.PidMode, for a seeded container
 	// The other HostConfig settings an adopted container is checked for.
 	Devices                      []docker.Device

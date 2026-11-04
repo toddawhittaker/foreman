@@ -135,6 +135,7 @@ func (g *Game) seedAdopted(a Adopted, network string) {
 			Env:   env, User: a.User, HostConfig: hc,
 		},
 		Status:   "exited",
+		CapDrop:  []string{"NET_RAW"},
 		Mounts:   []docker.Mount{{Source: a.GameDir, Destination: volume}},
 		Networks: map[string]string{network: ""},
 	}

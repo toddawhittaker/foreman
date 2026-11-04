@@ -305,6 +305,11 @@ func (p ServerPage) Failure() *Failure {
 	if !p.HaveResult || p.Result.Err == nil {
 		return nil
 	}
+	// A network refusal is stale once a later check found the network
+	// clean (SPEC 4.4).
+	if errors.Is(p.Result.Err, game.ErrNetwork) && p.Result.At.Before(p.Status.NetworkCleanAt) {
+		return nil
+	}
 	err := p.Result.Err
 	f := &Failure{Undo: p.Result.Undo}
 	var pe *game.PrecheckError
