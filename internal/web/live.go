@@ -126,7 +126,9 @@ type liveStream struct {
 }
 
 // send writes each region of p that changed since the last send. A new
-// result, or else a new state, also goes to #announcer (DESIGN 7.5).
+// result, or else a new state, also goes to #announcer (DESIGN 7.5). A
+// failed result stays on the page, so it must not silence the state
+// changes after it.
 func (l *liveStream) send(p ServerPage) error {
 	result := resultAnnouncement(p)
 	say := ""
@@ -134,7 +136,7 @@ func (l *liveStream) send(p ServerPage) error {
 		switch {
 		case result != "" && result != l.result:
 			say = result
-		case l.state != p.Status.State && p.Failure() == nil && len(p.OtherErrors()) == 0:
+		case l.state != p.Status.State:
 			say = announcement(p.Status.State)
 		}
 	}
@@ -151,11 +153,15 @@ func (l *liveStream) send(p ServerPage) error {
 			continue
 		}
 		l.sent[region] = data
-		if say != "" {
-			data += `<div hx-swap-oob="innerHTML:#announcer">` + html.EscapeString(say) + `</div>`
-			say = ""
-		}
 		if err := l.event(region, data); err != nil {
+			return err
+		}
+		wrote = true
+	}
+	// The sentence has an event of its own, so it is never lost when no
+	// region changed with it.
+	if say != "" {
+		if err := l.event("announce", `<div hx-swap-oob="innerHTML:#announcer">`+html.EscapeString(say)+`</div>`); err != nil {
 			return err
 		}
 		wrote = true

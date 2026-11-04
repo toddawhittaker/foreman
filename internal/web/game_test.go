@@ -449,10 +449,7 @@ func TestEventsStream(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stream ended before the game ran: %v", err)
 		}
-		if name == "facts" && strings.Contains(data, "Running") {
-			if !strings.Contains(data, `<div hx-swap-oob="innerHTML:#announcer">Server is now running</div>`) {
-				t.Errorf("no announcement with the change: %s", data)
-			}
+		if name == "announce" && strings.Contains(data, `<div hx-swap-oob="innerHTML:#announcer">Server is now running</div>`) {
 			break
 		}
 	}

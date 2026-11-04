@@ -324,7 +324,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 			return
 		}
 		id, snap, by := p.WorldID, p.Snapshot.Name, actor(u)
-		s.begin(w, r, id, func(ctx context.Context) actionResult {
+		s.begin(w, r, id, true, func(ctx context.Context) actionResult {
 			before, err := s.game.Restore(ctx, id, by, snap, stop)
 			res := s.finish(id, game.ActionRestore, err)
 			res.Restored, res.Undo = snap, before.Name
