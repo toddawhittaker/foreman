@@ -1,5 +1,7 @@
 {{define "title"}}Server{{end}}
 
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <h1>Server</h1>
@@ -20,7 +22,7 @@
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
 <section class="panel" aria-labelledby="control-heading">
-  <h2 id="control-heading">Start and stop</h2>
+  <h2 id="control-heading" tabindex="-1">Start and stop</h2>
   <div sse-swap="control">{{template "server-control" .}}</div>
 </section>
 {{- end}}
@@ -65,6 +67,8 @@
 {{- end}}
 {{- else if .PlayersError}}
 <p class="empty">Foreman could not ask the game who is online. It tries again with the next update.</p>
+{{- else if eq .Status.State "starting" "stopping"}}
+<p class="empty">Players are not listed while the server is {{.Status.State}}.</p>
 {{- else}}
 <p class="empty">Nobody can be online while the game is not running.</p>
 {{- end}}
@@ -86,7 +90,7 @@
   {{- end}}
   {{- if .AnywayPath}}
   <p>You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above.</p>
-  <div class="actions"><a href="{{.AnywayPath}}" class="button">Start anyway</a></div>
+  <div class="actions"><a href="{{.AnywayPath}}" class="button" id="act-start-anyway">Start anyway</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -94,7 +98,7 @@
 {{/* One step list (DESIGN 7.6). Takes the page, the operation and where a
      failure goes. */}}
 {{define "server-steps" -}}
-<ol class="steps">
+<ol class="steps" role="list">
   {{- range .Op.Steps}}
   <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.Page.StepClass .State}}">{{$.Page.StepWord .State}}</span> {{.Name}}
     {{- if eq .State "progress"}}
@@ -108,16 +112,22 @@
 </ol>
 {{- end}}
 
-{{/* Operations, crashes and the actions for the current state. */}}
+{{/* Operations, crashes and the actions for the current state. Every
+     link and button has an id, so focus stays on it across live updates. */}}
 {{define "server-control" -}}
 {{- $failure := .Failure}}
 {{- if and $failure (eq $failure.In "")}}
 {{template "server-failure" $failure}}
 {{- end}}
+{{- range .OtherErrors}}
+<div class="message message--error">
+  <p><strong>Error:</strong> {{.}}</p>
+</div>
+{{- end}}
 {{- with .Done}}
 <div class="message message--success">
   <p><strong>Done:</strong> {{.}}</p>
-  <div class="actions"><a href="{{$.SnapshotsPath}}">Go to Snapshots</a></div>
+  <div class="actions"><a href="{{$.SnapshotsPath}}" id="act-snapshots">Go to Snapshots</a></div>
 </div>
 {{- end}}
 {{- if .ShowOperation}}
@@ -129,31 +139,31 @@
 {{template "server-steps" .DownloadList}}
 {{- end}}
 {{- if eq .Status.State "crash-looping"}}
-<div class="message message--error">
-  <p><strong>Error:</strong> The game crashed again and again, so Foreman stopped it. Read the last log lines, fix the world, then start it again.</p>
+<div class="message message--warning">
+  <p><strong>Warning:</strong> The game crashed again and again, so Foreman stopped it. Read the last log lines, fix the world, then start it again.</p>
 </div>
 {{- else if eq .Status.State "crashed"}}
-<div class="message message--error">
-  <p><strong>Error:</strong> The game crashed{{if not .Status.LastCrash.IsZero}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}. Docker is starting it again.</p>
+<div class="message message--warning">
+  <p><strong>Warning:</strong> The game crashed{{if not .Status.LastCrash.IsZero}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}. Docker is starting it again.</p>
 </div>
 {{- end}}
 {{- with .Status.CrashLines}}
-<div class="log" tabindex="0" role="region" aria-label="The last log lines before the crash"><pre>{{range .}}{{.}}
+<div class="log" id="crash-log" tabindex="0" role="region" aria-label="The last log lines before the crash"><pre>{{range .}}{{.}}
 {{end}}</pre></div>
 {{- end}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop}}
 <div class="actions">
   {{- if .CanStart}}
-  <form method="post" action="{{.StartPath}}"><button type="submit" class="button button--primary">Start server</button></form>
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button button--primary" id="act-start">Start server</button></form>
   {{- end}}
   {{- if .CanStop}}
-  <a href="{{.StopPath}}" class="button">Stop server</a>
+  <a href="{{.StopPath}}" class="button" id="act-stop">Stop server</a>
   {{- end}}
   {{- if .CanRestart}}
-  <a href="{{.RestartPath}}" class="button">Restart server</a>
+  <a href="{{.RestartPath}}" class="button" id="act-restart">Restart server</a>
   {{- end}}
   {{- if .CanForceStop}}
-  <a href="{{.ForceStopPath}}" class="button">Force stop</a>
+  <a href="{{.ForceStopPath}}" class="button" id="act-force-stop">Force stop</a>
   {{- end}}
 </div>
 {{- end}}
@@ -162,7 +172,7 @@
 {{- end}}
 {{- if and $failure $failure.Download (not .Busy)}}
 <form method="post" action="{{.PullPath}}" class="actions">
-  <button type="submit" class="button button--primary">Download game image</button>
+  <button type="submit" class="button button--primary" id="act-pull">Download game image</button>
 </form>
 {{- end}}
 {{- end}}

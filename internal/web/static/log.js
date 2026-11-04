@@ -59,6 +59,9 @@
     const events = new EventSource(frame.dataset.logEvents);
     events.addEventListener("reset", (e) => reset(JSON.parse(e.data)));
     events.addEventListener("lines", (e) => add(JSON.parse(e.data)));
+    // live.js says so when the log stops following the game.
+    events.addEventListener("error", () => window.foremanLive?.lost());
+    events.addEventListener("open", () => window.foremanLive?.back());
   }
 
   // Newest last: a history box opens, and after each command shows, its end.

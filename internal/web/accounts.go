@@ -120,7 +120,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "start session", err)
 		return
 	}
-	http.Redirect(w, r, PathHome, http.StatusSeeOther)
+	http.Redirect(w, r, s.home(), http.StatusSeeOther)
 }
 
 func (s *server) handleSignInForm(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +194,7 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "start session", err)
 		return
 	}
-	http.Redirect(w, r, PathHome, http.StatusSeeOther)
+	http.Redirect(w, r, s.home(), http.StatusSeeOther)
 }
 
 // signInFailed keeps the attempt Allow counted. The log names the client

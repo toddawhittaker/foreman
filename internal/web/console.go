@@ -293,13 +293,11 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 		return
 	}
 	defer s.runs.wg.Done()
-
-	h := w.Header()
-	h.Set("Content-Type", "text/event-stream")
-	h.Set("Cache-Control", "no-store")
-	h.Set("X-Accel-Buffering", "no") // proxies must pass each event on at once
-	w.WriteHeader(http.StatusOK)
-	out := &liveStream{w: w, rc: http.NewResponseController(w)}
+	opened := s.now()
+	out, err := s.openStream(w)
+	if err != nil {
+		return
+	}
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
@@ -312,7 +310,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 		select {
 		case <-r.Context().Done():
 			return
-		case <-s.runs.live.Done():
+		case <-s.runs.ctx.Done():
 			return
 		case up, open := <-updates:
 			if !open {
@@ -340,7 +338,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 				return
 			}
 		case <-beat.C:
-			if _, state, err := s.identify(r); err != nil || state != isSignedIn {
+			if !s.stillSignedIn(r, opened) {
 				return
 			}
 			if out.comment() != nil {

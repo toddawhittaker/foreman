@@ -1,57 +1,18 @@
-import { test, expect, checkPage, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, type Foreman, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { copyFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 
 // The Server page (SPEC 7, 8.1) against the fake game.
-
-const password = "correct horse battery";
-const repo = join(import.meta.dirname, "..", "..");
-
-// The image Foreman runs for 2.1 worlds, read from the one place it is pinned.
-const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
 
 const container = "foreman-base";
 // The monitor polls Docker every 5 seconds, so a change it has to
 // notice can take that long to show.
 const live = { timeout: 20_000 };
 
-async function createAdmin(page: Page) {
-  await page.goto("/setup");
-  await page.getByLabel("Username").fill("admin");
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByLabel("Confirm password").fill(password);
-  await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
-}
-
-// The active world "base", a 2.1 world holding one real save (SPEC 5.1: a
-// world is a folder a person can make by hand).
-function seedWorld(f: Foreman, fixture = "2.1.24-no-space-age.zip", spaceAge = false) {
-  const dir = join(f.dataDir, "worlds", "base");
-  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
-  writeFileSync(
-    join(dir, "world.json"),
-    JSON.stringify({ format_version: 1, name: "Base", game_version: "2.1.24", space_age: spaceAge, created_at: "2026-11-01T10:00:00Z" }),
-  );
-  const save = join(dir, "saves", "base.zip");
-  copyFileSync(join(repo, "internal", "savefile", "testdata", fixture), save);
-  const at = new Date(Date.now() - 3_600_000);
-  utimesSync(save, at, at);
-  const db = new DatabaseSync(join(f.dataDir, "foreman.db"));
-  try {
-    db.prepare("INSERT INTO active_worlds (world_id, since) VALUES (?, ?)").run("base", 0);
-  } finally {
-    db.close();
-  }
-}
-
 const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { image?: boolean; fixture?: string; spaceAge?: boolean } = {}) {
   await createAdmin(page);
-  seedWorld(f, opts.fixture, opts.spaceAge);
+  seedWorld(f, { fixture: opts.fixture, spaceAge: opts.spaceAge });
   if (opts.image ?? true) await g.call("/image", { ref: image21, on: true });
   await page.goto("/");
   await expect(badge(page)).toHaveText("Stopped", live);
@@ -202,6 +163,76 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("table")).toContainText("Before start anyway");
   });
 
+  // DESIGN 5: a live update never drops keyboard focus to the top of the page.
+  test("focus stays on an action across a live update, or moves to the heading", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await start(page);
+    const focused = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+
+    // The crash notice is added, and Stop server stays: focus stays on it.
+    await page.getByRole("link", { name: "Stop server" }).focus();
+    await fakeGame!.call("/crash", { name: container });
+    await expect(badge(page)).toHaveText("Crashed", live);
+    await expect(page.getByText(/The game crashed/)).toBeVisible();
+    expect(await focused()).toBe("act-stop");
+
+    // Force stop goes away with the game: focus moves to the section's heading.
+    await page.getByRole("link", { name: "Force stop" }).focus();
+    expect((await page.request.post("/worlds/base/force-stop", { form: {}, maxRedirects: 0 })).status()).toBe(303);
+    await expect(badge(page)).toHaveText("Stopped", live);
+    await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
+    expect(await focused()).toBe("control-heading");
+  });
+
+  // DESIGN 7.5: a failure that arrives live is read out, and the state
+  // sentence is not said beside it.
+  test("a failed start is announced", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
+    expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
+    await expect(page.locator(".message--error")).toContainText("does not match the world", live);
+    await expect(page.locator("#announcer")).toHaveText(/^Error: Foreman did not start the game, because the save that would load does not match the world/);
+    await expect(page.locator("#announcer")).not.toContainText("Server is now");
+  });
+
+  // SPEC 17.1: the step list passes the checks while an operation runs.
+  test("the step list of a stop in progress passes the page checks", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await start(page);
+    await fakeGame!.call("/join", { name: container, player: "alice" });
+    await fakeGame!.call("/save-hangs", { name: container, on: true });
+    await page.getByRole("link", { name: "Stop server" }).click();
+    await page.getByLabel("Countdown in seconds").fill("3");
+    await page.getByRole("button", { name: "Stop server" }).click();
+    const steps = page.getByRole("list").filter({ has: page.locator("[aria-current=step]") });
+    await expect(page.getByRole("heading", { name: "Stopping the server" })).toBeVisible(live);
+    await expect(steps).toBeVisible();
+    await checkPage(page);
+    // The countdown ends and the save hangs: still in progress.
+    await expect(steps.locator("[aria-current=step]")).toContainText("Save the game", live);
+    await checkPage(page);
+    await page.getByRole("link", { name: "Force stop" }).click();
+    await page.getByRole("region", { name: /Force stop/ }).getByRole("button", { name: "Force stop" }).click();
+    await expect(badge(page)).toHaveText("Stopped", live);
+  });
+
+  // A dropped live connection is said, not silent, and the note goes when
+  // the page is live again.
+  test("a dropped live connection shows a note until it reconnects", async ({ page, foreman, fakeGame }) => {
+    // The stream cannot be reached, as while Foreman restarts.
+    const stream = "**/worlds/base/events";
+    await page.route(stream, (route) => route.fulfill({ status: 503, body: "" }));
+    await setUp(page, foreman, fakeGame!);
+    const note = page.locator("#live-lost");
+    await expect(note).toHaveText("Note: Live updates stopped. Reload to see the current state.", live);
+    await expect(page.locator("#announcer")).toHaveText("Live updates stopped. Reload to see the current state.");
+    await checkPage(page);
+    await page.unroute(stream);
+    await expect(note).toHaveCount(0, { timeout: 60_000 });
+    // Live again: a change shows without a reload.
+    expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
+    await expect(badge(page)).toHaveText("Running", live);
+  });
+
   test("a missing image is downloaded as its own action", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { image: false });
     await page.getByRole("button", { name: "Start server" }).click();
@@ -230,7 +261,8 @@ test.describe("with the fake game", () => {
     await page.getByLabel(/No countdown/).check();
     await page.getByRole("button", { name: "Restore snapshot" }).click();
     await expect(page).toHaveURL("/");
-    await expect(page.getByText(/The world is restored/)).toBeVisible(live);
+    await expect(page.locator(".message--success")).toContainText("The world is restored", live);
+    await expect(page.locator("#announcer")).toHaveText("The world is restored.");
     await expect(badge(page)).toHaveText("Running", live);
     await checkPage(page);
   });

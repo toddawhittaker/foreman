@@ -48,15 +48,15 @@ var (
 // gameRuns holds the server control actions that run past their request,
 // their last results, and the live pages watching them.
 type gameRuns struct {
-	ctx       context.Context // ends at Close; actions run in it
+	ctx       context.Context // ends at Close; actions run in it, and live pages end with it
 	cancel    context.CancelFunc
-	live      context.Context // ends at Close, first; live pages end with it
-	stopLive  context.CancelFunc
 	wg        sync.WaitGroup
 	mu        sync.Mutex
 	closed    bool
-	results   map[string]actionResult // by world id
-	changed   chan struct{}           // closed and replaced when a result is stored
+	running   map[string]int            // actions in flight, by world id
+	results   map[string]actionResult   // by world id
+	asides    map[string][]actionResult // actions asked for while another ran (R38)
+	changed   chan struct{}             // closed and replaced when a result is stored
 	closeOnce sync.Once
 }
 
@@ -71,20 +71,19 @@ type actionResult struct {
 }
 
 func newGameRuns() *gameRuns {
-	g := &gameRuns{results: map[string]actionResult{}, changed: make(chan struct{})}
+	g := &gameRuns{running: map[string]int{}, results: map[string]actionResult{},
+		asides: map[string][]actionResult{}, changed: make(chan struct{})}
 	g.ctx, g.cancel = context.WithCancel(context.Background())
-	g.live, g.stopLive = context.WithCancel(context.Background())
 	return g
 }
 
-// close ends the live pages first, then interrupts the actions still
-// running, and waits for both. The game itself is never stopped (SPEC 3.8).
+// close ends the live pages and interrupts the actions still running, and
+// waits for both. The game itself is never stopped (SPEC 3.8).
 func (g *gameRuns) close() {
 	g.closeOnce.Do(func() {
 		g.mu.Lock()
 		g.closed = true
 		g.mu.Unlock()
-		g.stopLive()
 		g.cancel()
 		g.wg.Wait()
 	})
@@ -94,6 +93,10 @@ func (g *gameRuns) close() {
 func (g *gameRuns) track() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.trackLocked()
+}
+
+func (g *gameRuns) trackLocked() bool {
 	if g.closed {
 		return false
 	}
@@ -101,29 +104,43 @@ func (g *gameRuns) track() bool {
 	return true
 }
 
-// run starts an action in the background and forgets the world's last
-// result, so the page shows only what this action does.
+// run starts an action in the background. When nothing else runs on the
+// world it forgets the world's last results, so the page shows only what
+// this action does. An action asked for while another runs keeps its
+// result apart, so it never hides the first one's (R38).
 func (g *gameRuns) run(id string, do func(ctx context.Context) actionResult) bool {
-	if !g.track() {
+	g.mu.Lock()
+	if !g.trackLocked() {
+		g.mu.Unlock()
 		return false
 	}
-	g.store(id, nil)
+	other := g.running[id] > 0
+	g.running[id]++
+	if !other {
+		delete(g.results, id)
+		delete(g.asides, id)
+		g.changedLocked()
+	}
+	g.mu.Unlock()
 	go func() {
 		defer g.wg.Done()
 		res := do(g.ctx)
-		g.store(id, &res)
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if g.running[id]--; g.running[id] == 0 {
+			delete(g.running, id)
+		}
+		if other {
+			g.asides[id] = append(g.asides[id], res)
+		} else {
+			g.results[id] = res
+		}
+		g.changedLocked()
 	}()
 	return true
 }
 
-func (g *gameRuns) store(id string, res *actionResult) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if res == nil {
-		delete(g.results, id)
-	} else {
-		g.results[id] = *res
-	}
+func (g *gameRuns) changedLocked() {
 	close(g.changed)
 	g.changed = make(chan struct{})
 }
@@ -135,6 +152,13 @@ func (g *gameRuns) result(id string) (actionResult, bool) {
 	return res, ok
 }
 
+// others returns the results of the actions asked for while another ran.
+func (g *gameRuns) others(id string) []actionResult {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]actionResult(nil), g.asides[id]...)
+}
+
 func (g *gameRuns) watch() <-chan struct{} {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -142,6 +166,15 @@ func (g *gameRuns) watch() <-chan struct{} {
 }
 
 func actor(u store.User) game.Actor { return game.Actor{UserID: u.ID, Username: u.Username} }
+
+// home is where setup and sign-in land: the Server page, or the world list
+// in a mode without server control.
+func (s *server) home() string {
+	if s.game == nil {
+		return PathWorlds
+	}
+	return PathServer
+}
 
 func (s *server) gameRoutes() {
 	if s.game == nil {
@@ -173,7 +206,7 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrNotReady), errors.Is(err, game.ErrImageMissing),
 		errors.Is(err, game.ErrRCONUnreachable), errors.Is(err, game.ErrSaveTimeout),
 		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
-		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign),
+		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
 		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
@@ -220,6 +253,7 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
 	p := ServerPage{World: sum, HasWorld: true, Status: st}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
+	p.Others = s.runs.others(sum.ID)
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()

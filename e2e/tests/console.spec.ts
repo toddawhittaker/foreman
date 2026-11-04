@@ -1,49 +1,13 @@
-import { test, expect, checkPage, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, type Foreman, type FakeGame } from "./foreman.js";
 import type { Locator, Page } from "@playwright/test";
-import { copyFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // The Console tab (SPEC 8.4, 8.6) against the fake game.
 
-const password = "correct horse battery";
-const repo = join(import.meta.dirname, "..", "..");
-
-// The image Foreman runs for 2.1 worlds, read from the one place it is pinned.
-const image21 = /^GAME_IMAGE_2_1\s*:=\s*(\S+)\s*$/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
-
 const container = "foreman-base";
 // The monitor polls Docker every 5 seconds, so a change it has to notice can take that long.
 const live = { timeout: 20_000 };
-
-async function createAdmin(page: Page) {
-  await page.goto("/setup");
-  await page.getByLabel("Username").fill("admin");
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByLabel("Confirm password").fill(password);
-  await page.getByRole("button", { name: "Create admin account" }).click();
-  await expect(page).toHaveURL("/worlds");
-}
-
-// The active world "base", a 2.1 world holding one real save.
-function seedWorld(f: Foreman) {
-  const dir = join(f.dataDir, "worlds", "base");
-  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
-  writeFileSync(
-    join(dir, "world.json"),
-    JSON.stringify({ format_version: 1, name: "Base", game_version: "2.1.24", space_age: false, created_at: "2026-11-01T10:00:00Z" }),
-  );
-  const save = join(dir, "saves", "base.zip");
-  copyFileSync(join(repo, "internal", "savefile", "testdata", "2.1.24-no-space-age.zip"), save);
-  const at = new Date(Date.now() - 3_600_000);
-  utimesSync(save, at, at);
-  const db = new DatabaseSync(join(f.dataDir, "foreman.db"));
-  try {
-    db.prepare("INSERT INTO active_worlds (world_id, since) VALUES (?, ?)").run("base", 0);
-  } finally {
-    db.close();
-  }
-}
 
 // The audit log's console rows, oldest first.
 function consoleAudit(f: Foreman): { username: string; world_id: string; detail: string }[] {
@@ -219,6 +183,14 @@ test.describe("with the fake game", () => {
     const message = page.locator(".message--error");
     await expect(message).toContainText("could not reach the game over RCON");
     await expect(message.getByRole("link", { name: "Go to the Server page" })).toBeVisible();
+    await checkPage(page);
+  });
+
+  test("a log stream that cannot connect is said, not silent", async ({ page, foreman, fakeGame }) => {
+    await page.route("**/worlds/base/console/events", (route) => route.fulfill({ status: 503, body: "" }));
+    await setUp(page, foreman, fakeGame!, { running: false });
+    await expect(page.locator("#live-lost")).toHaveText("Note: Live updates stopped. Reload to see the current state.", live);
+    await expect(page.locator("#announcer")).toHaveText("Live updates stopped. Reload to see the current state.");
     await checkPage(page);
   });
 });

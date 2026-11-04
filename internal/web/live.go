@@ -1,7 +1,9 @@
 package web
 
 import (
+	"html"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +15,11 @@ import (
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
 var liveRegions = []string{"facts", "players", "control"}
+
+// reconnectAfter is how soon a browser reconnects after a stream ends, so
+// a stream that ends by design (proxyStreamLimit) is back before the page
+// says live updates stopped.
+const reconnectAfter = 2 * time.Second
 
 // handleEvents streams a world's server page as server-sent events (SPEC
 // 16.3): each region's HTML whenever it changes, starting with all of them,
@@ -29,13 +36,11 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	defer s.runs.wg.Done()
-
-	h := w.Header()
-	h.Set("Content-Type", "text/event-stream")
-	h.Set("Cache-Control", "no-store")
-	h.Set("X-Accel-Buffering", "no") // proxies must pass each event on at once
-	w.WriteHeader(http.StatusOK)
-	out := &liveStream{w: w, rc: http.NewResponseController(w), render: s.render, sent: map[string]string{}}
+	opened := s.now()
+	out, err := s.openStream(w)
+	if err != nil {
+		return
+	}
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
@@ -53,7 +58,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		select {
 		case <-r.Context().Done():
 			return
-		case <-s.runs.live.Done():
+		case <-s.runs.ctx.Done():
 			return
 		case up, open := <-updates:
 			if !open {
@@ -82,7 +87,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 			results = s.runs.watch()
 			st = s.game.Status(sum.ID)
 		case <-beat.C:
-			if _, state, err := s.identify(r); err != nil || state != isSignedIn {
+			if !s.stillSignedIn(r, opened) {
 				return
 			}
 			if err := out.comment(); err != nil {
@@ -93,38 +98,68 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 }
 
+// openStream starts a server-sent event response.
+func (s *server) openStream(w http.ResponseWriter) (*liveStream, error) {
+	h := w.Header()
+	h.Set("Content-Type", "text/event-stream")
+	h.Set("Cache-Control", "no-store")
+	h.Set("X-Accel-Buffering", "no") // proxies must pass each event on at once
+	w.WriteHeader(http.StatusOK)
+	l := &liveStream{w: w, rc: http.NewResponseController(w), render: s.render, sent: map[string]string{}}
+	if _, err := w.Write([]byte("retry: " + strconv.Itoa(int(reconnectAfter/time.Millisecond)) + "\n\n")); err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
 // liveStream writes server-sent events.
 type liveStream struct {
 	w      http.ResponseWriter
 	rc     *http.ResponseController
 	render *Renderer
 	sent   map[string]string // the last HTML sent for each region
-	state  game.State        // the last state sent; "" before the first
+	// started is set after the first send, which is never read out: it is
+	// what the page already shows.
+	started bool
+	state   game.State // the last state sent
+	result  string     // the last results sent, as read out
 }
 
-// send writes each region of p that changed since the last send. When the
-// state changed, the facts region carries a sentence for #announcer.
+// send writes each region of p that changed since the last send. A new
+// result, or else a new state, also goes to #announcer (DESIGN 7.5).
 func (l *liveStream) send(p ServerPage) error {
+	result := resultAnnouncement(p)
+	say := ""
+	if l.started {
+		switch {
+		case result != "" && result != l.result:
+			say = result
+		case l.state != p.Status.State && p.Failure() == nil && len(p.OtherErrors()) == 0:
+			say = announcement(p.Status.State)
+		}
+	}
+	l.started, l.state, l.result = true, p.Status.State, result
+
 	wrote := false
 	for _, region := range liveRegions {
 		var b strings.Builder
 		if err := l.render.Fragment(&b, p, "server-"+region); err != nil {
 			return err
 		}
-		html := b.String()
-		if l.sent[region] == html {
+		data := b.String()
+		if l.sent[region] == data {
 			continue
 		}
-		l.sent[region] = html
-		if region == "facts" && l.state != "" && l.state != p.Status.State {
-			html += `<div hx-swap-oob="innerHTML:#announcer">` + announcement(p.Status.State) + `</div>`
+		l.sent[region] = data
+		if say != "" {
+			data += `<div hx-swap-oob="innerHTML:#announcer">` + html.EscapeString(say) + `</div>`
+			say = ""
 		}
-		if err := l.event(region, html); err != nil {
+		if err := l.event(region, data); err != nil {
 			return err
 		}
 		wrote = true
 	}
-	l.state = p.Status.State
 	if !wrote {
 		return nil
 	}

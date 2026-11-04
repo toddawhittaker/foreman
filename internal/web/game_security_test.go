@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -100,14 +101,20 @@ func (g *gameRig) containerStatus(id string) string {
 	return c.Status
 }
 
-// waitResult waits until the world's last action is the one named and has
-// ended, and returns its error.
+// waitResult waits until the world's last action, or an action asked for
+// while it ran, is the one named and has ended, and returns its error.
 func (g *gameRig) waitResult(id, action string) error {
 	g.t.Helper()
 	deadline := time.Now().Add(15 * time.Second)
 	for {
-		if res, ok := g.h.(*Handler).runs.result(id); ok && res.Action == action {
+		runs := g.h.(*Handler).runs
+		if res, ok := runs.result(id); ok && res.Action == action {
 			return res.Err
+		}
+		for _, res := range runs.others(id) {
+			if res.Action == action {
+				return res.Err
+			}
 		}
 		if time.Now().After(deadline) {
 			g.t.Fatalf("the %s never ended", action)
@@ -126,7 +133,21 @@ func (g *gameRig) startGame(id string) {
 // returned function is called or the stream ends; ended is closed then.
 func (g *gameRig) collectEvents(id string) (buf *syncBuffer, ended <-chan struct{}, closeIt func()) {
 	g.t.Helper()
-	resp := g.openEvents(id, true) //nolint:bodyclose // closed by the returned function
+	return g.collectStream(gamePath(id, "events"))
+}
+
+// collectStream is collectEvents for any stream path.
+func (g *gameRig) collectStream(path string) (buf *syncBuffer, ended <-chan struct{}, closeIt func()) {
+	g.t.Helper()
+	req, err := http.NewRequestWithContext(g.t.Context(), http.MethodGet, g.url+path, nil)
+	if err != nil {
+		g.t.Fatal(err)
+	}
+	req.AddCookie(g.cookie)
+	resp, err := g.client.Do(req) //nolint:bodyclose // closed by the returned function
+	if err != nil {
+		g.t.Fatal(err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		g.t.Fatalf("event stream: %d", resp.StatusCode)
 	}
@@ -156,12 +177,14 @@ func serverActionRoutes(snap string) []actionRoute {
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},
+		{http.MethodPost, func(id string) string { return consolePath(id, "") }},
+		{http.MethodGet, func(id string) string { return consolePath(id, "/events") }},
 	}
 }
 
 // actionForm is a form every action route would accept from a signed-in
 // admin: no countdown, start anyway.
-var actionForm = url.Values{"no_countdown": {"on"}, "anyway": {"1"}, "label": {"x"}}
+var actionForm = url.Values{"no_countdown": {"on"}, "anyway": {"1"}, "label": {"x"}, "command": {"/server-save"}}
 
 // wantUntouched fails when the game was stopped, restarted or recreated,
 // or anything was audited or snapshotted, since the baseline.
@@ -254,34 +277,125 @@ func TestServerActionsRefuseBadRequests(t *testing.T) {
 	g.wantUntouched(id, "a refused request", base, audits, len(snaps))
 }
 
-// SPEC 12.8, 16.3: the live stream ends when its session ends, by sign-out
-// or by idle expiry, checked at each heartbeat.
+// SPEC 12.8, 16.3: both live streams end when their session ends, by
+// sign-out or by idle expiry, checked at each heartbeat.
 func TestEventsStreamEndsWithTheSession(t *testing.T) {
 	was := heartbeatEvery
 	heartbeatEvery = 50 * time.Millisecond
 	t.Cleanup(func() { heartbeatEvery = was })
 
-	for _, how := range []string{"sign-out", "expiry"} {
-		t.Run(how, func(t *testing.T) {
+	for _, stream := range []string{"events", "console/events"} {
+		for _, how := range []string{"sign-out", "expiry"} {
+			t.Run(stream+" "+how, func(t *testing.T) {
+				g := newSecRig(t)
+				id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+				_, ended, closeIt := g.collectStream(worldPath(id) + "/" + stream)
+				defer closeIt()
+				time.Sleep(200 * time.Millisecond)
+				select {
+				case <-ended:
+					t.Fatal("the stream ended while the session was live")
+				default:
+				}
+				if how == "sign-out" {
+					g.do(http.MethodPost, PathSignOut, url.Values{}, http.Header{"Cookie": {g.cookie.String()}})
+				} else {
+					g.clock.Advance(g.cfg.SessionIdle + time.Minute)
+				}
+				select {
+				case <-ended:
+				case <-time.After(3 * time.Second):
+					t.Fatalf("the stream outlived the session (%s)", how)
+				}
+			})
+		}
+	}
+}
+
+// SPEC 12.8: a heartbeat checks the session without using it, so a page
+// left open, or a client holding the stream, cannot keep a session alive
+// past its idle limit.
+func TestHeartbeatDoesNotKeepTheSessionAlive(t *testing.T) {
+	was := heartbeatEvery
+	heartbeatEvery = 20 * time.Millisecond
+	t.Cleanup(func() { heartbeatEvery = was })
+
+	for _, stream := range []string{"events", "console/events"} {
+		t.Run(stream, func(t *testing.T) {
 			g := newSecRig(t)
 			id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
-			_, ended, closeIt := g.collectEvents(id)
+			_, ended, closeIt := g.collectStream(worldPath(id) + "/" + stream)
 			defer closeIt()
-			time.Sleep(200 * time.Millisecond)
+			// Each step is well inside the idle limit, and a few heartbeats
+			// pass between steps, so a heartbeat that used the session would
+			// keep it alive.
+			step := g.cfg.SessionIdle / 10
+			for range 30 {
+				g.clock.Advance(step)
+				select {
+				case <-ended:
+					return
+				case <-time.After(5 * heartbeatEvery):
+				}
+			}
+			t.Fatal("the stream kept the session alive past its idle limit")
+		})
+	}
+}
+
+// SPEC 12.5, 16.3: a stream signed in by trusted headers ends after
+// proxyStreamLimit, since its own headers never change; the browser then
+// reconnects through the proxy, which vouches for the user again.
+func TestProxySignedStreamIsCapped(t *testing.T) {
+	was := heartbeatEvery
+	heartbeatEvery = 20 * time.Millisecond
+	t.Cleanup(func() { heartbeatEvery = was })
+
+	fake := fakegame.New(t, fakegame.Config{Images: []string{image21}})
+	env := map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_REQUIRED_GROUP": testGroup}
+	for k, v := range headerEnv {
+		env[k] = v
+	}
+	env["FOREMAN_TRUSTED_PROXIES"] = "127.0.0.1/32" // the test's own client
+	hn := newHarnessWith(t, env, func(worlds *world.Manager, st *store.Store) *game.Controller {
+		c, _ := startController(t, fake.Host(), worlds, st, io.Discard)
+		return c
+	})
+	ls := newLiveServerFor(t, hn)
+	id, err := hn.worlds.Create(context.Background(), "Base", "2.1.24", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stream := range []string{"events", "console/events"} {
+		t.Run(stream, func(t *testing.T) {
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ls.url+worldPath(id)+"/"+stream, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("X-Authentik-Username", "alice")
+			req.Header.Set("X-Authentik-Groups", testGroup)
+			resp, err := ls.client.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("the stream did not open: %d", resp.StatusCode)
+			}
+			ended := make(chan struct{})
+			go func() { _, _ = io.Copy(io.Discard, resp.Body); close(ended) }()
+
+			hn.clock.Advance(proxyStreamLimit - time.Minute)
 			select {
 			case <-ended:
-				t.Fatal("the stream ended while the session was live")
-			default:
+				t.Fatal("the stream ended before its limit")
+			case <-time.After(200 * time.Millisecond):
 			}
-			if how == "sign-out" {
-				g.do(http.MethodPost, PathSignOut, url.Values{}, http.Header{"Cookie": {g.cookie.String()}})
-			} else {
-				g.clock.Advance(g.cfg.SessionIdle + time.Minute)
-			}
+			hn.clock.Advance(2 * time.Minute)
 			select {
 			case <-ended:
 			case <-time.After(3 * time.Second):
-				t.Fatalf("the stream outlived the session (%s)", how)
+				t.Fatal("the stream outlived its limit")
 			}
 		})
 	}
@@ -332,10 +446,16 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 		}
 	}
 	pages := []string{PathServer, gamePath(id, "stop"), gamePath(id, "restart"), gamePath(id, "force-stop"),
-		gamePath(id, "start-anyway"), snapshotsPath(id), PathWorlds}
+		gamePath(id, "start-anyway"), snapshotsPath(id), PathWorlds, PathConsole}
 
 	g.startGame(id)
 	g.emitSecrets(id, rconPW, gamePW)
+	// Console commands that carry each secret (SPEC 8.4, 14.8).
+	for _, cmd := range []string{"/config set password " + gamePW, `/c rcon.print("` + rconPW + `")`} {
+		if rep := g.post(consolePath(id, ""), url.Values{"command": {cmd}}); rep.StatusCode != http.StatusSeeOther {
+			t.Fatalf("console %d: %s", rep.StatusCode, rep.body)
+		}
+	}
 	look(pages...)
 
 	// A stop that cannot reach RCON fails with a message for the admin.
@@ -373,8 +493,15 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 		"container":        strings.Join(slices.Concat(spec.Env, spec.Cmd, spec.Entrypoint, spec.HostConfig.Binds), "\n"),
 	}
 	var audit strings.Builder
+	consoled := 0
 	for _, e := range g.audit() {
 		audit.WriteString(e.Action + " " + e.Detail + "\n")
+		if e.Action == game.AuditConsole {
+			consoled++
+		}
+	}
+	if consoled != 2 {
+		t.Errorf("%d console commands audited, want 2, so the check proves nothing", consoled)
 	}
 	where["audit log"] = audit.String()
 	for place, text := range where {
@@ -696,4 +823,28 @@ func TestStopDuringRestartIsNotLost(t *testing.T) {
 	if err == nil && st != game.StateStopped {
 		t.Errorf("the stop reported success but the game is %s", st)
 	}
+}
+
+// R38: a stop refused while a restart ran is shown on its own and does not
+// hide the restart's result.
+func TestRefusedStopKeepsTheRestartsResult(t *testing.T) {
+	g := newSecRig(t)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.startGame(id)
+	if err := g.fake.Join(game.ContainerName(id), "bob"); err != nil {
+		t.Fatal(err)
+	}
+	// The restart warns bob for 2 seconds, so the stop arrives while it runs
+	// and is refused. The image goes away meanwhile, so the restart's start
+	// then fails.
+	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"countdown": {"2"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
+	g.fake.SetImage(image21, false)
+	if err := g.waitResult(id, game.AuditRestart); !errors.Is(err, game.ErrImageMissing) {
+		t.Fatalf("the restart ended with %v, want the missing image", err)
+	}
+	if err := g.waitResult(id, game.AuditStop); err == nil {
+		t.Fatal("the stop was not refused, so the check proves nothing")
+	}
+	g.waitPage("is not downloaded", "The stop asked for during another action did not finish: ")
 }
