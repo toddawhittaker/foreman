@@ -10,7 +10,7 @@
   <div class="actions"><a href="{{worldsPath}}" class="button">Go to Worlds</a></div>
 </section>
 {{- else}}
-<p>Active world: <a href="{{.WorldPath}}">{{.World.Name}}</a></p>
+<div class="actions"><a href="{{.WorldPath}}">Active world: {{.World.Name}}</a></div>
 <section class="panel" aria-labelledby="status-heading">
   <h2 id="status-heading">Status</h2>
   <div sse-swap="facts">{{template "server-facts" .}}</div>

@@ -3,6 +3,10 @@ import type { Page } from "@playwright/test";
 import { mkdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+// Snapshots and restores ask Docker whether the game is running first
+// (SPEC 6.5, 6.10), so these tests use the fake game as Docker.
+test.use({ fakeGameOn: true });
+
 const admin = "admin";
 const password = "correct horse battery";
 

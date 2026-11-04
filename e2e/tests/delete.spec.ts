@@ -4,6 +4,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, utimesSync,
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+// Restores ask Docker whether the game is running first (SPEC 6.5), so
+// these tests use the fake game as Docker.
+test.use({ fakeGameOn: true });
+
 const password = "correct horse battery";
 
 async function createAdmin(page: Page) {

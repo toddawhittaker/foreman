@@ -4,6 +4,10 @@ import { mkdirSync, readdirSync, statSync, utimesSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+// Taking a snapshot asks Docker whether the game is running first
+// (SPEC 6.10), so these tests use the fake game as Docker.
+test.use({ fakeGameOn: true });
+
 const admin = "admin";
 const password = "correct horse battery";
 
@@ -38,9 +42,13 @@ function setActive(f: Foreman, id: string) {
   }
 }
 
-test("/ goes to the world list", async ({ page }) => {
+// DESIGN 6: "/" is the Server page; the world list stays at /worlds.
+test("/ is the Server page and the world list is at /worlds", async ({ page }) => {
   await createAdmin(page);
   await page.goto("/");
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Server");
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" }).click();
   await expect(page).toHaveURL("/worlds");
 });
 

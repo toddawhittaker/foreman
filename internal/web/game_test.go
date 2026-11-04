@@ -315,7 +315,7 @@ func TestForceStop(t *testing.T) {
 	}
 }
 
-// R16: with Docker unreachable the page still renders, says Unknown and
+// SPEC 7.1: with Docker unreachable the page still renders, says Unknown and
 // why, and offers no action; a snapshot is refused in plain words.
 func TestDockerUnreachable(t *testing.T) {
 	g := newGameRigOn(t, "unix://"+filepath.Join(t.TempDir(), "no.sock"), nil)
