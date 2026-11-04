@@ -37,8 +37,11 @@ release; 2.0.77 the newest 2.0.x on Docker Hub.
   Docker timestamps. The player lines are `YYYY-MM-DD HH:MM:SS [JOIN]
   <name> joined the game` and `... [LEAVE] <name> left the game`, in
   server local time (UTC in the container). The stop warnings appear as
-  `[CHAT] <server>: ...` lines. The RCON password is absent; the log holds
-  a private network address and a public user name, kept as captured.
+  `[CHAT] <server>: ...` lines. The RCON password is absent. Two things
+  were replaced because the repository is public: the client's LAN address
+  (now the documentation address 192.0.2.10) and the server padlock hash
+  (now 32 X characters). Everything else, including the public user name,
+  is as captured.
 
 ## 1. Command line
 

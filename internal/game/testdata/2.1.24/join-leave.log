@@ -33,7 +33,7 @@
    0.377 Info UDPSocket.cpp:38: Opening socket at (IP ADDR:({0.0.0.0:34197}))
    0.378 Hosting game at IP ADDR:({0.0.0.0:34197})
    0.378 Info HttpSharedState.cpp:57: Downloading https://auth.factorio.com/generate-server-padlock-2?api_version=6
-   0.603 Info AuthServerConnector.cpp:112: Obtained serverPadlock for serverHash (jlbCb8eVElBcLZGKM3dEytlKfwjG7P0o) from the auth server.
+   0.603 Info AuthServerConnector.cpp:112: Obtained serverPadlock for serverHash (XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX) from the auth server.
    0.603 Info ServerMultiplayerManager.cpp:809: updateTick(0) changing state from(CreatingGame) to(InGame)
    0.603 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})
    0.603 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({172.17.0.1:49160})
@@ -42,14 +42,14 @@
   65.103 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:55444})
   95.135 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:56188})
  125.168 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:35406})
- 130.453 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:49872}))
- 130.453 Refusing connection for address (IP ADDR:({192.168.10.167:49872})), username (toddawhittaker). UserVerificationMissing
- 130.936 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:49873}))
- 130.936 Refusing connection for address (IP ADDR:({192.168.10.167:49873})), username (toddawhittaker). ModsMismatch
- 153.970 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:57736}))
- 153.970 Refusing connection for address (IP ADDR:({192.168.10.167:57736})), username (toddawhittaker). UserVerificationMissing
- 154.453 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:57737}))
- 154.453 Info ServerRouter.cpp:465: Replying to connectionRequest for address(IP ADDR:({192.168.10.167:57737})).
+ 130.453 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.0.2.10:49872}))
+ 130.453 Refusing connection for address (IP ADDR:({192.0.2.10:49872})), username (toddawhittaker). UserVerificationMissing
+ 130.936 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.0.2.10:49873}))
+ 130.936 Refusing connection for address (IP ADDR:({192.0.2.10:49873})), username (toddawhittaker). ModsMismatch
+ 153.970 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.0.2.10:57736}))
+ 153.970 Refusing connection for address (IP ADDR:({192.0.2.10:57736})), username (toddawhittaker). UserVerificationMissing
+ 154.453 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.0.2.10:57737}))
+ 154.453 Info ServerRouter.cpp:465: Replying to connectionRequest for address(IP ADDR:({192.0.2.10:57737})).
  154.453 Info ServerSynchronizer.cpp:594: nextHeartbeatSequenceNumber(9230) adding peer(1)
  154.470 Info ServerMultiplayerManager.cpp:809: updateTick(40) changing state from(InGame) to(InGameSavingMap)
  154.503 Info ServerMultiplayerManager.cpp:977: updateTick(40) received stateChanged peerID(1) oldState(Ready) newState(ConnectedWaitingForMap)
@@ -71,8 +71,8 @@
  176.203 Info AppManager.cpp:424: Saving game as /factorio/saves/realcheck.zip
  176.236 Info AppManagerStates.cpp:2131: Saving finished
  185.234 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:49276})
- 189.986 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:53039}))
- 189.986 Info ServerRouter.cpp:465: Replying to connectionRequest for address(IP ADDR:({192.168.10.167:53039})).
+ 189.986 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.0.2.10:53039}))
+ 189.986 Info ServerRouter.cpp:465: Replying to connectionRequest for address(IP ADDR:({192.0.2.10:53039})).
  189.986 Info ServerSynchronizer.cpp:594: nextHeartbeatSequenceNumber(11362) adding peer(2)
  190.004 Info ServerMultiplayerManager.cpp:809: updateTick(1232) changing state from(InGame) to(InGameSavingMap)
  190.020 Info ServerMultiplayerManager.cpp:977: updateTick(1232) received stateChanged peerID(2) oldState(Ready) newState(ConnectedWaitingForMap)
