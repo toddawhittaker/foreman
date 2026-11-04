@@ -31,6 +31,7 @@ type Container struct {
 	StartedAt    time.Time
 	FinishedAt   time.Time
 	Mounts       []docker.Mount
+	Privileged   bool // HostConfig.Privileged, for a seeded container
 	// Networks maps a network name to the address on it, set while running.
 	// "172.18.0.5/24" also gives the prefix length; a bare address has 16.
 	Networks map[string]string

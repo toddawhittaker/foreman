@@ -85,3 +85,22 @@ func TestConsoleRedactsKnownPasswords(t *testing.T) {
 		t.Error("the game was not sent the command as typed")
 	}
 }
+
+// SPEC 8.6, 14.8: the image's entrypoint prints the game's command line,
+// so any --rcon-password value in a line is masked, whatever password the
+// world has and however the shell quoted it.
+func TestMaskRCONPasswordFlag(t *testing.T) {
+	cases := map[string]string{
+		"+ exec /opt/factorio/bin/x64/factorio --start-server-load-latest --rcon-port 27015 --rcon-password hunter2 --server-settings x": "+ exec /opt/factorio/bin/x64/factorio --start-server-load-latest --rcon-port 27015 --rcon-password " + Mask + " --server-settings x",
+		"+ exec factorio --rcon-password 'pass word' --mod-directory /factorio/mods":                                                     "+ exec factorio --rcon-password " + Mask + " --mod-directory /factorio/mods",
+		`+ exec factorio --rcon-password 'it'\''s' --port 1`:                                                                             "+ exec factorio --rcon-password " + Mask + " --port 1",
+		`+ exec factorio --rcon-password "dq pw" --port 1`:                                                                               "+ exec factorio --rcon-password " + Mask + " --port 1",
+		"+ exec factorio --rcon-password=eq-pw":                                                                                          "+ exec factorio --rcon-password " + Mask,
+		"2026-11-03 10:00:00 [CHAT] alice: hello":                                                                                        "2026-11-03 10:00:00 [CHAT] alice: hello",
+	}
+	for line, want := range cases {
+		if got := maskSecretCommand(line); got != want {
+			t.Errorf("maskSecretCommand(%q) = %q, want %q", line, got, want)
+		}
+	}
+}

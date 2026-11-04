@@ -49,23 +49,12 @@ func (s *Store) SetActiveWorld(ctx context.Context, id string, now time.Time) (e
 	return nil
 }
 
-// ReplaceActiveWorld makes to active in place of from, leaving any other
-// active row alone. It returns ErrNotActive, changing nothing, when from is
-// not active.
-func (s *Store) ReplaceActiveWorld(ctx context.Context, from, to string, now time.Time) error {
-	return s.replaceActiveWorld(ctx, from, to, now, "")
-}
-
-// ReplaceActiveWorldForSwitch does ReplaceActiveWorld and, in the same
-// transaction, sets the step of the switch record for from to StepPresented
-// (SPEC 7.10), so the active row and the record cannot disagree. It returns
-// ErrNoSwitch, changing nothing, when there is no record.
-func (s *Store) ReplaceActiveWorldForSwitch(ctx context.Context, from, to string, now time.Time) error {
-	return s.replaceActiveWorld(ctx, from, to, now, StepPresented)
-}
-
-// replaceActiveWorld also sets the switch step when step is not empty.
-func (s *Store) replaceActiveWorld(ctx context.Context, from, to string, now time.Time, step string) (err error) {
+// ReplaceActiveWorldForSwitch makes to active in place of from, leaving any
+// other active row alone, and in the same transaction sets the step of the
+// switch record for from to StepPresented (SPEC 7.10), so the active row and
+// the record cannot disagree. It changes nothing and returns ErrNotActive
+// when from is not active, or ErrNoSwitch when there is no record.
+func (s *Store) ReplaceActiveWorldForSwitch(ctx context.Context, from, to string, now time.Time) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("replace active world: %w", err)
@@ -86,15 +75,13 @@ func (s *Store) replaceActiveWorld(ctx context.Context, from, to string, now tim
 		"INSERT INTO active_worlds (world_id, since) VALUES (?, ?)", to, now.Unix()); err != nil {
 		return fmt.Errorf("replace active world: %w", err)
 	}
-	if step != "" {
-		res, err = tx.ExecContext(ctx,
-			"UPDATE world_switches SET step = ? WHERE from_world = ?", step, from)
-		if err != nil {
-			return fmt.Errorf("replace active world: %w", err)
-		}
-		if err = requireOneRow(res, "replace active world", ErrNoSwitch); err != nil {
-			return err
-		}
+	res, err = tx.ExecContext(ctx,
+		"UPDATE world_switches SET step = ? WHERE from_world = ?", StepPresented, from)
+	if err != nil {
+		return fmt.Errorf("replace active world: %w", err)
+	}
+	if err = requireOneRow(res, "replace active world", ErrNoSwitch); err != nil {
+		return err
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("replace active world: %w", err)

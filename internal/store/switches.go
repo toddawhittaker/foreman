@@ -23,11 +23,9 @@ var ErrNoSwitch = errors.New("no switch in progress from that world")
 
 // Switch is a switch in progress or cut short: From is the world being left.
 type Switch struct {
-	From      string
-	To        string
-	Step      string
-	StartedAt time.Time
-	ByUser    string // username, kept as text like the audit log
+	From string
+	To   string
+	Step string
 }
 
 // BeginSwitch records a new switch at step begun. It fails when a switch
@@ -57,7 +55,7 @@ func (s *Store) SetSwitchStep(ctx context.Context, from, step string) error {
 // recovery (SPEC 3.8).
 func (s *Store) ListSwitches(ctx context.Context) (_ []Switch, err error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT from_world, to_world, step, started_at, by_user
+		`SELECT from_world, to_world, step
 		 FROM world_switches ORDER BY started_at, from_world`)
 	if err != nil {
 		return nil, fmt.Errorf("list switches: %w", err)
@@ -70,11 +68,9 @@ func (s *Store) ListSwitches(ctx context.Context) (_ []Switch, err error) {
 	var out []Switch
 	for rows.Next() {
 		var sw Switch
-		var at int64
-		if err := rows.Scan(&sw.From, &sw.To, &sw.Step, &at, &sw.ByUser); err != nil {
+		if err := rows.Scan(&sw.From, &sw.To, &sw.Step); err != nil {
 			return nil, fmt.Errorf("list switches: %w", err)
 		}
-		sw.StartedAt = time.Unix(at, 0).UTC()
 		out = append(out, sw)
 	}
 	if err := rows.Err(); err != nil {

@@ -192,7 +192,7 @@ func TestSwitchRefusals(t *testing.T) {
 			return a, b
 		}, ErrImageMissing},
 		{"to already running", func(r *rig, a, b string) (string, string) {
-			r.start(b)
+			r.startAsActive(b)
 			return a, b
 		}, ErrSwitchTargetRunning},
 		{"from busy", func(r *rig, a, b string) (string, string) {
@@ -386,11 +386,13 @@ func TestSwitchBusyOnBothAndForcedStop(t *testing.T) {
 				t.Error("an interrupted switch changed the active world")
 			}
 			r.noRecord()
-			if target == "from" {
-				r.waitState(a, StateStopped)
-			} else {
-				// Only the world named was force-stopped.
-				r.waitState(a, StateRunning)
+			// Whichever world was named, the forced stop acts on the game
+			// the switch was stopping (SPEC 7.7), and says so.
+			r.waitState(a, StateStopped)
+			for _, id := range []string{a, b} {
+				if op := r.c.Status(id).Operation; op == nil || !strings.Contains(op.Error, "Alpha") {
+					t.Errorf("%s's operation result %+v does not name Alpha", id, op)
+				}
 			}
 			if r.hasContainer(b) {
 				t.Error("the new world was started")
@@ -436,7 +438,7 @@ func TestRecoverSwitches(t *testing.T) {
 			before := len(r.game.State().Calls)
 
 			c := r.newController(rigOptions{})
-			if err := c.RecoverSwitches(ctx); err != nil {
+			if err := c.Recover(ctx); err != nil {
 				t.Fatal(err)
 			}
 			r.noRecord()
@@ -459,7 +461,7 @@ func TestRecoverSwitches(t *testing.T) {
 			if n == nil {
 				t.Fatalf("no notice on %s", want)
 			}
-			if n.Text != tc.text || n.Presented != tc.presented || n.From != a || n.To != b || n.Step != tc.step {
+			if n.Text != tc.text || n.Presented != tc.presented || n.From != a || n.To != b {
 				t.Errorf("notice %+v", n)
 			}
 			if c.Status(other).Notice != nil {
@@ -483,7 +485,25 @@ func TestSwitchUnavailable(t *testing.T) {
 	if err := r.switchWorlds(a, b); !errors.Is(err, ErrSwitchUnavailable) {
 		t.Fatalf("got %v", err)
 	}
-	if err := r.c.RecoverSwitches(context.Background()); err != nil {
+	if err := r.c.Recover(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// SPEC 7.10: a record left by an earlier switch from the same world, which
+// recovery did not clear, does not block the next switch: the world's lock
+// shows no switch from it is running.
+func TestSwitchReplacesAStaleRecord(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	a, b := r.twoWorlds()
+	if err := r.store.BeginSwitch(context.Background(), a, b, "someone", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.switchWorlds(a, b); err != nil {
+		t.Fatalf("switch = %v", err)
+	}
+	if r.active() != b {
+		t.Errorf("active = %q", r.active())
+	}
+	r.noRecord()
 }

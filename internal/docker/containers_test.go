@@ -226,6 +226,13 @@ func TestInspectContainer(t *testing.T) {
 	if !got.State.Running || got.RestartCount != 1 || got.State.OOMKilled {
 		t.Errorf("restarted: running %v, count %d", got.State.Running, got.RestartCount)
 	}
+	if got.Privileged {
+		t.Error("a container Foreman made reads as privileged")
+	}
+	d.Seed(dockertest.Container{Name: "privileged", Privileged: true})
+	if got, err := c.InspectContainer(ctx, "privileged"); err != nil || !got.Privileged {
+		t.Errorf("privileged container read as %+v, %v", got, err)
+	}
 }
 
 func TestInspectRejectsBadIDWithoutSending(t *testing.T) {

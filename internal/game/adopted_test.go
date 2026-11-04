@@ -36,6 +36,7 @@ type adoptedOptions struct {
 	prepare func(dir string)
 	// gameContainer is what Foreman is told to use; empty means adoptedName.
 	gameContainer string
+	rconPassword  string // FOREMAN_RCON_PASSWORD
 }
 
 // newAdoptedRig runs the controller in adopted mode, outside a container,
@@ -57,7 +58,7 @@ func newAdoptedRig(t *testing.T, o adoptedOptions) (*rig, string) {
 			Name: adoptedName, GameDir: mount, Env: append([]string{"DLC_SPACE_AGE=false"}, o.env...),
 			RCONHostPort: o.rconHostPort, Running: o.running,
 		}},
-		gameDir: dir, noRun: o.noRun, gameContainer: o.gameContainer,
+		gameDir: dir, noRun: o.noRun, gameContainer: o.gameContainer, rconPassword: o.rconPassword,
 	})
 	return r, dir
 }
@@ -236,11 +237,21 @@ func TestAdoptedInsideAContainer(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r, dir := newAdoptedRig(t, adoptedOptions{noRun: true})
-			self := tc.self(dir)
-			self.Name, self.Status = "foreman-self", "running"
-			r.game.Daemon().Seed(self)
-			seeded, _ := r.game.Daemon().Container("foreman-self")
-			r.c = r.newController(rigOptions{gameDir: dir, selfID: seeded.ID})
+			// The fake seeds a container for this process when it can; it
+			// has the folder and the network, and a second Foreman beside it
+			// would be a stranger on the game network (SPEC 4.4).
+			hostname, _ := os.Hostname()
+			selfID := ""
+			if own, ok := r.game.Daemon().Container(hostname); ok && tc.refusal == "" {
+				selfID = own.ID
+			} else {
+				self := tc.self(dir)
+				self.Name, self.Status = "foreman-self", "running"
+				r.game.Daemon().Seed(self)
+				seeded, _ := r.game.Daemon().Container("foreman-self")
+				selfID = seeded.ID
+			}
+			r.c = r.newController(rigOptions{gameDir: dir, selfID: selfID})
 			r.run(r.c)
 			a := r.newWorld("Alpha")
 			err := r.c.Start(context.Background(), a, admin, StartOptions{})
@@ -423,6 +434,24 @@ func TestAdoptedSwitchWhileStoppedPresentsTheNewWorld(t *testing.T) {
 	if cs := r.adoptedState(); cs.Status != "exited" {
 		t.Errorf("container status %q", cs.Status)
 	}
+	// B never started, so it has no RCON password yet; a stopped container
+	// needs none to be shown as stopped, with Start offered (SPEC 7.1).
+	if _, err := os.Lstat(filepath.Join(r.worldDir(b), world.RCONPasswordFile)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("B has a password file already: %v", err)
+	}
+	r.c.pokeMonitor()
+	looked := func() bool {
+		w := r.c.world(b)
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return w.containerID != "" || w.adoptErr != nil
+	}
+	eventually(t, looked, "the monitor to look at the container for B")
+	if st := r.c.Status(b); st.State != StateStopped || st.Reason != "" {
+		t.Errorf("B is %s (%s), want stopped", st.State, st.Reason)
+	}
+	r.start(b)
+	r.waitState(b, StateRunning)
 }
 
 func TestAdoptedSwitchPutsTheOldWorldBackWhenTheDatabaseFails(t *testing.T) {
@@ -453,7 +482,7 @@ func TestAdoptedRecovery(t *testing.T) {
 			t.Fatal(err)
 		}
 		n := r.c.Status(b).Notice
-		if n == nil || !n.Presented || n.Step != store.StepPresented {
+		if n == nil || !n.Presented || !strings.Contains(n.Text, "is active") {
 			t.Fatalf("notice on B = %+v", n)
 		}
 		if r.active() != b {
@@ -594,5 +623,62 @@ func TestAdoptedModeOffersNoImageDownload(t *testing.T) {
 	}
 	if _, _, err := r.c.ImageFor(context.Background(), a); !errors.Is(err, ErrAdoptedImages) {
 		t.Errorf("image for = %v", err)
+	}
+}
+
+// SPEC 4.10: with FOREMAN_RCON_PASSWORD set, every start writes it into the
+// presented world's config/rconpw at 0640, because the image gives the game
+// the password in that file. An older value in the file stays hidden.
+func TestAdoptedEnvPasswordIsWrittenBeforeEachStart(t *testing.T) {
+	const env, old = "env-pass-4711", "old-file-pw-0815"
+	r, dir := newAdoptedRig(t, adoptedOptions{rconPassword: env})
+	a, b := r.twoWorlds()
+	if err := os.MkdirAll(filepath.Join(r.worldDir(b), world.ConfigDir), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(r.worldDir(b), world.RCONPasswordFile), []byte(old+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r.start(a)
+	r.waitState(a, StateRunning)
+	if err := r.switchWorlds(a, b); err != nil {
+		t.Fatalf("switch: %v", err)
+	}
+	r.waitState(b, StateRunning)
+	presents(t, dir, b)
+	for _, id := range []string{a, b} {
+		p := filepath.Join(r.worldDir(id), world.RCONPasswordFile)
+		info, err := os.Stat(p)
+		if err != nil || info.Mode().Perm() != 0o640 || readText(t, p) != env {
+			t.Errorf("%s's rconpw: %v, %v", id, info, err)
+		}
+	}
+	for _, l := range r.c.Lines(b) {
+		if strings.Contains(l, env) || strings.Contains(l, old) {
+			t.Errorf("log line shows a password: %q", l)
+		}
+	}
+}
+
+// SPEC 3.8, 4.10: a re-attach with FOREMAN_RCON_PASSWORD set uses it, and
+// creates no password file in the world.
+func TestAdoptedReattachUsesTheEnvPassword(t *testing.T) {
+	const env = "env-pass-4711"
+	r, dir := newAdoptedRig(t, adoptedOptions{rconPassword: env})
+	a := r.newWorld("Alpha")
+	r.start(a)
+	r.waitState(a, StateRunning)
+	r.stop()
+	if err := os.Remove(filepath.Join(r.worldDir(a), world.RCONPasswordFile)); err != nil {
+		t.Fatal(err)
+	}
+	r.c = r.newController(rigOptions{gameDir: dir, rconPassword: env})
+	r.run(r.c)
+	st := r.waitState(a, StateRunning)
+	if st.Reason != "" {
+		t.Errorf("reason %q", st.Reason)
+	}
+	if _, err := os.Lstat(filepath.Join(r.worldDir(a), world.RCONPasswordFile)); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("re-attach made a password file: %v", err)
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
+	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -157,6 +158,8 @@ type rigOptions struct {
 	gameDir string
 	// gameContainer names the adopted container; empty means adoptedName.
 	gameContainer string
+	// rconPassword is FOREMAN_RCON_PASSWORD in adopted mode.
+	rconPassword string
 }
 
 func newRig(t *testing.T, opts rigOptions) *rig {
@@ -208,6 +211,7 @@ func (r *rig) newController(opts rigOptions) *Controller {
 	}
 	if opts.gameDir != "" {
 		cfg.GameContainer, cfg.GameDir = cmp.Or(opts.gameContainer, adoptedName), opts.gameDir
+		cfg.RCONPassword = secret.New(opts.rconPassword)
 		cfg.HostDataDir, cfg.Images = "", nil
 	}
 	c, err := New(cfg)
@@ -281,6 +285,25 @@ func (r *rig) start(id string) {
 	r.t.Helper()
 	if err := r.c.Start(context.Background(), id, admin, StartOptions{}); err != nil {
 		r.t.Fatalf("start: %v", err)
+	}
+}
+
+// startAsActive starts a world that is not the active one, by making it
+// active for the start only: a state an older Foreman, or a game started
+// before a switch was refused, can leave (SPEC 5.3).
+func (r *rig) startAsActive(id string) {
+	r.t.Helper()
+	ctx := context.Background()
+	was, _, err := r.store.ActiveWorld(ctx)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	if err := r.store.SetActiveWorld(ctx, id, time.Now()); err != nil {
+		r.t.Fatal(err)
+	}
+	r.start(id)
+	if err := r.store.SetActiveWorld(ctx, was, time.Now()); err != nil {
+		r.t.Fatal(err)
 	}
 }
 

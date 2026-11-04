@@ -502,7 +502,7 @@ func (v *invRig) recoverOnFreshProcess() *Controller {
 	c := v.newController(rigOptions{})
 	callsBefore := len(v.game.State().Calls)
 	statusBefore, commandsBefore := v.statuses(), v.allCommands()
-	if err := c.RecoverSwitches(context.Background()); err != nil {
+	if err := c.Recover(context.Background()); err != nil {
 		v.t.Fatal(err)
 	}
 	if m := mutations(v.game.State().Calls[callsBefore:]); len(m) != 0 {
@@ -604,8 +604,10 @@ func crashAndRecover(t *testing.T, running bool, at int) {
 		t.Errorf("notice %+v although no switch began", n)
 	case tr.step() != "" && n == nil:
 		t.Error("an unfinished switch was not reported")
-	case n != nil && (n.Presented != tr.wasPresented() || n.Step != tr.step()):
+	case n != nil && n.Presented != tr.wasPresented():
 		t.Errorf("notice %+v, want presented=%v at %q", n, tr.wasPresented(), tr.step())
+	case n != nil && !n.Presented && !strings.Contains(n.Text, unfinishedStep(tr.step(), c2.worldName(a), c2.worldName(b))):
+		t.Errorf("notice %q does not name the step after %q", n.Text, tr.step())
 	}
 	other := b
 	if active == b {
@@ -892,7 +894,7 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 			return a, b
 		}, wantErr: ErrImageMissing},
 		{name: "new world already running", audited: 1, othersGameRuns: true, setup: func(v *invRig, a, b string) (string, string) {
-			v.start(b)
+			v.startAsActive(b)
 			return a, b
 		}, wantErr: ErrSwitchTargetRunning},
 		{name: "pre-start check refuses the new world", audited: 1, setup: func(v *invRig, a, b string) (string, string) {
@@ -911,12 +913,6 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 			v.c.containerEnvs = []string{dockerenv}
 			return a, b
 		}, wantErr: ErrNetwork},
-		{name: "an earlier switch record was never recovered", audited: 1, setup: func(v *invRig, a, b string) (string, string) {
-			if err := v.store.BeginSwitch(context.Background(), a, b, "someone", time.Now()); err != nil {
-				v.t.Fatal(err)
-			}
-			return a, b
-		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -963,7 +959,7 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 			if !tc.othersGameRuns {
 				v.assertSafe("after the refusal")
 			}
-			if tc.name != "no switch store" && tc.name != "an earlier switch record was never recovered" {
+			if tc.name != "no switch store" {
 				v.noRecord()
 			}
 		})
@@ -1109,10 +1105,10 @@ func TestInvariantRecoveryNeverTouchesAGame(t *testing.T) {
 	}{
 		{"nothing ever started", func(*invRig, string, string) {}},
 		{"old world running", func(v *invRig, a, _ string) { v.start(a) }},
-		{"new world running", func(v *invRig, _, b string) { v.start(b) }},
+		{"new world running", func(v *invRig, _, b string) { v.startAsActive(b) }},
 		{"both stopped", func(v *invRig, a, b string) {
 			for _, id := range []string{a, b} {
-				v.start(id)
+				v.startAsActive(id)
 				if err := v.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 					v.t.Fatal(err)
 				}
@@ -1147,7 +1143,7 @@ func TestInvariantRecoveryNeverTouchesAGame(t *testing.T) {
 				statusBefore := v.statuses()
 				c := v.recoverOnFreshProcess()
 				// A second pass finds nothing, and does nothing.
-				if err := c.RecoverSwitches(ctx); err != nil {
+				if err := c.Recover(ctx); err != nil {
 					t.Fatal(err)
 				}
 				want := a
@@ -1315,29 +1311,23 @@ func TestInvariantSwitchSnapshotRestoresExactly(t *testing.T) {
 // that goes ahead. The target's pre-start check is the one thing that runs
 // first, and it must be read-only.
 func TestInvariantRefusedSwitchWritesNoWorldFile(t *testing.T) {
-	const bug = "BUG: a refused switch still creates mods/mod-list.json in the target world, because switchChecks runs precheck, which calls EnsureModList, before any snapshot"
 	cases := []struct {
 		name  string
-		skip  string
 		setup func(v *invRig, a, b string) (from, to string)
 	}{
-		{"from is not active", "", func(_ *invRig, a, b string) (string, string) { return b, a }},
-		{"image missing", bug, func(v *invRig, a, b string) (string, string) {
+		{"from is not active", func(_ *invRig, a, b string) (string, string) { return b, a }},
+		{"image missing", func(v *invRig, a, b string) (string, string) {
 			v.game.SetImage(image21, false)
 			return a, b
 		}},
-		{"an earlier switch record was never recovered", bug, func(v *invRig, a, b string) (string, string) {
-			if err := v.store.BeginSwitch(context.Background(), a, b, "someone", time.Now()); err != nil {
-				v.t.Fatal(err)
-			}
+		{"the game network is refused", func(v *invRig, a, b string) (string, string) {
+			// Foreman looks as if it runs in a container it cannot find (SPEC 4.4).
+			v.c.containerEnvs = []string{v.worldDir(a)}
 			return a, b
 		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.skip != "" {
-				t.Skip(tc.skip)
-			}
 			v := newInvRig(t, "Alpha", "Beta")
 			a, b := v.ids[0], v.ids[1]
 			v.start(a)
@@ -1360,4 +1350,43 @@ func TestInvariantRefusedSwitchWritesNoWorldFile(t *testing.T) {
 
 func (tr *tracer) SetActiveWorld(ctx context.Context, id string, now time.Time) error {
 	return tr.inner.SetActiveWorld(ctx, id, now)
+}
+
+// SPEC 7.3, 7.9: in managed mode a start or restart of a world that is not
+// the active one is refused before anything runs, so a container only ever
+// runs the active world.
+func TestInvariantStartOfANonActiveWorldRunsNoContainer(t *testing.T) {
+	for _, action := range []string{"start", "restart"} {
+		t.Run(action, func(t *testing.T) {
+			v := newInvRig(t, "Alpha", "Beta")
+			b := v.ids[1]
+			var err error
+			if action == "start" {
+				err = v.c.Start(context.Background(), b, admin, StartOptions{})
+			} else {
+				err = v.c.Restart(context.Background(), b, admin, StopOptions{}, StartOptions{})
+			}
+			if !errors.Is(err, ErrWorldNotActive) || err.Error() != "Beta is not the active world. Switch to it first" {
+				t.Fatalf("%s = %v, want the not-active refusal", action, err)
+			}
+			if n := len(v.calls("POST /containers/create")); n != 0 {
+				t.Errorf("%d container creations after a refusal", n)
+			}
+			if v.hasContainer(b) {
+				t.Error("a container exists for the world that is not active")
+			}
+		})
+	}
+}
+
+func (tr *tracer) SetAdoption(ctx context.Context, id string, now time.Time) error {
+	return tr.inner.SetAdoption(ctx, id, now)
+}
+
+func (tr *tracer) Adoption(ctx context.Context) (string, bool, error) {
+	return tr.inner.Adoption(ctx)
+}
+
+func (tr *tracer) ClearAdoption(ctx context.Context) error {
+	return tr.inner.ClearAdoption(ctx)
 }

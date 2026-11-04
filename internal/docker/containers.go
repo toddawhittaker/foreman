@@ -181,6 +181,8 @@ type Container struct {
 	// NetworkMode is HostConfig.NetworkMode: a network name, "bridge",
 	// "host", "none", or "default" for an unset one.
 	NetworkMode string
+	// Privileged is HostConfig.Privileged.
+	Privileged bool
 }
 
 // EnvValue returns the value of an environment variable. When the name is
@@ -226,6 +228,7 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		HostConfig struct {
 			PortBindings map[string][]PortBinding
 			NetworkMode  string
+			Privileged   bool
 		}
 		Mounts          []Mount
 		NetworkSettings struct {
@@ -248,6 +251,7 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		User:         raw.Config.User,
 		PortBindings: raw.HostConfig.PortBindings,
 		NetworkMode:  raw.HostConfig.NetworkMode,
+		Privileged:   raw.HostConfig.Privileged,
 	}, nil
 }
 

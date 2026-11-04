@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -49,11 +51,6 @@ var launchSteps = []string{StepImage, StepCreate, StepStartContainer, StepLoad, 
 // adoptedLaunchSteps are the steps of launchLocked in adopted mode, where
 // the container already exists and its checks run with the world's.
 var adoptedLaunchSteps = []string{StepStartContainer, StepLoad, StepRCON}
-
-// startStepsFor lists a start's steps in managed mode.
-func startStepsFor(opts StartOptions) []string {
-	return append(checkStepsFor(opts), launchSteps...)
-}
 
 // launchSteps lists the steps of launchLocked in this controller's mode.
 func (c *Controller) launchSteps() []string {
@@ -103,12 +100,45 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 		return err
 	}
 	defer unlock()
+	if err := c.checkActive(ctx, id); err != nil {
+		return err
+	}
 	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
 		return err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, c.startSteps(opts))
 	err = c.startLocked(ctx, o, by, opts)
 	return o.end(err)
+}
+
+// ErrWorldNotActive matches the refusal to start a world that is not the
+// active one; its text names the world.
+var ErrWorldNotActive = errors.New("the world is not the active world. Switch to it first")
+
+type notActiveError struct{ name string }
+
+func (e notActiveError) Error() string {
+	return e.name + " is not the active world. Switch to it first"
+}
+func (e notActiveError) Is(target error) bool { return target == ErrWorldNotActive }
+
+// checkActive refuses, in managed mode, a start of a world that is not the
+// active one: a start runs the active world (SPEC 7.3), and only a switch
+// changes which that is (SPEC 7.9). In adopted mode the game folder decides,
+// and checkLayout refuses instead (SPEC 4.8). The caller holds the world's
+// lock.
+func (c *Controller) checkActive(ctx context.Context, id string) error {
+	if c.adopted != nil || c.switches == nil {
+		return nil
+	}
+	active, found, err := c.switches.ActiveWorld(ctx)
+	if err != nil {
+		return err
+	}
+	if !found || active != id {
+		return notActiveError{name: c.worldName(id)}
+	}
+	return nil
 }
 
 // startLocked runs the start steps. The caller holds the world's lock.
@@ -181,14 +211,51 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	if err != nil {
 		return world.PreCheck{}, err
 	}
-	allowed := check.OK() || (opts.Anyway && check.CanStartAnyway())
-	if !allowed {
-		return world.PreCheck{}, &PrecheckError{Check: check}
+	return check, c.allowStart(id, check, opts)
+}
+
+// precheckReadOnly is precheck for a switch's checks before the stop, which
+// may change no world file before the switch's snapshots (SPEC 6.2, 7.9). A
+// missing mod list is not written: the start writes one that matches the
+// Space Age flag, so the problem it would cause is left out.
+func (c *Controller) precheckReadOnly(id string, opts StartOptions) error {
+	check, err := c.worlds.PreStartCheck(id)
+	if err != nil {
+		return err
 	}
-	if err := c.checkSaveAgainstImage(id, check.SaveVersion); err != nil {
-		return world.PreCheck{}, err
+	missing, err := c.modListMissing(id)
+	if err != nil {
+		return err
 	}
-	return check, nil
+	if missing {
+		check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
+			return p.Kind == world.ProblemModListSpaceAge
+		})
+	}
+	return c.allowStart(id, check, opts)
+}
+
+// allowStart returns a *PrecheckError unless the check lets the world start,
+// and ErrSaveNewerThanImage when the game is older than the save.
+func (c *Controller) allowStart(id string, check world.PreCheck, opts StartOptions) error {
+	if allowed := check.OK() || (opts.Anyway && check.CanStartAnyway()); !allowed {
+		return &PrecheckError{Check: check}
+	}
+	return c.checkSaveAgainstImage(id, check.SaveVersion)
+}
+
+// modListMissing reports whether the world has no mods/mod-list.json.
+func (c *Controller) modListMissing(id string) (bool, error) {
+	root, err := c.worlds.OpenWorld(id)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = root.Close() }()
+	_, err = root.Lstat(path.Join(world.ModsDir, world.ModListFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return true, nil
+	}
+	return false, err
 }
 
 // ErrSaveNewerThanImage refuses a save made by a newer game than the one
@@ -445,7 +512,7 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	}
 	w := c.world(id)
 	w.mu.Lock()
-	cancel, done := w.opCancel, w.opDone
+	cancel, done, run := w.opCancel, w.opDone, w.opRun
 	w.mu.Unlock()
 	interrupted := cancel != nil
 	if interrupted {
@@ -457,15 +524,19 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+		// A switch holds two worlds: the game to stop is the one its last
+		// step acted on, whichever world was named (SPEC 7.7, 7.9).
+		w = run.w
 	}
 	defer c.pokeMonitor()
-	cont, found, err := c.ourContainer(ctx, id)
+	cont, found, err := c.ourContainer(ctx, w.id)
 	if err != nil {
 		return err
 	}
 	status := cont.State.Status
 	if !found || (status != "running" && status != "restarting") {
 		if interrupted {
+			run.noteForceStop(fmt.Sprintf("No game of %s was running.", c.worldName(w.id)))
 			// Ending what was in progress was what the admin asked for.
 			return nil
 		}
@@ -486,7 +557,22 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 		return err
 	}
 	c.refresh(ctx, w, cont.ID)
+	if interrupted {
+		run.noteForceStop(fmt.Sprintf("It stopped the game of %s.", c.worldName(w.id)))
+	}
 	return nil
+}
+
+// noteForceStop adds to the result of an operation on several worlds which
+// one a forced stop acted on. The operation has ended.
+func (o *opRun) noteForceStop(text string) {
+	if len(o.ws) < 2 {
+		return
+	}
+	o.lockAll()
+	defer o.unlockAll()
+	o.op.Error = ErrCancelled.Error() + ". " + text
+	o.publishLocked()
 }
 
 // markStopping marks the game as stopped on purpose, so its exit is not a
@@ -519,6 +605,9 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 		return err
 	}
 	defer unlock()
+	if err := c.checkActive(ctx, id); err != nil {
+		return err
+	}
 	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}

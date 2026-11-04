@@ -47,20 +47,6 @@ func activeIDs(t *testing.T, s *Store) []string {
 	return ids
 }
 
-func TestReplaceActiveWorld(t *testing.T) {
-	s, _ := openTemp(t)
-	ctx := context.Background()
-	if err := s.SetActiveWorld(ctx, "alpha", t0); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.ReplaceActiveWorld(ctx, "alpha", "beta", t0.Add(time.Minute)); err != nil {
-		t.Fatal(err)
-	}
-	if got := activeIDs(t, s); len(got) != 1 || got[0] != "beta" {
-		t.Errorf("active = %v, want [beta]", got)
-	}
-}
-
 func TestReplaceActiveWorldLeavesOtherRowsAlone(t *testing.T) {
 	s, _ := openTemp(t)
 	ctx := context.Background()
@@ -69,26 +55,14 @@ func TestReplaceActiveWorldLeavesOtherRowsAlone(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := s.ReplaceActiveWorld(ctx, "alpha", "beta", t0); err != nil {
+	if err := s.BeginSwitch(ctx, "alpha", "beta", "todd", t0); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceActiveWorldForSwitch(ctx, "alpha", "beta", t0); err != nil {
 		t.Fatal(err)
 	}
 	if got := activeIDs(t, s); len(got) != 2 || got[0] != "beta" || got[1] != "other" {
 		t.Errorf("active = %v, want [beta other]", got)
-	}
-}
-
-func TestReplaceActiveWorldRefusesWhenFromNotActive(t *testing.T) {
-	s, _ := openTemp(t)
-	ctx := context.Background()
-	if err := s.SetActiveWorld(ctx, "alpha", t0); err != nil {
-		t.Fatal(err)
-	}
-	err := s.ReplaceActiveWorld(ctx, "gamma", "beta", t0)
-	if !errors.Is(err, ErrNotActive) {
-		t.Fatalf("err = %v, want ErrNotActive", err)
-	}
-	if got := activeIDs(t, s); len(got) != 1 || got[0] != "alpha" {
-		t.Errorf("active = %v, want [alpha] unchanged", got)
 	}
 }
 
