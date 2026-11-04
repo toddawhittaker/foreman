@@ -233,6 +233,10 @@ func TestInspectContainer(t *testing.T) {
 	if got, err := c.InspectContainer(ctx, "privileged"); err != nil || !got.Privileged {
 		t.Errorf("privileged container read as %+v, %v", got, err)
 	}
+	d.Seed(dockertest.Container{Name: "caps", CapAdd: []string{"NET_ADMIN"}, PidMode: "host"})
+	if got, err := c.InspectContainer(ctx, "caps"); err != nil || len(got.CapAdd) != 1 || got.CapAdd[0] != "NET_ADMIN" || got.PidMode != "host" {
+		t.Errorf("container with capabilities read as %+v, %v", got, err)
+	}
 }
 
 func TestInspectRejectsBadIDWithoutSending(t *testing.T) {

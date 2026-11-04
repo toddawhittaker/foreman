@@ -35,6 +35,7 @@ type adoptedView struct {
 	layoutErr     string // the last error reading the folder, logged once
 	version       string // the container's VERSION; "" when it has none
 	rconPublished bool
+	networkErr    string // the last network refusal, logged once
 }
 
 func newAdoptedMode(cfg Config) (*adoptedMode, error) {
@@ -268,6 +269,12 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 	if cont.Privileged {
 		return refuseContainer("the game container is privileged, so a game in it could take over the host. Remove privileged mode from the container's definition")
 	}
+	if len(cont.CapAdd) > 0 {
+		return refuseContainer("the game container adds the Linux capability %s, which a game does not need and could use against the host. Remove cap_add from the container's definition", cont.CapAdd[0])
+	}
+	if cont.PidMode == "host" {
+		return refuseContainer("the game container uses the host's process namespace (pid: host), so a game in it could see and signal the host's processes. Remove that setting from the container's definition")
+	}
 	src, found := "", false
 	for _, m := range cont.Mounts {
 		dest := path.Clean(m.Destination)
@@ -324,16 +331,50 @@ func (c *Controller) checkAdoptedNetwork(ctx context.Context, cont docker.Contai
 	return c.checkSharedNetwork(ctx, self, network, func(s docker.ContainerSummary) bool { return s.ID == cont.ID })
 }
 
+// CheckAdoptedNetwork applies the SPEC 4.4 network rules to the adopted
+// container before Foreman serves. It returns only a refusal: when Docker
+// cannot be asked or the container is missing, the monitor reports that.
+func (c *Controller) CheckAdoptedNetwork(ctx context.Context) error {
+	if c.adopted == nil {
+		return nil
+	}
+	cont, err := c.inspectAdopted(ctx)
+	if err != nil {
+		return nil
+	}
+	err = c.checkAdoptedNetwork(ctx, cont)
+	if errors.Is(err, ErrNetwork) {
+		return err
+	}
+	return nil
+}
+
+// noteNetworkRefusal logs a network refusal once each time it changes.
+func (c *Controller) noteNetworkRefusal(err error) {
+	text := ""
+	if errors.Is(err, ErrNetwork) {
+		text = err.Error()
+	}
+	c.mu.Lock()
+	changed := c.aview.networkErr != text
+	c.aview.networkErr = text
+	c.mu.Unlock()
+	if changed && text != "" {
+		c.log.Error("the game container's network is refused", "reason", text)
+	}
+}
+
 // mountsDockerSocket reports whether a mount gives the container the Docker
-// socket: a docker.sock at either end, or the run folder that holds it.
+// socket: a docker.sock at either end, or a host folder that holds it.
 func mountsDockerSocket(m docker.Mount) bool {
 	for _, p := range []string{path.Clean(m.Source), path.Clean(m.Destination)} {
 		if path.Base(p) == "docker.sock" {
 			return true
 		}
 	}
+	// A folder that holds /run or /var/run holds the socket too.
 	src := path.Clean(m.Source)
-	return src == "/run" || src == "/var/run"
+	return src == "/" || src == "/var" || src == "/run" || src == "/var/run"
 }
 
 // adoptedNetwork names the network Foreman shares with the game: the only
@@ -615,6 +656,12 @@ func (c *Controller) writeEnvRCONPassword(id string) error {
 // folder is Fresh, Unadopted or Broken (SPEC 4.7, 4.8).
 func (c *Controller) tickAdopted(ctx context.Context) {
 	cont, err := c.inspectAdopted(ctx)
+	if err == nil {
+		// The network can change while the game runs; this catches it at
+		// the next look rather than preventing it (SPEC 4.4).
+		err = c.checkAdoptedNetwork(ctx, cont)
+		c.noteNetworkRefusal(err)
+	}
 	if ctx.Err() != nil {
 		return
 	}

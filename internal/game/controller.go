@@ -678,7 +678,7 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 	}
 	listed, dockerErr := c.dockerState()
 	if w.opDone == nil {
-		if errors.Is(dockerErr, ErrNoGameContainer) {
+		if errors.Is(dockerErr, ErrNoGameContainer) || errors.Is(dockerErr, ErrNetwork) {
 			return StateUnknown, dockerErr.Error()
 		}
 		if dockerErr != nil {

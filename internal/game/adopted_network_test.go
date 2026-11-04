@@ -16,26 +16,33 @@ import (
 // These tests pin down the adopted container's privilege and network
 // refusals (SPEC 4.4, 4.6, 14).
 
-// SPEC 4.6, 14: Foreman refuses an adopted container that is privileged or
-// can reach the Docker socket, since a game in it could control Docker.
+// SPEC 4.6, 14: Foreman refuses an adopted container that is privileged,
+// adds a capability, shares the host's processes or can reach the Docker
+// socket, since a game in it could control the host.
 func TestAdoptedContainerPrivilegeRefusals(t *testing.T) {
 	cases := []struct {
 		name       string
 		privileged bool
+		capAdd     []string
+		pidMode    string
 		extra      []docker.Mount
 		want       string
 	}{
-		{"privileged", true, nil, "privileged"},
-		{"socket at the usual place", false, []docker.Mount{{Source: "/var/run/docker.sock", Destination: "/var/run/docker.sock"}}, "Docker socket"},
-		{"socket under /run", false, []docker.Mount{{Source: "/run/docker.sock", Destination: "/sock"}}, "Docker socket"},
-		{"socket under another name", false, []docker.Mount{{Source: "/srv/docker.sock", Destination: "/tmp/d"}}, "Docker socket"},
-		{"the folder that holds the socket", false, []docker.Mount{{Source: "/var/run", Destination: "/host-run"}}, "Docker socket"},
+		{"privileged", true, nil, "", nil, "privileged"},
+		{"adds a capability", false, []string{"SYS_ADMIN"}, "", nil, "SYS_ADMIN"},
+		{"host process namespace", false, nil, "host", nil, "process namespace"},
+		{"the host's root", false, nil, "", []docker.Mount{{Source: "/", Destination: "/host"}}, "Docker socket"},
+		{"the folder above /var/run", false, nil, "", []docker.Mount{{Source: "/var/", Destination: "/host-var"}}, "Docker socket"},
+		{"socket at the usual place", false, nil, "", []docker.Mount{{Source: "/var/run/docker.sock", Destination: "/var/run/docker.sock"}}, "Docker socket"},
+		{"socket under /run", false, nil, "", []docker.Mount{{Source: "/run/docker.sock", Destination: "/sock"}}, "Docker socket"},
+		{"socket under another name", false, nil, "", []docker.Mount{{Source: "/srv/docker.sock", Destination: "/tmp/d"}}, "Docker socket"},
+		{"the folder that holds the socket", false, nil, "", []docker.Mount{{Source: "/var/run", Destination: "/host-run"}}, "Docker socket"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r, dir := newAdoptedRig(t, adoptedOptions{gameContainer: "other", noRun: true})
 			r.game.Daemon().Seed(dockertest.Container{
-				Name: "other", Status: "exited", Privileged: tc.privileged,
+				Name: "other", Status: "exited", Privileged: tc.privileged, CapAdd: tc.capAdd, PidMode: tc.pidMode,
 				Spec:     docker.ContainerSpec{Image: "factoriotools/factorio:2.1.24", Env: []string{"PUID=845", "PGID=845", "DLC_SPACE_AGE=false", "VERSION=2.1.24"}},
 				Mounts:   append([]docker.Mount{{Source: dir, Destination: "/factorio"}}, tc.extra...),
 				Networks: map[string]string{testNetwork: ""},
@@ -153,12 +160,7 @@ func TestAdoptedUnknownReasonNamesTheNetworkRefusal(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer r.run(r.c)()
-	eventually(t, func() bool {
-		w := r.c.world(a)
-		w.mu.Lock()
-		defer w.mu.Unlock()
-		return w.adoptErr != nil
-	}, "the monitor to refuse the container")
+	eventually(t, func() bool { return strings.Contains(r.c.Status(a).Reason, "FOREMAN_GAME_NETWORK") }, "the monitor to refuse the container")
 	st := r.c.Status(a)
 	if st.State != StateUnknown || !strings.Contains(st.Reason, "Set FOREMAN_GAME_NETWORK") {
 		t.Errorf("status = %s (%s), want unknown naming FOREMAN_GAME_NETWORK", st.State, st.Reason)
@@ -166,4 +168,46 @@ func TestAdoptedUnknownReasonNamesTheNetworkRefusal(t *testing.T) {
 	if strings.Contains(st.Reason, "RCON password") {
 		t.Errorf("reason blames the RCON password: %s", st.Reason)
 	}
+}
+
+// SPEC 4.4: a running game on a network that breaks the rules stops
+// Foreman at startup; a missing container does not.
+func TestCheckAdoptedNetworkAtStartup(t *testing.T) {
+	ctx := context.Background()
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": ""})
+	if err := r.docker.StartContainer(ctx, "other"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.CheckAdoptedNetwork(ctx); err != nil {
+		t.Fatalf("accepted network refused: %v", err)
+	}
+	r.c.proxies = []netip.Prefix{netip.MustParsePrefix("10.251.0.0/16")}
+	if err := r.c.CheckAdoptedNetwork(ctx); !errors.Is(err, ErrNetwork) || !strings.Contains(err.Error(), "FOREMAN_TRUSTED_PROXIES") {
+		t.Fatalf("check = %v, want a refusal naming FOREMAN_TRUSTED_PROXIES", err)
+	}
+	r.c.adopted.container = "missing"
+	if err := r.c.CheckAdoptedNetwork(ctx); err != nil {
+		t.Errorf("missing container refused startup: %v", err)
+	}
+}
+
+// SPEC 4.4: a network change while the game runs is caught at the next
+// monitor tick, which marks the world Unknown with the refusal.
+func TestAdoptedNetworkChangeMarksUnknown(t *testing.T) {
+	ctx := context.Background()
+	r := sharedNetworkRig(t, map[string]string{"shared": "10.251.0.9/24"}, map[string]string{"shared": ""})
+	a := r.newWorld("Alpha")
+	if err := gamedir.Present(r.c.adopted.dir, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.docker.StartContainer(ctx, "other"); err != nil {
+		t.Fatal(err)
+	}
+	defer r.run(r.c)()
+	eventually(t, func() bool { listed, err := r.c.dockerState(); return listed && err == nil }, "the first look")
+	r.game.Daemon().Seed(dockertest.Container{Name: "intruder", Status: "running", Networks: map[string]string{"shared": ""}})
+	eventually(t, func() bool {
+		st := r.c.Status(a)
+		return st.State == StateUnknown && strings.Contains(st.Reason, "intruder")
+	}, "the world to turn unknown naming the intruder")
 }

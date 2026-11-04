@@ -269,18 +269,52 @@ func TestAdoptionRecoveryAtEachStep(t *testing.T) {
 	}
 }
 
-// SPEC 4.8: one adoption at a time. A second is refused while a marker or
-// the database record of another exists, or while one runs, and nothing is
-// stopped or moved.
+// SPEC 4.8, 14: one adoption at a time. A second is refused while the
+// database records another or one runs, and nothing is stopped or moved.
+// A marker alone, which the game could write, does not count.
 func TestAdoptionOneAtATime(t *testing.T) {
 	ctx := context.Background()
-	t.Run("a marker exists", func(t *testing.T) {
-		r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
+	t.Run("a marker without a record is cleared", func(t *testing.T) {
+		r, dir := newAdoptedRig(t, adoptedOptions{prepare: unadoptedFolder(t)})
 		a, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, adoptionMarker), []byte("other\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.c.Adopt(ctx, a, admin, StopOptions{}); err != nil {
+			t.Fatalf("adopt = %v", err)
+		}
+		presents(t, dir, a.ID)
+	})
+	t.Run("a folder with something in it, named as the marker", func(t *testing.T) {
+		r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
+		a, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		keep := filepath.Join(dir, adoptionMarker, "keep")
+		if err := os.MkdirAll(keep, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.c.Adopt(ctx, a, admin, StopOptions{}); err == nil || !strings.Contains(err.Error(), adoptionMarker) {
+			t.Fatalf("adopt = %v, want a refusal naming the marker", err)
+		}
+		if cs := r.adoptedState(); cs.Status != "running" {
+			t.Errorf("container status %q", cs.Status)
+		}
+		if _, err := os.Stat(keep); err != nil {
+			t.Errorf("the folder's contents were touched: %v", err)
+		}
+	})
+	t.Run("a record without a marker is refused before the stop", func(t *testing.T) {
+		r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
+		a, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := r.store.SetAdoption(ctx, "other", time.Now()); err != nil {
 			t.Fatal(err)
 		}
 		if err := r.c.Adopt(ctx, a, admin, StopOptions{}); !errors.Is(err, ErrAdoptionInProgress) {
@@ -291,6 +325,9 @@ func TestAdoptionOneAtATime(t *testing.T) {
 		}
 		if cs := r.adoptedState(); cs.Status != "running" {
 			t.Errorf("container status %q", cs.Status)
+		}
+		if st, _ := gamedir.Inspect(dir); st.Kind != gamedir.Unadopted {
+			t.Errorf("folder is %s", st.Kind)
 		}
 	})
 	t.Run("the database holds another", func(t *testing.T) {
@@ -318,7 +355,7 @@ func TestAdoptionOneAtATime(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		release, err := r.c.claimAdoption()
+		release, err := r.c.claimAdoption(context.Background())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -383,5 +420,34 @@ func TestUnadoptedPasswordRefusesAFIFO(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("reading the password blocked on a FIFO")
+	}
+}
+
+// SPEC 4.8: an adoption that stopped before its cut-over is forgotten at
+// startup even while the game runs, so a game that is always running does
+// not block adoption for good.
+func TestRecoveryForgetsAnUnbegunAdoptionWhileTheGameRuns(t *testing.T) {
+	ctx := context.Background()
+	r, dir := newAdoptedRig(t, adoptedOptions{running: true, prepare: unadoptedFolder(t)})
+	if err := r.store.SetAdoption(ctx, "gate", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, adoptionMarker), []byte("gate\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.Recover(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := r.store.Adoption(ctx); err != nil || found {
+		t.Errorf("record kept: %v, %v", found, err)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, adoptionMarker)); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("marker kept: %v", err)
+	}
+	if cs := r.adoptedState(); cs.Status != "running" {
+		t.Errorf("container status %q", cs.Status)
+	}
+	if _, err := r.c.ReserveAdoption(ctx, "Gate", "2.1.24", false); err != nil {
+		t.Errorf("reserve after recovery = %v", err)
 	}
 }
