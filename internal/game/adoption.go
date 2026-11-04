@@ -90,7 +90,7 @@ func (c *Controller) ReserveAdoption(ctx context.Context, name, gameVersion stri
 	if !world.ValidGameVersion(gameVersion) {
 		return Adoption{}, world.ErrBadGameVersion
 	}
-	if err := c.adoptionBusy(); err != nil {
+	if err := c.adoptionBusy(ctx); err != nil {
 		return Adoption{}, err
 	}
 	if _, err := c.checkUnadopted(ctx, gameVersion, spaceAge); err != nil {
@@ -154,7 +154,7 @@ func (c *Controller) Adopt(ctx context.Context, a Adoption, by Actor, stop StopO
 		return err
 	}
 	defer unlock()
-	release, err := c.claimAdoption()
+	release, err := c.claimAdoption(ctx)
 	if err != nil {
 		return err
 	}
@@ -167,28 +167,41 @@ func (c *Controller) Adopt(ctx context.Context, a Adoption, by Actor, stop StopO
 	return o.end(err)
 }
 
-// adoptionBusy refuses while an adoption runs in this Foreman or one is
-// recorded in the game folder: one adoption at a time (SPEC 4.8).
-func (c *Controller) adoptionBusy() error {
+// adoptionBusy refuses while an adoption runs in this Foreman or the
+// database records one, before anything is stopped (SPEC 4.8). The marker
+// alone never counts, since the game can write the folder (SPEC 14); a
+// stale one is cleared here so writing the new marker cannot fail after
+// the game has stopped.
+func (c *Controller) adoptionBusy(ctx context.Context) error {
 	c.mu.Lock()
 	running := c.adopting
 	c.mu.Unlock()
 	if running {
 		return ErrAdoptionInProgress
 	}
-	if _, err := c.lstatGameDir(adoptionMarker); !errors.Is(err, fs.ErrNotExist) {
-		if err != nil {
-			return err
-		}
+	if _, found, err := c.switches.Adoption(ctx); err != nil {
+		return err
+	} else if found {
 		return ErrAdoptionInProgress
+	}
+	info, err := c.lstatGameDir(adoptionMarker)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	c.log.Warn("the game folder holds an adoption marker Foreman has no record of; it is ignored and removed", "type", info.Mode().Type().String())
+	if err := c.removeAdoptionMarker(); err != nil {
+		return fmt.Errorf("the game folder holds %s, which Foreman has no record of and cannot remove. Remove it from the game folder: %w", adoptionMarker, err)
 	}
 	return nil
 }
 
 // claimAdoption marks an adoption as running, or refuses when one is.
 // Call release when it ends.
-func (c *Controller) claimAdoption() (release func(), err error) {
-	if err := c.adoptionBusy(); err != nil {
+func (c *Controller) claimAdoption(ctx context.Context) (release func(), err error) {
+	if err := c.adoptionBusy(ctx); err != nil {
 		return nil, err
 	}
 	c.mu.Lock()
@@ -254,9 +267,8 @@ func (c *Controller) adoptLocked(ctx context.Context, o *opRun, a Adoption, by A
 	o.begin(StepKeepOriginals)
 	pre, err := gamedir.CutOver(c.adopted.dir, a.ID, c.now())
 	if err != nil {
-		// Startup finishes a cut-over left part way from the folder alone
-		// (SPEC 4.8); the record would make it finish the adoption too,
-		// which the admin now sees failed.
+		// The admin sees this adoption fail, so startup must not finish
+		// it; gamedir.Recover still repairs a half-moved folder (SPEC 4.8).
 		c.forgetAdoption(work)
 		return err
 	}
@@ -530,6 +542,18 @@ func (c *Controller) removeAdoptionMarker() error {
 		return err
 	}
 	defer func() { _ = root.Close() }()
+	info, err := root.Lstat(adoptionMarker)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	// Remove never empties a folder, so a non-empty one is left in place.
+	t := info.Mode().Type()
+	if t != 0 && t != fs.ModeSymlink && t != fs.ModeDir {
+		return fmt.Errorf("%s is not a file or a folder, so Foreman leaves it", adoptionMarker)
+	}
 	if err := root.Remove(adoptionMarker); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -562,9 +586,21 @@ func (c *Controller) Recover(ctx context.Context) error {
 	return ctx.Err()
 }
 
-// recoverGameDir changes the game folder only while the container is
-// stopped, since the game may be reading it.
+// recoverGameDir forgets an adoption that never began whatever the
+// container's state, since that changes only the marker and the database
+// record. It changes the game folder only while the container is stopped,
+// since the game may be reading it.
 func (c *Controller) recoverGameDir(ctx context.Context) error {
+	// Read before gamedir.Recover, which removes a leftover current.new.
+	begun, err := c.cutOverBegun()
+	if err != nil {
+		return err
+	}
+	if !begun {
+		if err := c.recoverAdoption(ctx, false); err != nil {
+			return err
+		}
+	}
 	cont, err := c.inspectAdopted(ctx)
 	if err != nil {
 		c.log.Warn("cannot read the game container, so the game folder was not checked for a change left part way", "error", err)
@@ -575,16 +611,14 @@ func (c *Controller) recoverGameDir(ctx context.Context) error {
 		c.log.Warn("the game container is running, so the game folder was not checked for a change left part way")
 		return nil
 	}
-	// Read before gamedir.Recover, which removes a leftover current.new.
-	begun, err := c.cutOverBegun()
-	if err != nil {
-		return err
-	}
 	if err := gamedir.Recover(c.adopted.dir); err != nil {
 		c.log.Warn("could not finish a change to the game folder that was left part way", "error", err)
 		return nil
 	}
-	return c.recoverAdoption(ctx, begun)
+	if !begun {
+		return nil
+	}
+	return c.recoverAdoption(ctx, true)
 }
 
 // cutOverBegun reports whether the folder shows that an adoption's cut-over
@@ -602,6 +636,9 @@ func (c *Controller) cutOverBegun() (bool, error) {
 	}
 	if err != nil {
 		return false, err
+	}
+	if !marker.Mode().IsRegular() {
+		return false, nil // not a marker; recoverAdoption forgets it
 	}
 	if _, err := root.Lstat(gamedir.CurrentDir + ".new"); err == nil {
 		return true, nil
@@ -648,7 +685,7 @@ func (c *Controller) recoverAdoption(ctx context.Context, begun bool) error {
 	id, found, err := c.readAdoptionMarker()
 	switch {
 	case err != nil:
-		c.log.Warn("the adoption marker in the game folder cannot be read; it was removed", "error", err)
+		c.log.Warn("the adoption marker in the game folder is not a readable file; it is ignored, and removed unless it is a folder with something in it", "error", err)
 		c.forgetAdoption(ctx)
 		return nil
 	case !found:

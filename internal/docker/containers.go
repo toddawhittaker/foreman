@@ -183,6 +183,10 @@ type Container struct {
 	NetworkMode string
 	// Privileged is HostConfig.Privileged.
 	Privileged bool
+	// CapAdd is HostConfig.CapAdd, the Linux capabilities added.
+	CapAdd []string
+	// PidMode is HostConfig.PidMode; "host" shares the host's processes.
+	PidMode string
 }
 
 // EnvValue returns the value of an environment variable. When the name is
@@ -229,6 +233,8 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 			PortBindings map[string][]PortBinding
 			NetworkMode  string
 			Privileged   bool
+			CapAdd       []string
+			PidMode      string
 		}
 		Mounts          []Mount
 		NetworkSettings struct {
@@ -252,6 +258,8 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (Container, er
 		PortBindings: raw.HostConfig.PortBindings,
 		NetworkMode:  raw.HostConfig.NetworkMode,
 		Privileged:   raw.HostConfig.Privileged,
+		CapAdd:       raw.HostConfig.CapAdd,
+		PidMode:      raw.HostConfig.PidMode,
 	}, nil
 }
 
