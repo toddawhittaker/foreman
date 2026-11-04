@@ -138,7 +138,7 @@ test.describe("with the fake game", () => {
     await expect(crash).toBeVisible();
     await expect(page.locator("main pre")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
-    await expect(page.locator(".message--note")).toContainText("would crash again");
+    await expect(page.locator(".message--note")).toContainText("crashed again and again the last time it ran");
     const retry = page.getByRole("button", { name: "Try to start again" });
     await expect(retry).toBeVisible();
     // The button is not flush under the message (DESIGN 6, rule 4).
@@ -146,8 +146,24 @@ test.describe("with the fake game", () => {
     const buttonRect = (await retry.boundingBox())!;
     expect(buttonRect.y - (noteRect.y + noteRect.height)).toBeGreaterThanOrEqual(8);
     await checkPage(page);
+    await expect(page.locator("#announcer")).toContainText("Start server is replaced by Try to start again");
     await crash.getByRole("link", { name: "Read the full log on the Console page" }).click();
     await expect(page).toHaveURL(/\/console/);
+  });
+
+  // SPEC 8.9: a blocked start can still be started by hand once fixed.
+  test("Try to start again starts the world by hand", async ({ page, foreman, fakeGame }) => {
+    test.setTimeout(60_000);
+    await setUp(page, foreman, fakeGame!);
+    await start(page);
+    await fakeGame!.call("/crash-loop", { name: container, on: true });
+    await expect(badge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
+    await expect(page.locator(".button--primary")).toHaveCount(0);
+    await checkPage(page);
+    await fakeGame!.call("/crash-loop", { name: container, on: false });
+    await page.getByRole("button", { name: "Try to start again" }).click();
+    await expect(badge(page)).toHaveText("Running", live);
+    await expect(page.getByRole("button", { name: "Try to start again" })).toHaveCount(0);
   });
 
   test("a refused start lists the problems, and start anyway takes a snapshot first", async ({ page, foreman, fakeGame }) => {
@@ -195,7 +211,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Stopped");
     // A start known to be refused is not offered as if it would run.
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
-    await expect(page.locator(".message--note")).toContainText("would be refused again");
+    await expect(page.locator(".message--note")).toContainText("Foreman refused the last start of Base");
     await expect(page.getByRole("button", { name: "Try to start again" })).toBeVisible();
     await checkPage(page);
   });

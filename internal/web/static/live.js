@@ -9,6 +9,18 @@
   const text = "Live updates stopped. Reload to see the current state.";
   let timer = null;
 
+  // Reads a sentence out through #announcer. The region is emptied first and
+  // filled a moment later, so a sentence the same as the last one is still
+  // read (DESIGN 7.5).
+  function announce(said) {
+    const announcer = document.getElementById("announcer");
+    if (!announcer) return;
+    announcer.textContent = "";
+    setTimeout(() => {
+      announcer.textContent = said;
+    }, 50);
+  }
+
   // Called when the live connection drops; shows the note once it has
   // stayed down for the grace period, and reads it out once.
   function lost() {
@@ -24,8 +36,7 @@
       p.append(word, " " + text);
       note.append(p);
       document.querySelector("main h1")?.after(note);
-      const announcer = document.getElementById("announcer");
-      if (announcer) announcer.textContent = text;
+      announce(text);
     }, graceMs);
   }
 
@@ -64,10 +75,7 @@
     if (said !== null) {
       sessionStorage.removeItem(movedKey);
       document.getElementById("control-heading")?.focus();
-      setTimeout(() => {
-        const announcer = document.getElementById("announcer");
-        if (announcer) announcer.textContent = said;
-      }, 500);
+      setTimeout(() => announce(said), 500);
     }
   } catch (_) {
     // Storage is blocked, so there is nothing to read out.
@@ -78,6 +86,14 @@
   // the region's heading instead of the top of the page (DESIGN 5).
   let held = null;
   document.addEventListener("htmx:sseBeforeMessage", (e) => {
+    // The server's sentence is read out here rather than swapped in, so it
+    // can be emptied first.
+    if (e.target.getAttribute("sse-swap") === "announce") {
+      e.preventDefault();
+      const doc = new DOMParser().parseFromString(e.detail.data, "text/html");
+      announce(doc.body.textContent.trim());
+      return;
+    }
     held = e.target.contains(document.activeElement) ? e.target : null;
   });
   document.addEventListener("htmx:sseMessage", (e) => {

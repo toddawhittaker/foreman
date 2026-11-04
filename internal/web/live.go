@@ -141,6 +141,9 @@ func (l *liveStream) send(p ServerPage) error {
 			say = announcement(p.Status.State)
 		}
 	}
+	if say != "" && p.StartBlocked() != "" {
+		say += " " + blockedAnnouncement
+	}
 	l.started, l.state, l.result = true, p.Status.State, result
 
 	wrote := false

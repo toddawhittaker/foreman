@@ -85,7 +85,7 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 	}
 	defer unlock()
 	if err := c.switchChecks(ctx, from, to, opts); err != nil {
-		return c.refused(ctx, by, AuditSwitch, from, switchDetail(from, to, opts), err)
+		return c.checkFailed(ctx, by, AuditSwitch, from, switchDetail(from, to, opts), err)
 	}
 	if err := c.audit(ctx, by, AuditSwitch, from, switchDetail(from, to, opts)); err != nil {
 		return err

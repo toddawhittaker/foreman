@@ -8,6 +8,25 @@ import (
 	"testing"
 )
 
+// SPEC 12.9: a fault in a switch's checks, such as Docker failing, is not a
+// refusal: it is audited as the switch itself, which then failed.
+func TestSwitchCheckFaultIsNotARefusal(t *testing.T) {
+	v := newInvRig(t, "Alpha", "Beta")
+	a, b := v.ids[0], v.ids[1]
+	v.start(a)
+	before := len(v.audit.list())
+	v.game.Daemon().SetFailure(500, "daemon down")
+	err := v.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{})
+	v.game.Daemon().SetFailure(0, "")
+	if err == nil || IsRefusal(err) {
+		t.Fatalf("got %v, want a Docker fault", err)
+	}
+	added := v.audit.list()[before:]
+	if len(added) != 1 || added[0].Action != AuditSwitch {
+		t.Errorf("audit entries %+v, want one plain switch", added)
+	}
+}
+
 // SPEC 12.9: a start or restart the checks refuse is recorded as a refusal,
 // with the reason, in one audit entry and one log line, and never as the
 // action itself.

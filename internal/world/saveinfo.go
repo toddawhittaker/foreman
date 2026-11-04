@@ -7,6 +7,9 @@ import (
 	"github.com/toddawhittaker/foreman/internal/savefile"
 )
 
+// spaceAgeMod is the mod that makes a save a Space Age save.
+const spaceAgeMod = "space-age"
+
 // SaveInfo is what a save's header says about the game it was made with.
 type SaveInfo struct {
 	GameVersion string
@@ -27,12 +30,13 @@ func ReadSaveInfo(root *os.Root, name string) (info SaveInfo, ok bool) {
 		return SaveInfo{}, false
 	}
 	info.GameVersion = save.Version.String()
-	dlc := spaceAgeMods[gameMinor(info.GameVersion)]
-	for _, m := range save.Mods {
-		if slices.Contains(dlc, m.Name) {
-			info.SpaceAge = true
-			break
-		}
-	}
+	info.SpaceAge = usesSpaceAge(save.Mods)
 	return info, true
+}
+
+// usesSpaceAge reports whether the save holds space-age itself. A save with
+// just quality or elevated-rails gets the flag off, and the pre-start check
+// then reports the mismatch, since the flag is all or nothing (SPEC 9.7).
+func usesSpaceAge(mods []savefile.Mod) bool {
+	return slices.ContainsFunc(mods, func(m savefile.Mod) bool { return m.Name == spaceAgeMod })
 }

@@ -309,19 +309,13 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 		f.SourceError = sentence(world.ErrNoFolder)
 	}
 	if f.GameVersion == "" && f.Source != "" {
-		inbox, err := s.worlds.Inbox()
-		if err != nil {
-			s.fail(w, r, "list import folder", err)
+		// A folder that is gone is reported by the import below.
+		folder, err := s.worlds.InboxEntry(f.Source)
+		if err != nil && !errors.Is(err, world.ErrNoFolder) {
+			s.fail(w, r, "read import folder", err)
 			return
 		}
-		var info world.SaveInfo
-		var read bool
-		for _, folder := range inbox {
-			if folder.Name == f.Source && folder.Read {
-				info, read = world.SaveInfo{GameVersion: folder.GameVersion, SpaceAge: folder.SpaceAge}, true
-			}
-		}
-		f.fillFromSave(info, read)
+		f.fillFromSave(world.SaveInfo{GameVersion: folder.GameVersion, SpaceAge: folder.SpaceAge}, folder.Read)
 	}
 	if f.failed() {
 		s.importPage(w, r, u, http.StatusBadRequest, f, ImportForm{})

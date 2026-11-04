@@ -179,12 +179,33 @@ test("choosing a folder fills the version, but not over typed text", async ({ pa
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
   await expect(form.getByLabel("Space Age is on")).toBeChecked();
+  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.1.24 from the save, with Space Age on.");
+  await checkPage(page);
   await form.getByLabel(/two: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.0.77");
   await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
+  await expect(page.locator("#announcer")).toHaveText("Game version set to 2.0.77 from the save.");
   await form.getByLabel("Game version").fill("2.0.1");
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("Game version")).toHaveValue("2.0.1");
+});
+
+// A folder whose save cannot be read clears what the script filled in, so
+// the previous folder's version is never imported by mistake.
+test("choosing an unreadable folder after a readable one clears the filled fields", async ({ page, foreman }) => {
+  await createAdmin(page);
+  inboxFixture(foreman, "good", "2.1.24-space-age.zip");
+  mkdirSync(join(foreman.dataDir, "import", "junk"), { recursive: true });
+  writeFileSync(join(foreman.dataDir, "import", "junk", "a.zip"), "not a zip");
+  await page.goto("/import");
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
+  await form.getByLabel(/good: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await form.getByLabel(/junk: /).check();
+  await expect(form.getByLabel("Game version")).toHaveValue("");
+  await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
+  await expect(page.locator("#announcer")).toContainText("could not read this folder's save");
+  await checkPage(page);
 });
 
 test("imports a world by uploading a save", async ({ page, foreman }) => {

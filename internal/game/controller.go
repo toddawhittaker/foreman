@@ -262,8 +262,11 @@ type worldRun struct {
 	logs  *LogBuffer
 	joins *JoinTimes
 
-	mu            sync.Mutex
-	containerID   string // "" when there is no container
+	mu          sync.Mutex
+	containerID string // "" when there is no container
+	// logMark is where the current container's lines begin in logs, so a
+	// crash reason is never taken from an older container (SPEC 8.7).
+	logMark       uint64
 	dockerStatus  string // Docker's State.Status at the last look; "" without a container
 	inspectErr    error  // the last inspect failed
 	startedAt     time.Time
@@ -630,7 +633,7 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
 		var f loadFailure
-		for _, l := range w.logs.Lines() {
+		for _, l := range w.logs.LinesSince(w.logMark) {
 			f.add(l)
 		}
 		st.CrashReason = strings.TrimSuffix(f.reason(w.redact), ".")
@@ -718,6 +721,34 @@ func (c *Controller) pokeMonitor() {
 	}
 }
 
+// refusedActions names the audit action of each refusable action.
+var refusedActions = map[string]string{
+	AuditStart: AuditStartRefused, AuditRestart: AuditRestartRefused, AuditSwitch: AuditSwitchRefused,
+}
+
+// IsRefusal reports whether err is a check refusing the world as it is,
+// rather than a fault such as Docker or the disk failing: the pre-start
+// check (SPEC 7.4), a save newer than the game image, or a switch refusal.
+func IsRefusal(err error) bool {
+	var pe *PrecheckError
+	return errors.As(err, &pe) || errors.Is(err, ErrSaveNewerThanImage) ||
+		errors.Is(err, ErrSwitchSame) || errors.Is(err, ErrSwitchNotActive) ||
+		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning)
+}
+
+// checkFailed handles an error from the checks a start, restart or switch
+// runs before it does anything. A refusal is recorded as such; any other
+// error is audited as the action itself, which then failed.
+func (c *Controller) checkFailed(ctx context.Context, by Actor, action, id, detail string, err error) error {
+	if IsRefusal(err) {
+		return c.refused(ctx, by, action, id, detail, err)
+	}
+	if aerr := c.audit(ctx, by, action, id, detail); aerr != nil {
+		return aerr
+	}
+	return err
+}
+
 // refused records a start, restart or switch that the checks refused before
 // anything was done: one log line and one audit entry, each with the
 // reason, under the action's own refused name (SPEC 12.9). The reason is the
@@ -728,7 +759,7 @@ func (c *Controller) refused(ctx context.Context, by Actor, action, id, detail s
 		reason = detail + ": " + reason
 	}
 	c.log.Warn(action+" refused", "world", id, "user", by.Username, "reason", reason)
-	if aerr := c.audit(ctx, by, action+"-refused", id, reason); aerr != nil {
+	if aerr := c.audit(ctx, by, refusedActions[action], id, reason); aerr != nil {
 		c.log.Error("could not record the refusal in the audit log", "world", id, "action", action, "error", aerr)
 	}
 	return err

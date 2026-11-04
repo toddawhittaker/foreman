@@ -137,6 +137,7 @@ type LogBuffer struct {
 	lines []string // ring storage
 	next  int      // where the next line goes
 	full  bool
+	added uint64 // lines ever added, so a caller can mark a point in it
 }
 
 // NewLogBuffer returns a buffer holding LogBufferLines lines.
@@ -149,16 +150,40 @@ func (b *LogBuffer) Add(line string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.lines[b.next] = line
+	b.added++
 	b.next++
 	if b.next == len(b.lines) {
 		b.next, b.full = 0, true
 	}
 }
 
+// Mark returns a point in the buffer; LinesSince(mark) returns only the
+// lines added after it.
+func (b *LogBuffer) Mark() uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.added
+}
+
+// LinesSince returns the held lines added after mark, oldest first.
+func (b *LogBuffer) LinesSince(mark uint64) []string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	lines, n := b.linesLocked(), b.added-mark
+	if n < uint64(len(lines)) {
+		lines = lines[uint64(len(lines))-n:]
+	}
+	return lines
+}
+
 // Lines returns a copy of the held lines, oldest first.
 func (b *LogBuffer) Lines() []string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	return b.linesLocked()
+}
+
+func (b *LogBuffer) linesLocked() []string {
 	if !b.full {
 		return append([]string(nil), b.lines[:b.next]...)
 	}

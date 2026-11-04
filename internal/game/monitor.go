@@ -309,7 +309,7 @@ func (c *Controller) attach(w *worldRun, cont docker.Container) {
 	old = c.dropContainerLocked(w)
 	w.noSecrets = !live
 	w.attachFailed, w.attachErr = "", nil
-	w.containerID = cont.ID
+	w.containerID, w.logMark = cont.ID, w.logs.Mark()
 	w.seenRestarts = cont.RestartCount
 	w.startedAt = cont.State.StartedAt
 	w.dockerStatus = cont.State.Status

@@ -102,9 +102,9 @@ func (p ServerPage) CanStart() bool {
 	return !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
 }
 
-// StartBlocked says why a start of the world as it is would not run, and
-// what the admin can do, or is "". It uses what Foreman already knows: the
-// crash loop (SPEC 8.9) and the last start or restart the checks refused
+// StartBlocked says why the last attempt to run the world did not, and what
+// the admin can do, or is "". It uses what Foreman already knows: the crash
+// loop (SPEC 8.9) and the last start or restart the checks refused
 // (SPEC 7.4). The page then offers a plain "Try to start again" for after
 // the fix, in place of the main Start button; an admin must still be able
 // to start by hand (SPEC 8.9).
@@ -113,20 +113,17 @@ func (p ServerPage) StartBlocked() string {
 		return ""
 	}
 	if p.Status.State == game.StateCrashLooping {
-		return "Starting " + p.World.Name + " as it is would crash again. Fix what the game reported, for example the world's mods or its save, then try to start it again. Or switch to another world from the Worlds page."
+		return p.World.Name + " crashed again and again the last time it ran. Fix what the game reported, for example the world's mods or its save, then try to start it again. Or switch to another world from the Worlds page."
 	}
-	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && startRefusal(p.Result.Err) {
-		return "Starting " + p.World.Name + " as it is would be refused again, for the reason above. Fix the world first, then try to start it again."
+	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && game.IsRefusal(p.Result.Err) {
+		return "Foreman refused the last start of " + p.World.Name + ", for the reason above. Fix the world first, then try to start it again."
 	}
 	return ""
 }
 
-// startRefusal reports whether err is the pre-start check refusing the
-// world as it is (SPEC 7.4), which a new start would meet again.
-func startRefusal(err error) bool {
-	var pe *game.PrecheckError
-	return errors.As(err, &pe) || errors.Is(err, game.ErrSaveNewerThanImage)
-}
+// blockedAnnouncement is read out with the page's results while a start is
+// blocked, so a screen reader user learns why Start server is gone.
+const blockedAnnouncement = "Start server is replaced by Try to start again, for after the world is fixed."
 
 // Crashed reports whether the page shows the crash message.
 func (p ServerPage) Crashed() bool {

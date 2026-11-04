@@ -68,7 +68,7 @@ func TestStartBlocked(t *testing.T) {
 			if c.blocked != strings.Contains(html, ">Try to start again<") || c.blocked == strings.Contains(html, ">Start server<") {
 				t.Errorf("wrong start button in\n%s", html)
 			}
-			if c.blocked && !strings.Contains(html, "<strong>Note:</strong> Starting") {
+			if c.blocked && !strings.Contains(html, "<strong>Note:</strong> ") {
 				t.Errorf("no reason given in\n%s", html)
 			}
 		})

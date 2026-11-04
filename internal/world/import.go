@@ -75,6 +75,30 @@ func (m *Manager) Inbox() ([]InboxFolder, error) {
 	return out, nil
 }
 
+// InboxEntry describes one inbox folder by name, as Inbox does, without
+// reading the others. A name that is not a folder directly in the inbox is
+// ErrNoFolder.
+func (m *Manager) InboxEntry(name string) (InboxFolder, error) {
+	if !inboxName(name) {
+		return InboxFolder{}, ErrNoFolder
+	}
+	inbox, err := openFolder(m.dirs.Imports)
+	if err != nil {
+		return InboxFolder{}, err
+	}
+	defer func() { _ = inbox.Close() }()
+	if info, err := inbox.Lstat(name); err != nil || !info.IsDir() {
+		return InboxFolder{}, ErrNoFolder
+	}
+	return inboxFolder(inbox, name)
+}
+
+// inboxName reports whether name can be an inbox folder: one path element,
+// not hidden.
+func inboxName(name string) bool {
+	return name != "" && path.Base(name) == name && !strings.HasPrefix(name, ".")
+}
+
 func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 	src, err := inbox.OpenRoot(name)
 	if err != nil {
@@ -151,7 +175,7 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 	if err := m.checkNew(ctx, name, gameVersion); err != nil {
 		return "", err
 	}
-	if folder == "" || path.Base(folder) != folder || strings.HasPrefix(folder, ".") {
+	if !inboxName(folder) {
 		return "", ErrNoFolder
 	}
 	inbox, err := openFolder(m.dirs.Imports)
