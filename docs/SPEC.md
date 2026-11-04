@@ -70,7 +70,8 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_MODE` | `managed` | `managed` or `adopted` (section 4) |
 | `FOREMAN_DATA_DIR` | `/data` | The data directory inside the container (3.3) |
 | `FOREMAN_HOST_DATA_DIR` | discovered | The same directory's path on the host (3.5) |
-| `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6) |
+| `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6). Never 0 (14.11) |
+| `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required in managed mode when Foreman runs in a container |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
 | `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
 | `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local` and `headers`. Empty means `local`. `oidc` joins the list with OIDC (12.7) |
@@ -111,12 +112,17 @@ its user ID nor its group ID matches the game's, because then the game
 could not use what Foreman writes. When only the group matches, files
 Foreman writes into a world are group-writable (files 0664, folders 0775).
 Foreman's own database file is the exception: it is 0660, because it holds
-password hashes and session hashes and the game has no need of it. (P0)
+password hashes and session hashes and the game has no need of it. The
+game's user and group ID may not be 0: Foreman refuses to start and names
+the setting, because the game would run as root (14.11). (P0)
 
 3.7. **No downloads at startup.** Foreman never downloads anything when it
 starts. It downloads only a game image or a mod the admin asked for, and
 reads the mod portal and the game's release list when the admin opens a
-page that shows them. (P0)
+page that shows them. Starting the game never downloads its image. When the
+pinned image is missing, the start is refused and the Server page offers a
+separate "Download game image" button, which pulls that exact tag as a
+visible step and is recorded in the audit log (12.9). (P0)
 
 3.8. **Upgrading Foreman never touches a running game** and never rewrites
 a world's files without a snapshot first. A Foreman upgrade that changes
@@ -134,34 +140,96 @@ not supported in v1. (P0)
 
 4.2. **Rely on the image as little as possible.** The
 `factoriotools/factorio` entrypoint changes between image versions (save
-selection, missing-save handling and shutdown all changed in 2026), and
-pinned worlds keep old images for years. Foreman depends only on: the
-`/factorio` directory with `saves/`, `mods/` and `config/`; loading the
-newest save; generating a map when `saves/` is empty; reading
-`config/rconpw`; and the `RCON_PORT`, `PUID` and `PGID` variables. Every
-other behaviour Foreman needs, it does itself. (P0)
+selection, missing-save handling and shutdown all changed in 2026), and it
+fails when run as any user but its own. So Foreman does not run it. The game
+container runs the game binary, `/opt/factorio/bin/x64/factorio`, directly,
+as `FOREMAN_GAME_UID:FOREMAN_GAME_GID`, with Foreman's own flags (4.3).
+Foreman depends on the image only for that binary and the game's own data.
+A small shell wrapper in the container's command reads the RCON password from
+the world's file (4.5), so the password is never in the container's
+settings. Foreman supports game versions 1.1, 2.0 and 2.1, each with one
+image pinned by digest in docs/STACK.md; a save made by any other version is
+refused at start (7.4). Foreman makes new maps itself (5.6) and never relies
+on the image generating one. It never downloads the image when it starts a
+game (3.7). (P0)
 
 ### Managed mode
 
-4.3. Foreman creates the game container from `factoriotools/factorio` at
-the active world's pinned version tag, with a Docker restart policy of
-`unless-stopped`, so the game comes back after a reboot whether or not
-Foreman is running. The active world's directory is bind-mounted at
-`/factorio`. Switching worlds, or changing a world's game version,
-removes the container and creates it again with the new mount or tag.
-This also allows one container per world later, each on its own port,
-with no change to the layout (5.3). (P0)
+4.3. Foreman creates the game container from the pinned image for the
+active world's game version. Its fixed parts are:
 
-4.4. The game port (UDP, default 34197) is published on the host. The
-RCON port is never published; Foreman reaches it on a Docker network
-shared only by Foreman and the game container. (P0)
+- **Name and labels.** The name is `foreman-<world-id>`. Two labels under
+  `io.github.toddawhittaker.foreman.` hold the world id (`world`) and the
+  install (`install`, the host data path). Foreman finds its containers by
+  label after it restarts, with no database row. A container with that name
+  that Foreman did not create for this world and install is never touched:
+  Foreman refuses to start and says to rename or remove it.
+- **Command.** `--start-server-load-latest`, so the game loads the newest
+  save and Docker's own restart after a crash loads the newest autosave
+  (7.11); `--mod-directory /factorio/mods`; RCON on port 27015; and
+  `--server-settings` when the world has `config/server-settings.json`.
+- **Restart policy** `unless-stopped`, so the game comes back after a reboot
+  whether or not Foreman is running. A stop that Foreman or Docker makes
+  leaves the container stopped.
+- **Standard input open, no terminal.**
+- **Port.** UDP 34197, published on the host. The port is fixed for now; a
+  per-world port is an additive `world.json` field for later (5.3).
+- **Logs and stop.** A rotating `json-file` log (10 MB, 3 files) and a stop
+  timeout of 120 seconds.
+- **One bind mount**: the world's directory at `/factorio` (4.6). The
+  game's own write folder stays inside the container, so it is lost when the
+  container is recreated.
 
-4.5. Foreman generates and owns the RCON password. It is stored only in
-the world directory's config, readable by the game, and never shown. (P0)
+Every start Foreman makes removes the old stopped container and creates a
+new one, so settings never drift. Docker's own restarts never recreate it.
+Switching worlds, or changing a world's game version, also starts a new
+container with the new mount or image. This allows one container per world
+later, each on its own port, with no change to the layout (5.3). (P0)
 
-4.6. The game container's shape is fixed by Foreman: no privileged mode,
-no host network, no added capabilities, and bind mounts only from inside
-the data directory. The game container is never given the data
+4.4. The game port (UDP, 34197) is published on the host. The RCON port is
+never published; Foreman reaches it at the game container's address, read
+from Docker, on a Docker network shared only by Foreman and the game
+container. The operator names that network with `FOREMAN_GAME_NETWORK`.
+Foreman never creates or connects networks (14.3). (P0)
+
+- Outside a container (local development and tests) the setting is
+  optional, and the game joins Docker's default `bridge`.
+- Inside a container the setting is required; there is no automatic pick.
+  Foreman refuses to create a game, and says what to change, when:
+  - it cannot find its own container (by ID or hostname) while it can tell
+    it runs in one, because a `/.dockerenv` or `/run/.containerenv` file
+    exists or `DOCKER_HOST` is `tcp://`;
+  - Foreman is not on the named network, or the name is `host`, `none` or
+    `container:...`;
+  - any container other than Foreman and this install's own labelled game
+    containers is on the game network;
+  - `DOCKER_HOST` is `tcp://` and does not resolve into one of Foreman's
+    networks other than the game network, so a socket proxy is always
+    reached over a network the game is not on;
+  - the game network's address range, IPv4 or IPv6, read from Foreman's own
+    container, overlaps `FOREMAN_TRUSTED_PROXIES`, because a game could
+    then pose as the proxy that signs users in (12.5).
+- These checks run when a game is created, not while it runs. Two limits are
+  known: a socket proxy that also publishes a port on the host cannot be
+  seen from inside Foreman, so the operator guide says never to publish it;
+  and a runtime that creates neither marker file, reached over a `unix://`
+  socket, gives Foreman no sign that it is in a container.
+
+4.5. Foreman generates and owns the RCON password. It is created when
+missing, as a random value in the world's `config/rconpw`, readable by the
+game's group (mode 0640, written atomically), and never shown. Snapshots
+copy it like any other world file; restore and startup recovery narrow any
+copy found wider than 0640. Docker's settings never hold it. **Accepted
+risk:** Factorio takes the RCON password only on its command line, so it is
+visible in the game process's arguments, to anyone who can read process
+details on the host. The operator guide advises mounting `/proc` with
+`hidepid=2` on the host, and 4.4 keeps the port itself off every network but
+Foreman's and the game's. (P0)
+
+4.6. The game container's shape is fixed by Foreman: it runs as the
+configured non-root user, with no privileged mode, no host network, all
+capabilities dropped and `no-new-privileges` set, and bind mounts only from
+inside the data directory. The game container is never given the data
 directory's root, only its world's directory, because the app database
 lives at the root. Nothing an admin types in the UI changes that shape
 except the published game port. (P0)
@@ -295,8 +363,8 @@ time and size. (P0)
 
 6.5. **Restore** puts a world back exactly as the snapshot recorded it,
 in one click with a confirmation. Restoring the active world stops it
-gracefully first (section 7.6), snapshots its current state, restores, and
-starts it again. Restore is itself undoable: the snapshot taken before it
+gracefully first (section 7.6; the confirmation asks for the countdown),
+snapshots its current state, restores, and starts it again. Restore is itself undoable: the snapshot taken before it
 is the undo. Foreman restores by building the restored world in a
 staging folder, renaming the live folder aside, and renaming the staged
 folder into place, so the path `worlds/<world-id>` never holds a half
@@ -339,7 +407,10 @@ manifest, because hardlinked saves share their time with the world
 (7.11). (P0)
 
 6.10. A snapshot of a running world is taken after a `/server-save` over
-RCON, so it holds the current game state. (P0)
+RCON, once the game's log says the save finished, so it holds the current
+game state. A snapshot or restore asks Docker whether the game is running
+first; when Docker cannot be reached it is refused, because Foreman cannot
+tell whether files are in use. (P0)
 
 6.11. **Fail safe on disk space.** Before a snapshot, restore, import or
 upload, Foreman works out how many bytes the write needs (nothing for a
@@ -357,7 +428,10 @@ shows free space beside snapshot disk use. (P0)
 
 7.1. Foreman shows the game's state as one of: **stopped**, **starting**,
 **running** (the server reached the "InGame" state), **stopping**,
-**crashed**, or **crash-looping**. (P0)
+**crashed**, or **crash-looping**. When Foreman cannot ask Docker, or
+cannot read the game container, the state is **unknown** and the page says
+why; Foreman keeps serving every page. The Server page is where setup and
+sign-in land. (P0)
 
 7.2. Alongside the state: uptime, game version, active world, the loaded
 save, and CPU and memory use. (P0)
@@ -369,7 +443,12 @@ container with the active world. It reports success only when the server
 has reached "InGame" **and** answers over RCON; reaching "InGame" alone is
 not enough, because the RCON port can fail to open after it. If that does
 not happen within a time limit (default 5 minutes), Foreman reports a
-failed start with the reason if it can name one (section 8.7). (P0)
+failed start with the reason if it can name one (section 8.7). Before the
+check, a world with no `mods/mod-list.json` gets one that enables `base`
+plus the built-in mods its game version and Space Age flag imply (9.7);
+without it, 2.x would turn Space Age on by itself. The start steps are shown
+as a list while it runs, and steps that never run after a failure read
+"Skipped". (P0)
 
 7.4. **The pre-start check.** Factorio loads a save whose mods are
 missing, or whose Space Age content is turned off, with no error, and
@@ -380,29 +459,46 @@ compares it with the world. It refuses to start, and says why, when:
 - a mod in the save is missing or disabled in the world, or the world's
   Space Age flag is off and the save uses DLC mods;
 - the save was made by a newer game version than the world's;
+- the save was made by a game version Foreman does not support (it runs
+  1.1, 2.0 and 2.1 only);
 - the world has no save, unless the admin is generating a new map
-  (otherwise the image silently generates one).
+  (otherwise the game would make one on its own);
+- `mods/mod-list.json` disagrees with the world's Space Age flag, because
+  that file is what the game loads until mod management (section 9) takes
+  over.
 
-The admin can then fix the world (for example with sync from save), or
-start anyway after a confirmation that names exactly what the game will
-delete, with a snapshot first. A save Foreman cannot read is reported as
-such, never guessed at. (P0)
+Each problem says what the game would delete. The admin can fix the world
+(for example with sync from save) or, for the first bullet and for an
+unreadable save only, **start anyway**: a confirmation that names exactly
+what the game will delete, with a snapshot first. A save from a newer or
+unsupported version, a world with no save, and a mod list that disagrees
+with the Space Age flag are plain refusals with no start-anyway, because
+the game could not load the save or would load the wrong mods. A save
+Foreman cannot read is reported as such, never guessed at; "Start anyway"
+then says the mods could not be checked. (P0)
 
 7.5. **Stop** is graceful by default (section 7.6). (P0)
 
 7.6. **A graceful stop**: if players are online, warn them in game with a
-countdown (default 60 seconds, configurable per action); run
-`/server-save` over RCON and wait for it to finish; then stop the
-container with an explicit stop timeout. If RCON cannot be reached,
-Foreman says so and offers a forced stop instead of silently forcing one.
-An exit after a stop Foreman asked for is never reported as a crash,
-whatever its exit code. (P0)
+countdown (default 60 seconds; each stop or restart asks for its own, from
+0 to 600 seconds, where 0 means no warning); run `/server-save` over RCON
+and wait for it to finish; then stop the container with Docker's stop
+(SIGTERM, with a 120-second timeout). The warnings are chat lines from the
+server, sent at the start of the countdown and again at 30 and 10 seconds
+before the end. If RCON cannot be reached, Foreman says so and offers a
+forced stop instead of silently forcing one. An exit after a stop Foreman
+asked for is never reported as a crash, whatever its exit code. (P0)
 
 7.7. **A forced stop** stops the container without saving. It is a
 separate action with its own confirmation that says progress since the
-last save will be lost. (P0)
+last save will be lost. It kills the container and takes no world lock, so
+it can interrupt an operation that is stuck. The container stays stopped
+afterwards, because Docker does not restart a container that was stopped
+by request. (P0)
 
-7.8. **Restart** is a graceful stop followed by a start. (P0)
+7.8. **Restart** is a graceful stop followed by a start. It runs the
+pre-start check (7.4) before it stops anything, so a start that would be
+refused never stops the game. (P0)
 
 ### Switching worlds
 
@@ -425,7 +521,10 @@ save file. The game always loads the save with the newest modification
 time. To load a named save, Foreman sets that file's modification time to
 now, while the game is stopped, just before start. It never sets a time
 in the future, which would pin that save above every later autosave.
-After a crash, the game therefore restarts from the newest autosave.
+A chosen save applies once: when the start that loads it reaches "InGame",
+the choice resets to the latest save (`load_save` is removed from
+`world.json`). After a crash, the game therefore restarts from the newest
+autosave.
 One function decides "the newest save", and the pre-start check (7.4)
 uses it, so the check reads the save the game will load. (P0)
 
@@ -441,7 +540,10 @@ is skipped for that day. (P1)
 
 ### Players
 
-8.1. List who is online now and for how long. (P0)
+8.1. List who is online now and for how long. RCON's `/players online`
+decides who is on. How long comes from the `[JOIN]` lines in the game
+container's log since it started, so a chat line cannot fake a join; a
+player whose join line Foreman did not see is listed without a time. (P0)
 
 8.2. Kick, ban, unban, promote to admin, demote, and add to or remove from
 the whitelist, each with a confirmation for the destructive ones. (P1)
@@ -451,8 +553,25 @@ world, including one that is not running. (P1)
 
 ### Console and chat
 
-8.4. An RCON console: send a command, see its response. Every command
-sent is recorded in the audit log (section 12.9). (P0)
+8.4. An RCON console: send a command, see its response. A command is 1 to
+1,000 characters on one line, with no NUL, CR or LF. It is sent to the game
+unchanged, and every command is recorded in the audit log (section 12.9)
+before it is sent. The console is its own Console tab, apart from the
+Server page.
+
+- **Commands that carry a secret** run, but are recorded and shown with the
+  secret replaced by `••••`. `/config set password <value>` shows as
+  `/config set password ••••`, and the reply to `/config get password` is
+  replaced by the same mask. The list of such commands is one constant, with
+  tests (14.8).
+- **Known secrets** (the RCON password and the game password) are also
+  removed from the audit text wherever they appear.
+- **Lua commands** (`/c`, `/sc`, `/silent-command`) are recorded as typed,
+  because a secret inside Lua cannot be told apart from code. A game
+  password set through the console is masked only by the pattern above; it
+  is not learned for the log.
+- The page keeps the last 20 commands per world, in memory only, so they are
+  gone when Foreman restarts. (P0)
 
 8.5. In-game chat: see recent chat and send a message as the server.
 (P1)
@@ -460,19 +579,26 @@ sent is recorded in the audit log (section 12.9). (P0)
 ### Logs and crashes
 
 8.6. A live stream of the game's log, with the most recent lines shown on
-open. The view stays usable on a phone and does not grow without limit.
-The image prints the RCON password in its log when it starts; Foreman
-removes it from every line before showing or storing it (section 14.8).
+open. The view stays usable on a phone and does not grow without limit:
+Foreman keeps and shows at most 1,000 lines. The history is the game
+container's own log, so Foreman stores nothing, and the history is lost when
+the container is recreated at the next start Foreman makes. The page follows
+new lines only while scrolled to the bottom and offers "Jump to newest"
+otherwise. The game prints its RCON password as `<private>`, but Foreman
+still removes the RCON password and the game password from every line before
+showing or keeping it, and masks a printed password command (8.4, 14.8).
 (P0)
 
 8.7. **Crash detection.** When the game stops without being asked to,
-Foreman marks it crashed, using Docker's container state (exit code,
-out-of-memory flag, start error, restart count), since every game
-failure exits with the same code. It names the reason when it can: a mod
-that failed to load, a corrupt save, a version mismatch, a port in use,
-or out of memory. Otherwise it says the reason is unknown and shows the
-last 20 log lines; it never guesses a reason. (P0 to detect a crash; P1
-to name the reason)
+Foreman marks it crashed. It polls Docker every few seconds, and again when
+the log stream ends, and compares the container's restart count, start time
+and out-of-memory flag with what it saw last, together with the log's
+failed-load line. It does not use the exit code, because the same failure
+exits with different codes in different game versions (1.1 exits 0 after a
+failed load). It names the reason when it can: a mod that failed to load, a
+corrupt save, a version mismatch, a port in use, or out of memory.
+Otherwise it says the reason is unknown and shows the last 20 log lines; it
+never guesses a reason. (P0 to detect a crash; P1 to name the reason)
 
 8.8. **The reason catalogue** is a data file of log patterns, each
 naming a reason. Patterns match message text, never source file and
@@ -484,8 +610,10 @@ listed as supported. (P1)
 8.9. **Crash loops.** If the game crashes three times within ten minutes,
 Foreman marks it crash-looping and stops it (in managed mode by stopping
 the container; in adopted mode the same, since Docker's restart policy
-would otherwise keep it spinning). An admin must start it again by hand.
-(P0)
+would otherwise keep it spinning). If Docker refuses that stop, Foreman
+tries again at each poll until Docker accepts it. An admin must start it
+again by hand. After Foreman itself restarts, a stopped game shows as
+stopped; the crash-loop mark is not remembered. (P0)
 
 ### Notifications
 
@@ -655,8 +783,11 @@ who is signed in, and signing out of Foreman ends nothing for them. (P0)
 12.9. **Audit log**: who did what and when, for start, stop, restart,
 switch, snapshot and restore, mod changes, settings changes, user changes,
 and every RCON command. Viewable and filterable in the UI. Never holds a
-secret. (P1, except RCON commands, which are recorded from the first
-version that has a console: P0)
+secret. Each entry holds the time, the user (the name stays on the entry
+after the user is deleted), the action, the world and a detail. Server
+control records start, stop, restart, forced stop, game image download and
+every console command (8.4). (P1, except RCON commands, which are recorded
+from the first version that has a console: P0)
 
 12.10. **API tokens.** A user can create, name, list and revoke their own
 API tokens in the UI. A token acts as that user: everything it does is
@@ -720,7 +851,8 @@ endpoints:
   `GET /containers/{id}/json`, `POST /containers/{id}/start`,
   `POST /containers/{id}/stop`, `POST /containers/{id}/kill` (forced stop
   only), `GET /containers/{id}/logs`, `GET /containers/{id}/stats`, and
-  optionally `GET /events` filtered to containers.
+  optionally `GET /events` filtered to containers. Foreman does not use
+  `GET /events`; it polls (8.7).
 - Managed mode only: `POST /images/create` (pull an exact tag),
   `GET /images/{name}/json`, `POST /containers/create`, and
   `DELETE /containers/{id}`.
@@ -729,12 +861,19 @@ Never: exec, build, volumes, networks, image delete, or anything under
 `/system` or `/auth`. Adding an endpoint changes this section first. The
 client refuses any path with a `.` or `..` segment, and refuses every
 redirect, so a daemon or proxy cannot send a request to a path this list
-never checked. (P0)
+never checked. Only the path is checked against this list; query strings
+(filters, `since`, `follow`) and JSON request bodies are allowed. Calls that
+last long (log follow, image pull, stop) have no overall time limit and
+set their own deadline. (P0)
 
 To share a network with the game (4.4), Foreman reads its own container
-with `GET /containers/{id}/json` and names that network in the
-`POST /containers/create` request. It never creates or connects networks;
-the network comes from the admin's compose file.
+with `GET /containers/{id}/json`, which gives the networks it is on and
+their address ranges. It names the game network in the
+`POST /containers/create` request, and lists the containers on that network
+with `GET /containers/json` and a network filter, to check that only
+Foreman and its own games are on it. It never creates or connects networks;
+the network comes from the admin's compose file. Outside a container it
+makes none of these checks and uses Docker's default `bridge`.
 
 14.4. **What Foreman will never do with Docker**: create a privileged
 container, use the host network or PID namespace, add capabilities, mount
@@ -760,8 +899,14 @@ the `Host` header. (P0)
 14.8. **Secrets** (the RCON password, the portal token, the OIDC client
 secret, the game password, `FOREMAN_SECRET_KEY`, and session tokens) never
 appear in a log line, an API response, an error message, the audit log,
-or the UI. This includes game log lines Foreman relays, since the image
-prints the RCON password at startup (8.6). (P0)
+or the UI. This includes game log lines Foreman relays: it removes the RCON
+password and the game password from every line (8.6), parsing the line
+before it redacts so a short password cannot hide what the line means. The
+console follows one list of commands that carry a secret: `/config set
+password` has its argument masked in the audit log, on the page and in
+relayed log lines, and the reply to `/config get password` is masked. A Lua
+command is recorded as typed (8.4). The one place the RCON password is
+visible is the game process's arguments, an accepted risk (4.5). (P0)
 
 14.9. **RCON input.** Commands built by Foreman from user text (chat
 messages, player names) are escaped so the text cannot become a different
@@ -773,7 +918,8 @@ configured. It does not follow redirects for webhooks. (P0)
 
 14.11. **Least privilege.** Foreman's container runs as non-root with a
 read-only root filesystem except its data directory and a temporary
-directory. (P0)
+directory. The game container is also unprivileged (4.6): a game user or
+group ID of 0 is refused at start (3.6). (P0)
 
 14.12. **AI clients.** An AI client connected through MCP (section 21) is
 its own trust zone: trusted only for its token's scope, and assumed to
@@ -811,7 +957,12 @@ stack is chosen. (P1)
 (P1)
 
 16.3. Status, player list and log pages update live without the admin
-reloading. (P0)
+reloading. They use server-sent events. A heartbeat checks the session but
+does not extend its idle time, so an open page cannot keep a session alive.
+A stream for a user signed in by trusted headers ends after 5 minutes and
+reconnects through the proxy, since those headers are checked only when the
+connection opens. A page whose connection stays down for 5 seconds says so
+and tells the user to reload. (P0)
 
 ## 17. Accessibility and design
 
@@ -854,7 +1005,8 @@ container (4.3 to 4.6); status (7.1, 7.2); start, stop, restart (7.3 to
 7.8), including the pre-start check and the save reader it needs
 (7.4, and 9.9); save selection (7.11); the log stream and crash
 detection (8.6, 8.7, 8.9); the player list (8.1); the RCON console (8.4)
-and its audit entries.
+and its audit entries. It also finishes snapshot and restore of a running
+world (6.5, 6.10).
 
 18.4. **Epic 4: World switching and adopted mode.** Switching (7.9, 7.10);
 adopted mode (4.7 to 4.12).

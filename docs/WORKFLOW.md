@@ -70,20 +70,36 @@ The targets (STACK.md, section 13):
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It
   runs in managed mode, with `FOREMAN_HOST_DATA_DIR` set, and your own user
-  and group IDs as the game's, so it needs no Docker socket.
-- `make e2e`: build the binary and run the Playwright and axe tests in
-  the Playwright image.
+  and group IDs as the game's. It talks to Docker through `DOCKER_HOST`
+  (the default socket if unset), so you need a Docker socket you can use to
+  start a game. Without one the Server page shows "Unknown" with the
+  reason, and the other pages work.
+- `make e2e`: build the binary and the fake game, and run the Playwright
+  and axe tests in the Playwright image. No real Docker or game is used.
 - `make image`: build the container image as `foreman:dev`.
 - `make vuln`: govulncheck. It needs the network, so it is not in
   `verify`.
 - `make ci`: `verify`, `e2e` and `image` in turn: everything CI checks,
   in one local run.
 - `make tidy`: `go mod tidy`.
-- `make test-game` and `make e2e-game`: placeholders until the real-game
-  tests arrive.
+- `make test-game`: run the game controller against the real Docker daemon
+  and the three pinned game images, one after another (about 70 seconds in
+  all). `TAG=1.1`, `2.0` or `2.1` runs one. It does not download the game
+  images: pull each one first with the `docker pull` command in the error it
+  prints. It starts containers named `foreman-e3test-*` and removes them,
+  with their data under `.cache/test-game/`.
+- `make e2e-game`: run the phone scenario against the real 2.1 game image.
+  It needs that image on the host (it prints the `docker pull` to run) and
+  a Docker socket (`DOCKER_SOCK`, `/var/run/docker.sock` by default).
+  **Run it only on a development machine.** It gives the Playwright
+  container the host's Docker socket, which is root on that host, and it
+  runs on a Docker network of its own that it creates and removes. Do not
+  run it in CI or on a shared or production host.
 
 The first `make verify` or `make e2e` pulls the pinned images and runs
-`npm ci` in `e2e/`; later runs reuse them.
+`npm ci` in `e2e/`; later runs reuse them. Run `make test-game` and `make
+e2e-game` before an epic pull request that touches server control, world
+switching, snapshots, mods or game versions.
 
 ## Branches
 

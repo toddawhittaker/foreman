@@ -1,0 +1,108 @@
+   0.000 2026-11-04 03:51:06; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+   0.000 Operating system: Linux
+   0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> 
+   0.000 Config path: /opt/factorio/config/config.ini
+   0.000 Read data path: /opt/factorio/data
+   0.000 Write data path: /opt/factorio [535462/928723MB]
+   0.000 Binaries path: /opt/factorio/bin
+   0.005 System info: [CPU: AMD Ryzen 9 5950X 16-Core Processor, 32 cores, RAM: 64194 MB]
+   0.005 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+   0.009 Running in headless mode
+   0.009 Audio is disabled
+   0.010 Info ModManager.cpp:455: FeatureFlag: expansion
+   0.012 Loading mod core 0.0.0 (data.lua)
+   0.022 Loading mod base 2.1.24 (data.lua)
+   0.142 Loading mod recycler 2.1.24 (data.lua)
+   0.148 Loading mod base 2.1.24 (data-updates.lua)
+   0.153 Loading mod recycler 2.1.24 (data-updates.lua)
+   0.199 Checksum for core: 3668028660
+   0.199 Checksum of base: 3864816957
+   0.199 Checksum of recycler: 3293728126
+   0.338 Prototype list checksum: 2725040850
+   0.362 Info PlayerData.cpp:582: Local player-data.json unavailable
+   0.363 Factorio initialised
+   0.363 Info ServerSynchronizer.cpp:22: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+   0.363 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(Ready) to(PreparedToHostGame)
+   0.363 Info ServerMultiplayerManager.cpp:809: updateTick(18446744073709551615) changing state from(PreparedToHostGame) to(CreatingGame)
+   0.363 Loading map /factorio/saves/realcheck.zip: 133689 bytes.
+   0.369 Loading level.dat: 268725 bytes.
+   0.369 Info Scenario.cpp:152: Map version 2.1.24-1
+   0.374 Blueprint storage "blueprint-storage-2.dat" was not found, trying to load previous version storage "blueprint-storage.dat"
+   0.374 Loading script.dat: 1184 bytes.
+   0.377 Checksum for script __level__/control.lua: 3368906707
+   0.377 Info UDPSocket.cpp:38: Opening socket at (IP ADDR:({0.0.0.0:34197}))
+   0.378 Hosting game at IP ADDR:({0.0.0.0:34197})
+   0.378 Info HttpSharedState.cpp:57: Downloading https://auth.factorio.com/generate-server-padlock-2?api_version=6
+   0.603 Info AuthServerConnector.cpp:112: Obtained serverPadlock for serverHash (jlbCb8eVElBcLZGKM3dEytlKfwjG7P0o) from the auth server.
+   0.603 Info ServerMultiplayerManager.cpp:809: updateTick(0) changing state from(CreatingGame) to(InGame)
+   0.603 Info RemoteCommandProcessor.cpp:119: Starting RCON interface at IP ADDR:({0.0.0.0:27015})
+   0.603 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({172.17.0.1:49160})
+   5.020 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:54506})
+  35.067 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:52682})
+  65.103 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:55444})
+  95.135 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:56188})
+ 125.168 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:35406})
+ 130.453 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:49872}))
+ 130.453 Refusing connection for address (IP ADDR:({192.168.10.167:49872})), username (toddawhittaker). UserVerificationMissing
+ 130.936 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:49873}))
+ 130.936 Refusing connection for address (IP ADDR:({192.168.10.167:49873})), username (toddawhittaker). ModsMismatch
+ 153.970 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:57736}))
+ 153.970 Refusing connection for address (IP ADDR:({192.168.10.167:57736})), username (toddawhittaker). UserVerificationMissing
+ 154.453 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:57737}))
+ 154.453 Info ServerRouter.cpp:465: Replying to connectionRequest for address(IP ADDR:({192.168.10.167:57737})).
+ 154.453 Info ServerSynchronizer.cpp:594: nextHeartbeatSequenceNumber(9230) adding peer(1)
+ 154.470 Info ServerMultiplayerManager.cpp:809: updateTick(40) changing state from(InGame) to(InGameSavingMap)
+ 154.503 Info ServerMultiplayerManager.cpp:977: updateTick(40) received stateChanged peerID(1) oldState(Ready) newState(ConnectedWaitingForMap)
+ 154.503 Info ServerMultiplayerManager.cpp:1038: UpdateTick(40) Serving map(/opt/factorio/temp/mp-save-0.zip) for peer(1) size(133409) auxiliary(85) crc(2216322835)
+ 154.503 Info ServerMultiplayerManager.cpp:809: updateTick(40) changing state from(InGameSavingMap) to(InGame)
+ 154.570 Info ServerMultiplayerManager.cpp:977: updateTick(40) received stateChanged peerID(1) oldState(ConnectedWaitingForMap) newState(ConnectedDownloadingMap)
+ 154.636 Info ServerMultiplayerManager.cpp:977: updateTick(40) received stateChanged peerID(1) oldState(ConnectedDownloadingMap) newState(ConnectedLoadingMap)
+ 155.202 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:45042})
+ 155.403 Info ServerMultiplayerManager.cpp:977: updateTick(41) received stateChanged peerID(1) oldState(ConnectedLoadingMap) newState(TryingToCatchUp)
+ 155.420 Info ServerMultiplayerManager.cpp:977: updateTick(41) received stateChanged peerID(1) oldState(TryingToCatchUp) newState(WaitingForCommandToStartSendingTickClosures)
+ 155.420 Info InputActionHandler.cpp:5065: UpdateTick (41) processed PlayerJoinGame peerID(1) playerIndex(0) mode(create) 
+ 155.486 Info ServerMultiplayerManager.cpp:977: updateTick(45) received stateChanged peerID(1) oldState(WaitingForCommandToStartSendingTickClosures) newState(InGame)
+2026-11-04 03:53:41 [JOIN] toddawhittaker joined the game
+ 175.186 Info ServerMultiplayerManager.cpp:1085: Disconnect notification for peer (1)
+ 175.186 Info ServerMultiplayerManager.cpp:977: updateTick(1227) received stateChanged peerID(1) oldState(InGame) newState(DisconnectScheduled)
+2026-11-04 03:54:01 [LEAVE] toddawhittaker left the game
+ 175.187 Info ServerSynchronizer.cpp:613: nextHeartbeatSequenceNumber(10475) removing peer(1).
+ 176.186 Info ServerMultiplayerManager.cpp:1230: Auto saving map as /factorio/saves/realcheck.zip
+ 176.203 Info AppManager.cpp:424: Saving game as /factorio/saves/realcheck.zip
+ 176.236 Info AppManagerStates.cpp:2131: Saving finished
+ 185.234 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:49276})
+ 189.986 ConnectionRequestReplyConfirm (type(ConnectionRequestReplyConfirm) ) from(IP ADDR:({192.168.10.167:53039}))
+ 189.986 Info ServerRouter.cpp:465: Replying to connectionRequest for address(IP ADDR:({192.168.10.167:53039})).
+ 189.986 Info ServerSynchronizer.cpp:594: nextHeartbeatSequenceNumber(11362) adding peer(2)
+ 190.004 Info ServerMultiplayerManager.cpp:809: updateTick(1232) changing state from(InGame) to(InGameSavingMap)
+ 190.020 Info ServerMultiplayerManager.cpp:977: updateTick(1232) received stateChanged peerID(2) oldState(Ready) newState(ConnectedWaitingForMap)
+ 190.036 Info ServerMultiplayerManager.cpp:1038: UpdateTick(1232) Serving map(/opt/factorio/temp/mp-save-1.zip) for peer(2) size(151037) auxiliary(85) crc(1344936556)
+ 190.036 Info ServerMultiplayerManager.cpp:809: updateTick(1232) changing state from(InGameSavingMap) to(InGame)
+ 190.086 Info ServerMultiplayerManager.cpp:977: updateTick(1232) received stateChanged peerID(2) oldState(ConnectedWaitingForMap) newState(ConnectedDownloadingMap)
+ 190.136 Info ServerMultiplayerManager.cpp:977: updateTick(1232) received stateChanged peerID(2) oldState(ConnectedDownloadingMap) newState(ConnectedLoadingMap)
+ 190.820 Info ServerMultiplayerManager.cpp:977: updateTick(1232) received stateChanged peerID(2) oldState(ConnectedLoadingMap) newState(TryingToCatchUp)
+ 190.820 Info ServerMultiplayerManager.cpp:977: updateTick(1232) received stateChanged peerID(2) oldState(TryingToCatchUp) newState(WaitingForCommandToStartSendingTickClosures)
+ 190.836 Info InputActionHandler.cpp:5065: UpdateTick (1232) processed PlayerJoinGame peerID(2) playerIndex(0) mode(connect) 
+ 190.870 Info ServerMultiplayerManager.cpp:977: updateTick(1234) received stateChanged peerID(2) oldState(WaitingForCommandToStartSendingTickClosures) newState(InGame)
+2026-11-04 03:54:17 [JOIN] toddawhittaker joined the game
+ 215.266 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:47820})
+2026-11-04 03:55:08 [CHAT] <server>: The server will save and stop in 30 seconds.
+ 245.302 Info RemoteCommandProcessor.cpp:236: New RCON connection from IP ADDR:({127.0.0.1:46416})
+2026-11-04 03:55:28 [CHAT] <server>: The server will save and stop in 10 seconds.
+ 271.870 Info AppManager.cpp:424: Saving game as /factorio/saves/realcheck.zip
+ 271.903 Info AppManagerStates.cpp:2131: Saving finished
+ 271.910 Received SIGTERM, shutting down
+ 271.910 Quitting: signal.
+ 271.910 Info MainLoop.cpp:447: Saving map as /factorio/saves/realcheck.zip
+ 271.918 Info MainLoop.cpp:458: Saving progress: 0.510204%
+ 271.918 Info MainLoop.cpp:458: Saving progress: 100.000000%
+ 271.922 Info ServerMultiplayerManager.cpp:120: Disconnecting multiplayer connection.
+ 271.922 Info ServerMultiplayerManager.cpp:809: updateTick(6095) changing state from(InGame) to(DisconnectingScheduled)
+ 271.955 Info ServerMultiplayerManager.cpp:809: updateTick(6095) changing state from(DisconnectingScheduled) to(Disconnecting)
+ 272.289 Info ServerMultiplayerManager.cpp:809: updateTick(6095) changing state from(Disconnecting) to(Disconnected)
+ 272.289 Info ServerMultiplayerManager.cpp:147: Quitting multiplayer connection.
+ 272.289 Info ServerMultiplayerManager.cpp:809: updateTick(6095) changing state from(Disconnected) to(Closed)
+ 272.289 Info ServerMultiplayerManager.cpp:167: Deleting active scenario (global = true).
+ 272.469 Info UDPSocket.cpp:238: Closing socket
+ 272.469 Info UDPSocket.cpp:268: Socket closed
+ 272.491 Goodbye

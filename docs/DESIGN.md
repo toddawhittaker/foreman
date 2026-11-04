@@ -719,8 +719,14 @@ Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
 delete), and in later epics switching (7.9) and destructive player
-actions (8.2). A graceful stop or restart does not need a confirmation
-page; its button says "Stop server (players get a 60-second warning)".
+actions (8.2). A graceful stop or restart does not need a danger
+confirmation, because nothing is lost. Its button opens a short form at its
+own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
+countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
+60, and a checkbox for no countdown. The form is a plain `panel` with a
+primary button ("Stop server", "Restart server"), not the danger box, and
+its Cancel link says the server keeps running. The result is shown on the
+Server page.
 
 ### 7.5 Server-state badge
 
@@ -740,7 +746,7 @@ SPEC 7.1 and 17.4: state is never shown by colour alone.
 | crash-looping | "Crash-looping" | `on-danger` | `danger` | Filled square; the whole badge is solid |
 | unknown | "Unknown" | `text-muted` | `deep` | Hollow circle; the badge edge is dashed |
 
-"Unknown" is for when Foreman cannot ask Docker (Epic 3 R16). It uses the
+"Unknown" is for when Foreman cannot ask Docker (SPEC 7.1). It uses the
 same pair of colours as "Stopped" (8.10 and 7.63 on dark and light), so
 no new contrast row is needed; the circle and the dashed edge tell the
 two apart without colour.
