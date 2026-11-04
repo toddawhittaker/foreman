@@ -100,6 +100,9 @@ test.describe("with the fake game", () => {
     await expect.poll(() => atBottom(log)).toBe(true);
     const jump = page.getByRole("button", { name: "Jump to newest" });
     await expect(jump).toBeHidden();
+    // Its row is kept while hidden, so showing it moves nothing below the log.
+    const consoleTop = () => page.locator("#console-panel").evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    const topBefore = await consoleTop();
 
     // Reading older lines: new ones arrive but the view stays where it is.
     const command = page.getByLabel("Command");
@@ -109,6 +112,11 @@ test.describe("with the fake game", () => {
     await expect(log).toContainText("late joined the game", live);
     expect(await log.evaluate((el) => el.scrollTop)).toBe(0);
     await expect(jump).toBeVisible();
+    // The button sits under the box and covers no line (DESIGN 8.5).
+    const logRect = (await log.boundingBox())!;
+    const jumpBox = (await jump.boundingBox())!;
+    expect(jumpBox.y).toBeGreaterThanOrEqual(logRect.y + logRect.height);
+    expect(await consoleTop()).toBe(topBefore);
     await expect(command).toBeFocused();
     await checkPage(page);
 

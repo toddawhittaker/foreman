@@ -316,14 +316,16 @@ inset `box-shadow`s, never a blurred or offset shadow outside the box:
 | Element | Bevel | Outline |
 |---|---|---|
 | Header and `main` frames | raised | 1px `frame-dark` border |
-| Inner panel (a section's content) | sunken | none |
+| Inner panel (a section's content) | sunken | none; 1px `CanvasText` in forced colours only |
 | Field, log, console | sunken | 1px `border` (the edge that counts for contrast) |
 | Button | raised; sunken while pressed (`:active`) | 1px border, see 7.1 |
 | Message, badge, confirmation box | none (flat) | 1px border in their own colour |
 
 The bevel is decoration. In forced-colours mode box-shadows are not
 drawn, and the 1 px borders in the "Outline" column are what remain.
-That is why every frame and control keeps one.
+That is why every frame and control keeps one. The inner panel has no
+border in the normal look, so `@media (forced-colors: active)` gives it a
+1px `CanvasText` border (section 6, "Forced colours").
 
 ### Rules
 
@@ -362,7 +364,8 @@ That is why every frame and control keeps one.
   not sticky.
 - In Windows high-contrast mode (`forced-colors: active`) the outline
   still shows. Bevels disappear there, and every frame, button and field
-  keeps a 1 px border (section 4, "Bevels") so its edge shows too.
+  keeps a 1 px border (section 4, "Bevels") so its edge shows too; the
+  inner panel, which has only a bevel, gets its border in that mode.
 
 ## 6. Page layout
 
@@ -444,6 +447,8 @@ tab a 2px `Highlight` border (every tab carries a transparent 2px border
 so nothing shifts) and a 3px underline, so "selected" is still a drawn
 shape. The "Active" badge keeps its border and its word, and buttons,
 fields and message boxes keep their borders, so they need nothing more.
+The inner panel has only a bevel, so it gets a 1px `CanvasText` border in
+this mode.
 The state badge's shapes (7.5) are redrawn in `CanvasText` so their fills
 survive. Anything new that marks a state with a fill alone needs a rule here. Check
 a screen with Playwright's `forcedColors: "active"`.
@@ -467,6 +472,9 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
 4. Adjacent targets are separated by at least `--space-2`, so two 24 px
    minimum targets can never overlap even when a person's text size
    shrinks things.
+   The parts the server swaps in (`[sse-swap]`) and `#console-panel` are
+   grids with `gap: var(--space-3)`, so a button is never flush under a
+   step list, message or log.
 5. Button rows wrap (`flex-wrap: wrap`). Each button may grow to the full
    width when its row wraps, so a phone shows them stacked, primary first.
 6. Tables follow 8.3. The log and console wrap their lines (8.5); they
@@ -478,7 +486,9 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
 
 Only `opacity` and `transform` may animate, for at most 150 ms. Under
 `prefers-reduced-motion: reduce`, nothing animates, including the
-indeterminate progress bar. Nothing on these screens needs motion to be
+indeterminate progress bar, which is hidden in that mode (`.steps
+progress { display: none }`) because the browser animates it itself; the
+"In progress" word carries the meaning. Nothing on these screens needs motion to be
 understood.
 
 ## 7. Components
@@ -804,9 +814,11 @@ Classes: `steps` (the `ol`; no numbers, one row per step), `step-state`
 (the word, a fixed 6rem column so the step text lines up) and its
 modifiers `step-state--done`, `step-state--progress` and
 `step-state--failed`. "Waiting" and "Skipped" take no modifier. The
-current step has `aria-current="step"` and is bold. A failed step's
-message goes inside that `li` as `<div class="message message--error">`;
-it takes its own full-width line. The words carry the state, so forced
+current step has `aria-current="step"` and is bold. In a panel narrower
+than 24rem the word takes its own line, so every step reads the same way.
+A failed step's message goes inside that `li` as
+`<div class="message message--error">`; it takes its own full-width line
+(`flex: 1 1 100%`, no `max-inline-size`) at any width. The words carry the state, so forced
 colours needs no rule.
 
 ## 8. Patterns for later screens
@@ -905,10 +917,13 @@ Classes and their contract:
   scrolling box needs a name and a keyboard stop. Nothing inside it may set
   its own width; lines wrap.
 - `log-frame`: optional wrapper, used only when the box carries a "Jump to
-  newest" button. It is `position: relative` and the button is drawn over
-  the box's lower corner (not fixed to the viewport, so 6, rule 7 holds),
-  which means showing or hiding it moves nothing. The script toggles the
-  button's `hidden` attribute.
+  newest" button. It is a grid: the box, then the button under it, at the
+  end edge, so the button never covers a line (at 320 px an overlay hid the
+  last lines). While `hidden`, the button is `visibility: hidden` and keeps
+  its row, so showing or hiding it moves nothing below it, and it is out of
+  the tab order and the accessibility tree. The script toggles the
+  button's `hidden` attribute. The markup is unchanged: the button stays a
+  sibling of `log`.
 - `console-row`: the field and "Send" on one row. They sit side by side
   and wrap onto two lines when the panel is too narrow. The field's text is
   mono at 16px, so a phone does not zoom in on focus.

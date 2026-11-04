@@ -172,8 +172,13 @@ test.describe("with the fake game", () => {
     await fakeGame!.call("/crash-loop", { name: container, on: true });
     await expect(badge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
     await expect(page.getByText(/crashed again and again, so Foreman stopped it/)).toBeVisible();
-    await expect(page.getByRole("region", { name: "The last log lines before the crash" })).not.toBeEmpty();
+    const crashLog = page.getByRole("region", { name: "The last log lines before the crash" });
+    await expect(crashLog).not.toBeEmpty();
     await expect(page.getByRole("button", { name: "Start server" })).toBeVisible();
+    // The button is not flush under the log (DESIGN 6, rule 4).
+    const logRect = (await crashLog.boundingBox())!;
+    const buttonRect = (await page.getByRole("button", { name: "Start server" }).boundingBox())!;
+    expect(buttonRect.y - (logRect.y + logRect.height)).toBeGreaterThanOrEqual(8);
     await checkPage(page);
   });
 
