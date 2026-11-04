@@ -19,10 +19,14 @@
   <p>This will:</p>
   <ul>
     <li>First, take a snapshot of {{.World.Name}}, labelled "Before start anyway". If the snapshot fails, nothing else happens.</li>
-    {{- range .CheckProblems}}
-    <li>{{.}}</li>
-    {{- end}}
-    <li>Start the game. The next time it saves, what is listed above is gone from the save. To undo, restore that snapshot from the Snapshots page.</li>
+    <li>Load a save that does not match {{.World.Name}}. When the game loads it, it drops from the save whatever depends on these problems, such as what a missing mod built:
+      <ul>
+        {{- range .CheckProblems}}
+        <li>{{.}}</li>
+        {{- end}}
+      </ul>
+    </li>
+    <li>Start the game. The next time it saves, what it dropped is gone from the save for good. To undo, restore that snapshot from the Snapshots page.</li>
   </ul>
   <form method="post" action="{{.Path}}">
     <div class="actions">

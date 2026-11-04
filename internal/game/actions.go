@@ -91,10 +91,16 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
-	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
-		return err
-	}
+	// The check runs as the first step, so a refusal shows in the step
+	// list, and is audited as a refusal rather than a start (SPEC 12.9).
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps(opts))
+	o.begin(StepCheck)
+	if _, err := c.precheck(id, opts); err != nil {
+		return o.end(c.refused(ctx, by, AuditStart, id, opts.auditDetail(), err))
+	}
+	if err := c.audit(ctx, by, AuditStart, id, opts.auditDetail()); err != nil {
+		return o.end(err)
+	}
 	err = c.startLocked(ctx, o, by, opts)
 	return o.end(err)
 }
@@ -589,10 +595,10 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	if err := c.checkActive(ctx, id); err != nil {
 		return err
 	}
-	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
-		return err
-	}
 	if _, err := c.precheck(id, opts); err != nil {
+		return c.refused(ctx, by, AuditRestart, id, opts.auditDetail(), err)
+	}
+	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps(opts))

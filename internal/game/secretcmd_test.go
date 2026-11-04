@@ -55,10 +55,8 @@ func TestRelayedLinesMaskSecretCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := r.waitState(id, StateCrashed)
-	for _, l := range st.CrashLines {
-		if strings.Contains(l, "s3cret") {
-			t.Errorf("crash line %q", l)
-		}
+	if strings.Contains(st.CrashReason, "s3cret") {
+		t.Errorf("crash reason %q", st.CrashReason)
 	}
 }
 

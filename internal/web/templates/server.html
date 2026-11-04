@@ -78,8 +78,8 @@
 
 {{/* The last action's error and what can be done next. Takes *Failure. */}}
 {{define "server-failure" -}}
-<div class="message message--error">
-  <p><strong>Error:</strong> {{.Message}}</p>
+<div class="message {{.Class}}">
+  <p><strong>{{.Word}}</strong> {{if not .Earlier.IsZero}}Earlier, at <time datetime="{{isoTime .Earlier}}">{{utc .Earlier}}</time>: {{end}}{{.Message}}</p>
   {{- with .Problems}}
   <ul>
     {{- range .}}
@@ -94,6 +94,20 @@
   <p>{{.AnywayText}}</p>
   <div class="actions"><a href="{{.AnywayPath}}" class="button" id="act-start-anyway">{{.AnywayVerb}}</a></div>
   {{- end}}
+</div>
+{{- end}}
+
+{{/* The crash message, with the game's reason from its log when it gave
+     one (SPEC 8.7). The full log is on the Console page. When a later
+     action's result leads the page, the crash is marked as earlier. */}}
+{{define "server-crash" -}}
+{{- $earlier := not .CrashLeads}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> {{if $earlier}}Earlier{{with .Status.LastCrash}}{{if not .IsZero}}, at <time datetime="{{isoTime .}}">{{utc .}}</time>{{end}}{{end}}: the{{else}}The{{end}} game crashed
+    {{- if eq .Status.State "crash-looping"}} again and again, so Foreman stopped it{{.Status.CrashReason}}.
+    {{- else}}{{if and (not $earlier) (not .Status.LastCrash.IsZero)}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}{{.Status.CrashReason}}. Docker is starting it again.{{end}}
+    {{- if not .Status.CrashReason}} Foreman could not tell why from the log.{{end}}</p>
+  <p><a href="{{.ConsolePath}}" id="act-console">Read the full log on the Console page</a></p>
 </div>
 {{- end}}
 
@@ -118,6 +132,9 @@
      link and button has an id, so focus stays on it across live updates. */}}
 {{define "server-control" -}}
 {{- $failure := .Failure}}
+{{- if .CrashLeads}}
+{{template "server-crash" .}}
+{{- end}}
 {{- if and $failure (eq $failure.In "")}}
 {{template "server-failure" $failure}}
 {{- end}}
@@ -151,22 +168,19 @@
 <h3>{{if .Status.Download.Done}}The download failed{{else}}Downloading the game image{{end}}</h3>
 {{template "server-steps" .DownloadList}}
 {{- end}}
-{{- if eq .Status.State "crash-looping"}}
-<div class="message message--warning">
-  <p><strong>Warning:</strong> The game crashed again and again, so Foreman stopped it. Read the last log lines, fix the world, then start it again.</p>
-</div>
-{{- else if eq .Status.State "crashed"}}
-<div class="message message--warning">
-  <p><strong>Warning:</strong> The game crashed{{if not .Status.LastCrash.IsZero}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}. Docker is starting it again.</p>
-</div>
+{{- if and .Crashed (not .CrashLeads)}}
+{{template "server-crash" .}}
 {{- end}}
-{{- with .Status.CrashLines}}
-<div class="log" id="crash-log" tabindex="0" role="region" aria-label="The last log lines before the crash"><pre>{{range .}}{{.}}
-{{end}}</pre></div>
+{{- with .StartBlocked}}
+<div class="message message--note">
+  <p><strong>Note:</strong> {{.}}</p>
+</div>
 {{- end}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop}}
 <div class="actions">
-  {{- if .CanStart}}
+  {{- if .StartBlocked}}
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button" id="act-start">Try to start again</button></form>
+  {{- else if .CanStart}}
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button button--primary" id="act-start">Start server</button></form>
   {{- end}}
   {{- if .CanStop}}

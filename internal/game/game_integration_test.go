@@ -512,8 +512,8 @@ func (e *gameEnv) runImage(t *testing.T, tag, fixture, version string) {
 		}
 		t.Logf("start said: %v", err)
 		st := waitState(t, c3, bad, StateCrashLooping, 90*time.Second)
-		if len(st.CrashLines) == 0 || len(st.CrashLines) > CrashLines {
-			t.Fatalf("crash lines = %d, want 1 to %d", len(st.CrashLines), CrashLines)
+		if !strings.HasPrefix(st.CrashReason, ". Factorio said: ") {
+			t.Fatalf("crash reason = %q, want the game's error line", st.CrashReason)
 		}
 		waitFor(t, 60*time.Second, "the crash-looping container to be stopped", func() bool {
 			return !e.inspect(t, bad).State.Running && e.inspect(t, bad).State.Status != "restarting"

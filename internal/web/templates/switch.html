@@ -23,7 +23,7 @@
   <p>This will:</p>
   <ul>
     {{- if .Anyway}}
-    <li>The save that would load in {{.To.Name}} does not match its world, so the game will delete:
+    <li>Load a save that does not match {{.To.Name}}. When the game loads it, it drops from the save whatever depends on these problems, such as what a missing mod built:
       <ul>
         {{- range .CheckProblems}}
         <li>{{.}}</li>
@@ -42,7 +42,7 @@
     {{- end}}
     <li>Make {{.To.Name}} the active world.</li>
     {{- if .Running}}
-    <li>Start the game on {{.To.Name}}.{{if .Anyway}} The next time it saves, what is listed above is gone from the save.{{end}}</li>
+    <li>Start the game on {{.To.Name}}.{{if .Anyway}} The next time it saves, what it dropped is gone from the save for good.{{end}}</li>
     {{- end}}
     <li>To undo, switch back to {{.From.Name}}, or restore a snapshot from the Snapshots page.</li>
   </ul>

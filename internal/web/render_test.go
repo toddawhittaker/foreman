@@ -134,10 +134,10 @@ func pageCases() []pageCase {
 			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: game.ErrImageMissing}, true
 		})},
 		{"server crash-looping", "todd", 200, serverCase(game.StateCrashLooping, func(p *ServerPage) {
-			p.Status.CrashLines = []string{"Error: " + longName, "line two"}
+			p.Status.CrashReason = ". Factorio said: " + longName
 		})},
 		{"server crashed", "todd", 200, serverCase(game.StateCrashed, func(p *ServerPage) {
-			p.Status.LastCrash, p.Status.CrashLines = time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), []string{"oops"}
+			p.Status.LastCrash = time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)
 		})},
 		{"server unknown", "todd", 200, serverCase(game.StateUnknown, func(p *ServerPage) {
 			p.Status.Reason = "Foreman cannot reach Docker: " + longName

@@ -683,7 +683,9 @@ failed-load line. It does not use the exit code, because the same failure
 exits with different codes in different game versions (1.1 exits 0 after a
 failed load). It names the reason when it can: a mod that failed to load, a
 corrupt save, a version mismatch, a port in use, or out of memory.
-Otherwise it says the reason is unknown and shows the last 20 log lines; it
+Otherwise it says the reason is unknown. The Server page shows only that
+summary, masked like every log line, and links to the full log on the
+Console page (8.6); it
 never guesses a reason. (P0 to detect a crash; P1 to name the reason)
 
 8.8. **The reason catalogue** is a data file of log patterns, each

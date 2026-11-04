@@ -947,8 +947,10 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 				t.Errorf("%d audit entries added, want %d: %v", added, tc.audited, v.actions())
 			}
 			if tc.audited == 1 {
-				if e := v.audit.list()[after.audit-1]; e.Action != AuditSwitch || e.WorldID != from {
-					t.Errorf("audit entry %+v, want a switch from %s", e, from)
+				// SPEC 12.9: a refusal is its own action, with the reason.
+				if e := v.audit.list()[after.audit-1]; e.Action != AuditSwitchRefused || e.WorldID != from ||
+					!strings.HasPrefix(e.Detail, "from "+from+" to "+to+": ") || !strings.Contains(e.Detail, err.Error()) {
+					t.Errorf("audit entry %+v, want a refused switch from %s with the reason", e, from)
 				}
 			}
 			v.assertSaves(before.saves, "after the refusal")

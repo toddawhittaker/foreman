@@ -50,6 +50,7 @@ func (p ServerPage) StopPath() string      { return gamePath(p.World.ID, "stop")
 func (p ServerPage) RestartPath() string   { return gamePath(p.World.ID, "restart") }
 func (p ServerPage) ForceStopPath() string { return gamePath(p.World.ID, "force-stop") }
 func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-image") }
+func (p ServerPage) ConsolePath() string   { return consolePath(p.World.ID, "") }
 
 // StateWord is the badge's word (DESIGN 7.5).
 func (p ServerPage) StateWord() string { return stateWord(p.Status.State) }
@@ -101,6 +102,57 @@ func (p ServerPage) CanStart() bool {
 	return !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
 }
 
+// StartBlocked says why a start of the world as it is would not run, and
+// what the admin can do, or is "". It uses what Foreman already knows: the
+// crash loop (SPEC 8.9) and the last start or restart the checks refused
+// (SPEC 7.4). The page then offers a plain "Try to start again" for after
+// the fix, in place of the main Start button; an admin must still be able
+// to start by hand (SPEC 8.9).
+func (p ServerPage) StartBlocked() string {
+	if !p.CanStart() {
+		return ""
+	}
+	if p.Status.State == game.StateCrashLooping {
+		return "Starting " + p.World.Name + " as it is would crash again. Fix what the game reported, for example the world's mods or its save, then try to start it again. Or switch to another world from the Worlds page."
+	}
+	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && startRefusal(p.Result.Err) {
+		return "Starting " + p.World.Name + " as it is would be refused again, for the reason above. Fix the world first, then try to start it again."
+	}
+	return ""
+}
+
+// startRefusal reports whether err is the pre-start check refusing the
+// world as it is (SPEC 7.4), which a new start would meet again.
+func startRefusal(err error) bool {
+	var pe *game.PrecheckError
+	return errors.As(err, &pe) || errors.Is(err, game.ErrSaveNewerThanImage)
+}
+
+// Crashed reports whether the page shows the crash message.
+func (p ServerPage) Crashed() bool {
+	return p.Status.State == game.StateCrashed || p.Status.State == game.StateCrashLooping
+}
+
+// CrashLeads reports whether the crash is the newest thing the page reports,
+// so its message comes first; otherwise it is marked as earlier.
+func (p ServerPage) CrashLeads() bool {
+	// A crash whose time is not known yet is the current state, so it leads.
+	c := p.Status.LastCrash
+	return p.Crashed() && (!p.HaveResult || c.IsZero() || p.Result.At.Before(c))
+}
+
+// opSuperseded reports whether the failed operation the status still holds
+// is older than the last result, as when a later switch was refused before
+// it began: its step list and note are then dropped.
+func (p ServerPage) opSuperseded() bool {
+	o := p.Status.Operation
+	if o == nil || !o.Done || o.Error == "" || !p.HaveResult {
+		return false
+	}
+	f := p.Failure()
+	return f == nil || f.In != "operation"
+}
+
 func (p ServerPage) CanStop() bool {
 	s := p.Status.State
 	return !p.Busy() && (s == game.StateRunning || s == game.StateCrashed)
@@ -135,7 +187,7 @@ func (p ServerPage) ActionsNote() string {
 
 // ShowOperation reports whether the step list is shown: while the
 // operation runs, and after it failed.
-func (p ServerPage) ShowOperation() bool { return showOp(p.Status.Operation) }
+func (p ServerPage) ShowOperation() bool { return showOp(p.Status.Operation) && !p.opSuperseded() }
 
 // ShowDownload is ShowOperation for the image download.
 func (p ServerPage) ShowDownload() bool { return showOp(p.Status.Download) }
@@ -234,6 +286,26 @@ type Failure struct {
 	// In says which step list holds the message: "operation", "download",
 	// or "" for on its own.
 	In string
+	// Earlier is when the action ended, set when a crash after it leads
+	// the page.
+	Earlier time.Time
+}
+
+// Word is the message's leading word. A refusal that offers a choice is a
+// warning, not an error: going ahead is the admin's call (DESIGN 7.3).
+func (f *Failure) Word() string {
+	if f.AnywayPath != "" {
+		return "Warning:"
+	}
+	return "Error:"
+}
+
+// Class is the message's kind class, matching Word.
+func (f *Failure) Class() string {
+	if f.AnywayPath != "" {
+		return "message--warning"
+	}
+	return "message--error"
 }
 
 // precheckLead opens the message for a start the pre-start check refused.
@@ -270,6 +342,9 @@ func (p ServerPage) Failure() *Failure {
 	}
 	err := p.Result.Err
 	f := &Failure{Undo: p.Result.Undo}
+	if p.Crashed() && p.CrashLeads() {
+		f.Earlier = p.Result.At
+	}
 	var pe *game.PrecheckError
 	switch {
 	case errors.As(err, &pe):
@@ -324,9 +399,9 @@ func anywayText(problems []world.Problem, switching bool) string {
 	}
 	if mods == 0 {
 		if switching {
-			return "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then deletes what is listed above."
+			return "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then drops from the save whatever depends on the problems above."
 		}
-		return "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above."
+		return "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then drops from the save whatever depends on the problems above."
 	}
 	anyway := "start anyway: Foreman takes a snapshot first"
 	if switching {
@@ -404,7 +479,7 @@ var doneAnnouncement = map[string]string{
 func resultAnnouncement(p ServerPage) string {
 	var said []string
 	if f := p.Failure(); f != nil {
-		said = append(said, "Error: "+f.Message)
+		said = append(said, f.Word()+" "+f.Message)
 	}
 	for _, e := range p.OtherErrors() {
 		said = append(said, "Error: "+e)
