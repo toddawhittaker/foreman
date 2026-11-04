@@ -6,10 +6,6 @@ import { join } from "node:path";
 // Adopted mode through the web pages (SPEC 4.7 to 4.12, DESIGN 7.4, 7.6)
 // against the fake game's seeded container.
 
-// Foreman's start-up wiring for adopted mode is a separate task. Every test
-// here passed with it merged; remove this line once it is on this branch.
-test.fixme(true, "needs the start-up wiring for adopted mode");
-
 const live = { timeout: 20_000 };
 
 const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
