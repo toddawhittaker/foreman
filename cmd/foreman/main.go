@@ -169,14 +169,31 @@ func serve(cfg *config.Config) error {
 // probeFolders checks the data directory and, in adopted mode, the game
 // folder (SPEC 3.6).
 func probeFolders(cfg *config.Config) error {
-	if err := datadir.Probe(cfg.DataDir, cfg.GameUID, cfg.GameGID); err != nil {
+	if err := datadir.Probe("the data directory", cfg.DataDir, cfg.GameUID, cfg.GameGID); err != nil {
 		return err
 	}
 	if cfg.Mode != config.ModeAdopted {
 		return nil
 	}
-	if err := datadir.Probe(cfg.GameDir, cfg.GameUID, cfg.GameGID); err != nil {
-		return fmt.Errorf("the game folder (FOREMAN_GAME_DIR) failed the same check as the data directory: %w", err)
+	if err := datadir.Probe("the game folder (FOREMAN_GAME_DIR)", cfg.GameDir, cfg.GameUID, cfg.GameGID); err != nil {
+		return err
+	}
+	return checkNesting(cfg)
+}
+
+// checkNesting refuses a data directory and game folder that overlap once
+// links are resolved; config.Load cannot see links (SPEC 3.2).
+func checkNesting(cfg *config.Config) error {
+	data, err := filepath.EvalSymlinks(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("resolve the data directory %s: %w", cfg.DataDir, err)
+	}
+	game, err := filepath.EvalSymlinks(cfg.GameDir)
+	if err != nil {
+		return fmt.Errorf("resolve the game folder %s: %w", cfg.GameDir, err)
+	}
+	if msg := config.NestingProblem(data, game); msg != "" {
+		return errors.New(msg)
 	}
 	return nil
 }

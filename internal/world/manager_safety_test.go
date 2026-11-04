@@ -190,29 +190,23 @@ func TestListShowsSizeUnknown(t *testing.T) {
 // SPEC 6.11: writes in flight share one count of promised bytes, so two that
 // each fit cannot together eat into the reserve.
 func TestReserveCountsWritesInFlight(t *testing.T) {
-	dir := t.TempDir()
-	free, err := FreeBytes(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if free < SpaceReserve+2 {
-		t.Skip("needs more free space than the reserve")
-	}
+	// A made-up free size, so the test does not depend on the runner's disk.
+	free := SpaceReserve + 1_000_000
 	half := (free - SpaceReserve) / 2
-	r1, err := Reserve(dir, half)
+	r1, err := reserveFree(free, half)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2, err := Reserve(dir, half)
+	r2, err := reserveFree(free, half)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Reserve(dir, half); !errors.Is(err, ErrNoSpace) {
+	if _, err := reserveFree(free, half); !errors.Is(err, ErrNoSpace) {
 		t.Errorf("third reserve: %v, want ErrNoSpace", err)
 	}
 	r1()
 	r1() // releasing twice is harmless
-	r3, err := Reserve(dir, half)
+	r3, err := reserveFree(free, half)
 	if err != nil {
 		t.Errorf("after a release: %v", err)
 	} else {

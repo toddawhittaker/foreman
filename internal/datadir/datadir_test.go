@@ -106,7 +106,7 @@ func TestProbeOwnership(t *testing.T) {
 		{1000, 1000, false},
 	}
 	for _, tc := range cases {
-		err := probe(dir, tc.uid, tc.gid, 845, 845)
+		err := probe("the data directory", dir, tc.uid, tc.gid, 845, 845)
 		if (err == nil) != tc.ok {
 			t.Errorf("uid %d gid %d: %v", tc.uid, tc.gid, err)
 		}
@@ -123,10 +123,10 @@ func TestProbeDirectoryProblems(t *testing.T) {
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := probe(filepath.Join(dir, "missing"), 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "does not exist") {
+	if err := probe("the data directory", filepath.Join(dir, "missing"), 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "does not exist") {
 		t.Errorf("missing: %v", err)
 	}
-	if err := probe(file, 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "not a directory") {
+	if err := probe("the data directory", file, 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "not a directory") {
 		t.Errorf("file: %v", err)
 	}
 	if os.Getuid() == 0 {
@@ -136,7 +136,16 @@ func TestProbeDirectoryProblems(t *testing.T) {
 	if err := os.Mkdir(ro, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	if err := probe(ro, 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "cannot write") {
+	if err := probe("the data directory", ro, 845, 845, 845, 845); err == nil || !strings.Contains(err.Error(), "cannot write") {
 		t.Errorf("read-only: %v", err)
+	}
+}
+
+// The message names the folder that was probed, so an operator who set up
+// two folders knows which one to fix.
+func TestProbeNamesTheFolder(t *testing.T) {
+	err := probe("the game folder", filepath.Join(t.TempDir(), "missing"), 845, 845, 845, 845)
+	if err == nil || !strings.Contains(err.Error(), "the game folder") || strings.Contains(err.Error(), "data directory") {
+		t.Errorf("message %v", err)
 	}
 }

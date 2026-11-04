@@ -45,7 +45,7 @@ type importFile struct {
 // Inbox lists the import inbox's subfolders. Hidden folders and anything
 // that is not a real folder (a symlink, for one) are left out.
 func (m *Manager) Inbox() ([]InboxFolder, error) {
-	inbox, err := os.OpenRoot(m.dirs.Imports)
+	inbox, err := openFolder(m.dirs.Imports)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 	if folder == "" || path.Base(folder) != folder || strings.HasPrefix(folder, ".") {
 		return "", ErrNoFolder
 	}
-	inbox, err := os.OpenRoot(m.dirs.Imports)
+	inbox, err := openFolder(m.dirs.Imports)
 	if err != nil {
 		return "", err
 	}
@@ -191,7 +191,7 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 // name relative to that folder), so moving it into the new world is a
 // rename. temp is removed whatever happens.
 func (m *Manager) ImportSave(ctx context.Context, name, gameVersion string, spaceAge bool, saveName, temp string) (string, error) {
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return "", err
 	}

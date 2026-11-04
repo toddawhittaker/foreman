@@ -127,6 +127,42 @@ func TestProbeFolders(t *testing.T) {
 	}
 }
 
+// SPEC 3.2: the data directory and the game folder must stay apart even
+// when a link makes one look elsewhere; the check resolves links first.
+func TestProbeFoldersRefusesNestingThroughALink(t *testing.T) {
+	a := testConfig(t, config.ModeAdopted)
+	// The data directory is a link to a folder inside the game folder.
+	inside := filepath.Join(a.GameDir, "data")
+	if err := os.Mkdir(inside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(filepath.Dir(a.GameDir), "data-link")
+	if err := os.Symlink(inside, link); err != nil {
+		t.Fatal(err)
+	}
+	a.DataDir = link
+	err := probeFolders(a)
+	if err == nil || !strings.Contains(err.Error(), "FOREMAN_DATA_DIR must not be the game folder or inside it") {
+		t.Errorf("a data directory inside the game folder through a link gave %v", err)
+	}
+
+	// The game folder is a link to a folder inside the data directory.
+	b := testConfig(t, config.ModeAdopted)
+	innerGame := filepath.Join(b.DataDir, "game")
+	if err := os.Mkdir(innerGame, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	gameLink := filepath.Join(filepath.Dir(b.DataDir), "game-link")
+	if err := os.Symlink(innerGame, gameLink); err != nil {
+		t.Fatal(err)
+	}
+	b.GameDir = gameLink
+	err = probeFolders(b)
+	if err == nil || !strings.Contains(err.Error(), "FOREMAN_GAME_DIR must not be inside FOREMAN_DATA_DIR") {
+		t.Errorf("a game folder inside the data directory through a link gave %v", err)
+	}
+}
+
 // Adopted mode never creates or removes containers or touches images
 // (SPEC 4.11).
 func TestNewDockerClientAdoptedRefusesManagedCalls(t *testing.T) {

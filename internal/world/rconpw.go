@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/toddawhittaker/foreman/internal/secret"
 )
@@ -42,7 +43,7 @@ func (m *Manager) RCONPassword(id string) (secret.Secret, error) {
 	if err := narrowRCONPassword(root); err != nil {
 		return secret.Secret{}, fmt.Errorf("narrow the RCON password file to 0640: %w", err)
 	}
-	return readRCONPassword(root)
+	return ReadRCONPassword(root)
 }
 
 // createRCONPassword writes a new password file unless one exists.
@@ -78,7 +79,7 @@ func createRCONPassword(root *os.Root) error {
 	if err != nil {
 		return fmt.Errorf("create the RCON password file: %w", err)
 	}
-	return syncDir(root, ConfigDir)
+	return SyncDir(root, ConfigDir)
 }
 
 // createPasswordTemp is CreateTemp for the password: the file is 0640 from
@@ -142,7 +143,7 @@ func copyRCONPassword(src, dst *os.Root) error {
 func narrowRCONPassword(root *os.Root) error {
 	info, err := root.Lstat(RCONPasswordFile)
 	if err != nil || !info.Mode().IsRegular() {
-		return nil // readRCONPassword reports it
+		return nil // ReadRCONPassword reports it
 	}
 	perm := info.Mode().Perm()
 	if perm&^rconPasswordMode == 0 {
@@ -151,21 +152,30 @@ func narrowRCONPassword(root *os.Root) error {
 	return root.Chmod(RCONPasswordFile, perm&rconPasswordMode)
 }
 
-// readRCONPassword reads the password file, refusing anything but a
-// regular file.
-func readRCONPassword(root *os.Root) (secret.Secret, error) {
-	info, err := root.Lstat(RCONPasswordFile)
+// ReadRCONPassword reads the password file in a world or game folder. The
+// file is opened without blocking and checked once opened, so a named pipe
+// put there is refused instead of waited on (SPEC 14.8). Anything but a
+// regular file, a link included, is an error.
+func ReadRCONPassword(root *os.Root) (secret.Secret, error) {
+	// A link is refused up front; the check on the opened file below catches
+	// a pipe swapped in after this one.
+	if info, err := root.Lstat(RCONPasswordFile); err != nil {
+		return secret.Secret{}, err
+	} else if !info.Mode().IsRegular() {
+		return secret.Secret{}, fmt.Errorf("%s is not a regular file", RCONPasswordFile)
+	}
+	f, err := root.OpenFile(RCONPasswordFile, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return secret.Secret{}, err
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
 	if err != nil {
 		return secret.Secret{}, err
 	}
 	if !info.Mode().IsRegular() {
 		return secret.Secret{}, fmt.Errorf("%s is not a regular file", RCONPasswordFile)
 	}
-	f, err := root.Open(RCONPasswordFile)
-	if err != nil {
-		return secret.Secret{}, err
-	}
-	defer func() { _ = f.Close() }()
 	b, err := io.ReadAll(io.LimitReader(f, maxRCONPassword))
 	if err != nil {
 		return secret.Secret{}, err

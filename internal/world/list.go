@@ -42,7 +42,7 @@ func (m *Manager) List(ctx context.Context) ([]Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (m *Manager) Get(ctx context.Context, id string) (Summary, error) {
 	if err != nil {
 		return Summary{}, err
 	}
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return Summary{}, err
 	}

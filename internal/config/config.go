@@ -227,14 +227,25 @@ func validateAdopted(c *Config, e env) []error {
 		if err != nil {
 			break
 		}
-		switch {
-		case within(data, c.GameDir):
-			fail("%s must not be the game folder or inside it (%s): the game's files and Foreman's would mix", varDataDir, varGameDir)
-		case within(c.GameDir, data):
-			fail("%s must not be inside %s: snapshots of the data directory would include the game folder", varGameDir, varDataDir)
+		if msg := NestingProblem(data, c.GameDir); msg != "" {
+			fail("%s", msg)
 		}
 	}
 	return errs
+}
+
+// NestingProblem returns the sentence refusing a data directory and a game
+// folder when one is the other or inside it, or "" when they are apart
+// (SPEC 3.2). It compares the paths as given and never touches the
+// filesystem; a caller that can resolve links does so first.
+func NestingProblem(dataDir, gameDir string) string {
+	switch {
+	case within(dataDir, gameDir):
+		return fmt.Sprintf("%s must not be the game folder or inside it (%s): the game's files and Foreman's would mix", varDataDir, varGameDir)
+	case within(gameDir, dataDir):
+		return fmt.Sprintf("%s must not be inside %s: snapshots of the data directory would include the game folder", varGameDir, varDataDir)
+	}
+	return ""
 }
 
 // within reports whether path is dir or inside it. It compares cleaned

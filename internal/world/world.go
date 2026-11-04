@@ -89,7 +89,7 @@ func NewManager(dirs Dirs, active ActiveStore, now func() time.Time) (*Manager, 
 		if err := os.Mkdir(d, DirMode); err != nil && !errors.Is(err, fs.ErrExist) {
 			return nil, fmt.Errorf("make folder %s: %w", d, err)
 		}
-		if err := os.Chmod(d, DirMode); err != nil {
+		if err := chmodFolder(d, DirMode); err != nil {
 			return nil, fmt.Errorf("set mode of %s: %w", d, err)
 		}
 	}
@@ -104,7 +104,7 @@ func (m *Manager) OpenWorld(id string) (*os.Root, error) {
 	if !ValidID(id) {
 		return nil, fs.ErrNotExist
 	}
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 // build is create without the activation. reserved is an id ReserveID
 // returned, or empty to choose one now.
 func (m *Manager) build(ctx context.Context, reserved, name, gameVersion string, spaceAge bool, fill func(worlds *os.Root, dir string) error) (string, error) {
-	worlds, err := os.OpenRoot(m.dirs.Worlds)
+	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return "", err
 	}
@@ -286,7 +286,7 @@ func (m *Manager) build(ctx context.Context, reserved, name, gameVersion string,
 		return "", err
 	}
 	committed = true
-	if err := syncDir(worlds, "."); err != nil {
+	if err := SyncDir(worlds, "."); err != nil {
 		return "", err
 	}
 	return id, nil
@@ -351,7 +351,7 @@ func writeMetaIn(worlds *os.Root, dir string, meta Meta) error {
 	if err := WriteMeta(w, meta); err != nil {
 		return err
 	}
-	return syncDir(w, ".")
+	return SyncDir(w, ".")
 }
 
 // activateIfNone makes id active when no world is.
