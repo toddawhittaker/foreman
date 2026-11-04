@@ -35,11 +35,12 @@ func run() error {
 	dir := flag.String("dir", "", "existing folder for the Docker socket")
 	images := flag.String("images", "", "comma-separated image references that are present at the start")
 	loadDelay := flag.Duration("load-delay", 0, "time a start takes between loading the map and InGame")
+	selfNetwork := flag.String("self-network", "", "seed a container for the one this runs in, on this network")
 	flag.Parse()
 	if *dir == "" {
 		return errors.New("-dir is required")
 	}
-	cfg := fakegame.Config{Dir: *dir, LoadDelay: *loadDelay}
+	cfg := fakegame.Config{Dir: *dir, LoadDelay: *loadDelay, SelfNetwork: *selfNetwork}
 	if *images != "" {
 		cfg.Images = strings.Split(*images, ",")
 	}

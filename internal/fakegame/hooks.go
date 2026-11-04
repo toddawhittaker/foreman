@@ -160,6 +160,9 @@ type State struct {
 func (g *Game) State() State {
 	out := State{Containers: []ContainerState{}, Calls: []string{}}
 	for _, c := range g.daemon.Containers() {
+		if c.ID == g.selfID {
+			continue
+		}
 		cs := ContainerState{
 			Name: c.Name, ID: c.ID, Image: c.Spec.Image, Status: c.Status,
 			ExitCode: c.ExitCode, RestartCount: c.RestartCount,

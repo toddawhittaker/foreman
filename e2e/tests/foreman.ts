@@ -99,9 +99,13 @@ export interface FakeGame {
   }>;
 }
 
+// The fake seeds a container for the one Foreman runs in, on this network,
+// so Foreman can check the game network as it does in a real install (SPEC 14.4).
+const fakeGameNetwork = "foreman-games";
+
 async function startFakeGame(): Promise<FakeGame & { stop: () => Promise<void> }> {
   const dir = mkdtempSync(join(tmpdir(), "fakegame-e2e-"));
-  const proc = spawn(fakeGameBinary, ["-dir", dir], { stdio: ["ignore", "pipe", "pipe"] });
+  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork], { stdio: ["ignore", "pipe", "pipe"] });
   let err = "";
   proc.stderr.on("data", (d) => (err += d));
   const lines = createInterface({ input: proc.stdout })[Symbol.asyncIterator]();
@@ -151,7 +155,9 @@ export const test = base.extend<{
     await g.stop();
   },
   foreman: async ({ foremanEnv, fakeGame }, use) => {
-    const env = fakeGame ? { DOCKER_HOST: "unix://" + fakeGame.socket, ...foremanEnv } : foremanEnv;
+    const env = fakeGame
+      ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork, ...foremanEnv }
+      : foremanEnv;
     const f = await startForeman(env);
     await use(f);
     await f.stop();

@@ -504,3 +504,21 @@ func TestCloseRemovesTheSocketAndStopsGames(t *testing.T) {
 	}
 	r.game.Close() // a second Close is harmless
 }
+
+// A Foreman beside the fake finds its own container on the self network,
+// the way main.go looks for it, and State does not count it as a game.
+func TestSelfContainer(t *testing.T) {
+	r := newRig(t, fakegame.Config{SelfNetwork: "foreman-games"})
+	hostname, _ := os.Hostname()
+	self, err := r.docker.InspectContainer(context.Background(), docker.SelfID(docker.MountinfoPath, hostname))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, ok := self.Networks["foreman-games"]
+	if !ok || n.IPAddress+"/24" != fakegame.SelfAddress || n.IPPrefixLen != 24 || self.State.Status != "running" {
+		t.Errorf("self container %+v", self)
+	}
+	if cs := r.game.State().Containers; len(cs) != 0 {
+		t.Errorf("State lists %d containers, want none", len(cs))
+	}
+}
