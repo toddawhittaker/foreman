@@ -602,6 +602,8 @@ type Status struct {
 	Layout gamedir.State
 	// RunningVersion is the container's VERSION, or "unknown" (SPEC 4.9).
 	RunningVersion string
+	// GameFolder names the game container and where its /factorio is.
+	GameFolder GameFolder
 	// RCONPublished is set when the container's RCON port can be reached
 	// from the host's network (SPEC 4.12).
 	RCONPublished bool
@@ -662,6 +664,8 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	if c.adopted != nil {
 		v := c.adoptedViewNow()
 		st.Adopted, st.Layout, st.RCONPublished = true, v.layout, v.rconPublished
+		st.GameFolder = v.folder
+		st.GameFolder.Container = c.adopted.container
 		st.RunningVersion, st.NetworkWarning, st.NetworkCleanAt = v.version, v.networkWarning, v.networkCleanAt
 		if st.RunningVersion == "" {
 			st.RunningVersion = "unknown"

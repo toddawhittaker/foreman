@@ -10,9 +10,9 @@ const live = { timeout: 20_000 };
 
 const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
 
-async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { image?: boolean; fixture?: string; spaceAge?: boolean } = {}) {
+async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { image?: boolean; fixture?: string; spaceAge?: boolean; mods?: Record<string, string> } = {}) {
   await createAdmin(page);
-  seedWorld(f, { fixture: opts.fixture, spaceAge: opts.spaceAge });
+  seedWorld(f, { fixture: opts.fixture, spaceAge: opts.spaceAge, mods: opts.mods });
   if (opts.image ?? true) await g.call("/image", { ref: image21, on: true });
   await page.goto("/");
   await expect(badge(page)).toHaveText("Stopped", live);
@@ -148,6 +148,8 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Start server" }).click();
     const refusal = page.locator(".message--error").filter({ hasText: "does not match the world" });
     await expect(refusal).toContainText("foreman-test", live);
+    await expect(refusal).toContainText("was last played with foreman-test, and this world does not have that mod's file");
+    await expect(refusal).toContainText("Foreman cannot add or turn on a world's mods yet.");
     await expect(badge(page)).toHaveText("Stopped");
     // Steps that will never run read Skipped, not Waiting.
     const steps = page.locator(".steps li");
@@ -166,6 +168,20 @@ test.describe("with the fake game", () => {
 
     await page.goto("/worlds/base/snapshots");
     await expect(page.getByRole("table")).toContainText("Before start anyway");
+  });
+
+  // SPEC 7.4: mods made for another Factorio would stop the game from loading,
+  // so the start is refused and cannot be started past.
+  test("mods made for another Factorio refuse the start, with no Start anyway", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!, { mods: { "old-mod": "2.0", "older-mod": "1.1" } });
+    await page.getByRole("button", { name: "Start server" }).click();
+    const refusal = page.locator(".message--error").filter({ hasText: "does not match the world" });
+    await expect(refusal).toContainText("Base cannot run on Factorio 2.1.24: 1 of its mods was made for Factorio 1.1, and the game refuses to load it: older-mod.", live);
+    await expect(refusal).toContainText("1 of its mods was made for Factorio 2.0, and the game refuses to load it: old-mod.");
+    await expect(refusal).toContainText("Set the world's game version to");
+    await expect(refusal.getByRole("link", { name: "Start anyway" })).toHaveCount(0);
+    await expect(badge(page)).toHaveText("Stopped");
+    await checkPage(page);
   });
 
   // DESIGN 5: a live update never drops keyboard focus to the top of the page.

@@ -153,7 +153,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	deadline := time.NewTimer(c.startTimeout)
 	defer deadline.Stop()
 	o.begin(StepLoad)
-	if err := c.waitInGame(ctx, w, cid, cont.RestartCount, deadline.C); err != nil {
+	if err := c.waitInGame(ctx, w, cid, cont.RestartCount, since, deadline.C); err != nil {
 		return err
 	}
 	// The chosen save applies once (SPEC 7.11).
@@ -175,8 +175,9 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 // waitInGame waits for the log to say the game is in game, or that it
 // failed to load (SPEC 7.3, 8.7).
 // restarts is Docker's restart count when this run began: an adopted
-// container keeps the count it had before.
-func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, restarts int, deadline <-chan time.Time) error {
+// container keeps the count it had before. since is where this run's log
+// begins, for the reason a stopped game gives.
+func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, restarts int, since time.Time, deadline <-chan time.Time) error {
 	poll := time.NewTicker(c.pollInterval)
 	defer poll.Stop()
 	for {
@@ -196,7 +197,11 @@ func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, re
 		case <-poll.C:
 			cont, err := c.docker.InspectContainer(ctx, cid)
 			if err == nil && (cont.State.Status != "running" || cont.RestartCount > restarts) {
-				return fmt.Errorf("%w: the game stopped while it was loading", ErrStartFailed)
+				reason := c.loadFailureReason(ctx, w, cid, since)
+				if reason == "" {
+					reason = "the game stopped while it was loading"
+				}
+				return fmt.Errorf("%w: %s", ErrStartFailed, reason)
 			}
 		case <-deadline:
 			return fmt.Errorf("%w: it did not finish loading within %s", ErrStartFailed, durationWords(c.startTimeout))

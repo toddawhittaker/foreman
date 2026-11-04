@@ -1,9 +1,8 @@
-import { test, expect, checkPage, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, makeZip, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { crc32 } from "node:zlib";
 
 const password = "correct horse battery";
 
@@ -38,48 +37,6 @@ function seedWorld(f: Foreman, id: string, meta: Record<string, unknown>, saves:
     utimesSync(p, new Date(s.at), new Date(s.at));
   }
   return dir;
-}
-
-// A zip of stored (uncompressed) entries, enough for Foreman to read its directory.
-function makeZip(entries: Record<string, string>): Buffer {
-  const parts: Buffer[] = [];
-  const central: Buffer[] = [];
-  let offset = 0;
-  for (const [name, text] of Object.entries(entries)) {
-    const nameBuf = Buffer.from(name);
-    const body = Buffer.from(text);
-    const crc = crc32(body);
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(33, 12); // 1980-01-01
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(body.length, 18);
-    local.writeUInt32LE(body.length, 22);
-    local.writeUInt16LE(nameBuf.length, 26);
-    parts.push(local, nameBuf, body);
-
-    const head = Buffer.alloc(46);
-    head.writeUInt32LE(0x02014b50, 0);
-    head.writeUInt16LE(20, 4);
-    head.writeUInt16LE(20, 6);
-    head.writeUInt16LE(33, 14);
-    head.writeUInt32LE(crc, 16);
-    head.writeUInt32LE(body.length, 20);
-    head.writeUInt32LE(body.length, 24);
-    head.writeUInt16LE(nameBuf.length, 28);
-    head.writeUInt32LE(offset, 42);
-    central.push(head, nameBuf);
-    offset += local.length + nameBuf.length + body.length;
-  }
-  const dirBytes = Buffer.concat(central);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(central.length / 2, 8);
-  end.writeUInt16LE(central.length / 2, 10);
-  end.writeUInt32LE(dirBytes.length, 12);
-  end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...parts, dirBytes, end]);
 }
 
 const newSave = makeZip({ "level/level.dat0": "the newest map" });

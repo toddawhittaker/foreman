@@ -4,6 +4,7 @@
 {{with .Page}}
 <div class="actions"><a href="{{serverPath}}">Back to the server</a></div>
 <h1>Adopt the game folder</h1>
+{{template "game-folder" .Folder}}
 {{template "summary" .Problems}}
 {{- with .Refusal}}
 <div class="message message--error">

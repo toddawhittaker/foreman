@@ -519,7 +519,7 @@ func (p StartAnywayPage) Path() string { return gamePath(p.World.ID, "start") }
 // anywayCheck runs the pre-start check again for a confirmation page. It
 // changes nothing. refusal is set when "Start anyway" is not allowed.
 func (s *server) anywayCheck(id string) (problems []string, refusal string, err error) {
-	check, err := s.worlds.PreStartCheck(id)
+	check, err := s.game.PreStartCheck(id)
 	if err != nil {
 		return nil, "", err
 	}

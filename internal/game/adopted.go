@@ -36,6 +36,7 @@ type adoptedView struct {
 	layoutErr     string // the last error reading the folder, logged once
 	version       string // the container's VERSION; "" when it has none
 	rconPublished bool
+	folder        GameFolder // where /factorio is, from the last inspect
 	// networkWarning is the network refusal the last two checks in a row
 	// found; "" when there is none (SPEC 4.4).
 	networkWarning   string
@@ -148,6 +149,7 @@ func (c *Controller) inspectAdopted(ctx context.Context) (docker.Container, erro
 	}
 	c.mu.Lock()
 	c.aview.version, c.aview.rconPublished = version, published
+	c.aview.folder = gameFolderOf(c.adopted.container, cont.Mounts)
 	c.mu.Unlock()
 	return cont, nil
 }
@@ -582,6 +584,17 @@ func (c *Controller) checkSaveAgainstContainer(save savefile.Version) error {
 	return nil
 }
 
+// PreStartCheck runs the pre-start check of SPEC 7.4 for the Factorio this
+// controller's game will run: the container's version in adopted mode, the
+// world's pinned version otherwise.
+func (c *Controller) PreStartCheck(id string) (world.PreCheck, error) {
+	run := world.GameRun{}
+	if c.adopted != nil {
+		run = world.GameRun{Adopted: true, Version: c.adoptedViewNow().version}
+	}
+	return c.worlds.PreStartCheck(id, run)
+}
+
 // VersionWarning returns, in adopted mode, the warning of SPEC 4.9 for a
 // world whose save that will load was made by a different Factorio from
 // the one the container runs. It is "" when they agree, when either is
@@ -594,7 +607,7 @@ func (c *Controller) VersionWarning(id string) (string, error) {
 	if running == "" {
 		return "", nil
 	}
-	check, err := c.worlds.PreStartCheck(id)
+	check, err := c.PreStartCheck(id)
 	if err != nil {
 		return "", err
 	}

@@ -321,14 +321,13 @@ func (p ServerPage) Failure() *Failure {
 		}
 		if pe.Check.CanStartAnyway() {
 			f.AnywayPath, f.AnywayVerb = gamePath(p.World.ID, "start-anyway"), "Start anyway"
-			f.AnywayText = "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above."
 			switch p.Result.Action {
 			case game.AuditRestart:
 				f.AnywayPath += "?then=restart"
 			case game.AuditSwitch:
 				f.AnywayPath, f.AnywayVerb = switchAnywayPath(p.Result.Target), "Switch anyway"
-				f.AnywayText = "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then deletes what is listed above."
 			}
+			f.AnywayText = anywayText(pe.Check.Problems, p.Result.Action == game.AuditSwitch)
 		}
 	case errors.Is(err, game.ErrImageMissing):
 		// In adopted mode the container's owner supplies the image.
@@ -349,6 +348,32 @@ func (p ServerPage) Failure() *Failure {
 		f.In = "download"
 	}
 	return f
+}
+
+// anywayText words the offer to go ahead past problems that allow it. When
+// mods are missing or turned off, it says how to keep what they built.
+func anywayText(problems []world.Problem, switching bool) string {
+	mods := 0
+	for _, pr := range problems {
+		mods += len(pr.Mods)
+	}
+	if mods == 0 {
+		if switching {
+			return "You can fix the world first, or switch anyway. Switching anyway takes a snapshot of both worlds first, and the game then deletes what is listed above."
+		}
+		return "You can fix the world first, or start anyway. Starting anyway takes a snapshot first, and the game then deletes what is listed above."
+	}
+	built := "that mod built"
+	if mods > 1 {
+		built = "those mods built"
+	}
+	anyway := "start anyway: Foreman takes a snapshot first"
+	if switching {
+		anyway = "switch anyway: Foreman takes a snapshot of both worlds first"
+	}
+	return "Foreman cannot add or turn on a world's mods yet. To keep what " + built +
+		", put the mod files in the import folder's mods/ and import the world again. Or " + anyway +
+		", so you can undo it from the Snapshots page."
 }
 
 // failureText words an action's error; one the admin cannot fix is logged

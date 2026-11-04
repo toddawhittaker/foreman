@@ -15,7 +15,7 @@ type ProblemKind string
 
 // Pre-start problems (SPEC 7.4).
 const (
-	// ProblemModMissing: a mod in the save is missing or disabled in the world.
+	// ProblemModMissing: a mod in the save has no file in the world.
 	ProblemModMissing ProblemKind = "mod-missing"
 	// ProblemSpaceAgeOff: the save uses Space Age but the world has it off.
 	ProblemSpaceAgeOff ProblemKind = "space-age-off"
@@ -32,6 +32,11 @@ const (
 	ProblemModListSpaceAge ProblemKind = "mod-list-space-age"
 	// ProblemGameVersion: the world's game version is not one Foreman runs.
 	ProblemGameVersion ProblemKind = "game-version"
+	// ProblemModDisabled: a mod in the save has its file but is turned off.
+	ProblemModDisabled ProblemKind = "mod-disabled"
+	// ProblemModGameVersion: enabled mods were made for another Factorio
+	// than the one the game runs, so the game would refuse to load.
+	ProblemModGameVersion ProblemKind = "mod-game-version"
 )
 
 // Problem is one reason not to start, in words for the admin.
@@ -42,6 +47,8 @@ type Problem struct {
 	// StartAnyway is true when the admin may start after a confirmation
 	// (SPEC 7.4): only mod and Space Age mismatches and an unreadable save.
 	StartAnyway bool
+	// Mods names the mods a missing or disabled mod problem is about.
+	Mods []string
 }
 
 // PreCheck is the result of the pre-start check.
@@ -68,9 +75,10 @@ func (p PreCheck) CanStartAnyway() bool {
 }
 
 // PreStartCheck reads the save that will load and compares it with the
-// world's mods, Space Age flag and game version (SPEC 7.4). It changes
-// nothing. An error means the check itself could not run.
-func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
+// world's mods, Space Age flag and game version (SPEC 7.4). run says which
+// Factorio the game will run, for the check of the mods' own versions. It
+// changes nothing. An error means the check itself could not run.
+func (m *Manager) PreStartCheck(id string, run GameRun) (PreCheck, error) {
 	root, err := m.OpenWorld(id)
 	if err != nil {
 		return PreCheck{}, err
@@ -96,6 +104,9 @@ func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 		return PreCheck{}, err
 	}
 	if p, bad := modListSpaceAge(meta, mods); bad {
+		out.Problems = append(out.Problems, p)
+	}
+	if p, bad := modGameVersionCheck(root, meta, mods, run); bad {
 		out.Problems = append(out.Problems, p)
 	}
 
@@ -133,7 +144,7 @@ func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 		return PreCheck{}, err
 	}
 	out.SaveVersion = save.Version
-	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save)...)
+	out.Problems = append(out.Problems, compareSave(meta, mods, present, name, save, run.Adopted)...)
 	return out, nil
 }
 
@@ -183,10 +194,12 @@ func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 }
 
 // compareSave lists what the game would delete from save, and refuses a
-// save newer than the world's game version.
-func compareSave(meta Meta, mods modList, present map[string]bool, name string, save savefile.Save) []Problem {
+// save newer than the world's game version, except in adopted mode, where
+// the container decides the version and the game side checks the save
+// against it (SPEC 4.9).
+func compareSave(meta Meta, mods modList, present map[string]bool, name string, save savefile.Save, adopted bool) []Problem {
 	world := parseGameVersion(meta.GameVersion)
-	if compareVersion(save.Version, world) > 0 {
+	if !adopted && compareVersion(save.Version, world) > 0 {
 		return []Problem{{Kind: ProblemSaveNewer,
 			Text: fmt.Sprintf("The save %s was made by Factorio %s, newer than this world's Factorio %s. An older game cannot load it.", name, save.Version, meta.GameVersion)}}
 	}
@@ -198,7 +211,7 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 	for _, d := range SpaceAgeMods(meta.GameVersion) {
 		dlc[d] = true
 	}
-	var usesDLC, missing []string
+	var usesDLC, missing, disabled []string
 	for _, mod := range save.Mods {
 		switch {
 		case dlc[mod.Name]:
@@ -206,8 +219,10 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 				usesDLC = append(usesDLC, mod.Name)
 			}
 		case builtin[mod.Name]:
-		case !mods.enabled[mod.Name] || !present[mod.Name]:
+		case !present[mod.Name]:
 			missing = append(missing, mod.Name)
+		case !mods.enabled[mod.Name]:
+			disabled = append(disabled, mod.Name)
 		}
 	}
 	var out []Problem
@@ -216,8 +231,22 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 			Text: fmt.Sprintf("The save %s uses Space Age (%s), but Space Age is off for this world. The game would delete all Space Age content from the save.", name, strings.Join(usesDLC, ", "))})
 	}
 	if len(missing) > 0 {
-		out = append(out, Problem{Kind: ProblemModMissing, StartAnyway: true,
-			Text: fmt.Sprintf("The save %s uses mods this world does not have or has turned off: %s. The game would delete everything those mods added.", name, strings.Join(missing, ", "))})
+		files, they := "that mod's file", "it"
+		if len(missing) > 1 {
+			files, they = "those mods' files", "they"
+		}
+		out = append(out, Problem{Kind: ProblemModMissing, StartAnyway: true, Mods: missing,
+			Text: fmt.Sprintf("The save %s was last played with %s, and this world does not have %s. Switching or starting anyway removes everything %s built from the save.",
+				name, strings.Join(missing, ", "), files, they)})
+	}
+	if len(disabled) > 0 {
+		is, they := "is", "it"
+		if len(disabled) > 1 {
+			is, they = "are", "they"
+		}
+		out = append(out, Problem{Kind: ProblemModDisabled, StartAnyway: true, Mods: disabled,
+			Text: fmt.Sprintf("The save %s was last played with %s, which %s turned off in this world. Starting anyway removes everything %s built from the save.",
+				name, strings.Join(disabled, ", "), is, they)})
 	}
 	return out
 }

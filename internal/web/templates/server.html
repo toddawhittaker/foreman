@@ -91,6 +91,7 @@
   <p><strong>Error:</strong> Foreman cannot control the game yet. In the game folder, {{.LayoutProblem}}. Fix it by hand, then reload this page.</p>
 </div>
 {{- else if .CanAdopt}}
+{{template "game-folder" .Status.GameFolder}}
 <p>The game folder still holds its own saves, mods and config. Foreman can control the game only after you adopt the folder, which turns what is in it into a world.</p>
 <div class="actions"><a href="{{.AdoptPath}}" class="button button--primary" id="act-adopt">Adopt this game folder</a></div>
 {{- end}}

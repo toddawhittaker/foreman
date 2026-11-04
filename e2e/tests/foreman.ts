@@ -8,6 +8,7 @@ import { createInterface } from "node:readline";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { crc32 } from "node:zlib";
 
 // Shared by every spec that needs a Foreman process of its own.
 
@@ -251,12 +252,55 @@ export async function createAdmin(page: Page) {
   await expect(page).toHaveURL("/");
 }
 
+// A zip of stored (uncompressed) entries, enough for Foreman to read its directory.
+export function makeZip(entries: Record<string, string>): Buffer {
+  const parts: Buffer[] = [];
+  const central: Buffer[] = [];
+  let offset = 0;
+  for (const [name, text] of Object.entries(entries)) {
+    const nameBuf = Buffer.from(name);
+    const body = Buffer.from(text);
+    const crc = crc32(body);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(33, 12); // 1980-01-01
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(body.length, 18);
+    local.writeUInt32LE(body.length, 22);
+    local.writeUInt16LE(nameBuf.length, 26);
+    parts.push(local, nameBuf, body);
+
+    const head = Buffer.alloc(46);
+    head.writeUInt32LE(0x02014b50, 0);
+    head.writeUInt16LE(20, 4);
+    head.writeUInt16LE(20, 6);
+    head.writeUInt16LE(33, 14);
+    head.writeUInt32LE(crc, 16);
+    head.writeUInt32LE(body.length, 20);
+    head.writeUInt32LE(body.length, 24);
+    head.writeUInt16LE(nameBuf.length, 28);
+    head.writeUInt32LE(offset, 42);
+    central.push(head, nameBuf);
+    offset += local.length + nameBuf.length + body.length;
+  }
+  const dirBytes = Buffer.concat(central);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(central.length / 2, 8);
+  end.writeUInt16LE(central.length / 2, 10);
+  end.writeUInt32LE(dirBytes.length, 12);
+  end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...parts, dirBytes, end]);
+}
+
 // Makes the active world "base", a 2.1 world holding one real save (SPEC
 // 5.1: a world is a folder a person can make by hand), with a game password
 // when one is given.
 export function seedWorld(
   f: Foreman,
-  opts: { fixture?: string; spaceAge?: boolean; gamePassword?: string } = {},
+  // mods maps the name of each enabled mod to the Factorio version its zip declares.
+  opts: { fixture?: string; spaceAge?: boolean; gamePassword?: string; mods?: Record<string, string> } = {},
 ) {
   const dir = join(f.dataDir, "worlds", "base");
   for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
@@ -266,6 +310,20 @@ export function seedWorld(
   );
   if (opts.gamePassword) {
     writeFileSync(join(dir, "config", "server-settings.json"), JSON.stringify({ name: "Base", game_password: opts.gamePassword }));
+  }
+  if (opts.mods) {
+    const spaceAgeOn = opts.spaceAge ?? false;
+    const list = [
+      { name: "base", enabled: true },
+      { name: "recycler", enabled: true },
+      ...["elevated-rails", "quality", "space-age"].map((name) => ({ name, enabled: spaceAgeOn })),
+    ];
+    for (const [name, factorio] of Object.entries(opts.mods)) {
+      const info = JSON.stringify({ name, version: "1.0.0", factorio_version: factorio });
+      writeFileSync(join(dir, "mods", `${name}_1.0.0.zip`), makeZip({ [`${name}_1.0.0/info.json`]: info }));
+      list.push({ name, enabled: true });
+    }
+    writeFileSync(join(dir, "mods", "mod-list.json"), JSON.stringify({ mods: list }));
   }
   const save = join(dir, "saves", "base.zip");
   copyFileSync(join(repo, "internal", "savefile", "testdata", opts.fixture ?? "2.1.24-no-space-age.zip"), save);

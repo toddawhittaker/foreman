@@ -134,6 +134,8 @@ func checkID(id string) error {
 
 // Mount is one mount of a container.
 type Mount struct {
+	Type        string `json:"Type"` // "bind" or "volume"
+	Name        string `json:"Name"` // a volume's name
 	Source      string `json:"Source"`
 	Destination string `json:"Destination"`
 }

@@ -31,10 +31,14 @@ test.describe("an unadopted game folder", () => {
     await expect(page.getByRole("button", { name: "Download game image" })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "Adopt the game folder" })).toBeVisible();
     await expect(page.getByText("No active world")).toHaveCount(0);
+    // It says which folder: the container's name and where /factorio is on the host.
+    const folderSentence = `The game folder is /factorio in the game container ${adoptedContainer}, which is ${gameDir} on the host.`;
+    await expect(page.locator("main p").filter({ hasText: "The game folder is /factorio" })).toHaveText(folderSentence);
     await checkPage(page);
 
     await adoptLink(page).click();
     await expect(page).toHaveURL("/adopt");
+    await expect(page.locator("main p").filter({ hasText: "The game folder is /factorio" })).toHaveText(folderSentence);
     const confirm = page.getByRole("region", { name: "Adopt the game folder as a new world?" });
     await expect(confirm).toContainText("Warn players online with the countdown below, save the game and stop it");
     await expect(confirm).toContainText('"Before adoption"');
