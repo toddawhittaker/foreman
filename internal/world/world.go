@@ -70,11 +70,20 @@ var ErrNameTaken = errors.New("another world already has this name. Choose a dif
 // ErrNameEmpty is returned for a blank name.
 var ErrNameEmpty = errors.New("enter a name for the world")
 
+// ErrWorldsIsLink is returned by NewManager when the worlds folder is a
+// symbolic link.
+var ErrWorldsIsLink = errors.New("the worlds folder is a symbolic link, which Foreman refuses to use. Replace it with a real folder")
+
 // NewManager makes the worlds, snapshots and imports folders if they are
 // missing. now may be nil for time.Now.
 func NewManager(dirs Dirs, active ActiveStore, now func() time.Time) (*Manager, error) {
 	if now == nil {
 		now = time.Now
+	}
+	// A link here would send every world's files, and the chmod below,
+	// somewhere else (SPEC 14.5).
+	if info, err := os.Lstat(dirs.Worlds); err == nil && info.Mode()&fs.ModeSymlink != 0 {
+		return nil, fmt.Errorf("%w: %s", ErrWorldsIsLink, dirs.Worlds)
 	}
 	for _, d := range []string{dirs.Worlds, dirs.Snapshots, dirs.Imports} {
 		if err := os.Mkdir(d, DirMode); err != nil && !errors.Is(err, fs.ErrExist) {
@@ -211,6 +220,19 @@ func (m *Manager) Create(ctx context.Context, name, gameVersion string, spaceAge
 // folder's name in it, and runs before createMu is taken, so a long copy
 // does not hold up other worlds.
 func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge bool, fill func(worlds *os.Root, dir string) error) (string, error) {
+	id, err := m.build(ctx, "", name, gameVersion, spaceAge, fill)
+	if err != nil {
+		return "", err
+	}
+	if err := m.activateIfNone(ctx, id); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// build is create without the activation. reserved is an id ReserveID
+// returned, or empty to choose one now.
+func (m *Manager) build(ctx context.Context, reserved, name, gameVersion string, spaceAge bool, fill func(worlds *os.Root, dir string) error) (string, error) {
 	worlds, err := os.OpenRoot(m.dirs.Worlds)
 	if err != nil {
 		return "", err
@@ -242,7 +264,12 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 	if err != nil {
 		return "", err
 	}
-	id, err := m.newID(name)
+	id := reserved
+	if id == "" {
+		id, err = m.newID(name)
+	} else {
+		err = m.checkReserved(worlds, id)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -262,10 +289,44 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 	if err := syncDir(worlds, "."); err != nil {
 		return "", err
 	}
-	if err := m.activateIfNone(ctx, id); err != nil {
+	return id, nil
+}
+
+// ReserveID picks the id a new world with this name will have and keeps it
+// taken by making snapshots/<id>, as Delete does, so no other world can
+// choose it meanwhile. An empty snapshots folder is not a deleted world.
+func (m *Manager) ReserveID(ctx context.Context, name string) (string, error) {
+	m.createMu.Lock()
+	defer m.createMu.Unlock()
+	name, err := m.checkName(ctx, "", name)
+	if err != nil {
 		return "", err
 	}
-	return id, nil
+	id, err := m.newID(name)
+	if err != nil {
+		return "", err
+	}
+	return id, m.keepID(id)
+}
+
+// checkReserved refuses a reserved id that is malformed, was not reserved,
+// or already has a world folder (a rename onto an empty folder would
+// succeed silently).
+func (m *Manager) checkReserved(worlds *os.Root, id string) error {
+	if !ValidID(id) {
+		return fmt.Errorf("%q is not a world id", id)
+	}
+	snaps, err := m.openSnapshots(id, false)
+	if err != nil {
+		return fmt.Errorf("world id %s was not reserved: %w", id, err)
+	}
+	_ = snaps.Close()
+	if _, err := worlds.Lstat(id); err == nil {
+		return fmt.Errorf("world %s already exists", id)
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 // mkdirWorld makes dir in worlds with a world's empty folders.
