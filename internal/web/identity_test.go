@@ -183,7 +183,7 @@ func TestHeadersFromAGameNetworkAreIgnored(t *testing.T) {
 	t.Run("the refusal page says why while the networks are unknown", func(t *testing.T) {
 		hn := headerHarnessWithGame(t, "headers", fakeNets{})
 		body := hn.get(PathWorlds, asPeer(peerProxy)...).Body.String()
-		if !strings.Contains(body, "not yet seen the game container") {
+		if !strings.Contains(body, "not yet seen the game container") || !strings.Contains(body, "cap_drop: [NET_RAW]") {
 			t.Errorf("headers only: the page does not say why: %s", body)
 		}
 		if strings.Contains(body, "Password sign-in") || strings.Contains(body, "alice") {

@@ -165,6 +165,16 @@ func (d *Daemon) DropLog(ref string) {
 	}
 }
 
+// SetCapDrop changes the capabilities a container drops, as recreating it
+// with a different definition would.
+func (d *Daemon) SetCapDrop(ref string, drop []string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if c := d.find(ref); c != nil {
+		c.CapDrop = drop
+	}
+}
+
 // AddImage makes an image present under ref.
 func (d *Daemon) AddImage(ref string) {
 	d.mu.Lock()

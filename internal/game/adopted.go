@@ -42,6 +42,9 @@ type adoptedView struct {
 	networkRefusals  int       // refusals in a row
 	networkUnchecked string    // the last "could not check", logged once
 	networkCleanAt   time.Time // the last check that found nothing wrong
+	// netRawWarning is set while the container keeps NET_RAW; the game
+	// ranges are unknown meanwhile, so no header sign-in passes (SPEC 12.6).
+	netRawWarning string
 }
 
 // networkStrikes is how many network refusals in a row raise the warning,
@@ -285,7 +288,7 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 	// NET_RAW lets a game send from any address on its network, which
 	// would fool the trusted-header guard's per-address checks (SPEC 12.6).
 	if !dropsNetRaw(cont.CapDrop) {
-		return refuseContainer("the game container keeps the NET_RAW capability, so a game in it could pretend to be another machine on the network. Add `cap_drop: [NET_RAW]` to the container's definition")
+		return errKeepsNetRaw()
 	}
 	if cont.PidMode == "host" {
 		return refuseContainer("the game container uses the host's process namespace (pid: host), so a game in it could see and signal the host's processes. Remove that setting from the container's definition")
@@ -349,6 +352,29 @@ func (c *Controller) checkContainerMounts(ctx context.Context, cont docker.Conta
 		return refuseContainer("the folder mounted at FOREMAN_GAME_DIR in the Foreman container is not the one the game container has at /factorio. Mount the same folder in both")
 	}
 	return nil
+}
+
+// errKeepsNetRaw is the refusal of a game container that keeps NET_RAW.
+func errKeepsNetRaw() error {
+	return refuseContainer("the game container keeps the NET_RAW capability, so a game in it could pretend to be another machine on the network. Add `cap_drop: [NET_RAW]` to the container's definition")
+}
+
+// noteNetRaw raises or clears the NET_RAW warning from one inspect of the
+// adopted container. It is a static setting, so one look is enough. It
+// reports whether the warning changed.
+func (c *Controller) noteNetRaw(cont docker.Container) bool {
+	warning := ""
+	if !dropsNetRaw(cont.CapDrop) {
+		warning = strings.TrimSuffix(errKeepsNetRaw().Error(), ".") + "."
+	}
+	c.mu.Lock()
+	changed := c.aview.netRawWarning != warning
+	c.aview.netRawWarning = warning
+	c.mu.Unlock()
+	if changed && warning != "" {
+		c.log.Error("the game container keeps NET_RAW, so trusted-header sign-in is refused", "reason", warning)
+	}
+	return changed
 }
 
 // checkAdoptedNetwork applies the game network rules of managed mode to the
@@ -705,6 +731,7 @@ func (c *Controller) tickAdopted(ctx context.Context) {
 	cont, err := c.inspectAdopted(ctx)
 	if err == nil {
 		c.refreshAdoptedSubnets(ctx, cont)
+		netRawChanged := c.noteNetRaw(cont)
 		// The network can change while the game runs; this catches it at
 		// the next look rather than preventing it (SPEC 4.4).
 		// A refusal does not stop the monitor watching the game, so a
@@ -713,7 +740,7 @@ func (c *Controller) tickAdopted(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if c.noteNetworkCheck(nerr) {
+		if c.noteNetworkCheck(nerr) || netRawChanged {
 			defer func() {
 				for _, w := range c.allRuns() {
 					c.publish(w)
