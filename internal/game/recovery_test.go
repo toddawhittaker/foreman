@@ -3,6 +3,7 @@ package game
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -173,5 +174,36 @@ func TestForceStopOfOperationWithNothingRunning(t *testing.T) {
 	}()
 	if err := r.c.ForceStop(context.Background(), id, admin); err != nil {
 		t.Fatalf("got %v, want nil", err)
+	}
+}
+
+// SPEC 8.9: a crash-loop stop that Docker refuses is tried again at later
+// polls until Docker accepts it; the state stays crash-looping throughout.
+func TestCrashLoopStopRetriedAfterRefusal(t *testing.T) {
+	for _, refusals := range []int{1, 3} {
+		t.Run(fmt.Sprintf("refused %d times", refusals), func(t *testing.T) {
+			r := newRig(t, rigOptions{})
+			id := r.newWorld("Loop refused")
+			r.start(id)
+			stops := func() int { return len(r.calls("POST /containers/" + r.container(id).ID + "/stop")) }
+			before := stops()
+			r.game.Daemon().SetCallFailure("POST", "stop", 500, "daemon busy")
+			r.game.SetCrashLoop(ContainerName(id), true)
+			r.waitState(id, StateCrashLooping)
+			eventually(t, func() bool { return stops()-before >= refusals }, "%d refused stops", refusals)
+			if st := r.c.Status(id); st.State != StateCrashLooping {
+				t.Fatalf("state %s while the stop was refused", st.State)
+			}
+			r.game.Daemon().SetCallFailure("POST", "stop", 0, "")
+			eventually(t, func() bool { return r.container(id).Status == "exited" }, "the retried stop to work")
+			n := stops()
+			time.Sleep(200 * time.Millisecond)
+			if stops() != n {
+				t.Error("the stop was tried again after Docker accepted it")
+			}
+			if st := r.c.Status(id); st.State != StateCrashLooping {
+				t.Errorf("state %s after the stop", st.State)
+			}
+		})
 	}
 }
