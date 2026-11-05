@@ -68,6 +68,20 @@ func (sel selection) ticks(id string, s world.Snapshot) bool {
 	return s.Automatic() && (sel.automatic == selectAutomatic || sel.automatic == selectAutomatic+":"+id)
 }
 
+// tickNote tells what a shortcut button just ticked, so the reload that
+// follows it is not silent. n is the automatic snapshots now ticked.
+func (sel selection) tickNote(n int) string {
+	switch {
+	case sel.automatic == "":
+		return ""
+	case n == 0:
+		return "No automatic snapshots to tick."
+	case n == 1:
+		return "1 automatic snapshot ticked."
+	}
+	return fmt.Sprintf("%d automatic snapshots ticked.", n)
+}
+
 // DeleteItem is one snapshot on the bulk confirmation page.
 type DeleteItem struct {
 	WorldID   string
@@ -76,6 +90,9 @@ type DeleteItem struct {
 	// Rollback is the game version rollback would go back to, set when
 	// this is the snapshot rollback restores (SPEC 10.4).
 	Rollback string
+	// Gone is true when the snapshot is already deleted, so there is
+	// nothing left to do for it.
+	Gone bool
 	// Refusal says why the snapshot stays; empty when it can go.
 	Refusal string
 	// Failure says why a delete just attempted did not happen.
@@ -123,12 +140,17 @@ func (SnapshotBulkDeletePage) Value(i DeleteItem) string { return refValue(i.Wor
 
 // Going lists the items that can be deleted.
 func (p SnapshotBulkDeletePage) Going() []DeleteItem {
-	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal != "" })
+	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal != "" || i.Gone })
 }
 
 // Staying lists the items that cannot be deleted now.
 func (p SnapshotBulkDeletePage) Staying() []DeleteItem {
-	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal == "" })
+	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal == "" || i.Gone })
+}
+
+// AlreadyGone lists the items whose snapshot was deleted before this page.
+func (p SnapshotBulkDeletePage) AlreadyGone() []DeleteItem {
+	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return !i.Gone })
 }
 
 // Heading names what the page asks.
@@ -186,7 +208,9 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 		item := DeleteItem{WorldID: ref.WorldID, WorldName: wi.name, Snapshot: world.Snapshot{Name: ref.Name}}
 		switch {
 		case !found:
-			item.Refusal = "The snapshot is not there any more."
+			item.Gone = true
+			// A name that holds no date leaves TakenAt zero, and the page shows the name.
+			item.Snapshot.TakenAt, _ = world.SnapshotNameTime(ref.Name)
 		case s.operationRunning(ref.WorldID):
 			item.Snapshot = snap
 			item.Refusal = sentence(errOperationRunning)
@@ -220,11 +244,8 @@ func (s *server) handleSnapshotsDeleteForm(w http.ResponseWriter, r *http.Reques
 // failureText says in plain words why one delete did not happen, logging a
 // fault whose detail the page must not carry.
 func (s *server) failureText(r *http.Request, err error) (text string, fault bool) {
-	switch {
-	case errors.Is(err, errOperationRunning), errors.Is(err, world.ErrBusy):
+	if errors.Is(err, errOperationRunning) || errors.Is(err, world.ErrBusy) {
 		return sentence(err), false
-	case errors.Is(err, world.ErrNoSnapshot):
-		return "The snapshot is not there any more.", false
 	}
 	s.log.Error("delete snapshot", "method", r.Method, "path", r.URL.Path, "error", err)
 	return "Foreman could not delete it. The log says why.", true
@@ -257,8 +278,13 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 			stayed = append(stayed, ref)
 			continue
 		}
-		err := s.deleteSnapshot(r.Context(), u, ref.WorldID, ref.Name)
-		if err == nil {
+		// A snapshot already gone is what the person asked for, so a
+		// resubmitted form ends on the Done page.
+		var err error
+		if !item.Gone {
+			err = s.deleteSnapshot(r.Context(), u, ref.WorldID, ref.Name)
+		}
+		if err == nil || errors.Is(err, world.ErrNoSnapshot) {
 			deleted = append(deleted, ref.Name)
 			continue
 		}

@@ -551,7 +551,7 @@ func TestInboxSymlinksAreNeverFollowed(t *testing.T) {
 	victimBefore := diskTree(t, filepath.Join(m.dirs.Worlds, victim))
 	outsideBefore := diskTree(t, secretDir)
 
-	folders, err := m.Inbox()
+	folders, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

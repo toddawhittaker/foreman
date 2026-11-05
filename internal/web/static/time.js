@@ -1,8 +1,13 @@
 // Shows each <time datetime="..."> in the browser's time zone, followed by
-// how long ago it was. Without this script the page keeps the UTC text the
-// server wrote (DESIGN 9). Durations such as the uptime are left alone.
+// how long ago it was, refreshed every minute. Without this script the page
+// keeps the UTC text the server wrote (DESIGN 9). Durations such as the
+// uptime are left alone. A time inside visually hidden text (part of a
+// control's spoken name) gets the local time only: relative text there
+// would go stale and make the name long.
 (function () {
   "use strict";
+
+  var ages = [];
 
   var absolute = /^\d{4}-\d\d-\d\dT/;
   var steps = [
@@ -56,8 +61,23 @@
     } else {
       el.textContent = day + " " + clock;
     }
-    el.append(" (" + relative(date) + ")");
     el.dataset.local = "true";
+    if (el.closest(".visually-hidden")) {
+      return;
+    }
+    var age = document.createElement("span");
+    age.textContent = " (" + relative(date) + ")";
+    el.append(age);
+    ages.push({ date: date, el: age });
+  }
+
+  function refresh() {
+    ages = ages.filter(function (a) {
+      return a.el.isConnected;
+    });
+    ages.forEach(function (a) {
+      a.el.textContent = " (" + relative(a.date) + ")";
+    });
   }
 
   function run(root) {
@@ -65,6 +85,7 @@
   }
 
   run(document);
+  setInterval(refresh, 60000);
   document.addEventListener("htmx:afterSettle", function () {
     run(document);
   });

@@ -26,7 +26,7 @@
   <p><strong>Warning:</strong> {{len .}} {{if eq (len .) 1}}folder was{{else}}folders were{{end}} not imported.</p>
   <ul>
     {{- range .}}
-    <li><code>{{.Folder}}</code>: {{.Reason}}</li>
+    <li><code>{{.Folder}}</code>: {{.Reason}}{{if .Alone}} <a href="{{.AlonePath}}">Import <code>{{.Folder}}</code> on its own</a>{{end}}</li>
     {{- end}}
   </ul>
 </div>
@@ -136,7 +136,7 @@
     aria-describedby="{{.IDPrefix}}-space-age-hint {{.IDPrefix}}-space-age-warning{{if .SpaceAgeError}} {{.IDPrefix}}-space-age-error{{end}}"
     {{- if .SpaceAgeError}} aria-invalid="true"{{end}}{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
   <p class="hint" id="{{.IDPrefix}}-space-age-hint">Space Age only applies to Factorio 2.0 and later.</p>
-  <p class="hint" id="{{.IDPrefix}}-space-age-warning"{{if not .SpaceAgeWarning}} hidden{{end}}><strong>Warning:</strong> <span>{{.SpaceAgeWarning}}</span></p>
+  <p class="hint" id="{{.IDPrefix}}-space-age-warning" data-warn-on="{{.SpaceAgeOnWarning}}" data-warn-off="{{.SpaceAgeOffWarning}}" data-warn-old="{{.SpaceAgeOldWarning}}"{{if not .SpaceAgeWarning}} hidden{{end}}><strong>Warning:</strong> <span>{{.SpaceAgeWarning}}</span></p>
   {{- with .SpaceAgeError}}
   <p class="error" id="{{$.IDPrefix}}-space-age-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}

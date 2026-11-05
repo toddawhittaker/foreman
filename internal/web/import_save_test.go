@@ -2,12 +2,15 @@ package web
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/toddawhittaker/foreman/internal/game"
 )
 
 func fixtureBytes(t *testing.T, name string) []byte {
@@ -77,5 +80,60 @@ func TestImportUploadTakesTheVersionFromTheSave(t *testing.T) {
 	list, _ := hn.worlds.List(context.Background())
 	if len(list) != 1 || list[0].GameVersion != "2.0.77" || !list[0].SpaceAge {
 		t.Errorf("list %+v", list)
+	}
+}
+
+// A bulk import whose request the browser abandoned is not a server fault:
+// the folders are skipped and nothing is logged at ERROR. A real failure
+// still is.
+func TestBulkImportLogsOnlyRealFailures(t *testing.T) {
+	hn := newHarness(t, nil)
+	s := &server{cfg: hn.cfg, log: hn.slog, worlds: hn.worlds, render: mustRenderer(t)}
+	putInboxSave(t, hn, "real", fixtureBytes(t, "2.1.24-space-age.zip"))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	res := s.importMany(ctx, []string{"real", "other"}, false, game.Actor{})
+	if len(res.Imported) != 0 || len(res.Skipped) != 2 {
+		t.Fatalf("result = %+v, want both skipped", res)
+	}
+	if hn.logs.String() != "" {
+		t.Errorf("a cancelled import was logged:\n%s", hn.logs.String())
+	}
+
+	s.logUnlessCancelled("import folder", "real", errors.New("disk gone"))
+	lines := logLines(t, hn)
+	if len(lines) != 1 || lines[0]["level"] != "ERROR" {
+		t.Errorf("a real failure was not logged as an error: %v", lines)
+	}
+}
+
+// SPEC 17.9: a skipped folder links to the Import page with only that folder
+// ticked. A name that is not an inbox folder ticks nothing.
+func TestSkippedFolderLinksToImportingItAlone(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	putInboxSave(t, hn, "real", fixtureBytes(t, "2.1.24-space-age.zip"))
+	putInboxSave(t, hn, "plain", fixtureBytes(t, "2.0.77-no-space-age.zip"))
+	putInboxSave(t, hn, "broken", saveZip(t))
+
+	rec := hn.postLive(PathImportFolder, url.Values{"folder": {"real", "broken"}}, c)
+	if want := `<a href="/import?folder=broken">Import <code>broken</code> on its own</a>`; !strings.Contains(rec.Body.String(), want) {
+		t.Errorf("no link to import the skipped folder alone:\n%s", rec.Body.String())
+	}
+
+	body := hn.get(PathImport+"?folder=broken", withCookie(c)).Body.String()
+	if !strings.Contains(body, `value="broken" data-name="broken" checked`) {
+		t.Errorf("broken is not ticked:\n%s", body)
+	}
+	if strings.Contains(body, `value="plain" data-name="plain" data-game-version="2.0.77" checked`) {
+		t.Error("another folder is ticked")
+	}
+
+	for _, bad := range []string{"../x", ".hidden", "missing"} {
+		rec := hn.get(PathImport+"?folder="+url.QueryEscape(bad), withCookie(c))
+		if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), " checked") {
+			t.Errorf("folder=%q: status %d, or a folder is ticked", bad, rec.Code)
+		}
 	}
 }

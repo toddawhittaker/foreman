@@ -26,6 +26,9 @@
     <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">Select all automatic</button>
   </div>
   <p class="hint">Tick the snapshots to delete, then choose Delete selected. Nothing is deleted until you confirm on the next page. Select all automatic ticks every snapshot Foreman took itself, such as before a switch or an update, and none of the manual ones.</p>
+  {{- with .TickNote}}
+  <p class="hint" id="tick-note" tabindex="-1" autofocus>{{.}}</p>
+  {{- end}}
   {{- range .Groups}}{{$name := .WorldName}}
   <section class="group" aria-labelledby="world-{{.WorldID}}">
     <div class="group__head">
@@ -42,12 +45,12 @@
         {{- range .Rows}}
         <tr>
           <td>
-            <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<span class="visually-hidden">, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></span></label>
+            <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<span class="visually-hidden"> (taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>)</span></span></label>
             <p class="hint">Deleting it frees <span class="nowrap">{{bytes .Frees}}</span></p>
             <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}">Restore<span class="visually-hidden"> {{.Label}} of {{$name}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a> <a class="button" href="{{$.Page.DeletePath .WorldID .Name}}">Delete<span class="visually-hidden"> {{.Label}} of {{$name}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a></div>
           </td>
           <td>{{template "when" .TakenAt}}<br>by {{with .TakenBy}}{{.}}{{else}}unknown{{end}}</td>
-          <td class="num">{{bytes .Size}}</td>
+          <td class="num">{{bytes .DiskSize}}</td>
         </tr>
         {{- end}}
       </tbody>

@@ -109,7 +109,7 @@ type importFile struct {
 
 // Inbox lists the import inbox's subfolders. Hidden folders and anything
 // that is not a real folder (a symlink, for one) are left out.
-func (m *Manager) Inbox() ([]InboxFolder, error) {
+func (m *Manager) Inbox(ctx context.Context) ([]InboxFolder, error) {
 	inbox, err := openFolder(m.dirs.Imports)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (m *Manager) Inbox() ([]InboxFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	records, err := m.importRecords()
+	records, err := m.importRecords(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +147,10 @@ type importRecord struct {
 	from *ImportedFrom
 }
 
-// importRecords reads where each world was imported from. A world whose
-// world.json cannot be read has no record.
-func (m *Manager) importRecords() ([]importRecord, error) {
+// importRecords lists where each world was imported from, read from each
+// world's world.json alone: the Import page must not measure disk use. A
+// world whose world.json cannot be read has no record.
+func (m *Manager) importRecords(_ context.Context) ([]importRecord, error) {
 	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return nil, err
@@ -164,41 +165,24 @@ func (m *Manager) importRecords() ([]importRecord, error) {
 		if !e.IsDir() || !ValidID(e.Name()) {
 			continue
 		}
-		meta, err := readMetaIn(worlds, e.Name())
-		if err != nil || meta.ImportedFrom == nil {
-			continue
+		meta, ok := readWorldMeta(worlds, e.Name())
+		if ok && meta.ImportedFrom != nil {
+			out = append(out, importRecord{ImportRecord{e.Name(), displayName(e.Name(), meta, nil), meta.ImportedFrom.At}, meta.ImportedFrom})
 		}
-		out = append(out, importRecord{ImportRecord{e.Name(), displayName(e.Name(), meta, nil), meta.ImportedFrom.At}, meta.ImportedFrom})
 	}
 	return out, nil
 }
 
-// readMetaIn reads world.json of the world dir inside worlds.
-func readMetaIn(worlds *os.Root, dir string) (Meta, error) {
-	w, err := openDir(worlds, dir)
+// readWorldMeta reads one world's world.json; ok is false when the world
+// cannot be opened or its world.json cannot be read.
+func readWorldMeta(worlds *os.Root, id string) (Meta, bool) {
+	w, err := openDir(worlds, id)
 	if err != nil {
-		return Meta{}, err
+		return Meta{}, false
 	}
 	defer func() { _ = w.Close() }()
-	return ReadMeta(w)
-}
-
-// ImportedFrom returns where the world id was imported from, or nil when it
-// was not imported from a folder or its world.json cannot be read.
-func (m *Manager) ImportedFrom(id string) *ImportedFrom {
-	if !ValidID(id) {
-		return nil
-	}
-	worlds, err := openFolder(m.dirs.Worlds)
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = worlds.Close() }()
-	meta, err := readMetaIn(worlds, id)
-	if err != nil {
-		return nil
-	}
-	return meta.ImportedFrom
+	meta, err := ReadMeta(w)
+	return meta, err == nil
 }
 
 // InboxEntry describes one inbox folder by name, as Inbox does, without

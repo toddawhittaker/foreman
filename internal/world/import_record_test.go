@@ -14,7 +14,7 @@ import (
 // inboxEntry returns the inbox folder named name, failing when it is missing.
 func inboxEntry(t *testing.T, m *Manager, name string) InboxFolder {
 	t.Helper()
-	list, err := m.Inbox()
+	list, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +62,8 @@ func TestImportRecordsWhereTheWorldCameFrom(t *testing.T) {
 			t.Errorf("imported_from.%s = %v, want %v", k, doc.ImportedFrom[k], v)
 		}
 	}
-	if got := m.ImportedFrom(id); got == nil || got.Folder != "saves-2025" {
-		t.Errorf("ImportedFrom(%s) = %+v", id, got)
+	if sum, err := m.Get(t.Context(), id); err != nil || sum.ImportedFrom == nil || sum.ImportedFrom.Folder != "saves-2025" {
+		t.Errorf("Get(%s).ImportedFrom = %+v, %v", id, sum.ImportedFrom, err)
 	}
 
 	f := inboxEntry(t, m, "saves-2025")
@@ -142,5 +142,32 @@ func TestImportRefusesSpaceAgeBefore2(t *testing.T) {
 	assertNoStaging(t, m)
 	if _, err := m.ImportFolder(context.Background(), "saves-2025", "Old", "1.1.110", false); err != nil {
 		t.Errorf("without Space Age: %v", err)
+	}
+}
+
+type failingActive struct{ fakeActive }
+
+func (*failingActive) ActiveWorld(context.Context) (string, bool, error) {
+	return "", false, errors.New("the active world cannot be read")
+}
+
+// The Import page reads each world's world.json and nothing else, so it
+// does not depend on the world list: a failing active-world lookup does not
+// break it, and a world with a broken world.json is skipped.
+func TestInboxReadsOnlyWorldJSON(t *testing.T) {
+	m, _ := newTestManager(t)
+	seedInbox(t, m)
+	id, err := m.ImportFolder(context.Background(), "saves-2025", "Old game", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(m.dirs.Worlds, "broken", MetaFile), "not json", t0)
+	m.active = &failingActive{}
+	if _, err := m.List(context.Background()); err == nil {
+		t.Fatal("List should fail with the active lookup failing; the test would prove nothing")
+	}
+	f := inboxEntry(t, m, "saves-2025")
+	if f.Imported == nil || f.Imported.WorldID != id || f.Imported.WorldName != "Old game" {
+		t.Errorf("Imported = %+v, want world %s named Old game", f.Imported, id)
 	}
 }

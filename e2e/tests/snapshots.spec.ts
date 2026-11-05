@@ -78,7 +78,7 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
   await expect(page.getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
   await expect(rows).toHaveCount(2);
-  await expect(rows.first().locator("td").first()).toHaveText(/^\s*Before restore, taken /);
+  await expect(rows.first().locator("td").first()).toHaveText(/^\s*Before restore \(taken /);
   await expect(rows.first().locator("td").first()).not.toHaveText(/Before restore\s*Before restore/);
   expect(readFileSync(save, "utf8")).toBe("the first save");
   expect(statSync(save).mtime.getTime()).toBe(savedAt.getTime());
@@ -93,10 +93,10 @@ test("a snapshot's reason is not repeated by its label", async ({ page, foreman 
   await page.goto("/worlds/family-base/snapshots");
   await page.getByRole("button", { name: "Take snapshot" }).click();
   const cell = page.locator("tbody tr").first().locator("td").first();
-  await expect(cell).toHaveText(/^\s*Manual snapshot, taken /);
+  await expect(cell).toHaveText(/^\s*Manual snapshot \(taken /);
   await page.getByLabel("Label (optional)").fill("Before the rocket");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.locator("tbody tr").first().locator("td").first()).toHaveText(/^\s*Manual\s*Before the rocket, taken /);
+  await expect(page.locator("tbody tr").first().locator("td").first()).toHaveText(/^\s*Manual\s*Before the rocket \(taken /);
 });
 
 test("cancel leaves the world as it is", async ({ page, foreman }) => {

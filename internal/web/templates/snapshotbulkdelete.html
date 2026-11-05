@@ -49,6 +49,16 @@
   </form>
 </section>
 {{- end}}
+{{- with .AlreadyGone}}
+<section class="panel" aria-labelledby="gone-heading">
+  <h2 id="gone-heading">Already deleted</h2>
+  <ul>
+    {{- range .}}
+    <li>{{.WorldName}}: {{if .TakenAt.IsZero}}the snapshot <code>{{.Snapshot.Name}}</code>{{else}}the snapshot taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>{{end}} is deleted already, so nothing is left to do.</li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
 {{- with .Staying}}
 <section class="panel" aria-labelledby="staying-heading">
   <h2 id="staying-heading">These stay</h2>

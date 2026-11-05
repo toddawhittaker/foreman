@@ -145,8 +145,8 @@ test("the tab groups by world, links Restore, and does not repeat the reason", a
   await expect(page.getByRole("heading", { level: 3 }).getByRole("link", { name: "Family base" })).toHaveAttribute("href", world);
   const auto = rowsOf(page).filter({ hasText: "Before restore" });
   const cell = auto.locator("td").first();
-  await expect(cell).toHaveText(/^\s*Before restore, taken [^]*Deleting it frees/);
-  await expect(cell).not.toHaveText(/Before restore[^]*Before restore, taken/);
+  await expect(cell).toHaveText(/^\s*Before restore \(taken [^]*Deleting it frees/);
+  await expect(cell).not.toHaveText(/Before restore[^]*Before restore \(taken/);
   await auto.getByRole("link", { name: /^Restore Before restore of Family base/ }).click();
   await expect(page.getByRole("heading", { name: /Restore the snapshot "Before restore"/ })).toBeVisible();
 });
@@ -175,14 +175,15 @@ test("the total is what deleting everything frees", async ({ page, foreman }) =>
   await expect(page.locator("dd").first()).toHaveText("0 B");
 });
 
-// A snapshot that is gone is named as staying, and is not posted.
-test("the confirmation says which snapshots stay and why", async ({ page, foreman }) => {
+// A snapshot that is gone counts as deleted already, and is not posted.
+test("the confirmation says which snapshots are already deleted", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.goto("/snapshots/delete?snap=family-base/20991103T142500Z");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete snapshots");
-  await expect(page.getByRole("heading", { name: "These stay" })).toBeVisible();
-  await expect(page.getByText("The snapshot is not there any more.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Already deleted" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "These stay" })).toHaveCount(0);
+  await expect(page.getByText(/is deleted already, so nothing is left to do/)).toBeVisible();
   await expect(page.getByRole("button", { name: /^Delete \d/ })).toHaveCount(0);
   await checkPage(page);
 

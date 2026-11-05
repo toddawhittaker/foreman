@@ -146,8 +146,14 @@ func (m *Manager) countWorld(c *SnapshotCount, id string) error {
 	}
 	for _, s := range list {
 		u := SnapshotUse{WorldID: id, Snapshot: s}
+		// snapshot.json counts like any file; it is never shared, so it
+		// frees with its snapshot.
+		paths := []string{ManifestFile}
 		for _, f := range s.Files {
-			info, err := snaps.Lstat(path.Join(s.Name, f.Path))
+			paths = append(paths, f.Path)
+		}
+		for _, p := range paths {
+			info, err := snaps.Lstat(path.Join(s.Name, p))
 			if errors.Is(err, fs.ErrNotExist) {
 				continue // a damaged snapshot still lists, so it can be deleted
 			}
@@ -156,7 +162,10 @@ func (m *Manager) countWorld(c *SnapshotCount, id string) error {
 			}
 			st, ok := info.Sys().(*syscall.Stat_t)
 			if !ok {
-				return fmt.Errorf("no inode for %s", f.Path)
+				return fmt.Errorf("no inode for %s", p)
+			}
+			if p == ManifestFile {
+				u.manifestBytes = uint64(info.Size()) //nolint:gosec // a size is never negative
 			}
 			k := inodeKey{uint64(st.Dev), st.Ino}                                      //nolint:gosec,unconvert // types differ by platform
 			c.inodes[k] = inodeUse{size: uint64(info.Size()), links: uint64(st.Nlink)} //nolint:gosec,unconvert // a size is never negative; Nlink's type differs by platform
