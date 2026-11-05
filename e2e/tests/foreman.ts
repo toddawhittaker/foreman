@@ -97,7 +97,7 @@ export interface FakeGame {
   // Everything the fake knows: containers with their players and RCON
   // commands, and every Docker call received.
   state: () => Promise<{
-    containers: { name: string; status: string; ip: string; players: string[]; commands: string[]; restart_count: number }[];
+    containers: { name: string; image: string; status: string; ip: string; players: string[]; commands: string[]; restart_count: number }[];
     calls: string[];
   }>;
 }
@@ -271,6 +271,22 @@ export function seedWorld(
   } finally {
     db.close();
   }
+}
+
+// Makes a second, inactive world "second" named "Second", written as a
+// folder (SPEC 5.1), with one save an hour old.
+export function seedSecond(f: Foreman, opts: { fixture?: string; spaceAge?: boolean; version?: string } = {}) {
+  const { fixture = "2.1.24-no-space-age.zip", spaceAge = false, version = "2.1.24" } = opts;
+  const dir = join(f.dataDir, "worlds", "second");
+  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
+  writeFileSync(
+    join(dir, "world.json"),
+    JSON.stringify({ format_version: 1, name: "Second", game_version: version, space_age: spaceAge, created_at: "2026-11-02T10:00:00Z" }),
+  );
+  const save = join(dir, "saves", "base.zip");
+  copyFileSync(join(repo, "internal", "savefile", "testdata", fixture), save);
+  const at = new Date(Date.now() - 3_600_000);
+  utimesSync(save, at, at);
 }
 
 // After a switch the Server page loads again; the sentence is

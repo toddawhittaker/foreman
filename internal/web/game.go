@@ -246,6 +246,8 @@ func gameError(err error) (int, string) {
 		errors.Is(err, world.ErrSaveInFuture),
 		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
 		errors.Is(err, game.ErrSwitchNoTarget), errors.Is(err, game.ErrSwitchTargetRunning),
+		errors.Is(err, game.ErrSwitchNoActive), errors.Is(err, game.ErrSwitchUnreadable), errors.Is(err, game.ErrSwitchNewer),
+		errors.Is(err, game.ErrSwitchBusy), errors.Is(err, game.ErrSwitchUnsettled),
 		errors.Is(err, game.ErrSwitchUnavailable), errors.Is(err, game.ErrWorldNotActive),
 		errors.Is(err, world.ErrVersionNotNewer), errors.Is(err, world.ErrVersionUnsupported), errors.Is(err, world.ErrNoRollback):
 		return http.StatusConflict, sentence(err)
@@ -291,10 +293,17 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 // serverPage builds the server page for a world from its status, asking
 // the game who is online when it is running.
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
-	p := ServerPage{World: sum, HasWorld: true, Status: st}
+	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID)}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	p.Others = s.runs.others(sum.ID)
 	s.switchNames(&p)
+	// Said before Start is pressed (SPEC 3.7). Only local Docker is asked;
+	// when it cannot answer, Start finds out and says so.
+	if p.CanStart() {
+		if ref, present, err := s.game.ImageFor(ctx, sum.ID); err == nil {
+			p.Image, p.ImageMissing = ref, !present
+		}
+	}
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()

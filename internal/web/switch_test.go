@@ -71,22 +71,34 @@ func TestSwitchRunningWorld(t *testing.T) {
 	g.wantContains("switch back form", g.get(switchPath(a)), "Switch from Bravo to Alpha?", `name="from" value="`+b+`"`)
 }
 
-// SPEC 7.9: a stopped game stays stopped; the confirmation leaves out
-// the countdown and the start.
+// SPEC 7.9: with the game stopped, the confirmation leaves out the
+// countdown and offers "Start Bravo after switching", ticked. Unticked, the
+// game stays stopped.
 func TestSwitchStoppedWorld(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 
 	form := g.get(switchPath(b))
-	g.wantContains("confirmation", form, "Leave the server stopped", "Switch from Alpha to Bravo?")
-	g.wantMissing("confirmation", form, `name="countdown"`, "Start the game on Bravo")
+	g.wantContains("confirmation", form, "Switch from Alpha to Bravo?", "Start Bravo after switching",
+		`<input type="checkbox" name="start" value="1" checked>`, "if the box below is ticked; otherwise leave the server stopped")
+	g.wantMissing("confirmation", form, `name="countdown"`, "Switch, leave stopped")
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}}))
 	g.waitPage("Active world: Bravo", stopped, "The worlds are switched")
 	if _, ok := g.fake.Daemon().Container(game.ContainerName(b)); ok {
 		t.Error("a stopped switch started the new world")
 	}
+}
+
+// SPEC 7.9: with the box ticked, a stopped game's switch starts the new
+// world in the same run.
+func TestSwitchStoppedWorldAndStart(t *testing.T) {
+	g := newGameRig(t, image21)
+	a := g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.newWorld("Bravo", fixtureNoSA, false)
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "start": {"1"}}))
+	g.waitPage("Active world: Bravo", running, "The worlds are switched")
 }
 
 // SPEC 7.9, DESIGN 7.1: a switch that cannot go ahead is refused on its page
@@ -131,30 +143,52 @@ func TestSwitchRefusals(t *testing.T) {
 	}
 }
 
-// SPEC 7.9, 7.4: a new world the pre-start check refuses is shown on the
-// Server page with its problems and, when every one allows it, a box that
-// is the confirmation: it names the snapshots, and its button switches.
+// SPEC 7.4, 7.9, 17.8: the new world's start problems show on the
+// confirmation page, before the admin confirms, with two choices: switch
+// and start anyway, which names the snapshots and goes ahead at once, or
+// switch and leave the game stopped. Nothing asks twice.
 func TestSwitchAnyway(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", "2.1.24-space-age-testmod.zip", true)
+	g.startGame(a)
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}}))
-	body := g.waitPage("Foreman did not switch", "foreman-test", "Switch anyway")
-	g.wantContains("server page", body, `<form method="post" action="`+switchPath(b)+`" class="actions">`,
-		`name="from" value="`+a+`"`, `name="anyway" value="1"`, `"Before switch"`, `"Before start anyway"`,
-		"Take a snapshot of Alpha and of Bravo", "To undo, switch back to Alpha", "Active world: Alpha")
-	g.wantMissing("server page", body, "?anyway=1", "Fix the world first")
-	if list, _ := g.worlds.Snapshots(a); len(list) != 0 {
-		t.Errorf("a refused switch took snapshots: %+v", list)
+	form := g.get(switchPath(b))
+	g.wantContains("confirmation", form, "The save that would load in Bravo does not match that world:", "foreman-test",
+		`"Before switch"`, `"Before start anyway"`, "own mods folder, then start Bravo again",
+		`name="choice" value="anyway"`, "Switch and start anyway", `name="choice" value="stopped"`, "Switch, leave stopped",
+		`name="countdown"`, "To undo, switch back to Alpha")
+	g.wantMissing("confirmation", form, ">Switch to Bravo</button>", "Start Bravo after switching", "import the world again")
+
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}, "choice": {"anyway"}, "seen": {seenIn(t, form)}}))
+	g.waitPage("Active world: Bravo", running, "The worlds are switched")
+	list, err := g.worlds.Snapshots(b)
+	if err != nil || len(list) != 2 {
+		t.Errorf("snapshots of Bravo %+v, %v: want the switch's and the start anyway's", list, err)
 	}
-
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}, "seen": {seenIn(t, body)}}))
-	g.waitPage("Active world: Bravo", "The worlds are switched")
 }
 
-// A switch anyway whose problems no longer allow it is refused by the
-// controller under its lock, and nothing changes.
+// SPEC 7.9: "Switch, leave stopped" switches past the problems without
+// starting; the next Start shows them.
+func TestSwitchLeaveStopped(t *testing.T) {
+	g := newGameRig(t, image21)
+	a := g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.newWorld("Bravo", "2.1.24-space-age-testmod.zip", true)
+	g.startGame(a)
+
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}, "choice": {"stopped"}}))
+	g.waitPage("Active world: Bravo", stopped, "The worlds are switched")
+	if _, ok := g.fake.Daemon().Container(game.ContainerName(b)); ok {
+		t.Error("a switch that leaves the game stopped made a container for the new world")
+	}
+	g.wantRedirectHome(g.post(gamePath(b, "start"), url.Values{}))
+	g.waitPage("foreman-test", "Start anyway")
+}
+
+// SPEC 7.4, 17.8: problems that allow no start anyway show on the
+// confirmation with only "Switch, leave stopped". A go-ahead anyway the
+// page did not offer, or a plain switch that would now start into problems,
+// sends the page back saying what changed, and nothing is done.
 func TestSwitchAnywayRefusedWhenNotAllowed(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
@@ -162,11 +196,25 @@ func TestSwitchAnywayRefusedWhenNotAllowed(t *testing.T) {
 	if err := removeSaves(g, b); err != nil {
 		t.Fatal(err)
 	}
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "anyway": {"1"}, "seen": {"x"}}))
-	body := g.waitPage("Foreman did not switch", "The world has no save.")
-	g.wantMissing("server page", body, "Switch anyway")
+	form := g.get(switchPath(b))
+	g.wantContains("confirmation", form, "The world has no save.", "Switch, leave stopped", `<p><strong>Error:</strong>`)
+	g.wantMissing("confirmation", form, "Switch and start anyway", `name="seen"`)
+
+	for _, v := range []url.Values{
+		{"from": {a}, "choice": {"anyway"}, "seen": {"x"}},
+		{"from": {a}, "start": {"1"}},
+	} {
+		rep := g.post(switchPath(b), v)
+		if rep.StatusCode != http.StatusConflict {
+			t.Errorf("%v: status %d", v, rep.StatusCode)
+		}
+		g.wantContains("changed page", rep.body, "changed since the page showed it", "The world has no save.")
+	}
 	if list, _ := g.worlds.Snapshots(a); len(list) != 0 {
 		t.Errorf("a refused switch took snapshots: %+v", list)
+	}
+	if n := len(g.audit()); n != 0 {
+		t.Errorf("a switch sent back to its page was audited: %+v", g.audit())
 	}
 }
 

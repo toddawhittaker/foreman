@@ -21,15 +21,36 @@ func (s *server) switchRoutes() {
 	s.mux.HandleFunc("POST "+PathGameSwitch, s.requireUser(s.handleSwitch))
 }
 
-// SwitchPage confirms a switch and asks how to warn players (SPEC 7.5,
-// 7.6, 7.9). A switch anyway is confirmed by the Server page's refusal box
-// (7.4); this page then shows only why it could not go ahead.
+// The choices the confirmation offers when the new world's start checks
+// find problems (SPEC 7.4, 7.9): start anyway, or switch and leave the game
+// stopped, so the problems wait for the next Start.
+const (
+	choiceAnyway  = "anyway"
+	choiceStopped = "stopped"
+)
+
+// SwitchPage confirms a switch (SPEC 7.5, 7.6, 7.9). It runs the switch's
+// own checks, so any problem shows here, before the admin confirms
+// (SPEC 17.8), and lists every step, including a download of the new
+// world's game image when this host lacks it (SPEC 3.7).
 type SwitchPage struct {
 	From, To world.Summary
-	// Running is true when the game runs in From, so a switch stops it and
-	// starts To; otherwise the worlds are switched and the game stays stopped.
-	Running bool
+	Plan     game.SwitchPlan
+	// ImageSize is the download's size in bytes, or 0 when not known.
+	ImageSize uint64
+	// StartAfter is the "Start after switching" box, offered when the game
+	// is stopped; it is ticked by default.
+	StartAfter bool
+	// Lead, CheckProblems and Advice word the new world's pre-start
+	// problems. Seen fingerprints them for "Switch and start anyway".
+	Lead          string
+	CheckProblems []string
+	Advice        string
+	Seen          string
 	CountdownForm
+	// Changed is set when the switch was not done because what the page
+	// showed is no longer true.
+	Changed bool
 	// Refusal replaces the form when the switch cannot go ahead.
 	Refusal string
 }
@@ -48,41 +69,46 @@ func (p SwitchPage) Path() string       { return switchPath(p.To.ID) }
 func (p SwitchPage) WorldPath() string  { return worldPath(p.To.ID) }
 func (p SwitchPage) ActivePath() string { return worldPath(p.From.ID) }
 
-// switchRefusal says in words why a switch from the active world to to
-// cannot go ahead, or returns "". The controller checks the same things
-// again when the switch runs; this keeps a button that would be refused off
-// the page (DESIGN 7.1).
-func (s *server) switchRefusal(ctx context.Context, from string, to world.Summary) (refusal string, running bool, err error) {
-	active, found, err := s.activeWorld(ctx)
-	if err != nil {
-		return "", false, err
+// HasProblems reports whether the new world's start checks found problems,
+// so the page offers its two choices in place of a plain switch.
+func (p SwitchPage) HasProblems() bool { return !p.Plan.Check.OK() }
+
+// CanAnyway reports whether every problem allows a start anyway (SPEC 7.4).
+func (p SwitchPage) CanAnyway() bool { return p.HasProblems() && p.Plan.Check.CanStartAnyway() }
+
+// ChangedLead says why a confirmed switch was not done.
+func (SwitchPage) ChangedLead() string { return changedLead }
+
+// switchProblemsLead opens the list of the new world's problems. When the
+// only problems are mods made for another Factorio, the save is not what
+// fails, so the lead says the world cannot run instead.
+func switchProblemsLead(check world.PreCheck, name string) string {
+	for _, pr := range check.Problems {
+		if pr.Kind != world.ProblemModGameVersion {
+			return "The save that would load in " + name + " does not match that world:"
+		}
 	}
-	switch {
-	case to.Active:
-		return "This is already the active world.", false, nil
-	case !found:
-		return "No world is active, so there is nothing to switch from.", false, nil
-	case from != "" && from != active.ID:
-		return sentence(game.ErrSwitchNotActive), false, nil
-	case to.Unreadable:
-		return "Foreman cannot read this world's world.json, so it cannot start this world.", false, nil
-	case to.Newer:
-		return "A newer version of Foreman wrote this world, so this version cannot start it.", false, nil
+	return name + " cannot run in this game:"
+}
+
+// imageSizer is the part of Releases that knows a game image's size. It is
+// asked for only on the switch page, and only when the image is missing.
+type imageSizer interface {
+	ImageSize(ctx context.Context, version string) (int64, error)
+}
+
+// imageSize returns the download size of a version's game image, or 0 when
+// it cannot be had; the page then leaves the size out.
+func (s *server) imageSize(ctx context.Context, version string) uint64 {
+	sizer, ok := s.releases.(imageSizer)
+	if !ok {
+		return 0
 	}
-	cur, next := s.game.Status(active.ID), s.game.Status(to.ID)
-	switch {
-	case cur.Operation != nil && !cur.Operation.Done, next.Operation != nil && !next.Operation.Done:
-		return "Another operation is running on one of these worlds. Wait for it to finish, then try again.", false, nil
-	case next.State != game.StateStopped:
-		return sentence(game.ErrSwitchTargetRunning), false, nil
+	n, err := sizer.ImageSize(ctx, version)
+	if err != nil || n < 0 {
+		return 0
 	}
-	switch cur.State {
-	case game.StateRunning, game.StateCrashed:
-		return "", true, nil
-	case game.StateStopped, game.StateCrashLooping:
-		return "", false, nil
-	}
-	return "The game is starting or stopping, or Foreman cannot tell its state. Wait until it is running or stopped, or use Force stop.", false, nil
+	return uint64(n)
 }
 
 // switchBusy reports whether an operation is running on this world or the
@@ -100,17 +126,40 @@ func (s *server) switchBusy(ctx context.Context, id string) bool {
 	return false
 }
 
-// switchPage builds the confirmation for a switch to to. from is the
-// world the form named, or "" for the active one.
+// switchPage builds the confirmation for a switch to to from the
+// controller's plan, which holds every rule that could refuse it. from is
+// the world the form named, or "" for the active one.
 func (s *server) switchPage(ctx context.Context, from string, to world.Summary, form CountdownForm) (SwitchPage, error) {
-	p := SwitchPage{To: to, CountdownForm: form}
+	p := SwitchPage{To: to, CountdownForm: form, StartAfter: true}
 	active, _, err := s.activeWorld(ctx)
 	if err != nil {
 		return p, err
 	}
 	p.From = active
-	p.Refusal, p.Running, err = s.switchRefusal(ctx, from, to)
-	return p, err
+	if from == "" {
+		from = active.ID
+	}
+	p.Plan, err = s.game.PlanSwitch(ctx, from, to.ID)
+	if err != nil {
+		status, msg := gameError(err)
+		if status == http.StatusInternalServerError {
+			return p, err
+		}
+		p.Refusal = msg
+		return p, nil
+	}
+	if p.HasProblems() {
+		p.Lead = switchProblemsLead(p.Plan.Check, to.Name)
+		for _, pr := range p.Plan.Check.Problems {
+			p.CheckProblems = append(p.CheckProblems, pr.Text)
+		}
+		p.Advice = anywayAdvice(p.Plan.Check.Problems, to.Name, hostModsFolder(s.hostData, to.ID))
+		p.Seen = game.AnywayFingerprint(p.Plan.Check, p.Plan.Running)
+	}
+	if p.Plan.Download {
+		p.ImageSize = s.imageSize(ctx, to.GameVersion)
+	}
+	return p, nil
 }
 
 func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -127,7 +176,9 @@ func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u stor
 }
 
 // handleSwitch makes the world in the path the active one (SPEC 7.9). The
-// form's "from" is the world the admin saw as active.
+// form's "from" is the world the admin saw as active. The checks run again
+// first: a problem the page did not show sends the page back with it, so
+// the admin decides once, on the confirmation (SPEC 17.8).
 func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) {
 		return
@@ -149,6 +200,9 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 		s.fail(w, r, "build the switch page", err)
 		return
 	}
+	// A running game's switch starts the new world (SPEC 7.9); a stopped
+	// one's starts it when the box was ticked.
+	p.StartAfter = r.PostFormValue("start") == "1"
 	if p.Refusal != "" {
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
@@ -157,9 +211,24 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
-	by, opts := actor(u), anywayOptions(r)
+	start, opts := p.Plan.Running || p.StartAfter, game.StartOptions{}
+	switch r.PostFormValue("choice") {
+	case choiceStopped:
+		start = false
+	case choiceAnyway:
+		start, opts = true, game.StartOptions{Anyway: true, Seen: r.PostFormValue("seen")}
+		p.Changed = !p.CanAnyway() || opts.Seen != p.Seen
+	default:
+		p.Changed = start && p.HasProblems()
+	}
+	if p.Changed {
+		p.StartAfter = start
+		s.page(w, r, http.StatusConflict, u.Username, p)
+		return
+	}
+	by := actor(u)
 	s.beginOn(w, r, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
-		err := s.game.Switch(ctx, from, to.ID, by, stop, opts)
+		err := s.game.Switch(ctx, from, to.ID, by, stop, opts, start)
 		res := s.finish(from, game.AuditSwitch, err)
 		res.Target = to.ID
 		return res
@@ -241,6 +310,9 @@ func (p ServerPage) SwitchBack() *SwitchOffer {
 // SwitchNote says where a failed switch left the worlds. An unfinished
 // switch found at startup brings its own words in the notice.
 func (p ServerPage) SwitchNote() string {
+	if p.switchRefused() {
+		return p.World.Name + " is still the active world, and nothing changed."
+	}
 	o := p.Status.Operation
 	if o == nil || o.Switch == nil || !o.Done || o.Error == "" || p.opSuperseded() {
 		return ""

@@ -37,8 +37,11 @@ type Deps struct {
 	// Releases lists Factorio versions and releases (SPEC 10.2, 10.7);
 	// nil means Foreman makes no outbound calls for them.
 	Releases Releases
-	Log      *slog.Logger
-	Now      func() time.Time // time.Now when nil
+	// HostDataDir is the data directory's path on the Docker host (SPEC
+	// 3.5), so a page can name a folder the admin reaches there.
+	HostDataDir string
+	Log         *slog.Logger
+	Now         func() time.Time // time.Now when nil
 }
 
 type server struct {
@@ -47,6 +50,7 @@ type server struct {
 	worlds   *world.Manager
 	game     *game.Controller
 	releases Releases
+	hostData string
 	runs     *gameRuns
 	console  *consoleHistory
 	log      *slog.Logger
@@ -94,6 +98,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		worlds:   d.Worlds,
 		game:     d.Game,
 		releases: d.Releases,
+		hostData: d.HostDataDir,
 		runs:     newGameRuns(),
 		gameNets: d.GameNets,
 		console:  newConsoleHistory(),

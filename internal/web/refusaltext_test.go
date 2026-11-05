@@ -7,7 +7,9 @@ import (
 )
 
 // The advice never repeats what the lead already says the game drops, and
-// mods that are only turned off get none (SPEC 7.4).
+// mods that are only turned off get none (SPEC 7.4). It names the world's own
+// mods folder on the host, never the import folder, since importing again
+// makes a second world.
 func TestAnywayAdvice(t *testing.T) {
 	spaceAge := []world.Problem{{Kind: world.ProblemSpaceAgeOff}}
 	missing := []world.Problem{{Kind: world.ProblemModMissing, Mods: []string{"a"}}}
@@ -18,14 +20,14 @@ func TestAnywayAdvice(t *testing.T) {
 		problems []world.Problem
 		want     string
 	}{
-		{"one missing mod", missing, "Foreman cannot add mods to a world yet. To keep what that mod built, put the mod files in the import folder's mods/ and import the world again."},
-		{"two missing mods", both, "Foreman cannot add mods to a world yet. To keep what those mods built, put the mod files in the import folder's mods/ and import the world again."},
+		{"one missing mod", missing, "Foreman cannot add mods to a world yet. To keep what that mod built, copy its zip file into Base's own mods folder, /srv/foreman/worlds/base/mods/ on the host, then start Base again."},
+		{"two missing mods", both, "Foreman cannot add mods to a world yet. To keep what those mods built, copy their zip files into Base's own mods folder, /srv/foreman/worlds/base/mods/ on the host, then start Base again."},
 		{"mods only turned off", off, ""},
 		{"Space Age", spaceAge, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := anywayAdvice(c.problems); got != c.want {
+			if got := anywayAdvice(c.problems, "Base", hostModsFolder("/srv/foreman", "base")); got != c.want {
 				t.Errorf("got %q\nwant %q", got, c.want)
 			}
 		})

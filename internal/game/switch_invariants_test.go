@@ -395,7 +395,7 @@ func runSwitch(ctx context.Context, c *Controller, from, to string) (err error, 
 				crashed = true
 			}
 		}()
-		err = c.Switch(ctx, from, to, admin, StopOptions{}, StartOptions{})
+		err = c.Switch(ctx, from, to, admin, StopOptions{}, StartOptions{}, keepRunState(c, from))
 	}()
 	<-done
 	return err, crashed
@@ -763,7 +763,8 @@ func failureCases() []failureCase {
 			return func() { v.game.SetRCONRefuse(ContainerName(b), false) }
 		}},
 		{name: "Docker refuses to start the new game", onlyRunning: true, setup: callFails("start")},
-		{name: "new world's save breaks after the snapshots", afterSnapshots: func(v *invRig, _, b string) {
+		// A switch that leaves the game stopped does not check the new world.
+		{name: "new world's save breaks after the snapshots", onlyRunning: true, afterSnapshots: func(v *invRig, _, b string) {
 			v.writeFile(b, filepath.Join(world.SavesDir, "base.zip"), []byte("now broken"))
 		}, setup: func(v *invRig, _, b string) func() {
 			// Named before the switch, so the earlier check still passes.
@@ -889,10 +890,6 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 		}},
 		{name: "from is not active", audited: 1, setup: func(_ *invRig, a, b string) (string, string) { return b, a }, wantErr: ErrSwitchNotActive},
 		{name: "new world missing", audited: 1, setup: func(_ *invRig, a, _ string) (string, string) { return a, "gamma" }, wantErr: ErrSwitchNoTarget},
-		{name: "image missing", audited: 1, setup: func(v *invRig, a, b string) (string, string) {
-			v.game.SetImage(image21, false)
-			return a, b
-		}, wantErr: ErrImageMissing},
 		{name: "new world already running", audited: 1, othersGameRuns: true, setup: func(v *invRig, a, b string) (string, string) {
 			v.startAsActive(b)
 			return a, b
@@ -917,7 +914,7 @@ func TestInvariantRefusedSwitchChangesNothing(t *testing.T) {
 			v.start(a)
 			from, to := tc.setup(v, a, b)
 			before := v.observe()
-			err := v.c.Switch(context.Background(), from, to, admin, tc.stop, StartOptions{})
+			err := v.c.Switch(context.Background(), from, to, admin, tc.stop, StartOptions{}, true)
 			switch {
 			case err == nil:
 				t.Fatal("the switch was not refused")
@@ -1321,8 +1318,9 @@ func TestInvariantRefusedSwitchWritesNoWorldFile(t *testing.T) {
 		setup func(v *invRig, a, b string) (from, to string)
 	}{
 		{"from is not active", func(_ *invRig, a, b string) (string, string) { return b, a }},
-		{"image missing", func(v *invRig, a, b string) (string, string) {
+		{"the image download fails", func(v *invRig, a, b string) (string, string) {
 			v.game.SetImage(image21, false)
+			v.game.Daemon().FailPull(image21, "registry down")
 			return a, b
 		}},
 		{"the game network is refused", func(v *invRig, a, b string) (string, string) {

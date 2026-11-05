@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -50,25 +51,153 @@ type SwitchNotice struct {
 // Switch refusals. The text is shown to the admin.
 var (
 	ErrSwitchUnavailable   = errors.New("switching worlds is not set up in this Foreman")
-	ErrSwitchSame          = errors.New("that world is already the one being switched from")
+	ErrSwitchSame          = errors.New("this is already the active world")
+	ErrSwitchNoActive      = errors.New("no world is active, so there is nothing to switch from")
 	ErrSwitchNotActive     = errors.New("the world to switch from is no longer the active world. Reload the page, then try again")
 	ErrSwitchNoTarget      = errors.New("the world to switch to does not exist")
+	ErrSwitchUnreadable    = errors.New("the world.json of the world to switch to cannot be read, so that world cannot start")
+	ErrSwitchNewer         = errors.New("a newer version of Foreman wrote the world to switch to, so this version cannot start it")
+	ErrSwitchBusy          = errors.New("another operation is running on one of these worlds. Wait for it to finish, then try again")
+	ErrSwitchUnsettled     = errors.New("the game is starting or stopping, or Foreman cannot tell its state. Wait until it is running or stopped, or use Force stop")
 	ErrSwitchTargetRunning = errors.New("the world to switch to already has a game running. Stop it first")
 )
 
-// switchSteps lists a switch's steps in the order of SPEC 7.9.
-func (c *Controller) switchSteps(opts StartOptions) [][]string {
-	return [][]string{stopSteps, {StepSnapshotBoth}, checkStepsFor(opts), {StepPresent}, launchSteps}
+// isSwitchRefusal reports whether err is one of the switch refusals that
+// IsRefusal does not know, so it is audited as a refusal (SPEC 12.9).
+// ErrSwitchUnsettled is left out: like a stop the game is not ready for, it
+// is audited as the switch, which then failed.
+func isSwitchRefusal(err error) bool {
+	for _, r := range []error{ErrSwitchNoActive, ErrSwitchUnreadable, ErrSwitchNewer, ErrSwitchBusy} {
+		if errors.Is(err, r) {
+			return true
+		}
+	}
+	return false
 }
 
-// Switch makes to the active world in place of from (SPEC 7.9, 7.10). The
-// game ends up as it was found: running on to when from was running,
-// otherwise stopped. Everything that could refuse the start of to is
-// checked before from is stopped, as a restart does (SPEC 7.8). Both worlds
-// are locked, show the operation and are busy until it ends; a forced stop
-// on either interrupts it. Like Start, it can take StartTimeout after the
-// stop; run it with a context that outlives the request.
-func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop StopOptions, opts StartOptions) error {
+// SwitchPlan is what a switch would do, from the checks that run before
+// anything changes (SPEC 7.9, 17.8). The confirmation page shows it, and the
+// switch acts on it.
+type SwitchPlan struct {
+	// Running is true when the game runs on the world switched from, so the
+	// switch stops it first.
+	Running bool
+	// Image is the game image the new world runs. Download is true when
+	// Docker does not have it, so the switch downloads it before anything
+	// else (SPEC 3.7).
+	Image    string
+	Download bool
+	// Check is the new world's pre-start check (SPEC 7.4), read without
+	// writing anything. Its problems refuse only a switch that starts the
+	// new world; a switch that leaves the game stopped leaves them to the
+	// next Start.
+	Check world.PreCheck
+}
+
+// PlanSwitch runs every check that could refuse a switch from from to to,
+// and changes nothing (SPEC 7.8, 7.9). The confirmation page calls it, so
+// problems show before the admin confirms (SPEC 17.8), and Switch calls it
+// again under both worlds' locks, so the two never disagree on the rules.
+// A refusal is returned as an error. The new world's pre-start problems are
+// in the plan instead, because the admin still chooses what to do about
+// them.
+func (c *Controller) PlanSwitch(ctx context.Context, from, to string) (SwitchPlan, error) {
+	if c.switches == nil {
+		return SwitchPlan{}, ErrSwitchUnavailable
+	}
+	active, found, err := c.switches.ActiveWorld(ctx)
+	if err != nil {
+		return SwitchPlan{}, err
+	}
+	switch {
+	case !found:
+		return SwitchPlan{}, ErrSwitchNoActive
+	case from != active:
+		return SwitchPlan{}, ErrSwitchNotActive
+	case to == active:
+		return SwitchPlan{}, ErrSwitchSame
+	}
+	meta, err := c.readMeta(to)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return SwitchPlan{}, ErrSwitchNoTarget
+	case err != nil:
+		return SwitchPlan{}, ErrSwitchUnreadable
+	case meta.Newer():
+		return SwitchPlan{}, ErrSwitchNewer
+	}
+	cur, next := c.Status(from), c.Status(to)
+	if busy(cur.Operation) || busy(next.Operation) {
+		return SwitchPlan{}, ErrSwitchBusy
+	}
+	var plan SwitchPlan
+	switch cur.State {
+	case StateRunning, StateCrashed:
+		plan.Running = true
+	case StateStopped, StateCrashLooping:
+	default:
+		return SwitchPlan{}, ErrSwitchUnsettled
+	}
+	var pe *PrecheckError
+	if err := c.precheckReadOnly(to, "", StartOptions{}); errors.As(err, &pe) {
+		plan.Check = pe.Check
+	} else if err != nil {
+		return SwitchPlan{}, err
+	}
+	ref, present, err := c.ImageFor(ctx, to)
+	if err != nil {
+		return SwitchPlan{}, err
+	}
+	plan.Image, plan.Download = ref, !present
+	if _, err := c.gameNetwork(ctx); err != nil {
+		return SwitchPlan{}, err
+	}
+	cont, found, err := c.ourContainer(ctx, to)
+	if err != nil {
+		return SwitchPlan{}, err
+	}
+	if found {
+		switch cont.State.Status {
+		case "running", "restarting", "paused":
+			return SwitchPlan{}, ErrSwitchTargetRunning
+		}
+	}
+	return plan, nil
+}
+
+func busy(op *Operation) bool { return op != nil && !op.Done }
+
+// switchSteps lists a switch's steps in the order of SPEC 7.9. A missing
+// image is downloaded first, before the stop, as an update does (SPEC 10.3).
+// A switch that leaves the game stopped neither checks nor starts the new
+// world, so it shows neither.
+func switchSteps(plan SwitchPlan, opts StartOptions, start bool) [][]string {
+	var steps [][]string
+	if plan.Download {
+		steps = append(steps, []string{StepDownload})
+	}
+	steps = append(steps, stopSteps, []string{StepSnapshotBoth})
+	if start {
+		steps = append(steps, checkStepsFor(opts))
+	}
+	steps = append(steps, []string{StepPresent})
+	if start {
+		steps = append(steps, launchSteps)
+	}
+	return steps
+}
+
+// Switch makes to the active world in place of from (SPEC 7.9, 7.10), and
+// starts it when start is set; otherwise the game ends stopped. Everything
+// that could refuse is checked before from is stopped (SPEC 7.8). A missing
+// game image for to is downloaded before the switch record is written and
+// before the stop, so a failed download leaves from running and untouched.
+// The pre-start problems of to refuse only a switch that starts it, unless
+// opts goes ahead anyway. Both worlds are locked, show the operation and are
+// busy until it ends; a forced stop on either interrupts it. It can take
+// StartTimeout after the stop; run it with a context that outlives the
+// request.
+func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop StopOptions, opts StartOptions, start bool) error {
 	if c.switches == nil {
 		return ErrSwitchUnavailable
 	}
@@ -84,29 +213,47 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 		return err
 	}
 	defer unlock()
-	opts.running = IsRunning(c.Status(from).State)
-	if err := c.switchChecks(ctx, from, to, opts); err != nil {
-		return c.checkFailed(ctx, by, AuditSwitch, from, switchDetail(from, to, opts), err)
+	if !start {
+		opts.Anyway = false
+	}
+	plan, err := c.PlanSwitch(ctx, from, to)
+	detail := switchDetail(from, to, plan, opts, start)
+	if err != nil {
+		if isSwitchRefusal(err) {
+			return c.refused(ctx, by, AuditSwitch, from, detail, err)
+		}
+		return c.checkFailed(ctx, by, AuditSwitch, from, detail, err)
+	}
+	opts.running = plan.Running
+	if start {
+		if err := c.allowStart(plan.Check, opts); err != nil {
+			return c.checkFailed(ctx, by, AuditSwitch, from, detail, err)
+		}
 	}
 	// Compared before the stop; the check after the snapshots does not.
 	opts.confirmed = true
-	if err := c.audit(ctx, by, AuditSwitch, from, switchDetail(from, to, opts)); err != nil {
-		return err
-	}
-	// A record from an earlier switch from this world is stale: from's lock
-	// is held, so no switch from it is running (SPEC 7.10).
-	if err := c.switches.EndSwitch(ctx, from); err != nil {
-		return err
-	}
-	if err := c.switches.BeginSwitch(ctx, from, to, by.Username, c.now()); err != nil {
+	if err := c.audit(ctx, by, AuditSwitch, from, detail); err != nil {
 		return err
 	}
 	ws := []*worldRun{c.world(from), c.world(to)}
 	slices.SortFunc(ws, func(a, b *worldRun) int { return strings.Compare(a.id, b.id) })
-	op := newOperation(AuditSwitch, c.switchSteps(opts)...)
+	op := newOperation(AuditSwitch, switchSteps(plan, opts, start)...)
 	op.Switch = &SwitchInfo{From: from, To: to}
 	ctx, o := c.beginOpOn(ctx, ws, op)
-	err = c.switchLocked(ctx, o, from, to, by, countdown, opts)
+	if plan.Download {
+		if err := c.switchDownload(ctx, o, plan.Image); err != nil {
+			return o.end(err)
+		}
+	}
+	// A record from an earlier switch from this world is stale: from's lock
+	// is held, so no switch from it is running (SPEC 7.10).
+	if err := c.switches.EndSwitch(ctx, from); err != nil {
+		return o.end(err)
+	}
+	if err := c.switches.BeginSwitch(ctx, from, to, by.Username, c.now()); err != nil {
+		return o.end(err)
+	}
+	err = c.switchLocked(ctx, o, from, to, by, countdown, opts, start)
 	// The record goes whether the switch worked or failed (SPEC 7.10), even
 	// after a forced stop.
 	if endErr := c.switches.EndSwitch(context.WithoutCancel(ctx), from); endErr != nil {
@@ -115,9 +262,35 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 	return o.end(err)
 }
 
-func switchDetail(from, to string, opts StartOptions) string {
+// switchDownload downloads the new world's game image, which the admin
+// confirmed on the switch page (SPEC 3.7). An image that arrived since the
+// plan is not downloaded again.
+func (c *Controller) switchDownload(ctx context.Context, o *opRun, ref string) error {
+	o.begin(StepDownload)
+	_, err := c.docker.InspectImage(ctx, ref)
+	if err == nil {
+		o.skip(StepDownload)
+		return nil
+	}
+	if !errors.Is(err, docker.ErrNotFound) {
+		return err
+	}
+	if err := c.docker.PullImage(ctx, ref); err != nil {
+		return fmt.Errorf("download %s: %w", ref, err)
+	}
+	o.done(StepDownload)
+	return nil
+}
+
+func switchDetail(from, to string, plan SwitchPlan, opts StartOptions, start bool) string {
 	d := "from " + from + " to " + to
-	if opts.Anyway {
+	if plan.Download {
+		d += ", download " + plan.Image
+	}
+	switch {
+	case !start:
+		d += ", leave stopped"
+	case opts.Anyway:
 		d += ", start anyway"
 	}
 	return d
@@ -143,51 +316,13 @@ func (c *Controller) lockWorlds(ids ...string) (unlock func(), err error) {
 	return release, nil
 }
 
-// switchChecks refuses, before anything is stopped, a switch whose start
-// would be refused (SPEC 7.8, 7.9).
-func (c *Controller) switchChecks(ctx context.Context, from, to string, opts StartOptions) error {
-	active, found, err := c.switches.ActiveWorld(ctx)
-	if err != nil {
-		return err
-	}
-	if !found || active != from {
-		return ErrSwitchNotActive
-	}
-	if _, err := c.readMeta(to); errors.Is(err, fs.ErrNotExist) {
-		return ErrSwitchNoTarget
-	} else if err != nil {
-		return err
-	}
-	if err := c.precheckReadOnly(to, "", opts); err != nil {
-		return err
-	}
-	if _, _, err := c.gameImage(ctx, to); err != nil {
-		return err
-	}
-	if _, err := c.gameNetwork(ctx); err != nil {
-		return err
-	}
-	cont, found, err := c.ourContainer(ctx, to)
-	if err != nil {
-		return err
-	}
-	if found {
-		switch cont.State.Status {
-		case "running", "restarting", "paused":
-			return ErrSwitchTargetRunning
-		}
-	}
-	return nil
-}
-
 // switchLocked runs the switch steps. The caller holds both worlds' locks
 // and the switch record. The order alone keeps SPEC 7.10: the old game is
-// stopped and the new world checked before the new world is made active.
-func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string, by Actor, countdown time.Duration, opts StartOptions) error {
+// stopped, and a new world that will start is checked, before the new world
+// is made active.
+func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string, by Actor, countdown time.Duration, opts StartOptions, start bool) error {
 	o.w = c.world(from)
-	err := c.stopLocked(ctx, o, countdown)
-	wasRunning := err == nil
-	if err != nil && !errors.Is(err, ErrNotRunning) {
+	if err := c.stopLocked(ctx, o, countdown); err != nil && !errors.Is(err, ErrNotRunning) {
 		return err
 	}
 
@@ -208,8 +343,10 @@ func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string
 	o.done(StepSnapshotBoth)
 
 	o.w = c.world(to)
-	if err := c.checkLocked(ctx, o, by, opts); err != nil {
-		return err
+	if start {
+		if err := c.checkLocked(ctx, o, by, opts); err != nil {
+			return err
+		}
 	}
 
 	o.begin(StepPresent)
@@ -227,8 +364,7 @@ func (c *Controller) switchLocked(ctx context.Context, o *opRun, from, to string
 	o.unlockAll()
 	o.done(StepPresent)
 
-	if !wasRunning {
-		o.skip(launchSteps...)
+	if !start {
 		return nil
 	}
 	if err := c.launchLocked(ctx, o); err != nil {
