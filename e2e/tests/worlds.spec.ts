@@ -323,8 +323,9 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
 
   await page.getByLabel("Name", { exact: true }).fill("Main base");
   await page.getByRole("button", { name: "Rename world" }).click();
-  await expect(page).toHaveURL("/worlds/base");
+  await expect(page).toHaveURL(/\/worlds\/base\?renamed=Main\+base$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Main base");
+  await expect(page.locator(".message--success p")).toHaveText("Done: Renamed to Main base.");
 });
 
 test("a world a newer Foreman wrote cannot be renamed", async ({ page, foreman }) => {

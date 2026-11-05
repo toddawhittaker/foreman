@@ -10,6 +10,12 @@
   {{- end}}
 </div>
 {{- end}}
+{{- if .Page.SwitchWait}}
+<div class="message message--note">
+  <p><strong>Note:</strong> Switching is unavailable while an operation runs on the server.</p>
+  <div class="actions"><a href="{{serverPath}}">See the Server page</a></div>
+</div>
+{{- end}}
 <div class="actions">
   <a href="{{.Page.ImportPath}}" class="button">Import a world</a>
   <a href="{{deletedPath}}">Deleted worlds</a>
@@ -20,7 +26,7 @@
   <ul class="worlds" role="list">
     {{- range .}}
     <li>
-      <h3><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>
+      <h3 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>
       {{- if .Unreadable}}
       <p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.ID}}</code>.</p>
       {{- else if .Newer}}
@@ -32,6 +38,14 @@
         <div><dt>Last played</dt><dd>{{if .LastPlayedUnknown}}unknown{{else if .LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .LastPlayed}}">{{utc .LastPlayed}}</time>{{end}}</dd></div>
         <div><dt>Disk use</dt><dd>{{if .SizeUnknown}}unknown{{else}}{{bytes .DiskBytes}}{{end}}</dd></div>
       </dl>
+      {{- with index $.Page.Busy .ID}}
+      <p><strong>Busy:</strong> {{.}}</p>
+      {{- end}}
+      {{- if index $.Page.Switchable .ID}}
+      <div class="actions">
+        <a href="{{$.Page.SwitchPath .ID}}" class="button" aria-describedby="world-{{.ID}}">Switch</a>
+      </div>
+      {{- end}}
     </li>
     {{- end}}
   </ul>

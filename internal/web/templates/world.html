@@ -9,6 +9,30 @@
 {{- else if .World.Newer}}
 <p>A newer version of Foreman wrote this world, so this version cannot change it.</p>
 {{- end}}
+{{- with .Done}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- with .Busy}}
+<div class="message message--note">
+  <p><strong>Note:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- if .CanSwitch}}
+<section class="panel" aria-labelledby="switch-heading">
+  <h2 id="switch-heading">Switch</h2>
+  <p>Make this the active world. Foreman snapshots both worlds first. It starts this world if the server is running, and leaves the server stopped if it is stopped.</p>
+  <div class="actions">
+    <a href="{{.SwitchPath}}" class="button button--primary" id="act-switch">Switch to this world</a>
+  </div>
+</section>
+{{- else if .SwitchNote}}
+<section class="panel" aria-labelledby="switch-heading">
+  <h2 id="switch-heading">Switch</h2>
+  <p>{{.SwitchNote}}{{if .SwitchBusy}} See <a href="{{serverPath}}">the Server page</a>.{{end}}</p>
+</section>
+{{- end}}
 <section class="panel" aria-labelledby="facts-heading">
   <h2 id="facts-heading">About this world</h2>
   <dl class="facts">
@@ -47,31 +71,6 @@
   {{- end}}
 </section>
 {{- end}}
-{{- if .CanSwitch}}
-<section class="panel" aria-labelledby="switch-heading">
-  <h2 id="switch-heading">Switch</h2>
-  <p>Make this the active world. Foreman snapshots both worlds first. It starts this world if the server is running, and leaves the server stopped if it is stopped.</p>
-  <div class="actions">
-    <a href="{{.SwitchPath}}" class="button" id="act-switch">Switch to this world</a>
-  </div>
-</section>
-{{- else if .SwitchNote}}
-<section class="panel" aria-labelledby="switch-heading">
-  <h2 id="switch-heading">Switch</h2>
-  <p>{{.SwitchNote}}{{if .SwitchBusy}} See <a href="{{serverPath}}">the Server page</a>.{{end}}</p>
-</section>
-{{- end}}
-<section class="panel" aria-labelledby="delete-heading">
-  <h2 id="delete-heading">Delete</h2>
-  {{- with .DeleteRefusal}}
-  <p>{{.}}</p>
-  {{- else}}
-  <p>Deleting removes the world's folder. Its snapshots stay, so it can be restored.</p>
-  <div class="actions">
-    <a href="{{.DeletePath}}" class="button">Delete world</a>
-  </div>
-  {{- end}}
-</section>
 {{- if not (or .World.Newer .World.Unreadable)}}
 <form method="post" action="{{.RenamePath}}" class="panel" novalidate aria-labelledby="rename-heading">
   <h2 id="rename-heading">Rename</h2>
@@ -86,9 +85,20 @@
     {{- end}}
   </div>
   <div class="actions">
-    <button type="submit" class="button button--primary">Rename world</button>
+    <button type="submit" class="button">Rename world</button>
   </div>
 </form>
 {{- end}}
+<section class="panel" aria-labelledby="delete-heading">
+  <h2 id="delete-heading">Delete</h2>
+  {{- with .DeleteRefusal}}
+  <p>{{.}}</p>
+  {{- else}}
+  <p>Deleting removes the world's folder. Its snapshots stay, so it can be restored.</p>
+  <div class="actions">
+    <a href="{{.DeletePath}}" class="button">Delete world</a>
+  </div>
+  {{- end}}
+</section>
 {{end}}
 {{- end}}

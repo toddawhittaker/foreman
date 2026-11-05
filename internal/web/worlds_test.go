@@ -173,9 +173,12 @@ func TestWorldPageAndRename(t *testing.T) {
 		t.Errorf("missing world: %d", rec.Code)
 	}
 
-	hn.wantRedirect(hn.post("/worlds/base/rename", url.Values{"name": {"New base"}}, withCookie(c)), "/worlds/base")
-	if body := hn.get("/worlds/base", withCookie(c)).Body.String(); !strings.Contains(body, "<h1>New base") {
+	hn.wantRedirect(hn.post("/worlds/base/rename", url.Values{"name": {"New base"}}, withCookie(c)), "/worlds/base?renamed=New+base")
+	if body := hn.get("/worlds/base?renamed=New+base", withCookie(c)).Body.String(); !strings.Contains(body, "<h1>New base") || !strings.Contains(body, "Renamed to New base.") {
 		t.Error("rename did not show")
+	}
+	if body := hn.get("/worlds/base?renamed=Something+else", withCookie(c)).Body.String(); strings.Contains(body, "Renamed to") {
+		t.Error("a link naming another world's name was believed")
 	}
 	rec := hn.post("/worlds/base/rename", url.Values{"name": {"OTHER"}}, withCookie(c))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Another world already has this name") {
