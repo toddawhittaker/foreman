@@ -89,7 +89,7 @@ func TestSpoofedHeadersFromUntrustedPeerAreIgnored(t *testing.T) {
 			t.Error("a spoofed header created a user")
 		}
 		hn.addUser("alice", testPassword)
-		hn.wantRedirect(hn.get(PathWorlds, spoof...), PathSignIn)
+		hn.wantRedirect(hn.get(PathWorlds, spoof...), signInAfter(PathWorlds))
 	})
 }
 
@@ -195,7 +195,7 @@ func TestHeadersFromAGameNetworkAreIgnored(t *testing.T) {
 			t.Error("the page shows a header value")
 		}
 		// With no proxy headers, a visitor is sent to sign in as usual.
-		hn.wantRedirect(hn.get(PathWorlds, withPeer(peerProxy)), PathSignIn)
+		hn.wantRedirect(hn.get(PathWorlds, withPeer(peerProxy)), signInAfter(PathWorlds))
 	})
 	t.Run("password sign-in and sessions still work", func(t *testing.T) {
 		hn := headerHarnessWithGame(t, "local,headers", fakeNets{})

@@ -60,7 +60,7 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   // Three columns, the reason above the label (DESIGN 8.3).
   await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
   await expect(rows.first().locator("td").first()).toContainText(/^Manual\s*Before the rocket/);
-  await expect(rows.first().locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+  await expect(rows.first().locator("time")).toHaveText(/\d{1,2}:\d{2}.*\((now|\d+ seconds? ago)\)$/);
   await checkPage(page);
 
   // Play on: the save is replaced and a new one appears.

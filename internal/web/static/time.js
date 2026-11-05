@@ -1,0 +1,71 @@
+// Shows each <time datetime="..."> in the browser's time zone, followed by
+// how long ago it was. Without this script the page keeps the UTC text the
+// server wrote (DESIGN 9). Durations such as the uptime are left alone.
+(function () {
+  "use strict";
+
+  var absolute = /^\d{4}-\d\d-\d\dT/;
+  var steps = [
+    ["second", 60],
+    ["minute", 60],
+    ["hour", 24],
+    ["day", 30],
+    ["month", 12],
+    ["year", Infinity],
+  ];
+
+  function relative(date) {
+    var rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    var amount = (date.getTime() - Date.now()) / 1000;
+    for (var i = 0; i < steps.length; i++) {
+      if (Math.abs(amount) < steps[i][1] || steps[i][1] === Infinity) {
+        return rtf.format(Math.round(amount), steps[i][0]);
+      }
+      amount /= steps[i][1];
+    }
+  }
+
+  function localize(el) {
+    var iso = el.getAttribute("datetime");
+    if (el.dataset.local || !iso || !absolute.test(iso)) {
+      return;
+    }
+    var date = new Date(iso);
+    if (isNaN(date.getTime())) {
+      return;
+    }
+    var withSeconds = /:\d\d:\d\d/.test(el.textContent);
+    // The year is left out for a date in the current year, to keep the line short.
+    var dayOptions = { month: "short", day: "numeric" };
+    if (date.getFullYear() !== new Date().getFullYear()) {
+      dayOptions.year = "numeric";
+    }
+    var day = new Intl.DateTimeFormat(undefined, dayOptions).format(date);
+    var clock = new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      second: withSeconds ? "2-digit" : undefined,
+      timeZoneName: "short",
+    }).format(date);
+
+    // A table cell keeps its date and clock each on one line (DESIGN 8.3).
+    var parts = el.querySelectorAll(":scope > .nowrap");
+    if (parts.length === 2) {
+      parts[0].textContent = day;
+      parts[1].textContent = clock;
+    } else {
+      el.textContent = day + " " + clock;
+    }
+    el.append(" (" + relative(date) + ")");
+    el.dataset.local = "true";
+  }
+
+  function run(root) {
+    root.querySelectorAll("time[datetime]").forEach(localize);
+  }
+
+  run(document);
+  document.addEventListener("htmx:afterSettle", function () {
+    run(document);
+  });
+})();
