@@ -64,33 +64,37 @@ func (s *server) fragment(w http.ResponseWriter, r *http.Request, p Page, name s
 	_, _ = w.Write([]byte(b.String()))
 }
 
-// fetchReleases asks for the image versions and the latest releases. ok is
-// false when there is no client or either call fails.
-func (s *server) fetchReleases(ctx context.Context) (versions []string, latest releases.Latest, ok bool) {
-	if s.releases == nil {
-		return nil, releases.Latest{}, false
-	}
-	versions, verr := s.releases.Versions(ctx)
-	latest, lerr := s.releases.Latest(ctx)
-	return versions, latest, verr == nil && lerr == nil
-}
-
 func newer(v, than string) bool {
 	return v != "" && (than == "" || world.CompareGameVersions(v, than) > 0)
 }
 
 // handleVersions fills a game version input's suggestion list (SPEC 10.7).
 func (s *server) handleVersions(w http.ResponseWriter, r *http.Request, _ store.User) {
-	p := VersionPicker{Above: strings.TrimSpace(r.URL.Query().Get("above"))}
-	versions, latest, ok := s.fetchReleases(r.Context())
-	p.Unreachable = !ok
-	p.Stable, p.Experimental = latest.Stable, latest.Experimental
+	above := strings.TrimSpace(r.URL.Query().Get("above"))
+	s.fragment(w, r, s.versionPicker(r.Context(), above), "version-list")
+}
+
+// versionPicker lists the image versions newer than above. The list needs
+// only Versions; Latest only labels it, so its failure leaves no labels.
+func (s *server) versionPicker(ctx context.Context, above string) VersionPicker {
+	p := VersionPicker{Above: above, Unreachable: true}
+	if s.releases == nil {
+		return p
+	}
+	versions, err := s.releases.Versions(ctx)
+	if err != nil {
+		return p
+	}
+	p.Unreachable = false
+	if latest, err := s.releases.Latest(ctx); err == nil {
+		p.Stable, p.Experimental = latest.Stable, latest.Experimental
+	}
 	for _, v := range versions {
-		if newer(v, p.Above) {
+		if newer(v, above) {
 			p.Versions = append(p.Versions, v)
 		}
 	}
-	s.fragment(w, r, p, "version-list")
+	return p
 }
 
 // handleReleases says whether a newer release than the world's is out
@@ -100,12 +104,21 @@ func (s *server) handleReleases(w http.ResponseWriter, r *http.Request, u store.
 	if !ok {
 		return
 	}
+	s.fragment(w, r, s.releaseNotice(r.Context(), sum), "release-notice")
+}
+
+// releaseNotice needs Latest, and Versions only when a newer release is
+// out, to say whether it has an image yet.
+func (s *server) releaseNotice(ctx context.Context, sum world.Summary) ReleaseNotice {
 	p := ReleaseNotice{Current: sum.GameVersion}
-	versions, latest, ok := s.fetchReleases(r.Context())
-	if !ok {
+	if s.releases == nil {
 		p.Unreachable = true
-		s.fragment(w, r, p, "release-notice")
-		return
+		return p
+	}
+	latest, err := s.releases.Latest(ctx)
+	if err != nil {
+		p.Unreachable = true
+		return p
 	}
 	if newer(latest.Stable, p.Current) {
 		p.Stable = latest.Stable
@@ -117,16 +130,21 @@ func (s *server) handleReleases(w http.ResponseWriter, r *http.Request, u store.
 	if target == "" {
 		target = p.Experimental
 	}
-	if target != "" {
-		p.ChangelogURL = changelogURL(target)
-		for _, v := range versions {
-			if v == target {
-				p.UpdatePath = updatePath(sum.ID) + "?" + url.Values{"game_version": {target}}.Encode()
-				break
-			}
+	if target == "" {
+		return p
+	}
+	versions, err := s.releases.Versions(ctx)
+	if err != nil {
+		return ReleaseNotice{Current: p.Current, Unreachable: true}
+	}
+	p.ChangelogURL = changelogURL(target)
+	for _, v := range versions {
+		if v == target {
+			p.UpdatePath = updatePath(sum.ID) + "?" + url.Values{"game_version": {target}}.Encode()
+			break
 		}
 	}
-	s.fragment(w, r, p, "release-notice")
+	return p
 }
 
 // updatePage builds the update confirmation. A refusal that the form
