@@ -89,8 +89,11 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
+# SHARD=1/4 runs the first of four slices of the tests; empty runs them all.
+SHARD ?=
+
 e2e: build build-fakegame e2e-deps
-	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
+	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD))
 
 # Foreman runs a world on the plain tag factoriotools/factorio:<version>, so
 # the tests do too. A tag can move or be re-pushed, so before a real-game run
