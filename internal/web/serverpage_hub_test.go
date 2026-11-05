@@ -139,7 +139,8 @@ func TestCountdownShowsTimeLeftPlayersAndCancel(t *testing.T) {
 	}
 	p := countdown(nil)
 	html := controlHTML(t, p)
-	wantAll(t, "control", html, "Warn players: 18 seconds left",
+	// The browser counts down from data-until; without script the text shows the time left at render.
+	wantAll(t, "control", html, `Warn players: <span data-until="`+now.Add(17*time.Second+time.Millisecond).UTC().Format(time.RFC3339)+`">18 seconds left</span>`,
 		`<form method="post" action="/worlds/base/cancel-stop" class="actions"><button type="submit" class="button button--primary" id="act-cancel-stop">Cancel stop</button></form>`)
 	wantIDs(t, html)
 	players := fragmentHTML(t, p, "server-players")
@@ -300,28 +301,24 @@ func TestCancelStopOverHTTP(t *testing.T) {
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))
 	g.waitPage("Cancel stop", "seconds left", "1 online when the stop began", "<td>alice</td>")
 
-	// The live page counts the time left down with no change of status. The
-	// page reads the rig's clock, which moves only when told to.
+	// Time passing alone sends nothing: the browser counts down from
+	// data-until, so Cancel stop is never swapped out under a tap (DESIGN
+	// 7.6). The page reads the rig's clock, which moves only when told to.
 	events, _, closeEvents := g.collectEvents(id)
-	ticking := make(chan struct{})
-	defer close(ticking)
-	go func() {
-		for {
-			select {
-			case <-ticking:
-				return
-			case <-time.After(250 * time.Millisecond):
-				g.clock.Advance(time.Second)
-			}
-		}
-	}()
-	left := regexp.MustCompile(`Warn players: (\d+) seconds left`)
+	left := regexp.MustCompile(`Warn players: <span data-until="[^"]+">(\d+) seconds left</span>`)
 	deadline := time.Now().Add(5 * time.Second)
-	for len(uniq(left.FindAllStringSubmatch(events.String(), -1))) < 2 {
+	for !left.MatchString(events.String()) {
 		if time.Now().After(deadline) {
-			t.Fatalf("the time left never changed:\n%s", events.String())
+			t.Fatalf("the first send lacks the time left:\n%s", events.String())
 		}
 		time.Sleep(50 * time.Millisecond)
+	}
+	for range 3 {
+		g.clock.Advance(time.Second)
+		time.Sleep(500 * time.Millisecond)
+	}
+	if n := strings.Count(events.String(), "event: control\n"); n != 1 {
+		t.Fatalf("control sent %d times while only time passed, want 1:\n%s", n, events.String())
 	}
 	closeEvents()
 
@@ -439,13 +436,4 @@ func TestWorldPageSaysImageIsMissing(t *testing.T) {
 
 	g.addImage("2.1.24")
 	g.wantMissing("with the image", g.get(worldPath(b)), "which is not on this host")
-}
-
-// uniq returns the distinct first groups of regexp matches.
-func uniq(matches [][]string) map[string]bool {
-	out := map[string]bool{}
-	for _, m := range matches {
-		out[m[1]] = true
-	}
-	return out
 }

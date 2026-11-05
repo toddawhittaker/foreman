@@ -1,6 +1,7 @@
 {{define "title"}}Server{{end}}
 
-{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
+<script src="{{static "countdown.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -207,8 +208,9 @@
      failure goes. */}}
 {{define "server-steps" -}}
 <ol class="steps" role="list">
-  {{- range .Steps}}
-  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> <span class="step-name">{{.Name}}{{with $.Left .}}: {{.}}{{end}}</span>
+  {{- range $step := .Steps}}
+  {{- /* countdown.js counts the time left down in place, so the buttons are never swapped each second (DESIGN 7.6). */}}
+  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> <span class="step-name">{{.Name}}{{with $.Left .}}: <span data-until="{{isoTime $step.Until}}">{{.}}</span>{{end}}</span>
     {{- if eq .State "progress"}}
     <progress aria-label="{{.Name}}"></progress>
     {{- end}}

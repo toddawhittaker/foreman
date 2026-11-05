@@ -43,7 +43,7 @@
       {{- end}}
       {{- if index $.Page.Switchable .ID}}
       <div class="actions">
-        <a href="{{$.Page.SwitchPath .ID}}" class="button" aria-describedby="world-{{.ID}}">Switch</a>
+        <a href="{{$.Page.SwitchPath .ID}}" class="button">Switch<span class="visually-hidden"> to {{.Name}}</span></a>
       </div>
       {{- end}}
     </li>

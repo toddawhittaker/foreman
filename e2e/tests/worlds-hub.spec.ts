@@ -40,11 +40,11 @@ test("each world but the active one has a Switch button on the list", async ({ p
   await page.goto("/worlds");
 
   await expect(row(page, "Base").getByRole("link", { name: /Switch/ })).toHaveCount(0);
-  // The row names the world, so the button is "Switch" and its description is the world's name.
-  const button = row(page, "Second").getByRole("link", { name: "Switch", exact: true });
+  // The screen shows "Switch" beside the world's name; a screen reader hears which world.
+  const button = row(page, "Second").getByRole("link", { name: "Switch to Second", exact: true });
   await expect(button).toHaveClass(/button/);
-  await expect(button).toHaveAccessibleDescription("Second");
-  await expect(row(page, "Third").getByRole("link", { name: "Switch", exact: true })).toBeVisible();
+  await expect(button.locator(".visually-hidden")).toHaveText(/^\s*to Second$/);
+  await expect(row(page, "Third").getByRole("link", { name: "Switch to Third", exact: true })).toBeVisible();
   await expect(page.getByText("Switching is unavailable")).toHaveCount(0);
   await checkPage(page);
 
@@ -103,7 +103,7 @@ test("a running switch is shown on both of its worlds and not on others", async 
   await expect(row(page, "Base")).toContainText(busy);
   await expect(row(page, "Second")).toContainText(busy);
   await expect(row(page, "Third")).not.toContainText("Switching");
-  await expect(page.getByRole("link", { name: "Switch", exact: true })).toHaveCount(0);
+  await expect(page.locator("ul.worlds").getByRole("link", { name: /^Switch to / })).toHaveCount(0);
   await expect(page.locator(".message--note")).toContainText("Switching is unavailable while an operation runs on the server");
   await checkPage(page);
 
