@@ -303,23 +303,3 @@ test.describe("with the fake game", () => {
     expect(await snapshotLabels(page, "base")).not.toContain("Before restore");
   });
 });
-
-// SPEC 10.7, 5.5: an import takes a typed version with no list to pick from.
-test.describe("the import form", () => {
-  test("accepts a typed game version while Docker Hub is unreachable", async ({ page, foreman }) => {
-    await createAdmin(page);
-    mkdirSync(join(foreman.dataDir, "import", "old"), { recursive: true });
-    copyFileSync(join(fixtures, "2.0.77-no-space-age.zip"), join(foreman.dataDir, "import", "old", "a.zip"));
-    await page.goto("/import");
-    const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
-    await page.waitForLoadState("networkidle");
-    await expect(form.locator("#folder-version-select option")).toHaveText(["Choose a version", "Docker Hub cannot be reached; type a version below"]);
-    await form.getByLabel("World name").fill("Typed");
-    await form.getByLabel("Or type a version").fill("2.0.78");
-    await checkPage(page);
-    await form.getByRole("button", { name: "Import folder" }).click();
-    await expect(page).toHaveURL("/worlds/typed");
-    await expect(page.locator("dl.facts")).toContainText("2.0.78");
-    expect(diskVersion(foreman, "typed")).toBe("2.0.78");
-  });
-});

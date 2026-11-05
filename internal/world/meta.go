@@ -29,21 +29,36 @@ type Meta struct {
 	// LoadSave names the save to load; empty means the newest (SPEC 7.11).
 	LoadSave  string
 	CreatedAt time.Time
+	// ImportedFrom says which inbox folder and save the world was imported
+	// from; nil for a world not imported from a folder (SPEC 5.5).
+	ImportedFrom *ImportedFrom
 
 	unknown map[string]json.RawMessage
 }
 
 // metaKnown is the on-disk shape of the fields Foreman knows.
 type metaKnown struct {
-	FormatVersion int       `json:"format_version"`
-	Name          string    `json:"name"`
-	GameVersion   string    `json:"game_version"`
-	SpaceAge      bool      `json:"space_age"`
-	LoadSave      string    `json:"load_save,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	FormatVersion int           `json:"format_version"`
+	Name          string        `json:"name"`
+	GameVersion   string        `json:"game_version"`
+	SpaceAge      bool          `json:"space_age"`
+	LoadSave      string        `json:"load_save,omitempty"`
+	CreatedAt     time.Time     `json:"created_at"`
+	ImportedFrom  *ImportedFrom `json:"imported_from,omitempty"`
 }
 
-var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at"}
+// ImportedFrom records the inbox folder a world was imported from and that
+// folder's newest save at the time, so the Import page can tell a folder
+// already imported from one with a newer save (SPEC 5.5).
+type ImportedFrom struct {
+	Folder    string    `json:"folder"`
+	Save      string    `json:"save"`
+	SaveSize  uint64    `json:"save_size"`
+	SaveMtime time.Time `json:"save_mtime"`
+	At        time.Time `json:"at"`
+}
+
+var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from"}
 
 // Newer reports whether a newer Foreman wrote m, so this one must not change it.
 func (m Meta) Newer() bool { return m.FormatVersion > FormatVersion }
@@ -57,6 +72,7 @@ func (m Meta) MarshalJSON() ([]byte, error) {
 		SpaceAge:      m.SpaceAge,
 		LoadSave:      m.LoadSave,
 		CreatedAt:     m.CreatedAt.UTC(),
+		ImportedFrom:  m.ImportedFrom,
 	})
 	if err != nil {
 		return nil, err
@@ -98,6 +114,7 @@ func (m *Meta) UnmarshalJSON(b []byte) error {
 		SpaceAge:      k.SpaceAge,
 		LoadSave:      k.LoadSave,
 		CreatedAt:     k.CreatedAt,
+		ImportedFrom:  k.ImportedFrom,
 		unknown:       all,
 	}
 	return nil

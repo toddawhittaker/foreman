@@ -218,6 +218,13 @@ func TestInboxListsRealFoldersOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(got) == 1 {
+		n := got[0].Newest
+		if n.path != "later.zip" || n.size != 9 || !n.mtime.Equal(time.Date(2025, 6, 1, 13, 0, 0, 0, time.UTC)) {
+			t.Errorf("newest save = %+v, want later.zip", n)
+		}
+		got[0].Newest = importFile{}
+	}
 	want := []InboxFolder{{Name: "saves-2025", Saves: 2, HasMods: true, Bytes: 8 + 9 + 2 + 3}}
 	if !slices.Equal(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)

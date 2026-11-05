@@ -14,6 +14,20 @@
   <p><strong>Done:</strong> {{.}}</p>
 </div>
 {{- end}}
+{{- with .Warning}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- if eq .Download "running"}}
+<div class="message message--note" id="image-download">
+  <p><strong>Note:</strong> Downloading the game image for Factorio <code>{{.World.GameVersion}}</code> from Docker Hub. Reload this page to see when it ends.</p>
+</div>
+{{- else if eq .Download "failed"}}
+<div class="message message--warning" id="image-download">
+  <p><strong>Warning:</strong> The game image for Factorio <code>{{.World.GameVersion}}</code> could not be downloaded. The details are in Foreman's log. A switch to this world tries the download again.</p>
+</div>
+{{- end}}
 {{- with .Busy}}
 <div class="message message--note">
   <p><strong>Note:</strong> {{.}}</p>
@@ -46,6 +60,9 @@
     <div><dt>Game version</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
     <div><dt>Space Age</dt><dd>{{if .World.SpaceAge}}On{{else}}Off{{end}}</dd></div>
     <div><dt>Last played</dt><dd>{{if .World.LastPlayedUnknown}}unknown{{else if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
+    {{- with .ImportedFrom}}
+    <div><dt>Imported from</dt><dd>The folder <code>{{.Folder}}</code>, save <code>{{.Save}}</code>, on <time datetime="{{isoTime .At}}">{{utc .At}}</time></dd></div>
+    {{- end}}
     <div><dt>Disk use</dt><dd>{{if .World.SizeUnknown}}unknown{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
   </dl>
   <div class="actions">

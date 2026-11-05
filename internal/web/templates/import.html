@@ -7,39 +7,71 @@
 <div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
 <h1>Import a world</h1>
 <p>Importing copies files into a new world. The original files are never moved or changed.</p>
+{{- with .Result}}
+{{- if .Imported}}
+<div class="message message--success" id="import-result" tabindex="-1" autofocus>
+  <p><strong>Done:</strong> Imported {{len .Imported}} {{if eq (len .Imported) 1}}folder{{else}}folders{{end}}.</p>
+  <ul>
+    {{- range .Imported}}
+    <li><code>{{.Folder}}</code> as <a href="{{$.Page.WorldPath .WorldID}}">{{.WorldName}}</a></li>
+    {{- end}}
+  </ul>
+  {{- with .Downloads}}
+  <p>Downloading the game image for Factorio {{range $i, $v := .}}{{if $i}}, {{end}}<code>{{$v}}</code>{{end}}. Each world's page shows how the download goes.</p>
+  {{- end}}
+</div>
+{{- end}}
+{{- with .Skipped}}
+<div class="message message--warning"{{if not $.Page.Result.Imported}} id="import-result" tabindex="-1" autofocus{{end}}>
+  <p><strong>Warning:</strong> {{len .}} {{if eq (len .) 1}}folder was{{else}}folders were{{end}} not imported.</p>
+  <ul>
+    {{- range .}}
+    <li><code>{{.Folder}}</code>: {{.Reason}}</li>
+    {{- end}}
+  </ul>
+</div>
+{{- end}}
+{{- end}}
 
 <form method="post" action="{{.FolderPath}}" class="panel" novalidate aria-labelledby="folder-heading">
   <h2 id="folder-heading">Import a folder</h2>
   {{template "summary" .Folder.Problems}}
   <p>Put a folder of saves in <code>{{.InboxDir}}</code>. Foreman copies the save files (<code>.zip</code>) at its top level or in its <code>saves</code> folder, its <code>mods</code> folder if it has one, and the settings files in its <code>config</code> folder (not <code>rconpw</code>; Foreman makes its own).</p>
   {{- with .Folder}}
-  {{- if $.Page.Inbox}}
+  {{- if $.Page.Importable}}
   <fieldset{{with .SourceError}} aria-describedby="folder-source-error"{{end}}>
-    <legend>Folder</legend>
+    <legend>Folders</legend>
+    <p class="hint" id="folder-many-hint">Tick one folder to choose its name and version below. With several ticked, each becomes a world named after its folder, with its save's version and Space Age setting.</p>
     {{- with .SourceError}}
     <p class="error" id="folder-source-error"><strong>Error:</strong> {{.}}</p>
     {{- end}}
-    {{- if not $.Page.Importable}}
-    <p class="empty">There is nothing to import: no folder here can be imported, for the reasons given below. Put the save files (<code>.zip</code>) in a folder, then reload this page.</p>
+    {{- range $.Page.Waiting}}
+    {{template "import-folder" .}}
     {{- end}}
-    {{- $chosen := .Source}}
-    {{- range $i, $f := $.Page.Inbox}}
-    {{- if $f.Importable}}
-    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}"{{if $f.Read}} data-game-version="{{$f.GameVersion}}"{{if $f.SpaceAge}} data-space-age{{end}}{{end}}{{if eq $f.Name $chosen}} checked{{end}}{{if $.Page.Folder.SourceError}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{$f.Name}}</code>: {{$f.Saves}} {{if eq $f.Saves 1}}save{{else}}saves{{end}}{{if $f.HasMods}} and mods{{end}}, {{bytes $f.Bytes}}{{if $f.Read}}, made with Factorio {{$f.GameVersion}}{{if $f.SpaceAge}}, Space Age{{end}}{{end}}</span></label>
-    {{- else if $f.Clash}}
-    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}" disabled> <span><code>{{$f.Name}}</code>: {{$f.Clash}}</span></label>
-    {{- else}}
-    <label class="check"><input type="radio" id="folder-source-{{$i}}" name="folder" value="{{$f.Name}}" disabled> <span><code>{{$f.Name}}</code>: no save at its top level or in a saves folder, so it cannot be imported</span></label>
+    {{- with $.Page.Imported}}
+    <p id="already-imported-heading"><strong>Already imported.</strong> These folders' newest saves are already in a world. You can import them again.</p>
+    {{- range .}}
+    {{template "import-folder" .}}
     {{- end}}
     {{- end}}
   </fieldset>
+  {{- else if $.Page.Inbox}}
+  <p class="empty" id="folder-source-0" tabindex="-1">There is nothing to import: no folder here can be imported, for the reasons given below. Put the save files (<code>.zip</code>) in a folder, then reload this page.</p>
   {{- else}}
   <p class="empty" id="folder-source-0" tabindex="-1">The import folder is empty. Add a folder of saves to it, then reload this page.</p>
+  {{- end}}
+  {{- with $.Page.Unimportable}}
+  <h3>Cannot be imported</h3>
+  <ul id="unimportable">
+    {{- range .}}
+    <li><code>{{.Name}}</code>: {{if .Clash}}{{.Clash}}{{else}}no save at its top level or in a saves folder, so it cannot be imported{{end}}</li>
+    {{- end}}
+  </ul>
   {{- end}}
   {{template "import-fields" .}}
   {{- end}}
   <div class="actions">
-    <button type="submit" class="button button--primary">Import folder</button>
+    <button type="submit" class="button button--primary">Import</button>
   </div>
 </form>
 
@@ -66,6 +98,12 @@
 {{end}}
 {{- end}}
 
+{{/* One folder checkbox. Takes ImportRow. */}}
+{{define "import-folder" -}}
+<label class="check"><input type="checkbox" id="{{.ID}}" name="folder" value="{{.Name}}" data-name="{{.SuggestedName}}"{{if .Read}} data-game-version="{{.GameVersion}}"{{if .SpaceAge}} data-space-age{{end}}{{end}}{{if .Checked}} checked{{end}}{{if .Invalid}} aria-invalid="true" aria-describedby="folder-source-error"{{end}}> <span><code>{{.Name}}</code>: {{.Saves}} {{if eq .Saves 1}}save{{else}}saves{{end}}{{if .HasMods}} and mods{{end}}, {{bytes .Bytes}}{{if .Read}}, made with Factorio {{.GameVersion}}{{if .SpaceAge}}, Space Age{{end}}{{else}}, game version unknown{{end}}{{if .MissingImage}}, game image not downloaded{{end}}{{with .Imported}}. Imported as {{.WorldName}} on <time datetime="{{isoTime .At}}">{{utc .At}}</time>{{end}}</span></label>
+{{- with .Imported}} <a href="{{$.WorldPath}}">Open {{.WorldName}}</a>{{end}}
+{{- end}}
+
 {{/* Name, game version and Space Age, shared by both forms. Takes ImportForm. */}}
 {{define "import-fields" -}}
 <div class="field">
@@ -80,12 +118,12 @@
 <div class="field">
   <label for="{{.IDPrefix}}-version-select">Game version</label>
   <select id="{{.IDPrefix}}-version-select" name="game_version" hx-get="{{.VersionsPath}}" hx-trigger="load" hx-swap="beforeend">
-    <option value="">Choose a version</option>
+    <option value="" id="{{.IDPrefix}}-version-same">Same as the save{{if .SaveRead}} ({{.SaveVersion}}){{end}}</option>
   </select>
 </div>
 <div class="field">
   <label for="{{.IDPrefix}}-version">Or type a version</label>
-  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. If you type one, it is used instead of the choice above. Leave both empty to use the version the save was made with.</p>
+  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. If you type one, it is used instead of the choice above.</p>
   <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
     inputmode="decimal" autocomplete="off" spellcheck="false"
     {{- if .VersionError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-version-hint {{.IDPrefix}}-version-error"{{else}} aria-describedby="{{.IDPrefix}}-version-hint"{{end}}>
@@ -93,6 +131,20 @@
   <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
 </div>
-<label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age" aria-describedby="{{.IDPrefix}}-space-age-hint"{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
-<p class="hint" id="{{.IDPrefix}}-space-age-hint">Space Age only applies to Factorio 2.0 and later.</p>
+<div class="field">
+  <label class="check"><input type="checkbox" id="{{.IDPrefix}}-space-age" name="space_age"
+    aria-describedby="{{.IDPrefix}}-space-age-hint {{.IDPrefix}}-space-age-warning{{if .SpaceAgeError}} {{.IDPrefix}}-space-age-error{{end}}"
+    {{- if .SpaceAgeError}} aria-invalid="true"{{end}}{{if .SpaceAge}} checked{{end}}> Space Age is on</label>
+  <p class="hint" id="{{.IDPrefix}}-space-age-hint">Space Age only applies to Factorio 2.0 and later.</p>
+  <p class="hint" id="{{.IDPrefix}}-space-age-warning"{{if not .SpaceAgeWarning}} hidden{{end}}><strong>Warning:</strong> <span>{{.SpaceAgeWarning}}</span></p>
+  {{- with .SpaceAgeError}}
+  <p class="error" id="{{$.IDPrefix}}-space-age-error"><strong>Error:</strong> {{.}}</p>
+  {{- end}}
+</div>
+{{- if .CanDownload}}
+<div class="field">
+  <label class="check"><input type="checkbox" id="{{.IDPrefix}}-download" name="download" aria-describedby="{{.IDPrefix}}-download-hint"{{if .Download}} checked{{end}}> Also download the game image if this host does not have it</label>
+  <p class="hint" id="{{.IDPrefix}}-download-hint">The world cannot start until its game image (<code>factoriotools/factorio</code> at its version) is on this host. The download starts after the import, from Docker Hub.</p>
+</div>
+{{- end}}
 {{- end}}
