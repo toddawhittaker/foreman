@@ -467,6 +467,21 @@ length is refused, and at most two uploads run at once. If the disk fills
 anyway, the partial file is removed and nothing changes. The snapshot page
 shows free space beside snapshot disk use. (P0)
 
+6.12. **The Snapshots tab and deleting a snapshot.** A Snapshots item in
+the main menu lists every world's snapshots, deleted worlds included,
+with the world, label, reason, time, who took it, its size and what
+deleting it would free, and the total disk all snapshots use. Size counts
+every file in the snapshot. What deleting frees counts only files no other
+snapshot or world shares by hard link (6.8), and the total counts each
+file once. An admin can delete one snapshot at a time, from this tab or
+from a world's Snapshots page, after a confirmation page that names the
+world, label and time and says how much space it frees. When the snapshot
+is the one rollback restores (10.4), the confirmation says plainly that
+rollback to that version goes away with it. Deleting removes only that
+snapshot's folder, never the world or a file another snapshot shares. It
+is refused while an operation runs on that world, and is recorded in the
+audit log as `snapshot-delete` before anything is removed. (P1)
+
 ## 7. Server control
 
 ### Status
@@ -1033,7 +1048,7 @@ the Docker socket into the game, or bind-mount any host path outside the
 data directory. (P0)
 
 14.5. **Paths from users.** Every path built from user input (world names,
-save names, uploaded zip entries, mod file names) is resolved and checked
+save names, snapshot folder names, uploaded zip entries, mod file names) is resolved and checked
 to stay inside the intended directory before use. Symlinks inside a world
 are not followed out of it. Uploaded zips are checked entry by entry and
 refused if any entry would land outside its target. (P0)

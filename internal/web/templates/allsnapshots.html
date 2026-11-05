@@ -1,0 +1,44 @@
+{{define "title"}}Snapshots{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>Snapshots</h1>
+{{- with .Done}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{.}}</p>
+</div>
+{{- end}}
+
+<section class="panel" aria-labelledby="disk-heading">
+  <h2 id="disk-heading">Disk use</h2>
+  <dl class="facts">
+    <div><dt>All snapshots use</dt><dd>{{bytes .UsedBytes}}</dd></div>
+    <div><dt>Free space</dt><dd>{{bytes .FreeBytes}}</dd></div>
+  </dl>
+  <p class="hint">Save and mod files are shared by hard link between a world and its snapshots, and are counted once here. Size counts every file in the snapshot. "Deleting frees" leaves out the files it shares, which stay on disk.</p>
+</section>
+
+<section class="panel" aria-labelledby="list-heading">
+  <h2 id="list-heading">Every snapshot</h2>
+  {{- if .Rows}}
+  <table>
+    <caption>Snapshots of every world, each world's newest first</caption>
+    <thead>
+      <tr><th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th></tr>
+    </thead>
+    <tbody>
+      {{- range .Rows}}
+      <tr>
+        <td><strong>{{.WorldName}}</strong><br>{{$.Page.Reason .Reason}}<br>{{.Label}}<br>Deleting frees <span class="nowrap">{{bytes .Frees}}</span><br><a class="button" href="{{$.Page.DeletePath .WorldID .Name}}">Delete<span class="visually-hidden"> {{.Label}} of {{.WorldName}}, taken {{utcSeconds .TakenAt}}</span></a></td>
+        <td>{{template "when" .TakenAt}}<br>by {{with .TakenBy}}{{.}}{{else}}unknown{{end}}</td>
+        <td class="num">{{bytes .Size}}</td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+  {{- else}}
+  <p class="empty">No snapshots yet. Take one from a world's Snapshots page.</p>
+  {{- end}}
+</section>
+{{- end}}
+{{- end}}

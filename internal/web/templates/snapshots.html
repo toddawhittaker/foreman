@@ -7,7 +7,9 @@
 {{- with .Done}}
 <div class="message message--success">
   <p><strong>Done:</strong> {{.}}</p>
+  {{- if $.Page.DoneSnap}}
   <div class="actions"><a href="#restore-{{$.Page.DoneSnap}}">Go to the snapshot</a></div>
+  {{- end}}
 </div>
 {{- end}}
 {{- with .Error}}
@@ -57,7 +59,7 @@
     <tbody>
       {{- range .Snapshots}}
       <tr>
-        <td>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<br><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></td>
+        <td>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<br><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a> <a class="button" href="{{$.Page.DeletePath .Name}}">Delete<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></td>
         <td>{{template "when" .TakenAt}}</td>
         <td class="num">{{bytes .Size}}</td>
       </tr>
