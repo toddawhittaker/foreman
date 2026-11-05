@@ -1206,6 +1206,24 @@ image, and switch back or restore after a failed switch or a crash loop.
 Text that tells the admin to go somewhere else and do something, without
 a link that does it, does not meet this. (P1)
 
+17.10. **Click budgets for common tasks.** Starting on the Server page,
+with the defaults accepted, these take at most:
+
+| Task | Clicks |
+|---|---|
+| See who is online and what is running | 0 |
+| Start the active world | 1 |
+| Stop or restart it, warning players | 2 |
+| Take a snapshot | 1 |
+| Switch to another world, downloading its game image if needed | 3 |
+| Switch back after a switch | 2 |
+| Undo the last change (switch, update, restore, mod change) | 2 |
+| Recover after a failed start or a crash loop | 2 |
+
+A click is one activation of a button, link or choice in a list. Typing
+in a field doesn't count. Each task's end-to-end test counts its clicks
+and fails when a task goes over budget. (P1)
+
 ## 18. Epics, in order
 
 Each epic delivers working, tested features end to end (on disk, server
