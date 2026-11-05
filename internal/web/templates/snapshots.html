@@ -12,6 +12,11 @@
   {{- end}}
 </div>
 {{- end}}
+{{- if .Deleted}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{if eq (len .Deleted) 1}}Foreman deleted the snapshot taken <time datetime="{{isoTime (index .Deleted 0)}}">{{utcSeconds (index .Deleted 0)}}</time>.{{else}}Foreman deleted {{len .Deleted}} snapshots.{{end}}</p>
+</div>
+{{- end}}
 {{- with .Error}}
 <div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.LabelError}} autofocus{{end}}>
   <p><strong>Error:</strong> {{.}}</p>
@@ -67,8 +72,8 @@
       {{- range .Snapshots}}
       <tr>
         <td>
-          <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<span class="visually-hidden">, taken {{utcSeconds .TakenAt}}</span></span></label>
-          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a> <a class="button" href="{{$.Page.DeletePath .Name}}">Delete<span class="visually-hidden"> {{.Label}}, taken {{utcSeconds .TakenAt}}</span></a></div>
+          <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<span class="visually-hidden">, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></span></label>
+          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a> <a class="button" href="{{$.Page.DeletePath .Name}}">Delete<span class="visually-hidden"> {{.Label}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a></div>
         </td>
         <td>{{template "when" .TakenAt}}</td>
         <td class="num">{{bytes .Size}}</td>

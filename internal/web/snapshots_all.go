@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -53,8 +54,8 @@ type AllSnapshotsPage struct {
 	// them would free.
 	AddBytes  uint64
 	FreeBytes uint64
-	// Done says what the last action did.
-	Done string
+	// Deleted holds when each snapshot the last delete removed was taken.
+	Deleted []time.Time
 }
 
 func (AllSnapshotsPage) templateName() string { return "allsnapshots" }
@@ -174,7 +175,7 @@ func (s *server) handleAllSnapshots(w http.ResponseWriter, r *http.Request, u st
 		g := &p.Groups[len(p.Groups)-1]
 		g.Rows = append(g.Rows, SnapshotRow{SnapshotUse: sn, Ticked: sel.ticks(sn.WorldID, sn.Snapshot)})
 	}
-	p.Done = deletedText(r.URL.Query()["deleted"])
+	p.Deleted = deletedTimes(r.URL.Query()["deleted"])
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -277,21 +278,14 @@ func deletedQuery(names ...string) string {
 	return url.Values{"deleted": names}.Encode()
 }
 
-// deletedText says which snapshots a delete removed, from their folder
-// names alone, since the snapshots themselves are gone.
-func deletedText(names []string) string {
-	var valid []string
+// deletedTimes reads when the deleted snapshots were taken from their
+// folder names alone, since the snapshots themselves are gone.
+func deletedTimes(names []string) []time.Time {
+	var out []time.Time
 	for _, name := range names {
-		if world.ValidSnapshotName(name) {
-			valid = append(valid, name)
+		if t, ok := world.SnapshotNameTime(name); ok {
+			out = append(out, t)
 		}
 	}
-	switch len(valid) {
-	case 0:
-		return ""
-	case 1:
-		t, _ := world.SnapshotNameTime(valid[0])
-		return "Foreman deleted the snapshot taken " + t.Format("2006-01-02 15:04:05 UTC") + "."
-	}
-	return fmt.Sprintf("Foreman deleted %d snapshots.", len(valid))
+	return out
 }

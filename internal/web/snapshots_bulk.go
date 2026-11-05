@@ -93,7 +93,8 @@ type SnapshotBulkDeletePage struct {
 	// WorldID is the world's page the delete started on; empty when it
 	// started on the Snapshots tab.
 	WorldID string
-	Done    string
+	// Deleted holds when each snapshot just deleted was taken.
+	Deleted []time.Time
 	Error   string
 }
 
@@ -281,7 +282,7 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 	for i, item := range rest.Items {
 		rest.Items[i].Failure = failures[world.SnapshotRef{WorldID: item.WorldID, Name: item.Snapshot.Name}]
 	}
-	rest.Done = deletedText(deleted)
+	rest.Deleted = deletedTimes(deleted)
 	rest.Error = fmt.Sprintf("%d of %d snapshots were not deleted. Each one below says why.", len(stayed), len(refs))
 	if len(deleted) == 0 {
 		rest.Error = "Nothing was deleted. Each snapshot below says why."

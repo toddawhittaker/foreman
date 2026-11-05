@@ -15,7 +15,7 @@ import (
 func allSnapshotsCase() AllSnapshotsPage {
 	s := snapshotsCase().Snapshots
 	return AllSnapshotsPage{
-		AddBytes: 2_100_000, FreeBytes: 40_000_000_000, Done: "Foreman deleted the snapshot taken 2026-11-03 14:25:00 UTC.",
+		AddBytes: 2_100_000, FreeBytes: 40_000_000_000, Deleted: []time.Time{time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)},
 		Groups: []SnapshotGroup{
 			{WorldID: "base", WorldName: longName, Known: true, Adds: 2_100_000, Rows: []SnapshotRow{
 				{SnapshotUse: world.SnapshotUse{WorldID: "base", Snapshot: s[0], Frees: 1000}, Ticked: true},
@@ -40,7 +40,7 @@ func bulkDeleteCase() SnapshotBulkDeletePage {
 
 func bulkDeletePartlyDone() SnapshotBulkDeletePage {
 	p := bulkDeleteCase()
-	p.Done, p.Error = "Foreman deleted 2 snapshots.", "1 of 3 snapshots were not deleted. Each one below says why."
+	p.Deleted, p.Error = []time.Time{time.Now(), time.Now()}, "1 of 3 snapshots were not deleted. Each one below says why."
 	p.Items[0].Failure = "Another operation is running on this world."
 	return p
 }
@@ -143,7 +143,7 @@ func TestSnapshotDeleteConfirmsThenDeletesAndAudits(t *testing.T) {
 		t.Errorf("audit %q", got)
 	}
 	done := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
-	if !strings.Contains(done, "Foreman deleted the snapshot taken 2026-11-02 12:00:00 UTC.") {
+	if !strings.Contains(done, `Foreman deleted the snapshot taken <time datetime="2026-11-02T12:00:00Z">2026-11-02 12:00:00 UTC</time>.`) {
 		t.Error("no done message")
 	}
 

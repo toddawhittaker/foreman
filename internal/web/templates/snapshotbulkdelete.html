@@ -4,9 +4,9 @@
 {{with .Page}}
 <div class="actions"><a href="{{.BackPath}}">Back to snapshots</a></div>
 <h1>{{.Heading}}</h1>
-{{- with .Done}}
+{{- if .Deleted}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{.}}</p>
+  <p><strong>Done:</strong> {{if eq (len .Deleted) 1}}Foreman deleted the snapshot taken <time datetime="{{isoTime (index .Deleted 0)}}">{{utcSeconds (index .Deleted 0)}}</time>.{{else}}Foreman deleted {{len .Deleted}} snapshots.{{end}}</p>
 </div>
 {{- end}}
 {{- with .Error}}

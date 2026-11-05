@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -55,6 +56,8 @@ type SnapshotsPage struct {
 	// Done says what the last action did; DoneSnap is the snapshot it names.
 	Done     string
 	DoneSnap string
+	// Deleted holds when each snapshot the last delete removed was taken.
+	Deleted []time.Time
 }
 
 // RestorePage confirms a restore (SPEC 6.5, DESIGN 7.4).
@@ -210,8 +213,8 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
 		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored. Foreman took the snapshot \"%s\" first; to undo the restore, restore that snapshot.", sn.Label), sn.Name
 	}
-	if text := deletedText(q["deleted"]); text != "" {
-		p.Done, p.DoneSnap = text, ""
+	if p.Deleted = deletedTimes(q["deleted"]); len(p.Deleted) > 0 {
+		p.Done, p.DoneSnap = "", ""
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }

@@ -987,6 +987,43 @@ td:last-child {
   font-variant-numeric: tabular-nums;
 }
 
+/* Snapshot lists: a world's heading beside its shortcut button, then its
+   table. min-inline-size keeps a long name from widening the panel. */
+.group {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.group__head h3 a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.row-actions .button {
+  white-space: nowrap;
+}
+
+td > .hint {
+  margin-block-start: var(--space-1);
+}
+
 /* Four columns at phone width need tighter gutters (DESIGN 8.3). */
 @container (max-width: 24rem) {
   th,
