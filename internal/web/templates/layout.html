@@ -22,6 +22,7 @@
       <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>Server</a></li>
       <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>Console</a></li>
       <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>Worlds</a></li>
+      <li><a href="{{snapshotsTabPath}}"{{if .Current snapshotsTabPath}} aria-current="page"{{end}}>Snapshots</a></li>
     </ul>
   </nav>
   <form method="post" action="{{signOutPath}}" class="signout">

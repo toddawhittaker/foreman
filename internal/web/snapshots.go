@@ -144,6 +144,7 @@ func (s *server) snapshotRoutes() {
 	// A running game saves before its snapshot (SPEC 6.10), which can outlast
 	// the usual deadlines.
 	s.handleLong("POST "+PathWorldSnapshots, s.requireUser(s.handleTakeSnapshot))
+	s.allSnapshotRoutes()
 	s.mux.HandleFunc("GET "+PathSnapshotRestore, s.requireUser(s.handleRestoreForm))
 	s.handleLong("POST "+PathSnapshotRestore, s.requireUser(s.handleRestore))
 }
@@ -193,6 +194,9 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
 		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored. Foreman took the snapshot \"%s\" first; to undo the restore, restore that snapshot.", sn.Label), sn.Name
+	}
+	if text := deletedText(q.Get("deleted")); text != "" {
+		p.Done, p.DoneSnap = text, ""
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }

@@ -1,0 +1,36 @@
+{{define "title"}}Delete a snapshot of {{.Page.WorldName}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.BackPath}}">Back to snapshots</a></div>
+<h1>Delete a snapshot of {{.WorldName}}</h1>
+{{- with .Error}}
+<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+  <p><strong>Error:</strong> {{.}}</p>
+</div>
+{{- end}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Delete the snapshot "{{.Snapshot.Label}}" of {{.WorldName}} from <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utcSeconds .Snapshot.TakenAt}}</time>?</h2>
+  {{- with .Rollback}}
+  <div class="message message--warning">
+    <p><strong>Warning:</strong> Rollback uses this snapshot. If you delete it, you can no longer roll {{$.Page.WorldName}} back to game version {{.}}.</p>
+  </div>
+  {{- end}}
+  <p>This will:</p>
+  <ul>
+    <li>Delete the folder <code>snapshots/{{.WorldID}}/{{.Snapshot.Name}}</code>. You cannot undo this.</li>
+    <li>Free {{bytes .Frees}} of disk space. Save and mod files this snapshot shares with the world or with other snapshots stay where they are, so they free nothing.</li>
+    <li>Leave the world itself and its other snapshots as they are.</li>
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    {{- if .FromAll}}
+    <input type="hidden" name="from" value="all">
+    {{- end}}
+    <div class="actions">
+      <button type="submit" class="button button--danger">Delete snapshot</button>
+      <a href="{{.BackPath}}">Cancel, keep the snapshot</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}
