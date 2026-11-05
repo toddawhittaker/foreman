@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -30,6 +32,14 @@ type ServerPage struct {
 	// WorldNames holds the names of the worlds a switch, or the notice of
 	// an unfinished one, speaks of, by id.
 	WorldNames map[string]string
+	// Image is the game image the world runs, and ImageMissing whether
+	// Docker lacks it; both are looked up only while the game can start
+	// (SPEC 3.7).
+	Image        string
+	ImageMissing bool
+	// ModsFolder is the world's mods folder on the host, for advice about
+	// missing mods; "" when not known.
+	ModsFolder string
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -100,6 +110,75 @@ func (p ServerPage) Busy() bool { return p.Status.Operation != nil && !p.Status.
 func (p ServerPage) CanStart() bool {
 	s := p.Status.State
 	return !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
+}
+
+// downloading reports whether the game image is being downloaded now.
+func (p ServerPage) downloading() bool {
+	return p.Status.Download != nil && !p.Status.Download.Done
+}
+
+// ImageNote says, before any Start, that the world cannot start until its
+// game image is downloaded, or is "" (SPEC 3.7). Start is then replaced by
+// the download. A failed start that said so already needs no second note.
+func (p ServerPage) ImageNote() string {
+	if !p.ImageMissing || !p.CanStart() || p.downloading() {
+		return ""
+	}
+	if f := p.Failure(); f != nil && f.Download {
+		return ""
+	}
+	return p.World.Name + " runs on the game image " + p.Image + ", which is not on this host, so it cannot start yet. Download it first; that pulls it from Docker Hub."
+}
+
+// OffersDownload reports whether the page offers the game image download:
+// when the image is missing before a start, or after a start refused for it.
+func (p ServerPage) OffersDownload() bool {
+	if p.Busy() || p.downloading() {
+		return false
+	}
+	if p.ImageMissing && p.CanStart() {
+		return true
+	}
+	f := p.Failure()
+	return f != nil && f.Download
+}
+
+// Downloaded confirms a download that worked, while the world waits to
+// start, or is "".
+func (p ServerPage) Downloaded() string {
+	if !p.CanStart() || p.ImageMissing || p.Image == "" {
+		return ""
+	}
+	results := p.Others
+	if p.HaveResult {
+		results = append([]actionResult{p.Result}, results...)
+	}
+	for _, res := range results {
+		if res.Action == game.AuditImageDownload && res.Err == nil {
+			return "Downloaded " + p.Image + "; " + p.World.Name + " is ready to start."
+		}
+	}
+	return ""
+}
+
+// switchRefused reports whether the last result is a switch that ended
+// before it began, so the old world is still active and nothing changed.
+func (p ServerPage) switchRefused() bool {
+	if !p.HaveResult || p.Result.Action != game.AuditSwitch || p.Result.Err == nil {
+		return false
+	}
+	f := p.Failure()
+	return f != nil && f.In != "operation"
+}
+
+// StartLabel is the Start button's words. After a refused switch the
+// button names the world it starts, which is not the one the admin asked
+// to switch to.
+func (p ServerPage) StartLabel() string {
+	if p.switchRefused() {
+		return "Start " + p.World.Name
+	}
+	return "Start server"
 }
 
 // StartBlocked says why the last attempt to run the world did not, and what
@@ -204,6 +283,9 @@ func (p ServerPage) OperationHeading() string {
 	failed := o.Done && o.Error != ""
 	switch o.Action {
 	case game.AuditStart:
+		if f := p.Failure(); failed && f != nil && f.Refused && f.In == "operation" {
+			return "Start refused"
+		}
 		return choose(failed, "The start failed", "Starting the server")
 	case game.AuditStop:
 		return choose(failed, "The stop failed", "Stopping the server")
@@ -247,6 +329,21 @@ func (p ServerPage) OperationList() stepList {
 
 func (p ServerPage) DownloadList() stepList {
 	return stepList{Page: p, Op: p.Status.Download, Failure: p.Failure(), In: "download"}
+}
+
+// Steps are the steps the list shows. After a refusal by the pre-start
+// check the steps that never ran are left out, since nothing was tried.
+func (l stepList) Steps() []game.Step {
+	if !l.refused() {
+		return l.Op.Steps
+	}
+	var out []game.Step
+	for _, s := range l.Op.Steps {
+		if s.State != game.StepSkipped {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // Since says how long a player has been online.
@@ -404,7 +501,10 @@ func (p ServerPage) Failure() *Failure {
 			f.Anyway = p.anyway(pe.Check)
 		}
 	case errors.Is(err, game.ErrImageMissing):
-		f.Message, f.Download = sentence(err), true
+		// The download is for this page's world only: a switch whose new
+		// world lacks its image must never offer the old world's.
+		f.Message = sentence(err)
+		f.Download = p.Result.Action != game.AuditSwitch || p.Result.Target == p.World.ID
 	default:
 		f.Message = failureText(err)
 	}
@@ -451,7 +551,7 @@ type Anyway struct {
 func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	a := &Anyway{
 		Path: p.StartPath(), Verb: "Start anyway", World: p.World.Name,
-		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems),
+		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems, p.World.Name, p.ModsFolder),
 		Running: game.IsRunning(p.Status.State),
 	}
 	switch p.Result.Action {
@@ -473,8 +573,10 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 }
 
 // anywayAdvice says how to keep what missing mods built; the lead already
-// says what the game drops. Mods that are only turned off need no file.
-func anywayAdvice(problems []world.Problem) string {
+// says what the game drops. Mods that are only turned off need no file. The
+// fix is the named world's own mods folder, at its host path when known,
+// since importing again would make a second world.
+func anywayAdvice(problems []world.Problem, name, folder string) string {
 	missing := 0
 	for _, pr := range problems {
 		if pr.Kind == world.ProblemModMissing {
@@ -484,12 +586,25 @@ func anywayAdvice(problems []world.Problem) string {
 	if missing == 0 {
 		return ""
 	}
-	built := "that mod built"
+	built, files := "that mod built", "its zip file"
 	if missing > 1 {
-		built = "those mods built"
+		built, files = "those mods built", "their zip files"
+	}
+	where := name + "'s own mods folder"
+	if folder != "" {
+		where += ", " + folder + " on the host"
 	}
 	return "Foreman cannot add mods to a world yet. To keep what " + built +
-		", put the mod files in the import folder's mods/ and import the world again."
+		", copy " + files + " into " + where + ", then start " + name + " again."
+}
+
+// hostModsFolder is a world's mods folder on the Docker host, or "" when
+// the host path is not known (SPEC 3.5, 5.2).
+func hostModsFolder(hostData, id string) string {
+	if hostData == "" {
+		return ""
+	}
+	return filepath.Join(datadir.Worlds(hostData), id, world.ModsDir) + "/"
 }
 
 // failureText words an action's error; one the admin cannot fix is logged

@@ -112,14 +112,10 @@
     {{- else if .Switch}}
     {{- if .Running}}
     <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop {{.From}}.</li>
-    {{- else}}
-    <li>Leave the server stopped, because {{.From}} is not running now.</li>
     {{- end}}
     <li>Take a snapshot of {{.From}} and of {{.World}}, both labelled "Before switch", and one more of {{.World}}, labelled "Before start anyway". If a snapshot fails, nothing else happens.</li>
     <li>Make {{.World}} the active world.</li>
-    {{- if .Running}}
     <li>Start the game on {{.World}}. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
-    {{- end}}
     <li>To undo, switch back to {{.From}}, or restore a snapshot from the Snapshots page.</li>
     {{- else}}
     {{- if and .Restart .Running}}
@@ -135,6 +131,7 @@
     <input type="hidden" name="seen" value="{{.Seen}}">
     {{- if .Switch}}
     <input type="hidden" name="from" value="{{.FromID}}">
+    <input type="hidden" name="choice" value="anyway">
     {{- end}}
     {{- if .Update}}
     <input type="hidden" name="game_version" value="{{.Version}}">
@@ -166,7 +163,7 @@
      failure goes. */}}
 {{define "server-steps" -}}
 <ol class="steps" role="list">
-  {{- range .Op.Steps}}
+  {{- range .Steps}}
   <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> {{.Name}}
     {{- if eq .State "progress"}}
     <progress aria-label="{{.Name}}"></progress>
@@ -227,12 +224,26 @@
   <p><strong>Note:</strong> {{.}}</p>
 </div>
 {{- end}}
-{{- if or .CanStart .CanStop .CanRestart .CanForceStop}}
+{{- with .ImageNote}}
+<div class="message message--note">
+  <p><strong>Note:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- with .Downloaded}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload}}
 <div class="actions">
-  {{- if .StartBlocked}}
+  {{- if .OffersDownload}}
+  <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary" id="act-pull">Download game image</button></form>
+  {{- end}}
+  {{- if .ImageMissing}}
+  {{- else if .StartBlocked}}
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button" id="act-start">Try to start again</button></form>
   {{- else if .CanStart}}
-  <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not .OffersAnyway}} button--primary{{end}}" id="act-start">Start server</button></form>
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{.StartLabel}}</button></form>
   {{- end}}
   {{- if .CanStop}}
   <a href="{{.StopPath}}" class="button" id="act-stop">Stop server</a>
@@ -247,10 +258,5 @@
 {{- end}}
 {{- with .ActionsNote}}
 <p>{{.}}</p>
-{{- end}}
-{{- if and $failure $failure.Download (not .Busy)}}
-<form method="post" action="{{.PullPath}}" class="actions">
-  <button type="submit" class="button button--primary" id="act-pull">Download game image</button>
-</form>
 {{- end}}
 {{- end}}
