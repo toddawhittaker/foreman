@@ -186,7 +186,7 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 
 // redirectToSignIn sends an anonymous visitor to setup while no account
 // exists and to sign-in afterwards, which returns to the page they asked
-// for (SPEC 14.9).
+// for (SPEC 14.17).
 func (s *server) redirectToSignIn(w http.ResponseWriter, r *http.Request) {
 	has, err := s.store.HasUsers(r.Context())
 	if err != nil {

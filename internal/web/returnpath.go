@@ -11,7 +11,7 @@ import (
 const maxReturnPath = 2000
 
 // returnPath returns p when it is safe to send a signed-in browser to it,
-// and "" otherwise (SPEC 14.9). Only a local path is safe: one that starts
+// and "" otherwise (SPEC 14.17). Only a local path is safe: one that starts
 // with a single "/". A second "/" or a backslash would make a browser read
 // the rest as a host, and a control character can be stripped by a browser
 // to make the same trick. The sign-in and setup pages are refused so a

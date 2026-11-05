@@ -7,7 +7,7 @@ async function signIn(page: Page) {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-// SPEC 14.9: signing in returns to the page that was asked for.
+// SPEC 14.17: signing in returns to the page that was asked for.
 test("sign-in returns to the requested page", async ({ page }) => {
   await createAdmin(page);
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -27,7 +27,7 @@ test("sign-in returns to the requested page", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Worlds");
 });
 
-// SPEC 14.9: a return path that is not a local path is ignored.
+// SPEC 14.17: a return path that is not a local path is ignored.
 test("sign-in ignores a return path that leaves the site", async ({ page, foreman }) => {
   await createAdmin(page);
   for (const next of ["//evil.example/", "https://evil.example/", "/\\evil.example", "/signin"]) {

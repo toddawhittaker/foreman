@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// SPEC 14.9: only a local path starting with a single "/" is accepted.
+// SPEC 14.17: only a local path starting with a single "/" is accepted.
 func TestReturnPath(t *testing.T) {
 	ok := []string{
 		"/",

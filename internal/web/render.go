@@ -87,7 +87,7 @@ type SignInPage struct {
 	UsernameError string
 	PasswordError string
 	// Next is the page to return to after signing in; empty means home
-	// (SPEC 14.9). It has already passed returnPath.
+	// (SPEC 14.17). It has already passed returnPath.
 	Next string
 	// RateLimited replaces the field errors with a message to wait
 	// (SPEC 12.4). RetryAfter is how long; zero means unknown.
