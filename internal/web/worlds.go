@@ -210,6 +210,10 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // why above.
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
+	if s.game != nil && !sum.Unreadable && !sum.Newer {
+		p.ReleasesPath = releasesPath(sum.ID)
+		p.Rollback = s.rollbackOffer(sum.ID)
+	}
 	switch {
 	case s.game == nil || sum.Unreadable || sum.Newer:
 	case sum.Active:
@@ -293,7 +297,7 @@ func importFields(name, version, spaceAge string) ImportForm {
 		f.NameError = sentence(world.ErrNameEmpty)
 	}
 	// An empty version is filled in from the save later (fillFromSave).
-	if f.GameVersion != "" && !world.ValidGameVersion(f.GameVersion) {
+	if f.GameVersion != "" && !world.SupportedGameVersion(f.GameVersion) {
 		f.VersionError = sentence(world.ErrBadGameVersion)
 	}
 	return f
@@ -533,4 +537,17 @@ func (s *server) handleDeleted(w http.ResponseWriter, r *http.Request, u store.U
 		}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// rollbackOffer returns the rollback the world page offers, or nil when
+// there is none (SPEC 10.4).
+func (s *server) rollbackOffer(id string) *RollbackOffer {
+	snap, version, err := s.worlds.RollbackTarget(id)
+	if err != nil {
+		if !errors.Is(err, world.ErrNoRollback) {
+			s.log.Error("find the rollback snapshot", "world", id, "error", err)
+		}
+		return nil
+	}
+	return &RollbackOffer{Snapshot: snap, Version: version, Path: rollbackPath(id)}
 }
