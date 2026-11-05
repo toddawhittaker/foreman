@@ -565,6 +565,8 @@ nothing animates.
   because a phone has no hover. The secondary button's hover is a
   lighter grey, so orange keeps meaning only "selected".
 
+- **Force stop** on the Server page is not a button at all: it is a plain
+  link after the buttons (section 6, "What a phone shows first").
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **secondary**, not danger. Red is kept for
   the moment the thing actually happens, so it still means something.
@@ -766,16 +768,22 @@ Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
 delete), switching worlds (7.9), and in later epics destructive player
-actions (8.2). Start, restart and switch anyway have no page of their
+actions (8.2). Start and restart anyway have no page of their
 own: the Warning that reports the refusal on the Server page is the
 confirmation (SPEC 7.4). It lists what the game drops, then the steps,
 the snapshots and the undo as above, and its danger button posts the
-action at once. Restart and a switch of a running game use the default
-60-second countdown there. The switch box carries the stop countdown fields only when the game is running. A graceful stop or restart does not need a danger
+action at once. Restart uses the default 60-second countdown there. A
+switch has its own confirmation page (SPEC 7.9, 17.8) that shows the new
+world's problems before anything runs, and offers "Switch, leave stopped"
+and, when every problem allows it, a danger button "Switch and start
+anyway". The page carries the countdown field only when the game is
+running. The Server page's own switch box appears only when problems arise
+after that page. A graceful stop or restart does not need a danger
 confirmation, because nothing is lost. Its button opens a short form at its
 own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
 countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
-60, and a checkbox for no countdown. The form is a plain `panel` with a
+60, where 0 means no warning (there is no checkbox), and a line naming who
+is online. The form is a plain `panel` with a
 primary button ("Stop server", "Restart server"), not the danger box, and
 its Cancel link says the server keeps running. The result is shown on the
 Server page.
@@ -839,8 +847,8 @@ holds only the word. A template always writes the modifier, even for
   </dl>
   ```
 
-  The `dl` is a grid, `repeat(auto-fit, minmax(10rem, 1fr))`, so it is
-  one column at 320 px and several on a wide screen. `dt` is `--text-sm`
+  The `dl` is a grid, `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`, so
+  it is two to a row at 320 px and several on a wide screen. `dt` is `--text-sm`
   `text-muted`; `dd` is `--text-md` `text`.
 - When the state changes live (SPEC 16.3), the server sends the new
   badge, and a short sentence goes to `#announcer` ("Server is now
@@ -918,7 +926,10 @@ name (a link to the world's page), then a `dl.facts` with game version,
 Space Age, last played and disk use. The active world carries the word
 "Active" in a badge drawn as selected (text `on-highlight`, background
 `highlight`, the same shape as the state badge in 7.5 but with no drawn
-square) beside its name, and is listed first. The word carries the
+square) beside its name, and is listed first. A world that can be switched
+to has a "Switch" button beside its name (its accessible name is "Switch to"
+and the world's name); section 6 ("What a phone shows first") gives the
+row's grid. The word carries the
 meaning; the orange matches the selected tab. A list with a `dl` per item
 reflows at any width, where a six-column table would not fit 320 px. The
 list sits in one inner panel and its rows are separated by a 1px `rule`
@@ -965,7 +976,8 @@ No infinite scroll.
 </section>
 ```
 
-Console, above its history:
+The console section comes before the game log on the page (section 6).
+Inside it, the command field comes above its history:
 
 ```html
 <section aria-labelledby="console-heading">
@@ -1018,8 +1030,10 @@ Classes and their contract:
   `white-space: pre-wrap` on the `pre`, `overflow-wrap: anywhere`, so lines
   wrap and never scroll sideways. (The `ol` of the console history keeps
   normal white space, or the markup's line breaks would show as blank lines.)
-- The box has a fixed `block-size: min(60vh, 32rem)` and scrolls
-  vertically. It is focusable so keyboard users can scroll it.
+- The game log's box has a fixed `block-size: min(60vh, 32rem)` and scrolls
+  vertically. The console's history box is only as tall as what it holds,
+  up to `min(40vh, 20rem)`, then scrolls (section 6). Both are focusable so
+  keyboard users can scroll them.
 - It is not a live region. A game log can print many lines a second; a
   screen reader announcing each would make the page unusable. Crashes
   and state changes are announced through the badge (7.5) instead.

@@ -5,8 +5,8 @@ What each epic delivered and the gaps it left. The epic's last task
 here are known and accepted; each is either fixed by a later epic or
 waits for a decision.
 
-Epics 1 to 5 and the Gate A fixes are done, and Gate A (SPEC 19.1)
-passed on 2026-11-05.
+Epics 1 to 5, the Gate A fixes and the first fix batch after Gate A (hub
+fixes) are done, and Gate A (SPEC 19.1) passed on 2026-11-05.
 
 ## Epic 1: Foundation
 
@@ -507,8 +507,8 @@ tested. Coverage across `internal/` is about 90%.
   test.
 - The start-anyway fingerprint leaves out the save name. This is an
   accepted trade-off.
-- Restart anyway and a switch anyway use the default countdown, with no
-  field to change it.
+- Restart anyway uses the default countdown, with no field to change it.
+  (A switch's confirmation page has the field; see Hub fixes.)
 - "Last played" shows the import time for a world that was never played.
 - `mods/mod-list.json` differs in every snapshot, because the game and the
   image's entrypoint rewrite it at each start.
@@ -765,3 +765,142 @@ succeed), #130 (download the image at import), #131 (warn about mod
 versions players cannot get from the portal), #132 (public page for
 players to download the running world's mods; needs a vision change).
 #125, #128, #129 and #130 are to be built as one batch.
+
+## Hub fixes
+
+The first of two fix batches after Gate A, before i18n (#87). It makes the
+Server page the hub for the active world and fixes the switch and stop
+flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
+
+### Delivered
+
+- **A switch is one confirmation (#128, #129, #145, #136).** One rule set
+  in the controller (`PlanSwitch`) runs every check that could refuse a
+  switch. The confirmation page and the switch both call it, so they
+  cannot disagree. A missing game image is downloaded first, before the
+  switch record and before the old game stops; a failed download leaves
+  the old world running. A stopped game's switch starts the new world when
+  "Start after switching" is ticked, which is the default. When the new
+  world has problems, the page lists them and offers "Switch and start
+  anyway" and "Switch, leave stopped"; leave stopped skips the check, and
+  the problems show at the next Start. The confirmation page asks who is
+  online and what the image will cost to download (its size, from Docker
+  Hub, when the image is missing). A switch result never offers the wrong
+  world's download (#129), and after a refused start the button reads
+  "Start <world>" and says that world is still active (#136). The
+  missing-mod advice names the world's own mods folder on the host (#145).
+  This closes Gate A review finding S3 (two copies of the refusal rules).
+- **The switch is refused if things changed (SPEC 17.8).** The
+  confirmation page posts whether the game was running and which problems
+  it showed. If either differs at confirm time, nothing is done and the
+  page comes back saying what changed.
+- **Missing image shown before Start (#125).** The Server page says so
+  and names the image; the download replaces Start, and afterwards says
+  "Downloaded <image>; <world> is ready to start." A world's own page says
+  it too. A failed download names the image, says whether Docker Hub has no
+  such version, and logs the cause.
+- **Start refused (#142, one point).** A start the check refused is
+  titled "Start refused" and lists only the step that ran.
+- **Stop can be cancelled (#143).** While players are warned, the Server
+  page counts the time left down and keeps the list of who was online when
+  the countdown began. "Cancel stop" ends the whole action (stop, restart,
+  switch, restore or update) with nothing changed; a downloaded image
+  stays. The action is audited as `stop-cancel`, and warned players get a
+  chat line. The seconds field is the only way to skip the warning (0
+  seconds); the "No countdown" checkbox is gone. The stop, restart,
+  switch and restore forms say who is online, and force stop names who
+  will be disconnected. The countdown text updates itself in the browser
+  (`countdown.js`), so the buttons beside it are never replaced and a slow
+  tap is not lost.
+- **Results offer their undo (#140, #152).** Every Done message has its
+  undo as a button: "Undo this restore", "Undo this rollback", "Roll back
+  to X", "Switch back to A". It also says when it finished, and the next
+  action clears it. A failed restore links straight to restoring "Before
+  restore".
+- **Crash loop recovery (#147).** One box offers restoring the newest
+  "Before start anyway" snapshot (only while it is the newest) and
+  "Switch back to A" while Foreman holds the switch result. After a
+  Foreman restart only the restore is offered, and no schema changed.
+- **Status is honest (#137).** During a switch the status reads "Switching:
+  From A to B" and the active-world link moves to the new world once it is
+  presented. After the switch, and whenever the state is Unknown, uptime,
+  save, CPU, memory and the running version are left out instead of shown
+  stale. The players panel says Foreman cannot see who is online. An
+  unreachable Docker is one plain sentence naming `DOCKER_HOST`, with the
+  raw error logged once per fault (#144); another Docker fault on a
+  container also reads as a plain sentence.
+- **Switching and snapshots from the Server page (#141).** A panel lists
+  every other world with its own "Switch to X" button, and "Take snapshot"
+  is one click. The Worlds list has a "Switch" button per world, named
+  "Switch to <world>" for screen readers, and a world's page leads with
+  Switch. A running switch shows on the list and on both of its worlds'
+  pages. Restoring the stopped active world runs in the background and
+  lands on the Server page.
+- **Worlds pages (#146, #138, #154 in part).** A world with an operation
+  running shows why it cannot be deleted, before any name is typed. Rename
+  lands on the world's page with "Done: Renamed to X."
+- **Network refusal (#126).** It says why sharing is refused, names each
+  other container with what Foreman can tell, and gives the fix first
+  (`docker rm` for a stopped one, `docker network disconnect` for a running
+  one, never remove advice for a running one, then
+  `FOREMAN_GAME_NETWORK`).
+- **Phone layout (#142, #153, #155 in part).** A two-row header (about 112
+  px tall at 320 px, down from 218). "Start and stop" and its steps come
+  before Status and Players, so Stop and Cancel stop are on the first
+  screen. Steps are one row each, and at 200% text at 320 px the step name
+  gets its own line. Force stop is a plain link. The console field comes
+  before the log. The Worlds list is compact, with Switch beside the
+  name.
+- **Click budgets (#157).** One end-to-end test per SPEC 17.10 budget
+  counts real clicks and fails over budget. Every budget is met: switch
+  with a download takes 2 clicks (budget 3) and Start anyway takes 1
+  (budget 2).
+- **Flaky test (#109).** `TestReattachAfterForemanRestart` polls for its
+  log lines instead of racing them.
+- **Server page wiring (W).** After Cancel stop or Take snapshot, focus
+  lands on the Done message. The Switch panel is live and is hidden while
+  an action is busy. The "no image with that version" message links to
+  the world's page. A stale "cancelled" message is fixed. The "Changed"
+  page keeps "Switch, leave stopped". The header reads at 200% text.
+
+### Verified
+
+- `make verify` and `make e2e` green at the last task (568 passed, 4
+  skipped, across desktop and phone, dark and light).
+- New Go tests for the plan, cancel, wording and size lookup; new end-to-end
+  specs for the switch flow, the worlds pages, the Server page hub, phone
+  layout, accessibility fixes and click budgets. The accessibility tests
+  failed on the old sources.
+- Code, accessibility and design reviews ran over the batch, and fix
+  rounds closed their findings.
+
+### Gaps left
+
+- The stop countdown's player list is a snapshot from its start, not
+  live.
+- The update and rollback forms do not name who is online.
+- The Worlds list does not show the game's state beside "Active".
+- The crash-loop restore offers the newest "Before start anyway" snapshot
+  whatever its age; the age is shown on the button.
+- The step list has no "Step N of M" summary line (it needs the step
+  number from Go), and finished steps are not collapsed, because the list
+  is redrawn live and a collapsed part would reopen on every update.
+- The countdown uses the browser's clock, so a phone with a wrong clock
+  shows a wrong time left; the stop itself runs on the server's clock.
+- The Server page's own problems box appears only when problems arise
+  after the confirmation.
+- The world page's inline "See the Server page" link is under 44 px
+  tall on a phone.
+- Two things have unit tests but no end-to-end test: figures left from a
+  run before Docker became unreachable, and the active-world line moving
+  mid-switch. The changed-state refusal is covered by an integration test
+  only.
+- The mod-change undo click-budget test is skipped until Epic 6.
+- The switch page and the Server page show the host path of a world's mods
+  folder to signed-in users, and the switch page makes one call to Docker
+  Hub for the image size (SPEC 14.10). Both want security review at the
+  batch gate.
+- Not yet run against a real `factoriotools/factorio` container: a switch
+  that downloads an image (`make test-game`, `make e2e-game`).
+- Issues #154 and #155 are only partly done; the rest (import form points,
+  other messages) is in the next batch.
