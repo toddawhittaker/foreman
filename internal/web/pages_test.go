@@ -113,9 +113,9 @@ func TestSnapshotTables(t *testing.T) {
 	wantIn(t, "snapshots page", body,
 		`<th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th>`,
 		`href="#restore-20261103T142500Z"`, `id="restore-20261103T142500Z"`,
-		`<td>Manual<br>`,
+		`<input type="checkbox" name="snap" value="base/20261103T142500Z"><span>Manual<br>`,
 		`<span class="nowrap">2026-11-03</span> <span class="nowrap">14:25 UTC</span>`,
-		"taken 2026-11-03 14:25:00 UTC", "taken 2026-11-03 14:25:30 UTC")
+		`taken <time datetime="2026-11-03T14:25:00Z">2026-11-03 14:25:00 UTC</time>`, `taken <time datetime="2026-11-03T14:25:30Z">2026-11-03 14:25:30 UTC</time>`)
 	_, body = render(t, r, pageCase{status: 200, user: "todd", page: DeletedPage{Worlds: []world.DeletedWorld{
 		{ID: "base", Name: "Base", Snapshots: p.Snapshots}}}})
 	wantIn(t, "deleted page", body,

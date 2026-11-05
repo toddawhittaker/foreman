@@ -15,7 +15,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -542,39 +541,4 @@ func (m *Manager) prune(id string) error {
 		}
 	}
 	return nil
-}
-
-// SnapshotDiskUse is the space a world's snapshots take, counting each
-// file once by inode since zips are hard-linked between them (SPEC 6.7), and the
-// free space on the snapshots folder's filesystem (SPEC 6.11).
-func (m *Manager) SnapshotDiskUse(id string, list []Snapshot) (used, free uint64, err error) {
-	free, err = FreeBytes(m.dirs.Snapshots)
-	if err != nil || len(list) == 0 {
-		return 0, free, err
-	}
-	snaps, err := m.openSnapshots(id, false)
-	if err != nil {
-		return 0, free, err
-	}
-	defer func() { _ = snaps.Close() }()
-	type inode struct{ dev, ino uint64 }
-	seen := map[inode]bool{}
-	for _, s := range list {
-		for _, f := range s.Files {
-			info, err := snaps.Lstat(path.Join(s.Name, f.Path))
-			if err != nil {
-				return 0, free, err
-			}
-			st, ok := info.Sys().(*syscall.Stat_t)
-			if !ok {
-				return 0, free, fmt.Errorf("no inode for %s", f.Path)
-			}
-			k := inode{uint64(st.Dev), st.Ino} //nolint:gosec,unconvert // Dev's type differs by platform
-			if !seen[k] {
-				seen[k] = true
-				used += uint64(info.Size()) //nolint:gosec // a file size is never negative
-			}
-		}
-	}
-	return used, free, nil
 }

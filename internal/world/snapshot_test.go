@@ -254,42 +254,6 @@ func TestRetentionKeepsManualAndBeforeDelete(t *testing.T) {
 	}
 }
 
-func TestDiskUseCountsEachInodeOnce(t *testing.T) {
-	m, _ := newTestManager(t)
-	id := seedWorld(t, m)
-	now := t0
-	m.now = func() time.Time { now = now.Add(time.Minute); return now }
-	for range 3 {
-		if _, err := m.TakeSnapshot(id, "", "alice"); err != nil {
-			t.Fatal(err)
-		}
-	}
-	list, err := m.Snapshots(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	used, free, err := m.SnapshotDiskUse(id, list)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The zips are shared by all three; world.json and the config file are
-	// copied into each.
-	var zips, small uint64
-	for _, f := range list[0].Files {
-		if isZip(f.Path) {
-			zips += uint64(f.Size) //nolint:gosec // test size
-		} else {
-			small += uint64(f.Size) //nolint:gosec // test size
-		}
-	}
-	if want := zips + 3*small; used != want {
-		t.Errorf("used %d, want %d", used, want)
-	}
-	if free == 0 {
-		t.Error("free space is zero")
-	}
-}
-
 func TestValidSnapshotName(t *testing.T) {
 	for name, want := range map[string]bool{
 		"20261103T142501Z":   true,

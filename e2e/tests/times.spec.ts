@@ -14,7 +14,7 @@ async function takeSnapshot(page: import("@playwright/test").Page, foreman: impo
 // DESIGN 9: times show in the browser's zone, with how long ago they were.
 test("times show in the browser's time zone with a relative time", async ({ page, foreman }) => {
   await takeSnapshot(page, foreman);
-  const time = page.locator("tbody tr").first().locator("time");
+  const time = page.locator("tbody tr").first().locator("td").nth(1).locator("time");
   const iso = await time.getAttribute("datetime");
   expect(iso).toMatch(/Z$/);
   const clock = new Intl.DateTimeFormat("en-US", {
@@ -30,7 +30,7 @@ test("times show in the browser's time zone with a relative time", async ({ page
 
   // The Snapshots tab uses the same element.
   await page.goto("/snapshots");
-  await expect(page.locator("tbody tr").first().locator("time")).toContainText(/\b(EST|EDT)\b/);
+  await expect(page.locator("tbody tr").first().locator("td").nth(1).locator("time")).toContainText(/\b(EST|EDT)\b/);
   await checkPage(page);
 });
 
@@ -44,6 +44,6 @@ test("without JavaScript times stay in UTC", async ({ page, foreman, browser }) 
   });
   const p = await plain.newPage();
   await p.goto("/worlds/base/snapshots");
-  await expect(p.locator("tbody tr").first().locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+  await expect(p.locator("tbody tr").first().locator("td").nth(1).locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
   await plain.close();
 });

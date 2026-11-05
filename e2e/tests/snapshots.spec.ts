@@ -59,8 +59,8 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await expect(rows.first()).toContainText("Manual");
   // Three columns, the reason above the label (DESIGN 8.3).
   await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
-  await expect(rows.first().locator("td").first()).toContainText(/^Manual\s*Before the rocket/);
-  await expect(rows.first().locator("time")).toHaveText(/\d{1,2}:\d{2}.*\((now|\d+ seconds? ago)\)$/);
+  await expect(rows.first().locator("td").first()).toContainText(/^\s*Manual\s*Before the rocket/);
+  await expect(rows.first().locator("td").nth(1).locator("time")).toHaveText(/\d{1,2}:\d{2}.*\((now|\d+ seconds? ago)\)$/);
   await checkPage(page);
 
   // Play on: the save is replaced and a new one appears.
@@ -78,7 +78,8 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
   await expect(page.getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
   await expect(rows).toHaveCount(2);
-  await expect(rows.first().locator("td").first()).toHaveText(/^Before restore\s*Restore/);
+  await expect(rows.first().locator("td").first()).toHaveText(/^\s*Before restore, taken /);
+  await expect(rows.first().locator("td").first()).not.toHaveText(/Before restore\s*Before restore/);
   expect(readFileSync(save, "utf8")).toBe("the first save");
   expect(statSync(save).mtime.getTime()).toBe(savedAt.getTime());
   expect(() => statSync(join(dir, "saves", "later.zip"))).toThrow();
@@ -92,10 +93,10 @@ test("a snapshot's reason is not repeated by its label", async ({ page, foreman 
   await page.goto("/worlds/family-base/snapshots");
   await page.getByRole("button", { name: "Take snapshot" }).click();
   const cell = page.locator("tbody tr").first().locator("td").first();
-  await expect(cell).toHaveText(/^Manual snapshot\s*Restore/);
+  await expect(cell).toHaveText(/^\s*Manual snapshot, taken /);
   await page.getByLabel("Label (optional)").fill("Before the rocket");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.locator("tbody tr").first().locator("td").first()).toHaveText(/^Manual\s*Before the rocket\s*Restore/);
+  await expect(page.locator("tbody tr").first().locator("td").first()).toHaveText(/^\s*Manual\s*Before the rocket, taken /);
 });
 
 test("cancel leaves the world as it is", async ({ page, foreman }) => {
@@ -140,7 +141,7 @@ test("the done message leads to the snapshot's Restore link", async ({ page, for
     els.map((el) => el.textContent),
   );
   expect(names).toHaveLength(2);
-  expect(names[0]).toMatch(/\d{2}:\d{2}:\d{2} UTC$/);
+  expect(names[0]).toMatch(/\d{1,2}:\d{2}:\d{2}/);
   expect(new Set(names).size).toBe(2);
   await checkPage(page);
 
