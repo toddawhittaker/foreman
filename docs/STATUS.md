@@ -573,13 +573,27 @@ STATUS had said 10.1 was delivered; it was not until this epic.
   With nothing to roll back to, the page shows only the error. A missing
   old image refuses the start (SPEC 3.7) and loses nothing. Pruning never
   removes a world's newest `game-update` snapshot. Audited as `rollback`.
-- **Version picker (SPEC 10.7).** The import form and the
-  Update page have a typed input with a list filled after the page loads,
-  newest first, with stable and experimental marked. It leaves out
-  rootless, `stable-` and alias tags. The page never waits on Docker Hub,
-  and typing works without the list and without JavaScript. A typed
-  version must be an exact patch release of a supported line; its
-  existence is not checked against Docker Hub.
+- **Version picker (SPEC 10.7).** The import form and the Update page
+  have a dropdown of every newer release, filled after the page loads,
+  newest first, with stable and experimental marked once. It leaves out
+  rootless, `stable-` and alias tags. Under it, "Or type a version" wins
+  when filled. When Docker Hub cannot be reached, the dropdown says so and
+  the typed field is the way in; typing also works without JavaScript. A
+  typed version must be an exact patch release of a supported line; its
+  existence is not checked against Docker Hub. The Update page says a
+  version only moves forward and the only way back is Roll back. (#113,
+  after Todd's test pass.)
+- **Snapshots tab and delete (SPEC 6.12, added in this epic).** A
+  Snapshots item in the main menu lists every world's snapshots, deleted
+  worlds included, with size, what deleting would free, and the total disk
+  used, counting hard-linked files once. Delete, one at a time, from the
+  tab or a world's Snapshots page, after a confirmation that names the
+  snapshot and the space it frees, and warns when Rollback depends on it.
+  Audited as `snapshot-delete` before anything is removed; refused while an
+  operation runs on the world. (#114)
+- **No layout shift between pages.** Every page keeps room for the
+  scrollbar (`scrollbar-gutter: stable`), so short and tall pages line up.
+  (#112)
 - **Release notice (SPEC 10.2).** The world page shows, once it has
   loaded, a newer stable or experimental release with a link to the wiki's
   Version history page for its line, and a link to the Update page. A
@@ -601,8 +615,8 @@ STATUS had said 10.1 was delivered; it was not until this epic.
 
 ### Verified
 
-Checks on 869350a, all green: `make verify` (coverage 90.5%), `make e2e`
-(408 passed), `make test-game` (1.1.110, 2.0.77, 2.1.23 and 2.1.24, with
+Checks on 7e4c15d, all green: `make verify` (coverage 90.3%), `make e2e`
+(420 passed), `make test-game` (1.1.110, 2.0.77, 2.1.23 and 2.1.24, with
 both update and rollback cases), and `make e2e-game` (2 passed).
 
 - Invariant tests in `internal/world` and `internal/game`
