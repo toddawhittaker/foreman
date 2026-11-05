@@ -173,6 +173,8 @@ func serverActionRoutes(snap string) []actionRoute {
 		{http.MethodPost, p("force-stop")},
 		{http.MethodPost, p("pull-image")},
 		{http.MethodPost, p("switch")},
+		{http.MethodPost, p("cancel-stop")},
+		{http.MethodPost, p("take-snapshot")},
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},
@@ -245,7 +247,7 @@ func TestServerActionsRefuseBadRequests(t *testing.T) {
 					t.Errorf("%s %s %s: %d, want 403", name, r.method, path, rep.StatusCode)
 				}
 			}
-			if rep := g.do(http.MethodGet, path, nil, cookie); r.path(id) == gamePath(id, "start") || r.path(id) == gamePath(id, "pull-image") {
+			if rep := g.do(http.MethodGet, path, nil, cookie); slices.Contains([]string{"start", "pull-image", "cancel-stop", "take-snapshot"}, strings.TrimPrefix(path, worldPath(id)+"/")) {
 				if rep.StatusCode != http.StatusMethodNotAllowed {
 					t.Errorf("GET %s: %d, want 405", path, rep.StatusCode)
 				}
