@@ -165,3 +165,22 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 });
+
+// SPEC 7.1: when Docker cannot be asked, the page shows nothing it cannot
+// know, and does not claim that nobody is online.
+test.describe("with Docker unreachable", () => {
+  test.use({ foremanEnv: { DOCKER_HOST: "unix:///nonexistent/docker.sock" } });
+
+  test("the status leaves out what cannot be known", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    await page.goto("/");
+    await expect(badge(page)).toHaveText("Unknown", live);
+    const status = page.getByRole("region", { name: "Status" });
+    await expect(status).not.toContainText("Uptime");
+    await expect(status).not.toContainText("Save loaded");
+    await expect(page.getByRole("region", { name: "Players online" })).toContainText("Foreman cannot see whether anyone is online.");
+    await expect(page.getByRole("button", { name: "Take snapshot" })).toHaveCount(0);
+    await checkPage(page);
+  });
+});

@@ -138,7 +138,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("region", { name: "Switch" })).toContainText("This is the active world.");
     await checkPage(page);
     await page.goto("/worlds/second");
-    await expect(page.getByRole("region", { name: "Switch" })).toContainText("leaves the server stopped if it is stopped");
+    await expect(page.getByRole("region", { name: "Switch" })).toContainText("When the server is stopped, the confirmation lets you leave it stopped instead.");
   });
 
   test("a bad countdown keeps the form with the field's error", async ({ page, foreman, fakeGame }) => {
