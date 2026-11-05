@@ -402,7 +402,7 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 		if len(names) == 0 || countdown == 0 {
 			o.skip(StepWarn)
 		} else {
-			if err := c.warnPlayers(ctx, rc, countdown); err != nil {
+			if err := c.countdown(ctx, o, rc, countdown, names); err != nil {
 				return err
 			}
 			o.done(StepWarn)
@@ -423,6 +423,92 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 	}
 	c.refresh(ctx, w, cont.ID)
 	o.done(StepStopContainer)
+	return nil
+}
+
+// errCountdownCancelled is the cause CancelStop gives the countdown's context.
+var errCountdownCancelled = errors.New("the stop countdown was cancelled")
+
+// cancelledText is the chat line that tells warned players the stop is off.
+const cancelledText = "The server stop was cancelled."
+
+// countdown warns players and waits out the countdown, which CancelStop can
+// end early. A cancel returns ErrStopCancelled with the stop's steps
+// skipped, before anything is saved or stopped, so every caller of
+// stopLocked ends its whole action there (SPEC 7.6).
+func (c *Controller) countdown(ctx context.Context, o *opRun, rc *rcon.Client, d time.Duration, names []string) error {
+	w := o.w
+	cdCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	now := c.now()
+	w.mu.Lock()
+	w.countdownCancel = cancel
+	w.mu.Unlock()
+	o.showCountdown(now.Add(d), w.joins.Online(names, now))
+
+	err := c.warnPlayers(cdCtx, rc, d)
+
+	// Clearing the cancel under the lock CancelStop holds decides a race
+	// between a late cancel and the end of the countdown: either it was
+	// seen here, or CancelStop finds nothing to cancel.
+	w.mu.Lock()
+	cause := context.Cause(cdCtx)
+	w.countdownCancel = nil
+	w.mu.Unlock()
+	if errors.Is(cause, errCountdownCancelled) {
+		o.skip(stopSteps...)
+		// Best effort: players were told the server would stop.
+		_ = c.exec(ctx, rc, cancelledText)
+		return ErrStopCancelled
+	}
+	return err
+}
+
+// showCountdown records when the countdown ends and who was online, for
+// the pages that show the stop (SPEC 7.6).
+func (o *opRun) showCountdown(until time.Time, players []Player) {
+	o.lockAll()
+	defer o.unlockAll()
+	for i := range o.op.Steps {
+		if o.op.Steps[i].Name == StepWarn {
+			o.op.Steps[i].Until = until
+		}
+	}
+	o.op.Players = players
+	o.publishLocked()
+}
+
+// CancelStop ends the stop countdown running on the world's game, so the
+// game is neither saved nor stopped and the action that began the countdown
+// (stop, restart, switch, restore or update) ends with its error
+// ErrStopCancelled and nothing changed; an image it had downloaded stays
+// (SPEC 7.6). It returns ErrNoCountdown when there is no countdown, which
+// includes one that has just ended, and waits until the action has ended.
+func (c *Controller) CancelStop(ctx context.Context, id string, by Actor) error {
+	w := c.world(id)
+	w.mu.Lock()
+	if w.countdownCancel == nil {
+		w.mu.Unlock()
+		return ErrNoCountdown
+	}
+	// Recorded under the lock, so the countdown cannot end between the
+	// record and the cancel. The audit entry never claims a cancel that did
+	// not happen.
+	if err := c.audit(ctx, by, AuditStopCancel, id, ""); err != nil {
+		w.mu.Unlock()
+		return err
+	}
+	w.countdownCancel(errCountdownCancelled)
+	done := w.opDone
+	w.mu.Unlock()
+	if done == nil {
+		return nil
+	}
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	return nil
 }
 

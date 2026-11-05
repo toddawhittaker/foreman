@@ -326,8 +326,49 @@ func TestDaemonDownAndFailing(t *testing.T) {
 		t.Errorf("after healing: %v", err)
 	}
 	d.Close()
-	if err := c.Ping(ctx); err == nil || !strings.Contains(err.Error(), "could not reach the Docker daemon") {
+	if err := c.Ping(ctx); err == nil || !strings.Contains(err.Error(), "Foreman cannot reach Docker at") {
 		t.Errorf("closed daemon: %v", err)
+	}
+}
+
+// A daemon nobody answers for is reported in a plain sentence that names
+// DOCKER_HOST. The raw transport error, with the request's URL and its
+// encoded filter, is kept for the log and is never in the text.
+func TestUnreachableIsPlain(t *testing.T) {
+	c, d := newClient(t)
+	// Agree the API version first, so the call that fails is the listing.
+	if _, err := c.APIVersion(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	d.Close()
+	_, err := c.ListContainers(context.Background(), true, []string{"some.label=value"})
+	var ue *docker.UnreachableError
+	if !errors.As(err, &ue) {
+		t.Fatalf("got %v, want an UnreachableError", err)
+	}
+	text := err.Error()
+	if !strings.Contains(text, "DOCKER_HOST") || !strings.Contains(text, "tcp://") {
+		t.Errorf("text %q does not name DOCKER_HOST and where it points", text)
+	}
+	for _, raw := range []string{"filters", "%7B", "/containers", "http://", "dial"} {
+		if strings.Contains(text, raw) {
+			t.Errorf("text %q holds raw error detail %q", text, raw)
+		}
+	}
+	if !strings.Contains(ue.Err.Error(), "filters") {
+		t.Errorf("the raw error for the log lost its detail: %v", ue.Err)
+	}
+}
+
+// A call the caller cancelled is not a Docker that cannot be reached.
+func TestCancelledCallIsNotUnreachable(t *testing.T) {
+	c, _ := newClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := c.Ping(ctx)
+	var ue *docker.UnreachableError
+	if !errors.Is(err, context.Canceled) || errors.As(err, &ue) {
+		t.Errorf("got %v", err)
 	}
 }
 
