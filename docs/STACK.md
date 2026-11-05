@@ -52,7 +52,14 @@ is a copy and goes stale if they change without it.
   - `factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb`
     (the last 1.1 release);
   - `factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef`;
-  - `factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28`.
+  - `factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28`;
+  - `GAME_IMAGE_2_1_PREV`: `factoriotools/factorio:2.1.23@sha256:1e1773337f5be1d93f61d1d64757f18c19c8eb345c96acc57e0d3567a4fd4c3f`,
+    the starting point of the same-line update test (SPEC 10.3).
+
+  Foreman runs a world on the plain tag, so the tests run the plain tag too.
+  Before a real-game run, `make test-game` and `make e2e-game` check that
+  the plain tag on the host resolves to the pinned digest, and refuse with
+  a `docker pull` and `docker tag` hint when it is missing or different.
   A tag can be rebuilt upstream (2.1.24 was), which is why the tests pin
   the digest, so a test run is repeatable. The product accepts that risk
   for a world's image (SPEC 4.2). Foreman never downloads an image at
@@ -268,8 +275,8 @@ Rejected:
 | `make image` | Build the container image with a local tag. |
 | `make run` | Run Foreman from source against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It contacts Docker at `DOCKER_HOST` (the default socket unless you set it) to show and control the game. If Docker cannot be reached the Server page shows "Unknown" with the reason and the other pages work. |
 | `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. A test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. |
-| `make test-game` | The game controller against the real Docker daemon and the three game test images (`GAME_IMAGE_*`, section 1), one after another, because they share the game port. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game. `TAG=1.1`, `2.0` or `2.1` runs one image. Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
-| `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image, and a switch from one world to another and back: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
+| `make test-game` | The game controller against the real Docker daemon and the game test images (`GAME_IMAGE_*`, section 1), one after another, because they share the game port. It first checks that each image's plain tag on the host is the pinned digest. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game, and update and rollback with the real game: 2.0.77 to 2.1.24 and 2.1.23 to 2.1.24, each reaching InGame and rolling back to a byte-identical save. `TAG=1.1`, `2.0` or `2.1` runs one line, and checks only the images that line's tests use (`2.0` and `2.1` include the update tests). Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
+| `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image, and a switch from one world to another and back: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing or is not the pinned digest. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
 | `make test-catalogue` | Created in Epic 8. Re-runs the crash reason catalogue's scenarios (SPEC 8.8) against `factoriotools/factorio:$(VERSION)`, for example `VERSION=2.1.22`. Downloads nothing: the image must already be on the host. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
 | `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as parallel jobs. |

@@ -30,6 +30,11 @@ it was made with.
 
 ## Consequences
 
+- Shipped: Epic 4 removed adopted mode and recorded the exact version. Epic 5
+  made each world run `factoriotools/factorio:<its version>` (SPEC 10.1),
+  with update, rollback, the picker and the release notice (SPEC 10.2 to
+  10.7).
+
 - Each world runs on its own version; switching needs no shared container.
 - Rejected: **keeping adopted mode**. Two code paths and the gaps above.
 - Rejected: **freezing it as experimental**. Still tested and reviewed, for a mode nobody should pick.
