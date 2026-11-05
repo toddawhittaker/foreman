@@ -211,6 +211,10 @@ func (p ServerPage) OperationHeading() string {
 		return choose(failed, "The restart failed", "Restarting the server")
 	case game.ActionRestore:
 		return choose(failed, "The restore failed", "Restoring a snapshot")
+	case game.AuditUpdate:
+		return choose(failed, "The update failed", "Updating the game version")
+	case game.AuditRollback:
+		return choose(failed, "The rollback failed", "Rolling back the game version")
 	case game.AuditSwitch:
 		if sw := o.Switch; sw != nil {
 			return choose(failed, "The switch from "+p.name(sw.From)+" to "+p.name(sw.To)+" failed",
@@ -337,6 +341,17 @@ const precheckLead = "Foreman did not start the game, because the save that woul
 // the new world refused. Nothing was stopped or changed.
 const switchPrecheckLead = "Foreman did not switch, because the save that would load in the new world does not match that world:"
 
+// updatePrecheckLead opens the message for an update the pre-start check
+// at the new version refused. Nothing was stopped or changed.
+func updatePrecheckLead(check world.PreCheck, name, version string) string {
+	for _, pr := range check.Problems {
+		if pr.Kind != world.ProblemModGameVersion {
+			return "Foreman did not update the game version, because the save does not match " + name + " on Factorio " + version + ":"
+		}
+	}
+	return "Foreman did not update the game version, because " + name + " cannot run in Factorio " + version + ":"
+}
+
 // precheckLeadFor opens the message for a refused start or switch. When the
 // only problems are mods made for another Factorio, the save is not what
 // fails, so the lead says the world cannot run instead. name is the world
@@ -376,6 +391,9 @@ func (p ServerPage) Failure() *Failure {
 			name = p.WorldNames[p.Result.Target]
 		}
 		f.Message = precheckLeadFor(pe.Check, switching, name)
+		if p.Result.Action == game.AuditUpdate {
+			f.Message = updatePrecheckLead(pe.Check, p.World.Name, p.Result.Version)
+		}
 		if pe.Changed {
 			f.Message = changedLead + " " + f.Message
 		}
@@ -412,8 +430,10 @@ func (p ServerPage) Failure() *Failure {
 type Anyway struct {
 	// Path is where the button posts; Verb is the button's words.
 	Path, Verb string
-	// Switch is set for a switch; Restart for a restart of a running game.
-	Switch, Restart bool
+	// Switch is set for a switch; Restart for a restart of a running game;
+	// Update for a game version update to Version.
+	Switch, Restart, Update bool
+	Version                 string
 	// World is the world that loads the save. From is the world a switch
 	// leaves, and FromID its id, which the form sends.
 	World, From, FromID string
@@ -440,6 +460,8 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	case game.AuditSwitch:
 		a.Path, a.Verb, a.Switch = switchPath(p.Result.Target), "Switch anyway", true
 		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
+	case game.AuditUpdate:
+		a.Path, a.Verb, a.Update, a.Version = updatePath(p.World.ID), "Update anyway", true, p.Result.Version
 	}
 	a.Seen = game.AnywayFingerprint(check, a.Running)
 	return a
@@ -479,7 +501,7 @@ func failureText(err error) string {
 var actionNames = map[string]string{
 	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
 	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
-	game.AuditSwitch: "switch",
+	game.AuditSwitch: "switch", game.AuditUpdate: "update", game.AuditRollback: "rollback",
 }
 
 // OtherErrors words the errors of the actions asked for while another ran.
@@ -506,6 +528,10 @@ func (p ServerPage) Done() string {
 	switch p.Result.Action {
 	case game.ActionRestore:
 		return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
+	case game.AuditUpdate:
+		return "The game version is updated. Foreman took the snapshot \"Before update\" first; to undo, use Roll back on the world's page."
+	case game.AuditRollback:
+		return "The world is rolled back. Foreman took the snapshot \"Before restore\" first; to undo the rollback, restore that snapshot from the Snapshots page."
 	case game.AuditSwitch:
 		return "The worlds are switched. Foreman took the snapshot \"Before switch\" of both worlds first; to undo, switch back, or restore that snapshot from the Snapshots page."
 	}
@@ -517,6 +543,8 @@ func (p ServerPage) Done() string {
 var doneAnnouncement = map[string]string{
 	game.ActionRestore: "The world is restored.",
 	game.AuditSwitch:   "The worlds are switched.",
+	game.AuditUpdate:   "The game version is updated.",
+	game.AuditRollback: "The world is rolled back.",
 }
 
 // resultAnnouncement is what a live page reads out for the results the

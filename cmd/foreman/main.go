@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/toddawhittaker/foreman/internal/releases"
 	"log/slog"
 	"net"
 	"net/http"
@@ -118,7 +119,7 @@ func serve(cfg *config.Config) error {
 	monitoring.Go(func() { games.Run(monitorCtx) })
 	defer func() { stopMonitor(); monitoring.Wait() }()
 
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Log: slog.Default()})
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Log: slog.Default()})
 	if err != nil {
 		return err
 	}

@@ -34,6 +34,9 @@ type Deps struct {
 	// GameNets gives the game networks, whose addresses may not
 	// sign in by trusted headers (SPEC 12.6). Game answers when it is nil.
 	GameNets GameSubnetter
+	// Releases lists Factorio versions and releases (SPEC 10.2, 10.7);
+	// nil means Foreman makes no outbound calls for them.
+	Releases Releases
 	Log      *slog.Logger
 	Now      func() time.Time // time.Now when nil
 }
@@ -43,6 +46,7 @@ type server struct {
 	store    *store.Store
 	worlds   *world.Manager
 	game     *game.Controller
+	releases Releases
 	runs     *gameRuns
 	console  *consoleHistory
 	log      *slog.Logger
@@ -89,6 +93,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		store:    d.Store,
 		worlds:   d.Worlds,
 		game:     d.Game,
+		releases: d.Releases,
 		runs:     newGameRuns(),
 		gameNets: d.GameNets,
 		console:  newConsoleHistory(),
@@ -143,6 +148,7 @@ func (s *server) routes() {
 	s.worldRoutes()
 	s.saveRoutes()
 	s.snapshotRoutes()
+	s.updateRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
