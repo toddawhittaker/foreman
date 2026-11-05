@@ -212,7 +212,10 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user s
 
 // fail logs err and sends the 500 page. The page never carries err.
 func (s *server) fail(w http.ResponseWriter, r *http.Request, what string, err error) {
-	s.log.Error(what, "method", r.Method, "path", r.URL.Path, "error", err)
+	// A browser that left mid-request is not a server fault.
+	if r.Context().Err() == nil {
+		s.log.Error(what, "method", r.Method, "path", r.URL.Path, "error", err)
+	}
 	s.page(w, r, http.StatusInternalServerError, "", ErrorPage{Status: http.StatusInternalServerError})
 }
 

@@ -1,12 +1,14 @@
 package web
 
 import (
+	"context"
 	"html"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -353,6 +355,35 @@ func TestStartAnywayRestoreOnlyWhenNewest(t *testing.T) {
 	}
 	if sn := s.startAnywaySnapshot(id); sn != nil {
 		t.Errorf("a newer snapshot exists, but %q is offered", sn.Name)
+	}
+}
+
+// A request the browser abandoned is not a server fault: listing the other
+// worlds on a cancelled context logs nothing, while a real failure to list
+// still logs an error.
+func TestOtherWorldsLogsOnlyRealFailures(t *testing.T) {
+	g := newGameRig(t, image21)
+	g.newWorld("Base", fixtureNoSA, false)
+	var logs strings.Builder
+	s := &server{worlds: g.worlds, log: slog.New(slog.NewTextHandler(&logs, nil))}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if got := s.otherWorlds(ctx); got != nil {
+		t.Errorf("a cancelled request listed %v", got)
+	}
+	if logs.Len() != 0 {
+		t.Errorf("a cancelled request was logged:\n%s", logs.String())
+	}
+
+	if err := os.RemoveAll(g.worlds.Dirs().Worlds); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.otherWorlds(context.Background()); got != nil {
+		t.Errorf("a failed listing returned %v", got)
+	}
+	if !strings.Contains(logs.String(), "level=ERROR") || !strings.Contains(logs.String(), "list worlds") {
+		t.Errorf("a real failure was not logged as an error:\n%s", logs.String())
 	}
 }
 

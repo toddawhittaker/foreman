@@ -2,7 +2,9 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -92,6 +94,27 @@ func TestLogsNeverHoldSecrets(t *testing.T) {
 		if strings.Contains(logs, secret) {
 			t.Errorf("the log contains the %s", name)
 		}
+	}
+}
+
+// A request the browser abandoned is not a server fault: fail logs nothing
+// for one, and still logs a real failure at ERROR.
+func TestFailLogsOnlyRealFailures(t *testing.T) {
+	hn := newHarness(t, nil)
+	s := &server{cfg: hn.cfg, log: hn.slog, render: mustRenderer(t)}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	r := httptest.NewRequest(http.MethodGet, "/x", nil).WithContext(ctx)
+	s.fail(httptest.NewRecorder(), r, "list worlds", context.Canceled)
+	if hn.logs.String() != "" {
+		t.Errorf("a cancelled request was logged:\n%s", hn.logs.String())
+	}
+
+	s.fail(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/x", nil), "list worlds", errors.New("disk gone"))
+	lines := logLines(t, hn)
+	if len(lines) != 1 || lines[0]["level"] != "ERROR" {
+		t.Errorf("a real failure was not logged as an error: %v", lines)
 	}
 }
 
