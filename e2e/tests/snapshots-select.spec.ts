@@ -79,6 +79,9 @@ test.describe("at 320 px and 200% text", () => {
       return out;
     });
     expect(problems).toEqual([]);
+    // Stacked rows are still a table to a screen reader.
+    await expect(page.getByRole("columnheader")).toHaveCount(3);
+    await expect(page.getByRole("row")).not.toHaveCount(0);
   }
 
   test("the Snapshots tab and a world's snapshots page fit", async ({ page, foreman }) => {
