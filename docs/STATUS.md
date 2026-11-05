@@ -873,6 +873,21 @@ flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
   failed on the old sources.
 - Code, accessibility and design reviews ran over the batch, and fix
   rounds closed their findings.
+- The security reviewer checked the host mods path shown on the switch and
+  Server pages and the Docker Hub size call (SPEC 14.10) on `bc071c1`. It
+  found nothing high or medium. Its one low finding, raw Docker text on the
+  Server page, was fixed.
+- Against real `factoriotools/factorio` containers on `bc071c1`:
+  `make test-game` for all tags (48 pass: 1.1, 2.0 and 2.1, including the
+  update across lines 2.0.77 to 2.1.24 and within a line 2.1.23 to
+  2.1.24) and `make e2e-game` (2 pass).
+- A real switch that downloaded `factoriotools/factorio:2.0.73` (about
+  135.5 MB, shown on the confirmation page). Docker events show the pull
+  finished before the old world stopped. The old world saved over RCON and
+  exited cleanly, and the new world reached InGame with its save. Both
+  "Before switch" snapshots were taken and no save was lost.
+- A real switch to a version with no image (2.0.74) failed at the download
+  and left the old world running, with nothing saved or snapshotted.
 
 ### Gaps left
 
@@ -896,11 +911,7 @@ flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
   mid-switch. The changed-state refusal is covered by an integration test
   only.
 - The mod-change undo click-budget test is skipped until Epic 6.
-- The switch page and the Server page show the host path of a world's mods
-  folder to signed-in users, and the switch page makes one call to Docker
-  Hub for the image size (SPEC 14.10). Both want security review at the
-  batch gate.
-- Not yet run against a real `factoriotools/factorio` container: a switch
-  that downloads an image (`make test-game`, `make e2e-game`).
+- Cancel stop was not tried with a real player online, because no game
+  client can join a headless server.
 - Issues #154 and #155 are only partly done; the rest (import form points,
   other messages) is in the next batch.
