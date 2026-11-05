@@ -133,8 +133,8 @@ test("a world in the list is compact at 320 px, with Switch beside its name", as
   // The Switch button shares the name's row.
   expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
   expect(switchTo.x).toBeGreaterThan(name.x);
-  // Five facts in three short rows, so a world still takes less than the 250 px it used to.
-  expect((await box(second)).height).toBeLessThan(phone(page) ? 225 : 140);
+  // Four facts in two rows, so a world takes well under the 250 px it used to.
+  expect((await box(second)).height).toBeLessThan(phone(page) ? 200 : 140);
   await checkPage(page);
 });
 

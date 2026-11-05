@@ -173,7 +173,7 @@ test("the Worlds tab marks the current page and hovers grey", async ({ page, for
   expect(idle).not.toBe(current);
 });
 
-// SPEC 5.4, 6.6: each world in the list says what its snapshots add, and
+// SPEC 5.4, 6.6: each world in the list says, in its Disk use, what its snapshots add, and
 // that is the figure on the world's own Snapshots page.
 test("the list shows what each world's snapshots add", async ({ page, foreman }) => {
   await createAdmin(page);
@@ -190,8 +190,8 @@ test("the list shows what each world's snapshots add", async ({ page, foreman })
 
   await page.goto("/worlds");
   const fact = (name: string) =>
-    page.locator("ul.worlds > li").filter({ has: page.getByRole("heading", { name }) }).locator("div").filter({ hasText: /^Snapshots add/ });
-  await expect(fact("Alpha").locator("dd")).toHaveText(added);
-  await expect(fact("Beta").locator("dd")).toHaveText("0 B");
+    page.locator("ul.worlds > li").filter({ has: page.getByRole("heading", { name }) }).locator("div").filter({ hasText: /^Disk use/ }).locator("dd");
+  await expect(fact("Alpha")).toHaveText(new RegExp(`snapshots add ${added}$`));
+  await expect(fact("Beta")).toHaveText(/snapshots add 0 B$/);
   await checkPage(page);
 });

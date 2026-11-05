@@ -8,7 +8,8 @@ import (
 	"testing"
 )
 
-var addsFigure = regexp.MustCompile(`<dt>Snapshots add</dt><dd>([^<]*)</dd>`)
+// addsFigure reads the figure from a world's Snapshots page and from the list, where it follows the disk use.
+var addsFigure = regexp.MustCompile(`(?:<dt>Snapshots add</dt><dd>|snapshots add )([^<]*)(?:</span>)?</dd>`)
 
 // SPEC 6.6: the list's "Snapshots add" for a world is the figure on that
 // world's Snapshots page, and a world with no snapshots adds nothing.

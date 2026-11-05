@@ -36,8 +36,7 @@
         <div><dt>Game version</dt><dd>{{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
         <div><dt>Space Age</dt><dd>{{if .SpaceAge}}On{{else}}Off{{end}}</dd></div>
         <div><dt>Last played</dt><dd>{{if .LastPlayedUnknown}}unknown{{else if .LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .LastPlayed}}">{{utc .LastPlayed}}</time>{{end}}</dd></div>
-        <div><dt>Disk use</dt><dd>{{if .SizeUnknown}}unknown{{else}}{{bytes .DiskBytes}}{{end}}</dd></div>
-        <div><dt>Snapshots add</dt><dd>{{if $.Page.AddsUnknown}}unknown{{else}}{{bytes (index $.Page.SnapshotAdds .ID)}}{{end}}</dd></div>
+        <div><dt>Disk use</dt><dd>{{if .SizeUnknown}}unknown{{else}}{{bytes .DiskBytes}}{{end}} <span class="fact-note">snapshots add {{if $.Page.AddsUnknown}}unknown{{else}}{{bytes (index $.Page.SnapshotAdds .ID)}}{{end}}</span></dd></div>
       </dl>
       {{- with index $.Page.Busy .ID}}
       <p><strong>Busy:</strong> {{.}}</p>

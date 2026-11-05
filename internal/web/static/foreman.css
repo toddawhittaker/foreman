@@ -882,12 +882,6 @@ legend {
   gap: var(--space-1) var(--space-3);
 }
 
-/* A world's five facts take their natural widths, so they fit two rows on a phone. */
-.worlds .facts {
-  display: flex;
-  flex-wrap: wrap;
-}
-
 /* The status facts: label and value pairs that reflow at any width (7.5). */
 .facts {
   display: grid;
@@ -906,6 +900,13 @@ legend {
 
 .facts dd {
   overflow-wrap: anywhere;
+}
+
+/* A second figure under a fact's value, on its own line and small enough to
+   stay on it at 320 px. */
+.facts .fact-note {
+  display: block;
+  font-size: var(--text-sm);
 }
 
 /* The "Active" badge is drawn as selected, like the current tab. */
