@@ -132,6 +132,11 @@ input {
   font: inherit;
 }
 
+/* Room for the scrollbar is always kept, so a short page and a long one sit at the same place. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Base elements */
 body {
   display: grid;
