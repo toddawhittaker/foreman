@@ -28,8 +28,9 @@ type InboxFolder struct {
 	SpaceAge    bool
 }
 
-// ErrBadGameVersion is returned for a game version not shaped like 2.0.72.
-var ErrBadGameVersion = errors.New("enter the game version as three numbers, such as 2.0.72")
+// ErrBadGameVersion is returned for a game version that is not an exact
+// release of a supported line (SPEC 10.8), such as 2.0.77.
+var ErrBadGameVersion = errors.New("enter the game version as three numbers from a supported line (1.1, 2.0 or 2.1), such as 2.0.77")
 
 // ErrNoSaves is returned when an inbox folder holds no save zips.
 var ErrNoSaves = errors.New("this folder holds no save files (.zip) at its top level, so there is nothing to import")
@@ -257,7 +258,7 @@ func (m *Manager) ImportSave(ctx context.Context, name, gameVersion string, spac
 // checkNew refuses a new world's name or game version before any work is
 // done. create checks the name again when it makes the world.
 func (m *Manager) checkNew(ctx context.Context, name, gameVersion string) error {
-	if !ValidGameVersion(gameVersion) {
+	if !SupportedGameVersion(gameVersion) {
 		return ErrBadGameVersion
 	}
 	m.createMu.Lock()

@@ -92,7 +92,7 @@ func (c *Controller) updateChecks(ctx context.Context, id, version string, opts 
 			return p.Kind == world.ProblemModListSpaceAge
 		})
 	}
-	if err := c.allowStart(id, check, opts); err != nil {
+	if err := c.allowStart(check, opts); err != nil {
 		return err
 	}
 	if _, err := c.gameNetwork(ctx); err != nil {

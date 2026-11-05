@@ -71,8 +71,8 @@ const (
 	AuditSwitch        = "switch"
 	AuditUpdate        = "game-update"
 	AuditRollback      = "rollback"
-	// A start, restart or switch the checks refused before anything was
-	// done is recorded under its own action, with the reason (SPEC 12.9).
+	// A start, restart, switch or update the checks refused before anything
+	// was done is recorded under its own action, with the reason (SPEC 12.9).
 	AuditStartRefused   = "start-refused"
 	AuditRestartRefused = "restart-refused"
 	AuditSwitchRefused  = "switch-refused"
@@ -135,9 +135,6 @@ type Config struct {
 	HostDataDir string
 	// GameUID and GameGID are what the game runs as (SPEC 3.6, 4.6).
 	GameUID, GameGID int
-	// Images maps a game's major.minor version ("2.0") to the pinned image
-	// reference that runs it (SPEC 4.2, STACK 1).
-	Images map[string]string
 	// Network is FOREMAN_GAME_NETWORK. Outside a container empty means
 	// Docker's default bridge; inside one it is required (SPEC 4.4).
 	Network string
@@ -166,7 +163,6 @@ type Controller struct {
 	switches SwitchStore
 	hostData string
 	user     string
-	images   map[string]string
 	network  string
 	selfID   string
 	// What the game network is checked against (SPEC 4.4). dockerHost is the
@@ -221,9 +217,6 @@ func New(cfg Config) (*Controller, error) {
 		strings.ContainsAny(cfg.HostDataDir, ":,") {
 		return nil, fmt.Errorf("the host data directory %q must be a clean absolute path without a colon or comma", cfg.HostDataDir)
 	}
-	if len(cfg.Images) == 0 {
-		return nil, errors.New("game controller: no game images are configured")
-	}
 	if err := checkNetworkName(cfg.Network); err != nil {
 		return nil, err
 	}
@@ -240,7 +233,7 @@ func New(cfg Config) (*Controller, error) {
 		docker: cfg.Docker, worlds: cfg.Worlds, auditLog: cfg.Audit, switches: cfg.Switches,
 		hostData: cfg.HostDataDir,
 		user:     fmt.Sprintf("%d:%d", cfg.GameUID, cfg.GameGID),
-		images:   cfg.Images, network: cfg.Network, selfID: cfg.SelfID,
+		network:  cfg.Network, selfID: cfg.SelfID,
 		dockerTCP: strings.HasPrefix(cfg.DockerHost, "tcp://"), dockerHost: tcpHost(cfg.DockerHost),
 		proxies: cfg.TrustedProxies, containerEnvs: []string{docker.DockerEnvPath, docker.PodmanEnvPath}, lookupHost: net.DefaultResolver.LookupHost,
 		now: now, log: log,
@@ -736,10 +729,10 @@ var refusedActions = map[string]string{
 
 // IsRefusal reports whether err is a check refusing the world as it is,
 // rather than a fault such as Docker or the disk failing: the pre-start
-// check (SPEC 7.4), a save newer than the game image, or a switch refusal.
+// check (SPEC 7.4) or a switch refusal.
 func IsRefusal(err error) bool {
 	var pe *PrecheckError
-	return errors.As(err, &pe) || errors.Is(err, ErrSaveNewerThanImage) ||
+	return errors.As(err, &pe) ||
 		errors.Is(err, ErrSwitchSame) || errors.Is(err, ErrSwitchNotActive) ||
 		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning)
 }

@@ -19,6 +19,11 @@ func refusal(anyway bool) error {
 		{Kind: world.ProblemModMissing, Text: "A mod is missing.", Mods: []string{"m"}, StartAnyway: anyway}}}}
 }
 
+// errSaveNewer is a plain refusal, with no "Start anyway": the pre-start
+// check's answer to a save newer than the world's game (SPEC 7.4).
+var errSaveNewer = &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveNewer,
+	Text: "The save base.zip was made by a newer Factorio than this world's Factorio 2.1.20. An older game cannot load it."}}}}
+
 // SPEC 8.7: the crash message names the game's reason and links to the full
 // log on the Console page, and shows no raw log lines.
 func TestCrashMessageNamesReasonAndLinksConsole(t *testing.T) {
@@ -53,7 +58,7 @@ func TestStartBlocked(t *testing.T) {
 			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: refusal(false)}, true
 		}), true},
 		{"newer save", serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Result, p.HaveResult = actionResult{Action: game.AuditRestart, Err: game.ErrSaveNewerThanImage}, true
+			p.Result, p.HaveResult = actionResult{Action: game.AuditRestart, Err: errSaveNewer}, true
 		}), true},
 		{"image missing", serverCase(game.StateStopped, func(p *ServerPage) {
 			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: game.ErrImageMissing}, true
@@ -103,7 +108,7 @@ func TestLatestMessageLeads(t *testing.T) {
 	refused := func(crash time.Time) ServerPage {
 		return serverCase(game.StateCrashLooping, func(p *ServerPage) {
 			p.Status.LastCrash = crash
-			p.Result, p.HaveResult = actionResult{Action: game.AuditRestart, Err: game.ErrSaveNewerThanImage, At: msgT0}, true
+			p.Result, p.HaveResult = actionResult{Action: game.AuditRestart, Err: errSaveNewer, At: msgT0}, true
 		})
 	}
 	html := controlHTML(t, refused(msgT1))

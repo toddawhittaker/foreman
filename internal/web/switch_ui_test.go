@@ -90,7 +90,7 @@ func TestWorldPageSaysWhyThereIsNoSwitch(t *testing.T) {
 	g.waitPage("Switching from Alpha to Bravo")
 	busy := g.get(worldPath(b))
 	g.wantContains("busy world", busy, "An operation is running on the server, such as a switch.", `href="/"`)
-	g.wantMissing("busy world", busy, "Switch to this world")
+	g.wantMissing("busy world", busy, `id="act-switch"`)
 }
 
 // DESIGN 7.3: a refused switch is an error message with a way back.
