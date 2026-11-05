@@ -1019,7 +1019,7 @@ remembered.
 ### Verified
 
 - `make verify` 90.9% coverage and `make e2e` 660 passed, 16 skipped, on
-  `6bb12ff` (FILL: replace with the numbers on the final epic head). Twelve
+  the final epic head, with main merged in. Twelve
   of the skips are the ERROR-check self-test, which runs in one browser
   project only. Four are the click-budget mod-change test, which waits for
   Epic 6.
