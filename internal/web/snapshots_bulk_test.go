@@ -141,7 +141,7 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Nothing is ticked.") {
 		t.Errorf("nothing ticked: %d", rec.Code)
 	}
-	hn.wantRedirect(hn.get(PathSnapshotsDelete), PathSignIn)
+	hn.wantRedirect(hn.get(PathSnapshotsDelete), signInAfter(PathSnapshotsDelete))
 }
 
 func TestBulkDeleteWarnsAboutRollback(t *testing.T) {

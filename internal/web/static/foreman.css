@@ -1024,6 +1024,41 @@ td > .hint {
   margin-block-start: var(--space-1);
 }
 
+/* Local times with a zone and "(now)" are wider than the old UTC text, and
+   the date and clock never split (DESIGN 8.3). On a narrow panel the
+   snapshot tables take smaller dates and sizes and a tighter checkbox gap,
+   so three columns still fit inside it at 320 px. */
+@container (max-width: 24rem) {
+  .snapshot-list td:not(:first-child) {
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list .check {
+    gap: var(--space-2);
+  }
+
+  /* The table may use half the panel's padding on each side, which is
+     room for a long zone name such as "GMT+5:30" beside the clock. */
+  .snapshot-list {
+    inline-size: calc(100% + var(--space-4));
+    margin-inline: calc(var(--space-2) * -1);
+  }
+
+  .snapshot-list th,
+  .snapshot-list td {
+    padding-inline: var(--space-1);
+  }
+
+  .snapshot-list th:first-child,
+  .snapshot-list td:first-child {
+    padding-inline-start: 0;
+  }
+
+  .snapshot-list .row-actions .button {
+    padding-inline: var(--space-3);
+  }
+}
+
 /* Four columns at phone width need tighter gutters (DESIGN 8.3). */
 @container (max-width: 24rem) {
   th,

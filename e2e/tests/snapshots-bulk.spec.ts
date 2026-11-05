@@ -34,7 +34,7 @@ async function restore(page: Page, label: string) {
   await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
 }
 
-// Each table sits inside its panel's content box, at any width.
+// Each table sits inside its panel's border, at any width; on a phone it may use the panel's padding.
 async function expectTablesFit(page: Page) {
   const outside = await page.evaluate(() =>
     [...document.querySelectorAll("table")]
@@ -42,8 +42,8 @@ async function expectTablesFit(page: Page) {
         const panel = t.closest<HTMLElement>(".panel")!;
         const p = panel.getBoundingClientRect();
         const style = getComputedStyle(panel);
-        const left = p.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
-        const right = p.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+        const left = p.left + parseFloat(style.borderLeftWidth);
+        const right = p.right - parseFloat(style.borderRightWidth);
         const r = t.getBoundingClientRect();
         return r.left < left - 0.5 || r.right > right + 0.5;
       })
@@ -189,4 +189,19 @@ test("the confirmation says which snapshots stay and why", async ({ page, forema
   await page.goto("/snapshots/delete");
   await expect(page.getByText("Nothing is ticked.")).toBeVisible();
   await checkPage(page);
+});
+
+// A zone name like "GMT+5:30" is among the widest clock text time.js writes.
+test.describe("in a wide time zone", () => {
+  test.use({ timezoneId: "Asia/Kolkata" });
+
+  test("the tables still fit their panel", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    await takeSnapshot(page, "Wide clock");
+    await expectTablesFit(page);
+    await page.goto("/snapshots");
+    await expectTablesFit(page);
+    await checkPage(page);
+  });
 });

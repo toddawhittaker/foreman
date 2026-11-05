@@ -33,7 +33,7 @@
       <button type="submit" class="button" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}">Select all automatic<span class="visually-hidden"> of {{.WorldName}}</span></button>
     </div>
     <p class="hint">Snapshots of this world add <span class="nowrap">{{bytes .Adds}}</span>.</p>
-    <table>
+    <table class="snapshot-list">
       <caption>Snapshots of {{.WorldName}}, newest first</caption>
       <thead>
         <tr><th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th></tr>

@@ -63,7 +63,7 @@
     <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">Select all automatic</button>
   </div>
   <p class="hint">Tick the snapshots to delete, then choose Delete selected. Nothing is deleted until you confirm on the next page. Select all automatic ticks every snapshot Foreman took itself, such as before a switch or an update, and none of the manual ones.</p>
-  <table>
+  <table class="snapshot-list">
     <caption>Snapshots of {{.WorldName}}, newest first</caption>
     <thead>
       <tr><th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th></tr>
