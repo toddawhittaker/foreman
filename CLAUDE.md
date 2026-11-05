@@ -63,6 +63,13 @@ fold, the epic PR) follows the `epic-run` skill.
 
 Orchestration rules:
 
+- Delegate the work itself, so the main session gets back to the user
+  quickly. Hand long waits (CI, merges, long runs) to agents in the
+  background too.
+- Put each decision the user must make in AskUserQuestion, never as a
+  question buried in a block of text: people skim text. Give each
+  decision a reasoned recommendation, listed first, and plausible
+  alternatives, each with what it gains and what it costs.
 - Delegate to the cheapest agent that can do the job. Run explorer first
   when a location is unknown and pass its paths on. When a builder or
   tester prompt settles every choice, spawn it on Sonnet at high effort
