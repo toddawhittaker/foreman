@@ -954,7 +954,12 @@ first cell, above the label, and drops to three.
 A link that stands alone in a cell, such as a save's name, is padded to
 `--target-min` tall; a badge may follow it in the same cell. A button in
 a cell is an ordinary button (7.1). Sizes have one decimal and a unit ("2.1 GB"). Times use `time` with a
-`datetime` attribute; the displayed format is Epic 2's choice.
+`datetime` attribute and are shown as section 9 describes.
+A snapshot table stacks each row (snapshot, then "Taken:", then "Size:")
+when its panel is narrower than 14rem, which is 200% text on a 320 px
+phone. Changing `display` can drop table semantics in some browsers, so
+these tables carry explicit `table`, `rowgroup`, `row`, `columnheader` and
+`cell` roles (SPEC 17.12).
 
 ### 8.4 Long lists
 
@@ -1058,6 +1063,15 @@ Classes and their contract:
   in any message, field value or log view (SPEC 14.8).
 - Numbers carry units ("2.1 GB", "60 seconds"), and times say whose zone
   when it matters (scheduled restarts).
+- Times (SPEC 17.11): the server writes UTC in a `time` element with a
+  `datetime` attribute, and `time.js` rewrites it with `Intl` into the
+  viewer's zone, such as "Nov 3, 2:25 PM EST (2 days ago)". The year shows
+  only when it is not the current year. The relative part is visible text
+  only and is refreshed every minute. A time inside `.visually-hidden`
+  text, such as a link's spoken name, gets the absolute local time and no
+  relative part, so the name stays short and never goes stale. Without
+  JavaScript the UTC text stays. A table cell keeps its date and clock in
+  separate `nowrap` spans (8.3). Durations are not rewritten.
 
 ## 10. Checks every screen passes
 

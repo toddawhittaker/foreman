@@ -925,5 +925,151 @@ flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
 - The mod-change undo click-budget test is skipped until Epic 6.
 - Cancel stop was not tried with a real player online, because no game
   client can join a headless server.
-- Issues #154 and #155 are only partly done; the rest (import form points,
-  other messages) is in the next batch.
+- Issues #154 and #155 were only partly done here; the polish fixes batch
+  finished them.
+
+## Polish fixes
+
+The second of two fix batches after Gate A, before i18n (#87). It finishes
+the Import page, the snapshot pages, sign-in and setup, and local times,
+and makes every end-to-end test fail on an undeclared Foreman error log
+line. It serves SPEC 3.7, 5.1, 5.4, 5.5, 6.6, 6.12, 10.7, 12.3, 14.17 and
+17.11 to 17.12, and DESIGN 8.3 and 9. ADR 0007 records where an import is
+remembered.
+
+### Delivered
+
+- **Import several folders at once (#124).** Folders are checkboxes. With
+  one ticked, the name, version and Space Age fields apply. With several,
+  each folder becomes a world named after the folder, with its save's
+  version and Space Age setting, and the per-world fields are emptied,
+  unticked and turned off, with a hint saying why. A folder whose save
+  cannot be read, or that is refused, is skipped with its reason, and the
+  Done list links each new world. A skipped folder that an import on its
+  own can fix links to that ("Import X on its own"); for an unreadable
+  save it asks for the version and focuses that field. Ticking back to one
+  folder puts the typed version and choice back.
+- **Already imported (#127).** `world.json` gains `imported_from` (folder,
+  save, save_size, save_mtime to the nanosecond, at). A folder whose name
+  and newest save's name, size and time match a record is listed apart,
+  naming the world and the time, and can still be imported. The Import
+  page reads only each world's `world.json` (ADR 0007).
+- **Image download with the import (#130).** A box, ticked by default,
+  downloads the game image the version needs if this host lacks it, after
+  the import and once per missing version. It reuses the world's own image
+  download, so it is audited and shown as before, and it needs no new
+  Docker call. Folder rows say "game image not downloaded". The world
+  page shows the download as running, or failed.
+- **Other import fixes.** Space Age is refused before 2.0, in the form and
+  in the import, and warned about when it differs from the save (#139).
+  The page names the inbox's host path (#148). The empty version option
+  reads "Same as the save (X)", the suggested name is the one in the
+  folder's `server-settings.json` when readable, and unimportable folders
+  are listed apart (#155). The world page says "Done: Imported X." and
+  shows "Imported from" (#154). A version typed by hand must be a
+  downloaded image or on Docker Hub's list; when Docker Hub cannot be
+  reached the import goes ahead and the world page warns that the version
+  could not be checked.
+- **Snapshots: one counting pass (#150, #135).** One pass over snapshot
+  files by inode gives what a selection frees, each world's figure and the
+  total, so they agree. "Snapshots add X" replaces "All snapshots use" and
+  "Snapshots use": the space held only by snapshot files that no world also
+  holds. A snapshot's own `snapshot.json` counts, so figures are byte
+  exact. The Worlds list shows "snapshots add X" under each world's Disk
+  use, from the same pass; if the count fails it says "unknown" and logs
+  one error.
+- **Delete several snapshots (#134).** A checkbox per snapshot, "Delete
+  selected", and "Select all automatic" (never manual or "Before delete"),
+  on the Snapshots tab, with one button per world, and on each world's
+  page. After the shortcut the page says how many it ticked and focuses
+  that note. One confirmation page lists every snapshot, says what the
+  whole selection frees, warns when one is the rollback point, and
+  separates "These stay" (an operation is running) from "Already deleted".
+  Foreman deletes one at a time through the single-delete path, with an
+  audit entry per snapshot before removal; a partial failure keeps what
+  was deleted and lists the rest, and a resubmitted page ends on Done.
+- **Snapshots tab and tables (#151).** The tab is grouped under a heading
+  per world, with a Restore link per row. Every snapshot table is measured
+  against its panel at all four projects and in a wide-zone run. The
+  overflow at 200% text on a 320 px phone predated this batch (the page
+  was 574 px wide on `main`); it is fixed here by stacking each row below
+  14rem. The tables carry explicit table, row and cell roles so the
+  stacked layout keeps its semantics.
+- **Sign-in return and setup (#154).** A signed-out visit goes to
+  `/signin?next=<path>`, and after sign-in the admin lands there. Only a
+  local path starting with one `/` is accepted (SPEC 14.17), checked when
+  the page is shown and again on the post, and it survives a wrong
+  password. A POST, an htmx request and `/` get none. Setup lists every
+  field problem at once.
+- **Local times (#149).** `time.js` shows each `time` element in the
+  browser's zone with a short zone name and a relative time refreshed every
+  minute. A time inside a control's spoken name gets the local time alone.
+  Without JavaScript the UTC text stays. The snapshot Done message and
+  Restore link names are `time` elements, so they follow suit.
+- **End-to-end tests fail on an ERROR log line.** The fixture stops
+  Foreman after each test and fails it on any ERROR line it did not
+  declare with `foreman.expectError`, and on a declaration that matches no
+  line. A committed spec tests the check, and a test also fails when
+  Foreman exits early. A cancelled action at shutdown and a cancelled bulk
+  import are no longer logged as errors.
+- **Review fixes.** world.json is read once per list; the Space Age
+  warning texts live only in Go; "Select all automatic" reads "ticked N
+  snapshots"; a gone snapshot with no date shows its name.
+
+### Verified
+
+- `make verify` 90.9% coverage and `make e2e` 660 passed, 16 skipped, on
+  `6bb12ff` (FILL: replace with the numbers on the final epic head). Twelve
+  of the skips are the ERROR-check self-test, which runs in one browser
+  project only. Four are the click-budget mod-change test, which waits for
+  Epic 6.
+- New Go tests pin the figures against the disk:
+  `TestFreesMatchesTheDiskForEverySelection` deletes every selection of
+  three snapshots and compares the claimed "frees" with the real fall in
+  disk use, to the byte. Others cover the `imported_from` record to the
+  nanosecond, the return path rules, bulk import and bulk delete, and the
+  Import page reading only `world.json`. New end-to-end specs cover import,
+  snapshots and the tab, selection, times, sign-in return, the Worlds list
+  figure and the ERROR check.
+- Code and accessibility reviews ran over the batch. Their fix rounds were
+  pull requests #181 (import review), #182 (snapshot figures, tick note,
+  times, large text), #183 (the Import page reads only `world.json`; an
+  undated gone snapshot is shown by name) and #184 (explicit table roles,
+  many-folder version fields emptied, reworded tick note, version hint on
+  import alone).
+- The security reviewer checked the return path, the import folder paths,
+  bulk delete and secrets. It found nothing.
+- Against real `factoriotools/factorio` containers on `80c5f26`:
+  `make test-game TAG=2.1` (24 passed) and `make e2e-game` (2 passed, no
+  ERROR lines). A bulk import downloaded the missing 2.0.77 image, and a
+  switch to that world reached InGame with its save. A hand-typed 2.0.999
+  was refused. A bulk snapshot delete's "frees" matched the real drop in
+  disk use except for `snapshot.json`, which the review fix round (#182)
+  then counted. The active save was untouched, and the world started
+  afterwards.
+
+### Gaps left
+
+- In a bulk import only the first world of each version shows the
+  download on its page, because a download is tracked per world.
+- The download checkbox shows whenever Foreman has server control, not
+  only when the chosen version's image is missing.
+- A world page does not update live during an image download, and its
+  note is not announced to a screen reader (accessibility review LOW7).
+  The note says to reload.
+- The several-folders state on page load (fields emptied before any
+  click) has no end-to-end test, because Playwright's reload does not
+  restore ticks.
+- A file held only by snapshots of two different worlds counts toward
+  neither world's figure, so the Worlds list figures can add up to less
+  than the Snapshots tab total. The list has no column total.
+- There is no unit test for the bulk delete refusal while a game operation
+  runs. The single delete has the same gap.
+- The Deleted worlds page still shows UTC in its Restore link names, and
+  setup does not carry a return path.
+- The "Taken:" and "Size:" labels of stacked snapshot rows are English
+  text in `foreman.css`; i18n (#87) must move them into templates.
+- The restore page shows a snapshot's size without `snapshot.json`, while
+  the lists include it, so they differ by a few hundred bytes.
+- The explicit table roles were checked in Chromium only, not in Safari
+  with VoiceOver.

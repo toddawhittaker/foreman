@@ -131,7 +131,9 @@ which pulls that exact tag as a visible step and is recorded in the audit
 log (12.9). A switch the admin confirmed (7.9) downloads the new world's
 missing image as its first step, visible and audited, before the switch
 record is written and before the old game is stopped; a failed download
-leaves the old world running and untouched. (P0)
+leaves the old world running and untouched. An import the admin ticked
+the download for (5.5) downloads the same way, after the world is made.
+(P0)
 
 3.8. **Upgrading Foreman never touches a running game** and never rewrites
 a world's files without a snapshot first. A Foreman upgrade that changes
@@ -347,7 +349,10 @@ this accepts.
   `server-whitelist.json`, and `rconpw` (4.5);
 - `world.json`: Foreman's metadata for the world: display name, pinned
   game version, Space Age flag, which save to load (section 7.11; if
-  missing, the newest save), and the time it was created.
+  missing, the newest save), the time it was created, and, for a world
+  imported from an inbox folder, `imported_from`: the folder, the newest
+  save's name, size and modification time (to the nanosecond), and the
+  time of the import (5.5).
 
 A person can read, back up and move a world without Foreman. `world.json`
 is plain JSON with snake_case keys and a `format_version` (1 today). Fields
@@ -372,19 +377,58 @@ field, not implied by a path. (P0)
 ### Operations
 
 5.4. **List** worlds with name, game version, Space Age flag, last played
-time, disk use, and which one is active. (P0)
+time, disk use, and which one is active. Under disk use each world shows
+what its snapshots add (6.6), so an admin can see which worlds hold the
+space. There is no total column. (P0)
 
 5.5. **Import** an existing directory of saves and mods (for example a
 hand-renamed `saves-2025` folder) as a new world, or upload a save zip and
 sync its mods from the portal (section 9.8). Import copies; it never moves
 or changes the source. Foreman reads a folder to import only from the inbox,
-`<data>/import/`, never from a path the admin types. It reads save zips
+`<data>/import/`, never from a path the admin types. The Import page names
+the inbox's path on the host (3.5) when Foreman knows it. It reads save zips
 from the folder's top level and from its `saves/` folder, so a Factorio
 server's own layout imports as it is. It copies `mods/` and the `config/`
 files that 5.1 lists, except `rconpw`: Foreman makes its own (4.5). Other
 files are not copied. A save name found both at the top level and in
 `saves/` makes the folder not importable, and the message names the file.
 A save zip can also be uploaded to make a new world. (P0)
+
+Import also does the following.
+
+- **Several folders at once.** The admin can tick several folders. With one
+  ticked, the name, game version and Space Age fields apply. With several,
+  each folder becomes a world named after the folder, with the game
+  version and Space Age setting read from its save; a folder whose save
+  cannot be read, or that is refused (a name taken, a clash), is skipped
+  with its reason and the others go ahead. A skipped folder an import on
+  its own can fix links to that. A bulk import is several single imports.
+- **Already imported.** Folders whose newest save is already in a world are
+  listed apart, naming that world and when, and can still be imported. A
+  folder counts as already imported when its folder name and its newest
+  save's name, size and modification time (to the nanosecond) all match
+  the `imported_from` record in a world's `world.json` (5.1). Worlds
+  imported before the record existed, and uploads, are never matched. A
+  newer or touched save makes the folder new again.
+  Folders that cannot be imported are listed apart, each with its reason.
+- **The game image.** When Foreman has server control, an import can also
+  download the game image its version needs if this host lacks it
+  (ticked by default). The download is the world's own image download
+  (3.7), started after the import, one per missing version. The
+  folder list says which folders' images are not downloaded.
+- **Space Age** is refused for a game version before 2.0, in the form and
+  in the import itself. The form warns when the choice differs from what
+  the save says.
+- **The game version** defaults to the save's. A version the admin types or
+  picks instead must be an image already downloaded or a version on
+  Docker Hub's list (10.7). When Docker Hub cannot be reached and the image
+  is not downloaded, the import goes ahead and the new world's page warns
+  that the version could not be checked.
+- **The suggested name** is the `name` in the folder's
+  `config/server-settings.json` when readable, else the folder name. Nothing
+  else is read from that file for this purpose.
+- **Reading the page** takes only each world's `world.json`; it does not
+  measure disk use. (P0)
 
 5.6. **Generate** a new world from a preset, a map exchange string, or
 map-gen settings plus a seed, with Space Age on or off. How a preset or
@@ -435,8 +479,16 @@ file still matches the snapshot (6.7). (P0)
 
 6.6. **Retention** is an app setting: keep the newest *n* automatic
 snapshots per world (default 10). Manual snapshots and the final snapshot
-of a deleted world are never removed automatically. Foreman shows total
-snapshot disk use. (P0)
+of a deleted world are never removed automatically. Foreman shows what
+snapshots cost as "Snapshots add X": the space held only by snapshot files
+that no world also holds, which deleting them would free. A save or mod
+zip a world holds by hard link (6.8) adds nothing, and a file shared by
+several snapshots counts once, when every name it has on disk belongs to a
+snapshot in the count. The same single counting pass, by inode, gives the
+space a selection of snapshots frees, each world's figure and the total, so
+they always agree. A file held only by snapshots of two different worlds
+counts for neither world's figure but is in the total, so the worlds'
+figures can add up to less than the total. (P0)
 
 6.7. **How snapshots are stored.** A snapshot is a plain directory,
 `snapshots/<world-id>/<time>/`, with the same shape as the world, plus a
@@ -448,7 +500,8 @@ path, size and modification time to the nanosecond. For each save and mod
 zip it also holds a SHA-256 hash, which Foreman reuses from the previous
 snapshot when the file's inode, size and modification time are unchanged.
 Restore checks every hash first and refuses a changed snapshot, naming the
-file. Disk use is read from manifests. A person can read it, copy it, or
+file. A snapshot's size is read from its manifest, and counts the manifest
+file itself; what deleting frees is read from the files (6.6). A person can read it, copy it, or
 restore it by hand, as the operator guide shows. (P0)
 
 6.8. Save and mod zips are hardlinked into the snapshot rather than
@@ -479,22 +532,43 @@ to writes in flight is short of that plus a fixed reserve of 2 GB. The
 reserve is kept for the game's autosaves. An upload with no declared
 length is refused, and at most two uploads run at once. If the disk fills
 anyway, the partial file is removed and nothing changes. The snapshot page
-shows free space beside snapshot disk use. (P0)
+shows free space beside what snapshots add. (P0)
 
-6.12. **The Snapshots tab and deleting a snapshot.** A Snapshots item in
+6.12. **The Snapshots tab and deleting snapshots.** A Snapshots item in
 the main menu lists every world's snapshots, deleted worlds included,
-with the world, label, reason, time, who took it, its size and what
-deleting it would free, and the total disk all snapshots use. Size counts
-every file in the snapshot. What deleting frees counts only files no other
-snapshot or world shares by hard link (6.8), and the total counts each
-file once. An admin can delete one snapshot at a time, from this tab or
-from a world's Snapshots page, after a confirmation page that names the
-world, label and time and says how much space it frees. When the snapshot
-is the one rollback restores (10.4), the confirmation says plainly that
-rollback to that version goes away with it. Deleting removes only that
-snapshot's folder, never the world or a file another snapshot shares. It
-is refused while an operation runs on that world, and is recorded in the
-audit log as `snapshot-delete` before anything is removed. (P1)
+grouped under a heading for each world that links to it. Each row shows
+the label, the reason when the label does not already say it, the time,
+who took it, its size, what deleting it would free, and Restore and Delete
+links. Each world's heading shows what its snapshots add, and the page
+shows "Snapshots add X" for all of them (6.6). Size counts every file in
+the snapshot, including its manifest. What deleting frees counts only
+files with no other name on disk outside the deleted snapshots, whether a
+world or another snapshot holds the name by hard link (6.8).
+
+An admin can delete snapshots from this tab or from a world's Snapshots
+page. A row's Delete link opens a confirmation page that names the world,
+label and time and says how much space it frees. Each row also has a
+checkbox, and "Delete selected" opens one confirmation page for the whole
+selection, which lists every snapshot with its world, label and time and
+says how much space the selection frees. "Select all automatic" ticks
+every automatic snapshot (6.6) on the page, and on the tab each world has
+one for its own. It keeps any hand ticks and never ticks a manual or
+"Before delete" snapshot. After it, the page says how many snapshots it
+ticked, also to a screen reader, and moves focus to that note.
+
+When a snapshot is the one rollback restores (10.4), its confirmation
+says plainly that rollback to that version goes away with it. On the
+selection page, a snapshot that cannot go (an operation is running on its
+world) is listed under "These stay" with the reason, and one already gone
+is listed as already deleted.
+
+Confirming deletes the snapshots one at a time, each through the same
+steps: refused while an operation runs on its world, recorded in the audit
+log as `snapshot-delete` (one entry per snapshot) before anything is
+removed, and removing only that snapshot's folder, never the world or a
+file another snapshot shares. If some fail, the ones already deleted stay
+deleted, and the page lists the rest with the reason. Submitting the page
+again after everything is gone ends on the Done page. (P1)
 
 ## 7. Server control
 
@@ -889,7 +963,9 @@ startup or on a timer. It keeps the Docker Hub list and the latest
 releases (10.2) in memory for 5 minutes, and does not keep a failed
 answer. The admin may also type a version; Foreman accepts only an exact
 patch release of a supported line. When Docker Hub cannot be reached, the
-page says so and the typed version still works. (P0)
+page says so and the typed version still works. An import also refuses a
+typed version that is neither downloaded nor on the list, unless Docker
+Hub cannot be reached (5.5). (P0)
 
 10.8. **Supported lines.** Foreman supports the 1.1, 2.0 and 2.1 lines,
 and every patch release within them. A new line (for example 2.2) needs a
@@ -933,11 +1009,13 @@ local accounts (12.3), trusted proxy headers (12.5), and OpenID Connect
 users, Foreman shows a one-time setup page to create the first admin; the
 page is reachable only until an admin exists. When `local` is not an
 enabled sign-in method there is no setup page, and the first user to
-arrive through trusted headers (12.5) becomes the admin. (P0)
+arrive through trusted headers (12.5) becomes the admin. The setup page
+reports every problem with its fields at once. (P0)
 
 12.4. Passwords are stored with a slow, salted password hash, chosen in
 docs/STACK.md. A password has at least 12 characters. Sign-in failures
-are rate-limited per username and per address (limits in 12.11). (P0)
+are rate-limited per username and per address (limits in 12.11). After a
+local sign-in the admin returns to the page they asked for (14.17). (P0)
 
 12.5. **Trusted proxy headers** (forward auth from Authentik, Authelia or
 oauth2-proxy): a configured header names the user, a second configured
@@ -1161,6 +1239,18 @@ when the sidecar is missing, not running, on the host network, or not on
 the game network (4.13). The game container itself keeps the shape in
 4.6. (P1)
 
+14.17. **Return after sign-in.** A signed-out visit to a page goes to the
+sign-in page with the page asked for in a `next` value. After sign-in
+Foreman sends the browser there only if the value is a local path: it
+starts with exactly one `/`, has no backslash or control character, has no
+scheme or host, is at most 2000 bytes, and is not the sign-in, setup,
+signed-out or sign-out page. Anything else goes to the home page. The
+value is checked when the sign-in page is shown and again when the form is
+posted, and it survives a wrong password. A POST or a partial-page
+(htmx) request is never given one. Trusted-header sign-in (12.5) needs no
+return path, because the proxy vouches for every request. The setup page
+carries none. (P0)
+
 ## 15. Logging
 
 15.1. Foreman writes structured logs to standard output: time, level,
@@ -1251,6 +1341,19 @@ with the defaults accepted, these take at most:
 A click is one activation of a button, link or choice in a list. Typing
 in a field doesn't count. Each task's end-to-end test counts its clicks
 and fails when a task goes over budget. (P1)
+
+17.11. **Times show in the viewer's time zone.** A time on a page is a
+`time` element with a UTC `datetime`. In the browser it is shown in the
+viewer's own zone, with a short zone name and, in visible text, how long
+ago it was, refreshed every minute. A time inside text only a screen
+reader hears (a control's name) shows the local time alone, so the name
+does not go stale. Without JavaScript the page keeps its UTC text.
+Durations, such as uptime, are not times of day and are left alone. (P1)
+
+17.12. **Tables keep their meaning when they reflow.** A table that stacks
+its rows at a narrow width (a snapshot list at 200% text on a phone) keeps
+its table, row and cell roles for assistive technology, and none of its
+content may overflow its panel. (P1)
 
 ## 18. Epics, in order
 
