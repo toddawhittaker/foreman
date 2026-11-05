@@ -179,7 +179,11 @@ var doneAnnouncement = map[string]string{
 func resultAnnouncement(p ServerPage) string {
 	var said []string
 	if f := p.Failure(); f != nil {
-		said = append(said, f.Word()+" "+f.Message)
+		msg := f.Message
+		if f.Next != nil {
+			msg += " " + f.Next.Label
+		}
+		said = append(said, f.Word()+" "+msg)
 		if f.Anyway != nil {
 			said = append(said, "You can "+strings.ToLower(f.Anyway.Verb)+"; the button is below.")
 		}

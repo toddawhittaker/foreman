@@ -62,6 +62,7 @@ type gameRuns struct {
 	locking   map[string]int            // those of them that hold the world's lock
 	results   map[string]actionResult   // by world id
 	asides    map[string][]actionResult // actions asked for while another ran
+	cancelled map[string]bool           // worlds whose running action had its stop cancelled
 	changed   chan struct{}             // closed and replaced when a result is stored
 	closeOnce sync.Once
 }
@@ -87,7 +88,7 @@ type actionResult struct {
 
 func newGameRuns() *gameRuns {
 	g := &gameRuns{running: map[string]int{}, locking: map[string]int{}, results: map[string]actionResult{},
-		asides: map[string][]actionResult{}, changed: make(chan struct{})}
+		asides: map[string][]actionResult{}, cancelled: map[string]bool{}, changed: make(chan struct{})}
 	g.ctx, g.cancel = context.WithCancel(context.Background())
 	return g
 }
@@ -161,6 +162,7 @@ func (g *gameRuns) runOn(ids []string, holdsLock bool, do func(ctx context.Conte
 		for i, id := range ids {
 			if g.running[id]--; g.running[id] == 0 {
 				delete(g.running, id)
+				delete(g.cancelled, id)
 			}
 			if holdsLock {
 				if g.locking[id]--; g.locking[id] == 0 {
@@ -179,6 +181,33 @@ func (g *gameRuns) runOn(ids []string, holdsLock bool, do func(ctx context.Conte
 		g.changedLocked()
 	}()
 	return true
+}
+
+// markCancelled notes that the action running on a world is having its stop
+// countdown cancelled, so its result is on the way. It does nothing when no
+// action runs, since the result is then stored already.
+func (g *gameRuns) markCancelled(id string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.running[id] > 0 {
+		g.cancelled[id] = true
+	}
+}
+
+// unmarkCancelled undoes markCancelled for a cancel that did not happen.
+func (g *gameRuns) unmarkCancelled(id string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	delete(g.cancelled, id)
+}
+
+// cancelPending reports whether a cancelled action's result has not been
+// stored yet. It ends with the actions on the world, so a later snapshot or
+// download never revives the message (SPEC 7.6).
+func (g *gameRuns) cancelPending(id string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.cancelled[id]
 }
 
 func (g *gameRuns) changedLocked() {
@@ -280,11 +309,19 @@ func gameError(err error) (int, string) {
 	return worldError(err)
 }
 
+// noImageAdvice is the next step after a download Docker Hub has no image
+// for; the Server page makes it a link to the world's page (SPEC 17.9).
+const noImageAdvice = "Check the world's game version on its page."
+
+func noImageLead(de *game.ImageDownloadError) string {
+	return "Foreman could not download " + de.Image + ": Docker Hub has no image with that version."
+}
+
 // downloadFailure words a failed image download: the image, the cause the
 // admin can act on and the next step. The daemon's own text stays in the log.
 func downloadFailure(de *game.ImageDownloadError, retry string) string {
 	if de.NotFound {
-		return "Foreman could not download " + de.Image + ": Docker Hub has no image with that version. Check the world's game version on its page."
+		return noImageLead(de) + " " + noImageAdvice
 	}
 	return "Foreman could not download " + de.Image + ". The details are in Foreman's log. " + retry
 }
@@ -322,7 +359,7 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
 	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID), Now: s.now()}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
-	if !p.HaveResult {
+	if !p.HaveResult && s.runs.cancelPending(sum.ID) {
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
 	}
 	p.Others = s.runs.others(sum.ID)
@@ -340,6 +377,11 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 			p.Image, p.ImageMissing = ref, !present
 		}
 	}
+	// Not while an operation runs: a switch would be refused (DESIGN 7.1).
+	// Each switch confirmation runs its own checks (SPEC 17.7, 17.8).
+	if !p.Busy() {
+		p.OtherWorlds = s.otherWorlds(ctx)
+	}
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()
@@ -347,6 +389,23 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 		p.Players, p.PlayersKnown, p.PlayersError = players, err == nil, err != nil
 	}
 	return p
+}
+
+// otherWorlds lists the worlds the Server page offers to switch to: every
+// readable one that is not the active world.
+func (s *server) otherWorlds(ctx context.Context) []world.Summary {
+	list, err := s.worlds.List(ctx)
+	if err != nil {
+		s.log.Error("list worlds", "error", err)
+		return nil
+	}
+	var out []world.Summary
+	for _, ws := range list {
+		if !ws.Active && !ws.Unreadable && !ws.Newer {
+			out = append(out, ws)
+		}
+	}
+	return out
 }
 
 // startAnywaySnapshot returns a world's newest snapshot when it is a
@@ -384,13 +443,6 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
 	p.FocusResult = followsOwnAction(r)
-	// Listed when the page loads only: the list is not live, and each switch
-	// confirmation runs its own checks (SPEC 17.7, 17.8).
-	for _, ws := range list {
-		if !ws.Active && !ws.Unreadable && !ws.Newer {
-			p.OtherWorlds = append(p.OtherWorlds, ws)
-		}
-	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -690,7 +742,12 @@ func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u stor
 	}
 	// A countdown that ended just before the cancel has nothing to cancel;
 	// the Server page shows how the action went on.
-	if err := s.game.CancelStop(r.Context(), sum.ID, actor(u)); err != nil && !errors.Is(err, game.ErrNoCountdown) {
+	s.runs.markCancelled(sum.ID)
+	err := s.game.CancelStop(r.Context(), sum.ID, actor(u))
+	if err != nil {
+		s.runs.unmarkCancelled(sum.ID)
+	}
+	if err != nil && !errors.Is(err, game.ErrNoCountdown) {
 		if status, msg, ok := s.gameRefusal(w, r, u, "cancel the stop", err); ok {
 			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: msg})
 		}
