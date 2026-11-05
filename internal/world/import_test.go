@@ -214,7 +214,7 @@ func TestInboxListsRealFoldersOnly(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(m.dirs.Imports, "escape")); err != nil {
 		t.Fatal(err)
 	}
-	got, err := m.Inbox()
+	got, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,7 +516,7 @@ func TestInboxMarksASaveClash(t *testing.T) {
 	write(t, filepath.Join(m.dirs.Imports, "clash", "same.zip"), "top", t0)
 	write(t, filepath.Join(m.dirs.Imports, "clash", "saves", "same.zip"), "inner", t0)
 	write(t, filepath.Join(m.dirs.Imports, "fine", "a.zip"), "x", t0)
-	list, err := m.Inbox()
+	list, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -26,6 +27,9 @@ const (
 	importedQuery  = "imported"
 	uncheckedQuery = "unchecked"
 )
+
+// folderQuery pre-ticks one inbox folder on the Import page.
+const folderQuery = "folder"
 
 // ImportPage offers both ways to import a world (SPEC 5.5).
 type ImportPage struct {
@@ -69,8 +73,17 @@ type BulkResult struct {
 // BulkImported is one folder that became a world.
 type BulkImported struct{ Folder, WorldID, WorldName string }
 
-// BulkSkipped is one folder that was not imported, and why.
-type BulkSkipped struct{ Folder, Reason string }
+// BulkSkipped is one folder that was not imported, and why. Alone is true
+// when importing the folder on its own can fix it (SPEC 17.9).
+type BulkSkipped struct {
+	Folder, Reason string
+	Alone          bool
+}
+
+// AlonePath is the import form with only this folder ticked.
+func (b BulkSkipped) AlonePath() string {
+	return PathImport + "?" + folderQuery + "=" + url.QueryEscape(b.Folder)
+}
 
 // ImportForm is one of the two import forms. Source is the uploaded file;
 // Folders are the ticked inbox folders.
@@ -167,11 +180,18 @@ func (f ImportForm) SpaceAgeWarning() string {
 	return spaceAgeOffWarning
 }
 
-// The Space Age warnings; import.js shows the same words.
+// The Space Age warnings. The page hands them to import.js as data
+// attributes, so the words live only here.
 const (
 	spaceAgeOnWarning  = "The save was made without Space Age. Factorio converts it to Space Age when it first starts, and that cannot be undone."
 	spaceAgeOffWarning = "The save was made with Space Age. Without it, Factorio may not load the save, or may remove its Space Age content."
 )
+
+// SpaceAgeOnWarning, SpaceAgeOffWarning and SpaceAgeOldWarning are the three
+// words import.js can show.
+func (ImportForm) SpaceAgeOnWarning() string  { return spaceAgeOnWarning }
+func (ImportForm) SpaceAgeOffWarning() string { return spaceAgeOffWarning }
+func (ImportForm) SpaceAgeOldWarning() string { return sentence(world.ErrSpaceAgeOld) }
 
 // Problems lists the form's field errors in the order the fields appear.
 // The upload form's file field comes last, so its text fields are read
@@ -194,12 +214,25 @@ func (f ImportForm) Problems() []Problem {
 }
 
 func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	s.importPage(w, r, u, http.StatusOK, ImportForm{Download: true}, ImportForm{Download: true}, nil)
+	folder := ImportForm{Download: true}
+	// A link from a skipped folder ticks it. A name that is not an importable
+	// inbox folder ticks nothing.
+	if name := r.URL.Query().Get(folderQuery); name != "" {
+		f, err := s.worlds.InboxEntry(name)
+		if err != nil && !errors.Is(err, world.ErrNoFolder) {
+			s.fail(w, r, "read import folder", err)
+			return
+		}
+		if err == nil && f.Importable() {
+			folder.Folders, folder.Name, folder.SpaceAge = []string{f.Name}, f.SuggestedName(), f.SpaceAge
+		}
+	}
+	s.importPage(w, r, u, http.StatusOK, folder, ImportForm{Download: true}, nil)
 }
 
 // importPage renders the import page with the given state of each form.
 func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User, status int, folder, upload ImportForm, result *BulkResult) {
-	inbox, err := s.worlds.Inbox()
+	inbox, err := s.worlds.Inbox(r.Context())
 	if err != nil {
 		s.fail(w, r, "list import folder", err)
 		return
@@ -409,34 +442,34 @@ func (s *server) importMany(ctx context.Context, folders []string, download bool
 	res := &BulkResult{}
 	firstOf := map[string]string{} // game version to the first world made with it
 	for _, name := range folders {
-		skip := func(reason string) { res.Skipped = append(res.Skipped, BulkSkipped{name, reason}) }
+		skip := func(reason string, alone bool) { res.Skipped = append(res.Skipped, BulkSkipped{name, reason, alone}) }
 		f, err := s.worlds.InboxEntry(name)
 		switch {
 		case errors.Is(err, world.ErrNoFolder):
-			skip("It is no longer in the import folder.")
+			skip("It is no longer in the import folder.", false)
 			continue
 		case err != nil:
-			s.log.Error("read import folder", "folder", name, "error", err)
-			skip("Foreman could not read it.")
+			s.logUnlessCancelled("read import folder", name, err)
+			skip("Foreman could not read it.", false)
 			continue
 		case f.Clash != nil:
-			skip(sentence(f.Clash))
+			skip(sentence(f.Clash), false)
 			continue
 		case f.Saves == 0:
-			skip(sentence(world.ErrNoSaves))
+			skip(sentence(world.ErrNoSaves), false)
 			continue
 		case !f.Read:
-			skip("Foreman could not read its save, so its game version is unknown. Import it on its own and enter the version.")
+			skip("Foreman could not read its save, so its game version is unknown. Import it on its own and enter the version.", true)
 			continue
 		}
 		id, err := s.worlds.ImportFolder(ctx, name, name, f.GameVersion, f.SpaceAge)
 		if err != nil {
 			status, msg := worldError(err)
 			if status == http.StatusInternalServerError {
-				s.log.Error("import folder", "folder", name, "error", err)
+				s.logUnlessCancelled("import folder", name, err)
 				msg = "Foreman could not import it."
 			}
-			skip(msg)
+			skip(msg, true)
 			continue
 		}
 		res.Imported = append(res.Imported, BulkImported{Folder: name, WorldID: id, WorldName: name})
@@ -450,10 +483,18 @@ func (s *server) importMany(ctx context.Context, folders []string, download bool
 	return res
 }
 
+// logUnlessCancelled logs a bulk import failure at ERROR. A browser that left
+// mid-request is not a server fault, so a cancelled request logs nothing.
+func (s *server) logUnlessCancelled(what, folder string, err error) {
+	if !errors.Is(err, context.Canceled) {
+		s.log.Error(what, "folder", folder, "error", err)
+	}
+}
+
 // downloadFor starts one image download for each version this host lacks,
 // through one world that runs it (SPEC 3.7). It reuses the world's own
 // download action, so it is audited and shown like one. It returns the
-// versions it started, newest import order kept.
+// versions it started, sorted by version.
 func (s *server) downloadFor(ctx context.Context, worlds map[string]string, by game.Actor) []string {
 	if s.game == nil {
 		return nil
@@ -546,7 +587,6 @@ func (s *server) receiveImport(r *http.Request) (id string, f ImportForm, unchec
 // message and version warning after an import, and the state of an image
 // download (SPEC 3.7, 5.5).
 func (s *server) importFacts(p *WorldPage, r *http.Request) {
-	p.ImportedFrom = s.worlds.ImportedFrom(p.World.ID)
 	q := r.URL.Query()
 	if q.Get(importedQuery) != "" {
 		p.Done = "Imported " + p.World.Name + "."

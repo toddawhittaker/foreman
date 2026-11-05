@@ -14,7 +14,7 @@ import (
 // inboxEntry returns the inbox folder named name, failing when it is missing.
 func inboxEntry(t *testing.T, m *Manager, name string) InboxFolder {
 	t.Helper()
-	list, err := m.Inbox()
+	list, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +62,8 @@ func TestImportRecordsWhereTheWorldCameFrom(t *testing.T) {
 			t.Errorf("imported_from.%s = %v, want %v", k, doc.ImportedFrom[k], v)
 		}
 	}
-	if got := m.ImportedFrom(id); got == nil || got.Folder != "saves-2025" {
-		t.Errorf("ImportedFrom(%s) = %+v", id, got)
+	if sum, err := m.Get(t.Context(), id); err != nil || sum.ImportedFrom == nil || sum.ImportedFrom.Folder != "saves-2025" {
+		t.Errorf("Get(%s).ImportedFrom = %+v, %v", id, sum.ImportedFrom, err)
 	}
 
 	f := inboxEntry(t, m, "saves-2025")
