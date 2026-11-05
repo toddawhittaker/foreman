@@ -396,7 +396,10 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 func (s *server) otherWorlds(ctx context.Context) []world.Summary {
 	list, err := s.worlds.List(ctx)
 	if err != nil {
-		s.log.Error("list worlds", "error", err)
+		// A browser that left mid-request is not a server fault.
+		if ctx.Err() == nil {
+			s.log.Error("list worlds", "error", err)
+		}
 		return nil
 	}
 	var out []world.Summary
