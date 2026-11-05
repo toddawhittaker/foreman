@@ -30,11 +30,10 @@ import (
 // game for each (internal/savefile/testdata) and the version its image runs.
 var gameTags = []struct {
 	tag, fixture, version string
-	env, image            string // the Makefile variable that pins the image, and its fallback
 }{
-	{"1.1", "1.1.110-vanilla.zip", "1.1.110", "GAME_IMAGE_1_1", image11},
-	{"2.0", "2.0.77-no-space-age.zip", "2.0.77", "GAME_IMAGE_2_0", image20},
-	{"2.1", "2.1.24-no-space-age.zip", "2.1.24", "GAME_IMAGE_2_1", image21},
+	{"1.1", "1.1.110-vanilla.zip", "1.1.110"},
+	{"2.0", "2.0.77-no-space-age.zip", "2.0.77"},
+	{"2.1", "2.1.24-no-space-age.zip", "2.1.24"},
 }
 
 // Only one game can hold the host's UDP port 34197, so the images run one
@@ -42,14 +41,6 @@ var gameTags = []struct {
 func TestRealGame(t *testing.T) {
 	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
 	e := newGameEnv(t)
-	// The Makefile passes its pinned images, so the pins are written down once (STACK 1).
-	e.images = map[string]string{}
-	for _, g := range gameTags {
-		e.images[g.tag] = g.image
-		if v := os.Getenv(g.env); v != "" {
-			e.images[g.tag] = v
-		}
-	}
 	total := time.Now()
 	for _, g := range gameTags {
 		if only != "" && only != g.tag {
@@ -57,7 +48,7 @@ func TestRealGame(t *testing.T) {
 		}
 		t.Run("v"+g.tag, func(t *testing.T) {
 			start := time.Now()
-			e.requireImage(t, e.images[g.tag])
+			e.requireImage(t, ImageRef(g.version))
 			e.runImage(t, g.tag, g.fixture, g.version)
 			t.Logf("TIMING %s: %s", g.tag, time.Since(start).Round(time.Second))
 		})
@@ -70,8 +61,7 @@ type gameEnv struct {
 	docker *docker.Client
 	worlds *world.Manager
 	audit  *memAudit
-	images map[string]string // by major.minor
-	run    string            // random, so no world id clashes with an earlier run
+	run    string // random, so no world id clashes with an earlier run
 	uid    int
 	gid    int
 }
@@ -132,7 +122,8 @@ func repoRoot(t *testing.T) string {
 	}
 }
 
-// requireImage fails when the pinned image is not already on this host;
+// requireImage fails when the image is not already on this host (make
+// test-game has checked that its tag is the pinned digest);
 // Foreman never downloads at start (SPEC 3.7), so neither does this test.
 func (e *gameEnv) requireImage(t *testing.T, ref string) {
 	t.Helper()
@@ -148,8 +139,7 @@ func (e *gameEnv) controller(t *testing.T) (*Controller, func()) {
 	c, err := New(Config{
 		Docker: e.docker, Worlds: e.worlds, Audit: e.audit, HostDataDir: e.data,
 		GameUID: e.uid, GameGID: e.gid,
-		Images: e.images,
-		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	if err != nil {
 		t.Fatal(err)

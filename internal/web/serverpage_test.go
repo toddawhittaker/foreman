@@ -332,10 +332,10 @@ func TestRefusalBoxAndStepWord(t *testing.T) {
 		{"restart anyway of a stopped game", refused(true, game.AuditRestart, game.StateStopped),
 			[]string{">Restart anyway</button>", `"Before start anyway"`},
 			[]string{"countdown, save the game and stop it"}},
-		{"save newer than the image", serverCase(game.StateStopped, func(p *ServerPage) {
-			p.Status.Operation = &game.Operation{Action: game.AuditStart, Done: true, Error: game.ErrSaveNewerThanImage.Error(), Steps: []game.Step{
+		{"save newer than the world", serverCase(game.StateStopped, func(p *ServerPage) {
+			p.Status.Operation = &game.Operation{Action: game.AuditStart, Done: true, Error: errSaveNewer.Error(), Steps: []game.Step{
 				{Name: game.StepCheck, State: game.StepFailed}}}
-			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: game.ErrSaveNewerThanImage}, true
+			p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: errSaveNewer}, true
 		}), []string{`step-state--failed">Refused<`}, []string{"Failed"}},
 		{"changed since shown", serverCase(game.StateStopped, func(p *ServerPage) {
 			err := &game.PrecheckError{Changed: true, Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveUnreadable, Text: "x", StartAnyway: true}}}}

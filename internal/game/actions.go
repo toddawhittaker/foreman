@@ -8,13 +8,11 @@ import (
 	"math"
 	"path"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/rcon"
-	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -200,7 +198,7 @@ func (c *Controller) anywaySnapshot(o *opRun, by Actor, check world.PreCheck) er
 	return nil
 }
 
-// gameImage returns the world's metadata and pinned image, or
+// gameImage returns the world's metadata and image, or
 // ErrImageMissing when Docker does not have the image: a start never
 // downloads it (SPEC 3.7).
 func (c *Controller) gameImage(ctx context.Context, id string) (world.Meta, string, error) {
@@ -228,8 +226,7 @@ func (c *Controller) PreStartCheck(id string) (world.PreCheck, error) {
 
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
 // has a mod list (SPEC 7.3). It returns a *PrecheckError unless the world may
-// start, with or without "Start anyway", and ErrSaveNewerThanImage when
-// the pinned image is older than the save.
+// start, with or without "Start anyway".
 func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, error) {
 	if err := c.worlds.EnsureModList(id); err != nil {
 		return world.PreCheck{}, err
@@ -238,7 +235,7 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	if err != nil {
 		return world.PreCheck{}, err
 	}
-	return check, c.allowStart(id, check, opts)
+	return check, c.allowStart(check, opts)
 }
 
 // precheckReadOnly is precheck for a switch's checks before the stop, which
@@ -259,12 +256,11 @@ func (c *Controller) precheckReadOnly(id string, opts StartOptions) error {
 			return p.Kind == world.ProblemModListSpaceAge
 		})
 	}
-	return c.allowStart(id, check, opts)
+	return c.allowStart(check, opts)
 }
 
-// allowStart returns a *PrecheckError unless the check lets the world start,
-// and ErrSaveNewerThanImage when the game is older than the save.
-func (c *Controller) allowStart(id string, check world.PreCheck, opts StartOptions) error {
+// allowStart returns a *PrecheckError unless the check lets the world start.
+func (c *Controller) allowStart(check world.PreCheck, opts StartOptions) error {
 	if allowed := check.OK() || (opts.Anyway && check.CanStartAnyway()); !allowed {
 		return &PrecheckError{Check: check}
 	}
@@ -273,7 +269,7 @@ func (c *Controller) allowStart(id string, check world.PreCheck, opts StartOptio
 	if opts.Anyway && !opts.confirmed && !check.OK() && AnywayFingerprint(check, opts.running) != opts.Seen {
 		return &PrecheckError{Check: check, Changed: true}
 	}
-	return c.checkSaveAgainstImage(id, check.SaveVersion)
+	return nil
 }
 
 // modListMissing reports whether the world has no mods/mod-list.json.
@@ -288,66 +284,6 @@ func (c *Controller) modListMissing(id string) (bool, error) {
 		return true, nil
 	}
 	return false, err
-}
-
-// ErrSaveNewerThanImage refuses a save made by a newer game than the one
-// the world's pinned image runs, which could not load it. It is a plain
-// refusal, never "Start anyway".
-var ErrSaveNewerThanImage = errors.New("the save was made by a newer Factorio than the game image Foreman runs for this world, so the game could not load it")
-
-// checkSaveAgainstImage refuses a save newer than the game version in the
-// pinned image's tag. A save that could not be read has no version and is
-// left to the pre-start check's own refusal.
-func (c *Controller) checkSaveAgainstImage(id string, save savefile.Version) error {
-	if save == (savefile.Version{}) {
-		return nil
-	}
-	meta, err := c.readMeta(id)
-	if err != nil {
-		return err
-	}
-	ref, err := c.imageFor(meta.GameVersion)
-	if err != nil {
-		return err
-	}
-	image, ok := imageVersion(ref)
-	if !ok {
-		return fmt.Errorf("cannot tell which Factorio version the game image %s runs", ref)
-	}
-	saved := [3]uint16{save.Major, save.Minor, save.Patch}
-	if slices.Compare(saved[:], image[:]) > 0 {
-		return fmt.Errorf("%w: the save is from Factorio %s, and the image runs Factorio %d.%d.%d",
-			ErrSaveNewerThanImage, save, image[0], image[1], image[2])
-	}
-	return nil
-}
-
-// imageVersion reads major.minor.patch from an image reference's tag, as in
-// factoriotools/factorio:2.0.77@sha256:...
-func imageVersion(ref string) ([3]uint16, bool) {
-	ref, _, _ = strings.Cut(ref, "@")
-	i := strings.LastIndex(ref, ":")
-	if i < 0 || i < strings.LastIndex(ref, "/") {
-		return [3]uint16{}, false
-	}
-	return parseVersion(ref[i+1:])
-}
-
-// parseVersion reads major.minor.patch, as in 2.0.77.
-func parseVersion(v string) ([3]uint16, bool) {
-	parts := strings.Split(v, ".")
-	if len(parts) != 3 {
-		return [3]uint16{}, false
-	}
-	var out [3]uint16
-	for k, p := range parts {
-		n, err := strconv.ParseUint(p, 10, 16)
-		if err != nil {
-			return [3]uint16{}, false
-		}
-		out[k] = uint16(n)
-	}
-	return out, true
 }
 
 // MaxStopCountdown is the longest countdown a stop may ask for.
@@ -658,7 +594,7 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	return o.end(err)
 }
 
-// PullImage downloads the pinned image for the world's game version, as an
+// PullImage downloads the image for the world's game version, as an
 // action of its own (SPEC 3.7). It is audited, and shown as a step.
 func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
 	meta, err := c.readMeta(id)
