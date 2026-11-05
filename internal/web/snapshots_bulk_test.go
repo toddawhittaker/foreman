@@ -144,6 +144,29 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 	hn.wantRedirect(hn.get(PathSnapshotsDelete), signInAfter(PathSnapshotsDelete))
 }
 
+// A gone snapshot whose name has the right shape but no real date is listed
+// by its name, never with the zero date.
+func TestBulkDeleteGoneSnapshotWithoutADateShowsItsName(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id := hn.seedSnapshotWorld()
+	const bad = "99999999T999999Z"
+	if _, ok := world.SnapshotNameTime(bad); ok || !world.ValidSnapshotName(bad) {
+		t.Fatal("the test needs a name of the right shape that holds no date")
+	}
+	rec := hn.get(PathSnapshotsDelete+"?snap="+url.QueryEscape(ref(id, bad)), withCookie(c))
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, "Already deleted") {
+		t.Fatalf("status %d:\n%s", rec.Code, body)
+	}
+	if !strings.Contains(body, "the snapshot <code>"+bad+"</code> is deleted already") {
+		t.Errorf("the name is not shown:\n%s", body)
+	}
+	if strings.Contains(body, "0001-01-01") {
+		t.Errorf("the zero date is shown:\n%s", body)
+	}
+}
+
 func TestBulkDeleteWarnsAboutRollback(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()
