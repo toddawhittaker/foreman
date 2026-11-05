@@ -19,7 +19,7 @@
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
 <section class="panel" aria-labelledby="control-heading">
   <h2 id="control-heading" tabindex="-1">Start and stop</h2>
-  <div sse-swap="control">{{template "server-control" .}}</div>
+  <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
 </section>
 <section class="panel" aria-labelledby="status-heading">
   <h2 id="status-heading">Status</h2>
@@ -29,6 +29,15 @@
   <h2 id="players-heading">Players online</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
+<div sse-swap="others">{{template "server-others" .}}</div>
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{/* The worlds the admin can switch to. It is empty while an operation runs
+     and comes back when it ends, so a page loaded during a start offers
+     the switch once the game is running (SPEC 17.7, DESIGN 7.1). */}}
+{{define "server-others" -}}
 {{- with .OtherWorlds}}
 <section class="panel" aria-labelledby="others-heading">
   <h2 id="others-heading">Switch to another world</h2>
@@ -37,13 +46,11 @@
     <li>
       <h3>{{.Name}}</h3>
       <p>Factorio {{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}of an unknown version{{end}}{{if .SpaceAge}}, with Space Age{{end}}</p>
-      <div class="actions"><a href="{{$.Page.SwitchPath .ID}}" class="button">Switch to {{.Name}}</a></div>
+      <div class="actions"><a href="{{$.SwitchPath .ID}}" class="button" id="act-switch-{{.ID}}">Switch to {{.Name}}</a></div>
     </li>
     {{- end}}
   </ul>
 </section>
-{{- end}}
-{{- end}}
 {{- end}}
 {{- end}}
 
@@ -109,7 +116,7 @@
 {{/* The last action's error and what can be done next. Takes *Failure. */}}
 {{define "server-failure" -}}
 <div class="message {{.Class}}">
-  <p><strong>{{.Word}}</strong> {{if not .Earlier.IsZero}}Earlier, at <time datetime="{{isoTime .Earlier}}">{{utc .Earlier}}</time>: {{end}}{{.Message}}</p>
+  <p><strong>{{.Word}}</strong> {{if not .Earlier.IsZero}}Earlier, at <time datetime="{{isoTime .Earlier}}">{{utc .Earlier}}</time>: {{end}}{{.Message}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{.Label}}</a>{{end}}</p>
   {{- with .Problems}}
   <ul>
     {{- range .}}
@@ -238,7 +245,7 @@
 </div>
 {{- end}}
 {{- with .Done}}
-<div class="message message--success">
+<div class="message message--success" id="done-message" tabindex="-1"{{if $.FocusResult}} autofocus{{end}}>
   <p><strong>Done:</strong> {{.}} Finished at <time datetime="{{isoTime $.DoneAt}}">{{utc $.DoneAt}}</time>.</p>
   <div class="actions">
     {{- with $.Undo}}

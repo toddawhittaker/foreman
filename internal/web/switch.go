@@ -222,7 +222,8 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	// form without the field counts as stopped.
 	shownRunning := r.PostFormValue("running") == "1"
 	start, opts := p.Plan.Running || p.StartAfter, game.StartOptions{}
-	switch r.PostFormValue("choice") {
+	choice := r.PostFormValue("choice")
+	switch choice {
 	case choiceStopped:
 		start = false
 	case choiceAnyway:
@@ -233,8 +234,9 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	if shownRunning != p.Plan.Running {
 		p.Changed = true
-		// A game that was running is wanted running again after the switch.
-		start = start || shownRunning
+		// A game that was running is wanted running again after the switch,
+		// unless the admin chose to leave it stopped.
+		start = start || shownRunning && choice != choiceStopped
 	}
 	if p.Changed {
 		p.StartAfter = start
