@@ -72,7 +72,7 @@ func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 }
 
 // SPEC 10.7: when Docker Hub cannot be reached the page still works: the list
-// is empty, the answer is 200, and the error's words (which may hold an
+// holds only a disabled option saying why, the answer is 200, and the error's words (which may hold an
 // address) are not shown. The same holds with no release source at all.
 func TestVersionsShowsNothingWhenTheSourceFails(t *testing.T) {
 	leak := errors.New("dial tcp 10.9.8.7:443: secret-hub-detail")
@@ -87,7 +87,7 @@ func TestVersionsShowsNothingWhenTheSourceFails(t *testing.T) {
 			if rep.StatusCode != http.StatusOK {
 				t.Fatalf("status %d\n%s", rep.StatusCode, rep.body)
 			}
-			if got := optionValues(rep.body); len(got) != 0 {
+			if got := optionValues(rep.body); len(got) != 1 || got[0] != "" || !strings.Contains(rep.body, "disabled>Docker Hub cannot be reached") {
 				t.Errorf("lists %q", got)
 			}
 			g.wantMissing("picker", rep.body, "secret-hub-detail", "10.9.8.7")

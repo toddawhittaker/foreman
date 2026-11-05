@@ -113,7 +113,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("New game version")).toBeVisible();
     // The list loads (or fails) without blocking, and offers nothing while Docker Hub is down.
     await page.waitForLoadState("networkidle");
-    await expect(page.locator("#update-version-select option")).toHaveText(["Choose a version"]);
+    await expect(page.locator("#update-version-select option")).toHaveText(["Choose a version", "Docker Hub cannot be reached; type a version below"]);
     await expect(page.getByLabel("Or type a version")).toBeVisible();
     await expect(page.getByText("A game version only moves forward.")).toContainText("Roll back");
     await expect(page.getByText("Leave the server stopped, because it is not running now.")).toBeVisible();
@@ -313,7 +313,7 @@ test.describe("the import form", () => {
     await page.goto("/import");
     const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
     await page.waitForLoadState("networkidle");
-    await expect(form.locator("#folder-version-select option")).toHaveText(["Choose a version"]);
+    await expect(form.locator("#folder-version-select option")).toHaveText(["Choose a version", "Docker Hub cannot be reached; type a version below"]);
     await form.getByLabel("World name").fill("Typed");
     await form.getByLabel("Or type a version").fill("2.0.78");
     await checkPage(page);

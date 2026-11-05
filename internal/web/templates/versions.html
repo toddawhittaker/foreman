@@ -7,8 +7,11 @@
 {{- end}}
 
 {{/* The options of a game version select. Takes VersionPicker.
-     They follow the placeholder; when Docker Hub cannot be reached there are none and the typed field is the way in. */}}
+     They follow the placeholder; when Docker Hub cannot be reached one disabled option says why. */}}
 {{define "version-list" -}}
+{{- if .Unreachable}}
+<option value="" disabled>Docker Hub cannot be reached; type a version below</option>
+{{- end}}
 {{- range .Versions}}
 <option value="{{.}}">{{$.Label .}}</option>
 {{- end}}

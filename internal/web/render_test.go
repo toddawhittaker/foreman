@@ -223,7 +223,7 @@ func TestVersionFragments(t *testing.T) {
 	}{
 		{"list", VersionPicker{Versions: []string{"2.1.24", "2.0.77", "2.0.76"}, Stable: "2.0.77", Experimental: "2.1.24"},
 			"version-list", []string{`<option value="2.1.24">2.1.24 (experimental)</option>`, `<option value="2.0.77">2.0.77 (stable)</option>`, `<option value="2.0.76">2.0.76</option>`}},
-		{"list unreachable", VersionPicker{Unreachable: true}, "version-list", nil},
+		{"list unreachable", VersionPicker{Unreachable: true}, "version-list", []string{`<option value="" disabled>Docker Hub cannot be reached; type a version below</option>`}},
 		{"notice newer", ReleaseNotice{Current: "2.0.76", Stable: "2.0.77", Experimental: "2.1.24", UpdatePath: "/worlds/base/update",
 			ChangelogURL: "https://wiki.factorio.com/Version_history/2.1.0"}, "release-notice",
 			[]string{"stable <code>2.0.77</code>", "experimental <code>2.1.24</code>", `href="https://wiki.factorio.com/Version_history/2.1.0"`, `href="/worlds/base/update"`}},
