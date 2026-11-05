@@ -1,6 +1,6 @@
 import { test, expect, checkPage, type Foreman } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -171,4 +171,27 @@ test("the Worlds tab marks the current page and hovers grey", async ({ page, for
   expect(hover).toBe(button);
   expect(hover).not.toBe(current);
   expect(idle).not.toBe(current);
+});
+
+// SPEC 5.4, 6.6: each world in the list says what its snapshots add, and
+// that is the figure on the world's own Snapshots page.
+test("the list shows what each world's snapshots add", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false }, new Date("2026-11-03T14:25:00Z"));
+  seedWorld(foreman, "beta", { name: "Beta", game_version: "2.0.72", space_age: false });
+  await page.goto("/worlds/alpha/snapshots");
+  await page.getByRole("button", { name: "Take snapshot" }).click();
+  await expect(page.getByText("Done: Foreman took the snapshot")).toBeVisible();
+  // The world moves on, so the snapshot alone holds the old save.
+  rmSync(join(foreman.dataDir, "worlds", "alpha", "saves", "base.zip"));
+  await page.reload();
+  const added = (await page.locator("dl.facts div").filter({ hasText: "Snapshots add" }).locator("dd").textContent())!;
+  expect(added).not.toBe("0 B");
+
+  await page.goto("/worlds");
+  const fact = (name: string) =>
+    page.locator("ul.worlds > li").filter({ has: page.getByRole("heading", { name }) }).locator("div").filter({ hasText: /^Snapshots add/ });
+  await expect(fact("Alpha").locator("dd")).toHaveText(added);
+  await expect(fact("Beta").locator("dd")).toHaveText("0 B");
+  await checkPage(page);
 });

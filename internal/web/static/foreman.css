@@ -882,6 +882,12 @@ legend {
   gap: var(--space-1) var(--space-3);
 }
 
+/* A world's five facts take their natural widths, so they fit two rows on a phone. */
+.worlds .facts {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 /* The status facts: label and value pairs that reflow at any width (7.5). */
 .facts {
   display: grid;
