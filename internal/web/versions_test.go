@@ -50,14 +50,14 @@ func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 	if got := strings.Join(optionValues(body), " "); got != "2.1.25 2.1.24" {
 		t.Errorf("above 2.0.77 lists %q:\n%s", got, body)
 	}
-	g.wantContains("picker", body, `label="2.1.25, experimental"`)
+	g.wantContains("picker", body, `>2.1.25 (experimental)<`)
 	g.wantMissing("picker", body, "stable", "2.0.76", "1.1.110")
 
 	body = g.get(versionsPath("2.0.76"))
 	if got := strings.Join(optionValues(body), " "); got != "2.1.25 2.1.24 2.0.77" {
 		t.Errorf("above 2.0.76 lists %q:\n%s", got, body)
 	}
-	g.wantContains("picker", body, `label="2.0.77, stable"`, `label="2.1.25, experimental"`)
+	g.wantContains("picker", body, `>2.0.77 (stable)<`, `>2.1.25 (experimental)<`)
 
 	// Nothing is above the newest, and the list is still a good answer.
 	rep := g.do(http.MethodGet, versionsPath("2.1.25"), nil, http.Header{"Cookie": {g.cookie.String()}})
@@ -72,7 +72,7 @@ func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 }
 
 // SPEC 10.7: when Docker Hub cannot be reached the page still works: the list
-// is empty, the answer is 200, and the error's words (which may hold an
+// holds only a disabled option saying why, the answer is 200, and the error's words (which may hold an
 // address) are not shown. The same holds with no release source at all.
 func TestVersionsShowsNothingWhenTheSourceFails(t *testing.T) {
 	leak := errors.New("dial tcp 10.9.8.7:443: secret-hub-detail")
@@ -87,7 +87,7 @@ func TestVersionsShowsNothingWhenTheSourceFails(t *testing.T) {
 			if rep.StatusCode != http.StatusOK {
 				t.Fatalf("status %d\n%s", rep.StatusCode, rep.body)
 			}
-			if got := optionValues(rep.body); len(got) != 0 {
+			if got := optionValues(rep.body); len(got) != 1 || got[0] != "" || !strings.Contains(rep.body, "disabled>Docker Hub cannot be reached") {
 				t.Errorf("lists %q", got)
 			}
 			g.wantMissing("picker", rep.body, "secret-hub-detail", "10.9.8.7")

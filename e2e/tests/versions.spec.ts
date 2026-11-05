@@ -113,7 +113,9 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("New game version")).toBeVisible();
     // The list loads (or fails) without blocking, and offers nothing while Docker Hub is down.
     await page.waitForLoadState("networkidle");
-    await expect(page.locator("#update-version-list option")).toHaveCount(0);
+    await expect(page.locator("#update-version-select option")).toHaveText(["Choose a version", "Docker Hub cannot be reached; type a version below"]);
+    await expect(page.getByLabel("Or type a version")).toBeVisible();
+    await expect(page.getByText("A game version only moves forward.")).toContainText("Roll back");
     await expect(page.getByText("Leave the server stopped, because it is not running now.")).toBeVisible();
     await expect(page.getByLabel("Countdown in seconds")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Update game version" })).toHaveClass(/button--danger/);
@@ -128,7 +130,7 @@ test.describe("with the fake game", () => {
     expect(await hasImage(g, image2125)).toBe(false);
 
     await page.goto("/worlds/base/update");
-    await page.getByLabel("New game version").fill("2.1.25");
+    await page.getByLabel("Or type a version").fill("2.1.25");
     await page.getByRole("button", { name: "Update game version" }).click();
 
     await expect.poll(() => diskVersion(foreman, "base"), live).toBe("2.1.25");
@@ -171,7 +173,7 @@ test.describe("with the fake game", () => {
     await page.goto("/worlds/base/update");
     await expect(page.getByLabel("Countdown in seconds")).toHaveValue("60");
     await expect(page.getByText("Start the game again on the new version.")).toBeVisible();
-    await page.getByLabel("New game version").fill("2.1.25");
+    await page.getByLabel("Or type a version").fill("2.1.25");
     await page.getByLabel("Countdown in seconds").fill("3");
     await checkPage(page);
     await page.getByRole("button", { name: "Update game version" }).click();
@@ -225,11 +227,11 @@ test.describe("with the fake game", () => {
 
     for (const typed of ["2.1.23", "2.1.24", "2.0.77", "3.0.0", "2.1", "latest"]) {
       await page.goto("/worlds/base/update");
-      await page.getByLabel("New game version").fill(typed);
+      await page.getByLabel("Or type a version").fill(typed);
       await page.getByRole("button", { name: "Update game version" }).click();
 
       await expect(page.getByRole("heading", { name: /Fix this problem/ }), typed).toBeVisible();
-      const field = page.getByLabel("New game version");
+      const field = page.getByLabel("Or type a version");
       await expect(field, typed).toHaveValue(typed);
       await expect(field, typed).toHaveAttribute("aria-invalid", "true");
       await expect(page.locator("#update-version-error"), typed).toContainText("Error:");
@@ -238,7 +240,7 @@ test.describe("with the fake game", () => {
 
     // The wording for the common case says "newer".
     await page.goto("/worlds/base/update");
-    await page.getByLabel("New game version").fill("2.1.23");
+    await page.getByLabel("Or type a version").fill("2.1.23");
     await page.getByRole("button", { name: "Update game version" }).click();
     await expect(page.locator("#update-version-error")).toContainText(/newer/i);
     await checkPage(page);
@@ -269,7 +271,7 @@ test.describe("with the fake game", () => {
     // The save uses Space Age, and the world has it off.
     await setUp(page, foreman, g, { fixture: "2.1.24-space-age.zip", spaceAge: false });
     await page.goto("/worlds/base/update");
-    await page.getByLabel("New game version").fill("2.1.25");
+    await page.getByLabel("Or type a version").fill("2.1.25");
     await page.getByRole("button", { name: "Update game version" }).click();
 
     const refusal = page.locator(".message--warning").filter({ hasText: "Space Age" });
@@ -311,9 +313,9 @@ test.describe("the import form", () => {
     await page.goto("/import");
     const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
     await page.waitForLoadState("networkidle");
-    await expect(form.locator("#folder-version-list option")).toHaveCount(0);
+    await expect(form.locator("#folder-version-select option")).toHaveText(["Choose a version", "Docker Hub cannot be reached; type a version below"]);
     await form.getByLabel("World name").fill("Typed");
-    await form.getByLabel("Game version").fill("2.0.78");
+    await form.getByLabel("Or type a version").fill("2.0.78");
     await checkPage(page);
     await form.getByRole("button", { name: "Import folder" }).click();
     await expect(page).toHaveURL("/worlds/typed");

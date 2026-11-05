@@ -404,6 +404,48 @@ func TestUpdateRefusesBadVersions(t *testing.T) {
 	}
 }
 
+// SPEC 10.7: the update form offers a select of newer releases and a typed
+// field, says a version only moves forward, and never suggests an older
+// version as an example.
+func TestUpdateFormHasSelectTypedFieldAndForwardNotice(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	id := g.newWorld("Alpha", fixtureNoSA, false)
+	form := g.get(updateURL(id))
+	g.wantContains("form", form, `<select id="update-version-select" name="game_version"`,
+		`<option value="">Choose a version</option>`, `name="game_version_typed"`,
+		"Or type a version", "only moves forward", "Roll back")
+	g.wantMissing("form", form, "<datalist", "such as")
+}
+
+// SPEC 10.7: a filled typed field wins over the select, so a bad typed
+// version is refused even when the select holds a good one.
+func TestUpdateTypedVersionWinsOverSelect(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	id := g.newWorld("Alpha", fixtureNoSA, false)
+	g.addImage(newVersion)
+	save := g.readSave(id)
+	rep := g.post(updateURL(id), url.Values{"game_version": {newVersion}, "game_version_typed": {"2.1.23"}})
+	if rep.StatusCode != http.StatusBadRequest {
+		t.Errorf("status %d", rep.StatusCode)
+	}
+	g.wantContains("refused", rep.body, `id="update-version-error"`, `value="2.1.23"`)
+	g.wantUnchanged("a refused typed version", id, oldVersion, save, 0)
+}
+
+func TestChosenVersion(t *testing.T) {
+	for _, c := range []struct{ picked, typed, want string }{
+		{"2.1.25", "", "2.1.25"},
+		{"2.1.25", "  ", "2.1.25"},
+		{"2.1.25", " 2.1.26 ", "2.1.26"},
+		{"", "2.1.26", "2.1.26"},
+		{"", "", ""},
+	} {
+		if got := chosenVersion(c.picked, c.typed); got != c.want {
+			t.Errorf("chosenVersion(%q, %q) = %q, want %q", c.picked, c.typed, got, c.want)
+		}
+	}
+}
+
 // SPEC 7.6: the countdown of an update is checked like a stop's, and a bad
 // one stops nothing.
 func TestUpdateCountdownIsChecked(t *testing.T) {

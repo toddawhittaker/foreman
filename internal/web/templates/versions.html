@@ -6,11 +6,14 @@
 <p>Open a world's page to see whether a newer Factorio release is out.</p>
 {{- end}}
 
-{{/* The options of a game version input's datalist. Takes VersionPicker.
-     When Docker Hub cannot be reached the list stays empty; typing still works. */}}
+{{/* The options of a game version select. Takes VersionPicker.
+     They follow the placeholder; when Docker Hub cannot be reached one disabled option says why. */}}
 {{define "version-list" -}}
+{{- if .Unreachable}}
+<option value="" disabled>Docker Hub cannot be reached; type a version below</option>
+{{- end}}
 {{- range .Versions}}
-<option value="{{.}}" label="{{$.Label .}}"></option>
+<option value="{{.}}">{{$.Label .}}</option>
 {{- end}}
 {{- end}}
 

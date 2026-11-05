@@ -2,11 +2,12 @@ package web
 
 import (
 	"net/url"
+	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// VersionPicker fills the game version input's suggestion list
+// VersionPicker fills the game version select's options
 // (SPEC 10.7). Above, when set, leaves out versions not newer than it.
 type VersionPicker struct {
 	Above                string
@@ -85,11 +86,20 @@ func (p RollbackPage) Problems() []Problem {
 func (p VersionPicker) Label(v string) string {
 	switch v {
 	case p.Stable:
-		return v + ", stable"
+		return v + " (stable)"
 	case p.Experimental:
-		return v + ", experimental"
+		return v + " (experimental)"
 	}
 	return v
+}
+
+// chosenVersion is the version a form asked for: the typed field wins
+// over the select when it is filled.
+func chosenVersion(picked, typed string) string {
+	if t := strings.TrimSpace(typed); t != "" {
+		return t
+	}
+	return strings.TrimSpace(picked)
 }
 
 // Paths the pages link and post to.

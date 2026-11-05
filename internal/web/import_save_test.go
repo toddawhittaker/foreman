@@ -56,7 +56,7 @@ func TestImportFolderPrefillsWhenThereIsOneFolder(t *testing.T) {
 	c := hn.signIn()
 	putInboxSave(t, hn, "only", fixtureBytes(t, "2.1.24-space-age.zip"))
 	body := hn.get(PathImport, withCookie(c)).Body.String()
-	for _, want := range []string{`value="only" data-game-version="2.1.24" data-space-age checked`, `name="game_version" type="text" value="2.1.24"`, `aria-describedby="folder-space-age-hint" checked`} {
+	for _, want := range []string{`value="only" data-game-version="2.1.24" data-space-age checked`, `name="game_version_typed" type="text" value="2.1.24"`, `aria-describedby="folder-space-age-hint" checked`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}

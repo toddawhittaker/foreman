@@ -199,7 +199,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 	if !ok {
 		return
 	}
-	target := strings.TrimSpace(r.PostFormValue("game_version"))
+	target := chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"))
 	form, stop := readCountdown(r)
 	p := s.updatePage(sum, target, form)
 	if p.Refusal != "" {

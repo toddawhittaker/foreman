@@ -339,7 +339,7 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 	if !s.readForm(w, r) {
 		return
 	}
-	f := importFields(r.PostFormValue("name"), r.PostFormValue("game_version"), r.PostFormValue("space_age"))
+	f := importFields(r.PostFormValue("name"), chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed")), r.PostFormValue("space_age"))
 	f.Source = r.PostFormValue("folder")
 	if f.Source == "" {
 		f.SourceError = sentence(world.ErrNoFolder)
@@ -401,9 +401,9 @@ func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	}
 	defer func() { _ = root.Close() }()
 
-	values := map[string]string{"name": "", "game_version": "", "space_age": ""}
+	values := map[string]string{"name": "", "game_version": "", "game_version_typed": "", "space_age": ""}
 	up, err := receiveFileWithFields(r, root, ".", "save", worldsDir, MaxSaveUpload, values)
-	f := importFields(values["name"], values["game_version"], values["space_age"])
+	f := importFields(values["name"], chosenVersion(values["game_version"], values["game_version_typed"]), values["space_age"])
 	if err != nil {
 		return "", f, err
 	}
