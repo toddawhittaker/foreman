@@ -47,6 +47,10 @@ type WorldPage struct {
 	CanSwitch  bool
 	SwitchNote string
 	SwitchBusy bool
+	// Rollback, when set, offers going back to the version before the last
+	// update (SPEC 10.4); ReleasesPath loads the release notice (SPEC 10.2).
+	Rollback     *RollbackOffer
+	ReleasesPath string
 }
 
 // ImportPage offers both ways to import a world (SPEC 5.5).
@@ -206,6 +210,10 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // why above.
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
+	if s.game != nil && !sum.Unreadable && !sum.Newer {
+		p.ReleasesPath = releasesPath(sum.ID)
+		p.Rollback = s.rollbackOffer(sum.ID)
+	}
 	switch {
 	case s.game == nil || sum.Unreadable || sum.Newer:
 	case sum.Active:
@@ -289,7 +297,7 @@ func importFields(name, version, spaceAge string) ImportForm {
 		f.NameError = sentence(world.ErrNameEmpty)
 	}
 	// An empty version is filled in from the save later (fillFromSave).
-	if f.GameVersion != "" && !world.ValidGameVersion(f.GameVersion) {
+	if f.GameVersion != "" && !world.SupportedGameVersion(f.GameVersion) {
 		f.VersionError = sentence(world.ErrBadGameVersion)
 	}
 	return f
@@ -331,7 +339,7 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 	if !s.readForm(w, r) {
 		return
 	}
-	f := importFields(r.PostFormValue("name"), r.PostFormValue("game_version"), r.PostFormValue("space_age"))
+	f := importFields(r.PostFormValue("name"), chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed")), r.PostFormValue("space_age"))
 	f.Source = r.PostFormValue("folder")
 	if f.Source == "" {
 		f.SourceError = sentence(world.ErrNoFolder)
@@ -393,9 +401,9 @@ func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
 	}
 	defer func() { _ = root.Close() }()
 
-	values := map[string]string{"name": "", "game_version": "", "space_age": ""}
+	values := map[string]string{"name": "", "game_version": "", "game_version_typed": "", "space_age": ""}
 	up, err := receiveFileWithFields(r, root, ".", "save", worldsDir, MaxSaveUpload, values)
-	f := importFields(values["name"], values["game_version"], values["space_age"])
+	f := importFields(values["name"], chosenVersion(values["game_version"], values["game_version_typed"]), values["space_age"])
 	if err != nil {
 		return "", f, err
 	}
@@ -529,4 +537,17 @@ func (s *server) handleDeleted(w http.ResponseWriter, r *http.Request, u store.U
 		}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// rollbackOffer returns the rollback the world page offers, or nil when
+// there is none (SPEC 10.4).
+func (s *server) rollbackOffer(id string) *RollbackOffer {
+	snap, version, err := s.worlds.RollbackTarget(id)
+	if err != nil {
+		if !errors.Is(err, world.ErrNoRollback) {
+			s.log.Error("find the rollback snapshot", "world", id, "error", err)
+		}
+		return nil
+	}
+	return &RollbackOffer{Snapshot: snap, Version: version, Path: rollbackPath(id)}
 }

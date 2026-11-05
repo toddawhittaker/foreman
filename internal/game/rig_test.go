@@ -20,14 +20,13 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// The pinned images (the Makefile's GAME_IMAGE_* values, STACK 1).
+// The images the worlds in these tests run: the exact tag of the world's
+// game version (SPEC 10.1).
 const (
-	image11 = "factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb"
-	image20 = "factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef"
-	image21 = "factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28"
+	image11 = "factoriotools/factorio:1.1.110"
+	image20 = "factoriotools/factorio:2.0.77"
+	image21 = "factoriotools/factorio:2.1.24"
 )
-
-var testImages = map[string]string{"1.1": image11, "2.0": image20, "2.1": image21}
 
 var admin = Actor{UserID: 7, Username: "alice"}
 
@@ -203,7 +202,7 @@ func (r *rig) newController(opts rigOptions) *Controller {
 	cfg := Config{
 		Docker: r.docker, Worlds: r.worlds, Audit: r.audit, Switches: r.store,
 		HostDataDir: r.data, GameUID: 845, GameGID: 845,
-		Images: testImages, Network: opts.network, SelfID: opts.selfID,
+		Network: opts.network, SelfID: opts.selfID,
 		Now: r.clock.Now, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	c, err := New(cfg)

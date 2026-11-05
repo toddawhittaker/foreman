@@ -128,8 +128,14 @@ dd {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
+}
+
+/* Room for the scrollbar is always kept, so a short page and a long one sit at the same place. */
+html {
+  scrollbar-gutter: stable;
 }
 
 /* Base elements */
@@ -445,7 +451,8 @@ legend {
   line-height: 1.45;
 }
 
-.field input {
+.field input,
+.field select {
   inline-size: 100%;
   max-inline-size: 40ch;
   min-block-size: var(--target-min);
@@ -482,7 +489,8 @@ legend {
   background: var(--color-button-hover);
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: 2px;
 }

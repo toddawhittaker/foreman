@@ -96,7 +96,20 @@
   {{- end}}
   <p>If you choose {{.Verb}}, Foreman will:</p>
   <ul>
-    {{- if .Switch}}
+    {{- if .Update}}
+    <li>Download the game image for Factorio {{.Version}} first, if Foreman does not have it. If the download fails, nothing else happens.</li>
+    {{- if .Running}}
+    <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop it.</li>
+    {{- end}}
+    <li>Take a snapshot of {{.World}}, labelled "Before update". If the snapshot fails, nothing else happens.</li>
+    <li>Set the world's game version to {{.Version}}.</li>
+    {{- if .Running}}
+    <li>Start the game on {{.Version}}. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
+    {{- else}}
+    <li>Leave the server stopped, because it is not running now.</li>
+    {{- end}}
+    <li>To undo, use Roll back on the world's page.</li>
+    {{- else if .Switch}}
     {{- if .Running}}
     <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop {{.From}}.</li>
     {{- else}}
@@ -123,7 +136,10 @@
     {{- if .Switch}}
     <input type="hidden" name="from" value="{{.FromID}}">
     {{- end}}
-    {{- if or .Switch .Restart}}
+    {{- if .Update}}
+    <input type="hidden" name="game_version" value="{{.Version}}">
+    {{- end}}
+    {{- if or .Switch .Restart .Update}}
     <input type="hidden" name="countdown" value="{{.Countdown}}">
     {{- end}}
     <button type="submit" class="button button--danger" id="act-anyway">{{.Verb}}</button>

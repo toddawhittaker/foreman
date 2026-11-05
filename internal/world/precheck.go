@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/savefile"
@@ -78,6 +77,13 @@ func (p PreCheck) CanStartAnyway() bool {
 // world's mods, Space Age flag and game version (SPEC 7.4). It changes
 // nothing. An error means the check itself could not run.
 func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
+	return m.PreStartCheckAt(id, "")
+}
+
+// PreStartCheckAt is PreStartCheck as if the world ran game version, so an
+// update can be checked before anything changes (SPEC 10.3). An empty
+// version means the world's own.
+func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	root, err := m.OpenWorld(id)
 	if err != nil {
 		return PreCheck{}, err
@@ -86,6 +92,9 @@ func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 	meta, err := ReadMeta(root)
 	if err != nil {
 		return PreCheck{}, err
+	}
+	if version != "" {
+		meta.GameVersion = version
 	}
 
 	var out PreCheck
@@ -111,7 +120,7 @@ func (m *Manager) PreStartCheck(id string) (PreCheck, error) {
 	running, wrong := modVersionMismatch(root, meta, mods)
 	finish := func() (PreCheck, error) {
 		if len(wrong) > 0 {
-			p := modVersionProblem(meta.Name, running, wrong, out.SaveVersion)
+			p := modVersionProblem(meta.Name, running, wrong)
 			out.Problems = slices.Insert(out.Problems, modAt, p)
 		}
 		return out, nil
@@ -252,19 +261,4 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 			Text: fmt.Sprintf("%s uses %s, but %s turned off in this world.", name, strings.Join(disabled, ", "), is)})
 	}
 	return out
-}
-
-// parseGameVersion reads "2.0.72". The caller has checked its shape.
-func parseGameVersion(v string) savefile.Version {
-	var n [3]uint16
-	for i, p := range strings.SplitN(v, ".", 3) {
-		x, _ := strconv.ParseUint(p, 10, 16)
-		n[i] = uint16(x)
-	}
-	return savefile.Version{Major: n[0], Minor: n[1], Patch: n[2]}
-}
-
-// compareVersion compares major, minor and patch, ignoring the build.
-func compareVersion(a, b savefile.Version) int {
-	return slices.Compare([]uint16{a.Major, a.Minor, a.Patch}, []uint16{b.Major, b.Minor, b.Patch})
 }

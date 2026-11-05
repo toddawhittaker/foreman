@@ -1,0 +1,41 @@
+{{define "title"}}Roll back {{.Page.World.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">Back to {{.World.Name}}</a></div>
+<h1>Roll back {{.World.Name}}</h1>
+{{template "summary" .Problems}}
+{{- with .Error}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
+  <p><strong>Error:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- if .Version}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">Go back from Factorio {{.World.GameVersion}} to {{.Version}}?</h2>
+  <p><strong>Warning:</strong> everything played since the update is lost. Saves made on {{.World.GameVersion}} cannot be loaded by {{.Version}}.</p>
+  <p>This will:</p>
+  <ul>
+    {{- if .Running}}
+    <li>Warn players online with the countdown below, save the game and stop it.</li>
+    {{- end}}
+    <li>Take a snapshot of {{.World.Name}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
+    <li>Restore the snapshot "{{.Snapshot.Label}}" from <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utc .Snapshot.TakenAt}}</time>, which puts the world back on Factorio {{.Version}}.</li>
+    {{- if .Running}}
+    <li>Start the game again on {{.Version}}. The Server page shows each step.</li>
+    {{- end}}
+    <li>To undo, restore the "Before restore" snapshot from the Snapshots page.</li>
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    {{- if .Running}}
+    {{template "countdown" .CountdownForm}}
+    {{- end}}
+    <div class="actions">
+      <button type="submit" class="button button--danger">Roll back to {{.Version}}</button>
+      <a href="{{.WorldPath}}">Cancel, keep {{.World.GameVersion}}</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}
+{{- end}}

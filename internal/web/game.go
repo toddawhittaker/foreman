@@ -71,6 +71,8 @@ type actionResult struct {
 	Undo     string
 	// Target is the world a switch was asked to go to.
 	Target string
+	// Version is the game version an update was asked to go to.
+	Version string
 	// At is when the action ended.
 	At time.Time
 }
@@ -241,10 +243,11 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrRCONUnreachable), errors.Is(err, game.ErrSaveTimeout),
 		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
 		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
-		errors.Is(err, game.ErrSaveNewerThanImage), errors.Is(err, world.ErrSaveInFuture),
+		errors.Is(err, world.ErrSaveInFuture),
 		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
 		errors.Is(err, game.ErrSwitchNoTarget), errors.Is(err, game.ErrSwitchTargetRunning),
-		errors.Is(err, game.ErrSwitchUnavailable), errors.Is(err, game.ErrWorldNotActive):
+		errors.Is(err, game.ErrSwitchUnavailable), errors.Is(err, game.ErrWorldNotActive),
+		errors.Is(err, world.ErrVersionNotNewer), errors.Is(err, world.ErrVersionUnsupported), errors.Is(err, world.ErrNoRollback):
 		return http.StatusConflict, sentence(err)
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)

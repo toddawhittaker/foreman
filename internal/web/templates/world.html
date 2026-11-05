@@ -23,6 +23,30 @@
     <a href="{{.SnapshotsPath}}" class="button">Snapshots</a>
   </div>
 </section>
+{{- if not (or .World.Newer .World.Unreadable)}}
+<section class="panel" aria-labelledby="version-heading">
+  <h2 id="version-heading">Game version</h2>
+  <p>This world runs Factorio {{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}of an unknown version{{end}}.</p>
+  {{- with .ReleasesPath}}
+  <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML">
+    <p>Checking for a newer Factorio release.</p>
+  </div>
+  {{- end}}
+  {{- if .World.Active}}
+  <div class="actions">
+    <a href="{{.UpdatePath}}" class="button" id="act-update">Update game version</a>
+  </div>
+  {{- else}}
+  <p>Switch to this world to update it.</p>
+  {{- end}}
+  {{- with .Rollback}}
+  <p>The last update took the snapshot "{{.Snapshot.Label}}" on <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utc .Snapshot.TakenAt}}</time>. Rolling back restores it and returns the world to Factorio <code>{{.Version}}</code>.</p>
+  <div class="actions">
+    <a href="{{.Path}}" class="button" id="act-rollback">Roll back to {{.Version}}</a>
+  </div>
+  {{- end}}
+</section>
+{{- end}}
 {{- if .CanSwitch}}
 <section class="panel" aria-labelledby="switch-heading">
   <h2 id="switch-heading">Switch</h2>

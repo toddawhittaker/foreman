@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	image21  = "factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28"
-	image11  = "factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb"
+	image21  = "factoriotools/factorio:2.1.24"
+	image11  = "factoriotools/factorio:1.1.110"
 	password = "pw-for-this-test"
 )
 
@@ -142,6 +142,8 @@ func TestStartReplaysTheTranscriptForTheImageVersion(t *testing.T) {
 		{image21, "Factorio 2.1.24", "ServerMultiplayerManager.cpp:809"},
 		{image11, "Factorio 1.1.110", "ServerMultiplayerManager.cpp:814"},
 		{"factoriotools/factorio:2.0.77", "Factorio 2.0.77", "ServerMultiplayerManager.cpp:808"},
+		{"factoriotools/factorio:2.1.23", "Factorio 2.1.24", "ServerMultiplayerManager.cpp:809"},
+		{"factoriotools/factorio:2.0.72", "Factorio 2.0.77", "ServerMultiplayerManager.cpp:808"},
 		{"factoriotools/factorio:stable", "Factorio 2.1.24", "ServerMultiplayerManager.cpp:809"},
 		{"localhost:5000/factorio", "Factorio 2.1.24", "ServerMultiplayerManager.cpp:809"},
 	} {

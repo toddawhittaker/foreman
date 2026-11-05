@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/toddawhittaker/foreman/internal/releases"
 	"log/slog"
 	"net"
 	"net/http"
@@ -25,17 +26,6 @@ import (
 	"github.com/toddawhittaker/foreman/internal/web"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-// The pinned game images, one per supported game version, by tag and
-// digest (SPEC 10). They must equal the Makefile's GAME_IMAGE_* values,
-// which the real-game tests use; a test compares them.
-const (
-	gameImage11 = "factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb"
-	gameImage20 = "factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef"
-	gameImage21 = "factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28"
-)
-
-var gameImages = map[string]string{"1.1": gameImage11, "2.0": gameImage20, "2.1": gameImage21}
 
 func main() {
 	cmd := "serve"
@@ -129,7 +119,7 @@ func serve(cfg *config.Config) error {
 	monitoring.Go(func() { games.Run(monitorCtx) })
 	defer func() { stopMonitor(); monitoring.Wait() }()
 
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Log: slog.Default()})
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Log: slog.Default()})
 	if err != nil {
 		return err
 	}
@@ -171,7 +161,7 @@ func gameConfig(cfg *config.Config, d *docker.Client, worlds *world.Manager, st 
 	return game.Config{
 		Docker: d, Worlds: worlds, Audit: st, Switches: st,
 		HostDataDir: hostDir, GameUID: cfg.GameUID, GameGID: cfg.GameGID,
-		Images: gameImages, Network: cfg.GameNetwork,
+		Network:    cfg.GameNetwork,
 		DockerHost: cfg.DockerHost, TrustedProxies: cfg.TrustedProxies,
 		SelfID: selfID, Log: slog.Default(),
 	}

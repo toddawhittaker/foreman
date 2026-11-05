@@ -158,7 +158,7 @@ func (c *Controller) switchChecks(ctx context.Context, from, to string, opts Sta
 	} else if err != nil {
 		return err
 	}
-	if err := c.precheckReadOnly(to, opts); err != nil {
+	if err := c.precheckReadOnly(to, "", opts); err != nil {
 		return err
 	}
 	if _, _, err := c.gameImage(ctx, to); err != nil {

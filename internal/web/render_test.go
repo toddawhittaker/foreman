@@ -51,6 +51,10 @@ func pageCases() []pageCase {
 			{ID: "odd", Name: "Odd", SizeUnknown: true},
 		}}},
 		{"snapshots empty", "todd", 200, SnapshotsPage{WorldID: "base", WorldName: longName}},
+		{"all snapshots", "todd", 200, allSnapshotsCase()},
+		{"all snapshots empty", "todd", 200, AllSnapshotsPage{}},
+		{"snapshot delete", "todd", 200, SnapshotDeletePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0], Frees: 1000, FromAll: true}},
+		{"snapshot delete rollback", "todd", 409, SnapshotDeletePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[1], Rollback: "2.0.72", Error: "Nothing was deleted: busy."}},
 		{"snapshots listed", "todd", 200, snapshotsCase()},
 		{"snapshots label error", "todd", 400, SnapshotsPage{WorldID: "base", WorldName: "Base",
 			Label: longName, LabelError: "Use at most 100 characters", Error: "The world was not changed: busy."}},
@@ -190,6 +194,64 @@ func pageCases() []pageCase {
 			Command: "/c game.print(1)", CommandError: "Enter a command of at most 1000 characters"}},
 		{"console not running", "todd", 409, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
 			Failure: "The game is not running, so it cannot take commands. Start it from the Server page."}},
+		{"world update offers", "todd", 200, WorldPage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.1.24", Active: true},
+			Name: longName, ReleasesPath: "/worlds/base/releases",
+			Rollback: &RollbackOffer{Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Path: "/worlds/base/rollback"}}},
+		{"world update not active", "todd", 200, WorldPage{World: world.Summary{ID: "other", Name: "Other", GameVersion: "2.0.77"},
+			Name: "Other", ReleasesPath: "/worlds/other/releases"}},
+		{"versions", "todd", 200, VersionPicker{}},
+		{"update stopped", "todd", 200, UpdatePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", Active: true}}},
+		{"update running", "todd", 200, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
+			Target: "2.1.24", Running: true, CountdownForm: defaultCountdown()}},
+		{"update errors", "todd", 400, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
+			Target: "2.0.70", VersionError: "Enter a version newer than 2.0.77", Running: true,
+			CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+		{"update refused", "todd", 409, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
+			Target: "2.1.24", Refusal: "The mod foo does not support Factorio 2.1."}},
+		{"rollback stopped", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.1.24"},
+			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77"}},
+		{"rollback running", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.1.24"},
+			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Running: true, CountdownForm: defaultCountdown(),
+			Error: "The game image for 2.0.77 is missing."}},
+	}
+}
+
+// The version fragments render each of their states (SPEC 10.2, 10.7).
+func TestVersionFragments(t *testing.T) {
+	r := newTestRenderer(t)
+	cases := []struct {
+		name string
+		page Page
+		frag string
+		want []string
+	}{
+		{"list", VersionPicker{Versions: []string{"2.1.24", "2.0.77", "2.0.76"}, Stable: "2.0.77", Experimental: "2.1.24"},
+			"version-list", []string{`<option value="2.1.24">2.1.24 (experimental)</option>`, `<option value="2.0.77">2.0.77 (stable)</option>`, `<option value="2.0.76">2.0.76</option>`}},
+		{"list unreachable", VersionPicker{Unreachable: true}, "version-list", []string{`<option value="" disabled>Docker Hub cannot be reached; type a version below</option>`}},
+		{"notice newer", ReleaseNotice{Current: "2.0.76", Stable: "2.0.77", Experimental: "2.1.24", UpdatePath: "/worlds/base/update",
+			ChangelogURL: "https://wiki.factorio.com/Version_history/2.1.0"}, "release-notice",
+			[]string{"stable <code>2.0.77</code>", "experimental <code>2.1.24</code>", `href="https://wiki.factorio.com/Version_history/2.1.0"`, `href="/worlds/base/update"`}},
+		{"notice no image", ReleaseNotice{Current: "2.0.77", Experimental: "2.1.25"}, "release-notice",
+			[]string{"No image yet"}},
+		{"notice unreachable", ReleaseNotice{Current: "2.0.77", Unreachable: true}, "release-notice",
+			[]string{"Docker Hub cannot be reached"}},
+		{"notice newest", ReleaseNotice{Current: "2.1.24"}, "release-notice", []string{"newest Factorio release"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var b strings.Builder
+			if err := r.Fragment(&b, c.page, c.frag); err != nil {
+				t.Fatal(err)
+			}
+			if c.want == nil && strings.TrimSpace(b.String()) != "" {
+				t.Errorf("want empty, got %q", b.String())
+			}
+			for _, w := range c.want {
+				if !strings.Contains(b.String(), w) {
+					t.Errorf("missing %q in %q", w, b.String())
+				}
+			}
+		})
 	}
 }
 

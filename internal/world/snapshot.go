@@ -518,8 +518,14 @@ func (m *Manager) prune(id string) error {
 	}
 	defer func() { _ = snaps.Close() }()
 	kept := 0
+	updateKept := false
 	for _, s := range list {
 		if !s.Automatic() {
+			continue
+		}
+		// Rollback restores the newest "Before update" snapshot (SPEC 10.4).
+		if s.Reason == ReasonGameUpdate && !updateKept {
+			updateKept = true
 			continue
 		}
 		if kept++; kept <= KeepAutomatic {

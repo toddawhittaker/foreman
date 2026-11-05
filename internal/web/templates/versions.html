@@ -1,0 +1,41 @@
+{{/* Fragments for htmx; the full page exists only so the template set is complete. */}}
+{{define "title"}}Factorio versions{{end}}
+
+{{define "content" -}}
+<h1>Factorio versions</h1>
+<p>Open a world's page to see whether a newer Factorio release is out.</p>
+{{- end}}
+
+{{/* The options of a game version select. Takes VersionPicker.
+     They follow the placeholder; when Docker Hub cannot be reached one disabled option says why. */}}
+{{define "version-list" -}}
+{{- if .Unreachable}}
+<option value="" disabled>Docker Hub cannot be reached; type a version below</option>
+{{- end}}
+{{- range .Versions}}
+<option value="{{.}}">{{$.Label .}}</option>
+{{- end}}
+{{- end}}
+
+{{/* The world page's release notice (SPEC 10.2). Takes ReleaseNotice. */}}
+{{define "release-notice" -}}
+{{- if .Unreachable}}
+<p>Docker Hub cannot be reached, so Foreman cannot check for new Factorio releases. You can still update by typing a version on the Update page.</p>
+{{- else if or .Stable .Experimental}}
+<div aria-live="polite">
+<p>A newer Factorio release is out:{{with .Stable}} stable <code>{{.}}</code>{{end}}{{if and .Stable .Experimental}},{{end}}{{with .Experimental}} experimental <code>{{.}}</code>{{end}}. This world uses <code>{{.Current}}</code>.</p>
+<div class="actions">
+  {{- with .ChangelogURL}}
+  <a href="{{.}}" rel="noopener noreferrer">Read what changed on the Factorio wiki</a>
+  {{- end}}
+  {{- if .UpdatePath}}
+  <a href="{{.UpdatePath}}" class="button">Update</a>
+  {{- else}}
+  <p id="release-no-image">No image yet. Docker Hub has no image for this release, so it cannot be used until one is published.</p>
+  {{- end}}
+</div>
+</div>
+{{- else}}
+<p>This world is on the newest Factorio release Foreman knows of.</p>
+{{- end}}
+{{- end}}

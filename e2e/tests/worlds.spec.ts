@@ -125,13 +125,13 @@ test("imports a folder from the inbox and leaves it unchanged", async ({ page, f
   const folderForm = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await folderForm.getByLabel(/saves-2025/).check();
   await folderForm.getByLabel("World name").fill("Old game");
-  await folderForm.getByLabel("Game version").fill("2.0");
+  await folderForm.getByLabel("Or type a version").fill("2.0");
   await folderForm.getByRole("button", { name: "Import folder" }).click();
   await expect(page.locator("#error-summary")).toContainText("Enter the game version as three numbers");
   await expect(page).toHaveTitle(/^Error: /);
   await checkPage(page);
 
-  await folderForm.getByLabel("Game version").fill("2.0.72");
+  await folderForm.getByLabel("Or type a version").fill("2.0.72");
   await folderForm.getByLabel("Space Age is on").check();
   await folderForm.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/old-game");
@@ -160,7 +160,7 @@ test("a single inbox folder fills in the version and Space Age, and imports", as
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await expect(form.getByLabel(/only: 1 save.*made with Factorio 2.1.24, Space Age/)).toBeChecked();
-  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("2.1.24");
   await expect(form.getByLabel("Space Age is on")).toBeChecked();
   await checkPage(page);
   await form.getByLabel("World name").fill("Prefilled");
@@ -175,19 +175,19 @@ test("choosing a folder fills the version, but not over typed text", async ({ pa
   inboxFixture(foreman, "two", "2.0.77-no-space-age.zip");
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
-  await expect(form.getByLabel("Game version")).toHaveValue("");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("");
   await form.getByLabel(/one: /).check();
-  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("2.1.24");
   await expect(form.getByLabel("Space Age is on")).toBeChecked();
   await expect(page.locator("#announcer")).toHaveText("World name suggested: one. Game version set to 2.1.24 from the save, with Space Age on.");
   await checkPage(page);
   await form.getByLabel(/two: /).check();
-  await expect(form.getByLabel("Game version")).toHaveValue("2.0.77");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("2.0.77");
   await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
   await expect(page.locator("#announcer")).toHaveText("World name suggested: two. Game version set to 2.0.77 from the save.");
-  await form.getByLabel("Game version").fill("2.0.1");
+  await form.getByLabel("Or type a version").fill("2.0.1");
   await form.getByLabel(/one: /).check();
-  await expect(form.getByLabel("Game version")).toHaveValue("2.0.1");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("2.0.1");
 });
 
 // A folder whose save cannot be read clears what the script filled in, so
@@ -200,9 +200,9 @@ test("choosing an unreadable folder after a readable one clears the filled field
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await form.getByLabel(/good: /).check();
-  await expect(form.getByLabel("Game version")).toHaveValue("2.1.24");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("2.1.24");
   await form.getByLabel(/junk: /).check();
-  await expect(form.getByLabel("Game version")).toHaveValue("");
+  await expect(form.getByLabel("Or type a version")).toHaveValue("");
   await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
   await expect(page.locator("#announcer")).toContainText("could not read this folder's save");
   await checkPage(page);
@@ -219,12 +219,12 @@ test("a version the server filled after a failed submit is cleared for an unread
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await form.getByLabel(/good: /).check();
   await form.getByLabel("World name").fill("");
-  await form.getByLabel("Game version").fill("");
+  await form.getByLabel("Or type a version").fill("");
   await form.getByRole("button", { name: "Import folder" }).click();
   const back = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
-  await expect(back.getByLabel("Game version")).toHaveValue("2.1.24");
+  await expect(back.getByLabel("Or type a version")).toHaveValue("2.1.24");
   await back.getByLabel(/junk: /).check();
-  await expect(back.getByLabel("Game version")).toHaveValue("");
+  await expect(back.getByLabel("Or type a version")).toHaveValue("");
   await expect(back.getByLabel("Space Age is on")).not.toBeChecked();
 });
 
@@ -283,7 +283,7 @@ test("imports a world by uploading a save", async ({ page, foreman }) => {
   await expect(page.getByText("The import folder is empty")).toBeVisible();
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Upload a save" }) });
   await form.getByLabel("World name").fill("Uploaded");
-  await form.getByLabel("Game version").fill("1.1.110");
+  await form.getByLabel("Or type a version").fill("1.1.110");
   await form.getByLabel("Save file").setInputFiles({ name: "my save.zip", mimeType: "application/zip", buffer: emptyZip });
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page).toHaveURL("/worlds/uploaded");
@@ -293,7 +293,7 @@ test("imports a world by uploading a save", async ({ page, foreman }) => {
   // A file that is not a zip is refused and no world is made.
   await page.goto("/import");
   await form.getByLabel("World name").fill("Second");
-  await form.getByLabel("Game version").fill("1.1.110");
+  await form.getByLabel("Or type a version").fill("1.1.110");
   await form.getByLabel("Save file").setInputFiles({ name: "fake.zip", mimeType: "application/zip", buffer: Buffer.from("nope") });
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page.locator("#error-summary")).toContainText("This file is not a zip file.");
@@ -312,7 +312,7 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
   await page.getByRole("link", { name: "Base" }).click();
   await expect(page).toHaveURL("/worlds/base");
   await expect(page.getByRole("link", { name: "Saves" })).toHaveAttribute("href", "/worlds/base/saves");
-  await expect(page.getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
+  await expect(page.locator("#main").getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
   await checkPage(page);
 
   await page.getByLabel("Name", { exact: true }).fill("OTHER");
@@ -393,7 +393,7 @@ test("an import with no folder chosen describes the error on every radio", async
   await page.goto("/import");
   const folderForm = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
   await folderForm.getByLabel("World name").fill("Imported");
-  await folderForm.getByLabel("Game version").fill("2.0.72");
+  await folderForm.getByLabel("Or type a version").fill("2.0.72");
   await folderForm.getByRole("button", { name: "Import folder" }).click();
   await expect(page.locator("#folder-source-error")).toBeVisible();
   const radios = folderForm.getByRole("radio");

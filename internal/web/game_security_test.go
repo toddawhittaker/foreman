@@ -45,8 +45,7 @@ func startController(t *testing.T, dockerHost string, worlds *world.Manager, st 
 	c, err := game.New(game.Config{
 		Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 		HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
-		Images: map[string]string{"2.1": image21},
-		Log:    slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		Log: slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	})
 	if err != nil {
 		t.Fatal(err)
