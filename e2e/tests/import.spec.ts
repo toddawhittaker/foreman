@@ -194,7 +194,7 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
 
   const done = page.locator(".message--success");
   await expect(done).toContainText("Done: Imported 2 folders.");
-  await expect(done.getByRole("link", { name: "sa" })).toHaveAttribute("href", "/worlds/sa");
+  await expect(done.getByRole("link", { name: "Open sa" })).toHaveAttribute("href", "/worlds/sa");
   await expect(done).toContainText("Downloading the game image for Factorio 2.0.77, 2.1.24.");
   await expect(page.locator(".message--warning")).toContainText("junk: Foreman could not read its save");
   await expect(page.locator("#import-result")).toBeFocused();

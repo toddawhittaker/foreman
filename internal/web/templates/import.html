@@ -13,7 +13,7 @@
   <p><strong>Done:</strong> Imported {{len .Imported}} {{if eq (len .Imported) 1}}folder{{else}}folders{{end}}.</p>
   <ul>
     {{- range .Imported}}
-    <li><code>{{.Folder}}</code> as <a href="{{$.Page.WorldPath .WorldID}}">{{.WorldName}}</a></li>
+    <li><code>{{.Folder}}</code>: <a href="{{$.Page.WorldPath .WorldID}}">Open {{.WorldName}}</a></li>
     {{- end}}
   </ul>
   {{- with .Downloads}}
