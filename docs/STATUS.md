@@ -857,11 +857,16 @@ flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
   (budget 2).
 - **Flaky test (#109).** `TestReattachAfterForemanRestart` polls for its
   log lines instead of racing them.
-- **Server page wiring (W).** After Cancel stop or Take snapshot, focus
-  lands on the Done message. The Switch panel is live and is hidden while
-  an action is busy. The "no image with that version" message links to
-  the world's page. A stale "cancelled" message is fixed. The "Changed"
-  page keeps "Switch, leave stopped". The header reads at 200% text.
+- **Server page wiring.** After the admin's own Cancel stop or Take
+  snapshot, focus moves to the Done message, also when that message arrives
+  by a live update. The "Switch to another world" panel is live: it is
+  empty while an action runs and comes back when the action ends, with no
+  reload. The "Docker Hub has no image with that version" message links to
+  the world's page (the target world, for a switch). A cancelled stop's
+  message no longer returns after a later snapshot or download. A changed
+  switch confirmation keeps the admin's "Switch, leave stopped" choice. At
+  320 px with 200% text the header keeps Sign out on one line, with the
+  name above it.
 
 ### Verified
 
@@ -910,6 +915,13 @@ flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
   run before Docker became unreachable, and the active-world line moving
   mid-switch. The changed-state refusal is covered by an integration test
   only.
+- A screen reader may hear both the announcement and the focused Done
+  message.
+- After a switch, the old world's Server page briefly lists that world in
+  the switch panel until the page reloads.
+- The cancel-then-snapshot integration test polls, so a very quick snapshot
+  weakens it. A deterministic test of the runs tracker covers the same
+  rule.
 - The mod-change undo click-budget test is skipped until Epic 6.
 - Cancel stop was not tried with a real player online, because no game
   client can join a headless server.
