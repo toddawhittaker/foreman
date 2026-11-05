@@ -66,6 +66,11 @@ type WorldsPage struct {
 	Busy       map[string]string
 	Switchable map[string]bool
 	SwitchWait bool
+	// SnapshotAdds is the space each world's snapshots add, by world id
+	// (SPEC 6.6); a world with none has no entry. AddsUnknown is set when
+	// the count failed, and the list then says "unknown".
+	SnapshotAdds map[string]uint64
+	AddsUnknown  bool
 }
 
 // SwitchPath is where a world's Switch button goes.

@@ -902,6 +902,13 @@ legend {
   overflow-wrap: anywhere;
 }
 
+/* A second figure under a fact's value, on its own line and small enough to
+   stay on it at 320 px. */
+.facts .fact-note {
+  display: block;
+  font-size: var(--text-sm);
+}
+
 /* The "Active" badge is drawn as selected, like the current tab. */
 .badge {
   display: inline-flex;

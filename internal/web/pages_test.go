@@ -63,7 +63,7 @@ func TestWorldLinksAndUnknownSize(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldPage{World: world.Summary{ID: "base", Name: "Base", SizeUnknown: true}}})
 	wantIn(t, "world page", body, `href="/worlds/base/delete"`, ">Delete world<", "<dd>unknown</dd>")
 	_, body = render(t, r, pageCase{status: 200, user: "todd", page: WorldsPage{Worlds: []world.Summary{{ID: "a", Name: "A", SizeUnknown: true}}}})
-	wantIn(t, "world list", body, `href="/deleted"`, "<dd>unknown</dd>")
+	wantIn(t, "world list", body, `href="/deleted"`, `<dd>unknown <span class="fact-note">snapshots add 0 B</span></dd>`)
 }
 
 // A saves folder that cannot be read says "unknown", not "Never".
