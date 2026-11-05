@@ -11,8 +11,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/toddawhittaker/foreman/internal/savefile"
 )
 
 const (
@@ -168,7 +166,7 @@ func modVersionMismatch(root *os.Root, meta Meta, mods modList) (running string,
 // modVersionProblem words the refusal for mods made for another Factorio
 // than the one the game runs. mods maps each mismatched mod to the
 // major.minor it was made for.
-func modVersionProblem(worldName string, running string, mods map[string]string, _ savefile.Version) Problem {
+func modVersionProblem(worldName string, running string, mods map[string]string) Problem {
 	byVersion := map[string][]string{}
 	for name, v := range mods {
 		byVersion[v] = append(byVersion[v], name)
