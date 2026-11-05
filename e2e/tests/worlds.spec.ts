@@ -309,7 +309,7 @@ test("renames a world and refuses a duplicate name", async ({ page, foreman }) =
   seedWorld(foreman, "other", { name: "Other", game_version: "2.0.72", space_age: false });
 
   await page.goto("/worlds");
-  await page.getByRole("link", { name: "Base" }).click();
+  await page.getByRole("link", { name: "Base", exact: true }).click();
   await expect(page).toHaveURL("/worlds/base");
   await expect(page.getByRole("link", { name: "Saves" })).toHaveAttribute("href", "/worlds/base/saves");
   await expect(page.locator("#main").getByRole("link", { name: "Snapshots" })).toHaveAttribute("href", "/worlds/base/snapshots");
@@ -343,7 +343,7 @@ test("a very long world name wraps on the list and the world page", async ({ pag
   const long = "Family-base-".repeat(8) + "x".repeat(40);
   seedWorld(foreman, "long", { name: long, game_version: "2.0.72", space_age: true });
   await page.goto("/worlds");
-  await expect(page.getByRole("link", { name: long })).toBeVisible();
+  await expect(page.getByRole("link", { name: long, exact: true })).toBeVisible();
   await checkPage(page);
   await page.goto("/worlds/long");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(long);

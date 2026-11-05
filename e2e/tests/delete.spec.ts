@@ -112,7 +112,7 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
 
   // Restoring did not displace the active world.
   await page.goto("/worlds");
-  await expect(page.getByRole("link", { name: "Family base" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Family base", exact: true })).toBeVisible();
   await expect(page.locator("li", { hasText: "Base" }).first().locator(".badge--active")).toBeVisible();
   await page.goto("/deleted");
   await expect(page.getByText(/No deleted worlds/)).toBeVisible();
