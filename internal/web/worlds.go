@@ -153,6 +153,7 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	p := WorldsPage{Worlds: list}
 	s.markSwitching(&p)
+	s.markSnapshotAdds(&p)
 	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
 		p.Deleted, p.DeletedKept, err = s.deletedWorld(id, list)
 		if err != nil {
@@ -161,6 +162,22 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 		}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// markSnapshotAdds fills in each world's "Snapshots add" figure from one
+// counting pass, the same one the Snapshots pages use, so the figures agree.
+// A failed count is logged once and the list still shows.
+func (s *server) markSnapshotAdds(p *WorldsPage) {
+	if len(p.Worlds) == 0 {
+		return
+	}
+	count, err := s.worlds.CountSnapshots()
+	if err != nil {
+		s.log.Error("count snapshots", "error", err)
+		p.AddsUnknown = true
+		return
+	}
+	p.SnapshotAdds = count.WorldAdds()
 }
 
 // markSwitching fills in what the list shows about switching: a Switch
