@@ -264,7 +264,7 @@ func TestImportListsFoldersWithoutSaves(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := hn.get(PathImport, withCookie(c)).Body.String()
-	for _, want := range []string{`value="current" disabled>`, "<code>current</code>: no save at its top level, so it cannot be imported",
+	for _, want := range []string{`value="current" disabled>`, "<code>current</code>: no save at its top level or in a saves folder, so it cannot be imported",
 		"There is nothing to import"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q:\n%s", want, body)

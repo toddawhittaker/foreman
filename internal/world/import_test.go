@@ -306,3 +306,179 @@ func TestRename(t *testing.T) {
 		t.Errorf("newer world.json changed: %s", b)
 	}
 }
+
+// seedServerLayout writes a folder in the Factorio server's own layout.
+func seedServerLayout(t *testing.T, m *Manager) string {
+	t.Helper()
+	src := filepath.Join(m.dirs.Imports, "server")
+	old := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+	write(t, filepath.Join(src, "saves", "a.zip"), "save-a", old)
+	write(t, filepath.Join(src, "saves", "b.zip"), "save-b", old.Add(time.Hour))
+	write(t, filepath.Join(src, "saves", "notes.txt"), "not a save", old)
+	write(t, filepath.Join(src, "saves", "deep", "c.zip"), "nested", old)
+	write(t, filepath.Join(src, "mods", "mod-list.json"), "{}", old)
+	for _, f := range configFiles {
+		write(t, filepath.Join(src, "config", f), "body of "+f, old)
+	}
+	write(t, filepath.Join(src, "config", "rconpw"), "hunter2", old)
+	write(t, filepath.Join(src, "config", "config.ini"), "[path]", old)
+	write(t, filepath.Join(src, "config", "mapexchangestring.txt"), ">>>x<<<", old)
+	return src
+}
+
+func TestImportFolderServerLayout(t *testing.T) {
+	m, _ := newTestManager(t)
+	src := seedServerLayout(t, m)
+	before := tree(t, src)
+
+	id, err := m.ImportFolder(context.Background(), "server", "Server game", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after := tree(t, src); !slices.Equal(before, after) {
+		t.Errorf("source changed:\nbefore %v\nafter  %v", before, after)
+	}
+	w := filepath.Join(m.dirs.Worlds, id)
+	want := map[string]string{
+		"saves/a.zip":        "save-a",
+		"saves/b.zip":        "save-b",
+		"mods/mod-list.json": "{}",
+	}
+	for _, f := range configFiles {
+		want["config/"+f] = "body of " + f
+	}
+	for p, body := range want {
+		got, err := os.ReadFile(filepath.Join(w, p)) //nolint:gosec // a test temp file
+		if err != nil || string(got) != body {
+			t.Errorf("%s: %q, %v", p, got, err)
+			continue
+		}
+		if mode(t, filepath.Join(w, p)) != FileMode {
+			t.Errorf("%s mode %v", p, mode(t, filepath.Join(w, p)))
+		}
+	}
+	for _, p := range []string{"config/rconpw", "config/config.ini", "config/mapexchangestring.txt", "saves/notes.txt", "saves/deep", "saves/c.zip"} {
+		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s should not be copied: %v", p, err)
+		}
+	}
+	assertNoStaging(t, m)
+}
+
+func TestImportFolderCopiesInvalidJSONConfigAsIs(t *testing.T) {
+	m, _ := newTestManager(t)
+	write(t, filepath.Join(m.dirs.Imports, "f", "a.zip"), "s", t0)
+	write(t, filepath.Join(m.dirs.Imports, "f", "config", "server-settings.json"), "{not json", t0)
+	id, err := m.ImportFolder(context.Background(), "f", "W", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(m.dirs.Worlds, id, "config", "server-settings.json")) //nolint:gosec // a test temp file
+	if err != nil || string(got) != "{not json" {
+		t.Errorf("got %q, %v", got, err)
+	}
+}
+
+func TestImportFolderSaveClashRefusesAndNamesTheFile(t *testing.T) {
+	m, _ := newTestManager(t)
+	write(t, filepath.Join(m.dirs.Imports, "clash", "same.zip"), "top", t0)
+	write(t, filepath.Join(m.dirs.Imports, "clash", "saves", "same.zip"), "inner", t0)
+	write(t, filepath.Join(m.dirs.Imports, "clash", "saves", "other.zip"), "x", t0)
+	_, err := m.ImportFolder(context.Background(), "clash", "W", "2.0.72", false)
+	if !errors.Is(err, ErrSaveClash) {
+		t.Fatalf("got %v, want ErrSaveClash", err)
+	}
+	if !strings.Contains(err.Error(), "same.zip") {
+		t.Errorf("error does not name the file: %v", err)
+	}
+	if list, _ := m.List(context.Background()); len(list) != 0 {
+		t.Errorf("a world was made: %+v", list)
+	}
+	assertNoStaging(t, m)
+	// The listing still shows the folder, so the page can show the error.
+	if _, err := m.InboxEntry("clash"); err != nil {
+		t.Errorf("InboxEntry: %v", err)
+	}
+}
+
+func TestImportFolderTopLevelOnlyStillWorks(t *testing.T) {
+	m, _ := newTestManager(t)
+	write(t, filepath.Join(m.dirs.Imports, "flat", "one.zip"), "1", t0)
+	id, err := m.ImportFolder(context.Background(), "flat", "Flat", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(m.dirs.Worlds, id, "saves", "one.zip")); err != nil {
+		t.Error(err)
+	}
+	if entries, _ := os.ReadDir(filepath.Join(m.dirs.Worlds, id, "config")); len(entries) != 0 {
+		t.Errorf("config not empty: %v", entries)
+	}
+}
+
+func TestImportFolderSkipsSymlinksInSavesAndConfig(t *testing.T) {
+	m, _ := newTestManager(t)
+	outside := filepath.Join(t.TempDir(), "secret")
+	write(t, outside, "secret", t0)
+	src := filepath.Join(m.dirs.Imports, "links")
+	write(t, filepath.Join(src, "saves", "real.zip"), "r", t0)
+	write(t, filepath.Join(src, "config", "map-settings.json"), "{}", t0)
+	for _, l := range []string{"saves/link.zip", "config/server-settings.json"} {
+		if err := os.Symlink(outside, filepath.Join(src, l)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	id, err := m.ImportFolder(context.Background(), "links", "L", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := filepath.Join(m.dirs.Worlds, id)
+	for _, p := range []string{"saves/link.zip", "config/server-settings.json"} {
+		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s should not be copied: %v", p, err)
+		}
+	}
+	for _, p := range []string{"saves/real.zip", "config/map-settings.json"} {
+		if _, err := os.Lstat(filepath.Join(w, p)); err != nil {
+			t.Errorf("%s: %v", p, err)
+		}
+	}
+}
+
+func TestImportFolderIgnoresSymlinkedSavesAndConfigFolders(t *testing.T) {
+	m, _ := newTestManager(t)
+	outside := t.TempDir()
+	write(t, filepath.Join(outside, "x.zip"), "x", t0)
+	write(t, filepath.Join(outside, "server-settings.json"), "{}", t0)
+	src := filepath.Join(m.dirs.Imports, "dirs")
+	write(t, filepath.Join(src, "top.zip"), "t", t0)
+	for _, l := range []string{"saves", "config"} {
+		if err := os.Symlink(outside, filepath.Join(src, l)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	id, err := m.ImportFolder(context.Background(), "dirs", "D", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := filepath.Join(m.dirs.Worlds, id)
+	for _, p := range []string{"saves/x.zip", "config/server-settings.json"} {
+		if _, err := os.Lstat(filepath.Join(w, p)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s should not be copied: %v", p, err)
+		}
+	}
+}
+
+func TestInboxCountsSavesFolder(t *testing.T) {
+	m, _ := newTestManager(t)
+	write(t, filepath.Join(m.dirs.Imports, "both", "top.zip"), "t", t0)
+	write(t, filepath.Join(m.dirs.Imports, "both", "saves", "a.zip"), "a", t0)
+	write(t, filepath.Join(m.dirs.Imports, "both", "saves", "b.zip"), "bb", t0)
+	f, err := m.InboxEntry("both")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Saves != 3 || f.Bytes != 4 {
+		t.Errorf("got %d saves, %d bytes", f.Saves, f.Bytes)
+	}
+}
