@@ -797,24 +797,34 @@ supported line (10.8), such as `2.0.77`. The world runs the image
 `factoriotools/factorio:<version>`, referenced by that tag (4.2). (P0)
 
 10.2. When a newer stable or experimental release exists, the world shows
-a notice with the release's changelog. Foreman checks only when an admin
-opens a page that shows it, never on a timer at startup. (P1)
+a notice that links to the changelog on the Factorio wiki's Version_history
+page for that release's line. Stable and experimental come from
+factorio.com's latest-releases list; which releases have an image comes from
+Docker Hub's tag list. A release with no image yet shows "No image yet" and
+cannot be chosen. Foreman checks only when an admin opens a page that shows
+it, never on a timer at startup. (P1)
 
 10.3. **Update** a world's game version to a newer release chosen with
 the version picker (10.7), for example from 2.1.19 to 2.1.24, or from a
 2.0 release to a 2.1 release: snapshot, download that version's image when
 the local Docker does not hold it (a tag already held is not downloaded
-again; "Download game image" downloads it again on request, 3.7), restart,
-and confirm "InGame". A world's version only ever moves up: Factorio cannot
-load a save in an older version than the one that wrote it, so the picker
-offers only newer releases and Foreman refuses an older one. The only way
-back is rollback (10.4), which restores the save from before the update.
+again; "Download game image" downloads it again on request, 3.7), and
+restart and confirm "InGame" only if the game was running (a stopped world
+stays stopped, as in a switch, 7.9). Only the active world can be updated.
+A world's version only ever moves up: Factorio cannot load a save in an
+older version than the one that wrote it, so the picker offers only newer
+releases and Foreman refuses an older one. The only way back is rollback
+(10.4), which restores the save from before the update.
 The pre-start check (7.4) applies as at any start, so mods made for the old
 line refuse an update to a new line until they are updated. (P0)
 
 10.4. **Rollback** restores the pre-update snapshot and the previous
-version together, as one action. When the local Docker no longer holds the
-previous version's image, the start is refused as in 3.7. (P0)
+version together, as one action. It goes one step back: it restores the
+newest "Before update" snapshot whose version is older than the world's
+current one, and takes the usual "Before restore" snapshot first as the undo.
+Pruning (6.6) never removes a world's newest "Before update" snapshot.
+When the local Docker no longer holds the previous version's image, the
+start is refused as in 3.7. (P0)
 
 10.5. Foreman never updates a game version, a mod, or itself on its own.
 (P0)
@@ -826,9 +836,11 @@ version (import 5.5, generate 5.6, update 10.3), Foreman lists the
 `factoriotools/factorio` tags from Docker Hub, filtered to patch releases
 of the supported lines. It fetches the list only when the admin opens a
 page that shows the picker, like the release check in 10.2, never at
-startup or on a timer. The admin may also type a version; Foreman accepts
-only an exact patch release of a supported line. When Docker Hub cannot be
-reached, the page says so and the typed version still works. (P0)
+startup or on a timer. It keeps the Docker Hub list and the latest
+releases (10.2) in memory for 5 minutes, and does not keep a failed
+answer. The admin may also type a version; Foreman accepts only an exact
+patch release of a supported line. When Docker Hub cannot be reached, the
+page says so and the typed version still works. (P0)
 
 10.8. **Supported lines.** Foreman supports the 1.1, 2.0 and 2.1 lines,
 and every patch release within them. A new line (for example 2.2) needs a
@@ -1054,8 +1066,11 @@ command. The raw console (8.4) sends what the admin typed, by design. (P0)
 
 14.10. **Outbound requests.** Foreman talks only to the mod portal, the
 factorio.com release list, Docker Hub's list of `factoriotools/factorio`
-tags (10.7), and webhook URLs an admin configured. Image pulls are made by
-the Docker daemon, not by Foreman. It does not follow redirects for webhooks. (P0)
+tags (`hub.docker.com`, 10.7), and webhook URLs an admin configured. Calls
+to the release list and to Docker Hub follow no redirects, take at most 10
+seconds, and read at most 2 MB (tag list) or 64 KB (release list). Image
+pulls are made by the Docker daemon, not by Foreman. It does not follow
+redirects for webhooks. (P0)
 
 14.11. **Least privilege.** Foreman's container runs as non-root with a
 read-only root filesystem except its data directory and a temporary

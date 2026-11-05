@@ -5,6 +5,8 @@ What each epic delivered and the gaps it left. The epic's last task
 here are known and accepted; each is either fixed by a later epic or
 waits for a decision.
 
+Epics 1 to 5 are done. Gate A (SPEC 19.1) is next.
+
 ## Epic 1: Foundation
 
 Serves SPEC 18.1. Everything below is built and tested.
@@ -117,7 +119,7 @@ across `internal/` is about 89%. The format decisions are in ADR 0002.
   save zip. Imports copy, keep times, never hardlink and never change the
   source. A new world is built in one staging folder and renamed into
   place, so a refused or failed import leaves no world behind. Mod sync
-  for an uploaded save is Epic 5.
+  for an uploaded save is Epic 6.
 - **Saves (SPEC 5.11, 7.11).** List (newest first), download, upload and
   choose which save loads. An upload with a name that exists is refused.
   An upload to a busy world waits up to 60 seconds for it. If the world
@@ -404,7 +406,8 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
 Serves SPEC 18.4: switching worlds (7.9, 7.10) and removing adopted mode.
 Adopted mode was built first, then dropped before release (ADR 0005), so
 Foreman now has one mode: it creates and owns the game container. Game
-versions are now exact patch tags (SPEC 4.2). Everything below is built and
+versions are now recorded as exact patch releases (SPEC 4.2); running each
+world on its own exact tag came in Epic 5. Everything below is built and
 tested. Coverage across `internal/` is about 90%.
 
 ### Delivered
@@ -458,9 +461,10 @@ tested. Coverage across `internal/` is about 90%.
   package, and the `adoption` table are gone. The SPEC 4.4 network checks
   and the trusted-header refusal for game ranges (12.5, 12.6) stay.
 - **Game versions by tag (SPEC 4.2, ADR 0005).** A world's version is an
-  exact patch release of the 1.1, 2.0 or 2.1 line, and its image is
-  `factoriotools/factorio:<version>`. The three game images pinned in the
-  Makefile are test images only.
+  exact patch release of the 1.1, 2.0 or 2.1 line. In this epic the image
+  was still the newest pinned image of the world's line, so a world made on
+  2.0.72 ran 2.0.77; Epic 5 made each world run its own exact tag. The
+  three game images pinned in the Makefile are test images only.
 - **VPN sidecars (SPEC 4.13, ADR 0006).** The game can share the network
   of an operator-run sidecar container. A start is refused when the
   sidecar is missing, stopped, on the host network, or off the game
@@ -522,3 +526,120 @@ tested. Coverage across `internal/` is about 90%.
   end-to-end test, because a browser cannot connect from a game address.
 - The mod-version check and the crash-reason reader are not checked
   against a real container's log.
+
+## Epic 5: Game versions
+
+Serves SPEC 18.5: section 10 (10.1 to 10.5, 10.7, 10.8). VPN sidecars
+(4.13) shipped in Epic 4. Everything below is built and tested. Epic 4's
+STATUS had said 10.1 was delivered; it was not until this epic.
+
+### Delivered
+
+- **Each world runs its exact version (SPEC 10.1, 4.2, ADR 0005).** The
+  image is `factoriotools/factorio:<game_version>`, so a world made on
+  2.0.72 runs 2.0.72. `Config.Images`, the image-version check and
+  `ErrSaveNewerThanImage` are gone; the pre-start check (SPEC 7.4) refuses
+  a save newer than the world's version, with no "Start anyway".
+- **Import accepts only supported lines (SPEC 5.5, 10.8).** Folder and
+  upload imports, and the import form, refuse a version that is not an
+  exact patch release of 1.1, 2.0 or 2.1. The mod-version advice never
+  says to lower a world's version.
+- **Releases client (SPEC 10.2, 10.7, 14.10).** The new package
+  `internal/releases` reads Docker Hub's tag list (one query per supported
+  line, at most 10 pages of 100) and factorio.com's latest releases
+  (stable and experimental `headless`). It follows no redirects, caps
+  replies at 2 MB and 64 KB, allows 10 seconds per call, caches for 5
+  minutes in memory and makes one fetch per call kind at a time. Errors are
+  not cached. A failure is `ErrUnreachable`. If one latest release is on a
+  line Foreman does not support (for example experimental 2.2.0), only
+  that field is empty; the other still shows. It makes no request at
+  startup or when a page is rendered without the picker or notice.
+- **Update (SPEC 10.3, 7.4, 3.7).** The active world can be updated to a
+  newer exact release. Everything that can refuse runs first, before any
+  download or stop: the target is a newer supported version, the world is
+  active, the game is in a state a stop would accept, the pre-start check
+  at the target version, the game network and the sidecar. Then the image
+  is downloaded if Docker lacks it (a visible step), the game stops
+  gracefully, a "Before update" snapshot is taken, the version is set, and
+  the game starts and is confirmed only if it was running. A stopped world
+  stays stopped. A refusal that has a choice shows the refusal box with
+  "Update anyway". If the update was set but the start was refused, the box
+  offers "Start anyway" instead. Audited as `game-update` and
+  `game-update-refused`.
+- **Rollback (SPEC 10.4, 6.6).** One step back: it restores the newest
+  "Before update" snapshot whose version is older than the world's, with
+  the version and the save together, and takes a "Before restore" snapshot
+  first as the undo. The page warns that play since the update is lost.
+  With nothing to roll back to, the page shows only the error. A missing
+  old image refuses the start (SPEC 3.7) and loses nothing. Pruning never
+  removes a world's newest `game-update` snapshot. Audited as `rollback`.
+- **Version picker (SPEC 10.7).** The import form and the
+  Update page have a typed input with a list filled after the page loads,
+  newest first, with stable and experimental marked. It leaves out
+  rootless, `stable-` and alias tags. The page never waits on Docker Hub,
+  and typing works without the list and without JavaScript. A typed
+  version must be an exact patch release of a supported line; its
+  existence is not checked against Docker Hub.
+- **Release notice (SPEC 10.2).** The world page shows, once it has
+  loaded, a newer stable or experimental release with a link to the wiki's
+  Version history page for its line, and a link to the Update page. A
+  release with no image yet reads "No image yet", with no button. The
+  notice says Docker Hub cannot be reached only when the call it needs
+  fails. Only a notice that reports a newer release is a live region.
+- **Real-game update tests (SPEC 10.3, 10.4, 9.7).** `make test-game`
+  runs 2.0.77 to 2.1.24 and 2.1.23 to 2.1.24 against real containers. Each
+  reaches "InGame" on the new version, rolls back to "InGame" on the old
+  one, and the restored save is byte for byte the "Before update" save. The
+  new game logs no error and loads 2.1's built-in mods (`recycler`) even
+  though the old `mod-list.json` lacks them.
+- **Test image checks (STACK 1, 13).** `GAME_IMAGE_2_1_PREV` pins 2.1.23.
+  `make test-game` and `make e2e-game` check that each plain tag they use
+  on the host is the pinned digest, and refuse with a `docker pull` and
+  `docker tag` hint if not. `make test-game TAG=` checks only the images
+  that tag runs. End-to-end runs set an unreachable `HTTPS_PROXY`, so
+  Foreman cannot reach Docker Hub from them.
+
+### Verified
+
+Checks on 869350a, all green: `make verify` (coverage 90.5%), `make e2e`
+(408 passed), `make test-game` (1.1.110, 2.0.77, 2.1.23 and 2.1.24, with
+both update and rollback cases), and `make e2e-game` (2 passed).
+
+- Invariant tests in `internal/world` and `internal/game`
+  (`update_test.go`): a version only moves up; a refused update changes
+  nothing and takes no snapshot; a download happens before the stop and a
+  failed download leaves the game running; rollback goes back one update at
+  a time; pruning keeps the newest update snapshot.
+- Releases client tests use `httptest` fakes: filtering and ordering,
+  paging limits, a `next` URL pointing elsewhere, redirects, size limits,
+  error text, caching and single-flight.
+- Web tests cover session, CSRF and method rules on every new route, the
+  picker, the notice and hostile text from the release source.
+- `make e2e` covers update by typed version (stopped and running worlds),
+  the Docker Hub notice, "Update anyway", rollback, and the axe scan at
+  desktop and 320 px in dark and light.
+- Code, security and accessibility reviews ran over the epic, and fix
+  rounds closed their findings except AR4 below.
+
+### Gaps left
+
+- The newer-release and "No image yet" notice states get no axe scan,
+  because end-to-end tests block Docker Hub (accessibility finding AR4).
+  The Go tests cover them, and the markup is shared with scanned pages.
+- End-to-end tests never see the picker list filled, for the same reason.
+  Go tests cover the fragment.
+- `TestReattachAfterForemanRestart` is flaky (issue #109).
+- Only the active world can be updated; another world says "Switch to this
+  world to update it" (issue #93).
+- The changelog is a link to the wiki, not shown inside Foreman (issue
+  #92).
+- The "Update anyway" fingerprint leaves out the target version. This is an
+  accepted trade-off.
+- The supported lines are listed in `internal/releases` as well as in
+  `world.SupportedGameVersion`; a new line needs both.
+- Not tested: `http.ProxyFromEnvironment` and the real 10-second deadline
+  in the releases client.
+- Not covered by the real-game test: a 2.0 world given a `recycler` mod
+  entry by hand, and mods that break across a line.
+- The end-to-end tests assert the update step list and the refusal box
+  wording loosely.
