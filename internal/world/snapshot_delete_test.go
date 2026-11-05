@@ -107,18 +107,23 @@ func TestSnapshotsAddLeavesOutFilesTheWorldHolds(t *testing.T) {
 	}
 	// The zips (8 + 3 bytes) are shared with the world; the copied small
 	// files are the snapshots' own.
-	small := a.Size() - 11
+	// Each snapshot.json is its own, so it frees with its snapshot.
+	own := map[string]uint64{
+		a.Name: a.Size() - 11 + manifestSize(t, m, id, a.Name),
+		b.Name: b.Size() - 11 + manifestSize(t, m, id, b.Name),
+	}
 	for _, u := range c.Snapshots() {
-		if u.WorldID != id || u.Frees != small {
-			t.Errorf("%s: world %q frees %d, want %d", u.Name, u.WorldID, u.Frees, small)
+		if u.WorldID != id || u.Frees != own[u.Name] {
+			t.Errorf("%s: world %q frees %d, want %d", u.Name, u.WorldID, u.Frees, own[u.Name])
 		}
 	}
 	both := []SnapshotRef{{id, a.Name}, {id, b.Name}}
-	if got := c.Frees(both); got != 2*small {
-		t.Errorf("both free %d, want %d", got, 2*small)
+	want := own[a.Name] + own[b.Name]
+	if got := c.Frees(both); got != want {
+		t.Errorf("both free %d, want %d", got, want)
 	}
-	if got := c.Total(); got != 2*small {
-		t.Errorf("total %d, want %d", got, 2*small)
+	if got := c.Total(); got != want {
+		t.Errorf("total %d, want %d", got, want)
 	}
 }
 
@@ -152,15 +157,25 @@ func seedPlayedOn(t *testing.T) (m *Manager, id string, snaps []Snapshot) {
 	return m, id, snaps
 }
 
+// manifestSize is the size of a snapshot's snapshot.json on disk.
+func manifestSize(t *testing.T, m *Manager, id, snap string) uint64 {
+	t.Helper()
+	info, err := os.Stat(filepath.Join(m.dirs.Snapshots, id, snap, ManifestFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return uint64(info.Size()) //nolint:gosec // a size is never negative
+}
+
 // distinctBytes is the disk the files under roots take, each inode once.
-// A manifest is left out, as it is from every size Foreman shows.
+// A snapshot.json counts like any file (SPEC 6.12).
 func distinctBytes(t *testing.T, roots ...string) uint64 {
 	t.Helper()
 	seen := map[inodeKey]bool{}
 	var n uint64
 	for _, root := range roots {
 		err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-			if err != nil || !d.Type().IsRegular() || d.Name() == ManifestFile {
+			if err != nil || !d.Type().IsRegular() {
 				return err
 			}
 			info, err := d.Info()
@@ -220,24 +235,34 @@ func TestSnapshotFiguresAgree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	small := snaps[0].Size() - 8 - 3
+	// What each snapshot holds alone: its small files and its snapshot.json.
+	own := func(i int) uint64 {
+		zips := uint64(8 + 3) // "save one" and the mod zip
+		if i > 0 {
+			zips = 9 + 3 // "save two!" and the mod zip
+		}
+		return snaps[i].Size() - zips + manifestSize(t, m, id, snaps[i].Name)
+	}
 	alone := map[string]uint64{}
 	var all []SnapshotRef
 	for _, u := range c.Snapshots() {
+		if want := u.Size() + manifestSize(t, m, id, u.Name); u.DiskSize() != want {
+			t.Errorf("%s size %d, want %d with its snapshot.json", u.Name, u.DiskSize(), want)
+		}
 		alone[u.Name] = u.Frees
 		all = append(all, SnapshotRef{id, u.Name})
 	}
 	// The two that share "save two!" free only their copies on their own.
-	want := map[string]uint64{snaps[0].Name: small + 8, snaps[1].Name: small, snaps[2].Name: small}
+	want := map[string]uint64{snaps[0].Name: own(0) + 8, snaps[1].Name: own(1), snaps[2].Name: own(2)}
 	for name, w := range want {
 		if alone[name] != w {
 			t.Errorf("%s alone frees %d, want %d", name, alone[name], w)
 		}
 	}
-	if got := c.Frees([]SnapshotRef{{id, snaps[1].Name}, {id, snaps[2].Name}}); got != 2*small+9 {
-		t.Errorf("the pair frees %d, want %d", got, 2*small+9)
+	if got := c.Frees([]SnapshotRef{{id, snaps[1].Name}, {id, snaps[2].Name}}); got != own(1)+own(2)+9 {
+		t.Errorf("the pair frees %d, want %d", got, own(1)+own(2)+9)
 	}
-	total := 3*small + 8 + 9
+	total := own(0) + own(1) + own(2) + 8 + 9
 	if got := c.Total(); got != total {
 		t.Errorf("total %d, want %d", got, total)
 	}

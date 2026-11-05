@@ -88,6 +88,8 @@ type Manifest struct {
 type Snapshot struct {
 	Name string
 	Manifest
+	// manifestBytes is the size of snapshot.json, set only by a count.
+	manifestBytes uint64
 }
 
 // Automatic reports whether retention may remove the snapshot (SPEC 6.6).
@@ -103,6 +105,11 @@ func (s Snapshot) Size() uint64 {
 	}
 	return n
 }
+
+// DiskSize is the size of every file in the snapshot, snapshot.json
+// included (SPEC 6.12). It is set by CountSnapshots and CountWorldSnapshots;
+// a snapshot listed any other way reports Size.
+func (s Snapshot) DiskSize() uint64 { return s.Size() + s.manifestBytes }
 
 // TakeSnapshot takes a manual snapshot of a world (SPEC 6.3).
 func (m *Manager) TakeSnapshot(id, label, by string) (Snapshot, error) {

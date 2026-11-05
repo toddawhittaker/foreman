@@ -33,7 +33,7 @@ func bulkDeleteCase() SnapshotBulkDeletePage {
 		Items: []DeleteItem{
 			{WorldID: "base", WorldName: longName, Snapshot: s[0]},
 			{WorldID: "base", WorldName: "Base", Snapshot: s[1], Rollback: "2.0.72"},
-			{WorldID: "base", WorldName: "Base", Snapshot: world.Snapshot{Name: "20261103T142300Z"}, Refusal: "The snapshot is not there any more."},
+			{WorldID: "base", WorldName: "Base", Snapshot: world.Snapshot{Name: "20261103T142300Z", Manifest: world.Manifest{TakenAt: time.Now()}}, Gone: true},
 		},
 	}
 }

@@ -3,6 +3,8 @@ package web
 import (
 	"bufio"
 	"context"
+	"errors"
+	"fmt"
 	"html"
 	"io"
 	"log/slog"
@@ -544,4 +546,25 @@ func seenIn(t *testing.T, body string) string {
 		t.Fatalf("no fingerprint in the box:\n%s", body)
 	}
 	return html.UnescapeString(m[1])
+}
+
+// An action that shutdown cancels is not a server fault, but any other
+// unexplained failure still is.
+func TestFinishLogsOnlyRealFailures(t *testing.T) {
+	hn := newHarness(t, nil)
+	s := &server{cfg: hn.cfg, log: hn.slog, render: mustRenderer(t)}
+
+	res := s.finish("base", "stop", fmt.Errorf("stop the server: %w", context.Canceled))
+	if hn.logs.String() != "" {
+		t.Errorf("a cancelled action was logged:\n%s", hn.logs.String())
+	}
+	if res.Err == nil {
+		t.Error("the cancelled action lost its error")
+	}
+
+	s.finish("base", "stop", errors.New("docker gone"))
+	lines := logLines(t, hn)
+	if len(lines) != 1 || lines[0]["level"] != "ERROR" {
+		t.Errorf("a real failure was not logged as an error: %v", lines)
+	}
 }

@@ -122,7 +122,7 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 	for _, want := range []string{
 		"<h1>Delete 2 snapshots</h1>", `Base: "First", taken`, `Base: "Second", taken`,
 		"Free " + world.FormatBytes(together) + " of disk space",
-		"These stay", "The snapshot is not there any more.",
+		"Already deleted", "is deleted already",
 		`<input type="hidden" name="snap" value="` + ref(id, first.Name) + `">`,
 		`<input type="hidden" name="snap" value="` + ref(id, second.Name) + `">`,
 	} {
@@ -253,6 +253,54 @@ func TestBulkDeleteReportsWhatStayed(t *testing.T) {
 	}
 }
 
+// A form submitted twice, or with some snapshots already gone, counts what
+// is gone as deleted and counts as kept only what really stayed.
+func TestBulkDeleteCountsGoneSnapshotsAsDeleted(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, other := hn.seedTwo()
+	a, err := hn.worlds.TakeSnapshot(id, "One", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := hn.worlds.TakeSnapshot(other, "Two", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := url.Values{"snap": {ref(id, a.Name), ref(other, b.Name)}}
+	hn.wantRedirect(hn.post(PathSnapshotsDelete, form, withCookie(c)), PathSnapshots+"?"+deletedQuery(a.Name, b.Name))
+	if n := len(hn.audits(AuditSnapshotDelete)); n != 2 {
+		t.Fatalf("%d audit entries after the first post", n)
+	}
+	// The same form again.
+	hn.wantRedirect(hn.post(PathSnapshotsDelete, form, withCookie(c)), PathSnapshots+"?"+deletedQuery(a.Name, b.Name))
+	if n := len(hn.audits(AuditSnapshotDelete)); n != 2 {
+		t.Errorf("a resubmit was audited: %d entries", n)
+	}
+
+	// One gone, one kept by a running operation: the count says 1 of 2.
+	c2, err := hn.worlds.TakeSnapshot(other, "Three", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unlock, err := hn.worlds.Lock(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	rec := hn.post(PathSnapshotsDelete, url.Values{"snap": {ref(id, a.Name), ref(other, c2.Name)}}, withCookie(c))
+	body := rec.Body.String()
+	if rec.Code != http.StatusConflict || !strings.Contains(body, "1 of 2 snapshots were not deleted.") {
+		t.Errorf("partial: %d\n%s", rec.Code, body)
+	}
+	if !strings.Contains(body, "Foreman deleted the snapshot taken") {
+		t.Errorf("the gone snapshot is not counted as deleted:\n%s", body)
+	}
+	if strings.Contains(body, "not there any more") {
+		t.Error("a gone snapshot is listed as staying")
+	}
+}
+
 func TestBulkDeleteRefusesBadRequests(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()
@@ -271,11 +319,10 @@ func TestBulkDeleteRefusesBadRequests(t *testing.T) {
 			t.Errorf("%s: %d", name, rec.Code)
 		}
 	}
-	// A snapshot that is not there is reported, not deleted.
+	// A snapshot that is not there counts as deleted: the Done page, with
+	// nothing removed and nothing audited.
 	rec := hn.post(PathSnapshotsDelete, url.Values{"snap": {ref(id, "20991103T142500Z")}}, withCookie(c))
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "The snapshot is not there any more.") {
-		t.Errorf("missing snapshot: %d", rec.Code)
-	}
+	hn.wantRedirect(rec, PathSnapshots+"?"+deletedQuery("20991103T142500Z"))
 	if list, _ := hn.worlds.Snapshots(id); len(list) != 2 {
 		t.Errorf("a refused delete removed a snapshot: %+v", list)
 	}

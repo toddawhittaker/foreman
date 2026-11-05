@@ -48,6 +48,8 @@ type SnapshotsPage struct {
 	FreeBytes uint64
 	// Ticked names the snapshots whose boxes start ticked.
 	Ticked map[string]bool
+	// TickNote says what a shortcut button ticked; empty when none was pressed.
+	TickNote string
 
 	Label      string
 	LabelError string
@@ -179,11 +181,16 @@ func (s *server) snapshotsPage(r *http.Request, id, name string) (SnapshotsPage,
 	sel := readSelection(r)
 	p := SnapshotsPage{WorldID: id, WorldName: name, AddBytes: count.Total(), FreeBytes: free, Ticked: map[string]bool{}}
 	var list []world.Snapshot
+	automatic := 0
 	for _, u := range count.Snapshots() {
 		list = append(list, u.Snapshot)
 		p.Copied = p.Copied || u.Copied
 		p.Ticked[u.Name] = sel.ticks(id, u.Snapshot)
+		if p.Ticked[u.Name] && u.Automatic() {
+			automatic++
+		}
 	}
+	p.TickNote = sel.tickNote(automatic)
 	// A box ticked by the shortcut must be on screen to be reviewed.
 	if len(list) > maxListRows && r.URL.Query().Get("all") == "" && sel.automatic == "" {
 		list, p.More = list[:maxListRows], true
