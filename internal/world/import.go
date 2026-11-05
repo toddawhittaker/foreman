@@ -2,6 +2,7 @@ package world
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // InboxFolder is one subfolder of the import inbox (SPEC 5.5).
@@ -29,6 +31,38 @@ type InboxFolder struct {
 	// Clash is set when a save name is in two places, which an import
 	// refuses; the folder is listed as not importable (SPEC 5.5).
 	Clash error
+	// Newest is the folder's newest save, by modification time; its path
+	// is empty when the folder has no saves.
+	Newest importFile
+	// ServerName is the name in the folder's config/server-settings.json,
+	// or "" when it has none or the file cannot be read.
+	ServerName string
+	// Imported is the world this folder, with the same newest save, was
+	// already imported as; nil when it was not (SPEC 5.5).
+	Imported *ImportRecord
+}
+
+// ImportRecord names a world made from an inbox folder, and when.
+type ImportRecord struct {
+	WorldID, WorldName string
+	At                 time.Time
+}
+
+// SuggestedName is the name a new world from the folder starts with: the
+// server's name from its settings when there is one, else the folder name.
+func (f InboxFolder) SuggestedName() string {
+	if f.ServerName != "" {
+		return f.ServerName
+	}
+	return f.Name
+}
+
+// sameSave reports whether rec was made from this folder and its newest save
+// as it is now: same folder and save name, size, and time to the nanosecond.
+func (f InboxFolder) sameSave(rec *ImportedFrom) bool {
+	return rec != nil && f.Newest.path != "" && rec.Folder == f.Name &&
+		rec.Save == path.Base(f.Newest.path) && rec.SaveSize == f.Newest.size &&
+		rec.SaveMtime.Equal(f.Newest.mtime)
 }
 
 // Importable reports whether an import of the folder can go ahead.
@@ -37,6 +71,10 @@ func (f InboxFolder) Importable() bool { return f.Saves > 0 && f.Clash == nil }
 // ErrBadGameVersion is returned for a game version that is not an exact
 // release of a supported line (SPEC 10.8), such as 2.0.77.
 var ErrBadGameVersion = errors.New("enter the game version as three numbers from a supported line (1.1, 2.0 or 2.1), such as 2.0.77")
+
+// ErrSpaceAgeOld is returned for Space Age on a game version before 2.0,
+// which has no Space Age.
+var ErrSpaceAgeOld = errors.New("space Age needs Factorio 2.0 or later. Untick Space Age for a Factorio 1.1 world")
 
 // ErrNoSaves is returned when an inbox folder holds no save zips.
 var ErrNoSaves = errors.New("this folder holds no save files (.zip) at its top level or in a saves folder, so there is nothing to import")
@@ -71,13 +109,17 @@ type importFile struct {
 
 // Inbox lists the import inbox's subfolders. Hidden folders and anything
 // that is not a real folder (a symlink, for one) are left out.
-func (m *Manager) Inbox() ([]InboxFolder, error) {
+func (m *Manager) Inbox(ctx context.Context) ([]InboxFolder, error) {
 	inbox, err := openFolder(m.dirs.Imports)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = inbox.Close() }()
 	entries, err := fs.ReadDir(inbox.FS(), ".")
+	if err != nil {
+		return nil, err
+	}
+	records, err := m.importRecords(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +132,57 @@ func (m *Manager) Inbox() ([]InboxFolder, error) {
 		if err != nil {
 			return nil, err
 		}
+		for _, r := range records {
+			if f.sameSave(r.from) {
+				f.Imported = &r.ImportRecord
+			}
+		}
 		out = append(out, f)
 	}
 	return out, nil
+}
+
+type importRecord struct {
+	ImportRecord
+	from *ImportedFrom
+}
+
+// importRecords lists where each world was imported from, read from each
+// world's world.json alone: the Import page must not measure disk use. A
+// world whose world.json cannot be read has no record.
+func (m *Manager) importRecords(_ context.Context) ([]importRecord, error) {
+	worlds, err := openFolder(m.dirs.Worlds)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = worlds.Close() }()
+	entries, err := fs.ReadDir(worlds.FS(), ".")
+	if err != nil {
+		return nil, err
+	}
+	var out []importRecord
+	for _, e := range entries {
+		if !e.IsDir() || !ValidID(e.Name()) {
+			continue
+		}
+		meta, ok := readWorldMeta(worlds, e.Name())
+		if ok && meta.ImportedFrom != nil {
+			out = append(out, importRecord{ImportRecord{e.Name(), displayName(e.Name(), meta, nil), meta.ImportedFrom.At}, meta.ImportedFrom})
+		}
+	}
+	return out, nil
+}
+
+// readWorldMeta reads one world's world.json; ok is false when the world
+// cannot be opened or its world.json cannot be read.
+func readWorldMeta(worlds *os.Root, id string) (Meta, bool) {
+	w, err := openDir(worlds, id)
+	if err != nil {
+		return Meta{}, false
+	}
+	defer func() { _ = w.Close() }()
+	meta, err := ReadMeta(w)
+	return meta, err == nil
 }
 
 // InboxEntry describes one inbox folder by name, as Inbox does, without
@@ -137,17 +227,49 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 		f.Bytes += x.size
 	}
 	if len(saves) > 0 {
-		newest := saves[0]
-		for _, s := range saves[1:] {
-			if s.mtime.After(newest.mtime) {
-				newest = s
-			}
-		}
-		if info, ok := ReadSaveInfo(src, newest.path); ok {
+		f.Newest = newestImport(saves)
+		if info, ok := ReadSaveInfo(src, f.Newest.path); ok {
 			f.Read, f.GameVersion, f.SpaceAge = true, info.GameVersion, info.SpaceAge
 		}
 	}
+	f.ServerName = serverName(src)
 	return f, nil
+}
+
+// newestImport returns the save with the latest modification time; saves must
+// not be empty.
+func newestImport(saves []importFile) importFile {
+	newest := saves[0]
+	for _, s := range saves[1:] {
+		if s.mtime.After(newest.mtime) {
+			newest = s
+		}
+	}
+	return newest
+}
+
+// maxServerName is the world name field's length limit.
+const maxServerName = 100
+
+// serverName reads the name from src's config/server-settings.json, or ""
+// when there is none usable. Nothing else in the file is kept: it may hold
+// the game password.
+func serverName(src *os.Root) string {
+	b, err := ReadSmallFile(src, path.Join(ConfigDir, ServerSettingsFile), maxMetaFile)
+	if err != nil {
+		return ""
+	}
+	var doc struct {
+		Name string `json:"name"`
+	}
+	if json.Unmarshal(b, &doc) != nil {
+		return ""
+	}
+	name := strings.TrimSpace(doc.Name)
+	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > maxServerName {
+		return ""
+	}
+	return name
 }
 
 // realFolder reports whether dir inside src is a real folder. A dir that
@@ -245,7 +367,7 @@ func importPlan(src *os.Root) (saves, mods, config []importFile, err error) {
 // was (SPEC 5.5). It refuses
 // up front when the disk lacks room for the copy (SPEC 6.11).
 func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion string, spaceAge bool) (string, error) {
-	if err := m.checkNew(ctx, name, gameVersion); err != nil {
+	if err := m.checkNew(ctx, name, gameVersion, spaceAge); err != nil {
 		return "", err
 	}
 	if !inboxName(folder) {
@@ -284,7 +406,9 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 		return "", err
 	}
 	defer release()
-	return m.create(ctx, name, gameVersion, spaceAge, func(worlds *os.Root, dir string) error {
+	newest := newestImport(saves)
+	from := &ImportedFrom{Folder: folder, Save: path.Base(newest.path), SaveSize: newest.size, SaveMtime: newest.mtime.UTC(), At: m.now().UTC()}
+	return m.create(ctx, name, gameVersion, spaceAge, from, func(worlds *os.Root, dir string) error {
 		dst, err := worlds.OpenRoot(dir)
 		if err != nil {
 			return err
@@ -322,19 +446,22 @@ func (m *Manager) ImportSave(ctx context.Context, name, gameVersion string, spac
 	if !ValidSaveName(saveName) {
 		return "", ErrSaveName
 	}
-	if err := m.checkNew(ctx, name, gameVersion); err != nil {
+	if err := m.checkNew(ctx, name, gameVersion, spaceAge); err != nil {
 		return "", err
 	}
-	return m.create(ctx, name, gameVersion, spaceAge, func(worlds *os.Root, dir string) error {
+	return m.create(ctx, name, gameVersion, spaceAge, nil, func(worlds *os.Root, dir string) error {
 		return worlds.Rename(temp, path.Join(dir, SavesDir, saveName))
 	})
 }
 
 // checkNew refuses a new world's name or game version before any work is
 // done. create checks the name again when it makes the world.
-func (m *Manager) checkNew(ctx context.Context, name, gameVersion string) error {
+func (m *Manager) checkNew(ctx context.Context, name, gameVersion string, spaceAge bool) error {
 	if !SupportedGameVersion(gameVersion) {
 		return ErrBadGameVersion
+	}
+	if spaceAge && strings.HasPrefix(gameVersion, "1.") {
+		return ErrSpaceAgeOld
 	}
 	m.createMu.Lock()
 	defer m.createMu.Unlock()

@@ -101,6 +101,15 @@ The first `make verify` or `make e2e` pulls the pinned images and runs
 e2e-game` before an epic pull request that touches server control, world
 switching, snapshots, mods or game versions.
 
+Every end-to-end test fails when its Foreman process writes an ERROR log
+line the test did not declare. A test that causes an error on purpose
+declares the line with `foreman.expectError(text or regexp)`, and a
+declaration that matches no line fails the test, so declarations cannot go
+stale. Foreman stops when the test ends and the check then reads its whole
+output, but an error written by background work after the last assertion
+can still be missed, so a test waits for what its action sets running
+(a download, a switch) to finish before it ends.
+
 ## Branches
 
 - `main` is always releasable. It changes only through a pull request.

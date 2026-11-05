@@ -28,10 +28,6 @@ func TestRadioGroupsPointEveryRadioAtTheError(t *testing.T) {
 			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, NewestSelected: true,
 			LoadError: "Choose which save loads.",
 			Rows:      []SaveRow{{Name: "a.zip", Href: "/x"}, {Name: "b.zip", Href: "/y"}}}, "load-save-error", 3},
-		{"import", ImportPage{InboxDir: "/data/import",
-			Inbox:  []world.InboxFolder{{Name: "one", Saves: 1}, {Name: "two", Saves: 2}},
-			Folder: ImportForm{IDPrefix: "folder", SourceError: "Choose a folder."},
-			Upload: ImportForm{IDPrefix: "upload"}}, "folder-source-error", 2},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -161,14 +157,22 @@ func TestSnapshotReasonShownOnlyWhenItAddsWords(t *testing.T) {
 	}
 
 	r := newTestRenderer(t)
-	for _, p := range []Page{snapshotsCase(), DeletedPage{Worlds: []world.DeletedWorld{{ID: "base", Name: "Base", Snapshots: snapshotsCase().Snapshots}}}} {
-		_, body := render(t, r, pageCase{status: 200, page: p})
+	for _, c := range []struct {
+		page Page
+		// open starts the text of a snapshot's first cell; label is what
+		// follows a label that is not repeated by a reason.
+		open, label string
+	}{
+		{snapshotsCase(), "<span>", `<span class="visually-hidden">`},
+		{DeletedPage{Worlds: []world.DeletedWorld{{ID: "base", Name: "Base", Snapshots: snapshotsCase().Snapshots}}}, "<td>", "<br><a"},
+	} {
+		_, body := render(t, r, pageCase{status: 200, page: c.page})
 		// The case has a "Manual" snapshot labelled with a long name, and
 		// a "Before restore" snapshot labelled "Before restore".
-		if !strings.Contains(body, "<td>Manual<br>") {
+		if !strings.Contains(body, c.open+"Manual<br>") {
 			t.Errorf("a reason that adds words is hidden:\n%s", body)
 		}
-		if strings.Contains(body, "<td>Before restore<br>Before restore<br>") || !strings.Contains(body, "<td>Before restore<br><a") {
+		if strings.Contains(body, c.open+"Before restore<br>Before restore") || !strings.Contains(body, c.open+"Before restore"+c.label) {
 			t.Errorf("a repeated reason is shown:\n%s", body)
 		}
 	}

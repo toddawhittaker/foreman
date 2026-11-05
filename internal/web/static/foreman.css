@@ -411,6 +411,8 @@ form.panel,
   text-align: center;
   text-decoration: none;
   cursor: pointer;
+  /* A label breaks between words, never inside one (the body breaks anywhere). */
+  overflow-wrap: normal;
 }
 
 .button:hover {
@@ -902,6 +904,13 @@ legend {
   overflow-wrap: anywhere;
 }
 
+/* A second figure under a fact's value, on its own line and small enough to
+   stay on it at 320 px. */
+.facts .fact-note {
+  display: block;
+  font-size: var(--text-sm);
+}
+
 /* The "Active" badge is drawn as selected, like the current tab. */
 .badge {
   display: inline-flex;
@@ -985,6 +994,124 @@ td:last-child {
 .num {
   text-align: end;
   font-variant-numeric: tabular-nums;
+}
+
+/* Snapshot lists: a world's heading beside its shortcut button, then its
+   table. min-inline-size keeps a long name from widening the panel. */
+.group {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.group__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.group__head h3 a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.row-actions .button {
+  white-space: nowrap;
+}
+
+td > .hint {
+  margin-block-start: var(--space-1);
+}
+
+/* Local times with a zone and "(now)" are wider than the old UTC text, and
+   the date and clock never split (DESIGN 8.3). On a narrow panel the
+   snapshot tables take smaller dates and sizes and a tighter checkbox gap,
+   so three columns still fit inside it at 320 px. */
+@container (max-width: 24rem) {
+  .snapshot-list td:not(:first-child) {
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list .check {
+    gap: var(--space-2);
+  }
+
+  /* The table may use half the panel's padding on each side, which is
+     room for a long zone name such as "GMT+5:30" beside the clock. */
+  .snapshot-list {
+    inline-size: calc(100% + var(--space-4));
+    margin-inline: calc(var(--space-2) * -1);
+  }
+
+  .snapshot-list th,
+  .snapshot-list td {
+    padding-inline: var(--space-1);
+  }
+
+  .snapshot-list th:first-child,
+  .snapshot-list td:first-child {
+    padding-inline-start: 0;
+  }
+
+  .snapshot-list .row-actions .button {
+    padding-inline: var(--space-3);
+  }
+}
+
+/* At about 200% text on a phone the three columns cannot share the panel
+   (a panel under 14rem wide is 224 px at 100% text), so each row stacks: the
+   snapshot, when it was taken, its size. The header row stays for screen
+   readers; the cells say what they are. */
+@container (max-width: 14rem) {
+  .snapshot-list,
+  .snapshot-list caption,
+  .snapshot-list tbody,
+  .snapshot-list tr,
+  .snapshot-list td {
+    display: block;
+  }
+
+  .snapshot-list {
+    inline-size: auto;
+    margin-inline: 0;
+  }
+
+  .snapshot-list thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .snapshot-list tr {
+    padding-block: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-rule);
+  }
+
+  .snapshot-list td {
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  .snapshot-list td:nth-child(2)::before {
+    content: "Taken: ";
+  }
+
+  .snapshot-list td:nth-child(3)::before {
+    content: "Size: ";
+  }
 }
 
 /* Four columns at phone width need tighter gutters (DESIGN 8.3). */

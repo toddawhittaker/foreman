@@ -214,9 +214,16 @@ func TestInboxListsRealFoldersOnly(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(m.dirs.Imports, "escape")); err != nil {
 		t.Fatal(err)
 	}
-	got, err := m.Inbox()
+	got, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(got) == 1 {
+		n := got[0].Newest
+		if n.path != "later.zip" || n.size != 9 || !n.mtime.Equal(time.Date(2025, 6, 1, 13, 0, 0, 0, time.UTC)) {
+			t.Errorf("newest save = %+v, want later.zip", n)
+		}
+		got[0].Newest = importFile{}
 	}
 	want := []InboxFolder{{Name: "saves-2025", Saves: 2, HasMods: true, Bytes: 8 + 9 + 2 + 3}}
 	if !slices.Equal(got, want) {
@@ -509,7 +516,7 @@ func TestInboxMarksASaveClash(t *testing.T) {
 	write(t, filepath.Join(m.dirs.Imports, "clash", "same.zip"), "top", t0)
 	write(t, filepath.Join(m.dirs.Imports, "clash", "saves", "same.zip"), "inner", t0)
 	write(t, filepath.Join(m.dirs.Imports, "fine", "a.zip"), "x", t0)
-	list, err := m.Inbox()
+	list, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}

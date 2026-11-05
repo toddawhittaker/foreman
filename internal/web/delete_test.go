@@ -137,8 +137,8 @@ func TestDeleteRefusals(t *testing.T) {
 			t.Errorf("a refused delete changed %s: %v", d, err)
 		}
 	}
-	hn.wantRedirect(hn.get(deletePath(id)), PathSignIn)
-	hn.wantRedirect(hn.get(PathDeleted), PathSignIn)
+	hn.wantRedirect(hn.get(deletePath(id)), signInAfter(deletePath(id)))
+	hn.wantRedirect(hn.get(PathDeleted), signInAfter(PathDeleted))
 }
 
 // A crafted link must not claim a world that still exists is deleted.

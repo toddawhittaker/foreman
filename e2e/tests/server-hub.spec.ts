@@ -62,7 +62,7 @@ test.describe("with the fake game", () => {
 
     await page.getByRole("button", { name: "Cancel stop" }).click();
     await expect(done(page)).toContainText("The stop was cancelled. Nothing was saved or stopped, and nothing changed.", live);
-    await expect(done(page)).toContainText(/Finished at \d{4}-\d\d-\d\d \d\d:\d\d UTC\./);
+    await expect(done(page)).toContainText(/Finished at .*\d{1,2}:\d{2}.* \((now|\d+ seconds? ago)\)\./);
     await expect(badge(page)).toHaveText("Running");
     await expect(page.locator(".message--error")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Cancel stop" })).toHaveCount(0);
@@ -109,7 +109,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, g);
     await page.getByRole("button", { name: "Take snapshot" }).click();
     await expect(done(page)).toContainText('Foreman took the snapshot "Manual snapshot" of Base.', live);
-    await expect(done(page)).toContainText(/Finished at \d{4}-\d\d-\d\d \d\d:\d\d UTC\./);
+    await expect(done(page)).toContainText(/Finished at .*\d{1,2}:\d{2}.* \((now|\d+ seconds? ago)\)\./);
     await checkPage(page);
 
     await page.getByRole("button", { name: "Start server" }).click();

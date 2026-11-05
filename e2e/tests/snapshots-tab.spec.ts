@@ -24,10 +24,10 @@ test("Snapshots tab lists and deletes a snapshot", async ({ page, foreman }) => 
   await expect(page).toHaveURL("/snapshots");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Snapshots");
   await expect(page.getByRole("link", { name: "Snapshots", exact: true })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("All snapshots use")).toBeVisible();
+  await expect(page.getByText("Snapshots add", { exact: true })).toBeVisible();
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(2);
-  await expect(rows.first()).toContainText("Base");
+  await expect(page.getByRole("heading", { level: 3 })).toHaveText("Base");
   await expect(rows.first()).toContainText("by admin");
   await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
   await checkPage(page);

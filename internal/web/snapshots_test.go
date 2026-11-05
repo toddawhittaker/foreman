@@ -15,7 +15,7 @@ import (
 func snapshotsCase() SnapshotsPage {
 	at := time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)
 	return SnapshotsPage{
-		WorldID: "base", WorldName: "Base", UsedBytes: 2_100_000, FreeBytes: 40_000_000_000, Copied: true, More: true,
+		WorldID: "base", WorldName: "Base", AddBytes: 2_100_000, FreeBytes: 40_000_000_000, Copied: true, More: true,
 		Done: `Foreman took the snapshot "x".`, DoneSnap: "20261103T142500Z",
 		Snapshots: []world.Snapshot{
 			{Name: "20261103T142500Z", Manifest: world.Manifest{Label: longName, Reason: world.ReasonManual, TakenAt: at,
@@ -52,7 +52,7 @@ func TestSnapshotTakeListAndRestore(t *testing.T) {
 	}
 	loc := rec.Header.Get("Location")
 	body := hn.get(loc, withCookie(c)).Body.String()
-	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, "<td>Manual<br>First<br>") {
+	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, "<span>Manual<br>First<span class=") {
 		t.Errorf("list after take:\n%s", body)
 	}
 	list, _ := hn.worlds.Snapshots(id)
@@ -121,5 +121,5 @@ func TestSnapshotRoutesRefuseBadInput(t *testing.T) {
 	if rec.StatusCode != http.StatusConflict || !strings.Contains(rec.body, "nother operation is running") {
 		t.Errorf("busy: %d", rec.StatusCode)
 	}
-	hn.wantRedirect(hn.get(snapshotsPath(id)), PathSignIn)
+	hn.wantRedirect(hn.get(snapshotsPath(id)), signInAfter(snapshotsPath(id)))
 }

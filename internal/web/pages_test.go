@@ -63,7 +63,7 @@ func TestWorldLinksAndUnknownSize(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldPage{World: world.Summary{ID: "base", Name: "Base", SizeUnknown: true}}})
 	wantIn(t, "world page", body, `href="/worlds/base/delete"`, ">Delete world<", "<dd>unknown</dd>")
 	_, body = render(t, r, pageCase{status: 200, user: "todd", page: WorldsPage{Worlds: []world.Summary{{ID: "a", Name: "A", SizeUnknown: true}}}})
-	wantIn(t, "world list", body, `href="/deleted"`, "<dd>unknown</dd>")
+	wantIn(t, "world list", body, `href="/deleted"`, `<dd>unknown<span class="visually-hidden">,</span> <span class="fact-note">snapshots add 0 B</span></dd>`)
 }
 
 // A saves folder that cannot be read says "unknown", not "Never".
@@ -111,11 +111,11 @@ func TestSnapshotTables(t *testing.T) {
 	p.Snapshots[1].TakenAt = p.Snapshots[0].TakenAt.Add(30 * time.Second)
 	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
 	wantIn(t, "snapshots page", body,
-		`<th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th>`,
+		`<th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th>`,
 		`href="#restore-20261103T142500Z"`, `id="restore-20261103T142500Z"`,
-		`<td>Manual<br>`,
+		`<input type="checkbox" name="snap" value="base/20261103T142500Z"><span>Manual<br>`,
 		`<span class="nowrap">2026-11-03</span> <span class="nowrap">14:25 UTC</span>`,
-		"taken 2026-11-03 14:25:00 UTC", "taken 2026-11-03 14:25:30 UTC")
+		`taken <time datetime="2026-11-03T14:25:00Z">2026-11-03 14:25:00 UTC</time>`, `taken <time datetime="2026-11-03T14:25:30Z">2026-11-03 14:25:30 UTC</time>`)
 	_, body = render(t, r, pageCase{status: 200, user: "todd", page: DeletedPage{Worlds: []world.DeletedWorld{
 		{ID: "base", Name: "Base", Snapshots: p.Snapshots}}}})
 	wantIn(t, "deleted page", body,
@@ -140,14 +140,18 @@ func TestLoadChoiceError(t *testing.T) {
 	}
 }
 
-// DESIGN 7.2: an error on the folder choice marks its radios invalid.
-func TestImportFolderErrorMarksRadios(t *testing.T) {
+// DESIGN 7.2: an error on the folder choice marks its checkboxes invalid
+// and points each at the error.
+func TestImportFolderErrorMarksCheckboxes(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 400, user: "todd", page: ImportPage{
 		Inbox:  []world.InboxFolder{{Name: "a", Saves: 1}, {Name: "b", Saves: 1}},
 		Folder: ImportForm{IDPrefix: "folder", SourceError: "Choose a folder."}, Upload: ImportForm{IDPrefix: "upload"}}})
-	if strings.Count(body, `name="folder" value="a" aria-invalid="true"`)+strings.Count(body, `name="folder" value="b" aria-invalid="true"`) != 2 {
-		t.Error("folder radios not marked invalid")
+	for _, n := range []string{"a", "b"} {
+		if !strings.Contains(body, `type="checkbox" id="folder-source-`) ||
+			!strings.Contains(body, `name="folder" value="`+n+`" data-name="`+n+`" aria-invalid="true" aria-describedby="folder-source-error"`) {
+			t.Errorf("folder %s not marked invalid:\n%s", n, body)
+		}
 	}
 }
 

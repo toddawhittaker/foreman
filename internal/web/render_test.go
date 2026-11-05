@@ -55,6 +55,9 @@ func pageCases() []pageCase {
 		{"all snapshots empty", "todd", 200, AllSnapshotsPage{}},
 		{"snapshot delete", "todd", 200, SnapshotDeletePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0], Frees: 1000, FromAll: true}},
 		{"snapshot delete rollback", "todd", 409, SnapshotDeletePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[1], Rollback: "2.0.72", Error: "Nothing was deleted: busy."}},
+		{"snapshots bulk delete", "todd", 200, bulkDeleteCase()},
+		{"snapshots bulk delete partly done", "todd", 409, bulkDeletePartlyDone()},
+		{"snapshots bulk delete none ticked", "todd", 400, SnapshotBulkDeletePage{Error: "Nothing is ticked."}},
 		{"snapshots listed", "todd", 200, snapshotsCase()},
 		{"snapshots label error", "todd", 400, SnapshotsPage{WorldID: "base", WorldName: "Base",
 			Label: longName, LabelError: "Use at most 100 characters", Error: "The world was not changed: busy."}},
@@ -656,8 +659,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 3 {
-		t.Fatalf("want the stylesheet, htmx and its SSE extension, found %v", found)
+	if len(found) != 4 {
+		t.Fatalf("want the stylesheet, htmx, its SSE extension and time.js, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

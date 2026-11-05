@@ -12,13 +12,10 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// Import paths (SPEC 5.5). A world's own pages hang off PathWorlds/{id}.
+// A world's own pages hang off PathWorlds/{id}.
 const (
-	PathImport       = "/import"
-	PathImportFolder = "/import/folder"
-	PathImportUpload = "/import/upload"
-	PathWorldDelete  = "/worlds/{id}/delete"
-	PathDeleted      = "/deleted"
+	PathWorldDelete = "/worlds/{id}/delete"
+	PathDeleted     = "/deleted"
 )
 
 func worldPath(id string) string  { return PathWorlds + "/" + id }
@@ -55,54 +52,23 @@ type WorldPage struct {
 	// Busy says what runs on this world now, so both worlds of a switch
 	// show it (SPEC 7.9); it is "" when nothing does.
 	Busy string
-	// Done is the message after a rename.
-	Done string
+	// Done is the message after a rename or an import; Warning follows an
+	// import whose version could not be checked.
+	Done    string
+	Warning string
+	// Download is "running" or "failed" while the world's last game image
+	// download is so, else "" (SPEC 3.7).
+	Download string
 	// Rollback, when set, offers going back to the version before the last
 	// update (SPEC 10.4); ReleasesPath loads the release notice (SPEC 10.2).
 	Rollback     *RollbackOffer
 	ReleasesPath string
 }
 
-// ImportPage offers both ways to import a world (SPEC 5.5).
-type ImportPage struct {
-	InboxDir string
-	Inbox    []world.InboxFolder
-	Folder   ImportForm
-	Upload   ImportForm
-}
+func (WorldPage) templateName() string { return "world" }
+func (WorldPage) navItem() string      { return PathWorlds }
 
-// Importable reports whether any inbox folder can be imported: it has a
-// save at its top level or in saves/, and no save name in both (SPEC 5.5).
-func (p ImportPage) Importable() bool {
-	for _, f := range p.Inbox {
-		if f.Importable() {
-			return true
-		}
-	}
-	return false
-}
-
-// ImportForm is one of the two import forms. Source is the chosen inbox
-// folder or the uploaded file.
-type ImportForm struct {
-	Source       string
-	Name         string
-	GameVersion  string
-	SpaceAge     bool
-	SourceError  string
-	NameError    string
-	VersionError string
-	// IDPrefix keeps the two forms' field ids apart on one page.
-	IDPrefix string
-}
-
-func (WorldPage) templateName() string  { return "world" }
-func (ImportPage) templateName() string { return "import" }
-func (WorldPage) navItem() string       { return PathWorlds }
-func (ImportPage) navItem() string      { return PathWorlds }
-
-func (p WorldPage) hasErrors() bool  { return p.NameError != "" }
-func (p ImportPage) hasErrors() bool { return len(p.Folder.Problems())+len(p.Upload.Problems()) > 0 }
+func (p WorldPage) hasErrors() bool { return p.NameError != "" }
 
 // ImportPath is where the world list's import link goes.
 func (WorldsPage) ImportPath() string { return PathImport }
@@ -176,28 +142,6 @@ func (s *server) worldBusy(id string) string {
 	return busyText(s.game.Status(id).Operation, s.worldName)
 }
 
-// FolderPath and UploadPath are where the two forms post.
-func (ImportPage) FolderPath() string { return PathImportFolder }
-func (ImportPage) UploadPath() string { return PathImportUpload }
-
-// Problems lists the form's field errors in the order the fields appear.
-// The upload form's file field comes last, so its text fields are read
-// before the file (see receiveFileWithFields).
-func (f ImportForm) Problems() []Problem {
-	if f.IDPrefix == "upload" {
-		return problems(
-			Problem{"upload-name", f.NameError},
-			Problem{"upload-version", f.VersionError},
-			Problem{"upload-source", f.SourceError},
-		)
-	}
-	return problems(
-		Problem{"folder-source-0", f.SourceError},
-		Problem{"folder-name", f.NameError},
-		Problem{"folder-version", f.VersionError},
-	)
-}
-
 // handleWorlds shows the world list (SPEC 5.4).
 func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.User) {
 	list, err := s.worlds.List(r.Context())
@@ -207,6 +151,7 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	p := WorldsPage{Worlds: list}
 	s.markSwitching(&p)
+	s.markSnapshotAdds(&p)
 	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
 		p.Deleted, p.DeletedKept, err = s.deletedWorld(id, list)
 		if err != nil {
@@ -215,6 +160,22 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 		}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// markSnapshotAdds fills in each world's "Snapshots add" figure from one
+// counting pass, the same one the Snapshots pages use, so the figures agree.
+// A failed count is logged once and the list still shows.
+func (s *server) markSnapshotAdds(p *WorldsPage) {
+	if len(p.Worlds) == 0 {
+		return
+	}
+	count, err := s.worlds.CountSnapshots()
+	if err != nil {
+		s.log.Error("count snapshots", "error", err)
+		p.AddsUnknown = true
+		return
+	}
+	p.SnapshotAdds = count.WorldAdds()
 }
 
 // markSwitching fills in what the list shows about switching: a Switch
@@ -286,6 +247,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	}
 	p := s.worldPage(r.Context(), sum, sum.Name, "")
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
+	s.importFacts(&p, r)
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -348,187 +310,6 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	s.page(w, r, status, u.Username, s.worldPage(r.Context(), sum, name, msg))
-}
-
-func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	s.importPage(w, r, u, http.StatusOK, ImportForm{}, ImportForm{})
-}
-
-// importPage renders the import page with the given state of each form.
-func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User, status int, folder, upload ImportForm) {
-	inbox, err := s.worlds.Inbox()
-	if err != nil {
-		s.fail(w, r, "list import folder", err)
-		return
-	}
-	// A fresh form with one folder to choose starts with it chosen, named
-	// after it, and filled in from its save.
-	if only, ok := onlyImportable(inbox); ok && status == http.StatusOK && folder == (ImportForm{}) {
-		folder = ImportForm{Source: only.Name, Name: only.Name}
-		if only.Read {
-			folder.GameVersion, folder.SpaceAge = only.GameVersion, only.SpaceAge
-		}
-	}
-	folder.IDPrefix, upload.IDPrefix = "folder", "upload"
-	s.page(w, r, status, u.Username, ImportPage{
-		InboxDir: s.worlds.Dirs().Imports,
-		Inbox:    inbox,
-		Folder:   folder,
-		Upload:   upload,
-	})
-}
-
-// onlyImportable returns the one inbox folder that can be imported, when
-// there is exactly one.
-func onlyImportable(inbox []world.InboxFolder) (world.InboxFolder, bool) {
-	var only world.InboxFolder
-	n := 0
-	for _, f := range inbox {
-		if f.Importable() {
-			only, n = f, n+1
-		}
-	}
-	return only, n == 1
-}
-
-// importFields reads and checks the fields both import forms share.
-func importFields(name, version, spaceAge string) ImportForm {
-	f := ImportForm{Name: name, GameVersion: strings.TrimSpace(version), SpaceAge: spaceAge == "on"}
-	if strings.TrimSpace(name) == "" {
-		f.NameError = sentence(world.ErrNameEmpty)
-	}
-	// An empty version is filled in from the save later (fillFromSave).
-	if f.GameVersion != "" && !world.SupportedGameVersion(f.GameVersion) {
-		f.VersionError = sentence(world.ErrBadGameVersion)
-	}
-	return f
-}
-
-// fillFromSave takes the version from the save when the admin left it
-// empty. Space Age then is on if the save uses it or the box is ticked. A
-// save that could not be read leaves the version required.
-func (f *ImportForm) fillFromSave(info world.SaveInfo, ok bool) {
-	if f.GameVersion != "" || f.VersionError != "" {
-		return
-	}
-	if !ok {
-		f.VersionError = sentence(world.ErrBadGameVersion)
-		return
-	}
-	f.GameVersion = info.GameVersion
-	f.SpaceAge = f.SpaceAge || info.SpaceAge
-}
-
-func (f ImportForm) failed() bool {
-	return f.SourceError != "" || f.NameError != "" || f.VersionError != ""
-}
-
-// place puts a refusal's words on the field it is about.
-func (f *ImportForm) place(err error, msg string) {
-	switch {
-	case errors.Is(err, world.ErrNameEmpty), errors.Is(err, world.ErrNameTaken):
-		f.NameError = msg
-	case errors.Is(err, world.ErrBadGameVersion):
-		f.VersionError = msg
-	default:
-		f.SourceError = msg
-	}
-}
-
-// handleImportFolder copies an inbox folder into a new world (SPEC 5.5).
-func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u store.User) {
-	if !s.readForm(w, r) {
-		return
-	}
-	f := importFields(r.PostFormValue("name"), chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed")), r.PostFormValue("space_age"))
-	f.Source = r.PostFormValue("folder")
-	if f.Source == "" {
-		f.SourceError = sentence(world.ErrNoFolder)
-	}
-	if f.GameVersion == "" && f.Source != "" {
-		// A folder that is gone is reported by the import below.
-		folder, err := s.worlds.InboxEntry(f.Source)
-		if err != nil && !errors.Is(err, world.ErrNoFolder) {
-			s.fail(w, r, "read import folder", err)
-			return
-		}
-		f.fillFromSave(world.SaveInfo{GameVersion: folder.GameVersion, SpaceAge: folder.SpaceAge}, folder.Read)
-	}
-	if f.failed() {
-		s.importPage(w, r, u, http.StatusBadRequest, f, ImportForm{})
-		return
-	}
-	id, err := s.worlds.ImportFolder(r.Context(), f.Source, f.Name, f.GameVersion, f.SpaceAge)
-	if err != nil {
-		status, msg, ok := s.refusal(w, r, u, "import folder", err)
-		if !ok {
-			return
-		}
-		f.place(err, msg)
-		s.importPage(w, r, u, status, f, ImportForm{})
-		return
-	}
-	http.Redirect(w, r, worldPath(id), http.StatusSeeOther)
-}
-
-// handleImportUpload makes a new world from one uploaded save (SPEC 5.5).
-// A refused upload leaves no world. Syncing the save's mods from the
-// portal comes with Epic 5.
-func (s *server) handleImportUpload(w http.ResponseWriter, r *http.Request, u store.User) {
-	id, f, err := s.receiveImport(r)
-	switch {
-	case err != nil:
-		status, msg, ok := s.refusal(w, r, u, "import upload", err)
-		if !ok {
-			return
-		}
-		f.place(err, msg)
-		s.importPage(w, r, u, status, ImportForm{}, f)
-	case f.failed():
-		s.importPage(w, r, u, http.StatusBadRequest, ImportForm{}, f)
-	default:
-		http.Redirect(w, r, worldPath(id), http.StatusSeeOther)
-	}
-}
-
-// receiveImport receives the upload form into a temp file in the worlds
-// folder and makes the world. It returns the new world's id, or the form
-// with its field errors, or an error.
-func (s *server) receiveImport(r *http.Request) (string, ImportForm, error) {
-	worldsDir := s.worlds.Dirs().Worlds
-	root, err := s.worlds.OpenWorlds()
-	if err != nil {
-		return "", ImportForm{}, err
-	}
-	defer func() { _ = root.Close() }()
-
-	values := map[string]string{"name": "", "game_version": "", "game_version_typed": "", "space_age": ""}
-	up, err := receiveFileWithFields(r, root, ".", "save", worldsDir, MaxSaveUpload, values)
-	f := importFields(values["name"], chosenVersion(values["game_version"], values["game_version_typed"]), values["space_age"])
-	if err != nil {
-		return "", f, err
-	}
-	f.Source = up.FileName
-	if !world.ValidSaveName(up.FileName) {
-		f.SourceError = "Choose a save file whose name ends in .zip and does not start with a dot."
-	} else if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a size is never negative
-		_ = root.Remove(up.Temp)
-		return "", f, err
-	}
-	if f.SourceError == "" {
-		info, ok := world.ReadSaveInfo(root, up.Temp)
-		f.fillFromSave(info, ok)
-	}
-	if f.failed() {
-		_ = root.Remove(up.Temp)
-		return "", f, nil
-	}
-	// ImportSave removes the temp file whatever happens.
-	id, err := s.worlds.ImportSave(r.Context(), f.Name, f.GameVersion, f.SpaceAge, up.FileName, up.Temp)
-	if err != nil {
-		return "", f, err
-	}
-	return id, f, nil
 }
 
 // DeletePage confirms deleting a world (SPEC 5.10, DESIGN 7.4).
