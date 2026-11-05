@@ -47,3 +47,25 @@ test("without JavaScript times stay in UTC", async ({ page, foreman, browser }) 
   await expect(p.locator("tbody tr").first().locator("td").nth(1).locator("time")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
   await plain.close();
 });
+
+// DESIGN 9: a time inside a control's spoken name has the local time only, so
+// the name does not go stale or grow.
+test("a time in an accessible name has no relative text", async ({ page, foreman }) => {
+  await takeSnapshot(page, foreman);
+  const name = page.getByRole("checkbox");
+  await expect(name).toHaveAccessibleName(/^Manual snapshot \(taken .*\b(EST|EDT)\)$/);
+  await expect(name).not.toHaveAccessibleName(/ago|now/);
+  await expect(name).not.toHaveAccessibleName(/ ,/);
+  await expect(page.getByRole("link", { name: /^Restore Manual snapshot, taken / })).not.toHaveAccessibleName(/ago|now/);
+});
+
+// DESIGN 9: the relative text of a visible time is refreshed once a minute.
+test("the relative time does not sit stale", async ({ page, foreman }) => {
+  await takeSnapshot(page, foreman);
+  await page.clock.install();
+  await page.reload();
+  const time = page.locator("tbody tr").first().locator("td").nth(1).locator("time");
+  await expect(time).toHaveText(/\((now|\d+ seconds? ago)\)$/);
+  await page.clock.fastForward(125_000);
+  await expect(time).toHaveText(/\(2 minutes ago\)$/);
+});

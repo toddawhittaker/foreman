@@ -507,6 +507,10 @@ func (s *server) finish(id, action string, err error) actionResult {
 		// A download's cause is not shown, so it is logged unless it is the
 		// plain "no such image".
 		de, failedDownload := errors.AsType[*game.ImageDownloadError](err)
+		// Shutdown cancels a running action; that is not a fault.
+		if errors.Is(err, context.Canceled) {
+			return actionResult{Action: action, Err: err}
+		}
 		if status == http.StatusInternalServerError || failedDownload && !de.NotFound {
 			s.log.Error("server control", "world", id, "action", action, "error", err)
 		}

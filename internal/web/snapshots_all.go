@@ -54,6 +54,8 @@ type AllSnapshotsPage struct {
 	// them would free.
 	AddBytes  uint64
 	FreeBytes uint64
+	// TickNote says what a shortcut button ticked; empty when none was pressed.
+	TickNote string
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
 }
@@ -163,6 +165,7 @@ func (s *server) handleAllSnapshots(w http.ResponseWriter, r *http.Request, u st
 	}
 	sel, adds := readSelection(r), count.WorldAdds()
 	p := AllSnapshotsPage{AddBytes: count.Total(), FreeBytes: free}
+	automatic := 0
 	for _, sn := range count.Snapshots() {
 		if n := len(p.Groups); n == 0 || p.Groups[n-1].WorldID != sn.WorldID {
 			name, known := names[sn.WorldID]
@@ -173,8 +176,13 @@ func (s *server) handleAllSnapshots(w http.ResponseWriter, r *http.Request, u st
 			p.Groups = append(p.Groups, SnapshotGroup{WorldID: sn.WorldID, WorldName: name, Known: known, Adds: adds[sn.WorldID]})
 		}
 		g := &p.Groups[len(p.Groups)-1]
-		g.Rows = append(g.Rows, SnapshotRow{SnapshotUse: sn, Ticked: sel.ticks(sn.WorldID, sn.Snapshot)})
+		ticked := sel.ticks(sn.WorldID, sn.Snapshot)
+		g.Rows = append(g.Rows, SnapshotRow{SnapshotUse: sn, Ticked: ticked})
+		if ticked && sn.Automatic() {
+			automatic++
+		}
 	}
+	p.TickNote = sel.tickNote(automatic)
 	p.Deleted = deletedTimes(r.URL.Query()["deleted"])
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
