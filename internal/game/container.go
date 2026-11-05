@@ -35,19 +35,34 @@ const (
 	gameHostPort   = "34197"
 	RCONPort       = "27015"
 	restartPolicy  = "unless-stopped"
-	serverSettings = world.ConfigDir + "/server-settings.json"
+	serverSettings = world.ConfigDir + "/" + world.ServerSettingsFile
 	maxSettings    = 1 << 20
 )
 
+// configPath is a config file's path inside the container.
+func configPath(file string) string { return gameMount + "/" + world.ConfigDir + "/" + file }
+
+// passIfPresent is a script line that adds flag with the config file to the
+// game's arguments only when the file exists.
+func passIfPresent(flag, file string) string {
+	return `if [ -f ` + configPath(file) + ` ]; then set -- "$@" ` + flag + ` ` + configPath(file) + `; fi`
+}
+
 // startScript runs the game with Foreman's flags. It reads the RCON
 // password from the world's file inside the container, so the password is
-// never in the container's settings (SPEC 4.5). Server settings are passed when
-// the world has them, as the spike's command line does.
+// never in the container's settings (SPEC 4.5). The admin and ban lists are
+// always passed: the game makes them when missing, so /promote and /ban
+// made in game persist in the world's folder (SPEC 5.1). Server settings
+// and the whitelist are passed when the world has them. The whitelist is
+// not enforced here: that is a game setting (SPEC 11).
 var startScript = strings.Join([]string{
 	`pw=$(cat ` + gameMount + "/" + world.RCONPasswordFile + `) || exit 1`,
 	`set -- --start-server-load-latest --mod-directory ` + gameMount + "/" + world.ModsDir +
-		` --rcon-port ` + RCONPort + ` --rcon-password "$pw"`,
-	`if [ -f ` + gameMount + "/" + serverSettings + ` ]; then set -- "$@" --server-settings ` + gameMount + "/" + serverSettings + `; fi`,
+		` --rcon-port ` + RCONPort + ` --rcon-password "$pw"` +
+		` --server-adminlist ` + configPath(world.ServerAdminListFile) +
+		` --server-banlist ` + configPath(world.ServerBanListFile),
+	passIfPresent("--server-settings", world.ServerSettingsFile),
+	passIfPresent("--server-whitelist", world.ServerWhiteListFile),
 	`exec ` + gameBinary + ` "$@"`,
 }, "\n")
 

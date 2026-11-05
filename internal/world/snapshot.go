@@ -393,7 +393,7 @@ func placeFile(src, dst *os.Root, f ManifestEntry) (zipCopied bool, err error) {
 		}
 		defer release()
 	}
-	if err := copyFile(src, f.Path, dst, f.Path); err != nil {
+	if err := copyFile(src, f.Path, dst, f.Path, FileMode); err != nil {
 		return false, err
 	}
 	return zipCopied, nil

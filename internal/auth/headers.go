@@ -50,7 +50,7 @@ func (c HeaderConfig) Identify(r *http.Request) HeaderIdentity {
 	if c.GroupsHeader != "" {
 		for _, v := range r.Header.Values(c.GroupsHeader) {
 			// Authentik joins groups with "|"; other proxies use ",".
-			for _, g := range strings.FieldsFunc(v, func(r rune) bool { return r == '|' || r == ',' }) {
+			for _, g := range strings.FieldsFunc(v, func(c rune) bool { return c == '|' || c == ',' }) {
 				if g = strings.TrimSpace(g); g != "" {
 					groups = append(groups, g)
 				}

@@ -34,7 +34,7 @@ test("imports a folder in the server layout: its save, mods and settings", async
   expect(readFileSync(join(world, "config", "server-settings.json"), "utf8")).toBe('{"game_password":"from-import"}');
 });
 
-test("a save name in both places refuses the import and names the file", async ({ page, foreman }) => {
+test("a save name in both places is listed as not importable and names the file", async ({ page, foreman }) => {
   await createAdmin(page);
   const src = join(foreman.dataDir, "import", "clash");
   mkdirSync(join(src, "saves"), { recursive: true });
@@ -43,11 +43,10 @@ test("a save name in both places refuses the import and names the file", async (
 
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
-  await form.getByLabel(/clash: /).check();
-  await form.getByLabel("World name").fill("Clash");
-  await form.getByLabel("Or type a version").fill("2.0.72");
-  await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page.locator("#error-summary")).toContainText("The save same.zip is in both the folder and its saves folder");
+  const row = form.getByLabel(/clash: /);
+  await expect(row).toBeDisabled();
+  await expect(form.getByText("the save same.zip is in both the folder and its saves folder")).toBeVisible();
+  await expect(form.getByText("There is nothing to import")).toBeVisible();
   await checkPage(page);
   expect(readdirSync(join(foreman.dataDir, "worlds")).filter((n) => !n.startsWith("."))).toEqual([]);
 });
