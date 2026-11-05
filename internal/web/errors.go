@@ -37,7 +37,7 @@ func worldError(err error) (int, string) {
 		return http.StatusUnprocessableEntity, sentence(err)
 	case errors.Is(err, world.ErrNameEmpty), errors.Is(err, world.ErrNameTaken),
 		errors.Is(err, world.ErrBadGameVersion), errors.Is(err, world.ErrNoFolder),
-		errors.Is(err, world.ErrNoSaves), errors.Is(err, world.ErrWrongName):
+		errors.Is(err, world.ErrNoSaves), errors.Is(err, world.ErrSaveClash), errors.Is(err, world.ErrWrongName):
 		return http.StatusBadRequest, sentence(err)
 	}
 	return http.StatusInternalServerError, ""
