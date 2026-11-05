@@ -44,7 +44,7 @@ func TestImportFolderTakesTheVersionFromTheSave(t *testing.T) {
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "three numbers") {
 		t.Errorf("unreadable save, empty version: %d", rec.Code)
 	}
-	hn.wantRedirect(hn.postLive(PathImportFolder, url.Values{"folder": {"real"}, "name": {"R"}}, c), "/worlds/r")
+	hn.wantRedirect(hn.postLive(PathImportFolder, url.Values{"folder": {"real"}, "name": {"R"}}, c), "/worlds/r?imported=1")
 	list, _ := hn.worlds.List(context.Background())
 	if len(list) != 1 || list[0].GameVersion != "2.1.24" || !list[0].SpaceAge {
 		t.Errorf("list %+v", list)
@@ -56,7 +56,9 @@ func TestImportFolderPrefillsWhenThereIsOneFolder(t *testing.T) {
 	c := hn.signIn()
 	putInboxSave(t, hn, "only", fixtureBytes(t, "2.1.24-space-age.zip"))
 	body := hn.get(PathImport, withCookie(c)).Body.String()
-	for _, want := range []string{`value="only" data-game-version="2.1.24" data-space-age checked`, `name="game_version_typed" type="text" value="2.1.24"`, `aria-describedby="folder-space-age-hint" checked`} {
+	for _, want := range []string{`value="only" data-name="only" data-game-version="2.1.24" data-space-age checked`,
+		`name="game_version_typed" type="text" value=""`, "Same as the save (2.1.24)",
+		`aria-describedby="folder-space-age-hint folder-space-age-warning" checked`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -71,7 +73,7 @@ func TestImportUploadTakesTheVersionFromTheSave(t *testing.T) {
 		t.Errorf("unreadable save, empty version: %d", rec.Code)
 	}
 	hn.noStaging()
-	hn.wantRedirect(hn.postImportUpload(c, map[string]string{"name": "Real"}, "a.zip", fixtureBytes(t, "2.0.77-space-age.zip")), "/worlds/real")
+	hn.wantRedirect(hn.postImportUpload(c, map[string]string{"name": "Real"}, "a.zip", fixtureBytes(t, "2.0.77-space-age.zip")), "/worlds/real?imported=1")
 	list, _ := hn.worlds.List(context.Background())
 	if len(list) != 1 || list[0].GameVersion != "2.0.77" || !list[0].SpaceAge {
 		t.Errorf("list %+v", list)

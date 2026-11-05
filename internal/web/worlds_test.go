@@ -209,7 +209,7 @@ func TestImportFolderRoute(t *testing.T) {
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Choose a folder") {
 		t.Errorf("escape: %d", rec.Code)
 	}
-	hn.wantRedirect(hn.postLive(PathImportFolder, url.Values{"folder": {"saves-2025"}, "name": {"Old"}, "game_version": {"2.0.72"}, "space_age": {"on"}}, c), "/worlds/old")
+	hn.wantRedirect(hn.postLive(PathImportFolder, url.Values{"folder": {"saves-2025"}, "name": {"Old"}, "game_version": {"2.0.72"}, "space_age": {"on"}}, c), "/worlds/old?imported=1&unchecked=1")
 	list, _ := hn.worlds.List(context.Background())
 	if len(list) != 1 || !list[0].SpaceAge || !list[0].Active {
 		t.Errorf("list %+v", list)
@@ -244,7 +244,7 @@ func TestImportUploadRoute(t *testing.T) {
 		t.Fatalf("refusals made worlds: %+v", list)
 	}
 
-	hn.wantRedirect(hn.postImportUpload(c, good, `C:\games\my save.zip`, saveZip(t)), "/worlds/uploaded")
+	hn.wantRedirect(hn.postImportUpload(c, good, `C:\games\my save.zip`, saveZip(t)), "/worlds/uploaded?imported=1&unchecked=1")
 	if _, err := os.Stat(filepath.Join(hn.worlds.Dirs().Worlds, "uploaded", "saves", "my save.zip")); err != nil {
 		t.Error(err)
 	}
@@ -256,7 +256,7 @@ func TestImportUploadRoute(t *testing.T) {
 }
 
 // SPEC 5.5: a folder with no save at its top level is listed in words as
-// not importable, with its radio button disabled. The one importable folder
+// not importable, apart from the others and with no checkbox. The one importable folder
 // starts chosen, with the world named after it. With nothing importable the
 // form says so.
 func TestImportListsFoldersWithoutSaves(t *testing.T) {
@@ -267,7 +267,10 @@ func TestImportListsFoldersWithoutSaves(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := hn.get(PathImport, withCookie(c)).Body.String()
-	for _, want := range []string{`value="current" disabled>`, "<code>current</code>: no save at its top level or in a saves folder, so it cannot be imported",
+	if strings.Contains(body, `value="current"`) {
+		t.Errorf("unimportable folder offered:\n%s", body)
+	}
+	for _, want := range []string{"<h3>Cannot be imported</h3>", "<li><code>current</code>: no save at its top level or in a saves folder, so it cannot be imported",
 		"There is nothing to import"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q:\n%s", want, body)
@@ -302,7 +305,7 @@ func TestImportListsFoldersWithoutSaves(t *testing.T) {
 }
 
 // SPEC 5.5: a folder whose save name is in two places is listed as not
-// importable, with the reason and a disabled radio button. The server still
+// importable, with the reason and no checkbox. The server still
 // refuses it if asked.
 func TestImportListsASaveClashAsNotImportable(t *testing.T) {
 	hn := newHarness(t, nil)
@@ -317,7 +320,10 @@ func TestImportListsASaveClashAsNotImportable(t *testing.T) {
 		}
 	}
 	body := hn.get(PathImport, withCookie(c)).Body.String()
-	for _, want := range []string{`value="clash" disabled>`, "<code>clash</code>: the save same.zip is in both the folder and its saves folder",
+	if strings.Contains(body, `value="clash"`) {
+		t.Errorf("unimportable folder offered:\n%s", body)
+	}
+	for _, want := range []string{"<li><code>clash</code>: the save same.zip is in both the folder and its saves folder",
 		"There is nothing to import"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q:\n%s", want, body)

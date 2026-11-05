@@ -21,7 +21,7 @@ test("imports a folder in the server layout: its save, mods and settings", async
   await form.getByLabel("World name").fill("Server layout");
   await form.getByLabel("Or type a version").fill("2.0.72");
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/server-layout");
+  await expect(page).toHaveURL("/worlds/server-layout?imported=1&unchecked=1");
 
   await page.goto("/worlds/server-layout/saves");
   await expect(page.locator("tbody tr").getByRole("link")).toHaveText("campaign.zip");
@@ -43,9 +43,8 @@ test("a save name in both places is listed as not importable and names the file"
 
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
-  const row = form.getByLabel(/clash: /);
-  await expect(row).toBeDisabled();
-  await expect(form.getByText("the save same.zip is in both the folder and its saves folder")).toBeVisible();
+  await expect(form.getByRole("checkbox", { name: /clash/ })).toHaveCount(0);
+  await expect(form.locator("#unimportable")).toContainText("clash: the save same.zip is in both the folder and its saves folder");
   await expect(form.getByText("There is nothing to import")).toBeVisible();
   await checkPage(page);
   expect(readdirSync(join(foreman.dataDir, "worlds")).filter((n) => !n.startsWith("."))).toEqual([]);

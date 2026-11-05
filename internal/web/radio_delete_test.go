@@ -28,10 +28,6 @@ func TestRadioGroupsPointEveryRadioAtTheError(t *testing.T) {
 			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, NewestSelected: true,
 			LoadError: "Choose which save loads.",
 			Rows:      []SaveRow{{Name: "a.zip", Href: "/x"}, {Name: "b.zip", Href: "/y"}}}, "load-save-error", 3},
-		{"import", ImportPage{InboxDir: "/data/import",
-			Inbox:  []world.InboxFolder{{Name: "one", Saves: 1}, {Name: "two", Saves: 2}},
-			Folder: ImportForm{IDPrefix: "folder", SourceError: "Choose a folder."},
-			Upload: ImportForm{IDPrefix: "upload"}}, "folder-source-error", 2},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
