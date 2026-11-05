@@ -17,6 +17,7 @@
 {{- with .Busy}}
 <div class="message message--note">
   <p><strong>Note:</strong> {{.}}</p>
+  <div class="actions"><a href="{{serverPath}}">Go to the Server page</a></div>
 </div>
 {{- end}}
 {{- if .CanSwitch}}
@@ -98,6 +99,9 @@
   <h2 id="delete-heading">Delete</h2>
   {{- with .DeleteRefusal}}
   <p>{{.}}</p>
+  {{- if $.Page.DeleteWaitsOnServer}}
+  <div class="actions"><a href="{{serverPath}}">Go to the Server page</a></div>
+  {{- end}}
   {{- else}}
   <p>Deleting removes the world's folder. Its snapshots stay, so it can be restored.</p>
   <div class="actions">

@@ -728,7 +728,9 @@ func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
 
 	err = c.audit(ctx, by, AuditImageDownload, id, ref)
 	if err == nil {
-		err = c.docker.PullImage(ctx, ref)
+		if err = c.docker.PullImage(ctx, ref); err != nil {
+			err = pullError(ref, err)
+		}
 	}
 	w.mu.Lock()
 	w.download.Done = true

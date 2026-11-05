@@ -65,12 +65,27 @@ func (p ServerPage) cancelled() bool {
 	return p.HaveResult && errors.Is(p.Result.Err, game.ErrStopCancelled)
 }
 
+// cancelledByOperation returns the result of a stop countdown's action from
+// the finished operation, for the moment after the cancel when the run has
+// ended in the controller but its result is not stored yet (SPEC 7.6).
+func cancelledByOperation(st game.Status, now time.Time) (actionResult, bool) {
+	o := st.Operation
+	if o == nil || !o.Done || !strings.Contains(o.Error, game.ErrStopCancelled.Error()) {
+		return actionResult{}, false
+	}
+	res := actionResult{Action: o.Action, Err: game.ErrStopCancelled, At: now}
+	if o.Switch != nil {
+		res.Target, res.From = o.Switch.To, o.Switch.From
+	}
+	return res, true
+}
+
 // actionNames name each action in a sentence.
 var actionNames = map[string]string{
 	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
 	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
 	game.AuditSwitch: "switch", game.AuditUpdate: "update", game.AuditRollback: "rollback",
-	game.AuditStopCancel: "stop cancel", actionSnapshot: "snapshot",
+	actionSnapshot: "snapshot",
 }
 
 // OtherErrors words the errors of the actions asked for while another ran.

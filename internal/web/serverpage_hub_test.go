@@ -2,7 +2,10 @@ package web
 
 import (
 	"html"
+	"io"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -322,16 +325,77 @@ func TestCancelStopOverHTTP(t *testing.T) {
 	}
 	closeEvents()
 
-	g.wantRedirectHome(g.post(gamePath(id, "cancel-stop"), url.Values{}))
+	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))
 	body := g.waitPage(running, "The stop was cancelled.")
 	g.wantMissing("server page", body, "Error:", "Cancel stop")
 	if !g.hasAudit(game.AuditStopCancel) {
 		t.Error("no stop-cancel audit entry")
 	}
 
-	rep := g.post(gamePath(id, "cancel-stop"), url.Values{})
-	if rep.StatusCode != http.StatusConflict || !strings.Contains(rep.body, "There is no stop countdown to cancel") {
-		t.Errorf("cancel with no countdown: %d\n%s", rep.StatusCode, rep.body)
+	// A cancel that finds no countdown, as when it just ended, goes to the
+	// Server page like any other; no error page.
+	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))
+}
+
+// SPEC 17.9: a crash loop offers to restore "Before start anyway" only
+// while it is the newest snapshot; a later one, such as a manual snapshot,
+// means the world moved on and the offer would undo it.
+func TestStartAnywayRestoreOnlyWhenNewest(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", fixtureNoSA, false)
+	s := &server{worlds: g.worlds, log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if _, err := g.worlds.AutoSnapshot(id, game.ReasonStartAnyway, game.LabelStartAnyway, "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if s.startAnywaySnapshot(id) == nil {
+		t.Fatal("the newest snapshot is Before start anyway, but no restore is offered")
+	}
+	g.clock.Advance(time.Minute)
+	if _, err := g.worlds.TakeSnapshot(id, "Later", "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if sn := s.startAnywaySnapshot(id); sn != nil {
+		t.Errorf("a newer snapshot exists, but %q is offered", sn.Name)
+	}
+}
+
+// SPEC 17.9: the Server page after the admin's own cancel stop or snapshot is
+// marked, so its Done message takes focus; a plain load is not.
+func TestFollowsOwnAction(t *testing.T) {
+	for target, want := range map[string]bool{PathServer: false, PathServerResult: true, PathServer + "?result=2": false} {
+		r := httptest.NewRequest(http.MethodGet, target, nil)
+		if got := followsOwnAction(r); got != want {
+			t.Errorf("%s: %v, want %v", target, got, want)
+		}
+	}
+}
+
+// SPEC 7.6: the page says the action was cancelled from the finished
+// operation alone, before the run's result is stored.
+func TestCancelledShowsFromTheOperation(t *testing.T) {
+	op := &game.Operation{Action: game.AuditRestart, Done: true, Error: game.ErrStopCancelled.Error()}
+	res, ok := cancelledByOperation(game.Status{Operation: op}, time.Now())
+	if !ok {
+		t.Fatal("a cancelled operation was not recognised")
+	}
+	p := ServerPage{World: world.Summary{ID: "base", Name: "Base"}, Result: res, HaveResult: true}
+	if got := p.Done(); !strings.Contains(got, "The restart was cancelled.") {
+		t.Errorf("Done %q", got)
+	}
+	sw := &game.Operation{Action: game.AuditSwitch, Done: true, Error: game.ErrStopCancelled.Error(),
+		Switch: &game.SwitchInfo{From: "base", To: "other"}}
+	if res, _ := cancelledByOperation(game.Status{Operation: sw}, time.Now()); res.Target != "other" {
+		t.Errorf("switch result %+v", res)
+	}
+	for name, o := range map[string]*game.Operation{
+		"none":    nil,
+		"running": {Action: game.AuditStop},
+		"failed":  {Action: game.AuditStop, Done: true, Error: "the save timed out"},
+		"worked":  {Action: game.AuditStop, Done: true},
+	} {
+		if _, ok := cancelledByOperation(game.Status{Operation: o}, time.Now()); ok {
+			t.Errorf("%s: recognised as cancelled", name)
+		}
 	}
 }
 
@@ -340,7 +404,7 @@ func TestCancelStopOverHTTP(t *testing.T) {
 func TestSnapshotFromServerPage(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", fixtureNoSA, false)
-	g.wantRedirectHome(g.post(gamePath(id, "take-snapshot"), url.Values{}))
+	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "take-snapshot"), url.Values{}))
 	g.waitPage(`<strong>Done:</strong> Foreman took the snapshot &#34;Manual snapshot&#34; of Base.`)
 	snaps, err := g.worlds.Snapshots(id)
 	if err != nil || len(snaps) != 1 || snaps[0].Label != defaultLabel {

@@ -14,7 +14,7 @@
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">Switch from {{.From.Name}} to {{.To.Name}}?</h2>
   {{- if .Changed}}
-  <div class="message message--warning">
+  <div class="message message--warning" id="action-changed" tabindex="-1" autofocus>
     <p><strong>Warning:</strong> {{.ChangedLead}}</p>
   </div>
   {{- end}}
@@ -55,6 +55,7 @@
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     <input type="hidden" name="from" value="{{.From.ID}}">
+    <input type="hidden" name="running" value="{{if .Plan.Running}}1{{else}}0{{end}}">
     {{- if .Plan.Running}}
     {{template "countdown" .CountdownForm}}
     {{- end}}
