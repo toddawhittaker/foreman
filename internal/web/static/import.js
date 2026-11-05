@@ -3,7 +3,7 @@
 // "Same as the save", sets Space Age from the folder's save, and warns when
 // the Space Age box differs from the save. Anything the admin has typed or
 // ticked is left alone. With several folders ticked the per-world fields do
-// not apply, so they are turned off (SPEC 5.5).
+// not apply, so they are emptied and turned off (SPEC 5.5).
 document.addEventListener("DOMContentLoaded", () => {
   // Reads the change out politely, emptying the region first so a repeated
   // sentence is still read.
@@ -59,19 +59,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return t.length === 1 ? t[0] : null;
   }
 
-  // The words match spaceAgeOnWarning and spaceAgeOffWarning in import.go.
   function warningText() {
     const box = only();
     if (!box || !box.dataset.gameVersion) return "";
     const version = (typed && typed.value.trim()) || (select && select.value) || box.dataset.gameVersion;
     if (spaceAge.checked && version.startsWith("1.")) {
-      return "Space Age needs Factorio 2.0 or later. Untick Space Age for a Factorio 1.1 world.";
+      return warning.dataset.warnOld;
     }
     const saveHas = "spaceAge" in box.dataset;
     if (spaceAge.checked === saveHas) return "";
-    return spaceAge.checked
-      ? "The save was made without Space Age. Factorio converts it to Space Age when it first starts, and that cannot be undone."
-      : "The save was made with Space Age. Without it, Factorio may not load the save, or may remove its Space Age content.";
+    return spaceAge.checked ? warning.dataset.warnOn : warning.dataset.warnOff;
   }
 
   // Shows or hides the warning, and returns its words when they changed.
@@ -93,11 +90,37 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // With several folders ticked the per-world fields do not apply: they are
+  // emptied, unticked and disabled, and point at the hint that says why. What
+  // was in them is put back when one folder is ticked again.
+  const manyHint = document.getElementById("folder-many-hint");
+  const fields = [name, select, typed, spaceAge].filter((el) => el);
+  const describedBy = new Map(fields.map((el) => [el, el.getAttribute("aria-describedby")]));
+  let stashed = null;
+  function applyMany(many) {
+    fields.forEach((el) => {
+      el.disabled = many;
+      const ids = [describedBy.get(el), many && manyHint ? manyHint.id : null].filter((id) => id).join(" ");
+      if (ids) el.setAttribute("aria-describedby", ids);
+      else el.removeAttribute("aria-describedby");
+    });
+    if (many && !stashed) {
+      stashed = { name: name ? name.value : "", spaceAge: spaceAge.checked };
+      if (name) name.value = "";
+      spaceAge.checked = false;
+    } else if (!many && stashed) {
+      if (name) name.value = stashed.name;
+      spaceAge.checked = stashed.spaceAge;
+      stashed = null;
+    }
+  }
+  applyMany(ticked().length > 1);
+
   boxes.forEach((box) => {
     box.addEventListener("change", () => {
       const one = only();
       const many = ticked().length > 1;
-      [name, select, typed, spaceAge].forEach((el) => { if (el) el.disabled = many; });
+      applyMany(many);
       const said = [];
       if (many) said.push("Several folders chosen: each uses its own name, version and Space Age.");
       if (one) {

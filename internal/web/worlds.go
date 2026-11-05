@@ -56,8 +56,6 @@ type WorldPage struct {
 	// import whose version could not be checked.
 	Done    string
 	Warning string
-	// ImportedFrom is where the world was imported from, when recorded.
-	ImportedFrom *world.ImportedFrom
 	// Download is "running" or "failed" while the world's last game image
 	// download is so, else "" (SPEC 3.7).
 	Download string

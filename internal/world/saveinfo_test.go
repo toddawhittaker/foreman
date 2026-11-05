@@ -65,7 +65,7 @@ func TestInboxReadsTheNewestSave(t *testing.T) {
 	copyFixture(t, "2.1.24-space-age.zip", filepath.Join(in, "mixed", "new.zip"), t0.Add(time.Hour))
 	copyFixture(t, "2.0.77-no-space-age.zip", filepath.Join(in, "plain", "a.zip"), t0)
 	write(t, filepath.Join(in, "broken", "a.zip"), "not a zip", t0)
-	got, err := m.Inbox()
+	got, err := m.Inbox(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
