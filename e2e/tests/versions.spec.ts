@@ -1,6 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, type Foreman, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
 import { join } from "node:path";
 
 // Game versions: the world page, the release notice, update and rollback
@@ -46,6 +47,20 @@ async function container(g: FakeGame, name: string) {
 const creates = async (g: FakeGame) =>
   (await g.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
 const pulls = async (g: FakeGame) => (await g.state()).calls.filter((c) => c.includes("/images/create"));
+
+// Asks the fake Docker host whether it holds an image; the call log keeps no query strings.
+function hasImage(g: FakeGame, ref: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const req = request({ socketPath: g.socket, path: `/images/${ref}/json` }, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+const image2125 = image21.replace(/:.*$/, ":2.1.25");
 
 async function snapshotLabels(page: Page, id: string): Promise<string> {
   await page.goto(`/worlds/${id}/snapshots`);
@@ -110,6 +125,7 @@ test.describe("with the fake game", () => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     const before = await creates(g);
+    expect(await hasImage(g, image2125)).toBe(false);
 
     await page.goto("/worlds/base/update");
     await page.getByLabel("New game version").fill("2.1.25");
@@ -119,7 +135,7 @@ test.describe("with the fake game", () => {
     await expect(page).toHaveURL("/");
     await expect(badge(page)).toHaveText("Stopped");
     // The image is fetched as a step, then nothing is started.
-    expect((await pulls(g)).some((c) => c.includes("2.1.25"))).toBe(true);
+    expect(await hasImage(g, image2125)).toBe(true);
     expect(await creates(g)).toBe(before);
 
     expect(await snapshotLabels(page, "base")).toContain("Before update");
@@ -129,6 +145,16 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("region", { name: "Game version" })).toContainText("This world runs Factorio 2.1.25");
     await expect(page.getByRole("link", { name: "Roll back to 2.1.24" })).toBeVisible();
     await checkPage(page);
+
+    // A stopped world rolls back before the reply and lands on Snapshots with the undo snapshot.
+    await page.getByRole("link", { name: "Roll back to 2.1.24" }).click();
+    await expect(page.getByLabel("Countdown in seconds")).toHaveCount(0);
+    await checkPage(page);
+    await page.getByRole("button", { name: "Roll back to 2.1.24" }).click();
+    await expect(page).toHaveURL(/\/worlds\/base\/snapshots\?undo=/);
+    expect(diskVersion(foreman, "base")).toBe("2.1.24");
+    await expect(page.locator("main")).toContainText("Before restore");
+    expect(await creates(g)).toBe(before);
     expect(foreman.logs()).not.toMatch(/"level":"ERROR"/);
   });
 
@@ -160,7 +186,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
     expect((await container(g, "foreman-base"))?.status).toBe("running");
     expect(diskVersion(foreman, "base")).toBe("2.1.25");
-    expect((await pulls(g)).some((c) => c.includes("2.1.25"))).toBe(true);
+    expect(await hasImage(g, image2125)).toBe(true);
     expect(await snapshotLabels(page, "base")).toContain("Before update");
 
     // Rollback: the warning is on its page, before the button.
@@ -230,7 +256,8 @@ test.describe("with the fake game", () => {
     seedSecond(foreman);
 
     const resp = await page.request.post("/worlds/second/update", { form: { game_version: "2.1.25" }, maxRedirects: 0 });
-    expect(resp.status()).not.toBeLessThan(300);
+    expect(resp.status()).toBe(409);
+    expect(await resp.text()).toContain("Switch to this world to update it.");
     expect(diskVersion(foreman, "second")).toBe("2.1.24");
     expect((await pulls(g)).length).toBe(0);
     expect(await snapshotLabels(page, "second")).not.toContain("Before update");
@@ -264,8 +291,12 @@ test.describe("with the fake game", () => {
   test("a rollback with nothing to roll back to changes nothing", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     const resp = await page.request.post("/worlds/base/rollback", { form: {}, maxRedirects: 0 });
-    // Either a refusal page or a redirect to the Server page that explains; never a restore.
-    expect(resp.status()).not.toBe(500);
+    expect(resp.status()).toBe(409);
+    expect(diskVersion(foreman, "base")).toBe("2.1.24");
+    await page.goto("/worlds/base/rollback");
+    await expect(page.locator("#action-error")).toContainText("Error:");
+    await expect(page.getByRole("button", { name: /Roll back to/ })).toHaveCount(0);
+    await checkPage(page);
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
     expect(await snapshotLabels(page, "base")).not.toContain("Before restore");
   });
