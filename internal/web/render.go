@@ -59,7 +59,17 @@ type WorldsPage struct {
 	// DeletedKept says whether its snapshots remain under Deleted worlds.
 	Deleted     string
 	DeletedKept bool
+	// Busy says what runs on a world, by world id, for the worlds a running
+	// operation is busy on. Switchable marks the worlds that get a Switch
+	// button. SwitchWait is set when a world has no button only because an
+	// operation is running. All are empty without server control.
+	Busy       map[string]string
+	Switchable map[string]bool
+	SwitchWait bool
 }
+
+// SwitchPath is where a world's Switch button goes.
+func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
 
 // SignedOutPage confirms that sign-out ended the session (SPEC 12.8).
 type SignedOutPage struct{}
