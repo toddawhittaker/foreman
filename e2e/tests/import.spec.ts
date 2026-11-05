@@ -193,6 +193,19 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
   await page.goto("/import");
   const form = folderForm(page);
   await form.getByLabel(/sa: /).check();
+  // A typed version and a chosen one are put away with several ticked, and
+  // come back when one folder is ticked again.
+  await form.getByLabel("Or type a version").fill("2.0.72");
+  await form.locator("#folder-version-select").evaluate((el: HTMLSelectElement) => {
+    el.add(new Option("9.9.9", "9.9.9"));
+    el.value = "9.9.9";
+  });
+  await form.getByLabel(/plain: /).check();
+  await expect(form.getByLabel("Or type a version")).toHaveValue("");
+  await expect(form.locator("#folder-version-select")).toHaveValue("");
+  await form.getByLabel(/plain: /).uncheck();
+  await expect(form.getByLabel("Or type a version")).toHaveValue("2.0.72");
+  await expect(form.locator("#folder-version-select")).toHaveValue("9.9.9");
   await form.getByLabel(/plain: /).check();
   await expect(form.getByLabel("World name")).toBeDisabled();
   await expect(page.locator("#announcer")).toContainText("Several folders chosen");
@@ -227,10 +240,20 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
   await expect(alone.getByLabel(/junk: /)).toBeChecked();
   await expect(alone.getByLabel("World name")).toHaveValue("junk");
   await expect(alone.getByLabel("World name")).toBeEnabled();
+  // Its version is unknown, so the typed-version field says so and has focus.
+  await expect(alone.getByLabel("Or type a version")).toBeFocused();
+  await expect(alone.getByLabel("Or type a version")).toHaveAccessibleDescription(/Type the version this save was made with\./);
+  await expect(alone.getByText("Type the version this save was made with.")).toBeVisible();
   await checkPage(page);
   await alone.getByLabel("Or type a version").fill("2.0.72");
   await alone.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/junk?imported=1&unchecked=1");
+
+  // A folder whose version is known gets no hint and no focus change.
+  await page.goto("/import?folder=sa");
+  await expect(folderForm(page).getByLabel(/sa: /)).toBeChecked();
+  await expect(folderForm(page).getByLabel("Or type a version")).not.toBeFocused();
+  await expect(page.getByText("Type the version this save was made with.")).toHaveCount(0);
 });
 
 // Ruling 2 (#127): a folder already imported is listed apart, names its

@@ -36,21 +36,21 @@
       <button type="submit" class="button" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}">Select all automatic<span class="visually-hidden"> of {{.WorldName}}</span></button>
     </div>
     <p class="hint">Snapshots of this world add <span class="nowrap">{{bytes .Adds}}</span>.</p>
-    <table class="snapshot-list">
+    <table class="snapshot-list" role="table">
       <caption>Snapshots of {{.WorldName}}, newest first</caption>
-      <thead>
-        <tr><th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th></tr>
+      <thead role="rowgroup">
+        <tr role="row"><th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th></tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         {{- range .Rows}}
-        <tr>
-          <td>
+        <tr role="row">
+          <td role="cell">
             <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<span class="visually-hidden"> (taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>)</span></span></label>
             <p class="hint">Deleting it frees <span class="nowrap">{{bytes .Frees}}</span></p>
             <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}">Restore<span class="visually-hidden"> {{.Label}} of {{$name}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a> <a class="button" href="{{$.Page.DeletePath .WorldID .Name}}">Delete<span class="visually-hidden"> {{.Label}} of {{$name}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a></div>
           </td>
-          <td>{{template "when" .TakenAt}}<br>by {{with .TakenBy}}{{.}}{{else}}unknown{{end}}</td>
-          <td class="num">{{bytes .DiskSize}}</td>
+          <td role="cell">{{template "when" .TakenAt}}<br>by {{with .TakenBy}}{{.}}{{else}}unknown{{end}}</td>
+          <td class="num" role="cell">{{bytes .DiskSize}}</td>
         </tr>
         {{- end}}
       </tbody>

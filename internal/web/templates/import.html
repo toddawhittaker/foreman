@@ -124,9 +124,12 @@
 <div class="field">
   <label for="{{.IDPrefix}}-version">Or type a version</label>
   <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. If you type one, it is used instead of the choice above.</p>
+  {{- if .AskVersion}}
+  <p class="hint" id="{{.IDPrefix}}-version-ask">Type the version this save was made with.</p>
+  {{- end}}
   <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
-    inputmode="decimal" autocomplete="off" spellcheck="false"
-    {{- if .VersionError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-version-hint {{.IDPrefix}}-version-error"{{else}} aria-describedby="{{.IDPrefix}}-version-hint"{{end}}>
+    inputmode="decimal" autocomplete="off" spellcheck="false"{{if .AskVersion}} autofocus{{end}}
+    {{- if .VersionError}} aria-invalid="true"{{end}} aria-describedby="{{.IDPrefix}}-version-hint{{if .AskVersion}} {{.IDPrefix}}-version-ask{{end}}{{if .VersionError}} {{.IDPrefix}}-version-error{{end}}">
   {{- with .VersionError}}
   <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
