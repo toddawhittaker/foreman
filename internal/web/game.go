@@ -26,6 +26,10 @@ const (
 	PathGameSwitch  = "/worlds/{id}/switch"
 	PathGamePull    = "/worlds/{id}/pull-image"
 	PathGameEvents  = "/worlds/{id}/events"
+	// PathGameCancel ends the stop countdown on the world whose game is
+	// stopping; in a switch that is the world switched from (SPEC 7.6).
+	PathGameCancel   = "/worlds/{id}/cancel-stop"
+	PathGameSnapshot = "/worlds/{id}/take-snapshot"
 )
 
 func gamePath(id, action string) string { return worldPath(id) + "/" + action }
@@ -69,8 +73,11 @@ type actionResult struct {
 	// "Before restore" snapshot it took first.
 	Restored string
 	Undo     string
-	// Target is the world a switch was asked to go to.
-	Target string
+	// Target is the world a switch was asked to go to, and From the world
+	// it left.
+	Target, From string
+	// Taken is the label of the snapshot a Server page snapshot took.
+	Taken string
 	// Version is the game version an update was asked to go to.
 	Version string
 	// At is when the action ended.
@@ -226,6 +233,8 @@ func (s *server) gameRoutes() {
 	s.mux.HandleFunc("GET "+PathGameForce, s.requireUser(s.handleForceStopForm))
 	s.mux.HandleFunc("POST "+PathGameForce, s.requireUser(s.handleForceStop))
 	s.mux.HandleFunc("POST "+PathGamePull, s.requireUser(s.handlePull))
+	s.mux.HandleFunc("POST "+PathGameCancel, s.requireUser(s.handleCancelStop))
+	s.mux.HandleFunc("POST "+PathGameSnapshot, s.requireUser(s.handleServerSnapshot))
 	s.switchRoutes()
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
 }
@@ -242,6 +251,7 @@ func gameError(err error) (int, string) {
 		errors.Is(err, game.ErrNotReady), errors.Is(err, game.ErrImageMissing),
 		errors.Is(err, game.ErrRCONUnreachable), errors.Is(err, game.ErrSaveTimeout),
 		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
+		errors.Is(err, game.ErrStopCancelled), errors.Is(err, game.ErrNoCountdown),
 		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
 		errors.Is(err, world.ErrSaveInFuture),
 		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
@@ -293,10 +303,16 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 // serverPage builds the server page for a world from its status, asking
 // the game who is online when it is running.
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
-	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID)}
+	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID), Now: s.now()}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	p.Others = s.runs.others(sum.ID)
 	s.switchNames(&p)
+	if p.HaveResult && p.Result.Err == nil && p.Result.Action == game.AuditUpdate {
+		p.Rollback = s.rollbackOffer(sum.ID)
+	}
+	if st.State == game.StateCrashLooping {
+		p.StartAnywaySnap = s.startAnywaySnapshot(sum.ID)
+	}
 	// Said before Start is pressed (SPEC 3.7). Only local Docker is asked;
 	// when it cannot answer, Start finds out and says so.
 	if p.CanStart() {
@@ -313,17 +329,48 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 	return p
 }
 
+// startAnywaySnapshot returns the newest "Before start anyway" snapshot of
+// a world, which a crash loop offers to restore (SPEC 17.9), or nil.
+func (s *server) startAnywaySnapshot(id string) *world.Snapshot {
+	list, err := s.worlds.Snapshots(id)
+	if err != nil {
+		s.log.Error("list snapshots", "world", id, "error", err)
+		return nil
+	}
+	for _, sn := range list {
+		if sn.Reason == game.ReasonStartAnyway {
+			return &sn
+		}
+	}
+	return nil
+}
+
 func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, found, err := s.activeWorld(r.Context())
+	list, err := s.worlds.List(r.Context())
 	if err != nil {
 		s.fail(w, r, "find the active world", err)
 		return
+	}
+	var sum world.Summary
+	found := false
+	for _, ws := range list {
+		if ws.Active {
+			sum, found = ws, true
+		}
 	}
 	if !found {
 		s.page(w, r, http.StatusOK, u.Username, ServerPage{})
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, s.serverPage(r.Context(), sum, s.game.Status(sum.ID)))
+	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
+	// Listed when the page loads only: the list is not live, and each switch
+	// confirmation runs its own checks (SPEC 17.7, 17.8).
+	for _, ws := range list {
+		if !ws.Active && !ws.Unreadable && !ws.Newer {
+			p.OtherWorlds = append(p.OtherWorlds, ws)
+		}
+	}
+	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
 // startable returns the world in the path when it is the active one, the
@@ -387,20 +434,19 @@ func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.Use
 	})
 }
 
-// CountdownForm is the stop countdown choice (SPEC 7.6).
+// CountdownForm is the stop countdown choice (SPEC 7.6), and who would
+// be warned.
 type CountdownForm struct {
 	Countdown      string
-	NoCountdown    bool
 	CountdownError string
+	Online         Online
 }
 
-// readCountdown reads the countdown fields. A problem is worded for the
-// field; an empty field means the default countdown (SPEC 7.6).
+// readCountdown reads the countdown field. A problem is worded for the
+// field; an empty field means the default countdown, and 0 means no warning
+// (SPEC 7.6).
 func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
-	f := CountdownForm{Countdown: strings.TrimSpace(r.PostFormValue("countdown")), NoCountdown: r.PostFormValue("no_countdown") != ""}
-	if f.NoCountdown {
-		return f, game.StopOptions{}
-	}
+	f := CountdownForm{Countdown: strings.TrimSpace(r.PostFormValue("countdown"))}
 	if f.Countdown == "" {
 		return f, game.StopOptions{Countdown: game.StopCountdown}
 	}
@@ -414,6 +460,52 @@ func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
 
 func defaultCountdown() CountdownForm {
 	return CountdownForm{Countdown: strconv.Itoa(defaultCountdownSeconds)}
+}
+
+// Online is who is in the game, for a form that stops it (SPEC 7.6, 7.7).
+// Asked is false when the game is not running, so the form says nothing.
+type Online struct {
+	Asked, Failed bool
+	Names         []string
+}
+
+// online asks the game who is online, when it is running.
+func (s *server) online(ctx context.Context, id string) Online {
+	if s.game.Status(id).State != game.StateRunning {
+		return Online{}
+	}
+	ctx, cancel := context.WithTimeout(ctx, playersLimit)
+	defer cancel()
+	players, err := s.game.Players(ctx, id)
+	o := Online{Asked: true, Failed: err != nil}
+	for _, pl := range players {
+		o.Names = append(o.Names, pl.Name)
+	}
+	return o
+}
+
+// Text names who is online.
+func (o Online) Text() string {
+	switch {
+	case o.Failed:
+		return "Foreman could not ask the game who is online."
+	case len(o.Names) == 0:
+		return "Nobody is online."
+	case len(o.Names) == 1:
+		return "1 player online: " + o.Names[0] + "."
+	}
+	return fmt.Sprintf("%d players online: %s.", len(o.Names), strings.Join(o.Names, ", "))
+}
+
+// Disconnected says who a forced stop disconnects.
+func (o Online) Disconnected() string {
+	switch {
+	case !o.Asked || o.Failed:
+		return "Players online are disconnected."
+	case len(o.Names) == 0:
+		return "Nobody is online."
+	}
+	return "These players are disconnected: " + strings.Join(o.Names, ", ") + "."
 }
 
 // StopPage asks how to warn players before a stop or restart (SPEC 7.5,
@@ -450,7 +542,9 @@ func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.
 		return
 	}
 	restart := strings.HasSuffix(r.URL.Path, "/restart")
-	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: defaultCountdown()})
+	form := defaultCountdown()
+	form.Online = s.online(r.Context(), sum.ID)
+	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
 }
 
 // handleStop stops or restarts a world's game gracefully (SPEC 7.6, 7.8).
@@ -471,6 +565,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 	}
 	form, stop := readCountdown(r)
 	if form.CountdownError != "" {
+		form.Online = s.online(r.Context(), sum.ID)
 		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
 		return
 	}
@@ -492,7 +587,8 @@ func anywayOptions(r *http.Request) game.StartOptions {
 
 // ForceStopPage confirms a forced stop (SPEC 7.7).
 type ForceStopPage struct {
-	World world.Summary
+	World  world.Summary
+	Online Online
 }
 
 func (ForceStopPage) templateName() string { return "forcestop" }
@@ -506,7 +602,7 @@ func (s *server) handleForceStopForm(w http.ResponseWriter, r *http.Request, u s
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, ForceStopPage{World: sum})
+	s.page(w, r, http.StatusOK, u.Username, ForceStopPage{World: sum, Online: s.online(r.Context(), sum.ID)})
 }
 
 // handleForceStop stops the game without saving (SPEC 7.7).
@@ -537,4 +633,24 @@ func (s *server) handlePull(w http.ResponseWriter, r *http.Request, u store.User
 	s.begin(w, r, sum.ID, false, func(ctx context.Context) actionResult {
 		return s.finish(sum.ID, game.AuditImageDownload, s.game.PullImage(ctx, sum.ID, by))
 	})
+}
+
+// handleCancelStop ends the stop countdown on the world in the path, so the
+// action that began it ends with nothing changed (SPEC 7.6). It returns once
+// that action has ended, so the Server page shows how it ended.
+func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	if err := s.game.CancelStop(r.Context(), sum.ID, actor(u)); err != nil {
+		if status, msg, ok := s.gameRefusal(w, r, u, "cancel the stop", err); ok {
+			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: msg})
+		}
+		return
+	}
+	http.Redirect(w, r, PathServer, http.StatusSeeOther)
 }

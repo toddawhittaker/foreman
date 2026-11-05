@@ -95,7 +95,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("link", { name: "Restart server" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
     await checkPage(page);
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restart server" }).click();
     await expect(page).toHaveURL("/");
     // A fresh container for every start, running again.
@@ -138,11 +138,13 @@ test.describe("with the fake game", () => {
     await expect(crash).toBeVisible();
     await expect(page.locator("main pre")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
-    await expect(page.locator(".message--note")).toContainText("crashed again and again the last time it ran");
+    // One box says what happened and what to do; no second note repeats it (SPEC 17.9).
+    await expect(crash).toContainText("then try to start it again");
+    await expect(page.locator(".message--note")).toHaveCount(0);
     const retry = page.getByRole("button", { name: "Try to start again" });
     await expect(retry).toBeVisible();
     // The button is not flush under the message (DESIGN 6, rule 4).
-    const noteRect = (await page.locator(".message--note").boundingBox())!;
+    const noteRect = (await crash.boundingBox())!;
     const buttonRect = (await retry.boundingBox())!;
     expect(buttonRect.y - (noteRect.y + noteRect.height)).toBeGreaterThanOrEqual(8);
     await checkPage(page);
@@ -341,7 +343,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("Countdown in seconds")).toBeVisible();
     await expect(page.getByRole("region", { name: /Restore the snapshot/ })).toContainText("Start the game again");
     await checkPage(page);
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restore snapshot" }).click();
     await expect(page).toHaveURL("/");
     await expect(page.locator(".message--success")).toContainText("The world is restored", live);

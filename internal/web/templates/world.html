@@ -22,7 +22,12 @@
 {{- if .CanSwitch}}
 <section class="panel" aria-labelledby="switch-heading">
   <h2 id="switch-heading">Switch</h2>
-  <p>Make this the active world. Foreman snapshots both worlds first. It starts this world if the server is running, and leaves the server stopped if it is stopped.</p>
+  <p>Make this the active world. Foreman snapshots both worlds first, then starts this world. When the server is stopped, the confirmation lets you leave it stopped instead.</p>
+  {{- with .MissingImage}}
+  <div class="message message--note">
+    <p><strong>Note:</strong> This world runs on the game image <code>{{.}}</code>, which is not on this host, so it cannot start yet. A switch downloads it first, from Docker Hub.</p>
+  </div>
+  {{- end}}
   <div class="actions">
     <a href="{{.SwitchPath}}" class="button button--primary" id="act-switch">Switch to this world</a>
   </div>

@@ -264,6 +264,28 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	s.page(w, r, status, u.Username, p)
 }
 
+// actionSnapshot is a snapshot taken from the Server page.
+const actionSnapshot = "snapshot"
+
+// handleServerSnapshot takes a manual snapshot of the world from the Server
+// page, in one click, and shows the result there (SPEC 6.3, 17.7, 17.10).
+func (s *server) handleServerSnapshot(w http.ResponseWriter, r *http.Request, u store.User) {
+	if !s.readForm(w, r) {
+		return
+	}
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	by := actor(u)
+	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
+		snap, err := s.game.Snapshot(ctx, sum.ID, by, defaultLabel)
+		res := s.finish(sum.ID, actionSnapshot, err)
+		res.Taken = snap.Label
+		return res
+	})
+}
+
 // restoreTarget reads the world and snapshot named in the path, answering
 // the request itself with 404 when either is missing.
 func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.User) (RestorePage, bool) {
@@ -293,6 +315,7 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		switch s.game.Status(id).State {
 		case game.StateRunning, game.StateStarting, game.StateStopping, game.StateCrashed:
 			p.Running = true
+			p.Online = s.online(r.Context(), id)
 		}
 	}
 	return p, true
@@ -327,7 +350,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 	case p.Running:
 		form, stop := readCountdown(r)
 		if form.CountdownError != "" {
-			p.CountdownForm = form
+			form.Online, p.CountdownForm = p.Online, form
 			s.page(w, r, http.StatusBadRequest, u.Username, p)
 			return
 		}

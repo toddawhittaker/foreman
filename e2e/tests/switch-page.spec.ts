@@ -79,7 +79,7 @@ test.describe("with the fake game", () => {
     // Back again is a full switch with its own confirmation.
     await openSwitch(page, "base", "Base");
     await expect(page.getByRole("region", { name: /Switch from Second to Base/ })).toBeVisible();
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Base" }).click();
     await expect(active(page, "Base")).toBeVisible(live);
     await expect(badge(page)).toHaveText("Running", live);
@@ -185,7 +185,7 @@ test.describe("with the fake game", () => {
     await g.call("/rcon-refuse", { name: "foreman-second", on: true });
 
     await openSwitch(page, "second", "Second");
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Second" }).click();
 
     await expect(page.getByRole("heading", { name: "The switch from Base to Second failed" })).toBeVisible(live);

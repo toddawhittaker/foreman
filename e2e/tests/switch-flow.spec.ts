@@ -62,7 +62,7 @@ test.describe("with the fake game", () => {
     const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
     await expect(confirm.locator(".message--warning")).toContainText("foreman-test");
     await expect(confirm.getByRole("button", { name: "Switch and start anyway" })).toBeVisible();
-    await expect(confirm.getByRole("checkbox")).toHaveCount(1); // the countdown's "No countdown" only
+    await expect(confirm.getByRole("checkbox")).toHaveCount(0); // the countdown field alone says how to skip the warning (SPEC 7.6)
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("0");
     await confirm.getByRole("button", { name: "Switch, leave stopped" }).click();

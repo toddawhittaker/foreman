@@ -83,7 +83,7 @@ func TestWorldPageSaysWhyThereIsNoSwitch(t *testing.T) {
 	active := g.get(worldPath(a))
 	g.wantContains("active world", active, "This is the active world.")
 	g.wantMissing("active world", active, "Switch to this world")
-	g.wantContains("other world", g.get(worldPath(b)), "Switch to this world", "leaves the server stopped if it is stopped")
+	g.wantContains("other world", g.get(worldPath(b)), "Switch to this world", "then starts this world. When the server is stopped, the confirmation lets you leave it stopped instead.")
 
 	g.startGame(a)
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"30"}}))

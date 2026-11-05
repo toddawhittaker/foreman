@@ -233,7 +233,7 @@ func TestUpdateRoutesRefuseBadRequests(t *testing.T) {
 		h.Set(k, v)
 		return h
 	}
-	form := url.Values{"game_version": {newVersion}, "no_countdown": {"on"}}
+	form := url.Values{"game_version": {newVersion}, "countdown": {"0"}}
 
 	routes := []struct {
 		method, path string

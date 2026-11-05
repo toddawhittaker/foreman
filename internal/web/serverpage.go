@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,15 @@ type ServerPage struct {
 	// ModsFolder is the world's mods folder on the host, for advice about
 	// missing mods; "" when not known.
 	ModsFolder string
+	// Now is when the page was built, for the countdown's time left.
+	Now time.Time
+	// Rollback undoes an update that worked (SPEC 10.4); set only then.
+	Rollback *RollbackOffer
+	// StartAnywaySnap is the newest "Before start anyway" snapshot, which a
+	// crash loop offers to restore (SPEC 17.9); set only while crash-looping.
+	StartAnywaySnap *world.Snapshot
+	// OtherWorlds are the worlds the page offers to switch to (SPEC 17.7).
+	OtherWorlds []world.Summary
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -61,6 +71,54 @@ func (p ServerPage) RestartPath() string   { return gamePath(p.World.ID, "restar
 func (p ServerPage) ForceStopPath() string { return gamePath(p.World.ID, "force-stop") }
 func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-image") }
 func (p ServerPage) ConsolePath() string   { return consolePath(p.World.ID, "") }
+func (p ServerPage) SnapshotPath() string  { return gamePath(p.World.ID, "take-snapshot") }
+func (ServerPage) SwitchPath(id string) string {
+	return switchPath(id)
+}
+
+// switchOp returns the switch running now, or nil.
+func (p ServerPage) switchOp() *game.SwitchInfo {
+	if o := p.Status.Operation; o != nil && !o.Done {
+		return o.Switch
+	}
+	return nil
+}
+
+// ActiveName and ActivePath name and link the active world. During a
+// switch that is the new world once it has been made active, though the
+// page still follows the old one until the switch ends (SPEC 7.9).
+func (p ServerPage) ActiveName() string {
+	if sw := p.switchOp(); sw != nil && sw.Presented {
+		return p.name(sw.To)
+	}
+	return p.World.Name
+}
+
+func (p ServerPage) ActivePath() string {
+	if sw := p.switchOp(); sw != nil && sw.Presented {
+		return worldPath(sw.To)
+	}
+	return p.WorldPath()
+}
+
+// Switching says which worlds a running switch is between, or is "".
+func (p ServerPage) Switching() string {
+	if sw := p.switchOp(); sw != nil {
+		return "From " + p.name(sw.From) + " to " + p.name(sw.To)
+	}
+	return ""
+}
+
+// FactsKnown reports whether the run's figures (uptime, save, CPU, memory)
+// are true of the active world now. They are not when Docker cannot be
+// asked, nor once a switch has made the new world active (SPEC 7.1, 7.9).
+func (p ServerPage) FactsKnown() bool {
+	if p.Status.State == game.StateUnknown {
+		return false
+	}
+	sw := p.switchOp()
+	return sw == nil || !sw.Presented
+}
 
 // StateWord is the badge's word (DESIGN 7.5).
 func (p ServerPage) StateWord() string { return stateWord(p.Status.State) }
@@ -85,7 +143,7 @@ func stateWord(s game.State) string {
 
 // GameVersion is the version the running game reports, else the world's.
 func (p ServerPage) GameVersion() string {
-	if p.Status.GameVersion != "" {
+	if p.Status.GameVersion != "" && p.FactsKnown() {
 		return p.Status.GameVersion
 	}
 	return p.World.GameVersion
@@ -192,7 +250,7 @@ func (p ServerPage) StartBlocked() string {
 		return ""
 	}
 	if p.Status.State == game.StateCrashLooping {
-		return p.World.Name + " crashed again and again the last time it ran. Fix what the game reported, for example the world's mods or its save, then try to start it again. Or switch to another world from the Worlds page."
+		return p.World.Name + " crashed again and again the last time it ran."
 	}
 	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && game.IsRefusal(p.Result.Err) && !p.OffersAnyway() {
 		return "Foreman refused the last start of " + p.World.Name + ", for the reason above. Fix the world first, then try to start it again."
@@ -210,6 +268,61 @@ func (p ServerPage) OffersAnyway() bool {
 // blockedAnnouncement is read out with the page's results while a start is
 // blocked, so a screen reader user learns why Start server is gone.
 const blockedAnnouncement = "Start server is replaced by Try to start again, for after the world is fixed."
+
+// CrashLooping reports whether the crash box leads with the ways to
+// recover, in place of a separate note (SPEC 8.9, 17.9).
+func (p ServerPage) CrashLooping() bool { return p.Status.State == game.StateCrashLooping }
+
+// CanSnapshot reports whether Take snapshot is offered: when no operation
+// runs and the game is settled, so the snapshot is not refused (SPEC 6.10).
+func (p ServerPage) CanSnapshot() bool {
+	switch p.Status.State {
+	case game.StateStopped, game.StateRunning, game.StateCrashLooping:
+		return !p.Busy()
+	}
+	return false
+}
+
+// CancelStopPath is where Cancel stop posts while players are being warned,
+// or "". It names the world being stopped: in a switch, the one switched
+// from (SPEC 7.6).
+func (p ServerPage) CancelStopPath() string {
+	o := p.Status.Operation
+	if o == nil || o.Done {
+		return ""
+	}
+	if _, ok := o.CountdownEnds(); !ok {
+		return ""
+	}
+	id := p.World.ID
+	if o.Switch != nil {
+		id = o.Switch.From
+	}
+	return gamePath(id, "cancel-stop")
+}
+
+// PlayerTable is the player list the page shows.
+type PlayerTable struct {
+	Caption string
+	Players []game.Player
+}
+
+// PlayerTable returns who is online now, or else, while a stop warns
+// players, who was online when it began (SPEC 7.6, 8.1); nil when there is
+// nobody to list.
+func (p ServerPage) PlayerTable() *PlayerTable {
+	if p.PlayersKnown {
+		if len(p.Players) == 0 {
+			return nil
+		}
+		return &PlayerTable{Caption: fmt.Sprintf("%d online", len(p.Players)), Players: p.Players}
+	}
+	o := p.Status.Operation
+	if o == nil || o.Done || len(o.Players) == 0 || p.Status.State == game.StateUnknown {
+		return nil
+	}
+	return &PlayerTable{Caption: fmt.Sprintf("%d online when the stop began", len(o.Players)), Players: o.Players}
+}
 
 // Crashed reports whether the page shows the crash message.
 func (p ServerPage) Crashed() bool {
@@ -270,7 +383,9 @@ func (p ServerPage) ActionsNote() string {
 
 // ShowOperation reports whether the step list is shown: while the
 // operation runs, and after it failed.
-func (p ServerPage) ShowOperation() bool { return showOp(p.Status.Operation) && !p.opSuperseded() }
+func (p ServerPage) ShowOperation() bool {
+	return showOp(p.Status.Operation) && !p.opSuperseded() && !p.cancelled()
+}
 
 // ShowDownload is ShowOperation for the image download.
 func (p ServerPage) ShowDownload() bool { return showOp(p.Status.Download) }
@@ -346,6 +461,21 @@ func (l stepList) Steps() []game.Step {
 	return out
 }
 
+// Left says how long the countdown on a step has to run, or "".
+func (l stepList) Left(s game.Step) string {
+	if s.State != game.StepProgress || s.Until.IsZero() {
+		return ""
+	}
+	n := int(math.Ceil(s.Until.Sub(l.Page.Now).Seconds()))
+	switch {
+	case n <= 0:
+		return "ending now"
+	case n == 1:
+		return "1 second left"
+	}
+	return fmt.Sprintf("%d seconds left", n)
+}
+
 // Since says how long a player has been online.
 func (ServerPage) Since(d time.Duration) string { return durationText(d) }
 
@@ -400,8 +530,9 @@ type Failure struct {
 	Anyway *Anyway
 	// Download offers to download the missing game image (SPEC 3.7).
 	Download bool
-	// Undo names the "Before restore" snapshot a failed restore took.
-	Undo string
+	// Undo names the "Before restore" snapshot a failed restore took, and
+	// UndoPath is where restoring it is confirmed.
+	Undo, UndoPath string
 	// In says which step list holds the message: "operation", "download",
 	// or "" for on its own.
 	In string
@@ -471,11 +602,14 @@ func precheckLeadFor(check world.PreCheck, switching bool, name string) string {
 
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
-	if !p.HaveResult || p.Result.Err == nil {
+	if !p.HaveResult || p.Result.Err == nil || p.cancelled() {
 		return nil
 	}
 	err := p.Result.Err
 	f := &Failure{Undo: p.Result.Undo}
+	if f.Undo != "" {
+		f.UndoPath = restorePath(p.World.ID, f.Undo)
+	}
 	if p.Crashed() && p.CrashLeads() {
 		f.Earlier = p.Result.At
 	}
@@ -615,75 +749,6 @@ func failureText(err error) string {
 		return "Foreman could not finish this. The details are in Foreman's log."
 	}
 	return msg
-}
-
-// actionNames name each action in a sentence.
-var actionNames = map[string]string{
-	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
-	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
-	game.AuditSwitch: "switch", game.AuditUpdate: "update", game.AuditRollback: "rollback",
-}
-
-// OtherErrors words the errors of the actions asked for while another ran.
-func (p ServerPage) OtherErrors() []string {
-	var out []string
-	for _, res := range p.Others {
-		if res.Err == nil {
-			continue
-		}
-		name := actionNames[res.Action]
-		if name == "" {
-			name = "action"
-		}
-		out = append(out, "The "+name+" asked for during another action did not finish: "+failureText(res.Err))
-	}
-	return out
-}
-
-// Done says what the last action did, when that is not otherwise visible.
-func (p ServerPage) Done() string {
-	if !p.HaveResult || p.Result.Err != nil {
-		return ""
-	}
-	switch p.Result.Action {
-	case game.ActionRestore:
-		return "The world is restored. Foreman took the snapshot \"Before restore\" first; to undo the restore, restore that snapshot from the Snapshots page."
-	case game.AuditUpdate:
-		return "The game version is updated. Foreman took the snapshot \"Before update\" first; to undo, use Roll back on the world's page."
-	case game.AuditRollback:
-		return "The world is rolled back. Foreman took the snapshot \"Before restore\" first; to undo the rollback, restore that snapshot from the Snapshots page."
-	case game.AuditSwitch:
-		return "The worlds are switched. Foreman took the snapshot \"Before switch\" of both worlds first; to undo, switch back, or restore that snapshot from the Snapshots page."
-	}
-	return ""
-}
-
-// doneAnnouncement is what a live page reads out when an action that
-// shows a "Done" message finishes.
-var doneAnnouncement = map[string]string{
-	game.ActionRestore: "The world is restored.",
-	game.AuditSwitch:   "The worlds are switched.",
-	game.AuditUpdate:   "The game version is updated.",
-	game.AuditRollback: "The world is rolled back.",
-}
-
-// resultAnnouncement is what a live page reads out for the results the
-// page shows: errors first, then a restore that finished (DESIGN 7.5).
-func resultAnnouncement(p ServerPage) string {
-	var said []string
-	if f := p.Failure(); f != nil {
-		said = append(said, f.Word()+" "+f.Message)
-		if f.Anyway != nil {
-			said = append(said, "You can "+strings.ToLower(f.Anyway.Verb)+"; the button is below.")
-		}
-	}
-	for _, e := range p.OtherErrors() {
-		said = append(said, "Error: "+e)
-	}
-	if p.Done() != "" {
-		said = append(said, doneAnnouncement[p.Result.Action])
-	}
-	return strings.Join(said, " ")
 }
 
 // Announcement is the sentence a live page reads out when the state

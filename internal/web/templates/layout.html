@@ -48,19 +48,18 @@
 {{/* How long players are warned before a graceful stop (SPEC 7.6). Takes
      CountdownForm. */}}
 {{define "countdown" -}}
+{{- if .Online.Asked}}
+<p id="online">{{.Online.Text}}</p>
+{{- end}}
 <div class="field">
   <label for="countdown">Countdown in seconds</label>
-  <p class="hint" id="countdown-hint">Players online see a warning in game, then the game saves and stops. From 0 to 600 seconds; 0 means no countdown. Nobody is warned if nobody is online.</p>
+  <p class="hint" id="countdown-hint">Players online see a warning in game, then the game saves and stops. From 0 to 600 seconds; 0 means no warning: the game saves and stops at once. Nobody is warned if nobody is online.</p>
   <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
     {{- if .CountdownError}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
   {{- with .CountdownError}}
   <p class="error" id="countdown-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
 </div>
-<label class="check">
-  <input type="checkbox" name="no_countdown"{{if .NoCountdown}} checked{{end}}>
-  No countdown: save and stop as soon as possible
-</label>
 {{- end}}
 
 {{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}

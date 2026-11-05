@@ -177,7 +177,10 @@ func TestServerPageStartsAndStops(t *testing.T) {
 	g.waitPage("<td>bob</td>")
 
 	form := g.get(gamePath(id, "stop"))
-	if !strings.Contains(form, `name="countdown"`) || !strings.Contains(form, `value="60"`) || !strings.Contains(form, `name="no_countdown"`) {
+	// One control for the warning: the seconds field, where 0 means none
+	// (SPEC 7.6). The form names who is online.
+	if !strings.Contains(form, `name="countdown"`) || !strings.Contains(form, `value="60"`) || strings.Contains(form, `type="checkbox"`) ||
+		!strings.Contains(form, "1 player online: bob.") {
 		t.Errorf("stop form:\n%s", form)
 	}
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"1"}}))
@@ -278,8 +281,9 @@ func TestReadCountdown(t *testing.T) {
 		{url.Values{"countdown": {" 90 "}}, game.StopOptions{Countdown: 90 * time.Second}, false},
 		{url.Values{"countdown": {"0"}}, game.StopOptions{}, false},
 		{url.Values{"countdown": {"600"}}, game.StopOptions{Countdown: 10 * time.Minute}, false},
-		{url.Values{"countdown": {"30"}, "no_countdown": {"on"}}, game.StopOptions{}, false},
-		{url.Values{"countdown": {"x"}, "no_countdown": {"on"}}, game.StopOptions{}, false},
+		// The checkbox is gone; 0 is the one way to skip the warning (SPEC 7.6).
+		{url.Values{"countdown": {"30"}, "no_countdown": {"on"}}, game.StopOptions{Countdown: 30 * time.Second}, false},
+		{url.Values{"countdown": {"x"}}, game.StopOptions{}, true},
 		{url.Values{"countdown": {"601"}}, game.StopOptions{}, true},
 	}
 	for _, c := range cases {
@@ -375,7 +379,7 @@ func TestRestoreRunningWorld(t *testing.T) {
 	if !strings.Contains(form, `name="countdown"`) || !strings.Contains(form, "Start the game again") {
 		t.Errorf("restore confirmation of a running world:\n%s", form)
 	}
-	g.wantRedirectHome(g.post(restorePath(id, snap.Name), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(restorePath(id, snap.Name), url.Values{"countdown": {"0"}}))
 	g.waitPage(running, "The world is restored.")
 	list, _ := g.worlds.Snapshots(id)
 	if len(list) != 2 || list[0].Reason != world.ReasonBeforeRestore {
