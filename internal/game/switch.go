@@ -276,7 +276,7 @@ func (c *Controller) switchDownload(ctx context.Context, o *opRun, ref string) e
 		return err
 	}
 	if err := c.docker.PullImage(ctx, ref); err != nil {
-		return fmt.Errorf("download %s: %w", ref, err)
+		return pullError(ref, err)
 	}
 	o.done(StepDownload)
 	return nil

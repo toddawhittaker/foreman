@@ -86,11 +86,11 @@ func TestWorldPageSaysWhyThereIsNoSwitch(t *testing.T) {
 	g.wantContains("other world", g.get(worldPath(b)), "Switch to this world", "then starts this world. When the server is stopped, the confirmation lets you leave it stopped instead.")
 
 	g.startGame(a)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"30"}}))
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"30"}}))
 	g.waitPage("Switching from Alpha to Bravo")
 	busy := g.get(worldPath(b))
-	g.wantContains("busy world", busy, "An operation is running on the server, such as a switch.", `href="/"`)
-	g.wantMissing("busy world", busy, `id="act-switch"`)
+	g.wantContains("busy world", busy, "Switching from Alpha to Bravo.", `href="/"`)
+	g.wantMissing("busy world", busy, `id="act-switch"`, "An operation is running on the server, such as a switch.")
 }
 
 // DESIGN 7.3: a refused switch is an error message with a way back.

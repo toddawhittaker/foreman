@@ -67,6 +67,9 @@ type RestorePage struct {
 	// Running is true when the world's game may be running, so the restore
 	// stops it gracefully first and starts it again after (SPEC 6.5).
 	Running bool
+	// Active is true when the world is the active one, whose restore shows
+	// its result on the Server page (SPEC 17.7).
+	Active bool
 	CountdownForm
 }
 
@@ -278,7 +281,7 @@ func (s *server) handleServerSnapshot(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	by := actor(u)
-	s.begin(w, r, sum.ID, true, func(ctx context.Context) actionResult {
+	s.beginTo(w, r, PathServerResult, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		snap, err := s.game.Snapshot(ctx, sum.ID, by, defaultLabel)
 		res := s.finish(sum.ID, actionSnapshot, err)
 		res.Taken = snap.Label
@@ -311,6 +314,7 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 		name = s.worlds.SnapshotWorldName(id, snapName)
 	}
 	p := RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found, CountdownForm: defaultCountdown()}
+	p.Active = found && sum.Active
 	if found && s.game != nil {
 		switch s.game.Status(id).State {
 		case game.StateRunning, game.StateStarting, game.StateStopping, game.StateCrashed:
@@ -331,9 +335,9 @@ func (s *server) handleRestoreForm(w http.ResponseWriter, r *http.Request, u sto
 
 // handleRestore restores a snapshot (SPEC 6.5). A deleted world's snapshot
 // recreates the world. With server control, a world whose game may be
-// running is stopped gracefully, restored and started again in the
-// background, and the server page follows it; any other restore is done
-// before the reply.
+// running, and the active world, restore in the background and the server
+// page follows them; a running game is stopped gracefully first and started
+// again after. Any other restore is done before the reply.
 func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.User) {
 	p, ok := s.restoreTarget(w, r, u)
 	if !ok {
@@ -347,12 +351,17 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 	switch {
 	case s.game == nil:
 		before, err = s.worlds.Restore(r.Context(), p.WorldID, p.Snapshot.Name, u.Username)
-	case p.Running:
-		form, stop := readCountdown(r)
-		if form.CountdownError != "" {
-			form.Online, p.CountdownForm = p.Online, form
-			s.page(w, r, http.StatusBadRequest, u.Username, p)
-			return
+	case p.Running || p.Active:
+		// A stopped game has nobody to warn, so it takes the default countdown.
+		stop := game.StopOptions{Countdown: game.StopCountdown}
+		if p.Running {
+			var form CountdownForm
+			form, stop = readCountdown(r)
+			if form.CountdownError != "" {
+				form.Online, p.CountdownForm = p.Online, form
+				s.page(w, r, http.StatusBadRequest, u.Username, p)
+				return
+			}
 		}
 		id, snap, by := p.WorldID, p.Snapshot.Name, actor(u)
 		s.begin(w, r, id, true, func(ctx context.Context) actionResult {

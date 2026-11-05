@@ -96,6 +96,27 @@ var (
 	ErrForeign         = errors.New("a Docker container with this world's container name exists, but Foreman did not create it. Rename or remove that container, then try again")
 )
 
+// ImageDownloadError is a failed download of a game image. Err is the
+// cause, for the log; the page words the failure itself (SPEC 17.9).
+type ImageDownloadError struct {
+	Image string
+	// NotFound is true when Docker answered that it has no such image.
+	NotFound bool
+	Err      error
+}
+
+func (e *ImageDownloadError) Error() string { return "download " + e.Image + ": " + e.Err.Error() }
+func (e *ImageDownloadError) Unwrap() error { return e.Err }
+
+// pullError words a failed pull of ref. A Docker that answers nothing keeps
+// its own plain sentence.
+func pullError(ref string, err error) error {
+	if _, ok := errors.AsType[*docker.UnreachableError](err); ok {
+		return err
+	}
+	return &ImageDownloadError{Image: ref, NotFound: errors.Is(err, docker.ErrNotFound), Err: err}
+}
+
 // PrecheckError is a start refused by the pre-start check (SPEC 7.4). The
 // caller may offer "Start anyway" when Check.CanStartAnyway() (SPEC 7.4).
 type PrecheckError struct {
@@ -679,10 +700,10 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 	listed, dockerErr := c.dockerState()
 	if w.opDone == nil {
 		if dockerErr != nil {
-			return StateUnknown, dockerFault("Foreman cannot reach Docker: ", dockerErr)
+			return StateUnknown, dockerFault("Foreman cannot reach Docker. The details are in Foreman's log.", dockerErr)
 		}
 		if w.inspectErr != nil {
-			return StateUnknown, dockerFault("Foreman cannot read the game container from Docker: ", w.inspectErr)
+			return StateUnknown, dockerFault("Foreman cannot read the game container from Docker. The details are in Foreman's log.", w.inspectErr)
 		}
 		if w.attachErr != nil && w.containerID == "" {
 			return StateUnknown, "Foreman " + w.attachErr.Error()
@@ -726,17 +747,22 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 
 // dockerFault is the reason shown for a failed Docker call. A Docker that
 // answers nothing already has a plain sentence of its own; any other fault
-// follows prefix.
-func dockerFault(prefix string, err error) string {
+// shows plain, never the raw error.
+func dockerFault(plain string, err error) string {
 	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
 		return ue.Error()
 	}
-	return prefix + err.Error()
+	return plain
 }
 
 // logDockerFault logs a failed listing of containers with the raw error,
 // which the page never shows. It logs once while the same fault lasts.
 func (c *Controller) logDockerFault(before, err error) {
+	c.logFault("cannot reach Docker", before, err)
+}
+
+// logFault logs a Docker fault's raw error once while the same fault lasts.
+func (c *Controller) logFault(msg string, before, err error, args ...any) {
 	if before != nil && before.Error() == err.Error() {
 		return
 	}
@@ -744,7 +770,7 @@ func (c *Controller) logDockerFault(before, err error) {
 	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
 		raw = ue.Err
 	}
-	c.log.Warn("cannot reach Docker", "error", raw)
+	c.log.Warn(msg, append(args, "error", raw)...)
 }
 
 // changedLocked wakes anything waiting on the game's state and, when

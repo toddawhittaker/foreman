@@ -24,6 +24,8 @@ func (f *fixReleases) Versions(context.Context) ([]string, error) {
 }
 func (f *fixReleases) Latest(context.Context) (releases.Latest, error) { return f.latest, f.lerr }
 
+func (f *fixReleases) ImageSize(context.Context, string) (int64, error) { return 0, errFixHub }
+
 var errFixHub = errors.New("docker hub down")
 
 // SPEC 10.7: the picker's list comes from the image versions alone; a

@@ -128,8 +128,13 @@ func (g *gameRig) waitPage(texts ...string) string {
 
 func (g *gameRig) wantRedirectHome(rep reply) {
 	g.t.Helper()
-	if rep.StatusCode != http.StatusSeeOther || rep.Header.Get("Location") != PathServer {
-		g.t.Fatalf("got %d to %q, want 303 to /\n%s", rep.StatusCode, rep.Header.Get("Location"), rep.body)
+	g.wantRedirectTo(PathServer, rep)
+}
+
+func (g *gameRig) wantRedirectTo(path string, rep reply) {
+	g.t.Helper()
+	if rep.StatusCode != http.StatusSeeOther || rep.Header.Get("Location") != path {
+		g.t.Fatalf("got %d to %q, want 303 to %s\n%s", rep.StatusCode, rep.Header.Get("Location"), path, rep.body)
 	}
 }
 
@@ -340,7 +345,7 @@ func TestDockerUnreachable(t *testing.T) {
 		}
 	}
 	rep := g.post(snapshotsPath(id), url.Values{})
-	if rep.StatusCode != http.StatusServiceUnavailable || !strings.Contains(rep.body, "Foreman cannot reach Docker, so nothing was done.") {
+	if rep.StatusCode != http.StatusServiceUnavailable || !strings.Contains(rep.body, "Foreman cannot reach Docker at") {
 		t.Errorf("snapshot with Docker unreachable: %d\n%s", rep.StatusCode, rep.body)
 	}
 	if list, _ := g.worlds.Snapshots(id); len(list) != 0 {
@@ -385,6 +390,20 @@ func TestRestoreRunningWorld(t *testing.T) {
 	if len(list) != 2 || list[0].Reason != world.ReasonBeforeRestore {
 		t.Errorf("snapshots after restore %+v", list)
 	}
+}
+
+// SPEC 17.7: restoring the stopped active world leaves its result on the
+// Server page, with the undo button.
+func TestRestoreStoppedActiveWorldShowsOnServerPage(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	snap, err := g.worlds.TakeSnapshot(id, "First", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.waitPage(stopped)
+	g.wantRedirectHome(g.post(restorePath(id, snap.Name), url.Values{}))
+	g.waitPage("The world is restored.", "Undo this restore")
 }
 
 // openEvents opens the world's event stream. The caller closes the body.

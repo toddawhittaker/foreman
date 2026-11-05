@@ -50,6 +50,9 @@ type ServerPage struct {
 	StartAnywaySnap *world.Snapshot
 	// OtherWorlds are the worlds the page offers to switch to (SPEC 17.7).
 	OtherWorlds []world.Summary
+	// FocusResult is true when this load follows the admin's own cancel stop
+	// or snapshot, so the Done message takes focus and is read out.
+	FocusResult bool
 }
 
 func (ServerPage) templateName() string { return "server" }
@@ -614,6 +617,7 @@ func (p ServerPage) Failure() *Failure {
 		f.Earlier = p.Result.At
 	}
 	var pe *game.PrecheckError
+	var de *game.ImageDownloadError
 	switch {
 	case errors.As(err, &pe):
 		switching := p.Result.Action == game.AuditSwitch
@@ -634,6 +638,12 @@ func (p ServerPage) Failure() *Failure {
 		if pe.Check.CanStartAnyway() {
 			f.Anyway = p.anyway(pe.Check)
 		}
+	case errors.As(err, &de):
+		retry := "Try again."
+		if p.Result.Action == game.AuditSwitch {
+			retry = "Try the switch again."
+		}
+		f.Message = downloadFailure(de, retry)
 	case errors.Is(err, game.ErrImageMissing):
 		// The download is for this page's world only: a switch whose new
 		// world lacks its image must never offer the old world's.

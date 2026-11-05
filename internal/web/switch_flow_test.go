@@ -1,7 +1,10 @@
 package web
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -56,11 +60,31 @@ func TestSwitchDownloadsTheNewWorldsImage(t *testing.T) {
 		t.Error("the download is not listed before the stop")
 	}
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage("Active world: Old", running, "The worlds are switched")
 	g.wantMissing("server page", body, gamePath(a, "pull-image"), "Download game image")
 	if !slices.Contains(g.fake.Daemon().Pulls(), image20) {
 		t.Errorf("pulls %v, want %s", g.fake.Daemon().Pulls(), image20)
+	}
+}
+
+// The confirmation page asks Docker Hub for the image's size; the POST that
+// confirms does not, because it shows nothing of it.
+func TestSwitchPostAsksNoSize(t *testing.T) {
+	rel := &fakeReleases{size: 345678901}
+	g := newUpdateRig(t, rel)
+	a := g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.oldWorld("Old")
+	g.startGame(a)
+
+	g.wantContains("confirmation", g.get(switchPath(b)), "about 345.7 MB")
+	if n := rel.sizeAsked(); n != 1 {
+		t.Fatalf("the page asked for the size %d times, want 1", n)
+	}
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
+	g.waitPage("Active world: Old", "The worlds are switched")
+	if n := rel.sizeAsked(); n != 1 {
+		t.Errorf("the POST asked for the size: %d calls in all, want 1", n)
 	}
 }
 
@@ -74,10 +98,56 @@ func TestSwitchFailedDownloadOffersNoWrongDownload(t *testing.T) {
 	g.startGame(a)
 	g.fake.Daemon().FailPull(image20, "manifest unknown")
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage("The switch from Alpha to Old failed", "Alpha is still the active world")
-	g.wantContains("server page", body, "Active world: Alpha", running)
-	g.wantMissing("server page", body, gamePath(a, "pull-image"), `id="act-pull"`)
+	g.wantContains("server page", body, "Active world: Alpha", running,
+		"Foreman could not download "+image20+". The details are in Foreman&#39;s log. Try the switch again.")
+	g.wantMissing("server page", body, gamePath(a, "pull-image"), `id="act-pull"`, "manifest unknown", "could not finish this")
+}
+
+// SPEC 17.9: a download Docker says it has no image for names the image and
+// the next step, and the raw text of the daemon stays off the page. The
+// cause of any other failure is logged.
+func TestDownloadFailureWords(t *testing.T) {
+	notFound := &game.ImageDownloadError{Image: image20, NotFound: true, Err: &docker.APIError{Status: 404, Message: "manifest unknown"}}
+	other := &game.ImageDownloadError{Image: image20, Err: errors.New("toomanyrequests: rate limit")}
+	for name, c := range map[string]struct {
+		err    error
+		action string
+		want   string
+	}{
+		"not found": {notFound, game.AuditSwitch,
+			"Foreman could not download " + image20 + ": Docker Hub has no image with that version. Check the world&#39;s game version on its page."},
+		"other, a switch": {other, game.AuditSwitch,
+			"Foreman could not download " + image20 + ". The details are in Foreman&#39;s log. Try the switch again."},
+		"other, a download": {other, game.AuditImageDownload,
+			"Foreman could not download " + image20 + ". The details are in Foreman&#39;s log. Try again."},
+	} {
+		p := serverCase(game.StateStopped, func(p *ServerPage) {
+			p.Result, p.HaveResult = actionResult{Action: c.action, Err: c.err}, true
+		})
+		html := fragmentHTML(t, p, "server-control")
+		if !strings.Contains(html, c.want) {
+			t.Errorf("%s: page lacks %q:\n%s", name, c.want, html)
+		}
+		for _, raw := range []string{"manifest unknown", "toomanyrequests", "could not finish this"} {
+			if strings.Contains(html, raw) {
+				t.Errorf("%s: page shows %q", name, raw)
+			}
+		}
+	}
+
+	var logs bytes.Buffer
+	s := &server{log: slog.New(slog.NewTextHandler(&logs, nil))}
+	s.finish("base", game.AuditSwitch, other)
+	if !strings.Contains(logs.String(), "toomanyrequests") {
+		t.Errorf("the cause of a download failure is not logged:\n%s", logs.String())
+	}
+	logs.Reset()
+	s.finish("base", game.AuditSwitch, notFound)
+	if logs.Len() != 0 {
+		t.Errorf("a plain no-such-image was logged:\n%s", logs.String())
+	}
 }
 
 // Regression for #129: a switch result that names a missing image never
