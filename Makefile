@@ -9,6 +9,7 @@ PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734
 GAME_IMAGE_1_1  := factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb
 GAME_IMAGE_2_0  := factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef
 GAME_IMAGE_2_1  := factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28
+GAME_IMAGE_2_1_PREV := factoriotools/factorio:2.1.23@sha256:1e1773337f5be1d93f61d1d64757f18c19c8eb345c96acc57e0d3567a4fd4c3f
 GOVULNCHECK     := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 COVERAGE_FLOOR  := 70
 
@@ -91,11 +92,26 @@ run:
 e2e: build build-fakegame e2e-deps
 	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test
 
+# Foreman runs a world on the plain tag factoriotools/factorio:<version>, so
+# the tests do too. A tag can move or be re-pushed, so before a real-game run
+# this checks that the host's tag is the image the Makefile pins, by digest.
+define CHECK_GAME_IMAGE
+	@pinned='$(1)'; tag=$${pinned%@*}; digest=$${pinned#*@}; \
+	have=$$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$$tag" 2>/dev/null); \
+	case "$$have" in *"@$$digest"*) ;; *) \
+		echo "The image $$tag on this host is missing or is not the pinned $$digest."; \
+		echo "Fix it with: docker pull $$pinned && docker tag $${tag%:*}@$$digest $$tag"; exit 1;; esac
+endef
+
 # The controller against the real Docker daemon and the pinned game images,
 # one image at a time (they share the game port). TAG=1.1, 2.0 or 2.1 runs one.
 test-game:
 	@case "$(TAG)" in ""|1.1|2.0|2.1) ;; *) echo "TAG must be 1.1, 2.0 or 2.1."; exit 1;; esac
-	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) \
+	$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_1_1))
+	$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_0))
+	$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1))
+	$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1_PREV))
+	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) GAME_IMAGE_2_1_PREV=$(GAME_IMAGE_2_1_PREV) \
 		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -timeout 30m -v -run TestRealGame ./internal/game/
 
 # The phone scenario against the real game: Playwright in its pinned image,
@@ -107,8 +123,7 @@ test-game:
 DOCKER_SOCK ?= /var/run/docker.sock
 
 e2e-game: build e2e-deps
-	@docker image inspect $(GAME_IMAGE_2_1) >/dev/null 2>&1 || { \
-		echo "The game image $(GAME_IMAGE_2_1) is not on this host. Pull it with: docker pull $(GAME_IMAGE_2_1)"; exit 1; }
+	$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1))
 	@test -S $(DOCKER_SOCK) || { echo "$(DOCKER_SOCK) is not a Docker socket. Set DOCKER_SOCK to the host's."; exit 1; }
 	@mkdir -p $(CACHE)/home $(CACHE)/e2e-game
 	@net=foreman-e3game-net-$$$$; \
