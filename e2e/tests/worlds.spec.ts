@@ -262,7 +262,7 @@ test("a folder with no save at its top level is listed as not importable", async
   mkdirSync(join(foreman.dataDir, "import", "current", "mods"), { recursive: true });
   await page.goto("/import");
   const form = page.locator("form", { has: page.getByRole("heading", { name: "Import a folder" }) });
-  const empty = form.getByLabel(/current: no save at its top level, so it cannot be imported/);
+  const empty = form.getByLabel(/current: no save at its top level or in a saves folder, so it cannot be imported/);
   await expect(empty).toBeDisabled();
   await expect(form).toContainText("There is nothing to import");
   await expect(form).not.toContainText("0 saves");

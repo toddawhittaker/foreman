@@ -61,7 +61,7 @@ type ImportPage struct {
 	Upload   ImportForm
 }
 
-// Importable reports whether any inbox folder has a save at its top level;
+// Importable reports whether any inbox folder has a save at its top level or in saves/;
 // a folder without one cannot be imported (SPEC 5.5).
 func (p ImportPage) Importable() bool {
 	for _, f := range p.Inbox {
