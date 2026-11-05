@@ -15,12 +15,34 @@ import (
 func allSnapshotsCase() AllSnapshotsPage {
 	s := snapshotsCase().Snapshots
 	return AllSnapshotsPage{
-		UsedBytes: 2_100_000, FreeBytes: 40_000_000_000, Done: "Foreman deleted the snapshot taken 2026-11-03 14:25:00 UTC.",
-		Rows: []SnapshotRow{
-			{WorldName: longName, SnapshotUse: world.SnapshotUse{WorldID: "base", Snapshot: s[0], Frees: 1000}},
-			{WorldName: "Other", SnapshotUse: world.SnapshotUse{WorldID: "other", Snapshot: s[1]}},
+		AddBytes: 2_100_000, FreeBytes: 40_000_000_000, Done: "Foreman deleted the snapshot taken 2026-11-03 14:25:00 UTC.",
+		Groups: []SnapshotGroup{
+			{WorldID: "base", WorldName: longName, Known: true, Adds: 2_100_000, Rows: []SnapshotRow{
+				{SnapshotUse: world.SnapshotUse{WorldID: "base", Snapshot: s[0], Frees: 1000}, Ticked: true},
+				{SnapshotUse: world.SnapshotUse{WorldID: "base", Snapshot: s[1]}},
+			}},
+			{WorldID: "gone", WorldName: "Gone", Rows: []SnapshotRow{{SnapshotUse: world.SnapshotUse{WorldID: "gone", Snapshot: s[1]}}}},
 		},
 	}
+}
+
+func bulkDeleteCase() SnapshotBulkDeletePage {
+	s := snapshotsCase().Snapshots
+	return SnapshotBulkDeletePage{
+		Frees: 1000, WorldID: "base",
+		Items: []DeleteItem{
+			{WorldID: "base", WorldName: longName, Snapshot: s[0]},
+			{WorldID: "base", WorldName: "Base", Snapshot: s[1], Rollback: "2.0.72"},
+			{WorldID: "base", WorldName: "Base", Snapshot: world.Snapshot{Name: "20261103T142300Z"}, Refusal: "The snapshot is not there any more."},
+		},
+	}
+}
+
+func bulkDeletePartlyDone() SnapshotBulkDeletePage {
+	p := bulkDeleteCase()
+	p.Done, p.Error = "Foreman deleted 2 snapshots.", "1 of 3 snapshots were not deleted. Each one below says why."
+	p.Items[0].Failure = "Another operation is running on this world."
+	return p
 }
 
 // seedTwoSnapshots makes a world with two manual snapshots a minute apart.
@@ -67,16 +89,22 @@ func TestSnapshotsTabListsEveryWorld(t *testing.T) {
 		t.Fatalf("status %d", rec.Code)
 	}
 	for _, want := range []string{
-		`aria-current="page">Snapshots</a>`, "<strong>Base</strong>", "First", "Second", "by alice",
+		`aria-current="page">Snapshots</a>`, `<h3 id="world-` + id + `"><a href="` + worldPath(id) + `">Base</a></h3>`, "First", "Second", "by alice",
 		`href="` + snapshotDeletePath(id, first.Name) + `?from=all"`,
+		`href="` + restorePath(id, first.Name) + `"`,
+		`name="snap" value="` + id + "/" + first.Name + `"`,
+		"<dt>Snapshots add</dt>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	_, total, err := hn.worlds.AllSnapshots()
-	if err != nil || !strings.Contains(body, "<dd>"+world.FormatBytes(total)+"</dd>") {
-		t.Errorf("total %d not shown: %v", total, err)
+	count, err := hn.worlds.CountSnapshots()
+	if err != nil || !strings.Contains(body, "<dd>"+world.FormatBytes(count.Total())+"</dd>") {
+		t.Errorf("total %d not shown: %v", count.Total(), err)
+	}
+	if strings.Contains(body, "All snapshots use") {
+		t.Error("the old total label is back")
 	}
 	if world := hn.get(snapshotsPath(id), withCookie(c)).Body.String(); !strings.Contains(world, `href="`+snapshotDeletePath(id, first.Name)+`"`) {
 		t.Error("the world's Snapshots page has no delete link")

@@ -40,9 +40,13 @@ type SnapshotsPage struct {
 	// More is true when rows past maxListRows are hidden.
 	More bool
 	// Copied is true when any snapshot holds full copies of zips (SPEC 6.8).
-	Copied    bool
-	UsedBytes uint64
+	Copied bool
+	// AddBytes is the space this world's snapshots add: what deleting all
+	// of them would free (SPEC 6.6).
+	AddBytes  uint64
 	FreeBytes uint64
+	// Ticked names the snapshots whose boxes start ticked.
+	Ticked map[string]bool
 
 	Label      string
 	LabelError string
@@ -98,6 +102,9 @@ func (p SnapshotsPage) Path() string { return snapshotsPath(p.WorldID) }
 
 // AllPath shows every snapshot.
 func (p SnapshotsPage) AllPath() string { return snapshotsPath(p.WorldID) + "?all=1" }
+
+// BulkValue is what a snapshot's checkbox submits.
+func (p SnapshotsPage) BulkValue(snap string) string { return refValue(p.WorldID, snap) }
 
 // RestorePath is the confirmation page for one snapshot.
 func (p SnapshotsPage) RestorePath(snap string) string { return restorePath(p.WorldID, snap) }
@@ -158,19 +165,24 @@ func (s *server) notFound(w http.ResponseWriter, r *http.Request, u store.User) 
 
 // snapshotsPage fills the list, disk use and free space for a world.
 func (s *server) snapshotsPage(r *http.Request, id, name string) (SnapshotsPage, error) {
-	list, err := s.worlds.Snapshots(id)
+	count, err := s.worlds.CountWorldSnapshots(id)
 	if err != nil {
 		return SnapshotsPage{}, err
 	}
-	used, free, err := s.worlds.SnapshotDiskUse(id, list)
+	free, err := world.FreeBytes(s.worlds.Dirs().Snapshots)
 	if err != nil {
 		return SnapshotsPage{}, err
 	}
-	p := SnapshotsPage{WorldID: id, WorldName: name, UsedBytes: used, FreeBytes: free}
-	for _, sn := range list {
-		p.Copied = p.Copied || sn.Copied
+	sel := readSelection(r)
+	p := SnapshotsPage{WorldID: id, WorldName: name, AddBytes: count.Total(), FreeBytes: free, Ticked: map[string]bool{}}
+	var list []world.Snapshot
+	for _, u := range count.Snapshots() {
+		list = append(list, u.Snapshot)
+		p.Copied = p.Copied || u.Copied
+		p.Ticked[u.Name] = sel.ticks(id, u.Snapshot)
 	}
-	if len(list) > maxListRows && r.URL.Query().Get("all") == "" {
+	// A box ticked by the shortcut must be on screen to be reviewed.
+	if len(list) > maxListRows && r.URL.Query().Get("all") == "" && sel.automatic == "" {
 		list, p.More = list[:maxListRows], true
 	}
 	p.Snapshots = list
@@ -198,7 +210,7 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
 		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored. Foreman took the snapshot \"%s\" first; to undo the restore, restore that snapshot.", sn.Label), sn.Name
 	}
-	if text := deletedText(q.Get("deleted")); text != "" {
+	if text := deletedText(q["deleted"]); text != "" {
 		p.Done, p.DoneSnap = text, ""
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)

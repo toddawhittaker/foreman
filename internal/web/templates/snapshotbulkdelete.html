@@ -1,0 +1,63 @@
+{{define "title"}}{{.Page.Heading}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.BackPath}}">Back to snapshots</a></div>
+<h1>{{.Heading}}</h1>
+{{- with .Done}}
+<div class="message message--success">
+  <p><strong>Done:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- with .Error}}
+<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+  <p><strong>Error:</strong> {{.}}</p>
+</div>
+{{- end}}
+{{- range .Going}}
+{{- if .Rollback}}
+<div class="message message--warning">
+  <p><strong>Warning:</strong> Rollback uses the snapshot "{{.Snapshot.Label}}" of {{.WorldName}}. If you delete it, you can no longer roll {{.WorldName}} back to game version {{.Rollback}}.</p>
+</div>
+{{- end}}
+{{- end}}
+{{- if .Going}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" tabindex="-1">{{.Heading}}?</h2>
+  <ul>
+    {{- range .Going}}
+    <li>{{.WorldName}}: "{{.Snapshot.Label}}", taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>{{with .Failure}}. The last try failed: {{.}}{{end}}</li>
+    {{- end}}
+  </ul>
+  <p>This will:</p>
+  <ul>
+    <li>Delete each snapshot's folder under <code>snapshots</code>. You cannot undo this.</li>
+    <li>Free {{bytes .Frees}} of disk space. A file that any other snapshot or a world also holds stays on disk and frees nothing.</li>
+    <li>Leave the worlds and every snapshot you did not tick as they are.</li>
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    {{- range .Going}}
+    <input type="hidden" name="snap" value="{{$.Page.Value .}}">
+    {{- end}}
+    {{- with .WorldID}}
+    <input type="hidden" name="world" value="{{.}}">
+    {{- end}}
+    <div class="actions">
+      <button type="submit" class="button button--danger">{{.Heading}}</button>
+      <a href="{{.BackPath}}">Cancel, keep the snapshots</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- with .Staying}}
+<section class="panel" aria-labelledby="staying-heading">
+  <h2 id="staying-heading">These stay</h2>
+  <ul>
+    {{- range .}}
+    <li>{{.WorldName}}: {{if .Snapshot.Label}}"{{.Snapshot.Label}}", taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>{{else}}<code>{{.Snapshot.Name}}</code>{{end}}. {{.Refusal}}{{with .Failure}} {{.}}{{end}}</li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+{{- end}}
+{{- end}}
