@@ -5,7 +5,8 @@ What each epic delivered and the gaps it left. The epic's last task
 here are known and accepted; each is either fixed by a later epic or
 waits for a decision.
 
-Epics 1 to 5 and the Gate A fixes are done. Gate A (SPEC 19.1) is next.
+Epics 1 to 5 and the Gate A fixes are done, and Gate A (SPEC 19.1)
+passed on 2026-11-05.
 
 ## Epic 1: Foundation
 
@@ -712,3 +713,55 @@ A fix batch from the architect's Gate A review. It serves SPEC 5.1, 5.5,
   checked.
 - VPN sidecars (SPEC 4.13, ADR 0006) are not built; they are planned for
   Epic 8.
+
+## Gate A
+
+Gate A (SPEC 19.1) passed on 2026-11-05. Todd ran it on a trial stack on
+his development machine, built from `fe4b814`.
+
+### What was checked
+
+- **Behind Caddy and Authentik with trusted-header sign-in.** Caddy
+  removes any `X-Authentik-*` headers the client sends, asks an Authentik
+  proxy outpost (forward auth), and Foreman trusts the headers only from
+  Caddy's fixed address. Todd signed in through Authentik. With the
+  required group set to one he is not in, Foreman refused him. Requests
+  with no sign-in, and requests with forged headers, were both sent to
+  Authentik.
+- **The hand-renamed folders imported as worlds.** All four imported
+  (`current` in the server layout, `saves-2026` with 45 mods,
+  `saves-10-2026`, `dans-achievement-saves`).
+- **Each on the version it was made with.** `current` ran on 2.1.22,
+  `dans-achievement-saves` on 2.0.76 and `saves-10-2026` on 2.1.9 (then
+  updated to 2.1.24, which also worked). `saves-2026` was updated from
+  2.0.66 to 2.0.77 before its first run, because the Steam client offers
+  no 2.0.66; Todd accepted this, since the limit was the client and the
+  other three worlds showed per-version running on both 2.0 and 2.1.
+- **Switching with no save lost.** Todd switched between worlds several
+  times, with the game running and stopped, from a desktop browser, and
+  joined the worlds from a game client. Foreman opened and worked on his
+  phone once the phone's browser was allowed to reach the local network
+  (an Android permission, not a Foreman issue). From the phone he then
+  started `saves-2026` and, with it running, switched back to `current`,
+  which closed the round trip begun from the desktop (`current` to
+  `dans-achievement-saves` to `saves-10-2026` to `saves-2026`).
+- Foreman downloaded a game image through the socket proxy (`POST`
+  allowed), and live page updates worked through Caddy.
+
+### Not done
+
+- OFSM is not retired. Todd keeps it, unused, until Foreman is deployed
+  on his real host; the development machine is not Foreman's permanent
+  home.
+
+### Found during the gate
+
+Filed as issues, not fixed: #124 (bulk import with checkboxes), #125 (say
+a game image is missing before Start), #126 (clearer game network
+refusal), #127 (list already imported folders separately), #128 (switch
+in one confirmation, including the download), #129 (a switch refused for
+a missing image offers the wrong world's download, so it cannot
+succeed), #130 (download the image at import), #131 (warn about mod
+versions players cannot get from the portal), #132 (public page for
+players to download the running world's mods; needs a vision change).
+#125, #128, #129 and #130 are to be built as one batch.
