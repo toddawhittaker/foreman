@@ -19,6 +19,7 @@
 {{- if .Unreachable}}
 <p>Docker Hub cannot be reached, so Foreman cannot check for new Factorio releases. You can still update by typing a version on the Update page.</p>
 {{- else if or .Stable .Experimental}}
+<div aria-live="polite">
 <p>A newer Factorio release is out:{{with .Stable}} stable <code>{{.}}</code>{{end}}{{if and .Stable .Experimental}},{{end}}{{with .Experimental}} experimental <code>{{.}}</code>{{end}}. This world uses <code>{{.Current}}</code>.</p>
 <div class="actions">
   {{- with .ChangelogURL}}
@@ -27,9 +28,9 @@
   {{- if .UpdatePath}}
   <a href="{{.UpdatePath}}" class="button">Update</a>
   {{- else}}
-  <button type="button" class="button" disabled aria-describedby="release-no-image">Update</button>
   <p id="release-no-image">No image yet. Docker Hub has no image for this release, so it cannot be used until one is published.</p>
   {{- end}}
+</div>
 </div>
 {{- else}}
 <p>This world is on the newest Factorio release Foreman knows of.</p>

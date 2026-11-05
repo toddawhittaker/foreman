@@ -228,7 +228,7 @@ func TestVersionFragments(t *testing.T) {
 			ChangelogURL: "https://wiki.factorio.com/Version_history/2.1.0"}, "release-notice",
 			[]string{"stable <code>2.0.77</code>", "experimental <code>2.1.24</code>", `href="https://wiki.factorio.com/Version_history/2.1.0"`, `href="/worlds/base/update"`}},
 		{"notice no image", ReleaseNotice{Current: "2.0.77", Experimental: "2.1.25"}, "release-notice",
-			[]string{"No image yet", "disabled"}},
+			[]string{"No image yet"}},
 		{"notice unreachable", ReleaseNotice{Current: "2.0.77", Unreachable: true}, "release-notice",
 			[]string{"Docker Hub cannot be reached"}},
 		{"notice newest", ReleaseNotice{Current: "2.1.24"}, "release-notice", []string{"newest Factorio release"}},

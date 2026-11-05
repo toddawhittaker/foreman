@@ -6,7 +6,7 @@
 <h1>Roll back {{.World.Name}}</h1>
 {{template "summary" .Problems}}
 {{- with .Error}}
-<div class="message message--error" id="action-error">
+<div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
   <p><strong>Error:</strong> {{.}}</p>
 </div>
 {{- end}}

@@ -28,7 +28,7 @@
   <h2 id="version-heading">Game version</h2>
   <p>This world runs Factorio {{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}of an unknown version{{end}}.</p>
   {{- with .ReleasesPath}}
-  <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML" aria-live="polite">
+  <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML">
     <p>Checking for a newer Factorio release.</p>
   </div>
   {{- end}}

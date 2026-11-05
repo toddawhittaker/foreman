@@ -461,6 +461,11 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 		a.Path, a.Verb, a.Switch = switchPath(p.Result.Target), "Switch anyway", true
 		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
 	case game.AuditUpdate:
+		// The refusal came from the start after the version was set, so
+		// going ahead is a plain start anyway (SPEC 10.3, 7.4).
+		if p.World.GameVersion == p.Result.Version {
+			break
+		}
 		a.Path, a.Verb, a.Update, a.Version = updatePath(p.World.ID), "Update anyway", true, p.Result.Version
 	}
 	a.Seen = game.AnywayFingerprint(check, a.Running)
