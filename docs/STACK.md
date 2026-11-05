@@ -228,7 +228,9 @@ Cheap to change.
   large and each start takes tens of seconds.
 - **In CI**: parallel jobs that together are `make ci`, with `make
   verify` split into `vet`, `lint` and `test` so its slow parts do not
-  wait on each other, since they grow with the code. Go modules and build output, the lint and npm
+  wait on each other, since they grow with the code. The end-to-end tests
+  run as four shards (`make e2e SHARD=1/4` and so on; an empty `SHARD`
+  runs them all). Go modules and build output, the lint and npm
   caches, and the image's build layers are cached between runs. Each job
   gets a fresh runner, so nothing needs cleaning up afterwards.
 

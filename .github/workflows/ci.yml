@@ -53,9 +53,17 @@ jobs:
 
       - run: ${{ matrix.run }}
 
+  # The end-to-end tests, in four slices that run side by side. The check
+  # names (e2e (1/4) and so on) are not required by the ruleset; the `ci`
+  # job below waits for every slice.
   e2e:
+    name: e2e (${{ matrix.shard }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/4', '2/4', '3/4', '4/4']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -76,8 +84,11 @@ jobs:
           key: e2e-${{ hashFiles('Makefile', 'e2e/package-lock.json') }}
 
       # The type check is part of `make verify`; it runs here because it
-      # needs the same Playwright image and packages.
-      - run: make typecheck e2e
+      # needs the same Playwright image and packages. One slice is enough.
+      - if: matrix.shard == '1/4'
+        run: make typecheck
+
+      - run: make e2e SHARD=${{ matrix.shard }}
 
   image:
     runs-on: ubuntu-24.04
