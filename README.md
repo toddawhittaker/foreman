@@ -183,29 +183,12 @@ from a game network's address range (SPEC 12.5, 12.6).
    again on the new world, with that world's game version, if it was
    running. To go back, switch to the first world the same way.
 
-### Optionally, a VPN sidecar (coming in Epic 5)
+### VPN sidecars (not built yet)
 
-Nothing above needs a VPN. Optionally, if you want players to join through
-Tailscale, Netbird or another VPN that runs as a sidecar container, you
-will be able to name that container in `FOREMAN_GAME_NETWORK_CONTAINER`.
-The game then runs inside the sidecar's network, and RCON stays reachable
-only from the game network (SPEC 4.13, ADR 0006). VPN players join through
-the VPN. LAN players can join at the same time through the game port, but
-Docker lets only the sidecar publish it, so you add the port to the
-sidecar's own definition, and the sidecar joins the game network:
-
-```yaml
-  vpn:
-    # your VPN sidecar's image and settings
-    ports:
-      - "34197:34197/udp"   # LAN players; Foreman cannot publish this for you
-    networks: [game]
-```
-
-Without that port line the game is VPN-only, and the Server page warns
-that LAN players cannot reach it. If you restart or recreate the sidecar
-while the game runs, restart the game from Foreman afterwards, because the
-game may lose its network until then.
+Running the game inside a VPN sidecar's network (Tailscale, Netbird and
+similar, SPEC 4.13, ADR 0006) is planned for Epic 8 and is not built.
+Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set, so
+leave it unset.
 
 ## Documentation
 
