@@ -291,17 +291,12 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 		}
 		defer func() { _ = dst.Close() }()
 		for _, f := range saves {
-			if err := copyFile(src, f.path, dst, path.Join(SavesDir, path.Base(f.path)), FileMode); err != nil {
+			if err := copyFile(src, f.path, dst, path.Join(SavesDir, path.Base(f.path))); err != nil {
 				return err
 			}
 		}
-		for _, f := range mods {
-			if err := copyFile(src, f.path, dst, f.path, FileMode); err != nil {
-				return err
-			}
-		}
-		for _, f := range config {
-			if err := copyFile(src, f.path, dst, f.path, configFileMode); err != nil {
+		for _, f := range slices.Concat(mods, config) {
+			if err := copyFile(src, f.path, dst, f.path); err != nil {
 				return err
 			}
 		}
@@ -347,10 +342,11 @@ func (m *Manager) checkNew(ctx context.Context, name, gameVersion string) error 
 	return err
 }
 
-// copyFile copies one regular file from src to dst through a temp file with
-// the given mode, keeping its modification time so "last played" stays
-// true. Parent folders are made as needed.
-func copyFile(src *os.Root, from string, dst *os.Root, to string, mode fs.FileMode) error {
+// copyFile copies one regular file from src to dst through a temp file,
+// keeping its modification time so "last played" stays true. The copy's
+// mode comes from where it lands (copyMode). Parent folders are made as
+// needed.
+func copyFile(src *os.Root, from string, dst *os.Root, to string) error {
 	if err := mkdirAll(dst, path.Dir(to)); err != nil {
 		return err
 	}
@@ -359,7 +355,7 @@ func copyFile(src *os.Root, from string, dst *os.Root, to string, mode fs.FileMo
 		return fmt.Errorf("copy %s: %w", from, err)
 	}
 	defer func() { _ = in.Close() }()
-	out, temp, err := createTempMode(dst, path.Dir(to), mode)
+	out, temp, err := createTempMode(dst, path.Dir(to), copyMode(to))
 	if err != nil {
 		return err
 	}

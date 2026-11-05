@@ -216,3 +216,33 @@ func TestRecoverNarrowsOldRCONPasswords(t *testing.T) {
 		t.Errorf("the symlink was followed: target mode %v", got)
 	}
 }
+
+// SPEC 14.8: every file under config/ stays 0640 through a snapshot and a
+// restore, since server-settings.json holds the game password. Other files
+// keep FileMode.
+func TestConfigFilesKeep0640ThroughSnapshotAndRestore(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	if _, err := m.RCONPassword(id); err != nil {
+		t.Fatal(err)
+	}
+	settings := filepath.Join(dir, ConfigDir, ServerSettingsFile)
+	write(t, settings, `{"game_password":"x"}`, t0)
+	if err := os.Chmod(settings, FileMode); err != nil { //nolint:gosec // a wide file, as the game may leave it
+		t.Fatal(err)
+	}
+	snap, err := m.TakeSnapshot(id, "", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Restore(context.Background(), id, snap.Name, "bob"); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{ServerSettingsFile, "rconpw"} {
+		for _, root := range []string{filepath.Join(m.dirs.Snapshots, id, snap.Name), dir} {
+			if got := mode(t, filepath.Join(root, ConfigDir, f)); got != 0o640 {
+				t.Errorf("%s has mode %v in %s, want 0640", f, got, root)
+			}
+		}
+	}
+}

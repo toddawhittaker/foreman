@@ -86,7 +86,7 @@ func TestCopyFileRefusesAPipeAndALink(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"pipe", "link"} {
-		err := withTimeout(t, func() error { return copyFile(root, name, dst, "out/"+name, FileMode) })
+		err := withTimeout(t, func() error { return copyFile(root, name, dst, "out/"+name) })
 		if err == nil {
 			t.Errorf("copyFile accepted %s", name)
 		}
