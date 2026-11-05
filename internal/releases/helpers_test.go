@@ -22,7 +22,7 @@ const bodyMarker = "UPSTREAM-BODY-MARKER-9f3a"
 
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("testdata", name))
+	b, err := os.ReadFile(filepath.Join("testdata", name)) //nolint:gosec // a fixed test fixture
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func newHub(t *testing.T) *hubFake {
 		}
 		h.serve(w, r.URL.Query().Get("name"), page)
 	}))
-	t.Cleanup(h.Server.Close)
+	t.Cleanup(h.Close)
 	return h
 }
 
@@ -103,7 +103,7 @@ func (h *hubFake) URL() string { return h.Server.URL + hubPath }
 
 func (h *hubFake) serveFixture(w http.ResponseWriter, name string, page int) {
 	file := "hub_" + strings.ReplaceAll(strings.TrimSuffix(name, "."), ".", "_") + "_" + strconv.Itoa(page) + ".json"
-	b, err := os.ReadFile(filepath.Join("testdata", file))
+	b, err := os.ReadFile(filepath.Join("testdata", file)) //nolint:gosec // a fixed test fixture
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"next":null,"results":[]}`))
@@ -111,7 +111,7 @@ func (h *hubFake) serveFixture(w http.ResponseWriter, name string, page int) {
 	}
 	b = bytes.ReplaceAll(b, []byte("@NEXT@"), []byte(h.next(name, page)))
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(b)
+	_, _ = w.Write(b) //nolint:gosec // a fixed test fixture, not user input
 }
 
 func (h *hubFake) requests() []hubRequest {
@@ -159,7 +159,7 @@ func newStub(t *testing.T, status int, body []byte) *lineStub {
 		w.WriteHeader(status)
 		_, _ = w.Write(body)
 	}))
-	t.Cleanup(s.Server.Close)
+	t.Cleanup(s.Close)
 	return s
 }
 
@@ -180,7 +180,7 @@ func redirectTo(t *testing.T, target string) *httptest.Server {
 }
 
 // testClient builds a client over a plain http.Client with a short timeout.
-// The client must refuse redirects itself, so no CheckRedirect is set here.
+// Redirect refusal is New's job and is tested through productionClient.
 func testClient(hubURL, latestURL string, clock *fakeClock) *Client {
 	if clock == nil {
 		clock = newFakeClock()
@@ -200,4 +200,12 @@ func pad(prefix string, size int) []byte {
 	}
 	b.WriteString(`"}`)
 	return b.Bytes()
+}
+
+// productionClient is what New builds, pointed at test servers, so the
+// redirect policy under test is the shipped one.
+func productionClient(hubURL, latestURL string) *Client {
+	c := New()
+	c.hubURL, c.latestURL = hubURL, latestURL
+	return c
 }

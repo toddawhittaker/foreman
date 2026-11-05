@@ -169,7 +169,7 @@ func TestVersionsStopsAtTenPagesPerLine(t *testing.T) {
 	hub := newHub(t)
 	hub.serve = func(w http.ResponseWriter, name string, page int) {
 		// Every page claims there is another one.
-		fmt.Fprintf(w, `{"next":%q,"results":[{"name":"2.1.%d"}]}`, hub.next(name, page), page)
+		_, _ = fmt.Fprintf(w, `{"next":%q,"results":[{"name":"2.1.%d"}]}`, hub.next(name, page), page)
 	}
 	c := testClient(hub.URL(), "http://unused.invalid/", nil)
 
@@ -202,11 +202,11 @@ func TestVersionsStopsWhenNextIsNull(t *testing.T) {
 	}
 }
 
-// 14.10: redirects are refused, even from a plain http.Client.
+// 14.10: redirects are refused by the client New builds.
 func TestVersionsRefusesRedirects(t *testing.T) {
 	target := newStub(t, http.StatusOK, fixture(t, "hub_2_1_2.json"))
 	redir := redirectTo(t, target.URL+hubPath)
-	c := testClient(redir.URL+hubPath, "http://unused.invalid/", nil)
+	c := productionClient(redir.URL+hubPath, "http://unused.invalid/")
 
 	_, err := c.Versions(context.Background())
 	if !errors.Is(err, ErrUnreachable) {
@@ -356,7 +356,7 @@ func TestVersionsTimeoutIsErrUnreachable(t *testing.T) {
 func TestVersionsUnreachableHostIsErrUnreachable(t *testing.T) {
 	hub := newHub(t)
 	url := hub.URL()
-	hub.Server.Close()
+	hub.Close()
 	c := testClient(url, "http://unused.invalid/", nil)
 	_, err := c.Versions(context.Background())
 	if !errors.Is(err, ErrUnreachable) {
@@ -424,5 +424,22 @@ func TestVersionsConcurrentCallsMakeOneFetch(t *testing.T) {
 		if got := hub.count(name); got != want {
 			t.Errorf("requests for name=%s: got %d, want %d", name, got, want)
 		}
+	}
+}
+
+// 14.10 and the proxy setting: New's client honours the environment proxy
+// and refuses to follow any redirect.
+func TestNewBuildsAClientWithProxyAndNoRedirects(t *testing.T) {
+	c := New()
+	tr, ok := c.hc.Transport.(*http.Transport)
+	if !ok || tr.Proxy == nil {
+		t.Fatal("New's transport does not use a proxy function")
+	}
+	if c.hc.CheckRedirect == nil {
+		t.Fatal("New's client has no redirect policy")
+	}
+	req, _ := http.NewRequest(http.MethodGet, "http://example.invalid/", nil)
+	if err := c.hc.CheckRedirect(req, []*http.Request{req}); err == nil {
+		t.Fatal("New's client follows redirects")
 	}
 }

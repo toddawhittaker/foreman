@@ -64,11 +64,11 @@ func TestLatestNeverReturnsAHostileVersion(t *testing.T) {
 	}
 }
 
-// 14.10: redirects are refused, even from a plain http.Client.
+// 14.10: redirects are refused by the client New builds.
 func TestLatestRefusesRedirects(t *testing.T) {
 	target := newStub(t, http.StatusOK, fixture(t, "latest.json"))
 	redir := redirectTo(t, target.URL)
-	c := testClient("http://unused.invalid/", redir.URL, nil)
+	c := productionClient("http://unused.invalid/", redir.URL)
 
 	_, err := c.Latest(context.Background())
 	if !errors.Is(err, ErrUnreachable) {
