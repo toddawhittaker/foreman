@@ -216,7 +216,7 @@ func (m *Manager) checkName(ctx context.Context, id, name string) (string, error
 // made becomes active, so there is always a world to start. It returns the
 // new world's id.
 func (m *Manager) Create(ctx context.Context, name, gameVersion string, spaceAge bool) (string, error) {
-	return m.create(ctx, name, gameVersion, spaceAge, nil)
+	return m.create(ctx, name, gameVersion, spaceAge, nil, nil)
 }
 
 // create builds a whole new world, world.json included, in one staging
@@ -225,7 +225,7 @@ func (m *Manager) Create(ctx context.Context, name, gameVersion string, spaceAge
 // to the staging folder; it gets the worlds folder and the staging
 // folder's name in it, and runs before createMu is taken, so a long copy
 // does not hold up other worlds.
-func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge bool, fill func(worlds *os.Root, dir string) error) (string, error) {
+func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge bool, from *ImportedFrom, fill func(worlds *os.Root, dir string) error) (string, error) {
 	worlds, err := openFolder(m.dirs.Worlds)
 	if err != nil {
 		return "", err
@@ -267,6 +267,7 @@ func (m *Manager) create(ctx context.Context, name, gameVersion string, spaceAge
 		GameVersion:   gameVersion,
 		SpaceAge:      spaceAge,
 		CreatedAt:     m.now().UTC(),
+		ImportedFrom:  from,
 	}); err != nil {
 		return "", err
 	}

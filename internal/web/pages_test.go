@@ -140,14 +140,18 @@ func TestLoadChoiceError(t *testing.T) {
 	}
 }
 
-// DESIGN 7.2: an error on the folder choice marks its radios invalid.
-func TestImportFolderErrorMarksRadios(t *testing.T) {
+// DESIGN 7.2: an error on the folder choice marks its checkboxes invalid
+// and points each at the error.
+func TestImportFolderErrorMarksCheckboxes(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 400, user: "todd", page: ImportPage{
 		Inbox:  []world.InboxFolder{{Name: "a", Saves: 1}, {Name: "b", Saves: 1}},
 		Folder: ImportForm{IDPrefix: "folder", SourceError: "Choose a folder."}, Upload: ImportForm{IDPrefix: "upload"}}})
-	if strings.Count(body, `name="folder" value="a" aria-invalid="true"`)+strings.Count(body, `name="folder" value="b" aria-invalid="true"`) != 2 {
-		t.Error("folder radios not marked invalid")
+	for _, n := range []string{"a", "b"} {
+		if !strings.Contains(body, `type="checkbox" id="folder-source-`) ||
+			!strings.Contains(body, `name="folder" value="`+n+`" data-name="`+n+`" aria-invalid="true" aria-describedby="folder-source-error"`) {
+			t.Errorf("folder %s not marked invalid:\n%s", n, body)
+		}
 	}
 }
 

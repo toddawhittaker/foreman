@@ -705,6 +705,20 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	return o.end(err)
 }
 
+// HasImage reports whether Docker has the game image for a version, so the
+// Import page can offer to download it (SPEC 3.7, 5.5).
+func (c *Controller) HasImage(ctx context.Context, version string) (bool, error) {
+	ref, err := c.imageFor(version)
+	if err != nil {
+		return false, err
+	}
+	_, err = c.docker.InspectImage(ctx, ref)
+	if errors.Is(err, docker.ErrNotFound) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 // PullImage downloads the image for the world's game version, as an
 // action of its own (SPEC 3.7). It is audited, and shown as a step.
 func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
