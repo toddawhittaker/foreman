@@ -54,6 +54,16 @@ func updateWorld(t *testing.T, m *Manager, version, saveBody string) string {
 	return id
 }
 
+// replaceSave writes a new file and renames it over the old, as the game
+// does; writing in place would change the snapshot's hard link (SPEC 6.7).
+func replaceSave(t *testing.T, p, body string) {
+	t.Helper()
+	writeFile(t, p+".tmp", body)
+	if err := os.Rename(p+".tmp", p); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func worldVersion(t *testing.T, m *Manager, id string) string {
 	t.Helper()
 	root, err := m.OpenWorld(id)
@@ -233,9 +243,9 @@ func TestRollbackStepsBackOneUpdateAtATime(t *testing.T) {
 	m := tickingManager(t)
 	id := updateWorld(t, m, "2.0.77", "save at 2.0.77")
 	first := update(t, m, id, "2.1.23")
-	writeFile(t, filepath.Join(m.dirs.Worlds, id, SavesDir, "base.zip"), "save at 2.1.23")
+	replaceSave(t, filepath.Join(m.dirs.Worlds, id, SavesDir, "base.zip"), "save at 2.1.23")
 	second := update(t, m, id, "2.1.24")
-	writeFile(t, filepath.Join(m.dirs.Worlds, id, SavesDir, "base.zip"), "save at 2.1.24")
+	replaceSave(t, filepath.Join(m.dirs.Worlds, id, SavesDir, "base.zip"), "save at 2.1.24")
 	// Other snapshots after the updates do not change the target.
 	if _, err := m.TakeSnapshot(id, "mine", "alice"); err != nil {
 		t.Fatal(err)
