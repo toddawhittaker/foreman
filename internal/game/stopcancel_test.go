@@ -299,7 +299,7 @@ func TestCancelSwitch(t *testing.T) {
 	u := r.record(a, true)
 
 	done := r.inCountdown(a, func() error {
-		return r.c.Switch(context.Background(), a, b, admin, StopOptions{Countdown: MaxStopCountdown}, StartOptions{})
+		return r.c.Switch(context.Background(), a, b, admin, StopOptions{Countdown: MaxStopCountdown}, StartOptions{}, true)
 	})
 	// Both worlds show the switch; the countdown belongs to the game being stopped.
 	if err := r.c.CancelStop(context.Background(), a, admin); err != nil {
