@@ -395,11 +395,21 @@ border in the normal look, so `@media (forced-colors: active)` gives it a
 </body>
 ```
 
-- The header is a flex row with `flex-wrap: wrap` and `gap`. At 320 px
-  the product name sits on the first line, and the nav and the sign-out
-  form wrap below it. There is no hamburger menu: Epics 1 to 3 have at
-  most four nav items, and a menu would hide them behind an extra tap.
-  Revisit only above six items.
+- The header is a flex row with `flex-wrap: wrap` and `gap`. Below 40rem
+  it is two rows, about 112 px tall at 320 px: the product name and the
+  sign-out form share the first row, and the nav fills the second
+  (`order: 1; flex-basis: 100%`), its tabs on one line. The sign-out form
+  takes the width the name leaves, and "Signed in as …" is `--text-sm`,
+  aligned to the end, and wraps inside it, so Sign out never gets a row
+  of its own. Below 40rem the tabs are `--text-sm`, padded by `--space-1`
+  and share the row out between them (`flex: 1 1 auto`); that keeps four
+  tabs on one line at 320 px even beside a 15 px scrollbar. From 40rem
+  the header is one row: name, tabs at `--text-md` padded by `--space-3`,
+  then the sign-out form at the end. The focus order is the source order
+  (name, tabs, Sign out) at every width; on a phone that means Sign out,
+  drawn on the first row, is reached after the tabs. There is no
+  hamburger menu: Epics 1 to 3 have at most four nav items, and a menu
+  would hide them behind an extra tap. Revisit only above six items.
 - The header is a frame (section 4, "Bevels"): background `frame`,
   raised bevel, 1px `frame-dark` border. The product name is `heading`,
   weight 650; nav links and the user name are `text` and `text-muted`.
@@ -477,10 +487,43 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
    step list, message or log.
 5. Button rows wrap (`flex-wrap: wrap`). Each button may grow to the full
    width when its row wraps, so a phone shows them stacked, primary first.
+   A button in a form of its own (`.actions > form`) takes part in the row
+   too: the form is `display: contents`, so "Take snapshot" stacks at the
+   same width as the links beside it.
 6. Tables follow 8.3. The log and console wrap their lines (8.5); they
    scroll vertically inside their own box, never horizontally.
 7. Nothing is fixed or sticky to the viewport, so the on-screen keyboard
    never covers a field.
+
+### What a phone shows first
+
+The vision's success test runs from a phone, so the most common task on
+each page is on its first screen, at 320 by 640 px, without scrolling.
+The order is the source order at every width, so reading order, focus
+order and the picture agree.
+
+- **Server page.** After the "Active world" link: "Start and stop" (the
+  controls, and while an operation runs its step list and "Cancel
+  stop"), then "Status", "Players online" and "Switch to another
+  world". The state is still one glance away, and the buttons on offer
+  already say whether the game runs.
+- **Status facts** (7.5) sit two to a row at 320 px: the grid is
+  `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`.
+- **Force stop** is a plain link standing alone (rule 3), after the
+  buttons in the control row, never a button face. It leads to its own
+  confirmation (7.4), and drawn as a link it weighs less than Stop and
+  Restart, so the drastic choice is not the one the eye lands on.
+- **Console page.** The "Console" section, with the command field, comes
+  before "Game log". The history box under the field is only as tall as
+  what it holds (`block-size: auto`), up to `min(40vh, 20rem)`, so the
+  newest reply sits close under the field. The game log keeps its fixed
+  height (8.5), so new lines never move the page.
+- **World list** (8.2). Each row is a grid, `minmax(0, 1fr) auto`: the
+  name heading in the first column and, when the world can be switched
+  to, its "Switch" button beside it in the second (`.facts ~ .actions`
+  moves to row 1). Everything else spans both columns, and the facts sit
+  two to a row, so a world takes about 170 px at 320 px instead of 290.
+  A long name wraps in its column; Switch keeps its width.
 
 ### Motion
 
@@ -812,10 +855,10 @@ steps, each with a word:
 
 ```html
 <ol class="steps">
-  <li><span class="step-state step-state--done">Done</span> Snapshot taken</li>
-  <li aria-current="step"><span class="step-state step-state--progress">In progress</span> Waiting for the game to reach InGame
+  <li><span class="step-state step-state--done">Done</span> <span class="step-name">Snapshot taken</span></li>
+  <li aria-current="step"><span class="step-state step-state--progress">In progress</span> <span class="step-name">Waiting for the game to reach InGame</span>
     <progress aria-label="Waiting for the game"></progress></li>
-  <li><span class="step-state">Waiting</span> Check RCON answers</li>
+  <li><span class="step-state">Waiting</span> <span class="step-name">Check RCON answers</span></li>
 </ol>
 ```
 
@@ -829,15 +872,26 @@ in-progress step may carry a native `<progress>` with no value
 that says what to do next, as SPEC 7.9 requires for switching.
 
 Classes: `steps` (the `ol`; no numbers, one row per step), `step-state`
-(the word, a fixed 6rem column so the step text lines up) and its
-modifiers `step-state--done`, `step-state--progress` and
-`step-state--failed`. "Waiting" and "Skipped" take no modifier. The
-current step has `aria-current="step"` and is bold. In a panel narrower
-than 24rem the word takes its own line, so every step reads the same way.
+(the word) and its modifiers `step-state--done`, `step-state--progress`
+and `step-state--failed`, and `step-name` (the step and any time left,
+"Warn players: 40 seconds left"). "Waiting" and "Skipped" take no
+modifier. The current step has `aria-current="step"` and is bold.
+
+Each `li` is a grid, `6rem minmax(0, 1fr)`: the word in the first column
+and the step beside it in the second, at every width, so a step is one
+row even at 320 px and an 11-step switch fits in about 300 px rather
+than twice that. A long step name wraps inside its own column, under
+itself, never under the word. The `<progress>` sits in the second
+column, under the step it measures. The list sits under the operation's
+heading in the "Start and stop" section, which leads the Server page
+(section 6, "What a phone shows first"), so the step in progress and
+"Cancel stop" are on a phone's first screen. Steps that are done stay in
+the list: it is the record of what happened (SPEC 7.10), and it is
+redrawn live, so a collapsed part would close again on every update.
 A failed step's message goes inside that `li` as
 `<div class="message message--error">` (or `message--warning` for a refusal
-with a choice); it takes its own line (`flex: 1 1 100%`) at any width, up
-to the message's reading width. Text inside a message fills that one width,
+with a choice); it spans both columns (`grid-column: 1 / -1`) at any
+width, up to the message's reading width. Text inside a message fills that one width,
 so a paragraph and a nested list item wrap alike. The words carry the state, so forced
 colours needs no rule.
 
