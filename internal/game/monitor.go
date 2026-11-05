@@ -66,12 +66,14 @@ func (c *Controller) tick(ctx context.Context) {
 		return
 	}
 	c.mu.Lock()
+	before := c.dockerErr
 	c.dockerErr = err
 	if err == nil {
 		c.listed = true
 	}
 	c.mu.Unlock()
 	if err != nil {
+		c.logDockerFault(before, err)
 		for _, w := range c.allRuns() {
 			c.publish(w)
 		}
@@ -116,6 +118,7 @@ func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docke
 		c.observe(w, nil)
 	case err != nil:
 		w.mu.Lock()
+		c.logFault("cannot read the game container", w.inspectErr, err, "world", w.id)
 		w.inspectErr = err
 		c.changedLocked(w, true)
 		w.mu.Unlock()

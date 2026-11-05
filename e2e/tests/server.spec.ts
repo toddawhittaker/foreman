@@ -95,7 +95,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("link", { name: "Restart server" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
     await checkPage(page);
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restart server" }).click();
     await expect(page).toHaveURL("/");
     // A fresh container for every start, running again.
@@ -138,11 +138,13 @@ test.describe("with the fake game", () => {
     await expect(crash).toBeVisible();
     await expect(page.locator("main pre")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
-    await expect(page.locator(".message--note")).toContainText("crashed again and again the last time it ran");
+    // One box says what happened and what to do; no second note repeats it (SPEC 17.9).
+    await expect(crash).toContainText("then try to start it again");
+    await expect(page.locator(".message--note")).toHaveCount(0);
     const retry = page.getByRole("button", { name: "Try to start again" });
     await expect(retry).toBeVisible();
     // The button is not flush under the message (DESIGN 6, rule 4).
-    const noteRect = (await page.locator(".message--note").boundingBox())!;
+    const noteRect = (await crash.boundingBox())!;
     const buttonRect = (await retry.boundingBox())!;
     expect(buttonRect.y - (noteRect.y + noteRect.height)).toBeGreaterThanOrEqual(8);
     await checkPage(page);
@@ -187,14 +189,16 @@ test.describe("with the fake game", () => {
     // One reading width for all the text in the box.
     const widths = await refusal.locator("p, li").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
-    // Steps that will never run read Skipped, not Waiting; the check reads
-    // Refused, styled as a warning like the box.
+    // Nothing was tried, so the list is titled "Start refused" and leaves out
+    // the steps that never ran; the check reads Refused, styled as a warning
+    // like the box.
+    await expect(page.getByRole("heading", { name: "Start refused" })).toBeVisible();
     const steps = page.locator(".steps li");
     const check = steps.filter({ hasText: "Check the world" }).locator(".step-state");
     await expect(check).toHaveText("Refused");
     await expect(check).toHaveClass(/step-state--warning/);
-    await expect(steps.filter({ hasText: "Check RCON answers" })).toContainText("Skipped");
-    await expect(page.locator(".steps")).not.toContainText("Waiting");
+    await expect(page.locator(".steps > li")).toHaveCount(1);
+    await expect(page.locator(".steps")).not.toContainText("Skipped");
     await checkPage(page);
 
     await refusal.getByRole("button", { name: "Start anyway" }).click();
@@ -310,15 +314,19 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
   });
 
-  test("a missing image is downloaded as its own action", async ({ page, foreman, fakeGame }) => {
+  // SPEC 3.7: the page says the image is missing before any Start, names it,
+  // and offers the download in place of Start; then the world is ready.
+  test("a missing image is said before Start and downloaded as its own action", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { image: false });
-    await page.getByRole("button", { name: "Start server" }).click();
-    await expect(page.locator("main").getByText(/game image for this world's Factorio version is not downloaded/)).toBeVisible(live);
+    const control = page.getByRole("region", { name: "Start and stop" });
+    await expect(control).toContainText(`Base runs on the game image ${image21}, which is not on this host, so it cannot start yet.`);
+    await expect(control.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await checkPage(page);
-    await page.getByRole("button", { name: "Download game image" }).click();
-    await expect(page.getByRole("button", { name: "Download game image" })).toHaveCount(0, live);
+    await control.getByRole("button", { name: "Download game image" }).click();
+    await expect(control).toContainText(`Downloaded ${image21}; Base is ready to start.`, live);
+    await expect(control.getByRole("button", { name: "Download game image" })).toHaveCount(0);
     await expect.poll(async () => (await fakeGame!.state()).calls.some((c) => c.startsWith("POST ") && c.includes("/images/create")), live).toBe(true);
-    await expect(page.getByRole("heading", { name: "Downloading the game image" })).toHaveCount(0, live);
+    await checkPage(page);
     await start(page);
   });
 
@@ -335,7 +343,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("Countdown in seconds")).toBeVisible();
     await expect(page.getByRole("region", { name: /Restore the snapshot/ })).toContainText("Start the game again");
     await checkPage(page);
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restore snapshot" }).click();
     await expect(page).toHaveURL("/");
     await expect(page.locator(".message--success")).toContainText("The world is restored", live);

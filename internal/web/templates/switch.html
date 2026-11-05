@@ -13,29 +13,75 @@
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">Switch from {{.From.Name}} to {{.To.Name}}?</h2>
+  {{- if .Changed}}
+  <div class="message message--warning" id="action-changed" tabindex="-1" autofocus>
+    <p><strong>Warning:</strong> {{.ChangedLead}}</p>
+  </div>
+  {{- end}}
+  {{- if .HasProblems}}
+  <div class="message {{if .CanAnyway}}message--warning{{else}}message--error{{end}}">
+    <p><strong>{{if .CanAnyway}}Warning:{{else}}Error:{{end}}</strong> {{.Lead}}</p>
+    <ul>
+      {{- range .CheckProblems}}
+      <li>{{.}}</li>
+      {{- end}}
+    </ul>
+    {{- with .Advice}}
+    <p>{{.}}</p>
+    {{- end}}
+  </div>
+  {{- end}}
   <p>This will:</p>
   <ul>
-    {{- if .Running}}
+    {{- if .Plan.Download}}
+    <li>Download the game image <code>{{.Plan.Image}}</code>{{with .ImageSize}}, about {{bytes .}}{{end}}, because this host does not have it. If the download fails, nothing else happens{{if .Plan.Running}} and {{.From.Name}} keeps running{{end}}.</li>
+    {{- end}}
+    {{- if .Plan.Running}}
     <li>Warn players online with the countdown below, save the game and stop {{.From.Name}}.</li>
-    {{- else}}
-    <li>Leave the server stopped, because {{.From.Name}} is not running now.</li>
     {{- end}}
     <li>Take a snapshot of {{.From.Name}} and of {{.To.Name}}, both labelled "Before switch". If a snapshot fails, nothing else happens.</li>
     <li>Make {{.To.Name}} the active world.</li>
-    {{- if .Running}}
+    {{- if .HasProblems}}
+    {{- if .CanAnyway}}
+    <li>With "Switch and start anyway": take one more snapshot of {{.To.Name}}, labelled "Before start anyway", and start the game on {{.To.Name}}. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
+    {{- end}}
+    <li>With "Switch, leave stopped": leave the server stopped. The next Start shows these problems again, so you can fix them first.</li>
+    {{- else if .Plan.Running}}
     <li>Start the game on {{.To.Name}}.</li>
+    {{- else}}
+    <li>Start the game on {{.To.Name}} if the box below is ticked; otherwise leave the server stopped.</li>
     {{- end}}
     <li>To undo, switch back to {{.From.Name}}, or restore a snapshot from the Snapshots page.</li>
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     <input type="hidden" name="from" value="{{.From.ID}}">
-    {{- if .Running}}
+    <input type="hidden" name="running" value="{{if .Plan.Running}}1{{else}}0{{end}}">
+    {{- if .Plan.Running}}
     {{template "countdown" .CountdownForm}}
+    {{- end}}
+    {{- if .HasProblems}}
+    {{- if .CanAnyway}}
+    <input type="hidden" name="seen" value="{{.Seen}}">
+    {{- end}}
+    <div class="actions">
+      <button type="submit" name="choice" value="stopped" class="button">Switch, leave stopped</button>
+      {{- if .CanAnyway}}
+      <button type="submit" name="choice" value="anyway" class="button button--danger">Switch and start anyway</button>
+      {{- end}}
+      <a href="{{.ActivePath}}">Cancel, keep {{.From.Name}} active</a>
+    </div>
+    {{- else}}
+    {{- if not .Plan.Running}}
+    <label class="check">
+      <input type="checkbox" name="start" value="1"{{if .StartAfter}} checked{{end}}>
+      Start {{.To.Name}} after switching
+    </label>
     {{- end}}
     <div class="actions">
       <button type="submit" class="button button--danger">Switch to {{.To.Name}}</button>
       <a href="{{.ActivePath}}">Cancel, keep {{.From.Name}} active</a>
     </div>
+    {{- end}}
   </form>
 </section>
 {{- end}}

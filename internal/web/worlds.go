@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -47,6 +49,14 @@ type WorldPage struct {
 	CanSwitch  bool
 	SwitchNote string
 	SwitchBusy bool
+	// MissingImage is the game image this host lacks for the world, asked
+	// of the local Docker only when it is offered for a switch (SPEC 3.7).
+	MissingImage string
+	// Busy says what runs on this world now, so both worlds of a switch
+	// show it (SPEC 7.9); it is "" when nothing does.
+	Busy string
+	// Done is the message after a rename.
+	Done string
 	// Rollback, when set, offers going back to the version before the last
 	// update (SPEC 10.4); ReleasesPath loads the release notice (SPEC 10.2).
 	Rollback     *RollbackOffer
@@ -108,11 +118,18 @@ func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
 func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
 
 // DeleteRefusal says why the world cannot be deleted, or is "" when it can.
-func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World) }
+func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World, p.Busy) }
+
+// DeleteWaitsOnServer reports whether the delete refusal is a running
+// operation, which the Server page follows (SPEC 17.9).
+func (p WorldPage) DeleteWaitsOnServer() bool {
+	return p.Busy != "" && !p.World.Active && !p.World.Newer && !p.World.Unreadable
+}
 
 // deleteRefusal says, in words, why a world cannot be deleted, so the page
 // can show that instead of a button that would be refused (DESIGN 7.1).
-func deleteRefusal(w world.Summary) string {
+// busy is what runs on the world now, or "".
+func deleteRefusal(w world.Summary, busy string) string {
 	switch {
 	case w.Active:
 		return "This is the active world. Switch to another world before deleting it."
@@ -120,8 +137,43 @@ func deleteRefusal(w world.Summary) string {
 		return "This world is from a newer Foreman, so this version will not delete it."
 	case w.Unreadable:
 		return "Because its world.json cannot be read, Foreman will not delete this world."
+	case busy != "":
+		return busy + " This world cannot be deleted until it ends."
 	}
 	return ""
+}
+
+// busyText says what the running operation is doing to a world, in
+// sentences that end with a full stop, or returns "" when none runs. name
+// words a world's id for a sentence.
+func busyText(op *game.Operation, name func(id string) string) string {
+	if op == nil || op.Done {
+		return ""
+	}
+	sw := op.Switch
+	if sw == nil {
+		what := actionNames[op.Action]
+		if what == "" {
+			what = "action"
+		}
+		return "An operation is running on this world: " + what + "."
+	}
+	text := "Switching from " + name(sw.From) + " to " + name(sw.To) + "."
+	for _, st := range op.Steps {
+		if st.State == game.StepProgress {
+			return text + " Now: " + st.Name + "."
+		}
+	}
+	return text
+}
+
+// worldBusy says what runs on the world now, or "". Without server control
+// nothing runs. Only a switch reads world names, and only its two.
+func (s *server) worldBusy(id string) string {
+	if s.game == nil {
+		return ""
+	}
+	return busyText(s.game.Status(id).Operation, s.worldName)
 }
 
 // FolderPath and UploadPath are where the two forms post.
@@ -154,6 +206,7 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	p := WorldsPage{Worlds: list}
+	s.markSwitching(&p)
 	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
 		p.Deleted, p.DeletedKept, err = s.deletedWorld(id, list)
 		if err != nil {
@@ -162,6 +215,35 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 		}
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// markSwitching fills in what the list shows about switching: a Switch
+// button on each world that can be switched to, and what runs on the worlds
+// an operation is busy on. While one runs on the active world or the row's
+// world, the button is left off and the page says why, as switchBusy does
+// for one world.
+func (s *server) markSwitching(p *WorldsPage) {
+	if s.game == nil {
+		return
+	}
+	p.Busy = map[string]string{}
+	p.Switchable = map[string]bool{}
+	activeBusy := false
+	for _, w := range p.Worlds {
+		if text := s.worldBusy(w.ID); text != "" {
+			p.Busy[w.ID] = text
+			activeBusy = activeBusy || w.Active
+		}
+	}
+	for _, w := range p.Worlds {
+		switch {
+		case w.Active || w.Unreadable || w.Newer:
+		case activeBusy || p.Busy[w.ID] != "":
+			p.SwitchWait = true
+		default:
+			p.Switchable[w.ID] = true
+		}
+	}
 }
 
 // deletedWorld names the world a delete just removed, for the message on
@@ -202,7 +284,19 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, s.worldPage(r.Context(), sum, sum.Name, ""))
+	p := s.worldPage(r.Context(), sum, sum.Name, "")
+	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
+	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// renameDone is the message after a rename. The link carries the new name,
+// and the message shows only while that is still the world's name, so a
+// crafted link cannot put words on the page.
+func renameDone(renamed, current string) string {
+	if renamed == "" || renamed != current {
+		return ""
+	}
+	return "Renamed to " + current + "."
 }
 
 // worldPage builds a world's page, with its Switch panel's state. A world
@@ -210,6 +304,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // why above.
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
+	p.Busy = s.worldBusy(sum.ID)
 	if s.game != nil && !sum.Unreadable && !sum.Newer {
 		p.ReleasesPath = releasesPath(sum.ID)
 		p.Rollback = s.rollbackOffer(sum.ID)
@@ -219,9 +314,15 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameErr
 	case sum.Active:
 		p.SwitchNote = "This is the active world."
 	case s.switchBusy(ctx, sum.ID):
-		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
+		// When the operation is on this world, Busy already says so.
+		if p.Busy == "" {
+			p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
+		}
 	default:
 		p.CanSwitch = true
+		if ref, present, err := s.game.ImageFor(ctx, sum.ID); err == nil && !present {
+			p.MissingImage = ref
+		}
 	}
 	return p
 }
@@ -239,7 +340,7 @@ func (s *server) handleRename(w http.ResponseWriter, r *http.Request, u store.Us
 	name := r.PostFormValue("name")
 	err := s.worlds.Rename(r.Context(), sum.ID, name)
 	if err == nil {
-		http.Redirect(w, r, worldPath(sum.ID), http.StatusSeeOther)
+		http.Redirect(w, r, worldPath(sum.ID)+"?renamed="+url.QueryEscape(strings.TrimSpace(name)), http.StatusSeeOther)
 		return
 	}
 	status, msg, ok := s.refusal(w, r, u, "rename world", err)
@@ -440,6 +541,8 @@ type DeletePage struct {
 	NameError   string
 	// Error says why the delete was refused, in plain words.
 	Error string
+	// Busy says what runs on the world now; it makes the page a refusal.
+	Busy string
 }
 
 // DeletedPage lists deleted worlds, each with the snapshots that remain
@@ -461,7 +564,7 @@ func (p DeletePage) hasErrors() bool { return p.NameError != "" || p.Error != ""
 func (p DeletePage) Problems() []Problem { return problems(Problem{"confirm-name", p.NameError}) }
 
 // Refusal says why the world cannot be deleted, or is "" when it can.
-func (p DeletePage) Refusal() string { return deleteRefusal(p.World) }
+func (p DeletePage) Refusal() string { return deleteRefusal(p.World, p.Busy) }
 
 // Path is where the confirmation posts.
 func (p DeletePage) Path() string { return deletePath(p.World.ID) }
@@ -486,7 +589,7 @@ func (s *server) handleDeleteForm(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, DeletePage{World: sum, FinalSnapshot: true})
+	s.page(w, r, http.StatusOK, u.Username, DeletePage{World: sum, FinalSnapshot: true, Busy: s.worldBusy(sum.ID)})
 }
 
 // handleDelete deletes a world after its final snapshot (SPEC 5.10). A
@@ -503,6 +606,7 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 		World:         sum,
 		FinalSnapshot: r.PostFormValue("final_snapshot") == "on",
 		ConfirmName:   r.PostFormValue("confirm_name"),
+		Busy:          s.worldBusy(sum.ID),
 	}
 	err := s.worlds.Delete(r.Context(), sum.ID, p.ConfirmName, p.FinalSnapshot, u.Username)
 	if err == nil {

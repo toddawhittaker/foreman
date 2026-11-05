@@ -39,6 +39,8 @@ type fakeReleases struct {
 	versionsErr, latestErr error
 	versionCalls           int
 	latestCalls            int
+	size                   int64
+	sizeCalls              int
 }
 
 func (f *fakeReleases) Versions(context.Context) ([]string, error) {
@@ -59,6 +61,24 @@ func (f *fakeReleases) Latest(context.Context) (releases.Latest, error) {
 		return releases.Latest{}, f.latestErr
 	}
 	return f.latest, nil
+}
+
+// ImageSize answers size, or fails when none is set, and counts its calls
+// apart from the others.
+func (f *fakeReleases) ImageSize(context.Context, string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sizeCalls++
+	if f.size == 0 {
+		return 0, errHub
+	}
+	return f.size, nil
+}
+
+func (f *fakeReleases) sizeAsked() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.sizeCalls
 }
 
 func (f *fakeReleases) calls() int {
@@ -233,7 +253,7 @@ func TestUpdateRoutesRefuseBadRequests(t *testing.T) {
 		h.Set(k, v)
 		return h
 	}
-	form := url.Values{"game_version": {newVersion}, "no_countdown": {"on"}}
+	form := url.Values{"game_version": {newVersion}, "countdown": {"0"}}
 
 	routes := []struct {
 		method, path string

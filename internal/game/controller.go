@@ -66,6 +66,7 @@ const (
 	AuditStop          = "stop"
 	AuditRestart       = "restart"
 	AuditForceStop     = "force-stop"
+	AuditStopCancel    = "stop-cancel"
 	AuditImageDownload = "image-download"
 	AuditConsole       = "console"
 	AuditSwitch        = "switch"
@@ -89,9 +90,32 @@ var (
 	ErrSaveTimeout     = errors.New("the game did not finish saving in time, so nothing was stopped or snapshotted. Try again, or use Force stop")
 	ErrStartFailed     = errors.New("the game did not start")
 	ErrCancelled       = errors.New("a forced stop interrupted this")
+	ErrStopCancelled   = errors.New("the stop was cancelled, so nothing was stopped or saved and the game runs on")
+	ErrNoCountdown     = errors.New("there is no stop countdown to cancel. It may have just ended")
 	ErrDownloading     = errors.New("the game image is already being downloaded")
 	ErrForeign         = errors.New("a Docker container with this world's container name exists, but Foreman did not create it. Rename or remove that container, then try again")
 )
+
+// ImageDownloadError is a failed download of a game image. Err is the
+// cause, for the log; the page words the failure itself (SPEC 17.9).
+type ImageDownloadError struct {
+	Image string
+	// NotFound is true when Docker answered that it has no such image.
+	NotFound bool
+	Err      error
+}
+
+func (e *ImageDownloadError) Error() string { return "download " + e.Image + ": " + e.Err.Error() }
+func (e *ImageDownloadError) Unwrap() error { return e.Err }
+
+// pullError words a failed pull of ref. A Docker that answers nothing keeps
+// its own plain sentence.
+func pullError(ref string, err error) error {
+	if _, ok := errors.AsType[*docker.UnreachableError](err); ok {
+		return err
+	}
+	return &ImageDownloadError{Image: ref, NotFound: errors.Is(err, docker.ErrNotFound), Err: err}
+}
 
 // PrecheckError is a start refused by the pre-start check (SPEC 7.4). The
 // caller may offer "Start anyway" when Check.CanStartAnyway() (SPEC 7.4).
@@ -302,8 +326,12 @@ type worldRun struct {
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
 	opRun    *opRun        // the operation running now; nil when none
-	download *Operation
-	notice   *SwitchNotice // an unfinished switch found at startup; cleared by the next operation
+	// countdownCancel ends the stop countdown running now; nil when there
+	// is none. It is set and cleared under mu, so a cancel is either in
+	// time or refused.
+	countdownCancel context.CancelCauseFunc
+	download        *Operation
+	notice          *SwitchNotice // an unfinished switch found at startup; cleared by the next operation
 
 	attachFailed string // a container whose world's secrets could not be read, warned about once
 	attachErr    error  // why that container could not be taken on
@@ -389,6 +417,9 @@ const (
 type Step struct {
 	Name  string
 	State StepState
+	// Until is when a countdown ends, set on the warn step once players are
+	// being warned (SPEC 7.6); zero otherwise.
+	Until time.Time
 }
 
 // Operation is a start, stop, restart, restore, switch or image download
@@ -400,6 +431,23 @@ type Operation struct {
 	Error  string // why it failed; empty when it worked or is running
 	// Switch is set on a switch, which both worlds show (SPEC 7.9).
 	Switch *SwitchInfo
+	// Players are who was online when the stop's countdown began; empty
+	// when there was no countdown (SPEC 7.6).
+	Players []Player
+}
+
+// CountdownEnds returns when the stop's countdown ends while players are
+// being warned, and false at any other time (SPEC 7.6).
+func (o *Operation) CountdownEnds() (time.Time, bool) {
+	if o == nil {
+		return time.Time{}, false
+	}
+	for _, s := range o.Steps {
+		if s.Name == StepWarn && s.State == StepProgress && !s.Until.IsZero() {
+			return s.Until, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func (o *Operation) clone() *Operation {
@@ -408,6 +456,7 @@ func (o *Operation) clone() *Operation {
 	}
 	out := *o
 	out.Steps = append([]Step(nil), o.Steps...)
+	out.Players = append([]Player(nil), o.Players...)
 	if o.Switch != nil {
 		sw := *o.Switch
 		out.Switch = &sw
@@ -651,10 +700,10 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 	listed, dockerErr := c.dockerState()
 	if w.opDone == nil {
 		if dockerErr != nil {
-			return StateUnknown, "Foreman cannot reach Docker: " + dockerErr.Error()
+			return StateUnknown, dockerFault("Foreman cannot reach Docker. The details are in Foreman's log.", dockerErr)
 		}
 		if w.inspectErr != nil {
-			return StateUnknown, "Foreman cannot read the game container from Docker: " + w.inspectErr.Error()
+			return StateUnknown, dockerFault("Foreman cannot read the game container from Docker. The details are in Foreman's log.", w.inspectErr)
 		}
 		if w.attachErr != nil && w.containerID == "" {
 			return StateUnknown, "Foreman " + w.attachErr.Error()
@@ -694,6 +743,34 @@ func (c *Controller) stateLocked(w *worldRun) (State, string) {
 		return StateCrashed, ""
 	}
 	return StateStopped, ""
+}
+
+// dockerFault is the reason shown for a failed Docker call. A Docker that
+// answers nothing already has a plain sentence of its own; any other fault
+// shows plain, never the raw error.
+func dockerFault(plain string, err error) string {
+	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
+		return ue.Error()
+	}
+	return plain
+}
+
+// logDockerFault logs a failed listing of containers with the raw error,
+// which the page never shows. It logs once while the same fault lasts.
+func (c *Controller) logDockerFault(before, err error) {
+	c.logFault("cannot reach Docker", before, err)
+}
+
+// logFault logs a Docker fault's raw error once while the same fault lasts.
+func (c *Controller) logFault(msg string, before, err error, args ...any) {
+	if before != nil && before.Error() == err.Error() {
+		return
+	}
+	raw := err
+	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
+		raw = ue.Err
+	}
+	c.log.Warn(msg, append(args, "error", raw)...)
 }
 
 // changedLocked wakes anything waiting on the game's state and, when

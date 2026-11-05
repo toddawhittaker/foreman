@@ -395,11 +395,21 @@ border in the normal look, so `@media (forced-colors: active)` gives it a
 </body>
 ```
 
-- The header is a flex row with `flex-wrap: wrap` and `gap`. At 320 px
-  the product name sits on the first line, and the nav and the sign-out
-  form wrap below it. There is no hamburger menu: Epics 1 to 3 have at
-  most four nav items, and a menu would hide them behind an extra tap.
-  Revisit only above six items.
+- The header is a flex row with `flex-wrap: wrap` and `gap`. Below 40rem
+  it is two rows, about 112 px tall at 320 px: the product name and the
+  sign-out form share the first row, and the nav fills the second
+  (`order: 1; flex-basis: 100%`), its tabs on one line. The sign-out form
+  takes the width the name leaves, and "Signed in as …" is `--text-sm`,
+  aligned to the end, and wraps inside it, so Sign out never gets a row
+  of its own. Below 40rem the tabs are `--text-sm`, padded by `--space-1`
+  and share the row out between them (`flex: 1 1 auto`); that keeps four
+  tabs on one line at 320 px even beside a 15 px scrollbar. From 40rem
+  the header is one row: name, tabs at `--text-md` padded by `--space-3`,
+  then the sign-out form at the end. The focus order is the source order
+  (name, tabs, Sign out) at every width; on a phone that means Sign out,
+  drawn on the first row, is reached after the tabs. There is no
+  hamburger menu: Epics 1 to 3 have at most four nav items, and a menu
+  would hide them behind an extra tap. Revisit only above six items.
 - The header is a frame (section 4, "Bevels"): background `frame`,
   raised bevel, 1px `frame-dark` border. The product name is `heading`,
   weight 650; nav links and the user name are `text` and `text-muted`.
@@ -477,10 +487,43 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
    step list, message or log.
 5. Button rows wrap (`flex-wrap: wrap`). Each button may grow to the full
    width when its row wraps, so a phone shows them stacked, primary first.
+   A button in a form of its own (`.actions > form`) takes part in the row
+   too: the form is `display: contents`, so "Take snapshot" stacks at the
+   same width as the links beside it.
 6. Tables follow 8.3. The log and console wrap their lines (8.5); they
    scroll vertically inside their own box, never horizontally.
 7. Nothing is fixed or sticky to the viewport, so the on-screen keyboard
    never covers a field.
+
+### What a phone shows first
+
+The vision's success test runs from a phone, so the most common task on
+each page is on its first screen, at 320 by 640 px, without scrolling.
+The order is the source order at every width, so reading order, focus
+order and the picture agree.
+
+- **Server page.** After the "Active world" link: "Start and stop" (the
+  controls, and while an operation runs its step list and "Cancel
+  stop"), then "Status", "Players online" and "Switch to another
+  world". The state is still one glance away, and the buttons on offer
+  already say whether the game runs.
+- **Status facts** (7.5) sit two to a row at 320 px: the grid is
+  `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`.
+- **Force stop** is a plain link standing alone (rule 3), after the
+  buttons in the control row, never a button face. It leads to its own
+  confirmation (7.4), and drawn as a link it weighs less than Stop and
+  Restart, so the drastic choice is not the one the eye lands on.
+- **Console page.** The "Console" section, with the command field, comes
+  before "Game log". The history box under the field is only as tall as
+  what it holds (`block-size: auto`), up to `min(40vh, 20rem)`, so the
+  newest reply sits close under the field. The game log keeps its fixed
+  height (8.5), so new lines never move the page.
+- **World list** (8.2). Each row is a grid, `minmax(0, 1fr) auto`: the
+  name heading in the first column and, when the world can be switched
+  to, its "Switch" button beside it in the second (`.facts ~ .actions`
+  moves to row 1). Everything else spans both columns, and the facts sit
+  two to a row, so a world takes about 170 px at 320 px instead of 290.
+  A long name wraps in its column; Switch keeps its width.
 
 ### Motion
 
@@ -522,6 +565,8 @@ nothing animates.
   because a phone has no hover. The secondary button's hover is a
   lighter grey, so orange keeps meaning only "selected".
 
+- **Force stop** on the Server page is not a button at all: it is a plain
+  link after the buttons (section 6, "What a phone shows first").
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **secondary**, not danger. Red is kept for
   the moment the thing actually happens, so it still means something.
@@ -723,16 +768,22 @@ Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
 delete), switching worlds (7.9), and in later epics destructive player
-actions (8.2). Start, restart and switch anyway have no page of their
+actions (8.2). Start and restart anyway have no page of their
 own: the Warning that reports the refusal on the Server page is the
 confirmation (SPEC 7.4). It lists what the game drops, then the steps,
 the snapshots and the undo as above, and its danger button posts the
-action at once. Restart and a switch of a running game use the default
-60-second countdown there. The switch box carries the stop countdown fields only when the game is running. A graceful stop or restart does not need a danger
+action at once. Restart uses the default 60-second countdown there. A
+switch has its own confirmation page (SPEC 7.9, 17.8) that shows the new
+world's problems before anything runs, and offers "Switch, leave stopped"
+and, when every problem allows it, a danger button "Switch and start
+anyway". The page carries the countdown field only when the game is
+running. The Server page's own switch box appears only when problems arise
+after that page. A graceful stop or restart does not need a danger
 confirmation, because nothing is lost. Its button opens a short form at its
 own URL (`GET /worlds/{id}/stop` or `/restart`) that asks for the
 countdown (SPEC 7.6): a text field for seconds, 0 to 600, filled in with
-60, and a checkbox for no countdown. The form is a plain `panel` with a
+60, where 0 means no warning (there is no checkbox), and a line naming who
+is online. The form is a plain `panel` with a
 primary button ("Stop server", "Restart server"), not the danger box, and
 its Cancel link says the server keeps running. The result is shown on the
 Server page.
@@ -796,8 +847,8 @@ holds only the word. A template always writes the modifier, even for
   </dl>
   ```
 
-  The `dl` is a grid, `repeat(auto-fit, minmax(10rem, 1fr))`, so it is
-  one column at 320 px and several on a wide screen. `dt` is `--text-sm`
+  The `dl` is a grid, `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`, so
+  it is two to a row at 320 px and several on a wide screen. `dt` is `--text-sm`
   `text-muted`; `dd` is `--text-md` `text`.
 - When the state changes live (SPEC 16.3), the server sends the new
   badge, and a short sentence goes to `#announcer` ("Server is now
@@ -812,10 +863,10 @@ steps, each with a word:
 
 ```html
 <ol class="steps">
-  <li><span class="step-state step-state--done">Done</span> Snapshot taken</li>
-  <li aria-current="step"><span class="step-state step-state--progress">In progress</span> Waiting for the game to reach InGame
+  <li><span class="step-state step-state--done">Done</span> <span class="step-name">Snapshot taken</span></li>
+  <li aria-current="step"><span class="step-state step-state--progress">In progress</span> <span class="step-name">Waiting for the game to reach InGame</span>
     <progress aria-label="Waiting for the game"></progress></li>
-  <li><span class="step-state">Waiting</span> Check RCON answers</li>
+  <li><span class="step-state">Waiting</span> <span class="step-name">Check RCON answers</span></li>
 </ol>
 ```
 
@@ -829,15 +880,26 @@ in-progress step may carry a native `<progress>` with no value
 that says what to do next, as SPEC 7.9 requires for switching.
 
 Classes: `steps` (the `ol`; no numbers, one row per step), `step-state`
-(the word, a fixed 6rem column so the step text lines up) and its
-modifiers `step-state--done`, `step-state--progress` and
-`step-state--failed`. "Waiting" and "Skipped" take no modifier. The
-current step has `aria-current="step"` and is bold. In a panel narrower
-than 24rem the word takes its own line, so every step reads the same way.
+(the word) and its modifiers `step-state--done`, `step-state--progress`
+and `step-state--failed`, and `step-name` (the step and any time left,
+"Warn players: 40 seconds left"). "Waiting" and "Skipped" take no
+modifier. The current step has `aria-current="step"` and is bold.
+
+Each `li` is a grid, `6rem minmax(0, 1fr)`: the word in the first column
+and the step beside it in the second, at every width, so a step is one
+row even at 320 px and an 11-step switch fits in about 300 px rather
+than twice that. A long step name wraps inside its own column, under
+itself, never under the word. The `<progress>` sits in the second
+column, under the step it measures. The list sits under the operation's
+heading in the "Start and stop" section, which leads the Server page
+(section 6, "What a phone shows first"), so the step in progress and
+"Cancel stop" are on a phone's first screen. Steps that are done stay in
+the list: it is the record of what happened (SPEC 7.10), and it is
+redrawn live, so a collapsed part would close again on every update.
 A failed step's message goes inside that `li` as
 `<div class="message message--error">` (or `message--warning` for a refusal
-with a choice); it takes its own line (`flex: 1 1 100%`) at any width, up
-to the message's reading width. Text inside a message fills that one width,
+with a choice); it spans both columns (`grid-column: 1 / -1`) at any
+width, up to the message's reading width. Text inside a message fills that one width,
 so a paragraph and a nested list item wrap alike. The words carry the state, so forced
 colours needs no rule.
 
@@ -864,7 +926,10 @@ name (a link to the world's page), then a `dl.facts` with game version,
 Space Age, last played and disk use. The active world carries the word
 "Active" in a badge drawn as selected (text `on-highlight`, background
 `highlight`, the same shape as the state badge in 7.5 but with no drawn
-square) beside its name, and is listed first. The word carries the
+square) beside its name, and is listed first. A world that can be switched
+to has a "Switch" button beside its name (its accessible name is "Switch to"
+and the world's name); section 6 ("What a phone shows first") gives the
+row's grid. The word carries the
 meaning; the orange matches the selected tab. A list with a `dl` per item
 reflows at any width, where a six-column table would not fit 320 px. The
 list sits in one inner panel and its rows are separated by a 1px `rule`
@@ -911,7 +976,8 @@ No infinite scroll.
 </section>
 ```
 
-Console, above its history:
+The console section comes before the game log on the page (section 6).
+Inside it, the command field comes above its history:
 
 ```html
 <section aria-labelledby="console-heading">
@@ -964,8 +1030,10 @@ Classes and their contract:
   `white-space: pre-wrap` on the `pre`, `overflow-wrap: anywhere`, so lines
   wrap and never scroll sideways. (The `ol` of the console history keeps
   normal white space, or the markup's line breaks would show as blank lines.)
-- The box has a fixed `block-size: min(60vh, 32rem)` and scrolls
-  vertically. It is focusable so keyboard users can scroll it.
+- The game log's box has a fixed `block-size: min(60vh, 32rem)` and scrolls
+  vertically. The console's history box is only as tall as what it holds,
+  up to `min(40vh, 20rem)`, then scrolls (section 6). Both are focusable so
+  keyboard users can scroll them.
 - It is not a live region. A game log can print many lines a second; a
   screen reader announcing each would make the page unusable. Crashes
   and state changes are announced through the badge (7.5) instead.

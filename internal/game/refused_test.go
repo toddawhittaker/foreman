@@ -16,7 +16,7 @@ func TestSwitchCheckFaultIsNotARefusal(t *testing.T) {
 	v.start(a)
 	before := len(v.audit.list())
 	v.game.Daemon().SetFailure(500, "daemon down")
-	err := v.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{})
+	err := v.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}, true)
 	v.game.Daemon().SetFailure(0, "")
 	if err == nil || IsRefusal(err) {
 		t.Fatalf("got %v, want a Docker fault", err)

@@ -34,8 +34,12 @@ func (r *rig) active() string {
 	return id
 }
 
+// keepRunState asks a switch to leave the game as it finds it: the new
+// world starts only when the old one runs.
+func keepRunState(c *Controller, from string) bool { return IsRunning(c.Status(from).State) }
+
 func (r *rig) switchWorlds(from, to string) error {
-	return r.c.Switch(context.Background(), from, to, admin, StopOptions{}, StartOptions{})
+	return r.c.Switch(context.Background(), from, to, admin, StopOptions{}, StartOptions{}, keepRunState(r.c, from))
 }
 
 // noRecord fails when a switch record is left behind (SPEC 7.10).
@@ -152,12 +156,19 @@ func TestSwitchStoppedWorld(t *testing.T) {
 		t.Error("a game container was created for a stopped switch")
 	}
 	op := r.c.Status(b).Operation
-	for _, name := range append(slices.Clone(stopSteps), launchSteps...) {
+	for _, name := range stopSteps {
 		if got := stepState(op, name); got != StepSkipped {
 			t.Errorf("step %q is %s, want skipped", name, got)
 		}
 	}
-	for _, name := range []string{StepSnapshotBoth, StepCheck, StepPresent} {
+	// Nothing starts, so the switch neither checks nor starts the new world
+	// and lists neither (SPEC 7.9).
+	for _, name := range append([]string{StepCheck, StepDownload}, launchSteps...) {
+		if got := stepState(op, name); got != "" {
+			t.Errorf("step %q is listed as %s", name, got)
+		}
+	}
+	for _, name := range []string{StepSnapshotBoth, StepPresent} {
 		if got := stepState(op, name); got != StepDone {
 			t.Errorf("step %q is %s, want done", name, got)
 		}
@@ -187,10 +198,6 @@ func TestSwitchRefusals(t *testing.T) {
 		{"same world", func(_ *rig, a, _ string) (string, string) { return a, a }, ErrSwitchSame},
 		{"from not active", func(_ *rig, a, b string) (string, string) { return b, a }, ErrSwitchNotActive},
 		{"to missing", func(_ *rig, a, _ string) (string, string) { return a, "gamma" }, ErrSwitchNoTarget},
-		{"image missing", func(r *rig, a, b string) (string, string) {
-			r.game.SetImage(image21, false)
-			return a, b
-		}, ErrImageMissing},
 		{"to already running", func(r *rig, a, b string) (string, string) {
 			r.startAsActive(b)
 			return a, b
@@ -352,7 +359,7 @@ func TestSwitchBusyOnBothAndForcedStop(t *testing.T) {
 			}
 			done := make(chan error, 1)
 			go func() {
-				done <- r.c.Switch(context.Background(), a, b, admin, StopOptions{Countdown: MaxStopCountdown}, StartOptions{})
+				done <- r.c.Switch(context.Background(), a, b, admin, StopOptions{Countdown: MaxStopCountdown}, StartOptions{}, true)
 			}()
 			eventually(t, func() bool {
 				op := r.c.Status(a).Operation

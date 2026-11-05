@@ -100,6 +100,24 @@
     if (held !== e.target) return;
     held = null;
     if (e.target.contains(document.activeElement)) return;
-    e.target.closest("section")?.querySelector("h2[tabindex='-1']")?.focus();
+    // A region outside any section, such as the switch panel, hands focus to
+    // the first heading that takes it: the start and stop controls.
+    (e.target.closest("section") ?? document).querySelector("h2[tabindex='-1']")?.focus();
+  });
+
+  // After the admin's own cancel stop or snapshot, the Done message takes
+  // focus once, as soon as it is there: at once when the page already shows
+  // it, or when a live update brings it. The server marks such a load with
+  // data-focus-result on the control region (SPEC 17.9).
+  function focusDone() {
+    const region = document.querySelector("[data-focus-result]");
+    const done = region?.querySelector("#done-message");
+    if (!done) return;
+    region.removeAttribute("data-focus-result");
+    done.focus();
+  }
+  focusDone();
+  document.addEventListener("htmx:sseMessage", (e) => {
+    if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
 })();

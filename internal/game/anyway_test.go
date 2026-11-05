@@ -72,13 +72,13 @@ func TestAnywayFingerprint(t *testing.T) {
 		a, b := r.twoWorlds()
 		r.start(a)
 		broken(r, b)
-		c := refused(r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}))
-		err := r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{Anyway: true, Seen: AnywayFingerprint(c, false)})
+		c := refused(r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}, true))
+		err := r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{Anyway: true, Seen: AnywayFingerprint(c, false)}, true)
 		wantChanged(t, err)
 		if r.active() != a || r.container(a).Status != "running" {
 			t.Fatal("a stale switch anyway changed something")
 		}
-		err = r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{Anyway: true, Seen: AnywayFingerprint(c, true)})
+		err = r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{Anyway: true, Seen: AnywayFingerprint(c, true)}, true)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -28,6 +28,8 @@ const (
 	cacheLifetime = 5 * time.Minute
 	maxTagPage    = 2 << 20
 	maxLatest     = 64 << 10
+	maxTag        = 64 << 10
+	sizeTimeout   = 3 * time.Second
 	pageSize      = 100
 	maxPages      = 10
 )
@@ -59,6 +61,9 @@ type Client struct {
 
 	versions entry[[]string]
 	latest   entry[Latest]
+
+	sizesMu sync.Mutex
+	sizes   map[string]int64 // a tag's size never changes, so it is kept
 }
 
 // New returns a client for the real Docker Hub and factorio.com.
@@ -89,6 +94,40 @@ func (c *Client) Versions(ctx context.Context) ([]string, error) {
 // Latest returns the current stable and experimental releases.
 func (c *Client) Latest(ctx context.Context) (Latest, error) {
 	return cached(ctx, c, &c.latest, c.fetchLatest, func(l Latest) Latest { return l })
+}
+
+// ImageSize returns the size in bytes Docker Hub gives for the game image of
+// a version, so a page can say how big a download is (SPEC 3.7). It asks
+// with a short time limit, because the size is only a nicety on the page.
+func (c *Client) ImageSize(ctx context.Context, version string) (int64, error) {
+	if !validVersion(version) {
+		return 0, fmt.Errorf("%w: not a supported version", ErrUnreachable)
+	}
+	c.sizesMu.Lock()
+	n, ok := c.sizes[version]
+	c.sizesMu.Unlock()
+	if ok {
+		return n, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, sizeTimeout)
+	defer cancel()
+	body, err := c.get(ctx, c.hubURL+"/"+version, maxTag)
+	if err != nil {
+		return 0, err
+	}
+	var doc struct {
+		FullSize int64 `json:"full_size"`
+	}
+	if err := json.Unmarshal(body, &doc); err != nil || doc.FullSize <= 0 {
+		return 0, fmt.Errorf("%w: the tag has no usable size", ErrUnreachable)
+	}
+	c.sizesMu.Lock()
+	if c.sizes == nil {
+		c.sizes = map[string]int64{}
+	}
+	c.sizes[version] = doc.FullSize
+	c.sizesMu.Unlock()
+	return doc.FullSize, nil
 }
 
 // cached serves e while it is fresh and otherwise fetches under e's lock.

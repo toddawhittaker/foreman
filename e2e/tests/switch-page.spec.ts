@@ -1,31 +1,13 @@
-import { test, expect, checkPage, expectFollowed, createAdmin, seedWorld, image21, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, checkPage, expectFollowed, createAdmin, seedWorld, seedSecond, image21, type Foreman, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
-import { copyFileSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 
 // Switching worlds from the web pages (SPEC 7.9, 7.10, DESIGN 7.4, 7.6)
 // against the fake game.
 
 const live = { timeout: 20_000 };
-const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
 
 const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
 const active = (page: Page, name: string) => page.getByRole("link", { name: `Active world: ${name}` });
-
-// A second world, written as a folder (SPEC 5.1). seedWorld made "base".
-function seedSecond(f: Foreman, opts: { fixture?: string; spaceAge?: boolean } = {}) {
-  const { fixture = "2.1.24-no-space-age.zip", spaceAge = false } = opts;
-  const dir = join(f.dataDir, "worlds", "second");
-  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
-  writeFileSync(
-    join(dir, "world.json"),
-    JSON.stringify({ format_version: 1, name: "Second", game_version: "2.1.24", space_age: spaceAge, created_at: "2026-11-02T10:00:00Z" }),
-  );
-  const save = join(dir, "saves", "base.zip");
-  copyFileSync(join(fixtures, fixture), save);
-  const at = new Date(Date.now() - 3_600_000);
-  utimesSync(save, at, at);
-}
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typeof seedSecond>[1] = {}) {
   await createAdmin(page);
@@ -97,22 +79,24 @@ test.describe("with the fake game", () => {
     // Back again is a full switch with its own confirmation.
     await openSwitch(page, "base", "Base");
     await expect(page.getByRole("region", { name: /Switch from Second to Base/ })).toBeVisible();
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Base" }).click();
     await expect(active(page, "Base")).toBeVisible(live);
     await expect(badge(page)).toHaveText("Running", live);
     expect(foreman.logs()).not.toMatch(/"level":"ERROR"/);
   });
 
-  test("a stopped world switches and stays stopped", async ({ page, foreman, fakeGame }) => {
+  test("a stopped world switches and, unticked, stays stopped", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     const before = await creates(g);
 
     await openSwitch(page, "second", "Second");
-    await expect(page.getByText("Leave the server stopped, because Base is not running now.")).toBeVisible();
+    const startAfter = page.getByRole("checkbox", { name: "Start Second after switching" });
+    await expect(startAfter).toBeChecked();
     await expect(page.getByLabel("Countdown in seconds")).toHaveCount(0);
     await checkPage(page);
+    await startAfter.uncheck();
     await page.getByRole("button", { name: "Switch to Second" }).click();
 
     await expect(active(page, "Second")).toBeVisible(live);
@@ -154,7 +138,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("region", { name: "Switch" })).toContainText("This is the active world.");
     await checkPage(page);
     await page.goto("/worlds/second");
-    await expect(page.getByRole("region", { name: "Switch" })).toContainText("leaves the server stopped if it is stopped");
+    await expect(page.getByRole("region", { name: "Switch" })).toContainText("When the server is stopped, the confirmation lets you leave it stopped instead.");
   });
 
   test("a bad countdown keeps the form with the field's error", async ({ page, foreman, fakeGame }) => {
@@ -170,22 +154,25 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running");
   });
 
-  // SPEC 7.9, 7.4, 17.5: the refusal box is the confirmation for switch anyway.
+  // SPEC 7.9, 7.4, 17.8: the problems show on the confirmation, which is the
+  // only page that asks; "Switch and start anyway" goes ahead at once.
   test("a new world the check refuses can be switched to anyway", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await openSwitch(page, "second", "Second");
-    await page.getByRole("button", { name: "Switch to Second" }).click();
 
-    const refusal = page.locator(".message--warning").filter({ hasText: "Foreman did not switch" });
-    await expect(refusal).toContainText("foreman-test", live);
-    await expect(active(page, "Base")).toBeVisible();
-    await expect(refusal).toContainText('both labelled "Before switch"');
-    await expect(refusal).toContainText('labelled "Before start anyway"');
-    await expect(refusal).toContainText("To undo, switch back to Base");
-    await expect(page.locator("main")).not.toContainText("Fix the world first");
+    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const problems = confirm.locator(".message--warning");
+    await expect(problems).toContainText("foreman-test");
+    await expect(problems).toContainText("Second's own mods folder");
+    await expect(confirm).toContainText('both labelled "Before switch"');
+    await expect(confirm).toContainText('labelled "Before start anyway"');
+    await expect(confirm).toContainText("To undo, switch back to Base");
+    await expect(confirm.getByRole("button", { name: "Switch, leave stopped" })).toBeVisible();
+    await expect(confirm.getByRole("button", { name: "Switch to Second" })).toHaveCount(0);
     await checkPage(page);
-    await refusal.getByRole("button", { name: "Switch anyway" }).click();
+    await confirm.getByRole("button", { name: "Switch and start anyway" }).click();
     await expect(active(page, "Second")).toBeVisible(live);
+    await expect(badge(page)).toHaveText("Running", live);
     await expect(page.locator("main").getByText("The worlds are switched")).toBeVisible(live);
     await page.goto("/worlds/second/snapshots");
     await expect(page.getByRole("table")).toContainText("Before start anyway");
@@ -198,7 +185,7 @@ test.describe("with the fake game", () => {
     await g.call("/rcon-refuse", { name: "foreman-second", on: true });
 
     await openSwitch(page, "second", "Second");
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Second" }).click();
 
     await expect(page.getByRole("heading", { name: "The switch from Base to Second failed" })).toBeVisible(live);
@@ -224,7 +211,7 @@ test.describe("with the fake game", () => {
     const focused = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
 
     await page.getByRole("link", { name: "Restart server" }).focus();
-    const started = await page.request.post("/worlds/second/switch", { form: { from: "base", countdown: "4" }, maxRedirects: 0 });
+    const started = await page.request.post("/worlds/second/switch", { form: { from: "base", running: "1", countdown: "4" }, maxRedirects: 0 });
     expect(started.status()).toBe(303);
     await expect(page.getByRole("heading", { name: "Switching from Base to Second" })).toBeVisible(live);
     expect(await focused()).toBe("control-heading");

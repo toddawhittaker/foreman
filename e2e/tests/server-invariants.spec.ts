@@ -37,7 +37,7 @@ test.describe("server control invariants", () => {
     await expect(badge(page)).toHaveText("Running", live);
     const before = await mutations(fakeGame!);
     const marker = "/e2e-must-not-arrive";
-    const body = `no_countdown=on&anyway=1&command=${encodeURIComponent(marker)}`;
+    const body = `countdown=0&anyway=1&command=${encodeURIComponent(marker)}`;
     const posts = ["start", "stop", "restart", "force-stop", "pull-image", "snapshots", "console"];
     const gets = ["events", "console/events"];
 
@@ -60,7 +60,7 @@ test.describe("server control invariants", () => {
     // SPEC 14.7: a signed-in browser posting from another site is refused.
     for (const action of posts) {
       const resp = await page.request.post(`/worlds/base/${action}`, {
-        form: { no_countdown: "on", anyway: "1", command: marker },
+        form: { countdown: "0", anyway: "1", command: marker },
         headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" },
         maxRedirects: 0,
       });
@@ -78,7 +78,7 @@ test.describe("server control invariants", () => {
     }
     for (const bad of ["nope", "%2e%2e", "..%2f..%2fetc"]) {
       for (const action of posts) {
-        const resp = await page.request.post(`/worlds/${bad}/${action}`, { form: { no_countdown: "on", command: marker }, maxRedirects: 0 });
+        const resp = await page.request.post(`/worlds/${bad}/${action}`, { form: { countdown: "0", command: marker }, maxRedirects: 0 });
         expect(resp.status(), `${bad} ${action}`).toBeGreaterThanOrEqual(300);
         expect(resp.headers()["location"] ?? "", `${bad} ${action}`).not.toBe("/");
       }
