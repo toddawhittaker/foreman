@@ -128,7 +128,10 @@ never downloads its image. When the local Docker holds no image under the
 world's version tag (`factoriotools/factorio:<version>`, 4.2), the start is
 refused and the Server page offers a separate "Download game image" button,
 which pulls that exact tag as a visible step and is recorded in the audit
-log (12.9). (P0)
+log (12.9). A switch the admin confirmed (7.9) downloads the new world's
+missing image as its first step, visible and audited, before the switch
+record is written and before the old game is stopped; a failed download
+leaves the old world running and untouched. (P0)
 
 3.8. **Upgrading Foreman never touches a running game** and never rewrites
 a world's files without a snapshot first. A Foreman upgrade that changes
@@ -520,7 +523,8 @@ check, a world with no `mods/mod-list.json` gets one that enables `base`
 plus the built-in mods its game version and Space Age flag imply (9.7);
 without it, 2.x would turn Space Age on by itself. The start steps are shown
 as a list while it runs, and steps that never run after a failure read
-"Skipped". (P0)
+"Skipped". A start the pre-start check refuses is titled "Start refused" and
+lists only the step that ran. (P0)
 
 7.4. **The pre-start check.** Factorio loads a save whose mods are
 missing, or whose Space Age content is turned off, with no error, and
@@ -568,7 +572,17 @@ and wait for it to finish; then stop the container with Docker's stop
 server, sent at the start of the countdown and again at 30 and 10 seconds
 before the end. If RCON cannot be reached, Foreman says so and offers a
 forced stop instead of silently forcing one. An exit after a stop Foreman
-asked for is never reported as a crash, whatever its exit code. (P0)
+asked for is never reported as a crash, whatever its exit code. The form
+names who is online. The seconds field is the only way to skip the warning:
+there is no separate checkbox. (P0)
+
+While players are warned, the Server page shows the time left and who was
+online when the countdown began, and offers **Cancel stop**. Cancelling
+ends the whole action (stop, restart, switch, restore or update) with
+nothing changed; an image already downloaded stays. Warned players get a
+chat line saying the stop was cancelled. The audit action is `stop-cancel`.
+A cancel after the countdown ended, or when there was no countdown, does
+nothing. (P0)
 
 7.7. **A forced stop** stops the container without saving. It is a
 separate action with its own confirmation that says progress since the
@@ -584,10 +598,13 @@ refused never stops the game. (P0)
 ### Switching worlds
 
 7.9. **Switch** to another world, as one operation with these steps in
-order: graceful stop of the current world; snapshot of both worlds; the
+order: download the new world's game image if the host does not have it
+(3.7); graceful stop of the current world; snapshot of both worlds; the
 pre-start check on the new world; make the new world the one the
 container presents (4.3); start;
-confirm it is running (7.3).
+confirm it is running (7.3). The download comes before the switch record
+(7.10) and before the stop, so a failed download leaves the old world
+running and untouched.
 If any step fails, Foreman stops, says which step failed, and offers to
 switch back, which restores the previous world as active. (P0)
 
@@ -597,10 +614,16 @@ network checks (4.4) and the VPN sidecar checks (4.13), as restart does
 (7.8). When the check's problems all allow it, the refusal offers
 switch anyway the same way (7.4): the refusal is the confirmation, and it
 also names the "Before switch" snapshots of both worlds. The pre-start
-check runs again after the snapshots. A switch leaves
-the running state as it found it: a running game ends up running the new
-world, and a stopped one ends up stopped with the new world active,
-skipping the stop and start steps. The old container is left stopped, since every start creates a new one
+check runs again after the snapshots. The confirmation page shows the new
+world's problems and offers two buttons, "Switch and start anyway" (when
+every problem allows it) and "Switch, leave stopped". Leave stopped makes
+the new world active and neither checks nor starts it, so its problems wait
+for the next Start. A running game ends up running the new world. A switch
+from a stopped game starts the new world when "Start after switching" is
+ticked, which is the default, and otherwise leaves it stopped with the new
+world active, skipping the stop step. If the game started or stopped, or the
+new world's problems changed, between the confirmation page and the post,
+nothing is done and the page comes back saying what changed. The old container is left stopped, since every start creates a new one
 (4.3). The operation is busy on both worlds, both pages show it, and a
 forced stop on either ends it. A switch back is a full switch, with its
 own snapshots and confirmation; when the new world never became active,
@@ -1096,7 +1119,10 @@ command. The raw console (8.4) sends what the admin typed, by design. (P0)
 factorio.com release list, Docker Hub's list of `factoriotools/factorio`
 tags (`hub.docker.com`, 10.7), and webhook URLs an admin configured. Calls
 to the release list and to Docker Hub follow no redirects, take at most 10
-seconds, and read at most 2 MB (tag list) or 64 KB (release list). Image
+seconds, and read at most 2 MB (tag list) or 64 KB (release list). The
+size of a game image is one request for a single tag, read at most 64 KB and
+limited to 3 seconds, made only when the image is missing and a page says
+how big the download is; any failure leaves the size out. Image
 pulls are made by the Docker daemon, not by Foreman. It does not follow
 redirects for webhooks. (P0)
 
@@ -1189,7 +1215,9 @@ and undo or recover after any of these. Each takes one confirmation
 page at most, then shows its progress and result on the Server page. A
 world's own page manages that world (rename, delete, saves, snapshots,
 mods, settings), and offers switching to it, but never sends the admin
-there to finish a task begun on the Server page. (P1)
+there to finish a task begun on the Server page. Text that changes every
+second, such as a countdown, updates only itself and never replaces the
+controls beside it. (P1)
 
 17.8. **Problems come before the confirmation.** A confirmation page runs
 the checks its action would run, and shows any problem, with its fix, on

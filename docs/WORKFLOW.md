@@ -177,6 +177,11 @@ There are two kinds of pull request, merged by different people:
   is fixed or explicitly deferred, and the full local checks are green.
   Only the user merges an epic pull request into `main`.
 
+Group small related changes into one pull request, or put them on the
+current epic branch. Auto-merge is on for the repository, so merge on
+green is `gh pr merge <n> --auto --squash --delete-branch`, after
+`gh pr update-branch` when `main` has moved.
+
 The merger agent lands a list of task pull requests, or one that
 conflicts. It reruns `make verify` up to twice when a failure looks like a
 flake, and escalates anything else. It never edits code to make a check
