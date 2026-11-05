@@ -70,6 +70,11 @@ Orchestration rules:
   question buried in a block of text: people skim text. Give each
   decision a reasoned recommendation, listed first, and plausible
   alternatives, each with what it gains and what it costs.
+- Keep the work moving. While agents run, prepare the next prompts,
+  reviews and checks. Start dependent work from a verified branch head
+  instead of waiting for its merge. End a turn only when the work is
+  done, the user must decide something, or every next step waits on a
+  running agent.
 - Delegate to the cheapest agent that can do the job. Run explorer first
   when a location is unknown and pass its paths on. When a builder or
   tester prompt settles every choice, spawn it on Sonnet at high effort
