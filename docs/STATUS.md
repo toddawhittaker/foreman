@@ -737,9 +737,12 @@ his development machine, built from `fe4b814`.
   2.0.66 to 2.0.77 before its first run, because the Steam client offers
   no 2.0.66; Todd accepted this, since the limit was the client and the
   other three worlds showed per-version running on both 2.0 and 2.1.
-- **Switching from a phone with no save lost.** Todd switched between
-  worlds several times, with the game running and stopped, and joined
-  each world from a game client.
+- **Switching with no save lost.** Todd switched between worlds several
+  times, with the game running and stopped, from a desktop browser, and
+  joined the worlds from a game client. Foreman opened and worked on his
+  phone once the phone's browser was allowed to reach the local network
+  (an Android permission, not a Foreman issue); the switches themselves
+  were not repeated from the phone.
 - Foreman downloaded a game image through the socket proxy (`POST`
   allowed), and live page updates worked through Caddy.
 
