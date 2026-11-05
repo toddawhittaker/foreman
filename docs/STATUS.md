@@ -5,7 +5,7 @@ What each epic delivered and the gaps it left. The epic's last task
 here are known and accepted; each is either fixed by a later epic or
 waits for a decision.
 
-Epics 1 to 5 are done. Gate A (SPEC 19.1) is next.
+Epics 1 to 5 and the Gate A fixes are done. Gate A (SPEC 19.1) is next.
 
 ## Epic 1: Foundation
 
@@ -115,8 +115,8 @@ across `internal/` is about 89%. The format decisions are in ADR 0002.
   name. "Last played" comes from the newest save, and shows "unknown" when
   it cannot be read.
 - **Import (SPEC 5.5).** From the inbox `<data>/import/`, copying a
-  folder's top-level save zips and its `mods/` folder, or by uploading one
-  save zip. Imports copy, keep times, never hardlink and never change the
+  folder's save zips and its `mods/` folder (the Gate A fixes below added
+  `saves/` and `config/`), or by uploading one save zip. Imports copy, keep times, never hardlink and never change the
   source. A new world is built in one staging folder and renamed into
   place, so a refused or failed import leaves no world behind. Mod sync
   for an uploaded save is Epic 6.
@@ -465,17 +465,16 @@ tested. Coverage across `internal/` is about 90%.
   was still the newest pinned image of the world's line, so a world made on
   2.0.72 ran 2.0.77; Epic 5 made each world run its own exact tag. The
   three game images pinned in the Makefile are test images only.
-- **VPN sidecars (SPEC 4.13, ADR 0006).** The game can share the network
-  of an operator-run sidecar container. A start is refused when the
-  sidecar is missing, stopped, on the host network, or off the game
-  network. A sidecar's ranges count as game ranges for trusted-header
-  sign-in.
+- **VPN sidecars (SPEC 4.13, ADR 0006): not built.** An earlier version of
+  this section said they shipped. They did not: nothing reads
+  `FOREMAN_GAME_NETWORK_CONTAINER`. The Gate A fixes below make Foreman
+  refuse to start when it is set. Sidecars are now planned for Epic 8.
 - **Import (SPEC 5.5).** The version and Space Age flag are read from the
   newest save and prefill the form; an empty version field means "use the
   save's version". Names are suggested from the chosen folder or file
   name and never overwrite typed text. A single importable folder is
-  picked for you. A folder with no save at its top level is listed as not
-  importable, with its radio disabled.
+  picked for you. A folder with no save is listed as not importable, with
+  its radio disabled.
 - **Test tools.** The fake game and fake Docker no longer model an adopted
   container.
 
@@ -530,7 +529,8 @@ tested. Coverage across `internal/` is about 90%.
 ## Epic 5: Game versions
 
 Serves SPEC 18.5: section 10 (10.1 to 10.5, 10.7, 10.8). VPN sidecars
-(4.13) shipped in Epic 4. Everything below is built and tested. Epic 4's
+(4.13) were planned here and moved to Epic 8. Everything below is built
+and tested. Epic 4's
 STATUS had said 10.1 was delivered; it was not until this epic.
 
 ### Delivered
@@ -558,7 +558,7 @@ STATUS had said 10.1 was delivered; it was not until this epic.
   newer exact release. Everything that can refuse runs first, before any
   download or stop: the target is a newer supported version, the world is
   active, the game is in a state a stop would accept, the pre-start check
-  at the target version, the game network and the sidecar. Then the image
+  at the target version and the game network. Then the image
   is downloaded if Docker lacks it (a visible step), the game stops
   gracefully, a "Before update" snapshot is taken, the version is set, and
   the game starts and is confirmed only if it was running. A stopped world
@@ -657,3 +657,58 @@ both update and rollback cases), and `make e2e-game` (2 passed).
   entry by hand, and mods that break across a line.
 - The end-to-end tests assert the update step list and the refusal box
   wording loosely.
+
+## Gate A fixes
+
+A fix batch from the architect's Gate A review. It serves SPEC 5.1, 5.5,
+4.5, 4.13, 8.3, 12.5, 12.6 and 14.8.
+
+### Delivered
+
+- **Trusted-header groups (SPEC 12.5).** Sign-in reads Authentik's
+  `|`-separated groups as well as comma lists. Parts are trimmed, empty
+  parts are dropped, and matching stays exact. A required group that
+  contains `|` or `,` is refused at startup when headers sign-in is on.
+- **Import reads the server layout (SPEC 5.1, 5.5).** Save zips come from
+  the folder's top level and from `saves/`. Mods are copied, and so are
+  the six `config/` files SPEC 5.1 lists, never `rconpw` (Foreman makes
+  its own). A save name in both places makes the folder not importable;
+  the listing and the submit-time refusal name the file and copy nothing.
+  The inbox save count includes `saves/`. Symlinks are not followed, the
+  source is never changed, and no config content is logged or shown.
+- **Admin, ban and white lists reach the game (SPEC 4.3).** The start
+  script always passes `--server-adminlist` and `--server-banlist`, so
+  `/promote` and `/ban` made in game persist; it passes
+  `--server-whitelist` only when the file exists. The six config file
+  names are one set of constants shared by import and the start script.
+- **Config files are 0640 (SPEC 3.6, 14.8).** Every file copied into
+  `config/` by import, snapshot or restore is written at 0640, from one
+  helper. Saves and mods keep 0664.
+- **VPN sidecar refusal (SPEC 4.13).** Setting
+  `FOREMAN_GAME_NETWORK_CONTAINER` stops Foreman at startup with a plain
+  message, because the sidecar is not built. An empty value counts as
+  unset.
+- **README example compose (SPEC 14.11, 4.4, 12.6).** Foreman runs
+  read-only with a `/tmp` tmpfs, no capabilities and `no-new-privileges`,
+  and waits for the socket proxy. A snippet shows the reverse proxy joining
+  `foreman-front` at a fixed address. The README import section describes
+  the server layout. The compose was run for real: Foreman healthy, a
+  server-layout folder imported on 2.1.24, the game reached InGame, and the
+  imported settings file was applied.
+
+### Verified
+
+- `make verify`, `make e2e` (428 tests, including the import layout and
+  clash specs) and `make test-game TAG=2.1`.
+- A script test runs the real start script against a fake world folder.
+- The README compose was brought up for real under a scratch project.
+
+### Gaps left
+
+- Whitelist enforcement waits for the game settings in SPEC section 11:
+  `--use-server-whitelist` is never passed.
+- In-game `/promote` and `/ban` persistence is not tested with a game
+  client. Only the start command and a real start without the files were
+  checked.
+- VPN sidecars (SPEC 4.13, ADR 0006) are not built; they are planned for
+  Epic 8.
