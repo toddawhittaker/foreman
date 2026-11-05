@@ -34,11 +34,16 @@ export interface Foreman {
   url: string;
   dataDir: string;
   logs: () => string;
+  // Declares an ERROR log line this test causes on purpose. It matches the raw
+  // JSON line, by substring or regexp. The test fails if no line matches.
+  // An ERROR from background work must be waited for in the test (for example
+  // until the page shows the failure) before the test ends.
+  expectError: (match: string | RegExp) => void;
 }
 
 // Starts the real binary on a free port over a fresh data directory, so each
 // test sees a first run of its own.
-async function startForeman(env: Record<string, string>): Promise<Foreman & { stop: () => Promise<void> }> {
+async function startForeman(env: Record<string, string>): Promise<Foreman & { stop: () => Promise<{ exitedEarly: boolean }>; errorLines: () => string[] }> {
   const dataDir = mkdtempSync(join(tmpdir(), "foreman-e2e-"));
   const port = await freePort();
   let out = "";
@@ -60,6 +65,9 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
   });
   proc.stdout.on("data", (d) => (out += d));
   proc.stderr.on("data", (d) => (out += d));
+  // "close" comes after the output streams end, so the last lines are in `out`.
+  const closed = new Promise((r) => proc.once("close", r));
+  const hasExited = () => proc.exitCode !== null || proc.signalCode !== null;
   const url = `http://127.0.0.1:${port}`;
   const deadline = Date.now() + 10_000;
   for (;;) {
@@ -76,13 +84,15 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
     url,
     dataDir,
     logs: () => out,
+    expectError: () => {}, // replaced by the fixture, which owns the list
+    errorLines: () => out.split("\n").filter((line) => /"level":"ERROR"/.test(line)),
+    // Reports whether Foreman was already gone, which is a crash.
     stop: async () => {
-      if (proc.exitCode === null) {
-        const exited = new Promise((r) => proc.once("exit", r));
-        proc.kill("SIGTERM");
-        await exited;
-      }
+      const exitedEarly = hasExited();
+      if (!exitedEarly) proc.kill("SIGTERM");
+      await closed;
       rmSync(dataDir, { recursive: true, force: true });
+      return { exitedEarly };
     },
   };
 }
@@ -157,13 +167,27 @@ export const test = base.extend<{
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame }, use) => {
+  foreman: async ({ foremanEnv, fakeGame }, use, testInfo) => {
     const env = fakeGame
       ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork, ...foremanEnv }
       : foremanEnv;
     const f = await startForeman(env);
+    const expected: (string | RegExp)[] = [];
+    f.expectError = (match) => expected.push(match);
     await use(f);
-    await f.stop();
+    const { exitedEarly } = await f.stop();
+    expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
+    // Ruling: a test fails on any ERROR line it did not declare, and on a
+    // declaration that matched nothing. This process belongs to this test alone.
+    const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
+    const lines = f.errorLines();
+    const unexpected = lines.filter((line) => !expected.some((m) => matches(line, m)));
+    expect(unexpected, "Foreman wrote ERROR log lines the test did not declare with foreman.expectError").toEqual([]);
+    // A test that already failed may have stopped before the error came, so only a passing test must show it.
+    if (testInfo.status === "passed") {
+      const missing = expected.filter((m) => !lines.some((line) => matches(line, m))).map(String);
+      expect(missing, "foreman.expectError declared lines Foreman never wrote").toEqual([]);
+    }
   },
   baseURL: async ({ foreman }, use) => use(foreman.url),
 });

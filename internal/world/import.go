@@ -147,20 +147,42 @@ type importRecord struct {
 	from *ImportedFrom
 }
 
-// importRecords lists where each world was imported from, read from the
-// world list. A world whose world.json cannot be read has no record.
-func (m *Manager) importRecords(ctx context.Context) ([]importRecord, error) {
-	list, err := m.List(ctx)
+// importRecords lists where each world was imported from, read from each
+// world's world.json alone: the Import page must not measure disk use. A
+// world whose world.json cannot be read has no record.
+func (m *Manager) importRecords(_ context.Context) ([]importRecord, error) {
+	worlds, err := openFolder(m.dirs.Worlds)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = worlds.Close() }()
+	entries, err := fs.ReadDir(worlds.FS(), ".")
 	if err != nil {
 		return nil, err
 	}
 	var out []importRecord
-	for _, sum := range list {
-		if sum.ImportedFrom != nil {
-			out = append(out, importRecord{ImportRecord{sum.ID, sum.Name, sum.ImportedFrom.At}, sum.ImportedFrom})
+	for _, e := range entries {
+		if !e.IsDir() || !ValidID(e.Name()) {
+			continue
+		}
+		meta, ok := readWorldMeta(worlds, e.Name())
+		if ok && meta.ImportedFrom != nil {
+			out = append(out, importRecord{ImportRecord{e.Name(), displayName(e.Name(), meta, nil), meta.ImportedFrom.At}, meta.ImportedFrom})
 		}
 	}
 	return out, nil
+}
+
+// readWorldMeta reads one world's world.json; ok is false when the world
+// cannot be opened or its world.json cannot be read.
+func readWorldMeta(worlds *os.Root, id string) (Meta, bool) {
+	w, err := openDir(worlds, id)
+	if err != nil {
+		return Meta{}, false
+	}
+	defer func() { _ = w.Close() }()
+	meta, err := ReadMeta(w)
+	return meta, err == nil
 }
 
 // InboxEntry describes one inbox folder by name, as Inbox does, without

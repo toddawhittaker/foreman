@@ -209,6 +209,7 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 		switch {
 		case !found:
 			item.Gone = true
+			// A name that holds no date leaves TakenAt zero, and the page shows the name.
 			item.Snapshot.TakenAt, _ = world.SnapshotNameTime(ref.Name)
 		case s.operationRunning(ref.WorldID):
 			item.Snapshot = snap
