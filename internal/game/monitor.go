@@ -118,6 +118,7 @@ func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docke
 		c.observe(w, nil)
 	case err != nil:
 		w.mu.Lock()
+		c.logFault("cannot read the game container", w.inspectErr, err, "world", w.id)
 		w.inspectErr = err
 		c.changedLocked(w, true)
 		w.mu.Unlock()

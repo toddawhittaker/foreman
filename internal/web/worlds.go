@@ -120,6 +120,12 @@ func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
 // DeleteRefusal says why the world cannot be deleted, or is "" when it can.
 func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World, p.Busy) }
 
+// DeleteWaitsOnServer reports whether the delete refusal is a running
+// operation, which the Server page follows (SPEC 17.9).
+func (p WorldPage) DeleteWaitsOnServer() bool {
+	return p.Busy != "" && !p.World.Active && !p.World.Newer && !p.World.Unreadable
+}
+
 // deleteRefusal says, in words, why a world cannot be deleted, so the page
 // can show that instead of a button that would be refused (DESIGN 7.1).
 // busy is what runs on the world now, or "".
@@ -138,17 +144,21 @@ func deleteRefusal(w world.Summary, busy string) string {
 }
 
 // busyText says what the running operation is doing to a world, in
-// sentences that end with a full stop, or returns "" when none runs. names
-// maps world ids to display names.
-func busyText(op *game.Operation, names map[string]string) string {
+// sentences that end with a full stop, or returns "" when none runs. name
+// words a world's id for a sentence.
+func busyText(op *game.Operation, name func(id string) string) string {
 	if op == nil || op.Done {
 		return ""
 	}
 	sw := op.Switch
 	if sw == nil {
-		return "An operation is running on this world: " + op.Action + "."
+		what := actionNames[op.Action]
+		if what == "" {
+			what = "action"
+		}
+		return "An operation is running on this world: " + what + "."
 	}
-	text := "Switching from " + nameOf(names, sw.From) + " to " + nameOf(names, sw.To) + "."
+	text := "Switching from " + name(sw.From) + " to " + name(sw.To) + "."
 	for _, st := range op.Steps {
 		if st.State == game.StepProgress {
 			return text + " Now: " + st.Name + "."
@@ -157,39 +167,13 @@ func busyText(op *game.Operation, names map[string]string) string {
 	return text
 }
 
-func nameOf(names map[string]string, id string) string {
-	if n := names[id]; n != "" {
-		return n
-	}
-	return id
-}
-
-// worldNames maps each world's id to its display name.
-func worldNames(list []world.Summary) map[string]string {
-	names := make(map[string]string, len(list))
-	for _, w := range list {
-		names[w.ID] = w.Name
-	}
-	return names
-}
-
-// worldBusy says what runs on the world now, naming the worlds of a
-// switch, or "".
-func (s *server) worldBusy(ctx context.Context, id string) string {
-	list, err := s.worlds.List(ctx)
-	if err != nil {
-		return s.busyOn(id, nil)
-	}
-	return s.busyOn(id, worldNames(list))
-}
-
-// busyOn says what runs on the world now, or "". Without server control
-// nothing runs.
-func (s *server) busyOn(id string, names map[string]string) string {
+// worldBusy says what runs on the world now, or "". Without server control
+// nothing runs. Only a switch reads world names, and only its two.
+func (s *server) worldBusy(id string) string {
 	if s.game == nil {
 		return ""
 	}
-	return busyText(s.game.Status(id).Operation, names)
+	return busyText(s.game.Status(id).Operation, s.worldName)
 }
 
 // FolderPath and UploadPath are where the two forms post.
@@ -242,12 +226,11 @@ func (s *server) markSwitching(p *WorldsPage) {
 	if s.game == nil {
 		return
 	}
-	names := worldNames(p.Worlds)
 	p.Busy = map[string]string{}
 	p.Switchable = map[string]bool{}
 	activeBusy := false
 	for _, w := range p.Worlds {
-		if text := s.busyOn(w.ID, names); text != "" {
+		if text := s.worldBusy(w.ID); text != "" {
 			p.Busy[w.ID] = text
 			activeBusy = activeBusy || w.Active
 		}
@@ -321,7 +304,7 @@ func renameDone(renamed, current string) string {
 // why above.
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
-	p.Busy = s.worldBusy(ctx, sum.ID)
+	p.Busy = s.worldBusy(sum.ID)
 	if s.game != nil && !sum.Unreadable && !sum.Newer {
 		p.ReleasesPath = releasesPath(sum.ID)
 		p.Rollback = s.rollbackOffer(sum.ID)
@@ -331,7 +314,10 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameErr
 	case sum.Active:
 		p.SwitchNote = "This is the active world."
 	case s.switchBusy(ctx, sum.ID):
-		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
+		// When the operation is on this world, Busy already says so.
+		if p.Busy == "" {
+			p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
+		}
 	default:
 		p.CanSwitch = true
 		if ref, present, err := s.game.ImageFor(ctx, sum.ID); err == nil && !present {
@@ -603,7 +589,7 @@ func (s *server) handleDeleteForm(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, DeletePage{World: sum, FinalSnapshot: true, Busy: s.worldBusy(r.Context(), sum.ID)})
+	s.page(w, r, http.StatusOK, u.Username, DeletePage{World: sum, FinalSnapshot: true, Busy: s.worldBusy(sum.ID)})
 }
 
 // handleDelete deletes a world after its final snapshot (SPEC 5.10). A
@@ -620,7 +606,7 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 		World:         sum,
 		FinalSnapshot: r.PostFormValue("final_snapshot") == "on",
 		ConfirmName:   r.PostFormValue("confirm_name"),
-		Busy:          s.worldBusy(r.Context(), sum.ID),
+		Busy:          s.worldBusy(sum.ID),
 	}
 	err := s.worlds.Delete(r.Context(), sum.ID, p.ConfirmName, p.FinalSnapshot, u.Username)
 	if err == nil {

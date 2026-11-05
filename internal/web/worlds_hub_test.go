@@ -23,10 +23,29 @@ func TestBusyText(t *testing.T) {
 		{"unknown world falls back to its id", &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "a", To: "gone"}},
 			"Switching from Alpha to gone."},
 		{"other operation", &game.Operation{Action: game.AuditRestart}, "An operation is running on this world: restart."},
+		{"action named in words", &game.Operation{Action: game.AuditForceStop}, "An operation is running on this world: forced stop."},
+		{"action without a name", &game.Operation{Action: "mystery"}, "An operation is running on this world: action."},
 	} {
-		if got := busyText(tc.op, names); got != tc.want {
+		name := func(id string) string {
+			if n := names[id]; n != "" {
+				return n
+			}
+			return id
+		}
+		if got := busyText(tc.op, name); got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+// With nothing running, a world's page asks nothing of the world store: the
+// busy line is not worth listing every world.
+func TestWorldBusyReadsNoWorldsWhenIdle(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Alpha", fixtureNoSA, false)
+	s := &server{game: g.ctrl} // no world store: a read of it would panic
+	if got := s.worldBusy(id); got != "" {
+		t.Errorf("busy %q on an idle world", got)
 	}
 }
 
@@ -44,7 +63,7 @@ func TestWorldsShowARunningSwitch(t *testing.T) {
 	g.wantMissing("idle list", list, `href="`+switchPath(a)+`"`, "Busy:", "Switching is unavailable")
 
 	g.startGame(a)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"30"}}))
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"30"}}))
 	g.waitPage("Switching from Alpha to Bravo")
 
 	list = g.get(PathWorlds)
@@ -55,9 +74,15 @@ func TestWorldsShowARunningSwitch(t *testing.T) {
 	g.wantMissing("busy list", list, `href="`+switchPath(b)+`"`, `href="`+switchPath(c)+`"`)
 
 	for _, id := range []string{a, b} {
-		g.wantContains("involved world", g.get(worldPath(id)), "Switching from Alpha to Bravo.")
+		g.wantContains("involved world", g.get(worldPath(id)), "Switching from Alpha to Bravo.",
+			`<a href="/">Go to the Server page</a>`)
 	}
-	g.wantMissing("unrelated world", g.get(worldPath(c)), "Switching from Alpha to Bravo.")
+	// Both the note and the delete refusal link to the page that follows it.
+	if n := strings.Count(g.get(worldPath(b)), `<a href="/">Go to the Server page</a>`); n != 2 {
+		t.Errorf("the busy world's page has %d links to the Server page, want 2", n)
+	}
+	g.wantMissing("active world's delete refusal", g.get(worldPath(a)), "cannot be deleted until it ends. <a")
+	g.wantMissing("unrelated world", g.get(worldPath(c)), "Switching from Alpha to Bravo.", "Go to the Server page")
 
 	del := g.get(deletePath(b))
 	g.wantContains("delete while busy", del, "Switching from Alpha to Bravo.", "This world cannot be deleted until it ends.")

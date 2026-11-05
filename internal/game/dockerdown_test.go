@@ -51,3 +51,38 @@ func TestDockerUnreachableReasonIsPlain(t *testing.T) {
 		t.Errorf("the raw error is not in the log:\n%s", logs.String())
 	}
 }
+
+// SPEC 7.1: when Docker answers but cannot inspect the game's container, the
+// reason is a plain sentence and the raw error goes to the log, once while
+// the fault lasts.
+func TestInspectFaultReasonIsPlain(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Hazy")
+	r.start(id)
+	// A second controller, made before it runs, so its log can be read.
+	r.stop()
+	c := r.newController(rigOptions{})
+	var logs bytes.Buffer
+	c.log = slog.New(slog.NewTextHandler(&logs, nil))
+	r.c = c
+	r.stop = r.run(c)
+	r.waitState(id, StateRunning)
+	r.game.Daemon().SetCallFailure("GET", "json", 500, "overlay2 layer is missing")
+
+	var st Status
+	eventually(t, func() bool {
+		st = r.c.Status(id)
+		return st.State == StateUnknown
+	}, "the unknown state")
+	time.Sleep(10 * r.c.pollInterval)
+
+	want := "Foreman cannot read the game container from Docker. The details are in Foreman's log."
+	if st.Reason != want {
+		t.Errorf("reason %q, want %q", st.Reason, want)
+	}
+	if n := strings.Count(logs.String(), "overlay2 layer is missing"); n != 1 {
+		t.Errorf("%d log lines for one unbroken fault, want 1:\n%s", n, logs.String())
+	}
+	r.game.Daemon().SetCallFailure("GET", "json", 0, "")
+	r.waitState(id, StateRunning)
+}

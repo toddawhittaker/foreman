@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -264,12 +265,28 @@ func gameError(err error) (int, string) {
 	case errors.Is(err, game.ErrCountdown):
 		return http.StatusBadRequest, sentence(err)
 	}
-	// The Docker client wraps a failed connection in *url.Error; its detail
-	// stays in the log.
+	// A Docker that answers nothing has a plain sentence of its own; the raw
+	// transport error stays in the log.
+	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
+		return http.StatusServiceUnavailable, ue.Error() + ". Nothing was done."
+	}
+	if de, ok := errors.AsType[*game.ImageDownloadError](err); ok {
+		return http.StatusBadGateway, downloadFailure(de, "Try again.")
+	}
+	// Any other failed connection is wrapped in *url.Error.
 	if _, ok := errors.AsType[*url.Error](err); ok {
 		return http.StatusServiceUnavailable, "Foreman cannot reach Docker, so nothing was done. Check that Docker is running and that Foreman can reach it, then try again."
 	}
 	return worldError(err)
+}
+
+// downloadFailure words a failed image download: the image, the cause the
+// admin can act on and the next step. The daemon's own text stays in the log.
+func downloadFailure(de *game.ImageDownloadError, retry string) string {
+	if de.NotFound {
+		return "Foreman could not download " + de.Image + ": Docker Hub has no image with that version. Check the world's game version on its page."
+	}
+	return "Foreman could not download " + de.Image + ". The details are in Foreman's log. " + retry
 }
 
 // gameRefusal is refusal for server control errors.
@@ -305,6 +322,9 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
 	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID), Now: s.now()}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
+	if !p.HaveResult {
+		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
+	}
 	p.Others = s.runs.others(sum.ID)
 	s.switchNames(&p)
 	if p.HaveResult && p.Result.Err == nil && p.Result.Action == game.AuditUpdate {
@@ -329,20 +349,20 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 	return p
 }
 
-// startAnywaySnapshot returns the newest "Before start anyway" snapshot of
-// a world, which a crash loop offers to restore (SPEC 17.9), or nil.
+// startAnywaySnapshot returns a world's newest snapshot when it is a
+// "Before start anyway" one, which a crash loop offers to restore
+// (SPEC 17.9), or nil. With a newer snapshot the world has moved on, and
+// the restore would undo more than the start.
 func (s *server) startAnywaySnapshot(id string) *world.Snapshot {
 	list, err := s.worlds.Snapshots(id)
 	if err != nil {
 		s.log.Error("list snapshots", "world", id, "error", err)
 		return nil
 	}
-	for _, sn := range list {
-		if sn.Reason == game.ReasonStartAnyway {
-			return &sn
-		}
+	if len(list) == 0 || list[0].Reason != game.ReasonStartAnyway {
+		return nil
 	}
-	return nil
+	return &list[0]
 }
 
 func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -363,6 +383,7 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
+	p.FocusResult = followsOwnAction(r)
 	// Listed when the page loads only: the list is not live, and each switch
 	// confirmation runs its own checks (SPEC 17.7, 17.8).
 	for _, ws := range list {
@@ -397,20 +418,41 @@ func (s *server) begin(w http.ResponseWriter, r *http.Request, id string, holdsL
 // beginOn is begin for an action on several worlds. It reports whether the
 // action started; if not, the page has been answered.
 func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
+	return s.beginTo(w, r, PathServer, ids, holdsLock, do)
+}
+
+// beginTo is beginOn sending the admin to the page at to.
+func (s *server) beginTo(w http.ResponseWriter, r *http.Request, to string, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	if !s.runs.runOn(ids, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
 			Detail: "Foreman is shutting down. Try again once it is back."})
 		return false
 	}
-	http.Redirect(w, r, PathServer, http.StatusSeeOther)
+	http.Redirect(w, r, to, http.StatusSeeOther)
 	return true
+}
+
+// ownResultQuery marks a Server page load that follows the admin's own
+// action, whose result the page then moves focus to.
+const (
+	ownResultQuery = "?result=1"
+	// PathServerResult is the Server page after the admin's own action.
+	PathServerResult = PathServer + ownResultQuery
+)
+
+func followsOwnAction(r *http.Request) bool {
+	return r.URL.RawQuery == strings.TrimPrefix(ownResultQuery, "?")
 }
 
 // finish logs an action's error that the admin cannot fix, then returns
 // the result to keep.
 func (s *server) finish(id, action string, err error) actionResult {
 	if err != nil {
-		if status, _ := gameError(err); status == http.StatusInternalServerError {
+		status, _ := gameError(err)
+		// A download's cause is not shown, so it is logged unless it is the
+		// plain "no such image".
+		de, failedDownload := errors.AsType[*game.ImageDownloadError](err)
+		if status == http.StatusInternalServerError || failedDownload && !de.NotFound {
 			s.log.Error("server control", "world", id, "action", action, "error", err)
 		}
 	}
@@ -646,11 +688,13 @@ func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u stor
 	if !ok {
 		return
 	}
-	if err := s.game.CancelStop(r.Context(), sum.ID, actor(u)); err != nil {
+	// A countdown that ended just before the cancel has nothing to cancel;
+	// the Server page shows how the action went on.
+	if err := s.game.CancelStop(r.Context(), sum.ID, actor(u)); err != nil && !errors.Is(err, game.ErrNoCountdown) {
 		if status, msg, ok := s.gameRefusal(w, r, u, "cancel the stop", err); ok {
 			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: msg})
 		}
 		return
 	}
-	http.Redirect(w, r, PathServer, http.StatusSeeOther)
+	http.Redirect(w, r, PathServerResult, http.StatusSeeOther)
 }

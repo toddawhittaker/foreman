@@ -22,10 +22,13 @@ const (
 )
 
 // Releases says which Factorio versions have images and which releases are
-// newest (SPEC 10.2, 10.7). *releases.Client implements it.
+// newest (SPEC 10.2, 10.7), and how big a game image is (SPEC 3.7).
+// *releases.Client implements it.
 type Releases interface {
 	Versions(context.Context) ([]string, error)
 	Latest(context.Context) (releases.Latest, error)
+	// ImageSize is the download's size in bytes; never negative.
+	ImageSize(ctx context.Context, version string) (int64, error)
 }
 
 const notActiveText = "Switch to this world to update it."

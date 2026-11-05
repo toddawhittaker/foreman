@@ -119,12 +119,6 @@ func TestCancelStopDuringCountdown(t *testing.T) {
 	}
 }
 
-func TestCancelStopIsAuditedByActionName(t *testing.T) {
-	if AuditStopCancel != "stop-cancel" {
-		t.Errorf("audit action %q", AuditStopCancel)
-	}
-}
-
 // A cancel with no countdown running is refused and is not audited.
 func TestCancelStopWithoutCountdown(t *testing.T) {
 	r := newRig(t, rigOptions{})

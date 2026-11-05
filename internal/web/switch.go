@@ -91,24 +91,32 @@ func switchProblemsLead(check world.PreCheck, name string) string {
 	return name + " cannot run in this game:"
 }
 
-// imageSizer is the part of Releases that knows a game image's size. It is
-// asked for only on the switch page, and only when the image is missing.
-type imageSizer interface {
-	ImageSize(ctx context.Context, version string) (int64, error)
-}
-
 // imageSize returns the download size of a version's game image, or 0 when
 // it cannot be had; the page then leaves the size out.
 func (s *server) imageSize(ctx context.Context, version string) uint64 {
-	sizer, ok := s.releases.(imageSizer)
-	if !ok {
+	if s.releases == nil {
 		return 0
 	}
-	n, err := sizer.ImageSize(ctx, version)
-	if err != nil || n < 0 {
+	n, err := s.releases.ImageSize(ctx, version)
+	if err != nil {
 		return 0
 	}
-	return uint64(n)
+	return uint64(n) //nolint:gosec // the Releases contract: a size is never negative
+}
+
+// fillSwitchPage asks what only a rendered confirmation shows: the size of
+// the image to download and who is online. A switch that goes ahead asks for
+// neither.
+func (s *server) fillSwitchPage(ctx context.Context, p *SwitchPage) {
+	if p.Refusal != "" {
+		return
+	}
+	if p.Plan.Download {
+		p.ImageSize = s.imageSize(ctx, p.To.GameVersion)
+	}
+	if p.Plan.Running {
+		p.Online = s.online(ctx, p.From.ID)
+	}
 }
 
 // switchBusy reports whether an operation is running on this world or the
@@ -156,12 +164,6 @@ func (s *server) switchPage(ctx context.Context, from string, to world.Summary, 
 		p.Advice = anywayAdvice(p.Plan.Check.Problems, to.Name, hostModsFolder(s.hostData, to.ID))
 		p.Seen = game.AnywayFingerprint(p.Plan.Check, p.Plan.Running)
 	}
-	if p.Plan.Download {
-		p.ImageSize = s.imageSize(ctx, to.GameVersion)
-	}
-	if p.Plan.Running {
-		p.Online = s.online(ctx, from)
-	}
 	return p, nil
 }
 
@@ -175,6 +177,7 @@ func (s *server) handleSwitchForm(w http.ResponseWriter, r *http.Request, u stor
 		s.fail(w, r, "build the switch page", err)
 		return
 	}
+	s.fillSwitchPage(r.Context(), &p)
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -211,9 +214,13 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	if form.CountdownError != "" {
+		s.fillSwitchPage(r.Context(), &p)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
+	// The page's steps were for the game's state it showed (SPEC 17.8); a
+	// form without the field counts as stopped.
+	shownRunning := r.PostFormValue("running") == "1"
 	start, opts := p.Plan.Running || p.StartAfter, game.StartOptions{}
 	switch r.PostFormValue("choice") {
 	case choiceStopped:
@@ -224,8 +231,14 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	default:
 		p.Changed = start && p.HasProblems()
 	}
+	if shownRunning != p.Plan.Running {
+		p.Changed = true
+		// A game that was running is wanted running again after the switch.
+		start = start || shownRunning
+	}
 	if p.Changed {
 		p.StartAfter = start
+		s.fillSwitchPage(r.Context(), &p)
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}

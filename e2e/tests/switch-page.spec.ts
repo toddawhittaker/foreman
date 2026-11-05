@@ -211,7 +211,7 @@ test.describe("with the fake game", () => {
     const focused = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
 
     await page.getByRole("link", { name: "Restart server" }).focus();
-    const started = await page.request.post("/worlds/second/switch", { form: { from: "base", countdown: "4" }, maxRedirects: 0 });
+    const started = await page.request.post("/worlds/second/switch", { form: { from: "base", running: "1", countdown: "4" }, maxRedirects: 0 });
     expect(started.status()).toBe(303);
     await expect(page.getByRole("heading", { name: "Switching from Base to Second" })).toBeVisible(live);
     expect(await focused()).toBe("control-heading");
