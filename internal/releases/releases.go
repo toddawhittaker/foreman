@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,11 +33,9 @@ const (
 )
 
 // lines are the game lines Foreman supports (SPEC 10.8). Each tag is also
-// checked with world.SupportedGameVersion, so a stale entry here cannot let
-// an unsupported version through.
+// checked with validVersion, so a stale entry here cannot let an unsupported
+// version through.
 var lines = []string{"2.1", "2.0", "1.1"}
-
-var versionRE = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 // ErrUnreachable wraps every network, status, size and parse failure.
 var ErrUnreachable = errors.New("release information is unreachable")
@@ -188,10 +185,19 @@ func (c *Client) fetchLatest(ctx context.Context) (Latest, error) {
 	if err := json.Unmarshal(body, &doc); err != nil {
 		return Latest{}, fmt.Errorf("%w: the release list is not valid JSON", ErrUnreachable)
 	}
-	if !validVersion(doc.Stable.Headless) || !validVersion(doc.Experimental.Headless) {
+	// A release on a game line Foreman does not support yet leaves its own
+	// field empty; it must not hide the other one.
+	var out Latest
+	if validVersion(doc.Stable.Headless) {
+		out.Stable = doc.Stable.Headless
+	}
+	if validVersion(doc.Experimental.Headless) {
+		out.Experimental = doc.Experimental.Headless
+	}
+	if out == (Latest{}) {
 		return Latest{}, fmt.Errorf("%w: the release list has no usable version", ErrUnreachable)
 	}
-	return Latest{Stable: doc.Stable.Headless, Experimental: doc.Experimental.Headless}, nil
+	return out, nil
 }
 
 // get fetches rawURL and returns at most limit bytes of body; a longer body
@@ -220,9 +226,7 @@ func (c *Client) get(ctx context.Context, rawURL string, limit int64) ([]byte, e
 	return body, nil
 }
 
-func validVersion(v string) bool {
-	return versionRE.MatchString(v) && world.SupportedGameVersion(v)
-}
+var validVersion = world.SupportedGameVersion
 
 // compareVersions orders two valid versions by their three numbers.
 func compareVersions(a, b string) int {
