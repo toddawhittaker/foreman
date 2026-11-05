@@ -119,7 +119,7 @@ across `internal/` is about 89%. The format decisions are in ADR 0002.
   save zip. Imports copy, keep times, never hardlink and never change the
   source. A new world is built in one staging folder and renamed into
   place, so a refused or failed import leaves no world behind. Mod sync
-  for an uploaded save is Epic 5.
+  for an uploaded save is Epic 6.
 - **Saves (SPEC 5.11, 7.11).** List (newest first), download, upload and
   choose which save loads. An upload with a name that exists is refused.
   An upload to a busy world waits up to 60 seconds for it. If the world
@@ -601,8 +601,9 @@ STATUS had said 10.1 was delivered; it was not until this epic.
 
 ### Verified
 
-Checks on <commit>: <to be filled: `make verify`, `make e2e`, `make
-test-game`, `make e2e-game`>.
+Checks on 869350a, all green: `make verify` (coverage 90.5%), `make e2e`
+(408 passed), `make test-game` (1.1.110, 2.0.77, 2.1.23 and 2.1.24, with
+both update and rollback cases), and `make e2e-game` (2 passed).
 
 - Invariant tests in `internal/world` and `internal/game`
   (`update_test.go`): a version only moves up; a refused update changes
