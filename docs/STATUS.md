@@ -741,8 +741,10 @@ his development machine, built from `fe4b814`.
   times, with the game running and stopped, from a desktop browser, and
   joined the worlds from a game client. Foreman opened and worked on his
   phone once the phone's browser was allowed to reach the local network
-  (an Android permission, not a Foreman issue); the switches themselves
-  were not repeated from the phone.
+  (an Android permission, not a Foreman issue). From the phone he then
+  started `saves-2026` and, with it running, switched back to `current`,
+  which closed the round trip begun from the desktop (`current` to
+  `dans-achievement-saves` to `saves-10-2026` to `saves-2026`).
 - Foreman downloaded a game image through the socket proxy (`POST`
   allowed), and live page updates worked through Caddy.
 
