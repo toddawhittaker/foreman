@@ -54,7 +54,7 @@
   <h2 id="gone-heading">Already deleted</h2>
   <ul>
     {{- range .}}
-    <li>{{.WorldName}}: the snapshot taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time> is deleted already, so nothing is left to do.</li>
+    <li>{{.WorldName}}: {{if .TakenAt.IsZero}}the snapshot <code>{{.Snapshot.Name}}</code>{{else}}the snapshot taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>{{end}} is deleted already, so nothing is left to do.</li>
     {{- end}}
   </ul>
 </section>
