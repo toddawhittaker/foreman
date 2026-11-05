@@ -14,7 +14,7 @@
 {{- else}}
 <div sse-swap="announce" hidden></div>
 <div sse-swap="moved" hidden></div>
-<div class="actions"><a href="{{.WorldPath}}">Active world: {{.World.Name}}</a></div>
+<div class="actions" sse-swap="active">{{template "server-active" .}}</div>
 <section class="panel" aria-labelledby="status-heading">
   <h2 id="status-heading">Status</h2>
   <div sse-swap="facts">{{template "server-facts" .}}</div>
@@ -27,15 +27,40 @@
   <h2 id="control-heading" tabindex="-1">Start and stop</h2>
   <div sse-swap="control">{{template "server-control" .}}</div>
 </section>
+{{- with .OtherWorlds}}
+<section class="panel" aria-labelledby="others-heading">
+  <h2 id="others-heading">Switch to another world</h2>
+  <ul class="worlds" role="list">
+    {{- range .}}
+    <li>
+      <h3>{{.Name}}</h3>
+      <p>Factorio {{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}of an unknown version{{end}}{{if .SpaceAge}}, with Space Age{{end}}</p>
+      <div class="actions"><a href="{{$.Page.SwitchPath .ID}}" class="button">Switch to {{.Name}}</a></div>
+    </li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
 
+{{/* The link to the active world's page. During a switch it moves to the
+     new world once that is active (SPEC 7.9). */}}
+{{define "server-active" -}}
+<a href="{{.ActivePath}}" id="act-world">Active world: {{.ActiveName}}</a>
+{{- end}}
+
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
-     focus, because it is replaced whenever a figure changes. */}}
+     focus, because it is replaced whenever a figure changes. Figures that
+     cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
 {{define "server-facts" -}}
 <dl class="facts">
   <div><dt>State</dt><dd><span class="state state--{{.Status.State}}">{{.StateWord}}</span></dd></div>
+  {{- with .Switching}}
+  <div><dt>Switching</dt><dd>{{.}}</dd></div>
+  {{- end}}
+  {{- if .FactsKnown}}
   <div><dt>Uptime</dt><dd>{{if .Running}}<time datetime="{{.UptimeISO}}">{{.Uptime}}</time>{{else}}Not running{{end}}</dd></div>
   <div><dt>Game version</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}Unknown{{end}}</dd></div>
   {{- with .Status.Save}}
@@ -45,18 +70,19 @@
   <div><dt>CPU</dt><dd>{{.CPU}}</dd></div>
   <div><dt>Memory</dt><dd>{{bytes .Status.MemoryBytes}}</dd></div>
   {{- end}}
+  {{- end}}
 </dl>
 {{- with .Status.Reason}}
 <p>{{.}}</p>
 {{- end}}
 {{- end}}
 
-{{/* Who is online now and for how long (SPEC 8.1). */}}
+{{/* Who is online now and for how long (SPEC 8.1). While a stop warns
+     players, the list is who was online when it began (SPEC 7.6). */}}
 {{define "server-players" -}}
-{{- if .PlayersKnown}}
-{{- if .Players}}
+{{- if .PlayerTable}}{{with .PlayerTable}}
 <table>
-  <caption>{{len .Players}} online</caption>
+  <caption>{{.Caption}}</caption>
   <thead><tr><th scope="col">Player</th><th scope="col" class="num">Online for</th></tr></thead>
   <tbody>
     {{- range .Players}}
@@ -64,9 +90,11 @@
     {{- end}}
   </tbody>
 </table>
-{{- else}}
-<p class="empty">Nobody is online.</p>
 {{- end}}
+{{- else if .PlayersKnown}}
+<p class="empty">Nobody is online.</p>
+{{- else if eq .Status.State "unknown"}}
+<p class="empty">Foreman cannot see whether anyone is online.</p>
 {{- else if .PlayersError}}
 <p class="empty">Foreman could not ask the game who is online. It tries again with the next update.</p>
 {{- else if eq .Status.State "starting" "stopping"}}
@@ -88,7 +116,8 @@
   </ul>
   {{- end}}
   {{- if .Undo}}
-  <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot from the Snapshots page.</p>
+  <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot.</p>
+  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">Restore "Before restore"</a></div>
   {{- end}}
   {{- with .Anyway}}
   {{- with .Advice}}
@@ -147,7 +176,8 @@
 
 {{/* The crash message, with the game's reason from its log when it gave
      one (SPEC 8.7). The full log is on the Console page. When a later
-     action's result leads the page, the crash is marked as earlier. */}}
+     action's result leads the page, the crash is marked as earlier. After a
+     crash loop the same box offers the ways to recover (SPEC 17.9). */}}
 {{define "server-crash" -}}
 {{- $earlier := not .CrashLeads}}
 <div class="message message--warning">
@@ -155,6 +185,19 @@
     {{- if eq .Status.State "crash-looping"}} again and again, so Foreman stopped it{{.Status.CrashReason}}.
     {{- else}}{{if and (not $earlier) (not .Status.LastCrash.IsZero)}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}{{.Status.CrashReason}}. Docker is starting it again.{{end}}
     {{- if not .Status.CrashReason}} Foreman could not tell why from the log.{{end}}</p>
+  {{- if .CrashLooping}}
+  <p>Fix what the game reported, for example {{.World.Name}}'s mods or its save, then try to start it again.{{if or .RecoverRestore .RecoverSwitch}} Or put things back as they were before:{{end}}</p>
+  {{- if or .RecoverRestore .RecoverSwitch}}
+  <div class="actions">
+    {{- with .RecoverRestore}}
+    <a href="{{.Path}}" class="button" id="act-recover-restore">{{.Label}} ({{utc .At}})</a>
+    {{- end}}
+    {{- with .RecoverSwitch}}
+    <a href="{{.Path}}" class="button" id="act-switch-back">Switch back to {{.Name}}</a>
+    {{- end}}
+  </div>
+  {{- end}}
+  {{- end}}
   <p><a href="{{.ConsolePath}}" id="act-console">Read the full log on the Console page</a></p>
 </div>
 {{- end}}
@@ -164,7 +207,7 @@
 {{define "server-steps" -}}
 <ol class="steps" role="list">
   {{- range .Steps}}
-  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> {{.Name}}
+  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> {{.Name}}{{with $.Left .}}: {{.}}{{end}}
     {{- if eq .State "progress"}}
     <progress aria-label="{{.Name}}"></progress>
     {{- end}}
@@ -193,13 +236,21 @@
 {{- end}}
 {{- with .Done}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{.}}</p>
-  <div class="actions"><a href="{{$.SnapshotsPath}}" id="act-snapshots">Go to Snapshots</a></div>
+  <p><strong>Done:</strong> {{.}} Finished at <time datetime="{{isoTime $.DoneAt}}">{{utc $.DoneAt}}</time>.</p>
+  <div class="actions">
+    {{- with $.Undo}}
+    <a href="{{.Path}}" class="button" id="act-undo">{{.Label}}</a>
+    {{- end}}
+    <a href="{{$.SnapshotsPath}}" id="act-snapshots">Go to Snapshots</a>
+  </div>
 </div>
 {{- end}}
 {{- if .ShowOperation}}
 <h3>{{.OperationHeading}}</h3>
 {{template "server-steps" .OperationList}}
+{{- end}}
+{{- with .CancelStopPath}}
+<form method="post" action="{{.}}" class="actions"><button type="submit" class="button button--primary" id="act-cancel-stop">Cancel stop</button></form>
 {{- end}}
 {{- with .SwitchNote}}
 <p>{{.}}</p>
@@ -209,7 +260,7 @@
   <p><strong>Warning:</strong> {{.Text}}</p>
 </div>
 {{- end}}
-{{- with .SwitchBack}}
+{{- with .LoneSwitchBack}}
 <div class="actions"><a href="{{.Path}}" class="button" id="act-switch-back">Switch back to {{.Name}}</a></div>
 {{- end}}
 {{- if .ShowDownload}}
@@ -219,11 +270,11 @@
 {{- if and .Crashed (not .CrashLeads)}}
 {{template "server-crash" .}}
 {{- end}}
-{{- with .StartBlocked}}
+{{- if not .CrashLooping}}{{with .StartBlocked}}
 <div class="message message--note">
   <p><strong>Note:</strong> {{.}}</p>
 </div>
-{{- end}}
+{{- end}}{{end}}
 {{- with .ImageNote}}
 <div class="message message--note">
   <p><strong>Note:</strong> {{.}}</p>
@@ -234,7 +285,7 @@
   <p><strong>Done:</strong> {{.}}</p>
 </div>
 {{- end}}
-{{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload}}
+{{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload .CanSnapshot}}
 <div class="actions">
   {{- if .OffersDownload}}
   <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary" id="act-pull">Download game image</button></form>
@@ -250,6 +301,9 @@
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">Restart server</a>
+  {{- end}}
+  {{- if .CanSnapshot}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">Take snapshot</button></form>
   {{- end}}
   {{- if .CanForceStop}}
   <a href="{{.ForceStopPath}}" class="button" id="act-force-stop">Force stop</a>

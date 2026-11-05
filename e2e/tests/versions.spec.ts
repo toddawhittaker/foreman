@@ -202,7 +202,7 @@ test.describe("with the fake game", () => {
     await expect(confirm.getByRole("button", { name: "Roll back to 2.1.24" })).toHaveClass(/button--danger/);
     await checkPage(page);
 
-    await page.getByLabel(/No countdown/).check();
+    await page.getByLabel("Countdown in seconds").fill("0");
     await confirm.getByRole("button", { name: "Roll back to 2.1.24" }).click();
     await expect.poll(() => diskVersion(foreman, "base"), live).toBe("2.1.24");
     await expect.poll(async () => (await container(g, "foreman-base"))?.image, live).toContain(":2.1.24");

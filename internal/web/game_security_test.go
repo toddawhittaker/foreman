@@ -173,6 +173,8 @@ func serverActionRoutes(snap string) []actionRoute {
 		{http.MethodPost, p("force-stop")},
 		{http.MethodPost, p("pull-image")},
 		{http.MethodPost, p("switch")},
+		{http.MethodPost, p("cancel-stop")},
+		{http.MethodPost, p("take-snapshot")},
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},
@@ -183,7 +185,7 @@ func serverActionRoutes(snap string) []actionRoute {
 
 // actionForm is a form every action route would accept from a signed-in
 // admin: no countdown, start anyway.
-var actionForm = url.Values{"no_countdown": {"on"}, "anyway": {"1"}, "label": {"x"}, "command": {"/server-save"}}
+var actionForm = url.Values{"countdown": {"0"}, "anyway": {"1"}, "label": {"x"}, "command": {"/server-save"}}
 
 // wantUntouched fails when the game was stopped, restarted or recreated,
 // or anything was audited or snapshotted, since the baseline.
@@ -245,7 +247,7 @@ func TestServerActionsRefuseBadRequests(t *testing.T) {
 					t.Errorf("%s %s %s: %d, want 403", name, r.method, path, rep.StatusCode)
 				}
 			}
-			if rep := g.do(http.MethodGet, path, nil, cookie); r.path(id) == gamePath(id, "start") || r.path(id) == gamePath(id, "pull-image") {
+			if rep := g.do(http.MethodGet, path, nil, cookie); slices.Contains([]string{"start", "pull-image", "cancel-stop", "take-snapshot"}, strings.TrimPrefix(path, worldPath(id)+"/")) {
 				if rep.StatusCode != http.StatusMethodNotAllowed {
 					t.Errorf("GET %s: %d, want 405", path, rep.StatusCode)
 				}
@@ -459,7 +461,7 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 
 	// A stop that cannot reach RCON fails with a message for the admin.
 	g.fake.SetRCONRefuse(name, true)
-	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	seen.WriteString(g.waitPage(running, "RCON"))
 	g.post(snapshotsPath(id), url.Values{"label": {"Live"}}) // refused: the game cannot save
 	look(pages...)
@@ -533,13 +535,13 @@ func TestOnlyListedDockerCalls(t *testing.T) {
 	if rep := g.post(snapshotsPath(id), url.Values{"label": {"Live"}}); rep.StatusCode != http.StatusSeeOther {
 		t.Fatalf("snapshot: %d", rep.StatusCode)
 	}
-	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"countdown": {"0"}}))
 	if err := g.waitResult(id, game.AuditRestart); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	g.wantRedirectHome(g.post(restorePath(id, snap.Name), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(restorePath(id, snap.Name), url.Values{"countdown": {"0"}}))
 	g.waitPage(running, "The world is restored.")
-	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	g.waitPage(stopped)
 	for _, c := range g.fake.State().Calls {
 		if strings.HasSuffix(c, "/kill") {
@@ -641,7 +643,7 @@ func TestAskedForStopIsNeverACrash(t *testing.T) {
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	for _, action := range []string{"stop", "force-stop"} {
 		g.startGame(id)
-		g.wantRedirectHome(g.post(gamePath(id, action), url.Values{"no_countdown": {"on"}}))
+		g.wantRedirectHome(g.post(gamePath(id, action), url.Values{"countdown": {"0"}}))
 		g.waitPage(stopped)
 		time.Sleep(6 * time.Second) // past one monitor poll (SPEC 8.7)
 		if st := g.ctrl.Status(id).State; st != game.StateStopped {
@@ -745,11 +747,11 @@ func TestServerActionsAuditTheUser(t *testing.T) {
 	}
 
 	g.startGame(id)
-	asBob(gamePath(id, "restart"), url.Values{"no_countdown": {"on"}})
+	asBob(gamePath(id, "restart"), url.Values{"countdown": {"0"}})
 	if err := g.waitResult(id, game.AuditRestart); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	g.waitPage(stopped)
 	g.startGame(id)
 	asBob(gamePath(id, "force-stop"), url.Values{})
@@ -810,8 +812,8 @@ func TestStopDuringRestartIsNotLost(t *testing.T) {
 	g := newSecRig(t)
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
 	g.startGame(id)
-	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"no_countdown": {"on"}}))
-	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"countdown": {"0"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	err := g.waitResult(id, game.AuditStop)
 	time.Sleep(time.Second)
 	st := g.ctrl.Status(id).State
@@ -833,7 +835,7 @@ func TestRefusedStopKeepsTheRestartsResult(t *testing.T) {
 	// and is refused. The image goes away meanwhile, so the restart's start
 	// then fails.
 	g.wantRedirectHome(g.post(gamePath(id, "restart"), url.Values{"countdown": {"2"}}))
-	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"no_countdown": {"on"}}))
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	g.fake.SetImage(image21, false)
 	if err := g.waitResult(id, game.AuditRestart); !errors.Is(err, game.ErrImageMissing) {
 		t.Fatalf("the restart ended with %v, want the missing image", err)

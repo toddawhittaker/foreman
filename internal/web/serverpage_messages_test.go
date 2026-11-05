@@ -73,7 +73,16 @@ func TestStartBlocked(t *testing.T) {
 			if c.blocked != strings.Contains(html, ">Try to start again<") || c.blocked == strings.Contains(html, ">Start server<") {
 				t.Errorf("wrong start button in\n%s", html)
 			}
-			if c.blocked && !strings.Contains(html, "<strong>Note:</strong> ") {
+			// A crash loop says what to do in its own box, with no second
+			// note repeating it.
+			why := "<strong>Note:</strong> "
+			if c.page.CrashLooping() {
+				why = "then try to start it again."
+				if strings.Contains(html, "<strong>Note:</strong>") {
+					t.Errorf("a crash loop still adds a note:\n%s", html)
+				}
+			}
+			if c.blocked && !strings.Contains(html, why) {
 				t.Errorf("no reason given in\n%s", html)
 			}
 		})

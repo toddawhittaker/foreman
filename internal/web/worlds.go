@@ -49,6 +49,9 @@ type WorldPage struct {
 	CanSwitch  bool
 	SwitchNote string
 	SwitchBusy bool
+	// MissingImage is the game image this host lacks for the world, asked
+	// of the local Docker only when it is offered for a switch (SPEC 3.7).
+	MissingImage string
 	// Busy says what runs on this world now, so both worlds of a switch
 	// show it (SPEC 7.9); it is "" when nothing does.
 	Busy string
@@ -331,6 +334,9 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameErr
 		p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
 	default:
 		p.CanSwitch = true
+		if ref, present, err := s.game.ImageFor(ctx, sum.ID); err == nil && !present {
+			p.MissingImage = ref
+		}
 	}
 	return p
 }

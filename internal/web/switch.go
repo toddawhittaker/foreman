@@ -159,6 +159,9 @@ func (s *server) switchPage(ctx context.Context, from string, to world.Summary, 
 	if p.Plan.Download {
 		p.ImageSize = s.imageSize(ctx, to.GameVersion)
 	}
+	if p.Plan.Running {
+		p.Online = s.online(ctx, from)
+	}
 	return p, nil
 }
 
@@ -230,7 +233,7 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	s.beginOn(w, r, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
 		err := s.game.Switch(ctx, from, to.ID, by, stop, opts, start)
 		res := s.finish(from, game.AuditSwitch, err)
-		res.Target = to.ID
+		res.Target, res.From = to.ID, from
 		return res
 	})
 }
@@ -264,8 +267,10 @@ func (s *server) switchNames(p *ServerPage) {
 	}
 	// A switch the checks refused never began an operation, but its box
 	// still names the world it would switch to.
-	if t := p.Result.Target; p.HaveResult && t != "" && p.WorldNames[t] == "" {
-		p.WorldNames[t] = s.worldName(t)
+	for _, id := range []string{p.Result.Target, p.Result.From} {
+		if p.HaveResult && id != "" && p.WorldNames[id] == "" {
+			p.WorldNames[id] = s.worldName(id)
+		}
 	}
 }
 
