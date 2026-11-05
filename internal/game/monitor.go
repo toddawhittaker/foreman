@@ -66,12 +66,14 @@ func (c *Controller) tick(ctx context.Context) {
 		return
 	}
 	c.mu.Lock()
+	before := c.dockerErr
 	c.dockerErr = err
 	if err == nil {
 		c.listed = true
 	}
 	c.mu.Unlock()
 	if err != nil {
+		c.logDockerFault(before, err)
 		for _, w := range c.allRuns() {
 			c.publish(w)
 		}

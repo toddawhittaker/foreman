@@ -272,7 +272,7 @@ func TestGameNetworkMembers(t *testing.T) {
 	d.Seed(dockertest.Container{Name: "foreman-theirs", Status: "running", Networks: map[string]string{"games": "172.30.0.10/24"},
 		Spec: docker.ContainerSpec{Labels: map[string]string{LabelInstall: "/srv/other", LabelWorld: "theirs"}}})
 	d.Seed(dockertest.Container{Name: "socket-proxy", Status: "running", Networks: map[string]string{"games": "172.30.0.11/24"}})
-	check("also holds foreman-theirs, socket-proxy")
+	check("foreman-theirs (a running game from another Foreman installation), socket-proxy")
 	// Outside a container the default bridge is shared with anything, and
 	// nothing is checked.
 	r.c.selfID, r.c.network = "", ""

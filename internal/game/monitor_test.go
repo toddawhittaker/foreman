@@ -163,11 +163,9 @@ func TestReattachAfterForemanRestart(t *testing.T) {
 	if err != nil || len(players) != 1 || players[0].Name != "carol" {
 		t.Errorf("players %+v, %v", players, err)
 	}
-	if v, _, stop := c2.Watch(id); len(v.Lines) == 0 {
-		t.Error("the log was not followed after re-attaching")
-	} else {
-		stop()
-	}
+	// The follower reads the log on its own goroutine, so its lines may
+	// arrive a moment after the state reads running.
+	eventually(t, func() bool { return len(c2.Lines(id)) > 0 }, "the log to be followed after re-attaching")
 	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
 		t.Fatalf("the re-attached game cannot be stopped: %v", err)
 	}

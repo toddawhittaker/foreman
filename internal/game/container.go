@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/datadir"
@@ -193,7 +194,7 @@ func (c *Controller) checkSharedNetwork(ctx context.Context, self docker.Contain
 	if c.dockerTCP || len(c.proxies) > 0 {
 		subnets, err := networkSubnets(self.Networks[network])
 		if err != nil {
-			return refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check that a game on it stays away from the Docker socket proxy and FOREMAN_TRUSTED_PROXIES", network)
+			return refuseNetwork("cannot read the address range of the %q network from Docker, so Foreman cannot check that a game on it stays away from the Docker socket proxy and FOREMAN_TRUSTED_PROXIES. Check that Docker answers, then try again", network)
 		}
 		if c.dockerTCP {
 			if err := c.checkDockerHost(ctx, self, network, subnets); err != nil {
@@ -219,7 +220,8 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 	if err != nil {
 		return err
 	}
-	var others []string
+	var others []string // each described, for the message
+	var removable, keep []string
 	for _, s := range list {
 		if s.ID == self.ID || isGame(s) {
 			continue
@@ -228,12 +230,37 @@ func (c *Controller) checkNetworkMembers(ctx context.Context, self docker.Contai
 		if len(s.Names) > 0 {
 			name = strings.TrimPrefix(s.Names[0], "/")
 		}
-		others = append(others, name)
+		stopped := slices.Contains([]string{"exited", "created", "dead"}, s.State)
+		state, kind := s.State, "container that is not a Foreman game"
+		if stopped {
+			state = "stopped"
+		}
+		// isGame refused it, so a world label means another install's game.
+		if s.Labels[LabelWorld] != "" {
+			kind = "game from another Foreman installation"
+		}
+		others = append(others, fmt.Sprintf("%s (a %s %s)", name, state, kind))
+		if stopped {
+			removable = append(removable, name)
+		} else {
+			keep = append(keep, name)
+		}
 	}
-	if len(others) > 0 {
-		return refuseNetwork("the game network %q also holds %s, which Foreman did not make, so a game could reach them. Give the game a network that only Foreman and its games are on", network, strings.Join(others, ", "))
+	if len(others) == 0 {
+		return nil
 	}
-	return nil
+	fixes := ""
+	if len(removable) > 0 {
+		fixes += fmt.Sprintf(" Remove the stopped ones you no longer need with %q.", "docker rm "+strings.Join(removable, " "))
+	}
+	if len(keep) > 0 {
+		cmds := make([]string, len(keep))
+		for i, n := range keep {
+			cmds[i] = fmt.Sprintf("%q", "docker network disconnect "+network+" "+n)
+		}
+		fixes += " Disconnect the others with " + strings.Join(cmds, " and ") + "."
+	}
+	return refuseNetwork("Foreman will not start a game on the network %q while other containers are on it, because a game could reach them. On it now: %s.%s Then try again. If they must stay, give Foreman a game network of its own with FOREMAN_GAME_NETWORK", network, strings.Join(others, ", "), fixes)
 }
 
 // checkDockerHost accepts a tcp:// DOCKER_HOST only when every address it
