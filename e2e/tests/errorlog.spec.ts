@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 
-// The ERROR log check in the foreman fixture (docs/EPIC-POLISH-FIXES.md, ruling 5).
+// The ERROR log check in the foreman fixture (docs/WORKFLOW.md).
 // The projects differ only in theme and width, which the log does not depend on,
 // so one project is enough.
 test.beforeEach(({}, testInfo) => {

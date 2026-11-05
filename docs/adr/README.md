@@ -36,3 +36,4 @@ record has four parts:
 | [0004](0004-adopted-game-folder.md) | Superseded by 0005. Adopted mode: a link layout switched by one rename, originals kept, records in the database, strict container rules, a network warning, header refusal by range. |
 | [0005](0005-managed-only-versions-by-tag.md) | Managed mode only; a world runs any patch release of a supported line, by version tag. |
 | [0006](0006-vpn-sidecar-network.md) | Optionally, the game shares a VPN sidecar's network, with RCON bound to the game-network address. |
+| [0007](0007-imported-from-in-world-json.md) | Where a world was imported from is kept in `world.json` and matched by the save's name, size and modification time, not a hash. |

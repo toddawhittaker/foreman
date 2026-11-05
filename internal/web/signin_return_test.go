@@ -12,7 +12,7 @@ func signInAfter(path string) string {
 	return PathSignIn + "?next=" + url.QueryEscape(path)
 }
 
-// SPEC 14.9: a signed-out visit goes to sign-in with the page asked for,
+// SPEC 14.17: a signed-out visit goes to sign-in with the page asked for,
 // and signing in returns there.
 func TestSignInReturnsToTheRequestedPage(t *testing.T) {
 	hn := newHarness(t, nil)
@@ -37,7 +37,7 @@ func TestSignInReturnsToTheRequestedPage(t *testing.T) {
 	}
 }
 
-// SPEC 14.9: anything but a local path sends the admin home, from the
+// SPEC 14.17: anything but a local path sends the admin home, from the
 // link and from a forged form field alike.
 func TestSignInIgnoresOffSiteReturnPaths(t *testing.T) {
 	for _, next := range []string{"//evil.example/", "/\\evil.example", "https://evil.example/", "/\t/evil.example", PathSignIn} {
