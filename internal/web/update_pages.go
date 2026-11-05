@@ -56,9 +56,9 @@ type RollbackOffer struct {
 // versionsPath is where the picker's suggestion list loads from.
 func versionsPath(above string) string {
 	if above == "" {
-		return "/versions"
+		return PathVersions
 	}
-	return "/versions?" + url.Values{"above": {above}}.Encode()
+	return PathVersions + "?" + url.Values{"above": {above}}.Encode()
 }
 
 func (VersionPicker) templateName() string { return "versions" }

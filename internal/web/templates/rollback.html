@@ -10,6 +10,7 @@
   <p><strong>Error:</strong> {{.}}</p>
 </div>
 {{- end}}
+{{- if .Version}}
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">Go back from Factorio {{.World.GameVersion}} to {{.Version}}?</h2>
   <p><strong>Warning:</strong> everything played since the update is lost. Saves made on {{.World.GameVersion}} cannot be loaded by {{.Version}}.</p>
@@ -35,5 +36,6 @@
     </div>
   </form>
 </section>
+{{- end}}
 {{- end}}
 {{- end}}
