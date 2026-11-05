@@ -15,6 +15,11 @@
 <div sse-swap="announce" hidden></div>
 <div sse-swap="moved" hidden></div>
 <div class="actions" sse-swap="active">{{template "server-active" .}}</div>
+{{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
+<section class="panel" aria-labelledby="control-heading">
+  <h2 id="control-heading" tabindex="-1">Start and stop</h2>
+  <div sse-swap="control">{{template "server-control" .}}</div>
+</section>
 <section class="panel" aria-labelledby="status-heading">
   <h2 id="status-heading">Status</h2>
   <div sse-swap="facts">{{template "server-facts" .}}</div>
@@ -22,10 +27,6 @@
 <section class="panel" aria-labelledby="players-heading">
   <h2 id="players-heading">Players online</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
-</section>
-<section class="panel" aria-labelledby="control-heading">
-  <h2 id="control-heading" tabindex="-1">Start and stop</h2>
-  <div sse-swap="control">{{template "server-control" .}}</div>
 </section>
 {{- with .OtherWorlds}}
 <section class="panel" aria-labelledby="others-heading">
@@ -207,7 +208,7 @@
 {{define "server-steps" -}}
 <ol class="steps" role="list">
   {{- range .Steps}}
-  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> {{.Name}}{{with $.Left .}}: {{.}}{{end}}
+  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> <span class="step-name">{{.Name}}{{with $.Left .}}: {{.}}{{end}}</span>
     {{- if eq .State "progress"}}
     <progress aria-label="{{.Name}}"></progress>
     {{- end}}
@@ -306,7 +307,8 @@
   <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">Take snapshot</button></form>
   {{- end}}
   {{- if .CanForceStop}}
-  <a href="{{.ForceStopPath}}" class="button" id="act-force-stop">Force stop</a>
+  {{- /* A plain link: it weighs less than Stop and Restart (DESIGN 6). */}}
+  <a href="{{.ForceStopPath}}" id="act-force-stop">Force stop</a>
   {{- end}}
 </div>
 {{- end}}

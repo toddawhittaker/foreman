@@ -244,6 +244,13 @@ main {
   padding: var(--space-2) var(--space-3);
 }
 
+/* On a phone the name and Sign out share the first row and the tabs fill
+   the second, in one line (DESIGN 6, Shell). */
+.site > nav {
+  order: 1;
+  flex-basis: 100%;
+}
+
 .product {
   display: inline-flex;
   align-items: center;
@@ -263,16 +270,20 @@ main {
   list-style: none;
 }
 
+/* On a phone the tabs share the row out between them. */
 .tabs li {
+  flex: 1 1 auto;
   max-inline-size: none;
 }
 
 .tabs a {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   min-block-size: var(--target-min);
-  padding-inline: var(--space-3);
+  padding-inline: var(--space-1);
   color: var(--color-text);
+  font-size: var(--text-sm);
   border-radius: var(--radius);
   text-decoration: none;
 }
@@ -289,8 +300,11 @@ main {
   font-weight: 700;
 }
 
+/* On a phone the sign-out form takes what the name leaves, and the user's
+   name wraps inside it rather than pushing Sign out to a row of its own. */
 .signout {
   display: flex;
+  flex: 1 1 0;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
@@ -299,8 +313,12 @@ main {
 }
 
 .user {
+  flex: 1 1 0;
   min-inline-size: 0;
+  text-align: end;
   color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
@@ -315,6 +333,25 @@ main {
 @media (min-width: 40rem) {
   body {
     padding: var(--space-4);
+  }
+
+  .site > nav {
+    order: 0;
+    flex-basis: auto;
+  }
+
+  .tabs li {
+    flex: none;
+  }
+
+  .tabs a {
+    padding-inline: var(--space-3);
+    font-size: var(--text-md);
+  }
+
+  .signout,
+  .user {
+    flex: 0 1 auto;
   }
 
   main {
@@ -405,6 +442,11 @@ form.panel,
   gap: var(--space-3);
 }
 
+/* A button in its own form lines up and stacks like the links beside it. */
+.actions > form {
+  display: contents;
+}
+
 /* A plain link beside a button, such as Cancel, is a full-size target. */
 .actions > a:not(.button) {
   display: inline-flex;
@@ -414,7 +456,8 @@ form.panel,
 
 /* On a narrow panel the buttons stack full width, primary first. */
 @container (max-width: 24rem) {
-  .actions > .button {
+  .actions > .button,
+  .actions > form > .button {
     flex: 1 1 100%;
   }
 }
@@ -698,9 +741,10 @@ legend {
   list-style: none;
 }
 
+/* The word and the step side by side, so each step is one row even on a phone. */
 .steps li {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
   align-items: baseline;
   gap: var(--space-1) var(--space-3);
   max-inline-size: none;
@@ -711,6 +755,7 @@ legend {
 }
 
 .steps progress {
+  grid-column: 2;
   inline-size: 100%;
   max-inline-size: 20rem;
   accent-color: var(--color-highlight);
@@ -724,7 +769,6 @@ legend {
 }
 
 .step-state {
-  min-inline-size: 6rem;
   font-weight: 600;
   color: var(--color-text-muted);
 }
@@ -747,14 +791,7 @@ legend {
 
 /* A failed step's message sits on its own line under the word, at any width. */
 .steps li > .message {
-  flex: 1 1 100%;
-}
-
-/* On a narrow panel the word has its own line, so every step lines up. */
-@container (max-width: 24rem) {
-  .step-state {
-    flex-basis: 100%;
-  }
+  grid-column: 1 / -1;
 }
 
 /* Parts the server swaps in stack with room between them, so a button is
@@ -780,12 +817,28 @@ legend {
   list-style: none;
 }
 
+/* A world's Switch sits beside its name, saving a row on a phone (DESIGN 6). */
 .worlds > li {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3);
   max-inline-size: none;
   padding-block: var(--space-3);
   border-block-end: var(--border-width) solid var(--color-rule);
+}
+
+.worlds > li > * {
+  grid-column: 1 / -1;
+}
+
+.worlds > li > :is(h2, h3) {
+  grid-column: 1;
+}
+
+.worlds > li > .facts ~ .actions {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: start;
 }
 
 .worlds > li:first-child {
@@ -807,7 +860,7 @@ legend {
 /* The status facts: label and value pairs that reflow at any width (7.5). */
 .facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
   gap: var(--space-2) var(--space-4);
 }
 
@@ -990,6 +1043,13 @@ td:last-child {
 
 .console-row .button {
   flex: 0 0 auto;
+}
+
+/* The history is only as tall as what it holds, up to a limit, so the newest
+   reply sits close under the field (DESIGN 6). */
+#console-panel > .log {
+  block-size: auto;
+  max-block-size: min(40vh, 20rem);
 }
 
 /* Past commands: the command is bold behind a drawn prompt, the reply plain. */
