@@ -1181,6 +1181,31 @@ will be taken first, and need a confirmation. (P0)
 17.6. A design document, docs/DESIGN.md, sets type, colour tokens,
 spacing and components before the first UI epic. (P0)
 
+17.7. **The Server page is the hub for the active world.** Everything an
+admin does to the world that is running, or about to run, starts from
+the Server page and shows its result there: start, stop, restart, force
+stop, switch to another world, take a snapshot, update the game version,
+and undo or recover after any of these. Each takes one confirmation
+page at most, then shows its progress and result on the Server page. A
+world's own page manages that world (rename, delete, saves, snapshots,
+mods, settings), and offers switching to it, but never sends the admin
+there to finish a task begun on the Server page. (P1)
+
+17.8. **Problems come before the confirmation.** A confirmation page runs
+the checks its action would run, and shows any problem, with its fix, on
+that page. An action is never refused, after the admin confirms, for a
+reason Foreman could have shown on the confirmation page. When an action
+is refused anyway, because something changed in between, the refusal says what
+changed. (P1)
+
+17.9. **The next step is a control, not an instruction.** Every result,
+refusal and failure names the world it is about and offers the next action
+as a button or link on the same page. That includes undo after a change
+(VISION principle 1, "undone in one click"), the download after a missing
+image, and switch back or restore after a failed switch or a crash loop.
+Text that tells the admin to go somewhere else and do something, without
+a link that does it, does not meet this. (P1)
+
 ## 18. Epics, in order
 
 Each epic delivers working, tested features end to end (on disk, server
