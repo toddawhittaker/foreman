@@ -54,7 +54,7 @@ func TestWorldListSurvivesAFailedSnapshotCount(t *testing.T) {
 	if err := os.Chmod(dir, 0); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) }) //nolint:gosec // a test folder must be searchable again to be removed
 
 	rec := hn.get(PathWorlds, withCookie(c))
 	body := rec.Body.String()
