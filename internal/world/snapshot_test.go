@@ -68,8 +68,8 @@ func TestSnapshotLinksZipsCopiesTheRestAndRecordsTimes(t *testing.T) {
 	if statT(t, filepath.Join(world, "config/server.json")).Ino == statT(t, filepath.Join(snap, "config/server.json")).Ino {
 		t.Error("config file was linked, not copied")
 	}
-	if got := mode(t, filepath.Join(snap, "config/server.json")); got != FileMode {
-		t.Errorf("copied file mode %v", got)
+	if got := mode(t, filepath.Join(snap, "config/server.json")); got != 0o640 {
+		t.Errorf("copied config file mode %v, want 0640", got)
 	}
 	got, err := m.Snapshot(id, s.Name)
 	if err != nil {

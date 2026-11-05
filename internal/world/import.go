@@ -26,7 +26,13 @@ type InboxFolder struct {
 	Read        bool
 	GameVersion string
 	SpaceAge    bool
+	// Clash is set when a save name is in two places, which an import
+	// refuses; the folder is listed as not importable (SPEC 5.5).
+	Clash error
 }
+
+// Importable reports whether an import of the folder can go ahead.
+func (f InboxFolder) Importable() bool { return f.Saves > 0 && f.Clash == nil }
 
 // ErrBadGameVersion is returned for a game version that is not an exact
 // release of a supported line (SPEC 10.8), such as 2.0.77.
@@ -124,6 +130,9 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 		return InboxFolder{}, err
 	}
 	f := InboxFolder{Name: name, Saves: len(saves), HasMods: mods != nil}
+	if n, clash := saveClash(saves); clash {
+		f.Clash = saveClashError{n}
+	}
 	for _, x := range slices.Concat(saves, mods, config) {
 		f.Bytes += x.size
 	}
@@ -141,23 +150,25 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 	return f, nil
 }
 
-// configFiles are the files of a world's config/ folder that an import
-// copies (SPEC 5.1). rconpw is not one: Foreman makes its own (SPEC 4.5).
-var configFiles = []string{
-	"server-settings.json", "map-gen-settings.json", "map-settings.json",
-	"server-adminlist.json", "server-banlist.json", "server-whitelist.json",
+// realFolder reports whether dir inside src is a real folder. A dir that
+// is missing, or is not a real folder (a symlink, for one), is not, and
+// that is not an error: there is nothing to copy from it.
+func realFolder(src *os.Root, dir string) (bool, error) {
+	info, err := src.Lstat(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.IsDir(), nil
 }
 
 // regularFiles lists the regular files directly in dir whose names pass
-// keep. A dir that is missing, or is not a real folder (a symlink, for
-// one), has none.
+// keep. A dir that is missing, or is not a real folder, has none.
 func regularFiles(src *os.Root, dir string, keep func(name string) bool) ([]importFile, error) {
 	if dir != "." {
-		info, err := src.Lstat(dir)
-		if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.IsDir()) {
-			return nil, nil
-		}
-		if err != nil {
+		if ok, err := realFolder(src, dir); err != nil || !ok {
 			return nil, err
 		}
 	}
@@ -206,16 +217,12 @@ func importPlan(src *os.Root) (saves, mods, config []importFile, err error) {
 		return nil, nil, nil, err
 	}
 	saves = append(saves, inner...)
-	config, err = regularFiles(src, ConfigDir, func(n string) bool { return slices.Contains(configFiles, n) })
+	config, err = regularFiles(src, ConfigDir, func(n string) bool { return slices.Contains(ConfigFiles, n) })
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	info, err := src.Lstat(ModsDir)
-	if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.IsDir()) {
-		return saves, nil, config, nil
-	}
-	if err != nil {
-		return nil, nil, nil, err
+	if ok, err := realFolder(src, ModsDir); err != nil || !ok {
+		return saves, nil, config, err
 	}
 	mods = []importFile{}
 	err = fs.WalkDir(src.FS(), ModsDir, func(p string, d fs.DirEntry, err error) error {
@@ -336,8 +343,9 @@ func (m *Manager) checkNew(ctx context.Context, name, gameVersion string) error 
 }
 
 // copyFile copies one regular file from src to dst through a temp file,
-// keeping its modification time so "last played" stays true. Parent
-// folders are made as needed.
+// keeping its modification time so "last played" stays true. The copy's
+// mode comes from where it lands (copyMode). Parent folders are made as
+// needed.
 func copyFile(src *os.Root, from string, dst *os.Root, to string) error {
 	if err := mkdirAll(dst, path.Dir(to)); err != nil {
 		return err
@@ -347,7 +355,7 @@ func copyFile(src *os.Root, from string, dst *os.Root, to string) error {
 		return fmt.Errorf("copy %s: %w", from, err)
 	}
 	defer func() { _ = in.Close() }()
-	out, temp, err := CreateTemp(dst, path.Dir(to))
+	out, temp, err := createTempMode(dst, path.Dir(to), copyMode(to))
 	if err != nil {
 		return err
 	}

@@ -317,7 +317,7 @@ func seedServerLayout(t *testing.T, m *Manager) string {
 	write(t, filepath.Join(src, "saves", "notes.txt"), "not a save", old)
 	write(t, filepath.Join(src, "saves", "deep", "c.zip"), "nested", old)
 	write(t, filepath.Join(src, "mods", "mod-list.json"), "{}", old)
-	for _, f := range configFiles {
+	for _, f := range ConfigFiles {
 		write(t, filepath.Join(src, "config", f), "body of "+f, old)
 	}
 	write(t, filepath.Join(src, "config", "rconpw"), "hunter2", old)
@@ -344,17 +344,13 @@ func TestImportFolderServerLayout(t *testing.T) {
 		"saves/b.zip":        "save-b",
 		"mods/mod-list.json": "{}",
 	}
-	for _, f := range configFiles {
+	for _, f := range ConfigFiles {
 		want["config/"+f] = "body of " + f
 	}
 	for p, body := range want {
 		got, err := os.ReadFile(filepath.Join(w, p)) //nolint:gosec // a test temp file
 		if err != nil || string(got) != body {
 			t.Errorf("%s: %q, %v", p, got, err)
-			continue
-		}
-		if mode(t, filepath.Join(w, p)) != FileMode {
-			t.Errorf("%s mode %v", p, mode(t, filepath.Join(w, p)))
 		}
 	}
 	for _, p := range []string{"config/rconpw", "config/config.ini", "config/mapexchangestring.txt", "saves/notes.txt", "saves/deep", "saves/c.zip"} {
@@ -480,5 +476,51 @@ func TestInboxCountsSavesFolder(t *testing.T) {
 	}
 	if f.Saves != 3 || f.Bytes != 4 {
 		t.Errorf("got %d saves, %d bytes", f.Saves, f.Bytes)
+	}
+}
+
+// SPEC 14.8: server-settings.json holds the game password, so an imported
+// config file is readable by the game's group only. Saves and mods keep
+// FileMode.
+func TestImportFolderCopiesConfigFilesAt0640(t *testing.T) {
+	m, _ := newTestManager(t)
+	seedServerLayout(t, m)
+	id, err := m.ImportFolder(context.Background(), "server", "Server game", "2.0.72", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := filepath.Join(m.dirs.Worlds, id)
+	for _, f := range ConfigFiles {
+		if got := mode(t, filepath.Join(w, ConfigDir, f)); got != 0o640 {
+			t.Errorf("%s has mode %v, want 0640", f, got)
+		}
+	}
+	for _, p := range []string{"saves/a.zip", "mods/mod-list.json"} {
+		if got := mode(t, filepath.Join(w, p)); got != FileMode {
+			t.Errorf("%s has mode %v, want %v", p, got, FileMode)
+		}
+	}
+}
+
+// SPEC 5.5: a folder whose save name clashes is listed as not importable,
+// so the admin sees why before submitting.
+func TestInboxMarksASaveClash(t *testing.T) {
+	m, _ := newTestManager(t)
+	write(t, filepath.Join(m.dirs.Imports, "clash", "same.zip"), "top", t0)
+	write(t, filepath.Join(m.dirs.Imports, "clash", "saves", "same.zip"), "inner", t0)
+	write(t, filepath.Join(m.dirs.Imports, "fine", "a.zip"), "x", t0)
+	list, err := m.Inbox()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]InboxFolder{}
+	for _, f := range list {
+		got[f.Name] = f
+	}
+	if c := got["clash"]; c.Importable() || !errors.Is(c.Clash, ErrSaveClash) || !strings.Contains(c.Clash.Error(), "same.zip") {
+		t.Errorf("clash folder: %+v", c)
+	}
+	if f := got["fine"]; !f.Importable() || f.Clash != nil {
+		t.Errorf("fine folder: %+v", f)
 	}
 }

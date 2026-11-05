@@ -137,6 +137,9 @@ func load(e env) (*Config, error) {
 		if c.RequiredGroup == "" {
 			fail("%s must be set when %s includes headers; without it anyone the proxy lets through could sign in", varGroup, varAuthMethods)
 		}
+		if strings.ContainsAny(c.RequiredGroup, "|,") {
+			fail("%s cannot contain | or , because group lists are split on them.", varGroup)
+		}
 		if len(c.TrustedProxies) == 0 {
 			fail("%s must list at least one address range when %s includes headers", varProxies, varAuthMethods)
 		}
