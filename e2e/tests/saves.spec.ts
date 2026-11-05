@@ -64,7 +64,7 @@ test("saves page lists a world's saves, newest first", async ({ page, foreman })
   await expect(rows.nth(0).getByRole("link")).toHaveText("new.zip");
   await expect(rows.nth(0)).toContainText("Loads next");
   await expect(rows.nth(0).locator("time")).toHaveAttribute("datetime", "2026-11-03T14:25:00Z");
-  await expect(rows.nth(0).locator("time")).toHaveText("2026-11-03 14:25 UTC");
+  await expect(rows.nth(0).locator("time")).toHaveText(/Nov 3.*\(.+ ago\)$/);
   await expect(rows.nth(0)).toContainText(`${newSave.length} B`);
   await expect(rows.nth(1).getByRole("link")).toHaveText("old.zip");
   await expect(rows.nth(1)).not.toContainText("Loads next");
