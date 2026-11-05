@@ -120,7 +120,7 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	running, wrong := modVersionMismatch(root, meta, mods)
 	finish := func() (PreCheck, error) {
 		if len(wrong) > 0 {
-			p := modVersionProblem(meta.Name, running, wrong, out.SaveVersion)
+			p := modVersionProblem(meta.Name, running, wrong)
 			out.Problems = slices.Insert(out.Problems, modAt, p)
 		}
 		return out, nil

@@ -238,12 +238,14 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	return check, c.allowStart(check, opts)
 }
 
-// precheckReadOnly is precheck for a switch's checks before the stop, which
-// may change no world file before the switch's snapshots (SPEC 6.2, 7.9). A
+// precheckReadOnly is precheck for the checks a switch or an update runs
+// before the stop, which may change no world file before their snapshots
+// (SPEC 6.2, 7.9, 10.3). version is the game version to check at, or "" for
+// the world's own. A
 // missing mod list is not written: the start writes one that matches the
 // Space Age flag, so the problem it would cause is left out.
-func (c *Controller) precheckReadOnly(id string, opts StartOptions) error {
-	check, err := c.PreStartCheck(id)
+func (c *Controller) precheckReadOnly(id, version string, opts StartOptions) error {
+	check, err := c.worlds.PreStartCheckAt(id, version)
 	if err != nil {
 		return err
 	}
@@ -334,22 +336,27 @@ func (c *Controller) Stop(ctx context.Context, id string, by Actor, stop StopOpt
 	return o.end(err)
 }
 
-// stopLocked runs the stop steps. It returns ErrNotRunning, with the steps
-// skipped, when there is no game to stop. The caller holds the world's lock.
-func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Duration) error {
-	w := o.w
+// stopPlan is what a stop would do with the world's container.
+type stopPlan struct {
+	cont docker.Container
+	rc   *rcon.Client
+	save bool // warn and save over RCON before the stop
+}
+
+// planStop decides what a stop would do, without doing it. It returns
+// ErrPaused, ErrNotRunning, ErrNotReady or ErrRCONUnreachable when the stop
+// would refuse or has nothing to stop.
+func (c *Controller) planStop(ctx context.Context, w *worldRun) (stopPlan, error) {
 	cont, found, err := c.ourContainer(ctx, w.id)
 	if err != nil {
-		return err
+		return stopPlan{}, err
 	}
 	status := cont.State.Status
 	if found && status == "paused" {
-		o.skip(stopSteps...)
-		return ErrPaused
+		return stopPlan{}, ErrPaused
 	}
 	if !found || (status != "running" && status != "restarting") {
-		o.skip(stopSteps...)
-		return ErrNotRunning
+		return stopPlan{}, ErrNotRunning
 	}
 	w.mu.Lock()
 	ours := w.containerID == cont.ID
@@ -361,13 +368,31 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 	case status == "restarting" || crashed:
 		// Docker is restarting the game after a crash, or it crashed and is
 		// not back in game: there is no game to warn or save.
-		o.skip(StepWarn, StepSave)
+		return stopPlan{cont: cont}, nil
 	case ours && !inGame:
-		o.skip(stopSteps...)
-		return ErrNotReady
+		return stopPlan{}, ErrNotReady
 	case rc == nil || !ours:
-		return ErrRCONUnreachable
-	default:
+		return stopPlan{}, ErrRCONUnreachable
+	}
+	return stopPlan{cont: cont, rc: rc, save: true}, nil
+}
+
+// stopLocked runs the stop steps. It returns ErrNotRunning, with the steps
+// skipped, when there is no game to stop. The caller holds the world's lock.
+func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Duration) error {
+	w := o.w
+	plan, err := c.planStop(ctx, w)
+	switch {
+	case errors.Is(err, ErrRCONUnreachable):
+		return err
+	case err != nil:
+		o.skip(stopSteps...)
+		return err
+	}
+	cont, rc := plan.cont, plan.rc
+	if !plan.save {
+		o.skip(StepWarn, StepSave)
+	} else {
 		o.show(StateStopping)
 		o.begin(StepWarn)
 		names, err := c.online(ctx, rc)

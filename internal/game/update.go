@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -51,8 +50,15 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err := c.checkActive(ctx, id); err != nil {
 		return c.refused(ctx, by, AuditUpdate, id, detail, err)
 	}
+	// A game the stop would refuse is refused before the download.
+	if _, err := c.planStop(ctx, c.world(id)); err != nil && !errors.Is(err, ErrNotRunning) {
+		return c.refused(ctx, by, AuditUpdate, id, detail, err)
+	}
 	opts.running = IsRunning(c.Status(id).State)
-	if err := c.updateChecks(ctx, id, version, opts); err != nil {
+	if err := c.precheckReadOnly(id, version, opts); err != nil {
+		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
+	}
+	if _, err := c.gameNetwork(ctx); err != nil {
 		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
 	}
 	opts.confirmed = true
@@ -73,32 +79,6 @@ func updateDetail(from, to string, opts StartOptions) string {
 		d += ", start anyway"
 	}
 	return d
-}
-
-// updateChecks refuses, before anything is stopped or downloaded, an
-// update whose start would be refused (SPEC 7.8, 10.3). It changes no world
-// file, as precheckReadOnly does not.
-func (c *Controller) updateChecks(ctx context.Context, id, version string, opts StartOptions) error {
-	check, err := c.worlds.PreStartCheckAt(id, version)
-	if err != nil {
-		return err
-	}
-	missing, err := c.modListMissing(id)
-	if err != nil {
-		return err
-	}
-	if missing {
-		check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
-			return p.Kind == world.ProblemModListSpaceAge
-		})
-	}
-	if err := c.allowStart(check, opts); err != nil {
-		return err
-	}
-	if _, err := c.gameNetwork(ctx); err != nil {
-		return err
-	}
-	return nil
 }
 
 // updateLocked runs the update steps. The caller holds the world's lock.

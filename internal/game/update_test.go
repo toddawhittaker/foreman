@@ -13,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
+	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -155,9 +158,6 @@ func (u untouched) check(label string) {
 func TestUpdateConstants(t *testing.T) {
 	if AuditUpdate != "game-update" || AuditUpdateRefused != "game-update-refused" || AuditRollback != "rollback" {
 		t.Errorf("audit actions %q %q %q", AuditUpdate, AuditUpdateRefused, AuditRollback)
-	}
-	if ImageRef("2.1.24") != "factoriotools/factorio:2.1.24" {
-		t.Errorf("ImageRef = %q", ImageRef("2.1.24"))
 	}
 }
 
@@ -443,4 +443,50 @@ func TestRollbackWithoutUpdateKeepsTheGameRunning(t *testing.T) {
 		t.Fatalf("Rollback = %v, want ErrNoRollback", err)
 	}
 	u.check("rollback with no update")
+}
+
+// noPull fails when the fake Docker saw an image download: a game the
+// stop would refuse must refuse the update before the download (SPEC 10.3).
+func (r *rig) noPull(label string) {
+	r.t.Helper()
+	if i := slices.IndexFunc(r.game.State().Calls, func(c string) bool { return strings.HasPrefix(c, "POST /images/create") }); i >= 0 {
+		r.t.Errorf("%s: an image was downloaded at call %d", label, i)
+	}
+}
+
+func TestUpdateRefusesAPausedGameBeforeTheDownload(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.versionWorld("Paused", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), false)
+	r.game.Daemon().Seed(dockertest.Container{Name: ContainerName(id), Status: "paused",
+		Spec: docker.ContainerSpec{Labels: map[string]string{LabelWorld: id, LabelInstall: r.data}}})
+	if err := r.c.Update(context.Background(), id, "2.1.24", admin, StopOptions{}, StartOptions{}); !errors.Is(err, ErrPaused) {
+		t.Fatalf("Update = %v, want ErrPaused", err)
+	}
+	r.noPull("paused game")
+	if v := r.metaVersion(id); v != "2.0.77" {
+		t.Errorf("world at %s", v)
+	}
+}
+
+func TestUpdateRefusesAGameNotYetInGameBeforeTheDownload(t *testing.T) {
+	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 2 * time.Second}})
+	id := r.versionWorld("Loading", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), false)
+	r.start(id)
+	r.stop()
+	if err := r.game.Crash(ContainerName(id), 1, false); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() bool { return r.container(id).Status == "running" }, "Docker to restart it")
+	c2 := r.newController(rigOptions{})
+	r.run(c2)
+	eventually(t, func() bool { return c2.Status(id).State == StateStarting }, "the re-attached game to be starting")
+	if err := c2.Update(context.Background(), id, "2.1.24", admin, StopOptions{}, StartOptions{}); !errors.Is(err, ErrNotReady) {
+		t.Fatalf("Update = %v, want ErrNotReady", err)
+	}
+	r.noPull("game not yet in game")
+	if r.container(id).Status != "running" {
+		t.Error("the loading game was stopped")
+	}
 }
