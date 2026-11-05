@@ -536,6 +536,8 @@ type Failure struct {
 	// Undo names the "Before restore" snapshot a failed restore took, and
 	// UndoPath is where restoring it is confirmed.
 	Undo, UndoPath string
+	// Next is a link that follows the message, or nil.
+	Next *Offer
 	// In says which step list holds the message: "operation", "download",
 	// or "" for on its own.
 	In string
@@ -643,7 +645,16 @@ func (p ServerPage) Failure() *Failure {
 		if p.Result.Action == game.AuditSwitch {
 			retry = "Try the switch again."
 		}
-		f.Message = downloadFailure(de, retry)
+		if !de.NotFound {
+			f.Message = downloadFailure(de, retry)
+			break
+		}
+		// The version to fix belongs to the world the image is for.
+		id := p.World.ID
+		if p.Result.Action == game.AuditSwitch && p.Result.Target != "" {
+			id = p.Result.Target
+		}
+		f.Message, f.Next = noImageLead(de), &Offer{Path: worldPath(id), Label: noImageAdvice}
 	case errors.Is(err, game.ErrImageMissing):
 		// The download is for this page's world only: a switch whose new
 		// world lacks its image must never offer the old world's.

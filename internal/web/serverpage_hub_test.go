@@ -416,13 +416,13 @@ func TestServerPageSwitchesAndSwitchesBack(t *testing.T) {
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 	body := g.get(PathServer)
-	g.wantContains("server page", body, `<a href="`+switchPath(b)+`" class="button">Switch to Bravo</a>`)
+	g.wantContains("server page", body, `<a href="`+switchPath(b)+`" class="button" id="act-switch-`+b+`">Switch to Bravo</a>`)
 	g.wantMissing("server page", body, "Switch to Alpha")
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
 	body = g.waitPage("Active world: Bravo", "The worlds are switched, from Alpha to Bravo.")
 	g.wantContains("after the switch", body, `href="`+switchPath(a)+`" class="button" id="act-undo">Switch back to Alpha</a>`,
-		`<a href="`+switchPath(a)+`" class="button">Switch to Alpha</a>`)
+		`<a href="`+switchPath(a)+`" class="button" id="act-switch-`+a+`">Switch to Alpha</a>`)
 }
 
 // SPEC 3.7: a world that is not active says on its page when this host

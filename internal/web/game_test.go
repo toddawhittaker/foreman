@@ -450,6 +450,8 @@ func readEvent(t *testing.T, r *bufio.Reader) (name, data string, err error) {
 func TestEventsStream(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	// A second world, so the switch panel has something to send at once.
+	g.newWorld("Other", "2.1.24-no-space-age.zip", false)
 
 	anon := g.openEvents(id, false)
 	_ = anon.Body.Close()

@@ -117,7 +117,7 @@ func TestDownloadFailureWords(t *testing.T) {
 		want   string
 	}{
 		"not found": {notFound, game.AuditSwitch,
-			"Foreman could not download " + image20 + ": Docker Hub has no image with that version. Check the world&#39;s game version on its page."},
+			"Foreman could not download " + image20 + ": Docker Hub has no image with that version. <a href=\"/worlds/base\" id=\"act-failure-next\">Check the world&#39;s game version on its page.</a>"},
 		"other, a switch": {other, game.AuditSwitch,
 			"Foreman could not download " + image20 + ". The details are in Foreman&#39;s log. Try the switch again."},
 		"other, a download": {other, game.AuditImageDownload,

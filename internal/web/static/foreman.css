@@ -304,7 +304,7 @@ main {
    name wraps inside it rather than pushing Sign out to a row of its own. */
 .signout {
   display: flex;
-  flex: 1 1 0;
+  flex: 1 1 11rem;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
@@ -312,8 +312,16 @@ main {
   margin-inline-start: auto;
 }
 
+/* Sign out never breaks inside its words. The bases are in rem, so at large
+   text the form drops to a row of its own and the name above the button,
+   instead of being squeezed to a letter a line. */
+.signout .button {
+  flex: none;
+  white-space: nowrap;
+}
+
 .user {
-  flex: 1 1 0;
+  flex: 1 1 5rem;
   min-inline-size: 0;
   text-align: end;
   color: var(--color-text-muted);
@@ -328,6 +336,11 @@ main {
   align-content: start;
   gap: var(--space-5);
   padding: var(--space-3);
+}
+
+/* The live switch panel is empty at times; its wrapper must not add a gap. */
+main [sse-swap="others"] {
+  display: contents;
 }
 
 @media (min-width: 40rem) {
