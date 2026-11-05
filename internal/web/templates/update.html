@@ -13,13 +13,19 @@
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">Update {{.World.Name}} from Factorio {{.World.GameVersion}}?</h2>
   <form method="post" action="{{.Path}}" novalidate>
+    <p id="update-forward">A game version only moves forward. The only way back is Roll back on the world's page, which restores the save from before the update.</p>
     <div class="field">
-      <label for="update-version">New game version</label>
-      <p class="hint" id="update-version-hint">Three numbers newer than {{.World.GameVersion}}, such as 2.0.76.</p>
-      <input id="update-version" name="game_version" type="text" value="{{.Target}}" list="update-version-list" required
+      <label for="update-version-select">New game version</label>
+      <select id="update-version-select" name="game_version" hx-get="{{.VersionsPath}}" hx-trigger="load" hx-swap="beforeend">
+        <option value="">Choose a version</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="update-version">Or type a version</label>
+      <p class="hint" id="update-version-hint">Three numbers newer than {{.World.GameVersion}}. If you type one, it is used instead of the choice above.</p>
+      <input id="update-version" name="game_version_typed" type="text" value="{{.Target}}"
         inputmode="decimal" autocomplete="off" spellcheck="false"
         {{- if .VersionError}} aria-invalid="true" aria-describedby="update-version-hint update-version-error"{{else}} aria-describedby="update-version-hint"{{end}}>
-      <datalist id="update-version-list" hx-get="{{.VersionsPath}}" hx-trigger="load" hx-swap="innerHTML"></datalist>
       {{- with .VersionError}}
       <p class="error" id="update-version-error"><strong>Error:</strong> {{.}}</p>
       {{- end}}

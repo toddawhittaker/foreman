@@ -222,7 +222,7 @@ func TestVersionFragments(t *testing.T) {
 		want []string
 	}{
 		{"list", VersionPicker{Versions: []string{"2.1.24", "2.0.77", "2.0.76"}, Stable: "2.0.77", Experimental: "2.1.24"},
-			"version-list", []string{`<option value="2.1.24" label="2.1.24, experimental">`, `label="2.0.77, stable"`, `label="2.0.76"`}},
+			"version-list", []string{`<option value="2.1.24">2.1.24 (experimental)</option>`, `<option value="2.0.77">2.0.77 (stable)</option>`, `<option value="2.0.76">2.0.76</option>`}},
 		{"list unreachable", VersionPicker{Unreachable: true}, "version-list", nil},
 		{"notice newer", ReleaseNotice{Current: "2.0.76", Stable: "2.0.77", Experimental: "2.1.24", UpdatePath: "/worlds/base/update",
 			ChangelogURL: "https://wiki.factorio.com/Version_history/2.1.0"}, "release-notice",

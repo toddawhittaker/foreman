@@ -50,14 +50,14 @@ func TestVersionsListsOnlyVersionsAbove(t *testing.T) {
 	if got := strings.Join(optionValues(body), " "); got != "2.1.25 2.1.24" {
 		t.Errorf("above 2.0.77 lists %q:\n%s", got, body)
 	}
-	g.wantContains("picker", body, `label="2.1.25, experimental"`)
+	g.wantContains("picker", body, `>2.1.25 (experimental)<`)
 	g.wantMissing("picker", body, "stable", "2.0.76", "1.1.110")
 
 	body = g.get(versionsPath("2.0.76"))
 	if got := strings.Join(optionValues(body), " "); got != "2.1.25 2.1.24 2.0.77" {
 		t.Errorf("above 2.0.76 lists %q:\n%s", got, body)
 	}
-	g.wantContains("picker", body, `label="2.0.77, stable"`, `label="2.1.25, experimental"`)
+	g.wantContains("picker", body, `>2.0.77 (stable)<`, `>2.1.25 (experimental)<`)
 
 	// Nothing is above the newest, and the list is still a good answer.
 	rep := g.do(http.MethodGet, versionsPath("2.1.25"), nil, http.Header{"Cookie": {g.cookie.String()}})

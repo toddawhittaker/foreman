@@ -76,12 +76,17 @@
   {{- end}}
 </div>
 <div class="field">
-  <label for="{{.IDPrefix}}-version">Game version</label>
-  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. Leave it empty to use the version the save was made with.</p>
-  <input id="{{.IDPrefix}}-version" name="game_version" type="text" value="{{.GameVersion}}" list="{{.IDPrefix}}-version-list"
+  <label for="{{.IDPrefix}}-version-select">Game version</label>
+  <select id="{{.IDPrefix}}-version-select" name="game_version" hx-get="{{.VersionsPath}}" hx-trigger="load" hx-swap="beforeend">
+    <option value="">Choose a version</option>
+  </select>
+</div>
+<div class="field">
+  <label for="{{.IDPrefix}}-version">Or type a version</label>
+  <p class="hint" id="{{.IDPrefix}}-version-hint">Three numbers, such as 2.0.72. If you type one, it is used instead of the choice above. Leave both empty to use the version the save was made with.</p>
+  <input id="{{.IDPrefix}}-version" name="game_version_typed" type="text" value="{{.GameVersion}}"
     inputmode="decimal" autocomplete="off" spellcheck="false"
     {{- if .VersionError}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-version-hint {{.IDPrefix}}-version-error"{{else}} aria-describedby="{{.IDPrefix}}-version-hint"{{end}}>
-  <datalist id="{{.IDPrefix}}-version-list" hx-get="{{.VersionsPath}}" hx-trigger="load" hx-swap="innerHTML"></datalist>
   {{- with .VersionError}}
   <p class="error" id="{{$.IDPrefix}}-version-error"><strong>Error:</strong> {{.}}</p>
   {{- end}}
