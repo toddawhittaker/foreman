@@ -117,14 +117,16 @@ func TestPreCheckModVersionAdvice(t *testing.T) {
 		mod                  string
 		want                 string
 	}{
-		{"an older supported game that still loads the save", "2.1.24", "2.0.77-no-space-age.zip", "2.0",
-			"Set the world's game version to 2.0.x, or update its mods."},
-		{"an older game cannot load a newer save", "2.1.24", "2.1.24-no-space-age.zip", "2.0",
+		{"mods for an older game never lead to lowering the world", "2.1.24", "2.0.77-no-space-age.zip", "2.0",
+			"Update its mods to versions made for Factorio 2.1."},
+		{"mods for an older game, with a save the older game cannot load", "2.1.24", "2.1.24-no-space-age.zip", "2.0",
 			"Update its mods to versions made for Factorio 2.1."},
 		{"a version Foreman does not run", "2.1.24", "2.0.77-no-space-age.zip", "0.17",
 			"Update its mods to versions made for Factorio 2.1."},
-		{"a newer version than the save", "2.0.77", "2.0.77-no-space-age.zip", "2.1",
-			"Set the world's game version to 2.1.x, or update its mods."},
+		{"mods for a newer supported game", "2.0.77", "2.0.77-no-space-age.zip", "2.1",
+			"Update the world's game version to a 2.1 release, or update its mods."},
+		{"mods for a game Foreman does not run, newer than the world", "2.1.24", "2.0.77-no-space-age.zip", "2.2",
+			"Update its mods to versions made for Factorio 2.1."},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

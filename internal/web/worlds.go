@@ -47,6 +47,10 @@ type WorldPage struct {
 	CanSwitch  bool
 	SwitchNote string
 	SwitchBusy bool
+	// Rollback, when set, offers going back to the version before the last
+	// update (SPEC 10.4); ReleasesPath loads the release notice (SPEC 10.2).
+	Rollback     *RollbackOffer
+	ReleasesPath string
 }
 
 // ImportPage offers both ways to import a world (SPEC 5.5).

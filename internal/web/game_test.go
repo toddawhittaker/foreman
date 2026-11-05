@@ -23,7 +23,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-const image21 = "factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28"
+const image21 = "factoriotools/factorio:2.1.24"
 
 // gameRig is a signed-in harness whose server control runs against the
 // fake game.
@@ -53,8 +53,7 @@ func newGameRigOn(t *testing.T, dockerHost string, fake *fakegame.Game) *gameRig
 		c, err := game.New(game.Config{
 			Docker: dc, Worlds: worlds, Audit: st, Switches: st,
 			HostDataDir: filepath.Dir(worlds.Dirs().Worlds), GameUID: 845, GameGID: 845,
-			Images: map[string]string{"2.1": image21},
-			Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+			Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		})
 		if err != nil {
 			t.Fatal(err)

@@ -167,10 +167,8 @@ func modVersionMismatch(root *os.Root, meta Meta, mods modList) (running string,
 
 // modVersionProblem words the refusal for mods made for another Factorio
 // than the one the game runs. mods maps each mismatched mod to the
-// major.minor it was made for. save is the version of the save that will
-// load, or zero when it is not known; it decides whether lowering the
-// world's game version is good advice.
-func modVersionProblem(worldName string, running string, mods map[string]string, save savefile.Version) Problem {
+// major.minor it was made for.
+func modVersionProblem(worldName string, running string, mods map[string]string, _ savefile.Version) Problem {
 	byVersion := map[string][]string{}
 	for name, v := range mods {
 		byVersion[v] = append(byVersion[v], name)
@@ -202,24 +200,20 @@ func modVersionProblem(worldName string, running string, mods map[string]string,
 		}
 		fmt.Fprintf(&text, "%s made for Factorio %s, and the game refuses to load %s: %s.", count, v, object, listNames(names))
 	}
-	switch {
-	case canLowerGameVersion(versions[0], save):
-		fmt.Fprintf(&text, " Set the world's game version to %s.x, or update its mods.", versions[0])
-	default:
+	// A world's version only moves up (SPEC 10.3), so advise a newer
+	// version only, never an older one.
+	if newerSupportedLine(versions[0], running) {
+		fmt.Fprintf(&text, " Update the world's game version to a %s release, or update its mods.", versions[0])
+	} else {
 		fmt.Fprintf(&text, " Update its mods to versions made for Factorio %s.", gameMinor(running))
 	}
 	return Problem{Kind: ProblemModGameVersion, Text: text.String()}
 }
 
-// canLowerGameVersion reports whether moving the world to Factorio minor
-// (such as "2.0") is real advice: Foreman runs that version, and it is not
-// older than the save, which an older game cannot load.
-func canLowerGameVersion(minor string, save savefile.Version) bool {
-	if !SupportedGameVersion(minor+".0") || save == (savefile.Version{}) {
-		return false
-	}
-	v := parseGameVersion(minor + ".0")
-	return slices.Compare([]uint16{v.Major, v.Minor}, []uint16{save.Major, save.Minor}) >= 0
+// newerSupportedLine reports whether minor (such as "2.1") is a line
+// Foreman runs and is newer than the running game version.
+func newerSupportedLine(minor, running string) bool {
+	return SupportedGameVersion(minor+".0") && compareDotted(minor, gameMinor(running)) > 0
 }
 
 // listNames joins the first listedMods names, each cut to a sensible length,

@@ -164,6 +164,9 @@ func TestImportFolderRefusals(t *testing.T) {
 		want                  error
 	}{
 		{"saves-2025", "Good", "2.0", ErrBadGameVersion},
+		{"saves-2025", "Good", "2.2.0", ErrBadGameVersion},
+		{"saves-2025", "Good", "0.17.79", ErrBadGameVersion},
+		{"saves-2025", "Good", "3.0.1", ErrBadGameVersion},
 		{"saves-2025", "  ", "2.0.72", ErrNameEmpty},
 		{"saves-2025", "TAKEN", "2.0.72", ErrNameTaken},
 		{"empty", "Good", "2.0.72", ErrNoSaves},
@@ -219,6 +222,29 @@ func TestInboxListsRealFoldersOnly(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
+}
+
+func TestBadGameVersionNamesTheSupportedLines(t *testing.T) {
+	for _, line := range []string{"1.1", "2.0", "2.1"} {
+		if !strings.Contains(ErrBadGameVersion.Error(), line) {
+			t.Errorf("%q does not name line %s", ErrBadGameVersion, line)
+		}
+	}
+}
+
+func TestImportRefusesAnUnsupportedLineBeforeAnyWork(t *testing.T) {
+	m, _ := newTestManager(t)
+	seedInbox(t, m)
+	if _, err := m.ImportFolder(context.Background(), "saves-2025", "New line", "2.2.1", false); !errors.Is(err, ErrBadGameVersion) {
+		t.Fatalf("folder import: got %v", err)
+	}
+	if _, err := m.ImportSave(context.Background(), "New line", "2.2.1", false, "a.zip", PrefixPartial+"x"); !errors.Is(err, ErrBadGameVersion) {
+		t.Fatalf("upload import: got %v", err)
+	}
+	if list, _ := m.List(context.Background()); len(list) != 0 {
+		t.Errorf("refusal made a world: %+v", list)
+	}
+	assertNoStaging(t, m)
 }
 
 func TestValidNames(t *testing.T) {
