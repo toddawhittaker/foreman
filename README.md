@@ -12,7 +12,7 @@ a save is never lost.
 
 Early development; no image is published yet, so you build it yourself
 (`make image`). Built so far: sign-in, worlds and snapshots, server
-control and switching worlds. Game versions, mods and generating worlds
+control, switching worlds and game versions. Mods and generating worlds
 come in later epics. See [docs/STATUS.md](docs/STATUS.md)
 for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
@@ -73,6 +73,16 @@ services:
       FOREMAN_TRUSTED_PROXIES: 172.30.0.10/32   # the proxy's fixed address below
     volumes:
       - ./data:/data
+    # Least privilege (SPEC 14.11): Foreman writes only /data and /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # Foreman asks Docker for its own mounts when it starts, so the proxy
+    # must be up first.
+    depends_on: [socket-proxy]
     networks: [game, docker, front]
 
   socket-proxy:
@@ -87,10 +97,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [docker]
 
-  # Your reverse proxy (Caddy, Traefik, nginx ...) joins only "front", with
-  # the fixed address named in FOREMAN_TRUSTED_PROXIES, and forwards to
-  # http://foreman:8080.
-
 networks:
   game:
     name: foreman-game
@@ -101,6 +107,25 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+```
+
+Pick a subnet that no existing Docker network uses, or compose fails.
+
+Your reverse proxy (Caddy, Traefik, nginx ...) runs from its own compose
+file. It joins only `foreman-front`, with the fixed address named in
+`FOREMAN_TRUSTED_PROXIES`, and forwards to `http://foreman:8080`:
+
+```yaml
+# In the reverse proxy's compose file.
+services:
+  proxy:
+    networks:
+      foreman-front:
+        ipv4_address: 172.30.0.10   # the same address as FOREMAN_TRUSTED_PROXIES
+
+networks:
+  foreman-front:
+    external: true   # created by Foreman's compose file; start that stack first
 ```
 
 Foreman creates the game container itself, named `foreman-<world-id>`, on
@@ -140,7 +165,11 @@ from a game network's address range (SPEC 12.5, 12.6).
    into `<data>/import/<name>/` (here `./data/import/<name>/`), with the
    save zip at the top level and the mods in `mods/`
    (`./data/import/family-2025/family.zip`,
-   `./data/import/family-2025/mods/...`). Then choose **Import a world** on
+   `./data/import/family-2025/mods/...`). The folder may instead use the
+   Factorio server layout (`saves/`, `mods/`, `config/`): saves are read
+   from the top level and from `saves/`, and the settings files in
+   `config/` that SPEC 5.1 lists are copied too, except `rconpw`, because
+   Foreman makes its own. Then choose **Import a world** on
    the Worlds page, pick the folder, give the exact game version the save
    was made with (such as `2.0.77`) and the Space Age flag, and choose
    **Import folder**. Import copies; the source is never changed (SPEC
