@@ -75,11 +75,11 @@ func (sel selection) tickNote(n int) string {
 	case sel.automatic == "":
 		return ""
 	case n == 0:
-		return "No automatic snapshots to tick."
+		return "There are no automatic snapshots to tick."
 	case n == 1:
-		return "1 automatic snapshot ticked."
+		return "Select all automatic ticked 1 snapshot."
 	}
-	return fmt.Sprintf("%d automatic snapshots ticked.", n)
+	return fmt.Sprintf("Select all automatic ticked %d snapshots.", n)
 }
 
 // DeleteItem is one snapshot on the bulk confirmation page.

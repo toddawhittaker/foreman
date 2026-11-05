@@ -203,3 +203,22 @@ func TestImportDownloadsTheImage(t *testing.T) {
 		t.Error("a download ran with the box unticked")
 	}
 }
+
+// SPEC 17.9: the "Import on its own" link for a folder whose save cannot be
+// read asks for the version and focuses that field; a readable folder does not.
+func TestImportOnItsOwnAsksForAnUnknownVersion(t *testing.T) {
+	g := newImportRig(t, nil)
+	g.inboxSave("plain", "2.0.77-no-space-age.zip")
+	putInboxSave(t, g.harness, "broken", saveZip(t))
+
+	unknown := g.get(PathImport + "?folder=broken")
+	g.wantContains("unreadable folder", unknown, "Type the version this save was made with.",
+		`id="folder-version-ask"`, `spellcheck="false" autofocus`, `aria-describedby="folder-version-hint folder-version-ask"`)
+
+	for what, body := range map[string]string{
+		"readable folder": g.get(PathImport + "?folder=plain"),
+		"plain page":      g.get(PathImport),
+	} {
+		g.wantMissing(what, body, "Type the version this save was made with.", "autofocus")
+	}
+}

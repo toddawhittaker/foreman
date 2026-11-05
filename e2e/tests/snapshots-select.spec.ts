@@ -21,7 +21,7 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
 
   await page.goto("/snapshots");
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
-  await expect(page.locator("#tick-note")).toHaveText("No automatic snapshots to tick.");
+  await expect(page.locator("#tick-note")).toHaveText("There are no automatic snapshots to tick.");
   await expect(page.locator("#tick-note")).toBeFocused();
 
   // A restore takes a "Before restore" snapshot, which is automatic.
@@ -31,7 +31,7 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
   await expect(page).toHaveURL(/\/worlds\/second\/snapshots\?(restored|undo)=/);
 
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
-  await expect(page.locator("#tick-note")).toHaveText("1 automatic snapshot ticked.");
+  await expect(page.locator("#tick-note")).toHaveText("Select all automatic ticked 1 snapshot.");
   await expect(page.locator("#tick-note")).toBeFocused();
   await expect(page.locator('input[name="snap"]:checked')).toHaveCount(1);
   await checkPage(page);
@@ -39,7 +39,7 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
   await page.goto("/snapshots");
   await expect(page.locator("#tick-note")).toHaveCount(0);
   await page.getByRole("button", { name: "Select all automatic of Second" }).click();
-  await expect(page.locator("#tick-note")).toHaveText("1 automatic snapshot ticked.");
+  await expect(page.locator("#tick-note")).toHaveText("Select all automatic ticked 1 snapshot.");
   await expect(page.locator("#tick-note")).toBeFocused();
   await checkPage(page);
 });
@@ -79,9 +79,14 @@ test.describe("at 320 px and 200% text", () => {
       return out;
     });
     expect(problems).toEqual([]);
-    // Stacked rows are still a table to a screen reader.
-    await expect(page.getByRole("columnheader")).toHaveCount(3);
+    // Stacked rows are still a table to a screen reader: Safari drops the
+    // native roles when the cells are display:block, so the markup states them.
+    await expect(page.locator("table.snapshot-list")).not.toHaveCount(0);
+    await expect(page.locator("table.snapshot-list:not([role=table])")).toHaveCount(0);
+    await expect(page.getByRole("table").first()).toBeVisible();
+    await expect(page.getByRole("columnheader")).toHaveCount(3 * (await page.getByRole("table").count()));
     await expect(page.getByRole("row")).not.toHaveCount(0);
+    await expect(page.getByRole("cell")).not.toHaveCount(0);
   }
 
   test("the Snapshots tab and a world's snapshots page fit", async ({ page, foreman }) => {

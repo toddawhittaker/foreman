@@ -107,6 +107,9 @@ type ImportForm struct {
 	// ticked (SPEC 3.7).
 	CanDownload bool
 	Download    bool
+	// AskVersion asks for the typed version and puts focus there: the folder
+	// ticked by a link has a save whose version Foreman could not read.
+	AskVersion bool
 	// IDPrefix keeps the two forms' field ids apart on one page.
 	IDPrefix string
 }
@@ -225,6 +228,7 @@ func (s *server) handleImportForm(w http.ResponseWriter, r *http.Request, u stor
 		}
 		if err == nil && f.Importable() {
 			folder.Folders, folder.Name, folder.SpaceAge = []string{f.Name}, f.SuggestedName(), f.SpaceAge
+			folder.AskVersion = !f.Read
 		}
 	}
 	s.importPage(w, r, u, http.StatusOK, folder, ImportForm{Download: true}, nil)

@@ -105,11 +105,20 @@ document.addEventListener("DOMContentLoaded", () => {
       else el.removeAttribute("aria-describedby");
     });
     if (many && !stashed) {
-      stashed = { name: name ? name.value : "", spaceAge: spaceAge.checked };
+      stashed = {
+        name: name ? name.value : "",
+        version: typed ? typed.value : "",
+        choice: select ? select.value : "",
+        spaceAge: spaceAge.checked,
+      };
       if (name) name.value = "";
+      if (typed) typed.value = "";
+      if (select) select.value = "";
       spaceAge.checked = false;
     } else if (!many && stashed) {
       if (name) name.value = stashed.name;
+      if (typed) typed.value = stashed.version;
+      if (select) select.value = stashed.choice;
       spaceAge.checked = stashed.spaceAge;
       stashed = null;
     }

@@ -111,7 +111,7 @@ func TestSnapshotTables(t *testing.T) {
 	p.Snapshots[1].TakenAt = p.Snapshots[0].TakenAt.Add(30 * time.Second)
 	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
 	wantIn(t, "snapshots page", body,
-		`<th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th>`,
+		`<th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th>`,
 		`href="#restore-20261103T142500Z"`, `id="restore-20261103T142500Z"`,
 		`<input type="checkbox" name="snap" value="base/20261103T142500Z"><span>Manual<br>`,
 		`<span class="nowrap">2026-11-03</span> <span class="nowrap">14:25 UTC</span>`,
