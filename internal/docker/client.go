@@ -30,6 +30,9 @@ type Client struct {
 	http *http.Client // short calls: a 30-second total limit
 	long *http.Client // log follow, pull and stop: no total limit, each caller sets a deadline
 	base string       // scheme and host, for example "http://docker"
+	// target is DOCKER_HOST as shown to people: unix:///path or
+	// tcp://host:port, never a user name or password.
+	target string
 
 	mu         sync.Mutex
 	apiVersion string // agreed with the daemon; empty until first needed
@@ -52,22 +55,23 @@ func New(dockerHost string) (*Client, error) {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", sock)
 		}}
-		return newClient(tr, "http://docker"), nil
+		return newClient(tr, "http://docker", "unix://"+sock), nil
 	case "tcp":
 		if u.Host == "" {
 			return nil, fmt.Errorf("DOCKER_HOST %q names no host", dockerHost)
 		}
-		return newClient(nil, "http://"+u.Host), nil
+		return newClient(nil, "http://"+u.Host, "tcp://"+u.Host), nil
 	default:
 		return nil, fmt.Errorf("DOCKER_HOST %q must start with unix:// or tcp://", dockerHost)
 	}
 }
 
-func newClient(tr http.RoundTripper, base string) *Client {
+func newClient(tr http.RoundTripper, base, target string) *Client {
 	return &Client{
-		http: newHTTPClient(tr, shortCallLimit),
-		long: newHTTPClient(tr, 0),
-		base: base,
+		http:   newHTTPClient(tr, shortCallLimit),
+		long:   newHTTPClient(tr, 0),
+		base:   base,
+		target: target,
 	}
 }
 
@@ -138,7 +142,10 @@ func (c *Client) do(ctx context.Context, r request) (*http.Response, error) {
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("could not reach the Docker daemon: %w", err)
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, &UnreachableError{Target: c.target, Err: err}
 	}
 	if resp.StatusCode >= 300 {
 		defer func() { _ = resp.Body.Close() }()
@@ -171,6 +178,20 @@ var (
 	// container is not running.
 	ErrConflict = errors.New("conflict")
 )
+
+// UnreachableError is a call that got no answer from the daemon. Its text
+// is a plain sentence for the admin; Err is the raw transport error, with
+// the request's URL in it, for the log only.
+type UnreachableError struct {
+	Target string // DOCKER_HOST, without any credentials
+	Err    error
+}
+
+func (e *UnreachableError) Error() string {
+	return "Foreman cannot reach Docker at " + e.Target + " (DOCKER_HOST). Check that Docker, or the socket proxy, is running and that DOCKER_HOST points at it"
+}
+
+func (e *UnreachableError) Unwrap() error { return e.Err }
 
 // APIError is a non-success answer from the daemon.
 type APIError struct {
