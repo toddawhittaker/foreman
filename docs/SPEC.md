@@ -74,7 +74,7 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_HOST_DATA_DIR` | discovered | The same directory's path on the host (3.5) |
 | `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6). Never 0 (14.11) |
 | `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required when Foreman runs in a container, or when `FOREMAN_GAME_NETWORK_CONTAINER` is set |
-| `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional |
+| `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Not built yet: Foreman refuses to start when it is set |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
 | `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
 | `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local` and `headers`. Empty means `local`. `oidc` joins the list with OIDC (12.7) |
@@ -113,6 +113,8 @@ as owns every file it writes. Foreman refuses to start only when neither
 its user ID nor its group ID matches the game's, because then the game
 could not use what Foreman writes. When only the group matches, files
 Foreman writes into a world are group-writable (files 0664, folders 0775).
+Files under a world's `config/` are the exception: they are 0640, because
+they can hold secrets (14.8), whether written by import, snapshot or restore.
 Foreman's own database file is the exception: it is 0660, because it holds
 password hashes and session hashes and the game has no need of it. The
 game's user and group ID may not be 0: Foreman refuses to start and names
@@ -176,8 +178,12 @@ world's game version (4.2). Its fixed parts are:
 - **Command.** `--start-server-load-latest`, so the game loads the newest
   save and Docker's own restart after a crash loads the newest autosave
   (7.11); `--mod-directory /factorio/mods`; RCON on port 27015 (bound to
-  one address with a VPN sidecar, 4.13); and `--server-settings` when the
-  world has `config/server-settings.json`.
+  one address with a VPN sidecar, 4.13); `--server-settings` when the
+  world has `config/server-settings.json`; `--server-adminlist` and
+  `--server-banlist` always, so `/promote` and `/ban` made in game persist
+  in the world's `config/`; and `--server-whitelist` when that file exists.
+  Foreman never passes `--use-server-whitelist`: whether the whitelist is
+  enforced is a game setting (section 11).
 - **Restart policy** `unless-stopped`, so the game comes back after a reboot
   whether or not Foreman is running. A stop that Foreman or Docker makes
   leaves the container stopped.
@@ -278,7 +284,8 @@ another VPN), so that players join through the VPN. This is one choice an
 operator may make, never a requirement. By default, with
 `FOREMAN_GAME_NETWORK_CONTAINER` unset, nothing here applies: Foreman
 publishes the game port on the host (4.3, 4.4) and needs no VPN. Foreman
-must not prevent a sidecar (ADR 0006). (P1)
+must not prevent a sidecar (ADR 0006). Until this is built (Epic 8, 18.8),
+Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set. (P1)
 
 When an operator sets one:
 
@@ -368,9 +375,13 @@ time, disk use, and which one is active. (P0)
 hand-renamed `saves-2025` folder) as a new world, or upload a save zip and
 sync its mods from the portal (section 9.8). Import copies; it never moves
 or changes the source. Foreman reads a folder to import only from the inbox,
-`<data>/import/`, never from a path the admin types. It copies the
-folder's top-level save zips and its `mods/` folder. A save zip can also
-be uploaded to make a new world. (P0)
+`<data>/import/`, never from a path the admin types. It reads save zips
+from the folder's top level and from its `saves/` folder, so a Factorio
+server's own layout imports as it is. It copies `mods/` and the `config/`
+files that 5.1 lists, except `rconpw`: Foreman makes its own (4.5). Other
+files are not copied. A save name found both at the top level and in
+`saves/` makes the folder not importable, and the message names the file.
+A save zip can also be uploaded to make a new world. (P0)
 
 5.6. **Generate** a new world from a preset, a map exchange string, or
 map-gen settings plus a seed, with Space Age on or off. How a preset or
@@ -909,7 +920,9 @@ are rate-limited per username and per address (limits in 12.11). (P0)
 oauth2-proxy): a configured header names the user, a second configured
 header lists groups, and a required group names who may sign in. All
 three are required: without a required group, anyone the proxy lets
-through would become an admin. A user outside the group gets a 403 page.
+through would become an admin. A group list is split on `|` (Authentik's
+form) and on `,`, and a required group that contains either is refused at
+startup. A user outside the group gets a 403 page.
 Foreman honours these headers **only** on requests whose direct peer address is
 inside `FOREMAN_TRUSTED_PROXIES` (a list of address ranges). From any
 other address the headers are ignored. A user seen for the first time is
@@ -1195,7 +1208,7 @@ world (6.5, 6.10).
 adopted mode (ADR 0005).
 
 18.5. **Epic 5: Game versions.** Section 10, including the version picker
-(10.7), and VPN sidecars (4.13, ADR 0006).
+(10.7).
 
 18.6. **Epic 6: Mods.** Section 9.
 
@@ -1204,7 +1217,7 @@ clone (5.7), and section 11.
 
 18.8. **Epic 8: Live operations.** Players (8.2, 8.3), chat (8.5), crash
 reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12),
-the low-disk warning (8.13).
+the low-disk warning (8.13), and VPN sidecars (4.13, ADR 0006).
 
 18.9. **Epic 9: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).

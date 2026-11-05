@@ -61,11 +61,11 @@ type ImportPage struct {
 	Upload   ImportForm
 }
 
-// Importable reports whether any inbox folder has a save at its top level;
-// a folder without one cannot be imported (SPEC 5.5).
+// Importable reports whether any inbox folder can be imported: it has a
+// save at its top level or in saves/, and no save name in both (SPEC 5.5).
 func (p ImportPage) Importable() bool {
 	for _, f := range p.Inbox {
-		if f.Saves > 0 {
+		if f.Importable() {
 			return true
 		}
 	}
@@ -277,13 +277,13 @@ func (s *server) importPage(w http.ResponseWriter, r *http.Request, u store.User
 	})
 }
 
-// onlyImportable returns the one inbox folder with a save at its top
-// level, when there is exactly one.
+// onlyImportable returns the one inbox folder that can be imported, when
+// there is exactly one.
 func onlyImportable(inbox []world.InboxFolder) (world.InboxFolder, bool) {
 	var only world.InboxFolder
 	n := 0
 	for _, f := range inbox {
-		if f.Saves > 0 {
+		if f.Importable() {
 			only, n = f, n+1
 		}
 	}

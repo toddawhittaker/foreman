@@ -48,12 +48,20 @@ func Mkdir(root *os.Root, name string) error {
 // name will go (in dir inside root), so the final rename stays on one
 // filesystem. It returns the open file and its name relative to root.
 func CreateTemp(root *os.Root, dir string) (*os.File, string, error) {
+	return createTempMode(root, dir, FileMode)
+}
+
+// createTempMode is CreateTemp with a mode of the caller's choice. The file
+// has that mode from the moment it exists, since anyone who opens it while
+// it is wider can read what is written later (SPEC 14.8).
+func createTempMode(root *os.Root, dir string, mode fs.FileMode) (*os.File, string, error) {
 	name := path.Join(dir, PrefixPartial+randomSuffix())
-	f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, FileMode)
+	f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
 		return nil, "", err
 	}
-	if err := f.Chmod(FileMode); err != nil {
+	// The umask may have narrowed it; the game's group still needs to read.
+	if err := f.Chmod(mode); err != nil {
 		_ = f.Close()
 		_ = root.Remove(name)
 		return nil, "", err

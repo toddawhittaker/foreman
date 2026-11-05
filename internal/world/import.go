@@ -26,17 +26,36 @@ type InboxFolder struct {
 	Read        bool
 	GameVersion string
 	SpaceAge    bool
+	// Clash is set when a save name is in two places, which an import
+	// refuses; the folder is listed as not importable (SPEC 5.5).
+	Clash error
 }
+
+// Importable reports whether an import of the folder can go ahead.
+func (f InboxFolder) Importable() bool { return f.Saves > 0 && f.Clash == nil }
 
 // ErrBadGameVersion is returned for a game version that is not an exact
 // release of a supported line (SPEC 10.8), such as 2.0.77.
 var ErrBadGameVersion = errors.New("enter the game version as three numbers from a supported line (1.1, 2.0 or 2.1), such as 2.0.77")
 
 // ErrNoSaves is returned when an inbox folder holds no save zips.
-var ErrNoSaves = errors.New("this folder holds no save files (.zip) at its top level, so there is nothing to import")
+var ErrNoSaves = errors.New("this folder holds no save files (.zip) at its top level or in a saves folder, so there is nothing to import")
 
 // ErrNoFolder is returned when the chosen inbox folder does not exist.
 var ErrNoFolder = errors.New("choose a folder from the import folder")
+
+// ErrSaveClash is returned when a save name is in both the folder's top
+// level and its saves/ folder, so Foreman cannot tell which one is meant.
+var ErrSaveClash = errors.New("save name in two places")
+
+// saveClashError names the clashing file. It matches ErrSaveClash.
+type saveClashError struct{ name string }
+
+func (e saveClashError) Error() string {
+	return fmt.Sprintf("the save %s is in both the folder and its saves folder, so it is not clear which to import. Remove or rename one of them", e.name)
+}
+
+func (saveClashError) Is(target error) bool { return target == ErrSaveClash }
 
 var gameVersionRE = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 
@@ -106,12 +125,15 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 		return InboxFolder{}, err
 	}
 	defer func() { _ = src.Close() }()
-	saves, mods, err := importPlan(src)
+	saves, mods, config, err := importPlan(src)
 	if err != nil {
 		return InboxFolder{}, err
 	}
 	f := InboxFolder{Name: name, Saves: len(saves), HasMods: mods != nil}
-	for _, x := range slices.Concat(saves, mods) {
+	if n, clash := saveClash(saves); clash {
+		f.Clash = saveClashError{n}
+	}
+	for _, x := range slices.Concat(saves, mods, config) {
 		f.Bytes += x.size
 	}
 	if len(saves) > 0 {
@@ -128,30 +150,79 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 	return f, nil
 }
 
-// importPlan lists what an import copies from src: its top-level save zips
-// and every regular file under mods/. mods is nil when there is no mods/
-// folder. Symlinks and other special files are skipped, never followed.
-func importPlan(src *os.Root) (saves, mods []importFile, err error) {
-	entries, err := fs.ReadDir(src.FS(), ".")
-	if err != nil {
-		return nil, nil, err
+// realFolder reports whether dir inside src is a real folder. A dir that
+// is missing, or is not a real folder (a symlink, for one), is not, and
+// that is not an error: there is nothing to copy from it.
+func realFolder(src *os.Root, dir string) (bool, error) {
+	info, err := src.Lstat(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+	return info.IsDir(), nil
+}
+
+// regularFiles lists the regular files directly in dir whose names pass
+// keep. A dir that is missing, or is not a real folder, has none.
+func regularFiles(src *os.Root, dir string, keep func(name string) bool) ([]importFile, error) {
+	if dir != "." {
+		if ok, err := realFolder(src, dir); err != nil || !ok {
+			return nil, err
+		}
+	}
+	entries, err := fs.ReadDir(src.FS(), dir)
+	if err != nil {
+		return nil, err
+	}
+	var out []importFile
 	for _, e := range entries {
-		if !e.Type().IsRegular() || !ValidSaveName(e.Name()) {
+		if !e.Type().IsRegular() || !keep(e.Name()) {
 			continue
 		}
 		info, err := e.Info()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		saves = append(saves, importFile{e.Name(), uint64(info.Size()), info.ModTime()}) //nolint:gosec // a file size is never negative
+		out = append(out, importFile{path.Join(dir, e.Name()), uint64(info.Size()), info.ModTime()}) //nolint:gosec // a file size is never negative
 	}
-	info, err := src.Lstat(ModsDir)
-	if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.IsDir()) {
-		return saves, nil, nil
+	return out, nil
+}
+
+// saveClash returns the first save name that appears twice in saves.
+func saveClash(saves []importFile) (string, bool) {
+	seen := map[string]bool{}
+	for _, s := range saves {
+		n := path.Base(s.path)
+		if seen[n] {
+			return n, true
+		}
+		seen[n] = true
 	}
+	return "", false
+}
+
+// importPlan lists what an import copies from src: save zips from its top
+// level and from saves/, every regular file under mods/, and the SPEC 5.1
+// files in config/. mods is nil when there is no mods/ folder. Symlinks and
+// other special files are skipped, never followed.
+func importPlan(src *os.Root) (saves, mods, config []importFile, err error) {
+	saves, err = regularFiles(src, ".", ValidSaveName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+	inner, err := regularFiles(src, SavesDir, ValidSaveName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	saves = append(saves, inner...)
+	config, err = regularFiles(src, ConfigDir, func(n string) bool { return slices.Contains(ConfigFiles, n) })
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if ok, err := realFolder(src, ModsDir); err != nil || !ok {
+		return saves, nil, config, err
 	}
 	mods = []importFile{}
 	err = fs.WalkDir(src.FS(), ModsDir, func(p string, d fs.DirEntry, err error) error {
@@ -165,12 +236,13 @@ func importPlan(src *os.Root) (saves, mods []importFile, err error) {
 		mods = append(mods, importFile{p, uint64(info.Size()), info.ModTime()}) //nolint:gosec // a file size is never negative
 		return nil
 	})
-	return saves, mods, err
+	return saves, mods, config, err
 }
 
 // ImportFolder makes a new world from the inbox folder named folder: its
-// top-level save zips and its mods/ folder are copied, never linked or
-// moved, so the source is left exactly as it was (SPEC 5.5). It refuses
+// save zips (top level and saves/), mods/ folder and SPEC 5.1 config files
+// are copied, never linked or moved, so the source is left exactly as it
+// was (SPEC 5.5). It refuses
 // up front when the disk lacks room for the copy (SPEC 6.11).
 func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion string, spaceAge bool) (string, error) {
 	if err := m.checkNew(ctx, name, gameVersion); err != nil {
@@ -193,15 +265,18 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 	}
 	defer func() { _ = src.Close() }()
 
-	saves, mods, err := importPlan(src)
+	saves, mods, config, err := importPlan(src)
 	if err != nil {
 		return "", err
 	}
 	if len(saves) == 0 {
 		return "", ErrNoSaves
 	}
+	if n, clash := saveClash(saves); clash {
+		return "", saveClashError{n}
+	}
 	var need uint64
-	for _, f := range slices.Concat(saves, mods) {
+	for _, f := range slices.Concat(saves, mods, config) {
 		need += f.size
 	}
 	release, err := Reserve(m.dirs.Worlds, need)
@@ -216,11 +291,11 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 		}
 		defer func() { _ = dst.Close() }()
 		for _, f := range saves {
-			if err := copyFile(src, f.path, dst, path.Join(SavesDir, f.path)); err != nil {
+			if err := copyFile(src, f.path, dst, path.Join(SavesDir, path.Base(f.path))); err != nil {
 				return err
 			}
 		}
-		for _, f := range mods {
+		for _, f := range slices.Concat(mods, config) {
 			if err := copyFile(src, f.path, dst, f.path); err != nil {
 				return err
 			}
@@ -268,8 +343,9 @@ func (m *Manager) checkNew(ctx context.Context, name, gameVersion string) error 
 }
 
 // copyFile copies one regular file from src to dst through a temp file,
-// keeping its modification time so "last played" stays true. Parent
-// folders are made as needed.
+// keeping its modification time so "last played" stays true. The copy's
+// mode comes from where it lands (copyMode). Parent folders are made as
+// needed.
 func copyFile(src *os.Root, from string, dst *os.Root, to string) error {
 	if err := mkdirAll(dst, path.Dir(to)); err != nil {
 		return err
@@ -279,7 +355,7 @@ func copyFile(src *os.Root, from string, dst *os.Root, to string) error {
 		return fmt.Errorf("copy %s: %w", from, err)
 	}
 	defer func() { _ = in.Close() }()
-	out, temp, err := CreateTemp(dst, path.Dir(to))
+	out, temp, err := createTempMode(dst, path.Dir(to), copyMode(to))
 	if err != nil {
 		return err
 	}

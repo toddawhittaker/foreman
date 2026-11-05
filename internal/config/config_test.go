@@ -184,6 +184,8 @@ func TestLoadErrors(t *testing.T) {
 		{"headers without proxies", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_TRUSTED_PROXIES must list at least one address range"},
 		{"headers with only blank proxies", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio", "FOREMAN_TRUSTED_PROXIES": " , "}, "FOREMAN_TRUSTED_PROXIES must list at least one"},
 		{"headers without required group", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups"}, "FOREMAN_AUTH_REQUIRED_GROUP must be set when FOREMAN_AUTH_METHODS includes headers"},
+		{"required group with a pipe", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "a|b"}, "FOREMAN_AUTH_REQUIRED_GROUP cannot contain | or , because group lists are split on them."},
+		{"required group with a comma", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "a,b"}, "FOREMAN_AUTH_REQUIRED_GROUP cannot contain | or , because group lists are split on them."},
 		{"headers without groups header", map[string]string{"FOREMAN_AUTH_METHODS": "headers", "FOREMAN_AUTH_USER_HEADER": "Remote-User", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_GROUPS_HEADER must be set when FOREMAN_AUTH_METHODS includes headers"},
 		{"headers without user header", map[string]string{"FOREMAN_AUTH_METHODS": "local,headers", "FOREMAN_TRUSTED_PROXIES": "10.0.0.0/8", "FOREMAN_AUTH_GROUPS_HEADER": "Remote-Groups", "FOREMAN_AUTH_REQUIRED_GROUP": "factorio"}, "FOREMAN_AUTH_USER_HEADER must be set"},
 	}
@@ -283,5 +285,29 @@ func TestRemovedSettingsAreIgnored(t *testing.T) {
 	d, _ := load(nil)
 	if !reflect.DeepEqual(c, d) {
 		t.Errorf("removed settings changed the config:\n got %+v\nwant %+v", c, d)
+	}
+}
+
+func TestGameNetworkContainerIsRefused(t *testing.T) {
+	_, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn"})
+	if err == nil {
+		t.Fatal("want an error: VPN sidecars are not built (SPEC 4.13)")
+	}
+	want := "FOREMAN_GAME_NETWORK_CONTAINER is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman."
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("error = %q, want containing %q", err, want)
+	}
+}
+
+func TestGameNetworkContainerEmptyOrUnsetStarts(t *testing.T) {
+	for name, vars := range map[string]map[string]string{
+		"empty": {"FOREMAN_GAME_NETWORK_CONTAINER": ""},
+		"unset": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := load(vars); err != nil {
+				t.Error(err)
+			}
+		})
 	}
 }

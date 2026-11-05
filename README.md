@@ -12,7 +12,7 @@ a save is never lost.
 
 Early development; no image is published yet, so you build it yourself
 (`make image`). Built so far: sign-in, worlds and snapshots, server
-control and switching worlds. Game versions, mods and generating worlds
+control, switching worlds and game versions. Mods and generating worlds
 come in later epics. See [docs/STATUS.md](docs/STATUS.md)
 for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
@@ -73,6 +73,16 @@ services:
       FOREMAN_TRUSTED_PROXIES: 172.30.0.10/32   # the proxy's fixed address below
     volumes:
       - ./data:/data
+    # Least privilege (SPEC 14.11): Foreman writes only /data and /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # Foreman asks Docker for its own mounts when it starts, so the proxy
+    # must be up first.
+    depends_on: [socket-proxy]
     networks: [game, docker, front]
 
   socket-proxy:
@@ -87,10 +97,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [docker]
 
-  # Your reverse proxy (Caddy, Traefik, nginx ...) joins only "front", with
-  # the fixed address named in FOREMAN_TRUSTED_PROXIES, and forwards to
-  # http://foreman:8080.
-
 networks:
   game:
     name: foreman-game
@@ -101,6 +107,25 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+```
+
+Pick a subnet that no existing Docker network uses, or compose fails.
+
+Your reverse proxy (Caddy, Traefik, nginx ...) runs from its own compose
+file. It joins only `foreman-front`, with the fixed address named in
+`FOREMAN_TRUSTED_PROXIES`, and forwards to `http://foreman:8080`:
+
+```yaml
+# In the reverse proxy's compose file.
+services:
+  proxy:
+    networks:
+      foreman-front:
+        ipv4_address: 172.30.0.10   # the same address as FOREMAN_TRUSTED_PROXIES
+
+networks:
+  foreman-front:
+    external: true   # created by Foreman's compose file; start that stack first
 ```
 
 Foreman creates the game container itself, named `foreman-<world-id>`, on
@@ -140,7 +165,11 @@ from a game network's address range (SPEC 12.5, 12.6).
    into `<data>/import/<name>/` (here `./data/import/<name>/`), with the
    save zip at the top level and the mods in `mods/`
    (`./data/import/family-2025/family.zip`,
-   `./data/import/family-2025/mods/...`). Then choose **Import a world** on
+   `./data/import/family-2025/mods/...`). The folder may instead use the
+   Factorio server layout (`saves/`, `mods/`, `config/`): saves are read
+   from the top level and from `saves/`, and the settings files in
+   `config/` that SPEC 5.1 lists are copied too, except `rconpw`, because
+   Foreman makes its own. Then choose **Import a world** on
    the Worlds page, pick the folder, give the exact game version the save
    was made with (such as `2.0.77`) and the Space Age flag, and choose
    **Import folder**. Import copies; the source is never changed (SPEC
@@ -154,29 +183,12 @@ from a game network's address range (SPEC 12.5, 12.6).
    again on the new world, with that world's game version, if it was
    running. To go back, switch to the first world the same way.
 
-### Optionally, a VPN sidecar (coming in Epic 5)
+### VPN sidecars (not built yet)
 
-Nothing above needs a VPN. Optionally, if you want players to join through
-Tailscale, Netbird or another VPN that runs as a sidecar container, you
-will be able to name that container in `FOREMAN_GAME_NETWORK_CONTAINER`.
-The game then runs inside the sidecar's network, and RCON stays reachable
-only from the game network (SPEC 4.13, ADR 0006). VPN players join through
-the VPN. LAN players can join at the same time through the game port, but
-Docker lets only the sidecar publish it, so you add the port to the
-sidecar's own definition, and the sidecar joins the game network:
-
-```yaml
-  vpn:
-    # your VPN sidecar's image and settings
-    ports:
-      - "34197:34197/udp"   # LAN players; Foreman cannot publish this for you
-    networks: [game]
-```
-
-Without that port line the game is VPN-only, and the Server page warns
-that LAN players cannot reach it. If you restart or recreate the sidecar
-while the game runs, restart the game from Foreman afterwards, because the
-game may lose its network until then.
+Running the game inside a VPN sidecar's network (Tailscale, Netbird and
+similar, SPEC 4.13, ADR 0006) is planned for Epic 8 and is not built.
+Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set, so
+leave it unset.
 
 ## Documentation
 

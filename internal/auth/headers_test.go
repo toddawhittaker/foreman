@@ -12,6 +12,10 @@ func TestHeaderIdentity(t *testing.T) {
 	withGroup.RequiredGroup = "foreman"
 	needB := base
 	needB.RequiredGroup = "b"
+	needAdmins := base
+	needAdmins.RequiredGroup = "factorio-admins"
+	needShort := base
+	needShort.RequiredGroup = "admins"
 	// Groups are only read through the required-group check.
 	noGroupsHeader := needB
 	noGroupsHeader.GroupsHeader = ""
@@ -44,6 +48,18 @@ func TestHeaderIdentity(t *testing.T) {
 			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", " a , b,,c "), HeaderOK, "alice"},
 		{"groups on several lines", needB, "10.0.0.1:1",
 			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "a", "X-Authentik-Groups", "b"), HeaderOK, "alice"},
+		{"authentik pipe form, required group second", needAdmins, "10.0.0.1:1",
+			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "authentik Admins|factorio-admins"), HeaderOK, "alice"},
+		{"pipe and comma mixed", needB, "10.0.0.1:1",
+			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "a|b, c"), HeaderOK, "alice"},
+		{"spaces around pipe parts", needB, "10.0.0.1:1",
+			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", " a | b | c "), HeaderOK, "alice"},
+		{"empty pipe parts", needAdmins, "10.0.0.1:1",
+			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "|factorio-admins|"), HeaderOK, "alice"},
+		{"pipe form on several lines", needB, "10.0.0.1:1",
+			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "a|x", "X-Authentik-Groups", "y|b"), HeaderOK, "alice"},
+		{"substring of a group does not match", needShort, "10.0.0.1:1",
+			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "factorio-admins|other"), HeaderNotAllowed, "alice"},
 		{"groups header not configured", noGroupsHeader, "10.0.0.1:1",
 			hdr("X-Authentik-Username", "alice", "X-Authentik-Groups", "b"), HeaderNotAllowed, "alice"},
 		{"required group present", withGroup, "10.0.0.1:1",

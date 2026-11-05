@@ -264,7 +264,7 @@ func TestImportListsFoldersWithoutSaves(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := hn.get(PathImport, withCookie(c)).Body.String()
-	for _, want := range []string{`value="current" disabled>`, "<code>current</code>: no save at its top level, so it cannot be imported",
+	for _, want := range []string{`value="current" disabled>`, "<code>current</code>: no save at its top level or in a saves folder, so it cannot be imported",
 		"There is nothing to import"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q:\n%s", want, body)
@@ -295,5 +295,34 @@ func TestImportListsFoldersWithoutSaves(t *testing.T) {
 	rec := hn.postLive(PathImportFolder, url.Values{"folder": {"current"}, "name": {"Cur"}, "game_version": {"2.0.72"}}, c)
 	if rec.Code == http.StatusSeeOther {
 		t.Errorf("imported a folder with no save")
+	}
+}
+
+// SPEC 5.5: a folder whose save name is in two places is listed as not
+// importable, with the reason and a disabled radio button. The server still
+// refuses it if asked.
+func TestImportListsASaveClashAsNotImportable(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	src := filepath.Join(hn.worlds.Dirs().Imports, "clash")
+	if err := os.MkdirAll(filepath.Join(src, "saves"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"same.zip", filepath.Join("saves", "same.zip")} {
+		if err := os.WriteFile(filepath.Join(src, p), saveZip(t), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := hn.get(PathImport, withCookie(c)).Body.String()
+	for _, want := range []string{`value="clash" disabled>`, "<code>clash</code>: the save same.zip is in both the folder and its saves folder",
+		"There is nothing to import"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q:\n%s", want, body)
+		}
+	}
+
+	rec := hn.postLive(PathImportFolder, url.Values{"folder": {"clash"}, "name": {"Clash"}, "game_version": {"2.0.72"}}, c)
+	if rec.Code == http.StatusSeeOther || !strings.Contains(rec.Body.String(), "The save same.zip is in both") {
+		t.Errorf("clash not refused at submit: %d\n%s", rec.Code, rec.Body.String())
 	}
 }
