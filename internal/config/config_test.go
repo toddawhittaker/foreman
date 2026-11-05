@@ -285,3 +285,27 @@ func TestRemovedSettingsAreIgnored(t *testing.T) {
 		t.Errorf("removed settings changed the config:\n got %+v\nwant %+v", c, d)
 	}
 }
+
+func TestGameNetworkContainerIsRefused(t *testing.T) {
+	_, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn"})
+	if err == nil {
+		t.Fatal("want an error: VPN sidecars are not built (SPEC 4.13)")
+	}
+	want := "FOREMAN_GAME_NETWORK_CONTAINER is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman."
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("error = %q, want containing %q", err, want)
+	}
+}
+
+func TestGameNetworkContainerEmptyOrUnsetStarts(t *testing.T) {
+	for name, vars := range map[string]map[string]string{
+		"empty": {"FOREMAN_GAME_NETWORK_CONTAINER": ""},
+		"unset": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := load(vars); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}

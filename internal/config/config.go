@@ -41,6 +41,8 @@ const (
 	varSessionIdle = "FOREMAN_SESSION_IDLE"
 	varDockerHost  = "DOCKER_HOST"
 	varGameNetwork = "FOREMAN_GAME_NETWORK"
+	// varNetworkContainer is read only to refuse it (SPEC 4.13).
+	varNetworkContainer = "FOREMAN_GAME_NETWORK_CONTAINER"
 )
 
 // Config is Foreman's validated configuration.
@@ -138,6 +140,12 @@ func load(e env) (*Config, error) {
 		if len(c.TrustedProxies) == 0 {
 			fail("%s must list at least one address range when %s includes headers", varProxies, varAuthMethods)
 		}
+	}
+
+	// Refuse rather than silently ignore a setting that would route game traffic
+	// through a VPN sidecar (SPEC 4.13).
+	if _, ok := e.get(varNetworkContainer); ok {
+		fail("%s is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman.", varNetworkContainer)
 	}
 
 	c.SessionIdle = DefaultSessionIdle
