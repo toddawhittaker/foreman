@@ -794,6 +794,18 @@ legend {
   grid-column: 1 / -1;
 }
 
+/* A narrow panel, such as a phone at large text, puts the word above the
+   step, so the step's name keeps the full width (DESIGN 3). */
+@container (max-width: 14rem) {
+  .steps li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .steps progress {
+    grid-column: 1;
+  }
+}
+
 /* Parts the server swaps in stack with room between them, so a button is
    never flush under a step list or log (DESIGN 6, rule 4). */
 [sse-swap],

@@ -16,10 +16,6 @@ import (
 // out of another.
 var liveRegions = []string{"active", "facts", "players", "control"}
 
-// countdownEvery is how often a page is sent again while a stop countdown
-// runs, so its time left keeps counting down (SPEC 7.6).
-var countdownEvery = time.Second
-
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
 // says live updates stopped.
@@ -51,8 +47,6 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	results := s.runs.watch()
 	beat := time.NewTicker(heartbeatEvery)
 	defer beat.Stop()
-	tick := time.NewTicker(countdownEvery)
-	defer tick.Stop()
 	st, changed := view.Status, true
 	for {
 		if changed {
@@ -92,8 +86,6 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		case <-results:
 			results = s.runs.watch()
 			st = s.game.Status(sum.ID)
-		case <-tick.C:
-			_, changed = st.Operation.CountdownEnds()
 		case <-beat.C:
 			if !s.stillSignedIn(r, opened) {
 				return

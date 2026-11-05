@@ -129,7 +129,7 @@ test("a world in the list is compact at 320 px, with Switch beside its name", as
 
   const second = page.locator("ul.worlds > li").filter({ hasText: "Second" });
   const name = await box(second.getByRole("heading", { name: "Second" }));
-  const switchTo = await box(second.getByRole("link", { name: "Switch" }));
+  const switchTo = await box(second.getByRole("link", { name: "Switch to Second" }));
   // The Switch button shares the name's row.
   expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
   expect(switchTo.x).toBeGreaterThan(name.x);
@@ -149,7 +149,7 @@ test("a long world name wraps beside Switch without widening the page", async ({
   await page.goto("/worlds");
   const item = page.locator("ul.worlds > li").filter({ hasText: long });
   const name = await box(item.getByRole("heading", { name: long }));
-  const switchTo = await box(item.getByRole("link", { name: "Switch" }));
+  const switchTo = await box(item.getByRole("link", { name: `Switch to ${long}` }));
   expect(switchTo.x).toBeGreaterThanOrEqual(name.x + name.width);
   await checkPage(page);
 });
