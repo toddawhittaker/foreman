@@ -1,0 +1,4 @@
+{
+  "stable": {"alpha": "2.0.77", "demo": "2.0.77", "headless": "2.0.77"},
+  "experimental": {"alpha": "2.1.24", "demo": "2.1.24", "headless": "2.1.24"}
+}
