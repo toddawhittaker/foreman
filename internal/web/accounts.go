@@ -93,7 +93,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	if confirm == "" {
 		pg.ConfirmError = "Enter the password again"
-	} else if pg.PasswordError == "" && confirm != password {
+	} else if confirm != password {
 		pg.ConfirmError = "Enter the same password in both fields"
 	}
 	if pg.UsernameError != "" || pg.PasswordError != "" || pg.ConfirmError != "" {
@@ -124,7 +124,7 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleSignInForm(w http.ResponseWriter, r *http.Request) {
-	s.page(w, r, http.StatusOK, "", SignInPage{})
+	s.page(w, r, http.StatusOK, "", SignInPage{Next: returnPath(r.URL.Query().Get("next"))})
 }
 
 // handleSignIn checks a local account (SPEC 12.4). It never says whether
@@ -138,7 +138,8 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	password := r.PostFormValue("password")
 	client := auth.ClientAddr(r, s.cfg.TrustedProxies)
 
-	pg := SignInPage{Username: username}
+	next := returnPath(r.PostFormValue("next"))
+	pg := SignInPage{Username: username, Next: next}
 	if username == "" {
 		pg.UsernameError = "Enter your username"
 	}
@@ -154,7 +155,7 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	if ok, wait := s.limiter.Allow(username, client); !ok {
 		s.log.Info("sign-in refused: too many failures", "client", client)
 		w.Header().Set("Retry-After", fmt.Sprint(int(wait.Seconds())+1))
-		s.page(w, r, http.StatusTooManyRequests, "", SignInPage{Username: username, RateLimited: true, RetryAfter: wait})
+		s.page(w, r, http.StatusTooManyRequests, "", SignInPage{Username: username, Next: next, RateLimited: true, RetryAfter: wait})
 		return
 	}
 
@@ -194,7 +195,10 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "start session", err)
 		return
 	}
-	http.Redirect(w, r, s.home(), http.StatusSeeOther)
+	if next == "" {
+		next = s.home()
+	}
+	http.Redirect(w, r, next, http.StatusSeeOther)
 }
 
 // signInFailed keeps the attempt Allow counted. The log names the client

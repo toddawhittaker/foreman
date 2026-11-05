@@ -81,7 +81,7 @@ func TestSnapshotsTabListsEveryWorld(t *testing.T) {
 	if world := hn.get(snapshotsPath(id), withCookie(c)).Body.String(); !strings.Contains(world, `href="`+snapshotDeletePath(id, first.Name)+`"`) {
 		t.Error("the world's Snapshots page has no delete link")
 	}
-	hn.wantRedirect(hn.get(PathSnapshots), PathSignIn)
+	hn.wantRedirect(hn.get(PathSnapshots), signInAfter(PathSnapshots))
 }
 
 func TestSnapshotDeleteConfirmsThenDeletesAndAudits(t *testing.T) {

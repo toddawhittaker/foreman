@@ -79,7 +79,7 @@ test("world list shows each world, the active one first", async ({ page, foreman
   await expect(first).toContainText("2.0.72");
   await expect(first.locator("dd").nth(1)).toHaveText("On");
   await expect(first.locator("time")).toHaveAttribute("datetime", "2026-11-03T14:25:00Z");
-  await expect(first.locator("time")).toHaveText("2026-11-03 14:25 UTC");
+  await expect(first.locator("time")).toHaveText(/Nov 3.*\(.+ ago\)$/);
   await expect(first).toContainText("2.1 MB");
 
   await expect(items.nth(1).getByRole("heading")).toHaveText("Alpha");

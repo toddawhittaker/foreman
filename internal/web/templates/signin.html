@@ -31,6 +31,9 @@
     <p class="error" id="password-error"><strong>Error:</strong> {{.}}</p>
     {{- end}}
   </div>
+  {{- with .Next}}
+  <input type="hidden" name="next" value="{{.}}">
+  {{- end}}
   <div class="actions">
     <button type="submit" class="button button--primary">Sign in</button>
   </div>

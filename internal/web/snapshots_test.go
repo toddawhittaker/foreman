@@ -121,5 +121,5 @@ func TestSnapshotRoutesRefuseBadInput(t *testing.T) {
 	if rec.StatusCode != http.StatusConflict || !strings.Contains(rec.body, "nother operation is running") {
 		t.Errorf("busy: %d", rec.StatusCode)
 	}
-	hn.wantRedirect(hn.get(snapshotsPath(id)), PathSignIn)
+	hn.wantRedirect(hn.get(snapshotsPath(id)), signInAfter(snapshotsPath(id)))
 }
