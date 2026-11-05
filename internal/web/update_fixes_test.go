@@ -24,17 +24,17 @@ func (f *fixReleases) Versions(context.Context) ([]string, error) {
 }
 func (f *fixReleases) Latest(context.Context) (releases.Latest, error) { return f.latest, f.lerr }
 
-var errHub = errors.New("docker hub down")
+var errFixHub = errors.New("docker hub down")
 
 // SPEC 10.7: the picker's list comes from the image versions alone; a
 // failed latest-release call only drops the labels.
 func TestPickerNeedsOnlyVersions(t *testing.T) {
-	s := &server{releases: &fixReleases{versions: []string{"2.0.1", "2.0.2"}, lerr: errHub}}
+	s := &server{releases: &fixReleases{versions: []string{"2.0.1", "2.0.2"}, lerr: errFixHub}}
 	p := s.versionPicker(context.Background(), "2.0.1")
 	if p.Unreachable || !slices.Equal(p.Versions, []string{"2.0.2"}) || p.Stable != "" {
 		t.Errorf("picker %+v: want 2.0.2 listed, reachable, no labels", p)
 	}
-	s = &server{releases: &fixReleases{verr: errHub, latest: releases.Latest{Stable: "2.0.2"}}}
+	s = &server{releases: &fixReleases{verr: errFixHub, latest: releases.Latest{Stable: "2.0.2"}}}
 	if p := s.versionPicker(context.Background(), ""); !p.Unreachable || len(p.Versions) != 0 {
 		t.Errorf("picker %+v: want unreachable and empty", p)
 	}
@@ -49,9 +49,9 @@ func TestReleaseNoticeJudgesEachCall(t *testing.T) {
 		unreachable      bool
 		stable, exp, upd string
 	}{
-		{"latest fails", &fixReleases{versions: []string{"2.0.2"}, lerr: errHub}, true, "", "", ""},
-		{"versions fail, nothing newer", &fixReleases{verr: errHub, latest: releases.Latest{Stable: "2.0.1"}}, false, "", "", ""},
-		{"versions fail, newer out", &fixReleases{verr: errHub, latest: releases.Latest{Stable: "2.0.2"}}, true, "", "", ""},
+		{"latest fails", &fixReleases{versions: []string{"2.0.2"}, lerr: errFixHub}, true, "", "", ""},
+		{"versions fail, nothing newer", &fixReleases{verr: errFixHub, latest: releases.Latest{Stable: "2.0.1"}}, false, "", "", ""},
+		{"versions fail, newer out", &fixReleases{verr: errFixHub, latest: releases.Latest{Stable: "2.0.2"}}, true, "", "", ""},
 		{"no stable known", &fixReleases{versions: []string{"2.1.0"}, latest: releases.Latest{Experimental: "2.1.0"}}, false, "", "2.1.0",
 			"/worlds/base/update?game_version=2.1.0"},
 		{"newer without image", &fixReleases{versions: []string{"2.0.1"}, latest: releases.Latest{Stable: "2.0.2"}}, false, "2.0.2", "", ""},
