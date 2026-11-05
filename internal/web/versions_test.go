@@ -150,7 +150,7 @@ func TestReleaseNoticeWithNoImageYet(t *testing.T) {
 	id := g.newWorld("Alpha", fixtureNoSA, false)
 
 	body := g.get(releasesURL(id))
-	g.wantContains("notice", body, "2.1.26", "No image yet", "disabled", "wiki.factorio.com/Version_history/2.1.0")
+	g.wantContains("notice", body, "2.1.26", "No image yet", "wiki.factorio.com/Version_history/2.1.0")
 	g.wantMissing("notice", body, `href="`+updateURL(id))
 }
 

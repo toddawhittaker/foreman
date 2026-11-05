@@ -64,6 +64,55 @@ func TestLatestNeverReturnsAHostileVersion(t *testing.T) {
 	}
 }
 
+// An unsupported experimental release (a new game line) must not hide the
+// stable one: that field is left empty and the call still succeeds.
+func TestLatestLeavesAnUnsupportedFieldEmpty(t *testing.T) {
+	cases := map[string]struct {
+		body string
+		want Latest
+	}{
+		"experimental unsupported": {
+			`{"stable":{"headless":"2.1.24"},"experimental":{"headless":"2.2.0"}}`,
+			Latest{Stable: "2.1.24"},
+		},
+		"stable unsupported": {
+			`{"stable":{"headless":"3.0.1"},"experimental":{"headless":"2.1.24"}}`,
+			Latest{Experimental: "2.1.24"},
+		},
+		"experimental missing": {
+			`{"stable":{"headless":"2.1.24"}}`,
+			Latest{Stable: "2.1.24"},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			stub := newStub(t, http.StatusOK, []byte(tc.body))
+			c := testClient("http://unused.invalid/", stub.URL, nil)
+			got, err := c.Latest(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("got %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+// A reply with no usable version is malformed, and a failure is not cached.
+func TestLatestWithNoUsableVersionFailsAndIsNotCached(t *testing.T) {
+	stub := newStub(t, http.StatusOK, []byte(`{"stable":{"headless":"3.0.1"},"experimental":{"headless":"2.2.0"}}`))
+	c := testClient("http://unused.invalid/", stub.URL, nil)
+	for range 2 {
+		if _, err := c.Latest(context.Background()); !errors.Is(err, ErrUnreachable) {
+			t.Fatalf("err = %v, want ErrUnreachable", err)
+		}
+	}
+	if n := stub.hits.Load(); n != 2 {
+		t.Fatalf("%d requests, want 2 (errors are not cached)", n)
+	}
+}
+
 // 14.10: redirects are refused by the client New builds.
 func TestLatestRefusesRedirects(t *testing.T) {
 	target := newStub(t, http.StatusOK, fixture(t, "latest.json"))
