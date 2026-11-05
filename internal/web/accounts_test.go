@@ -233,7 +233,7 @@ func TestSignOutEndsSession(t *testing.T) {
 		t.Errorf("cookie not cleared: %+v", cleared)
 	}
 	// The old cookie is dead on the server side too.
-	hn.wantRedirect(hn.get(PathWorlds, withCookie(c)), PathSignIn)
+	hn.wantRedirect(hn.get(PathWorlds, withCookie(c)), signInAfter(PathWorlds))
 	// Signing out with no session is harmless.
 	hn.wantRedirect(hn.post(PathSignOut, nil), PathSignedOut)
 }
@@ -253,7 +253,7 @@ func TestIdleSessionExpires(t *testing.T) {
 		t.Fatalf("activity did not extend the session: %d", rec.Code)
 	}
 	hn.clock.Advance(7*24*time.Hour + time.Minute)
-	hn.wantRedirect(hn.get(PathWorlds, withCookie(c)), PathSignIn)
+	hn.wantRedirect(hn.get(PathWorlds, withCookie(c)), signInAfter(PathWorlds))
 }
 
 func TestSignInRehashesOldHash(t *testing.T) {
