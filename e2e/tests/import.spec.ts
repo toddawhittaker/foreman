@@ -131,6 +131,14 @@ test("choosing a folder suggests its name and Space Age, but not over typed text
   await form.getByLabel(/two: /).uncheck();
   await form.getByLabel(/one: /).check();
   await expect(form.getByLabel("World name")).toHaveValue("Mine");
+
+  // Ticking a second folder empties the fields; going back to one puts the
+  // typed name back.
+  await form.getByLabel(/two: /).check();
+  await expect(form.getByLabel("World name")).toHaveValue("");
+  await form.getByLabel(/two: /).uncheck();
+  await expect(form.getByLabel("World name")).toHaveValue("Mine");
+  await expect(form.getByLabel("World name")).toBeEnabled();
 });
 
 // A save that cannot be read leaves the version to the admin.
@@ -189,6 +197,14 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
   await expect(form.getByLabel("World name")).toBeDisabled();
   await expect(page.locator("#announcer")).toContainText("Several folders chosen");
   await form.getByLabel(/junk: /).check();
+  // The per-world fields are empty, unticked, off, and say why.
+  await expect(form.getByLabel("World name")).toHaveValue("");
+  await expect(form.getByLabel("Space Age is on")).not.toBeChecked();
+  for (const field of [form.getByLabel("World name"), form.getByLabel("Or type a version"), form.getByLabel("Space Age is on")]) {
+    await expect(field).toBeDisabled();
+    await expect(field).toHaveAccessibleDescription(/Tick one folder to choose its name and version/);
+  }
+  await expect(form.locator("#folder-version-select")).toBeDisabled();
   await checkPage(page);
   await form.getByRole("button", { name: "Import folder" }).click();
 
@@ -199,9 +215,22 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
   await expect(page.locator(".message--warning")).toContainText("junk: Foreman could not read its save");
   await expect(page.locator("#import-result")).toBeFocused();
   await checkPage(page);
+
   expect(worldJSON(foreman, "sa")).toMatchObject({ name: "sa", game_version: "2.1.24", space_age: true });
   expect(worldJSON(foreman, "plain")).toMatchObject({ name: "plain", game_version: "2.0.77", space_age: false });
   await expect.poll(async () => (await fakeGame!.state()).calls.filter((c) => c.includes("images/create")).length).toBe(2);
+
+  // SPEC 17.9: the skipped folder has a link that leads to importing it alone.
+  await page.getByRole("link", { name: "Import junk on its own" }).click();
+  await expect(page).toHaveURL("/import?folder=junk");
+  const alone = folderForm(page);
+  await expect(alone.getByLabel(/junk: /)).toBeChecked();
+  await expect(alone.getByLabel("World name")).toHaveValue("junk");
+  await expect(alone.getByLabel("World name")).toBeEnabled();
+  await checkPage(page);
+  await alone.getByLabel("Or type a version").fill("2.0.72");
+  await alone.getByRole("button", { name: "Import folder" }).click();
+  await expect(page).toHaveURL("/worlds/junk?imported=1&unchecked=1");
 });
 
 // Ruling 2 (#127): a folder already imported is listed apart, names its

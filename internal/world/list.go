@@ -32,6 +32,9 @@ type Summary struct {
 	// Unreadable is true when world.json is missing or broken. Name is then
 	// the id.
 	Unreadable bool
+	// ImportedFrom is where the world was imported from; nil when it was
+	// not imported from a folder or world.json cannot be read (SPEC 5.5).
+	ImportedFrom *ImportedFrom
 }
 
 // List returns every world in the worlds folder, the active one first, then
@@ -112,6 +115,7 @@ func summarize(worlds *os.Root, id string) (Summary, error) {
 		s.GameVersion = meta.GameVersion
 		s.SpaceAge = meta.SpaceAge
 		s.Newer = meta.Newer()
+		s.ImportedFrom = meta.ImportedFrom
 	}
 	if s.DiskBytes, err = diskUse(w); err != nil {
 		s.DiskBytes, s.SizeUnknown = 0, true
