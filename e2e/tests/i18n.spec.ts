@@ -1,6 +1,6 @@
-import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21, type Foreman } from "./foreman.js";
 import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
-import { statSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { catalogue, languages, pluralCategory, t, type Lang } from "./i18n.js";
 
@@ -282,7 +282,7 @@ test.describe("sizes", () => {
 // every failing case is listed at the end, not only the first.
 const textSizes = [100, 200] as const;
 
-// The matrix is 8 languages by 15 pages by 2 sizes. Colour does not change
+// The matrix is 8 languages by 22 pages and error states by 2 sizes. Colour does not change
 // layout and every other spec already runs checkPage in all four projects, so
 // the matrix runs once, in the 320 px dark project.
 function onlyInPhoneDark() {
@@ -321,6 +321,37 @@ async function sweep(page: Page, lang: Lang, paths: string[], failures: string[]
   }
 }
 
+// Submits a form that comes back with an error, once per text size, and checks the
+// error page. The error response is not a page that can be reloaded, so each size
+// repeats the submit.
+async function sweepSubmit(page: Page, lang: Lang, label: string, submit: () => Promise<void>, failures: string[]) {
+  for (const size of textSizes) {
+    await submit();
+    await expect(page.locator("html"), label).toHaveAttribute("lang", lang);
+    await setTextSize(page, size);
+    await checkCase(page, `${lang} ${label} at ${size}%`, failures);
+  }
+}
+
+// A second save the load form can choose, which a test may then remove.
+function copyExtraSave(f: Foreman) {
+  copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(f.dataDir, "worlds", "base", "saves", "extra.zip"));
+}
+
+const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
+
+// A third world, written as a folder (SPEC 5.1), so it can be deleted and listed
+// under Deleted worlds. The long name tests wrapping in the heading and caption.
+function seedThird(f: Foreman) {
+  const dir = join(f.dataDir, "worlds", "third");
+  for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
+  writeFileSync(
+    join(dir, "world.json"),
+    JSON.stringify({ format_version: 1, name: "Third world with a rather long name for a table caption", game_version: "2.1.24", space_age: false, created_at: "2026-11-02T10:00:00Z" }),
+  );
+  copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(dir, "saves", "base.zip"));
+}
+
 test.describe("layout at 320 px in every language", () => {
   test.use({ fakeGameOn: true });
   onlyInPhoneDark();
@@ -336,7 +367,23 @@ test.describe("layout at 320 px in every language", () => {
       await createAdmin(page);
       seedWorld(foreman);
       seedSecond(foreman);
+      seedThird(foreman);
       await fakeGame!.call("/image", { ref: image21, on: true });
+
+      // An update leaves the "Before update" snapshot, which makes a rollback page.
+      await page.goto("/worlds/base/update");
+      await page.getByLabel("Or type a version").fill("2.1.25");
+      await page.getByRole("button", { name: "Update game version" }).click();
+      await expect(page).toHaveURL("/");
+      await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Stopped", live);
+      await expect.poll(() => page.request.get("/worlds/base/rollback").then((r) => r.status()), live).toBe(200);
+
+      // Delete the third world with its final snapshot, so Deleted worlds lists it.
+      await page.goto("/worlds/third/delete");
+      await page.getByLabel("Type the world's name to confirm").fill("Third world with a rather long name for a table caption");
+      await page.getByRole("button", { name: "Delete world" }).click();
+      await expect(page).toHaveURL("/worlds?deleted=third");
+
       await page.goto("/");
       await page.getByRole("button", { name: "Start server" }).click();
       await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
@@ -346,6 +393,18 @@ test.describe("layout at 320 px in every language", () => {
       await page.getByLabel("Label (optional)").fill("Before the big rocket launch rebuild");
       await page.getByRole("button", { name: "Take snapshot" }).click();
       await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
+
+      // The confirmation pages for one snapshot, and for ticking several, by their
+      // links, read here in English while the controls have English names.
+      const longRow = page.locator("tbody tr", { hasText: "Before the big rocket launch rebuild" });
+      const restoreBase = await longRow.getByRole("link", { name: /^Restore/ }).getAttribute("href");
+      const deleteBase = await longRow.getByRole("link", { name: /^Delete/ }).getAttribute("href");
+      const ticked = await page.locator("input[name=snap]").evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+      expect(ticked.length, "snapshots of the base world").toBeGreaterThanOrEqual(2);
+      const bulk = `/snapshots/delete?${ticked.map((v) => `snap=${encodeURIComponent(v)}`).join("&")}`;
+      await page.goto("/deleted");
+      const restoreDeleted = await page.getByRole("link", { name: /^Restore/ }).first().getAttribute("href");
+      expect(restoreBase && deleteBase && restoreDeleted, "snapshot links").toBeTruthy();
 
       await chooseLanguage(page.context(), lang, foreman.url);
       await sweep(
@@ -365,7 +424,54 @@ test.describe("layout at 320 px in every language", () => {
           "/worlds/base/force-stop",
           "/worlds/base/update",
           "/worlds/second/delete",
+          "/deleted",
+          restoreBase!,
+          restoreDeleted!,
+          deleteBase!,
+          bulk,
+          "/worlds/base/rollback",
         ],
+        failures,
+      );
+
+      // The 422 error pages of the load-save and rename forms. The load form has a
+      // radio group that always has one choice, so the choice is removed here.
+      await sweepSubmit(
+        page,
+        lang,
+        "/worlds/base/saves with no save chosen",
+        async () => {
+          await page.goto("/worlds/base/saves");
+          await page.locator("input[name=load]").evaluateAll((els) => els.forEach((e) => ((e as HTMLInputElement).checked = false)));
+          await page.locator("form[action$=load-save] button[type=submit]").click();
+          await expect(page.locator("#load-save-error")).toBeVisible();
+        },
+        failures,
+      );
+      await sweepSubmit(
+        page,
+        lang,
+        "/worlds/base/saves with a save that is gone",
+        async () => {
+          await copyExtraSave(foreman);
+          await page.goto("/worlds/base/saves");
+          await page.locator("input[name=load][value='extra.zip']").check();
+          rmSync(join(foreman.dataDir, "worlds", "base", "saves", "extra.zip"));
+          await page.locator("form[action$=load-save] button[type=submit]").click();
+          await expect(page.locator("#load-save-error")).toBeVisible();
+        },
+        failures,
+      );
+      await sweepSubmit(
+        page,
+        lang,
+        "/worlds/base with an empty name",
+        async () => {
+          await page.goto("/worlds/base");
+          await page.locator("#name").fill("");
+          await page.locator("form[action$=rename] button[type=submit]").click();
+          await expect(page.locator("#name-error")).toBeVisible();
+        },
         failures,
       );
 
@@ -385,6 +491,34 @@ test.describe("layout at 320 px in every language", () => {
         await checkCase(page, `${lang} /signin rate-limited at ${size}%`, failures);
       }
 
+      expect(failures, "pages that break at 320 px").toEqual([]);
+    });
+  }
+});
+
+// SPEC 17.2: a zone such as "GMT+5:45" is the widest clock text time.js writes,
+// so at 200% text it must wrap onto its own line, not push the page wider.
+test.describe("a wide time zone at 320 px and 200% text", () => {
+  test.use({ fakeGameOn: true, timezoneId: "Asia/Kathmandu" });
+  onlyInPhoneDark();
+
+  for (const lang of ["en", "de"] as const) {
+    test(`${lang}: the saves and snapshot tables fit`, async ({ page, foreman }) => {
+      const failures: string[] = [];
+      await page.setViewportSize({ width: 320, height: 640 });
+      await createAdmin(page);
+      seedWorld(foreman);
+      await page.goto("/worlds/base/snapshots");
+      await page.getByRole("button", { name: "Take snapshot" }).click();
+      await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
+      await chooseLanguage(page.context(), lang, foreman.url);
+      await sweep(page, lang, ["/worlds/base/saves", "/worlds/base/snapshots", "/snapshots"], failures);
+      await page.goto("/worlds/base/saves");
+      await expect(page.locator("td time").first()).toContainText("GMT+5:45");
+      // A stacked size sits under its label at the start of the line, not at the end.
+      await setTextSize(page, 200);
+      const align = await page.locator("td.num").first().evaluate((el) => getComputedStyle(el).textAlign);
+      expect(align, "text-align of a stacked size").toMatch(/^(start|left)$/);
       expect(failures, "pages that break at 320 px").toEqual([]);
     });
   }

@@ -1016,6 +1016,15 @@ td.num,
   white-space: nowrap;
 }
 
+/* A clock moves as one piece, and only a clock wider than its cell lets its
+   zone, such as "GMT+5:45", drop to a second line; the date stays whole. */
+table time > .nowrap ~ .nowrap {
+  display: inline-block;
+  max-inline-size: 100%;
+  white-space: normal;
+  vertical-align: top;
+}
+
 th {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -1116,7 +1125,8 @@ td > .hint {
     padding-inline-start: 0;
   }
 
-  .snapshot-list .row-actions .button {
+  .snapshot-list .row-actions .button,
+  .snapshot-list td > .button {
     padding-inline: var(--space-3);
   }
 }
@@ -1152,7 +1162,8 @@ td > .hint {
     border-block-end: var(--border-width) solid var(--color-rule);
   }
 
-  table td {
+  table td,
+  table td.num {
     padding: 0;
     border: 0;
     text-align: start;
