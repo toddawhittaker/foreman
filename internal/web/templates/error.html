@@ -1,12 +1,12 @@
-{{define "title"}}{{.Page.Heading}}{{end}}
+{{define "title"}}{{msg .Page.Heading}}{{end}}
 
 {{define "content" -}}
-<h1>{{.Page.Heading}}</h1>
+<h1>{{msg .Page.Heading}}</h1>
 <div class="panel">
-  <p>{{.Page.Explanation}}</p>
-  <p class="hint">Error code {{.Page.Status}}</p>
+  <p>{{msg .Page.Explanation}}</p>
+  <p class="hint">{{t "common.error.code" "code" (print .Page.Status)}}</p>
   <div class="actions">
-    <a class="button" href="{{serverPath}}">Go to the home page</a>
+    <a class="button" href="{{serverPath}}">{{t "common.error.home"}}</a>
   </div>
 </div>
 {{- end}}

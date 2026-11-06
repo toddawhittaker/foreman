@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
@@ -37,7 +38,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	defer s.runs.wg.Done()
 	opened := s.now()
-	out, err := s.openStream(w)
+	out, err := s.openStream(w, localeOf(r))
 	if err != nil {
 		return
 	}
@@ -99,13 +100,13 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 }
 
 // openStream starts a server-sent event response.
-func (s *server) openStream(w http.ResponseWriter) (*liveStream, error) {
+func (s *server) openStream(w http.ResponseWriter, loc i18n.Locale) (*liveStream, error) {
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Accel-Buffering", "no") // proxies must pass each event on at once
 	w.WriteHeader(http.StatusOK)
-	l := &liveStream{w: w, rc: http.NewResponseController(w), render: s.render, sent: map[string]string{}}
+	l := &liveStream{w: w, rc: http.NewResponseController(w), render: s.render, loc: loc, sent: map[string]string{}}
 	if _, err := w.Write([]byte("retry: " + strconv.Itoa(int(reconnectAfter/time.Millisecond)) + "\n\n")); err != nil {
 		return nil, err
 	}
@@ -117,6 +118,7 @@ type liveStream struct {
 	w      http.ResponseWriter
 	rc     *http.ResponseController
 	render *Renderer
+	loc    i18n.Locale       // the language the page was opened in
 	sent   map[string]string // the last HTML sent for each region
 	// started is set after the first send, which is never read out: it is
 	// what the page already shows.
@@ -149,7 +151,7 @@ func (l *liveStream) send(p ServerPage) error {
 	wrote := false
 	for _, region := range liveRegions {
 		var b strings.Builder
-		if err := l.render.Fragment(&b, p, "server-"+region); err != nil {
+		if err := l.render.Fragment(&b, l.loc, p, "server-"+region); err != nil {
 			return err
 		}
 		data := b.String()

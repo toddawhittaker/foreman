@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -88,8 +89,8 @@ func (p SavesPage) hasErrors() bool { return len(p.Problems()) > 0 }
 // Problems lists the form errors in the order the forms appear.
 func (p SavesPage) Problems() []Problem {
 	return problems(
-		Problem{"save-file", p.UploadError},
-		Problem{loadFirstID, p.LoadError},
+		Problem{"save-file", i18n.Raw(p.UploadError)},
+		Problem{loadFirstID, i18n.Raw(p.LoadError)},
 	)
 }
 

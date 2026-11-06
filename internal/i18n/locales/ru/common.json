@@ -1,0 +1,54 @@
+{
+  "common.skip": "Перейти к содержимому",
+  "common.error.label": "Ошибка:",
+  "common.nav.label": "Главное меню",
+  "common.nav.server": "Сервер",
+  "common.nav.console": "Консоль",
+  "common.nav.worlds": "Миры",
+  "common.nav.snapshots": "Снимки",
+  "common.signedin": "Вы вошли как {user}",
+  "common.signout": "Выйти",
+  "common.language.label": "Язык",
+  "common.language.submit": "Сменить",
+  "common.countdown.label": "Обратный отсчёт в секундах",
+  "common.countdown.hint": "Игроки в сети увидят предупреждение в игре, затем игра сохранится и остановится. От 0 до 600 секунд; 0 означает без предупреждения: игра сразу сохранится и остановится. Если в сети никого нет, никто не будет предупреждён.",
+  "common.summary.heading": {
+    "one": "Исправьте {count} проблему, чтобы продолжить",
+    "few": "Исправьте {count} проблемы, чтобы продолжить",
+    "many": "Исправьте {count} проблем, чтобы продолжить"
+  },
+  "common.bytes.b": "{n} Б",
+  "common.bytes.kb": "{n} кБ",
+  "common.bytes.mb": "{n} МБ",
+  "common.bytes.gb": "{n} ГБ",
+  "common.bytes.tb": "{n} ТБ",
+  "common.bytes.pb": "{n} ПБ",
+  "common.bytes.eb": "{n} ЭБ",
+  "common.duration.seconds": {
+    "one": "{count} секунда",
+    "few": "{count} секунды",
+    "many": "{count} секунд"
+  },
+  "common.duration.minutes": {
+    "one": "{count} минута",
+    "few": "{count} минуты",
+    "many": "{count} минут"
+  },
+  "common.duration.hours": {
+    "one": "{count} час",
+    "few": "{count} часа",
+    "many": "{count} часов"
+  },
+  "common.error.forbidden.heading": "Доступ запрещён",
+  "common.error.forbidden.text": "Foreman отклонил этот запрос. Если вы перешли по ссылке с другого сайта, откройте Foreman напрямую и попробуйте снова. Если это повторяется, попросите того, кто управляет Foreman, проверить ваш доступ.",
+  "common.error.notfound.heading": "Страница не найдена",
+  "common.error.notfound.text": "По этому адресу нет страницы. Проверьте адрес или перейдите на главную страницу.",
+  "common.error.internal.heading": "Что-то пошло не так",
+  "common.error.internal.text": "Foreman не смог выполнить этот запрос. Подробности — в журнале Foreman. Попробуйте снова, а если снова не получится, загляните в журнал.",
+  "common.error.other.heading": "Запрос не выполнен",
+  "common.error.other.text": "Foreman не смог выполнить этот запрос. Перейдите на главную страницу и попробуйте снова.",
+  "common.error.code": "Код ошибки {code}",
+  "common.error.home": "На главную страницу",
+  "common.form.unreadable": "Foreman не смог прочитать форму. Вернитесь назад, обновите страницу и попробуйте снова.",
+  "common.form.too_large": "Форма слишком большая. Вернитесь назад, обновите страницу и попробуйте снова."
+}

@@ -1,0 +1,48 @@
+{
+  "accounts.username.label": "Nom d’utilisateur",
+  "accounts.password.label": "Mot de passe",
+  "accounts.username.missing": "Saisissez un nom d’utilisateur",
+  "accounts.username.long": {
+    "one": "Utilisez au plus {count} caractère",
+    "other": "Utilisez au plus {count} caractères"
+  },
+  "accounts.username.control": "Retirez les caractères de contrôle du nom d’utilisateur",
+  "accounts.signin.title": "Connexion",
+  "accounts.signin.submit": "Se connecter",
+  "accounts.signin.ratelimited.unknown": "Trop de connexions échouées. Attendez quelques minutes, puis réessayez.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Trop de connexions échouées. Attendez {count} minute, puis réessayez.",
+    "other": "Trop de connexions échouées. Attendez {count} minutes, puis réessayez."
+  },
+  "accounts.signin.busy": "Foreman est occupé. Attendez un instant et réessayez.",
+  "accounts.signin.bad": "Le nom d’utilisateur ou le mot de passe est incorrect. Vérifiez les deux et réessayez.",
+  "accounts.signin.username.missing": "Saisissez votre nom d’utilisateur",
+  "accounts.signin.password.missing": "Saisissez votre mot de passe",
+  "accounts.setup.title": "Créer le premier compte administrateur",
+  "accounts.setup.intro": "Foreman n’a encore aucun compte. Le compte que vous créez ici peut tout faire dans Foreman. Cette page se ferme dès que le compte existe.",
+  "accounts.setup.password.hint": {
+    "one": "Utilisez au moins {count} caractère.",
+    "other": "Utilisez au moins {count} caractères."
+  },
+  "accounts.setup.password.missing": "Saisissez un mot de passe",
+  "accounts.setup.password.long": {
+    "one": "Utilisez au plus {count} octet",
+    "other": "Utilisez au plus {count} octets"
+  },
+  "accounts.setup.password.short": {
+    "one": "Utilisez au moins {count} caractère",
+    "other": "Utilisez au moins {count} caractères"
+  },
+  "accounts.setup.confirm.label": "Confirmer le mot de passe",
+  "accounts.setup.confirm.missing": "Saisissez de nouveau le mot de passe",
+  "accounts.setup.confirm.mismatch": "Saisissez le même mot de passe dans les deux champs",
+  "accounts.setup.submit": "Créer le compte administrateur",
+  "accounts.signedout.title": "Déconnecté",
+  "accounts.signedout.heading": "Vous êtes déconnecté",
+  "accounts.signedout.text": "Votre session sur cet appareil est terminée.",
+  "accounts.signedout.again": "Se reconnecter",
+  "accounts.proxy.refused": "Votre compte n’est pas autorisé à utiliser Foreman. Demandez à la personne qui gère Foreman de vous donner l’accès.",
+  "accounts.proxy.waiting": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute.",
+  "accounts.proxy.waiting_local": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute. La connexion par mot de passe fonctionne toujours : ouvrez {path} pour l’utiliser.",
+  "accounts.proxy.missing": "Foreman n’a pas reçu votre connexion du proxy. Connectez-vous par le proxy, puis rouvrez cette page."
+}

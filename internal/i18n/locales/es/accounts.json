@@ -1,0 +1,48 @@
+{
+  "accounts.username.label": "Nombre de usuario",
+  "accounts.password.label": "Contraseña",
+  "accounts.username.missing": "Escribe un nombre de usuario",
+  "accounts.username.long": {
+    "one": "Usa como máximo {count} carácter",
+    "other": "Usa como máximo {count} caracteres"
+  },
+  "accounts.username.control": "Quita los caracteres de control del nombre de usuario",
+  "accounts.signin.title": "Iniciar sesión",
+  "accounts.signin.submit": "Iniciar sesión",
+  "accounts.signin.ratelimited.unknown": "Demasiados inicios de sesión fallidos. Espera unos minutos y vuelve a intentarlo.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Demasiados inicios de sesión fallidos. Espera {count} minuto y vuelve a intentarlo.",
+    "other": "Demasiados inicios de sesión fallidos. Espera {count} minutos y vuelve a intentarlo."
+  },
+  "accounts.signin.busy": "Foreman está ocupado. Espera un momento y vuelve a intentarlo.",
+  "accounts.signin.bad": "El nombre de usuario o la contraseña no son correctos. Revisa ambos y vuelve a intentarlo.",
+  "accounts.signin.username.missing": "Escribe tu nombre de usuario",
+  "accounts.signin.password.missing": "Escribe tu contraseña",
+  "accounts.setup.title": "Crear la primera cuenta de administrador",
+  "accounts.setup.intro": "Foreman aún no tiene cuentas. La cuenta que crees aquí puede hacer todo en Foreman. Esta página se cierra en cuanto exista la cuenta.",
+  "accounts.setup.password.hint": {
+    "one": "Usa al menos {count} carácter.",
+    "other": "Usa al menos {count} caracteres."
+  },
+  "accounts.setup.password.missing": "Escribe una contraseña",
+  "accounts.setup.password.long": {
+    "one": "Usa como máximo {count} byte",
+    "other": "Usa como máximo {count} bytes"
+  },
+  "accounts.setup.password.short": {
+    "one": "Usa al menos {count} carácter",
+    "other": "Usa al menos {count} caracteres"
+  },
+  "accounts.setup.confirm.label": "Confirmar contraseña",
+  "accounts.setup.confirm.missing": "Vuelve a escribir la contraseña",
+  "accounts.setup.confirm.mismatch": "Escribe la misma contraseña en los dos campos",
+  "accounts.setup.submit": "Crear cuenta de administrador",
+  "accounts.signedout.title": "Sesión cerrada",
+  "accounts.signedout.heading": "Has cerrado la sesión",
+  "accounts.signedout.text": "Tu sesión en este dispositivo ha terminado.",
+  "accounts.signedout.again": "Volver a iniciar sesión",
+  "accounts.proxy.refused": "Tu cuenta no tiene permiso para usar Foreman. Pide a la persona que gestiona Foreman que te dé acceso.",
+  "accounts.proxy.waiting": "Foreman aún no puede aceptar inicios de sesión desde el proxy, porque todavía no ha visto las redes del contenedor del juego. Vuelve a intentarlo dentro de un minuto.",
+  "accounts.proxy.waiting_local": "Foreman aún no puede aceptar inicios de sesión desde el proxy, porque todavía no ha visto las redes del contenedor del juego. Vuelve a intentarlo dentro de un minuto. El inicio de sesión con contraseña sigue funcionando: abre {path} para usarlo.",
+  "accounts.proxy.missing": "Foreman no ha recibido tu inicio de sesión desde el proxy. Inicia sesión a través del proxy y vuelve a abrir esta página."
+}

@@ -1,0 +1,48 @@
+{
+  "accounts.username.label": "Username",
+  "accounts.password.label": "Password",
+  "accounts.username.missing": "Enter a username",
+  "accounts.username.long": {
+    "one": "Use at most {count} character",
+    "other": "Use at most {count} characters"
+  },
+  "accounts.username.control": "Remove control characters from the username",
+  "accounts.signin.title": "Sign in",
+  "accounts.signin.submit": "Sign in",
+  "accounts.signin.ratelimited.unknown": "Too many failed sign-ins. Wait a few minutes, then try again.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Too many failed sign-ins. Wait {count} minute, then try again.",
+    "other": "Too many failed sign-ins. Wait {count} minutes, then try again."
+  },
+  "accounts.signin.busy": "Foreman is busy. Wait a moment and try again.",
+  "accounts.signin.bad": "The username or password is not right. Check both and try again.",
+  "accounts.signin.username.missing": "Enter your username",
+  "accounts.signin.password.missing": "Enter your password",
+  "accounts.setup.title": "Create the first admin account",
+  "accounts.setup.intro": "Foreman has no accounts yet. The account you create here can do everything in Foreman. This page closes as soon as the account exists.",
+  "accounts.setup.password.hint": {
+    "one": "Use at least {count} character.",
+    "other": "Use at least {count} characters."
+  },
+  "accounts.setup.password.missing": "Enter a password",
+  "accounts.setup.password.long": {
+    "one": "Use at most {count} byte",
+    "other": "Use at most {count} bytes"
+  },
+  "accounts.setup.password.short": {
+    "one": "Use at least {count} character",
+    "other": "Use at least {count} characters"
+  },
+  "accounts.setup.confirm.label": "Confirm password",
+  "accounts.setup.confirm.missing": "Enter the password again",
+  "accounts.setup.confirm.mismatch": "Enter the same password in both fields",
+  "accounts.setup.submit": "Create admin account",
+  "accounts.signedout.title": "Signed out",
+  "accounts.signedout.heading": "You are signed out",
+  "accounts.signedout.text": "Your session on this device has ended.",
+  "accounts.signedout.again": "Sign in again",
+  "accounts.proxy.refused": "Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.",
+  "accounts.proxy.waiting": "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute.",
+  "accounts.proxy.waiting_local": "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute. Password sign-in still works: open {path} to use it.",
+  "accounts.proxy.missing": "Foreman did not get your sign-in from the proxy. Sign in through the proxy, then open this page again."
+}

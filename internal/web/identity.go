@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
@@ -51,7 +52,7 @@ func (s *server) whoIs(r *http.Request, session func(context.Context, *http.Requ
 			return store.User{}, refused, false, nil
 		case auth.HeaderOK:
 			name, problem := checkUsername(id.Username)
-			if problem != "" {
+			if !problem.IsZero() {
 				return store.User{}, refused, false, nil
 			}
 			u, err := s.headerUser(ctx, name)
@@ -165,12 +166,12 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 		case state == refused:
 			s.page(w, r, http.StatusForbidden, "", ErrorPage{
 				Status: http.StatusForbidden,
-				Detail: "Your account is not allowed to use Foreman. Ask the person who runs Foreman to give you access.",
+				Detail: i18n.M("accounts.proxy.refused"),
 			})
 		case state == proxyWaiting:
-			detail := "Foreman cannot accept sign-in from the proxy yet, because it has not yet seen the game container's networks. Try again in a minute."
+			detail := i18n.M("accounts.proxy.waiting")
 			if s.cfg.AuthLocal {
-				detail += " Password sign-in still works: open " + PathSignIn + " to use it."
+				detail = i18n.M("accounts.proxy.waiting_local", "path", PathSignIn)
 			}
 			s.page(w, r, http.StatusForbidden, "", ErrorPage{Status: http.StatusForbidden, Detail: detail})
 		case s.cfg.AuthLocal:
@@ -178,7 +179,7 @@ func (s *server) requireUser(h func(http.ResponseWriter, *http.Request, store.Us
 		default:
 			s.page(w, r, http.StatusForbidden, "", ErrorPage{
 				Status: http.StatusForbidden,
-				Detail: "Foreman did not get your sign-in from the proxy. Sign in through the proxy, then open this page again.",
+				Detail: i18n.M("accounts.proxy.missing"),
 			})
 		}
 	}

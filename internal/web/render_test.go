@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -104,18 +105,18 @@ func pageCases() []pageCase {
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
-			PasswordError: "The username or password is not right. Check both and try again."}},
-		{"sign in two errors", "", 400, SignInPage{UsernameError: "Enter your username", PasswordError: "Enter your password"}},
+			PasswordError: i18n.M("accounts.signin.bad")}},
+		{"sign in two errors", "", 400, SignInPage{UsernameError: i18n.M("accounts.signin.username.missing"), PasswordError: i18n.M("accounts.signin.password.missing")}},
 		{"sign in rate limited", "", 429, SignInPage{Username: longName, RateLimited: true, RetryAfter: 14*time.Minute + time.Second}},
 		{"setup empty", "", 200, SetupPage{}},
 		{"setup with hint", "", 200, SetupPage{MinPasswordLength: 12}},
 		{"setup all errors", "", 400, SetupPage{Username: longName, MinPasswordLength: 12, //nolint:gosec // error wording, not a credential
-			UsernameError: "Enter a username", PasswordError: "Use at least 12 characters",
-			ConfirmError: "Enter the same password in both fields"}},
+			UsernameError: i18n.M("accounts.username.missing"), PasswordError: i18n.M("accounts.setup.password.short", "count", 12),
+			ConfirmError: i18n.M("accounts.setup.confirm.mismatch")}},
 		{"error 403", "todd", 403, ErrorPage{Status: 403}},
 		{"error 404", "", 404, ErrorPage{Status: 404}},
 		{"error 500", "", 500, ErrorPage{Status: 500}},
-		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: "Choose a file that ends in .zip."}},
+		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: i18n.Raw("Choose a file that ends in .zip.")}},
 		{"server no world", "todd", 200, ServerPage{}},
 		{"server running", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
 			p.Status.Uptime, p.Status.StartedAt = 3*time.Hour+12*time.Minute, time.Date(2026, 11, 3, 11, 0, 0, 0, time.UTC)
@@ -248,7 +249,7 @@ func TestVersionFragments(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var b strings.Builder
-			if err := r.Fragment(&b, c.page, c.frag); err != nil {
+			if err := r.Fragment(&b, i18n.English, c.page, c.frag); err != nil {
 				t.Fatal(err)
 			}
 			if c.want == nil && strings.TrimSpace(b.String()) != "" {
@@ -273,8 +274,14 @@ func serverCase(s game.State, edit func(*ServerPage)) ServerPage {
 
 func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, string) {
 	t.Helper()
+	return renderIn(t, r, c, i18n.English)
+}
+
+// renderIn renders c for a GET request in language loc.
+func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest.ResponseRecorder, string) {
+	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := r.Render(rec, c.status, c.user, c.page); err != nil {
+	if err := r.Render(rec, requestIn(loc), c.status, c.user, c.page); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	return rec, rec.Body.String()
@@ -289,87 +296,92 @@ var (
 )
 
 // Every page renders and meets the document rules every screen shares
-// (SPEC 17.1, DESIGN 2 and 7.2).
+// (SPEC 17.1, DESIGN 2 and 7.2), in every language (SPEC 22.1).
 func TestEveryPageRenders(t *testing.T) {
 	r := newTestRenderer(t)
-	for _, c := range pageCases() {
-		t.Run(c.name, func(t *testing.T) {
-			rec, body := render(t, r, c)
+	for _, l := range i18n.Languages {
+		for _, c := range pageCases() {
+			t.Run(string(l.Tag)+"/"+c.name, func(t *testing.T) { checkPage(t, r, c, l.Tag) })
+		}
+	}
+}
 
-			if rec.Code != c.status {
-				t.Errorf("status %d, want %d", rec.Code, c.status)
-			}
-			if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-				t.Errorf("Content-Type %q", got)
-			}
-			if got := rec.Header().Get("Cache-Control"); got != "no-store" {
-				t.Errorf("Cache-Control %q", got)
-			}
-			if !strings.HasPrefix(body, "<!doctype html>") {
-				t.Errorf("body does not start with a doctype: %.40q", body)
-			}
-			if !strings.Contains(body, `<html lang="en">`) {
-				t.Error("no lang on html")
-			}
-			if m := reTitle.FindAllStringSubmatch(body, -1); len(m) != 1 || strings.TrimSpace(m[0][1]) == "" {
-				t.Errorf("want one non-empty title, got %v", m)
-			}
-			if n := strings.Count(body, "<h1"); n != 1 {
-				t.Errorf("%d h1 elements, want 1", n)
-			}
-			if strings.Contains(body, "<b>") {
-				t.Error("user text was not escaped")
-			}
+func checkPage(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) {
+	t.Helper()
+	rec, body := renderIn(t, r, c, loc)
 
-			ids := map[string]int{}
-			for _, m := range reID.FindAllStringSubmatch(body, -1) {
-				ids[m[1]]++
-			}
-			for id, n := range ids {
-				if n > 1 {
-					t.Errorf("id %q used %d times", id, n)
-				}
-			}
-			for _, in := range reInput.FindAllString(body, -1) {
-				// Radios and checkboxes sit inside their label (DESIGN 7.2); a
-				// hidden field is never shown, so has none.
-				if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) || strings.Contains(in, `type="hidden"`) {
-					continue
-				}
-				m := reID.FindStringSubmatch(in)
-				if m == nil {
-					t.Errorf("input without id: %s", in)
-					continue
-				}
-				if !strings.Contains(body, `<label for="`+m[1]+`">`) {
-					t.Errorf("input %q has no label", m[1])
-				}
-				if strings.Contains(in, "placeholder") {
-					t.Errorf("input %q uses a placeholder", m[1])
-				}
-			}
-			for _, m := range reDescribed.FindAllStringSubmatch(body, -1) {
-				for _, id := range strings.Fields(m[1]) {
-					if ids[id] == 0 {
-						t.Errorf("aria-describedby names missing id %q", id)
-					}
-				}
-			}
-			for _, m := range reHrefAnchor.FindAllStringSubmatch(body, -1) {
-				if ids[m[1]] == 0 {
-					t.Errorf("link to missing id #%s", m[1])
-				}
-			}
-			if strings.Contains(body, "autofocus") && strings.Count(body, "autofocus") != 1 {
-				t.Error("more than one autofocus")
-			}
+	if rec.Code != c.status {
+		t.Errorf("status %d, want %d", rec.Code, c.status)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type %q", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control %q", got)
+	}
+	if !strings.HasPrefix(body, "<!doctype html>") {
+		t.Errorf("body does not start with a doctype: %.40q", body)
+	}
+	if !strings.Contains(body, `<html lang="`+loc.String()+`">`) {
+		t.Error("no lang on html")
+	}
+	if m := reTitle.FindAllStringSubmatch(body, -1); len(m) != 1 || strings.TrimSpace(m[0][1]) == "" {
+		t.Errorf("want one non-empty title, got %v", m)
+	}
+	if n := strings.Count(body, "<h1"); n != 1 {
+		t.Errorf("%d h1 elements, want 1", n)
+	}
+	if strings.Contains(body, "<b>") {
+		t.Error("user text was not escaped")
+	}
 
-			// Sign-out is a POST form shown only when someone is signed in (DESIGN 6).
-			signOut := `<form method="post" action="` + PathSignOut + `"`
-			if got := strings.Contains(body, signOut); got != (c.user != "") {
-				t.Errorf("sign-out form shown=%v with user %q", got, c.user)
+	ids := map[string]int{}
+	for _, m := range reID.FindAllStringSubmatch(body, -1) {
+		ids[m[1]]++
+	}
+	for id, n := range ids {
+		if n > 1 {
+			t.Errorf("id %q used %d times", id, n)
+		}
+	}
+	for _, in := range reInput.FindAllString(body, -1) {
+		// Radios and checkboxes sit inside their label (DESIGN 7.2); a
+		// hidden field is never shown, so has none.
+		if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) || strings.Contains(in, `type="hidden"`) {
+			continue
+		}
+		m := reID.FindStringSubmatch(in)
+		if m == nil {
+			t.Errorf("input without id: %s", in)
+			continue
+		}
+		if !strings.Contains(body, `<label for="`+m[1]+`">`) {
+			t.Errorf("input %q has no label", m[1])
+		}
+		if strings.Contains(in, "placeholder") {
+			t.Errorf("input %q uses a placeholder", m[1])
+		}
+	}
+	for _, m := range reDescribed.FindAllStringSubmatch(body, -1) {
+		for _, id := range strings.Fields(m[1]) {
+			if ids[id] == 0 {
+				t.Errorf("aria-describedby names missing id %q", id)
 			}
-		})
+		}
+	}
+	for _, m := range reHrefAnchor.FindAllStringSubmatch(body, -1) {
+		if ids[m[1]] == 0 {
+			t.Errorf("link to missing id #%s", m[1])
+		}
+	}
+	if strings.Contains(body, "autofocus") && strings.Count(body, "autofocus") != 1 {
+		t.Error("more than one autofocus")
+	}
+
+	// Sign-out is a POST form shown only when someone is signed in (DESIGN 6).
+	signOut := `<form method="post" action="` + PathSignOut + `"`
+	if got := strings.Contains(body, signOut); got != (c.user != "") {
+		t.Errorf("sign-out form shown=%v with user %q", got, c.user)
 	}
 }
 
@@ -385,7 +397,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 		if name == "layout" {
 			continue
 		}
-		if _, ok := r.pages[name]; !ok {
+		if _, ok := r.pages[i18n.English][name]; !ok {
 			t.Errorf("template %s has no page type", f)
 		}
 	}
@@ -393,7 +405,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 	for _, c := range pageCases() {
 		covered[c.page.templateName()] = true
 	}
-	for name := range r.pages {
+	for name := range r.pages[i18n.English] {
 		if !covered[name] {
 			t.Errorf("page %s has no render case", name)
 		}
@@ -407,9 +419,9 @@ func TestErrorSummary(t *testing.T) {
 		heading string
 		links   []string
 	}{
-		{SignInPage{PasswordError: "x"}, "Fix this problem to continue", []string{"password"}},
-		{SignInPage{UsernameError: "a", PasswordError: "b"}, "Fix 2 problems to continue", []string{"username", "password"}},
-		{SetupPage{UsernameError: "a", PasswordError: "b", ConfirmError: "c"}, "Fix 3 problems to continue", []string{"username", "password", "confirm"}},
+		{SignInPage{PasswordError: i18n.Raw("x")}, "Fix this problem to continue", []string{"password"}},
+		{SignInPage{UsernameError: i18n.Raw("a"), PasswordError: i18n.Raw("b")}, "Fix 2 problems to continue", []string{"username", "password"}},
+		{SetupPage{UsernameError: i18n.Raw("a"), PasswordError: i18n.Raw("b"), ConfirmError: i18n.Raw("c")}, "Fix 3 problems to continue", []string{"username", "password", "confirm"}},
 	}
 	for _, c := range cases {
 		_, body := render(t, r, pageCase{page: c.page, status: 400})
@@ -445,11 +457,11 @@ func TestErrorTitleAndSummaryName(t *testing.T) {
 		title string
 	}{
 		{SignInPage{}, "Sign in – Foreman"},
-		{SignInPage{PasswordError: "x"}, "Error: Sign in – Foreman"},
+		{SignInPage{PasswordError: i18n.Raw("x")}, "Error: Sign in – Foreman"},
 		{SignInPage{RateLimited: true}, "Error: Sign in – Foreman"},
 		{SignInPage{Busy: true}, "Error: Sign in – Foreman"},
 		{SetupPage{}, "Create the first admin account – Foreman"},
-		{SetupPage{ConfirmError: "x"}, "Error: Create the first admin account – Foreman"},
+		{SetupPage{ConfirmError: i18n.Raw("x")}, "Error: Create the first admin account – Foreman"},
 		{ErrorPage{Status: 404}, "Page not found – Foreman"},
 	}
 	for _, c := range cases {
@@ -483,19 +495,19 @@ func TestSignInRateLimit(t *testing.T) {
 		after time.Duration
 		want  string
 	}{
-		{0, "a few minutes"},
-		{time.Second, "1 minute"},
-		{time.Minute, "1 minute"},
-		{14*time.Minute + time.Second, "15 minutes"},
+		{0, "Too many failed sign-ins. Wait a few minutes, then try again."},
+		{time.Second, "Too many failed sign-ins. Wait 1 minute, then try again."},
+		{time.Minute, "Too many failed sign-ins. Wait 1 minute, then try again."},
+		{14*time.Minute + time.Second, "Too many failed sign-ins. Wait 15 minutes, then try again."},
 	}
 	for _, c := range cases {
-		if got := (SignInPage{RateLimited: true, RetryAfter: c.after}).Wait(); got != c.want {
-			t.Errorf("Wait(%v) = %q, want %q", c.after, got, c.want)
+		if got := i18n.English.Format((SignInPage{RateLimited: true, RetryAfter: c.after}).RateLimitMessage()); got != c.want {
+			t.Errorf("RateLimitMessage(%v) = %q, want %q", c.after, got, c.want)
 		}
 	}
 
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 429, page: SignInPage{RateLimited: true, PasswordError: "x"}})
+	_, body := render(t, r, pageCase{status: 429, page: SignInPage{RateLimited: true, PasswordError: i18n.Raw("x")}})
 	if !strings.Contains(body, "Too many failed sign-ins. Wait a few minutes, then try again.") {
 		t.Error("no rate-limit message")
 	}
@@ -522,7 +534,7 @@ func TestSignInBusyIsFormLevel(t *testing.T) {
 
 func TestSignInNeverEchoesPassword(t *testing.T) {
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 401, page: SignInPage{Username: "todd", PasswordError: "x"}})
+	_, body := render(t, r, pageCase{status: 401, page: SignInPage{Username: "todd", PasswordError: i18n.Raw("x")}})
 	for _, in := range reInput.FindAllString(body, -1) {
 		if strings.Contains(in, `type="password"`) && strings.Contains(in, "value=") {
 			t.Errorf("password input carries a value: %s", in)
@@ -536,11 +548,11 @@ func TestSignInNeverEchoesPassword(t *testing.T) {
 func TestErrorPageCopy(t *testing.T) {
 	for _, s := range []int{403, 404, 500, 418} {
 		p := ErrorPage{Status: s}
-		if p.Heading() == "" || p.Explanation() == "" {
+		if p.Heading().IsZero() || p.Explanation().IsZero() {
 			t.Errorf("status %d has no copy", s)
 		}
 	}
-	if got := (ErrorPage{Status: 403, Detail: "Ask for the admins group."}).Explanation(); got != "Ask for the admins group." {
+	if got := i18n.English.Format((ErrorPage{Status: 403, Detail: i18n.Raw("Ask for the admins group.")}).Explanation()); got != "Ask for the admins group." {
 		t.Errorf("Detail not used: %q", got)
 	}
 }

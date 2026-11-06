@@ -58,7 +58,7 @@ func (s *server) updateRoutes() {
 // fragment answers with one named template of a page, for htmx.
 func (s *server) fragment(w http.ResponseWriter, r *http.Request, p Page, name string) {
 	var b strings.Builder
-	if err := s.render.Fragment(&b, p, name); err != nil {
+	if err := s.render.Fragment(&b, localeOf(r), p, name); err != nil {
 		s.fail(w, r, "render "+name, err)
 		return
 	}

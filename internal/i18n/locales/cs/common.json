@@ -1,0 +1,54 @@
+{
+  "common.skip": "Přejít na obsah",
+  "common.error.label": "Chyba:",
+  "common.nav.label": "Hlavní nabídka",
+  "common.nav.server": "Server",
+  "common.nav.console": "Konzole",
+  "common.nav.worlds": "Světy",
+  "common.nav.snapshots": "Snímky",
+  "common.signedin": "Přihlášený uživatel: {user}",
+  "common.signout": "Odhlásit",
+  "common.language.label": "Jazyk",
+  "common.language.submit": "Změnit",
+  "common.countdown.label": "Odpočet v sekundách",
+  "common.countdown.hint": "Hráči online uvidí ve hře varování, potom hra uloží stav a zastaví se. Od 0 do 600 sekund; 0 znamená bez varování: hra stav uloží a zastaví se hned. Když nikdo není online, nikdo není varován.",
+  "common.summary.heading": {
+    "one": "Pro pokračování je třeba opravit {count} problém",
+    "few": "Pro pokračování je třeba opravit {count} problémy",
+    "other": "Pro pokračování je třeba opravit {count} problémů"
+  },
+  "common.bytes.b": "{n} B",
+  "common.bytes.kb": "{n} kB",
+  "common.bytes.mb": "{n} MB",
+  "common.bytes.gb": "{n} GB",
+  "common.bytes.tb": "{n} TB",
+  "common.bytes.pb": "{n} PB",
+  "common.bytes.eb": "{n} EB",
+  "common.duration.seconds": {
+    "one": "{count} sekunda",
+    "few": "{count} sekundy",
+    "other": "{count} sekund"
+  },
+  "common.duration.minutes": {
+    "one": "{count} minuta",
+    "few": "{count} minuty",
+    "other": "{count} minut"
+  },
+  "common.duration.hours": {
+    "one": "{count} hodina",
+    "few": "{count} hodiny",
+    "other": "{count} hodin"
+  },
+  "common.error.forbidden.heading": "Přístup odepřen",
+  "common.error.forbidden.text": "Foreman tento požadavek odmítl. Pokud vedl odkaz z jiného webu, je třeba otevřít Foreman přímo a zkusit to znovu. Pokud se to opakuje, je třeba požádat správce Foremanu o kontrolu přístupu.",
+  "common.error.notfound.heading": "Stránka nenalezena",
+  "common.error.notfound.text": "Na této adrese žádná stránka není. Je třeba zkontrolovat adresu, nebo přejít na úvodní stránku.",
+  "common.error.internal.heading": "Něco se pokazilo",
+  "common.error.internal.text": "Foreman nemohl tento požadavek dokončit. Podrobnosti jsou v protokolu Foremanu. Je třeba to zkusit znovu, a pokud to opět selže, podívat se do protokolu.",
+  "common.error.other.heading": "Požadavek selhal",
+  "common.error.other.text": "Foreman nemohl tento požadavek dokončit. Je třeba přejít na úvodní stránku a zkusit to znovu.",
+  "common.error.code": "Kód chyby {code}",
+  "common.error.home": "Přejít na úvodní stránku",
+  "common.form.unreadable": "Foreman nemohl přečíst formulář. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu.",
+  "common.form.too_large": "Formulář byl příliš velký. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu."
+}

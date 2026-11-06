@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/releases"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -115,7 +116,7 @@ func TestUpdateAndRollbackErrorTakesFocus(t *testing.T) {
 func noticeHTML(t *testing.T, p ReleaseNotice) string {
 	t.Helper()
 	var b strings.Builder
-	if err := newTestRenderer(t).Fragment(&b, p, "release-notice"); err != nil {
+	if err := newTestRenderer(t).Fragment(&b, i18n.English, p, "release-notice"); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()

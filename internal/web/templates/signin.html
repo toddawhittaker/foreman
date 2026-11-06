@@ -1,41 +1,41 @@
-{{define "title"}}Sign in{{end}}
+{{define "title"}}{{t "accounts.signin.title"}}{{end}}
 
 {{define "content" -}}
-<h1>Sign in</h1>
+<h1>{{t "accounts.signin.title"}}</h1>
 {{with .Page}}
 <form method="post" action="{{signInPath}}" class="panel" novalidate>
   {{- if .RateLimited}}
   <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
-    <p><strong>Error:</strong> Too many failed sign-ins. Wait {{.Wait}}, then try again.</p>
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .RateLimitMessage}}</p>
   </div>
   {{- else if .Busy}}
   <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
-    <p><strong>Error:</strong> Foreman is busy. Wait a moment and try again.</p>
+    <p><strong>{{t "common.error.label"}}</strong> {{t "accounts.signin.busy"}}</p>
   </div>
   {{- end}}
   {{template "summary" .Problems}}
   <div class="field">
-    <label for="username">Username</label>
+    <label for="username">{{t "accounts.username.label"}}</label>
     <input id="username" name="username" type="text" value="{{.Username}}" required
       autocomplete="username" autocapitalize="none" spellcheck="false"
-      {{- with .UsernameError}} aria-invalid="true" aria-describedby="username-error"{{end}}>
-    {{- with .UsernameError}}
-    <p class="error" id="username-error"><strong>Error:</strong> {{.}}</p>
+      {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="username-error"{{end}}>
+    {{- if not .UsernameError.IsZero}}
+    <p class="error" id="username-error"><strong>{{t "common.error.label"}}</strong> {{msg .UsernameError}}</p>
     {{- end}}
   </div>
   <div class="field">
-    <label for="password">Password</label>
+    <label for="password">{{t "accounts.password.label"}}</label>
     <input id="password" name="password" type="password" required autocomplete="current-password"
-      {{- with .PasswordError}} aria-invalid="true" aria-describedby="password-error"{{end}}>
-    {{- with .PasswordError}}
-    <p class="error" id="password-error"><strong>Error:</strong> {{.}}</p>
+      {{- if not .PasswordError.IsZero}} aria-invalid="true" aria-describedby="password-error"{{end}}>
+    {{- if not .PasswordError.IsZero}}
+    <p class="error" id="password-error"><strong>{{t "common.error.label"}}</strong> {{msg .PasswordError}}</p>
     {{- end}}
   </div>
   {{- with .Next}}
   <input type="hidden" name="next" value="{{.}}">
   {{- end}}
   <div class="actions">
-    <button type="submit" class="button button--primary">Sign in</button>
+    <button type="submit" class="button button--primary">{{t "accounts.signin.submit"}}</button>
   </div>
 </form>
 {{end}}

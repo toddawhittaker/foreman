@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 )
 
@@ -16,22 +17,20 @@ const (
 	maxUsernameChars = 64
 	// maxLoggedUsername keeps a hostile username from flooding the log.
 	maxLoggedUsername = 64
-
-	msgBadLogin = "The username or password is not right. Check both and try again."
 )
 
-// checkUsername trims name and returns a problem in plain words, or "".
-func checkUsername(name string) (clean, problem string) {
+// checkUsername trims name and returns a problem in plain words, or a zero Msg.
+func checkUsername(name string) (clean string, problem i18n.Msg) {
 	clean = strings.TrimSpace(name)
 	switch {
 	case clean == "":
-		return clean, "Enter a username"
+		return clean, i18n.M("accounts.username.missing")
 	case utf8.RuneCountInString(clean) > maxUsernameChars:
-		return clean, fmt.Sprintf("Use at most %d characters", maxUsernameChars)
+		return clean, i18n.M("accounts.username.long", "count", maxUsernameChars)
 	case strings.IndexFunc(clean, unicode.IsControl) >= 0:
-		return clean, "Remove control characters from the username"
+		return clean, i18n.M("accounts.username.control")
 	}
-	return clean, ""
+	return clean, i18n.Msg{}
 }
 
 // readForm parses the body of a POST. It answers the request itself and
@@ -42,10 +41,10 @@ func (s *server) readForm(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	status := http.StatusBadRequest
-	detail := "Foreman could not read the form. Go back, reload the page and try again."
+	detail := i18n.M("common.form.unreadable")
 	if _, tooBig := errors.AsType[*http.MaxBytesError](err); tooBig {
 		status = http.StatusRequestEntityTooLarge
-		detail = "The form was too large. Go back, reload the page and try again."
+		detail = i18n.M("common.form.too_large")
 	}
 	s.page(w, r, status, "", ErrorPage{Status: status, Detail: detail})
 	return false
@@ -85,18 +84,18 @@ func (s *server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	pg := SetupPage{Username: username, UsernameError: usernameProblem, MinPasswordLength: auth.MinPasswordChars}
 	switch {
 	case password == "":
-		pg.PasswordError = "Enter a password"
+		pg.PasswordError = i18n.M("accounts.setup.password.missing")
 	case len(password) > auth.MaxPasswordBytes:
-		pg.PasswordError = fmt.Sprintf("Use at most %d bytes", auth.MaxPasswordBytes)
+		pg.PasswordError = i18n.M("accounts.setup.password.long", "count", auth.MaxPasswordBytes)
 	case auth.CheckPassword(password) != nil:
-		pg.PasswordError = fmt.Sprintf("Use at least %d characters", auth.MinPasswordChars)
+		pg.PasswordError = i18n.M("accounts.setup.password.short", "count", auth.MinPasswordChars)
 	}
 	if confirm == "" {
-		pg.ConfirmError = "Enter the password again"
+		pg.ConfirmError = i18n.M("accounts.setup.confirm.missing")
 	} else if confirm != password {
-		pg.ConfirmError = "Enter the same password in both fields"
+		pg.ConfirmError = i18n.M("accounts.setup.confirm.mismatch")
 	}
-	if pg.UsernameError != "" || pg.PasswordError != "" || pg.ConfirmError != "" {
+	if !pg.UsernameError.IsZero() || !pg.PasswordError.IsZero() || !pg.ConfirmError.IsZero() {
 		s.page(w, r, http.StatusBadRequest, "", pg)
 		return
 	}
@@ -141,12 +140,12 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	next := returnPath(r.PostFormValue("next"))
 	pg := SignInPage{Username: username, Next: next}
 	if username == "" {
-		pg.UsernameError = "Enter your username"
+		pg.UsernameError = i18n.M("accounts.signin.username.missing")
 	}
 	if password == "" {
-		pg.PasswordError = "Enter your password"
+		pg.PasswordError = i18n.M("accounts.signin.password.missing")
 	}
-	if pg.UsernameError != "" || pg.PasswordError != "" {
+	if !pg.UsernameError.IsZero() || !pg.PasswordError.IsZero() {
 		s.page(w, r, http.StatusBadRequest, "", pg)
 		return
 	}
@@ -205,7 +204,7 @@ func (s *server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 // only: a mistyped password often lands in the username field.
 func (s *server) signInFailed(w http.ResponseWriter, r *http.Request, pg SignInPage, client string) {
 	s.log.Info("sign-in failed", "client", client)
-	pg.PasswordError = msgBadLogin
+	pg.PasswordError = i18n.M("accounts.signin.bad")
 	s.page(w, r, http.StatusUnauthorized, "", pg)
 }
 

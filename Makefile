@@ -26,7 +26,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame image run e2e e2e-deps \
-	test-game e2e-game vuln ci tidy
+	test-game e2e-game vuln ci tidy i18n-hash
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -154,3 +154,8 @@ ci: verify e2e image
 
 tidy:
 	go mod tidy
+
+# After updating every language for a key, record the English it was
+# translated from (internal/i18n/translated.json, SPEC 22.5).
+i18n-hash:
+	go run ./cmd/i18n-hash

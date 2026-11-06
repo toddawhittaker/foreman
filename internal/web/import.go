@@ -11,6 +11,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -202,17 +203,17 @@ func (ImportForm) SpaceAgeOldWarning() string { return sentence(world.ErrSpaceAg
 func (f ImportForm) Problems() []Problem {
 	if f.IDPrefix == "upload" {
 		return problems(
-			Problem{"upload-name", f.NameError},
-			Problem{"upload-version", f.VersionError},
-			Problem{"upload-space-age", f.SpaceAgeError},
-			Problem{"upload-source", f.SourceError},
+			Problem{"upload-name", i18n.Raw(f.NameError)},
+			Problem{"upload-version", i18n.Raw(f.VersionError)},
+			Problem{"upload-space-age", i18n.Raw(f.SpaceAgeError)},
+			Problem{"upload-source", i18n.Raw(f.SourceError)},
 		)
 	}
 	return problems(
-		Problem{"folder-source-0", f.SourceError},
-		Problem{"folder-name", f.NameError},
-		Problem{"folder-version", f.VersionError},
-		Problem{"folder-space-age", f.SpaceAgeError},
+		Problem{"folder-source-0", i18n.Raw(f.SourceError)},
+		Problem{"folder-name", i18n.Raw(f.NameError)},
+		Problem{"folder-version", i18n.Raw(f.VersionError)},
+		Problem{"folder-space-age", i18n.Raw(f.SpaceAgeError)},
 	)
 }
 

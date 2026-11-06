@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -159,7 +160,7 @@ func (ConsolePage) navItem() string      { return PathConsole }
 func (p ConsolePage) hasErrors() bool    { return p.CommandError != "" }
 
 func (p ConsolePage) Problems() []Problem {
-	return problems(Problem{"command", p.CommandError})
+	return problems(Problem{"command", i18n.Raw(p.CommandError)})
 }
 
 func (p ConsolePage) WorldPath() string  { return worldPath(p.World.ID) }
@@ -220,7 +221,7 @@ func (s *server) respond(w http.ResponseWriter, r *http.Request, status int, use
 		return
 	}
 	var b strings.Builder
-	if err := s.render.Fragment(&b, p, "console-response"); err != nil {
+	if err := s.render.Fragment(&b, localeOf(r), p, "console-response"); err != nil {
 		s.fail(w, r, "render console panel", err)
 		return
 	}
@@ -294,7 +295,7 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 	}
 	defer s.runs.wg.Done()
 	opened := s.now()
-	out, err := s.openStream(w)
+	out, err := s.openStream(w, localeOf(r))
 	if err != nil {
 		return
 	}

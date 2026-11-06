@@ -12,6 +12,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -275,7 +276,7 @@ func renderControl(t *testing.T, p ServerPage) string {
 		t.Fatal(err)
 	}
 	var b strings.Builder
-	if err := r.Fragment(&b, p, "server-control"); err != nil {
+	if err := r.Fragment(&b, i18n.English, p, "server-control"); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()
