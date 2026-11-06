@@ -299,6 +299,42 @@ func TestGameNetworkContainerIsRefused(t *testing.T) {
 	}
 }
 
+// The address players join (SPEC 3.2): shown as given, with the game's own
+// port added when none is named. Blank means none is shown.
+func TestPublicAddress(t *testing.T) {
+	ok := map[string]string{
+		"factorio.example.com":       "factorio.example.com:34197",
+		"factorio.example.com:40000": "factorio.example.com:40000",
+		"203.0.113.7":                "203.0.113.7:34197",
+		"203.0.113.7:34197":          "203.0.113.7:34197",
+		"2001:db8::7":                "[2001:db8::7]:34197",
+		"[2001:db8::7]":              "[2001:db8::7]:34197",
+		"[2001:db8::7]:40000":        "[2001:db8::7]:40000",
+	}
+	for in, want := range ok {
+		c, err := load(map[string]string{"FOREMAN_PUBLIC_ADDRESS": in})
+		if err != nil {
+			t.Errorf("%q: %v", in, err)
+			continue
+		}
+		if c.PublicAddress != want {
+			t.Errorf("%q: got %q, want %q", in, c.PublicAddress, want)
+		}
+	}
+	for _, in := range []string{"https://factorio.example.com", "host/path", "a b", ":34197", "host:0", "host:70000", "host:port", "user@host", "[::1", "2001:db8::zz"} {
+		_, err := load(map[string]string{"FOREMAN_PUBLIC_ADDRESS": in})
+		if err == nil || !strings.Contains(err.Error(), "FOREMAN_PUBLIC_ADDRESS") {
+			t.Errorf("%q: want an error naming the variable, got %v", in, err)
+		}
+	}
+	for _, vars := range []map[string]string{nil, {"FOREMAN_PUBLIC_ADDRESS": ""}} {
+		c, err := load(vars)
+		if err != nil || c.PublicAddress != "" {
+			t.Errorf("%v: got %+v, %v; want no address", vars, c, err)
+		}
+	}
+}
+
 func TestGameNetworkContainerEmptyOrUnsetStarts(t *testing.T) {
 	for name, vars := range map[string]map[string]string{
 		"empty": {"FOREMAN_GAME_NETWORK_CONTAINER": ""},

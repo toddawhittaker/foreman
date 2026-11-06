@@ -7,7 +7,7 @@ import type { Page } from "@playwright/test";
 const container = "foreman-base";
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
 const focusedId = (page: Page) => page.evaluate(() => document.activeElement?.id ?? "");
 
@@ -69,7 +69,9 @@ test.describe("with the fake game", () => {
     await expect.poll(() => focusedId(page)).toBe("done-message");
   });
 
-  test("a page loaded during Start offers the switch once the game runs, without a reload", async ({ page, foreman, fakeGame }) => {
+  // The switch starts from the Worlds list (SPEC 17.10); the Server page's
+  // link to it is there while Start runs and after, with no reload.
+  test("a page loaded during Start keeps its Switch world link once the game runs, without a reload", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, true);
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(page).toHaveURL("/");
@@ -77,8 +79,7 @@ test.describe("with the fake game", () => {
       (window as unknown as { loadedOnce: boolean }).loadedOnce = true;
     });
     await expect(badge(page)).toHaveText("Running", live);
-    const others = page.getByRole("region", { name: "Switch to another world" });
-    await expect(others.getByRole("link", { name: "Switch to Second" })).toBeVisible(live);
+    await expect(page.getByRole("link", { name: "Switch world" })).toHaveAttribute("href", "/worlds");
     expect(await page.evaluate(() => (window as unknown as { loadedOnce?: boolean }).loadedOnce)).toBe(true);
     await checkPage(page);
   });

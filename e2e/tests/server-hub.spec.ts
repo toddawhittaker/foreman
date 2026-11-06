@@ -8,7 +8,7 @@ import type { Page } from "@playwright/test";
 const container = "foreman-base";
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { second?: Parameters<typeof seedSecond>[1]; fixture?: string; spaceAge?: boolean } = {}) {
@@ -77,24 +77,25 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, g, { second: {} });
     await startWithAlice(page, g);
 
-    // Server page, Switch to Second, confirm: within SPEC 17.10's budget of 3.
-    const others = page.getByRole("region", { name: "Switch to another world" });
-    await others.getByRole("link", { name: "Switch to Second" }).click();
+    // Server page, Switch world, Switch to Second, confirm: SPEC 17.10's budget of 3.
+    await page.getByRole("link", { name: "Switch world" }).click();
+    await page.getByRole("link", { name: "Switch to Second" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Second");
     await expect(page.locator("#online")).toHaveText("1 player online: alice.");
     await page.getByRole("button", { name: "Switch to Second" }).click();
 
     // While players are warned, the status names both worlds.
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("From Base to Second", live);
+    await expect(page.locator("main [sse-swap=facts]")).toContainText("From Base to Second", live);
     await page.getByRole("button", { name: "Cancel stop" }).click();
     await expect(done(page)).toContainText("The switch to Second was cancelled. Base is still the active world, and nothing changed.", live);
-    await expect(page.getByRole("link", { name: "Active world: Base" })).toBeVisible();
+    await expect(page.locator("#server-title", { hasText: "Base" })).toBeVisible();
     await expect(badge(page)).toHaveText("Running");
 
-    await others.getByRole("link", { name: "Switch to Second" }).click();
+    await page.getByRole("link", { name: "Switch world" }).click();
+    await page.getByRole("link", { name: "Switch to Second" }).click();
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Second" }).click();
-    await expect(page.getByRole("link", { name: "Active world: Second" })).toBeVisible(live);
+    await expect(page.locator("#server-title", { hasText: "Second" })).toBeVisible(live);
     await expect(done(page)).toContainText("The worlds are switched, from Base to Second.", live);
     await expect(badge(page)).toHaveText("Running", live);
     await checkPage(page);
@@ -176,7 +177,7 @@ test.describe("with Docker unreachable", () => {
     seedWorld(foreman);
     await page.goto("/");
     await expect(badge(page)).toHaveText("Unknown", live);
-    const status = page.getByRole("region", { name: "Status" });
+    const status = page.locator("main [sse-swap=facts]");
     await expect(status).not.toContainText("Uptime");
     await expect(status).not.toContainText("Save loaded");
     await expect(page.getByRole("region", { name: "Players online" })).toContainText("Foreman cannot see whether anyone is online.");

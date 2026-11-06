@@ -383,7 +383,7 @@ test.describe("layout at 320 px in every language", () => {
       await page.getByLabel("Or type a version").fill("2.1.25");
       await page.getByRole("button", { name: "Update game version" }).click();
       await expect(page).toHaveURL("/");
-      await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Stopped", live);
+      await expect(page.locator("main h1 .state")).toHaveText("Stopped", live);
       await expect.poll(() => page.request.get("/worlds/base/rollback").then((r) => r.status()), live).toBe(200);
 
       // Delete the third world with its final snapshot, so Deleted worlds lists it.
@@ -394,7 +394,7 @@ test.describe("layout at 320 px in every language", () => {
 
       await page.goto("/");
       await page.getByRole("button", { name: "Start server" }).click();
-      await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+      await expect(page.locator("main h1 .state")).toHaveText("Running", live);
       await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
       await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
       await page.goto("/worlds/base/snapshots");
@@ -617,7 +617,7 @@ test.describe("game text carries lang=en", () => {
     await fakeGame!.call("/image", { ref: image21, on: true });
     await page.goto("/");
     await page.getByRole("button", { name: "Start server" }).click();
-    await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+    await expect(page.locator("main h1 .state")).toHaveText("Running", live);
     await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
     await page.goto("/console");
     await page.getByLabel("Command").fill("/players online");

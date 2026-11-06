@@ -79,7 +79,12 @@ type RestorePage struct {
 
 func (SnapshotsPage) templateName() string { return "snapshots" }
 func (SnapshotsPage) navItem() string      { return PathWorlds }
-func (RestorePage) navItem() string        { return PathWorlds }
+
+// Tabs links the world's pages (DESIGN 6).
+func (p SnapshotsPage) Tabs() WorldTabs {
+	return WorldTabs{Path: worldPath(p.WorldID), Current: "snapshots", Settings: true}
+}
+func (RestorePage) navItem() string { return PathWorlds }
 
 // WorldPath links back to the world page.
 func (p RestorePage) WorldPath() string  { return worldPath(p.WorldID) }

@@ -26,8 +26,9 @@
       <input type="checkbox" name="final_snapshot"{{if .FinalSnapshot}} checked{{end}}>
       {{if .World.SizeUnknown}}{{t "worlds.delete.final_unknown" "label" (t "worlds.snapshot.label.before_delete")}}{{else}}{{t "worlds.delete.final" "label" (t "worlds.snapshot.label.before_delete") "size" (bytes .World.DiskBytes)}}{{end}}
     </label>
+    {{template "required-note"}}
     <div class="field">
-      <label for="confirm-name">{{t "worlds.delete.name_label"}}</label>
+      <label for="confirm-name" class="required">{{t "worlds.delete.name_label"}}</label>
       <p class="hint" id="confirm-name-hint">{{tHTML "worlds.delete.name_hint" "name" (strong .World.Name)}}</p>
       <input id="confirm-name" name="confirm_name" type="text" value="{{.ConfirmName}}" autocomplete="off" required
         {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="confirm-name-hint confirm-name-error"{{else}} aria-describedby="confirm-name-hint"{{end}}>

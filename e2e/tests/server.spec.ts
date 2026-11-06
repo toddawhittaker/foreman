@@ -8,7 +8,7 @@ const container = "foreman-base";
 // notice can take that long to show.
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { image?: boolean; fixture?: string; spaceAge?: boolean; mods?: Record<string, string> } = {}) {
   await createAdmin(page);
@@ -318,7 +318,7 @@ test.describe("with the fake game", () => {
   // and offers the download in place of Start; then the world is ready.
   test("a missing image is said before Start and downloaded as its own action", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { image: false });
-    const control = page.getByRole("region", { name: "Start and stop" });
+    const control = page.locator("main [sse-swap=control]");
     await expect(control).toContainText(`Base runs on the game image ${image21}, which is not on this host, so it cannot start yet.`);
     await expect(control.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await checkPage(page);
@@ -361,7 +361,7 @@ test.describe("with Docker unreachable", () => {
     seedWorld(foreman);
     await page.goto("/");
     await expect(badge(page)).toHaveText("Unknown", live);
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("Foreman cannot reach Docker");
+    await expect(page.locator("main [sse-swap=facts]")).toContainText("Foreman cannot reach Docker");
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await expect(page.locator("main").getByText("Foreman cannot start or stop the game until it can ask Docker about it.")).toBeVisible();
     await checkPage(page);

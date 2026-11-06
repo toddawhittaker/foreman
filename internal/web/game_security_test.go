@@ -447,7 +447,7 @@ func TestNoSecretLeaksFromServerControl(t *testing.T) {
 		}
 	}
 	pages := []string{PathServer, gamePath(id, "stop"), gamePath(id, "restart"), gamePath(id, "force-stop"),
-		snapshotsPath(id), PathWorlds, PathConsole}
+		snapshotsPath(id), PathWorlds, PathConsole, consolePath(id, "/log")}
 
 	g.startGame(id)
 	g.emitSecrets(id, rconPW, gamePW)

@@ -39,8 +39,10 @@
   <p>{{tHTML "worlds.import.folder.intro" "dir" (code .InboxDir) "zip" (code ".zip") "saves" (code "saves") "mods" (code "mods") "config" (code "config") "rconpw" (code "rconpw")}}</p>
   {{- with .Folder}}
   {{- if $.Page.Importable}}
+  {{template "required-note"}}
+  {{- /* A group cannot carry the required attribute; its hint says to tick at least one. */}}
   <fieldset{{if not .SourceError.IsZero}} aria-describedby="folder-source-error"{{end}}>
-    <legend>{{t "worlds.import.folder.legend"}}</legend>
+    <legend class="required">{{t "worlds.import.folder.legend"}}</legend>
     <p class="hint" id="folder-many-hint">{{t "worlds.import.folder.many_hint"}}</p>
     {{- if not .SourceError.IsZero}}
     <p class="error" id="folder-source-error"><strong>{{t "common.error.label"}}</strong> {{msg .SourceError}}</p>
@@ -80,10 +82,11 @@
   {{template "summary" .Upload.Problems}}
   <p>{{t "worlds.import.upload.intro"}}</p>
   {{- with .Upload}}
+  {{template "required-note"}}
   {{template "import-fields" .}}
   {{/* The file comes last: the server reads the text fields before it. */}}
   <div class="field">
-    <label for="upload-source">{{t "worlds.saves.upload.label"}}</label>
+    <label for="upload-source" class="required">{{t "worlds.saves.upload.label"}}</label>
     <input id="upload-source" name="save" type="file" accept=".zip" required
       {{- if not .SourceError.IsZero}} aria-invalid="true" aria-describedby="upload-source-error"{{end}}>
     {{- if not .SourceError.IsZero}}
@@ -111,9 +114,9 @@
 {{/* Name, game version and Space Age, shared by both forms. Takes ImportForm. */}}
 {{define "import-fields" -}}
 <div class="field">
-  <label for="{{.IDPrefix}}-name">{{t "worlds.import.name.label"}}</label>
+  <label for="{{.IDPrefix}}-name" class="required">{{t "worlds.import.name.label"}}</label>
   <p class="hint" id="{{.IDPrefix}}-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
-  <input id="{{.IDPrefix}}-name" name="name" type="text" value="{{.Name}}" required maxlength="100"
+  <input id="{{.IDPrefix}}-name" name="name" type="text" value="{{.Name}}" required maxlength="100" placeholder="{{t "worlds.name.placeholder"}}"
     {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="{{.IDPrefix}}-name-hint {{.IDPrefix}}-name-error"{{else}} aria-describedby="{{.IDPrefix}}-name-hint"{{end}}>
   {{- if not .NameError.IsZero}}
   <p class="error" id="{{$.IDPrefix}}-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>

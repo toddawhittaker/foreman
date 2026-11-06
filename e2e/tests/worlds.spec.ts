@@ -74,7 +74,7 @@ test("world list shows each world, the active one first", async ({ page, foreman
   await expect(items).toHaveCount(3);
 
   const first = items.nth(0);
-  await expect(first.getByRole("heading")).toHaveText("Zeta base Active");
+  await expect(first.getByRole("heading")).toHaveText("Zeta base Active Stopped");
   await expect(first.locator(".badge--active")).toHaveText("Active");
   await expect(first).toContainText("2.0.72");
   await expect(first.locator("dd").nth(1)).toHaveText("On");

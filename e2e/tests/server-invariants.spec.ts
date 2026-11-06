@@ -13,7 +13,7 @@ const live = { timeout: 20_000 };
 const allowed =
   /^(GET \/_ping|GET \/version|GET \/containers\/json|GET \/containers\/[^/]+\/(json|logs|stats)|POST \/containers\/[^/]+\/(start|stop|kill)|POST \/containers\/create|DELETE \/containers\/[^/]+|POST \/images\/create|GET \/images\/.+\/json|GET \/events)$/;
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 
 async function setUp(page: Page, f: Foreman, g: FakeGame) {
   await createAdmin(page);

@@ -11,7 +11,7 @@ const live = { timeout: 20_000 };
 
 const phone = (page: Page) => (page.viewportSize()?.width ?? 1000) <= 320;
 const box = async (l: Locator) => (await l.boundingBox())!;
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 
 async function running(page: Page, f: Foreman, g: FakeGame) {
   await createAdmin(page);
@@ -49,11 +49,12 @@ test.describe("with the fake game", () => {
   test("the Server page puts its controls first, and Force stop weighs less than Stop", async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
 
-    const regions = await page.locator("main > section h2").allTextContents();
-    expect(regions.slice(0, 3)).toEqual(["Start and stop", "Status", "Players online"]);
+    // The heading with the state, then the controls, the facts and the players (DESIGN 6).
+    const stop = page.getByRole("link", { name: "Stop server" });
+    const order = [page.locator("main h1"), stop, page.locator("main [sse-swap=facts]"), page.getByRole("heading", { name: "Players online" })];
+    for (let i = 1; i < order.length; i++) expect((await box(order[i])).y).toBeGreaterThan((await box(order[i - 1])).y);
 
     // On a phone the main action is on the first screen, without scrolling.
-    const stop = page.getByRole("link", { name: "Stop server" });
     const viewport = page.viewportSize()!;
     expect((await box(stop)).y + (await box(stop)).height).toBeLessThanOrEqual(viewport.height);
 
@@ -70,7 +71,7 @@ test.describe("with the fake game", () => {
 
     // At 320 px the status facts sit two to a row.
     if (phone(page)) {
-      const facts = page.getByRole("region", { name: "Status" }).locator(".facts > div");
+      const facts = page.locator("main [sse-swap=facts]").locator(".facts > div");
       expect(Math.round((await box(facts.nth(0))).y)).toBe(Math.round((await box(facts.nth(1))).y));
     }
     await checkPage(page);
@@ -101,7 +102,7 @@ test.describe("with the fake game", () => {
 
   test("the console's command field sits above the game log, with the reply under it", async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!);
-    await page.getByRole("link", { name: "Console" }).click();
+    await page.getByRole("navigation", { name: "Server pages" }).getByRole("link", { name: "Console" }).click();
 
     const field = page.getByLabel("Command");
     const log = page.getByRole("region", { name: "Game log lines" });

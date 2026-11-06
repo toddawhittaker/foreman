@@ -117,9 +117,12 @@
 <p class="hint required-note"><span class="req" aria-hidden="true">*</span> {{t "common.required.note"}}</p>
 {{- end}}
 
-{{/* The mark after a required field's label. */}}
-{{define "req" -}}
-<span class="req" aria-hidden="true">*</span>
+
+{{/* The heading's words: the world's name and its state badge (DESIGN 7.5).
+     During a switch the name is the new world's once it is active (SPEC
+     7.9). Takes a page with ActiveName, Status and StateWord. */}}
+{{define "server-title" -}}
+{{.ActiveName}} <span class="state state--{{.Status.State}}">{{msg .StateWord}}</span>
 {{- end}}
 
 {{/* The tabs of the server view (DESIGN 6, "Sub-navigation"). Takes

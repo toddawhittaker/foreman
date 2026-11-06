@@ -27,7 +27,7 @@ async function setUp(page: Page, f: Parameters<typeof seedWorld>[0], extra: Reco
     writeFileSync(file, JSON.stringify({ ...JSON.parse(readFileSync(file, "utf8")), ...extra }, null, 2));
   }
   await page.goto("/");
-  await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Stopped", live);
+  await expect(page.locator("main h1 .state")).toHaveText("Stopped", live);
 }
 
 // Neither the page text nor its markup holds the password (SPEC 11.4).
@@ -339,7 +339,7 @@ test.describe("a running world", () => {
     await setUp(page, foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
     await page.getByRole("button", { name: "Start server" }).click();
-    await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+    await expect(page.locator("main h1 .state")).toHaveText("Running", live);
 
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page.getByText("The server is running. Changes to these settings take effect after a restart. Changes to admins apply at once.")).toBeVisible();
@@ -411,7 +411,7 @@ test.describe("auto-pause (SPEC 11.1)", () => {
 });
 
 test.describe("a running world with players", () => {
-  const status = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+  const status = (page: Page) => page.locator("main h1 .state");
 
   // The world "base" running, with Bob already an admin.
   async function startRunning(page: Page, foreman: Foreman, fakeGame: FakeGame) {

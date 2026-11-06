@@ -50,7 +50,7 @@ test.describe("with the fake game", () => {
 
   test("the Console tab opens, and the log follows the game only while at the bottom", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Console");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base\s+Running$/);
     await expect(page.getByRole("link", { name: "Console" })).toHaveAttribute("aria-current", "page");
     await checkPage(page);
 

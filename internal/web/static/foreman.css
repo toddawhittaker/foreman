@@ -741,10 +741,18 @@ legend {
   flex: 0 1 auto;
 }
 
-/* A required field's mark: an asterisk, explained once per form (DESIGN 7.2). */
-.req {
+/* A required field's mark: an asterisk, explained once per form (DESIGN 7.2).
+   It is drawn by the style sheet with empty alt text, so the label's name stays
+   the label's words and screen readers hear "required" from the field instead. */
+.req,
+.required::after {
   color: var(--color-danger-text);
   font-weight: 600;
+}
+
+.required::after {
+  content: " *";
+  content: " *" / "";
 }
 
 /* A placeholder is an example, in hint colour, which meets text contrast. */
@@ -1132,7 +1140,83 @@ time[data-age-only] .time-short {
   font-size: var(--text-sm);
 }
 
-/* The "Active" badge is drawn as selected, like the current tab. */
+/* Facts on one wrapping line, under the controls (DESIGN 7.5). */
+.facts--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+/* A page's heading, with its state badge, and the lines under it. */
+.page-head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* A heading with the page's own buttons at its end, wrapping under it when narrow. */
+.page-head--row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+main h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* The heading's live part lays out as the heading's own words and badge. */
+#server-title {
+  display: contents;
+}
+
+/* Where players join: the address, then Copy beside it while it fits. */
+.join {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.join code {
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+/* A section heading with a link or note at its end. */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+}
+
+.section-head > a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* A row of quiet links, each a full-size target. */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+}
+
+.links > a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* The "Active" badge: the state badge's shape, without the drawn square. */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1466,6 +1550,15 @@ td > .hint {
   font: inherit;
   list-style: none;
   overflow-wrap: anywhere;
+}
+
+/* The game's own Error and Warning lines; each keeps its word (SPEC 17.4). */
+.log .log-error {
+  color: var(--color-danger-text);
+}
+
+.log .log-warning {
+  color: var(--color-warn);
 }
 
 /* Only the text itself keeps its line breaks; the list's markup whitespace must not show. */

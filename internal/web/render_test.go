@@ -322,11 +322,12 @@ func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest
 }
 
 var (
-	reInput      = regexp.MustCompile(`<input\b[^>]*>`)
-	reID         = regexp.MustCompile(`\bid="([^"]*)"`)
-	reDescribed  = regexp.MustCompile(`aria-describedby="([^"]*)"`)
-	reHrefAnchor = regexp.MustCompile(`href="#([^"]*)"`)
-	reTitle      = regexp.MustCompile(`<title>([^<]+)</title>`)
+	reInput       = regexp.MustCompile(`<input\b[^>]*>`)
+	reID          = regexp.MustCompile(`\bid="([^"]*)"`)
+	rePlaceholder = regexp.MustCompile(`\bplaceholder="([^"]*)"`)
+	reDescribed   = regexp.MustCompile(`aria-describedby="([^"]*)"`)
+	reHrefAnchor  = regexp.MustCompile(`href="#([^"]*)"`)
+	reTitle       = regexp.MustCompile(`<title>([^<]+)</title>`)
 )
 
 // Every page renders and meets the document rules every screen shares
@@ -389,11 +390,13 @@ func checkPage(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) {
 			t.Errorf("input without id: %s", in)
 			continue
 		}
-		if !strings.Contains(body, `<label for="`+m[1]+`">`) {
+		if !regexp.MustCompile(`<label for="` + regexp.QuoteMeta(m[1]) + `"[ >]`).MatchString(body) {
 			t.Errorf("input %q has no label", m[1])
 		}
-		if strings.Contains(in, "placeholder") {
-			t.Errorf("input %q uses a placeholder", m[1])
+		// A placeholder may give an example, never the label (DESIGN 7.2):
+		// the label above is required, and the example must not repeat it.
+		if p := rePlaceholder.FindStringSubmatch(in); p != nil && strings.Contains(body, `">`+p[1]+`</label>`) {
+			t.Errorf("input %q's placeholder repeats its label", m[1])
 		}
 	}
 	for _, m := range reDescribed.FindAllStringSubmatch(body, -1) {

@@ -71,8 +71,9 @@ func TestControlActionsHaveStableIDs(t *testing.T) {
 		}
 	}
 	body := pageHTML(t, serverCase(game.StateRunning, func(*ServerPage) {}))
-	if !strings.Contains(body, `<h2 id="control-heading" tabindex="-1">`) {
-		t.Error("the Start and stop heading cannot take focus")
+	// After an operation, focus goes to the heading, which names the world and its state (DESIGN 5).
+	if !strings.Contains(body, `<h1 id="control-heading" tabindex="-1"><span id="server-title">`) || !strings.Contains(body, ` <span class="state state--running">Running</span></span></h1>`) {
+		t.Errorf("the heading does not name the world and state, or cannot take focus:\n%s", body)
 	}
 	if !strings.Contains(body, "live.js") {
 		t.Error("the server page does not load its script")

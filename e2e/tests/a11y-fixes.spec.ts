@@ -7,7 +7,7 @@ import type { Page } from "@playwright/test";
 const container = "foreman-base";
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
 const warn = (page: Page) => page.locator(".steps li").filter({ hasText: "Warn players" });
 

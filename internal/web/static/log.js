@@ -16,9 +16,13 @@
       box.scrollTop = box.scrollHeight;
       jump.hidden = true;
     };
+    // The game's own Error and Warning lines are coloured, as console.go does.
+    const kind = /^\s*\d+\.\d+ (Error|Warning) /;
     const span = (text) => {
       const el = document.createElement("span");
       el.textContent = text + "\n";
+      const m = kind.exec(text);
+      if (m) el.className = "log-" + m[1].toLowerCase();
       return el;
     };
     const noEmptyNote = (lines) => {
@@ -60,8 +64,8 @@
     events.addEventListener("reset", (e) => reset(JSON.parse(e.data)));
     events.addEventListener("lines", (e) => add(JSON.parse(e.data)));
     // live.js says so when the log stops following the game.
-    events.addEventListener("error", () => window.foremanLive?.lost());
-    events.addEventListener("open", () => window.foremanLive?.back());
+    events.addEventListener("error", () => window.foremanLive?.lost("log"));
+    events.addEventListener("open", () => window.foremanLive?.back("log"));
   }
 
   // Newest last: a history box opens, and after each command shows, its end.

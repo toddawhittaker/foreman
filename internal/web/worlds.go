@@ -38,7 +38,14 @@ type WorldsPage struct {
 	// the count failed, and the list then says "unknown".
 	SnapshotAdds map[string]uint64
 	AddsUnknown  bool
+	// ActiveState is the game's state, shown beside the active world when
+	// HaveState (only with server control, DESIGN 8.2).
+	ActiveState game.State
+	HaveState   bool
 }
+
+// StateWord is the active world's state badge word (DESIGN 7.5).
+func (p WorldsPage) StateWord() i18n.Msg { return stateWord(p.ActiveState) }
 
 // SwitchPath is where a world's Switch button goes.
 func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
@@ -47,7 +54,19 @@ func (WorldsPage) templateName() string { return "worlds" }
 
 func (WorldsPage) navItem() string { return PathWorlds + navPage }
 
-func worldPath(id string) string  { return PathWorlds + "/" + id }
+func worldPath(id string) string { return PathWorlds + "/" + id }
+
+// WorldTabs are the links between a world's pages; Current is the one shown
+// ("overview", "saves", "snapshots" or "settings"), and Settings is false for
+// a world whose settings cannot be read (DESIGN 6, "Sub-navigation").
+type WorldTabs struct {
+	Path, Current string
+	Settings      bool
+}
+
+func worldTabs(w world.Summary, current string) WorldTabs {
+	return WorldTabs{Path: worldPath(w.ID), Current: current, Settings: !w.Newer && !w.Unreadable}
+}
 func deletePath(id string) string { return worldPath(id) + "/delete" }
 
 func (s *server) worldRoutes() {
@@ -69,11 +88,9 @@ type WorldPage struct {
 	Name      string
 	NameError i18n.Msg
 	// CanSwitch offers "Switch to this world": this mode has server control
-	// and the world is not the active one (SPEC 7.9). SwitchNote says in a
-	// line why it does not, when that is worth saying; SwitchBusy adds a
-	// link to the Server page (DESIGN 7.1).
+	// and the world is not the active one (SPEC 7.9). SwitchBusy says an
+	// operation stops it, with a link to the Server page (DESIGN 7.1).
 	CanSwitch  bool
-	SwitchNote i18n.Msg
 	SwitchBusy bool
 	// MissingImage is the game image this host lacks for the world, asked
 	// of the local Docker only when it is offered for a switch (SPEC 3.7).
@@ -113,6 +130,7 @@ func (p WorldPage) SavesPath() string     { return worldPath(p.World.ID) + "/sav
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
 func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
+func (p WorldPage) Tabs() WorldTabs       { return worldTabs(p.World, "overview") }
 
 // DeleteRefusal says why the world cannot be deleted, or is zero when it can.
 func (p WorldPage) DeleteRefusal() i18n.Msg { return deleteRefusal(p.World, p.Busy) }
@@ -190,6 +208,13 @@ func (s *server) handleWorlds(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	p := WorldsPage{Worlds: list}
+	if s.game != nil {
+		for _, w := range list {
+			if w.Active {
+				p.ActiveState, p.HaveState = s.game.Status(w.ID).State, true
+			}
+		}
+	}
 	s.markSwitching(&p)
 	s.markSnapshotAdds(&p)
 	if id := r.URL.Query().Get("deleted"); world.ValidID(id) {
@@ -314,9 +339,7 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, 
 		p.Rollback = s.rollbackOffer(sum.ID)
 	}
 	switch {
-	case s.game == nil || sum.Unreadable || sum.Newer:
-	case sum.Active:
-		p.SwitchNote = i18n.M("worlds.world.switch.active")
+	case s.game == nil || sum.Unreadable || sum.Newer || sum.Active:
 	case s.switchBusy(ctx, sum.ID):
 		// When the operation is on this world, Busy already says so.
 		p.SwitchBusy = p.Busy.IsZero()

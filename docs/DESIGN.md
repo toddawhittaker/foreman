@@ -485,23 +485,37 @@ each page is on its first screen, at 320 by 640 px, without scrolling.
 The order is the source order at every width, so reading order, focus
 order and the picture agree.
 
-- **Server page.** After the "Active world" link: "Start and stop" (the
-  controls, and while an operation runs its step list and "Cancel
-  stop"), then "Status", "Players online" and "Switch to another
-  world". The state is still one glance away, and the buttons on offer
-  already say whether the game runs.
-- **Status facts** (7.5) sit two to a row at 320 px: the grid is
-  `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`.
+- **Server page.** The `h1` is the active world's name with its state
+  badge (7.5), so what is running is the first thing read. Under it, when
+  the operator set `FOREMAN_PUBLIC_ADDRESS` (SPEC 3.2), one line "Players
+  join at host:port" with the address in `code` and a quiet "Copy address"
+  button; the line is not there when the variable is blank, because
+  Foreman never guesses the address. `copy.js` shows the button only where
+  the Clipboard API works (HTTPS or localhost) and says "Address copied"
+  beside it and through `#announcer`. Then the Overview and Console tabs,
+  then the controls (and while an operation runs, its step list and
+  "Cancel stop"), then the facts, then "Players online", then one row of
+  quiet links: "World page", "Settings" and "Switch world". There is no
+  list of other worlds: "Switch world" goes to the Worlds list, where every
+  row has its Switch button, which makes a switch three clicks from the
+  Server page (SPEC 17.10). After an operation, focus goes to the `h1`
+  (`#control-heading`), which names the world and its new state.
+- **Status facts** (7.5) are one wrapping line (`dl.facts--inline`, a
+  flex row with `gap: var(--space-2) var(--space-5)`), so they sit two or
+  three to a row at 320 px.
 - **Force stop** is a plain link standing alone (rule 3), after the
   buttons in the control row, never a button face. It leads to its own
   confirmation (7.4), and drawn as a link it weighs less than Stop and
   Restart, so the drastic choice is not the one the eye lands on.
-- **Console page.** The "Console" section, with the command field, comes
-  before "Game log". The history box under the field is only as tall as
+- **Console page.** The same `h1` and live badge as the Server page, then
+  the Overview and Console tabs. The "Console" section, with the command
+  field, comes before "Game log". The history box under the field is only as tall as
   what it holds (`block-size: auto`), up to `min(40vh, 20rem)`, so the
   newest reply sits close under the field. The game log keeps its fixed
   height (8.5), so new lines never move the page.
-- **World list** (8.2). Each row is a grid, `minmax(0, 1fr) auto`: the
+- **World list** (8.2). Generate and Import sit at the end of the `h1`'s
+  row and wrap under it on a phone. "Deleted worlds" is a link under the
+  list. Each row is a grid, `minmax(0, 1fr) auto`: the
   name heading in the first column and, when the world can be switched
   to, its "Switch" button beside it in the second (`.facts ~ .actions`
   moves to row 1). Everything else spans both columns, and the facts sit
@@ -596,10 +610,11 @@ the block padding is `--space-2` so a two-line label is not cramped.
   helps ("Family base"), in `text-muted`, which meets text contrast on
   `deep` in both themes (7.64:1 dark, 7.36:1 light).
 - **Required fields** have the `required` attribute, which screen readers
-  announce, and a red asterisk after the label (`{{template "req"}}`,
-  `<span class="req" aria-hidden="true">*</span>`), hidden from screen
-  readers so "required" is not said twice. The asterisk is not colour
-  alone: it is a shape. Each form with a required field shows the note
+  announce, and a red asterisk after the label: `<label class="required">`,
+  whose `::after` is `content: " *" / ""`. The empty alt text keeps the
+  asterisk out of the label's accessible name, so "required" is not said
+  twice and the name is still the label's words. The asterisk is not colour
+  alone: it is a shape. A required group puts the class on its `legend`. Each form with a required field shows the note
   once, before its first field (`{{template "required-note"}}`): an
   asterisk and the word "Required", translated. A field the server
   refuses when empty is marked; an end-to-end check fails when one is not.
@@ -842,12 +857,15 @@ holds only the word. A template always writes the modifier, even for
 - Crash-looping is filled solid because it is the one state that needs a
   person to act (SPEC 8.9: Foreman has stopped the game and will not
   restart it alone).
-- On the server page the badge sits in a `dl` with the other status facts
-  (SPEC 7.2):
+- On the Server and Console pages the badge sits in the `h1`, after the
+  world's name, inside `<span id="server-title">`. The live "facts" event
+  carries a copy of that span marked `hx-swap-oob="innerHTML"`, so the
+  heading follows the game without a second event and without replacing
+  the `h1`, which may have focus. The other status facts (SPEC 7.2) are a
+  `dl` after the controls:
 
   ```html
   <dl class="facts">
-    <div><dt>State</dt><dd><span class="state state--running">Running</span></dd></div>
     <div><dt>Uptime</dt><dd><time datetime="PT3H12M">3 h 12 min</time></dd></div>
     <div><dt>Active world</dt><dd>Family base 2025</dd></div>
     <div><dt>Game version</dt><dd><code>2.0.72</code></dd></div>
@@ -855,8 +873,9 @@ holds only the word. A template always writes the modifier, even for
   </dl>
   ```
 
-  The `dl` is a grid, `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`, so
-  it is two to a row at 320 px and several on a wide screen. `dt` is `--text-sm`
+  The `dl` is a wrapping flex row (`facts--inline`) on the Server page, and
+  a grid, `repeat(auto-fit, minmax(min(100%, 7rem), 1fr))`, on a world's
+  page; both are two or more to a row at 320 px. `dt` is `--text-sm`
   `text-muted`; `dd` is `--text-md` `text`.
 - When the state changes live (SPEC 16.3), the server sends the new
   badge, and a short sentence goes to `#announcer` ("Server is now
@@ -913,7 +932,7 @@ colours needs no rule.
 
 When an operation changes the active world (a switch), the
 old world's open page reloads onto the Server page after the operation
-ends, moves focus to the control heading, and writes the result sentence
+ends, moves focus to the `h1`, and writes the result sentence
 to `#announcer`.
 
 ## 8. Patterns for later screens
@@ -933,7 +952,10 @@ A `ul`, one `li` per world, each holding an `h2` or `h3` with the world's
 name (a link to the world's page), then a `dl.facts` with game version,
 Space Age, last played and disk use. The active world carries the word
 "Active" in a badge drawn as an outline in `link` colour (the same shape as
-the state badge in 7.5 but with no drawn square) beside its name, and is listed first. A world that can be switched
+the state badge in 7.5 but with no drawn square) beside its name, followed by the game's state badge (7.5) when
+Foreman controls the game, and is listed first. A size in the Disk use
+fact, and the size in its "snapshots add" note, are each one
+`span.nowrap`, so "0 B" never wraps onto a line of its own at 320 px. A world that can be switched
 to has a "Switch" button beside its name (its accessible name is "Switch to"
 and the world's name); section 6 ("What a phone shows first") gives the
 row's grid. On a narrow panel the Last played fact shows only the age
@@ -1054,6 +1076,17 @@ Classes and their contract:
   vertically. The console's history box is only as tall as what it holds,
   up to `min(40vh, 20rem)`, then scrolls (section 6). Both are focusable so
   keyboard users can scroll them.
+- **The game's own Error and Warning lines** (a line whose message, after
+  the game's seconds counter, starts with "Error" or "Warning") are drawn
+  in `danger-text` and `warn`. The word is in the line itself, so the
+  colour is never the only sign (SPEC 17.4). `console.go` marks the lines
+  the page starts with, and `log.js` the same pattern for lines that
+  arrive live.
+- **Download log** is a link at the end of the "Game log" heading's row
+  (`div.section-head`). It is served by `GET /worlds/{id}/console/log` as
+  a `text/plain` attachment named `foreman-<world id>-log.txt`, and holds
+  exactly the lines the Console keeps, already masked, so nothing leaves
+  that the page does not show (SPEC 8.6, 14.8).
 - It is not a live region. A game log can print many lines a second; a
   screen reader announcing each would make the page unusable. Crashes
   and state changes are announced through the badge (7.5) instead.
