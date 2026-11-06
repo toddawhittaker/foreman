@@ -14,8 +14,9 @@
   <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
 </section>
 {{- else}}
-{{- /* Only the facts event is used here: it carries the heading's badge (DESIGN 7.5). */}}
+{{- /* The facts event carries the heading's badge and the announce event is read out, so state changes are spoken here too (DESIGN 7.5). */}}
 <div sse-swap="facts" hidden></div>
+<div sse-swap="announce" hidden></div>
 <header class="page-head">
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
 </header>
