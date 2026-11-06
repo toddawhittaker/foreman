@@ -1,6 +1,6 @@
 // Package mapgen holds the game's own map-generation data for each supported
 // line (SPEC 5.6, 10.8): preset names, planets, autoplace controls and the
-// default settings files. It was read from the real game images and is
+// default map-gen-settings file. It was read from the real game images and is
 // embedded, so nothing is looked up or downloaded at run time (SPEC 4.2).
 // "go generate" re-reads it; see extract.go.
 package mapgen
@@ -17,13 +17,10 @@ import (
 //go:embed data
 var files embed.FS
 
-// Control categories, as the game names them.
-const (
-	CategoryResource = "resource"
-	CategoryTerrain  = "terrain"
-	CategoryCliff    = "cliff"
-	CategoryEnemy    = "enemy"
-)
+// CategoryCliff is the category of the cliff control, which the form shows
+// apart from the others. The game's other categories are resource, terrain
+// and enemy.
+const CategoryCliff = "cliff"
 
 // Control is one autoplace control: a setting with its own frequency and
 // size, and richness when the game offers it for the control.
@@ -114,10 +111,6 @@ func Controls(line, planet string) []Control {
 // as shipped: keys that start with "_" are comments the game ignores. It
 // returns nil for an unknown line.
 func DefaultMapGen(line string) []byte { return read(line, "map-gen-settings.json") }
-
-// DefaultMapSettings returns the game's example map-settings.json for a
-// line, as shipped. It returns nil for an unknown line.
-func DefaultMapSettings(line string) []byte { return read(line, "map-settings.json") }
 
 func read(line, name string) []byte {
 	if _, ok := parsed[line]; !ok {

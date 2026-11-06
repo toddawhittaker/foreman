@@ -133,17 +133,15 @@ func extract(version string) error {
 	if err := os.WriteFile(filepath.Join(dir, "data.json"), append(b, '\n'), 0o644); err != nil {
 		return err
 	}
-	for _, f := range []string{"map-gen-settings", "map-settings"} {
-		b, err := dockerOut(image, "cat", "/opt/factorio/data/"+f+".example.json")
-		if err != nil {
-			return err
-		}
-		if !json.Valid(b) {
-			return fmt.Errorf("%s.example.json is not valid JSON", f)
-		}
-		if err := os.WriteFile(filepath.Join(dir, f+".json"), b, 0o644); err != nil {
-			return err
-		}
+	b, err = dockerOut(image, "cat", "/opt/factorio/data/map-gen-settings.example.json")
+	if err != nil {
+		return err
+	}
+	if !json.Valid(b) {
+		return fmt.Errorf("map-gen-settings.example.json is not valid JSON")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "map-gen-settings.json"), b, 0o644); err != nil {
+		return err
 	}
 	fmt.Printf("%s: %d presets, %d planets\n", version, len(out.Presets), len(out.Planets))
 	return nil

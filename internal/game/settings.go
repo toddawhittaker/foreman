@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode"
 
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -17,16 +16,9 @@ import (
 // file and never a value (SPEC 12.9, 14.8).
 const AuditSettingsSave = "settings-save"
 
-// Refusals of SaveSettings.
-var (
-	// ErrSettingsChanged means the file is not as it was when the page showed
-	// the diff. Nothing was written. The page reads the file again and shows
-	// the new diff (SPEC 11.3).
-	ErrSettingsChanged = errors.New("the settings file changed after the preview, so nothing was saved. Check the new differences, then save again")
-	// ErrSettingsInvalid means the new file does not pass the checks of
-	// SPEC 11.2. Nothing was written.
-	ErrSettingsInvalid = errors.New("the new settings are not valid, so nothing was saved")
-)
+// ErrSettingsInvalid means the new file does not pass the checks of
+// SPEC 11.2. Nothing was written.
+var ErrSettingsInvalid = errors.New("the new settings are not valid, so nothing was saved")
 
 // SettingsChange is a confirmed change to one of the world's settings files
 // (SPEC 11.3).
@@ -45,23 +37,36 @@ type SettingsResult struct {
 	// RestartNeeded is true when the game runs and reads the file only at
 	// start, so the change takes effect after a restart (SPEC 11.3).
 	RestartNeeded bool
+	// Snapshot is the automatic snapshot this save took.
+	Snapshot world.Snapshot
 }
 
-// SaveSettings saves a settings change in this order: it takes the world's
-// lock; saves a running game, as a snapshot does (SPEC 6.10); takes the
-// automatic snapshot with reason world.ReasonSettings (SPEC 6.2, 11.3);
-// checks that the file still has SeenHash; records the audit entry
-// settings-save; then writes the file, atomically (SPEC 12.9). A running
-// game's admin list is not written: the changed names are sent over RCON as
-// /promote and /demote and the game writes the file itself (SPEC 11.1).
-// The audit entry comes before the write, as for every action: when it cannot
-// be recorded, nothing is changed.
-func (c *Controller) SaveSettings(ctx context.Context, id string, by Actor, ch SettingsChange) (SettingsResult, error) {
-	if ch.File != world.ServerSettingsFile && ch.File != world.ServerAdminListFile {
-		return SettingsResult{}, world.ErrConfigFile
-	}
-	if err := c.checkSettings(id, ch); err != nil {
-		return SettingsResult{}, err
+// PartialSaveError means the files in Saved are written but the admin
+// changes could not be sent to the running game. Err is why.
+type PartialSaveError struct {
+	Saved []string
+	Err   error
+}
+
+func (e *PartialSaveError) Error() string { return e.Err.Error() }
+func (e *PartialSaveError) Unwrap() error { return e.Err }
+
+// SaveSettings saves one confirmed change, which may name several files, in
+// this order: it takes the world's lock once; saves a running game, as a
+// snapshot does (SPEC 6.10); then world.SaveSettingsHeld checks every file's
+// hash, takes one automatic snapshot, records one audit entry naming the
+// files and writes them (SPEC 6.2, 11.3, 12.9). A running game's admin list
+// is not written: the changed names are then sent over RCON as /promote and
+// /demote and the game writes the file itself (SPEC 11.1). If that fails
+// after other files are written, the error is a *PartialSaveError.
+func (c *Controller) SaveSettings(ctx context.Context, id string, by Actor, changes []SettingsChange) (SettingsResult, error) {
+	for _, ch := range changes {
+		if ch.File != world.ServerSettingsFile && ch.File != world.ServerAdminListFile {
+			return SettingsResult{}, world.ErrConfigFile
+		}
+		if err := c.checkSettings(id, ch); err != nil {
+			return SettingsResult{}, err
+		}
 	}
 	unlock, err := c.worlds.Lock(id)
 	if err != nil {
@@ -72,35 +77,41 @@ func (c *Controller) SaveSettings(ctx context.Context, id string, by Actor, ch S
 	if err != nil {
 		return SettingsResult{}, err
 	}
-	if _, err := c.worlds.AutoSnapshot(id, world.ReasonSettings, world.LabelBeforeSettings, by.Username); err != nil {
-		return SettingsResult{}, err
-	}
-	current, err := c.worlds.ReadConfig(id, ch.File)
-	if err != nil {
-		return SettingsResult{}, err
-	}
-	if current.Hash != ch.SeenHash {
-		return SettingsResult{}, ErrSettingsChanged
-	}
-	var commands []string
-	if running && ch.File == world.ServerAdminListFile {
-		if commands, err = adminCommands(current.Data, ch.Data); err != nil {
-			return SettingsResult{}, err
+	var files, saved, commands []string
+	var cfg []world.ConfigChange
+	for _, ch := range changes {
+		wc := world.ConfigChange{File: ch.File, Data: ch.Data, SeenHash: ch.SeenHash}
+		files = append(files, ch.File)
+		if running && ch.File == world.ServerAdminListFile {
+			current, err := c.worlds.ReadConfig(id, ch.File)
+			if err != nil {
+				return SettingsResult{}, err
+			}
+			if commands, err = adminCommands(current.Data, ch.Data); err != nil {
+				return SettingsResult{}, err
+			}
+			wc.NoWrite = true
+		} else {
+			saved = append(saved, ch.File)
 		}
+		cfg = append(cfg, wc)
 	}
-	if err := c.audit(ctx, by, AuditSettingsSave, id, ch.File); err != nil {
-		return SettingsResult{}, err
-	}
-	switch {
-	case commands != nil:
-		err = c.sendAdminCommands(ctx, id, commands)
-	default:
-		err = c.worlds.WriteConfigHeld(id, ch.File, ch.Data)
-	}
+	snap, err := c.worlds.SaveSettingsHeld(id, cfg, by.Username, func() error {
+		return c.audit(ctx, by, AuditSettingsSave, id, strings.Join(files, ", "))
+	})
 	if err != nil {
 		return SettingsResult{}, err
 	}
-	return SettingsResult{RestartNeeded: running && ch.File == world.ServerSettingsFile}, nil
+	if err := c.sendAdminCommands(ctx, id, commands); err != nil {
+		if len(saved) > 0 {
+			return SettingsResult{}, &PartialSaveError{Saved: saved, Err: err}
+		}
+		return SettingsResult{}, err
+	}
+	return SettingsResult{
+		RestartNeeded: running && slices.Contains(saved, world.ServerSettingsFile),
+		Snapshot:      snap,
+	}, nil
 }
 
 // checkSettings refuses a new file that fails the checks of SPEC 11.2, before
@@ -129,8 +140,8 @@ func (c *Controller) checkSettings(id string, ch SettingsChange) error {
 // adminCommands returns the console commands that turn the admin list in
 // current into the one in next, or an empty non-nil list when they hold the
 // same names. Names go in as they are: the console has no quoting, and
-// gamesettings.ValidateAdminName has refused every character that could end
-// the command (SPEC 14.9).
+// gamesettings.ValidateAdminName has refused every space and control
+// character that could end the command (SPEC 14.9).
 func adminCommands(current, next []byte) ([]string, error) {
 	var have []string
 	if len(current) > 0 {
@@ -152,19 +163,15 @@ func adminCommands(current, next []byte) ([]string, error) {
 	for _, n := range promote {
 		commands = append(commands, "/promote "+n)
 	}
-	for _, n := range slices.Concat(promote, demote) {
-		// The game's console reads the first word after the command as the
-		// player's name and has no quoting, so "/promote bob smith" would
-		// promote bob. A name it cannot read whole is never sent (SPEC 14.9).
-		if strings.ContainsFunc(n, unicode.IsSpace) {
-			return nil, fmt.Errorf("%w: an admin name with a space cannot be sent to a running game. Stop the game to change it", ErrSettingsInvalid)
-		}
-	}
 	return commands, nil
 }
 
-// sendAdminCommands runs the commands over the running game's RCON.
+// sendAdminCommands runs the commands over the running game's RCON. With none
+// to send it does nothing.
 func (c *Controller) sendAdminCommands(ctx context.Context, id string, commands []string) error {
+	if len(commands) == 0 {
+		return nil
+	}
 	rc, _, err := c.liveRCON(c.world(id))
 	if err != nil {
 		return err

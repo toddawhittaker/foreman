@@ -208,7 +208,8 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte) ([]b
 }
 
 // carriedPassword is the game_password value of an earlier edit's text, as
-// raw JSON, or nil when it holds none that is set.
+// raw JSON, or nil when that text has no game_password key. An empty value
+// is returned as it is, so a removal carries forward.
 func carriedPassword(b []byte) []byte {
 	var raw map[string]json.RawMessage
 	if json.Unmarshal(b, &raw) != nil {

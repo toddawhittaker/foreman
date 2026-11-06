@@ -81,19 +81,9 @@ func (m *Manager) Generate(ctx context.Context, nw NewWorld) (string, error) {
 	})
 }
 
-// ClearNewMap removes new_map from the world once its first start has made
-// the map. It takes the world's lock, waiting as AddSave does, and does
-// nothing when new_map is not set.
-func (m *Manager) ClearNewMap(id string) error {
-	unlock, err := m.lockWait(id, m.addSaveWait)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	return m.ClearNewMapHeld(id)
-}
-
-// ClearNewMapHeld is ClearNewMap for the start that holds Lock(id).
+// ClearNewMapHeld removes new_map from the world once its first start has
+// made the map. The caller holds Lock(id). It does nothing when new_map is
+// not set.
 func (m *Manager) ClearNewMapHeld(id string) error {
 	root, err := m.OpenWorld(id)
 	if err != nil {

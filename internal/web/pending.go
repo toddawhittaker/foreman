@@ -117,9 +117,9 @@ func (p *pendingStore) expireLocked() {
 	}
 }
 
-// newToken is 128 random bits, URL-safe.
+// newToken is 144 random bits, URL-safe.
 func newToken() string {
-	b := make([]byte, 16)
+	b := make([]byte, 18)
 	if _, err := rand.Read(b); err != nil {
 		// The system's random source failing is not survivable.
 		panic("read random bytes: " + err.Error())

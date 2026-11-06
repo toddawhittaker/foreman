@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// SPEC 4.3: the start that holds the world's lock clears new_map itself, since
-// ClearNewMap would wait for that lock and refuse.
+// SPEC 4.3: the start that holds the world's lock clears new_map itself.
 func TestClearNewMapHeldWorksUnderTheLock(t *testing.T) {
 	m, _ := newTestManager(t)
 	id, err := m.Generate(context.Background(), NewWorld{Name: "Held", GameVersion: "2.0.77", Seed: seedPtr(5)})

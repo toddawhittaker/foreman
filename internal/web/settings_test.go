@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -193,7 +194,7 @@ func (r *settingsRig) auditActions() []string {
 	}
 	var out []string
 	for _, e := range list {
-		if e.Action == AuditSettingsSave {
+		if e.Action == game.AuditSettingsSave {
 			out = append(out, e.Detail+"|"+e.Username+"|"+e.WorldID)
 		}
 	}
@@ -293,10 +294,10 @@ func TestSettingsFormPreviewAndConfirm(t *testing.T) {
 	}
 
 	snaps := r.snapshots()
-	if len(snaps) != 2 || snaps[0].Reason != world.ReasonSettings || snaps[0].Label != world.LabelBeforeSettings {
+	if len(snaps) != 1 || snaps[0].Reason != world.ReasonSettings || snaps[0].Label != world.LabelBeforeSettings {
 		t.Fatalf("snapshots %+v", snaps)
 	}
-	if a := r.auditActions(); len(a) != 2 || a[0] != "server-adminlist.json|alice|"+r.id || a[1] != "server-settings.json|alice|"+r.id {
+	if a := r.auditActions(); len(a) != 1 || a[0] != "server-settings.json, server-adminlist.json|alice|"+r.id {
 		t.Errorf("audit %q", a)
 	}
 
@@ -313,7 +314,7 @@ func TestSettingsFormPreviewAndConfirm(t *testing.T) {
 	if again.Code != http.StatusConflict || !strings.Contains(again.Body.String(), "This preview has expired, or its changes were already saved.") {
 		t.Errorf("second confirm: %d\n%s", again.Code, again.Body.String())
 	}
-	if len(r.snapshots()) != 2 {
+	if len(r.snapshots()) != 1 {
 		t.Error("the second confirm took a snapshot")
 	}
 }
@@ -752,7 +753,7 @@ func (g *gameRig) settingsSnapshots(id string) int {
 func settingsSavedAudits(g *gameRig) int {
 	n := 0
 	for _, e := range g.audit() {
-		if e.Action == AuditSettingsSave {
+		if e.Action == game.AuditSettingsSave {
 			n++
 		}
 	}
@@ -786,8 +787,8 @@ func TestSettingsRunningWorld(t *testing.T) {
 	if conf.StatusCode != http.StatusSeeOther || !strings.Contains(loc, "&snap=") || !strings.Contains(loc, "&restart=1&live=1") {
 		t.Fatalf("confirm %d to %q\n%s", conf.StatusCode, loc, conf.body)
 	}
-	if g.settingsSnapshots(id) != 2 {
-		t.Errorf("want one snapshot per file, got %d", g.settingsSnapshots(id))
+	if g.settingsSnapshots(id) != 1 {
+		t.Errorf("want one snapshot for the whole change, got %d", g.settingsSnapshots(id))
 	}
 	if cmds := g.commands(id); !slices.Contains(cmds, "/server-save") || !slices.Contains(cmds, "/promote carol") {
 		t.Errorf("RCON commands %q: want a save and a promote", cmds)
@@ -795,8 +796,8 @@ func TestSettingsRunningWorld(t *testing.T) {
 	if cfg, err := g.worlds.ReadConfig(id, world.ServerSettingsFile); err != nil || !strings.Contains(string(cfg.Data), `"name": "Live"`) {
 		t.Errorf("server-settings.json %q %v", cfg.Data, err)
 	}
-	if settingsSavedAudits(g) != 2 {
-		t.Errorf("audit entries: %d", settingsSavedAudits(g))
+	if settingsSavedAudits(g) != 1 {
+		t.Errorf("audit entries: %d, want one for the whole change", settingsSavedAudits(g))
 	}
 	// The game writes the admin list, not Foreman.
 	if cfg, err := g.worlds.ReadConfig(id, world.ServerAdminListFile); err != nil || cfg.Found {
@@ -811,21 +812,56 @@ func TestSettingsRunningWorld(t *testing.T) {
 	}
 }
 
-// A name with a space cannot be sent to a running game's console, so the form
-// says so before the preview.
-func TestSettingsRunningAdminNameWithSpace(t *testing.T) {
+// A name with a space is refused before the preview, whether the game runs
+// or not (SPEC 14.9).
+func TestSettingsAdminNameWithSpaceIsRefused(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
-	rep := g.post(settingsPath(id), url.Values{"name": {"Live"}, "admins": {"Mary Ann"}})
-	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(rep.body, "The name Mary Ann has a space, so it cannot be added or removed while the server is running.") {
-		t.Errorf("%d\n%s", rep.StatusCode, rep.body)
-	}
-	// Stopped, the same name is fine.
 	g2 := newGameRig(t, image21)
 	id2 := g2.newWorld("Base", "2.1.24-no-space-age.zip", false)
-	rep = g2.post(settingsPath(id2), url.Values{"name": {"Live"}, "admins": {"Mary Ann"}})
-	if rep.StatusCode != http.StatusOK {
-		t.Errorf("stopped: %d\n%s", rep.StatusCode, rep.body)
+	for name, rep := range map[string]reply{
+		"running": g.post(settingsPath(id), url.Values{"name": {"Live"}, "admins": {"Mary Ann"}}),
+		"stopped": g2.post(settingsPath(id2), url.Values{"name": {"Live"}, "admins": {"Mary Ann"}}),
+	} {
+		if rep.StatusCode != http.StatusBadRequest || !strings.Contains(rep.body, "Line 1 is not a usable player name.") {
+			t.Errorf("%s: %d\n%s", name, rep.StatusCode, rep.body)
+		}
+	}
+}
+
+// Two saves to one world each name their own snapshot in the Done link, even
+// when they come one right after the other.
+func TestSettingsTwoSavesEachLinkTheirOwnSnapshot(t *testing.T) {
+	r := newSettingsRig(t)
+	save := func(maxPlayers string) string {
+		form := settingsFormValues()
+		form.Set("max_players", maxPlayers)
+		token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
+		r.clock.Advance(time.Minute)
+		conf := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {token}})
+		if conf.Code != http.StatusSeeOther {
+			t.Fatalf("confirm %d:\n%s", conf.Code, conf.Body.String())
+		}
+		return conf.Header().Get("Location")
+	}
+	first, second := save("5"), save("6")
+	snap := func(loc string) string {
+		u, err := url.Parse(loc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return u.Query().Get("snap")
+	}
+	if snap(first) == "" || snap(second) == "" || snap(first) == snap(second) {
+		t.Errorf("links %q and %q", first, second)
+	}
+	if n := len(r.snapshots()); n != 2 {
+		t.Errorf("%d snapshots, want 2", n)
+	}
+	for _, loc := range []string{first, second} {
+		if !strings.Contains(r.getAs(r.cookie, loc).Body.String(), "#restore-"+snap(loc)) {
+			t.Errorf("the Done page of %q does not link its own snapshot", loc)
+		}
 	}
 }
 

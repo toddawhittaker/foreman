@@ -164,7 +164,7 @@ func (e *gameEnv) runGenerate(t *testing.T, tag, version string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			res, err := c.SaveSettings(ctx, id, admin, SettingsChange{File: file, Data: []byte(data), SeenHash: read.Hash})
+			res, err := c.SaveSettings(ctx, id, admin, []SettingsChange{{File: file, Data: []byte(data), SeenHash: read.Hash}})
 			if err != nil {
 				t.Fatalf("save %s: %v", file, err)
 			}

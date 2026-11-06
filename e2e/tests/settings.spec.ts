@@ -303,7 +303,8 @@ test.describe("a running world", () => {
     await expect(done.getByRole("link", { name: "Restart server" })).toHaveAttribute("href", "/worlds/base/restart");
     await checkPage(page);
     expect(JSON.parse(read(foreman.dataDir)).max_players).toBe(8);
-    expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).length).toBe(2);
+    // One confirmation of two files takes one snapshot (SPEC 11.3).
+    expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).length).toBe(1);
     expect((await fakeGame!.state()).containers[0].commands).toContain("/promote Alice");
   });
 });

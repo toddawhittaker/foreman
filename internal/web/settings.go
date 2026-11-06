@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
-	"unicode"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
@@ -24,10 +22,6 @@ const (
 	PathSettingsRaw     = "/worlds/{id}/settings/raw/{file}"
 	PathSettingsConfirm = "/worlds/{id}/settings/confirm"
 )
-
-// AuditSettingsSave is the audit action for a saved settings change. Its
-// detail names the file, never a value (SPEC 11.3, 14.8).
-const AuditSettingsSave = "settings-save"
 
 // rawBodyLimit is the largest raw-editor post: the 1 MB the text may hold,
 // at its largest when percent-encoded, plus the other fields.
@@ -166,6 +160,15 @@ func (c *pendingChange) file(name string) (pendingFile, bool) {
 	return pendingFile{}, false
 }
 
+// fileNames lists the files of a change, for the audit entry and the log.
+func fileNames(files []pendingFile) []string {
+	names := make([]string, len(files))
+	for i, f := range files {
+		names[i] = f.File
+	}
+	return names
+}
+
 func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sw, ok := h.load(w, r, u)
 	if !ok {
@@ -249,15 +252,6 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		var bad int
 		if names, bad = adminLines(in.Admins); bad > 0 {
 			adminErr = i18n.M("settings.admins.bad_name", "line", bad, "max", gamesettings.MaxNameBytes)
-		}
-	}
-	if adminErr.IsZero() && sw.running && in.AdminsPosted && !sw.adminsBroken {
-		promote, demote := gamesettings.AdminDiff(sw.admins, names)
-		for _, n := range append(promote, demote...) {
-			if strings.ContainsFunc(n, unicode.IsSpace) {
-				adminErr = i18n.M("settings.admins.running_space", "name", n)
-				break
-			}
 		}
 	}
 	edit2 := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Carried: carried, Names: names}
@@ -389,30 +383,16 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 		h.showPreview(w, r, u, sw, *c, true)
 		return
 	}
-	var snap world.Snapshot
-	restart, live := false, false
-	var saved []string
-	for _, f := range c.Files {
-		sn, rs, err := h.save(r.Context(), u, id, f)
-		if err != nil {
-			h.saveFailed(w, r, u, id, c, f, saved, err)
-			return
-		}
-		saved = append(saved, f.File)
-		if snap.Name == "" {
-			snap = sn
-		}
-		restart = restart || rs
-		live = live || (f.File == world.ServerAdminListFile && sw.running)
+	res, err := h.save(r.Context(), u, id, c.Files)
+	if err != nil {
+		h.saveFailed(w, r, u, id, c, err)
+		return
 	}
-	to := settingsPath(id) + "?saved=1"
-	if snap.Name != "" {
-		to += "&snap=" + snap.Name
-	}
-	if restart {
+	to := settingsPath(id) + "?saved=1&snap=" + res.Snapshot.Name
+	if res.RestartNeeded {
 		to += "&restart=1"
 	}
-	if live {
+	if _, admins := c.file(world.ServerAdminListFile); admins && sw.running {
 		to += "&live=1"
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
@@ -453,12 +433,17 @@ func (h *settingsHandlers) moved(sw settingsWorld, c *pendingChange) bool {
 
 // saveFailed answers a confirmation that did not complete. A file that
 // changed under the save is shown as a new preview; anything else is an
-// error on the form, naming what was saved before it.
-func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u store.User, id string, c *pendingChange, failed pendingFile, saved []string, err error) {
+// error on the form. When the files were written but the running game could
+// not be told of the admin change, the error names what was saved.
+func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u store.User, id string, c *pendingChange, err error) {
 	s := h.s
 	sw, ok := h.load(w, r, u)
 	if !ok {
 		return
+	}
+	var saved []string
+	if pe, ok := errors.AsType[*game.PartialSaveError](err); ok {
+		saved = pe.Saved
 	}
 	rest := &pendingChange{UserID: c.UserID, WorldID: c.WorldID, Raw: c.Raw, Form: c.Form}
 	for _, f := range c.Files {
@@ -466,23 +451,24 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 			rest.Files = append(rest.Files, f)
 		}
 	}
-	if errors.Is(err, game.ErrSettingsChanged) || h.moved(sw, rest) {
+	if errors.Is(err, world.ErrSettingsChanged) || h.moved(sw, rest) {
 		h.showPreview(w, r, u, sw, *rest, true)
 		return
 	}
 	status, msg := settingsError(err)
+	files := fileNames(c.Files)
 	if errors.Is(err, game.ErrSettingsInvalid) {
 		// The error names a line and a key, never a value.
-		s.log.Warn("settings refused", "world", id, "file", failed.File, "error", err)
+		s.log.Warn("settings refused", "world", id, "files", files, "error", err)
 	}
 	if status == http.StatusInternalServerError || status == http.StatusNotFound || msg.IsZero() {
-		s.log.Error("save settings", "path", r.URL.Path, "world", id, "file", failed.File, "error", err)
+		s.log.Error("save settings", "path", r.URL.Path, "world", id, "files", files, "error", err)
 		status, msg = http.StatusInternalServerError, i18n.M("settings.error.failed")
 	}
 	p := sw.formPage(sw.text(), sw.admins)
 	p.Error = msg
 	if len(saved) > 0 {
-		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", failed.File, "reason", msg)
+		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", world.ServerAdminListFile, "reason", msg)
 	}
 	s.page(w, r, status, u.Username, p)
 }
@@ -498,70 +484,39 @@ func settingsError(err error) (int, i18n.Msg) {
 	return gameError(err)
 }
 
-// save writes one file of a change. With server control the game layer does
+// save writes the files of a change. With server control the game layer does
 // it, because a running game must be saved first and told of an admin change
-// (SPEC 6.10, 11.3). With none there is no game to save, so Foreman does the
-// rest itself in the same order. The snapshot returned is the one the save
-// took, when it can be found.
-func (h *settingsHandlers) save(ctx context.Context, u store.User, id string, f pendingFile) (world.Snapshot, bool, error) {
+// (SPEC 6.10, 11.3). With none there is no game to save, so Foreman takes the
+// lock and runs the same world function.
+func (h *settingsHandlers) save(ctx context.Context, u store.User, id string, files []pendingFile) (game.SettingsResult, error) {
 	s := h.s
-	if s.game == nil {
-		return h.saveStopped(ctx, u, id, f)
-	}
-	start := s.now()
-	res, err := s.game.SaveSettings(ctx, id, actor(u), game.SettingsChange{File: f.File, Data: f.New, SeenHash: f.Hash})
-	if err != nil {
-		return world.Snapshot{}, false, err
-	}
-	return h.settingsSnapshotSince(id, start), res.RestartNeeded, nil
-}
-
-// settingsSnapshotSince is the newest snapshot of the settings reason taken
-// at or after start, or the zero value; it only names a link in the Done
-// message.
-func (h *settingsHandlers) settingsSnapshotSince(id string, start time.Time) world.Snapshot {
-	count, err := h.s.worlds.CountWorldSnapshots(id)
-	if err != nil {
-		return world.Snapshot{}
-	}
-	for _, u := range count.Snapshots() {
-		if u.Reason == world.ReasonSettings && !u.TakenAt.Before(start) {
-			return u.Snapshot
+	if s.game != nil {
+		changes := make([]game.SettingsChange, len(files))
+		for i, f := range files {
+			changes[i] = game.SettingsChange{File: f.File, Data: f.New, SeenHash: f.Hash}
 		}
+		return s.game.SaveSettings(ctx, id, actor(u), changes)
 	}
-	return world.Snapshot{}
-}
-
-func (h *settingsHandlers) saveStopped(ctx context.Context, u store.User, id string, f pendingFile) (world.Snapshot, bool, error) {
-	s := h.s
 	unlock, err := s.worlds.Lock(id)
 	if err != nil {
-		return world.Snapshot{}, false, err
+		return game.SettingsResult{}, err
 	}
 	defer unlock()
-	cur, err := s.worlds.ReadConfig(id, f.File)
-	if err != nil {
-		return world.Snapshot{}, false, err
+	changes := make([]world.ConfigChange, len(files))
+	for i, f := range files {
+		changes[i] = world.ConfigChange{File: f.File, Data: f.New, SeenHash: f.Hash}
 	}
-	if cur.Hash != f.Hash {
-		return world.Snapshot{}, false, game.ErrSettingsChanged
-	}
-	snap, err := s.worlds.AutoSnapshot(id, world.ReasonSettings, world.LabelBeforeSettings, u.Username)
-	if err != nil {
-		return world.Snapshot{}, false, err
-	}
-	// The audit entry comes before the write: if it cannot be recorded,
-	// nothing changes (SPEC 12.9).
-	if err := s.store.AddAudit(ctx, store.AuditEntry{
-		Time: s.now(), UserID: u.ID, Username: u.Username, Action: AuditSettingsSave,
-		WorldID: id, Detail: f.File,
-	}); err != nil {
-		return world.Snapshot{}, false, fmt.Errorf("record settings save: %w", err)
-	}
-	if err := s.worlds.WriteConfigHeld(id, f.File, f.New); err != nil {
-		return world.Snapshot{}, false, err
-	}
-	return snap, false, nil
+	snap, err := s.worlds.SaveSettingsHeld(id, changes, u.Username, func() error {
+		err := s.store.AddAudit(ctx, store.AuditEntry{
+			Time: s.now(), UserID: u.ID, Username: u.Username, Action: game.AuditSettingsSave,
+			WorldID: id, Detail: strings.Join(fileNames(files), ", "),
+		})
+		if err != nil {
+			return fmt.Errorf("record settings save: %w", err)
+		}
+		return nil
+	})
+	return game.SettingsResult{Snapshot: snap}, err
 }
 
 // SettingsPreviewPage shows what a settings change would do, before it is
