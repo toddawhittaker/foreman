@@ -33,6 +33,8 @@ func TestHookProtocol(t *testing.T) {
 		{"/save-hangs", `{"name":"foreman-w1","on":true}`},
 		{"/image", `{"ref":"example/other:1","on":true}`},
 		{"/image", `{"ref":"example/other:1","on":false}`},
+		{"/preview-mode", `{"mode":"fail"}`},
+		{"/preview-mode", `{"mode":"ok"}`},
 	} {
 		if rec := hook(t, h, "POST", call.path, call.body); rec.Code != http.StatusNoContent {
 			t.Errorf("POST %s %s = %d %s", call.path, call.body, rec.Code, rec.Body)
@@ -74,6 +76,7 @@ func TestHookErrors(t *testing.T) {
 		{"/join", `{"name":"foreman-nope","player":"alice"}`},
 		{"/crash", `{"name":"foreman-nope"}`},
 		{"/image", `{"on":true}`},
+		{"/preview-mode", `{"mode":"sideways"}`},
 		{"/join", `{"name":"x","surprise":1}`},
 		{"/join", `not json`},
 	} {

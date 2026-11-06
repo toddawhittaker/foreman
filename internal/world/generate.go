@@ -90,6 +90,11 @@ func (m *Manager) ClearNewMap(id string) error {
 		return err
 	}
 	defer unlock()
+	return m.ClearNewMapHeld(id)
+}
+
+// ClearNewMapHeld is ClearNewMap for the start that holds Lock(id).
+func (m *Manager) ClearNewMapHeld(id string) error {
 	root, err := m.OpenWorld(id)
 	if err != nil {
 		return err
