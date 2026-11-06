@@ -126,7 +126,7 @@ func (hn *harness) serveLive(r *http.Request) *httptest.ResponseRecorder {
 	}
 	r.RequestURI, r.URL, r.Host = "", u, u.Host
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	resp, err := client.Do(r)
+	resp, err := client.Do(r) //nolint:gosec // a request to a test server on loopback
 	if err != nil {
 		hn.t.Fatal(err)
 	}

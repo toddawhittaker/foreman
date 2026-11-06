@@ -1,0 +1,94 @@
+{{define "title"}}{{if .Page.Nothing}}{{t "settings.preview.nothing_title" "world" .Page.WorldName}}{{else}}{{t "settings.preview.heading" "world" .Page.WorldName}}{{end}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
+{{- if .Nothing}}
+<h1>{{t "settings.preview.nothing_title" "world" .WorldName}}</h1>
+{{- if .FileChanged}}
+<div class="message message--note" id="file-changed" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.nothing_left"}}</p>
+</div>
+{{- else}}
+<p>{{t "settings.preview.nothing"}}</p>
+{{- end}}
+<div class="actions"><a href="{{.BackPath}}" class="button">{{t "settings.preview.back_fresh"}}</a></div>
+{{- else}}
+<h1>{{t "settings.preview.heading" "world" .WorldName}}</h1>
+{{- if .FileChanged}}
+<div class="message message--warning" id="file-changed">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "settings.preview.changed" "file" .File}}</p>
+</div>
+{{- end}}
+{{- if .Settings}}
+<section class="panel" aria-labelledby="changes-heading">
+  <h2 id="changes-heading">{{t "settings.preview.file_heading" "file" .File}}</h2>
+  <ul class="changes" role="list">
+    {{- range .Settings}}
+    <li>
+      <p><strong>{{msg .Word}}</strong> <code>{{.Key}}</code></p>
+      {{- if .Secret}}
+      <p>{{msg .SecretNote}}</p>
+      {{- else}}
+      {{- if .HasOld}}
+      <p><span class="visually-hidden">{{t "settings.diff.before"}}</span> <del>{{.Old}}</del></p>
+      {{- end}}
+      {{- if .HasNew}}
+      <p><span class="visually-hidden">{{t "settings.diff.after"}}</span> <ins>{{.New}}</ins></p>
+      {{- end}}
+      {{- end}}
+      {{- if .Unknown}}
+      <p class="hint">{{t "settings.diff.unknown"}}</p>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+{{- if .Admins}}
+<section class="panel" aria-labelledby="admins-heading">
+  <h2 id="admins-heading">{{t "settings.preview.admins_heading"}}</h2>
+  <ul class="changes" role="list">
+    {{- range .Promote}}
+    <li><p><strong>{{t "settings.diff.admin_added" "name" .}}</strong></p></li>
+    {{- end}}
+    {{- range .Demote}}
+    <li><p><strong>{{t "settings.diff.admin_removed" "name" .}}</strong></p></li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+{{- if .Restart}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.restart"}}</p>
+</div>
+{{- end}}
+{{- if .AdminsLive}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.admins_live"}}</p>
+</div>
+{{- end}}
+<form method="post" action="{{.ConfirmPath}}" class="panel" aria-labelledby="steps-heading">
+  <h2 id="steps-heading">{{t "common.confirm.will"}}</h2>
+  <ol>
+    {{- if .Running}}
+    <li>{{t "settings.preview.step_save_game"}}</li>
+    {{- end}}
+    <li>{{t "settings.preview.step_snapshot" "world" .WorldName}}</li>
+    {{- if .Settings}}
+    <li>{{tHTML "settings.preview.step_write" "file" (code .File)}}</li>
+    {{- end}}
+    {{- if .Admins}}
+    <li>{{if .Running}}{{tHTML "settings.preview.step_admins_live" "file" (code .AdminFile)}}{{else}}{{tHTML "settings.preview.step_write" "file" (code .AdminFile)}}{{end}}</li>
+    {{- end}}
+  </ol>
+  <p>{{t "settings.preview.undo"}}</p>
+  <input type="hidden" name="token" value="{{.Token}}">
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-save">{{t "settings.preview.save"}}</button>
+    <a href="{{.BackPath}}">{{t "settings.preview.back"}}</a>
+  </div>
+</form>
+{{- end}}
+{{- end}}
+{{- end}}

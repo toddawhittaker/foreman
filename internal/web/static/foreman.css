@@ -1341,3 +1341,80 @@ td > .hint {
     border-width: 3px;
   }
 }
+
+/* 8.10 Game settings: text areas, the raw editor and the list of changes. */
+.field textarea {
+  inline-size: 100%;
+  max-inline-size: 40ch;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--bevel-sunken);
+  font: inherit;
+  font-size: var(--text-md);
+  resize: vertical;
+}
+
+.field textarea:focus {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.field textarea[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
+}
+
+.field--short input {
+  max-inline-size: 20ch;
+}
+
+/* The JSON editor keeps its lines; a long one scrolls inside the box. */
+.field textarea.code {
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+}
+
+.settings > fieldset > legend {
+  margin-block-end: var(--space-2);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+}
+
+.changes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes li {
+  display: grid;
+  gap: var(--space-1);
+  max-inline-size: none;
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-rule);
+}
+
+.changes li:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+.changes del,
+.changes ins {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.changes del {
+  color: var(--color-text-muted);
+}
