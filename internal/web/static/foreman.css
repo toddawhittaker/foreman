@@ -184,6 +184,19 @@ li {
   overflow-wrap: anywhere;
 }
 
+/* Prose breaks at syllables in the page's own language when a word does not fit. */
+p,
+li,
+dd,
+legend,
+label,
+caption,
+h1,
+h2,
+h3 {
+  hyphens: auto;
+}
+
 a {
   color: var(--color-link);
   text-decoration: underline;
@@ -193,6 +206,7 @@ code {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
+  hyphens: manual;
 }
 
 :focus-visible {
@@ -410,6 +424,22 @@ form.panel,
 .panel > form {
   display: grid;
   gap: var(--space-4);
+}
+
+/* Single-column grids use minmax(0, 1fr), so a long word or a wide child
+   cannot push the track past its box (DESIGN 7, 320 px rules). */
+.panel,
+form.panel,
+.panel > form,
+.confirm,
+.confirm form,
+.field,
+.message,
+fieldset,
+.steps,
+.worlds,
+.group {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .empty {
@@ -1091,25 +1121,25 @@ td > .hint {
   }
 }
 
-/* At about 200% text on a phone the three columns cannot share the panel
-   (a panel under 14rem wide is 224 px at 100% text), so each row stacks: the
+/* At about 200% text on a phone the columns cannot share the panel (a panel
+   under 14rem wide is 224 px at 100% text), so each row of a table stacks: a
    snapshot, when it was taken, its size. The header row stays for screen
-   readers; the cells say what they are. */
+   readers; a cell with a data-label says what it is. */
 @container (max-width: 14rem) {
-  .snapshot-list,
-  .snapshot-list caption,
-  .snapshot-list tbody,
-  .snapshot-list tr,
-  .snapshot-list td {
+  table,
+  table caption,
+  table tbody,
+  table tr,
+  table td {
     display: block;
   }
 
-  .snapshot-list {
+  table {
     inline-size: auto;
     margin-inline: 0;
   }
 
-  .snapshot-list thead {
+  table thead {
     position: absolute;
     inline-size: 1px;
     block-size: 1px;
@@ -1117,22 +1147,18 @@ td > .hint {
     clip-path: inset(50%);
   }
 
-  .snapshot-list tr {
+  table tr {
     padding-block: var(--space-2);
     border-block-end: var(--border-width) solid var(--color-rule);
   }
 
-  .snapshot-list td {
+  table td {
     padding: 0;
     border: 0;
     text-align: start;
   }
 
-  .snapshot-list td:nth-child(2)::before {
-    content: attr(data-label) " ";
-  }
-
-  .snapshot-list td:nth-child(3)::before {
+  table td[data-label]::before {
     content: attr(data-label) " ";
   }
 }
@@ -1142,6 +1168,26 @@ td > .hint {
   th,
   td {
     padding-inline: var(--space-2);
+  }
+}
+
+/* At large text a panel is too narrow for a button label or a header word
+   to stay whole, so they may wrap rather than push the page sideways (SPEC 17.2). */
+@container (max-width: 14rem) {
+  th,
+  td {
+    overflow-wrap: anywhere;
+  }
+
+  td > .button,
+  .row-actions .button {
+    white-space: normal;
+  }
+
+  /* A world's actions drop under its name instead of sharing its row. */
+  .worlds > li > .facts ~ .actions {
+    grid-row: auto;
+    grid-column: 1 / -1;
   }
 }
 
