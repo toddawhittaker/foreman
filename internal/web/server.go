@@ -40,6 +40,9 @@ type Deps struct {
 	// Releases lists Factorio versions and releases (SPEC 10.2, 10.7);
 	// nil means Foreman makes no outbound calls for them.
 	Releases Releases
+	// Previewer makes the map previews of Generate (SPEC 5.6); nil means the
+	// page offers no preview.
+	Previewer MapPreviewer
 	// HostDataDir is the data directory's path on the Docker host (SPEC
 	// 3.5), so a page can name a folder the admin reaches there.
 	HostDataDir string
@@ -53,15 +56,19 @@ type server struct {
 	worlds   *world.Manager
 	game     *game.Controller
 	releases Releases
-	hostData string
-	runs     *gameRuns
-	console  *consoleHistory
-	log      *slog.Logger
-	now      func() time.Time
-	render   *Renderer
-	sessions *auth.SessionManager
-	limiter  *auth.Limiter
-	headers  auth.HeaderConfig
+	// previewer and previews: the map preview maker, and the pictures it
+	// made, held for 15 minutes (SPEC 5.6).
+	previewer MapPreviewer
+	previews  *previewStore
+	hostData  string
+	runs      *gameRuns
+	console   *consoleHistory
+	log       *slog.Logger
+	now       func() time.Time
+	render    *Renderer
+	sessions  *auth.SessionManager
+	limiter   *auth.Limiter
+	headers   auth.HeaderConfig
 	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
 	gameNets GameSubnetter
@@ -96,20 +103,22 @@ func NewHandler(d Deps) (*Handler, error) {
 		now = time.Now
 	}
 	s := &server{
-		cfg:      d.Config,
-		store:    d.Store,
-		worlds:   d.Worlds,
-		game:     d.Game,
-		releases: d.Releases,
-		hostData: d.HostDataDir,
-		runs:     newGameRuns(),
-		gameNets: d.GameNets,
-		console:  newConsoleHistory(),
-		log:      d.Log,
-		now:      now,
-		render:   renderer,
-		sessions: auth.NewSessionManager(d.Store, d.Config.SessionIdle, d.Config.SecureCookies(), now),
-		limiter:  auth.NewLimiter(now),
+		cfg:       d.Config,
+		store:     d.Store,
+		worlds:    d.Worlds,
+		game:      d.Game,
+		releases:  d.Releases,
+		previewer: d.Previewer,
+		previews:  newPreviewStore(now),
+		hostData:  d.HostDataDir,
+		runs:      newGameRuns(),
+		gameNets:  d.GameNets,
+		console:   newConsoleHistory(),
+		log:       d.Log,
+		now:       now,
+		render:    renderer,
+		sessions:  auth.NewSessionManager(d.Store, d.Config.SessionIdle, d.Config.SecureCookies(), now),
+		limiter:   auth.NewLimiter(now),
 		headers: auth.HeaderConfig{
 			UserHeader:    d.Config.UserHeader,
 			GroupsHeader:  d.Config.GroupsHeader,

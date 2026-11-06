@@ -6,5 +6,7 @@
   "js.import.suggested": "Sugerowana nazwa świata: {name}.",
   "js.import.warning": "Ostrzeżenie: {text}",
   "js.live.moved": "Aktywny świat został zmieniony.",
-  "js.live.stopped": "Aktualizacje na żywo zostały zatrzymane. Należy odświeżyć stronę, aby zobaczyć aktualny stan."
+  "js.live.stopped": "Aktualizacje na żywo zostały zatrzymane. Należy odświeżyć stronę, aby zobaczyć aktualny stan.",
+  "js.generate.options": "Zaktualizowano opcje mapy dla wybranej wersji gry i ustawienia Ery Kosmosu.",
+  "js.generate.preview_ready": "Podgląd mapy jest gotowy."
 }
