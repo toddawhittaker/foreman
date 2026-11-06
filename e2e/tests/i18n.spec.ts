@@ -485,7 +485,7 @@ test.describe("layout at 320 px in every language", () => {
           await page.goto("/worlds/base/settings");
           await page.locator("#name").fill("Base server");
           await page.locator("#max-players").fill("7");
-          await page.locator("form.settings button[type=submit]").click();
+          await page.locator("form.settings button.button--primary").click();
           await expect(page.locator("ul.changes")).toBeVisible();
         },
         failures,

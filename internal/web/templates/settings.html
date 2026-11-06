@@ -44,6 +44,10 @@
 {{- end}}
 <form method="post" action="{{.Path}}" class="panel settings" novalidate>
   {{template "summary" .Problems}}
+  {{- if .Connected}}
+  {{- /* The first submit button is the one Enter presses; without this it would be a Make admin button. */}}
+  <button type="submit" hidden></button>
+  {{- end}}
   {{- if .Edit}}
   <input type="hidden" name="edit" value="{{.Edit}}">
   {{- end}}
@@ -143,6 +147,15 @@
       <p class="error" id="admins-error"><strong>{{t "common.error.label"}}</strong> {{msg .AdminsError}}</p>
       {{- end}}
     </div>
+    {{- if and .Editable .Connected}}
+    <h3 id="connected-heading">{{t "settings.connected.heading"}}</h3>
+    <p class="hint" id="connected-hint">{{t "settings.connected.hint"}}</p>
+    <ul aria-labelledby="connected-heading" aria-describedby="connected-hint">
+      {{- range .Connected}}
+      <li>{{.}} <button type="submit" class="button" name="make_admin" value="{{.}}">{{t "settings.connected.make_admin"}}<span class="visually-hidden"> {{.}}</span></button></li>
+      {{- end}}
+    </ul>
+    {{- end}}
     {{- end}}
   </fieldset>
 

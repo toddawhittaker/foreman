@@ -11,7 +11,7 @@
   {{template "countdown" .CountdownForm}}
   <div class="actions">
     <button type="submit" class="button button--primary">{{if .Restart}}{{t "server.action.restart"}}{{else}}{{t "server.action.stop"}}{{end}}</button>
-    <a href="{{serverPath}}">{{t "server.stop.cancel"}}</a>
+    <a href="{{.Back}}">{{t "server.stop.cancel"}}</a>
   </div>
 </form>
 {{- end}}
