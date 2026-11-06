@@ -2,9 +2,9 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
 {{- if .Nothing}}
 <h1>{{t "settings.preview.nothing_title" "world" .WorldName}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if .FileChanged}}
 <div class="message message--note" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.nothing_left"}}</p>
@@ -15,6 +15,7 @@
 <div class="actions"><a href="{{.BackPath}}" class="button">{{t "settings.preview.back_fresh"}}</a></div>
 {{- else}}
 <h1>{{t "settings.preview.heading" "world" .WorldName}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if .FileChanged}}
 <div class="message message--warning" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "settings.preview.changed" "file" .File}}</p>

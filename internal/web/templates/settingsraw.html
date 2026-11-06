@@ -4,8 +4,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.FormPath}}">{{t "settings.raw.back"}}</a></div>
 <h1>{{t "settings.raw.title" "file" .File "world" .WorldName}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>

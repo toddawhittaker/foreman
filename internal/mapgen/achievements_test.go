@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -209,4 +210,60 @@ func TestAchievementBlockersRefusesBadInput(t *testing.T) {
 	if _, err := AchievementBlockers("2.1.24", nil, []byte("[]")); err == nil {
 		t.Error("map settings that are not an object were accepted")
 	}
+}
+
+// The rules a form warns with give the same answer as AchievementBlockers for
+// the value each rule names, on every line.
+func TestAchievementRulesMatchBlockers(t *testing.T) {
+	for _, line := range Lines {
+		rules, err := AchievementRules(versionOf(line))
+		if err != nil || len(rules) == 0 {
+			t.Fatalf("%s: %v, %v", line, rules, err)
+		}
+		for _, r := range rules {
+			probes := []any{r.Limit, r.Limit * 0.5, r.Limit * 2}
+			if r.Test == "true" || r.Test == "false" {
+				probes = []any{true, false}
+			}
+			for _, p := range probes {
+				mg, ms := map[string]any{}, map[string]any{}
+				if r.MapSettings {
+					ms[r.Field] = p
+				} else {
+					put(mg, r.Field, p)
+				}
+				has := false
+				for _, b := range blockersFor(t, line, mg, ms, "default") {
+					has = has || (b.Field == r.Field && b.Message == r.Message)
+				}
+				if has != r.Blocks(p) {
+					t.Errorf("%s %s=%v: the rule says %t, the blockers %t", line, r.Field, p, r.Blocks(p), has)
+				}
+			}
+		}
+	}
+	// An untested layout lists only the map-gen rules.
+	rules, err := AchievementRules("2.1.15")
+	if err != nil || len(rules) == 0 {
+		t.Fatalf("2.1.15: %v, %v", rules, err)
+	}
+	for _, r := range rules {
+		if r.MapSettings {
+			t.Errorf("2.1.15 lists a map-settings rule: %+v", r)
+		}
+	}
+}
+
+// put sets a dotted path in a nested map.
+func put(m map[string]any, path string, v any) {
+	parts := strings.Split(path, ".")
+	for _, p := range parts[:len(parts)-1] {
+		next, ok := m[p].(map[string]any)
+		if !ok {
+			next = map[string]any{}
+			m[p] = next
+		}
+		m = next
+	}
+	m[parts[len(parts)-1]] = v
 }

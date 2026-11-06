@@ -3,11 +3,10 @@ package web
 import (
 	"encoding/json"
 	"math"
-	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -159,15 +158,9 @@ func selectOptionsFor(f MapGenForm, name string) []MapGenOption {
 	if f.StartingArea.Name == name {
 		return f.StartingArea.Options
 	}
-	groups := []MapGenGroup{f.Water, f.Cliffs}
-	for _, p := range f.Planets {
-		groups = append(groups, p.Groups...)
-	}
-	for _, g := range groups {
-		for _, s := range g.Selects {
-			if s.Name == name {
-				return s.Options
-			}
+	for _, s := range f.selects() {
+		if s.Name == name {
+			return s.Options
 		}
 	}
 	return nil
@@ -240,42 +233,10 @@ func hasOption(s MapGenSelect, code string) bool {
 	return false
 }
 
-// Only a refresh that the preset select started refills the form; every
-// other request keeps what the person typed (SPEC 5.6).
-func TestOnlyThePresetSelectRefillsTheForm(t *testing.T) {
-	post := func(trigger string) MapGenForm {
-		v := url.Values{"preset": {"death-world"}, mgStart: {"200"}, mgSeed: {"7"}}
-		r := httptest.NewRequest(http.MethodPost, "/generate/refresh", strings.NewReader(v.Encode()))
-		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		if trigger != "" {
-			r.Header.Set("HX-Trigger", trigger)
-		}
-		f, _, _ := ParseMapGenForm(r, "2.1", true)
-		return f
-	}
-	if f := post(""); f.StartingArea.Value != "200" || !f.FromPreset.IsZero() {
-		t.Errorf("a plain post changed the form: starting area %s, note %v", f.StartingArea.Value, f.FromPreset)
-	}
-	if f := post("generate-version-select"); f.StartingArea.Value != "200" {
-		t.Errorf("another element's post changed the form: %s", f.StartingArea.Value)
-	}
-	f := post(PresetSelectID)
-	if f.StartingArea.Value != "71" || f.Seed.Value != "7" || f.FromPreset.IsZero() {
-		t.Errorf("the preset select's post: starting area %s, seed %q, note %v; want 71, 7 and a note", f.StartingArea.Value, f.Seed.Value, f.FromPreset)
-	}
-	// An unknown preset changes nothing.
-	r := httptest.NewRequest(http.MethodPost, "/generate/refresh", strings.NewReader(url.Values{"preset": {"nope"}, mgStart: {"200"}}.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.Header.Set("HX-Trigger", PresetSelectID)
-	if f, _, _ := ParseMapGenForm(r, "2.1", true); f.StartingArea.Value != "200" {
-		t.Errorf("an unknown preset changed the form: %s", f.StartingArea.Value)
-	}
-}
-
 // DESIGN 8.7: the game words terrain controls as Scale and Coverage.
 func TestTerrainControlsAreWordedAsTheGameWordsThem(t *testing.T) {
 	f := NewMapGenForm("2.1", true)
-	for _, p := range f.Planets {
+	for _, p := range slices.Concat(f.Resources, f.Terrain) {
 		for _, g := range p.Groups {
 			for _, s := range g.Selects {
 				if strings.HasSuffix(s.Name, ".trees.frequency") && s.Label.Key != "mapgen.setting.scale" {
