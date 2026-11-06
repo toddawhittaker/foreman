@@ -333,7 +333,7 @@ export async function checkPage(page: Page) {
   expect(size.scroll, `horizontal scroll on ${page.url()}`).toBeLessThanOrEqual(size.client);
 
   // DESIGN 8.3: a date, a time or a size never breaks inside itself. The one
-  // exception is a clock in a table cell, whose last word, the zone such as
+  // exception is a clock in a stacked table cell, whose last word, the zone such as
   // "GMT+5:45", may drop to its own line when the clock is wider than the cell.
   const broken = await page.evaluate(() => {
     const linesOf = (node: Node, from: number, to: number) => {
@@ -349,7 +349,7 @@ export async function checkPage(page: Page) {
         const tops = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)));
         if (tops.size < 2) return false;
         const text = el.firstChild;
-        if (!el.matches("td time > .nowrap ~ .nowrap") || tops.size > 2 || el.childNodes.length !== 1 || text?.nodeType !== Node.TEXT_NODE) return true;
+        if (!el.matches("td time > .nowrap ~ .nowrap") || getComputedStyle(el.closest("td")!).display !== "block" || tops.size > 2 || el.childNodes.length !== 1 || text?.nodeType !== Node.TEXT_NODE) return true;
         const space = (text as Text).data.lastIndexOf(" ");
         return space < 1 || linesOf(text, 0, space).size > 1;
       })
