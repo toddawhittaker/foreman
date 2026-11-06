@@ -1161,6 +1161,13 @@ td > .hint {
   table td[data-label]::before {
     content: attr(data-label) " ";
   }
+
+  /* A figure never breaks inside itself (DESIGN 8.3), so its label takes
+     its own line, as "Online for" above "3 minutes" does. */
+  table td.num[data-label]::before {
+    display: block;
+    white-space: normal;
+  }
 }
 
 /* Four columns at phone width need tighter gutters (DESIGN 8.3). */
