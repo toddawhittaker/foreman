@@ -27,7 +27,7 @@
   "mapgen.control.water": "Voda",
   "mapgen.err.seed": "Kód mapy je třeba zadat jako celé číslo od 0 do {max} nebo nechat pole prázdné.",
   "mapgen.err.size": "Počet dlaždic je třeba zadat jako celé číslo od 0 do {max}.",
-  "mapgen.err.step": "Pro {field} je třeba vybrat jednu z nabízených hodnot.",
+  "mapgen.err.step": "Je třeba vybrat jednu z nabízených hodnot pro pole {field}.",
   "mapgen.err.unknown": "Foreman nemohl tato nastavení mapy přečíst. Stránku je třeba načíst znovu a pokus zopakovat.",
   "mapgen.field.name": "{control}, {setting}",
   "mapgen.height.label": "Výška",
