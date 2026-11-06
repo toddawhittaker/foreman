@@ -6,7 +6,7 @@ package mapgen
 // (internal/mapexchange/testdata), kept as the difference from the "default"
 // preset. It holds only what map-gen-settings.json carries: the changes a
 // preset makes to the map settings (evolution, pollution, price multiplier)
-// are not here.
+// are in MapSettings (mapsettings.go).
 
 import "encoding/json"
 

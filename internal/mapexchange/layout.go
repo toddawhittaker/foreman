@@ -25,6 +25,28 @@ func layoutEnd(line gameLine, patch uint16) string {
 	return ""
 }
 
+// MapSettingsLayout names the map-settings layout an exact game version
+// ("2.1.24") uses, as the first version that has it ("2.1.18"; "2.0.0" for
+// all of 2.0). Two versions with the same name take the same map-settings
+// keys. It reports false for an unsupported line or a malformed version.
+func MapSettingsLayout(version string) (string, bool) {
+	v, ok := parseWorldVersion(version)
+	if !ok {
+		return "", false
+	}
+	line, ok := lineOf([4]uint16{v[0], v[1], v[2], 0})
+	if !ok {
+		return "", false
+	}
+	start := uint16(0)
+	for _, c := range layoutChanges[line] {
+		if c <= v[2] {
+			start = c
+		}
+	}
+	return fmt.Sprintf("%s.%d", lineNames[line], start), true
+}
+
 // parseWorldVersion reads an exact "major.minor.patch" version.
 func parseWorldVersion(s string) ([3]uint16, bool) {
 	parts := strings.Split(s, ".")
