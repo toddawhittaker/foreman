@@ -1067,9 +1067,10 @@ default.
 One page, `GET /worlds/generate`, one `form.panel`, in this order:
 
 1. Name (7.2, required, the only field with no default).
-2. Game version: a `select` of the downloaded versions, newest first
-   and selected. A version not downloaded is not offered; the hint links
-   to the Versions page.
+2. Game version: the same picker as Import (SPEC 10.7): downloaded
+   versions and Docker Hub's list, with the "download the game image"
+   checkbox. Preview needs a downloaded image; its refusal (8.8) covers
+   that.
 3. Space Age: a checkbox, checked when the version supports it, as on
    Import.
 4. "How to make the map": a `fieldset` of three radios, each followed
@@ -1145,8 +1146,15 @@ Plain HTML, no script. It is long, so it is grouped and mostly closed.
   no limit". Peaceful mode is a checkbox (7.2).
 - The form opens filled with the chosen preset's values for the game
   line, so "Custom" means "a preset, then changed". Anything the form
-  does not cover keeps the game's default. There is no raw map-gen
-  editor at Generate.
+  does not cover is in the raw editor below.
+- **Raw map-gen JSON** (SPEC 11.5). After the planet `details`, a closed
+  `details` "Other map-gen settings (JSON)" holds the raw editor of 8.10
+  (mono `textarea`, `wrap="off"`, errors by line in the error summary,
+  `details` rendered `open` when it has an error). It is prefilled with
+  the game line's defaults for only the keys the form does not cover.
+  On submit the raw object is read first and the form fields are laid
+  over it, so a form field wins for every key it covers; a raw key the
+  form covers is ignored, and the hint says so.
 
 ### 8.8 Map preview (SPEC 5.6, P1)
 
@@ -1209,10 +1217,10 @@ since nothing is lost. From the Server page: the active world's link,
 
 ### 8.10 Game settings (SPEC 11)
 
-A world's page has a "Settings" button. From the Server page, changing a
-setting of the active world takes four clicks: the world link, Settings,
-"Preview changes", "Save settings", plus Restart when the game is
-running.
+A world's page and the Server page (for the active world) each have a
+"Settings" link. From the Server page, changing a setting takes three
+clicks: Settings, "Preview changes", "Save settings", plus Restart when
+the game is running.
 
 **The form** (`GET /worlds/{id}/settings`) is one `form.panel` of
 fieldsets, in this order:
