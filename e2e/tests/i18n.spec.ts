@@ -1,5 +1,5 @@
 import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21 } from "./foreman.js";
-import type { APIRequestContext, BrowserContext } from "@playwright/test";
+import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
 import { statSync } from "node:fs";
 import { join } from "node:path";
 import { catalogue, languages, pluralCategory, t, type Lang } from "./i18n.js";
@@ -273,16 +273,61 @@ test.describe("sizes", () => {
   }
 });
 
-// SPEC 22.7: every page meets 17.1 and 17.2 in the languages with the longest
-// text. checkPage scans with axe and, at 320 px, fails on horizontal scroll,
-// a wrapped date or size, and a target under 24 px.
-test.describe("layout at 320 px in the longest languages", () => {
-  test.use({ fakeGameOn: true });
+// SPEC 22.7, 17.2, 17.12: every page meets 17.1 and 17.2 in every language,
+// at 320 px with text at 100% and at 200% (WCAG 1.4.4). checkPage scans with
+// axe and, at 320 px, fails on horizontal scroll, a wrapped date or size, and
+// a target under 24 px. Each page is visited in each language and size, and
+// every failing case is listed at the end, not only the first.
+const textSizes = [100, 200] as const;
 
-  for (const lang of ["de", "ru"] as const) {
-    test(`${lang}: the main pages and the sign-in page fit and pass axe`, async ({ page, foreman, fakeGame }) => {
-      test.setTimeout(90_000);
+// The matrix is 8 languages by 15 pages by 2 sizes. Colour does not change
+// layout and every other spec already runs checkPage in all four projects, so
+// the matrix runs once, in the 320 px dark project.
+function onlyInPhoneDark() {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "phone-dark", "the language matrix runs in one project; see the comment above");
+  });
+}
+
+// Sets the text size the way the other 200% tests do: on the root element.
+async function setTextSize(page: Page, percent: number) {
+  await page.evaluate((p) => {
+    document.documentElement.style.fontSize = `${p}%`;
+  }, percent);
+}
+
+async function checkCase(page: Page, label: string, failures: string[]) {
+  try {
+    await checkPage(page);
+  } catch (e) {
+    // The first line says what failed; Expected and Received carry the widths.
+    const lines = (e as Error).message.split("\n").map((l) => l.trim());
+    const numbers = lines.filter((l) => /^(Expected|Received)\b/.test(l));
+    failures.push(`${label}: ${[lines[0], ...numbers].join(" | ")}`);
+  }
+}
+
+// Visits each path at each text size and records what fails.
+async function sweep(page: Page, lang: Lang, paths: string[], failures: string[]) {
+  for (const path of paths) {
+    for (const size of textSizes) {
+      await page.goto(path);
+      await expect(page.locator("html"), path).toHaveAttribute("lang", lang);
+      await setTextSize(page, size);
+      await checkCase(page, `${lang} ${path} at ${size}%`, failures);
+    }
+  }
+}
+
+test.describe("layout at 320 px in every language", () => {
+  test.use({ fakeGameOn: true });
+  onlyInPhoneDark();
+
+  for (const lang of languages) {
+    test(`${lang}: every page fits and passes axe at 100% and 200% text`, async ({ page, foreman, fakeGame }) => {
+      test.setTimeout(180_000);
       const live = { timeout: 20_000 };
+      const failures: string[] = [];
       await page.setViewportSize({ width: 320, height: 640 });
 
       // Set up in English with the real controls, then read the pages in lang.
@@ -301,25 +346,118 @@ test.describe("layout at 320 px in the longest languages", () => {
       await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
 
       await chooseLanguage(page.context(), lang, foreman.url);
-      for (const path of ["/", "/worlds", "/worlds/base", "/worlds/base/saves", "/snapshots", "/worlds/base/snapshots"]) {
-        await page.goto(path);
-        await expect(page.locator("html"), path).toHaveAttribute("lang", lang);
-        await checkPage(page);
-      }
+      await sweep(
+        page,
+        lang,
+        [
+          "/",
+          "/worlds",
+          "/worlds/base",
+          "/worlds/base/saves",
+          "/snapshots",
+          "/worlds/base/snapshots",
+          "/import",
+          "/console",
+          "/worlds/second/switch",
+          "/worlds/base/stop",
+          "/worlds/base/force-stop",
+          "/worlds/base/update",
+          "/worlds/second/delete",
+        ],
+        failures,
+      );
 
       // The sign-in page, plain and at its longest (the rate-limit message).
       await page.context().clearCookies();
       await chooseLanguage(page.context(), lang, foreman.url);
+      await sweep(page, lang, ["/signin"], failures);
       await page.goto("/signin");
-      await expect(page.locator("html")).toHaveAttribute("lang", lang);
-      await checkPage(page);
       for (let i = 0; i < 6; i++) {
         await page.locator("#username").fill("admin");
         await page.locator("#password").fill(i < 5 ? `wrong password ${i}` : adminPassword);
         await page.locator("form.panel button[type=submit]").click();
       }
       await expect(page.locator("#error-summary")).toContainText(t("common.error.label", {}, lang));
-      await checkPage(page);
+      for (const size of textSizes) {
+        await setTextSize(page, size);
+        await checkCase(page, `${lang} /signin rate-limited at ${size}%`, failures);
+      }
+
+      expect(failures, "pages that break at 320 px").toEqual([]);
     });
   }
+});
+
+// The first-run page has no admin yet, so it needs a Foreman of its own.
+test.describe("first-run setup at 320 px in every language", () => {
+  onlyInPhoneDark();
+  for (const lang of languages) {
+    test(`${lang}: the setup page fits at 100% and 200% text, also with its error summary`, async ({ page, foreman }) => {
+      const failures: string[] = [];
+      await page.setViewportSize({ width: 320, height: 640 });
+      await chooseLanguage(page.context(), lang, foreman.url);
+      await sweep(page, lang, ["/setup"], failures);
+
+      // Three problems make the longest summary.
+      await page.goto("/setup");
+      await page.locator("#password").fill("short");
+      await page.locator("#confirm").fill("other");
+      await page.locator("form.panel button[type=submit]").click();
+      await expect(page.locator("#error-summary li")).toHaveCount(3);
+      for (const size of textSizes) {
+        await setTextSize(page, size);
+        await checkCase(page, `${lang} /setup with errors at ${size}%`, failures);
+      }
+      expect(failures, "pages that break at 320 px").toEqual([]);
+    });
+  }
+});
+
+// SPEC 22.3: the game's own words stay English, marked so a screen reader
+// speaks them in English whatever language the page is in.
+test.describe("game text carries lang=en", () => {
+  test.use({ fakeGameOn: true });
+
+  test("the log pane and the console history are English in every language", async ({ page, foreman, fakeGame }) => {
+    test.setTimeout(120_000);
+    const live = { timeout: 20_000 };
+    await createAdmin(page);
+    seedWorld(foreman);
+    await fakeGame!.call("/image", { ref: image21, on: true });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Start server" }).click();
+    await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+    await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
+    await page.goto("/console");
+    await page.getByLabel("Command").fill("/players online");
+    await page.getByLabel("Command").press("Enter");
+    await expect(page.getByRole("region", { name: "Console history" }).locator("pre")).toContainText("Online players");
+
+    // The language of the nearest element that names one, for each piece of game text.
+    const langOf = (loc: Locator) => loc.evaluate((el) => el.closest("[lang]")?.getAttribute("lang"));
+
+    for (const lang of languages) {
+      await chooseLanguage(page.context(), lang, foreman.url);
+      await page.goto("/console");
+      await expect(page.locator("html")).toHaveAttribute("lang", lang);
+      // The page's own words carry the page language, so the check below is not vacuous.
+      expect(await langOf(page.getByRole("heading", { level: 1 })), `${lang} heading`).toBe(lang);
+
+      const logLine = page.locator(".log pre > span", { hasText: "alice joined the game" }).first();
+      await expect(logLine, `${lang} log line`).toBeVisible(live);
+      expect(await langOf(logLine), `${lang} log line`).toBe("en");
+      expect(await langOf(page.locator(".log pre").first()), `${lang} log pane`).toBe("en");
+
+      const reply = page.locator(".console-history pre").first();
+      await expect(reply, `${lang} reply`).toContainText("Online players");
+      expect(await langOf(reply), `${lang} console reply`).toBe("en");
+    }
+
+    // A line that arrives while the page is open goes into the same English block.
+    await page.goto("/console");
+    await fakeGame!.call("/join", { name: "foreman-base", player: "bob" });
+    const fresh = page.locator(".log pre > span", { hasText: "bob joined the game" }).first();
+    await expect(fresh).toBeVisible(live);
+    expect(await langOf(fresh)).toBe("en");
+  });
 });
