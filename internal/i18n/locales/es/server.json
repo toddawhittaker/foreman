@@ -488,5 +488,9 @@
     "one": "queda {count} segundo",
     "other": "quedan {count} segundos"
   },
-  "server.step.ending_now": "termina ahora"
+  "server.step.ending_now": "termina ahora",
+  "server.problem.save_detail.not_zip": "la partida guardada no es un archivo zip, o el archivo está cortado",
+  "server.problem.save_detail.no_level_data": "la partida guardada no contiene level.dat0 ni level.dat",
+  "server.problem.save_detail.format": "la cabecera de la partida guardada tiene un formato que Foreman no entiende",
+  "server.problem.save_detail.truncated": "los datos del nivel de la partida guardada están cortados"
 }

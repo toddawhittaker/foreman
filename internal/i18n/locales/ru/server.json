@@ -500,5 +500,9 @@
     "few": "осталось {count} секунды",
     "many": "осталось {count} секунд"
   },
-  "server.step.ending_now": "завершается"
+  "server.step.ending_now": "завершается",
+  "server.problem.save_detail.not_zip": "сохранение не является ZIP-файлом или файл обрезан",
+  "server.problem.save_detail.no_level_data": "в сохранении нет level.dat0 или level.dat",
+  "server.problem.save_detail.format": "заголовок сохранения в формате, который Foreman не понимает",
+  "server.problem.save_detail.truncated": "данные уровня в сохранении обрезаны"
 }

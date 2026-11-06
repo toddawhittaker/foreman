@@ -10,6 +10,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -356,8 +357,7 @@ func problemMsg(p world.Problem) i18n.Msg {
 	case world.ProblemSaveUnsupported:
 		return i18n.M("server.problem.save_unsupported", "save", p.Save, "save_version", p.SaveVersion)
 	case world.ProblemSaveUnreadable:
-		// The detail is Go's English error text (SPEC 22.3).
-		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", i18n.Game(p.Detail))
+		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", saveReadDetail(p.Detail))
 	case world.ProblemModListSpaceAge:
 		if p.SpaceAge {
 			return i18n.M("server.problem.modlist_space_age_on", "mods", names)
@@ -387,6 +387,27 @@ func problemMsg(p world.Problem) i18n.Msg {
 
 // modVersionMsg words mods made for another Factorio: one sentence per
 // version, then the advice.
+// saveReadDetail is why a save could not be read, in the page's language
+// for the reasons savefile names. The problem carries only the error's
+// text, so it is matched against each reason's text; anything else is
+// shown as the English it is (SPEC 22.3).
+func saveReadDetail(detail string) any {
+	for _, r := range []struct {
+		err error
+		msg i18n.Msg
+	}{
+		{savefile.ErrNotZip, i18n.M("server.problem.save_detail.not_zip")},
+		{savefile.ErrNoLevelData, i18n.M("server.problem.save_detail.no_level_data")},
+		{savefile.ErrFormat, i18n.M("server.problem.save_detail.format")},
+		{savefile.ErrTruncated, i18n.M("server.problem.save_detail.truncated")},
+	} {
+		if detail == r.err.Error() || strings.HasSuffix(detail, ": "+r.err.Error()) {
+			return r.msg
+		}
+	}
+	return i18n.Game(detail)
+}
+
 func modVersionMsg(p world.Problem) i18n.Msg {
 	if len(p.Groups) == 0 {
 		return i18n.M("server.problem.other", "text", p.Text)

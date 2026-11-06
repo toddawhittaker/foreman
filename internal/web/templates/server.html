@@ -90,12 +90,12 @@
      players, the list is who was online when it began (SPEC 7.6). */}}
 {{define "server-players" -}}
 {{- if .PlayerTable}}{{with .PlayerTable}}
-<table>
+<table role="table">
   <caption>{{msg .Caption}}</caption>
-  <thead><tr><th scope="col">{{t "server.players.player"}}</th><th scope="col" class="num">{{t "server.players.online_for"}}</th></tr></thead>
-  <tbody>
+  <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.online_for"}}</th></tr></thead>
+  <tbody role="rowgroup">
     {{- range .Players}}
-    <tr><td>{{.Name}}</td><td class="num">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
+    <tr role="row"><td role="cell">{{.Name}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
     {{- end}}
   </tbody>
 </table>

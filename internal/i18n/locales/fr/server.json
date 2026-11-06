@@ -488,5 +488,9 @@
     "one": "{count} seconde restante",
     "other": "{count} secondes restantes"
   },
-  "server.step.ending_now": "fin imminente"
+  "server.step.ending_now": "fin imminente",
+  "server.problem.save_detail.not_zip": "la sauvegarde n’est pas un fichier zip, ou le fichier est tronqué",
+  "server.problem.save_detail.no_level_data": "la sauvegarde ne contient ni level.dat0 ni level.dat",
+  "server.problem.save_detail.format": "l’en-tête de la sauvegarde est dans un format que Foreman ne comprend pas",
+  "server.problem.save_detail.truncated": "les données de niveau de la sauvegarde sont tronquées"
 }

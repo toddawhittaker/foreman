@@ -11,6 +11,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -247,6 +248,18 @@ func TestEnglishDetailsAreMarkedEnglish(t *testing.T) {
 	} {
 		if got := string(de.FormatHTML(m)); !strings.Contains(got, `<span lang="en">zip: not a valid zip file</span>`) {
 			t.Errorf("%s: detail not marked English: %s", name, got)
+		}
+	}
+}
+
+// A save-read reason savefile names is said in the page's language, even
+// when wrapped; one it does not name stays English, marked (SPEC 22.3).
+func TestSaveReadDetailIsTranslated(t *testing.T) {
+	de := i18n.Locale("de")
+	for _, detail := range []string{savefile.ErrNotZip.Error(), "open a.zip: " + savefile.ErrTruncated.Error()} {
+		got := string(de.FormatHTML(problemMsg(world.Problem{Kind: world.ProblemSaveUnreadable, Save: "a.zip", Detail: detail})))
+		if strings.Contains(got, "the save") || strings.Contains(got, `lang="en"`) {
+			t.Errorf("%q not translated: %s", detail, got)
 		}
 	}
 }

@@ -24,17 +24,17 @@
 <section class="panel" aria-labelledby="saves-heading">
   <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
   {{- if .Rows}}
-  <table>
+  <table role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
-    <thead>
-      <tr><th scope="col">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num">{{t "worlds.col.size"}}</th><th scope="col">{{t "worlds.saves.col.saved"}}</th></tr>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th></tr>
     </thead>
-    <tbody>
+    <tbody role="rowgroup">
       {{- range .Rows}}
-      <tr>
-        <td><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</td>
-        <td class="num">{{bytes .Size}}</td>
-        <td>{{template "when" .Saved}}</td>
+      <tr role="row">
+        <td role="cell"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</td>
+        <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
+        <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
       </tr>
       {{- end}}
     </tbody>

@@ -476,5 +476,9 @@
   "server.step.seconds_left": {
     "other": "还剩 {count} 秒"
   },
-  "server.step.ending_now": "即将结束"
+  "server.step.ending_now": "即将结束",
+  "server.problem.save_detail.not_zip": "存档不是 zip 文件，或文件不完整",
+  "server.problem.save_detail.no_level_data": "存档中没有 level.dat0 或 level.dat",
+  "server.problem.save_detail.format": "存档头部的格式 Foreman 无法识别",
+  "server.problem.save_detail.truncated": "存档的关卡数据不完整"
 }

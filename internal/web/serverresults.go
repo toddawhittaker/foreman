@@ -28,7 +28,7 @@ func (p ServerPage) RecoverRestore() *Offer {
 	if !p.CrashLooping() || sn == nil {
 		return nil
 	}
-	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", sn.Label, "time", momentUTC(sn.TakenAt)), At: sn.TakenAt}
+	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", snapshotLabelArg(*sn), "time", momentUTC(sn.TakenAt)), At: sn.TakenAt}
 }
 
 // CrashMessage is the crash box's sentence (SPEC 8.7).

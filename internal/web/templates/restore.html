@@ -15,7 +15,7 @@
 </div>
 {{- end}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" .Snapshot.Label "time" (momentUTC .Snapshot.TakenAt)}}</h2>
+  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}</h2>
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .Deleted}}

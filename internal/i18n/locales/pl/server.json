@@ -500,5 +500,9 @@
     "few": "pozostały {count} sekundy",
     "many": "pozostało {count} sekund"
   },
-  "server.step.ending_now": "właśnie się kończy"
+  "server.step.ending_now": "właśnie się kończy",
+  "server.problem.save_detail.not_zip": "zapis nie jest plikiem zip albo plik jest ucięty",
+  "server.problem.save_detail.no_level_data": "zapis nie zawiera pliku level.dat0 ani level.dat",
+  "server.problem.save_detail.format": "nagłówek zapisu ma format, którego Foreman nie rozumie",
+  "server.problem.save_detail.truncated": "dane poziomu w zapisie są ucięte"
 }

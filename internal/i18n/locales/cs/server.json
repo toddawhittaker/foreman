@@ -500,5 +500,9 @@
     "few": "zbývají {count} sekundy",
     "other": "zbývá {count} sekund"
   },
-  "server.step.ending_now": "právě končí"
+  "server.step.ending_now": "právě končí",
+  "server.problem.save_detail.not_zip": "uložená hra není soubor zip, nebo je soubor useknutý",
+  "server.problem.save_detail.no_level_data": "uložená hra neobsahuje level.dat0 ani level.dat",
+  "server.problem.save_detail.format": "hlavička uložené hry má formát, kterému Foreman nerozumí",
+  "server.problem.save_detail.truncated": "data úrovně v uložené hře jsou useknutá"
 }

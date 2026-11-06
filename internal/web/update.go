@@ -314,6 +314,6 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 		s.log.Error("roll back", "world", id, "error", err)
 		status, msg = http.StatusInternalServerError, i18n.M("server.rollback.unfinished")
 	}
-	p.Error = join(msg, i18n.M("server.rollback.undo_note", "label", before.Label))
+	p.Error = join(msg, i18n.M("server.rollback.undo_note", "label", snapshotLabelArg(before)))
 	s.page(w, r, status, u.Username, p)
 }

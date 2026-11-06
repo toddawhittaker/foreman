@@ -488,5 +488,9 @@
     "one": "{count} second left",
     "other": "{count} seconds left"
   },
-  "server.step.ending_now": "ending now"
+  "server.step.ending_now": "ending now",
+  "server.problem.save_detail.not_zip": "the save is not a zip file, or the file is cut short",
+  "server.problem.save_detail.no_level_data": "the save has no level.dat0 or level.dat inside it",
+  "server.problem.save_detail.format": "the save's header is in a format Foreman does not understand",
+  "server.problem.save_detail.truncated": "the save's level data is cut short"
 }

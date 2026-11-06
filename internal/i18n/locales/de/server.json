@@ -488,5 +488,9 @@
     "one": "noch {count} Sekunde",
     "other": "noch {count} Sekunden"
   },
-  "server.step.ending_now": "endet jetzt"
+  "server.step.ending_now": "endet jetzt",
+  "server.problem.save_detail.not_zip": "der Speicherstand ist keine ZIP-Datei oder die Datei ist abgeschnitten",
+  "server.problem.save_detail.no_level_data": "der Speicherstand enthält weder level.dat0 noch level.dat",
+  "server.problem.save_detail.format": "der Kopf des Speicherstands hat ein Format, das Foreman nicht versteht",
+  "server.problem.save_detail.truncated": "die Leveldaten des Speicherstands sind abgeschnitten"
 }
