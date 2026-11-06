@@ -1166,16 +1166,25 @@ SPEC 22.
 ### Verified
 
 - `make verify` passed on the epic head with coverage 90.7% across
-  `internal/`. `make e2e` FILL.
+  `internal/`. `make e2e`: 868 passed, 88 skipped (the 320 px language
+  matrix runs in phone-dark only, plus the existing skips), none failed.
 - New tests: Accept-Language cases and the cookie, the menu's return on
   every kind of page, plural forms checked against the browser's own CLDR
   data, decimal commas, a 320 px matrix at 100% and 200% text over every
   page in all eight languages with axe, a check that the log pane and
   console are `lang="en"`, German and Russian script output, and the
   catalogue checks above.
-- Against real `factoriotools/factorio` containers: `make test-game` FILL
-  and `make e2e-game` FILL.
-- Code, security and accessibility reviews ran over the epic. FILL
+- Against real `factoriotools/factorio` containers, on the head after the
+  server pages landed (4bfff98): `make test-game` passed on all four
+  images and `make e2e-game` passed both tests, with no ERROR log line. A
+  failed start, switch and update each named the right step and world in
+  English and German, Factorio's text was marked `lang="en"`, and the
+  English text of those five pages was identical to main before the epic.
+- Code, security and accessibility reviews ran over the epic, and two
+  translation reviews (de, fr, es, pl; ru, cs, zh-Hans) back-translated
+  every value. Security found nothing. Every other finding was fixed and
+  confirmed closed by a second code and accessibility pass and a second
+  translation check, or is listed below.
 
 ### Gaps left
 
