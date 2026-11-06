@@ -23,17 +23,12 @@ import (
 // Go code; the catalogue's own checks are in internal/i18n.
 //
 // The pending lists name the files not converted yet, which the text checks
-// skip. Converting a file means taking it off its list.
+// skip. Each area keeps its lists in a file of its own (pending_server_test.go,
+// pending_worlds_test.go, pending_scripts_test.go). Converting a file means taking
+// it off its list.
 var (
-	pendingTemplates = []string{
-		"allsnapshots.html", "console.html", "delete.html", "deleted.html",
-		"forcestop.html", "import.html", "restore.html", "rollback.html",
-		"saves.html", "server.html", "snapshotbulkdelete.html",
-		"snapshotdelete.html", "snapshots.html", "stop.html", "switch.html",
-		"update.html", "versions.html", "world.html", "worlds.html",
-	}
-	pendingScripts = []string{"countdown.js", "import.js", "live.js", "log.js", "time.js"}
-	pendingCSS     = []string{"foreman.css"}
+	pendingTemplates = slices.Concat(pendingServerTemplates, pendingWorldsTemplates)
+	pendingCSS       = pendingWorldsCSS
 )
 
 // allowedWords may appear outside the catalogue: names that are never

@@ -180,29 +180,38 @@ func TestPluralCategories(t *testing.T) {
 	}
 }
 
-// translated.json matches the English: a key whose English changed must
-// be translated again, then make i18n-hash run.
+// The translated/<area>.json files match the English: a key whose English
+// changed must be translated again, then make i18n-hash run.
 func TestTranslationsAreCurrent(t *testing.T) {
-	b, err := os.ReadFile("translated.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var recorded map[string]string
-	if err := json.Unmarshal(b, &recorded); err != nil {
-		t.Fatal(err)
+	recorded := map[string]string{}
+	for _, a := range Areas() {
+		b, err := os.ReadFile(path.Join("translated", a+".json")) //nolint:gosec // an area name from the embedded catalogue
+		if err != nil {
+			t.Fatalf("%v: run make i18n-hash", err)
+		}
+		var m map[string]string
+		if err := json.Unmarshal(b, &m); err != nil {
+			t.Fatal(err)
+		}
+		for k, h := range m {
+			if !strings.HasPrefix(k, a+".") {
+				t.Errorf("translated/%s.json lists %s from another area: run make i18n-hash", a, k)
+			}
+			recorded[k] = h
+		}
 	}
 	for k, h := range Hashes() {
 		r, ok := recorded[k]
 		switch {
 		case !ok:
-			t.Errorf("%s is not in translated.json: translate it into every language, then run make i18n-hash", k)
+			t.Errorf("%s is not in translated/: translate it into every language, then run make i18n-hash", k)
 		case r != h:
 			t.Errorf("the English of %s changed since it was translated: update every language, then run make i18n-hash", k)
 		}
 	}
 	for k := range recorded {
 		if _, ok := catalogue[English][k]; !ok {
-			t.Errorf("translated.json lists %s, which is gone: run make i18n-hash", k)
+			t.Errorf("translated/ lists %s, which is gone: run make i18n-hash", k)
 		}
 	}
 }

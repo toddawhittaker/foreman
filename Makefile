@@ -156,6 +156,6 @@ tidy:
 	go mod tidy
 
 # After updating every language for a key, record the English it was
-# translated from (internal/i18n/translated.json, SPEC 22.5).
+# translated from (internal/i18n/translated/<area>.json, SPEC 22.5).
 i18n-hash:
 	go run ./cmd/i18n-hash

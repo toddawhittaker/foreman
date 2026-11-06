@@ -15,7 +15,7 @@
 //
 // Adding a string: add the key to en and to the seven other languages in
 // the same area file, then run make i18n-hash, which records in
-// translated.json which English each translation was made from. When the
+// translated/<area>.json which English each translation was made from. When the
 // English of a key changes later, the check fails until every language is
 // updated and make i18n-hash is run again.
 //
@@ -40,8 +40,10 @@
 // from key to text, or to plural forms by category, placeholders unfilled.
 // A key appears there once it is listed in internal/web's jsKeys.
 //
-// Text checks (internal/web/i18ncheck_test.go) skip the files on their
-// pending lists; a file comes off its list once converted.
+// Text checks (internal/web/i18ncheck_test.go) skip the files on the
+// pending lists, kept one file per area in internal/web
+// (pending_server_test.go, pending_worlds_test.go, pending_scripts_test.go); a
+// file comes off its list once converted.
 //
 // Raw wraps English that has not been converted yet. It exists only while
 // the pages are being converted, and goes once none use it.

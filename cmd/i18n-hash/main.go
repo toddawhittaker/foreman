@@ -5,14 +5,21 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 func main() {
-	b, err := i18n.HashJSON()
+	files, err := i18n.HashFiles()
 	if err == nil {
-		err = os.WriteFile(i18n.HashFile, b, 0o644) //nolint:gosec // a source file in the repository, read by everyone
+		err = os.MkdirAll(i18n.HashDir, 0o755) //nolint:gosec // a source folder in the repository
+	}
+	for area, b := range files {
+		if err != nil {
+			break
+		}
+		err = os.WriteFile(filepath.Join(i18n.HashDir, area+".json"), b, 0o644) //nolint:gosec // a source file in the repository, read by everyone
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "i18n-hash:", err)
