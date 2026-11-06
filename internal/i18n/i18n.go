@@ -467,9 +467,14 @@ func (l Locale) Link(href, linkKey string) Fragment {
 }
 
 // ownPath reports whether href is a path on this site: one slash, then
-// not a second slash or a backslash, which browsers read as another host.
+// not a second slash or a backslash, which browsers read as another host,
+// and no control character, which a browser can strip to make the same
+// trick. It is a small copy of the web package's returnPath check.
 func ownPath(href string) bool {
-	return strings.HasPrefix(href, "/") && !strings.HasPrefix(href, "//") && !strings.HasPrefix(href, "/\\")
+	if !strings.HasPrefix(href, "/") || strings.HasPrefix(href, "//") || strings.HasPrefix(href, "/\\") {
+		return false
+	}
+	return strings.IndexFunc(href, func(r rune) bool { return r < 0x20 || r == 0x7f }) < 0
 }
 
 // Code wraps s, such as a file name, in a code element.

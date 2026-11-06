@@ -44,7 +44,8 @@ func TestLinkRefusesForeignHref(t *testing.T) {
 	if got := English.Link("/worlds", "common.nav.worlds").html; got != `<a href="/worlds">Worlds</a>` {
 		t.Errorf("own path: %s", got)
 	}
-	for _, href := range []string{"", "worlds", "//evil.example/x", `/\evil.example`, "https://evil.example/", "javascript:alert(1)"} {
+	for _, href := range []string{"", "worlds", "//evil.example/x", `/\evil.example`, "https://evil.example/", "javascript:alert(1)",
+		"/\t/evil.example", "/\n/evil.example", "/a\rb", "/a\x00b", "/a\x7fb"} {
 		func() {
 			defer func() {
 				if recover() == nil {
