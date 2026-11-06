@@ -404,6 +404,38 @@ func TestSettingsFormErrors(t *testing.T) {
 	}
 }
 
+// SPEC 11.1, 11.4: a typed password is never sent back in the page, so a
+// form refused for another field's error says to enter it again. The note is
+// tied to the field, and not shown on "Go back and edit", where the password
+// is kept on the server.
+func TestSettingsDroppedPasswordNote(t *testing.T) {
+	r := newSettingsRig(t)
+	const note = "Enter the new password again; it is never kept in the page."
+
+	form := settingsFormValues()
+	form.Set("name", "  ")
+	form.Set("game_password", "newpass-typed")
+	rec := r.postAs(r.cookie, r.path(""), form)
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, note) ||
+		!strings.Contains(body, `aria-describedby="pw-state pw-hint pw-dropped"`) || !strings.Contains(body, `id="pw-dropped"`) {
+		t.Errorf("refused form with a typed password: %d\n%s", rec.Code, body)
+	}
+	r.noSecrets(rec)
+
+	form.Del("game_password")
+	if body := r.postAs(r.cookie, r.path(""), form).Body.String(); strings.Contains(body, note) {
+		t.Errorf("the note shows without a typed password:\n%s", body)
+	}
+
+	form = settingsFormValues()
+	form.Set("game_password", "newpass-typed")
+	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
+	if body := r.getAs(r.cookie, r.path("?edit="+token)).Body.String(); strings.Contains(body, note) {
+		t.Errorf("the note shows on Go back and edit:\n%s", body)
+	}
+}
+
 // SPEC 11.3: a token belongs to its user, its world and its 15 minutes.
 func TestSettingsTokenOwnershipAndExpiry(t *testing.T) {
 	r := newSettingsRig(t)
@@ -583,6 +615,25 @@ func TestSettingsRawEditor(t *testing.T) {
 	}
 	if rec := r.postAs(r.cookie, r.path("/raw/server-adminlist.json"), url.Values{"content": {"[]"}}); rec.Code != http.StatusNotFound {
 		t.Errorf("adminlist editor: %d", rec.Code)
+	}
+}
+
+// SPEC 11.2: a missing key the game needs is named with its line.
+func TestSettingsRawEditorMissingKey(t *testing.T) {
+	r := newSettingsRig(t)
+	text := "{\n  \"name\": \"x\",\n  \"visibility\": {\"public\": false}\n}\n"
+	rec := r.postAs(r.cookie, r.path("/raw/server-settings.json"), url.Values{"content": {text}})
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d", rec.Code)
+	}
+	for _, want := range []string{"description is missing. The game needs it.", "visibility.lan is missing. The game needs it."} {
+		if !strings.Contains(body, want) {
+			t.Errorf("errors lack %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "is not allowed") {
+		t.Errorf("a missing key is worded as a wrong value:\n%s", body)
 	}
 }
 

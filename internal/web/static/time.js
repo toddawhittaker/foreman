@@ -89,8 +89,22 @@
     }
     var age = document.createElement("span");
     age.textContent = " (" + relative(date) + ")";
+    ages.push({ date: date, el: age, plain: false });
+    if (el.hasAttribute("data-age-only")) {
+      // The full text and the age alone are both written; the style sheet
+      // shows one, by the width of the panel (DESIGN 8.2).
+      var full = document.createElement("span");
+      full.className = "time-full";
+      full.append.apply(full, el.childNodes);
+      full.append(age);
+      var short = document.createElement("span");
+      short.className = "time-short";
+      short.textContent = relative(date);
+      ages.push({ date: date, el: short, plain: true });
+      el.replaceChildren(short, full);
+      return;
+    }
     el.append(age);
-    ages.push({ date: date, el: age });
   }
 
   function refresh() {
@@ -98,7 +112,7 @@
       return a.el.isConnected;
     });
     ages.forEach(function (a) {
-      a.el.textContent = " (" + relative(a.date) + ")";
+      a.el.textContent = a.plain ? relative(a.date) : " (" + relative(a.date) + ")";
     });
   }
 

@@ -142,14 +142,18 @@ test.describe("a world in the list", () => {
     expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
     expect(switchTo.x).toBeGreaterThan(name.x);
     if (phone(page)) {
-      // Last played has the whole row, so its date, clock and age fit in two lines (label plus two lines is under 80 px).
-      const played = await box(second.locator(".facts > div").filter({ hasText: "Last played" }));
-      const row = await box(second.locator(".facts"));
-      expect(played.width).toBeGreaterThanOrEqual(row.width - 1);
-      expect(played.height).toBeLessThan(80);
-      // Three rows of facts: version and Space Age, Last played, disk use.
-      expect((await box(second)).height).toBeLessThan(280);
+      // Last played shows only the age on a phone, not the date and clock (DESIGN 8.2).
+      await expect(second.locator("time .time-short")).toBeVisible();
+      await expect(second.locator("time .time-full")).toBeHidden();
+      const shown = await second.locator("time").innerText();
+      expect(shown.trim()).toBe("10 years ago");
+      expect(shown).not.toMatch(/\d:\d\d/);
+      // Four facts in two rows, as on a wide screen.
+      expect((await box(second)).height).toBeLessThan(200);
     } else {
+      await expect(second.locator("time .time-full")).toBeVisible();
+      await expect(second.locator("time .time-short")).toBeHidden();
+      await expect(second.locator("time")).toContainText(/\d:\d\d.*UTC \(10 years ago\)/);
       // Four facts in two rows, so a world takes well under the 250 px it used to.
       expect((await box(second)).height).toBeLessThan(140);
     }

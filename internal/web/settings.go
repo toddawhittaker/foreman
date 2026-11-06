@@ -279,6 +279,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		p.Name, p.Description, p.MaxPlayers = in.Name, in.Description, in.MaxPlayers
 		p.Interval, p.Slots, p.Verify, p.AutoPause = in.Interval, in.Slots, in.Verify, in.AutoPause
 		p.Admins, p.Edit, p.formErrors = in.Admins, edit, errs
+		p.PasswordDropped = in.Password != ""
 		if v := gamesettings.Visibility(in.Visibility); slices.Contains(gamesettings.FormVisibilities, v) {
 			p.Visibility = in.Visibility
 		}

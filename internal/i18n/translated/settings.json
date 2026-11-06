@@ -23,6 +23,7 @@
   "settings.done.saved": "a1102063",
   "settings.done.saved_plain": "ae493e21",
   "settings.err.enum": "beaa3e29",
+  "settings.err.missing": "1e20b1ab",
   "settings.err.not_object": "03e8d1e4",
   "settings.err.other": "09251da3",
   "settings.err.range": "e417a98f",
@@ -49,6 +50,7 @@
   "settings.note.running": "5e464c17",
   "settings.note.running_raw": "a4ef0da1",
   "settings.password.both": "d63e28aa",
+  "settings.password.dropped": "2e05b1b3",
   "settings.password.keep": "2a3a9a1d",
   "settings.password.keep_none": "d494cd5d",
   "settings.password.legend": "3ad08cdb",
@@ -98,5 +100,5 @@
   "settings.visibility.lan": "e02b3f44",
   "settings.visibility.legend": "7448611d",
   "settings.visibility.public": "8b4032bd",
-  "settings.visibility.unset": "4b9c35f3"
+  "settings.visibility.unset": "d73698a2"
 }

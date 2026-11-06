@@ -285,7 +285,10 @@ type SettingsPage struct {
 	// Visibility is "lan", "hidden", or "" when neither is chosen.
 	Visibility string
 	// VisibilityHint explains an unset or public visibility.
-	VisibilityHint    i18n.Msg
+	VisibilityHint i18n.Msg
+	// PasswordDropped is true when a form was refused after a password was
+	// typed: the page never carries it back, so it must be entered again.
+	PasswordDropped   bool
 	PasswordSet       bool
 	MaxPlayers        string
 	Interval, Slots   string

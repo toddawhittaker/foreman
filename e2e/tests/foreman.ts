@@ -269,7 +269,7 @@ export function seedWorld(
     JSON.stringify({ format_version: 1, name: "Base", game_version: "2.1.24", space_age: opts.spaceAge ?? false, created_at: "2026-11-01T10:00:00Z" }),
   );
   if (opts.gamePassword) {
-    writeFileSync(join(dir, "config", "server-settings.json"), JSON.stringify({ name: "Base", game_password: opts.gamePassword }));
+    writeFileSync(join(dir, "config", "server-settings.json"), JSON.stringify({ name: "Base", description: "", visibility: { public: false, lan: false }, game_password: opts.gamePassword }));
   }
   if (opts.mods) {
     const spaceAgeOn = opts.spaceAge ?? false;

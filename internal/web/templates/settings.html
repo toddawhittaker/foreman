@@ -80,8 +80,11 @@
         <label for="game-password">{{t "settings.password.new"}}</label>
         <p class="hint" id="pw-hint">{{if .PasswordSet}}{{t "settings.password.keep"}}{{else}}{{t "settings.password.keep_none"}}{{end}}</p>
         <input id="game-password" name="game_password" type="password" autocomplete="new-password"
-          aria-describedby="pw-state pw-hint{{if not .PasswordError.IsZero}} pw-error{{end}}"
+          aria-describedby="pw-state pw-hint{{if .PasswordDropped}} pw-dropped{{end}}{{if not .PasswordError.IsZero}} pw-error{{end}}"
           {{- if not .PasswordError.IsZero}} aria-invalid="true"{{end}}>
+        {{- if .PasswordDropped}}
+        <p class="hint" id="pw-dropped"><strong>{{t "common.label.note"}}</strong> {{t "settings.password.dropped"}}</p>
+        {{- end}}
         {{- if not .PasswordError.IsZero}}
         <p class="error" id="pw-error"><strong>{{t "common.error.label"}}</strong> {{msg .PasswordError}}</p>
         {{- end}}

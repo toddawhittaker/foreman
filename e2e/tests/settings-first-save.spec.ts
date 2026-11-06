@@ -20,6 +20,9 @@ test("the first save of a name, a password and max players writes the keys the g
   await page.goto("/worlds/base/settings");
   await expect(page.getByLabel("Server name")).toHaveValue("Base");
   await expect(page.getByRole("radio", { name: "Hidden" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Hidden" })).toHaveAccessibleDescription(
+    "The file has no visibility yet. Hidden will be written unless another is chosen.",
+  );
 
   await page.getByLabel("New password").fill(typed);
   await page.getByLabel("Maximum players").fill("8");

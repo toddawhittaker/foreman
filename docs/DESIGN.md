@@ -936,9 +936,12 @@ Space Age, last played and disk use. The active world carries the word
 square) beside its name, and is listed first. A world that can be switched
 to has a "Switch" button beside its name (its accessible name is "Switch to"
 and the world's name); section 6 ("What a phone shows first") gives the
-row's grid. On a narrow panel the Last played fact takes the whole row
-(`.fact--wide`), so its date, clock with zone and age fit in two lines in
-every language. The word carries the
+row's grid. On a narrow panel the Last played fact shows only the age
+("1 hour ago"), so it fits its half of the row in every language; the
+world's own page and a wide panel keep the date, clock with zone and age.
+`time.js` writes both texts into the `time` element (`data-age-only`),
+the style sheet shows one by the panel's width, and the exact time stays in
+`datetime`. Without script the page keeps the server's UTC text. The word carries the
 meaning; the orange matches the selected tab. A list with a `dl` per item
 reflows at any width, where a six-column table would not fit 320 px. The
 list sits in one inner panel and its rows are separated by a 1px `rule`

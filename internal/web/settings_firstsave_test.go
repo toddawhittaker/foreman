@@ -43,7 +43,8 @@ func TestSettingsFirstSaveWritesRequiredKeys(t *testing.T) {
 	r.removeSettingsFile()
 
 	body := r.getAs(r.cookie, r.path("")).Body.String()
-	for _, want := range []string{`value="Base"`, `id="visibility-hidden" name="visibility" value="hidden" checked`} {
+	for _, want := range []string{`value="Base"`, `id="visibility-hidden" name="visibility" value="hidden" checked`,
+		"The file has no visibility yet. Hidden will be written unless another is chosen."} {
 		if !strings.Contains(body, want) {
 			t.Errorf("first form lacks %q:\n%s", want, body)
 		}
