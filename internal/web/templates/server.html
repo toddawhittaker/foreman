@@ -1,16 +1,16 @@
-{{define "title"}}Server{{end}}
+{{define "title"}}{{t "server.title"}}{{end}}
 
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "countdown.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<h1>Server</h1>
+<h1>{{t "server.title"}}</h1>
 {{- if not .HasWorld}}
 <section class="panel" aria-labelledby="none-heading">
-  <h2 id="none-heading">No active world</h2>
-  <p class="empty">No world is active yet, so there is no server to run. Import a world or upload a save on the Worlds page; the first world becomes the active one.</p>
-  <div class="actions"><a href="{{worldsPath}}" class="button">Go to Worlds</a></div>
+  <h2 id="none-heading">{{t "server.none.heading"}}</h2>
+  <p class="empty">{{t "server.none.text"}}</p>
+  <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
 </section>
 {{- else}}
 <div sse-swap="announce" hidden></div>
@@ -18,15 +18,15 @@
 <div class="actions" sse-swap="active">{{template "server-active" .}}</div>
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
 <section class="panel" aria-labelledby="control-heading">
-  <h2 id="control-heading" tabindex="-1">Start and stop</h2>
+  <h2 id="control-heading" tabindex="-1">{{t "server.control.heading"}}</h2>
   <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
 </section>
 <section class="panel" aria-labelledby="status-heading">
-  <h2 id="status-heading">Status</h2>
+  <h2 id="status-heading">{{t "server.status.heading"}}</h2>
   <div sse-swap="facts">{{template "server-facts" .}}</div>
 </section>
 <section class="panel" aria-labelledby="players-heading">
-  <h2 id="players-heading">Players online</h2>
+  <h2 id="players-heading">{{t "server.players.heading"}}</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
 <div sse-swap="others">{{template "server-others" .}}</div>
@@ -40,13 +40,13 @@
 {{define "server-others" -}}
 {{- with .OtherWorlds}}
 <section class="panel" aria-labelledby="others-heading">
-  <h2 id="others-heading">Switch to another world</h2>
+  <h2 id="others-heading">{{t "server.others.heading"}}</h2>
   <ul class="worlds" role="list">
     {{- range .}}
     <li>
       <h3>{{.Name}}</h3>
-      <p>Factorio {{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}of an unknown version{{end}}{{if .SpaceAge}}, with Space Age{{end}}</p>
-      <div class="actions"><a href="{{$.SwitchPath .ID}}" class="button" id="act-switch-{{.ID}}">Switch to {{.Name}}</a></div>
+      <p>{{if .GameVersion}}{{if .SpaceAge}}{{tHTML "server.others.version_space_age" "version" (code .GameVersion)}}{{else}}{{tHTML "server.others.version" "version" (code .GameVersion)}}{{end}}{{else if .SpaceAge}}{{t "server.others.unknown_space_age"}}{{else}}{{t "server.others.unknown"}}{{end}}</p>
+      <div class="actions"><a href="{{$.SwitchPath .ID}}" class="button" id="act-switch-{{.ID}}">{{t "server.others.switch" "world" .Name}}</a></div>
     </li>
     {{- end}}
   </ul>
@@ -57,7 +57,7 @@
 {{/* The link to the active world's page. During a switch it moves to the
      new world once that is active (SPEC 7.9). */}}
 {{define "server-active" -}}
-<a href="{{.ActivePath}}" id="act-world">Active world: {{.ActiveName}}</a>
+<a href="{{.ActivePath}}" id="act-world">{{t "server.active" "world" .ActiveName}}</a>
 {{- end}}
 
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
@@ -65,24 +65,24 @@
      cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
 {{define "server-facts" -}}
 <dl class="facts">
-  <div><dt>State</dt><dd><span class="state state--{{.Status.State}}">{{.StateWord}}</span></dd></div>
-  {{- with .Switching}}
-  <div><dt>Switching</dt><dd>{{.}}</dd></div>
+  <div><dt>{{t "server.facts.state"}}</dt><dd><span class="state state--{{.Status.State}}">{{msg .StateWord}}</span></dd></div>
+  {{- if not .Switching.IsZero}}
+  <div><dt>{{t "server.facts.switching"}}</dt><dd>{{msg .Switching}}</dd></div>
   {{- end}}
   {{- if .FactsKnown}}
-  <div><dt>Uptime</dt><dd>{{if .Running}}<time datetime="{{.UptimeISO}}">{{.Uptime}}</time>{{else}}Not running{{end}}</dd></div>
-  <div><dt>Game version</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}Unknown{{end}}</dd></div>
+  <div><dt>{{t "server.facts.uptime"}}</dt><dd>{{if .Running}}<time datetime="{{.UptimeISO}}">{{msg .Uptime}}</time>{{else}}{{t "server.facts.not_running"}}{{end}}</dd></div>
+  <div><dt>{{t "server.facts.game_version"}}</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}{{t "server.facts.unknown"}}{{end}}</dd></div>
   {{- with .Status.Save}}
-  <div><dt>Save loaded</dt><dd>{{.}}</dd></div>
+  <div><dt>{{t "server.facts.save"}}</dt><dd>{{.}}</dd></div>
   {{- end}}
   {{- if .Status.HaveUsage}}
-  <div><dt>CPU</dt><dd>{{.CPU}}</dd></div>
-  <div><dt>Memory</dt><dd>{{bytes .Status.MemoryBytes}}</dd></div>
+  <div><dt>{{t "server.facts.cpu"}}</dt><dd>{{t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent)}}</dd></div>
+  <div><dt>{{t "server.facts.memory"}}</dt><dd>{{bytes .Status.MemoryBytes}}</dd></div>
   {{- end}}
   {{- end}}
 </dl>
-{{- with .Status.Reason}}
-<p>{{.}}</p>
+{{- if not .Reason.IsZero}}
+<p>{{msg .Reason}}</p>
 {{- end}}
 {{- end}}
 
@@ -91,77 +91,79 @@
 {{define "server-players" -}}
 {{- if .PlayerTable}}{{with .PlayerTable}}
 <table>
-  <caption>{{.Caption}}</caption>
-  <thead><tr><th scope="col">Player</th><th scope="col" class="num">Online for</th></tr></thead>
+  <caption>{{msg .Caption}}</caption>
+  <thead><tr><th scope="col">{{t "server.players.player"}}</th><th scope="col" class="num">{{t "server.players.online_for"}}</th></tr></thead>
   <tbody>
     {{- range .Players}}
-    <tr><td>{{.Name}}</td><td class="num">{{if .Joined.IsZero}}unknown{{else}}{{$.Since .Duration}}{{end}}</td></tr>
+    <tr><td>{{.Name}}</td><td class="num">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
     {{- end}}
   </tbody>
 </table>
 {{- end}}
 {{- else if .PlayersKnown}}
-<p class="empty">Nobody is online.</p>
+<p class="empty">{{t "server.online.nobody"}}</p>
 {{- else if eq .Status.State "unknown"}}
-<p class="empty">Foreman cannot see whether anyone is online.</p>
+<p class="empty">{{t "server.players.cannot_see"}}</p>
 {{- else if .PlayersError}}
-<p class="empty">Foreman could not ask the game who is online. It tries again with the next update.</p>
-{{- else if eq .Status.State "starting" "stopping"}}
-<p class="empty">Players are not listed while the server is {{.Status.State}}.</p>
+<p class="empty">{{t "server.players.failed"}}</p>
+{{- else if eq .Status.State "starting"}}
+<p class="empty">{{t "server.players.not_listed_starting"}}</p>
+{{- else if eq .Status.State "stopping"}}
+<p class="empty">{{t "server.players.not_listed_stopping"}}</p>
 {{- else}}
-<p class="empty">Nobody can be online while the game is not running.</p>
+<p class="empty">{{t "server.players.not_running"}}</p>
 {{- end}}
 {{- end}}
 
 {{/* The last action's error and what can be done next. Takes *Failure. */}}
 {{define "server-failure" -}}
 <div class="message {{.Class}}">
-  <p><strong>{{.Word}}</strong> {{if not .Earlier.IsZero}}Earlier, at <time datetime="{{isoTime .Earlier}}">{{utc .Earlier}}</time>: {{end}}{{.Message}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{.Label}}</a>{{end}}</p>
+  <p><strong>{{msg .Word}}</strong> {{if not .Earlier.IsZero}}{{tHTML "server.failure.earlier" "time" (when .Earlier) "message" .Message}}{{else}}{{msgHTML .Message}}{{end}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{msg .Label}}</a>{{end}}</p>
   {{- with .Problems}}
   <ul>
     {{- range .}}
-    <li>{{.}}</li>
+    <li>{{msg .}}</li>
     {{- end}}
   </ul>
   {{- end}}
   {{- if .Undo}}
-  <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot.</p>
-  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">Restore "Before restore"</a></div>
+  <p>{{t "server.failure.undo_text"}}</p>
+  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button"}}</a></div>
   {{- end}}
   {{- with .Anyway}}
-  {{- with .Advice}}
-  <p>{{.}}</p>
+  {{- if not .Advice.IsZero}}
+  <p>{{msg .Advice}}</p>
   {{- end}}
-  <p>If you choose {{.Verb}}, Foreman will:</p>
+  <p>{{t "server.anyway.intro" "verb" .Verb}}</p>
   <ul>
     {{- if .Update}}
-    <li>Download the game image for Factorio {{.Version}} first, if Foreman does not have it. If the download fails, nothing else happens.</li>
+    <li>{{t "server.anyway.update.download" "version" .Version}}</li>
     {{- if .Running}}
-    <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop it.</li>
+    <li>{{t "server.anyway.warn" "countdown" .Countdown}}</li>
     {{- end}}
-    <li>Take a snapshot of {{.World}}, labelled "Before update". If the snapshot fails, nothing else happens.</li>
-    <li>Set the world's game version to {{.Version}}.</li>
+    <li>{{t "server.anyway.update.snapshot" "world" .World}}</li>
+    <li>{{t "server.anyway.update.set" "version" .Version}}</li>
     {{- if .Running}}
-    <li>Start the game on {{.Version}}. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
+    <li>{{t "server.anyway.update.start" "version" .Version}}</li>
     {{- else}}
-    <li>Leave the server stopped, because it is not running now.</li>
+    <li>{{t "server.anyway.leave_stopped"}}</li>
     {{- end}}
-    <li>To undo, use Roll back on the world's page.</li>
+    <li>{{t "server.anyway.update.undo"}}</li>
     {{- else if .Switch}}
     {{- if .Running}}
-    <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop {{.From}}.</li>
+    <li>{{t "server.anyway.switch.warn" "countdown" .Countdown "from" .From}}</li>
     {{- end}}
-    <li>Take a snapshot of {{.From}} and of {{.World}}, both labelled "Before switch", and one more of {{.World}}, labelled "Before start anyway". If a snapshot fails, nothing else happens.</li>
-    <li>Make {{.World}} the active world.</li>
-    <li>Start the game on {{.World}}. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
-    <li>To undo, switch back to {{.From}}, or restore a snapshot from the Snapshots page.</li>
+    <li>{{t "server.anyway.switch.snapshots" "from" .From "world" .World}}</li>
+    <li>{{t "server.anyway.switch.present" "world" .World}}</li>
+    <li>{{t "server.anyway.switch.start" "world" .World}}</li>
+    <li>{{t "server.anyway.switch.undo" "from" .From}}</li>
     {{- else}}
     {{- if and .Restart .Running}}
-    <li>Warn players online with a {{.Countdown}}-second countdown, save the game and stop it.</li>
+    <li>{{t "server.anyway.warn" "countdown" .Countdown}}</li>
     {{- end}}
-    <li>Take a snapshot of {{.World}}, labelled "Before start anyway". If the snapshot fails, nothing else happens.</li>
-    <li>Start the game. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
-    <li>To undo, restore that snapshot from the Snapshots page.</li>
+    <li>{{t "server.anyway.start.snapshot" "world" .World}}</li>
+    <li>{{t "server.anyway.start.start"}}</li>
+    <li>{{t "server.anyway.start.undo"}}</li>
     {{- end}}
   </ul>
   <form method="post" action="{{.Path}}" class="actions">
@@ -177,7 +179,7 @@
     {{- if or .Switch .Restart .Update}}
     <input type="hidden" name="countdown" value="{{.Countdown}}">
     {{- end}}
-    <button type="submit" class="button button--danger" id="act-anyway">{{.Verb}}</button>
+    <button type="submit" class="button button--danger" id="act-anyway">{{msg .Verb}}</button>
   </form>
   {{- end}}
 </div>
@@ -188,26 +190,23 @@
      action's result leads the page, the crash is marked as earlier. After a
      crash loop the same box offers the ways to recover (SPEC 17.9). */}}
 {{define "server-crash" -}}
-{{- $earlier := not .CrashLeads}}
 <div class="message message--warning">
-  <p><strong>Warning:</strong> {{if $earlier}}Earlier{{with .Status.LastCrash}}{{if not .IsZero}}, at <time datetime="{{isoTime .}}">{{utc .}}</time>{{end}}{{end}}: the{{else}}The{{end}} game crashed
-    {{- if eq .Status.State "crash-looping"}} again and again, so Foreman stopped it{{.Status.CrashReason}}.
-    {{- else}}{{if and (not $earlier) (not .Status.LastCrash.IsZero)}} at <time datetime="{{isoTime .Status.LastCrash}}">{{utc .Status.LastCrash}}</time>{{end}}{{.Status.CrashReason}}. Docker is starting it again.{{end}}
-    {{- if not .Status.CrashReason}} Foreman could not tell why from the log.{{end}}</p>
+  <p><strong>{{t "server.label.warning"}}</strong> {{msgHTML .CrashMessage}}
+    {{- if .Status.Crash.IsZero}} {{t "server.crash.no_reason"}}{{end}}</p>
   {{- if .CrashLooping}}
-  <p>Fix what the game reported, for example {{.World.Name}}'s mods or its save, then try to start it again.{{if or .RecoverRestore .RecoverSwitch}} Or put things back as they were before:{{end}}</p>
+  <p>{{if or .RecoverRestore .RecoverSwitch}}{{t "server.crash.fix_or" "world" .World.Name}}{{else}}{{t "server.crash.fix" "world" .World.Name}}{{end}}</p>
   {{- if or .RecoverRestore .RecoverSwitch}}
   <div class="actions">
     {{- with .RecoverRestore}}
-    <a href="{{.Path}}" class="button" id="act-recover-restore">{{.Label}} ({{utc .At}})</a>
+    <a href="{{.Path}}" class="button" id="act-recover-restore">{{msg .Label}}</a>
     {{- end}}
     {{- with .RecoverSwitch}}
-    <a href="{{.Path}}" class="button" id="act-switch-back">Switch back to {{.Name}}</a>
+    <a href="{{.Path}}" class="button" id="act-switch-back">{{t "server.switch_back" "world" .Name}}</a>
     {{- end}}
   </div>
   {{- end}}
   {{- end}}
-  <p><a href="{{.ConsolePath}}" id="act-console">Read the full log on the Console page</a></p>
+  <p><a href="{{.ConsolePath}}" id="act-console">{{t "server.crash.console"}}</a></p>
 </div>
 {{- end}}
 
@@ -217,9 +216,9 @@
 <ol class="steps" role="list">
   {{- range $step := .Steps}}
   {{- /* countdown.js counts the time left down in place, so the buttons are never swapped each second (DESIGN 7.6). */}}
-  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{$.StepWord .State}}</span> <span class="step-name">{{.Name}}{{with $.Left .}}: <span data-until="{{isoTime $step.Until}}">{{.}}</span>{{end}}</span>
+  <li{{if eq .State "progress"}} aria-current="step"{{end}}><span class="step-state {{$.StepClass .State}}">{{msg ($.StepWord .State)}}</span> <span class="step-name">{{msg ($.StepName $step)}}{{with $.Left .}}{{if not .IsZero}}: <span data-until="{{isoTime $step.Until}}">{{msg .}}</span>{{end}}{{end}}</span>
     {{- if eq .State "progress"}}
-    <progress aria-label="{{.Name}}"></progress>
+    <progress aria-label="{{msg ($.StepName $step)}}"></progress>
     {{- end}}
     {{- if and (eq .State "failed") $.Failure}}{{if eq $.Failure.In $.In}}
     {{template "server-failure" $.Failure}}
@@ -241,87 +240,87 @@
 {{- end}}
 {{- range .OtherErrors}}
 <div class="message message--error">
-  <p><strong>Error:</strong> {{.}}</p>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .}}</p>
 </div>
 {{- end}}
-{{- with .Done}}
+{{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1"{{if $.FocusResult}} autofocus{{end}}>
-  <p><strong>Done:</strong> {{.}} Finished at <time datetime="{{isoTime $.DoneAt}}">{{utc $.DoneAt}}</time>.</p>
+  <p><strong>{{t "server.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (when $.DoneAt)}}</p>
   <div class="actions">
     {{- with $.Undo}}
-    <a href="{{.Path}}" class="button" id="act-undo">{{.Label}}</a>
+    <a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a>
     {{- end}}
-    <a href="{{$.SnapshotsPath}}" id="act-snapshots">Go to Snapshots</a>
+    <a href="{{$.SnapshotsPath}}" id="act-snapshots">{{t "server.go_snapshots"}}</a>
   </div>
 </div>
 {{- end}}
 {{- if .ShowOperation}}
-<h3>{{.OperationHeading}}</h3>
+<h3>{{msg .OperationHeading}}</h3>
 {{template "server-steps" .OperationList}}
 {{- end}}
 {{- with .CancelStopPath}}
-<form method="post" action="{{.}}" class="actions"><button type="submit" class="button button--primary" id="act-cancel-stop">Cancel stop</button></form>
+<form method="post" action="{{.}}" class="actions"><button type="submit" class="button button--primary" id="act-cancel-stop">{{t "server.cancel_stop"}}</button></form>
 {{- end}}
-{{- with .SwitchNote}}
-<p>{{.}}</p>
+{{- if not .SwitchNote.IsZero}}
+<p>{{msg .SwitchNote}}</p>
 {{- end}}
-{{- with .Status.Notice}}
+{{- if not .Notice.IsZero}}
 <div class="message message--warning">
-  <p><strong>Warning:</strong> {{.Text}}</p>
+  <p><strong>{{t "server.label.warning"}}</strong> {{msg .Notice}}</p>
 </div>
 {{- end}}
 {{- with .LoneSwitchBack}}
-<div class="actions"><a href="{{.Path}}" class="button" id="act-switch-back">Switch back to {{.Name}}</a></div>
+<div class="actions"><a href="{{.Path}}" class="button" id="act-switch-back">{{t "server.switch_back" "world" .Name}}</a></div>
 {{- end}}
 {{- if .ShowDownload}}
-<h3>{{if .Status.Download.Done}}The download failed{{else}}Downloading the game image{{end}}</h3>
+<h3>{{if .Status.Download.Done}}{{t "server.op.download_failed"}}{{else}}{{t "server.op.download"}}{{end}}</h3>
 {{template "server-steps" .DownloadList}}
 {{- end}}
 {{- if and .Crashed (not .CrashLeads)}}
 {{template "server-crash" .}}
 {{- end}}
-{{- if not .CrashLooping}}{{with .StartBlocked}}
+{{- if not .CrashLooping}}{{if not .StartBlocked.IsZero}}
 <div class="message message--note">
-  <p><strong>Note:</strong> {{.}}</p>
+  <p><strong>{{t "server.label.note"}}</strong> {{msg .StartBlocked}}</p>
 </div>
 {{- end}}{{end}}
-{{- with .ImageNote}}
+{{- if not .ImageNote.IsZero}}
 <div class="message message--note">
-  <p><strong>Note:</strong> {{.}}</p>
+  <p><strong>{{t "server.label.note"}}</strong> {{msg .ImageNote}}</p>
 </div>
 {{- end}}
-{{- with .Downloaded}}
+{{- if not .Downloaded.IsZero}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{.}}</p>
+  <p><strong>{{t "server.label.done"}}</strong> {{msg .Downloaded}}</p>
 </div>
 {{- end}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload .CanSnapshot}}
 <div class="actions">
   {{- if .OffersDownload}}
-  <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary" id="act-pull">Download game image</button></form>
+  <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary" id="act-pull">{{t "server.action.download"}}</button></form>
   {{- end}}
   {{- if .ImageMissing}}
-  {{- else if .StartBlocked}}
-  <form method="post" action="{{.StartPath}}"><button type="submit" class="button" id="act-start">Try to start again</button></form>
+  {{- else if not .StartBlocked.IsZero}}
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button" id="act-start">{{t "server.action.try_again"}}</button></form>
   {{- else if .CanStart}}
-  <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{.StartLabel}}</button></form>
+  <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
   {{- if .CanStop}}
-  <a href="{{.StopPath}}" class="button" id="act-stop">Stop server</a>
+  <a href="{{.StopPath}}" class="button" id="act-stop">{{t "server.action.stop"}}</a>
   {{- end}}
   {{- if .CanRestart}}
-  <a href="{{.RestartPath}}" class="button" id="act-restart">Restart server</a>
+  <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
   {{- end}}
   {{- if .CanSnapshot}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">Take snapshot</button></form>
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "server.action.snapshot"}}</button></form>
   {{- end}}
   {{- if .CanForceStop}}
   {{- /* A plain link: it weighs less than Stop and Restart (DESIGN 6). */}}
-  <a href="{{.ForceStopPath}}" id="act-force-stop">Force stop</a>
+  <a href="{{.ForceStopPath}}" id="act-force-stop">{{t "server.action.force_stop"}}</a>
   {{- end}}
 </div>
 {{- end}}
-{{- with .ActionsNote}}
-<p>{{.}}</p>
+{{- if not .ActionsNote.IsZero}}
+<p>{{msg .ActionsNote}}</p>
 {{- end}}
 {{- end}}

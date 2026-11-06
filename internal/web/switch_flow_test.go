@@ -200,7 +200,7 @@ func TestRefusedSwitchNamesTheWorldOnStart(t *testing.T) {
 // #142: a start the pre-start check refused is titled "Start refused" and
 // lists only the step that ran, not the ones skipped.
 func TestStartRefusedListsNoSkippedSteps(t *testing.T) {
-	pe := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveNewer, Text: "The save is from a newer game."}}}}
+	pe := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Text: "The save is from a newer game."}}}}
 	p := serverCase(game.StateStopped, func(p *ServerPage) {
 		p.Status.Operation = &game.Operation{Action: game.AuditStart, Done: true, Error: pe.Error(), Steps: []game.Step{
 			{Name: game.StepCheck, State: game.StepFailed}, {Name: game.StepImage, State: game.StepSkipped}, {Name: game.StepLoad, State: game.StepSkipped},

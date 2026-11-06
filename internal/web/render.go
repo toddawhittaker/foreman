@@ -281,10 +281,16 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"tHTML": loc.HTML,
 		"link":  loc.Link,
 		"code":  i18n.Code,
-		// msg renders an i18n.Msg from a view model.
+		// when is a time element and game Factorio's own words, for tHTML.
+		"when": i18n.Time,
+		"game": i18n.Game,
+		// msg renders an i18n.Msg from a view model; msgHTML one whose
+		// arguments hold fragments.
 		"msg":      loc.Format,
+		"msgHTML":  loc.FormatHTML,
 		"bytes":    loc.Bytes,
 		"num":      loc.Num,
+		"decimal1": loc.OneDecimal,
 		"duration": loc.Duration,
 		"lang":     loc.String,
 		"jsStrings": func() map[string]any {

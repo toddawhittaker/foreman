@@ -23,7 +23,7 @@ func reasonOf(redact func(string) string, lines ...string) string {
 	for _, l := range lines {
 		f.add(l)
 	}
-	return f.reason(redact)
+	return f.reason(redact).text()
 }
 
 const incompatible = "    • Incompatible Factorio version (current: 2.1, required: 2.0)"

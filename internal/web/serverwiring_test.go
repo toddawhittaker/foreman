@@ -169,7 +169,7 @@ func TestNoImageFailureLinksTheWorldPage(t *testing.T) {
 			"Foreman could not download "+image20+": Docker Hub has no image with that version. ",
 			`<a href="`+c.path+`" id="act-failure-next">Check the world&#39;s game version on its page.</a>`)
 		wantNone(t, name, html, "manifest unknown")
-		if got := resultAnnouncement(p); !strings.Contains(got, "Check the world's game version on its page.") {
+		if got := english(resultAnnouncement(p)); !strings.Contains(got, "Check the world's game version on its page.") {
 			t.Errorf("%s: announcement %q lacks the next step", name, got)
 		}
 	}

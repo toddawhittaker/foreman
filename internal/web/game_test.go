@@ -220,7 +220,7 @@ func TestStartAnyway(t *testing.T) {
 
 	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
 	body := g.waitPage("the save that would load does not match the world", "foreman-test", "Start anyway")
-	for _, want := range []string{`"Before start anyway"`, "restore that snapshot from the Snapshots page",
+	for _, want := range []string{`&#34;Before start anyway&#34;`, "restore that snapshot from the Snapshots page",
 		`<form method="post" action="/worlds/` + id + `/start" class="actions">`, `name="anyway" value="1"`, "Refused"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("refusal box lacks %q:\n%s", want, body)
@@ -297,7 +297,7 @@ func TestReadCountdown(t *testing.T) {
 		r, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(c.form.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		form, got := readCountdown(r)
-		if got != c.want || (form.CountdownError != "") != c.bad {
+		if got != c.want || !form.CountdownError.IsZero() != c.bad {
 			t.Errorf("%v: got %+v, error %q", c.form, got, form.CountdownError)
 		}
 	}
@@ -529,7 +529,7 @@ func TestDurationText(t *testing.T) {
 		3*time.Hour + 12*time.Minute + 59: "3 h 12 min",
 	}
 	for d, want := range cases {
-		if got := durationText(d); got != want {
+		if got := english(durationText(d)); got != want {
 			t.Errorf("%s: %q, want %q", d, got, want)
 		}
 	}

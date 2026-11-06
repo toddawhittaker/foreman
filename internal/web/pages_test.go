@@ -97,7 +97,7 @@ func TestFailedRestoreLinksToItsUndo(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 500, user: "todd", page: RestorePage{WorldID: "base", WorldName: "Base",
 		Snapshot: snapshotsCase().Snapshots[0], Error: "Foreman could not finish the restore.", Undo: "20261103T150000Z"}})
-	wantIn(t, "restore page", body, `Foreman took the snapshot "Before restore" first`,
+	wantIn(t, "restore page", body, `Foreman took the snapshot &#34;Before restore&#34; first`,
 		`href="/worlds/base/snapshots/20261103T150000Z/restore"`)
 }
 

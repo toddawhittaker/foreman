@@ -334,6 +334,8 @@ func (l Locale) arg(v any) string {
 	switch v := v.(type) {
 	case Msg:
 		return l.Format(v)
+	case Fragment:
+		return v.text
 	case string:
 		return v
 	case int, int64, int32, uint, uint64, uint32:
@@ -358,6 +360,13 @@ func toInt(v any) (int, bool) {
 // Num formats a number with l's digit grouping and decimal mark.
 func (l Locale) Num(n any) string {
 	return message.NewPrinter(l.tag()).Sprint(number.Decimal(n))
+}
+
+// OneDecimal formats v with exactly one fraction digit, such as a
+// percentage: "12.0" in English, "12,0" in German.
+func (l Locale) OneDecimal(v float64) string {
+	return message.NewPrinter(l.tag()).Sprint(number.Decimal(v,
+		number.MinFractionDigits(1), number.MaxFractionDigits(1)))
 }
 
 // Bytes formats a size in decimal units with one fraction digit, as
@@ -407,27 +416,46 @@ func (l Locale) Duration(d time.Duration) string {
 
 // Fragment is a piece of trusted markup for a placeholder of HTML. Only
 // Link and Code make one, and both escape what they wrap.
-type Fragment struct{ html string }
+type Fragment struct{ html, text string }
 
 // Link is a link to href, which must be one of Foreman's own paths, whose
 // text is linkKey's translation.
 func (l Locale) Link(href, linkKey string) Fragment {
 	esc := template.HTMLEscapeString
-	return Fragment{`<a href="` + esc(href) + `">` + esc(l.T(linkKey)) + `</a>`}
+	text := l.T(linkKey)
+	return Fragment{`<a href="` + esc(href) + `">` + esc(text) + `</a>`, text}
 }
 
 // Code wraps s, such as a file name, in a code element.
 func Code(s string) Fragment {
-	return Fragment{"<code>" + template.HTMLEscapeString(s) + "</code>"}
+	return Fragment{"<code>" + template.HTMLEscapeString(s) + "</code>", s}
+}
+
+// Time is a time element for t, in UTC as pages show times (SPEC 17.11).
+func Time(t time.Time) Fragment {
+	t = t.UTC()
+	text := t.Format("2006-01-02 15:04 UTC")
+	return Fragment{`<time datetime="` + t.Format(time.RFC3339) + `">` + text + `</time>`, text}
+}
+
+// Game marks s as Factorio's own words, which stay English (SPEC 22.3).
+func Game(s string) Fragment {
+	return Fragment{`<span lang="en">` + template.HTMLEscapeString(s) + `</span>`, s}
 }
 
 // HTML translates key as T does, for a sentence that holds markup. The
 // sentence and every plain argument are escaped; each Fragment argument
 // goes in as it is, at its placeholder, so the translator decides where
 // the markup goes in the sentence.
-func (l Locale) HTML(key string, kv ...any) template.HTML {
-	m := M(key, kv...)
-	e, from := l.lookup(key)
+func (l Locale) HTML(key string, kv ...any) template.HTML { return l.FormatHTML(M(key, kv...)) }
+
+// FormatHTML is HTML for a Msg, so a view model can carry a sentence with
+// fragments. A Msg argument is filled in the same way, markup and all.
+func (l Locale) FormatHTML(m Msg) template.HTML {
+	if m.Key == "" {
+		return template.HTML(template.HTMLEscapeString(m.raw)) //nolint:gosec // escaped
+	}
+	e, from := l.lookup(m.Key)
 	p := from.pattern(e, m)
 	esc := template.HTMLEscapeString
 	var b strings.Builder
@@ -446,6 +474,8 @@ func (l Locale) HTML(key string, kv ...any) template.HTML {
 		default:
 			if f, isFragment := v.(Fragment); isFragment {
 				b.WriteString(f.html)
+			} else if sub, isMsg := v.(Msg); isMsg {
+				b.WriteString(string(l.FormatHTML(sub)))
 			} else {
 				b.WriteString(esc(l.arg(v)))
 			}

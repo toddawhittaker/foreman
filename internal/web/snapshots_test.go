@@ -70,7 +70,7 @@ func TestSnapshotTakeListAndRestore(t *testing.T) {
 	}
 
 	form := hn.get(restorePath(id, snap), withCookie(c)).Body.String()
-	if !strings.Contains(form, `Restore the snapshot "First"`) || !strings.Contains(form, "Before restore") {
+	if !strings.Contains(form, `Restore the snapshot &#34;First&#34;`) || !strings.Contains(form, "Before restore") {
 		t.Errorf("confirmation:\n%s", form)
 	}
 	hn.clock.Advance(time.Minute)

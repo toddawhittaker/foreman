@@ -22,7 +22,7 @@ func TestBlockedStartIsAnnounced(t *testing.T) {
 	if err := l.send(serverCase(game.StateCrashLooping, func(*ServerPage) {})); err != nil {
 		t.Fatal(err)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "Server is now crash-looping "+blockedAnnouncement) {
+	if body := rec.Body.String(); !strings.Contains(body, "Server is now crash-looping "+english(blockedAnnouncement)) {
 		t.Errorf("the blocked start is not read out:\n%s", body)
 	}
 }

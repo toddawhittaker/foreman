@@ -3,15 +3,12 @@ package web
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -270,77 +267,6 @@ func (s *server) gameRoutes() {
 	s.handleLong("GET "+PathGameEvents, s.requireUser(s.handleEvents))
 }
 
-// gameError turns an error from server control into a status and words for
-// the admin. Anything it does not know goes to worldError; a 500 means the
-// caller logs the error and shows no detail.
-func gameError(err error) (int, string) {
-	if pe, ok := errors.AsType[*game.PrecheckError](err); ok {
-		return http.StatusConflict, precheckLeadFor(pe.Check, false, "") + " " + pe.Error()
-	}
-	switch {
-	case errors.Is(err, game.ErrAlreadyRunning), errors.Is(err, game.ErrNotRunning),
-		errors.Is(err, game.ErrNotReady), errors.Is(err, game.ErrImageMissing),
-		errors.Is(err, game.ErrRCONUnreachable), errors.Is(err, game.ErrSaveTimeout),
-		errors.Is(err, game.ErrStartFailed), errors.Is(err, game.ErrCancelled),
-		errors.Is(err, game.ErrStopCancelled), errors.Is(err, game.ErrNoCountdown),
-		errors.Is(err, game.ErrDownloading), errors.Is(err, game.ErrForeign), errors.Is(err, game.ErrPaused),
-		errors.Is(err, world.ErrSaveInFuture),
-		errors.Is(err, game.ErrNetwork), errors.Is(err, game.ErrSwitchSame), errors.Is(err, game.ErrSwitchNotActive),
-		errors.Is(err, game.ErrSwitchNoTarget), errors.Is(err, game.ErrSwitchTargetRunning),
-		errors.Is(err, game.ErrSwitchNoActive), errors.Is(err, game.ErrSwitchUnreadable), errors.Is(err, game.ErrSwitchNewer),
-		errors.Is(err, game.ErrSwitchBusy), errors.Is(err, game.ErrSwitchUnsettled),
-		errors.Is(err, game.ErrSwitchUnavailable), errors.Is(err, game.ErrWorldNotActive),
-		errors.Is(err, world.ErrVersionNotNewer), errors.Is(err, world.ErrVersionUnsupported), errors.Is(err, world.ErrNoRollback):
-		return http.StatusConflict, sentence(err)
-	case errors.Is(err, game.ErrCountdown):
-		return http.StatusBadRequest, sentence(err)
-	}
-	// A Docker that answers nothing has a plain sentence of its own; the raw
-	// transport error stays in the log.
-	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
-		return http.StatusServiceUnavailable, ue.Error() + ". Nothing was done."
-	}
-	if de, ok := errors.AsType[*game.ImageDownloadError](err); ok {
-		return http.StatusBadGateway, downloadFailure(de, "Try again.")
-	}
-	// Any other failed connection is wrapped in *url.Error.
-	if _, ok := errors.AsType[*url.Error](err); ok {
-		return http.StatusServiceUnavailable, "Foreman cannot reach Docker, so nothing was done. Check that Docker is running and that Foreman can reach it, then try again."
-	}
-	return worldError(err)
-}
-
-// noImageAdvice is the next step after a download Docker Hub has no image
-// for; the Server page makes it a link to the world's page (SPEC 17.9).
-const noImageAdvice = "Check the world's game version on its page."
-
-func noImageLead(de *game.ImageDownloadError) string {
-	return "Foreman could not download " + de.Image + ": Docker Hub has no image with that version."
-}
-
-// downloadFailure words a failed image download: the image, the cause the
-// admin can act on and the next step. The daemon's own text stays in the log.
-func downloadFailure(de *game.ImageDownloadError, retry string) string {
-	if de.NotFound {
-		return noImageLead(de) + " " + noImageAdvice
-	}
-	return "Foreman could not download " + de.Image + ". The details are in Foreman's log. " + retry
-}
-
-// gameRefusal is refusal for server control errors.
-func (s *server) gameRefusal(w http.ResponseWriter, r *http.Request, u store.User, what string, err error) (status int, msg string, ok bool) {
-	status, msg = gameError(err)
-	switch status {
-	case http.StatusNotFound:
-		s.notFound(w, r, u)
-		return 0, "", false
-	case http.StatusInternalServerError:
-		s.fail(w, r, what, err)
-		return 0, "", false
-	}
-	return status, msg, true
-}
-
 // activeWorld returns the active world; found is false when none is.
 func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 	list, err := s.worlds.List(ctx)
@@ -459,7 +385,7 @@ func (s *server) startable(w http.ResponseWriter, r *http.Request, u store.User)
 	}
 	if !sum.Active {
 		s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict,
-			Detail: i18n.Raw("Only the active world can be started. This world is not the active one.")})
+			Detail: i18n.M("server.start.not_active")})
 		return world.Summary{}, false
 	}
 	return sum, true
@@ -481,7 +407,7 @@ func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, h
 func (s *server) beginTo(w http.ResponseWriter, r *http.Request, to string, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	if !s.runs.runOn(ids, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
-			Detail: i18n.Raw("Foreman is shutting down. Try again once it is back.")})
+			Detail: i18n.M("server.shutting_down")})
 		return false
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
@@ -540,7 +466,7 @@ func (s *server) handleStart(w http.ResponseWriter, r *http.Request, u store.Use
 // be warned.
 type CountdownForm struct {
 	Countdown      string
-	CountdownError string
+	CountdownError i18n.Msg
 	Online         Online
 }
 
@@ -554,7 +480,7 @@ func readCountdown(r *http.Request) (CountdownForm, game.StopOptions) {
 	}
 	n, err := strconv.Atoi(f.Countdown)
 	if err != nil || n < 0 || n > maxCountdownSeconds {
-		f.CountdownError = fmt.Sprintf("Enter a whole number of seconds from 0 to %d", maxCountdownSeconds)
+		f.CountdownError = i18n.M("server.countdown.invalid", "max", maxCountdownSeconds)
 		return f, game.StopOptions{}
 	}
 	return f, game.StopOptions{Countdown: time.Duration(n) * time.Second}
@@ -587,27 +513,25 @@ func (s *server) online(ctx context.Context, id string) Online {
 }
 
 // Text names who is online.
-func (o Online) Text() string {
+func (o Online) Text() i18n.Msg {
 	switch {
 	case o.Failed:
-		return "Foreman could not ask the game who is online."
+		return i18n.M("server.online.failed")
 	case len(o.Names) == 0:
-		return "Nobody is online."
-	case len(o.Names) == 1:
-		return "1 player online: " + o.Names[0] + "."
+		return i18n.M("server.online.nobody")
 	}
-	return fmt.Sprintf("%d players online: %s.", len(o.Names), strings.Join(o.Names, ", "))
+	return i18n.M("server.online.names", "count", len(o.Names), "names", strings.Join(o.Names, ", "))
 }
 
 // Disconnected says who a forced stop disconnects.
-func (o Online) Disconnected() string {
+func (o Online) Disconnected() i18n.Msg {
 	switch {
 	case !o.Asked || o.Failed:
-		return "Players online are disconnected."
+		return i18n.M("server.online.disconnected_unknown")
 	case len(o.Names) == 0:
-		return "Nobody is online."
+		return i18n.M("server.online.nobody")
 	}
-	return "These players are disconnected: " + strings.Join(o.Names, ", ") + "."
+	return i18n.M("server.online.disconnected", "names", strings.Join(o.Names, ", "))
 }
 
 // StopPage asks how to warn players before a stop or restart (SPEC 7.5,
@@ -620,11 +544,11 @@ type StopPage struct {
 
 func (StopPage) templateName() string { return "stop" }
 func (StopPage) navItem() string      { return PathServer }
-func (p StopPage) hasErrors() bool    { return p.CountdownError != "" }
+func (p StopPage) hasErrors() bool    { return !p.CountdownError.IsZero() }
 
 // Problems lists the countdown field's error for the summary.
 func (p StopPage) Problems() []Problem {
-	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
+	return problems(Problem{"countdown", p.CountdownError})
 }
 
 // Path is where the form posts.
@@ -634,9 +558,6 @@ func (p StopPage) Path() string {
 	}
 	return gamePath(p.World.ID, "stop")
 }
-
-// Verb is the action's name, for headings and the button.
-func (p StopPage) Verb() string { return choose(p.Restart, "Restart", "Stop") }
 
 func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.findWorld(w, r, u)
@@ -666,7 +587,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 		return
 	}
 	form, stop := readCountdown(r)
-	if form.CountdownError != "" {
+	if !form.CountdownError.IsZero() {
 		form.Online = s.online(r.Context(), sum.ID)
 		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
 		return
@@ -757,7 +678,7 @@ func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u stor
 	}
 	if err != nil && !errors.Is(err, game.ErrNoCountdown) {
 		if status, msg, ok := s.gameRefusal(w, r, u, "cancel the stop", err); ok {
-			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: i18n.Raw(msg)})
+			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: msg})
 		}
 		return
 	}
