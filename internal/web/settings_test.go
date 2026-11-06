@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -156,8 +156,8 @@ func (r *settingsRig) noSecrets(rec page) {
 	}
 }
 
-// formValues is the form as the page shows it for settingsFile.
-func formValues() url.Values {
+// settingsFormValues is the form as the page shows it for settingsFile.
+func settingsFormValues() url.Values {
 	return url.Values{
 		"name": {"Family base"}, "description": {"Come play"}, "visibility": {"lan"},
 		"max_players": {"0"}, "autosave_interval": {"10"}, "autosave_slots": {"5"},
@@ -233,7 +233,7 @@ func TestSettingsFormShowsValuesNotSecrets(t *testing.T) {
 // taken first and the secrets are never shown, only that they will be set.
 func TestSettingsFormPreviewAndConfirm(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("name", "Renamed <b>")
 	form.Set("max_players", "12")
 	form.Set("visibility", "hidden")
@@ -322,7 +322,7 @@ func TestSettingsFormPreviewAndConfirm(t *testing.T) {
 // keeps the edits, not the password.
 func TestSettingsPasswordIsWriteOnly(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("game_password", "newpass-typed")
 	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
 
@@ -344,7 +344,7 @@ func TestSettingsPasswordIsWriteOnly(t *testing.T) {
 	}
 
 	// Remove and a new password together is a field error.
-	form = formValues()
+	form = settingsFormValues()
 	form.Set("game_password", "x")
 	form.Set("game_password_remove", "on")
 	rec := r.postAs(r.cookie, r.path(""), form)
@@ -354,7 +354,7 @@ func TestSettingsPasswordIsWriteOnly(t *testing.T) {
 	}
 
 	// Remove clears it and the diff says "removed", without a value.
-	form = formValues()
+	form = settingsFormValues()
 	form.Set("game_password_remove", "on")
 	body = r.postAs(r.cookie, r.path(""), form).Body.String()
 	if !strings.Contains(body, "The value is not shown. It will be removed.") {
@@ -365,7 +365,7 @@ func TestSettingsPasswordIsWriteOnly(t *testing.T) {
 // SPEC 11.3: a form that changes nothing says so and offers no save.
 func TestSettingsNothingChanged(t *testing.T) {
 	r := newSettingsRig(t)
-	rec := r.postAs(r.cookie, r.path(""), formValues())
+	rec := r.postAs(r.cookie, r.path(""), settingsFormValues())
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK || !strings.Contains(body, "Nothing changed. The settings already hold these values.") ||
 		strings.Contains(body, "Save settings") || strings.Contains(body, `name="token"`) {
@@ -380,7 +380,7 @@ func TestSettingsNothingChanged(t *testing.T) {
 // text as typed.
 func TestSettingsFormErrors(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("name", "  ")
 	form.Set("max_players", "ten")
 	form.Set("autosave_interval", "-1")
@@ -406,7 +406,7 @@ func TestSettingsFormErrors(t *testing.T) {
 // SPEC 11.3: a token belongs to its user, its world and its 15 minutes.
 func TestSettingsTokenOwnershipAndExpiry(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("max_players", "9")
 	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
 
@@ -455,7 +455,7 @@ func TestSettingsTokenOwnershipAndExpiry(t *testing.T) {
 // unseen: the browser gets the new diff with a warning, and no snapshot.
 func TestSettingsFileChangedSincePreview(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("max_players", "9")
 	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
 
@@ -493,7 +493,7 @@ func TestSettingsFileChangedSincePreview(t *testing.T) {
 // A change that the other edit already made leaves nothing to save.
 func TestSettingsChangeAlreadyMade(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("max_players", "9")
 	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
 	r.write(world.ServerSettingsFile, strings.Replace(settingsFile, `"max_players": 0`, `"max_players": 9`, 1))
@@ -626,7 +626,7 @@ func TestSettingsAdmins(t *testing.T) {
 	if !strings.Contains(body, ">Alice\nbob</textarea>") {
 		t.Errorf("admins not shown:\n%s", body)
 	}
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("admins", "bob\ncarol\"quote")
 	body = r.postAs(r.cookie, r.path(""), form).Body.String()
 	for _, want := range []string{"Added admin carol&#34;quote", "Removed admin Alice"} {
@@ -655,7 +655,7 @@ func TestSettingsAdmins(t *testing.T) {
 // says why.
 func TestSettingsNewerWorldIsReadOnly(t *testing.T) {
 	r := newSettingsRig(t)
-	form := formValues()
+	form := settingsFormValues()
 	form.Set("max_players", "9")
 	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
 
@@ -722,56 +722,56 @@ func TestSettingsDoneNeedsASettingsSnapshot(t *testing.T) {
 	}
 }
 
-type fakeSaver struct {
-	calls []string
-	rig   *gameRig
-	err   error
+// writeConfig puts a settings file into a world made by the game rig.
+func (g *gameRig) writeConfig(id, file, text string) {
+	g.t.Helper()
+	dir := filepath.Join(g.worlds.Dirs().Worlds, id, world.ConfigDir)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		g.t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, file), []byte(text), 0o600); err != nil { //nolint:gosec // a test temp folder
+		g.t.Fatal(err)
+	}
 }
 
-func (f *fakeSaver) SaveSettings(_ context.Context, id string, _ game.Actor, file string, data []byte, seen string) (world.Snapshot, bool, error) {
-	f.calls = append(f.calls, id+"|"+file+"|"+seen)
-	if f.err != nil {
-		return world.Snapshot{}, false, f.err
-	}
-	cur, err := f.rig.worlds.ReadConfig(id, file)
+func (g *gameRig) settingsSnapshots(id string) int {
+	g.t.Helper()
+	c, err := g.worlds.CountWorldSnapshots(id)
 	if err != nil {
-		return world.Snapshot{}, false, err
+		g.t.Fatal(err)
 	}
-	if cur.Hash != seen {
-		return world.Snapshot{}, false, errSettingsChanged
+	n := 0
+	for _, u := range c.Snapshots() {
+		if u.Reason == world.ReasonSettings {
+			n++
+		}
 	}
-	unlock, err := f.rig.worlds.Lock(id)
-	if err != nil {
-		return world.Snapshot{}, false, err
-	}
-	defer unlock()
-	snap, err := f.rig.worlds.AutoSnapshot(id, world.ReasonSettings, world.LabelBeforeSettings, "alice")
-	if err != nil {
-		return world.Snapshot{}, false, err
-	}
-	if err := f.rig.worlds.WriteConfigHeld(id, file, data); err != nil {
-		return world.Snapshot{}, false, err
-	}
-	return snap, file == world.ServerSettingsFile, nil
+	return n
 }
 
-// SPEC 11.3: a running world's change says it needs a restart, in the
-// preview and after saving, with a Restart link; the game layer saves.
+func settingsSavedAudits(g *gameRig) int {
+	n := 0
+	for _, e := range g.audit() {
+		if e.Action == AuditSettingsSave {
+			n++
+		}
+	}
+	return n
+}
+
+// SPEC 11.3, 6.10, 11.1: a running world's change says it needs a restart,
+// in the preview and after saving, with a Restart link. The game layer saves
+// the game, takes the snapshot and sends the admin change over RCON.
 func TestSettingsRunningWorld(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
 	path := settingsPath(id)
-
-	saver := &fakeSaver{rig: g}
-	prev := newSettingsSaver
-	newSettingsSaver = func(*game.Controller) settingsSaver { return saver }
-	t.Cleanup(func() { newSettingsSaver = prev })
+	g.writeConfig(id, world.ServerSettingsFile, `{"name": "Old"}`)
 
 	if body := g.get(path); !strings.Contains(body, "The server is running. Changes to these settings take effect after a restart.") {
 		t.Errorf("form lacks the running note:\n%s", body)
 	}
-	form := url.Values{"name": {"Live"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}, "admins": {"carol"}}
-	rep := g.post(path, form)
+	rep := g.post(path, url.Values{"name": {"Live"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}, "admins": {"carol"}})
 	if rep.StatusCode != http.StatusOK {
 		t.Fatalf("preview %d:\n%s", rep.StatusCode, rep.body)
 	}
@@ -782,11 +782,25 @@ func TestSettingsRunningWorld(t *testing.T) {
 		}
 	}
 	conf := g.post(path+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}})
-	if conf.StatusCode != http.StatusSeeOther || !strings.Contains(conf.Header.Get("Location"), "&restart=1&live=1") {
-		t.Fatalf("confirm %d to %q\n%s", conf.StatusCode, conf.Header.Get("Location"), conf.body)
+	loc := conf.Header.Get("Location")
+	if conf.StatusCode != http.StatusSeeOther || !strings.Contains(loc, "&snap=") || !strings.Contains(loc, "&restart=1&live=1") {
+		t.Fatalf("confirm %d to %q\n%s", conf.StatusCode, loc, conf.body)
 	}
-	if len(saver.calls) != 2 || !strings.HasPrefix(saver.calls[0], id+"|server-settings.json|") || !strings.HasPrefix(saver.calls[1], id+"|server-adminlist.json|") {
-		t.Errorf("saver calls %q", saver.calls)
+	if g.settingsSnapshots(id) != 2 {
+		t.Errorf("want one snapshot per file, got %d", g.settingsSnapshots(id))
+	}
+	if cmds := g.commands(id); !slices.Contains(cmds, "/server-save") || !slices.Contains(cmds, "/promote carol") {
+		t.Errorf("RCON commands %q: want a save and a promote", cmds)
+	}
+	if cfg, err := g.worlds.ReadConfig(id, world.ServerSettingsFile); err != nil || !strings.Contains(string(cfg.Data), `"name": "Live"`) {
+		t.Errorf("server-settings.json %q %v", cfg.Data, err)
+	}
+	if settingsSavedAudits(g) != 2 {
+		t.Errorf("audit entries: %d", settingsSavedAudits(g))
+	}
+	// The game writes the admin list, not Foreman.
+	if cfg, err := g.worlds.ReadConfig(id, world.ServerAdminListFile); err != nil || cfg.Found {
+		t.Errorf("Foreman wrote the admin list of a running game: %v %v", cfg.Found, err)
 	}
 	// The page the redirect names, built from the known path rather than the header.
 	done := g.get(path + "?saved=1&restart=1&live=1")
@@ -797,45 +811,59 @@ func TestSettingsRunningWorld(t *testing.T) {
 	}
 }
 
-// Without a game layer that can save, a running world's settings are not
-// written behind its back.
-func TestSettingsRunningWorldWithoutSaverRefuses(t *testing.T) {
+// A name with a space cannot be sent to a running game's console, so the form
+// says so before the preview.
+func TestSettingsRunningAdminNameWithSpace(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
-	path := settingsPath(id)
-	before, err := g.worlds.ReadConfig(id, world.ServerSettingsFile)
-	if err != nil {
-		t.Fatal(err)
+	rep := g.post(settingsPath(id), url.Values{"name": {"Live"}, "admins": {"Mary Ann"}})
+	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(rep.body, "The name Mary Ann has a space, so it cannot be added or removed while the server is running.") {
+		t.Errorf("%d\n%s", rep.StatusCode, rep.body)
 	}
-	prev := newSettingsSaver
-	newSettingsSaver = func(*game.Controller) settingsSaver { return nil }
-	t.Cleanup(func() { newSettingsSaver = prev })
-
-	rep := g.post(path, url.Values{"name": {"Live"}, "description": {""}, "max_players": {"4"}, "autosave_interval": {""}, "autosave_slots": {""}})
-	conf := g.post(path+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}})
-	if conf.StatusCode != http.StatusConflict || !strings.Contains(conf.body, "cannot save the settings of a running server") {
-		t.Errorf("confirm %d:\n%s", conf.StatusCode, conf.body)
-	}
-	after, err := g.worlds.ReadConfig(id, world.ServerSettingsFile)
-	if err != nil || after.Hash != before.Hash {
-		t.Error("the file changed while the game ran")
+	// Stopped, the same name is fine.
+	g2 := newGameRig(t, image21)
+	id2 := g2.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	rep = g2.post(settingsPath(id2), url.Values{"name": {"Live"}, "admins": {"Mary Ann"}})
+	if rep.StatusCode != http.StatusOK {
+		t.Errorf("stopped: %d\n%s", rep.StatusCode, rep.body)
 	}
 }
 
-// The game layer's failure shows on the form and does not claim a save.
-func TestSettingsSaveFailureIsShown(t *testing.T) {
+// With a game controller and a stopped game the controller saves: snapshot,
+// audit entry and write, and the Done link names the snapshot.
+func TestSettingsStoppedWorldSavesThroughController(t *testing.T) {
 	g := newGameRig(t, image21)
-	id := g.startRunning()
-	saver := &fakeSaver{rig: g, err: world.ErrBusy}
-	prev := newSettingsSaver
-	newSettingsSaver = func(*game.Controller) settingsSaver { return saver }
-	t.Cleanup(func() { newSettingsSaver = prev })
-
-	rep := g.post(settingsPath(id), url.Values{"name": {"Live"}, "description": {""}, "max_players": {"4"}, "autosave_interval": {""}, "autosave_slots": {""}})
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.writeConfig(id, world.ServerSettingsFile, `{"name": "Old", "game_password": "hunter2-secret"}`)
+	rep := g.post(settingsPath(id), url.Values{"name": {"New"}, "max_players": {"4"}})
 	conf := g.post(settingsPath(id)+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}})
-	if conf.StatusCode != http.StatusConflict || !strings.Contains(conf.body, "Another operation is running on this world.") ||
-		strings.Contains(conf.body, "Settings saved") {
-		t.Errorf("failure %d:\n%s", conf.StatusCode, conf.body)
+	loc := conf.Header.Get("Location")
+	if conf.StatusCode != http.StatusSeeOther || !strings.Contains(loc, "&snap=") || strings.Contains(loc, "restart") {
+		t.Fatalf("confirm %d to %q\n%s", conf.StatusCode, loc, conf.body)
+	}
+	cfg, err := g.worlds.ReadConfig(id, world.ServerSettingsFile)
+	if err != nil || !strings.Contains(string(cfg.Data), `"name": "New"`) || !strings.Contains(string(cfg.Data), `"max_players": 4`) ||
+		!strings.Contains(string(cfg.Data), "hunter2-secret") {
+		t.Errorf("file %q %v", cfg.Data, err)
+	}
+	if g.settingsSnapshots(id) != 1 || settingsSavedAudits(g) != 1 {
+		t.Errorf("snapshots %d, audits %d", g.settingsSnapshots(id), settingsSavedAudits(g))
+	}
+}
+
+// A file the game layer refuses is not written, and the page says what to do.
+func TestSettingsInvalidFileIsRefused(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	g.writeConfig(id, world.ServerSettingsFile, `{"name": "Old", "max_players": "ten"}`)
+	rep := g.post(settingsPath(id), url.Values{"name": {"New"}})
+	conf := g.post(settingsPath(id)+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}})
+	if conf.StatusCode != http.StatusUnprocessableEntity || !strings.Contains(conf.body, "Foreman checked the new settings again and refused them") ||
+		!strings.Contains(conf.body, "Edit server-settings.json as JSON") {
+		t.Errorf("confirm %d\n%s", conf.StatusCode, conf.body)
+	}
+	if cfg, err := g.worlds.ReadConfig(id, world.ServerSettingsFile); err != nil || strings.Contains(string(cfg.Data), "New") {
+		t.Errorf("an invalid file was written: %q %v", cfg.Data, err)
 	}
 }
 

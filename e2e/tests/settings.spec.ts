@@ -275,7 +275,7 @@ test("a long name and a long description do not break the layout", async ({ page
 });
 
 test.describe("a running world", () => {
-  test("the form and the preview say changes need a restart", async ({ page, foreman, fakeGame }) => {
+  test("the form and the preview say changes need a restart, and saving offers Restart", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman);
     await fakeGame!.call("/image", { ref: image21, on: true });
     await page.getByRole("button", { name: "Start server" }).click();
@@ -293,5 +293,17 @@ test.describe("a running world", () => {
     await expect(page.getByText("Promote and demote these players in the running game")).toBeVisible();
     await checkPage(page);
     expect(existsSync(join(foreman.dataDir, "snapshots", "base"))).toBe(false);
+
+    // Saving saves the running game, takes the snapshot and sends the admin change to the game; the
+    // message then offers Restart, so the next step is a control.
+    await page.getByRole("button", { name: "Save settings" }).click();
+    const done = page.locator(".message--success");
+    await expect(done).toContainText("Settings saved. Foreman took the snapshot");
+    await expect(done).toContainText("take effect after a restart");
+    await expect(done.getByRole("link", { name: "Restart server" })).toHaveAttribute("href", "/worlds/base/restart");
+    await checkPage(page);
+    expect(JSON.parse(read(foreman.dataDir)).max_players).toBe(8);
+    expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).length).toBe(2);
+    expect((await fakeGame!.state()).containers[0].commands).toContain("/promote Alice");
   });
 });

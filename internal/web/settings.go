@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
@@ -40,37 +42,6 @@ func settingsRawPath(id, file string) string {
 // ActiveSettingsPath is the settings page of the world the Server page is
 // about (DESIGN 8.10).
 func (p ServerPage) ActiveSettingsPath() string { return p.ActivePath() + "/settings" }
-
-// settingsSaver is what the game layer offers for saving a settings file of
-// a world whose game may be running (SPEC 11.3, 6.10). It takes the world's
-// lock; saves the running game; takes an automatic snapshot with reason
-// world.ReasonSettings; refuses with an error when the file's hash is no
-// longer seen; writes the file atomically (for server-adminlist.json on a
-// running world it sends /promote and /demote instead, and lets the game
-// write the file); and records the audit entry AuditSettingsSave. restart is
-// true when the change takes effect only after a restart. The snapshot is
-// the zero value when none was taken.
-type settingsSaver interface {
-	SaveSettings(ctx context.Context, id string, by game.Actor, file string, data []byte, seen string) (snap world.Snapshot, restart bool, err error)
-}
-
-// newSettingsSaver returns the game controller's saver, or nil when the
-// controller has none. Tests replace it.
-var newSettingsSaver = func(c *game.Controller) settingsSaver {
-	if c == nil {
-		return nil
-	}
-	sv, _ := any(c).(settingsSaver)
-	return sv
-}
-
-var (
-	// errSettingsChanged means the file's hash is not the one previewed.
-	errSettingsChanged = errors.New("the settings file changed since it was previewed")
-	// errSettingsNeedGame means a running game must save the file, and the
-	// game layer cannot.
-	errSettingsNeedGame = errors.New("the game is not stopped and the game layer cannot save its settings")
-)
 
 type settingsHandlers struct {
 	s       *server
@@ -280,6 +251,15 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 			adminErr = i18n.M("settings.admins.bad_name", "line", bad, "max", gamesettings.MaxNameBytes)
 		}
 	}
+	if adminErr.IsZero() && sw.running && in.AdminsPosted && !sw.adminsBroken {
+		promote, demote := gamesettings.AdminDiff(sw.admins, names)
+		for _, n := range append(promote, demote...) {
+			if strings.ContainsFunc(n, unicode.IsSpace) {
+				adminErr = i18n.M("settings.admins.running_space", "name", n)
+				break
+			}
+		}
+	}
 	edit2 := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Carried: carried, Names: names}
 	files, errs, err := buildFiles(sw, edit2)
 	if err != nil {
@@ -486,11 +466,15 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 			rest.Files = append(rest.Files, f)
 		}
 	}
-	if errors.Is(err, errSettingsChanged) || h.moved(sw, rest) {
+	if errors.Is(err, game.ErrSettingsChanged) || h.moved(sw, rest) {
 		h.showPreview(w, r, u, sw, *rest, true)
 		return
 	}
 	status, msg := settingsError(err)
+	if errors.Is(err, game.ErrSettingsInvalid) {
+		// The error names a line and a key, never a value.
+		s.log.Warn("settings refused", "world", id, "file", failed.File, "error", err)
+	}
 	if status == http.StatusInternalServerError || status == http.StatusNotFound || msg.IsZero() {
 		s.log.Error("save settings", "path", r.URL.Path, "world", id, "file", failed.File, "error", err)
 		status, msg = http.StatusInternalServerError, i18n.M("settings.error.failed")
@@ -506,8 +490,8 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 // settingsError words a refusal of a settings save.
 func settingsError(err error) (int, i18n.Msg) {
 	switch {
-	case errors.Is(err, errSettingsNeedGame):
-		return http.StatusConflict, i18n.M("settings.error.needs_game")
+	case errors.Is(err, game.ErrSettingsInvalid):
+		return http.StatusUnprocessableEntity, i18n.M("settings.error.invalid")
 	case errors.Is(err, world.ErrConfigTooBig):
 		return http.StatusRequestEntityTooLarge, i18n.M("settings.error.too_big", "size", i18n.Size(gamesettings.MaxBytes))
 	}
@@ -516,19 +500,36 @@ func settingsError(err error) (int, i18n.Msg) {
 
 // save writes one file of a change. With server control the game layer does
 // it, because a running game must be saved first and told of an admin change
-// (SPEC 6.10, 11.3). A stopped game, or none, has nothing to save, so Foreman
-// does the rest itself in the same order.
+// (SPEC 6.10, 11.3). With none there is no game to save, so Foreman does the
+// rest itself in the same order. The snapshot returned is the one the save
+// took, when it can be found.
 func (h *settingsHandlers) save(ctx context.Context, u store.User, id string, f pendingFile) (world.Snapshot, bool, error) {
 	s := h.s
-	if s.game != nil {
-		if sv := newSettingsSaver(s.game); sv != nil {
-			return sv.SaveSettings(ctx, id, actor(u), f.File, f.New, f.Hash)
-		}
-		if s.game.Status(id).State != game.StateStopped {
-			return world.Snapshot{}, false, errSettingsNeedGame
+	if s.game == nil {
+		return h.saveStopped(ctx, u, id, f)
+	}
+	start := s.now()
+	res, err := s.game.SaveSettings(ctx, id, actor(u), game.SettingsChange{File: f.File, Data: f.New, SeenHash: f.Hash})
+	if err != nil {
+		return world.Snapshot{}, false, err
+	}
+	return h.settingsSnapshotSince(id, start), res.RestartNeeded, nil
+}
+
+// settingsSnapshotSince is the newest snapshot of the settings reason taken
+// at or after start, or the zero value; it only names a link in the Done
+// message.
+func (h *settingsHandlers) settingsSnapshotSince(id string, start time.Time) world.Snapshot {
+	count, err := h.s.worlds.CountWorldSnapshots(id)
+	if err != nil {
+		return world.Snapshot{}
+	}
+	for _, u := range count.Snapshots() {
+		if u.Reason == world.ReasonSettings && !u.TakenAt.Before(start) {
+			return u.Snapshot
 		}
 	}
-	return h.saveStopped(ctx, u, id, f)
+	return world.Snapshot{}
 }
 
 func (h *settingsHandlers) saveStopped(ctx context.Context, u store.User, id string, f pendingFile) (world.Snapshot, bool, error) {
@@ -543,7 +544,7 @@ func (h *settingsHandlers) saveStopped(ctx context.Context, u store.User, id str
 		return world.Snapshot{}, false, err
 	}
 	if cur.Hash != f.Hash {
-		return world.Snapshot{}, false, errSettingsChanged
+		return world.Snapshot{}, false, game.ErrSettingsChanged
 	}
 	snap, err := s.worlds.AutoSnapshot(id, world.ReasonSettings, world.LabelBeforeSettings, u.Username)
 	if err != nil {
