@@ -43,7 +43,7 @@
   "accounts.setup.confirm.mismatch": "W obu polach należy podać to samo hasło",
   "accounts.setup.submit": "Utwórz konto administratora",
   "accounts.signedout.title": "Wylogowano",
-  "accounts.signedout.heading": "Wylogowano",
+  "accounts.signedout.heading": "Wylogowano z Foremana",
   "accounts.signedout.text": "Sesja na tym urządzeniu została zakończona.",
   "accounts.signedout.again": "Zaloguj ponownie",
   "accounts.proxy.refused": "To konto nie ma uprawnień do korzystania z Foremana. Należy poprosić osobę zarządzającą Foremanem o nadanie dostępu.",

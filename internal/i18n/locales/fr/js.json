@@ -1,10 +1,10 @@
 {
-  "js.import.many": "Plusieurs dossiers choisis : chacun utilise son propre nom, sa propre version et son propre réglage de l'Ère spatiale.",
+  "js.import.many": "Plusieurs dossiers choisis : chacun utilise son propre nom, sa propre version et son propre réglage de l’Ère spatiale.",
   "js.import.same": "Identique à la sauvegarde",
   "js.import.same.unreadable": "Identique à la sauvegarde (illisible, choisissez ou saisissez une version)",
   "js.import.same.version": "Identique à la sauvegarde ({version})",
-  "js.import.suggested": "Nom du monde suggéré : {name}.",
-  "js.import.warning": "Avertissement : {text}",
+  "js.import.suggested": "Nom du monde suggéré : {name}.",
+  "js.import.warning": "Avertissement : {text}",
   "js.live.moved": "Le monde actif a changé.",
-  "js.live.stopped": "Les mises à jour en direct se sont arrêtées. Rechargez la page pour voir l'état actuel."
+  "js.live.stopped": "Les mises à jour en direct se sont arrêtées. Rechargez la page pour voir l’état actuel."
 }

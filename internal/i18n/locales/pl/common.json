@@ -13,7 +13,7 @@
   "common.countdown.label": "Odliczanie w sekundach",
   "common.countdown.hint": "Gracze online zobaczą w grze ostrzeżenie, a potem gra zapisze stan i się zatrzyma. Od 0 do 600 sekund; 0 oznacza brak ostrzeżenia: gra od razu zapisze stan i się zatrzyma. Jeśli nikt nie jest online, nikt nie zostanie ostrzeżony.",
   "common.summary.heading": {
-    "one": "Aby kontynuować, należy poprawić {count} problem",
+    "one": "Aby kontynuować, należy poprawić ten problem",
     "few": "Aby kontynuować, należy poprawić {count} problemy",
     "many": "Aby kontynuować, należy poprawić {count} problemów"
   },

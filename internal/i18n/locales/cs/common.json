@@ -6,7 +6,7 @@
   "common.nav.console": "Konzole",
   "common.nav.worlds": "Světy",
   "common.nav.snapshots": "Snímky",
-  "common.signedin": "Přihlášený uživatel: {user}",
+  "common.signedin": "Přihlášen jako {user}",
   "common.signout": "Odhlásit",
   "common.language.label": "Jazyk",
   "common.language.submit": "Změnit",
@@ -51,10 +51,10 @@
   "common.error.home": "Přejít na úvodní stránku",
   "common.form.unreadable": "Foreman nemohl přečíst formulář. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu.",
   "common.form.too_large": "Formulář byl příliš velký. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu.",
-  "common.label.warning": "Pozor:",
+  "common.label.warning": "Upozornění:",
   "common.label.done": "Hotovo:",
   "common.label.note": "Poznámka:",
-  "common.label.busy": "Obsazeno:",
+  "common.label.busy": "Probíhá operace:",
   "common.confirm.will": "Co se stane:",
   "common.list.sep": ", "
 }

@@ -40,7 +40,7 @@
   "common.error.notfound.heading": "Seite nicht gefunden",
   "common.error.notfound.text": "Unter dieser Adresse gibt es keine Seite. Prüfe die Adresse oder geh zur Startseite.",
   "common.error.internal.heading": "Etwas ist schiefgelaufen",
-  "common.error.internal.text": "Foreman konnte diese Anfrage nicht abschließen. Die Details stehen im Log von Foreman. Versuche es erneut, und wenn es wieder fehlschlägt, sieh im Log nach.",
+  "common.error.internal.text": "Foreman konnte diese Anfrage nicht abschließen. Die Details stehen im Protokoll von Foreman. Versuche es erneut, und wenn es wieder fehlschlägt, sieh im Protokoll nach.",
   "common.error.other.heading": "Anfrage fehlgeschlagen",
   "common.error.other.text": "Foreman konnte diese Anfrage nicht abschließen. Geh zur Startseite und versuche es erneut.",
   "common.error.code": "Fehlercode {code}",
