@@ -54,7 +54,27 @@ map, so editing it afterwards changes nothing; the fold says so in 11.5),
    form (the game's own default). The first save on a world with no
    `server-settings.json` writes `auto_pause: true` with the three required
    keys. An explicit `false` already in a file is kept.
-8. Mine, not disputed: Make admin (#240) sits beside each connected player on
+8. **Ideas from the two other managers** (design review of Factorio Stack
+   Manager and FactorioHQ, 2026-11-06). Added to this batch:
+   - The Server page heading is the active world's name with its state
+     beside it; a "Join at host:port" line with a Copy address button; the
+     page's links on one row; each world's Switch button beside its name.
+   - The host comes from a new `FOREMAN_PUBLIC_ADDRESS` (SPEC 3.2); the
+     line is hidden when it is blank. Foreman never guesses the address.
+   - The game log colours the game's own Error and Warning lines and has a
+     Download log link served by the server.
+   - The world page gets a menu of links (Overview, Saves, Snapshots,
+     Settings) marking the current page, in place of the "Back to" link and
+     the buttons inside About; the empty "this is the active world" Switch
+     panel goes.
+   - The world list shows the active world's state, and the "0 B" that
+     wraps alone at 320 px is fixed (DESIGN 8.3).
+   - Number fields are about 10 characters wide, not full width.
+   - On Generate: the way to make the map is chosen first, as labelled
+     radios with one-line descriptions; each slider shows its value as a
+     number and a word; the preview says it shows unsaved settings; the
+     seed button reads "Random seed".
+9. Mine, not disputed: Make admin (#240) sits beside each connected player on
    the settings page and goes through the normal edit, preview and confirm;
    the one list of game lines (#220) lives in `internal/mapgen`; the
    "* Required" note shows on every form with a required field (#242).
@@ -81,7 +101,7 @@ A task that needs a shared file it does not own stops and reports.
 | W1-B: one list of game lines | builder, Sonnet high | `internal/mapgen/mapgen.go`, `internal/gamesettings/schema.go`, `internal/mapexchange/decode.go`, `internal/world/builtin.go`, their tests | Refs #220 | 10.8, 5.6 |
 | W1-C: map-settings and achievement data | builder, Opus low | `internal/mapgen/extract.go`, `internal/mapgen/data/**`, new `mapsettings.go` and `achievements.go` with tests, `presets.go`, `internal/mapexchange/layout.go` | Refs #238, #239 | 5.6 |
 | W1-D: preview backend | builder, Opus low | `internal/game/preview.go`, `internal/fakegame/create.go` and `instance.go`, `internal/gameenv`, `internal/web/generate.go`, new `internal/web/genpreview.go`, new `templates/generatepreview.html`, their tests | Refs #233, #234, #236, #237 | 5.6, 14.3, 14.6 |
-| W1-E: header logo, required marks, No warning | ui-designer, Sonnet high | `layout.html` (header, `countdown` partial), `foreman.css`, new `static/icons/logo-*.png`, the form templates except Generate and settings, the locale files above, new `e2e/tests/header-logo.spec.ts` and `required-fields.spec.ts`, e2e helpers, `DESIGN.md` 6 and 7.2 | #244, #241 (button), #242 except Generate and settings | 7.6, 17, 22 |
+| W1-E: shell and hub, two PRs in order (E1 shell, E2 hub) | ui-designer, Opus low | `layout.html` (header, `countdown` partial), `foreman.css`, new `static/icons/logo-*.png`, the templates except Generate and settings (incl. `server.html`, `world.html`, `worlds.html`, `console.html`), `internal/web/serverpage.go`, `console.go`, `live.go` and the world page handlers for their view models and the log download route, `internal/config` (`FOREMAN_PUBLIC_ADDRESS`), README's variable table, the locale files above, new `e2e/tests/header-logo.spec.ts`, `required-fields.spec.ts` and `hub.spec.ts`, the e2e helpers, `click-budgets.spec.ts`, `DESIGN.md` 6, 7.2 and 8.1 to 8.5 | E1: #244, #241 (button), #242 except Generate and settings, number widths. E2: ruling 8's hub items | 3.2, 7.6, 8.6, 17, 22 |
 | W1-F: settings | builder, Sonnet high | `internal/web/settings.go`, `settingsform.go`, `settingsraw.go`, `internal/web/game.go` (stop page return path), the settings templates, new `static/settingsraw.js`, settings locale file, `e2e/tests/settings.spec.ts`, their tests | #240, #241 (e2e and return path), #221 (raw editor), #242 on settings, auto-pause | 11.1, 11.3, 17.9 |
 
 What each must do:
@@ -100,7 +120,10 @@ What each must do:
 - **W1-E:** logo 32 to 48 CSS px with a 2x image, empty `alt`, link named
   "Foreman"; icon only at 320 px; the `required-note` partial and `.req`
   mark; the No warning button in the `countdown` partial; the e2e check
-  fails when a field the server requires is not marked.
+  fails when a field the server requires is not marked; a number-field
+  width class W1-F also uses. E2, from E1's head: the hub items in ruling 8;
+  click budgets from the Server page do not rise; the address never shows
+  when `FOREMAN_PUBLIC_ADDRESS` is blank.
 - **W1-F:** "Connected now" with Make admin; caret on the named line in the
   raw editor; auto-pause ruling 7; the #241 e2e test; Cancel on the stop page
   returns where the person came from; required marks on the settings pages
@@ -135,7 +158,8 @@ view by keyboard alone at 320 px.
   dropped preview leaves no container or folder behind; a modified death
   world reaches InGame with the preset's evolution kept; Enemy and Advanced
   values match what was chosen; auto-pause written on first save.
-- **Fold:** SPEC 5.6 (two ways to make the map, the tabs, `filled_from`,
+- **Fold:** SPEC 3.2 (`FOREMAN_PUBLIC_ADDRESS`), 7.1 and 8.6 (the Server
+  page heading and join line, log colours and download), 5.6 (two ways to make the map, the tabs, `filled_from`,
   achievements, the preview rules), 7.6 (No warning button), 11.1 (Make
   admin, auto-pause), 11.3, 11.5 (#207 note), 14.3, 17 (a new 17.13 on
   required fields, the logo, a Generate row in 17.10 with a budget of 3);
