@@ -1,6 +1,11 @@
 package gamesettings
 
-import "math"
+import (
+	"math"
+	"slices"
+
+	"github.com/toddawhittaker/foreman/internal/mapgen"
+)
 
 // File names Validate knows the keys of.
 const (
@@ -9,7 +14,9 @@ const (
 	FileMapSettings    = "map-settings.json"
 )
 
-// Game lines Validate has key tables for.
+// The game lines the key tables below tell apart. The supported lines come
+// from mapgen.Lines; a line listed there but not here is checked as the
+// newest of these until its keys are added.
 const (
 	Line11 = "1.1"
 	Line20 = "2.0"
@@ -77,9 +84,7 @@ func withKeys(fields map[string]*spec, s *spec, names ...string) map[string]*spe
 // schemaFor returns the table for a file on a game line. ok is false for a
 // file or line without one; such input gets only the checks that need no table.
 func schemaFor(file, line string) (*spec, bool) {
-	switch line {
-	case Line11, Line20, Line21:
-	default:
+	if !slices.Contains(mapgen.Lines, line) {
 		return nil, false
 	}
 	switch file {

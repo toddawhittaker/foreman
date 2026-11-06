@@ -98,7 +98,7 @@ type modListEntry struct {
 func DefaultModList(gameVersion string, spaceAge bool) []byte {
 	entries := []modListEntry{{Name: ModBase, Enabled: true}}
 	var rest []modListEntry
-	for _, name := range alwaysOnMods[gameMinor(gameVersion)] {
+	for _, name := range alwaysOnMods(gameVersion) {
 		rest = append(rest, modListEntry{Name: name, Enabled: true})
 	}
 	for _, name := range SpaceAgeMods(gameVersion) {
