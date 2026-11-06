@@ -86,11 +86,11 @@ func (p RestorePage) WorldPath() string  { return worldPath(p.WorldID) }
 func (RestorePage) templateName() string { return "restore" }
 
 func (p SnapshotsPage) hasErrors() bool { return !p.LabelError.IsZero() || !p.Error.IsZero() }
-func (p RestorePage) hasErrors() bool   { return !p.Error.IsZero() || p.CountdownError != "" }
+func (p RestorePage) hasErrors() bool   { return !p.Error.IsZero() || !p.CountdownError.IsZero() }
 
 // Problems lists the countdown field's error for the summary.
 func (p RestorePage) Problems() []Problem {
-	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
+	return problems(Problem{"countdown", p.CountdownError})
 }
 
 // Problems lists the field errors for the summary (DESIGN 7.2).
@@ -244,12 +244,10 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	}
 	status, msg := http.StatusBadRequest, i18n.Msg{}
 	if err != nil {
-		var text string
 		var ok bool
-		if status, text, ok = s.gameRefusal(w, r, u, "take snapshot", err); !ok {
+		if status, msg, ok = s.gameRefusal(w, r, u, "take snapshot", err); !ok {
 			return
 		}
-		msg = i18n.Raw(text)
 	}
 	p, perr := s.snapshotsPage(r, id, name)
 	if perr != nil {
@@ -350,7 +348,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		if p.Running {
 			var form CountdownForm
 			form, stop = readCountdown(r)
-			if form.CountdownError != "" {
+			if !form.CountdownError.IsZero() {
 				form.Online, p.CountdownForm = p.Online, form
 				s.page(w, r, http.StatusBadRequest, u.Username, p)
 				return
@@ -370,15 +368,15 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 	if err != nil {
 		if before.Name == "" {
 			if status, msg, ok := s.gameRefusal(w, r, u, "restore snapshot", err); ok {
-				p.Error = i18n.Raw(msg)
+				p.Error = msg
 				s.page(w, r, status, u.Username, p)
 			}
 			return
 		}
 		// The undo snapshot exists, so the admin must hear of it whatever
 		// went wrong (SPEC 6.5); a fault's detail stays in the log.
-		status, text := gameError(err)
-		p.Error, p.Undo = i18n.Raw(text), before.Name
+		status, msg := gameError(err)
+		p.Error, p.Undo = msg, before.Name
 		if status == http.StatusInternalServerError || status == http.StatusNotFound {
 			s.log.Error("restore snapshot", "method", r.Method, "path", r.URL.Path, "error", err)
 			status, p.Error = http.StatusInternalServerError, i18n.M("worlds.restore.failed")

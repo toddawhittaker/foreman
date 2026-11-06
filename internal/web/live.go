@@ -33,7 +33,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	if !s.runs.track() {
-		http.Error(w, "Foreman is shutting down.", http.StatusServiceUnavailable)
+		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
 		return
 	}
 	defer s.runs.wg.Done()
@@ -133,18 +133,18 @@ type liveStream struct {
 // failed result stays on the page, so it must not silence the state
 // changes after it.
 func (l *liveStream) send(p ServerPage) error {
-	result := resultAnnouncement(p)
-	say := ""
+	result := l.loc.Format(resultAnnouncement(p))
+	var say i18n.Msg
 	if l.started {
 		switch {
 		case result != "" && result != l.result:
-			say = result
+			say = resultAnnouncement(p)
 		case l.state != p.Status.State:
 			say = announcement(p.Status.State)
 		}
 	}
-	if say != "" && p.StartBlocked() != "" {
-		say += " " + blockedAnnouncement
+	if !say.IsZero() && !p.StartBlocked().IsZero() {
+		say = join(say, blockedAnnouncement)
 	}
 	l.started, l.state, l.result = true, p.Status.State, result
 
@@ -166,8 +166,8 @@ func (l *liveStream) send(p ServerPage) error {
 	}
 	// The sentence has an event of its own, so it is never lost when no
 	// region changed with it.
-	if say != "" {
-		if err := l.event("announce", `<div hx-swap-oob="innerHTML:#announcer">`+html.EscapeString(say)+`</div>`); err != nil {
+	if !say.IsZero() {
+		if err := l.event("announce", `<div hx-swap-oob="innerHTML:#announcer">`+html.EscapeString(l.loc.Format(say))+`</div>`); err != nil {
 			return err
 		}
 		wrote = true
@@ -176,7 +176,7 @@ func (l *liveStream) send(p ServerPage) error {
 	// shows, so the page loads again to show the new one (SPEC 7.9). The
 	// sentence goes along, because the reload would drop the announce event.
 	if p.Moved() && !l.moved {
-		if err := l.event("moved", html.EscapeString(p.movedSentence())); err != nil {
+		if err := l.event("moved", html.EscapeString(l.loc.Format(p.movedSentence()))); err != nil {
 			return err
 		}
 		l.moved, wrote = true, true

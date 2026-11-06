@@ -48,7 +48,7 @@ func TestSwitchRunningWorld(t *testing.T) {
 	form := g.get(switchPath(b))
 	g.wantContains("confirmation", form,
 		"Switch from Alpha to Bravo?", `name="from" value="`+a+`"`, `name="countdown"`, `value="60"`,
-		"save the game and stop Alpha", "Start the game on Bravo", `"Before switch"`, "button--danger", "Switch to Bravo")
+		"save the game and stop Alpha", "Start the game on Bravo", `&#34;Before switch&#34;`, "button--danger", "Switch to Bravo")
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage("Active world: Bravo", running, "The worlds are switched")
@@ -158,7 +158,7 @@ func TestSwitchAnyway(t *testing.T) {
 
 	form := g.get(switchPath(b))
 	g.wantContains("confirmation", form, "The save that would load in Bravo does not match that world:", "foreman-test",
-		`"Before switch"`, `"Before start anyway"`, "own mods folder, then start Bravo again",
+		`&#34;Before switch&#34;`, `&#34;Before start anyway&#34;`, "own mods folder, then start Bravo again",
 		`name="choice" value="anyway"`, "Switch and start anyway", `name="choice" value="stopped"`, "Switch, leave stopped",
 		`name="countdown"`, "To undo, switch back to Alpha")
 	g.wantMissing("confirmation", form, ">Switch to Bravo</button>", "Start Bravo after switching", "import the world again")
@@ -363,15 +363,15 @@ func TestSwitchRefusalsHaveWords(t *testing.T) {
 		game.ErrSwitchSame, game.ErrSwitchNotActive, game.ErrSwitchNoTarget, game.ErrSwitchTargetRunning,
 		game.ErrSwitchUnavailable, world.ErrBusy, game.ErrImageMissing, game.ErrNetwork,
 	} {
-		status, msg := gameError(err)
+		status, msg := gameErrorText(err)
 		if status != http.StatusConflict || msg == "" || !strings.HasSuffix(msg, ".") {
 			t.Errorf("%v: %d %q", err, status, msg)
 		}
 	}
-	if status, _ := gameError(game.ErrCountdown); status != http.StatusBadRequest {
+	if status, _ := gameErrorText(game.ErrCountdown); status != http.StatusBadRequest {
 		t.Errorf("countdown: %d", status)
 	}
-	if status, msg := gameError(precheckErr()); status != http.StatusConflict || !strings.Contains(msg, "The save is from a newer game.") {
+	if status, msg := gameErrorText(precheckErr()); status != http.StatusConflict || !strings.Contains(msg, "The save is from a newer game.") {
 		t.Errorf("precheck: %d %q", status, msg)
 	}
 }
@@ -384,7 +384,7 @@ func TestUnreachableDockerHasPlainWords(t *testing.T) {
 		Target: "unix:///var/run/docker.sock",
 		Err:    &url.Error{Op: "Get", URL: "http://docker/images/x/json?filters=%7B", Err: errors.New("dial unix: no such file")},
 	})
-	status, msg := gameError(err)
+	status, msg := gameErrorText(err)
 	if status == http.StatusInternalServerError {
 		t.Fatalf("status %d: the page would show the failure page", status)
 	}

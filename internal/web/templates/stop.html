@@ -1,17 +1,17 @@
-{{define "title"}}{{.Page.Verb}} the server{{end}}
+{{define "title"}}{{if .Page.Restart}}{{t "server.stop.restart_title"}}{{else}}{{t "server.stop.title"}}{{end}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{serverPath}}">Back to the server</a></div>
-<h1>{{.Verb}} the server</h1>
+<div class="actions"><a href="{{serverPath}}">{{t "server.back"}}</a></div>
+<h1>{{if .Restart}}{{t "server.stop.restart_title"}}{{else}}{{t "server.stop.title"}}{{end}}</h1>
 {{template "summary" .Problems}}
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="stop-heading">
-  <h2 id="stop-heading">{{if .Restart}}Restart{{else}}Stop{{end}} {{.World.Name}}</h2>
-  <p>{{if .Restart}}Foreman warns players online, saves the game and stops it, then starts it again with the same world. Players can rejoin once it is running.{{else}}Foreman warns players online, saves the game, then stops it. Nothing is lost.{{end}}</p>
+  <h2 id="stop-heading">{{if .Restart}}{{t "server.stop.restart_heading" "world" .World.Name}}{{else}}{{t "server.stop.heading" "world" .World.Name}}{{end}}</h2>
+  <p>{{if .Restart}}{{t "server.stop.restart_text"}}{{else}}{{t "server.stop.text"}}{{end}}</p>
   {{template "countdown" .CountdownForm}}
   <div class="actions">
-    <button type="submit" class="button button--primary">{{.Verb}} server</button>
-    <a href="{{serverPath}}">Cancel, keep it running</a>
+    <button type="submit" class="button button--primary">{{if .Restart}}{{t "server.action.restart"}}{{else}}{{t "server.action.stop"}}{{end}}</button>
+    <a href="{{serverPath}}">{{t "server.stop.cancel"}}</a>
   </div>
 </form>
 {{- end}}

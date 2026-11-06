@@ -99,9 +99,9 @@ func TestUpdateAndRollbackErrorTakesFocus(t *testing.T) {
 		page  Page
 		focus bool
 	}{
-		{"update refusal", UpdatePage{World: sum, Refusal: notActiveText}, true},
-		{"update refusal with field errors", UpdatePage{World: sum, Refusal: notActiveText, VersionError: "Bad."}, false},
-		{"rollback error", RollbackPage{World: sum, Error: "No rollback."}, true},
+		{"update refusal", UpdatePage{World: sum, Refusal: i18n.M("server.update.not_active")}, true},
+		{"update refusal with field errors", UpdatePage{World: sum, Refusal: i18n.M("server.update.not_active"), VersionError: i18n.M("server.error.version_not_newer")}, false},
+		{"rollback error", RollbackPage{World: sum, Error: i18n.M("server.error.no_rollback")}, true},
 	}
 	for _, c := range pages {
 		t.Run(c.name, func(t *testing.T) {

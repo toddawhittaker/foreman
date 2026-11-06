@@ -184,9 +184,12 @@ func modVersionProblem(worldName string, running string, mods map[string]string)
 		return compareDotted(a, b)
 	})
 
+	p := Problem{Kind: ProblemModGameVersion, World: worldName, GameVersion: running}
 	var text strings.Builder
 	for i, v := range versions {
 		names := byVersion[v]
+		shown, more := shownMods(names)
+		p.Groups = append(p.Groups, ModGroup{Version: v, Count: len(names), Shown: shown, More: more})
 		count, object := fmt.Sprintf("%d of its mods were", len(names)), "them"
 		if len(names) == 1 {
 			count, object = "1 of its mods was", "it"
@@ -201,11 +204,14 @@ func modVersionProblem(worldName string, running string, mods map[string]string)
 	// A world's version only moves up (SPEC 10.3), so advise a newer
 	// version only, never an older one.
 	if newerSupportedLine(versions[0], running) {
+		p.UpdateTo = versions[0]
 		fmt.Fprintf(&text, " Update the world's game version to a %s release, or update its mods.", versions[0])
 	} else {
-		fmt.Fprintf(&text, " Update its mods to versions made for Factorio %s.", gameMinor(running))
+		p.Minor = gameMinor(running)
+		fmt.Fprintf(&text, " Update its mods to versions made for Factorio %s.", p.Minor)
 	}
-	return Problem{Kind: ProblemModGameVersion, Text: text.String()}
+	p.Text = text.String()
+	return p
 }
 
 // newerSupportedLine reports whether minor (such as "2.1") is a line
@@ -217,6 +223,17 @@ func newerSupportedLine(minor, running string) bool {
 // listNames joins the first listedMods names, each cut to a sensible length,
 // and counts the rest.
 func listNames(names []string) string {
+	cut, rest := shownMods(names)
+	out := strings.Join(cut, ", ")
+	if rest > 0 {
+		out += fmt.Sprintf(" and %d more", rest)
+	}
+	return out
+}
+
+// shownMods is the first listedMods names, each cut to length, and how many
+// are left out.
+func shownMods(names []string) ([]string, int) {
 	shown := names[:min(len(names), listedMods)]
 	cut := make([]string, len(shown))
 	for i, n := range shown {
@@ -225,9 +242,5 @@ func listNames(names []string) string {
 			cut[i] = string(r[:maxShownModName]) + "…"
 		}
 	}
-	out := strings.Join(cut, ", ")
-	if rest := len(names) - len(shown); rest > 0 {
-		out += fmt.Sprintf(" and %d more", rest)
-	}
-	return out
+	return cut, len(names) - len(shown)
 }

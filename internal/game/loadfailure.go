@@ -93,7 +93,7 @@ func (f *loadFailure) addIncompatible(current, required string) {
 // message, or returns "" when the log said nothing it may show. redact is
 // the page-safe masking of a log line (SPEC 8.6, 14.8); every piece taken
 // from the log goes through it before it is cut to length.
-func (f *loadFailure) reason(redact func(string) string) string {
+func (f *loadFailure) reason(redact func(string) string) LoadReason {
 	if len(f.byRequired) > 0 {
 		var required string
 		for r, names := range f.byRequired {
@@ -103,26 +103,58 @@ func (f *loadFailure) reason(redact func(string) string) string {
 			}
 		}
 		names := f.byRequired[required]
-		count := fmt.Sprintf("%d mods were", len(names))
-		if len(names) == 1 {
+		r := LoadReason{Mods: len(names), Required: redact(required), Current: redact(f.current)}
+		r.Shown, r.More = shownNames(names, redact)
+		return r
+	}
+	if f.errLine == "" {
+		return LoadReason{}
+	}
+	return LoadReason{Said: strings.TrimSpace(cut(redact(f.errLine), maxErrorLine))}
+}
+
+// LoadReason is the game's own reason it stopped while loading, from its
+// log (SPEC 8.7): mods made for another Factorio, or else the game's error
+// line, Said. Every piece is masked like a log line. The zero value means
+// the log said nothing it may show.
+type LoadReason struct {
+	// Mods were made for Factorio Required; the game runs Current. Shown
+	// names the first few, and More counts the rest.
+	Mods              int
+	Required, Current string
+	Shown             []string
+	More              int
+	Said              string
+}
+
+// IsZero reports whether the log gave no reason.
+func (r LoadReason) IsZero() bool { return r.Mods == 0 && r.Said == "" }
+
+// text is the reason as the end of an English sentence, for the log.
+func (r LoadReason) text() string {
+	if r.Mods > 0 {
+		count := fmt.Sprintf("%d mods were", r.Mods)
+		if r.Mods == 1 {
 			count = "1 mod was"
 		}
-		out := fmt.Sprintf(": %s made for Factorio %s, and this game runs %s",
-			count, redact(required), redact(f.current))
-		if shown := shownNames(names, redact); shown != "" {
-			out += ": " + shown
+		out := fmt.Sprintf(": %s made for Factorio %s, and this game runs %s", count, r.Required, r.Current)
+		if len(r.Shown) > 0 {
+			out += ": " + strings.Join(r.Shown, ", ")
+			if r.More > 0 {
+				out += fmt.Sprintf(" and %d more", r.More)
+			}
 		}
 		return out
 	}
-	if f.errLine == "" {
+	if r.Said == "" {
 		return ""
 	}
-	return ". Factorio said: " + strings.TrimSpace(cut(redact(f.errLine), maxErrorLine))
+	return ". Factorio said: " + r.Said
 }
 
-// shownNames names the first listedMods named mods, redacted and cut to
-// length, and counts the rest.
-func shownNames(names []string, redact func(string) string) string {
+// shownNames is the first listedMods named mods, redacted and cut to
+// length, and how many are left out.
+func shownNames(names []string, redact func(string) string) ([]string, int) {
 	var shown []string
 	for _, n := range names {
 		if n == "" || len(shown) >= listedMods {
@@ -134,11 +166,7 @@ func shownNames(names []string, redact func(string) string) string {
 		}
 		shown = append(shown, n)
 	}
-	out := strings.Join(shown, ", ")
-	if rest := len(names) - len(shown); out != "" && rest > 0 {
-		out += fmt.Sprintf(" and %d more", rest)
-	}
-	return out
+	return shown, len(names) - len(shown)
 }
 
 // cut keeps at most n characters of s.
@@ -154,12 +182,12 @@ func cut(s string, n int) string {
 // failure's message, or "" when the log gives none or cannot be read. Every
 // start makes a fresh container (ADR 0003), so its log holds every run of
 // this start, Docker's restarts after a crash included, and nothing older.
-func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string) string {
+func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string) LoadReason {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
 	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{})
 	if err != nil {
-		return ""
+		return LoadReason{}
 	}
 	defer func() { _ = s.Close() }()
 	var f loadFailure

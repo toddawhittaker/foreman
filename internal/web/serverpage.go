@@ -4,13 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -104,12 +103,12 @@ func (p ServerPage) ActivePath() string {
 	return p.WorldPath()
 }
 
-// Switching says which worlds a running switch is between, or is "".
-func (p ServerPage) Switching() string {
+// Switching says which worlds a running switch is between, or is zero.
+func (p ServerPage) Switching() i18n.Msg {
 	if sw := p.switchOp(); sw != nil {
-		return "From " + p.name(sw.From) + " to " + p.name(sw.To)
+		return i18n.M("server.facts.switching_value", "from", p.name(sw.From), "to", p.name(sw.To))
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 // FactsKnown reports whether the run's figures (uptime, save, CPU, memory)
@@ -124,25 +123,10 @@ func (p ServerPage) FactsKnown() bool {
 }
 
 // StateWord is the badge's word (DESIGN 7.5).
-func (p ServerPage) StateWord() string { return stateWord(p.Status.State) }
+func (p ServerPage) StateWord() i18n.Msg { return stateWord(p.Status.State) }
 
-func stateWord(s game.State) string {
-	switch s {
-	case game.StateStopped:
-		return "Stopped"
-	case game.StateStarting:
-		return "Starting"
-	case game.StateRunning:
-		return "Running"
-	case game.StateStopping:
-		return "Stopping"
-	case game.StateCrashed:
-		return "Crashed"
-	case game.StateCrashLooping:
-		return "Crash-looping"
-	}
-	return "Unknown"
-}
+// Reason says why the state is not known, or is zero.
+func (p ServerPage) Reason() i18n.Msg { return unknownMsg(p.Status.Unknown) }
 
 // GameVersion is the version the running game reports, else the world's.
 func (p ServerPage) GameVersion() string {
@@ -157,11 +141,8 @@ func (p ServerPage) Running() bool { return !p.Status.StartedAt.IsZero() }
 
 // Uptime says how long the game has run, in whole minutes, and the same as
 // an ISO 8601 duration for the time element.
-func (p ServerPage) Uptime() string    { return durationText(p.Status.Uptime) }
+func (p ServerPage) Uptime() i18n.Msg  { return durationText(p.Status.Uptime) }
 func (p ServerPage) UptimeISO() string { return durationISO(p.Status.Uptime) }
-
-// CPU is the game's CPU use, as a percentage of one core.
-func (p ServerPage) CPU() string { return fmt.Sprintf("%.1f%%", p.Status.CPUPercent) }
 
 // Busy reports whether a start, stop, restart or restore is running.
 func (p ServerPage) Busy() bool { return p.Status.Operation != nil && !p.Status.Operation.Done }
@@ -181,14 +162,14 @@ func (p ServerPage) downloading() bool {
 // ImageNote says, before any Start, that the world cannot start until its
 // game image is downloaded, or is "" (SPEC 3.7). Start is then replaced by
 // the download. A failed start that said so already needs no second note.
-func (p ServerPage) ImageNote() string {
+func (p ServerPage) ImageNote() i18n.Msg {
 	if !p.ImageMissing || !p.CanStart() || p.downloading() {
-		return ""
+		return i18n.Msg{}
 	}
 	if f := p.Failure(); f != nil && f.Download {
-		return ""
+		return i18n.Msg{}
 	}
-	return p.World.Name + " runs on the game image " + p.Image + ", which is not on this host, so it cannot start yet. Download it first; that pulls it from Docker Hub."
+	return i18n.M("server.image.missing_note", "world", p.World.Name, "image", p.Image)
 }
 
 // OffersDownload reports whether the page offers the game image download:
@@ -205,10 +186,10 @@ func (p ServerPage) OffersDownload() bool {
 }
 
 // Downloaded confirms a download that worked, while the world waits to
-// start, or is "".
-func (p ServerPage) Downloaded() string {
+// start, or is zero.
+func (p ServerPage) Downloaded() i18n.Msg {
 	if !p.CanStart() || p.ImageMissing || p.Image == "" {
-		return ""
+		return i18n.Msg{}
 	}
 	results := p.Others
 	if p.HaveResult {
@@ -216,10 +197,10 @@ func (p ServerPage) Downloaded() string {
 	}
 	for _, res := range results {
 		if res.Action == game.AuditImageDownload && res.Err == nil {
-			return "Downloaded " + p.Image + "; " + p.World.Name + " is ready to start."
+			return i18n.M("server.image.downloaded", "image", p.Image, "world", p.World.Name)
 		}
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 // switchRefused reports whether the last result is a switch that ended
@@ -235,30 +216,30 @@ func (p ServerPage) switchRefused() bool {
 // StartLabel is the Start button's words. After a refused switch the
 // button names the world it starts, which is not the one the admin asked
 // to switch to.
-func (p ServerPage) StartLabel() string {
+func (p ServerPage) StartLabel() i18n.Msg {
 	if p.switchRefused() {
-		return "Start " + p.World.Name
+		return i18n.M("server.action.start_world", "world", p.World.Name)
 	}
-	return "Start server"
+	return i18n.M("server.action.start")
 }
 
 // StartBlocked says why the last attempt to run the world did not, and what
-// the admin can do, or is "". It uses what Foreman already knows: the crash
+// the admin can do, or is zero. It uses what Foreman already knows: the crash
 // loop (SPEC 8.9) and the last start or restart the checks refused
 // (SPEC 7.4). The page then offers a plain "Try to start again" for after
 // the fix, in place of the main Start button; an admin must still be able
 // to start by hand (SPEC 8.9).
-func (p ServerPage) StartBlocked() string {
+func (p ServerPage) StartBlocked() i18n.Msg {
 	if !p.CanStart() {
-		return ""
+		return i18n.Msg{}
 	}
 	if p.Status.State == game.StateCrashLooping {
-		return p.World.Name + " crashed again and again the last time it ran."
+		return i18n.M("server.blocked.crash_loop", "world", p.World.Name)
 	}
 	if p.HaveResult && (p.Result.Action == game.AuditStart || p.Result.Action == game.AuditRestart) && game.IsRefusal(p.Result.Err) && !p.OffersAnyway() {
-		return "Foreman refused the last start of " + p.World.Name + ", for the reason above. Fix the world first, then try to start it again."
+		return i18n.M("server.blocked.refused", "world", p.World.Name)
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 // OffersAnyway reports whether the last result's box offers to go ahead
@@ -270,7 +251,7 @@ func (p ServerPage) OffersAnyway() bool {
 
 // blockedAnnouncement is read out with the page's results while a start is
 // blocked, so a screen reader user learns why Start server is gone.
-const blockedAnnouncement = "Start server is replaced by Try to start again, for after the world is fixed."
+var blockedAnnouncement = i18n.M("server.blocked.announce")
 
 // CrashLooping reports whether the crash box leads with the ways to
 // recover, in place of a separate note (SPEC 8.9, 17.9).
@@ -306,7 +287,7 @@ func (p ServerPage) CancelStopPath() string {
 
 // PlayerTable is the player list the page shows.
 type PlayerTable struct {
-	Caption string
+	Caption i18n.Msg
 	Players []game.Player
 }
 
@@ -318,13 +299,13 @@ func (p ServerPage) PlayerTable() *PlayerTable {
 		if len(p.Players) == 0 {
 			return nil
 		}
-		return &PlayerTable{Caption: fmt.Sprintf("%d online", len(p.Players)), Players: p.Players}
+		return &PlayerTable{Caption: i18n.M("server.players.caption", "count", len(p.Players)), Players: p.Players}
 	}
 	o := p.Status.Operation
 	if o == nil || o.Done || len(o.Players) == 0 || p.Status.State == game.StateUnknown {
 		return nil
 	}
-	return &PlayerTable{Caption: fmt.Sprintf("%d online when the stop began", len(o.Players)), Players: o.Players}
+	return &PlayerTable{Caption: i18n.M("server.players.caption_stop", "count", len(o.Players)), Players: o.Players}
 }
 
 // Crashed reports whether the page shows the crash message.
@@ -369,19 +350,19 @@ func (p ServerPage) CanForceStop() bool {
 	return true
 }
 
-// ActionsNote explains the actions left out, or is "".
-func (p ServerPage) ActionsNote() string {
+// ActionsNote explains the actions left out, or is zero.
+func (p ServerPage) ActionsNote() i18n.Msg {
 	switch {
 	case p.Status.State == game.StateUnknown:
-		return "Foreman cannot start or stop the game until it can ask Docker about it."
+		return i18n.M("server.actions_note.unknown")
 	case p.Busy() && p.Status.Operation.Action == game.AuditSwitch:
-		return "Wait for the switch to finish, or use Force stop. Force stop ends the switch; the game is stopped without saving."
+		return i18n.M("server.actions_note.switch")
 	case p.Busy():
-		return "Wait for this to finish, or use Force stop to stop the game now without saving."
+		return i18n.M("server.actions_note.busy")
 	case p.Status.State == game.StateStarting || p.Status.State == game.StateStopping:
-		return "The game is not in game, so it cannot be warned or saved. Wait, or use Force stop."
+		return i18n.M("server.actions_note.unsettled")
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 // ShowOperation reports whether the step list is shown: while the
@@ -396,36 +377,37 @@ func (p ServerPage) ShowDownload() bool { return showOp(p.Status.Download) }
 func showOp(o *game.Operation) bool { return o != nil && (!o.Done || o.Error != "") }
 
 // OperationHeading names the operation in the step list.
-func (p ServerPage) OperationHeading() string {
+func (p ServerPage) OperationHeading() i18n.Msg {
 	o := p.Status.Operation
 	failed := o.Done && o.Error != ""
 	switch o.Action {
 	case game.AuditStart:
 		if f := p.Failure(); failed && f != nil && f.Refused && f.In == "operation" {
-			return "Start refused"
+			return i18n.M("server.op.start_refused")
 		}
-		return choose(failed, "The start failed", "Starting the server")
+		return choose(failed, i18n.M("server.op.start_failed"), i18n.M("server.op.start"))
 	case game.AuditStop:
-		return choose(failed, "The stop failed", "Stopping the server")
+		return choose(failed, i18n.M("server.op.stop_failed"), i18n.M("server.op.stop"))
 	case game.AuditRestart:
-		return choose(failed, "The restart failed", "Restarting the server")
+		return choose(failed, i18n.M("server.op.restart_failed"), i18n.M("server.op.restart"))
 	case game.ActionRestore:
-		return choose(failed, "The restore failed", "Restoring a snapshot")
+		return choose(failed, i18n.M("server.op.restore_failed"), i18n.M("server.op.restore"))
 	case game.AuditUpdate:
-		return choose(failed, "The update failed", "Updating the game version")
+		return choose(failed, i18n.M("server.op.update_failed"), i18n.M("server.op.update"))
 	case game.AuditRollback:
-		return choose(failed, "The rollback failed", "Rolling back the game version")
+		return choose(failed, i18n.M("server.op.rollback_failed"), i18n.M("server.op.rollback"))
 	case game.AuditSwitch:
 		if sw := o.Switch; sw != nil {
-			return choose(failed, "The switch from "+p.name(sw.From)+" to "+p.name(sw.To)+" failed",
-				"Switching from "+p.name(sw.From)+" to "+p.name(sw.To))
+			from, to := p.name(sw.From), p.name(sw.To)
+			return choose(failed, i18n.M("server.op.switch_named_failed", "from", from, "to", to),
+				i18n.M("server.op.switch_named", "from", from, "to", to))
 		}
-		return choose(failed, "The switch failed", "Switching worlds")
+		return choose(failed, i18n.M("server.op.switch_failed"), i18n.M("server.op.switch"))
 	}
-	return choose(failed, "This failed", "Working")
+	return choose(failed, i18n.M("server.op.other_failed"), i18n.M("server.op.other"))
 }
 
-func choose(cond bool, yes, no string) string {
+func choose[T any](cond bool, yes, no T) T {
 	if cond {
 		return yes
 	}
@@ -464,23 +446,23 @@ func (l stepList) Steps() []game.Step {
 	return out
 }
 
-// Left says how long the countdown on a step has to run, or "".
-func (l stepList) Left(s game.Step) string {
+// Left says how long the countdown on a step has to run, or is zero.
+func (l stepList) Left(s game.Step) i18n.Msg {
 	if s.State != game.StepProgress || s.Until.IsZero() {
-		return ""
+		return i18n.Msg{}
 	}
 	n := int(math.Ceil(s.Until.Sub(l.Page.Now).Seconds()))
-	switch {
-	case n <= 0:
-		return "ending now"
-	case n == 1:
-		return "1 second left"
+	if n <= 0 {
+		return i18n.M("server.step.ending_now")
 	}
-	return fmt.Sprintf("%d seconds left", n)
+	return i18n.M("server.step.seconds_left", "count", n)
 }
 
+// StepName is a step's words.
+func (stepList) StepName(s game.Step) i18n.Msg { return stepName(s.Name) }
+
 // Since says how long a player has been online.
-func (ServerPage) Since(d time.Duration) string { return durationText(d) }
+func (ServerPage) Since(d time.Duration) i18n.Msg { return durationText(d) }
 
 // refused reports whether this list's failed step is a refusal by the
 // pre-start check, not a fault.
@@ -490,21 +472,21 @@ func (l stepList) refused() bool {
 
 // StepWord is the word beside a step (DESIGN 7.6). A step the pre-start
 // check refused reads "Refused", since nothing went wrong.
-func (l stepList) StepWord(s game.StepState) string {
+func (l stepList) StepWord(s game.StepState) i18n.Msg {
 	switch s {
 	case game.StepDone:
-		return "Done"
+		return i18n.M("server.step.done")
 	case game.StepProgress:
-		return "In progress"
+		return i18n.M("server.step.progress")
 	case game.StepFailed:
 		if l.refused() {
-			return "Refused"
+			return i18n.M("server.step.refused")
 		}
-		return "Failed"
+		return i18n.M("server.step.failed")
 	case game.StepSkipped:
-		return "Skipped"
+		return i18n.M("server.step.skipped")
 	}
-	return "Waiting"
+	return i18n.M("server.step.waiting")
 }
 
 // StepClass is the step word's modifier class, or "". A refusal that
@@ -523,9 +505,10 @@ func (l stepList) StepClass(s game.StepState) string {
 // Failure is the last action's error, worded for the admin, with what the
 // page can offer next.
 type Failure struct {
-	Message string
+	// Message may hold the game's own words, so it is shown with msgHTML.
+	Message i18n.Msg
 	// Problems are the pre-start check's findings (SPEC 7.4).
-	Problems []string
+	Problems []i18n.Msg
 	// Refused is true when the pre-start check refused the action.
 	Refused bool
 	// Anyway offers to go ahead past the problems, when every problem
@@ -548,11 +531,11 @@ type Failure struct {
 
 // Word is the message's leading word. A refusal that offers a choice is a
 // warning, not an error: going ahead is the admin's call (DESIGN 7.3).
-func (f *Failure) Word() string {
+func (f *Failure) Word() i18n.Msg {
 	if f.Anyway != nil {
-		return "Warning:"
+		return i18n.M("server.label.warning")
 	}
-	return "Error:"
+	return i18n.M("common.error.label")
 }
 
 // Class is the message's kind class, matching Word.
@@ -565,45 +548,7 @@ func (f *Failure) Class() string {
 
 // changedLead says why a go-ahead anyway did not run: what the box showed
 // was no longer true, so the admin must read it again (SPEC 7.4, 17.5).
-const changedLead = "The world or the server changed since the page showed it, so Foreman did not go ahead. Read the message again before you choose."
-
-// precheckLead opens the message for a start the pre-start check refused.
-const precheckLead = "Foreman did not start the game, because the save that would load does not match the world:"
-
-// switchPrecheckLead opens the message for a switch the pre-start check of
-// the new world refused. Nothing was stopped or changed.
-const switchPrecheckLead = "Foreman did not switch, because the save that would load in the new world does not match that world:"
-
-// updatePrecheckLead opens the message for an update the pre-start check
-// at the new version refused. Nothing was stopped or changed.
-func updatePrecheckLead(check world.PreCheck, name, version string) string {
-	for _, pr := range check.Problems {
-		if pr.Kind != world.ProblemModGameVersion {
-			return "Foreman did not update the game version, because the save does not match " + name + " on Factorio " + version + ":"
-		}
-	}
-	return "Foreman did not update the game version, because " + name + " cannot run in Factorio " + version + ":"
-}
-
-// precheckLeadFor opens the message for a refused start or switch. When the
-// only problems are mods made for another Factorio, the save is not what
-// fails, so the lead says the world cannot run instead. name is the world
-// that cannot run; "" says "the world".
-func precheckLeadFor(check world.PreCheck, switching bool, name string) string {
-	if len(check.Problems) == 0 {
-		return choose(switching, switchPrecheckLead, precheckLead)
-	}
-	for _, pr := range check.Problems {
-		if pr.Kind != world.ProblemModGameVersion {
-			return choose(switching, switchPrecheckLead, precheckLead)
-		}
-	}
-	if name == "" {
-		name = "the world"
-	}
-	return choose(switching, "Foreman did not switch", "Foreman did not start the game") +
-		", because " + name + " cannot run in this game:"
-}
+var changedLead = i18n.M("server.precheck.changed")
 
 // Failure returns the last action's error, or nil.
 func (p ServerPage) Failure() *Failure {
@@ -632,21 +577,15 @@ func (p ServerPage) Failure() *Failure {
 			f.Message = updatePrecheckLead(pe.Check, p.World.Name, p.Result.Version)
 		}
 		if pe.Changed {
-			f.Message = changedLead + " " + f.Message
+			f.Message = join(changedLead, f.Message)
 		}
-		for _, pr := range pe.Check.Problems {
-			f.Problems = append(f.Problems, pr.Text)
-		}
+		f.Problems = problemMsgs(pe.Check.Problems)
 		if pe.Check.CanStartAnyway() {
 			f.Anyway = p.anyway(pe.Check)
 		}
 	case errors.As(err, &de):
-		retry := "Try again."
-		if p.Result.Action == game.AuditSwitch {
-			retry = "Try the switch again."
-		}
 		if !de.NotFound {
-			f.Message = downloadFailure(de, retry)
+			f.Message = downloadFailure(de, p.Result.Action == game.AuditSwitch)
 			break
 		}
 		// The version to fix belongs to the world the image is for.
@@ -654,11 +593,11 @@ func (p ServerPage) Failure() *Failure {
 		if p.Result.Action == game.AuditSwitch && p.Result.Target != "" {
 			id = p.Result.Target
 		}
-		f.Message, f.Next = noImageLead(de), &Offer{Path: worldPath(id), Label: noImageAdvice}
+		f.Message, f.Next = noImageLead(de), &Offer{Path: worldPath(id), Label: i18n.M("server.download.no_image_advice")}
 	case errors.Is(err, game.ErrImageMissing):
 		// The download is for this page's world only: a switch whose new
 		// world lacks its image must never offer the old world's.
-		f.Message = sentence(err)
+		f.Message = i18n.M("server.error.image_missing")
 		f.Download = p.Result.Action != game.AuditSwitch || p.Result.Target == p.World.ID
 	default:
 		f.Message = failureText(err)
@@ -668,7 +607,10 @@ func (p ServerPage) Failure() *Failure {
 	// A forced stop that interrupted a switch says in the operation's own
 	// error which world it stopped.
 	if o := p.Status.Operation; errors.Is(err, game.ErrCancelled) && o != nil && o.Done && o.Error != "" {
-		f.Message, text = sentence(errors.New(o.Error)), o.Error
+		if o.Err != nil {
+			f.Message = failureText(o.Err)
+		}
+		text = o.Error
 	}
 	switch {
 	case p.Status.Operation != nil && p.Status.Operation.Done && p.Status.Operation.Error == text:
@@ -683,8 +625,10 @@ func (p ServerPage) Failure() *Failure {
 // check's problems. It names every step and the snapshots taken first, so
 // its button acts at once (SPEC 7.4, 17.5).
 type Anyway struct {
-	// Path is where the button posts; Verb is the button's words.
-	Path, Verb string
+	// Path is where the button posts; Verb is the button's words, and
+	// Offer says the button is there, for a screen reader.
+	Path        string
+	Verb, Offer i18n.Msg
 	// Switch is set for a switch; Restart for a restart of a running game;
 	// Update for a game version update to Version.
 	Switch, Restart, Update bool
@@ -698,22 +642,22 @@ type Anyway struct {
 	Countdown int
 	// Seen fingerprints what the box shows, so a stale box is refused.
 	Seen string
-	// Advice says how to keep what missing mods built, or is "".
-	Advice string
+	// Advice says how to keep what missing mods built, or is zero.
+	Advice i18n.Msg
 }
 
 // anyway builds the offer for the last refused action.
 func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	a := &Anyway{
-		Path: p.StartPath(), Verb: "Start anyway", World: p.World.Name,
+		Path: p.StartPath(), Verb: i18n.M("server.anyway.start"), Offer: i18n.M("server.anyway.start_offer"), World: p.World.Name,
 		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems, p.World.Name, p.ModsFolder),
 		Running: game.IsRunning(p.Status.State),
 	}
 	switch p.Result.Action {
 	case game.AuditRestart:
-		a.Path, a.Verb, a.Restart = p.RestartPath(), "Restart anyway", true
+		a.Path, a.Verb, a.Offer, a.Restart = p.RestartPath(), i18n.M("server.anyway.restart"), i18n.M("server.anyway.restart_offer"), true
 	case game.AuditSwitch:
-		a.Path, a.Verb, a.Switch = switchPath(p.Result.Target), "Switch anyway", true
+		a.Path, a.Verb, a.Offer, a.Switch = switchPath(p.Result.Target), i18n.M("server.anyway.switch"), i18n.M("server.anyway.switch_offer"), true
 		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
 	case game.AuditUpdate:
 		// The refusal came from the start after the version was set, so
@@ -721,7 +665,7 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 		if p.World.GameVersion == p.Result.Version {
 			break
 		}
-		a.Path, a.Verb, a.Update, a.Version = updatePath(p.World.ID), "Update anyway", true, p.Result.Version
+		a.Path, a.Verb, a.Offer, a.Update, a.Version = updatePath(p.World.ID), i18n.M("server.anyway.update"), i18n.M("server.anyway.update_offer"), true, p.Result.Version
 	}
 	a.Seen = game.AnywayFingerprint(check, a.Running)
 	return a
@@ -731,7 +675,7 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 // says what the game drops. Mods that are only turned off need no file. The
 // fix is the named world's own mods folder, at its host path when known,
 // since importing again would make a second world.
-func anywayAdvice(problems []world.Problem, name, folder string) string {
+func anywayAdvice(problems []world.Problem, name, folder string) i18n.Msg {
 	missing := 0
 	for _, pr := range problems {
 		if pr.Kind == world.ProblemModMissing {
@@ -739,18 +683,18 @@ func anywayAdvice(problems []world.Problem, name, folder string) string {
 		}
 	}
 	if missing == 0 {
-		return ""
+		return i18n.Msg{}
 	}
-	built, files := "that mod built", "its zip file"
-	if missing > 1 {
-		built, files = "those mods built", "their zip files"
+	// One mod is "that mod" and several "those mods"; the count is not shown.
+	switch {
+	case folder != "" && missing == 1:
+		return i18n.M("server.anyway.advice_folder_one", "world", name, "folder", folder)
+	case folder != "":
+		return i18n.M("server.anyway.advice_folder_many", "world", name, "folder", folder)
+	case missing == 1:
+		return i18n.M("server.anyway.advice_one", "world", name)
 	}
-	where := name + "'s own mods folder"
-	if folder != "" {
-		where += ", " + folder + " on the host"
-	}
-	return "Foreman cannot add mods to a world yet. To keep what " + built +
-		", copy " + files + " into " + where + ", then start " + name + " again."
+	return i18n.M("server.anyway.advice_many", "world", name)
 }
 
 // hostModsFolder is a world's mods folder on the Docker host, or "" when
@@ -760,39 +704,6 @@ func hostModsFolder(hostData, id string) string {
 		return ""
 	}
 	return filepath.Join(datadir.Worlds(hostData), id, world.ModsDir) + "/"
-}
-
-// failureText words an action's error; one the admin cannot fix is logged
-// when the action ends and is not shown.
-func failureText(err error) string {
-	status, msg := gameError(err)
-	if status == http.StatusInternalServerError || msg == "" {
-		return "Foreman could not finish this. The details are in Foreman's log."
-	}
-	return msg
-}
-
-// Announcement is the sentence a live page reads out when the state
-// changes (DESIGN 7.5).
-func announcement(s game.State) string {
-	if s == game.StateUnknown {
-		return "Foreman cannot tell the server's state"
-	}
-	return "Server is now " + strings.ToLower(stateWord(s))
-}
-
-// durationText says a duration in whole minutes, hours and days.
-func durationText(d time.Duration) string {
-	m := int(d / time.Minute)
-	switch {
-	case m < 1:
-		return "less than 1 min"
-	case m < 60:
-		return fmt.Sprintf("%d min", m)
-	case m < 24*60:
-		return fmt.Sprintf("%d h %d min", m/60, m%60)
-	}
-	return fmt.Sprintf("%d d %d h", m/(24*60), m/60%24)
 }
 
 // durationISO is d as an ISO 8601 duration in whole minutes, for datetime.

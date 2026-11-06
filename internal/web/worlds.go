@@ -147,17 +147,6 @@ var busyActions = map[string]i18n.Msg{
 	game.AuditRollback: i18n.M("worlds.busy.action.rollback"), actionSnapshot: i18n.M("worlds.busy.action.snapshot"),
 }
 
-// busySteps name the steps of a switch, which is the only operation whose
-// current step the note gives.
-var busySteps = map[string]i18n.Msg{
-	game.StepDownload: i18n.M("worlds.busy.step.download"), game.StepWarn: i18n.M("worlds.busy.step.warn"),
-	game.StepSave: i18n.M("worlds.busy.step.save"), game.StepStopContainer: i18n.M("worlds.busy.step.stop_container"),
-	game.StepSnapshotBoth: i18n.M("worlds.busy.step.snapshot_both"), game.StepPresent: i18n.M("worlds.busy.step.present"),
-	game.StepCheck: i18n.M("worlds.busy.step.check"), game.StepImage: i18n.M("worlds.busy.step.image"),
-	game.StepCreate: i18n.M("worlds.busy.step.create"), game.StepStartContainer: i18n.M("worlds.busy.step.start_container"),
-	game.StepLoad: i18n.M("worlds.busy.step.load"), game.StepRCON: i18n.M("worlds.busy.step.rcon"),
-}
-
 // busyText says what the running operation is doing to a world, or returns
 // the zero Msg when none runs. name words a world's id for a sentence.
 func busyText(op *game.Operation, name func(id string) string) i18n.Msg {
@@ -174,8 +163,8 @@ func busyText(op *game.Operation, name func(id string) string) i18n.Msg {
 	}
 	from, to := name(sw.From), name(sw.To)
 	for _, st := range op.Steps {
-		if step, ok := busySteps[st.Name]; ok && st.State == game.StepProgress {
-			return i18n.M("worlds.busy.switch_step", "from", from, "to", to, "step", step)
+		if st.State == game.StepProgress {
+			return i18n.M("worlds.busy.switch_step", "from", from, "to", to, "step", stepName(st.Name))
 		}
 	}
 	return i18n.M("worlds.busy.switch", "from", from, "to", to)

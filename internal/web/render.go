@@ -262,9 +262,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"utcSeconds": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05 UTC") },
 		// momentUTC and momentUTCSeconds are a <time> element for a sentence
 		// that holds a time, for tHTML.
-		"momentUTC": func(t time.Time) i18n.Fragment {
-			return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04 UTC"))
-		},
+		"momentUTC": momentUTC,
 		"momentUTCSeconds": func(t time.Time) i18n.Fragment {
 			return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04:05 UTC"))
 		},
@@ -293,10 +291,15 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"codes":  i18n.Codes,
 		"nowrap": i18n.NoWrap,
 		"strong": i18n.Strong,
-		// msg renders an i18n.Msg from a view model.
+		// game marks Factorio's own words, for tHTML.
+		"game": i18n.Game,
+		// msg renders an i18n.Msg from a view model; msgHTML one whose
+		// arguments hold fragments.
 		"msg":      loc.Format,
+		"msgHTML":  loc.FormatHTML,
 		"bytes":    loc.Bytes,
 		"num":      loc.Num,
+		"decimal1": loc.OneDecimal,
 		"duration": loc.Duration,
 		// snapLabel and snapReason show a snapshot's label and why it was
 		// taken (see snapshotlabel.go).
@@ -461,4 +464,10 @@ func (r *Renderer) Static() http.Handler {
 		}
 		http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(f.body))
 	})
+}
+
+// momentUTC is a <time> element for t in UTC, for a sentence that holds a
+// time (SPEC 17.11).
+func momentUTC(t time.Time) i18n.Fragment {
+	return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04 UTC"))
 }

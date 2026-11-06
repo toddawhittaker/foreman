@@ -117,7 +117,7 @@ func TestCancelledStopIsReportedAsDone(t *testing.T) {
 		html := controlHTML(t, p)
 		wantAll(t, action, html, "<strong>Done:</strong> "+want)
 		wantNone(t, action, html, "Error:", `<ol class="steps"`, "act-undo", "Switch back")
-		if got := resultAnnouncement(p); !strings.Contains(got, "was cancelled.") {
+		if got := english(resultAnnouncement(p)); !strings.Contains(got, "was cancelled.") {
 			t.Errorf("%s: announcement %q", action, got)
 		}
 	}
@@ -168,11 +168,11 @@ func TestStepTimeLeft(t *testing.T) {
 		0:                       "ending now",
 		-time.Second:            "ending now",
 	} {
-		if got := l.Left(game.Step{State: game.StepProgress, Until: msgT0.Add(d)}); got != want {
+		if got := english(l.Left(game.Step{State: game.StepProgress, Until: msgT0.Add(d)})); got != want {
 			t.Errorf("%v: got %q, want %q", d, got, want)
 		}
 	}
-	if got := l.Left(game.Step{State: game.StepProgress}); got != "" {
+	if got := l.Left(game.Step{State: game.StepProgress}); !got.IsZero() {
 		t.Errorf("a step with no countdown says %q", got)
 	}
 }
@@ -212,7 +212,7 @@ func TestCrashLoopOffersRecovery(t *testing.T) {
 // left out, and the page does not claim nobody is online.
 func TestUnknownStateShowsNoStaleFacts(t *testing.T) {
 	p := serverCase(game.StateUnknown, func(p *ServerPage) {
-		p.Status.Reason = "Foreman cannot reach Docker."
+		p.Status.Unknown = game.UnknownReason{Kind: game.UnknownDocker}
 		p.Status.Save, p.Status.HaveUsage, p.Status.MemoryBytes = "old.zip", true, 1<<30
 		p.Status.GameVersion = "2.1.20"
 	})
@@ -280,10 +280,10 @@ func TestOnlineWords(t *testing.T) {
 		{Online{}, "Nobody is online.", "Players online are disconnected."},
 	}
 	for _, c := range cases {
-		if c.o.Asked && c.o.Text() != c.text {
+		if c.o.Asked && english(c.o.Text()) != c.text {
 			t.Errorf("%+v: Text %q, want %q", c.o, c.o.Text(), c.text)
 		}
-		if c.o.Disconnected() != c.gone {
+		if english(c.o.Disconnected()) != c.gone {
 			t.Errorf("%+v: Disconnected %q, want %q", c.o, c.o.Disconnected(), c.gone)
 		}
 	}
@@ -308,7 +308,7 @@ func TestCancelStopOverHTTP(t *testing.T) {
 	// data-until, so Cancel stop is never swapped out under a tap (DESIGN
 	// 7.6). The page reads the rig's clock, which moves only when told to.
 	events, _, closeEvents := g.collectEvents(id)
-	left := regexp.MustCompile(`Warn players: <span data-until="[^"]+">(\d+) seconds left</span>`)
+	left := regexp.MustCompile(`Warn players: <span data-until="[^"]+">([\d,]+) seconds left</span>`)
 	deadline := time.Now().Add(5 * time.Second)
 	for !left.MatchString(events.String()) {
 		if time.Now().After(deadline) {
@@ -408,7 +408,7 @@ func TestCancelledShowsFromTheOperation(t *testing.T) {
 		t.Fatal("a cancelled operation was not recognised")
 	}
 	p := ServerPage{World: world.Summary{ID: "base", Name: "Base"}, Result: res, HaveResult: true}
-	if got := p.Done(); !strings.Contains(got, "The restart was cancelled.") {
+	if got := english(p.Done()); !strings.Contains(got, "The restart was cancelled.") {
 		t.Errorf("Done %q", got)
 	}
 	sw := &game.Operation{Action: game.AuditSwitch, Done: true, Error: game.ErrStopCancelled.Error(),

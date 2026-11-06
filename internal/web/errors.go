@@ -4,9 +4,6 @@ import (
 	"errors"
 	"io/fs"
 	"net/http"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -110,18 +107,6 @@ func (s *server) refusal(w http.ResponseWriter, r *http.Request, u store.User, w
 		return 0, i18n.Msg{}, false
 	}
 	return status, msg, true
-}
-
-// sentence turns an error into an English sentence: capital first letter
-// and a full stop. Only the pages that still show English text use it.
-func sentence(err error) string {
-	msg := err.Error()
-	r, n := utf8.DecodeRuneInString(msg)
-	msg = string(unicode.ToUpper(r)) + msg[n:]
-	if !strings.HasSuffix(msg, ".") {
-		msg += "."
-	}
-	return msg
 }
 
 // notFoundOrFail answers an error that stops a page from being shown at

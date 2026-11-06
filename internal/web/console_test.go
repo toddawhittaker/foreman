@@ -73,20 +73,20 @@ func TestCheckCommand(t *testing.T) {
 		{"/c a\rb", true},
 	}
 	for _, c := range cases {
-		if got := checkCommand(c.command); (got != "") != c.bad {
+		if got := checkCommand(c.command); !got.IsZero() != c.bad {
 			t.Errorf("checkCommand(%.20q): %q", c.command, got)
 		}
 	}
 }
 
 func TestAnnounceReply(t *testing.T) {
-	if got := announceReply("/players online", "Online players (2):\n  alice (online)\n  bob (online)\n"); got != "Reply to /players online: Online players (2): alice (online) bob (online)" {
+	if got := english(announceReply("/players online", "Online players (2):\n  alice (online)\n  bob (online)\n")); got != "Reply to /players online: Online players (2): alice (online) bob (online)" {
 		t.Errorf("got %q", got)
 	}
-	if got := announceReply("/c x", ""); got != "The game sent no reply to /c x" {
+	if got := english(announceReply("/c x", "")); got != "The game sent no reply to /c x" {
 		t.Errorf("got %q", got)
 	}
-	long := announceReply("/c x", strings.Repeat("word ", 200))
+	long := english(announceReply("/c x", strings.Repeat("word ", 200)))
 	if len([]rune(long)) > 300 || !strings.HasSuffix(long, "…") {
 		t.Errorf("a long reply is cut with an ellipsis: %q", long)
 	}

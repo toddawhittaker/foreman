@@ -138,12 +138,13 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 // active one; its text names the world.
 var ErrWorldNotActive = errors.New("the world is not the active world. Switch to it first")
 
-type notActiveError struct{ name string }
+// NotActiveError is ErrWorldNotActive naming the world.
+type NotActiveError struct{ Name string }
 
-func (e notActiveError) Error() string {
-	return e.name + " is not the active world. Switch to it first"
+func (e NotActiveError) Error() string {
+	return e.Name + " is not the active world. Switch to it first"
 }
-func (e notActiveError) Is(target error) bool { return target == ErrWorldNotActive }
+func (e NotActiveError) Is(target error) bool { return target == ErrWorldNotActive }
 
 // checkActive refuses a start of a world that is not the active one: a
 // start runs the active world (SPEC 7.3), and only a switch changes which
@@ -157,7 +158,7 @@ func (c *Controller) checkActive(ctx context.Context, id string) error {
 		return err
 	}
 	if !found || active != id {
-		return notActiveError{name: c.worldName(id)}
+		return NotActiveError{Name: c.worldName(id)}
 	}
 	return nil
 }
@@ -612,7 +613,7 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	status := cont.State.Status
 	if !found || (status != "running" && status != "restarting") {
 		if interrupted {
-			run.noteForceStop(fmt.Sprintf("No game of %s was running.", c.worldName(w.id)))
+			run.noteForceStop(&ForcedStopError{World: c.worldName(w.id)})
 			// Ending what was in progress was what the admin asked for.
 			return nil
 		}
@@ -634,22 +635,38 @@ func (c *Controller) ForceStop(ctx context.Context, id string, by Actor) error {
 	}
 	c.refresh(ctx, w, cont.ID)
 	if interrupted {
-		run.noteForceStop(fmt.Sprintf("It stopped the game of %s.", c.worldName(w.id)))
+		run.noteForceStop(&ForcedStopError{World: c.worldName(w.id), Stopped: true})
 	}
 	return nil
 }
 
 // noteForceStop adds to the result of an operation on several worlds which
 // one a forced stop acted on. The operation has ended.
-func (o *opRun) noteForceStop(text string) {
+func (o *opRun) noteForceStop(err *ForcedStopError) {
 	if len(o.ws) < 2 {
 		return
 	}
 	o.lockAll()
 	defer o.unlockAll()
-	o.op.Error = ErrCancelled.Error() + ". " + text
+	o.op.Error, o.op.Err = err.Error(), err
 	o.publishLocked()
 }
+
+// ForcedStopError is ErrCancelled for an operation on several worlds, naming
+// the world whose game the forced stop acted on, and whether one ran.
+type ForcedStopError struct {
+	World   string
+	Stopped bool
+}
+
+func (e *ForcedStopError) Error() string {
+	if e.Stopped {
+		return ErrCancelled.Error() + ". It stopped the game of " + e.World + "."
+	}
+	return ErrCancelled.Error() + ". No game of " + e.World + " was running."
+}
+
+func (e *ForcedStopError) Is(target error) bool { return target == ErrCancelled }
 
 // markStopping marks the game as stopped on purpose, so its exit is not a
 // crash (SPEC 7.6). The returned function puts the earlier marks back, for
@@ -751,7 +768,7 @@ func (c *Controller) PullImage(ctx context.Context, id string, by Actor) error {
 	w.download.Steps[0].State = StepDone
 	if err != nil {
 		w.download.Steps[0].State = StepFailed
-		w.download.Error = err.Error()
+		w.download.Error, w.download.Err = err.Error(), err
 	}
 	c.changedLocked(w, true)
 	w.mu.Unlock()

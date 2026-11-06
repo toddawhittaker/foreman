@@ -16,14 +16,14 @@ func TestMovedSentence(t *testing.T) {
 	names := map[string]string{"alpha": "Alpha", "bravo": "Bravo"}
 	f := switchPageOf("alpha", failedSwitch(true), names)
 	f.HaveResult, f.Result = true, actionResult{Action: game.AuditSwitch, Err: errors.New("start the game: it failed")}
-	if got := f.movedSentence(); !strings.HasPrefix(got, "Bravo is now the active world. Error: ") {
+	if got := english(f.movedSentence()); !strings.HasPrefix(got, "Bravo is now the active world. Error: ") {
 		t.Errorf("failed switch: %q", got)
 	}
 
 	done := game.Status{Operation: &game.Operation{Action: game.AuditSwitch, Done: true, Switch: &game.SwitchInfo{From: "alpha", To: "bravo", Presented: true}}}
 	p := switchPageOf("alpha", done, names)
 	p.HaveResult, p.Result = true, actionResult{Action: game.AuditSwitch}
-	if got, want := p.movedSentence(), "Bravo is now the active world. The worlds are switched."; got != want {
+	if got, want := english(p.movedSentence()), "Bravo is now the active world. The worlds are switched."; got != want {
 		t.Errorf("finished switch: %q, want %q", got, want)
 	}
 }
@@ -104,7 +104,7 @@ func TestSwitchRefusalIsAMessage(t *testing.T) {
 // SPEC 7.7: while a switch runs, the page says what Force stop does to it.
 func TestForceStopNoteDuringASwitch(t *testing.T) {
 	st := game.Status{State: game.StateStopping, Operation: &game.Operation{Action: game.AuditSwitch}}
-	got := switchPageOf("alpha", st, switchNames).ActionsNote()
+	got := english(switchPageOf("alpha", st, switchNames).ActionsNote())
 	if !strings.Contains(got, "Force stop ends the switch; the game is stopped without saving.") {
 		t.Errorf("note: %q", got)
 	}

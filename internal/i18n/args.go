@@ -14,17 +14,17 @@ type Size uint64
 // the datetime attribute and text what shows without script (SPEC 17.11).
 func Moment(iso, text string) Fragment {
 	esc := template.HTMLEscapeString
-	return Fragment{`<time datetime="` + esc(iso) + `">` + esc(text) + `</time>`}
+	return Fragment{`<time datetime="` + esc(iso) + `">` + esc(text) + `</time>`, text}
 }
 
 // NoWrap keeps text, such as a size, on one line.
 func NoWrap(text string) Fragment {
-	return Fragment{`<span class="nowrap">` + template.HTMLEscapeString(text) + `</span>`}
+	return Fragment{`<span class="nowrap">` + template.HTMLEscapeString(text) + `</span>`, text}
 }
 
 // Strong emphasises text, such as a name the person must type.
 func Strong(text string) Fragment {
-	return Fragment{"<strong>" + template.HTMLEscapeString(text) + "</strong>"}
+	return Fragment{"<strong>" + template.HTMLEscapeString(text) + "</strong>", text}
 }
 
 // Codes is a comma-separated run of code elements for a placeholder of
@@ -34,5 +34,5 @@ func Codes(items []string) Fragment {
 	for i, it := range items {
 		parts[i] = Code(it).html
 	}
-	return Fragment{strings.Join(parts, ", ")}
+	return Fragment{strings.Join(parts, ", "), strings.Join(items, ", ")}
 }

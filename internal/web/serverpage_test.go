@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -138,21 +139,14 @@ func TestUnmarkedListsKeepTheirRole(t *testing.T) {
 // can act on, worded plainly.
 func TestPausedAndNotReadyAreWorded(t *testing.T) {
 	for _, err := range []error{game.ErrPaused, game.ErrNotReady} {
-		if status, msg := gameError(err); status != http.StatusConflict || msg != sentence(err) {
+		if status, msg := gameErrorText(err); status != http.StatusConflict || msg != sentence(err) {
 			t.Errorf("%v: %d %q", err, status, msg)
 		}
-		if got := failureText(err); got != sentence(err) {
+		if got := english(failureText(err)); got != sentence(err) {
 			t.Errorf("%v shown as %q", err, got)
 		}
 	}
 }
-
-// notActive stands for the controller's refusal to start a world that is
-// not the active one, which names the world.
-type notActive string
-
-func (e notActive) Error() string        { return string(e) + " is not the active world. Switch to it first" }
-func (e notActive) Is(target error) bool { return target == game.ErrWorldNotActive }
 
 // SPEC 7.3, 7.9: a start of a world that is not active is a refusal with
 // its own words, not a 500.
@@ -161,14 +155,14 @@ func TestNotActiveIsWorded(t *testing.T) {
 		err  error
 		want string
 	}{
-		{notActive("Bravo"), "Bravo is not the active world. Switch to it first."},
-		{fmt.Errorf("start: %w", notActive("Bravo")), "Bravo is not the active world."},
+		{game.NotActiveError{Name: "Bravo"}, "Bravo is not the active world. Switch to it first."},
+		{fmt.Errorf("start: %w", game.NotActiveError{Name: "Bravo"}), "Bravo is not the active world."},
 	} {
-		status, msg := gameError(c.err)
+		status, msg := gameErrorText(c.err)
 		if status != http.StatusConflict || !strings.Contains(msg, c.want) {
 			t.Errorf("%v: %d %q, want 409 containing %q", c.err, status, msg, c.want)
 		}
-		if got := failureText(c.err); got != msg {
+		if got := english(failureText(c.err)); got != msg {
 			t.Errorf("%v shown as %q", c.err, got)
 		}
 	}
@@ -177,40 +171,33 @@ func TestNotActiveIsWorded(t *testing.T) {
 // SPEC 7.7: a forced stop that interrupted a switch shows the operation's
 // error, which names the world it stopped, not the bare cancellation.
 func TestForcedStopInterruptingASwitchNamesTheWorld(t *testing.T) {
-	opError := game.ErrCancelled.Error() + ". It stopped the game of Alpha."
-	st := game.Status{Operation: &game.Operation{Action: game.AuditSwitch, Done: true, Error: opError}}
+	opErr := &game.ForcedStopError{World: "Alpha", Stopped: true}
+	st := game.Status{Operation: &game.Operation{Action: game.AuditSwitch, Done: true, Error: opErr.Error(), Err: opErr}}
 	p := ServerPage{World: worldSummary("alpha"), HasWorld: true, Status: st, HaveResult: true,
 		Result: actionResult{Action: game.AuditSwitch, Err: game.ErrCancelled}}
 	f := p.Failure()
-	if f == nil || f.Message != "A forced stop interrupted this. It stopped the game of Alpha." || f.In != "operation" {
+	if f == nil || english(f.Message) != "A forced stop interrupted this. It stopped the game of Alpha." || f.In != "operation" {
 		t.Fatalf("failure: %+v", f)
 	}
-	if got := resultAnnouncement(p); got != "Error: "+f.Message {
+	if got := english(resultAnnouncement(p)); got != "Error: "+english(f.Message) {
 		t.Errorf("announcement: %q", got)
 	}
 
 	// Without an operation error to name, the plain cancellation shows.
 	p.Status = game.Status{}
-	if f := p.Failure(); f == nil || f.Message != sentence(game.ErrCancelled) {
+	if f := p.Failure(); f == nil || english(f.Message) != sentence(game.ErrCancelled) {
 		t.Errorf("plain: %+v", f)
 	}
 }
 
-// networkRefusal stands for a game network refusal, which carries its own
-// plain-English text and matches game.ErrNetwork.
-type networkRefusal string
-
-func (e networkRefusal) Error() string        { return string(e) }
-func (e networkRefusal) Is(target error) bool { return target == game.ErrNetwork }
-
 // A refused game network says what to change, not "see the log".
 func TestNetworkRefusalIsShown(t *testing.T) {
-	err := fmt.Errorf("start: %w", networkRefusal("FOREMAN_GAME_NETWORK must be set when Foreman runs in a container: choose a network"))
+	err := fmt.Errorf("start: %w", &game.NetworkError{Kind: game.NetworkUnset})
 	want := "Foreman could not"
-	if status, msg := gameError(err); status != http.StatusConflict || msg != sentence(err) {
+	if status, msg := gameErrorText(err); status != http.StatusConflict || msg != sentence(errors.Unwrap(err)) {
 		t.Errorf("gameError: %d %q", status, msg)
 	}
-	if got := failureText(err); got != sentence(err) || strings.HasPrefix(got, want) {
+	if got := english(failureText(err)); got != sentence(errors.Unwrap(err)) || strings.HasPrefix(got, want) {
 		t.Errorf("shown as %q", got)
 	}
 }
@@ -237,7 +224,7 @@ func TestLiveAnnouncements(t *testing.T) {
 	failed := func(s game.State, err error) ServerPage {
 		return serverCase(s, func(p *ServerPage) { p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: err}, true })
 	}
-	startFailed := fmt.Errorf("%w: it could not load the save", game.ErrStartFailed)
+	startFailed := &game.StartError{Kind: game.StartLoadFailed}
 
 	l := &liveStream{render: r, sent: map[string]string{}}
 	if got := send(l, failed(game.StateStopped, startFailed)); got != "" {
@@ -324,14 +311,14 @@ func TestRefusalBoxAndStepWord(t *testing.T) {
 		want, nots []string
 	}{
 		{"start anyway", refused(true, game.AuditStart, game.StateStopped),
-			[]string{`step-state--warning">Refused<`, "<strong>Warning:</strong>", `"Before start anyway"`,
+			[]string{`step-state--warning">Refused<`, "<strong>Warning:</strong>", `&#34;Before start anyway&#34;`,
 				`action="/worlds/base/start"`, `name="anyway" value="1"`, ">Start anyway</button>", "To undo, restore that snapshot"},
 			[]string{"Fix the world first", "Try to start again", "button--primary", `name="countdown"`, "Failed"}},
 		{"restart anyway", refused(true, game.AuditRestart, game.StateRunning),
 			[]string{`action="/worlds/base/restart"`, `name="countdown" value="60"`, "60-second countdown", ">Restart anyway</button>"},
 			[]string{"Fix the world first"}},
 		{"restart anyway of a stopped game", refused(true, game.AuditRestart, game.StateStopped),
-			[]string{">Restart anyway</button>", `"Before start anyway"`},
+			[]string{">Restart anyway</button>", `&#34;Before start anyway&#34;`},
 			[]string{"countdown, save the game and stop it"}},
 		{"save newer than the world", serverCase(game.StateStopped, func(p *ServerPage) {
 			p.Status.Operation = &game.Operation{Action: game.AuditStart, Done: true, Error: errSaveNewer.Error(), Steps: []game.Step{
@@ -371,7 +358,7 @@ func TestRefusalAnnouncementNamesTheChoice(t *testing.T) {
 			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveUnreadable, Text: "x", StartAnyway: true}}}}
 			p.Result, p.HaveResult = actionResult{Action: action, Err: err, Target: "other"}, true
 		})
-		if got, want := resultAnnouncement(p), "You can "+verb+"; the button is below."; !strings.Contains(got, want) {
+		if got, want := english(resultAnnouncement(p)), "You can "+verb+"; the button is below."; !strings.Contains(got, want) {
 			t.Errorf("%s: %q lacks %q", action, got, want)
 		}
 	}

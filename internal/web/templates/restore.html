@@ -1,38 +1,38 @@
-{{define "title"}}Restore a snapshot of {{.Page.WorldName}}{{end}}
+{{define "title"}}{{t "server.restore.title" "world" .Page.WorldName}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions">{{if .Deleted}}<a href="{{worldsPath}}">Back to worlds</a>{{else}}<a href="{{.WorldPath}}">Back to {{.WorldName}}</a>{{end}}</div>
-<h1>Restore a snapshot of {{.WorldName}}</h1>
+<div class="actions">{{if .Deleted}}<a href="{{worldsPath}}">{{t "server.restore.back_worlds"}}</a>{{else}}<a href="{{.WorldPath}}">{{t "server.back_to" "world" .WorldName}}</a>{{end}}</div>
+<h1>{{t "server.restore.title" "world" .WorldName}}</h1>
 {{template "summary" .Problems}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>Error:</strong> {{msg .Error}}</p>
+  <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>
   {{- if $.Page.Undo}}
-  <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot.</p>
-  <div class="actions"><a href="{{$.Page.UndoPath}}">Restore the "Before restore" snapshot</a></div>
+  <p>{{t "server.failure.undo_text"}}</p>
+  <div class="actions"><a href="{{$.Page.UndoPath}}">{{t "server.restore.undo_link"}}</a></div>
   {{- end}}
 </div>
 {{- end}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Restore the snapshot "{{.Snapshot.Label}}" from <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utc .Snapshot.TakenAt}}</time>?</h2>
-  <p>This will:</p>
+  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" .Snapshot.Label "time" (momentUTC .Snapshot.TakenAt)}}</h2>
+  <p>{{t "server.this_will"}}</p>
   <ul>
     {{- if .Deleted}}
-    <li>Foreman will recreate this world from the snapshot: the folder <code>worlds/{{.WorldID}}</code> with the {{len .Snapshot.Files}} files in this snapshot ({{bytes .Snapshot.Size}}), with their original modification times.</li>
-    <li>Keep this snapshot.</li>
+    <li>{{tHTML "server.restore.recreate" "folder" (code (print "worlds/" .WorldID)) "count" (len .Snapshot.Files) "size" (bytes .Snapshot.Size)}}</li>
+    <li>{{t "server.restore.keep"}}</li>
     {{- else}}
     {{- if .Running}}
-    <li>First, stop the game: warn players online with the countdown below, save, then stop. If the game cannot be saved, nothing else happens.</li>
-    <li>Then take a snapshot of {{.WorldName}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
+    <li>{{t "server.restore.stop_first"}}</li>
+    <li>{{t "server.restore.then_snapshot" "world" .WorldName}}</li>
     {{- else}}
-    <li>First, take a snapshot of {{.WorldName}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
+    <li>{{t "server.restore.first_snapshot" "world" .WorldName}}</li>
     {{- end}}
-    <li>Replace everything in the folder <code>worlds/{{.WorldID}}</code> with the {{len .Snapshot.Files}} files in this snapshot ({{bytes .Snapshot.Size}}), with their original modification times. Saves made since the snapshot will be gone from the world.</li>
+    <li>{{tHTML "server.restore.replace" "folder" (code (print "worlds/" .WorldID)) "count" (len .Snapshot.Files) "size" (bytes .Snapshot.Size)}}</li>
     {{- if .Running}}
-    <li>Start the game again with the restored world. The Server page shows each step.</li>
+    <li>{{t "server.restore.start"}}</li>
     {{- end}}
-    <li>Keep this snapshot. To undo, restore the "Before restore" snapshot from the Snapshots page.</li>
+    <li>{{t "server.restore.keep_undo"}}</li>
     {{- end}}
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
@@ -40,8 +40,8 @@
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">Restore snapshot</button>
-      <a href="{{.SnapshotsPath}}">Cancel, keep the world as it is</a>
+      <button type="submit" class="button button--danger">{{t "server.restore.button"}}</button>
+      <a href="{{.SnapshotsPath}}">{{t "server.restore.cancel"}}</a>
     </div>
   </form>
 </section>

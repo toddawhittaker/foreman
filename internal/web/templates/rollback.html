@@ -1,38 +1,38 @@
-{{define "title"}}Roll back {{.Page.World.Name}}{{end}}
+{{define "title"}}{{t "server.rollback.title" "world" .Page.World.Name}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">Back to {{.World.Name}}</a></div>
-<h1>Roll back {{.World.Name}}</h1>
+<div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .World.Name}}</a></div>
+<h1>{{t "server.rollback.title" "world" .World.Name}}</h1>
 {{template "summary" .Problems}}
-{{- with .Error}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
-  <p><strong>Error:</strong> {{.}}</p>
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>
 </div>
 {{- end}}
 {{- if .Version}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Go back from Factorio {{.World.GameVersion}} to {{.Version}}?</h2>
-  <p><strong>Warning:</strong> everything played since the update is lost. Saves made on {{.World.GameVersion}} cannot be loaded by {{.Version}}.</p>
-  <p>This will:</p>
+  <h2 id="confirm-heading" tabindex="-1">{{t "server.rollback.heading" "from" .World.GameVersion "to" .Version}}</h2>
+  <p><strong>{{t "server.label.warning"}}</strong> {{t "server.rollback.warning" "from" .World.GameVersion "to" .Version}}</p>
+  <p>{{t "server.this_will"}}</p>
   <ul>
     {{- if .Running}}
-    <li>Warn players online with the countdown below, save the game and stop it.</li>
+    <li>{{t "server.update.warn"}}</li>
     {{- end}}
-    <li>Take a snapshot of {{.World.Name}}, labelled "Before restore". If the snapshot fails, nothing else happens.</li>
-    <li>Restore the snapshot "{{.Snapshot.Label}}" from <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utc .Snapshot.TakenAt}}</time>, which puts the world back on Factorio {{.Version}}.</li>
+    <li>{{t "server.rollback.snapshot" "world" .World.Name}}</li>
+    <li>{{tHTML "server.rollback.restore" "label" .Snapshot.Label "time" (momentUTC .Snapshot.TakenAt) "version" .Version}}</li>
     {{- if .Running}}
-    <li>Start the game again on {{.Version}}. The Server page shows each step.</li>
+    <li>{{t "server.rollback.start" "version" .Version}}</li>
     {{- end}}
-    <li>To undo, restore the "Before restore" snapshot from the Snapshots page.</li>
+    <li>{{t "server.rollback.undo"}}</li>
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     {{- if .Running}}
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">Roll back to {{.Version}}</button>
-      <a href="{{.WorldPath}}">Cancel, keep {{.World.GameVersion}}</a>
+      <button type="submit" class="button button--danger">{{t "server.undo.update" "version" .Version}}</button>
+      <a href="{{.WorldPath}}">{{t "server.update.cancel" "version" .World.GameVersion}}</a>
     </div>
   </form>
 </section>

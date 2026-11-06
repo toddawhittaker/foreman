@@ -1,36 +1,37 @@
-{{define "title"}}Console{{end}}
+{{define "title"}}{{t "server.console.title"}}{{end}}
 
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
 <script src="{{static "log.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<h1>Console</h1>
+<h1>{{t "server.console.title"}}</h1>
 {{- if not .HasWorld}}
 <section class="panel" aria-labelledby="none-heading">
-  <h2 id="none-heading">No active world</h2>
-  <p class="empty">No world is active yet, so there is no game to read or command. Import a world or upload a save on the Worlds page; the first world becomes the active one.</p>
-  <div class="actions"><a href="{{worldsPath}}" class="button">Go to Worlds</a></div>
+  <h2 id="none-heading">{{t "server.none.heading"}}</h2>
+  <p class="empty">{{t "server.console.none"}}</p>
+  <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
 </section>
 {{- else}}
-<div class="actions"><a href="{{.WorldPath}}">Active world: {{.World.Name}}</a></div>
+<div class="actions"><a href="{{.WorldPath}}">{{t "server.active" "world" .World.Name}}</a></div>
 {{/* The command field comes first, so a phone shows it without scrolling past the log (DESIGN 6). */}}
 <section class="panel" aria-labelledby="console-heading">
-  <h2 id="console-heading">Console</h2>
+  <h2 id="console-heading">{{t "server.console.title"}}</h2>
   {{template "console-panel" .}}
 </section>
 <section class="panel" aria-labelledby="log-heading">
-  <h2 id="log-heading">Game log</h2>
-  <p class="hint">The most recent {{.MaxLines}} lines of the game's log, with new lines added as the game prints them. The RCON password is hidden.</p>
+  <h2 id="log-heading">{{t "server.console.log_heading"}}</h2>
+  <p class="hint">{{t "server.console.log_hint" "count" .MaxLines}}</p>
   {{- if not .Lines}}
-  <p class="empty" id="log-empty">The game has printed nothing since Foreman last started it.</p>
+  <p class="empty" id="log-empty">{{t "server.console.log_empty"}}</p>
   {{- end}}
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}">
-    <div class="log" tabindex="0" role="region" aria-label="Game log lines">
-      <pre>{{range .Lines}}<span>{{.}}
+    <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.log_label"}}">
+      {{- /* The game's own words stay English (SPEC 22.3). */}}
+      <pre lang="en">{{range .Lines}}<span>{{.}}
 </span>{{end}}</pre>
     </div>
-    <button type="button" class="button" hidden>Jump to newest</button>
+    <button type="button" class="button" hidden>{{t "server.console.jump"}}</button>
   </div>
 </section>
 {{- end}}
@@ -42,44 +43,44 @@
 {{define "console-panel" -}}
 <div id="console-panel">
   {{template "summary" .Problems}}
-  {{- with .Failure}}
+  {{- if not .Failure.IsZero}}
   <div class="message message--error">
-    <p><strong>Error:</strong> {{.}}</p>
-    <div class="actions"><a href="{{serverPath}}">Go to the Server page</a></div>
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .Failure}}</p>
+    <div class="actions"><a href="{{serverPath}}">{{t "server.console.go_server"}}</a></div>
   </div>
   {{- end}}
   <form class="field" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML">
-    <label for="command">Command</label>
-    <p class="hint" id="command-hint">Sent to the game as typed, and recorded in the audit log. Up to {{.CommandLimit}} characters on one line. A password you set is hidden in the record and here.</p>
+    <label for="command">{{t "server.console.command"}}</label>
+    <p class="hint" id="command-hint">{{t "server.console.command_hint" "max" .CommandLimit}}</p>
     <div class="console-row">
       <input id="command" name="command" type="text" value="{{.Command}}" autocomplete="off" autocapitalize="off" spellcheck="false"
-        {{- if .CommandError}} aria-invalid="true" aria-describedby="command-hint command-error"{{else}} aria-describedby="command-hint"{{end}}>
-      <button id="send" type="submit" class="button button--primary">Send</button>
+        {{- if not .CommandError.IsZero}} aria-invalid="true" aria-describedby="command-hint command-error"{{else}} aria-describedby="command-hint"{{end}}>
+      <button id="send" type="submit" class="button button--primary">{{t "server.console.send"}}</button>
     </div>
-    {{- with .CommandError}}
-    <p class="error" id="command-error"><strong>Error:</strong> {{.}}</p>
+    {{- if not .CommandError.IsZero}}
+    <p class="error" id="command-error"><strong>{{t "common.error.label"}}</strong> {{msg .CommandError}}</p>
     {{- end}}
   </form>
   {{- if .History}}
-  <div class="log" tabindex="0" role="region" aria-label="Console history" data-follow-end>
+  <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.history_label"}}" data-follow-end>
     <ol class="console-history" role="list">
       {{- range .History}}
       <li{{if .Last}} id="last-reply"{{end}}>
-        <p class="console-command"><span class="visually-hidden">You sent </span>{{.Command}}</p>
+        <p class="console-command"><span class="visually-hidden">{{t "server.console.you_sent"}} </span>{{.Command}}</p>
         {{- if .Reply}}
-        <pre>{{.Reply}}</pre>
+        <pre lang="en">{{.Reply}}</pre>
         {{- else}}
-        <p>The game sent no reply.</p>
+        <p>{{t "server.console.no_reply"}}</p>
         {{- end}}
         {{- if .Cut}}
-        <p>The reply was longer than Foreman shows. The rest is not displayed.</p>
+        <p>{{t "server.console.cut"}}</p>
         {{- end}}
       </li>
       {{- end}}
     </ol>
   </div>
   {{- else}}
-  <p class="empty">No commands have been sent yet.</p>
+  <p class="empty">{{t "server.console.no_history"}}</p>
   {{- end}}
 </div>
 {{- end}}
@@ -88,7 +89,7 @@
      refusal for the announcer. */}}
 {{define "console-response" -}}
 {{template "console-panel" .}}
-{{- with .Announce}}
-<div hx-swap-oob="innerHTML:#announcer">{{.}}</div>
+{{- if not .Announce.IsZero}}
+<div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}
 {{- end}}

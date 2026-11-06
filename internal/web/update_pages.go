@@ -30,10 +30,10 @@ type ReleaseNotice struct {
 type UpdatePage struct {
 	World        world.Summary
 	Target       string
-	VersionError string
+	VersionError i18n.Msg
 	Running      bool
 	CountdownForm
-	Refusal string
+	Refusal i18n.Msg
 }
 
 // RollbackPage confirms going back to the version before the last update
@@ -44,7 +44,7 @@ type RollbackPage struct {
 	Version  string
 	Running  bool
 	CountdownForm
-	Error string
+	Error i18n.Msg
 }
 
 // RollbackOffer is what the world page shows to offer a rollback: the
@@ -71,27 +71,27 @@ func (UpdatePage) navItem() string         { return PathWorlds }
 func (RollbackPage) navItem() string       { return PathWorlds }
 
 func (p UpdatePage) hasErrors() bool   { return len(p.Problems()) > 0 }
-func (p RollbackPage) hasErrors() bool { return p.CountdownError != "" }
+func (p RollbackPage) hasErrors() bool { return !p.CountdownError.IsZero() }
 
 // Problems lists the field errors in the order the fields appear.
 func (p UpdatePage) Problems() []Problem {
-	return problems(Problem{"update-version", i18n.Raw(p.VersionError)}, Problem{"countdown", i18n.Raw(p.CountdownError)})
+	return problems(Problem{"update-version", p.VersionError}, Problem{"countdown", p.CountdownError})
 }
 
 // Problems lists the countdown field's error.
 func (p RollbackPage) Problems() []Problem {
-	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
+	return problems(Problem{"countdown", p.CountdownError})
 }
 
 // Label marks the stable and experimental releases in the suggestion list.
-func (p VersionPicker) Label(v string) string {
+func (p VersionPicker) Label(v string) i18n.Msg {
 	switch v {
 	case p.Stable:
-		return v + " (stable)"
+		return i18n.M("server.versions.stable", "version", v)
 	case p.Experimental:
-		return v + " (experimental)"
+		return i18n.M("server.versions.experimental", "version", v)
 	}
-	return v
+	return i18n.M("server.versions.plain", "version", v)
 }
 
 // chosenVersion is the version a form asked for: the typed field wins

@@ -65,15 +65,15 @@
      CountdownForm. */}}
 {{define "countdown" -}}
 {{- if .Online.Asked}}
-<p id="online">{{.Online.Text}}</p>
+<p id="online">{{msg .Online.Text}}</p>
 {{- end}}
 <div class="field">
   <label for="countdown">{{t "common.countdown.label"}}</label>
   <p class="hint" id="countdown-hint">{{t "common.countdown.hint"}}</p>
   <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
-    {{- if .CountdownError}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
-  {{- with .CountdownError}}
-  <p class="error" id="countdown-error"><strong>{{t "common.error.label"}}</strong> {{.}}</p>
+    {{- if not .CountdownError.IsZero}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
+  {{- if not .CountdownError.IsZero}}
+  <p class="error" id="countdown-error"><strong>{{t "common.error.label"}}</strong> {{msg .CountdownError}}</p>
   {{- end}}
 </div>
 {{- end}}
