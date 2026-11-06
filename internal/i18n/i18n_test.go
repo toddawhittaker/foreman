@@ -41,7 +41,17 @@ func TestMatch(t *testing.T) {
 		{"", "zh-Hans-CN", "zh-Hans"},
 		{"", "zh-SG", "zh-Hans"},
 		{"", "cs", "cs"},
-		{"", "sk", English}, // Slovak is close to Czech, but not offered
+		{"", "sk", English},                             // Slovak is close to Czech, but not offered
+		{"", "xx, de;q=0.5", "de"},                      // an unknown tag does not hide a later match
+		{"", "tlh, de;q=0.5", "de"},                     // nor does a valid tag with no catalogue
+		{"", "ru, !!!", "ru"},                           // a malformed entry does not hide a valid one
+		{"", "ru, x", "ru"},                             // a too-short tag is dropped on its own
+		{"", "ru;q=abc", English},                       // a bad q-value drops only its entry
+		{"", "ru;q=abc, pl;q=0.5", "pl"},                // and the rest still count
+		{"", "!!!, de_DE", "de"},                        // underscore form after a bad entry
+		{"", "de;q=0.3, xx, fr;q=0.8", "fr"},            // q-values order the survivors
+		{"", strings.Repeat("xx,", 40) + "de", English}, // entries past the cap are not read
+		{"", strings.Repeat("xx,", 31) + "de", "de"},    // the last one under the cap is
 	}
 	for _, c := range cases {
 		if got := Match(c.cookie, c.header); got != c.want {
