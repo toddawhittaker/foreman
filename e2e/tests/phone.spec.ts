@@ -121,21 +121,44 @@ test.describe("with the fake game", () => {
   });
 });
 
-test("a world in the list is compact at 320 px, with Switch beside its name", async ({ page, foreman }) => {
-  await createAdmin(page);
-  seedWorld(foreman);
-  seedSecond(foreman);
-  await page.goto("/worlds");
+// The longest "Last played" text: date, clock with zone, and an age in years.
+// The clock is fixed and the zone is UTC, so the text is the same on every run.
+test.describe("a world in the list", () => {
+  test.use({ timezoneId: "UTC" });
 
-  const second = page.locator("ul.worlds > li").filter({ hasText: "Second" });
-  const name = await box(second.getByRole("heading", { name: "Second" }));
-  const switchTo = await box(second.getByRole("link", { name: "Switch to Second" }));
-  // The Switch button shares the name's row.
-  expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
-  expect(switchTo.x).toBeGreaterThan(name.x);
-  // Four facts in two rows, so a world takes well under the 250 px it used to.
-  expect((await box(second)).height).toBeLessThan(phone(page) ? 200 : 140);
-  await checkPage(page);
+  test("is compact at 320 px, with Switch beside its name", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    seedSecond(foreman, { playedAt: new Date("2016-12-29T22:59:00Z") });
+    await page.clock.setFixedTime(new Date("2026-11-06T12:00:00Z"));
+    await page.goto("/worlds");
+
+    const second = page.locator("ul.worlds > li").filter({ hasText: "Second" });
+    await expect(second.locator("time")).toContainText("Dec 29, 2016");
+    await expect(second).toContainText("10 years ago");
+    const name = await box(second.getByRole("heading", { name: "Second" }));
+    const switchTo = await box(second.getByRole("link", { name: "Switch to Second" }));
+    // The Switch button shares the name's row.
+    expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
+    expect(switchTo.x).toBeGreaterThan(name.x);
+    if (phone(page)) {
+      // Last played shows only the age on a phone, not the date and clock (DESIGN 8.2).
+      await expect(second.locator("time .time-short")).toBeVisible();
+      await expect(second.locator("time .time-full")).toBeHidden();
+      const shown = await second.locator("time").innerText();
+      expect(shown.trim()).toBe("10 years ago");
+      expect(shown).not.toMatch(/\d:\d\d/);
+      // Four facts in two rows, as on a wide screen.
+      expect((await box(second)).height).toBeLessThan(200);
+    } else {
+      await expect(second.locator("time .time-full")).toBeVisible();
+      await expect(second.locator("time .time-short")).toBeHidden();
+      await expect(second.locator("time")).toContainText(/\d:\d\d.*UTC \(10 years ago\)/);
+      // Four facts in two rows, so a world takes well under the 250 px it used to.
+      expect((await box(second)).height).toBeLessThan(140);
+    }
+    await checkPage(page);
+  });
 });
 
 test("a long world name wraps beside Switch without widening the page", async ({ page, foreman }) => {

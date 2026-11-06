@@ -464,8 +464,14 @@ fieldset,
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  /* A label breaks between words, never inside one (the body breaks anywhere). */
-  overflow-wrap: normal;
+  /* A label wraps between words inside its box at large text (SPEC 17.2,
+     22.7). Only a single word wider than the box is broken, with a hyphen
+     where the browser can; "anywhere" (the body's rule) would also shrink a
+     button's minimum width to one letter. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+  white-space: normal;
+  padding-block: var(--space-2);
 }
 
 .button:hover {
@@ -499,7 +505,8 @@ fieldset,
   color: var(--color-on-danger);
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled="true"] {
   cursor: progress;
 }
 
@@ -575,6 +582,8 @@ legend {
   border-radius: var(--radius);
   box-shadow: var(--bevel-sunken);
   font-size: var(--text-md);
+  /* A choice too long for a phone ends in an ellipsis; the list shows it whole. */
+  text-overflow: ellipsis;
 }
 
 /* The file picker button is drawn as a secondary button (DESIGN 7.2). */
@@ -958,6 +967,23 @@ legend {
 
 .facts dd {
   overflow-wrap: anywhere;
+}
+
+/* A time that carries data-age-only shows its date, clock and age on a wide
+   panel and only the age on a narrow one, so a fact fits its half of the
+   row in every language (SPEC 22.7). time.js writes the two spans. */
+time[data-age-only] .time-short {
+  display: none;
+}
+
+@container (max-width: 24rem) {
+  time[data-age-only] .time-full {
+    display: none;
+  }
+
+  time[data-age-only] .time-short {
+    display: inline;
+  }
 }
 
 /* A second figure under a fact's value, on its own line and small enough to

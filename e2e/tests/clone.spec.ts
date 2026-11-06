@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import { countClicks, expectWithin } from "./clicks.js";
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -58,6 +58,25 @@ test("a fresh map has no save and a random seed", async ({ page, foreman, fakeGa
   const meta = worldJSON(foreman.dataDir, "clean-slate");
   expect(meta.load_save).toBeUndefined();
   expect(Number.isInteger(meta.new_map.seed)).toBe(true);
+});
+
+// SPEC 17.3: Clone can be done with the keyboard alone, choosing the map by arrow keys.
+test("a fresh-map clone is made with the keyboard alone", async ({ page, foreman, fakeGame }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await page.goto("/worlds/base/clone");
+  await tabTo(page, page.getByLabel("Name of the clone"));
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type("Keys clone");
+  await tabTo(page, page.getByRole("radio", { name: /^Keep base\.zip/ }));
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("radio", { name: "Start a fresh map" })).toBeChecked();
+  await tabTo(page, page.getByRole("button", { name: "Clone world" }));
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL("/worlds/keys-clone?cloned=base");
+  expect(savesOf(foreman.dataDir, "keys-clone")).toEqual([]);
+  expect(Number.isInteger(worldJSON(foreman.dataDir, "keys-clone").new_map.seed)).toBe(true);
 });
 
 test("a name that is taken or blank is refused with the typed name kept", async ({ page, foreman }) => {

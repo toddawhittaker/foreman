@@ -80,8 +80,11 @@
         <label for="game-password">{{t "settings.password.new"}}</label>
         <p class="hint" id="pw-hint">{{if .PasswordSet}}{{t "settings.password.keep"}}{{else}}{{t "settings.password.keep_none"}}{{end}}</p>
         <input id="game-password" name="game_password" type="password" autocomplete="new-password"
-          aria-describedby="pw-state pw-hint{{if not .PasswordError.IsZero}} pw-error{{end}}"
+          aria-describedby="pw-state pw-hint{{if .PasswordDropped}} pw-dropped{{end}}{{if not .PasswordError.IsZero}} pw-error{{end}}"
           {{- if not .PasswordError.IsZero}} aria-invalid="true"{{end}}>
+        {{- if .PasswordDropped}}
+        <p class="hint" id="pw-dropped"><strong>{{t "common.label.note"}}</strong> {{t "settings.password.dropped"}}</p>
+        {{- end}}
         {{- if not .PasswordError.IsZero}}
         <p class="error" id="pw-error"><strong>{{t "common.error.label"}}</strong> {{msg .PasswordError}}</p>
         {{- end}}
@@ -124,7 +127,8 @@
     <label class="check"><input type="checkbox" name="auto_pause"{{if .AutoPause}} checked{{end}}> {{t "settings.auto_pause.label"}}</label>
   </fieldset>
 
-  <fieldset{{if not .Editable}} disabled{{end}}>
+  {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
+  <fieldset>
     <legend>{{t "settings.admins.legend"}}</legend>
     {{- if .AdminsBroken}}
     <p class="hint">{{t "settings.admins.broken" "file" .AdminFile}}</p>
@@ -132,7 +136,7 @@
     <div class="field">
       <label for="admins">{{t "settings.admins.label"}}</label>
       <p class="hint" id="admins-hint">{{t "settings.admins.hint"}}</p>
-      <textarea id="admins" name="admins" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false"
+      <textarea id="admins" name="admins" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false"{{if not .Editable}} readonly{{end}}
         aria-describedby="admins-hint{{if not .AdminsError.IsZero}} admins-error{{end}}"
         {{- if not .AdminsError.IsZero}} aria-invalid="true"{{end}}>{{.Admins}}</textarea>
       {{- if not .AdminsError.IsZero}}

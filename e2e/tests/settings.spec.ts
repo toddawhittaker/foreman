@@ -106,6 +106,35 @@ test("a new password is set without being shown, and the diff only says so", asy
   await checkPage(page);
 });
 
+test("a refused form says to enter a typed password again, but Go back and edit does not", async ({ page, foreman }) => {
+  await setUp(page, foreman);
+  await page.goto("/worlds/base/settings");
+  const note = "Enter the new password again; it is never kept in the page.";
+  await page.getByLabel("Maximum players").fill("ten");
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  await expect(page.locator("#error-summary")).toBeFocused();
+  await expect(page.getByText(note)).toHaveCount(0);
+
+  await page.getByLabel("Maximum players").fill("8");
+  await page.getByLabel("New password").fill(typed);
+  await page.getByLabel("Server name").fill("");
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  await expect(page.locator("#error-summary")).toBeFocused();
+  await expect(page.getByText(note)).toBeVisible();
+  await expect(page.getByLabel("New password")).toHaveValue("");
+  await expect(page.getByLabel("New password")).toHaveAttribute("aria-describedby", /pw-dropped/);
+  await expect(page.locator("#pw-dropped")).toContainText(note);
+  await expectNoSecret(page);
+  await checkPage(page);
+
+  await page.getByLabel("Server name").fill("Base");
+  await page.getByLabel("New password").fill(typed);
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  await page.getByRole("link", { name: "Go back and edit" }).click();
+  await expect(page.getByText(note)).toHaveCount(0);
+  await expectNoSecret(page);
+});
+
 test("the form shows every error at once and keeps what was typed", async ({ page, foreman }) => {
   await setUp(page, foreman);
   await page.goto("/worlds/base/settings");
@@ -173,19 +202,29 @@ test("the JSON editor refuses a bad edit with the line, then saves a good one an
   await expectNoSecret(page);
   await checkPage(page);
 
-  const bad = '{\n  "name": "Base",\n  "max_players": "ten",\n  "auto_pause": 3\n}\n';
+  const bad = '{\n  "name": "Base",\n  "description": "",\n  "visibility": {"public": false, "lan": false},\n  "max_players": "ten",\n  "auto_pause": 3\n}\n';
   await editor.fill(bad);
   await page.getByRole("button", { name: "Preview changes" }).click();
   const summary = page.locator("#error-summary");
   await expect(summary).toContainText("Fix 2 problems to continue");
-  await expect(summary).toContainText('Line 3: max_players must be a whole number. The line reads: "max_players": "ten",');
-  await expect(summary).toContainText("Line 4: auto_pause must be true or false.");
+  await expect(summary).toContainText('Line 5: max_players must be a whole number. The line reads: "max_players": "ten",');
+  await expect(summary).toContainText("Line 6: auto_pause must be true or false.");
   await expect(editor).toHaveValue(bad);
   await expect(editor).toHaveAttribute("aria-invalid", "true");
   await checkPage(page);
   expect(JSON.parse(read(foreman.dataDir)).max_players).toBeUndefined();
 
-  await editor.fill('{\n  "name": "Base",\n  "max_players": 3,\n  "mystery_key": [1, 2]\n}\n');
+  // A key the game needs, left out, is named (SPEC 11.2).
+  await editor.fill('{\n  "name": "Base"\n}\n');
+  await page.getByRole("button", { name: "Preview changes" }).click();
+  await expect(summary).toContainText("Fix 2 problems to continue");
+  await expect(summary).toContainText("description is missing. The game needs it.");
+  await expect(summary).toContainText("visibility is missing. The game needs it.");
+  await expect(summary).not.toContainText("is not allowed");
+  await checkPage(page);
+  expect(JSON.parse(read(foreman.dataDir)).max_players).toBeUndefined();
+
+  await editor.fill('{\n  "name": "Base",\n  "description": "",\n  "visibility": {"public": false, "lan": false},\n  "max_players": 3,\n  "mystery_key": [1, 2]\n}\n');
   await page.getByRole("button", { name: "Preview changes" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Save these changes to Base?");
   await expect(page.locator("ul.changes > li").filter({ hasText: "mystery_key" })).toContainText("Foreman does not check this key. It is saved as written.");
@@ -196,7 +235,14 @@ test("the JSON editor refuses a bad edit with the line, then saves a good one an
   await page.getByRole("button", { name: "Preview changes" }).click();
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.locator(".message--success")).toBeVisible();
-  expect(JSON.parse(read(foreman.dataDir))).toEqual({ name: "Base", max_players: 3, mystery_key: [1, 2], game_password: secret });
+  expect(JSON.parse(read(foreman.dataDir))).toEqual({
+    name: "Base",
+    description: "",
+    visibility: { public: false, lan: false },
+    max_players: 3,
+    mystery_key: [1, 2],
+    game_password: secret,
+  });
 });
 
 test("a file changed after the preview shows the new changes with a warning", async ({ page, foreman }) => {
@@ -204,9 +250,14 @@ test("a file changed after the preview shows the new changes with a warning", as
   await page.goto("/worlds/base/settings");
   await page.getByLabel("Maximum players").fill("5");
   await page.getByRole("button", { name: "Preview changes" }).click();
-  writeFileSync(settingsFile(foreman.dataDir), JSON.stringify({ name: "Base", game_password: secret, autosave_slots: 7 }));
+  writeFileSync(
+    settingsFile(foreman.dataDir),
+    JSON.stringify({ name: "Base", description: "", visibility: { public: false, lan: false }, game_password: secret, autosave_slots: 7 }),
+  );
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.locator(".message--warning")).toContainText("server-settings.json changed since you previewed. These are the changes against the file as it is now.");
+  // The new diff is announced by focus, as the "nothing left" variant is (a11y: the title and heading are the same as before).
+  await expect(page.locator("#file-changed")).toBeFocused();
   await expect(page.locator("ul.changes ins")).toHaveText("5");
   expect(JSON.parse(read(foreman.dataDir)).max_players).toBeUndefined();
   await checkPage(page);
@@ -239,6 +290,13 @@ test("a world a newer Foreman wrote is read-only", async ({ page, foreman }) => 
   await expect(page.getByText("A newer version of Foreman wrote this world, so this version cannot change it.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview changes" })).toHaveCount(0);
   await expect(page.getByLabel("Maximum players")).toBeDisabled();
+  // The admin list is read-only, not disabled, so the keyboard can reach and scroll it.
+  const admins = page.getByLabel("Admin names");
+  await expect(admins).toHaveAttribute("readonly", "");
+  await expect(admins).toBeEnabled();
+  await expect(admins).not.toBeEditable();
+  await admins.focus();
+  await expect(admins).toBeFocused();
   await checkPage(page);
   await page.getByRole("link", { name: "Edit server-settings.json as JSON" }).click();
   await expect(page.getByLabel("Contents of server-settings.json")).toHaveAttribute("readonly", "");
@@ -303,7 +361,8 @@ test.describe("a running world", () => {
     await expect(done.getByRole("link", { name: "Restart server" })).toHaveAttribute("href", "/worlds/base/restart");
     await checkPage(page);
     expect(JSON.parse(read(foreman.dataDir)).max_players).toBe(8);
-    expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).length).toBe(2);
+    // One confirmation of two files takes one snapshot (SPEC 11.3).
+    expect(readdirSync(join(foreman.dataDir, "snapshots", "base")).length).toBe(1);
     expect((await fakeGame!.state()).containers[0].commands).toContain("/promote Alice");
   });
 });

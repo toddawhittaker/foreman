@@ -233,3 +233,33 @@ func TestCloneIgnoresSymlinksInTheSource(t *testing.T) {
 		t.Errorf("symlink was followed or copied: %v", err)
 	}
 }
+
+// SPEC 5.7: a fresh-map clone of a world that has not started yet gets the
+// source's preset; one of a world that has started has none left to copy.
+func TestCloneFreshMapCopiesThePresetOfASourceThatHasNotStarted(t *testing.T) {
+	m, _ := newTestManager(t)
+	ctx := context.Background()
+	src, err := m.Generate(ctx, NewWorld{Name: "Deathworld", GameVersion: "2.0.77", Preset: "death-world", Seed: seedPtr(7)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := m.Clone(ctx, src, "Copy", false, seedPtr(99))
+	if err != nil {
+		t.Fatal(err)
+	}
+	nm := readWorldMetaFile(t, m, id).NewMap
+	if nm == nil || nm.Preset != "death-world" || nm.Seed == nil || *nm.Seed != 99 {
+		t.Errorf("new_map %+v, want preset death-world and seed 99", nm)
+	}
+
+	if err := m.ClearNewMapHeld(src); err != nil {
+		t.Fatal(err)
+	}
+	id, err = m.Clone(ctx, src, "Later copy", false, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nm := readWorldMetaFile(t, m, id).NewMap; nm == nil || nm.Preset != "" {
+		t.Errorf("new_map %+v, want no preset", nm)
+	}
+}

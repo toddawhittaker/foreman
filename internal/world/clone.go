@@ -60,7 +60,8 @@ func (m *Manager) CloneSource(srcID string) (name string, modTime time.Time, err
 // version and Space Age flag (SPEC 5.7). With keepSave it also copies the
 // save that would load and records it as the new world's load_save. Without,
 // the new world has no save and its first start makes a map with seed (nil
-// lets the game choose); seed is ignored when keepSave is set. The source is
+// lets the game choose); seed is ignored when keepSave is set. A source that
+// still has its new_map passes its preset on. The source is
 // left as it was. It refuses a source a newer Foreman wrote, and one that
 // is busy.
 func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, seed *uint32) (string, error) {
@@ -101,6 +102,11 @@ func (m *Manager) Clone(ctx context.Context, srcID, name string, keepSave bool, 
 		files = append(files, importFile{path: path.Join(SavesDir, save.Name), size: uint64(save.Size)}) //nolint:gosec // a file size is never negative
 	} else {
 		opts.newMap = &NewMap{Seed: seed}
+		// A source that has not started yet still holds its preset; once it has
+		// started the preset is gone, and its map-gen file is all there is.
+		if meta.NewMap != nil {
+			opts.newMap.Preset = meta.NewMap.Preset
+		}
 	}
 	var need uint64
 	for _, f := range files {

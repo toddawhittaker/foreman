@@ -45,6 +45,7 @@
   "mapgen.preset.death_world": "Mundo inhóspito",
   "mapgen.preset.death_world_marathon": "Maratón en mundo inhóspito",
   "mapgen.preset.default": "Por defecto",
+  "mapgen.preset.filled": "Rellenado con el ajuste predefinido «{preset}». Cambia los ajustes que quieras.",
   "mapgen.preset.island": "Isla",
   "mapgen.preset.lakes": "Lagos",
   "mapgen.preset.marathon": "Maratón",

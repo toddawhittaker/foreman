@@ -45,6 +45,7 @@
   "mapgen.preset.death_world": "Death world",
   "mapgen.preset.death_world_marathon": "Death world marathon",
   "mapgen.preset.default": "Default",
+  "mapgen.preset.filled": "Filled in from the preset “{preset}”. Change any setting you like.",
   "mapgen.preset.island": "Island",
   "mapgen.preset.lakes": "Lakes",
   "mapgen.preset.marathon": "Marathon",

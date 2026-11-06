@@ -559,7 +559,11 @@ var(--target-min)`, `padding-inline: var(--space-4)`, `--text-md`,
 weight 600, `--radius`, `cursor: pointer`, `box-shadow:
 var(--bevel-raised)`. While pressed (`:active`) the bevel flips to
 `var(--bevel-sunken)`, so the button looks pushed in. Nothing moves and
-nothing animates.
+nothing animates. A label wraps between words inside the button (it
+never runs past the edge) when large text or a long translation needs two
+lines; only a single word wider than the button is broken (`overflow-wrap:
+break-word`, hyphenated where the browser can); the block padding is `--space-2` so a
+two-line label is not cramped.
 
 - Hover is a colour change only; it is never the sole sign of anything,
   because a phone has no hover. The secondary button's hover is a
@@ -581,7 +585,10 @@ nothing animates.
 - **While a request runs**, htmx sets `disabled` on the button
   (`hx-disabled-elt="this"`) and Foreman changes its label to the
   present participle ("Starting…"). The button keeps its size, so nothing
-  shifts. The busy state is the only time a button is disabled.
+  shifts. The busy state is the only time a button is disabled. The one
+  exception is a button the person pressed that must keep focus, such as
+  Preview map (8.8): it is marked `aria-disabled="true"` and a click on it
+  does nothing.
 - A row of buttons is a flex container with `gap: var(--space-3)` and
   `flex-wrap: wrap`. The primary button comes first in source and visual
   order; the cancel link comes last.
@@ -929,7 +936,12 @@ Space Age, last played and disk use. The active world carries the word
 square) beside its name, and is listed first. A world that can be switched
 to has a "Switch" button beside its name (its accessible name is "Switch to"
 and the world's name); section 6 ("What a phone shows first") gives the
-row's grid. The word carries the
+row's grid. On a narrow panel the Last played fact shows only the age
+("1 hour ago"), so it fits its half of the row in every language; the
+world's own page and a wide panel keep the date, clock with zone and age.
+`time.js` writes both texts into the `time` element (`data-age-only`),
+the style sheet shows one by the panel's width, and the exact time stays in
+`datetime`. Without script the page keeps the server's UTC text. The word carries the
 meaning; the orange matches the selected tab. A list with a `dl` per item
 reflows at any width, where a six-column table would not fit 320 px. The
 list sits in one inner panel and its rows are separated by a 1px `rule`
@@ -1064,7 +1076,7 @@ clicks: Worlds, "Generate world" (beside "Import worlds" on the Worlds
 page), then "Generate world" on the form. Everything but the name has a
 default.
 
-One page, `GET /worlds/generate`, one `form.panel`, in this order:
+One page, `GET /generate`, one `form.panel`, in this order:
 
 1. Name (7.2, required, the only field with no default).
 2. Game version: the same picker as Import (SPEC 10.7): downloaded
@@ -1145,8 +1157,20 @@ Plain HTML, no script. It is long, so it is grouped and mostly closed.
   `inputmode="numeric"`, mono, `20ch`. Width and height hint "0 means
   no limit". Peaceful mode is a checkbox (7.2).
 - The form opens filled with the chosen preset's values for the game
-  line, so "Custom" means "a preset, then changed". Anything the form
-  does not cover is in the raw editor below.
+  line, so "Custom" means "a preset, then changed". Choosing another
+  preset in the Preset mode refills this form (the select posts to the
+  refresh route; only the seed is kept), and a hint at the top of the form
+  says which preset it holds. A preset value that is on none of the game's
+  steps (rail world's water coverage of 150%, ribbon world's cliff
+  continuity of 75%) shows as an extra step in that one select, so opening
+  the form never changes a preset. Keys the fields do not cover, such as an
+  island's terrain type, fill the raw editor below. Without script the form
+  opens at the defaults and the person sets what they want.
+- **Words for terrain.** A terrain control (water, trees, rocks, moisture)
+  has Scale and Coverage, as the game's terrain tab words them; Scale is
+  the inverse of the stored frequency. Resources and enemy bases have
+  Frequency and Size, resources also Richness; cliffs Frequency and
+  Continuity.
 - **Raw map-gen JSON** (SPEC 11.5). After the planet `details`, a closed
   `details` "Other map-gen settings (JSON)" holds the raw editor of 8.10
   (mono `textarea`, `wrap="off"`, errors by line in the error summary,
@@ -1161,7 +1185,7 @@ Plain HTML, no script. It is long, so it is grouped and mostly closed.
 Preview is optional and adds no screen to Generate.
 
 - "Preview map" is a secondary submit button in Generate's action row.
-  It posts the same form with `formaction="/worlds/generate/preview"`.
+  It posts the same form with `formaction="/generate/preview"`.
 - The answer is **the same Generate page**, every value kept, a blank
   seed now holding the random seed the picture used, and a "Map preview"
   `section` (h2) directly above the action row. The pictures sit next to
@@ -1180,11 +1204,20 @@ Preview is optional and adds no screen to Generate.
   full-size file.
 - **While it runs** (about one second per planet). Without script the
   browser's own loading state shows and the page arrives complete. With
-  htmx, the button posts with `hx-target` on the preview section and
-  `hx-disabled-elt` on both buttons; the section reserves the height of
-  one picture and shows "Making the map preview for 5 planets, about 5
-  seconds." with an indeterminate `<progress>` (7.6). When the pictures
-  arrive focus stays put and `#announcer` says "Map preview ready."
+  htmx, the button posts with `hx-target` on the preview section; the
+  section reserves the height of one picture and shows "Making the map
+  preview for 5 planets, about 5 seconds." with an indeterminate
+  `<progress>` (7.6). Both action buttons are marked `aria-disabled`
+  while it runs, never `disabled`, because a disabled button loses focus
+  and the browser does not give it back; a click on a busy button does
+  nothing, which also stops the Enter key's implicit submit. When the
+  pictures arrive focus is still on Preview map and `#announcer` says
+  "Map preview ready." A redraw that leaves the form in place removes an
+  old error summary, so focus never lands on errors already fixed. If the
+  request itself fails (a 4xx or 5xx answer, or no connection), htmx swaps
+  nothing, so the script puts a sentence in the preview section and in
+  `#announcer`: "The map preview request failed..." The sentence comes
+  from a `template` in the page, so it is translated with the page.
 - **Refusals** are errors (7.3) in the preview section, each with its
   next step as a control: the game image is not downloaded (a "Download
   2.0.77" button that posts the Versions page's download action); another preview is
@@ -1231,7 +1264,10 @@ fieldsets, in this order:
   means no limit"), require user verification (checkbox).
 - "Saving": autosave interval in minutes, autosave slots, pause when no
   one is online (checkbox).
-- "Admins": a `textarea`, one player name per line, as its hint says.
+- "Admins": a `textarea`, one player name per line, as its hint says. On
+  a world that cannot be changed it is `readonly`, not disabled, so the
+  keyboard can focus and scroll a long list; the other controls stay
+  disabled.
 
 Then "Preview changes" (primary) and Cancel. Below the form, one plain
 link per editable file: "Edit server-settings.json as JSON".
@@ -1298,7 +1334,9 @@ not the danger box, because the snapshot makes it undoable.
 - No changes: "Nothing changed." with a link back and no save button.
 - If the file changed since the preview, confirming shows this page
   again with a Warning: "server-settings.json changed since you
-  previewed. These are the changes against the file as it is now."
+  previewed. These are the changes against the file as it is now." The
+  Warning takes focus, as the "nothing left" note does, so the new diff
+  is announced.
 
 **After saving**, the browser returns to the settings form with a Done
 message naming the snapshot, linked. When a restart is needed the

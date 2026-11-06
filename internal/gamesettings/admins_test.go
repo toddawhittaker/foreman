@@ -7,11 +7,11 @@ import (
 )
 
 func TestParseAdminList(t *testing.T) {
-	got, err := ParseAdminList([]byte("[\n \"Todd\",\n \"anna\", \"TODD\", \"Bob Smith\"\n]"))
+	got, err := ParseAdminList([]byte("[\n \"Todd\",\n \"anna\", \"TODD\", \"Bob_Smith\"\n]"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"Todd", "anna", "Bob Smith"}
+	want := []string{"Todd", "anna", "Bob_Smith"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v", got)
 	}
@@ -39,6 +39,7 @@ func TestParseAdminListRefuses(t *testing.T) {
 		"trailing data":    `["a"] x`,
 		"too large":        `["a"]` + strings.Repeat(" ", MaxBytes),
 		"delete character": `["a\u007fb"]`,
+		"space in name":    `["Bob Smith"]`,
 	}
 	for name, in := range bad {
 		if got, err := ParseAdminList([]byte(in)); err == nil {
@@ -48,12 +49,12 @@ func TestParseAdminListRefuses(t *testing.T) {
 }
 
 func TestValidateAdminName(t *testing.T) {
-	for _, ok := range []string{"a", "Todd", "Bob Smith", "ü-é_1", `it's "ok"`, strings.Repeat("a", MaxNameBytes)} {
+	for _, ok := range []string{"a", "Todd", "ü-é_1", `it's"ok"`, strings.Repeat("a", MaxNameBytes)} {
 		if err := ValidateAdminName(ok); err != nil {
 			t.Errorf("%q: %v", ok, err)
 		}
 	}
-	for _, bad := range []string{"", "a\x00", "a\r", "\tx", "a\xff", "x\u200b"} {
+	for _, bad := range []string{"", "a\x00", "a\r", "\tx", "a\xff", "x\u200b", "Bob Smith", " x", "x ", "a\u00a0b", "a\u3000b", "a\u2003b"} {
 		if err := ValidateAdminName(bad); err == nil {
 			t.Errorf("%q accepted", bad)
 		}

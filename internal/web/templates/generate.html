@@ -72,7 +72,7 @@
         <div class="mode-fields">
           <div class="field" id="preset-field">
             <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
-            <select id="generate-preset" name="preset"{{if not .PresetError.IsZero}} aria-invalid="true" aria-describedby="generate-preset-error"{{end}}>
+            <select id="generate-preset" name="preset" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#custom-fields" hx-select="#custom-fields" hx-swap="outerHTML" hx-sync="this:replace"{{if not .PresetError.IsZero}} aria-invalid="true" aria-describedby="generate-preset-error"{{end}}>
               {{- range .Presets}}
               <option value="{{.}}"{{if eq . $.Page.Form.Preset}} selected{{end}}>{{msg ($.Page.Form.PresetMsg .)}}</option>
               {{- end}}
@@ -129,11 +129,20 @@
     <p>{{t "worlds.generate.preview.wait"}}</p>
     <progress aria-label="{{t "worlds.generate.preview.wait_label"}}"></progress>
   </div>
+  {{/* Shown by the script when the preview request itself fails; htmx swaps nothing then. */}}
+  <template id="preview-failed">
+    <section aria-labelledby="preview-failed-heading">
+      <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
+      <div class="message message--error">
+        <p><strong>{{t "common.error.label"}}</strong> {{t "worlds.generate.preview.request_failed"}}</p>
+      </div>
+    </section>
+  </template>
   <div class="actions">
     <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
-      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed,#mg-seed" hx-indicator="#preview-wait" hx-disabled-elt="#preview-button, #generate-button">{{t "worlds.generate.preview.button"}}</button>
+      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed,#mg-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
     <a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a>
   </div>

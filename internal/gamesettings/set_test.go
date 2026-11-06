@@ -16,7 +16,7 @@ func TestSetFieldsKeepsLayoutAndOrder(t *testing.T) {
 	if string(got) != want {
 		t.Errorf("got %q\nwant %q", got, want)
 	}
-	if errs := Validate(FileServerSettings, Line21, got); len(errs) != 0 {
+	if errs := withoutMissing(Validate(FileServerSettings, Line21, got)); len(errs) != 0 {
 		t.Errorf("result does not validate: %+v", errs)
 	}
 }
@@ -26,7 +26,7 @@ func TestSetFieldsOnEmptyObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if errs := Validate(FileServerSettings, Line21, got); len(errs) != 0 {
+	if errs := withoutMissing(Validate(FileServerSettings, Line21, got)); len(errs) != 0 {
 		t.Errorf("result does not validate: %+v\n%s", errs, got)
 	}
 	if ch := Diff([]byte(`{}`), got); len(ch) != 2 {

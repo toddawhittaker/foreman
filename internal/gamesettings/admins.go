@@ -14,10 +14,10 @@ import (
 const MaxNameBytes = 64
 
 // ValidateAdminName refuses a name that could not be sent safely in a
-// /promote or /demote command (SPEC 14.9): empty, too long, not UTF-8, with
-// surrounding spaces, or holding a control, line-break or invisible
-// formatting character. Quotes and other punctuation pass here; the game
-// layer escapes them.
+// /promote or /demote command (SPEC 14.9): empty, too long, not UTF-8,
+// holding any space (the console reads one word as the name and has no
+// quoting), or holding a control, line-break or invisible formatting
+// character. Quotes and other punctuation pass.
 func ValidateAdminName(name string) error {
 	switch {
 	case name == "":
@@ -26,10 +26,11 @@ func ValidateAdminName(name string) error {
 		return fmt.Errorf("admin name is longer than %d bytes", MaxNameBytes)
 	case !utf8.ValidString(name):
 		return errors.New("admin name is not valid UTF-8")
-	case strings.TrimSpace(name) != name:
-		return errors.New("admin name has a space at its start or end")
 	}
 	for _, r := range name {
+		if unicode.IsSpace(r) {
+			return errors.New("admin name has a space")
+		}
 		if unicode.IsControl(r) || unicode.In(r, unicode.Cf, unicode.Zl, unicode.Zp) {
 			return errors.New("admin name has a control or invisible character")
 		}

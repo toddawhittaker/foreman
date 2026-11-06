@@ -33,7 +33,6 @@ func TestValidate(t *testing.T) {
 		in   string
 		want []FieldError
 	}{
-		{name: "empty object is fine", file: FileServerSettings, line: Line21, in: `{}`},
 		{name: "unknown keys are allowed", file: FileServerSettings, line: Line21,
 			in: `{"mod_made_up": [1, {"a": null}], "_comment_x": "hi"}`},
 		{name: "empty input", file: FileServerSettings, line: Line21, in: ``,
@@ -172,11 +171,80 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Validate(tc.file, tc.line, []byte(tc.in))
+			got := withoutMissing(Validate(tc.file, tc.line, []byte(tc.in)))
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got  %+v\nwant %+v", got, tc.want)
 			}
 		})
+	}
+}
+
+// withoutMissing drops the required-key errors, which TestValidateRequiredKeys
+// covers, so the table above can use short files.
+func withoutMissing(errs []FieldError) []FieldError {
+	var out []FieldError
+	for _, e := range errs {
+		if e.Code != CodeMissing {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// The game refuses a server-settings.json that lacks name, description or
+// visibility (with boolean public and lan) when it is given --server-settings;
+// tags is not needed (SPEC 11.2).
+func TestValidateRequiredKeys(t *testing.T) {
+	const ok = `{"name": "a", "description": "", "visibility": {"public": false, "lan": false}}`
+	tests := []struct {
+		name string
+		in   string
+		want []FieldError
+	}{
+		{name: "the three keys are enough", in: ok},
+		{name: "empty object", in: `{}`, want: []FieldError{
+			{Line: 1, Key: "name", Code: CodeMissing},
+			{Line: 1, Key: "description", Code: CodeMissing},
+			{Line: 1, Key: "visibility", Code: CodeMissing},
+		}},
+		{name: "no description", in: "{\n \"name\": \"a\",\n \"visibility\": {\"public\": false, \"lan\": true}\n}",
+			want: []FieldError{{Line: 1, Key: "description", Code: CodeMissing}}},
+		{name: "no name", in: `{"description": "", "visibility": {"public": false, "lan": false}}`,
+			want: []FieldError{{Line: 1, Key: "name", Code: CodeMissing}}},
+		{name: "no visibility", in: `{"name": "a", "description": ""}`,
+			want: []FieldError{{Line: 1, Key: "visibility", Code: CodeMissing}}},
+		{name: "visibility without lan", in: "{\"name\": \"a\", \"description\": \"\",\n\"visibility\": {\"public\": false}}",
+			want: []FieldError{{Line: 2, Key: "visibility.lan", Code: CodeMissing}}},
+		{name: "visibility without public", in: "{\"name\": \"a\", \"description\": \"\",\n\"visibility\": {\"lan\": false}}",
+			want: []FieldError{{Line: 2, Key: "visibility.public", Code: CodeMissing}}},
+		{name: "visibility empty", in: "{\"name\": \"a\", \"description\": \"\",\n\"visibility\": {}}",
+			want: []FieldError{
+				{Line: 2, Key: "visibility.public", Code: CodeMissing},
+				{Line: 2, Key: "visibility.lan", Code: CodeMissing},
+			}},
+		{name: "a wrong type is a type error, not a missing key", in: `{"name": 1, "description": "", "visibility": {"public": false, "lan": false}}`,
+			want: []FieldError{{Line: 1, Key: "name", Code: CodeWrongType, Want: "string"}}},
+	}
+	for _, line := range []string{Line11, Line20, Line21} {
+		for _, tc := range tests {
+			t.Run(line+" "+tc.name, func(t *testing.T) {
+				got := Validate(FileServerSettings, line, []byte(tc.in))
+				if !reflect.DeepEqual(got, tc.want) {
+					t.Errorf("got  %+v\nwant %+v", got, tc.want)
+				}
+			})
+		}
+	}
+}
+
+// Only server-settings.json has required keys, and an unknown game line gets
+// no key rules at all.
+func TestValidateRequiredKeysScope(t *testing.T) {
+	if got := Validate(FileMapGen, Line21, []byte(`{}`)); got != nil {
+		t.Errorf("map-gen-settings.json: %+v", got)
+	}
+	if got := Validate(FileServerSettings, "3.0", []byte(`{}`)); got != nil {
+		t.Errorf("unknown line: %+v", got)
 	}
 }
 
@@ -186,7 +254,7 @@ func TestValidateSizeLimit(t *testing.T) {
 	if len(atLimit) != MaxBytes {
 		t.Fatalf("test input is %d bytes", len(atLimit))
 	}
-	if errs := Validate(FileServerSettings, Line21, []byte(atLimit)); len(errs) != 0 {
+	if errs := withoutMissing(Validate(FileServerSettings, Line21, []byte(atLimit))); len(errs) != 0 {
 		t.Errorf("1 MB exactly was refused: %+v", errs)
 	}
 	over := atLimit + " "
@@ -199,7 +267,7 @@ func TestValidateSizeLimit(t *testing.T) {
 func TestValidateLongLineNumbers(t *testing.T) {
 	// 5000 lines before the problem.
 	in := "{\n" + strings.Repeat("\"_c\": 1,\n", 5000) + "\"auto_pause\": 7}"
-	got := Validate(FileServerSettings, Line21, []byte(in))
+	got := withoutMissing(Validate(FileServerSettings, Line21, []byte(in)))
 	want := []FieldError{{Line: 5002, Key: "auto_pause", Code: CodeWrongType, Want: "boolean"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v", got)
@@ -229,7 +297,7 @@ func TestValidateErrorCap(t *testing.T) {
 // A wrong value in a secret key is reported by type only (SPEC 14.8).
 func TestValidateErrorsCarryNoValue(t *testing.T) {
 	in := `{"game_password": 12345678, "token": {"s": "hunter2"}, "password": ["hunter3"]}`
-	got := Validate(FileServerSettings, Line21, []byte(in))
+	got := withoutMissing(Validate(FileServerSettings, Line21, []byte(in)))
 	if len(got) != 3 {
 		t.Fatalf("got %+v", got)
 	}

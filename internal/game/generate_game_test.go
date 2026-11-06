@@ -164,13 +164,13 @@ func (e *gameEnv) runGenerate(t *testing.T, tag, version string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			res, err := c.SaveSettings(ctx, id, admin, SettingsChange{File: file, Data: []byte(data), SeenHash: read.Hash})
+			res, err := c.SaveSettings(ctx, id, admin, []SettingsChange{{File: file, Data: []byte(data), SeenHash: read.Hash}})
 			if err != nil {
 				t.Fatalf("save %s: %v", file, err)
 			}
 			return res
 		}
-		if res := save(world.ServerSettingsFile, `{"name": "Changed name", "description": "Changed"}`); !res.RestartNeeded {
+		if res := save(world.ServerSettingsFile, `{"name": "Changed name", "description": "Changed", "visibility": {"public": false, "lan": false}}`); !res.RestartNeeded {
 			t.Error("a running game's server settings need a restart")
 		}
 		save(world.ServerAdminListFile, `["alice_x", "bob;y"]`)

@@ -45,6 +45,7 @@
   "mapgen.preset.death_world": "Monde mortel",
   "mapgen.preset.death_world_marathon": "Monde mortel - Marathon",
   "mapgen.preset.default": "Défaut",
+  "mapgen.preset.filled": "Rempli d’après le préréglage « {preset} ». Modifiez les réglages à votre guise.",
   "mapgen.preset.island": "Île",
   "mapgen.preset.lakes": "Lacs",
   "mapgen.preset.marathon": "Marathon",

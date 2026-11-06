@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -64,6 +65,12 @@ var mgSteps = []mgStep{
 	{"100", 1}, {"141", math.Sqrt2}, {"200", 2}, {"300", 3}, {"400", 4}, {"600", 6},
 }
 
+// mgExtraSteps are values a preset sets that the list does not offer (rail
+// world's water coverage, ribbon world's cliff continuity). A select shows one
+// only when it holds it, so opening the form never changes a preset's values
+// (DESIGN 8.7).
+var mgExtraSteps = []mgStep{{"75", 0.75}, {"150", 1.5}}
+
 const mgNone = "0"
 
 // MapGenOption is one entry of a select.
@@ -101,12 +108,50 @@ func stepValue(code string) (float64, bool) {
 	if code == mgNone {
 		return 0, true
 	}
-	for _, s := range mgSteps {
+	for _, s := range slices.Concat(mgSteps, mgExtraSteps) {
 		if s.code == code {
 			return s.value, true
 		}
 	}
 	return 0, false
+}
+
+// stepCode is the code of the step a game value stands for, to a tolerance
+// that covers the game's single-precision numbers.
+func stepCode(v float64) (string, bool) {
+	if v == 0 {
+		return mgNone, true
+	}
+	for _, s := range slices.Concat(mgSteps, mgExtraSteps) {
+		if math.Abs(s.value-v) <= 1e-6*math.Max(1, s.value) {
+			return s.code, true
+		}
+	}
+	return "", false
+}
+
+// withExtra adds the extra step with this code to a list that lacks it, in
+// order of value.
+func withExtra(options []MapGenOption, code string) []MapGenOption {
+	if slices.ContainsFunc(options, func(o MapGenOption) bool { return o.Value == code }) {
+		return options
+	}
+	for _, e := range mgExtraSteps {
+		if e.code != code {
+			continue
+		}
+		n, _ := strconv.Atoi(code)
+		extra := MapGenOption{code, i18n.M("mapgen.step.percent", "percent", n)}
+		at := len(options)
+		for i, o := range options {
+			if v, _ := stepValue(o.Value); v > e.value {
+				at = i
+				break
+			}
+		}
+		return slices.Insert(slices.Clone(options), at, extra)
+	}
+	return options
 }
 
 // MapGenSelect is one select of steps.
@@ -157,6 +202,8 @@ type MapGenForm struct {
 	Raw MapGenText
 	// RawOpen opens the raw box's details; RawInvalid marks it as wrong.
 	RawOpen, RawInvalid bool
+	// FromPreset says the fields were just filled from a preset; zero otherwise.
+	FromPreset i18n.Msg
 }
 
 // SeedNumber is the seed as a number, or nil for a random one. It reports
@@ -256,12 +303,22 @@ func cliffSettings() []mgSetting {
 	}
 }
 
+// terrainSettings are the settings of a terrain control, worded as the game
+// words them: Scale (the inverse of the stored frequency) and Coverage.
+func terrainSettings(richness bool) []mgSetting {
+	out := waterSettings()
+	if richness {
+		out = append(out, mgSetting{key: "richness", label: i18n.M("mapgen.setting.richness"), none: true})
+	}
+	return out
+}
+
 func controlFor(c mapgen.Control) mgControl {
 	mc := mgControl{name: c.Name, legend: controlMsg(c.Name)}
-	switch {
-	case c.Name == "water":
-		mc.settings = waterSettings()
-	case c.Category == mapgen.CategoryCliff:
+	switch c.Category {
+	case mapgen.CategoryTerrain:
+		mc.settings = terrainSettings(c.Richness)
+	case mapgen.CategoryCliff:
 		mc.settings = cliffSettings()
 	default:
 		mc.settings = []mgSetting{
@@ -320,6 +377,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 	}
 	if v, ok := posted(mgStart); ok {
 		f.StartingArea.Value = v
+		f.StartingArea.Options = withExtra(f.StartingArea.Options, v)
 	}
 	for i, p := range mgPlanets(line, spaceAge) {
 		planet := MapGenPlanet{ID: "mg-planet-" + p.name, Summary: p.summary, Open: i == 0}
@@ -334,6 +392,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 				}
 				if v, ok := posted(name); ok {
 					sel.Value = v
+					sel.Options = withExtra(sel.Options, v)
 				}
 				g.Selects = append(g.Selects, sel)
 			}
@@ -357,17 +416,36 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 // is nil when problems is not empty. Form fields win over the raw box for
 // every key they cover (DESIGN 8.7). The result has passed
 // gamesettings.Validate for the line (SPEC 11.2).
+//
+// A request that the preset select started (its id in HX-Trigger) is read as
+// a new start from that preset, keeping only the seed (DESIGN 8.7).
 func ParseMapGenForm(r *http.Request, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
 	_ = r.ParseForm() // the middleware caps the body; a bad body leaves what parsed, and the fields then fail their own checks
+	vals := r.PostForm
+	var fromPreset i18n.Msg
+	if preset := r.PostForm.Get("preset"); r.Header.Get("HX-Trigger") == PresetSelectID && slices.Contains(mapgen.Presets(line), preset) {
+		vals = presetValues(line, spaceAge, preset, r.PostForm.Get(mgSeed))
+		fromPreset = i18n.M("mapgen.preset.filled", "preset", PresetMsg(preset))
+	}
+	form, mapGen, problems = parseMapGenValues(vals, line, spaceAge)
+	form.FromPreset = fromPreset
+	return form, mapGen, problems
+}
+
+// PresetSelectID is the id of Generate's preset select. Changing it refills
+// the custom form from the chosen preset.
+const PresetSelectID = "generate-preset"
+
+func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
 	posted := func(name string) (string, bool) {
-		vs, ok := r.PostForm[name]
+		vs, ok := vals[name]
 		if !ok || len(vs) == 0 {
 			return "", false
 		}
 		return vs[0], true
 	}
 	form = buildMapGenForm(line, spaceAge, posted)
-	form.Peaceful = r.PostForm.Get(mgPeaceful) != ""
+	form.Peaceful = vals.Get(mgPeaceful) != ""
 	if v, ok := posted(mgSeed); ok {
 		form.Seed.Value = strings.TrimSpace(v)
 	}
@@ -387,7 +465,7 @@ func ParseMapGenForm(r *http.Request, line string, spaceAge bool) (form MapGenFo
 		fail(mgSeedID, i18n.M("mapgen.err.unknown"))
 		return form, nil, problems
 	}
-	for name := range r.PostForm {
+	for name := range vals {
 		if strings.HasPrefix(name, mgPrefix) && !knownFieldNames[name] {
 			// Never echoed: it is not one of this form's fields.
 			fail(mgSeedID, i18n.M("mapgen.err.unknown"))

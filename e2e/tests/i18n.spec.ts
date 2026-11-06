@@ -430,7 +430,54 @@ test.describe("layout at 320 px in every language", () => {
           deleteBase!,
           bulk,
           "/worlds/base/rollback",
+          "/generate",
+          "/worlds/base/clone",
+          "/worlds/base/settings",
+          "/worlds/base/settings/raw/server-settings.json",
         ],
+        failures,
+      );
+
+      // Generate in its other two modes, with its errors, and the settings
+      // change preview (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
+      for (const [label, radio] of [
+        ["exchange string mode", "#mode-exchange"],
+        ["custom mode", "#mode-custom"],
+      ] as const) {
+        await sweepSubmit(
+          page,
+          lang,
+          `/generate in ${label}`,
+          async () => {
+            await page.goto("/generate");
+            await page.locator(radio).check();
+          },
+          failures,
+        );
+      }
+      await sweepSubmit(
+        page,
+        lang,
+        "/generate with its errors",
+        async () => {
+          await page.goto("/generate");
+          await page.locator("#mode-exchange").check();
+          await page.locator("#generate-button").click();
+          await expect(page.locator("#error-summary")).toBeVisible();
+        },
+        failures,
+      );
+      await sweepSubmit(
+        page,
+        lang,
+        "/worlds/base/settings change preview",
+        async () => {
+          await page.goto("/worlds/base/settings");
+          await page.locator("#name").fill("Base server");
+          await page.locator("#max-players").fill("7");
+          await page.locator("form.settings button[type=submit]").click();
+          await expect(page.locator("ul.changes")).toBeVisible();
+        },
         failures,
       );
 

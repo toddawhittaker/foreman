@@ -173,6 +173,8 @@ func rawProblem(fe gamesettings.FieldError) i18n.Msg {
 		return i18n.M("settings.err.wrong_type", "line", fe.Line, "key", fe.Key, "want", typeList(strings.Split(fe.Want, " or ")))
 	case gamesettings.CodeOutOfRange:
 		return rangeProblem(fe)
+	case gamesettings.CodeMissing:
+		return i18n.M("settings.err.missing", "line", fe.Line, "key", fe.Key)
 	}
 	return i18n.M("settings.err.other", "line", fe.Line, "key", fe.Key)
 }
