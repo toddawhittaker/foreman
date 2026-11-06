@@ -1,0 +1,101 @@
+{{/* The map-gen form of Generate (DESIGN 8.7). Takes MapGenForm; the page wraps it in its own "custom settings" fieldset. */}}
+{{define "mapgenform" -}}
+<div class="mapgen">
+  <fieldset>
+    <legend>{{t "mapgen.map.legend"}}</legend>
+    {{- with .Seed}}
+    <div class="field">
+      <label for="{{.ID}}">{{t "mapgen.seed.label"}}</label>
+      <p class="hint" id="{{.ID}}-hint">{{t "mapgen.seed.hint"}}</p>
+      <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono"
+        inputmode="numeric" autocomplete="off" spellcheck="false"
+        {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
+      {{- if not .Error.IsZero}}
+      <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+      {{- end}}
+    </div>
+    {{- end}}
+    <div class="mapgen-pair">
+      {{- with .Width}}
+      <div class="field">
+        <label for="{{.ID}}">{{t "mapgen.width.label"}}</label>
+        <p class="hint" id="{{.ID}}-hint">{{t "mapgen.size.hint"}}</p>
+        <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono"
+          inputmode="numeric" autocomplete="off" spellcheck="false"
+          {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
+        {{- if not .Error.IsZero}}
+        <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+        {{- end}}
+      </div>
+      {{- end}}
+      {{- with .Height}}
+      <div class="field">
+        <label for="{{.ID}}">{{t "mapgen.height.label"}}</label>
+        <p class="hint" id="{{.ID}}-hint">{{t "mapgen.size.hint"}}</p>
+        <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono"
+          inputmode="numeric" autocomplete="off" spellcheck="false"
+          {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
+        {{- if not .Error.IsZero}}
+        <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+        {{- end}}
+      </div>
+      {{- end}}
+    </div>
+    {{template "mapgen-select" .StartingArea}}
+    {{template "mapgen-group" .Water}}
+    {{template "mapgen-group" .Cliffs}}
+    <div class="mapgen-check">
+      <label class="check"><input type="checkbox" id="mg-peaceful" name="mg.peaceful" aria-describedby="mg-peaceful-hint"{{if .Peaceful}} checked{{end}}> {{t "mapgen.peaceful.label"}}</label>
+      <p class="hint" id="mg-peaceful-hint">{{t "mapgen.peaceful.hint"}}</p>
+    </div>
+  </fieldset>
+  {{- range .Planets}}
+  <details id="{{.ID}}"{{if .Open}} open{{end}}>
+    <summary>{{msg .Summary}}</summary>
+    <div class="mapgen-body">
+      {{- range .Groups}}
+      {{template "mapgen-group" .}}
+      {{- end}}
+    </div>
+  </details>
+  {{- end}}
+  <details id="mg-raw-details"{{if .RawOpen}} open{{end}}>
+    <summary>{{t "mapgen.raw.summary"}}</summary>
+    {{- with .Raw}}
+    <div class="field">
+      <label for="{{.ID}}">{{t "mapgen.raw.label"}}</label>
+      <p class="hint" id="{{.ID}}-hint">{{t "mapgen.raw.hint"}}</p>
+      <textarea id="{{.ID}}" name="{{.Name}}" rows="10" wrap="off" class="mono"
+        spellcheck="false" autocapitalize="off" autocomplete="off"
+        {{- if $.RawInvalid}} aria-invalid="true" aria-describedby="{{.ID}}-hint error-summary"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>{{.Value}}</textarea>
+    </div>
+    {{- end}}
+  </details>
+</div>
+{{- end}}
+
+{{/* One autoplace control: its name, then its settings side by side. Takes MapGenGroup. */}}
+{{define "mapgen-group" -}}
+<fieldset class="autoplace">
+  <legend>{{msg .Legend}}</legend>
+  {{- range .Selects}}
+  {{template "mapgen-select" .}}
+  {{- end}}
+</fieldset>
+{{- end}}
+
+{{/* One select of steps. Takes MapGenSelect. */}}
+{{define "mapgen-select" -}}
+<div class="field">
+  <label for="{{.ID}}">{{msg .Label}}</label>
+  <select id="{{.ID}}" name="{{.Name}}"{{if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-error"{{end}}>
+    {{- $chosen := .Value}}
+    {{- range .Options}}
+    <option value="{{.Value}}"{{if eq .Value $chosen}} selected{{end}}>{{msg .Label}}</option>
+    {{- end}}
+  </select>
+  {{- if not .Error.IsZero}}
+  <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- end}}
+</div>
+{{- end}}

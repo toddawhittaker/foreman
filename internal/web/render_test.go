@@ -394,7 +394,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 	}
 	for _, f := range files {
 		name := strings.TrimSuffix(path.Base(f), ".html")
-		if name == "layout" {
+		if name == "layout" || isPartial(name) {
 			continue
 		}
 		if _, ok := r.pages[i18n.English][name]; !ok {
