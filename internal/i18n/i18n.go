@@ -4,7 +4,7 @@
 // # Catalogues
 //
 // Text lives in locales/<lang>/<area>.json, one file per area (common,
-// accounts, server, worlds, js) in each of the eight languages. A file is
+// accounts, server, worlds, settings, mapgen, js) in each of the eight languages. A file is
 // a flat JSON object from a stable dotted key to a value. Keys start with
 // their area ("accounts.signin.title"), and a key lives in one area file
 // only. A value is either a string or, when it counts something, an
