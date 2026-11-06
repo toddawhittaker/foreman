@@ -77,7 +77,7 @@
   "worlds.fact.game_version": "Verze hry",
   "worlds.fact.last_played": "Naposledy hráno",
   "worlds.fact.space_age": "Space Age",
-  "worlds.import.download.hint": "Svět nelze spustit, dokud obraz jeho hry ({image} v příslušné verzi) není na tomto hostiteli. Stahování z Docker Hubu začne po importu.",
+  "worlds.import.download.hint": "Svět nelze spustit, dokud jeho obraz hry ({image} v příslušné verzi) není na tomto hostiteli. Stahování z Docker Hubu začne po importu.",
   "worlds.import.download.label": "Stáhnout také obraz hry, pokud ho tento hostitel nemá",
   "worlds.import.folder.already_label": "Již importováno.",
   "worlds.import.folder.already_text": "Nejnovější uložené hry z těchto složek už jsou ve světě. Lze je importovat znovu.",
