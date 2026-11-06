@@ -9,8 +9,9 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 (old 6 Mods is now 8, old 8 is 9, old 9 is 10, old 10 is 11). Older text
 below uses the new numbers.
 
-Epics 1 to 5, the Gate A fixes and the first fix batch after Gate A (hub
-fixes) are done, and Gate A (SPEC 19.1) passed on 2026-11-05.
+Epics 1 to 6, the Gate A fixes and the two fix batches after Gate A (hub
+fixes, polish fixes) are done, and Gate A (SPEC 19.1) passed on
+2026-11-05.
 
 ## Epic 1: Foundation
 
@@ -1077,3 +1078,135 @@ remembered.
   the lists include it, so they differ by a few hundred bytes.
 - The explicit table roles were checked in Chromium only, not in Safari
   with VoiceOver.
+
+## Epic 6: Languages
+
+Serves SPEC 22 (issue #87), with SPEC 14.17 for the menu's return path and
+17.1, 17.2 and 17.12 for layout and names in every language. ADR 0008
+records the design of the catalogue. The plan's lasting rules are in
+SPEC 22.
+
+### Delivered
+
+- **Eight languages.** English, German, Russian, Simplified Chinese,
+  French, Spanish, Polish and Czech. Every page, form, error page,
+  refusal, pre-start problem and failure text built in Go, and the text
+  the page's scripts show, comes from the catalogue.
+- **The `internal/i18n` package.** JSON catalogues embedded in the binary,
+  in five areas (common, accounts, server, worlds, js), over
+  `golang.org/x/text` v0.43.0 for matching, plural rules and number
+  formats. Nothing downloads at startup. Templates are parsed once and
+  copied per language. The binary grew by about 760 KB and the image is
+  still about 8 MB compressed.
+- **Language choice.** The best match for Accept-Language, read entry by
+  entry (at most 32; a bad entry is skipped), overridden by the
+  `foreman_lang` cookie that the menu on every page sets through
+  `POST /language`. The menu works without JavaScript, returns through
+  the return-path check, and after a form post returns to the page the
+  form was on (from the Referer), else home. Off English its label adds
+  "(Language)" in English.
+- **Messages built in Go.** Page fields hold `i18n.Msg`, so a raw string
+  cannot reach a page. `internal/game` and `internal/world` carry typed
+  errors (`StartError`, `LoadReason`, `ForcedStopError`, `NotActiveError`,
+  `NetworkError`, `NoSpaceError`, `DamagedError`, `UnsupportedFileError`,
+  `SaveClashError`, and facts on `Problem`) and keep their English
+  `Error()` text for logs and the API. `internal/web/gametext.go` words
+  them in the page's language. A test pins that each English page text
+  matches its log text.
+- **Snapshot labels.** Automatic labels are shown from their stored reason
+  code in the page's language; a typed label is shown as written. No
+  sentence quotes a label, and a check fails if one does.
+- **Game text stays English.** The log pane, console replies, crash
+  reasons and English error details are marked `lang="en"`.
+- **Scripts.** `import.js`, `live.js` and `countdown.js` read their text
+  from an `#i18n` JSON block that `layout.html` renders. `time.js`
+  formats times and relative times in the page's language. Times stay
+  UTC without JavaScript.
+- **Checks in `make verify` (SPEC 22.5).** Hard-coded text in templates,
+  scripts and the stylesheet; missing, unused and misplaced keys;
+  placeholders and plural forms against CLDR; HTML in a value; a stale
+  translation (the `translated/<area>.json` hash, refreshed by
+  `make i18n-hash`); a quoted snapshot label; and a rendered-page test
+  that every link and button's accessible name contains its visible text
+  in every language (label in name). Every page renders in all eight
+  languages in a Go test.
+- **Layout in every language.** No page scrolls sideways at 320 px with
+  text at 200%. Single-column grids use `minmax(0, 1fr)`; tables stack
+  below 14rem; long Worlds buttons drop under the name; prose hyphenates
+  in the page's language. Stacked table labels come from `data-label`
+  instead of CSS text, which closes the "Taken:" and "Size:" gap the
+  polish fixes left. The player, saves and deleted-worlds tables carry
+  explicit table roles.
+- **Glossary and review.** docs/I18N.md holds the glossary (from Factorio
+  2.1.24's own locale files where the game has a term), the address rule
+  per language and the label tables. Two AI reviews of the translations
+  were applied, and a second-pass check made French and Polish use one
+  verb for taking a snapshot.
+- **One English change.** Numbers follow each language's grouping, so the
+  sign-in error reads "at most 1,024 bytes" (SPEC 22.4).
+- **Fixes along the way.** An unknown or malformed Accept-Language entry no
+  longer hides a later match. The language menu after a form post no
+  longer returns to a POST-only address (405). `Link` refuses a path that
+  is not Foreman's own, and the menu's return path refuses control
+  characters.
+- **Layout fixes after the first matrix.** The deleted-worlds tables now
+  stack at large text. In a stacked cell a clock's zone (for example
+  `GMT+5:45`) wraps onto its own line while the date and sizes never
+  break, and stacked figures are start-aligned. The 320 px matrix now
+  also covers the deleted-worlds page, restore, snapshot delete, bulk
+  delete, rollback, three 422 error states, and a test in the
+  Asia/Kathmandu zone.
+- **Wide time zones.** `time.js` renders a date, a clock and a zone as
+  three unbreakable units with normal spaces between them, so a wide zone
+  such as `GMT+5:45` drops to its own line. The Asia/Kathmandu test
+  covers the saves page and both snapshot pages in all eight languages at
+  100% and 200% text. German and Russian snapshot tables were 345 and
+  333 px wide before.
+
+### Verified
+
+- `make verify` passed on the epic head with coverage 90.7% across
+  `internal/`. `make e2e`: 868 passed, 88 skipped (the 320 px language
+  matrix runs in phone-dark only, plus the existing skips), none failed.
+- New tests: Accept-Language cases and the cookie, the menu's return on
+  every kind of page, plural forms checked against the browser's own CLDR
+  data, decimal commas, a 320 px matrix at 100% and 200% text over every
+  page in all eight languages with axe, a check that the log pane and
+  console are `lang="en"`, German and Russian script output, and the
+  catalogue checks above.
+- Against real `factoriotools/factorio` containers, on the head after the
+  server pages landed (4bfff98): `make test-game` passed on all four
+  images and `make e2e-game` passed both tests, with no ERROR log line. A
+  failed start, switch and update each named the right step and world in
+  English and German, Factorio's text was marked `lang="en"`, and the
+  English text of those five pages was identical to main before the epic.
+- Code, security and accessibility reviews ran over the epic, and two
+  translation reviews (de, fr, es, pl; ru, cs, zh-Hans) back-translated
+  every value. Security found nothing. Every other finding was fixed and
+  confirmed closed by a second code and accessibility pass and a second
+  translation check, or is listed below.
+
+### Gaps left
+
+- Translations are AI-made and reviewed by a second AI pass, not by
+  native speakers (SPEC 22.6). The glossary and address rules have not
+  had a native review either. Corrections are welcome as issues.
+- A game operation keeps its failure twice (`Operation.Error` text and
+  `Operation.Err`), and `serverpage.go` picks the panel by comparing
+  `Error` strings. This is deferred cleanup.
+- The countdown warning sent into the game chat stays English on purpose,
+  because players read it in the game.
+- Docker's own state words (running, paused) stay English inside the
+  shared-network refusal.
+- The test helper `sentence()` ties some English page text to `Error()`
+  text, so rewording a log message can fail a page test.
+- Behind a proxy that rewrites the Host header, the language menu after a
+  form post falls back to home, because the Referer's host no longer
+  matches the request's.
+- The plural forms for 5 and 21 are checked against the catalogue, not on
+  a rendered page, because no page shows those counts yet.
+- The 320 px language matrix runs in one browser project (`phone-dark`)
+  to save about eight minutes; colour does not change layout.
+- `make test-game` binds host UDP 34197, so it cannot run on a host where
+  a real Factorio server holds that port. The real-game check had to
+  patch the port locally.

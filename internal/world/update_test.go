@@ -237,7 +237,7 @@ func TestRollbackTargetSkipsSnapshotsAtTheCurrentVersion(t *testing.T) {
 	}
 }
 
-// Ruling 5 of the plan, SPEC 10.4: rollback goes one update back at a time,
+// SPEC 10.4: rollback goes one update back at a time,
 // and each step puts back that update's old version and save together.
 func TestRollbackStepsBackOneUpdateAtATime(t *testing.T) {
 	m := tickingManager(t)
@@ -283,7 +283,7 @@ func TestRollbackStepsBackOneUpdateAtATime(t *testing.T) {
 	}
 }
 
-// Ruling 5 of the plan: pruning keeps a world's newest "Before update"
+// SPEC 10.4: pruning keeps a world's newest "Before update"
 // snapshot however many automatic snapshots follow it (SPEC 6.6, 10.4).
 func TestPruneKeepsTheNewestBeforeUpdateSnapshot(t *testing.T) {
 	m := tickingManager(t)

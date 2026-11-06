@@ -177,7 +177,7 @@ export const test = base.extend<{
     await use(f);
     const { exitedEarly } = await f.stop();
     expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
-    // Ruling: a test fails on any ERROR line it did not declare, and on a
+    // docs/WORKFLOW.md: a test fails on any ERROR line it did not declare, and on a
     // declaration that matched nothing. This process belongs to this test alone.
     const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
     const lines = f.errorLines();
