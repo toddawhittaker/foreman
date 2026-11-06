@@ -159,6 +159,7 @@ func (s *server) routes() {
 		_, _ = w.Write([]byte("ok\n"))
 	})
 	s.mux.Handle("GET "+PathStatic, s.render.Static())
+	s.mux.Handle("GET "+PathFavicon, s.render.Favicon())
 	s.mux.HandleFunc("GET "+PathSignedOut, s.handleSignedOut)
 	s.mux.HandleFunc("POST "+PathSignOut, s.handleSignOut)
 	s.mux.HandleFunc("POST "+PathLanguage, s.handleLanguage)

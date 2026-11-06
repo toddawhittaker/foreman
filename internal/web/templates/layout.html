@@ -7,6 +7,9 @@
 <meta name="color-scheme" content="dark light">
 <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
 <title>{{if .Failed}}{{t "common.error.label"}} {{end}}{{template "title" .}} – Foreman</title>
+<link rel="icon" href="{{static "icons/icon-16.png"}}" sizes="16x16" type="image/png">
+<link rel="icon" href="{{static "icons/icon-32.png"}}" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="{{static "icons/apple-touch-icon.png"}}">
 <link rel="stylesheet" href="{{static "foreman.css"}}">
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>

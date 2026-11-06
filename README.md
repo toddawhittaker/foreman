@@ -1,3 +1,5 @@
+<img src="docs/brand/foreman-wordmark-800.webp" alt="Foreman" width="400">
+
 # Foreman
 
 [![ci](https://github.com/toddawhittaker/foreman/actions/workflows/ci.yml/badge.svg)](https://github.com/toddawhittaker/foreman/actions/workflows/ci.yml)

@@ -705,8 +705,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 4 {
-		t.Fatalf("want the stylesheet, htmx, its SSE extension and time.js, found %v", found)
+	if len(found) != 7 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension and time.js, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")
@@ -728,6 +728,41 @@ func TestCSSHasNoRawColoursOutsideTokens(t *testing.T) {
 	for i, line := range strings.Split(string(css), "\n") {
 		if hex.MatchString(line) && !strings.HasPrefix(strings.TrimSpace(line), "--color-") {
 			t.Errorf("line %d: raw colour outside a token: %s", i+1, line)
+		}
+	}
+}
+
+// The brand icons are linked from the page head and served without a session.
+func TestFaviconLinksAndFiles(t *testing.T) {
+	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
+	head := body[:strings.Index(body, "</head>")]
+	for _, want := range []string{
+		`rel="icon" href="/static/icons/icon-16.png?v=`,
+		`sizes="16x16" type="image/png"`,
+		`rel="icon" href="/static/icons/icon-32.png?v=`,
+		`sizes="32x32" type="image/png"`,
+		`rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png?v=`,
+	} {
+		if !strings.Contains(head, want) {
+			t.Errorf("head lacks %s", want)
+		}
+	}
+
+	hn := newHarness(t, nil)
+	for _, c := range []struct{ path, contentType string }{
+		{PathFavicon, "image/x-icon"},
+		{PathStatic + "icons/favicon.ico", "image/x-icon"},
+		{PathStatic + "icons/icon-16.png", "image/png"},
+		{PathStatic + "icons/icon-32.png", "image/png"},
+		{PathStatic + "icons/apple-touch-icon.png", "image/png"},
+	} {
+		rec := hn.get(c.path)
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != c.contentType {
+			t.Errorf("%s: %d %q, want 200 %q", c.path, rec.Code, rec.Header().Get("Content-Type"), c.contentType)
+		}
+		if rec.Body.Len() == 0 {
+			t.Errorf("%s: empty body", c.path)
 		}
 	}
 }
