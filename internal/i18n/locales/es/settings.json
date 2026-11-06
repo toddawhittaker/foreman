@@ -53,7 +53,6 @@
   "settings.error.invalid": "Foreman volvió a comprobar la nueva configuración y la rechazó, así que no se guardó nada. Abre el editor JSON para ver qué falla.",
   "settings.error.too_big": "El archivo de configuración superaría {size}. Quita una parte.",
   "settings.raw.title": "Editar {file} de {world}",
-  "settings.raw.back": "Volver al formulario de configuración",
   "settings.raw.label": "Contenido de {file}",
   "settings.raw.hint": "Un objeto JSON, de hasta {size}. Foreman comprueba las claves que conoce y guarda las demás tal como están.",
   "settings.raw.secrets": "La contraseña de la partida, la contraseña de factorio.com y el token no se muestran aquí. Se conservan mientras este texto no dé un valor nuevo a una clave. Un valor vacío los quita.",
@@ -104,5 +103,6 @@
   "settings.preview.step_admins_live": "Promover y degradar a estos jugadores en la partida en marcha; el juego actualiza {file}.",
   "settings.preview.undo": "Para deshacerlo, restaura esa instantánea desde la página Instantáneas.",
   "settings.preview.save": "Guardar configuración",
-  "settings.preview.back": "Volver y editar"
+  "settings.preview.back": "Volver y editar",
+  "settings.rail.label": "Secciones de la configuración"
 }

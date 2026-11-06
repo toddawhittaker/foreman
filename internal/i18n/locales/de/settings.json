@@ -53,7 +53,6 @@
   "settings.error.invalid": "Foreman hat die neuen Einstellungen erneut geprüft und abgelehnt, daher wurde nichts gespeichert. Öffne den JSON-Editor, um zu sehen, was nicht stimmt.",
   "settings.error.too_big": "Die Einstellungsdatei wäre größer als {size}. Entferne einen Teil davon.",
   "settings.raw.title": "{file} von {world} bearbeiten",
-  "settings.raw.back": "Zurück zum Einstellungsformular",
   "settings.raw.label": "Inhalt von {file}",
   "settings.raw.hint": "Ein JSON-Objekt, bis zu {size}. Foreman prüft die Schlüssel, die es kennt, und speichert alle anderen unverändert.",
   "settings.raw.secrets": "Das Spielpasswort, das Passwort von factorio.com und das Token werden hier nicht angezeigt. Sie bleiben erhalten, solange dieser Text einem Schlüssel keinen neuen Wert gibt. Ein leerer Wert entfernt sie.",
@@ -104,5 +103,6 @@
   "settings.preview.step_admins_live": "Diese Spieler im laufenden Spiel zu Admins befördern oder degradieren; das Spiel aktualisiert dabei {file}.",
   "settings.preview.undo": "Zum Rückgängigmachen stelle diesen Snapshot auf der Seite „Snapshots“ wieder her.",
   "settings.preview.save": "Einstellungen speichern",
-  "settings.preview.back": "Zurück und bearbeiten"
+  "settings.preview.back": "Zurück und bearbeiten",
+  "settings.rail.label": "Abschnitte der Einstellungen"
 }

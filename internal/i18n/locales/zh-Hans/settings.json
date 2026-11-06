@@ -53,7 +53,6 @@
   "settings.error.invalid": "Foreman 再次检查新设置后予以拒绝，因此未保存任何内容。请打开 JSON 编辑器查看问题所在。",
   "settings.error.too_big": "设置文件将超过 {size}。请删除一部分内容。",
   "settings.raw.title": "编辑 {world} 的 {file}",
-  "settings.raw.back": "返回设置表单",
   "settings.raw.label": "{file} 的内容",
   "settings.raw.hint": "一个 JSON 对象，最大 {size}。Foreman 会检查它认识的键，其他键按原样保存。",
   "settings.raw.secrets": "游戏密码、factorio.com 密码和令牌不会在此显示。除非此文本为某个键给出新值，否则它们会保留。空值表示移除。",
@@ -104,5 +103,6 @@
   "settings.preview.step_admins_live": "在正在运行的游戏中提升和降级这些玩家，游戏会更新 {file}。",
   "settings.preview.undo": "要撤销，请在“快照”页面恢复该快照。",
   "settings.preview.save": "保存设置",
-  "settings.preview.back": "返回并编辑"
+  "settings.preview.back": "返回并编辑",
+  "settings.rail.label": "设置分区"
 }

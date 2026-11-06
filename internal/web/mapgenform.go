@@ -23,23 +23,26 @@ import (
 // raw JSON box covers every other key.
 //
 // Field names start with "mg." so the form can sit in a page that has fields
-// of its own: "mg.seed", "mg.width", "mg.height", "mg.start", "mg.peaceful",
-// "mg.raw", and "mg.<planet>.<control>.<setting>" for each autoplace control.
+// of its own: "mg.width", "mg.height", "mg.start", "mg.peaceful",
+// "mg.no_enemies", "mg.raw", and "mg.<planet>.<control>.<setting>" for each
+// autoplace control. The seed is the page's own "seed" field, shown above the
+// tabs.
 
 // Names of the form's fixed fields.
 const (
-	mgSeed     = "mg.seed"
-	mgWidth    = "mg.width"
-	mgHeight   = "mg.height"
-	mgStart    = "mg.start"
-	mgPeaceful = "mg.peaceful"
-	mgRaw      = "mg.raw"
-	mgPrefix   = "mg."
+	mgSeed      = "seed"
+	mgWidth     = "mg.width"
+	mgHeight    = "mg.height"
+	mgStart     = "mg.start"
+	mgPeaceful  = "mg.peaceful"
+	mgNoEnemies = "mg.no_enemies"
+	mgRaw       = "mg.raw"
+	mgPrefix    = "mg."
 )
 
 // IDs of the fixed fields, for the error summary's links.
 const (
-	mgSeedID   = "mg-seed"
+	mgSeedID   = "generate-seed"
 	mgWidthID  = "mg-width"
 	mgHeightID = "mg-height"
 	mgStartID  = "mg-start"
@@ -154,21 +157,44 @@ func withExtra(options []MapGenOption, code string) []MapGenOption {
 	return options
 }
 
-// MapGenSelect is one select of steps.
+// MapGenSelect is one setting of steps: a select, and with script a slider
+// over the same steps on a wide panel (DESIGN 8.7).
 type MapGenSelect struct {
 	ID, Name string
 	Label    i18n.Msg
-	// Value is the chosen step's code.
+	// Value is the chosen step's code; Preset the preset's, for "[modified]".
 	Value   string
+	Preset  string
 	Options []MapGenOption
 	Error   i18n.Msg
+	// Ach is the achievement line in step codes; Blocked says the value crosses it.
+	Ach     *AchWarn
+	Blocked bool
+	// stored is the value's path in map-gen-settings.json and whether the
+	// field shows its inverse; "" for 1.1's water and cliffs.
+	path   string
+	invert bool
 }
 
 // MapGenText is one text field or the raw box.
 type MapGenText struct {
 	ID, Name string
+	Label    i18n.Msg
 	Value    string
+	Preset   string
 	Error    i18n.Msg
+}
+
+// MapGenCheck is a checkbox of the Enemy tab.
+type MapGenCheck struct {
+	ID, Name string
+	Label    i18n.Msg
+	Hint     i18n.Msg
+	Checked  bool
+	Preset   bool
+	Ach      *AchWarn
+	Blocked  bool
+	path     string
 }
 
 // MapGenGroup is the settings of one autoplace control, under its name.
@@ -177,7 +203,7 @@ type MapGenGroup struct {
 	Selects []MapGenSelect
 }
 
-// MapGenPlanet is the controls of one planet, in a details element that
+// MapGenPlanet is one planet's controls in a tab, in a details element that
 // is open when it comes first or holds an error (DESIGN 8.7).
 type MapGenPlanet struct {
 	ID      string
@@ -186,24 +212,166 @@ type MapGenPlanet struct {
 	Groups  []MapGenGroup
 }
 
-// MapGenForm is the view model of the partial "mapgenform" and what a
-// post is read back into. Build one with NewMapGenForm or ParseMapGenForm.
+// MapGenForm is the map-gen part of Generate's form and what a post is read
+// back into. Build one with NewMapGenForm or ParseMapGenForm. Its fields fall
+// into the tabs the game's map generator has: Resources and Terrain per
+// planet, Enemy, and Advanced (DESIGN 8.7).
 type MapGenForm struct {
 	line     string
 	spaceAge bool
 
 	Seed, Width, Height MapGenText
 	StartingArea        MapGenSelect
-	Water, Cliffs       MapGenGroup
-	Peaceful            bool
-	Planets             []MapGenPlanet
+	Peaceful            MapGenCheck
+	// NoEnemies is 2.x only; its Name is "" on 1.1.
+	NoEnemies MapGenCheck
+	Resources []MapGenPlanet
+	Terrain   []MapGenPlanet
+	Enemy     []MapGenGroup
 
 	// Raw is the box for every key the fields do not cover.
 	Raw MapGenText
 	// RawOpen opens the raw box's details; RawInvalid marks it as wrong.
 	RawOpen, RawInvalid bool
-	// FromPreset says the fields were just filled from a preset; zero otherwise.
-	FromPreset i18n.Msg
+	// RawModified says the raw box differs from the preset's.
+	RawModified bool
+}
+
+// selects lists every select of the form, in page order.
+func (f *MapGenForm) selects() []*MapGenSelect {
+	var out []*MapGenSelect
+	for _, tab := range [][]MapGenPlanet{f.Resources, f.Terrain} {
+		for pi := range tab {
+			for gi := range tab[pi].Groups {
+				for si := range tab[pi].Groups[gi].Selects {
+					out = append(out, &tab[pi].Groups[gi].Selects[si])
+				}
+			}
+		}
+	}
+	for gi := range f.Enemy {
+		for si := range f.Enemy[gi].Selects {
+			out = append(out, &f.Enemy[gi].Selects[si])
+		}
+	}
+	return append(out, &f.StartingArea)
+}
+
+// TabOf names the tab that holds a field id, or "".
+func (f MapGenForm) TabOf(id string) string {
+	in := func(planets []MapGenPlanet) bool {
+		for _, p := range planets {
+			for _, g := range p.Groups {
+				for _, s := range g.Selects {
+					if s.ID == id {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}
+	switch {
+	case in(f.Resources):
+		return tabResources
+	case in(f.Terrain):
+		return tabTerrain
+	case id == mgSeedID:
+		return ""
+	case id == mgWidthID, id == mgHeightID, id == mgRawID:
+		return tabAdvanced
+	}
+	return tabEnemy
+}
+
+// Modified reports whether any field differs from the preset it was filled
+// from. The seed is not a setting of the preset.
+func (f MapGenForm) Modified() bool {
+	for _, s := range f.selects() {
+		if s.Value != s.Preset {
+			return true
+		}
+	}
+	return f.RawModified || f.Peaceful.Checked != f.Peaceful.Preset || f.NoEnemies.Checked != f.NoEnemies.Preset ||
+		!sameShown(f.Width.Value, f.Width.Preset) || !sameShown(f.Height.Value, f.Height.Preset)
+}
+
+// withPreset records the preset's values beside the form's, for "[modified]".
+func (f *MapGenForm) withPreset(p MapGenForm) {
+	codes := map[string]string{}
+	for _, s := range p.selects() {
+		codes[s.Name] = s.Value
+	}
+	for _, s := range f.selects() {
+		s.Preset = codes[s.Name]
+	}
+	f.Width.Preset, f.Height.Preset = p.Width.Value, p.Height.Value
+	f.Peaceful.Preset, f.NoEnemies.Preset = p.Peaceful.Checked, p.NoEnemies.Checked
+	f.RawModified = !sameJSON(f.Raw.Value, p.Raw.Value)
+}
+
+// sameJSON compares two JSON texts, ignoring layout; text that is not JSON
+// matches only itself.
+func sameJSON(a, b string) bool {
+	var x, y bytes.Buffer
+	if json.Compact(&x, []byte(a)) != nil || json.Compact(&y, []byte(b)) != nil {
+		return strings.TrimSpace(a) == strings.TrimSpace(b)
+	}
+	return bytes.Equal(x.Bytes(), y.Bytes())
+}
+
+// markAchievements sets each field's achievement line from the version's
+// rules and whether its value crosses it (SPEC 5.6).
+func (f *MapGenForm) markAchievements(rules []mapgen.AchievementRule) {
+	byPath := map[string]mapgen.AchievementRule{}
+	for _, r := range rules {
+		if !r.MapSettings {
+			byPath[r.Field] = r
+		}
+	}
+	for _, s := range f.selects() {
+		r, ok := byPath[s.path]
+		if !ok || s.path == "" {
+			continue
+		}
+		w := &AchWarn{Test: r.Test, Reason: r.Message}
+		limit := r.Limit
+		if s.invert && limit != 0 {
+			// The field shows the inverse, so the line is crossed the other way.
+			limit = 1 / limit
+			w.Test = map[string]string{"below": "above", "above": "below"}[r.Test]
+		}
+		w.Limit = shown(limit, 100)
+		s.Ach = w
+		v, _ := stepValue(s.Value)
+		if s.invert && v != 0 {
+			v = 1 / v
+		}
+		s.Blocked = r.Blocks(v)
+	}
+	for _, c := range []*MapGenCheck{&f.Peaceful, &f.NoEnemies} {
+		if r, ok := byPath[c.path]; ok && c.Name != "" {
+			c.Ach = &AchWarn{Test: r.Test, Reason: r.Message}
+			c.Blocked = r.Blocks(c.Checked)
+		}
+	}
+}
+
+// blockedReasons lists the message keys of the reasons the form's fields
+// cross, each once, in page order.
+func (f MapGenForm) blockedReasons() []string {
+	var out []string
+	add := func(blocked bool, a *AchWarn) {
+		if blocked && a != nil && !slices.Contains(out, a.Reason) {
+			out = append(out, a.Reason)
+		}
+	}
+	for _, s := range f.selects() {
+		add(s.Blocked, s.Ach)
+	}
+	add(f.Peaceful.Blocked, f.Peaceful.Ach)
+	add(f.NoEnemies.Blocked, f.NoEnemies.Ach)
+	return out
 }
 
 // SeedNumber is the seed as a number, or nil for a random one. It reports
@@ -240,6 +408,7 @@ type mgSetting struct {
 type mgControl struct {
 	name     string
 	legend   i18n.Msg
+	category string
 	settings []mgSetting
 	// topLevel is a 1.1 setting that the game stores outside
 	// autoplace_controls: water and cliffs.
@@ -248,19 +417,20 @@ type mgControl struct {
 
 type mgPlanet struct {
 	name     string
-	summary  i18n.Msg
 	controls []mgControl
 }
 
 func (c mgControl) isWater() bool { return c.name == "water" }
-func (c mgControl) isCliffs() bool {
-	return c.name == "nauvis_cliff"
-}
 
-// inMapGroup is true for Nauvis's water and cliffs, which sit in the Map
-// fieldset on every line (DESIGN 8.7).
-func (p mgPlanet) inMapGroup(c mgControl) bool {
-	return p.name == "nauvis" && (c.isWater() || c.isCliffs())
+// tab names the tab a control's fields sit in (DESIGN 8.7).
+func (c mgControl) tab() string {
+	switch c.category {
+	case mapgen.CategoryTerrain, mapgen.CategoryCliff:
+		return tabTerrain
+	case "enemy":
+		return tabEnemy
+	}
+	return tabResources
 }
 
 // mgPlanets lists the planets a new world has with their controls, from the
@@ -271,18 +441,13 @@ func mgPlanets(line string, spaceAge bool) []mgPlanet {
 	out := make([]mgPlanet, 0, len(names))
 	for _, p := range names {
 		planet := mgPlanet{name: p}
-		if len(names) == 1 {
-			planet.summary = i18n.M("mapgen.planet.summary_only")
-		} else {
-			planet.summary = i18n.M("mapgen.planet.summary", "planet", planetMsg(p))
-		}
 		for _, c := range mapgen.Controls(line, p) {
 			planet.controls = append(planet.controls, controlFor(c))
 		}
 		if line == gamesettings.Line11 && p == "nauvis" {
 			planet.controls = append(planet.controls,
-				mgControl{name: "water", legend: controlMsg("water"), topLevel: true, settings: waterSettings()},
-				mgControl{name: "nauvis_cliff", legend: controlMsg("nauvis_cliff"), topLevel: true, settings: cliffSettings()})
+				mgControl{name: "water", legend: controlMsg("water"), category: mapgen.CategoryTerrain, topLevel: true, settings: waterSettings()},
+				mgControl{name: "nauvis_cliff", legend: controlMsg("nauvis_cliff"), category: mapgen.CategoryCliff, topLevel: true, settings: cliffSettings()})
 		}
 		out = append(out, planet)
 	}
@@ -314,7 +479,7 @@ func terrainSettings(richness bool) []mgSetting {
 }
 
 func controlFor(c mapgen.Control) mgControl {
-	mc := mgControl{name: c.Name, legend: controlMsg(c.Name)}
+	mc := mgControl{name: c.Name, legend: controlMsg(c.Name), category: c.Category}
 	switch c.Category {
 	case mapgen.CategoryTerrain:
 		mc.settings = terrainSettings(c.Richness)
@@ -344,7 +509,7 @@ func fieldID(planet, control, setting string) string {
 // another "mg." name is told apart from one meant for another line or for
 // a world without Space Age.
 var knownFieldNames = func() map[string]bool {
-	known := map[string]bool{mgSeed: true, mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgRaw: true}
+	known := map[string]bool{mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgNoEnemies: true, mgRaw: true}
 	for _, line := range mapgen.Lines {
 		for _, p := range mgPlanets(line, true) {
 			for _, c := range p.controls {
@@ -360,7 +525,9 @@ var knownFieldNames = func() map[string]bool {
 // NewMapGenForm is the form as it first opens: every setting as the game
 // ships it, for a world of the given game line (SPEC 5.6).
 func NewMapGenForm(line string, spaceAge bool) MapGenForm {
-	return buildMapGenForm(line, spaceAge, func(string) (string, bool) { return "", false })
+	f := buildMapGenForm(line, spaceAge, func(string) (string, bool) { return "", false })
+	f.withPreset(f)
+	return f
 }
 
 // buildMapGenForm lays out the form; posted says what the request holds for
@@ -369,24 +536,35 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 	f := MapGenForm{
 		line: line, spaceAge: spaceAge,
 		Seed:   MapGenText{ID: mgSeedID, Name: mgSeed},
-		Width:  MapGenText{ID: mgWidthID, Name: mgWidth, Value: "0"},
-		Height: MapGenText{ID: mgHeightID, Name: mgHeight, Value: "0"},
+		Width:  MapGenText{ID: mgWidthID, Name: mgWidth, Label: i18n.M("mapgen.width.label"), Value: "0"},
+		Height: MapGenText{ID: mgHeightID, Name: mgHeight, Label: i18n.M("mapgen.height.label"), Value: "0"},
 		StartingArea: MapGenSelect{ID: mgStartID, Name: mgStart, Label: i18n.M("mapgen.start.label"),
-			Value: mgDefaultStep, Options: optionsWithNone},
+			Value: mgDefaultStep, Options: optionsWithNone, path: "starting_area"},
+		Peaceful: MapGenCheck{ID: "mg-peaceful", Name: mgPeaceful, Label: i18n.M("mapgen.peaceful.label"),
+			Hint: i18n.M("mapgen.peaceful.hint"), path: "peaceful_mode"},
 		Raw: MapGenText{ID: mgRawID, Name: mgRaw, Value: rawPrefill(line)},
+	}
+	if line != gamesettings.Line11 {
+		f.NoEnemies = MapGenCheck{ID: "mg-no-enemies", Name: mgNoEnemies, Label: i18n.M("mapgen.no_enemies.label"),
+			Hint: i18n.M("mapgen.no_enemies.hint"), path: "no_enemies_mode"}
 	}
 	if v, ok := posted(mgStart); ok {
 		f.StartingArea.Value = v
 		f.StartingArea.Options = withExtra(f.StartingArea.Options, v)
 	}
-	for i, p := range mgPlanets(line, spaceAge) {
-		planet := MapGenPlanet{ID: "mg-planet-" + p.name, Summary: p.summary, Open: i == 0}
+	for _, p := range mgPlanets(line, spaceAge) {
+		summary := planetMsg(p.name)
+		res := MapGenPlanet{ID: "mg-resources-" + p.name, Summary: summary, Open: len(f.Resources) == 0}
+		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Summary: summary, Open: len(f.Terrain) == 0}
 		for _, c := range p.controls {
 			g := MapGenGroup{Legend: c.legend}
 			for _, s := range c.settings {
 				name := fieldName(p.name, c.name, s.key)
 				sel := MapGenSelect{ID: fieldID(p.name, c.name, s.key), Name: name, Label: s.label,
-					Value: mgDefaultStep, Options: optionsFrequency}
+					Value: mgDefaultStep, Options: optionsFrequency, invert: s.invert}
+				if !c.topLevel {
+					sel.path = "autoplace_controls." + c.name + "." + s.key
+				}
 				if s.none {
 					sel.Options = optionsWithNone
 				}
@@ -396,16 +574,21 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 				}
 				g.Selects = append(g.Selects, sel)
 			}
-			switch {
-			case p.inMapGroup(c) && c.isWater():
-				f.Water = g
-			case p.inMapGroup(c):
-				f.Cliffs = g
+			switch c.tab() {
+			case tabTerrain:
+				ter.Groups = append(ter.Groups, g)
+			case tabEnemy:
+				f.Enemy = append(f.Enemy, g)
 			default:
-				planet.Groups = append(planet.Groups, g)
+				res.Groups = append(res.Groups, g)
 			}
 		}
-		f.Planets = append(f.Planets, planet)
+		if len(res.Groups) > 0 {
+			f.Resources = append(f.Resources, res)
+		}
+		if len(ter.Groups) > 0 {
+			f.Terrain = append(f.Terrain, ter)
+		}
 	}
 	return f
 }
@@ -416,25 +599,10 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 // is nil when problems is not empty. Form fields win over the raw box for
 // every key they cover (DESIGN 8.7). The result has passed
 // gamesettings.Validate for the line (SPEC 11.2).
-//
-// A request that the preset select started (its id in HX-Trigger) is read as
-// a new start from that preset, keeping only the seed (DESIGN 8.7).
 func ParseMapGenForm(r *http.Request, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
 	_ = r.ParseForm() // the middleware caps the body; a bad body leaves what parsed, and the fields then fail their own checks
-	vals := r.PostForm
-	var fromPreset i18n.Msg
-	if preset := r.PostForm.Get("preset"); r.Header.Get("HX-Trigger") == PresetSelectID && slices.Contains(mapgen.Presets(line), preset) {
-		vals = presetValues(line, spaceAge, preset, r.PostForm.Get(mgSeed))
-		fromPreset = i18n.M("mapgen.preset.filled", "preset", PresetMsg(preset))
-	}
-	form, mapGen, problems = parseMapGenValues(vals, line, spaceAge)
-	form.FromPreset = fromPreset
-	return form, mapGen, problems
+	return parseMapGenValues(r.PostForm, line, spaceAge)
 }
-
-// PresetSelectID is the id of Generate's preset select. Changing it refills
-// the custom form from the chosen preset.
-const PresetSelectID = "generate-preset"
 
 func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGenForm, mapGen []byte, problems []Problem) {
 	posted := func(name string) (string, bool) {
@@ -445,7 +613,10 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		return vs[0], true
 	}
 	form = buildMapGenForm(line, spaceAge, posted)
-	form.Peaceful = vals.Get(mgPeaceful) != ""
+	form.Peaceful.Checked = vals.Get(mgPeaceful) != ""
+	if form.NoEnemies.Name != "" {
+		form.NoEnemies.Checked = vals.Get(mgNoEnemies) != ""
+	}
 	if v, ok := posted(mgSeed); ok {
 		form.Seed.Value = strings.TrimSpace(v)
 	}
@@ -475,42 +646,44 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 
 	if form.Seed.Value != "" {
 		if _, err := strconv.ParseUint(form.Seed.Value, 10, 32); err != nil {
-			form.Seed.Error = i18n.M("mapgen.err.seed", "max", uint64(mgMaxNumber))
+			form.Seed.Error = i18n.M("mapgen.err.seed", "max", strconv.FormatUint(mgMaxNumber, 10))
 			fail(mgSeedID, form.Seed.Error)
 		}
 	}
-	for _, t := range []*MapGenText{&form.Width, &form.Height} {
-		if _, err := strconv.ParseUint(t.Value, 10, 32); err != nil {
-			t.Error = i18n.M("mapgen.err.size", "max", uint64(mgMaxNumber))
-			fail(t.ID, t.Error)
-		}
-	}
-	checkSelect := func(s *MapGenSelect, field i18n.Msg) {
+	checkSelect := func(s *MapGenSelect, field i18n.Msg) bool {
 		if validStep(s.Value, s.Options) {
-			return
+			return true
 		}
 		// The bad value is not echoed or kept.
 		s.Value = mgDefaultStep
 		s.Error = i18n.M("mapgen.err.step", "field", field)
 		fail(s.ID, s.Error)
+		return false
 	}
-	checkSelect(&form.StartingArea, i18n.M("mapgen.start.label"))
-	for _, g := range []*MapGenGroup{&form.Water, &form.Cliffs} {
-		for i := range g.Selects {
-			checkSelect(&g.Selects[i], i18n.M("mapgen.field.name", "control", g.Legend, "setting", g.Selects[i].Label))
-		}
-	}
-	for pi := range form.Planets {
-		p := &form.Planets[pi]
-		for gi := range p.Groups {
-			g := &p.Groups[gi]
-			for si := range g.Selects {
-				before := len(problems)
-				checkSelect(&g.Selects[si], i18n.M("mapgen.field.name", "control", g.Legend, "setting", g.Selects[si].Label))
-				if len(problems) > before {
-					p.Open = true
+	for _, tab := range [][]MapGenPlanet{form.Resources, form.Terrain} {
+		for pi := range tab {
+			p := &tab[pi]
+			for gi := range p.Groups {
+				g := &p.Groups[gi]
+				for si := range g.Selects {
+					if !checkSelect(&g.Selects[si], i18n.M("mapgen.field.name", "control", g.Legend, "setting", g.Selects[si].Label)) {
+						p.Open = true
+					}
 				}
 			}
+		}
+	}
+	for gi := range form.Enemy {
+		g := &form.Enemy[gi]
+		for si := range g.Selects {
+			checkSelect(&g.Selects[si], i18n.M("mapgen.field.name", "control", g.Legend, "setting", g.Selects[si].Label))
+		}
+	}
+	checkSelect(&form.StartingArea, i18n.M("mapgen.start.label"))
+	for _, t := range []*MapGenText{&form.Width, &form.Height} {
+		if _, err := strconv.ParseUint(t.Value, 10, 32); err != nil {
+			t.Error = i18n.M("mapgen.err.size", "max", uint64(mgMaxNumber))
+			fail(t.ID, t.Error)
 		}
 	}
 
@@ -611,6 +784,8 @@ func rawCovered(line, key string) bool {
 	switch key {
 	case "width", "height", "starting_area", "peaceful_mode", "seed":
 		return true
+	case "no_enemies_mode":
+		return line != gamesettings.Line11
 	case "terrain_segmentation", "water":
 		return line == gamesettings.Line11
 	}
@@ -661,15 +836,9 @@ func num(v float64) json.RawMessage {
 
 // chosen is the step code of every select by field name.
 func (f MapGenForm) chosen() map[string]string {
-	m := map[string]string{mgStart: f.StartingArea.Value}
-	groups := []MapGenGroup{f.Water, f.Cliffs}
-	for _, p := range f.Planets {
-		groups = append(groups, p.Groups...)
-	}
-	for _, g := range groups {
-		for _, s := range g.Selects {
-			m[s.Name] = s.Value
-		}
+	m := map[string]string{}
+	for _, s := range f.selects() {
+		m[s.Name] = s.Value
 	}
 	return m
 }
@@ -724,7 +893,10 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 	add("width", json.RawMessage(strconv.FormatUint(width, 10)))
 	add("height", json.RawMessage(strconv.FormatUint(height, 10)))
 	add("starting_area", num(start))
-	add("peaceful_mode", json.RawMessage(strconv.FormatBool(f.Peaceful)))
+	add("peaceful_mode", json.RawMessage(strconv.FormatBool(f.Peaceful.Checked)))
+	if f.NoEnemies.Name != "" {
+		add("no_enemies_mode", json.RawMessage(strconv.FormatBool(f.NoEnemies.Checked)))
+	}
 
 	// A setting's multiplier as the file stores it.
 	stored := func(planet string, c mgControl, s mgSetting) float64 {

@@ -53,7 +53,6 @@
   "settings.error.invalid": "Foreman checked the new settings again and refused them, so nothing was saved. Open the JSON editor to see what is wrong.",
   "settings.error.too_big": "The settings file would be over {size}. Remove some of it.",
   "settings.raw.title": "Edit {file} of {world}",
-  "settings.raw.back": "Back to the settings form",
   "settings.raw.label": "Contents of {file}",
   "settings.raw.hint": "One JSON object, up to {size}. Foreman checks the keys it knows and saves any other key as written.",
   "settings.raw.secrets": "The game password, factorio.com password and token are not shown here. They are kept unless this text gives a key a new value. An empty value removes it.",
@@ -104,5 +103,6 @@
   "settings.preview.step_admins_live": "Promote and demote these players in the running game, which updates {file}.",
   "settings.preview.undo": "To undo, restore that snapshot from the Snapshots page.",
   "settings.preview.save": "Save settings",
-  "settings.preview.back": "Go back and edit"
+  "settings.preview.back": "Go back and edit",
+  "settings.rail.label": "Settings sections"
 }

@@ -42,7 +42,8 @@ test("change a setting from the Server page in three clicks, and the password ne
   await clicks.reset();
 
   await page.getByRole("link", { name: "Settings" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Settings of Base");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("A password is set.")).toBeVisible();
   await expect(page.getByLabel("New password")).toHaveValue("");
   await expectNoSecret(page);
@@ -163,7 +164,8 @@ test("nothing changed offers no save", async ({ page, foreman }) => {
   await expect(page.getByRole("button", { name: "Save settings" })).toHaveCount(0);
   await checkPage(page);
   await page.getByRole("link", { name: "Back to the settings" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Settings of Base");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
 });
 
 test("go back and edit keeps the edits", async ({ page, foreman }) => {
@@ -497,4 +499,30 @@ test("a raw editor error puts the caret on the line it names", async ({ page, fo
   const caretLine = await editor.evaluate((el) => (el as HTMLTextAreaElement).value.slice(0, (el as HTMLTextAreaElement).selectionStart).split("\n").length);
   expect(caretLine).toBe(badLine);
   expect(await editor.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});
+
+// DESIGN 8.10: a rail of section links beside the form on a panel at least
+// 44rem wide; on a phone the form alone, with the raw editor's link after it.
+test("the settings rail shows on a wide panel only", async ({ page, foreman }) => {
+  await setUp(page, foreman);
+  await page.goto("/worlds/base/settings");
+  const rail = page.getByRole("navigation", { name: "Settings sections" });
+  const wide = (page.viewportSize()?.width ?? 1280) > 800;
+  if (wide) {
+    await expect(rail).toBeVisible();
+    await rail.getByRole("link", { name: "Saving" }).click();
+    await expect(page).toHaveURL(/#settings-saving$/);
+    await expect(rail.getByRole("link", { name: "Edit server-settings.json as JSON" })).toBeVisible();
+    await expect(page.locator(".settings-raw-link")).toBeHidden();
+  } else {
+    await expect(rail).toBeHidden();
+    await expect(page.locator(".settings-raw-link").getByRole("link", { name: "Edit server-settings.json as JSON" })).toBeVisible();
+  }
+  // No back link: the world's tabs lead back.
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
+  await checkPage(page);
+  await page.goto("/worlds/base/settings/raw/server-settings.json");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
+  await checkPage(page);
 });

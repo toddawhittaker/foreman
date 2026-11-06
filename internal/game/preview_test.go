@@ -443,3 +443,40 @@ func TestPreviewScriptDraws1280(t *testing.T) {
 		t.Errorf("the preview script does not ask for 1280 pixels:\n%s", previewScript)
 	}
 }
+
+// SPEC 14.3: when creating the container fails after Docker made it, the
+// container is still removed, by its name.
+func TestPreviewRemovesAContainerWhoseCreateFailed(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.game.Daemon().SetCallFailure("POST", "create", 500, "connection lost")
+	if _, err := r.c.Preview(context.Background(), previewRequest()); err == nil {
+		t.Fatal("the preview worked though creating the container failed")
+	}
+	if left := r.previewContainers(); len(left) != 0 {
+		t.Errorf("%d preview containers left", len(left))
+	}
+}
+
+// SPEC 14.3: only a few callers may wait for the preview slot; one beyond
+// that is refused at once.
+func TestPreviewRefusesTooManyWaiters(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _, _ = r.c.Preview(ctx, previewRequest()) }()
+	r.waitPreviewContainer()
+	for range maxPreviewWaiters {
+		go func() { _, _ = r.c.Preview(ctx, previewRequest()) }()
+	}
+	eventually(t, func() bool { return len(r.c.previewWaiting) == maxPreviewWaiters }, "the waiters to queue")
+	start := time.Now()
+	if _, err := r.c.Preview(context.Background(), previewRequest()); !errors.Is(err, ErrPreviewBusy) {
+		t.Errorf("preview beyond the waiting limit: %v, want ErrPreviewBusy", err)
+	}
+	if time.Since(start) > PreviewWait/2 {
+		t.Error("the extra preview waited instead of being refused at once")
+	}
+}
