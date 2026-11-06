@@ -78,7 +78,9 @@ test("html lang, the menu and the page text agree in every language", async ({ p
     await expect(page.locator("html")).toHaveAttribute("lang", lang);
     await expect(page.locator("#language")).toHaveValue(lang);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t("accounts.signedout.heading", {}, lang));
-    await expect(page.locator("label[for=language]")).toHaveText(t("common.language.label", {}, lang));
+    // Off English the label adds the English word, marked lang="en".
+    const label = t("common.language.label", {}, lang);
+    await expect(page.locator("label[for=language]")).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
     expect(await page.title()).toContain(t("accounts.signedout.title", {}, lang));
   }
 });

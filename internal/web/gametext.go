@@ -357,7 +357,7 @@ func problemMsg(p world.Problem) i18n.Msg {
 	case world.ProblemSaveUnsupported:
 		return i18n.M("server.problem.save_unsupported", "save", p.Save, "save_version", p.SaveVersion)
 	case world.ProblemSaveUnreadable:
-		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", saveReadDetail(p.Detail))
+		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", saveReadDetail(p))
 	case world.ProblemModListSpaceAge:
 		if p.SpaceAge {
 			return i18n.M("server.problem.modlist_space_age_on", "mods", names)
@@ -388,10 +388,9 @@ func problemMsg(p world.Problem) i18n.Msg {
 // modVersionMsg words mods made for another Factorio: one sentence per
 // version, then the advice.
 // saveReadDetail is why a save could not be read, in the page's language
-// for the reasons savefile names. The problem carries only the error's
-// text, so it is matched against each reason's text; anything else is
-// shown as the English it is (SPEC 22.3).
-func saveReadDetail(detail string) any {
+// for the reasons savefile names; any other cause is shown as the English
+// it is (SPEC 22.3).
+func saveReadDetail(p world.Problem) any {
 	for _, r := range []struct {
 		err error
 		msg i18n.Msg
@@ -401,11 +400,11 @@ func saveReadDetail(detail string) any {
 		{savefile.ErrFormat, i18n.M("server.problem.save_detail.format")},
 		{savefile.ErrTruncated, i18n.M("server.problem.save_detail.truncated")},
 	} {
-		if detail == r.err.Error() || strings.HasSuffix(detail, ": "+r.err.Error()) {
+		if errors.Is(p.Cause, r.err) {
 			return r.msg
 		}
 	}
-	return i18n.Game(detail)
+	return i18n.Game(p.Detail)
 }
 
 func modVersionMsg(p world.Problem) i18n.Msg {

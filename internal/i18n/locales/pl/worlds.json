@@ -153,7 +153,7 @@
   "worlds.list.import": "Importuj świat",
   "worlds.list.server_link": "Zobacz stronę serwera",
   "worlds.list.switch": "Przełącz",
-  "worlds.list.switch_named": "Przełącz na: {name}",
+  "worlds.list.switch_named": "Przełącz na {name}",
   "worlds.list.switch_wait": "Przełączanie jest niedostępne, gdy na serwerze trwa operacja.",
   "worlds.never": "Nigdy",
   "worlds.off": "Wyłączony",

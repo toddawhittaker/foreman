@@ -256,8 +256,8 @@ func TestEnglishDetailsAreMarkedEnglish(t *testing.T) {
 // when wrapped; one it does not name stays English, marked (SPEC 22.3).
 func TestSaveReadDetailIsTranslated(t *testing.T) {
 	de := i18n.Locale("de")
-	for _, detail := range []string{savefile.ErrNotZip.Error(), "open a.zip: " + savefile.ErrTruncated.Error()} {
-		got := string(de.FormatHTML(problemMsg(world.Problem{Kind: world.ProblemSaveUnreadable, Save: "a.zip", Detail: detail})))
+	for _, detail := range []error{savefile.ErrNotZip, fmt.Errorf("open a.zip: %w", savefile.ErrTruncated)} {
+		got := string(de.FormatHTML(problemMsg(world.Problem{Kind: world.ProblemSaveUnreadable, Save: "a.zip", Detail: detail.Error(), Cause: detail})))
 		if strings.Contains(got, "the save") || strings.Contains(got, `lang="en"`) {
 			t.Errorf("%q not translated: %s", detail, got)
 		}

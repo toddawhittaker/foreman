@@ -153,7 +153,7 @@
   "worlds.list.import": "Importovat svět",
   "worlds.list.server_link": "Zobrazit stránku serveru",
   "worlds.list.switch": "Přepnout",
-  "worlds.list.switch_named": "Přepnout na: {name}",
+  "worlds.list.switch_named": "Přepnout na {name}",
   "worlds.list.switch_wait": "Přepnutí není možné, dokud na serveru probíhá operace.",
   "worlds.never": "Nikdy",
   "worlds.off": "Vypnuto",

@@ -52,10 +52,12 @@ type Problem struct {
 	// (SPEC 22.3). Save is the save the problem is about, "" for a world
 	// without one. GameVersion is the world's version, or the one it would
 	// run. Names are the mods a Space Age problem is about, and SpaceAge
-	// whether the world has it on. Detail is the reader's own error.
+	// whether the world has it on. Detail is the reader's own error, and
+	// Cause the error itself, so a page can tell its reason with errors.Is.
 	Save, SaveVersion, GameVersion, Detail string
 	Names                                  []string
 	SpaceAge                               bool
+	Cause                                  error
 	// World and Groups word a mod game version problem: the mods by the
 	// Factorio they were made for, largest group first. UpdateTo is the
 	// newer release line to advise, or "" to advise updating the mods for
@@ -176,7 +178,7 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 			Text: fmt.Sprintf("The save %s was made by Factorio %s. Foreman runs only saves from Factorio 1.1, 2.0 and 2.1.", name, unsupported.Version)})
 		return finish()
 	case isSaveFormatError(err):
-		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true, Save: name, Detail: err.Error(),
+		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true, Save: name, Detail: err.Error(), Cause: err,
 			Text: fmt.Sprintf("Foreman could not read the save %s (%v), so its mods could not be checked.", name, err)})
 		return finish()
 	case err != nil:
