@@ -30,6 +30,7 @@ const (
 	ReasonBeforeDelete  = "before-delete"
 	ReasonBeforeRestore = "before-restore"
 	ReasonSwitch        = "switch"
+	ReasonSettings      = "settings"
 )
 
 // Labels of the automatic snapshots (SPEC 6.5, 5.10).
@@ -37,6 +38,9 @@ const (
 	LabelBeforeRestore = "Before restore"
 	LabelBeforeDelete  = "Before delete"
 	LabelBeforeSwitch  = "Before switch"
+	// LabelBeforeSettings is the label of the snapshot taken before a
+	// settings file is replaced (SPEC 11.3).
+	LabelBeforeSettings = "Before settings change"
 )
 
 // KeepAutomatic is how many automatic snapshots each world keeps (SPEC 6.6).

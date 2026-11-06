@@ -1,0 +1,186 @@
+{
+  "game_version": "2.1.24",
+  "presets": [
+    "default",
+    "rich-resources",
+    "marathon",
+    "death-world",
+    "death-world-marathon",
+    "rail-world",
+    "ribbon-world",
+    "lakes",
+    "island"
+  ],
+  "planets": [
+    {
+      "name": "nauvis",
+      "space_age": false,
+      "controls": [
+        {
+          "name": "iron-ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "copper-ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "stone",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "coal",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "crude-oil",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "uranium-ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "water",
+          "category": "terrain",
+          "richness": false
+        },
+        {
+          "name": "trees",
+          "category": "terrain",
+          "richness": false
+        },
+        {
+          "name": "rocks",
+          "category": "terrain",
+          "richness": false
+        },
+        {
+          "name": "enemy-base",
+          "category": "enemy",
+          "richness": false
+        },
+        {
+          "name": "nauvis_cliff",
+          "category": "cliff",
+          "richness": false
+        },
+        {
+          "name": "starting_area_moisture",
+          "category": "terrain",
+          "richness": false
+        }
+      ]
+    },
+    {
+      "name": "vulcanus",
+      "space_age": true,
+      "controls": [
+        {
+          "name": "vulcanus_coal",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "calcite",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "sulfuric_acid_geyser",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "tungsten_ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "vulcanus_volcanism",
+          "category": "terrain",
+          "richness": false
+        }
+      ]
+    },
+    {
+      "name": "gleba",
+      "space_age": true,
+      "controls": [
+        {
+          "name": "gleba_stone",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "gleba_cliff",
+          "category": "cliff",
+          "richness": false
+        },
+        {
+          "name": "gleba_water",
+          "category": "terrain",
+          "richness": false
+        },
+        {
+          "name": "gleba_plants",
+          "category": "terrain",
+          "richness": false
+        },
+        {
+          "name": "gleba_enemy_base",
+          "category": "enemy",
+          "richness": false
+        }
+      ]
+    },
+    {
+      "name": "fulgora",
+      "space_age": true,
+      "controls": [
+        {
+          "name": "fulgora_cliff",
+          "category": "cliff",
+          "richness": false
+        },
+        {
+          "name": "fulgora_islands",
+          "category": "terrain",
+          "richness": false
+        },
+        {
+          "name": "scrap",
+          "category": "resource",
+          "richness": true
+        }
+      ]
+    },
+    {
+      "name": "aquilo",
+      "space_age": true,
+      "controls": [
+        {
+          "name": "aquilo_crude_oil",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "lithium_brine",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "fluorine_vent",
+          "category": "resource",
+          "richness": true
+        }
+      ]
+    }
+  ]
+}

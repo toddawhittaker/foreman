@@ -1,0 +1,46 @@
+{{define "title"}}{{t "settings.raw.title" "file" .Page.File "world" .Page.WorldName}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.FormPath}}">{{t "settings.raw.back"}}</a></div>
+<h1>{{t "settings.raw.title" "file" .File "world" .WorldName}}</h1>
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+</div>
+{{- end}}
+{{- if not .ReadOnly.IsZero}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .ReadOnly}}</p>
+</div>
+{{- end}}
+{{- if .Unreadable}}
+<div class="message message--warning">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "settings.raw.unreadable" "file" .File}}</p>
+</div>
+{{- end}}
+{{- if .Running}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running_raw"}}</p>
+</div>
+{{- end}}
+<form method="post" action="{{.Path}}" class="panel" novalidate>
+  {{template "summary" .Problems}}
+  <div class="field">
+    <label for="content">{{t "settings.raw.label" "file" .File}}</label>
+    <p class="hint" id="content-hint">{{t "settings.raw.hint" "size" (bytes .MaxBytes)}}</p>
+    <p class="hint" id="content-secrets">{{t "settings.raw.secrets"}}</p>
+    <textarea id="content" name="content" class="code" rows="24" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off"
+      aria-describedby="content-hint content-secrets{{if .Problems}} error-summary{{end}}"
+      {{- if .Problems}} aria-invalid="true"{{end}}
+      {{- if not .ReadOnly.IsZero}} readonly{{end}}>{{.Text}}</textarea>
+  </div>
+  {{- if .ReadOnly.IsZero}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
+    <a href="{{.WorldPath}}">{{t "settings.cancel"}}</a>
+  </div>
+  {{- end}}
+</form>
+{{- end}}
+{{- end}}

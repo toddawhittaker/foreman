@@ -1,8 +1,5 @@
 # Branching, review, and checks
 
-The real-game test procedure is added here once the real-game tests
-arrive (Epic 3).
-
 ## Where the code lives
 
 The repository is on GitHub: `origin` is
@@ -83,7 +80,7 @@ The targets (STACK.md, section 13):
   in one local run.
 - `make tidy`: `go mod tidy`.
 - `make test-game`: run the game controller against the real Docker daemon
-  and the three game test images (STACK.md, section 1), one after another.
+  and the game test images (STACK.md, section 1), one after another.
   `TAG=1.1`, `2.0` or `2.1` runs one. It does not download the game
   images: pull each one first with the `docker pull` command in the error
   it prints. It starts containers named `foreman-e3test-*` and removes
@@ -99,7 +96,8 @@ The targets (STACK.md, section 13):
 The first `make verify` or `make e2e` pulls the pinned images and runs
 `npm ci` in `e2e/`; later runs reuse them. Run `make test-game` and `make
 e2e-game` before an epic pull request that touches server control, world
-switching, snapshots, mods or game versions.
+creation (Generate, Clone), game settings, world switching, snapshots, mods
+or game versions.
 
 Every end-to-end test fails when its Foreman process writes an ERROR log
 line the test did not declare. A test that causes an error on purpose

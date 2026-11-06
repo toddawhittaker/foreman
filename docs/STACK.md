@@ -270,6 +270,13 @@ Rejected:
   generates code; and `go-i18n`, a third-party copy of what `x/text`
   already does. Rules for writing and adding strings are in
   docs/I18N.md, and the reasons for the design are in ADR 0008.
+- **Map exchange strings (SPEC 5.6)**: decoded in Go by
+  `internal/mapexchange`, a port of rfvgyhn/factorio-exchange-string-parser
+  (MIT licence). Rejected: a throwaway game container, which needs the image
+  and a container start for each answer. Reasons and risk are in ADR 0009.
+  The game data the Generate form needs (presets, planets, autoplace
+  controls) is read from each image by `go generate ./internal/mapgen` and
+  embedded.
 - **Linting**: golangci-lint v2.
 - **Vulnerability scan**: govulncheck.
 
@@ -287,7 +294,7 @@ Rejected:
 | `make image` | Build the container image with a local tag. |
 | `make run` | Run Foreman from source against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It contacts Docker at `DOCKER_HOST` (the default socket unless you set it) to show and control the game. If Docker cannot be reached the Server page shows "Unknown" with the reason and the other pages work. |
 | `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. A test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. |
-| `make test-game` | The game controller against the real Docker daemon and the game test images (`GAME_IMAGE_*`, section 1), one after another, because they share the game port. It first checks that each image's plain tag on the host is the pinned digest. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game, and update and rollback with the real game: 2.0.77 to 2.1.24 and 2.1.23 to 2.1.24, each reaching InGame and rolling back to a byte-identical save. `TAG=1.1`, `2.0` or `2.1` runs one line, and checks only the images that line's tests use (`2.0` and `2.1` include the update tests). Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
+| `make test-game` | The game controller against the real Docker daemon and the game test images (`GAME_IMAGE_*`, section 1), one after another, because they share the game port. It first checks that each image's plain tag on the host is the pinned digest. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game, update and rollback with the real game: 2.0.77 to 2.1.24 and 2.1.23 to 2.1.24, each reaching InGame and rolling back to a byte-identical save, and Generate (a preset, custom settings and real exchange strings, each reaching InGame with the chosen seed; map previews; a settings save on a running game) and the first settings save. `TAG=1.1`, `2.0` or `2.1` runs one line, and checks only the images that line's tests use (`2.0` and `2.1` include the update tests). Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
 | `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image, and a switch from one world to another and back: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing or is not the pinned digest. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
 | `make test-catalogue` | Created in Epic 9. Re-runs the crash reason catalogue's scenarios (SPEC 8.8) against `factoriotools/factorio:$(VERSION)`, for example `VERSION=2.1.22`. Downloads nothing: the image must already be on the host. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |

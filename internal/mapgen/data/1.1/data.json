@@ -1,0 +1,61 @@
+{
+  "game_version": "1.1.110",
+  "presets": [
+    "default",
+    "rich-resources",
+    "marathon",
+    "death-world",
+    "death-world-marathon",
+    "rail-world",
+    "ribbon-world",
+    "island"
+  ],
+  "planets": [
+    {
+      "name": "nauvis",
+      "space_age": false,
+      "controls": [
+        {
+          "name": "iron-ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "copper-ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "stone",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "coal",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "uranium-ore",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "crude-oil",
+          "category": "resource",
+          "richness": true
+        },
+        {
+          "name": "trees",
+          "category": "terrain",
+          "richness": true
+        },
+        {
+          "name": "enemy-base",
+          "category": "enemy",
+          "richness": false
+        }
+      ]
+    }
+  ]
+}

@@ -32,6 +32,9 @@ type Meta struct {
 	// ImportedFrom says which inbox folder and save the world was imported
 	// from; nil for a world not imported from a folder (SPEC 5.5).
 	ImportedFrom *ImportedFrom
+	// NewMap is set on a world whose first start must make the map, and
+	// cleared once that start reaches InGame (SPEC 5.1, 5.6). nil otherwise.
+	NewMap *NewMap
 
 	unknown map[string]json.RawMessage
 }
@@ -45,6 +48,14 @@ type metaKnown struct {
 	LoadSave      string        `json:"load_save,omitempty"`
 	CreatedAt     time.Time     `json:"created_at"`
 	ImportedFrom  *ImportedFrom `json:"imported_from,omitempty"`
+	NewMap        *NewMap       `json:"new_map,omitempty"`
+}
+
+// NewMap says how the world's first start makes its map: the game's own
+// preset name (may be empty) and map seed (nil lets the game choose).
+type NewMap struct {
+	Preset string  `json:"preset"`
+	Seed   *uint32 `json:"seed,omitempty"`
 }
 
 // ImportedFrom records the inbox folder a world was imported from and that
@@ -58,7 +69,7 @@ type ImportedFrom struct {
 	At        time.Time `json:"at"`
 }
 
-var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from"}
+var knownKeys = []string{"format_version", "name", "game_version", "space_age", "load_save", "created_at", "imported_from", "new_map"}
 
 // Newer reports whether a newer Foreman wrote m, so this one must not change it.
 func (m Meta) Newer() bool { return m.FormatVersion > FormatVersion }
@@ -73,6 +84,7 @@ func (m Meta) MarshalJSON() ([]byte, error) {
 		LoadSave:      m.LoadSave,
 		CreatedAt:     m.CreatedAt.UTC(),
 		ImportedFrom:  m.ImportedFrom,
+		NewMap:        m.NewMap,
 	})
 	if err != nil {
 		return nil, err
@@ -115,6 +127,7 @@ func (m *Meta) UnmarshalJSON(b []byte) error {
 		LoadSave:      k.LoadSave,
 		CreatedAt:     k.CreatedAt,
 		ImportedFrom:  k.ImportedFrom,
+		NewMap:        k.NewMap,
 		unknown:       all,
 	}
 	return nil

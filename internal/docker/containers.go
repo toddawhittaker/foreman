@@ -37,7 +37,13 @@ type HostConfig struct {
 	SecurityOpt   []string                 `json:"SecurityOpt,omitempty"`
 	RestartPolicy RestartPolicy            `json:"RestartPolicy"`
 	LogConfig     LogConfig                `json:"LogConfig"`
-	NetworkMode   string                   `json:"NetworkMode,omitempty"` // a network name or "bridge"
+	NetworkMode   string                   `json:"NetworkMode,omitempty"` // a network name, "bridge" or "none"
+	// ReadonlyRootfs, Memory and MemorySwap (bytes; equal means no swap) and
+	// Tmpfs (path to mount options) lock down a one-off container (SPEC 14.3).
+	ReadonlyRootfs bool              `json:"ReadonlyRootfs,omitempty"`
+	Memory         int64             `json:"Memory,omitempty"`
+	MemorySwap     int64             `json:"MemorySwap,omitempty"`
+	Tmpfs          map[string]string `json:"Tmpfs,omitempty"`
 }
 
 // PortBinding publishes a container port on the host.

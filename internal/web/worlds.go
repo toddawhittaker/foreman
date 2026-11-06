@@ -99,8 +99,10 @@ func (WorldPage) navItem() string      { return PathWorlds }
 
 func (p WorldPage) hasErrors() bool { return !p.NameError.IsZero() }
 
-// ImportPath is where the world list's import link goes.
-func (WorldsPage) ImportPath() string { return PathImport }
+// ImportPath and GeneratePath are where the world list's import and generate
+// links go.
+func (WorldsPage) ImportPath() string   { return PathImport }
+func (WorldsPage) GeneratePath() string { return PathGenerate }
 
 // Problems lists the rename field's error.
 func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.NameError}) }
@@ -286,6 +288,8 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
 	s.importFacts(&p, r)
+	s.generatedFacts(&p, r)
+	s.clonedFacts(&p, r)
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 

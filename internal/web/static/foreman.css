@@ -464,8 +464,14 @@ fieldset,
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  /* A label breaks between words, never inside one (the body breaks anywhere). */
-  overflow-wrap: normal;
+  /* A label wraps between words inside its box at large text (SPEC 17.2,
+     22.7). Only a single word wider than the box is broken, with a hyphen
+     where the browser can; "anywhere" (the body's rule) would also shrink a
+     button's minimum width to one letter. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+  white-space: normal;
+  padding-block: var(--space-2);
 }
 
 .button:hover {
@@ -499,7 +505,8 @@ fieldset,
   color: var(--color-on-danger);
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled="true"] {
   cursor: progress;
 }
 
@@ -562,8 +569,10 @@ legend {
   line-height: 1.45;
 }
 
-.field input,
-.field select {
+/* Checkboxes and radios keep their own 1.25rem look; the .check label is the target. */
+.field input:not([type="checkbox"], [type="radio"]),
+.field select,
+.field textarea {
   inline-size: 100%;
   max-inline-size: 40ch;
   min-block-size: var(--target-min);
@@ -574,6 +583,8 @@ legend {
   border-radius: var(--radius);
   box-shadow: var(--bevel-sunken);
   font-size: var(--text-md);
+  /* A choice too long for a phone ends in an ellipsis; the list shows it whole. */
+  text-overflow: ellipsis;
 }
 
 /* The file picker button is drawn as a secondary button (DESIGN 7.2). */
@@ -601,12 +612,14 @@ legend {
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: 2px;
 }
 
-.field input[aria-invalid="true"] {
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
   border: 2px solid var(--color-danger-text);
 }
 
@@ -957,6 +970,23 @@ legend {
   overflow-wrap: anywhere;
 }
 
+/* A time that carries data-age-only shows its date, clock and age on a wide
+   panel and only the age on a narrow one, so a fact fits its half of the
+   row in every language (SPEC 22.7). time.js writes the two spans. */
+time[data-age-only] .time-short {
+  display: none;
+}
+
+@container (max-width: 24rem) {
+  time[data-age-only] .time-full {
+    display: none;
+  }
+
+  time[data-age-only] .time-short {
+    display: inline;
+  }
+}
+
 /* A second figure under a fact's value, on its own line and small enough to
    stay on it at 320 px. */
 .facts .fact-note {
@@ -1200,6 +1230,90 @@ td > .hint {
   }
 }
 
+/* 8.7 The map-gen form: groups that size themselves from the room they have. */
+.mapgen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.mapgen fieldset {
+  gap: var(--space-3);
+}
+
+/* One control: its name, then its settings side by side while they fit. */
+.mapgen .autoplace {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--color-rule);
+}
+
+/* The Map fieldset's own controls stay inside its single column. */
+.mapgen-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-3);
+}
+
+/* A checkbox row with its hint under it, not a labelled field. */
+.mapgen-check {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mapgen input.mono,
+.mapgen textarea {
+  font-family: var(--font-mono);
+}
+
+.mapgen input.mono {
+  max-inline-size: 20ch;
+}
+
+.mapgen textarea {
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--bevel-sunken);
+  font-size: var(--text-md);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.mapgen select[aria-invalid="true"],
+.mapgen textarea[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
+}
+
+/* A planet's controls and the raw box fold away; the summary is the whole target. */
+.mapgen details {
+  border-block-start: 1px solid var(--color-rule);
+}
+
+.mapgen summary {
+  display: list-item;
+  list-style-position: inside;
+  min-block-size: var(--target-min);
+  padding-block: var(--space-3);
+  box-sizing: border-box;
+  font-weight: 600;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.mapgen-body,
+.mapgen details > .field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+}
+
 /* 8.5 Log and console: a deep sunken mono box that scrolls inside itself. */
 .log {
   min-inline-size: 0;
@@ -1296,6 +1410,99 @@ td > .hint {
   margin-block-start: var(--space-2);
 }
 
+/* 8.6 to 8.8 Generate: the way to make the map, and the map preview. */
+.mono {
+  font-family: var(--font-mono);
+}
+
+.field textarea {
+  max-inline-size: 60ch;
+  padding-block: var(--space-2);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.version-fields,
+.map-section,
+.preview,
+.preview > section,
+.mode-option,
+.mode-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.version-fields {
+  gap: var(--space-4);
+}
+
+.mode-fields {
+  padding-inline-start: var(--space-3);
+}
+
+/* Only the chosen way shows its fields; hidden fields leave the tab order. Without :has() all three show and the server reads the chosen one. */
+.mode-option:has(> label > input[type="radio"]:not(:checked)) > .mode-fields {
+  display: none;
+}
+
+.pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.pictures figure {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.pictures img {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 32rem;
+  block-size: auto;
+  aspect-ratio: 1;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.message pre {
+  max-block-size: 12rem;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Shown only while the preview request runs (htmx adds the class). */
+.wait {
+  display: none;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.wait.htmx-request {
+  display: grid;
+}
+
+.wait progress {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-highlight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait progress {
+    display: none;
+  }
+}
+
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
 @media (forced-colors: active) {
   /* The panel's sunken bevel is a box-shadow, which is not drawn here. */
@@ -1340,4 +1547,81 @@ td > .hint {
   .state--crash-looping {
     border-width: 3px;
   }
+}
+
+/* 8.10 Game settings: text areas, the raw editor and the list of changes. */
+.field textarea {
+  inline-size: 100%;
+  max-inline-size: 40ch;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-deep);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--bevel-sunken);
+  font: inherit;
+  font-size: var(--text-md);
+  resize: vertical;
+}
+
+.field textarea:focus {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.field textarea[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
+}
+
+.field--short input {
+  max-inline-size: 20ch;
+}
+
+/* The JSON editor keeps its lines; a long one scrolls inside the box. */
+.field textarea.code {
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+}
+
+.settings > fieldset > legend {
+  margin-block-end: var(--space-2);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+}
+
+.changes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes li {
+  display: grid;
+  gap: var(--space-1);
+  max-inline-size: none;
+  padding-block-end: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-rule);
+}
+
+.changes li:last-child {
+  padding-block-end: 0;
+  border-block-end: 0;
+}
+
+.changes del,
+.changes ins {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.changes del {
+  color: var(--color-text-muted);
 }

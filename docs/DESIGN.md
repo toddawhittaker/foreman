@@ -559,7 +559,11 @@ var(--target-min)`, `padding-inline: var(--space-4)`, `--text-md`,
 weight 600, `--radius`, `cursor: pointer`, `box-shadow:
 var(--bevel-raised)`. While pressed (`:active`) the bevel flips to
 `var(--bevel-sunken)`, so the button looks pushed in. Nothing moves and
-nothing animates.
+nothing animates. A label wraps between words inside the button (it
+never runs past the edge) when large text or a long translation needs two
+lines; only a single word wider than the button is broken (`overflow-wrap:
+break-word`, hyphenated where the browser can); the block padding is `--space-2` so a
+two-line label is not cramped.
 
 - Hover is a colour change only; it is never the sole sign of anything,
   because a phone has no hover. The secondary button's hover is a
@@ -581,7 +585,10 @@ nothing animates.
 - **While a request runs**, htmx sets `disabled` on the button
   (`hx-disabled-elt="this"`) and Foreman changes its label to the
   present participle ("Starting…"). The button keeps its size, so nothing
-  shifts. The busy state is the only time a button is disabled.
+  shifts. The busy state is the only time a button is disabled. The one
+  exception is a button the person pressed that must keep focus, such as
+  Preview map (8.8): it is marked `aria-disabled="true"` and a click on it
+  does nothing.
 - A row of buttons is a flex container with `gap: var(--space-3)` and
   `flex-wrap: wrap`. The primary button comes first in source and visual
   order; the cancel link comes last.
@@ -629,7 +636,10 @@ nothing animates.
   var(--color-highlight)`, so a checked box is orange like any other
   selected thing, and `inline-size` and `block-size` of 1.25rem. The
   input sits inside its `label`, and the label is a flex row with
-  `min-block-size: var(--target-min)`, so the whole row is the target.
+  `min-block-size: var(--target-min)`, so the whole row is the target. The
+  sunken-box styling above never applies to them, even inside a
+  `div.field`: the `.field` rule excludes `[type="checkbox"]` and
+  `[type="radio"]`, so the input stays 1.25rem square.
 - A group of radios or checkboxes is a `fieldset` with a `legend` styled
   like a label. "Which save loads" (SPEC 7.11) is a radio group.
 - **File inputs** are native, inside the same 44 px sunken box as other
@@ -929,7 +939,12 @@ Space Age, last played and disk use. The active world carries the word
 square) beside its name, and is listed first. A world that can be switched
 to has a "Switch" button beside its name (its accessible name is "Switch to"
 and the world's name); section 6 ("What a phone shows first") gives the
-row's grid. The word carries the
+row's grid. On a narrow panel the Last played fact shows only the age
+("1 hour ago"), so it fits its half of the row in every language; the
+world's own page and a wide panel keep the date, clock with zone and age.
+`time.js` writes both texts into the `time` element (`data-age-only`),
+the style sheet shows one by the panel's width, and the exact time stays in
+`datetime`. Without script the page keeps the server's UTC text. The word carries the
 meaning; the orange matches the selected tab. A list with a `dl` per item
 reflows at any width, where a six-column table would not fit 320 px. The
 list sits in one inner panel and its rows are separated by a 1px `rule`
@@ -1056,6 +1071,280 @@ Classes and their contract:
   a "Send" button, above an `ol` of past commands and responses, newest
   last, in the same sunken mono box. The response to the person's own
   command goes to `#announcer`, because they asked for it.
+
+### 8.6 Generate (SPEC 5.6)
+
+The task is "make a new world". From the Server page it takes three
+clicks: Worlds, "Generate world" (beside "Import worlds" on the Worlds
+page), then "Generate world" on the form. Everything but the name has a
+default.
+
+One page, `GET /generate`, one `form.panel`, in this order:
+
+1. Name (7.2, required, the only field with no default).
+2. Game version: the same picker as Import (SPEC 10.7): downloaded
+   versions and Docker Hub's list, with the "download the game image"
+   checkbox. Preview needs a downloaded image; its refusal (8.8) covers
+   that.
+3. Space Age: a checkbox, checked when the version supports it, as on
+   Import.
+4. "How to make the map": a `fieldset` of three radios, each followed
+   in order by its own `fieldset` of fields:
+   - **Preset** (checked): a `select` of the game line's presets with
+     "Default" selected, and a Seed field (mono, `inputmode="numeric"`,
+     `20ch`, hint "Leave blank for a random seed").
+   - **Map exchange string**: a mono `textarea`, 6 rows,
+     `spellcheck="false"`, `autocapitalize="off"`. Its hint says where
+     the game shows one. A bad string is refused on this page with the
+     string's version and the reason (7.2 error).
+   - **Custom settings**: the map-gen form (8.7).
+5. The action row: "Generate world" (primary), "Preview map" (secondary,
+   8.8), then a Cancel link back to the Worlds page.
+
+CSS shows only the chosen mode's `fieldset`
+(`form:has(#mode-preset:checked) .mode-exchange { display: none }` and
+so on); `display: none` also takes hidden fields out of the tab order.
+Without `:has()` all three show, and the server reads only the chosen
+one, so the page still works with no script. After a failed submit the
+chosen radio stays chosen and every value is kept.
+
+On success the browser lands on the new world's page with a Done message
+(7.3): "Generated Family base 2026. Its map is made when it first
+starts." The next action, Switch, is already on that page.
+
+### 8.7 The map-gen form (SPEC 5.6, 11.5)
+
+Plain HTML, no script. It is long, so it is grouped and mostly closed.
+
+```html
+<fieldset class="mode-custom">
+  <legend>Custom settings</legend>
+  <fieldset><legend>Map</legend> … seed, width, height, starting area,
+    water, cliffs, peaceful mode …</fieldset>
+  <details open>
+    <summary>Nauvis: resources and terrain</summary>
+    <fieldset class="autoplace">
+      <legend>Iron ore</legend>
+      <div class="field"><label for="nauvis-iron-ore-frequency">Frequency</label>
+        <select id="nauvis-iron-ore-frequency" name="nauvis.iron-ore.frequency">…</select></div>
+      … size, richness …
+    </fieldset>
+    …
+  </details>
+  <details><summary>Vulcanus: resources and terrain</summary> … </details>
+</fieldset>
+```
+
+- **Groups.** First a "Map" fieldset, always open: seed, width and
+  height, starting area, water (scale and coverage), cliffs (frequency
+  and continuity), and peaceful mode. Then one `details` per planet the
+  world will have, in the game's order (only Nauvis on 1.1 or without
+  Space Age, and then the summary says just "Resources and terrain").
+  The first planet is open, the others closed. A `details` holding a
+  field with an error is rendered `open`, so the error summary's link
+  (7.2) reaches a visible field.
+- **One fieldset per autoplace control**, its legend the game's name
+  for it ("Iron ore", "Trees", "Enemy bases"). Its fields (frequency,
+  size, richness; two where the control has no richness) sit in a grid,
+  `repeat(auto-fit, minmax(8rem, 1fr))`, sized by the container: one
+  row on a wide panel, stacked at 320 px. A screen reader hears "Iron
+  ore, Frequency, 100%".
+- **Selects of named steps, not sliders or free numbers.** Frequency,
+  size, richness, starting area, water and cliffs are each a `select` of
+  the game's own steps for that game line, read from the game data and
+  labelled as the game labels them, with the default step selected and
+  marked "(default)". Where the game allows zero, "None" is first. A
+  range input is hard to set exactly from the keyboard and hides its
+  value; a free number lets in values the game refuses.
+- **Numbers.** Seed, width and height are text inputs with
+  `inputmode="numeric"`, mono, `20ch`. Width and height hint "0 means
+  no limit". Peaceful mode is a checkbox (7.2).
+- The form opens filled with the chosen preset's values for the game
+  line, so "Custom" means "a preset, then changed". Choosing another
+  preset in the Preset mode refills this form (the select posts to the
+  refresh route; only the seed is kept), and a hint at the top of the form
+  says which preset it holds. A preset value that is on none of the game's
+  steps (rail world's water coverage of 150%, ribbon world's cliff
+  continuity of 75%) shows as an extra step in that one select, so opening
+  the form never changes a preset. Keys the fields do not cover, such as an
+  island's terrain type, fill the raw editor below. Without script the form
+  opens at the defaults and the person sets what they want.
+- **Words for terrain.** A terrain control (water, trees, rocks, moisture)
+  has Scale and Coverage, as the game's terrain tab words them; Scale is
+  the inverse of the stored frequency. Resources and enemy bases have
+  Frequency and Size, resources also Richness; cliffs Frequency and
+  Continuity.
+- **Raw map-gen JSON** (SPEC 11.5). After the planet `details`, a closed
+  `details` "Other map-gen settings (JSON)" holds the raw editor of 8.10
+  (mono `textarea`, `wrap="off"`, errors by line in the error summary,
+  `details` rendered `open` when it has an error). It is prefilled with
+  the game line's defaults for only the keys the form does not cover.
+  On submit the raw object is read first and the form fields are laid
+  over it, so a form field wins for every key it covers; a raw key the
+  form covers is ignored, and the hint says so.
+
+### 8.8 Map preview (SPEC 5.6, P1)
+
+Preview is optional and adds no screen to Generate.
+
+- "Preview map" is a secondary submit button in Generate's action row.
+  It posts the same form with `formaction="/generate/preview"`.
+- The answer is **the same Generate page**, every value kept, a blank
+  seed now holding the random seed the picture used, and a "Map preview"
+  `section` (h2) directly above the action row. The pictures sit next to
+  the two buttons that follow from them: change a field and press
+  "Preview map" again, or press "Generate world" to make exactly this
+  map. There is no separate "Back" or "Use these settings" step. The
+  section's first line: "Made from the settings above, seed 123456.
+  Change anything and preview again to see it."
+- **Pictures.** A `ul` (no bullets) of `figure`s, one per planet, each
+  with a `figcaption` naming the planet. The `img` has `width` and
+  `height` attributes, `inline-size: 100%`, `max-inline-size: 32rem`
+  and `aspect-ratio: 1`, so its space is held before it loads. Alt text:
+  "Map preview of Nauvis, seed 123456". The list is a grid,
+  `repeat(auto-fit, minmax(16rem, 1fr))`: one picture per row on a
+  phone, two or more on a wide panel. Each picture links to its
+  full-size file.
+- **While it runs** (about one second per planet). Without script the
+  browser's own loading state shows and the page arrives complete. With
+  htmx, the button posts with `hx-target` on the preview section; the
+  section reserves the height of one picture and shows "Making the map
+  preview for 5 planets, about 5 seconds." with an indeterminate
+  `<progress>` (7.6). Both action buttons are marked `aria-disabled`
+  while it runs, never `disabled`, because a disabled button loses focus
+  and the browser does not give it back; a click on a busy button does
+  nothing, which also stops the Enter key's implicit submit. When the
+  pictures arrive focus is still on Preview map and `#announcer` says
+  "Map preview ready." A redraw that leaves the form in place removes an
+  old error summary, so focus never lands on errors already fixed. If the
+  request itself fails (a 4xx or 5xx answer, or no connection), htmx swaps
+  nothing, so the script puts a sentence in the preview section and in
+  `#announcer`: "The map preview request failed..." The sentence comes
+  from a `template` in the page, so it is translated with the page.
+- **Refusals** are errors (7.3) in the preview section, each with its
+  next step as a control: the game image is not downloaded (a "Download
+  2.0.77" button that posts the Versions page's download action); another preview is
+  running ("Try again in a few seconds", with Preview map right below);
+  the game failed (its last log lines in a `pre`; Generate still works).
+- Pictures are deleted after 15 minutes. An expired preview says "This
+  preview expired. Preview map again." and the images are dropped.
+
+### 8.9 Clone (SPEC 5.7, P1)
+
+A world's page has "Clone world" (secondary). It opens
+`GET /worlds/{id}/clone`, a plain `form.panel`, not the danger box,
+since nothing is lost. From the Server page: the active world's link,
+"Clone world", then "Clone world" on the form: three clicks.
+
+- Heading "Clone Family base 2025", then a short `ul` of what is copied:
+  "Its 38 mods, its settings, game version 2.0.77 and Space Age."
+- Name, filled in with "Family base 2025 (copy)".
+- A "Map" `fieldset` with two radios:
+  - **Keep the save** (checked when the world has one). The label names
+    the save and its time: "Keep autosave_3.zip, saved `<time>`", using
+    section 9's time rules. It is the save the world would load (SPEC
+    7.11).
+  - **Start a fresh map**, hint "A new map with a random seed, made when
+    the world first starts."
+  A world with no save shows only the fresh-map line, as text, not a
+  lone radio.
+- "Clone world" (primary) and a Cancel link back to the world. The
+  result is the new world's page with a Done message naming both worlds.
+
+### 8.10 Game settings (SPEC 11)
+
+A world's page and the Server page (for the active world) each have a
+"Settings" link. From the Server page, changing a setting takes three
+clicks: Settings, "Preview changes", "Save settings", plus Restart when
+the game is running.
+
+**The form** (`GET /worlds/{id}/settings`) is one `form.panel` of
+fieldsets, in this order:
+
+- "Listing": name, description (`textarea`, 3 rows), and visibility as
+  two radios, "On the local network" and "Hidden".
+- "Joining": game password (below), maximum players (numeric, hint "0
+  means no limit"), require user verification (checkbox).
+- "Saving": autosave interval in minutes, autosave slots, pause when no
+  one is online (checkbox).
+- "Admins": a `textarea`, one player name per line, as its hint says. On
+  a world that cannot be changed it is `readonly`, not disabled, so the
+  keyboard can focus and scroll a long list; the other controls stay
+  disabled.
+
+Then "Preview changes" (primary) and Cancel. Below the form, one plain
+link per editable file: "Edit server-settings.json as JSON".
+
+**Write-only fields** (SPEC 11.4). No value ever reaches the browser.
+
+```html
+<fieldset>
+  <legend>Game password</legend>
+  <p class="hint" id="pw-state">A password is set.</p>
+  <div class="field">
+    <label for="pw-new">New password</label>
+    <p class="hint" id="pw-hint">Leave blank to keep the current password.</p>
+    <input id="pw-new" name="game_password" type="password"
+           autocomplete="new-password" aria-describedby="pw-state pw-hint">
+  </div>
+  <label class="check"><input type="checkbox" name="game_password_remove"> Remove the password</label>
+</fieldset>
+```
+
+With no password set, the state reads "No password is set. Anyone who
+can reach the server can join.", the hint "Leave blank to keep no
+password", and there is no remove checkbox. A new password and remove
+together is a field error: "Enter a new password or remove it, not
+both." The factorio.com username, password and token follow the same
+pattern if a page ever shows them.
+
+**The raw editor** (`GET /worlds/{id}/settings/raw/{file}`):
+
+- One `textarea` in `--font-mono` at 16px, `rows="24"`, `wrap="off"`,
+  `spellcheck="false"`, `autocapitalize="off"`, `autocomplete="off"`,
+  full panel width. Long lines scroll inside it; the page never scrolls
+  sideways. No line-number gutter and no syntax colour: both need script.
+- Secret keys are left out; the hint says "The game password is not
+  shown here. It is kept unless you change it on the form."
+- Errors use the error summary (7.2), all at once. Each names the line,
+  the reason and the line's text: "Line 12: max_players must be a whole
+  number. The line reads `"max_players": "ten",`". The `textarea` gets
+  `aria-invalid` and `aria-describedby` pointing at the summary list,
+  and keeps the text exactly as typed.
+- "Preview changes" (primary) and Cancel, as on the form.
+
+**The preview of changes** follows the 7.4 structure in a plain panel,
+not the danger box, because the snapshot makes it undoable.
+
+- Heading: "Save these changes to Family base 2025?"
+- A `ul.changes`, one `li` per key: a bold leading word, "Added",
+  "Changed" or "Removed" (like a step word in 7.6, so the kind never
+  rests on colour), the key in `code`, then `<del>` old value and
+  `<ins>` new value on lines of their own, each led by a visually hidden
+  "Before:" or "After:". Values wrap with `overflow-wrap: anywhere`; no
+  red or green fills. A secret shows no value, only "will be set",
+  "changed" or "removed". An unknown key adds "Foreman does not check
+  this key; it is saved as written." Admins read "Added admin Alice",
+  "Removed admin Bob".
+- What will happen, in order: save the running game (only when it
+  runs), take a snapshot labelled for the settings change, write the
+  file. Then the undo line naming the Snapshots page.
+- When the world is running, a Note (7.3): "The server is running. These
+  changes take effect after a restart." When only admins changed, it
+  says instead that admins change at once.
+- "Save settings" (primary) and "Go back and edit", a link back to the
+  form or raw editor with the edits kept.
+- No changes: "Nothing changed." with a link back and no save button.
+- If the file changed since the preview, confirming shows this page
+  again with a Warning: "server-settings.json changed since you
+  previewed. These are the changes against the file as it is now." The
+  Warning takes focus, as the "nothing left" note does, so the new diff
+  is announced.
+
+**After saving**, the browser returns to the settings form with a Done
+message naming the snapshot, linked. When a restart is needed the
+message ends with a "Restart server" link to the restart form (7.4), so
+the next step is a control.
 
 ## 9. Writing
 

@@ -8,7 +8,7 @@ description: |
   will do.
 model: claude-opus-5-5
 effort: low
-tools: Bash, Read, Write, Edit, Grep, Glob, Agent(explorer)
+tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(explorer)
 hooks:
   Stop:
     - hooks:

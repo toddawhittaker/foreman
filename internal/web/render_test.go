@@ -17,6 +17,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -102,6 +103,23 @@ func pageCases() []pageCase {
 			Upload: ImportForm{IDPrefix: "upload"}}},
 		{"import upload errors", "todd", 400, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"},
 			Upload: ImportForm{IDPrefix: "upload", SourceError: i18n.M("worlds.upload.not_zip"), NameError: msgNameEmpty(), VersionError: msgBadGameVersion()}}},
+		{"generate empty", "todd", 200, GeneratePage{Form: generateCase(nil)}},
+		{"generate preview", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil), Preview: &PreviewView{Seed: "1234", Pictures: []PreviewPicture{
+			{Planet: "nauvis", Name: planetMsg("nauvis"), Path: "/generate/preview/tok/nauvis"},
+			{Planet: "vulcanus", Name: planetMsg("vulcanus"), Path: "/generate/preview/tok/vulcanus"}}}}},
+		{"generate preview failed", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil),
+			Preview: &PreviewView{Error: i18n.M("worlds.generate.preview.failed")}}},
+		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+			f.Name, f.Mode, f.Reset = longName, modeExchange, true
+			f.NameError, f.VersionError, f.SpaceAgeError = msgNameEmpty(), msgBadGameVersion(), msgSpaceAgeOld()
+			f.PresetError, f.SeedError = i18n.M("worlds.generate.error.preset"), i18n.M("worlds.generate.error.seed")
+			f.ExchangeError, f.FormError = i18n.M("worlds.generate.error.exchange_empty"), i18n.M("worlds.generate.error.settings")
+		})}},
+		{"clone with save", "todd", 200, ClonePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", SpaceAge: true},
+			Name: longName + " (copy)", Choice: cloneKeep, SaveName: "autosave_3.zip", SaveTime: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), RunningNote: true}},
+		{"clone fresh only errors", "todd", 400, ClonePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "1.1.110"},
+			Name: "", Choice: cloneFresh, FreshOnlyWhy: i18n.M("worlds.clone.no_save"), NameError: msgNameEmpty(),
+			Error: msgBusy(), ErrorBusy: true}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
@@ -222,6 +240,12 @@ func pageCases() []pageCase {
 		{"rollback running", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.1.24"},
 			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Running: true, CountdownForm: defaultCountdown(),
 			Error: i18n.M("server.error.image_missing")}},
+		{"settings form", "todd", 200, settingsFormCase(false)},
+		{"settings form errors", "todd", 400, settingsFormCase(true)},
+		{"settings raw", "todd", 200, settingsRawCase(false)},
+		{"settings raw errors", "todd", 400, settingsRawCase(true)},
+		{"settings preview", "todd", 200, settingsPreviewCase()},
+		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
 	}
 }
 
@@ -262,6 +286,16 @@ func TestVersionFragments(t *testing.T) {
 			}
 		})
 	}
+}
+
+// generateCase is the Generate form as first offered, with edit applied.
+func generateCase(edit func(*GenerateForm)) GenerateForm {
+	f := GenerateForm{Version: "2.0.77", DefaultVersion: "2.0.77", SpaceAge: true, Download: true, CanDownload: true,
+		Mode: modePreset, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Seed: "42", MapGen: NewMapGenForm("2.0", true)}
+	if edit != nil {
+		edit(&f)
+	}
+	return f
 }
 
 // serverCase is the server page for an active world in state s.
@@ -394,7 +428,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 	}
 	for _, f := range files {
 		name := strings.TrimSuffix(path.Base(f), ".html")
-		if name == "layout" {
+		if name == "layout" || isPartial(name) {
 			continue
 		}
 		if _, ok := r.pages[i18n.English][name]; !ok {
@@ -671,8 +705,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 4 {
-		t.Fatalf("want the stylesheet, htmx, its SSE extension and time.js, found %v", found)
+	if len(found) != 7 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension and time.js, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")
@@ -694,6 +728,41 @@ func TestCSSHasNoRawColoursOutsideTokens(t *testing.T) {
 	for i, line := range strings.Split(string(css), "\n") {
 		if hex.MatchString(line) && !strings.HasPrefix(strings.TrimSpace(line), "--color-") {
 			t.Errorf("line %d: raw colour outside a token: %s", i+1, line)
+		}
+	}
+}
+
+// The brand icons are linked from the page head and served without a session.
+func TestFaviconLinksAndFiles(t *testing.T) {
+	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
+	head := body[:strings.Index(body, "</head>")]
+	for _, want := range []string{
+		`rel="icon" href="/static/icons/icon-16.png?v=`,
+		`sizes="16x16" type="image/png"`,
+		`rel="icon" href="/static/icons/icon-32.png?v=`,
+		`sizes="32x32" type="image/png"`,
+		`rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png?v=`,
+	} {
+		if !strings.Contains(head, want) {
+			t.Errorf("head lacks %s", want)
+		}
+	}
+
+	hn := newHarness(t, nil)
+	for _, c := range []struct{ path, contentType string }{
+		{PathFavicon, "image/x-icon"},
+		{PathStatic + "icons/favicon.ico", "image/x-icon"},
+		{PathStatic + "icons/icon-16.png", "image/png"},
+		{PathStatic + "icons/icon-32.png", "image/png"},
+		{PathStatic + "icons/apple-touch-icon.png", "image/png"},
+	} {
+		rec := hn.get(c.path)
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != c.contentType {
+			t.Errorf("%s: %d %q, want 200 %q", c.path, rec.Code, rec.Header().Get("Content-Type"), c.contentType)
+		}
+		if rec.Body.Len() == 0 {
+			t.Errorf("%s: empty body", c.path)
 		}
 	}
 }

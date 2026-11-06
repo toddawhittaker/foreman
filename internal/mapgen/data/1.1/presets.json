@@ -1,0 +1,137 @@
+{
+  "death-world": {
+    "autoplace_controls": {
+      "enemy-base": {
+        "frequency": 2,
+        "richness": 1,
+        "size": 2
+      }
+    },
+    "starting_area": 0.7071067690849304
+  },
+  "death-world-marathon": {
+    "autoplace_controls": {
+      "enemy-base": {
+        "frequency": 2,
+        "richness": 1,
+        "size": 2
+      }
+    },
+    "starting_area": 0.7071067690849304
+  },
+  "default": {},
+  "island": {
+    "property_expression_names": {
+      "elevation": "0_17-island"
+    }
+  },
+  "marathon": {},
+  "rail-world": {
+    "autoplace_controls": {
+      "coal": {
+        "frequency": 0.3333333432674408,
+        "richness": 1,
+        "size": 3
+      },
+      "copper-ore": {
+        "frequency": 0.3333333432674408,
+        "richness": 1,
+        "size": 3
+      },
+      "crude-oil": {
+        "frequency": 0.3333333432674408,
+        "richness": 1,
+        "size": 3
+      },
+      "iron-ore": {
+        "frequency": 0.3333333432674408,
+        "richness": 1,
+        "size": 3
+      },
+      "stone": {
+        "frequency": 0.3333333432674408,
+        "richness": 1,
+        "size": 3
+      },
+      "uranium-ore": {
+        "frequency": 0.3333333432674408,
+        "richness": 1,
+        "size": 3
+      }
+    },
+    "terrain_segmentation": 0.5,
+    "water": 1.5
+  },
+  "ribbon-world": {
+    "autoplace_controls": {
+      "coal": {
+        "frequency": 3,
+        "richness": 2,
+        "size": 0.5
+      },
+      "copper-ore": {
+        "frequency": 3,
+        "richness": 2,
+        "size": 0.5
+      },
+      "crude-oil": {
+        "frequency": 3,
+        "richness": 2,
+        "size": 0.5
+      },
+      "iron-ore": {
+        "frequency": 3,
+        "richness": 2,
+        "size": 0.5
+      },
+      "stone": {
+        "frequency": 3,
+        "richness": 2,
+        "size": 0.5
+      },
+      "uranium-ore": {
+        "frequency": 3,
+        "richness": 2,
+        "size": 0.5
+      }
+    },
+    "height": 128,
+    "starting_area": 3,
+    "terrain_segmentation": 4,
+    "water": 0.25
+  },
+  "rich-resources": {
+    "autoplace_controls": {
+      "coal": {
+        "frequency": 1,
+        "richness": 2,
+        "size": 1
+      },
+      "copper-ore": {
+        "frequency": 1,
+        "richness": 2,
+        "size": 1
+      },
+      "crude-oil": {
+        "frequency": 1,
+        "richness": 2,
+        "size": 1
+      },
+      "iron-ore": {
+        "frequency": 1,
+        "richness": 2,
+        "size": 1
+      },
+      "stone": {
+        "frequency": 1,
+        "richness": 2,
+        "size": 1
+      },
+      "uranium-ore": {
+        "frequency": 1,
+        "richness": 2,
+        "size": 1
+      }
+    }
+  }
+}

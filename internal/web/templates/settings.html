@@ -1,0 +1,159 @@
+{{define "title"}}{{t "settings.title" "world" .Page.WorldName}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
+<h1>{{t "settings.title" "world" .WorldName}}</h1>
+{{- if not .Done.IsZero}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+  {{- if or .DoneSnap .DoneRestart}}
+  <div class="actions">
+    {{- if .DoneRestart}}
+    <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
+    {{- end}}
+    {{- if .DoneSnap}}
+    <a href="{{.SnapshotsPath}}#restore-{{.DoneSnap}}">{{t "worlds.snapshots.go_to"}}</a>
+    {{- end}}
+  </div>
+  {{- end}}
+  {{- if .DoneRestart}}
+  <p>{{t "settings.done.restart"}}</p>
+  {{- end}}
+</div>
+{{- end}}
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+</div>
+{{- end}}
+{{- if not .ReadOnly.IsZero}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .ReadOnly}}</p>
+</div>
+{{- end}}
+{{- if .Broken}}
+<div class="message message--error">
+  <p><strong>{{t "common.error.label"}}</strong> {{t "settings.broken" "file" .File}}</p>
+</div>
+{{- else}}
+{{- if .Running}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running"}}</p>
+</div>
+{{- end}}
+<form method="post" action="{{.Path}}" class="panel settings" novalidate>
+  {{template "summary" .Problems}}
+  {{- if .Edit}}
+  <input type="hidden" name="edit" value="{{.Edit}}">
+  {{- end}}
+  <fieldset{{if not .Editable}} disabled{{end}}>
+    <legend>{{t "settings.listing"}}</legend>
+    <div class="field">
+      <label for="name">{{t "settings.name.label"}}</label>
+      <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off"
+        {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+      {{- if not .NameError.IsZero}}
+      <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
+      {{- end}}
+    </div>
+    <div class="field">
+      <label for="description">{{t "settings.description.label"}}</label>
+      <textarea id="description" name="description" rows="3" autocomplete="off">{{.Description}}</textarea>
+    </div>
+    <fieldset>
+      <legend>{{t "settings.visibility.legend"}}</legend>
+      {{- if not .VisibilityHint.IsZero}}
+      <p class="hint" id="visibility-hint">{{msg .VisibilityHint}}</p>
+      {{- end}}
+      <label class="check"><input type="radio" id="visibility-lan" name="visibility" value="lan"{{if eq .Visibility "lan"}} checked{{end}}{{if not .VisibilityHint.IsZero}} aria-describedby="visibility-hint"{{end}}> {{t "settings.visibility.lan"}}</label>
+      <label class="check"><input type="radio" id="visibility-hidden" name="visibility" value="hidden"{{if eq .Visibility "hidden"}} checked{{end}}{{if not .VisibilityHint.IsZero}} aria-describedby="visibility-hint"{{end}}> {{t "settings.visibility.hidden"}}</label>
+    </fieldset>
+  </fieldset>
+
+  <fieldset{{if not .Editable}} disabled{{end}}>
+    <legend>{{t "settings.joining"}}</legend>
+    <fieldset>
+      <legend>{{t "settings.password.legend"}}</legend>
+      <p class="hint" id="pw-state">{{if .PasswordSet}}{{t "settings.password.set"}}{{else}}{{t "settings.password.unset"}}{{end}}</p>
+      <div class="field">
+        <label for="game-password">{{t "settings.password.new"}}</label>
+        <p class="hint" id="pw-hint">{{if .PasswordPending}}{{t "settings.password.keep_pending"}}{{else if .PasswordSet}}{{t "settings.password.keep"}}{{else}}{{t "settings.password.keep_none"}}{{end}}</p>
+        <input id="game-password" name="game_password" type="password" autocomplete="new-password"
+          aria-describedby="pw-state pw-hint{{if .PasswordDropped}} pw-dropped{{end}}{{if not .PasswordError.IsZero}} pw-error{{end}}"
+          {{- if not .PasswordError.IsZero}} aria-invalid="true"{{end}}>
+        {{- if .PasswordDropped}}
+        <p class="hint" id="pw-dropped"><strong>{{t "common.label.note"}}</strong> {{t "settings.password.dropped"}}</p>
+        {{- end}}
+        {{- if not .PasswordError.IsZero}}
+        <p class="error" id="pw-error"><strong>{{t "common.error.label"}}</strong> {{msg .PasswordError}}</p>
+        {{- end}}
+      </div>
+      {{- if .PasswordSet}}
+      <label class="check"><input type="checkbox" name="game_password_remove"> {{t "settings.password.remove"}}</label>
+      {{- end}}
+    </fieldset>
+    <div class="field field--short">
+      <label for="max-players">{{t "settings.max_players.label"}}</label>
+      <p class="hint" id="max-players-hint">{{t "settings.max_players.hint"}}</p>
+      <input id="max-players" name="max_players" type="text" inputmode="numeric" value="{{.MaxPlayers}}" autocomplete="off"
+        aria-describedby="max-players-hint{{if not .MaxPlayersError.IsZero}} max-players-error{{end}}"
+        {{- if not .MaxPlayersError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .MaxPlayersError.IsZero}}
+      <p class="error" id="max-players-error"><strong>{{t "common.error.label"}}</strong> {{msg .MaxPlayersError}}</p>
+      {{- end}}
+    </div>
+    <label class="check"><input type="checkbox" name="require_user_verification"{{if .Verify}} checked{{end}}> {{t "settings.verify.label"}}</label>
+  </fieldset>
+
+  <fieldset{{if not .Editable}} disabled{{end}}>
+    <legend>{{t "settings.saving"}}</legend>
+    <div class="field field--short">
+      <label for="autosave-interval">{{t "settings.interval.label"}}</label>
+      <input id="autosave-interval" name="autosave_interval" type="text" inputmode="numeric" value="{{.Interval}}" autocomplete="off"
+        {{- if not .IntervalError.IsZero}} aria-invalid="true" aria-describedby="autosave-interval-error"{{end}}>
+      {{- if not .IntervalError.IsZero}}
+      <p class="error" id="autosave-interval-error"><strong>{{t "common.error.label"}}</strong> {{msg .IntervalError}}</p>
+      {{- end}}
+    </div>
+    <div class="field field--short">
+      <label for="autosave-slots">{{t "settings.slots.label"}}</label>
+      <input id="autosave-slots" name="autosave_slots" type="text" inputmode="numeric" value="{{.Slots}}" autocomplete="off"
+        {{- if not .SlotsError.IsZero}} aria-invalid="true" aria-describedby="autosave-slots-error"{{end}}>
+      {{- if not .SlotsError.IsZero}}
+      <p class="error" id="autosave-slots-error"><strong>{{t "common.error.label"}}</strong> {{msg .SlotsError}}</p>
+      {{- end}}
+    </div>
+    <label class="check"><input type="checkbox" name="auto_pause"{{if .AutoPause}} checked{{end}}> {{t "settings.auto_pause.label"}}</label>
+  </fieldset>
+
+  {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
+  <fieldset>
+    <legend>{{t "settings.admins.legend"}}</legend>
+    {{- if .AdminsBroken}}
+    <p class="hint">{{t "settings.admins.broken" "file" .AdminFile}}</p>
+    {{- else}}
+    <div class="field">
+      <label for="admins">{{t "settings.admins.label"}}</label>
+      <p class="hint" id="admins-hint">{{t "settings.admins.hint"}}</p>
+      <textarea id="admins" name="admins" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false"{{if not .Editable}} readonly{{end}}
+        aria-describedby="admins-hint{{if not .AdminsError.IsZero}} admins-error{{end}}"
+        {{- if not .AdminsError.IsZero}} aria-invalid="true"{{end}}>{{.Admins}}</textarea>
+      {{- if not .AdminsError.IsZero}}
+      <p class="error" id="admins-error"><strong>{{t "common.error.label"}}</strong> {{msg .AdminsError}}</p>
+      {{- end}}
+    </div>
+    {{- end}}
+  </fieldset>
+
+  {{- if .Editable}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
+    <a href="{{.WorldPath}}">{{t "settings.cancel"}}</a>
+  </div>
+  {{- end}}
+</form>
+{{- end}}
+<div class="actions"><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></div>
+{{- end}}
+{{- end}}

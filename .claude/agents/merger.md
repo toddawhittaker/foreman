@@ -9,7 +9,7 @@ description: |
   instead of hand-written merge loops in the orchestrator.
 model: sonnet
 effort: low
-tools: Bash, Read, Grep
+tools: Bash, Read, Grep, Monitor
 ---
 
 # merger

@@ -100,33 +100,28 @@ func (hn *harness) postImportUpload(c *http.Cookie, fields map[string]string, fi
 	}
 	_, _ = fw.Write(content)
 	_ = mw.Close()
-	r := httptest.NewRequest(http.MethodPost, PathImportUpload, &b)
-	r.Header.Set("Content-Type", mw.FormDataContentType())
-	r.AddCookie(c)
-	return hn.serveLive(r)
+	return hn.postLiveBody(PathImportUpload, mw.FormDataContentType(), &b, c)
 }
 
 func (hn *harness) postLive(path string, form url.Values, c *http.Cookie) *httptest.ResponseRecorder {
 	hn.t.Helper()
-	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.AddCookie(c)
-	return hn.serveLive(r)
+	return hn.postLiveBody(path, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()), c)
 }
 
-// serveLive sends r through a real listener: the import routes lift the
+// postLiveBody posts body through a real listener: the import routes lift the
 // connection's deadlines, which a ResponseRecorder cannot do.
-func (hn *harness) serveLive(r *http.Request) *httptest.ResponseRecorder {
+func (hn *harness) postLiveBody(path, contentType string, body io.Reader, c *http.Cookie) *httptest.ResponseRecorder {
 	hn.t.Helper()
 	ts := httptest.NewServer(hn.h)
 	defer ts.Close()
-	u, err := url.Parse(ts.URL + r.URL.RequestURI())
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, ts.URL+path, body)
 	if err != nil {
 		hn.t.Fatal(err)
 	}
-	r.RequestURI, r.URL, r.Host = "", u, u.Host
+	req.Header.Set("Content-Type", contentType)
+	req.AddCookie(c)
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	resp, err := client.Do(r)
+	resp, err := client.Do(req)
 	if err != nil {
 		hn.t.Fatal(err)
 	}
