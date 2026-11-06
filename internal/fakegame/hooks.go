@@ -125,6 +125,30 @@ func (g *Game) SetSaveHangs(name string, on bool) {
 	g.behave[name] = b
 }
 
+// PreviewMode is how the fake game's preview containers end.
+type PreviewMode string
+
+// The modes of SetPreviewMode.
+const (
+	PreviewOK    PreviewMode = "ok"   // draw the pictures and exit 0
+	PreviewFails PreviewMode = "fail" // exit 1 without drawing
+	PreviewHangs PreviewMode = "hang" // keep running until killed
+)
+
+// SetPreviewMode sets how later preview containers end (SPEC 5.6). The
+// default is PreviewOK.
+func (g *Game) SetPreviewMode(mode PreviewMode) error {
+	switch mode {
+	case PreviewOK, PreviewFails, PreviewHangs:
+	default:
+		return fmt.Errorf("a preview mode is %q, %q or %q", PreviewOK, PreviewFails, PreviewHangs)
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.preview = mode
+	return nil
+}
+
 // SetImage makes an image present or missing.
 func (g *Game) SetImage(ref string, present bool) {
 	if present {
@@ -199,6 +223,7 @@ type hookRequest struct {
 	Code   int    `json:"code"`   // crash: exit code, 1 when left out
 	OOM    bool   `json:"oom"`    // crash: the out-of-memory killer did it
 	On     bool   `json:"on"`     // crash-loop, rcon-refuse, save-hangs, image
+	Mode   string `json:"mode"`   // preview-mode
 }
 
 // HookHandler serves the test hooks over HTTP. Every hook is a POST with a
@@ -212,6 +237,7 @@ type hookRequest struct {
 //	POST /rcon-refuse   name, on
 //	POST /save-hangs    name, on
 //	POST /image         ref, on (the image is present)
+//	POST /preview-mode  mode ("ok", "fail" or "hang")
 func (g *Game) HookHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /state", func(w http.ResponseWriter, _ *http.Request) {
@@ -247,6 +273,7 @@ func (g *Game) HookHandler() http.Handler {
 	hook("/leave", func(q hookRequest) error { return g.Leave(q.Name, q.Player) })
 	hook("/rcon-refuse", func(q hookRequest) error { g.SetRCONRefuse(q.Name, q.On); return nil })
 	hook("/save-hangs", func(q hookRequest) error { g.SetSaveHangs(q.Name, q.On); return nil })
+	hook("/preview-mode", func(q hookRequest) error { return g.SetPreviewMode(PreviewMode(q.Mode)) })
 	hook("/image", func(q hookRequest) error {
 		if q.Ref == "" {
 			return errors.New("an image needs a ref")

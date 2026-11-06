@@ -92,10 +92,10 @@ type modListEntry struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// defaultModList builds the list the game would write for a new world of
+// DefaultModList builds the list the game would write for a new world of
 // this game version, with the Space Age mods on or off by the flag.
 // The game lists base first, then the rest by name.
-func defaultModList(gameVersion string, spaceAge bool) []byte {
+func DefaultModList(gameVersion string, spaceAge bool) []byte {
 	entries := []modListEntry{{Name: ModBase, Enabled: true}}
 	var rest []modListEntry
 	for _, name := range alwaysOnMods[gameMinor(gameVersion)] {
@@ -142,5 +142,5 @@ func (m *Manager) EnsureModList(id string) error {
 	if err := Mkdir(root, ModsDir); err != nil && !errors.Is(err, fs.ErrExist) {
 		return err
 	}
-	return WriteFileAtomic(root, p, defaultModList(meta.GameVersion, meta.SpaceAge))
+	return WriteFileAtomic(root, p, DefaultModList(meta.GameVersion, meta.SpaceAge))
 }

@@ -12,10 +12,13 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -56,8 +59,28 @@ func passIfPresent(flag, file string) string {
 // made in game persist in the world's folder (SPEC 5.1). Server settings
 // and the whitelist are passed when the world has them. The whitelist is
 // not enforced here: that is a game setting (SPEC 11).
+//
+// A world made by Generate has no save. When the container is told so
+// (gameenv.NewMap) and the folder holds no save, the script first makes
+// one with --create (SPEC 4.3, 5.6). The check is in the script, not in
+// Foreman, so Docker's own restart of a container that still carries the
+// variable can never overwrite a save. A failed create exits the container,
+// which is how a failed start is reported. Values reach the script by
+// environment variables, never through its text.
 var startScript = strings.Join([]string{
 	`pw=$(cat ` + gameMount + "/" + world.RCONPasswordFile + `) || exit 1`,
+	`if [ -n "$` + gameenv.NewMap + `" ]; then`,
+	`have=`,
+	`for f in ` + gameMount + "/" + world.SavesDir + `/*.zip; do [ -f "$f" ] && have=1; done`,
+	`if [ -z "$have" ]; then`,
+	`set -- --create ` + gameMount + "/" + world.SavesDir + `/"$` + gameenv.WorldID + `".zip --mod-directory ` + gameMount + "/" + world.ModsDir,
+	`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
+	`if [ -n "$` + gameenv.Seed + `" ]; then set -- "$@" --map-gen-seed "$` + gameenv.Seed + `"; fi`,
+	passIfPresent("--map-gen-settings", world.MapGenSettingsFile),
+	passIfPresent("--map-settings", world.MapSettingsFile),
+	gameBinary + ` "$@" || exit 1`,
+	`fi`,
+	`fi`,
 	`set -- --start-server-load-latest --mod-directory ` + gameMount + "/" + world.ModsDir +
 		` --rcon-port ` + RCONPort + ` --rcon-password "$pw"` +
 		` --server-adminlist ` + configPath(world.ServerAdminListFile) +
@@ -73,11 +96,15 @@ func ContainerName(id string) string { return "foreman-" + id }
 // containerSpec builds the game container for a world (SPEC 4.3 to 4.6).
 // Nothing in it comes from what an admin types, apart from the world id,
 // which world.ValidID has checked.
-func (c *Controller) containerSpec(id, image, network string) docker.ContainerSpec {
+//
+// newMap is the world's new_map, or nil; it adds the create step's
+// environment (SPEC 4.3).
+func (c *Controller) containerSpec(id, image, network string, newMap *world.NewMap) docker.ContainerSpec {
 	grace := StopGraceSeconds
 	return docker.ContainerSpec{
 		Image:        image,
 		Labels:       map[string]string{LabelWorld: id, LabelInstall: c.hostData},
+		Env:          createEnv(id, newMap),
 		Entrypoint:   []string{"/bin/sh"},
 		Cmd:          []string{"-c", startScript},
 		User:         c.user,
@@ -96,6 +123,24 @@ func (c *Controller) containerSpec(id, image, network string) docker.ContainerSp
 			NetworkMode: network,
 		},
 	}
+}
+
+// createEnv is the environment that makes the start script create the
+// world's map, or nil for a world with a save (SPEC 4.3). Only the variables
+// that are set are given. The preset and the seed were checked when the
+// world was made.
+func createEnv(id string, newMap *world.NewMap) []string {
+	if newMap == nil {
+		return nil
+	}
+	env := []string{gameenv.NewMap + "=1", gameenv.WorldID + "=" + id}
+	if newMap.Preset != "" {
+		env = append(env, gameenv.Preset+"="+newMap.Preset)
+	}
+	if newMap.Seed != nil {
+		env = append(env, gameenv.Seed+"="+strconv.FormatUint(uint64(*newMap.Seed), 10))
+	}
+	return env
 }
 
 // ourContainer reads the world's container. found is false when there is
@@ -513,23 +558,19 @@ func (c *Controller) ImageFor(ctx context.Context, id string) (ref string, prese
 	return ref, true, nil
 }
 
-// secrets returns the world's RCON password and, when its server settings
-// set one, the game password: every secret the game might print
+// secrets returns the world's RCON password and, with it, every secret the
+// game might print: the passwords and tokens its server settings set
 // (SPEC 8.6, 14.8). It creates the RCON password file when missing (SPEC 4.5).
 func (c *Controller) secrets(id string) (rconPW secret.Secret, all []secret.Secret, err error) {
 	rconPW, err = c.worlds.RCONPassword(id)
 	if err != nil {
 		return secret.Secret{}, nil, fmt.Errorf("read the world's RCON password: %w", err)
 	}
-	all = []secret.Secret{rconPW}
-	gamePW, err := c.gamePassword(id)
+	fromSettings, err := c.settingsSecrets(id)
 	if err != nil {
 		return secret.Secret{}, nil, err
 	}
-	if gamePW.Reveal() != "" {
-		all = append(all, gamePW)
-	}
-	return rconPW, all, nil
+	return rconPW, append([]secret.Secret{rconPW}, fromSettings...), nil
 }
 
 // hasRCONPassword reports, as an error, whether the world lacks its RCON
@@ -544,28 +585,36 @@ func (c *Controller) hasRCONPassword(id string) error {
 	return err
 }
 
-// gamePassword reads game_password from the world's server settings; it is
-// empty when the file or the field is missing.
-func (c *Controller) gamePassword(id string) (secret.Secret, error) {
+// settingsSecrets reads the secrets in the world's server settings: the
+// game password and the factorio.com username, password and token
+// (gamesettings.SecretKeys, SPEC 14.8). It returns none when the file or
+// the fields are missing or empty.
+func (c *Controller) settingsSecrets(id string) ([]secret.Secret, error) {
 	root, err := c.worlds.OpenWorld(id)
 	if err != nil {
-		return secret.Secret{}, err
+		return nil, err
 	}
 	defer func() { _ = root.Close() }()
 	b, err := world.ReadSmallFile(root, serverSettings, maxSettings)
 	if errors.Is(err, fs.ErrNotExist) {
-		return secret.Secret{}, nil
+		return nil, nil
 	}
 	if err != nil {
-		return secret.Secret{}, err
+		return nil, err
 	}
-	var doc struct {
-		GamePassword string `json:"game_password"`
-	}
-	// Fail safe: a file Foreman cannot read may still hold a password the
+	var doc map[string]json.RawMessage
+	// Fail safe: a file Foreman cannot read may still hold a secret the
 	// game reads, which Foreman could then not hide (SPEC 14.8).
 	if json.Unmarshal(b, &doc) != nil {
-		return secret.Secret{}, fmt.Errorf("%s is not valid JSON, so Foreman cannot tell whether it sets a game password to keep out of the log. Fix the file, then start again", path.Clean(serverSettings))
+		return nil, fmt.Errorf("%s is not valid JSON, so Foreman cannot tell whether it sets a password or token to keep out of the log. Fix the file, then start again", path.Clean(serverSettings))
 	}
-	return secret.New(doc.GamePassword), nil
+	var out []secret.Secret
+	for _, key := range gamesettings.SecretKeys {
+		var value string
+		// A key of another type is not a string the game could print.
+		if json.Unmarshal(doc[key], &value) == nil && value != "" {
+			out = append(out, secret.New(value))
+		}
+	}
+	return out, nil
 }

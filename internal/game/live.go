@@ -122,6 +122,30 @@ func (c *Controller) saveGame(ctx context.Context, w *worldRun) error {
 	}
 }
 
+// saveRunning saves the world's game when it runs, so the files on disk hold
+// the current game (SPEC 6.10), and reports whether it ran. A game that is
+// starting or restarting is ErrNotReady. The caller holds the world's lock.
+func (c *Controller) saveRunning(ctx context.Context, id string) (running bool, err error) {
+	cont, found, err := c.ourContainer(ctx, id)
+	if err != nil || !found {
+		return false, err
+	}
+	switch cont.State.Status {
+	case "running":
+		w := c.world(id)
+		w.mu.Lock()
+		ready := w.containerID == cont.ID && w.run.inGame
+		w.mu.Unlock()
+		if !ready {
+			return false, ErrNotReady
+		}
+		return true, c.saveGame(ctx, w)
+	case "restarting":
+		return false, ErrNotReady
+	}
+	return false, nil
+}
+
 // Snapshot takes a manual snapshot of the world (SPEC 6.3). When the game
 // is running it saves first, so the snapshot holds the current game
 // (SPEC 6.10).
@@ -131,26 +155,8 @@ func (c *Controller) Snapshot(ctx context.Context, id string, by Actor, label st
 		return world.Snapshot{}, err
 	}
 	defer unlock()
-	cont, found, err := c.ourContainer(ctx, id)
-	if err != nil {
+	if _, err := c.saveRunning(ctx, id); err != nil {
 		return world.Snapshot{}, err
-	}
-	if found {
-		switch cont.State.Status {
-		case "running":
-			w := c.world(id)
-			w.mu.Lock()
-			ready := w.containerID == cont.ID && w.run.inGame
-			w.mu.Unlock()
-			if !ready {
-				return world.Snapshot{}, ErrNotReady
-			}
-			if err := c.saveGame(ctx, w); err != nil {
-				return world.Snapshot{}, err
-			}
-		case "restarting":
-			return world.Snapshot{}, ErrNotReady
-		}
 	}
 	return c.worlds.TakeSnapshotHeld(id, label, by.Username)
 }

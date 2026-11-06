@@ -86,6 +86,7 @@ type Game struct {
 	manual   map[string]bool          // container IDs a person stopped
 	backoff  map[string]time.Duration // container ID to its next restart delay
 	commands map[string][]string      // RCON commands received, by container name
+	preview  PreviewMode              // how preview containers end
 	done     chan struct{}
 	wg       sync.WaitGroup
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
+	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/rcon/rcontest"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -54,6 +55,15 @@ func (g *Game) boot(id string) {
 	if !ok || c.Status != "running" {
 		return
 	}
+	if _, isPreview := c.Spec.Labels[gameenv.LabelPreview]; isPreview {
+		g.bootPreview(c)
+		return
+	}
+	if err := createSave(c); err != nil {
+		g.report(err.Error())
+		g.daemon.Exit(id, 1, false)
+		return
+	}
 	in := &instance{
 		g: g, id: id, name: c.Name, v: versionFor(c.Spec.Image),
 		save: saveName(c.Spec), password: rconPassword(c),
@@ -83,6 +93,28 @@ func (g *Game) boot(id string) {
 		return
 	}
 	g.after(g.cfg.LoadDelay, in.finishLoad)
+}
+
+// bootPreview runs a preview container: the game draws the pictures and
+// exits, as --generate-map-preview does, with no server and no restart.
+func (g *Game) bootPreview(c dockertest.Container) {
+	g.mu.Lock()
+	mode := g.preview
+	g.mu.Unlock()
+	switch mode {
+	case PreviewHangs:
+		return
+	case PreviewFails:
+		g.daemon.EmitLog(c.ID, docker.Stderr, "Error Util.cpp:81: the fake game was told to fail")
+		g.daemon.Exit(c.ID, 1, false)
+		return
+	}
+	if err := drawPreview(c); err != nil {
+		g.report(err.Error())
+		g.daemon.Exit(c.ID, 1, false)
+		return
+	}
+	g.daemon.Exit(c.ID, 0, false)
 }
 
 // finishLoad is the rest of a start: the game opens RCON and reaches InGame.
