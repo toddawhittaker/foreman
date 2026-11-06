@@ -39,6 +39,11 @@ type Result struct {
 type UnsupportedError struct {
 	Version [4]uint16
 	Reason  string
+	// From and Until bound the world game versions that could use the
+	// string: From is the string's own version, and Until is the first
+	// version with a different map-settings layout, or "" when none is
+	// known. Both are empty for a string that did not decode.
+	From, Until string
 }
 
 func (e *UnsupportedError) Error() string {
