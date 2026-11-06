@@ -54,8 +54,13 @@ type ServerPage struct {
 	FocusResult bool
 }
 
+// navPage marks a nav item as the page itself rather than a page inside its
+// section, so the layout can tell aria-current "page" from "true" (DESIGN 6).
+// The layout writes the same suffix.
+const navPage = "#page"
+
 func (ServerPage) templateName() string { return "server" }
-func (ServerPage) navItem() string      { return PathServer }
+func (ServerPage) navItem() string      { return PathServer + navPage }
 
 func (p ServerPage) liveURL() string {
 	if !p.HasWorld {

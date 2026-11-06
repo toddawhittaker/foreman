@@ -703,10 +703,10 @@ func TestStaticHandler(t *testing.T) {
 func TestPageAssetsResolve(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
-	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
+	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 7 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension and time.js, found %v", found)
+	if len(found) != 10 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js and the logo at two sizes, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

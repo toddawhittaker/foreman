@@ -155,7 +155,7 @@ type ConsolePage struct {
 }
 
 func (ConsolePage) templateName() string { return "console" }
-func (ConsolePage) navItem() string      { return PathConsole }
+func (ConsolePage) navItem() string      { return PathServer }
 func (p ConsolePage) hasErrors() bool    { return !p.CommandError.IsZero() }
 
 func (p ConsolePage) Problems() []Problem {

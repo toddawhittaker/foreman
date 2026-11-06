@@ -1,5 +1,7 @@
 {
   "server.title": "Server",
+  "server.tabs.label": "Stránky serveru",
+  "server.tabs.overview": "Přehled",
   "server.active": "Aktivní svět: {world}",
   "server.back": "Zpět na server",
   "server.back_to": "Zpět na {world}",

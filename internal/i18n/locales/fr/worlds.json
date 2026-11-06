@@ -286,6 +286,8 @@
   "worlds.upload.unreadable": "Foreman n’a pas pu lire l’envoi. Rechargez la page et réessayez.",
   "worlds.upload.unsafe_entry": "Ce fichier zip contient une entrée dont le nom n’est pas sûr ; il a donc été refusé.",
   "worlds.world.about": "À propos de ce monde",
+  "worlds.tabs.label": "Pages du monde",
+  "worlds.tabs.overview": "Vue d'ensemble",
   "worlds.world.checking_release": "Recherche d’une version plus récente de Factorio.",
   "worlds.world.delete.button": "Supprimer le monde",
   "worlds.world.delete.heading": "Supprimer",

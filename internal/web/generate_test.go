@@ -500,7 +500,7 @@ func TestPreviewAsksForEveryPlanetWithTheFilledSeed(t *testing.T) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	if n := strings.Count(body, "<img "); n != 5 {
+	if n := strings.Count(body, `alt="Map preview of`); n != 5 {
 		t.Errorf("%d pictures, want 5", n)
 	}
 	// Generate with those very values makes that map.

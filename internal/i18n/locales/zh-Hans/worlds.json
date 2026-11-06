@@ -274,6 +274,8 @@
   "worlds.upload.unreadable": "Foreman 无法读取上传的内容。请刷新页面后重试。",
   "worlds.upload.unsafe_entry": "此 zip 文件包含名称不安全的条目，因此被拒绝。",
   "worlds.world.about": "关于此世界",
+  "worlds.tabs.label": "世界页面",
+  "worlds.tabs.overview": "概览",
   "worlds.world.checking_release": "正在检查是否有更新的 Factorio 版本。",
   "worlds.world.delete.button": "删除世界",
   "worlds.world.delete.heading": "删除",

@@ -9,9 +9,10 @@
   "common.signedin": "Sesión iniciada como {user}",
   "common.signout": "Cerrar sesión",
   "common.language.label": "Idioma",
-  "common.language.submit": "Cambiar",
   "common.countdown.label": "Cuenta atrás en segundos",
-  "common.countdown.hint": "Los jugadores conectados ven un aviso en el juego; después el juego guarda y se detiene. De 0 a 600 segundos; 0 significa sin aviso: el juego guarda y se detiene al instante. Si no hay nadie conectado, no se avisa a nadie.",
+  "common.countdown.hint": "Los jugadores conectados ven un aviso en el juego y luego el juego guarda y se detiene. De 0 a 600 segundos; 0 significa sin aviso.",
+  "common.countdown.none": "Sin aviso",
+  "common.required.note": "Obligatorio",
   "common.summary.heading": {
     "one": "Corrige este problema para continuar",
     "other": "Corrige {count} problemas para continuar"

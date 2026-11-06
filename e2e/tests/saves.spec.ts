@@ -242,7 +242,7 @@ test("a very long save name wraps in the table and the radio list", async ({ pag
   await page.goto("/worlds/longs/saves");
   await expect(page.getByRole("link", { name })).toBeVisible();
   await expect(page.getByRole("group", { name: "Save to load" })).toBeVisible();
-  expect(await page.locator("fieldset").evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+  expect(await page.locator("main fieldset").evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
   await checkPage(page);
 });
 

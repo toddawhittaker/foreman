@@ -1,5 +1,7 @@
 {
   "server.title": "服务器",
+  "server.tabs.label": "服务器页面",
+  "server.tabs.overview": "概览",
   "server.active": "活动世界：{world}",
   "server.back": "返回服务器",
   "server.back_to": "返回 {world}",

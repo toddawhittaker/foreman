@@ -298,6 +298,8 @@
   "worlds.upload.unreadable": "Foreman nie mógł odczytać przesyłanych danych. Należy odświeżyć stronę i spróbować ponownie.",
   "worlds.upload.unsafe_entry": "Ten plik zip zawiera wpis o niebezpiecznej nazwie, więc został odrzucony.",
   "worlds.world.about": "Informacje o tym świecie",
+  "worlds.tabs.label": "Strony świata",
+  "worlds.tabs.overview": "Przegląd",
   "worlds.world.checking_release": "Sprawdzanie, czy jest nowsze wydanie Factorio.",
   "worlds.world.delete.button": "Usuń świat",
   "worlds.world.delete.heading": "Usuwanie",

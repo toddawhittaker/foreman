@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, adminPassword } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, adminPassword, signOut } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 async function signIn(page: Page) {
@@ -10,7 +10,7 @@ async function signIn(page: Page) {
 // SPEC 14.17: signing in returns to the page that was asked for.
 test("sign-in returns to the requested page", async ({ page }) => {
   await createAdmin(page);
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signOut(page);
 
   await page.goto("/worlds?from=test");
   await expect(page).toHaveURL("/signin?next=%2Fworlds%3Ffrom%3Dtest");
@@ -31,7 +31,7 @@ test("sign-in returns to the requested page", async ({ page }) => {
 test("sign-in ignores a return path that leaves the site", async ({ page, foreman }) => {
   await createAdmin(page);
   for (const next of ["//evil.example/", "https://evil.example/", "/\\evil.example", "/signin"]) {
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOut(page);
     await page.goto("/signin?next=" + encodeURIComponent(next));
     await expect(page.locator('input[name="next"]')).toHaveCount(0);
     await signIn(page);

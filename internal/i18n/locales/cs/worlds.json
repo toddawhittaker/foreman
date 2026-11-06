@@ -298,6 +298,8 @@
   "worlds.upload.unreadable": "Foreman nemohl přečíst nahrávaná data. Je třeba stránku znovu načíst a zkusit to znovu.",
   "worlds.upload.unsafe_entry": "Tento soubor zip obsahuje položku s nebezpečným názvem, proto byl odmítnut.",
   "worlds.world.about": "O tomto světě",
+  "worlds.tabs.label": "Stránky světa",
+  "worlds.tabs.overview": "Přehled",
   "worlds.world.checking_release": "Probíhá kontrola novějšího vydání Factorio.",
   "worlds.world.delete.button": "Smazat svět",
   "worlds.world.delete.heading": "Smazání",

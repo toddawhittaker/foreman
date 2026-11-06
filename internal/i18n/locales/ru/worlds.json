@@ -298,6 +298,8 @@
   "worlds.upload.unreadable": "Foreman не смог прочитать загруженные данные. Обновите страницу и повторите попытку.",
   "worlds.upload.unsafe_entry": "В этом zip-архиве есть запись с небезопасным именем, поэтому он отклонён.",
   "worlds.world.about": "Об этом мире",
+  "worlds.tabs.label": "Страницы мира",
+  "worlds.tabs.overview": "Обзор",
   "worlds.world.checking_release": "Проверяется наличие более нового выпуска Factorio.",
   "worlds.world.delete.button": "Удалить мир",
   "worlds.world.delete.heading": "Удаление",

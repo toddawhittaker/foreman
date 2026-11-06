@@ -1,4 +1,4 @@
-import { test, expect, checkPage } from "./foreman.js";
+import { test, expect, checkPage, openMenu, signOut } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 const admin = "admin";
@@ -42,10 +42,11 @@ test("first run: setup, sign out, sign in again", async ({ page }) => {
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Create admin account" }).click();
   await expect(page).toHaveURL("/");
+  await openMenu(page);
   await expect(page.getByText(`Signed in as ${admin}`)).toBeVisible();
   await checkPage(page);
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signOut(page);
   await expect(page).toHaveURL("/signed-out");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("You are signed out");
   await checkPage(page);
@@ -67,6 +68,7 @@ test("first run: setup, sign out, sign in again", async ({ page }) => {
 
   await signIn(page, admin, password);
   await expect(page).toHaveURL("/");
+  await openMenu(page);
   await expect(page.getByText(`Signed in as ${admin}`)).toBeVisible();
 });
 
@@ -85,7 +87,7 @@ test("setup after an admin exists goes to sign-in", async ({ page, context }) =>
 // SPEC 12.4: repeated failures for one username reach the limit.
 test("repeated failures reach the rate-limit message", async ({ page }) => {
   await createAdmin(page);
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signOut(page);
   await page.goto("/signin");
   for (let i = 0; i < 5; i++) {
     await signIn(page, admin, `wrong password ${i}`);

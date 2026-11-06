@@ -1,5 +1,7 @@
 {
   "server.title": "Сервер",
+  "server.tabs.label": "Страницы сервера",
+  "server.tabs.overview": "Обзор",
   "server.active": "Активный мир: {world}",
   "server.back": "Назад к серверу",
   "server.back_to": "Назад к {world}",

@@ -62,7 +62,7 @@ type AllSnapshotsPage struct {
 }
 
 func (AllSnapshotsPage) templateName() string { return "allsnapshots" }
-func (AllSnapshotsPage) navItem() string      { return PathSnapshots }
+func (AllSnapshotsPage) navItem() string      { return PathSnapshots + navPage }
 
 // DeletePath is the confirmation page for one snapshot.
 func (AllSnapshotsPage) DeletePath(id, snap string) string {

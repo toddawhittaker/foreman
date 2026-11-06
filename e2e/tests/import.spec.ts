@@ -327,7 +327,7 @@ test("import folder lists have no default fieldset border", async ({ page, forem
   await createAdmin(page);
   inboxJunk(foreman, "my-folder");
   await page.goto("/import");
-  const fieldset = page.locator("fieldset").first();
+  const fieldset = page.locator("main fieldset").first();
   await expect(fieldset).toBeVisible();
   expect(await fieldset.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
   await checkPage(page);

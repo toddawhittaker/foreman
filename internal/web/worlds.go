@@ -45,7 +45,7 @@ func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
 
 func (WorldsPage) templateName() string { return "worlds" }
 
-func (WorldsPage) navItem() string { return PathWorlds }
+func (WorldsPage) navItem() string { return PathWorlds + navPage }
 
 func worldPath(id string) string  { return PathWorlds + "/" + id }
 func deletePath(id string) string { return worldPath(id) + "/delete" }

@@ -25,21 +25,21 @@ async function running(page: Page, f: Foreman, g: FakeGame) {
   await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
 }
 
-test("the header keeps every tab on one row and Sign out beside the name", async ({ page }) => {
+test("the header keeps every tab on one row and the menu beside the logo", async ({ page }) => {
   await createAdmin(page);
   const tabs = page.getByRole("navigation", { name: "Main" }).getByRole("link");
-  await expect(tabs).toHaveCount(4);
+  await expect(tabs).toHaveCount(3);
   const tops = new Set<number>();
   for (const tab of await tabs.all()) tops.add(Math.round((await box(tab)).y));
   expect(tops.size, "tabs on one row").toBe(1);
 
   const product = await box(page.getByRole("link", { name: "Foreman" }));
-  const signOut = await box(page.getByRole("button", { name: "Sign out" }));
+  const menu = await box(page.locator("details.menu > summary"));
   const header = await box(page.locator("header.site"));
-  // Sign out is on the first row, level with the product name, never on a row of its own.
-  expect(Math.abs(signOut.y + signOut.height / 2 - (product.y + product.height / 2))).toBeLessThan(4);
+  // The menu is on the first row, level with the logo, never on a row of its own.
+  expect(Math.abs(menu.y + menu.height / 2 - (product.y + product.height / 2))).toBeLessThan(4);
   // Two rows of 44 px targets at most on a phone; one on a wide screen.
-  expect(header.height).toBeLessThanOrEqual(phone(page) ? 120 : 64);
+  expect(header.height).toBeLessThanOrEqual(phone(page) ? 100 : 56);
   await checkPage(page);
 });
 

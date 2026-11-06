@@ -286,6 +286,8 @@
   "worlds.upload.unreadable": "Foreman could not read the upload. Reload the page and try again.",
   "worlds.upload.unsafe_entry": "This zip file holds an entry with an unsafe name, so it was refused.",
   "worlds.world.about": "About this world",
+  "worlds.tabs.label": "World pages",
+  "worlds.tabs.overview": "Overview",
   "worlds.world.checking_release": "Checking for a newer Factorio release.",
   "worlds.world.delete.button": "Delete world",
   "worlds.world.delete.heading": "Delete",

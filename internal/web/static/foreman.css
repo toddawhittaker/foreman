@@ -15,37 +15,32 @@
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
 
-  --color-bg: #141312;
-  --color-frame: #2f2d2a;
-  --color-frame-light: #57534d;
-  --color-frame-dark: #0c0b0a;
-  --color-inner: #3d3a36;
-  --color-deep: #1b1a18;
-  --color-text: #ebe6dd;
-  --color-heading: #f5dcb0;
-  --color-text-muted: #b8b0a4;
-  --color-border: #958c80;
-  --color-rule: #57534d;
+  --color-bg: #161514;
+  --color-surface: #1f1e1c;
+  --color-deep: #0f0e0d;
+  --color-line: #34312e;
+  --color-border: #857e75;
+  --color-text: #ebe7e0;
+  --color-heading: #ebe7e0;
+  --color-text-muted: #aaa297;
   --color-link: #ffbd6b;
-  --color-highlight: #f39a2a;
-  --color-on-highlight: #1a1004;
-  --color-button: #a8a198;
-  --color-on-button: #161412;
-  --color-button-hover: #c4beb5;
-  --color-confirm: #62b04f;
-  --color-confirm-hover: #7cc768;
-  --color-on-confirm: #0c1808;
+  --color-selected: #f39a2a;
+  --color-primary: #f39a2a;
+  --color-primary-hover: #f7b25a;
+  --color-primary-edge: #f39a2a;
+  --color-on-primary: #1a1004;
+  --color-secondary-hover: #2b2927;
   --color-danger: #ea6248;
   --color-danger-hover: #f2836f;
   --color-on-danger: #1a0503;
   --color-danger-text: #ff978a;
-  --color-danger-bg: #45201a;
+  --color-danger-bg: #3a1a15;
   --color-ok: #8fd77c;
-  --color-ok-bg: #21361b;
+  --color-ok-bg: #1c2d17;
   --color-warn: #f7c548;
-  --color-warn-bg: #3d3112;
+  --color-warn-bg: #33290f;
   --color-info: #a3c6ff;
-  --color-info-bg: #1c2a3e;
+  --color-info-bg: #18243a;
   --color-focus: #8fb8ff;
 
   --space-1: 0.25rem;
@@ -55,7 +50,7 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
 
-  --radius: 2px;
+  --radius: 4px;
   --border-width: 1px;
   --focus-width: 3px;
   --target-min: 2.75rem;
@@ -65,26 +60,21 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --color-bg: #bab3a8;
-    --color-frame: #e3ded6;
-    --color-frame-light: #fbf9f6;
-    --color-frame-dark: #8c857b;
-    --color-inner: #f3f0ea;
+    --color-bg: #f5f3ef;
+    --color-surface: #ffffff;
     --color-deep: #ffffff;
+    --color-line: #dedad3;
+    --color-border: #7f776d;
     --color-text: #1c1a17;
-    --color-heading: #4b3010;
-    --color-text-muted: #58534b;
-    --color-border: #7a7369;
-    --color-rule: #cdc7bd;
+    --color-heading: #1c1a17;
+    --color-text-muted: #5b554d;
     --color-link: #9a4800;
-    --color-highlight: #b05a00;
-    --color-on-highlight: #ffffff;
-    --color-button: #d2ccc2;
-    --color-on-button: #1c1a17;
-    --color-button-hover: #e6e1d8;
-    --color-confirm: #2d7621;
-    --color-confirm-hover: #235f19;
-    --color-on-confirm: #ffffff;
+    --color-selected: #b05a00;
+    --color-primary: #f39a2a;
+    --color-primary-hover: #f6ad52;
+    --color-primary-edge: #a35200;
+    --color-on-primary: #1a1004;
+    --color-secondary-hover: #ebe7e1;
     --color-danger: #b3301d;
     --color-danger-hover: #932616;
     --color-on-danger: #ffffff;
@@ -98,14 +88,6 @@
     --color-info-bg: #e3ebf8;
     --color-focus: #0a56c8;
   }
-}
-
-/* Bevels are the only depth (DESIGN 4, "Bevels"). */
-:root {
-  --bevel-raised: inset 1px 1px 0 var(--color-frame-light),
-    inset -1px -1px 0 var(--color-frame-dark);
-  --bevel-sunken: inset 1px 1px 0 var(--color-frame-dark),
-    inset -1px -1px 0 var(--color-frame-light);
 }
 
 /* Reset */
@@ -143,7 +125,6 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: var(--space-1);
   min-block-size: 100dvh;
   overflow-wrap: anywhere;
   background: var(--color-bg);
@@ -167,14 +148,14 @@ h1 {
 }
 
 h2 {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   line-height: 1.3;
   font-weight: 600;
 }
 
 h3 {
-  font-size: var(--text-lg);
-  line-height: 1.35;
+  font-size: var(--text-md);
+  line-height: 1.4;
   font-weight: 600;
 }
 
@@ -239,173 +220,272 @@ code {
   border-radius: var(--radius);
 }
 
-.site,
-main {
-  inline-size: 100%;
-  max-inline-size: var(--page-max);
-  justify-self: center;
-  background: var(--color-frame);
-  border: var(--border-width) solid var(--color-frame-dark);
-  border-radius: var(--radius);
-  box-shadow: var(--bevel-raised);
-}
-
+/* The header is a flat bar the width of the window; its content lines up
+   with the page column (DESIGN 6, Shell). */
 .site {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-2) var(--space-3);
-}
-
-/* On a phone the name and Sign out share the first row and the tabs fill
-   the second, in one line (DESIGN 6, Shell). */
-.site > nav {
-  order: 1;
-  flex-basis: 100%;
+  gap: 0 var(--space-3);
+  padding: var(--space-1) max(var(--space-3), calc((100% - var(--page-max)) / 2 + var(--space-3)));
+  background: var(--color-surface);
+  border-block-end: var(--border-width) solid var(--color-line);
 }
 
 .product {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
   min-block-size: var(--target-min);
-  color: var(--color-heading);
-  font-size: var(--text-lg);
+  color: var(--color-text);
   font-weight: 650;
   text-decoration: none;
+}
+
+.product img {
+  flex: none;
+  inline-size: 2rem;
+  block-size: 2rem;
+}
+
+/* On a phone the tabs take a row of their own under the logo and menu. */
+.site > nav {
+  order: 2;
+  flex-basis: 100%;
 }
 
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* On a phone the tabs share the row out between them. */
 .tabs li {
   flex: 1 1 auto;
   max-inline-size: none;
 }
 
-.tabs a {
+/* A tab is a link with an underline when current. The underline is a border,
+   so it is still drawn in forced colours. */
+.tabs a,
+.subnav a {
   display: flex;
   align-items: center;
   justify-content: center;
   min-block-size: var(--target-min);
-  padding-inline: var(--space-1);
-  color: var(--color-text);
-  font-size: var(--text-sm);
-  border-radius: var(--radius);
+  padding-inline: var(--space-3);
+  color: var(--color-text-muted);
+  border-block: 3px solid transparent;
   text-decoration: none;
 }
 
-/* Grey on hover keeps orange meaning only "selected" (DESIGN 6, Shell). */
-.tabs a:hover {
-  background: var(--color-button-hover);
-  color: var(--color-on-button);
+.tabs a:hover,
+.subnav a:hover {
+  color: var(--color-text);
 }
 
-.tabs a[aria-current="page"] {
-  background: var(--color-highlight);
-  color: var(--color-on-highlight);
-  font-weight: 700;
+.tabs a[aria-current],
+.subnav a[aria-current] {
+  color: var(--color-text);
+  font-weight: 650;
+  border-block-end-color: var(--color-selected);
 }
 
-/* On a phone the sign-out form takes what the name leaves, and the user's
-   name wraps inside it rather than pushing Sign out to a row of its own. */
-.signout {
+/* Sub-navigation under a page's heading: the same tabs on a line. */
+.subnav {
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.subnav ul {
   display: flex;
-  flex: 1 1 11rem;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subnav li {
+  max-inline-size: none;
+}
+
+.subnav a {
+  margin-block-end: -1px;
+}
+
+/* On a narrow page the tabs share the row out between them. */
+@container (max-width: 30rem) {
+  .subnav li {
+    flex: 1 1 auto;
+  }
+
+  .subnav a {
+    padding-inline: var(--space-2);
+  }
+}
+
+/* The user menu (DESIGN 6, "User menu"): a native details element. Its panel
+   opens under the header, at the end edge. */
+.menu {
+  order: 1;
   margin-inline-start: auto;
 }
 
-/* Sign out never breaks inside its words. The bases are in rem, so at large
-   text the form drops to a row of its own and the name above the button,
-   instead of being squeezed to a letter a line. */
-.signout .button {
-  flex: none;
-  white-space: nowrap;
-}
-
-.user {
-  flex: 1 1 5rem;
-  min-inline-size: 0;
-  text-align: end;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-/* The language menu (SPEC 22.2) sits in a frame below main and wraps on a phone. */
-.language {
+.menu > summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-
-.language select {
+  column-gap: var(--space-2);
   min-block-size: var(--target-min);
   padding-inline: var(--space-3);
-  background: var(--color-deep);
-  color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--bevel-sunken);
+  font-size: var(--text-sm);
+  list-style: none;
+  cursor: pointer;
 }
 
-.language select:focus {
-  outline: var(--focus-width) solid var(--color-focus);
-  outline-offset: 2px;
+.menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The two words wrap between them, never inside one. */
+.menu > summary > span {
+  white-space: nowrap;
+}
+
+.menu > summary::after {
+  content: "";
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.menu[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.menu__user {
+  font-weight: 600;
+}
+
+.menu__lang {
+  color: var(--color-text-muted);
+}
+
+.menu__panel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: max(var(--space-3), calc((100% - var(--page-max)) / 2 + var(--space-3)));
+  z-index: 2;
+  display: grid;
+  gap: var(--space-2);
+  inline-size: min(18rem, calc(100% - 2 * var(--space-3)));
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.menu__panel form {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.menu__panel form + form {
+  padding-block-start: var(--space-2);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.menu__panel legend {
+  margin-block-end: var(--space-1);
+}
+
+.menu__panel ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  background: none;
+  color: var(--color-text);
+  border: 0;
+  border-inline-start: 3px solid transparent;
+  border-radius: 0;
+  text-align: start;
+  cursor: pointer;
+}
+
+.menu__item:hover {
+  background: var(--color-secondary-hover);
+}
+
+.menu__item[aria-current="true"] {
+  font-weight: 650;
+  border-inline-start-color: var(--color-selected);
 }
 
 main {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--space-5);
-  padding: var(--space-3);
-}
-
-/* The live switch panel is empty at times; its wrapper must not add a gap. */
-main [sse-swap="others"] {
-  display: contents;
+  inline-size: 100%;
+  max-inline-size: var(--page-max);
+  justify-self: center;
+  padding: var(--space-4) var(--space-3) var(--space-6);
 }
 
 @media (min-width: 40rem) {
-  body {
-    padding: var(--space-4);
+  .site {
+    padding-inline: max(var(--space-5), calc((100% - var(--page-max)) / 2 + var(--space-5)));
   }
 
   .site > nav {
     order: 0;
     flex-basis: auto;
+    margin-inline-start: auto;
   }
 
   .tabs li {
     flex: none;
   }
 
-  .tabs a {
-    padding-inline: var(--space-3);
-    font-size: var(--text-md);
+  .menu {
+    order: 1;
+    margin-inline-start: 0;
   }
 
-  .signout,
-  .user {
-    flex: 0 1 auto;
+  .menu__panel {
+    inset-inline-end: max(var(--space-5), calc((100% - var(--page-max)) / 2 + var(--space-5)));
   }
 
   main {
-    padding: var(--space-5);
+    padding: var(--space-5) var(--space-5) var(--space-6);
+  }
+}
+
+/* On a phone only the logo shows, so the menu keeps room for its words (DESIGN 6). */
+@media (max-width: 22rem) {
+  .product__name {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
@@ -414,10 +494,6 @@ main [sse-swap="others"] {
   container-type: inline-size;
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--color-inner);
-  border-radius: var(--radius);
-  box-shadow: var(--bevel-sunken);
 }
 
 form.panel,
@@ -454,11 +530,10 @@ fieldset,
   min-block-size: var(--target-min);
   min-inline-size: var(--target-min);
   padding-inline: var(--space-4);
-  background: var(--color-button);
-  color: var(--color-on-button);
+  background: transparent;
+  color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--bevel-raised);
   font-size: var(--text-md);
   font-weight: 600;
   text-align: center;
@@ -475,23 +550,44 @@ fieldset,
 }
 
 .button:hover {
-  background: var(--color-button-hover);
-  color: var(--color-on-button);
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
 }
 
+/* Pressing moves the button down a pixel; nothing moves under reduced motion. */
 .button:active {
-  box-shadow: var(--bevel-sunken);
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:active {
+    transform: none;
+  }
 }
 
 .button--primary {
-  background: var(--color-confirm);
-  color: var(--color-on-confirm);
-  border-color: var(--color-confirm);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary-edge);
 }
 
 .button--primary:hover {
-  background: var(--color-confirm-hover);
-  color: var(--color-on-confirm);
+  background: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}
+
+/* Quiet: drawn as a link, still a full-size target (DESIGN 7.1). */
+.button--quiet {
+  padding-inline: var(--space-2);
+  color: var(--color-link);
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.button--quiet:hover {
+  background: none;
+  color: var(--color-link);
 }
 
 .button--danger {
@@ -581,7 +677,6 @@ legend {
   color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--bevel-sunken);
   font-size: var(--text-md);
   /* A choice too long for a phone ends in an ellipsis; the list shows it whole. */
   text-overflow: ellipsis;
@@ -596,19 +691,18 @@ legend {
   min-block-size: calc(var(--target-min) - 2 * var(--border-width));
   margin-inline-end: var(--space-3);
   padding-inline: var(--space-4);
-  background: var(--color-button);
-  color: var(--color-on-button);
+  background: transparent;
+  color: var(--color-text);
   border: 0;
   border-inline-end: var(--border-width) solid var(--color-border);
   border-radius: 0;
-  box-shadow: var(--bevel-raised);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .field input[type="file"]::file-selector-button:hover {
-  background: var(--color-button-hover);
+  background: var(--color-secondary-hover);
 }
 
 .field input:focus,
@@ -621,6 +715,42 @@ legend {
 .field input[aria-invalid="true"],
 .field textarea[aria-invalid="true"] {
   border: 2px solid var(--color-danger-text);
+}
+
+/* A number field is about 10 characters wide, not the width of a name
+   (DESIGN 7.2). The padding and edges are added to the characters. */
+.field input[inputmode="numeric"],
+.field--short input {
+  max-inline-size: calc(10ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+/* A field and the button that acts on it share a row while they fit. */
+.inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.inline-row > input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.inline-row > input[inputmode="numeric"] {
+  flex: 0 1 auto;
+}
+
+/* A required field's mark: an asterisk, explained once per form (DESIGN 7.2). */
+.req {
+  color: var(--color-danger-text);
+  font-weight: 600;
+}
+
+/* A placeholder is an example, in hint colour, which meets text contrast. */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
 }
 
 .error {
@@ -700,8 +830,8 @@ legend {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: var(--color-danger-bg);
-  border: var(--border-width) solid var(--color-danger-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-danger);
   border-radius: var(--radius);
 }
 
@@ -730,7 +860,7 @@ legend {
   inline-size: 1.25rem;
   block-size: 1.25rem;
   margin: 0;
-  accent-color: var(--color-highlight);
+  accent-color: var(--color-selected);
 }
 
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
@@ -839,7 +969,7 @@ legend {
   grid-column: 2;
   inline-size: 100%;
   max-inline-size: 20rem;
-  accent-color: var(--color-highlight);
+  accent-color: var(--color-selected);
 }
 
 /* The indeterminate bar always moves; the "In progress" word says the same (DESIGN 6, Motion). */
@@ -917,7 +1047,7 @@ legend {
   gap: var(--space-2) var(--space-3);
   max-inline-size: none;
   padding-block: var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-rule);
+  border-block-end: var(--border-width) solid var(--color-line);
 }
 
 .worlds > li > * {
@@ -943,7 +1073,15 @@ legend {
   border-block-end: 0;
 }
 
+/* A world's name is a full-size target, level with its Switch button. */
+.worlds :is(h2, h3) a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
 .worlds :is(h2, h3) {
+  font-size: var(--text-lg);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1006,9 +1144,9 @@ time[data-age-only] .time-short {
   line-height: 1.5;
 }
 
+/* An outline in link colour, so it does not compete with the orange primary button. */
 .badge--active {
-  background: var(--color-highlight);
-  color: var(--color-on-highlight);
+  color: var(--color-link);
 }
 
 /* 8.3 Tables */
@@ -1027,7 +1165,7 @@ caption {
 th,
 td {
   padding: var(--space-2) var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-rule);
+  border-block-end: var(--border-width) solid var(--color-line);
   text-align: start;
   vertical-align: middle;
   overflow-wrap: normal;
@@ -1049,7 +1187,7 @@ td.num,
 th {
   font-size: var(--text-sm);
   font-weight: 600;
-  border-block-end-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 /* A button in a cell keeps its word whole; the label column gives way instead. */
@@ -1129,13 +1267,6 @@ td > .hint {
     gap: var(--space-2);
   }
 
-  /* The table may use half the panel's padding on each side, which is
-     room for a long zone name such as "GMT+5:30" beside the clock. */
-  .snapshot-list {
-    inline-size: calc(100% + var(--space-4));
-    margin-inline: calc(var(--space-2) * -1);
-  }
-
   .snapshot-list th,
   .snapshot-list td {
     padding-inline: var(--space-1);
@@ -1180,7 +1311,7 @@ td > .hint {
 
   table tr {
     padding-block: var(--space-2);
-    border-block-end: var(--border-width) solid var(--color-rule);
+    border-block-end: var(--border-width) solid var(--color-line);
   }
 
   table td,
@@ -1246,7 +1377,7 @@ td > .hint {
 .mapgen .autoplace {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   padding-block-start: var(--space-3);
-  border-block-start: 1px solid var(--color-rule);
+  border-block-start: 1px solid var(--color-line);
 }
 
 /* The Map fieldset's own controls stay inside its single column. */
@@ -1279,7 +1410,6 @@ td > .hint {
   color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--bevel-sunken);
   font-size: var(--text-md);
   line-height: 1.45;
   resize: vertical;
@@ -1292,7 +1422,7 @@ td > .hint {
 
 /* A planet's controls and the raw box fold away; the summary is the whole target. */
 .mapgen details {
-  border-block-start: 1px solid var(--color-rule);
+  border-block-start: 1px solid var(--color-line);
 }
 
 .mapgen summary {
@@ -1325,7 +1455,6 @@ td > .hint {
   color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--bevel-sunken);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.45;
@@ -1494,7 +1623,7 @@ td > .hint {
 .wait progress {
   inline-size: 100%;
   max-inline-size: 20rem;
-  accent-color: var(--color-highlight);
+  accent-color: var(--color-selected);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1505,20 +1634,13 @@ td > .hint {
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
 @media (forced-colors: active) {
-  /* The panel's sunken bevel is a box-shadow, which is not drawn here. */
-  .panel {
-    border: var(--border-width) solid CanvasText;
+  .tabs a[aria-current],
+  .subnav a[aria-current] {
+    border-block-end-color: Highlight;
   }
 
-  .tabs a {
-    border: 2px solid transparent;
-  }
-
-  .tabs a[aria-current="page"] {
-    border-color: Highlight;
-    text-decoration: underline;
-    text-decoration-thickness: 3px;
-    text-underline-offset: 0.25em;
+  .menu__item[aria-current="true"] {
+    border-inline-start-color: Highlight;
   }
 
   .field input[type="file"]::file-selector-button {
@@ -1559,7 +1681,6 @@ td > .hint {
   color: var(--color-text);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  box-shadow: var(--bevel-sunken);
   font: inherit;
   font-size: var(--text-md);
   resize: vertical;
@@ -1593,6 +1714,12 @@ td > .hint {
   font-size: var(--text-lg);
 }
 
+/* A group in a long form is set off by a line above it, not a box. */
+.settings > fieldset + fieldset {
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
 .changes {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1607,7 +1734,7 @@ td > .hint {
   gap: var(--space-1);
   max-inline-size: none;
   padding-block-end: var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-rule);
+  border-block-end: var(--border-width) solid var(--color-line);
 }
 
 .changes li:last-child {

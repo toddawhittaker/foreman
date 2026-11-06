@@ -6,6 +6,7 @@
 {{define "content" -}}
 {{with .Page}}
 <h1>{{t "server.title"}}</h1>
+{{template "server-tabs" "overview"}}
 {{- if not .HasWorld}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>

@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, openMenu, type Foreman, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // The Server page after the admin's own action, its live switch panel, and the
@@ -84,9 +84,9 @@ test.describe("with the fake game", () => {
   });
 });
 
-// WCAG 1.4.4: at 200% text on a phone, Sign out stays one word on one line and
-// the name is readable.
-test("at 320 px and 200% text the header keeps Sign out on one line", async ({ page, foreman }) => {
+// WCAG 1.4.4: at 200% text on a phone, the menu's words each stay whole, the
+// menu opens inside the page, and nothing scrolls sideways.
+test("at 320 px and 200% text the header keeps the menu's words whole", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
   await page.setViewportSize({ width: 320, height: 640 });
@@ -94,15 +94,16 @@ test("at 320 px and 200% text the header keeps Sign out on one line", async ({ p
   await page.evaluate(() => {
     document.documentElement.style.fontSize = "200%";
   });
-  const out = page.getByRole("button", { name: "Sign out" });
   const lines = (sel: string) =>
     page.locator(sel).evaluate((el) => {
       const range = document.createRange();
       range.selectNodeContents(el);
       return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
     });
-  expect(await lines("header .signout button")).toBe(1);
-  expect(await lines("header .user")).toBeLessThanOrEqual(2);
+  expect(await lines("details.menu .menu__user")).toBe(1);
+  expect(await lines("details.menu .menu__lang")).toBe(1);
+  await openMenu(page);
+  const out = page.getByRole("button", { name: "Sign out" });
   expect((await out.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   const size = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(size.scroll).toBeLessThanOrEqual(size.client);

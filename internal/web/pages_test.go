@@ -21,16 +21,23 @@ func wantIn(t *testing.T, what, body string, wants ...string) {
 	}
 }
 
-// DESIGN 7.3: the Worlds tab is marked current on every page about worlds.
+// DESIGN 6: the Worlds tab is the current page only on the world list; on
+// every other page about worlds it marks the section, so a screen reader is
+// not told it is on the list.
 func TestWorldsTabIsCurrentOnWorldPages(t *testing.T) {
 	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldsPage{}})
+	wantIn(t, "worlds", body, `<a href="/worlds" aria-current="page">Worlds</a>`)
 	for _, p := range []Page{
-		WorldsPage{}, WorldPage{World: world.Summary{ID: "base", Name: "Base"}}, ImportPage{},
+		WorldPage{World: world.Summary{ID: "base", Name: "Base"}}, ImportPage{},
 		SavesPage{WorldName: "Base"}, snapshotsCase(), RestorePage{WorldID: "base", WorldName: "Base"},
 		DeletePage{World: world.Summary{ID: "base", Name: "Base"}}, DeletedPage{},
 	} {
 		_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
-		wantIn(t, p.templateName(), body, `<a href="/worlds" aria-current="page">Worlds</a>`)
+		wantIn(t, p.templateName(), body, `<a href="/worlds" aria-current="true">Worlds</a>`)
+		if strings.Contains(body, `aria-current="page"`) {
+			t.Errorf("%s: a nav link claims to be this page", p.templateName())
+		}
 	}
 }
 
