@@ -56,8 +56,9 @@ lint:
 
 # One race-enabled run gives both the test result and the coverage floor.
 test:
-	go test -race -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./...
-	@total=$$(go tool cover -func=coverage.out | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
+	@cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
+	go test -race -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
+	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
 	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
 		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
 	fi; \
