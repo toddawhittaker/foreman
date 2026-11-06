@@ -1116,7 +1116,8 @@ td > .hint {
     padding-inline-start: 0;
   }
 
-  .snapshot-list .row-actions .button {
+  .snapshot-list .row-actions .button,
+  .snapshot-list td > .button {
     padding-inline: var(--space-3);
   }
 }
@@ -1152,7 +1153,8 @@ td > .hint {
     border-block-end: var(--border-width) solid var(--color-rule);
   }
 
-  table td {
+  table td,
+  table td.num {
     padding: 0;
     border: 0;
     text-align: start;
@@ -1160,6 +1162,18 @@ td > .hint {
 
   table td[data-label]::before {
     content: attr(data-label) " ";
+  }
+
+  /* A clock moves down whole when it does not fit beside the label; only a
+     clock wider than the cell lets its zone, such as "GMT+5:45", drop to a
+     second line. Only a stacked cell may do this: in a table, a clock that
+     can shrink would be squeezed by a long name beside it. The date stays
+     whole (DESIGN 8.3). */
+  table time > .nowrap ~ .nowrap {
+    display: inline-block;
+    max-inline-size: 100%;
+    white-space: normal;
+    vertical-align: top;
   }
 
   /* A figure never breaks inside itself (DESIGN 8.3), so its label takes

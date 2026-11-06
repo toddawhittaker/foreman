@@ -332,17 +332,29 @@ export async function checkPage(page: Page) {
   }));
   expect(size.scroll, `horizontal scroll on ${page.url()}`).toBeLessThanOrEqual(size.client);
 
-  // DESIGN 8.3: a date, a time or a size never breaks inside itself.
-  const broken = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>(".nowrap, td.num")]
+  // DESIGN 8.3: a date, a time or a size never breaks inside itself. The one
+  // exception is a clock in a stacked table cell, whose last word, the zone such as
+  // "GMT+5:45", may drop to its own line when the clock is wider than the cell.
+  const broken = await page.evaluate(() => {
+    const linesOf = (node: Node, from: number, to: number) => {
+      const range = document.createRange();
+      range.setStart(node, from);
+      range.setEnd(node, to);
+      return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)));
+    };
+    return [...document.querySelectorAll<HTMLElement>(".nowrap, td.num")]
       .filter((el) => {
         const range = document.createRange();
         range.selectNodeContents(el);
         const tops = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)));
-        return tops.size > 1;
+        if (tops.size < 2) return false;
+        const text = el.firstChild;
+        if (!el.matches("td time > .nowrap ~ .nowrap") || getComputedStyle(el.closest("td")!).display !== "block" || tops.size > 2 || el.childNodes.length !== 1 || text?.nodeType !== Node.TEXT_NODE) return true;
+        const space = (text as Text).data.lastIndexOf(" ");
+        return space < 1 || linesOf(text, 0, space).size > 1;
       })
-      .map((el) => el.textContent),
-  );
+      .map((el) => el.textContent);
+  });
   expect(broken, `text that wraps inside itself on ${page.url()}`).toEqual([]);
 
   const targets = await page.evaluate(() =>
