@@ -122,6 +122,8 @@ func TestGoldenDamagedStringsAreRefused(t *testing.T) {
 			"empty":                 "",
 			"markers only":          ">>><<<",
 		} {
+			// The game itself says "Wrong quote characters" for the two
+			// marker cases (checked on 1.1.110 and 2.1.24).
 			if what == "padding removed" && !strings.HasSuffix(body, "=") {
 				continue
 			}
@@ -129,6 +131,15 @@ func TestGoldenDamagedStringsAreRefused(t *testing.T) {
 				t.Errorf("%s, %s: Decode accepted it: %+v", f.version, what, res.Version)
 			}
 		}
+	}
+}
+
+// The game accepts spaces and a newline around a pasted string, so Foreman
+// does too.
+func TestGoldenSurroundingWhitespaceIsAccepted(t *testing.T) {
+	f := fixtures(t)[0]
+	if _, err := Decode("  \n" + f.exchange + "\n\t "); err != nil {
+		t.Errorf("Decode refused a string with spaces around it: %v", err)
 	}
 }
 
@@ -232,12 +243,18 @@ func normMapSettings(got, game map[string]any) {
 //   - an autoplace control left out of the file means frequency, size and
 //     richness 1, and the game lists every control, so a control that is all 1
 //     may be missing from the decoded side;
+//   - default_enable_all_autoplace_controls is ignored when true, the game's
+//     default, because the 1.1 parse leaves it out;
 //   - a few keys the files format never sets (the fields in gameOnly) are
 //     dropped from the game's side unless the decoded side has them.
 func normMapGen(got, game map[string]any) {
 	emptyIsObject(got)
 	emptyIsObject(game)
 	for _, m := range []map[string]any{got, game} {
+		// True is the game's default; 1.1's parse leaves it out.
+		if m["default_enable_all_autoplace_controls"] == true {
+			delete(m, "default_enable_all_autoplace_controls")
+		}
 		for _, k := range []string{"width", "height"} {
 			if n, ok := m[k].(float64); ok && n == 0 {
 				m[k] = float64(infiniteSize)
@@ -276,7 +293,7 @@ func normMapGen(got, game map[string]any) {
 // set: the game fills them with defaults. A decoder that does emit one must
 // have it right.
 var gameOnly = []string{
-	"default_enable_all_autoplace_controls", "no_enemies_mode", "starting_points", "autoplace_settings",
+	"no_enemies_mode", "starting_points", "autoplace_settings",
 	"cliff_settings.name", "cliff_settings.control", "cliff_settings.cliff_smoothing",
 }
 
