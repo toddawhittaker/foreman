@@ -109,8 +109,7 @@ test.describe("with the fake game", () => {
   test("the update page works with no version list", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.goto("/worlds/base/update");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Update Base");
-    await expect(page.getByRole("heading", { level: 2, name: /Update Base from Factorio 2\.1\.24\?/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Update Base from Factorio 2.1.24?");
     await expect(page.getByLabel("New game version")).toBeVisible();
     // The list loads (or fails) without blocking, and offers nothing while Docker Hub is down.
     await page.waitForLoadState("networkidle");
@@ -195,7 +194,7 @@ test.describe("with the fake game", () => {
     // Rollback: the warning is on its page, before the button.
     await page.goto("/worlds/base");
     await page.getByRole("link", { name: "Roll back to 2.1.24" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Roll back Base");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Go back from Factorio 2.1.25 to 2.1.24?");
     const confirm = page.getByRole("region", { name: /Go back from Factorio 2\.1\.25 to 2\.1\.24/ });
     await expect(confirm).toContainText("everything played since the update is lost");
     await expect(confirm).toContainText('Restore the snapshot "Before update"');

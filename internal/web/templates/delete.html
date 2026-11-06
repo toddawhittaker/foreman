@@ -2,20 +2,19 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
-<h1>{{t "worlds.delete.title" "world" .World.Name}}</h1>
+{{- $refusal := .Refusal}}
+<h1 id="confirm-heading" tabindex="-1">{{if $refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}</h1>
 {{template "summary" .Problems}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}
-{{- $refusal := .Refusal}}
 {{- if not $refusal.IsZero}}
 <p>{{msg $refusal}}</p>
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{t "worlds.delete.question" "world" .World.Name}}</h2>
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{if .World.SizeUnknown}}{{tHTML "worlds.delete.folder_unknown" "folder" (code (printf "worlds/%s" .World.ID))}}{{else}}{{tHTML "worlds.delete.folder" "folder" (code (printf "worlds/%s" .World.ID)) "size" (bytes .World.DiskBytes)}}{{end}}</li>
