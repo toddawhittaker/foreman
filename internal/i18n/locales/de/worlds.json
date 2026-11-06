@@ -323,7 +323,7 @@
   "worlds.generate.title": "Welt generieren",
   "worlds.generate.intro": "Erstelle eine neue Welt ohne Speicherstand. Ihre Karte wird beim ersten Start der Welt erzeugt.",
   "worlds.generate.heading": "Neue Welt",
-  "worlds.generate.version.same": "{version}, wie die aktive Welt",
+  "worlds.generate.version.same": "{version}, wie bei der aktiven Welt",
   "worlds.generate.version.choose": "Version wählen",
   "worlds.generate.space_age.hint": "Space Age gibt es erst ab Factorio 2.0. Die Einstellung bestimmt, welche Planeten die Karte hat.",
   "worlds.generate.download.hint": "Die Welt kann erst starten, wenn ihr Spiel-Image ({image} in ihrer Version) auf diesem Host vorhanden ist. Der Download startet von Docker Hub, nachdem die Welt erstellt wurde.",

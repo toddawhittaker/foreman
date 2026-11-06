@@ -23,7 +23,7 @@
   "settings.password.keep_none": "Leer lassen, um kein Passwort zu setzen.",
   "settings.password.remove": "Das Passwort entfernen",
   "settings.password.both": "Gib ein neues Passwort ein oder entferne es, aber nicht beides.",
-  "settings.password.dropped": "Gib das neue Passwort erneut ein; es wird nie in der Seite behalten.",
+  "settings.password.dropped": "Gib das neue Passwort erneut ein; es wird nie auf der Seite gespeichert.",
   "settings.max_players.label": "Maximale Spielerzahl",
   "settings.max_players.hint": "0 bedeutet keine Begrenzung.",
   "settings.verify.label": "Benutzerverifizierung verlangen",
