@@ -57,8 +57,50 @@ var ErrNoSnapshot = errors.New("there is no such snapshot")
 // cannot keep, such as a symlink.
 var ErrUnsupportedFile = errors.New("this world holds a file Foreman cannot snapshot")
 
+// UnsupportedFileError names the file a snapshot cannot keep. It matches
+// ErrUnsupportedFile.
+type UnsupportedFileError struct{ Path string }
+
+func (e *UnsupportedFileError) Error() string {
+	return fmt.Sprintf("%s: %s is a symlink or special file, which a snapshot cannot keep. Remove it or replace it with a copy, then try again", ErrUnsupportedFile, e.Path)
+}
+
+func (*UnsupportedFileError) Is(target error) bool { return target == ErrUnsupportedFile }
+
 // ErrDamaged is returned when a snapshot's files do not match its manifest.
 var ErrDamaged = errors.New("this snapshot's files do not match its snapshot.json, so Foreman will not restore it")
+
+// DamageKind says how a snapshot's files differ from its manifest.
+type DamageKind int
+
+// The ways a snapshot can be damaged (SPEC 6.5).
+const (
+	DamageBadPath      DamageKind = iota // the manifest names a path that is not allowed
+	DamageMissing                        // a file is gone
+	DamageChanged                        // a file is not the regular file of the size recorded
+	DamageChangedSince                   // a file's content no longer matches its hash
+)
+
+// DamagedError says which file of a snapshot no longer matches. It matches
+// ErrDamaged.
+type DamagedError struct {
+	Kind DamageKind
+	Path string
+}
+
+func (e *DamagedError) Error() string {
+	switch e.Kind {
+	case DamageBadPath:
+		return fmt.Sprintf("%s: bad path %q", ErrDamaged, e.Path)
+	case DamageMissing:
+		return fmt.Sprintf("%s: %s is missing", ErrDamaged, e.Path)
+	case DamageChangedSince:
+		return fmt.Sprintf("%s: %s has changed since the snapshot was taken", ErrDamaged, e.Path)
+	}
+	return fmt.Sprintf("%s: %s has changed", ErrDamaged, e.Path)
+}
+
+func (*DamagedError) Is(target error) bool { return target == ErrDamaged }
 
 // ManifestEntry is one file in a snapshot, with the time to put back on
 // restore (SPEC 6.9).
@@ -344,7 +386,7 @@ func filesUnder(w *os.Root, start string) ([]ManifestEntry, error) {
 			return nil
 		}
 		if !d.Type().IsRegular() {
-			return fmt.Errorf("%w: %s is a symlink or special file, which a snapshot cannot keep. Remove it or replace it with a copy, then try again", ErrUnsupportedFile, p)
+			return &UnsupportedFileError{Path: p}
 		}
 		info, err := d.Info()
 		if err != nil {

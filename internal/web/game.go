@@ -307,7 +307,8 @@ func gameError(err error) (int, string) {
 	if _, ok := errors.AsType[*url.Error](err); ok {
 		return http.StatusServiceUnavailable, "Foreman cannot reach Docker, so nothing was done. Check that Docker is running and that Foreman can reach it, then try again."
 	}
-	return worldError(err)
+	status, msg := worldError(err)
+	return status, i18n.English.Format(msg)
 }
 
 // noImageAdvice is the next step after a download Docker Hub has no image

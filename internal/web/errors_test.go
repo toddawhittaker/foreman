@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -20,30 +21,53 @@ func TestWorldErrorMapsEveryRefusal(t *testing.T) {
 		status int
 		want   string
 	}{
-		{world.ErrWorldChanged, http.StatusConflict, world.ErrWorldChanged.Error()},
+		{world.ErrWorldChanged, http.StatusConflict, "This world was changed or deleted while your upload was running."},
 		{world.ErrUnreadable, http.StatusConflict, "world.json cannot be read"},
-		{fmt.Errorf("%w: mods/link is a symlink", world.ErrUnsupportedFile), http.StatusConflict, "mods/link"},
+		{&world.UnsupportedFileError{Path: "mods/link"}, http.StatusConflict, "mods/link is a symlink or special file"},
 		{world.ErrRestoreNameTaken, http.StatusConflict, "Rename that world"},
-		{fmt.Errorf("%w: saves/a.zip has changed", world.ErrDamaged), http.StatusConflict, "saves/a.zip has changed"},
+		{&world.DamagedError{Kind: world.DamageChanged, Path: "saves/a.zip"}, http.StatusConflict, "restore it: saves/a.zip has changed. The world was not changed. Restore a different snapshot."},
+		{&world.DamagedError{Kind: world.DamageMissing, Path: "a"}, http.StatusConflict, "restore it: a is missing."},
+		{&world.DamagedError{Kind: world.DamageBadPath, Path: "../a"}, http.StatusConflict, "restore it: bad path \"../a\"."},
+		{&world.DamagedError{Kind: world.DamageChangedSince, Path: "a"}, http.StatusConflict, "a has changed since the snapshot was taken."},
 		{world.ErrBusy, http.StatusConflict, "Another operation is running"},
 		{world.ErrActive, http.StatusConflict, "active world cannot be deleted"},
 		{world.ErrNewerFormat, http.StatusConflict, "newer version of Foreman"},
 		{world.ErrSaveExists, http.StatusConflict, "Rename the file"},
-		{fmt.Errorf("%w: this needs 3 GB", world.ErrNoSpace), http.StatusInsufficientStorage, "Nothing was changed"},
+		{fmt.Errorf("take the snapshot: %w", &world.NoSpaceError{Need: 3e9, Reserve: 2e9, Free: 1e9}), http.StatusInsufficientStorage,
+			"Nothing was changed: Not enough free disk space: this needs 3.0 GB, including 2.0 GB kept free for the game, but only 1.0 GB is free. Free some space and try again."},
 		{world.ErrSaveName, http.StatusUnprocessableEntity, "must end in .zip"},
-		{uploadError{"This file is not a zip file."}, http.StatusUnprocessableEntity, "not a zip file"},
+		{uploadError{i18n.M("worlds.upload.not_zip")}, http.StatusUnprocessableEntity, "not a zip file"},
 		{world.ErrNameTaken, http.StatusBadRequest, "Choose a different name."},
+		{world.SaveClashError{Name: "a.zip"}, http.StatusBadRequest, "The save a.zip is in both the folder and its saves folder"},
 		{fs.ErrNotExist, http.StatusNotFound, ""},
 		{world.ErrNoSnapshot, http.StatusNotFound, ""},
 		{fmt.Errorf("disk on fire"), http.StatusInternalServerError, ""},
 	} {
 		status, msg := worldError(tc.err)
-		if status != tc.status || !strings.Contains(msg, tc.want) {
-			t.Errorf("%v: %d %q, want %d with %q", tc.err, status, msg, tc.status, tc.want)
+		text := i18n.English.Format(msg)
+		if status != tc.status || !strings.Contains(text, tc.want) {
+			t.Errorf("%v: %d %q, want %d with %q", tc.err, status, text, tc.status, tc.want)
 		}
-		if msg != "" && (strings.ToUpper(msg[:1]) != msg[:1] || !strings.HasSuffix(msg, ".")) {
-			t.Errorf("%v: %q is not a sentence", tc.err, msg)
+		if tc.want == "" && !msg.IsZero() {
+			t.Errorf("%v: has words %q, want none", tc.err, text)
 		}
+		if text != "" && (strings.ToUpper(text[:1]) != text[:1] || !strings.HasSuffix(text, ".")) {
+			t.Errorf("%v: %q is not a sentence", tc.err, text)
+		}
+	}
+}
+
+// A refusal reads in every language, with its figures filled in.
+func TestWorldErrorIsTranslated(t *testing.T) {
+	_, msg := worldError(&world.NoSpaceError{Need: 3e9, Reserve: 2e9, Free: 1e9})
+	for _, l := range i18n.Languages {
+		text := l.Tag.Format(msg)
+		if text == "" || strings.Contains(text, "{") || strings.Contains(text, "worlds.error") {
+			t.Errorf("%s: %q", l.Tag, text)
+		}
+	}
+	if got := i18n.Locale("de").Format(msg); !strings.Contains(got, "3,0 GB") {
+		t.Errorf("de: sizes are not in the language's format: %q", got)
 	}
 }
 

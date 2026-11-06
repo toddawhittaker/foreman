@@ -25,13 +25,14 @@
 // string: i18n.M("accounts.setup.password.short", "count", 12). The key
 // must be a string literal, so the checks can see it. An argument that is
 // itself a Msg is translated when it is filled in. Numbers are formatted
-// for the language.
+// for the language, and a Size is a number of bytes in the language's units.
 //
 // Templates (internal/web) call {{t "key" "name" value}}, {{msg .Field}}
 // for a Msg from the view model, and for a sentence holding markup
 // {{tHTML "key" "link" (link "/href" "linkKey") "file" (code .Path)}}:
-// link and code make trusted fragments, and tHTML escapes the sentence and
-// plain arguments and puts each fragment at its placeholder. A field error is
+// link, code, codes, strong, nowrap and momentUTC (a time element) make
+// trusted fragments, and tHTML escapes the sentence and plain arguments and
+// puts each fragment at its placeholder. A field error is
 // shown with {{if not .Err.IsZero}}...{{msg .Err}}{{end}}, as a Msg is
 // never empty to {{with}}. bytes, num and duration format a size, a number
 // and a time span; lang is the page's tag.
@@ -371,6 +372,8 @@ func (l Locale) arg(v any) string {
 		return l.Format(v)
 	case string:
 		return v
+	case Size:
+		return l.Bytes(uint64(v))
 	case int, int64, int32, uint, uint64, uint32:
 		return l.Num(v)
 	default:

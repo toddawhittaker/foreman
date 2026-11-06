@@ -1129,11 +1129,11 @@ td > .hint {
   }
 
   .snapshot-list td:nth-child(2)::before {
-    content: "Taken: ";
+    content: attr(data-label) " ";
   }
 
   .snapshot-list td:nth-child(3)::before {
-    content: "Size: ";
+    content: attr(data-label) " ";
   }
 }
 

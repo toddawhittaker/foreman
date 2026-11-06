@@ -2,12 +2,12 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -70,16 +70,14 @@ func (sel selection) ticks(id string, s world.Snapshot) bool {
 
 // tickNote tells what a shortcut button just ticked, so the reload that
 // follows it is not silent. n is the automatic snapshots now ticked.
-func (sel selection) tickNote(n int) string {
+func (sel selection) tickNote(n int) i18n.Msg {
 	switch {
 	case sel.automatic == "":
-		return ""
+		return i18n.Msg{}
 	case n == 0:
-		return "There are no automatic snapshots to tick."
-	case n == 1:
-		return "Select all automatic ticked 1 snapshot."
+		return i18n.M("worlds.snapshots.tick.none")
 	}
-	return fmt.Sprintf("Select all automatic ticked %d snapshots.", n)
+	return i18n.M("worlds.snapshots.tick.some", "count", n)
 }
 
 // DeleteItem is one snapshot on the bulk confirmation page.
@@ -93,10 +91,10 @@ type DeleteItem struct {
 	// Gone is true when the snapshot is already deleted, so there is
 	// nothing left to do for it.
 	Gone bool
-	// Refusal says why the snapshot stays; empty when it can go.
-	Refusal string
+	// Refusal says why the snapshot stays; zero when it can go.
+	Refusal i18n.Msg
 	// Failure says why a delete just attempted did not happen.
-	Failure string
+	Failure i18n.Msg
 }
 
 // TakenAt is when the snapshot was taken.
@@ -112,7 +110,7 @@ type SnapshotBulkDeletePage struct {
 	WorldID string
 	// Deleted holds when each snapshot just deleted was taken.
 	Deleted []time.Time
-	Error   string
+	Error   i18n.Msg
 }
 
 func (SnapshotBulkDeletePage) templateName() string { return "snapshotbulkdelete" }
@@ -122,7 +120,7 @@ func (p SnapshotBulkDeletePage) navItem() string {
 	}
 	return PathSnapshots
 }
-func (p SnapshotBulkDeletePage) hasErrors() bool { return p.Error != "" }
+func (p SnapshotBulkDeletePage) hasErrors() bool { return !p.Error.IsZero() }
 
 // Path is where the confirmation posts.
 func (SnapshotBulkDeletePage) Path() string { return PathSnapshotsDelete }
@@ -140,12 +138,12 @@ func (SnapshotBulkDeletePage) Value(i DeleteItem) string { return refValue(i.Wor
 
 // Going lists the items that can be deleted.
 func (p SnapshotBulkDeletePage) Going() []DeleteItem {
-	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal != "" || i.Gone })
+	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return !i.Refusal.IsZero() || i.Gone })
 }
 
 // Staying lists the items that cannot be deleted now.
 func (p SnapshotBulkDeletePage) Staying() []DeleteItem {
-	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal == "" || i.Gone })
+	return slices.DeleteFunc(slices.Clone(p.Items), func(i DeleteItem) bool { return i.Refusal.IsZero() || i.Gone })
 }
 
 // AlreadyGone lists the items whose snapshot was deleted before this page.
@@ -154,15 +152,17 @@ func (p SnapshotBulkDeletePage) AlreadyGone() []DeleteItem {
 }
 
 // Heading names what the page asks.
-func (p SnapshotBulkDeletePage) Heading() string {
-	switch n := len(p.Going()); n {
-	case 0:
-		return "Delete snapshots"
-	case 1:
-		return "Delete 1 snapshot"
-	default:
-		return fmt.Sprintf("Delete %d snapshots", n)
+func (p SnapshotBulkDeletePage) Heading() i18n.Msg {
+	n := len(p.Going())
+	if n == 0 {
+		return i18n.M("worlds.snapshots.bulk.heading_none")
 	}
+	return i18n.M("worlds.snapshots.bulk.heading", "count", n)
+}
+
+// Question asks the heading's question above the confirmation.
+func (p SnapshotBulkDeletePage) Question() i18n.Msg {
+	return i18n.M("worlds.snapshots.bulk.question", "count", len(p.Going()))
 }
 
 // bulkPage examines the named snapshots and fills the confirmation page.
@@ -213,7 +213,7 @@ func (s *server) bulkPage(w http.ResponseWriter, r *http.Request, refs []world.S
 			item.Snapshot.TakenAt, _ = world.SnapshotNameTime(ref.Name)
 		case s.operationRunning(ref.WorldID):
 			item.Snapshot = snap
-			item.Refusal = sentence(errOperationRunning)
+			item.Refusal = msgOperationRunning()
 		default:
 			item.Snapshot = snap
 			if wi.rollbackSnap == ref.Name {
@@ -235,7 +235,7 @@ func (s *server) handleSnapshotsDeleteForm(w http.ResponseWriter, r *http.Reques
 	}
 	status := http.StatusOK
 	if len(refs) == 0 {
-		p.Error = "Nothing is ticked. Go back, tick the snapshots to delete, then choose Delete selected."
+		p.Error = i18n.M("worlds.snapshots.bulk.nothing_ticked")
 		status = http.StatusBadRequest
 	}
 	s.page(w, r, status, u.Username, p)
@@ -243,12 +243,12 @@ func (s *server) handleSnapshotsDeleteForm(w http.ResponseWriter, r *http.Reques
 
 // failureText says in plain words why one delete did not happen, logging a
 // fault whose detail the page must not carry.
-func (s *server) failureText(r *http.Request, err error) (text string, fault bool) {
-	if errors.Is(err, errOperationRunning) || errors.Is(err, world.ErrBusy) {
-		return sentence(err), false
+func (s *server) failureText(r *http.Request, err error) (text i18n.Msg, fault bool) {
+	if reason, busy := busyReason(err); busy {
+		return reason, false
 	}
 	s.log.Error("delete snapshot", "method", r.Method, "path", r.URL.Path, "error", err)
-	return "Foreman could not delete it. The log says why.", true
+	return i18n.M("worlds.snapshots.bulk.delete_failed"), true
 }
 
 // handleSnapshotsDelete deletes the confirmed snapshots one at a time, each
@@ -264,17 +264,17 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	if len(refs) == 0 {
-		p.Error = "Nothing was deleted: nothing is ticked."
+		p.Error = i18n.M("worlds.snapshots.bulk.nothing_deleted_unticked")
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
 	var deleted []string
 	var stayed []world.SnapshotRef
-	failures := map[world.SnapshotRef]string{}
+	failures := map[world.SnapshotRef]i18n.Msg{}
 	fault := false
 	for _, item := range p.Items {
 		ref := world.SnapshotRef{WorldID: item.WorldID, Name: item.Snapshot.Name}
-		if item.Refusal != "" {
+		if !item.Refusal.IsZero() {
 			stayed = append(stayed, ref)
 			continue
 		}
@@ -309,9 +309,9 @@ func (s *server) handleSnapshotsDelete(w http.ResponseWriter, r *http.Request, u
 		rest.Items[i].Failure = failures[world.SnapshotRef{WorldID: item.WorldID, Name: item.Snapshot.Name}]
 	}
 	rest.Deleted = deletedTimes(deleted)
-	rest.Error = fmt.Sprintf("%d of %d snapshots were not deleted. Each one below says why.", len(stayed), len(refs))
+	rest.Error = i18n.M("worlds.snapshots.bulk.some_stayed", "failed", len(stayed), "count", len(refs))
 	if len(deleted) == 0 {
-		rest.Error = "Nothing was deleted. Each snapshot below says why."
+		rest.Error = i18n.M("worlds.snapshots.bulk.none_deleted")
 	}
 	status := http.StatusConflict
 	if fault {
