@@ -1,23 +1,13 @@
 package world
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/toddawhittaker/foreman/internal/mapgen"
+)
 
 // ModBase is the game's own mod, enabled in every world.
 const ModBase = "base"
-
-// spaceAgeMods are the Space Age DLC mods for each supported game minor
-// version (SPEC 9.7). Space Age does not exist before 2.0.
-var spaceAgeMods = map[string][]string{
-	"1.1": nil,
-	"2.0": {"elevated-rails", "quality", "space-age"},
-	"2.1": {"elevated-rails", "quality", "space-age"},
-}
-
-// alwaysOnMods are built-in mods that are not part of Space Age and stay
-// enabled with Space Age off: recycler is its own mod from 2.1.
-var alwaysOnMods = map[string][]string{
-	"2.1": {"recycler"},
-}
 
 var gameMinorRE = regexp.MustCompile(`^(\d+)\.(\d+)(?:\.\d+)*$`)
 
@@ -32,9 +22,9 @@ func gameMinor(gameVersion string) string {
 }
 
 // SupportedGameVersion reports whether Foreman runs this game version:
-// 1.1, 2.0 or 2.1.
+// one of the lines in mapgen.Lines.
 func SupportedGameVersion(gameVersion string) bool {
-	_, ok := spaceAgeMods[gameMinor(gameVersion)]
+	_, ok := mapgen.LineOf(gameVersion)
 	return ok && ValidGameVersion(gameVersion)
 }
 
@@ -45,17 +35,23 @@ func BuiltinMods(gameVersion string) []string {
 	if !SupportedGameVersion(gameVersion) {
 		return nil
 	}
-	minor := gameMinor(gameVersion)
-	out := []string{ModBase}
-	out = append(out, alwaysOnMods[minor]...)
-	return append(out, spaceAgeMods[minor]...)
+	return append(append([]string{ModBase}, alwaysOnMods(gameVersion)...), SpaceAgeMods(gameVersion)...)
+}
+
+// alwaysOnMods lists the built-in mods of this game version that are not
+// part of Space Age and stay enabled with Space Age off.
+func alwaysOnMods(gameVersion string) []string {
+	line, _ := mapgen.LineOf(gameVersion)
+	return line.AlwaysOnMods
 }
 
 // SpaceAgeMods lists the Space Age DLC mods of this game version, which
-// are enabled only when the world's Space Age flag is on (SPEC 9.7).
+// are enabled only when the world's Space Age flag is on (SPEC 9.7). Space
+// Age does not exist before 2.0.
 func SpaceAgeMods(gameVersion string) []string {
 	if !SupportedGameVersion(gameVersion) {
 		return nil
 	}
-	return append([]string(nil), spaceAgeMods[gameMinor(gameVersion)]...)
+	line, _ := mapgen.LineOf(gameVersion)
+	return line.SpaceAgeMods
 }
