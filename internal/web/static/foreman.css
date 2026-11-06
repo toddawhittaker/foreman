@@ -569,7 +569,8 @@ legend {
   line-height: 1.45;
 }
 
-.field input,
+/* Checkboxes and radios keep their own 1.25rem look; the .check label is the target. */
+.field input:not([type="checkbox"], [type="radio"]),
 .field select,
 .field textarea {
   inline-size: 100%;

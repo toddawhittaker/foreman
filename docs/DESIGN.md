@@ -636,7 +636,10 @@ two-line label is not cramped.
   var(--color-highlight)`, so a checked box is orange like any other
   selected thing, and `inline-size` and `block-size` of 1.25rem. The
   input sits inside its `label`, and the label is a flex row with
-  `min-block-size: var(--target-min)`, so the whole row is the target.
+  `min-block-size: var(--target-min)`, so the whole row is the target. The
+  sunken-box styling above never applies to them, even inside a
+  `div.field`: the `.field` rule excludes `[type="checkbox"]` and
+  `[type="radio"]`, so the input stays 1.25rem square.
 - A group of radios or checkboxes is a `fieldset` with a `legend` styled
   like a label. "Which save loads" (SPEC 7.11) is a radio group.
 - **File inputs** are native, inside the same 44 px sunken box as other
