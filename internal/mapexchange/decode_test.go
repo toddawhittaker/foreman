@@ -197,6 +197,8 @@ func TestDecodeRefuses(t *testing.T) {
 		unsupported bool
 	}{
 		"empty":           {"", false},
+		"only start mark": {strings.TrimSuffix(encode(t, good, true), "<<<"), false},
+		"only end mark":   {strings.TrimPrefix(encode(t, good, true), ">>>"), false},
 		"not base64":      {">>>!!!!<<<", false},
 		"not zlib":        {">>>" + base64.StdEncoding.EncodeToString([]byte("hello world")) + "<<<", false},
 		"too long":        {big, false},
