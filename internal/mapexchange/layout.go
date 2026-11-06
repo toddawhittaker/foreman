@@ -4,47 +4,15 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
-
-// layoutChanges lists, per line, the patch numbers at which the
-// map-settings layout changes. A line not listed has one layout throughout.
-var layoutChanges = map[gameLine][]uint16{
-	line21: {dispatchCooldownAddedIn, pollutionRestoreRemovedIn},
-}
-
-var lineNames = map[gameLine]string{line11: "1.1", line20: "2.0", line21: "2.1"}
 
 // layoutEnd returns the first version after patch on the line that has a
 // different map-settings layout, or "" when the layout never changes again.
+// mapgen owns the layout boundaries.
 func layoutEnd(line gameLine, patch uint16) string {
-	for _, c := range layoutChanges[line] {
-		if c > patch {
-			return fmt.Sprintf("%s.%d", lineNames[line], c)
-		}
-	}
-	return ""
-}
-
-// MapSettingsLayout names the map-settings layout an exact game version
-// ("2.1.24") uses, as the first version that has it ("2.1.18"; "2.0.0" for
-// all of 2.0). Two versions with the same name take the same map-settings
-// keys. It reports false for an unsupported line or a malformed version.
-func MapSettingsLayout(version string) (string, bool) {
-	v, ok := parseWorldVersion(version)
-	if !ok {
-		return "", false
-	}
-	line, ok := lineOf([4]uint16{v[0], v[1], v[2], 0})
-	if !ok {
-		return "", false
-	}
-	start := uint16(0)
-	for _, c := range layoutChanges[line] {
-		if c <= v[2] {
-			start = c
-		}
-	}
-	return fmt.Sprintf("%s.%d", lineNames[line], start), true
+	return mapgen.MapSettingsLayoutEnd(fmt.Sprintf("%s.%d", mapgen.Lines[line], patch))
 }
 
 // parseWorldVersion reads an exact "major.minor.patch" version.
@@ -83,7 +51,7 @@ func Compatible(stringVersion [4]uint16, worldVersion string) error {
 
 	sLine, ok := lineOf(stringVersion)
 	if !ok {
-		return refuse("", "only game lines 1.1, 2.0 and 2.1 are supported")
+		return refuse("", linesReason())
 	}
 	until := layoutEnd(sLine, sv[2])
 

@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/toddawhittaker/foreman/internal/mapexchange"
 )
 
 // testedImages are the images whose example map-settings file is embedded,
@@ -178,12 +176,12 @@ func TestMapSettingsLayoutNames(t *testing.T) {
 		"2.1.13": "2.1.13", "2.1.17": "2.1.13", "2.1.18": "2.1.18", "2.1.24": "2.1.18",
 	}
 	for v, want := range cases {
-		if got, ok := mapexchange.MapSettingsLayout(v); !ok || got != want {
+		if got, ok := MapSettingsLayout(v); !ok || got != want {
 			t.Errorf("%s: got %q %v, want %q", v, got, ok, want)
 		}
 	}
 	for _, v := range []string{"3.0.0", "2.1", "x"} {
-		if _, ok := mapexchange.MapSettingsLayout(v); ok {
+		if _, ok := MapSettingsLayout(v); ok {
 			t.Errorf("%s: want false", v)
 		}
 	}

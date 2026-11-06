@@ -14,8 +14,6 @@ import (
 	"io/fs"
 	"math"
 	"strings"
-
-	"github.com/toddawhittaker/foreman/internal/mapexchange"
 )
 
 // ErrUntestedLayout means no tested game image has the version's
@@ -34,7 +32,7 @@ type settingsLayout struct {
 	presets map[string]json.RawMessage
 }
 
-// settingsLayouts is keyed by mapexchange.MapSettingsLayout. The files are
+// settingsLayouts is keyed by MapSettingsLayout. The files are
 // data/<line>/map-settings-<version>.json (the image's example, copied by
 // extract.go) and preset-map-settings-<version>.json (the game's own parse of
 // each preset, pinned by mapsettings_test.go).
@@ -47,7 +45,7 @@ var settingsLayouts = func() map[string]settingsLayout {
 		}
 		for _, n := range names {
 			v := strings.TrimSuffix(strings.TrimPrefix(n, "data/"+l+"/map-settings-"), ".json")
-			layout, ok := mapexchange.MapSettingsLayout(v)
+			layout, ok := MapSettingsLayout(v)
 			if !ok {
 				panic("mapgen: bad version in " + n)
 			}
@@ -76,7 +74,7 @@ func layoutFor(version string) (settingsLayout, error) {
 	if _, ok := Line(version); !ok {
 		return settingsLayout{}, fmt.Errorf("mapgen: %q is not a supported game version", version)
 	}
-	name, ok := mapexchange.MapSettingsLayout(version)
+	name, ok := MapSettingsLayout(version)
 	if !ok {
 		return settingsLayout{}, fmt.Errorf("mapgen: %q is not a supported game version", version)
 	}
