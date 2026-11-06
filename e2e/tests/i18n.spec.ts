@@ -502,7 +502,7 @@ test.describe("a wide time zone at 320 px and 200% text", () => {
   test.use({ fakeGameOn: true, timezoneId: "Asia/Kathmandu" });
   onlyInPhoneDark();
 
-  for (const lang of ["en", "de"] as const) {
+  for (const lang of languages) {
     test(`${lang}: the saves and snapshot tables fit`, async ({ page, foreman }) => {
       const failures: string[] = [];
       await page.setViewportSize({ width: 320, height: 640 });
@@ -512,10 +512,9 @@ test.describe("a wide time zone at 320 px and 200% text", () => {
       await page.getByRole("button", { name: "Take snapshot" }).click();
       await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
       await chooseLanguage(page.context(), lang, foreman.url);
-      // The three-column snapshot tables cannot hold a zone this wide at 100% in German; see the PR.
-      await sweep(page, lang, lang === "en" ? ["/worlds/base/saves", "/worlds/base/snapshots", "/snapshots"] : ["/worlds/base/saves"], failures);
+      await sweep(page, lang, ["/worlds/base/saves", "/worlds/base/snapshots", "/snapshots"], failures);
       await page.goto("/worlds/base/saves");
-      await expect(page.locator("td time").first()).toContainText("GMT+5:45");
+      await expect(page.locator("td time").first()).toContainText("+5:45");
       // A stacked size sits under its label at the start of the line, not at the end.
       await setTextSize(page, 200);
       const align = await page.locator("td.num").first().evaluate((el) => getComputedStyle(el).textAlign);
