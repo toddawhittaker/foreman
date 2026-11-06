@@ -1370,7 +1370,14 @@ sections.
   the image download belongs to a world and none exists yet.
 - Checkboxes inside form fields sit in a tall dark box (#187); it also
   shows on Generate.
-- The Czech `worlds.import.download.hint` still says "obraz jeho hry".
+- On a stopped world, if a confirmation changes two files and the second
+  write fails (for example a full disk), the page shows a fresh preview of
+  what is left but does not say the first file was saved. The snapshot was
+  taken first, so nothing is lost.
+- Choosing another preset after editing in Custom replaces those edits; the
+  "Filled in from the preset" note is the only hint.
+- A stopped world whose existing `server-adminlist.json` holds a name with a
+  space shows the list as unreadable (Factorio names cannot hold spaces).
 - The accessibility follow-ups are in #221. A French header at 200% text,
   named in the review, did not reproduce.
 - Not built, by decision: public server listing (#206), editing
