@@ -240,6 +240,12 @@ func pageCases() []pageCase {
 		{"rollback running", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.1.24"},
 			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Running: true, CountdownForm: defaultCountdown(),
 			Error: i18n.M("server.error.image_missing")}},
+		{"settings form", "todd", 200, settingsFormCase(false)},
+		{"settings form errors", "todd", 400, settingsFormCase(true)},
+		{"settings raw", "todd", 200, settingsRawCase(false)},
+		{"settings raw errors", "todd", 400, settingsRawCase(true)},
+		{"settings preview", "todd", 200, settingsPreviewCase()},
+		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
 	}
 }
 

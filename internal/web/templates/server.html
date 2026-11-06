@@ -58,6 +58,7 @@
      new world once that is active (SPEC 7.9). */}}
 {{define "server-active" -}}
 <a href="{{.ActivePath}}" id="act-world">{{t "server.active" "world" .ActiveName}}</a>
+<a href="{{.ActiveSettingsPath}}" id="act-settings">{{t "settings.link"}}</a>
 {{- end}}
 
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
