@@ -68,6 +68,10 @@
   <div class="actions">
     <a href="{{.SavesPath}}" class="button">{{t "worlds.world.saves"}}</a>
     <a href="{{.SnapshotsPath}}" class="button">{{t "worlds.world.snapshots"}}</a>
+    {{- if not (or .World.Newer .World.Unreadable)}}
+    <a href="{{worldsPath}}/{{.World.ID}}/settings" class="button" id="act-settings">{{t "worlds.world.settings"}}</a>
+    <a href="{{.ClonePath}}" class="button" id="act-clone">{{t "worlds.world.clone"}}</a>
+    {{- end}}
   </div>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}

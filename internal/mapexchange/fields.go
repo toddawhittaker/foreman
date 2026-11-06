@@ -3,6 +3,13 @@ package mapexchange
 // The read order below is the game's binary layout and must not change;
 // each line-specific field is read only on the lines that write it.
 
+// The 2.1 patch numbers at which the map-settings layout changes. Compatible
+// reads the same constants (layout.go), so the two cannot disagree.
+const (
+	dispatchCooldownAddedIn   = 13 // adds enemy_expansion.build_base_unit_dispatch_cooldown
+	pollutionRestoreRemovedIn = 18 // removes pollution.max_pollution_to_restore_trees
+)
+
 func readFSR(r *reader, field string) FrequencySizeRichness {
 	return FrequencySizeRichness{
 		Frequency: r.f32(field),
@@ -139,8 +146,7 @@ func readMapSettings(r *reader, line gameLine, v [4]uint16) MapSettings {
 		PollutionPerTreeDamage:         optF64(r, p),
 		PollutionRestoredPerTreeDamage: optF64(r, p),
 	}
-	// Game 2.1.18 removed this field from the layout.
-	if line != line21 || v[2] < 18 {
+	if line != line21 || v[2] < pollutionRestoreRemovedIn {
 		s.Pollution.MaxPollutionToRestoreTrees = optF64(r, p)
 	}
 	s.Pollution.EnemyAttackPollutionConsumptionModifier = optF64(r, p)
@@ -178,8 +184,7 @@ func readMapSettings(r *reader, line gameLine, v [4]uint16) MapSettings {
 	}
 	e.MinExpansionCooldown = optU32(r, ex)
 	e.MaxExpansionCooldown = optU32(r, ex)
-	// Game 2.1.13 added this field to the layout.
-	if line >= line21 && v[2] >= 13 {
+	if line >= line21 && v[2] >= dispatchCooldownAddedIn {
 		e.BuildBaseUnitDispatchCooldown = optU32(r, ex)
 	}
 

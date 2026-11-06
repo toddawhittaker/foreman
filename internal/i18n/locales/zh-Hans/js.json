@@ -6,5 +6,7 @@
   "js.import.suggested": "建议的世界名称：{name}。",
   "js.import.warning": "警告：{text}",
   "js.live.moved": "活动世界已更改。",
-  "js.live.stopped": "实时更新已停止。请重新加载页面以查看当前状态。"
+  "js.live.stopped": "实时更新已停止。请重新加载页面以查看当前状态。",
+  "js.generate.options": "已按所选游戏版本和太空时代设置更新地图选项。",
+  "js.generate.preview_ready": "地图预览已就绪。"
 }

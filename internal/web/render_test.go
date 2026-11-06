@@ -17,6 +17,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -102,6 +103,23 @@ func pageCases() []pageCase {
 			Upload: ImportForm{IDPrefix: "upload"}}},
 		{"import upload errors", "todd", 400, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"},
 			Upload: ImportForm{IDPrefix: "upload", SourceError: i18n.M("worlds.upload.not_zip"), NameError: msgNameEmpty(), VersionError: msgBadGameVersion()}}},
+		{"generate empty", "todd", 200, GeneratePage{Form: generateCase(nil)}},
+		{"generate preview", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil), Preview: &PreviewView{Seed: "1234", Pictures: []PreviewPicture{
+			{Planet: "nauvis", Name: planetMsg("nauvis"), Path: "/generate/preview/tok/nauvis"},
+			{Planet: "vulcanus", Name: planetMsg("vulcanus"), Path: "/generate/preview/tok/vulcanus"}}}}},
+		{"generate preview failed", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil),
+			Preview: &PreviewView{Error: i18n.M("worlds.generate.preview.failed")}}},
+		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+			f.Name, f.Mode, f.Reset = longName, modeExchange, true
+			f.NameError, f.VersionError, f.SpaceAgeError = msgNameEmpty(), msgBadGameVersion(), msgSpaceAgeOld()
+			f.PresetError, f.SeedError = i18n.M("worlds.generate.error.preset"), i18n.M("worlds.generate.error.seed")
+			f.ExchangeError, f.FormError = i18n.M("worlds.generate.error.exchange_empty"), i18n.M("worlds.generate.error.settings")
+		})}},
+		{"clone with save", "todd", 200, ClonePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", SpaceAge: true},
+			Name: longName + " (copy)", Choice: cloneKeep, SaveName: "autosave_3.zip", SaveTime: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), RunningNote: true}},
+		{"clone fresh only errors", "todd", 400, ClonePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "1.1.110"},
+			Name: "", Choice: cloneFresh, FreshOnlyWhy: i18n.M("worlds.clone.no_save"), NameError: msgNameEmpty(),
+			Error: msgBusy(), ErrorBusy: true}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
@@ -268,6 +286,16 @@ func TestVersionFragments(t *testing.T) {
 			}
 		})
 	}
+}
+
+// generateCase is the Generate form as first offered, with edit applied.
+func generateCase(edit func(*GenerateForm)) GenerateForm {
+	f := GenerateForm{Version: "2.0.77", DefaultVersion: "2.0.77", SpaceAge: true, Download: true, CanDownload: true,
+		Mode: modePreset, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Seed: "42", MapGen: NewMapGenForm("2.0", true)}
+	if edit != nil {
+		edit(&f)
+	}
+	return f
 }
 
 // serverCase is the server page for an active world in state s.

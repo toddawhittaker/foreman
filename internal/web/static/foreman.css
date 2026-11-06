@@ -563,7 +563,8 @@ legend {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   inline-size: 100%;
   max-inline-size: 40ch;
   min-block-size: var(--target-min);
@@ -601,12 +602,14 @@ legend {
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: 2px;
 }
 
-.field input[aria-invalid="true"] {
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
   border: 2px solid var(--color-danger-text);
 }
 
@@ -1378,6 +1381,99 @@ td > .hint {
 
 .console-history li + li {
   margin-block-start: var(--space-2);
+}
+
+/* 8.6 to 8.8 Generate: the way to make the map, and the map preview. */
+.mono {
+  font-family: var(--font-mono);
+}
+
+.field textarea {
+  max-inline-size: 60ch;
+  padding-block: var(--space-2);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.version-fields,
+.map-section,
+.preview,
+.preview > section,
+.mode-option,
+.mode-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.version-fields {
+  gap: var(--space-4);
+}
+
+.mode-fields {
+  padding-inline-start: var(--space-3);
+}
+
+/* Only the chosen way shows its fields; hidden fields leave the tab order. Without :has() all three show and the server reads the chosen one. */
+.mode-option:has(> label > input[type="radio"]:not(:checked)) > .mode-fields {
+  display: none;
+}
+
+.pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.pictures figure {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.pictures img {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 32rem;
+  block-size: auto;
+  aspect-ratio: 1;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.message pre {
+  max-block-size: 12rem;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Shown only while the preview request runs (htmx adds the class). */
+.wait {
+  display: none;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.wait.htmx-request {
+  display: grid;
+}
+
+.wait progress {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-highlight);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait progress {
+    display: none;
+  }
 }
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
