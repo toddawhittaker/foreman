@@ -159,7 +159,7 @@ func (s *server) updatePage(sum world.Summary, target string, form CountdownForm
 	case !sum.Active:
 		p.Refusal = i18n.M("server.update.not_active")
 	case st.Operation != nil && !st.Operation.Done:
-		p.Refusal = i18n.M("server.update.busy")
+		p.Refusal = i18n.M("worlds.error.busy")
 	}
 	return p
 }
@@ -314,6 +314,6 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 		s.log.Error("roll back", "world", id, "error", err)
 		status, msg = http.StatusInternalServerError, i18n.M("server.rollback.unfinished")
 	}
-	p.Error = join(msg, i18n.M("server.rollback.undo_note", "label", before.Label))
+	p.Error = join(msg, i18n.M("server.rollback.undo_note", "label", snapshotLabelArg(before)))
 	s.page(w, r, status, u.Username, p)
 }

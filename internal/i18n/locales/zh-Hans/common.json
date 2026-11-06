@@ -42,5 +42,11 @@
   "common.error.code": "错误代码 {code}",
   "common.error.home": "前往首页",
   "common.form.unreadable": "Foreman 无法读取表单。请返回、重新加载页面后再试一次。",
-  "common.form.too_large": "表单太大。请返回、重新加载页面后再试一次。"
+  "common.form.too_large": "表单太大。请返回、重新加载页面后再试一次。",
+  "common.label.warning": "警告：",
+  "common.label.done": "完成：",
+  "common.label.note": "注意：",
+  "common.label.busy": "忙碌：",
+  "common.confirm.will": "此操作将：",
+  "common.list.sep": "、"
 }

@@ -31,7 +31,6 @@
   "worlds.col.size": "1af85190",
   "worlds.col.snapshot": "6ad27bd4",
   "worlds.col.taken": "c76e6790",
-  "worlds.confirm.will": "3f2cfbc9",
   "worlds.delete.cancel": "63b9edf5",
   "worlds.delete.final": "66caff6d",
   "worlds.delete.final_unknown": "ff631f19",
@@ -126,10 +125,6 @@
   "worlds.import.version.same_with": "ffd2765b",
   "worlds.import.version.typed": "a0e68e36",
   "worlds.import.version_unknown": "5a0022cc",
-  "worlds.label.busy": "d7b641fb",
-  "worlds.label.done": "02513648",
-  "worlds.label.note": "1150f054",
-  "worlds.label.warning": "63ea8236",
   "worlds.list.adds": "e9b8765d",
   "worlds.list.adds_unknown": "61e89c04",
   "worlds.list.all": "cd1fc28c",
@@ -140,10 +135,9 @@
   "worlds.list.import": "a80faf93",
   "worlds.list.server_link": "3aa1d09e",
   "worlds.list.switch": "39921a74",
-  "worlds.list.switch_to": "688897c4",
+  "worlds.list.switch_named": "f6d893e2",
   "worlds.list.switch_wait": "ac28bb1d",
   "worlds.never": "6300ef80",
-  "worlds.newer": "32ca64f5",
   "worlds.off": "ca7981b4",
   "worlds.on": "13001175",
   "worlds.restore.failed": "b3aebdb2",
@@ -289,6 +283,5 @@
   "worlds.world.switch.missing_image": "2e1059e0",
   "worlds.world.switch.text": "36d6e9e8",
   "worlds.world.unchecked": "35ea12ce",
-  "worlds.world.update": "e510921f",
-  "worlds.world.update_switch_first": "3786554b"
+  "worlds.world.update": "e510921f"
 }

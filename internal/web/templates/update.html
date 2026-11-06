@@ -30,13 +30,13 @@
       <p class="error" id="update-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
       {{- end}}
     </div>
-    <p>{{t "server.this_will"}}</p>
+    <p>{{t "common.confirm.will"}}</p>
     <ul>
       <li>{{t "server.update.download"}}</li>
       {{- if .Running}}
       <li>{{t "server.update.warn"}}</li>
       {{- end}}
-      <li>{{t "server.update.snapshot" "world" .World.Name}}</li>
+      <li>{{t "server.update.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_update")}}</li>
       <li>{{t "server.update.set"}}</li>
       {{- if .Running}}
       <li>{{t "server.update.start"}}</li>

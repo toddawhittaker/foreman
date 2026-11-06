@@ -10,7 +10,7 @@
 {{- with .Result}}
 {{- if .Imported}}
 <div class="message message--success" id="import-result" tabindex="-1" autofocus>
-  <p><strong>{{t "worlds.label.done"}}</strong> {{t "worlds.import.result.imported" "count" (len .Imported)}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{t "worlds.import.result.imported" "count" (len .Imported)}}</p>
   <ul>
     {{- range .Imported}}
     <li><code>{{.Folder}}</code>: <a href="{{$.Page.WorldPath .WorldID}}">{{t "worlds.import.result.open" "world" .WorldName}}</a></li>
@@ -23,7 +23,7 @@
 {{- end}}
 {{- with .Skipped}}
 <div class="message message--warning"{{if not $.Page.Result.Imported}} id="import-result" tabindex="-1" autofocus{{end}}>
-  <p><strong>{{t "worlds.label.warning"}}</strong> {{t "worlds.import.result.skipped" "count" (len .)}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "worlds.import.result.skipped" "count" (len .)}}</p>
   <ul>
     {{- range .}}
     <li><code>{{.Folder}}</code>: {{msg .Reason}}{{if .Alone}} <a href="{{.AlonePath}}">{{tHTML "worlds.import.result.alone" "folder" (code .Folder)}}</a>{{end}}</li>
@@ -143,7 +143,7 @@
     aria-describedby="{{.IDPrefix}}-space-age-hint {{.IDPrefix}}-space-age-warning{{if not .SpaceAgeError.IsZero}} {{.IDPrefix}}-space-age-error{{end}}"
     {{- if not .SpaceAgeError.IsZero}} aria-invalid="true"{{end}}{{if .SpaceAge}} checked{{end}}> {{t "worlds.import.space_age.label"}}</label>
   <p class="hint" id="{{.IDPrefix}}-space-age-hint">{{t "worlds.import.space_age.hint"}}</p>
-  <p class="hint" id="{{.IDPrefix}}-space-age-warning" data-warn-on="{{t "worlds.import.space_age_on_warning"}}" data-warn-off="{{t "worlds.import.space_age_off_warning"}}" data-warn-old="{{t "worlds.error.space_age_old"}}"{{if .SpaceAgeWarning.IsZero}} hidden{{end}}><strong>{{t "worlds.label.warning"}}</strong> <span>{{if not .SpaceAgeWarning.IsZero}}{{msg .SpaceAgeWarning}}{{end}}</span></p>
+  <p class="hint" id="{{.IDPrefix}}-space-age-warning" data-warn-on="{{t "worlds.import.space_age_on_warning"}}" data-warn-off="{{t "worlds.import.space_age_off_warning"}}" data-warn-old="{{t "worlds.error.space_age_old"}}"{{if .SpaceAgeWarning.IsZero}} hidden{{end}}><strong>{{t "common.label.warning"}}</strong> <span>{{if not .SpaceAgeWarning.IsZero}}{{msg .SpaceAgeWarning}}{{end}}</span></p>
   {{- if not .SpaceAgeError.IsZero}}
   <p class="error" id="{{$.IDPrefix}}-space-age-error"><strong>{{t "common.error.label"}}</strong> {{msg .SpaceAgeError}}</p>
   {{- end}}

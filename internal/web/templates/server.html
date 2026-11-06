@@ -82,7 +82,7 @@
   {{- end}}
 </dl>
 {{- if not .Reason.IsZero}}
-<p>{{msg .Reason}}</p>
+<p>{{msgHTML .Reason}}</p>
 {{- end}}
 {{- end}}
 
@@ -90,12 +90,12 @@
      players, the list is who was online when it began (SPEC 7.6). */}}
 {{define "server-players" -}}
 {{- if .PlayerTable}}{{with .PlayerTable}}
-<table>
+<table role="table">
   <caption>{{msg .Caption}}</caption>
-  <thead><tr><th scope="col">{{t "server.players.player"}}</th><th scope="col" class="num">{{t "server.players.online_for"}}</th></tr></thead>
-  <tbody>
+  <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.online_for"}}</th></tr></thead>
+  <tbody role="rowgroup">
     {{- range .Players}}
-    <tr><td>{{.Name}}</td><td class="num">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
+    <tr role="row"><td role="cell">{{.Name}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
     {{- end}}
   </tbody>
 </table>
@@ -122,13 +122,13 @@
   {{- with .Problems}}
   <ul>
     {{- range .}}
-    <li>{{msg .}}</li>
+    <li>{{msgHTML .}}</li>
     {{- end}}
   </ul>
   {{- end}}
   {{- if .Undo}}
-  <p>{{t "server.failure.undo_text"}}</p>
-  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button"}}</a></div>
+  <p>{{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
+  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
   {{- end}}
   {{- with .Anyway}}
   {{- if not .Advice.IsZero}}
@@ -141,7 +141,7 @@
     {{- if .Running}}
     <li>{{t "server.anyway.warn" "countdown" .Countdown}}</li>
     {{- end}}
-    <li>{{t "server.anyway.update.snapshot" "world" .World}}</li>
+    <li>{{t "server.update.snapshot" "world" .World "label" (m "worlds.snapshot.label.before_update")}}</li>
     <li>{{t "server.anyway.update.set" "version" .Version}}</li>
     {{- if .Running}}
     <li>{{t "server.anyway.update.start" "version" .Version}}</li>
@@ -153,15 +153,15 @@
     {{- if .Running}}
     <li>{{t "server.anyway.switch.warn" "countdown" .Countdown "from" .From}}</li>
     {{- end}}
-    <li>{{t "server.anyway.switch.snapshots" "from" .From "world" .World}}</li>
+    <li>{{t "server.anyway.switch.snapshots" "from" .From "world" .World "label" (m "worlds.snapshot.label.before_switch") "anyway_label" (m "worlds.snapshot.label.before_start_anyway")}}</li>
     <li>{{t "server.anyway.switch.present" "world" .World}}</li>
     <li>{{t "server.anyway.switch.start" "world" .World}}</li>
-    <li>{{t "server.anyway.switch.undo" "from" .From}}</li>
+    <li>{{t "server.switch.undo" "from" .From}}</li>
     {{- else}}
     {{- if and .Restart .Running}}
     <li>{{t "server.anyway.warn" "countdown" .Countdown}}</li>
     {{- end}}
-    <li>{{t "server.anyway.start.snapshot" "world" .World}}</li>
+    <li>{{t "server.anyway.start.snapshot" "world" .World "label" (m "worlds.snapshot.label.before_start_anyway")}}</li>
     <li>{{t "server.anyway.start.start"}}</li>
     <li>{{t "server.anyway.start.undo"}}</li>
     {{- end}}
@@ -191,7 +191,7 @@
      crash loop the same box offers the ways to recover (SPEC 17.9). */}}
 {{define "server-crash" -}}
 <div class="message message--warning">
-  <p><strong>{{t "server.label.warning"}}</strong> {{msgHTML .CrashMessage}}
+  <p><strong>{{t "common.label.warning"}}</strong> {{msgHTML .CrashMessage}}
     {{- if .Status.Crash.IsZero}} {{t "server.crash.no_reason"}}{{end}}</p>
   {{- if .CrashLooping}}
   <p>{{if or .RecoverRestore .RecoverSwitch}}{{t "server.crash.fix_or" "world" .World.Name}}{{else}}{{t "server.crash.fix" "world" .World.Name}}{{end}}</p>
@@ -245,7 +245,7 @@
 {{- end}}
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1"{{if $.FocusResult}} autofocus{{end}}>
-  <p><strong>{{t "server.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (momentUTC $.DoneAt)}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (momentUTC $.DoneAt)}}</p>
   <div class="actions">
     {{- with $.Undo}}
     <a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a>
@@ -266,7 +266,7 @@
 {{- end}}
 {{- if not .Notice.IsZero}}
 <div class="message message--warning">
-  <p><strong>{{t "server.label.warning"}}</strong> {{msg .Notice}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{msg .Notice}}</p>
 </div>
 {{- end}}
 {{- with .LoneSwitchBack}}
@@ -281,17 +281,17 @@
 {{- end}}
 {{- if not .CrashLooping}}{{if not .StartBlocked.IsZero}}
 <div class="message message--note">
-  <p><strong>{{t "server.label.note"}}</strong> {{msg .StartBlocked}}</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .StartBlocked}}</p>
 </div>
 {{- end}}{{end}}
 {{- if not .ImageNote.IsZero}}
 <div class="message message--note">
-  <p><strong>{{t "server.label.note"}}</strong> {{msg .ImageNote}}</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .ImageNote}}</p>
 </div>
 {{- end}}
 {{- if not .Downloaded.IsZero}}
 <div class="message message--success">
-  <p><strong>{{t "server.label.done"}}</strong> {{msg .Downloaded}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Downloaded}}</p>
 </div>
 {{- end}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload .CanSnapshot}}
@@ -312,7 +312,7 @@
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
   {{- end}}
   {{- if .CanSnapshot}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "server.action.snapshot"}}</button></form>
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanForceStop}}
   {{- /* A plain link: it weighs less than Stop and Restart (DESIGN 6). */}}

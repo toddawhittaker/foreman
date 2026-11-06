@@ -28,7 +28,7 @@ func (p ServerPage) RecoverRestore() *Offer {
 	if !p.CrashLooping() || sn == nil {
 		return nil
 	}
-	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", sn.Label, "time", momentUTC(sn.TakenAt)), At: sn.TakenAt}
+	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", snapshotLabelArg(*sn), "time", momentUTC(sn.TakenAt)), At: sn.TakenAt}
 }
 
 // CrashMessage is the crash box's sentence (SPEC 8.7).
@@ -165,13 +165,14 @@ func (p ServerPage) Done() i18n.Msg {
 	}
 	switch p.Result.Action {
 	case game.ActionRestore:
-		return i18n.M("server.done.restore")
+		return i18n.M("server.done.restore", "label", i18n.M("worlds.snapshot.label.before_restore"))
 	case game.AuditUpdate:
-		return i18n.M("server.done.update")
+		return i18n.M("server.done.update", "label", i18n.M("worlds.snapshot.label.before_update"))
 	case game.AuditRollback:
-		return i18n.M("server.done.rollback")
+		return i18n.M("server.done.rollback", "label", i18n.M("worlds.snapshot.label.before_restore"))
 	case game.AuditSwitch:
-		return i18n.M("server.done.switch", "from", p.name(p.Result.From), "to", p.World.Name)
+		return i18n.M("server.done.switch", "from", p.name(p.Result.From), "to", p.World.Name,
+			"label", i18n.M("worlds.snapshot.label.before_switch"))
 	case actionSnapshot:
 		return i18n.M("server.done.snapshot", "label", p.Result.Taken, "world", p.World.Name)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -356,7 +357,7 @@ func problemMsg(p world.Problem) i18n.Msg {
 	case world.ProblemSaveUnsupported:
 		return i18n.M("server.problem.save_unsupported", "save", p.Save, "save_version", p.SaveVersion)
 	case world.ProblemSaveUnreadable:
-		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", p.Detail)
+		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", saveReadDetail(p))
 	case world.ProblemModListSpaceAge:
 		if p.SpaceAge {
 			return i18n.M("server.problem.modlist_space_age_on", "mods", names)
@@ -386,6 +387,26 @@ func problemMsg(p world.Problem) i18n.Msg {
 
 // modVersionMsg words mods made for another Factorio: one sentence per
 // version, then the advice.
+// saveReadDetail is why a save could not be read, in the page's language
+// for the reasons savefile names; any other cause is shown as the English
+// it is (SPEC 22.3).
+func saveReadDetail(p world.Problem) any {
+	for _, r := range []struct {
+		err error
+		msg i18n.Msg
+	}{
+		{savefile.ErrNotZip, i18n.M("server.problem.save_detail.not_zip")},
+		{savefile.ErrNoLevelData, i18n.M("server.problem.save_detail.no_level_data")},
+		{savefile.ErrFormat, i18n.M("server.problem.save_detail.format")},
+		{savefile.ErrTruncated, i18n.M("server.problem.save_detail.truncated")},
+	} {
+		if errors.Is(p.Cause, r.err) {
+			return r.msg
+		}
+	}
+	return i18n.Game(p.Detail)
+}
+
 func modVersionMsg(p world.Problem) i18n.Msg {
 	if len(p.Groups) == 0 {
 		return i18n.M("server.problem.other", "text", p.Text)
@@ -522,7 +543,7 @@ func unknownMsg(r game.UnknownReason) i18n.Msg {
 	case game.UnknownInspect:
 		return i18n.M("server.unknown.inspect")
 	case game.UnknownPassword:
-		return i18n.M("server.unknown.password", "detail", r.Detail)
+		return i18n.M("server.unknown.password", "detail", i18n.Game(r.Detail))
 	case game.UnknownAsking:
 		return i18n.M("server.unknown.asking")
 	case game.UnknownPaused:

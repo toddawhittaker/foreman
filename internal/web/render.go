@@ -196,8 +196,9 @@ func (p ErrorPage) Explanation() i18n.Msg {
 type view struct {
 	User string
 	Page Page
-	// Return is the page the language menu comes back to: this page's
-	// address for a GET, else empty, which means home.
+	// Return is the page the language menu comes back to: this request's
+	// address when languageReturn allows it, else empty, which means home.
+	// After a form post that is the form's page, re-shown.
 	Return string
 }
 
@@ -273,6 +274,9 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"signedOutPath": func() string { return PathSignedOut },
 		"languagePath":  func() string { return PathLanguage },
 		"languages":     func() []i18n.Language { return i18n.Languages },
+		// english is a key's English, for a word shown in English beside
+		// the page's language, as the language menu's label is.
+		"english": func(key string) string { return i18n.English.T(key) },
 	}
 }
 
@@ -288,11 +292,14 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"tHTML":  loc.HTML,
 		"link":   loc.Link,
 		"code":   i18n.Code,
-		"codes":  i18n.Codes,
+		"codes":  loc.Codes,
 		"nowrap": i18n.NoWrap,
 		"strong": i18n.Strong,
 		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
+		// m makes a Msg to fill a placeholder, such as a snapshot label:
+		// {{t "key" "label" (m "worlds.snapshot.label.before_restore")}}.
+		"m": i18n.M,
 		// msg renders an i18n.Msg from a view model; msgHTML one whose
 		// arguments hold fragments.
 		"msg":      loc.Format,
@@ -410,10 +417,7 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p}
-	if req.Method == http.MethodGet {
-		v.Return = req.URL.RequestURI()
-	}
+	v := view{User: user, Page: p, Return: languageReturn(req.URL.RequestURI())}
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)

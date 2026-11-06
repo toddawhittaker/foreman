@@ -7,34 +7,34 @@
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{tHTML "worlds.saves.uploaded" "file" (code .Uploaded)}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{tHTML "worlds.saves.uploaded" "file" (code .Uploaded)}}</p>
 </div>
 {{- end}}
 {{- if .Chosen}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{if .LoadSave}}{{tHTML "worlds.saves.chosen" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.chosen_newest"}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if .LoadSave}}{{tHTML "worlds.saves.chosen" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.chosen_newest"}}{{end}}</p>
 </div>
 {{- end}}
 {{- if .Newer}}
 <div class="message message--note">
-  <p><strong>{{t "worlds.label.note"}}</strong> {{t "worlds.saves.newer"}}</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.saves.newer"}}</p>
 </div>
 {{- end}}
 
 <section class="panel" aria-labelledby="saves-heading">
   <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
   {{- if .Rows}}
-  <table>
+  <table role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
-    <thead>
-      <tr><th scope="col">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num">{{t "worlds.col.size"}}</th><th scope="col">{{t "worlds.saves.col.saved"}}</th></tr>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th></tr>
     </thead>
-    <tbody>
+    <tbody role="rowgroup">
       {{- range .Rows}}
-      <tr>
-        <td><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</td>
-        <td class="num">{{bytes .Size}}</td>
-        <td>{{template "when" .Saved}}</td>
+      <tr role="row">
+        <td role="cell"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</td>
+        <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
+        <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
       </tr>
       {{- end}}
     </tbody>
@@ -73,7 +73,7 @@
     <p>{{t "worlds.saves.load.text"}}</p>
     {{- if .LoadMissing}}
     <div class="message message--note">
-      <p><strong>{{t "worlds.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
+      <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
     </div>
     {{- end}}
     {{- $invalid := not .LoadError.IsZero}}

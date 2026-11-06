@@ -275,7 +275,7 @@ func (s *server) handleServerSnapshot(w http.ResponseWriter, r *http.Request, u 
 	s.beginTo(w, r, PathServerResult, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		snap, err := s.game.Snapshot(ctx, sum.ID, by, defaultLabel)
 		res := s.finish(sum.ID, actionSnapshot, err)
-		res.Taken = snap.Label
+		res.Taken = snapshotLabelArg(snap)
 		return res
 	})
 }

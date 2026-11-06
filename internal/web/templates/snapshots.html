@@ -6,7 +6,7 @@
 <h1>{{t "worlds.snapshots.title" "world" .WorldName}}</h1>
 {{- if not .Done.IsZero}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{msg .Done}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- if $.Page.DoneSnap}}
   <div class="actions"><a href="#restore-{{$.Page.DoneSnap}}">{{t "worlds.snapshots.go_to"}}</a></div>
   {{- end}}
@@ -14,7 +14,7 @@
 {{- end}}
 {{- if .Deleted}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}
@@ -32,7 +32,7 @@
   <p class="hint">{{t "worlds.snapshots.adds_hint"}}</p>
   {{- if .Copied}}
   <div class="message message--note">
-    <p><strong>{{t "worlds.label.note"}}</strong> {{t "worlds.snapshots.copied"}}</p>
+    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.snapshots.copied"}}</p>
   </div>
   {{- end}}
 </section>

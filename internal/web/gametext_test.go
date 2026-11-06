@@ -11,6 +11,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -234,5 +235,31 @@ func TestUnknownReasonWords(t *testing.T) {
 	}
 	if !unknownMsg(game.UnknownReason{}).IsZero() {
 		t.Error("a known state has a reason")
+	}
+}
+
+// An English technical detail inside a translated sentence is marked
+// lang="en", so a screen reader reads it with English rules (SPEC 22.3).
+func TestEnglishDetailsAreMarkedEnglish(t *testing.T) {
+	de := i18n.Locale("de")
+	for name, m := range map[string]i18n.Msg{
+		"save unreadable": problemMsg(world.Problem{Kind: world.ProblemSaveUnreadable, Save: "a.zip", Detail: "zip: not a valid zip file"}),
+		"password":        unknownMsg(game.UnknownReason{Kind: game.UnknownPassword, Detail: "zip: not a valid zip file"}),
+	} {
+		if got := string(de.FormatHTML(m)); !strings.Contains(got, `<span lang="en">zip: not a valid zip file</span>`) {
+			t.Errorf("%s: detail not marked English: %s", name, got)
+		}
+	}
+}
+
+// A save-read reason savefile names is said in the page's language, even
+// when wrapped; one it does not name stays English, marked (SPEC 22.3).
+func TestSaveReadDetailIsTranslated(t *testing.T) {
+	de := i18n.Locale("de")
+	for _, detail := range []error{savefile.ErrNotZip, fmt.Errorf("open a.zip: %w", savefile.ErrTruncated)} {
+		got := string(de.FormatHTML(problemMsg(world.Problem{Kind: world.ProblemSaveUnreadable, Save: "a.zip", Detail: detail.Error(), Cause: detail})))
+		if strings.Contains(got, "the save") || strings.Contains(got, `lang="en"`) {
+			t.Errorf("%q not translated: %s", detail, got)
+		}
 	}
 }

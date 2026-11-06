@@ -76,8 +76,9 @@ type actionResult struct {
 	// Target is the world a switch was asked to go to, and From the world
 	// it left.
 	Target, From string
-	// Taken is the label of the snapshot a Server page snapshot took.
-	Taken string
+	// Taken is the label of the snapshot a Server page snapshot took, as
+	// snapshotLabelArg gives it.
+	Taken any
 	// Version is the game version an update was asked to go to.
 	Version string
 	// At is when the action ended.

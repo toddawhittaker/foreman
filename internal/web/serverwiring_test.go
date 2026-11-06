@@ -83,7 +83,7 @@ func TestSnapshotAfterCancelNeverShowsTheCancelledMessage(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(id), "alice"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage("<td>alice</td>")
+	g.waitPage(`<td role="cell">alice</td>`)
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))
 	g.waitPage("Cancel stop")
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))
@@ -115,7 +115,7 @@ func TestSwitchPanelFollowsTheOperation(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(a), "alice"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage("<td>alice</td>")
+	g.waitPage(`<td role="cell">alice</td>`)
 	link := `id="act-switch-` + b + `">Switch to Bravo</a>`
 	g.wantContains("idle page", g.get(PathServer), link)
 

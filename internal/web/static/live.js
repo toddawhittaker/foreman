@@ -35,7 +35,7 @@
       note.id = "live-lost";
       const p = document.createElement("p");
       const word = document.createElement("strong");
-      word.textContent = t("js.live.note");
+      word.textContent = t("common.label.note");
       const stopped = t("js.live.stopped");
       p.append(word, " " + stopped);
       note.append(p);

@@ -3,8 +3,8 @@ package web
 // The catalogue keys the page scripts read from the #i18n block.
 func init() {
 	jsKeys = []string{
-		"js.countdown.ending",
-		"js.countdown.left",
+		"server.step.ending_now",
+		"server.step.seconds_left",
 		"js.import.many",
 		"js.import.same",
 		"js.import.same.unreadable",
@@ -12,7 +12,7 @@ func init() {
 		"js.import.suggested",
 		"js.import.warning",
 		"js.live.moved",
-		"js.live.note",
+		"common.label.note",
 		"js.live.stopped",
 	}
 }

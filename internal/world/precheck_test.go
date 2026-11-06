@@ -2,6 +2,7 @@ package world
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,6 +266,10 @@ func TestPreCheckUnreadableSave(t *testing.T) {
 	}
 	if p.SaveVersion != (savefile.Version{}) {
 		t.Errorf("an unreadable save has version %s", p.SaveVersion)
+	}
+	// The cause stays on the problem, so a page can name it in any language.
+	if !errors.Is(p.Problems[0].Cause, savefile.ErrNotZip) {
+		t.Errorf("cause %v, want ErrNotZip", p.Problems[0].Cause)
 	}
 }
 

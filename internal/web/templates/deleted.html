@@ -8,18 +8,18 @@
 {{- range .Worlds}}
 <section aria-labelledby="world-{{.ID}}">
   <h2 id="world-{{.ID}}">{{.Name}}</h2>
-  <table>
+  <table role="table">
     <caption>{{t "worlds.deleted.caption" "world" .Name}}</caption>
-    <thead>
-      <tr><th scope="col">{{t "worlds.col.snapshot"}}</th><th scope="col">{{t "worlds.col.taken"}}</th><th scope="col" class="num">{{t "worlds.col.size"}}</th></tr>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.col.snapshot"}}</th><th scope="col" role="columnheader">{{t "worlds.col.taken"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th></tr>
     </thead>
-    <tbody>
+    <tbody role="rowgroup">
       {{- $id := .ID}}
       {{- range .Snapshots}}
-      <tr>
-        <td>{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<br><a class="button" href="{{$.Page.RestorePath $id .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{t "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (utcSeconds .TakenAt)}}</span></a></td>
-        <td>{{template "when" .TakenAt}}</td>
-        <td class="num">{{bytes .Size}}</td>
+      <tr role="row">
+        <td role="cell">{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<br><a class="button" href="{{$.Page.RestorePath $id .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{t "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (utcSeconds .TakenAt)}}</span></a></td>
+        <td role="cell" data-label="{{t "worlds.col.taken"}}">{{template "when" .TakenAt}}</td>
+        <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
       </tr>
       {{- end}}
     </tbody>

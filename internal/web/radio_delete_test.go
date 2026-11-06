@@ -166,7 +166,7 @@ func TestSnapshotReasonShownOnlyWhenItAddsWords(t *testing.T) {
 		open, label string
 	}{
 		{snapshotsCase(), "<span>", `<span class="visually-hidden">`},
-		{DeletedPage{Worlds: []world.DeletedWorld{{ID: "base", Name: "Base", Snapshots: snapshotsCase().Snapshots}}}, "<td>", "<br><a"},
+		{DeletedPage{Worlds: []world.DeletedWorld{{ID: "base", Name: "Base", Snapshots: snapshotsCase().Snapshots}}}, `<td role="cell">`, "<br><a"},
 	} {
 		_, body := render(t, r, pageCase{status: 200, page: c.page})
 		// The case has a "Manual" snapshot labelled with a long name, and

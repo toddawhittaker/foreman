@@ -50,5 +50,11 @@
   "common.error.code": "Kód chyby {code}",
   "common.error.home": "Přejít na úvodní stránku",
   "common.form.unreadable": "Foreman nemohl přečíst formulář. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu.",
-  "common.form.too_large": "Formulář byl příliš velký. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu."
+  "common.form.too_large": "Formulář byl příliš velký. Je třeba se vrátit, načíst stránku znovu a zkusit to znovu.",
+  "common.label.warning": "Pozor:",
+  "common.label.done": "Hotovo:",
+  "common.label.note": "Poznámka:",
+  "common.label.busy": "Obsazeno:",
+  "common.confirm.will": "Co se stane:",
+  "common.list.sep": ", "
 }

@@ -16,7 +16,7 @@
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">{{t "worlds.delete.question" "world" .World.Name}}</h2>
-  <p>{{t "worlds.confirm.will"}}</p>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{if .World.SizeUnknown}}{{tHTML "worlds.delete.folder_unknown" "folder" (code (printf "worlds/%s" .World.ID))}}{{else}}{{tHTML "worlds.delete.folder" "folder" (code (printf "worlds/%s" .World.ID)) "size" (bytes .World.DiskBytes)}}{{end}}</li>
     <li>{{t "worlds.delete.keeps"}}</li>

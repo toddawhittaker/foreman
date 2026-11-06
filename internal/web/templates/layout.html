@@ -37,7 +37,7 @@
 </main>
 <footer class="site">
   <form method="post" action="{{languagePath}}" class="language">
-    <label for="language">{{t "common.language.label"}}</label>
+    <label for="language">{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</label>
     <select id="language" name="lang">
       {{- range languages}}
       <option value="{{.Tag}}" lang="{{.Tag}}"{{if eq .Tag.String lang}} selected{{end}}>{{.Name}}</option>

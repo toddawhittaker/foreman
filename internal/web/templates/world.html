@@ -7,30 +7,30 @@
 {{- if .World.Unreadable}}
 <p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>
 {{- else if .World.Newer}}
-<p>{{t "worlds.newer"}}</p>
+<p>{{t "worlds.error.newer_format"}}</p>
 {{- end}}
 {{- if not .Done.IsZero}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{msg .Done}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
 </div>
 {{- end}}
 {{- if not .Warning.IsZero}}
 <div class="message message--warning">
-  <p><strong>{{t "worlds.label.warning"}}</strong> {{msg .Warning}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{msg .Warning}}</p>
 </div>
 {{- end}}
 {{- if eq .Download "running"}}
 <div class="message message--note" id="image-download">
-  <p><strong>{{t "worlds.label.note"}}</strong> {{tHTML "worlds.world.download_running" "version" (code .World.GameVersion)}}</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.world.download_running" "version" (code .World.GameVersion)}}</p>
 </div>
 {{- else if eq .Download "failed"}}
 <div class="message message--warning" id="image-download">
-  <p><strong>{{t "worlds.label.warning"}}</strong> {{tHTML "worlds.world.download_failed" "version" (code .World.GameVersion)}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "worlds.world.download_failed" "version" (code .World.GameVersion)}}</p>
 </div>
 {{- end}}
 {{- if not .Busy.IsZero}}
 <div class="message message--note">
-  <p><strong>{{t "worlds.label.note"}}</strong> {{msg .Busy}}</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
   <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
 </div>
 {{- end}}
@@ -40,7 +40,7 @@
   <p>{{t "worlds.world.switch.text"}}</p>
   {{- with .MissingImage}}
   <div class="message message--note">
-    <p><strong>{{t "worlds.label.note"}}</strong> {{tHTML "worlds.world.switch.missing_image" "image" (code .)}}</p>
+    <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.world.switch.missing_image" "image" (code .)}}</p>
   </div>
   {{- end}}
   <div class="actions">
@@ -84,7 +84,7 @@
     <a href="{{.UpdatePath}}" class="button" id="act-update">{{t "worlds.world.update"}}</a>
   </div>
   {{- else}}
-  <p>{{t "worlds.world.update_switch_first"}}</p>
+  <p>{{t "server.update.not_active"}}</p>
   {{- end}}
   {{- with .Rollback}}
   <p>{{tHTML "worlds.world.rollback_text" "label" (snapLabel .Snapshot) "when" (momentUTC .Snapshot.TakenAt) "version" (code .Version)}}</p>

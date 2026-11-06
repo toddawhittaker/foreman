@@ -9,14 +9,14 @@
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
   <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>
   {{- if $.Page.Undo}}
-  <p>{{t "server.failure.undo_text"}}</p>
-  <div class="actions"><a href="{{$.Page.UndoPath}}">{{t "server.restore.undo_link"}}</a></div>
+  <p>{{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
+  <div class="actions"><a href="{{$.Page.UndoPath}}">{{t "server.restore.undo_link" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
   {{- end}}
 </div>
 {{- end}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" .Snapshot.Label "time" (momentUTC .Snapshot.TakenAt)}}</h2>
-  <p>{{t "server.this_will"}}</p>
+  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}</h2>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .Deleted}}
     <li>{{tHTML "server.restore.recreate" "folder" (code (print "worlds/" .WorldID)) "count" (len .Snapshot.Files) "size" (bytes .Snapshot.Size)}}</li>
@@ -24,15 +24,15 @@
     {{- else}}
     {{- if .Running}}
     <li>{{t "server.restore.stop_first"}}</li>
-    <li>{{t "server.restore.then_snapshot" "world" .WorldName}}</li>
+    <li>{{t "server.restore.then_snapshot" "world" .WorldName "label" (m "worlds.snapshot.label.before_restore")}}</li>
     {{- else}}
-    <li>{{t "server.restore.first_snapshot" "world" .WorldName}}</li>
+    <li>{{t "server.restore.first_snapshot" "world" .WorldName "label" (m "worlds.snapshot.label.before_restore")}}</li>
     {{- end}}
     <li>{{tHTML "server.restore.replace" "folder" (code (print "worlds/" .WorldID)) "count" (len .Snapshot.Files) "size" (bytes .Snapshot.Size)}}</li>
     {{- if .Running}}
     <li>{{t "server.restore.start"}}</li>
     {{- end}}
-    <li>{{t "server.restore.keep_undo"}}</li>
+    <li>{{t "server.restore.keep_undo" "label" (m "worlds.snapshot.label.before_restore")}}</li>
     {{- end}}
   </ul>
   <form method="post" action="{{.Path}}" novalidate>

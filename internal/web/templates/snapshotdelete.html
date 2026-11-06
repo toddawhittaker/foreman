@@ -13,10 +13,10 @@
   <h2 id="confirm-heading" tabindex="-1">{{tHTML "worlds.snapshots.delete.question" "label" (snapLabel .Snapshot) "world" .WorldName "when" (momentUTCSeconds .Snapshot.TakenAt)}}</h2>
   {{- with .Rollback}}
   <div class="message message--warning">
-    <p><strong>{{t "worlds.label.warning"}}</strong> {{t "worlds.snapshots.delete.rollback" "world" $.Page.WorldName "version" .}}</p>
+    <p><strong>{{t "common.label.warning"}}</strong> {{t "worlds.snapshots.delete.rollback" "world" $.Page.WorldName "version" .}}</p>
   </div>
   {{- end}}
-  <p>{{t "worlds.confirm.will"}}</p>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{tHTML "worlds.snapshots.delete.folder" "folder" (code (printf "snapshots/%s/%s" .WorldID .Snapshot.Name))}}</li>
     <li>{{t "worlds.snapshots.delete.frees" "size" (bytes .Frees)}}</li>

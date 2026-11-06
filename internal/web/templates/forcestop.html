@@ -6,7 +6,7 @@
 <h1>{{t "server.force.title" "world" .World.Name}}</h1>
 <section class="confirm" aria-labelledby="confirm-heading">
   <h2 id="confirm-heading" tabindex="-1">{{t "server.force.heading" "world" .World.Name}}</h2>
-  <p>{{t "server.this_will"}}</p>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "server.force.at_once"}}</li>
     <li>{{if not .World.LastPlayed.IsZero}}{{tHTML "server.force.lose_since" "time" (momentUTC .World.LastPlayed)}}{{else}}{{t "server.force.lose"}}{{end}} {{msg .Online.Disconnected}}</li>

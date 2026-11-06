@@ -116,7 +116,7 @@ func pageCases() []pageCase {
 		{"error 403", "todd", 403, ErrorPage{Status: 403}},
 		{"error 404", "", 404, ErrorPage{Status: 404}},
 		{"error 500", "", 500, ErrorPage{Status: 500}},
-		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: i18n.Raw("Choose a file that ends in .zip.")}},
+		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: i18n.M("worlds.upload.bad_name")}},
 		{"server no world", "todd", 200, ServerPage{}},
 		{"server running", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
 			p.Status.Uptime, p.Status.StartedAt = 3*time.Hour+12*time.Minute, time.Date(2026, 11, 3, 11, 0, 0, 0, time.UTC)
@@ -419,9 +419,9 @@ func TestErrorSummary(t *testing.T) {
 		heading string
 		links   []string
 	}{
-		{SignInPage{PasswordError: i18n.Raw("x")}, "Fix this problem to continue", []string{"password"}},
-		{SignInPage{UsernameError: i18n.Raw("a"), PasswordError: i18n.Raw("b")}, "Fix 2 problems to continue", []string{"username", "password"}},
-		{SetupPage{UsernameError: i18n.Raw("a"), PasswordError: i18n.Raw("b"), ConfirmError: i18n.Raw("c")}, "Fix 3 problems to continue", []string{"username", "password", "confirm"}},
+		{SignInPage{PasswordError: i18n.M("accounts.username.missing")}, "Fix this problem to continue", []string{"password"}},
+		{SignInPage{UsernameError: i18n.M("accounts.username.missing"), PasswordError: i18n.M("accounts.setup.confirm.mismatch")}, "Fix 2 problems to continue", []string{"username", "password"}},
+		{SetupPage{UsernameError: i18n.M("accounts.username.missing"), PasswordError: i18n.M("accounts.setup.confirm.mismatch"), ConfirmError: i18n.M("accounts.setup.confirm.mismatch")}, "Fix 3 problems to continue", []string{"username", "password", "confirm"}},
 	}
 	for _, c := range cases {
 		_, body := render(t, r, pageCase{page: c.page, status: 400})
@@ -457,11 +457,11 @@ func TestErrorTitleAndSummaryName(t *testing.T) {
 		title string
 	}{
 		{SignInPage{}, "Sign in – Foreman"},
-		{SignInPage{PasswordError: i18n.Raw("x")}, "Error: Sign in – Foreman"},
+		{SignInPage{PasswordError: i18n.M("accounts.username.missing")}, "Error: Sign in – Foreman"},
 		{SignInPage{RateLimited: true}, "Error: Sign in – Foreman"},
 		{SignInPage{Busy: true}, "Error: Sign in – Foreman"},
 		{SetupPage{}, "Create the first admin account – Foreman"},
-		{SetupPage{ConfirmError: i18n.Raw("x")}, "Error: Create the first admin account – Foreman"},
+		{SetupPage{ConfirmError: i18n.M("accounts.username.missing")}, "Error: Create the first admin account – Foreman"},
 		{ErrorPage{Status: 404}, "Page not found – Foreman"},
 	}
 	for _, c := range cases {
@@ -507,7 +507,7 @@ func TestSignInRateLimit(t *testing.T) {
 	}
 
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 429, page: SignInPage{RateLimited: true, PasswordError: i18n.Raw("x")}})
+	_, body := render(t, r, pageCase{status: 429, page: SignInPage{RateLimited: true, PasswordError: i18n.M("accounts.username.missing")}})
 	if !strings.Contains(body, "Too many failed sign-ins. Wait a few minutes, then try again.") {
 		t.Error("no rate-limit message")
 	}
@@ -534,7 +534,7 @@ func TestSignInBusyIsFormLevel(t *testing.T) {
 
 func TestSignInNeverEchoesPassword(t *testing.T) {
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 401, page: SignInPage{Username: "todd", PasswordError: i18n.Raw("x")}})
+	_, body := render(t, r, pageCase{status: 401, page: SignInPage{Username: "todd", PasswordError: i18n.M("accounts.username.missing")}})
 	for _, in := range reInput.FindAllString(body, -1) {
 		if strings.Contains(in, `type="password"`) && strings.Contains(in, "value=") {
 			t.Errorf("password input carries a value: %s", in)
@@ -552,7 +552,7 @@ func TestErrorPageCopy(t *testing.T) {
 			t.Errorf("status %d has no copy", s)
 		}
 	}
-	if got := i18n.English.Format((ErrorPage{Status: 403, Detail: i18n.Raw("Ask for the admins group.")}).Explanation()); got != "Ask for the admins group." {
+	if got := i18n.English.Format((ErrorPage{Status: 403, Detail: i18n.M("worlds.upload.bad_name")}).Explanation()); got != i18n.English.T("worlds.upload.bad_name") {
 		t.Errorf("Detail not used: %q", got)
 	}
 }
