@@ -6,9 +6,9 @@
 <h1>{{t "worlds.deleted.title"}}</h1>
 <p>{{t "worlds.deleted.intro"}}</p>
 {{- range .Worlds}}
-<section aria-labelledby="world-{{.ID}}">
+<section class="panel" aria-labelledby="world-{{.ID}}">
   <h2 id="world-{{.ID}}">{{.Name}}</h2>
-  <table role="table">
+  <table class="snapshot-list" role="table">
     <caption>{{t "worlds.deleted.caption" "world" .Name}}</caption>
     <thead role="rowgroup">
       <tr role="row"><th scope="col" role="columnheader">{{t "worlds.col.snapshot"}}</th><th scope="col" role="columnheader">{{t "worlds.col.taken"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th></tr>
