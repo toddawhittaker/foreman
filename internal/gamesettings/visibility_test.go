@@ -53,7 +53,7 @@ func TestSetVisibility(t *testing.T) {
 	if v, ok := ReadVisibility(got); !ok || v != VisibilityHidden {
 		t.Errorf("appended: read back %q %v from %s", v, ok, got)
 	}
-	if errs := Validate(FileServerSettings, Line21, got); len(errs) != 0 {
+	if errs := withoutMissing(Validate(FileServerSettings, Line21, got)); len(errs) != 0 {
 		t.Errorf("result does not validate: %+v", errs)
 	}
 }

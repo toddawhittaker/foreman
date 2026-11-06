@@ -149,13 +149,15 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte) ([]b
 	var fields []gamesettings.Field
 	set := func(key string, raw []byte) { fields = append(fields, gamesettings.Field{Key: key, JSON: raw}) }
 
+	// The game refuses a file without name, description and visibility, so a
+	// file that lacks one gets it whether or not the field changed (SPEC 11.2).
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		errs.NameError = i18n.M("settings.name.empty")
-	} else if name != cur.Name {
+	} else if name != cur.Name || !gamesettings.HasKey(old, "name") {
 		set("name", jsonString(name))
 	}
-	if in.Description != cur.Description {
+	if in.Description != cur.Description || !gamesettings.HasKey(old, "description") {
 		set("description", jsonString(in.Description))
 	}
 	numbers := []struct {
@@ -198,7 +200,18 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte) ([]b
 	if err != nil {
 		return nil, errs, err
 	}
-	if v := gamesettings.Visibility(in.Visibility); v != cur.Visibility && slices.Contains(gamesettings.FormVisibilities, v) {
+	v := gamesettings.Visibility(in.Visibility)
+	if !slices.Contains(gamesettings.FormVisibilities, v) {
+		v = ""
+	}
+	write := v != "" && v != cur.Visibility
+	if _, ok := gamesettings.ReadVisibility(out); !ok {
+		write = true
+		if v == "" {
+			v = gamesettings.VisibilityHidden
+		}
+	}
+	if write {
 		out, err = gamesettings.SetVisibility(out, v)
 		if err != nil {
 			return nil, errs, err
@@ -208,7 +221,8 @@ func applyForm(old []byte, cur serverValues, in postedForm, carried []byte) ([]b
 }
 
 // carriedPassword is the game_password value of an earlier edit's text, as
-// raw JSON, or nil when it holds none that is set.
+// raw JSON, or nil when that text has no game_password key. An empty value
+// is returned as it is, so a removal carries forward.
 func carriedPassword(b []byte) []byte {
 	var raw map[string]json.RawMessage
 	if json.Unmarshal(b, &raw) != nil {

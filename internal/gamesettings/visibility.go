@@ -67,3 +67,12 @@ func SetVisibility(b []byte, v Visibility) ([]byte, error) {
 	}
 	return setMember(b, root, "visibility", raw), nil
 }
+
+// HasKey reports whether b is one JSON object with a top-level key.
+func HasKey(b []byte, key string) bool {
+	if len(b) > MaxBytes {
+		return false
+	}
+	root, fe := parse(b)
+	return fe == nil && lastMember(root, key) != nil
+}

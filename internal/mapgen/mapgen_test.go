@@ -37,8 +37,8 @@ func TestEveryLineHasData(t *testing.T) {
 		if len(Presets(l)) == 0 || len(Planets(l, true)) == 0 || len(Controls(l, "nauvis")) == 0 {
 			t.Errorf("line %s is missing data", l)
 		}
-		if DefaultMapGen(l) == nil || DefaultMapSettings(l) == nil {
-			t.Errorf("line %s is missing its default settings files", l)
+		if DefaultMapGen(l) == nil {
+			t.Errorf("line %s is missing its default map-gen file", l)
 		}
 	}
 }
@@ -46,7 +46,7 @@ func TestEveryLineHasData(t *testing.T) {
 func TestUnknownLineHasNoData(t *testing.T) {
 	for _, l := range []string{"", "2.2", "1.0", "2.0.77", "../2.1"} {
 		if Presets(l) != nil || Planets(l, true) != nil || Controls(l, "nauvis") != nil ||
-			DefaultMapGen(l) != nil || DefaultMapSettings(l) != nil {
+			DefaultMapGen(l) != nil {
 			t.Errorf("line %q should have no data", l)
 		}
 	}
@@ -111,11 +111,11 @@ func TestControls(t *testing.T) {
 		}
 		for _, r := range resources {
 			c, ok := byName[r]
-			if !ok || c.Category != CategoryResource || !c.Richness {
+			if !ok || c.Category != "resource" || !c.Richness {
 				t.Errorf("%s: %s = %+v, want a resource with richness", l, r, c)
 			}
 		}
-		if c := byName["enemy-base"]; c.Category != CategoryEnemy || c.Richness {
+		if c := byName["enemy-base"]; c.Category != "enemy" || c.Richness {
 			t.Errorf("%s: enemy-base = %+v", l, c)
 		}
 		if _, ok := byName["trees"]; !ok {
@@ -128,7 +128,7 @@ func TestControls(t *testing.T) {
 }
 
 func TestControlsAreWellFormed(t *testing.T) {
-	valid := map[string]bool{CategoryResource: true, CategoryTerrain: true, CategoryCliff: true, CategoryEnemy: true}
+	valid := map[string]bool{"resource": true, "terrain": true, CategoryCliff: true, "enemy": true}
 	for _, l := range Lines {
 		// The game keeps one flat list of controls per map, so a name may
 		// belong to only one planet.
@@ -142,7 +142,7 @@ func TestControlsAreWellFormed(t *testing.T) {
 				if !valid[c.Category] {
 					t.Errorf("%s/%s/%s: category %q", l, p, c.Name, c.Category)
 				}
-				if c.Richness && c.Category != CategoryResource && c.Category != CategoryTerrain {
+				if c.Richness && c.Category != "resource" && c.Category != "terrain" {
 					t.Errorf("%s/%s/%s: richness on a %s control", l, p, c.Name, c.Category)
 				}
 				if prev, dup := owner[c.Name]; dup {
@@ -162,7 +162,7 @@ func TestControlsReturnsACopy(t *testing.T) {
 	}
 }
 
-func TestDefaultSettingsAreJSONObjectsThatAgreeWithTheControls(t *testing.T) {
+func TestDefaultMapGenIsAJSONObjectThatAgreesWithTheControls(t *testing.T) {
 	for _, l := range Lines {
 		var gen struct {
 			AutoplaceControls map[string]json.RawMessage `json:"autoplace_controls"`
@@ -181,15 +181,6 @@ func TestDefaultSettingsAreJSONObjectsThatAgreeWithTheControls(t *testing.T) {
 		for name := range gen.AutoplaceControls {
 			if !known[name] {
 				t.Errorf("%s: the default map-gen file has control %s that Controls does not", l, name)
-			}
-		}
-		var ms map[string]json.RawMessage
-		if err := json.Unmarshal(DefaultMapSettings(l), &ms); err != nil {
-			t.Fatalf("%s: map-settings default is not a JSON object: %v", l, err)
-		}
-		for _, key := range []string{"pollution", "enemy_evolution", "enemy_expansion", "difficulty_settings"} {
-			if _, ok := ms[key]; !ok {
-				t.Errorf("%s: map-settings default lacks %s", l, key)
 			}
 		}
 	}

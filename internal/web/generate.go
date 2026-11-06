@@ -2,8 +2,6 @@ package web
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -55,48 +54,11 @@ var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map se
 
 // MapPreviewer makes the map preview pictures: one PNG for each planet
 // asked for, from the settings Generate would write (SPEC 5.6, 14.3). The
-// game layer provides it.
+// game controller provides it. Seed is always set, so the world made later
+// has the same map.
 type MapPreviewer interface {
-	Preview(ctx context.Context, req PreviewRequest) ([]PreviewImage, error)
+	Preview(ctx context.Context, req game.PreviewRequest) ([]game.PNG, error)
 }
-
-// PreviewRequest is what a preview is made from. Seed is always set, so the
-// world made later has the same map.
-type PreviewRequest struct {
-	Version     string
-	SpaceAge    bool
-	Preset      string
-	Seed        uint32
-	MapGen      []byte
-	MapSettings []byte
-	Planets     []string
-}
-
-// PreviewImage is the picture of one planet.
-type PreviewImage struct {
-	Planet string
-	PNG    []byte
-}
-
-// The refusals of a MapPreviewer.
-var (
-	// ErrPreviewNoImage means the game image is not downloaded.
-	ErrPreviewNoImage = errors.New("the game image for this version is not downloaded")
-	// ErrPreviewBusy means another preview is being made.
-	ErrPreviewBusy = errors.New("another map preview is being made")
-	// ErrPreviewTimeout means the preview ran past its time limit.
-	ErrPreviewTimeout = errors.New("the map preview took too long")
-)
-
-// PreviewFailure is a preview that the game itself could not make. Log is
-// the end of the game's output, for Foreman's log only: the page words the
-// failure itself.
-type PreviewFailure struct {
-	Log string
-	OOM bool
-}
-
-func (e *PreviewFailure) Error() string { return "the game could not make the map preview" }
 
 // previewTTL is how long a preview's pictures are kept (SPEC 5.6).
 const previewTTL = 15 * time.Minute
@@ -106,10 +68,7 @@ const previewTTL = 15 * time.Minute
 const (
 	maxPreviews     = 8
 	maxPreviewBytes = 48 << 20
-	maxPNGBytes     = 8 << 20
 )
-
-var pngSignature = []byte("\x89PNG\r\n\x1a\n")
 
 type previewItem struct {
 	user    int64
@@ -133,23 +92,16 @@ func newPreviewStore(now func() time.Time) *previewStore {
 
 // put keeps the pictures and returns their token. A user keeps one preview
 // at a time: a new one replaces the last.
-func (p *previewStore) put(user int64, images []PreviewImage) (string, error) {
+func (p *previewStore) put(user int64, images []game.PNG) (string, error) {
 	item := &previewItem{user: user, expires: p.now().Add(previewTTL), images: map[string][]byte{}}
 	for _, im := range images {
-		if len(im.PNG) > maxPNGBytes || !hasPrefix(im.PNG, pngSignature) {
-			return "", errors.New("the preview is not a PNG picture")
-		}
-		item.images[im.Planet] = im.PNG
-		item.bytes += len(im.PNG)
+		item.images[im.Planet] = im.Data
+		item.bytes += len(im.Data)
 	}
 	if item.bytes > maxPreviewBytes {
 		return "", errors.New("the preview pictures are too large")
 	}
-	raw := make([]byte, 18)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	token := base64.RawURLEncoding.EncodeToString(raw)
+	token := newToken()
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -165,10 +117,6 @@ func (p *previewStore) put(user int64, images []PreviewImage) (string, error) {
 	p.items[token] = item
 	p.order = append(p.order, token)
 	return token, nil
-}
-
-func hasPrefix(b, prefix []byte) bool {
-	return len(b) >= len(prefix) && string(b[:len(prefix)]) == string(prefix)
 }
 
 // get returns a planet's picture when the token is the user's and has not
@@ -695,14 +643,14 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	line, _ := mapgen.Line(nw.GameVersion)
-	req := PreviewRequest{
-		Version: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
-		MapGen: nw.MapGenSettings, MapSettings: nw.MapSettings,
+	req := game.PreviewRequest{
+		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
+		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings,
 		Planets: mapgen.Planets(line, nw.SpaceAge),
 	}
 	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10)}
 	images, err := s.previewer.Preview(r.Context(), req)
-	pf, failure := errors.AsType[*PreviewFailure](err)
+	pf, failure := errors.AsType[*game.PreviewError](err)
 	switch {
 	case err == nil:
 		view.Token, err = s.previews.put(u.ID, images)
@@ -714,14 +662,14 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		for _, planet := range req.Planets {
 			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
 		}
-	case errors.Is(err, ErrPreviewNoImage):
+	case errors.Is(err, game.ErrPreviewImageMissing):
 		view.Error = i18n.M("worlds.generate.preview.no_image", "version", nw.GameVersion)
-	case errors.Is(err, ErrPreviewBusy):
+	case errors.Is(err, game.ErrPreviewBusy):
 		view.Error = i18n.M("worlds.generate.preview.busy")
-	case errors.Is(err, ErrPreviewTimeout):
+	case errors.Is(err, game.ErrPreviewTimeout):
 		view.Error = i18n.M("worlds.generate.preview.timeout")
 	case failure:
-		s.log.Warn("map preview failed", "version", nw.GameVersion, "oom", pf.OOM, "game_output", lastLines(pf.Log, 20, 2000))
+		s.log.Warn("map preview failed", "version", nw.GameVersion, "oom", pf.OOM)
 		view.Error = i18n.M("worlds.generate.preview.failed")
 		if pf.OOM {
 			view.Error = i18n.M("worlds.generate.preview.oom")
@@ -738,20 +686,6 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 // pictureURL is where a planet's picture is served.
 func pictureURL(token, planet string) string {
 	return PathGeneratePreview + "/" + token + "/" + planet
-}
-
-// lastLines keeps the end of the game's output: at most n lines and max
-// bytes.
-func lastLines(log string, n, max int) string {
-	lines := strings.Split(strings.TrimSpace(log), "\n")
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	out := strings.Join(lines, "\n")
-	if len(out) > max {
-		out = out[len(out)-max:]
-	}
-	return strings.ToValidUTF8(out, "")
 }
 
 // handlePicture serves one planet's preview picture to the user who asked

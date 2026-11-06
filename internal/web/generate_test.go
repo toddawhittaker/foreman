@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -23,17 +22,18 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// pngBytes is the smallest thing the preview store accepts as a picture.
-var pngBytes = append(slices.Clone(pngSignature), "fake picture"...)
+// pngBytes stands for a picture. The game layer checks that a real one is a
+// PNG; the store keeps whatever it is given.
+var pngBytes = []byte("\x89PNG\r\n\x1a\nfake picture")
 
 // fakePreviewer records what it was asked and answers as set.
 type fakePreviewer struct {
-	got []PreviewRequest
+	got []game.PreviewRequest
 	err error
 	png []byte
 }
 
-func (f *fakePreviewer) Preview(_ context.Context, req PreviewRequest) ([]PreviewImage, error) {
+func (f *fakePreviewer) Preview(_ context.Context, req game.PreviewRequest) ([]game.PNG, error) {
 	f.got = append(f.got, req)
 	if f.err != nil {
 		return nil, f.err
@@ -42,9 +42,9 @@ func (f *fakePreviewer) Preview(_ context.Context, req PreviewRequest) ([]Previe
 	if png == nil {
 		png = pngBytes
 	}
-	var out []PreviewImage
+	var out []game.PNG
 	for _, p := range req.Planets {
-		out = append(out, PreviewImage{Planet: p, PNG: png})
+		out = append(out, game.PNG{Planet: p, Data: png})
 	}
 	return out, nil
 }
@@ -489,8 +489,8 @@ func TestPreviewAsksForEveryPlanetWithTheFilledSeed(t *testing.T) {
 		t.Fatalf("%d previews made", len(prev.got))
 	}
 	got := prev.got[0]
-	if got.Version != "2.0.77" || got.Preset != "island" || got.Seed != 424242 ||
-		!slices.Equal(got.Planets, []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"}) || got.MapGen != nil || got.MapSettings != nil {
+	if got.GameVersion != "2.0.77" || got.Preset != "island" || got.Seed != 424242 ||
+		!slices.Equal(got.Planets, []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"}) || got.MapGenSettings != nil || got.MapSettings != nil {
 		t.Errorf("request %+v", got)
 	}
 	body := rec.Body.String()
@@ -521,8 +521,8 @@ func TestPreviewPlanetsFollowTheLineAndSpaceAge(t *testing.T) {
 	if len(prev.got) != 2 || !slices.Equal(prev.got[0].Planets, []string{"nauvis"}) || !slices.Equal(prev.got[1].Planets, []string{"nauvis"}) {
 		t.Fatalf("requests %+v", prev.got)
 	}
-	if prev.got[0].Version != "2.0.77" || prev.got[1].Version != "1.1.110" {
-		t.Errorf("versions %q, %q", prev.got[0].Version, prev.got[1].Version)
+	if prev.got[0].GameVersion != "2.0.77" || prev.got[1].GameVersion != "1.1.110" {
+		t.Errorf("versions %q, %q", prev.got[0].GameVersion, prev.got[1].GameVersion)
 	}
 	// Custom options made with Space Age are set back when it is turned off: no preview from stale options.
 	hn.postLong(PathGeneratePreview, generateForm("mode", "custom", "space_age", "", "map_key", "2.0|1"), c)
@@ -539,7 +539,7 @@ func TestPreviewKeepsTheFilledSeedForCustomMode(t *testing.T) {
 	c := hn.signIn()
 	hn.withActive("2.0.77")
 	body := hn.postLong(PathGeneratePreview, generateForm("mode", "custom", "mg.width", "512"), c).Body.String()
-	if !strings.Contains(body, `id="mg-seed" name="mg.seed" type="text" value="777"`) || !strings.Contains(string(prev.got[0].MapGen), `"width": 512`) || prev.got[0].Seed != 777 {
+	if !strings.Contains(body, `id="mg-seed" name="mg.seed" type="text" value="777"`) || !strings.Contains(string(prev.got[0].MapGenSettings), `"width": 512`) || prev.got[0].Seed != 777 {
 		t.Errorf("request %+v\n%s", prev.got, body)
 	}
 	fixedSeed(t, 1)
@@ -569,7 +569,7 @@ func TestPreviewOfAnExchangeStringSendsBothFiles(t *testing.T) {
 	c := hn.signIn()
 	hn.withActive("2.0.77")
 	hn.postLong(PathGeneratePreview, generateForm("mode", "exchange", "exchange", fixture(t, "2.0.77.txt")), c)
-	if len(prev.got) != 1 || len(prev.got[0].MapGen) == 0 || len(prev.got[0].MapSettings) == 0 {
+	if len(prev.got) != 1 || len(prev.got[0].MapGenSettings) == 0 || len(prev.got[0].MapSettings) == 0 {
 		t.Fatalf("requests %+v", prev.got)
 	}
 }
@@ -600,11 +600,11 @@ func TestPreviewFailuresSayWhatToDo(t *testing.T) {
 		err  error
 		want string
 	}{
-		{"no image", ErrPreviewNoImage, "game image for Factorio 2.0.77 is not downloaded"},
-		{"busy", ErrPreviewBusy, "Another map preview is being made."},
-		{"timeout", ErrPreviewTimeout, "took too long and was stopped"},
-		{"out of memory", &PreviewFailure{OOM: true}, "ran out of memory"},
-		{"game failed", &PreviewFailure{Log: "line one\nsecret game output"}, "The game could not make the map preview. You can still generate the world."},
+		{"no image", game.ErrPreviewImageMissing, "game image for Factorio 2.0.77 is not downloaded"},
+		{"busy", game.ErrPreviewBusy, "Another map preview is being made."},
+		{"timeout", game.ErrPreviewTimeout, "took too long and was stopped"},
+		{"out of memory", &game.PreviewError{OOM: true}, "ran out of memory"},
+		{"game failed", &game.PreviewError{Log: "line one\nsecret game output"}, "The game could not make the map preview. You can still generate the world."},
 		{"unknown", errors.New("docker is gone"), "The game could not make the map preview."},
 	}
 	for _, tc := range cases {
@@ -624,30 +624,6 @@ func TestPreviewFailuresSayWhatToDo(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// The game layer's refusals map to the ones the page words.
-func TestGamePreviewerErrors(t *testing.T) {
-	cases := []struct {
-		in   error
-		want error
-	}{
-		{game.ErrPreviewBusy, ErrPreviewBusy},
-		{game.ErrPreviewImageMissing, ErrPreviewNoImage},
-		{game.ErrPreviewTimeout, ErrPreviewTimeout},
-	}
-	for _, tc := range cases {
-		if got := previewError(fmt.Errorf("wrapped: %w", tc.in)); !errors.Is(got, tc.want) {
-			t.Errorf("%v became %v, want %v", tc.in, got, tc.want)
-		}
-	}
-	pf, ok := errors.AsType[*PreviewFailure](previewError(&game.PreviewError{ExitCode: 1, OOM: true, Log: "x"}))
-	if !ok || !pf.OOM || pf.Log != "x" {
-		t.Errorf("game failure became %+v", pf)
-	}
-	if GamePreviewer(nil) != nil {
-		t.Error("a previewer without server control")
 	}
 }
 
@@ -687,7 +663,7 @@ func TestPreviewPicturesAreServedOnlyToTheirUser(t *testing.T) {
 
 	rec := hn.get(pic, withCookie(c))
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "image/png" || rec.Header().Get("Cache-Control") != "no-store" ||
-		rec.Header().Get("X-Content-Type-Options") != "nosniff" || !strings.HasPrefix(rec.Body.String(), string(pngSignature)) {
+		rec.Header().Get("X-Content-Type-Options") != "nosniff" || !strings.HasPrefix(rec.Body.String(), "\x89PNG") {
 		t.Fatalf("status %d, headers %v", rec.Code, rec.Header())
 	}
 
@@ -736,20 +712,10 @@ func TestANewPreviewReplacesTheUsersLastOne(t *testing.T) {
 	}
 }
 
-func TestPreviewRefusesAnythingButAPNG(t *testing.T) {
-	hn := newGenerateHarness(t, &fakePreviewer{png: []byte("<html>not a picture</html>")})
-	c := hn.signIn()
-	hn.withActive("2.0.77")
-	rec := hn.postLong(PathGeneratePreview, generateForm(), c)
-	if strings.Contains(rec.Body.String(), "<img ") || !strings.Contains(rec.Body.String(), "The game could not make the map preview.") {
-		t.Errorf("a non-PNG was kept:\n%s", rec.Body.String())
-	}
-}
-
 func TestPreviewStoreCapsWhatItHolds(t *testing.T) {
 	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	one := []PreviewImage{{Planet: "nauvis", PNG: pngBytes}}
+	one := []game.PNG{{Planet: "nauvis", Data: pngBytes}}
 
 	var tokens []string
 	for user := range int64(maxPreviews + 3) {
@@ -769,12 +735,9 @@ func TestPreviewStoreCapsWhatItHolds(t *testing.T) {
 		t.Error("another user read the preview")
 	}
 
-	big := []PreviewImage{{Planet: "nauvis", PNG: append(slices.Clone(pngSignature), make([]byte, maxPNGBytes)...)}}
+	big := []game.PNG{{Planet: "nauvis", Data: make([]byte, maxPreviewBytes+1)}}
 	if _, err := st.put(1, big); err == nil {
-		t.Error("an oversized picture was kept")
-	}
-	if _, err := st.put(1, []PreviewImage{{Planet: "nauvis", PNG: []byte("GIF89a")}}); err == nil {
-		t.Error("a non-PNG was kept")
+		t.Error("pictures over the total cap were kept")
 	}
 	tokenA, _ := st.put(2, one)
 	now = now.Add(previewTTL)

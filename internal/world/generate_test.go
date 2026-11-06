@@ -163,35 +163,15 @@ func TestClearNewMap(t *testing.T) {
 	if err := os.WriteFile(p, b, 0o600); err != nil { //nolint:gosec // a test temp folder
 		t.Fatal(err)
 	}
-	if err := m.ClearNewMap(id); err != nil {
+	if err := m.ClearNewMapHeld(id); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(p) //nolint:gosec // a test temp folder
 	if strings.Contains(string(b), "new_map") || !strings.Contains(string(b), `"later": 5`) {
 		t.Errorf("world.json: %s", b)
 	}
-	if err := m.ClearNewMap(id); err != nil {
+	if err := m.ClearNewMapHeld(id); err != nil {
 		t.Errorf("clearing twice: %v", err)
-	}
-}
-
-func TestClearNewMapWaitsForTheLockAndRefusesWhenBusy(t *testing.T) {
-	m, _ := newTestManager(t)
-	id, err := m.Generate(context.Background(), NewWorld{Name: "Busy", GameVersion: "2.0.77"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.addSaveWait = 0
-	unlock, err := m.Lock(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := m.ClearNewMap(id); !errors.Is(err, ErrBusy) {
-		t.Errorf("got %v, want ErrBusy", err)
-	}
-	unlock()
-	if readWorldMetaFile(t, m, id).NewMap == nil {
-		t.Error("a refused clear changed world.json")
 	}
 }
 
@@ -207,7 +187,7 @@ func TestClearNewMapRefusesANewerWorld(t *testing.T) {
 	if err := os.WriteFile(p, b, 0o600); err != nil { //nolint:gosec // a test temp folder
 		t.Fatal(err)
 	}
-	if err := m.ClearNewMap(id); !errors.Is(err, ErrNewerFormat) {
+	if err := m.ClearNewMapHeld(id); !errors.Is(err, ErrNewerFormat) {
 		t.Errorf("got %v, want ErrNewerFormat", err)
 	}
 }
@@ -240,7 +220,7 @@ func TestPreCheckNewMapSkipsNoSaveOnlyWhileSavesHoldNoZip(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantKinds(t, runCheck(t, m, id))
-	if err := m.ClearNewMap(id); err != nil {
+	if err := m.ClearNewMapHeld(id); err != nil {
 		t.Fatal(err)
 	}
 	wantKinds(t, runCheck(t, m, id), ProblemNoSave)

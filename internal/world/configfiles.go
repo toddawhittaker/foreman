@@ -107,6 +107,67 @@ func (m *Manager) WriteConfigHeld(id, file string, data []byte) error {
 	return writeFileAtomicMode(root, path.Join(ConfigDir, file), data)
 }
 
+// ErrSettingsChanged means a file is not as it was when the page showed the
+// diff. Nothing was written. The page reads the file again and shows the new
+// diff (SPEC 11.3).
+var ErrSettingsChanged = errors.New("the settings file changed after the preview, so nothing was saved. Check the new differences, then save again")
+
+// ConfigChange is a confirmed change to one config file (SPEC 11.3).
+type ConfigChange struct {
+	File string
+	// Data is the whole new file.
+	Data []byte
+	// SeenHash is the Hash of ReadConfig when the page showed the diff, empty
+	// for a file that did not exist then.
+	SeenHash string
+	// NoWrite checks the file's hash but leaves writing to the game, as for
+	// the admin list of a running game (SPEC 11.1).
+	NoWrite bool
+}
+
+// SaveSettingsHeld applies a confirmed settings change in one order: check
+// every file against its SeenHash, take the automatic snapshot with reason
+// ReasonSettings (SPEC 6.2), call audit, then write each file that is not
+// NoWrite. A failure at any step stops the later ones, and a hash mismatch
+// or a bad file writes nothing. audit must record the change and return an
+// error when it cannot, so nothing is changed without a record (SPEC 12.9).
+// The caller holds Lock(id) and has saved a running game (SPEC 6.10).
+func (m *Manager) SaveSettingsHeld(id string, changes []ConfigChange, by string, audit func() error) (Snapshot, error) {
+	for _, ch := range changes {
+		if !slices.Contains(ConfigFiles, ch.File) {
+			return Snapshot{}, ErrConfigFile
+		}
+		if len(ch.Data) > maxConfigFile {
+			return Snapshot{}, ErrConfigTooBig
+		}
+	}
+	for _, ch := range changes {
+		cur, err := m.ReadConfig(id, ch.File)
+		if err != nil {
+			return Snapshot{}, err
+		}
+		if cur.Hash != ch.SeenHash {
+			return Snapshot{}, ErrSettingsChanged
+		}
+	}
+	snap, err := m.AutoSnapshot(id, ReasonSettings, LabelBeforeSettings, by)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if err := audit(); err != nil {
+		return Snapshot{}, err
+	}
+	for _, ch := range changes {
+		if ch.NoWrite {
+			continue
+		}
+		if err := m.WriteConfigHeld(id, ch.File, ch.Data); err != nil {
+			return Snapshot{}, err
+		}
+	}
+	return snap, nil
+}
+
 // writeFileAtomicMode is WriteFileAtomic with the mode copyMode gives name.
 func writeFileAtomicMode(root *os.Root, name string, data []byte) error {
 	f, temp, err := createTempMode(root, path.Dir(name), copyMode(name))
