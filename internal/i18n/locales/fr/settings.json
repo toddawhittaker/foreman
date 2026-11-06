@@ -21,6 +21,7 @@
   "settings.password.new": "Nouveau mot de passe",
   "settings.password.keep": "Laissez vide pour conserver le mot de passe actuel.",
   "settings.password.keep_none": "Laissez vide pour ne pas définir de mot de passe.",
+  "settings.password.keep_pending": "Le nouveau mot de passe est conservé, sauf si vous en saisissez un autre.",
   "settings.password.remove": "Supprimer le mot de passe",
   "settings.password.both": "Saisissez un nouveau mot de passe ou supprimez-le, pas les deux.",
   "settings.password.dropped": "Saisissez à nouveau le nouveau mot de passe ; il n’est jamais conservé dans la page.",

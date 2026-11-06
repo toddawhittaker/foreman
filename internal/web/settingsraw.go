@@ -123,13 +123,14 @@ func (h *settingsHandlers) handleRawPreview(w http.ResponseWriter, r *http.Reque
 }
 
 // rawProblems words each error of a raw edit, naming its line and, where it
-// helps, quoting it. A line under a secret key is never quoted.
+// helps, quoting it. A line under a secret key is never quoted, and a missing
+// key has no line of its own to quote.
 func rawProblems(errs []gamesettings.FieldError, content string) []Problem {
 	lines := strings.Split(content, "\n")
 	out := make([]Problem, 0, len(errs))
 	for _, fe := range errs {
 		msg := rawProblem(fe)
-		if fe.Line > 0 && fe.Line <= len(lines) && fe.Code != gamesettings.CodeTooLarge && !isSecretPath(fe.Key) {
+		if fe.Line > 0 && fe.Line <= len(lines) && fe.Code != gamesettings.CodeTooLarge && fe.Code != gamesettings.CodeMissing && !isSecretPath(fe.Key) {
 			if text := echoLine(lines[fe.Line-1]); text != "" {
 				msg = i18n.M("settings.err.with_line", "problem", msg, "text", text)
 			}

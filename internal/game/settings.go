@@ -37,6 +37,9 @@ type SettingsResult struct {
 	// RestartNeeded is true when the game runs and reads the file only at
 	// start, so the change takes effect after a restart (SPEC 11.3).
 	RestartNeeded bool
+	// Live is true when the game was running at the save and the admin list
+	// changed, so the change reached the game through its console.
+	Live bool
 	// Snapshot is the automatic snapshot this save took.
 	Snapshot world.Snapshot
 }
@@ -78,10 +81,12 @@ func (c *Controller) SaveSettings(ctx context.Context, id string, by Actor, chan
 		return SettingsResult{}, err
 	}
 	var files, saved, commands []string
+	adminChanged := false
 	var cfg []world.ConfigChange
 	for _, ch := range changes {
 		wc := world.ConfigChange{File: ch.File, Data: ch.Data, SeenHash: ch.SeenHash}
 		files = append(files, ch.File)
+		adminChanged = adminChanged || ch.File == world.ServerAdminListFile
 		if running && ch.File == world.ServerAdminListFile {
 			current, err := c.worlds.ReadConfig(id, ch.File)
 			if err != nil {
@@ -110,6 +115,7 @@ func (c *Controller) SaveSettings(ctx context.Context, id string, by Actor, chan
 	}
 	return SettingsResult{
 		RestartNeeded: running && slices.Contains(saved, world.ServerSettingsFile),
+		Live:          running && adminChanged,
 		Snapshot:      snap,
 	}, nil
 }

@@ -284,10 +284,20 @@ const textSizes = [100, 200] as const;
 
 // The matrix is 8 languages by 22 pages and error states by 2 sizes. Colour does not change
 // layout and every other spec already runs checkPage in all four projects, so
-// the matrix runs once, in the 320 px dark project.
-function onlyInPhoneDark() {
+// each language runs in one project only. The languages are spread over the
+// projects, two each in the order of `languages`, so no CI shard holds the
+// whole matrix: en and de in desktop-dark, ru and zh-Hans in desktop-light,
+// fr and es in phone-dark, pl and cs in phone-light. Every test sets the 320 px
+// viewport itself, so a desktop project checks at the same width.
+const matrixProjects = ["desktop-dark", "desktop-light", "phone-dark", "phone-light"];
+
+// Test titles in the matrix start with "<language>:".
+function oneProjectPerLanguage() {
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== "phone-dark", "the language matrix runs in one project; see the comment above");
+    const lang = testInfo.title.split(":")[0] as Lang;
+    if (!languages.includes(lang)) throw new Error(`test title "${testInfo.title}" does not start with a language`);
+    const mine = matrixProjects[Math.floor(languages.indexOf(lang) / 2)];
+    test.skip(testInfo.project.name !== mine, `${lang} runs in ${mine} only; see the comment above`);
   });
 }
 
@@ -354,7 +364,7 @@ function seedThird(f: Foreman) {
 
 test.describe("layout at 320 px in every language", () => {
   test.use({ fakeGameOn: true });
-  onlyInPhoneDark();
+  oneProjectPerLanguage();
 
   for (const lang of languages) {
     test(`${lang}: every page fits and passes axe at 100% and 200% text`, async ({ page, foreman, fakeGame }) => {
@@ -547,7 +557,7 @@ test.describe("layout at 320 px in every language", () => {
 // so at 200% text it must wrap onto its own line, not push the page wider.
 test.describe("a wide time zone at 320 px and 200% text", () => {
   test.use({ fakeGameOn: true, timezoneId: "Asia/Kathmandu" });
-  onlyInPhoneDark();
+  oneProjectPerLanguage();
 
   for (const lang of languages) {
     test(`${lang}: the saves and snapshot tables fit`, async ({ page, foreman }) => {
@@ -573,7 +583,7 @@ test.describe("a wide time zone at 320 px and 200% text", () => {
 
 // The first-run page has no admin yet, so it needs a Foreman of its own.
 test.describe("first-run setup at 320 px in every language", () => {
-  onlyInPhoneDark();
+  oneProjectPerLanguage();
   for (const lang of languages) {
     test(`${lang}: the setup page fits at 100% and 200% text, also with its error summary`, async ({ page, foreman }) => {
       const failures: string[] = [];

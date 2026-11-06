@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -199,6 +200,7 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 	}
 	p := sw.formPage(text, names)
 	p.Edit = edit
+	p.PasswordPending = p.PasswordSet && !bytes.Equal(carriedPassword(sw.formText()), carriedPassword(text))
 	h.fillDone(&p, sw, r)
 	h.s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -404,7 +406,7 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	if res.RestartNeeded {
 		to += "&restart=1"
 	}
-	if _, admins := c.file(world.ServerAdminListFile); admins && sw.running {
+	if res.Live {
 		to += "&live=1"
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)

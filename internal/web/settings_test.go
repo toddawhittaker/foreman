@@ -273,7 +273,7 @@ func TestSettingsFormPreviewAndConfirm(t *testing.T) {
 		t.Fatalf("confirm status %d:\n%s\nlogs: %s", conf.Code, conf.Body.String(), r.logs.String())
 	}
 	to := conf.Header().Get("Location")
-	if !strings.HasPrefix(to, r.path("")+"?saved=1&snap=") || strings.Contains(to, "restart") {
+	if !strings.HasPrefix(to, r.path("")+"?saved=1&snap=") || strings.Contains(to, "restart") || strings.Contains(to, "live") {
 		t.Fatalf("redirect to %q", to)
 	}
 	got := r.read(world.ServerSettingsFile)
@@ -431,9 +431,17 @@ func TestSettingsDroppedPasswordNote(t *testing.T) {
 	form = settingsFormValues()
 	form.Set("game_password", "newpass-typed")
 	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
-	if body := r.getAs(r.cookie, r.path("?edit="+token)).Body.String(); strings.Contains(body, note) {
+	body = r.getAs(r.cookie, r.path("?edit="+token)).Body.String()
+	if strings.Contains(body, note) {
 		t.Errorf("the note shows on Go back and edit:\n%s", body)
 	}
+	// The hint must not tell the person to leave the field blank to keep a
+	// password that is only pending.
+	const pending = "Your new password is kept unless you type another."
+	if !strings.Contains(body, pending) || strings.Contains(body, "Leave blank to keep the current password.") {
+		t.Errorf("Go back and edit with a typed password lacks the pending hint:\n%s", body)
+	}
+	r.noSecrets(r.getAs(r.cookie, r.path("?edit="+token)))
 }
 
 // SPEC 11.3: a token belongs to its user, its world and its 15 minutes.
@@ -634,6 +642,11 @@ func TestSettingsRawEditorMissingKey(t *testing.T) {
 	}
 	if strings.Contains(body, "is not allowed") {
 		t.Errorf("a missing key is worded as a wrong value:\n%s", body)
+	}
+	// The line a missing key is reported at belongs to another key; quoting it
+	// only confuses.
+	if strings.Contains(body, "The line reads") {
+		t.Errorf("a missing-key error quotes a line:\n%s", body)
 	}
 }
 

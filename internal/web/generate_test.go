@@ -594,6 +594,24 @@ func TestPreviewRefusesABadFormWithoutCallingTheGame(t *testing.T) {
 	}
 }
 
+// SPEC 14.17: an expired session during a preview sends the browser to the
+// sign-in page. A plain redirect would hand htmx the sign-in page to swap
+// into the preview, so an htmx request is told to leave the page instead.
+func TestPreviewWithAnExpiredSessionLeavesForSignIn(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	hn.signIn()
+	form := generateForm()
+	rec := hn.postLong(PathGeneratePreview, form, nil, withHeader("HX-Request", "true"))
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Redirect") != PathSignIn || len(prev.got) != 0 {
+		t.Errorf("htmx: status %d, headers %v, %d previews", rec.Code, rec.Header(), len(prev.got))
+	}
+	rec = hn.postLong(PathGeneratePreview, form, nil)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != PathSignIn || rec.Header().Get("HX-Redirect") != "" {
+		t.Errorf("plain: status %d, headers %v", rec.Code, rec.Header())
+	}
+}
+
 func TestPreviewFailuresSayWhatToDo(t *testing.T) {
 	cases := []struct {
 		name string

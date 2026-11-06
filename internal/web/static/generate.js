@@ -71,7 +71,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (summary) summary.remove();
     if (path.endsWith("/generate/refresh")) {
       // Choosing a preset refills the hidden custom form; nothing is shown to read out.
-      if (!(e.detail.elt && e.detail.elt.id === "generate-preset")) announce(strings["js.generate.options"]);
+      // After a swap detail.elt is the swapped part; the sender is in requestConfig.
+      const sender = e.detail.requestConfig && e.detail.requestConfig.elt;
+      if (!(sender && sender.id === "generate-preset")) announce(strings["js.generate.options"]);
     } else if (path.endsWith("/generate/preview")) {
       const failed = document.querySelector("#preview .message");
       announce(failed ? failed.textContent.replace(/\s+/g, " ").trim() : strings["js.generate.preview_ready"]);

@@ -21,6 +21,7 @@
   "settings.password.new": "Contraseña nueva",
   "settings.password.keep": "Déjalo en blanco para conservar la contraseña actual.",
   "settings.password.keep_none": "Déjalo en blanco para no poner contraseña.",
+  "settings.password.keep_pending": "Se conserva la contraseña nueva, salvo que escribas otra.",
   "settings.password.remove": "Quitar la contraseña",
   "settings.password.both": "Escribe una contraseña nueva o quítala, pero no ambas cosas.",
   "settings.password.dropped": "Escribe de nuevo la contraseña nueva; nunca se conserva en la página.",

@@ -21,6 +21,7 @@
   "settings.password.new": "New password",
   "settings.password.keep": "Leave blank to keep the current password.",
   "settings.password.keep_none": "Leave blank to keep no password.",
+  "settings.password.keep_pending": "Your new password is kept unless you type another.",
   "settings.password.remove": "Remove the password",
   "settings.password.both": "Enter a new password or remove it, not both.",
   "settings.password.dropped": "Enter the new password again; it is never kept in the page.",

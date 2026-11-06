@@ -299,6 +299,14 @@ test.describe("the preview keeps focus and says what happened", () => {
     await expect(button).toBeFocused();
   });
 
+  test("an expired session sends the person to sign-in and announces no success", async ({ page }) => {
+    await page.getByLabel("World name").fill("Expired");
+    await page.context().clearCookies();
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await expect(page).toHaveURL(/\/signin/);
+    await expect(page.locator("#announcer")).not.toContainText("Map preview ready.");
+  });
+
   test("a failed request writes a sentence in the preview and the announcer", async ({ page }) => {
     const button = page.getByRole("button", { name: "Preview map" });
     await page.route("**/generate/preview", (route) => route.fulfill({ status: 500, body: "boom" }));
@@ -387,6 +395,18 @@ test("the custom form takes the chosen preset's values and words terrain as the 
   await expect(page.locator("#mg-preset-note")).toContainText("Default");
   await mode(page, "Choose each setting").check();
   await expect(page.locator("#mg-nauvis-iron-ore-richness")).toHaveValue("100");
+});
+
+// SPEC 17.3: a preset change only refills the hidden custom form, so nothing
+// is read out over the select that is reading its new option.
+test("choosing a preset announces nothing", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await page.locator("#generate-preset").selectOption({ label: "Rail world" });
+  await expect(page.locator("#mg-preset-note")).toBeAttached();
+  // The announcer writes 50 ms after a swap; give it time to be wrong.
+  await page.waitForTimeout(300);
+  await expect(page.locator("#announcer")).toHaveText("");
 });
 
 // The version choice is the first thing on the form; its text must show the

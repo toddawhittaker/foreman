@@ -21,6 +21,7 @@
   "settings.password.new": "新密码",
   "settings.password.keep": "留空则保留当前密码。",
   "settings.password.keep_none": "留空则不设密码。",
+  "settings.password.keep_pending": "除非输入其他密码，否则将保留新密码。",
   "settings.password.remove": "移除密码",
   "settings.password.both": "请输入新密码或移除密码，不能同时进行。",
   "settings.password.dropped": "请重新输入新密码；页面绝不会保留密码。",

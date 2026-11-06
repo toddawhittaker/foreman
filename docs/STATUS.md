@@ -1203,8 +1203,9 @@ SPEC 22.
   matches the request's.
 - The plural forms for 5 and 21 are checked against the catalogue, not on
   a rendered page, because no page shows those counts yet.
-- The 320 px language matrix runs in one browser project (`phone-dark`)
-  to save about eight minutes; colour does not change layout.
+- The 320 px language matrix checks each language in one browser project
+  (two languages per project since Epic 7, so the CI shards stay even);
+  colour does not change layout.
 - `make test-game` binds host UDP 34197, so it cannot run on a host where
   a real Factorio server holds that port. The real-game check had to
   patch the port locally.
