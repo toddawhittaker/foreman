@@ -36,6 +36,28 @@ Todd, 2026-11-06:
    control's frequency, size and richness, per game line and, on 2.x, per
    planet, plus preset, seed, width and height, starting area, cliffs,
    water and peaceful mode. The raw editor covers the rest.
+8. **Map preview** (P1). Generate offers a "Preview map" step that shows
+   a picture of the map, one per planet the world will have (Nauvis only
+   without Space Age, and on 1.1). Previewing is optional; Generate works
+   without it.
+
+Orchestrator rulings on the preview (Todd asked for it 2026-11-06; the
+orchestrator checked the game's options the same day):
+
+- The picture comes from the game's own `--generate-map-preview` option
+  (with `--map-preview-planet` on 2.x), run in a one-off container from
+  the world's game image. It takes about one second per planet and starts
+  no game. Screenshots were rejected: the headless server cannot render.
+- The preview is made from exactly the settings Generate would write. A
+  blank seed is filled with a random one at the preview, and the form keeps
+  it, so the world matches the picture.
+- The one-off container runs as the game's user, with no network, a
+  read-only root, all capabilities dropped, a memory limit, a 60-second
+  limit and only a fresh temporary folder mounted. One preview runs at a
+  time. It uses only an image already downloaded; otherwise the page says
+  the image must be downloaded first.
+- Pictures are held on the server under a random token tied to the user,
+  like a pending settings change, and deleted after 15 minutes.
 
 Orchestrator rulings (from the architect's design):
 
@@ -87,7 +109,7 @@ new string in all eight languages (SPEC 22).
 | Task | Owner and model | Files | Delivers |
 |---|---|---|---|
 | T1 World layer | builder, Sonnet high | `internal/world/`: `meta.go`, `world.go`, `import.go` (call site), new `generate.go`, new `clone.go`, `configfiles.go`, `precheck.go`, their tests | `new_map`; `Generate(ctx, NewWorld) (id, error)`; `Clone(ctx, srcID, name, keepSave)`; `WriteConfigHeld(id, file, data)`; `ReasonSettings`; the 7.4 change |
-| T2 Game data and fixtures | tester, Sonnet high | new `internal/mapgen/` (embedded per-line data: presets, autoplace controls per planet, default map-gen and map settings, read from each image), `internal/mapexchange/testdata/`, `internal/mapexchange/golden_test.go`, Makefile target `mapexchange-golden` | Data the form and decoder use; strings made by 1.1.110, 2.0.66, 2.0.77, 2.1.9 and 2.1.24 with the game's own parsed JSON |
+| T2 Game data and fixtures | tester, Sonnet high | new `internal/mapgen/` (embedded per-line data: presets, autoplace controls per planet, default map-gen and map settings, read from each image), `internal/mapexchange/testdata/`, `internal/mapexchange/golden_test.go`, Makefile target `mapexchange-golden` | Data the form, decoder and preview use (including each line's planets); strings made by 1.1.110, 2.0.66, 2.0.77, 2.1.9 and 2.1.24 with the game's own parsed JSON |
 | T3 Settings rules | builder, Sonnet high | new `internal/gamesettings/` | `Validate(file, line, b) []FieldError{Line, Reason}`, `SecretKeys`, `Diff`, `StripSecrets`, `MergeSecrets`, admin-list diff |
 | T4 Design | ui-designer, Opus low | `docs/DESIGN.md` | Patterns for the diff view, the raw editor, the Generate mode choice, the write-only field, and the full map-gen form at phone width |
 | T5 Decoder | builder, Opus low, time-boxed | `internal/mapexchange/*.go` except `golden_test.go` | `Decode(s) (Result, error)` with `*UnsupportedError{Version, Reason}`; ruling 2; unit tests |
@@ -96,8 +118,8 @@ new string in all eight languages (SPEC 22).
 
 | Task | Owner and model | Files | Delivers |
 |---|---|---|---|
-| T6 Game layer | builder, Sonnet high | `internal/game/container.go`, `launch.go`, new `settings.go`, the secrets list, their tests; `internal/fakegame/` | Create step and environment; clearing `new_map`; `SaveSettings` with snapshot and admins over RCON; fake game models `--create` |
-| T7 Generate and Clone pages | ui-designer, Sonnet high | `internal/web/generate.go`, `clone.go`, `templates/generate.html`, `clone.html`, `worlds.html`, `world.html` (links, including Settings), `locales/*/worlds.json` | Both flows, using the map-gen form partial |
+| T6 Game layer | builder, Sonnet high | `internal/game/container.go`, `launch.go`, new `settings.go`, the secrets list, their tests; `internal/fakegame/` | Create step and environment; clearing `new_map`; `SaveSettings` with snapshot and admins over RCON; new `preview.go`: `Preview(ctx, version, files, seed, planets) ([]PNG, error)` in a locked-down one-off container (ruling 8); fake game models `--create` and the preview |
+| T7 Generate and Clone pages | ui-designer, Sonnet high | `internal/web/generate.go`, `clone.go`, `templates/generate.html`, `clone.html`, `worlds.html`, `world.html` (links, including Settings), `locales/*/worlds.json` | Both flows, using the map-gen form partial; the Preview map step and its images |
 | T8 Settings pages | ui-designer, Sonnet high | `internal/web/settings.go`, new `pending.go`, `templates/settings*.html`, new area `locales/*/settings.json` | Form, raw editors, preview with diff, confirm, restart note |
 | T9 Map-gen form | ui-designer, Sonnet high | `internal/web/mapgenform.go`, `templates/mapgenform.html`, the partial-loading line in `render.go`, new area `locales/*/mapgen.json` | Full resource controls from `internal/mapgen`; parses the form into map-gen JSON with field errors |
 
@@ -105,14 +127,14 @@ new string in all eight languages (SPEC 22).
 
 | Task | Owner and model | Delivers |
 |---|---|---|
-| T10 End-to-end tests | tester, Sonnet high | Generate in each mode on each line, then start; Clone both ways; settings diff, snapshot, restart note; no secret in any page |
+| T10 End-to-end tests | tester, Sonnet high | Generate in each mode on each line, then start; preview on each line; Clone both ways; settings diff, snapshot, restart note; no secret in any page |
 | Reviews | code-reviewer, security-reviewer, a11y-reviewer; translation review | Findings, then a fix round |
-| Real-game check | tester, Sonnet high | Each mode on 1.1, 2.0 and 2.1 reaches InGame with the expected map; confirm the "first start writes example config files" gap is gone |
+| Real-game check | tester, Sonnet high | Each mode on 1.1, 2.0 and 2.1 reaches InGame with the expected map, and the map matches its preview; confirm the "first start writes example config files" gap is gone |
 | Fold | builder, Sonnet high | SPEC, STATUS, I18N.md, ADR for D9; delete this plan; `Fixes` lines |
 
 ## Spec edits for the fold
 
-5.6 records D9 and rulings 1 to 3 with each line's presets; 5.1 adds
+5.6 records D9, rulings 1 to 3 and the preview (ruling 8) with each line's presets and planets; 14.3 the preview container; 5.1 adds
 `new_map`; 4.3 the create step; 7.4 the reworded exception; 5.7 what Clone
 copies; 6.7 the `settings` reason; 11.1 admins live in
 `server-adminlist.json`, visibility is LAN or hidden; 11.3 the restart
