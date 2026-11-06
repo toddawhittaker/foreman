@@ -159,6 +159,9 @@ func (s *server) routes() {
 	s.saveRoutes()
 	s.snapshotRoutes()
 	s.updateRoutes()
+	s.generateRoutes()
+	s.cloneRoutes()
+	s.settingsRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
