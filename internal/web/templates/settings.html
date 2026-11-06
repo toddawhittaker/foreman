@@ -57,6 +57,9 @@
 <div class="settings-main">
 <form method="post" action="{{.Path}}" class="panel settings" novalidate>
   {{template "summary" .Problems}}
+  {{- if .Editable}}
+  {{template "required-note"}}
+  {{- end}}
   {{- if .Connected}}
   {{- /* The first submit button is the one Enter presses; without this it would be a Make admin button. */}}
   <button type="submit" hidden></button>
@@ -67,8 +70,8 @@
   <fieldset id="settings-listing"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.listing"}}</legend>
     <div class="field">
-      <label for="name">{{t "settings.name.label"}}</label>
-      <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off"
+      <label for="name" class="required">{{t "settings.name.label"}}</label>
+      <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off" required placeholder="{{t "worlds.name.placeholder"}}"
         {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-error"{{end}}>
       {{- if not .NameError.IsZero}}
       <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>

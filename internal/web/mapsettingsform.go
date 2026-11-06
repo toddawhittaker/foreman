@@ -267,15 +267,15 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 				n, _ := pv.(float64)
 				fl.Preset = shown(n, d.scale)
 				fl.Value = fl.Preset
-				if posted != nil {
-					fl.Value = strings.TrimSpace(posted.Get(fl.Name))
+				// A field the post lacks, as when the line changed under the page, keeps the preset's value.
+				if vs, ok := posted[fl.Name]; ok && len(vs) > 0 {
+					fl.Value = strings.TrimSpace(vs[0])
 				}
 				v, msg := parseShown(fl.Value, d)
 				if !msg.IsZero() {
 					fl.Error = msg
 					problems = append(problems, Problem{FieldID: fl.ID, Message: msg})
 				} else {
-					stored = v
 					if !sameShown(fl.Value, fl.Preset) {
 						overrides[d.path] = storedValue(v, n, d)
 						stored = overrides[d.path]

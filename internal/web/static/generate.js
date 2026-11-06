@@ -217,7 +217,24 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.addEventListener("htmx:responseError", failed);
   document.body.addEventListener("htmx:sendError", failed);
 
+  // A field typed in while a redraw was on its way keeps what was typed.
+  const textFields = () => [...document.querySelectorAll("#line-box input[type=text][name], #line-box textarea[name]")];
+  const isRefresh = (e) => (e.detail.pathInfo ? e.detail.pathInfo.requestPath : "").endsWith("/generate/refresh");
+  let sentValues = new Map();
+  let typedValues = new Map();
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    if (isRefresh(e)) sentValues = new Map(textFields().map((f) => [f.name, f.value]));
+  });
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    if (!isRefresh(e)) return;
+    typedValues = new Map(textFields().filter((f) => sentValues.has(f.name) && sentValues.get(f.name) !== f.value).map((f) => [f.name, f.value]));
+  });
+
   document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (isRefresh(e) && typedValues.size) {
+      textFields().forEach((f) => { if (typedValues.has(f.name)) f.value = typedValues.get(f.name); });
+      typedValues = new Map();
+    }
     const path = e.detail.pathInfo ? e.detail.pathInfo.requestPath : "";
     // The version list's own load is also a swap; it must not touch the summary.
     if (!path.endsWith("/generate/refresh") && !path.endsWith("/generate/preview")) return;

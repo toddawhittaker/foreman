@@ -330,6 +330,8 @@ func (f *GenerateForm) fill(version string, keep *MapGenText) {
 	f.MapGen.Seed.Value = seed.Value
 	f.MapSettings, _, _ = readMapSettings(version, f.Preset, nil)
 	f.FilledFrom = f.Preset
+	rules, _ := mapgen.AchievementRules(version)
+	f.MapGen.markAchievements(rules)
 }
 
 // settingsShown is sent with the map settings, so a post that never showed
@@ -427,7 +429,8 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	// A post that never showed the settings (no settingsShown), such as a preset
 	// and a seed alone, means the preset as it is.
 	shown := r.PostFormValue(settingsShown) != ""
-	stale := versionOK && f.SpaceAgeError.IsZero() && posted != f.MapKey && shown
+	// The settings are stale when made for another line, or for the other Space Age setting.
+	stale := versionOK && shown && (keyLine(posted) != line || (f.SpaceAgeError.IsZero() && posted != f.MapKey))
 	f.Reset = stale && f.Mode == modeSettings
 
 	if kind == kindGenerate && strings.TrimSpace(f.Name) == "" {

@@ -20,7 +20,7 @@
     {{- end}}
   </div>
   {{/* A change here redraws the map settings for the new line (htmx); without script the server does it when the form is sent. */}}
-  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#map-key-box" hx-select="#map-key-box" hx-select-oob="#map-settings,#ach-summary" hx-swap="outerHTML" hx-sync="this:replace">
+  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#line-box" hx-select="#line-box" hx-select-oob="#ach-summary" hx-swap="outerHTML" hx-sync="this:replace">
     <div class="field">
       <label for="generate-version-select">{{t "worlds.fact.game_version"}}</label>
       <select id="generate-version-select" name="game_version" hx-get="{{$.Page.VersionsPath}}" hx-trigger="load" hx-target="this" hx-select="unset" hx-swap="beforeend">
@@ -75,7 +75,8 @@
 
     {{/* The settings beside the preview on a wide panel, above it on a narrow one (DESIGN 8.6). */}}
     <div class="gen-layout">
-      <div class="gen-main">
+      {{- /* Everything here follows the game line, so a version change redraws it whole. */}}
+      <div class="gen-main" id="line-box">
         <div id="map-key-box">
           <input type="hidden" name="map_key" value="{{.MapKey}}">
           {{- if .Reset}}
@@ -133,9 +134,8 @@
      and the reset redraw this part (htmx); without script the form is sent
      and the server does it (DESIGN 8.6). Takes GenerateForm. */}}
 {{define "map-settings" -}}
-<div id="map-settings" class="mode-panel mode-panel--settings">
-  <input type="hidden" name="filled_from" value="{{.FilledFrom}}">
-  <input type="hidden" name="settings_shown" value="1">
+<div class="mode-panel mode-panel--settings">
+<div id="preset-box" class="mode-panel">
   {{- if .Refilled}}
   <div class="message message--note" id="map-refilled" tabindex="-1" autofocus>
     <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.refilled" "preset" (.PresetMsg .Preset)}}</p>
@@ -158,6 +158,8 @@
     <p class="error" id="generate-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
     {{- end}}
   </div>
+</div>
+  {{- /* The seed is not the preset's, so a redraw of the settings leaves it as typed. */}}
   {{- with .MapGen.Seed}}
   <div class="field">
     <label for="{{.ID}}">{{t "mapgen.seed.label"}}</label>
@@ -173,6 +175,10 @@
     {{- end}}
   </div>
   {{- end}}
+</div>
+<div id="map-settings" class="mode-panel mode-panel--settings">
+  <input type="hidden" name="filled_from" value="{{.FilledFrom}}">
+  <input type="hidden" name="settings_shown" value="1">
   {{template "mapgen-panels" .}}
 </div>
 {{- end}}
