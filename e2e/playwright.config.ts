@@ -7,6 +7,9 @@ export default defineConfig({
   forbidOnly: true,
   retries: 0,
   reporter: "list",
+  // SPEC 22.2: the browser's language picks Foreman's, so every project asks
+  // for English and no test depends on the machine it runs on.
+  use: { locale: "en-US" },
   // DESIGN 10: every screen is checked in both themes, at desktop and at
   // 320 CSS pixels (SPEC 17.2).
   projects: [
