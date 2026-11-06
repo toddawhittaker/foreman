@@ -17,7 +17,6 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
-	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -382,17 +381,13 @@ func TestGenerateExchangeStringMustFitTheWorld(t *testing.T) {
 
 // DESIGN 8.7: custom mode writes only map-gen-settings.json, never a map-settings.json.
 func TestGenerateCustomWritesOnlyMapGenSettings(t *testing.T) {
-	old := parseMapGen
-	parseMapGen = func(*http.Request, string, bool) (MapGenForm, []byte, []Problem) {
-		return MapGenForm{}, []byte(`{"width":512}`), nil
-	}
-	t.Cleanup(func() { parseMapGen = old })
 	fixedSeed(t, 55)
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
 	hn.withActive("2.0.77")
-	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("mode", "custom"), c))
-	if got := hn.config(id, world.MapGenSettingsFile); !got.Found || string(got.Data) != `{"width":512}` {
+	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("mode", "custom", "mg.width", "512"), c))
+	got := hn.config(id, world.MapGenSettingsFile)
+	if !got.Found || !strings.Contains(string(got.Data), `"width": 512`) {
 		t.Errorf("map-gen-settings.json %q", got.Data)
 	}
 	if hn.config(id, world.MapSettingsFile).Found {
@@ -403,37 +398,27 @@ func TestGenerateCustomWritesOnlyMapGenSettings(t *testing.T) {
 	}
 }
 
-// A seed in the custom form wins over the filled one.
-func TestGenerateCustomSeedInTheSettingsWins(t *testing.T) {
-	old := parseMapGen
-	parseMapGen = func(*http.Request, string, bool) (MapGenForm, []byte, []Problem) {
-		return MapGenForm{}, []byte(`{"seed":4242}`), nil
-	}
-	t.Cleanup(func() { parseMapGen = old })
+// A seed in the custom form is the world's seed.
+func TestGenerateCustomSeedIsTheWorldsSeed(t *testing.T) {
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
 	hn.withActive("2.0.77")
-	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("mode", "custom", "filled_seed", "9"), c))
+	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("mode", "custom", "mg.seed", "4242"), c))
 	if m := hn.meta(id); m.NewMap == nil || m.NewMap.Seed == nil || *m.NewMap.Seed != 4242 {
 		t.Errorf("new_map %+v", m.NewMap)
 	}
 }
 
 func TestGenerateCustomProblemsAreShownAndNothingIsMade(t *testing.T) {
-	old := parseMapGen
-	parseMapGen = func(*http.Request, string, bool) (MapGenForm, []byte, []Problem) {
-		return MapGenForm{}, nil, []Problem{{FieldID: "nauvis-iron-ore-size", Message: msgNameEmpty()}}
-	}
-	t.Cleanup(func() { parseMapGen = old })
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
 	hn.withActive("2.0.77")
-	rec := hn.postLong(PathGenerate, generateForm("mode", "custom"), c)
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `href="#nauvis-iron-ore-size"`) {
-		t.Errorf("status %d\n%s", rec.Code, rec.Body.String())
+	rec := hn.postLong(PathGenerate, generateForm("mode", "custom", "mg.width", "wide"), c)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `href="#mg-width"`) || hn.worldCount() != 1 {
+		t.Errorf("status %d, %d worlds\n%s", rec.Code, hn.worldCount(), rec.Body.String())
 	}
-	// The same problem from another mode's hidden fields is not shown.
-	rec = hn.postLong(PathGenerate, generateForm("mode", "preset", "seed", "1"), c)
+	// The same problem in another mode's hidden fields is not shown.
+	rec = hn.postLong(PathGenerate, generateForm("mode", "preset", "seed", "1", "mg.width", "wide"), c)
 	if rec.Code != http.StatusSeeOther {
 		t.Errorf("preset mode refused for a custom problem: %d", rec.Code)
 	}
@@ -549,26 +534,35 @@ func TestPreviewPlanetsFollowTheLineAndSpaceAge(t *testing.T) {
 	}
 }
 
-// A custom or exchange-string preview keeps its filled seed in the form for the world.
+// A custom preview puts its random seed in the custom form, so Generate makes that map.
 func TestPreviewKeepsTheFilledSeedForCustomMode(t *testing.T) {
-	old := parseMapGen
-	parseMapGen = func(*http.Request, string, bool) (MapGenForm, []byte, []Problem) {
-		return MapGenForm{}, []byte(`{"width":512}`), nil
-	}
-	t.Cleanup(func() { parseMapGen = old })
 	fixedSeed(t, 777)
 	prev := &fakePreviewer{}
 	hn := newGenerateHarness(t, prev)
 	c := hn.signIn()
 	hn.withActive("2.0.77")
-	body := hn.postLong(PathGeneratePreview, generateForm("mode", "custom"), c).Body.String()
-	if !strings.Contains(body, `name="filled_seed" value="777"`) || string(prev.got[0].MapGen) != `{"width":512}` || prev.got[0].Seed != 777 {
+	body := hn.postLong(PathGeneratePreview, generateForm("mode", "custom", "mg.width", "512"), c).Body.String()
+	if !strings.Contains(body, `id="mg-seed" name="mg.seed" type="text" value="777"`) || !strings.Contains(string(prev.got[0].MapGen), `"width": 512`) || prev.got[0].Seed != 777 {
 		t.Errorf("request %+v\n%s", prev.got, body)
 	}
 	fixedSeed(t, 1)
-	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("mode", "custom", "filled_seed", "777"), c))
+	id := idFromLocation(t, hn.postLong(PathGenerate, generateForm("mode", "custom", "mg.seed", "777"), c))
 	if m := hn.meta(id); *m.NewMap.Seed != 777 {
 		t.Errorf("seed %d, want the previewed 777", *m.NewMap.Seed)
+	}
+}
+
+// An exchange string carries its own seed; preview and world both use it.
+func TestExchangeStringSeedIsUsedByPreviewAndWorld(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	hn.withActive("2.0.77")
+	form := generateForm("mode", "exchange", "exchange", fixture(t, "2.0.77.txt"))
+	hn.postLong(PathGeneratePreview, form, c)
+	id := idFromLocation(t, hn.postLong(PathGenerate, form, c))
+	if m := hn.meta(id); m.NewMap == nil || m.NewMap.Seed == nil || *m.NewMap.Seed != prev.got[0].Seed {
+		t.Errorf("seed %+v, previewed %d", m.NewMap, prev.got[0].Seed)
 	}
 }
 
@@ -750,20 +744,5 @@ func TestPreviewStoreCapsWhatItHolds(t *testing.T) {
 	}
 	if len(st.items) != 0 || len(st.order) != 0 {
 		t.Errorf("expired previews kept: %d, %d", len(st.items), len(st.order))
-	}
-}
-
-func TestPresetNamesCoverTheGamesPresets(t *testing.T) {
-	for _, line := range []string{"1.1", "2.0", "2.1"} {
-		for _, name := range mapgen.Presets(line) {
-			if _, ok := presetNames[name]; !ok {
-				t.Errorf("line %s: preset %q has no name", line, name)
-			}
-		}
-	}
-	for _, name := range []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"} {
-		if _, ok := planetNames[name]; !ok {
-			t.Errorf("planet %q has no name", name)
-		}
 	}
 }

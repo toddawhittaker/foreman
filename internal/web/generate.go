@@ -53,9 +53,6 @@ const (
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
 
-// parseMapGen reads the custom map-gen form. Tests replace it.
-var parseMapGen = ParseMapGenForm
-
 // MapPreviewer makes the map preview pictures: one PNG for each planet
 // asked for, from the settings Generate would write (SPEC 5.6, 14.3). The
 // game layer provides it.
@@ -293,33 +290,8 @@ func (GeneratePage) VersionsPath() string {
 	return versionsPath("")
 }
 
-// PresetName is a preset's name in the game's own words.
-func (GenerateForm) PresetName(name string) i18n.Msg {
-	if m, ok := presetNames[name]; ok {
-		return m
-	}
-	return i18n.M("worlds.generate.preset.other", "name", name)
-}
-
-var presetNames = map[string]i18n.Msg{
-	"default":              i18n.M("worlds.generate.preset.default"),
-	"rich-resources":       i18n.M("worlds.generate.preset.rich_resources"),
-	"marathon":             i18n.M("worlds.generate.preset.marathon"),
-	"death-world":          i18n.M("worlds.generate.preset.death_world"),
-	"death-world-marathon": i18n.M("worlds.generate.preset.death_world_marathon"),
-	"rail-world":           i18n.M("worlds.generate.preset.rail_world"),
-	"ribbon-world":         i18n.M("worlds.generate.preset.ribbon_world"),
-	"lakes":                i18n.M("worlds.generate.preset.lakes"),
-	"island":               i18n.M("worlds.generate.preset.island"),
-}
-
-var planetNames = map[string]i18n.Msg{
-	"nauvis":   i18n.M("worlds.generate.planet.nauvis"),
-	"vulcanus": i18n.M("worlds.generate.planet.vulcanus"),
-	"gleba":    i18n.M("worlds.generate.planet.gleba"),
-	"fulgora":  i18n.M("worlds.generate.planet.fulgora"),
-	"aquilo":   i18n.M("worlds.generate.planet.aquilo"),
-}
+// PresetMsg is a preset's name in the game's own words.
+func (GenerateForm) PresetMsg(name string) i18n.Msg { return PresetMsg(name) }
 
 func (s *server) generateRoutes() {
 	s.mux.HandleFunc("GET "+PathGenerate, s.requireUser(s.handleGenerateForm))
@@ -547,7 +519,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		f.MapGen = NewMapGenForm(line, mapSpaceAge)
 	} else {
 		var probs []Problem
-		f.MapGen, mapGen, probs = parseMapGen(r, line, mapSpaceAge)
+		f.MapGen, mapGen, probs = ParseMapGenForm(r, line, mapSpaceAge)
 		if f.Mode == modeCustom {
 			f.CustomProblems = probs
 		}
@@ -577,7 +549,16 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	case modeCustom:
 		if len(f.CustomProblems) == 0 {
 			nw.MapGenSettings = mapGen
-			seed = s.settingsSeed(&f, mapGen)
+			// A blank seed is filled in the form, so the world matches the preview.
+			v, ok := uint32(0), false
+			if n := f.MapGen.SeedNumber(); n != nil {
+				v, ok = *n, true
+			}
+			if !ok {
+				v = newSeed()
+				f.MapGen = f.MapGen.WithSeed(v)
+			}
+			seed = &v
 		}
 	}
 	nw.Seed = seed
@@ -717,11 +698,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 			break
 		}
 		for _, planet := range req.Planets {
-			name, known := planetNames[planet]
-			if !known {
-				name = i18n.M("worlds.generate.planet.other", "name", planet)
-			}
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: name, Path: pictureURL(view.Token, planet)})
+			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
 		}
 	case errors.Is(err, ErrPreviewNoImage):
 		view.Error = i18n.M("worlds.generate.preview.no_image", "version", nw.GameVersion)

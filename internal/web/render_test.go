@@ -105,8 +105,8 @@ func pageCases() []pageCase {
 			Upload: ImportForm{IDPrefix: "upload", SourceError: i18n.M("worlds.upload.not_zip"), NameError: msgNameEmpty(), VersionError: msgBadGameVersion()}}},
 		{"generate empty", "todd", 200, GeneratePage{Form: generateCase(nil)}},
 		{"generate preview", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil), Preview: &PreviewView{Seed: "1234", Pictures: []PreviewPicture{
-			{Planet: "nauvis", Name: planetNames["nauvis"], Path: "/generate/preview/tok/nauvis"},
-			{Planet: "vulcanus", Name: planetNames["vulcanus"], Path: "/generate/preview/tok/vulcanus"}}}}},
+			{Planet: "nauvis", Name: planetMsg("nauvis"), Path: "/generate/preview/tok/nauvis"},
+			{Planet: "vulcanus", Name: planetMsg("vulcanus"), Path: "/generate/preview/tok/vulcanus"}}}}},
 		{"generate preview failed", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil),
 			Preview: &PreviewView{Error: i18n.M("worlds.generate.preview.failed"), Log: "Error: out of memory\n<b>x</b>"}}},
 		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
@@ -285,7 +285,7 @@ func TestVersionFragments(t *testing.T) {
 // generateCase is the Generate form as first offered, with edit applied.
 func generateCase(edit func(*GenerateForm)) GenerateForm {
 	f := GenerateForm{Version: "2.0.77", DefaultVersion: "2.0.77", SpaceAge: true, Download: true, CanDownload: true,
-		Mode: modePreset, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Seed: "42"}
+		Mode: modePreset, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Seed: "42", MapGen: NewMapGenForm("2.0", true)}
 	if edit != nil {
 		edit(&f)
 	}
@@ -422,7 +422,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 	}
 	for _, f := range files {
 		name := strings.TrimSuffix(path.Base(f), ".html")
-		if name == "layout" || name == "mapgenform" {
+		if name == "layout" || isPartial(name) {
 			continue
 		}
 		if _, ok := r.pages[i18n.English][name]; !ok {

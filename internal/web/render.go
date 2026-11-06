@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -323,6 +324,20 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 	}
 }
 
+// partials are template files that no route renders on their own: every page
+// loads them, and each defines templates the pages include.
+var partials = []string{"mapgenform"}
+
+var partialFiles = func() []string {
+	out := make([]string, len(partials))
+	for i, p := range partials {
+		out[i] = "templates/" + p + ".html"
+	}
+	return out
+}()
+
+func isPartial(name string) bool { return slices.Contains(partials, name) }
+
 // NewRenderer parses every template once, makes a copy for each language
 // with that language's functions, and hashes every static file once.
 func NewRenderer() (*Renderer, error) {
@@ -343,11 +358,11 @@ func NewRenderer() (*Renderer, error) {
 	}
 	for _, f := range files {
 		name := strings.TrimSuffix(path.Base(f), ".html")
-		if name == "layout" {
+		if name == "layout" || isPartial(name) {
 			continue
 		}
 		base, err := template.New(name).Funcs(funcs).ParseFS(templateFS,
-			"templates/layout.html", "templates/"+name+".html")
+			append([]string{"templates/layout.html", "templates/" + name + ".html"}, partialFiles...)...)
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", name, err)
 		}

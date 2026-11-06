@@ -21,7 +21,7 @@
     {{- end}}
   </div>
   {{/* A change here redraws the map options for the new line (htmx); without script the server does it when the form is sent. */}}
-  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#map-section" hx-select="#map-section" hx-swap="outerHTML" hx-sync="this:replace">
+  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#map-key-box" hx-select="#map-key-box" hx-select-oob="#preset-field,#custom-fields" hx-swap="outerHTML" hx-sync="this:replace">
     <div class="field">
       <label for="generate-version-select">{{t "worlds.fact.game_version"}}</label>
       <select id="generate-version-select" name="game_version" hx-get="{{$.Page.VersionsPath}}" hx-trigger="load" hx-target="this" hx-select="unset" hx-swap="beforeend">
@@ -55,24 +55,26 @@
   {{- end}}
 
   <div id="map-section" class="map-section">
-    <input type="hidden" name="map_key" value="{{.MapKey}}">
-    <input type="hidden" name="filled_seed" value="{{.FilledSeed}}">
-    {{- if .Reset}}
-    <div class="message message--note" id="map-reset" tabindex="-1">
-      <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
+    <div id="map-key-box">
+      <input type="hidden" name="map_key" value="{{.MapKey}}">
+      {{- if .Reset}}
+      <div class="message message--note" id="map-reset" tabindex="-1">
+        <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
+      </div>
+      {{- end}}
     </div>
-    {{- end}}
+    <input type="hidden" id="filled-seed" name="filled_seed" value="{{.FilledSeed}}">
     <fieldset>
       <legend>{{t "worlds.generate.mode.legend"}}</legend>
 
       <div class="mode-option">
         <label class="check"><input type="radio" id="mode-preset" name="mode" value="preset"{{if eq .Mode "preset"}} checked{{end}}> {{t "worlds.generate.mode.preset"}}</label>
         <div class="mode-fields">
-          <div class="field">
+          <div class="field" id="preset-field">
             <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
             <select id="generate-preset" name="preset"{{if not .PresetError.IsZero}} aria-invalid="true" aria-describedby="generate-preset-error"{{end}}>
               {{- range .Presets}}
-              <option value="{{.}}"{{if eq . $.Page.Form.Preset}} selected{{end}}>{{msg ($.Page.Form.PresetName .)}}</option>
+              <option value="{{.}}"{{if eq . $.Page.Form.Preset}} selected{{end}}>{{msg ($.Page.Form.PresetMsg .)}}</option>
               {{- end}}
             </select>
             {{- if not .PresetError.IsZero}}
@@ -108,8 +110,11 @@
 
       <div class="mode-option">
         <label class="check"><input type="radio" id="mode-custom" name="mode" value="custom"{{if eq .Mode "custom"}} checked{{end}}> {{t "worlds.generate.mode.custom"}}</label>
-        <div class="mode-fields">
-          {{template "mapgenform" .MapGen}}
+        <div class="mode-fields" id="custom-fields">
+          <fieldset class="mode-custom">
+            <legend>{{t "worlds.generate.custom.legend"}}</legend>
+            {{template "mapgenform" .MapGen}}
+          </fieldset>
         </div>
       </div>
     </fieldset>
@@ -128,7 +133,7 @@
     <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
-      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-indicator="#preview-wait" hx-disabled-elt="#preview-button, #generate-button">{{t "worlds.generate.preview.button"}}</button>
+      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed,#mg-seed" hx-indicator="#preview-wait" hx-disabled-elt="#preview-button, #generate-button">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
     <a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a>
   </div>
