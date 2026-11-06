@@ -120,7 +120,7 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 		t.Fatalf("status %d", rec.Code)
 	}
 	for _, want := range []string{
-		"<h1>Delete 2 snapshots</h1>", `Base: "First", taken`, `Base: "Second", taken`,
+		"<h1>Delete 2 snapshots</h1>", `Base: &#34;First&#34;, taken`, `Base: &#34;Second&#34;, taken`,
 		"Free " + world.FormatBytes(together) + " of disk space",
 		"Already deleted", "is deleted already",
 		`<input type="hidden" name="snap" value="` + ref(id, first.Name) + `">`,

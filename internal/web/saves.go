@@ -33,10 +33,6 @@ const (
 // error summary sends focus (DESIGN 7.2).
 const loadFirstID = "load-newest"
 
-// msgSaveGone is the load choice's error when the chosen save was removed
-// after the page was shown.
-const msgSaveGone = "Choose a save from the list. That save is no longer in the saves folder."
-
 func (s *server) saveRoutes() {
 	s.mux.HandleFunc("GET "+patternSaves, s.requireUser(s.handleSaves))
 	s.handleUpload("POST "+patternSaves, MaxSaveUpload, s.requireUser(s.guardUpload(s.handleSaveUpload)))
@@ -77,8 +73,8 @@ type SavesPage struct {
 	Uploaded string
 	Chosen   bool
 
-	UploadError string
-	LoadError   string
+	UploadError i18n.Msg
+	LoadError   i18n.Msg
 }
 
 func (SavesPage) templateName() string { return "saves" }
@@ -89,8 +85,8 @@ func (p SavesPage) hasErrors() bool { return len(p.Problems()) > 0 }
 // Problems lists the form errors in the order the forms appear.
 func (p SavesPage) Problems() []Problem {
 	return problems(
-		Problem{"save-file", i18n.Raw(p.UploadError)},
-		Problem{loadFirstID, i18n.Raw(p.LoadError)},
+		Problem{"save-file", p.UploadError},
+		Problem{loadFirstID, p.LoadError},
 	)
 }
 
@@ -236,7 +232,7 @@ func (s *server) handleLoadSave(w http.ResponseWriter, r *http.Request, u store.
 	}
 	choice, sent := r.PostForm[saveLoadField]
 	if !sent {
-		s.showSaves(w, r, u, http.StatusUnprocessableEntity, func(p *SavesPage) { p.LoadError = "Choose which save loads." })
+		s.showSaves(w, r, u, http.StatusUnprocessableEntity, func(p *SavesPage) { p.LoadError = i18n.M("worlds.saves.choose") })
 		return
 	}
 	if err := s.worlds.SetLoadSave(id, choice[0]); err != nil {
@@ -245,7 +241,7 @@ func (s *server) handleLoadSave(w http.ResponseWriter, r *http.Request, u store.
 			return
 		}
 		if errors.Is(err, world.ErrSaveNotFound) {
-			msg = msgSaveGone
+			msg = i18n.M("worlds.saves.gone")
 		}
 		s.showSaves(w, r, u, status, func(p *SavesPage) { p.LoadError = msg })
 		return

@@ -77,8 +77,9 @@ type BulkImported struct{ Folder, WorldID, WorldName string }
 // BulkSkipped is one folder that was not imported, and why. Alone is true
 // when importing the folder on its own can fix it (SPEC 17.9).
 type BulkSkipped struct {
-	Folder, Reason string
-	Alone          bool
+	Folder string
+	Reason i18n.Msg
+	Alone  bool
 }
 
 // AlonePath is the import form with only this folder ticked.
@@ -94,11 +95,11 @@ type ImportForm struct {
 	Name         string
 	GameVersion  string
 	SpaceAge     bool
-	SourceError  string
-	NameError    string
-	VersionError string
+	SourceError  i18n.Msg
+	NameError    i18n.Msg
+	VersionError i18n.Msg
 	// SpaceAgeError says why Space Age cannot be on for this version.
-	SpaceAgeError string
+	SpaceAgeError i18n.Msg
 	// SaveRead, SaveVersion and SaveSpaceAge describe the one chosen
 	// folder's save, for "Same as the save" and the Space Age warning.
 	SaveRead     bool
@@ -134,7 +135,7 @@ func (p ImportPage) Rows() (waiting, imported []ImportRow) {
 			continue
 		}
 		row := ImportRow{InboxFolder: f, Checked: slices.Contains(p.Folder.Folders, f.Name),
-			Invalid: p.Folder.SourceError != "", MissingImage: f.Read && p.Missing[f.GameVersion]}
+			Invalid: !p.Folder.SourceError.IsZero(), MissingImage: f.Read && p.Missing[f.GameVersion]}
 		if f.Imported == nil {
 			waiting = append(waiting, row)
 		} else {
@@ -156,13 +157,24 @@ func (p ImportPage) Waiting() []ImportRow { w, _ := p.Rows(); return w }
 // Imported lists the folders already imported with their newest save.
 func (p ImportPage) Imported() []ImportRow { _, i := p.Rows(); return i }
 
+// Unimportable is one folder that cannot be imported and why.
+type Unimportable struct {
+	Name string
+	Why  i18n.Msg
+}
+
 // Unimportable lists the folders that cannot be imported.
-func (p ImportPage) Unimportable() []world.InboxFolder {
-	var out []world.InboxFolder
+func (p ImportPage) Unimportable() []Unimportable {
+	var out []Unimportable
 	for _, f := range p.Inbox {
-		if !f.Importable() {
-			out = append(out, f)
+		if f.Importable() {
+			continue
 		}
+		why := i18n.M("worlds.import.unimportable.no_save")
+		if clash, ok := errors.AsType[world.SaveClashError](f.Clash); ok {
+			why = i18n.M("worlds.import.unimportable.clash", "name", clash.Name)
+		}
+		out = append(out, Unimportable{Name: f.Name, Why: why})
 	}
 	return out
 }
@@ -173,29 +185,16 @@ func (p ImportPage) Importable() bool {
 }
 
 // SpaceAgeWarning says what the Space Age choice does to the chosen
-// folder's save when it differs from how the save was made, or "".
-func (f ImportForm) SpaceAgeWarning() string {
+// folder's save when it differs from how the save was made, or is zero.
+func (f ImportForm) SpaceAgeWarning() i18n.Msg {
 	if !f.SaveRead || f.SpaceAge == f.SaveSpaceAge {
-		return ""
+		return i18n.Msg{}
 	}
 	if f.SpaceAge {
-		return spaceAgeOnWarning
+		return i18n.M("worlds.import.space_age_on_warning")
 	}
-	return spaceAgeOffWarning
+	return i18n.M("worlds.import.space_age_off_warning")
 }
-
-// The Space Age warnings. The page hands them to import.js as data
-// attributes, so the words live only here.
-const (
-	spaceAgeOnWarning  = "The save was made without Space Age. Factorio converts it to Space Age when it first starts, and that cannot be undone."
-	spaceAgeOffWarning = "The save was made with Space Age. Without it, Factorio may not load the save, or may remove its Space Age content."
-)
-
-// SpaceAgeOnWarning, SpaceAgeOffWarning and SpaceAgeOldWarning are the three
-// words import.js can show.
-func (ImportForm) SpaceAgeOnWarning() string  { return spaceAgeOnWarning }
-func (ImportForm) SpaceAgeOffWarning() string { return spaceAgeOffWarning }
-func (ImportForm) SpaceAgeOldWarning() string { return sentence(world.ErrSpaceAgeOld) }
 
 // Problems lists the form's field errors in the order the fields appear.
 // The upload form's file field comes last, so its text fields are read
@@ -203,17 +202,17 @@ func (ImportForm) SpaceAgeOldWarning() string { return sentence(world.ErrSpaceAg
 func (f ImportForm) Problems() []Problem {
 	if f.IDPrefix == "upload" {
 		return problems(
-			Problem{"upload-name", i18n.Raw(f.NameError)},
-			Problem{"upload-version", i18n.Raw(f.VersionError)},
-			Problem{"upload-space-age", i18n.Raw(f.SpaceAgeError)},
-			Problem{"upload-source", i18n.Raw(f.SourceError)},
+			Problem{"upload-name", f.NameError},
+			Problem{"upload-version", f.VersionError},
+			Problem{"upload-space-age", f.SpaceAgeError},
+			Problem{"upload-source", f.SourceError},
 		)
 	}
 	return problems(
-		Problem{"folder-source-0", i18n.Raw(f.SourceError)},
-		Problem{"folder-name", i18n.Raw(f.NameError)},
-		Problem{"folder-version", i18n.Raw(f.VersionError)},
-		Problem{"folder-space-age", i18n.Raw(f.SpaceAgeError)},
+		Problem{"folder-source-0", f.SourceError},
+		Problem{"folder-name", f.NameError},
+		Problem{"folder-version", f.VersionError},
+		Problem{"folder-space-age", f.SpaceAgeError},
 	)
 }
 
@@ -307,11 +306,11 @@ func onlyWaiting(inbox []world.InboxFolder) (world.InboxFolder, bool) {
 func importFields(name, version, spaceAge, download string) ImportForm {
 	f := ImportForm{Name: name, GameVersion: strings.TrimSpace(version), SpaceAge: spaceAge == "on", Download: download == "on"}
 	if strings.TrimSpace(name) == "" {
-		f.NameError = sentence(world.ErrNameEmpty)
+		f.NameError = msgNameEmpty()
 	}
 	// An empty version is filled in from the save later (fillFromSave).
 	if f.GameVersion != "" && !world.SupportedGameVersion(f.GameVersion) {
-		f.VersionError = sentence(world.ErrBadGameVersion)
+		f.VersionError = msgBadGameVersion()
 	}
 	return f
 }
@@ -320,11 +319,11 @@ func importFields(name, version, spaceAge, download string) ImportForm {
 // empty. Space Age then is on if the save uses it or the box is ticked. A
 // save that could not be read leaves the version required.
 func (f *ImportForm) fillFromSave(info world.SaveInfo, ok bool) {
-	if f.GameVersion != "" || f.VersionError != "" {
+	if f.GameVersion != "" || !f.VersionError.IsZero() {
 		return
 	}
 	if !ok {
-		f.VersionError = sentence(world.ErrBadGameVersion)
+		f.VersionError = msgBadGameVersion()
 		return
 	}
 	f.GameVersion = info.GameVersion
@@ -333,17 +332,17 @@ func (f *ImportForm) fillFromSave(info world.SaveInfo, ok bool) {
 
 // checkSpaceAge refuses Space Age for a version before 2.0.
 func (f *ImportForm) checkSpaceAge() {
-	if f.SpaceAge && f.VersionError == "" && strings.HasPrefix(f.GameVersion, "1.") {
-		f.SpaceAgeError = sentence(world.ErrSpaceAgeOld)
+	if f.SpaceAge && f.VersionError.IsZero() && strings.HasPrefix(f.GameVersion, "1.") {
+		f.SpaceAgeError = msgSpaceAgeOld()
 	}
 }
 
 func (f ImportForm) failed() bool {
-	return f.SourceError != "" || f.NameError != "" || f.VersionError != "" || f.SpaceAgeError != ""
+	return !f.SourceError.IsZero() || !f.NameError.IsZero() || !f.VersionError.IsZero() || !f.SpaceAgeError.IsZero()
 }
 
 // place puts a refusal's words on the field it is about.
-func (f *ImportForm) place(err error, msg string) {
+func (f *ImportForm) place(err error, msg i18n.Msg) {
 	switch {
 	case errors.Is(err, world.ErrNameEmpty), errors.Is(err, world.ErrNameTaken):
 		f.NameError = msg
@@ -372,7 +371,7 @@ func (s *server) checkTypedVersion(ctx context.Context, f *ImportForm) (unchecke
 		return true
 	}
 	if !slices.Contains(versions, v) {
-		f.VersionError = "Factorio " + v + " is not a downloaded game image and is not on Docker Hub's list of versions. Check the number."
+		f.VersionError = i18n.M("worlds.import.version_unknown", "version", v)
 	}
 	return false
 }
@@ -394,7 +393,7 @@ func (s *server) handleImportFolder(w http.ResponseWriter, r *http.Request, u st
 	f := importFields(r.PostFormValue("name"), typed, r.PostFormValue("space_age"), r.PostFormValue("download"))
 	f.Folders = folders
 	if len(folders) == 0 {
-		f.SourceError = sentence(world.ErrNoFolder)
+		f.SourceError = msgNoFolder()
 	}
 	if f.GameVersion == "" && len(folders) == 1 {
 		// A folder that is gone is reported by the import below.
@@ -447,24 +446,25 @@ func (s *server) importMany(ctx context.Context, folders []string, download bool
 	res := &BulkResult{}
 	firstOf := map[string]string{} // game version to the first world made with it
 	for _, name := range folders {
-		skip := func(reason string, alone bool) { res.Skipped = append(res.Skipped, BulkSkipped{name, reason, alone}) }
+		skip := func(reason i18n.Msg, alone bool) { res.Skipped = append(res.Skipped, BulkSkipped{name, reason, alone}) }
 		f, err := s.worlds.InboxEntry(name)
 		switch {
 		case errors.Is(err, world.ErrNoFolder):
-			skip("It is no longer in the import folder.", false)
+			skip(i18n.M("worlds.import.skip.gone"), false)
 			continue
 		case err != nil:
 			s.logUnlessCancelled("read import folder", name, err)
-			skip("Foreman could not read it.", false)
+			skip(i18n.M("worlds.import.skip.unreadable"), false)
 			continue
 		case f.Clash != nil:
-			skip(sentence(f.Clash), false)
+			clash, _ := errors.AsType[world.SaveClashError](f.Clash)
+			skip(clashMsg(clash), false)
 			continue
 		case f.Saves == 0:
-			skip(sentence(world.ErrNoSaves), false)
+			skip(msgNoSaves(), false)
 			continue
 		case !f.Read:
-			skip("Foreman could not read its save, so its game version is unknown. Import it on its own and enter the version.", true)
+			skip(i18n.M("worlds.import.skip.no_version"), true)
 			continue
 		}
 		id, err := s.worlds.ImportFolder(ctx, name, name, f.GameVersion, f.SpaceAge)
@@ -472,7 +472,7 @@ func (s *server) importMany(ctx context.Context, folders []string, download bool
 			status, msg := worldError(err)
 			if status == http.StatusInternalServerError {
 				s.logUnlessCancelled("import folder", name, err)
-				msg = "Foreman could not import it."
+				msg = i18n.M("worlds.import.skip.failed")
 			}
 			skip(msg, true)
 			continue
@@ -563,12 +563,12 @@ func (s *server) receiveImport(r *http.Request) (id string, f ImportForm, unchec
 	}
 	f.Source = up.FileName
 	if !world.ValidSaveName(up.FileName) {
-		f.SourceError = "Choose a save file whose name ends in .zip and does not start with a dot."
+		f.SourceError = i18n.M("worlds.upload.bad_name")
 	} else if err := checkZip(root, up.Temp, maxZipRatio*uint64(up.Size)); err != nil { //nolint:gosec // a size is never negative
 		_ = root.Remove(up.Temp)
 		return "", f, false, err
 	}
-	if f.SourceError == "" {
+	if f.SourceError.IsZero() {
 		info, ok := world.ReadSaveInfo(root, up.Temp)
 		f.fillFromSave(info, ok)
 	}
@@ -594,10 +594,9 @@ func (s *server) receiveImport(r *http.Request) (id string, f ImportForm, unchec
 func (s *server) importFacts(p *WorldPage, r *http.Request) {
 	q := r.URL.Query()
 	if q.Get(importedQuery) != "" {
-		p.Done = "Imported " + p.World.Name + "."
+		p.Done = i18n.M("worlds.world.imported", "name", p.World.Name)
 		if q.Get(uncheckedQuery) != "" {
-			p.Warning = "Foreman could not reach Docker Hub to check that Factorio " + p.World.GameVersion +
-				" exists. If it does not, the world will not start."
+			p.Warning = i18n.M("worlds.world.unchecked", "version", p.World.GameVersion)
 		}
 	}
 	if s.game == nil {

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -40,8 +41,8 @@ func bulkDeleteCase() SnapshotBulkDeletePage {
 
 func bulkDeletePartlyDone() SnapshotBulkDeletePage {
 	p := bulkDeleteCase()
-	p.Deleted, p.Error = []time.Time{time.Now(), time.Now()}, "1 of 3 snapshots were not deleted. Each one below says why."
-	p.Items[0].Failure = "Another operation is running on this world."
+	p.Deleted, p.Error = []time.Time{time.Now(), time.Now()}, i18n.M("worlds.snapshots.bulk.some_stayed", "failed", 1, "count", 3)
+	p.Items[0].Failure = msgBusy()
 	return p
 }
 
@@ -119,7 +120,7 @@ func TestSnapshotDeleteConfirmsThenDeletesAndAudits(t *testing.T) {
 	saves := filepath.Join(hn.worlds.Dirs().Worlds, id, "saves", "base.zip")
 
 	form := hn.get(snapshotDeletePath(id, first.Name), withCookie(c)).Body.String()
-	for _, want := range []string{`Delete the snapshot "First" of Base from`, "2026-11-02 12:00:00 UTC", "Free ", "Delete snapshot"} {
+	for _, want := range []string{`Delete the snapshot &#34;First&#34; of Base from`, "2026-11-02 12:00:00 UTC", "Free ", "Delete snapshot"} {
 		if !strings.Contains(form, want) {
 			t.Errorf("confirmation missing %q:\n%s", want, form)
 		}

@@ -5,9 +5,9 @@
 <div class="actions">{{if .Deleted}}<a href="{{worldsPath}}">Back to worlds</a>{{else}}<a href="{{.WorldPath}}">Back to {{.WorldName}}</a>{{end}}</div>
 <h1>Restore a snapshot of {{.WorldName}}</h1>
 {{template "summary" .Problems}}
-{{- with .Error}}
+{{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>Error:</strong> {{.}}</p>
+  <p><strong>Error:</strong> {{msg .Error}}</p>
   {{- if $.Page.Undo}}
   <p>Foreman took the snapshot "Before restore" first. To put the world back as it was, restore that snapshot.</p>
   <div class="actions"><a href="{{$.Page.UndoPath}}">Restore the "Before restore" snapshot</a></div>

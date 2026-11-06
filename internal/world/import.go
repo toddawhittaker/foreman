@@ -86,14 +86,14 @@ var ErrNoFolder = errors.New("choose a folder from the import folder")
 // level and its saves/ folder, so Foreman cannot tell which one is meant.
 var ErrSaveClash = errors.New("save name in two places")
 
-// saveClashError names the clashing file. It matches ErrSaveClash.
-type saveClashError struct{ name string }
+// SaveClashError names the clashing file. It matches ErrSaveClash.
+type SaveClashError struct{ Name string }
 
-func (e saveClashError) Error() string {
-	return fmt.Sprintf("the save %s is in both the folder and its saves folder, so it is not clear which to import. Remove or rename one of them", e.name)
+func (e SaveClashError) Error() string {
+	return fmt.Sprintf("the save %s is in both the folder and its saves folder, so it is not clear which to import. Remove or rename one of them", e.Name)
 }
 
-func (saveClashError) Is(target error) bool { return target == ErrSaveClash }
+func (SaveClashError) Is(target error) bool { return target == ErrSaveClash }
 
 var gameVersionRE = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 
@@ -221,7 +221,7 @@ func inboxFolder(inbox *os.Root, name string) (InboxFolder, error) {
 	}
 	f := InboxFolder{Name: name, Saves: len(saves), HasMods: mods != nil}
 	if n, clash := saveClash(saves); clash {
-		f.Clash = saveClashError{n}
+		f.Clash = SaveClashError{n}
 	}
 	for _, x := range slices.Concat(saves, mods, config) {
 		f.Bytes += x.size
@@ -395,7 +395,7 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 		return "", ErrNoSaves
 	}
 	if n, clash := saveClash(saves); clash {
-		return "", saveClashError{n}
+		return "", SaveClashError{n}
 	}
 	var need uint64
 	for _, f := range slices.Concat(saves, mods, config) {

@@ -1,12 +1,8 @@
 package web
 
 // The worlds area's templates and stylesheet not yet converted (see
-// i18ncheck_test.go).
+// i18ncheck_test.go). Everything is converted, so the lists are empty.
 var (
-	pendingWorldsTemplates = []string{
-		"allsnapshots.html", "delete.html", "deleted.html", "import.html",
-		"saves.html", "snapshotbulkdelete.html", "snapshotdelete.html",
-		"snapshots.html", "world.html", "worlds.html",
-	}
-	pendingWorldsCSS = []string{"foreman.css"}
+	pendingWorldsTemplates []string
+	pendingWorldsCSS       []string
 )
