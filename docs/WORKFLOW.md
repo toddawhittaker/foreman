@@ -1,8 +1,5 @@
 # Branching, review, and checks
 
-The real-game test procedure is added here once the real-game tests
-arrive (Epic 3).
-
 ## Where the code lives
 
 The repository is on GitHub: `origin` is
