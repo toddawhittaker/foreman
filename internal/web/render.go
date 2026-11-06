@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -196,9 +197,8 @@ func (p ErrorPage) Explanation() i18n.Msg {
 type view struct {
 	User string
 	Page Page
-	// Return is the page the language menu comes back to: this request's
-	// address when languageReturn allows it, else empty, which means home.
-	// After a form post that is the form's page, re-shown.
+	// Return is the page the language menu comes back to, else empty, which
+	// means home (see menuReturn).
 	Return string
 }
 
@@ -407,6 +407,21 @@ func (r *Renderer) staticURL(name string) (string, error) {
 	return PathStatic + name + "?v=" + f.hash, nil
 }
 
+// menuReturn is the address the language menu goes back to. A GET page is
+// its own address. Any other request came from a form, whose address answers
+// only POST, so it is the page the form was on, from a same-site Referer.
+// Without a usable one it is empty, which means home (SPEC 22.2, 14.17).
+func menuReturn(req *http.Request) string {
+	if req.Method == http.MethodGet || req.Method == http.MethodHead {
+		return languageReturn(req.URL.RequestURI())
+	}
+	ref, err := url.Parse(req.Referer())
+	if err != nil || ref.Host == "" || ref.Host != req.Host {
+		return ""
+	}
+	return languageReturn(ref.RequestURI())
+}
+
 // Render writes page p as a complete HTML document with the given status,
 // in the language of req (localeOf). user is the signed-in username, or
 // empty to hide the sign-out form. The page is rendered in full before
@@ -417,7 +432,7 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p, Return: languageReturn(req.URL.RequestURI())}
+	v := view{User: user, Page: p, Return: menuReturn(req)}
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)

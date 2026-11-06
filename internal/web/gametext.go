@@ -385,8 +385,6 @@ func problemMsg(p world.Problem) i18n.Msg {
 	return i18n.M("server.problem.other", "text", p.Text)
 }
 
-// modVersionMsg words mods made for another Factorio: one sentence per
-// version, then the advice.
 // saveReadDetail is why a save could not be read, in the page's language
 // for the reasons savefile names; any other cause is shown as the English
 // it is (SPEC 22.3).
@@ -407,6 +405,8 @@ func saveReadDetail(p world.Problem) any {
 	return i18n.Game(p.Detail)
 }
 
+// modVersionMsg words mods made for another Factorio: one sentence per
+// version, then the advice.
 func modVersionMsg(p world.Problem) i18n.Msg {
 	if len(p.Groups) == 0 {
 		return i18n.M("server.problem.other", "text", p.Text)

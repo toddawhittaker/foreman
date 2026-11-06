@@ -167,7 +167,7 @@ func TestLanguageMenuReturnAfterPost(t *testing.T) {
 	hn := newHarness(t, nil)
 	hn.addUser("alice", testPassword)
 	f := signInForm("alice", "not the right password")
-	bad := hn.post(PathSignIn+"?next=%2Fworlds", f).Body.String()
+	bad := hn.post(PathSignIn+"?next=%2Fworlds", f, withHeader("Referer", "http://example.com/signin?next=%2Fworlds")).Body.String()
 	if want := `<input type="hidden" name="return" value="/signin?next=%2Fworlds">`; !strings.Contains(bad, want) {
 		t.Errorf("re-shown sign-in lacks %s", want)
 	}
