@@ -20,7 +20,7 @@ import (
 )
 
 // These tests pin what an update and a rollback must hold (SPEC 10.3 to
-// 10.5, 6.2, 7.9, and rulings 3 to 5 of the plan):
+// 10.5, 6.2, 7.9):
 //
 //   - every refusal happens before the game is stopped, takes no snapshot
 //     and changes nothing on disk;
@@ -198,7 +198,7 @@ func TestUpdateRefusesAVersionThatIsNotNewer(t *testing.T) {
 	}
 }
 
-// Ruling 3 of the plan: only the active world is updated.
+// SPEC 10.3: only the active world is updated.
 func TestUpdateRefusesAWorldThatIsNotActive(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	r.versionWorld("Active", "2.0.77", "2.0.77-no-space-age.zip")
@@ -292,7 +292,7 @@ func TestUpdateRunningWorld(t *testing.T) {
 	}
 }
 
-// Ruling 4 of the plan: a stopped world is updated and stays stopped.
+// SPEC 10.3: a stopped world is updated and stays stopped.
 func TestUpdateStoppedWorldStaysStopped(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.versionWorld("Stopped", "2.0.77", "2.0.77-no-space-age.zip")
@@ -405,7 +405,7 @@ func TestRollbackRunningWorld(t *testing.T) {
 	}
 }
 
-// Ruling 5 of the plan: across several updates, each rollback goes back one.
+// SPEC 10.4: across several updates, each rollback goes back one.
 func TestRollbackStepsBackOneUpdateAtATime(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.versionWorld("Steps", "2.0.77", "2.0.77-no-space-age.zip")

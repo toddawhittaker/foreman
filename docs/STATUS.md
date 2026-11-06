@@ -1140,7 +1140,8 @@ SPEC 22.
 - **Glossary and review.** docs/I18N.md holds the glossary (from Factorio
   2.1.24's own locale files where the game has a term), the address rule
   per language and the label tables. Two AI reviews of the translations
-  were applied.
+  were applied, and a second-pass check made French and Polish use one
+  verb for taking a snapshot.
 - **One English change.** Numbers follow each language's grouping, so the
   sign-in error reads "at most 1,024 bytes" (SPEC 22.4).
 - **Fixes along the way.** An unknown or malformed Accept-Language entry no
@@ -1148,7 +1149,14 @@ SPEC 22.
   longer returns to a POST-only address (405). `Link` refuses a path that
   is not Foreman's own, and the menu's return path refuses control
   characters.
-- Z: FILL
+- **Layout fixes after the first matrix.** The deleted-worlds tables now
+  stack at large text. In a stacked cell a clock's zone (for example
+  `GMT+5:45`) wraps onto its own line while the date and sizes never
+  break, and stacked figures are start-aligned. The 320 px matrix now
+  also covers the deleted-worlds page, restore, snapshot delete, bulk
+  delete, rollback, three 422 error states, and a test in the
+  Asia/Kathmandu zone.
+- Q: FILL
 
 ### Verified
 
@@ -1184,8 +1192,7 @@ SPEC 22.
 - The plural forms for 5 and 21 are checked against the catalogue, not on
   a rendered page, because no page shows those counts yet.
 - The 320 px language matrix runs in one browser project (`phone-dark`)
-  to save about eight minutes; colour does not change layout. FILL: drop
-  this if Z widened it.
+  to save about eight minutes; colour does not change layout.
 - `make test-game` binds host UDP 34197, so it cannot run on a host where
   a real Factorio server holds that port. The real-game check had to
   patch the port locally.
