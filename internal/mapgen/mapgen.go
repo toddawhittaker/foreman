@@ -17,10 +17,12 @@ import (
 //go:embed data
 var files embed.FS
 
-// CategoryCliff is the category of the cliff control, which the form shows
-// apart from the others. The game's other categories are resource, terrain
-// and enemy.
-const CategoryCliff = "cliff"
+// Control categories the form treats apart from the others, as the game
+// names them. The game's other categories are resource and enemy.
+const (
+	CategoryTerrain = "terrain"
+	CategoryCliff   = "cliff"
+)
 
 // Control is one autoplace control: a setting with its own frequency and
 // size, and richness when the game offers it for the control.
