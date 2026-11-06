@@ -315,10 +315,10 @@ func terrainSettings(richness bool) []mgSetting {
 
 func controlFor(c mapgen.Control) mgControl {
 	mc := mgControl{name: c.Name, legend: controlMsg(c.Name)}
-	switch {
-	case c.Category == mapgen.CategoryTerrain:
+	switch c.Category {
+	case mapgen.CategoryTerrain:
 		mc.settings = terrainSettings(c.Richness)
-	case c.Category == mapgen.CategoryCliff:
+	case mapgen.CategoryCliff:
 		mc.settings = cliffSettings()
 	default:
 		mc.settings = []mgSetting{

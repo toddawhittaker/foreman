@@ -19,7 +19,7 @@ type goldenFile struct {
 
 func readGolden(t *testing.T, version, name string) map[string]any {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "mapexchange", "testdata", version, name+".json"))
+	b, err := os.ReadFile(filepath.Join("..", "mapexchange", "testdata", version, name+".json")) //nolint:gosec // a fixed test fixture
 	if err != nil {
 		t.Fatal(err)
 	}

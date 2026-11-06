@@ -26,7 +26,7 @@ func goldenMapGen(t *testing.T, line, preset string, spaceAge bool) map[string]a
 	if spaceAge {
 		name += "_space-age"
 	}
-	b, err := os.ReadFile(filepath.Join("..", "mapexchange", "testdata", goldenVersions[line], name+".json"))
+	b, err := os.ReadFile(filepath.Join("..", "mapexchange", "testdata", goldenVersions[line], name+".json")) //nolint:gosec // a fixed test fixture
 	if err != nil {
 		t.Fatal(err)
 	}
