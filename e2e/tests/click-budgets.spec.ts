@@ -58,6 +58,28 @@ test.describe("click budgets, with the fake game", () => {
     await expectWithin(clicks, 0, "see who is online");
   });
 
+  // SPEC 17.10 (Generate row): from the Server page, Worlds, "Generate a
+  // world", then "Generate world" with every default kept but the name.
+  test("generate a world with the defaults: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("link", { name: "Worlds", exact: true }).click();
+    await page.getByRole("link", { name: "Generate a world" }).click();
+    await page.getByLabel("World name").fill("Fresh");
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page).toHaveURL("/worlds/fresh?generated=1");
+    await expectWithin(clicks, 3, "generate");
+  });
+
+  // DESIGN 8.9: the active world's link, "Clone world", then "Clone world" on the form.
+  test("clone the active world: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("link", { name: "World page" }).click();
+    await page.getByRole("link", { name: "Clone world" }).click();
+    await page.getByRole("button", { name: "Clone world" }).click();
+    await expect(page.locator(".message--success")).toBeVisible(live);
+    await expectWithin(clicks, 3, "clone");
+  });
+
   test("start the active world: 1 click", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!);
     await page.getByRole("button", { name: "Start server" }).click();

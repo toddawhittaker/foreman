@@ -1104,113 +1104,131 @@ Classes and their contract:
 ### 8.6 Generate (SPEC 5.6)
 
 The task is "make a new world". From the Server page it takes three
-clicks: Worlds, "Generate world" (beside "Import worlds" on the Worlds
-page), then "Generate world" on the form. Everything but the name has a
-default.
+clicks: Worlds, "Generate a world", then "Generate world" on the form.
+Everything but the name has a default.
 
-One page, `GET /generate`, one `form.panel`, in this order:
+One page, `GET /generate`: one `h1` with a one-line hint, then one form,
+in this order:
 
-1. Name (7.2, required, the only field with no default).
-2. Game version: the same picker as Import (SPEC 10.7): downloaded
-   versions and Docker Hub's list, with the "download the game image"
-   checkbox. Preview needs a downloaded image; its refusal (8.8) covers
-   that.
-3. Space Age: a checkbox, checked when the version supports it, as on
-   Import.
-4. "How to make the map": a `fieldset` of three radios, each followed
-   in order by its own `fieldset` of fields:
-   - **Preset** (checked): a `select` of the game line's presets with
-     "Default" selected, and a Seed field (mono, `inputmode="numeric"`,
-     `20ch`, hint "Leave blank for a random seed").
-   - **Map exchange string**: a mono `textarea`, 6 rows,
-     `spellcheck="false"`, `autocapitalize="off"`. Its hint says where
-     the game shows one. A bad string is refused on this page with the
-     string's version and the reason (7.2 error).
-   - **Custom settings**: the map-gen form (8.7).
-5. The action row: "Generate world" (primary), "Preview map" (secondary,
-   8.8), then a Cancel link back to the Worlds page.
+1. The required note (7.2), then Name (required, a placeholder example).
+2. Game version: the same picker as Import (SPEC 10.7). Typing a version
+   not in the list sits in a closed `details`, "Use a version not in the
+   list", opened when it holds a value or an error.
+3. Space Age, and the "download the game image" checkbox.
+4. "How to make the map": two radios, each with a one-line description
+   under its words: **Map settings** (checked) and **Map exchange
+   string**. CSS shows only the chosen way's fields
+   (`form:has(#mode-exchange:checked) .mode-panel--settings` and the
+   reverse); without `:has()` both show and the server reads the chosen
+   one.
+   - Map settings: the preset select with "[modified]" (the game's word)
+     and a quiet "Reset to preset default" button after it; the seed with
+     a "Random seed" button; then the tabs of 8.7.
+   - Map exchange string: a mono `textarea`, as before.
+5. The preview slot (8.8).
+6. One achievements summary (below), then the action row: "Generate
+   world" (primary), "Preview map", and a Cancel link.
 
-CSS shows only the chosen mode's `fieldset`
-(`form:has(#mode-preset:checked) .mode-exchange { display: none }` and
-so on); `display: none` also takes hidden fields out of the tab order.
-Without `:has()` all three show, and the server reads only the chosen
-one, so the page still works with no script. After a failed submit the
-chosen radio stays chosen and every value is kept.
+**Preset, "[modified]" and reset.** Choosing a preset fills every tab with
+its values (htmx redraws `#map-settings`; the preset and the seed are
+outside it, so focus and a typed seed stay). "[modified]" and the reset
+button show once any setting differs from the preset; the seed is not a
+setting of the preset. Reset is a submit button to the refresh route, so
+it also works without script; with htmx it redraws the tabs in place.
+A hidden `filled_from` names the preset the tabs were filled from. A page
+without script that sends a new preset with the old preset's values gets
+the page back, filled from the new preset, with a Note "The settings
+below were filled from the preset ..."; nothing is made until the person
+has seen them. A version or Space Age change redraws everything that
+follows the game line (`#line-box`) at once; text typed while that redraw
+was on its way is kept.
+
+**What is written** (SPEC 5.6). The preset unchanged: `--preset` and the
+seed, no file. Anything changed: both files complete and no `--preset`,
+because the game lets a preset win over the files. On a version whose
+map-settings layout no tested image has (2.1.13 to 2.1.17) the
+map-settings fields are not offered (a Note says why); a changed default
+writes the map-gen file alone, and a changed other preset is refused on
+the form, with its next steps (reset, the default preset, another
+version).
+
+**Achievements** (SPEC 5.6). A short warning, "Turns off some
+achievements.", in `warn` colour, sits under each setting as soon as its
+value crosses the game's line, and is part of that field's description.
+One `message--warning` by the action row lists the game's own reasons
+("Cannot be unlocked in peaceful mode."), each once; it is hidden while
+none applies. The script decides from `data-ach`, `data-ach-limit` and
+`data-ach-reason` on each field, which the server writes from
+`mapgen.AchievementRules`; the server renders the same warnings and
+summary on every page it sends. When a warning first appears it is said
+once through `#announcer`.
+
+**Preview slot.** On a panel narrower than 52rem the preview sits under
+the settings. On a wider one, once the preview section holds anything,
+it takes a column of 16 to 22rem beside them and stays in view
+(`position: sticky`); until then the settings use the whole width.
 
 On success the browser lands on the new world's page with a Done message
 (7.3): "Generated Family base 2026. Its map is made when it first
-starts." The next action, Switch, is already on that page.
+starts."
 
-### 8.7 The map-gen form (SPEC 5.6, 11.5)
-
-Plain HTML, no script. It is long, so it is grouped and mostly closed.
+### 8.7 The map settings (SPEC 5.6, 11.5)
 
 ```html
-<fieldset class="mode-custom">
-  <legend>Custom settings</legend>
-  <fieldset><legend>Map</legend> … seed, width, height, starting area,
-    water, cliffs, peaceful mode …</fieldset>
-  <details open>
-    <summary>Nauvis: resources and terrain</summary>
-    <fieldset class="autoplace">
-      <legend>Iron ore</legend>
-      <div class="field"><label for="nauvis-iron-ore-frequency">Frequency</label>
-        <select id="nauvis-iron-ore-frequency" name="nauvis.iron-ore.frequency">…</select></div>
-      … size, richness …
-    </fieldset>
-    …
-  </details>
-  <details><summary>Vulcanus: resources and terrain</summary> … </details>
+<fieldset class="tabset"><legend class="visually-hidden">Settings to show</legend>
+  <div class="tablist">
+    <label class="tab"><input type="radio" name="tab" id="tab-resources" value="resources" checked>Resources</label>
+    … Terrain, Enemy, Advanced …
+  </div>
 </fieldset>
+<fieldset class="tab-panel" id="panel-resources"><legend>Resources</legend> … </fieldset>
+…
 ```
 
-- **Groups.** First a "Map" fieldset, always open: seed, width and
-  height, starting area, water (scale and coverage), cliffs (frequency
-  and continuity), and peaceful mode. Then one `details` per planet the
-  world will have, in the game's order (only Nauvis on 1.1 or without
-  Space Age, and then the summary says just "Resources and terrain").
-  The first planet is open, the others closed. A `details` holding a
-  field with an error is rendered `open`, so the error summary's link
-  (7.2) reaches a visible field.
-- **One fieldset per autoplace control**, its legend the game's name
-  for it ("Iron ore", "Trees", "Enemy bases"). Its fields (frequency,
-  size, richness; two where the control has no richness) sit in a grid,
-  `repeat(auto-fit, minmax(8rem, 1fr))`, sized by the container: one
-  row on a wide panel, stacked at 320 px. A screen reader hears "Iron
-  ore, Frequency, 100%".
-- **Selects of named steps, not sliders or free numbers.** Frequency,
-  size, richness, starting area, water and cliffs are each a `select` of
-  the game's own steps for that game line, read from the game data and
-  labelled as the game labels them, with the default step selected and
-  marked "(default)". Where the game allows zero, "None" is first. A
-  range input is hard to set exactly from the keyboard and hides its
-  value; a free number lets in values the game refuses.
-- **Numbers.** Seed, width and height are text inputs with
-  `inputmode="numeric"`, mono, `20ch`. Width and height hint "0 means
-  no limit". Peaceful mode is a checkbox (7.2).
-- The form opens filled with the chosen preset's values for the game
-  line, so "Custom" means "a preset, then changed". Choosing another
-  preset in the Preset mode refills this form (the select posts to the
-  refresh route; only the seed is kept), and a hint at the top of the form
-  says which preset it holds. A preset value that is on none of the game's
-  steps (rail world's water coverage of 150%, ribbon world's cliff
-  continuity of 75%) shows as an extra step in that one select, so opening
-  the form never changes a preset. Keys the fields do not cover, such as an
-  island's terrain type, fill the raw editor below. Without script the form
-  opens at the defaults and the person sets what they want.
-- **Words for terrain.** A terrain control (water, trees, rocks, moisture)
-  has Scale and Coverage, as the game's terrain tab words them; Scale is
-  the inverse of the stored frequency. Resources and enemy bases have
-  Frequency and Size, resources also Richness; cliffs Frequency and
-  Continuity.
-- **Raw map-gen JSON** (SPEC 11.5). After the planet `details`, a closed
-  `details` "Other map-gen settings (JSON)" holds the raw editor of 8.10
-  (mono `textarea`, `wrap="off"`, errors by line in the error summary,
-  `details` rendered `open` when it has an error). It is prefilled with
-  the game line's defaults for only the keys the form does not cover.
-  On submit the raw object is read first and the form fields are laid
-  over it, so a form field wins for every key it covers; a raw key the
-  form covers is ignored, and the hint says so.
+- **Tabs, as the game has them.** Resources, Terrain (with cliffs and
+  1.1's water), Enemy and Advanced. The tabs are radios drawn as the
+  sub-navigation's tabs (6): one tab stop, the arrow keys move between
+  them, the current one bold with the 3px `selected` underline. The
+  script adds `js-on` to the form and names the shown tab in `data-tab`,
+  and the style sheet shows that one panel; the panel's own legend is
+  then for screen readers only. Without script the radios are hidden and
+  the four panels stack under their legends. After a failed submit the
+  page opens on the tab holding the first error, and a summary link (or
+  focus) that lands in another tab opens it first.
+- **Per planet.** Resources and Terrain hold one closed `details` per
+  planet (the first open, any with an error open); a world with one
+  planet shows its groups directly.
+- **One fieldset per control**, its legend the game's name, small and
+  muted so the groups read as one list. Its settings sit in a grid
+  `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 16rem with sliders.
+- **Steps: selects, and sliders on a wide panel.** Every frequency, size,
+  richness, scale, coverage, continuity and the starting area is a
+  `select` of the game's own steps (the game's words: a percentage,
+  "None", "(default)"; the game has no other word for a step). The
+  select is always what is sent. The script adds, after each select, an
+  `input type="range"` over the same steps (no name, labelled by the
+  select's label, `aria-valuetext` the step's words) and an `output` with
+  those words. On a `map-section` container at least 34rem wide the
+  style sheet shows the slider and output and hides the select; narrower
+  (phones, 200% text) it shows the select. The name is on its own line,
+  never broken inside a word; the slider and its value share the next
+  line, and the value has a fixed 14ch so the slider never moves as the
+  words change.
+- **Enemy tab:** the enemy controls (Nauvis's and Gleba's), No enemies
+  (2.x) and Peaceful mode with their hints, the starting area, then the
+  map-settings groups "Enemy expansion" and "Evolution".
+- **Advanced tab:** Width and Height, the groups Technology (price
+  multiplier), Pollution, Asteroids and Spoiling (2.x), then the raw
+  map-gen JSON `details`.
+- **Map-settings fields** (`ms.<dotted path>`) show what the version's
+  file holds, in the units the game's map generator shows: cooldowns in
+  minutes, ratios and modifiers in percent, evolution factors as "40"
+  with a "× 10⁻⁷" unit after the field. A group's "Enabled" checkbox heads
+  it on its own row. Numbers are mono text fields 12ch wide with the unit
+  beside them. 2.1's evolution group size factor replaces 2.0's group
+  sizes.
+- **Raw map-gen JSON** (SPEC 11.5) is as before: the fields win for every
+  key they cover.
 
 ### 8.8 Map preview (SPEC 5.6, P1)
 
@@ -1286,6 +1304,14 @@ A world's page and the Server page (for the active world) each have a
 "Settings" link. From the Server page, changing a setting takes three
 clicks: Settings, "Preview changes", "Save settings", plus Restart when
 the game is running.
+
+The settings pages (form, raw editor and preview) carry the world's tabs
+(6) with Settings current, and no "Back to" link. The form's `h1` is the
+world's name. On a container at least 44rem wide a rail of section links
+(Listing, Joining, Saving, Admins, and "Edit server-settings.json as
+JSON") sits beside the form, 12rem wide and sticky, since it never covers
+the form; narrower, there is no rail and the raw editor's link follows
+the form. Server name is required (7.2).
 
 **The form** (`GET /worlds/{id}/settings`) is one `form.panel` of
 fieldsets, in this order:

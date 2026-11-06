@@ -278,3 +278,53 @@ func TestASlowPreviewOutlastsTheWriteTimeout(t *testing.T) {
 		t.Errorf("status %d, %v\n%s", resp.StatusCode, err, body)
 	}
 }
+
+// SPEC 5.6: a download reads a preview's pictures while the user draws
+// another planet from the same settings; the two must not touch the same map.
+func TestPreviewStoreAddDuringReads(t *testing.T) {
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	st := newPreviewStore(func() time.Time { return now })
+	tok, err := st.add(1, "k1", "World", "7", onePNG("nauvis"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	planets := []string{"gleba", "vulcanus", "fulgora", "aquilo"}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := range 2000 {
+			_, _ = st.add(1, "k1", "World", "7", onePNG(planets[i%len(planets)]+strings.Repeat("x", i)))
+		}
+	}()
+	for {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		e, ok := st.entry(tok, 1)
+		if !ok {
+			t.Fatal("the preview was lost")
+		}
+		for range e.images {
+		}
+		_ = len(e.planets)
+		_, _ = st.get(tok, 1, "nauvis")
+	}
+}
+
+// SPEC 5.6: a preview that is asked for again lives another 15 minutes, so
+// the pictures its page links to do not vanish a second later.
+func TestPreviewStoreFoundPreviewLivesOn(t *testing.T) {
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	st := newPreviewStore(func() time.Time { return now })
+	tok, _ := st.add(1, "k1", "World", "7", onePNG("nauvis"))
+	now = now.Add(previewTTL - time.Second)
+	if got, _ := st.missing(1, "k1", "Renamed", []string{"nauvis"}); got != tok {
+		t.Fatal("the preview was not found")
+	}
+	now = now.Add(2 * time.Second)
+	if _, ok := st.get(tok, 1, "nauvis"); !ok {
+		t.Error("the preview expired right after it was found again")
+	}
+}

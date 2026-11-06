@@ -217,3 +217,83 @@ func achievementRules(line string) []achievementRule {
 	}
 	return out
 }
+
+// AchievementRule is one setting's line, for a form that warns as soon as a
+// value crosses it: the file and dotted path of the setting, how it is
+// compared, the value it is compared with, and the reason's message key.
+type AchievementRule struct {
+	// MapSettings is true for a value in map-settings.json, false for one in
+	// map-gen-settings.json.
+	MapSettings bool
+	Field       string
+	// Test is "true" or "false" (the setting blocks when it is that), or
+	// "below" or "above" (it blocks when it is beyond Limit by more than the
+	// game's float rounding).
+	Test    string
+	Limit   float64
+	Message string
+}
+
+// AchievementRules lists the rules AchievementBlockers applies on an exact
+// game version, each with the value it compares with. On a version with no
+// tested map-settings layout only the map-gen rules are listed.
+func AchievementRules(version string) ([]AchievementRule, error) {
+	line, ok := Line(version)
+	if !ok {
+		return nil, fmt.Errorf("mapgen: %q is not a supported game version", version)
+	}
+	defs := map[string]map[string]any{}
+	var err error
+	if defs[inMapGen], err = flatObject(DefaultMapGen(line)); err != nil {
+		return nil, fmt.Errorf("mapgen: %w", err)
+	}
+	if b, err := MapSettings(version, "default", nil); err == nil {
+		if defs[inMapSettings], err = flatObject(b); err != nil {
+			return nil, fmt.Errorf("mapgen: %w", err)
+		}
+	}
+	var out []AchievementRule
+	for _, r := range achievementRules(line) {
+		d, known := defs[r.file]
+		if !known {
+			continue
+		}
+		rule := AchievementRule{MapSettings: r.file == inMapSettings, Field: r.field, Limit: 1,
+			Message: achievementKey + strings.ReplaceAll(r.reason, "-", "_")}
+		switch r.test {
+		case isTrue, isFalse:
+			rule.Test = r.test
+		case belowDefault, belowOne:
+			rule.Test = "below"
+		default:
+			rule.Test = "above"
+		}
+		if r.test == belowDefault || r.test == aboveDefault {
+			if v, ok := d[r.field].(float64); ok {
+				rule.Limit = v
+			}
+		}
+		out = append(out, rule)
+	}
+	return out, nil
+}
+
+// Blocks reports whether a value breaks the rule, with the tolerance
+// AchievementBlockers uses.
+func (r AchievementRule) Blocks(v any) bool {
+	switch r.Test {
+	case isTrue:
+		return v == true
+	case isFalse:
+		return v == false
+	}
+	n, ok := v.(float64)
+	if !ok {
+		return false
+	}
+	tol := 1e-6 * math.Abs(r.Limit)
+	if r.Test == "below" {
+		return n < r.Limit-tol
+	}
+	return n > r.Limit+tol
+}

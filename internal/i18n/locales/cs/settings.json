@@ -53,7 +53,6 @@
   "settings.error.invalid": "Foreman nová nastavení znovu zkontroloval a odmítl je, proto se nic neuložilo. Je třeba otevřít editor JSON a zjistit, co je špatně.",
   "settings.error.too_big": "Soubor nastavení by překročil {size}. Je třeba odstranit jeho část.",
   "settings.raw.title": "Úprava {file} světa {world}",
-  "settings.raw.back": "Zpět na formulář nastavení",
   "settings.raw.label": "Obsah {file}",
   "settings.raw.hint": "Jeden objekt JSON, nejvýše {size}. Foreman kontroluje klíče, které zná, a ostatní ukládá beze změny.",
   "settings.raw.secrets": "Heslo hry, heslo k factorio.com a token se zde nezobrazují. Zůstanou zachovány, dokud tento text klíči nedá novou hodnotu. Prázdná hodnota je odstraní.",
@@ -104,5 +103,6 @@
   "settings.preview.step_admins_live": "Povýší a degraduje tyto hráče v běžící hře; hra aktualizuje {file}.",
   "settings.preview.undo": "Pro vrácení je třeba obnovit tento snímek na stránce Snímky.",
   "settings.preview.save": "Uložit nastavení",
-  "settings.preview.back": "Vrátit se a upravit"
+  "settings.preview.back": "Vrátit se a upravit",
+  "settings.rail.label": "Části nastavení"
 }

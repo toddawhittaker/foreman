@@ -446,11 +446,12 @@ test.describe("layout at 320 px in every language", () => {
         failures,
       );
 
-      // Generate in its other two modes, with its errors, and the settings
+      // Generate with an exchange string, on its other tabs, with its errors, and the settings
       // change preview (SPEC 5.6, 5.7, 11; DESIGN 8.6 to 8.10).
       for (const [label, radio] of [
         ["exchange string mode", "#mode-exchange"],
-        ["custom mode", "#mode-custom"],
+        ["Enemy tab", "label.tab:has(#tab-enemy)"],
+        ["Advanced tab", "label.tab:has(#tab-advanced)"],
       ] as const) {
         await sweepSubmit(
           page,
@@ -458,7 +459,7 @@ test.describe("layout at 320 px in every language", () => {
           `/generate in ${label}`,
           async () => {
             await page.goto("/generate");
-            await page.locator(radio).check();
+            await page.locator(radio).click();
           },
           failures,
         );

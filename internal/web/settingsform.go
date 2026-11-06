@@ -354,6 +354,11 @@ type SettingsPage struct {
 func (SettingsPage) templateName() string { return "settings" }
 func (SettingsPage) navItem() string      { return PathWorlds }
 
+// Tabs are the world's pages, with Settings current (DESIGN 6).
+func (p SettingsPage) Tabs() WorldTabs {
+	return WorldTabs{Path: worldPath(p.WorldID), Current: "settings", Settings: true}
+}
+
 func (p SettingsPage) hasErrors() bool { return p.has() || !p.Error.IsZero() }
 
 func (p SettingsPage) WorldPath() string { return worldPath(p.WorldID) }

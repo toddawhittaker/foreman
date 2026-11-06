@@ -171,6 +171,12 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 	}
 	d.containers = append(d.containers, c)
 	d.broadcast()
+	if f, failing := d.callFail["POST create"]; failing {
+		// The container exists but the caller is told it failed, as when a
+		// connection drops after the daemon has made it.
+		reply(w, f.status, f.msg)
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"Id": c.ID, "Warnings": []string{}})
 }

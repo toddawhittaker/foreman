@@ -583,6 +583,11 @@ type ChangeRow struct {
 func (SettingsPreviewPage) templateName() string { return "settingspreview" }
 func (SettingsPreviewPage) navItem() string      { return PathWorlds }
 
+// Tabs are the world's pages, with Settings current (DESIGN 6).
+func (p SettingsPreviewPage) Tabs() WorldTabs {
+	return WorldTabs{Path: worldPath(p.WorldID), Current: "settings", Settings: true}
+}
+
 func (p SettingsPreviewPage) WorldPath() string     { return worldPath(p.WorldID) }
 func (p SettingsPreviewPage) ConfirmPath() string   { return settingsConfirmPath(p.WorldID) }
 func (p SettingsPreviewPage) SnapshotsPath() string { return snapshotsPath(p.WorldID) }

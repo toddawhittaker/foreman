@@ -6,8 +6,7 @@ import type { Page } from "@playwright/test";
 // alt text, so screen readers hear "required" once, from the field), and its
 // form explains the asterisk once with "* Required". The table lists, per
 // form, the fields its handler refuses when empty, so a field added to a
-// handler without its mark fails here. Generate and the settings pages are
-// checked with their own forms.
+// handler without its mark fails here.
 const required: Record<string, string[]> = {
   "/worlds/base": ["name"],
   "/worlds/base/clone": ["clone-name"],
@@ -15,6 +14,8 @@ const required: Record<string, string[]> = {
   "/worlds/base/saves": ["save-file"],
   "/import": ["upload-name", "upload-source"],
   "/console": ["command"],
+  "/generate": ["generate-name"],
+  "/worlds/base/settings": ["name"],
 };
 
 async function expectMarked(page: Page, ids: string[]) {
@@ -43,7 +44,7 @@ async function expectMarked(page: Page, ids: string[]) {
   expect(stray, `marks on optional fields on ${page.url()}`).toEqual([]);
 }
 
-test("every required field is marked, on every form but Generate and settings", async ({ page, foreman }) => {
+test("every required field is marked, on every form", async ({ page, foreman }) => {
   await page.goto("/setup");
   await expectMarked(page, ["username", "password", "confirm"]);
   await checkPage(page);
