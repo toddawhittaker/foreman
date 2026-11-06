@@ -13,7 +13,7 @@ description: |
   code-reviewer.
 model: claude-opus-5-5
 effort: medium
-tools: Bash, Read, Write, Edit, Grep, Glob, Agent(explorer)
+tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(explorer)
 hooks:
   Stop:
     - hooks:
