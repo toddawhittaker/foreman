@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -544,6 +545,9 @@ func (o Online) Disconnected() i18n.Msg {
 type StopPage struct {
 	World   world.Summary
 	Restart bool
+	// From is the page the person came from, already checked by returnPath;
+	// Cancel returns there. Empty means the Server page.
+	From string
 	CountdownForm
 }
 
@@ -556,12 +560,28 @@ func (p StopPage) Problems() []Problem {
 	return problems(Problem{"countdown", p.CountdownError})
 }
 
-// Path is where the form posts.
+// fromQuery names the query value that says where a stop page's Cancel goes.
+const fromQuery = "from"
+
+// Path is where the form posts. It carries From, so a refused countdown shows
+// the page again with the same way back.
 func (p StopPage) Path() string {
+	to := gamePath(p.World.ID, "stop")
 	if p.Restart {
-		return gamePath(p.World.ID, "restart")
+		to = gamePath(p.World.ID, "restart")
 	}
-	return gamePath(p.World.ID, "stop")
+	if p.From != "" {
+		to += "?" + fromQuery + "=" + url.QueryEscape(p.From)
+	}
+	return to
+}
+
+// Back is where Cancel goes.
+func (p StopPage) Back() string {
+	if p.From != "" {
+		return p.From
+	}
+	return PathServer
 }
 
 func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -572,7 +592,7 @@ func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.
 	restart := strings.HasSuffix(r.URL.Path, "/restart")
 	form := defaultCountdown()
 	form.Online = s.online(r.Context(), sum.ID)
-	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
+	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, From: returnPath(r.URL.Query().Get(fromQuery)), CountdownForm: form})
 }
 
 // handleStop stops or restarts a world's game gracefully (SPEC 7.6, 7.8).
@@ -594,7 +614,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 	form, stop := readCountdown(r)
 	if !form.CountdownError.IsZero() {
 		form.Online = s.online(r.Context(), sum.ID)
-		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
+		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, From: returnPath(r.URL.Query().Get(fromQuery)), CountdownForm: form})
 		return
 	}
 	by, opts := actor(u), anywayOptions(r)
