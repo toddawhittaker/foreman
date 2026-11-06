@@ -6,5 +6,7 @@
   "js.import.suggested": "Nombre del mundo sugerido: {name}.",
   "js.import.warning": "Advertencia: {text}",
   "js.live.moved": "El mundo activo ha cambiado.",
-  "js.live.stopped": "Las actualizaciones en vivo se detuvieron. Recarga la página para ver el estado actual."
+  "js.live.stopped": "Las actualizaciones en vivo se detuvieron. Recarga la página para ver el estado actual.",
+  "js.generate.options": "Opciones del mapa actualizadas para la versión del juego y el ajuste de Space Age elegidos.",
+  "js.generate.preview_ready": "Vista previa del mapa lista."
 }

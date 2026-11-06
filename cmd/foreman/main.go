@@ -119,7 +119,7 @@ func serve(cfg *config.Config) error {
 	monitoring.Go(func() { games.Run(monitorCtx) })
 	defer func() { stopMonitor(); monitoring.Wait() }()
 
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), HostDataDir: hostDir, Log: slog.Default()})
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: web.GamePreviewer(games), HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}

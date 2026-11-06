@@ -5,6 +5,8 @@ func init() {
 	jsKeys = []string{
 		"server.step.ending_now",
 		"server.step.seconds_left",
+		"js.generate.options",
+		"js.generate.preview_ready",
 		"js.import.many",
 		"js.import.same",
 		"js.import.same.unreadable",

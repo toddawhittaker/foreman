@@ -1,0 +1,56 @@
+{{define "title"}}{{t "worlds.clone.title" "name" .Page.World.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
+<h1>{{t "worlds.clone.title" "name" .World.Name}}</h1>
+<form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="clone-heading">
+  <h2 id="clone-heading">{{t "worlds.clone.heading"}}</h2>
+  {{template "summary" .Problems}}
+  {{- if not .Error.IsZero}}
+  <div class="message message--error" id="clone-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    {{- if .ErrorBusy}}
+    <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
+    {{- end}}
+  </div>
+  {{- end}}
+  <p>{{t "worlds.clone.copies"}}</p>
+  <ul>
+    <li>{{t "worlds.clone.copies.mods"}}</li>
+    <li>{{t "worlds.clone.copies.settings"}}</li>
+    <li>{{if .World.SpaceAge}}{{t "worlds.clone.copies.version_space_age" "version" .World.GameVersion}}{{else}}{{t "worlds.clone.copies.version" "version" .World.GameVersion}}{{end}}</li>
+  </ul>
+  <div class="field">
+    <label for="clone-name">{{t "worlds.clone.name.label"}}</label>
+    <p class="hint" id="clone-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
+    <input id="clone-name" name="name" type="text" value="{{.Name}}" required maxlength="100" autocomplete="off"
+      {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="clone-name-hint clone-name-error"{{else}} aria-describedby="clone-name-hint"{{end}}>
+    {{- if not .NameError.IsZero}}
+    <p class="error" id="clone-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
+    {{- end}}
+  </div>
+  {{- if .RunningNote}}
+  <div class="message message--note">
+    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.clone.running"}}</p>
+  </div>
+  {{- end}}
+  {{- if .SaveName}}
+  <fieldset>
+    <legend>{{t "worlds.clone.map.legend"}}</legend>
+    <label class="check"><input type="radio" id="clone-keep" name="map" value="keep"{{if eq .Choice "keep"}} checked{{end}}>
+      <span>{{tHTML "worlds.clone.map.keep" "save" (code .SaveName) "when" (momentUTC .SaveTime)}}</span></label>
+    <label class="check"><input type="radio" id="clone-fresh" name="map" value="fresh"{{if eq .Choice "fresh"}} checked{{end}} aria-describedby="clone-fresh-hint"> {{t "worlds.clone.map.fresh"}}</label>
+    <p class="hint" id="clone-fresh-hint">{{t "worlds.clone.map.fresh_hint"}}</p>
+  </fieldset>
+  {{- else}}
+  <input type="hidden" name="map" value="fresh">
+  <p id="clone-fresh" tabindex="-1">{{msg .FreshOnlyWhy}} {{t "worlds.clone.map.fresh_only"}}</p>
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button button--primary">{{t "worlds.clone.button"}}</button>
+    <a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a>
+  </div>
+</form>
+{{end}}
+{{- end}}
