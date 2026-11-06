@@ -1,10 +1,7 @@
-//go:build golden
-
 package mapexchange
 
 // Golden tests: strings made by the real game (testdata/README.md) must decode
-// to what the game itself says they hold (SPEC 5.6). Run with
-// "make mapexchange-golden".
+// to what the game itself says they hold (SPEC 5.6).
 
 import (
 	"bytes"
@@ -42,7 +39,7 @@ func fixtures(t *testing.T) []fixture {
 	var out []fixture
 	for _, p := range txts {
 		f := fixture{version: filepath.Base(filepath.Dir(p)), name: strings.TrimSuffix(filepath.Base(p), ".txt")}
-		b, err := os.ReadFile(p)
+		b, err := os.ReadFile(p) //nolint:gosec // paths come from a glob of the fixture folder
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +65,7 @@ func TestGoldenDecodeMatchesTheGame(t *testing.T) {
 			}
 			var want [3]uint16
 			for i, part := range strings.SplitN(f.version, ".", 3) {
-				n, _ := strconv.Atoi(part)
+				n, _ := strconv.ParseUint(part, 10, 16)
 				want[i] = uint16(n)
 			}
 			if [3]uint16(res.Version[:3]) != want {
@@ -122,8 +119,9 @@ func TestGoldenDamagedStringsAreRefused(t *testing.T) {
 			"empty":                 "",
 			"markers only":          ">>><<<",
 		} {
-			// The game itself says "Wrong quote characters" for the two
-			// marker cases (checked on 1.1.110 and 2.1.24).
+			// The game says "Wrong quote characters" for a missing marker. A
+			// string with neither marker is still accepted (see
+			// TestGoldenNoMarkersIsAccepted); exactly one is a cut-off paste.
 			if what == "padding removed" && !strings.HasSuffix(body, "=") {
 				continue
 			}
@@ -131,6 +129,16 @@ func TestGoldenDamagedStringsAreRefused(t *testing.T) {
 				t.Errorf("%s, %s: Decode accepted it: %+v", f.version, what, res.Version)
 			}
 		}
+	}
+}
+
+// Pasted inner text with no markers at all is accepted, though the game itself
+// would refuse it.
+func TestGoldenNoMarkersIsAccepted(t *testing.T) {
+	f := fixtures(t)[0]
+	body := strings.TrimSuffix(strings.TrimPrefix(f.exchange, ">>>"), "<<<")
+	if _, err := Decode(body); err != nil {
+		t.Errorf("Decode refused a string with no markers: %v", err)
 	}
 }
 

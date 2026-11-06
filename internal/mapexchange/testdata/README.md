@@ -53,8 +53,7 @@ or off; `recycler` is always on in 2.1, as in a Foreman world (SPEC 9.7).
 
 `../golden_test.go` runs `Decode` on every `.txt` and compares its map-gen and
 map settings with the `.json` (a JSON compare, not a text compare). It also
-checks that damaged strings are refused. It is behind the build tag `golden`
-until the decoder exists; `make mapexchange-golden` runs it.
+checks that damaged strings are refused. `make test` runs it.
 
 Where the game's JSON and the settings files say the same thing differently,
 the test allows these and no other differences:
@@ -78,7 +77,9 @@ the test allows these and no other differences:
 
 The game itself refuses a string without its `>>>` and `<<<` markers ("Wrong
 quote characters", checked on 1.1.110 and 2.1.24) and accepts spaces and
-newlines around one; the test expects the decoder to do the same.
+newlines around one. The decoder accepts spaces and newlines the same way. It
+takes a string with both markers, or with neither (pasted inner text), and
+refuses one with exactly one marker, which is a cut-off paste.
 
 Map settings have no allowed differences: the string holds every value.
 
