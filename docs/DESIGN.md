@@ -1072,6 +1072,10 @@ Classes and their contract:
   relative part, so the name stays short and never goes stale. Without
   JavaScript the UTC text stays. A table cell keeps its date and clock in
   separate `nowrap` spans (8.3). Durations are not rewritten.
+- Text and translations (SPEC 22): every visible word comes from the
+  catalogue in eight languages. docs/I18N.md holds the glossary, the
+  address rule per language and the rules for writing a string. Leave room
+  for text about 40 percent longer than English, and put no text in CSS.
 
 ## 10. Checks every screen passes
 
@@ -1105,7 +1109,7 @@ screen does, in this document first.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
   SPEC 7.2.
 - Pagination. See 8.4.
-- Mod search results, dependency plans and the mod list (Epic 6).
+- Mod search results, dependency plans and the mod list (Epic 8).
 - The world-switch progress screen beyond the step list in 7.6 (Epic 4).
-- Chat (Epic 8).
+- Chat (Epic 9).
 - A print stylesheet.

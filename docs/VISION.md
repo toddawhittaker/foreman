@@ -211,4 +211,4 @@ folders are imported as worlds, each on its own game version.
    how to keep the catalogue current across game versions.
 6. *(Answered: docs/STACK.md.)* **Tech stack**: deliberately left open. The constraints are one small container, a
    responsive UI, and no runtime downloads.
-7. *(Answered: MIT, SPEC 18.10.)* **License**: MIT or Apache-2.0.
+7. *(Answered: MIT, SPEC 18.11.)* **License**: MIT or Apache-2.0.

@@ -5,6 +5,10 @@ What each epic delivered and the gaps it left. The epic's last task
 here are known and accepted; each is either fixed by a later epic or
 waits for a decision.
 
+Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
+(old 6 Mods is now 8, old 8 is 9, old 9 is 10, old 10 is 11). Older text
+below uses the new numbers.
+
 Epics 1 to 5, the Gate A fixes and the first fix batch after Gate A (hub
 fixes) are done, and Gate A (SPEC 19.1) passed on 2026-11-05.
 
@@ -89,7 +93,7 @@ Serves SPEC 18.1. Everything below is built and tested.
   requires sign-in. There are no navigation links yet.
 - Signing out a header user ends nothing; the proxy decides (SPEC 12.8).
 - A `tcp://` `DOCKER_HOST` is unencrypted (SPEC 3.2); the operator guide
-  in Epic 10 must say so.
+  in Epic 11 must say so.
 
 ## Epic 2: Worlds and snapshots
 
@@ -120,7 +124,7 @@ across `internal/` is about 89%. The format decisions are in ADR 0002.
   `saves/` and `config/`), or by uploading one save zip. Imports copy, keep times, never hardlink and never change the
   source. A new world is built in one staging folder and renamed into
   place, so a refused or failed import leaves no world behind. Mod sync
-  for an uploaded save is Epic 6.
+  for an uploaded save is Epic 8.
 - **Saves (SPEC 5.11, 7.11).** List (newest first), download, upload and
   choose which save loads. An upload with a name that exists is refused.
   An upload to a busy world waits up to 60 seconds for it. If the world
@@ -355,7 +359,7 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
   rewrites it that way, so any local user on the host can edit it. Every
   Foreman start re-checks it. Low risk, host-local.
 - The RCON password is in the game's process arguments, because Factorio
-  takes it only on the command line (SPEC 4.5). The operator guide in Epic 10
+  takes it only on the command line (SPEC 4.5). The operator guide in Epic 11
   must give the `hidepid=2` advice.
 - Snapshot and restore are refused while Docker cannot be reached, because
   Foreman cannot tell whether the game is running.
@@ -380,13 +384,13 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
 - No Space Age world (flag on) was started against a real game. The save
   reader reads real Space Age saves, and the real check ran 2.1.24 with
   Space Age off.
-- There is no audit viewer, filter or retention yet (Epic 10), and audit
-  rows have no token name (Epic 9).
+- There is no audit viewer, filter or retention yet (Epic 11), and audit
+  rows have no token name (Epic 10).
 - Crash reasons are not named; a crash says "unknown" and shows the last 20
-  lines (Epic 8). A crash loop is not remembered across a Foreman restart:
+  lines (Epic 9). A crash loop is not remembered across a Foreman restart:
   the game stays stopped and shows as stopped.
 - Nothing builds an RCON command from user text yet, so there is no
-  escaping helper for SPEC 14.9. It arrives with chat in Epic 8.
+  escaping helper for SPEC 14.9. It arrives with chat in Epic 9.
 - The save reader skips six bytes of the 2.x header whose meaning is
   unknown. A save whose layout differs there is refused, not misread.
 - The game port, 34197, is fixed. A per-world port is an additive
@@ -469,7 +473,7 @@ tested. Coverage across `internal/` is about 90%.
 - **VPN sidecars (SPEC 4.13, ADR 0006): not built.** An earlier version of
   this section said they shipped. They did not: nothing reads
   `FOREMAN_GAME_NETWORK_CONTAINER`. The Gate A fixes below make Foreman
-  refuse to start when it is set. Sidecars are now planned for Epic 8.
+  refuse to start when it is set. Sidecars are now planned for Epic 9.
 - **Import (SPEC 5.5).** The version and Space Age flag are read from the
   newest save and prefill the form; an empty version field means "use the
   save's version". Names are suggested from the chosen folder or file
@@ -530,7 +534,7 @@ tested. Coverage across `internal/` is about 90%.
 ## Epic 5: Game versions
 
 Serves SPEC 18.5: section 10 (10.1 to 10.5, 10.7, 10.8). VPN sidecars
-(4.13) were planned here and moved to Epic 8. Everything below is built
+(4.13) were planned here and moved to Epic 9. Everything below is built
 and tested. Epic 4's
 STATUS had said 10.1 was delivered; it was not until this epic.
 
@@ -712,7 +716,7 @@ A fix batch from the architect's Gate A review. It serves SPEC 5.1, 5.5,
   client. Only the start command and a real start without the files were
   checked.
 - VPN sidecars (SPEC 4.13, ADR 0006) are not built; they are planned for
-  Epic 8.
+  Epic 9.
 
 ## Gate A
 
@@ -922,7 +926,7 @@ flows. It serves SPEC 3.7, 7.3, 7.6, 7.9, 14.10 and 17.7 to 17.10.
 - The cancel-then-snapshot integration test polls, so a very quick snapshot
   weakens it. A deterministic test of the runs tracker covers the same
   rule.
-- The mod-change undo click-budget test is skipped until Epic 6.
+- The mod-change undo click-budget test is skipped until Epic 8.
 - Cancel stop was not tried with a real player online, because no game
   client can join a headless server.
 - Issues #154 and #155 were only partly done here; the polish fixes batch
@@ -1022,7 +1026,7 @@ remembered.
   the final epic head, with main merged in. Twelve
   of the skips are the ERROR-check self-test, which runs in one browser
   project only. Four are the click-budget mod-change test, which waits for
-  Epic 6.
+  Epic 8.
 - New Go tests pin the figures against the disk:
   `TestFreesMatchesTheDiskForEverySelection` deletes every selection of
   three snapshots and compares the claimed "frees" with the real fall in
