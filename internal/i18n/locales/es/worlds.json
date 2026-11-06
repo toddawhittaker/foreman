@@ -384,5 +384,8 @@
   "worlds.clone.button": "Clonar mundo",
   "worlds.clone.error.choice": "Elige si conservar la partida guardada o empezar un mapa nuevo.",
   "worlds.clone.error.no_save": "Este mundo no tiene ninguna partida guardada que conservar. Empieza un mapa nuevo.",
-  "worlds.generate.custom.legend": "Ajustes del mapa"
+  "worlds.generate.custom.legend": "Ajustes del mapa",
+  "worlds.generate.error.exchange_layout": "Esta cadena la creó Factorio {version} y sus ajustes del mapa no encajan con Factorio {game}, que los organiza de otra manera. Exporta una cadena nueva desde Factorio {game} o elige arriba una versión del juego más cercana a {version}.",
+  "worlds.generate.preview.timeout": "La vista previa del mapa tardó demasiado y se detuvo. Inténtalo de nuevo o genera el mundo sin ella.",
+  "worlds.generate.preview.oom": "Al juego se le acabó la memoria creando la vista previa del mapa. Prueba un mapa más pequeño o genera el mundo sin vista previa."
 }

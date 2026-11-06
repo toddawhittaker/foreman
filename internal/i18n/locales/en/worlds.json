@@ -384,5 +384,8 @@
   "worlds.clone.button": "Clone world",
   "worlds.clone.error.choice": "Choose whether to keep the save or start a fresh map.",
   "worlds.clone.error.no_save": "This world has no save to keep. Start a fresh map instead.",
-  "worlds.generate.custom.legend": "Map settings"
+  "worlds.generate.custom.legend": "Map settings",
+  "worlds.generate.error.exchange_layout": "This string was made by Factorio {version}, and its map settings do not fit Factorio {game}, which lays them out differently. Export a new string from Factorio {game}, or choose a game version closer to {version} above.",
+  "worlds.generate.preview.timeout": "The map preview took too long and was stopped. Try again, or generate the world without it.",
+  "worlds.generate.preview.oom": "The game ran out of memory making the map preview. Try a smaller map, or generate the world without a preview."
 }

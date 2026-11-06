@@ -163,9 +163,6 @@
     {{- else}}
     <div class="message message--error">
       <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-      {{- with .Log}}
-      <pre lang="en">{{.}}</pre>
-      {{- end}}
     </div>
     {{- end}}
   </section>

@@ -108,7 +108,7 @@ func pageCases() []pageCase {
 			{Planet: "nauvis", Name: planetMsg("nauvis"), Path: "/generate/preview/tok/nauvis"},
 			{Planet: "vulcanus", Name: planetMsg("vulcanus"), Path: "/generate/preview/tok/vulcanus"}}}}},
 		{"generate preview failed", "todd", 200, GeneratePage{CanPreview: true, Form: generateCase(nil),
-			Preview: &PreviewView{Error: i18n.M("worlds.generate.preview.failed"), Log: "Error: out of memory\n<b>x</b>"}}},
+			Preview: &PreviewView{Error: i18n.M("worlds.generate.preview.failed")}}},
 		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
 			f.Name, f.Mode, f.Reset = longName, modeExchange, true
 			f.NameError, f.VersionError, f.SpaceAgeError = msgNameEmpty(), msgBadGameVersion(), msgSpaceAgeOld()

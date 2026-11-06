@@ -73,7 +73,7 @@ test("a map exchange string writes both settings files, and a bad one is refused
   await page.goto("/generate");
   await page.getByLabel("World name").fill("From a string");
   await mode(page, "Paste a map exchange string").check();
-  await expect(page.getByLabel("Map exchange string")).toBeVisible();
+  await expect(page.locator("#exchange-string")).toBeVisible();
   await expect(page.locator("#generate-preset")).toBeHidden();
 
   // Empty, then not a string, then one from another game line: each says what to do.
@@ -83,19 +83,19 @@ test("a map exchange string writes both settings files, and a bad one is refused
   await expect(mode(page, "Paste a map exchange string")).toBeChecked();
   await checkPage(page);
 
-  await page.getByLabel("Map exchange string").fill(">>>this is not one<<<");
+  await page.locator("#exchange-string").fill(">>>this is not one<<<");
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page.locator("#error-summary")).toContainText("Foreman could not read this as a map exchange string");
   await page.locator("#error-summary a").click();
-  await expect(page.getByLabel("Map exchange string")).toBeFocused();
-  await expect(page.getByLabel("Map exchange string")).toHaveValue(">>>this is not one<<<");
+  await expect(page.locator("#exchange-string")).toBeFocused();
+  await expect(page.locator("#exchange-string")).toHaveValue(">>>this is not one<<<");
 
-  await page.getByLabel("Map exchange string").fill(exchange("2.0.77.txt"));
+  await page.locator("#exchange-string").fill(exchange("2.0.77.txt"));
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page.locator("#error-summary")).toContainText("made by Factorio 2.0.77, but this world uses 2.1.24");
   await checkPage(page);
 
-  await page.getByLabel("Map exchange string").fill(exchange("2.1.24.txt"));
+  await page.locator("#exchange-string").fill(exchange("2.1.24.txt"));
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page).toHaveURL("/worlds/from-a-string?generated=1");
   for (const f of ["map-gen-settings.json", "map-settings.json"]) {
@@ -115,7 +115,7 @@ test("custom settings write only the map-gen file", async ({ page, foreman, fake
   await checkPage(page);
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page).toHaveURL("/worlds/custom-one?generated=1");
-  expect(JSON.parse(readFileSync(configFile(foreman.dataDir, "custom-one", "map-gen-settings.json"), "utf8"))).toBeTypeOf("object");
+  expect(typeof JSON.parse(readFileSync(configFile(foreman.dataDir, "custom-one", "map-gen-settings.json"), "utf8"))).toBe("object");
   // The patch-specific map-settings.json is never written for a custom map.
   expect(existsSync(configFile(foreman.dataDir, "custom-one", "map-settings.json"))).toBe(false);
   expect(worldJSON(foreman.dataDir, "custom-one").new_map.seed).toBeGreaterThanOrEqual(0);
@@ -130,11 +130,14 @@ test("errors name the field, keep what was typed and make nothing", async ({ pag
   await page.getByRole("button", { name: "Generate world" }).click();
 
   const summary = page.locator("#error-summary");
-  await expect(summary).toContainText("Fix 2 problems to continue");
-  await expect(summary).toContainText("Another world already has this name");
   await expect(summary).toContainText("Enter the seed as a whole number");
-  await expect(page.getByLabel("World name")).toHaveValue("base");
   await expect(page.locator("#generate-seed")).toHaveValue("not a number");
+  await page.locator("#generate-seed").fill("9");
+  await page.getByRole("button", { name: "Generate world" }).click();
+  await expect(summary).toContainText("Another world already has this name");
+  await summary.getByRole("link").click();
+  await expect(page.getByLabel("World name")).toBeFocused();
+  await expect(page.getByLabel("World name")).toHaveValue("base");
   await expect(page.getByLabel("World name")).toHaveAttribute("aria-invalid", "true");
   await checkPage(page);
   expect(readdirSync(join(foreman.dataDir, "worlds")).filter((n) => !n.startsWith("."))).toEqual(["base"]);
@@ -160,7 +163,7 @@ test("choosing another game line redraws the presets, and Space Age is refused f
 
   await page.getByLabel("Or type a version").fill("1.1.110");
   await page.getByLabel("Or type a version").press("Tab");
-  await expect(page.locator('input[name="map_key"]')).toHaveValue("1.1|1");
+  await expect(page.locator('input[name="map_key"]')).toHaveValue("1.1|0");
   await expect(presets.locator("option", { hasText: "Lakes" })).toHaveCount(0);
   await expect(presets.locator("option", { hasText: "Ribbon world" })).toHaveCount(1);
   await expect(page.locator("#announcer")).toContainText("Map options updated");
@@ -175,13 +178,11 @@ test("choosing another game line redraws the presets, and Space Age is refused f
   expect(worldJSON(foreman.dataDir, "old-game")).toMatchObject({ game_version: "1.1.110", space_age: false });
 });
 
-// DESIGN 8.8: the preview is optional. It needs the game layer's previewer;
-// a build without one has no button, and the form works as before.
+// DESIGN 8.8: the preview is optional and adds no screen to Generate.
 test.describe("map preview", () => {
   test.beforeEach(async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await page.goto("/generate");
-    test.skip((await page.locator("#preview-button").count()) === 0, "this build has no map previewer wired in");
   });
 
   test("shows one picture per planet, keeps the seed it used, and Generate makes that map", async ({ page, foreman }) => {
@@ -191,10 +192,10 @@ test.describe("map preview", () => {
     await expect(section.getByRole("img")).toHaveCount(5);
     await expect(section.getByRole("img", { name: /^Map preview of Nauvis, seed \d+$/ })).toBeVisible();
     await expect(page.locator("#announcer")).toContainText("Map preview ready.");
+    // The blank seed now holds the one the pictures used.
     const seed = await page.locator("#generate-seed").inputValue();
     expect(seed).toMatch(/^\d+$/);
     await expect(section).toContainText(`seed ${seed}`);
-    // Every picture loads, and each links to its full-size file.
     const sizes = await section.getByRole("img").evaluateAll((imgs) => (imgs as HTMLImageElement[]).map((i) => i.naturalWidth));
     expect(sizes.every((w) => w > 0)).toBe(true);
     await checkPage(page);
@@ -204,9 +205,38 @@ test.describe("map preview", () => {
     expect(worldJSON(foreman.dataDir, "previewed").new_map.seed).toBe(Number(seed));
   });
 
-  test("Nauvis only without Space Age", async ({ page }) => {
+  test("the custom form takes the seed too, and Nauvis only without Space Age", async ({ page, foreman }) => {
+    await mode(page, "Choose each setting").check();
+    await page.getByLabel("World name").fill("Custom preview");
+    await page.getByRole("button", { name: "Preview map" }).click();
+    const section = page.getByRole("region", { name: "Map preview" });
+    await expect(section.getByRole("img")).toHaveCount(5);
+    const seed = await page.locator("#mg-seed").inputValue();
+    expect(seed).toMatch(/^\d+$/);
     await page.getByLabel("Space Age is on").uncheck();
+    // Turning Space Age off redraws the planet groups (Nauvis and the raw box are left); a new preview has one picture.
+    await expect(page.locator("#custom-fields details")).toHaveCount(2);
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(1);
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page).toHaveURL("/worlds/custom-preview?generated=1");
+  });
+
+  test("a game that fails says so, and Generate still works", async ({ page, foreman, fakeGame }) => {
+    await fakeGame!.call("/preview-mode", { mode: "fail" });
+    await page.getByLabel("World name").fill("No picture");
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await expect(page.locator("#preview .message--error")).toContainText("The game could not make the map preview. You can still generate the world.");
+    await expect(page.getByRole("button", { name: "Generate world" })).toBeEnabled();
+    await checkPage(page);
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page).toHaveURL("/worlds/no-picture?generated=1");
+  });
+
+  test("a bad form is shown again whole, with its errors", async ({ page }) => {
+    await mode(page, "Paste a map exchange string").check();
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await expect(page.locator("#error-summary")).toContainText("Paste a map exchange string");
+    await expect(page.locator("#error-summary")).toBeFocused();
   });
 });

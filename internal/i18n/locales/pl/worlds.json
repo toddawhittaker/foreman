@@ -396,5 +396,8 @@
   "worlds.clone.button": "Sklonuj świat",
   "worlds.clone.error.choice": "Należy wybrać, czy zachować zapis, czy rozpocząć nową mapę.",
   "worlds.clone.error.no_save": "Ten świat nie ma zapisu do zachowania. Należy zamiast tego rozpocząć nową mapę.",
-  "worlds.generate.custom.legend": "Ustawienia mapy"
+  "worlds.generate.custom.legend": "Ustawienia mapy",
+  "worlds.generate.error.exchange_layout": "Ten kod został utworzony w Factorio {version}, a jego ustawienia mapy nie pasują do Factorio {game}, które układa je inaczej. Należy wyeksportować nowy kod z Factorio {game} albo wybrać powyżej wersję gry bliższą {version}.",
+  "worlds.generate.preview.timeout": "Podgląd mapy trwał zbyt długo i został zatrzymany. Należy spróbować ponownie albo wygenerować świat bez podglądu.",
+  "worlds.generate.preview.oom": "Grze zabrakło pamięci przy tworzeniu podglądu mapy. Należy spróbować mniejszej mapy albo wygenerować świat bez podglądu."
 }

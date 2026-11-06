@@ -53,6 +53,10 @@ const (
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
 
+// exchangeCompatible refuses a string whose settings the world's game version
+// cannot read (SPEC 5.6). It stands for mapexchange.Compatible until that lands.
+var exchangeCompatible = func(stringVersion [4]uint16, worldVersion string) error { return nil }
+
 // MapPreviewer makes the map preview pictures: one PNG for each planet
 // asked for, from the settings Generate would write (SPEC 5.6, 14.3). The
 // game layer provides it.
@@ -64,6 +68,7 @@ type MapPreviewer interface {
 // world made later has the same map.
 type PreviewRequest struct {
 	Version     string
+	SpaceAge    bool
 	Preset      string
 	Seed        uint32
 	MapGen      []byte
@@ -83,11 +88,17 @@ var (
 	ErrPreviewNoImage = errors.New("the game image for this version is not downloaded")
 	// ErrPreviewBusy means another preview is being made.
 	ErrPreviewBusy = errors.New("another map preview is being made")
+	// ErrPreviewTimeout means the preview ran past its time limit.
+	ErrPreviewTimeout = errors.New("the map preview took too long")
 )
 
-// PreviewFailure is a preview that the game itself could not make; Log is
-// the end of the game's output.
-type PreviewFailure struct{ Log string }
+// PreviewFailure is a preview that the game itself could not make. Log is
+// the end of the game's output, for Foreman's log only: the page words the
+// failure itself.
+type PreviewFailure struct {
+	Log string
+	OOM bool
+}
 
 func (e *PreviewFailure) Error() string { return "the game could not make the map preview" }
 
@@ -249,7 +260,6 @@ type PreviewView struct {
 	Seed     string
 	Pictures []PreviewPicture
 	Error    i18n.Msg
-	Log      string
 }
 
 // PreviewPicture is one planet's picture.
@@ -646,6 +656,11 @@ func decodeExchange(f *GenerateForm, version string) (mapexchange.Result, bool) 
 		f.ExchangeError = i18n.M("worlds.generate.error.exchange_newer", "version", made, "game", version)
 		return mapexchange.Result{}, false
 	}
+	// An older patch of the line may lay its settings out differently from the world's.
+	if err := exchangeCompatible(res.Version, version); err != nil {
+		f.ExchangeError = i18n.M("worlds.generate.error.exchange_layout", "version", made, "game", version)
+		return mapexchange.Result{}, false
+	}
 	return res, true
 }
 
@@ -682,7 +697,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	line, _ := mapgen.Line(nw.GameVersion)
 	req := PreviewRequest{
-		Version: nw.GameVersion, Preset: nw.Preset, Seed: *nw.Seed,
+		Version: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
 		MapGen: nw.MapGenSettings, MapSettings: nw.MapSettings,
 		Planets: mapgen.Planets(line, nw.SpaceAge),
 	}
@@ -704,8 +719,14 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		view.Error = i18n.M("worlds.generate.preview.no_image", "version", nw.GameVersion)
 	case errors.Is(err, ErrPreviewBusy):
 		view.Error = i18n.M("worlds.generate.preview.busy")
+	case errors.Is(err, ErrPreviewTimeout):
+		view.Error = i18n.M("worlds.generate.preview.timeout")
 	case failure:
-		view.Error, view.Log = i18n.M("worlds.generate.preview.failed"), lastLines(pf.Log, 20, 2000)
+		s.log.Warn("map preview failed", "version", nw.GameVersion, "oom", pf.OOM, "game_output", lastLines(pf.Log, 20, 2000))
+		view.Error = i18n.M("worlds.generate.preview.failed")
+		if pf.OOM {
+			view.Error = i18n.M("worlds.generate.preview.oom")
+		}
 	default:
 		if r.Context().Err() == nil {
 			s.log.Error("map preview", "version", nw.GameVersion, "error", err)

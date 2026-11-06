@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -602,12 +604,13 @@ func TestPreviewFailuresSayWhatToDo(t *testing.T) {
 		name string
 		err  error
 		want string
-		log  string
 	}{
-		{"no image", ErrPreviewNoImage, "game image for Factorio 2.0.77 is not downloaded", ""},
-		{"busy", ErrPreviewBusy, "Another map preview is being made.", ""},
-		{"game failed", &PreviewFailure{Log: "line one\nout of memory <b>"}, "The game could not make the map preview. You can still generate the world.", "out of memory &lt;b&gt;"},
-		{"unknown", errors.New("docker is gone"), "The game could not make the map preview.", ""},
+		{"no image", ErrPreviewNoImage, "game image for Factorio 2.0.77 is not downloaded"},
+		{"busy", ErrPreviewBusy, "Another map preview is being made."},
+		{"timeout", ErrPreviewTimeout, "took too long and was stopped"},
+		{"out of memory", &PreviewFailure{OOM: true}, "ran out of memory"},
+		{"game failed", &PreviewFailure{Log: "line one\nsecret game output"}, "The game could not make the map preview. You can still generate the world."},
+		{"unknown", errors.New("docker is gone"), "The game could not make the map preview."},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -619,13 +622,51 @@ func TestPreviewFailuresSayWhatToDo(t *testing.T) {
 			if rec.Code != http.StatusOK || !strings.Contains(body, tc.want) || !strings.Contains(body, `id="generate-button"`) {
 				t.Errorf("status %d\n%s", rec.Code, body)
 			}
-			if tc.log != "" && !strings.Contains(body, tc.log) {
-				t.Errorf("page lacks the game's log %q", tc.log)
-			}
-			if strings.Contains(body, "docker is gone") {
-				t.Error("an internal error reached the page")
+			// The game's output goes to Foreman's log, never to the page.
+			for _, leak := range []string{"docker is gone", "secret game output"} {
+				if strings.Contains(body, leak) {
+					t.Errorf("%q reached the page", leak)
+				}
 			}
 		})
+	}
+}
+
+// The game layer's refusals map to the ones the page words.
+func TestGamePreviewerErrors(t *testing.T) {
+	cases := []struct {
+		in   error
+		want error
+	}{
+		{game.ErrPreviewBusy, ErrPreviewBusy},
+		{game.ErrPreviewImageMissing, ErrPreviewNoImage},
+		{game.ErrPreviewTimeout, ErrPreviewTimeout},
+	}
+	for _, tc := range cases {
+		if got := previewError(fmt.Errorf("wrapped: %w", tc.in)); !errors.Is(got, tc.want) {
+			t.Errorf("%v became %v, want %v", tc.in, got, tc.want)
+		}
+	}
+	pf, ok := errors.AsType[*PreviewFailure](previewError(&game.PreviewError{ExitCode: 1, OOM: true, Log: "x"}))
+	if !ok || !pf.OOM || pf.Log != "x" {
+		t.Errorf("game failure became %+v", pf)
+	}
+	if GamePreviewer(nil) != nil {
+		t.Error("a previewer without server control")
+	}
+}
+
+// SPEC 5.6: a string whose settings the world's version cannot read is refused on the form.
+func TestGenerateRefusesAnExchangeStringTheWorldCannotRead(t *testing.T) {
+	old := exchangeCompatible
+	exchangeCompatible = func(sv [4]uint16, wv string) error { return errors.New("layout") }
+	t.Cleanup(func() { exchangeCompatible = old })
+	hn := newGenerateHarness(t, nil)
+	c := hn.signIn()
+	hn.withActive("2.0.77")
+	rec := hn.postLong(PathGenerate, generateForm("mode", "exchange", "exchange", fixture(t, "2.0.77.txt")), c)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "its map settings do not fit Factorio 2.0.77") || hn.worldCount() != 1 {
+		t.Errorf("status %d, %d worlds", rec.Code, hn.worldCount())
 	}
 }
 

@@ -384,5 +384,8 @@
   "worlds.clone.button": "Welt klonen",
   "worlds.clone.error.choice": "Wähle, ob der Speicherstand behalten oder eine neue Karte begonnen werden soll.",
   "worlds.clone.error.no_save": "Diese Welt hat keinen Speicherstand zum Behalten. Beginne stattdessen eine neue Karte.",
-  "worlds.generate.custom.legend": "Karteneinstellungen"
+  "worlds.generate.custom.legend": "Karteneinstellungen",
+  "worlds.generate.error.exchange_layout": "Dieser Code wurde mit Factorio {version} erstellt, und seine Karteneinstellungen passen nicht zu Factorio {game}, das sie anders aufbaut. Exportiere einen neuen Code aus Factorio {game} oder wähle oben eine Spielversion, die näher an {version} liegt.",
+  "worlds.generate.preview.timeout": "Die Kartenvorschau hat zu lange gedauert und wurde gestoppt. Versuche es erneut oder generiere die Welt ohne Vorschau.",
+  "worlds.generate.preview.oom": "Dem Spiel ging beim Erstellen der Kartenvorschau der Arbeitsspeicher aus. Versuche eine kleinere Karte oder generiere die Welt ohne Vorschau."
 }

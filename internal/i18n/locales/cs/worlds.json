@@ -396,5 +396,8 @@
   "worlds.clone.button": "Naklonovat svět",
   "worlds.clone.error.choice": "Je třeba zvolit, zda ponechat uloženou hru, nebo začít s novou mapou.",
   "worlds.clone.error.no_save": "Tento svět nemá uloženou hru k ponechání. Je třeba místo toho začít s novou mapou.",
-  "worlds.generate.custom.legend": "Nastavení mapy"
+  "worlds.generate.custom.legend": "Nastavení mapy",
+  "worlds.generate.error.exchange_layout": "Tento řetězec vytvořilo Factorio {version} a jeho nastavení mapy nepasuje do Factoria {game}, které je uspořádává jinak. Je třeba exportovat nový řetězec z Factoria {game} nebo nahoře zvolit verzi hry blíže k {version}.",
+  "worlds.generate.preview.timeout": "Náhled mapy trval příliš dlouho a byl zastaven. Je třeba to zkusit znovu nebo svět vygenerovat bez něj.",
+  "worlds.generate.preview.oom": "Hře při vytváření náhledu mapy došla paměť. Je třeba zkusit menší mapu nebo svět vygenerovat bez náhledu."
 }
