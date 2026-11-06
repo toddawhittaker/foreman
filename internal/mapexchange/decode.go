@@ -53,10 +53,11 @@ var (
 	errTrailing  = errors.New("map exchange string has unexpected bytes after the settings")
 	errChecksum  = errors.New("map exchange string checksum does not match")
 	errDuplicate = errors.New("map exchange string repeats a name")
+	errMarkers   = errors.New("map exchange string has only one of its >>> and <<< markers")
 )
 
-// Decode parses a map exchange string, with or without its >>> and <<<
-// markers. It refuses anything it cannot read exactly: a newer patch on a
+// Decode parses a map exchange string. It takes both its >>> and <<< markers
+// or neither, and refuses exactly one, which is a cut-off paste. It refuses anything it cannot read exactly: a newer patch on a
 // known line is accepted only because every byte, the checksum and every
 // range check still pass. Error text never quotes the input.
 func Decode(s string) (Result, error) {
@@ -69,8 +70,13 @@ func Decode(s string) (Result, error) {
 		}
 		return r
 	}, s)
-	s = strings.TrimPrefix(s, ">>>")
-	s = strings.TrimSuffix(s, "<<<")
+	start, end := strings.HasPrefix(s, ">>>"), strings.HasSuffix(s, "<<<")
+	if start != end {
+		return Result{}, errMarkers
+	}
+	if start {
+		s = strings.TrimSuffix(strings.TrimPrefix(s, ">>>"), "<<<")
+	}
 
 	compressed, err := base64.StdEncoding.DecodeString(s)
 	if err != nil || len(compressed) == 0 {
