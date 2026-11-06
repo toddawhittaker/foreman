@@ -29,7 +29,11 @@ const (
 	PathSignedOut = "/signed-out"
 	PathLanguage  = "/language"
 	PathStatic    = "/static/"
+	PathFavicon   = "/favicon.ico"
 )
+
+// faviconFile is the static file answered at PathFavicon.
+const faviconFile = "icons/favicon.ico"
 
 //go:embed templates/*.html
 var templateFS embed.FS
@@ -237,6 +241,8 @@ type staticFile struct {
 var staticTypes = map[string]string{
 	".css": "text/css; charset=utf-8",
 	".js":  "text/javascript; charset=utf-8",
+	".png": "image/png",
+	".ico": "image/x-icon",
 }
 
 // Renderer holds the parsed templates, once per language, and the
@@ -476,28 +482,39 @@ func (r *Renderer) Fragment(w io.Writer, loc i18n.Locale, p Page, name string) e
 	return t.ExecuteTemplate(w, name, p)
 }
 
-// Static serves the embedded CSS and JavaScript under PathStatic. A request
-// carrying the current content hash is cached for a year; any other is
-// revalidated.
+// Static serves the embedded CSS, JavaScript and icons under PathStatic. A
+// request carrying the current content hash is cached for a year; any other
+// is revalidated.
 func (r *Renderer) Static() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		name := strings.TrimPrefix(req.URL.Path, PathStatic)
-		f, ok := r.static[name]
-		if !ok {
-			http.NotFound(w, req)
-			return
-		}
-		h := w.Header()
-		h.Set("Content-Type", f.contentType)
-		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("ETag", `"`+f.hash+`"`)
-		if req.URL.Query().Get("v") == f.hash {
-			h.Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			h.Set("Cache-Control", "no-cache")
-		}
-		http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(f.body))
+		r.serveStatic(w, req, strings.TrimPrefix(req.URL.Path, PathStatic))
 	})
+}
+
+// Favicon answers the request browsers make at the site root, whatever the
+// page's own icon links say.
+func (r *Renderer) Favicon() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		r.serveStatic(w, req, faviconFile)
+	})
+}
+
+func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name string) {
+	f, ok := r.static[name]
+	if !ok {
+		http.NotFound(w, req)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", f.contentType)
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("ETag", `"`+f.hash+`"`)
+	if req.URL.Query().Get("v") == f.hash {
+		h.Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		h.Set("Cache-Control", "no-cache")
+	}
+	http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(f.body))
 }
 
 // momentUTC is a <time> element for t in UTC, for a sentence that holds a
