@@ -1,12 +1,12 @@
 {{define "layout" -}}
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
-<title>{{if .Failed}}Error: {{end}}{{template "title" .}} – Foreman</title>
+<title>{{if .Failed}}{{t "common.error.label"}} {{end}}{{template "title" .}} – Foreman</title>
 <link rel="stylesheet" href="{{static "foreman.css"}}">
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
@@ -14,28 +14,43 @@
 {{block "scripts" .}}{{end}}
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">{{t "common.skip"}}</a>
 <header class="site">
   <a href="{{serverPath}}" class="product">Foreman</a>
   {{- if .User}}
-  <nav aria-label="Main">
+  <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
-      <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>Server</a></li>
-      <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>Console</a></li>
-      <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>Worlds</a></li>
-      <li><a href="{{snapshotsTabPath}}"{{if .Current snapshotsTabPath}} aria-current="page"{{end}}>Snapshots</a></li>
+      <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>{{t "common.nav.server"}}</a></li>
+      <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>{{t "common.nav.console"}}</a></li>
+      <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>{{t "common.nav.worlds"}}</a></li>
+      <li><a href="{{snapshotsTabPath}}"{{if .Current snapshotsTabPath}} aria-current="page"{{end}}>{{t "common.nav.snapshots"}}</a></li>
     </ul>
   </nav>
   <form method="post" action="{{signOutPath}}" class="signout">
-    <span class="user">Signed in as {{.User}}</span>
-    <button type="submit" class="button">Sign out</button>
+    <span class="user">{{t "common.signedin" "user" .User}}</span>
+    <button type="submit" class="button">{{t "common.signout"}}</button>
   </form>
   {{- end}}
 </header>
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{template "content" .}}
 </main>
+<footer class="site">
+  <form method="post" action="{{languagePath}}" class="language">
+    <label for="language">{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</label>
+    <select id="language" name="lang">
+      {{- range languages}}
+      <option value="{{.Tag}}" lang="{{.Tag}}"{{if eq .Tag.String lang}} selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+    {{- with .Return}}
+    <input type="hidden" name="return" value="{{.}}">
+    {{- end}}
+    <button type="submit" class="button">{{t "common.language.submit"}}</button>
+  </form>
+</footer>
 <div id="announcer" class="visually-hidden" aria-live="polite"></div>
+<script type="application/json" id="i18n">{{jsStrings}}</script>
 </body>
 </html>
 {{end}}
@@ -50,15 +65,15 @@
      CountdownForm. */}}
 {{define "countdown" -}}
 {{- if .Online.Asked}}
-<p id="online">{{.Online.Text}}</p>
+<p id="online">{{msg .Online.Text}}</p>
 {{- end}}
 <div class="field">
-  <label for="countdown">Countdown in seconds</label>
-  <p class="hint" id="countdown-hint">Players online see a warning in game, then the game saves and stops. From 0 to 600 seconds; 0 means no warning: the game saves and stops at once. Nobody is warned if nobody is online.</p>
+  <label for="countdown">{{t "common.countdown.label"}}</label>
+  <p class="hint" id="countdown-hint">{{t "common.countdown.hint"}}</p>
   <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
-    {{- if .CountdownError}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
-  {{- with .CountdownError}}
-  <p class="error" id="countdown-error"><strong>Error:</strong> {{.}}</p>
+    {{- if not .CountdownError.IsZero}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
+  {{- if not .CountdownError.IsZero}}
+  <p class="error" id="countdown-error"><strong>{{t "common.error.label"}}</strong> {{msg .CountdownError}}</p>
   {{- end}}
 </div>
 {{- end}}
@@ -67,10 +82,10 @@
 {{define "summary" -}}
 {{with .}}
 <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
-  <h2 id="error-summary-heading"><strong>Error:</strong> {{if eq (len .) 1}}Fix this problem to continue{{else}}Fix {{len .}} problems to continue{{end}}</h2>
+  <h2 id="error-summary-heading"><strong>{{t "common.error.label"}}</strong> {{t "common.summary.heading" "count" (len .)}}</h2>
   <ul>
     {{- range .}}
-    <li><a href="#{{.FieldID}}">{{.Message}}</a></li>
+    <li><a href="#{{.FieldID}}">{{msg .Message}}</a></li>
     {{- end}}
   </ul>
 </div>

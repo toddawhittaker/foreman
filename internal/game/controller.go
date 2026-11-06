@@ -429,6 +429,8 @@ type Operation struct {
 	Steps  []Step
 	Done   bool
 	Error  string // why it failed; empty when it worked or is running
+	// Err is the error Error was made from, so a page can word it.
+	Err error
 	// Switch is set on a switch, which both worlds show (SPEC 7.9).
 	Switch *SwitchInfo
 	// Players are who was online when the stop's countdown began; empty
@@ -582,7 +584,7 @@ func (o *opRun) end(err error) error {
 	}
 	o.op.Done = true
 	if err != nil {
-		o.op.Error = err.Error()
+		o.op.Error, o.op.Err = err.Error(), err
 	}
 	o.cancel()
 	for _, w := range o.ws {
@@ -600,14 +602,18 @@ func (o *opRun) end(err error) error {
 type Status struct {
 	World string
 	State State
-	// Reason says why the state is Unknown.
-	Reason string
+	// Reason says why the state is Unknown; Unknown holds its facts, so a
+	// page can word it (SPEC 22.3).
+	Reason  string
+	Unknown UnknownReason
 	// CrashReason is the game's own reason for a crash, from its log, while
 	// crashed or crash-looping; "" when the log names none (SPEC 8.7). It
 	// is masked like every line a page shows, and is a sentence's end:
 	// ": 2 mods were made for..." or ". Factorio said: ...".
 	CrashReason string
-	LastCrash   time.Time
+	// Crash is what CrashReason is made from.
+	Crash     LoadReason
+	LastCrash time.Time
 	// StartedAt is when the current run began; zero when not running.
 	StartedAt   time.Time
 	Uptime      time.Duration
@@ -670,7 +676,8 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		n := *w.notice
 		st.Notice = &n
 	}
-	st.State, st.Reason = c.stateLocked(w)
+	st.State, st.Unknown = c.stateLocked(w)
+	st.Reason = st.Unknown.Text()
 	if st.State == StateRunning || st.State == StateStarting || st.State == StateStopping || st.State == StateCrashed {
 		if w.dockerStatus == "running" && !w.startedAt.IsZero() {
 			st.StartedAt = w.startedAt
@@ -685,7 +692,8 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 		for _, l := range w.logs.LinesSince(w.logMark) {
 			f.add(l)
 		}
-		st.CrashReason = strings.TrimSuffix(f.reason(w.redact), ".")
+		st.Crash = f.reason(w.redact)
+		st.CrashReason = strings.TrimSuffix(st.Crash.text(), ".")
 	}
 	return st
 }
@@ -693,66 +701,111 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 // stateLocked decides the state from what Docker and the log said
 // (SPEC 7.1, 8.7, 8.9). The exit code is never used: 1.1 exits 0
 // after a failed load. w.mu is held.
-func (c *Controller) stateLocked(w *worldRun) (State, string) {
+func (c *Controller) stateLocked(w *worldRun) (State, UnknownReason) {
 	if w.opDone != nil && w.opState != "" {
-		return w.opState, ""
+		return w.opState, UnknownReason{}
 	}
 	listed, dockerErr := c.dockerState()
 	if w.opDone == nil {
 		if dockerErr != nil {
-			return StateUnknown, dockerFault("Foreman cannot reach Docker. The details are in Foreman's log.", dockerErr)
+			return StateUnknown, dockerFault(UnknownDocker, dockerErr)
 		}
 		if w.inspectErr != nil {
-			return StateUnknown, dockerFault("Foreman cannot read the game container from Docker. The details are in Foreman's log.", w.inspectErr)
+			return StateUnknown, dockerFault(UnknownInspect, w.inspectErr)
 		}
 		if w.attachErr != nil && w.containerID == "" {
-			return StateUnknown, "Foreman " + w.attachErr.Error()
+			r := UnknownReason{Kind: UnknownPassword, text: "Foreman " + w.attachErr.Error()}
+			if inner := errors.Unwrap(w.attachErr); inner != nil {
+				r.Detail = inner.Error()
+			}
+			return StateUnknown, r
 		}
 		if !listed && w.containerID == "" {
-			return StateUnknown, "Foreman is still asking Docker about the game."
+			return StateUnknown, UnknownReason{Kind: UnknownAsking}
 		}
 	}
 	if w.crashLoop {
-		return StateCrashLooping, ""
+		return StateCrashLooping, UnknownReason{}
 	}
 	switch w.dockerStatus {
 	case "":
-		return StateStopped, ""
+		return StateStopped, UnknownReason{}
 	case "running":
 		switch {
 		case w.stopping:
-			return StateStopping, ""
+			return StateStopping, UnknownReason{}
 		case w.run.loadFailed || w.crashedRun:
-			return StateCrashed, ""
+			return StateCrashed, UnknownReason{}
 		case w.run.inGame:
-			return StateRunning, ""
+			return StateRunning, UnknownReason{}
 		}
-		return StateStarting, ""
+		return StateStarting, UnknownReason{}
 	case "restarting":
 		if w.stopping {
-			return StateStopping, ""
+			return StateStopping, UnknownReason{}
 		}
-		return StateCrashed, ""
+		return StateCrashed, UnknownReason{}
 	case "paused":
-		return StateUnknown, "The game container is paused in Docker. Foreman never pauses it; unpause it with Docker."
+		return StateUnknown, UnknownReason{Kind: UnknownPaused}
 	case "created":
 		// Docker never ran it, so it cannot have crashed.
-		return StateStopped, ""
+		return StateStopped, UnknownReason{}
 	}
 	if w.expectRunning && !w.stopping {
-		return StateCrashed, ""
+		return StateCrashed, UnknownReason{}
 	}
-	return StateStopped, ""
+	return StateStopped, UnknownReason{}
+}
+
+// The kinds of UnknownReason.
+const (
+	// UnknownUnreachable: Docker answers nothing at Target (DOCKER_HOST).
+	UnknownUnreachable = "docker-unreachable"
+	// UnknownDocker: listing the containers failed.
+	UnknownDocker = "docker"
+	// UnknownInspect: reading the game container failed.
+	UnknownInspect = "inspect"
+	// UnknownPassword: the world's RCON password cannot be read; Detail
+	// says why.
+	UnknownPassword = "password"
+	// UnknownAsking: Docker has not answered yet.
+	UnknownAsking = "asking"
+	// UnknownPaused: someone paused the game container in Docker.
+	UnknownPaused = "paused"
+)
+
+// UnknownReason says why a game's state is Unknown; Kind is "" when it is
+// known.
+type UnknownReason struct {
+	Kind, Target, Detail string
+	text                 string
+}
+
+// Text is the reason in English, for the log and the API.
+func (r UnknownReason) Text() string {
+	switch r.Kind {
+	case UnknownUnreachable, UnknownPassword:
+		return r.text
+	case UnknownDocker:
+		return "Foreman cannot reach Docker. The details are in Foreman's log."
+	case UnknownInspect:
+		return "Foreman cannot read the game container from Docker. The details are in Foreman's log."
+	case UnknownAsking:
+		return "Foreman is still asking Docker about the game."
+	case UnknownPaused:
+		return "The game container is paused in Docker. Foreman never pauses it; unpause it with Docker."
+	}
+	return ""
 }
 
 // dockerFault is the reason shown for a failed Docker call. A Docker that
 // answers nothing already has a plain sentence of its own; any other fault
 // shows plain, never the raw error.
-func dockerFault(plain string, err error) string {
+func dockerFault(kind string, err error) UnknownReason {
 	if ue, ok := errors.AsType[*docker.UnreachableError](err); ok {
-		return ue.Error()
+		return UnknownReason{Kind: UnknownUnreachable, Target: ue.Target, text: ue.Error()}
 	}
-	return plain
+	return UnknownReason{Kind: kind}
 }
 
 // logDockerFault logs a failed listing of containers with the raw error,

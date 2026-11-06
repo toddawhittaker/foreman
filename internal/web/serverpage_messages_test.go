@@ -22,15 +22,16 @@ func refusal(anyway bool) error {
 // errSaveNewer is a plain refusal, with no "Start anyway": the pre-start
 // check's answer to a save newer than the world's game (SPEC 7.4).
 var errSaveNewer = &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveNewer,
-	Text: "The save base.zip was made by a newer Factorio than this world's Factorio 2.1.20. An older game cannot load it."}}}}
+	Save: "base.zip", SaveVersion: "2.1.24", GameVersion: "2.1.20",
+	Text: "The save base.zip was made by Factorio 2.1.24, newer than this world's Factorio 2.1.20. An older game cannot load it."}}}}
 
 // SPEC 8.7: the crash message names the game's reason and links to the full
 // log on the Console page, and shows no raw log lines.
 func TestCrashMessageNamesReasonAndLinksConsole(t *testing.T) {
 	html := controlHTML(t, serverCase(game.StateCrashLooping, func(p *ServerPage) {
-		p.Status.CrashReason = ". Factorio said: Opening zip failed"
+		p.Status.Crash = game.LoadReason{Said: "Opening zip failed"}
 	}))
-	for _, want := range []string{"so Foreman stopped it. Factorio said: Opening zip failed.", `href="/worlds/base/console"`} {
+	for _, want := range []string{`so Foreman stopped it. Factorio said: <span lang="en">Opening zip failed</span>.`, `href="/worlds/base/console"`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("missing %q in\n%s", want, html)
 		}
@@ -67,7 +68,7 @@ func TestStartBlocked(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			html := controlHTML(t, c.page)
-			if got := c.page.StartBlocked() != ""; got != c.blocked {
+			if got := !c.page.StartBlocked().IsZero(); got != c.blocked {
 				t.Fatalf("blocked = %v, want %v", got, c.blocked)
 			}
 			if c.blocked != strings.Contains(html, ">Try to start again<") || c.blocked == strings.Contains(html, ">Start server<") {
@@ -104,7 +105,7 @@ func TestRefusalLabelByKind(t *testing.T) {
 		if !strings.Contains(html, `class="message `+class+`"`) || !strings.Contains(html, "<strong>"+word+"</strong>") {
 			t.Errorf("anyway %v: want %s in\n%s", anyway, word, html)
 		}
-		if got := resultAnnouncement(p); !strings.HasPrefix(got, word+" ") {
+		if got := english(resultAnnouncement(p)); !strings.HasPrefix(got, word+" ") {
 			t.Errorf("anyway %v: announced %q", anyway, got)
 		}
 	}
@@ -121,7 +122,7 @@ func TestLatestMessageLeads(t *testing.T) {
 		})
 	}
 	html := controlHTML(t, refused(msgT1))
-	crash, ref := strings.Index(html, "game crashed"), strings.Index(html, "newer Factorio")
+	crash, ref := strings.Index(html, "game crashed"), strings.Index(html, "newer than this world")
 	if crash < 0 || ref < 0 || crash > ref {
 		t.Errorf("the newer crash does not lead:\n%s", html)
 	}
@@ -129,7 +130,7 @@ func TestLatestMessageLeads(t *testing.T) {
 		t.Errorf("the older refusal is not marked earlier:\n%s", html)
 	}
 	html = controlHTML(t, refused(msgT0.Add(-time.Minute)))
-	crash, ref = strings.Index(html, "game crashed"), strings.Index(html, "newer Factorio")
+	crash, ref = strings.Index(html, "game crashed"), strings.Index(html, "newer than this world")
 	if crash < ref || !strings.Contains(html, "Earlier, at <time datetime=\"2026-11-04T09:59:00Z\">") {
 		t.Errorf("the older crash is not after the refusal and marked earlier:\n%s", html)
 	}

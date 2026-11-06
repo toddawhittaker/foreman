@@ -48,6 +48,31 @@ type Problem struct {
 	StartAnyway bool
 	// Mods names the mods a missing or disabled mod problem is about.
 	Mods []string
+	// The facts Text is made from, so a page can word it in any language
+	// (SPEC 22.3). Save is the save the problem is about, "" for a world
+	// without one. GameVersion is the world's version, or the one it would
+	// run. Names are the mods a Space Age problem is about, and SpaceAge
+	// whether the world has it on. Detail is the reader's own error, and
+	// Cause the error itself, so a page can tell its reason with errors.Is.
+	Save, SaveVersion, GameVersion, Detail string
+	Names                                  []string
+	SpaceAge                               bool
+	Cause                                  error
+	// World and Groups word a mod game version problem: the mods by the
+	// Factorio they were made for, largest group first. UpdateTo is the
+	// newer release line to advise, or "" to advise updating the mods for
+	// the running line, Minor.
+	World, UpdateTo, Minor string
+	Groups                 []ModGroup
+}
+
+// ModGroup is the mods made for one Factorio version: the first few names,
+// cut to length, and how many more there are.
+type ModGroup struct {
+	Version string
+	Count   int
+	Shown   []string
+	More    int
 }
 
 // PreCheck is the result of the pre-start check.
@@ -99,7 +124,7 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 
 	var out PreCheck
 	if !SupportedGameVersion(meta.GameVersion) {
-		out.Problems = append(out.Problems, Problem{Kind: ProblemGameVersion,
+		out.Problems = append(out.Problems, Problem{Kind: ProblemGameVersion, GameVersion: meta.GameVersion,
 			Text: fmt.Sprintf("The world is set to Factorio %s. Foreman runs only Factorio 1.1, 2.0 and 2.1.", meta.GameVersion)})
 		return out, nil
 	}
@@ -141,7 +166,7 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	}
 	save, err := m.readSave(id, name)
 	if errors.Is(err, ErrSaveNotFound) {
-		out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave,
+		out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave, Save: name,
 			Text: fmt.Sprintf("The save chosen to load, %s, is no longer in the world. Choose another save.", name)})
 		return finish()
 	}
@@ -149,11 +174,11 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	var unsupported *savefile.UnsupportedVersionError
 	switch {
 	case errors.As(err, &unsupported):
-		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnsupported,
+		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnsupported, Save: name, SaveVersion: unsupported.Version.String(),
 			Text: fmt.Sprintf("The save %s was made by Factorio %s. Foreman runs only saves from Factorio 1.1, 2.0 and 2.1.", name, unsupported.Version)})
 		return finish()
 	case isSaveFormatError(err):
-		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true,
+		out.Problems = append(out.Problems, Problem{Kind: ProblemSaveUnreadable, StartAnyway: true, Save: name, Detail: err.Error(), Cause: err,
 			Text: fmt.Sprintf("Foreman could not read the save %s (%v), so its mods could not be checked.", name, err)})
 		return finish()
 	case err != nil:
@@ -200,10 +225,10 @@ func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 	}
 	switch {
 	case meta.SpaceAge && len(off) > 0:
-		return Problem{Kind: ProblemModListSpaceAge,
+		return Problem{Kind: ProblemModListSpaceAge, SpaceAge: true, Names: off,
 			Text: fmt.Sprintf("Space Age is on for this world, but mod-list.json has %s turned off. Fix the mod list before starting.", strings.Join(off, ", "))}, true
 	case !meta.SpaceAge && len(on) > 0:
-		return Problem{Kind: ProblemModListSpaceAge,
+		return Problem{Kind: ProblemModListSpaceAge, Names: on,
 			Text: fmt.Sprintf("Space Age is off for this world, but mod-list.json has %s turned on (or is missing, so the game turns them on). Fix the mod list before starting.", strings.Join(on, ", "))}, true
 	}
 	return Problem{}, false
@@ -214,7 +239,7 @@ func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 func compareSave(meta Meta, mods modList, present map[string]bool, name string, save savefile.Save) []Problem {
 	world := parseGameVersion(meta.GameVersion)
 	if compareVersion(save.Version, world) > 0 {
-		return []Problem{{Kind: ProblemSaveNewer,
+		return []Problem{{Kind: ProblemSaveNewer, Save: name, SaveVersion: save.Version.String(), GameVersion: meta.GameVersion,
 			Text: fmt.Sprintf("The save %s was made by Factorio %s, newer than this world's Factorio %s. An older game cannot load it.", name, save.Version, meta.GameVersion)}}
 	}
 	builtin := map[string]bool{}
@@ -241,7 +266,7 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 	}
 	var out []Problem
 	if len(usesDLC) > 0 {
-		out = append(out, Problem{Kind: ProblemSpaceAgeOff, StartAnyway: true,
+		out = append(out, Problem{Kind: ProblemSpaceAgeOff, StartAnyway: true, Save: name, Names: usesDLC,
 			Text: fmt.Sprintf("%s uses Space Age (%s), but Space Age is off for this world.", name, strings.Join(usesDLC, ", "))})
 	}
 	if len(missing) > 0 {
@@ -249,7 +274,7 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 		if len(missing) > 1 {
 			files = "no files for them"
 		}
-		out = append(out, Problem{Kind: ProblemModMissing, StartAnyway: true, Mods: missing,
+		out = append(out, Problem{Kind: ProblemModMissing, StartAnyway: true, Mods: missing, Save: name,
 			Text: fmt.Sprintf("%s uses %s, but this world has %s.", name, strings.Join(missing, ", "), files)})
 	}
 	if len(disabled) > 0 {
@@ -257,7 +282,7 @@ func compareSave(meta Meta, mods modList, present map[string]bool, name string, 
 		if len(disabled) > 1 {
 			is = "they are"
 		}
-		out = append(out, Problem{Kind: ProblemModDisabled, StartAnyway: true, Mods: disabled,
+		out = append(out, Problem{Kind: ProblemModDisabled, StartAnyway: true, Mods: disabled, Save: name,
 			Text: fmt.Sprintf("%s uses %s, but %s turned off in this world.", name, strings.Join(disabled, ", "), is)})
 	}
 	return out

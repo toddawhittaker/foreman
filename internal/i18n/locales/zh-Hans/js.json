@@ -1,0 +1,10 @@
+{
+  "js.import.many": "已选择多个文件夹：每个文件夹使用各自的名称、版本和太空时代设置。",
+  "js.import.same": "与存档相同",
+  "js.import.same.unreadable": "与存档相同（无法读取，请选择或输入一个版本）",
+  "js.import.same.version": "与存档相同（{version}）",
+  "js.import.suggested": "建议的世界名称：{name}。",
+  "js.import.warning": "警告：{text}",
+  "js.live.moved": "活动世界已更改。",
+  "js.live.stopped": "实时更新已停止。请重新加载页面以查看当前状态。"
+}

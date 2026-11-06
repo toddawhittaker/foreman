@@ -11,6 +11,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -65,7 +66,7 @@ func TestImportPageShowsTheHostPath(t *testing.T) {
 	g.wantMissing("import page", body, g.worlds.Dirs().Imports)
 }
 
-// Ruling 1 (#124): several ticked folders each become a world named after
+// SPEC 5.5: several ticked folders each become a world named after
 // the folder, with the save's version and Space Age. An unreadable save is
 // skipped with its reason. One download runs per missing version.
 func TestBulkImport(t *testing.T) {
@@ -117,7 +118,7 @@ func TestBulkImport(t *testing.T) {
 	}
 }
 
-// Ruling 2 (#127): a folder whose newest save is already in a world is
+// SPEC 5.5: a folder whose newest save is already in a world is
 // listed apart, names that world, and can still be imported.
 func TestImportListsAlreadyImportedFolders(t *testing.T) {
 	g := newImportRig(t, nil)
@@ -151,10 +152,10 @@ func TestImportWarnsWhenSpaceAgeDiffersFromTheSave(t *testing.T) {
 	g := newImportRig(t, nil)
 	g.inboxSave("plain", "2.1.24-no-space-age.zip")
 	rep := g.post(PathImportFolder, url.Values{"folder": {"plain"}, "name": {""}, "space_age": {"on"}})
-	g.wantContains("re-shown form", rep.body, "Same as the save (2.1.24)", spaceAgeOnWarning)
+	g.wantContains("re-shown form", rep.body, "Same as the save (2.1.24)", i18n.English.T("worlds.import.space_age_on_warning"))
 }
 
-// Ruling 4: a typed version must be a downloaded image or on Docker Hub's
+// SPEC 10.7, 5.5: a typed version must be a downloaded image or on Docker Hub's
 // list. When Docker Hub cannot be asked the import goes ahead and says so.
 func TestImportChecksATypedVersion(t *testing.T) {
 	rel := &fakeReleases{versions: []string{"2.1.25", "2.0.77"}}

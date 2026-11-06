@@ -43,7 +43,7 @@ test("each world but the active one has a Switch button on the list", async ({ p
   // The screen shows "Switch" beside the world's name; a screen reader hears which world.
   const button = row(page, "Second").getByRole("link", { name: "Switch to Second", exact: true });
   await expect(button).toHaveClass(/button/);
-  await expect(button.locator(".visually-hidden")).toHaveText(/^\s*to Second$/);
+  await expect(button.locator(".visually-hidden")).toHaveText("Switch to Second");
   await expect(row(page, "Third").getByRole("link", { name: "Switch to Third", exact: true })).toBeVisible();
   await expect(page.getByText("Switching is unavailable")).toHaveCount(0);
   await checkPage(page);

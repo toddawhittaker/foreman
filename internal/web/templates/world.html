@@ -2,127 +2,128 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{worldsPath}}">Back to worlds</a></div>
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">Active</span>{{end}}</h1>
+<div class="actions"><a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a></div>
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{- if .World.Unreadable}}
-<p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.World.ID}}</code>.</p>
+<p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>
 {{- else if .World.Newer}}
-<p>A newer version of Foreman wrote this world, so this version cannot change it.</p>
+<p>{{t "worlds.error.newer_format"}}</p>
 {{- end}}
-{{- with .Done}}
+{{- if not .Done.IsZero}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{.}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
 </div>
 {{- end}}
-{{- with .Warning}}
+{{- if not .Warning.IsZero}}
 <div class="message message--warning">
-  <p><strong>Warning:</strong> {{.}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{msg .Warning}}</p>
 </div>
 {{- end}}
 {{- if eq .Download "running"}}
 <div class="message message--note" id="image-download">
-  <p><strong>Note:</strong> Downloading the game image for Factorio <code>{{.World.GameVersion}}</code> from Docker Hub. Reload this page to see when it ends.</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.world.download_running" "version" (code .World.GameVersion)}}</p>
 </div>
 {{- else if eq .Download "failed"}}
 <div class="message message--warning" id="image-download">
-  <p><strong>Warning:</strong> The game image for Factorio <code>{{.World.GameVersion}}</code> could not be downloaded. The details are in Foreman's log. A switch to this world tries the download again.</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "worlds.world.download_failed" "version" (code .World.GameVersion)}}</p>
 </div>
 {{- end}}
-{{- with .Busy}}
+{{- if not .Busy.IsZero}}
 <div class="message message--note">
-  <p><strong>Note:</strong> {{.}}</p>
-  <div class="actions"><a href="{{serverPath}}">Go to the Server page</a></div>
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
+  <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
 </div>
 {{- end}}
 {{- if .CanSwitch}}
 <section class="panel" aria-labelledby="switch-heading">
-  <h2 id="switch-heading">Switch</h2>
-  <p>Make this the active world. Foreman snapshots both worlds first, then starts this world. When the server is stopped, the confirmation lets you leave it stopped instead.</p>
+  <h2 id="switch-heading">{{t "worlds.world.switch.heading"}}</h2>
+  <p>{{t "worlds.world.switch.text"}}</p>
   {{- with .MissingImage}}
   <div class="message message--note">
-    <p><strong>Note:</strong> This world runs on the game image <code>{{.}}</code>, which is not on this host, so it cannot start yet. A switch downloads it first, from Docker Hub.</p>
+    <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.world.switch.missing_image" "image" (code .)}}</p>
   </div>
   {{- end}}
   <div class="actions">
-    <a href="{{.SwitchPath}}" class="button button--primary" id="act-switch">Switch to this world</a>
+    <a href="{{.SwitchPath}}" class="button button--primary" id="act-switch">{{t "worlds.world.switch.button"}}</a>
   </div>
 </section>
-{{- else if .SwitchNote}}
+{{- else if or .SwitchBusy (not .SwitchNote.IsZero)}}
 <section class="panel" aria-labelledby="switch-heading">
-  <h2 id="switch-heading">Switch</h2>
-  <p>{{.SwitchNote}}{{if .SwitchBusy}} See <a href="{{serverPath}}">the Server page</a>.{{end}}</p>
+  <h2 id="switch-heading">{{t "worlds.world.switch.heading"}}</h2>
+  <p>{{if .SwitchBusy}}{{tHTML "worlds.world.switch.busy" "link" (link serverPath "worlds.world.server_page")}}{{else}}{{msg .SwitchNote}}{{end}}</p>
 </section>
 {{- end}}
 <section class="panel" aria-labelledby="facts-heading">
-  <h2 id="facts-heading">About this world</h2>
+  <h2 id="facts-heading">{{t "worlds.world.about"}}</h2>
   <dl class="facts">
-    <div><dt>Folder</dt><dd><code>{{.World.ID}}</code></dd></div>
-    <div><dt>Game version</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
-    <div><dt>Space Age</dt><dd>{{if .World.SpaceAge}}On{{else}}Off{{end}}</dd></div>
-    <div><dt>Last played</dt><dd>{{if .World.LastPlayedUnknown}}unknown{{else if .World.LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
+    <div><dt>{{t "worlds.world.folder"}}</dt><dd><code>{{.World.ID}}</code></dd></div>
+    <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+    <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .World.SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
+    <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .World.LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .World.LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
     {{- with .World.ImportedFrom}}
-    <div><dt>Imported from</dt><dd>The folder <code>{{.Folder}}</code>, save <code>{{.Save}}</code>, on <time datetime="{{isoTime .At}}">{{utc .At}}</time></dd></div>
+    <div><dt>{{t "worlds.world.imported_from"}}</dt><dd>{{tHTML "worlds.world.imported_from_text" "folder" (code .Folder) "save" (code .Save) "when" (momentUTC .At)}}</dd></div>
     {{- end}}
-    <div><dt>Disk use</dt><dd>{{if .World.SizeUnknown}}unknown{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
+    <div><dt>{{t "worlds.fact.disk_use"}}</dt><dd>{{if .World.SizeUnknown}}{{t "worlds.unknown_lower"}}{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
   </dl>
   <div class="actions">
-    <a href="{{.SavesPath}}" class="button">Saves</a>
-    <a href="{{.SnapshotsPath}}" class="button">Snapshots</a>
+    <a href="{{.SavesPath}}" class="button">{{t "worlds.world.saves"}}</a>
+    <a href="{{.SnapshotsPath}}" class="button">{{t "worlds.world.snapshots"}}</a>
   </div>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
 <section class="panel" aria-labelledby="version-heading">
-  <h2 id="version-heading">Game version</h2>
-  <p>This world runs Factorio {{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}of an unknown version{{end}}.</p>
+  <h2 id="version-heading">{{t "worlds.fact.game_version"}}</h2>
+  <p>{{if .World.GameVersion}}{{tHTML "worlds.world.runs" "version" (code .World.GameVersion)}}{{else}}{{t "worlds.world.runs_unknown"}}{{end}}</p>
   {{- with .ReleasesPath}}
   <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML">
-    <p>Checking for a newer Factorio release.</p>
+    <p>{{t "worlds.world.checking_release"}}</p>
   </div>
   {{- end}}
   {{- if .World.Active}}
   <div class="actions">
-    <a href="{{.UpdatePath}}" class="button" id="act-update">Update game version</a>
+    <a href="{{.UpdatePath}}" class="button" id="act-update">{{t "worlds.world.update"}}</a>
   </div>
   {{- else}}
-  <p>Switch to this world to update it.</p>
+  <p>{{t "server.update.not_active"}}</p>
   {{- end}}
   {{- with .Rollback}}
-  <p>The last update took the snapshot "{{.Snapshot.Label}}" on <time datetime="{{isoTime .Snapshot.TakenAt}}">{{utc .Snapshot.TakenAt}}</time>. Rolling back restores it and returns the world to Factorio <code>{{.Version}}</code>.</p>
+  <p>{{tHTML "worlds.world.rollback_text" "label" (snapLabel .Snapshot) "when" (momentUTC .Snapshot.TakenAt) "version" (code .Version)}}</p>
   <div class="actions">
-    <a href="{{.Path}}" class="button" id="act-rollback">Roll back to {{.Version}}</a>
+    <a href="{{.Path}}" class="button" id="act-rollback">{{t "worlds.world.rollback_button" "version" .Version}}</a>
   </div>
   {{- end}}
 </section>
 {{- end}}
 {{- if not (or .World.Newer .World.Unreadable)}}
 <form method="post" action="{{.RenamePath}}" class="panel" novalidate aria-labelledby="rename-heading">
-  <h2 id="rename-heading">Rename</h2>
+  <h2 id="rename-heading">{{t "worlds.world.rename.heading"}}</h2>
   {{template "summary" .Problems}}
-  <p>The new name is shown everywhere in Foreman. The world's folder keeps its name.</p>
+  <p>{{t "worlds.world.rename.text"}}</p>
   <div class="field">
-    <label for="name">Name</label>
+    <label for="name">{{t "worlds.world.rename.label"}}</label>
     <input id="name" name="name" type="text" value="{{.Name}}" required maxlength="100"
-      {{- with .NameError}} aria-invalid="true" aria-describedby="name-error"{{end}}>
-    {{- with .NameError}}
-    <p class="error" id="name-error"><strong>Error:</strong> {{.}}</p>
+      {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+    {{- if not .NameError.IsZero}}
+    <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
     {{- end}}
   </div>
   <div class="actions">
-    <button type="submit" class="button">Rename world</button>
+    <button type="submit" class="button">{{t "worlds.world.rename.button"}}</button>
   </div>
 </form>
 {{- end}}
 <section class="panel" aria-labelledby="delete-heading">
-  <h2 id="delete-heading">Delete</h2>
-  {{- with .DeleteRefusal}}
-  <p>{{.}}</p>
+  <h2 id="delete-heading">{{t "worlds.world.delete.heading"}}</h2>
+  {{- $refusal := .DeleteRefusal}}
+  {{- if not $refusal.IsZero}}
+  <p>{{msg $refusal}}</p>
   {{- if $.Page.DeleteWaitsOnServer}}
-  <div class="actions"><a href="{{serverPath}}">Go to the Server page</a></div>
+  <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
   {{- end}}
   {{- else}}
-  <p>Deleting removes the world's folder. Its snapshots stay, so it can be restored.</p>
+  <p>{{t "worlds.world.delete.text"}}</p>
   <div class="actions">
-    <a href="{{.DeletePath}}" class="button">Delete world</a>
+    <a href="{{.DeletePath}}" class="button">{{t "worlds.world.delete.button"}}</a>
   </div>
   {{- end}}
 </section>

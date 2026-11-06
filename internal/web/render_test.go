@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -54,18 +55,18 @@ func pageCases() []pageCase {
 		{"all snapshots", "todd", 200, allSnapshotsCase()},
 		{"all snapshots empty", "todd", 200, AllSnapshotsPage{}},
 		{"snapshot delete", "todd", 200, SnapshotDeletePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0], Frees: 1000, FromAll: true}},
-		{"snapshot delete rollback", "todd", 409, SnapshotDeletePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[1], Rollback: "2.0.72", Error: "Nothing was deleted: busy."}},
+		{"snapshot delete rollback", "todd", 409, SnapshotDeletePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[1], Rollback: "2.0.72", Error: i18n.M("worlds.snapshots.delete.nothing", "reason", msgBusy())}},
 		{"snapshots bulk delete", "todd", 200, bulkDeleteCase()},
 		{"snapshots bulk delete partly done", "todd", 409, bulkDeletePartlyDone()},
-		{"snapshots bulk delete none ticked", "todd", 400, SnapshotBulkDeletePage{Error: "Nothing is ticked."}},
+		{"snapshots bulk delete none ticked", "todd", 400, SnapshotBulkDeletePage{Error: i18n.M("worlds.snapshots.bulk.nothing_ticked")}},
 		{"snapshots listed", "todd", 200, snapshotsCase()},
 		{"snapshots label error", "todd", 400, SnapshotsPage{WorldID: "base", WorldName: "Base",
-			Label: longName, LabelError: "Use at most 100 characters", Error: "The world was not changed: busy."}},
+			Label: longName, LabelError: i18n.M("worlds.snapshots.label.too_long", "count", 100), Error: msgBusy()}},
 		{"restore", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0]}},
 		{"restore error", "todd", 409, RestorePage{WorldID: "base", WorldName: "Base",
-			Snapshot: snapshotsCase().Snapshots[0], Error: "The world was not changed."}},
+			Snapshot: snapshotsCase().Snapshots[0], Error: msgBusy()}},
 		{"restore failed with undo", "todd", 500, RestorePage{WorldID: "base", WorldName: "Base",
-			Snapshot: snapshotsCase().Snapshots[0], Error: "Foreman could not finish the restore.", Undo: "20261103T142500Z"}},
+			Snapshot: snapshotsCase().Snapshots[0], Error: i18n.M("worlds.restore.failed"), Undo: "20261103T142500Z"}},
 		{"saves empty", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
 			LoadHref: "/worlds/base/saves", NewestSelected: true, UploadLimit: MaxSaveUpload}},
 		{"saves listed", "todd", 200, SavesPage{WorldName: longName, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
@@ -77,17 +78,17 @@ func pageCases() []pageCase {
 			}}},
 		{"saves errors", "todd", 422, SavesPage{WorldName: "Base", WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
 			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, LoadSave: "gone.zip", LoadMissing: true, NewestSelected: true,
-			UploadError: "This file is not a zip file.", LoadError: "Choose which save loads."}},
+			UploadError: i18n.M("worlds.upload.not_zip"), LoadError: i18n.M("worlds.saves.choose")}},
 		{"saves newer", "todd", 200, SavesPage{WorldName: "Base", Newer: true, WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves"}},
 		{"world", "todd", 200, WorldPage{World: world.Summary{ID: "base", Name: longName, Active: true}, Name: longName}},
 		{"world rename error", "todd", 400, WorldPage{World: world.Summary{ID: "base", Name: "Base"}, Name: "Other",
-			NameError: "Another world already has this name. Choose a different name."}},
+			NameError: i18n.M("worlds.error.name_taken")}},
 		{"world newer", "todd", 200, WorldPage{World: world.Summary{ID: "future", Name: "Future", Newer: true}}},
 		{"delete", "todd", 200, DeletePage{World: world.Summary{ID: "base", Name: longName, DiskBytes: 2_100_000_000}, FinalSnapshot: true}},
 		{"delete name error", "todd", 400, DeletePage{World: world.Summary{ID: "base", Name: "Base"}, ConfirmName: "base",
-			NameError: "Type Base exactly, or cancel"}},
+			NameError: i18n.M("worlds.delete.wrong_name", "name", "Base")}},
 		{"delete refused", "todd", 409, DeletePage{World: world.Summary{ID: "base", Name: "Base", Active: true},
-			Error: "The world was not changed: this is the active world, and the active world cannot be deleted."}},
+			Error: i18n.M("worlds.error.active")}},
 		{"deleted empty", "todd", 200, DeletedPage{}},
 		{"deleted listed", "todd", 200, DeletedPage{More: true, Worlds: []world.DeletedWorld{
 			{ID: "base", Name: longName, Snapshots: snapshotsCase().Snapshots},
@@ -97,25 +98,25 @@ func pageCases() []pageCase {
 		{"import empty", "todd", 200, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"}, Upload: ImportForm{IDPrefix: "upload"}}},
 		{"import errors", "todd", 400, ImportPage{InboxDir: "/data/import",
 			Inbox:  []world.InboxFolder{{Name: longName, Saves: 1, Bytes: 10}, {Name: "b", Saves: 2, HasMods: true}},
-			Folder: ImportForm{IDPrefix: "folder", Source: "b", SourceError: "Choose a folder.", NameError: "Enter a name.", VersionError: "Bad version."},
+			Folder: ImportForm{IDPrefix: "folder", Source: "b", SourceError: msgNoFolder(), NameError: msgNameEmpty(), VersionError: msgBadGameVersion()},
 			Upload: ImportForm{IDPrefix: "upload"}}},
 		{"import upload errors", "todd", 400, ImportPage{InboxDir: "/data/import", Folder: ImportForm{IDPrefix: "folder"},
-			Upload: ImportForm{IDPrefix: "upload", SourceError: "Not a zip.", NameError: "Enter a name.", VersionError: "Bad version."}}},
+			Upload: ImportForm{IDPrefix: "upload", SourceError: i18n.M("worlds.upload.not_zip"), NameError: msgNameEmpty(), VersionError: msgBadGameVersion()}}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",
-			PasswordError: "The username or password is not right. Check both and try again."}},
-		{"sign in two errors", "", 400, SignInPage{UsernameError: "Enter your username", PasswordError: "Enter your password"}},
+			PasswordError: i18n.M("accounts.signin.bad")}},
+		{"sign in two errors", "", 400, SignInPage{UsernameError: i18n.M("accounts.signin.username.missing"), PasswordError: i18n.M("accounts.signin.password.missing")}},
 		{"sign in rate limited", "", 429, SignInPage{Username: longName, RateLimited: true, RetryAfter: 14*time.Minute + time.Second}},
 		{"setup empty", "", 200, SetupPage{}},
 		{"setup with hint", "", 200, SetupPage{MinPasswordLength: 12}},
 		{"setup all errors", "", 400, SetupPage{Username: longName, MinPasswordLength: 12, //nolint:gosec // error wording, not a credential
-			UsernameError: "Enter a username", PasswordError: "Use at least 12 characters",
-			ConfirmError: "Enter the same password in both fields"}},
+			UsernameError: i18n.M("accounts.username.missing"), PasswordError: i18n.M("accounts.setup.password.short", "count", 12),
+			ConfirmError: i18n.M("accounts.setup.confirm.mismatch")}},
 		{"error 403", "todd", 403, ErrorPage{Status: 403}},
 		{"error 404", "", 404, ErrorPage{Status: 404}},
 		{"error 500", "", 500, ErrorPage{Status: 500}},
-		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: "Choose a file that ends in .zip."}},
+		{"error other with detail", "", 400, ErrorPage{Status: 400, Detail: i18n.M("worlds.upload.bad_name")}},
 		{"server no world", "todd", 200, ServerPage{}},
 		{"server running", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
 			p.Status.Uptime, p.Status.StartedAt = 3*time.Hour+12*time.Minute, time.Date(2026, 11, 3, 11, 0, 0, 0, time.UTC)
@@ -172,25 +173,25 @@ func pageCases() []pageCase {
 		})},
 		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
 		{"restart countdown error", "todd", 400, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true,
-			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"switch running", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: longName}, To: world.Summary{ID: "other", Name: longName},
 			Plan: game.SwitchPlan{Running: true}, CountdownForm: defaultCountdown()}},
 		{"switch with a download and problems", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
 			Plan: game.SwitchPlan{Running: true, Download: true, Image: "factoriotools/factorio:2.0.76",
 				Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemModMissing, Text: "Mod a is missing.", StartAnyway: true}}}},
-			ImageSize: 345678901, Lead: "The save that would load in Other does not match that world:", CheckProblems: []string{"Mod a is missing."},
+			ImageSize: 345678901, Lead: i18n.M("server.switch.problems_lead", "world", "Other"), CheckProblems: []i18n.Msg{i18n.M("server.problem.other", "text", "Mod a is missing.")},
 			CountdownForm: defaultCountdown()}},
 		{"switch stopped", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"}}},
 		{"switch countdown error", "todd", 400, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
-			Plan: game.SwitchPlan{Running: true}, CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+			Plan: game.SwitchPlan{Running: true}, CountdownForm: CountdownForm{Countdown: "x", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"switch refused", "todd", 409, SwitchPage{From: world.Summary{ID: "base", Name: "Base"}, To: world.Summary{ID: "other", Name: "Other"},
-			Refusal: "This is already the active world."}},
+			Refusal: i18n.M("server.error.switch_same")}},
 		{"force stop", "todd", 200, ForceStopPage{World: world.Summary{ID: "base", Name: longName,
 			LastPlayed: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)}}},
 		{"restore running", "todd", 200, RestorePage{WorldID: "base", WorldName: longName, Snapshot: snapshotsCase().Snapshots[0],
 			Running: true, CountdownForm: defaultCountdown()}},
 		{"restore countdown error", "todd", 400, RestorePage{WorldID: "base", WorldName: "Base", Snapshot: snapshotsCase().Snapshots[0],
-			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+			Running: true, CountdownForm: CountdownForm{Countdown: "x", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"console no world", "todd", 200, ConsolePage{}},
 		{"console empty", "todd", 200, ConsolePage{World: world.Summary{ID: "base", Name: longName}, HasWorld: true}},
 		{"console log and history", "todd", 200, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
@@ -199,9 +200,9 @@ func pageCases() []pageCase {
 				{Command: longName, Reply: longName, Cut: true},
 				{Command: "/server-save", Last: true}}}},
 		{"console command refused", "todd", 400, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
-			Command: "/c game.print(1)", CommandError: "Enter a command of at most 1000 characters"}},
+			Command: "/c game.print(1)", CommandError: i18n.M("server.console.error.long", "max", 1000)}},
 		{"console not running", "todd", 409, ConsolePage{World: world.Summary{ID: "base", Name: "Base"}, HasWorld: true,
-			Failure: "The game is not running, so it cannot take commands. Start it from the Server page."}},
+			Failure: i18n.M("server.console.not_running")}},
 		{"world update offers", "todd", 200, WorldPage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.1.24", Active: true},
 			Name: longName, ReleasesPath: "/worlds/base/releases",
 			Rollback: &RollbackOffer{Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Path: "/worlds/base/rollback"}}},
@@ -212,15 +213,15 @@ func pageCases() []pageCase {
 		{"update running", "todd", 200, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
 			Target: "2.1.24", Running: true, CountdownForm: defaultCountdown()}},
 		{"update errors", "todd", 400, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
-			Target: "2.0.70", VersionError: "Enter a version newer than 2.0.77", Running: true,
-			CountdownForm: CountdownForm{Countdown: "x", CountdownError: "Enter a whole number of seconds from 0 to 600"}}},
+			Target: "2.0.70", VersionError: i18n.M("server.error.version_not_newer"), Running: true,
+			CountdownForm: CountdownForm{Countdown: "x", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"update refused", "todd", 409, UpdatePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77", Active: true},
-			Target: "2.1.24", Refusal: "The mod foo does not support Factorio 2.1."}},
+			Target: "2.1.24", Refusal: i18n.M("server.error.version_unsupported")}},
 		{"rollback stopped", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.1.24"},
 			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77"}},
 		{"rollback running", "todd", 200, RollbackPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.1.24"},
 			Snapshot: snapshotsCase().Snapshots[0], Version: "2.0.77", Running: true, CountdownForm: defaultCountdown(),
-			Error: "The game image for 2.0.77 is missing."}},
+			Error: i18n.M("server.error.image_missing")}},
 	}
 }
 
@@ -248,7 +249,7 @@ func TestVersionFragments(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var b strings.Builder
-			if err := r.Fragment(&b, c.page, c.frag); err != nil {
+			if err := r.Fragment(&b, i18n.English, c.page, c.frag); err != nil {
 				t.Fatal(err)
 			}
 			if c.want == nil && strings.TrimSpace(b.String()) != "" {
@@ -273,8 +274,14 @@ func serverCase(s game.State, edit func(*ServerPage)) ServerPage {
 
 func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, string) {
 	t.Helper()
+	return renderIn(t, r, c, i18n.English)
+}
+
+// renderIn renders c for a GET request in language loc.
+func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest.ResponseRecorder, string) {
+	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := r.Render(rec, c.status, c.user, c.page); err != nil {
+	if err := r.Render(rec, requestIn(loc), c.status, c.user, c.page); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	return rec, rec.Body.String()
@@ -289,87 +296,92 @@ var (
 )
 
 // Every page renders and meets the document rules every screen shares
-// (SPEC 17.1, DESIGN 2 and 7.2).
+// (SPEC 17.1, DESIGN 2 and 7.2), in every language (SPEC 22.1).
 func TestEveryPageRenders(t *testing.T) {
 	r := newTestRenderer(t)
-	for _, c := range pageCases() {
-		t.Run(c.name, func(t *testing.T) {
-			rec, body := render(t, r, c)
+	for _, l := range i18n.Languages {
+		for _, c := range pageCases() {
+			t.Run(string(l.Tag)+"/"+c.name, func(t *testing.T) { checkPage(t, r, c, l.Tag) })
+		}
+	}
+}
 
-			if rec.Code != c.status {
-				t.Errorf("status %d, want %d", rec.Code, c.status)
-			}
-			if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-				t.Errorf("Content-Type %q", got)
-			}
-			if got := rec.Header().Get("Cache-Control"); got != "no-store" {
-				t.Errorf("Cache-Control %q", got)
-			}
-			if !strings.HasPrefix(body, "<!doctype html>") {
-				t.Errorf("body does not start with a doctype: %.40q", body)
-			}
-			if !strings.Contains(body, `<html lang="en">`) {
-				t.Error("no lang on html")
-			}
-			if m := reTitle.FindAllStringSubmatch(body, -1); len(m) != 1 || strings.TrimSpace(m[0][1]) == "" {
-				t.Errorf("want one non-empty title, got %v", m)
-			}
-			if n := strings.Count(body, "<h1"); n != 1 {
-				t.Errorf("%d h1 elements, want 1", n)
-			}
-			if strings.Contains(body, "<b>") {
-				t.Error("user text was not escaped")
-			}
+func checkPage(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) {
+	t.Helper()
+	rec, body := renderIn(t, r, c, loc)
 
-			ids := map[string]int{}
-			for _, m := range reID.FindAllStringSubmatch(body, -1) {
-				ids[m[1]]++
-			}
-			for id, n := range ids {
-				if n > 1 {
-					t.Errorf("id %q used %d times", id, n)
-				}
-			}
-			for _, in := range reInput.FindAllString(body, -1) {
-				// Radios and checkboxes sit inside their label (DESIGN 7.2); a
-				// hidden field is never shown, so has none.
-				if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) || strings.Contains(in, `type="hidden"`) {
-					continue
-				}
-				m := reID.FindStringSubmatch(in)
-				if m == nil {
-					t.Errorf("input without id: %s", in)
-					continue
-				}
-				if !strings.Contains(body, `<label for="`+m[1]+`">`) {
-					t.Errorf("input %q has no label", m[1])
-				}
-				if strings.Contains(in, "placeholder") {
-					t.Errorf("input %q uses a placeholder", m[1])
-				}
-			}
-			for _, m := range reDescribed.FindAllStringSubmatch(body, -1) {
-				for _, id := range strings.Fields(m[1]) {
-					if ids[id] == 0 {
-						t.Errorf("aria-describedby names missing id %q", id)
-					}
-				}
-			}
-			for _, m := range reHrefAnchor.FindAllStringSubmatch(body, -1) {
-				if ids[m[1]] == 0 {
-					t.Errorf("link to missing id #%s", m[1])
-				}
-			}
-			if strings.Contains(body, "autofocus") && strings.Count(body, "autofocus") != 1 {
-				t.Error("more than one autofocus")
-			}
+	if rec.Code != c.status {
+		t.Errorf("status %d, want %d", rec.Code, c.status)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type %q", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control %q", got)
+	}
+	if !strings.HasPrefix(body, "<!doctype html>") {
+		t.Errorf("body does not start with a doctype: %.40q", body)
+	}
+	if !strings.Contains(body, `<html lang="`+loc.String()+`">`) {
+		t.Error("no lang on html")
+	}
+	if m := reTitle.FindAllStringSubmatch(body, -1); len(m) != 1 || strings.TrimSpace(m[0][1]) == "" {
+		t.Errorf("want one non-empty title, got %v", m)
+	}
+	if n := strings.Count(body, "<h1"); n != 1 {
+		t.Errorf("%d h1 elements, want 1", n)
+	}
+	if strings.Contains(body, "<b>") {
+		t.Error("user text was not escaped")
+	}
 
-			// Sign-out is a POST form shown only when someone is signed in (DESIGN 6).
-			signOut := `<form method="post" action="` + PathSignOut + `"`
-			if got := strings.Contains(body, signOut); got != (c.user != "") {
-				t.Errorf("sign-out form shown=%v with user %q", got, c.user)
+	ids := map[string]int{}
+	for _, m := range reID.FindAllStringSubmatch(body, -1) {
+		ids[m[1]]++
+	}
+	for id, n := range ids {
+		if n > 1 {
+			t.Errorf("id %q used %d times", id, n)
+		}
+	}
+	for _, in := range reInput.FindAllString(body, -1) {
+		// Radios and checkboxes sit inside their label (DESIGN 7.2); a
+		// hidden field is never shown, so has none.
+		if strings.Contains(in, `type="radio"`) || strings.Contains(in, `type="checkbox"`) || strings.Contains(in, `type="hidden"`) {
+			continue
+		}
+		m := reID.FindStringSubmatch(in)
+		if m == nil {
+			t.Errorf("input without id: %s", in)
+			continue
+		}
+		if !strings.Contains(body, `<label for="`+m[1]+`">`) {
+			t.Errorf("input %q has no label", m[1])
+		}
+		if strings.Contains(in, "placeholder") {
+			t.Errorf("input %q uses a placeholder", m[1])
+		}
+	}
+	for _, m := range reDescribed.FindAllStringSubmatch(body, -1) {
+		for _, id := range strings.Fields(m[1]) {
+			if ids[id] == 0 {
+				t.Errorf("aria-describedby names missing id %q", id)
 			}
-		})
+		}
+	}
+	for _, m := range reHrefAnchor.FindAllStringSubmatch(body, -1) {
+		if ids[m[1]] == 0 {
+			t.Errorf("link to missing id #%s", m[1])
+		}
+	}
+	if strings.Contains(body, "autofocus") && strings.Count(body, "autofocus") != 1 {
+		t.Error("more than one autofocus")
+	}
+
+	// Sign-out is a POST form shown only when someone is signed in (DESIGN 6).
+	signOut := `<form method="post" action="` + PathSignOut + `"`
+	if got := strings.Contains(body, signOut); got != (c.user != "") {
+		t.Errorf("sign-out form shown=%v with user %q", got, c.user)
 	}
 }
 
@@ -385,7 +397,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 		if name == "layout" {
 			continue
 		}
-		if _, ok := r.pages[name]; !ok {
+		if _, ok := r.pages[i18n.English][name]; !ok {
 			t.Errorf("template %s has no page type", f)
 		}
 	}
@@ -393,7 +405,7 @@ func TestEveryTemplateHasAPage(t *testing.T) {
 	for _, c := range pageCases() {
 		covered[c.page.templateName()] = true
 	}
-	for name := range r.pages {
+	for name := range r.pages[i18n.English] {
 		if !covered[name] {
 			t.Errorf("page %s has no render case", name)
 		}
@@ -407,9 +419,9 @@ func TestErrorSummary(t *testing.T) {
 		heading string
 		links   []string
 	}{
-		{SignInPage{PasswordError: "x"}, "Fix this problem to continue", []string{"password"}},
-		{SignInPage{UsernameError: "a", PasswordError: "b"}, "Fix 2 problems to continue", []string{"username", "password"}},
-		{SetupPage{UsernameError: "a", PasswordError: "b", ConfirmError: "c"}, "Fix 3 problems to continue", []string{"username", "password", "confirm"}},
+		{SignInPage{PasswordError: i18n.M("accounts.username.missing")}, "Fix this problem to continue", []string{"password"}},
+		{SignInPage{UsernameError: i18n.M("accounts.username.missing"), PasswordError: i18n.M("accounts.setup.confirm.mismatch")}, "Fix 2 problems to continue", []string{"username", "password"}},
+		{SetupPage{UsernameError: i18n.M("accounts.username.missing"), PasswordError: i18n.M("accounts.setup.confirm.mismatch"), ConfirmError: i18n.M("accounts.setup.confirm.mismatch")}, "Fix 3 problems to continue", []string{"username", "password", "confirm"}},
 	}
 	for _, c := range cases {
 		_, body := render(t, r, pageCase{page: c.page, status: 400})
@@ -445,11 +457,11 @@ func TestErrorTitleAndSummaryName(t *testing.T) {
 		title string
 	}{
 		{SignInPage{}, "Sign in – Foreman"},
-		{SignInPage{PasswordError: "x"}, "Error: Sign in – Foreman"},
+		{SignInPage{PasswordError: i18n.M("accounts.username.missing")}, "Error: Sign in – Foreman"},
 		{SignInPage{RateLimited: true}, "Error: Sign in – Foreman"},
 		{SignInPage{Busy: true}, "Error: Sign in – Foreman"},
 		{SetupPage{}, "Create the first admin account – Foreman"},
-		{SetupPage{ConfirmError: "x"}, "Error: Create the first admin account – Foreman"},
+		{SetupPage{ConfirmError: i18n.M("accounts.username.missing")}, "Error: Create the first admin account – Foreman"},
 		{ErrorPage{Status: 404}, "Page not found – Foreman"},
 	}
 	for _, c := range cases {
@@ -483,19 +495,19 @@ func TestSignInRateLimit(t *testing.T) {
 		after time.Duration
 		want  string
 	}{
-		{0, "a few minutes"},
-		{time.Second, "1 minute"},
-		{time.Minute, "1 minute"},
-		{14*time.Minute + time.Second, "15 minutes"},
+		{0, "Too many failed sign-ins. Wait a few minutes, then try again."},
+		{time.Second, "Too many failed sign-ins. Wait 1 minute, then try again."},
+		{time.Minute, "Too many failed sign-ins. Wait 1 minute, then try again."},
+		{14*time.Minute + time.Second, "Too many failed sign-ins. Wait 15 minutes, then try again."},
 	}
 	for _, c := range cases {
-		if got := (SignInPage{RateLimited: true, RetryAfter: c.after}).Wait(); got != c.want {
-			t.Errorf("Wait(%v) = %q, want %q", c.after, got, c.want)
+		if got := i18n.English.Format((SignInPage{RateLimited: true, RetryAfter: c.after}).RateLimitMessage()); got != c.want {
+			t.Errorf("RateLimitMessage(%v) = %q, want %q", c.after, got, c.want)
 		}
 	}
 
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 429, page: SignInPage{RateLimited: true, PasswordError: "x"}})
+	_, body := render(t, r, pageCase{status: 429, page: SignInPage{RateLimited: true, PasswordError: i18n.M("accounts.username.missing")}})
 	if !strings.Contains(body, "Too many failed sign-ins. Wait a few minutes, then try again.") {
 		t.Error("no rate-limit message")
 	}
@@ -522,7 +534,7 @@ func TestSignInBusyIsFormLevel(t *testing.T) {
 
 func TestSignInNeverEchoesPassword(t *testing.T) {
 	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 401, page: SignInPage{Username: "todd", PasswordError: "x"}})
+	_, body := render(t, r, pageCase{status: 401, page: SignInPage{Username: "todd", PasswordError: i18n.M("accounts.username.missing")}})
 	for _, in := range reInput.FindAllString(body, -1) {
 		if strings.Contains(in, `type="password"`) && strings.Contains(in, "value=") {
 			t.Errorf("password input carries a value: %s", in)
@@ -536,11 +548,11 @@ func TestSignInNeverEchoesPassword(t *testing.T) {
 func TestErrorPageCopy(t *testing.T) {
 	for _, s := range []int{403, 404, 500, 418} {
 		p := ErrorPage{Status: s}
-		if p.Heading() == "" || p.Explanation() == "" {
+		if p.Heading().IsZero() || p.Explanation().IsZero() {
 			t.Errorf("status %d has no copy", s)
 		}
 	}
-	if got := (ErrorPage{Status: 403, Detail: "Ask for the admins group."}).Explanation(); got != "Ask for the admins group." {
+	if got := i18n.English.Format((ErrorPage{Status: 403, Detail: i18n.M("worlds.upload.bad_name")}).Explanation()); got != i18n.English.T("worlds.upload.bad_name") {
 		t.Errorf("Detail not used: %q", got)
 	}
 }

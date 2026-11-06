@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -16,7 +17,7 @@ func snapshotsCase() SnapshotsPage {
 	at := time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC)
 	return SnapshotsPage{
 		WorldID: "base", WorldName: "Base", AddBytes: 2_100_000, FreeBytes: 40_000_000_000, Copied: true, More: true,
-		Done: `Foreman took the snapshot "x".`, DoneSnap: "20261103T142500Z",
+		Done: i18n.M("worlds.snapshots.done.taken", "label", "x"), DoneSnap: "20261103T142500Z",
 		Snapshots: []world.Snapshot{
 			{Name: "20261103T142500Z", Manifest: world.Manifest{Label: longName, Reason: world.ReasonManual, TakenAt: at,
 				Files: []world.ManifestEntry{{Path: "saves/a.zip", Size: 2_100_000}}}},
@@ -70,7 +71,7 @@ func TestSnapshotTakeListAndRestore(t *testing.T) {
 	}
 
 	form := hn.get(restorePath(id, snap), withCookie(c)).Body.String()
-	if !strings.Contains(form, `Restore the snapshot "First"`) || !strings.Contains(form, "Before restore") {
+	if !strings.Contains(form, `Restore the snapshot &#34;First&#34;`) || !strings.Contains(form, "Before restore") {
 		t.Errorf("confirmation:\n%s", form)
 	}
 	hn.clock.Advance(time.Minute)

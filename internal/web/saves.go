@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -31,10 +32,6 @@ const (
 // loadFirstID is the id of the first radio in the load choice, where the
 // error summary sends focus (DESIGN 7.2).
 const loadFirstID = "load-newest"
-
-// msgSaveGone is the load choice's error when the chosen save was removed
-// after the page was shown.
-const msgSaveGone = "Choose a save from the list. That save is no longer in the saves folder."
 
 func (s *server) saveRoutes() {
 	s.mux.HandleFunc("GET "+patternSaves, s.requireUser(s.handleSaves))
@@ -76,8 +73,8 @@ type SavesPage struct {
 	Uploaded string
 	Chosen   bool
 
-	UploadError string
-	LoadError   string
+	UploadError i18n.Msg
+	LoadError   i18n.Msg
 }
 
 func (SavesPage) templateName() string { return "saves" }
@@ -235,7 +232,7 @@ func (s *server) handleLoadSave(w http.ResponseWriter, r *http.Request, u store.
 	}
 	choice, sent := r.PostForm[saveLoadField]
 	if !sent {
-		s.showSaves(w, r, u, http.StatusUnprocessableEntity, func(p *SavesPage) { p.LoadError = "Choose which save loads." })
+		s.showSaves(w, r, u, http.StatusUnprocessableEntity, func(p *SavesPage) { p.LoadError = i18n.M("worlds.saves.choose") })
 		return
 	}
 	if err := s.worlds.SetLoadSave(id, choice[0]); err != nil {
@@ -244,7 +241,7 @@ func (s *server) handleLoadSave(w http.ResponseWriter, r *http.Request, u store.
 			return
 		}
 		if errors.Is(err, world.ErrSaveNotFound) {
-			msg = msgSaveGone
+			msg = i18n.M("worlds.saves.gone")
 		}
 		s.showSaves(w, r, u, status, func(p *SavesPage) { p.LoadError = msg })
 		return

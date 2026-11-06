@@ -1,0 +1,56 @@
+{
+  "common.skip": "Saltar al contenido",
+  "common.error.label": "Error:",
+  "common.nav.label": "Menú principal",
+  "common.nav.server": "Servidor",
+  "common.nav.console": "Consola",
+  "common.nav.worlds": "Mundos",
+  "common.nav.snapshots": "Instantáneas",
+  "common.signedin": "Sesión iniciada como {user}",
+  "common.signout": "Cerrar sesión",
+  "common.language.label": "Idioma",
+  "common.language.submit": "Cambiar",
+  "common.countdown.label": "Cuenta atrás en segundos",
+  "common.countdown.hint": "Los jugadores conectados ven un aviso en el juego; después el juego guarda y se detiene. De 0 a 600 segundos; 0 significa sin aviso: el juego guarda y se detiene al instante. Si no hay nadie conectado, no se avisa a nadie.",
+  "common.summary.heading": {
+    "one": "Corrige este problema para continuar",
+    "other": "Corrige {count} problemas para continuar"
+  },
+  "common.bytes.b": "{n} B",
+  "common.bytes.kb": "{n} kB",
+  "common.bytes.mb": "{n} MB",
+  "common.bytes.gb": "{n} GB",
+  "common.bytes.tb": "{n} TB",
+  "common.bytes.pb": "{n} PB",
+  "common.bytes.eb": "{n} EB",
+  "common.duration.seconds": {
+    "one": "{count} segundo",
+    "other": "{count} segundos"
+  },
+  "common.duration.minutes": {
+    "one": "{count} minuto",
+    "other": "{count} minutos"
+  },
+  "common.duration.hours": {
+    "one": "{count} hora",
+    "other": "{count} horas"
+  },
+  "common.error.forbidden.heading": "Acceso denegado",
+  "common.error.forbidden.text": "Foreman ha rechazado esta solicitud. Si has seguido un enlace desde otro sitio, abre Foreman directamente y vuelve a intentarlo. Si sigue ocurriendo, pide a la persona que gestiona Foreman que revise tu acceso.",
+  "common.error.notfound.heading": "Página no encontrada",
+  "common.error.notfound.text": "No hay ninguna página en esta dirección. Comprueba la dirección o ve a la página de inicio.",
+  "common.error.internal.heading": "Algo ha salido mal",
+  "common.error.internal.text": "Foreman no ha podido terminar esta solicitud. Los detalles están en el registro de Foreman. Vuelve a intentarlo y, si falla otra vez, revisa el registro.",
+  "common.error.other.heading": "La solicitud ha fallado",
+  "common.error.other.text": "Foreman no ha podido terminar esta solicitud. Ve a la página de inicio y vuelve a intentarlo.",
+  "common.error.code": "Código de error {code}",
+  "common.error.home": "Ir a la página de inicio",
+  "common.form.unreadable": "Foreman no ha podido leer el formulario. Vuelve atrás, recarga la página y vuelve a intentarlo.",
+  "common.form.too_large": "El formulario era demasiado grande. Vuelve atrás, recarga la página y vuelve a intentarlo.",
+  "common.label.warning": "Advertencia:",
+  "common.label.done": "Hecho:",
+  "common.label.note": "Nota:",
+  "common.label.busy": "Ocupado:",
+  "common.confirm.will": "Esto hará lo siguiente:",
+  "common.list.sep": ", "
+}

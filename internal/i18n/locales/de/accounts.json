@@ -1,0 +1,48 @@
+{
+  "accounts.username.label": "Benutzername",
+  "accounts.password.label": "Passwort",
+  "accounts.username.missing": "Gib einen Benutzernamen ein",
+  "accounts.username.long": {
+    "one": "Verwende höchstens {count} Zeichen",
+    "other": "Verwende höchstens {count} Zeichen"
+  },
+  "accounts.username.control": "Entferne die Steuerzeichen aus dem Benutzernamen",
+  "accounts.signin.title": "Anmelden",
+  "accounts.signin.submit": "Anmelden",
+  "accounts.signin.ratelimited.unknown": "Zu viele fehlgeschlagene Anmeldungen. Warte ein paar Minuten und versuche es dann erneut.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Zu viele fehlgeschlagene Anmeldungen. Warte {count} Minute und versuche es dann erneut.",
+    "other": "Zu viele fehlgeschlagene Anmeldungen. Warte {count} Minuten und versuche es dann erneut."
+  },
+  "accounts.signin.busy": "Foreman ist ausgelastet. Warte einen Moment und versuche es erneut.",
+  "accounts.signin.bad": "Benutzername oder Passwort stimmt nicht. Prüfe beides und versuche es erneut.",
+  "accounts.signin.username.missing": "Gib deinen Benutzernamen ein",
+  "accounts.signin.password.missing": "Gib dein Passwort ein",
+  "accounts.setup.title": "Das erste Admin-Konto anlegen",
+  "accounts.setup.intro": "Foreman hat noch keine Konten. Das Konto, das du hier anlegst, darf in Foreman alles. Diese Seite schließt sich, sobald das Konto existiert.",
+  "accounts.setup.password.hint": {
+    "one": "Verwende mindestens {count} Zeichen.",
+    "other": "Verwende mindestens {count} Zeichen."
+  },
+  "accounts.setup.password.missing": "Gib ein Passwort ein",
+  "accounts.setup.password.long": {
+    "one": "Verwende höchstens {count} Byte",
+    "other": "Verwende höchstens {count} Byte"
+  },
+  "accounts.setup.password.short": {
+    "one": "Verwende mindestens {count} Zeichen",
+    "other": "Verwende mindestens {count} Zeichen"
+  },
+  "accounts.setup.confirm.label": "Passwort bestätigen",
+  "accounts.setup.confirm.missing": "Gib das Passwort noch einmal ein",
+  "accounts.setup.confirm.mismatch": "Gib in beiden Feldern dasselbe Passwort ein",
+  "accounts.setup.submit": "Admin-Konto anlegen",
+  "accounts.signedout.title": "Abgemeldet",
+  "accounts.signedout.heading": "Du bist abgemeldet",
+  "accounts.signedout.text": "Deine Sitzung auf diesem Gerät ist beendet.",
+  "accounts.signedout.again": "Erneut anmelden",
+  "accounts.proxy.refused": "Dein Konto darf Foreman nicht verwenden. Bitte die Person, die Foreman betreibt, dir Zugang zu geben.",
+  "accounts.proxy.waiting": "Foreman kann Anmeldungen über den Proxy noch nicht annehmen, weil es die Netzwerke des Spiel-Containers noch nicht kennt. Versuche es in einer Minute erneut.",
+  "accounts.proxy.waiting_local": "Foreman kann Anmeldungen über den Proxy noch nicht annehmen, weil es die Netzwerke des Spiel-Containers noch nicht kennt. Versuche es in einer Minute erneut. Die Anmeldung mit Passwort funktioniert weiterhin: Öffne dazu {path}.",
+  "accounts.proxy.missing": "Foreman hat deine Anmeldung nicht vom Proxy erhalten. Melde dich über den Proxy an und öffne diese Seite dann erneut."
+}

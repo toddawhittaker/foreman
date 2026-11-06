@@ -1,43 +1,43 @@
-{{define "title"}}Create the first admin account{{end}}
+{{define "title"}}{{t "accounts.setup.title"}}{{end}}
 
 {{define "content" -}}
-<h1>Create the first admin account</h1>
+<h1>{{t "accounts.setup.title"}}</h1>
 {{with .Page}}
 <form method="post" action="{{setupPath}}" class="panel" novalidate>
   {{template "summary" .Problems}}
-  <p>Foreman has no accounts yet. The account you create here can do everything in Foreman. This page closes as soon as the account exists.</p>
+  <p>{{t "accounts.setup.intro"}}</p>
   <div class="field">
-    <label for="username">Username</label>
+    <label for="username">{{t "accounts.username.label"}}</label>
     <input id="username" name="username" type="text" value="{{.Username}}" required
       autocomplete="username" autocapitalize="none" spellcheck="false"
-      {{- with .UsernameError}} aria-invalid="true" aria-describedby="username-error"{{end}}>
-    {{- with .UsernameError}}
-    <p class="error" id="username-error"><strong>Error:</strong> {{.}}</p>
+      {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="username-error"{{end}}>
+    {{- if not .UsernameError.IsZero}}
+    <p class="error" id="username-error"><strong>{{t "common.error.label"}}</strong> {{msg .UsernameError}}</p>
     {{- end}}
   </div>
   <div class="field">
-    <label for="password">Password</label>
+    <label for="password">{{t "accounts.password.label"}}</label>
     {{- if gt .MinPasswordLength 0}}
-    <p class="hint" id="password-hint">Use at least {{.MinPasswordLength}} characters.</p>
+    <p class="hint" id="password-hint">{{t "accounts.setup.password.hint" "count" .MinPasswordLength}}</p>
     {{- end}}
     <input id="password" name="password" type="password" required autocomplete="new-password"
       {{- if gt .MinPasswordLength 0}} minlength="{{.MinPasswordLength}}"{{end}}
-      {{- if .PasswordError}} aria-invalid="true"{{end}}
+      {{- if not .PasswordError.IsZero}} aria-invalid="true"{{end}}
       {{- with .PasswordDescribedBy}} aria-describedby="{{.}}"{{end}}>
-    {{- with .PasswordError}}
-    <p class="error" id="password-error"><strong>Error:</strong> {{.}}</p>
+    {{- if not .PasswordError.IsZero}}
+    <p class="error" id="password-error"><strong>{{t "common.error.label"}}</strong> {{msg .PasswordError}}</p>
     {{- end}}
   </div>
   <div class="field">
-    <label for="confirm">Confirm password</label>
+    <label for="confirm">{{t "accounts.setup.confirm.label"}}</label>
     <input id="confirm" name="confirm" type="password" required autocomplete="new-password"
-      {{- with .ConfirmError}} aria-invalid="true" aria-describedby="confirm-error"{{end}}>
-    {{- with .ConfirmError}}
-    <p class="error" id="confirm-error"><strong>Error:</strong> {{.}}</p>
+      {{- if not .ConfirmError.IsZero}} aria-invalid="true" aria-describedby="confirm-error"{{end}}>
+    {{- if not .ConfirmError.IsZero}}
+    <p class="error" id="confirm-error"><strong>{{t "common.error.label"}}</strong> {{msg .ConfirmError}}</p>
     {{- end}}
   </div>
   <div class="actions">
-    <button type="submit" class="button button--primary">Create admin account</button>
+    <button type="submit" class="button button--primary">{{t "accounts.setup.submit"}}</button>
   </div>
 </form>
 {{end}}

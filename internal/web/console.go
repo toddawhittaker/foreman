@@ -3,7 +3,6 @@ package web
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -61,19 +61,19 @@ func auditText(command string) string {
 // hidesReply reports whether the game's reply to command prints a secret.
 func hidesReply(command string) bool { return secretReply.MatchString(command) }
 
-// checkCommand returns the words for the command field's error, or "".
-func checkCommand(command string) string {
+// checkCommand returns the words for the command field's error, or zero.
+func checkCommand(command string) i18n.Msg {
 	switch {
 	case strings.TrimSpace(command) == "":
-		return "Enter a command to send"
+		return i18n.M("server.console.error.empty")
 	case utf8.RuneCountInString(command) > maxCommandLength:
-		return fmt.Sprintf("Enter a command of at most %d characters", maxCommandLength)
+		return i18n.M("server.console.error.long", "max", maxCommandLength)
 	case strings.ContainsAny(command, "\x00"):
-		return "A command cannot contain a NUL character"
+		return i18n.M("server.console.error.nul")
 	case strings.ContainsAny(command, "\r\n"):
-		return "A command must be on one line"
+		return i18n.M("server.console.error.lines")
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 // consoleEntry is one command and the game's reply, as shown.
@@ -126,15 +126,15 @@ func (h *consoleHistory) list(id string) []consoleEntry {
 
 // announceReply is what a screen reader hears for the admin's own command
 // (DESIGN 8.5): the reply on one line, cut short.
-func announceReply(command, reply string) string {
+func announceReply(command, reply string) i18n.Msg {
 	reply = strings.Join(strings.Fields(reply), " ")
 	if reply == "" {
-		return "The game sent no reply to " + command
+		return i18n.M("server.console.announce.no_reply", "command", command)
 	}
 	if r := []rune(reply); len(r) > announceRunes {
 		reply = string(r[:announceRunes]) + "…"
 	}
-	return "Reply to " + command + ": " + reply
+	return i18n.M("server.console.announce.reply", "command", command, "reply", reply)
 }
 
 // ConsolePage is the log and console of the active world (SPEC 8.4, 8.6,
@@ -147,16 +147,16 @@ type ConsolePage struct {
 	// Command refills the field after a refusal; it is empty when the
 	// command carried a secret.
 	Command      string
-	CommandError string
+	CommandError i18n.Msg
 	// Failure says why a command was not sent or answered.
-	Failure string
+	Failure i18n.Msg
 	// Announce is read out by #announcer when a script swaps in the panel.
-	Announce string
+	Announce i18n.Msg
 }
 
 func (ConsolePage) templateName() string { return "console" }
 func (ConsolePage) navItem() string      { return PathConsole }
-func (p ConsolePage) hasErrors() bool    { return p.CommandError != "" }
+func (p ConsolePage) hasErrors() bool    { return !p.CommandError.IsZero() }
 
 func (p ConsolePage) Problems() []Problem {
 	return problems(Problem{"command", p.CommandError})
@@ -220,7 +220,7 @@ func (s *server) respond(w http.ResponseWriter, r *http.Request, status int, use
 		return
 	}
 	var b strings.Builder
-	if err := s.render.Fragment(&b, p, "console-response"); err != nil {
+	if err := s.render.Fragment(&b, localeOf(r), p, "console-response"); err != nil {
 		s.fail(w, r, "render console panel", err)
 		return
 	}
@@ -241,7 +241,7 @@ func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u sto
 	command := r.PostFormValue("command")
 	p := s.consolePage(sum)
 	p.Command = refill(command)
-	if msg := checkCommand(command); msg != "" {
+	if msg := checkCommand(command); !msg.IsZero() {
 		p.CommandError = msg
 		s.respond(w, r, http.StatusBadRequest, u.Username, p)
 		return
@@ -250,15 +250,15 @@ func (s *server) handleConsoleSend(w http.ResponseWriter, r *http.Request, u sto
 	switch {
 	case err == nil:
 	case errors.Is(err, game.ErrNotRunning):
-		p.Failure = "The game is not running, so it cannot take commands. Start it from the Server page."
+		p.Failure = i18n.M("server.console.not_running")
 	case errors.Is(err, game.ErrRCONUnreachable):
-		p.Failure = "Foreman could not reach the game over RCON, so the command may not have been sent. Check the game's state on the Server page."
+		p.Failure = i18n.M("server.console.unreachable")
 	default:
 		s.fail(w, r, "send console command", err)
 		return
 	}
 	if err != nil {
-		p.Announce = "Error: " + p.Failure
+		p.Announce = labelled(i18n.M("common.error.label"), p.Failure)
 		s.respond(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -289,12 +289,12 @@ func (s *server) handleConsoleEvents(w http.ResponseWriter, r *http.Request, u s
 		return
 	}
 	if !s.runs.track() {
-		http.Error(w, "Foreman is shutting down.", http.StatusServiceUnavailable)
+		http.Error(w, localeOf(r).T("server.stream.shutting_down"), http.StatusServiceUnavailable)
 		return
 	}
 	defer s.runs.wg.Done()
 	opened := s.now()
-	out, err := s.openStream(w)
+	out, err := s.openStream(w, localeOf(r))
 	if err != nil {
 		return
 	}

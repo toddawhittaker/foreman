@@ -1,41 +1,41 @@
 {{/* Fragments for htmx; the full page exists only so the template set is complete. */}}
-{{define "title"}}Factorio versions{{end}}
+{{define "title"}}{{t "server.versions.title"}}{{end}}
 
 {{define "content" -}}
-<h1>Factorio versions</h1>
-<p>Open a world's page to see whether a newer Factorio release is out.</p>
+<h1>{{t "server.versions.title"}}</h1>
+<p>{{t "server.versions.text"}}</p>
 {{- end}}
 
 {{/* The options of a game version select. Takes VersionPicker.
      They follow the placeholder; when Docker Hub cannot be reached one disabled option says why. */}}
 {{define "version-list" -}}
 {{- if .Unreachable}}
-<option value="" disabled>Docker Hub cannot be reached; type a version below</option>
+<option value="" disabled>{{t "server.versions.unreachable_option"}}</option>
 {{- end}}
 {{- range .Versions}}
-<option value="{{.}}">{{$.Label .}}</option>
+<option value="{{.}}">{{msg ($.Label .)}}</option>
 {{- end}}
 {{- end}}
 
 {{/* The world page's release notice (SPEC 10.2). Takes ReleaseNotice. */}}
 {{define "release-notice" -}}
 {{- if .Unreachable}}
-<p>Docker Hub cannot be reached, so Foreman cannot check for new Factorio releases. You can still update by typing a version on the Update page.</p>
+<p>{{t "server.versions.unreachable"}}</p>
 {{- else if or .Stable .Experimental}}
 <div aria-live="polite">
-<p>A newer Factorio release is out:{{with .Stable}} stable <code>{{.}}</code>{{end}}{{if and .Stable .Experimental}},{{end}}{{with .Experimental}} experimental <code>{{.}}</code>{{end}}. This world uses <code>{{.Current}}</code>.</p>
+<p>{{if and .Stable .Experimental}}{{tHTML "server.versions.newer_both" "stable" (code .Stable) "experimental" (code .Experimental) "current" (code .Current)}}{{else if .Stable}}{{tHTML "server.versions.newer_stable" "stable" (code .Stable) "current" (code .Current)}}{{else}}{{tHTML "server.versions.newer_experimental" "experimental" (code .Experimental) "current" (code .Current)}}{{end}}</p>
 <div class="actions">
   {{- with .ChangelogURL}}
-  <a href="{{.}}" rel="noopener noreferrer">Read what changed on the Factorio wiki</a>
+  <a href="{{.}}" rel="noopener noreferrer">{{t "server.versions.changelog"}}</a>
   {{- end}}
   {{- if .UpdatePath}}
-  <a href="{{.UpdatePath}}" class="button">Update</a>
+  <a href="{{.UpdatePath}}" class="button">{{t "server.versions.update"}}</a>
   {{- else}}
-  <p id="release-no-image">No image yet. Docker Hub has no image for this release, so it cannot be used until one is published.</p>
+  <p id="release-no-image">{{t "server.versions.no_image"}}</p>
   {{- end}}
 </div>
 </div>
 {{- else}}
-<p>This world is on the newest Factorio release Foreman knows of.</p>
+<p>{{t "server.versions.newest"}}</p>
 {{- end}}
 {{- end}}

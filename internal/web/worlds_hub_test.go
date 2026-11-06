@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 func TestBusyText(t *testing.T) {
@@ -32,7 +33,7 @@ func TestBusyText(t *testing.T) {
 			}
 			return id
 		}
-		if got := busyText(tc.op, name); got != tc.want {
+		if got := i18n.English.Format(busyText(tc.op, name)); got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
 	}
@@ -44,7 +45,7 @@ func TestWorldBusyReadsNoWorldsWhenIdle(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Alpha", fixtureNoSA, false)
 	s := &server{game: g.ctrl} // no world store: a read of it would panic
-	if got := s.worldBusy(id); got != "" {
+	if got := s.worldBusy(id); !got.IsZero() {
 		t.Errorf("busy %q on an idle world", got)
 	}
 }
@@ -59,7 +60,7 @@ func TestWorldsShowARunningSwitch(t *testing.T) {
 	c := g.newWorld("Charlie", fixtureNoSA, false)
 
 	list := g.get(PathWorlds)
-	g.wantContains("idle list", list, `href="`+switchPath(b)+`" class="button">Switch<span class="visually-hidden"> to Bravo</span>`, `href="`+switchPath(c)+`" class="button">Switch<span class="visually-hidden"> to Charlie</span>`)
+	g.wantContains("idle list", list, `href="`+switchPath(b)+`" class="button"><span aria-hidden="true">Switch</span><span class="visually-hidden">Switch to Bravo</span>`, `href="`+switchPath(c)+`" class="button"><span aria-hidden="true">Switch</span><span class="visually-hidden">Switch to Charlie</span>`)
 	g.wantMissing("idle list", list, `href="`+switchPath(a)+`"`, "Busy:", "Switching is unavailable")
 
 	g.startGame(a)

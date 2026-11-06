@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -96,8 +97,8 @@ func TestRestorePageForDeletedWorld(t *testing.T) {
 func TestFailedRestoreLinksToItsUndo(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 500, user: "todd", page: RestorePage{WorldID: "base", WorldName: "Base",
-		Snapshot: snapshotsCase().Snapshots[0], Error: "Foreman could not finish the restore.", Undo: "20261103T150000Z"}})
-	wantIn(t, "restore page", body, `Foreman took the snapshot "Before restore" first`,
+		Snapshot: snapshotsCase().Snapshots[0], Error: i18n.M("worlds.restore.failed"), Undo: "20261103T150000Z"}})
+	wantIn(t, "restore page", body, `Foreman took the snapshot &#34;Before restore&#34; first`,
 		`href="/worlds/base/snapshots/20261103T150000Z/restore"`)
 }
 
@@ -119,7 +120,7 @@ func TestSnapshotTables(t *testing.T) {
 	_, body = render(t, r, pageCase{status: 200, user: "todd", page: DeletedPage{Worlds: []world.DeletedWorld{
 		{ID: "base", Name: "Base", Snapshots: p.Snapshots}}}})
 	wantIn(t, "deleted page", body,
-		`<th scope="col">Snapshot</th><th scope="col">Taken</th><th scope="col" class="num">Size</th>`,
+		`<th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th>`,
 		`<span class="nowrap">14:25 UTC</span>`, "taken 2026-11-03 14:25:30 UTC")
 }
 
@@ -134,7 +135,7 @@ func TestLoadChoiceError(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Errorf("status %d", rec.Code)
 	}
-	wantIn(t, "saves page", body, msgSaveGone, `href="#load-newest"`, `id="load-newest"`)
+	wantIn(t, "saves page", body, i18n.English.T("worlds.saves.gone"), `href="#load-newest"`, `id="load-newest"`)
 	if n := strings.Count(body, `name="load"`); n == 0 || strings.Count(body, `aria-invalid="true" aria-describedby="load-save-error">`) < n {
 		t.Errorf("not every radio of %d is marked invalid", n)
 	}
@@ -146,7 +147,7 @@ func TestImportFolderErrorMarksCheckboxes(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 400, user: "todd", page: ImportPage{
 		Inbox:  []world.InboxFolder{{Name: "a", Saves: 1}, {Name: "b", Saves: 1}},
-		Folder: ImportForm{IDPrefix: "folder", SourceError: "Choose a folder."}, Upload: ImportForm{IDPrefix: "upload"}}})
+		Folder: ImportForm{IDPrefix: "folder", SourceError: msgNoFolder()}, Upload: ImportForm{IDPrefix: "upload"}}})
 	for _, n := range []string{"a", "b"} {
 		if !strings.Contains(body, `type="checkbox" id="folder-source-`) ||
 			!strings.Contains(body, `name="folder" value="`+n+`" data-name="`+n+`" aria-invalid="true" aria-describedby="folder-source-error"`) {

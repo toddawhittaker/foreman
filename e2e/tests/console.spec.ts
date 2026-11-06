@@ -158,7 +158,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
 
     await send(page, "x".repeat(1001));
-    await expect(page.locator("#command-error")).toHaveText("Error: Enter a command of at most 1000 characters");
+    await expect(page.locator("#command-error")).toHaveText("Error: Enter a command of at most 1,000 characters");
     await checkPage(page);
     expect(consoleAudit(foreman)).toEqual([]);
     expect(await commands(fakeGame!)).not.toContain("x".repeat(1001));

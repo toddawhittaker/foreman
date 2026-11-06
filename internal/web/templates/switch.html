@@ -1,57 +1,57 @@
-{{define "title"}}Switch to {{.Page.To.Name}}{{end}}
+{{define "title"}}{{t "server.switch.title" "world" .Page.To.Name}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">Back to {{.To.Name}}</a></div>
-<h1>Switch to {{.To.Name}}</h1>
+<div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .To.Name}}</a></div>
+<h1>{{t "server.switch.title" "world" .To.Name}}</h1>
 {{template "summary" .Problems}}
-{{- with .Refusal}}
+{{- if not .Refusal.IsZero}}
 <div class="message message--error">
-  <p><strong>Error:</strong> {{.}}</p>
+  <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Refusal}}</p>
 </div>
-<div class="actions"><a href="{{$.Page.WorldPath}}">Back to {{$.Page.To.Name}}</a></div>
+<div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .To.Name}}</a></div>
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Switch from {{.From.Name}} to {{.To.Name}}?</h2>
+  <h2 id="confirm-heading" tabindex="-1">{{t "server.switch.heading" "from" .From.Name "to" .To.Name}}</h2>
   {{- if .Changed}}
   <div class="message message--warning" id="action-changed" tabindex="-1" autofocus>
-    <p><strong>Warning:</strong> {{.ChangedLead}}</p>
+    <p><strong>{{t "common.label.warning"}}</strong> {{msg .ChangedLead}}</p>
   </div>
   {{- end}}
   {{- if .HasProblems}}
   <div class="message {{if .CanAnyway}}message--warning{{else}}message--error{{end}}">
-    <p><strong>{{if .CanAnyway}}Warning:{{else}}Error:{{end}}</strong> {{.Lead}}</p>
+    <p><strong>{{if .CanAnyway}}{{t "common.label.warning"}}{{else}}{{t "common.error.label"}}{{end}}</strong> {{msg .Lead}}</p>
     <ul>
       {{- range .CheckProblems}}
-      <li>{{.}}</li>
+      <li>{{msgHTML .}}</li>
       {{- end}}
     </ul>
-    {{- with .Advice}}
-    <p>{{.}}</p>
+    {{- if not .Advice.IsZero}}
+    <p>{{msg .Advice}}</p>
     {{- end}}
   </div>
   {{- end}}
-  <p>This will:</p>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .Plan.Download}}
-    <li>Download the game image <code>{{.Plan.Image}}</code>{{with .ImageSize}}, about {{bytes .}}{{end}}, because this host does not have it. If the download fails, nothing else happens{{if .Plan.Running}} and {{.From.Name}} keeps running{{end}}.</li>
+    <li>{{if .ImageSize}}{{if .Plan.Running}}{{tHTML "server.switch.download_size_running" "image" (code .Plan.Image) "size" (bytes .ImageSize) "from" .From.Name}}{{else}}{{tHTML "server.switch.download_size" "image" (code .Plan.Image) "size" (bytes .ImageSize)}}{{end}}{{else if .Plan.Running}}{{tHTML "server.switch.download_running" "image" (code .Plan.Image) "from" .From.Name}}{{else}}{{tHTML "server.switch.download" "image" (code .Plan.Image)}}{{end}}</li>
     {{- end}}
     {{- if .Plan.Running}}
-    <li>Warn players online with the countdown below, save the game and stop {{.From.Name}}.</li>
+    <li>{{t "server.switch.warn" "from" .From.Name}}</li>
     {{- end}}
-    <li>Take a snapshot of {{.From.Name}} and of {{.To.Name}}, both labelled "Before switch". If a snapshot fails, nothing else happens.</li>
-    <li>Make {{.To.Name}} the active world.</li>
+    <li>{{t "server.switch.snapshots" "from" .From.Name "to" .To.Name "label" (m "worlds.snapshot.label.before_switch")}}</li>
+    <li>{{t "server.switch.present" "to" .To.Name}}</li>
     {{- if .HasProblems}}
     {{- if .CanAnyway}}
-    <li>With "Switch and start anyway": take one more snapshot of {{.To.Name}}, labelled "Before start anyway", and start the game on {{.To.Name}}. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.</li>
+    <li>{{t "server.switch.with_anyway" "to" .To.Name "label" (m "worlds.snapshot.label.before_start_anyway")}}</li>
     {{- end}}
-    <li>With "Switch, leave stopped": leave the server stopped. The next Start shows these problems again, so you can fix them first.</li>
+    <li>{{t "server.switch.with_stopped"}}</li>
     {{- else if .Plan.Running}}
-    <li>Start the game on {{.To.Name}}.</li>
+    <li>{{t "server.switch.start" "to" .To.Name}}</li>
     {{- else}}
-    <li>Start the game on {{.To.Name}} if the box below is ticked; otherwise leave the server stopped.</li>
+    <li>{{t "server.switch.start_if" "to" .To.Name}}</li>
     {{- end}}
-    <li>To undo, switch back to {{.From.Name}}, or restore a snapshot from the Snapshots page.</li>
+    <li>{{t "server.switch.undo" "from" .From.Name}}</li>
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     <input type="hidden" name="from" value="{{.From.ID}}">
@@ -64,22 +64,22 @@
     <input type="hidden" name="seen" value="{{.Seen}}">
     {{- end}}
     <div class="actions">
-      <button type="submit" name="choice" value="stopped" class="button">Switch, leave stopped</button>
+      <button type="submit" name="choice" value="stopped" class="button">{{t "server.switch.button_stopped"}}</button>
       {{- if .CanAnyway}}
-      <button type="submit" name="choice" value="anyway" class="button button--danger">Switch and start anyway</button>
+      <button type="submit" name="choice" value="anyway" class="button button--danger">{{t "server.switch.button_anyway"}}</button>
       {{- end}}
-      <a href="{{.ActivePath}}">Cancel, keep {{.From.Name}} active</a>
+      <a href="{{.ActivePath}}">{{t "server.switch.cancel" "from" .From.Name}}</a>
     </div>
     {{- else}}
     {{- if not .Plan.Running}}
     <label class="check">
       <input type="checkbox" name="start" value="1"{{if .StartAfter}} checked{{end}}>
-      Start {{.To.Name}} after switching
+      {{t "server.switch.start_after" "to" .To.Name}}
     </label>
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">Switch to {{.To.Name}}</button>
-      <a href="{{.ActivePath}}">Cancel, keep {{.From.Name}} active</a>
+      <button type="submit" class="button button--danger">{{t "server.switch.title" "world" .To.Name}}</button>
+      <a href="{{.ActivePath}}">{{t "server.switch.cancel" "from" .From.Name}}</a>
     </div>
     {{- end}}
   </form>

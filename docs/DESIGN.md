@@ -960,6 +960,10 @@ when its panel is narrower than 14rem, which is 200% text on a 320 px
 phone. Changing `display` can drop table semantics in some browsers, so
 these tables carry explicit `table`, `rowgroup`, `row`, `columnheader` and
 `cell` roles (SPEC 17.12).
+A time is three units: the date, the clock and the zone. None breaks inside
+itself, and a wide zone such as `GMT+5:45` drops to its own line after the
+clock. Each language keeps its own order (Chinese puts the zone first), and
+`checkPage` fails a page where any unit is broken.
 
 ### 8.4 Long lists
 
@@ -1071,7 +1075,12 @@ Classes and their contract:
   text, such as a link's spoken name, gets the absolute local time and no
   relative part, so the name stays short and never goes stale. Without
   JavaScript the UTC text stays. A table cell keeps its date and clock in
-  separate `nowrap` spans (8.3). Durations are not rewritten.
+  separate `nowrap` spans, and the zone is its own unit after the
+  clock, in each language's order (8.3). Durations are not rewritten.
+- Text and translations (SPEC 22): every visible word comes from the
+  catalogue in eight languages. docs/I18N.md holds the glossary, the
+  address rule per language and the rules for writing a string. Leave room
+  for text about 40 percent longer than English, and put no text in CSS.
 
 ## 10. Checks every screen passes
 
@@ -1105,7 +1114,7 @@ screen does, in this document first.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
   SPEC 7.2.
 - Pagination. See 8.4.
-- Mod search results, dependency plans and the mod list (Epic 6).
+- Mod search results, dependency plans and the mod list (Epic 8).
 - The world-switch progress screen beyond the step list in 7.6 (Epic 4).
-- Chat (Epic 8).
+- Chat (Epic 9).
 - A print stylesheet.

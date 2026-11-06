@@ -105,7 +105,7 @@ func TestReceiveFileRefusals(t *testing.T) {
 	r.ContentLength = -1
 	_, err := receiveFile(r, root, ".", "save", dir, 2000)
 	var ue uploadError
-	if !errors.As(err, &ue) || !strings.Contains(ue.msg, "larger than the limit") {
+	if !errors.As(err, &ue) || ue.msg.Key != "worlds.upload.too_large" {
 		t.Errorf("over limit: %v", err)
 	}
 	if got := dirNames(t, dir); len(got) != 0 {
@@ -182,7 +182,7 @@ func TestCheckZip(t *testing.T) {
 		"dotdot.zip": "unsafe name", "abs.zip": "unsafe name", "big.zip": "more than", "notzip.zip": "not a zip",
 	} {
 		var ue uploadError
-		if err := checkZip(root, name, 1000); !errors.As(err, &ue) || !strings.Contains(ue.msg, want) {
+		if err := checkZip(root, name, 1000); !errors.As(err, &ue) || !strings.Contains(ue.Error(), want) {
 			t.Errorf("%s: %v, want %q", name, err, want)
 		}
 	}

@@ -80,9 +80,6 @@ test("each Switch on the Worlds list names its world to a screen reader", async 
   const link = page.getByRole("link", { name: "Switch to Second", exact: true });
   await expect(link).toBeVisible();
   // The visible word stays "Switch", beside the world's name.
-  const shown = await link.evaluate((el) =>
-    [...el.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent).join(""),
-  );
-  expect(shown).toBe("Switch");
+  await expect(link.locator('[aria-hidden="true"]')).toHaveText("Switch");
   await checkPage(page);
 });

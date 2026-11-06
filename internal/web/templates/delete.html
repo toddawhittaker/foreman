@@ -1,42 +1,43 @@
-{{define "title"}}Delete {{.Page.World.Name}}{{end}}
+{{define "title"}}{{t "worlds.delete.title" "world" .Page.World.Name}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">Back to {{.World.Name}}</a></div>
-<h1>Delete {{.World.Name}}</h1>
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
+<h1>{{t "worlds.delete.title" "world" .World.Name}}</h1>
 {{template "summary" .Problems}}
-{{- with .Error}}
+{{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>Error:</strong> {{.}}</p>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}
-{{- with .Refusal}}
-<p>{{.}}</p>
+{{- $refusal := .Refusal}}
+{{- if not $refusal.IsZero}}
+<p>{{msg $refusal}}</p>
 {{- else}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Delete the world "{{.World.Name}}"?</h2>
-  <p>This will:</p>
+  <h2 id="confirm-heading" tabindex="-1">{{t "worlds.delete.question" "world" .World.Name}}</h2>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
-    <li>Delete the folder <code>worlds/{{.World.ID}}</code>, with its saves, mods and settings ({{if .World.SizeUnknown}}size unknown{{else}}{{bytes .World.DiskBytes}}{{end}}).</li>
-    <li>Keep its snapshots. They stay listed under Deleted worlds and can be restored.</li>
+    <li>{{if .World.SizeUnknown}}{{tHTML "worlds.delete.folder_unknown" "folder" (code (printf "worlds/%s" .World.ID))}}{{else}}{{tHTML "worlds.delete.folder" "folder" (code (printf "worlds/%s" .World.ID)) "size" (bytes .World.DiskBytes)}}{{end}}</li>
+    <li>{{t "worlds.delete.keeps"}}</li>
   </ul>
   <form method="post" action="{{.Path}}" novalidate>
     <label class="check">
       <input type="checkbox" name="final_snapshot"{{if .FinalSnapshot}} checked{{end}}>
-      Take a final snapshot first, labelled "Before delete" ({{if .World.SizeUnknown}}size unknown{{else}}about {{bytes .World.DiskBytes}}{{end}}, never removed automatically). If the snapshot fails, nothing else happens.
+      {{if .World.SizeUnknown}}{{t "worlds.delete.final_unknown" "label" (t "worlds.snapshot.label.before_delete")}}{{else}}{{t "worlds.delete.final" "label" (t "worlds.snapshot.label.before_delete") "size" (bytes .World.DiskBytes)}}{{end}}
     </label>
     <div class="field">
-      <label for="confirm-name">Type the world's name to confirm</label>
-      <p class="hint" id="confirm-name-hint">Type <strong>{{.World.Name}}</strong>, with the same capital letters.</p>
+      <label for="confirm-name">{{t "worlds.delete.name_label"}}</label>
+      <p class="hint" id="confirm-name-hint">{{tHTML "worlds.delete.name_hint" "name" (strong .World.Name)}}</p>
       <input id="confirm-name" name="confirm_name" type="text" value="{{.ConfirmName}}" autocomplete="off" required
-        {{- if .NameError}} aria-invalid="true" aria-describedby="confirm-name-hint confirm-name-error"{{else}} aria-describedby="confirm-name-hint"{{end}}>
-      {{- with .NameError}}
-      <p class="error" id="confirm-name-error"><strong>Error:</strong> {{.}}</p>
+        {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="confirm-name-hint confirm-name-error"{{else}} aria-describedby="confirm-name-hint"{{end}}>
+      {{- if not .NameError.IsZero}}
+      <p class="error" id="confirm-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
       {{- end}}
     </div>
     <div class="actions">
-      <button type="submit" class="button button--danger">Delete world</button>
-      <a href="{{.WorldPath}}">Cancel, keep the world</a>
+      <button type="submit" class="button button--danger">{{t "worlds.world.delete.button"}}</button>
+      <a href="{{.WorldPath}}">{{t "worlds.delete.cancel"}}</a>
     </div>
   </form>
 </section>

@@ -46,6 +46,9 @@ type SwitchInfo struct {
 type SwitchNotice struct {
 	SwitchInfo
 	Text string
+	// Step is the last step the switch recorded (store.Step*), so a page
+	// can say where it stopped.
+	Step string
 }
 
 // Switch refusals. The text is shown to the admin.
@@ -424,7 +427,7 @@ func (c *Controller) recoverSwitch(ctx context.Context, sw store.Switch) error {
 	fromName, toName := c.worldName(sw.From), c.worldName(sw.To)
 	// The active row and the presented step change in one transaction, so
 	// the step alone says which world is active.
-	n := &SwitchNotice{SwitchInfo: SwitchInfo{From: sw.From, To: sw.To}}
+	n := &SwitchNotice{SwitchInfo: SwitchInfo{From: sw.From, To: sw.To}, Step: sw.Step}
 	active := sw.From
 	switch sw.Step {
 	case store.StepPresented, store.StepStarted:

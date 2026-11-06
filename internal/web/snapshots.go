@@ -2,15 +2,14 @@ package web
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -21,11 +20,7 @@ const (
 	PathSnapshotRestore = "/worlds/{id}/snapshots/{snap}/restore"
 )
 
-const (
-	maxLabelChars = 100
-	// defaultLabel names a manual snapshot taken without a label.
-	defaultLabel = "Manual snapshot"
-)
+const maxLabelChars = 100
 
 func snapshotsPath(id string) string { return worldPath(id) + "/snapshots" }
 func restorePath(id, snap string) string {
@@ -48,15 +43,15 @@ type SnapshotsPage struct {
 	FreeBytes uint64
 	// Ticked names the snapshots whose boxes start ticked.
 	Ticked map[string]bool
-	// TickNote says what a shortcut button ticked; empty when none was pressed.
-	TickNote string
+	// TickNote says what a shortcut button ticked; zero when none was pressed.
+	TickNote i18n.Msg
 
 	Label      string
-	LabelError string
+	LabelError i18n.Msg
 	// Error says why the last action failed, in plain words.
-	Error string
+	Error i18n.Msg
 	// Done says what the last action did; DoneSnap is the snapshot it names.
-	Done     string
+	Done     i18n.Msg
 	DoneSnap string
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
@@ -67,7 +62,7 @@ type RestorePage struct {
 	WorldID   string
 	WorldName string
 	Snapshot  world.Snapshot
-	Error     string
+	Error     i18n.Msg
 	// Deleted is true when the world's folder is gone, so restoring makes
 	// the world again and takes no "Before restore" snapshot.
 	Deleted bool
@@ -90,14 +85,18 @@ func (RestorePage) navItem() string        { return PathWorlds }
 func (p RestorePage) WorldPath() string  { return worldPath(p.WorldID) }
 func (RestorePage) templateName() string { return "restore" }
 
-func (p SnapshotsPage) hasErrors() bool { return p.LabelError != "" || p.Error != "" }
-func (p RestorePage) hasErrors() bool   { return p.Error != "" || p.CountdownError != "" }
+func (p SnapshotsPage) hasErrors() bool { return !p.LabelError.IsZero() || !p.Error.IsZero() }
+func (p RestorePage) hasErrors() bool   { return !p.Error.IsZero() || !p.CountdownError.IsZero() }
 
 // Problems lists the countdown field's error for the summary.
-func (p RestorePage) Problems() []Problem { return problems(Problem{"countdown", p.CountdownError}) }
+func (p RestorePage) Problems() []Problem {
+	return problems(Problem{"countdown", p.CountdownError})
+}
 
 // Problems lists the field errors for the summary (DESIGN 7.2).
-func (p SnapshotsPage) Problems() []Problem { return problems(Problem{"label", p.LabelError}) }
+func (p SnapshotsPage) Problems() []Problem {
+	return problems(Problem{"label", p.LabelError})
+}
 
 // WorldPath links back to the world page.
 func (p SnapshotsPage) WorldPath() string { return worldPath(p.WorldID) }
@@ -122,37 +121,6 @@ func (p RestorePage) UndoPath() string { return restorePath(p.WorldID, p.Undo) }
 
 // SnapshotsPath is where cancelling goes.
 func (p RestorePage) SnapshotsPath() string { return snapshotsPath(p.WorldID) }
-
-// Reason says why a snapshot was taken, or "" when its label already says so.
-func (SnapshotsPage) Reason(reason, label string) string { return showReason(reason, label) }
-
-// reasonText says why a snapshot was taken, in words.
-func reasonText(reason string) string {
-	switch reason {
-	case world.ReasonManual:
-		return "Manual"
-	case world.ReasonBeforeRestore:
-		return world.LabelBeforeRestore
-	case world.ReasonBeforeDelete:
-		return world.LabelBeforeDelete
-	case world.ReasonSwitch:
-		return world.LabelBeforeSwitch
-	case world.ReasonGameUpdate:
-		return world.LabelBeforeUpdate
-	}
-	return "Before " + strings.ReplaceAll(strings.TrimPrefix(reason, "before-"), "-", " ")
-}
-
-// showReason returns the reason in words, or "" when the label starts with
-// the same words, so "Manual" is not shown above "Manual snapshot".
-func showReason(reason, label string) string {
-	text := reasonText(reason)
-	have, lead := strings.Fields(strings.ToLower(label)), strings.Fields(strings.ToLower(text))
-	if len(have) >= len(lead) && slices.Equal(have[:len(lead)], lead) {
-		return ""
-	}
-	return text
-}
 
 func (s *server) snapshotRoutes() {
 	s.mux.HandleFunc("GET "+PathWorldSnapshots, s.requireUser(s.handleSnapshots))
@@ -212,16 +180,16 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	}
 	q := r.URL.Query()
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("taken")); ok {
-		p.Done, p.DoneSnap = fmt.Sprintf("Foreman took the snapshot \"%s\".", sn.Label), sn.Name
+		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.taken", "label", snapshotLabelArg(sn)), sn.Name
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("restored")); ok {
-		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored from the snapshot \"%s\".", sn.Label), sn.Name
+		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.restored", "label", snapshotLabelArg(sn)), sn.Name
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
-		p.Done, p.DoneSnap = fmt.Sprintf("The world is restored. Foreman took the snapshot \"%s\" first; to undo the restore, restore that snapshot.", sn.Label), sn.Name
+		p.Done, p.DoneSnap = i18n.M("worlds.snapshots.done.undo", "label", snapshotLabelArg(sn)), sn.Name
 	}
 	if p.Deleted = deletedTimes(q["deleted"]); len(p.Deleted) > 0 {
-		p.Done, p.DoneSnap = "", ""
+		p.Done, p.DoneSnap = i18n.Msg{}, ""
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -235,18 +203,19 @@ func findSnapshot(list []world.Snapshot, name string) (world.Snapshot, bool) {
 	return world.Snapshot{}, false
 }
 
-// checkLabel trims a label and returns a problem in plain words, or "".
-func checkLabel(label string) (clean, problem string) {
+// checkLabel trims a label and returns a problem in plain words, or the
+// zero Msg.
+func checkLabel(label string) (clean string, problem i18n.Msg) {
 	clean = strings.TrimSpace(label)
 	switch {
 	case utf8.RuneCountInString(clean) > maxLabelChars:
-		return clean, fmt.Sprintf("Use at most %d characters", maxLabelChars)
+		return clean, i18n.M("worlds.snapshots.label.too_long", "count", maxLabelChars)
 	case strings.IndexFunc(clean, unicode.IsControl) >= 0:
-		return clean, "Remove control characters from the label"
+		return clean, i18n.M("worlds.snapshots.label.control")
 	case clean == "":
-		return defaultLabel, ""
+		return defaultLabel, i18n.Msg{}
 	}
-	return clean, ""
+	return clean, i18n.Msg{}
 }
 
 // handleTakeSnapshot takes a manual snapshot (SPEC 6.3).
@@ -263,17 +232,17 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	var snap world.Snapshot
 	var err error
 	switch {
-	case problem != "":
+	case !problem.IsZero():
 	case s.game != nil:
 		snap, err = s.game.Snapshot(r.Context(), id, actor(u), label)
 	default:
 		snap, err = s.worlds.TakeSnapshot(id, label, u.Username)
 	}
-	if problem == "" && err == nil {
+	if problem.IsZero() && err == nil {
 		http.Redirect(w, r, snapshotsPath(id)+"?taken="+snap.Name, http.StatusSeeOther)
 		return
 	}
-	status, msg := http.StatusBadRequest, ""
+	status, msg := http.StatusBadRequest, i18n.Msg{}
 	if err != nil {
 		var ok bool
 		if status, msg, ok = s.gameRefusal(w, r, u, "take snapshot", err); !ok {
@@ -306,7 +275,7 @@ func (s *server) handleServerSnapshot(w http.ResponseWriter, r *http.Request, u 
 	s.beginTo(w, r, PathServerResult, []string{sum.ID}, true, func(ctx context.Context) actionResult {
 		snap, err := s.game.Snapshot(ctx, sum.ID, by, defaultLabel)
 		res := s.finish(sum.ID, actionSnapshot, err)
-		res.Taken = snap.Label
+		res.Taken = snapshotLabelArg(snap)
 		return res
 	})
 }
@@ -379,7 +348,7 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		if p.Running {
 			var form CountdownForm
 			form, stop = readCountdown(r)
-			if form.CountdownError != "" {
+			if !form.CountdownError.IsZero() {
 				form.Online, p.CountdownForm = p.Online, form
 				s.page(w, r, http.StatusBadRequest, u.Username, p)
 				return
@@ -407,11 +376,11 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request, u store.U
 		// The undo snapshot exists, so the admin must hear of it whatever
 		// went wrong (SPEC 6.5); a fault's detail stays in the log.
 		status, msg := gameError(err)
+		p.Error, p.Undo = msg, before.Name
 		if status == http.StatusInternalServerError || status == http.StatusNotFound {
 			s.log.Error("restore snapshot", "method", r.Method, "path", r.URL.Path, "error", err)
-			status, msg = http.StatusInternalServerError, "Foreman could not finish the restore."
+			status, p.Error = http.StatusInternalServerError, i18n.M("worlds.restore.failed")
 		}
-		p.Error, p.Undo = msg, before.Name
 		s.page(w, r, status, u.Username, p)
 		return
 	}

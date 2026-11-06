@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/releases"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -30,8 +31,6 @@ type Releases interface {
 	// ImageSize is the download's size in bytes; never negative.
 	ImageSize(ctx context.Context, version string) (int64, error)
 }
-
-const notActiveText = "Switch to this world to update it."
 
 func updatePath(id string) string   { return gamePath(id, "update") }
 func rollbackPath(id string) string { return gamePath(id, "rollback") }
@@ -58,7 +57,7 @@ func (s *server) updateRoutes() {
 // fragment answers with one named template of a page, for htmx.
 func (s *server) fragment(w http.ResponseWriter, r *http.Request, p Page, name string) {
 	var b strings.Builder
-	if err := s.render.Fragment(&b, p, name); err != nil {
+	if err := s.render.Fragment(&b, localeOf(r), p, name); err != nil {
 		s.fail(w, r, "render "+name, err)
 		return
 	}
@@ -158,20 +157,22 @@ func (s *server) updatePage(sum world.Summary, target string, form CountdownForm
 	p.Running = game.IsRunning(st.State)
 	switch {
 	case !sum.Active:
-		p.Refusal = notActiveText
+		p.Refusal = i18n.M("server.update.not_active")
 	case st.Operation != nil && !st.Operation.Done:
-		p.Refusal = "Another operation is running on this world. Wait for it to finish, then try again."
+		p.Refusal = i18n.M("worlds.error.busy")
 	}
 	return p
 }
 
 // updateTargetError words a refused target version for its field.
-func updateTargetError(err error) string {
+func updateTargetError(err error) i18n.Msg {
 	switch {
-	case errors.Is(err, world.ErrVersionNotNewer), errors.Is(err, world.ErrVersionUnsupported):
-		return sentence(err)
+	case errors.Is(err, world.ErrVersionNotNewer):
+		return i18n.M("server.error.version_not_newer")
+	case errors.Is(err, world.ErrVersionUnsupported):
+		return i18n.M("server.error.version_unsupported")
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 func (s *server) handleUpdateForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -205,7 +206,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 	target := chosenVersion(r.PostFormValue("game_version"), r.PostFormValue("game_version_typed"))
 	form, stop := readCountdown(r)
 	p := s.updatePage(sum, target, form)
-	if p.Refusal != "" {
+	if !p.Refusal.IsZero() {
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
@@ -213,7 +214,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 		p.VersionError = updateTargetError(err)
 	}
 	if !p.Running {
-		p.CountdownError = ""
+		p.CountdownError = i18n.Msg{}
 	}
 	if p.hasErrors() {
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
@@ -241,7 +242,7 @@ func (s *server) rollbackPage(w http.ResponseWriter, r *http.Request, u store.Us
 	snap, version, err := s.worlds.RollbackTarget(sum.ID)
 	switch {
 	case errors.Is(err, world.ErrNoRollback):
-		p.Error = sentence(err)
+		p.Error = i18n.M("server.error.no_rollback")
 	case err != nil:
 		s.notFoundOrFail(w, r, u, "find the rollback snapshot", err)
 		return RollbackPage{}, false
@@ -256,7 +257,7 @@ func (s *server) handleRollbackForm(w http.ResponseWriter, r *http.Request, u st
 		return
 	}
 	status := http.StatusOK
-	if p.Error != "" {
+	if !p.Error.IsZero() {
 		status = http.StatusConflict
 	}
 	s.page(w, r, status, u.Username, p)
@@ -274,14 +275,14 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 	if !ok {
 		return
 	}
-	if p.Error != "" {
+	if !p.Error.IsZero() {
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
 	id, by := p.World.ID, actor(u)
 	if p.Running {
 		form, stop := readCountdown(r)
-		if form.CountdownError != "" {
+		if !form.CountdownError.IsZero() {
 			p.CountdownForm = form
 			s.page(w, r, http.StatusBadRequest, u.Username, p)
 			return
@@ -311,8 +312,8 @@ func (s *server) handleRollback(w http.ResponseWriter, r *http.Request, u store.
 	status, msg := gameError(err)
 	if status == http.StatusInternalServerError || status == http.StatusNotFound {
 		s.log.Error("roll back", "world", id, "error", err)
-		status, msg = http.StatusInternalServerError, "Foreman could not finish the rollback."
+		status, msg = http.StatusInternalServerError, i18n.M("server.rollback.unfinished")
 	}
-	p.Error = msg + " Foreman took the snapshot \"" + before.Label + "\" first; to undo, restore it from the Snapshots page."
+	p.Error = join(msg, i18n.M("server.rollback.undo_note", "label", snapshotLabelArg(before)))
 	s.page(w, r, status, u.Username, p)
 }

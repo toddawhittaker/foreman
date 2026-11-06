@@ -289,7 +289,7 @@ another VPN), so that players join through the VPN. This is one choice an
 operator may make, never a requirement. By default, with
 `FOREMAN_GAME_NETWORK_CONTAINER` unset, nothing here applies: Foreman
 publishes the game port on the host (4.3, 4.4) and needs no VPN. Foreman
-must not prevent a sidecar (ADR 0006). Until this is built (Epic 8, 18.8),
+must not prevent a sidecar (ADR 0006). Until this is built (Epic 9, 18.9),
 Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set. (P1)
 
 When an operator sets one:
@@ -1384,19 +1384,22 @@ adopted mode (ADR 0005).
 18.5. **Epic 5: Game versions.** Section 10, including the version picker
 (10.7).
 
-18.6. **Epic 6: Mods.** Section 9.
+18.6. **Epic 6: Languages.** Section 22, including the language menu,
+translated server-built messages, and the checks in 22.5.
 
 18.7. **Epic 7: Generating worlds and game settings.** Generate (5.6),
 clone (5.7), and section 11.
 
-18.8. **Epic 8: Live operations.** Players (8.2, 8.3), chat (8.5), crash
+18.8. **Epic 8: Mods.** Section 9.
+
+18.9. **Epic 9: Live operations.** Players (8.2, 8.3), chat (8.5), crash
 reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12),
 the low-disk warning (8.13), and VPN sidecars (4.13, ADR 0006).
 
-18.9. **Epic 9: AI access.** API tokens (12.10) and the MCP endpoint
+18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).
 
-18.10. **Epic 10: Release.** OIDC (12.7), the full audit log (12.9),
+18.11. **Epic 11: Release.** OIDC (12.7), the full audit log (12.9),
 archive (5.9), Foreman's settings page (13.1), the operator guide with the
 socket proxy example (14.2), and the first public image
 on GHCR (3.1).
@@ -1413,11 +1416,11 @@ version it was made with, and an admin can switch between two of them and
 back from a phone with no save lost. Todd retires OFSM only after this
 gate passes.
 
-19.2. **Gate B, after Epic 7: the new-user path works.** From `docker run`
+19.2. **Gate B, after Epic 8: the new-user path works.** From `docker run`
 to a running Space Age server with three portal mods in under ten
 minutes, following only Foreman's own operator guide.
 
-19.3. **Gate C, after Epic 10: v1.** Every P0 and P1 requirement is met; a
+19.3. **Gate C, after Epic 11: v1.** Every P0 and P1 requirement is met; a
 bad mod update is undone in one click; security-reviewer finds nothing
 open in section 14; the image is published.
 
@@ -1429,7 +1432,7 @@ it, and the decision is removed from this list.
 
 | Id | Question | Needed by | Sections |
 |---|---|---|---|
-| D10 | Whether the chat-message tool (21.4) is in v1 or waits, given that it lets an AI speak to players | Epic 9 | 21.4 |
+| D10 | Whether the chat-message tool (21.4) is in v1 or waits, given that it lets an AI speak to players | Epic 10 | 21.4 |
 | D9 | How Generate makes a map from a preset or a map exchange string, given that the image generates only from `map-gen-settings.json` and `map-settings.json` | Epic 7 | 5.6 |
 
 The tech stack (vision question 6) is settled in docs/STACK.md, not here.
@@ -1462,3 +1465,84 @@ snapshot it took. (P1)
 stop, restore a snapshot, mod changes, settings changes, game version
 changes, raw RCON commands, and user or token management. These stay
 with a person in the UI. (P1)
+
+## 22. Languages
+
+22.1. Foreman's web UI is available in English, German, Russian,
+Simplified Chinese, French, Spanish, Polish and Czech. (P0)
+
+22.2. The language is the best match for the browser's
+Accept-Language, else English. A language menu on every page,
+including sign-in, overrides it for that browser with a cookie;
+nothing is stored per user. The page's `lang` attribute names the
+language shown. (P0)
+
+- The cookie is `foreman_lang`. It holds a BCP 47 language tag (for
+  example `zh-Hans`), with Path `/`, SameSite Lax, HttpOnly, a life of
+  one year, and Secure under the same rule as the session cookie. A
+  value that is not one of the eight tags is ignored and never echoed.
+- The menu posts to `POST /language`, which accepts only the eight tags
+  and goes back to the page the menu was on through the return-path check
+  (14.17). On a page shown in answer to a form post, that page is the
+  same-site Referer, else home.
+- Accept-Language is read entry by entry, at most 32 entries. An entry
+  that is unknown or malformed is skipped and does not hide a later
+  match.
+- Off English, the menu's label adds "(Language)" in English, marked
+  `lang="en"`, so a person who landed in a language they cannot read can
+  still find it.
+
+22.3. Everything the web UI shows is translated, including problems,
+refusals, failures and results built by the server, and text shown by
+the page's scripts. Server logs, audit entries as stored, and API and
+MCP errors stay English. Text relayed from Factorio and anything a
+person typed (world names, snapshot labels, player names) is shown as
+written. (P0)
+
+- Messages built in Go travel as message ids with arguments, never as
+  English strings, so a raw string cannot reach a page. The domain
+  packages keep English `Error()` text for logs and carry the facts the
+  web layer needs in typed errors.
+- Foreman's automatic snapshot labels are shown from their stored reason
+  code, in the page's language. A label a person typed is shown as
+  written. No sentence quotes a label; it names the snapshot through the
+  label's own message, so a page and the snapshot list always agree.
+- Game text (the log pane, console replies, crash reasons) and English
+  error details that Foreman cannot translate are marked `lang="en"`.
+  The countdown warning sent into the game chat stays English, because
+  players read it in the game.
+
+22.4. Numbers, sizes, dates and plurals follow each language's CLDR
+(Common Locale Data Repository) rules. A message that counts something
+has every plural form its language needs. A message is never assembled
+from translated fragments. (P0)
+
+22.5. Every new user-facing string goes into the catalogue in all
+languages in the same change. `make verify` fails on these. (P0)
+
+- hard-coded text in a template, script or stylesheet;
+- a key missing from any language, or an unused key;
+- mismatched placeholders or plural forms;
+- HTML inside a catalogue value;
+- a translation made from English text that has since changed;
+- a sentence in any language that quotes an automatic snapshot label
+  instead of using its message (22.3);
+- a link or button whose accessible name does not contain its visible
+  text, on every page in every language (22.7, 17.1).
+
+Catalogue keys are stable dotted ids that start with their area
+(`server.start.button`), not English sentences. Values use named
+placeholders (`{world}`), a counted value is an object of plural
+categories using `count`, and values never hold HTML. The files are
+`internal/i18n/locales/<language>/<area>.json`; docs/I18N.md says how to
+add a string and ADR 0008 gives the reasons.
+
+22.6. Translations are machine-made with the glossary in docs/I18N.md,
+so terms stay consistent and follow Factorio's own translations where
+it has them. A second pass reviews each before its epic merges. (P0)
+
+22.7. Every page meets 17.1 and 17.2 in every language, including at
+320 px in the languages with the longest text. The accessible name of
+every control contains its visible text in every language (label in
+name, WCAG 2.5.3), including where a hidden part is added to a visible
+word. (P0)

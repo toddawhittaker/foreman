@@ -27,7 +27,7 @@ func TestAnywayAdvice(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := anywayAdvice(c.problems, "Base", hostModsFolder("/srv/foreman", "base")); got != c.want {
+			if got := english(anywayAdvice(c.problems, "Base", hostModsFolder("/srv/foreman", "base"))); got != c.want {
 				t.Errorf("got %q\nwant %q", got, c.want)
 			}
 		})
@@ -47,12 +47,12 @@ func TestPrecheckLeadFor(t *testing.T) {
 		{"start", modVersion, false, "Base", "Foreman did not start the game, because Base cannot run in this game:"},
 		{"switch", modVersion, true, "Beta", "Foreman did not switch, because Beta cannot run in this game:"},
 		{"no name", modVersion, false, "", "Foreman did not start the game, because the world cannot run in this game:"},
-		{"other problems too", mixed, false, "Base", precheckLead},
-		{"other problems, switch", mixed, true, "Base", switchPrecheckLead},
+		{"other problems too", mixed, false, "Base", "Foreman did not start the game, because the save that would load does not match the world:"},
+		{"other problems, switch", mixed, true, "Base", "Foreman did not switch, because the save that would load in the new world does not match that world:"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := precheckLeadFor(c.check, c.switching, c.world); got != c.want {
+			if got := english(precheckLeadFor(c.check, c.switching, c.world)); got != c.want {
 				t.Errorf("got %q\nwant %q", got, c.want)
 			}
 		})

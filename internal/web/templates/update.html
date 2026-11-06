@@ -1,56 +1,56 @@
-{{define "title"}}Update {{.Page.World.Name}}{{end}}
+{{define "title"}}{{t "server.update.title" "world" .Page.World.Name}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">Back to {{.World.Name}}</a></div>
-<h1>Update {{.World.Name}}</h1>
+<div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .World.Name}}</a></div>
+<h1>{{t "server.update.title" "world" .World.Name}}</h1>
 {{template "summary" .Problems}}
-{{- with .Refusal}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
-  <p><strong>Error:</strong> {{.}}</p>
+{{- if not .Refusal.IsZero}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Refusal}}</p>
 </div>
 {{- end}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Update {{.World.Name}} from Factorio {{.World.GameVersion}}?</h2>
+  <h2 id="confirm-heading" tabindex="-1">{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}</h2>
   <form method="post" action="{{.Path}}" novalidate>
-    <p id="update-forward">A game version only moves forward. The only way back is Roll back on the world's page, which restores the save from before the update.</p>
+    <p id="update-forward">{{t "server.update.forward"}}</p>
     <div class="field">
-      <label for="update-version-select">New game version</label>
+      <label for="update-version-select">{{t "server.update.select"}}</label>
       <select id="update-version-select" name="game_version" hx-get="{{.VersionsPath}}" hx-trigger="load" hx-swap="beforeend">
-        <option value="">Choose a version</option>
+        <option value="">{{t "server.update.choose"}}</option>
       </select>
     </div>
     <div class="field">
-      <label for="update-version">Or type a version</label>
-      <p class="hint" id="update-version-hint">Three numbers newer than {{.World.GameVersion}}. If you type one, it is used instead of the choice above.</p>
+      <label for="update-version">{{t "server.update.typed"}}</label>
+      <p class="hint" id="update-version-hint">{{t "server.update.typed_hint" "version" .World.GameVersion}}</p>
       <input id="update-version" name="game_version_typed" type="text" value="{{.Target}}"
         inputmode="decimal" autocomplete="off" spellcheck="false"
-        {{- if .VersionError}} aria-invalid="true" aria-describedby="update-version-hint update-version-error"{{else}} aria-describedby="update-version-hint"{{end}}>
-      {{- with .VersionError}}
-      <p class="error" id="update-version-error"><strong>Error:</strong> {{.}}</p>
+        {{- if not .VersionError.IsZero}} aria-invalid="true" aria-describedby="update-version-hint update-version-error"{{else}} aria-describedby="update-version-hint"{{end}}>
+      {{- if not .VersionError.IsZero}}
+      <p class="error" id="update-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
       {{- end}}
     </div>
-    <p>This will:</p>
+    <p>{{t "common.confirm.will"}}</p>
     <ul>
-      <li>Download the new version's game image first, if Foreman does not have it. If the download fails, nothing else happens.</li>
+      <li>{{t "server.update.download"}}</li>
       {{- if .Running}}
-      <li>Warn players online with the countdown below, save the game and stop it.</li>
+      <li>{{t "server.update.warn"}}</li>
       {{- end}}
-      <li>Take a snapshot of {{.World.Name}}, labelled "Before update". If the snapshot fails, nothing else happens.</li>
-      <li>Set the world's game version to the new one.</li>
+      <li>{{t "server.update.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_update")}}</li>
+      <li>{{t "server.update.set"}}</li>
       {{- if .Running}}
-      <li>Start the game again on the new version. The Server page shows each step.</li>
+      <li>{{t "server.update.start"}}</li>
       {{- else}}
-      <li>Leave the server stopped, because it is not running now.</li>
+      <li>{{t "server.anyway.leave_stopped"}}</li>
       {{- end}}
-      <li>To undo, use Roll back on the world's page. Play after the update is lost when you roll back.</li>
+      <li>{{t "server.update.undo"}}</li>
     </ul>
     {{- if .Running}}
     {{template "countdown" .CountdownForm}}
     {{- end}}
     <div class="actions">
-      <button type="submit" class="button button--danger">Update game version</button>
-      <a href="{{.WorldPath}}">Cancel, keep {{.World.GameVersion}}</a>
+      <button type="submit" class="button button--danger">{{t "server.update.button"}}</button>
+      <a href="{{.WorldPath}}">{{t "server.update.cancel" "version" .World.GameVersion}}</a>
     </div>
   </form>
 </section>

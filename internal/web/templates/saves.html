@@ -1,94 +1,94 @@
-{{define "title"}}Saves of {{.Page.WorldName}}{{end}}
+{{define "title"}}{{t "worlds.saves.title" "world" .Page.WorldName}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldHref}}">Back to {{.WorldName}}</a></div>
-<h1>Saves of {{.WorldName}}</h1>
+<div class="actions"><a href="{{.WorldHref}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
+<h1>{{t "worlds.saves.title" "world" .WorldName}}</h1>
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
 <div class="message message--success">
-  <p><strong>Done:</strong> Uploaded <code>{{.Uploaded}}</code>.</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{tHTML "worlds.saves.uploaded" "file" (code .Uploaded)}}</p>
 </div>
 {{- end}}
 {{- if .Chosen}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{if .LoadSave}}The server will load <code>{{.LoadSave}}</code> the next time it starts.{{else}}The server will load the newest save the next time it starts.{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if .LoadSave}}{{tHTML "worlds.saves.chosen" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.chosen_newest"}}{{end}}</p>
 </div>
 {{- end}}
 {{- if .Newer}}
 <div class="message message--note">
-  <p><strong>Note:</strong> A newer version of Foreman wrote this world, so this version cannot change it. You can still download its saves.</p>
+  <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.saves.newer"}}</p>
 </div>
 {{- end}}
 
 <section class="panel" aria-labelledby="saves-heading">
-  <h2 id="saves-heading">Saves</h2>
+  <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
   {{- if .Rows}}
-  <table>
-    <caption>Saves in {{.WorldName}}, newest first</caption>
-    <thead>
-      <tr><th scope="col">Name</th><th scope="col" class="num">Size</th><th scope="col">Saved</th></tr>
+  <table role="table">
+    <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th></tr>
     </thead>
-    <tbody>
+    <tbody role="rowgroup">
       {{- range .Rows}}
-      <tr>
-        <td><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">Loads next</span>{{end}}</td>
-        <td class="num">{{bytes .Size}}</td>
-        <td>{{template "when" .Saved}}</td>
+      <tr role="row">
+        <td role="cell"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</td>
+        <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
+        <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
       </tr>
       {{- end}}
     </tbody>
   </table>
   {{- if .OlderHref}}
-  <div class="actions"><a href="{{.OlderHref}}">Show older saves</a></div>
+  <div class="actions"><a href="{{.OlderHref}}">{{t "worlds.saves.older"}}</a></div>
   {{- end}}
   {{- else}}
-  <p class="empty">This world has no saves yet.{{if not .Newer}} Upload a save file below.{{end}}</p>
+  <p class="empty">{{if .Newer}}{{t "worlds.saves.empty"}}{{else}}{{t "worlds.saves.empty_upload"}}{{end}}</p>
   {{- end}}
 </section>
 
 {{- if not .Newer}}
 <section class="panel" aria-labelledby="upload-heading">
-  <h2 id="upload-heading">Upload a save</h2>
+  <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
   <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" novalidate>
     <div class="field">
-      <label for="save-file">Save file</label>
-      <p class="hint" id="save-file-hint">A Factorio save: a .zip file of up to {{bytes .UploadLimit}}. A save never replaces one with the same name.</p>
+      <label for="save-file">{{t "worlds.saves.upload.label"}}</label>
+      <p class="hint" id="save-file-hint">{{t "worlds.saves.upload.hint" "limit" (bytes .UploadLimit)}}</p>
       <input id="save-file" name="save" type="file" accept=".zip,application/zip" required
-        aria-describedby="save-file-hint{{if .UploadError}} save-file-error{{end}}"
-        {{- if .UploadError}} aria-invalid="true"{{end}}>
-      {{- with .UploadError}}
-      <p class="error" id="save-file-error"><strong>Error:</strong> {{.}}</p>
+        aria-describedby="save-file-hint{{if not .UploadError.IsZero}} save-file-error{{end}}"
+        {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .UploadError.IsZero}}
+      <p class="error" id="save-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .UploadError}}</p>
       {{- end}}
     </div>
     <div class="actions">
-      <button type="submit" class="button button--primary">Upload save</button>
+      <button type="submit" class="button button--primary">{{t "worlds.saves.upload.button"}}</button>
     </div>
   </form>
 </section>
 
 <section class="panel" aria-labelledby="load-heading">
-  <h2 id="load-heading">Which save loads</h2>
+  <h2 id="load-heading">{{t "worlds.saves.load.heading"}}</h2>
   <form method="post" action="{{.LoadHref}}">
-    <p>The game loads the newest save when the server starts. To load an older one, choose it here.</p>
+    <p>{{t "worlds.saves.load.text"}}</p>
     {{- if .LoadMissing}}
     <div class="message message--note">
-      <p><strong>Note:</strong> The chosen save <code>{{.LoadSave}}</code> is no longer in the saves folder, so the newest save loads.</p>
+      <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
     </div>
     {{- end}}
-    {{- $invalid := .LoadError}}
-    <fieldset{{if .LoadError}} aria-describedby="load-save-error"{{end}}>
-      <legend>Save to load</legend>
-      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> The newest save</label>
+    {{- $invalid := not .LoadError.IsZero}}
+    <fieldset{{if $invalid}} aria-describedby="load-save-error"{{end}}>
+      <legend>{{t "worlds.saves.load.legend"}}</legend>
+      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> {{t "worlds.saves.load.newest"}}</label>
       {{- range .Rows}}
       <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> {{.Name}}</label>
       {{- end}}
-      {{- with .LoadError}}
-      <p class="error" id="load-save-error"><strong>Error:</strong> {{.}}</p>
+      {{- if $invalid}}
+      <p class="error" id="load-save-error"><strong>{{t "common.error.label"}}</strong> {{msg .LoadError}}</p>
       {{- end}}
     </fieldset>
     <div class="actions">
-      <button type="submit" class="button button--primary">Use this choice</button>
+      <button type="submit" class="button button--primary">{{t "worlds.saves.load.button"}}</button>
     </div>
   </form>
 </section>

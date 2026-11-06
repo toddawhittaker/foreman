@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 // The import offers the game image download, which needs Docker; the fake
 // game stands in for it (SPEC 3.7). Docker Hub is never reachable here, so
-// every typed version is imported unchecked (ruling 4).
+// every typed version is imported unchecked (SPEC 10.7).
 test.use({ fakeGameOn: true });
 
 // The smallest valid zip: an end-of-central-directory record and no entries.
@@ -182,9 +182,9 @@ test("Space Age that differs from the save is warned of, and refused for 1.1", a
   expect(readdirSync(join(foreman.dataDir, "worlds")).filter((n) => !n.startsWith("."))).toEqual([]);
 });
 
-// Ruling 1 (#124): several folders import at once, each named after its
-// folder with its save's version; a folder that cannot be read is skipped
-// with its reason (#130: one download per missing version).
+// SPEC 5.5: several folders import at once, each named after its folder
+// with its save's version; a folder that cannot be read is skipped with its
+// reason, and one download runs per missing version.
 test("several folders import at once, each reported", async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   inboxFixture(foreman, "sa", "2.1.24-space-age.zip");
@@ -256,7 +256,7 @@ test("several folders import at once, each reported", async ({ page, foreman, fa
   await expect(page.getByText("Type the version this save was made with.")).toHaveCount(0);
 });
 
-// Ruling 2 (#127): a folder already imported is listed apart, names its
+// SPEC 5.5: a folder already imported is listed apart, names its
 // world, and can be imported again; one with a newer save waits again.
 test("folders already imported are listed apart", async ({ page, foreman }) => {
   await createAdmin(page);

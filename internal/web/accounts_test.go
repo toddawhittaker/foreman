@@ -59,7 +59,7 @@ func TestSetupRefusesBadInput(t *testing.T) {
 		{"control character", url.Values{"username": {"al\x07ice"}, "password": {testPassword}, "confirm": {testPassword}}, "control characters"},
 		{"no password", url.Values{"username": {"alice"}}, "Enter a password"},
 		{"short password", url.Values{"username": {"alice"}, "password": {"short"}, "confirm": {"short"}}, "Use at least 12 characters"},
-		{"huge password", url.Values{"username": {"alice"}, "password": {strings.Repeat("p", 2000)}, "confirm": {strings.Repeat("p", 2000)}}, "at most 1024 bytes"},
+		{"huge password", url.Values{"username": {"alice"}, "password": {strings.Repeat("p", 2000)}, "confirm": {strings.Repeat("p", 2000)}}, "at most 1,024 bytes"}, // CLDR grouping (SPEC 22.4)
 		{"no confirm", url.Values{"username": {"alice"}, "password": {testPassword}}, "Enter the password again"},
 		{"mismatch", url.Values{"username": {"alice"}, "password": {testPassword}, "confirm": {testPassword + "x"}}, "same password in both fields"},
 	}

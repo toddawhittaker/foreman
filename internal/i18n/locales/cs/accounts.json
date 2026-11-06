@@ -1,0 +1,53 @@
+{
+  "accounts.username.label": "Uživatelské jméno",
+  "accounts.password.label": "Heslo",
+  "accounts.username.missing": "Je třeba zadat uživatelské jméno",
+  "accounts.username.long": {
+    "one": "Povolen je nejvýše {count} znak",
+    "few": "Povoleny jsou nejvýše {count} znaky",
+    "other": "Povoleno je nejvýše {count} znaků"
+  },
+  "accounts.username.control": "Z uživatelského jména je třeba odstranit řídicí znaky",
+  "accounts.signin.title": "Přihlášení",
+  "accounts.signin.submit": "Přihlásit",
+  "accounts.signin.ratelimited.unknown": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat několik minut a zkusit to znovu.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat {count} minutu a zkusit to znovu.",
+    "few": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat {count} minuty a zkusit to znovu.",
+    "other": "Příliš mnoho neúspěšných přihlášení. Je třeba počkat {count} minut a zkusit to znovu."
+  },
+  "accounts.signin.busy": "Foreman je zaneprázdněný. Je třeba chvíli počkat a zkusit to znovu.",
+  "accounts.signin.bad": "Uživatelské jméno nebo heslo není správné. Je třeba zkontrolovat obojí a zkusit to znovu.",
+  "accounts.signin.username.missing": "Je třeba zadat uživatelské jméno",
+  "accounts.signin.password.missing": "Je třeba zadat heslo",
+  "accounts.setup.title": "Vytvoření prvního účtu správce",
+  "accounts.setup.intro": "Foreman zatím nemá žádné účty. Účet vytvořený zde může ve Foremanu dělat cokoli. Tato stránka se zavře, jakmile účet existuje.",
+  "accounts.setup.password.hint": {
+    "one": "Vyžadován je alespoň {count} znak.",
+    "few": "Vyžadovány jsou alespoň {count} znaky.",
+    "other": "Vyžadováno je alespoň {count} znaků."
+  },
+  "accounts.setup.password.missing": "Je třeba zadat heslo",
+  "accounts.setup.password.long": {
+    "one": "Povolen je nejvýše {count} bajt",
+    "few": "Povoleny jsou nejvýše {count} bajty",
+    "other": "Povoleno je nejvýše {count} bajtů"
+  },
+  "accounts.setup.password.short": {
+    "one": "Vyžadován je alespoň {count} znak",
+    "few": "Vyžadovány jsou alespoň {count} znaky",
+    "other": "Vyžadováno je alespoň {count} znaků"
+  },
+  "accounts.setup.confirm.label": "Potvrzení hesla",
+  "accounts.setup.confirm.missing": "Je třeba zadat heslo znovu",
+  "accounts.setup.confirm.mismatch": "Do obou polí je třeba zadat stejné heslo",
+  "accounts.setup.submit": "Vytvořit účet správce",
+  "accounts.signedout.title": "Odhlášeno",
+  "accounts.signedout.heading": "Odhlášení proběhlo",
+  "accounts.signedout.text": "Relace na tomto zařízení skončila.",
+  "accounts.signedout.again": "Znovu přihlásit",
+  "accounts.proxy.refused": "Tento účet nemá povolený přístup k Foremanu. Je třeba požádat správce Foremanu o přístup.",
+  "accounts.proxy.waiting": "Foreman zatím nemůže přijmout přihlášení přes proxy, protože ještě nezná sítě herního kontejneru. Je třeba to zkusit znovu za minutu.",
+  "accounts.proxy.waiting_local": "Foreman zatím nemůže přijmout přihlášení přes proxy, protože ještě nezná sítě herního kontejneru. Je třeba to zkusit znovu za minutu. Přihlášení heslem stále funguje: stačí otevřít {path}.",
+  "accounts.proxy.missing": "Foreman nedostal přihlášení od proxy. Je třeba se přihlásit přes proxy a potom tuto stránku otevřít znovu."
+}

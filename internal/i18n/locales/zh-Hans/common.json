@@ -1,0 +1,52 @@
+{
+  "common.skip": "跳到正文",
+  "common.error.label": "错误：",
+  "common.nav.label": "主菜单",
+  "common.nav.server": "服务器",
+  "common.nav.console": "控制台",
+  "common.nav.worlds": "世界",
+  "common.nav.snapshots": "快照",
+  "common.signedin": "已登录：{user}",
+  "common.signout": "退出登录",
+  "common.language.label": "语言",
+  "common.language.submit": "切换",
+  "common.countdown.label": "倒计时（秒）",
+  "common.countdown.hint": "在线玩家会在游戏中看到警告，然后游戏保存并停止。范围为 0 到 600 秒；0 表示不发出警告：游戏立即保存并停止。如果没有人在线，则不会警告任何人。",
+  "common.summary.heading": {
+    "other": "请修正 {count} 个问题后继续"
+  },
+  "common.bytes.b": "{n} B",
+  "common.bytes.kb": "{n} kB",
+  "common.bytes.mb": "{n} MB",
+  "common.bytes.gb": "{n} GB",
+  "common.bytes.tb": "{n} TB",
+  "common.bytes.pb": "{n} PB",
+  "common.bytes.eb": "{n} EB",
+  "common.duration.seconds": {
+    "other": "{count} 秒"
+  },
+  "common.duration.minutes": {
+    "other": "{count} 分钟"
+  },
+  "common.duration.hours": {
+    "other": "{count} 小时"
+  },
+  "common.error.forbidden.heading": "访问被拒绝",
+  "common.error.forbidden.text": "Foreman 拒绝了此请求。如果是从其他网站的链接打开的，请直接打开 Foreman 再试一次。如果一直出现这种情况，请让运行 Foreman 的人检查访问权限。",
+  "common.error.notfound.heading": "找不到页面",
+  "common.error.notfound.text": "此地址没有页面。请检查地址，或前往首页。",
+  "common.error.internal.heading": "出错了",
+  "common.error.internal.text": "Foreman 无法完成此请求。详细信息在 Foreman 的日志中。请重试，如果再次失败，请查看日志。",
+  "common.error.other.heading": "请求失败",
+  "common.error.other.text": "Foreman 无法完成此请求。请前往首页再试一次。",
+  "common.error.code": "错误代码 {code}",
+  "common.error.home": "前往首页",
+  "common.form.unreadable": "Foreman 无法读取表单。请返回、重新加载页面后再试一次。",
+  "common.form.too_large": "表单太大。请返回、重新加载页面后再试一次。",
+  "common.label.warning": "警告：",
+  "common.label.done": "完成：",
+  "common.label.note": "提示：",
+  "common.label.busy": "忙碌：",
+  "common.confirm.will": "将会：",
+  "common.list.sep": "、"
+}

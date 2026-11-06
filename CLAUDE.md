@@ -41,6 +41,8 @@ silently. Use the architect agent to draft spec and stack options.
 - `docs/WORKFLOW.md`: branching, epic plans, code style, pull requests,
   secret scanning, and GitHub use. Local development is added once the stack is
   chosen.
+- `docs/I18N.md`: the eight languages, the glossary, the address rule per
+  language, and how to write and add a translated string.
 - `docs/adr/`: decision records, one for any choice a reader asks "why"
   of. Copy `docs/adr/0000-template.md`.
 - GitHub issues (labels `enhancement` and `bug`): wanted work that is

@@ -1,0 +1,56 @@
+{
+  "common.skip": "Zum Inhalt springen",
+  "common.error.label": "Fehler:",
+  "common.nav.label": "Hauptmenü",
+  "common.nav.server": "Server",
+  "common.nav.console": "Konsole",
+  "common.nav.worlds": "Welten",
+  "common.nav.snapshots": "Snapshots",
+  "common.signedin": "Angemeldet als {user}",
+  "common.signout": "Abmelden",
+  "common.language.label": "Sprache",
+  "common.language.submit": "Wechseln",
+  "common.countdown.label": "Countdown in Sekunden",
+  "common.countdown.hint": "Spieler, die online sind, sehen im Spiel eine Warnung, dann speichert das Spiel und stoppt. 0 bis 600 Sekunden; 0 heißt keine Warnung: Das Spiel speichert und stoppt sofort. Ist niemand online, wird niemand gewarnt.",
+  "common.summary.heading": {
+    "one": "Behebe dieses Problem, um fortzufahren",
+    "other": "Behebe {count} Probleme, um fortzufahren"
+  },
+  "common.bytes.b": "{n} B",
+  "common.bytes.kb": "{n} kB",
+  "common.bytes.mb": "{n} MB",
+  "common.bytes.gb": "{n} GB",
+  "common.bytes.tb": "{n} TB",
+  "common.bytes.pb": "{n} PB",
+  "common.bytes.eb": "{n} EB",
+  "common.duration.seconds": {
+    "one": "{count} Sekunde",
+    "other": "{count} Sekunden"
+  },
+  "common.duration.minutes": {
+    "one": "{count} Minute",
+    "other": "{count} Minuten"
+  },
+  "common.duration.hours": {
+    "one": "{count} Stunde",
+    "other": "{count} Stunden"
+  },
+  "common.error.forbidden.heading": "Zugriff verweigert",
+  "common.error.forbidden.text": "Foreman hat diese Anfrage abgelehnt. Wenn du einem Link von einer anderen Website gefolgt bist, öffne Foreman direkt und versuche es erneut. Wenn es immer wieder passiert, bitte die Person, die Foreman betreibt, deinen Zugang zu prüfen.",
+  "common.error.notfound.heading": "Seite nicht gefunden",
+  "common.error.notfound.text": "Unter dieser Adresse gibt es keine Seite. Prüfe die Adresse oder geh zur Startseite.",
+  "common.error.internal.heading": "Etwas ist schiefgelaufen",
+  "common.error.internal.text": "Foreman konnte diese Anfrage nicht abschließen. Die Details stehen im Protokoll von Foreman. Versuche es erneut, und wenn es wieder fehlschlägt, sieh im Protokoll nach.",
+  "common.error.other.heading": "Anfrage fehlgeschlagen",
+  "common.error.other.text": "Foreman konnte diese Anfrage nicht abschließen. Geh zur Startseite und versuche es erneut.",
+  "common.error.code": "Fehlercode {code}",
+  "common.error.home": "Zur Startseite",
+  "common.form.unreadable": "Foreman konnte das Formular nicht lesen. Geh zurück, lade die Seite neu und versuche es erneut.",
+  "common.form.too_large": "Das Formular war zu groß. Geh zurück, lade die Seite neu und versuche es erneut.",
+  "common.label.warning": "Warnung:",
+  "common.label.done": "Fertig:",
+  "common.label.note": "Hinweis:",
+  "common.label.busy": "Beschäftigt:",
+  "common.confirm.will": "Dabei passiert Folgendes:",
+  "common.list.sep": ", "
+}

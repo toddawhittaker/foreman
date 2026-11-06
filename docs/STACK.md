@@ -36,6 +36,8 @@ is a copy and goes stale if they change without it.
   `golang.org/x/crypto` v0.58.0 and `golang.org/x/sys` v0.49.0 (direct
   since Epic 2: hardlinks into a snapshot folder, which the standard
   library cannot make relative to an open folder).
+- `golang.org/x/text`, direct from Epic 6, for language matching, plural
+  rules and number formats (SPEC 22), v0.43.0.
 - govulncheck v1.9.0, run by `make vuln`.
 - CI: GitHub Actions on the `ubuntu-24.04` runner. Every action is
   pinned to a full commit: `actions/checkout` v7.0.1,
@@ -260,6 +262,14 @@ Rejected:
 - **Scheduled restarts (SPEC 7.12)**: a hand-written daily scheduler using
   `time.LoadLocation`. Rejected: robfig/cron, since the spec needs only
   "at HH:MM in time zone Z".
+- **Languages (SPEC 22)**: a small in-repo package, `internal/i18n`, over
+  JSON catalogues embedded in the binary. It uses `golang.org/x/text`,
+  which the Go team maintains, for matching the browser's languages,
+  CLDR (Common Locale Data Repository) plural rules and per-language
+  number formats. Rejected: `gotext`, which cannot read templates and
+  generates code; and `go-i18n`, a third-party copy of what `x/text`
+  already does. Rules for writing and adding strings are in
+  docs/I18N.md, and the reasons for the design are in ADR 0008.
 - **Linting**: golangci-lint v2.
 - **Vulnerability scan**: govulncheck.
 
@@ -279,15 +289,16 @@ Rejected:
 | `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. A test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. |
 | `make test-game` | The game controller against the real Docker daemon and the game test images (`GAME_IMAGE_*`, section 1), one after another, because they share the game port. It first checks that each image's plain tag on the host is the pinned digest. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game, and update and rollback with the real game: 2.0.77 to 2.1.24 and 2.1.23 to 2.1.24, each reaching InGame and rolling back to a byte-identical save. `TAG=1.1`, `2.0` or `2.1` runs one line, and checks only the images that line's tests use (`2.0` and `2.1` include the update tests). Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
 | `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image, and a switch from one world to another and back: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing or is not the pinned digest. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
-| `make test-catalogue` | Created in Epic 8. Re-runs the crash reason catalogue's scenarios (SPEC 8.8) against `factoriotools/factorio:$(VERSION)`, for example `VERSION=2.1.22`. Downloads nothing: the image must already be on the host. |
+| `make test-catalogue` | Created in Epic 9. Re-runs the crash reason catalogue's scenarios (SPEC 8.8) against `factoriotools/factorio:$(VERSION)`, for example `VERSION=2.1.22`. Downloads nothing: the image must already be on the host. |
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
 | `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as parallel jobs. |
 | `make tidy` | `go mod tidy`. |
+| `make i18n-hash` | After every language has a new or changed key, records the short hash of the English each translation was made from, in `internal/i18n/translated/<area>.json` (SPEC 22.5, ADR 0008). |
 
 ## 14. Left out on purpose
 
 - No public REST API. The spec needs only the UI and MCP.
 - No ORM, CSS framework or state-management library.
-- No release tooling (such as GoReleaser) until Epic 10.
+- No release tooling (such as GoReleaser) until Epic 11.
 - Nothing for running several worlds at once, beyond the schema leaving
   room for it (SPEC 5.3).

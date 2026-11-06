@@ -3,7 +3,6 @@ package game
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -162,10 +161,8 @@ func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, re
 		run, changed := w.run, w.changed
 		w.mu.Unlock()
 		switch {
-		case run.loadFailed && run.loadError != "":
-			return fmt.Errorf("%w: it could not load the save (%s)", ErrStartFailed, run.loadError)
 		case run.loadFailed:
-			return fmt.Errorf("%w: it could not load the save", ErrStartFailed)
+			return &StartError{Kind: StartLoadFailed, Detail: run.loadError}
 		case run.inGame:
 			return nil
 		}
@@ -174,14 +171,10 @@ func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, re
 		case <-poll.C:
 			cont, err := c.docker.InspectContainer(ctx, cid)
 			if err == nil && (cont.State.Status != "running" || cont.RestartCount > restarts) {
-				tail := c.loadFailureReason(ctx, w, cid)
-				if tail == "" {
-					tail = ": the game stopped while it was loading"
-				}
-				return fmt.Errorf("%w%s", ErrStartFailed, tail)
+				return &StartError{Kind: StartStopped, Reason: c.loadFailureReason(ctx, w, cid)}
 			}
 		case <-deadline:
-			return fmt.Errorf("%w: it did not finish loading within %s", ErrStartFailed, durationWords(c.startTimeout))
+			return &StartError{Kind: StartLoadTimeout, Timeout: c.startTimeout}
 		case <-ctx.Done():
 			return ctx.Err()
 		}
@@ -203,7 +196,7 @@ func (c *Controller) waitRCON(ctx context.Context, w *worldRun, cid string, dead
 				return nil
 			}
 			if errors.Is(err, rcon.ErrLogin) {
-				return fmt.Errorf("%w: the game is in game, but it refused Foreman's RCON password", ErrStartFailed)
+				return &StartError{Kind: StartRCONRefused}
 			}
 		} else if err := c.connectRCON(ctx, w, cid); err != nil {
 			return err
@@ -213,7 +206,7 @@ func (c *Controller) waitRCON(ctx context.Context, w *worldRun, cid string, dead
 		case <-t.C:
 		case <-deadline:
 			t.Stop()
-			return fmt.Errorf("%w: it is in game but did not answer over RCON within %s", ErrStartFailed, durationWords(c.startTimeout))
+			return &StartError{Kind: StartRCONTimeout, Timeout: c.startTimeout}
 		case <-ctx.Done():
 			t.Stop()
 			return ctx.Err()
@@ -242,3 +235,53 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	}
 	return nil
 }
+
+// The kinds of StartError.
+const (
+	// StartLoadFailed: the game said it could not load the save; Detail is
+	// its own words, or "".
+	StartLoadFailed = "load-failed"
+	// StartStopped: the game stopped while loading; Reason is why, from
+	// its log, when it said.
+	StartStopped = "stopped"
+	// StartLoadTimeout and StartRCONTimeout: the game did not finish
+	// loading, or answer over RCON, within Timeout.
+	StartLoadTimeout = "load-timeout"
+	StartRCONTimeout = "rcon-timeout"
+	// StartRCONRefused: the game refused Foreman's RCON password.
+	StartRCONRefused = "rcon-refused"
+)
+
+// StartError is ErrStartFailed with the reason, so a page can word it in
+// any language (SPEC 22.3). Its text is the log's.
+type StartError struct {
+	Kind    string
+	Detail  string
+	Timeout time.Duration
+	Reason  LoadReason
+}
+
+func (e *StartError) Error() string {
+	head := ErrStartFailed.Error()
+	switch e.Kind {
+	case StartLoadFailed:
+		if e.Detail != "" {
+			return head + ": it could not load the save (" + e.Detail + ")"
+		}
+		return head + ": it could not load the save"
+	case StartStopped:
+		if tail := e.Reason.text(); tail != "" {
+			return head + tail
+		}
+		return head + ": the game stopped while it was loading"
+	case StartLoadTimeout:
+		return head + ": it did not finish loading within " + durationWords(e.Timeout)
+	case StartRCONTimeout:
+		return head + ": it is in game but did not answer over RCON within " + durationWords(e.Timeout)
+	case StartRCONRefused:
+		return head + ": the game is in game, but it refused Foreman's RCON password"
+	}
+	return head
+}
+
+func (e *StartError) Is(target error) bool { return target == ErrStartFailed }

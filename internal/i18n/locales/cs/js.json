@@ -1,0 +1,10 @@
+{
+  "js.import.many": "Vybráno více složek: každá používá vlastní název, verzi a nastavení Space Age.",
+  "js.import.same": "Stejná jako v uložené hře",
+  "js.import.same.unreadable": "Stejná jako v uložené hře (nepodařilo se ji přečíst, proto je třeba verzi vybrat nebo zadat)",
+  "js.import.same.version": "Stejná jako v uložené hře ({version})",
+  "js.import.suggested": "Navržený název světa: {name}.",
+  "js.import.warning": "Upozornění: {text}",
+  "js.live.moved": "Aktivní svět se změnil.",
+  "js.live.stopped": "Živé aktualizace se zastavily. Pro zobrazení aktuálního stavu je třeba stránku znovu načíst."
+}

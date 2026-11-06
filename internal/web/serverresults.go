@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 // How the last action on the Server page ended, and the next step it offers
@@ -14,7 +15,8 @@ import (
 
 // Offer is a link to an action's confirmation page.
 type Offer struct {
-	Path, Label string
+	Path  string
+	Label i18n.Msg
 	// At is when the snapshot the offer restores was taken, or zero.
 	At time.Time
 }
@@ -26,7 +28,12 @@ func (p ServerPage) RecoverRestore() *Offer {
 	if !p.CrashLooping() || sn == nil {
 		return nil
 	}
-	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: "Restore \"" + sn.Label + "\"", At: sn.TakenAt}
+	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", snapshotLabelArg(*sn), "time", momentUTC(sn.TakenAt)), At: sn.TakenAt}
+}
+
+// CrashMessage is the crash box's sentence (SPEC 8.7).
+func (p ServerPage) CrashMessage() i18n.Msg {
+	return crashMsg(p.Status.State == game.StateCrashLooping, !p.CrashLeads(), p.Status.LastCrash, p.Status.Crash)
 }
 
 // switchBackOffer is the way back from the last switch: from a failed or
@@ -80,57 +87,96 @@ func cancelledByOperation(st game.Status, now time.Time) (actionResult, bool) {
 	return res, true
 }
 
-// actionNames name each action in a sentence.
-var actionNames = map[string]string{
-	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
-	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
-	game.AuditSwitch: "switch", game.AuditUpdate: "update", game.AuditRollback: "rollback",
-	actionSnapshot: "snapshot",
+// otherError says an action asked for during another did not finish, and
+// why.
+func otherError(action string, why i18n.Msg) i18n.Msg {
+	switch action {
+	case game.AuditStart:
+		return i18n.M("server.other.start", "why", why)
+	case game.AuditStop:
+		return i18n.M("server.other.stop", "why", why)
+	case game.AuditRestart:
+		return i18n.M("server.other.restart", "why", why)
+	case game.AuditForceStop:
+		return i18n.M("server.other.force_stop", "why", why)
+	case game.AuditImageDownload:
+		return i18n.M("server.other.download", "why", why)
+	case game.ActionRestore:
+		return i18n.M("server.other.restore", "why", why)
+	case game.AuditSwitch:
+		return i18n.M("server.other.switch", "why", why)
+	case game.AuditUpdate:
+		return i18n.M("server.other.update", "why", why)
+	case game.AuditRollback:
+		return i18n.M("server.other.rollback", "why", why)
+	case actionSnapshot:
+		return i18n.M("server.other.snapshot", "why", why)
+	}
+	return i18n.M("server.other.action", "why", why)
+}
+
+// cancelledMsg says an action's stop countdown was cancelled, which changed
+// nothing, and short for a screen reader (SPEC 7.6).
+func cancelledMsg(action string) (msg, short i18n.Msg) {
+	switch action {
+	case game.AuditStop:
+		return i18n.M("server.cancelled.stop"), i18n.M("server.cancelled.stop_short")
+	case game.AuditRestart:
+		return i18n.M("server.cancelled.restart"), i18n.M("server.cancelled.restart_short")
+	case game.ActionRestore:
+		return i18n.M("server.cancelled.restore"), i18n.M("server.cancelled.restore_short")
+	case game.AuditUpdate:
+		return i18n.M("server.cancelled.update"), i18n.M("server.cancelled.update_short")
+	case game.AuditRollback:
+		return i18n.M("server.cancelled.rollback"), i18n.M("server.cancelled.rollback_short")
+	case game.AuditSwitch:
+		return i18n.Msg{}, i18n.M("server.cancelled.switch_short")
+	}
+	return i18n.M("server.cancelled.action"), i18n.M("server.cancelled.action_short")
 }
 
 // OtherErrors words the errors of the actions asked for while another ran.
-func (p ServerPage) OtherErrors() []string {
-	var out []string
+func (p ServerPage) OtherErrors() []i18n.Msg {
+	var out []i18n.Msg
 	for _, res := range p.Others {
 		if res.Err == nil {
 			continue
 		}
-		name := actionNames[res.Action]
-		if name == "" {
-			name = "action"
-		}
-		out = append(out, "The "+name+" asked for during another action did not finish: "+failureText(res.Err))
+		out = append(out, otherError(res.Action, failureText(res.Err)))
 	}
 	return out
 }
 
-// Done says what the last action did, when that is not otherwise visible.
-func (p ServerPage) Done() string {
+// Done says what the last action did, when that is not otherwise visible,
+// or is zero.
+func (p ServerPage) Done() i18n.Msg {
 	if !p.HaveResult {
-		return ""
+		return i18n.Msg{}
 	}
 	if p.cancelled() {
 		if p.Result.Action == game.AuditSwitch {
-			return "The switch to " + p.name(p.Result.Target) + " was cancelled. " + p.World.Name + " is still the active world, and nothing changed."
+			return i18n.M("server.cancelled.switch", "to", p.name(p.Result.Target), "world", p.World.Name)
 		}
-		return "The " + actionNames[p.Result.Action] + " was cancelled. Nothing was saved or stopped, and nothing changed."
+		msg, _ := cancelledMsg(p.Result.Action)
+		return msg
 	}
 	if p.Result.Err != nil {
-		return ""
+		return i18n.Msg{}
 	}
 	switch p.Result.Action {
 	case game.ActionRestore:
-		return "The world is restored. Foreman took the snapshot \"Before restore\" first."
+		return i18n.M("server.done.restore", "label", i18n.M("worlds.snapshot.label.before_restore"))
 	case game.AuditUpdate:
-		return "The game version is updated. Foreman took the snapshot \"Before update\" first."
+		return i18n.M("server.done.update", "label", i18n.M("worlds.snapshot.label.before_update"))
 	case game.AuditRollback:
-		return "The world is rolled back. Foreman took the snapshot \"Before restore\" first."
+		return i18n.M("server.done.rollback", "label", i18n.M("worlds.snapshot.label.before_restore"))
 	case game.AuditSwitch:
-		return "The worlds are switched, from " + p.name(p.Result.From) + " to " + p.World.Name + ". Foreman took the snapshot \"Before switch\" of both worlds first."
+		return i18n.M("server.done.switch", "from", p.name(p.Result.From), "to", p.World.Name,
+			"label", i18n.M("worlds.snapshot.label.before_switch"))
 	case actionSnapshot:
-		return "Foreman took the snapshot \"" + p.Result.Taken + "\" of " + p.World.Name + "."
+		return i18n.M("server.done.snapshot", "label", p.Result.Taken, "world", p.World.Name)
 	}
-	return ""
+	return i18n.Msg{}
 }
 
 // DoneAt is when the action in the Done message ended.
@@ -139,26 +185,26 @@ func (p ServerPage) DoneAt() time.Time { return p.Result.At }
 // Undo offers to undo the change the Done message reports, at its own
 // confirmation page (VISION principle 1, SPEC 17.9), or is nil.
 func (p ServerPage) Undo() *Offer {
-	if p.Done() == "" || p.cancelled() {
+	if p.Done().IsZero() || p.cancelled() {
 		return nil
 	}
 	switch p.Result.Action {
 	case game.ActionRestore:
 		if p.Result.Undo != "" {
-			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: "Undo this restore"}
+			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: i18n.M("server.undo.restore")}
 		}
 	case game.AuditRollback:
 		if p.Result.Undo != "" {
-			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: "Undo this rollback"}
+			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: i18n.M("server.undo.rollback")}
 		}
 	case game.AuditUpdate:
 		if r := p.Rollback; r != nil {
-			return &Offer{Path: r.Path, Label: "Roll back to " + r.Version}
+			return &Offer{Path: r.Path, Label: i18n.M("server.undo.update", "version", r.Version)}
 		}
 	case game.AuditSwitch:
 		// After a crash loop the crash box offers it instead.
 		if o := p.switchBackOffer(); o != nil && !p.CrashLooping() {
-			return &Offer{Path: o.Path, Label: "Switch back to " + o.Name}
+			return &Offer{Path: o.Path, Label: i18n.M("server.switch_back", "world", o.Name)}
 		}
 	}
 	return nil
@@ -166,36 +212,46 @@ func (p ServerPage) Undo() *Offer {
 
 // doneAnnouncement is what a live page reads out when an action that
 // shows a "Done" message finishes.
-var doneAnnouncement = map[string]string{
-	game.ActionRestore: "The world is restored.",
-	game.AuditSwitch:   "The worlds are switched.",
-	game.AuditUpdate:   "The game version is updated.",
-	game.AuditRollback: "The world is rolled back.",
-	actionSnapshot:     "The snapshot is taken.",
+var doneAnnouncement = map[string]i18n.Msg{
+	game.ActionRestore: i18n.M("server.done.restore_short"),
+	game.AuditSwitch:   i18n.M("server.done.switch_short"),
+	game.AuditUpdate:   i18n.M("server.done.update_short"),
+	game.AuditRollback: i18n.M("server.done.rollback_short"),
+	actionSnapshot:     i18n.M("server.done.snapshot_short"),
+}
+
+// labelled puts a message's leading word, such as "Error:", before it.
+func labelled(label, text i18n.Msg) i18n.Msg {
+	return i18n.M("server.labelled", "label", label, "text", text)
 }
 
 // resultAnnouncement is what a live page reads out for the results the
-// page shows: errors first, then a restore that finished (DESIGN 7.5).
-func resultAnnouncement(p ServerPage) string {
-	var said []string
+// page shows: errors first, then a restore that finished (DESIGN 7.5). It
+// is zero when there is nothing to say.
+func resultAnnouncement(p ServerPage) i18n.Msg {
+	var said []i18n.Msg
 	if f := p.Failure(); f != nil {
 		msg := f.Message
 		if f.Next != nil {
-			msg += " " + f.Next.Label
+			msg = join(msg, f.Next.Label)
 		}
-		said = append(said, f.Word()+" "+msg)
+		said = append(said, labelled(f.Word(), msg))
 		if f.Anyway != nil {
-			said = append(said, "You can "+strings.ToLower(f.Anyway.Verb)+"; the button is below.")
+			said = append(said, f.Anyway.Offer)
 		}
 	}
 	for _, e := range p.OtherErrors() {
-		said = append(said, "Error: "+e)
+		said = append(said, labelled(i18n.M("common.error.label"), e))
 	}
 	switch {
 	case p.cancelled():
-		said = append(said, "The "+actionNames[p.Result.Action]+" was cancelled.")
-	case p.Done() != "":
+		_, short := cancelledMsg(p.Result.Action)
+		said = append(said, short)
+	case !p.Done().IsZero():
 		said = append(said, doneAnnouncement[p.Result.Action])
 	}
-	return strings.Join(said, " ")
+	if len(said) == 0 {
+		return i18n.Msg{}
+	}
+	return join(said[0], said[1:]...)
 }

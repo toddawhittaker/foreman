@@ -207,17 +207,17 @@ func (m *Manager) checkFiles(id string, snap Snapshot) error {
 	defer func() { _ = src.Close() }()
 	for _, f := range snap.Files {
 		if !fs.ValidPath(f.Path) || f.Path == "." || f.Path == ManifestFile {
-			return fmt.Errorf("%w: bad path %q", ErrDamaged, f.Path)
+			return &DamagedError{Kind: DamageBadPath, Path: f.Path}
 		}
 		info, err := src.Lstat(f.Path)
 		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("%w: %s is missing", ErrDamaged, f.Path)
+			return &DamagedError{Kind: DamageMissing, Path: f.Path}
 		}
 		if err != nil {
 			return err
 		}
 		if !info.Mode().IsRegular() || info.Size() != f.Size {
-			return fmt.Errorf("%w: %s has changed", ErrDamaged, f.Path)
+			return &DamagedError{Kind: DamageChanged, Path: f.Path}
 		}
 		// Older snapshots have no hash, so there is nothing to check (SPEC 6.7).
 		if f.SHA256 == "" {
@@ -228,7 +228,7 @@ func (m *Manager) checkFiles(id string, snap Snapshot) error {
 			return err
 		}
 		if sum != f.SHA256 {
-			return fmt.Errorf("%w: %s has changed since the snapshot was taken", ErrDamaged, f.Path)
+			return &DamagedError{Kind: DamageChangedSince, Path: f.Path}
 		}
 	}
 	return nil

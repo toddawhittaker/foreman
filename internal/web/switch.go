@@ -3,9 +3,9 @@ package web
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -43,21 +43,21 @@ type SwitchPage struct {
 	StartAfter bool
 	// Lead, CheckProblems and Advice word the new world's pre-start
 	// problems. Seen fingerprints them for "Switch and start anyway".
-	Lead          string
-	CheckProblems []string
-	Advice        string
+	Lead          i18n.Msg
+	CheckProblems []i18n.Msg
+	Advice        i18n.Msg
 	Seen          string
 	CountdownForm
 	// Changed is set when the switch was not done because what the page
 	// showed is no longer true.
 	Changed bool
 	// Refusal replaces the form when the switch cannot go ahead.
-	Refusal string
+	Refusal i18n.Msg
 }
 
 func (SwitchPage) templateName() string { return "switch" }
 func (SwitchPage) navItem() string      { return PathWorlds }
-func (p SwitchPage) hasErrors() bool    { return p.CountdownError != "" }
+func (p SwitchPage) hasErrors() bool    { return !p.CountdownError.IsZero() }
 
 // Problems lists the countdown field's error for the summary.
 func (p SwitchPage) Problems() []Problem {
@@ -77,18 +77,16 @@ func (p SwitchPage) HasProblems() bool { return !p.Plan.Check.OK() }
 func (p SwitchPage) CanAnyway() bool { return p.HasProblems() && p.Plan.Check.CanStartAnyway() }
 
 // ChangedLead says why a confirmed switch was not done.
-func (SwitchPage) ChangedLead() string { return changedLead }
+func (SwitchPage) ChangedLead() i18n.Msg { return changedLead }
 
 // switchProblemsLead opens the list of the new world's problems. When the
 // only problems are mods made for another Factorio, the save is not what
 // fails, so the lead says the world cannot run instead.
-func switchProblemsLead(check world.PreCheck, name string) string {
-	for _, pr := range check.Problems {
-		if pr.Kind != world.ProblemModGameVersion {
-			return "The save that would load in " + name + " does not match that world:"
-		}
+func switchProblemsLead(check world.PreCheck, name string) i18n.Msg {
+	if !onlyModVersions(check) {
+		return i18n.M("server.switch.problems_lead", "world", name)
 	}
-	return name + " cannot run in this game:"
+	return i18n.M("server.switch.cannot_run_lead", "world", name)
 }
 
 // imageSize returns the download size of a version's game image, or 0 when
@@ -108,7 +106,7 @@ func (s *server) imageSize(ctx context.Context, version string) uint64 {
 // the image to download and who is online. A switch that goes ahead asks for
 // neither.
 func (s *server) fillSwitchPage(ctx context.Context, p *SwitchPage) {
-	if p.Refusal != "" {
+	if !p.Refusal.IsZero() {
 		return
 	}
 	if p.Plan.Download {
@@ -158,9 +156,7 @@ func (s *server) switchPage(ctx context.Context, from string, to world.Summary, 
 	}
 	if p.HasProblems() {
 		p.Lead = switchProblemsLead(p.Plan.Check, to.Name)
-		for _, pr := range p.Plan.Check.Problems {
-			p.CheckProblems = append(p.CheckProblems, pr.Text)
-		}
+		p.CheckProblems = problemMsgs(p.Plan.Check.Problems)
 		p.Advice = anywayAdvice(p.Plan.Check.Problems, to.Name, hostModsFolder(s.hostData, to.ID))
 		p.Seen = game.AnywayFingerprint(p.Plan.Check, p.Plan.Running)
 	}
@@ -197,7 +193,7 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	if from == "" {
 		// A form without it cannot say what the admin was shown.
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest,
-			Detail: "The form does not say which world is active. Go back, reload the page and try again."})
+			Detail: i18n.M("server.switch.no_from")})
 		return
 	}
 	form, stop := readCountdown(r)
@@ -209,11 +205,11 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	// A running game's switch starts the new world (SPEC 7.9); a stopped
 	// one's starts it when the box was ticked.
 	p.StartAfter = r.PostFormValue("start") == "1"
-	if p.Refusal != "" {
+	if !p.Refusal.IsZero() {
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	if form.CountdownError != "" {
+	if !form.CountdownError.IsZero() {
 		s.fillSwitchPage(r.Context(), &p)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
@@ -327,30 +323,57 @@ func (p ServerPage) SwitchBack() *SwitchOffer {
 	return &SwitchOffer{Path: switchPath(sw.From), Name: p.name(sw.From)}
 }
 
-// SwitchNote says where a failed switch left the worlds. An unfinished
-// switch found at startup brings its own words in the notice.
-func (p ServerPage) SwitchNote() string {
+// SwitchNote says where a failed switch left the worlds, or is zero.
+func (p ServerPage) SwitchNote() i18n.Msg {
 	if p.switchRefused() {
-		return p.World.Name + " is still the active world, and nothing changed."
+		return i18n.M("server.switch.note_refused", "world", p.World.Name)
 	}
 	o := p.Status.Operation
 	if o == nil || o.Switch == nil || !o.Done || o.Error == "" || p.opSuperseded() {
-		return ""
+		return i18n.Msg{}
 	}
 	if o.Switch.Presented {
-		return p.name(o.Switch.To) + " is now the active world, but the switch did not finish."
+		return i18n.M("server.switch.note_presented", "world", p.name(o.Switch.To))
 	}
-	return "Nothing was switched. " + p.name(o.Switch.From) + " is still the active world."
+	return i18n.M("server.switch.note_none", "world", p.name(o.Switch.From))
+}
+
+// Notice words an unfinished switch found at startup (SPEC 7.10), or is
+// zero: where it stopped and which world is active.
+func (p ServerPage) Notice() i18n.Msg {
+	n := p.Status.Notice
+	if n == nil {
+		return i18n.Msg{}
+	}
+	from, to := p.name(n.From), p.name(n.To)
+	if n.Presented {
+		return i18n.M("server.notice.presented", "to", to)
+	}
+	switch n.Step {
+	case store.StepBegun:
+		return i18n.M("server.notice.at_stop", "from", from, "to", to)
+	case store.StepStopped:
+		return i18n.M("server.notice.at_snapshots", "from", from, "to", to)
+	case store.StepSnapshotted:
+		return i18n.M("server.notice.at_check", "from", from, "to", to)
+	case store.StepChecked:
+		return i18n.M("server.notice.at_present", "from", from, "to", to)
+	}
+	return i18n.M("server.notice.at_step", "from", from, "to", to, "step", n.Step)
 }
 
 // movedSentence is what the reloaded page reads out: which world is now the
 // active one, then how the action ended when that is known.
-func (p ServerPage) movedSentence() string {
+func (p ServerPage) movedSentence() i18n.Msg {
 	name := p.World.Name
 	if sw := p.Status.Operation.Switch; sw != nil {
 		name = p.name(sw.To)
 	}
-	return strings.TrimSpace(name + " is now the active world. " + resultAnnouncement(p))
+	moved := i18n.M("server.switch.moved", "world", name)
+	if said := resultAnnouncement(p); !said.IsZero() {
+		return join(moved, said)
+	}
+	return moved
 }
 
 // Moved reports whether this page's world stopped being the active one in a

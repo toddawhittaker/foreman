@@ -85,17 +85,17 @@ func TestDownloadNeverHidesAnActionsResult(t *testing.T) {
 // it is worded, and it is not a server error to log.
 func TestPrecheckErrorIsNeverAServerError(t *testing.T) {
 	err := precheckErr()
-	if status, _ := gameError(err); status != http.StatusConflict {
+	if status, _ := gameErrorText(err); status != http.StatusConflict {
 		t.Errorf("status %d", status)
 	}
-	got := failureText(err)
+	got := english(failureText(err))
 	if strings.Contains(got, "could not finish") || !strings.Contains(got, "The save is from a newer game.") {
 		t.Errorf("worded as %q", got)
 	}
 	p := serverCase(game.StateStopped, func(p *ServerPage) {
 		p.Others = []actionResult{{Action: game.AuditStart, Err: err}}
 	})
-	if e := p.OtherErrors(); len(e) != 1 || strings.Contains(e[0], "could not finish") {
+	if e := p.OtherErrors(); len(e) != 1 || strings.Contains(english(e[0]), "could not finish") {
 		t.Errorf("other errors %q", e)
 	}
 }

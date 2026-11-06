@@ -1,0 +1,56 @@
+{
+  "common.skip": "Skip to content",
+  "common.error.label": "Error:",
+  "common.nav.label": "Main",
+  "common.nav.server": "Server",
+  "common.nav.console": "Console",
+  "common.nav.worlds": "Worlds",
+  "common.nav.snapshots": "Snapshots",
+  "common.signedin": "Signed in as {user}",
+  "common.signout": "Sign out",
+  "common.language.label": "Language",
+  "common.language.submit": "Change",
+  "common.countdown.label": "Countdown in seconds",
+  "common.countdown.hint": "Players online see a warning in game, then the game saves and stops. From 0 to 600 seconds; 0 means no warning: the game saves and stops at once. Nobody is warned if nobody is online.",
+  "common.summary.heading": {
+    "one": "Fix this problem to continue",
+    "other": "Fix {count} problems to continue"
+  },
+  "common.bytes.b": "{n} B",
+  "common.bytes.kb": "{n} kB",
+  "common.bytes.mb": "{n} MB",
+  "common.bytes.gb": "{n} GB",
+  "common.bytes.tb": "{n} TB",
+  "common.bytes.pb": "{n} PB",
+  "common.bytes.eb": "{n} EB",
+  "common.duration.seconds": {
+    "one": "{count} second",
+    "other": "{count} seconds"
+  },
+  "common.duration.minutes": {
+    "one": "{count} minute",
+    "other": "{count} minutes"
+  },
+  "common.duration.hours": {
+    "one": "{count} hour",
+    "other": "{count} hours"
+  },
+  "common.error.forbidden.heading": "Access refused",
+  "common.error.forbidden.text": "Foreman refused this request. If you followed a link from another site, open Foreman directly and try again. If it keeps happening, ask the person who runs Foreman to check your access.",
+  "common.error.notfound.heading": "Page not found",
+  "common.error.notfound.text": "There is no page at this address. Check the address, or go to the home page.",
+  "common.error.internal.heading": "Something went wrong",
+  "common.error.internal.text": "Foreman could not finish this request. The details are in Foreman's log. Try again, and if it fails again, check the log.",
+  "common.error.other.heading": "Request failed",
+  "common.error.other.text": "Foreman could not finish this request. Go to the home page and try again.",
+  "common.error.code": "Error code {code}",
+  "common.error.home": "Go to the home page",
+  "common.form.unreadable": "Foreman could not read the form. Go back, reload the page and try again.",
+  "common.form.too_large": "The form was too large. Go back, reload the page and try again.",
+  "common.label.warning": "Warning:",
+  "common.label.done": "Done:",
+  "common.label.note": "Note:",
+  "common.label.busy": "Busy:",
+  "common.confirm.will": "This will:",
+  "common.list.sep": ", "
+}

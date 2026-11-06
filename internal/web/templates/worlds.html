@@ -1,56 +1,57 @@
-{{define "title"}}Worlds{{end}}
+{{define "title"}}{{t "worlds.title"}}{{end}}
 
 {{define "content" -}}
-<h1>Worlds</h1>
+<h1>{{t "worlds.title"}}</h1>
 {{- with .Page.Deleted}}
 <div class="message message--success">
-  <p><strong>Done:</strong> Deleted {{.}}.{{if $.Page.DeletedKept}} Its snapshots are under Deleted worlds.{{else}} It had no snapshots, so it cannot be restored.{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if $.Page.DeletedKept}}{{t "worlds.list.deleted_kept" "name" .}}{{else}}{{t "worlds.list.deleted_gone" "name" .}}{{end}}</p>
   {{- if $.Page.DeletedKept}}
-  <div class="actions"><a href="{{deletedPath}}">Go to Deleted worlds</a></div>
+  <div class="actions"><a href="{{deletedPath}}">{{t "worlds.list.deleted_link"}}</a></div>
   {{- end}}
 </div>
 {{- end}}
 {{- if .Page.SwitchWait}}
 <div class="message message--note">
-  <p><strong>Note:</strong> Switching is unavailable while an operation runs on the server.</p>
-  <div class="actions"><a href="{{serverPath}}">See the Server page</a></div>
+  <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.list.switch_wait"}}</p>
+  <div class="actions"><a href="{{serverPath}}">{{t "worlds.list.server_link"}}</a></div>
 </div>
 {{- end}}
 <div class="actions">
-  <a href="{{.Page.ImportPath}}" class="button">Import a world</a>
-  <a href="{{deletedPath}}">Deleted worlds</a>
+  <a href="{{.Page.ImportPath}}" class="button">{{t "worlds.list.import"}}</a>
+  <a href="{{deletedPath}}">{{t "worlds.deleted.title"}}</a>
 </div>
 <section class="panel" aria-labelledby="worlds-heading">
-  <h2 id="worlds-heading">All worlds</h2>
+  <h2 id="worlds-heading">{{t "worlds.list.all"}}</h2>
   {{- with .Page.Worlds}}
   <ul class="worlds" role="list">
     {{- range .}}
     <li>
-      <h3 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">Active</span>{{end}}</h3>
+      <h3 id="world-{{.ID}}"><a href="{{worldsPath}}/{{.ID}}">{{.Name}}</a>{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h3>
       {{- if .Unreadable}}
-      <p>Foreman cannot read this world's world.json. Check the file in the folder <code>{{.ID}}</code>.</p>
+      <p>{{tHTML "worlds.unreadable" "folder" (code .ID)}}</p>
       {{- else if .Newer}}
-      <p>A newer version of Foreman wrote this world, so this version cannot change it.</p>
+      <p>{{t "worlds.error.newer_format"}}</p>
       {{- end}}
       <dl class="facts">
-        <div><dt>Game version</dt><dd>{{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}Unknown{{end}}</dd></div>
-        <div><dt>Space Age</dt><dd>{{if .SpaceAge}}On{{else}}Off{{end}}</dd></div>
-        <div><dt>Last played</dt><dd>{{if .LastPlayedUnknown}}unknown{{else if .LastPlayed.IsZero}}Never{{else}}<time datetime="{{isoTime .LastPlayed}}">{{utc .LastPlayed}}</time>{{end}}</dd></div>
-        <div><dt>Disk use</dt><dd>{{if .SizeUnknown}}unknown{{else}}{{bytes .DiskBytes}}{{end}}<span class="visually-hidden">,</span> <span class="fact-note">snapshots add {{if $.Page.AddsUnknown}}unknown{{else}}{{bytes (index $.Page.SnapshotAdds .ID)}}{{end}}</span></dd></div>
+        <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .GameVersion}}<code>{{.GameVersion}}</code>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+        <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
+        <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .LastPlayed}}">{{utc .LastPlayed}}</time>{{end}}</dd></div>
+        <div><dt>{{t "worlds.fact.disk_use"}}</dt><dd>{{if .SizeUnknown}}{{t "worlds.unknown_lower"}}{{else}}{{bytes .DiskBytes}}{{end}}<span class="visually-hidden">,</span> <span class="fact-note">{{if $.Page.AddsUnknown}}{{t "worlds.list.adds_unknown"}}{{else}}{{t "worlds.list.adds" "size" (bytes (index $.Page.SnapshotAdds .ID))}}{{end}}</span></dd></div>
       </dl>
-      {{- with index $.Page.Busy .ID}}
-      <p><strong>Busy:</strong> {{.}}</p>
+      {{- $busy := index $.Page.Busy .ID}}
+      {{- if not $busy.IsZero}}
+      <p><strong>{{t "common.label.busy"}}</strong> {{msg $busy}}</p>
       {{- end}}
       {{- if index $.Page.Switchable .ID}}
       <div class="actions">
-        <a href="{{$.Page.SwitchPath .ID}}" class="button">Switch<span class="visually-hidden"> to {{.Name}}</span></a>
+        <a href="{{$.Page.SwitchPath .ID}}" class="button"><span aria-hidden="true">{{t "worlds.list.switch"}}</span><span class="visually-hidden">{{t "worlds.list.switch_named" "name" .Name}}</span></a>
       </div>
       {{- end}}
     </li>
     {{- end}}
   </ul>
   {{- else}}
-  <p class="empty">No worlds yet. Import a folder of saves or upload a save file to make your first world.</p>
+  <p class="empty">{{t "worlds.list.empty"}}</p>
   {{- end}}
 </section>
 {{- end}}

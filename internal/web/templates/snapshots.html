@@ -1,97 +1,97 @@
-{{define "title"}}Snapshots of {{.Page.WorldName}}{{end}}
+{{define "title"}}{{t "worlds.snapshots.title" "world" .Page.WorldName}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">Back to {{.WorldName}}</a></div>
-<h1>Snapshots of {{.WorldName}}</h1>
-{{- with .Done}}
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
+<h1>{{t "worlds.snapshots.title" "world" .WorldName}}</h1>
+{{- if not .Done.IsZero}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{.}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- if $.Page.DoneSnap}}
-  <div class="actions"><a href="#restore-{{$.Page.DoneSnap}}">Go to the snapshot</a></div>
+  <div class="actions"><a href="#restore-{{$.Page.DoneSnap}}">{{t "worlds.snapshots.go_to"}}</a></div>
   {{- end}}
 </div>
 {{- end}}
 {{- if .Deleted}}
 <div class="message message--success">
-  <p><strong>Done:</strong> {{if eq (len .Deleted) 1}}Foreman deleted the snapshot taken <time datetime="{{isoTime (index .Deleted 0)}}">{{utcSeconds (index .Deleted 0)}}</time>.{{else}}Foreman deleted {{len .Deleted}} snapshots.{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
 {{- end}}
-{{- with .Error}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not $.Page.LabelError}} autofocus{{end}}>
-  <p><strong>Error:</strong> {{.}}</p>
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="action-error" tabindex="-1"{{if .LabelError.IsZero}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}
 
 <section class="panel" aria-labelledby="disk-heading">
-  <h2 id="disk-heading">Disk use</h2>
+  <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
   <dl class="facts">
-    <div><dt>Snapshots add</dt><dd>{{bytes .AddBytes}}</dd></div>
-    <div><dt>Free space</dt><dd>{{bytes .FreeBytes}}</dd></div>
+    <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
+    <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
   </dl>
-  <p class="hint">"Snapshots add" is the space only snapshots hold, which deleting all of them would free. Save and mod files shared by hard link with the world stay on disk either way.</p>
+  <p class="hint">{{t "worlds.snapshots.adds_hint"}}</p>
   {{- if .Copied}}
   <div class="message message--note">
-    <p><strong>Note:</strong> Some snapshots hold full copies of save and mod files, not hardlinks, so they take more space. This happens when the snapshots folder is on a different filesystem from the worlds folder.</p>
+    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.snapshots.copied"}}</p>
   </div>
   {{- end}}
 </section>
 
 <form method="post" action="{{.Path}}" class="panel" novalidate>
-  <h2>Take a snapshot</h2>
+  <h2>{{t "worlds.snapshots.take.heading"}}</h2>
   {{template "summary" .Problems}}
   <div class="field">
-    <label for="label">Label (optional)</label>
-    <p class="hint" id="label-hint">Up to 100 characters, such as "Before the rocket launch".</p>
+    <label for="label">{{t "worlds.snapshots.take.label"}}</label>
+    <p class="hint" id="label-hint">{{t "worlds.snapshots.take.hint" "count" 100}}</p>
     <input id="label" name="label" type="text" value="{{.Label}}" maxlength="100" autocomplete="off"
-      {{- if .LabelError}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
-    {{- with .LabelError}}
-    <p class="error" id="label-error"><strong>Error:</strong> {{.}}</p>
+      {{- if not .LabelError.IsZero}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
+    {{- if not .LabelError.IsZero}}
+    <p class="error" id="label-error"><strong>{{t "common.error.label"}}</strong> {{msg .LabelError}}</p>
     {{- end}}
   </div>
   <div class="actions">
-    <button type="submit" class="button button--primary">Take snapshot</button>
+    <button type="submit" class="button button--primary">{{t "worlds.snapshots.take.button"}}</button>
   </div>
 </form>
 
 {{- if .Snapshots}}
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   <input type="hidden" name="world" value="{{.WorldID}}">
-  <h2 id="list-heading">All snapshots</h2>
+  <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
   <div class="actions">
-    <button type="submit" class="button">Delete selected</button>
-    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">Select all automatic</button>
+    <button type="submit" class="button">{{t "worlds.snapshots.delete_selected"}}</button>
+    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
   </div>
-  <p class="hint">Tick the snapshots to delete, then choose Delete selected. Nothing is deleted until you confirm on the next page. Select all automatic ticks every snapshot Foreman took itself, such as before a switch or an update, and none of the manual ones.</p>
-  {{- with .TickNote}}
-  <p class="hint" id="tick-note" tabindex="-1" autofocus>{{.}}</p>
+  <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
+  {{- if not .TickNote.IsZero}}
+  <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
   <table class="snapshot-list" role="table">
-    <caption>Snapshots of {{.WorldName}}, newest first</caption>
+    <caption>{{t "worlds.snapshots.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
-      <tr role="row"><th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th></tr>
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.col.snapshot"}}</th><th scope="col" role="columnheader">{{t "worlds.col.taken"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th></tr>
     </thead>
     <tbody role="rowgroup">
       {{- range .Snapshots}}
       <tr role="row">
         <td role="cell">
-          <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with $.Page.Reason .Reason .Label}}{{.}}<br>{{end}}{{.Label}}<span class="visually-hidden"> (taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time>)</span></span></label>
-          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}">Restore<span class="visually-hidden"> {{.Label}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a> <a class="button" href="{{$.Page.DeletePath .Name}}">Delete<span class="visually-hidden"> {{.Label}}, taken <time datetime="{{isoTime .TakenAt}}">{{utcSeconds .TakenAt}}</time></span></a></div>
+          <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
+          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
         </td>
-        <td role="cell">{{template "when" .TakenAt}}</td>
-        <td class="num" role="cell">{{bytes .DiskSize}}</td>
+        <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}</td>
+        <td class="num" role="cell" data-label="{{t "worlds.snapshots.size_label"}}">{{bytes .DiskSize}}</td>
       </tr>
       {{- end}}
     </tbody>
   </table>
   {{- if .More}}
-  <div class="actions"><a href="{{.AllPath}}">Show older</a></div>
+  <div class="actions"><a href="{{.AllPath}}">{{t "worlds.snapshots.older"}}</a></div>
   {{- end}}
 </form>
 {{- else}}
 <section class="panel" aria-labelledby="list-heading">
-  <h2 id="list-heading">All snapshots</h2>
-  <p class="empty">No snapshots yet. Take one above before you try something risky.</p>
+  <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
+  <p class="empty">{{t "worlds.snapshots.empty"}}</p>
 </section>
 {{- end}}
 {{- end}}

@@ -1,0 +1,56 @@
+{
+  "common.skip": "Aller au contenu",
+  "common.error.label": "Erreur :",
+  "common.nav.label": "Navigation principale",
+  "common.nav.server": "Serveur",
+  "common.nav.console": "Console",
+  "common.nav.worlds": "Mondes",
+  "common.nav.snapshots": "Instantanés",
+  "common.signedin": "Connecté en tant que {user}",
+  "common.signout": "Se déconnecter",
+  "common.language.label": "Langue",
+  "common.language.submit": "Changer",
+  "common.countdown.label": "Compte à rebours en secondes",
+  "common.countdown.hint": "Les joueurs en ligne voient un avertissement dans le jeu, puis le jeu sauvegarde et s’arrête. De 0 à 600 secondes ; 0 signifie aucun avertissement : le jeu sauvegarde et s’arrête aussitôt. Personne n’est averti si personne n’est en ligne.",
+  "common.summary.heading": {
+    "one": "Corrigez ce problème pour continuer",
+    "other": "Corrigez {count} problèmes pour continuer"
+  },
+  "common.bytes.b": "{n} o",
+  "common.bytes.kb": "{n} ko",
+  "common.bytes.mb": "{n} Mo",
+  "common.bytes.gb": "{n} Go",
+  "common.bytes.tb": "{n} To",
+  "common.bytes.pb": "{n} Po",
+  "common.bytes.eb": "{n} Eo",
+  "common.duration.seconds": {
+    "one": "{count} seconde",
+    "other": "{count} secondes"
+  },
+  "common.duration.minutes": {
+    "one": "{count} minute",
+    "other": "{count} minutes"
+  },
+  "common.duration.hours": {
+    "one": "{count} heure",
+    "other": "{count} heures"
+  },
+  "common.error.forbidden.heading": "Accès refusé",
+  "common.error.forbidden.text": "Foreman a refusé cette requête. Si vous avez suivi un lien depuis un autre site, ouvrez Foreman directement et réessayez. Si cela se reproduit, demandez à la personne qui gère Foreman de vérifier votre accès.",
+  "common.error.notfound.heading": "Page introuvable",
+  "common.error.notfound.text": "Il n’y a aucune page à cette adresse. Vérifiez l’adresse ou allez à la page d’accueil.",
+  "common.error.internal.heading": "Une erreur s’est produite",
+  "common.error.internal.text": "Foreman n’a pas pu terminer cette requête. Les détails se trouvent dans le journal de Foreman. Réessayez, et si cela échoue encore, consultez le journal.",
+  "common.error.other.heading": "Échec de la requête",
+  "common.error.other.text": "Foreman n’a pas pu terminer cette requête. Allez à la page d’accueil et réessayez.",
+  "common.error.code": "Code d’erreur {code}",
+  "common.error.home": "Aller à la page d’accueil",
+  "common.form.unreadable": "Foreman n’a pas pu lire le formulaire. Revenez en arrière, rechargez la page et réessayez.",
+  "common.form.too_large": "Le formulaire était trop volumineux. Revenez en arrière, rechargez la page et réessayez.",
+  "common.label.warning": "Avertissement :",
+  "common.label.done": "Terminé :",
+  "common.label.note": "Remarque :",
+  "common.label.busy": "Occupé :",
+  "common.confirm.will": "Foreman va :",
+  "common.list.sep": ", "
+}

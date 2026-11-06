@@ -11,7 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// These tests pin SPEC 7.6 and ruling 3 of the plan: a countdown can be
+// These tests pin SPEC 7.6: a countdown can be
 // cancelled while it runs, before anything is saved or stopped. Cancelling
 // a restart, switch, restore or update ends the whole action with nothing
 // changed.

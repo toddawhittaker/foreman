@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/releases"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -98,9 +99,9 @@ func TestUpdateAndRollbackErrorTakesFocus(t *testing.T) {
 		page  Page
 		focus bool
 	}{
-		{"update refusal", UpdatePage{World: sum, Refusal: notActiveText}, true},
-		{"update refusal with field errors", UpdatePage{World: sum, Refusal: notActiveText, VersionError: "Bad."}, false},
-		{"rollback error", RollbackPage{World: sum, Error: "No rollback."}, true},
+		{"update refusal", UpdatePage{World: sum, Refusal: i18n.M("server.update.not_active")}, true},
+		{"update refusal with field errors", UpdatePage{World: sum, Refusal: i18n.M("server.update.not_active"), VersionError: i18n.M("server.error.version_not_newer")}, false},
+		{"rollback error", RollbackPage{World: sum, Error: i18n.M("server.error.no_rollback")}, true},
 	}
 	for _, c := range pages {
 		t.Run(c.name, func(t *testing.T) {
@@ -115,7 +116,7 @@ func TestUpdateAndRollbackErrorTakesFocus(t *testing.T) {
 func noticeHTML(t *testing.T, p ReleaseNotice) string {
 	t.Helper()
 	var b strings.Builder
-	if err := newTestRenderer(t).Fragment(&b, p, "release-notice"); err != nil {
+	if err := newTestRenderer(t).Fragment(&b, i18n.English, p, "release-notice"); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()

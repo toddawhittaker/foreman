@@ -177,7 +177,7 @@ export const test = base.extend<{
     await use(f);
     const { exitedEarly } = await f.stop();
     expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
-    // Ruling: a test fails on any ERROR line it did not declare, and on a
+    // docs/WORKFLOW.md: a test fails on any ERROR line it did not declare, and on a
     // declaration that matched nothing. This process belongs to this test alone.
     const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
     const lines = f.errorLines();
@@ -332,14 +332,14 @@ export async function checkPage(page: Page) {
   }));
   expect(size.scroll, `horizontal scroll on ${page.url()}`).toBeLessThanOrEqual(size.client);
 
-  // DESIGN 8.3: a date, a time or a size never breaks inside itself.
+  // DESIGN 8.3: a date, a clock, a zone or a size never breaks inside itself. The
+  // zone, such as "GMT+5:45", is its own .nowrap unit and may take a line to itself.
   const broken = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".nowrap, td.num")]
       .filter((el) => {
         const range = document.createRange();
         range.selectNodeContents(el);
-        const tops = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)));
-        return tops.size > 1;
+        return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size > 1;
       })
       .map((el) => el.textContent),
   );

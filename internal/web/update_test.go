@@ -530,7 +530,7 @@ func TestUpdateRunningWorldRestarts(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage("<td>bob</td>")
+	g.waitPage(`<td role="cell">bob</td>`)
 
 	g.wantRedirectHome(g.post(updateURL(id), url.Values{"game_version": {newVersion}, "countdown": {"1"}}))
 	if err := g.waitResult(id, game.AuditUpdate); err != nil {
@@ -672,9 +672,9 @@ func TestRollbackStoppedWorld(t *testing.T) {
 	}
 
 	worldPage := g.get(worldPath(id))
-	g.wantContains("world page", worldPage, `id="act-rollback"`, `href="`+rollbackURL(id)+`"`, "Roll back to "+oldVersion, `"Before update"`)
+	g.wantContains("world page", worldPage, `id="act-rollback"`, `href="`+rollbackURL(id)+`"`, "Roll back to "+oldVersion, `&#34;Before update&#34;`)
 	page := g.get(rollbackURL(id))
-	g.wantContains("rollback page", page, "Go back from Factorio "+newVersion+" to "+oldVersion+"?", `"Before update"`,
+	g.wantContains("rollback page", page, "Go back from Factorio "+newVersion+" to "+oldVersion+"?", `&#34;Before update&#34;`,
 		"everything played since the update is lost", "Roll back to "+oldVersion, `action="`+rollbackURL(id)+`"`, "Before restore")
 	g.wantMissing("rollback page", page, `name="countdown"`)
 

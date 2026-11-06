@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -26,7 +27,7 @@ func TestRadioGroupsPointEveryRadioAtTheError(t *testing.T) {
 	}{
 		{"saves", SavesPage{WorldName: "Base", WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
 			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, NewestSelected: true,
-			LoadError: "Choose which save loads.",
+			LoadError: i18n.M("worlds.saves.choose"),
 			Rows:      []SaveRow{{Name: "a.zip", Href: "/x"}, {Name: "b.zip", Href: "/y"}}}, "load-save-error", 3},
 	}
 	for _, c := range cases {
@@ -151,8 +152,9 @@ func TestSnapshotReasonShownOnlyWhenItAddsWords(t *testing.T) {
 		{world.ReasonManual, "Manually tuned", "Manual"},
 	}
 	for _, c := range cases {
-		if got := showReason(c.reason, c.label); got != c.want {
-			t.Errorf("showReason(%q, %q) = %q, want %q", c.reason, c.label, got, c.want)
+		s := world.Snapshot{Manifest: world.Manifest{Reason: c.reason, Label: c.label}}
+		if got := snapshotReason(i18n.English, s); got != c.want {
+			t.Errorf("snapshotReason(%q, %q) = %q, want %q", c.reason, c.label, got, c.want)
 		}
 	}
 
@@ -164,7 +166,7 @@ func TestSnapshotReasonShownOnlyWhenItAddsWords(t *testing.T) {
 		open, label string
 	}{
 		{snapshotsCase(), "<span>", `<span class="visually-hidden">`},
-		{DeletedPage{Worlds: []world.DeletedWorld{{ID: "base", Name: "Base", Snapshots: snapshotsCase().Snapshots}}}, "<td>", "<br><a"},
+		{DeletedPage{Worlds: []world.DeletedWorld{{ID: "base", Name: "Base", Snapshots: snapshotsCase().Snapshots}}}, `<td role="cell">`, "<br><a"},
 	} {
 		_, body := render(t, r, pageCase{status: 200, page: c.page})
 		// The case has a "Manual" snapshot labelled with a long name, and
