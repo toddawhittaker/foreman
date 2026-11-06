@@ -33,6 +33,9 @@ const (
 	// PreviewWait is how long a preview waits for the one running before it
 	// to end, before it is ErrPreviewBusy.
 	PreviewWait = 20 * time.Second
+	// maxPreviewWaiters is how many previews may wait for the slot; one
+	// more is ErrPreviewBusy at once.
+	maxPreviewWaiters = 8
 	// PreviewSize is the width and height of each picture, in pixels. On 2.x
 	// a pixel is a tile; on 1.1 the default scale is one tile too.
 	PreviewSize = 1280
@@ -175,8 +178,20 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 	return readPreviews(base, name, req.Planets)
 }
 
-// takePreviewSlot waits for the one preview slot, up to previewWait.
+// takePreviewSlot waits for the one preview slot, up to previewWait, with
+// at most maxPreviewWaiters callers waiting.
 func (c *Controller) takePreviewSlot(ctx context.Context) error {
+	select {
+	case c.previewSlot <- struct{}{}:
+		return nil
+	default:
+	}
+	select {
+	case c.previewWaiting <- struct{}{}:
+		defer func() { <-c.previewWaiting }()
+	default:
+		return ErrPreviewBusy
+	}
 	wait := time.NewTimer(c.previewWait)
 	defer wait.Stop()
 	select {
@@ -267,8 +282,12 @@ func makePreviewDir(base *os.Root, req PreviewRequest) (string, error) {
 func (c *Controller) runPreview(ctx context.Context, image, dir, line string, req PreviewRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, c.previewLimit)
 	defer cancel()
-	id, err := c.docker.CreateContainer(ctx, "foreman-preview-"+dir, c.previewSpec(image, dir, line, req))
+	name := "foreman-preview-" + dir
+	id, err := c.docker.CreateContainer(ctx, name, c.previewSpec(image, dir, line, req))
 	if err != nil {
+		// Docker may have made the container before the call failed; the
+		// name is all there is to find it by.
+		c.removePreview(name)
 		return err
 	}
 	defer c.removePreview(id)

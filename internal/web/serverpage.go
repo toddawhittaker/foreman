@@ -83,9 +83,6 @@ func (p ServerPage) ForceStopPath() string { return gamePath(p.World.ID, "force-
 func (p ServerPage) PullPath() string      { return gamePath(p.World.ID, "pull-image") }
 func (p ServerPage) ConsolePath() string   { return consolePath(p.World.ID, "") }
 func (p ServerPage) SnapshotPath() string  { return gamePath(p.World.ID, "take-snapshot") }
-func (ServerPage) SwitchPath(id string) string {
-	return switchPath(id)
-}
 
 // switchOp returns the switch running now, or nil.
 func (p ServerPage) switchOp() *game.SwitchInfo {
