@@ -462,7 +462,7 @@ test.describe("a running world with players", () => {
     await page.getByRole("button", { name: "Preview changes" }).click();
     await page.getByRole("button", { name: "Save settings" }).click();
     await page.locator(".message--success").locator("#act-restart").click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart Base");
     const fromSettings = await page.locator("main").innerText();
     await checkPage(page);
     await page.getByRole("link", { name: "Cancel, keep it running" }).click();
@@ -470,7 +470,7 @@ test.describe("a running world with players", () => {
 
     await page.goto("/");
     await page.locator("#act-restart").click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart Base");
     expect(await page.locator("main").innerText()).toBe(fromSettings);
     await page.getByRole("link", { name: "Cancel, keep it running" }).click();
     await expect(page).toHaveURL(/\/$/);

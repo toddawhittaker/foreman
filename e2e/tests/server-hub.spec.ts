@@ -80,7 +80,7 @@ test.describe("with the fake game", () => {
     // Server page, Switch world, Switch to Second, confirm: SPEC 17.10's budget of 3.
     await page.getByRole("link", { name: "Switch world" }).click();
     await page.getByRole("link", { name: "Switch to Second" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Second");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Base to Second?");
     await expect(page.locator("#online")).toHaveText("1 player online: alice.");
     await page.getByRole("button", { name: "Switch to Second" }).click();
 
@@ -102,7 +102,7 @@ test.describe("with the fake game", () => {
 
     // Switch back after a switch: 2 clicks (SPEC 17.10).
     await done(page).getByRole("link", { name: "Switch back to Base" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Base");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Second to Base?");
   });
 
   test("a snapshot is one click, and the next action clears the last Done message", async ({ page, foreman, fakeGame }) => {
@@ -133,7 +133,7 @@ test.describe("with the fake game", () => {
     await expect(done(page)).toContainText("The world is restored.", live);
     await expect(badge(page)).toHaveText("Running", live);
     await done(page).getByRole("link", { name: "Undo this restore" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: /Restore the snapshot "Before restore"/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /Restore the snapshot "Before restore"/ })).toBeVisible();
   });
 
   // SPEC 17.9: after a start anyway whose game then crash-loops, one box
@@ -153,7 +153,7 @@ test.describe("with the fake game", () => {
     await expect(page.locator(".message--note")).toHaveCount(0);
     await checkPage(page);
     await crash.getByRole("link", { name: /^Restore "Before start anyway" \(/ }).click();
-    await expect(page.getByRole("heading", { level: 2, name: /Restore the snapshot "Before start anyway"/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /Restore the snapshot "Before start anyway"/ })).toBeVisible();
   });
 
   // SPEC 3.7: a world's page says before any switch that its image is missing.

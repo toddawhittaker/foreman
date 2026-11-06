@@ -2,10 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{serverPath}}">{{t "server.back"}}</a></div>
-<h1>{{t "server.force.title" "world" .World.Name}}</h1>
+<h1 id="confirm-heading" tabindex="-1">{{t "server.force.heading" "world" .World.Name}}</h1>
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{t "server.force.heading" "world" .World.Name}}</h2>
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "server.force.at_once"}}</li>

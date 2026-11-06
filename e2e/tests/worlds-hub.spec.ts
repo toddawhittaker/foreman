@@ -50,7 +50,7 @@ test("each world but the active one has a Switch button on the list", async ({ p
 
   await button.click();
   await expect(page).toHaveURL("/worlds/second/switch");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Second");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Base to Second?");
 });
 
 // DESIGN 7.1: one primary action per page, and the destructive one last.

@@ -26,7 +26,7 @@ async function startBase(page: Page) {
 async function openSwitch(page: Page, id: string, name: string) {
   await page.goto(`/worlds/${id}`);
   await page.getByRole("link", { name: "Switch to this world" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Switch to ${name}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(new RegExp(`^Switch from .+ to ${name}\\?$`));
 }
 
 const creates = async (g: FakeGame) =>
