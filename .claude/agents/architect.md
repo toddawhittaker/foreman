@@ -11,7 +11,7 @@ description: |
   does not edit.
 model: claude-opus-5-5
 effort: high
-tools: Bash, Read, Grep, Glob, Agent(explorer)
+tools: Bash, Read, Grep, Glob, WebFetch, WebSearch, Agent(explorer)
 ---
 
 # architect
