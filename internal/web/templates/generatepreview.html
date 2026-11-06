@@ -1,0 +1,43 @@
+{{/* The Map preview section, or an empty slot the browser swaps it into. Takes GeneratePage. */}}
+{{define "generate-preview" -}}
+<div id="preview" class="preview">
+  {{- with .Preview}}
+  <section aria-labelledby="preview-heading">
+    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+    {{- if .Error.IsZero}}
+    <p>{{t "worlds.generate.preview.made" "seed" .Seed}}</p>
+    <ul class="pictures" role="list">
+      {{- range .Pictures}}
+      <li>
+        <figure>
+          <a href="{{.Path}}"><img src="{{.Path}}" width="1280" height="1280" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy"></a>
+          <figcaption>{{msg .Name}}</figcaption>
+        </figure>
+      </li>
+      {{- end}}
+    </ul>
+    <p class="hint">{{t "worlds.generate.preview.kept"}}</p>
+    {{- else}}
+    <div class="message message--error">
+      <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    </div>
+    {{- end}}
+  </section>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* The answer to an automatic preview request whose settings are not valid:
+     the problems, in the preview's slot, with no focus moved. Takes GeneratePage. */}}
+{{define "generate-preview-invalid" -}}
+<div id="preview" class="preview" data-preview="invalid">
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{t "common.summary.heading" "count" (len .Problems)}}</p>
+    <ul>
+      {{- range .Problems}}
+      <li><a href="#{{.FieldID}}">{{msg .Message}}</a></li>
+      {{- end}}
+    </ul>
+  </div>
+</div>
+{{- end}}

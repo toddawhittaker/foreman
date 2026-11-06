@@ -10,10 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
-	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -27,7 +24,6 @@ const (
 	PathGenerate        = "/generate"
 	PathGenerateRefresh = "/generate/refresh"
 	PathGeneratePreview = "/generate/preview"
-	pathPicture         = PathGeneratePreview + "/{token}/{planet}"
 )
 
 // AuditGenerate is the audit action of a world made by Generate (SPEC 12.9).
@@ -51,109 +47,6 @@ const (
 
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
-
-// MapPreviewer makes the map preview pictures: one PNG for each planet
-// asked for, from the settings Generate would write (SPEC 5.6, 14.3). The
-// game controller provides it. Seed is always set, so the world made later
-// has the same map.
-type MapPreviewer interface {
-	Preview(ctx context.Context, req game.PreviewRequest) ([]game.PNG, error)
-}
-
-// previewTTL is how long a preview's pictures are kept (SPEC 5.6).
-const previewTTL = 15 * time.Minute
-
-// The pictures held at once: 8 previews and 48 MB in all, so a few admins
-// cannot fill the memory.
-const (
-	maxPreviews     = 8
-	maxPreviewBytes = 48 << 20
-)
-
-type previewItem struct {
-	user    int64
-	expires time.Time
-	images  map[string][]byte
-	bytes   int
-}
-
-// previewStore holds the pictures of previews under a random token, each
-// tied to the user who asked (SPEC 5.6). Nothing else is served from it.
-type previewStore struct {
-	mu    sync.Mutex
-	now   func() time.Time
-	items map[string]*previewItem
-	order []string // oldest first
-}
-
-func newPreviewStore(now func() time.Time) *previewStore {
-	return &previewStore{now: now, items: map[string]*previewItem{}}
-}
-
-// put keeps the pictures and returns their token. A user keeps one preview
-// at a time: a new one replaces the last.
-func (p *previewStore) put(user int64, images []game.PNG) (string, error) {
-	item := &previewItem{user: user, expires: p.now().Add(previewTTL), images: map[string][]byte{}}
-	for _, im := range images {
-		item.images[im.Planet] = im.Data
-		item.bytes += len(im.Data)
-	}
-	if item.bytes > maxPreviewBytes {
-		return "", errors.New("the preview pictures are too large")
-	}
-	token := newToken()
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.sweepLocked()
-	for _, t := range slices.Clone(p.order) {
-		if p.items[t].user == user {
-			p.dropLocked(t)
-		}
-	}
-	for len(p.order) >= maxPreviews || (len(p.order) > 0 && p.totalLocked()+item.bytes > maxPreviewBytes) {
-		p.dropLocked(p.order[0])
-	}
-	p.items[token] = item
-	p.order = append(p.order, token)
-	return token, nil
-}
-
-// get returns a planet's picture when the token is the user's and has not
-// expired.
-func (p *previewStore) get(token string, user int64, planet string) ([]byte, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.sweepLocked()
-	item, ok := p.items[token]
-	if !ok || item.user != user {
-		return nil, false
-	}
-	png, ok := item.images[planet]
-	return png, ok
-}
-
-func (p *previewStore) sweepLocked() {
-	now := p.now()
-	for _, t := range slices.Clone(p.order) {
-		if !now.Before(p.items[t].expires) {
-			p.dropLocked(t)
-		}
-	}
-}
-
-func (p *previewStore) dropLocked(token string) {
-	delete(p.items, token)
-	p.order = slices.DeleteFunc(p.order, func(t string) bool { return t == token })
-}
-
-func (p *previewStore) totalLocked() int {
-	n := 0
-	for _, it := range p.items {
-		n += it.bytes
-	}
-	return n
-}
 
 // GeneratePage is the Generate form, with the map preview when one was made
 // (SPEC 5.6, DESIGN 8.6, 8.8).
@@ -197,22 +90,6 @@ type GenerateForm struct {
 	CustomProblems                                                                           []Problem
 }
 
-// PreviewView is the Map preview section. Error holds why no pictures
-// were made; Log is the game's output when it failed.
-type PreviewView struct {
-	Token    string
-	Seed     string
-	Pictures []PreviewPicture
-	Error    i18n.Msg
-}
-
-// PreviewPicture is one planet's picture.
-type PreviewPicture struct {
-	Planet string
-	Name   i18n.Msg
-	Path   string
-}
-
 func (GeneratePage) templateName() string { return "generate" }
 func (GeneratePage) navItem() string      { return PathWorlds }
 
@@ -251,8 +128,7 @@ func (s *server) generateRoutes() {
 	s.mux.HandleFunc("GET "+PathGenerate, s.requireUser(s.handleGenerateForm))
 	s.handleUpload("POST "+PathGenerate, generateFormLimit, s.requireUser(s.handleGenerate))
 	s.handleUpload("POST "+PathGenerateRefresh, generateFormLimit, s.requireUser(s.handleGenerateRefresh))
-	s.handleUpload("POST "+PathGeneratePreview, generateFormLimit, s.requireUser(s.handleGeneratePreview))
-	s.mux.HandleFunc("GET "+pathPicture, s.requireUser(s.handlePicture))
+	s.previewRoutes()
 }
 
 // activeVersion is the game version of the active world, or "".
@@ -614,95 +490,6 @@ func decodeExchange(f *GenerateForm, version string) (mapexchange.Result, bool) 
 // versionText is the first three numbers of a version; the fourth is the
 // build.
 func versionText(v [4]uint16) string { return fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2]) }
-
-// handleGeneratePreview makes the map pictures from the settings Generate
-// would write, and shows the form again with them under it (SPEC 5.6).
-func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u store.User) {
-	if s.previewer == nil {
-		s.notFound(w, r, u)
-		return
-	}
-	if !s.readForm(w, r) {
-		return
-	}
-	f, nw, ok := s.readGenerate(r, kindPreview)
-	if !ok {
-		// htmx swaps only a 2xx answer, and then the whole form, with its errors.
-		status := http.StatusBadRequest
-		if r.Header.Get("HX-Request") == "true" {
-			status = http.StatusOK
-			h := w.Header()
-			h.Set("HX-Retarget", "#generate-form")
-			h.Set("HX-Reselect", "#generate-form")
-			h.Set("HX-Reswap", "outerHTML")
-		}
-		if f.Reset {
-			status = http.StatusOK
-		}
-		s.page(w, r, status, u.Username, s.generatePage(f, nil))
-		return
-	}
-	line, _ := mapgen.Line(nw.GameVersion)
-	req := game.PreviewRequest{
-		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
-		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings,
-		Planets: mapgen.Planets(line, nw.SpaceAge),
-	}
-	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10)}
-	images, err := s.previewer.Preview(r.Context(), req)
-	pf, failure := errors.AsType[*game.PreviewError](err)
-	switch {
-	case err == nil:
-		view.Token, err = s.previews.put(u.ID, images)
-		if err != nil {
-			s.log.Error("keep map preview", "error", err)
-			view.Error = i18n.M("worlds.generate.preview.failed")
-			break
-		}
-		for _, planet := range req.Planets {
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
-		}
-	case errors.Is(err, game.ErrPreviewImageMissing):
-		view.Error = i18n.M("worlds.generate.preview.no_image", "version", nw.GameVersion)
-	case errors.Is(err, game.ErrPreviewBusy):
-		view.Error = i18n.M("worlds.generate.preview.busy")
-	case errors.Is(err, game.ErrPreviewTimeout):
-		view.Error = i18n.M("worlds.generate.preview.timeout")
-	case failure:
-		s.log.Warn("map preview failed", "version", nw.GameVersion, "oom", pf.OOM)
-		view.Error = i18n.M("worlds.generate.preview.failed")
-		if pf.OOM {
-			view.Error = i18n.M("worlds.generate.preview.oom")
-		}
-	default:
-		if r.Context().Err() == nil {
-			s.log.Error("map preview", "version", nw.GameVersion, "error", err)
-		}
-		view.Error = i18n.M("worlds.generate.preview.failed")
-	}
-	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, view))
-}
-
-// pictureURL is where a planet's picture is served.
-func pictureURL(token, planet string) string {
-	return PathGeneratePreview + "/" + token + "/" + planet
-}
-
-// handlePicture serves one planet's preview picture to the user who asked
-// for it. Nothing else is read through this route.
-func (s *server) handlePicture(w http.ResponseWriter, r *http.Request, u store.User) {
-	png, ok := s.previews.get(r.PathValue("token"), u.ID, r.PathValue("planet"))
-	if !ok {
-		s.notFound(w, r, u)
-		return
-	}
-	h := w.Header()
-	h.Set("Content-Type", "image/png")
-	h.Set("Cache-Control", "no-store")
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Length", strconv.Itoa(len(png)))
-	_, _ = w.Write(png)
-}
 
 // generatedFacts adds the Done message after Generate to a world's page.
 func (s *server) generatedFacts(p *WorldPage, r *http.Request) {
