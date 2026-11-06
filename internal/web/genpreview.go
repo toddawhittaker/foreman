@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strconv"
@@ -127,6 +128,7 @@ func (p *previewStore) missing(user int64, key, name string, planets []string) (
 	if len(out) > 0 {
 		return "", out
 	}
+	e.expires = p.now().Add(previewTTL)
 	return e.token, nil
 }
 
@@ -140,6 +142,13 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 	e, ok := p.byUser[user]
 	if !ok || e.key != key {
 		e = &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
+	} else {
+		// entry() hands copies of the stored entry to handlers that read the
+		// map and slice after the lock is gone, so they are never written in
+		// place. The picture bytes are shared; they are never changed.
+		c := *e
+		c.images, c.planets = maps.Clone(e.images), slices.Clone(e.planets)
+		e = &c
 	}
 	grown := e.bytes
 	for _, im := range images {
