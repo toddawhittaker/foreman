@@ -9,7 +9,7 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 (old 6 Mods is now 8, old 8 is 9, old 9 is 10, old 10 is 11). Older text
 below uses the new numbers.
 
-Epics 1 to 6, the Gate A fixes and the two fix batches after Gate A (hub
+Epics 1 to 7, the Gate A fixes and the two fix batches after Gate A (hub
 fixes, polish fixes) are done, and Gate A (SPEC 19.1) passed on
 2026-11-05.
 
@@ -517,8 +517,6 @@ tested. Coverage across `internal/` is about 90%.
 - "Last played" shows the import time for a world that was never played.
 - `mods/mod-list.json` differs in every snapshot, because the game and the
   image's entrypoint rewrite it at each start.
-- On a world's first start the image writes its example config files into
-  the world, after the switch snapshot was taken.
 - The server keeps no limit on a world name's length; only the form's
   `maxlength` (100) does.
 - A running switch is silent to screen readers until it ends (DESIGN 7.6).
@@ -1210,3 +1208,172 @@ SPEC 22.
 - `make test-game` binds host UDP 34197, so it cannot run on a host where
   a real Factorio server holds that port. The real-game check had to
   patch the port locally.
+
+## Epic 7: Generating worlds and game settings
+
+Serves SPEC 5.6 (Generate, with the map preview), 5.7 (Clone) and section
+11 (game settings), with 4.3 (the create step), 5.1 (`new_map`), 6.7 (the
+`settings` snapshot reason), 7.4, 14.3 (the preview container), 14.6 and
+14.8. ADR 0009 records the decision to decode map exchange strings in Go
+(D9, settled 2026-11-06). The plan's lasting rules are in those SPEC
+sections.
+
+### Delivered
+
+- **Generate (SPEC 5.6).** One page makes a world with no save from a
+  preset and seed, a map exchange string, or a custom map-gen form. The
+  world carries `new_map` in `world.json` and its first start runs the
+  game's own `--create`, only when `saves/` holds no zip, so a Docker
+  restart can never overwrite a save. `new_map` is cleared once that start
+  reaches InGame. A failed create uses the existing failed-start report
+  with the game's own words. Generate writes no `mod-list.json`; the start
+  step already does. The page is at `/generate`, because a world named
+  "Generate" would take the id `generate` and hide `/worlds/generate`.
+- **Exchange strings (D9, `internal/mapexchange`).** A Go port of
+  rfvgyhn's parser (MIT; its notice is kept in the package) for 1.1, 2.0
+  and 2.1. It takes both markers or neither, and refuses what it cannot
+  read exactly: a bad checksum, left-over bytes, bad values, or a newer
+  patch that does not read cleanly. Two fixes to the ported layout were
+  found against the real game: from 2.0 `cliff_smoothing` comes before
+  `richness`, and 2.1.18 removed `max_pollution_to_restore_trees`.
+  `Compatible` refuses a string of another line, newer than the world, or
+  laid out differently from the world's version (2.1.13 and 2.1.18 are the
+  two layout boundaries), and names the versions that would work. A 2.1.9
+  string on a 2.1.24 world failed at `--create` in the real game; it is now
+  refused on the form. Fuzz runs of 30 and 60 seconds found no panic.
+- **Game data and fixtures.** `internal/mapgen` embeds, for each line, the
+  presets, planets, autoplace controls and each preset's values, read from
+  the real images by `go generate`. `internal/mapexchange/testdata` holds
+  98 golden strings made by the real game on 1.1.110, 2.0.66, 2.0.77,
+  2.1.9 and 2.1.24 with the game's own parse; `make test` runs them.
+- **The custom map-gen form.** Every autoplace control's frequency, size
+  and richness per line and per planet; seed, size, starting area, water,
+  cliffs and peaceful mode; a raw JSON box for the rest. It opens filled
+  from the chosen preset, and terrain controls read Scale and Coverage as
+  the game words them. Steps are the percentages the game's sliders use.
+  "None" is not offered for frequency, because the real 2.0.77 game refuses
+  a frequency of 0 at create. On 2.x cliffs go to the planet's control and
+  never to `cliff_settings`.
+- **Map preview.** "Preview map" draws one picture per planet from exactly
+  the settings Generate would write, with the game's
+  `--generate-map-preview` in a locked-down one-off container (no network,
+  read-only root, all capabilities dropped, 1 GiB memory, 60 seconds, a
+  fresh folder only). The pictures are held 15 minutes under a random token
+  tied to the user. A blank seed is filled and kept. Real games drew a
+  planet in 0.6 to 0.9 seconds and five Space Age planets in 5 to 6. 512 MB
+  was the smallest memory that drew a Space Age planet, so the limit leaves
+  room. No endpoint was added to the Docker list (SPEC 14.3).
+- **Clone (SPEC 5.7).** Copies mods and config (never `rconpw`) and the
+  game version and Space Age flag. "Keep the save" copies the one save
+  that would load; "fresh map" sets `new_map` with a random seed and the
+  source's preset while the source has not started. From the Server page,
+  Generate and Clone each take three clicks.
+- **Game settings (SPEC 11).** A form for the common fields, a raw JSON
+  editor for `server-settings.json` with line-and-reason errors, a diff
+  preview, and a confirmation held on the server under a random token for
+  15 minutes. One confirmation takes one world lock, one game save, one
+  snapshot (reason `settings`, "Before settings change") and one audit
+  entry (`settings-save`, file names only). It checks every file is as it
+  was at the preview, then writes. The game password and the factorio.com
+  `username`, `password` and `token` are write-only, and log redaction
+  knows them. A change to a running world's settings says it needs a
+  restart and links to Restart.
+- **Admins live by RCON.** A stopped world writes `server-adminlist.json`.
+  A running world is sent `/promote` and `/demote` and the game writes the
+  file. The real game's console has no quoting (`/promote "bob smith"`
+  promotes `"bob`), so a name with any whitespace is refused, always,
+  rather than escaped.
+- **A complete `server-settings.json`.** Every `server-settings.json`
+  Foreman writes has `name`, `description` and `visibility`, which the game
+  requires (SPEC 11.1). Before this was found, the first form save on a
+  world with no file wrote a file without them, and the next start went
+  into a crash loop on the real game. Hidden is the default visibility, the
+  world's name is prefilled, and `Validate` refuses a file without the
+  three keys. The raw editor names the missing key.
+- **Design and phones.** DESIGN 8.6 to 8.10 hold the patterns. Preview
+  keeps focus while it runs, a failed request writes a translated
+  sentence, buttons and the version select fit at 320 px and 200% text, and
+  a read-only world's Admins box is read-only rather than disabled. A typed
+  game password that a refused form drops is explained by a Note. The new
+  pages are in the 320 px language matrix in all eight languages.
+- **Last played on a phone.** Todd's ruling (2026-11-06): in the world
+  list on a phone, Last played shows the age only ("10 years ago"). The
+  200 px compact row stays. A wide panel and the world's own page keep the
+  date, the clock with its zone and the age.
+- **Translations.** The `settings` and `mapgen` areas are in all eight
+  languages. A review of the seven non-English languages was applied,
+  including the reversed raw-key hint in Russian, Polish and Czech.
+- **Review fixes.** Settings save through one path (`SaveSettingsHeld`);
+  the web and game layers share the preview types; a fresh-map Clone
+  carries the source's preset; unused map-settings data was removed.
+- **Follow-up issues.** #206 (public server listing), #207 (editing
+  `map-settings.json` after creation), #220 (one list of supported game
+  lines) and #221 (accessibility follow-ups from the review).
+
+### Verified
+
+- `make verify` passed on the fix-round head with coverage 90.6% across
+  `internal/`. `make e2e` there: 1024 passed, 88 skipped, none failed (the
+  320 px language matrix runs in one project).
+- New tests: Go tests for the world, game, settings, decoder and web
+  pieces; the golden test; end-to-end specs for Generate, Clone, the
+  settings pages, the first save and the new pages in every language, each
+  with axe, in four projects, plus keyboard-only runs.
+- Against real `factoriotools/factorio` containers (1.1.110, 2.0.77 and
+  2.1.24, with and without Space Age on 2.x): each way of making a map
+  reached InGame, and the game's own `/seed` and iron-ore control matched
+  the form. Real exchange strings made the right map. A preview drew every
+  planet and removed its container and folder. A settings save on a running
+  game took its snapshot and needed a restart (the new `max_players` showed
+  only after it). Admins promoted and demoted by RCON were written to the
+  game's file. Both Clone ways started. No page held a game password or the
+  RCON password, and no ERROR line was logged. `make test-game` now has
+  real-game tests for Generate and the first settings save, and `make
+  e2e-game` passed its two existing tests.
+- The real-game check refuted an old gap: the image does **not** write
+  example config files into a world on its first start. After a first start
+  `config/` held only `rconpw`, on 1.1.110, 2.0.77 and 2.1.24. The gap was
+  removed from Epic 4's list.
+- Code, security, accessibility and translation reviews ran over the epic.
+  Security found nothing high or medium; its one low finding (a preview's
+  game output in Foreman's log) was fixed. The other findings were fixed in
+  the fix round or filed (#220, #221).
+
+### Gaps left
+
+- Leftover preview containers and work folders, after a crash, are removed
+  at the next preview and not at startup.
+- Exchange-string values get structural range checks only (finite numbers,
+  booleans, UTF-8 and unique names), not the game's numeric bounds, so the
+  game can still refuse a string at create. The settings rules check
+  `map-gen-settings.json` and `map-settings.json` only for non-negative
+  numbers, and `water` and `terrain_segmentation` on 1.1 only.
+  `area_to_generate_at_start` is read from a string and not written.
+- Strings from 2.1.13 to 2.1.17 are untested: there is no local image for
+  those patches. A future layout change needs a new boundary constant in
+  `internal/mapexchange`.
+- The map data for the whole 2.1 line is read from 2.1.24, though
+  `map-settings.json` differs between 2.1 patches.
+- A fresh-map clone of a world that has already started has lost its
+  preset, so it uses default settings unless the source has
+  `map-gen-settings.json`.
+- A preset's map-settings (evolution, pollution) are not carried into
+  Custom. Filling the custom form from a preset needs script.
+- The partial save, where the files are written and the RCON promote or
+  demote then fails, is untested because the fake game cannot fail that
+  way.
+- `make e2e-game` has no real-game test for Generate, Clone or Settings.
+  They were checked by hand-run scripts and by the real-game tests in
+  `internal/game`. A preview picture was not compared with the generated
+  map.
+- A refused preview for a missing image has no download button, because
+  the image download belongs to a world and none exists yet.
+- Checkboxes inside form fields sit in a tall dark box (#187); it also
+  shows on Generate.
+- The Czech `worlds.import.download.hint` still says "obraz jeho hry".
+- The accessibility follow-ups are in #221. A French header at 200% text,
+  named in the review, did not reproduce.
+- Not built, by decision: public server listing (#206), editing
+  `map-settings.json` after creation (#207), whitelist enforcement, and a
+  check of a string's planets against the world's mods (the game's create
+  step reports that).
