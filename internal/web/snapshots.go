@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -94,10 +95,14 @@ func (p SnapshotsPage) hasErrors() bool { return p.LabelError != "" || p.Error !
 func (p RestorePage) hasErrors() bool   { return p.Error != "" || p.CountdownError != "" }
 
 // Problems lists the countdown field's error for the summary.
-func (p RestorePage) Problems() []Problem { return problems(Problem{"countdown", p.CountdownError}) }
+func (p RestorePage) Problems() []Problem {
+	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
+}
 
 // Problems lists the field errors for the summary (DESIGN 7.2).
-func (p SnapshotsPage) Problems() []Problem { return problems(Problem{"label", p.LabelError}) }
+func (p SnapshotsPage) Problems() []Problem {
+	return problems(Problem{"label", i18n.Raw(p.LabelError)})
+}
 
 // WorldPath links back to the world page.
 func (p SnapshotsPage) WorldPath() string { return worldPath(p.WorldID) }

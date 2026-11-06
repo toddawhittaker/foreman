@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -34,7 +35,7 @@ func (s *server) guardUpload(h func(http.ResponseWriter, *http.Request, store.Us
 	return func(w http.ResponseWriter, r *http.Request, u store.User) {
 		if r.ContentLength < 0 {
 			s.page(w, r, http.StatusLengthRequired, u.Username, ErrorPage{Status: http.StatusLengthRequired,
-				Detail: "Your browser did not say how big the file is. Try again from the upload form."})
+				Detail: i18n.Raw("Your browser did not say how big the file is. Try again from the upload form.")})
 			return
 		}
 		select {
@@ -42,7 +43,7 @@ func (s *server) guardUpload(h func(http.ResponseWriter, *http.Request, store.Us
 			defer func() { <-s.uploadSlots }()
 		default:
 			s.page(w, r, http.StatusTooManyRequests, u.Username, ErrorPage{Status: http.StatusTooManyRequests,
-				Detail: "Two uploads are already running. Wait for one to finish and try again."})
+				Detail: i18n.Raw("Two uploads are already running. Wait for one to finish and try again.")})
 			return
 		}
 		h(w, r, u)

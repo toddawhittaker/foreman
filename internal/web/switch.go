@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -61,7 +62,7 @@ func (p SwitchPage) hasErrors() bool    { return p.CountdownError != "" }
 
 // Problems lists the countdown field's error for the summary.
 func (p SwitchPage) Problems() []Problem {
-	return problems(Problem{"countdown", p.CountdownError})
+	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
 }
 
 // Paths the page posts to and links to.
@@ -197,7 +198,7 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 	if from == "" {
 		// A form without it cannot say what the admin was shown.
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest,
-			Detail: "The form does not say which world is active. Go back, reload the page and try again."})
+			Detail: i18n.Raw("The form does not say which world is active. Go back, reload the page and try again.")})
 		return
 	}
 	form, stop := readCountdown(r)

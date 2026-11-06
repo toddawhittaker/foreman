@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -74,12 +75,12 @@ func (p RollbackPage) hasErrors() bool { return p.CountdownError != "" }
 
 // Problems lists the field errors in the order the fields appear.
 func (p UpdatePage) Problems() []Problem {
-	return problems(Problem{"update-version", p.VersionError}, Problem{"countdown", p.CountdownError})
+	return problems(Problem{"update-version", i18n.Raw(p.VersionError)}, Problem{"countdown", i18n.Raw(p.CountdownError)})
 }
 
 // Problems lists the countdown field's error.
 func (p RollbackPage) Problems() []Problem {
-	return problems(Problem{"countdown", p.CountdownError})
+	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
 }
 
 // Label marks the stable and experimental releases in the suggestion list.

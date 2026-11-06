@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -17,6 +18,34 @@ const (
 	PathWorldDelete = "/worlds/{id}/delete"
 	PathDeleted     = "/deleted"
 )
+
+// WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).
+type WorldsPage struct {
+	Worlds []world.Summary
+	// Deleted names the world a delete just removed, for the message, and
+	// DeletedKept says whether its snapshots remain under Deleted worlds.
+	Deleted     string
+	DeletedKept bool
+	// Busy says what runs on a world, by world id, for the worlds a running
+	// operation is busy on. Switchable marks the worlds that get a Switch
+	// button. SwitchWait is set when a world has no button only because an
+	// operation is running. All are empty without server control.
+	Busy       map[string]string
+	Switchable map[string]bool
+	SwitchWait bool
+	// SnapshotAdds is the space each world's snapshots add, by world id
+	// (SPEC 6.6); a world with none has no entry. AddsUnknown is set when
+	// the count failed, and the list then says "unknown".
+	SnapshotAdds map[string]uint64
+	AddsUnknown  bool
+}
+
+// SwitchPath is where a world's Switch button goes.
+func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
+
+func (WorldsPage) templateName() string { return "worlds" }
+
+func (WorldsPage) navItem() string { return PathWorlds }
 
 func worldPath(id string) string  { return PathWorlds + "/" + id }
 func deletePath(id string) string { return worldPath(id) + "/delete" }
@@ -74,7 +103,7 @@ func (p WorldPage) hasErrors() bool { return p.NameError != "" }
 func (WorldsPage) ImportPath() string { return PathImport }
 
 // Problems lists the rename field's error.
-func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.NameError}) }
+func (p WorldPage) Problems() []Problem { return problems(Problem{"name", i18n.Raw(p.NameError)}) }
 
 // Paths the world page links and posts to.
 func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/rename" }
@@ -342,7 +371,9 @@ func (DeletedPage) navItem() string      { return PathWorlds }
 func (p DeletePage) hasErrors() bool { return p.NameError != "" || p.Error != "" }
 
 // Problems lists the name field's error for the summary.
-func (p DeletePage) Problems() []Problem { return problems(Problem{"confirm-name", p.NameError}) }
+func (p DeletePage) Problems() []Problem {
+	return problems(Problem{"confirm-name", i18n.Raw(p.NameError)})
+}
 
 // Refusal says why the world cannot be deleted, or is "" when it can.
 func (p DeletePage) Refusal() string { return deleteRefusal(p.World, p.Busy) }

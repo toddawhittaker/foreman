@@ -13,6 +13,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -458,7 +459,7 @@ func (s *server) startable(w http.ResponseWriter, r *http.Request, u store.User)
 	}
 	if !sum.Active {
 		s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict,
-			Detail: "Only the active world can be started. This world is not the active one."})
+			Detail: i18n.Raw("Only the active world can be started. This world is not the active one.")})
 		return world.Summary{}, false
 	}
 	return sum, true
@@ -480,7 +481,7 @@ func (s *server) beginOn(w http.ResponseWriter, r *http.Request, ids []string, h
 func (s *server) beginTo(w http.ResponseWriter, r *http.Request, to string, ids []string, holdsLock bool, do func(ctx context.Context) actionResult) bool {
 	if !s.runs.runOn(ids, holdsLock, do) {
 		s.page(w, r, http.StatusServiceUnavailable, "", ErrorPage{Status: http.StatusServiceUnavailable,
-			Detail: "Foreman is shutting down. Try again once it is back."})
+			Detail: i18n.Raw("Foreman is shutting down. Try again once it is back.")})
 		return false
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
@@ -623,7 +624,7 @@ func (p StopPage) hasErrors() bool    { return p.CountdownError != "" }
 
 // Problems lists the countdown field's error for the summary.
 func (p StopPage) Problems() []Problem {
-	return problems(Problem{"countdown", p.CountdownError})
+	return problems(Problem{"countdown", i18n.Raw(p.CountdownError)})
 }
 
 // Path is where the form posts.
@@ -756,7 +757,7 @@ func (s *server) handleCancelStop(w http.ResponseWriter, r *http.Request, u stor
 	}
 	if err != nil && !errors.Is(err, game.ErrNoCountdown) {
 		if status, msg, ok := s.gameRefusal(w, r, u, "cancel the stop", err); ok {
-			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: msg})
+			s.page(w, r, status, u.Username, ErrorPage{Status: status, Detail: i18n.Raw(msg)})
 		}
 		return
 	}

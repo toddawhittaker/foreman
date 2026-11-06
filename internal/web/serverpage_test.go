@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -16,7 +17,7 @@ import (
 func controlHTML(t *testing.T, p ServerPage) string {
 	t.Helper()
 	var b strings.Builder
-	if err := newTestRenderer(t).Fragment(&b, p, "server-control"); err != nil {
+	if err := newTestRenderer(t).Fragment(&b, i18n.English, p, "server-control"); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()
@@ -88,7 +89,7 @@ func TestPlayersPanelWhileStartingOrStopping(t *testing.T) {
 		game.StateCrashLooping: "Nobody can be online while the game is not running.",
 	} {
 		var b strings.Builder
-		if err := newTestRenderer(t).Fragment(&b, serverCase(state, func(*ServerPage) {}), "server-players"); err != nil {
+		if err := newTestRenderer(t).Fragment(&b, i18n.English, serverCase(state, func(*ServerPage) {}), "server-players"); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(b.String(), want) {

@@ -1,0 +1,54 @@
+{
+  "common.skip": "Przejdź do treści",
+  "common.error.label": "Błąd:",
+  "common.nav.label": "Menu główne",
+  "common.nav.server": "Serwer",
+  "common.nav.console": "Konsola",
+  "common.nav.worlds": "Światy",
+  "common.nav.snapshots": "Migawki",
+  "common.signedin": "Zalogowano jako {user}",
+  "common.signout": "Wyloguj",
+  "common.language.label": "Język",
+  "common.language.submit": "Zmień",
+  "common.countdown.label": "Odliczanie w sekundach",
+  "common.countdown.hint": "Gracze online zobaczą w grze ostrzeżenie, a potem gra zapisze stan i się zatrzyma. Od 0 do 600 sekund; 0 oznacza brak ostrzeżenia: gra od razu zapisze stan i się zatrzyma. Jeśli nikt nie jest online, nikt nie zostanie ostrzeżony.",
+  "common.summary.heading": {
+    "one": "Aby kontynuować, należy poprawić {count} problem",
+    "few": "Aby kontynuować, należy poprawić {count} problemy",
+    "many": "Aby kontynuować, należy poprawić {count} problemów"
+  },
+  "common.bytes.b": "{n} B",
+  "common.bytes.kb": "{n} kB",
+  "common.bytes.mb": "{n} MB",
+  "common.bytes.gb": "{n} GB",
+  "common.bytes.tb": "{n} TB",
+  "common.bytes.pb": "{n} PB",
+  "common.bytes.eb": "{n} EB",
+  "common.duration.seconds": {
+    "one": "{count} sekunda",
+    "few": "{count} sekundy",
+    "many": "{count} sekund"
+  },
+  "common.duration.minutes": {
+    "one": "{count} minuta",
+    "few": "{count} minuty",
+    "many": "{count} minut"
+  },
+  "common.duration.hours": {
+    "one": "{count} godzina",
+    "few": "{count} godziny",
+    "many": "{count} godzin"
+  },
+  "common.error.forbidden.heading": "Odmowa dostępu",
+  "common.error.forbidden.text": "Foreman odrzucił to żądanie. Po przejściu z linku na innej stronie należy otworzyć Foremana bezpośrednio i spróbować ponownie. Jeśli to się powtarza, należy poprosić osobę zarządzającą Foremanem o sprawdzenie dostępu.",
+  "common.error.notfound.heading": "Nie znaleziono strony",
+  "common.error.notfound.text": "Pod tym adresem nie ma strony. Należy sprawdzić adres albo przejść do strony głównej.",
+  "common.error.internal.heading": "Coś poszło nie tak",
+  "common.error.internal.text": "Foreman nie mógł dokończyć tego żądania. Szczegóły są w dzienniku Foremana. Należy spróbować ponownie, a jeśli znów się nie uda, sprawdzić dziennik.",
+  "common.error.other.heading": "Żądanie nie powiodło się",
+  "common.error.other.text": "Foreman nie mógł dokończyć tego żądania. Należy przejść do strony głównej i spróbować ponownie.",
+  "common.error.code": "Kod błędu {code}",
+  "common.error.home": "Przejdź do strony głównej",
+  "common.form.unreadable": "Foreman nie mógł odczytać formularza. Należy wrócić, odświeżyć stronę i spróbować ponownie.",
+  "common.form.too_large": "Formularz był za duży. Należy wrócić, odświeżyć stronę i spróbować ponownie."
+}

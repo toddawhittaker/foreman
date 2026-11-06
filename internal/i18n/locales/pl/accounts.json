@@ -1,0 +1,53 @@
+{
+  "accounts.username.label": "Nazwa użytkownika",
+  "accounts.password.label": "Hasło",
+  "accounts.username.missing": "Należy podać nazwę użytkownika",
+  "accounts.username.long": {
+    "one": "Dozwolony jest najwyżej {count} znak",
+    "few": "Dozwolone są najwyżej {count} znaki",
+    "many": "Dozwolonych jest najwyżej {count} znaków"
+  },
+  "accounts.username.control": "Należy usunąć znaki sterujące z nazwy użytkownika",
+  "accounts.signin.title": "Logowanie",
+  "accounts.signin.submit": "Zaloguj",
+  "accounts.signin.ratelimited.unknown": "Zbyt wiele nieudanych logowań. Należy odczekać kilka minut i spróbować ponownie.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Zbyt wiele nieudanych logowań. Należy odczekać {count} minutę i spróbować ponownie.",
+    "few": "Zbyt wiele nieudanych logowań. Należy odczekać {count} minuty i spróbować ponownie.",
+    "many": "Zbyt wiele nieudanych logowań. Należy odczekać {count} minut i spróbować ponownie."
+  },
+  "accounts.signin.busy": "Foreman jest zajęty. Należy chwilę odczekać i spróbować ponownie.",
+  "accounts.signin.bad": "Nazwa użytkownika lub hasło są nieprawidłowe. Należy sprawdzić oba pola i spróbować ponownie.",
+  "accounts.signin.username.missing": "Należy podać nazwę użytkownika",
+  "accounts.signin.password.missing": "Należy podać hasło",
+  "accounts.setup.title": "Tworzenie pierwszego konta administratora",
+  "accounts.setup.intro": "Foreman nie ma jeszcze żadnych kont. Utworzone tutaj konto może w Foremanie wszystko. Ta strona zostanie zamknięta, gdy tylko konto powstanie.",
+  "accounts.setup.password.hint": {
+    "one": "Wymagany jest co najmniej {count} znak.",
+    "few": "Wymagane są co najmniej {count} znaki.",
+    "many": "Wymaganych jest co najmniej {count} znaków."
+  },
+  "accounts.setup.password.missing": "Należy podać hasło",
+  "accounts.setup.password.long": {
+    "one": "Dozwolony jest najwyżej {count} bajt",
+    "few": "Dozwolone są najwyżej {count} bajty",
+    "many": "Dozwolonych jest najwyżej {count} bajtów"
+  },
+  "accounts.setup.password.short": {
+    "one": "Wymagany jest co najmniej {count} znak",
+    "few": "Wymagane są co najmniej {count} znaki",
+    "many": "Wymaganych jest co najmniej {count} znaków"
+  },
+  "accounts.setup.confirm.label": "Potwierdzenie hasła",
+  "accounts.setup.confirm.missing": "Należy podać hasło ponownie",
+  "accounts.setup.confirm.mismatch": "W obu polach należy podać to samo hasło",
+  "accounts.setup.submit": "Utwórz konto administratora",
+  "accounts.signedout.title": "Wylogowano",
+  "accounts.signedout.heading": "Wylogowano",
+  "accounts.signedout.text": "Sesja na tym urządzeniu została zakończona.",
+  "accounts.signedout.again": "Zaloguj ponownie",
+  "accounts.proxy.refused": "To konto nie ma uprawnień do korzystania z Foremana. Należy poprosić osobę zarządzającą Foremanem o nadanie dostępu.",
+  "accounts.proxy.waiting": "Foreman nie może jeszcze przyjmować logowań przez proxy, ponieważ nie zna jeszcze sieci kontenera gry. Należy spróbować ponownie za minutę.",
+  "accounts.proxy.waiting_local": "Foreman nie może jeszcze przyjmować logowań przez proxy, ponieważ nie zna jeszcze sieci kontenera gry. Należy spróbować ponownie za minutę. Logowanie hasłem nadal działa: wystarczy otworzyć {path}.",
+  "accounts.proxy.missing": "Foreman nie otrzymał logowania od proxy. Należy zalogować się przez proxy, a potem ponownie otworzyć tę stronę."
+}

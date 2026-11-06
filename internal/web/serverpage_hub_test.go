@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -24,7 +25,7 @@ import (
 func fragmentHTML(t *testing.T, p ServerPage, name string) string {
 	t.Helper()
 	var b strings.Builder
-	if err := newTestRenderer(t).Fragment(&b, p, name); err != nil {
+	if err := newTestRenderer(t).Fragment(&b, i18n.English, p, name); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()

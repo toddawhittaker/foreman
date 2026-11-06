@@ -1,0 +1,53 @@
+{
+  "accounts.username.label": "Имя пользователя",
+  "accounts.password.label": "Пароль",
+  "accounts.username.missing": "Введите имя пользователя",
+  "accounts.username.long": {
+    "one": "Используйте не более {count} символа",
+    "few": "Используйте не более {count} символов",
+    "many": "Используйте не более {count} символов"
+  },
+  "accounts.username.control": "Уберите управляющие символы из имени пользователя",
+  "accounts.signin.title": "Вход",
+  "accounts.signin.submit": "Войти",
+  "accounts.signin.ratelimited.unknown": "Слишком много неудачных попыток входа. Подождите несколько минут и попробуйте снова.",
+  "accounts.signin.ratelimited.minutes": {
+    "one": "Слишком много неудачных попыток входа. Подождите {count} минуту и попробуйте снова.",
+    "few": "Слишком много неудачных попыток входа. Подождите {count} минуты и попробуйте снова.",
+    "many": "Слишком много неудачных попыток входа. Подождите {count} минут и попробуйте снова."
+  },
+  "accounts.signin.busy": "Foreman занят. Подождите немного и попробуйте снова.",
+  "accounts.signin.bad": "Неверное имя пользователя или пароль. Проверьте оба поля и попробуйте снова.",
+  "accounts.signin.username.missing": "Введите ваше имя пользователя",
+  "accounts.signin.password.missing": "Введите ваш пароль",
+  "accounts.setup.title": "Создание первой учётной записи администратора",
+  "accounts.setup.intro": "В Foreman ещё нет учётных записей. Учётная запись, которую вы создадите здесь, может делать в Foreman всё. Эта страница закроется, как только учётная запись появится.",
+  "accounts.setup.password.hint": {
+    "one": "Используйте не менее {count} символа.",
+    "few": "Используйте не менее {count} символов.",
+    "many": "Используйте не менее {count} символов."
+  },
+  "accounts.setup.password.missing": "Введите пароль",
+  "accounts.setup.password.long": {
+    "one": "Используйте не более {count} байта",
+    "few": "Используйте не более {count} байтов",
+    "many": "Используйте не более {count} байтов"
+  },
+  "accounts.setup.password.short": {
+    "one": "Используйте не менее {count} символа",
+    "few": "Используйте не менее {count} символов",
+    "many": "Используйте не менее {count} символов"
+  },
+  "accounts.setup.confirm.label": "Подтверждение пароля",
+  "accounts.setup.confirm.missing": "Введите пароль ещё раз",
+  "accounts.setup.confirm.mismatch": "Введите один и тот же пароль в оба поля",
+  "accounts.setup.submit": "Создать учётную запись администратора",
+  "accounts.signedout.title": "Выход выполнен",
+  "accounts.signedout.heading": "Вы вышли",
+  "accounts.signedout.text": "Ваш сеанс на этом устройстве завершён.",
+  "accounts.signedout.again": "Войти снова",
+  "accounts.proxy.refused": "Вашей учётной записи не разрешено пользоваться Foreman. Попросите того, кто управляет Foreman, дать вам доступ.",
+  "accounts.proxy.waiting": "Foreman пока не может принять вход через прокси, потому что ещё не видел сети игрового контейнера. Попробуйте снова через минуту.",
+  "accounts.proxy.waiting_local": "Foreman пока не может принять вход через прокси, потому что ещё не видел сети игрового контейнера. Попробуйте снова через минуту. Вход по паролю по-прежнему работает: откройте {path}.",
+  "accounts.proxy.missing": "Foreman не получил ваш вход от прокси. Войдите через прокси, затем откройте эту страницу снова."
+}

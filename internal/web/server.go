@@ -2,15 +2,18 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -134,6 +137,7 @@ func NewHandler(d Deps) (*Handler, error) {
 	}
 	var h http.Handler = s.mux
 	h = cop.Handler(h)
+	h = withLocale(h)
 	h = s.limitBody(h)
 	h = s.recoverPanic(h)
 	h = s.accessLog(h)
@@ -148,6 +152,7 @@ func (s *server) routes() {
 	s.mux.Handle("GET "+PathStatic, s.render.Static())
 	s.mux.HandleFunc("GET "+PathSignedOut, s.handleSignedOut)
 	s.mux.HandleFunc("POST "+PathSignOut, s.handleSignOut)
+	s.mux.HandleFunc("POST "+PathLanguage, s.handleLanguage)
 	s.gameRoutes()
 	s.consoleRoutes()
 	s.worldRoutes()
@@ -200,12 +205,12 @@ func NewHTTPServer(addr string, h http.Handler) *http.Server {
 
 // page renders p. If rendering fails it logs the error and sends a plain 500.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
-	err := s.render.Render(w, status, user, p)
+	err := s.render.Render(w, r, status, user, p)
 	if err == nil {
 		return
 	}
 	s.log.Error("render page", "method", r.Method, "path", r.URL.Path, "error", err)
-	if rerr := s.render.Render(w, http.StatusInternalServerError, "", ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
+	if rerr := s.render.Render(w, r, http.StatusInternalServerError, "", ErrorPage{Status: http.StatusInternalServerError}); rerr != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
@@ -221,4 +226,84 @@ func (s *server) fail(w http.ResponseWriter, r *http.Request, what string, err e
 
 func (s *server) handleSignedOut(w http.ResponseWriter, r *http.Request) {
 	s.page(w, r, http.StatusOK, "", SignedOutPage{})
+}
+
+// LangCookie holds the language the menu chose, as a supported BCP 47 tag
+// (SPEC 22.2).
+const LangCookie = "foreman_lang"
+
+type localeKey struct{}
+
+// withLocale picks each request's language, from the cookie first and then
+// Accept-Language, and stores it in the request's context.
+func withLocale(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var chosen string
+		if c, err := r.Cookie(LangCookie); err == nil {
+			chosen = c.Value
+		}
+		loc := i18n.Match(chosen, r.Header.Get("Accept-Language"))
+		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), localeKey{}, loc)))
+	})
+}
+
+// localeOf is the language r is answered in; English when none was picked.
+func localeOf(r *http.Request) i18n.Locale {
+	if loc, ok := r.Context().Value(localeKey{}).(i18n.Locale); ok {
+		return loc
+	}
+	return i18n.English
+}
+
+// handleLanguage stores the menu's choice in a cookie and goes back to the
+// page the menu was on (SPEC 22.2). It needs no sign-in, so the sign-in
+// page can be read in any language.
+func (s *server) handleLanguage(w http.ResponseWriter, r *http.Request) {
+	if !s.readForm(w, r) {
+		return
+	}
+	loc, ok := i18n.Parse(r.PostFormValue("lang"))
+	if !ok {
+		s.page(w, r, http.StatusBadRequest, "", ErrorPage{Status: http.StatusBadRequest})
+		return
+	}
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows the configuration, as the session cookie does
+		Name:     LangCookie,
+		Value:    loc.String(),
+		Path:     "/",
+		MaxAge:   365 * 24 * 60 * 60,
+		HttpOnly: true,
+		Secure:   s.cfg.SecureCookies(),
+		SameSite: http.SameSiteLaxMode,
+	})
+	to := languageReturn(r.PostFormValue("return"))
+	if to == "" {
+		to = "/"
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// languageReturn is where the language menu sends the browser back to:
+// what returnPath allows (SPEC 14.17), and also the sign-in, setup and
+// signed-out pages, which returnPath refuses only so a sign-in cannot
+// return to itself. For those it returns Foreman's own path, never the
+// input, keeping only a sign-in's next once it passes returnPath.
+func languageReturn(p string) string {
+	if safe := returnPath(p); safe != "" {
+		return safe
+	}
+	u, err := url.Parse(p)
+	if err != nil {
+		return ""
+	}
+	switch u.Path {
+	case PathSetup, PathSignedOut:
+		return u.Path
+	case PathSignIn:
+		if next := returnPath(u.Query().Get("next")); next != "" {
+			return PathSignIn + "?next=" + url.QueryEscape(next)
+		}
+		return PathSignIn
+	}
+	return ""
 }

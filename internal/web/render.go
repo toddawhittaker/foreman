@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/world"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 // Paths the templates link to or post to. The router serves these.
@@ -24,6 +24,7 @@ const (
 	PathSetup     = "/setup"
 	PathSignOut   = "/signout"
 	PathSignedOut = "/signed-out"
+	PathLanguage  = "/language"
 	PathStatic    = "/static/"
 )
 
@@ -35,7 +36,12 @@ var templateFS embed.FS
 //go:embed static
 var staticFS embed.FS
 
-// Page is the view model of one full page. Only the types in this file
+// jsKeys lists the catalogue keys the page scripts use; layout.html puts
+// their text in the #i18n JSON block. jsstrings.go fills it in an init
+// function, so the scripts' keys live in one file of their own.
+var jsKeys []string
+
+// Page is the view model of one full page. Only the types in this package
 // implement it, so a page can never be rendered with another page's data.
 type Page interface {
 	templateName() string
@@ -45,36 +51,12 @@ type Page interface {
 // the field at fault and the same words as that field's error.
 type Problem struct {
 	FieldID string
-	Message string
+	Message i18n.Msg
 }
 
 // maxListRows is how many rows a saves or snapshots table shows before
 // "Show older".
 const maxListRows = 50
-
-// WorldsPage is the world list (SPEC 5.4, DESIGN 8.2).
-type WorldsPage struct {
-	Worlds []world.Summary
-	// Deleted names the world a delete just removed, for the message, and
-	// DeletedKept says whether its snapshots remain under Deleted worlds.
-	Deleted     string
-	DeletedKept bool
-	// Busy says what runs on a world, by world id, for the worlds a running
-	// operation is busy on. Switchable marks the worlds that get a Switch
-	// button. SwitchWait is set when a world has no button only because an
-	// operation is running. All are empty without server control.
-	Busy       map[string]string
-	Switchable map[string]bool
-	SwitchWait bool
-	// SnapshotAdds is the space each world's snapshots add, by world id
-	// (SPEC 6.6); a world with none has no entry. AddsUnknown is set when
-	// the count failed, and the list then says "unknown".
-	SnapshotAdds map[string]uint64
-	AddsUnknown  bool
-}
-
-// SwitchPath is where a world's Switch button goes.
-func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
 
 // SignedOutPage confirms that sign-out ended the session (SPEC 12.8).
 type SignedOutPage struct{}
@@ -84,8 +66,8 @@ type SignInPage struct {
 	// Username refills the field after a failed attempt. The password is
 	// never sent back.
 	Username      string
-	UsernameError string
-	PasswordError string
+	UsernameError i18n.Msg
+	PasswordError i18n.Msg
 	// Next is the page to return to after signing in; empty means home
 	// (SPEC 14.17). It has already passed returnPath.
 	Next string
@@ -101,9 +83,9 @@ type SignInPage struct {
 // SetupPage creates the first admin account on first run (SPEC 12.3).
 type SetupPage struct {
 	Username      string
-	UsernameError string
-	PasswordError string
-	ConfirmError  string
+	UsernameError i18n.Msg
+	PasswordError i18n.Msg
+	ConfirmError  i18n.Msg
 	// MinPasswordLength, when above zero, is shown as a hint on the
 	// password field.
 	MinPasswordLength int
@@ -114,10 +96,9 @@ type SetupPage struct {
 // must never contain a secret or an internal error string.
 type ErrorPage struct {
 	Status int
-	Detail string
+	Detail i18n.Msg
 }
 
-func (WorldsPage) templateName() string    { return "worlds" }
 func (SignedOutPage) templateName() string { return "signedout" }
 func (SignInPage) templateName() string    { return "signin" }
 func (SetupPage) templateName() string     { return "setup" }
@@ -125,8 +106,6 @@ func (ErrorPage) templateName() string     { return "error" }
 
 func (p SignInPage) hasErrors() bool { return p.RateLimited || p.Busy || len(p.Problems()) > 0 }
 func (p SetupPage) hasErrors() bool  { return len(p.Problems()) > 0 }
-
-func (WorldsPage) navItem() string { return PathWorlds }
 
 // Problems lists the field errors in the order the fields appear.
 func (p SignInPage) Problems() []Problem {
@@ -139,16 +118,13 @@ func (p SignInPage) Problems() []Problem {
 	)
 }
 
-// Wait says how long to wait before trying to sign in again.
-func (p SignInPage) Wait() string {
+// RateLimitMessage says how long to wait before trying to sign in again.
+func (p SignInPage) RateLimitMessage() i18n.Msg {
 	if p.RetryAfter <= 0 {
-		return "a few minutes"
+		return i18n.M("accounts.signin.ratelimited.unknown")
 	}
 	m := int((p.RetryAfter + time.Minute - 1) / time.Minute)
-	if m == 1 {
-		return "1 minute"
-	}
-	return fmt.Sprintf("%d minutes", m)
+	return i18n.M("accounts.signin.ratelimited.minutes", "count", m)
 }
 
 // Problems lists the field errors in the order the fields appear.
@@ -167,7 +143,7 @@ func (p SetupPage) PasswordDescribedBy() string {
 	if p.MinPasswordLength > 0 {
 		ids = append(ids, "password-hint")
 	}
-	if p.PasswordError != "" {
+	if !p.PasswordError.IsZero() {
 		ids = append(ids, "password-error")
 	}
 	return strings.Join(ids, " ")
@@ -176,7 +152,7 @@ func (p SetupPage) PasswordDescribedBy() string {
 func problems(all ...Problem) []Problem {
 	var out []Problem
 	for _, pr := range all {
-		if pr.Message != "" {
+		if !pr.Message.IsZero() {
 			out = append(out, pr)
 		}
 	}
@@ -184,33 +160,33 @@ func problems(all ...Problem) []Problem {
 }
 
 // Heading is the page's h1 and title for its status.
-func (p ErrorPage) Heading() string {
+func (p ErrorPage) Heading() i18n.Msg {
 	switch p.Status {
 	case http.StatusForbidden:
-		return "Access refused"
+		return i18n.M("common.error.forbidden.heading")
 	case http.StatusNotFound:
-		return "Page not found"
+		return i18n.M("common.error.notfound.heading")
 	case http.StatusInternalServerError:
-		return "Something went wrong"
+		return i18n.M("common.error.internal.heading")
 	default:
-		return "Request failed"
+		return i18n.M("common.error.other.heading")
 	}
 }
 
 // Explanation says what happened and what to do next (DESIGN 9).
-func (p ErrorPage) Explanation() string {
-	if p.Detail != "" {
+func (p ErrorPage) Explanation() i18n.Msg {
+	if !p.Detail.IsZero() {
 		return p.Detail
 	}
 	switch p.Status {
 	case http.StatusForbidden:
-		return "Foreman refused this request. If you followed a link from another site, open Foreman directly and try again. If it keeps happening, ask the person who runs Foreman to check your access."
+		return i18n.M("common.error.forbidden.text")
 	case http.StatusNotFound:
-		return "There is no page at this address. Check the address, or go to the home page."
+		return i18n.M("common.error.notfound.text")
 	case http.StatusInternalServerError:
-		return "Foreman could not finish this request. The details are in Foreman's log. Try again, and if it fails again, check the log."
+		return i18n.M("common.error.internal.text")
 	default:
-		return "Foreman could not finish this request. Go to the home page and try again."
+		return i18n.M("common.error.other.text")
 	}
 }
 
@@ -219,6 +195,9 @@ func (p ErrorPage) Explanation() string {
 type view struct {
 	User string
 	Page Page
+	// Return is the page the language menu comes back to: this page's
+	// address for a GET, else empty, which means home.
+	Return string
 }
 
 // Current is true when the nav link to path names this page, so it gets
@@ -257,25 +236,21 @@ var staticTypes = map[string]string{
 	".js":  "text/javascript; charset=utf-8",
 }
 
-// Renderer holds the parsed templates and the embedded static files.
+// Renderer holds the parsed templates, once per language, and the
+// embedded static files.
 type Renderer struct {
-	pages  map[string]*template.Template
+	pages  map[i18n.Locale]map[string]*template.Template
 	static map[string]staticFile
 }
 
-// NewRenderer parses every template and hashes every static file once.
-func NewRenderer() (*Renderer, error) {
-	r := &Renderer{pages: map[string]*template.Template{}, static: map[string]staticFile{}}
-	if err := r.loadStatic(); err != nil {
-		return nil, err
-	}
-	funcs := template.FuncMap{
+// sharedFuncs are the template functions that do not depend on the language.
+func (r *Renderer) sharedFuncs() template.FuncMap {
+	return template.FuncMap{
 		"static":           r.staticURL,
 		"serverPath":       func() string { return PathServer },
 		"consolePath":      func() string { return PathConsole },
 		"worldsPath":       func() string { return PathWorlds },
 		"snapshotsTabPath": func() string { return PathSnapshots },
-		"bytes":            world.FormatBytes,
 		"utc":              func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":          func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
@@ -289,24 +264,88 @@ func NewRenderer() (*Renderer, error) {
 		"setupPath":     func() string { return PathSetup },
 		"signOutPath":   func() string { return PathSignOut },
 		"signedOutPath": func() string { return PathSignedOut },
+		"languagePath":  func() string { return PathLanguage },
+		"languages":     func() []i18n.Language { return i18n.Languages },
+	}
+}
+
+// localeFuncs are the template functions that speak loc's language
+// (SPEC 22.3, 22.4).
+func localeFuncs(loc i18n.Locale) template.FuncMap {
+	return template.FuncMap{
+		// t translates a key: {{t "common.signout"}}, or with arguments
+		// {{t "common.signedin" "user" .User}}.
+		"t": loc.T,
+		// tHTML is one sentence with markup at its placeholders, from link
+		// and code: {{tHTML "key" "link" (link "/href" "linkKey") "file" (code .Path)}}.
+		"tHTML": loc.HTML,
+		"link":  loc.Link,
+		"code":  i18n.Code,
+		// msg renders an i18n.Msg from a view model.
+		"msg":      loc.Format,
+		"bytes":    loc.Bytes,
+		"num":      loc.Num,
+		"duration": loc.Duration,
+		"lang":     loc.String,
+		"jsStrings": func() map[string]any {
+			out := make(map[string]any, len(jsKeys))
+			for _, k := range jsKeys {
+				out[k] = loc.Entry(k)
+			}
+			return out
+		},
+	}
+}
+
+// NewRenderer parses every template once, makes a copy for each language
+// with that language's functions, and hashes every static file once.
+func NewRenderer() (*Renderer, error) {
+	r := &Renderer{pages: map[i18n.Locale]map[string]*template.Template{}, static: map[string]staticFile{}}
+	if err := r.loadStatic(); err != nil {
+		return nil, err
+	}
+	funcs := r.sharedFuncs()
+	for k, f := range localeFuncs(i18n.English) {
+		funcs[k] = f
 	}
 	files, err := fs.Glob(templateFS, "templates/*.html")
 	if err != nil {
 		return nil, err
+	}
+	for _, l := range i18n.Languages {
+		r.pages[l.Tag] = map[string]*template.Template{}
 	}
 	for _, f := range files {
 		name := strings.TrimSuffix(path.Base(f), ".html")
 		if name == "layout" {
 			continue
 		}
-		t, err := template.New(name).Funcs(funcs).ParseFS(templateFS,
+		base, err := template.New(name).Funcs(funcs).ParseFS(templateFS,
 			"templates/layout.html", "templates/"+name+".html")
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", name, err)
 		}
-		r.pages[name] = t
+		for _, l := range i18n.Languages {
+			t, err := base.Clone()
+			if err != nil {
+				return nil, fmt.Errorf("copy template %s: %w", name, err)
+			}
+			r.pages[l.Tag][name] = t.Funcs(localeFuncs(l.Tag))
+		}
 	}
 	return r, nil
+}
+
+func (r *Renderer) template(loc i18n.Locale, p Page) (*template.Template, error) {
+	pages, ok := r.pages[loc]
+	if !ok {
+		pages = r.pages[i18n.English]
+	}
+	t, ok := pages[p.templateName()]
+	if !ok {
+		return nil, fmt.Errorf("no template for %T", p)
+	}
+	return t, nil
 }
 
 func (r *Renderer) loadStatic() error {
@@ -342,17 +381,22 @@ func (r *Renderer) staticURL(name string) (string, error) {
 	return PathStatic + name + "?v=" + f.hash, nil
 }
 
-// Render writes page p as a complete HTML document with the given status.
-// user is the signed-in username, or empty to hide the sign-out form. The
-// page is rendered in full before anything is written, so on error the
-// response is untouched and the caller can still send an ErrorPage.
-func (r *Renderer) Render(w http.ResponseWriter, status int, user string, p Page) error {
-	t, ok := r.pages[p.templateName()]
-	if !ok {
-		return fmt.Errorf("no template for %T", p)
+// Render writes page p as a complete HTML document with the given status,
+// in the language of req (localeOf). user is the signed-in username, or
+// empty to hide the sign-out form. The page is rendered in full before
+// anything is written, so on error the response is untouched and the
+// caller can still send an ErrorPage.
+func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, p Page) error {
+	t, err := r.template(localeOf(req), p)
+	if err != nil {
+		return err
+	}
+	v := view{User: user, Page: p}
+	if req.Method == http.MethodGet {
+		v.Return = req.URL.RequestURI()
 	}
 	var buf bytes.Buffer
-	if err := t.ExecuteTemplate(&buf, "layout", view{User: user, Page: p}); err != nil {
+	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
 	}
 	h := w.Header()
@@ -362,17 +406,19 @@ func (r *Renderer) Render(w http.ResponseWriter, status int, user string, p Page
 	// Pages carry sign-in forms, so no other site may frame them.
 	h.Set("Content-Security-Policy", "frame-ancestors 'none'")
 	h.Set("X-Frame-Options", "DENY")
+	// The language follows a cookie and the request's Accept-Language.
+	h.Set("Vary", "Cookie, Accept-Language")
 	w.WriteHeader(status)
-	_, err := buf.WriteTo(w)
+	_, err = buf.WriteTo(w)
 	return err
 }
 
-// Fragment writes one named template of page p on its own, for a live
-// update of part of the page.
-func (r *Renderer) Fragment(w io.Writer, p Page, name string) error {
-	t, ok := r.pages[p.templateName()]
-	if !ok {
-		return fmt.Errorf("no template for %T", p)
+// Fragment writes one named template of page p on its own, in loc's
+// language, for a live update of part of the page.
+func (r *Renderer) Fragment(w io.Writer, loc i18n.Locale, p Page, name string) error {
+	t, err := r.template(loc, p)
+	if err != nil {
+		return err
 	}
 	return t.ExecuteTemplate(w, name, p)
 }
