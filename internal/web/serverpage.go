@@ -47,15 +47,24 @@ type ServerPage struct {
 	// StartAnywaySnap is the newest "Before start anyway" snapshot, which a
 	// crash loop offers to restore (SPEC 17.9); set only while crash-looping.
 	StartAnywaySnap *world.Snapshot
-	// OtherWorlds are the worlds the page offers to switch to (SPEC 17.7).
-	OtherWorlds []world.Summary
+	// JoinAddress is the host:port players join, from FOREMAN_PUBLIC_ADDRESS;
+	// "" hides the line (SPEC 3.2).
+	JoinAddress string
+	// Live is set for a live update, whose facts also carry the heading's
+	// state badge out of band (DESIGN 7.5).
+	Live bool
 	// FocusResult is true when this load follows the admin's own cancel stop
 	// or snapshot, so the Done message takes focus and is read out.
 	FocusResult bool
 }
 
+// navPage marks a nav item as the page itself rather than a page inside its
+// section, so the layout can tell aria-current "page" from "true" (DESIGN 6).
+// The layout writes the same suffix.
+const navPage = "#page"
+
 func (ServerPage) templateName() string { return "server" }
-func (ServerPage) navItem() string      { return PathServer }
+func (ServerPage) navItem() string      { return PathServer + navPage }
 
 func (p ServerPage) liveURL() string {
 	if !p.HasWorld {

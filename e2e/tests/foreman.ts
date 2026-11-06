@@ -212,6 +212,26 @@ export async function createAdmin(page: Page) {
   await expect(page).toHaveURL("/");
 }
 
+// Opens the user menu at the top right, which holds the languages and Sign
+// out (DESIGN 6, "User menu").
+export async function openMenu(page: Page) {
+  const menu = page.locator("details.menu");
+  if (!(await menu.evaluate((el: HTMLDetailsElement) => el.open))) await menu.locator("summary").click();
+}
+
+// Signs out through the user menu: two clicks (DESIGN 6).
+export async function signOut(page: Page, name = "Sign out") {
+  await openMenu(page);
+  await page.getByRole("button", { name }).click();
+}
+
+// Picks a language in the user menu by its tag, such as "de": one of the
+// eight submit buttons to POST /language (SPEC 22.2).
+export async function pickLanguage(page: Page, tag: string) {
+  await openMenu(page);
+  await page.locator(`details.menu button[name="lang"][value="${tag}"]`).click();
+}
+
 // A zip of stored (uncompressed) entries, enough for Foreman to read its directory.
 export function makeZip(entries: Record<string, string>): Buffer {
   const parts: Buffer[] = [];

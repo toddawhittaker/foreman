@@ -21,16 +21,23 @@ func wantIn(t *testing.T, what, body string, wants ...string) {
 	}
 }
 
-// DESIGN 7.3: the Worlds tab is marked current on every page about worlds.
+// DESIGN 6: the Worlds tab is the current page only on the world list; on
+// every other page about worlds it marks the section, so a screen reader is
+// not told it is on the list.
 func TestWorldsTabIsCurrentOnWorldPages(t *testing.T) {
 	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldsPage{}})
+	wantIn(t, "worlds", body, `<a href="/worlds" aria-current="page">Worlds</a>`)
 	for _, p := range []Page{
-		WorldsPage{}, WorldPage{World: world.Summary{ID: "base", Name: "Base"}}, ImportPage{},
+		WorldPage{World: world.Summary{ID: "base", Name: "Base"}}, ImportPage{},
 		SavesPage{WorldName: "Base"}, snapshotsCase(), RestorePage{WorldID: "base", WorldName: "Base"},
 		DeletePage{World: world.Summary{ID: "base", Name: "Base"}}, DeletedPage{},
 	} {
 		_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
-		wantIn(t, p.templateName(), body, `<a href="/worlds" aria-current="page">Worlds</a>`)
+		wantIn(t, p.templateName(), body, `<a href="/worlds" aria-current="true">Worlds</a>`)
+		if nav := between(body, `<nav aria-label="Main">`, `</nav>`); strings.Contains(nav, `aria-current="page"`) {
+			t.Errorf("%s: a main nav link claims to be this page", p.templateName())
+		}
 	}
 }
 
@@ -43,11 +50,8 @@ func TestBackLinks(t *testing.T) {
 		page Page
 		want string
 	}{
-		{WorldPage{World: sum}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
 		{ImportPage{}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
 		{DeletedPage{}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
-		{SavesPage{WorldName: "Base", WorldHref: "/worlds/base"}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
-		{snapshotsCase(), `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
 		{RestorePage{WorldID: "base", WorldName: "Base"}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
 		{RestorePage{WorldID: "base", WorldName: "Base", Deleted: true}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
 		{DeletePage{World: sum}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
@@ -57,6 +61,51 @@ func TestBackLinks(t *testing.T) {
 	}
 }
 
+// DESIGN 6: a world's pages are tabs of one another, in place of a "Back to"
+// link; only the page shown is marked current.
+func TestWorldTabs(t *testing.T) {
+	r := newTestRenderer(t)
+	for current, p := range map[string]Page{
+		"overview":  WorldPage{World: world.Summary{ID: "base", Name: "Base"}},
+		"saves":     SavesPage{WorldName: "Base", WorldHref: "/worlds/base"},
+		"snapshots": snapshotsCase(),
+	} {
+		_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+		tabs := between(body, `<nav class="subnav" aria-label="World pages">`, `</nav>`)
+		for tab, href := range map[string]string{"overview": "/worlds/base", "saves": "/worlds/base/saves", "snapshots": "/worlds/base/snapshots", "settings": "/worlds/base/settings"} {
+			mark := ""
+			if tab == current {
+				mark = ` aria-current="page"`
+			}
+			wantIn(t, current, tabs, `<a href="`+href+`"`+mark+`>`)
+		}
+		if n := strings.Count(tabs, `aria-current`); n != 1 {
+			t.Errorf("%s: %d tabs marked current", current, n)
+		}
+		if strings.Contains(body, "Back to") {
+			t.Errorf("%s: still has a Back to link", current)
+		}
+	}
+	// A world a newer Foreman wrote has no settings to show.
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldPage{World: world.Summary{ID: "base", Name: "Base", Newer: true}}})
+	if strings.Contains(body, `href="/worlds/base/settings"`) {
+		t.Error("a newer world's page links to its settings")
+	}
+}
+
+// between returns the text of s from the first start to the next end, or "".
+func between(s, start, end string) string {
+	i := strings.Index(s, start)
+	if i < 0 {
+		return ""
+	}
+	j := strings.Index(s[i:], end)
+	if j < 0 {
+		return ""
+	}
+	return s[i : i+j]
+}
+
 // SPEC 5.10, 6.6: the world page links to its delete confirmation, the
 // list to the deleted worlds, and an unmeasured size says so.
 func TestWorldLinksAndUnknownSize(t *testing.T) {
@@ -64,7 +113,7 @@ func TestWorldLinksAndUnknownSize(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, user: "todd", page: WorldPage{World: world.Summary{ID: "base", Name: "Base", SizeUnknown: true}}})
 	wantIn(t, "world page", body, `href="/worlds/base/delete"`, ">Delete world<", "<dd>unknown</dd>")
 	_, body = render(t, r, pageCase{status: 200, user: "todd", page: WorldsPage{Worlds: []world.Summary{{ID: "a", Name: "A", SizeUnknown: true}}}})
-	wantIn(t, "world list", body, `href="/deleted"`, `<dd>unknown<span class="visually-hidden">,</span> <span class="fact-note">snapshots add 0 B</span></dd>`)
+	wantIn(t, "world list", body, `href="/deleted"`, `<dd>unknown<span class="visually-hidden">,</span> <span class="fact-note">snapshots add <span class="nowrap">0 B</span></span></dd>`)
 }
 
 // A saves folder that cannot be read says "unknown", not "Never".

@@ -132,10 +132,10 @@ func TestLanguageMenu(t *testing.T) {
 	hn.addUser("alice", testPassword)
 	body := hn.get(PathSignIn+"?next=%2Fworlds", withHeader("Accept-Language", "de")).Body.String()
 	for _, want := range []string{
-		`<form method="post" action="/language" class="language">`,
-		`<label for="language">Sprache <span lang="en">(Language)</span></label>`,
-		`<option value="de" lang="de" selected>Deutsch</option>`,
-		`<option value="zh-Hans" lang="zh-Hans">简体中文</option>`,
+		`<form method="post" action="/language">`,
+		`<legend>Sprache <span lang="en">(Language)</span></legend>`,
+		`<button type="submit" name="lang" value="de" lang="de" class="menu__item" aria-current="true">Deutsch</button>`,
+		`<button type="submit" name="lang" value="zh-Hans" lang="zh-Hans" class="menu__item">简体中文</button>`,
 		`<input type="hidden" name="return" value="/signin?next=%2Fworlds">`,
 		`<script type="application/json" id="i18n">{`,
 		`"common.label.note":"Hinweis:"`,
@@ -153,10 +153,10 @@ func TestLanguageMenuSaysLanguageInEnglishToo(t *testing.T) {
 	hn := newHarness(t, nil)
 	hn.addUser("alice", testPassword)
 	de := hn.get(PathSignIn, withHeader("Accept-Language", "de")).Body.String()
-	if want := `<label for="language">Sprache <span lang="en">(Language)</span></label>`; !strings.Contains(de, want) {
+	if want := `<legend>Sprache <span lang="en">(Language)</span></legend>`; !strings.Contains(de, want) {
 		t.Errorf("German menu lacks %s", want)
 	}
-	if en := hn.get(PathSignIn).Body.String(); !strings.Contains(en, `<label for="language">Language</label>`) {
+	if en := hn.get(PathSignIn).Body.String(); !strings.Contains(en, `<legend>Language</legend>`) {
 		t.Error("English menu label is not just Language")
 	}
 }

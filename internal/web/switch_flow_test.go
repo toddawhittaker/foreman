@@ -61,7 +61,7 @@ func TestSwitchDownloadsTheNewWorldsImage(t *testing.T) {
 	}
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
-	body := g.waitPage("Active world: Old", running, "The worlds are switched")
+	body := g.waitPage(`id="server-title">Old <span`, running, "The worlds are switched")
 	g.wantMissing("server page", body, gamePath(a, "pull-image"), "Download game image")
 	if !slices.Contains(g.fake.Daemon().Pulls(), image20) {
 		t.Errorf("pulls %v, want %s", g.fake.Daemon().Pulls(), image20)
@@ -82,7 +82,7 @@ func TestSwitchPostAsksNoSize(t *testing.T) {
 		t.Fatalf("the page asked for the size %d times, want 1", n)
 	}
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
-	g.waitPage("Active world: Old", "The worlds are switched")
+	g.waitPage(`id="server-title">Old <span`, "The worlds are switched")
 	if n := rel.sizeAsked(); n != 1 {
 		t.Errorf("the POST asked for the size: %d calls in all, want 1", n)
 	}
@@ -100,7 +100,7 @@ func TestSwitchFailedDownloadOffersNoWrongDownload(t *testing.T) {
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage("The switch from Alpha to Old failed", "Alpha is still the active world")
-	g.wantContains("server page", body, "Active world: Alpha", running,
+	g.wantContains("server page", body, `id="server-title">Alpha <span`, running,
 		"Foreman could not download "+image20+". The details are in Foreman&#39;s log. Try the switch again.")
 	g.wantMissing("server page", body, gamePath(a, "pull-image"), `id="act-pull"`, "manifest unknown", "could not finish this")
 }

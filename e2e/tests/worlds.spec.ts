@@ -74,7 +74,7 @@ test("world list shows each world, the active one first", async ({ page, foreman
   await expect(items).toHaveCount(3);
 
   const first = items.nth(0);
-  await expect(first.getByRole("heading")).toHaveText("Zeta base Active");
+  await expect(first.getByRole("heading")).toHaveText("Zeta base Active Stopped");
   await expect(first.locator(".badge--active")).toHaveText("Active");
   await expect(first).toContainText("2.0.72");
   await expect(first.locator("dd").nth(1)).toHaveText("On");
@@ -139,38 +139,41 @@ test("a very long world name wraps on the list and the world page", async ({ pag
   await checkPage(page);
 });
 
-// DESIGN 6, Shell: the current tab is orange, a hovered tab is grey.
-test("the Worlds tab marks the current page and hovers grey", async ({ page, foreman }) => {
+// DESIGN 6, Shell: the Worlds tab is the current page on the list and marks
+// the section on every other page about worlds; the current tab is underlined
+// in the selected colour and a hovered tab only brightens its text.
+test("the Worlds tab marks the current page and the section", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "alpha", { name: "Alpha", game_version: "2.0.72", space_age: false });
   const tab = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Worlds" });
   await page.goto("/worlds/alpha/snapshots");
   await page.getByRole("button", { name: "Take snapshot" }).click();
   const restore = await page.getByRole("link", { name: /^Restore/ }).getAttribute("href");
-  // Every page about worlds marks the tab (DESIGN 7.3).
-  for (const path of ["/worlds", "/worlds/alpha", "/import", "/worlds/alpha/saves", "/worlds/alpha/snapshots",
+  await page.goto("/worlds");
+  await expect(tab).toHaveAttribute("aria-current", "page");
+  for (const path of ["/worlds/alpha", "/import", "/worlds/alpha/saves", "/worlds/alpha/snapshots",
     restore!, "/worlds/alpha/delete", "/deleted"]) {
     await page.goto(path);
-    await expect(tab, path).toHaveAttribute("aria-current", "page");
+    await expect(tab, path).toHaveAttribute("aria-current", "true");
   }
-  const face = () => tab.evaluate((el) => getComputedStyle(el).backgroundColor);
-  const current = await face();
-  // Every signed-in page is about worlds, so drop the mark to see the idle tab.
-  await tab.evaluate((el) => el.removeAttribute("aria-current"));
-  const idle = await face();
-  await tab.hover();
-  const hover = await face();
-  const button = await page.evaluate(() => {
+  const look = () => tab.evaluate((el) => ({ line: getComputedStyle(el).borderBottomColor, text: getComputedStyle(el).color }));
+  const selected = await page.evaluate(() => {
     const probe = document.createElement("span");
-    probe.style.background = "var(--color-button-hover)";
+    probe.style.color = "var(--color-selected)";
     document.body.append(probe);
-    const c = getComputedStyle(probe).backgroundColor;
+    const c = getComputedStyle(probe).color;
     probe.remove();
     return c;
   });
-  expect(hover).toBe(button);
-  expect(hover).not.toBe(current);
-  expect(idle).not.toBe(current);
+  const current = await look();
+  expect(current.line).toBe(selected);
+  await tab.evaluate((el) => el.removeAttribute("aria-current"));
+  const idle = await look();
+  expect(idle.line).not.toBe(selected);
+  await tab.hover();
+  const hover = await look();
+  expect(hover.text).not.toBe(idle.text);
+  expect(hover.line).not.toBe(selected);
 });
 
 // SPEC 5.4, 6.6: each world in the list says, in its Disk use, what its snapshots add, and

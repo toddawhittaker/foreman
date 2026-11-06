@@ -15,7 +15,7 @@ import (
 // liveRegions are the parts of the server page a live update replaces.
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
-var liveRegions = []string{"active", "facts", "players", "control", "others"}
+var liveRegions = []string{"active", "facts", "players", "control"}
 
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
@@ -133,6 +133,7 @@ type liveStream struct {
 // failed result stays on the page, so it must not silence the state
 // changes after it.
 func (l *liveStream) send(p ServerPage) error {
+	p.Live = true
 	result := l.loc.Format(resultAnnouncement(p))
 	var say i18n.Msg
 	if l.started {

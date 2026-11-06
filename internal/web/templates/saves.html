@@ -2,8 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldHref}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
-<h1>{{t "worlds.saves.title" "world" .WorldName}}</h1>
+<h1>{{.WorldName}}</h1>
+{{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
 <div class="message message--success">
@@ -51,8 +51,9 @@
 <section class="panel" aria-labelledby="upload-heading">
   <h2 id="upload-heading">{{t "worlds.saves.upload.heading"}}</h2>
   <form method="post" action="{{.SavesHref}}" enctype="multipart/form-data" novalidate>
+    {{template "required-note"}}
     <div class="field">
-      <label for="save-file">{{t "worlds.saves.upload.label"}}</label>
+      <label for="save-file" class="required">{{t "worlds.saves.upload.label"}}</label>
       <p class="hint" id="save-file-hint">{{t "worlds.saves.upload.hint" "limit" (bytes .UploadLimit)}}</p>
       <input id="save-file" name="save" type="file" accept=".zip,application/zip" required
         aria-describedby="save-file-hint{{if not .UploadError.IsZero}} save-file-error{{end}}"

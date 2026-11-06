@@ -5,22 +5,31 @@
 
 {{define "content" -}}
 {{with .Page}}
-<h1>{{t "server.console.title"}}</h1>
 {{- if not .HasWorld}}
+<h1>{{t "server.console.title"}}</h1>
+{{template "server-tabs" "console"}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
   <p class="empty">{{t "server.console.none"}}</p>
   <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
 </section>
 {{- else}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "server.active" "world" .World.Name}}</a></div>
+{{- /* Only the facts event is used here: it carries the heading's badge (DESIGN 7.5). */}}
+<div sse-swap="facts" hidden></div>
+<header class="page-head">
+  <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
+</header>
+{{template "server-tabs" "console"}}
 {{/* The command field comes first, so a phone shows it without scrolling past the log (DESIGN 6). */}}
 <section class="panel" aria-labelledby="console-heading">
   <h2 id="console-heading">{{t "server.console.title"}}</h2>
   {{template "console-panel" .}}
 </section>
 <section class="panel" aria-labelledby="log-heading">
-  <h2 id="log-heading">{{t "server.console.log_heading"}}</h2>
+  <div class="section-head">
+    <h2 id="log-heading">{{t "server.console.log_heading"}}</h2>
+    <a href="{{.LogPath}}" download id="log-download">{{t "server.console.log_download"}}</a>
+  </div>
   <p class="hint">{{t "server.console.log_hint" "count" .MaxLines}}</p>
   {{- if not .Lines}}
   <p class="empty" id="log-empty">{{t "server.console.log_empty"}}</p>
@@ -28,7 +37,7 @@
   <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}">
     <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.log_label"}}">
       {{- /* The game's own words stay English (SPEC 22.3). */}}
-      <pre lang="en">{{range .Lines}}<span>{{.}}
+      <pre lang="en">{{range .Lines}}<span{{with $.Page.LineClass .}} class="{{.}}"{{end}}>{{.}}
 </span>{{end}}</pre>
     </div>
     <button type="button" class="button" hidden>{{t "server.console.jump"}}</button>
@@ -49,11 +58,12 @@
     <div class="actions"><a href="{{serverPath}}">{{t "server.console.go_server"}}</a></div>
   </div>
   {{- end}}
-  <form class="field" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML">
-    <label for="command">{{t "server.console.command"}}</label>
-    <p class="hint" id="command-hint">{{t "server.console.command_hint" "max" .CommandLimit}}</p>
+  <form class="field" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML" novalidate>
+    {{template "required-note"}}
+    <label for="command" class="required">{{t "server.console.command"}}</label>
+    <p class="hint" id="command-hint">{{t "server.console.command_hint"}}</p>
     <div class="console-row">
-      <input id="command" name="command" type="text" value="{{.Command}}" autocomplete="off" autocapitalize="off" spellcheck="false"
+      <input id="command" name="command" type="text" value="{{.Command}}" required autocomplete="off" autocapitalize="off" spellcheck="false"
         {{- if not .CommandError.IsZero}} aria-invalid="true" aria-describedby="command-hint command-error"{{else}} aria-describedby="command-hint"{{end}}>
       <button id="send" type="submit" class="button button--primary">{{t "server.console.send"}}</button>
     </div>

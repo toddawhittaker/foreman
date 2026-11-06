@@ -80,6 +80,12 @@ type SavesPage struct {
 func (SavesPage) templateName() string { return "saves" }
 func (SavesPage) navItem() string      { return PathWorlds }
 
+// Tabs links the world's pages; a world a newer Foreman wrote has no
+// settings to show (DESIGN 6).
+func (p SavesPage) Tabs() WorldTabs {
+	return WorldTabs{Path: p.WorldHref, Current: "saves", Settings: !p.Newer}
+}
+
 func (p SavesPage) hasErrors() bool { return len(p.Problems()) > 0 }
 
 // Problems lists the form errors in the order the forms appear.

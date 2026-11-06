@@ -21,6 +21,7 @@ const (
 	PathConsole       = "/console"
 	PathConsoleSend   = "/worlds/{id}/console"
 	PathConsoleEvents = "/worlds/{id}/console/events"
+	PathConsoleLog    = "/worlds/{id}/console/log"
 )
 
 func consolePath(id, tail string) string { return worldPath(id) + "/console" + tail }
@@ -142,8 +143,11 @@ func announceReply(command, reply string) i18n.Msg {
 type ConsolePage struct {
 	World    world.Summary
 	HasWorld bool
-	Lines    []string
-	History  []consoleEntry
+	// Status is the game's state for the heading's badge, which follows the
+	// Server page's live facts (DESIGN 7.5).
+	Status  game.Status
+	Lines   []string
+	History []consoleEntry
 	// Command refills the field after a refusal; it is empty when the
 	// command carried a secret.
 	Command      string
@@ -155,7 +159,7 @@ type ConsolePage struct {
 }
 
 func (ConsolePage) templateName() string { return "console" }
-func (ConsolePage) navItem() string      { return PathConsole }
+func (ConsolePage) navItem() string      { return PathServer }
 func (p ConsolePage) hasErrors() bool    { return !p.CommandError.IsZero() }
 
 func (p ConsolePage) Problems() []Problem {
@@ -165,6 +169,33 @@ func (p ConsolePage) Problems() []Problem {
 func (p ConsolePage) WorldPath() string  { return worldPath(p.World.ID) }
 func (p ConsolePage) SendPath() string   { return consolePath(p.World.ID, "") }
 func (p ConsolePage) EventsPath() string { return consolePath(p.World.ID, "/events") }
+func (p ConsolePage) LogPath() string    { return consolePath(p.World.ID, "/log") }
+
+// The heading names the world and its state, as on the Server page.
+func (p ConsolePage) ActiveName() string  { return p.World.Name }
+func (p ConsolePage) StateWord() i18n.Msg { return stateWord(p.Status.State) }
+
+// liveURL is the Server page's stream: its facts carry the heading's badge.
+func (p ConsolePage) liveURL() string {
+	if !p.HasWorld {
+		return ""
+	}
+	return gamePath(p.World.ID, "events")
+}
+
+// gameLineKind finds the game's own Error and Warning lines, such as
+// "  12.345 Error ServerMultiplayerManager.cpp:...". log.js holds the same
+// pattern for lines that arrive live.
+var gameLineKind = regexp.MustCompile(`^\s*\d+\.\d+ (Error|Warning) `)
+
+// LineClass is the class that colours a game Error or Warning line, or "".
+// The line keeps its own word, so the colour is never the only sign (SPEC 17.4).
+func (ConsolePage) LineClass(line string) string {
+	if m := gameLineKind.FindStringSubmatch(line); m != nil {
+		return "log-" + strings.ToLower(m[1])
+	}
+	return ""
+}
 
 // CommandLimit is the longest command, for the hint.
 func (ConsolePage) CommandLimit() int { return maxCommandLength }
@@ -182,12 +213,37 @@ func (s *server) consoleRoutes() {
 	s.mux.HandleFunc("GET "+PathConsole, s.requireUser(s.handleConsole))
 	s.mux.HandleFunc("POST "+PathConsoleSend, s.requireUser(s.handleConsoleSend))
 	s.handleLong("GET "+PathConsoleEvents, s.requireUser(s.handleConsoleEvents))
+	s.mux.HandleFunc("GET "+PathConsoleLog, s.requireUser(s.handleConsoleLog))
+}
+
+// logFileName keeps a world id to the characters safe in a header and a file name.
+var logFileName = regexp.MustCompile(`[^A-Za-z0-9._-]`)
+
+// handleConsoleLog sends the log lines the Console shows as a text file
+// (SPEC 8.6). They are the lines Foreman keeps, already masked, so nothing
+// leaves that the page does not show (SPEC 14.8).
+func (s *server) handleConsoleLog(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.findWorld(w, r, u)
+	if !ok {
+		return
+	}
+	var b strings.Builder
+	for _, line := range s.game.Lines(sum.ID) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	name := "foreman-" + logFileName.ReplaceAllString(sum.ID, "_") + "-log.txt"
+	h := w.Header()
+	h.Set("Content-Type", "text/plain; charset=utf-8")
+	h.Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	h.Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(b.String()))
 }
 
 // consolePage fills the page for a world with the log so far and the
 // recent commands.
 func (s *server) consolePage(sum world.Summary) ConsolePage {
-	return ConsolePage{World: sum, HasWorld: true, Lines: s.game.Lines(sum.ID), History: s.console.list(sum.ID)}
+	return ConsolePage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID), Lines: s.game.Lines(sum.ID), History: s.console.list(sum.ID)}
 }
 
 func (s *server) handleConsole(w http.ResponseWriter, r *http.Request, u store.User) {

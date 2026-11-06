@@ -18,7 +18,7 @@ test("clones the active world and keeps its save, in three clicks from the Serve
   const clicks = await countClicks(page);
   await clicks.reset();
 
-  await page.getByRole("link", { name: "Active world: Base" }).click();
+  await page.getByRole("link", { name: "World page" }).click();
   await page.getByRole("link", { name: "Clone world" }).click();
   await expect(page).toHaveURL("/worlds/base/clone");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Clone Base");

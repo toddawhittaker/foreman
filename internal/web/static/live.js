@@ -7,6 +7,9 @@
   // A stream that ends by design is back within a few seconds, before this.
   const graceMs = 5000;
   let timer = null;
+  // Each stream that is down, by name: the page's own and the Console's log
+  // can drop apart, and the note stays while either is down.
+  const down = new Set();
 
   // Text from the page's #i18n block, in the page's language.
   const strings = JSON.parse(document.getElementById("i18n").textContent);
@@ -24,9 +27,10 @@
     }, 50);
   }
 
-  // Called when the live connection drops; shows the note once it has
+  // Called when a live connection drops; shows the note once it has
   // stayed down for the grace period, and reads it out once.
-  function lost() {
+  function lost(stream = "page") {
+    down.add(stream);
     if (timer !== null || document.getElementById("live-lost")) return;
     timer = setTimeout(() => {
       timer = null;
@@ -44,8 +48,10 @@
     }, graceMs);
   }
 
-  // Called when the live connection is open again.
-  function back() {
+  // Called when a live connection is open again.
+  function back(stream = "page") {
+    down.delete(stream);
+    if (down.size > 0) return;
     clearTimeout(timer);
     timer = null;
     document.getElementById("live-lost")?.remove();
@@ -53,8 +59,8 @@
 
   window.foremanLive = { lost, back };
 
-  document.addEventListener("htmx:sseError", lost);
-  document.addEventListener("htmx:sseOpen", back);
+  document.addEventListener("htmx:sseError", () => lost());
+  document.addEventListener("htmx:sseOpen", () => back());
 
   // The active world changed in a switch, so this page's world is no longer
   // the one the Server page shows: load the page again to show the new one.
@@ -73,8 +79,8 @@
     location.reload();
   });
 
-  // After a reload that followed a switch, focus goes to the control heading
-  // and the sentence is read out. The pause lets a screen reader settle on
+  // After a reload that followed a switch, focus goes to the page's heading,
+  // the world's name and state, and the sentence is read out. The pause lets a screen reader settle on
   // the new page first.
   try {
     const said = sessionStorage.getItem(movedKey);
@@ -89,7 +95,8 @@
 
   // A region swap removes the element that had focus. htmx gives focus back
   // to the new element with the same id; when there is none, focus goes to
-  // the region's heading instead of the top of the page (DESIGN 5).
+  // the page's heading, which names the world and its state, instead of the
+  // top of the page (DESIGN 5).
   let held = null;
   document.addEventListener("htmx:sseBeforeMessage", (e) => {
     // The server's sentence is read out here rather than swapped in, so it
@@ -106,9 +113,7 @@
     if (held !== e.target) return;
     held = null;
     if (e.target.contains(document.activeElement)) return;
-    // A region outside any section, such as the switch panel, hands focus to
-    // the first heading that takes it: the start and stop controls.
-    (e.target.closest("section") ?? document).querySelector("h2[tabindex='-1']")?.focus();
+    document.getElementById("control-heading")?.focus();
   });
 
   // After the admin's own cancel stop or snapshot, the Done message takes

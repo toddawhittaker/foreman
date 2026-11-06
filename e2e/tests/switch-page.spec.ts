@@ -6,8 +6,8 @@ import type { Page } from "@playwright/test";
 
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
-const active = (page: Page, name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+const badge = (page: Page) => page.locator("main h1 .state");
+const active = (page: Page, name: string) => page.locator("#server-title", { hasText: name });
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typeof seedSecond>[1] = {}) {
   await createAdmin(page);
@@ -132,13 +132,13 @@ test.describe("with the fake game", () => {
     // A form that does not say which world was active is refused outright.
     const bare = await page.request.post("/worlds/second/switch", { form: {}, maxRedirects: 0 });
     expect(bare.status()).toBe(400);
-    // The active world has no Switch button on its own page, and says why.
+    // The active world has no Switch button on its own page; its Active badge says why.
     await page.goto("/worlds/base");
     await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Switch" })).toContainText("This is the active world.");
+    await expect(page.locator("main h1 .badge--active")).toHaveText("Active");
     await checkPage(page);
     await page.goto("/worlds/second");
-    await expect(page.getByRole("region", { name: "Switch" })).toContainText("When the server is stopped, the confirmation lets you leave it stopped instead.");
+    await expect(page.getByRole("region", { name: "Switch" })).toContainText("Foreman snapshots both worlds first, then starts this one.");
   });
 
   test("a bad countdown keeps the form with the field's error", async ({ page, foreman, fakeGame }) => {

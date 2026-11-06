@@ -71,6 +71,7 @@ services:
       FOREMAN_GAME_NETWORK: foreman-game
       DOCKER_HOST: tcp://socket-proxy:2375
       FOREMAN_PUBLIC_URL: https://factorio.example.com
+      FOREMAN_PUBLIC_ADDRESS: factorio.example.com   # where players join; port 34197 when none is given
       FOREMAN_AUTH_METHODS: local,headers
       FOREMAN_AUTH_USER_HEADER: X-Authentik-Username
       FOREMAN_AUTH_GROUPS_HEADER: X-Authentik-Groups
@@ -138,6 +139,11 @@ Foreman creates the game container itself, named `foreman-<world-id>`, on
 
 Notes on the example:
 
+- `FOREMAN_PUBLIC_ADDRESS` is the host name or IP address, with an optional
+  port, that players type into Factorio. The Server page shows it as
+  "Players join at factorio.example.com:34197" with a Copy address button
+  (copying works on HTTPS or localhost). Leave it out and the line is not
+  shown: Foreman never guesses the address (SPEC 3.2).
 - The header names and group are examples; use what your forward-auth
   proxy sends. With `local` only, leave out the four `FOREMAN_AUTH_*`
   header settings and `FOREMAN_TRUSTED_PROXIES`.

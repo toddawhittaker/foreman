@@ -135,7 +135,7 @@ test("a world that cannot be deleted says why instead of offering the button", a
   ];
   for (const [id, reason] of cases) {
     await page.goto(`/worlds/${id}`);
-    const panel = page.locator("section", { has: page.getByRole("heading", { name: "Delete", exact: true }) });
+    const panel = page.locator("section", { has: page.getByRole("heading", { name: "Copy or delete", exact: true }) });
     await expect(panel.getByText(reason)).toBeVisible();
     await expect(page.getByRole("link", { name: "Delete world" })).toHaveCount(0);
     await checkPage(page);

@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21, type Foreman } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21, openMenu, pickLanguage, type Foreman } from "./foreman.js";
 import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
 import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -53,7 +53,7 @@ test("the cookie overrides Accept-Language for every language", async ({ request
     const { lang, body } = await pageLang(request, { "Accept-Language": "de", Cookie: `${langCookie}=${want}` });
     expect(lang, `cookie ${want}`).toBe(want);
     expect(body, `cookie ${want}`).toContain(`<h1>${t("accounts.signedout.heading", {}, want)}</h1>`);
-    expect(body, `cookie ${want}`).toMatch(new RegExp(`<option value="${want}"[^>]*selected`));
+    expect(body, `cookie ${want}`).toMatch(new RegExp(`name="lang" value="${want}"[^>]*aria-current="true"`));
   }
 });
 
@@ -76,11 +76,11 @@ test("html lang, the menu and the page text agree in every language", async ({ p
     await chooseLanguage(page.context(), lang, foreman.url);
     await page.goto("/signed-out");
     await expect(page.locator("html")).toHaveAttribute("lang", lang);
-    await expect(page.locator("#language")).toHaveValue(lang);
+    await expect(page.locator(`details.menu button[value="${lang}"]`)).toHaveAttribute("aria-current", "true");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t("accounts.signedout.heading", {}, lang));
     // Off English the label adds the English word, marked lang="en".
     const label = t("common.language.label", {}, lang);
-    await expect(page.locator("label[for=language]")).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
+    await expect(page.locator("details.menu legend")).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
     expect(await page.title()).toContain(t("accounts.signedout.title", {}, lang));
   }
 });
@@ -91,20 +91,20 @@ test.describe("the menu returns to the same page", () => {
     await createAdmin(page);
     seedWorld(foreman);
     await page.goto("/worlds/base?x=1&y=two");
-    await page.getByLabel(t("common.language.label")).selectOption("ru");
-    await page.getByRole("button", { name: t("common.language.submit") }).click();
+    await pickLanguage(page, "ru");
 
     await expect(page).toHaveURL("/worlds/base?x=1&y=two");
     await expect(page.locator("html")).toHaveAttribute("lang", "ru");
     // Still signed in, and the page is the world's page.
+    await openMenu(page);
     await expect(page.getByRole("button", { name: t("common.signout", {}, "ru") })).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Base");
 
-    // Back to English from the Russian page, by position since the words changed.
-    await page.locator("#language").selectOption("en");
-    await page.locator("form.language button").click();
+    // Back to English from the Russian page, by tag since the words changed.
+    await pickLanguage(page, "en");
     await expect(page).toHaveURL("/worlds/base?x=1&y=two");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await openMenu(page);
     await expect(page.getByRole("button", { name: t("common.signout") })).toBeVisible();
   });
 
@@ -112,8 +112,7 @@ test.describe("the menu returns to the same page", () => {
     await createAdmin(page);
     await page.context().clearCookies();
     await page.goto("/signin?next=%2Fworlds");
-    await page.getByLabel(t("common.language.label")).selectOption("cs");
-    await page.getByRole("button", { name: t("common.language.submit") }).click();
+    await pickLanguage(page, "cs");
 
     await expect(page).toHaveURL("/signin?next=%2Fworlds");
     await expect(page.locator("html")).toHaveAttribute("lang", "cs");
@@ -129,8 +128,7 @@ test.describe("the menu returns to the same page", () => {
 
   test("on the first-run setup page", async ({ page }) => {
     await page.goto("/setup");
-    await page.getByLabel(t("common.language.label")).selectOption("pl");
-    await page.getByRole("button", { name: t("common.language.submit") }).click();
+    await pickLanguage(page, "pl");
     await expect(page).toHaveURL("/setup");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t("accounts.setup.title", {}, "pl"));
   });
@@ -385,7 +383,7 @@ test.describe("layout at 320 px in every language", () => {
       await page.getByLabel("Or type a version").fill("2.1.25");
       await page.getByRole("button", { name: "Update game version" }).click();
       await expect(page).toHaveURL("/");
-      await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Stopped", live);
+      await expect(page.locator("main h1 .state")).toHaveText("Stopped", live);
       await expect.poll(() => page.request.get("/worlds/base/rollback").then((r) => r.status()), live).toBe(200);
 
       // Delete the third world with its final snapshot, so Deleted worlds lists it.
@@ -396,7 +394,7 @@ test.describe("layout at 320 px in every language", () => {
 
       await page.goto("/");
       await page.getByRole("button", { name: "Start server" }).click();
-      await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+      await expect(page.locator("main h1 .state")).toHaveText("Running", live);
       await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
       await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
       await page.goto("/worlds/base/snapshots");
@@ -619,7 +617,7 @@ test.describe("game text carries lang=en", () => {
     await fakeGame!.call("/image", { ref: image21, on: true });
     await page.goto("/");
     await page.getByRole("button", { name: "Start server" }).click();
-    await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+    await expect(page.locator("main h1 .state")).toHaveText("Running", live);
     await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
     await page.goto("/console");
     await page.getByLabel("Command").fill("/players online");

@@ -9,22 +9,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
-	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-// DESIGN 5, 7.1: the switch panel is empty while an operation runs, and its
-// links keep ids so focus survives a live update.
-func TestSwitchPanelFragment(t *testing.T) {
-	others := []world.Summary{{ID: "bravo", Name: "Bravo", GameVersion: "2.1.24"}}
-	idle := serverCase(game.StateRunning, func(p *ServerPage) { p.OtherWorlds = others })
-	html := fragmentHTML(t, idle, "server-others")
-	wantAll(t, "idle panel", html, "Switch to another world", "Switch to Bravo")
-	wantIDs(t, html)
-	empty := serverCase(game.StateRunning, func(*ServerPage) {})
-	if got := strings.TrimSpace(fragmentHTML(t, empty, "server-others")); got != "" {
-		t.Errorf("a page with no other worlds renders %q", got)
-	}
-}
 
 // The Server page's live parts and the results it links on (SPEC 7.6, 17.7,
 // 17.9, DESIGN 7.1).
@@ -102,38 +87,6 @@ func TestSnapshotAfterCancelNeverShowsTheCancelledMessage(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-}
-
-// DESIGN 7.1, SPEC 17.7: no Switch button shows while an operation runs, and
-// the panel comes back through the live stream once it ends, so a page loaded
-// during a stop offers the switch afterwards without a reload.
-func TestSwitchPanelFollowsTheOperation(t *testing.T) {
-	g := newGameRig(t, image21)
-	a := g.newWorld("Alpha", fixtureNoSA, false)
-	b := g.newWorld("Bravo", fixtureNoSA, false)
-	g.startGame(a)
-	if err := g.fake.Join(game.ContainerName(a), "alice"); err != nil {
-		t.Fatal(err)
-	}
-	g.waitPage(`<td role="cell">alice</td>`)
-	link := `id="act-switch-` + b + `">Switch to Bravo</a>`
-	g.wantContains("idle page", g.get(PathServer), link)
-
-	g.wantRedirectHome(g.post(gamePath(a, "stop"), url.Values{"countdown": {"120"}}))
-	busy := g.waitPage("Cancel stop")
-	g.wantMissing("busy page", busy, "Switch to Bravo", "Switch to another world")
-	events, _, closeEvents := g.collectEvents(a)
-	defer closeEvents()
-
-	g.wantRedirectTo(PathServerResult, g.post(gamePath(a, "cancel-stop"), url.Values{}))
-	deadline := time.Now().Add(10 * time.Second)
-	for !strings.Contains(events.String(), link) {
-		if time.Now().After(deadline) {
-			t.Fatalf("the panel never came back:\n%s", events.String())
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	g.wantContains("stream", events.String(), "event: others")
 }
 
 // SPEC 17.9, DESIGN 5: the Done message takes focus when the page follows the

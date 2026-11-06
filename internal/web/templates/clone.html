@@ -21,10 +21,11 @@
     <li>{{t "worlds.clone.copies.settings"}}</li>
     <li>{{if .World.SpaceAge}}{{t "worlds.clone.copies.version_space_age" "version" .World.GameVersion}}{{else}}{{t "worlds.clone.copies.version" "version" .World.GameVersion}}{{end}}</li>
   </ul>
+  {{template "required-note"}}
   <div class="field">
-    <label for="clone-name">{{t "worlds.clone.name.label"}}</label>
+    <label for="clone-name" class="required">{{t "worlds.clone.name.label"}}</label>
     <p class="hint" id="clone-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
-    <input id="clone-name" name="name" type="text" value="{{.Name}}" required maxlength="100" autocomplete="off"
+    <input id="clone-name" name="name" type="text" value="{{.Name}}" required maxlength="100" autocomplete="off" placeholder="{{t "worlds.name.placeholder"}}"
       {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="clone-name-hint clone-name-error"{{else}} aria-describedby="clone-name-hint"{{end}}>
     {{- if not .NameError.IsZero}}
     <p class="error" id="clone-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>

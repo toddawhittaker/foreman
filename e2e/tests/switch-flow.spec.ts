@@ -8,8 +8,8 @@ import type { Page } from "@playwright/test";
 const live = { timeout: 20_000 };
 const image20 = "factoriotools/factorio:2.0.77";
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
-const active = (page: Page, name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+const badge = (page: Page) => page.locator("main h1 .state");
+const active = (page: Page, name: string) => page.locator("#server-title", { hasText: name });
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typeof seedSecond>[1] = {}) {
   await createAdmin(page);

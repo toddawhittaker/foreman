@@ -11,7 +11,7 @@ import { join } from "node:path";
 const live = { timeout: 20_000 };
 const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 
 // The version on disk, so the checks do not depend on how a page words it.
 const diskVersion = (f: Foreman, id: string): string =>
@@ -78,7 +78,6 @@ test.describe("with the fake game", () => {
     await page.goto("/worlds/base");
     await expect(page.locator("dl.facts")).toContainText("2.1.24");
     const panel = page.getByRole("region", { name: "Game version" });
-    await expect(panel).toContainText("This world runs Factorio 2.1.24");
     await expect(panel.getByRole("link", { name: "Update game version" })).toHaveAttribute("href", "/worlds/base/update");
     await expect(panel.getByText("Switch to this world to update it.")).toHaveCount(0);
     // No update has happened yet, so there is nothing to roll back.
@@ -87,8 +86,10 @@ test.describe("with the fake game", () => {
     await page.goto("/worlds/second");
     await expect(page.locator("dl.facts")).toContainText("2.1.24");
     const other = page.getByRole("region", { name: "Game version" });
-    await expect(other.getByText("Switch to this world to update it.")).toBeVisible();
+    // The version is stated once, in the facts; the way to update another
+    // world is the page's own Switch button (SPEC 17.9).
     await expect(other.getByRole("link", { name: "Update game version" })).toHaveCount(0);
+    await expect(page.locator("#act-switch")).toHaveText("Switch to this world");
     await checkPage(page);
   });
 
@@ -144,7 +145,7 @@ test.describe("with the fake game", () => {
 
     await page.goto("/worlds/base");
     await expect(page.locator("dl.facts")).toContainText("2.1.25");
-    await expect(page.getByRole("region", { name: "Game version" })).toContainText("This world runs Factorio 2.1.25");
+
     await expect(page.getByRole("link", { name: "Roll back to 2.1.24" })).toBeVisible();
     await checkPage(page);
 

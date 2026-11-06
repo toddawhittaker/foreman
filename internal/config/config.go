@@ -23,6 +23,9 @@ const (
 	DefaultGameID      = 845
 	DefaultSessionIdle = 7 * 24 * time.Hour
 	DefaultDockerHost  = "unix:///var/run/docker.sock"
+	// DefaultGamePort is the host port the game is published on (SPEC 4),
+	// used when the public address names no port.
+	DefaultGamePort = "34197"
 )
 
 // Variable names.
@@ -33,6 +36,7 @@ const (
 	varGameGID     = "FOREMAN_GAME_GID"
 	varListen      = "FOREMAN_LISTEN"
 	varPublicURL   = "FOREMAN_PUBLIC_URL"
+	varPublicAddr  = "FOREMAN_PUBLIC_ADDRESS"
 	varAuthMethods = "FOREMAN_AUTH_METHODS"
 	varUserHeader  = "FOREMAN_AUTH_USER_HEADER"
 	varGroupHeader = "FOREMAN_AUTH_GROUPS_HEADER"
@@ -52,15 +56,18 @@ type Config struct {
 	GameUID, GameGID int
 	Listen           string
 	PublicURL        *url.URL // nil when unset
-	AuthLocal        bool
-	AuthHeaders      bool
-	UserHeader       string // canonical header name
-	GroupsHeader     string // canonical header name, may be empty
-	RequiredGroup    string
-	TrustedProxies   []netip.Prefix
-	SessionIdle      time.Duration
-	DockerHost       string
-	GameNetwork      string // the Docker network the game joins; empty means work it out (SPEC 4.4)
+	// PublicAddress is the host:port players join, shown on the Server page;
+	// empty when unset, and then Foreman shows none (it never guesses).
+	PublicAddress  string
+	AuthLocal      bool
+	AuthHeaders    bool
+	UserHeader     string // canonical header name
+	GroupsHeader   string // canonical header name, may be empty
+	RequiredGroup  string
+	TrustedProxies []netip.Prefix
+	SessionIdle    time.Duration
+	DockerHost     string
+	GameNetwork    string // the Docker network the game joins; empty means work it out (SPEC 4.4)
 }
 
 // SecureCookies reports whether session cookies carry the Secure flag,
@@ -112,6 +119,12 @@ func load(e env) (*Config, error) {
 	if raw, ok := e.get(varPublicURL); ok {
 		if c.PublicURL, err = parsePublicURL(raw); err != nil {
 			fail("%s %v", varPublicURL, err)
+		}
+	}
+
+	if raw, ok := e.get(varPublicAddr); ok {
+		if c.PublicAddress, err = parsePublicAddress(raw); err != nil {
+			fail("%s %v", varPublicAddr, err)
 		}
 	}
 
@@ -205,6 +218,35 @@ func parsePublicURL(raw string) (*url.URL, error) {
 		return nil, fmt.Errorf("must be an absolute http or https URL, for example https://foreman.example.com, not %q", raw)
 	}
 	return u, nil
+}
+
+// parsePublicAddress reads the address players join: a host name or IP
+// address, with a port or without one (then the game's own port).
+func parsePublicAddress(raw string) (string, error) {
+	bad := fmt.Errorf("must be a host name or IP address players can reach, with an optional port, for example factorio.example.com or 203.0.113.7:34197, not %q", raw)
+	if strings.ContainsAny(raw, "/@?# \t") {
+		return "", bad
+	}
+	host, port, err := net.SplitHostPort(raw)
+	if err != nil {
+		// No port: the whole value is the host. A bare IPv6 address has colons of its own.
+		host, port = raw, DefaultGamePort
+		if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+			host = host[1 : len(host)-1]
+		}
+		if strings.Contains(host, ":") {
+			if _, perr := netip.ParseAddr(host); perr != nil {
+				return "", bad
+			}
+		}
+	}
+	if host == "" || strings.ContainsAny(host, "[]") {
+		return "", bad
+	}
+	if n, err := strconv.ParseUint(port, 10, 16); err != nil || n == 0 {
+		return "", fmt.Errorf("has port %q, which is not a number from 1 to 65535", port)
+	}
+	return net.JoinHostPort(host, port), nil
 }
 
 func parseAuthMethods(raw string) (local, headers bool, err error) {

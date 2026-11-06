@@ -12,9 +12,9 @@ import { join } from "node:path";
 const container = "foreman-base";
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
-const active = (page: Page, name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+const active = (page: Page, name: string) => page.locator("#server-title", { hasText: name });
 
 const diskVersion = (f: Foreman, id: string): string =>
   JSON.parse(readFileSync(join(f.dataDir, "worlds", id, "world.json"), "utf8")).game_version;
@@ -52,8 +52,8 @@ test.describe("click budgets, with the fake game", () => {
     await g.call("/join", { name: container, player: "alice" });
 
     // The Server page, as it loads, answers both questions.
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("Running");
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("2.1.24");
+    await expect(badge(page)).toHaveText("Running");
+    await expect(page.locator("main [sse-swap=facts]")).toContainText("2.1.24");
     await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
     await expectWithin(clicks, 0, "see who is online");
   });
@@ -116,6 +116,8 @@ test.describe("click budgets, with the fake game", () => {
     const clicks = await setUp(page, foreman, g, { second: { version: "2.0.77", fixture: "2.0.77-no-space-age.zip" } });
     await startGame(page, clicks);
 
+    // From the Server page: Switch world, then the world's Switch on the list (SPEC 17.10).
+    await page.getByRole("link", { name: "Switch world" }).click();
     await page.getByRole("link", { name: "Switch to Second" }).click();
     await page.getByRole("button", { name: "Switch to Second" }).click();
     await expect(active(page, "Second")).toBeVisible(live);
@@ -130,6 +132,8 @@ test.describe("click budgets, with the fake game", () => {
     const g = fakeGame!;
     const clicks = await setUp(page, foreman, g, { second: {} });
     await startGame(page, clicks);
+    // From the Server page: Switch world, then the world's Switch on the list (SPEC 17.10).
+    await page.getByRole("link", { name: "Switch world" }).click();
     await page.getByRole("link", { name: "Switch to Second" }).click();
     await page.getByRole("button", { name: "Switch to Second" }).click();
     await expect(done(page)).toContainText("The worlds are switched, from Base to Second.", live);
@@ -215,6 +219,8 @@ test.describe("click budgets, with the fake game", () => {
     // Base is fine; Second's save needs a mod it lacks, so starting it anyway loops.
     const clicks = await setUp(page, foreman, g, { second: { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true } });
     await startGame(page, clicks);
+    // From the Server page: Switch world, then the world's Switch on the list (SPEC 17.10).
+    await page.getByRole("link", { name: "Switch world" }).click();
     await page.getByRole("link", { name: "Switch to Second" }).click();
     await page.getByRole("button", { name: "Switch and start anyway" }).click();
     await expect(active(page, "Second")).toBeVisible(live);

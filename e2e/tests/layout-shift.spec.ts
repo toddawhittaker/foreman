@@ -16,8 +16,9 @@ async function frame(page: Page, path: string) {
     expect(b, selector).not.toBeNull();
     return { x: b!.x, width: b!.width };
   };
+  // The heading's start is what lines up; the Worlds page shares its row with buttons.
   return {
-    heading: await box("h1"),
+    heading: { x: (await box("h1")).x },
     nav: await box("nav[aria-label='Main']"),
     header: await box("header.site"),
     main: await box("main"),
