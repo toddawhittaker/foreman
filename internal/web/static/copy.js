@@ -15,6 +15,11 @@
     }
     done.hidden = false;
     const announcer = document.getElementById("announcer");
-    if (announcer) announcer.textContent = done.textContent;
+    if (!announcer) return;
+    // Emptied first and filled on the next frame, so a second press is read out again (DESIGN 7.5).
+    announcer.textContent = "";
+    requestAnimationFrame(() => {
+      announcer.textContent = done.textContent;
+    });
   });
 })();
