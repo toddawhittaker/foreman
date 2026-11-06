@@ -26,6 +26,11 @@ test("times show in the browser's time zone with a relative time", async ({ page
   await expect(time).toContainText(/\b(EST|EDT)\b/);
   await expect(time).not.toContainText("UTC");
   await expect(time).toHaveText(/\((now|\d+ seconds? ago)\)$/);
+  // The date, the clock and the zone are three units that each stay whole (DESIGN 8.3).
+  const units = time.locator(":scope > .nowrap");
+  await expect(units).toHaveCount(3);
+  await expect(units.nth(1)).toHaveText(clock);
+  await expect(units.nth(2)).toHaveText(/^(EST|EDT)$/);
   await checkPage(page);
 
   // The Snapshots tab uses the same element.

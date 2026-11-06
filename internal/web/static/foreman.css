@@ -1164,18 +1164,6 @@ td > .hint {
     content: attr(data-label) " ";
   }
 
-  /* A clock moves down whole when it does not fit beside the label; only a
-     clock wider than the cell lets its zone, such as "GMT+5:45", drop to a
-     second line. Only a stacked cell may do this: in a table, a clock that
-     can shrink would be squeezed by a long name beside it. The date stays
-     whole (DESIGN 8.3). */
-  table time > .nowrap ~ .nowrap {
-    display: inline-block;
-    max-inline-size: 100%;
-    white-space: normal;
-    vertical-align: top;
-  }
-
   /* A figure never breaks inside itself (DESIGN 8.3), so its label takes
      its own line, as "Online for" above "3 minutes" does. */
   table td.num[data-label]::before {
