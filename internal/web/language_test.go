@@ -133,7 +133,7 @@ func TestLanguageMenu(t *testing.T) {
 	body := hn.get(PathSignIn+"?next=%2Fworlds", withHeader("Accept-Language", "de")).Body.String()
 	for _, want := range []string{
 		`<form method="post" action="/language" class="language">`,
-		`<label for="language">Sprache</label>`,
+		`<label for="language">Sprache <span lang="en">(Language)</span></label>`,
 		`<option value="de" lang="de" selected>Deutsch</option>`,
 		`<option value="zh-Hans" lang="zh-Hans">简体中文</option>`,
 		`<input type="hidden" name="return" value="/signin?next=%2Fworlds">`,
@@ -143,5 +143,32 @@ func TestLanguageMenu(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
 		}
+	}
+}
+
+// Off English, the menu's label also says "Language" in English, so a
+// person who cannot read the page's language can still find the way back
+// (SPEC 22.1). On English it is said once.
+func TestLanguageMenuSaysLanguageInEnglishToo(t *testing.T) {
+	hn := newHarness(t, nil)
+	hn.addUser("alice", testPassword)
+	de := hn.get(PathSignIn, withHeader("Accept-Language", "de")).Body.String()
+	if want := `<label for="language">Sprache <span lang="en">(Language)</span></label>`; !strings.Contains(de, want) {
+		t.Errorf("German menu lacks %s", want)
+	}
+	if en := hn.get(PathSignIn).Body.String(); !strings.Contains(en, `<label for="language">Language</label>`) {
+		t.Error("English menu label is not just Language")
+	}
+}
+
+// A page re-shown after a form post returns the menu to the form's page,
+// through the same check as for a GET (SPEC 14.17).
+func TestLanguageMenuReturnAfterPost(t *testing.T) {
+	hn := newHarness(t, nil)
+	hn.addUser("alice", testPassword)
+	f := signInForm("alice", "not the right password")
+	bad := hn.post(PathSignIn+"?next=%2Fworlds", f).Body.String()
+	if want := `<input type="hidden" name="return" value="/signin?next=%2Fworlds">`; !strings.Contains(bad, want) {
+		t.Errorf("re-shown sign-in lacks %s", want)
 	}
 }

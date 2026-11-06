@@ -236,3 +236,17 @@ func TestUnknownReasonWords(t *testing.T) {
 		t.Error("a known state has a reason")
 	}
 }
+
+// An English technical detail inside a translated sentence is marked
+// lang="en", so a screen reader reads it with English rules (SPEC 22.3).
+func TestEnglishDetailsAreMarkedEnglish(t *testing.T) {
+	de := i18n.Locale("de")
+	for name, m := range map[string]i18n.Msg{
+		"save unreadable": problemMsg(world.Problem{Kind: world.ProblemSaveUnreadable, Save: "a.zip", Detail: "zip: not a valid zip file"}),
+		"password":        unknownMsg(game.UnknownReason{Kind: game.UnknownPassword, Detail: "zip: not a valid zip file"}),
+	} {
+		if got := string(de.FormatHTML(m)); !strings.Contains(got, `<span lang="en">zip: not a valid zip file</span>`) {
+			t.Errorf("%s: detail not marked English: %s", name, got)
+		}
+	}
+}

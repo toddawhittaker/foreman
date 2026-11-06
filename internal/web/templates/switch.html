@@ -23,7 +23,7 @@
     <p><strong>{{if .CanAnyway}}{{t "common.label.warning"}}{{else}}{{t "common.error.label"}}{{end}}</strong> {{msg .Lead}}</p>
     <ul>
       {{- range .CheckProblems}}
-      <li>{{msg .}}</li>
+      <li>{{msgHTML .}}</li>
       {{- end}}
     </ul>
     {{- if not .Advice.IsZero}}

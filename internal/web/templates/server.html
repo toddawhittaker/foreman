@@ -82,7 +82,7 @@
   {{- end}}
 </dl>
 {{- if not .Reason.IsZero}}
-<p>{{msg .Reason}}</p>
+<p>{{msgHTML .Reason}}</p>
 {{- end}}
 {{- end}}
 
@@ -122,7 +122,7 @@
   {{- with .Problems}}
   <ul>
     {{- range .}}
-    <li>{{msg .}}</li>
+    <li>{{msgHTML .}}</li>
     {{- end}}
   </ul>
   {{- end}}

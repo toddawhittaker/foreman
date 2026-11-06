@@ -148,7 +148,7 @@
   "worlds.list.import": "Importer un monde",
   "worlds.list.server_link": "Voir la page du serveur",
   "worlds.list.switch": "Basculer",
-  "worlds.list.switch_to": "vers {name}",
+  "worlds.list.switch_named": "Basculer vers {name}",
   "worlds.list.switch_wait": "Le basculement est indisponible tant qu'une opération s'exécute sur le serveur.",
   "worlds.never": "Jamais",
   "worlds.off": "Désactivé",

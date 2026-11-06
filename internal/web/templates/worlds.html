@@ -44,7 +44,7 @@
       {{- end}}
       {{- if index $.Page.Switchable .ID}}
       <div class="actions">
-        <a href="{{$.Page.SwitchPath .ID}}" class="button">{{t "worlds.list.switch"}}<span class="visually-hidden"> {{t "worlds.list.switch_to" "name" .Name}}</span></a>
+        <a href="{{$.Page.SwitchPath .ID}}" class="button"><span aria-hidden="true">{{t "worlds.list.switch"}}</span><span class="visually-hidden">{{t "worlds.list.switch_named" "name" .Name}}</span></a>
       </div>
       {{- end}}
     </li>

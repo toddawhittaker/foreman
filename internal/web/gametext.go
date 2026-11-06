@@ -356,7 +356,8 @@ func problemMsg(p world.Problem) i18n.Msg {
 	case world.ProblemSaveUnsupported:
 		return i18n.M("server.problem.save_unsupported", "save", p.Save, "save_version", p.SaveVersion)
 	case world.ProblemSaveUnreadable:
-		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", p.Detail)
+		// The detail is Go's English error text (SPEC 22.3).
+		return i18n.M("server.problem.save_unreadable", "save", p.Save, "detail", i18n.Game(p.Detail))
 	case world.ProblemModListSpaceAge:
 		if p.SpaceAge {
 			return i18n.M("server.problem.modlist_space_age_on", "mods", names)
@@ -522,7 +523,7 @@ func unknownMsg(r game.UnknownReason) i18n.Msg {
 	case game.UnknownInspect:
 		return i18n.M("server.unknown.inspect")
 	case game.UnknownPassword:
-		return i18n.M("server.unknown.password", "detail", r.Detail)
+		return i18n.M("server.unknown.password", "detail", i18n.Game(r.Detail))
 	case game.UnknownAsking:
 		return i18n.M("server.unknown.asking")
 	case game.UnknownPaused:

@@ -40,7 +40,6 @@
 // Scripts read their text from the #i18n JSON block of each page: a map
 // from key to text, or to plural forms by category, placeholders unfilled.
 // A key appears there once it is listed in internal/web's jsKeys.
-//
 package i18n
 
 import (
@@ -478,7 +477,8 @@ func Code(s string) Fragment {
 	return Fragment{"<code>" + template.HTMLEscapeString(s) + "</code>", s}
 }
 
-// Game marks s as Factorio's own words, which stay English (SPEC 22.3).
+// Game marks s as English that stays English, such as Factorio's own words
+// or a technical error detail (SPEC 22.3).
 func Game(s string) Fragment {
 	return Fragment{`<span lang="en">` + template.HTMLEscapeString(s) + `</span>`, s}
 }

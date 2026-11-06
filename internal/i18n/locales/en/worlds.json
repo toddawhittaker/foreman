@@ -148,7 +148,7 @@
   "worlds.list.import": "Import a world",
   "worlds.list.server_link": "See the Server page",
   "worlds.list.switch": "Switch",
-  "worlds.list.switch_to": "to {name}",
+  "worlds.list.switch_named": "Switch to {name}",
   "worlds.list.switch_wait": "Switching is unavailable while an operation runs on the server.",
   "worlds.never": "Never",
   "worlds.off": "Off",

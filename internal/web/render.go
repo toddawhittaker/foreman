@@ -196,8 +196,9 @@ func (p ErrorPage) Explanation() i18n.Msg {
 type view struct {
 	User string
 	Page Page
-	// Return is the page the language menu comes back to: this page's
-	// address for a GET, else empty, which means home.
+	// Return is the page the language menu comes back to: this request's
+	// address when languageReturn allows it, else empty, which means home.
+	// After a form post that is the form's page, re-shown.
 	Return string
 }
 
@@ -273,6 +274,9 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"signedOutPath": func() string { return PathSignedOut },
 		"languagePath":  func() string { return PathLanguage },
 		"languages":     func() []i18n.Language { return i18n.Languages },
+		// english is a key's English, for a word shown in English beside
+		// the page's language, as the language menu's label is.
+		"english": func(key string) string { return i18n.English.T(key) },
 	}
 }
 
@@ -413,10 +417,7 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p}
-	if req.Method == http.MethodGet {
-		v.Return = req.URL.RequestURI()
-	}
+	v := view{User: user, Page: p, Return: languageReturn(req.URL.RequestURI())}
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
