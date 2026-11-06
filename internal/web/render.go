@@ -276,9 +276,11 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		// t translates a key: {{t "common.signout"}}, or with arguments
 		// {{t "common.signedin" "user" .User}}.
 		"t": loc.T,
-		// tLinked is one sentence with a link at its {link} placeholder:
-		// {{tLinked "key" "/href" "linkTextKey" "name" value}}.
-		"tLinked": loc.Linked,
+		// tHTML is one sentence with markup at its placeholders, from link
+		// and code: {{tHTML "key" "link" (link "/href" "linkKey") "file" (code .Path)}}.
+		"tHTML": loc.HTML,
+		"link":  loc.Link,
+		"code":  i18n.Code,
 		// msg renders an i18n.Msg from a view model.
 		"msg":      loc.Format,
 		"bytes":    loc.Bytes,

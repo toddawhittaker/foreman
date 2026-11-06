@@ -28,8 +28,10 @@
 // for the language.
 //
 // Templates (internal/web) call {{t "key" "name" value}}, {{msg .Field}}
-// for a Msg from the view model, and {{tLinked "key" "/href" "linkKey"}}
-// for a sentence with a link at its {link} placeholder. A field error is
+// for a Msg from the view model, and for a sentence holding markup
+// {{tHTML "key" "link" (link "/href" "linkKey") "file" (code .Path)}}:
+// link and code make trusted fragments, and tHTML escapes the sentence and
+// plain arguments and puts each fragment at its placeholder. A field error is
 // shown with {{if not .Err.IsZero}}...{{msg .Err}}{{end}}, as a Msg is
 // never empty to {{with}}. bytes, num and duration format a size, a number
 // and a time span; lang is the page's tag.
@@ -401,18 +403,55 @@ func (l Locale) Duration(d time.Duration) string {
 	}
 }
 
-// Linked translates key, a sentence holding the placeholder {link}, and
-// puts a link to href there whose text is linkKey's translation. The
-// sentence and the link text are escaped; only the link markup is not, so
-// the translator decides where the link goes in the sentence.
-func (l Locale) Linked(key, href, linkKey string, kv ...any) template.HTML {
+// Fragment is a piece of trusted markup for a placeholder of HTML. Only
+// Link and Code make one, and both escape what they wrap.
+type Fragment struct{ html string }
+
+// Link is a link to href, which must be one of Foreman's own paths, whose
+// text is linkKey's translation.
+func (l Locale) Link(href, linkKey string) Fragment {
+	esc := template.HTMLEscapeString
+	return Fragment{`<a href="` + esc(href) + `">` + esc(l.T(linkKey)) + `</a>`}
+}
+
+// Code wraps s, such as a file name, in a code element.
+func Code(s string) Fragment {
+	return Fragment{"<code>" + template.HTMLEscapeString(s) + "</code>"}
+}
+
+// HTML translates key as T does, for a sentence that holds markup. The
+// sentence and every plain argument are escaped; each Fragment argument
+// goes in as it is, at its placeholder, so the translator decides where
+// the markup goes in the sentence.
+func (l Locale) HTML(key string, kv ...any) template.HTML {
 	m := M(key, kv...)
 	e, from := l.lookup(key)
-	before, after, _ := strings.Cut(from.pattern(e, m), "{link}")
+	p := from.pattern(e, m)
 	esc := template.HTMLEscapeString
-	return template.HTML(esc(l.fill(before, m.Args)) + //nolint:gosec // every part but the link markup is escaped
-		`<a href="` + esc(href) + `">` + esc(l.T(linkKey)) + `</a>` +
-		esc(l.fill(after, m.Args)))
+	var b strings.Builder
+	for {
+		open := strings.IndexByte(p, '{')
+		end := strings.IndexByte(p[max(open, 0):], '}')
+		if open < 0 || end < 0 {
+			break
+		}
+		name := p[open+1 : open+end]
+		b.WriteString(esc(p[:open]))
+		switch v, ok := m.Args[name]; {
+		case !ok:
+			slog.Error("i18n: no value for placeholder", "placeholder", name)
+			b.WriteString(esc(p[open : open+end+1]))
+		default:
+			if f, isFragment := v.(Fragment); isFragment {
+				b.WriteString(f.html)
+			} else {
+				b.WriteString(esc(l.arg(v)))
+			}
+		}
+		p = p[open+end+1:]
+	}
+	b.WriteString(esc(p))
+	return template.HTML(b.String()) //nolint:gosec // text and plain arguments are escaped; fragments escape what they wrap
 }
 
 // Entry is key's value for a script: a string, or plural forms by

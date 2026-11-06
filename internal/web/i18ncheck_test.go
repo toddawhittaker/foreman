@@ -258,7 +258,7 @@ func TestPendingListsNameRealFiles(t *testing.T) {
 	}
 }
 
-// templateKeys collects the keys passed to t and tLinked in every template.
+// templateKeys collects the keys passed to t, tHTML and link in every template.
 func templateKeys(t *testing.T) map[string]bool {
 	t.Helper()
 	keys := map[string]bool{}
@@ -299,12 +299,11 @@ func templateKeys(t *testing.T) map[string]bool {
 			if len(n.Args) > 1 {
 				if id, ok := n.Args[0].(*parse.IdentifierNode); ok {
 					switch id.Ident {
-					case "t":
+					case "t", "tHTML":
 						addKey(t, keys, n.Args[1])
-					case "tLinked":
-						addKey(t, keys, n.Args[1])
-						if len(n.Args) > 3 {
-							addKey(t, keys, n.Args[3])
+					case "link":
+						if len(n.Args) > 2 {
+							addKey(t, keys, n.Args[2])
 						}
 					}
 				}
@@ -332,7 +331,7 @@ func addKey(t *testing.T, keys map[string]bool, n parse.Node) {
 	keys[s.Text] = true
 }
 
-// goKeys collects the literal keys of M, T and Linked calls in the
+// goKeys collects the literal keys of M, T, HTML and Link calls in the
 // non-test Go files of internal/web and internal/i18n.
 func goKeys(t *testing.T) map[string]bool {
 	t.Helper()
@@ -364,10 +363,10 @@ func goKeys(t *testing.T) map[string]bool {
 				}
 				var at []int
 				switch name {
-				case "M", "T":
+				case "M", "T", "HTML":
 					at = []int{0}
-				case "Linked":
-					at = []int{0, 2}
+				case "Link":
+					at = []int{1}
 				}
 				for _, i := range at {
 					if i >= len(call.Args) {

@@ -144,14 +144,32 @@ func TestNumAndDuration(t *testing.T) {
 	}
 }
 
-func TestLinked(t *testing.T) {
-	catalogue["en"]["test.linked"] = entry{text: "Open {link} for <{name}>."}
-	defer delete(catalogue["en"], "test.linked")
-	got := English.Linked("test.linked", "/a?b=1&c=2", "common.signout", "name", "<b>")
-	want := `Open <a href="/a?b=1&amp;c=2">Sign out</a> for &lt;&lt;b&gt;&gt;.`
-	if string(got) != want {
-		t.Errorf("got %s\nwant %s", got, want)
+func TestHTML(t *testing.T) {
+	cases := []struct {
+		pattern string
+		args    []any
+		want    string
+	}{
+		// A hostile plain argument and a hostile path are escaped.
+		{"Open {link} for <{name}>.", []any{"link", English.Link("/a?b=1&c=2", "common.signout"), "name", "<b>"},
+			`Open <a href="/a?b=1&amp;c=2">Sign out</a> for &lt;&lt;b&gt;&gt;.`},
+		{"In {file} & more", []any{"file", Code(`x"><script>alert(1)</script>`)},
+			`In <code>x&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;</code> &amp; more`},
+		// Fragments at the start and the end of the sentence.
+		{"{file} is in {link}", []any{"file", Code("world.json"), "link", English.Link("/worlds", "common.nav.worlds")},
+			`<code>world.json</code> is in <a href="/worlds">Worlds</a>`},
+		// Two fragments, and a plain Msg argument translated then escaped.
+		{"{a} and {b}, {m}", []any{"a", Code("a"), "b", Code("b"), "m", M("common.signout")},
+			`<code>a</code> and <code>b</code>, Sign out`},
 	}
+	for _, c := range cases {
+		catalogue["en"]["test.html"] = entry{text: c.pattern}
+		got := English.HTML("test.html", c.args...)
+		if string(got) != c.want {
+			t.Errorf("%q:\n got %s\nwant %s", c.pattern, got, c.want)
+		}
+	}
+	delete(catalogue["en"], "test.html")
 }
 
 func TestParse(t *testing.T) {
