@@ -17,6 +17,9 @@ come in later epics. See [docs/STATUS.md](docs/STATUS.md)
 for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
 
+The web UI is available in eight languages. The translations are made by
+AI, and corrections are welcome as GitHub issues.
+
 ## Running Foreman
 
 Foreman creates and owns the game container itself (SPEC section 4, ADR
@@ -186,7 +189,7 @@ from a game network's address range (SPEC 12.5, 12.6).
 ### VPN sidecars (not built yet)
 
 Running the game inside a VPN sidecar's network (Tailscale, Netbird and
-similar, SPEC 4.13, ADR 0006) is planned for Epic 8 and is not built.
+similar, SPEC 4.13, ADR 0006) is planned for Epic 9 and is not built.
 Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set, so
 leave it unset.
 
@@ -199,6 +202,8 @@ leave it unset.
 - [docs/DESIGN.md](docs/DESIGN.md): the user interface design rules.
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): branches, pull requests, checks
   and local development.
+- [docs/I18N.md](docs/I18N.md): the languages, the glossary and the rules
+  for writing and translating text.
 - [docs/adr/](docs/adr/): decision records.
 
 ## Development

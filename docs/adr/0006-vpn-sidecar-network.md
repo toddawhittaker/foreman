@@ -1,8 +1,8 @@
 # 0006. Running the game inside a VPN sidecar's network
 
-- **Status**: Accepted. Scheduled for Epic 8 (SPEC 18.8) and not yet built; until then Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set.
+- **Status**: Accepted. Scheduled for Epic 9 (SPEC 18.9) and not yet built; until then Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set.
 - **Date**: 2026-11-04
-- **References**: SPEC.md sections 3.2, 4.4, 4.6, 4.13, 12.6, 14.1, 14.16, 18.8. Amends ADR 0003.
+- **References**: SPEC.md sections 3.2, 4.4, 4.6, 4.13, 12.6, 14.1, 14.16, 18.9. Amends ADR 0003.
 
 ## Context
 

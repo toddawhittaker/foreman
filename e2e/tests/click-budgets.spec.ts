@@ -145,7 +145,7 @@ test.describe("click budgets, with the fake game", () => {
   });
 
   // SPEC 17.10 lists the undo of a switch, an update, a restore and a mod change.
-  // The switch is the "switch back" test above; the mod change waits for Epic 6.
+  // The switch is the "switch back" test above; the mod change waits for Epic 8.
   test("undo a restore: 2 clicks", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     const clicks = await setUp(page, foreman, g);
@@ -184,7 +184,7 @@ test.describe("click budgets, with the fake game", () => {
     await expectWithin(clicks, 2, "undo an update");
   });
 
-  // Epic 6 adds the mod change. Its undo must then take 2 clicks too.
+  // Epic 8 adds the mod change. Its undo must then take 2 clicks too.
   test.skip("undo a mod change: 2 clicks", () => {});
 
   // A save that uses a mod the world lacks makes the game crash on every start, so a start anyway loops.
