@@ -338,7 +338,7 @@
   "worlds.generate.version.same": "Stejná jako u aktivního světa ({version})",
   "worlds.generate.version.choose": "Vybrat verzi",
   "worlds.generate.space_age.hint": "Space Age existuje jen ve Factoriu 2.0 a novějších. Toto nastavení určuje, které planety mapa má.",
-  "worlds.generate.download.hint": "Svět nelze spustit, dokud obraz jeho hry ({image} v příslušné verzi) není na tomto hostiteli. Stahování z Docker Hubu začne po vytvoření světa.",
+  "worlds.generate.download.hint": "Svět nelze spustit, dokud jeho obraz hry ({image} v příslušné verzi) není na tomto hostiteli. Stahování z Docker Hubu začne po vytvoření světa.",
   "worlds.generate.reset_note": "Změnila se verze hry nebo Space Age, a proto byly níže uvedené možnosti mapy vráceny na výchozí hodnoty této verze. Je třeba je zkontrolovat a pokračovat.",
   "worlds.generate.mode.legend": "Způsob vytvoření mapy",
   "worlds.generate.mode.preset": "Použít předvolbu a kód mapy",
