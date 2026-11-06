@@ -29,6 +29,8 @@ type SettingsRawPage struct {
 	Unreadable bool
 	Running    bool
 	Errors     []Problem
+	// ErrorLines holds, for each of Errors in order, the line it names, or 0.
+	ErrorLines []int
 	Error      i18n.Msg
 }
 
@@ -39,6 +41,16 @@ func (p SettingsRawPage) hasErrors() bool { return len(p.Errors) > 0 || !p.Error
 
 // Problems lists the errors for the summary.
 func (p SettingsRawPage) Problems() []Problem { return p.Errors }
+
+// ErrorLineList is ErrorLines as the page hands it to its script: numbers
+// separated by commas, in the order of the summary's links.
+func (p SettingsRawPage) ErrorLineList() string {
+	parts := make([]string, len(p.ErrorLines))
+	for i, n := range p.ErrorLines {
+		parts[i] = strconv.Itoa(n)
+	}
+	return strings.Join(parts, ",")
+}
 
 func (p SettingsRawPage) WorldPath() string { return worldPath(p.WorldID) }
 func (p SettingsRawPage) FormPath() string  { return settingsPath(p.WorldID) }
@@ -110,7 +122,7 @@ func (h *settingsHandlers) handleRawPreview(w http.ResponseWriter, r *http.Reque
 	if errs := gamesettings.Validate(gamesettings.FileServerSettings, sw.line, []byte(content)); len(errs) > 0 {
 		p := h.rawPage(sw, sw.text())
 		p.Text, p.Unreadable = content, false
-		p.Errors = rawProblems(errs, content)
+		p.Errors, p.ErrorLines = rawProblems(errs, content)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}
@@ -124,20 +136,25 @@ func (h *settingsHandlers) handleRawPreview(w http.ResponseWriter, r *http.Reque
 
 // rawProblems words each error of a raw edit, naming its line and, where it
 // helps, quoting it. A line under a secret key is never quoted, and a missing
-// key has no line of its own to quote.
-func rawProblems(errs []gamesettings.FieldError, content string) []Problem {
+// key has no line of its own to quote. The second result is the line each
+// error names in the text, or 0 when it names none.
+func rawProblems(errs []gamesettings.FieldError, content string) ([]Problem, []int) {
 	lines := strings.Split(content, "\n")
 	out := make([]Problem, 0, len(errs))
+	at := make([]int, 0, len(errs))
 	for _, fe := range errs {
 		msg := rawProblem(fe)
-		if fe.Line > 0 && fe.Line <= len(lines) && fe.Code != gamesettings.CodeTooLarge && fe.Code != gamesettings.CodeMissing && !isSecretPath(fe.Key) {
-			if text := echoLine(lines[fe.Line-1]); text != "" {
+		line := 0
+		if fe.Line > 0 && fe.Line <= len(lines) && fe.Code != gamesettings.CodeTooLarge && fe.Code != gamesettings.CodeMissing {
+			line = fe.Line
+			if text := echoLine(lines[fe.Line-1]); text != "" && !isSecretPath(fe.Key) {
 				msg = i18n.M("settings.err.with_line", "problem", msg, "text", text)
 			}
 		}
 		out = append(out, Problem{FieldID: "content", Message: msg})
+		at = append(at, line)
 	}
-	return out
+	return out, at
 }
 
 func isSecretPath(key string) bool {

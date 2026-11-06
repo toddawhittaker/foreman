@@ -6,25 +6,29 @@
 // already pulled). Nothing here runs at startup (SPEC 4.2).
 //
 //	go run extract.go [version ...]   (default: the versions in defaultVersions)
+//
+// It also copies each tested image's map-settings.example.json to
+// data/<line>/map-settings-<version>.json, one per map-settings layout.
 package main
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
 )
 
 var defaultVersions = []string{"1.1.110", "2.0.77", "2.1.24"}
 
-// dlcMods are the built-in mods that Space Age turns on; recycler is part of
-// the base game from 2.1 (SPEC 9.7).
-var dlcMods = []string{"elevated-rails", "quality", "space-age"}
+// mapSettingsOnly are tested images of an older map-settings layout of a
+// line: only their map-settings example is read, the line's other data comes
+// from defaultVersions. 2.1.9 has the layout before 2.1.13 (SPEC 5.6).
+var mapSettingsOnly = []string{"2.1.9"}
 
 type control struct {
 	Name     string `json:"name"`
@@ -63,8 +67,6 @@ type rawDump struct {
 	Planets  map[string]rawPlanet                  `json:"planet"`
 }
 
-var versionRE = regexp.MustCompile(`^(1\.1|2\.0|2\.1)\.\d+$`)
-
 func main() {
 	versions := os.Args[1:]
 	if len(versions) == 0 {
@@ -76,14 +78,44 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	if len(os.Args) > 1 {
+		return
+	}
+	for _, v := range mapSettingsOnly {
+		if err := extractMapSettings(v); err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", v, err)
+			os.Exit(1)
+		}
+	}
+}
+
+// extractMapSettings copies the image's own map-settings example. The game
+// refuses a map-settings file missing any key its version knows (SPEC 5.6),
+// so the file is kept per image and never written by hand.
+func extractMapSettings(version string) error {
+	line, ok := mapgen.Line(version)
+	if !ok {
+		return fmt.Errorf("not a patch release of a supported line")
+	}
+	b, err := dockerOut("factoriotools/factorio:"+version, "cat", "/opt/factorio/data/map-settings.example.json")
+	if err != nil {
+		return err
+	}
+	if !json.Valid(b) {
+		return fmt.Errorf("map-settings.example.json is not valid JSON")
+	}
+	dir := filepath.Join("data", line)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "map-settings-"+version+".json"), b, 0o644)
 }
 
 func extract(version string) error {
-	m := versionRE.FindStringSubmatch(version)
-	if m == nil {
+	line, ok := mapgen.Line(version)
+	if !ok {
 		return fmt.Errorf("not a patch release of a supported line")
 	}
-	line := m[1]
 	image := "factoriotools/factorio:" + version
 
 	base, err := dump(image, line, false)
@@ -141,6 +173,9 @@ func extract(version string) error {
 		return fmt.Errorf("map-gen-settings.example.json is not valid JSON")
 	}
 	if err := os.WriteFile(filepath.Join(dir, "map-gen-settings.json"), b, 0o644); err != nil {
+		return err
+	}
+	if err := extractMapSettings(version); err != nil {
 		return err
 	}
 	fmt.Printf("%s: %d presets, %d planets\n", version, len(out.Presets), len(out.Planets))
@@ -257,15 +292,13 @@ func dump(image, line string, spaceAge bool) (rawDump, error) {
 	if err := os.Chmod(work, 0o777); err != nil {
 		return d, err
 	}
+	gl, _ := mapgen.LineOf(line)
 	mods := `{"name":"base","enabled":true}`
-	for _, m := range dlcMods {
-		if line == "1.1" {
-			break
-		}
+	for _, m := range gl.SpaceAgeMods {
 		mods += fmt.Sprintf(`,{"name":%q,"enabled":%t}`, m, spaceAge)
 	}
-	if line == "2.1" {
-		mods += `,{"name":"recycler","enabled":true}`
+	for _, m := range gl.AlwaysOnMods {
+		mods += fmt.Sprintf(`,{"name":%q,"enabled":true}`, m)
 	}
 	files := map[string]string{
 		"config.ini":         "[path]\nread-data=/opt/factorio/data\nwrite-data=/work\n",

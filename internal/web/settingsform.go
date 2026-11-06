@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -25,7 +26,8 @@ var (
 
 // serverValues are the settings the form shows, read from the text of
 // server-settings.json. A key the file lacks, or holds in another shape, reads
-// as empty, so the form changes nothing it did not show (see applyForm).
+// as empty (auto_pause as on), so the form changes nothing it did not show
+// (see applyForm).
 type serverValues struct {
 	Name, Description string
 	MaxPlayers        string
@@ -53,6 +55,13 @@ func readServerValues(b []byte) (serverValues, bool) {
 		var v bool
 		return json.Unmarshal(raw[key], &v) == nil && v
 	}
+	// A missing key reads as on, the game's own default (SPEC 11.1).
+	flagOrOn := func(key string) bool {
+		if _, ok := raw[key]; !ok {
+			return true
+		}
+		return flag(key)
+	}
 	whole := func(key string) string {
 		s := strings.TrimSpace(string(raw[key]))
 		if jsonWhole.MatchString(s) {
@@ -63,7 +72,7 @@ func readServerValues(b []byte) (serverValues, bool) {
 	v := serverValues{
 		Name: str("name"), Description: str("description"),
 		MaxPlayers: whole("max_players"), Interval: whole("autosave_interval"), Slots: whole("autosave_slots"),
-		Verify: flag("require_user_verification"), AutoPause: flag("auto_pause"),
+		Verify: flag("require_user_verification"), AutoPause: flagOrOn("auto_pause"),
 	}
 	if vis, ok := gamesettings.ReadVisibility(b); ok {
 		v.Visibility = vis
@@ -84,6 +93,8 @@ type postedForm struct {
 	Verify, AutoPause bool
 	Admins            string
 	AdminsPosted      bool
+	// MakeAdmin is a connected player the Make admin button chose.
+	MakeAdmin string
 }
 
 func readPostedForm(get func(string) string, has func(string) bool) postedForm {
@@ -93,7 +104,38 @@ func readPostedForm(get func(string) string, has func(string) bool) postedForm {
 		MaxPlayers: get("max_players"), Interval: get("autosave_interval"), Slots: get("autosave_slots"),
 		Verify: has("require_user_verification"), AutoPause: has("auto_pause"),
 		Admins: strings.ReplaceAll(get("admins"), "\r\n", "\n"), AdminsPosted: has("admins"),
+		MakeAdmin: strings.TrimSpace(get("make_admin")),
 	}
+}
+
+// addMadeAdmin puts the player the Make admin button chose on a new line of
+// the admins box, so the name goes through the same checks as a typed one.
+func (in *postedForm) addMadeAdmin() {
+	if in.MakeAdmin == "" {
+		return
+	}
+	if rest := strings.TrimRight(in.Admins, " \t\r\n"); rest != "" {
+		in.Admins = rest + "\n" + in.MakeAdmin
+	} else {
+		in.Admins = in.MakeAdmin
+	}
+	in.AdminsPosted = true
+}
+
+// connected lists the players in names who are not on the admins box's lines
+// and whose names the game could be sent, without regard to case.
+func connected(names []string, adminsText string) []string {
+	listed := map[string]bool{}
+	for _, line := range strings.Split(adminsText, "\n") {
+		listed[strings.ToLower(strings.TrimSpace(line))] = true
+	}
+	var out []string
+	for _, n := range names {
+		if !listed[strings.ToLower(n)] && gamesettings.ValidateAdminName(n) == nil {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // formErrors are the form's field errors.
@@ -298,6 +340,8 @@ type SettingsPage struct {
 	Verify, AutoPause bool
 	Admins            string
 	AdminsBroken      bool
+	// Connected are the players in the running game who are not admins.
+	Connected []string
 
 	formErrors
 	Error i18n.Msg
@@ -318,9 +362,15 @@ func (p SettingsPage) RawPath() string {
 	return settingsRawPath(p.WorldID, gamesettings.FileServerSettings)
 }
 func (p SettingsPage) SnapshotsPath() string { return snapshotsPath(p.WorldID) }
-func (p SettingsPage) RestartPath() string   { return gamePath(p.WorldID, "restart") }
-func (SettingsPage) File() string            { return gamesettings.FileServerSettings }
-func (SettingsPage) AdminFile() string       { return world.ServerAdminListFile }
+
+// RestartPath is the Server page's stop page for a restart, told to come back
+// here on Cancel.
+func (p SettingsPage) RestartPath() string {
+	return gamePath(p.WorldID, "restart") + "?" + fromQuery + "=" + url.QueryEscape(p.Path())
+}
+
+func (SettingsPage) File() string      { return gamesettings.FileServerSettings }
+func (SettingsPage) AdminFile() string { return world.ServerAdminListFile }
 
 // Editable is true when the form can be used.
 func (p SettingsPage) Editable() bool { return p.ReadOnly.IsZero() && !p.Broken }

@@ -30,13 +30,19 @@ const (
 	// PreviewLimit is how long a preview may take before its container is
 	// killed.
 	PreviewLimit = 60 * time.Second
+	// PreviewWait is how long a preview waits for the one running before it
+	// to end, before it is ErrPreviewBusy.
+	PreviewWait = 20 * time.Second
+	// PreviewSize is the width and height of each picture, in pixels. On 2.x
+	// a pixel is a tile; on 1.1 the default scale is one tile too.
+	PreviewSize = 1280
 	// previewMemory is the container's memory limit in bytes, with no swap.
 	// A Space Age planet drew within 512 MB; this leaves room for a patch that
 	// needs more.
 	previewMemory = 1 << 30
-	// maxPreviewPNG is the largest picture Foreman reads back. Real ones at
-	// 1024 pixels are under 600 KB.
-	maxPreviewPNG = 8 << 20
+	// MaxPreviewPNG is the largest picture Foreman reads back (SPEC 5.6).
+	// Real ones at 1280 pixels are under 1 MB.
+	MaxPreviewPNG = 8 << 20
 	previewPoll   = 250 * time.Millisecond
 	// previewDir is the folder of the data directory that holds a preview's
 	// work folder, which exists only while the preview runs.
@@ -51,8 +57,8 @@ const (
 
 // Refusals of Preview. Each is a sentinel the page words itself.
 var (
-	// ErrPreviewBusy means another preview is being made. One runs at a time
-	// across Foreman.
+	// ErrPreviewBusy means another preview was still being made after
+	// PreviewWait. One runs at a time across Foreman.
 	ErrPreviewBusy = errors.New("another map preview is being made. Try again in a moment")
 	// ErrPreviewImageMissing means the game image for the version is not
 	// downloaded. A preview never downloads it (SPEC 3.7).
@@ -110,7 +116,7 @@ type PNG struct {
 var previewScript = strings.Join([]string{
 	`for p in $` + gameenv.PreviewPlanets + `; do`,
 	`set -- --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir +
-		` --generate-map-preview ` + gameenv.PreviewMount + `/"$p".png --map-preview-size 1024 --map-gen-seed "$` + gameenv.Seed + `"`,
+		` --generate-map-preview ` + gameenv.PreviewMount + `/"$p".png --map-preview-size ` + strconv.Itoa(PreviewSize) + ` --map-gen-seed "$` + gameenv.Seed + `"`,
 	`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
 	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + ` ]; then set -- "$@" --map-gen-settings ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + `; fi`,
 	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + ` ]; then set -- "$@" --map-settings ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + `; fi`,
@@ -125,17 +131,18 @@ var previewScript = strings.Join([]string{
 // container has no network, a read-only root, no capabilities, a memory
 // limit and PreviewLimit to finish, and mounts only a fresh folder of the
 // data directory, deleted afterwards. One preview runs at a time: a second
-// call is ErrPreviewBusy. An image that is not downloaded is
+// call waits up to previewWait for its turn, then is ErrPreviewBusy; a
+// cancelled ctx ends the wait or the run. An image that is not downloaded is
 // ErrPreviewImageMissing; a game that fails is a *PreviewError.
 func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, error) {
 	line, err := checkPreview(req)
 	if err != nil {
 		return nil, err
 	}
-	if !c.previewMu.TryLock() {
-		return nil, ErrPreviewBusy
+	if err := c.takePreviewSlot(ctx); err != nil {
+		return nil, err
 	}
-	defer c.previewMu.Unlock()
+	defer func() { <-c.previewSlot }()
 
 	ref, err := c.imageFor(req.GameVersion)
 	if err != nil {
@@ -168,11 +175,25 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 	return readPreviews(base, name, req.Planets)
 }
 
+// takePreviewSlot waits for the one preview slot, up to previewWait.
+func (c *Controller) takePreviewSlot(ctx context.Context) error {
+	wait := time.NewTimer(c.previewWait)
+	defer wait.Stop()
+	select {
+	case c.previewSlot <- struct{}{}:
+		return nil
+	case <-wait.C:
+		return ErrPreviewBusy
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // checkPreview refuses a request the game line cannot draw, and returns the
 // line. Planet names go to a script, so they must be the game's own.
 func checkPreview(req PreviewRequest) (line string, err error) {
 	line, ok := mapgen.Line(req.GameVersion)
-	if !ok || !world.SupportedGameVersion(req.GameVersion) {
+	if !ok {
 		return "", fmt.Errorf("%w: there is no preview for Factorio %q", ErrPreviewInvalid, req.GameVersion)
 	}
 	known := mapgen.Planets(line, req.SpaceAge)
@@ -296,8 +317,8 @@ func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) do
 	if req.Preset != "" {
 		env = append(env, gameenv.Preset+"="+req.Preset)
 	}
-	// --map-preview-planet exists on 2.x only.
-	if line != gamesettings.Line11 {
+	// --map-preview-planet came with the planets of 2.x, the lines that have Space Age.
+	if l, _ := mapgen.LineOf(line); len(l.SpaceAgeMods) > 0 {
 		env = append(env, gameenv.PreviewPlanetFlag+"=1")
 	}
 	return docker.ContainerSpec{
@@ -377,7 +398,7 @@ func (c *Controller) removeStalePreviews(ctx context.Context, base *os.Root) {
 // pngSignature starts every PNG file.
 var pngSignature = []byte("\x89PNG\r\n\x1a\n")
 
-// readPreviews reads the picture of each planet, at most maxPreviewPNG bytes
+// readPreviews reads the picture of each planet, at most MaxPreviewPNG bytes
 // each, and checks it is a PNG.
 func readPreviews(base *os.Root, dir string, planets []string) ([]PNG, error) {
 	root, err := base.OpenRoot(dir)
@@ -391,13 +412,13 @@ func readPreviews(base *os.Root, dir string, planets []string) ([]PNG, error) {
 		if err != nil {
 			return nil, fmt.Errorf("the game made no picture of %s: %w", p, err)
 		}
-		data, err := io.ReadAll(io.LimitReader(f, maxPreviewPNG+1))
+		data, err := io.ReadAll(io.LimitReader(f, MaxPreviewPNG+1))
 		_ = f.Close()
 		switch {
 		case err != nil:
 			return nil, err
-		case len(data) > maxPreviewPNG:
-			return nil, fmt.Errorf("the picture of %s is bigger than %d bytes", p, maxPreviewPNG)
+		case len(data) > MaxPreviewPNG:
+			return nil, fmt.Errorf("the picture of %s is bigger than %d bytes", p, MaxPreviewPNG)
 		case !bytes.HasPrefix(data, pngSignature):
 			return nil, fmt.Errorf("the picture of %s is not a PNG", p)
 		}

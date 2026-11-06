@@ -149,32 +149,3 @@
 </form>
 {{end}}
 {{- end}}
-
-{{/* The Map preview section, or an empty slot the browser swaps it into. Takes GeneratePage. */}}
-{{define "generate-preview" -}}
-<div id="preview" class="preview">
-  {{- with .Preview}}
-  <section aria-labelledby="preview-heading">
-    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
-    {{- if .Error.IsZero}}
-    <p>{{t "worlds.generate.preview.made" "seed" .Seed}}</p>
-    <ul class="pictures" role="list">
-      {{- range .Pictures}}
-      <li>
-        <figure>
-          <a href="{{.Path}}"><img src="{{.Path}}" width="1024" height="1024" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy"></a>
-          <figcaption>{{msg .Name}}</figcaption>
-        </figure>
-      </li>
-      {{- end}}
-    </ul>
-    <p class="hint">{{t "worlds.generate.preview.kept"}}</p>
-    {{- else}}
-    <div class="message message--error">
-      <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-    </div>
-    {{- end}}
-  </section>
-  {{- end}}
-</div>
-{{- end}}

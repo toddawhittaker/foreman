@@ -19,9 +19,6 @@ func TestLineOfFollowsTheSupportedLines(t *testing.T) {
 		if !ok || got != gameLine(i) {
 			t.Errorf("lineOf(%s) = %d, %v; want %d, true", name, got, ok, i)
 		}
-		if lineNames[gameLine(i)] != name {
-			t.Errorf("lineNames[%d] = %q, want %q", i, lineNames[gameLine(i)], name)
-		}
 		if !strings.Contains(linesReason(), name) {
 			t.Errorf("%q does not name line %s", linesReason(), name)
 		}
