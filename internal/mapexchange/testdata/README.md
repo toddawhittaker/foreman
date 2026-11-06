@@ -68,11 +68,17 @@ the test allows these and no other differences:
 - The game writes an empty table as `[]`. The file has `{}`.
 - Whole numbers must match exactly. Other numbers match within float32
   rounding (`0.17` is `0.17000000178813934` in the game).
+- `default_enable_all_autoplace_controls` is ignored when true, the game's
+  default; the 1.1 parse leaves it out.
 - Fields the files format does not set, which the game fills in:
   `default_enable_all_autoplace_controls`, `no_enemies_mode`,
   `starting_points`, `autoplace_settings`, `cliff_settings.name`,
   `cliff_settings.control` and `cliff_settings.cliff_smoothing`. They are
   ignored when the decoder leaves them out, and must be right when it does not.
+
+The game itself refuses a string without its `>>>` and `<<<` markers ("Wrong
+quote characters", checked on 1.1.110 and 2.1.24) and accepts spaces and
+newlines around one; the test expects the decoder to do the same.
 
 Map settings have no allowed differences: the string holds every value.
 
