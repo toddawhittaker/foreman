@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	oldSettings = `{"name": "Old name", "game_password": "old-secret"}`
-	newSettings = `{"name": "New name", "game_password": "new-secret"}`
+	oldSettings = `{"name": "Old name", "description": "", "visibility": {"public": false, "lan": false}, "game_password": "old-secret"}`
+	newSettings = `{"name": "New name", "description": "", "visibility": {"public": false, "lan": false}, "game_password": "new-secret"}`
 )
 
 // seen reads the file's hash as the settings page does when it shows the diff.
@@ -342,7 +342,7 @@ func TestSaveSettingsOfSeveralFilesIsOneSave(t *testing.T) {
 		}
 		return res
 	}
-	first := two(`{"name": "One"}`, `["alice", "bob"]`)
+	first := two(`{"name": "One", "description": "", "visibility": {"public": false, "lan": false}}`, `["alice", "bob"]`)
 	if !first.RestartNeeded || first.Snapshot.Name == "" {
 		t.Errorf("result %+v", first)
 	}
@@ -368,14 +368,14 @@ func TestSaveSettingsOfSeveralFilesIsOneSave(t *testing.T) {
 	if len(entries) != 1 || entries[0].Detail != want {
 		t.Errorf("audit %+v", entries)
 	}
-	if got := r.config(id, world.ServerSettingsFile); got != `{"name": "One"}` {
+	if got := r.config(id, world.ServerSettingsFile); got != `{"name": "One", "description": "", "visibility": {"public": false, "lan": false}}` {
 		t.Errorf("settings file %q", got)
 	}
 	if !slices.Contains(r.commands(id), "/promote bob") {
 		t.Errorf("commands %v", r.commands(id))
 	}
 
-	second := two(`{"name": "Two"}`, `["alice", "bob", "carol"]`)
+	second := two(`{"name": "Two", "description": "", "visibility": {"public": false, "lan": false}}`, `["alice", "bob", "carol"]`)
 	if second.Snapshot.Name == "" || second.Snapshot.Name == first.Snapshot.Name {
 		t.Errorf("snapshots %q and %q", first.Snapshot.Name, second.Snapshot.Name)
 	}

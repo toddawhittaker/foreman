@@ -75,6 +75,15 @@ func (w settingsWorld) text() []byte {
 	return w.cfg.Data
 }
 
+// formText is the text the form reads. A world with no file starts with its
+// own name as the server name, so a first save has one (SPEC 11.1).
+func (w settingsWorld) formText() []byte {
+	if w.cfg.Found {
+		return w.cfg.Data
+	}
+	return append(append([]byte(`{"name": `), jsonString(w.sum.Name)...), '}')
+}
+
 // load finds the world named in the path and reads its two settings files.
 // It answers the request itself and returns false when it cannot.
 func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.User) (settingsWorld, bool) {
@@ -130,6 +139,8 @@ func (sw settingsWorld) formPage(text []byte, names []string) SettingsPage {
 	p.Visibility = string(cur.Visibility)
 	switch cur.Visibility {
 	case "":
+		// The game needs a visibility, so the form saves one (SPEC 11.2).
+		p.Visibility = string(gamesettings.VisibilityHidden)
 		p.VisibilityHint = i18n.M("settings.visibility.unset")
 	case gamesettings.VisibilityPublic:
 		p.Visibility = ""
@@ -174,7 +185,7 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 	if !ok {
 		return
 	}
-	text, names, edit := sw.text(), sw.admins, ""
+	text, names, edit := sw.formText(), sw.admins, ""
 	if c, ok := h.fromEdit(r.URL.Query().Get("edit"), u, sw.sum.ID, false); ok {
 		edit = r.URL.Query().Get("edit")
 		if f, ok := c.file(world.ServerSettingsFile); ok {
@@ -224,12 +235,12 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	if !sw.readOnly.IsZero() {
-		p := sw.formPage(sw.text(), sw.admins)
+		p := sw.formPage(sw.formText(), sw.admins)
 		p.Error = sw.readOnly
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	text := sw.text()
+	text := sw.formText()
 	_, readable := readServerValues(text)
 	if !readable {
 		p := sw.formPage(text, sw.admins)
@@ -298,7 +309,7 @@ func buildFiles(sw settingsWorld, e formEdit) ([]pendingFile, formErrors, error)
 	if !ok {
 		return nil, formErrors{}, errors.New("server-settings.json is not an object")
 	}
-	text := sw.text()
+	text := sw.formText()
 	next, errs, err := applyForm(text, shown, e.In, e.Carried)
 	if err != nil || errs.has() {
 		return nil, errs, err
@@ -368,13 +379,13 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 	token := r.PostFormValue("token")
 	c, ok := h.pending.take(token, u.ID, id)
 	if !ok {
-		p := sw.formPage(sw.text(), sw.admins)
+		p := sw.formPage(sw.formText(), sw.admins)
 		p.Error = i18n.M("settings.error.expired")
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
 	if !sw.readOnly.IsZero() {
-		p := sw.formPage(sw.text(), sw.admins)
+		p := sw.formPage(sw.formText(), sw.admins)
 		p.Error = sw.readOnly
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
@@ -465,7 +476,7 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 		s.log.Error("save settings", "path", r.URL.Path, "world", id, "files", files, "error", err)
 		status, msg = http.StatusInternalServerError, i18n.M("settings.error.failed")
 	}
-	p := sw.formPage(sw.text(), sw.admins)
+	p := sw.formPage(sw.formText(), sw.admins)
 	p.Error = msg
 	if len(saved) > 0 {
 		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", world.ServerAdminListFile, "reason", msg)

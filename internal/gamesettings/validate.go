@@ -27,12 +27,15 @@ const maxErrors = 50
 //	out_of_range Key holds a right-typed but unacceptable value. Want is either a
 //	             range written "lo..hi" (an empty side is unbounded) or the allowed
 //	             values joined by "|".
+//	missing      Key is a key the game needs and the file lacks. Line is the line of
+//	             the object that should hold it. Want is empty.
 const (
 	CodeSyntax     = "syntax"
 	CodeNotObject  = "not_object"
 	CodeTooLarge   = "too_large"
 	CodeWrongType  = "wrong_type"
 	CodeOutOfRange = "out_of_range"
+	CodeMissing    = "missing"
 )
 
 // FieldError is one problem in a settings file. It never holds a value from
@@ -47,8 +50,10 @@ type FieldError struct {
 // Validate checks b, the text of file (one of the File constants) for a world
 // on a game line (Line11, Line20 or Line21). It refuses input over MaxBytes,
 // text that is not one JSON object, and known keys of the wrong type or
-// outside their range. Unknown keys are allowed. For a file or line without a
-// table only the first three checks apply. It returns at most 50 errors.
+// outside their range. Unknown keys are allowed. server-settings.json must
+// also hold name, description and visibility, which the game demands once it
+// is given the file (SPEC 11.2). For a file or line without a table only the
+// first three checks apply. It returns at most 50 errors.
 func Validate(file, line string, b []byte) []FieldError {
 	if len(b) > MaxBytes {
 		return []FieldError{{Code: CodeTooLarge}}
@@ -63,7 +68,38 @@ func Validate(file, line string, b []byte) []FieldError {
 	}
 	var out []FieldError
 	check(root, sp, "", &out)
+	if file == FileServerSettings {
+		checkRequired(root, &out)
+	}
 	return out
+}
+
+// checkRequired reports the keys the game refuses to start without. A key
+// that is there with the wrong type is already reported by check.
+func checkRequired(root *node, out *[]FieldError) {
+	missing := func(line int, key string) {
+		if len(*out) < maxErrors {
+			*out = append(*out, FieldError{Line: line, Key: key, Code: CodeMissing})
+		}
+	}
+	for _, key := range []string{"name", "description"} {
+		if lastMember(root, key) == nil {
+			missing(root.line, key)
+		}
+	}
+	vis := lastMember(root, "visibility")
+	if vis == nil {
+		missing(root.line, "visibility")
+		return
+	}
+	if vis.node.kind != kObject {
+		return
+	}
+	for _, key := range []string{"public", "lan"} {
+		if lastMember(vis.node, key) == nil {
+			missing(vis.node.line, "visibility."+key)
+		}
+	}
 }
 
 func check(n *node, sp *spec, path string, out *[]FieldError) {

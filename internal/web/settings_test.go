@@ -526,7 +526,7 @@ func TestSettingsRawEditor(t *testing.T) {
 	}
 
 	// A wrong type: every error at once, with line, reason and the line.
-	bad := "{\n  \"name\": \"x\",\n  \"max_players\": \"ten\",\n  \"auto_pause\": 3\n}\n"
+	bad := "{\n  \"name\": \"x\",\n  \"max_players\": \"ten\",\n  \"auto_pause\": 3,\n  \"description\": \"\",\n  \"visibility\": {\"public\": false, \"lan\": true}\n}\n"
 	rec = r.postAs(r.cookie, r.path("/raw/server-settings.json"), url.Values{"content": {bad}})
 	body = rec.Body.String()
 	if rec.Code != http.StatusBadRequest {
@@ -550,11 +550,11 @@ func TestSettingsRawEditor(t *testing.T) {
 	}
 
 	// A valid edit without the secret keys keeps them; unknown keys stay.
-	edit := "{\n  \"name\": \"Raw name\",\n  \"max_players\": 3,\n  \"mystery\": [1, 2]\n}\n"
+	edit := "{\n  \"name\": \"Raw name\",\n  \"description\": \"Raw description\",\n  \"visibility\": {\"public\": false, \"lan\": true},\n  \"max_players\": 3,\n  \"mystery\": [1, 2]\n}\n"
 	rec = r.postAs(r.cookie, r.path("/raw/server-settings.json"), url.Values{"content": {edit}})
 	body = rec.Body.String()
 	for _, want := range []string{"Changed</strong> <code>name</code>", "<code>mystery</code>", "Foreman does not check this key. It is saved as written.",
-		"Removed</strong> <code>description</code>"} {
+		"Changed</strong> <code>description</code>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("raw preview lacks %q:\n%s", want, body)
 		}
@@ -571,7 +571,7 @@ func TestSettingsRawEditor(t *testing.T) {
 	}
 
 	// Setting the secret in the raw text changes it; the diff says only so.
-	edit = "{\n  \"name\": \"Raw name\",\n  \"game_password\": \"newpass-typed\"\n}\n"
+	edit = "{\n  \"name\": \"Raw name\",\n  \"description\": \"Come play\",\n  \"visibility\": {\"public\": false, \"lan\": true},\n  \"game_password\": \"newpass-typed\"\n}\n"
 	body = r.postAs(r.cookie, r.path("/raw/server-settings.json"), url.Values{"content": {edit}}).Body.String()
 	if !strings.Contains(body, "<code>game_password</code>") || !strings.Contains(body, "It will be changed.") {
 		t.Errorf("secret change preview:\n%s", body)
@@ -590,7 +590,7 @@ func TestSettingsRawEditor(t *testing.T) {
 func TestSettingsRawEditorSize(t *testing.T) {
 	r := newSettingsRig(t)
 	pad := strings.Repeat("x", 1<<19)
-	big := `{"name": "n", "description": "` + pad + `"}`
+	big := `{"name": "n", "visibility": {"public": false, "lan": false}, "description": "` + pad + `"}`
 	rec := r.postAs(r.cookie, r.path("/raw/server-settings.json"), url.Values{"content": {big}})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("half a megabyte: %d", rec.Code)

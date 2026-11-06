@@ -170,7 +170,7 @@ func (e *gameEnv) runGenerate(t *testing.T, tag, version string) {
 			}
 			return res
 		}
-		if res := save(world.ServerSettingsFile, `{"name": "Changed name", "description": "Changed"}`); !res.RestartNeeded {
+		if res := save(world.ServerSettingsFile, `{"name": "Changed name", "description": "Changed", "visibility": {"public": false, "lan": false}}`); !res.RestartNeeded {
 			t.Error("a running game's server settings need a restart")
 		}
 		save(world.ServerAdminListFile, `["alice_x", "bob;y"]`)
