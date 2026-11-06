@@ -26,7 +26,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame image run e2e e2e-deps \
-	test-game e2e-game vuln ci tidy i18n-hash
+	test-game e2e-game vuln ci tidy i18n-hash mapexchange-golden
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -159,3 +159,9 @@ tidy:
 # translated from (internal/i18n/translated/<area>.json, SPEC 22.5).
 i18n-hash:
 	go run ./cmd/i18n-hash
+
+# The map exchange decoder against strings made by the real game and the
+# game's own parse of each (internal/mapexchange/testdata/README.md). The
+# fixtures are committed, so this needs neither Docker nor the images.
+mapexchange-golden:
+	go test -tags golden -count=1 -v -run 'TestGolden' ./internal/mapexchange/
