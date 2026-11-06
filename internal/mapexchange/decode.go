@@ -16,8 +16,11 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
 // Size limits from SPEC 14.6: the pasted text, and the bytes it inflates to.
@@ -111,7 +114,7 @@ func decodeRaw(raw []byte) (Result, error) {
 	}
 	line, ok := lineOf(v)
 	if !ok {
-		return Result{}, &UnsupportedError{Version: v, Reason: "only game lines 1.1, 2.0 and 2.1 are supported"}
+		return Result{}, &UnsupportedError{Version: v, Reason: linesReason()}
 	}
 	r.u8() // a byte the game writes after the version; its meaning is unknown
 	mgs := readMapGenSettings(r, line)
@@ -154,7 +157,10 @@ func inflate(compressed []byte) ([]byte, error) {
 	return raw, nil
 }
 
-// gameLine is a supported major.minor line of the game.
+// gameLine is a supported major.minor line of the game: its position in
+// mapgen.Lines, the one list of supported lines. The decoder still needs code
+// for each line's layout, so a new line is not read until it has a constant
+// here and a case in the field readers.
 type gameLine int
 
 const (
@@ -163,14 +169,17 @@ const (
 	line21
 )
 
+// lineOf returns the supported line of a game version.
 func lineOf(v [4]uint16) (gameLine, bool) {
-	switch {
-	case v[0] == 1 && v[1] == 1:
-		return line11, true
-	case v[0] == 2 && v[1] == 0:
-		return line20, true
-	case v[0] == 2 && v[1] == 1:
-		return line21, true
+	l, ok := mapgen.LineOf(fmt.Sprintf("%d.%d", v[0], v[1]))
+	if !ok {
+		return 0, false
 	}
-	return 0, false
+	return gameLine(slices.Index(mapgen.Lines, l.Name)), true
+}
+
+// linesReason says which game lines the decoder accepts.
+func linesReason() string {
+	n := len(mapgen.Lines)
+	return "only game lines " + strings.Join(mapgen.Lines[:n-1], ", ") + " and " + mapgen.Lines[n-1] + " are supported"
 }
