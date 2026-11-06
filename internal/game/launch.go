@@ -69,7 +69,7 @@ func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, er
 	if err != nil {
 		return launch{}, err
 	}
-	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network))
+	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network, meta.NewMap))
 	if errors.Is(err, docker.ErrConflict) {
 		return launch{}, ErrForeign
 	}
@@ -138,6 +138,12 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	if p.save != "" {
 		if err := c.worlds.ClearLoadSave(id, p.save); err != nil {
 			c.log.Warn("could not reset which save loads to the newest", "world", id, "error", err)
+		}
+	}
+	// The map exists now, so the next start loads it (SPEC 4.3, 5.6).
+	if p.meta.NewMap != nil {
+		if err := c.worlds.ClearNewMapHeld(id); err != nil {
+			c.log.Warn("could not clear the new-map mark after the first start", "world", id, "error", err)
 		}
 	}
 	o.done(StepLoad)
