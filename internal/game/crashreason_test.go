@@ -38,7 +38,10 @@ func TestCrashReasonIgnoresOlderRuns(t *testing.T) {
 		r.game.Daemon().EmitLog(r.container(id).ID, docker.Stdout, l)
 	}
 	eventually(t, func() bool {
-		return len(r.c.Lines(id)) > 0 && r.c.Lines(id)[len(r.c.Lines(id))-1] == "   1.002 Incompatible Factorio version (current: 2.1.24, required: 2.0)"
+		// One read: the log can grow between calls, so three reads could
+		// disagree on its length.
+		lines := r.c.Lines(id)
+		return len(lines) > 0 && lines[len(lines)-1] == "   1.002 Incompatible Factorio version (current: 2.1.24, required: 2.0)"
 	},
 		"the old lines to be kept")
 	if err := r.c.ForceStop(context.Background(), id, admin); err != nil {

@@ -189,6 +189,20 @@ world's game version (4.2). Its fixed parts are:
   in the world's `config/`; and `--server-whitelist` when that file exists.
   Foreman never passes `--use-server-whitelist`: whether the whitelist is
   enforced is a game setting (section 11).
+- **Create step.** A world made by Generate or a fresh-map Clone has no
+  save and carries `new_map` in `world.json` (5.1). While `new_map` is set,
+  Foreman gives the container the environment variables `FOREMAN_NEW_MAP`
+  and `FOREMAN_WORLD_ID`, and `FOREMAN_PRESET` and `FOREMAN_SEED` when the
+  world has them. The wrapper script then runs the game once with
+  `--create saves/<world-id>.zip`, the world's mod folder and, as the world
+  has them, `--preset`, `--map-gen-seed`, `--map-gen-settings` and
+  `--map-settings`, and only afterwards starts the server. The script
+  creates the map only when `saves/` holds no zip, so Docker's own restart
+  of a container that still carries the variables can never overwrite a
+  save. The values reach the script as environment variables, never in its
+  text. A create that fails exits the container, and the failed-start report
+  shows the game's own words (7.3). Foreman clears `new_map` when that start
+  reaches the in-game state, so the next start loads the save.
 - **Restart policy** `unless-stopped`, so the game comes back after a reboot
   whether or not Foreman is running. A stop that Foreman or Docker makes
   leaves the container stopped.
@@ -352,7 +366,10 @@ this accepts.
   missing, the newest save), the time it was created, and, for a world
   imported from an inbox folder, `imported_from`: the folder, the newest
   save's name, size and modification time (to the nanosecond), and the
-  time of the import (5.5).
+  time of the import (5.5). A world that has no save yet also holds
+  `new_map`, such as `{"preset": "rich-resources", "seed": 123}`, where
+  either part may be missing. It lets the next start create the map (4.3,
+  5.6); Foreman clears it once that start reaches the in-game state.
 
 A person can read, back up and move a world without Foreman. `world.json`
 is plain JSON with snake_case keys and a `format_version` (1 today). Fields
@@ -430,12 +447,92 @@ Import also does the following.
 - **Reading the page** takes only each world's `world.json`; it does not
   measure disk use. (P0)
 
-5.6. **Generate** a new world from a preset, a map exchange string, or
-map-gen settings plus a seed, with Space Age on or off. How a preset or
-an exchange string becomes a map is **Decision D9**. (P0)
+5.6. **Generate** a new world from a preset and a seed, a map exchange
+string, or custom map-gen settings, with Space Age on or off. (P0)
 
-5.7. **Clone** a world's mods and settings into a new world, then either
-start a fresh map or keep the save. (P1)
+- **Nothing is made until the first start.** Generate writes only the world
+  folder, `world.json` with `new_map` (5.1) and the settings files below.
+  The world has no save. The world's first start runs the game's own
+  `--create` step (4.3) and clears `new_map`; the pre-start check lets a
+  world with `new_map` and no save through (7.4). Generate does not write
+  `mods/mod-list.json`; the start step already makes it. The game version
+  and Space Age choices work as in Import (5.5): Space Age is refused
+  before 2.0, and the image can be downloaded with the world.
+- **Three ways to say how the map is made.** A *preset* is one of the
+  game's own names, passed to `--preset`, with a seed passed to
+  `--map-gen-seed`; no file is written. An *exchange string* is decoded by
+  Foreman and both its files are written (`map-gen-settings.json`,
+  `map-settings.json`). *Custom settings* write `map-gen-settings.json`
+  alone. A blank seed is filled with a random one that the form keeps, so
+  the world matches the preview. The presets are, on 1.1: default,
+  rich-resources, marathon, death-world, death-world-marathon, rail-world,
+  ribbon-world and island; 2.0 and 2.1 add lakes. These names, the
+  planets and the autoplace controls are read from each game line's image
+  when the project is built and embedded in Foreman; nothing is read or
+  downloaded at startup.
+- **The custom form** has every autoplace control's frequency, size and
+  richness for each game line, and on 2.x for each planet, plus seed, width,
+  height, starting area, water, cliffs and peaceful mode. A raw JSON box
+  covers the rest (11.5). It opens filled from the chosen preset. Foreman
+  refuses a form the game would refuse: a frequency of none, for example,
+  is not offered.
+- **Decision D9 (settled 2026-11-06, ADR 0009): Foreman decodes the
+  exchange string itself, in Go**, for the 1.1, 2.0 and 2.1 lines
+  (`internal/mapexchange`). It is a port of rfvgyhn's
+  factorio-exchange-string-parser (MIT licence; its notice is kept in the
+  package). The game's binary layout is undocumented and has changed
+  within a line, so the decoder refuses what it cannot read exactly rather
+  than guess:
+  - the string may carry both `>>>` and `<<<` markers or neither; exactly
+    one marker is refused as a cut-off paste. Spaces and line breaks
+    anywhere are ignored. The limits are in 14.6;
+  - it must be base64 and zlib, use every byte, and match its checksum;
+    values must pass structural range checks (finite numbers, true or
+    false bytes that are 0 or 1, UTF-8 names that do not repeat). These
+    are not the game's numeric bounds: the game still has the last word at
+    create;
+  - a string from a patch newer than any the decoder was tested against
+    (it was tested on 1.1.110, 2.0.66, 2.0.77, 2.1.9 and 2.1.24) is accepted
+    only when it reads cleanly by every rule above, is on a known line and
+    is not newer than the world's game version;
+  - the string must be from the world's game line, and its settings layout
+    must be the world's. The game refuses a `map-settings.json` that lacks a
+    key its own version knows, and the layout changed at 2.1.13 and 2.1.18.
+    A string whose layout differs is refused with the versions that would
+    take it;
+  - a refusal names the string's version and the reason, and never quotes
+    the string.
+- **Map preview (P1).** A "Preview map" step on the Generate page shows a
+  picture of the map, one for each planet the world will have: Nauvis only
+  on 1.1 and on 2.x without Space Age, and Nauvis, Vulcanus, Gleba, Fulgora
+  and Aquilo with Space Age. The picture comes from the game's own
+  `--generate-map-preview` (with `--map-preview-planet` on 2.x), run in a
+  locked-down one-off container (14.3); the headless game cannot take a
+  screenshot. It is drawn from exactly the settings Generate would write.
+  Previewing is optional. It uses only an image already downloaded, and
+  otherwise says the image must be downloaded first; it never downloads
+  one (3.7). One preview runs at a time. The pictures are held in memory
+  under a random token tied to the user for 15 minutes, at most 8 previews
+  and 48 MB at once, and only that user can fetch them.
+- Generate records the audit entry `generate` (12.9). A refusal appears on
+  the form, in the page's language.
+
+5.7. **Clone** a world into a new world, then either start a fresh map or
+keep the save. (P1)
+
+- It copies `mods/` and the `config/` files, never `rconpw` (4.5), and
+  gives the new world the same game version and Space Age flag. The
+  source is left as it was. A source a newer Foreman wrote, or one that is
+  busy, is refused.
+- **Keep the save** copies the one save that would load (7.11) and records
+  it as the new world's chosen save. **A fresh map** copies no save and
+  sets `new_map` with a random seed; if the source has not started yet, its
+  preset comes along. Once the source has started, only its
+  `map-gen-settings.json` carries over, so a fresh map of a started world
+  uses the game's defaults when that file is missing.
+- When the source's game is running, the page says the copy is the last
+  save on disk, not the live game.
+- Clone records the audit entry `clone` (12.9).
 
 5.8. **Rename** a world (display name only). (P0)
 
@@ -459,7 +556,9 @@ they were at one moment, plus a label, the time, who took it, and why
 6.2. Foreman takes a snapshot automatically before every risky operation,
 before the operation changes any file. If the snapshot fails, the
 operation does not run. A switch snapshots both worlds, labelled "Before
-switch" with reason `switch` (7.9). (P0)
+switch" with reason `switch` (7.9). A confirmed settings save snapshots
+the world first, labelled "Before settings change" with reason `settings`
+(11.3). (P0)
 
 6.3. An admin can take a snapshot by hand at any time. (P0)
 
@@ -495,7 +594,7 @@ figures can add up to less than the total. (P0)
 `snapshot.json` manifest (6.1). The folder is named by its UTC time, for
 example `20261103T142501Z`, with `-2` added on a clash. The manifest
 holds the label, the reason (`manual`, `before-delete`, `before-restore`,
-or the risky operation), the time, who took it, and for each file its
+`settings`, or the risky operation), the time, who took it, and for each file its
 path, size and modification time to the nanosecond. For each save and mod
 zip it also holds a SHA-256 hash, which Foreman reuses from the previous
 snapshot when the file's inode, size and modification time are unchanged.
@@ -611,8 +710,11 @@ compares it with the world. It refuses to start, and says why, when:
 - the save was made by a newer game version than the world's;
 - the save was made by a game version Foreman does not support (it
   supports the 1.1, 2.0 and 2.1 lines only, 10.8);
-- the world has no save, unless the admin is generating a new map
-  (otherwise the game would make one on its own);
+- the world has no save, unless it carries `new_map` (5.1), which is a
+  world made by Generate or a fresh-map Clone whose first start creates
+  the map (4.3, 5.6). Without that mark the game would make a map on its
+  own. The create step only runs while `saves/` holds no save, so once a
+  save exists the checks above apply to it as usual;
 - `mods/mod-list.json` disagrees with the world's Space Age flag, because
   that file is what the game loads until mod management (section 9) takes
   over;
@@ -630,7 +732,7 @@ carries what the box showed (the kinds of problem, the mods they name and
 whether the game runs); when the check before anything changes finds
 otherwise, Foreman refuses, shows the box again with what is true now, and
 says it changed. A save from a newer or
-unsupported version, a world with no save, and a mod list that disagrees
+unsupported version, a world with no save and no `new_map`, and a mod list that disagrees
 with the Space Age flag are plain refusals with no start-anyway, because
 the game could not load the save or would load the wrong mods. A save
 Foreman cannot read is reported as such, never guessed at; "Start anyway"
@@ -803,8 +905,8 @@ container's own log, so Foreman stores nothing, and the history is lost when
 the container is recreated at the next start Foreman makes. The page follows
 new lines only while scrolled to the bottom and offers "Jump to newest"
 otherwise. The game prints its RCON password as `<private>`, but Foreman
-still removes the RCON password and the game password from every line before
-showing or keeping it, and masks a printed password command (8.4, 14.8).
+still removes the RCON password, the game password and the factorio.com
+username, password and token from every line before showing or keeping it, and masks a printed password command (8.4, 14.8).
 Any `--rcon-password` value in a line is always masked. (P0)
 
 8.7. **Crash detection.** When the game stops without being asked to,
@@ -980,20 +1082,76 @@ description, game password, visibility, autosave interval and slots,
 auto-pause, max players, require user verification, and admins) plus a
 raw JSON editor for everything else. (P0 form; P1 raw editor)
 
-11.2. The raw editor validates JSON syntax and field types before saving,
-and refuses invalid input with the line and reason. (P1)
+- **Admins live in `server-adminlist.json`**, not in `server-settings.json`;
+  the game always gets that file (4.3). On a stopped world Foreman writes
+  the file. On a running world Foreman sends `/promote` and `/demote` over
+  RCON for the names that changed, and the game writes the file, so the
+  change applies at once. Names are compared without regard to case, as
+  the game does. The game's console has no quoting, so Foreman sends a name
+  as typed and refuses, instead of escaping, a name that is empty, over 64
+  bytes, not UTF-8, or holds any whitespace (Unicode spaces included) or a
+  control or invisible character (14.9).
+- **Visibility** offers the local network and hidden. Listing on the
+  public server list needs a factorio.com username and token, which
+  Foreman does not take (issue #206). A raw edit may still hold public, and
+  Foreman keeps it.
+- **Every `server-settings.json` Foreman writes has `name`, `description`
+  and `visibility`** (with boolean `public` and `lan`), because the game
+  refuses the file at start without them (4.3). The first save on a world
+  with no file writes the world's name as the name unless another is
+  typed, a description that may be empty, and Hidden unless another
+  visibility is chosen. The form and the raw editor both refuse a file
+  that lacks one of the three.
+- **The form changes only the keys it shows.** Every other key, and the
+  file's layout and key order, are kept.
 
-11.3. Every settings save shows a diff of what will change and takes a
-snapshot first. A change to a running world says whether it needs a
-restart to take effect. (P0)
+11.2. The raw editor validates before saving and refuses invalid input
+with the line and the reason. (P1)
 
-11.4. The game password is write-only: the form shows whether one is set,
-never its value. (P0)
+- The editor covers `server-settings.json`. The text must be at most 1 MB
+  and one JSON object. Known keys are type-checked and range-checked for
+  the world's game line (1.1, 2.0 or 2.1), from the example file in that
+  line's image. Unknown keys are kept, and the diff lists them as keys
+  Foreman does not check. An error never shows a value from the file.
+- A secret key (11.4) is left out of the editor's text and put back when
+  the change is saved.
+
+11.3. Every settings save is shown as a diff before it is written, and
+takes a snapshot first. (P0)
+
+- **Edit, preview, confirm.** The edit page validates and shows the diff.
+  The pending change is held on the server, in memory, under a random
+  token tied to the user and the world, for 15 minutes and at most 8 per
+  user, so no setting and no secret sits in a hidden field. One preview
+  saves once.
+- **One confirmation takes one snapshot and writes one audit entry**, even
+  when it changes several files. In order, it takes the world's lock,
+  saves a running game (6.10), checks that every file is as it was at the
+  preview, takes the snapshot with reason `settings` (6.2), records the
+  audit entry `settings-save`, which names the files and never a value
+  (12.9, 14.8), and writes each file atomically. If a file changed after
+  the preview, nothing is written and the page shows the new diff with a
+  warning. If the snapshot or the audit entry fails, nothing is written.
+- **A running world.** The game reads `server-settings.json` only when it
+  starts, so the page says the change takes effect after a restart and
+  links to Restart. An admin change applies at once (11.1). If the files
+  were written but a promote or demote could not be sent, the page says
+  the save was partial.
+- A world a newer Foreman wrote is shown read-only (5.1).
+
+11.4. Secrets in `server-settings.json` are write-only: the game password
+and the factorio.com `username`, `password` and `token`. (P0)
+
+- The form shows whether a game password is set, never its value. The diff
+  says a secret "will be set", "changed" or "removed", without the value.
+  When a refused form is shown again, a typed password is not shown back;
+  the page tells the person to type it again.
+- No page, log line, audit entry or error carries a secret (14.8).
 
 11.5. `map-gen-settings.json` and `map-settings.json` get the same
 form-and-raw editor. Map-gen settings are edited only when generating a
 world (section 5.6). (P1 for map-gen as part of generate; P2 for editing
-map-settings afterwards)
+map-settings afterwards, issue #207)
 
 ## 12. Sign-in and users
 
@@ -1058,9 +1216,9 @@ arrive through trusted headers get no session cookie: the proxy decides
 who is signed in, and signing out of Foreman ends nothing for them. (P0)
 
 12.9. **Audit log**: who did what and when, for start, stop, restart,
-switch, snapshot and restore, mod changes, settings changes, user changes,
-and every RCON command. Viewable and filterable in the UI. Never holds a
-secret. Each entry holds the time, the user (the name stays on the entry
+switch, snapshot and restore, generate and clone, mod changes, settings
+changes, user changes, and every RCON command. Viewable and filterable in
+the UI. Never holds a secret. Each entry holds the time, the user (the name stays on the entry
 after the user is deleted), the action, the world and a detail. Server
 control records start, stop, restart, forced stop, switch (on the world
 switched from, with both ids), game image download and
@@ -1144,6 +1302,18 @@ never checked. Only the path is checked against this list; query strings
 last long (log follow, image pull, stop) have no overall time limit and
 set their own deadline. (P0)
 
+The map preview (5.6) uses these same endpoints and no others. It creates
+a one-off container from the world's game image, never pulling it (3.7),
+starts it, polls it, reads the end of its log when it fails (no page shows
+it), and deletes it with `DELETE` and `force`. The container runs as the game's user with
+no network, a read-only root, every capability dropped, `no-new-privileges`,
+no restart, a memory limit of 1 GiB with no swap, the game's write folder
+on a size-limited tmpfs and a 60-second limit, after which it is deleted.
+Its only bind mount is a fresh folder under the data directory, never a
+world's folder, which is deleted afterwards. One runs at a time. A
+leftover container (found by label) or folder from a crash is removed at
+the start of the next preview, not at startup.
+
 To share a network with the game (4.4), Foreman reads its own container
 with `GET /containers/{id}/json`, which gives the networks it is on and
 their address ranges. It names the game network in the
@@ -1169,7 +1339,11 @@ refused if any entry would land outside its target. (P0)
 
 14.6. **Uploads** have size limits (an app setting, default 1 GB for a
 save, 200 MB for a mod) and are written to a temporary file and checked
-before they replace anything. (P0)
+before they replace anything. Pasted text has limits too: a map exchange
+string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
+or map-gen JSON text, including the raw editors' and the files written to a
+world's `config/`, is at most 1 MB and must be one JSON object (11.2). A
+map preview picture is at most 8 MB. (P0)
 
 14.7. **Requests that change state** require a signed-in session and
 protection against cross-site request forgery. A browser post is accepted
@@ -1178,11 +1352,13 @@ only from Foreman's own origin, or from the origin of
 the `Host` header. (P0)
 
 14.8. **Secrets** (the RCON password, the portal token, the OIDC client
-secret, the game password, `FOREMAN_SECRET_KEY`, and session tokens) never
-appear in a log line, an API response, an error message, the audit log,
-or the UI. This includes game log lines Foreman relays: it removes the RCON
-password and the game password from every line (8.6), parsing the line
-before it redacts so a short password cannot hide what the line means. The
+secret, the game password, the factorio.com `username`, `password` and
+`token` keys of `server-settings.json`, `FOREMAN_SECRET_KEY`, and session
+tokens) never appear in a log line, an API response, an error message, the
+audit log, or the UI. This includes game log lines Foreman relays: it
+removes the RCON password, the game password and those factorio.com values
+from every line (8.6), parsing the line before it redacts so a short
+password cannot hide what the line means. The
 console follows one list of commands that carry a secret: `/config set
 password` has its argument masked in the audit log, on the page and in
 relayed log lines, and the reply to `/config get password` is masked. A Lua
@@ -1433,7 +1609,6 @@ it, and the decision is removed from this list.
 | Id | Question | Needed by | Sections |
 |---|---|---|---|
 | D10 | Whether the chat-message tool (21.4) is in v1 or waits, given that it lets an AI speak to players | Epic 10 | 21.4 |
-| D9 | How Generate makes a map from a preset or a map exchange string, given that the image generates only from `map-gen-settings.json` and `map-settings.json` | Epic 7 | 5.6 |
 
 The tech stack (vision question 6) is settled in docs/STACK.md, not here.
 
