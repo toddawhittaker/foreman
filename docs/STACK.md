@@ -37,8 +37,7 @@ is a copy and goes stale if they change without it.
   since Epic 2: hardlinks into a snapshot folder, which the standard
   library cannot make relative to an open folder).
 - `golang.org/x/text`, direct from Epic 6, for language matching, plural
-  rules and number formats (SPEC 22). The exact version is pinned in
-  `go.mod`, and the Epic 6 fold copies it here.
+  rules and number formats (SPEC 22), v0.43.0.
 - govulncheck v1.9.0, run by `make vuln`.
 - CI: GitHub Actions on the `ubuntu-24.04` runner. Every action is
   pinned to a full commit: `actions/checkout` v7.0.1,
@@ -270,7 +269,7 @@ Rejected:
   number formats. Rejected: `gotext`, which cannot read templates and
   generates code; and `go-i18n`, a third-party copy of what `x/text`
   already does. Rules for writing and adding strings are in
-  docs/I18N.md.
+  docs/I18N.md, and the reasons for the design are in ADR 0008.
 - **Linting**: golangci-lint v2.
 - **Vulnerability scan**: govulncheck.
 
@@ -294,6 +293,7 @@ Rejected:
 | `make vuln` | govulncheck. It needs the network, so it stays out of `make verify`. |
 | `make ci` | `verify`, then `e2e`, then `image`: everything CI checks, in one local run. CI runs the same checks as parallel jobs. |
 | `make tidy` | `go mod tidy`. |
+| `make i18n-hash` | After every language has a new or changed key, records the short hash of the English each translation was made from, in `internal/i18n/translated/<area>.json` (SPEC 22.5, ADR 0008). |
 
 ## 14. Left out on purpose
 

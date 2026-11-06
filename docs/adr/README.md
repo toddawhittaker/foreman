@@ -37,3 +37,4 @@ record has four parts:
 | [0005](0005-managed-only-versions-by-tag.md) | Managed mode only; a world runs any patch release of a supported line, by version tag. |
 | [0006](0006-vpn-sidecar-network.md) | Optionally, the game shares a VPN sidecar's network, with RCON bound to the game-network address. |
 | [0007](0007-imported-from-in-world-json.md) | Where a world was imported from is kept in `world.json` and matched by the save's name, size and modification time, not a hash. |
+| [0008](0008-message-catalogue.md) | Languages: an in-repo `internal/i18n` over `x/text`, dotted keys with a hash check, message ids in view models, one catalogue file per area. |

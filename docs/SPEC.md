@@ -1477,6 +1477,21 @@ including sign-in, overrides it for that browser with a cookie;
 nothing is stored per user. The page's `lang` attribute names the
 language shown. (P0)
 
+- The cookie is `foreman_lang`. It holds a BCP 47 language tag (for
+  example `zh-Hans`), with Path `/`, SameSite Lax, HttpOnly, a life of
+  one year, and Secure under the same rule as the session cookie. A
+  value that is not one of the eight tags is ignored and never echoed.
+- The menu posts to `POST /language`, which accepts only the eight tags
+  and goes back to the page the menu was on through the return-path check
+  (14.17). On a page shown in answer to a form post, that page is the
+  same-site Referer, else home.
+- Accept-Language is read entry by entry, at most 32 entries. An entry
+  that is unknown or malformed is skipped and does not hide a later
+  match.
+- Off English, the menu's label adds "(Language)" in English, marked
+  `lang="en"`, so a person who landed in a language they cannot read can
+  still find it.
+
 22.3. Everything the web UI shows is translated, including problems,
 refusals, failures and results built by the server, and text shown by
 the page's scripts. Server logs, audit entries as stored, and API and
@@ -1484,20 +1499,50 @@ MCP errors stay English. Text relayed from Factorio and anything a
 person typed (world names, snapshot labels, player names) is shown as
 written. (P0)
 
+- Messages built in Go travel as message ids with arguments, never as
+  English strings, so a raw string cannot reach a page. The domain
+  packages keep English `Error()` text for logs and carry the facts the
+  web layer needs in typed errors.
+- Foreman's automatic snapshot labels are shown from their stored reason
+  code, in the page's language. A label a person typed is shown as
+  written. No sentence quotes a label; it names the snapshot through the
+  label's own message, so a page and the snapshot list always agree.
+- Game text (the log pane, console replies, crash reasons) and English
+  error details that Foreman cannot translate are marked `lang="en"`.
+  The countdown warning sent into the game chat stays English, because
+  players read it in the game.
+
 22.4. Numbers, sizes, dates and plurals follow each language's CLDR
-(Common Locale Data Repository) rules. A message that counts something has every plural form its
-language needs. A message is never assembled from translated
-fragments. (P0)
+(Common Locale Data Repository) rules. A message that counts something
+has every plural form its language needs. A message is never assembled
+from translated fragments. (P0)
 
 22.5. Every new user-facing string goes into the catalogue in all
-languages in the same change. `make verify` fails on hard-coded text in
-a template, script or stylesheet; a key missing from any language; an
-unused key; mismatched placeholders or plural forms; and a translation
-made from English text that has since changed. (P0)
+languages in the same change. `make verify` fails on these. (P0)
+
+- hard-coded text in a template, script or stylesheet;
+- a key missing from any language, or an unused key;
+- mismatched placeholders or plural forms;
+- HTML inside a catalogue value;
+- a translation made from English text that has since changed;
+- a sentence in any language that quotes an automatic snapshot label
+  instead of using its message (22.3);
+- a link or button whose accessible name does not contain its visible
+  text, on every page in every language (22.7, 17.1).
+
+Catalogue keys are stable dotted ids that start with their area
+(`server.start.button`), not English sentences. Values use named
+placeholders (`{world}`), a counted value is an object of plural
+categories using `count`, and values never hold HTML. The files are
+`internal/i18n/locales/<language>/<area>.json`; docs/I18N.md says how to
+add a string and ADR 0008 gives the reasons.
 
 22.6. Translations are machine-made with the glossary in docs/I18N.md,
 so terms stay consistent and follow Factorio's own translations where
 it has them. A second pass reviews each before its epic merges. (P0)
 
 22.7. Every page meets 17.1 and 17.2 in every language, including at
-320 px in the languages with the longest text. (P0)
+320 px in the languages with the longest text. The accessible name of
+every control contains its visible text in every language (label in
+name, WCAG 2.5.3), including where a hidden part is added to a visible
+word. (P0)
