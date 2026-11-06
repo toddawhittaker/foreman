@@ -219,8 +219,8 @@ func Match(cookie, acceptLanguage string) Locale {
 	if l, ok := Parse(cookie); ok {
 		return l
 	}
-	wanted, _, err := language.ParseAcceptLanguage(acceptLanguage)
-	if err != nil || len(wanted) == 0 {
+	wanted := parseAcceptLanguage(acceptLanguage)
+	if len(wanted) == 0 {
 		return English
 	}
 	_, i, conf := matcher.Match(wanted...)
@@ -228,6 +228,41 @@ func Match(cookie, acceptLanguage string) Locale {
 		return English
 	}
 	return Languages[i].Tag
+}
+
+// maxAcceptEntries caps how many comma-separated entries of an
+// Accept-Language header are read, so a hostile header costs little.
+const maxAcceptEntries = 32
+
+// parseAcceptLanguage returns the tags of header in order of preference.
+// Each entry is parsed alone, so an unknown or malformed one is skipped
+// instead of discarding the whole header.
+func parseAcceptLanguage(header string) []language.Tag {
+	type weighted struct {
+		tag language.Tag
+		q   float32
+	}
+	// The extra element holds the unread rest of the header.
+	entries := strings.SplitN(header, ",", maxAcceptEntries+1)
+	if len(entries) > maxAcceptEntries {
+		entries = entries[:maxAcceptEntries]
+	}
+	var found []weighted
+	for _, entry := range entries {
+		tags, qs, err := language.ParseAcceptLanguage(entry)
+		if err != nil {
+			continue
+		}
+		for i := range tags {
+			found = append(found, weighted{tags[i], qs[i]})
+		}
+	}
+	sort.SliceStable(found, func(i, j int) bool { return found[i].q > found[j].q })
+	tags := make([]language.Tag, len(found))
+	for i, f := range found {
+		tags[i] = f.tag
+	}
+	return tags
 }
 
 func (l Locale) known() Locale {

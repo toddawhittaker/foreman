@@ -5,6 +5,10 @@
 // ticked is left alone. With several folders ticked the per-world fields do
 // not apply, so they are emptied and turned off (SPEC 5.5).
 document.addEventListener("DOMContentLoaded", () => {
+  // Text from the page's #i18n block, with {name} placeholders filled in.
+  const strings = JSON.parse(document.getElementById("i18n").textContent);
+  const t = (key, args = {}) => strings[key].replace(/\{(\w+)\}/g, (_, name) => args[name]);
+
   // Reads the change out politely, emptying the region first so a repeated
   // sentence is still read.
   function announce(said) {
@@ -24,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return (name) => {
       if (edited || field.value === name) return "";
       field.value = name;
-      return "World name suggested: " + name + ".";
+      return t("js.import.suggested", { name });
     };
   }
 
@@ -79,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const changed = span.textContent !== text;
     span.textContent = text;
     warning.hidden = text === "";
-    return changed && text ? "Warning: " + text : "";
+    return changed && text ? t("js.import.warning", { text }) : "";
   }
 
   [spaceAge, typed, select].forEach((el) => {
@@ -131,19 +135,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const many = ticked().length > 1;
       applyMany(many);
       const said = [];
-      if (many) said.push("Several folders chosen: each uses its own name, version and Space Age.");
+      if (many) said.push(t("js.import.many"));
       if (one) {
         said.push(suggestFolderName(one.dataset.name));
         if (same) {
           same.textContent = one.dataset.gameVersion
-            ? "Same as the save (" + one.dataset.gameVersion + ")"
-            : "Same as the save (could not be read, so choose or type one)";
+            ? t("js.import.same.version", { version: one.dataset.gameVersion })
+            : t("js.import.same.unreadable");
         }
         if (!spaceAgeEdited && one.dataset.gameVersion) {
           spaceAge.checked = "spaceAge" in one.dataset;
         }
       } else if (same) {
-        same.textContent = "Same as the save";
+        same.textContent = t("js.import.same");
       }
       said.push(showWarning());
       const text = said.filter((s) => s).join(" ");

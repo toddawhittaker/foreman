@@ -5,12 +5,21 @@
 (() => {
   "use strict";
 
+  // Text from the page's #i18n block: a plural entry is picked by the
+  // page's language, and {name} placeholders are filled in.
+  const lang = document.documentElement.lang;
+  const strings = JSON.parse(document.getElementById("i18n").textContent);
+  function t(key, args = {}) {
+    let text = strings[key];
+    if (typeof text === "object") text = text[new Intl.PluralRules(lang).select(args.count)] ?? text.other;
+    return text.replace(/\{(\w+)\}/g, (_, name) => (typeof args[name] === "number" ? args[name].toLocaleString(lang) : args[name]));
+  }
+
   // The same words as the server's stepList.Left.
   function left(until) {
     const n = Math.ceil((until - Date.now()) / 1000);
-    if (n <= 0) return "ending now";
-    if (n === 1) return "1 second left";
-    return n + " seconds left";
+    if (n <= 0) return t("js.countdown.ending");
+    return t("js.countdown.left", { count: n });
   }
 
   // One timer for the page; a live update that swaps in a new list is picked
