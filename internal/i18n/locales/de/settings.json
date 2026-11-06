@@ -21,6 +21,7 @@
   "settings.password.new": "Neues Passwort",
   "settings.password.keep": "Leer lassen, um das aktuelle Passwort zu behalten.",
   "settings.password.keep_none": "Leer lassen, um kein Passwort zu setzen.",
+  "settings.password.keep_pending": "Dein neues Passwort bleibt erhalten, sofern du kein anderes eingibst.",
   "settings.password.remove": "Das Passwort entfernen",
   "settings.password.both": "Gib ein neues Passwort ein oder entferne es, aber nicht beides.",
   "settings.password.dropped": "Gib das neue Passwort erneut ein; es wird nie auf der Seite gespeichert.",

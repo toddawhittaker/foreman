@@ -132,6 +132,7 @@ test("a refused form says to enter a typed password again, but Go back and edit 
   await page.getByRole("button", { name: "Preview changes" }).click();
   await page.getByRole("link", { name: "Go back and edit" }).click();
   await expect(page.getByText(note)).toHaveCount(0);
+  await expect(page.locator("#pw-hint")).toHaveText("Your new password is kept unless you type another.");
   await expectNoSecret(page);
 });
 
@@ -221,6 +222,7 @@ test("the JSON editor refuses a bad edit with the line, then saves a good one an
   await expect(summary).toContainText("description is missing. The game needs it.");
   await expect(summary).toContainText("visibility is missing. The game needs it.");
   await expect(summary).not.toContainText("is not allowed");
+  await expect(summary).not.toContainText("The line reads");
   await checkPage(page);
   expect(JSON.parse(read(foreman.dataDir)).max_players).toBeUndefined();
 

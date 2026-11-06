@@ -21,6 +21,7 @@
   "settings.password.new": "Nowe hasło",
   "settings.password.keep": "Puste pole zachowuje bieżące hasło.",
   "settings.password.keep_none": "Puste pole oznacza brak hasła.",
+  "settings.password.keep_pending": "Nowe hasło zostanie zachowane, o ile nie zostanie wpisane inne.",
   "settings.password.remove": "Usuń hasło",
   "settings.password.both": "Należy podać nowe hasło albo usunąć hasło, nie jedno i drugie.",
   "settings.password.dropped": "Należy ponownie wpisać nowe hasło; nigdy nie jest ono zachowywane na stronie.",

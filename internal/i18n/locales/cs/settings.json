@@ -21,6 +21,7 @@
   "settings.password.new": "Nové heslo",
   "settings.password.keep": "Prázdné pole ponechá současné heslo.",
   "settings.password.keep_none": "Prázdné pole znamená bez hesla.",
+  "settings.password.keep_pending": "Nové heslo se zachová, dokud nebude zadáno jiné.",
   "settings.password.remove": "Odstranit heslo",
   "settings.password.both": "Je třeba zadat nové heslo, nebo heslo odstranit, ne obojí.",
   "settings.password.dropped": "Nové heslo je třeba zadat znovu; na stránce se nikdy neuchovává.",

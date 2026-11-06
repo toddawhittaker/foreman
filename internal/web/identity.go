@@ -194,9 +194,16 @@ func (s *server) redirectToSignIn(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, "check for users", err)
 		return
 	}
+	to := signInURL(r)
 	if !has {
-		http.Redirect(w, r, PathSetup, http.StatusSeeOther)
+		to = PathSetup
+	}
+	// The browser follows a 303 inside an htmx request and hands htmx the page
+	// to swap into a fragment; HX-Redirect makes htmx leave the page instead.
+	if r.Header.Get("HX-Request") != "" {
+		w.Header().Set("HX-Redirect", to)
+		w.WriteHeader(http.StatusOK)
 		return
 	}
-	http.Redirect(w, r, signInURL(r), http.StatusSeeOther)
+	http.Redirect(w, r, to, http.StatusSeeOther)
 }

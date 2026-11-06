@@ -21,6 +21,7 @@
   "settings.password.new": "Новый пароль",
   "settings.password.keep": "Оставьте поле пустым, чтобы сохранить текущий пароль.",
   "settings.password.keep_none": "Оставьте поле пустым, чтобы пароля не было.",
+  "settings.password.keep_pending": "Новый пароль сохранится, если вы не введёте другой.",
   "settings.password.remove": "Удалить пароль",
   "settings.password.both": "Введите новый пароль или удалите пароль, но не то и другое сразу.",
   "settings.password.dropped": "Введите новый пароль ещё раз: он никогда не сохраняется на странице.",

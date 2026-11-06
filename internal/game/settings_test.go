@@ -112,6 +112,9 @@ func TestSaveSettingsOnARunningWorld(t *testing.T) {
 	if !res.RestartNeeded {
 		t.Error("a running world needs a restart for server settings")
 	}
+	if res.Live {
+		t.Error("a settings file change is not an admin change taken live")
+	}
 	if !slices.Contains(r.commands(id), "/server-save") {
 		t.Errorf("the game was not saved first: %v", r.commands(id))
 	}
@@ -253,6 +256,9 @@ func TestSaveAdminListOnAStoppedWorld(t *testing.T) {
 	if res.RestartNeeded {
 		t.Error("an admin list never needs a restart")
 	}
+	if res.Live {
+		t.Error("a stopped game cannot have taken the admin change live")
+	}
 	if got := r.config(id, world.ServerAdminListFile); got != `["alice", "bob"]` {
 		t.Errorf("file is %q", got)
 	}
@@ -275,6 +281,9 @@ func TestSaveAdminListOnARunningWorld(t *testing.T) {
 	}
 	if res.RestartNeeded {
 		t.Error("an admin list never needs a restart")
+	}
+	if !res.Live {
+		t.Error("the admin change was sent to a running game, so it is live")
 	}
 	var sent []string
 	for _, c := range r.commands(id) {

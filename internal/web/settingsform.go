@@ -288,7 +288,10 @@ type SettingsPage struct {
 	VisibilityHint i18n.Msg
 	// PasswordDropped is true when a form was refused after a password was
 	// typed: the page never carries it back, so it must be entered again.
-	PasswordDropped   bool
+	PasswordDropped bool
+	// PasswordPending is true when the form was refilled from a previewed
+	// change whose password differs from the one in the file.
+	PasswordPending   bool
 	PasswordSet       bool
 	MaxPlayers        string
 	Interval, Slots   string
