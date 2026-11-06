@@ -399,5 +399,6 @@
   "worlds.generate.custom.legend": "Ustawienia mapy",
   "worlds.generate.error.exchange_layout": "Ten kod został utworzony w Factorio {version}, a jego ustawienia mapy nie pasują do Factorio {game}, które układa je inaczej. Należy wyeksportować nowy kod z Factorio {game} albo wybrać powyżej wersję gry bliższą {version}.",
   "worlds.generate.preview.timeout": "Podgląd mapy trwał zbyt długo i został zatrzymany. Należy spróbować ponownie albo wygenerować świat bez podglądu.",
-  "worlds.generate.preview.oom": "Grze zabrakło pamięci przy tworzeniu podglądu mapy. Należy spróbować mniejszej mapy albo wygenerować świat bez podglądu."
+  "worlds.generate.preview.oom": "Grze zabrakło pamięci przy tworzeniu podglądu mapy. Należy spróbować mniejszej mapy albo wygenerować świat bez podglądu.",
+  "worlds.generate.error.exchange_layout_range": "Ten kod został utworzony w Factorio {version}, a jego ustawienia mapy nie pasują do Factorio {game}. Działa z Factorio od {from} do {until} (bez tej wersji). Należy wybrać powyżej wersję z tego zakresu albo wyeksportować nowy kod z Factorio {game}."
 }

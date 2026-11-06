@@ -67,7 +67,7 @@ func TestCloneKeepingTheSave(t *testing.T) {
 	if nid == id {
 		t.Fatal("same world")
 	}
-	if got, err := os.ReadFile(filepath.Join(hn.worlds.Dirs().Worlds, nid, "saves", "new.zip")); err != nil || string(got) != "data of new.zip" {
+	if got, err := os.ReadFile(filepath.Join(hn.worlds.Dirs().Worlds, nid, "saves", "new.zip")); err != nil || string(got) != "data of new.zip" { //nolint:gosec // a test temp file
 		t.Errorf("saved copy %q, %v", got, err)
 	}
 	if _, err := os.Stat(filepath.Join(hn.worlds.Dirs().Worlds, nid, "saves", "old.zip")); err == nil {

@@ -103,6 +103,7 @@
   "worlds.generate.download.hint": "c516c9cf",
   "worlds.generate.error.exchange_empty": "2a5c33c3",
   "worlds.generate.error.exchange_layout": "62c5ebca",
+  "worlds.generate.error.exchange_layout_range": "07f25a4f",
   "worlds.generate.error.exchange_newer": "6d588a9d",
   "worlds.generate.error.exchange_other_line": "f05eb7d8",
   "worlds.generate.error.exchange_too_long": "0901e130",

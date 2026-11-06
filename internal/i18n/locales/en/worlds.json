@@ -387,5 +387,6 @@
   "worlds.generate.custom.legend": "Map settings",
   "worlds.generate.error.exchange_layout": "This string was made by Factorio {version}, and its map settings do not fit Factorio {game}, which lays them out differently. Export a new string from Factorio {game}, or choose a game version closer to {version} above.",
   "worlds.generate.preview.timeout": "The map preview took too long and was stopped. Try again, or generate the world without it.",
-  "worlds.generate.preview.oom": "The game ran out of memory making the map preview. Try a smaller map, or generate the world without a preview."
+  "worlds.generate.preview.oom": "The game ran out of memory making the map preview. Try a smaller map, or generate the world without a preview.",
+  "worlds.generate.error.exchange_layout_range": "This string was made by Factorio {version}, and its map settings do not fit Factorio {game}. It works with Factorio {from} up to, but not including, {until}. Choose a version in that range above, or export a new string from Factorio {game}."
 }

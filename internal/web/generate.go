@@ -53,10 +53,6 @@ const (
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
 
-// exchangeCompatible refuses a string whose settings the world's game version
-// cannot read (SPEC 5.6). It stands for mapexchange.Compatible until that lands.
-var exchangeCompatible = func(stringVersion [4]uint16, worldVersion string) error { return nil }
-
 // MapPreviewer makes the map preview pictures: one PNG for each planet
 // asked for, from the settings Generate would write (SPEC 5.6, 14.3). The
 // game layer provides it.
@@ -657,8 +653,11 @@ func decodeExchange(f *GenerateForm, version string) (mapexchange.Result, bool) 
 		return mapexchange.Result{}, false
 	}
 	// An older patch of the line may lay its settings out differently from the world's.
-	if err := exchangeCompatible(res.Version, version); err != nil {
+	if err := mapexchange.Compatible(res.Version, version); err != nil {
 		f.ExchangeError = i18n.M("worlds.generate.error.exchange_layout", "version", made, "game", version)
+		if ue, ok := errors.AsType[*mapexchange.UnsupportedError](err); ok && ue.From != "" && ue.Until != "" {
+			f.ExchangeError = i18n.M("worlds.generate.error.exchange_layout_range", "version", made, "game", version, "from", ue.From, "until", ue.Until)
+		}
 		return mapexchange.Result{}, false
 	}
 	return res, true

@@ -387,5 +387,6 @@
   "worlds.generate.custom.legend": "Réglages de la carte",
   "worlds.generate.error.exchange_layout": "Cette chaîne a été créée par Factorio {version}, et ses réglages de carte ne conviennent pas à Factorio {game}, qui les organise autrement. Exportez une nouvelle chaîne depuis Factorio {game}, ou choisissez ci-dessus une version du jeu plus proche de {version}.",
   "worlds.generate.preview.timeout": "L’aperçu de la carte a pris trop de temps et a été arrêté. Réessayez, ou générez le monde sans aperçu.",
-  "worlds.generate.preview.oom": "Le jeu a manqué de mémoire en créant l’aperçu de la carte. Essayez une carte plus petite, ou générez le monde sans aperçu."
+  "worlds.generate.preview.oom": "Le jeu a manqué de mémoire en créant l’aperçu de la carte. Essayez une carte plus petite, ou générez le monde sans aperçu.",
+  "worlds.generate.error.exchange_layout_range": "Cette chaîne a été créée par Factorio {version}, et ses réglages de carte ne conviennent pas à Factorio {game}. Elle fonctionne avec Factorio de {from} jusqu’à {until} exclue. Choisissez ci-dessus une version de cet intervalle, ou exportez une nouvelle chaîne depuis Factorio {game}."
 }

@@ -327,7 +327,7 @@ func TestGenerateNeedsAVersionWhenNoWorldIsActive(t *testing.T) {
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
-	b, err := os.ReadFile(path.Join("..", "mapexchange", "unittestdata", name))
+	b, err := os.ReadFile(path.Join("..", "mapexchange", "unittestdata", name)) //nolint:gosec // a fixture of this repository
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,13 +371,8 @@ func TestGenerateExchangeStringMustFitTheWorld(t *testing.T) {
 	if newer.Code != http.StatusBadRequest || !strings.Contains(newer.Body.String(), "game version 2.0.66") {
 		t.Errorf("newer: %d", newer.Code)
 	}
-	// An older patch on the same line is let through.
-	older := hn.postLong(PathGenerate, generateForm("mode", "exchange", "exchange", fixture(t, "2.1.9.txt"), "game_version_typed", "2.1.24", "map_key", "2.1|1"), c)
-	if older.Code != http.StatusSeeOther {
-		t.Errorf("older patch: %d", older.Code)
-	}
-	if n := hn.worldCount(); n != 2 {
-		t.Errorf("%d worlds, want the active one and the older-patch one", n)
+	if n := hn.worldCount(); n != 1 {
+		t.Errorf("%d worlds, want only the active one", n)
 	}
 }
 
@@ -656,17 +651,20 @@ func TestGamePreviewerErrors(t *testing.T) {
 	}
 }
 
-// SPEC 5.6: a string whose settings the world's version cannot read is refused on the form.
-func TestGenerateRefusesAnExchangeStringTheWorldCannotRead(t *testing.T) {
-	old := exchangeCompatible
-	exchangeCompatible = func(sv [4]uint16, wv string) error { return errors.New("layout") }
-	t.Cleanup(func() { exchangeCompatible = old })
+// SPEC 5.6: a string whose settings layout the world's version cannot read is refused on the form, with the versions that would work.
+func TestGenerateRefusesAnExchangeStringWithAnotherLayout(t *testing.T) {
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
-	hn.withActive("2.0.77")
-	rec := hn.postLong(PathGenerate, generateForm("mode", "exchange", "exchange", fixture(t, "2.0.77.txt")), c)
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "its map settings do not fit Factorio 2.0.77") || hn.worldCount() != 1 {
-		t.Errorf("status %d, %d worlds", rec.Code, hn.worldCount())
+	hn.withActive("2.1.24")
+	rec := hn.postLong(PathGenerate, generateForm("mode", "exchange", "exchange", fixture(t, "2.1.9.txt"), "game_version_typed", "2.1.24", "map_key", "2.1|1"), c)
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, "map settings do not fit Factorio 2.1.24") || !strings.Contains(body, "up to, but not including,") || hn.worldCount() != 1 {
+		t.Errorf("status %d, %d worlds\n%s", rec.Code, hn.worldCount(), body)
+	}
+	// A string made by the world's own version is fine.
+	rec = hn.postLong(PathGenerate, generateForm("mode", "exchange", "exchange", fixture(t, "2.1.24.txt"), "game_version_typed", "2.1.24", "map_key", "2.1|1"), c)
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("own version: %d", rec.Code)
 	}
 }
 
