@@ -2,7 +2,6 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
 <h1>{{t "worlds.clone.title" "name" .World.Name}}</h1>
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="clone-heading">
   <h2 id="clone-heading">{{t "worlds.clone.heading"}}</h2>
@@ -50,7 +49,7 @@
   {{- end}}
   <div class="actions">
     <button type="submit" class="button button--primary">{{t "worlds.clone.button"}}</button>
-    <a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a>
+    <a href="{{.WorldPath}}">{{t "worlds.cancel"}}</a>
   </div>
 </form>
 {{end}}

@@ -131,6 +131,10 @@ var parsed = func() map[string]lineData {
 	return m
 }()
 
+// DataVersion returns the game version a line's data was read from, or ""
+// for an unknown line.
+func DataVersion(line string) string { return parsed[line].GameVersion }
+
 // Presets returns the names the game accepts for --preset on a line, in the
 // order its map generator lists them. It returns nil for an unknown line.
 func Presets(line string) []string {

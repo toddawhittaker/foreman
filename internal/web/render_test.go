@@ -112,8 +112,19 @@ func pageCases() []pageCase {
 		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
 			f.Name, f.Mode, f.Reset = longName, modeExchange, true
 			f.NameError, f.VersionError, f.SpaceAgeError = msgNameEmpty(), msgBadGameVersion(), msgSpaceAgeOld()
-			f.PresetError, f.SeedError = i18n.M("worlds.generate.error.preset"), i18n.M("worlds.generate.error.seed")
+			f.PresetError = i18n.M("worlds.generate.error.preset")
 			f.ExchangeError, f.FormError = i18n.M("worlds.generate.error.exchange_empty"), i18n.M("worlds.generate.error.settings")
+		})}},
+		{"generate settings errors and warnings", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+			f.Preset, f.Modified, f.Tab = "death-world", true, tabEnemy
+			f.MapGen.Peaceful.Checked, f.MapGen.Peaceful.Blocked = true, true
+			f.MapGen.Seed.Error = i18n.M("mapgen.err.seed", "max", "4294967295")
+			f.SettingsProblems = []Problem{{FieldID: mgSeedID, Message: f.MapGen.Seed.Error}}
+			f.Reasons = []AchReason{{Key: "mapgen.achievement.not_in_peaceful_mode", Msg: achievementMsgs["mapgen.achievement.not_in_peaceful_mode"], Active: true}}
+		})}},
+		{"generate untested layout", "todd", 200, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+			f.Version, f.Line, f.MapKey, f.Presets = "2.1.15", "2.1", "2.1|1", mapgen.Presets("2.1")
+			f.fill("2.1.15", nil)
 		})}},
 		{"clone with save", "todd", 200, ClonePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", SpaceAge: true},
 			Name: longName + " (copy)", Choice: cloneKeep, SaveName: "autosave_3.zip", SaveTime: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), RunningNote: true}},
@@ -291,7 +302,8 @@ func TestVersionFragments(t *testing.T) {
 // generateCase is the Generate form as first offered, with edit applied.
 func generateCase(edit func(*GenerateForm)) GenerateForm {
 	f := GenerateForm{Version: "2.0.77", DefaultVersion: "2.0.77", SpaceAge: true, Download: true, CanDownload: true,
-		Mode: modePreset, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Seed: "42", MapGen: NewMapGenForm("2.0", true)}
+		Mode: modeSettings, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Tab: tabResources}
+	f.fill("2.0.77", &MapGenText{Value: "42"})
 	if edit != nil {
 		edit(&f)
 	}

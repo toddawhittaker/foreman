@@ -1445,71 +1445,246 @@ td > .hint {
   }
 }
 
-/* 8.7 The map-gen form: groups that size themselves from the room they have. */
-.mapgen {
+/* 8.7 The map settings: tabs, then groups that size themselves from the room they have. */
+.map-section {
+  container: map-section / inline-size;
+}
+
+.mode-panel,
+.gen-main,
+.gen-preview,
+.tab-panel,
+.mapgen-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   min-inline-size: 0;
 }
 
-.mapgen fieldset {
-  gap: var(--space-3);
+/* The tab radios mean something only once the script shows one panel at a
+   time; without it the panels stack, each under its own heading. */
+.tabset {
+  display: none;
+}
+
+.tab-panel > legend {
+  margin-block-end: var(--space-2);
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+}
+
+.tab-panel + .tab-panel {
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.js-on .tabset {
+  display: block;
+}
+
+.js-on .tablist {
+  display: flex;
+  flex-wrap: wrap;
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+/* A tab is a radio drawn as the sub-navigation's tab (DESIGN 6): the arrow
+   keys move between them, and the group is one tab stop. */
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  margin-block-end: -1px;
+  padding-inline: var(--space-3);
+  color: var(--color-text-muted);
+  border-block: 3px solid transparent;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tab input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tab:has(input:checked) {
+  color: var(--color-text);
+  font-weight: 650;
+  border-block-end-color: var(--color-selected);
+}
+
+.tab:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: -3px;
+}
+
+/* The script names the shown tab on the form, so this needs no :has(). */
+.js-on .tab-panel {
+  display: none;
+}
+
+.js-on[data-tab="resources"] #panel-resources,
+.js-on[data-tab="terrain"] #panel-terrain,
+.js-on[data-tab="enemy"] #panel-enemy,
+.js-on[data-tab="advanced"] #panel-advanced {
+  display: grid;
+}
+
+/* The tab names the panel, so its own heading is for screen readers only. */
+.js-on .tab-panel > legend {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.js-on .tab-panel + .tab-panel {
+  padding-block-start: 0;
+  border-block-start: 0;
 }
 
 /* One control: its name, then its settings side by side while they fit. */
-.mapgen .autoplace {
+.autoplace {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-3) var(--space-4);
   padding-block-start: var(--space-3);
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--border-width) solid var(--color-line);
 }
 
-/* The Map fieldset's own controls stay inside its single column. */
-.mapgen-pair {
+/* A control's name is quieter than the tab's, so the groups read as one list (DESIGN 8.7). */
+.autoplace > legend {
+  margin-block-end: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.mapgen-checks {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: var(--space-3);
 }
 
 /* A checkbox row with its hint under it, not a labelled field. */
 .mapgen-check {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
-.mapgen input.mono,
-.mapgen textarea {
+/* A setting of steps: its name, then the select or, with script on a wide
+   panel, a slider with the step in words at the end of the name's row (DESIGN 7.2). */
+.step__range,
+.step__value {
+  display: none;
+}
+
+@container map-section (min-width: 34rem) {
+  .js-on .autoplace {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+
+  .js-on .step {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: var(--space-2);
+  }
+
+  .js-on .step > :not(label, output) {
+    grid-column: 1 / -1;
+  }
+
+  .js-on .step select {
+    display: none;
+  }
+
+  /* The value has room for the widest step, so the slider never moves under the pointer. */
+  .js-on .step__value {
+    display: block;
+    min-inline-size: 5ch;
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  .js-on .step__range {
+    display: block;
+    inline-size: 100%;
+    min-block-size: var(--target-min);
+    margin: 0;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+  }
+}
+
+.step__range:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* A short warning beside a setting that turns achievements off; the words carry it. */
+.ach {
+  color: var(--color-warn);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ach:empty {
+  display: none;
+}
+
+.unit {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.ms-group .field input {
+  max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+.mode-panel input.mono {
   font-family: var(--font-mono);
 }
 
-.mapgen input.mono {
-  max-inline-size: 20ch;
+.mode-panel textarea.mono {
+  font-family: var(--font-mono);
 }
 
-.mapgen textarea {
+#mg-raw textarea,
+#mg-raw {
   inline-size: 100%;
-  min-block-size: var(--target-min);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-deep);
-  color: var(--color-text);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  font-size: var(--text-md);
-  line-height: 1.45;
-  resize: vertical;
+  max-inline-size: none;
+  font-family: var(--font-mono);
+  white-space: pre;
+  overflow: auto;
 }
 
-.mapgen select[aria-invalid="true"],
-.mapgen textarea[aria-invalid="true"] {
+.mode-panel select[aria-invalid="true"],
+.mode-panel textarea[aria-invalid="true"] {
   border: 2px solid var(--color-danger-text);
 }
 
-/* A planet's controls and the raw box fold away; the summary is the whole target. */
-.mapgen details {
-  border-block-start: 1px solid var(--color-line);
+/* A planet's controls, the raw box and the typed version fold away; the summary is the whole target. */
+.mode-panel details {
+  border-block-start: var(--border-width) solid var(--color-line);
 }
 
-.mapgen summary {
+.mode-panel summary,
+.disclosure > summary {
   display: list-item;
   list-style-position: inside;
   min-block-size: var(--target-min);
@@ -1520,12 +1695,37 @@ td > .hint {
   overflow-wrap: anywhere;
 }
 
+.disclosure > summary {
+  color: var(--color-link);
+  font-weight: 400;
+}
+
 .mapgen-body,
-.mapgen details > .field {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+.mode-panel details > .field,
+.disclosure > .field {
   padding-block: var(--space-3);
+}
+
+/* The preset, "[modified]" and its reset share a row while they fit. */
+.preset-row > select {
+  flex: 0 1 auto;
+}
+
+.modified {
+  color: var(--color-text-muted);
+}
+
+.modified:empty {
+  display: none;
+}
+
+/* Random seed needs script, so it shows only once the script has run. */
+.seed-random {
+  display: none;
+}
+
+.js-on .seed-random {
+  display: inline-flex;
 }
 
 /* 8.5 Log and console: a deep sunken mono box that scrolls inside itself. */
@@ -1645,26 +1845,59 @@ td > .hint {
 }
 
 .version-fields,
-.map-section,
 .preview,
-.preview > section,
-.mode-option,
-.mode-fields {
+.preview > section {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
-.version-fields {
+.version-fields,
+.map-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
-.mode-fields {
-  padding-inline-start: var(--space-3);
+.modes {
+  gap: var(--space-2);
 }
 
-/* Only the chosen way shows its fields; hidden fields leave the tab order. Without :has() all three show and the server reads the chosen one. */
-.mode-option:has(> label > input[type="radio"]:not(:checked)) > .mode-fields {
+/* A way to make the map: its radio, then its one-line description under the words. */
+.mode > .hint {
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+/* Only the chosen way shows its fields; hidden fields leave the tab order.
+   Without :has() both show and the server reads the chosen one. */
+form:has(#mode-settings:checked) .mode-panel--exchange,
+form:has(#mode-exchange:checked) .mode-panel--settings,
+form:has(#mode-exchange:checked) .achievements {
+  display: none;
+}
+
+/* The preview sits under the settings on a narrow panel, and beside them,
+   held in view, on a wide one (DESIGN 8.6). */
+.gen-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+@container map-section (min-width: 52rem) {
+  .gen-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+    align-items: start;
+  }
+
+  .gen-preview {
+    position: sticky;
+    inset-block-start: var(--space-4);
+  }
+}
+
+/* A message's display would otherwise beat the hidden attribute. */
+.message[hidden] {
   display: none;
 }
 
@@ -1788,10 +2021,6 @@ td > .hint {
   border: 2px solid var(--color-danger-text);
 }
 
-.field--short input {
-  max-inline-size: 20ch;
-}
-
 /* The JSON editor keeps its lines; a long one scrolls inside the box. */
 .field textarea.code {
   max-inline-size: none;
@@ -1799,6 +2028,63 @@ td > .hint {
   white-space: pre;
   overflow: auto;
   tab-size: 2;
+}
+
+/* The settings rail: section links beside the form on a wide panel only;
+   it may stay in view there because it never covers the form (DESIGN 8.10). */
+.settings-wrap {
+  container: settings / inline-size;
+}
+
+.settings-rail {
+  display: none;
+}
+
+@container settings (min-width: 44rem) {
+  .settings-layout {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .settings-rail {
+    display: block;
+    position: sticky;
+    inset-block-start: var(--space-4);
+  }
+
+  .settings-rail ul {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .settings-rail a {
+    display: flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    padding-inline-start: var(--space-3);
+    border-inline-start: 3px solid var(--color-line);
+    overflow-wrap: anywhere;
+  }
+
+  .settings-rail a:hover {
+    border-inline-start-color: var(--color-selected);
+  }
+
+  /* The rail holds the raw editor's link. */
+  .settings-raw-link {
+    display: none;
+  }
+}
+
+.settings-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
 }
 
 .settings > fieldset > legend {

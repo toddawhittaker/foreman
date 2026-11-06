@@ -84,3 +84,16 @@ func PresetMsg(name string) i18n.Msg {
 	}
 	return i18n.M("mapgen.preset.other", "name", name)
 }
+
+// achievementMsgs words the game's reasons achievements are turned off, by
+// the message key mapgen gives them; the wording is the game's own.
+var achievementMsgs = map[string]i18n.Msg{
+	"mapgen.achievement.not_in_peaceful_mode":                     i18n.M("mapgen.achievement.not_in_peaceful_mode"),
+	"mapgen.achievement.not_in_no_enemies_mode":                   i18n.M("mapgen.achievement.not_in_no_enemies_mode"),
+	"mapgen.achievement.not_with_lower_enemies":                   i18n.M("mapgen.achievement.not_with_lower_enemies"),
+	"mapgen.achievement.not_with_extra_trees":                     i18n.M("mapgen.achievement.not_with_extra_trees"),
+	"mapgen.achievement.not_with_bigger_starting_area":            i18n.M("mapgen.achievement.not_with_bigger_starting_area"),
+	"mapgen.achievement.not_with_easier_pollution_settings":       i18n.M("mapgen.achievement.not_with_easier_pollution_settings"),
+	"mapgen.achievement.not_with_easier_enemy_expansion_settings": i18n.M("mapgen.achievement.not_with_easier_enemy_expansion_settings"),
+	"mapgen.achievement.not_with_easier_enemy_evolution_settings": i18n.M("mapgen.achievement.not_with_easier_enemy_evolution_settings"),
+}

@@ -1,13 +1,20 @@
 // Keeps the Generate form in step with what the browser redraws (SPEC 5.6,
-// 17.3; DESIGN 8.8). Choosing a version from the list clears the typed one,
-// which would win. After the map options are redrawn for a new game line, or
-// a preview is made, the change is read out. A form shown again with errors
-// gets focus on its error summary; an old summary is removed when a redraw
-// leaves the form in place. While a preview runs the buttons are marked
-// aria-disabled rather than disabled, so the one the person pressed keeps
-// focus.
+// 17.3; DESIGN 8.6 to 8.8). Choosing a version from the list clears the typed
+// one, which would win. The map settings show one tab at a time, sliders on a
+// wide panel, "[modified]" once a setting leaves the preset, and a warning as
+// soon as a setting turns achievements off; the server gives the same answers
+// when the form is sent. After the settings are redrawn for a new game line,
+// or a preview is made, the change is read out. A form shown again with
+// errors gets focus on its error summary; an old summary is removed when a
+// redraw leaves the form in place. While a preview runs the buttons are
+// marked aria-disabled rather than disabled, so the one the person pressed
+// keeps focus.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
+  // The whole form is swapped when it comes back with errors, so it is looked up each time.
+  const formEl = () => document.getElementById("generate-form");
+  if (!formEl()) return;
+  formEl().classList.add("js-on");
 
   function announce(said) {
     const announcer = document.getElementById("announcer");
@@ -16,10 +23,164 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => { announcer.textContent = said; }, 50);
   }
 
-  document.body.addEventListener("change", (e) => {
-    if (e.target.id !== "generate-version-select") return;
-    const typed = document.getElementById("generate-version");
-    if (typed) typed.value = "";
+  // Tabs: the checked radio names the panel the style sheet shows.
+  function showTab(name) {
+    const radio = document.getElementById("tab-" + name);
+    if (radio) radio.checked = true;
+    formEl().dataset.tab = name;
+  }
+
+  // A link or focus that lands in another tab, or a closed planet, opens it first.
+  function reveal(el) {
+    const panel = el.closest(".tab-panel");
+    if (panel) showTab(panel.id.replace("panel-", ""));
+    for (let d = el.closest("details"); d; d = d.parentElement.closest("details")) d.open = true;
+  }
+
+  // Sliders: the select is the field that is sent; the slider moves it.
+  function syncSlider(select) {
+    const range = document.getElementById(select.id + "-range");
+    const value = document.getElementById(select.id + "-value");
+    const text = select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : "";
+    if (range) {
+      range.value = String(select.selectedIndex);
+      range.setAttribute("aria-valuetext", text);
+    }
+    if (value) value.textContent = text;
+  }
+
+  // Each select of steps gets a slider over the same steps and an output
+  // with the step's words; the style sheet shows them on a wide panel.
+  function addSliders(root) {
+    root.querySelectorAll(".step select").forEach((select) => {
+      if (document.getElementById(select.id + "-range")) return;
+      const label = document.getElementById(select.id + "-label");
+      const value = document.createElement("output");
+      value.className = "step__value";
+      value.id = select.id + "-value";
+      value.htmlFor = select.id + "-range";
+      if (label) label.after(value);
+      const range = document.createElement("input");
+      range.type = "range";
+      range.className = "step__range";
+      range.id = select.id + "-range";
+      range.min = "0";
+      range.max = String(select.options.length - 1);
+      range.step = "1";
+      range.dataset.for = select.id;
+      range.setAttribute("aria-labelledby", select.id + "-label");
+      range.setAttribute("aria-describedby", select.getAttribute("aria-describedby") || "");
+      select.after(range);
+      syncSlider(select);
+    });
+  }
+  addSliders(document);
+
+  // The achievement line of one field, in the units it shows.
+  function crosses(el) {
+    const test = el.dataset.ach;
+    if (!test) return false;
+    if (el.type === "checkbox") return test === "true" ? el.checked : !el.checked;
+    const v = parseFloat(el.value);
+    const limit = parseFloat(el.dataset.achLimit);
+    if (Number.isNaN(v) || Number.isNaN(limit)) return false;
+    const tol = 1e-6 * Math.abs(limit);
+    return test === "below" ? v < limit - tol : v > limit + tol;
+  }
+
+  function differs(el) {
+    if (el.type === "checkbox") return el.checked !== (el.dataset.preset === "on");
+    if (el.tagName === "SELECT") return el.value !== el.dataset.preset;
+    const a = parseFloat(el.value);
+    const b = parseFloat(el.dataset.preset);
+    if (Number.isNaN(a) || Number.isNaN(b)) return el.value.trim() !== el.dataset.preset.trim();
+    return Math.abs(a - b) > 1e-9 * Math.max(1, Math.abs(b));
+  }
+
+  // Redraws "[modified]", the reset button, each warning and the summary.
+  function refresh() {
+    const settings = document.getElementById("map-settings");
+    if (!settings) return;
+    const word = formEl().dataset.achWord || "";
+    let modified = false;
+    const active = new Set();
+    settings.querySelectorAll("[data-preset]").forEach((el) => {
+      if (differs(el)) modified = true;
+      if (!el.dataset.ach) return;
+      const blocked = crosses(el);
+      if (blocked) active.add(el.dataset.achReason);
+      const note = document.getElementById(el.id + "-ach");
+      if (note && note.textContent !== (blocked ? word : "")) note.textContent = blocked ? word : "";
+    });
+    const raw = document.getElementById("mg-raw");
+    if (raw && (raw.dataset.modified === "true" || raw.value !== raw.defaultValue)) modified = true;
+    const mark = document.getElementById("preset-modified");
+    if (mark) mark.textContent = modified ? mark.dataset.word : "";
+    const reset = document.getElementById("preset-reset");
+    if (reset) reset.hidden = !modified;
+    const summary = document.getElementById("ach-summary");
+    if (summary) {
+      summary.querySelectorAll("li[data-reason]").forEach((li) => { li.hidden = !active.has(li.dataset.reason); });
+      summary.hidden = active.size === 0;
+    }
+    return active.size;
+  }
+
+  let blockedBefore = refresh();
+  function changed() {
+    const blocked = refresh();
+    // A setting that newly turns achievements off is said once, not on every keystroke.
+    if (blocked > blockedBefore) announce(formEl().dataset.achWord || "");
+    blockedBefore = blocked;
+  }
+
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (!t.closest("#generate-form")) return;
+    if (t.classList.contains("step__range")) {
+      const select = document.getElementById(t.dataset.for);
+      if (select) {
+        select.selectedIndex = Number(t.value);
+        syncSlider(select);
+      }
+    }
+    if (t.closest("#map-settings")) changed();
+  });
+
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (!t.closest("#generate-form")) return;
+    if (t.name === "tab") {
+      showTab(t.value);
+      return;
+    }
+    if (t.tagName === "SELECT" && t.closest(".step")) syncSlider(t);
+    if (t.id === "generate-version-select") {
+      const typed = document.getElementById("generate-version");
+      if (typed) typed.value = "";
+    }
+    if (t.closest("#map-settings")) changed();
+  });
+
+  // Random seed fills a new one as the game's own button does, 0 to 4294967295 (SPEC 5.6).
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#seed-random")) return;
+    const seed = document.getElementById("generate-seed");
+    if (!seed) return;
+    seed.value = String(crypto.getRandomValues(new Uint32Array(1))[0]);
+    seed.dispatchEvent(new Event("input", { bubbles: true }));
+    seed.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  // The error summary's links reach fields in a tab not shown.
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("#error-summary a[href^='#'], #preview a[href^='#']");
+    if (!link) return;
+    const target = document.getElementById(link.getAttribute("href").slice(1));
+    if (target) reveal(target);
+  });
+  document.addEventListener("focusin", (e) => {
+    if (e.target.closest("#generate-form .tab-panel")) reveal(e.target);
   });
 
   const actions = "#preview-button, #generate-button";
@@ -64,19 +225,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = document.getElementById("error-summary");
     // The form came back whole, with its errors: they are what to read next.
     if (xhr && xhr.getResponseHeader("HX-Retarget") === "#generate-form") {
+      const again = document.getElementById("generate-form");
+      if (again) {
+        again.classList.add("js-on");
+        showTab(again.dataset.tab || "resources");
+        addSliders(again);
+      }
       if (summary) summary.focus();
       return;
     }
     // Otherwise only a part was redrawn, so a summary left in the form is out of date.
     if (summary) summary.remove();
     if (path.endsWith("/generate/refresh")) {
-      // Choosing a preset refills the hidden custom form; nothing is shown to read out.
-      // After a swap detail.elt is the swapped part; the sender is in requestConfig.
+      // The redrawn settings keep the tab that was shown.
+      const tab = formEl().querySelector("input[name='tab']:checked");
+      if (tab) formEl().dataset.tab = tab.value;
+      addSliders(document);
+      blockedBefore = refresh();
+      // Choosing a preset, or resetting to it, redraws what the person is looking at; nothing more is read out.
       const sender = e.detail.requestConfig && e.detail.requestConfig.elt;
-      if (!(sender && sender.id === "generate-preset")) announce(strings["js.generate.options"]);
+      if (!(sender && (sender.id === "generate-preset" || sender.id === "preset-reset"))) announce(strings["js.generate.options"]);
     } else if (path.endsWith("/generate/preview")) {
-      const failed = document.querySelector("#preview .message");
-      announce(failed ? failed.textContent.replace(/\s+/g, " ").trim() : strings["js.generate.preview_ready"]);
+      const failedMsg = document.querySelector("#preview .message");
+      announce(failedMsg ? failedMsg.textContent.replace(/\s+/g, " ").trim() : strings["js.generate.preview_ready"]);
     }
   });
 });

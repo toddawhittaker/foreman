@@ -38,12 +38,14 @@ const generatedQuery = "generated"
 // three bytes for each of its characters (SPEC 14.6).
 const generateFormLimit = 4 * mapexchange.MaxInputBytes
 
-// How the map is made.
+// The two ways to make the map (SPEC 5.6, DESIGN 8.6).
 const (
-	modePreset   = "preset"
+	modeSettings = "settings"
 	modeExchange = "exchange"
-	modeCustom   = "custom"
 )
+
+// PresetSelectID is the id of Generate's preset select.
+const PresetSelectID = "generate-preset"
 
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
@@ -57,12 +59,20 @@ type GeneratePage struct {
 	Preview    *PreviewView
 }
 
+// AchReason is one of the game's reasons achievements are turned off, for
+// the summary by the Generate button; Active when the settings give it.
+type AchReason struct {
+	Key    string
+	Msg    i18n.Msg
+	Active bool
+}
+
 // GenerateForm is the Generate form's state, as typed or as first offered.
 type GenerateForm struct {
 	Name string
-	// Picked is the select's choice; Typed the typed version. Version is
-	// the one the world will have, and DefaultVersion the active world's,
-	// which the first option of the select names.
+	// Typed is the typed version. Version is the one the world will have,
+	// and DefaultVersion the active world's, which the first option of the
+	// select names.
 	Typed          string
 	Version        string
 	DefaultVersion string
@@ -72,22 +82,34 @@ type GenerateForm struct {
 	Mode           string
 	Preset         string
 	Presets        []string
-	// Seed is the preset mode's field; FilledSeed carries the random seed
-	// a custom or exchange-string preview used, so the world matches it.
-	Seed       string
-	FilledSeed string
-	Exchange   string
-	MapGen     MapGenForm
+	// FilledFrom is the preset the settings were filled from. A page without
+	// script posts a new preset with the old preset's values; the two differ
+	// then, and the settings are filled again before anything is made.
+	FilledFrom string
+	// Tab is the settings tab shown.
+	Tab string
+	// FilledSeed carries the random seed an exchange-string preview used, so
+	// the world matches it.
+	FilledSeed  string
+	Exchange    string
+	MapGen      MapGenForm
+	MapSettings MapSettingsForm
+	// Modified is true once any setting differs from the preset's.
+	Modified bool
+	// Reasons are the line's achievement reasons, each marked when the
+	// settings give it (SPEC 5.6).
+	Reasons []AchReason
 	// Line and MapKey say which game line and Space Age setting the map
 	// options were made for.
 	Line   string
 	MapKey string
 	// Reset says the map options were set back because the version or
-	// Space Age changed.
-	Reset bool
+	// Space Age changed; Refilled that they were filled from a newly chosen
+	// preset that the page had not shown yet.
+	Reset, Refilled bool
 
-	NameError, VersionError, SpaceAgeError, PresetError, SeedError, ExchangeError, FormError i18n.Msg
-	CustomProblems                                                                           []Problem
+	NameError, VersionError, SpaceAgeError, PresetError, ExchangeError, FormError i18n.Msg
+	SettingsProblems                                                              []Problem
 }
 
 func (GeneratePage) templateName() string { return "generate" }
@@ -102,15 +124,24 @@ func (p GeneratePage) Problems() []Problem {
 		{"generate-name", f.NameError},
 		{"generate-version", f.VersionError},
 		{"generate-space-age", f.SpaceAgeError},
-		{"generate-preset", f.PresetError},
-		{"generate-seed", f.SeedError},
+		{PresetSelectID, f.PresetError},
 		{"exchange-string", f.ExchangeError},
 		{"mode-" + f.Mode, f.FormError},
 	}
-	if f.Mode == modeCustom {
-		all = append(all, f.CustomProblems...)
+	if f.Mode == modeSettings {
+		all = append(all, f.SettingsProblems...)
 	}
 	return problems(all...)
+}
+
+// Blocked reports whether any achievement reason is active.
+func (f GenerateForm) Blocked() bool {
+	return slices.ContainsFunc(f.Reasons, func(r AchReason) bool { return r.Active })
+}
+
+// Tabs lists the settings tabs in the game's order.
+func (GenerateForm) Tabs() []string {
+	return []string{tabResources, tabTerrain, tabEnemy, tabAdvanced}
 }
 
 // Paths the form uses.
@@ -120,6 +151,9 @@ func (GeneratePage) PreviewPath() string { return PathGeneratePreview }
 func (GeneratePage) VersionsPath() string {
 	return versionsPath("")
 }
+
+// RefreshPath is where the settings are redrawn.
+func (GenerateForm) RefreshPath() string { return PathGenerateRefresh }
 
 // PresetMsg is a preset's name in the game's own words.
 func (GenerateForm) PresetMsg(name string) i18n.Msg { return PresetMsg(name) }
@@ -167,7 +201,7 @@ func keyLine(key string) string {
 	return ""
 }
 
-// handleGenerateForm shows the empty form: a preset map on the active
+// handleGenerateForm shows the empty form: the default preset on the active
 // world's game version.
 func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	version := s.activeVersion(r.Context())
@@ -178,14 +212,18 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	spaceAge := lineHasSpaceAge(line)
 	f := GenerateForm{
 		Version: version, DefaultVersion: version, SpaceAge: spaceAge, Download: true,
-		Mode: modePreset, Preset: "default", Line: line, Presets: mapgen.Presets(line),
-		MapKey: mapKey(line, spaceAge), MapGen: NewMapGenForm(line, spaceAge),
+		Mode: modeSettings, Preset: "default", Line: line, Presets: mapgen.Presets(line),
+		MapKey: mapKey(line, spaceAge), Tab: tabResources,
 	}
+	f.fill(version, nil)
+	rules, _ := mapgen.AchievementRules(version)
+	f.reasons(version, nil, nil, rules)
 	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, nil))
 }
 
-// handleGenerateRefresh redraws the page for a changed game version or
-// Space Age; the browser swaps in only the map options.
+// handleGenerateRefresh redraws the page for a changed game version, Space
+// Age or preset, or the preset's reset; the browser swaps in only the parts
+// that change.
 func (s *server) handleGenerateRefresh(w http.ResponseWriter, r *http.Request, u store.User) {
 	if !s.readForm(w, r) {
 		return
@@ -197,7 +235,9 @@ func (s *server) handleGenerateRefresh(w http.ResponseWriter, r *http.Request, u
 
 func (f *GenerateForm) clearErrors() {
 	f.NameError, f.VersionError, f.SpaceAgeError, f.PresetError = i18n.Msg{}, i18n.Msg{}, i18n.Msg{}, i18n.Msg{}
-	f.SeedError, f.ExchangeError, f.FormError, f.CustomProblems = i18n.Msg{}, i18n.Msg{}, i18n.Msg{}, nil
+	f.ExchangeError, f.FormError, f.SettingsProblems = i18n.Msg{}, i18n.Msg{}, nil
+	f.MapGen.Seed.Error = i18n.Msg{}
+	f.Refilled = false
 }
 
 func (f GenerateForm) failed() bool {
@@ -212,7 +252,7 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 	f, nw, ok := s.readGenerate(r, kindGenerate)
 	if !ok {
 		status := http.StatusBadRequest
-		if f.Reset {
+		if f.Reset || f.Refilled {
 			status = http.StatusOK
 		}
 		s.page(w, r, status, u.Username, s.generatePage(f, nil))
@@ -228,7 +268,14 @@ func (s *server) handleGenerate(w http.ResponseWriter, r *http.Request, u store.
 		s.page(w, r, status, u.Username, s.generatePage(f, nil))
 		return
 	}
-	s.audit(r.Context(), u, AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", f.Mode, nw.GameVersion, nw.SpaceAge))
+	how := f.Mode
+	if f.Mode == modeSettings {
+		how = "preset " + f.Preset
+		if f.Modified {
+			how += ", modified"
+		}
+	}
+	s.audit(r.Context(), u, AuditGenerate, id, fmt.Sprintf("%s, %s, space age %t", how, nw.GameVersion, nw.SpaceAge))
 	if f.Download {
 		s.downloadFor(r.Context(), map[string]string{nw.GameVersion: id}, actor(u))
 	}
@@ -268,14 +315,58 @@ type readKind int
 const (
 	kindGenerate readKind = iota // make the world
 	kindPreview                  // make the map pictures; the name is not needed yet
-	kindRefresh                  // redraw the map options for a changed version
+	kindRefresh                  // redraw the map options for a changed version or preset
 )
+
+// fill sets the settings to the preset's values for the version, keeping
+// the seed (DESIGN 8.7).
+func (f *GenerateForm) fill(version string, keep *MapGenText) {
+	seed := MapGenText{}
+	if keep != nil {
+		seed = *keep
+	}
+	f.MapGen = NewMapGenFormForPreset(f.Line, f.SpaceAge && lineHasSpaceAge(f.Line), f.Preset)
+	f.MapGen.withPreset(f.MapGen)
+	f.MapGen.Seed.Value = seed.Value
+	f.MapSettings, _, _ = readMapSettings(version, f.Preset, nil)
+	f.FilledFrom = f.Preset
+}
+
+// settingsShown is sent with the map settings, so a post that never showed
+// them is told apart from one whose checkboxes are all off.
+const settingsShown = "settings_shown"
+
+// checkSeed refuses a seed that is not a 32-bit whole number.
+func (f *GenerateForm) checkSeed() {
+	s := strings.TrimSpace(f.MapGen.Seed.Value)
+	if _, err := strconv.ParseUint(s, 10, 32); s != "" && err != nil {
+		f.MapGen.Seed.Error = i18n.M("mapgen.err.seed", "max", strconv.FormatUint(mgMaxNumber, 10))
+		if f.Mode == modeSettings {
+			f.SettingsProblems = append(f.SettingsProblems, Problem{FieldID: mgSeedID, Message: f.MapGen.Seed.Error})
+		}
+	}
+}
+
+// tabOf names the settings tab a field id is in.
+func (f GenerateForm) tabOf(id string) string {
+	if strings.HasPrefix(id, "ms-") {
+		for _, g := range f.MapSettings.Groups {
+			for _, fl := range g.Fields {
+				if fl.ID == id {
+					return g.Tab
+				}
+			}
+		}
+	}
+	return f.MapGen.TabOf(id)
+}
 
 // readGenerate reads and checks the form. It always returns the form to
 // show again. ok is true when the world, or the preview, can be made. When
-// the version or Space Age moved on from what the custom map options were
-// made for, those options are set back and ok is false with no error
-// (Reset); the other ways to make a map do not depend on them.
+// the version or Space Age moved on from what the map settings were made
+// for, or a new preset was chosen without the page filling its values, the
+// settings are filled from the preset and ok is false with no error (Reset,
+// Refilled); the exchange string does not depend on them.
 func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, nw world.NewWorld, ok bool) {
 	ctx := r.Context()
 	f = GenerateForm{
@@ -285,13 +376,17 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		Download:    r.PostFormValue("download") == "on",
 		Mode:        r.PostFormValue("mode"),
 		Preset:      r.PostFormValue("preset"),
-		Seed:        strings.TrimSpace(r.PostFormValue("seed")),
+		FilledFrom:  r.PostFormValue("filled_from"),
+		Tab:         r.PostFormValue("tab"),
 		FilledSeed:  strings.TrimSpace(r.PostFormValue("filled_seed")),
 		Exchange:    r.PostFormValue("exchange"),
 		CanDownload: s.game != nil,
 	}
-	if !slices.Contains([]string{modePreset, modeExchange, modeCustom}, f.Mode) {
-		f.Mode = modePreset
+	if f.Mode != modeExchange {
+		f.Mode = modeSettings
+	}
+	if !slices.Contains(f.Tabs(), f.Tab) {
+		f.Tab = tabResources
 	}
 	f.DefaultVersion = s.activeVersion(ctx)
 	f.Version = f.Typed
@@ -329,8 +424,11 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	mapSpaceAge := f.SpaceAge && lineHasSpaceAge(line)
 	f.Line, f.MapKey = line, mapKey(line, mapSpaceAge)
 	f.Presets = mapgen.Presets(line)
-	stale := versionOK && f.SpaceAgeError.IsZero() && posted != f.MapKey
-	f.Reset = stale && f.Mode == modeCustom
+	// A post that never showed the settings (no settingsShown), such as a preset
+	// and a seed alone, means the preset as it is.
+	shown := r.PostFormValue(settingsShown) != ""
+	stale := versionOK && f.SpaceAgeError.IsZero() && posted != f.MapKey && shown
+	f.Reset = stale && f.Mode == modeSettings
 
 	if kind == kindGenerate && strings.TrimSpace(f.Name) == "" {
 		f.NameError = msgNameEmpty()
@@ -342,79 +440,149 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 			f.PresetError = i18n.M("worlds.generate.error.preset")
 		}
 	}
+	// The version the map settings are laid out for: the world's, or the
+	// line's own when the version is not settled yet.
+	layoutVersion := f.Version
+	if !versionOK {
+		layoutVersion = mapgen.DataVersion(line)
+	}
 
-	// Always read the custom form, so it is shown again whatever the mode.
+	// Always read the settings, so they are shown again whatever the mode.
 	var mapGen []byte
-	if stale {
-		f.MapGen = NewMapGenForm(line, mapSpaceAge)
+	var overrides map[string]any
+	seed := MapGenText{Value: strings.TrimSpace(r.PostFormValue(mgSeed))}
+	mismatch := f.PresetError.IsZero() && f.FilledFrom != f.Preset
+	refill := stale || r.PostFormValue("reset") != "" || mismatch || !shown
+	if refill {
+		f.Refilled = kind == kindGenerate && shown && mismatch && !stale && f.Mode == modeSettings && r.PostFormValue("reset") == ""
+		f.fill(layoutVersion, &seed)
+		f.checkSeed()
+		if f.Refilled {
+			f.Tab = tabResources
+		}
+		mapGen, _ = buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))
 	} else {
-		var probs []Problem
+		var probs, msProbs []Problem
 		f.MapGen, mapGen, probs = ParseMapGenForm(r, line, mapSpaceAge)
-		if f.Mode == modeCustom {
-			f.CustomProblems = probs
+		f.MapGen.withPreset(NewMapGenFormForPreset(line, mapSpaceAge, f.Preset))
+		f.MapSettings, overrides, msProbs = readMapSettings(layoutVersion, f.Preset, r.PostForm)
+		if f.Mode == modeSettings {
+			f.SettingsProblems = append(probs, msProbs...)
+			if len(f.SettingsProblems) > 0 {
+				f.Tab = f.tabOf(f.SettingsProblems[0].FieldID)
+			}
 		}
 	}
-	if f.Reset {
+	f.Modified = f.MapGen.Modified() || f.MapSettings.Modified()
+	rules, _ := mapgen.AchievementRules(layoutVersion)
+	f.MapGen.markAchievements(rules)
+	if f.Reset || f.Refilled {
+		refilled := f.Refilled
 		f.clearErrors()
+		f.Refilled = refilled
+		f.reasons(layoutVersion, mapGen, nil, rules)
+		return f, nw, false
+	}
+	if kind == kindRefresh {
+		if mapGen == nil {
+			mapGen, _ = buildMapGen(f.MapGen, rawOrEmpty(f.MapGen.Raw.Value))
+		}
+		f.reasons(layoutVersion, mapGen, overrides, rules)
 		return f, nw, false
 	}
 	if !versionOK {
+		f.reasons(layoutVersion, mapGen, overrides, rules)
 		return f, nw, false
 	}
 
 	nw = world.NewWorld{Name: strings.TrimSpace(f.Name), GameVersion: f.Version, SpaceAge: f.SpaceAge}
-	var seed *uint32
+	var seedValue *uint32
 	switch f.Mode {
-	case modePreset:
-		seed = s.presetSeed(&f)
-		if f.Preset != "default" {
-			nw.Preset = f.Preset
-		}
+	case modeSettings:
+		seedValue = s.settingsWorld(&f, &nw, mapGen, overrides)
 	case modeExchange:
 		var res mapexchange.Result
 		if res, ok = decodeExchange(&f, f.Version); ok {
 			nw.MapGenSettings, nw.MapSettings = res.MapGenSettings, res.MapSettings
-			seed = s.settingsSeed(&f, res.MapGenSettings)
-		}
-	case modeCustom:
-		if len(f.CustomProblems) == 0 {
-			nw.MapGenSettings = mapGen
-			// A blank seed is filled in the form, so the world matches the preview.
-			v, ok := uint32(0), false
-			if n := f.MapGen.SeedNumber(); n != nil {
-				v, ok = *n, true
-			}
-			if !ok {
-				v = newSeed()
-				f.MapGen = f.MapGen.WithSeed(v)
-			}
-			seed = &v
+			seedValue = s.settingsSeed(&f, res.MapGenSettings)
 		}
 	}
-	nw.Seed = seed
-	if f.failed() || seed == nil {
+	f.reasons(f.Version, mapGen, overrides, rules)
+	nw.Seed = seedValue
+	if f.failed() || seedValue == nil {
 		return f, nw, false
 	}
 	return f, nw, true
 }
 
-// presetSeed reads the seed field, filling a blank one with a random seed
-// that the form then shows.
-func (s *server) presetSeed(f *GenerateForm) *uint32 {
-	if f.Seed != "" {
-		n, err := strconv.ParseUint(f.Seed, 10, 32)
-		if err != nil {
-			f.SeedError = i18n.M("worlds.generate.error.seed")
+// settingsWorld sets how the world's map is made from the settings: an
+// unchanged preset passes the preset alone and writes no file; any change
+// writes both files complete and passes no preset, because the game lets a
+// preset win over the files (SPEC 5.6). It returns the seed, filling a blank
+// one in the form so the world matches the preview, or nil after a problem.
+func (s *server) settingsWorld(f *GenerateForm, nw *world.NewWorld, mapGen []byte, overrides map[string]any) *uint32 {
+	if len(f.SettingsProblems) > 0 || !f.PresetError.IsZero() {
+		return nil
+	}
+	if f.Modified {
+		switch {
+		case !f.MapSettings.Untested:
+			ms, err := mapgen.MapSettings(f.Version, f.Preset, overrides)
+			if err != nil {
+				f.FormError = i18n.M("worlds.generate.error.settings")
+				return nil
+			}
+			nw.MapGenSettings, nw.MapSettings = mapGen, ms
+		case f.Preset == "default":
+			// The game's own map settings are the default preset's.
+			nw.MapGenSettings = mapGen
+		default:
+			// Without the layout, the preset's map settings cannot be written,
+			// and passing the preset would undo the changes.
+			f.PresetError = i18n.M("worlds.generate.error.untested_preset", "version", f.Version)
 			return nil
 		}
-		v := uint32(n)
-		f.Seed = strconv.FormatUint(n, 10)
-		return &v
+	} else if f.Preset != "default" {
+		nw.Preset = f.Preset
+	}
+	if n := f.MapGen.SeedNumber(); n != nil {
+		return n
 	}
 	v := newSeed()
-	f.Seed = strconv.FormatUint(uint64(v), 10)
-	f.FilledSeed = f.Seed
+	f.MapGen = f.MapGen.WithSeed(v)
 	return &v
+}
+
+// reasons marks the achievement reasons the settings give. With both files
+// at hand the answer is mapgen.AchievementBlockers'; otherwise, as while a
+// field has an error, it is the fields' own (the same rules).
+func (f *GenerateForm) reasons(version string, mapGen []byte, overrides map[string]any, rules []mapgen.AchievementRule) {
+	active := map[string]bool{}
+	ms, msErr := mapgen.MapSettings(version, f.Preset, overrides)
+	if mapGen != nil && msErr == nil {
+		if bs, err := mapgen.AchievementBlockers(version, mapGen, ms); err == nil {
+			for _, b := range bs {
+				active[b.Message] = true
+			}
+		}
+	} else {
+		for _, k := range f.MapGen.blockedReasons() {
+			active[k] = true
+		}
+		for _, g := range f.MapSettings.Groups {
+			for _, fl := range g.Fields {
+				if fl.Blocked && fl.Ach != nil {
+					active[fl.Ach.Reason] = true
+				}
+			}
+		}
+	}
+	f.Reasons = nil
+	for _, r := range rules {
+		if !slices.ContainsFunc(f.Reasons, func(a AchReason) bool { return a.Key == r.Message }) {
+			f.Reasons = append(f.Reasons, AchReason{Key: r.Message, Msg: achievementMsgs[r.Message], Active: active[r.Message]})
+		}
+	}
 }
 
 // settingsSeed takes the seed from the map-gen settings, else the one filled
