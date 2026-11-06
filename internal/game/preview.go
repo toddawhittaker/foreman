@@ -1,0 +1,407 @@
+package game
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"path"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/world"
+)
+
+// The map preview's fixed parts (SPEC 5.6, 14.3).
+const (
+	// PreviewLimit is how long a preview may take before its container is
+	// killed.
+	PreviewLimit = 60 * time.Second
+	// previewMemory is the container's memory limit in bytes, with no swap.
+	// A Space Age planet drew within 512 MB; this leaves room for a patch that
+	// needs more.
+	previewMemory = 1 << 30
+	// maxPreviewPNG is the largest picture Foreman reads back. Real ones at
+	// 1024 pixels are under 600 KB.
+	maxPreviewPNG = 8 << 20
+	previewPoll   = 250 * time.Millisecond
+	// previewDir is the folder of the data directory that holds a preview's
+	// work folder, which exists only while the preview runs.
+	previewDir = "previews"
+	// previewWrite is the game's write folder in the container: a tmpfs, since
+	// the root is read-only and nothing may be left behind on the disk.
+	previewWrite = "/tmp/factorio"
+	// previewConfig points the game's write folder at previewWrite. Its read
+	// folder is where the image keeps the game's data.
+	previewConfig = "[path]\nread-data=__PATH__executable__/../../data\nwrite-data=" + previewWrite + "\n"
+)
+
+// Refusals of Preview. Each is a sentinel the page words itself.
+var (
+	// ErrPreviewBusy means another preview is being made. One runs at a time
+	// across Foreman.
+	ErrPreviewBusy = errors.New("another map preview is being made. Try again in a moment")
+	// ErrPreviewImageMissing means the game image for the version is not
+	// downloaded. A preview never downloads it (SPEC 3.7).
+	ErrPreviewImageMissing = errors.New("the game image for this Factorio version is not downloaded. Download the game image first")
+	// ErrPreviewTimeout means the container ran past PreviewLimit and was killed.
+	ErrPreviewTimeout = errors.New("the map preview took too long and was stopped")
+	// ErrPreviewInvalid means the request names something the game line does
+	// not have, or settings that are not JSON.
+	ErrPreviewInvalid = errors.New("the map preview request is not valid")
+)
+
+// PreviewError is a preview whose game exited with an error. Log is the end
+// of the game's own output, for the log; a page words the failure itself.
+type PreviewError struct {
+	ExitCode int
+	OOM      bool
+	Log      string
+}
+
+func (e *PreviewError) Error() string {
+	switch {
+	case e.OOM:
+		return "the map preview ran out of memory"
+	case e.Log != "":
+		return fmt.Sprintf("the game could not draw the map preview (exit %d): %s", e.ExitCode, e.Log)
+	}
+	return fmt.Sprintf("the game could not draw the map preview (exit %d)", e.ExitCode)
+}
+
+// PreviewRequest says what Preview draws, from the settings Generate would
+// write (SPEC 5.6).
+type PreviewRequest struct {
+	// GameVersion is an exact patch release of a supported line. Its image
+	// must be downloaded already.
+	GameVersion string
+	SpaceAge    bool
+	Preset      string
+	Seed        uint32
+	// MapGenSettings and MapSettings are the JSON of the two settings files,
+	// or nil for none.
+	MapGenSettings, MapSettings []byte
+	// Planets are drawn in this order; each must be in
+	// mapgen.Planets(line, SpaceAge).
+	Planets []string
+}
+
+// PNG is one planet's picture.
+type PNG struct {
+	Planet string
+	Data   []byte
+}
+
+// previewScript draws each planet in turn. The values come from the
+// environment (gameenv), and the files are in the work folder.
+var previewScript = strings.Join([]string{
+	`for p in $` + gameenv.PreviewPlanets + `; do`,
+	`set -- --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir +
+		` --generate-map-preview ` + gameenv.PreviewMount + `/"$p".png --map-preview-size 1024 --map-gen-seed "$` + gameenv.Seed + `"`,
+	`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
+	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + ` ]; then set -- "$@" --map-gen-settings ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + `; fi`,
+	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + ` ]; then set -- "$@" --map-settings ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + `; fi`,
+	`if [ -n "$` + gameenv.PreviewPlanetFlag + `" ]; then set -- "$@" --map-preview-planet "$p"; fi`,
+	gameBinary + ` "$@" || exit 1`,
+	`done`,
+}, "\n")
+
+// Preview draws the map a new world would have, one picture per planet, with
+// the game's own --generate-map-preview in one one-off container from the
+// game version's image (SPEC 5.6, 14.3). The game starts no server. The
+// container has no network, a read-only root, no capabilities, a memory
+// limit and PreviewLimit to finish, and mounts only a fresh folder of the
+// data directory, deleted afterwards. One preview runs at a time: a second
+// call is ErrPreviewBusy. An image that is not downloaded is
+// ErrPreviewImageMissing; a game that fails is a *PreviewError.
+func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, error) {
+	line, err := checkPreview(req)
+	if err != nil {
+		return nil, err
+	}
+	if !c.previewMu.TryLock() {
+		return nil, ErrPreviewBusy
+	}
+	defer c.previewMu.Unlock()
+
+	ref, err := c.imageFor(req.GameVersion)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
+		return nil, ErrPreviewImageMissing
+	} else if err != nil {
+		return nil, err
+	}
+	base, err := c.previewBase()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = base.Close() }()
+	c.removeStalePreviews(ctx, base)
+
+	name, err := makePreviewDir(base, req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := base.RemoveAll(name); err != nil {
+			c.log.Warn("could not remove a map preview's work folder", "folder", name, "error", err)
+		}
+	}()
+	if err := c.runPreview(ctx, ref, name, line, req); err != nil {
+		return nil, err
+	}
+	return readPreviews(base, name, req.Planets)
+}
+
+// checkPreview refuses a request the game line cannot draw, and returns the
+// line. Planet names go to a script, so they must be the game's own.
+func checkPreview(req PreviewRequest) (line string, err error) {
+	line, ok := mapgen.Line(req.GameVersion)
+	if !ok || !world.SupportedGameVersion(req.GameVersion) {
+		return "", fmt.Errorf("%w: there is no preview for Factorio %q", ErrPreviewInvalid, req.GameVersion)
+	}
+	known := mapgen.Planets(line, req.SpaceAge)
+	if len(req.Planets) == 0 || len(req.Planets) > len(known) {
+		return "", fmt.Errorf("%w: planets", ErrPreviewInvalid)
+	}
+	for i, p := range req.Planets {
+		if !slices.Contains(known, p) || slices.Contains(req.Planets[:i], p) {
+			return "", fmt.Errorf("%w: planet %q", ErrPreviewInvalid, p)
+		}
+	}
+	if req.Preset != "" && !slices.Contains(mapgen.Presets(line), req.Preset) {
+		return "", fmt.Errorf("%w: preset %q", ErrPreviewInvalid, req.Preset)
+	}
+	for _, b := range [][]byte{req.MapGenSettings, req.MapSettings} {
+		if len(b) > gamesettings.MaxBytes || len(b) > 0 && !json.Valid(b) {
+			return "", fmt.Errorf("%w: settings are not JSON, or too big", ErrPreviewInvalid)
+		}
+	}
+	return line, nil
+}
+
+// previewBase opens the folder that holds work folders, making it first.
+func (c *Controller) previewBase() (*os.Root, error) {
+	dir := filepath.Join(filepath.Dir(c.worlds.Dirs().Worlds), previewDir)
+	if err := os.MkdirAll(dir, world.DirMode); err != nil {
+		return nil, err
+	}
+	return os.OpenRoot(dir)
+}
+
+// makePreviewDir makes a fresh work folder in base and fills it with what the
+// game reads: its config, a mod list that matches Space Age, and the settings
+// files. The game's group can write the folder, as it can a world's.
+func makePreviewDir(base *os.Root, req PreviewRequest) (string, error) {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	name := "p-" + hex.EncodeToString(b[:])
+	if err := world.Mkdir(base, name); err != nil {
+		return "", err
+	}
+	dir, err := base.OpenRoot(name)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = dir.Close() }()
+	if err := world.Mkdir(dir, world.ModsDir); err != nil {
+		return "", err
+	}
+	files := map[string][]byte{
+		"config.ini": []byte(previewConfig),
+		path.Join(world.ModsDir, world.ModListFile): world.DefaultModList(req.GameVersion, req.SpaceAge),
+	}
+	if len(req.MapGenSettings) > 0 {
+		files[world.MapGenSettingsFile] = req.MapGenSettings
+	}
+	if len(req.MapSettings) > 0 {
+		files[world.MapSettingsFile] = req.MapSettings
+	}
+	for file, data := range files {
+		if err := dir.WriteFile(file, data, world.FileMode); err != nil {
+			return "", err
+		}
+	}
+	return name, nil
+}
+
+// runPreview runs the one-off container to its end and removes it. Whatever
+// happens, the container does not outlive the call: it is killed and deleted
+// with a context that a cancelled request cannot cut short.
+func (c *Controller) runPreview(ctx context.Context, image, dir, line string, req PreviewRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, c.previewLimit)
+	defer cancel()
+	id, err := c.docker.CreateContainer(ctx, "foreman-preview-"+dir, c.previewSpec(image, dir, line, req))
+	if err != nil {
+		return err
+	}
+	defer c.removePreview(id)
+	if err := c.docker.StartContainer(ctx, id); err != nil {
+		return err
+	}
+	tick := time.NewTicker(previewPoll)
+	defer tick.Stop()
+	for {
+		cont, err := c.docker.InspectContainer(ctx, id)
+		switch {
+		case ctx.Err() != nil:
+			return c.previewStopped(ctx)
+		case err != nil:
+			return err
+		case cont.State.Status == "exited" || cont.State.Status == "dead":
+			if cont.State.ExitCode == 0 && !cont.State.OOMKilled {
+				return nil
+			}
+			return &PreviewError{ExitCode: cont.State.ExitCode, OOM: cont.State.OOMKilled, Log: c.previewLog(id)}
+		}
+		select {
+		case <-tick.C:
+		case <-ctx.Done():
+			return c.previewStopped(ctx)
+		}
+	}
+}
+
+// previewStopped words why the wait ended: the deadline, or the caller.
+func (c *Controller) previewStopped(ctx context.Context) error {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return ErrPreviewTimeout
+	}
+	return ctx.Err()
+}
+
+// previewSpec is the preview container (SPEC 14.3, 14.4): the game's user,
+// no network, a read-only root, no capabilities, a memory limit, no restart,
+// and one bind mount, the work folder. dir is its name under previewDir.
+func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) docker.ContainerSpec {
+	env := []string{
+		gameenv.PreviewPlanets + "=" + strings.Join(req.Planets, " "),
+		gameenv.Seed + "=" + strconv.FormatUint(uint64(req.Seed), 10),
+	}
+	if req.Preset != "" {
+		env = append(env, gameenv.Preset+"="+req.Preset)
+	}
+	// --map-preview-planet exists on 2.x only.
+	if line != gamesettings.Line11 {
+		env = append(env, gameenv.PreviewPlanetFlag+"=1")
+	}
+	return docker.ContainerSpec{
+		Image:      image,
+		Labels:     map[string]string{gameenv.LabelPreview: c.hostData},
+		Env:        env,
+		Entrypoint: []string{"/bin/sh"},
+		Cmd:        []string{"-c", previewScript},
+		User:       c.user,
+		HostConfig: docker.HostConfig{
+			Binds:          []string{filepath.Join(c.hostData, previewDir, dir) + ":" + gameenv.PreviewMount},
+			CapDrop:        []string{"ALL"},
+			SecurityOpt:    []string{"no-new-privileges"},
+			RestartPolicy:  docker.RestartPolicy{Name: "no"},
+			NetworkMode:    "none",
+			ReadonlyRootfs: true,
+			Memory:         previewMemory,
+			MemorySwap:     previewMemory,
+			Tmpfs:          map[string]string{previewWrite: "rw,noexec,nosuid,size=64m,mode=1777"},
+		},
+	}
+}
+
+// previewLog returns the end of a failed preview's output, as one line.
+func (c *Controller) previewLog(id string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	s, err := c.docker.Logs(ctx, id, docker.LogOptions{})
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = s.Close() }()
+	var lines []string
+	for {
+		l, err := s.Next()
+		if err != nil {
+			break
+		}
+		lines = append(lines, strings.TrimSpace(l.Text))
+		lines = lines[max(0, len(lines)-5):]
+	}
+	return strings.Join(lines, " | ")
+}
+
+// removePreview kills a preview container if it still runs, then deletes it.
+// It uses its own context: the request's may be over.
+func (c *Controller) removePreview(id string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := c.docker.RemoveContainer(ctx, id, true); err != nil && !errors.Is(err, docker.ErrNotFound) {
+		c.log.Warn("could not remove a map preview container", "container", id, "error", err)
+	}
+}
+
+// removeStalePreviews deletes what an earlier preview left behind after a
+// crash: containers carrying this install's preview label, and work folders.
+// Only one preview runs at a time, so none of it is in use.
+func (c *Controller) removeStalePreviews(ctx context.Context, base *os.Root) {
+	list, err := c.docker.ListContainers(ctx, true, []string{gameenv.LabelPreview + "=" + c.hostData})
+	if err != nil {
+		c.log.Warn("could not look for old map preview containers", "error", err)
+	}
+	for _, s := range list {
+		c.removePreview(s.ID)
+	}
+	entries, err := fs.ReadDir(base.FS(), ".")
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if err := base.RemoveAll(e.Name()); err != nil {
+			c.log.Warn("could not remove an old map preview folder", "folder", e.Name(), "error", err)
+		}
+	}
+}
+
+// pngSignature starts every PNG file.
+var pngSignature = []byte("\x89PNG\r\n\x1a\n")
+
+// readPreviews reads the picture of each planet, at most maxPreviewPNG bytes
+// each, and checks it is a PNG.
+func readPreviews(base *os.Root, dir string, planets []string) ([]PNG, error) {
+	root, err := base.OpenRoot(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	out := make([]PNG, 0, len(planets))
+	for _, p := range planets {
+		f, err := root.Open(p + ".png")
+		if err != nil {
+			return nil, fmt.Errorf("the game made no picture of %s: %w", p, err)
+		}
+		data, err := io.ReadAll(io.LimitReader(f, maxPreviewPNG+1))
+		_ = f.Close()
+		switch {
+		case err != nil:
+			return nil, err
+		case len(data) > maxPreviewPNG:
+			return nil, fmt.Errorf("the picture of %s is bigger than %d bytes", p, maxPreviewPNG)
+		case !bytes.HasPrefix(data, pngSignature):
+			return nil, fmt.Errorf("the picture of %s is not a PNG", p)
+		}
+		out = append(out, PNG{Planet: p, Data: data})
+	}
+	return out, nil
+}
