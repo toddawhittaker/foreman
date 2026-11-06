@@ -14,8 +14,8 @@
   },
   "accounts.signin.busy": "Foreman 正忙。请稍等片刻再试。",
   "accounts.signin.bad": "用户名或密码不正确。请检查两者后再试。",
-  "accounts.signin.username.missing": "请输入你的用户名",
-  "accounts.signin.password.missing": "请输入你的密码",
+  "accounts.signin.username.missing": "请输入用户名",
+  "accounts.signin.password.missing": "请输入密码",
   "accounts.setup.title": "创建第一个管理员账户",
   "accounts.setup.intro": "Foreman 还没有任何账户。在这里创建的账户可以在 Foreman 中执行所有操作。账户创建后，此页面即关闭。",
   "accounts.setup.password.hint": {
@@ -33,11 +33,11 @@
   "accounts.setup.confirm.mismatch": "请在两个字段中输入相同的密码",
   "accounts.setup.submit": "创建管理员账户",
   "accounts.signedout.title": "已退出登录",
-  "accounts.signedout.heading": "你已退出登录",
-  "accounts.signedout.text": "你在此设备上的会话已结束。",
+  "accounts.signedout.heading": "已退出登录",
+  "accounts.signedout.text": "此设备上的会话已结束。",
   "accounts.signedout.again": "重新登录",
-  "accounts.proxy.refused": "你的账户无权使用 Foreman。请让运行 Foreman 的人为你开通访问权限。",
+  "accounts.proxy.refused": "此账户无权使用 Foreman。请让运行 Foreman 的人开通访问权限。",
   "accounts.proxy.waiting": "Foreman 暂时无法接受来自代理的登录，因为它还没有看到游戏容器的网络。请一分钟后再试。",
   "accounts.proxy.waiting_local": "Foreman 暂时无法接受来自代理的登录，因为它还没有看到游戏容器的网络。请一分钟后再试。密码登录仍然可用：打开 {path} 即可使用。",
-  "accounts.proxy.missing": "Foreman 没有从代理收到你的登录信息。请通过代理登录，然后再次打开此页面。"
+  "accounts.proxy.missing": "Foreman 没有从代理收到登录信息。请通过代理登录，然后再次打开此页面。"
 }

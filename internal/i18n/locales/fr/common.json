@@ -1,6 +1,6 @@
 {
   "common.skip": "Aller au contenu",
-  "common.error.label": "Erreur :",
+  "common.error.label": "Erreur :",
   "common.nav.label": "Navigation principale",
   "common.nav.server": "Serveur",
   "common.nav.console": "Console",
@@ -11,7 +11,7 @@
   "common.language.label": "Langue",
   "common.language.submit": "Changer",
   "common.countdown.label": "Compte à rebours en secondes",
-  "common.countdown.hint": "Les joueurs en ligne voient un avertissement dans le jeu, puis le jeu sauvegarde et s’arrête. De 0 à 600 secondes ; 0 signifie aucun avertissement : le jeu sauvegarde et s’arrête aussitôt. Personne n’est averti si personne n’est en ligne.",
+  "common.countdown.hint": "Les joueurs en ligne voient un avertissement dans le jeu, puis le jeu sauvegarde et s’arrête. De 0 à 600 secondes ; 0 signifie aucun avertissement : le jeu sauvegarde et s’arrête aussitôt. Personne n’est averti si personne n’est en ligne.",
   "common.summary.heading": {
     "one": "Corrigez ce problème pour continuer",
     "other": "Corrigez {count} problèmes pour continuer"
@@ -47,10 +47,10 @@
   "common.error.home": "Aller à la page d’accueil",
   "common.form.unreadable": "Foreman n’a pas pu lire le formulaire. Revenez en arrière, rechargez la page et réessayez.",
   "common.form.too_large": "Le formulaire était trop volumineux. Revenez en arrière, rechargez la page et réessayez.",
-  "common.label.warning": "Attention :",
+  "common.label.warning": "Avertissement :",
   "common.label.done": "Terminé :",
   "common.label.note": "Remarque :",
-  "common.label.busy": "Occupé :",
-  "common.confirm.will": "Cette action va :",
+  "common.label.busy": "Occupé :",
+  "common.confirm.will": "Foreman va :",
   "common.list.sep": ", "
 }

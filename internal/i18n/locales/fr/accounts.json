@@ -38,11 +38,11 @@
   "accounts.setup.confirm.mismatch": "Saisissez le même mot de passe dans les deux champs",
   "accounts.setup.submit": "Créer le compte administrateur",
   "accounts.signedout.title": "Déconnecté",
-  "accounts.signedout.heading": "Vous êtes déconnecté",
+  "accounts.signedout.heading": "Vous avez été déconnecté",
   "accounts.signedout.text": "Votre session sur cet appareil est terminée.",
   "accounts.signedout.again": "Se reconnecter",
   "accounts.proxy.refused": "Votre compte n’est pas autorisé à utiliser Foreman. Demandez à la personne qui gère Foreman de vous donner l’accès.",
   "accounts.proxy.waiting": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute.",
-  "accounts.proxy.waiting_local": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute. La connexion par mot de passe fonctionne toujours : ouvrez {path} pour l’utiliser.",
+  "accounts.proxy.waiting_local": "Foreman ne peut pas encore accepter de connexion par le proxy, car il n’a pas encore vu les réseaux du conteneur du jeu. Réessayez dans une minute. La connexion par mot de passe fonctionne toujours : ouvrez {path} pour l’utiliser.",
   "accounts.proxy.missing": "Foreman n’a pas reçu votre connexion du proxy. Connectez-vous par le proxy, puis rouvrez cette page."
 }

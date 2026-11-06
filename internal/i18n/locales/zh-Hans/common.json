@@ -1,7 +1,7 @@
 {
   "common.skip": "跳到正文",
   "common.error.label": "错误：",
-  "common.nav.label": "主导航",
+  "common.nav.label": "主菜单",
   "common.nav.server": "服务器",
   "common.nav.console": "控制台",
   "common.nav.worlds": "世界",
@@ -32,7 +32,7 @@
     "other": "{count} 小时"
   },
   "common.error.forbidden.heading": "访问被拒绝",
-  "common.error.forbidden.text": "Foreman 拒绝了此请求。如果你是从其他网站的链接打开的，请直接打开 Foreman 再试一次。如果一直出现这种情况，请让运行 Foreman 的人检查你的访问权限。",
+  "common.error.forbidden.text": "Foreman 拒绝了此请求。如果是从其他网站的链接打开的，请直接打开 Foreman 再试一次。如果一直出现这种情况，请让运行 Foreman 的人检查访问权限。",
   "common.error.notfound.heading": "找不到页面",
   "common.error.notfound.text": "此地址没有页面。请检查地址，或前往首页。",
   "common.error.internal.heading": "出错了",
@@ -45,8 +45,8 @@
   "common.form.too_large": "表单太大。请返回、重新加载页面后再试一次。",
   "common.label.warning": "警告：",
   "common.label.done": "完成：",
-  "common.label.note": "注意：",
+  "common.label.note": "提示：",
   "common.label.busy": "忙碌：",
-  "common.confirm.will": "此操作将：",
+  "common.confirm.will": "将会：",
   "common.list.sep": "、"
 }
