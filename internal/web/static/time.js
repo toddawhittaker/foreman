@@ -7,6 +7,7 @@
 (function () {
   "use strict";
 
+  var lang = document.documentElement.lang;
   var ages = [];
 
   var absolute = /^\d{4}-\d\d-\d\dT/;
@@ -20,7 +21,7 @@
   ];
 
   function relative(date) {
-    var rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    var rtf = new Intl.RelativeTimeFormat(lang, { numeric: "auto" });
     var amount = (date.getTime() - Date.now()) / 1000;
     for (var i = 0; i < steps.length; i++) {
       if (Math.abs(amount) < steps[i][1] || steps[i][1] === Infinity) {
@@ -45,8 +46,8 @@
     if (date.getFullYear() !== new Date().getFullYear()) {
       dayOptions.year = "numeric";
     }
-    var day = new Intl.DateTimeFormat(undefined, dayOptions).format(date);
-    var clock = new Intl.DateTimeFormat(undefined, {
+    var day = new Intl.DateTimeFormat(lang, dayOptions).format(date);
+    var clock = new Intl.DateTimeFormat(lang, {
       hour: "numeric",
       minute: "2-digit",
       second: withSeconds ? "2-digit" : undefined,

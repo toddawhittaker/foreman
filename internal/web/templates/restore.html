@@ -5,9 +5,9 @@
 <div class="actions">{{if .Deleted}}<a href="{{worldsPath}}">{{t "server.restore.back_worlds"}}</a>{{else}}<a href="{{.WorldPath}}">{{t "server.back_to" "world" .WorldName}}</a>{{end}}</div>
 <h1>{{t "server.restore.title" "world" .WorldName}}</h1>
 {{template "summary" .Problems}}
-{{- with .Error}}
+{{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>{{t "common.error.label"}}</strong> {{.}}</p>
+  <p><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>
   {{- if $.Page.Undo}}
   <p>{{t "server.failure.undo_text"}}</p>
   <div class="actions"><a href="{{$.Page.UndoPath}}">{{t "server.restore.undo_link"}}</a></div>
@@ -15,7 +15,7 @@
 </div>
 {{- end}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" .Snapshot.Label "time" (when .Snapshot.TakenAt)}}</h2>
+  <h2 id="confirm-heading" tabindex="-1">{{tHTML "server.restore.heading" "label" .Snapshot.Label "time" (momentUTC .Snapshot.TakenAt)}}</h2>
   <p>{{t "server.this_will"}}</p>
   <ul>
     {{- if .Deleted}}

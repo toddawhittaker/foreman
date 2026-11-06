@@ -685,10 +685,16 @@ func anywayAdvice(problems []world.Problem, name, folder string) i18n.Msg {
 	if missing == 0 {
 		return i18n.Msg{}
 	}
-	if folder != "" {
-		return i18n.M("server.anyway.advice_folder", "count", missing, "world", name, "folder", folder)
+	// One mod is "that mod" and several "those mods"; the count is not shown.
+	switch {
+	case folder != "" && missing == 1:
+		return i18n.M("server.anyway.advice_folder_one", "world", name, "folder", folder)
+	case folder != "":
+		return i18n.M("server.anyway.advice_folder_many", "world", name, "folder", folder)
+	case missing == 1:
+		return i18n.M("server.anyway.advice_one", "world", name)
 	}
-	return i18n.M("server.anyway.advice", "count", missing, "world", name)
+	return i18n.M("server.anyway.advice_many", "world", name)
 }
 
 // hostModsFolder is a world's mods folder on the Docker host, or "" when

@@ -25,13 +25,14 @@
 // string: i18n.M("accounts.setup.password.short", "count", 12). The key
 // must be a string literal, so the checks can see it. An argument that is
 // itself a Msg is translated when it is filled in. Numbers are formatted
-// for the language.
+// for the language, and a Size is a number of bytes in the language's units.
 //
 // Templates (internal/web) call {{t "key" "name" value}}, {{msg .Field}}
 // for a Msg from the view model, and for a sentence holding markup
 // {{tHTML "key" "link" (link "/href" "linkKey") "file" (code .Path)}}:
-// link and code make trusted fragments, and tHTML escapes the sentence and
-// plain arguments and puts each fragment at its placeholder. A field error is
+// link, code, codes, strong, nowrap and momentUTC (a time element) make
+// trusted fragments, and tHTML escapes the sentence and plain arguments and
+// puts each fragment at its placeholder. A field error is
 // shown with {{if not .Err.IsZero}}...{{msg .Err}}{{end}}, as a Msg is
 // never empty to {{with}}. bytes, num and duration format a size, a number
 // and a time span; lang is the page's tag.
@@ -219,8 +220,8 @@ func Match(cookie, acceptLanguage string) Locale {
 	if l, ok := Parse(cookie); ok {
 		return l
 	}
-	wanted, _, err := language.ParseAcceptLanguage(acceptLanguage)
-	if err != nil || len(wanted) == 0 {
+	wanted := parseAcceptLanguage(acceptLanguage)
+	if len(wanted) == 0 {
 		return English
 	}
 	_, i, conf := matcher.Match(wanted...)
@@ -228,6 +229,41 @@ func Match(cookie, acceptLanguage string) Locale {
 		return English
 	}
 	return Languages[i].Tag
+}
+
+// maxAcceptEntries caps how many comma-separated entries of an
+// Accept-Language header are read, so a hostile header costs little.
+const maxAcceptEntries = 32
+
+// parseAcceptLanguage returns the tags of header in order of preference.
+// Each entry is parsed alone, so an unknown or malformed one is skipped
+// instead of discarding the whole header.
+func parseAcceptLanguage(header string) []language.Tag {
+	type weighted struct {
+		tag language.Tag
+		q   float32
+	}
+	// The extra element holds the unread rest of the header.
+	entries := strings.SplitN(header, ",", maxAcceptEntries+1)
+	if len(entries) > maxAcceptEntries {
+		entries = entries[:maxAcceptEntries]
+	}
+	var found []weighted
+	for _, entry := range entries {
+		tags, qs, err := language.ParseAcceptLanguage(entry)
+		if err != nil {
+			continue
+		}
+		for i := range tags {
+			found = append(found, weighted{tags[i], qs[i]})
+		}
+	}
+	sort.SliceStable(found, func(i, j int) bool { return found[i].q > found[j].q })
+	tags := make([]language.Tag, len(found))
+	for i, f := range found {
+		tags[i] = f.tag
+	}
+	return tags
 }
 
 func (l Locale) known() Locale {
@@ -338,6 +374,8 @@ func (l Locale) arg(v any) string {
 		return v.text
 	case string:
 		return v
+	case Size:
+		return l.Bytes(uint64(v))
 	case int, int64, int32, uint, uint64, uint32:
 		return l.Num(v)
 	default:
@@ -429,13 +467,6 @@ func (l Locale) Link(href, linkKey string) Fragment {
 // Code wraps s, such as a file name, in a code element.
 func Code(s string) Fragment {
 	return Fragment{"<code>" + template.HTMLEscapeString(s) + "</code>", s}
-}
-
-// Time is a time element for t, in UTC as pages show times (SPEC 17.11).
-func Time(t time.Time) Fragment {
-	t = t.UTC()
-	text := t.Format("2006-01-02 15:04 UTC")
-	return Fragment{`<time datetime="` + t.Format(time.RFC3339) + `">` + text + `</time>`, text}
 }
 
 // Game marks s as Factorio's own words, which stay English (SPEC 22.3).

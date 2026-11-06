@@ -30,7 +30,7 @@ type WorldsPage struct {
 	// operation is busy on. Switchable marks the worlds that get a Switch
 	// button. SwitchWait is set when a world has no button only because an
 	// operation is running. All are empty without server control.
-	Busy       map[string]string
+	Busy       map[string]i18n.Msg
 	Switchable map[string]bool
 	SwitchWait bool
 	// SnapshotAdds is the space each world's snapshots add, by world id
@@ -67,24 +67,24 @@ type WorldPage struct {
 	World world.Summary
 	// Name refills the rename field.
 	Name      string
-	NameError string
+	NameError i18n.Msg
 	// CanSwitch offers "Switch to this world": this mode has server control
 	// and the world is not the active one (SPEC 7.9). SwitchNote says in a
 	// line why it does not, when that is worth saying; SwitchBusy adds a
 	// link to the Server page (DESIGN 7.1).
 	CanSwitch  bool
-	SwitchNote string
+	SwitchNote i18n.Msg
 	SwitchBusy bool
 	// MissingImage is the game image this host lacks for the world, asked
 	// of the local Docker only when it is offered for a switch (SPEC 3.7).
 	MissingImage string
 	// Busy says what runs on this world now, so both worlds of a switch
-	// show it (SPEC 7.9); it is "" when nothing does.
-	Busy string
+	// show it (SPEC 7.9); it is zero when nothing does.
+	Busy i18n.Msg
 	// Done is the message after a rename or an import; Warning follows an
 	// import whose version could not be checked.
-	Done    string
-	Warning string
+	Done    i18n.Msg
+	Warning i18n.Msg
 	// Download is "running" or "failed" while the world's last game image
 	// download is so, else "" (SPEC 3.7).
 	Download string
@@ -97,13 +97,13 @@ type WorldPage struct {
 func (WorldPage) templateName() string { return "world" }
 func (WorldPage) navItem() string      { return PathWorlds }
 
-func (p WorldPage) hasErrors() bool { return p.NameError != "" }
+func (p WorldPage) hasErrors() bool { return !p.NameError.IsZero() }
 
 // ImportPath is where the world list's import link goes.
 func (WorldsPage) ImportPath() string { return PathImport }
 
 // Problems lists the rename field's error.
-func (p WorldPage) Problems() []Problem { return problems(Problem{"name", i18n.Raw(p.NameError)}) }
+func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.NameError}) }
 
 // Paths the world page links and posts to.
 func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/rename" }
@@ -112,61 +112,70 @@ func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/sna
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
 func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }
 
-// DeleteRefusal says why the world cannot be deleted, or is "" when it can.
-func (p WorldPage) DeleteRefusal() string { return deleteRefusal(p.World, p.Busy) }
+// DeleteRefusal says why the world cannot be deleted, or is zero when it can.
+func (p WorldPage) DeleteRefusal() i18n.Msg { return deleteRefusal(p.World, p.Busy) }
 
 // DeleteWaitsOnServer reports whether the delete refusal is a running
 // operation, which the Server page follows (SPEC 17.9).
 func (p WorldPage) DeleteWaitsOnServer() bool {
-	return p.Busy != "" && !p.World.Active && !p.World.Newer && !p.World.Unreadable
+	return !p.Busy.IsZero() && !p.World.Active && !p.World.Newer && !p.World.Unreadable
 }
 
 // deleteRefusal says, in words, why a world cannot be deleted, so the page
 // can show that instead of a button that would be refused (DESIGN 7.1).
-// busy is what runs on the world now, or "".
-func deleteRefusal(w world.Summary, busy string) string {
+// busy is what runs on the world now, or zero.
+func deleteRefusal(w world.Summary, busy i18n.Msg) i18n.Msg {
 	switch {
 	case w.Active:
-		return "This is the active world. Switch to another world before deleting it."
+		return i18n.M("worlds.delete.refusal.active")
 	case w.Newer:
-		return "This world is from a newer Foreman, so this version will not delete it."
+		return i18n.M("worlds.delete.refusal.newer")
 	case w.Unreadable:
-		return "Because its world.json cannot be read, Foreman will not delete this world."
-	case busy != "":
-		return busy + " This world cannot be deleted until it ends."
+		return i18n.M("worlds.delete.refusal.unreadable")
+	case !busy.IsZero():
+		return i18n.M("worlds.delete.refusal.busy", "busy", busy)
 	}
-	return ""
+	return i18n.Msg{}
 }
 
-// busyText says what the running operation is doing to a world, in
-// sentences that end with a full stop, or returns "" when none runs. name
-// words a world's id for a sentence.
-func busyText(op *game.Operation, name func(id string) string) string {
+// busyActions name each action in the note about what runs on a world.
+var busyActions = map[string]i18n.Msg{
+	game.AuditStart: i18n.M("worlds.busy.action.start"), game.AuditStop: i18n.M("worlds.busy.action.stop"),
+	game.AuditRestart: i18n.M("worlds.busy.action.restart"), game.AuditForceStop: i18n.M("worlds.busy.action.force_stop"),
+	game.AuditImageDownload: i18n.M("worlds.busy.action.image_download"), game.ActionRestore: i18n.M("worlds.busy.action.restore"),
+	game.AuditSwitch: i18n.M("worlds.busy.action.switch"), game.AuditUpdate: i18n.M("worlds.busy.action.update"),
+	game.AuditRollback: i18n.M("worlds.busy.action.rollback"), actionSnapshot: i18n.M("worlds.busy.action.snapshot"),
+}
+
+// busyText says what the running operation is doing to a world, or returns
+// the zero Msg when none runs. name words a world's id for a sentence.
+func busyText(op *game.Operation, name func(id string) string) i18n.Msg {
 	if op == nil || op.Done {
-		return ""
+		return i18n.Msg{}
 	}
 	sw := op.Switch
 	if sw == nil {
-		what := actionNames[op.Action]
-		if what == "" {
-			what = "action"
+		what, ok := busyActions[op.Action]
+		if !ok {
+			what = i18n.M("worlds.busy.action.other")
 		}
-		return "An operation is running on this world: " + what + "."
+		return i18n.M("worlds.busy.operation", "action", what)
 	}
-	text := "Switching from " + name(sw.From) + " to " + name(sw.To) + "."
+	from, to := name(sw.From), name(sw.To)
 	for _, st := range op.Steps {
 		if st.State == game.StepProgress {
-			return text + " Now: " + st.Name + "."
+			return i18n.M("worlds.busy.switch_step", "from", from, "to", to, "step", stepName(st.Name))
 		}
 	}
-	return text
+	return i18n.M("worlds.busy.switch", "from", from, "to", to)
 }
 
-// worldBusy says what runs on the world now, or "". Without server control
-// nothing runs. Only a switch reads world names, and only its two.
-func (s *server) worldBusy(id string) string {
+// worldBusy says what runs on the world now, or the zero Msg. Without
+// server control nothing runs. Only a switch reads world names, and only
+// its two.
+func (s *server) worldBusy(id string) i18n.Msg {
 	if s.game == nil {
-		return ""
+		return i18n.Msg{}
 	}
 	return busyText(s.game.Status(id).Operation, s.worldName)
 }
@@ -216,11 +225,11 @@ func (s *server) markSwitching(p *WorldsPage) {
 	if s.game == nil {
 		return
 	}
-	p.Busy = map[string]string{}
+	p.Busy = map[string]i18n.Msg{}
 	p.Switchable = map[string]bool{}
 	activeBusy := false
 	for _, w := range p.Worlds {
-		if text := s.worldBusy(w.ID); text != "" {
+		if text := s.worldBusy(w.ID); !text.IsZero() {
 			p.Busy[w.ID] = text
 			activeBusy = activeBusy || w.Active
 		}
@@ -228,7 +237,7 @@ func (s *server) markSwitching(p *WorldsPage) {
 	for _, w := range p.Worlds {
 		switch {
 		case w.Active || w.Unreadable || w.Newer:
-		case activeBusy || p.Busy[w.ID] != "":
+		case activeBusy || !p.Busy[w.ID].IsZero():
 			p.SwitchWait = true
 		default:
 			p.Switchable[w.ID] = true
@@ -274,7 +283,7 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
-	p := s.worldPage(r.Context(), sum, sum.Name, "")
+	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
 	s.importFacts(&p, r)
 	s.page(w, r, http.StatusOK, u.Username, p)
@@ -283,17 +292,17 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 // renameDone is the message after a rename. The link carries the new name,
 // and the message shows only while that is still the world's name, so a
 // crafted link cannot put words on the page.
-func renameDone(renamed, current string) string {
+func renameDone(renamed, current string) i18n.Msg {
 	if renamed == "" || renamed != current {
-		return ""
+		return i18n.Msg{}
 	}
-	return "Renamed to " + current + "."
+	return i18n.M("worlds.world.renamed", "name", current)
 }
 
 // worldPage builds a world's page, with its Switch panel's state. A world
 // this Foreman cannot start gets no panel, because the page already says
 // why above.
-func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameError string) WorldPage {
+func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, nameError i18n.Msg) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
 	p.Busy = s.worldBusy(sum.ID)
 	if s.game != nil && !sum.Unreadable && !sum.Newer {
@@ -303,12 +312,10 @@ func (s *server) worldPage(ctx context.Context, sum world.Summary, name, nameErr
 	switch {
 	case s.game == nil || sum.Unreadable || sum.Newer:
 	case sum.Active:
-		p.SwitchNote = "This is the active world."
+		p.SwitchNote = i18n.M("worlds.world.switch.active")
 	case s.switchBusy(ctx, sum.ID):
 		// When the operation is on this world, Busy already says so.
-		if p.Busy == "" {
-			p.SwitchNote, p.SwitchBusy = "An operation is running on the server, such as a switch.", true
-		}
+		p.SwitchBusy = p.Busy.IsZero()
 	default:
 		p.CanSwitch = true
 		if ref, present, err := s.game.ImageFor(ctx, sum.ID); err == nil && !present {
@@ -348,11 +355,11 @@ type DeletePage struct {
 	FinalSnapshot bool
 	// ConfirmName refills the typed name after a mistake.
 	ConfirmName string
-	NameError   string
+	NameError   i18n.Msg
 	// Error says why the delete was refused, in plain words.
-	Error string
+	Error i18n.Msg
 	// Busy says what runs on the world now; it makes the page a refusal.
-	Busy string
+	Busy i18n.Msg
 }
 
 // DeletedPage lists deleted worlds, each with the snapshots that remain
@@ -368,15 +375,15 @@ func (DeletedPage) templateName() string { return "deleted" }
 func (DeletePage) navItem() string       { return PathWorlds }
 func (DeletedPage) navItem() string      { return PathWorlds }
 
-func (p DeletePage) hasErrors() bool { return p.NameError != "" || p.Error != "" }
+func (p DeletePage) hasErrors() bool { return !p.NameError.IsZero() || !p.Error.IsZero() }
 
 // Problems lists the name field's error for the summary.
 func (p DeletePage) Problems() []Problem {
-	return problems(Problem{"confirm-name", i18n.Raw(p.NameError)})
+	return problems(Problem{"confirm-name", p.NameError})
 }
 
-// Refusal says why the world cannot be deleted, or is "" when it can.
-func (p DeletePage) Refusal() string { return deleteRefusal(p.World, p.Busy) }
+// Refusal says why the world cannot be deleted, or is zero when it can.
+func (p DeletePage) Refusal() i18n.Msg { return deleteRefusal(p.World, p.Busy) }
 
 // Path is where the confirmation posts.
 func (p DeletePage) Path() string { return deletePath(p.World.ID) }
@@ -392,9 +399,6 @@ func (DeletedPage) AllPath() string { return PathDeleted + "?all=1" }
 
 // RestorePath is the confirmation page for one snapshot.
 func (DeletedPage) RestorePath(id, snap string) string { return restorePath(id, snap) }
-
-// Reason says why a snapshot was taken, or "" when its label already says so.
-func (DeletedPage) Reason(reason, label string) string { return showReason(reason, label) }
 
 func (s *server) handleDeleteForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.findWorld(w, r, u)
@@ -426,7 +430,7 @@ func (s *server) handleDelete(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	if errors.Is(err, world.ErrWrongName) {
-		p.NameError = "Type " + sum.Name + " exactly, or cancel"
+		p.NameError = i18n.M("worlds.delete.wrong_name", "name", sum.Name)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}

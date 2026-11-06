@@ -35,7 +35,7 @@ func TestDeleteWithFinalSnapshotThenRestore(t *testing.T) {
 	_, id := hn.seedTwo()
 
 	form := hn.get(deletePath(id), withCookie(c)).Body.String()
-	if !strings.Contains(form, `Delete the world "Second"?`) || !strings.Contains(form, `name="final_snapshot" checked`) {
+	if !strings.Contains(form, `Delete the world &#34;Second&#34;?`) || !strings.Contains(form, `name="final_snapshot" checked`) {
 		t.Errorf("confirmation:\n%s", form)
 	}
 

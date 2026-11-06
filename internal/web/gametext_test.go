@@ -6,11 +6,25 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
+
+// sentence is an error's log text as a sentence, which the English page
+// text must match.
+func sentence(err error) string {
+	msg := err.Error()
+	r, n := utf8.DecodeRuneInString(msg)
+	msg = string(unicode.ToUpper(r)) + msg[n:]
+	if !strings.HasSuffix(msg, ".") {
+		msg += "."
+	}
+	return msg
+}
 
 // english is m as an English page shows it.
 func english(m i18n.Msg) string { return i18n.English.Format(m) }

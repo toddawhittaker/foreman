@@ -121,16 +121,10 @@
   "server.anyway.start.snapshot": "Wykona migawkę świata {world} z etykietą „Przed wymuszonym uruchomieniem”. Jeśli migawka się nie powiedzie, nic więcej się nie stanie.",
   "server.anyway.start.start": "Uruchomi grę. Wszystko, co zależy od powyższych problemów, zostanie usunięte z zapisu, a przy następnym zapisie zniknie na stałe.",
   "server.anyway.start.undo": "Aby cofnąć, należy przywrócić tę migawkę na stronie Migawki.",
-  "server.anyway.advice": {
-    "one": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world}, a potem ponownie uruchomić {world}.",
-    "few": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world}, a potem ponownie uruchomić {world}.",
-    "many": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world}, a potem ponownie uruchomić {world}."
-  },
-  "server.anyway.advice_folder": {
-    "one": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world} ({folder} na hoście), a potem ponownie uruchomić {world}.",
-    "few": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world} ({folder} na hoście), a potem ponownie uruchomić {world}.",
-    "many": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world} ({folder} na hoście), a potem ponownie uruchomić {world}."
-  },
+  "server.anyway.advice_one": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world}, a potem ponownie uruchomić {world}.",
+  "server.anyway.advice_many": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world}, a potem ponownie uruchomić {world}.",
+  "server.anyway.advice_folder_one": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world} ({folder} na hoście), a potem ponownie uruchomić {world}.",
+  "server.anyway.advice_folder_many": "Foreman nie potrafi jeszcze dodawać modyfikacji do świata. Aby zachować to, co zbudowano za ich pomocą, należy skopiować ich pliki zip do własnego folderu modyfikacji świata {world} ({folder} na hoście), a potem ponownie uruchomić {world}.",
   "server.crash.no_reason": "Foreman nie zdołał ustalić z dziennika, dlaczego.",
   "server.crash.fix": "Należy naprawić to, o czym zgłosiła gra, na przykład modyfikacje świata {world} lub jego zapis, a potem spróbować uruchomić go ponownie.",
   "server.crash.fix_or": "Należy naprawić to, o czym zgłosiła gra, na przykład modyfikacje świata {world} lub jego zapis, a potem spróbować uruchomić go ponownie. Można też przywrócić stan sprzed zmian:",
@@ -300,16 +294,10 @@
   "server.problem.modlist_space_age_off": "Era Kosmosu jest wyłączona dla tego świata, ale w mod-list.json włączono: {mods} (albo wpisu brak, więc gra je włącza). Przed uruchomieniem należy naprawić listę modyfikacji.",
   "server.problem.save_newer": "Zapis {save} utworzono w Factorio {save_version}, nowszym niż Factorio {version} tego świata. Starsza gra nie może go wczytać.",
   "server.problem.space_age_off": "{save} używa Ery Kosmosu ({mods}), ale Era Kosmosu jest wyłączona dla tego świata.",
-  "server.problem.mod_missing": {
-    "one": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików.",
-    "few": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików.",
-    "many": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików."
-  },
-  "server.problem.mod_disabled": {
-    "one": "{save} używa modyfikacji: {mods}. W tym świecie są one wyłączone.",
-    "few": "{save} używa modyfikacji: {mods}. W tym świecie są one wyłączone.",
-    "many": "{save} używa modyfikacji: {mods}. W tym świecie są one wyłączone."
-  },
+  "server.problem.mod_missing_one": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików.",
+  "server.problem.mod_missing_many": "{save} używa modyfikacji: {mods}, ale ten świat nie ma odpowiednich plików.",
+  "server.problem.mod_disabled_one": "{save} używa modyfikacji: {mods}. W tym świecie są one wyłączone.",
+  "server.problem.mod_disabled_many": "{save} używa modyfikacji: {mods}. W tym świecie są one wyłączone.",
   "server.problem.mod_version_first": {
     "one": "{world} nie może działać w Factorio {version}: {count} z jego modyfikacji powstała dla Factorio {for}, a gra odmawia jej wczytania: {names}.",
     "few": "{world} nie może działać w Factorio {version}: {count} z jego modyfikacji powstały dla Factorio {for}, a gra odmawia ich wczytania: {names}.",

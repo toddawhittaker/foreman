@@ -672,7 +672,7 @@ func TestRollbackStoppedWorld(t *testing.T) {
 	}
 
 	worldPage := g.get(worldPath(id))
-	g.wantContains("world page", worldPage, `id="act-rollback"`, `href="`+rollbackURL(id)+`"`, "Roll back to "+oldVersion, `"Before update"`)
+	g.wantContains("world page", worldPage, `id="act-rollback"`, `href="`+rollbackURL(id)+`"`, "Roll back to "+oldVersion, `&#34;Before update&#34;`)
 	page := g.get(rollbackURL(id))
 	g.wantContains("rollback page", page, "Go back from Factorio "+newVersion+" to "+oldVersion+"?", `&#34;Before update&#34;`,
 		"everything played since the update is lost", "Roll back to "+oldVersion, `action="`+rollbackURL(id)+`"`, "Before restore")

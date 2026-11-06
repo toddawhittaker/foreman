@@ -121,16 +121,10 @@
   "server.anyway.start.snapshot": "Pořídí snímek světa {world} s popiskem „Před vynuceným spuštěním“. Pokud se snímek nezdaří, nic dalšího se nestane.",
   "server.anyway.start.start": "Spustí hru. Vše, co závisí na výše uvedených problémech, se z uložené hry vypustí a při dalším uložení to zmizí natrvalo.",
   "server.anyway.start.undo": "Pro vrácení je třeba obnovit tento snímek na stránce Snímky.",
-  "server.anyway.advice": {
-    "one": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} a pak {world} spustit znovu.",
-    "few": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} a pak {world} spustit znovu.",
-    "other": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} a pak {world} spustit znovu."
-  },
-  "server.anyway.advice_folder": {
-    "one": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} ({folder} na hostiteli) a pak {world} spustit znovu.",
-    "few": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} ({folder} na hostiteli) a pak {world} spustit znovu.",
-    "other": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} ({folder} na hostiteli) a pak {world} spustit znovu."
-  },
+  "server.anyway.advice_one": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} a pak {world} spustit znovu.",
+  "server.anyway.advice_many": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} a pak {world} spustit znovu.",
+  "server.anyway.advice_folder_one": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} ({folder} na hostiteli) a pak {world} spustit znovu.",
+  "server.anyway.advice_folder_many": "Foreman zatím neumí přidávat mody do světa. Aby se zachovalo, co s nimi bylo postaveno, je třeba zkopírovat jejich soubory zip do složky modů světa {world} ({folder} na hostiteli) a pak {world} spustit znovu.",
   "server.crash.no_reason": "Foreman z protokolu nezjistil, proč.",
   "server.crash.fix": "Je třeba opravit to, co hra ohlásila, například mody světa {world} nebo jeho uloženou hru, a zkusit ho spustit znovu.",
   "server.crash.fix_or": "Je třeba opravit to, co hra ohlásila, například mody světa {world} nebo jeho uloženou hru, a zkusit ho spustit znovu. Nebo je třeba vrátit věci, jak byly dříve:",
@@ -300,16 +294,10 @@
   "server.problem.modlist_space_age_off": "Space Age je pro tento svět vypnuto, ale v mod-list.json je zapnuto: {mods} (nebo chybí záznam, a hra je pak zapne). Před spuštěním je třeba opravit seznam modů.",
   "server.problem.save_newer": "Uložená hra {save} byla vytvořena ve Factorio {save_version}, novějším než Factorio {version} tohoto světa. Starší hra ji nemůže načíst.",
   "server.problem.space_age_off": "{save} používá Space Age ({mods}), ale Space Age je pro tento svět vypnuto.",
-  "server.problem.mod_missing": {
-    "one": "{save} používá {mods}, ale tento svět pro ně nemá soubory.",
-    "few": "{save} používá {mods}, ale tento svět pro ně nemá soubory.",
-    "other": "{save} používá {mods}, ale tento svět pro ně nemá soubory."
-  },
-  "server.problem.mod_disabled": {
-    "one": "{save} používá mody: {mods}. V tomto světě jsou vypnuté.",
-    "few": "{save} používá mody: {mods}. V tomto světě jsou vypnuté.",
-    "other": "{save} používá mody: {mods}. V tomto světě jsou vypnuté."
-  },
+  "server.problem.mod_missing_one": "{save} používá {mods}, ale tento svět pro ně nemá soubory.",
+  "server.problem.mod_missing_many": "{save} používá {mods}, ale tento svět pro ně nemá soubory.",
+  "server.problem.mod_disabled_one": "{save} používá mody: {mods}. V tomto světě jsou vypnuté.",
+  "server.problem.mod_disabled_many": "{save} používá mody: {mods}. V tomto světě jsou vypnuté.",
   "server.problem.mod_version_first": {
     "one": "{world} nemůže běžet na Factorio {version}: {count} z jeho modů byl vytvořen pro Factorio {for} a hra ho odmítá načíst: {names}.",
     "few": "{world} nemůže běžet na Factorio {version}: {count} z jeho modů byly vytvořeny pro Factorio {for} a hra je odmítá načíst: {names}.",

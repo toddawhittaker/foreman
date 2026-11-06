@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // Paths the templates link to or post to. The router serves these.
@@ -256,9 +257,15 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		// day and clock are a table's timestamp in two parts that each
 		// never wrap (DESIGN 8.3); utcSeconds tells apart two snapshots
 		// taken in the same minute.
-		"day":           func(t time.Time) string { return t.UTC().Format("2006-01-02") },
-		"clock":         func(t time.Time) string { return t.UTC().Format("15:04 UTC") },
-		"utcSeconds":    func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05 UTC") },
+		"day":        func(t time.Time) string { return t.UTC().Format("2006-01-02") },
+		"clock":      func(t time.Time) string { return t.UTC().Format("15:04 UTC") },
+		"utcSeconds": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05 UTC") },
+		// momentUTC and momentUTCSeconds are a <time> element for a sentence
+		// that holds a time, for tHTML.
+		"momentUTC": momentUTC,
+		"momentUTCSeconds": func(t time.Time) i18n.Fragment {
+			return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04:05 UTC"))
+		},
 		"deletedPath":   func() string { return PathDeleted },
 		"signInPath":    func() string { return PathSignIn },
 		"setupPath":     func() string { return PathSetup },
@@ -278,11 +285,13 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"t": loc.T,
 		// tHTML is one sentence with markup at its placeholders, from link
 		// and code: {{tHTML "key" "link" (link "/href" "linkKey") "file" (code .Path)}}.
-		"tHTML": loc.HTML,
-		"link":  loc.Link,
-		"code":  i18n.Code,
-		// when is a time element and game Factorio's own words, for tHTML.
-		"when": i18n.Time,
+		"tHTML":  loc.HTML,
+		"link":   loc.Link,
+		"code":   i18n.Code,
+		"codes":  i18n.Codes,
+		"nowrap": i18n.NoWrap,
+		"strong": i18n.Strong,
+		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
 		// msg renders an i18n.Msg from a view model; msgHTML one whose
 		// arguments hold fragments.
@@ -292,7 +301,11 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"num":      loc.Num,
 		"decimal1": loc.OneDecimal,
 		"duration": loc.Duration,
-		"lang":     loc.String,
+		// snapLabel and snapReason show a snapshot's label and why it was
+		// taken (see snapshotlabel.go).
+		"snapLabel":  func(s world.Snapshot) string { return snapshotLabel(loc, s) },
+		"snapReason": func(s world.Snapshot) string { return snapshotReason(loc, s) },
+		"lang":       loc.String,
 		"jsStrings": func() map[string]any {
 			out := make(map[string]any, len(jsKeys))
 			for _, k := range jsKeys {
@@ -451,4 +464,10 @@ func (r *Renderer) Static() http.Handler {
 		}
 		http.ServeContent(w, req, name, time.Time{}, bytes.NewReader(f.body))
 	})
+}
+
+// momentUTC is a <time> element for t in UTC, for a sentence that holds a
+// time (SPEC 17.11).
+func momentUTC(t time.Time) i18n.Fragment {
+	return i18n.Moment(t.UTC().Format(time.RFC3339), t.UTC().Format("2006-01-02 15:04 UTC"))
 }

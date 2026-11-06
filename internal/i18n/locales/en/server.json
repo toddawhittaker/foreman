@@ -117,14 +117,10 @@
   "server.anyway.start.snapshot": "Take a snapshot of {world}, labelled \"Before start anyway\". If the snapshot fails, nothing else happens.",
   "server.anyway.start.start": "Start the game. It drops from the save whatever depends on the problems above, and the next time it saves, that is gone for good.",
   "server.anyway.start.undo": "To undo, restore that snapshot from the Snapshots page.",
-  "server.anyway.advice": {
-    "one": "Foreman cannot add mods to a world yet. To keep what that mod built, copy its zip file into {world}'s own mods folder, then start {world} again.",
-    "other": "Foreman cannot add mods to a world yet. To keep what those mods built, copy their zip files into {world}'s own mods folder, then start {world} again."
-  },
-  "server.anyway.advice_folder": {
-    "one": "Foreman cannot add mods to a world yet. To keep what that mod built, copy its zip file into {world}'s own mods folder, {folder} on the host, then start {world} again.",
-    "other": "Foreman cannot add mods to a world yet. To keep what those mods built, copy their zip files into {world}'s own mods folder, {folder} on the host, then start {world} again."
-  },
+  "server.anyway.advice_one": "Foreman cannot add mods to a world yet. To keep what that mod built, copy its zip file into {world}'s own mods folder, then start {world} again.",
+  "server.anyway.advice_many": "Foreman cannot add mods to a world yet. To keep what those mods built, copy their zip files into {world}'s own mods folder, then start {world} again.",
+  "server.anyway.advice_folder_one": "Foreman cannot add mods to a world yet. To keep what that mod built, copy its zip file into {world}'s own mods folder, {folder} on the host, then start {world} again.",
+  "server.anyway.advice_folder_many": "Foreman cannot add mods to a world yet. To keep what those mods built, copy their zip files into {world}'s own mods folder, {folder} on the host, then start {world} again.",
   "server.crash.no_reason": "Foreman could not tell why from the log.",
   "server.crash.fix": "Fix what the game reported, for example {world}'s mods or its save, then try to start it again.",
   "server.crash.fix_or": "Fix what the game reported, for example {world}'s mods or its save, then try to start it again. Or put things back as they were before:",
@@ -291,14 +287,10 @@
   "server.problem.modlist_space_age_off": "Space Age is off for this world, but mod-list.json has {mods} turned on (or is missing, so the game turns them on). Fix the mod list before starting.",
   "server.problem.save_newer": "The save {save} was made by Factorio {save_version}, newer than this world's Factorio {version}. An older game cannot load it.",
   "server.problem.space_age_off": "{save} uses Space Age ({mods}), but Space Age is off for this world.",
-  "server.problem.mod_missing": {
-    "one": "{save} uses {mods}, but this world has no file for it.",
-    "other": "{save} uses {mods}, but this world has no files for them."
-  },
-  "server.problem.mod_disabled": {
-    "one": "{save} uses {mods}, but it is turned off in this world.",
-    "other": "{save} uses {mods}, but they are turned off in this world."
-  },
+  "server.problem.mod_missing_one": "{save} uses {mods}, but this world has no file for it.",
+  "server.problem.mod_missing_many": "{save} uses {mods}, but this world has no files for them.",
+  "server.problem.mod_disabled_one": "{save} uses {mods}, but it is turned off in this world.",
+  "server.problem.mod_disabled_many": "{save} uses {mods}, but they are turned off in this world.",
   "server.problem.mod_version_first": {
     "one": "{world} cannot run on Factorio {version}: {count} of its mods was made for Factorio {for}, and the game refuses to load it: {names}.",
     "other": "{world} cannot run on Factorio {version}: {count} of its mods were made for Factorio {for}, and the game refuses to load them: {names}."

@@ -117,14 +117,10 @@
   "server.anyway.start.snapshot": "Einen Snapshot von {world} mit dem Namen „Vor erzwungenem Start“ erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
   "server.anyway.start.start": "Das Spiel starten. Es lässt aus dem Speicherstand weg, was von den oben genannten Problemen abhängt, und beim nächsten Speichern ist das endgültig weg.",
   "server.anyway.start.undo": "Zum Rückgängigmachen stelle diesen Snapshot auf der Seite „Snapshots“ wieder her.",
-  "server.anyway.advice": {
-    "one": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mod gebaut hat, kopiere ihre Zip-Datei in den eigenen Mods-Ordner von {world} und starte {world} dann erneut.",
-    "other": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mods gebaut haben, kopiere ihre Zip-Dateien in den eigenen Mods-Ordner von {world} und starte {world} dann erneut."
-  },
-  "server.anyway.advice_folder": {
-    "one": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mod gebaut hat, kopiere ihre Zip-Datei in den eigenen Mods-Ordner von {world}, auf dem Host {folder}, und starte {world} dann erneut.",
-    "other": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mods gebaut haben, kopiere ihre Zip-Dateien in den eigenen Mods-Ordner von {world}, auf dem Host {folder}, und starte {world} dann erneut."
-  },
+  "server.anyway.advice_one": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mod gebaut hat, kopiere ihre Zip-Datei in den eigenen Mods-Ordner von {world} und starte {world} dann erneut.",
+  "server.anyway.advice_many": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mods gebaut haben, kopiere ihre Zip-Dateien in den eigenen Mods-Ordner von {world} und starte {world} dann erneut.",
+  "server.anyway.advice_folder_one": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mod gebaut hat, kopiere ihre Zip-Datei in den eigenen Mods-Ordner von {world}, auf dem Host {folder}, und starte {world} dann erneut.",
+  "server.anyway.advice_folder_many": "Foreman kann einer Welt noch keine Mods hinzufügen. Um zu behalten, was diese Mods gebaut haben, kopiere ihre Zip-Dateien in den eigenen Mods-Ordner von {world}, auf dem Host {folder}, und starte {world} dann erneut.",
   "server.crash.no_reason": "Foreman konnte dem Protokoll nicht entnehmen, warum.",
   "server.crash.fix": "Behebe, was das Spiel gemeldet hat, zum Beispiel die Mods oder den Speicherstand von {world}, und versuche dann, es erneut zu starten.",
   "server.crash.fix_or": "Behebe, was das Spiel gemeldet hat, zum Beispiel die Mods oder den Speicherstand von {world}, und versuche dann, es erneut zu starten. Oder stelle den früheren Zustand wieder her:",
@@ -291,14 +287,10 @@
   "server.problem.modlist_space_age_off": "Space Age ist für diese Welt ausgeschaltet, aber in mod-list.json ist {mods} eingeschaltet (oder die Datei fehlt, dann schaltet das Spiel sie ein). Korrigiere die Mod-Liste vor dem Start.",
   "server.problem.save_newer": "Der Speicherstand {save} wurde mit Factorio {save_version} erstellt, das neuer ist als Factorio {version} dieser Welt. Ein älteres Spiel kann ihn nicht laden.",
   "server.problem.space_age_off": "{save} nutzt Space Age ({mods}), aber Space Age ist für diese Welt ausgeschaltet.",
-  "server.problem.mod_missing": {
-    "one": "{save} nutzt {mods}, aber diese Welt hat dafür keine Datei.",
-    "other": "{save} nutzt {mods}, aber diese Welt hat dafür keine Dateien."
-  },
-  "server.problem.mod_disabled": {
-    "one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt ausgeschaltet.",
-    "other": "{save} nutzt {mods}, aber diese Mods sind in dieser Welt ausgeschaltet."
-  },
+  "server.problem.mod_missing_one": "{save} nutzt {mods}, aber diese Welt hat dafür keine Datei.",
+  "server.problem.mod_missing_many": "{save} nutzt {mods}, aber diese Welt hat dafür keine Dateien.",
+  "server.problem.mod_disabled_one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt ausgeschaltet.",
+  "server.problem.mod_disabled_many": "{save} nutzt {mods}, aber diese Mods sind in dieser Welt ausgeschaltet.",
   "server.problem.mod_version_first": {
     "one": "{world} kann unter Factorio {version} nicht laufen: {count} ihrer Mods wurde für Factorio {for} erstellt, und das Spiel weigert sich, sie zu laden: {names}.",
     "other": "{world} kann unter Factorio {version} nicht laufen: {count} ihrer Mods wurden für Factorio {for} erstellt, und das Spiel weigert sich, sie zu laden: {names}."

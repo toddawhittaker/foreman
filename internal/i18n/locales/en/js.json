@@ -1,1 +1,16 @@
-{}
+{
+  "js.countdown.ending": "ending now",
+  "js.countdown.left": {
+    "one": "{count} second left",
+    "other": "{count} seconds left"
+  },
+  "js.import.many": "Several folders chosen: each uses its own name, version and Space Age.",
+  "js.import.same": "Same as the save",
+  "js.import.same.unreadable": "Same as the save (could not be read, so choose or type one)",
+  "js.import.same.version": "Same as the save ({version})",
+  "js.import.suggested": "World name suggested: {name}.",
+  "js.import.warning": "Warning: {text}",
+  "js.live.moved": "The active world changed.",
+  "js.live.note": "Note:",
+  "js.live.stopped": "Live updates stopped. Reload to see the current state."
+}

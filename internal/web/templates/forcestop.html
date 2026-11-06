@@ -9,7 +9,7 @@
   <p>{{t "server.this_will"}}</p>
   <ul>
     <li>{{t "server.force.at_once"}}</li>
-    <li>{{if not .World.LastPlayed.IsZero}}{{tHTML "server.force.lose_since" "time" (when .World.LastPlayed)}}{{else}}{{t "server.force.lose"}}{{end}} {{msg .Online.Disconnected}}</li>
+    <li>{{if not .World.LastPlayed.IsZero}}{{tHTML "server.force.lose_since" "time" (momentUTC .World.LastPlayed)}}{{else}}{{t "server.force.lose"}}{{end}} {{msg .Online.Disconnected}}</li>
     <li>{{t "server.force.interrupt"}}</li>
     <li>{{t "server.force.no_snapshot"}}</li>
   </ul>

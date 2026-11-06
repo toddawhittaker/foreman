@@ -113,12 +113,10 @@
   "server.anyway.start.snapshot": "为 {world} 创建快照，标签为“强制启动前”。如果快照失败，不会进行其他操作。",
   "server.anyway.start.start": "启动游戏。依赖于上述问题的内容会从存档中丢弃，下次保存后将永久消失。",
   "server.anyway.start.undo": "要撤销，请在“快照”页面恢复该快照。",
-  "server.anyway.advice": {
-    "other": "Foreman 目前还不能向世界添加模组。要保留这些模组所建造的内容，请把它们的 zip 文件复制到 {world} 自己的模组文件夹中，然后重新启动 {world}。"
-  },
-  "server.anyway.advice_folder": {
-    "other": "Foreman 目前还不能向世界添加模组。要保留这些模组所建造的内容，请把它们的 zip 文件复制到 {world} 自己的模组文件夹（主机上的 {folder}）中，然后重新启动 {world}。"
-  },
+  "server.anyway.advice_one": "Foreman 目前还不能向世界添加模组。要保留这些模组所建造的内容，请把它们的 zip 文件复制到 {world} 自己的模组文件夹中，然后重新启动 {world}。",
+  "server.anyway.advice_many": "Foreman 目前还不能向世界添加模组。要保留这些模组所建造的内容，请把它们的 zip 文件复制到 {world} 自己的模组文件夹中，然后重新启动 {world}。",
+  "server.anyway.advice_folder_one": "Foreman 目前还不能向世界添加模组。要保留这些模组所建造的内容，请把它们的 zip 文件复制到 {world} 自己的模组文件夹（主机上的 {folder}）中，然后重新启动 {world}。",
+  "server.anyway.advice_folder_many": "Foreman 目前还不能向世界添加模组。要保留这些模组所建造的内容，请把它们的 zip 文件复制到 {world} 自己的模组文件夹（主机上的 {folder}）中，然后重新启动 {world}。",
   "server.crash.no_reason": "Foreman 无法从日志中判断原因。",
   "server.crash.fix": "请修复游戏报告的问题，例如 {world} 的模组或存档，然后再次尝试启动。",
   "server.crash.fix_or": "请修复游戏报告的问题，例如 {world} 的模组或存档，然后再次尝试启动。或者恢复到之前的状态：",
@@ -282,12 +280,10 @@
   "server.problem.modlist_space_age_off": "此世界已关闭太空时代，但 mod-list.json 中已开启：{mods}（或缺少相应条目，游戏会将其开启）。请在启动前修复模组列表。",
   "server.problem.save_newer": "存档 {save} 由 Factorio {save_version} 创建，比此世界的 Factorio {version} 更新。较旧的游戏无法载入它。",
   "server.problem.space_age_off": "{save} 使用了太空时代（{mods}），但此世界已关闭太空时代。",
-  "server.problem.mod_missing": {
-    "other": "{save} 使用了 {mods}，但此世界中没有相应的文件。"
-  },
-  "server.problem.mod_disabled": {
-    "other": "{save} 使用了 {mods}，但在此世界中已关闭。"
-  },
+  "server.problem.mod_missing_one": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
+  "server.problem.mod_missing_many": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
+  "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已关闭。",
+  "server.problem.mod_disabled_many": "{save} 使用了 {mods}，但在此世界中已关闭。",
   "server.problem.mod_version_first": {
     "other": "{world} 无法在 Factorio {version} 上运行：它的 {count} 个模组是为 Factorio {for} 制作的，游戏拒绝载入：{names}。"
   },

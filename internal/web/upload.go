@@ -3,7 +3,6 @@ package web
 import (
 	"archive/zip"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -35,7 +34,7 @@ func (s *server) guardUpload(h func(http.ResponseWriter, *http.Request, store.Us
 	return func(w http.ResponseWriter, r *http.Request, u store.User) {
 		if r.ContentLength < 0 {
 			s.page(w, r, http.StatusLengthRequired, u.Username, ErrorPage{Status: http.StatusLengthRequired,
-				Detail: i18n.Raw("Your browser did not say how big the file is. Try again from the upload form.")})
+				Detail: i18n.M("worlds.upload.no_length")})
 			return
 		}
 		select {
@@ -43,7 +42,7 @@ func (s *server) guardUpload(h func(http.ResponseWriter, *http.Request, store.Us
 			defer func() { <-s.uploadSlots }()
 		default:
 			s.page(w, r, http.StatusTooManyRequests, u.Username, ErrorPage{Status: http.StatusTooManyRequests,
-				Detail: i18n.Raw("Two uploads are already running. Wait for one to finish and try again.")})
+				Detail: i18n.M("worlds.upload.busy")})
 			return
 		}
 		h(w, r, u)
@@ -51,9 +50,13 @@ func (s *server) guardUpload(h func(http.ResponseWriter, *http.Request, store.Us
 }
 
 // uploadError carries words safe to show the admin.
-type uploadError struct{ msg string }
+type uploadError struct{ msg i18n.Msg }
 
-func (e uploadError) Error() string { return e.msg }
+func (e uploadError) Error() string { return i18n.English.Format(e.msg) }
+
+func tooLarge(limit int64) uploadError {
+	return uploadError{i18n.M("worlds.upload.too_large", "limit", i18n.Size(limit))} //nolint:gosec // limit is a positive constant
+}
 
 // uploaded is a file received into a temp file beside its destination.
 // The caller checks it, then commits it with world.Commit or removes it.
@@ -80,7 +83,7 @@ const maxFieldBytes = 1 << 10
 // values. Text fields sent after the file are not read.
 func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir string, limit int64, values map[string]string) (uploaded, error) {
 	if r.ContentLength > limit {
-		return uploaded{}, uploadError{fmt.Sprintf("The file is larger than the limit of %s.", world.FormatBytes(uint64(limit)))} //nolint:gosec // limit is a positive constant
+		return uploaded{}, tooLarge(limit)
 	}
 	// A body of unknown length still needs the reserve free; if it then
 	// fills the disk, bodyError says so and the temp file goes.
@@ -91,12 +94,12 @@ func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir 
 	defer release()
 	mr, err := r.MultipartReader()
 	if err != nil {
-		return uploaded{}, uploadError{"Choose a file to upload."}
+		return uploaded{}, uploadError{i18n.M("worlds.upload.choose_file")}
 	}
 	for {
 		part, err := mr.NextPart()
 		if errors.Is(err, io.EOF) {
-			return uploaded{}, uploadError{"Choose a file to upload."}
+			return uploaded{}, uploadError{i18n.M("worlds.upload.choose_file")}
 		}
 		if err != nil {
 			return uploaded{}, partError(err, limit)
@@ -107,7 +110,7 @@ func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir 
 				return uploaded{}, bodyError(err, limit)
 			}
 			if len(b) > maxFieldBytes {
-				return uploaded{}, uploadError{"A form field is too long."}
+				return uploaded{}, uploadError{i18n.M("worlds.upload.field_long")}
 			}
 			values[part.FormName()] = string(b)
 			continue
@@ -143,9 +146,9 @@ func bodyError(err error, limit int64) error {
 	var tooBig *http.MaxBytesError
 	switch {
 	case errors.As(err, &tooBig):
-		return uploadError{fmt.Sprintf("The file is larger than the limit of %s.", world.FormatBytes(uint64(limit)))} //nolint:gosec // limit is a positive constant
+		return tooLarge(limit)
 	case errors.Is(err, syscall.ENOSPC):
-		return uploadError{"The disk filled up during the upload, so it was stopped and nothing was changed. Free some space and try again."}
+		return uploadError{i18n.M("worlds.upload.disk_full")}
 	}
 	return err
 }
@@ -157,7 +160,7 @@ func partError(err error, limit int64) error {
 	if err = bodyError(err, limit); errors.As(err, new(uploadError)) {
 		return err
 	}
-	return uploadError{"Foreman could not read the upload. Reload the page and try again."}
+	return uploadError{i18n.M("worlds.upload.unreadable")}
 }
 
 // checkZip reads only a zip's directory, never unpacking it, and refuses
@@ -175,16 +178,16 @@ func checkZip(root *os.Root, name string, maxUnpacked uint64) error {
 	}
 	zr, err := zip.NewReader(f, info.Size())
 	if err != nil {
-		return uploadError{"This file is not a zip file."}
+		return uploadError{i18n.M("worlds.upload.not_zip")}
 	}
 	var total uint64
 	for _, e := range zr.File {
 		if !filepath.IsLocal(e.Name) {
-			return uploadError{"This zip file holds an entry with an unsafe name, so it was refused."}
+			return uploadError{i18n.M("worlds.upload.unsafe_entry")}
 		}
 		total += e.UncompressedSize64
 		if total > maxUnpacked || total < e.UncompressedSize64 {
-			return uploadError{fmt.Sprintf("This zip file would unpack to more than %s, so it was refused.", world.FormatBytes(maxUnpacked))}
+			return uploadError{i18n.M("worlds.upload.unpack_limit", "limit", i18n.Size(maxUnpacked))}
 		}
 	}
 	return nil

@@ -174,6 +174,18 @@ func SetSpaceReserveForTest(n uint64) (restore func()) {
 // ErrNoSpace is wrapped by Reserve and CheckSpace when the disk is too full.
 var ErrNoSpace = errors.New("not enough free disk space")
 
+// NoSpaceError carries the sizes behind an ErrNoSpace, in bytes: what the
+// write needs including the reserve, the reserve itself, and what is free.
+// It matches ErrNoSpace.
+type NoSpaceError struct{ Need, Reserve, Free uint64 }
+
+func (e *NoSpaceError) Error() string {
+	return fmt.Sprintf("%s: this needs %s, including %s kept free for the game, but only %s is free. Free some space and try again",
+		ErrNoSpace, FormatBytes(e.Need), FormatBytes(e.Reserve), FormatBytes(e.Free))
+}
+
+func (*NoSpaceError) Is(target error) bool { return target == ErrNoSpace }
+
 // promised counts bytes that writes in flight said they will write, so
 // writes running side by side cannot together eat into the reserve (SPEC 6.11).
 // One count for the process: the data folder is one filesystem.
@@ -229,8 +241,7 @@ func checkSpace(free, inFlight, need uint64) error {
 	}
 	reserve := reserveBytes.Load()
 	if want := need + reserve; avail < want {
-		return fmt.Errorf("%w: this needs %s, including %s kept free for the game, but only %s is free. Free some space and try again",
-			ErrNoSpace, FormatBytes(want), FormatBytes(reserve), FormatBytes(avail))
+		return &NoSpaceError{Need: want, Reserve: reserve, Free: avail}
 	}
 	return nil
 }

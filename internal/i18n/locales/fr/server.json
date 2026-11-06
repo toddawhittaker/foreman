@@ -117,14 +117,10 @@
   "server.anyway.start.snapshot": "Prendre un instantané de {world}, intitulé « Avant le démarrage forcé ». Si l’instantané échoue, rien d’autre ne se passe.",
   "server.anyway.start.start": "Démarrer le jeu. Il retire de la sauvegarde tout ce qui dépend des problèmes ci-dessus, et à la prochaine sauvegarde, c’est perdu pour de bon.",
   "server.anyway.start.undo": "Pour annuler, restaurez cet instantané depuis la page Instantanés.",
-  "server.anyway.advice": {
-    "one": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ce mod a construit, copiez son fichier zip dans le dossier de mods propre à {world}, puis démarrez à nouveau {world}.",
-    "other": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ces mods ont construit, copiez leurs fichiers zip dans le dossier de mods propre à {world}, puis démarrez à nouveau {world}."
-  },
-  "server.anyway.advice_folder": {
-    "one": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ce mod a construit, copiez son fichier zip dans le dossier de mods propre à {world}, {folder} sur l’hôte, puis démarrez à nouveau {world}.",
-    "other": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ces mods ont construit, copiez leurs fichiers zip dans le dossier de mods propre à {world}, {folder} sur l’hôte, puis démarrez à nouveau {world}."
-  },
+  "server.anyway.advice_one": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ce mod a construit, copiez son fichier zip dans le dossier de mods propre à {world}, puis démarrez à nouveau {world}.",
+  "server.anyway.advice_many": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ces mods ont construit, copiez leurs fichiers zip dans le dossier de mods propre à {world}, puis démarrez à nouveau {world}.",
+  "server.anyway.advice_folder_one": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ce mod a construit, copiez son fichier zip dans le dossier de mods propre à {world}, {folder} sur l’hôte, puis démarrez à nouveau {world}.",
+  "server.anyway.advice_folder_many": "Foreman ne peut pas encore ajouter de mods à un monde. Pour conserver ce que ces mods ont construit, copiez leurs fichiers zip dans le dossier de mods propre à {world}, {folder} sur l’hôte, puis démarrez à nouveau {world}.",
   "server.crash.no_reason": "Foreman n’a pas pu déterminer la cause d’après le journal.",
   "server.crash.fix": "Corrigez ce que le jeu a signalé, par exemple les mods de {world} ou sa sauvegarde, puis essayez de le démarrer à nouveau.",
   "server.crash.fix_or": "Corrigez ce que le jeu a signalé, par exemple les mods de {world} ou sa sauvegarde, puis essayez de le démarrer à nouveau. Ou remettez les choses comme elles étaient avant :",
@@ -291,14 +287,10 @@
   "server.problem.modlist_space_age_off": "L’Ère spatiale est désactivée pour ce monde, mais mod-list.json active {mods} (ou le fichier est absent, auquel cas le jeu les active). Corrigez la liste des mods avant de démarrer.",
   "server.problem.save_newer": "La sauvegarde {save} a été créée par Factorio {save_version}, plus récent que le Factorio {version} de ce monde. Un jeu plus ancien ne peut pas la charger.",
   "server.problem.space_age_off": "{save} utilise l’Ère spatiale ({mods}), mais l’Ère spatiale est désactivée pour ce monde.",
-  "server.problem.mod_missing": {
-    "one": "{save} utilise {mods}, mais ce monde n’a pas de fichier pour lui.",
-    "other": "{save} utilise {mods}, mais ce monde n’a pas de fichiers pour eux."
-  },
-  "server.problem.mod_disabled": {
-    "one": "{save} utilise {mods}, mais il est désactivé dans ce monde.",
-    "other": "{save} utilise {mods}, mais ils sont désactivés dans ce monde."
-  },
+  "server.problem.mod_missing_one": "{save} utilise {mods}, mais ce monde n’a pas de fichier pour lui.",
+  "server.problem.mod_missing_many": "{save} utilise {mods}, mais ce monde n’a pas de fichiers pour eux.",
+  "server.problem.mod_disabled_one": "{save} utilise {mods}, mais il est désactivé dans ce monde.",
+  "server.problem.mod_disabled_many": "{save} utilise {mods}, mais ils sont désactivés dans ce monde.",
   "server.problem.mod_version_first": {
     "one": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods a été conçu pour Factorio {for}, et le jeu refuse de le charger : {names}.",
     "other": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods ont été conçus pour Factorio {for}, et le jeu refuse de les charger : {names}."

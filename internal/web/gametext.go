@@ -52,10 +52,7 @@ func gameError(err error) (int, i18n.Msg) {
 	if _, ok := errors.AsType[*url.Error](err); ok {
 		return http.StatusServiceUnavailable, i18n.M("server.error.docker_down")
 	}
-	status, msg := worldError(err)
-	// worldError's words are not in the catalogue yet; the worlds area
-	// converts them.
-	return status, i18n.Raw(msg)
+	return worldError(err)
 }
 
 // refusalMsg words the refusals of server control that the admin can act
@@ -161,7 +158,7 @@ func loadModsMsg(r game.LoadReason) i18n.Msg {
 // crashed once or again and again, when, whether a later result leads the
 // page, and the game's reason from its log.
 func crashMsg(looping, earlier bool, at time.Time, r game.LoadReason) i18n.Msg {
-	t, mods, said := i18n.Time(at), loadModsMsg(r), i18n.Game(strings.TrimSuffix(r.Said, "."))
+	t, mods, said := momentUTC(at), loadModsMsg(r), i18n.Game(strings.TrimSuffix(r.Said, "."))
 	pick := func(none, withMods, withSaid i18n.Msg) i18n.Msg {
 		switch {
 		case r.Mods > 0:
@@ -369,10 +366,17 @@ func problemMsg(p world.Problem) i18n.Msg {
 		return i18n.M("server.problem.save_newer", "save", p.Save, "save_version", p.SaveVersion, "version", p.GameVersion)
 	case world.ProblemSpaceAgeOff:
 		return i18n.M("server.problem.space_age_off", "save", p.Save, "mods", names)
+	// One mod is "it" and several "them"; the count itself is not shown.
 	case world.ProblemModMissing:
-		return i18n.M("server.problem.mod_missing", "save", p.Save, "mods", mods, "count", len(p.Mods))
+		if len(p.Mods) == 1 {
+			return i18n.M("server.problem.mod_missing_one", "save", p.Save, "mods", mods)
+		}
+		return i18n.M("server.problem.mod_missing_many", "save", p.Save, "mods", mods)
 	case world.ProblemModDisabled:
-		return i18n.M("server.problem.mod_disabled", "save", p.Save, "mods", mods, "count", len(p.Mods))
+		if len(p.Mods) == 1 {
+			return i18n.M("server.problem.mod_disabled_one", "save", p.Save, "mods", mods)
+		}
+		return i18n.M("server.problem.mod_disabled_many", "save", p.Save, "mods", mods)
 	case world.ProblemModGameVersion:
 		return modVersionMsg(p)
 	}

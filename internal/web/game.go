@@ -440,6 +440,10 @@ func (s *server) finish(id, action string, err error) actionResult {
 		}
 		if status == http.StatusInternalServerError || failedDownload && !de.NotFound {
 			s.log.Error("server control", "world", id, "action", action, "error", err)
+		} else if errors.Is(err, game.ErrRCONUnreachable) {
+			// The page shows the plain refusal; the transport's own error is
+			// kept here.
+			s.log.Warn("server control", "world", id, "action", action, "error", err)
 		}
 	}
 	return actionResult{Action: action, Err: err}

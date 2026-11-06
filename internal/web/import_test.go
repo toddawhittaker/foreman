@@ -11,6 +11,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -151,7 +152,7 @@ func TestImportWarnsWhenSpaceAgeDiffersFromTheSave(t *testing.T) {
 	g := newImportRig(t, nil)
 	g.inboxSave("plain", "2.1.24-no-space-age.zip")
 	rep := g.post(PathImportFolder, url.Values{"folder": {"plain"}, "name": {""}, "space_age": {"on"}})
-	g.wantContains("re-shown form", rep.body, "Same as the save (2.1.24)", spaceAgeOnWarning)
+	g.wantContains("re-shown form", rep.body, "Same as the save (2.1.24)", i18n.English.T("worlds.import.space_age_on_warning"))
 }
 
 // Ruling 4: a typed version must be a downloaded image or on Docker Hub's

@@ -28,7 +28,7 @@ func (p ServerPage) RecoverRestore() *Offer {
 	if !p.CrashLooping() || sn == nil {
 		return nil
 	}
-	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", sn.Label, "time", i18n.Time(sn.TakenAt)), At: sn.TakenAt}
+	return &Offer{Path: restorePath(p.World.ID, sn.Name), Label: i18n.M("server.recover.restore", "label", sn.Label, "time", momentUTC(sn.TakenAt)), At: sn.TakenAt}
 }
 
 // CrashMessage is the crash box's sentence (SPEC 8.7).
@@ -253,13 +253,4 @@ func resultAnnouncement(p ServerPage) i18n.Msg {
 		return i18n.Msg{}
 	}
 	return join(said[0], said[1:]...)
-}
-
-// actionNames name each action in an English sentence; the worlds area
-// still uses them until its busy text is converted.
-var actionNames = map[string]string{
-	game.AuditStart: "start", game.AuditStop: "stop", game.AuditRestart: "restart",
-	game.AuditForceStop: "forced stop", game.AuditImageDownload: "image download", game.ActionRestore: "restore",
-	game.AuditSwitch: "switch", game.AuditUpdate: "update", game.AuditRollback: "rollback",
-	actionSnapshot: "snapshot",
 }

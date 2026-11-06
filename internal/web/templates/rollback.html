@@ -20,7 +20,7 @@
     <li>{{t "server.update.warn"}}</li>
     {{- end}}
     <li>{{t "server.rollback.snapshot" "world" .World.Name}}</li>
-    <li>{{tHTML "server.rollback.restore" "label" .Snapshot.Label "time" (when .Snapshot.TakenAt) "version" .Version}}</li>
+    <li>{{tHTML "server.rollback.restore" "label" .Snapshot.Label "time" (momentUTC .Snapshot.TakenAt) "version" .Version}}</li>
     {{- if .Running}}
     <li>{{t "server.rollback.start" "version" .Version}}</li>
     {{- end}}

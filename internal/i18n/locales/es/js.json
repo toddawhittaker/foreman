@@ -1,1 +1,16 @@
-{}
+{
+  "js.countdown.ending": "terminando ahora",
+  "js.countdown.left": {
+    "one": "queda {count} segundo",
+    "other": "quedan {count} segundos"
+  },
+  "js.import.many": "Varias carpetas seleccionadas: cada una usa su propio nombre, su propia versión y su propio Space Age.",
+  "js.import.same": "Igual que la partida guardada",
+  "js.import.same.unreadable": "Igual que la partida guardada (no se pudo leer, así que elige o escribe una versión)",
+  "js.import.same.version": "Igual que la partida guardada ({version})",
+  "js.import.suggested": "Nombre del mundo sugerido: {name}.",
+  "js.import.warning": "Aviso: {text}",
+  "js.live.moved": "El mundo activo ha cambiado.",
+  "js.live.note": "Nota:",
+  "js.live.stopped": "Las actualizaciones en vivo se detuvieron. Recarga la página para ver el estado actual."
+}

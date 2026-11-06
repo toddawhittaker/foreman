@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -54,17 +55,14 @@ type AllSnapshotsPage struct {
 	// them would free.
 	AddBytes  uint64
 	FreeBytes uint64
-	// TickNote says what a shortcut button ticked; empty when none was pressed.
-	TickNote string
+	// TickNote says what a shortcut button ticked; zero when none was pressed.
+	TickNote i18n.Msg
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
 }
 
 func (AllSnapshotsPage) templateName() string { return "allsnapshots" }
 func (AllSnapshotsPage) navItem() string      { return PathSnapshots }
-
-// Reason says why a snapshot was taken, or "" when its label already says so.
-func (AllSnapshotsPage) Reason(reason, label string) string { return showReason(reason, label) }
 
 // DeletePath is the confirmation page for one snapshot.
 func (AllSnapshotsPage) DeletePath(id, snap string) string {
@@ -103,7 +101,7 @@ type SnapshotDeletePage struct {
 	Rollback string
 	// FromAll is true when the delete started on the Snapshots tab.
 	FromAll bool
-	Error   string
+	Error   i18n.Msg
 }
 
 func (SnapshotDeletePage) templateName() string { return "snapshotdelete" }
@@ -113,7 +111,7 @@ func (p SnapshotDeletePage) navItem() string {
 	}
 	return PathWorlds
 }
-func (p SnapshotDeletePage) hasErrors() bool { return p.Error != "" }
+func (p SnapshotDeletePage) hasErrors() bool { return !p.Error.IsZero() }
 
 // Path is where the confirmation posts.
 func (p SnapshotDeletePage) Path() string { return snapshotDeletePath(p.WorldID, p.Snapshot.Name) }
@@ -231,6 +229,18 @@ func (s *server) handleSnapshotDeleteForm(w http.ResponseWriter, r *http.Request
 // world, since a restore or update there may need the snapshot.
 var errOperationRunning = errors.New("an operation is running on this world. Wait for it to finish, then try again")
 
+// busyReason says why a snapshot delete is refused for err, when err is a
+// busy world.
+func busyReason(err error) (i18n.Msg, bool) {
+	switch {
+	case errors.Is(err, errOperationRunning):
+		return msgOperationRunning(), true
+	case errors.Is(err, world.ErrBusy):
+		return msgBusy(), true
+	}
+	return i18n.Msg{}, false
+}
+
 func (s *server) operationRunning(id string) bool {
 	if s.game == nil {
 		return false
@@ -265,19 +275,21 @@ func (s *server) handleSnapshotDelete(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	err := s.deleteSnapshot(r.Context(), u, p.WorldID, p.Snapshot.Name)
-	switch {
-	case err == nil:
+	if err == nil {
 		to := snapshotsPath(p.WorldID)
 		if p.FromAll {
 			to = PathSnapshots
 		}
 		http.Redirect(w, r, to+"?"+deletedQuery(p.Snapshot.Name), http.StatusSeeOther)
-	case errors.Is(err, errOperationRunning), errors.Is(err, world.ErrBusy):
-		p.Error = "Nothing was deleted: " + sentence(err)
-		s.page(w, r, http.StatusConflict, u.Username, p)
-	default:
-		s.notFoundOrFail(w, r, u, "delete snapshot", err)
+		return
 	}
+	reason, refused := busyReason(err)
+	if !refused {
+		s.notFoundOrFail(w, r, u, "delete snapshot", err)
+		return
+	}
+	p.Error = i18n.M("worlds.snapshots.delete.nothing", "reason", reason)
+	s.page(w, r, http.StatusConflict, u.Username, p)
 }
 
 // deletedQuery names the deleted snapshots for the page the delete returns

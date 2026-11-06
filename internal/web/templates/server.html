@@ -118,7 +118,7 @@
 {{/* The last action's error and what can be done next. Takes *Failure. */}}
 {{define "server-failure" -}}
 <div class="message {{.Class}}">
-  <p><strong>{{msg .Word}}</strong> {{if not .Earlier.IsZero}}{{tHTML "server.failure.earlier" "time" (when .Earlier) "message" .Message}}{{else}}{{msgHTML .Message}}{{end}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{msg .Label}}</a>{{end}}</p>
+  <p><strong>{{msg .Word}}</strong> {{if not .Earlier.IsZero}}{{tHTML "server.failure.earlier" "time" (momentUTC .Earlier) "message" .Message}}{{else}}{{msgHTML .Message}}{{end}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{msg .Label}}</a>{{end}}</p>
   {{- with .Problems}}
   <ul>
     {{- range .}}
@@ -245,7 +245,7 @@
 {{- end}}
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1"{{if $.FocusResult}} autofocus{{end}}>
-  <p><strong>{{t "server.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (when $.DoneAt)}}</p>
+  <p><strong>{{t "server.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (momentUTC $.DoneAt)}}</p>
   <div class="actions">
     {{- with $.Undo}}
     <a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a>

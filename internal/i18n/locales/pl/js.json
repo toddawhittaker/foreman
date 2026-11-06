@@ -1,1 +1,17 @@
-{}
+{
+  "js.countdown.ending": "kończy się",
+  "js.countdown.left": {
+    "one": "pozostała {count} sekunda",
+    "few": "pozostały {count} sekundy",
+    "many": "pozostało {count} sekund"
+  },
+  "js.import.many": "Wybrano kilka folderów: każdy używa własnej nazwy, wersji i ustawienia Ery Kosmosu.",
+  "js.import.same": "Taka sama jak w zapisie",
+  "js.import.same.unreadable": "Taka sama jak w zapisie (nie udało się jej odczytać, więc należy wybrać lub wpisać wersję)",
+  "js.import.same.version": "Taka sama jak w zapisie ({version})",
+  "js.import.suggested": "Sugerowana nazwa świata: {name}.",
+  "js.import.warning": "Ostrzeżenie: {text}",
+  "js.live.moved": "Aktywny świat został zmieniony.",
+  "js.live.note": "Uwaga:",
+  "js.live.stopped": "Aktualizacje na żywo zostały zatrzymane. Należy odświeżyć stronę, aby zobaczyć aktualny stan."
+}
