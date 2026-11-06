@@ -1,0 +1,102 @@
+{
+  "death-world": {
+    "difficulty_settings": {
+      "research_queue_setting": "always"
+    },
+    "enemy_evolution": {
+      "pollution_factor": 1.2e-06,
+      "time_factor": 2e-05
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    },
+    "pollution": {
+      "ageing": 0.5,
+      "enemy_attack_pollution_consumption_modifier": 0.5
+    }
+  },
+  "death-world-marathon": {
+    "difficulty_settings": {
+      "recipe_difficulty": 1,
+      "research_queue_setting": "always",
+      "technology_difficulty": 1,
+      "technology_price_multiplier": 4
+    },
+    "enemy_evolution": {
+      "pollution_factor": 1e-06,
+      "time_factor": 1.5e-05
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    },
+    "pollution": {
+      "ageing": 0.5,
+      "enemy_attack_pollution_consumption_modifier": 0.8
+    }
+  },
+  "default": {
+    "difficulty_settings": {
+      "research_queue_setting": "always"
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    }
+  },
+  "island": {
+    "difficulty_settings": {
+      "research_queue_setting": "always"
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    }
+  },
+  "marathon": {
+    "difficulty_settings": {
+      "recipe_difficulty": 1,
+      "research_queue_setting": "always",
+      "technology_difficulty": 1,
+      "technology_price_multiplier": 4
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    }
+  },
+  "rail-world": {
+    "difficulty_settings": {
+      "research_queue_setting": "always"
+    },
+    "enemy_evolution": {
+      "time_factor": 2e-06
+    },
+    "enemy_expansion": {
+      "enabled": false
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    }
+  },
+  "ribbon-world": {
+    "difficulty_settings": {
+      "research_queue_setting": "always"
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    }
+  },
+  "rich-resources": {
+    "difficulty_settings": {
+      "research_queue_setting": "always"
+    },
+    "path_finder": {
+      "max_steps_worked_per_tick": 1000,
+      "start_to_goal_cost_multiplier_to_terminate_path_find": 2000
+    }
+  }
+}

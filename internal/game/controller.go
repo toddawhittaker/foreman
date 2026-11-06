@@ -210,8 +210,11 @@ type Controller struct {
 	rconCallLimit time.Duration
 	previewLimit  time.Duration
 
-	// previewMu is held while a map preview runs: one at a time (SPEC 14.3).
-	previewMu sync.Mutex
+	previewWait time.Duration
+
+	// previewSlot holds a token while a map preview runs: one at a time
+	// (SPEC 14.3).
+	previewSlot chan struct{}
 
 	ctx     context.Context // ends when Run returns; log followers live in it
 	cancel  context.CancelFunc
@@ -267,8 +270,9 @@ func New(cfg Config) (*Controller, error) {
 		now: now, log: log,
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
-		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit,
-		ctx: ctx, cancel: cancel,
+		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit, previewWait: PreviewWait,
+		previewSlot: make(chan struct{}, 1),
+		ctx:         ctx, cancel: cancel,
 		poke: make(chan struct{}, 1),
 		runs: map[string]*worldRun{},
 	}, nil

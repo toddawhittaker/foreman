@@ -104,17 +104,43 @@ func (g *Game) bootPreview(c dockertest.Container) {
 	switch mode {
 	case PreviewHangs:
 		return
+	case PreviewSlow:
+		// A container removed meanwhile draws nothing, so its folder is not made again.
+		g.after(PreviewSlowDelay, func() {
+			if g.hasContainer(c.ID) {
+				g.finishPreview(c)
+			}
+		})
+		return
 	case PreviewFails:
 		g.daemon.EmitLog(c.ID, docker.Stderr, "Error Util.cpp:81: the fake game was told to fail")
 		g.daemon.Exit(c.ID, 1, false)
 		return
 	}
+	g.finishPreview(c)
+}
+
+// PreviewSlowDelay is how long a PreviewSlow container runs before it draws.
+const PreviewSlowDelay = 500 * time.Millisecond
+
+// finishPreview draws the pictures and exits.
+func (g *Game) finishPreview(c dockertest.Container) {
 	if err := drawPreview(c); err != nil {
 		g.report(err.Error())
 		g.daemon.Exit(c.ID, 1, false)
 		return
 	}
 	g.daemon.Exit(c.ID, 0, false)
+}
+
+// hasContainer reports whether the fake Docker still holds the container.
+func (g *Game) hasContainer(id string) bool {
+	for _, c := range g.daemon.Containers() {
+		if c.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // finishLoad is the rest of a start: the game opens RCON and reaches InGame.
