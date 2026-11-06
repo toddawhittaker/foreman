@@ -45,6 +45,7 @@
   "mapgen.preset.death_world": "末日领域",
   "mapgen.preset.death_world_marathon": "绝地求生",
   "mapgen.preset.default": "默认预设",
+  "mapgen.preset.filled": "已按预设“{preset}”填写。可以随意修改任何设置。",
   "mapgen.preset.island": "汪洋孤岛",
   "mapgen.preset.lakes": "湖泊星罗",
   "mapgen.preset.marathon": "长期作战",

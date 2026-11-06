@@ -197,7 +197,7 @@ func TestGenerateFormOpensOnTheActiveWorldsVersion(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Same as the active world (2.0.77)", `name="map_key" value="2.0|1"`, `value="rich-resources"`, "Rich resources",
+		"2.0.77, same as the active world", `name="map_key" value="2.0|1"`, `value="rich-resources"`, "Rich resources",
 		`id="mode-preset" name="mode" value="preset" checked`, `id="preview-button"`, `id="generate-button"`,
 	} {
 		if !strings.Contains(body, want) {

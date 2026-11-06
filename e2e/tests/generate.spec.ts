@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import { countClicks, expectWithin } from "./clicks.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -34,7 +34,7 @@ test("a preset world takes three clicks from the Server page and says its map is
   await expect(page).toHaveURL("/generate");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Generate a world");
   // The version is the active world's, the preset is the default, the seed is blank.
-  await expect(page.getByLabel("Game version")).toContainText("Same as the active world (2.1.24)");
+  await expect(page.getByLabel("Game version")).toContainText("2.1.24, same as the active world");
   await expect(mode(page, "Use a preset and a seed")).toBeChecked();
   await expect(page.locator("#generate-preset")).toHaveValue("default");
   await expect(page.locator("#generate-seed")).toHaveValue("");
@@ -239,4 +239,173 @@ test.describe("map preview", () => {
     await expect(page.locator("#error-summary")).toContainText("Paste a map exchange string");
     await expect(page.locator("#error-summary")).toBeFocused();
   });
+});
+
+// DESIGN 8.8, SPEC 17.3: the person who pressed Preview map keeps their place,
+// hears what happened, and is never told about errors they have fixed.
+test.describe("the preview keeps focus and says what happened", () => {
+  test.beforeEach(async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/generate");
+    await page.getByLabel("World name").fill("Focus");
+  });
+
+  test("focus stays on Preview map while it runs and after the pictures arrive", async ({ page }) => {
+    const button = page.getByRole("button", { name: "Preview map" });
+    // The answer is held back for a moment, so the busy state can be seen.
+    await page.route("**/generate/preview", async (route) => {
+      await new Promise((r) => setTimeout(r, 1000));
+      await route.continue();
+    });
+    await button.focus();
+    await page.keyboard.press("Enter");
+    // Busy is aria-disabled, never disabled, so the button keeps focus.
+    await expect(button).toHaveAttribute("aria-disabled", "true");
+    await expect(button).not.toHaveAttribute("disabled", "");
+    await expect(button).toBeFocused();
+    await expect(page.locator("#preview-wait")).toBeVisible();
+
+    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(button).toBeFocused();
+    await expect(button).not.toHaveAttribute("aria-disabled", "true");
+    await expect(page.locator("#announcer")).toContainText("Map preview ready.");
+  });
+
+  test("a busy Generate does nothing, even from the Enter key in a text field", async ({ page }) => {
+    await page.route("**/generate/preview", async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await expect(page.getByRole("button", { name: "Preview map" })).toHaveAttribute("aria-disabled", "true");
+    await page.getByLabel("World name").press("Enter");
+    await page.getByRole("button", { name: "Generate world" }).click({ force: true });
+    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    // Neither attempt made the world: the page is still the form.
+    await expect(page).toHaveURL("/generate");
+  });
+
+  test("an old error summary is dropped, and the preview is still announced", async ({ page }) => {
+    await page.getByLabel("World name").fill("");
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page.locator("#error-summary")).toBeFocused();
+    await page.getByLabel("World name").fill("Fixed");
+    const button = page.getByRole("button", { name: "Preview map" });
+    await button.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+    await expect(page.locator("#error-summary")).toHaveCount(0);
+    await expect(page.locator("#announcer")).toContainText("Map preview ready.");
+    await expect(button).toBeFocused();
+  });
+
+  test("a failed request writes a sentence in the preview and the announcer", async ({ page }) => {
+    const button = page.getByRole("button", { name: "Preview map" });
+    await page.route("**/generate/preview", (route) => route.fulfill({ status: 500, body: "boom" }));
+    await button.focus();
+    await page.keyboard.press("Enter");
+    const message = page.locator("#preview .message--error");
+    await expect(message).toContainText("The map preview request failed.");
+    await expect(page.locator("#announcer")).toContainText("The map preview request failed.");
+    await expect(button).toBeFocused();
+    await expect(button).not.toHaveAttribute("aria-disabled", "true");
+    await checkPage(page);
+
+    await page.unroute("**/generate/preview");
+    await page.route("**/generate/preview", (route) => route.abort("connectionreset"));
+    await page.getByRole("button", { name: "Preview map" }).press("Enter");
+    await expect(page.locator("#announcer")).toContainText("The map preview request failed.");
+    await expect(page.locator("#preview .message--error")).toHaveCount(1);
+    // The world can still be made.
+    await page.unroute("**/generate/preview");
+    await page.getByRole("button", { name: "Generate world" }).click();
+    await expect(page).toHaveURL("/worlds/focus?generated=1");
+  });
+});
+
+// SPEC 17.3: Generate can be done with the keyboard alone.
+test("a preset world with a seed is made with the keyboard alone, previewing first", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await tabTo(page, page.getByLabel("World name"));
+  await page.keyboard.type("Keys only");
+  await tabTo(page, page.locator("#generate-preset"));
+  await page.keyboard.type("Rich");
+  await expect(page.locator("#generate-preset")).toHaveValue("rich-resources");
+  await tabTo(page, page.locator("#generate-seed"));
+  await page.keyboard.type("777");
+  await tabTo(page, page.getByRole("button", { name: "Preview map" }));
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "Map preview" }).getByRole("img")).toHaveCount(5);
+  await expect(page.getByRole("button", { name: "Preview map" })).toBeFocused();
+  await expect(page.locator("#generate-seed")).toHaveValue("777");
+  // The primary button comes first in the action row.
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Generate world" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL("/worlds/keys-only?generated=1");
+  expect(worldJSON(foreman.dataDir, "keys-only")).toMatchObject({ new_map: { preset: "rich-resources", seed: 777 } });
+});
+
+// DESIGN 8.7: the custom form opens filled with the preset that was chosen, in
+// the game's own words for terrain controls.
+test("the custom form takes the chosen preset's values and words terrain as the game does", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await page.getByLabel("World name").fill("Rail");
+  await page.locator("#generate-preset").selectOption({ label: "Rail world" });
+  await expect(page.locator("#mg-preset-note")).toBeAttached();
+  // The select was not redrawn, so it keeps focus and its choice.
+  await expect(page.locator("#generate-preset")).toHaveValue("rail-world");
+  await mode(page, "Choose each setting").check();
+  await expect(page.locator("#mg-preset-note")).toContainText("Filled in from the preset “Rail world”.");
+  await expect(page.locator("#mg-nauvis-iron-ore-size")).toHaveValue("300");
+  await expect(page.locator("#mg-nauvis-iron-ore-frequency")).toHaveValue("33");
+  await expect(page.locator("#mg-nauvis-water-size")).toHaveValue("150");
+  await expect(page.locator("#mg-nauvis-water-frequency")).toHaveValue("200");
+  const trees = page.getByRole("group", { name: "Trees", exact: true });
+  await expect(trees.getByLabel("Scale")).toBeVisible();
+  await expect(trees.getByLabel("Coverage")).toBeVisible();
+  await expect(trees.getByLabel("Frequency")).toHaveCount(0);
+  const iron = page.getByRole("group", { name: "Iron ore", exact: true });
+  await expect(iron.getByLabel("Frequency")).toBeVisible();
+  await expect(iron.getByLabel("Size")).toBeVisible();
+  await checkPage(page);
+
+  await page.getByRole("button", { name: "Generate world" }).click();
+  await expect(page).toHaveURL("/worlds/rail?generated=1");
+  const doc = JSON.parse(readFileSync(configFile(foreman.dataDir, "rail", "map-gen-settings.json"), "utf8"));
+  expect(doc.autoplace_controls["iron-ore"]).toMatchObject({ size: 3 });
+  expect(doc.autoplace_controls["iron-ore"].frequency).toBeCloseTo(1 / 3, 6);
+  expect(doc.autoplace_controls.water).toMatchObject({ frequency: 0.5, size: 1.5 });
+
+  // Choosing "Default" again puts the plain values back.
+  await page.goto("/generate");
+  await page.locator("#generate-preset").selectOption({ label: "Rich resources" });
+  await expect(page.locator("#mg-preset-note")).toContainText("Rich resources");
+  await page.locator("#generate-preset").selectOption({ label: "Default" });
+  await expect(page.locator("#mg-preset-note")).toContainText("Default");
+  await mode(page, "Choose each setting").check();
+  await expect(page.locator("#mg-nauvis-iron-ore-richness")).toHaveValue("100");
+});
+
+// The version choice is the first thing on the form; its text must show the
+// version at 320 px, in every language (SPEC 22.7).
+test("the version choice is not cut off at 320 px", async ({ page, foreman, fakeGame }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  const select = page.locator("#generate-version-select");
+  await expect(select).toContainText("2.1.24, same as the active world");
+  // The text up to the version must fit inside the select's own box.
+  const fits = await select.evaluate((el) => {
+    const s = el as HTMLSelectElement;
+    const cs = getComputedStyle(s);
+    const c = document.createElement("canvas").getContext("2d")!;
+    c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const room = s.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 24;
+    return { room, version: c.measureText("2.1.24").width, whole: c.measureText(s.selectedOptions[0].text).width, ellipsis: cs.textOverflow };
+  });
+  expect(fits.version, "the version is the first thing shown").toBeLessThan(fits.room);
+  expect(fits.ellipsis).toBe("ellipsis");
 });

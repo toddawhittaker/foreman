@@ -45,6 +45,7 @@
   "mapgen.preset.death_world": "Svět smrti",
   "mapgen.preset.death_world_marathon": "Maraton světa smrti",
   "mapgen.preset.default": "Výchozí",
+  "mapgen.preset.filled": "Vyplněno podle předvolby „{preset}“. Lze změnit libovolné nastavení.",
   "mapgen.preset.island": "Ostrov",
   "mapgen.preset.lakes": "Jezera",
   "mapgen.preset.marathon": "Maraton",

@@ -1,6 +1,9 @@
 {{/* The map-gen form of Generate (DESIGN 8.7). Takes MapGenForm; the page wraps it in its own "custom settings" fieldset. */}}
 {{define "mapgenform" -}}
 <div class="mapgen">
+  {{- if not .FromPreset.IsZero}}
+  <p class="hint" id="mg-preset-note">{{msg .FromPreset}}</p>
+  {{- end}}
   <fieldset>
     <legend>{{t "mapgen.map.legend"}}</legend>
     {{- with .Seed}}

@@ -16,7 +16,7 @@
 {{- else}}
 <h1>{{t "settings.preview.heading" "world" .WorldName}}</h1>
 {{- if .FileChanged}}
-<div class="message message--warning" id="file-changed">
+<div class="message message--warning" id="file-changed" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "settings.preview.changed" "file" .File}}</p>
 </div>
 {{- end}}

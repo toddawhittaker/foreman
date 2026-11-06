@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { spawn } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
@@ -299,7 +299,8 @@ export function seedWorld(
 
 // Makes a second, inactive world "second" named "Second", written as a
 // folder (SPEC 5.1), with one save an hour old.
-export function seedSecond(f: Foreman, opts: { fixture?: string; spaceAge?: boolean; version?: string } = {}) {
+// playedAt is when the save was written, the world's "Last played"; the default is an hour ago.
+export function seedSecond(f: Foreman, opts: { fixture?: string; spaceAge?: boolean; version?: string; playedAt?: Date } = {}) {
   const { fixture = "2.1.24-no-space-age.zip", spaceAge = false, version = "2.1.24" } = opts;
   const dir = join(f.dataDir, "worlds", "second");
   for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
@@ -309,7 +310,7 @@ export function seedSecond(f: Foreman, opts: { fixture?: string; spaceAge?: bool
   );
   const save = join(dir, "saves", "base.zip");
   copyFileSync(join(repo, "internal", "savefile", "testdata", fixture), save);
-  const at = new Date(Date.now() - 3_600_000);
+  const at = opts.playedAt ?? new Date(Date.now() - 3_600_000);
   utimesSync(save, at, at);
 }
 
@@ -345,6 +346,27 @@ export async function checkPage(page: Page) {
   );
   expect(broken, `text that wraps inside itself on ${page.url()}`).toEqual([]);
 
+  // A button's label stays inside its box at large text and long translations (SPEC 17.2, 22.7).
+  const spill = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("button, a.button")]
+      .filter((el) => {
+        const box = el.getBoundingClientRect();
+        if (box.width === 0) return false;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent?.trim() || n.parentElement?.closest(".visually-hidden")) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const r of range.getClientRects()) {
+            if (r.width > 0 && (r.right > box.right + 0.5 || r.left < box.left - 0.5)) return true;
+          }
+        }
+        return false;
+      })
+      .map((el) => `${el.textContent?.trim()} (${Math.round(el.getBoundingClientRect().width)} px wide, ${el.scrollWidth} px of text)`),
+  );
+  expect(spill, `button text that runs past its button on ${page.url()}`).toEqual([]);
+
   const targets = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a, button, input, select, textarea")]
       .filter((el) => {
@@ -372,4 +394,16 @@ export async function checkPage(page: Page) {
       });
     }
   }
+}
+
+// Moves focus to a control with the Tab key alone, so a test shows that the
+// control can be reached from the keyboard. Gives up after `limit` presses.
+export async function tabTo(page: Page, target: Locator, limit = 150) {
+  const handle = await target.elementHandle();
+  if (!handle) throw new Error("tabTo: no such element");
+  for (let i = 0; i < limit; i++) {
+    if (await handle.evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press("Tab");
+  }
+  throw new Error(`tabTo: not reached in ${limit} Tab presses`);
 }

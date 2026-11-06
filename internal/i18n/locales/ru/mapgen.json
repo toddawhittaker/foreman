@@ -45,6 +45,7 @@
   "mapgen.preset.death_world": "Мир смерти",
   "mapgen.preset.death_world_marathon": "Марафон мира смерти",
   "mapgen.preset.default": "По умолчанию",
+  "mapgen.preset.filled": "Заполнено из шаблона «{preset}». Измените любые настройки.",
   "mapgen.preset.island": "Остров",
   "mapgen.preset.lakes": "Озёра",
   "mapgen.preset.marathon": "Марафон",

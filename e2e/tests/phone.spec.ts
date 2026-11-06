@@ -121,21 +121,40 @@ test.describe("with the fake game", () => {
   });
 });
 
-test("a world in the list is compact at 320 px, with Switch beside its name", async ({ page, foreman }) => {
-  await createAdmin(page);
-  seedWorld(foreman);
-  seedSecond(foreman);
-  await page.goto("/worlds");
+// The longest "Last played" text: date, clock with zone, and an age in years.
+// The clock is fixed and the zone is UTC, so the text is the same on every run.
+test.describe("a world in the list", () => {
+  test.use({ timezoneId: "UTC" });
 
-  const second = page.locator("ul.worlds > li").filter({ hasText: "Second" });
-  const name = await box(second.getByRole("heading", { name: "Second" }));
-  const switchTo = await box(second.getByRole("link", { name: "Switch to Second" }));
-  // The Switch button shares the name's row.
-  expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
-  expect(switchTo.x).toBeGreaterThan(name.x);
-  // Four facts in two rows, so a world takes well under the 250 px it used to.
-  expect((await box(second)).height).toBeLessThan(phone(page) ? 200 : 140);
-  await checkPage(page);
+  test("is compact at 320 px, with Switch beside its name", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    seedSecond(foreman, { playedAt: new Date("2016-12-29T22:59:00Z") });
+    await page.clock.setFixedTime(new Date("2026-11-06T12:00:00Z"));
+    await page.goto("/worlds");
+
+    const second = page.locator("ul.worlds > li").filter({ hasText: "Second" });
+    await expect(second.locator("time")).toContainText("Dec 29, 2016");
+    await expect(second).toContainText("10 years ago");
+    const name = await box(second.getByRole("heading", { name: "Second" }));
+    const switchTo = await box(second.getByRole("link", { name: "Switch to Second" }));
+    // The Switch button shares the name's row.
+    expect(switchTo.y).toBeLessThanOrEqual(name.y + name.height);
+    expect(switchTo.x).toBeGreaterThan(name.x);
+    if (phone(page)) {
+      // Last played has the whole row, so its date, clock and age fit in two lines (label plus two lines is under 80 px).
+      const played = await box(second.locator(".facts > div").filter({ hasText: "Last played" }));
+      const row = await box(second.locator(".facts"));
+      expect(played.width).toBeGreaterThanOrEqual(row.width - 1);
+      expect(played.height).toBeLessThan(80);
+      // Three rows of facts: version and Space Age, Last played, disk use.
+      expect((await box(second)).height).toBeLessThan(280);
+    } else {
+      // Four facts in two rows, so a world takes well under the 250 px it used to.
+      expect((await box(second)).height).toBeLessThan(140);
+    }
+    await checkPage(page);
+  });
 });
 
 test("a long world name wraps beside Switch without widening the page", async ({ page, foreman }) => {

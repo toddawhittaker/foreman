@@ -207,6 +207,8 @@ test("a file changed after the preview shows the new changes with a warning", as
   writeFileSync(settingsFile(foreman.dataDir), JSON.stringify({ name: "Base", game_password: secret, autosave_slots: 7 }));
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page.locator(".message--warning")).toContainText("server-settings.json changed since you previewed. These are the changes against the file as it is now.");
+  // The new diff is announced by focus, as the "nothing left" variant is (a11y: the title and heading are the same as before).
+  await expect(page.locator("#file-changed")).toBeFocused();
   await expect(page.locator("ul.changes ins")).toHaveText("5");
   expect(JSON.parse(read(foreman.dataDir)).max_players).toBeUndefined();
   await checkPage(page);
@@ -239,6 +241,13 @@ test("a world a newer Foreman wrote is read-only", async ({ page, foreman }) => 
   await expect(page.getByText("A newer version of Foreman wrote this world, so this version cannot change it.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview changes" })).toHaveCount(0);
   await expect(page.getByLabel("Maximum players")).toBeDisabled();
+  // The admin list is read-only, not disabled, so the keyboard can reach and scroll it.
+  const admins = page.getByLabel("Admin names");
+  await expect(admins).toHaveAttribute("readonly", "");
+  await expect(admins).toBeEnabled();
+  await expect(admins).not.toBeEditable();
+  await admins.focus();
+  await expect(admins).toBeFocused();
   await checkPage(page);
   await page.getByRole("link", { name: "Edit server-settings.json as JSON" }).click();
   await expect(page.getByLabel("Contents of server-settings.json")).toHaveAttribute("readonly", "");
