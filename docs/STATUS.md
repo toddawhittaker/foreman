@@ -1156,7 +1156,12 @@ SPEC 22.
   also covers the deleted-worlds page, restore, snapshot delete, bulk
   delete, rollback, three 422 error states, and a test in the
   Asia/Kathmandu zone.
-- Q: FILL
+- **Wide time zones.** `time.js` renders a date, a clock and a zone as
+  three unbreakable units with normal spaces between them, so a wide zone
+  such as `GMT+5:45` drops to its own line. The Asia/Kathmandu test
+  covers the saves page and both snapshot pages in all eight languages at
+  100% and 200% text. German and Russian snapshot tables were 345 and
+  333 px wide before.
 
 ### Verified
 
