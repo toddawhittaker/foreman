@@ -137,7 +137,8 @@ func TestLanguageMenu(t *testing.T) {
 		`<option value="de" lang="de" selected>Deutsch</option>`,
 		`<option value="zh-Hans" lang="zh-Hans">简体中文</option>`,
 		`<input type="hidden" name="return" value="/signin?next=%2Fworlds">`,
-		`<script type="application/json" id="i18n">{}</script>`,
+		`<script type="application/json" id="i18n">{`,
+		`"js.live.note":"Hinweis:"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)

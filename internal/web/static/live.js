@@ -6,8 +6,11 @@
 
   // A stream that ends by design is back within a few seconds, before this.
   const graceMs = 5000;
-  const text = "Live updates stopped. Reload to see the current state.";
   let timer = null;
+
+  // Text from the page's #i18n block, in the page's language.
+  const strings = JSON.parse(document.getElementById("i18n").textContent);
+  const t = (key) => strings[key];
 
   // Reads a sentence out through #announcer. The region is emptied first and
   // filled a moment later, so a sentence the same as the last one is still
@@ -32,11 +35,12 @@
       note.id = "live-lost";
       const p = document.createElement("p");
       const word = document.createElement("strong");
-      word.textContent = "Note:";
-      p.append(word, " " + text);
+      word.textContent = t("js.live.note");
+      const stopped = t("js.live.stopped");
+      p.append(word, " " + stopped);
       note.append(p);
       document.querySelector("main h1")?.after(note);
-      announce(text);
+      announce(stopped);
     }, graceMs);
   }
 
@@ -55,12 +59,14 @@
   // The active world changed in a switch, so this page's world is no longer
   // the one the Server page shows: load the page again to show the new one.
   // The reload would drop the announcement, so the sentence is kept for the
-  // next page to read out (SPEC 16.3).
+  // next page to read out (SPEC 16.3). The server's sentence is kept as it
+  // came; when there was none, the stored value is empty and the next page
+  // says the standard sentence in its own language.
   const movedKey = "foreman-moved";
   document.addEventListener("htmx:sseMessage", (e) => {
     if (e.target.getAttribute("sse-swap") !== "moved") return;
     try {
-      sessionStorage.setItem(movedKey, e.target.textContent || "The active world changed.");
+      sessionStorage.setItem(movedKey, e.target.textContent);
     } catch (_) {
       // Without storage the page still reloads, only silently.
     }
@@ -75,7 +81,7 @@
     if (said !== null) {
       sessionStorage.removeItem(movedKey);
       document.getElementById("control-heading")?.focus();
-      setTimeout(() => announce(said), 500);
+      setTimeout(() => announce(said || t("js.live.moved")), 500);
     }
   } catch (_) {
     // Storage is blocked, so there is nothing to read out.
