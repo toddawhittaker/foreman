@@ -408,7 +408,7 @@ func (m *Manager) ImportFolder(ctx context.Context, folder, name, gameVersion st
 	defer release()
 	newest := newestImport(saves)
 	from := &ImportedFrom{Folder: folder, Save: path.Base(newest.path), SaveSize: newest.size, SaveMtime: newest.mtime.UTC(), At: m.now().UTC()}
-	return m.create(ctx, name, gameVersion, spaceAge, from, func(worlds *os.Root, dir string) error {
+	return m.create(ctx, name, gameVersion, spaceAge, createOptions{from: from}, func(worlds *os.Root, dir string) error {
 		dst, err := worlds.OpenRoot(dir)
 		if err != nil {
 			return err
@@ -449,7 +449,7 @@ func (m *Manager) ImportSave(ctx context.Context, name, gameVersion string, spac
 	if err := m.checkNew(ctx, name, gameVersion, spaceAge); err != nil {
 		return "", err
 	}
-	return m.create(ctx, name, gameVersion, spaceAge, nil, func(worlds *os.Root, dir string) error {
+	return m.create(ctx, name, gameVersion, spaceAge, createOptions{}, func(worlds *os.Root, dir string) error {
 		return worlds.Rename(temp, path.Join(dir, SavesDir, saveName))
 	})
 }

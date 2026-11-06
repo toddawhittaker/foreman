@@ -157,6 +157,11 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 		if err != nil {
 			return PreCheck{}, err
 		}
+		if !found && meta.NewMap != nil {
+			// The first start makes the map; the start script only does so
+			// while saves/ holds no zip (SPEC 5.6, 7.4).
+			return finish()
+		}
 		if !found {
 			out.Problems = append(out.Problems, Problem{Kind: ProblemNoSave,
 				Text: "The world has no save. Upload a save first; without one the game would make a new map."})
