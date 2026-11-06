@@ -867,6 +867,23 @@ func TestSettingsInvalidFileIsRefused(t *testing.T) {
 	}
 }
 
+// The Done message shows the snapshot's label in the page's language
+// (SPEC 22.3), as the snapshot list does.
+func TestSettingsDoneShowsTranslatedLabel(t *testing.T) {
+	r := newSettingsRig(t)
+	form := settingsFormValues()
+	form.Set("max_players", "9")
+	token := tokenOf(t, r.postAs(r.cookie, r.path(""), form).Body.String())
+	if conf := r.postAs(r.cookie, r.path("/confirm"), url.Values{"token": {token}}); conf.Code != http.StatusSeeOther {
+		t.Fatalf("confirm %d", conf.Code)
+	}
+	snap := r.snapshots()[0].Name
+	rep := r.do(http.MethodGet, r.path("?saved=1&snap="+snap), nil, http.Header{"Cookie": {r.cookie.String()}, "Accept-Language": {"de"}})
+	if !strings.Contains(rep.body, "Vor der Einstellungsänderung") || strings.Contains(rep.body, "Before settings change") {
+		t.Errorf("German Done message:\n%s", rep.body)
+	}
+}
+
 func TestPendingStoreLimits(t *testing.T) {
 	clock := &fakeClock{t: time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)}
 	p := newPendingStore(clock.Now)
