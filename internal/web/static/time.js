@@ -47,21 +47,42 @@
       dayOptions.year = "numeric";
     }
     var day = new Intl.DateTimeFormat(lang, dayOptions).format(date);
-    var clock = new Intl.DateTimeFormat(lang, {
+    var clockParts = new Intl.DateTimeFormat(lang, {
       hour: "numeric",
       minute: "2-digit",
       second: withSeconds ? "2-digit" : undefined,
       timeZoneName: "short",
-    }).format(date);
+    }).formatToParts(date);
+    var clock = clockParts
+      .filter(function (p) {
+        return p.type !== "timeZoneName";
+      })
+      .map(function (p) {
+        return p.value;
+      })
+      .join("")
+      .trim();
+    var zone = document.createElement("span");
+    zone.className = "nowrap";
+    zone.textContent = clockParts.filter(function (p) {
+      return p.type === "timeZoneName";
+    })[0].value;
 
-    // A table cell keeps its date and clock each on one line (DESIGN 8.3).
+    // The date, the clock and the zone each stay on one line, and the zone,
+    // such as "GMT+5:45", may take a line of its own (DESIGN 8.3). A table
+    // cell already holds the date and the clock in .nowrap spans.
     var parts = el.querySelectorAll(":scope > .nowrap");
+    var dayNode = day;
+    var clockNode = clock;
     if (parts.length === 2) {
       parts[0].textContent = day;
       parts[1].textContent = clock;
-    } else {
-      el.textContent = day + " " + clock;
+      dayNode = parts[0];
+      clockNode = parts[1];
     }
+    // Some languages, such as Chinese, put the zone before the clock.
+    var order = clockParts[0].type === "timeZoneName" ? [dayNode, zone, clockNode] : [dayNode, clockNode, zone];
+    el.replaceChildren(order[0], " ", order[1], " ", order[2]);
     el.dataset.local = "true";
     if (el.closest(".visually-hidden")) {
       return;
