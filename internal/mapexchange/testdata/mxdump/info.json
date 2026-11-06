@@ -1,0 +1,8 @@
+{
+  "name": "mxdump",
+  "version": "0.0.1",
+  "title": "Map exchange dump",
+  "author": "foreman",
+  "factorio_version": "@LINE@",
+  "dependencies": ["base"]
+}
