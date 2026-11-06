@@ -6,7 +6,7 @@
 <h1>{{msg .Heading}}</h1>
 {{- if .Deleted}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}
@@ -17,7 +17,7 @@
 {{- range .Going}}
 {{- if .Rollback}}
 <div class="message message--warning">
-  <p><strong>{{t "worlds.label.warning"}}</strong> {{t "worlds.snapshots.bulk.rollback" "label" (snapLabel .Snapshot) "world" .WorldName "version" .Rollback}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "worlds.snapshots.bulk.rollback" "label" (snapLabel .Snapshot) "world" .WorldName "version" .Rollback}}</p>
 </div>
 {{- end}}
 {{- end}}
@@ -29,7 +29,7 @@
     <li>{{if .Failure.IsZero}}{{tHTML "worlds.snapshots.bulk.item" "world" .WorldName "label" (snapLabel .Snapshot) "when" (momentUTCSeconds .TakenAt)}}{{else}}{{tHTML "worlds.snapshots.bulk.item_failed" "world" .WorldName "label" (snapLabel .Snapshot) "when" (momentUTCSeconds .TakenAt) "failure" (msg .Failure)}}{{end}}</li>
     {{- end}}
   </ul>
-  <p>{{t "worlds.confirm.will"}}</p>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{tHTML "worlds.snapshots.bulk.folders" "folder" (code "snapshots")}}</li>
     <li>{{t "worlds.snapshots.bulk.frees" "size" (bytes .Frees)}}</li>

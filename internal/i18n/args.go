@@ -27,12 +27,13 @@ func Strong(text string) Fragment {
 	return Fragment{"<strong>" + template.HTMLEscapeString(text) + "</strong>", text}
 }
 
-// Codes is a comma-separated run of code elements for a placeholder of
-// HTML, such as a list of version numbers.
-func Codes(items []string) Fragment {
+// Codes is a run of code elements, joined by the language's list
+// separator, for a placeholder of HTML, such as a list of version numbers.
+func (l Locale) Codes(items []string) Fragment {
+	sep := l.T("common.list.sep")
 	parts := make([]string, len(items))
 	for i, it := range items {
 		parts[i] = Code(it).html
 	}
-	return Fragment{strings.Join(parts, ", "), strings.Join(items, ", ")}
+	return Fragment{strings.Join(parts, template.HTMLEscapeString(sep)), strings.Join(items, sep)}
 }

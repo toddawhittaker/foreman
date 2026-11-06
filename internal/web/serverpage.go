@@ -533,7 +533,7 @@ type Failure struct {
 // warning, not an error: going ahead is the admin's call (DESIGN 7.3).
 func (f *Failure) Word() i18n.Msg {
 	if f.Anyway != nil {
-		return i18n.M("server.label.warning")
+		return i18n.M("common.label.warning")
 	}
 	return i18n.M("common.error.label")
 }

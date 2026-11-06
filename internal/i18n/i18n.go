@@ -41,13 +41,6 @@
 // from key to text, or to plural forms by category, placeholders unfilled.
 // A key appears there once it is listed in internal/web's jsKeys.
 //
-// Text checks (internal/web/i18ncheck_test.go) skip the files on the
-// pending lists, kept one file per area in internal/web
-// (pending_server_test.go, pending_worlds_test.go, pending_scripts_test.go); a
-// file comes off its list once converted.
-//
-// Raw wraps English that has not been converted yet. It exists only while
-// the pages are being converted, and goes once none use it.
 package i18n
 
 import (
@@ -61,6 +54,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"golang.org/x/text/feature/plural"
@@ -102,8 +96,6 @@ var Languages = []Language{
 type Msg struct {
 	Key  string
 	Args map[string]any
-	// raw is English not yet in the catalogue; see Raw.
-	raw string
 }
 
 // M builds a Msg from a key and pairs of argument name and value.
@@ -119,13 +111,8 @@ func M(key string, kv ...any) Msg {
 	return m
 }
 
-// Raw wraps English text that is not in the catalogue yet. It is shown as
-// written in every language. Temporary: it is removed once every page is
-// converted.
-func Raw(s string) Msg { return Msg{raw: s} }
-
 // IsZero reports whether m holds no text, as an unset error field does.
-func (m Msg) IsZero() bool { return m.Key == "" && m.raw == "" }
+func (m Msg) IsZero() bool { return m.Key == "" }
 
 // entry is one catalogue value: text, or plural forms by category.
 type entry struct {
@@ -298,7 +285,7 @@ func (l Locale) T(key string, kv ...any) string { return l.Format(M(key, kv...))
 // Format translates m.
 func (l Locale) Format(m Msg) string {
 	if m.Key == "" {
-		return m.raw
+		return ""
 	}
 	e, from := l.lookup(m.Key)
 	return l.fill(from.pattern(e, m), m.Args)
@@ -340,9 +327,9 @@ func Category(l Locale, n int) string {
 	}
 }
 
-// fill replaces each {name} in p with its argument, formatted for l.
-func (l Locale) fill(p string, args map[string]any) string {
-	var b strings.Builder
+// eachPart walks pattern p: text gets each run of literal text, and arg
+// each {name}, with the placeholder as written for when it has no value.
+func eachPart(p string, text func(string), arg func(name, written string)) {
 	for {
 		open := strings.IndexByte(p, '{')
 		if open < 0 {
@@ -352,17 +339,24 @@ func (l Locale) fill(p string, args map[string]any) string {
 		if end < 0 {
 			break
 		}
-		name := p[open+1 : open+end]
-		b.WriteString(p[:open])
+		text(p[:open])
+		arg(p[open+1:open+end], p[open:open+end+1])
+		p = p[open+end+1:]
+	}
+	text(p)
+}
+
+// fill replaces each {name} in p with its argument, formatted for l.
+func (l Locale) fill(p string, args map[string]any) string {
+	var b strings.Builder
+	eachPart(p, func(s string) { b.WriteString(s) }, func(name, written string) {
 		if v, ok := args[name]; ok {
 			b.WriteString(l.arg(v))
 		} else {
 			slog.Error("i18n: no value for placeholder", "placeholder", name)
-			b.WriteString(p[open : open+end+1])
+			b.WriteString(written)
 		}
-		p = p[open+end+1:]
-	}
-	b.WriteString(p)
+	})
 	return b.String()
 }
 
@@ -453,15 +447,30 @@ func (l Locale) Duration(d time.Duration) string {
 }
 
 // Fragment is a piece of trusted markup for a placeholder of HTML. Only
-// Link and Code make one, and both escape what they wrap.
+// the helpers in this package make one (Link, Code, Codes, Game, Moment,
+// NoWrap and Strong), and each escapes what it wraps.
 type Fragment struct{ html, text string }
 
 // Link is a link to href, which must be one of Foreman's own paths, whose
-// text is linkKey's translation.
+// text is linkKey's translation. Any other href is refused: the text is
+// shown without a link, and under test it panics, so no page ships one.
 func (l Locale) Link(href, linkKey string) Fragment {
 	esc := template.HTMLEscapeString
 	text := l.T(linkKey)
+	if !ownPath(href) {
+		if testing.Testing() {
+			panic("i18n: Link to a path that is not Foreman's own: " + href)
+		}
+		slog.Error("i18n: link refused, not one of Foreman's own paths", "key", linkKey)
+		return Fragment{esc(text), text}
+	}
 	return Fragment{`<a href="` + esc(href) + `">` + esc(text) + `</a>`, text}
+}
+
+// ownPath reports whether href is a path on this site: one slash, then
+// not a second slash or a backslash, which browsers read as another host.
+func ownPath(href string) bool {
+	return strings.HasPrefix(href, "/") && !strings.HasPrefix(href, "//") && !strings.HasPrefix(href, "/\\")
 }
 
 // Code wraps s, such as a file name, in a code element.
@@ -484,36 +493,27 @@ func (l Locale) HTML(key string, kv ...any) template.HTML { return l.FormatHTML(
 // fragments. A Msg argument is filled in the same way, markup and all.
 func (l Locale) FormatHTML(m Msg) template.HTML {
 	if m.Key == "" {
-		return template.HTML(template.HTMLEscapeString(m.raw)) //nolint:gosec // escaped
+		return ""
 	}
 	e, from := l.lookup(m.Key)
-	p := from.pattern(e, m)
 	esc := template.HTMLEscapeString
 	var b strings.Builder
-	for {
-		open := strings.IndexByte(p, '{')
-		end := strings.IndexByte(p[max(open, 0):], '}')
-		if open < 0 || end < 0 {
-			break
-		}
-		name := p[open+1 : open+end]
-		b.WriteString(esc(p[:open]))
-		switch v, ok := m.Args[name]; {
-		case !ok:
+	eachPart(from.pattern(e, m), func(s string) { b.WriteString(esc(s)) }, func(name, written string) {
+		v, ok := m.Args[name]
+		if !ok {
 			slog.Error("i18n: no value for placeholder", "placeholder", name)
-			b.WriteString(esc(p[open : open+end+1]))
-		default:
-			if f, isFragment := v.(Fragment); isFragment {
-				b.WriteString(f.html)
-			} else if sub, isMsg := v.(Msg); isMsg {
-				b.WriteString(string(l.FormatHTML(sub)))
-			} else {
-				b.WriteString(esc(l.arg(v)))
-			}
+			b.WriteString(esc(written))
+			return
 		}
-		p = p[open+end+1:]
-	}
-	b.WriteString(esc(p))
+		switch v := v.(type) {
+		case Fragment:
+			b.WriteString(v.html)
+		case Msg:
+			b.WriteString(string(l.FormatHTML(v)))
+		default:
+			b.WriteString(esc(l.arg(v)))
+		}
+	})
 	return template.HTML(b.String()) //nolint:gosec // text and plain arguments are escaped; fragments escape what they wrap
 }
 

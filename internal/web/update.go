@@ -159,7 +159,7 @@ func (s *server) updatePage(sum world.Summary, target string, form CountdownForm
 	case !sum.Active:
 		p.Refusal = i18n.M("server.update.not_active")
 	case st.Operation != nil && !st.Operation.Done:
-		p.Refusal = i18n.M("server.update.busy")
+		p.Refusal = i18n.M("worlds.error.busy")
 	}
 	return p
 }

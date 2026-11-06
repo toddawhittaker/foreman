@@ -96,10 +96,7 @@ func TestNestedMsg(t *testing.T) {
 	if got := Locale("de").T("common.signedin", "user", inner); got != "Angemeldet als 3 Minuten" {
 		t.Errorf("de: %q", got)
 	}
-	if got := English.Format(Raw("as written")); got != "as written" {
-		t.Errorf("raw: %q", got)
-	}
-	if !Raw("").IsZero() || !(Msg{}).IsZero() || M("x").IsZero() || Raw("y").IsZero() {
+	if !(Msg{}).IsZero() || M("x").IsZero() || English.Format(Msg{}) != "" {
 		t.Error("IsZero")
 	}
 }

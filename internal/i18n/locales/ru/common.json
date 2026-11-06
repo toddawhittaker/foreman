@@ -50,5 +50,11 @@
   "common.error.code": "Код ошибки {code}",
   "common.error.home": "На главную страницу",
   "common.form.unreadable": "Foreman не смог прочитать форму. Вернитесь назад, обновите страницу и попробуйте снова.",
-  "common.form.too_large": "Форма слишком большая. Вернитесь назад, обновите страницу и попробуйте снова."
+  "common.form.too_large": "Форма слишком большая. Вернитесь назад, обновите страницу и попробуйте снова.",
+  "common.label.warning": "Внимание:",
+  "common.label.done": "Готово:",
+  "common.label.note": "Примечание:",
+  "common.label.busy": "Занят:",
+  "common.confirm.will": "Что произойдёт:",
+  "common.list.sep": ", "
 }

@@ -215,3 +215,55 @@ func TestTranslationsAreCurrent(t *testing.T) {
 		}
 	}
 }
+
+// quotes reports whether s holds name as a quoted name, after an opening
+// quotation mark and any spaces, rather than as ordinary words.
+func quotes(s, name string) bool {
+	for i := 0; ; {
+		j := strings.Index(s[i:], name)
+		if j < 0 {
+			return false
+		}
+		before := strings.TrimRight(s[:i+j], "   ")
+		if strings.HasSuffix(before, `"`) || strings.ContainsAny(lastRune(before), "“„«‘「‚") {
+			return true
+		}
+		i += j + len(name)
+	}
+}
+
+func lastRune(s string) string {
+	r := []rune(s)
+	if len(r) == 0 {
+		return ""
+	}
+	return string(r[len(r)-1])
+}
+
+// A sentence that names an automatic snapshot takes the label as {label},
+// filled from worlds.snapshot.label.*, so the page and the snapshot list
+// always show the same name. No other value types a label out.
+func TestSnapshotLabelsAreNotTyped(t *testing.T) {
+	const prefix = "worlds.snapshot.label."
+	for _, l := range Languages {
+		for lk, le := range catalogue[l.Tag] {
+			if !strings.HasPrefix(lk, prefix) || lk == prefix+"manual" {
+				continue
+			}
+			for k, e := range catalogue[l.Tag] {
+				if k == lk {
+					continue
+				}
+				texts := []string{e.text}
+				for _, s := range e.plural {
+					texts = append(texts, s)
+				}
+				for _, s := range texts {
+					if quotes(s, le.text) {
+						t.Errorf("%s: %s types the label %q; use {label} with %s", l.Tag, k, le.text, lk)
+					}
+				}
+			}
+		}
+	}
+}

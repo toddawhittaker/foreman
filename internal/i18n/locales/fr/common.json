@@ -46,5 +46,11 @@
   "common.error.code": "Code d’erreur {code}",
   "common.error.home": "Aller à la page d’accueil",
   "common.form.unreadable": "Foreman n’a pas pu lire le formulaire. Revenez en arrière, rechargez la page et réessayez.",
-  "common.form.too_large": "Le formulaire était trop volumineux. Revenez en arrière, rechargez la page et réessayez."
+  "common.form.too_large": "Le formulaire était trop volumineux. Revenez en arrière, rechargez la page et réessayez.",
+  "common.label.warning": "Attention :",
+  "common.label.done": "Terminé :",
+  "common.label.note": "Remarque :",
+  "common.label.busy": "Occupé :",
+  "common.confirm.will": "Cette action va :",
+  "common.list.sep": ", "
 }

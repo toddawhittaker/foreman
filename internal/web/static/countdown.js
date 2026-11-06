@@ -18,8 +18,8 @@
   // The same words as the server's stepList.Left.
   function left(until) {
     const n = Math.ceil((until - Date.now()) / 1000);
-    if (n <= 0) return t("js.countdown.ending");
-    return t("js.countdown.left", { count: n });
+    if (n <= 0) return t("server.step.ending_now");
+    return t("server.step.seconds_left", { count: n });
   }
 
   // One timer for the page; a live update that swaps in a new list is picked

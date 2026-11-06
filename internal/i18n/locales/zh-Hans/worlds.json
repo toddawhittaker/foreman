@@ -31,7 +31,6 @@
   "worlds.col.size": "大小",
   "worlds.col.snapshot": "快照",
   "worlds.col.taken": "创建时间",
-  "worlds.confirm.will": "此操作将：",
   "worlds.delete.cancel": "取消，保留世界",
   "worlds.delete.final": "先创建最后一个快照，标签为“{label}”（约 {size}，不会被自动删除）。如果快照失败，则不会执行其他操作。",
   "worlds.delete.final_unknown": "先创建最后一个快照，标签为“{label}”（大小未知，不会被自动删除）。如果快照失败，则不会执行其他操作。",
@@ -54,14 +53,12 @@
   "worlds.deleted.title": "已删除的世界",
   "worlds.error.active": "这是当前世界，而当前世界无法删除。",
   "worlds.error.bad_game_version": "请以三组数字输入游戏版本，且需属于受支持的系列（1.1、2.0 或 2.1），例如 2.0.77。",
-  "worlds.error.busy": "此世界上正在运行另一项操作。请等待其完成后重试。",
   "worlds.error.damaged.bad_path": "此快照的文件与其 snapshot.json 不一致，因此 Foreman 不会恢复它：路径“{path}”无效。世界未被更改。请恢复另一个快照。",
   "worlds.error.damaged.changed": "此快照的文件与其 snapshot.json 不一致，因此 Foreman 不会恢复它：{path} 已被更改。世界未被更改。请恢复另一个快照。",
   "worlds.error.damaged.changed_since": "此快照的文件与其 snapshot.json 不一致，因此 Foreman 不会恢复它：{path} 在快照创建后已被更改。世界未被更改。请恢复另一个快照。",
   "worlds.error.damaged.missing": "此快照的文件与其 snapshot.json 不一致，因此 Foreman 不会恢复它：缺少 {path}。世界未被更改。请恢复另一个快照。",
   "worlds.error.name_empty": "请输入世界名称。",
   "worlds.error.name_taken": "已有另一个世界使用此名称。请换一个名称。",
-  "worlds.error.newer_format": "此世界由更新版本的 Foreman 写入，因此当前版本无法修改。",
   "worlds.error.no_folder": "请从导入文件夹中选择一个文件夹。",
   "worlds.error.no_saves": "此文件夹的顶层或 saves 文件夹中没有存档文件（.zip），因此没有可导入的内容。",
   "worlds.error.nospace": "未做任何更改：可用磁盘空间不足。此操作需要 {need}（其中包含为游戏保留的 {reserve}），但只有 {free} 可用。请释放一些空间后重试。",
@@ -136,10 +133,6 @@
   "worlds.import.version.same_with": "与存档相同（{version}）",
   "worlds.import.version.typed": "或输入版本号",
   "worlds.import.version_unknown": "Factorio {version} 既不是已下载的游戏镜像，也不在 Docker Hub 的版本列表中。请检查版本号。",
-  "worlds.label.busy": "忙碌：",
-  "worlds.label.done": "完成：",
-  "worlds.label.note": "注意：",
-  "worlds.label.warning": "警告：",
   "worlds.list.adds": "快照额外占用 {size}",
   "worlds.list.adds_unknown": "快照额外占用未知",
   "worlds.list.all": "所有世界",
@@ -153,7 +146,6 @@
   "worlds.list.switch_to": "到 {name}",
   "worlds.list.switch_wait": "服务器上有操作正在运行时，无法切换。",
   "worlds.never": "从未",
-  "worlds.newer": "此世界由更新版本的 Foreman 写入，因此当前版本无法修改。",
   "worlds.off": "关",
   "worlds.on": "开",
   "worlds.restore.failed": "Foreman 无法完成恢复。",
@@ -254,7 +246,6 @@
   "worlds.snapshots.select_automatic": "选择所有自动快照",
   "worlds.snapshots.select_hint": "勾选要删除的快照，然后选择“删除所选”。在下一页确认之前不会删除任何内容。“选择所有自动快照”会勾选 Foreman 自己创建的全部快照（例如切换或更新前创建的），不会勾选任何手动快照。",
   "worlds.snapshots.size_label": "大小：",
-  "worlds.snapshots.take.button": "创建快照",
   "worlds.snapshots.take.heading": "创建快照",
   "worlds.snapshots.take.hint": {
     "other": "最多 {count} 个字符，例如“火箭发射前”。"
@@ -314,5 +305,7 @@
   "worlds.world.switch.text": "将此世界设为当前世界。Foreman 会先为两个世界创建快照，然后启动此世界。如果服务器已停止，可在确认页面选择保持停止。",
   "worlds.world.unchecked": "Foreman 无法连接 Docker Hub，因此未能确认 Factorio {version} 是否存在。如果不存在，世界将无法启动。",
   "worlds.world.update": "更新游戏版本",
-  "worlds.world.update_switch_first": "切换到此世界后才能更新。"
+  "worlds.error.busy": "此世界上正在进行另一项操作。请等待其完成，然后重试。",
+  "worlds.error.newer_format": "此世界由更新版本的 Foreman 写入，因此当前版本无法修改。",
+  "worlds.snapshots.take.button": "创建快照"
 }

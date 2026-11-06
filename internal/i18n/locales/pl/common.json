@@ -50,5 +50,11 @@
   "common.error.code": "Kod błędu {code}",
   "common.error.home": "Przejdź do strony głównej",
   "common.form.unreadable": "Foreman nie mógł odczytać formularza. Należy wrócić, odświeżyć stronę i spróbować ponownie.",
-  "common.form.too_large": "Formularz był za duży. Należy wrócić, odświeżyć stronę i spróbować ponownie."
+  "common.form.too_large": "Formularz był za duży. Należy wrócić, odświeżyć stronę i spróbować ponownie.",
+  "common.label.warning": "Ostrzeżenie:",
+  "common.label.done": "Gotowe:",
+  "common.label.note": "Uwaga:",
+  "common.label.busy": "Zajęty:",
+  "common.confirm.will": "Co się stanie:",
+  "common.list.sep": ", "
 }

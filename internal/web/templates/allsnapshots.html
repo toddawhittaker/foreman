@@ -5,7 +5,7 @@
 <h1>{{t "worlds.allsnapshots.title"}}</h1>
 {{- if .Deleted}}
 <div class="message message--success">
-  <p><strong>{{t "worlds.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
+  <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
 </div>
 {{- end}}
 

@@ -288,11 +288,14 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"tHTML":  loc.HTML,
 		"link":   loc.Link,
 		"code":   i18n.Code,
-		"codes":  i18n.Codes,
+		"codes":  loc.Codes,
 		"nowrap": i18n.NoWrap,
 		"strong": i18n.Strong,
 		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
+		// m makes a Msg to fill a placeholder, such as a snapshot label:
+		// {{t "key" "label" (m "worlds.snapshot.label.before_restore")}}.
+		"m": i18n.M,
 		// msg renders an i18n.Msg from a view model; msgHTML one whose
 		// arguments hold fragments.
 		"msg":      loc.Format,

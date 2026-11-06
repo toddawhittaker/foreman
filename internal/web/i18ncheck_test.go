@@ -21,15 +21,6 @@ import (
 
 // The checks of SPEC 22.5 that read the templates, scripts, stylesheet and
 // Go code; the catalogue's own checks are in internal/i18n.
-//
-// The pending lists name the files not converted yet, which the text checks
-// skip. Each area keeps its lists in a file of its own (pending_server_test.go,
-// pending_worlds_test.go, pending_scripts_test.go). Converting a file means taking
-// it off its list.
-var (
-	pendingTemplates = slices.Concat(pendingServerTemplates, pendingWorldsTemplates)
-	pendingCSS       = pendingWorldsCSS
-)
 
 // allowedWords may appear outside the catalogue: names that are never
 // translated.
@@ -226,29 +217,12 @@ func templateFiles(t *testing.T) []string {
 // Templates hold no text of their own outside the catalogue (SPEC 22.5).
 func TestTemplatesHaveNoHardCodedText(t *testing.T) {
 	for _, f := range templateFiles(t) {
-		if slices.Contains(pendingTemplates, f) {
-			continue
-		}
 		for name, tree := range parseTemplateFile(t, f) {
 			var b strings.Builder
 			flatten(tree.Root, &b)
 			for _, s := range hardCodedText(b.String()) {
 				t.Errorf("%s (%s): text not from the catalogue: %q", f, name, strings.ReplaceAll(s, action, "{{…}}"))
 			}
-		}
-	}
-}
-
-// Each pending file is still a real file, so the lists cannot go stale.
-func TestPendingListsNameRealFiles(t *testing.T) {
-	for _, f := range pendingTemplates {
-		if _, err := templateFS.ReadFile("templates/" + f); err != nil {
-			t.Errorf("pending template %s: %v", f, err)
-		}
-	}
-	for _, f := range append(slices.Clone(pendingScripts), pendingCSS...) {
-		if _, err := staticFS.ReadFile("static/" + f); err != nil {
-			t.Errorf("pending static file %s: %v", f, err)
 		}
 	}
 }
@@ -491,9 +465,6 @@ func TestScriptsHaveNoHardCodedText(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range files {
-		if slices.Contains(pendingScripts, path.Base(f)) {
-			continue
-		}
 		src, _ := staticFS.ReadFile(f)
 		for _, s := range jsStrings(string(src)) {
 			if jsStringHasWords(s) {
@@ -517,9 +488,6 @@ func TestStylesheetHasNoHardCodedText(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range files {
-		if slices.Contains(pendingCSS, path.Base(f)) {
-			continue
-		}
 		src, _ := staticFS.ReadFile(f)
 		for _, m := range reCSSContent.FindAllStringSubmatch(string(src), -1) {
 			if cssContentHasWords(m[1]) {

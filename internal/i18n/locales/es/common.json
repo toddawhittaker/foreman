@@ -46,5 +46,11 @@
   "common.error.code": "Código de error {code}",
   "common.error.home": "Ir a la página de inicio",
   "common.form.unreadable": "Foreman no ha podido leer el formulario. Vuelve atrás, recarga la página y vuelve a intentarlo.",
-  "common.form.too_large": "El formulario era demasiado grande. Vuelve atrás, recarga la página y vuelve a intentarlo."
+  "common.form.too_large": "El formulario era demasiado grande. Vuelve atrás, recarga la página y vuelve a intentarlo.",
+  "common.label.warning": "Advertencia:",
+  "common.label.done": "Hecho:",
+  "common.label.note": "Nota:",
+  "common.label.busy": "Ocupado:",
+  "common.confirm.will": "Esto hará lo siguiente:",
+  "common.list.sep": ", "
 }

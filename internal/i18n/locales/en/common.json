@@ -46,5 +46,11 @@
   "common.error.code": "Error code {code}",
   "common.error.home": "Go to the home page",
   "common.form.unreadable": "Foreman could not read the form. Go back, reload the page and try again.",
-  "common.form.too_large": "The form was too large. Go back, reload the page and try again."
+  "common.form.too_large": "The form was too large. Go back, reload the page and try again.",
+  "common.label.warning": "Warning:",
+  "common.label.done": "Done:",
+  "common.label.note": "Note:",
+  "common.label.busy": "Busy:",
+  "common.confirm.will": "This will:",
+  "common.list.sep": ", "
 }

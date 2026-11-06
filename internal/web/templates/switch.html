@@ -15,12 +15,12 @@
   <h2 id="confirm-heading" tabindex="-1">{{t "server.switch.heading" "from" .From.Name "to" .To.Name}}</h2>
   {{- if .Changed}}
   <div class="message message--warning" id="action-changed" tabindex="-1" autofocus>
-    <p><strong>{{t "server.label.warning"}}</strong> {{msg .ChangedLead}}</p>
+    <p><strong>{{t "common.label.warning"}}</strong> {{msg .ChangedLead}}</p>
   </div>
   {{- end}}
   {{- if .HasProblems}}
   <div class="message {{if .CanAnyway}}message--warning{{else}}message--error{{end}}">
-    <p><strong>{{if .CanAnyway}}{{t "server.label.warning"}}{{else}}{{t "common.error.label"}}{{end}}</strong> {{msg .Lead}}</p>
+    <p><strong>{{if .CanAnyway}}{{t "common.label.warning"}}{{else}}{{t "common.error.label"}}{{end}}</strong> {{msg .Lead}}</p>
     <ul>
       {{- range .CheckProblems}}
       <li>{{msg .}}</li>
@@ -31,7 +31,7 @@
     {{- end}}
   </div>
   {{- end}}
-  <p>{{t "server.this_will"}}</p>
+  <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .Plan.Download}}
     <li>{{if .ImageSize}}{{if .Plan.Running}}{{tHTML "server.switch.download_size_running" "image" (code .Plan.Image) "size" (bytes .ImageSize) "from" .From.Name}}{{else}}{{tHTML "server.switch.download_size" "image" (code .Plan.Image) "size" (bytes .ImageSize)}}{{end}}{{else if .Plan.Running}}{{tHTML "server.switch.download_running" "image" (code .Plan.Image) "from" .From.Name}}{{else}}{{tHTML "server.switch.download" "image" (code .Plan.Image)}}{{end}}</li>
@@ -39,11 +39,11 @@
     {{- if .Plan.Running}}
     <li>{{t "server.switch.warn" "from" .From.Name}}</li>
     {{- end}}
-    <li>{{t "server.switch.snapshots" "from" .From.Name "to" .To.Name}}</li>
+    <li>{{t "server.switch.snapshots" "from" .From.Name "to" .To.Name "label" (m "worlds.snapshot.label.before_switch")}}</li>
     <li>{{t "server.switch.present" "to" .To.Name}}</li>
     {{- if .HasProblems}}
     {{- if .CanAnyway}}
-    <li>{{t "server.switch.with_anyway" "to" .To.Name}}</li>
+    <li>{{t "server.switch.with_anyway" "to" .To.Name "label" (m "worlds.snapshot.label.before_start_anyway")}}</li>
     {{- end}}
     <li>{{t "server.switch.with_stopped"}}</li>
     {{- else if .Plan.Running}}
