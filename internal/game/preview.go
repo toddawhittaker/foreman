@@ -192,7 +192,6 @@ func (c *Controller) takePreviewSlot(ctx context.Context) error {
 // checkPreview refuses a request the game line cannot draw, and returns the
 // line. Planet names go to a script, so they must be the game's own.
 func checkPreview(req PreviewRequest) (line string, err error) {
-	// TODO(#220): use the one list of game lines once it is in mapgen.
 	line, ok := mapgen.Line(req.GameVersion)
 	if !ok {
 		return "", fmt.Errorf("%w: there is no preview for Factorio %q", ErrPreviewInvalid, req.GameVersion)
@@ -318,8 +317,8 @@ func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) do
 	if req.Preset != "" {
 		env = append(env, gameenv.Preset+"="+req.Preset)
 	}
-	// --map-preview-planet exists on 2.x only.
-	if line != gamesettings.Line11 {
+	// --map-preview-planet came with the planets of 2.x, the lines that have Space Age.
+	if l, _ := mapgen.LineOf(line); len(l.SpaceAgeMods) > 0 {
 		env = append(env, gameenv.PreviewPlanetFlag+"=1")
 	}
 	return docker.ContainerSpec{

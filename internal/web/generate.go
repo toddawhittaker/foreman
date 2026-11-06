@@ -175,7 +175,7 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	if !ok {
 		line = mapgen.Lines[len(mapgen.Lines)-1]
 	}
-	spaceAge := line != "1.1"
+	spaceAge := lineHasSpaceAge(line)
 	f := GenerateForm{
 		Version: version, DefaultVersion: version, SpaceAge: spaceAge, Download: true,
 		Mode: modePreset, Preset: "default", Line: line, Presets: mapgen.Presets(line),
@@ -312,7 +312,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 			f.VersionError = msgBadGameVersion()
 		}
 	}
-	if versionOK && strings.HasPrefix(f.Version, "1.") && f.SpaceAge {
+	if versionOK && !lineHasSpaceAge(line) && f.SpaceAge {
 		f.SpaceAgeError = msgSpaceAgeOld()
 	}
 	if versionOK && f.Typed != "" && f.Typed != f.DefaultVersion && f.SpaceAgeError.IsZero() {
@@ -326,7 +326,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 			line = mapgen.Lines[len(mapgen.Lines)-1]
 		}
 	}
-	mapSpaceAge := f.SpaceAge && line != "1.1"
+	mapSpaceAge := f.SpaceAge && lineHasSpaceAge(line)
 	f.Line, f.MapKey = line, mapKey(line, mapSpaceAge)
 	f.Presets = mapgen.Presets(line)
 	stale := versionOK && f.SpaceAgeError.IsZero() && posted != f.MapKey
@@ -496,4 +496,10 @@ func (s *server) generatedFacts(p *WorldPage, r *http.Request) {
 	if r.URL.Query().Get(generatedQuery) != "" {
 		p.Done = i18n.M("worlds.world.generated", "name", p.World.Name)
 	}
+}
+
+// lineHasSpaceAge reports whether a game line ("2.0") can have Space Age.
+func lineHasSpaceAge(line string) bool {
+	l, ok := mapgen.LineOf(line)
+	return ok && len(l.SpaceAgeMods) > 0
 }
