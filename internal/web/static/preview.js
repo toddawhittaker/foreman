@@ -4,6 +4,8 @@
 // It never moves focus. The large view opens each picture in the page, with
 // Previous, Next, zoom and panning; without script the picture link opens
 // the file. Another planet viewed is told as a "preview:planet" event.
+// Vulcanus's demolisher territories, when their box is ticked, are asked
+// for after its picture arrives and drawn over it and in the large view.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
@@ -44,7 +46,116 @@ document.addEventListener("DOMContentLoaded", () => {
     if (pending) pending.abort();
     pending = null;
     setStatus(false);
+    dropTerritories();
   }
+
+  // Vulcanus's demolisher territories (SPEC 5.6; DESIGN 8.8) are asked for
+  // once its picture has arrived, so the picture never waits. The newest
+  // request wins; a new draw, a change of settings or another planet viewed
+  // drops the one on its way.
+  const terrPath = path + "/territories";
+  let terrSent = 0;
+  let terrPending = null;
+  const terrPlanet = "vulcanus";
+  const terrBox = () => document.getElementById("preview-territories");
+  const terrSlot = () => document.getElementById("territory-result");
+
+  function dropTerritories() {
+    terrSent++;
+    if (terrPending) terrPending.abort();
+    terrPending = null;
+  }
+
+  // The downloads draw the territories in while they are shown.
+  function territoryDownloads(on) {
+    const link = pictureLink(terrPlanet);
+    const one = link && link.closest("li").querySelector("a.download");
+    const zip = document.querySelector('#preview a.download[href*="/all.zip"]');
+    for (const a of [one, zip]) {
+      if (!a) continue;
+      const url = new URL(a.href);
+      if (on) url.searchParams.set("territories", "1");
+      else url.searchParams.delete("territories");
+      a.setAttribute("href", url.pathname + url.search);
+    }
+    if (one) one.textContent = on ? one.dataset.territories : one.dataset.plain;
+    if (dialog && dialog.open && (viewing || firstPlanet()) === terrPlanet) show(terrPlanet);
+  }
+
+  function clearTerritories() {
+    dropTerritories();
+    const link = pictureLink(terrPlanet);
+    if (link) link.querySelectorAll(".territories").forEach((o) => o.remove());
+    const slot = terrSlot();
+    if (slot) slot.replaceChildren();
+    territoryDownloads(false);
+  }
+
+  function showTerritoryResult(slot, from) {
+    slot.replaceChildren(...[...from.childNodes].map((n) => document.importNode(n, true)));
+  }
+
+  async function territories(say) {
+    dropTerritories();
+    const box = terrBox();
+    const link = pictureLink(terrPlanet);
+    const slot = terrSlot();
+    if (!box || !box.checked || box.disabled || !link || !slot) return;
+    // The server already showed the ones it holds for these settings.
+    if (link.querySelector(".territories")) return;
+    const n = terrSent;
+    const ctrl = new AbortController();
+    terrPending = ctrl;
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = slot.dataset.finding;
+    slot.replaceChildren(note);
+    const body = new URLSearchParams(new FormData(formEl()));
+    let html;
+    try {
+      const res = await fetch(terrPath, { method: "POST", body, signal: ctrl.signal, headers: { "HX-Request": "true" }, credentials: "same-origin" });
+      if (!res.ok || res.redirected) throw new Error(String(res.status));
+      html = await res.text();
+    } catch {
+      if (n !== terrSent || ctrl.signal.aborted) return;
+      terrPending = null;
+      const failed = document.getElementById("territory-failed");
+      if (failed) showTerritoryResult(slot, failed.content);
+      if (say) announce(words(slot));
+      return;
+    }
+    if (n !== terrSent) return;
+    terrPending = null;
+    const reply = new DOMParser().parseFromString(html, "text/html").getElementById("territory-reply");
+    const result = reply && reply.querySelector(".territory-result");
+    if (!result) return;
+    const overlay = reply.querySelector(".territories");
+    if (overlay) link.querySelector(".map").insertBefore(document.importNode(overlay, true), link.querySelector(".pin"));
+    showTerritoryResult(slot, result);
+    territoryDownloads(Boolean(overlay));
+    if (say) announce(words(slot));
+  }
+
+  // The large view shows the same overlay as the picture it opened. Its copy
+  // uses the page's stripe pattern, so no id is there twice.
+  function largeOverlay(link) {
+    const map = document.querySelector("#large-view .map");
+    if (!map) return;
+    map.querySelectorAll(".territories").forEach((o) => o.remove());
+    const overlay = link && link.querySelector(".territories");
+    if (!overlay) return;
+    const copy = overlay.cloneNode(true);
+    copy.querySelectorAll("defs").forEach((d) => d.remove());
+    map.insertBefore(copy, map.querySelector(".pin"));
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-territory-retry]")) return;
+    // The button goes with the message, so focus goes back to the box.
+    const box = terrBox();
+    if (box) box.focus();
+    territories(true);
+  });
 
   // A pasted exchange string is needed before there is anything to draw.
   function nothingToDraw() {
@@ -96,6 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const filled = formEl().querySelector("#filled-seed");
     if (filled && fresh.dataset.filledSeed) filled.value = fresh.dataset.filledSeed;
     markInvalid(fresh);
+    territories(false);
     const error = fresh.querySelector(".message");
     // Problems are said, but focus stays where it is (DESIGN 8.8).
     if (fresh.dataset.preview === "invalid") {
@@ -182,6 +294,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   document.addEventListener("input", (e) => { if (counts(e.target)) soon(); });
   document.addEventListener("change", (e) => {
+    if (e.target.id === "preview-territories") {
+      if (e.target.checked) territories(true);
+      else clearTerritories();
+      return;
+    }
     if (e.target.id === "preview-planet") {
       view(e.target.value);
       drop();
@@ -209,6 +326,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Preview map asks for every planet; nothing automatic may overwrite it.
     if (e.detail.elt === button()) drop();
+  });
+  // Preview map's pictures are in place; the territories come after them.
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    if (e.target.id === "preview") territories(false);
   });
   document.body.addEventListener("htmx:afterRequest", (e) => {
     if (!isRefresh(e)) return;
@@ -317,6 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
       el("large-title").textContent = name;
       el("large-frame").dataset.missing = "true";
       el("large-download").hidden = true;
+      largeOverlay(null);
       el("large-status").textContent = strings["js.preview.drawing"].replace("{planet}", name);
       draw(true);
       return false;
@@ -334,7 +456,9 @@ document.addEventListener("DOMContentLoaded", () => {
     el("large-img").src = img.src;
     el("large-img").alt = img.alt;
     el("large-download").href = download ? download.href : link.href;
-    el("large-download-name").textContent = strings["js.preview.download"].replace("{planet}", name);
+    const drawnIn = download && new URL(download.href).searchParams.has("territories");
+    el("large-download-name").textContent = strings[drawnIn ? "js.preview.download_territories" : "js.preview.download"].replace("{planet}", name);
+    largeOverlay(link);
     el("large-download").hidden = false;
     // A bigger picture may allow more zoom, or a smaller one less.
     if (dialog.open) zoomTo(zoom);
