@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
@@ -360,7 +361,38 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 			form.Groups = append(form.Groups, group)
 		}
 	}
+	if len(problems) == 0 && len(overrides) > 0 {
+		problems = checkMapSettingsFile(&form, version, preset, overrides)
+	}
 	return form, overrides, problems
+}
+
+// checkMapSettingsFile runs the file the overrides make through the settings
+// validator, as the map-gen file is, so a value the game would refuse is
+// never previewed or written. It marks the field at fault, or the first one.
+func checkMapSettingsFile(form *MapSettingsForm, version, preset string, overrides map[string]any) []Problem {
+	line, _ := mapgen.Line(version)
+	b, err := mapgen.MapSettings(version, preset, overrides)
+	var errs []gamesettings.FieldError
+	if err == nil {
+		errs = gamesettings.Validate(gamesettings.FileMapSettings, line, b)
+	}
+	if err == nil && len(errs) == 0 {
+		return nil
+	}
+	// The form holds the first field, as an override came from one.
+	at := &form.Groups[0].Fields[0]
+	if len(errs) > 0 {
+		for g := range form.Groups {
+			for i := range form.Groups[g].Fields {
+				if form.Groups[g].Fields[i].ID == msFieldID(errs[0].Key) {
+					at = &form.Groups[g].Fields[i]
+				}
+			}
+		}
+	}
+	at.Error = i18n.M("mapgen.err.unknown")
+	return []Problem{{FieldID: at.ID, Message: at.Error}}
 }
 
 // presetChoice is a preset's number or word as a choice's value.
@@ -387,6 +419,10 @@ func parseShown(s string, d msDef) (float64, i18n.Msg) {
 		return 0, i18n.M("mapgen.err.whole", "field", field)
 	case d.hi != 0 && (v < d.lo || v > d.hi):
 		return 0, i18n.M("mapgen.err.between", "field", field, "low", shown(d.lo, 1), "high", shown(d.hi, 1))
+	case d.hi == 0 && math.Round(v/d.scale) > mgMaxNumber:
+		// The game stores these as 32-bit numbers; a larger one would wrap.
+		top := math.Floor(mgMaxNumber*d.scale*100) / 100
+		return 0, i18n.M("mapgen.err.between", "field", field, "low", "0", "high", strconv.FormatFloat(top, 'f', -1, 64))
 	}
 	return v, i18n.Msg{}
 }

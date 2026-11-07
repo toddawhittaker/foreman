@@ -141,6 +141,30 @@ func TestChoiceWordsAreWrittenAsWords(t *testing.T) {
 	}
 }
 
+// A number past what the game stores is a field error, not a wrapped value in
+// the written file.
+func TestHugeMapSettingNumbersAreRefused(t *testing.T) {
+	for _, c := range []struct{ version, name, value string }{
+		{"2.1.24", "ms.enemy_expansion.max_expansion_distance", "1e300"},
+		{"2.1.24", "ms.enemy_expansion.max_expansion_distance", "4294967296"},
+		{"2.1.24", "ms.enemy_expansion.min_expansion_cooldown", "1e15"},
+		{"2.0.77", "ms.enemy_expansion.settler_group_max_size", "1e300"},
+		{"2.1.24", "ms.enemy_evolution.time_factor", "1e300"},
+	} {
+		form, overrides, problems := readMapSettings(c.version, "default", postedFor(c.version, "default", map[string]string{c.name: c.value}))
+		fl, _ := choiceField(form, c.name)
+		if len(problems) != 1 || fl.Error.IsZero() || len(overrides) != 0 {
+			t.Errorf("%s=%s: problems %v, overrides %v", c.name, c.value, problems, overrides)
+		}
+	}
+	// The largest value the game stores is still accepted and written whole.
+	name := "ms.enemy_expansion.max_expansion_distance"
+	_, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: "4294967295"}))
+	if len(problems) != 0 || overrides["enemy_expansion.max_expansion_distance"] != 4294967295 {
+		t.Errorf("largest value: problems %v, overrides %v", problems, overrides)
+	}
+}
+
 func TestChoiceNotInTheListIsRefused(t *testing.T) {
 	bad := map[string][]string{
 		choicePaths[0]: {"2", "-1", "1.0", "", "expensive"},
