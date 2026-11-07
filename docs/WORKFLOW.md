@@ -242,3 +242,4 @@ records its exact game version and runs the game image by that version tag
 (ADR 0005), per the vision's "Pinned, never drifting" principle. The game
 test images are pinned by digest (STACK.md, section 1).
 
+
