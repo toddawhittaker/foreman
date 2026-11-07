@@ -170,6 +170,8 @@ func withExtra(options []MapGenOption, code string) []MapGenOption {
 type MapGenSelect struct {
 	ID, Name string
 	Label    i18n.Msg
+	// Tip explains the setting in the game's words, or is zero for none.
+	Tip i18n.Msg
 	// Value is the chosen step's code; Preset the preset's, for "[modified]".
 	Value   string
 	Preset  string
@@ -188,6 +190,20 @@ type MapGenSelect struct {
 	invert bool
 }
 
+// Toggletip is the (i) button and the text that explain one setting
+// (DESIGN 7.7). The text's id is ID + "-tip"; a zero Text shows nothing.
+type Toggletip struct {
+	ID    string
+	About i18n.Msg // the setting the button's name says it explains
+	Text  i18n.Msg
+}
+
+// Toggletip explains the setting.
+func (s MapGenSelect) Toggletip() Toggletip { return Toggletip{s.ID, s.Label, s.Tip} }
+
+// Toggletip explains the box.
+func (c MapGenCheck) Toggletip() Toggletip { return Toggletip{c.ID, c.Label, c.Tip} }
+
 // MapGenText is one text field or the raw box.
 type MapGenText struct {
 	ID, Name string
@@ -201,7 +217,7 @@ type MapGenText struct {
 type MapGenCheck struct {
 	ID, Name string
 	Label    i18n.Msg
-	Hint     i18n.Msg
+	Tip      i18n.Msg
 	Checked  bool
 	Preset   bool
 	Ach      *AchWarn
@@ -662,6 +678,12 @@ var knownFieldNames = func() map[string]bool {
 	return known
 }()
 
+// enemyTips are the game's tips for an enemy control's settings, by key.
+var enemyTips = map[string]i18n.Msg{
+	"frequency": i18n.M("mapgen.tip.enemy_frequency"),
+	"size":      i18n.M("mapgen.tip.enemy_size"),
+}
+
 // buildMapGenForm lays out the form; posted says what the request holds for
 // a select's name.
 func buildMapGenForm(line string, spaceAge bool, posted func(name string) (string, bool)) MapGenForm {
@@ -670,15 +692,15 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 		Seed:   MapGenText{ID: mgSeedID, Name: mgSeed},
 		Width:  MapGenText{ID: mgWidthID, Name: mgWidth, Label: i18n.M("mapgen.width.label"), Value: "0"},
 		Height: MapGenText{ID: mgHeightID, Name: mgHeight, Label: i18n.M("mapgen.height.label"), Value: "0"},
-		StartingArea: MapGenSelect{ID: mgStartID, Name: mgStart, Label: i18n.M("mapgen.start.label"),
+		StartingArea: MapGenSelect{ID: mgStartID, Name: mgStart, Label: i18n.M("mapgen.start.label"), Tip: i18n.M("mapgen.tip.starting_area"),
 			Value: mgDefaultStep, Options: optionsWithNone, path: "starting_area"},
 		Peaceful: MapGenCheck{ID: "mg-peaceful", Name: mgPeaceful, Label: i18n.M("mapgen.peaceful.label"),
-			Hint: i18n.M("mapgen.peaceful.hint"), path: "peaceful_mode"},
+			Tip: i18n.M("mapgen.peaceful.hint"), path: "peaceful_mode"},
 		Raw: MapGenText{ID: mgRawID, Name: mgRaw, Value: rawPrefill(line)},
 	}
 	if line != gamesettings.Line11 {
 		f.NoEnemies = MapGenCheck{ID: "mg-no-enemies", Name: mgNoEnemies, Label: i18n.M("mapgen.no_enemies.label"),
-			Hint: i18n.M("mapgen.no_enemies.hint"), path: "no_enemies_mode"}
+			Tip: i18n.M("mapgen.no_enemies.hint"), path: "no_enemies_mode"}
 	}
 	if v, ok := posted(mgStart); ok {
 		f.StartingArea.Value = v
@@ -708,6 +730,9 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 					Value: mgDefaultStep, Options: optionsFrequency, invert: s.invert}
 				if !c.topLevel {
 					sel.path = "autoplace_controls." + c.name + "." + s.key
+				}
+				if c.tab() == tabEnemy {
+					sel.Tip = enemyTips[s.key]
 				}
 				// A resource's box stands in for its size's "None", as in the game.
 				if s.none && (!c.toggle || s.key != "size") {

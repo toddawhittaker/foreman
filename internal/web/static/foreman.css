@@ -678,8 +678,10 @@ legend {
   line-height: 1.45;
 }
 
-/* Checkboxes and radios keep their own 1.25rem look; the .check label is the target. */
-.field input:not([type="checkbox"], [type="radio"]),
+/* Checkboxes and radios keep their own 1.25rem look; the .check label is the
+   target. A slider is no box either: padding would stop its knob short of the
+   track's ends. */
+.field input:not([type="checkbox"], [type="radio"], [type="range"]),
 .field select,
 .field textarea {
   inline-size: 100%;
@@ -1596,15 +1598,41 @@ td > .hint {
   letter-spacing: 0.02em;
 }
 
+/* A resource's or cliffs' on/off box is a control, so its name keeps full
+   strength, on or off; while off, only the settings it turns off grey. */
+.autoplace > legend .check {
+  color: var(--color-text);
+}
+
+.autoplace:disabled .field label,
+.autoplace:disabled .step__value {
+  color: var(--color-text-muted);
+}
+
 .mapgen-checks {
   display: grid;
   gap: var(--space-3);
 }
 
-/* A checkbox row with its hint under it, not a labelled field. */
+/* A checkbox row with its tip under it, not a labelled field. */
 .mapgen-check {
+  position: relative;
   display: grid;
   gap: var(--space-1);
+}
+
+/* A setting's name and its tip button share a line; with a slider, the step
+   in words sits at the line's end (DESIGN 7.7, 8.7). */
+.field__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.field__head > label {
+  min-inline-size: 0;
 }
 
 /* A setting of steps: its name, then the select or, with script on a wide
@@ -1615,7 +1643,7 @@ td > .hint {
 }
 
 /* A setting's name never breaks inside a word; a long one wraps between words. */
-.step > label {
+.step label {
   overflow-wrap: normal;
   hyphens: manual;
 }
@@ -1627,44 +1655,52 @@ td > .hint {
     row-gap: var(--space-2);
   }
 
-  /* The name and the step in words share the first line while they fit, and
-     the words drop under the name between words when they do not; the
-     slider has a line to itself. */
+  /* Fixed rows: the name and the step in words, then the slider, then the
+     warning and the tip. Nothing in them depends on the words' length, so
+     the slider never moves while it is dragged. */
   .js-on .step {
-    display: flex;
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: baseline;
     align-content: start;
-    column-gap: var(--space-2);
-    row-gap: 0;
+    gap: 0 var(--space-2);
   }
 
   .js-on .step > * {
-    flex: 1 1 100%;
-    min-inline-size: 0;
+    grid-column: 1 / -1;
   }
 
+  /* A name with no tip button holds the first column, the words the second. */
   .js-on .step > label {
-    flex: 1 1 auto;
+    grid-column: 1;
   }
 
   .js-on .step > .step__value {
-    flex: 0 1 auto;
-    margin-inline-start: auto;
+    grid-row: 1;
+    grid-column: 2;
   }
 
   .js-on .step select {
     display: none;
   }
 
-  /* The slider has its own line, so the value's width never moves it. */
+  /* The words keep room for the longest step in every language, "100 %
+     (по умолчанию)", so the name's line never reflows as they change. Beside
+     a tip button they end the line, or take a line of their own when the
+     name leaves no room, and keep it. */
   .js-on .step__value {
     display: block;
+    min-inline-size: 20ch;
     color: var(--color-text);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
     text-align: end;
+    white-space: nowrap;
+  }
+
+  .js-on .field__head > .step__value {
+    order: 1;
+    margin-inline-start: auto;
   }
 
   .js-on .step__range {
@@ -1749,6 +1785,86 @@ td > .hint {
 
 .ms-group .field input {
   max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
+}
+
+/* 7.7 Toggletip: an (i) button after a setting's name, and its text. Without
+   script the button is hidden and the text is a hint under the field. */
+.tip {
+  display: none;
+}
+
+.tip__text {
+  max-inline-size: 60ch;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.js-on .tip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.js-on .tip:hover,
+.js-on .tip[aria-expanded="true"] {
+  color: var(--color-text);
+}
+
+.tip:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 0;
+}
+
+.tip svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.tip .tip__dot {
+  fill: currentColor;
+}
+
+/* A touch screen gets a 44 px target (SPEC 17.2). */
+@media (pointer: coarse) {
+  .js-on .tip {
+    inline-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
+
+/* The field holds its tip; the script places it under the button and keeps it on screen. */
+.field:has(> .tip__text) {
+  position: relative;
+}
+
+.js-on .tip__text {
+  position: absolute;
+  z-index: 3;
+  display: none;
+  inline-size: max-content;
+  max-inline-size: min(22rem, var(--tip-room, calc(100vw - 2 * var(--space-4))));
+  hyphens: manual;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.js-on .tip__text.is-open {
+  display: block;
 }
 
 .mode-panel input.mono {

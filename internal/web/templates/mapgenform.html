@@ -120,20 +120,37 @@
 </fieldset>
 {{- end}}
 
+{{/* The (i) button of a toggletip, after a setting's name. Without script it
+     is hidden and the text shows under the field (DESIGN 7.7). Takes Toggletip. */}}
+{{define "tip-button" -}}
+{{- if not .Text.IsZero}}<button type="button" class="tip" aria-expanded="false" aria-controls="{{.ID}}-tip" aria-describedby="{{.ID}}-tip"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><circle cx="8" cy="8" r="6.75"/><path d="M8 7v4.5"/><circle class="tip__dot" cx="8" cy="4.75" r="0.5"/></svg><span class="visually-hidden">{{t "mapgen.tip.about" "setting" (msg .About)}}</span></button>{{end}}
+{{- end}}
+
+{{/* The text of a toggletip, which the field's aria-describedby names. Takes Toggletip. */}}
+{{define "tip-text" -}}
+{{- if not .Text.IsZero}}
+<p class="tip__text" id="{{.ID}}-tip">{{msg .Text}}</p>
+{{- end}}
+{{- end}}
+
 {{/* One setting of steps: a select. With script, on a wide panel, a slider
      over the same steps stands in for it and shows the step in words; the
      select is still what is sent (DESIGN 8.7). Takes MapGenSelect. */}}
 {{define "mapgen-select" -}}
 <div class="field{{if not .Plain}} step{{end}}">
-  <label for="{{.ID}}" id="{{.ID}}-label">{{msg .Label}}</label>
+  <div class="field__head">
+    <label for="{{.ID}}" id="{{.ID}}-label">{{msg .Label}}</label>
+    {{- template "tip-button" .Toggletip}}
+  </div>
   <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
-    aria-describedby="{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
+    aria-describedby="{{if not .Tip.IsZero}}{{.ID}}-tip {{end}}{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
     {{- $chosen := .Value}}
     {{- range .Options}}
     <option value="{{.Value}}"{{if eq .Value $chosen}} selected{{end}}>{{msg .Label}}</option>
     {{- end}}
   </select>
   <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+  {{- template "tip-text" .Toggletip}}
   {{- if not .Error.IsZero}}
   <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   {{- end}}
@@ -144,10 +161,13 @@
 {{define "mapgen-check" -}}
 {{- if .Name}}
 <div class="mapgen-check">
-  <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" data-preset="{{if .Preset}}on{{end}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
-    aria-describedby="{{.ID}}-hint {{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
-  <p class="hint" id="{{.ID}}-hint">{{msg .Hint}}</p>
+  <div class="field__head">
+    <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" data-preset="{{if .Preset}}on{{end}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
+      aria-describedby="{{.ID}}-tip {{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
+    {{- template "tip-button" .Toggletip}}
+  </div>
   <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+  {{- template "tip-text" .Toggletip}}
 </div>
 {{- end}}
 {{- end}}
@@ -166,42 +186,55 @@
 </div>
 {{- end}}
 
-{{/* A group of map settings. Takes MapSettingsGroup. */}}
+{{/* A group of map settings; each field has a toggletip. Takes MapSettingsGroup. */}}
 {{define "ms-group" -}}
 <fieldset class="autoplace ms-group">
   <legend>{{msg .Legend}}</legend>
   {{- range .Fields}}
   {{- if .Toggle}}
   <div class="mapgen-check">
-    <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
-      aria-describedby="{{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
+    <div class="field__head">
+      <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
+        aria-describedby="{{if not .Tip.IsZero}}{{.ID}}-tip {{end}}{{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
+      {{- template "tip-button" .Toggletip}}
+    </div>
     <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+    {{- template "tip-text" .Toggletip}}
   </div>
   {{- else if .Choices}}
   <div class="field">
-    <label for="{{.ID}}">{{msg .Label}}</label>
-    <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-error"{{end}}>
+    <div class="field__head">
+      <label for="{{.ID}}">{{msg .Label}}</label>
+      {{- template "tip-button" .Toggletip}}
+    </div>
+    <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"
+      {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{if not .Tip.IsZero}}{{.ID}}-tip {{end}}{{.ID}}-error"{{else if not .Tip.IsZero}} aria-describedby="{{.ID}}-tip"{{end}}>
       {{- range .Choices}}
       <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{msg .Label}}</option>
       {{- end}}
     </select>
+    {{- template "tip-text" .Toggletip}}
     {{- if not .Error.IsZero}}
     <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
     {{- end}}
   </div>
   {{- else}}
   <div class="field">
-    <label for="{{.ID}}">{{msg .Label}}</label>
+    <div class="field__head">
+      <label for="{{.ID}}">{{msg .Label}}</label>
+      {{- template "tip-button" .Toggletip}}
+    </div>
     <div class="inline-row">
       <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" inputmode="decimal" autocomplete="off" spellcheck="false"
         {{- if .Max}} data-min="{{.Min}}" data-max="{{.Max}}"{{end}}{{if .MinField}} data-min-field="{{.MinField}}" data-gap="{{.Gap}}"{{end}}
         data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
-        aria-describedby="{{if not .Unit.IsZero}}{{.ID}}-unit {{end}}{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
+        aria-describedby="{{if not .Unit.IsZero}}{{.ID}}-unit {{end}}{{if not .Tip.IsZero}}{{.ID}}-tip {{end}}{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
       {{- if not .Unit.IsZero}}
       <span class="unit" id="{{.ID}}-unit">{{msg .Unit}}</span>
       {{- end}}
     </div>
     <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+    {{- template "tip-text" .Toggletip}}
     {{- if not .Error.IsZero}}
     <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
     {{- end}}

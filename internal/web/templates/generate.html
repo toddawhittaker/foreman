@@ -1,6 +1,6 @@
 {{define "title"}}{{t "worlds.generate.title"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "generate.js"}}" defer></script>
+{{define "scripts"}}<script src="{{static "generate.js"}}" defer></script><script src="{{static "toggletip.js"}}" defer></script>
 {{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}{{end}}
 
 {{define "content" -}}

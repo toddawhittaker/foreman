@@ -152,7 +152,8 @@ func TestTerrainFieldsSitOnTheTerrainTab(t *testing.T) {
 	}
 	page := renderPartial(t, i18n.Locale("en"), f)
 	if !strings.Contains(page, `<div class="field">
-  <label for="mg-map-type"`) {
+  <div class="field__head">
+    <label for="mg-map-type"`) {
 		t.Error("map type is not a plain field")
 	}
 	for _, want := range []string{`<option value="elevation_island">Island elevation</option>`,
