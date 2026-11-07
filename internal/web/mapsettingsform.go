@@ -103,8 +103,8 @@ var msGroups = []msGroup{
 		// The limits are the game screen's, in the shown units.
 		{path: "enemy_expansion.min_expansion_distance", label: i18n.M("mapgen.ms.min_distance"), kind: msWhole, scale: 1, lo: 1, hi: 20},
 		{path: "enemy_expansion.max_expansion_distance", label: i18n.M("mapgen.ms.max_distance"), kind: msWhole, scale: 1, lo: 2, hi: 20},
-		{path: "enemy_expansion.settler_group_min_size", label: i18n.M("mapgen.ms.min_group"), kind: msWhole, scale: 1, replacedBy: "enemy_expansion.evolution_group_size_factor"},
-		{path: "enemy_expansion.settler_group_max_size", label: i18n.M("mapgen.ms.max_group"), kind: msWhole, scale: 1, replacedBy: "enemy_expansion.evolution_group_size_factor"},
+		{path: "enemy_expansion.settler_group_min_size", label: i18n.M("mapgen.ms.min_group"), kind: msWhole, scale: 1, lo: 1, hi: 20, replacedBy: "enemy_expansion.evolution_group_size_factor"},
+		{path: "enemy_expansion.settler_group_max_size", label: i18n.M("mapgen.ms.max_group"), kind: msWhole, scale: 1, lo: 1, hi: 40, replacedBy: "enemy_expansion.evolution_group_size_factor"},
 		{path: "enemy_expansion.evolution_group_size_factor", label: i18n.M("mapgen.ms.group_factor"), scale: 1, whole: true, lo: 1, hi: 20},
 		{path: "enemy_expansion.min_expansion_cooldown", label: i18n.M("mapgen.ms.min_cooldown"), scale: 1.0 / 3600, whole: true, lo: 1, hi: 60, unit: i18n.M("mapgen.unit.minutes")},
 		{path: "enemy_expansion.max_expansion_cooldown", label: i18n.M("mapgen.ms.max_cooldown"), scale: 1.0 / 3600, whole: true, lo: 5, hi: 180, unit: i18n.M("mapgen.unit.minutes")},
@@ -386,6 +386,7 @@ type msOrder struct {
 var msOrders = []msOrder{
 	{"enemy_expansion.min_expansion_distance", "enemy_expansion.max_expansion_distance", true},
 	{"enemy_expansion.min_expansion_cooldown", "enemy_expansion.max_expansion_cooldown", false},
+	{"enemy_expansion.settler_group_min_size", "enemy_expansion.settler_group_max_size", false},
 }
 
 // checkMsOrder marks the maximum field of each pair that is out of order. A
@@ -490,10 +491,6 @@ func parseShown(s string, d msDef) (float64, i18n.Msg) {
 		return 0, i18n.M("mapgen.err.whole", "field", field)
 	case d.hi != 0 && (v < d.lo || v > d.hi):
 		return 0, bounds
-	case d.hi == 0 && math.Round(v/d.scale) > mgMaxNumber:
-		// The game stores these as 32-bit numbers; a larger one would wrap.
-		top := math.Floor(mgMaxNumber*d.scale*100) / 100
-		return 0, i18n.M("mapgen.err.between", "field", field, "low", "0", "high", strconv.FormatFloat(top, 'f', -1, 64))
 	}
 	return v, i18n.Msg{}
 }

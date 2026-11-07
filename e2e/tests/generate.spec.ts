@@ -511,7 +511,7 @@ test.describe("the map settings tabs", () => {
     await page.getByLabel("Time factor").fill("fast");
     await tab(page, "Resources").click();
     await page.getByRole("button", { name: "Generate world" }).click();
-    await expect(page.locator("#error-summary")).toContainText("Enter a number of 0 or more for Time factor.");
+    await expect(page.locator("#error-summary")).toContainText("Enter a whole number from 0 to 1000 for Time factor.");
     // The page comes back on the tab that holds the error.
     await expect(page.locator("#panel-enemy")).toBeVisible();
     await tab(page, "Resources").click();

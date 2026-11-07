@@ -150,6 +150,7 @@ func TestHugeMapSettingNumbersAreRefused(t *testing.T) {
 		{"2.0.77", "ms.enemy_expansion.settler_group_max_size", "1e300"},
 		{"2.0.77", "ms.enemy_expansion.settler_group_max_size", "4294967296"},
 		{"2.1.24", "ms.pollution.min_pollution_to_damage_trees", "1e300"},
+		{"2.1.24", "ms.enemy_expansion.min_expansion_cooldown", "1e15"},
 	} {
 		form, overrides, problems := readMapSettings(c.version, "default", postedFor(c.version, "default", map[string]string{c.name: c.value}))
 		fl, _ := choiceField(form, c.name)
@@ -157,11 +158,24 @@ func TestHugeMapSettingNumbersAreRefused(t *testing.T) {
 			t.Errorf("%s=%s: problems %v, overrides %v", c.name, c.value, problems, overrides)
 		}
 	}
-	// The largest value the game stores is still accepted and written whole.
-	name := "ms.enemy_expansion.settler_group_max_size"
-	_, overrides, problems := readMapSettings("2.0.77", "default", postedFor("2.0.77", "default", map[string]string{name: "4294967295"}))
-	if len(problems) != 0 || overrides["enemy_expansion.settler_group_max_size"] != 4294967295 {
-		t.Errorf("largest value: problems %v, overrides %v", problems, overrides)
+}
+
+// Every number field has an upper limit that fits the game's 32-bit numbers,
+// so no stored value can wrap.
+func TestEveryNumberFieldHasALimit(t *testing.T) {
+	for _, g := range msGroups {
+		for _, d := range g.defs {
+			if d.kind == msToggle || d.kind == msChoice {
+				continue
+			}
+			stored := d.hi / d.scale
+			if d.inverse {
+				stored = 100 / d.lo
+			}
+			if d.hi == 0 || stored > mgMaxNumber {
+				t.Errorf("%s: limit %v", d.path, d.hi)
+			}
+		}
 	}
 }
 
@@ -264,6 +278,50 @@ func TestAdvancedFieldBounds(t *testing.T) {
 			if fl, _ := choiceField(form, c.name); len(problems) != 1 || fl.Error.IsZero() || len(overrides) != 0 {
 				t.Errorf("%s=%s accepted: problems %v, overrides %v", c.name, v, problems, overrides)
 			}
+		}
+	}
+}
+
+// 1.1 and 2.0 offer the group sizes that 2.1.18 and later replace with a factor.
+func TestGroupSizeBounds(t *testing.T) {
+	const min, max = "ms.enemy_expansion.settler_group_min_size", "ms.enemy_expansion.settler_group_max_size"
+	for _, version := range []string{"1.1.110", "2.0.77"} {
+		post := func(change map[string]string) (MapSettingsForm, []Problem) {
+			form, _, problems := readMapSettings(version, "default", postedFor(version, "default", change))
+			return form, problems
+		}
+		for _, c := range []struct {
+			name   string
+			accept []string
+			refuse []string
+		}{
+			{min, []string{"1", "20"}, []string{"0", "21", "2.5"}},
+			{max, []string{"40"}, []string{"0", "41", "5.5"}},
+		} {
+			for _, v := range c.accept {
+				change := map[string]string{c.name: v}
+				if c.name == min {
+					change[max] = "40" // the minimum may not pass the maximum
+				}
+				if _, problems := post(change); len(problems) != 0 {
+					t.Errorf("%s %s=%s refused: %v", version, c.name, v, problems)
+				}
+			}
+			for _, v := range c.refuse {
+				if form, problems := post(map[string]string{c.name: v}); len(problems) != 1 {
+					fl, _ := choiceField(form, c.name)
+					t.Errorf("%s %s=%s accepted (error %v): %v", version, c.name, v, fl.Error, problems)
+				}
+			}
+		}
+		// The maximum may equal the minimum but not fall below it.
+		if _, problems := post(map[string]string{min: "8", max: "8"}); len(problems) != 0 {
+			t.Errorf("%s: equal sizes refused: %v", version, problems)
+		}
+		form, problems := post(map[string]string{min: "9", max: "8"})
+		fl, _ := choiceField(form, max)
+		if len(problems) != 1 || problems[0].FieldID != fl.ID || fl.Error.Args["other"] == nil {
+			t.Errorf("%s: maximum 8 below minimum 9: %v", version, problems)
 		}
 	}
 }
