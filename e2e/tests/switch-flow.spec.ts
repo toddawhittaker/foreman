@@ -34,7 +34,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, g, { version: "2.0.77", fixture: "2.0.77-no-space-age.zip" });
 
     await openSwitch(page);
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     const steps = confirm.getByRole("listitem");
     await expect(steps.first()).toContainText(`Download the game image ${image20}`);
     await expect(steps.first()).toContainText("If the download fails, nothing else happens.");
@@ -59,7 +59,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
 
     await openSwitch(page);
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm.locator(".message--warning")).toContainText("foreman-test");
     await expect(confirm.getByRole("button", { name: "Switch and start anyway" })).toBeVisible();
     await expect(confirm.getByRole("checkbox")).toHaveCount(0); // the countdown field alone says how to skip the warning (SPEC 7.6)

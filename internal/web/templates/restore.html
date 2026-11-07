@@ -2,8 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-{{- /* The span keeps the time inside the sentence: main h1 is a flex row. */}}
-<h1 id="confirm-heading" tabindex="-1"><span>{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}</span></h1>
+<h1 id="confirm-heading">{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}</h1>
 {{template "summary" .Problems}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
@@ -14,7 +13,7 @@
   {{- end}}
 </div>
 {{- end}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .Deleted}}

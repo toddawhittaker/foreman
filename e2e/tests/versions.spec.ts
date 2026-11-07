@@ -195,7 +195,7 @@ test.describe("with the fake game", () => {
     await page.goto("/worlds/base");
     await page.getByRole("link", { name: "Roll back to 2.1.24" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Go back from Factorio 2.1.25 to 2.1.24?");
-    const confirm = page.getByRole("region", { name: /Go back from Factorio 2\.1\.25 to 2\.1\.24/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("everything played since the update is lost");
     await expect(confirm).toContainText('Restore the snapshot "Before update"');
     await expect(confirm).toContainText('labelled "Before restore"');

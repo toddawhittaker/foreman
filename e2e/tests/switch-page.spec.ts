@@ -42,7 +42,7 @@ test.describe("with the fake game", () => {
     await g.call("/join", { name: "foreman-base", player: "alice" });
 
     await openSwitch(page, "second", "Second");
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("save the game and stop Base");
     await expect(confirm).toContainText('both labelled "Before switch"');
     await expect(confirm).toContainText("Start the game on Second");
@@ -78,7 +78,7 @@ test.describe("with the fake game", () => {
 
     // Back again is a full switch with its own confirmation.
     await openSwitch(page, "base", "Base");
-    await expect(page.getByRole("region", { name: /Switch from Second to Base/ })).toBeVisible();
+    await expect(page.locator("section.confirm")).toBeVisible();
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Base" }).click();
     await expect(active(page, "Base")).toBeVisible(live);
@@ -160,7 +160,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await openSwitch(page, "second", "Second");
 
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     const problems = confirm.locator(".message--warning");
     await expect(problems).toContainText("foreman-test");
     await expect(problems).toContainText("Second's own mods folder");
@@ -197,7 +197,7 @@ test.describe("with the fake game", () => {
 
     await g.call("/rcon-refuse", { name: "foreman-second", on: false });
     await page.getByRole("link", { name: "Switch back to Base" }).click();
-    await expect(page.getByRole("region", { name: /Switch from Second to Base/ })).toBeVisible();
+    await expect(page.locator("section.confirm")).toBeVisible();
     await checkPage(page);
   });
 

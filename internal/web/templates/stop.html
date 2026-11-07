@@ -4,7 +4,7 @@
 {{with .Page}}
 <h1 id="stop-heading">{{if .Restart}}{{t "server.stop.restart_heading" "world" .World.Name}}{{else}}{{t "server.stop.heading" "world" .World.Name}}{{end}}</h1>
 {{template "summary" .Problems}}
-<form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="stop-heading">
+<form method="post" action="{{.Path}}" class="panel" novalidate>
   <p>{{if .Restart}}{{t "server.stop.restart_text"}}{{else}}{{t "server.stop.text"}}{{end}}</p>
   {{template "countdown" .CountdownForm}}
   <div class="actions">
