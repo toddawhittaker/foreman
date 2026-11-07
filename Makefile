@@ -95,9 +95,11 @@ run:
 
 # SHARD=1/4 runs the first of four slices of the tests; empty runs them all.
 SHARD ?=
+# E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
+E2E_ARGS ?=
 
 e2e: build build-fakegame e2e-deps
-	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD))
+	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD)) $(E2E_ARGS)
 
 # Foreman runs a world on the plain tag factoriotools/factorio:<version>, so
 # the tests do too. A tag can move or be re-pushed, so before a real-game run
