@@ -3,7 +3,6 @@ package game
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -58,45 +57,21 @@ func (c *Controller) Territories(ctx context.Context, req PreviewRequest) (terri
 	if err != nil {
 		return territory.Result{}, err
 	}
-	if err := c.takePreviewSlot(ctx); err != nil {
-		return territory.Result{}, err
-	}
-	defer func() { <-c.previewSlot }()
-
-	ref, err := c.imageFor(req.GameVersion)
-	if err != nil {
-		return territory.Result{}, err
-	}
-	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
-		return territory.Result{}, ErrPreviewImageMissing
-	} else if err != nil {
-		return territory.Result{}, err
-	}
-	base, err := c.previewBase()
-	if err != nil {
-		return territory.Result{}, err
-	}
-	defer func() { _ = base.Close() }()
-	c.removeStalePreviews(ctx, base)
-
-	name, err := makePreviewDir(base, req)
-	if err != nil {
-		return territory.Result{}, err
-	}
-	defer func() {
-		if err := base.RemoveAll(name); err != nil {
-			c.log.Warn("could not remove a territory run's work folder", "folder", name, "error", err)
+	var res territory.Result
+	err = c.previewRun(ctx, req, "territories", func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
+		if err := addTerritoriesMod(base, name, line, req); err != nil {
+			return err
 		}
-	}()
-	if err := addTerritoriesMod(base, name, line, req); err != nil {
+		if err := container(c.territoriesSpec(ref, name, req)); err != nil {
+			return err
+		}
+		res, err = readTerritories(base, name, req.size())
+		return err
+	})
+	if err != nil {
 		return territory.Result{}, err
 	}
-	runCtx, cancel := context.WithTimeout(ctx, c.previewLimit)
-	defer cancel()
-	if err := c.runOneOff(runCtx, "foreman-territories-"+name, c.territoriesSpec(ref, name, req)); err != nil {
-		return territory.Result{}, err
-	}
-	return readTerritories(base, name, req.size())
+	return res, nil
 }
 
 // checkTerritories refuses a request that has no territories to read, then
