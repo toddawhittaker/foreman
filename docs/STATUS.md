@@ -1524,9 +1524,17 @@ closed: #93, #265, #272 and #274 to #284.
   Foreman service of a local Compose stack named by `DEPLOY_DIR`. The
   flaky restore test is fixed. Foreman no longer logs an error or sends a
   500 when a browser cancels a request mid-page.
-- All new text is translated into the eight languages.
-- PLACEHOLDER: the second translation pass and the large-view test flake
-  fix.
+- All new text is translated into the eight languages, and a second pass
+  reviewed every new or changed string.
+- The large view no longer jumps back to the previous planet when a
+  planet row the page opened itself reports its toggle late; this was
+  behind an intermittent end-to-end failure at 320 px.
+- After a world page reloads with a result, the result is read once,
+  through focus, and not repeated in the announcer.
+- `make test` allows 30 minutes, since the web package takes about 11
+  under `-race` on a loaded machine. Playwright runs 8 workers locally so
+  two runs fit the machine, and its default in CI. `make e2e E2E_ARGS=...`
+  runs chosen specs.
 
 ### Verified
 
