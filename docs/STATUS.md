@@ -1469,3 +1469,102 @@ in those sections. Issues closed: #220, #221, #232 to #242 and #244.
   no such pair exists today.
 - Not built, by decision: changing map settings after a map is made
   (#207; see SPEC 11.5).
+
+## Fixes batch 2
+
+Serves SPEC 5.6 (Generate and the map preview), 10.3 and 10.4 (update and
+rollback), 14.3 and 14.6 (the preview containers and their limits), 17
+(the new 17.14) and 19, with DESIGN.md 7.6, 7.7, 8.6, 8.7, 8.8 and 12,
+and STACK.md 1 and 13. ADR 0011 records how demolisher territories are
+read and drawn. The plan's lasting rules are in those sections. Issues
+closed: #93, #265, #272 and #274 to #284.
+
+### Delivered
+
+- **Update and rollback of any world.** A world that is not active can be
+  updated and rolled back, and nothing starts or stops. Its update runs in
+  the background. Its world page shows "Updating to Factorio X…", keeps
+  focus on the busy note while it polls, then shows the result once and
+  moves focus to it, with "Update anyway" after a pre-start refusal. A
+  stopped world's update skips the game network check.
+- **Map preview size.** 1024 to 4096 tiles in steps of 128, 1280 by
+  default, a slider on a wide panel and a select on phones, kept over a
+  form error. The picture cap is 16 MiB and the preview store 96 MiB.
+- **Large view as a picture viewer.** Continuous zoom by wheel, keys,
+  buttons or pinch, up to the larger of 8 times fit and 8 px per tile.
+  Drag, keys or a tap pan the picture. Arrows, Close and zoom buttons sit
+  over the picture, and a download icon by the heading. The preview
+  picture fills its column, capped by the window's height. Two races
+  behind large-view flakes are fixed.
+- **Planet rows.** One click opens a planet row and it stays open. One
+  planet is open at a time, the same in every tab and over a round trip,
+  and the preview follows it both ways.
+- **Cliffs off** on Nauvis (every line), Gleba and Fulgora (2.x), proved
+  by counting cliffs in real games on 1.1.110, 2.0.77 and 2.1.24.
+- **Needed-resource warnings** while iron ore, copper ore, stone, crude
+  oil or coal is off on Nauvis, under the box and in a summary.
+- **Demolisher territories** on Vulcanus (Space Age): a box that draws
+  them over the picture and the large view, with counts in words. They
+  are read by a control-only mod in a one-off `--create` container and
+  parsed under limits. Downloads and the zip get them drawn in by the
+  server, in all eight languages. They are offered up to 3072 tiles. The
+  territory and preview reads refuse named pipes. The PNG renderer runs
+  one at a time, stops waiting when the request is cancelled, and refuses
+  a fifth waiter with a 503. Preview and territory runs share one setup
+  helper.
+- **Toggletips** on every Enemy and Advanced setting, in the game's own
+  words, opening on click, tap, focus or hover. The × 10⁻ⁿ unit is gone.
+  Sliders reach both ends, and a slider row keeps its shape while
+  dragged. The preset's "[modified]" line keeps its room, so nothing
+  below it moves. An off box keeps its name at full strength. Slider
+  values are no longer read out twice.
+- **Tests and tools.** Foreman binds before it logs `listening` with its
+  real address, and the e2e harnesses listen on port 0, which ends the
+  port race. `make deploy` builds the image and recreates only the
+  Foreman service of a local Compose stack named by `DEPLOY_DIR`. The
+  flaky restore test is fixed. Foreman no longer logs an error or sends a
+  500 when a browser cancels a request mid-page.
+- All new text is translated into the eight languages.
+- PLACEHOLDER: the second translation pass and the large-view test flake
+  fix.
+
+### Verified
+
+- `make verify` green on every task head, and the full `make e2e` suite
+  in all four projects, with new specs for the large view, planet rows,
+  territories, tips and sliders (sliders in en, de and ru, and also in
+  Firefox).
+- Real games: previews at 4096 for every planet on 1.1.110, 2.0.77 and
+  2.1.24; territories on 2.0.77 and 2.1.24 (seed 123456 at 1280 gives 12
+  small and 6 medium, and 3072 peaks at 750 MiB); cliffs off on all three
+  lines; an update of a world that is not active from 2.0.77 to 2.1.24,
+  and its rollback.
+- `make deploy` was run by hand against a throwaway Compose stack, with
+  and without `DEPLOY_DIR`, with a dirty tree and with `FORCE=1`.
+
+### Gaps left
+
+- Update of a world that is not active: no e2e test of the "Updating to
+  X…" note, because the fake game's image pull is instant (a Go render
+  test covers it).
+- The phone e2e projects do not emulate touch, so touch is tested only in
+  the specs that turn it on.
+- Download links are built twice, on the server and in preview.js.
+- The "vulcanus" check and the territory size cap are each made in two Go
+  layers.
+- Territories are offered only up to 3072 tiles, because 4096 runs out of
+  memory. Generating only every fourth chunk could fit 4096, but it is not
+  proven for every seed and is not built.
+- Territory labels crowd in the 320 px thumbnail, and the zip link's text
+  does not mention territories.
+- The cliffs-off keys were inferred from the resource toggle and proved
+  in real games, not decoded from a cliffs-off exchange string.
+- `make deploy` has no automated test; it needs a Docker daemon and a
+  Compose stack.
+- `phone.spec.ts` was type-checked but not run against a real game after
+  the port change.
+- The PNG renderer's one-at-a-time slot has no test beyond the waiter cap
+  and cancel.
+- The slider row jump of #279 could not be reproduced on the base; the
+  fixed grid and the tests rule it out by construction.
+- No swipe between planets in the large view (optional in the issue).

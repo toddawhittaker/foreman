@@ -38,6 +38,11 @@ is a copy and goes stale if they change without it.
   library cannot make relative to an open folder).
 - `golang.org/x/text`, direct from Epic 6, for language matching, plural
   rules and number formats (SPEC 22), v0.43.0.
+- `golang.org/x/image` v0.47.0, direct from fixes batch 2, to draw the
+  demolisher territory labels into a downloaded map preview PNG (SPEC
+  5.6): its `font/opentype` rasteriser and the Go Bold font, because the
+  standard library cannot draw text. A committed subset of Noto Sans CJK
+  SC Bold (OFL licence, 2.5 KB) covers the Chinese labels (ADR 0011).
 - govulncheck v1.9.0, run by `make vuln`.
 - CI: GitHub Actions on the `ubuntu-24.04` runner. Every action is
   pinned to a full commit: `actions/checkout` v7.0.1,
