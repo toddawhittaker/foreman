@@ -64,6 +64,9 @@ test.describe("Generate", () => {
     await page.goto("/generate");
     const box = page.locator(".preview-placeholder__map");
     await expect(box).toBeVisible();
+    // A faint line says what will fill it, so the space does not read as empty.
+    await expect(box).toHaveText("Drawing the map preview for the current settings…");
+    await checkPage(page);
     const before = (await box.boundingBox())!;
     const actions = (await page.locator("#generate-button").boundingBox())!;
     expect(before.height).toBeCloseTo(before.width, 0);
@@ -224,35 +227,88 @@ test.describe("Generate", () => {
     await expect(page.locator("#announcer")).toHaveText("No setting turns off achievements now.");
   });
 
-  // Like the game, a minimum and its maximum stay at least their gap apart; the other field moves, within its limits.
-  test("a minimum and its maximum keep their gap, and what moved is said", async ({ page }) => {
+  // Like the game, a minimum and its maximum stay at least their gap apart: the other field moves,
+  // within its own ends, and what moved is said (SPEC 5.6).
+  test("on 2.1, the expansion distance and cooldown keep their order", async ({ page }) => {
     await page.goto("/generate");
-    await page.locator("#map-settings").evaluate((el) => {
-      el.insertAdjacentHTML("beforeend", '<div class="field"><label for="t-min">Low</label><input id="t-min" type="text" data-min="0" data-max="10" value="2"></div>' +
-        '<div class="field"><label for="t-max">High</label><input id="t-max" type="text" data-min="0" data-max="10" value="5" data-min-field="t-min" data-gap="1"></div>');
-    });
-    const low = page.locator("#t-min");
-    const high = page.locator("#t-max");
+    await tab(page, "Enemy").click();
+    const low = page.getByLabel("Minimum expansion distance");
+    const high = page.getByLabel("Maximum expansion distance");
     const announcer = page.locator("#announcer");
-    // Raising the minimum past the maximum pushes the maximum up.
-    await low.fill("7");
-    await low.press("Tab");
-    await expect(high).toHaveValue("8");
-    await expect(announcer).toHaveText("High set to 8 to keep the range valid.");
-    // At the top of the maximum's range the minimum gives way instead.
-    await low.fill("10");
+    await expect(low).toHaveValue("3");
+    await expect(high).toHaveValue("5");
+    // Raising the minimum past the maximum pushes it up, one more: the game wants it strictly larger.
+    await low.fill("9");
     await low.press("Tab");
     await expect(high).toHaveValue("10");
-    await expect(low).toHaveValue("9");
-    await expect(announcer).toHaveText("Low set to 9 to keep the range valid. High set to 10 to keep the range valid.");
-    // Lowering the maximum pulls the minimum down, never below its own floor.
-    await high.fill("0");
-    await high.press("Tab");
-    await expect(low).toHaveValue("0");
-    await expect(high).toHaveValue("1");
+    await expect(announcer).toHaveText("Maximum expansion distance set to 10 to keep the range valid.");
+    await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+    // At the maximum's top end the minimum gives way instead.
+    await low.fill("20");
+    await low.press("Tab");
+    await expect(high).toHaveValue("20");
+    await expect(low).toHaveValue("19");
+    await expect(announcer).toHaveText("Minimum expansion distance set to 19 to keep the range valid. Maximum expansion distance set to 20 to keep the range valid.");
+    // Lowering the maximum under the minimum pulls the minimum down.
     await high.fill("6");
     await high.press("Tab");
-    await expect(low).toHaveValue("0");
+    await expect(low).toHaveValue("5");
+    await expect(announcer).toHaveText("Minimum expansion distance set to 5 to keep the range valid.");
+    // Never below the minimum's own bottom end: the maximum stops one above it.
+    await high.fill("1");
+    await high.press("Tab");
+    await expect(low).toHaveValue("1");
+    await expect(high).toHaveValue("2");
+    // With no gap, equal values are fine and nothing moves.
+    const cooldownLow = page.getByLabel("Minimum cooldown");
+    const cooldownHigh = page.getByLabel("Maximum cooldown");
+    await cooldownHigh.fill("10");
+    await cooldownHigh.press("Tab");
+    await expect(cooldownLow).toHaveValue("10");
+    await cooldownLow.fill("30");
+    await cooldownLow.press("Tab");
+    await expect(cooldownHigh).toHaveValue("30");
+    await expect(announcer).toHaveText("Maximum cooldown set to 30 to keep the range valid.");
+  });
+
+  test("on 1.1, the settler group sizes keep their order", async ({ page }) => {
+    await page.goto("/generate");
+    await page.locator("details.disclosure summary").click();
+    const refreshed = page.waitForResponse((r) => r.url().endsWith("/generate/refresh"));
+    await page.getByLabel("Type a version").fill("1.1.110");
+    await page.getByLabel("Type a version").press("Tab");
+    await refreshed;
+    await expect(page.locator("#announcer")).toHaveText(/^Map options updated/);
+    await tab(page, "Enemy").click();
+    const low = page.getByLabel("Minimum group size");
+    const high = page.getByLabel("Maximum group size");
+    await expect(low).toHaveValue("5");
+    await expect(high).toHaveValue("20");
+    await high.fill("3");
+    await high.press("Tab");
+    await expect(low).toHaveValue("3");
+    await expect(page.locator("#announcer")).toHaveText("Minimum group size set to 3 to keep the range valid.");
+    await low.fill("12");
+    await low.press("Tab");
+    await expect(high).toHaveValue("12");
+    await expect(page.locator("#announcer")).toHaveText("Maximum group size set to 12 to keep the range valid.");
+  });
+
+  // A preset chosen after the game line changed fills the new line's settings.
+  test("after typing a 1.1 version, choosing Marathon refills the settings", async ({ page }) => {
+    await page.goto("/generate");
+    await page.locator("details.disclosure summary").click();
+    const refreshed = page.waitForResponse((r) => r.url().endsWith("/generate/refresh"));
+    await page.getByLabel("Type a version").fill("1.1.110");
+    await page.getByLabel("Type a version").press("Tab");
+    await refreshed;
+    // The redraw has landed once it is said.
+    await expect(page.locator("#announcer")).toHaveText(/^Map options updated/);
+    const price = page.locator("#ms-difficulty-settings-technology-price-multiplier");
+    await expect(price).toHaveValue("1");
+    await page.locator("#generate-preset").selectOption({ label: "Marathon" });
+    await expect(price).toHaveValue("4");
+    await expect(page.locator("#preset-modified")).toHaveText("");
   });
 
   // WCAG 1.4.11: the slider is drawn in the selected colour, 3:1 or more on both themes (DESIGN 3).

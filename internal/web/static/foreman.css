@@ -2081,13 +2081,19 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
+/* A faint line in the box says what will fill it, so the held space does not read as empty. */
 .preview-placeholder__map {
-  display: block;
+  display: grid;
+  place-items: center;
   inline-size: 100%;
   max-inline-size: 32rem;
   aspect-ratio: 1;
+  padding: var(--space-4);
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
 }
 
 /* A picture the server no longer has shows an empty frame while it is drawn again. */
