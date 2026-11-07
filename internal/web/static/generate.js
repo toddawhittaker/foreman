@@ -30,12 +30,47 @@ document.addEventListener("DOMContentLoaded", () => {
     formEl().dataset.tab = name;
   }
 
-  // A link or focus that lands in another tab, or a closed planet, opens it first.
+  // A link or focus that lands in another tab, or a closed planet, opens it
+  // first. A row's own summary is left to its click, which would otherwise
+  // toggle shut the row its focus just opened.
   function reveal(el) {
     const panel = el.closest(".tab-panel");
     if (panel) showTab(panel.id.replace("panel-", ""));
-    for (let d = el.closest("details"); d; d = d.parentElement.closest("details")) d.open = true;
+    for (let d = el.closest("details"); d; d = d.parentElement.closest("details")) {
+      if (d.querySelector(":scope > summary") !== el) d.open = true;
+    }
   }
+
+  // Planet rows (DESIGN 8.7): each tab's rows are one exclusive group, so
+  // the browser closes the other row. One planet is open in every tab, kept
+  // in #open-planet for the server, and the preview shows it.
+  const openPlanet = () => document.getElementById("open-planet");
+  function openRow(planet) {
+    const field = openPlanet();
+    if (field) field.value = planet;
+    document.querySelectorAll(`#generate-form details[data-planet="${CSS.escape(planet)}"]`).forEach((d) => { d.open = true; });
+  }
+  document.addEventListener("toggle", (e) => {
+    const d = e.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.open || !d.dataset.planet || !d.closest("#generate-form")) return;
+    const field = openPlanet();
+    // A row opened to follow the choice already made says and sends nothing.
+    if (!field || field.value === d.dataset.planet) return;
+    openRow(d.dataset.planet);
+    const pick = document.getElementById("preview-planet");
+    if (pick && pick.value !== d.dataset.planet && [...pick.options].some((o) => o.value === d.dataset.planet)) {
+      pick.value = d.dataset.planet;
+      pick.dispatchEvent(new Event("change", { bubbles: true }));
+      announce(d.dataset.said);
+    }
+  }, true);
+  // A planet chosen in the preview opens its row, and focus stays where it is.
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "preview-planet") openRow(e.target.value);
+  });
+  document.addEventListener("preview:planet", (e) => {
+    if (e.detail && e.detail.planet) openRow(e.detail.planet);
+  });
 
   // Sliders: the select is the field that is sent; the slider moves it.
   function syncSlider(select) {
@@ -111,6 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return Math.abs(a - b) > 1e-9 * Math.max(1, Math.abs(b));
   }
 
+  // The needed resources that are off, as last drawn.
+  let needsOff = new Set();
   // Redraws "[modified]", the reset button, each warning and the summary.
   function refresh() {
     const settings = document.getElementById("map-settings");
@@ -137,6 +174,20 @@ document.addEventListener("DOMContentLoaded", () => {
       summary.querySelectorAll("li[data-reason]").forEach((li) => { li.hidden = !active.has(li.dataset.reason); });
       summary.hidden = active.size === 0;
     }
+    // A resource the game needs warns while off; a warning, not a block (SPEC 5.6).
+    const off = new Set();
+    needsOff = off;
+    settings.querySelectorAll("input[data-need]").forEach((box) => {
+      if (!box.checked) off.add(box.dataset.needKey);
+      const note = document.getElementById(box.id + "-need");
+      const text = box.checked ? "" : box.dataset.need;
+      if (note && note.textContent !== text) note.textContent = text;
+    });
+    const needs = document.getElementById("need-summary");
+    if (needs) {
+      needs.querySelectorAll("li[data-need-key]").forEach((li) => { li.hidden = !off.has(li.dataset.needKey); });
+      needs.hidden = off.size === 0;
+    }
     return active.size;
   }
 
@@ -151,6 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // and change come together), so a live-fit announcement can say it too.
   let saidNow = "";
   function changed(t) {
+    const offBefore = needsOff;
     const blocked = refresh();
     // A setting that newly turns achievements off is said once, not on every
     // keystroke, by name; so is the last warning going away.
@@ -161,6 +213,12 @@ document.addEventListener("DOMContentLoaded", () => {
       said = name ? strings["js.generate.ach_setting"].replace("{setting}", name) : formEl().dataset.achWord || "";
     } else if (blocked === 0 && blockedBefore > 0) {
       said = strings["js.generate.ach_clear"];
+    }
+    // A needed resource's box is said once each way.
+    const key = t && t.dataset ? t.dataset.needKey : "";
+    if (key && offBefore.has(key) !== needsOff.has(key)) {
+      const need = t.checked ? t.dataset.needClear : t.dataset.need;
+      said = said ? said + " " + need : need;
     }
     if (said) {
       announce(said);
@@ -333,6 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
         again.classList.add("js-on");
         showTab(again.dataset.tab || "resources");
         addSliders(again);
+        if (openPlanet()) openRow(openPlanet().value);
       }
       if (summary) summary.focus();
       return;
@@ -340,6 +399,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Otherwise only a part was redrawn, so a summary left in the form is out of date.
     if (summary) summary.remove();
     if (path.endsWith("/generate/refresh")) {
+      // The browser shuts a row inserted while the old one of its group was
+      // still in the page, so the open planet is opened again.
+      if (openPlanet()) openRow(openPlanet().value);
       // The redrawn settings keep the tab that was shown.
       const tab = formEl().querySelector("input[name='tab']:checked");
       if (tab) formEl().dataset.tab = tab.value;
