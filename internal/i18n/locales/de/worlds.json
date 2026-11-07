@@ -400,7 +400,7 @@
   "worlds.generate.large.zoom_out": "Verkleinern",
   "worlds.generate.large.zoom_in": "Vergrößern",
   "worlds.generate.large.close": "Schließen",
-  "worlds.generate.large.keys": "Pfeil links und rechts zeigen den vorigen und nächsten Planeten, Plus und Minus zoomen, 0 zeigt das ganze Bild und Escape schließt. Wenn du hineingezoomt hast, ziehe das Bild oder bewege es mit den Pfeiltasten, solange es den Fokus hat.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "Die Markierung zeigt die Kartenmitte, wo die Spieler starten.",
   "worlds.generate.preview.size_label": "Vorschaugröße",
   "worlds.generate.preview.size_option": "{size} × {size} Kacheln",

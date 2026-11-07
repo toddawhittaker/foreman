@@ -400,7 +400,7 @@
   "worlds.generate.large.zoom_out": "Zoom out",
   "worlds.generate.large.zoom_in": "Zoom in",
   "worlds.generate.large.close": "Close",
-  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture or use the arrow keys on it to move around.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "The pin marks the centre of the map, where players start.",
   "worlds.generate.preview.size_label": "Preview size",
   "worlds.generate.preview.size_option": "{size} × {size} tiles",

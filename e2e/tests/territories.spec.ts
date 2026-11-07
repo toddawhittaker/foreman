@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
 
 // SPEC 5.6, DESIGN 8.8: Vulcanus's demolisher territories on the map preview.
@@ -74,7 +74,19 @@ test("above 3072 tiles the box is turned off, with a hint naming the largest siz
   await expect(section(page).getByRole("img")).toHaveAttribute("width", "3200");
   await expect(box(page)).toBeDisabled();
   await expect(box(page)).toHaveAccessibleDescription("Shown for preview sizes up to 3072 × 3072 tiles. Choose a smaller preview size to show them.");
+  await expect(box(page)).toHaveAttribute("aria-disabled", "true");
   await checkPage(page);
+  // Tab still reaches it, so its reason is heard, but it cannot change or send.
+  let asked = 0;
+  await page.route(territoryURL, (r) => { asked++; return r.continue(); });
+  await tabTo(page, box(page));
+  await page.keyboard.press("Space");
+  await expect(box(page)).not.toBeChecked();
+  await box(page).click({ force: true });
+  await expect(box(page)).not.toBeChecked();
+  expect(await box(page).getAttribute("name")).toBeNull();
+  expect(asked).toBe(0);
+  await page.unroute(territoryURL);
   await page.locator("#generate-preview-size").selectOption("3072", { force: true });
   await expect(section(page).getByRole("img")).toHaveAttribute("width", "3072");
   await expect(box(page)).toBeEnabled();
@@ -223,6 +235,8 @@ test("a failed request says so and offers to try again", async ({ page }) => {
   const result = section(page).locator("#territory-result");
   await expect(result).toContainText("The request for the demolisher territories failed.");
   await expect(page.locator("#announcer")).toContainText("The request for the demolisher territories failed.");
+  // The sentence alone, without the button's label after it.
+  await expect(page.locator("#announcer")).not.toContainText("Try again");
   await checkPage(page);
   await page.unroute(territoryURL);
   await result.getByRole("button", { name: "Try again" }).click();

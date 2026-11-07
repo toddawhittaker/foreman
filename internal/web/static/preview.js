@@ -67,6 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let terrPending = null;
   const terrPlanet = "vulcanus";
   const terrBox = () => document.getElementById("preview-territories");
+  // Above the size cap the box stays reachable by Tab but cannot change.
+  const boxLocked = (b) => b.getAttribute("aria-disabled") === "true";
   const terrSlot = () => document.getElementById("territory-result");
 
   function dropTerritories() {
@@ -109,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const box = terrBox();
     const link = pictureLink(terrPlanet);
     const slot = terrSlot();
-    if (!box || !box.checked || box.disabled || !link || !slot) return;
+    if (!box || !box.checked || boxLocked(box) || !link || !slot) return;
     // The server already showed the ones it holds for these settings.
     if (link.querySelector(".territories")) return;
     const n = terrSent;
@@ -130,7 +132,9 @@ document.addEventListener("DOMContentLoaded", () => {
       terrPending = null;
       const failed = document.getElementById("territory-failed");
       if (failed) showTerritoryResult(slot, failed.content);
-      if (say) announce(words(slot));
+      // The sentence only, not the Try again button's label.
+      const why = slot.querySelector(".message p");
+      if (say && why) announce(words(why));
       return;
     }
     if (n !== terrSent) return;
@@ -213,10 +217,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!fresh) return;
     // A tick or untick made while the picture was drawn is newer than the reply.
     const before = terrBox();
-    const ticked = before && !before.disabled ? before.checked : null;
+    const ticked = before && !boxLocked(before) ? before.checked : null;
     swap(fresh);
     const after = terrBox();
-    if (ticked !== null && after && !after.disabled && after.checked !== ticked) {
+    if (ticked !== null && after && !boxLocked(after) && after.checked !== ticked) {
       after.checked = ticked;
       if (!ticked) clearTerritories();
     }
@@ -311,6 +315,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return !["generate-name", "generate-download"].includes(t.id);
   }
   document.addEventListener("input", (e) => { if (counts(e.target)) soon(); });
+  document.addEventListener("click", (e) => {
+    if (e.target.id === "preview-territories" && boxLocked(e.target)) e.preventDefault();
+  });
   document.addEventListener("change", (e) => {
     if (e.target.id === "preview-territories") {
       if (e.target.checked) territories(true);
@@ -534,12 +541,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // One pointer drags the picture; two pinch, zooming around their middle.
     const pointers = new Map();
+    // Where a lone pointer went down, so a tap can centre the spot (WCAG 2.5.7).
+    let tap = null;
     let spread = 0;
     let middle = null;
     frame().addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       frame().setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      tap = pointers.size === 1 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
       spread = 0;
       if (pointers.size !== 2) return;
       const [a, b] = [...pointers.values()];
@@ -570,6 +580,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const lift = (e) => {
       pointers.delete(e.pointerId);
       spread = 0;
+      if (!tap || tap.id !== e.pointerId) return;
+      const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y);
+      tap = null;
+      if (e.type !== "pointerup" || moved >= 6 || zoom <= 1) return;
+      const f = frame();
+      const box = f.getBoundingClientRect();
+      f.scrollLeft += e.clientX - (box.left + box.width / 2);
+      f.scrollTop += e.clientY - (box.top + box.height / 2);
     };
     frame().addEventListener("pointerup", lift);
     frame().addEventListener("pointercancel", lift);

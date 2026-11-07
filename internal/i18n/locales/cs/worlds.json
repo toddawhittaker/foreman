@@ -412,7 +412,7 @@
   "worlds.generate.large.zoom_out": "Oddálit",
   "worlds.generate.large.zoom_in": "Přiblížit",
   "worlds.generate.large.close": "Zavřít",
-  "worlds.generate.large.keys": "Šipky vlevo a vpravo ukazují předchozí a další planetu, plus a minus mění přiblížení, 0 přizpůsobí obrázek oknu a Escape zavírá. Při přiblížení lze obrázek posouvat tažením nebo klávesami se šipkami, když je obrázek vybrán.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "Špendlík označuje střed mapy, kde hráči začínají.",
   "worlds.generate.preview.size_label": "Velikost náhledu",
   "worlds.generate.preview.size_option": "{size} × {size} dlaždic",
