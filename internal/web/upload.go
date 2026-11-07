@@ -54,7 +54,15 @@ type uploadError struct{ msg i18n.Msg }
 
 func (e uploadError) Error() string { return i18n.English.Format(e.msg) }
 
+// tooLarge says the limit as the page's hint does: the mod limits in whole
+// megabytes, the save limit in bytes' decimal units.
 func tooLarge(limit int64) uploadError {
+	switch limit {
+	case MaxModUpload:
+		return uploadError{i18n.M("worlds.upload.too_large", "limit", megabytes(modUploadMB))}
+	case MaxSettingsUpload:
+		return uploadError{i18n.M("worlds.upload.too_large", "limit", megabytes(settingsUploadMB))}
+	}
 	return uploadError{i18n.M("worlds.upload.too_large", "limit", i18n.Size(limit))} //nolint:gosec // limit is a positive constant
 }
 

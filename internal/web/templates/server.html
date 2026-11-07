@@ -25,16 +25,18 @@
 {{template "server-tabs" "overview"}}
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
 <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
+{{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (plan ruling 2). */}}
+<div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
+{{- with .ModNoticePath}}
+<div id="mods-notice" class="mods-notice" role="status" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML"></div>
+{{- end}}
+</div>
 <section class="panel" aria-labelledby="players-heading">
   <h2 id="players-heading">{{t "server.players.heading"}}</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
 <div class="links" sse-swap="active">{{template "server-active" .}}</div>
-{{- /* Asks the mod portal after the page has opened, so it never slows the page; at the end, so nothing above it moves (plan ruling 2). */}}
-{{- with .ModNoticePath}}
-<div id="mods-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML"></div>
-{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
@@ -265,7 +267,8 @@
 {{define "mods-notice" -}}
 {{- if .Errors}}
 <div class="message message--warning">
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.notice" "count" .Errors "world" .World.Name}} <a href="{{.FixPath}}" id="act-mods-fix">{{t "mods.notice.fix"}}</a></p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.notice" "count" .Errors "world" .World.Name}}</p>
+  <div class="actions"><a href="{{.FixPath}}" id="act-mods-fix">{{t "mods.notice.fix"}}</a></div>
 </div>
 {{- end}}
 {{- end}}

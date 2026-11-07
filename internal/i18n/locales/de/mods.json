@@ -43,7 +43,6 @@
   "mods.col.actions": "Aktionen",
   "mods.state.on": "Aktiviert",
   "mods.state.off": "Deaktiviert",
-  "mods.built_in.hint": "Folgt der Space-Age-Einstellung der Welt",
   "mods.row.update": "Auf {version} aktualisieren",
   "mods.row.enable": "Aktivieren",
   "mods.row.disable": "Deaktivieren",
@@ -71,7 +70,7 @@
     "other": "Spieler können {count} Mods von {world} nicht mehr herunterladen, deshalb können sie nicht beitreten."
   },
   "mods.notice.fix": "Beheben",
-  "mods.sync.heading": "An den Speicherstand angleichen",
+  "mods.sync.heading": "Mods an den Speicherstand angleichen",
   "mods.sync.text": "Macht die Mods der Welt zu denen, mit denen der Speicherstand {save} erstellt wurde: Fehlende werden installiert, Versionen geändert und alle übrigen deaktiviert. Du siehst vorher den Plan.",
   "mods.sync.button": "Mods an den Speicherstand angleichen",
   "mods.sync.no_save": "Diese Welt hat noch keinen Speicherstand, also gibt es nichts anzugleichen.",
@@ -172,10 +171,10 @@
   "mods.optional.hint": "Eine Mod im Plan kann diese nutzen, braucht sie aber nicht. Hake eine an, um sie samt allem, was sie braucht, hinzuzufügen.",
   "mods.optional.item": "{mod}, angeboten von {of}",
   "mods.unresolved.legend": "Das Mod-Portal hat {mod} {version} nicht",
-  "mods.unresolved.hint": "Der Speicherstand wurde mit dieser Version erstellt. Wähle, was geschehen soll; der Plan kann erst angewendet werden, wenn du das getan hast. „Nächstliegend“ ist das Release für Factorio {line}, das dieser Version am nächsten kommt.",
+  "mods.unresolved.hint": "Der Speicherstand wurde mit dieser Version erstellt. Wähle, was geschehen soll; der Plan kann erst angewendet werden, wenn du das getan hast. „Nächstliegend“ ist die Version für Factorio {line}, die dieser Version am nächsten kommt.",
   "mods.unresolved.upload": "Die Zip-Datei von {mod} {version} hochladen",
   "mods.unresolved.uploaded": "Die hochgeladene Zip-Datei von {mod} {version} verwenden",
-  "mods.unresolved.nearest": "{mod} {version} verwenden, das nächstliegende Release für Factorio {line}",
+  "mods.unresolved.nearest": "{mod} {version} verwenden, die nächstliegende Version für Factorio {line}",
   "mods.unresolved.without": "Ohne {mod} fortfahren",
   "mods.unresolved.confirm": "Mir ist klar: Wird der Speicherstand ohne {mod} geladen, löscht das Spiel alles, was {mod} der Welt hinzugefügt hat. Der Snapshot „{label}“ behält eine Kopie.",
   "mods.unresolved.confirm_missing": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was {mod} hinzugefügt hat, oder wähle eine andere Option für {mod}.",
@@ -187,8 +186,8 @@
   },
   "mods.drops.confirm_missing": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese Mods hinzugefügt haben, oder brich die Änderung ab.",
   "mods.conflict.incompatible": "{mod} kann nicht zusammen mit {other} laufen.",
-  "mods.conflict.space_age_off": "{mod} braucht {other}, das zu Space Age gehört, und Space Age ist für diese Welt aus.",
-  "mods.conflict.space_age_save": "Der Speicherstand nutzt {mod}, das zu Space Age gehört, und Space Age ist für diese Welt aus. Aktiviere zuerst Space Age in den Einstellungen der Welt.",
+  "mods.conflict.space_age_off": "{mod} braucht {other}, die zu Space Age gehört, und Space Age ist für diese Welt aus.",
+  "mods.conflict.space_age_save": "Der Speicherstand nutzt {mod}, die zu Space Age gehört, und Space Age ist für diese Welt aus. Aktiviere zuerst Space Age in den Einstellungen der Welt.",
   "mods.conflict.no_release": "Keine Version von {mod} für diese Spielversion erfüllt, was der Plan braucht: {needs}.",
   "mods.conflict.version": "{mod} {version} erfüllt nicht, was der Plan braucht: {needs}.",
   "mods.conflict.not_on_portal": "{mod} ist nicht auf dem Mod-Portal. Lade stattdessen die Zip-Datei hoch.",
@@ -216,5 +215,16 @@
   "mods.error.download_failed": "Eine Mod konnte nicht vom Mod-Portal heruntergeladen werden. Es wurde nichts geändert. Versuche es gleich noch einmal.",
   "mods.done": "Die Mods von {world} sind geändert. Foreman hat zuvor den Snapshot „{label}“ erstellt.",
   "mods.undo": "Diese Mod-Änderung rückgängig machen",
-  "mods.changed.next": "Die Mods erneut öffnen"
+  "mods.changed.next": "Die Mods erneut öffnen",
+  "mods.plan.redrawn": {
+    "one": "Plan aktualisiert: {count} Mod wird geändert.",
+    "other": "Plan aktualisiert: {count} Mods werden geändert."
+  },
+  "mods.plan.redrawn_conflicts": {
+    "one": "Plan aktualisiert: Er hat einen Konflikt und kann deshalb nicht angewendet werden.",
+    "other": "Plan aktualisiert: Er hat {count} Konflikte und kann deshalb nicht angewendet werden."
+  },
+  "mods.error.cross_site": "Dieser Plan wurde von einer anderen Website aus geöffnet, deshalb hat Foreman ihn nicht berechnet. Es wurde nichts geändert. Wähle „Erneut versuchen“, um den Plan zu sehen.",
+  "mods.built_in.note": "Eingebaute Mods gehören zum Spiel und folgen der Space-Age-Einstellung der Welt.",
+  "mods.built_in.settings": "Space Age in den Einstellungen der Welt ändern"
 }

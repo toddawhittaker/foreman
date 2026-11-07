@@ -2800,11 +2800,28 @@ form:has(#mode-exchange:checked) .achievements {
   overflow-wrap: anywhere;
 }
 
-.mod-plan,
-.unresolved-upload {
+.mod-plan {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
+}
+
+/* An unresolved mod's zip form is empty; its field and button sit in the
+   plan's form and name it with form="". */
+.confirm form[hidden] {
+  display: none;
+}
+
+/* The Server page's mods notice is part of the facts' block. It is a live
+   region, so it is always there; empty, it takes no room, and with words it
+   keeps the facts' spacing from inside (DESIGN 6, 7.3). */
+.facts-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mods-notice:has(.message) {
+  padding-block-start: var(--space-3);
 }
 
 .plan-groups {

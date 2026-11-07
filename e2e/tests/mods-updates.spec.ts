@@ -134,13 +134,19 @@ test.describe("a mod players cannot get", () => {
     expect((await portal.state()).refused).toEqual([]);
   });
 
-  // SPEC 17.2: targets are at least 24 px. The Fix link in the notice's sentence is 18.5 px tall at 320 px wide.
+  // SPEC 17.2: targets are at least 24 px, so the Fix link stands alone under the sentence; the notice is a live region beside the facts.
   test("the Server page notice passes the page checks", async ({ page, foreman, fakeGame, fakePortal }) => {
-    test.fail((page.viewportSize()?.width ?? 1000) <= 320, "the notice's Fix link is under 24 px tall at 320 px wide");
     await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
     await setUpModsWorld(page, foreman, fakeGame!, { ...spaceAge, mods });
-    await expect(page.locator("#mods-notice")).toContainText("cannot join", live);
+    const notice = page.locator("#mods-notice");
+    await expect(notice).toContainText("cannot join", live);
+    await expect(notice).toHaveAttribute("role", "status");
+    // It sits with the status facts, before the players (DESIGN 7.3).
+    const players = page.getByRole("heading", { level: 2, name: "Players online" });
+    expect((await notice.boundingBox())!.y).toBeLessThan((await players.boundingBox())!.y);
+    expect((await notice.getByRole("link", { name: "Fix" }).boundingBox())!.height).toBeGreaterThanOrEqual(24);
     await checkPage(page);
+    await page.screenshot({ path: `../screenshots/mods-notice-${test.info().project.name}.png`, fullPage: true });
   });
 
   test("a world with nothing to fix shows no notice", async ({ page, foreman, fakeGame, fakePortal }) => {

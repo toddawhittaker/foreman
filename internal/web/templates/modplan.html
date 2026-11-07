@@ -4,16 +4,20 @@
 {{with .Page}}
 <h1 id="confirm-heading">{{msg .Heading}}</h1>
 {{template "world-tabs" .Tabs}}
+{{- /* A redraw says the new plan through #announcer; focus stays where it was (WCAG 4.1.3). */}}
+{{- if .Redraw}}
+<div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
+{{- end}}
 {{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (plan ruling 7). */}}
 <div id="mod-plan" class="mod-plan">
 {{template "summary" .Problems}}
 {{- if .Changed}}
-<div class="message message--warning" id="plan-changed" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+<div class="message message--warning" id="plan-changed" tabindex="-1"{{if not (or .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan.changed" "world" .World.Name}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}
-<div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems)}} autofocus{{end}}>
+<div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems .Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   <div class="actions">
     {{- with .Retry}}<a href="{{.}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
@@ -22,7 +26,7 @@
 </div>
 {{- else}}
 {{- with .ConflictTexts}}
-<div class="message message--error" id="plan-conflicts" tabindex="-1"{{if not (or $.Page.Changed $.Page.Problems)}} autofocus{{end}}>
+<div class="message message--error" id="plan-conflicts" tabindex="-1"{{if not (or $.Page.Changed $.Page.Problems $.Page.Redraw)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{t "mods.plan.conflicts" "count" (len .)}}</p>
   <ul>
     {{- range .}}
@@ -46,7 +50,8 @@
 <div class="actions"><a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a></div>
 {{- else}}
 <section class="confirm">
-  <form method="post" action="{{.Path}}" novalidate>
+  {{- /* A choice's control asks for the plan again (hx-get); the form gives it what to send and where the new plan goes. */}}
+  <form method="post" action="{{.Path}}" novalidate hx-include="closest form" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
     <input type="hidden" name="kind" value="{{.Form.Kind}}">
     {{- range .Form.Names}}
     <input type="hidden" name="name" value="{{.}}">
@@ -82,29 +87,49 @@
       {{- end}}
       <li>{{t "mods.plan.undo"}}</li>
     </ul>
+    {{- if .AsksRequired}}
+    {{template "required-note"}}
+    {{- end}}
     {{- with .Plan.Optional}}
-    <fieldset hx-get="{{$.Page.Path}}" hx-trigger="change" hx-include="closest form" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
+    <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
       <p class="hint">{{t "mods.optional.hint"}}</p>
-      {{- range $i, $o := .}}
-      <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="optional-{{$i}}"{{if $.Page.Ticked .Name}} checked{{end}}> {{t "mods.optional.item" "mod" .Name "of" .Of}}</label>
+      {{- range .}}
+      <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="{{$.Page.ModID .Name "optional"}}" hx-get="{{$.Page.Path}}"{{if $.Page.Ticked .Name}} checked{{end}}> {{t "mods.optional.item" "mod" .Name "of" .Of}}</label>
       {{- end}}
     </fieldset>
     {{- end}}
-    {{- range $i, $u := .Plan.Unresolved}}
+    {{- range .Plan.Unresolved}}
     {{- $choice := $.Page.Choice .Name}}
-    <fieldset hx-get="{{$.Page.Path}}" hx-trigger="change" hx-include="closest form" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
+    <fieldset>
       <legend>{{t "mods.unresolved.legend" "mod" .Name "version" .Version}}</legend>
       <p class="hint">{{t "mods.unresolved.hint" "line" $.Page.Line}}</p>
-      <label class="check"><input type="radio" name="choice-{{.Name}}" value="upload" id="choice-{{$i}}-upload"{{if eq $choice "upload"}} checked{{end}}> {{if $.Page.UploadedFor .Name}}{{t "mods.unresolved.uploaded" "mod" .Name "version" $.Page.Uploaded.Version}}{{else}}{{t "mods.unresolved.upload" "mod" .Name "version" .Version}}{{end}}</label>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="upload" id="{{$.Page.ModID .Name "upload"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "upload"}} checked{{end}}> {{if $.Page.UploadedFor .Name}}{{t "mods.unresolved.uploaded" "mod" .Name "version" $.Page.Uploaded.Version}}{{else}}{{t "mods.unresolved.upload" "mod" .Name "version" .Version}}{{end}}</label>
       {{- if .Nearest}}
-      <label class="check"><input type="radio" name="choice-{{.Name}}" value="nearest" id="choice-{{$i}}-nearest"{{if eq $choice "nearest"}} checked{{end}}> {{t "mods.unresolved.nearest" "mod" .Name "version" .Nearest "line" $.Page.Line}}</label>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="nearest" id="{{$.Page.ModID .Name "nearest"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "nearest"}} checked{{end}}> {{t "mods.unresolved.nearest" "mod" .Name "version" .Nearest "line" $.Page.Line}}</label>
       {{- end}}
-      <label class="check"><input type="radio" name="choice-{{.Name}}" value="without" id="choice-{{$i}}-without"{{if eq $choice "without"}} checked{{end}}> {{t "mods.unresolved.without" "mod" .Name}}</label>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="without" id="{{$.Page.ModID .Name "without"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "without"}} checked{{end}}> {{t "mods.unresolved.without" "mod" .Name}}</label>
+      {{- if eq $choice "without"}}
+      {{- $id := $.Page.ModID .Name "confirm"}}
       {{- $err := index $.Page.ConfirmErrors .Name}}
-      <label class="check confirm-without"><input type="checkbox" name="confirm-{{.Name}}" value="1" id="{{$.Page.ConfirmID $i}}"{{if and .Choice .Choice.Confirmed}} checked{{end}}{{if not $err.IsZero}} aria-invalid="true" aria-describedby="{{$.Page.ConfirmID $i}}-error"{{end}}> {{t "mods.unresolved.confirm" "mod" .Name "label" (m "worlds.snapshot.label.before_mods")}}</label>
+      <label class="check confirm-without required" for="{{$id}}"><input type="checkbox" name="confirm-{{.Name}}" value="1" id="{{$id}}" required hx-get="{{$.Page.Path}}"{{if and .Choice .Choice.Confirmed}} checked{{end}}{{if not $err.IsZero}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}> {{t "mods.unresolved.confirm" "mod" .Name "label" (m "worlds.snapshot.label.before_mods")}}</label>
       {{- if not $err.IsZero}}
-      <p class="error" id="{{$.Page.ConfirmID $i}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $err}}</p>
+      <p class="error" id="{{$id}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $err}}</p>
+      {{- end}}
+      {{- else if and (eq $choice "upload") (not $.Page.Form.Staged)}}
+      {{- /* The zip belongs to its own form (after this one), so choosing a file never redraws the plan; one zip per change (SPEC 9.10). */}}
+      {{- $id := $.Page.ModID .Name "zip"}}
+      {{- $upErr := and (eq $.Page.UploadFor .Name) (not $.Page.UploadError.IsZero)}}
+      <div class="field">
+        <label for="{{$id}}" class="required">{{t "mods.unresolved.upload_label" "mod" .Name "version" .Version}}</label>
+        <p class="hint" id="{{$id}}-hint">{{t "mods.upload.hint" "limit" $.Page.UploadLimit}}</p>
+        <input id="{{$id}}" name="mod" type="file" accept=".zip,application/zip" required form="{{$id}}-form"
+          aria-describedby="{{$id}}-hint{{if $upErr}} {{$id}}-error{{end}}"{{if $upErr}} aria-invalid="true"{{end}}>
+        {{- if $upErr}}
+        <p class="error" id="{{$id}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $.Page.UploadError}}</p>
+        {{- end}}
+      </div>
+      <div class="actions"><button type="submit" class="button" form="{{$id}}-form">{{t "mods.unresolved.upload_button"}}</button></div>
       {{- end}}
     </fieldset>
     {{- end}}
@@ -116,7 +141,7 @@
     {{- /* The game deletes what a mod the save uses built once it starts without it; the box is the go-ahead (SPEC 9.10, 17.5). */}}
     <div class="message message--warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.drops.warning" "count" (len .Drops) "mods" .DropsText}}</p>
-      <label class="check"><input type="checkbox" name="confirm-drops" value="1" id="confirm-drops"{{if .Form.DropsConfirmed}} checked{{end}}{{if not .DropsError.IsZero}} aria-invalid="true" aria-describedby="confirm-drops-error"{{end}}> {{t "mods.unresolved.confirm" "mod" .DropsText "label" (m "worlds.snapshot.label.before_mods")}}</label>
+      <label class="check required" for="confirm-drops"><input type="checkbox" name="confirm-drops" value="1" id="confirm-drops" required hx-get="{{.Path}}"{{if .Form.DropsConfirmed}} checked{{end}}{{if not .DropsError.IsZero}} aria-invalid="true" aria-describedby="confirm-drops-error"{{end}}> {{t "mods.unresolved.confirm" "mod" .DropsText "label" (m "worlds.snapshot.label.before_mods")}}</label>
       {{- if not .DropsError.IsZero}}
       <p class="error" id="confirm-drops-error"><strong>{{t "common.error.label"}}</strong> {{msg .DropsError}}</p>
       {{- end}}
@@ -132,24 +157,11 @@
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
     </div>
   </form>
-  {{- /* An unresolved mod's zip is sent on its own; the plan comes back with it (SPEC 9.10). One zip per change. */}}
+  {{- /* The unresolved mods' zip forms, empty: each one's field and button sit in the mod's group above. */}}
   {{- if not .Form.Staged}}
-  {{- range $i, $u := .Plan.Unresolved}}
+  {{- range .Plan.Unresolved}}
   {{- if eq ($.Page.Choice .Name) "upload"}}
-  <form method="post" action="{{$.Page.UploadPath}}" enctype="multipart/form-data" class="unresolved-upload" novalidate>
-    <input type="hidden" name="kind" value="sync">
-    <input type="hidden" name="save" value="{{$.Page.Form.Save}}">
-    <input type="hidden" name="for" value="{{.Name}}">
-    {{- $upErr := and (eq $.Page.UploadFor .Name) (not $.Page.UploadError.IsZero)}}
-    <div class="field">
-      <label for="upload-{{$i}}">{{t "mods.unresolved.upload_label" "mod" .Name "version" .Version}}</label>
-      <input id="upload-{{$i}}" name="mod" type="file" accept=".zip,application/zip"{{if $upErr}} aria-invalid="true" aria-describedby="upload-{{$i}}-error"{{end}}>
-      {{- if $upErr}}
-      <p class="error" id="upload-{{$i}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $.Page.UploadError}}</p>
-      {{- end}}
-    </div>
-    <div class="actions"><button type="submit" class="button">{{t "mods.unresolved.upload_button"}}</button></div>
-  </form>
+  <form method="post" action="{{$.Page.UploadAction .Name}}" enctype="multipart/form-data" id="{{$.Page.ModID .Name "zip"}}-form" novalidate hidden></form>
   {{- end}}
   {{- end}}
   {{- end}}

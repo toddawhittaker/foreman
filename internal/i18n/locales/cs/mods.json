@@ -27,7 +27,7 @@
   "mods.fact.latest": "Nejnovější verze",
   "mods.fact.game_version": "Verze hry",
   "mods.fact.downloads": "Stažení",
-  "mods.badge.installed": "Nainstalován",
+  "mods.badge.installed": "Nainstalovaný",
   "mods.badge.built_in": "Vestavěný",
   "mods.badge.local": "Místní složka",
   "mods.installed.heading": "Nainstalované mody",
@@ -47,7 +47,6 @@
   "mods.col.actions": "Akce",
   "mods.state.on": "Zapnutý",
   "mods.state.off": "Vypnutý",
-  "mods.built_in.hint": "Řídí se nastavením Space Age světa",
   "mods.row.update": "Aktualizovat na {version}",
   "mods.row.enable": "Zapnout",
   "mods.row.disable": "Vypnout",
@@ -78,7 +77,7 @@
     "other": "Hráči už nemohou stáhnout {count} modů světa {world}, takže se nemohou připojit."
   },
   "mods.notice.fix": "Opravit",
-  "mods.sync.heading": "Přizpůsobit uložené hře",
+  "mods.sync.heading": "Přizpůsobit mody uložené hře",
   "mods.sync.text": "Nastaví mody světa na ty, se kterými byla vytvořena uložená hra {save}: chybějící nainstaluje, změní verze a ostatní vypne. Nejdřív se zobrazí plán.",
   "mods.sync.button": "Přizpůsobit mody uložené hře",
   "mods.sync.no_save": "Tento svět zatím nemá žádnou uloženou hru, takže není co přizpůsobovat.",
@@ -233,5 +232,18 @@
   "mods.error.download_failed": "Mod se nepodařilo stáhnout z portálu modů. Nic se nezměnilo. Za chvíli je třeba zkusit to znovu.",
   "mods.done": "Mody světa {world} jsou změněny. Foreman nejprve pořídil snímek „{label}“.",
   "mods.undo": "Vrátit tuto změnu modů",
-  "mods.changed.next": "Znovu otevřít mody"
+  "mods.changed.next": "Znovu otevřít mody",
+  "mods.plan.redrawn": {
+    "one": "Plán aktualizován: mění se {count} mod.",
+    "few": "Plán aktualizován: mění se {count} mody.",
+    "other": "Plán aktualizován: mění se {count} modů."
+  },
+  "mods.plan.redrawn_conflicts": {
+    "one": "Plán aktualizován: má konflikt, a proto ho nelze použít.",
+    "few": "Plán aktualizován: má {count} konflikty, a proto ho nelze použít.",
+    "other": "Plán aktualizován: má {count} konfliktů, a proto ho nelze použít."
+  },
+  "mods.error.cross_site": "Tento plán byl otevřen z jiného webu, proto ho Foreman nesestavil. Nic se nezměnilo. Plán se zobrazí po volbě „Zkusit znovu“.",
+  "mods.built_in.note": "Vestavěné mody jsou součástí hry a řídí se nastavením Space Age světa.",
+  "mods.built_in.settings": "Změnit Space Age v nastavení světa"
 }

@@ -209,7 +209,13 @@ func TestModsTabListsMods(t *testing.T) {
 	}
 	wantIn(t, "mods tab", body, `>alpha</span>`, `>folder-mod</span>`, "Built in", "Local folder",
 		`href="/worlds/`+id+`/mods/plan?kind=remove&amp;name=alpha"`, `href="/worlds/`+id+`/mods/plan?kind=disable&amp;name=alpha"`,
-		`hx-get="/worlds/`+id+`/mods/status"`, "Match mods to the save", `aria-current="page">Mods</a>`)
+		`hx-get="/worlds/`+id+`/mods/status"`, "Match mods to the save", `aria-current="page">Mods</a>`,
+		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod; the built-in note is said once.
+		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> alpha</span>`, `Remove<span class="visually-hidden"> alpha</span>`,
+		"Built-in mods come with the game", `href="/worlds/`+id+`/settings" id="act-built-in-settings"`, "at most 200 MB", "At most 4 MB")
+	if n := strings.Count(body, "world&#39;s Space Age setting"); n != 1 {
+		t.Errorf("the built-in note is said %d times", n)
+	}
 	for _, bad := range []string{"name=base", "kind=remove&amp;name=folder-mod"} {
 		if strings.Contains(body, bad) {
 			t.Errorf("the tab offers %s", bad)
@@ -418,8 +424,7 @@ func TestSyncUnresolvedChoices(t *testing.T) {
 		t.Fatalf("got %d\n%s", rep.StatusCode, rep.body)
 	}
 	// The uploaded zip answers the upload choice and the plan can apply.
-	rep = g.postMultipart(modsPath(id)+"/upload", [][2]string{{"kind", "sync"}, {"save", "base.zip"}, {"for", "foreman-test"}},
-		"mod", "foreman-test_0.1.0.zip", modZip(t, "foreman-test", "0.1.0"))
+	rep = g.postMultipart(uploadAction(t, g.get(syncPath(id)), "foreman-test"), nil, "mod", "foreman-test_0.1.0.zip", modZip(t, "foreman-test", "0.1.0"))
 	if rep.StatusCode != http.StatusOK || !strings.Contains(rep.body, `id="act-apply"`) || !strings.Contains(rep.body, "from the uploaded zip") {
 		t.Fatalf("upload answer: %d\n%s", rep.StatusCode, rep.body)
 	}
@@ -496,7 +501,11 @@ func TestServerModNotice(t *testing.T) {
 	g.portal.AddZip("beta", "2.0.0")
 	id := g.world20("Base", "beta_1.0.0")
 	page := g.get(PathServer)
-	wantIn(t, "server page", page, `hx-get="/worlds/`+id+`/mods/notice"`, `id="act-mods"`)
+	// The notice sits with the status facts and is a live region (DESIGN 7.3).
+	wantIn(t, "server page", page, `<div id="mods-notice" class="mods-notice" role="status" hx-get="/worlds/`+id+`/mods/notice"`, `id="act-mods"`)
+	if strings.Index(page, `id="mods-notice"`) > strings.Index(page, `id="players-heading"`) {
+		t.Error("the notice is not beside the status facts")
+	}
 	if strings.Contains(page, "can no longer be downloaded") {
 		t.Error("the notice is in the first paint")
 	}
@@ -581,8 +590,8 @@ func modPageCases() []pageCase {
 	form := planForm{Kind: mods.KindSync, Save: "base.zip", Choices: map[string]mods.ChoiceKind{"old": mods.ChoiceWithout}, Confirmed: map[string]bool{}}
 	return []pageCase{
 		{"mods", "todd", 200, ModsPage{World: w, Mods: installed, NoAccount: true, LoadSave: "base.zip", HasSettings: true, Running: true,
-			CountdownForm: defaultCountdown(), UploadLimit: MaxModUpload, SettingsLimit: MaxSettingsUpload,
-			Done: i18n.M("mods.done", "world", w.Name, "label", "x"), Undo: &Offer{Path: "/x", Label: i18n.M("mods.undo")}}},
+			CountdownForm: defaultCountdown(),
+			Done:          i18n.M("mods.done", "world", w.Name, "label", "x"), Undo: &Offer{Path: "/x", Label: i18n.M("mods.undo")}}},
 		{"mods errors", "todd", 200, ModsPage{World: w, Mods: installed[:1], UploadError: i18n.M("mods.upload.not_mod"),
 			SettingsError: i18n.M("mods.settings.empty"), Failure: &Failure{Message: i18n.M("mods.error.changed")}}},
 		{"mods unreadable", "todd", 200, ModsPage{World: world.Summary{ID: "x", Name: "X", Unreadable: true}}},
@@ -596,6 +605,9 @@ func modPageCases() []pageCase {
 		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: defaultCountdown()}},
 		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: "/x"}},
 		{"mod plan nothing", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}}},
+		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},
+			Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "old mod", Version: "0.1.0"}}}, UploadFor: "old mod", UploadError: i18n.M("mods.upload.not_mod")}},
+		{"mod plan redrawn", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Redraw: true}},
 	}
 }
 
@@ -608,4 +620,143 @@ func TestStagedInfoRefusesOtherNames(t *testing.T) {
 			t.Errorf("stagedInfo(%q) = %v", name, err)
 		}
 	}
+}
+
+var reUploadAction = regexp.MustCompile(`<form method="post" action="([^"]+)" enctype="multipart/form-data" id="([^"]+)-form"`)
+
+// uploadAction is the path an unresolved mod's zip form posts to.
+func uploadAction(t *testing.T, body, mod string) string {
+	t.Helper()
+	for _, m := range reUploadAction.FindAllStringSubmatch(body, -1) {
+		if m[2] == modID(mod, "zip") {
+			return html.UnescapeString(m[1])
+		}
+	}
+	t.Fatalf("no zip form for %s:\n%s", mod, body)
+	return ""
+}
+
+// Ids follow the mod, not its place in the list, so focus stays on the same
+// mod after a redraw; no two names share an id.
+func TestModIDFollowsTheName(t *testing.T) {
+	if got := modID("foreman-test", "confirm"); got != "mod-foreman-test-confirm" {
+		t.Errorf("modID = %q", got)
+	}
+	seen := map[string]string{}
+	for _, name := range []string{"a b", "a_b", "a.20b", "a-b", "Ab", "ab", "a/b", "日本"} {
+		id := modID(name, "zip")
+		if other, ok := seen[id]; ok {
+			t.Errorf("%q and %q share the id %q", name, other, id)
+		}
+		if strings.ContainsAny(id, " \"'<>/") {
+			t.Errorf("modID(%q) = %q", name, id)
+		}
+		seen[id] = name
+	}
+}
+
+// a11y 1, 3, 6: a redraw that finds a conflict still answers 200, so htmx
+// swaps it in; it is announced, takes no focus, and its ids name the mods.
+func TestPlanRedrawShowsAConflict(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("fp-conf", "1.0.0", "! beta")
+	g.portal.AddZip("fp-main", "1.0.0", "? fp-conf")
+	id := g.world20("Base", "beta_1.0.0")
+	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}})
+	_, body := g.getStatus(path)
+	wantIn(t, "plan", body, `id="mod-fp-conf-optional"`, `hx-get="/worlds/`+id+`/mods/plan"`)
+	if strings.Contains(body, `hx-swap-oob="innerHTML:#announcer"`) {
+		t.Error("a full page load announces a redraw")
+	}
+
+	ticked := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}, "optional": {"fp-conf"}})
+	if code, _ := g.getStatus(ticked); code != http.StatusConflict {
+		t.Errorf("a full page load of a conflicting plan: %d", code)
+	}
+	rec := g.harness.get(ticked, withCookie(g.cookie), withHeader("HX-Request", "true"))
+	body = rec.Body.String()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("redraw %d", rec.Code)
+	}
+	wantIn(t, "redraw", body, "fp-conf cannot run together with beta", `id="plan-conflicts"`,
+		`<div hx-swap-oob="innerHTML:#announcer">Plan updated: it has a conflict, so it cannot be applied.</div>`)
+	if strings.Contains(between(body, `id="mod-plan"`, `</main>`), "autofocus") {
+		t.Error("a redraw moves focus")
+	}
+}
+
+// a11y 11: a redraw keeps the countdown the admin typed, rather than
+// resetting it to the default.
+func TestPlanRedrawKeepsTheCountdown(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	g.startGame(id)
+	q := url.Values{"kind": {"install"}, "name": {"alpha"}, "countdown": {"7"}}
+	rec := g.harness.get(planPath(id, q), withCookie(g.cookie), withHeader("HX-Request", "true"))
+	wantIn(t, "redraw", rec.Body.String(), `id="countdown" name="countdown" type="text" inputmode="numeric" value="7"`,
+		"Plan updated: 1 mod changes.")
+}
+
+// S3: a plan request names at most 50 mods, and another site's page cannot
+// make a signed-in browser ask for a plan; the admin's own click can.
+func TestPlanRequestIsBounded(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	names := make([]string, maxPlanNames+1)
+	for i := range names {
+		names[i] = "m" + strings.Repeat("x", i)
+	}
+	if code, _ := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": names})); code != http.StatusBadRequest {
+		t.Errorf("51 names: %d", code)
+	}
+	if code, _ := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "optional": names})); code != http.StatusBadRequest {
+		t.Errorf("51 optional mods: %d", code)
+	}
+	path := kindPlanPath(id, mods.KindInstall, "alpha")
+	for _, site := range []string{"cross-site", "same-site"} {
+		rec := g.harness.get(path, withCookie(g.cookie), withHeader("Sec-Fetch-Site", site))
+		body := rec.Body.String()
+		if rec.Code != http.StatusForbidden || !strings.Contains(body, "opened from another site") || !strings.Contains(body, `href="`+html.EscapeString(path)+`" class="button">Try again`) {
+			t.Errorf("%s: %d\n%s", site, rec.Code, body)
+		}
+	}
+	if n := g.portal.FullCalls("alpha") + g.portal.FullCalls("m"); n != 0 {
+		t.Errorf("refused requests asked the portal %d times", n)
+	}
+	for _, site := range []string{"same-origin", "none", ""} {
+		rec := g.harness.get(path, withCookie(g.cookie), withHeader("Sec-Fetch-Site", site))
+		if rec.Code != http.StatusOK {
+			t.Errorf("%q: %d", site, rec.Code)
+		}
+	}
+}
+
+// a11y 2, 5, 7: a refused zip for an unresolved mod is an error in the
+// summary, linked to the zip field in the mod's own group, and every other
+// answer on the page is kept.
+func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
+	g := newModsRig(t, true)
+	// A 2.0 world with the 2.1 save: foreman-test and the save's built-in
+	// recycler are both unresolved.
+	id, err := g.worlds.Create(context.Background(), "Modded", v20, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.copySave(id, "2.1.24-space-age-testmod.zip")
+	q := url.Values{"kind": {"sync"}, "choice-recycler": {"without"}, "confirm-recycler": {"1"}}
+	_, body := g.getStatus(planPath(id, q))
+	wantIn(t, "sync", body, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`, `<label for="mod-foreman-test-zip" class="required">`,
+		`form="mod-foreman-test-zip-form"`, `class="hint required-note"`, "at most 200 MB")
+	if strings.Contains(body, `id="mod-foreman-test-confirm"`) {
+		t.Error("the continue-without box shows for a mod whose choice is upload")
+	}
+	action := uploadAction(t, body, "foreman-test")
+	rep := g.postMultipart(action, nil, "mod", "junk.zip", []byte("not a zip"))
+	if rep.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("junk zip: %d", rep.StatusCode)
+	}
+	wantIn(t, "refused", rep.body, `id="error-summary"`, `<a href="#mod-foreman-test-zip">This file is not a mod zip`,
+		`id="mod-foreman-test-zip-error"`, `id="mod-recycler-without" hx-get="/worlds/`+id+`/mods/plan" checked`, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`)
 }

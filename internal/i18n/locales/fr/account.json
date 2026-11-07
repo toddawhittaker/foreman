@@ -25,5 +25,6 @@
   "account.replace": "Remplacer le compte",
   "account.remove.heading": "Supprimer le compte",
   "account.remove.hint": "Le téléchargement des mods s’arrête jusqu’à ce qu’un compte soit saisi à nouveau.",
-  "account.remove": "Supprimer le compte"
+  "account.remove": "Supprimer le compte",
+  "account.back": "Retour"
 }

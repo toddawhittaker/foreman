@@ -47,7 +47,6 @@
   "mods.col.actions": "Akcje",
   "mods.state.on": "Włączona",
   "mods.state.off": "Wyłączona",
-  "mods.built_in.hint": "Zależy od ustawienia Ery Kosmosu w świecie",
   "mods.row.update": "Zaktualizuj do {version}",
   "mods.row.enable": "Włącz",
   "mods.row.disable": "Wyłącz",
@@ -63,8 +62,8 @@
   "mods.status.update_all": "Zaktualizuj wszystkie",
   "mods.status.current": {
     "one": "{count} modyfikacja z portalu modyfikacji jest aktualna.",
-    "few": "{count} modyfikacje z portalu modyfikacji są aktualne.",
-    "many": "{count} modyfikacji z portalu modyfikacji jest aktualnych."
+    "few": "Wszystkie {count} modyfikacje z portalu modyfikacji są aktualne.",
+    "many": "Wszystkie {count} modyfikacji z portalu modyfikacji są aktualne."
   },
   "mods.flag.gone": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji, więc ich gra nie może jej pobrać. Na portalu jest wersja {update}.",
   "mods.flag.gone_none": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji ani żadnej dla tej wersji gry.",
@@ -73,12 +72,12 @@
   "mods.flag.fix_update": "Zaktualizuj {mod} do {version}",
   "mods.flag.fix_remove": "Usuń {mod}",
   "mods.notice": {
-    "one": "Gracze nie mogą już pobrać {count} modyfikację świata {world}, więc nie mogą dołączyć.",
+    "one": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć.",
     "few": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć.",
     "many": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć."
   },
   "mods.notice.fix": "Napraw",
-  "mods.sync.heading": "Dopasuj do zapisu",
+  "mods.sync.heading": "Dopasuj modyfikacje do zapisu",
   "mods.sync.text": "Ustawia modyfikacje świata na te, z którymi utworzono zapis {save}: instaluje brakujące, zmienia wersje i wyłącza pozostałe. Najpierw widać plan.",
   "mods.sync.button": "Dopasuj modyfikacje do zapisu",
   "mods.sync.no_save": "Ten świat nie ma jeszcze zapisu, więc nie ma czego dopasowywać.",
@@ -233,5 +232,18 @@
   "mods.error.download_failed": "Nie udało się pobrać modyfikacji z portalu modyfikacji. Nic nie zmieniono. Należy spróbować ponownie za chwilę.",
   "mods.done": "Modyfikacje świata {world} zostały zmienione. Foreman najpierw wykonał migawkę „{label}”.",
   "mods.undo": "Cofnij tę zmianę modyfikacji",
-  "mods.changed.next": "Otwórz modyfikacje ponownie"
+  "mods.changed.next": "Otwórz modyfikacje ponownie",
+  "mods.plan.redrawn": {
+    "one": "Plan zaktualizowany: zmienia się {count} modyfikacja.",
+    "few": "Plan zaktualizowany: zmieniają się {count} modyfikacje.",
+    "many": "Plan zaktualizowany: zmienia się {count} modyfikacji."
+  },
+  "mods.plan.redrawn_conflicts": {
+    "one": "Plan zaktualizowany: ma konflikt, więc nie można go zastosować.",
+    "few": "Plan zaktualizowany: ma {count} konflikty, więc nie można go zastosować.",
+    "many": "Plan zaktualizowany: ma {count} konfliktów, więc nie można go zastosować."
+  },
+  "mods.error.cross_site": "Ten plan otwarto z innej witryny, więc Foreman go nie ustalił. Nic nie zmieniono. Aby zobaczyć plan, należy wybrać „Spróbuj ponownie”.",
+  "mods.built_in.note": "Wbudowane modyfikacje są częścią gry i zależą od ustawienia Ery Kosmosu w świecie.",
+  "mods.built_in.settings": "Zmień Erę Kosmosu w ustawieniach świata"
 }

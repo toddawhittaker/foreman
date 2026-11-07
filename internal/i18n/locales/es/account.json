@@ -25,5 +25,6 @@
   "account.replace": "Reemplazar cuenta",
   "account.remove.heading": "Quitar la cuenta",
   "account.remove.hint": "Las descargas de mods se detienen hasta que se introduzca una cuenta de nuevo.",
-  "account.remove": "Quitar cuenta"
+  "account.remove": "Quitar cuenta",
+  "account.back": "Volver"
 }

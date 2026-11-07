@@ -20,7 +20,14 @@ test.describe("mods tab", () => {
     // A built-in mod is listed but offers no Remove (SPEC 9.7).
     const base = table.getByRole("row").filter({ hasText: "Built in" }).first();
     await expect(base.getByRole("link")).toHaveCount(0);
-    // The portal cannot be reached here, and the tab says so in words.
+    // What built-in mods follow is said once, above the table, with the way to change it.
+    await expect(page.getByText("follow the world's Space Age setting")).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Change Space Age in the world's settings" })).toHaveAttribute("href", "/worlds/base/settings");
+    // Each row's buttons name their mod for a screen reader.
+    await expect(table.getByRole("link", { name: "Disable other" })).toBeVisible();
+    await expect(table.getByRole("link", { name: "Remove other" })).toBeVisible();
+    // The portal cannot be reached here, and the tab says so in words, in a live region.
+    await expect(page.locator("#mod-status")).toHaveAttribute("role", "status");
     await expect(page.locator("#mod-status")).toContainText("could not reach the mod portal");
     await expect(page.getByRole("link", { name: "Match mods to the save" })).toBeVisible();
     await checkPage(page);
