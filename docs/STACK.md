@@ -291,7 +291,7 @@ Rejected:
 |---|---|
 | `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. The Stop hook and the merge gate run it. |
 | `make check-go` | Fails when the local Go, or the Go in the build image, differs from `GO_VERSION` (ADR 0001). |
-| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. |
+| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. `TEST_TIMEOUT` (default 30m) is the time limit, because the web package takes about 11 minutes under `-race` on a loaded machine. |
 | `make lint` | golangci-lint, in its pinned image. |
 | `make fmt-check` | Fails when a Go file is not formatted. This is the only place format is checked. |
 | `make fmt` | Rewrite formatting. |
