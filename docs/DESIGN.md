@@ -1415,7 +1415,9 @@ on a download).
   - Panning: drag the zoomed picture (pointer capture), or use the
     frame's scroll bars, or the arrow keys while the frame has focus. On
     touch screens one finger drags and two pinch around their middle
-    (`touch-action: none` on the frame).
+    (`touch-action: none` on the frame). A tap (one pointer, under 6 px
+    of movement) on a zoomed picture centres the spot tapped, so panning
+    never needs a drag (WCAG 2.5.7).
   - Keys: left and right arrows step (inside the zoomed frame they scroll
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
     Alt or Meta held the browser keeps its own zoom keys.
@@ -1429,8 +1431,9 @@ on a download).
 - **Demolisher territories** (Vulcanus, Space Age). A "Show demolisher
   territories" checkbox (7.2) beside the Planet select, shown only while
   Vulcanus's picture is shown, off by default, with the hint "Finding them
-  takes a few seconds more." Above 3072 tiles it is disabled, and its hint
-  names that size and says to choose a smaller one. It is a named field,
+  takes a few seconds more." Above 3072 tiles it is `aria-disabled="true"`
+  with no name, so Tab still reaches it and its reason is heard but it
+  cannot change or send; its hint names that size and says to choose a smaller one. It is a named field,
   so "Preview map" without script reads the territories after the
   pictures, in the same request; a ticked choice is kept in a hidden field
   while another planet is viewed. With script, the territories are asked
@@ -1462,6 +1465,7 @@ on a download).
     query away again.
   - A busy or failed run, or a failed request, is an error (7.3) under
     the picture with a "Try again" button; the page's picture stays.
+    The announcement is the error sentence alone, not the button label.
 - **Icons** (the large view only). Inline SVG on a 16 by 16 grid, drawn
   with a 2 px `currentColor` stroke and no fill, `aria-hidden`, inside a
   round `.icon-button` (`bg` face, 1 px `border`) whose name is visually

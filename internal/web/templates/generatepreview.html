@@ -26,7 +26,7 @@
       {{- with .Territories}}{{if .Show}}
       {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
       <div class="field territory-box">
-        <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}{{if .Disabled}} disabled{{end}}> {{t "worlds.generate.territories.label"}}</label>
+        <label class="check"><input type="checkbox" id="preview-territories"{{if not .Disabled}} name="territories"{{end}} value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}{{if .Disabled}} aria-disabled="true"{{end}}> {{t "worlds.generate.territories.label"}}</label>
         <p class="hint" id="preview-territories-hint">{{if .Disabled}}{{t "worlds.generate.territories.too_big_hint" "size" (print .MaxSize)}}{{else}}{{t "worlds.generate.territories.hint"}}{{end}}</p>
       </div>
       {{- end}}{{end}}
