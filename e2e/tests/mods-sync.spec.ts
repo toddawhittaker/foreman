@@ -184,6 +184,27 @@ test("the nearest release is one of three choices, and it is downloaded and inst
   expect((await fakePortal!.state()).refused).toEqual([]);
 });
 
+test("in a 2.1 world the nearest release is the next one up on the 2.1 line", async ({ page, foreman, fakeGame, fakePortal }) => {
+  // The portal has no foreman-test 0.1.0 for 2.1: it has 0.0.5 below, and 0.9.0 and 1.1.0 above.
+  // The 2.0 release at 0.1.5 is nearer, but it is for another game line.
+  await fakePortal!.add("foreman-test", "0.0.5", ["base >= 2.1"], "2.1");
+  await fakePortal!.add("foreman-test", "0.9.0", ["base >= 2.1"], "2.1");
+  await fakePortal!.add("foreman-test", "1.1.0", ["base >= 2.1"], "2.1");
+  await fakePortal!.add("foreman-test", "0.1.5", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, world21);
+  await page.goto(syncPlan);
+  const choices = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
+  await expect(choices.getByRole("radio")).toHaveCount(3);
+  await choices.getByLabel("Use foreman-test 0.9.0, the nearest release for Factorio 2.1").check();
+  await expect(page.locator("#mod-plan")).toContainText("foreman-test 0.9.0");
+  await checkPage(page);
+
+  await page.locator("#act-apply").click();
+  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  expect(existsSync(join(modsFolder(foreman.dataDir), "foreman-test_0.9.0.zip"))).toBe(true);
+  expect((await fakePortal!.state()).refused).toEqual([]);
+});
+
 // A redraw that finds a conflict answers 200 so htmx swaps it in, and the
 // conflict is announced.
 test("ticking an optional mod that conflicts shows the conflict", async ({ page, foreman, fakeGame, fakePortal }) => {

@@ -602,7 +602,6 @@ func dedupe(cs []Conflict) []Conflict {
 // was given for. Ticking "continue without" does not change what will
 // happen, so it does not change the digest.
 func HashPlan(p Plan, drops []string) string {
-	p.Hash = ""
 	p.Unresolved = slices.Clone(p.Unresolved)
 	for i, u := range p.Unresolved {
 		if u.Choice != nil {

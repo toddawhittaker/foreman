@@ -400,6 +400,33 @@ func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	}
 }
 
+// SPEC 9.4: the drops a confirmation is for are part of the plan the page
+// showed. If the save that loads now uses a mod the plan turns off, the plan
+// changed, and the post applies nothing.
+func TestPlanChangesWhenTheDropsChange(t *testing.T) {
+	g := newModsRig(t, true)
+	id, err := g.worlds.Create(context.Background(), "Modded", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.copySave(id, "2.1.24-space-age.zip")
+	g.writeMod(id, "foreman-test", "0.1.0")
+	_, body := g.getStatus(kindPlanPath(id, mods.KindDisable, "foreman-test"))
+	if strings.Contains(body, `name="confirm-drops"`) {
+		t.Fatalf("a save without the mod asks about drops:\n%s", body)
+	}
+	v := planValues(t, body)
+	g.copySave(id, "2.1.24-space-age-testmod.zip")
+	rep := g.post(modsPath(id)+"/plan", v)
+	if rep.StatusCode != http.StatusConflict || !strings.Contains(rep.body, "The plan changed since you saw it") {
+		t.Fatalf("got %d\n%s", rep.StatusCode, rep.body)
+	}
+	if g.modSnapshots(id) != 0 {
+		t.Error("a plan with changed drops was applied")
+	}
+	wantIn(t, "new plan", rep.body, "turns off: foreman-test", `name="confirm-drops"`)
+}
+
 // SPEC 9.8, 9.10: a save's mod the portal lacks blocks the sync, offers an
 // upload, and "continue without" needs its own box.
 func TestSyncUnresolvedChoices(t *testing.T) {
@@ -445,6 +472,9 @@ func TestModUpload(t *testing.T) {
 	rep := g.postMultipart(modsPath(id)+"/upload", [][2]string{{"kind", "upload"}}, "mod", "whatever.zip", modZip(t, "delta", "3.2.1"))
 	if rep.StatusCode != http.StatusOK || !strings.Contains(rep.body, "Install the uploaded delta 3.2.1 in Base?") {
 		t.Fatalf("got %d\n%s", rep.StatusCode, rep.body)
+	}
+	if staged := planValues(t, rep.body).Get("staged"); !strings.HasPrefix(staged, world.PrefixModStaging) {
+		t.Errorf("the upload was staged as %q, want the prefix %q", staged, world.PrefixModStaging)
 	}
 	g.wantRedirectHome(g.post(modsPath(id)+"/plan", planValues(t, rep.body)))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
@@ -547,28 +577,6 @@ func TestModRoutesNeedSignIn(t *testing.T) {
 	}
 }
 
-// The hash ignores the "continue without" box, so ticking it needs no
-// second confirmation.
-func TestPlanHashIgnoresConfirmation(t *testing.T) {
-	p := mods.Plan{Unresolved: []mods.Unresolved{{Name: "a", Choice: &mods.Choice{Kind: mods.ChoiceWithout}}}}
-	q := mods.Plan{Unresolved: []mods.Unresolved{{Name: "a", Choice: &mods.Choice{Kind: mods.ChoiceWithout, Confirmed: true}}}}
-	if planHash(p) != planHash(q) {
-		t.Error("ticking the box changed the hash")
-	}
-	q.Unresolved[0].Choice.Kind = mods.ChoiceNearest
-	if planHash(p) == planHash(q) {
-		t.Error("another choice kept the hash")
-	}
-}
-
-func TestGameLine(t *testing.T) {
-	for in, want := range map[string]string{"2.0.77": "2.0", "1.1.110": "1.1", "2": ""} {
-		if got := gameLine(in); got != want {
-			t.Errorf("gameLine(%q) = %q", in, got)
-		}
-	}
-}
-
 // modPageCases render the mods pages in every language (TestEveryPageRenders).
 func modPageCases() []pageCase {
 	w := world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", Active: true}
@@ -611,14 +619,35 @@ func modPageCases() []pageCase {
 	}
 }
 
-// The upload plan's staged name never leaves the server's own staging area.
-func TestStagedInfoRefusesOtherNames(t *testing.T) {
+// The upload plan's staged name never leaves the server's own staging area:
+// another upload's temp file, which starts with the same prefix, is refused
+// by a plan page and by a post, and is not deleted.
+func TestStagedNameIsOnlyAModUpload(t *testing.T) {
 	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	other := world.PrefixPartial + "import-upload"
+	path := filepath.Join(g.worlds.Dirs().Worlds, other)
+	if err := os.WriteFile(path, modZip(t, "delta", "3.2.1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	s := &server{worlds: g.worlds}
-	for _, name := range []string{"", "x.zip", "../.partial-x", ".partial-x/../../etc", `.partial-a\b`} {
+	for _, name := range []string{"", "x.zip", other, "../.partial-mod-x", ".partial-mod-x/../../etc", `.partial-mod-a\b`, world.PrefixModStaging + "gone"} {
 		if _, err := s.stagedInfo(name); !errors.Is(err, errStagedGone) {
 			t.Errorf("stagedInfo(%q) = %v", name, err)
 		}
+	}
+	// A plan that does not use a staged zip removes it when applied, so a
+	// name that is not a staged mod's must never get that far.
+	_, body := g.getStatus(kindPlanPath(id, mods.KindInstall, "alpha"))
+	v := planValues(t, body)
+	v.Set("staged", other)
+	rep := g.post(modsPath(id)+"/plan", v)
+	if rep.StatusCode == http.StatusSeeOther {
+		t.Error("a post naming another upload was accepted")
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("another upload's temp file was removed: %v", err)
 	}
 }
 

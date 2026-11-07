@@ -164,7 +164,7 @@ func (s *server) handleAccount(w http.ResponseWriter, r *http.Request, u store.U
 // nothing to remove, and no audit entry.
 func (s *server) removeAccount(w http.ResponseWriter, r *http.Request, u store.User, p AccountPage) {
 	if p.Stored() || p.Unreadable() {
-		if err := s.account.Remove(r.Context(), u.Username); err != nil {
+		if err := s.account.Remove(r.Context()); err != nil {
 			s.accountRefused(w, r, u, p, "remove the factorio.com account", err)
 			return
 		}

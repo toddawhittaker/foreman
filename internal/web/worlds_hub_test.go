@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/url"
 	"strings"
 	"testing"
@@ -63,9 +64,16 @@ func TestWorldsShowARunningSwitch(t *testing.T) {
 	g.wantContains("idle list", list, `href="`+switchPath(b)+`" class="button"><span aria-hidden="true">Switch</span><span class="visually-hidden">Switch to Bravo</span>`, `href="`+switchPath(c)+`" class="button"><span aria-hidden="true">Switch</span><span class="visually-hidden">Switch to Charlie</span>`)
 	g.wantMissing("idle list", list, `href="`+switchPath(a)+`"`, "Busy:", "Switching is unavailable")
 
+	// A player online makes the switch wait out its countdown, which holds
+	// the switch open until the test cancels it.
 	g.startGame(a)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"30"}}))
-	g.waitPage("Switching from Alpha to Bravo")
+	if err := g.fake.Join(game.ContainerName(a), "bob"); err != nil {
+		t.Fatal(err)
+	}
+	g.waitPage(`<td role="cell">bob</td>`)
+	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"600"}}))
+	g.waitPage("Switching from Alpha to Bravo", "Cancel stop")
+	t.Cleanup(func() { _ = g.ctrl.CancelStop(context.Background(), a, game.Actor{Username: "alice"}) })
 
 	list = g.get(PathWorlds)
 	if n := strings.Count(list, "<strong>Busy:</strong> Switching from Alpha to Bravo."); n != 2 {

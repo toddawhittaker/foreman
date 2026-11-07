@@ -82,7 +82,7 @@ func TestStoredRoundTrip(t *testing.T) {
 		t.Error("the stored row holds a value in the clear")
 	}
 
-	if err := svc.Remove(ctx, "todd"); err != nil {
+	if err := svc.Remove(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if _, src, _, _ := svc.Get(ctx); src != None {
@@ -104,7 +104,7 @@ func TestEnvironmentWinsOverStored(t *testing.T) {
 	if err := svc.Set(ctx, mine(), "todd"); !errors.Is(err, ErrFromEnvironment) {
 		t.Errorf("Set err = %v, want ErrFromEnvironment", err)
 	}
-	if err := svc.Remove(ctx, "todd"); !errors.Is(err, ErrFromEnvironment) {
+	if err := svc.Remove(ctx); !errors.Is(err, ErrFromEnvironment) {
 		t.Errorf("Remove err = %v, want ErrFromEnvironment", err)
 	}
 	if _, _, _, err := st.GetSecret(ctx, RowName); err != nil {
@@ -125,7 +125,7 @@ func TestWithoutKeyNothingIsStored(t *testing.T) {
 	if err := svc.Set(ctx, mine(), "todd"); !errors.Is(err, ErrNoSecretKey) {
 		t.Errorf("Set err = %v, want ErrNoSecretKey", err)
 	}
-	if err := svc.Remove(ctx, "todd"); !errors.Is(err, ErrNoSecretKey) {
+	if err := svc.Remove(ctx); !errors.Is(err, ErrNoSecretKey) {
 		t.Errorf("Remove err = %v, want ErrNoSecretKey", err)
 	}
 	if _, _, _, err := st.GetSecret(ctx, RowName); !errors.Is(err, store.ErrNoSecret) {
@@ -233,7 +233,7 @@ func TestDatabaseErrorsAreReturned(t *testing.T) {
 	if err := svc.Set(ctx, mine(), "todd"); !errors.Is(err, errDB) {
 		t.Errorf("Set err = %v", err)
 	}
-	if err := svc.Remove(ctx, "todd"); !errors.Is(err, errDB) {
+	if err := svc.Remove(ctx); !errors.Is(err, errDB) {
 		t.Errorf("Remove err = %v", err)
 	}
 }
