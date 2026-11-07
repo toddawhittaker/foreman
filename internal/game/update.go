@@ -22,11 +22,12 @@ const (
 // shows no snapshot step of its own.
 var updateSteps = [][]string{{StepDownload}, stopSteps, {StepSnapshotUpdate, StepSetVersion}, {StepCheck}, launchSteps}
 
-// Update moves the active world to a newer game version (SPEC 10.3). Every
-// check that could refuse runs before the game is stopped; a missing image
-// is downloaded before the stop too. The game is stopped gracefully, the
-// "Before update" snapshot taken, the version set, and the game started
-// again only if it was running. A refusal by the pre-start check is a
+// Update moves a world to a newer game version (SPEC 10.3), whether or not
+// it is the active one; a world that is not active never runs, so nothing
+// stops or starts. Every check that could refuse runs before the game is
+// stopped; a missing image is downloaded before the stop too. The game is
+// stopped gracefully, the "Before update" snapshot taken, the version set,
+// and the game started again only if it was running. A refusal by the pre-start check is a
 // *PrecheckError. Run it with a context that outlives the request.
 func (c *Controller) Update(ctx context.Context, id, version string, by Actor, stop StopOptions, opts StartOptions) error {
 	countdown, err := stopCountdown(stop)
@@ -45,9 +46,6 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	detail := updateDetail(meta.GameVersion, version, opts)
 	// Not IsRefusal errors, but still refusals: nothing was done.
 	if err := world.CheckUpdateTarget(meta, version); err != nil {
-		return c.refused(ctx, by, AuditUpdate, id, detail, err)
-	}
-	if err := c.checkActive(ctx, id); err != nil {
 		return c.refused(ctx, by, AuditUpdate, id, detail, err)
 	}
 	// A game the stop would refuse is refused before the download.

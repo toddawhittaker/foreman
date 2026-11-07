@@ -479,7 +479,6 @@
   "server.console.announce.reply": "Antwort auf {command}: {reply}",
   "server.update.snapshot": "Einen Snapshot von {world} mit der Bezeichnung „{label}“ erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
   "server.switch.undo": "Zum Rückgängigmachen wechsle zurück zu {from} oder stelle auf der Seite „Snapshots“ einen Snapshot wieder her.",
-  "server.update.not_active": "Wechsle zu dieser Welt, um sie zu aktualisieren.",
   "server.step.seconds_left": {
     "one": "noch {count} Sekunde",
     "other": "noch {count} Sekunden"

@@ -28,12 +28,25 @@
   <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "worlds.world.download_failed" "version" (code .World.GameVersion)}}</p>
 </div>
 {{- end}}
+{{- /* While an action runs, the page reloads this block until it ends, so the result of an update of this world appears without a refresh. */}}
+<div id="world-activity"{{if .Working}} hx-get="{{.WorldPath}}" hx-trigger="every 2s" hx-select="#world-activity" hx-swap="outerHTML"{{end}}>
 {{- if not .Busy.IsZero}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
   <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
 </div>
 {{- end}}
+{{- if not .UpdateDone.IsZero}}
+<div class="message message--success">
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .UpdateDone}}</p>
+</div>
+{{- end}}
+{{- if not .UpdateFailed.IsZero}}
+<div class="message message--error">
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .UpdateFailed}}</p>
+</div>
+{{- end}}
+</div>
 {{- /* The world page's one primary action, on a world that is not active (SPEC 7.9). */}}
 {{- if .CanSwitch}}
 <section class="panel" aria-label="{{t "worlds.world.switch.heading"}}">
@@ -71,13 +84,9 @@
     <p>{{t "worlds.world.checking_release"}}</p>
   </div>
   {{- end}}
-  {{- if .World.Active}}
   <div class="actions">
     <a href="{{.UpdatePath}}" class="button" id="act-update">{{t "worlds.world.update"}}</a>
   </div>
-  {{- end}}
-  {{- /* A world that is not active is updated after a switch; the page's own
-       Switch button, at its top, is that control (SPEC 17.9). */}}
   {{- with .Rollback}}
   <p>{{tHTML "worlds.world.rollback_text" "label" (snapLabel .Snapshot) "when" (momentUTC .Snapshot.TakenAt) "version" (code .Version)}}</p>
   <div class="actions">

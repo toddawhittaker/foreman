@@ -490,7 +490,6 @@
   "server.console.announce.reply": "Odpověď na {command}: {reply}",
   "server.update.snapshot": "Pořídí snímek světa {world} s popiskem „{label}“. Pokud se snímek nezdaří, nic dalšího se nestane.",
   "server.switch.undo": "Pro vrácení je třeba přepnout zpět na {from} nebo obnovit snímek na stránce Snímky.",
-  "server.update.not_active": "Pro aktualizaci tohoto světa je třeba se na něj přepnout.",
   "server.step.seconds_left": {
     "one": "zbývá {count} sekunda",
     "few": "zbývají {count} sekundy",

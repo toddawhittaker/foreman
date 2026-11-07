@@ -479,7 +479,6 @@
   "server.console.announce.reply": "Respuesta a {command}: {reply}",
   "server.update.snapshot": "Tomar una instantánea de {world} con la etiqueta «{label}». Si la instantánea falla, no pasa nada más.",
   "server.switch.undo": "Para deshacerlo, vuelve a cambiar a {from}, o restaura una instantánea desde la página Instantáneas.",
-  "server.update.not_active": "Cambia a este mundo para actualizarlo.",
   "server.step.seconds_left": {
     "one": "queda {count} segundo",
     "other": "quedan {count} segundos"

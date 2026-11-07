@@ -479,7 +479,6 @@
   "server.console.announce.reply": "Reply to {command}: {reply}",
   "server.update.snapshot": "Take a snapshot of {world}, labelled \"{label}\". If the snapshot fails, nothing else happens.",
   "server.switch.undo": "To undo, switch back to {from}, or restore a snapshot from the Snapshots page.",
-  "server.update.not_active": "Switch to this world to update it.",
   "server.step.seconds_left": {
     "one": "{count} second left",
     "other": "{count} seconds left"

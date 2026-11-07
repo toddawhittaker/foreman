@@ -215,6 +215,15 @@ func (g *gameRuns) changedLocked() {
 	g.changed = make(chan struct{})
 }
 
+// inFlight reports whether an action is running on the world. It is true
+// from the request until the result is stored, which spans the moments
+// before and after the controller's operation shows in its status.
+func (g *gameRuns) inFlight(id string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.running[id] > 0
+}
+
 func (g *gameRuns) result(id string) (actionResult, bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()

@@ -119,6 +119,13 @@ type WorldPage struct {
 	// update (SPEC 10.4); ReleasesPath loads the release notice (SPEC 10.2).
 	Rollback     *RollbackOffer
 	ReleasesPath string
+	// UpdateDone and UpdateFailed say how the last update of a world that is
+	// not active ended, since the Server page shows only the active world's
+	// (SPEC 10.3). At most one is set.
+	UpdateDone, UpdateFailed i18n.Msg
+	// Working says an action runs on the world, so the page reloads the
+	// block that shows what it does and how it ended.
+	Working bool
 }
 
 func (WorldPage) templateName() string { return "world" }
@@ -135,6 +142,7 @@ func (WorldsPage) GeneratePath() string { return PathGenerate }
 func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.NameError}) }
 
 // Paths the world page links and posts to.
+func (p WorldPage) WorldPath() string     { return worldPath(p.World.ID) }
 func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/rename" }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
@@ -320,6 +328,12 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 		return
 	}
 	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
+	// The page reloads its activity block while an action runs; when the
+	// action has ended, it reloads whole, so the version and the rollback
+	// offer are current.
+	if r.Header.Get("HX-Request") != "" && !p.Working {
+		w.Header().Set("HX-Refresh", "true")
+	}
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
 	s.importFacts(&p, r)
 	s.generatedFacts(&p, r)
@@ -343,9 +357,13 @@ func renameDone(renamed, current string) i18n.Msg {
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, nameError i18n.Msg) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
 	p.Busy = s.worldBusy(sum.ID)
+	p.Working = !p.Busy.IsZero() || s.game != nil && s.runs.inFlight(sum.ID)
 	if s.game != nil && !sum.Unreadable && !sum.Newer {
 		p.ReleasesPath = releasesPath(sum.ID)
 		p.Rollback = s.rollbackOffer(sum.ID)
+		if !sum.Active {
+			p.UpdateDone, p.UpdateFailed = s.updateOutcome(sum)
+		}
 	}
 	switch {
 	case s.game == nil || sum.Unreadable || sum.Newer || sum.Active:
