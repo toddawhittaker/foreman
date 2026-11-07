@@ -524,7 +524,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     evolution group size factor 1 to 20 in place of the group sizes.
   - Evolution: time factor and pollution factor 0 to 1000 (× 10⁻⁷),
     destroy factor 0 to 1000 (× 10⁻⁵).
-  - Technology: price multiplier 1 to 100000 (the game's runtime range).
+  - Technology: price multiplier 1 to 100000 (the game screen's lower end; the screen shows no upper end, so 100000 is a practical cap).
     On 1.1 also recipe difficulty and technology difficulty (Normal or
     Expensive) and research queue (After victory, Always or Never).
   - Pollution: diffusion ratio 0 to 25%, absorption modifier and attack
