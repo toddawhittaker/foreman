@@ -40,14 +40,14 @@
   {{- end}}
 </div>
 {{- end}}
-{{- /* The page reloads when the update ends; the result then takes focus and is read out (DESIGN 7.6). */}}
+{{- /* The page reloads when the update ends; the result then takes focus, which reads it out; it is not also announced (DESIGN 7.6). */}}
 {{- if not .UpdateDone.IsZero}}
-<div class="message message--success" id="world-result" tabindex="-1" autofocus data-announce>
+<div class="message message--success" id="world-result" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .UpdateDone}}</p>
 </div>
 {{- end}}
 {{- with .UpdateFailure}}
-<div id="world-result" tabindex="-1" autofocus data-announce>{{template "server-failure" .}}</div>
+<div id="world-result" tabindex="-1" autofocus>{{template "server-failure" .}}</div>
 {{- end}}
 </div>
 {{- /* The world page's one primary action, on a world that is not active (SPEC 7.9). */}}

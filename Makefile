@@ -57,10 +57,14 @@ lint:
 	@mkdir -p $(CACHE)/home
 	$(DOCKER_RUN) $(LINT_IMAGE) golangci-lint run ./...
 
+# The web package takes about 11 minutes under -race on a loaded machine,
+# past go test's 10-minute default, so the limit is set here with room.
+TEST_TIMEOUT ?= 30m
+
 # One race-enabled run gives both the test result and the coverage floor.
 test:
 	@cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
-	go test -race -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
+	go test -race -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
 	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
 	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
 		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
@@ -95,9 +99,11 @@ run:
 
 # SHARD=1/4 runs the first of four slices of the tests; empty runs them all.
 SHARD ?=
+# E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
+E2E_ARGS ?=
 
 e2e: build build-fakegame e2e-deps
-	$(DOCKER_RUN) --ipc=host -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD))
+	$(DOCKER_RUN) --ipc=host -e CI -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD)) $(E2E_ARGS)
 
 # Foreman runs a world on the plain tag factoriotools/factorio:<version>, so
 # the tests do too. A tag can move or be re-pushed, so before a real-game run

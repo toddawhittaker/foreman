@@ -393,7 +393,7 @@ func TestUpdateOfAnInactiveWorld(t *testing.T) {
 		t.Error("a plain visit asked for a refresh")
 	}
 	page := g.get(worldPath(b) + ownResultQuery)
-	g.wantContains("world page after", page, `id="world-activity"`, `id="world-result" tabindex="-1" autofocus data-announce`,
+	g.wantContains("world page after", page, `id="world-activity"`, `id="world-result" tabindex="-1" autofocus>`,
 		"The game version is updated.", "<code>"+newVersion+"</code>")
 	g.wantMissing("world page after", page, `hx-trigger="every`, `message--error`)
 	// The result belongs to the visit the update sent the admin to, not to every later one.

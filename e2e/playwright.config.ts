@@ -6,6 +6,10 @@ export default defineConfig({
   testDir: "tests",
   forbidOnly: true,
   retries: 0,
+  // Eight workers locally, so two runs at once fit a 32-core machine; each
+  // worker starts its own Foreman and browser. CI keeps Playwright's default
+  // (half the runner's cores). The Makefile passes CI into the container.
+  workers: process.env.CI ? undefined : 8,
   reporter: "list",
   // SPEC 22.2: the browser's language picks Foreman's, so every project asks
   // for English and no test depends on the machine it runs on.
