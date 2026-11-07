@@ -152,6 +152,8 @@ test("errors name the field, keep what was typed and make nothing", async ({ pag
   const summary = page.locator("#error-summary");
   await expect(summary).toContainText("Enter the seed as a whole number");
   await expect(page.locator("#generate-seed")).toHaveValue("not a number");
+  // A seed error is in no tab, so the page keeps the tab it was on.
+  await expect(page.locator("#panel-resources")).toBeVisible();
   await page.locator("#generate-seed").fill("9");
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(summary).toContainText("Another world already has this name");
@@ -196,6 +198,42 @@ test("choosing another game line redraws the presets, and Space Age is refused f
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page).toHaveURL("/worlds/old-game?generated=1");
   expect(worldJSON(foreman.dataDir, "old-game")).toMatchObject({ game_version: "1.1.110", space_age: false });
+});
+
+// SPEC 5.6, DESIGN 8.7: 1.1's file holds three choices the later lines lack.
+test("1.1 offers recipe, technology and research queue choices; 2.1 does not", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await tab(page, "Advanced").click();
+  await expect(page.getByLabel("Recipe difficulty")).toHaveCount(0);
+  await expect(page.getByLabel("Spoiling rate")).toHaveValue("100");
+
+  await (await typedVersion(page)).fill("1.1.110");
+  await (await typedVersion(page)).press("Tab");
+  await expect(page.locator('input[name="map_key"]')).toHaveValue("1.1|0");
+  await expect(page.locator("#generate-preset option", { hasText: "Ribbon world" })).toHaveCount(1);
+  await tab(page, "Advanced").click();
+  const recipe = page.getByLabel("Recipe difficulty");
+  await expect(recipe).toHaveValue("0");
+  await expect(recipe.locator("option")).toHaveText(["Normal", "Expensive"]);
+  await expect(page.getByLabel("Technology difficulty")).toHaveValue("0");
+  await expect(page.getByLabel("Research queue")).toHaveValue("always");
+  await expect(page.getByLabel("Research queue").locator("option")).toHaveText(["After victory", "Always", "Never"]);
+  await expect(page.getByLabel("Spoiling rate")).toHaveCount(0);
+  await expect(page.locator("#preset-modified")).toHaveText("");
+  await recipe.selectOption("1");
+  await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+  await page.getByLabel("Research queue").selectOption("never");
+  await checkPage(page);
+
+  await page.getByLabel("World name").fill("Old game plus");
+  await page.getByLabel("Download the game image", { exact: false }).uncheck();
+  await page.getByLabel("Space Age is on").uncheck();
+  await page.getByRole("button", { name: "Generate world" }).click();
+  await expect(page).toHaveURL("/worlds/old-game-plus?generated=1");
+  const ds = JSON.parse(readFileSync(configFile(foreman.dataDir, "old-game-plus", "map-settings.json"), "utf8")).difficulty_settings;
+  // Numbers stay numbers and words stay words.
+  expect(ds).toMatchObject({ recipe_difficulty: 1, technology_difficulty: 0, research_queue_setting: "never" });
 });
 
 // DESIGN 8.8: the preview is optional and adds no screen to Generate.
