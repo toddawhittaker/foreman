@@ -17,11 +17,30 @@ pull request and every push to `main`. Its jobs run in parallel and
 together check the same things as `make ci`, plus the image size limit:
 `make verify` is split into `vet`, `lint` and `test` jobs, the type check
 runs with `e2e`, and `image` builds the container. A final `ci` job passes
-only when every other job passed. A ruleset on `main` blocks direct
+only when every other job passed or was skipped for a reason below. A ruleset on `main` blocks direct
 pushes, force pushes and deletion, and requires a pull request whose
 branch is up to date with `main` and whose `ci` job passed. Adding a job
 never needs a ruleset change. Read a failing run's log with
 `gh run view --log-failed`.
+
+A first `changes` job decides whether the build and test jobs (`verify`,
+`e2e` and `image`) run. It skips them in two cases. First, when a pull
+request changes only files that nothing in the build, the tests or CI
+reads: anything under `docs/`, `.claude/` or `.githooks/`, and Markdown
+files anywhere outside `.github/`. Second, when an earlier green run
+already tested the same git tree, on a pull request or a push to `main`.
+Every full green run records its tree as an artifact named
+`tested-tree-<tree hash>`, kept 30 days, so a tree is re-tested on a fresh
+runner now and then. Markers from forks' pull requests are ignored. A push
+to `main` is never skipped for being documentation only. If the lookup
+fails, everything runs; if `changes` itself fails, `ci` fails.
+
+A `trailers` job runs on every pull request, even when the rest is
+skipped. It fails when a commit in the pull request, or its title or body,
+credits an AI assistant as co-author, and names the commit. GitHub lists
+every co-author as a contributor, and a squash merge copies those lines
+onto `main`. The pattern lives in `.github/ai-trailer-check`, which the
+commit-msg hook also runs (see "Secret scanning").
 
 CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
 system changes only when we change it. A push to a pull request cancels
@@ -213,7 +232,8 @@ The same hooks folder holds a commit-msg hook. It refuses a commit message
 that names an AI assistant as a co-author (a `Co-authored-by:` line for
 Claude or Anthropic, or a "Generated with Claude Code" line). Agents write
 commit messages themselves, so Claude Code's own attribution setting cannot
-stop such a line; this hook does.
+stop such a line; this hook does. CI runs the same check on every pull
+request (see "Checks").
 
 ## Dependencies
 

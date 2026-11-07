@@ -1,0 +1,12 @@
+#!/bin/sh
+# Prints each line of a message (file argument, or stdin) that credits an AI
+# assistant as co-author, and exits 1 if there is one. Used by
+# .githooks/commit-msg and by the trailers job in .github/workflows/ci.yml.
+# The "Generated with" line must start the line, after only symbols such as
+# the robot emoji, so a quoted mention of it in ordinary text passes.
+grep -Ei '^(co-authored-by:.*(claude|anthropic)|[^[:alnum:]"`'"'"']*generated with \[?claude code)' "${1:--}"
+case $? in
+  0) exit 1 ;;
+  1) exit 0 ;;
+  *) exit 2 ;; # grep could not read the message: refuse rather than pass.
+esac
