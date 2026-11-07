@@ -312,7 +312,6 @@ func (e *gameEnv) runModsChange(t *testing.T, tag, fixture, version string) {
 	// The save the stop just wrote lists the mod, so the pre-start check (SPEC
 	// 7.4) refuses the start that follows turning it off, and the world waits
 	// stopped with the snapshot to undo (SPEC 9.4, 10.3).
-	var disableCheck world.PreCheck
 	step("4 disable: the pre-start check refuses, the world stays stopped", func(t *testing.T) {
 		op := e.modsOp(t, id, "turn off "+probeMod, world.ModChange{Enabled: map[string]bool{probeMod: false}})
 		err := c.ApplyMods(ctx, id, admin, op, stopOpts)
@@ -320,7 +319,6 @@ func (e *gameEnv) runModsChange(t *testing.T, tag, fixture, version string) {
 		if !errors.As(err, &pe) || !pe.Check.CanStartAnyway() {
 			t.Fatalf("ApplyMods = %v, want a pre-start refusal that allows going ahead", err)
 		}
-		disableCheck = pe.Check
 		if len(pe.Check.Problems) != 1 || pe.Check.Problems[0].Kind != world.ProblemModDisabled ||
 			len(pe.Check.Problems[0].Mods) != 1 || pe.Check.Problems[0].Mods[0] != probeMod {
 			t.Fatalf("the refusal is %+v, want the mod-disabled problem for %s", pe.Check.Problems, probeMod)
@@ -336,12 +334,33 @@ func (e *gameEnv) runModsChange(t *testing.T, tag, fixture, version string) {
 		}
 	})
 
-	step("4b the game reaches InGame without the mod", func(t *testing.T) {
-		start := StartOptions{Anyway: true, Seen: AnywayFingerprint(disableCheck, false)}
-		if err := c.Start(ctx, id, admin, start); err != nil {
-			t.Fatalf("start anyway: %v", err)
+	// The refusal left the mod off in a stopped world. Turning it back on and
+	// starting gives the running game the next step needs.
+	step("4b turn the mod back on and start", func(t *testing.T) {
+		op := e.modsOp(t, id, "turn on "+probeMod, world.ModChange{Enabled: map[string]bool{probeMod: true}})
+		if err := c.ApplyMods(ctx, id, admin, op, stopOpts); err != nil {
+			t.Fatalf("ApplyMods: %v", err)
+		}
+		if err := c.Start(ctx, id, admin, StartOptions{}); err != nil {
+			t.Fatalf("start: %v", err)
 		}
 		backInGame(t, time.Time{})
+		if !loads("2.0.0") {
+			t.Fatalf("the game did not load %s 2.0.0 after it was turned on", probeMod)
+		}
+	})
+
+	// With the admin's confirmation that the game deletes the mod's content
+	// from the save, the same change passes the check and the world ends
+	// running (SPEC 9.4, 9.10).
+	step("4c a confirmed drop: the game reaches InGame without the mod", func(t *testing.T) {
+		prev := c.Status(id).StartedAt
+		op := e.modsOp(t, id, "turn off "+probeMod, world.ModChange{Enabled: map[string]bool{probeMod: false}})
+		op.ConfirmedDrops = []string{probeMod}
+		if err := c.ApplyMods(ctx, id, admin, op, stopOpts); err != nil {
+			t.Fatalf("ApplyMods: %v", err)
+		}
+		backInGame(t, prev)
 		dumpModLines(t)
 		if logged("Loading mod "+probeMod) || logged("FOREMAN-T10-LOADED") {
 			t.Fatal("the game loaded the mod after it was turned off")

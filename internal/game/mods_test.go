@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
@@ -549,5 +550,124 @@ func TestApplyModsRejectsABadCountdown(t *testing.T) {
 	err := r.c.ApplyMods(context.Background(), id, admin, r.modOp(id, "x"), StopOptions{Countdown: -1})
 	if !errors.Is(err, ErrCountdown) {
 		t.Errorf("ApplyMods = %v, want ErrCountdown", err)
+	}
+}
+
+// dropWorld makes a running Space Age world whose newest save uses the mod
+// foreman-test, which the world has installed and on.
+func (r *rig) dropWorld() string {
+	r.t.Helper()
+	id, err := r.worlds.Create(context.Background(), "Drops", "2.1.24", true)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	r.putSave(id, "2.1.24-space-age-testmod.zip", "base.zip", time.Now().Add(-time.Hour))
+	r.writeFile(id, filepath.Join(world.ModsDir, "foreman-test_0.1.0.zip"), modZip(r.t, "foreman-test", "0.1.0", "2.1"))
+	r.start(id)
+	return id
+}
+
+func (r *rig) problemKinds(err error) []world.ProblemKind {
+	r.t.Helper()
+	pe, ok := errors.AsType[*PrecheckError](err)
+	if !ok {
+		r.t.Fatalf("ApplyMods = %v, want a *PrecheckError", err)
+	}
+	var kinds []world.ProblemKind
+	for _, p := range pe.Check.Problems {
+		kinds = append(kinds, p.Kind)
+	}
+	return kinds
+}
+
+// SPEC 9.4, 7.4: turning off a mod the loading save uses, after the admin
+// confirmed the game deletes its content, ends with the game running.
+func TestApplyModsConfirmedDropRestartsTheGame(t *testing.T) {
+	for name, change := range map[string]world.ModChange{
+		"disable": {Enabled: map[string]bool{"foreman-test": false}},
+		"remove":  {Enabled: map[string]bool{"foreman-test": false}, Remove: []string{"foreman-test_0.1.0.zip"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newRig(t, rigOptions{})
+			id := r.dropWorld()
+			op := r.modOp(id, name+" foreman-test")
+			op.Change, op.ConfirmedDrops = change, []string{"foreman-test"}
+			if err := r.applyMods(id, op); err != nil {
+				t.Fatalf("ApplyMods = %v, want the world running", err)
+			}
+			if st := r.c.Status(id); st.State != StateRunning || st.Operation.Error != "" {
+				t.Errorf("state %s, op %+v", st.State, st.Operation)
+			}
+			if snaps := r.snapshots(id); len(snaps) == 0 || snaps[0].Label != world.LabelBeforeMods {
+				t.Errorf("no Before mod change snapshot: %+v", snaps)
+			}
+			done, _ := r.modAudit()
+			if len(done) != 1 || !strings.Contains(done[0], "foreman-test") || !strings.Contains(done[0], "confirmed") {
+				t.Errorf("audit %v, want the confirmed drop recorded", done)
+			}
+		})
+	}
+}
+
+// Without the confirmation the refusal stands, as before.
+func TestApplyModsUnconfirmedDropStillRefuses(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.dropWorld()
+	op := r.modOp(id, "disable foreman-test")
+	op.Change = world.ModChange{Enabled: map[string]bool{"foreman-test": false}}
+	err := r.applyMods(id, op)
+	if kinds := r.problemKinds(err); !slices.Equal(kinds, []world.ProblemKind{world.ProblemModDisabled}) {
+		t.Errorf("problems %v, want mod-disabled", kinds)
+	}
+	if st := r.c.Status(id); st.State == StateRunning {
+		t.Error("the game was started past a refused check")
+	}
+}
+
+// A confirmation for another mod, or one next to a different problem, does
+// not pass the check.
+func TestApplyModsPartlyConfirmedStillRefuses(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.dropWorld()
+	f := newFetcher()
+	dl := r.offer(f, "oldline", "1.0.0", "1.1") // made for another game line
+	r.c.SetModFetcher(f)
+	op := r.modOp(id, "disable foreman-test, install oldline", dl)
+	op.Change = world.ModChange{Enabled: map[string]bool{"foreman-test": false}}
+	op.ConfirmedDrops = []string{"foreman-test"}
+	kinds := r.problemKinds(r.applyMods(id, op))
+	if !slices.Equal(kinds, []world.ProblemKind{world.ProblemModGameVersion}) {
+		t.Errorf("problems %v, want only the mod version problem left", kinds)
+	}
+
+	r2 := newRig(t, rigOptions{})
+	id = r2.dropWorld()
+	op = r2.modOp(id, "disable foreman-test")
+	op.Change = world.ModChange{Enabled: map[string]bool{"foreman-test": false}}
+	op.ConfirmedDrops = []string{"some-other-mod"}
+	if kinds := r2.problemKinds(r2.applyMods(id, op)); !slices.Equal(kinds, []world.ProblemKind{world.ProblemModDisabled}) {
+		t.Errorf("problems %v, want mod-disabled", kinds)
+	}
+}
+
+// One problem naming two mods passes only when both are confirmed.
+func TestConfirmedDropNeedsEveryNamedMod(t *testing.T) {
+	two := world.Problem{Kind: world.ProblemModDisabled, Mods: []string{"a", "b"}}
+	cases := []struct {
+		p     world.Problem
+		drops []string
+		want  bool
+	}{
+		{two, []string{"a", "b"}, true},
+		{two, []string{"a"}, false},
+		{two, nil, false},
+		{world.Problem{Kind: world.ProblemModMissing, Mods: []string{"a"}}, []string{"a"}, true},
+		{world.Problem{Kind: world.ProblemSpaceAgeOff, Names: []string{"a"}}, []string{"a"}, false},
+		{world.Problem{Kind: world.ProblemModDisabled}, []string{"a"}, false},
+	}
+	for _, c := range cases {
+		if got := confirmedDrop(c.p, c.drops); got != c.want {
+			t.Errorf("confirmedDrop(%+v, %v) = %v, want %v", c.p, c.drops, got, c.want)
+		}
 	}
 }
