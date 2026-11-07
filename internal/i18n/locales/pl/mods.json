@@ -23,13 +23,15 @@
     "many": "{count} modyfikacji dla Factorio {line}"
   },
   "mods.search.none": "Żadna modyfikacja dla Factorio {line} nie pasuje. Należy spróbować krótszej części nazwy.",
-  "mods.search.install": "Zainstaluj {mod}",
+  "mods.search.add": "Dodaj do planu",
   "mods.fact.latest": "Najnowsza wersja",
   "mods.fact.game_version": "Wersja gry",
   "mods.fact.downloads": "Pobrania",
   "mods.badge.installed": "Zainstalowana",
-  "mods.badge.built_in": "Wbudowana",
+  "mods.badge.in_plan": "W planie",
   "mods.badge.local": "Folder lokalny",
+  "mods.portal.link": "Portal modyfikacji",
+  "mods.portal.for": "dla {mod}, otwiera się w nowej karcie",
   "mods.installed.heading": "Zainstalowane modyfikacje",
   "mods.installed.caption": {
     "one": "Modyfikacje świata {world}: {count} modyfikacja.",
@@ -76,7 +78,13 @@
     "few": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć.",
     "many": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć."
   },
-  "mods.notice.fix": "Napraw",
+  "mods.notice.one": "Modyfikacji {mod} {version} nie ma już w portalu modyfikacji, więc gracze nie mogą dołączyć.",
+  "mods.notice.update": "Zaktualizuj {mod}",
+  "mods.notice.review": {
+    "one": "Sprawdź {count} modyfikację",
+    "few": "Sprawdź {count} modyfikacje",
+    "many": "Sprawdź {count} modyfikacji"
+  },
   "mods.sync.heading": "Dopasuj modyfikacje do zapisu",
   "mods.sync.text": "Ustawia modyfikacje świata na te, z którymi utworzono zapis {save}: instaluje brakujące, zmienia wersje i wyłącza pozostałe. Najpierw widać plan.",
   "mods.sync.button": "Dopasuj modyfikacje do zapisu",
@@ -95,6 +103,9 @@
   "mods.settings.text": "Wartości ustawień modyfikacji znajdują się w pliku {file}. Można go pobrać, aby zachować kopię lub użyć go w innym świecie.",
   "mods.settings.download": "Pobierz mod-settings.dat",
   "mods.settings.none": "Ten świat nie ma jeszcze pliku {file}. Gra tworzy go przy pierwszym uruchomieniu z modyfikacjami.",
+  "mods.settings.where": "Klient Factorio przechowuje ten plik w swoim folderze modyfikacji: Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Ustawienia startowe zaczną obowiązywać przy następnym uruchomieniu świata.",
+  "mods.settings.apply_running": "Ustawienia startowe zaczną obowiązywać przy następnym uruchomieniu świata, więc Foreman go zrestartuje.",
   "mods.settings.replace": "Zastąp {file} wybranym plikiem.",
   "mods.settings.label": "Nowy {file}",
   "mods.settings.hint": "Co najwyżej {limit}.",
@@ -102,6 +113,7 @@
   "mods.settings.empty": "Ten plik jest pusty. Należy wybrać plik mod-settings.dat.",
   "mods.settings.changed": "Modyfikacje świata zmieniły się po otwarciu tej strony, więc nic nie zmieniono. Należy sprawdzić stronę i ponownie przesłać plik.",
   "mods.plan.heading.install": "Zainstalować {mod} w świecie {world}?",
+  "mods.plan.heading.install_some": "Zainstalować modyfikacje w świecie {world}?",
   "mods.plan.heading.update": "Zaktualizować modyfikacje świata {world}?",
   "mods.plan.heading.update_one": "Zaktualizować {mod} w świecie {world}?",
   "mods.plan.heading.sync": "Dopasować modyfikacje świata {world} do zapisu {save}?",
@@ -134,6 +146,11 @@
   "mods.plan.warn_stop": "Ostrzeż graczy, a potem zapisz grę i zatrzymaj serwer.",
   "mods.plan.snapshot": "Wykonaj migawkę świata {world} z etykietą „{label}”. Jeśli migawka się nie powiedzie, nic więcej się nie dzieje.",
   "mods.plan.change": "Zmień modyfikacje:",
+  "mods.plan.asked.heading": "Wybrane modyfikacje:",
+  "mods.plan.asked.remove": "Usuń z planu",
+  "mods.plan.needed.heading": "Czego potrzebują:",
+  "mods.plan.change_above": "Wprowadź zmiany modyfikacji wymienione powyżej.",
+  "mods.plan.add.heading": "Dodaj kolejną modyfikację",
   "mods.plan.start": "Ponownie uruchom serwer.",
   "mods.plan.undo": "Aby cofnąć, należy przywrócić tę migawkę na stronie „Migawki”.",
   "mods.plan.group.install": "Instalacja",
@@ -187,7 +204,8 @@
   "mods.optional.hint": "Modyfikacja z planu może z nich korzystać, ale ich nie wymaga. Zaznaczenie jednej dodaje ją razem ze wszystkim, czego wymaga.",
   "mods.optional.item": "{mod}, oferowana przez {of}",
   "mods.unresolved.legend": "Portal modyfikacji nie ma {mod} {version}",
-  "mods.unresolved.hint": "Zapis utworzono z tą wersją. Należy wybrać, co zrobić; do tego czasu planu nie można zastosować. „Najbliższe” oznacza wydanie najbliższe tej wersji dla Factorio {line}.",
+  "mods.unresolved.hint": "Zapis utworzono z tą wersją. Należy wybrać, co zrobić; do tego czasu planu nie można zastosować.",
+  "mods.unresolved.nearest_hint": "„Najbliższe” oznacza wydanie najbliższe tej wersji dla Factorio {line}.",
   "mods.unresolved.upload": "Prześlij plik zip {mod} {version}",
   "mods.unresolved.uploaded": "Użyj przesłanego pliku zip {mod} {version}",
   "mods.unresolved.nearest": "Użyj {mod} {version}, najbliższego wydania dla Factorio {line}",
@@ -238,12 +256,23 @@
     "few": "Plan zaktualizowany: zmieniają się {count} modyfikacje.",
     "many": "Plan zaktualizowany: zmienia się {count} modyfikacji."
   },
+  "mods.plan.added": {
+    "one": "Dodano {mod}. Plan obejmuje {count} modyfikację.",
+    "few": "Dodano {mod}. Plan obejmuje {count} modyfikacje.",
+    "many": "Dodano {mod}. Plan obejmuje {count} modyfikacji."
+  },
+  "mods.plan.removed": {
+    "one": "Usunięto {mod}. Plan obejmuje {count} modyfikację.",
+    "few": "Usunięto {mod}. Plan obejmuje {count} modyfikacje.",
+    "many": "Usunięto {mod}. Plan obejmuje {count} modyfikacji."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan zaktualizowany: ma konflikt, więc nie można go zastosować.",
     "few": "Plan zaktualizowany: ma {count} konflikty, więc nie można go zastosować.",
     "many": "Plan zaktualizowany: ma {count} konfliktów, więc nie można go zastosować."
   },
   "mods.error.cross_site": "Ten plan otwarto z innej witryny, więc Foreman go nie ustalił. Nic nie zmieniono. Aby zobaczyć plan, należy wybrać „Spróbuj ponownie”.",
-  "mods.built_in.note": "Wbudowane modyfikacje są częścią gry i zależą od ustawienia Ery Kosmosu w świecie.",
-  "mods.built_in.settings": "Zmień Erę Kosmosu w ustawieniach świata"
+  "mods.built_in.line_space_age": "Wbudowane, wersja {version}: {mods}. Zależą od ustawienia Ery Kosmosu.",
+  "mods.built_in.line": "Wbudowane, wersja {version}: {mods}.",
+  "mods.built_in.change": "Zmień Erę Kosmosu"
 }

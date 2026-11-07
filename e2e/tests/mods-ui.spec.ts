@@ -17,12 +17,11 @@ test.describe("mods tab", () => {
     await expect(page.getByRole("link", { name: "Mods", exact: true })).toHaveAttribute("aria-current", "page");
     const table = page.getByRole("table", { name: /Mods of Base/ });
     await expect(table.getByRole("row", { name: /a-mod-with-a-rather-long-name/ })).toBeVisible();
-    // A built-in mod is listed but offers no Remove (SPEC 9.7).
-    const base = table.getByRole("row").filter({ hasText: "Built in" }).first();
-    await expect(base.getByRole("link")).toHaveCount(0);
-    // What built-in mods follow is said once, above the table, with the way to change it.
-    await expect(page.getByText("follow the world's Space Age setting")).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Change Space Age in the world's settings" })).toHaveAttribute("href", "/worlds/base/settings");
+    // Built-in mods are one line above the table, not rows, with the way to change them (SPEC 9.7).
+    await expect(table.getByRole("row", { name: /\bbase\b/ })).toHaveCount(0);
+    await expect(page.locator("#mods-built-in")).toContainText("Built in, version 2.1.24: base");
+    await expect(page.getByText("They follow Space Age.")).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Change Space Age", exact: true })).toHaveAttribute("href", "/worlds/base/settings");
     // Each row's buttons name their mod for a screen reader.
     await expect(table.getByRole("link", { name: "Disable other" })).toBeVisible();
     await expect(table.getByRole("link", { name: "Remove other" })).toBeVisible();

@@ -16,7 +16,7 @@ test("a change to the other world ends on its Mods tab, with an undo that restor
   await expect(page.getByRole("heading", { level: 1, name: "Second" })).toBeVisible();
   await page.getByLabel("Mod name").fill("fp-other");
   await page.getByRole("button", { name: "Search" }).click();
-  await page.getByRole("link", { name: "Install fp-other" }).click();
+  await page.getByRole("link", { name: "Add to plan fp-other", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-other in Second?" })).toBeVisible();
   // The world is stopped, so the plan has no countdown and says it stays stopped.
   await expect(page.locator("#countdown")).toHaveCount(0);

@@ -21,13 +21,15 @@
     "other": "{count} mods for Factorio {line}"
   },
   "mods.search.none": "No mod for Factorio {line} matches. Try a shorter part of the name.",
-  "mods.search.install": "Install {mod}",
+  "mods.search.add": "Add to plan",
   "mods.fact.latest": "Latest version",
   "mods.fact.game_version": "Game version",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installed",
-  "mods.badge.built_in": "Built in",
+  "mods.badge.in_plan": "In plan",
   "mods.badge.local": "Local folder",
+  "mods.portal.link": "Mod portal",
+  "mods.portal.for": "for {mod}, opens in a new tab",
   "mods.installed.heading": "Installed mods",
   "mods.installed.caption": {
     "one": "Mods of {world}: {count} mod.",
@@ -69,7 +71,12 @@
     "one": "{count} mod of {world} can no longer be downloaded by players, so they cannot join.",
     "other": "{count} mods of {world} can no longer be downloaded by players, so they cannot join."
   },
-  "mods.notice.fix": "Fix",
+  "mods.notice.one": "{mod} {version} is gone from the mod portal, so players cannot join.",
+  "mods.notice.update": "Update {mod}",
+  "mods.notice.review": {
+    "one": "Review {count} mod",
+    "other": "Review {count} mods"
+  },
   "mods.sync.heading": "Match mods to the save",
   "mods.sync.text": "Makes the world's mods the ones the save {save} was made with: installs the missing ones, changes versions, and disables the rest. You see the plan first.",
   "mods.sync.button": "Match mods to the save",
@@ -88,6 +95,9 @@
   "mods.settings.text": "The values of the mods' settings live in {file}. Download it to keep a copy or to use it in another world.",
   "mods.settings.download": "Download mod-settings.dat",
   "mods.settings.none": "This world has no {file} yet. The game writes one when it first runs with mods.",
+  "mods.settings.where": "Your Factorio client keeps it in its mods folder: Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Startup settings apply when the world next starts.",
+  "mods.settings.apply_running": "Startup settings apply when the world next starts, so Foreman restarts it.",
   "mods.settings.replace": "Replace {file} with the file you choose.",
   "mods.settings.label": "New {file}",
   "mods.settings.hint": "At most {limit}.",
@@ -95,6 +105,7 @@
   "mods.settings.empty": "This file is empty. Choose a mod-settings.dat file.",
   "mods.settings.changed": "The world's mods changed after this page opened, so nothing was changed. Check the page, then upload the file again.",
   "mods.plan.heading.install": "Install {mod} in {world}?",
+  "mods.plan.heading.install_some": "Install mods in {world}?",
   "mods.plan.heading.update": "Update the mods of {world}?",
   "mods.plan.heading.update_one": "Update {mod} in {world}?",
   "mods.plan.heading.sync": "Match the mods of {world} to the save {save}?",
@@ -124,6 +135,11 @@
   "mods.plan.warn_stop": "Warn the players, then save and stop the server.",
   "mods.plan.snapshot": "Take a snapshot of {world}, labelled \"{label}\". If the snapshot fails, nothing else happens.",
   "mods.plan.change": "Change the mods:",
+  "mods.plan.asked.heading": "Mods you asked for:",
+  "mods.plan.asked.remove": "Remove from plan",
+  "mods.plan.needed.heading": "What they need:",
+  "mods.plan.change_above": "Make the mod changes listed above.",
+  "mods.plan.add.heading": "Add another mod",
   "mods.plan.start": "Start the server again.",
   "mods.plan.undo": "To undo, restore that snapshot from the Snapshots tab.",
   "mods.plan.group.install": "Install",
@@ -171,7 +187,8 @@
   "mods.optional.hint": "A mod in the plan can use these, but does not need them. Tick one to add it, with anything it needs.",
   "mods.optional.item": "{mod}, offered by {of}",
   "mods.unresolved.legend": "The mod portal does not have {mod} {version}",
-  "mods.unresolved.hint": "The save was made with this version. Choose what to do; the plan cannot be applied until you do. Nearest means the closest release for Factorio {line}.",
+  "mods.unresolved.hint": "The save was made with this version. Choose what to do; the plan cannot be applied until you do.",
+  "mods.unresolved.nearest_hint": "Nearest means the closest release for Factorio {line}.",
   "mods.unresolved.upload": "Upload the zip of {mod} {version}",
   "mods.unresolved.uploaded": "Use the uploaded zip of {mod} {version}",
   "mods.unresolved.nearest": "Use {mod} {version}, the nearest release for Factorio {line}",
@@ -220,11 +237,20 @@
     "one": "Plan updated: {count} mod changes.",
     "other": "Plan updated: {count} mods change."
   },
+  "mods.plan.added": {
+    "one": "Added {mod}. The plan has {count} mod.",
+    "other": "Added {mod}. The plan has {count} mods."
+  },
+  "mods.plan.removed": {
+    "one": "Removed {mod}. The plan has {count} mod.",
+    "other": "Removed {mod}. The plan has {count} mods."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan updated: it has a conflict, so it cannot be applied.",
     "other": "Plan updated: it has {count} conflicts, so it cannot be applied."
   },
   "mods.error.cross_site": "This plan was opened from another site, so Foreman did not work it out. Nothing was changed. Choose Try again to see the plan.",
-  "mods.built_in.note": "Built-in mods come with the game and follow the world's Space Age setting.",
-  "mods.built_in.settings": "Change Space Age in the world's settings"
+  "mods.built_in.line_space_age": "Built in, version {version}: {mods}. They follow Space Age.",
+  "mods.built_in.line": "Built in, version {version}: {mods}.",
+  "mods.built_in.change": "Change Space Age"
 }

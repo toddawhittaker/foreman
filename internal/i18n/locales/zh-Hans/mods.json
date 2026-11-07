@@ -19,13 +19,15 @@
     "other": "适用于 Factorio {line} 的模组：{count} 个"
   },
   "mods.search.none": "没有匹配的适用于 Factorio {line} 的模组。请尝试名称中更短的一部分。",
-  "mods.search.install": "安装 {mod}",
+  "mods.search.add": "加入计划",
   "mods.fact.latest": "最新版本",
   "mods.fact.game_version": "游戏版本",
   "mods.fact.downloads": "下载量",
   "mods.badge.installed": "已安装",
-  "mods.badge.built_in": "内置",
+  "mods.badge.in_plan": "已在计划中",
   "mods.badge.local": "本地文件夹",
+  "mods.portal.link": "模组门户",
+  "mods.portal.for": "（{mod}，在新标签页中打开）",
   "mods.installed.heading": "已安装的模组",
   "mods.installed.caption": {
     "other": "{world} 的模组：共 {count} 个。"
@@ -62,7 +64,11 @@
   "mods.notice": {
     "other": "玩家已无法下载 {world} 的 {count} 个模组，因此无法加入。"
   },
-  "mods.notice.fix": "修复",
+  "mods.notice.one": "模组门户上已没有 {mod} {version}，因此玩家无法加入。",
+  "mods.notice.update": "更新 {mod}",
+  "mods.notice.review": {
+    "other": "查看 {count} 个模组"
+  },
   "mods.sync.heading": "使模组与存档一致",
   "mods.sync.text": "将世界的模组改为存档 {save} 制作时使用的模组：安装缺少的，更改版本，并禁用其余的。会先显示计划。",
   "mods.sync.button": "使模组与存档一致",
@@ -81,6 +87,9 @@
   "mods.settings.text": "模组设置的值保存在 {file} 中。可下载该文件以保留副本，或在其他世界中使用。",
   "mods.settings.download": "下载 mod-settings.dat",
   "mods.settings.none": "此世界还没有 {file}。游戏首次带模组运行时会写入一个。",
+  "mods.settings.where": "Factorio 客户端将该文件保存在其模组文件夹中：Windows {windows}，macOS {macos}，Linux {linux}。",
+  "mods.settings.apply": "启动设置在世界下次启动时生效。",
+  "mods.settings.apply_running": "启动设置在世界下次启动时生效，因此 Foreman 会重启它。",
   "mods.settings.replace": "用所选文件替换 {file}。",
   "mods.settings.label": "新的 {file}",
   "mods.settings.hint": "最大 {limit}。",
@@ -88,6 +97,7 @@
   "mods.settings.empty": "此文件为空。请选择 mod-settings.dat 文件。",
   "mods.settings.changed": "此页面打开后，世界的模组发生了变化，因此未做任何更改。请检查页面，然后重新上传文件。",
   "mods.plan.heading.install": "在 {world} 中安装 {mod}？",
+  "mods.plan.heading.install_some": "在 {world} 中安装模组？",
   "mods.plan.heading.update": "更新 {world} 的模组？",
   "mods.plan.heading.update_one": "在 {world} 中更新 {mod}？",
   "mods.plan.heading.sync": "使 {world} 的模组与存档 {save} 一致？",
@@ -114,6 +124,11 @@
   "mods.plan.warn_stop": "警告玩家，然后保存并停止服务器。",
   "mods.plan.snapshot": "为 {world} 创建快照，标签为“{label}”。如果快照失败，不会执行其他操作。",
   "mods.plan.change": "更改模组：",
+  "mods.plan.asked.heading": "已选择的模组：",
+  "mods.plan.asked.remove": "从计划中移除",
+  "mods.plan.needed.heading": "它们需要的模组：",
+  "mods.plan.change_above": "进行上面列出的模组更改。",
+  "mods.plan.add.heading": "添加其他模组",
   "mods.plan.start": "重新启动服务器。",
   "mods.plan.undo": "如需撤销，请在“快照”页面恢复该快照。",
   "mods.plan.group.install": "安装",
@@ -155,7 +170,8 @@
   "mods.optional.hint": "计划中的模组可以使用这些模组，但并不需要它们。勾选某一项即可添加它及其所需的一切。",
   "mods.optional.item": "{mod}，由 {of} 提供",
   "mods.unresolved.legend": "模组门户没有 {mod} {version}",
-  "mods.unresolved.hint": "存档是用此版本制作的。请选择处理方式；选择之前无法应用此计划。“最接近”指适用于 Factorio {line} 的最接近的发布版本。",
+  "mods.unresolved.hint": "存档是用此版本制作的。请选择处理方式；选择之前无法应用此计划。",
+  "mods.unresolved.nearest_hint": "“最接近”指适用于 Factorio {line} 的最接近的发布版本。",
   "mods.unresolved.upload": "上传 {mod} {version} 的 zip 文件",
   "mods.unresolved.uploaded": "使用已上传的 {mod} {version} zip 文件",
   "mods.unresolved.nearest": "使用 {mod} {version}，适用于 Factorio {line} 的最接近的发布版本",
@@ -202,10 +218,17 @@
   "mods.plan.redrawn": {
     "other": "计划已更新：将更改 {count} 个模组。"
   },
+  "mods.plan.added": {
+    "other": "已添加 {mod}。计划中有 {count} 个模组。"
+  },
+  "mods.plan.removed": {
+    "other": "已移除 {mod}。计划中有 {count} 个模组。"
+  },
   "mods.plan.redrawn_conflicts": {
     "other": "计划已更新：存在 {count} 个冲突，因此无法应用。"
   },
   "mods.error.cross_site": "此计划是从其他网站打开的，因此 Foreman 未制定该计划。未做任何更改。选择“重试”即可查看计划。",
-  "mods.built_in.note": "内置模组随游戏提供，并跟随世界的太空时代设置。",
-  "mods.built_in.settings": "在世界设置中更改太空时代"
+  "mods.built_in.line_space_age": "内置，版本 {version}：{mods}。它们跟随太空时代设置。",
+  "mods.built_in.line": "内置，版本 {version}：{mods}。",
+  "mods.built_in.change": "更改太空时代"
 }

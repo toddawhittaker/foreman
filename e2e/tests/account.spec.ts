@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { test, expect, checkPage, createAdmin, openMenu, tabTo } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, openMenu, seedWorld, tabTo } from "./foreman.js";
 
 // SPEC 9.11, 11.4: the factorio.com account page. The username and token are
 // written once and never shown back. Every project runs these, so each holds
@@ -88,6 +88,9 @@ test.describe("with a secret key", () => {
 
     await tabTo(page, page.getByLabel("factorio.com username"));
     await page.keyboard.type(username);
+    // The token's hint links to the profile page, where the token is; then the field.
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: /your factorio\.com profile page/ })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("factorio.com token")).toBeFocused();
     await page.keyboard.type(token);
@@ -167,5 +170,29 @@ test.describe("with an account in the environment", () => {
     await expect(page.locator("main form")).toHaveCount(0);
     await expectNoValues(page, username, token);
     await checkPage(page);
+  });
+});
+
+// SPEC 9.11, 14.17: the token's hint links to where the token is, and the
+// Mods tab's link to this page comes back to the Mods tab once the account is saved.
+test.describe("from the Mods tab", () => {
+  test.use({ foremanEnv: { FOREMAN_SECRET_KEY: key }, fakeGameOn: true });
+
+  test("the profile link, then saving returns to the Mods tab", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    await page.goto("/worlds/base/mods");
+    await page.getByRole("link", { name: "Enter the factorio.com account" }).click();
+    await expect(page).toHaveURL("/settings/factorio-account?return=%2Fworlds%2Fbase%2Fmods");
+    const profile = page.getByRole("link", { name: "your factorio.com profile page (opens in a new tab)" });
+    await expect(profile).toHaveAttribute("href", "https://factorio.com/profile");
+    await expect(profile).toHaveAttribute("target", "_blank");
+    await expect(profile).toHaveAttribute("rel", "noopener noreferrer");
+    await checkPage(page);
+    await page.getByLabel("factorio.com username").fill(username);
+    await page.getByLabel("factorio.com token").fill(token);
+    await page.getByRole("button", { name: "Save account" }).click();
+    await expect(page).toHaveURL("/worlds/base/mods");
+    await expect(page.getByText("Mod downloads are off")).toHaveCount(0);
   });
 });

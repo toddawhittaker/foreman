@@ -12,7 +12,7 @@
 </div>
 <div class="field">
   <label for="account-token" class="required">{{t "account.token.label"}}</label>
-  <p class="hint" id="account-token-hint">{{t "account.token.hint"}}</p>
+  <p class="hint" id="account-token-hint">{{tHTML "account.token.hint" "profile" (extLink "https://factorio.com/profile" "account.token.profile")}}</p>
   <input id="account-token" name="token" type="password" required autocomplete="off" autocapitalize="none" spellcheck="false"
     {{- if not .TokenError.IsZero}} aria-invalid="true"{{end}} aria-describedby="account-token-hint{{if not .TokenError.IsZero}} account-token-error{{end}}">
   {{- if not .TokenError.IsZero}}

@@ -77,7 +77,7 @@ test.describe("no factorio.com account", () => {
     await expect(page.getByRole("heading", { level: 3, name: "fp-nodl" })).toBeVisible();
     await checkPage(page);
 
-    await page.getByRole("link", { name: "Install fp-nodl" }).click();
+    await page.getByRole("link", { name: "Add to plan fp-nodl", exact: true }).click();
     await expect(page.locator(".message--note")).toContainText("This plan downloads 1 mod, and downloads are off because Foreman has no factorio.com account.");
     await expect(page.getByRole("button", { name: /^Install/ })).toHaveCount(0);
     await checkPage(page);

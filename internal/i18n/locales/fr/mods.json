@@ -21,13 +21,15 @@
     "other": "{count} mods pour Factorio {line}"
   },
   "mods.search.none": "Aucun mod pour Factorio {line} ne correspond. Essayez une partie plus courte du nom.",
-  "mods.search.install": "Installer {mod}",
+  "mods.search.add": "Ajouter au plan",
   "mods.fact.latest": "Dernière version",
   "mods.fact.game_version": "Version du jeu",
   "mods.fact.downloads": "Téléchargements",
   "mods.badge.installed": "Installé",
-  "mods.badge.built_in": "Intégré",
+  "mods.badge.in_plan": "Dans le plan",
   "mods.badge.local": "Dossier local",
+  "mods.portal.link": "Portail de mods",
+  "mods.portal.for": "de {mod}, s’ouvre dans un nouvel onglet",
   "mods.installed.heading": "Mods installés",
   "mods.installed.caption": {
     "one": "Mods de {world} : {count} mod.",
@@ -69,7 +71,12 @@
     "one": "Les joueurs ne peuvent plus télécharger {count} mod de {world}, ils ne peuvent donc pas rejoindre.",
     "other": "Les joueurs ne peuvent plus télécharger {count} mods de {world}, ils ne peuvent donc pas rejoindre."
   },
-  "mods.notice.fix": "Corriger",
+  "mods.notice.one": "{mod} {version} n’est plus sur le portail de mods, les joueurs ne peuvent donc pas rejoindre.",
+  "mods.notice.update": "Mettre {mod} à jour",
+  "mods.notice.review": {
+    "one": "Vérifier {count} mod",
+    "other": "Vérifier {count} mods"
+  },
   "mods.sync.heading": "Faire correspondre les mods à la sauvegarde",
   "mods.sync.text": "Fait des mods du monde ceux avec lesquels la sauvegarde {save} a été créée : installe ceux qui manquent, change les versions et désactive les autres. Vous voyez d’abord le plan.",
   "mods.sync.button": "Faire correspondre les mods à la sauvegarde",
@@ -88,6 +95,9 @@
   "mods.settings.text": "Les valeurs des paramètres des mods se trouvent dans {file}. Téléchargez-le pour en garder une copie ou pour l’utiliser dans un autre monde.",
   "mods.settings.download": "Télécharger mod-settings.dat",
   "mods.settings.none": "Ce monde n’a pas encore de {file}. Le jeu en écrit un lors de sa première exécution avec des mods.",
+  "mods.settings.where": "Votre client Factorio le garde dans son dossier de mods : Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Les paramètres de démarrage s’appliquent au prochain démarrage du monde.",
+  "mods.settings.apply_running": "Les paramètres de démarrage s’appliquent au prochain démarrage du monde, Foreman le redémarre donc.",
   "mods.settings.replace": "Remplacer {file} par le fichier que vous choisissez.",
   "mods.settings.label": "Nouveau {file}",
   "mods.settings.hint": "{limit} au plus.",
@@ -95,6 +105,7 @@
   "mods.settings.empty": "Ce fichier est vide. Choisissez un fichier mod-settings.dat.",
   "mods.settings.changed": "Les mods du monde ont changé après l’ouverture de cette page, rien n’a donc été modifié. Vérifiez la page, puis envoyez à nouveau le fichier.",
   "mods.plan.heading.install": "Installer {mod} dans {world} ?",
+  "mods.plan.heading.install_some": "Installer des mods dans {world} ?",
   "mods.plan.heading.update": "Mettre à jour les mods de {world} ?",
   "mods.plan.heading.update_one": "Mettre {mod} à jour dans {world} ?",
   "mods.plan.heading.sync": "Faire correspondre les mods de {world} à la sauvegarde {save} ?",
@@ -124,6 +135,11 @@
   "mods.plan.warn_stop": "Avertir les joueurs, puis sauvegarder et arrêter le serveur.",
   "mods.plan.snapshot": "Prendre un instantané de {world}, nommé « {label} ». Si l’instantané échoue, rien d’autre ne se passe.",
   "mods.plan.change": "Modifier les mods :",
+  "mods.plan.asked.heading": "Mods demandés :",
+  "mods.plan.asked.remove": "Retirer du plan",
+  "mods.plan.needed.heading": "Ce dont ils ont besoin :",
+  "mods.plan.change_above": "Appliquer les changements de mods indiqués ci-dessus.",
+  "mods.plan.add.heading": "Ajouter un autre mod",
   "mods.plan.start": "Démarrer à nouveau le serveur.",
   "mods.plan.undo": "Pour annuler, restaurez cet instantané depuis la page « Instantanés ».",
   "mods.plan.group.install": "Installer",
@@ -171,7 +187,8 @@
   "mods.optional.hint": "Un mod du plan peut les utiliser, mais n’en a pas besoin. Cochez-en un pour l’ajouter, avec tout ce dont il a besoin.",
   "mods.optional.item": "{mod}, proposé par {of}",
   "mods.unresolved.legend": "Le portail de mods n’a pas {mod} {version}",
-  "mods.unresolved.hint": "La sauvegarde a été créée avec cette version. Choisissez quoi faire ; le plan ne peut pas être appliqué tant que vous n’avez pas choisi. « La plus proche » désigne la version la plus proche pour Factorio {line}.",
+  "mods.unresolved.hint": "La sauvegarde a été créée avec cette version. Choisissez quoi faire ; le plan ne peut pas être appliqué tant que vous n’avez pas choisi.",
+  "mods.unresolved.nearest_hint": "« La plus proche » désigne la version la plus proche pour Factorio {line}.",
   "mods.unresolved.upload": "Envoyer le zip de {mod} {version}",
   "mods.unresolved.uploaded": "Utiliser le zip envoyé de {mod} {version}",
   "mods.unresolved.nearest": "Utiliser {mod} {version}, la version la plus proche pour Factorio {line}",
@@ -220,11 +237,20 @@
     "one": "Plan mis à jour : {count} mod change.",
     "other": "Plan mis à jour : {count} mods changent."
   },
+  "mods.plan.added": {
+    "one": "{mod} ajouté. Le plan compte {count} mod.",
+    "other": "{mod} ajouté. Le plan compte {count} mods."
+  },
+  "mods.plan.removed": {
+    "one": "{mod} retiré. Le plan compte {count} mod.",
+    "other": "{mod} retiré. Le plan compte {count} mods."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan mis à jour : il comporte un conflit et ne peut donc pas être appliqué.",
     "other": "Plan mis à jour : il comporte {count} conflits et ne peut donc pas être appliqué."
   },
   "mods.error.cross_site": "Ce plan a été ouvert depuis un autre site, Foreman ne l’a donc pas établi. Rien n’a été modifié. Choisissez « Réessayer » pour voir le plan.",
-  "mods.built_in.note": "Les mods intégrés font partie du jeu et suivent le réglage de l’Ère spatiale du monde.",
-  "mods.built_in.settings": "Modifier l’Ère spatiale dans les paramètres du monde"
+  "mods.built_in.line_space_age": "Intégrés, version {version} : {mods}. Ils suivent le réglage de l’Ère spatiale.",
+  "mods.built_in.line": "Intégrés, version {version} : {mods}.",
+  "mods.built_in.change": "Modifier l’Ère spatiale"
 }

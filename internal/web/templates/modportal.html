@@ -1,0 +1,4 @@
+{{/* A quiet link to a mod's page on the mod portal, in a new tab; the hidden words name the mod and say so. Takes the mod's name. */}}
+{{define "portal-link" -}}
+<a href="{{portalPath .}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident .)}}</span></a>
+{{- end}}

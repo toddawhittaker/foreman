@@ -23,13 +23,15 @@
     "many": "{count} модов для Factorio {line}"
   },
   "mods.search.none": "Нет модов для Factorio {line}, подходящих под запрос. Введите более короткую часть названия.",
-  "mods.search.install": "Установить {mod}",
+  "mods.search.add": "Добавить в план",
   "mods.fact.latest": "Последняя версия",
   "mods.fact.game_version": "Версия игры",
   "mods.fact.downloads": "Скачивания",
   "mods.badge.installed": "Установлен",
-  "mods.badge.built_in": "Встроенный",
+  "mods.badge.in_plan": "В плане",
   "mods.badge.local": "Локальная папка",
+  "mods.portal.link": "Портал модов",
+  "mods.portal.for": "для {mod}, открывается в новой вкладке",
   "mods.installed.heading": "Установленные моды",
   "mods.installed.caption": {
     "one": "Моды мира {world}: {count} мод.",
@@ -76,7 +78,13 @@
     "few": "Игроки больше не могут скачать {count} мода мира {world}, поэтому не могут зайти.",
     "many": "Игроки больше не могут скачать {count} модов мира {world}, поэтому не могут зайти."
   },
-  "mods.notice.fix": "Исправить",
+  "mods.notice.one": "{mod} {version} больше нет на портале модов, поэтому игроки не могут зайти.",
+  "mods.notice.update": "Обновить {mod}",
+  "mods.notice.review": {
+    "one": "Проверить {count} мод",
+    "few": "Проверить {count} мода",
+    "many": "Проверить {count} модов"
+  },
   "mods.sync.heading": "Привести моды в соответствие с сохранением",
   "mods.sync.text": "Делает модами мира те, с которыми создано сохранение {save}: устанавливает недостающие, меняет версии и отключает остальные. Сначала вы увидите план.",
   "mods.sync.button": "Привести моды в соответствие с сохранением",
@@ -95,6 +103,9 @@
   "mods.settings.text": "Значения настроек модов хранятся в {file}. Скачайте файл, чтобы сохранить копию или использовать его в другом мире.",
   "mods.settings.download": "Скачать mod-settings.dat",
   "mods.settings.none": "В этом мире ещё нет {file}. Игра создаёт его при первом запуске с модами.",
+  "mods.settings.where": "Ваш клиент Factorio хранит этот файл в своей папке модов: Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Настройки запуска применяются при следующем запуске мира.",
+  "mods.settings.apply_running": "Настройки запуска применяются при следующем запуске мира, поэтому Foreman перезапустит его.",
   "mods.settings.replace": "Заменить {file} выбранным файлом.",
   "mods.settings.label": "Новый {file}",
   "mods.settings.hint": "Не более {limit}.",
@@ -102,6 +113,7 @@
   "mods.settings.empty": "Этот файл пуст. Выберите файл mod-settings.dat.",
   "mods.settings.changed": "Моды мира изменились после открытия этой страницы, поэтому ничего не изменено. Проверьте страницу и загрузите файл снова.",
   "mods.plan.heading.install": "Установить {mod} в мир {world}?",
+  "mods.plan.heading.install_some": "Установить моды в мир {world}?",
   "mods.plan.heading.update": "Обновить моды мира {world}?",
   "mods.plan.heading.update_one": "Обновить {mod} в мире {world}?",
   "mods.plan.heading.sync": "Привести моды мира {world} в соответствие с сохранением {save}?",
@@ -134,6 +146,11 @@
   "mods.plan.warn_stop": "Предупредить игроков, затем сохранить игру и остановить сервер.",
   "mods.plan.snapshot": "Сделать снимок мира {world} с названием «{label}». Если снимок сделать не удастся, больше ничего не произойдёт.",
   "mods.plan.change": "Изменить моды:",
+  "mods.plan.asked.heading": "Выбранные моды:",
+  "mods.plan.asked.remove": "Убрать из плана",
+  "mods.plan.needed.heading": "Что им нужно:",
+  "mods.plan.change_above": "Внести перечисленные выше изменения модов.",
+  "mods.plan.add.heading": "Добавить ещё мод",
   "mods.plan.start": "Снова запустить сервер.",
   "mods.plan.undo": "Чтобы отменить, восстановите этот снимок на странице «Снимки».",
   "mods.plan.group.install": "Установить",
@@ -187,7 +204,8 @@
   "mods.optional.hint": "Мод из плана может использовать эти моды, но не требует их. Отметьте мод, чтобы добавить его вместе со всем, что ему нужно.",
   "mods.optional.item": "{mod}, предлагается модом {of}",
   "mods.unresolved.legend": "На портале модов нет {mod} {version}",
-  "mods.unresolved.hint": "Сохранение создано с этой версией. Выберите, что делать; пока вы не выберете, план нельзя применить. «Ближайший» означает ближайший выпуск для Factorio {line}.",
+  "mods.unresolved.hint": "Сохранение создано с этой версией. Выберите, что делать; пока вы не выберете, план нельзя применить.",
+  "mods.unresolved.nearest_hint": "«Ближайший» означает ближайший выпуск для Factorio {line}.",
   "mods.unresolved.upload": "Загрузить zip-файл {mod} {version}",
   "mods.unresolved.uploaded": "Использовать загруженный zip-файл {mod} {version}",
   "mods.unresolved.nearest": "Использовать {mod} {version}, ближайший выпуск для Factorio {line}",
@@ -238,12 +256,23 @@
     "few": "План обновлён: меняются {count} мода.",
     "many": "План обновлён: меняются {count} модов."
   },
+  "mods.plan.added": {
+    "one": "Добавлен {mod}. В плане {count} мод.",
+    "few": "Добавлен {mod}. В плане {count} мода.",
+    "many": "Добавлен {mod}. В плане {count} модов."
+  },
+  "mods.plan.removed": {
+    "one": "Убран {mod}. В плане {count} мод.",
+    "few": "Убран {mod}. В плане {count} мода.",
+    "many": "Убран {mod}. В плане {count} модов."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "План обновлён: в нём {count} конфликт, поэтому его нельзя применить.",
     "few": "План обновлён: в нём {count} конфликта, поэтому его нельзя применить.",
     "many": "План обновлён: в нём {count} конфликтов, поэтому его нельзя применить."
   },
   "mods.error.cross_site": "Этот план открыт с другого сайта, поэтому Foreman не стал его составлять. Ничего не изменено. Нажмите «Повторить», чтобы увидеть план.",
-  "mods.built_in.note": "Встроенные моды входят в игру и следуют настройке Space Age этого мира.",
-  "mods.built_in.settings": "Изменить Space Age в настройках мира"
+  "mods.built_in.line_space_age": "Встроенные, версия {version}: {mods}. Они следуют настройке Space Age.",
+  "mods.built_in.line": "Встроенные, версия {version}: {mods}.",
+  "mods.built_in.change": "Изменить Space Age"
 }
