@@ -48,7 +48,7 @@ jobs:
 
           # A marker uploaded by a run for a fork's pull request is not trusted.
           if found=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=tested-tree-$tree&per_page=100" \
-              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id == .workflow_run.repository_id)] | length'); then
+              --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id != null and .workflow_run.head_repository_id == .workflow_run.repository_id)] | length'); then
             if [ "$found" -gt 0 ]; then
               echo "A green run already tested tree $tree; skipping the build and tests."
               echo "code=false" >> "$GITHUB_OUTPUT"

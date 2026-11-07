@@ -37,7 +37,9 @@ fails, everything runs; if `changes` itself fails, `ci` fails.
 
 A `trailers` job runs on every pull request, even when the rest is
 skipped. It fails when a commit in the pull request, or its title or body,
-credits an AI assistant as co-author, and names the commit. GitHub lists
+credits an AI assistant as co-author, and names the commit. Editing the
+title or body does not rerun CI, so an edit is checked at the next push.
+GitHub lists
 every co-author as a contributor, and a squash merge copies those lines
 onto `main`. The pattern lives in `.github/ai-trailer-check`, which the
 commit-msg hook also runs (see "Secret scanning").
