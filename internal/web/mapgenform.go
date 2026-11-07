@@ -706,7 +706,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 		f.StartingArea.Value = v
 		f.StartingArea.Options = withExtra(f.StartingArea.Options, v)
 	}
-	needed := mapgen.NeededResources(line, spaceAge)
+	needed := mapgen.NeededResources()
 	for _, p := range mgPlanets(line, spaceAge) {
 		summary := planetMsg(p.name)
 		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: summary}
