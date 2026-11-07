@@ -19,10 +19,11 @@ import (
 var files embed.FS
 
 // Control categories the form treats apart from the others, as the game
-// names them. The game's other categories are resource and enemy.
+// names them. The game's other category is enemy.
 const (
-	CategoryTerrain = "terrain"
-	CategoryCliff   = "cliff"
+	CategoryResource = "resource"
+	CategoryTerrain  = "terrain"
+	CategoryCliff    = "cliff"
 )
 
 // Control is one autoplace control: a setting with its own frequency and
@@ -31,6 +32,9 @@ type Control struct {
 	Name     string `json:"name"`
 	Category string `json:"category"`
 	Richness bool   `json:"richness"`
+	// CanBeDisabled says the game's map generator offers an on/off box for
+	// the control.
+	CanBeDisabled bool `json:"can_be_disabled"`
 }
 
 type planet struct {
@@ -43,6 +47,7 @@ type lineData struct {
 	GameVersion string   `json:"game_version"`
 	Presets     []string `json:"presets"`
 	Planets     []planet `json:"planets"`
+	MapTypes    []string `json:"map_types"`
 }
 
 // GameLine is one supported game line and what the rest of Foreman needs to

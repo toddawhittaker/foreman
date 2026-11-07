@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"math"
 	"net/url"
 	"slices"
 	"sort"
@@ -73,11 +74,42 @@ func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
 		}
 	}
 	step(mgStart, p.StartingArea, false)
+	vals.Set(mgMapType, mapgen.ElevationKey)
+	if t, ok := p.PropertyNames[mapgen.ElevationKey]; ok {
+		var name string
+		if json.Unmarshal(t, &name) == nil && slices.Contains(mapgen.MapTypes(line), name) {
+			vals.Set(mgMapType, name)
+		}
+	}
+	if keys, ok := mapgen.TerrainKeysOf(line); ok {
+		for key, field := range map[string]string{keys.MoistureScale: mgMoistureScale, keys.AuxScale: mgAuxScale} {
+			var text string
+			if t, ok := p.PropertyNames[key]; ok && json.Unmarshal(t, &text) == nil {
+				if v, err := strconv.ParseFloat(text, 64); err == nil {
+					step(field, &v, true)
+				}
+			}
+		}
+		for key, field := range map[string]string{keys.MoistureBias: mgMoistureBias, keys.AuxBias: mgAuxBias} {
+			var text string
+			if t, ok := p.PropertyNames[key]; ok && json.Unmarshal(t, &text) == nil {
+				if v, err := strconv.ParseFloat(text, 64); err == nil {
+					code := strconv.Itoa(int(math.Round(v * 100)))
+					if validStep(code, optionsBias) {
+						vals.Set(field, code)
+					}
+				}
+			}
+		}
+	}
 	for _, pl := range mgPlanets(line, spaceAge) {
 		if pl.name != "nauvis" {
 			continue
 		}
 		for _, c := range pl.controls {
+			if ctl, named := p.Controls[c.name]; c.toggle && named && ctl.Size != nil && *ctl.Size == 0 {
+				vals.Set(fieldName(pl.name, c.name, mgOn), "off")
+			}
 			for _, s := range c.settings {
 				name := fieldName(pl.name, c.name, s.key)
 				switch {
@@ -94,6 +126,10 @@ func presetValues(line string, spaceAge bool, preset, seed string) url.Values {
 					step(name, p.Cliff.Richness, false)
 				default:
 					if ctl, ok := p.Controls[c.name]; ok {
+						if c.toggle && s.key == "size" && ctl.Size != nil && *ctl.Size == 0 {
+							// Off is the box, not a step.
+							continue
+						}
 						step(name, map[string]*float64{"frequency": ctl.Frequency, "size": ctl.Size, "richness": ctl.Richness}[s.key], s.invert)
 					}
 				}
@@ -117,7 +153,9 @@ func rawPrefillFor(line, preset string) string {
 	}
 	keys := make([]string, 0, len(p.PropertyNames))
 	for k := range p.PropertyNames {
-		keys = append(keys, k)
+		if !penCovered(line, k) {
+			keys = append(keys, k)
+		}
 	}
 	sort.Strings(keys)
 	lay := func(inner []jsonMember) []jsonMember {

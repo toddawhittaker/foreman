@@ -1,6 +1,9 @@
 package web
 
-import "github.com/toddawhittaker/foreman/internal/i18n"
+import (
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
+	"github.com/toddawhittaker/foreman/internal/i18n"
+)
 
 // Names the game shows, in our language. The wording of each language is the
 // game's own translation (docs/I18N.md, section 2), so a player sees the same
@@ -96,4 +99,23 @@ var achievementMsgs = map[string]i18n.Msg{
 	"mapgen.achievement.not_with_easier_pollution_settings":       i18n.M("mapgen.achievement.not_with_easier_pollution_settings"),
 	"mapgen.achievement.not_with_easier_enemy_expansion_settings": i18n.M("mapgen.achievement.not_with_easier_enemy_expansion_settings"),
 	"mapgen.achievement.not_with_easier_enemy_evolution_settings": i18n.M("mapgen.achievement.not_with_easier_enemy_evolution_settings"),
+}
+
+// mapTypeNames words each map type as the game's map type list does. 1.1
+// calls the default "Normal"; 2.x names it after Nauvis.
+var mapTypeNames = map[string]i18n.Msg{
+	"elevation":        i18n.M("mapgen.map_type.elevation"),
+	"elevation_lakes":  i18n.M("mapgen.map_type.elevation_lakes"),
+	"elevation_island": i18n.M("mapgen.map_type.elevation_island"),
+	"0_17-island":      i18n.M("mapgen.map_type.island_1_1"),
+}
+
+func mapTypeMsg(line, name string) i18n.Msg {
+	if name == "elevation" && line == gamesettings.Line11 {
+		return i18n.M("mapgen.map_type.normal_1_1")
+	}
+	if m, ok := mapTypeNames[name]; ok {
+		return m
+	}
+	return i18n.M("mapgen.map_type.other", "name", name)
 }

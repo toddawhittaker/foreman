@@ -95,10 +95,17 @@
 {{- end}}
 {{- end}}
 
-{{/* One autoplace control: its name, then its settings side by side. Takes MapGenGroup. */}}
+{{/* One autoplace control: its name, then its settings side by side. A
+     resource the game lets you switch off has its on/off box in the legend,
+     which stays usable when the script disables the fieldset; the hidden
+     "off" before it is what an unticked box sends. Takes MapGenGroup. */}}
 {{define "mapgen-group" -}}
-<fieldset class="autoplace">
+<fieldset class="autoplace" id="{{.ID}}">
+  {{- with .Toggle}}
+  <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"{{if .Checked}} checked{{end}}> {{msg .Label}}</label></legend>
+  {{- else}}
   <legend>{{msg .Legend}}</legend>
+  {{- end}}
   {{- range .Selects}}
   {{template "mapgen-select" .}}
   {{- end}}
@@ -109,7 +116,7 @@
      over the same steps stands in for it and shows the step in words; the
      select is still what is sent (DESIGN 8.7). Takes MapGenSelect. */}}
 {{define "mapgen-select" -}}
-<div class="field step">
+<div class="field{{if not .Plain}} step{{end}}">
   <label for="{{.ID}}" id="{{.ID}}-label">{{msg .Label}}</label>
   <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
     aria-describedby="{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>

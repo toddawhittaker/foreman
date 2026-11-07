@@ -18,44 +18,56 @@
         {
           "name": "iron-ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "copper-ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "stone",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "coal",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "uranium-ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "crude-oil",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "trees",
           "category": "terrain",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "enemy-base",
           "category": "enemy",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         }
       ]
     }
+  ],
+  "map_types": [
+    "elevation",
+    "0_17-island"
   ]
 }
