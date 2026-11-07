@@ -886,6 +886,12 @@ legend {
   accent-color: var(--color-selected);
 }
 
+/* A box that cannot change now stays focusable, so its reason is heard. */
+.check input[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
 .state {
   display: inline-flex;
@@ -2187,8 +2193,7 @@ form:has(#mode-exchange:checked) .achievements {
 }
 
 /* A download link is a full-height target of its own. */
-.preview .download,
-.large-view__download {
+.preview .download {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);

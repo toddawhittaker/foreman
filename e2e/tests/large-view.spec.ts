@@ -268,6 +268,45 @@ test.describe("on a touch screen", () => {
   });
 });
 
+test.describe("on a touch screen, without dragging", () => {
+  test.use({ hasTouch: true, isMobile: true });
+
+  // WCAG 2.5.7: one tap on a zoomed picture centres the spot tapped.
+  test("a tap centres the spot tapped, and a drag still pans", async ({ page }) => {
+    await openLarge(page);
+    await expect(page.locator("#large-keys")).toContainText("tap a spot to centre it");
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: "touchStart" | "touchMove" | "touchEnd", points: { x: number; y: number }[]) =>
+      cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points.map((p, id) => ({ ...p, id })) });
+    const mid = await middleOf(page);
+    // At the fitted size a tap does nothing.
+    await touch("touchStart", [{ x: mid.x + 40, y: mid.y + 30 }]);
+    await touch("touchEnd", []);
+    expect(await scroll(page)).toEqual({ x: 0, y: 0 });
+    for (let i = 0; i < 8; i++) await dialog(page).getByRole("button", { name: "Zoom in" }).tap();
+    await page.waitForTimeout(400);
+    const start = await scroll(page);
+    const spot = await spotAt(page, mid.x + 40, mid.y + 30);
+    await touch("touchStart", [{ x: mid.x + 40, y: mid.y + 30 }]);
+    await touch("touchMove", [{ x: mid.x + 42, y: mid.y + 31 }]);
+    await touch("touchEnd", []);
+    const tapped = await scroll(page);
+    expect(tapped.x - start.x).toBeCloseTo(40, -1);
+    expect(tapped.y - start.y).toBeCloseTo(30, -1);
+    const now = await spotAt(page, mid.x, mid.y);
+    expect(now.u).toBeCloseTo(spot.u, 2);
+    expect(now.v).toBeCloseTo(spot.v, 2);
+
+    await page.waitForTimeout(400);
+    await touch("touchStart", [{ x: mid.x, y: mid.y }]);
+    for (const d of [10, 20, 30]) await touch("touchMove", [{ x: mid.x - d, y: mid.y - d }]);
+    await touch("touchEnd", []);
+    const dragged = await scroll(page);
+    expect(dragged.x - tapped.x).toBeCloseTo(30, 0);
+    expect(dragged.y - tapped.y).toBeCloseTo(30, 0);
+  });
+});
+
 test.describe("the planet viewed", () => {
   // The settings' rows follow the planet viewed through this event.
   async function recordEvents(page: Page) {

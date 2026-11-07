@@ -387,7 +387,7 @@
   "worlds.generate.large.zoom_out": "缩小",
   "worlds.generate.large.zoom_in": "放大",
   "worlds.generate.large.close": "关闭",
-  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture or use the arrow keys on it to move around.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "图钉标记地图中心，即玩家的出生点。",
   "worlds.generate.preview.size_label": "Preview size",
   "worlds.generate.preview.size_option": "{size} × {size} tiles",
