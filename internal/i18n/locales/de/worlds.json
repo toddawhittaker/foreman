@@ -335,7 +335,7 @@
   "worlds.generate.button": "Welt generieren",
   "worlds.generate.preview.button": "Karte vorab ansehen",
   "worlds.generate.preview.heading": "Kartenvorschau",
-  "worlds.generate.preview.made": "Erstellt aus den Einstellungen oben, Kartenseed {seed}. Ändere etwas und zeige die Vorschau erneut an, um es zu sehen. „Welt generieren“ erzeugt genau diese Karte.",
+  "worlds.generate.preview.made": "Gezeichnet aus den aktuellen Einstellungen, die noch nicht gespeichert sind, mit Kartenseed {seed}. Die Vorschau wird neu gezeichnet, wenn du sie änderst. „Welt generieren“ erzeugt genau diese Karte.",
   "worlds.generate.preview.alt": "Kartenvorschau von {planet}, Kartenseed {seed}",
   "worlds.generate.preview.kept": "Diese Bilder werden 15 Minuten lang aufbewahrt.",
   "worlds.generate.preview.wait": "Die Kartenvorschau wird erstellt. Das dauert pro Planet einige Sekunden.",
@@ -389,5 +389,18 @@
   "worlds.generate.mode.exchange_hint": "Übernimm die Einstellungen einer Karte, die jemand aus dem Spiel geteilt hat.",
   "worlds.generate.refilled": "Die Einstellungen unten wurden aus der Vorlage „{preset}“ übernommen. Prüfe sie und wähle dann erneut „Welt generieren“.",
   "worlds.cancel": "Abbrechen",
-  "worlds.generate.error.untested_preset": "Foreman kann die Karteneinstellungen dieser Vorlage für Factorio {version} nicht schreiben, daher lassen sich ihre Einstellungen dort nicht ändern. Setze sie auf die Vorlage zurück, beginne mit der Standardvorlage oder wähle eine andere Version."
+  "worlds.generate.error.untested_preset": "Foreman kann die Karteneinstellungen dieser Vorlage für Factorio {version} nicht schreiben, daher lassen sich ihre Einstellungen dort nicht ändern. Setze sie auf die Vorlage zurück, beginne mit der Standardvorlage oder wähle eine andere Version.",
+  "worlds.generate.preview.planet": "Planet",
+  "worlds.generate.preview.opens_picture": "(öffnet das Bild in voller Größe)",
+  "worlds.generate.preview.opens_large": "(öffnet die große Ansicht)",
+  "worlds.generate.preview.download": "{planet} herunterladen (PNG)",
+  "worlds.generate.preview.download_all": "Alle gezeichneten Planeten herunterladen (ZIP)",
+  "worlds.generate.preview.updating": "Kartenvorschau für die aktuellen Einstellungen wird gezeichnet …",
+  "worlds.generate.large.previous": "Zurück",
+  "worlds.generate.large.next": "Weiter",
+  "worlds.generate.large.zoom_out": "Verkleinern",
+  "worlds.generate.large.zoom_in": "Vergrößern",
+  "worlds.generate.large.close": "Schließen",
+  "worlds.generate.large.keys": "Pfeil links und rechts zeigen den vorigen und nächsten Planeten, Plus und Minus zoomen, Escape schließt.",
+  "worlds.generate.preview.pin": "Die Markierung zeigt die Kartenmitte, wo die Spieler starten."
 }

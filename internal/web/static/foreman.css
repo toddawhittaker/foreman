@@ -54,6 +54,9 @@
   --border-width: 1px;
   --focus-width: 3px;
   --target-min: 2.75rem;
+  /* The pin sits on the map's own colours, which do not follow the theme. */
+  --color-pin-face: #ffffff;
+  --color-pin-edge: #000000;
   --measure: 70ch;
   --page-max: 64rem;
 }
@@ -1598,44 +1601,45 @@ td > .hint {
 }
 
 @container map-section (min-width: 34rem) {
+  /* As many to a row as fit at 13rem each. */
   .js-on .autoplace {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    row-gap: var(--space-2);
   }
 
-  /* The name on its own line, then the slider with its value at the end. */
+  /* The name and the step in words share the first line while they fit, and
+     the words drop under the name between words when they do not; the
+     slider has a line to itself. */
   .js-on .step {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
     align-content: start;
-    column-gap: var(--space-3);
+    column-gap: var(--space-2);
+    row-gap: 0;
   }
 
   .js-on .step > * {
-    grid-column: 1 / -1;
+    flex: 1 1 100%;
+    min-inline-size: 0;
   }
 
   .js-on .step > label {
-    grid-row: 1;
-  }
-
-  .js-on .step > .step__range {
-    grid-row: 2;
-    grid-column: 1;
+    flex: 1 1 auto;
   }
 
   .js-on .step > .step__value {
-    grid-row: 2;
-    grid-column: 2;
+    flex: 0 1 auto;
+    margin-inline-start: auto;
   }
 
   .js-on .step select {
     display: none;
   }
 
-  /* The value has room for the widest step, so the slider never moves under the pointer. */
+  /* The slider has its own line, so the value's width never moves it. */
   .js-on .step__value {
     display: block;
-    inline-size: 14ch;
     color: var(--color-text);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
@@ -1646,10 +1650,44 @@ td > .hint {
   .js-on .step__range {
     display: block;
     inline-size: 100%;
-    min-block-size: var(--target-min);
+    min-block-size: 2rem;
     margin: 0;
     accent-color: var(--color-primary);
     cursor: pointer;
+  }
+}
+
+/* On a wide panel the map settings scroll less: tighter groups, and with a
+   mouse, 24 px sliders and planet rows, the WCAG 2.2 floor (SPEC 17.2).
+   Narrow panels and touch screens keep 44 px. */
+@container map-section (min-width: 34rem) {
+  .js-on .autoplace {
+    padding-block-start: var(--space-2);
+  }
+
+  .js-on .autoplace > legend {
+    margin-block-end: var(--space-1);
+  }
+
+  .js-on .mapgen-body,
+  .js-on .mode-panel details > .field {
+    padding-block: var(--space-2);
+  }
+
+  .js-on .mapgen-body {
+    row-gap: var(--space-2);
+  }
+
+  @media (pointer: fine) {
+    .js-on .step > input.step__range {
+      min-block-size: 1.5rem;
+      block-size: 1.5rem;
+    }
+
+    .js-on .mode-panel summary {
+      min-block-size: 1.5rem;
+      padding-block: var(--space-1);
+    }
   }
 }
 
@@ -1913,25 +1951,11 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
-/* The preview sits under the settings on a narrow panel, and beside them,
-   held in view, on a wide one (DESIGN 8.6). */
+/* The preview sits full width under the settings, on every width (DESIGN 8.8). */
 .gen-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
-}
-
-@container map-section (min-width: 52rem) {
-  /* Only once a preview is shown; until then the settings use the width. */
-  .gen-layout:has(#preview > *) {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
-    align-items: start;
-  }
-
-  .gen-preview {
-    position: sticky;
-    inset-block-start: var(--space-4);
-  }
 }
 
 /* A message's display would otherwise beat the hidden attribute. */
@@ -1961,6 +1985,181 @@ form:has(#mode-exchange:checked) .achievements {
   aspect-ratio: 1;
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
+}
+
+/* The picture link names what it opens: the file without script, the large view with it. */
+.js-on .nojs-only,
+.js-only,
+.preview-planet {
+  display: none;
+}
+
+.js-on .js-only {
+  display: inline;
+}
+
+.js-on .preview-planet {
+  display: grid;
+}
+
+/* Planet choice and downloads need no more width than their words. */
+.field.preview-planet {
+  justify-items: start;
+}
+
+.field.preview-planet select {
+  inline-size: auto;
+  max-inline-size: 100%;
+}
+
+.pictures li {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.pictures .download {
+  justify-self: start;
+}
+
+.pictures .picture {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 32rem;
+}
+
+/* A download link is a full-height target of its own. */
+.preview .download,
+.large-view__download {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* An older picture stays in place, faded, while the next one is drawn. */
+.preview[aria-busy="true"] .pictures img {
+  opacity: 0.6;
+}
+
+/* One line is held for the drawing note once a preview shows, so nothing moves. */
+.preview-status:empty {
+  display: none;
+}
+
+.gen-layout:has(#preview > *) .preview-status:empty {
+  display: block;
+  min-block-size: 1lh;
+}
+
+/* 8.8 The large view: the whole screen, the picture fitted, zoomed by
+   scaling with sharp pixels (one tile is one pixel on 2.x). */
+.large-view {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  block-size: 100%;
+  max-block-size: 100%;
+  margin: 0;
+  padding: var(--space-3);
+  border: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.large-view[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+}
+
+.large-view::backdrop {
+  background: var(--color-bg);
+}
+
+.large-view__bar {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.large-view__bar h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.large-view__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.large-view__controls [hidden] {
+  display: none;
+}
+
+/* The value has a reserved width, so the buttons beside it do not move. */
+.large-view__zoom {
+  min-inline-size: 11ch;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.large-view__frame {
+  container-type: size;
+  display: flex;
+  min-block-size: 0;
+  overflow: auto;
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  --zoom: 1;
+}
+
+/* Auto margins centre a fitted picture and never push a zoomed one out of reach. */
+.large-view__map {
+  flex: none;
+  margin: auto;
+  inline-size: calc(min(100cqi, 100cqb) * var(--zoom));
+}
+
+.large-view__map img {
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+
+/* A picture with the start marked: the pin's tip on the centre. */
+.map {
+  position: relative;
+  display: block;
+}
+
+.map > img {
+  display: block;
+}
+
+.pin {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 1.5rem;
+  block-size: 2rem;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.pin path {
+  fill: var(--color-pin-face);
+  stroke: var(--color-pin-edge);
+  stroke-width: 2;
+}
+
+.pin circle {
+  fill: var(--color-pin-edge);
+}
+
+.large-view__status:empty {
+  display: none;
 }
 
 .message pre {

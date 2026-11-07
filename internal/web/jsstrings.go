@@ -7,6 +7,7 @@ func init() {
 		"server.step.seconds_left",
 		"js.generate.options",
 		"js.generate.preview_ready",
+		"js.preview.zoom",
 		"js.import.many",
 		"js.import.same",
 		"js.import.same.unreadable",

@@ -347,7 +347,7 @@
   "worlds.generate.button": "Создать мир",
   "worlds.generate.preview.button": "Показать карту",
   "worlds.generate.preview.heading": "Предпросмотр карты",
-  "worlds.generate.preview.made": "Создано по настройкам выше, ключ генератора {seed}. Измените что-нибудь и снова покажите карту, чтобы увидеть результат. Кнопка «Создать мир» создаст именно эту карту.",
+  "worlds.generate.preview.made": "Нарисовано по текущим настройкам, которые ещё не сохранены, ключ генератора {seed}. При изменении настроек карта перерисовывается. Кнопка «Создать мир» создаст именно эту карту.",
   "worlds.generate.preview.alt": "Предпросмотр карты: {planet}, ключ генератора {seed}",
   "worlds.generate.preview.kept": "Эти изображения хранятся 15 минут.",
   "worlds.generate.preview.wait": "Создаётся предпросмотр карты. На каждую планету уходит несколько секунд.",
@@ -401,5 +401,18 @@
   "worlds.generate.mode.exchange_hint": "Используйте настройки карты, которой кто-то поделился из игры.",
   "worlds.generate.refilled": "Настройки ниже заполнены из шаблона «{preset}». Проверьте их и снова нажмите «Создать мир».",
   "worlds.cancel": "Отмена",
-  "worlds.generate.error.untested_preset": "Foreman не может записать настройки карты этого шаблона для Factorio {version}, поэтому их здесь нельзя изменить. Сбросьте их к шаблону, начните со стандартного шаблона или выберите другую версию."
+  "worlds.generate.error.untested_preset": "Foreman не может записать настройки карты этого шаблона для Factorio {version}, поэтому их здесь нельзя изменить. Сбросьте их к шаблону, начните со стандартного шаблона или выберите другую версию.",
+  "worlds.generate.preview.planet": "Планета",
+  "worlds.generate.preview.opens_picture": "(открывает изображение в полном размере)",
+  "worlds.generate.preview.opens_large": "(открывает крупный просмотр)",
+  "worlds.generate.preview.download": "Скачать: {planet} (PNG)",
+  "worlds.generate.preview.download_all": "Скачать все нарисованные планеты (ZIP)",
+  "worlds.generate.preview.updating": "Рисуется предпросмотр карты по текущим настройкам…",
+  "worlds.generate.large.previous": "Назад",
+  "worlds.generate.large.next": "Далее",
+  "worlds.generate.large.zoom_out": "Уменьшить",
+  "worlds.generate.large.zoom_in": "Увеличить",
+  "worlds.generate.large.close": "Закрыть",
+  "worlds.generate.large.keys": "Стрелки влево и вправо показывают предыдущую и следующую планету, плюс и минус меняют масштаб, Escape закрывает.",
+  "worlds.generate.preview.pin": "Метка показывает центр карты, где начинают игроки."
 }

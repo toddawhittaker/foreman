@@ -8,5 +8,6 @@
   "js.live.moved": "The active world changed.",
   "js.live.stopped": "Live updates stopped. Reload to see the current state.",
   "js.generate.options": "Map options updated for the chosen game version and Space Age setting.",
-  "js.generate.preview_ready": "Map preview ready."
+  "js.generate.preview_ready": "Map preview ready.",
+  "js.preview.zoom": "Zoom {level}"
 }

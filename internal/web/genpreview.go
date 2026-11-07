@@ -229,7 +229,16 @@ type PreviewView struct {
 	Token    string
 	Seed     string
 	Pictures []PreviewPicture
-	Error    i18n.Msg
+	// Planets are every planet the world will have, for the planet choice
+	// shown when only one of them was drawn (DESIGN 8.8).
+	Planets []PreviewPlanet
+	Error   i18n.Msg
+}
+
+// PreviewPlanet is one planet the preview can draw.
+type PreviewPlanet struct {
+	Planet string
+	Name   i18n.Msg
 }
 
 // PreviewPicture is one planet's picture.
@@ -237,6 +246,18 @@ type PreviewPicture struct {
 	Planet string
 	Name   i18n.Msg
 	Path   string
+}
+
+// Choose is true when one picture of several planets is shown, so the
+// section offers the others.
+func (v PreviewView) Choose() bool { return len(v.Planets) > 1 && len(v.Pictures) == 1 }
+
+// Current is the planet of the one picture shown, or blank.
+func (v PreviewView) Current() string {
+	if len(v.Pictures) == 1 {
+		return v.Pictures[0].Planet
+	}
+	return ""
 }
 
 // DownloadPath is where the picture is served as a file.
@@ -288,19 +309,27 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	line, _ := mapgen.Line(nw.GameVersion)
-	planets := mapgen.Planets(line, nw.SpaceAge)
-	if p := r.PostFormValue(previewPlanetField); p != "" {
-		if !slices.Contains(planets, p) {
-			s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
-			return
-		}
+	all := mapgen.Planets(line, nw.SpaceAge)
+	planets := all
+	switch p := r.PostFormValue(previewPlanetField); {
+	case p != "" && slices.Contains(all, p):
 		planets = []string{p}
+	case auto && len(all) > 0:
+		// An automatic preview draws only the planet viewed: the first, unless
+		// one was picked that these settings still have (DESIGN 8.8).
+		planets = all[:1]
+	case p != "":
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+		return
 	}
 	req := game.PreviewRequest{
 		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
 		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings,
 	}
 	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10)}
+	for _, planet := range all {
+		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: planetMsg(planet)})
+	}
 	key := settingsKey(req)
 	view.Token, req.Planets = s.previews.missing(u.ID, key, f.Name, planets)
 	var err error
@@ -314,6 +343,11 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	} else {
 		view.Token = ""
 		view.Error = s.previewFailure(r, nw.GameVersion, err)
+	}
+	if auto {
+		// The page keeps the form as typed and swaps in the section alone.
+		s.fragment(w, r, s.generatePage(f, view), "generate-preview")
+		return
 	}
 	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, view))
 }

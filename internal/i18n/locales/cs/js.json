@@ -8,5 +8,6 @@
   "js.live.moved": "Aktivní svět se změnil.",
   "js.live.stopped": "Živé aktualizace se zastavily. Pro zobrazení aktuálního stavu je třeba stránku znovu načíst.",
   "js.generate.options": "Možnosti mapy byly aktualizovány pro zvolenou verzi hry a nastavení Space Age.",
-  "js.generate.preview_ready": "Náhled mapy je hotový."
+  "js.generate.preview_ready": "Náhled mapy je hotový.",
+  "js.preview.zoom": "Přiblížení {level}"
 }
