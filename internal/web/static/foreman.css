@@ -409,7 +409,9 @@ code {
   gap: var(--space-1);
 }
 
-.menu__panel form + form {
+.menu__panel form + form,
+.menu__panel form + a,
+.menu__panel a + form {
   padding-block-start: var(--space-2);
   border-block-start: var(--border-width) solid var(--color-line);
 }
@@ -437,6 +439,7 @@ code {
   border-inline-start: 3px solid transparent;
   border-radius: 0;
   text-align: start;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -444,7 +447,7 @@ code {
   background: var(--color-secondary-hover);
 }
 
-.menu__item[aria-current="true"] {
+.menu__item[aria-current] {
   font-weight: 650;
   border-inline-start-color: var(--color-selected);
 }
@@ -2595,7 +2598,7 @@ form:has(#mode-exchange:checked) .achievements {
     border-block-end-color: Highlight;
   }
 
-  .menu__item[aria-current="true"] {
+  .menu__item[aria-current] {
     border-inline-start-color: Highlight;
   }
 

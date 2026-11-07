@@ -260,6 +260,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"consolePath":      func() string { return PathConsole },
 		"worldsPath":       func() string { return PathWorlds },
 		"snapshotsTabPath": func() string { return PathSnapshots },
+		"accountPath":      func() string { return PathAccount },
 		"utc":              func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":          func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
