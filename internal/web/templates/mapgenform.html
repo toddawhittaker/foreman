@@ -186,7 +186,7 @@
     <label for="{{.ID}}">{{msg .Label}}</label>
     <div class="inline-row">
       <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" inputmode="decimal" autocomplete="off" spellcheck="false"
-        {{- if .Max}} min="{{.Min}}" max="{{.Max}}"{{end}}{{if .MinField}} data-min-field="{{.MinField}}" data-gap="{{.Gap}}"{{end}}
+        {{- if .Max}} data-min="{{.Min}}" data-max="{{.Max}}"{{end}}{{if .MinField}} data-min-field="{{.MinField}}" data-gap="{{.Gap}}"{{end}}
         data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
         aria-describedby="{{if not .Unit.IsZero}}{{.ID}}-unit {{end}}{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
       {{- if not .Unit.IsZero}}

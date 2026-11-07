@@ -169,7 +169,7 @@ type MapSettingsField struct {
 	Preset  string
 	// Choices is set for a select; Value is then the chosen option's value.
 	Choices []MapSettingsChoice
-	// Min and Max are the limits of a number field. A maximum that must
+	// Min and Max are the limits of a number field (data-min and data-max). A maximum that must
 	// follow a minimum also names it (MinField, an element id) and how far
 	// apart they stay (Gap, "1" or "0"), for the script to move the other one.
 	Min, Max, MinField, Gap string

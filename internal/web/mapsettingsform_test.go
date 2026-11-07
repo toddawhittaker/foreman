@@ -349,13 +349,13 @@ func TestLimitAttributesInTheForm(t *testing.T) {
 		want        []string
 		absent      []string
 	}{
-		{"2.1.24", x + "max-expansion-distance", []string{`min="2"`, `max="20"`, `data-min-field="` + x + `min-expansion-distance"`, `data-gap="1"`}, nil},
-		{"2.1.24", x + "min-expansion-distance", []string{`min="1"`, `max="20"`}, []string{"data-min-field", "data-gap"}},
-		{"2.1.24", x + "max-expansion-cooldown", []string{`min="5"`, `max="180"`, `data-min-field="` + x + `min-expansion-cooldown"`, `data-gap="0"`}, nil},
-		{"2.1.24", "ms-enemy-evolution-time-factor", []string{`min="0"`, `max="1000"`}, []string{"data-min-field"}},
-		{"1.1.110", x + "settler-group-max-size", []string{`min="1"`, `max="40"`, `data-min-field="` + x + `settler-group-min-size"`, `data-gap="0"`}, nil},
+		{"2.1.24", x + "max-expansion-distance", []string{`data-min="2"`, `data-max="20"`, `data-min-field="` + x + `min-expansion-distance"`, `data-gap="1"`}, nil},
+		{"2.1.24", x + "min-expansion-distance", []string{`data-min="1"`, `data-max="20"`}, []string{"data-min-field", "data-gap"}},
+		{"2.1.24", x + "max-expansion-cooldown", []string{`data-min="5"`, `data-max="180"`, `data-min-field="` + x + `min-expansion-cooldown"`, `data-gap="0"`}, nil},
+		{"2.1.24", "ms-enemy-evolution-time-factor", []string{`data-min="0"`, `data-max="1000"`}, []string{"data-min-field"}},
+		{"1.1.110", x + "settler-group-max-size", []string{`data-min="1"`, `data-max="40"`, `data-min-field="` + x + `settler-group-min-size"`, `data-gap="0"`}, nil},
 		// 1.1 has no minimum distance, so the maximum has nothing to follow.
-		{"1.1.110", x + "max-expansion-distance", []string{`max="20"`}, []string{"data-min-field"}},
+		{"1.1.110", x + "max-expansion-distance", []string{`data-max="20"`}, []string{"data-min-field"}},
 	} {
 		got := tag(tc.version, tc.id)
 		for _, w := range tc.want {
