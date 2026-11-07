@@ -411,7 +411,7 @@
   "worlds.generate.large.zoom_out": "Pomniejsz",
   "worlds.generate.large.zoom_in": "Powiększ",
   "worlds.generate.large.close": "Zamknij",
-  "worlds.generate.large.keys": "Strzałki w lewo i w prawo pokazują poprzednią i następną planetę, plus i minus zmieniają powiększenie, 0 dopasowuje obraz do okna, a Escape zamyka. Po powiększeniu obraz można przeciągać albo przesuwać strzałkami, gdy jest wybrany.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "Znacznik pokazuje środek mapy, w którym zaczynają gracze.",
   "worlds.generate.preview.size_label": "Rozmiar podglądu",
   "worlds.generate.preview.size_option": "{size} × {size} kafelków",

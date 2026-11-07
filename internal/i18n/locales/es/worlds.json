@@ -399,7 +399,7 @@
   "worlds.generate.large.zoom_out": "Alejar",
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
-  "worlds.generate.large.keys": "Las flechas izquierda y derecha muestran el planeta anterior y el siguiente, más y menos hacen zoom, 0 ajusta la imagen a la ventana y Escape cierra. Con el zoom aplicado, arrastra la imagen o muévela con las teclas de flecha cuando tenga el foco.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "El marcador señala el centro del mapa, donde empiezan los jugadores.",
   "worlds.generate.preview.size_label": "Tamaño de la vista previa",
   "worlds.generate.preview.size_option": "{size} × {size} casillas",

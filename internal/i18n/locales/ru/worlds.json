@@ -411,7 +411,7 @@
   "worlds.generate.large.zoom_out": "Уменьшить",
   "worlds.generate.large.zoom_in": "Увеличить",
   "worlds.generate.large.close": "Закрыть",
-  "worlds.generate.large.keys": "Стрелки влево и вправо показывают предыдущую и следующую планету, плюс и минус меняют масштаб, 0 вписывает изображение в окно, а Escape закрывает. При увеличении перетаскивайте изображение или перемещайте его стрелками, когда оно в фокусе.",
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "Метка показывает центр карты, где начинают игроки.",
   "worlds.generate.preview.size_label": "Размер предпросмотра",
   "worlds.generate.preview.size_option": "{size} × {size} клеток",

@@ -188,12 +188,12 @@ func TestTerritoryBoxShowsOnlyForVulcanus(t *testing.T) {
 		t.Errorf("the box's words are missing:\n%s", off)
 	}
 	big := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3200"), c, hx).Body.String()
-	if !strings.Contains(big, `aria-describedby="preview-territories-hint" disabled>`) ||
+	if !strings.Contains(big, `aria-describedby="preview-territories-hint" aria-disabled="true">`) || strings.Contains(big, `id="preview-territories" name=`) ||
 		!strings.Contains(big, "Shown for preview sizes up to 3072 × 3072 tiles.") || !strings.Contains(big, `<input type="hidden" name="territories" value="1">`) {
 		t.Errorf("above 3072 the box is not turned off with its hint:\n%s", big)
 	}
 	hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3072"), c, hx)
-	if body := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3072"), c, hx).Body.String(); strings.Contains(body, " disabled>") {
+	if body := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3072"), c, hx).Body.String(); strings.Contains(body, `aria-disabled="true">`) {
 		t.Error("3072 itself is turned off")
 	}
 	noSA := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "space_age", "", "map_key", "2.1|0", "planet", ""), c, hx).Body.String()
