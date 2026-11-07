@@ -100,6 +100,20 @@ test("keyboard focus shows a tip, Escape hides it, and leaving it hides it", asy
   await expect(timeText(page)).toBeHidden();
 });
 
+// A tip opened by focus is shown, so Enter on it closes it, and Enter again opens it.
+test("Enter on a tip that focus opened closes it, and Enter again opens it", async ({ page }) => {
+  await onEnemyTab(page);
+  await tabTo(page, timeTip(page));
+  await expect(timeText(page)).toBeVisible();
+  await expect(timeTip(page)).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Enter");
+  await expect(timeText(page)).toBeHidden();
+  await expect(timeTip(page)).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Enter");
+  await expect(timeText(page)).toBeVisible();
+  await expect(timeTip(page)).toHaveAttribute("aria-expanded", "true");
+});
+
 test("a tip in the Advanced tab opens and passes axe", async ({ page }) => {
   await onEnemyTab(page);
   await tab(page, "Advanced").click();
@@ -131,6 +145,33 @@ test.describe("on a touch screen", () => {
     await page.screenshot({ path: `../screenshots/tips-tap-${test.info().project.name}.png` });
     await page.locator("#panel-enemy .ms-group > legend").first().tap();
     await expect(text).toBeHidden();
+  });
+
+  // At 320 px an open tip lies over its own field; a tap on its text must not
+  // leave it there.
+  test("a tap on the tip's text closes it", async ({ page }) => {
+    await onEnemyTab(page);
+    await timeTip(page).tap();
+    await expect(timeText(page)).toBeVisible();
+    await timeText(page).tap();
+    await expect(timeText(page)).toBeHidden();
+    await expect(timeTip(page)).toHaveAttribute("aria-expanded", "false");
+  });
+
+  // Chrome moves focus on a real tap, which closes the tip by itself; a bare
+  // touch press, with no focus change, must close it too, and a mouse press on
+  // the text (to select it) must not.
+  test("a touch press on the text closes it, a mouse press does not", async ({ page }) => {
+    await onEnemyTab(page);
+    const press = (pointerType: string) => timeText(page).evaluate((el, type) => {
+      el.dispatchEvent(new PointerEvent("pointerdown", { pointerType: type, bubbles: true }));
+    }, pointerType);
+    await timeTip(page).tap();
+    await expect(timeText(page)).toBeVisible();
+    await press("mouse");
+    await expect(timeText(page)).toBeVisible();
+    await press("touch");
+    await expect(timeText(page)).toBeHidden();
   });
 });
 
