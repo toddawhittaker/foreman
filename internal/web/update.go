@@ -221,7 +221,7 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 	id, by, opts := sum.ID, actor(u), anywayOptions(r)
 	to := PathServer
 	if !sum.Active {
-		to = worldPath(id)
+		to = worldPath(id) + ownResultQuery
 	}
 	s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
 		res := s.finish(id, game.AuditUpdate, s.game.Update(ctx, id, target, by, stop, opts))
@@ -230,22 +230,36 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 	})
 }
 
-// updateOutcome words how the last update of a world ended, for the world's
-// own page: what was done, or why not. Both are zero when the world's last
-// action was not an update.
-func (s *server) updateOutcome(sum world.Summary) (done, failed i18n.Msg) {
+// updateOutcome words how the last update of a world that is not active
+// ended, for the world's own page: what was done, or why not, with the
+// offer to go ahead anyway when the pre-start check allows it (SPEC 10.3,
+// 17.9). Both are empty when the world's last action was not an update.
+func (s *server) updateOutcome(sum world.Summary) (i18n.Msg, *Failure) {
+	if s.game == nil || sum.Active || sum.Unreadable || sum.Newer {
+		return i18n.Msg{}, nil
+	}
 	res, ok := s.runs.result(sum.ID)
 	if !ok || res.Action != game.AuditUpdate {
-		return i18n.Msg{}, i18n.Msg{}
+		return i18n.Msg{}, nil
 	}
 	if res.Err == nil {
-		return i18n.M("server.done.update", "label", i18n.M("worlds.snapshot.label.before_update")), i18n.Msg{}
+		return i18n.M("server.done.update", "label", i18n.M("worlds.snapshot.label.before_update")), nil
 	}
-	if pe, ok := errors.AsType[*game.PrecheckError](res.Err); ok {
-		lead := updatePrecheckLead(pe.Check, sum.Name, res.Version)
-		return i18n.Msg{}, join(lead, problemMsgs(pe.Check.Problems)...)
+	f := &Failure{Refused: game.IsRefusal(res.Err)}
+	pe, ok := errors.AsType[*game.PrecheckError](res.Err)
+	if !ok {
+		f.Message = failureText(res.Err)
+		return i18n.Msg{}, f
 	}
-	return i18n.Msg{}, failureText(res.Err)
+	f.Message = updatePrecheckLead(pe.Check, sum.Name, res.Version)
+	if pe.Changed {
+		f.Message = join(changedLead, f.Message)
+	}
+	f.Problems = problemMsgs(pe.Check.Problems)
+	if pe.Check.CanStartAnyway() {
+		f.Anyway = updateAnyway(pe.Check, sum, res.Version, hostModsFolder(s.hostData, sum.ID))
+	}
+	return i18n.Msg{}, f
 }
 
 // rollbackPage builds the rollback confirmation, or says why there is none.

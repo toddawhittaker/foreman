@@ -296,6 +296,7 @@
   "worlds.world.rollback_text": "上次更新在 {when} 创建了快照“{label}”。回滚会恢复该快照，并使世界回到 Factorio {version}。",
   "worlds.world.saves": "存档",
   "worlds.world.server_link": "前往服务器页面",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "服务器页面",
   "worlds.world.snapshots": "快照",
   "worlds.world.switch.busy": "服务器上正在运行操作，例如切换。请查看{link}。",

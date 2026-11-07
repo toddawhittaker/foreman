@@ -320,6 +320,7 @@
   "worlds.world.rollback_text": "При последнем обновлении был сделан снимок «{label}», {when}. Откат восстановит его и вернёт мир к Factorio {version}.",
   "worlds.world.saves": "Сохранения",
   "worlds.world.server_link": "Перейти на страницу сервера",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "страницу сервера",
   "worlds.world.snapshots": "Снимки",
   "worlds.world.switch.busy": "На сервере выполняется операция, например переключение. Откройте {link}.",

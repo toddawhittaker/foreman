@@ -56,8 +56,11 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err := c.precheckReadOnly(id, version, opts); err != nil {
 		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
 	}
-	if _, err := c.gameNetwork(ctx); err != nil {
-		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
+	// Only a game started again joins the network.
+	if opts.running {
+		if _, err := c.gameNetwork(ctx); err != nil {
+			return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
+		}
 	}
 	opts.confirmed = true
 	ref, err := c.imageFor(version)
@@ -67,7 +70,9 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err := c.audit(ctx, by, AuditUpdate, id, detail); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditUpdate, updateSteps...)
+	op := newOperation(AuditUpdate, updateSteps...)
+	op.Version = version
+	ctx, o := c.beginOpOn(ctx, []*worldRun{c.world(id)}, op)
 	return o.end(c.updateLocked(ctx, o, by, version, ref, countdown, opts))
 }
 

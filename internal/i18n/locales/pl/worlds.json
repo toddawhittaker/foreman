@@ -320,6 +320,7 @@
   "worlds.world.rollback_text": "Ostatnia aktualizacja wykonała migawkę „{label}” ({when}). Cofnięcie przywraca ją i zmienia wersję świata z powrotem na Factorio {version}.",
   "worlds.world.saves": "Zapisy",
   "worlds.world.server_link": "Przejdź do strony serwera",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "stronę serwera",
   "worlds.world.snapshots": "Migawki",
   "worlds.world.switch.busy": "Na serwerze trwa operacja, na przykład przełączanie. Zobacz {link}.",

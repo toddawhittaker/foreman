@@ -308,6 +308,7 @@
   "worlds.world.rollback_text": "La dernière mise à jour a pris l’instantané « {label} » le {when}. Le retour en arrière le restaure et ramène le monde à Factorio {version}.",
   "worlds.world.saves": "Sauvegardes",
   "worlds.world.server_link": "Aller à la page du serveur",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "la page du serveur",
   "worlds.world.snapshots": "Instantanés",
   "worlds.world.switch.busy": "Une opération est en cours sur le serveur, par exemple un basculement. Voir {link}.",

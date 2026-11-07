@@ -131,4 +131,9 @@
   document.addEventListener("htmx:sseMessage", (e) => {
     if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
+
+  // A page that reloaded when an action ended reads out its result's first
+  // sentence once the screen reader has settled on the page (DESIGN 7.6).
+  const result = document.querySelector("[data-announce] p");
+  if (result) setTimeout(() => announce(result.textContent.trim()), 500);
 })();

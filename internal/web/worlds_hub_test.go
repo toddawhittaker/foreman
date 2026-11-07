@@ -76,10 +76,10 @@ func TestWorldsShowARunningSwitch(t *testing.T) {
 
 	for _, id := range []string{a, b} {
 		g.wantContains("involved world", g.get(worldPath(id)), "Switching from Alpha to Bravo.",
-			`<a href="/">Go to the Server page</a>`)
+			`<a href="/" id="world-server-link">Go to the Server page</a>`)
 	}
 	// Both the note and the delete refusal link to the page that follows it.
-	if n := strings.Count(g.get(worldPath(b)), `<a href="/">Go to the Server page</a>`); n != 2 {
+	if n := strings.Count(g.get(worldPath(b)), `">Go to the Server page</a>`); n != 2 {
 		t.Errorf("the busy world's page has %d links to the Server page, want 2", n)
 	}
 	g.wantMissing("active world's delete refusal", g.get(worldPath(a)), "cannot be deleted until it ends. <a")
