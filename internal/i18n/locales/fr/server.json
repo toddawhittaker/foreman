@@ -479,7 +479,6 @@
   "server.console.announce.reply": "Réponse à {command} : {reply}",
   "server.update.snapshot": "Prendre un instantané de {world}, intitulé « {label} ». Si l’instantané échoue, rien d’autre ne se passe.",
   "server.switch.undo": "Pour annuler, rebasculez vers {from}, ou restaurez un instantané depuis la page Instantanés.",
-  "server.update.not_active": "Basculez vers ce monde pour le mettre à jour.",
   "server.step.seconds_left": {
     "one": "{count} seconde restante",
     "other": "{count} secondes restantes"

@@ -490,7 +490,6 @@
   "server.console.announce.reply": "Ответ на {command}: {reply}",
   "server.update.snapshot": "Сделает снимок мира {world} с названием «{label}». Если снимок не удастся, больше ничего не произойдёт.",
   "server.switch.undo": "Чтобы отменить, переключитесь обратно на {from} или восстановите снимок на странице «Снимки».",
-  "server.update.not_active": "Переключитесь на этот мир, чтобы обновить его.",
   "server.step.seconds_left": {
     "one": "осталась {count} секунда",
     "few": "осталось {count} секунды",
