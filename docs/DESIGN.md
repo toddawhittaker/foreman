@@ -1363,6 +1363,42 @@ on a download).
     view or the Planet select moves to another planet the page gets a
     `preview:planet` event, and the view starts from the hidden
     `#open-planet` field when the settings set it.
+- **Demolisher territories** (Vulcanus, Space Age). A "Show demolisher
+  territories" checkbox (7.2) beside the Planet select, shown only while
+  Vulcanus's picture is shown, off by default, with the hint "Finding them
+  takes a few seconds more." Above 3072 tiles it is disabled, and its hint
+  names that size and says to choose a smaller one. It is a named field,
+  so "Preview map" without script reads the territories after the
+  pictures, in the same request; a ticked choice is kept in a hidden field
+  while another planet is viewed. With script, the territories are asked
+  for (`POST /generate/preview/territories`, the same form) only once the
+  picture has arrived, so the picture never waits; the newest request
+  wins, and a new draw, a change of settings or another planet viewed
+  drops the one on its way. Meanwhile a line under the picture says
+  "Finding the demolisher territories…"; that line's height is held while
+  the box is ticked.
+  - The overlay is an inline SVG inside the picture's `.map`, in picture
+    pixels (`viewBox` of the size, `preserveAspectRatio="none"`), so it
+    scales and pans with the picture: each territory's chunk runs as
+    rectangles filled with a stripe pattern matching the downloaded PNG
+    (pixels where x - y modulo 56 is under 28, bars from top left to bottom right as in the game, `--color-territory-stripe`,
+    rgb 200 20 20 at a third), one border path along every edge between
+    owners and around the free start area (`--color-territory-border`, 2
+    CSS px at any zoom with `vector-effect: non-scaling-stroke`); the start
+    area has no stripes. Each territory's size in words ("Small",
+    "Medium", "Big", "Unknown") is an HTML label placed by percent at its
+    chunks' mean, at `--text-sm` bold white with a near-black ring of
+    text shadows, so it keeps its size under zoom like the pin. The
+    overlay is `aria-hidden`; a `p` under the picture says the same in
+    words: "Demolisher territories in this picture: 12 small, 6
+    medium." The large view shows a copy of the same overlay.
+  - While they are shown, Vulcanus's download reads "Download Vulcanus
+    with territories (PNG)" and its file, and Vulcanus's file in the zip,
+    have the overlay drawn in by the server (`?territories=1`), named
+    with "-territories". Unticking takes the overlay, the list and the
+    query away again.
+  - A busy or failed run, or a failed request, is an error (7.3) under
+    the picture with a "Try again" button; the page's picture stays.
 - **Icons** (the large view only). Inline SVG on a 16 by 16 grid, drawn
   with a 2 px `currentColor` stroke and no fill, `aria-hidden`, inside a
   round `.icon-button` (`bg` face, 1 px `border`) whose name is visually

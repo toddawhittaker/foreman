@@ -17,5 +17,6 @@
   "js.generate.reset": "Ajustes del mapa restablecidos al ajuste predefinido {preset}.",
   "js.generate.ach_setting": "{setting} desactiva algunos logros.",
   "js.generate.ach_clear": "Ahora ningún ajuste desactiva logros.",
-  "js.generate.moved": "{field} cambiado a {value} para que el rango siga siendo válido."
+  "js.generate.moved": "{field} cambiado a {value} para que el rango siga siendo válido.",
+  "js.preview.download_territories": "Download {planet} map with territories"
 }

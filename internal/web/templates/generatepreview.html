@@ -4,27 +4,55 @@
   {{- with .Preview}}
   <section aria-labelledby="preview-heading">
     <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+    {{- if .Territories.Carry}}
+    {{/* The box is not here to send the choice, so it is kept for when it is (DESIGN 8.8). */}}
+    <input type="hidden" name="territories" value="1">
+    {{- end}}
     {{- if .Error.IsZero}}
     <p>{{t "worlds.generate.preview.made" "seed" .Seed}} {{t "worlds.generate.preview.pin"}}</p>
-    {{- if .Choose}}
-    {{/* Picking a planet draws it; it needs script, so the style sheet hides it without (DESIGN 8.8). */}}
-    <div class="field preview-planet">
-      <label for="preview-planet">{{t "worlds.generate.preview.planet"}}</label>
-      <select id="preview-planet">
-        {{- range .Planets}}
-        <option value="{{.Planet}}"{{if eq .Planet $.Preview.Current}} selected{{end}}>{{msg .Name}}</option>
-        {{- end}}
-      </select>
+    {{- if or .Choose .Territories.Show}}
+    <div class="preview-controls">
+      {{- if .Choose}}
+      {{/* Picking a planet draws it; it needs script, so the style sheet hides it without (DESIGN 8.8). */}}
+      <div class="field preview-planet">
+        <label for="preview-planet">{{t "worlds.generate.preview.planet"}}</label>
+        <select id="preview-planet">
+          {{- range .Planets}}
+          <option value="{{.Planet}}"{{if eq .Planet $.Preview.Current}} selected{{end}}>{{msg .Name}}</option>
+          {{- end}}
+        </select>
+      </div>
+      {{- end}}
+      {{- with .Territories}}{{if .Show}}
+      {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
+      <div class="field territory-box">
+        <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}{{if .Disabled}} disabled{{end}}> {{t "worlds.generate.territories.label"}}</label>
+        <p class="hint" id="preview-territories-hint">{{if .Disabled}}{{t "worlds.generate.territories.too_big_hint" "size" (print .MaxSize)}}{{else}}{{t "worlds.generate.territories.hint"}}{{end}}</p>
+      </div>
+      {{- end}}{{end}}
     </div>
     {{- end}}
     <ul class="pictures" role="list">
       {{- range .Pictures}}
+      {{- $terr := $.Preview.IsTerritoryPicture .}}
       <li>
         <figure>
-          <a href="{{.Path}}" class="picture" data-planet="{{.Planet}}"><span class="map"><img src="{{.Path}}" width="{{$.Preview.Size}}" height="{{$.Preview.Size}}" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy">{{template "map-pin"}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
+          <a href="{{.Path}}" class="picture" data-planet="{{.Planet}}"><span class="map"><img src="{{.Path}}" width="{{$.Preview.Size}}" height="{{$.Preview.Size}}" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy">
+            {{- if and $terr $.Preview.Territories.Drawn}}{{template "territory-overlay" $.Preview.Territories.Result}}{{end}}{{template "map-pin"}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
           <figcaption>{{msg .Name}}</figcaption>
         </figure>
+        {{- if $terr}}
+        {{/* The territories in words, under their picture; the script fills it when they arrive. */}}
+        <div class="territory-result" id="territory-result" data-finding="{{t "worlds.generate.territories.finding"}}">
+          {{- if $.Preview.Territories.Checked}}{{with $.Preview.Territories.Result}}{{template "territory-result" .}}{{end}}{{end -}}
+        </div>
+        {{/* Shown by the script when its request for the territories fails. */}}
+        <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
+        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}">
+          {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
+        {{- else}}
         <a href="{{.DownloadPath}}" class="download" download>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        {{- end}}
       </li>
       {{- end}}
     </ul>
@@ -91,6 +119,47 @@
   </div>
   <p class="hint" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
 </dialog>
+{{- end}}
+
+{{/* The answer to the page's request for the territories: the overlay, which
+     the script puts over Vulcanus's picture, and the list or the reason there
+     is none. Takes GeneratePage. */}}
+{{define "generate-territories" -}}
+<div id="territory-reply">
+  {{- with .Preview.Territories.Result}}{{if .Error.IsZero}}{{template "territory-overlay" .}}{{end}}
+  <div class="territory-result">{{template "territory-result" .}}</div>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* Vulcanus's demolisher territories over its picture, in picture pixels:
+     stripes, as the downloaded picture has them, one border line 2 CSS px
+     wide at any zoom, and each territory's size in words at a fixed size, like
+     the pin. The list under the picture says the same, so this is hidden from
+     screen readers (DESIGN 8.8). Takes TerritoryView. */}}
+{{define "territory-overlay" -}}
+<span class="territories" aria-hidden="true"><svg viewBox="0 0 {{.Size}} {{.Size}}" preserveAspectRatio="none" focusable="false">
+  {{- /* The large view's copy drops these and uses the page's; one id per page. */}}
+  <defs><pattern id="territory-stripes" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M0 0H28L56 28V56ZM0 28L28 56H0Z"/></pattern></defs>
+  <g fill="url(#territory-stripes)">{{range .Runs}}<rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}"/>{{end}}</g>
+  {{- if .Border}}<path class="territories__border" d="{{.Border}}" vector-effect="non-scaling-stroke"/>{{end -}}
+</svg>
+  {{- range .Labels}}<span class="territories__label" style="left: {{.Left}}%; top: {{.Top}}%">{{.Text}}</span>{{end -}}
+</span>
+{{- end}}
+
+{{/* The territories in words, or why there are none, with the next step. Takes TerritoryView. */}}
+{{define "territory-result" -}}
+{{- if .Error.IsZero}}
+<p class="territory-counts">{{.Counts}}</p>
+{{- else}}
+<div class="message message--error">
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- if .Retry}}
+  <p class="js-only"><button type="button" class="button" data-territory-retry>{{t "worlds.generate.territories.retry"}}</button></p>
+  {{- end}}
+</div>
+{{- end}}
 {{- end}}
 
 {{/* Where players start: the centre of the map, which the preview is drawn

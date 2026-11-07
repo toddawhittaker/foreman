@@ -40,7 +40,7 @@ func at(img image.Image, x, y int) color.RGBA {
 func noLabel(string) string { return "" }
 
 // Stripes blend rgb(200,20,20) at alpha 85 into the pixels of a territory
-// where (x+y) mod 56 < 28; borders are a 2 px rgb(255,30,30) line astride
+// where (x-y) mod 56 < 28, bars from top left to bottom right; borders are a 2 px rgb(255,30,30) line astride
 // the chunk edge; the free area is untouched.
 func TestDrawPNGPixels(t *testing.T) {
 	ov := Geometry(Result{Territories: []Territory{{Small, []Chunk{{-2, -2}}}}}, 128)
@@ -54,11 +54,13 @@ func TestDrawPNGPixels(t *testing.T) {
 		x, y int
 		want color.RGBA
 	}{
-		{0, 0, striped},        // x+y = 0, on a stripe
-		{27, 0, striped},       // x+y = 27, the stripe's last pixel
-		{28, 0, grey},          // x+y = 28, between stripes
-		{29, 26, grey},         // x+y = 55, the gap's last pixel
-		{30, 26, striped},      // x+y = 56, the next stripe
+		{0, 0, striped},        // x-y = 0, on a stripe
+		{27, 0, striped},       // x-y = 27, the stripe's last pixel
+		{28, 0, grey},          // x-y = 28, between stripes
+		{0, 1, grey},           // x-y = -1, so 55: the gap's last pixel
+		{0, 28, grey},          // x-y = -28, so 28: between stripes
+		{0, 29, striped},       // x-y = -29, so 27: the next bar down
+		{26, 26, striped},      // x-y = 0, down the same bar
 		{31, 10, borderColour}, // the border's left pixel, inside the territory
 		{32, 10, borderColour}, // its right pixel, in the free area
 		{10, 31, borderColour}, // the border below

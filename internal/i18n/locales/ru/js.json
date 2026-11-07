@@ -17,5 +17,6 @@
   "js.generate.reset": "Настройки карты сброшены к шаблону {preset}.",
   "js.generate.ach_setting": "{setting} отключает некоторые достижения.",
   "js.generate.ach_clear": "Теперь ни одна настройка не отключает достижения.",
-  "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым."
+  "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым.",
+  "js.preview.download_territories": "Download {planet} map with territories"
 }

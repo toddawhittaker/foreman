@@ -12,6 +12,7 @@ func init() {
 		"js.preview.previous",
 		"js.preview.next",
 		"js.preview.download",
+		"js.preview.download_territories",
 		"js.generate.reset",
 		"js.generate.ach_setting",
 		"js.generate.ach_clear",

@@ -57,6 +57,10 @@
   /* The pin sits on the map's own colours, which do not follow the theme. */
   --color-pin-face: #ffffff;
   --color-pin-edge: #000000;
+  /* Demolisher territories, as the downloaded picture draws them: the game's red, lighter. */
+  --color-territory-stripe: rgb(200 20 20 / 33.3%);
+  --color-territory-border: rgb(255 30 30);
+  --color-territory-outline: #101010;
   --measure: 70ch;
   --page-max: 64rem;
 }
@@ -2348,6 +2352,80 @@ form:has(#mode-exchange:checked) .achievements {
   fill: var(--color-pin-edge);
 }
 
+/* The planet choice and the territory box share a line when there is room. */
+.preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--space-3) var(--space-5);
+}
+
+.preview-controls > * {
+  min-inline-size: 0;
+}
+
+/* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture
+   pixels, so they scale and pan with it; the labels keep one size, like the pin. */
+.territories {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The thumbnail's picture has a border; the overlay covers only the map. */
+.pictures .territories {
+  inset: var(--border-width);
+}
+
+.territories svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+#territory-stripes path {
+  fill: var(--color-territory-stripe);
+}
+
+.territories__border {
+  fill: none;
+  stroke: var(--color-territory-border);
+  stroke-width: 2;
+}
+
+/* White on a dark ring reads on every part of the map, as the pin does. */
+.territories__label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: var(--color-pin-face);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow:
+    -1px -1px 0 var(--color-territory-outline), 1px -1px 0 var(--color-territory-outline),
+    -1px 1px 0 var(--color-territory-outline), 1px 1px 0 var(--color-territory-outline),
+    -2px 0 0 var(--color-territory-outline), 2px 0 0 var(--color-territory-outline),
+    0 -2px 0 var(--color-territory-outline), 0 2px 0 var(--color-territory-outline);
+}
+
+.preview[aria-busy="true"] .territories {
+  opacity: 0.6;
+}
+
+/* While the box is ticked, a line is held for the list, so nothing moves when it arrives. */
+.preview:has(#preview-territories:checked) .territory-result {
+  min-block-size: 1lh;
+}
+
+.territory-result:empty {
+  display: none;
+}
+
+.preview:has(#preview-territories:checked) .territory-result:empty {
+  display: block;
+}
+
 .message pre {
   max-block-size: 12rem;
   margin: 0;
@@ -2394,6 +2472,11 @@ form:has(#mode-exchange:checked) .achievements {
 
   .field input[type="file"]::file-selector-button {
     border-inline-end-color: ButtonText;
+  }
+
+  /* A label's ring is a shadow, which forced colours drop; it sits on the map, not the page. */
+  .territories__label {
+    forced-color-adjust: none;
   }
 
   /* The shape's fill must survive: draw it in the system text colour. */

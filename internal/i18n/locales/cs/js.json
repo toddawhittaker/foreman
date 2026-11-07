@@ -17,5 +17,6 @@
   "js.generate.reset": "Nastavení mapy bylo vráceno na předvolbu {preset}.",
   "js.generate.ach_setting": "{setting} vypne některé úspěchy.",
   "js.generate.ach_clear": "Teď už žádné nastavení úspěchy nevypíná.",
-  "js.generate.moved": "{field}: nastaveno na {value}, aby rozsah zůstal platný."
+  "js.generate.moved": "{field}: nastaveno na {value}, aby rozsah zůstal platný.",
+  "js.preview.download_territories": "Download {planet} map with territories"
 }

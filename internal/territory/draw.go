@@ -105,12 +105,13 @@ func DrawPNG(src []byte, ov Overlay, label func(size string) string) ([]byte, er
 	return out.Bytes(), nil
 }
 
-// stripe blends the stripe colour into the pixels of r on the stripes.
+// stripe blends the stripe colour into the pixels of r on the stripes, bars
+// running from top left to bottom right as in the game.
 func stripe(img *image.RGBA, r Rect) {
 	area := image.Rect(r.X, r.Y, r.X+r.W, r.Y+r.H).Intersect(img.Bounds())
 	for y := area.Min.Y; y < area.Max.Y; y++ {
 		for x := area.Min.X; x < area.Max.X; x++ {
-			if (x+y)%stripePeriod >= stripeWidth {
+			if ((x-y)%stripePeriod+stripePeriod)%stripePeriod >= stripeWidth {
 				continue
 			}
 			i := img.PixOffset(x, y)
