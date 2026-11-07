@@ -1,4 +1,5 @@
 {{define "title"}}{{.Page.World.Name}}{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -33,18 +34,20 @@
 {{- if not .Busy.IsZero}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
-  <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
+  {{- /* The fixed id lets htmx give focus back to the link after each reload. */}}
+  {{- if .ServerLink}}
+  <div class="actions"><a href="{{serverPath}}" id="world-server-link">{{t "worlds.world.server_link"}}</a></div>
+  {{- end}}
 </div>
 {{- end}}
+{{- /* The page reloads when the update ends; the result then takes focus and is read out (DESIGN 7.6). */}}
 {{- if not .UpdateDone.IsZero}}
-<div class="message message--success">
+<div class="message message--success" id="world-result" tabindex="-1" autofocus data-announce>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .UpdateDone}}</p>
 </div>
 {{- end}}
-{{- if not .UpdateFailed.IsZero}}
-<div class="message message--error">
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .UpdateFailed}}</p>
-</div>
+{{- with .UpdateFailure}}
+<div id="world-result" tabindex="-1" autofocus data-announce>{{template "server-failure" .}}</div>
 {{- end}}
 </div>
 {{- /* The world page's one primary action, on a world that is not active (SPEC 7.9). */}}

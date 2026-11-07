@@ -443,6 +443,8 @@ type Operation struct {
 	Err error
 	// Switch is set on a switch, which both worlds show (SPEC 7.9).
 	Switch *SwitchInfo
+	// Version is the game version an update moves to; empty otherwise.
+	Version string
 	// Players are who was online when the stop's countdown began; empty
 	// when there was no countdown (SPEC 7.6).
 	Players []Player
