@@ -942,6 +942,51 @@ old world's open page reloads onto the Server page after the operation
 ends, moves focus to the `h1`, and writes the result sentence
 to `#announcer`.
 
+### 7.7 Toggletip
+
+A short explanation of one setting, behind an (i) button after its name,
+as the game's map generator has it (SPEC 5.6, 17).
+
+```html
+<div class="field">
+  <div class="field__head">
+    <label for="ms-time-factor">Time factor</label>
+    <button type="button" class="tip" aria-expanded="false"
+            aria-controls="ms-time-factor-tip" aria-describedby="ms-time-factor-tip">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16">…</svg>
+      <span class="visually-hidden">About Time factor</span>
+    </button>
+  </div>
+  <input id="ms-time-factor" … aria-describedby="ms-time-factor-tip ms-time-factor-ach">
+  <p class="ach" id="ms-time-factor-ach"></p>
+  <p class="tip__text" id="ms-time-factor-tip">Controls how fast evolution increases over time. …</p>
+</div>
+```
+
+- **Words.** The game's own tooltip (`*-description` in the game's
+  `core.cfg`) in every language, without its "Note:" line about
+  achievements, which Foreman shows its own way (8.7). Where the game
+  has none, plain words, translated as usual (SPEC 22.6). A tip may add
+  what the game's number means ("40 means 0.000004").
+- **The button** is named "About" and the setting; for a group's
+  "Enabled" box it names the group. The icon is a 16 px circled "i" in
+  `text-muted` (`text` on hover and while open), in a 24 px round target,
+  44 px with a coarse pointer (`pointer: coarse`). Focus is the usual
+  ring (5).
+- **The text** is in the page, so the field's `aria-describedby` and the
+  button's name it: a screen reader hears it with the field, and with the
+  button. Without script the button is hidden and the text is a hint
+  under the field (`--text-sm`, `text-muted`).
+- **With script** (`toggletip.js`) the text is a box over the page:
+  `surface`, 1px `border`, `--radius`, `--text-sm` in `text`, at most
+  22rem wide. It opens on a click or tap (and stays), on keyboard focus,
+  and on mouse hover (and closes when the pointer leaves both the button
+  and the text). Escape, a tap elsewhere or moving focus away closes it.
+  One is open at a time. The script places it under its button, or above
+  it when there is no room below, and moves it left to keep 8 px from the
+  window's right edge, so it fits at 320 px. `aria-expanded` follows.
+- Nothing moves when a tip opens: the box lies over what follows.
+
 ## 8. Patterns for later screens
 
 These are not built in Epic 1. They are here so Epics 2 and 3 start from
@@ -1140,7 +1185,11 @@ in this order:
 its values (htmx redraws `#map-settings`; the preset and the seed are
 outside it, so focus and a typed seed stay). "[modified]" and the reset
 button show once any setting differs from the preset; the seed is not a
-setting of the preset. Reset is a submit button to the refresh route, so
+setting of the preset. Their room is kept while they are not shown (the
+word and the button are there but invisible, and out of the
+accessibility tree), so the row wraps the same way either way, and
+nothing below it, such as the slider being dragged, moves when they come
+or go. On a phone they hold a line of their own under the select. Reset is a submit button to the refresh route, so
 it also works without script; with htmx it redraws the tabs in place.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
@@ -1215,10 +1264,18 @@ starts."
   select's label, `aria-valuetext` the step's words) and an `output` with
   those words. On a `map-section` container at least 34rem wide the
   style sheet shows the slider and output and hides the select; narrower
-  (phones, 200% text) it shows the select. The name and the value share
-  the first line while they fit, and the value drops under the name
-  (between words) when they do not; the name never breaks inside a word.
-  The slider has a line to itself, so the value's width never moves it.
+  (phones, 200% text) it shows the select. The row has fixed lines: the
+  name (with its tip button, if any) and the value, then the slider, then
+  the warning and the tip. The value keeps room for the longest step in
+  any language (`min-inline-size: 20ch`, tabular numbers), so moving the
+  slider never reflows the row; when the name leaves no room beside it,
+  the value takes a line of its own, and keeps it. The name never breaks
+  inside a word. The slider is not a boxed field: no padding, edge or
+  width cap, so its knob reaches both ends of the track at the first and
+  last step, and the fill ends under the knob.
+- **While an on/off box is off**, its name stays at full strength (it is
+  a control); the names and values of the settings it turns off turn
+  `text-muted`, and the browser greys their sliders.
 - **Density on a wide panel.** On a `map-section` at least 34rem wide the
   groups sit closer (8px between groups and under a group's name), and
   with a fine pointer (`pointer: fine`) the sliders and the planet
@@ -1233,11 +1290,17 @@ starts."
   (2.x), then the raw map-gen JSON `details`.
 - **Map-settings fields** (`ms.<dotted path>`) show what the version's
   file holds, in the units the game's map generator shows: cooldowns in
-  minutes, ratios and modifiers in percent, evolution factors as "40"
-  with a "× 10⁻⁷" unit after the field. A group's "Enabled" checkbox heads
+  minutes, ratios and modifiers in percent, evolution factors as plain
+  numbers ("40"), as the game shows them, with no unit; the tip says what
+  the number means. A group's "Enabled" checkbox heads
   it on its own row. Numbers are mono text fields 12ch wide with the unit
   beside them. 2.1's evolution group size factor replaces 2.0's group
   sizes.
+- **Tips.** Every setting of the Enemy and Advanced tabs has a
+  toggletip (7.7): the enemy bases' frequency and size, the starting
+  area, No enemies, Peaceful mode, and each map-settings field, a
+  group's "Enabled" box explaining the group. Width and Height keep their
+  visible hint instead, as the game has no tip for them.
 - **Spoiling rate** is shown as the game shows it, 10% to 1000%, the
   inverse of the stored `spoil_time_modifier` (shown % = 100 / stored).
 - **Limits.** Every number field takes whole numbers within the game
@@ -1588,10 +1651,10 @@ Left out because no Epic 1 to 3 screen needs it. Add each when a real
 screen does, in this document first.
 
 - A manual theme switch. The system setting decides (SPEC 17.3).
-- Icons of any kind, except the map preview's pin and the large view's
-  controls (8.8).
-- Modal dialogs other than the map preview's large view (8.8), pop-overs
-  (other than the large view's controls over its picture), menus, tab panels and toasts. (The nav links
+- Icons of any kind, except the map preview's pin, the large view's
+  controls (8.8) and the toggletip's (i) (7.7).
+- Modal dialogs other than the map preview's large view (8.8), menus,
+  tab panels and toasts. (The nav links
   only look like tabs; they are ordinary links.) The confirmation step
   (7.4) and the message (7.3) cover Epics 1 to 3.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
