@@ -173,13 +173,13 @@ func TestSpoilingRateIsShownInverted(t *testing.T) {
 	for _, c := range []struct {
 		shown  string
 		stored float64
-	}{{"10", 10}, {"1000", 0.1}, {"200", 0.5}, {"15", 100.0 / 15}, {"333.3", 100.0 / 333.3}} {
+	}{{"10", 10}, {"1000", 0.1}, {"200", 0.5}, {"15", 100.0 / 15}, {"333", 100.0 / 333}} {
 		_, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: c.shown}))
 		if len(problems) != 0 || overrides[path] != c.stored {
 			t.Errorf("shown %s: problems %v, stored %v, want %v", c.shown, problems, overrides[path], c.stored)
 		}
 	}
-	for _, bad := range []string{"5", "1010", "0", "x"} {
+	for _, bad := range []string{"5", "1010", "0", "x", "333.3"} {
 		_, _, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: bad}))
 		if len(problems) != 1 {
 			t.Errorf("shown %s: problems %v, want one", bad, problems)

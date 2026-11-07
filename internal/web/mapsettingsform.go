@@ -136,7 +136,7 @@ var msGroups = []msGroup{
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.spoiling"), []msDef{
 		// The game shows the rate, 10% to 1000%; the file stores the time modifier, 10 to 0.1.
-		{path: "difficulty_settings.spoil_time_modifier", label: i18n.M("mapgen.ms.spoil_rate"), inverse: true, unit: i18n.M("mapgen.unit.percent"), lo: 10, hi: 1000},
+		{path: "difficulty_settings.spoil_time_modifier", label: i18n.M("mapgen.ms.spoil_rate"), inverse: true, whole: true, unit: i18n.M("mapgen.unit.percent"), lo: 10, hi: 1000},
 	}},
 }
 
