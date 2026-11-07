@@ -510,6 +510,22 @@ func TestServerModNotice(t *testing.T) {
 	}
 }
 
+// SPEC 17.9: after an import whose save needs a mod the world lacks, the
+// result offers the sync; a world that needs none is not offered it.
+func TestImportOffersSyncOnlyWhenModsAreMissing(t *testing.T) {
+	g := newModsRig(t, true)
+	plain := g.world20("Plain")
+	id, err := g.worlds.Create(context.Background(), "Modded", "2.1.24", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.copySave(id, "2.1.24-space-age-testmod.zip")
+	wantIn(t, "import result", g.get(worldPath(id)+"?imported=1"), "Match this world&#39;s mods to its save", `href="/worlds/`+id+`/mods/plan?kind=sync"`)
+	if strings.Contains(g.get(worldPath(plain)+"?imported=1"), "mods to its save") {
+		t.Error("a world with every mod is offered the sync")
+	}
+}
+
 // Every mods route needs a signed-in admin.
 func TestModRoutesNeedSignIn(t *testing.T) {
 	g := newModsRig(t, true)

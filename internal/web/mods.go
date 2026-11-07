@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -964,24 +963,11 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 	return p
 }
 
-// saveDropper names the mods a plan turns off that the loading save uses.
-// *mods.Planner gets SaveDrops in a parallel change; until it has it,
-// fallbackDrops does the same from the save's mod list.
-type saveDropper interface {
-	SaveDrops(ctx context.Context, worldID string, plan mods.Plan) ([]string, error)
-}
-
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
 // which have their own box. A save that cannot be read drops nothing here;
 // the pre-start check reports it.
 func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan) []string {
-	var drops []string
-	var err error
-	if d, ok := any(s.planner).(saveDropper); ok {
-		drops, err = d.SaveDrops(ctx, id, plan)
-	} else {
-		drops, err = s.fallbackDrops(id, plan)
-	}
+	drops, err := s.planner.SaveDrops(ctx, id, plan)
 	if err != nil {
 		s.log.Warn("read the mods of the save that loads", "world", id, "error", err)
 		return nil
@@ -989,28 +975,6 @@ func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan) []str
 	return slices.DeleteFunc(drops, func(n string) bool {
 		return slices.ContainsFunc(plan.Unresolved, func(u mods.Unresolved) bool { return u.Name == n })
 	})
-}
-
-func (s *server) fallbackDrops(id string, plan mods.Plan) ([]string, error) {
-	save, err := s.loadingSave(id)
-	if err != nil || save == "" {
-		return nil, err
-	}
-	sv, err := s.worlds.SaveMods(id, save)
-	if err != nil {
-		return nil, err
-	}
-	used := map[string]bool{}
-	for _, m := range sv.Mods {
-		used[m.Name] = true
-	}
-	var out []string
-	for _, c := range plan.Changes {
-		if (c.Action == mods.ActDisable || c.Action == mods.ActRemove) && used[c.Name] {
-			out = append(out, c.Name)
-		}
-	}
-	return out, nil
 }
 
 // errStagedGone says an uploaded zip is no longer waiting, as after a
@@ -1179,7 +1143,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 			confirmed = append(confirmed, un.Name)
 		}
 	}
-	setConfirmedDrops(&op, confirmed)
+	op.ConfirmedDrops = confirmed
 	for _, d := range downloads {
 		op.Downloads = append(op.Downloads, game.ModDownload{Mod: d.Name, Release: d.Release})
 	}
@@ -1271,15 +1235,4 @@ func (f *Failure) UndoName() i18n.Msg {
 		return f.UndoLabel
 	}
 	return i18n.M("worlds.snapshot.label.before_restore")
-}
-
-// setConfirmedDrops hands ApplyMods the mods the admin accepted losing, so
-// the restart's pre-start check lets their absence pass. game.ModOp gains
-// ConfirmedDrops in a parallel change; until then this sets nothing.
-// TODO(merge): replace with op.ConfirmedDrops = names once that lands.
-func setConfirmedDrops(op *game.ModOp, names []string) {
-	f := reflect.ValueOf(op).Elem().FieldByName("ConfirmedDrops")
-	if f.IsValid() && f.CanSet() && f.Type() == reflect.TypeOf(names) {
-		f.Set(reflect.ValueOf(slices.Clone(names)))
-	}
 }
