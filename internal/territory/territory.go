@@ -46,10 +46,12 @@ const (
 	// MaxPicture is the largest picture size Parse accepts, the largest
 	// preview there is.
 	MaxPicture = 4096
-	// MaxSize is the largest preview size territories are offered for. At
-	// 3840 the game needed 96% of the container's 1 GiB and ran twice as
-	// slowly, and at 4096 it ran out of memory on 2.1 (SPEC 5.6).
-	MaxSize = 3584
+	// MaxSize is the largest preview size territories are offered for, kept
+	// low to fail safe (SPEC 5.6). At 3584, 2.0 took 32 s on a fast desktop
+	// and 2.1 used 88% of the container's 1 GiB, too little room for a slow
+	// home server; 3072 used at most 750 MiB (73%) and 27 s. 4096 ran out of
+	// memory on 2.1.
+	MaxSize = 3072
 )
 
 // ChunkTiles is the width of a chunk in tiles, and so in picture pixels.

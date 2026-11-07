@@ -113,7 +113,7 @@ func TestParseRefusesSize(t *testing.T) {
 			t.Errorf("size %d: err %v, want ErrInvalid", size, err)
 		}
 	}
-	for _, size := range []int{64, 1024, 1280, 3584, MaxPicture} {
+	for _, size := range []int{64, 1024, 1280, MaxSize, 3584, MaxPicture} {
 		if _, err := Parse([]byte(`{"territories":[]}`), size); err != nil {
 			t.Errorf("size %d: %v", size, err)
 		}
@@ -121,10 +121,15 @@ func TestParseRefusesSize(t *testing.T) {
 }
 
 // The territory sizes are offered only up to MaxSize, which must be a
-// preview size: 1024 to 4096 in steps of 128.
+// preview size: 1024 to 4096 in steps of 128. It is 3072, the largest size
+// measured with room to spare on 2.0 and 2.1: 750 MiB of 1 GiB and 27 s of
+// 60 at worst.
 func TestMaxSizeIsAPreviewSize(t *testing.T) {
 	if MaxSize < 1024 || MaxSize > MaxPicture || MaxSize%128 != 0 {
 		t.Errorf("MaxSize %d is not a preview size", MaxSize)
+	}
+	if MaxSize != 3072 {
+		t.Errorf("MaxSize is %d; raising it needs new measurements in a real game", MaxSize)
 	}
 }
 
