@@ -1,6 +1,9 @@
 # Make targets are described in docs/STACK.md, section 13.
 # Go runs locally; golangci-lint and Playwright run in pinned images.
 
+# Your own values (DEPLOY_DIR) live in local.mk, which git ignores.
+-include local.mk
+
 # The one toolchain pin: local Go, the build image and CI all use it.
 GO_VERSION      := 1.27.3
 GO_IMAGE        := golang:1.27.3-trixie@sha256:c65ecfe613b539ac74c62a4c3b2c27e8f8a6076384c8f27e8a3c0f3be17cc385
@@ -26,7 +29,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame image run e2e e2e-deps \
-	test-game e2e-game vuln ci tidy i18n-hash
+	test-game e2e-game vuln ci tidy i18n-hash deploy
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -147,6 +150,39 @@ e2e-game: build e2e-deps
 	docker network create $$net >/dev/null && \
 	$(DOCKER_RUN) --network $$net -e FOREMAN_E2E_GAME_NETWORK=$$net --ipc=host -v $(DOCKER_SOCK):/var/run/docker.sock --group-add $$(stat -c %g $(DOCKER_SOCK)) \
 		-w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) sh -c 'npx --no-install tsc --noEmit -p game && npx --no-install playwright test -c game'
+
+# Build the image from this checkout and recreate only Foreman in a local
+# Compose stack, so the proxy, the sign-in outpost and a running game stay up.
+# DEPLOY_DIR has no default: the repository names no deployment.
+DEPLOY_IMAGE ?= $(IMAGE)
+DEPLOY_SERVICE ?= foreman
+DEPLOY_TIMEOUT ?= 120
+FORCE ?=
+
+deploy:
+	@test -n '$(DEPLOY_DIR)' || { \
+		echo "DEPLOY_DIR is not set. Set it to the folder of your Compose stack, on the command line or in local.mk"; \
+		echo "(docs/WORKFLOW.md, \"Local development\"). Example: make deploy DEPLOY_DIR=/path/to/stack"; exit 1; }
+	@test -d '$(DEPLOY_DIR)' || { echo "DEPLOY_DIR '$(DEPLOY_DIR)' is not a folder."; exit 1; }
+	@if [ -z '$(FORCE)' ] && [ -n "$$(git status --porcelain)" ]; then \
+		echo "This checkout has uncommitted changes, so what runs would match no commit."; \
+		echo "Commit them, or run make deploy FORCE=1 to deploy anyway."; exit 1; fi
+	$(MAKE) image IMAGE='$(DEPLOY_IMAGE)'
+	docker compose --project-directory '$(DEPLOY_DIR)' up -d --no-deps '$(DEPLOY_SERVICE)'
+	@cid=$$(docker compose --project-directory '$(DEPLOY_DIR)' ps -q '$(DEPLOY_SERVICE)'); \
+	[ -n "$$cid" ] || { echo "The service '$(DEPLOY_SERVICE)' has no container in '$(DEPLOY_DIR)'."; exit 1; }; \
+	echo "Waiting up to $(DEPLOY_TIMEOUT) s for $(DEPLOY_SERVICE) to report healthy."; \
+	waited=0; \
+	while :; do \
+		state=$$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$$cid"); \
+		[ "$$state" = healthy ] && break; \
+		if [ "$$state" = unhealthy ] || [ "$$state" = no-healthcheck ] || [ "$$waited" -ge '$(DEPLOY_TIMEOUT)' ]; then \
+			echo "$(DEPLOY_SERVICE) is $$state after $$waited s, so the deploy failed. See: docker logs $$cid"; exit 1; fi; \
+		sleep 2; waited=$$((waited + 2)); \
+	done; \
+	echo "Deployed $(DEPLOY_SERVICE): healthy after $$waited s."; \
+	echo "Image ID: $$(docker inspect -f '{{.Image}}' "$$cid")"; \
+	echo "Commit:   $$(git rev-parse HEAD)$(if $(FORCE), (FORCE=1: the tree may differ from this commit))"
 
 vuln:
 	go run $(GOVULNCHECK) ./...
