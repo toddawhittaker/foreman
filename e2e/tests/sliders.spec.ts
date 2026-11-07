@@ -8,7 +8,7 @@ import type { Page } from "@playwright/test";
 test.use({ fakeGameOn: true });
 
 test.beforeEach(async ({ page, foreman, fakeGame }, info) => {
-  test.skip(info.project.name.startsWith("phone"), "phones show selects, not sliders (DESIGN 8.7)");
+  test.skip(info.project.name.startsWith("phone") && !info.title.includes("[modified]"), "phones show selects, not sliders (DESIGN 8.7)");
   await createAdmin(page);
   seedWorld(foreman);
   await fakeGame!.call("/image", { ref: image21, on: true });
@@ -89,6 +89,43 @@ for (const lang of ["de", "ru"]) {
         await tab(page, name).click();
         expect(await movedWhileStepping(page), `${width} px`).toEqual([]);
       }
+    }
+  });
+}
+
+// DESIGN 8.6: "[modified]" and the reset button appear by the preset as soon
+// as a setting leaves it. Their line is kept for them, so nothing under the
+// preset, the setting being moved included, shifts when they come or go.
+for (const lang of ["en", "de"]) {
+  test(`"[modified]" coming and going moves nothing below the preset, in ${lang}`, async ({ page }) => {
+    await page.goto("/generate");
+    if (lang !== "en") await pickLanguage(page, lang);
+    for (const width of [320, 480, 700, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/generate");
+      // The setting as shown: a slider on a wide panel, else its select.
+      const where = () => page.evaluate(() => {
+        const range = document.getElementById("mg-nauvis-iron-ore-frequency-range")!;
+        const shown = range.getClientRects().length > 0 ? range : document.getElementById("mg-nauvis-iron-ore-frequency")!;
+        const top = (el: Element) => Math.round((el.getBoundingClientRect().y + window.scrollY) * 10);
+        return [top(shown), top(document.querySelector(".tablist")!)];
+      });
+      const step = (to: string) => page.locator("#mg-nauvis-iron-ore-frequency").evaluate((s: HTMLSelectElement, v) => {
+        s.value = v;
+        s.dispatchEvent(new Event("change", { bubbles: true }));
+      }, to);
+      const before = await where();
+      await step("50");
+      await expect(page.locator("#preset-reset")).toBeVisible();
+      await expect(page.locator("#preset-modified")).not.toBeEmpty();
+      expect(await where(), `${width} px, modified`).toEqual(before);
+      if (width === 320) {
+        await page.locator("#generate-preset").scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `../screenshots/preset-modified-${lang}-${test.info().project.name}.png` });
+      }
+      await step("100");
+      await expect(page.locator("#preset-reset")).toBeHidden();
+      expect(await where(), `${width} px, back to the preset`).toEqual(before);
     }
   });
 }

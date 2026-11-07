@@ -1185,7 +1185,11 @@ in this order:
 its values (htmx redraws `#map-settings`; the preset and the seed are
 outside it, so focus and a typed seed stay). "[modified]" and the reset
 button show once any setting differs from the preset; the seed is not a
-setting of the preset. Reset is a submit button to the refresh route, so
+setting of the preset. Their room is kept while they are not shown (the
+word and the button are there but invisible, and out of the
+accessibility tree), so the row wraps the same way either way, and
+nothing below it, such as the slider being dragged, moves when they come
+or go. On a phone they hold a line of their own under the select. Reset is a submit button to the refresh route, so
 it also works without script; with htmx it redraws the tabs in place.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets

@@ -1926,8 +1926,16 @@ td > .hint {
   color: var(--color-text-muted);
 }
 
-.modified:empty {
-  display: none;
+/* "[modified]" and the reset keep their room while unseen, so the row wraps
+   the same either way and nothing below moves when they appear (DESIGN 8.6). */
+.modified:empty::before {
+  content: attr(data-word);
+  visibility: hidden;
+}
+
+.preset-row > #preset-reset[hidden] {
+  display: inline-flex;
+  visibility: hidden;
 }
 
 /* Random seed needs script, so it shows only once the script has run. */
