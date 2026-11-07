@@ -13,6 +13,7 @@ import { crc32 } from "node:zlib";
 
 const binary = join(import.meta.dirname, "..", "..", "bin", "foreman");
 const fakeGameBinary = join(import.meta.dirname, "..", "..", "bin", "fakegame");
+const fakePortalBinary = join(import.meta.dirname, "..", "..", "bin", "fakeportal");
 
 // SPEC 17.1 names WCAG 2.2 AA.
 export const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -174,15 +175,104 @@ async function startFakeGame(): Promise<FakeGame & { stop: () => Promise<void> }
   };
 }
 
+// A fake Factorio mod portal (cmd/fakeportal). It is an HTTPS proxy: Foreman gets
+// HTTPS_PROXY and SSL_CERT_FILE, so its unchanged portal client reaches the fake
+// as mods.factorio.com, and the proxy refuses every other host. The hooks are
+// listed at controlHandler in cmd/fakeportal/control.go.
+export interface FakePortal {
+  proxy: string;
+  // PEM file of the test certificate authority.
+  caFile: string;
+  // The fake's own made-up factorio.com credentials; a download needs them.
+  username: string;
+  token: string;
+  // Adds a release of a mod. The mod then shows in search, and its /full reply
+  // lists only the releases added for it (a recorded mod of the same name is hidden).
+  add: (name: string, version: string, deps?: string[]) => Promise<{ file_name: string; download_url: string; sha1: string }>;
+  // How a release downloads: normal, direct, wrong-sha1, unauthorized,
+  // redirect-login, redirect-foreign, server-error, slow, oversized.
+  setMode: (name: string, version: string, mode: string) => Promise<void>;
+  // Every /api reply carries this status; 0 restores them.
+  failApi: (status: number) => Promise<void>;
+  // The proxy refuses every tunnel with 503 while true.
+  setDown: (down: boolean) => Promise<void>;
+  // Requests seen inside tunnels (host and path, never the query), tunnels
+  // opened, and the hosts the proxy refused.
+  state: () => Promise<PortalState>;
+  // How many requests were for this host and a path starting with pathPrefix.
+  count: (host: string, pathPrefix: string) => Promise<number>;
+}
+
+interface PortalState {
+  requests: { host: string; path: string }[];
+  connects: number;
+  refused: string[];
+}
+
+async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<void> }> {
+  const dir = mkdtempSync(join(tmpdir(), "fakeportal-e2e-"));
+  const proc = spawn(fakePortalBinary, ["-dir", dir], { stdio: ["ignore", "pipe", "pipe"] });
+  let err = "";
+  proc.stderr.on("data", (d) => (err += d));
+  const lines = createInterface({ input: proc.stdout })[Symbol.asyncIterator]();
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`fakeportal did not start:\n${err}`)), 10_000),
+  );
+  const exited = new Promise<never>((_, reject) =>
+    proc.once("exit", (code) => reject(new Error(`fakeportal exited ${code}:\n${err}`))),
+  );
+  const first = await Promise.race([lines.next(), timeout, exited]);
+  const ready = JSON.parse(first.value as string) as { proxy: string; ca: string; control: string; username: string; token: string };
+  const post = async (path: string, body: Record<string, unknown>) => {
+    const resp = await fetch(ready.control + path, { method: "POST", body: JSON.stringify(body) });
+    if (!resp.ok) throw new Error(`fakeportal ${path} ${JSON.stringify(body)}: ${resp.status} ${await resp.text()}`);
+    return resp.json();
+  };
+  const state = async (): Promise<PortalState> => (await fetch(ready.control + "/state")).json();
+  return {
+    proxy: ready.proxy,
+    caFile: ready.ca,
+    username: ready.username,
+    token: ready.token,
+    add: (name, version, deps = []) => post("/add", { name, version, deps }),
+    setMode: async (name, version, mode) => void (await post("/mode", { name, version, mode })),
+    failApi: async (status) => void (await post("/fail", { status })),
+    setDown: async (down) => void (await post("/down", { down })),
+    state,
+    count: async (host, pathPrefix) => (await state()).requests.filter((r) => r.host === host && r.path.startsWith(pathPrefix)).length,
+    stop: async () => {
+      if (proc.exitCode === null) {
+        const done = new Promise((r) => proc.once("exit", r));
+        proc.kill("SIGTERM");
+        await done;
+      }
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
 export const test = base.extend<{
   foreman: Foreman;
   foremanEnv: Record<string, string>;
   // Opt in with test.use({ fakeGameOn: true }): Foreman then gets the fake as its Docker host.
   fakeGameOn: boolean;
   fakeGame: FakeGame | undefined;
+  // Opt in with test.use({ fakePortalOn: true }): Foreman then reaches the fake mod portal through its proxy.
+  fakePortalOn: boolean;
+  fakePortal: FakePortal | undefined;
 }>({
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
+  fakePortalOn: [false, { option: true }],
+  fakePortal: async ({ fakePortalOn }, use) => {
+    if (!fakePortalOn) {
+      await use(undefined);
+      return;
+    }
+    const p = await startFakePortal();
+    await use(p);
+    await p.stop();
+  },
   fakeGame: async ({ fakeGameOn }, use) => {
     if (!fakeGameOn) {
       await use(undefined);
@@ -192,10 +282,13 @@ export const test = base.extend<{
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame }, use, testInfo) => {
-    const env = fakeGame
-      ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork, ...foremanEnv }
-      : foremanEnv;
+  foreman: async ({ foremanEnv, fakeGame, fakePortal }, use, testInfo) => {
+    const env = {
+      ...(fakeGame ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork } : {}),
+      // Loopback addresses are never proxied, so only the portal's hosts go through.
+      ...(fakePortal ? { HTTPS_PROXY: fakePortal.proxy, SSL_CERT_FILE: fakePortal.caFile } : {}),
+      ...foremanEnv,
+    };
     const f = await startForeman(env);
     const expected: (string | RegExp)[] = [];
     f.expectError = (match) => expected.push(match);
