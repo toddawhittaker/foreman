@@ -39,7 +39,7 @@ func (SettingsRawPage) navItem() string      { return PathWorlds }
 
 // Tabs are the world's pages, with Settings current (DESIGN 6).
 func (p SettingsRawPage) Tabs() WorldTabs {
-	return WorldTabs{Path: worldPath(p.WorldID), Current: "settings", Settings: true}
+	return settingsTabs(p.WorldID, true)
 }
 
 func (p SettingsRawPage) hasErrors() bool { return len(p.Errors) > 0 || !p.Error.IsZero() }

@@ -128,7 +128,7 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 // formPage fills the form from the settings text and admin names given.
 func (sw settingsWorld) formPage(text []byte, names []string) SettingsPage {
 	p := SettingsPage{
-		WorldID: sw.sum.ID, WorldName: sw.sum.Name, ReadOnly: sw.readOnly,
+		WorldID: sw.sum.ID, WorldName: sw.sum.Name, Active: sw.sum.Active, ReadOnly: sw.readOnly,
 		Running: sw.running, AdminsBroken: sw.adminsBroken,
 		Admins: strings.Join(names, "\n"),
 	}
@@ -585,7 +585,7 @@ func (SettingsPreviewPage) navItem() string      { return PathWorlds }
 
 // Tabs are the world's pages, with Settings current (DESIGN 6).
 func (p SettingsPreviewPage) Tabs() WorldTabs {
-	return WorldTabs{Path: worldPath(p.WorldID), Current: "settings", Settings: true}
+	return settingsTabs(p.WorldID, true)
 }
 
 func (p SettingsPreviewPage) WorldPath() string     { return worldPath(p.WorldID) }

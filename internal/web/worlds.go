@@ -62,11 +62,21 @@ func worldPath(id string) string { return PathWorlds + "/" + id }
 type WorldTabs struct {
 	Path, Current string
 	Settings      bool
+	// Under marks Current as the section the page belongs to, not the page
+	// itself (aria-current "true", not "page"; DESIGN 6).
+	Under bool
 }
 
 func worldTabs(w world.Summary, current string) WorldTabs {
 	return WorldTabs{Path: worldPath(w.ID), Current: current, Settings: !w.Newer && !w.Unreadable}
 }
+
+// settingsTabs are a world's pages from the settings pages. under is true
+// on a page reached from Settings rather than Settings itself.
+func settingsTabs(id string, under bool) WorldTabs {
+	return WorldTabs{Path: worldPath(id), Current: "settings", Settings: true, Under: under}
+}
+
 func deletePath(id string) string { return worldPath(id) + "/delete" }
 
 func (s *server) worldRoutes() {
@@ -417,6 +427,13 @@ func (p DeletePage) Path() string { return deletePath(p.World.ID) }
 
 // WorldPath is where cancelling goes.
 func (p DeletePage) WorldPath() string { return worldPath(p.World.ID) }
+
+// Tabs are the world's pages; Delete is reached from Overview (DESIGN 6).
+func (p DeletePage) Tabs() WorldTabs {
+	t := worldTabs(p.World, "overview")
+	t.Under = true
+	return t
+}
 
 // WorldsPath links back to the world list.
 func (DeletedPage) WorldsPath() string { return PathWorlds }
