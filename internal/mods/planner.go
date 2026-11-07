@@ -16,6 +16,7 @@ type Worlds interface {
 	Mods(id string) ([]world.InstalledMod, error)
 	ModsFingerprint(id string) (string, error)
 	SaveMods(id, save string) (savefile.Save, error)
+	PreStartCheck(id string) (world.PreCheck, error)
 }
 
 // Portal is what the planner asks the mod portal; *modportal.Client has it.
@@ -69,6 +70,56 @@ func (p *Planner) SyncRequest(worldID, save string, choices map[string]Choice) (
 		req.SaveMods = append(req.SaveMods, SaveMod{Name: m.Name, Version: m.Version.String()})
 	}
 	return req, nil
+}
+
+// SaveDrops lists, sorted, the mods the plan turns off or removes (for a
+// sync, also those it continues without) that the save which loads uses.
+// The game deletes their content from the world, so the admin confirms them
+// first (SPEC 9.4, 9.10). Built-in mods follow the Space Age flag and never
+// appear. A world with no save, or one Foreman cannot read, drops nothing
+// it can name; the pre-start check then still refuses.
+func (p *Planner) SaveDrops(ctx context.Context, worldID string, plan Plan) ([]string, error) {
+	check, err := p.Worlds.PreStartCheck(worldID)
+	if err != nil {
+		return nil, err
+	}
+	if check.Save == "" || slices.ContainsFunc(check.Problems, func(pr world.Problem) bool { return pr.Kind == world.ProblemSaveUnreadable }) {
+		return nil, nil
+	}
+	save, err := p.Worlds.SaveMods(worldID, check.Save)
+	if err != nil {
+		return nil, err
+	}
+	w, err := p.world(ctx, worldID)
+	if err != nil {
+		return nil, err
+	}
+	inSave := map[string]bool{}
+	for _, m := range save.Mods {
+		inSave[m.Name] = true
+	}
+	builtIn := map[string]bool{}
+	for _, m := range w.Mods {
+		builtIn[m.Name] = m.BuiltIn
+	}
+	var out []string
+	add := func(name string) {
+		if inSave[name] && !builtIn[name] && !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
+	for _, c := range plan.Changes {
+		if c.Action == ActDisable || c.Action == ActRemove {
+			add(c.Name)
+		}
+	}
+	for _, u := range plan.Unresolved {
+		if usableChoice(u) && u.Choice.Kind == ChoiceWithout {
+			add(u.Name)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
 }
 
 func (p *Planner) world(ctx context.Context, worldID string) (World, error) {

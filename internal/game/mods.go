@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/modportal"
@@ -68,6 +69,11 @@ type ModOp struct {
 	// Summary is what the change does, for the audit entry. It holds mod
 	// names and versions, never a secret.
 	Summary string
+	// ConfirmedDrops are the mods the admin confirmed the game will delete
+	// from the world's save (SPEC 9.4, 9.10). The pre-start check after the
+	// change passes a "turned off" or "no file" problem only when every mod
+	// it names is listed here.
+	ConfirmedDrops []string
 }
 
 // ApplyMods makes one mod change to a world, whether or not it is the
@@ -102,6 +108,9 @@ func (c *Controller) ApplyMods(ctx context.Context, id string, by Actor, op ModO
 	}()
 
 	detail := op.Summary
+	if len(op.ConfirmedDrops) > 0 {
+		detail += "; confirmed the game deletes " + strings.Join(slices.Sorted(slices.Values(op.ConfirmedDrops)), ", ")
+	}
 	if got, err := c.worlds.ModsFingerprint(id); err != nil {
 		return err
 	} else if got != op.Fingerprint {
@@ -176,11 +185,33 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 		return staged, nil
 	}
 	o.begin(StepCheck)
-	if _, err := c.precheck(id, StartOptions{}); err != nil {
+	if err := c.precheckMods(id, op.ConfirmedDrops); err != nil {
 		return staged, err
 	}
 	o.done(StepCheck)
 	return staged, c.launchLocked(ctx, o)
+}
+
+// precheckMods is the pre-start check after a mod change. A problem about
+// mods the save uses but the world no longer has on is passed when every
+// mod it names is a confirmed drop; anything else still refuses.
+func (c *Controller) precheckMods(id string, drops []string) error {
+	if err := c.worlds.EnsureModList(id); err != nil {
+		return err
+	}
+	check, err := c.PreStartCheck(id)
+	if err != nil {
+		return err
+	}
+	check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool { return confirmedDrop(p, drops) })
+	return c.allowStart(check, StartOptions{})
+}
+
+func confirmedDrop(p world.Problem, drops []string) bool {
+	if p.Kind != world.ProblemModDisabled && p.Kind != world.ProblemModMissing {
+		return false
+	}
+	return len(p.Mods) > 0 && !slices.ContainsFunc(p.Mods, func(m string) bool { return !slices.Contains(drops, m) })
 }
 
 // downloadMods fetches each release into a staged file and returns the
