@@ -98,7 +98,12 @@ test.describe("Generate", () => {
     let gone = true;
     await page.route(/\/generate\/preview\/[^/]+\/[a-z-]+$/, (route) => (gone ? route.fulfill({ status: 404, body: "" }) : route.continue()));
     const sent: Request[] = [];
-    page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
+    // The picture is back from the moment the new request starts, before its reply asks for the file.
+    page.on("request", (r) => {
+      if (!isAuto(r)) return;
+      sent.push(r);
+      if (sent.length === 2) gone = false;
+    });
     await page.goto("/generate");
     await expect.poll(() => sent.length).toBe(1);
     await expect(section(page).getByRole("link", { name: /opens the large view/ })).toBeVisible();
@@ -106,7 +111,6 @@ test.describe("Generate", () => {
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
     // The broken picture is hidden, a new one is asked for, and the dialog says so.
     await expect.poll(() => sent.length).toBe(2);
-    gone = false;
     await expect(dialog(page).locator("#large-frame")).not.toHaveAttribute("data-missing", /.*/);
     await expect.poll(() => dialog(page).locator("#large-img").evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
@@ -142,6 +146,71 @@ test.describe("Generate", () => {
     await expect(dialog(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
     await expect(dialog(page).locator("#large-status")).toHaveText("Vulcanus");
     await expect(dialog(page).getByRole("link", { name: "Download Vulcanus (PNG)" })).toBeVisible();
+  });
+
+  // Previous before a planet's picture arrives drops that draw: the earlier picture, its status and Close's focus stay right.
+  test("Previous before an undrawn planet arrives keeps the earlier planet and its focus", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/preview", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.keyboard.press("ArrowRight");
+    await expect(dialog(page).locator("#large-status")).toContainText("Drawing Vulcanus");
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
+    release();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
+    await dialog(page).getByRole("button", { name: "Close" }).click();
+    await expect(section(page).getByRole("link", { name: /Map preview of Nauvis/ })).toBeFocused();
+  });
+
+  // Close while a planet is still being drawn: focus stays on a picture that is there, and the late reply changes nothing.
+  test("closing the large view while a planet is drawing keeps focus on a picture", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/preview", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.keyboard.press("ArrowRight");
+    await expect(dialog(page).locator("#large-status")).toContainText("Drawing Vulcanus");
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toBeHidden();
+    release();
+    await page.waitForTimeout(800);
+    await expect(section(page).getByRole("link", { name: /Map preview of Nauvis/ })).toBeFocused();
+  });
+
+  // After one failed draw, Previous and Next still move and try again, one request for each press.
+  test("after a failed draw in the large view, Previous and Next still move and retry", async ({ page, fakeGame }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await fakeGame!.call("/preview-mode", { mode: "fail" });
+    await page.keyboard.press("ArrowRight");
+    await expect(dialog(page).locator("#large-status")).toContainText("The game could not make the map preview.");
+    await fakeGame!.call("/preview-mode", { mode: "ok" });
+    const sent: Request[] = [];
+    page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await expect(dialog(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+    await page.waitForTimeout(1200);
+    expect(sent.length).toBe(1);
   });
 
   // WCAG 1.4.10: at 400% zoom (320 by 200) or a phone on its side the picture keeps its room and the dialog scrolls.
@@ -292,6 +361,22 @@ test.describe("Generate", () => {
     await low.press("Tab");
     await expect(high).toHaveValue("12");
     await expect(page.locator("#announcer")).toHaveText("Maximum group size set to 12 to keep the range valid.");
+  });
+
+  // A change that moves a field and also turns the achievement warning on says both, in one announcement.
+  test("a live-fit move that also turns the achievement warning on says both", async ({ page }) => {
+    await page.goto("/generate");
+    await tab(page, "Enemy").click();
+    const low = page.getByLabel("Minimum expansion distance");
+    const seen = await recordAnnouncer(page);
+    // A spin of the number box sends input and change together.
+    await low.evaluate((el) => {
+      const box = el as HTMLInputElement;
+      box.value = "9";
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await expect.poll(seen).toContain("Minimum expansion distance turns off some achievements. Maximum expansion distance set to 10 to keep the range valid.");
   });
 
   // A preset chosen after the game line changed fills the new line's settings.

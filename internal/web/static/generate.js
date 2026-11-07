@@ -147,16 +147,25 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let blockedBefore = refresh();
+  // What the achievement announcements said in this task (a number box's input
+  // and change come together), so a live-fit announcement can say it too.
+  let saidNow = "";
   function changed(t) {
     const blocked = refresh();
     // A setting that newly turns achievements off is said once, not on every
     // keystroke, by name; so is the last warning going away.
+    let said = "";
     if (blocked > blockedBefore) {
       const field = t && t.dataset && t.dataset.ach ? t : t && document.getElementById(t.dataset.for || "");
       const name = field ? labelOf(field) : "";
-      announce(name ? strings["js.generate.ach_setting"].replace("{setting}", name) : formEl().dataset.achWord || "");
+      said = name ? strings["js.generate.ach_setting"].replace("{setting}", name) : formEl().dataset.achWord || "";
     } else if (blocked === 0 && blockedBefore > 0) {
-      announce(strings["js.generate.ach_clear"]);
+      said = strings["js.generate.ach_clear"];
+    }
+    if (said) {
+      announce(said);
+      saidNow = saidNow ? saidNow + " " + said : said;
+      setTimeout(() => { saidNow = ""; }, 0);
     }
     blockedBefore = blocked;
   }
@@ -224,7 +233,9 @@ document.addEventListener("DOMContentLoaded", () => {
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    if (moved.length) announce(moved.map((el) => strings["js.generate.moved"].replace("{field}", labelOf(el)).replace("{value}", el.value)).join(" "));
+    if (!moved.length) return;
+    const movedSaid = moved.map((el) => strings["js.generate.moved"].replace("{field}", labelOf(el)).replace("{value}", el.value)).join(" ");
+    announce(saidNow ? saidNow + " " + movedSaid : movedSaid);
   }
   document.addEventListener("change", (e) => {
     const t = e.target;
