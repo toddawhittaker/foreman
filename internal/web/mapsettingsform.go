@@ -68,6 +68,8 @@ type msDef struct {
 	unit  i18n.Msg // the unit after the field, or none
 	// lo and hi bound the shown value when hi is not 0 (the game's own limits).
 	lo, hi float64
+	// inverse means shown = 100 / stored, for a rate the file stores as a time.
+	inverse bool
 	// choices lists the options of an msChoice field.
 	choices []msOption
 	// replacedBy is a path whose presence means the game no longer shows this
@@ -129,8 +131,8 @@ var msGroups = []msGroup{
 		{path: "asteroids.spawning_rate", label: i18n.M("mapgen.ms.spawning"), scale: 100, unit: i18n.M("mapgen.unit.percent")},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.spoiling"), []msDef{
-		// The runtime API's range: 0.01 to 100.
-		{path: "difficulty_settings.spoil_time_modifier", label: i18n.M("mapgen.ms.spoil_time"), scale: 100, unit: i18n.M("mapgen.unit.percent"), lo: 1, hi: 10000},
+		// The game shows the rate, 10% to 1000%; the file stores the time modifier, 10 to 0.1.
+		{path: "difficulty_settings.spoil_time_modifier", label: i18n.M("mapgen.ms.spoil_rate"), inverse: true, unit: i18n.M("mapgen.unit.percent"), lo: 10, hi: 1000},
 	}},
 }
 
@@ -329,7 +331,7 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 				}
 			} else {
 				n, _ := pv.(float64)
-				fl.Preset = shown(n, d.scale)
+				fl.Preset = presetShown(n, d)
 				fl.Value = fl.Preset
 				// A field the post lacks, as when the line changed under the page, keeps the preset's value.
 				if vs, ok := posted[fl.Name]; ok && len(vs) > 0 {
@@ -427,9 +429,20 @@ func parseShown(s string, d msDef) (float64, i18n.Msg) {
 	return v, i18n.Msg{}
 }
 
+// presetShown is a stored number in the units the field shows.
+func presetShown(n float64, d msDef) string {
+	if d.inverse && n > 0 {
+		return shown(100/n, 1)
+	}
+	return shown(n, d.scale)
+}
+
 // storedValue turns a shown value back into the file's units. A value the
 // file holds as a whole number (a cooldown in ticks, a distance) stays whole.
 func storedValue(v, preset float64, d msDef) any {
+	if d.inverse {
+		return 100 / v
+	}
 	x := v / d.scale
 	if d.kind == msWhole || preset == math.Trunc(preset) && d.scale < 1 {
 		return int(math.Round(x))

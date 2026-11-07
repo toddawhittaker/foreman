@@ -81,7 +81,7 @@
   "mapgen.ms.recipe_difficulty": "Recipe difficulty",
   "mapgen.ms.research_queue": "Research queue",
   "mapgen.ms.spawning": "Spawning rate",
-  "mapgen.ms.spoil_time": "Spoil time",
+  "mapgen.ms.spoil_rate": "Spoiling rate",
   "mapgen.ms.spoiling": "Spoiling",
   "mapgen.ms.technology": "Technology",
   "mapgen.ms.technology_difficulty": "Technology difficulty",

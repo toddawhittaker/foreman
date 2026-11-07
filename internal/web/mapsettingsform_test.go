@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -162,6 +163,48 @@ func TestHugeMapSettingNumbersAreRefused(t *testing.T) {
 	_, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: "4294967295"}))
 	if len(problems) != 0 || overrides["enemy_expansion.max_expansion_distance"] != 4294967295 {
 		t.Errorf("largest value: problems %v, overrides %v", problems, overrides)
+	}
+}
+
+// The game shows the spoil time modifier as a rate: 10% is stored as 10 and
+// 1000% as 0.1, so the shown value is 100 divided by the stored one.
+func TestSpoilingRateIsShownInverted(t *testing.T) {
+	const name = "ms.difficulty_settings.spoil_time_modifier"
+	const path = "difficulty_settings.spoil_time_modifier"
+	for _, c := range []struct {
+		shown  string
+		stored float64
+	}{{"10", 10}, {"1000", 0.1}, {"200", 0.5}, {"15", 100.0 / 15}, {"333.3", 100.0 / 333.3}} {
+		_, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: c.shown}))
+		if len(problems) != 0 || overrides[path] != c.stored {
+			t.Errorf("shown %s: problems %v, stored %v, want %v", c.shown, problems, overrides[path], c.stored)
+		}
+	}
+	for _, bad := range []string{"5", "1010", "0", "x"} {
+		_, _, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: bad}))
+		if len(problems) != 1 {
+			t.Errorf("shown %s: problems %v, want one", bad, problems)
+		}
+	}
+
+	form, overrides, _ := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: "200"}))
+	if fl, _ := choiceField(form, name); fl.Value != "200" || fl.Preset != "100" || !form.Modified() {
+		t.Errorf("value %q preset %q modified %v", fl.Value, fl.Preset, form.Modified())
+	}
+	b, err := mapgen.MapSettings("2.1.24", "default", overrides)
+	if err != nil || !strings.Contains(string(b), `"spoil_time_modifier": 0.5`) {
+		t.Errorf("written file: %v\n%s", err, b)
+	}
+
+	for _, version := range []string{"2.0.77", "2.1.24"} {
+		line, _ := mapgen.Line(version)
+		for _, preset := range mapgen.Presets(line) {
+			form, overrides, problems := readMapSettings(version, preset, nil)
+			fl, ok := choiceField(form, name)
+			if !ok || fl.Value != "100" || fl.Preset != "100" || len(problems) != 0 || len(overrides) != 0 {
+				t.Errorf("%s %s: shown %q (found %v), problems %v", version, preset, fl.Value, ok, problems)
+			}
+		}
 	}
 }
 
