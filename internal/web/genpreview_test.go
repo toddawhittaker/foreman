@@ -328,3 +328,32 @@ func TestPreviewStoreFoundPreviewLivesOn(t *testing.T) {
 		t.Error("the preview expired right after it was found again")
 	}
 }
+
+// DESIGN 8.8: an automatic request draws only the planet viewed, the first
+// unless one is named that the settings still have, and answers with the
+// preview section alone, offering the other planets.
+func TestAutomaticPreviewDrawsOnePlanet(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	hn.withActive("2.1.24")
+	form := generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "42", "auto", "1")
+	for _, tc := range []struct{ planet, want string }{{"", "nauvis"}, {"gleba", "gleba"}, {"mars", "nauvis"}} {
+		form.Set("planet", tc.planet)
+		rec := hn.postLong(PathGeneratePreview, form, c, withHeader("HX-Request", "true"))
+		body := rec.Body.String()
+		if rec.Code != http.StatusOK || !strings.HasPrefix(strings.TrimSpace(body), `<div id="preview"`) || strings.Contains(body, "<html") {
+			t.Fatalf("planet %q: status %d, body:\n%s", tc.planet, rec.Code, body)
+		}
+		if !strings.Contains(body, `/`+tc.want+`"`) || strings.Count(body, `<img src="`) != 1 {
+			t.Errorf("planet %q: want one picture of %s:\n%s", tc.planet, tc.want, body)
+		}
+		if strings.Count(body, "<option ") != 5 || !strings.Contains(body, `<option value="`+tc.want+`" selected>`) {
+			t.Errorf("planet %q: the planet choice is wrong:\n%s", tc.planet, body)
+		}
+	}
+	// Each run drew one planet: nauvis, then gleba; nauvis again was stored.
+	if len(prev.got) != 2 || !slices.Equal(prev.got[0].Planets, []string{"nauvis"}) || !slices.Equal(prev.got[1].Planets, []string{"gleba"}) {
+		t.Errorf("runs %+v", prev.got)
+	}
+}

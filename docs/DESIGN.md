@@ -1163,10 +1163,8 @@ none applies. The script decides from `data-ach`, `data-ach-limit` and
 summary on every page it sends. When a warning first appears it is said
 once through `#announcer`.
 
-**Preview slot.** On a panel narrower than 52rem the preview sits under
-the settings. On a wider one, once the preview section holds anything,
-it takes a column of 16 to 22rem beside them and stays in view
-(`position: sticky`); until then the settings use the whole width.
+**Preview slot.** The preview sits full width under the settings, on
+every width (8.8).
 
 On success the browser lands on the new world's page with a Done message
 (7.3): "Generated Family base 2026. Its map is made when it first
@@ -1200,7 +1198,7 @@ starts."
   planet shows its groups directly.
 - **One fieldset per control**, its legend the game's name, small and
   muted so the groups read as one list. Its settings sit in a grid
-  `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 16rem with sliders.
+  `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 13rem with sliders.
 - **Steps: selects, and sliders on a wide panel.** Every frequency, size,
   richness, scale, coverage, continuity and the starting area is a
   `select` of the game's own steps (the game's words: a percentage,
@@ -1210,10 +1208,15 @@ starts."
   select's label, `aria-valuetext` the step's words) and an `output` with
   those words. On a `map-section` container at least 34rem wide the
   style sheet shows the slider and output and hides the select; narrower
-  (phones, 200% text) it shows the select. The name is on its own line,
-  never broken inside a word; the slider and its value share the next
-  line, and the value has a fixed 14ch so the slider never moves as the
-  words change.
+  (phones, 200% text) it shows the select. The name and the value share
+  the first line while they fit, and the value drops under the name
+  (between words) when they do not; the name never breaks inside a word.
+  The slider has a line to itself, so the value's width never moves it.
+- **Density on a wide panel.** On a `map-section` at least 34rem wide the
+  groups sit closer (8px between groups and under a group's name), and
+  with a fine pointer (`pointer: fine`) the sliders and the planet
+  summaries are 24px tall, the WCAG 2.2 floor (SPEC 17.2). Narrow panels
+  and touch screens keep 44px targets. Text sizes do not change.
 - **Enemy tab:** the enemy controls (Nauvis's and Gleba's), No enemies
   (2.x) and Peaceful mode with their hints, the starting area, then the
   map-settings groups "Enemy expansion" and "Evolution".
@@ -1232,49 +1235,91 @@ starts."
 
 ### 8.8 Map preview (SPEC 5.6, P1)
 
-Preview is optional and adds no screen to Generate.
+Preview is optional and adds no screen to Generate. The tasks are "see
+what this map looks like" (no clicks: it is drawn as the page opens and
+as the settings change), "look at another planet" (one choice), "look
+closely" (one click on the picture) and "keep the pictures" (one click
+on a download).
 
-- "Preview map" is a secondary submit button in Generate's action row.
-  It posts the same form with `formaction="/generate/preview"`.
-- The answer is **the same Generate page**, every value kept, a blank
-  seed now holding the random seed the picture used, and a "Map preview"
-  `section` (h2) directly above the action row. The pictures sit next to
-  the two buttons that follow from them: change a field and press
-  "Preview map" again, or press "Generate world" to make exactly this
-  map. There is no separate "Back" or "Use these settings" step. The
-  section's first line: "Made from the settings above, seed 123456.
-  Change anything and preview again to see it."
-- **Pictures.** A `ul` (no bullets) of `figure`s, one per planet, each
-  with a `figcaption` naming the planet. The `img` has `width` and
-  `height` attributes, `inline-size: 100%`, `max-inline-size: 32rem`
-  and `aspect-ratio: 1`, so its space is held before it loads. Alt text:
-  "Map preview of Nauvis, seed 123456". The list is a grid,
-  `repeat(auto-fit, minmax(16rem, 1fr))`: one picture per row on a
-  phone, two or more on a wide panel. Each picture links to its
-  full-size file.
-- **While it runs** (about one second per planet). Without script the
-  browser's own loading state shows and the page arrives complete. With
-  htmx, the button posts with `hx-target` on the preview section; the
-  section reserves the height of one picture and shows "Making the map
-  preview for 5 planets, about 5 seconds." with an indeterminate
-  `<progress>` (7.6). Both action buttons are marked `aria-disabled`
-  while it runs, never `disabled`, because a disabled button loses focus
-  and the browser does not give it back; a click on a busy button does
-  nothing, which also stops the Enter key's implicit submit. When the
-  pictures arrive focus is still on Preview map and `#announcer` says
-  "Map preview ready." A redraw that leaves the form in place removes an
-  old error summary, so focus never lands on errors already fixed. If the
-  request itself fails (a 4xx or 5xx answer, or no connection), htmx swaps
-  nothing, so the script puts a sentence in the preview section and in
-  `#announcer`: "The map preview request failed..." The sentence comes
-  from a `template` in the page, so it is translated with the page.
-- **Refusals** are errors (7.3) in the preview section, each with its
-  next step as a control: the game image is not downloaded (a "Download
-  2.0.77" button that posts the Versions page's download action); another preview is
-  running ("Try again in a few seconds", with Preview map right below);
-  the game failed (its last log lines in a `pre`; Generate still works).
-- Pictures are deleted after 15 minutes. An expired preview says "This
-  preview expired. Preview map again." and the images are dropped.
+- **Where.** A "Map preview" `section` (h2) full width under the
+  settings, on every width, above the achievements summary and the
+  action row. Its first line: "Drawn from the current settings, which
+  are not saved yet, with seed 123456. It redraws as you change them.
+  "Generate world" makes exactly this map. The pin marks the centre of
+  the map, where players start."
+- **Drawn by itself** (with script). On page load, and 0.8 s after the
+  last change to anything in the form that changes the map: the preset,
+  the seed, any setting, the way to make the map, the pasted exchange
+  string, and the settings a version or Space Age change redraws (asked
+  once that redraw has landed). The name, the tabs and the download box
+  do not count. The newest request wins: a change aborts the request on
+  its way (the server stops its run) and a late reply is ignored. A
+  pressed "Preview map" is aborted by a later change too. Exchange mode
+  with nothing pasted draws nothing and empties the section.
+- **One planet at a time.** An automatic request (`auto=1`) draws only
+  the planet being viewed: the first, or the one picked. A "Planet"
+  select under the first line (script only, and only on a world with
+  several planets) picks it and draws it at once; returning to a planet
+  already drawn with the same settings shows the stored picture with no
+  run. "Preview map" still draws every planet, which is also the page
+  without script.
+- **Seed.** A blank seed field is filled with the seed the preview used,
+  so the world made is the one previewed; a seed the person typed is
+  never overwritten.
+- **Focus and news.** Nothing automatic moves focus; a control in the
+  section that had focus (the planet select) keeps it across the redraw.
+  While a request runs, the previous picture stays, faded to 60%, the
+  section is `aria-busy`, and a one-line note above it says "Drawing the
+  map preview for the current settings…"; that line's height is held once
+  a preview shows, so nothing moves. When a preview arrives after a
+  change, `#announcer` says "Map preview ready." once; the page load says
+  nothing. Settings that are not valid get the problems in the section,
+  each a link to its field, with no focus moved.
+- **Pictures.** A `ul` (no bullets) of `figure`s, each with a
+  `figcaption` naming the planet. The `img` has `width` and `height`,
+  `inline-size: 100%`, `max-inline-size: 32rem` and `aspect-ratio: 1`, so
+  its space is held. Alt text: "Map preview of Nauvis, seed 123456".
+  Several pictures (Preview map) sit in a grid,
+  `repeat(auto-fit, minmax(16rem, 1fr))`. The picture is a link to its
+  file; its name adds "(opens the large view)" with script and "(opens
+  the full-size picture)" without, from two visually hidden spans the
+  style sheet switches with `js-on`.
+- **The pin.** An inline SVG map pin, its tip on the picture's centre
+  (the game draws the preview around 0,0), in the thumbnail and the large
+  view. White face, black edge and dot (`--color-pin-face`,
+  `--color-pin-edge`, the same in both themes, because the map's own
+  colours do not follow the theme), so it reads on every planet. It is
+  `aria-hidden`; the section's first line says what it marks.
+- **Downloads** (#237). Under each picture, "Download Nauvis (PNG)"; on
+  a world with several planets, one "Download all drawn planets (zip)"
+  after the list. Both are links with `download`, each a 44px target.
+  Files are named after the world, the seed and the planet.
+- **The large view** is a native `dialog` opened with `showModal()`, so
+  the browser keeps focus inside it and Escape closes it. It fills the
+  screen (`bg` face, no shadow): a bar with the planet's name (h2, the
+  dialog's name), then Previous, Next, Zoom out, the zoom level ("Zoom
+  200%", from `Intl.NumberFormat`), Zoom in, the planet's download and
+  Close, wrapping as needed, and a one-line key hint; then the picture in
+  a scrolling frame. Previous and Next step through the world's planets
+  and wrap; a planet not drawn yet is drawn and shown in place. Zoom is
+  1, 2, 4 and 8 times the fitted size, scaling the picture with
+  `image-rendering: pixelated` (one tile is one pixel on 2.x), keeping the
+  middle of the view. Keys: left and right arrows step (inside the
+  zoomed frame they scroll it instead), plus and minus zoom, 0 fits.
+  Content outside a modal dialog is inert, so the dialog has its own
+  `role="status"` line for its news. On close, focus goes to the link of
+  the picture last shown. A click with a modifier key opens the file as
+  the browser would. Pinch zoom on phones is the browser's own.
+- **Without script** "Preview map" posts the form to
+  `/generate/preview` and the answer is the same page, every value kept,
+  a blank seed now holding the seed used, with every planet's picture;
+  each link opens the picture itself.
+- **Refusals** are errors (7.3) in the section, each with its next step
+  as a control: the game image is not downloaded; another preview is
+  running; the game failed (Generate still works). A request that fails
+  outright puts "The map preview request failed..." in the section, from
+  a `template` in the page.
+- Pictures are deleted after 15 minutes.
 
 ### 8.9 Clone (SPEC 5.7, P1)
 
@@ -1450,8 +1495,9 @@ Left out because no Epic 1 to 3 screen needs it. Add each when a real
 screen does, in this document first.
 
 - A manual theme switch. The system setting decides (SPEC 17.3).
-- Icons of any kind.
-- Modal dialogs, pop-overs, menus, tab panels and toasts. (The nav links
+- Icons of any kind, except the map preview's pin (8.8).
+- Modal dialogs other than the map preview's large view (8.8), pop-overs,
+  menus, tab panels and toasts. (The nav links
   only look like tabs; they are ordinary links.) The confirmation step
   (7.4) and the message (7.3) cover Epics 1 to 3.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for

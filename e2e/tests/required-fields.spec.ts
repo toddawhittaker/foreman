@@ -45,6 +45,8 @@ async function expectMarked(page: Page, ids: string[]) {
 }
 
 test("every required field is marked, on every form", async ({ page, foreman }) => {
+  // Generate draws its preview on load, and this test runs with no Docker (DESIGN 8.8).
+  foreman.expectError(/"msg":"map preview".*cannot reach Docker/);
   await page.goto("/setup");
   await expectMarked(page, ["username", "password", "confirm"]);
   await checkPage(page);

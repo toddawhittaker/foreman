@@ -335,7 +335,7 @@
   "worlds.generate.button": "Générer le monde",
   "worlds.generate.preview.button": "Prévisualiser la carte",
   "worlds.generate.preview.heading": "Aperçu de la carte",
-  "worlds.generate.preview.made": "Créé d’après les réglages ci-dessus, valeur d’initialisation {seed}. Modifiez quelque chose et prévisualisez à nouveau pour le voir. « Générer le monde » crée exactement cette carte.",
+  "worlds.generate.preview.made": "Dessiné d’après les réglages actuels, pas encore enregistrés, valeur d’initialisation {seed}. Il est redessiné quand vous les modifiez. « Générer le monde » crée exactement cette carte.",
   "worlds.generate.preview.alt": "Aperçu de la carte de {planet}, valeur d’initialisation {seed}",
   "worlds.generate.preview.kept": "Ces images sont conservées 15 minutes.",
   "worlds.generate.preview.wait": "Création de l’aperçu de la carte. Cela prend quelques secondes par planète.",
@@ -389,5 +389,18 @@
   "worlds.generate.mode.exchange_hint": "Utilisez les réglages d’une carte partagée depuis le jeu.",
   "worlds.generate.refilled": "Les réglages ci-dessous ont été remplis d’après le préréglage « {preset} ». Vérifiez-les, puis choisissez à nouveau « Générer le monde ».",
   "worlds.cancel": "Annuler",
-  "worlds.generate.error.untested_preset": "Foreman ne peut pas écrire les réglages de carte de ce préréglage pour Factorio {version} : ils ne peuvent donc pas y être modifiés. Revenez au préréglage, partez du préréglage par défaut ou choisissez une autre version."
+  "worlds.generate.error.untested_preset": "Foreman ne peut pas écrire les réglages de carte de ce préréglage pour Factorio {version} : ils ne peuvent donc pas y être modifiés. Revenez au préréglage, partez du préréglage par défaut ou choisissez une autre version.",
+  "worlds.generate.preview.planet": "Planète",
+  "worlds.generate.preview.opens_picture": "(ouvre l’image en taille réelle)",
+  "worlds.generate.preview.opens_large": "(ouvre la grande vue)",
+  "worlds.generate.preview.download": "Télécharger {planet} (PNG)",
+  "worlds.generate.preview.download_all": "Télécharger toutes les planètes dessinées (zip)",
+  "worlds.generate.preview.updating": "Dessin de l’aperçu de la carte pour les réglages actuels…",
+  "worlds.generate.large.previous": "Précédente",
+  "worlds.generate.large.next": "Suivante",
+  "worlds.generate.large.zoom_out": "Dézoomer",
+  "worlds.generate.large.zoom_in": "Zoomer",
+  "worlds.generate.large.close": "Fermer",
+  "worlds.generate.large.keys": "Les flèches gauche et droite montrent la planète précédente et la suivante, plus et moins zooment, Échap ferme.",
+  "worlds.generate.preview.pin": "L’épingle marque le centre de la carte, où les joueurs commencent."
 }

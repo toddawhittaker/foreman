@@ -323,7 +323,7 @@
   "worlds.generate.button": "生成世界",
   "worlds.generate.preview.button": "预览地图",
   "worlds.generate.preview.heading": "地图预览",
-  "worlds.generate.preview.made": "根据上方的设置生成，种子 {seed}。更改任何内容后再次预览即可查看。“生成世界”会生成与此完全相同的地图。",
+  "worlds.generate.preview.made": "根据当前尚未保存的设置绘制，种子 {seed}。更改设置后会重新绘制。“生成世界”会生成与此完全相同的地图。",
   "worlds.generate.preview.alt": "{planet} 的地图预览，种子 {seed}",
   "worlds.generate.preview.kept": "这些图片会保留 15 分钟。",
   "worlds.generate.preview.wait": "正在生成地图预览。每个星球需要几秒钟。",
@@ -377,5 +377,18 @@
   "worlds.generate.mode.exchange_hint": "使用他人从游戏中分享的地图设置。",
   "worlds.generate.refilled": "下方的设置已按预设“{preset}”填写。请检查后再次选择“生成世界”。",
   "worlds.cancel": "取消",
-  "worlds.generate.error.untested_preset": "Foreman 无法为 Factorio {version} 写入此预设的地图设置，因此无法在该版本上修改这些设置。请重置为预设、从默认预设开始，或选择其他版本。"
+  "worlds.generate.error.untested_preset": "Foreman 无法为 Factorio {version} 写入此预设的地图设置，因此无法在该版本上修改这些设置。请重置为预设、从默认预设开始，或选择其他版本。",
+  "worlds.generate.preview.planet": "星球",
+  "worlds.generate.preview.opens_picture": "（打开原尺寸图片）",
+  "worlds.generate.preview.opens_large": "（打开大图查看）",
+  "worlds.generate.preview.download": "下载 {planet}（PNG）",
+  "worlds.generate.preview.download_all": "下载所有已绘制的星球（ZIP）",
+  "worlds.generate.preview.updating": "正在按当前设置绘制地图预览…",
+  "worlds.generate.large.previous": "上一个",
+  "worlds.generate.large.next": "下一个",
+  "worlds.generate.large.zoom_out": "缩小",
+  "worlds.generate.large.zoom_in": "放大",
+  "worlds.generate.large.close": "关闭",
+  "worlds.generate.large.keys": "左右方向键显示上一个和下一个星球，加号和减号缩放，Esc 键关闭。",
+  "worlds.generate.preview.pin": "图钉标记地图中心，即玩家的出生点。"
 }

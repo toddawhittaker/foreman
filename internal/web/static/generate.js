@@ -76,6 +76,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   addSliders(document);
 
+  // A box with data-disables turns the element it names on and off, so a
+  // resource that is off sends none of its settings (SPEC 5.6).
+  function applyDisables() {
+    document.querySelectorAll("#generate-form input[type=checkbox][data-disables]").forEach((box) => {
+      const target = document.getElementById(box.dataset.disables);
+      if (target) target.disabled = !box.checked;
+    });
+  }
+  applyDisables();
+  document.addEventListener("change", (e) => {
+    if (e.target.matches && e.target.matches("#generate-form input[type=checkbox][data-disables]")) applyDisables();
+  });
+  document.body.addEventListener("htmx:afterSwap", applyDisables);
+
   // The achievement line of one field, in the units it shows.
   function crosses(el) {
     const test = el.dataset.ach;
@@ -183,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.closest("#generate-form .tab-panel")) reveal(e.target);
   });
 
-  const actions = "#preview-button, #generate-button";
+  const actions = "#preview-button, #generate-button, #generate-default";
   const isPreview = (e) => e.detail.elt && e.detail.elt.id === "preview-button";
 
   function setBusy(on) {
