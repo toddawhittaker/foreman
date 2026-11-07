@@ -39,13 +39,13 @@ func TestResourceOnPosts(t *testing.T) {
 	} {
 		f, m := parseOK(t, "2.1", false, v)
 		approx(t, name+" coal size", sub(t, m, "autoplace_controls", "coal")["size"], 1)
-		f.withPreset(NewMapGenForm("2.1", false))
+		f.withPreset(NewMapGenFormForPreset("2.1", false, "default"))
 		if f.Modified() {
 			t.Errorf("%s: form is marked modified", name)
 		}
 	}
 	f, _ := parseOK(t, "2.1", false, url.Values{fieldName("nauvis", "coal", mgOn): {"off"}})
-	f.withPreset(NewMapGenForm("2.1", false))
+	f.withPreset(NewMapGenFormForPreset("2.1", false, "default"))
 	if !f.Modified() {
 		t.Error("switching a resource off does not mark the form modified")
 	}
@@ -53,7 +53,7 @@ func TestResourceOnPosts(t *testing.T) {
 
 // Only resources get a box, and their size then offers no "None".
 func TestOnlyResourcesHaveABox(t *testing.T) {
-	f := NewMapGenForm("2.1", true)
+	f := NewMapGenFormForPreset("2.1", true, "default")
 	for _, p := range f.Resources {
 		for _, g := range p.Groups {
 			if g.Toggle == nil {
@@ -142,7 +142,7 @@ func TestTerrainScaleSteps(t *testing.T) {
 // Map type and the scales sit on Nauvis's Terrain tab; the map type is a
 // plain select, never a slider.
 func TestTerrainFieldsSitOnTheTerrainTab(t *testing.T) {
-	f := NewMapGenForm("2.1", true)
+	f := NewMapGenFormForPreset("2.1", true, "default")
 	for _, id := range []string{"mg-map-type", "mg-moisture-scale", "mg-aux-scale"} {
 		if tab := f.TabOf(id); tab != tabTerrain {
 			t.Errorf("%s is on tab %q", id, tab)

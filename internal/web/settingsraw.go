@@ -58,7 +58,6 @@ func (p SettingsRawPage) ErrorLineList() string {
 }
 
 func (p SettingsRawPage) WorldPath() string { return worldPath(p.WorldID) }
-func (p SettingsRawPage) FormPath() string  { return settingsPath(p.WorldID) }
 
 // MaxBytes is the largest text the editor accepts.
 func (SettingsRawPage) MaxBytes() uint64 { return gamesettings.MaxBytes }
