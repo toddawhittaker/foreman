@@ -101,46 +101,82 @@ func compareDotted(a, b string) int {
 // It returns "" when anything is missing or unreadable, and for a zip over
 // the size or entry limit.
 func zipFactorioVersion(root *os.Root, name string) string {
-	f, info, err := openRegular(root, name)
-	if err != nil {
+	info, ok := zipModInfo(root, name)
+	if !ok {
 		return ""
 	}
-	defer func() { _ = f.Close() }()
-	if info.Size() > maxModZip {
-		return ""
-	}
-	zr, err := zip.NewReader(f, info.Size())
-	if err != nil || len(zr.File) > maxModZipEntries {
-		return ""
-	}
-	for _, zf := range zr.File {
-		dir, file, ok := strings.Cut(zf.Name, "/")
-		if !ok || dir == "" || file != "info.json" {
-			continue
-		}
-		return infoFactorioVersion(zf)
-	}
-	return ""
+	return info.FactorioVersion
 }
 
-// infoFactorioVersion reads an info.json inside a zip, up to maxInfoJSON bytes.
-func infoFactorioVersion(zf *zip.File) string {
+// ModInfo is what a mod's info.json says about it.
+type ModInfo struct {
+	Name, Version, FactorioVersion string
+	// Dependencies are the raw strings, such as "? other >= 1.2".
+	Dependencies []string
+}
+
+// zipModInfo reads the info.json of the mod zip name inside root.
+func zipModInfo(root *os.Root, name string) (ModInfo, bool) {
+	f, st, err := openRegular(root, name)
+	if err != nil {
+		return ModInfo{}, false
+	}
+	defer func() { _ = f.Close() }()
+	return readZipInfo(f, st.Size())
+}
+
+// readZipInfo reads info.json from a mod zip: the zip holds one top-level
+// folder, and the file is in it. ok is false when anything is missing or
+// unreadable, and for a zip over the size or entry limit.
+func readZipInfo(r io.ReaderAt, size int64) (ModInfo, bool) {
+	if size > maxModZip {
+		return ModInfo{}, false
+	}
+	zr, err := zip.NewReader(r, size)
+	if err != nil || len(zr.File) > maxModZipEntries {
+		return ModInfo{}, false
+	}
+	for _, zf := range zr.File {
+		dir, file, found := strings.Cut(zf.Name, "/")
+		if !found || dir == "" || file != "info.json" {
+			continue
+		}
+		return readInfoJSON(zf)
+	}
+	return ModInfo{}, false
+}
+
+// readInfoJSON reads an info.json inside a zip, up to maxInfoJSON bytes.
+func readInfoJSON(zf *zip.File) (ModInfo, bool) {
 	rc, err := zf.Open()
 	if err != nil {
-		return ""
+		return ModInfo{}, false
 	}
 	defer func() { _ = rc.Close() }()
 	b, err := io.ReadAll(io.LimitReader(rc, maxInfoJSON))
 	if err != nil {
-		return ""
+		return ModInfo{}, false
 	}
+	return parseInfoJSON(b)
+}
+
+// parseInfoJSON decodes info.json. Dependencies of an odd shape are left
+// out rather than spoiling the rest.
+func parseInfoJSON(b []byte) (ModInfo, bool) {
 	var doc struct {
-		FactorioVersion string `json:"factorio_version"`
+		Name            string          `json:"name"`
+		Version         string          `json:"version"`
+		FactorioVersion string          `json:"factorio_version"`
+		Dependencies    json.RawMessage `json:"dependencies"`
 	}
 	if json.Unmarshal(b, &doc) != nil {
-		return ""
+		return ModInfo{}, false
 	}
-	return doc.FactorioVersion
+	info := ModInfo{Name: doc.Name, Version: doc.Version, FactorioVersion: doc.FactorioVersion}
+	if len(doc.Dependencies) > 0 {
+		_ = json.Unmarshal(doc.Dependencies, &info.Dependencies)
+	}
+	return info, true
 }
 
 // modVersionMismatch finds mods made for another Factorio than the world's
