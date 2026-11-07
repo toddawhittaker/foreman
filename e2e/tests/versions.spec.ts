@@ -18,14 +18,14 @@ const diskVersion = (f: Foreman, id: string): string =>
   JSON.parse(readFileSync(join(f.dataDir, "worlds", id, "world.json"), "utf8")).game_version;
 
 // A second world, written as a folder (SPEC 5.1). seedWorld made "base".
-function seedSecond(f: Foreman) {
+function seedSecond(f: Foreman, fixture = "2.1.24-no-space-age.zip") {
   const dir = join(f.dataDir, "worlds", "second");
   for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
   writeFileSync(
     join(dir, "world.json"),
     JSON.stringify({ format_version: 1, name: "Second", game_version: "2.1.24", space_age: false, created_at: "2026-11-02T10:00:00Z" }),
   );
-  copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(dir, "saves", "base.zip"));
+  copyFileSync(join(fixtures, fixture), join(dir, "saves", "base.zip"));
 }
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, opts: Parameters<typeof seedWorld>[1] = {}) {
@@ -260,15 +260,22 @@ test.describe("with the fake game", () => {
     await page.getByLabel("Or type a version").fill("2.1.25");
     await page.getByRole("button", { name: "Update game version" }).click();
 
-    await expect(page).toHaveURL("/worlds/second");
-    await expect(page.locator("#world-activity")).toContainText("The game version is updated.", live);
+    await expect(page).toHaveURL("/worlds/second?result=1");
+    const result = page.locator("#world-result");
+    await expect(result).toContainText("The game version is updated.", live);
+    // DESIGN 7.6: the reloaded page puts focus on the result and reads it out.
+    await expect(result).toBeFocused();
+    await expect(page.locator("#announcer")).toContainText("Done: The game version is updated.", live);
     await expect(page.locator("dl.facts")).toContainText("2.1.25");
     expect(diskVersion(foreman, "second")).toBe("2.1.25");
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
     expect(await hasImage(g, image2125)).toBe(true);
     expect(await creates(g)).toBe(before);
     expect(await snapshotLabels(page, "second")).toContain("Before update");
+    // A later visit no longer shows the result.
     await page.goto("/worlds/second");
+    await expect(page.locator("#world-result")).toHaveCount(0);
+    await expect(page.getByText("The game version is updated.")).toHaveCount(0);
     await checkPage(page);
 
     await page.getByRole("link", { name: "Roll back to 2.1.24" }).click();
@@ -302,6 +309,61 @@ test.describe("with the fake game", () => {
     await refusal.getByRole("button", { name: "Update anyway" }).click();
     await expect.poll(() => diskVersion(foreman, "base"), live).toBe("2.1.25");
     expect(await snapshotLabels(page, "base")).toContain("Before update");
+  });
+
+  // SPEC 10.3, 7.4, 17.9: a world that is not active, refused by the pre-start check, gets the same
+  // "Update anyway" box on its own page, and the box goes ahead.
+  test("a world that is not active offers Update anyway on its page, and it goes ahead", async ({ page, foreman, fakeGame }) => {
+    const g = fakeGame!;
+    await setUp(page, foreman, g);
+    // The save uses Space Age, and the world has it off.
+    seedSecond(foreman, "2.1.24-space-age.zip");
+
+    await page.goto("/worlds/second/update");
+    await page.getByLabel("Or type a version").fill("2.1.25");
+    await page.getByRole("button", { name: "Update game version" }).click();
+    await expect(page).toHaveURL("/worlds/second?result=1");
+
+    const refusal = page.locator("#world-result .message--warning");
+    await expect(refusal).toContainText("base.zip uses Space Age", live);
+    await expect(refusal).toContainText('labelled "Before update"');
+    await expect(page.locator("#world-result")).toBeFocused();
+    await expect(page.locator("#announcer")).toContainText("Warning:", live);
+    expect(diskVersion(foreman, "second")).toBe("2.1.24");
+    await checkPage(page);
+
+    await refusal.getByRole("button", { name: "Update anyway" }).click();
+    await expect(page).toHaveURL("/worlds/second?result=1");
+    await expect(page.locator("#world-result")).toContainText("The game version is updated.", live);
+    expect(diskVersion(foreman, "second")).toBe("2.1.25");
+    expect(diskVersion(foreman, "base")).toBe("2.1.24");
+    expect(await snapshotLabels(page, "second")).toContain("Before update");
+  });
+
+  // SPEC 17.7, DESIGN 7.5: the busy note reloads every 2 s without taking focus from its link.
+  test("the world page keeps focus on the busy note's link across reloads", async ({ page, foreman, fakeGame }) => {
+    const g = fakeGame!;
+    await setUp(page, foreman, g);
+    await page.getByRole("button", { name: "Start server" }).click();
+    await expect(badge(page)).toHaveText("Running", live);
+    await g.call("/join", { name: "foreman-base", player: "alice" });
+    // The countdown holds the stop open.
+    await page.goto("/worlds/base/stop");
+    await page.getByLabel("Countdown in seconds").fill("30");
+    await page.getByRole("button", { name: "Stop server" }).click();
+    await expect(badge(page)).toHaveText("Stopping", live);
+
+    await page.goto("/worlds/base");
+    const link = page.locator("#world-server-link");
+    await link.focus();
+    // Two reloads of the block.
+    let polls = 0;
+    page.on("response", (r) => {
+      if (r.url().endsWith("/worlds/base") && r.request().headers()["hx-request"]) polls++;
+    });
+    await expect.poll(() => polls, { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
+    await expect(page.locator("#world-activity")).toContainText("An operation is running on this world");
+    await expect(link).toBeFocused();
   });
 
   // SPEC 10.4: a rollback is offered only after an update, and refused otherwise.

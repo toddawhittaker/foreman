@@ -308,6 +308,7 @@
   "worlds.world.rollback_text": "La última actualización tomó la instantánea «{label}» el {when}. Al revertir, se restaura y el mundo vuelve a Factorio {version}.",
   "worlds.world.saves": "Partidas guardadas",
   "worlds.world.server_link": "Ir a la página del servidor",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "la página del servidor",
   "worlds.world.snapshots": "Instantáneas",
   "worlds.world.switch.busy": "Hay una operación en curso en el servidor, por ejemplo un cambio de mundo. Consulta {link}.",

@@ -668,13 +668,26 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	case game.AuditUpdate:
 		// The refusal came from the start after the version was set, so
 		// going ahead is a plain start anyway (SPEC 10.3, 7.4).
-		if p.World.GameVersion == p.Result.Version {
-			break
+		if p.World.GameVersion != p.Result.Version {
+			a.toUpdate(p.World.ID, p.Result.Version)
 		}
-		a.Path, a.Verb, a.Offer, a.Update, a.Version = updatePath(p.World.ID), i18n.M("server.anyway.update"), i18n.M("server.anyway.update_offer"), true, p.Result.Version
 	}
 	a.Seen = game.AnywayFingerprint(check, a.Running)
 	return a
+}
+
+// updateAnyway is the offer to update a world that is not active past the
+// pre-start check, shown on the world's own page (SPEC 10.3, 7.4).
+func updateAnyway(check world.PreCheck, sum world.Summary, version, folder string) *Anyway {
+	a := &Anyway{World: sum.Name, Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems, sum.Name, folder)}
+	a.toUpdate(sum.ID, version)
+	a.Seen = game.AnywayFingerprint(check, a.Running)
+	return a
+}
+
+// toUpdate makes the offer an update of the world id to version.
+func (a *Anyway) toUpdate(id, version string) {
+	a.Path, a.Verb, a.Offer, a.Update, a.Version = updatePath(id), i18n.M("server.anyway.update"), i18n.M("server.anyway.update_offer"), true, version
 }
 
 // anywayAdvice says how to keep what missing mods built; the lead already

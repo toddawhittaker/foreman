@@ -308,6 +308,7 @@
   "worlds.world.rollback_text": "The last update took the snapshot \"{label}\" on {when}. Rolling back restores it and returns the world to Factorio {version}.",
   "worlds.world.saves": "Saves",
   "worlds.world.server_link": "Go to the Server page",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "the Server page",
   "worlds.world.snapshots": "Snapshots",
   "worlds.world.switch.busy": "An operation is running on the server, such as a switch. See {link}.",

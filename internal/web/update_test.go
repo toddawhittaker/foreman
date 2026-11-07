@@ -377,7 +377,7 @@ func TestUpdateOfAnInactiveWorld(t *testing.T) {
 	g.wantContains("update page", form, "Update Bravo from Factorio "+oldVersion, `action="`+updateURL(b)+`"`)
 	g.wantMissing("update page", form, `id="action-error"`)
 
-	g.wantRedirectTo(worldPath(b), g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
 	if err := g.waitResult(b, game.AuditUpdate); err != nil {
 		t.Fatal(err)
 	}
@@ -392,9 +392,13 @@ func TestUpdateOfAnInactiveWorld(t *testing.T) {
 	if plain := g.do(http.MethodGet, worldPath(b), nil, http.Header{"Cookie": {g.cookie.String()}}); plain.Header.Get("HX-Refresh") != "" {
 		t.Error("a plain visit asked for a refresh")
 	}
-	page := g.get(worldPath(b))
-	g.wantContains("world page after", page, `id="world-activity"`, "The game version is updated.", "<code>"+newVersion+"</code>")
+	page := g.get(worldPath(b) + ownResultQuery)
+	g.wantContains("world page after", page, `id="world-activity"`, `id="world-result" tabindex="-1" autofocus data-announce`,
+		"The game version is updated.", "<code>"+newVersion+"</code>")
 	g.wantMissing("world page after", page, `hx-trigger="every`, `message--error`)
+	// The result belongs to the visit the update sent the admin to, not to every later one.
+	later := g.get(worldPath(b))
+	g.wantMissing("a later visit", later, "The game version is updated.", `id="world-result"`)
 	list, err := g.worlds.Snapshots(b)
 	if err != nil || len(list) != 1 || list[0].Label != world.LabelBeforeUpdate || list[0].Reason != world.ReasonGameUpdate {
 		t.Fatalf("snapshots %+v, %v", list, err)
@@ -427,14 +431,64 @@ func TestUpdateOfAnInactiveWorldShowsARefusalOnItsPage(t *testing.T) {
 	g.addImage(newVersion)
 	save := g.readSave(b)
 
-	g.wantRedirectTo(worldPath(b), g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
 	if err := g.waitResult(b, game.AuditUpdate); err == nil {
 		t.Fatal("the update was not refused")
 	}
-	page := g.get(worldPath(b))
-	g.wantContains("world page", page, `message--error`, "Bravo")
+	page := g.get(worldPath(b) + ownResultQuery)
+	g.wantContains("world page", page, "Bravo", `id="world-result"`)
 	g.wantMissing("world page", page, "The game version is updated.")
 	g.wantUnchanged("a refused update of an inactive world", b, oldVersion, save, 0)
+}
+
+// SPEC 10.3, 7.4, 17.9: when every problem allows it, a refused update of a
+// world that is not active offers "Update anyway" on the world's page, and
+// that box goes ahead after the snapshot.
+func TestUpdateOfAnInactiveWorldOffersUpdateAnyway(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	g.newWorld("Alpha", fixtureNoSA, false)
+	// The save uses Space Age, and the world has it off.
+	b := g.newWorld("Bravo", "2.1.24-space-age.zip", false)
+	g.addImage(newVersion)
+
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	if err := g.waitResult(b, game.AuditUpdate); err == nil {
+		t.Fatal("the update was not refused")
+	}
+	page := g.get(worldPath(b) + ownResultQuery)
+	g.wantContains("world page", page, `message--warning`, `action="`+updateURL(b)+`"`, `name="anyway" value="1"`,
+		`name="game_version" value="`+newVersion+`"`, `id="act-anyway">Update anyway</button>`)
+	seen := regexp.MustCompile(`name="seen" value="([^"]*)"`).FindStringSubmatch(page)
+	if seen == nil {
+		t.Fatalf("the box sends no fingerprint:\n%s", page)
+	}
+	if g.version(b) != oldVersion {
+		t.Fatal("the refusal changed the version")
+	}
+
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{
+		"game_version": {newVersion}, "anyway": {"1"}, "seen": {html.UnescapeString(seen[1])}, "countdown": {"60"}}))
+	if err := g.waitResult(b, game.AuditUpdate); err != nil {
+		t.Fatalf("update anyway: %v", err)
+	}
+	if got := g.version(b); got != newVersion {
+		t.Errorf("version %s, want %s", got, newVersion)
+	}
+}
+
+// SPEC 7.9, 10.3: the busy note links to the Server page only when that page
+// shows the operation: for the active world, or a switch.
+func TestWorldPageBusyNoteLinksToTheServerPageOnlyWhenItShowsTheOperation(t *testing.T) {
+	sum := world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.1"}
+	note := i18n.M("worlds.world.updating", "version", "2.1.25")
+	plain := pageHTML(t, WorldPage{World: sum, Working: true, Busy: note})
+	if !strings.Contains(plain, "Updating to Factorio 2.1.25…") || strings.Contains(plain, `id="world-server-link"`) {
+		t.Errorf("a world that is not active must say what it updates to and not link to the Server page:\n%s", plain)
+	}
+	linked := pageHTML(t, WorldPage{World: sum, Working: true, Busy: note, ServerLink: true})
+	if !strings.Contains(linked, `<a href="/" id="world-server-link">`) {
+		t.Errorf("the link lacks its fixed id:\n%s", linked)
+	}
 }
 
 // SPEC 10.3: while an operation runs on a world, its page shows the busy note
@@ -452,7 +506,7 @@ func TestWorldPageReloadsItsActivityWhileBusy(t *testing.T) {
 	if !strings.Contains(early, `hx-trigger="every 2s"`) || strings.Contains(early, "An operation is running") {
 		t.Errorf("a world page of an action not yet an operation must reload and show no note:\n%s", early)
 	}
-	idle := pageHTML(t, WorldPage{World: sum, UpdateFailed: i18n.M("server.error.unfinished")})
+	idle := pageHTML(t, WorldPage{World: sum, UpdateFailure: &Failure{Message: i18n.M("server.error.unfinished")}})
 	if strings.Contains(idle, `hx-trigger="every`) || !strings.Contains(idle, `id="world-activity"`) {
 		t.Errorf("an idle world page must keep its block and stop reloading it:\n%s", idle)
 	}
@@ -466,7 +520,7 @@ func TestRollbackOfAnInactiveWorld(t *testing.T) {
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 	g.addImage(newVersion)
 	original := g.readSave(b)
-	g.wantRedirectTo(worldPath(b), g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
 	if err := g.waitResult(b, game.AuditUpdate); err != nil {
 		t.Fatal(err)
 	}
