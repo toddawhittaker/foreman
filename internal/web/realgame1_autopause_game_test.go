@@ -5,10 +5,9 @@ package web
 // A world with no server-settings.json, saved once through the settings page,
 // must start with the game's auto-pause on (SPEC 11.1). The real game images
 // show it: with no player connected, an auto-paused game's tick does not
-// move. Run with `go test -tags game -run TestRealGameUIBAutoPause
-// ./internal/web/` while no other game test runs (they share the game's UDP
-// port); `make test-game` runs only ./internal/game/ and `make verify` runs
-// neither.
+// move. Run by `make test-game` after the game package, one package at a time
+// (they share the game's UDP port), or alone with `go test -tags game -run
+// TestRealGameUIBAutoPause ./internal/web/`; `make verify` runs neither.
 
 import (
 	"context"
