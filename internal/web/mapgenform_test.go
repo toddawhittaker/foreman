@@ -96,7 +96,7 @@ func TestEveryControlHasAName(t *testing.T) {
 // DESIGN 8.7).
 func TestFormFollowsTheGameLine(t *testing.T) {
 	for _, c := range testLines {
-		f := NewMapGenForm(c.line, c.spaceAge)
+		f := NewMapGenFormForPreset(c.line, c.spaceAge, "default")
 		wantPlanets := mapgen.Planets(c.line, c.spaceAge)
 		names := f.chosen()
 		for _, p := range wantPlanets {
@@ -136,20 +136,20 @@ func TestFormFollowsTheGameLine(t *testing.T) {
 		}
 	}
 	// Per-line differences: 2.x has rocks and Space Age's planets; 1.1 has neither.
-	if _, ok := NewMapGenForm("1.1", true).chosen()[fieldName("nauvis", "rocks", "size")]; ok {
+	if _, ok := NewMapGenFormForPreset("1.1", true, "default").chosen()[fieldName("nauvis", "rocks", "size")]; ok {
 		t.Error("1.1 offers rocks")
 	}
-	if _, ok := NewMapGenForm("2.0", false).chosen()[fieldName("vulcanus", "calcite", "size")]; ok {
+	if _, ok := NewMapGenFormForPreset("2.0", false, "default").chosen()[fieldName("vulcanus", "calcite", "size")]; ok {
 		t.Error("2.0 without Space Age offers Vulcanus")
 	}
-	if _, ok := NewMapGenForm("2.0", true).chosen()[fieldName("vulcanus", "calcite", "size")]; !ok {
+	if _, ok := NewMapGenFormForPreset("2.0", true, "default").chosen()[fieldName("vulcanus", "calcite", "size")]; !ok {
 		t.Error("2.0 with Space Age lacks Vulcanus")
 	}
 	// 1.1 trees have richness; 2.x trees do not.
-	if _, ok := NewMapGenForm("1.1", false).chosen()[fieldName("nauvis", "trees", "richness")]; !ok {
+	if _, ok := NewMapGenFormForPreset("1.1", false, "default").chosen()[fieldName("nauvis", "trees", "richness")]; !ok {
 		t.Error("1.1 trees lack richness")
 	}
-	if _, ok := NewMapGenForm("2.0", false).chosen()[fieldName("nauvis", "trees", "richness")]; ok {
+	if _, ok := NewMapGenFormForPreset("2.0", false, "default").chosen()[fieldName("nauvis", "trees", "richness")]; ok {
 		t.Error("2.0 trees have richness")
 	}
 }
@@ -431,7 +431,7 @@ func renderPartial(t *testing.T, loc i18n.Locale, f MapGenForm) string {
 // and what it holds passes the same check as a typed edit (SPEC 11.2).
 func TestRawBoxPrefill(t *testing.T) {
 	for _, line := range mapgen.Lines {
-		raw := NewMapGenForm(line, false).Raw.Value
+		raw := NewMapGenFormForPreset(line, false, "default").Raw.Value
 		if fes := gamesettings.Validate(gamesettings.FileMapGen, line, []byte(raw)); len(fes) > 0 {
 			t.Errorf("%s: prefill fails Validate: %+v\n%s", line, fes, raw)
 		}
@@ -594,7 +594,7 @@ func TestPartialMarkup(t *testing.T) {
 	reLabelledBy := regexp.MustCompile(`<input[^>]* id="([^"]+)"[^>]* aria-labelledby="([^"]+)"`)
 	for _, c := range testLines {
 		for _, l := range i18n.Languages {
-			body := renderPartial(t, l.Tag, NewMapGenForm(c.line, c.spaceAge))
+			body := renderPartial(t, l.Tag, NewMapGenFormForPreset(c.line, c.spaceAge, "default"))
 			ids := map[string]int{}
 			for _, m := range reID.FindAllStringSubmatch(body, -1) {
 				ids[m[1]]++
@@ -642,7 +642,7 @@ func TestPartialMarkup(t *testing.T) {
 // Closed groups still ship every field, but the page stays small enough for
 // a phone (SPEC 17.2).
 func TestPartialSize(t *testing.T) {
-	body := renderPartial(t, i18n.English, NewMapGenForm("2.1", true))
+	body := renderPartial(t, i18n.English, NewMapGenFormForPreset("2.1", true, "default"))
 	if len(body) > 100_000 {
 		t.Errorf("the form is %d bytes", len(body))
 	}

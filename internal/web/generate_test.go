@@ -427,7 +427,7 @@ func TestGenerateAChangedPresetKeepsThePresetsOtherValues(t *testing.T) {
 	form := pagePresetValues(t, hn, c, "2.1.24", "death-world")
 	form.Set("name", "Hard")
 	form.Set("seed", "9")
-	form.Set("ms.enemy_expansion.max_expansion_distance", "3")
+	form.Set("ms.enemy_expansion.max_expansion_distance", "10")
 	id := idFromLocation(t, hn.postLong(PathGenerate, form, c))
 	if m := hn.meta(id); m.NewMap == nil || m.NewMap.Preset != "" || *m.NewMap.Seed != 9 {
 		t.Fatalf("new_map %+v: a changed preset must not pass --preset", m.NewMap)
@@ -435,7 +435,7 @@ func TestGenerateAChangedPresetKeepsThePresetsOtherValues(t *testing.T) {
 	ms := jsonOf(t, hn.config(id, world.MapSettingsFile).Data)
 	evo := ms["enemy_evolution"].(map[string]any)
 	exp := ms["enemy_expansion"].(map[string]any)
-	if evo["time_factor"] != 2e-05 || evo["pollution_factor"] != 1.2e-06 || exp["max_expansion_distance"] != 3.0 || exp["min_expansion_cooldown"] != 36000.0 {
+	if evo["time_factor"] != 2e-05 || evo["pollution_factor"] != 1.2e-06 || exp["max_expansion_distance"] != 10.0 || exp["min_expansion_cooldown"] != 36000.0 {
 		t.Errorf("map settings lost the preset or the change: evolution %v, expansion %v", evo, exp)
 	}
 	mg := jsonOf(t, hn.config(id, world.MapGenSettingsFile).Data)
@@ -699,8 +699,8 @@ func TestGenerateMapSettingsProblems(t *testing.T) {
 	if rec.Code != http.StatusBadRequest || hn.worldCount() != 1 {
 		t.Fatalf("status %d", rec.Code)
 	}
-	for _, want := range []string{`href="#ms-enemy-evolution-time-factor"`, "Enter a number of 0 or more for Time factor.",
-		"Enter a number from 0.001 to 100000 for Price multiplier.", `value="fast"`, `data-tab="enemy"`} {
+	for _, want := range []string{`href="#ms-enemy-evolution-time-factor"`, "Enter a whole number from 0 to 1000 for Time factor.",
+		"Enter a whole number from 1 to 100000 for Price multiplier.", `value="fast"`, `data-tab="enemy"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
 		}

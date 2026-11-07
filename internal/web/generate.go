@@ -44,8 +44,8 @@ const (
 	modeExchange = "exchange"
 )
 
-// PresetSelectID is the id of Generate's preset select.
-const PresetSelectID = "generate-preset"
+// presetSelectID is the id of Generate's preset select.
+const presetSelectID = "generate-preset"
 
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
@@ -124,7 +124,7 @@ func (p GeneratePage) Problems() []Problem {
 		{"generate-name", f.NameError},
 		{"generate-version", f.VersionError},
 		{"generate-space-age", f.SpaceAgeError},
-		{PresetSelectID, f.PresetError},
+		{presetSelectID, f.PresetError},
 		{"exchange-string", f.ExchangeError},
 		{"mode-" + f.Mode, f.FormError},
 	}
@@ -217,6 +217,7 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	}
 	f.fill(version, nil)
 	rules, _ := mapgen.AchievementRules(version)
+	f.MapGen.markAchievements(rules)
 	f.reasons(version, nil, nil, rules)
 	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, nil))
 }
@@ -237,7 +238,6 @@ func (f *GenerateForm) clearErrors() {
 	f.NameError, f.VersionError, f.SpaceAgeError, f.PresetError = i18n.Msg{}, i18n.Msg{}, i18n.Msg{}, i18n.Msg{}
 	f.ExchangeError, f.FormError, f.SettingsProblems = i18n.Msg{}, i18n.Msg{}, nil
 	f.MapGen.Seed.Error = i18n.Msg{}
-	f.Refilled = false
 }
 
 func (f GenerateForm) failed() bool {
@@ -330,8 +330,6 @@ func (f *GenerateForm) fill(version string, keep *MapGenText) {
 	f.MapGen.Seed.Value = seed.Value
 	f.MapSettings, _, _ = readMapSettings(version, f.Preset, nil)
 	f.FilledFrom = f.Preset
-	rules, _ := mapgen.AchievementRules(version)
-	f.MapGen.markAchievements(rules)
 }
 
 // settingsShown is sent with the map settings, so a post that never showed
@@ -471,8 +469,11 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 		f.MapSettings, overrides, msProbs = readMapSettings(layoutVersion, f.Preset, r.PostForm)
 		if f.Mode == modeSettings {
 			f.SettingsProblems = append(probs, msProbs...)
+			// The seed is in no tab: keep the tab the page was on.
 			if len(f.SettingsProblems) > 0 {
-				f.Tab = f.tabOf(f.SettingsProblems[0].FieldID)
+				if t := f.tabOf(f.SettingsProblems[0].FieldID); t != "" {
+					f.Tab = t
+				}
 			}
 		}
 	}
@@ -480,9 +481,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	rules, _ := mapgen.AchievementRules(layoutVersion)
 	f.MapGen.markAchievements(rules)
 	if f.Reset || f.Refilled {
-		refilled := f.Refilled
 		f.clearErrors()
-		f.Refilled = refilled
 		f.reasons(layoutVersion, mapGen, nil, rules)
 		return f, nw, false
 	}
