@@ -526,6 +526,8 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 			}
 		}
 	}
+	// The open planet is one choice for the whole form, kept over a round trip.
+	f.MapGen.setOpen(r.PostFormValue("open_planet"))
 	f.Modified = f.MapGen.Modified() || f.MapSettings.Modified()
 	rules, _ := mapgen.AchievementRules(layoutVersion)
 	f.MapGen.markAchievements(rules)
