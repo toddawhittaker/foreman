@@ -68,6 +68,9 @@ type msDef struct {
 	unit  i18n.Msg // the unit after the field, or none
 	// lo and hi bound the shown value when hi is not 0 (the game's own limits).
 	lo, hi float64
+	// whole means the shown value must be a whole number (an msWhole field
+	// always must; this is for a field the file stores as a decimal).
+	whole bool
 	// inverse means shown = 100 / stored, for a rate the file stores as a time.
 	inverse bool
 	// choices lists the options of an msChoice field.
@@ -97,19 +100,20 @@ const (
 var msGroups = []msGroup{
 	{tabEnemy, i18n.M("mapgen.ms.expansion"), []msDef{
 		{path: "enemy_expansion.enabled", label: i18n.M("mapgen.ms.enabled"), kind: msToggle},
-		{path: "enemy_expansion.min_expansion_distance", label: i18n.M("mapgen.ms.min_distance"), kind: msWhole, scale: 1},
-		{path: "enemy_expansion.max_expansion_distance", label: i18n.M("mapgen.ms.max_distance"), kind: msWhole, scale: 1},
+		// The limits are the game screen's, in the shown units.
+		{path: "enemy_expansion.min_expansion_distance", label: i18n.M("mapgen.ms.min_distance"), kind: msWhole, scale: 1, lo: 1, hi: 20},
+		{path: "enemy_expansion.max_expansion_distance", label: i18n.M("mapgen.ms.max_distance"), kind: msWhole, scale: 1, lo: 2, hi: 20},
 		{path: "enemy_expansion.settler_group_min_size", label: i18n.M("mapgen.ms.min_group"), kind: msWhole, scale: 1, replacedBy: "enemy_expansion.evolution_group_size_factor"},
 		{path: "enemy_expansion.settler_group_max_size", label: i18n.M("mapgen.ms.max_group"), kind: msWhole, scale: 1, replacedBy: "enemy_expansion.evolution_group_size_factor"},
-		{path: "enemy_expansion.evolution_group_size_factor", label: i18n.M("mapgen.ms.group_factor"), scale: 1},
-		{path: "enemy_expansion.min_expansion_cooldown", label: i18n.M("mapgen.ms.min_cooldown"), scale: 1.0 / 3600, unit: i18n.M("mapgen.unit.minutes")},
-		{path: "enemy_expansion.max_expansion_cooldown", label: i18n.M("mapgen.ms.max_cooldown"), scale: 1.0 / 3600, unit: i18n.M("mapgen.unit.minutes")},
+		{path: "enemy_expansion.evolution_group_size_factor", label: i18n.M("mapgen.ms.group_factor"), scale: 1, whole: true, lo: 1, hi: 20},
+		{path: "enemy_expansion.min_expansion_cooldown", label: i18n.M("mapgen.ms.min_cooldown"), scale: 1.0 / 3600, whole: true, lo: 1, hi: 60, unit: i18n.M("mapgen.unit.minutes")},
+		{path: "enemy_expansion.max_expansion_cooldown", label: i18n.M("mapgen.ms.max_cooldown"), scale: 1.0 / 3600, whole: true, lo: 5, hi: 180, unit: i18n.M("mapgen.unit.minutes")},
 	}},
 	{tabEnemy, i18n.M("mapgen.ms.evolution"), []msDef{
 		{path: "enemy_evolution.enabled", label: i18n.M("mapgen.ms.enabled"), kind: msToggle},
-		{path: "enemy_evolution.time_factor", label: i18n.M("mapgen.ms.time_factor"), scale: 1e7, unit: i18n.M("mapgen.unit.e7")},
-		{path: "enemy_evolution.destroy_factor", label: i18n.M("mapgen.ms.destroy_factor"), scale: 1e5, unit: i18n.M("mapgen.unit.e5")},
-		{path: "enemy_evolution.pollution_factor", label: i18n.M("mapgen.ms.pollution_factor"), scale: 1e7, unit: i18n.M("mapgen.unit.e7")},
+		{path: "enemy_evolution.time_factor", label: i18n.M("mapgen.ms.time_factor"), scale: 1e7, whole: true, hi: 1000, unit: i18n.M("mapgen.unit.e7")},
+		{path: "enemy_evolution.destroy_factor", label: i18n.M("mapgen.ms.destroy_factor"), scale: 1e5, whole: true, hi: 1000, unit: i18n.M("mapgen.unit.e5")},
+		{path: "enemy_evolution.pollution_factor", label: i18n.M("mapgen.ms.pollution_factor"), scale: 1e7, whole: true, hi: 1000, unit: i18n.M("mapgen.unit.e7")},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.technology"), []msDef{
 		// Only 1.1's file holds these three.
@@ -117,18 +121,18 @@ var msGroups = []msGroup{
 		{path: "difficulty_settings.technology_difficulty", label: i18n.M("mapgen.ms.technology_difficulty"), kind: msChoice, choices: msNormalExpensive},
 		{path: "difficulty_settings.research_queue_setting", label: i18n.M("mapgen.ms.research_queue"), kind: msChoice, choices: msResearchQueue},
 		// The runtime API's range for the multiplier.
-		{path: "difficulty_settings.technology_price_multiplier", label: i18n.M("mapgen.ms.price"), scale: 1, lo: 0.001, hi: 100000},
+		{path: "difficulty_settings.technology_price_multiplier", label: i18n.M("mapgen.ms.price"), scale: 1, whole: true, lo: 1, hi: 100000},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.pollution"), []msDef{
 		{path: "pollution.enabled", label: i18n.M("mapgen.ms.enabled"), kind: msToggle},
-		{path: "pollution.diffusion_ratio", label: i18n.M("mapgen.ms.diffusion"), scale: 100, unit: i18n.M("mapgen.unit.percent")},
-		{path: "pollution.ageing", label: i18n.M("mapgen.ms.absorption"), scale: 100, unit: i18n.M("mapgen.unit.percent")},
-		{path: "pollution.enemy_attack_pollution_consumption_modifier", label: i18n.M("mapgen.ms.attack_cost"), scale: 100, unit: i18n.M("mapgen.unit.percent")},
-		{path: "pollution.min_pollution_to_damage_trees", label: i18n.M("mapgen.ms.tree_damage"), scale: 1},
-		{path: "pollution.pollution_per_tree_damage", label: i18n.M("mapgen.ms.per_tree"), scale: 1},
+		{path: "pollution.diffusion_ratio", label: i18n.M("mapgen.ms.diffusion"), scale: 100, whole: true, hi: 25, unit: i18n.M("mapgen.unit.percent")},
+		{path: "pollution.ageing", label: i18n.M("mapgen.ms.absorption"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
+		{path: "pollution.enemy_attack_pollution_consumption_modifier", label: i18n.M("mapgen.ms.attack_cost"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
+		{path: "pollution.min_pollution_to_damage_trees", label: i18n.M("mapgen.ms.tree_damage"), scale: 1, whole: true, hi: 9999},
+		{path: "pollution.pollution_per_tree_damage", label: i18n.M("mapgen.ms.per_tree"), scale: 1, whole: true, hi: 9999},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.asteroids"), []msDef{
-		{path: "asteroids.spawning_rate", label: i18n.M("mapgen.ms.spawning"), scale: 100, unit: i18n.M("mapgen.unit.percent")},
+		{path: "asteroids.spawning_rate", label: i18n.M("mapgen.ms.spawning"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.spoiling"), []msDef{
 		// The game shows the rate, 10% to 1000%; the file stores the time modifier, 10 to 0.1.
@@ -286,6 +290,7 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 		}
 	}
 	overrides = map[string]any{}
+	shownValues := map[string]float64{}
 	for _, g := range msGroups {
 		group := MapSettingsGroup{Tab: g.tab, Legend: g.legend}
 		for _, d := range g.defs {
@@ -342,6 +347,7 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 					fl.Error = msg
 					problems = append(problems, Problem{FieldID: fl.ID, Message: msg})
 				} else {
+					shownValues[d.path] = v
 					if !sameShown(fl.Value, fl.Preset) {
 						overrides[d.path] = storedValue(v, n, d)
 						stored = overrides[d.path]
@@ -363,10 +369,61 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 			form.Groups = append(form.Groups, group)
 		}
 	}
+	problems = append(problems, checkMsOrder(&form, shownValues)...)
 	if len(problems) == 0 && len(overrides) > 0 {
 		problems = checkMapSettingsFile(&form, version, preset, overrides)
 	}
 	return form, overrides, problems
+}
+
+// msOrder says a maximum must be above (or, when strict is false, at least)
+// its minimum, as the game's screen holds.
+type msOrder struct {
+	min, max string
+	strict   bool
+}
+
+var msOrders = []msOrder{
+	{"enemy_expansion.min_expansion_distance", "enemy_expansion.max_expansion_distance", true},
+	{"enemy_expansion.min_expansion_cooldown", "enemy_expansion.max_expansion_cooldown", false},
+}
+
+// checkMsOrder marks the maximum field of each pair that is out of order. A
+// pair is skipped when the version lacks a field or one holds an error already.
+func checkMsOrder(form *MapSettingsForm, values map[string]float64) []Problem {
+	var out []Problem
+	for _, o := range msOrders {
+		lo, okLo := values[o.min]
+		hi, okHi := values[o.max]
+		if !okLo || !okHi || hi > lo || (!o.strict && hi == lo) {
+			continue
+		}
+		msg := i18n.M("mapgen.err.at_least", "field", msLabel(o.max), "other", msLabel(o.min))
+		if o.strict {
+			msg = i18n.M("mapgen.err.greater_than", "field", msLabel(o.max), "other", msLabel(o.min))
+		}
+		for g := range form.Groups {
+			for i := range form.Groups[g].Fields {
+				if fl := &form.Groups[g].Fields[i]; fl.ID == msFieldID(o.max) {
+					fl.Error = msg
+					out = append(out, Problem{FieldID: fl.ID, Message: fl.Error})
+				}
+			}
+		}
+	}
+	return out
+}
+
+// msLabel is the label of the field at a path.
+func msLabel(path string) i18n.Msg {
+	for _, g := range msGroups {
+		for _, d := range g.defs {
+			if d.path == path {
+				return d.label
+			}
+		}
+	}
+	return i18n.Msg{}
 }
 
 // checkMapSettingsFile runs the file the overrides make through the settings
@@ -410,17 +467,29 @@ func presetChoice(v any) string {
 // field's error.
 func parseShown(s string, d msDef) (float64, i18n.Msg) {
 	field := d.label
+	whole := d.kind == msWhole || d.whole
+	// The message for a bounded field names its limits, whatever the fault.
+	bounds := i18n.M("mapgen.err.between", "field", field, "low", shown(d.lo, 1), "high", shown(d.hi, 1))
+	if whole {
+		bounds = i18n.M("mapgen.err.whole_between", "field", field, "low", shown(d.lo, 1), "high", shown(d.hi, 1))
+	}
 	v, err := strconv.ParseFloat(s, 64)
 	switch {
 	case err != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0:
-		if d.kind == msWhole {
+		switch {
+		case whole && d.hi != 0:
+			return 0, bounds
+		case whole:
 			return 0, i18n.M("mapgen.err.whole", "field", field)
 		}
 		return 0, i18n.M("mapgen.err.number", "field", field)
-	case d.kind == msWhole && v != math.Trunc(v):
+	case whole && v != math.Trunc(v):
+		if d.hi != 0 {
+			return 0, bounds
+		}
 		return 0, i18n.M("mapgen.err.whole", "field", field)
 	case d.hi != 0 && (v < d.lo || v > d.hi):
-		return 0, i18n.M("mapgen.err.between", "field", field, "low", shown(d.lo, 1), "high", shown(d.hi, 1))
+		return 0, bounds
 	case d.hi == 0 && math.Round(v/d.scale) > mgMaxNumber:
 		// The game stores these as 32-bit numbers; a larger one would wrap.
 		top := math.Floor(mgMaxNumber*d.scale*100) / 100

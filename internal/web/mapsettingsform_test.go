@@ -147,10 +147,9 @@ func TestChoiceWordsAreWrittenAsWords(t *testing.T) {
 func TestHugeMapSettingNumbersAreRefused(t *testing.T) {
 	for _, c := range []struct{ version, name, value string }{
 		{"2.1.24", "ms.enemy_expansion.max_expansion_distance", "1e300"},
-		{"2.1.24", "ms.enemy_expansion.max_expansion_distance", "4294967296"},
-		{"2.1.24", "ms.enemy_expansion.min_expansion_cooldown", "1e15"},
 		{"2.0.77", "ms.enemy_expansion.settler_group_max_size", "1e300"},
-		{"2.1.24", "ms.enemy_evolution.time_factor", "1e300"},
+		{"2.0.77", "ms.enemy_expansion.settler_group_max_size", "4294967296"},
+		{"2.1.24", "ms.pollution.min_pollution_to_damage_trees", "1e300"},
 	} {
 		form, overrides, problems := readMapSettings(c.version, "default", postedFor(c.version, "default", map[string]string{c.name: c.value}))
 		fl, _ := choiceField(form, c.name)
@@ -159,9 +158,9 @@ func TestHugeMapSettingNumbersAreRefused(t *testing.T) {
 		}
 	}
 	// The largest value the game stores is still accepted and written whole.
-	name := "ms.enemy_expansion.max_expansion_distance"
-	_, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{name: "4294967295"}))
-	if len(problems) != 0 || overrides["enemy_expansion.max_expansion_distance"] != 4294967295 {
+	name := "ms.enemy_expansion.settler_group_max_size"
+	_, overrides, problems := readMapSettings("2.0.77", "default", postedFor("2.0.77", "default", map[string]string{name: "4294967295"}))
+	if len(problems) != 0 || overrides["enemy_expansion.settler_group_max_size"] != 4294967295 {
 		t.Errorf("largest value: problems %v, overrides %v", problems, overrides)
 	}
 }
@@ -203,6 +202,125 @@ func TestSpoilingRateIsShownInverted(t *testing.T) {
 			fl, ok := choiceField(form, name)
 			if !ok || fl.Value != "100" || fl.Preset != "100" || len(problems) != 0 || len(overrides) != 0 {
 				t.Errorf("%s %s: shown %q (found %v), problems %v", version, preset, fl.Value, ok, problems)
+			}
+		}
+	}
+}
+
+// The Enemy tab's limits are the game screen's, in whole shown units (SPEC 5.6).
+func TestEnemyFieldBounds(t *testing.T) {
+	const x = "ms.enemy_expansion."
+	const e = "ms.enemy_evolution."
+	for _, c := range []struct {
+		name           string
+		accept, refuse []string
+	}{
+		{x + "min_expansion_distance", []string{"1", "4"}, []string{"0", "21", "2.5", "-1", "x"}},
+		{x + "max_expansion_distance", []string{"6", "20"}, []string{"1", "21", "5.5"}},
+		{x + "evolution_group_size_factor", []string{"1", "20"}, []string{"0", "21", "8.5"}},
+		{x + "min_expansion_cooldown", []string{"1", "30"}, []string{"0", "61", "1.5"}},
+		{x + "max_expansion_cooldown", []string{"60", "180"}, []string{"4", "181", "10.5"}},
+		{e + "time_factor", []string{"0", "1000"}, []string{"1001", "40.5", "-1"}},
+		{e + "destroy_factor", []string{"0", "1000"}, []string{"1001", "40.5"}},
+		{e + "pollution_factor", []string{"0", "1000"}, []string{"1001", "9.5"}},
+	} {
+		for _, v := range c.accept {
+			form, _, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{c.name: v}))
+			if fl, _ := choiceField(form, c.name); len(problems) != 0 || !fl.Error.IsZero() {
+				t.Errorf("%s=%s refused: %v", c.name, v, problems)
+			}
+		}
+		for _, v := range c.refuse {
+			form, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{c.name: v}))
+			if fl, _ := choiceField(form, c.name); len(problems) != 1 || fl.Error.IsZero() || len(overrides) != 0 {
+				t.Errorf("%s=%s accepted: problems %v, overrides %v", c.name, v, problems, overrides)
+			}
+		}
+	}
+}
+
+// The Advanced tab's limits, also the game screen's (SPEC 5.6).
+func TestAdvancedFieldBounds(t *testing.T) {
+	for _, c := range []struct {
+		name           string
+		accept, refuse []string
+	}{
+		{"ms.difficulty_settings.technology_price_multiplier", []string{"1", "100000"}, []string{"0", "0.5", "100001", "2.5"}},
+		{"ms.pollution.diffusion_ratio", []string{"0", "25"}, []string{"26", "2.5", "-1"}},
+		{"ms.pollution.ageing", []string{"10", "400"}, []string{"9", "401", "10.5"}},
+		{"ms.pollution.enemy_attack_pollution_consumption_modifier", []string{"10", "400"}, []string{"9", "401", "10.5"}},
+		{"ms.pollution.min_pollution_to_damage_trees", []string{"0", "9999"}, []string{"10000", "1.5"}},
+		{"ms.pollution.pollution_per_tree_damage", []string{"0", "9999"}, []string{"10000", "1.5"}},
+		{"ms.asteroids.spawning_rate", []string{"10", "400"}, []string{"9", "401", "12.5"}},
+	} {
+		for _, v := range c.accept {
+			form, _, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{c.name: v}))
+			if fl, _ := choiceField(form, c.name); len(problems) != 0 || !fl.Error.IsZero() {
+				t.Errorf("%s=%s refused: %v", c.name, v, problems)
+			}
+		}
+		for _, v := range c.refuse {
+			form, overrides, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", map[string]string{c.name: v}))
+			if fl, _ := choiceField(form, c.name); len(problems) != 1 || fl.Error.IsZero() || len(overrides) != 0 {
+				t.Errorf("%s=%s accepted: problems %v, overrides %v", c.name, v, problems, overrides)
+			}
+		}
+	}
+}
+
+// The maximum is an error on the maximum field, naming the minimum.
+func TestMaximumsMustNotBeBelowMinimums(t *testing.T) {
+	const x = "ms.enemy_expansion."
+	for _, c := range []struct {
+		change map[string]string
+		field  string
+		bad    bool
+	}{
+		{map[string]string{x + "max_expansion_distance": "3"}, x + "max_expansion_distance", true}, // equal to the minimum, which must be less
+		{map[string]string{x + "max_expansion_distance": "2"}, x + "max_expansion_distance", true},
+		{map[string]string{x + "min_expansion_distance": "5"}, x + "max_expansion_distance", true},
+		{map[string]string{x + "min_expansion_distance": "4"}, "", false},
+		{map[string]string{x + "min_expansion_cooldown": "30", x + "max_expansion_cooldown": "29"}, x + "max_expansion_cooldown", true},
+		{map[string]string{x + "min_expansion_cooldown": "30", x + "max_expansion_cooldown": "30"}, "", false}, // equal is allowed
+		{map[string]string{x + "min_expansion_cooldown": "60", x + "max_expansion_cooldown": "50"}, x + "max_expansion_cooldown", true},
+	} {
+		form, _, problems := readMapSettings("2.1.24", "default", postedFor("2.1.24", "default", c.change))
+		if !c.bad {
+			if len(problems) != 0 {
+				t.Errorf("%v refused: %v", c.change, problems)
+			}
+			continue
+		}
+		fl, _ := choiceField(form, c.field)
+		if len(problems) != 1 || problems[0].FieldID != fl.ID || fl.Error.IsZero() {
+			t.Errorf("%v: problems %v", c.change, problems)
+			continue
+		}
+		if _, ok := fl.Error.Args["other"]; !ok {
+			t.Errorf("%v: the message does not name the other field: %+v", c.change, fl.Error)
+		}
+	}
+	// 2.0 has no minimum distance, so its maximum is held to the screen's lower limit only.
+	form, _, problems := readMapSettings("2.0.77", "default", postedFor("2.0.77", "default", map[string]string{x + "max_expansion_distance": "1"}))
+	if fl, _ := choiceField(form, x+"max_expansion_distance"); len(problems) != 1 || fl.Error.IsZero() {
+		t.Errorf("2.0 maximum distance 1 (below the screen's 2): %v", problems)
+	}
+}
+
+// Every preset of every line reads back inside the limits.
+func TestEveryPresetIsInsideTheEnemyLimits(t *testing.T) {
+	for _, version := range []string{"1.1.110", "2.0.77", "2.1.9", "2.1.24"} {
+		line, _ := mapgen.Line(version)
+		for _, preset := range mapgen.Presets(line) {
+			form, _, problems := readMapSettings(version, preset, nil)
+			if len(problems) != 0 {
+				t.Errorf("%s %s: %v", version, preset, problems)
+			}
+			if _, _, problems := readMapSettings(version, preset, postedFor(version, preset, nil)); len(problems) != 0 {
+				t.Errorf("%s %s posted back: %v", version, preset, problems)
+			}
+			if _, ok := choiceField(form, "ms.enemy_evolution.time_factor"); !ok {
+				t.Errorf("%s %s: no time factor", version, preset)
 			}
 		}
 	}
