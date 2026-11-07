@@ -70,7 +70,8 @@ test.describe("with script", () => {
     // The first request goes out after the pause, and only once.
     await page.waitForTimeout(1200);
     expect(sent.map((r) => field(r, "seed"))).toEqual(["424242"]);
-    expect(field(sent[0], "planet")).toBeUndefined();
+    // The planet open in the settings, the first by default, is the one drawn.
+    expect(field(sent[0], "planet")).toBe("nauvis");
     await expect(seed).toBeFocused();
   });
 
