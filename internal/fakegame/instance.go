@@ -123,9 +123,9 @@ func (g *Game) bootPreview(c dockertest.Container) {
 // PreviewSlowDelay is how long a PreviewSlow container runs before it draws.
 const PreviewSlowDelay = 500 * time.Millisecond
 
-// finishPreview draws the pictures and exits.
+// finishPreview makes what the preview container is for, and exits.
 func (g *Game) finishPreview(c dockertest.Container) {
-	if err := drawPreview(c); err != nil {
+	if err := makePreview(c); err != nil {
 		g.report(err.Error())
 		g.daemon.Exit(c.ID, 1, false)
 		return
