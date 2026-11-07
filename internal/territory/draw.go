@@ -1,0 +1,185 @@
+package territory
+
+import (
+	"bytes"
+	_ "embed"
+	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
+	"sync"
+
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/gobold"
+	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/font/sfnt"
+	"golang.org/x/image/math/fixed"
+)
+
+// The overlay's look, as the page draws it: diagonal red stripes lighter
+// than the game's own, and a solid border.
+const (
+	stripePeriod = 56
+	stripeWidth  = 28
+	stripeAlpha  = 85
+)
+
+var (
+	stripeColour  = color.RGBA{200, 20, 20, 255}
+	borderColour  = color.RGBA{255, 30, 30, 255}
+	outlineColour = color.RGBA{16, 16, 16, 255}
+	textColour    = color.RGBA{255, 255, 255, 255}
+)
+
+// outline holds the offsets the dark copies of a label are drawn at, a ring
+// about 2 px wide around the white text.
+var outline = []image.Point{{-2, 0}, {2, 0}, {0, -2}, {0, 2}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}}
+
+// notoLabels is Noto Sans CJK SC Bold cut down to the Simplified Chinese
+// labels' glyphs (fonts/NOTICE); Go Bold has no CJK.
+//
+//go:embed fonts/NotoSansCJKsc-Bold-labels.otf
+var notoLabels []byte
+
+// fonts are parsed once: Go Bold first, then the CJK subset.
+var fonts = sync.OnceValues(func() ([]*sfnt.Font, error) {
+	var out []*sfnt.Font
+	for _, b := range [][]byte{gobold.TTF, notoLabels} {
+		f, err := opentype.Parse(b)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, nil
+})
+
+// renderSlot lets one render run at a time: decoding a 4096 picture alone
+// takes 64 MB.
+var renderSlot = make(chan struct{}, 1)
+
+// DrawPNG draws ov over the PNG src, which must be ov.Size pixels square,
+// and returns the new PNG. label gives the word for each size.
+func DrawPNG(src []byte, ov Overlay, label func(size string) string) ([]byte, error) {
+	renderSlot <- struct{}{}
+	defer func() { <-renderSlot }()
+
+	cfg, err := png.DecodeConfig(bytes.NewReader(src))
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Width != ov.Size || cfg.Height != ov.Size {
+		return nil, fmt.Errorf("the picture is %d by %d, not %d square", cfg.Width, cfg.Height, ov.Size)
+	}
+	pic, err := png.Decode(bytes.NewReader(src))
+	if err != nil {
+		return nil, err
+	}
+	img := image.NewRGBA(pic.Bounds())
+	draw.Draw(img, img.Bounds(), pic, pic.Bounds().Min, draw.Src)
+
+	for _, s := range ov.Shapes {
+		for _, r := range s.Runs {
+			stripe(img, r)
+		}
+	}
+	for _, seg := range ov.Borders {
+		border(img, seg)
+	}
+	fs, err := fonts()
+	if err != nil {
+		return nil, err
+	}
+	px := float64(max(16, ov.Size/64))
+	for _, s := range ov.Shapes {
+		if err := drawLabel(img, fs, px, label(s.Size), s.LabelX, s.LabelY); err != nil {
+			return nil, err
+		}
+	}
+	var out bytes.Buffer
+	enc := png.Encoder{CompressionLevel: png.BestSpeed}
+	if err := enc.Encode(&out, img); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+// stripe blends the stripe colour into the pixels of r on the stripes.
+func stripe(img *image.RGBA, r Rect) {
+	area := image.Rect(r.X, r.Y, r.X+r.W, r.Y+r.H).Intersect(img.Bounds())
+	for y := area.Min.Y; y < area.Max.Y; y++ {
+		for x := area.Min.X; x < area.Max.X; x++ {
+			if (x+y)%stripePeriod >= stripeWidth {
+				continue
+			}
+			i := img.PixOffset(x, y)
+			p := img.Pix[i : i+3 : i+3]
+			p[0] = blend(p[0], stripeColour.R)
+			p[1] = blend(p[1], stripeColour.G)
+			p[2] = blend(p[2], stripeColour.B)
+		}
+	}
+}
+
+func blend(under, over uint8) uint8 {
+	return uint8((int(under)*(255-stripeAlpha) + int(over)*stripeAlpha + 127) / 255) //nolint:gosec // the sum of two weighted bytes over 255 is a byte
+}
+
+// border paints a 2 px line along seg, one pixel on each side of the
+// boundary it lies on.
+func border(img *image.RGBA, seg Segment) {
+	var area image.Rectangle
+	if seg.X0 == seg.X1 {
+		area = image.Rect(seg.X0-1, seg.Y0, seg.X0+1, seg.Y1)
+	} else {
+		area = image.Rect(seg.X0, seg.Y0-1, seg.X1, seg.Y0+1)
+	}
+	draw.Draw(img, area.Intersect(img.Bounds()), image.NewUniform(borderColour), image.Point{}, draw.Src)
+}
+
+// drawLabel writes text centred on x, y in white with a dark outline, in the
+// first font that has all its glyphs.
+func drawLabel(img *image.RGBA, fs []*sfnt.Font, px float64, text string, x, y float64) error {
+	face, err := opentype.NewFace(fontFor(fs, text), &opentype.FaceOptions{Size: px, DPI: 72, Hinting: font.HintingFull})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = face.Close() }()
+	m := face.Metrics()
+	width := font.MeasureString(face, text)
+	dot := fixed.Point26_6{
+		X: fixed.Int26_6(x*64) - width/2,
+		Y: fixed.Int26_6(y*64) + (m.Ascent-m.Descent)/2,
+	}
+	d := font.Drawer{Dst: img, Src: image.NewUniform(outlineColour), Face: face}
+	for _, o := range outline {
+		d.Dot = dot.Add(fixed.P(o.X, o.Y))
+		d.DrawString(text)
+	}
+	d.Src = image.NewUniform(textColour)
+	d.Dot = dot
+	d.DrawString(text)
+	return nil
+}
+
+// fontFor picks the first font that has every glyph of text, or the first
+// font if none has; the glyph test keeps the labels covered.
+func fontFor(fs []*sfnt.Font, text string) *sfnt.Font {
+	for _, f := range fs {
+		if hasGlyphs(f, text) {
+			return f
+		}
+	}
+	return fs[0]
+}
+
+func hasGlyphs(f *sfnt.Font, text string) bool {
+	var buf sfnt.Buffer
+	for _, r := range text {
+		if g, err := f.GlyphIndex(&buf, r); err != nil || g == 0 {
+			return false
+		}
+	}
+	return true
+}
