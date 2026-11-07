@@ -11,12 +11,12 @@
   "js.generate.preview_ready": "Kartenvorschau fertig.",
   "js.preview.zoom": "Zoom {level}",
   "js.preview.drawing": "{planet} wird gezeichnet …",
-  "js.preview.previous": "Previous planet: {planet}",
-  "js.preview.next": "Next planet: {planet}",
-  "js.preview.download": "Download {planet} map",
+  "js.preview.previous": "Vorheriger Planet: {planet}",
+  "js.preview.next": "Nächster Planet: {planet}",
+  "js.preview.download": "Karte {planet} herunterladen",
   "js.generate.reset": "Karteneinstellungen auf die Vorlage {preset} zurückgesetzt.",
   "js.generate.ach_setting": "{setting} deaktiviert einige Errungenschaften.",
   "js.generate.ach_clear": "Jetzt deaktiviert keine Einstellung mehr Errungenschaften.",
   "js.generate.moved": "{field} auf {value} gesetzt, damit der Bereich gültig bleibt.",
-  "js.preview.download_territories": "Download {planet} map with territories"
+  "js.preview.download_territories": "Karte {planet} mit Territorien herunterladen"
 }

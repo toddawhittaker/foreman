@@ -387,40 +387,40 @@
   "worlds.generate.large.zoom_out": "缩小",
   "worlds.generate.large.zoom_in": "放大",
   "worlds.generate.large.close": "关闭",
-  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture or use the arrow keys on it to move around.",
+  "worlds.generate.large.keys": "左右方向键显示上一个和下一个星球，加号和减号缩放，0 键使图片适应窗口，Esc 键关闭。放大后，可拖动图片，或在图片获得焦点时用方向键移动。",
   "worlds.generate.preview.pin": "图钉标记地图中心，即玩家的出生点。",
-  "worlds.generate.preview.size_label": "Preview size",
-  "worlds.generate.preview.size_option": "{size} × {size} tiles",
-  "worlds.generate.preview.size_default": "{size} × {size} tiles (default)",
-  "worlds.generate.preview.size_hint": "How much of the map, around its centre, the preview shows. Big sizes show their detail in the large view.",
-  "worlds.generate.error.preview_size": "Choose one of the sizes in the list.",
-  "worlds.generate.territories.label": "Show demolisher territories",
-  "worlds.generate.territories.hint": "Finding them takes a few seconds more.",
-  "worlds.generate.territories.too_big_hint": "Shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size to show them.",
-  "worlds.generate.territories.finding": "Finding the demolisher territories…",
-  "worlds.generate.territories.counts": "Demolisher territories in this picture: {list}.",
-  "worlds.generate.territories.none": "This picture has no demolisher territories.",
-  "worlds.generate.territories.no_vulcanus": "Only Space Age worlds have demolisher territories, on Vulcanus.",
-  "worlds.generate.territories.too_big": "Demolisher territories are shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size.",
-  "worlds.generate.territories.invalid": "The settings have problems, so the demolisher territories were not found. Fix the problems the map preview lists.",
-  "worlds.generate.territories.busy": "Another map preview is being made, so the demolisher territories were not found. Wait a few seconds, then try again.",
-  "worlds.generate.territories.draw_busy": "Other pictures with territories are being drawn right now. Wait a few seconds, then download again.",
-  "worlds.generate.territories.timeout": "Finding the demolisher territories took too long and was stopped. Try again, or choose a smaller preview size.",
-  "worlds.generate.territories.oom": "The game ran out of memory finding the demolisher territories. Choose a smaller preview size.",
-  "worlds.generate.territories.failed": "The game could not find the demolisher territories. The map preview and Generate still work. If it keeps failing, check Foreman's log.",
-  "worlds.generate.territories.request_failed": "The request for the demolisher territories failed. Check that Foreman is reachable and that you are still signed in, then try again.",
-  "worlds.generate.territories.retry": "Try again",
-  "worlds.generate.territories.download": "Download {planet} with territories (PNG)",
+  "worlds.generate.preview.size_label": "预览大小",
+  "worlds.generate.preview.size_option": "{size} × {size} 格",
+  "worlds.generate.preview.size_default": "{size} × {size} 格（默认）",
+  "worlds.generate.preview.size_hint": "预览显示以地图中心为中心的多大范围。较大的尺寸可在大图查看中看到细节。",
+  "worlds.generate.error.preview_size": "请选择列表中的一个尺寸。",
+  "worlds.generate.territories.label": "显示撼地虫领地",
+  "worlds.generate.territories.hint": "查找需要多花几秒钟。",
+  "worlds.generate.territories.too_big_hint": "预览大小不超过 {size} × {size} 格时才会显示。请选择更小的预览大小。",
+  "worlds.generate.territories.finding": "正在查找撼地虫领地…",
+  "worlds.generate.territories.counts": "此图片中的撼地虫领地：{list}。",
+  "worlds.generate.territories.none": "此图片中没有撼地虫领地。",
+  "worlds.generate.territories.no_vulcanus": "只有启用太空时代的世界才有撼地虫领地，位于祝融星。",
+  "worlds.generate.territories.too_big": "预览大小不超过 {size} × {size} 格时才会显示撼地虫领地。请选择更小的预览大小。",
+  "worlds.generate.territories.invalid": "设置存在问题，因此未能找到撼地虫领地。请修正地图预览中列出的问题。",
+  "worlds.generate.territories.busy": "正在生成另一个地图预览，因此未能找到撼地虫领地。请等待几秒钟，然后重试。",
+  "worlds.generate.territories.draw_busy": "正在绘制其他带领地的图片。请等待几秒钟，然后重新下载。",
+  "worlds.generate.territories.timeout": "查找撼地虫领地用时过长，已被停止。请重试，或选择更小的预览大小。",
+  "worlds.generate.territories.oom": "游戏在查找撼地虫领地时内存不足。请选择更小的预览大小。",
+  "worlds.generate.territories.failed": "游戏无法找到撼地虫领地，但地图预览和生成世界仍可使用。如果持续失败，请查看 Foreman 的日志。",
+  "worlds.generate.territories.request_failed": "撼地虫领地请求失败。请确认能够访问 Foreman 且仍处于登录状态，然后重试。",
+  "worlds.generate.territories.retry": "重试",
+  "worlds.generate.territories.download": "下载带领地的 {planet}（PNG）",
   "worlds.generate.territories.count.small": {
-    "other": "{count} small"
+    "other": "{count} 个小型"
   },
   "worlds.generate.territories.count.medium": {
-    "other": "{count} medium"
+    "other": "{count} 个中型"
   },
   "worlds.generate.territories.count.big": {
-    "other": "{count} big"
+    "other": "{count} 个大型"
   },
   "worlds.generate.territories.count.unknown": {
-    "other": "{count} of unknown size"
+    "other": "{count} 个未知大小"
   }
 }
