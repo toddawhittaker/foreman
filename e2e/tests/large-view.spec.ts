@@ -334,6 +334,25 @@ test.describe("the planet viewed", () => {
     expect(await seen()).toEqual(["vulcanus", "nauvis", "fulgora"]);
   });
 
+  // A tab leaves out a planet with nothing to set there, so the row of the
+  // planet before stays open in it. A row opened to follow the planet viewed
+  // says so a moment later, when the view may have moved on: it must not
+  // pull the view back (DESIGN 8.7).
+  test("two quick steps leave the planet viewed where the steps ended", async ({ page }) => {
+    await openLarge(page);
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+    await page.evaluate(() => {
+      document.getElementById("large-prev")!.click();
+      document.getElementById("large-prev")!.click();
+    });
+    await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
+    await page.waitForTimeout(300);
+    await expect(page.getByRole("dialog", { name: "Aquilo" })).toBeVisible();
+    await expect(page.locator("#large-next-name")).toHaveText("Next planet: Nauvis");
+    await expect(page.locator("#open-planet")).toHaveValue("aquilo");
+  });
+
   // The dialog's close event comes a moment after it shuts; a planet picked
   // in that moment is still drawn, and the planet viewed stays the one picked.
   test("a planet picked as the large view closes is drawn", async ({ page }) => {

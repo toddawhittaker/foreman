@@ -45,14 +45,26 @@ document.addEventListener("DOMContentLoaded", () => {
   // the browser closes the other row. One planet is open in every tab, kept
   // in #open-planet for the server, and the preview shows it.
   const openPlanet = () => document.getElementById("open-planet");
+  // Rows the script opened. Their toggle event comes a moment later, when a
+  // tab without the next planet's row may still hold this one open; it must
+  // not be taken for the person choosing it.
+  const byScript = new WeakSet();
   function openRow(planet) {
     const field = openPlanet();
     if (field) field.value = planet;
-    document.querySelectorAll(`#generate-form details[data-planet="${CSS.escape(planet)}"]`).forEach((d) => { d.open = true; });
+    document.querySelectorAll("#generate-form details[data-planet]").forEach((d) => {
+      if (d.dataset.planet !== planet) {
+        if (!d.open) byScript.delete(d);
+      } else if (!d.open) {
+        byScript.add(d);
+        d.open = true;
+      }
+    });
   }
   document.addEventListener("toggle", (e) => {
     const d = e.target;
-    if (!(d instanceof HTMLDetailsElement) || !d.open || !d.dataset.planet || !d.closest("#generate-form")) return;
+    if (!(d instanceof HTMLDetailsElement) || !d.dataset.planet || !d.closest("#generate-form")) return;
+    if (byScript.delete(d) || !d.open) return;
     const field = openPlanet();
     // A row opened to follow the choice already made says and sends nothing.
     if (!field || field.value === d.dataset.planet) return;
