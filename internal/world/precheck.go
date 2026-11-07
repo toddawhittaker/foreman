@@ -194,6 +194,12 @@ func (m *Manager) PreStartCheckAt(id, version string) (PreCheck, error) {
 	return finish()
 }
 
+// SaveMods reads the game version and mod list of one save of the world,
+// for sync from save (SPEC 9.8, 9.9). It refuses a save it cannot parse.
+func (m *Manager) SaveMods(id, save string) (savefile.Save, error) {
+	return m.readSave(id, save)
+}
+
 // readSave opens and reads one save of the world.
 func (m *Manager) readSave(id, name string) (savefile.Save, error) {
 	f, info, err := m.OpenSave(id, name)

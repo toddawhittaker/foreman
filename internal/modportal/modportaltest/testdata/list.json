@@ -1,0 +1,207 @@
+{
+ "pagination": null,
+ "results": [
+  {
+   "name": "flib",
+   "title": "Factorio Library",
+   "owner": "raiguard",
+   "summary": "A set of high-quality, commonly-used utilities for creating Factorio mods.",
+   "downloads_count": 1082004,
+   "category": "internal",
+   "score": -8.066666666666606,
+   "latest_release": {
+    "download_url": "/download/flib/690aa58f2da58c0b75aadd06",
+    "file_name": "flib_0.16.5.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2025-11-05T01:17:03.734000Z",
+    "version": "0.16.5",
+    "sha1": "be7ce1b5c9477ad3161df120a379aec091b86f77"
+   }
+  },
+  {
+   "name": "jetpack",
+   "title": "Jetpack",
+   "owner": "Earendel",
+   "summary": "Lets you build jetpack equipment that lets you rocket at high speeds to fly over buildings and water.",
+   "downloads_count": 673479,
+   "category": "content",
+   "last_highlighted_at": "2025-08-18",
+   "score": 1.0999999999999943,
+   "latest_release": {
+    "download_url": "/download/jetpack/69d695b6aa2bf4e50813630c",
+    "file_name": "jetpack_0.4.17.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2026-04-08T17:51:50.809000Z",
+    "version": "0.4.17",
+    "sha1": "000f931cd583445eb14fb4bd389da129613b1ecf"
+   }
+  },
+  {
+   "name": "Krastorio2",
+   "title": "Krastorio 2",
+   "owner": "raiguard",
+   "summary": "An overhaul mod focusing on end-game technologies and moderately increased complexity.",
+   "downloads_count": 395465,
+   "category": "overhaul",
+   "last_highlighted_at": "2026-10-19",
+   "score": 218.5,
+   "latest_release": {
+    "download_url": "/download/Krastorio2/6a3ee3ddb47877e4de0fde46",
+    "file_name": "Krastorio2_2.0.19.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2026-06-26T20:41:01.660000Z",
+    "version": "2.0.19",
+    "sha1": "695d638f18b6d5d5af5caa0a2947796cd1fb738f"
+   }
+  },
+  {
+   "name": "Krastorio2Assets",
+   "title": "Krastorio 2 Assets",
+   "owner": "raiguard",
+   "summary": "Assets for Krastorio 2.",
+   "downloads_count": 417758,
+   "category": "internal",
+   "score": 36.90000000000003,
+   "latest_release": {
+    "download_url": "/download/Krastorio2Assets/6a3d7709353f65fde86d8850",
+    "file_name": "Krastorio2Assets_2.0.5.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2026-06-25T18:44:25.031000Z",
+    "version": "2.0.5",
+    "sha1": "6a56e6ed11b15b25e16a0ec7b826fa45b33d8a7c"
+   }
+  },
+  {
+   "name": "Flow Control",
+   "title": "Flow Control",
+   "owner": "GotLag",
+   "summary": "Adds pipes with restricted connections to easily build parallel pipelines. Additionally, valves can be added by installing the optional Valves mod.",
+   "downloads_count": 222070,
+   "category": "utilities",
+   "last_highlighted_at": "2026-04-13",
+   "score": 13.399999999999999,
+   "latest_release": {
+    "download_url": "/download/Flow%20Control/67a69e2b7bb8d922068caa5c",
+    "file_name": "Flow Control_3.2.3.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2025-02-07T23:58:35.657000Z",
+    "version": "3.2.3",
+    "sha1": "7776af8bc692954b6f94d8bc4221c7ea312c90db"
+   }
+  },
+  {
+   "name": "far-reach",
+   "title": "Far Reach",
+   "owner": "Fexx",
+   "summary": "Build, interact and mine on the entire screen. Distances are customizable. Substitute for non-maintained mods like Long Reach.",
+   "downloads_count": 246943,
+   "category": "utilities",
+   "last_highlighted_at": "2026-08-17",
+   "score": 44.10000000000004,
+   "latest_release": {
+    "download_url": "/download/far-reach/68c4606fa70d09edc5420867",
+    "file_name": "far-reach_2.0.2.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2025-09-12T18:03:27.268000Z",
+    "version": "2.0.2",
+    "sha1": "8a0c11e2e61238609561c0b874322bb33286f145"
+   }
+  },
+  {
+   "name": "visible-planets",
+   "title": "Visible Planets in Space",
+   "owner": "Nauviax",
+   "summary": "Render the local planet behind platforms when in orbit.",
+   "downloads_count": 155092,
+   "category": "tweaks",
+   "last_highlighted_at": "2026-05-04",
+   "score": -77.99999999999989,
+   "latest_release": {
+    "download_url": "/download/visible-planets/69e34f807f899521acf22f9d",
+    "file_name": "visible-planets_1.7.2.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2026-04-18T09:31:44.554000Z",
+    "version": "1.7.2",
+    "sha1": "28675850f6c5ff96d55093b42e2798f245e4f03b",
+    "feature_flags": [
+     "space-travel"
+    ]
+   },
+   "requires_space_age": true
+  },
+  {
+   "name": "Power Armor MK3",
+   "title": "Power Armor MK3+",
+   "owner": "jimmy_1283",
+   "summary": "Bigger, better power armors; with a bigger grid (14x14)/(20x20) and larger inventory bonus (+50)/(+60), also adds various equipment and alternatives to light and heavy armor with inventory bonus (+10)/(+20). Compatible with Base Game and Space Age DLC.",
+   "downloads_count": 229000,
+   "category": "content",
+   "last_highlighted_at": "2026-07-27",
+   "score": 78.63333333333334,
+   "latest_release": {
+    "download_url": "/download/Power%20Armor%20MK3/67f0802c5d1e5dcb1792aa93",
+    "file_name": "Power Armor MK3_2.1.07.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2025-04-05T00:58:20.258000Z",
+    "version": "2.1.07",
+    "sha1": "cdc7e6c3851ec38c8e40d0a97820d9d7c0f356b1"
+   }
+  },
+  {
+   "name": "aai-industry",
+   "title": "AAI Industry",
+   "owner": "Earendel",
+   "summary": "The industry part of Advanced Autonomous Industries. Adds burner machines, some new intermediate ingredients, powered offshore pumps, and more. Alters tech and recipes. Other AAI mods are not required.",
+   "downloads_count": 592817,
+   "category": "content",
+   "last_highlighted_at": "2026-08-24",
+   "score": 24.333333333333393,
+   "latest_release": {
+    "download_url": "/download/aai-industry/69a17555bb02cb306d1ac1a6",
+    "file_name": "aai-industry_0.6.16.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2026-02-27T10:43:33.767000Z",
+    "version": "0.6.16",
+    "sha1": "7a72b485b1346f8d4cf34420de3e3d5233441f62"
+   }
+  },
+  {
+   "name": "aai-containers",
+   "title": "AAI Containers & Warehouses",
+   "owner": "Earendel",
+   "summary": "A set of containers in the Factorio style with multiple options for inventory sizes. Chest 1x1, Strongbox 2x2, Storehouse 4x4, and Warehouse 6x6. Logistic and non-logistic variants of all. Container colour uses masks so other mods can modify the tint (for colour blindness etc).",
+   "downloads_count": 621670,
+   "category": "content",
+   "last_highlighted_at": "2025-09-22",
+   "score": 37.76666666666667,
+   "latest_release": {
+    "download_url": "/download/aai-containers/68d2ad73257dad1106e089a4",
+    "file_name": "aai-containers_0.3.2.zip",
+    "info_json": {
+     "factorio_version": "2.0"
+    },
+    "released_at": "2025-09-23T14:23:47.234000Z",
+    "version": "0.3.2",
+    "sha1": "564fd44cf4d5b46e7285fb53fe08111c33c0242e"
+   }
+  }
+ ]
+}
