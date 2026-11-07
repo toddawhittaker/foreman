@@ -1,0 +1,7 @@
+#!/bin/sh
+# Refuses a commit message that credits an AI assistant as a co-author.
+# Enable with: git config core.hooksPath .githooks
+if ! .github/ai-trailer-check "$1"; then
+  echo "commit-msg: remove the AI attribution line from the message (docs/WORKFLOW.md, \"Secret scanning\")." >&2
+  exit 1
+fi
