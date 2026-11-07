@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -341,5 +342,72 @@ func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
 		if _, err := readTerritories(base, "p", 1280); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+}
+
+// fifoAt makes a named pipe called name in a work folder "p" of the returned
+// root. The cleanup opens the pipe so a read stuck on it ends instead of
+// leaking.
+func fifoAt(t *testing.T, name string) *os.Root {
+	t.Helper()
+	dir := t.TempDir()
+	base, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = base.Close() })
+	if err := base.Mkdir("p", 0o750); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(dir, "p", name)
+	if err := syscall.Mkfifo(p, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if f, err := os.OpenFile(p, os.O_RDWR|syscall.O_NONBLOCK, 0); err == nil { //nolint:gosec // the test's own temporary pipe
+			_ = f.Close()
+		}
+	})
+	return base
+}
+
+// failsPromptly returns the error read returns, or fails the test when read
+// is still running after a few seconds.
+func failsPromptly(t *testing.T, read func() error) error {
+	t.Helper()
+	done := make(chan error, 1)
+	go func() { done <- read() }()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(3 * time.Second):
+		t.Fatal("the read is stuck on a named pipe")
+		return nil
+	}
+}
+
+// SPEC 14.1: the game can leave a named pipe where its file should be. The
+// read refuses it at once instead of waiting for a writer.
+func TestReadTerritoriesRefusesANamedPipe(t *testing.T) {
+	base := fifoAt(t, gameenv.TerritoryFile)
+	err := failsPromptly(t, func() error {
+		_, err := readTerritories(base, "p", 1280)
+		return err
+	})
+	if err == nil {
+		t.Error("a named pipe was accepted")
+	}
+}
+
+// SPEC 14.1: a named pipe where the game's picture should be is refused at
+// once, so it cannot hold the preview slot.
+func TestReadPreviewsRefusesANamedPipe(t *testing.T) {
+	base := fifoAt(t, "nauvis.png")
+	err := failsPromptly(t, func() error {
+		_, err := readPreviews(base, "p", []string{"nauvis"})
+		return err
+	})
+	if err == nil {
+		t.Error("a named pipe was accepted")
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -456,7 +455,8 @@ func (c *Controller) removeStalePreviews(ctx context.Context, base *os.Root) {
 var pngSignature = []byte("\x89PNG\r\n\x1a\n")
 
 // readPreviews reads the picture of each planet, at most MaxPreviewPNG bytes
-// each, and checks it is a PNG.
+// each, and checks it is a PNG. Each must be a regular file, so a named pipe
+// the game left cannot hold the preview slot (SPEC 14.1).
 func readPreviews(base *os.Root, dir string, planets []string) ([]PNG, error) {
 	root, err := base.OpenRoot(dir)
 	if err != nil {
@@ -465,17 +465,11 @@ func readPreviews(base *os.Root, dir string, planets []string) ([]PNG, error) {
 	defer func() { _ = root.Close() }()
 	out := make([]PNG, 0, len(planets))
 	for _, p := range planets {
-		f, err := root.Open(p + ".png")
+		data, err := world.ReadSmallFile(root, p+".png", MaxPreviewPNG)
 		if err != nil {
-			return nil, fmt.Errorf("the game made no picture of %s: %w", p, err)
+			return nil, fmt.Errorf("the game made no usable picture of %s: %w", p, err)
 		}
-		data, err := io.ReadAll(io.LimitReader(f, MaxPreviewPNG+1))
-		_ = f.Close()
 		switch {
-		case err != nil:
-			return nil, err
-		case len(data) > MaxPreviewPNG:
-			return nil, fmt.Errorf("the picture of %s is bigger than %d bytes", p, MaxPreviewPNG)
 		case !bytes.HasPrefix(data, pngSignature):
 			return nil, fmt.Errorf("the picture of %s is not a PNG", p)
 		}

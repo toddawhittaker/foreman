@@ -404,6 +404,7 @@
   "worlds.generate.territories.too_big": "Demolisher territories are shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size.",
   "worlds.generate.territories.invalid": "The settings have problems, so the demolisher territories were not found. Fix the problems the map preview lists.",
   "worlds.generate.territories.busy": "Another map preview is being made, so the demolisher territories were not found. Wait a few seconds, then try again.",
+  "worlds.generate.territories.draw_busy": "Other pictures with territories are being drawn right now. Wait a few seconds, then download again.",
   "worlds.generate.territories.timeout": "Finding the demolisher territories took too long and was stopped. Try again, or choose a smaller preview size.",
   "worlds.generate.territories.oom": "The game ran out of memory finding the demolisher territories. Choose a smaller preview size.",
   "worlds.generate.territories.failed": "The game could not find the demolisher territories. The map preview and Generate still work. If it keeps failing, check Foreman's log.",

@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -359,5 +360,50 @@ func TestTerritoriesNeedSignInAndTheSameOrigin(t *testing.T) {
 	nc := none.signIn()
 	if rec := none.postLong(pathTerritories, vulcanusForm(), nc); rec.Code != http.StatusNotFound {
 		t.Errorf("no previewer: %d", rec.Code)
+	}
+}
+
+type drawCtxKey struct{}
+
+// SPEC 14.1: a download draws with its request's context, so a browser that
+// leaves stops waiting for the render slot; a full queue is a 503 the user
+// can retry, not a server fault.
+func TestTerritoryDownloadDrawsWithTheRequestContextAndRefusesWhenBusy(t *testing.T) {
+	hn, _, c := newTerritoryHarness(t)
+	form := vulcanusForm()
+	form.Del("planet")
+	body := hn.postLong(PathGeneratePreview, form, c, withHeader("HX-Request", "true")).Body.String()
+	vulcanus := PathGeneratePreview + "/" + strings.Split(pictureOf(t, body), "/")[3] + "/vulcanus"
+	hn.postLong(pathTerritories, vulcanusForm(), c, withHeader("HX-Request", "true"))
+
+	orig := drawPNG
+	t.Cleanup(func() { drawPNG = orig })
+	var got any
+	drawPNG = func(ctx context.Context, _ []byte, _ territory.Overlay, _ func(string) string) ([]byte, error) {
+		got = ctx.Value(drawCtxKey{})
+		return nil, territory.ErrBusy
+	}
+	for _, path := range []string{vulcanus + "/download?territories=1", strings.TrimSuffix(vulcanus, "/vulcanus") + "/all.zip?territories=1"} {
+		got = nil
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.AddCookie(c)
+		rec := hn.serveLong(r.WithContext(context.WithValue(r.Context(), drawCtxKey{}, "mine")))
+		if got != "mine" {
+			t.Errorf("%s: drawn without the request's context", path)
+		}
+		if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" ||
+			!strings.Contains(rec.Body.String(), "Wait a few seconds, then download again.") {
+			t.Errorf("%s: status %d, headers %v:\n%s", path, rec.Code, rec.Header(), rec.Body.String())
+		}
+	}
+	if strings.Contains(hn.logs.String(), `"level":"ERROR"`) {
+		t.Errorf("a busy queue was logged as an error:\n%s", hn.logs.String())
+	}
+
+	drawPNG = func(context.Context, []byte, territory.Overlay, func(string) string) ([]byte, error) {
+		return nil, errors.New("broken")
+	}
+	if rec := hn.getLong(vulcanus+"/download?territories=1", c); rec.Code != http.StatusInternalServerError {
+		t.Errorf("another failure: %d", rec.Code)
 	}
 }

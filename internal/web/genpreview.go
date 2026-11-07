@@ -512,7 +512,7 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 	png, have, err := territoryDownload(r, e, planet, png)
 	switch {
 	case err != nil:
-		s.fail(w, r, "draw the demolisher territories", err)
+		s.drawFailure(w, r, u, err)
 		return
 	case !have:
 		s.notFound(w, r, u)
@@ -536,7 +536,7 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 		drawn, have, err := territoryDownload(r, e, territoryPlanet, png)
 		switch {
 		case err != nil:
-			s.fail(w, r, "draw the demolisher territories", err)
+			s.drawFailure(w, r, u, err)
 			return
 		case !have:
 			s.notFound(w, r, u)
