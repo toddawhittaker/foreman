@@ -107,12 +107,10 @@ func (m *Manager) RemoveStaged(name string) error {
 }
 
 // isStagedName reports whether name is a staged mod file at the top of the
-// worlds folder.
-//
-// TODO: accept only PrefixModStaging once the web mod upload stages with
-// CreateModTemp; until then its uploads carry the plain PrefixPartial.
+// worlds folder. Another upload's temp file also starts with PrefixPartial
+// but is not a staged mod, so it is never read or removed here.
 func isStagedName(name string) bool {
-	return strings.HasPrefix(name, PrefixPartial) && path.Base(name) == name && !strings.ContainsAny(name, `/\`)
+	return strings.HasPrefix(name, PrefixModStaging) && path.Base(name) == name && !strings.ContainsAny(name, `/\`)
 }
 
 // placed is one staged file and the name it takes in mods/.

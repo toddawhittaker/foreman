@@ -90,6 +90,13 @@ const maxFieldBytes = 1 << 10
 // fields: each part named in values, sent before the file, is read into
 // values. Text fields sent after the file are not read.
 func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir string, limit int64, values map[string]string) (uploaded, error) {
+	create := func() (*os.File, string, error) { return world.CreateTemp(root, dir) }
+	return receiveInto(r, root, create, field, spaceDir, limit, values)
+}
+
+// receiveInto is receiveFileWithFields with the temp file made by create,
+// which returns it open with its name relative to root.
+func receiveInto(r *http.Request, root *os.Root, create func() (*os.File, string, error), field, spaceDir string, limit int64, values map[string]string) (uploaded, error) {
 	if r.ContentLength > limit {
 		return uploaded{}, tooLarge(limit)
 	}
@@ -128,7 +135,7 @@ func receiveFileWithFields(r *http.Request, root *os.Root, dir, field, spaceDir 
 		}
 		// Browsers on Windows may send a full path with backslashes.
 		up := uploaded{FileName: path.Base(strings.ReplaceAll(part.FileName(), `\`, "/"))}
-		f, temp, err := world.CreateTemp(root, dir)
+		f, temp, err := create()
 		if err != nil {
 			return uploaded{}, err
 		}

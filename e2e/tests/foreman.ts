@@ -188,7 +188,8 @@ export interface FakePortal {
   token: string;
   // Adds a release of a mod. The mod then shows in search, and its /full reply
   // lists only the releases added for it (a recorded mod of the same name is hidden).
-  add: (name: string, version: string, deps?: string[]) => Promise<{ file_name: string; download_url: string; sha1: string }>;
+  // The release is for game line "2.0" unless line says another, such as "2.1".
+  add: (name: string, version: string, deps?: string[], line?: string) => Promise<{ file_name: string; download_url: string; sha1: string }>;
   // How a release downloads: normal, direct, wrong-sha1, unauthorized,
   // redirect-login, redirect-foreign, server-error, slow, oversized.
   setMode: (name: string, version: string, mode: string) => Promise<void>;
@@ -234,7 +235,7 @@ async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<voi
     caFile: ready.ca,
     username: ready.username,
     token: ready.token,
-    add: (name, version, deps = []) => post("/add", { name, version, deps }),
+    add: (name, version, deps = [], line) => post("/add", { name, version, deps, line }),
     setMode: async (name, version, mode) => void (await post("/mode", { name, version, mode })),
     failApi: async (status) => void (await post("/fail", { status })),
     setDown: async (down) => void (await post("/down", { down })),

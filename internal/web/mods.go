@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -75,15 +74,6 @@ func kindPlanPath(id string, kind mods.Kind, names ...string) string {
 // syncPath is the plan that matches a world's mods to the save that loads
 // (SPEC 9.8, 7.11).
 func syncPath(id string) string { return kindPlanPath(id, mods.KindSync) }
-
-// gameLine is a game version's major.minor line, as the portal names it.
-func gameLine(version string) string {
-	parts := strings.SplitN(version, ".", 3)
-	if len(parts) < 2 {
-		return ""
-	}
-	return parts[0] + "." + parts[1]
-}
 
 func (s *server) modRoutes() {
 	s.mux.HandleFunc("GET "+PathWorldMods, s.requireUser(s.handleMods))
@@ -208,7 +198,7 @@ func updateSlot(name string) string {
 }
 
 // Line is the world's game line, such as "2.0".
-func (p ModsPage) Line() string { return gameLine(p.World.GameVersion) }
+func (p ModsPage) Line() string { return mods.GameLine(p.World.GameVersion) }
 
 // SettingsFile is the mod settings file's name.
 func (ModsPage) SettingsFile() string { return world.ModSettingsFile }
@@ -482,7 +472,7 @@ func (p ModSearchPage) Problems() []Problem { return problems(Problem{"mod-searc
 
 func (p ModSearchPage) Path() string     { return modsPath(p.World.ID) + "/search" }
 func (p ModSearchPage) ModsPath() string { return modsPath(p.World.ID) }
-func (p ModSearchPage) Line() string     { return gameLine(p.World.GameVersion) }
+func (p ModSearchPage) Line() string     { return mods.GameLine(p.World.GameVersion) }
 func (p ModSearchPage) AccountPath() string {
 	return accountLink(p.Path() + "?" + url.Values{"q": {p.Query}}.Encode())
 }
@@ -523,7 +513,7 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 			p.Installed[m.Name] = true
 		}
 	}
-	hits, err := s.portal.Search(r.Context(), gameLine(sum.GameVersion), p.Query)
+	hits, err := s.portal.Search(r.Context(), mods.GameLine(sum.GameVersion), p.Query)
 	if err != nil {
 		s.portalTrouble("search the mod portal", sum.ID, err)
 		p.Unreachable = true
@@ -756,7 +746,7 @@ func (p ModPlanPage) Path() string       { return modsPath(p.World.ID) + "/plan"
 func (p ModPlanPage) ModsPath() string   { return modsPath(p.World.ID) }
 func (p ModPlanPage) UploadPath() string { return modsPath(p.World.ID) + "/upload" }
 func (p ModPlanPage) SavesPath() string  { return worldPath(p.World.ID) + "/saves" }
-func (p ModPlanPage) Line() string       { return gameLine(p.World.GameVersion) }
+func (p ModPlanPage) Line() string       { return mods.GameLine(p.World.GameVersion) }
 
 // AccountPath returns here after the account is entered. An upload cannot
 // be posted again from a link, so it returns to the Mods tab.
@@ -1079,8 +1069,8 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		p.Error, p.Retry = s.planError(sum.ID, err), planPath(sum.ID, f.query())
 		return p
 	}
-	p.Hash = planHash(p.Plan)
 	p.Drops = s.planDrops(ctx, sum.ID, p.Plan)
+	p.Hash = mods.HashPlan(p.Plan, p.Drops)
 	return p
 }
 
@@ -1177,23 +1167,6 @@ func (s *server) planError(id string, err error) i18n.Msg {
 	}
 	s.log.Error("make a mod plan", "world", id, "error", err)
 	return i18n.M("mods.error.plan")
-}
-
-// planHash digests the plan the page shows. Ticking "continue without"
-// does not change what will happen, so it does not change the digest.
-func planHash(p mods.Plan) string {
-	p.Hash = ""
-	p.Unresolved = slices.Clone(p.Unresolved)
-	for i, u := range p.Unresolved {
-		if u.Choice != nil {
-			c := *u.Choice
-			c.Confirmed = false
-			p.Unresolved[i].Choice = &c
-		}
-	}
-	b, _ := json.Marshal(p)
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
 }
 
 // handlePlan applies a plan the admin confirmed. It recomputes the plan

@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -66,17 +65,21 @@ func modZipError(err error) i18n.Msg {
 }
 
 // stagedInfo reads the info.json of an uploaded zip waiting to be placed.
-// A name that is not a staged file's, or a file that is gone, is
+// A name that is not a staged mod's, or a file that is gone, is
 // errStagedGone, so a crafted name reads nothing.
 func (s *server) stagedInfo(name string) (world.ModInfo, error) {
-	if !strings.HasPrefix(name, world.PrefixPartial) || path.Base(name) != name || strings.ContainsAny(name, `/\`) {
-		return world.ModInfo{}, errStagedGone
-	}
-	info, err := world.ReadModZip(s.worlds.StagedPath(name))
-	if errors.Is(err, fs.ErrNotExist) {
+	info, err := s.worlds.ReadStaged(name)
+	if errors.Is(err, world.ErrNotStaged) || errors.Is(err, fs.ErrNotExist) {
 		return world.ModInfo{}, errStagedGone
 	}
 	return info, err
+}
+
+// receiveStaged receives an upload into a staged mod file, which a mod
+// change may read and remove and no other upload's temp file can be taken for.
+func (s *server) receiveStaged(r *http.Request, worlds *os.Root, field string, limit int64, values map[string]string) (uploaded, error) {
+	create := func() (*os.File, string, error) { return world.CreateModTemp(worlds) }
+	return receiveInto(r, worlds, create, field, s.worlds.Dirs().Worlds, limit, values)
 }
 
 // hasModSettings reports whether the world has a mod-settings.dat.
@@ -130,7 +133,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	defer func() { _ = worlds.Close() }()
-	up, err := receiveFileWithFields(r, worlds, ".", modUploadField, s.worlds.Dirs().Worlds, MaxModUpload, map[string]string{})
+	up, err := s.receiveStaged(r, worlds, modUploadField, MaxModUpload, map[string]string{})
 	if err != nil {
 		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
 			refuse(msg, status)
@@ -139,7 +142,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 		s.fail(w, r, "receive a mod zip", err)
 		return
 	}
-	info, err := world.ReadModZip(s.worlds.StagedPath(up.Temp))
+	info, err := s.worlds.ReadStaged(up.Temp)
 	if err != nil {
 		_ = s.worlds.RemoveStaged(up.Temp)
 		refuse(modZipError(err), http.StatusUnprocessableEntity)
@@ -184,7 +187,7 @@ func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	defer func() { _ = worlds.Close() }()
-	up, err := receiveFileWithFields(r, worlds, ".", settingsUploadField, s.worlds.Dirs().Worlds, MaxSettingsUpload, values)
+	up, err := s.receiveStaged(r, worlds, settingsUploadField, MaxSettingsUpload, values)
 	if err != nil {
 		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
 			refuse(msg, status, defaultCountdown())

@@ -107,6 +107,29 @@ func TestReadStagedRefusesOtherNames(t *testing.T) {
 	}
 }
 
+// Another upload in progress also starts with PrefixPartial. A posted name
+// that points at it is refused by every staged-file call and the file stays.
+func TestOtherUploadsTempFilesAreNotStagedMods(t *testing.T) {
+	m, id, _ := checkWorld(t, "2.0.77", false)
+	other := PrefixPartial + "import-upload"
+	path := filepath.Join(m.Dirs().Worlds, other)
+	if err := os.WriteFile(path, modZip(t, "a_1.0.0", `{"name":"a","version":"1.0.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ReadStaged(other); !errors.Is(err, ErrNotStaged) {
+		t.Errorf("ReadStaged = %v, want ErrNotStaged", err)
+	}
+	if err := m.RemoveStaged(other); !errors.Is(err, ErrNotStaged) {
+		t.Errorf("RemoveStaged = %v, want ErrNotStaged", err)
+	}
+	if err := m.ApplyModsHeld(id, ModChange{Add: []string{other}}, fingerprint(t, m, id)); !errors.Is(err, ErrNotStaged) {
+		t.Errorf("ApplyModsHeld = %v, want ErrNotStaged", err)
+	}
+	if !exists(path) {
+		t.Error("another upload's temp file was removed")
+	}
+}
+
 // CheckModChange refuses what ApplyModsHeld would and changes nothing.
 func TestCheckModChangeRefusesWithoutChanging(t *testing.T) {
 	m, id, dir := checkWorld(t, "2.0.77", true)

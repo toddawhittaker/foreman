@@ -171,8 +171,6 @@ type Plan struct {
 	Conflicts  []Conflict
 	Unresolved []Unresolved
 	Optional   []Offer
-	// Hash is always empty: HashPlan digests a plan with its drops.
-	Hash string
 }
 
 // Applicable reports whether the plan may be applied: no conflict, and

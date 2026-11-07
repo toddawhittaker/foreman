@@ -147,9 +147,8 @@ func (s *Service) Set(ctx context.Context, acct Account, by string) error {
 	return nil
 }
 
-// Remove deletes the stored account. The by argument is for the caller's
-// audit entry; the row is simply gone.
-func (s *Service) Remove(ctx context.Context, _ string) error {
+// Remove deletes the stored account.
+func (s *Service) Remove(ctx context.Context) error {
 	if err := s.canChange(); err != nil {
 		return err
 	}

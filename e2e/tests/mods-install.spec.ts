@@ -99,6 +99,9 @@ test.describe("an optional dependency", () => {
     await box.check();
     await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
     await expect(page.locator("#mod-plan")).toContainText("fp-opt 1.0.0 (offered by fp-main)");
+    // The redraw keeps the ticked box, and focus stays on it.
+    await expect(box).toBeChecked();
+    await expect(box).toBeFocused();
     // Script redraws the plan without a page load, so there is no Recalculate button.
     await expect(page.getByRole("button", { name: "Recalculate the plan" })).toBeHidden();
     await checkPage(page);
@@ -143,6 +146,11 @@ test.describe("an optional dependency", () => {
       await expect(page.getByLabel("fp-opt, offered by fp-main")).toBeChecked();
       await page.getByRole("button", { name: "Install 2 mods" }).click();
       await expect(page).toHaveURL("/", live);
+      // Without script the page does not update itself; load it until the change has finished.
+      await expect(async () => {
+        await page.reload();
+        await expect(doneBox(page)).toContainText("The mods of Base are changed.", { timeout: 500 });
+      }).toPass(live);
       for (const name of ["fp-main", "fp-opt"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", `${name}_1.0.0.zip`))).toBe(true);
     });
   });
