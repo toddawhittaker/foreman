@@ -3,6 +3,8 @@ package modportal
 import (
 	"bytes"
 	"context"
+	"crypto/sha1" //nolint:gosec // the portal publishes SHA-1 sums
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -302,5 +304,28 @@ func TestRealRequestShape(t *testing.T) {
 	if got.URL.Scheme != "https" || got.URL.Host != "mods.factorio.com" || got.URL.EscapedPath() != "/download/Flow%20Control/abc" ||
 		got.URL.Query().Get("username") != "bob" || got.URL.Query().Get("token") != "t o+k" {
 		t.Errorf("request was %s", got.URL.Redacted())
+	}
+}
+
+// SPEC 14.10: the token rides in the download's query, and Go copies the
+// previous address into Referer on a redirect, so the header is removed.
+func TestDownloadRedirectSendsNoReferer(t *testing.T) {
+	body := []byte("zipbytes")
+	sum := sha1.Sum(body) //nolint:gosec // the portal's own sum
+	var referer []string
+	c := handlerClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/download/m/1" {
+			http.Redirect(w, r, "/files/m_1.0.0.zip", http.StatusFound)
+			return
+		}
+		referer = append(referer, r.Header.Get("Referer"))
+		_, _ = w.Write(body)
+	})
+	r := Release{Version: "1.0.0", FileName: "m_1.0.0.zip", DownloadURL: "/download/m/1", SHA1: hex.EncodeToString(sum[:])}
+	if err := download(c, r, tempFile(t)); err != nil {
+		t.Fatal(err)
+	}
+	if len(referer) != 1 || referer[0] != "" {
+		t.Errorf("Referer on the redirected request %q, want none", referer)
 	}
 }

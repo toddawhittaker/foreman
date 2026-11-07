@@ -151,6 +151,21 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 	}
 	change := op.Change
 	change.Add = append(slices.Clone(op.Change.Add), staged...)
+	// A change the world layer would refuse is refused while the game
+	// still runs.
+	if err := c.worlds.CheckModChange(id, change); err != nil {
+		return staged, err
+	}
+	// A game started anyway runs with its problems; the check after the
+	// change accepts those, and refuses only new ones (SPEC 7.4).
+	var before []world.Problem
+	if IsRunning(c.Status(id).State) {
+		check, err := c.PreStartCheck(id)
+		if err != nil {
+			return staged, err
+		}
+		before = check.Problems
+	}
 
 	err = c.stopLocked(ctx, o, countdown)
 	wasRunning := err == nil
@@ -185,7 +200,7 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 		return staged, nil
 	}
 	o.begin(StepCheck)
-	if err := c.precheckMods(id, op.ConfirmedDrops); err != nil {
+	if err := c.precheckMods(id, op.ConfirmedDrops, before); err != nil {
 		return staged, err
 	}
 	o.done(StepCheck)
@@ -194,8 +209,9 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 
 // precheckMods is the pre-start check after a mod change. A problem about
 // mods the save uses but the world no longer has on is passed when every
-// mod it names is a confirmed drop; anything else still refuses.
-func (c *Controller) precheckMods(id string, drops []string) error {
+// mod it names is a confirmed drop. A problem the game ran with before the
+// change, after a "start anyway", is passed too. Anything else refuses.
+func (c *Controller) precheckMods(id string, drops []string, before []world.Problem) error {
 	if err := c.worlds.EnsureModList(id); err != nil {
 		return err
 	}
@@ -203,8 +219,27 @@ func (c *Controller) precheckMods(id string, drops []string) error {
 	if err != nil {
 		return err
 	}
-	check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool { return confirmedDrop(p, drops) })
+	check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
+		return confirmedDrop(p, drops) || ranWith(p, before)
+	})
 	return c.allowStart(check, StartOptions{})
+}
+
+// ranWith reports whether the game already ran past problem p: a problem
+// before the change that a start anyway allows, of the same kind, naming
+// every mod p names. A problem naming a new mod is new.
+func ranWith(p world.Problem, before []world.Problem) bool {
+	if !p.StartAnyway {
+		return false
+	}
+	return slices.ContainsFunc(before, func(q world.Problem) bool {
+		return q.StartAnyway && q.Kind == p.Kind && subset(p.Mods, q.Mods) && subset(p.Names, q.Names)
+	})
+}
+
+// subset reports whether every name in a is in b.
+func subset(a, b []string) bool {
+	return !slices.ContainsFunc(a, func(n string) bool { return !slices.Contains(b, n) })
 }
 
 func confirmedDrop(p world.Problem, drops []string) bool {

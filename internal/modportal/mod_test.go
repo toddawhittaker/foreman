@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 func TestModRecorded(t *testing.T) {
@@ -25,7 +27,7 @@ func TestModRecorded(t *testing.T) {
 		t.Fatalf("%d releases, want 10", len(m.Releases))
 	}
 	for i := 1; i < len(m.Releases); i++ {
-		if !versionLess(m.Releases[i-1].Version, m.Releases[i].Version) {
+		if world.CompareVersions(m.Releases[i-1].Version, m.Releases[i].Version) >= 0 {
 			t.Errorf("releases not oldest first at %d: %s then %s", i, m.Releases[i-1].Version, m.Releases[i].Version)
 		}
 	}
@@ -152,12 +154,16 @@ func TestModCacheAndErrors(t *testing.T) {
 	if _, err := c.Mod(ctx, "visible-planets"); err != nil || p.FullCalls("visible-planets") != 2 {
 		t.Fatalf("second success must come from the cache: %v, %d calls", err, p.FullCalls("visible-planets"))
 	}
-	// A 404 is not kept either.
+	// A 404 is an answer, kept as long as a mod is.
 	if _, err := c.Mod(ctx, "nope"); !errors.Is(err, ErrNotOnPortal) {
 		t.Fatal(err)
 	}
+	if _, err := c.Mod(ctx, "nope"); !errors.Is(err, ErrNotOnPortal) || p.FullCalls("nope") != 1 {
+		t.Fatalf("a 404 was asked again: %d calls", p.FullCalls("nope"))
+	}
+	clk.Advance(15*time.Minute + time.Second)
 	if _, err := c.Mod(ctx, "nope"); !errors.Is(err, ErrNotOnPortal) || p.FullCalls("nope") != 2 {
-		t.Fatalf("calls %d", p.FullCalls("nope"))
+		t.Fatalf("a 404 did not expire after 15 minutes: %d calls", p.FullCalls("nope"))
 	}
 	_, _ = c.Mod(ctx, "Flow Control")
 	clk.Advance(14*time.Minute + 59*time.Second)
@@ -250,23 +256,10 @@ func TestNothingIsFetchedAtConstruction(t *testing.T) {
 	}
 }
 
-func TestVersionLess(t *testing.T) {
-	for _, tc := range []struct {
-		a, b string
-		less bool
-	}{
-		{"1.0.0", "1.0.1", true}, {"1.0.9", "1.0.10", true}, {"1.10.0", "1.9.0", false},
-		{"1.0", "1.0.0", false}, {"1.0.0", "1.0.0", false}, {"0.9.9", "1.0.0", true},
-	} {
-		if versionLess(tc.a, tc.b) != tc.less {
-			t.Errorf("versionLess(%s, %s) != %v", tc.a, tc.b, tc.less)
-		}
-	}
-}
-
 func TestParseModSortsReleases(t *testing.T) {
 	m, err := parseMod([]byte(`{"name":"m","releases":[
-		{"version":"1.0.10"},{"version":"1.0.2"},{"version":""},{"version":"0.9.0"}]}`))
+		{"version":"1.0.10","file_name":"m_1.0.10.zip"},{"version":"1.0.2","file_name":"m_1.0.2.zip"},
+		{"version":"","file_name":"m_.zip"},{"version":"0.9.0","file_name":"m_0.9.0.zip"}]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,5 +269,22 @@ func TestParseModSortsReleases(t *testing.T) {
 	}
 	if strings.Join(got, ",") != "0.9.0,1.0.2,1.0.10" {
 		t.Errorf("got %v", got)
+	}
+}
+
+// Plan ruling 11 for SPEC 14.10: a release whose file_name is not
+// <name>_<version>.zip is not used, whatever part is wrong.
+func TestParseModDropsReleasesNamedForAnotherMod(t *testing.T) {
+	m, err := parseMod([]byte(`{"name":"m","releases":[
+		{"version":"1.0.0","file_name":"m_1.0.0.zip"},
+		{"version":"1.1.0","file_name":"other_1.1.0.zip"},
+		{"version":"1.2.0","file_name":"m_1.2.1.zip"},
+		{"version":"1.3.0","file_name":"m_1.3.0.tar"},
+		{"version":"1.4.0"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Releases) != 1 || m.Releases[0].Version != "1.0.0" {
+		t.Errorf("releases %+v, want only 1.0.0", m.Releases)
 	}
 }

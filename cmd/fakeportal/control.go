@@ -24,8 +24,9 @@ var modes = map[string]modportaltest.Mode{
 // controlHandler serves the test hooks, all JSON:
 //
 //	GET  /state  requests seen inside tunnels, tunnels opened, hosts refused
-//	POST /add    {"name","version","deps":[...]} adds a release. The mod then
-//	             shows in the list, and its /full reply lists only added releases.
+//	POST /add    {"name","version","deps":[...],"line"} adds a release, made
+//	             for Factorio line ("2.0" when left out). The mod then shows in
+//	             the list, and its /full reply lists only added releases.
 //	POST /mode   {"name","version","mode"} sets how that release downloads
 //	POST /fail   {"status":N} makes every /api reply carry N; 0 restores them
 //	POST /down   {"down":true} makes the proxy refuse every tunnel with 503
@@ -38,8 +39,8 @@ func (f *Fake) controlHandler() http.Handler {
 	})
 	mux.HandleFunc("POST /add", func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
-			Name, Version string
-			Deps          []string
+			Name, Version, Line string
+			Deps                []string
 		}
 		if !decode(w, r, &in) {
 			return
@@ -48,7 +49,10 @@ func (f *Fake) controlHandler() http.Handler {
 			http.Error(w, "name and version are required", http.StatusBadRequest)
 			return
 		}
-		s := f.portal.AddZip(in.Name, in.Version, in.Deps...)
+		if in.Line == "" {
+			in.Line = modportaltest.GameLine
+		}
+		s := f.portal.AddZipFor(in.Line, in.Name, in.Version, in.Deps...)
 		f.portal.SetMode(s, modportaltest.Redirect)
 		f.mu.Lock()
 		f.served[in.Name+"_"+in.Version] = s

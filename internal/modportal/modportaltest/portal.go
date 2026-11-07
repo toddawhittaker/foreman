@@ -33,7 +33,7 @@ const (
 	Token    = "tok-4f9c7e1d2b8a-not-a-real-token" //nolint:gosec // a fake, made up for tests
 )
 
-// GameLine is the factorio_version of every generated release.
+// GameLine is the factorio_version of a release AddZip generates.
 const GameLine = "2.0"
 
 // Mode is how the fake answers a download of one generated file.
@@ -55,6 +55,7 @@ const (
 // Served describes one generated release, as the client would see it.
 type Served struct {
 	Name, Version, FileName, DownloadURL, SHA1 string
+	FactorioVersion                            string // the game line, such as "2.0"
 	Body                                       []byte
 }
 
@@ -136,18 +137,24 @@ func New(t testing.TB) *Portal {
 	return p
 }
 
-// AddZip registers a generated release of a mod: a small zip with an
-// info.json, and the matching SHA-1. The mod's /full reply lists every
-// release added for it, oldest first, ahead of any recorded fixture of the
-// same name.
+// AddZip registers a generated release of a mod for GameLine: a small zip
+// with an info.json, and the matching SHA-1. The mod's /full reply lists
+// every release added for it, oldest first, ahead of any recorded fixture
+// of the same name.
 func (p *Portal) AddZip(name, version string, deps ...string) Served {
+	return p.AddZipFor(GameLine, name, version, deps...)
+}
+
+// AddZipFor is AddZip for a release made for another game line, such as
+// "2.1".
+func (p *Portal) AddZipFor(line, name, version string, deps ...string) Served {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	w, err := zw.Create(name + "_" + version + "/info.json")
 	if err != nil {
 		panic(err)
 	}
-	info, _ := json.Marshal(map[string]any{"name": name, "version": version, "dependencies": deps})
+	info, _ := json.Marshal(map[string]any{"name": name, "version": version, "factorio_version": line, "dependencies": deps})
 	_, _ = w.Write(info)
 	if err := zw.Close(); err != nil {
 		panic(err)
@@ -156,12 +163,13 @@ func (p *Portal) AddZip(name, version string, deps ...string) Served {
 	id := hex.EncodeToString(sum[:12])
 	f := &file{
 		Served: Served{
-			Name:        name,
-			Version:     version,
-			FileName:    name + "_" + version + ".zip",
-			DownloadURL: "/download/" + url.PathEscape(name) + "/" + id,
-			SHA1:        hex.EncodeToString(sum[:]),
-			Body:        buf.Bytes(),
+			Name:            name,
+			Version:         version,
+			FileName:        name + "_" + version + ".zip",
+			DownloadURL:     "/download/" + url.PathEscape(name) + "/" + id,
+			SHA1:            hex.EncodeToString(sum[:]),
+			FactorioVersion: line,
+			Body:            buf.Bytes(),
 		},
 		path: "/download/" + name + "/" + id,
 	}
@@ -332,7 +340,7 @@ func fullFor(name string, gen []*file) []byte {
 	for _, f := range gen {
 		var rel release
 		rel.DownloadURL, rel.FileName, rel.SHA1, rel.Version = f.DownloadURL, f.FileName, f.SHA1, f.Version
-		rel.InfoJSON.FactorioVersion = GameLine
+		rel.InfoJSON.FactorioVersion = f.FactorioVersion
 		rel.InfoJSON.Dependencies = depsOf(f.Body)
 		doc.Releases = append(doc.Releases, rel)
 	}

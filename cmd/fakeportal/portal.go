@@ -275,7 +275,7 @@ func listEntry(name string, s modportaltest.Served) json.RawMessage {
 		"latest_release": map[string]any{
 			"download_url": s.DownloadURL, "file_name": s.FileName, "version": s.Version, "sha1": s.SHA1,
 			"released_at": "2026-01-01T00:00:00.000000Z",
-			"info_json":   map[string]any{"factorio_version": modportaltest.GameLine},
+			"info_json":   map[string]any{"factorio_version": s.FactorioVersion},
 		},
 	})
 	return b

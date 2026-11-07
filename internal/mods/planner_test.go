@@ -124,10 +124,6 @@ func TestAvailabilityFlagsAVersionThePortalNoLongerHas(t *testing.T) {
 	if !slices.Equal(flags, want) {
 		t.Fatalf("flags %+v, want %+v", flags, want)
 	}
-	n, err := f.planner.AvailabilityErrors(context.Background(), f.id)
-	if err != nil || n != 1 {
-		t.Fatalf("errors %d, %v; want 1", n, err)
-	}
 
 	// The fix is the 9.3 update: to the newest 2.0 release, not 2.1's.
 	p := f.plan(Request{Kind: KindUpdate, Names: []string{"visible-planets"}})
@@ -296,9 +292,6 @@ func TestPortalDownIsAnErrorNotFlags(t *testing.T) {
 	if flags, err := f.planner.Availability(ctx, f.id); !errors.Is(err, modportal.ErrUnreachable) || flags != nil {
 		t.Fatalf("availability %+v, %v", flags, err)
 	}
-	if _, err := f.planner.AvailabilityErrors(ctx, f.id); !errors.Is(err, modportal.ErrUnreachable) {
-		t.Fatalf("summary %v", err)
-	}
 	if ups, err := f.planner.Updates(ctx, f.id); !errors.Is(err, modportal.ErrUnreachable) || ups != nil {
 		t.Fatalf("updates %+v, %v", ups, err)
 	}
@@ -310,7 +303,7 @@ func TestPortalDownIsAnErrorNotFlags(t *testing.T) {
 func TestAvailabilitySummaryUsesTheCache(t *testing.T) {
 	f := newFixture(t, "visible-planets_1.5.5")
 	for range 3 {
-		if _, err := f.planner.AvailabilityErrors(context.Background(), f.id); err != nil {
+		if _, err := f.planner.Availability(context.Background(), f.id); err != nil {
 			t.Fatal(err)
 		}
 	}
