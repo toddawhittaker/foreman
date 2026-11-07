@@ -38,6 +38,26 @@
     </div>
     {{- end}}
   </section>
+  {{- else}}{{if .CanPreview}}
+  {{/* Holds the first preview's space until it arrives, so nothing moves: the picture's box and,
+       unseen, the lines around it. Space Age means several planets, so a planet choice. Script only (DESIGN 8.8). */}}
+  <section aria-labelledby="preview-heading" class="preview-placeholder">
+    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+    <p class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.made" "seed" ""}} {{t "worlds.generate.preview.pin"}}</p>
+    {{- if .Form.SpaceAge}}
+    <div class="field preview-placeholder__hold" aria-hidden="true"><span>{{t "worlds.generate.preview.planet"}}</span><span class="preview-placeholder__control"></span></div>
+    {{- end}}
+    <div class="preview-placeholder__picture">
+      <span class="preview-placeholder__map"></span>
+      <span class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.planet"}}</span>
+      <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    </div>
+    {{- if .Form.SpaceAge}}
+    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    {{- end}}
+    <p class="hint preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.kept"}}</p>
+  </section>
+  {{- end}}
   {{- end}}
 </div>
 {{- end}}

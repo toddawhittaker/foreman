@@ -9,5 +9,10 @@
   "js.live.stopped": "Las actualizaciones en vivo se detuvieron. Recarga la página para ver el estado actual.",
   "js.generate.options": "Opciones del mapa actualizadas para la versión del juego y el ajuste de Space Age elegidos.",
   "js.generate.preview_ready": "Vista previa del mapa lista.",
-  "js.preview.zoom": "Zoom {level}"
+  "js.preview.zoom": "Zoom {level}",
+  "js.preview.drawing": "Dibujando {planet}…",
+  "js.generate.reset": "Ajustes del mapa restablecidos al preajuste {preset}.",
+  "js.generate.ach_setting": "{setting} desactiva algunos logros.",
+  "js.generate.ach_clear": "Ahora ningún ajuste desactiva logros.",
+  "js.generate.moved": "{field} cambiado a {value} para que el rango siga siendo válido."
 }

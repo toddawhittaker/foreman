@@ -140,11 +140,24 @@ document.addEventListener("DOMContentLoaded", () => {
     return active.size;
   }
 
+  // The words a field is known by: its label, or for a box the label around it.
+  function labelOf(el) {
+    const label = document.getElementById(el.id + "-label") || el.closest("label") || document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+    return label ? label.textContent.replace(/\s+/g, " ").trim() : "";
+  }
+
   let blockedBefore = refresh();
-  function changed() {
+  function changed(t) {
     const blocked = refresh();
-    // A setting that newly turns achievements off is said once, not on every keystroke.
-    if (blocked > blockedBefore) announce(formEl().dataset.achWord || "");
+    // A setting that newly turns achievements off is said once, not on every
+    // keystroke, by name; so is the last warning going away.
+    if (blocked > blockedBefore) {
+      const field = t && t.dataset && t.dataset.ach ? t : t && document.getElementById(t.dataset.for || "");
+      const name = field ? labelOf(field) : "";
+      announce(name ? strings["js.generate.ach_setting"].replace("{setting}", name) : formEl().dataset.achWord || "");
+    } else if (blocked === 0 && blockedBefore > 0) {
+      announce(strings["js.generate.ach_clear"]);
+    }
     blockedBefore = blocked;
   }
 
@@ -158,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
         syncSlider(select);
       }
     }
-    if (t.closest("#map-settings")) changed();
+    if (t.closest("#map-settings")) changed(t);
   });
 
   document.addEventListener("change", (e) => {
@@ -173,7 +186,49 @@ document.addEventListener("DOMContentLoaded", () => {
       const typed = document.getElementById("generate-version");
       if (typed) typed.value = "";
     }
-    if (t.closest("#map-settings")) changed();
+    if (t.closest("#map-settings")) changed(t);
+  });
+
+  // A minimum and its maximum keep at least their gap apart, as the game's
+  // own form does: the field not changed moves, within its own limits, and
+  // what moved is said once. The maximum names its minimum in data-min-field.
+  function keepRange(t) {
+    const max = t.dataset.minField ? t : document.querySelector(`#generate-form [data-min-field="${CSS.escape(t.id)}"]`);
+    const min = max && document.getElementById(max.dataset.minField);
+    if (!max || !min) return;
+    const gap = Number(max.dataset.gap || 0);
+    const lo = parseFloat(min.value);
+    const hi = parseFloat(max.value);
+    if (Number.isNaN(lo) || Number.isNaN(hi) || hi >= lo + gap) return;
+    const round = (n) => String(Number(n.toFixed(6)));
+    const moved = [];
+    const set = (el, n) => {
+      if (el.value === round(n)) return;
+      el.value = round(n);
+      moved.push(el);
+    };
+    if (t === min) {
+      const top = parseFloat(max.dataset.max);
+      if (!Number.isNaN(top) && lo + gap > top) {
+        set(min, top - gap);
+        set(max, top);
+      } else set(max, lo + gap);
+    } else {
+      const bottom = parseFloat(min.dataset.min);
+      if (!Number.isNaN(bottom) && hi - gap < bottom) {
+        set(min, bottom);
+        set(max, bottom + gap);
+      } else set(min, hi - gap);
+    }
+    moved.forEach((el) => {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    if (moved.length) announce(moved.map((el) => strings["js.generate.moved"].replace("{field}", labelOf(el)).replace("{value}", el.value)).join(" "));
+  }
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.matches && t.matches("#generate-form input") && t.id) keepRange(t);
   });
 
   // Random seed fills a new one as the game's own button does, 0 to 4294967295 (SPEC 5.6).
@@ -216,7 +271,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, true);
 
-  document.body.addEventListener("htmx:beforeRequest", (e) => { if (isPreview(e)) setBusy(true); });
+  // The wait box appearing is not read out, so the start is said too.
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    if (!isPreview(e)) return;
+    setBusy(true);
+    const wait = document.querySelector("#preview-wait p");
+    if (wait) announce(wait.textContent.trim());
+  });
   document.body.addEventListener("htmx:afterRequest", (e) => { if (isPreview(e)) setBusy(false); });
 
   // htmx swaps nothing on a 4xx, a 5xx or a lost connection, so say so.
@@ -273,9 +334,16 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tab) formEl().dataset.tab = tab.value;
       addSliders(document);
       blockedBefore = refresh();
-      // Choosing a preset, or resetting to it, redraws what the person is looking at; nothing more is read out.
+      // Choosing a preset redraws what the person is looking at; nothing more is read out.
       const sender = e.detail.requestConfig && e.detail.requestConfig.elt;
-      if (!(sender && (sender.id === "generate-preset" || sender.id === "preset-reset"))) announce(strings["js.generate.options"]);
+      if (sender && sender.id === "preset-reset") {
+        // Reset is hidden once nothing differs, so focus goes to the preset it went back to.
+        const preset = document.getElementById("generate-preset");
+        if (preset) {
+          preset.focus();
+          announce(strings["js.generate.reset"].replace("{preset}", preset.selectedIndex >= 0 ? preset.options[preset.selectedIndex].text : ""));
+        }
+      } else if (!(sender && sender.id === "generate-preset")) announce(strings["js.generate.options"]);
     } else if (path.endsWith("/generate/preview")) {
       const failedMsg = document.querySelector("#preview .message");
       announce(failedMsg ? failedMsg.textContent.replace(/\s+/g, " ").trim() : strings["js.generate.preview_ready"]);
