@@ -6,10 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sort"
-	"strconv"
+	"slices"
 	"strings"
 	"sync"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // Mod fetches one mod with all its releases from /api/mods/{name}/full. A
@@ -22,6 +23,9 @@ func (c *Client) Mod(ctx context.Context, name string) (Mod, error) {
 	if m, ok := c.mods.get(name, c.now()); ok {
 		return cloneMod(m), nil
 	}
+	if _, ok := c.missing.get(name, c.now()); ok {
+		return Mod{}, ErrNotOnPortal
+	}
 	select {
 	case c.full <- struct{}{}:
 		defer func() { <-c.full }()
@@ -32,6 +36,7 @@ func (c *Client) Mod(ctx context.Context, name string) (Mod, error) {
 	if err != nil {
 		var se *statusError
 		if errors.As(err, &se) && se.code == 404 {
+			c.missing.put(name, struct{}{}, c.now())
 			return Mod{}, ErrNotOnPortal
 		}
 		return Mod{}, err
@@ -104,7 +109,9 @@ func parseMod(body []byte) (Mod, error) {
 		Deprecated: doc.Deprecated,
 	}
 	for _, r := range doc.Releases {
-		if r.Version == "" {
+		// Plan ruling 11 for SPEC 14.10: a release is named
+		// <name>_<version>.zip, or it is not used.
+		if r.Version == "" || r.FileName != doc.Name+"_"+r.Version+".zip" {
 			continue
 		}
 		m.Releases = append(m.Releases, Release{
@@ -118,29 +125,10 @@ func parseMod(body []byte) (Mod, error) {
 	}
 	// The portal lists oldest first; the contract says so, so sort rather
 	// than trust it.
-	sort.SliceStable(m.Releases, func(i, j int) bool {
-		return versionLess(m.Releases[i].Version, m.Releases[j].Version)
+	slices.SortStableFunc(m.Releases, func(a, b Release) int {
+		return world.CompareVersions(a.Version, b.Version)
 	})
 	return m, nil
-}
-
-// versionLess compares dotted numbers; a part that is not a number counts
-// as 0.
-func versionLess(a, b string) bool {
-	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
-	for i := 0; i < len(pa) || i < len(pb); i++ {
-		var x, y int
-		if i < len(pa) {
-			x, _ = strconv.Atoi(pa[i])
-		}
-		if i < len(pb) {
-			y, _ = strconv.Atoi(pb[i])
-		}
-		if x != y {
-			return x < y
-		}
-	}
-	return false
 }
 
 // cloneMod copies the slices, so a caller cannot change what the cache holds.

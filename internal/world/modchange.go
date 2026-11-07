@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Refusals of a mod change. Nothing was changed.
@@ -21,23 +22,72 @@ var (
 	ErrNotStaged   = errors.New("this is not a staged mod file")
 )
 
+// PrefixModStaging starts the name of a mod zip staged at the top of the
+// worlds folder. It starts with PrefixPartial, so startup recovery clears it,
+// and it is its own, so a mod change never takes another upload in progress.
+const PrefixModStaging = PrefixPartial + "mod-"
+
+// stagedModMaxAge is how long a staged mod waits for its plan to be applied
+// before a new staging removes it (SPEC 6.11).
+const stagedModMaxAge = time.Hour
+
 // StageMod creates an empty temp file at the top of the worlds folder for
 // a mod being downloaded or uploaded. It sits outside every world, so no
-// snapshot holds it, and startup recovery removes it after a crash. The
-// caller writes, syncs and closes the file, then passes name in
-// ModChange.Add, or removes it with RemoveStaged.
+// snapshot holds it, and startup recovery removes it after a crash. Staged
+// mods older than an hour are removed first, so abandoned uploads do not
+// eat the disk. The caller writes, syncs and closes the file, then passes
+// name in ModChange.Add, or removes it with RemoveStaged.
 func (m *Manager) StageMod() (f *os.File, name string, err error) {
 	worlds, err := m.OpenWorlds()
 	if err != nil {
 		return nil, "", err
 	}
 	defer func() { _ = worlds.Close() }()
-	return CreateTemp(worlds, ".")
+	removeOldStagedMods(worlds, time.Now())
+	return CreateModTemp(worlds)
+}
+
+// CreateModTemp creates an empty staged mod file at the top of root, the
+// worlds folder, and returns it open with its name.
+func CreateModTemp(root *os.Root) (*os.File, string, error) {
+	return createTempNamed(root, PrefixModStaging+randomSuffix(), FileMode)
+}
+
+// removeOldStagedMods removes the staged mods last written before
+// stagedModMaxAge ago. A failure leaves the file for startup recovery.
+func removeOldStagedMods(worlds *os.Root, now time.Time) {
+	entries, err := fs.ReadDir(worlds.FS(), ".")
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !e.Type().IsRegular() || !strings.HasPrefix(e.Name(), PrefixModStaging) {
+			continue
+		}
+		if info, err := e.Info(); err == nil && now.Sub(info.ModTime()) > stagedModMaxAge {
+			_ = worlds.Remove(e.Name())
+		}
+	}
 }
 
 // StagedPath is where a staged file is, for ReadModZip.
 func (m *Manager) StagedPath(name string) string {
 	return filepath.Join(m.dirs.Worlds, name)
+}
+
+// ReadStaged reads the info.json of a staged mod zip. A name that is not a
+// staged mod's is ErrNotStaged, so a crafted name reads nothing; a staged
+// file that is gone is fs.ErrNotExist.
+func (m *Manager) ReadStaged(name string) (ModInfo, error) {
+	if !isStagedName(name) {
+		return ModInfo{}, ErrNotStaged
+	}
+	worlds, err := m.OpenWorlds()
+	if err != nil {
+		return ModInfo{}, err
+	}
+	defer func() { _ = worlds.Close() }()
+	return readModZipIn(worlds, name)
 }
 
 // RemoveStaged removes a staged file; one already gone is fine.
@@ -56,8 +106,13 @@ func (m *Manager) RemoveStaged(name string) error {
 	return nil
 }
 
+// isStagedName reports whether name is a staged mod file at the top of the
+// worlds folder.
+//
+// TODO: accept only PrefixModStaging once the web mod upload stages with
+// CreateModTemp; until then its uploads carry the plain PrefixPartial.
 func isStagedName(name string) bool {
-	return strings.HasPrefix(name, PrefixPartial) && path.Base(name) == name
+	return strings.HasPrefix(name, PrefixPartial) && path.Base(name) == name && !strings.ContainsAny(name, `/\`)
 }
 
 // placed is one staged file and the name it takes in mods/.
@@ -103,22 +158,9 @@ func (m *Manager) ApplyModsHeld(id string, change ModChange, fingerprint string)
 		return ErrModsChanged
 	}
 
-	builtin := BuiltinMods(meta.GameVersion)
-	local, err := localMods(root)
+	adds, err := checkChange(worlds, root, meta, change)
 	if err != nil {
 		return err
-	}
-	adds, err := checkAdds(worlds, change.Add, builtin, local)
-	if err != nil {
-		return err
-	}
-	if err := checkRemoves(root, change.Remove, adds); err != nil {
-		return err
-	}
-	for name := range change.Enabled {
-		if slices.Contains(builtin, name) {
-			return ErrBuiltinMod
-		}
 	}
 
 	// A Generated world has no list yet; without one the game turns on
@@ -163,6 +205,52 @@ func (m *Manager) ApplyModsHeld(id string, change ModChange, fingerprint string)
 		}
 	}
 	return nil
+}
+
+// CheckModChange refuses, as ApplyModsHeld would, a change that adds a
+// built-in or folder mod, a file that is not a staged mod zip, or removes
+// what is not a zip in mods/. It changes nothing, so a change bound to be
+// refused is refused before the game is stopped. The caller holds Lock(id).
+func (m *Manager) CheckModChange(id string, change ModChange) error {
+	worlds, err := m.OpenWorlds()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = worlds.Close() }()
+	root, err := openDir(worlds, id)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := readChangeable(root)
+	if err != nil {
+		return err
+	}
+	_, err = checkChange(worlds, root, meta, change)
+	return err
+}
+
+// checkChange reads and names the staged zips of a change and refuses one
+// that cannot be applied.
+func checkChange(worlds, root *os.Root, meta Meta, change ModChange) ([]placed, error) {
+	builtin := BuiltinMods(meta.GameVersion)
+	local, err := localMods(root)
+	if err != nil {
+		return nil, err
+	}
+	adds, err := checkAdds(worlds, change.Add, builtin, local)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkRemoves(root, change.Remove, adds); err != nil {
+		return nil, err
+	}
+	for name := range change.Enabled {
+		if slices.Contains(builtin, name) {
+			return nil, ErrBuiltinMod
+		}
+	}
+	return adds, nil
 }
 
 // localMods names the mods installed as folders in mods/.

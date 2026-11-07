@@ -36,11 +36,9 @@ type SaveMod struct {
 	Name, Version string
 }
 
-// Upload is the info.json of an uploaded mod zip (SPEC 9.5).
-type Upload struct {
-	Name, Version string
-	Dependencies  []string
-}
+// Upload is another name for world.ModInfo, the info.json of an uploaded
+// mod zip (SPEC 9.5); new code uses world.ModInfo.
+type Upload = world.ModInfo
 
 // ChoiceKind is the admin's decision for an unresolved mod (SPEC 9.10).
 type ChoiceKind string
@@ -55,8 +53,8 @@ const (
 // Choice is the admin's decision for one unresolved mod.
 type Choice struct {
 	Kind      ChoiceKind
-	Upload    *Upload // the uploaded zip, for ChoiceUpload
-	Confirmed bool    // required for ChoiceWithout
+	Upload    *world.ModInfo // the uploaded zip's info.json, for ChoiceUpload
+	Confirmed bool           // required for ChoiceWithout
 }
 
 // Request is one mod change asked for.
@@ -64,7 +62,7 @@ type Request struct {
 	Kind     Kind
 	Names    []string          // install, update, enable, disable, remove
 	Optional []string          // optional dependencies the admin ticked
-	Upload   *Upload           // for KindUpload
+	Upload   *world.ModInfo    // the uploaded zip's info.json, for KindUpload
 	SaveMods []SaveMod         // for KindSync
 	Choices  map[string]Choice // for KindSync, by mod name
 }
@@ -160,9 +158,11 @@ type Unresolved struct {
 	Choice        *Choice
 }
 
-// Offer is an optional dependency the admin may tick.
+// Offer is an optional dependency the admin may tick. Chosen is true once
+// it is ticked: it stays offered, so the page keeps its box (SPEC 9.2).
 type Offer struct {
 	Name, Of string
+	Chosen   bool
 }
 
 // Plan is the resolved change, shown before anything applies.
@@ -171,7 +171,8 @@ type Plan struct {
 	Conflicts  []Conflict
 	Unresolved []Unresolved
 	Optional   []Offer
-	Hash       string
+	// Hash is always empty: HashPlan digests a plan with its drops.
+	Hash string
 }
 
 // Applicable reports whether the plan may be applied: no conflict, and

@@ -144,21 +144,25 @@ type Download struct {
 // change to apply. installed is the world's mods when the plan was made;
 // staged is the staged file of an uploaded zip, or empty. The caller adds
 // the downloads' staged names to change.Add. A removed mod's zip is
-// deleted and its mod-list entry turned off; a replaced version's zip is
-// deleted.
+// deleted and its mod-list entry turned off. A mod given a new file has
+// every other zip of it deleted, so the folder is left with one, whatever
+// an earlier change that stopped part-way left behind.
 func ToChange(p Plan, installed []world.InstalledMod, staged string) ([]Download, world.ModChange, error) {
 	if !p.Applicable() {
 		return nil, world.ModChange{}, ErrNotApplicable
 	}
-	files := map[string]world.InstalledMod{}
+	builtIn := map[string]bool{}
+	zips := map[string][]string{}
 	for _, m := range installed {
-		files[m.Name] = m
+		builtIn[m.Name] = builtIn[m.Name] || m.BuiltIn
+		if m.File != "" {
+			zips[m.Name] = append(zips[m.Name], m.File)
+		}
 	}
 	var downloads []Download
 	change := world.ModChange{Enabled: map[string]bool{}}
 	for _, c := range p.Changes {
-		old := files[c.Name]
-		if old.BuiltIn {
+		if builtIn[c.Name] {
 			continue // ApplyModsHeld refuses any built-in name
 		}
 		change.Enabled[c.Name] = c.Enabled
@@ -171,9 +175,19 @@ func ToChange(p Plan, installed []world.InstalledMod, staged string) ([]Download
 		case c.Release != nil:
 			downloads = append(downloads, Download{Name: c.Name, Release: *c.Release})
 		}
-		replaced := (c.Upload || c.Release != nil) && c.From != "" && c.To != c.From
-		if (replaced || c.Action == ActRemove) && old.File != "" && !slices.Contains(change.Remove, old.File) {
-			change.Remove = append(change.Remove, old.File)
+		replaced := c.Upload || c.Release != nil
+		if !replaced && c.Action != ActRemove {
+			continue
+		}
+		// The new zip takes this name, so placing it replaces that file.
+		placed := ""
+		if replaced {
+			placed = world.ModFileName(world.ModInfo{Name: c.Name, Version: c.To})
+		}
+		for _, file := range zips[c.Name] {
+			if file != placed && !slices.Contains(change.Remove, file) {
+				change.Remove = append(change.Remove, file)
+			}
 		}
 	}
 	return downloads, change, nil
@@ -193,7 +207,7 @@ func (p *Planner) Updates(ctx context.Context, worldID string) ([]Update, error)
 	if err != nil {
 		return nil, err
 	}
-	line := gameLine(w.GameVersion)
+	line := GameLine(w.GameVersion)
 	mods := checkable(w.Mods)
 	results, err := p.fetch(ctx, mods)
 	if err != nil {
@@ -205,7 +219,7 @@ func (p *Planner) Updates(ctx context.Context, worldID string) ([]Update, error)
 		if r.Err != nil {
 			continue // not on the portal; fetch returns any other error
 		}
-		if to := newestOnLine(r.Mod, line); to != "" && compareVersions(to, m.Version) > 0 {
+		if to := newestOnLine(r.Mod, line); to != "" && world.CompareVersions(to, m.Version) > 0 {
 			out = append(out, Update{Name: m.Name, From: m.Version, To: to})
 		}
 	}
@@ -243,7 +257,7 @@ func (p *Planner) fetch(ctx context.Context, mods []world.InstalledMod) (map[str
 func newestOnLine(m modportal.Mod, line string) string {
 	newest := ""
 	for _, rel := range m.Releases {
-		if rel.FactorioVersion == line && (newest == "" || compareVersions(rel.Version, newest) > 0) {
+		if rel.FactorioVersion == line && (newest == "" || world.CompareVersions(rel.Version, newest) > 0) {
 			newest = rel.Version
 		}
 	}

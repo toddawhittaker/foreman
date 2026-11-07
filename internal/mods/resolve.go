@@ -29,9 +29,10 @@ type target struct {
 	off         bool // turned off by this request; never re-enabled
 	remove      bool
 	newest      bool // prefer the newest release over the installed one
-	upload      *Upload
+	upload      *world.ModInfo
 	release     *modportal.Release
 	notOnPortal bool
+	localDeps   []string // the installed version's own info.json dependencies
 	deps        []Dep
 	why         Reason
 	warning     string
@@ -58,7 +59,7 @@ type resolver struct {
 // having a mod.
 func Resolve(ctx context.Context, w World, req Request, lookup Lookup) (Plan, error) {
 	r := &resolver{
-		ctx: ctx, lookup: lookup, line: gameLine(w.GameVersion),
+		ctx: ctx, lookup: lookup, line: GameLine(w.GameVersion),
 		targets: map[string]*target{}, needs: map[string]map[string]Dep{},
 		offers: map[string][]string{}, chosen: map[string]bool{}, cache: map[string]*modportal.Mod{},
 	}
@@ -107,12 +108,17 @@ func (r *resolver) addWorld(w World) {
 		r.targets[n].fromEnabled = r.targets[n].enabled
 	}
 	for _, m := range w.Mods {
-		if m.BuiltIn || r.targets[m.Name] != nil {
+		if m.BuiltIn {
+			continue
+		}
+		// With two zips of one mod the game loads the newest, so the plan
+		// starts from that one.
+		if t := r.targets[m.Name]; t != nil && (t.builtin || world.CompareVersions(m.Version, t.from) <= 0) {
 			continue
 		}
 		r.targets[m.Name] = &target{
 			installed: true, from: m.Version, fromEnabled: m.Enabled, version: m.Version,
-			enabled: m.Enabled, local: m.Local, fixed: m.Local,
+			enabled: m.Enabled, local: m.Local, fixed: m.Local, localDeps: m.Dependencies,
 		}
 	}
 }
@@ -190,7 +196,7 @@ func (r *resolver) installedTarget(n string) *target {
 	return t
 }
 
-func (r *resolver) addUpload(u *Upload, why Reason) {
+func (r *resolver) addUpload(u *world.ModInfo, why Reason) {
 	if u == nil {
 		r.conflict(Conflict{Code: ConflictBadRequest})
 		return
@@ -250,7 +256,7 @@ func (r *resolver) sync(save []SaveMod, choices map[string]Choice) ([]Unresolved
 			r.addUpload(u.Choice.Upload, fromSave)
 		case usableChoice(u) && u.Choice.Kind == ChoiceNearest:
 			warn := ""
-			if compareVersions(u.Nearest, sm.Version) < 0 {
+			if world.CompareVersions(u.Nearest, sm.Version) < 0 {
 				warn = WarnOlderThanSave
 			}
 			r.pin(sm.Name, u.Nearest, findRelease(mod, u.Nearest, r.line), fromSave, warn)
@@ -334,12 +340,19 @@ func (r *resolver) settle(name string) error {
 	}
 	r.offers[name] = nil
 	for _, d := range t.deps {
-		switch {
-		case d.Kind == Incompatible:
+		if d.Kind == Incompatible {
 			continue
-		case !d.required() && !r.chosen[d.Name] && !r.present(d.Name):
-			if d.Kind == Optional {
-				r.offers[name] = append(r.offers[name], d.Name)
+		}
+		// A ticked optional stays offered, so the page keeps its box; one
+		// that was on already is not offered.
+		if d.Kind == Optional && !r.wasOn(d.Name) && (r.chosen[d.Name] || !r.present(d.Name)) {
+			r.offers[name] = append(r.offers[name], d.Name)
+		}
+		if !d.required() && !r.chosen[d.Name] && !r.present(d.Name) {
+			// The game holds an optional mod to this limit if anything turns
+			// it on, later in this walk too.
+			if d.Op != "" {
+				r.need(d.Name, name, d)
 			}
 			continue
 		}
@@ -347,10 +360,7 @@ func (r *resolver) settle(name string) error {
 		if !d.required() {
 			why.Code = WhyOptionalOf
 		}
-		if r.needs[d.Name] == nil {
-			r.needs[d.Name] = map[string]Dep{}
-		}
-		r.needs[d.Name][name] = d
+		r.need(d.Name, name, d)
 		dt := r.targets[d.Name]
 		switch {
 		case dt == nil:
@@ -372,6 +382,20 @@ func (r *resolver) settle(name string) error {
 		}
 	}
 	return nil
+}
+
+// need records that requirer depends on mod as d says.
+func (r *resolver) need(mod, requirer string, d Dep) {
+	if r.needs[mod] == nil {
+		r.needs[mod] = map[string]Dep{}
+	}
+	r.needs[mod][requirer] = d
+}
+
+// wasOn reports whether a mod was installed and on before this change.
+func (r *resolver) wasOn(name string) bool {
+	t := r.targets[name]
+	return t != nil && t.installed && t.fromEnabled
 }
 
 func (r *resolver) present(name string) bool {
@@ -426,6 +450,10 @@ func (r *resolver) readDeps(name string, t *target) error {
 		raw = t.upload.Dependencies
 	case t.release != nil:
 		raw = t.release.Dependencies
+	case t.installed && t.version == t.from:
+		// The installed zip or folder says, so a change that keeps it needs
+		// no portal (SPEC 9.2).
+		raw = t.localDeps
 	case t.version != "":
 		mod, err := r.mod(name)
 		if err != nil {
@@ -525,9 +553,9 @@ func (r *resolver) plan(unresolved []Unresolved) Plan {
 			continue
 		case !t.installed:
 			c.Action = ActInstall
-		case t.version != "" && compareVersions(t.version, t.from) > 0:
+		case t.version != "" && world.CompareVersions(t.version, t.from) > 0:
 			c.Action = ActUpgrade
-		case t.version != "" && compareVersions(t.version, t.from) < 0:
+		case t.version != "" && world.CompareVersions(t.version, t.from) < 0:
 			c.Action = ActDowngrade
 		case t.upload != nil:
 			c.Action = ActUpgrade // same version, replaced by the uploaded zip
@@ -546,7 +574,7 @@ func (r *resolver) plan(unresolved []Unresolved) Plan {
 		p.Changes = append(p.Changes, c)
 		if c.Action != ActKeep && c.Action != ActDisable && c.Action != ActRemove {
 			for _, o := range r.offers[n] {
-				p.Optional = append(p.Optional, Offer{Name: o, Of: n})
+				p.Optional = append(p.Optional, Offer{Name: o, Of: n, Chosen: r.chosen[o]})
 			}
 		}
 	}
@@ -556,7 +584,6 @@ func (r *resolver) plan(unresolved []Unresolved) Plan {
 	slices.SortFunc(p.Optional, func(a, b Offer) int {
 		return strings.Compare(a.Name+"\x00"+a.Of, b.Name+"\x00"+b.Of)
 	})
-	p.Hash = hashPlan(p)
 	return p
 }
 
@@ -569,11 +596,25 @@ func dedupe(cs []Conflict) []Conflict {
 	return slices.CompactFunc(cs, func(a, b Conflict) bool { return key(a) == key(b) })
 }
 
-// hashPlan is a stable digest of everything in the plan but the hash, so
-// a plan shown and a plan recomputed can be compared.
-func hashPlan(p Plan) string {
+// HashPlan is a stable digest of a plan and the drops the admin is asked
+// to confirm (SPEC 9.4), so the plan shown and the plan recomputed when it
+// is applied can be compared, and a confirmation binds to the names it
+// was given for. Ticking "continue without" does not change what will
+// happen, so it does not change the digest.
+func HashPlan(p Plan, drops []string) string {
 	p.Hash = ""
-	b, _ := json.Marshal(p)
+	p.Unresolved = slices.Clone(p.Unresolved)
+	for i, u := range p.Unresolved {
+		if u.Choice != nil {
+			c := *u.Choice
+			c.Confirmed = false
+			p.Unresolved[i].Choice = &c
+		}
+	}
+	b, _ := json.Marshal(struct {
+		Plan  Plan
+		Drops []string
+	}{p, drops})
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
@@ -602,11 +643,11 @@ func nearest(mod *modportal.Mod, version, line string) string {
 		if rel.FactorioVersion != line {
 			continue
 		}
-		c := compareVersions(rel.Version, version)
-		if c > 0 && (above == "" || compareVersions(rel.Version, above) < 0) {
+		c := world.CompareVersions(rel.Version, version)
+		if c > 0 && (above == "" || world.CompareVersions(rel.Version, above) < 0) {
 			above = rel.Version
 		}
-		if c < 0 && (below == "" || compareVersions(rel.Version, below) > 0) {
+		if c < 0 && (below == "" || world.CompareVersions(rel.Version, below) > 0) {
 			below = rel.Version
 		}
 	}
@@ -616,8 +657,9 @@ func nearest(mod *modportal.Mod, version, line string) string {
 	return below
 }
 
-// gameLine returns "2.0" for "2.0.72".
-func gameLine(gameVersion string) string {
+// GameLine is a game version's major.minor line, as the portal names it:
+// "2.0" for "2.0.72".
+func GameLine(gameVersion string) string {
 	parts := strings.SplitN(gameVersion, ".", 3)
 	if len(parts) < 2 {
 		return ""

@@ -10,8 +10,8 @@ type cacheItem[T any] struct {
 	expires time.Time
 }
 
-// cache keeps successful replies for cacheLifetime. Callers store only
-// successes, so an error is never kept.
+// cache keeps the portal's answers for cacheLifetime. Callers store only
+// answers, a mod or "no such mod", so a failure is never kept.
 type cache[T any] struct {
 	mu    sync.Mutex
 	items map[string]cacheItem[T]

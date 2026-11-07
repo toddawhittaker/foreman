@@ -40,6 +40,9 @@ type Client struct {
 	full  chan struct{} // holds a slot for each /full request in flight
 	lists cache[[]listEntry]
 	mods  cache[Mod]
+	// missing remembers the names the portal answered 404 for: an answer,
+	// kept as long as a found mod is.
+	missing cache[struct{}]
 }
 
 // New returns a client for the real mod portal.
@@ -69,6 +72,9 @@ func newClient(base string, redirectOK func(*url.URL) bool) *Client {
 		dl: &http.Client{
 			Transport: tr,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				// Go copies the previous address into Referer, and a download's
+				// address carries the token in its query (SPEC 14.10).
+				req.Header.Del("Referer")
 				switch {
 				case req.URL.Path == "/login" || strings.HasPrefix(req.URL.Path, "/login/"):
 					return errLoginRedirect

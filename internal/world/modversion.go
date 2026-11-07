@@ -2,6 +2,8 @@ package world
 
 import (
 	"archive/zip"
+	"bufio"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -67,16 +69,16 @@ func newestZips(root *os.Root) map[string]string {
 			continue
 		}
 		name, version := base[:i], base[i+1:]
-		if _, seen := out[name]; !seen || compareDotted(version, versions[name]) > 0 {
+		if _, seen := out[name]; !seen || CompareVersions(version, versions[name]) > 0 {
 			out[name], versions[name] = file, version
 		}
 	}
 	return out
 }
 
-// compareDotted compares two dotted numbers such as "1.10.2"; a part that
-// is not a number counts as 0.
-func compareDotted(a, b string) int {
+// CompareVersions compares two dotted numbers such as "1.10.2", as -1, 0 or
+// 1; a missing part, or one that is not a number, counts as 0.
+func CompareVersions(a, b string) int {
 	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
 	for i := range max(len(pa), len(pb)) {
 		var x, y uint64
@@ -129,7 +131,7 @@ func zipModInfo(root *os.Root, name string) (ModInfo, bool) {
 // folder, and the file is in it. ok is false when anything is missing or
 // unreadable, and for a zip over the size or entry limit.
 func readZipInfo(r io.ReaderAt, size int64) (ModInfo, bool) {
-	if size > maxModZip {
+	if size > maxModZip || zipEntriesOver(r, size, maxModZipEntries) {
 		return ModInfo{}, false
 	}
 	zr, err := zip.NewReader(r, size)
@@ -144,6 +146,115 @@ func readZipInfo(r io.ReaderAt, size int64) (ModInfo, bool) {
 		return readInfoJSON(zf)
 	}
 	return ModInfo{}, false
+}
+
+// Zip record signatures and sizes (PKWARE APPNOTE 4.3).
+const (
+	zipDirHeaderSig   = 0x02014b50
+	zipDirHeaderLen   = 46
+	zipEndSig         = 0x06054b50
+	zipEndLen         = 22
+	zip64LocatorSig   = 0x07064b50
+	zip64LocatorLen   = 20
+	zip64EndSig       = 0x06064b50
+	zip64EndLen       = 56
+	zipMaxCommentLen  = 0xffff
+	zip64EntriesValue = 0xffff
+)
+
+// zipEntriesOver reports whether a zip's central directory holds more than
+// limit entries, reading only the fixed part of each header. zip.NewReader
+// builds every entry before anyone can count them, and it reads headers
+// until one is bad, whatever count the end record gives, so a crafted zip
+// of millions of tiny entries would cost that much memory on every page that
+// lists mods. Headers are counted from both places archive/zip may start
+// reading, so the count is never below its own. A zip whose end record
+// cannot be found is not over: zip.NewReader then refuses it.
+func zipEntriesOver(r io.ReaderAt, size int64, limit int) bool {
+	tail := min(size, zipEndLen+zipMaxCommentLen)
+	buf := make([]byte, tail)
+	if _, err := r.ReadAt(buf, size-tail); err != nil && err != io.EOF {
+		return false
+	}
+	end := -1
+	for i := len(buf) - zipEndLen; i >= 0; i-- {
+		if binary.LittleEndian.Uint32(buf[i:]) == zipEndSig &&
+			i+zipEndLen+int(binary.LittleEndian.Uint16(buf[i+20:])) <= len(buf) {
+			end = i
+			break
+		}
+	}
+	if end < 0 {
+		return false
+	}
+	endAt := size - tail + int64(end)
+	rec := buf[end:]
+	entries := uint64(binary.LittleEndian.Uint16(rec[10:]))
+	dirSize := uint64(binary.LittleEndian.Uint32(rec[12:]))
+	dirOffset := uint64(binary.LittleEndian.Uint32(rec[16:]))
+	// archive/zip looks for a zip64 record on a size of 0xffff too.
+	if entries == zip64EntriesValue || dirSize == 0xffff || dirSize == 0xffffffff || dirOffset == 0xffffffff {
+		if e, s, o, at, ok := zip64End(r, endAt); ok {
+			entries, dirSize, dirOffset, endAt = e, s, o, at
+		}
+	}
+	if entries > uint64(limit) { //nolint:gosec // limit is a small positive constant
+		return true
+	}
+	// archive/zip starts at the offset itself, or past data put before the
+	// zip. A value too large for int64 turns negative and reads nothing.
+	at, size64 := int64(dirOffset), int64(dirSize) //nolint:gosec // see above
+	starts := []int64{at}
+	if base := endAt - size64 - at; base > 0 {
+		starts = append(starts, base+at)
+	}
+	for _, at := range starts {
+		if countDirHeaders(r, size, at, limit) > limit {
+			return true
+		}
+	}
+	return false
+}
+
+// zip64End reads the zip64 end record that the locator just before the end
+// record at endAt points to: its entry count, directory size and offset, and
+// where it sits.
+func zip64End(r io.ReaderAt, endAt int64) (entries, dirSize, dirOffset uint64, at int64, ok bool) {
+	if endAt < zip64LocatorLen {
+		return 0, 0, 0, 0, false
+	}
+	loc := make([]byte, zip64LocatorLen)
+	if _, err := r.ReadAt(loc, endAt-zip64LocatorLen); err != nil || binary.LittleEndian.Uint32(loc) != zip64LocatorSig {
+		return 0, 0, 0, 0, false
+	}
+	at = int64(binary.LittleEndian.Uint64(loc[8:])) //nolint:gosec // a negative offset fails the read
+	rec := make([]byte, zip64EndLen)
+	if _, err := r.ReadAt(rec, at); err != nil || binary.LittleEndian.Uint32(rec) != zip64EndSig {
+		return 0, 0, 0, 0, false
+	}
+	return binary.LittleEndian.Uint64(rec[32:]), binary.LittleEndian.Uint64(rec[40:]), binary.LittleEndian.Uint64(rec[48:]), at, true
+}
+
+// countDirHeaders counts central directory headers from at, as archive/zip
+// reads them, stopping once the count passes limit.
+func countDirHeaders(r io.ReaderAt, size, at int64, limit int) int {
+	if at < 0 || at >= size {
+		return 0
+	}
+	br := bufio.NewReader(io.NewSectionReader(r, at, size-at))
+	var head [zipDirHeaderLen]byte
+	n := 0
+	for n <= limit {
+		if _, err := io.ReadFull(br, head[:]); err != nil || binary.LittleEndian.Uint32(head[:]) != zipDirHeaderSig {
+			break
+		}
+		n++
+		skip := int64(binary.LittleEndian.Uint16(head[28:])) + int64(binary.LittleEndian.Uint16(head[30:])) + int64(binary.LittleEndian.Uint16(head[32:]))
+		if _, err := br.Discard(int(skip)); err != nil {
+			break
+		}
+	}
+	return n
 }
 
 // readInfoJSON reads an info.json inside a zip, up to maxInfoJSON bytes.
@@ -217,7 +328,7 @@ func modVersionProblem(worldName string, running string, mods map[string]string)
 		if d := len(byVersion[b]) - len(byVersion[a]); d != 0 {
 			return d
 		}
-		return compareDotted(a, b)
+		return CompareVersions(a, b)
 	})
 
 	p := Problem{Kind: ProblemModGameVersion, World: worldName, GameVersion: running}
@@ -253,7 +364,7 @@ func modVersionProblem(worldName string, running string, mods map[string]string)
 // newerSupportedLine reports whether minor (such as "2.1") is a line
 // Foreman runs and is newer than the running game version.
 func newerSupportedLine(minor, running string) bool {
-	return SupportedGameVersion(minor+".0") && compareDotted(minor, gameMinor(running)) > 0
+	return SupportedGameVersion(minor+".0") && CompareVersions(minor, gameMinor(running)) > 0
 }
 
 // listNames joins the first listedMods names, each cut to a sensible length,

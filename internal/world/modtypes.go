@@ -8,6 +8,10 @@ type InstalledMod struct {
 	Enabled bool
 	Local   bool // installed as a folder; never replaced
 	BuiltIn bool // base or a DLC mod (SPEC 9.7)
+	// Dependencies are the raw strings from the mod's own info.json, so a
+	// plan can read them without the portal; nil when it has none or it
+	// cannot be read.
+	Dependencies []string
 }
 
 // ModChange is one mod change, applied to a world under its lock after a
