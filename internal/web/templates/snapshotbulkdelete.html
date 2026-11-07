@@ -2,7 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<h1 id="confirm-heading" tabindex="-1">{{if .Going}}{{msg .Question}}{{else}}{{msg .Heading}}{{end}}</h1>
+<h1 id="confirm-heading">{{if .Going}}{{msg .Question}}{{else}}{{msg .Heading}}{{end}}</h1>
 {{- if .Deleted}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
@@ -21,7 +21,7 @@
 {{- end}}
 {{- end}}
 {{- if .Going}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <ul>
     {{- range .Going}}
     <li>{{if .Failure.IsZero}}{{tHTML "worlds.snapshots.bulk.item" "world" .WorldName "label" (snapLabel .Snapshot) "when" (momentUTCSeconds .TakenAt)}}{{else}}{{tHTML "worlds.snapshots.bulk.item_failed" "world" .WorldName "label" (snapLabel .Snapshot) "when" (momentUTCSeconds .TakenAt) "failure" (msg .Failure)}}{{end}}</li>

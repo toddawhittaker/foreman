@@ -70,6 +70,13 @@ func (p ClonePage) Problems() []Problem {
 func (p ClonePage) Path() string      { return worldPath(p.World.ID) + "/clone" }
 func (p ClonePage) WorldPath() string { return worldPath(p.World.ID) }
 
+// Tabs are the world's pages; Clone is reached from Overview (DESIGN 6).
+func (p ClonePage) Tabs() WorldTabs {
+	t := worldTabs(p.World, "overview")
+	t.Under = true
+	return t
+}
+
 // ClonePath is where a world's Clone button goes.
 func (p WorldPage) ClonePath() string { return worldPath(p.World.ID) + "/clone" }
 

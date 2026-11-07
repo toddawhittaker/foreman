@@ -32,6 +32,8 @@ func restorePath(id, snap string) string {
 type SnapshotsPage struct {
 	WorldID   string
 	WorldName string
+	// Active marks the active world in the heading, as on its Overview.
+	Active    bool
 	Snapshots []world.Snapshot
 	// More is true when rows past maxListRows are hidden.
 	More bool
@@ -142,7 +144,8 @@ func (s *server) notFound(w http.ResponseWriter, r *http.Request, u store.User) 
 }
 
 // snapshotsPage fills the list, disk use and free space for a world.
-func (s *server) snapshotsPage(r *http.Request, id, name string) (SnapshotsPage, error) {
+func (s *server) snapshotsPage(r *http.Request, sum world.Summary) (SnapshotsPage, error) {
+	id := sum.ID
 	count, err := s.worlds.CountWorldSnapshots(id)
 	if err != nil {
 		return SnapshotsPage{}, err
@@ -152,7 +155,7 @@ func (s *server) snapshotsPage(r *http.Request, id, name string) (SnapshotsPage,
 		return SnapshotsPage{}, err
 	}
 	sel := readSelection(r)
-	p := SnapshotsPage{WorldID: id, WorldName: name, AddBytes: count.Total(), FreeBytes: free, Ticked: map[string]bool{}}
+	p := SnapshotsPage{WorldID: id, WorldName: sum.Name, Active: sum.Active, AddBytes: count.Total(), FreeBytes: free, Ticked: map[string]bool{}}
 	var list []world.Snapshot
 	automatic := 0
 	for _, u := range count.Snapshots() {
@@ -177,8 +180,7 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return
 	}
-	id := sum.ID
-	p, err := s.snapshotsPage(r, id, sum.Name)
+	p, err := s.snapshotsPage(r, sum)
 	if err != nil {
 		s.notFoundOrFail(w, r, u, "list snapshots", err)
 		return
@@ -229,7 +231,7 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 	if !ok {
 		return
 	}
-	id, name := sum.ID, sum.Name
+	id := sum.ID
 	if !s.readForm(w, r) {
 		return
 	}
@@ -254,7 +256,7 @@ func (s *server) handleTakeSnapshot(w http.ResponseWriter, r *http.Request, u st
 			return
 		}
 	}
-	p, perr := s.snapshotsPage(r, id, name)
+	p, perr := s.snapshotsPage(r, sum)
 	if perr != nil {
 		s.notFoundOrFail(w, r, u, "list snapshots", perr)
 		return

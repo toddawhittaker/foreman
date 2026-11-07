@@ -57,5 +57,8 @@
   "common.label.note": "Примечание:",
   "common.label.busy": "Занят:",
   "common.confirm.will": "Что произойдёт:",
-  "common.list.sep": ", "
+  "common.list.sep": ", ",
+  "common.menu.account": "{user}, {language}: меню учётной записи и языка",
+  "common.menu.language": "{language}: меню языка",
+  "common.countdown.none_name": "Без предупреждения: установить обратный отсчёт на 0 секунд"
 }

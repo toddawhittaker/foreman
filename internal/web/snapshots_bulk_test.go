@@ -120,7 +120,7 @@ func TestBulkDeleteConfirmationCountsTheSelectionTogether(t *testing.T) {
 		t.Fatalf("status %d", rec.Code)
 	}
 	for _, want := range []string{
-		`<h1 id="confirm-heading" tabindex="-1">Delete 2 snapshots?</h1>`, `Base: &#34;First&#34;, taken`, `Base: &#34;Second&#34;, taken`,
+		`<h1 id="confirm-heading">Delete 2 snapshots?</h1>`, `Base: &#34;First&#34;, taken`, `Base: &#34;Second&#34;, taken`,
 		"Free " + world.FormatBytes(together) + " of disk space",
 		"Already deleted", "is deleted already",
 		`<input type="hidden" name="snap" value="` + ref(id, first.Name) + `">`,
@@ -245,7 +245,7 @@ func TestBulkDeleteReportsWhatStayed(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Foreman deleted the snapshot taken", "1 of 2 snapshots were not deleted.",
-		"The last try failed: Another operation is running on this world.", `<h1 id="confirm-heading" tabindex="-1">Delete 1 snapshot?</h1>`,
+		"The last try failed: Another operation is running on this world.", `<h1 id="confirm-heading">Delete 1 snapshot?</h1>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %q:\n%s", want, body)

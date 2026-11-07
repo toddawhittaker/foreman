@@ -677,7 +677,7 @@ test("settings that turn achievements off are warned of at once", async ({ page,
   await expect(page.getByRole("checkbox", { name: "Peaceful mode" })).toHaveAccessibleDescription(/Turns off some achievements\./);
   await expect(summary).toBeVisible();
   await expect(summary.getByRole("listitem")).toHaveText(["Cannot be unlocked in peaceful mode."]);
-  await expect(page.locator("#announcer")).toHaveText("Turns off some achievements.");
+  await expect(page.locator("#announcer")).toHaveText("Peaceful mode turns off some achievements.");
   await page.getByLabel("Time factor").fill("20");
   await expect(page.locator("#ms-enemy-evolution-time-factor-ach")).toHaveText("Turns off some achievements.");
   await expect(summary.getByRole("listitem")).toHaveText(["Cannot be unlocked in peaceful mode.", "Cannot be unlocked with easier enemy evolution settings."]);

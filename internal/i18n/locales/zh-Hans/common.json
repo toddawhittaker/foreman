@@ -49,5 +49,8 @@
   "common.label.note": "提示：",
   "common.label.busy": "忙碌：",
   "common.confirm.will": "将会：",
-  "common.list.sep": "、"
+  "common.list.sep": "、",
+  "common.menu.account": "{user}，{language}：账户和语言菜单",
+  "common.menu.language": "{language}：语言菜单",
+  "common.countdown.none_name": "不警告：将倒计时设为 0 秒"
 }

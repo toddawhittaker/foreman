@@ -9,5 +9,10 @@
   "js.live.stopped": "Обновления в реальном времени остановлены. Перезагрузите страницу, чтобы увидеть текущее состояние.",
   "js.generate.options": "Параметры карты обновлены для выбранной версии игры и настройки Space Age.",
   "js.generate.preview_ready": "Предпросмотр карты готов.",
-  "js.preview.zoom": "Масштаб {level}"
+  "js.preview.zoom": "Масштаб {level}",
+  "js.preview.drawing": "Рисуется {planet}…",
+  "js.generate.reset": "Настройки карты сброшены к предустановке {preset}.",
+  "js.generate.ach_setting": "{setting} отключает некоторые достижения.",
+  "js.generate.ach_clear": "Теперь ни одна настройка не отключает достижения.",
+  "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым."
 }

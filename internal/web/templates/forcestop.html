@@ -2,8 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<h1 id="confirm-heading" tabindex="-1">{{t "server.force.heading" "world" .World.Name}}</h1>
-<section class="confirm" aria-labelledby="confirm-heading">
+<h1 id="confirm-heading">{{t "server.force.heading" "world" .World.Name}}</h1>
+<section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "server.force.at_once"}}</li>

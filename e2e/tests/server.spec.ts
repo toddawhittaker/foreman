@@ -108,7 +108,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
     await page.getByRole("link", { name: "Force stop" }).click();
-    const confirm = page.getByRole("region", { name: /Force stop the game running Base/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("Lose all progress since the last save");
     await expect(confirm.getByRole("button", { name: "Force stop" })).toHaveClass(/button--danger/);
     await checkPage(page);
@@ -292,7 +292,7 @@ test.describe("with the fake game", () => {
     await expect(steps.locator("[aria-current=step]")).toContainText("Save the game", live);
     await checkPage(page);
     await page.getByRole("link", { name: "Force stop" }).click();
-    await page.getByRole("region", { name: /Force stop/ }).getByRole("button", { name: "Force stop" }).click();
+    await page.locator("section.confirm").getByRole("button", { name: "Force stop" }).click();
     await expect(badge(page)).toHaveText("Stopped", live);
   });
 
@@ -341,7 +341,7 @@ test.describe("with the fake game", () => {
 
     await page.getByRole("link", { name: /^Restore/ }).first().click();
     await expect(page.getByLabel("Countdown in seconds")).toBeVisible();
-    await expect(page.getByRole("region", { name: /Restore the snapshot/ })).toContainText("Start the game again");
+    await expect(page.locator("section.confirm")).toContainText("Start the game again");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restore snapshot" }).click();

@@ -42,7 +42,7 @@ test("change a setting from the Server page in three clicks, and the password ne
   await clicks.reset();
 
   await page.getByRole("link", { name: "Settings" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base Active");
   await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("A password is set.")).toBeVisible();
   await expect(page.getByLabel("New password")).toHaveValue("");
@@ -164,7 +164,7 @@ test("nothing changed offers no save", async ({ page, foreman }) => {
   await expect(page.getByRole("button", { name: "Save settings" })).toHaveCount(0);
   await checkPage(page);
   await page.getByRole("link", { name: "Back to the settings" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base Active");
   await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
 });
 
@@ -522,7 +522,7 @@ test("the settings rail shows on a wide panel only", async ({ page, foreman }) =
   await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
   await page.goto("/worlds/base/settings/raw/server-settings.json");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
 });

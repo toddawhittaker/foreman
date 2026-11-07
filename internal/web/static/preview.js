@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (n !== sent || ctrl.signal.aborted) return;
       setStatus(false);
       pending = null;
-      failed();
+      failed(say);
       return;
     }
     if (n !== sent) return;
@@ -90,32 +90,74 @@ document.addEventListener("DOMContentLoaded", () => {
     if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) seed.value = fresh.dataset.seed;
     const filled = formEl().querySelector("#filled-seed");
     if (filled && fresh.dataset.filledSeed) filled.value = fresh.dataset.filledSeed;
-    if (fresh.dataset.preview === "invalid") return;
-    if (say) {
-      const error = fresh.querySelector(".message");
-      announce(error ? error.textContent.replace(/\s+/g, " ").trim() : strings["js.generate.preview_ready"]);
+    markInvalid(fresh);
+    const error = fresh.querySelector(".message");
+    // Problems are said, but focus stays where it is (DESIGN 8.8).
+    if (fresh.dataset.preview === "invalid") {
+      if (say && error) announce(words(error));
+      return;
     }
-    if (dialog && dialog.open) show(viewing || firstPlanet());
+    if (dialog && dialog.open) {
+      // Only a reply with the viewed planet's picture is shown; anything else
+      // is said and ends here, so a failing preview is never asked for again.
+      const planet = viewing || firstPlanet();
+      if (!error && pictureLink(planet)) {
+        show(planet);
+        announce(el("large-title").textContent);
+      } else if (error) announce(words(error));
+      return;
+    }
+    if (say) announce(error ? words(error) : strings["js.generate.preview_ready"]);
+  }
+
+  const words = (node) => node.textContent.replace(/\s+/g, " ").trim();
+  const pictureLink = (planet) => document.querySelector(`#preview a.picture[data-planet="${CSS.escape(planet)}"]`);
+
+  // The fields an automatic preview found problems in are marked, until a
+  // later reply has none; a mark the server put there is left alone.
+  let marked = [];
+  function markInvalid(fresh) {
+    marked.forEach((f) => f.removeAttribute("aria-invalid"));
+    marked = [];
+    if (fresh.dataset.preview !== "invalid") return;
+    fresh.querySelectorAll("a[href^='#']").forEach((a) => {
+      const field = document.getElementById(a.getAttribute("href").slice(1));
+      if (!field || field.getAttribute("aria-invalid") === "true") return;
+      field.setAttribute("aria-invalid", "true");
+      marked.push(field);
+    });
+  }
+
+  // How to find the focused control again in the new section: by its id,
+  // or, for a picture or download link, by the planet it belongs to.
+  function focusKey(node) {
+    if (node.id) return "#" + CSS.escape(node.id);
+    if (!node.matches("a")) return "";
+    const pic = node.closest("li") && node.closest("li").querySelector("a.picture");
+    if (!pic) return node.matches("a.download") ? "#preview p a.download" : "";
+    const planet = `a.picture[data-planet="${CSS.escape(pic.dataset.planet)}"]`;
+    return node.matches("a.picture") ? "#preview " + planet : `#preview li:has(${planet}) a.download`;
   }
 
   // Puts the new section in place; a control that had focus there keeps it.
   function swap(fresh) {
     const slot = document.getElementById("preview");
     if (!slot) return;
-    const focused = slot.contains(document.activeElement) && document.activeElement.id;
+    const key = slot.contains(document.activeElement) ? focusKey(document.activeElement) : "";
     slot.replaceWith(document.importNode(fresh, true));
-    if (focused) {
-      const again = document.getElementById(focused);
+    if (key) {
+      const again = document.querySelector(key);
       if (again) again.focus({ preventScroll: true });
     }
   }
 
-  // htmx swaps nothing on a failed request, so the page's own sentence is shown.
-  function failed() {
+  // A failed request swaps nothing, so the page's own sentence is shown, and said.
+  function failed(say) {
     const slot = document.getElementById("preview");
     const message = document.getElementById("preview-failed");
     if (!slot || !message) return;
     slot.replaceChildren(message.content.cloneNode(true));
+    if (say) announce(words(slot.querySelector(".message")));
   }
 
   function soon() {
@@ -191,9 +233,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const link = document.querySelector(`#preview a.picture[data-planet="${CSS.escape(planet)}"]`);
     viewing = planet;
     if (!link) {
+      // The dialog names the planet at once and shows no other planet's picture meanwhile.
       const pick = el("preview-planet");
       if (pick) pick.value = planet;
-      el("large-status").textContent = status ? status.dataset.text : "";
+      const option = pick && [...pick.options].find((o) => o.value === planet);
+      const name = option ? option.text : planet;
+      el("large-title").textContent = name;
+      el("large-frame").dataset.missing = "true";
+      el("large-download").hidden = true;
+      el("large-status").textContent = strings["js.preview.drawing"].replace("{planet}", name);
       draw(true);
       return false;
     }
@@ -201,10 +249,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const figure = link.closest("figure");
     const download = link.closest("li").querySelector("a.download");
     el("large-title").textContent = figure.querySelector("figcaption").textContent.trim();
+    el("large-frame").removeAttribute("data-missing");
     el("large-img").src = img.src;
     el("large-img").alt = img.alt;
     el("large-download").href = download ? download.href : link.href;
     el("large-download").textContent = download ? download.textContent : "";
+    el("large-download").hidden = false;
     const many = planets().length > 1;
     el("large-prev").hidden = !many;
     el("large-next").hidden = !many;
@@ -226,6 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // A click with a modifier still opens the picture as the browser would.
       if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
+      redrawn = false;
       show(link.dataset.planet);
       el("large-status").textContent = "";
       dialog.showModal();
@@ -236,6 +287,23 @@ document.addEventListener("DOMContentLoaded", () => {
     el("large-in").addEventListener("click", () => setZoom(zoom + 1));
     el("large-out").addEventListener("click", () => setZoom(zoom - 1));
     el("large-close").addEventListener("click", () => dialog.close());
+    // A picture the server no longer has (kept 15 minutes) is drawn again,
+    // once; the frame shows nothing meanwhile rather than a broken image.
+    let redrawn = false;
+    el("large-img").addEventListener("load", () => { redrawn = false; });
+    el("large-img").addEventListener("error", () => {
+      if (!dialog.open || el("large-img").getAttribute("src") === "data:,") return;
+      el("large-frame").dataset.missing = "true";
+      if (redrawn) {
+        const message = document.getElementById("preview-failed");
+        const text = message ? message.content.querySelector(".message").textContent : "";
+        el("large-status").textContent = text.replace(/\s+/g, " ").trim();
+        return;
+      }
+      redrawn = true;
+      el("large-status").textContent = status ? status.dataset.text : "";
+      draw(true);
+    });
     // The arrows step between planets; a zoomed picture with focus scrolls with them instead.
     const arrows = { ArrowLeft: -1, ArrowRight: 1 };
     dialog.addEventListener("keydown", (e) => {

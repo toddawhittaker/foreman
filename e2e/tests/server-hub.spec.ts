@@ -40,7 +40,7 @@ test.describe("with the fake game", () => {
     await startWithAlice(page, g);
 
     await page.getByRole("link", { name: "Force stop" }).click();
-    await expect(page.getByRole("region", { name: /Force stop/ })).toContainText("These players are disconnected: alice.");
+    await expect(page.locator("section.confirm")).toContainText("These players are disconnected: alice.");
     await page.goto("/");
 
     await page.getByRole("link", { name: "Stop server" }).click();

@@ -3,6 +3,7 @@
 {{define "content" -}}
 {{with .Page}}
 <h1>{{t "worlds.clone.title" "name" .World.Name}}</h1>
+{{template "world-tabs" .Tabs}}
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="clone-heading">
   <h2 id="clone-heading">{{t "worlds.clone.heading"}}</h2>
   {{template "summary" .Problems}}

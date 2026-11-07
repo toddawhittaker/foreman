@@ -311,6 +311,8 @@ func adminListJSON(names []string) []byte {
 // 8.10).
 type SettingsPage struct {
 	WorldID, WorldName string
+	// Active marks the active world in the heading, as on its Overview.
+	Active bool
 	// ReadOnly says why nothing can be changed; zero when the world is open
 	// to editing.
 	ReadOnly i18n.Msg
@@ -356,7 +358,7 @@ func (SettingsPage) navItem() string      { return PathWorlds }
 
 // Tabs are the world's pages, with Settings current (DESIGN 6).
 func (p SettingsPage) Tabs() WorldTabs {
-	return WorldTabs{Path: worldPath(p.WorldID), Current: "settings", Settings: true}
+	return settingsTabs(p.WorldID, false)
 }
 
 func (p SettingsPage) hasErrors() bool { return p.has() || !p.Error.IsZero() }

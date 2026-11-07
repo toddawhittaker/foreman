@@ -162,6 +162,12 @@ h3 {
   font-weight: 600;
 }
 
+/* An operation's heading is an h2 for the outline but sits inside its section, so it is set as an h3. */
+h2.op-heading {
+  font-size: var(--text-md);
+  line-height: 1.4;
+}
+
 p,
 li {
   max-inline-size: var(--measure);
@@ -1172,6 +1178,11 @@ main h1 {
   gap: var(--space-2) var(--space-3);
 }
 
+/* A heading with a time in its sentence reads as one line of text, not a row of parts. */
+main h1:has(> time) {
+  display: block;
+}
+
 /* The heading's live part lays out as the heading's own words and badge. */
 #server-title {
   display: contents;
@@ -1189,6 +1200,11 @@ main h1 {
 .join code {
   color: var(--color-text);
   font-size: var(--text-md);
+}
+
+/* Copy wraps under the address on a phone; its words line up with the line above. */
+.join .button--quiet {
+  padding-inline: 0;
 }
 
 /* A section heading with a link or note at its end. */
@@ -1652,7 +1668,7 @@ td > .hint {
     inline-size: 100%;
     min-block-size: 2rem;
     margin: 0;
-    accent-color: var(--color-primary);
+    accent-color: var(--color-selected);
     cursor: pointer;
   }
 }
@@ -2041,6 +2057,50 @@ form:has(#mode-exchange:checked) .achievements {
   opacity: 0.6;
 }
 
+/* Before the first picture, its box is held (script only: without it nothing draws by itself). */
+.preview > .preview-placeholder {
+  display: none;
+}
+
+.js-on .preview > .preview-placeholder {
+  display: grid;
+}
+
+/* The unseen lines take the room the preview's own text will. */
+.preview-placeholder__hold {
+  visibility: hidden;
+}
+
+.preview-placeholder__picture {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.preview-placeholder__control {
+  display: block;
+  min-block-size: var(--target-min);
+}
+
+/* A faint line in the box says what will fill it, so the held space does not read as empty. */
+.preview-placeholder__map {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  max-inline-size: 32rem;
+  aspect-ratio: 1;
+  padding: var(--space-4);
+  background: var(--color-deep);
+  border: var(--border-width) solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* A picture the server no longer has shows an empty frame while it is drawn again. */
+.large-view__frame[data-missing] .map {
+  visibility: hidden;
+}
+
 /* One line is held for the drawing note once a preview shows, so nothing moves. */
 .preview-status:empty {
   display: none;
@@ -2061,13 +2121,15 @@ form:has(#mode-exchange:checked) .achievements {
   margin: 0;
   padding: var(--space-3);
   border: 0;
+  overflow: auto;
   background: var(--color-bg);
   color: var(--color-text);
 }
 
+/* The picture keeps a usable height on a short screen (400% zoom, a phone on its side); the dialog scrolls instead. */
 .large-view[open] {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(16rem, 1fr) auto;
   gap: var(--space-3);
 }
 

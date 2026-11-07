@@ -9,5 +9,10 @@
   "js.live.stopped": "Les mises à jour en direct se sont arrêtées. Rechargez la page pour voir l’état actuel.",
   "js.generate.options": "Options de la carte mises à jour pour la version du jeu et le réglage de l’Ère spatiale choisis.",
   "js.generate.preview_ready": "Aperçu de la carte prêt.",
-  "js.preview.zoom": "Zoom {level}"
+  "js.preview.zoom": "Zoom {level}",
+  "js.preview.drawing": "Dessin de {planet}…",
+  "js.generate.reset": "Paramètres de la carte réinitialisés au préréglage {preset}.",
+  "js.generate.ach_setting": "{setting} désactive certains succès.",
+  "js.generate.ach_clear": "Plus aucun paramètre ne désactive les succès.",
+  "js.generate.moved": "{field} réglé sur {value} pour que la plage reste valide."
 }
