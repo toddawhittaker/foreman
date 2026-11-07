@@ -57,5 +57,8 @@
   "common.label.note": "Poznámka:",
   "common.label.busy": "Probíhá operace:",
   "common.confirm.will": "Co se stane:",
-  "common.list.sep": ", "
+  "common.list.sep": ", ",
+  "common.menu.account": "{user}, {language}: nabídka účtu a jazyka",
+  "common.menu.language": "{language}: nabídka jazyka",
+  "common.countdown.none_name": "Bez upozornění: nastavit odpočet na 0 sekund"
 }

@@ -33,8 +33,10 @@
   </nav>
   {{- end}}
   {{- /* A native details element, so the menu opens by keyboard and without script (DESIGN 6, "User menu"). */}}
+  {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
+  {{- /* The name says what the button opens and starts with the words it shows (WCAG 2.5.3). */}}
   <details class="menu">
-    <summary>{{with .User}}<span class="menu__user">{{.}}</span> {{end}}<span class="menu__lang">{{range languages}}{{if eq .Tag.String lang}}{{.Name}}{{end}}{{end}}</span></summary>
+    <summary aria-label="{{if .User}}{{t "common.menu.account" "user" .User "language" $langName}}{{else}}{{t "common.menu.language" "language" $langName}}{{end}}">{{with .User}}<span class="menu__user">{{.}}</span> {{end}}<span class="menu__lang">{{$langName}}</span></summary>
     <div class="menu__panel">
       {{- with .User}}
       <p class="hint">{{t "common.signedin" "user" .}}</p>
@@ -88,7 +90,7 @@
   <div class="inline-row">
     <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
       {{- if not .CountdownError.IsZero}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
-    <button type="button" class="button" id="countdown-zero" hidden>{{t "common.countdown.none"}}</button>
+    <button type="button" class="button" id="countdown-zero" aria-label="{{t "common.countdown.none_name"}}" hidden>{{t "common.countdown.none"}}</button>
   </div>
   {{- if not .CountdownError.IsZero}}
   <p class="error" id="countdown-error"><strong>{{t "common.error.label"}}</strong> {{msg .CountdownError}}</p>
@@ -140,11 +142,11 @@
 {{define "world-tabs" -}}
 <nav class="subnav" aria-label="{{t "worlds.tabs.label"}}">
   <ul role="list">
-    <li><a href="{{.Path}}"{{if eq .Current "overview"}} aria-current="page"{{end}}>{{t "worlds.tabs.overview"}}</a></li>
-    <li><a href="{{.Path}}/saves"{{if eq .Current "saves"}} aria-current="page"{{end}}>{{t "worlds.world.saves"}}</a></li>
-    <li><a href="{{.Path}}/snapshots"{{if eq .Current "snapshots"}} aria-current="page"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
+    <li><a href="{{.Path}}"{{if eq .Current "overview"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.tabs.overview"}}</a></li>
+    <li><a href="{{.Path}}/saves"{{if eq .Current "saves"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.saves"}}</a></li>
+    <li><a href="{{.Path}}/snapshots"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
     {{- if .Settings}}
-    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="page"{{end}}>{{t "worlds.world.settings"}}</a></li>
+    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a></li>
     {{- end}}
   </ul>
 </nav>

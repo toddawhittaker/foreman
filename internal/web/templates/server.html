@@ -254,7 +254,7 @@
 </div>
 {{- end}}
 {{- if .ShowOperation}}
-<h2>{{msg .OperationHeading}}</h2>
+<h2 class="op-heading">{{msg .OperationHeading}}</h2>
 {{template "server-steps" .OperationList}}
 {{- end}}
 {{- with .CancelStopPath}}
@@ -272,7 +272,7 @@
 <div class="actions"><a href="{{.Path}}" class="button" id="act-switch-back">{{t "server.switch_back" "world" .Name}}</a></div>
 {{- end}}
 {{- if .ShowDownload}}
-<h2>{{if .Status.Download.Done}}{{t "server.op.download_failed"}}{{else}}{{t "server.op.download"}}{{end}}</h2>
+<h2 class="op-heading">{{if .Status.Download.Done}}{{t "server.op.download_failed"}}{{else}}{{t "server.op.download"}}{{end}}</h2>
 {{template "server-steps" .DownloadList}}
 {{- end}}
 {{- if and .Crashed (not .CrashLeads)}}

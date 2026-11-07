@@ -14,7 +14,7 @@ test("the language menu switches to German and the choice persists", async ({ pa
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Anmelden");
   // The menu's summary names the language shown, and its list marks it.
-  await expect(page.locator("details.menu > summary")).toHaveText("Deutsch");
+  await expect(page.locator("details.menu > summary .menu__lang")).toHaveText("Deutsch");
   await openMenu(page);
   await expect(page.getByRole("group", { name: "Sprache (Language)" }).getByRole("button", { name: "Deutsch" })).toHaveAttribute("aria-current", "true");
   await checkPage(page);
