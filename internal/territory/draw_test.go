@@ -2,10 +2,14 @@ package territory
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"image"
 	"image/color"
 	"image/png"
+	"sync"
 	"testing"
+	"time"
 )
 
 var grey = color.RGBA{100, 100, 100, 255}
@@ -44,7 +48,7 @@ func noLabel(string) string { return "" }
 // the chunk edge; the free area is untouched.
 func TestDrawPNGPixels(t *testing.T) {
 	ov := Geometry(Result{Territories: []Territory{{Small, []Chunk{{-2, -2}}}}}, 128)
-	out, err := DrawPNG(greyPNG(t, 128), ov, noLabel)
+	out, err := DrawPNG(context.Background(), greyPNG(t, 128), ov, noLabel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +92,7 @@ func TestDrawPNGLabel(t *testing.T) {
 	if s := ov.Shapes[0]; s.LabelX != 128 || s.LabelY != 128 {
 		t.Fatalf("label point %v,%v", s.LabelX, s.LabelY)
 	}
-	out, err := DrawPNG(greyPNG(t, 256), ov, func(size string) string { return "WWWW" })
+	out, err := DrawPNG(context.Background(), greyPNG(t, 256), ov, func(size string) string { return "WWWW" })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,10 +124,10 @@ func TestDrawPNGLabel(t *testing.T) {
 
 func TestDrawPNGRefusesWrongSize(t *testing.T) {
 	ov := Geometry(Result{}, 128)
-	if _, err := DrawPNG(greyPNG(t, 64), ov, noLabel); err == nil {
+	if _, err := DrawPNG(context.Background(), greyPNG(t, 64), ov, noLabel); err == nil {
 		t.Error("a 64 picture drew a 128 overlay")
 	}
-	if _, err := DrawPNG([]byte("not a png"), ov, noLabel); err == nil {
+	if _, err := DrawPNG(context.Background(), []byte("not a png"), ov, noLabel); err == nil {
 		t.Error("a non-PNG drew")
 	}
 }
@@ -131,7 +135,7 @@ func TestDrawPNGRefusesWrongSize(t *testing.T) {
 // Drawing in Chinese uses the subset font and still draws text.
 func TestDrawPNGChinese(t *testing.T) {
 	ov := Geometry(Result{Territories: []Territory{{Small, []Chunk{{-1, -1}, {0, -1}, {-1, 0}, {0, 0}}}}}, 128)
-	out, err := DrawPNG(greyPNG(t, 128), ov, func(string) string { return "小型" })
+	out, err := DrawPNG(context.Background(), greyPNG(t, 128), ov, func(string) string { return "小型" })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,5 +150,89 @@ func TestDrawPNGChinese(t *testing.T) {
 	}
 	if white < 20 {
 		t.Errorf("the Chinese label drew %d white pixels", white)
+	}
+}
+
+// holdSlot takes the render slot for the test, as a render in progress does.
+func holdSlot(t *testing.T) (release func()) {
+	t.Helper()
+	renderSlot <- struct{}{}
+	var once sync.Once
+	release = func() { once.Do(func() { <-renderSlot }) }
+	t.Cleanup(release)
+	return release
+}
+
+// waitFor polls until cond holds.
+func waitFor(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	for end := time.Now().Add(3 * time.Second); !cond(); {
+		if time.Now().After(end) {
+			t.Fatalf("timed out waiting for %s", what)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// SPEC 14.1: a request that gives up stops waiting for the render slot and
+// leaves no place taken in the queue.
+func TestDrawPNGStopsWaitingWhenCancelled(t *testing.T) {
+	holdSlot(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := DrawPNG(ctx, greyPNG(t, 128), Geometry(Result{}, 128), noLabel)
+		done <- err
+	}()
+	waitFor(t, "the caller to queue", func() bool { return waiting.Load() == 1 })
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("got %v, want context.Canceled", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("a cancelled caller is still waiting for the slot")
+	}
+	if n := waiting.Load(); n != 0 {
+		t.Errorf("%d callers still counted as waiting", n)
+	}
+}
+
+// SPEC 14.1: a fifth caller waiting for the slot is refused at once, so the
+// queue (and the pictures held with it) stays small.
+func TestDrawPNGRefusesTooManyWaiters(t *testing.T) {
+	holdSlot(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	src := greyPNG(t, 128)
+	ov := Geometry(Result{}, 128)
+	var wg sync.WaitGroup
+	for range maxWaiting {
+		wg.Go(func() { _, _ = DrawPNG(ctx, src, ov, noLabel) })
+	}
+	waitFor(t, "the queue to fill", func() bool { return waiting.Load() == maxWaiting })
+
+	start := time.Now()
+	if _, err := DrawPNG(context.Background(), src, ov, noLabel); !errors.Is(err, ErrBusy) {
+		t.Errorf("got %v, want ErrBusy", err)
+	}
+	if time.Since(start) > time.Second {
+		t.Error("the extra caller waited instead of being refused at once")
+	}
+	cancel()
+	wg.Wait()
+	if n := waiting.Load(); n != 0 {
+		t.Errorf("%d callers still counted as waiting", n)
+	}
+}
+
+// With the slot free a caller draws at once, and the slot is free again after.
+func TestDrawPNGFreesTheSlot(t *testing.T) {
+	if _, err := DrawPNG(context.Background(), greyPNG(t, 128), Geometry(Result{}, 128), noLabel); err != nil {
+		t.Fatal(err)
+	}
+	if len(renderSlot) != 0 || waiting.Load() != 0 {
+		t.Errorf("slot holds %d, %d waiting", len(renderSlot), waiting.Load())
 	}
 }
