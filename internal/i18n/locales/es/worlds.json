@@ -308,6 +308,7 @@
   "worlds.world.rollback_text": "La última actualización tomó la instantánea «{label}» el {when}. Al revertir, se restaura y el mundo vuelve a Factorio {version}.",
   "worlds.world.saves": "Partidas guardadas",
   "worlds.world.server_link": "Ir a la página del servidor",
+  "worlds.world.updating": "Actualizando a Factorio {version}…",
   "worlds.world.server_page": "la página del servidor",
   "worlds.world.snapshots": "Instantáneas",
   "worlds.world.switch.busy": "Hay una operación en curso en el servidor, por ejemplo un cambio de mundo. Consulta {link}.",
@@ -396,11 +397,47 @@
   "worlds.generate.preview.download": "Descargar {planet} (PNG)",
   "worlds.generate.preview.download_all": "Descargar todos los planetas dibujados (zip)",
   "worlds.generate.preview.updating": "Dibujando la vista previa del mapa con los ajustes actuales…",
-  "worlds.generate.large.previous": "Anterior",
-  "worlds.generate.large.next": "Siguiente",
   "worlds.generate.large.zoom_out": "Alejar",
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
-  "worlds.generate.large.keys": "Las flechas izquierda y derecha muestran el planeta anterior y el siguiente, más y menos hacen zoom y Escape cierra.",
-  "worlds.generate.preview.pin": "El marcador señala el centro del mapa, donde empiezan los jugadores."
+  "worlds.generate.large.keys": "Las flechas izquierda y derecha muestran el planeta anterior y el siguiente, más y menos hacen zoom, 0 ajusta la imagen y Escape cierra. Con el zoom aplicado, arrastra la imagen, toca un punto para centrarlo o usa las flechas sobre ella para moverte.",
+  "worlds.generate.preview.pin": "El marcador señala el centro del mapa, donde empiezan los jugadores.",
+  "worlds.generate.preview.size_label": "Tamaño de la vista previa",
+  "worlds.generate.preview.size_option": "{size} × {size} casillas",
+  "worlds.generate.preview.size_default": "{size} × {size} casillas (por defecto)",
+  "worlds.generate.preview.size_hint": "Cuánto del mapa, alrededor de su centro, muestra la vista previa. Los tamaños grandes muestran sus detalles en la vista grande.",
+  "worlds.generate.error.preview_size": "Elige uno de los tamaños de la lista.",
+  "worlds.generate.territories.label": "Mostrar territorios de demoledores",
+  "worlds.generate.territories.hint": "Encontrarlos tarda unos segundos más.",
+  "worlds.generate.territories.too_big_hint": "Se muestran con tamaños de vista previa de hasta {size} × {size} casillas. Elige un tamaño de vista previa menor para mostrarlos.",
+  "worlds.generate.territories.finding": "Buscando los territorios de los demoledores…",
+  "worlds.generate.territories.counts": "Territorios de demoledores en esta imagen: {list}.",
+  "worlds.generate.territories.none": "Esta imagen no tiene territorios de demoledores.",
+  "worlds.generate.territories.no_vulcanus": "Solo los mundos con Space Age tienen territorios de demoledores, en Vulcano.",
+  "worlds.generate.territories.too_big": "Los territorios de demoledores se muestran con tamaños de vista previa de hasta {size} × {size} casillas. Elige un tamaño de vista previa menor.",
+  "worlds.generate.territories.invalid": "Los ajustes tienen problemas, por lo que no se encontraron los territorios de los demoledores. Corrige los problemas que indica la vista previa del mapa.",
+  "worlds.generate.territories.busy": "Se está creando otra vista previa del mapa, por lo que no se encontraron los territorios de los demoledores. Espera unos segundos y vuelve a intentarlo.",
+  "worlds.generate.territories.draw_busy": "Ahora mismo se están dibujando otras imágenes con territorios. Espera unos segundos y vuelve a descargar.",
+  "worlds.generate.territories.timeout": "Encontrar los territorios de los demoledores tardó demasiado y se detuvo. Inténtalo de nuevo o elige un tamaño de vista previa menor.",
+  "worlds.generate.territories.oom": "Al buscar los territorios de los demoledores, el juego se quedó sin memoria. Elige un tamaño de vista previa menor.",
+  "worlds.generate.territories.failed": "El juego no pudo encontrar los territorios de los demoledores. La vista previa del mapa y la generación siguen funcionando. Si sigue fallando, revisa el registro de Foreman.",
+  "worlds.generate.territories.request_failed": "Falló la solicitud de los territorios de los demoledores. Comprueba que Foreman esté accesible y que sigas con la sesión iniciada, y vuelve a intentarlo.",
+  "worlds.generate.territories.retry": "Reintentar",
+  "worlds.generate.territories.download": "Descargar {planet} con territorios (PNG)",
+  "worlds.generate.territories.count.small": {
+    "one": "{count} pequeño",
+    "other": "{count} pequeños"
+  },
+  "worlds.generate.territories.count.medium": {
+    "one": "{count} mediano",
+    "other": "{count} medianos"
+  },
+  "worlds.generate.territories.count.big": {
+    "one": "{count} grande",
+    "other": "{count} grandes"
+  },
+  "worlds.generate.territories.count.unknown": {
+    "one": "{count} de tamaño desconocido",
+    "other": "{count} de tamaño desconocido"
+  }
 }

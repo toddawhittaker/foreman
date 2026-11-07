@@ -155,10 +155,7 @@ func (s *server) updatePage(sum world.Summary, target string, form CountdownForm
 	p := UpdatePage{World: sum, Target: target, CountdownForm: form}
 	st := s.game.Status(sum.ID)
 	p.Running = game.IsRunning(st.State)
-	switch {
-	case !sum.Active:
-		p.Refusal = i18n.M("server.update.not_active")
-	case st.Operation != nil && !st.Operation.Done:
+	if st.Operation != nil && !st.Operation.Done {
 		p.Refusal = i18n.M("worlds.error.busy")
 	}
 	return p
@@ -188,9 +185,10 @@ func (s *server) handleUpdateForm(w http.ResponseWriter, r *http.Request, u stor
 	s.page(w, r, http.StatusOK, u.Username, s.updatePage(sum, target, defaultCountdown()))
 }
 
-// handleUpdate moves the active world to a newer game version in the
-// background; the Server page follows it (SPEC 10.3). "anyway" comes from
-// the refusal box (SPEC 7.4).
+// handleUpdate moves a world to a newer game version in the background
+// (SPEC 10.3). The Server page follows the active world's update; the
+// world's own page follows any other world's, since the Server page shows
+// only the active world. "anyway" comes from the refusal box (SPEC 7.4).
 func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.User) {
 	if s.game == nil {
 		s.notFound(w, r, u)
@@ -221,11 +219,47 @@ func (s *server) handleUpdate(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	id, by, opts := sum.ID, actor(u), anywayOptions(r)
-	s.begin(w, r, id, true, func(ctx context.Context) actionResult {
+	to := PathServer
+	if !sum.Active {
+		to = worldPath(id) + ownResultQuery
+	}
+	s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
 		res := s.finish(id, game.AuditUpdate, s.game.Update(ctx, id, target, by, stop, opts))
 		res.Version = target
 		return res
 	})
+}
+
+// updateOutcome words how the last update of a world that is not active
+// ended, for the world's own page: what was done, or why not, with the
+// offer to go ahead anyway when the pre-start check allows it (SPEC 10.3,
+// 17.9). Both are empty when the world's last action was not an update.
+func (s *server) updateOutcome(sum world.Summary) (i18n.Msg, *Failure) {
+	if s.game == nil || sum.Active || sum.Unreadable || sum.Newer {
+		return i18n.Msg{}, nil
+	}
+	res, ok := s.runs.result(sum.ID)
+	if !ok || res.Action != game.AuditUpdate {
+		return i18n.Msg{}, nil
+	}
+	if res.Err == nil {
+		return i18n.M("server.done.update", "label", i18n.M("worlds.snapshot.label.before_update")), nil
+	}
+	f := &Failure{Refused: game.IsRefusal(res.Err)}
+	pe, ok := errors.AsType[*game.PrecheckError](res.Err)
+	if !ok {
+		f.Message = failureText(res.Err)
+		return i18n.Msg{}, f
+	}
+	f.Message = updatePrecheckLead(pe.Check, sum.Name, res.Version)
+	if pe.Changed {
+		f.Message = join(changedLead, f.Message)
+	}
+	f.Problems = problemMsgs(pe.Check.Problems)
+	if pe.Check.CanStartAnyway() {
+		f.Anyway = updateAnyway(pe.Check, sum, res.Version, hostModsFolder(s.hostData, sum.ID))
+	}
+	return i18n.Msg{}, f
 }
 
 // rollbackPage builds the rollback confirmation, or says why there is none.

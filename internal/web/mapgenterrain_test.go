@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 )
 
 // An unticked resource is written with size 0, the value that removes it on
@@ -69,8 +70,9 @@ func TestOnlyResourcesHaveABox(t *testing.T) {
 	}
 	for _, p := range f.Terrain {
 		for _, g := range p.Groups {
-			if g.Toggle != nil {
-				t.Errorf("%s: terrain control has a box", p.ID)
+			// Only cliffs the game lets you switch off have a box on Terrain.
+			if want := strings.HasSuffix(g.ID, "_cliff") && mapgen.CliffToggle("2.1", p.Planet); (g.Toggle != nil) != want {
+				t.Errorf("%s: %s has a box %v, want %v", p.ID, g.ID, g.Toggle != nil, want)
 			}
 		}
 	}
@@ -150,7 +152,8 @@ func TestTerrainFieldsSitOnTheTerrainTab(t *testing.T) {
 	}
 	page := renderPartial(t, i18n.Locale("en"), f)
 	if !strings.Contains(page, `<div class="field">
-  <label for="mg-map-type"`) {
+  <div class="field__head">
+    <label for="mg-map-type"`) {
 		t.Error("map type is not a plain field")
 	}
 	for _, want := range []string{`<option value="elevation_island">Island elevation</option>`,

@@ -1,0 +1,19 @@
+NotoSansCJKsc-Bold-labels.otf
+
+A subset of Noto Sans CJK SC Bold, version 2.004, from
+https://github.com/notofonts/noto-cjk (Sans/OTF/SimplifiedChinese).
+Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font
+Name 'Source'. Noto is a trademark of Google Inc. It is licensed under
+the SIL Open Font License, Version 1.1, in OFL.txt beside this file.
+
+It holds only the glyphs of the Simplified Chinese territory labels, so
+it stays a few kilobytes. Go Bold, from golang.org/x/image, draws every
+other language. When a label needs a glyph this file lacks, the glyph
+test in internal/territory fails; make the subset again with every
+glyph the labels need, for example with fontTools:
+
+  python3 -m fontTools.subset NotoSansCJK-Bold.ttc --font-number=2 \
+    --text=" 小中大型未知" --layout-features='' \
+    --output-file=NotoSansCJKsc-Bold-labels.otf
+
+Font number 2 of the collection is the SC face.

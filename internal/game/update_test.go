@@ -24,7 +24,8 @@ import (
 //
 //   - every refusal happens before the game is stopped, takes no snapshot
 //     and changes nothing on disk;
-//   - only the active world is updated;
+//   - a world that is not active is updated and rolled back without a
+//     start or a stop, under its lock;
 //   - a missing image is downloaded before the stop;
 //   - an update stops gracefully, snapshots the old version, sets the new
 //     one and restarts only a game that was running;
@@ -198,18 +199,116 @@ func TestUpdateRefusesAVersionThatIsNotNewer(t *testing.T) {
 	}
 }
 
-// SPEC 10.3: only the active world is updated.
-func TestUpdateRefusesAWorldThatIsNotActive(t *testing.T) {
+// SPEC 10.3: a world that is not active is updated too. Nothing stops or
+// starts, the active world's game runs on, the snapshot is taken and the
+// version is set.
+func TestUpdateWorldThatIsNotActive(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	active := r.versionWorld("Active", "2.0.77", "2.0.77-no-space-age.zip")
+	other := r.versionWorld("Other", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), true)
+	r.start(active)
+	running := r.record(active, true)
+	creates := len(r.calls("POST /containers/create"))
+	if err := r.c.Update(context.Background(), other, "2.1.24", admin, StopOptions{}, StartOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	running.check("update of a world that is not active")
+	if n := len(r.calls("POST /containers/create")); n != creates {
+		t.Errorf("%d containers created, was %d: the update started a game", n, creates)
+	}
+	if got := r.active(); got != active {
+		t.Errorf("active world %q, want %q", got, active)
+	}
+	snaps := r.snapshots(other)
+	if len(snaps) == 0 || snaps[0].Reason != world.ReasonGameUpdate {
+		t.Fatalf("no Before update snapshot: %+v", snaps)
+	}
+	if v := r.snapshotVersion(other, snaps[0].Name); v != "2.0.77" {
+		t.Errorf("the snapshot holds %s", v)
+	}
+	if v := r.metaVersion(other); v != "2.1.24" {
+		t.Errorf("world at %s", v)
+	}
+	if !slices.Contains(r.actions(), AuditUpdate) {
+		t.Errorf("audit %v, want %s", r.actions(), AuditUpdate)
+	}
+}
+
+// SPEC 10.3, 7.4: the pre-start check still refuses an update of a world
+// that is not active, before anything changes.
+func TestUpdateWorldThatIsNotActiveStillRunsThePreStartCheck(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	r.versionWorld("Active", "2.0.77", "2.0.77-no-space-age.zip")
 	other := r.versionWorld("Other", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), true)
+	r.putModZip(other, "oldmod", "1.1")
 	u := r.record(other, false)
-	if err := r.c.Update(context.Background(), other, "2.1.24", admin, StopOptions{}, StartOptions{}); err == nil {
-		t.Fatal("updated a world that is not active")
+	err := r.c.Update(context.Background(), other, "2.1.24", admin, StopOptions{}, StartOptions{})
+	if _, ok := errors.AsType[*PrecheckError](err); !ok {
+		t.Fatalf("Update = %v, want a *PrecheckError", err)
 	}
-	u.check("update of a world that is not active")
+	u.check("refused update of a world that is not active")
 	if v := r.metaVersion(other); v != "2.0.77" {
 		t.Errorf("world at %s", v)
+	}
+}
+
+// SPEC 7.9, 10.3: the world's lock holds while it is updated, so a switch
+// to it, or a second update, is refused until the lock is free.
+func TestUpdateWorldThatIsNotActiveHoldsTheLockAgainstASwitch(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	a, b := r.twoWorlds()
+	r.game.SetImage(ImageRef("2.1.25"), true)
+	unlock, err := r.worlds.Lock(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}, false)
+	if !errors.Is(err, world.ErrBusy) {
+		t.Errorf("Switch while the world is locked = %v, want ErrBusy", err)
+	}
+	if err := r.c.Update(context.Background(), b, "2.1.25", admin, StopOptions{}, StartOptions{}); !errors.Is(err, world.ErrBusy) {
+		t.Errorf("Update while the world is locked = %v, want ErrBusy", err)
+	}
+	if v := r.metaVersion(b); v != "2.1.24" {
+		t.Errorf("world at %s while locked", v)
+	}
+	unlock()
+	if err := r.c.Update(context.Background(), b, "2.1.25", admin, StopOptions{}, StartOptions{}); err != nil {
+		t.Fatalf("Update after the lock was freed: %v", err)
+	}
+}
+
+// SPEC 10.4: a world that is not active is rolled back too, and nothing
+// starts or stops.
+func TestRollbackWorldThatIsNotActive(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	active := r.versionWorld("Active", "2.0.77", "2.0.77-no-space-age.zip")
+	other := r.versionWorld("Other", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), true)
+	r.start(active)
+	if err := r.c.Update(context.Background(), other, "2.1.24", admin, StopOptions{}, StartOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	running := r.record(active, true)
+	creates := len(r.calls("POST /containers/create"))
+	undo, err := r.c.Rollback(context.Background(), other, admin, StopOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	running.check("rollback of a world that is not active")
+	if n := len(r.calls("POST /containers/create")); n != creates {
+		t.Errorf("%d containers created, was %d: the rollback started a game", n, creates)
+	}
+	if v := r.metaVersion(other); v != "2.0.77" {
+		t.Errorf("world at %s after rollback, want 2.0.77", v)
+	}
+	if undo.Reason != world.ReasonBeforeRestore {
+		t.Errorf("undo snapshot %+v", undo.Manifest)
+	}
+	if got := r.active(); got != active {
+		t.Errorf("active world %q, want %q", got, active)
 	}
 }
 
@@ -289,6 +388,27 @@ func TestUpdateRunningWorld(t *testing.T) {
 	}
 	if !slices.Contains(r.actions(), AuditUpdate) {
 		t.Errorf("audit %v, want %s", r.actions(), AuditUpdate)
+	}
+}
+
+// SPEC 10.3, 4.4: the game network matters only to a game that is started
+// again, so a stopped world updates even when FOREMAN_GAME_NETWORK is wrong.
+func TestUpdateStoppedWorldSkipsTheGameNetworkCheck(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.versionWorld("Stopped", "2.0.77", "2.0.77-no-space-age.zip")
+	r.game.SetImage(ImageRef("2.1.24"), true)
+	d := r.game.Daemon()
+	d.Seed(dockertest.Container{Name: "foreman-self", Status: "running", Networks: map[string]string{"bridge": "172.17.0.9/16"}})
+	self, _ := d.Container("foreman-self")
+	r.c.network, r.c.selfID = "", self.ID
+	if _, err := r.c.gameNetwork(context.Background()); !errors.Is(err, ErrNetwork) {
+		t.Fatalf("gameNetwork = %v, want the network refused", err)
+	}
+	if err := r.c.Update(context.Background(), id, "2.1.24", admin, StopOptions{}, StartOptions{}); err != nil {
+		t.Fatalf("Update = %v, want the update of a stopped world to go ahead", err)
+	}
+	if v := r.metaVersion(id); v != "2.1.24" {
+		t.Errorf("world at %s", v)
 	}
 }
 

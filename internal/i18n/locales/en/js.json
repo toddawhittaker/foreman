@@ -11,8 +11,12 @@
   "js.generate.preview_ready": "Map preview ready.",
   "js.preview.zoom": "Zoom {level}",
   "js.preview.drawing": "Drawing {planet}…",
+  "js.preview.previous": "Previous planet: {planet}",
+  "js.preview.next": "Next planet: {planet}",
+  "js.preview.download": "Download {planet} map",
   "js.generate.reset": "Map settings reset to the {preset} preset.",
   "js.generate.ach_setting": "{setting} turns off some achievements.",
   "js.generate.ach_clear": "No setting turns off achievements now.",
-  "js.generate.moved": "{field} set to {value} to keep the range valid."
+  "js.generate.moved": "{field} set to {value} to keep the range valid.",
+  "js.preview.download_territories": "Download {planet} map with territories"
 }

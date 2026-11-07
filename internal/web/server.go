@@ -3,11 +3,14 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/auth"
@@ -216,10 +219,22 @@ func NewHTTPServer(addr string, h http.Handler) *http.Server {
 	}
 }
 
-// page renders p. If rendering fails it logs the error and sends a plain 500.
+// clientGone reports whether err came from a browser that left: the
+// request was cancelled or the connection broke while writing.
+func clientGone(r *http.Request, err error) bool {
+	return r.Context().Err() != nil ||
+		errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, net.ErrClosed)
+}
+
+// page renders p. If rendering fails it logs the error and sends a plain 500,
+// unless the browser left: that is no server fault and nobody is left to answer.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, user string, p Page) {
 	err := s.render.Render(w, r, status, user, p)
 	if err == nil {
+		return
+	}
+	if clientGone(r, err) {
+		s.log.Debug("render page: client gone", "method", r.Method, "path", r.URL.Path, "error", err)
 		return
 	}
 	s.log.Error("render page", "method", r.Method, "path", r.URL.Path, "error", err)

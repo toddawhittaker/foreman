@@ -1,9 +1,8 @@
 /// <reference types="node" />
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
 import { createInterface } from "node:readline";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,15 +17,38 @@ const fakeGameBinary = join(import.meta.dirname, "..", "..", "bin", "fakegame");
 // SPEC 17.1 names WCAG 2.2 AA.
 export const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
-function freePort(): Promise<number> {
+// Resolves with the port Foreman reports in its "listening" log line, which
+// it logs only after the bind succeeded. The caller listens on port 0, so no
+// other process can have taken the port in between.
+export function listeningPort(proc: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
-    const srv = createServer();
-    srv.on("error", reject);
-    srv.listen(0, "127.0.0.1", () => {
-      const addr = srv.address();
-      const port = typeof addr === "object" && addr ? addr.port : 0;
-      srv.close(() => resolve(port));
-    });
+    // A plain listener, not readline: closing a readline pauses the stream, which would stall the caller's own listener.
+    let pending = "";
+    const timer = setTimeout(() => done(new Error("foreman did not log that it was listening")), 10_000);
+    const done = (err?: Error, port?: number) => {
+      clearTimeout(timer);
+      proc.stdout!.off("data", onData);
+      proc.stdout!.off("end", onEnd);
+      if (err) reject(err);
+      else resolve(port!);
+    };
+    const onData = (d: Buffer) => {
+      const lines = (pending + d).split("\n");
+      pending = lines.pop()!;
+      for (const line of lines) {
+        let entry: { msg?: string; addr?: string };
+        try {
+          entry = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (entry.msg === "listening" && entry.addr) return done(undefined, Number(entry.addr.slice(entry.addr.lastIndexOf(":") + 1)));
+      }
+    };
+    // Foreman ended without ever listening; the caller reports its output.
+    const onEnd = () => done(new Error("foreman exited before it listened"));
+    proc.stdout!.on("data", onData);
+    proc.stdout!.on("end", onEnd);
   });
 }
 
@@ -41,11 +63,10 @@ export interface Foreman {
   expectError: (match: string | RegExp) => void;
 }
 
-// Starts the real binary on a free port over a fresh data directory, so each
+// Starts the real binary on a port the system picks over a fresh data directory, so each
 // test sees a first run of its own.
 async function startForeman(env: Record<string, string>): Promise<Foreman & { stop: () => Promise<{ exitedEarly: boolean }>; errorLines: () => string[] }> {
   const dataDir = mkdtempSync(join(tmpdir(), "foreman-e2e-"));
-  const port = await freePort();
   let out = "";
   const proc = spawn(binary, ["serve"], {
     env: {
@@ -55,7 +76,7 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
       FOREMAN_GAME_GID: String(process.getgid?.() ?? 0),
       // The host path is given, so no Docker call is made.
       FOREMAN_HOST_DATA_DIR: dataDir,
-      FOREMAN_LISTEN: `127.0.0.1:${port}`,
+      FOREMAN_LISTEN: "127.0.0.1:0",
       // Nothing in these tests may reach Docker Hub or factorio.com; port 9 refuses the connection.
       HTTPS_PROXY: "http://127.0.0.1:9",
       HTTP_PROXY: "http://127.0.0.1:9",
@@ -68,6 +89,10 @@ async function startForeman(env: Record<string, string>): Promise<Foreman & { st
   // "close" comes after the output streams end, so the last lines are in `out`.
   const closed = new Promise((r) => proc.once("close", r));
   const hasExited = () => proc.exitCode !== null || proc.signalCode !== null;
+  const port = await listeningPort(proc).catch((e: Error) => {
+    proc.kill("SIGTERM");
+    throw new Error(`${e.message}:\n${out}`);
+  });
   const url = `http://127.0.0.1:${port}`;
   const deadline = Date.now() + 10_000;
   for (;;) {

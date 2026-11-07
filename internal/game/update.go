@@ -22,11 +22,12 @@ const (
 // shows no snapshot step of its own.
 var updateSteps = [][]string{{StepDownload}, stopSteps, {StepSnapshotUpdate, StepSetVersion}, {StepCheck}, launchSteps}
 
-// Update moves the active world to a newer game version (SPEC 10.3). Every
-// check that could refuse runs before the game is stopped; a missing image
-// is downloaded before the stop too. The game is stopped gracefully, the
-// "Before update" snapshot taken, the version set, and the game started
-// again only if it was running. A refusal by the pre-start check is a
+// Update moves a world to a newer game version (SPEC 10.3), whether or not
+// it is the active one; a world that is not active never runs, so nothing
+// stops or starts. Every check that could refuse runs before the game is
+// stopped; a missing image is downloaded before the stop too. The game is
+// stopped gracefully, the "Before update" snapshot taken, the version set,
+// and the game started again only if it was running. A refusal by the pre-start check is a
 // *PrecheckError. Run it with a context that outlives the request.
 func (c *Controller) Update(ctx context.Context, id, version string, by Actor, stop StopOptions, opts StartOptions) error {
 	countdown, err := stopCountdown(stop)
@@ -47,9 +48,6 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err := world.CheckUpdateTarget(meta, version); err != nil {
 		return c.refused(ctx, by, AuditUpdate, id, detail, err)
 	}
-	if err := c.checkActive(ctx, id); err != nil {
-		return c.refused(ctx, by, AuditUpdate, id, detail, err)
-	}
 	// A game the stop would refuse is refused before the download.
 	if _, err := c.planStop(ctx, c.world(id)); err != nil && !errors.Is(err, ErrNotRunning) {
 		return c.refused(ctx, by, AuditUpdate, id, detail, err)
@@ -58,8 +56,11 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err := c.precheckReadOnly(id, version, opts); err != nil {
 		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
 	}
-	if _, err := c.gameNetwork(ctx); err != nil {
-		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
+	// Only a game started again joins the network.
+	if opts.running {
+		if _, err := c.gameNetwork(ctx); err != nil {
+			return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
+		}
 	}
 	opts.confirmed = true
 	ref, err := c.imageFor(version)
@@ -69,7 +70,9 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 	if err := c.audit(ctx, by, AuditUpdate, id, detail); err != nil {
 		return err
 	}
-	ctx, o := c.beginOp(ctx, c.world(id), AuditUpdate, updateSteps...)
+	op := newOperation(AuditUpdate, updateSteps...)
+	op.Version = version
+	ctx, o := c.beginOpOn(ctx, []*worldRun{c.world(id)}, op)
 	return o.end(c.updateLocked(ctx, o, by, version, ref, countdown, opts))
 }
 

@@ -170,6 +170,8 @@ func withExtra(options []MapGenOption, code string) []MapGenOption {
 type MapGenSelect struct {
 	ID, Name string
 	Label    i18n.Msg
+	// Tip explains the setting in the game's words, or is zero for none.
+	Tip i18n.Msg
 	// Value is the chosen step's code; Preset the preset's, for "[modified]".
 	Value   string
 	Preset  string
@@ -188,6 +190,20 @@ type MapGenSelect struct {
 	invert bool
 }
 
+// Toggletip is the (i) button and the text that explain one setting
+// (DESIGN 7.7). The text's id is ID + "-tip"; a zero Text shows nothing.
+type Toggletip struct {
+	ID    string
+	About i18n.Msg // the setting the button's name says it explains
+	Text  i18n.Msg
+}
+
+// Toggletip explains the setting.
+func (s MapGenSelect) Toggletip() Toggletip { return Toggletip{s.ID, s.Label, s.Tip} }
+
+// Toggletip explains the box.
+func (c MapGenCheck) Toggletip() Toggletip { return Toggletip{c.ID, c.Label, c.Tip} }
+
 // MapGenText is one text field or the raw box.
 type MapGenText struct {
 	ID, Name string
@@ -201,12 +217,16 @@ type MapGenText struct {
 type MapGenCheck struct {
 	ID, Name string
 	Label    i18n.Msg
-	Hint     i18n.Msg
+	Tip      i18n.Msg
 	Checked  bool
 	Preset   bool
 	Ach      *AchWarn
 	Blocked  bool
 	path     string
+	// Need is the warning a box shows while off, for a resource the game
+	// cannot be finished without; NeedKey names it in the summary.
+	Need    i18n.Msg
+	NeedKey string
 }
 
 // MapGenGroup is the settings of one autoplace control, under its name.
@@ -219,10 +239,12 @@ type MapGenGroup struct {
 	Selects []MapGenSelect
 }
 
-// MapGenPlanet is one planet's controls in a tab, in a details element that
-// is open when it comes first or holds an error (DESIGN 8.7).
+// MapGenPlanet is one planet's controls in a tab, in a details element of
+// the tab's exclusive group: only the open planet's is open (DESIGN 8.7).
 type MapGenPlanet struct {
 	ID      string
+	Planet  string
+	Tab     string
 	Summary i18n.Msg
 	Open    bool
 	Groups  []MapGenGroup
@@ -244,6 +266,8 @@ type MapGenForm struct {
 	Resources []MapGenPlanet
 	Terrain   []MapGenPlanet
 	Enemy     []MapGenGroup
+	// OpenPlanet is the planet whose rows are open in every tab.
+	OpenPlanet string
 
 	// Raw is the box for every key the fields do not cover.
 	Raw MapGenText
@@ -273,17 +297,95 @@ func (f *MapGenForm) selects() []*MapGenSelect {
 	return append(out, &f.StartingArea)
 }
 
-// toggles lists every resource's on/off box, in page order.
+// toggles lists every on/off box of a resource or cliffs, in page order.
 func (f *MapGenForm) toggles() []*MapGenCheck {
 	var out []*MapGenCheck
-	for pi := range f.Resources {
-		for gi := range f.Resources[pi].Groups {
-			if t := f.Resources[pi].Groups[gi].Toggle; t != nil {
-				out = append(out, t)
+	for _, tab := range [][]MapGenPlanet{f.Resources, f.Terrain} {
+		for pi := range tab {
+			for gi := range tab[pi].Groups {
+				if t := tab[pi].Groups[gi].Toggle; t != nil {
+					out = append(out, t)
+				}
 			}
 		}
 	}
 	return out
+}
+
+// Needs lists the boxes of resources the game needs, for the summary by the
+// Generate button.
+func (f MapGenForm) Needs() []*MapGenCheck {
+	var out []*MapGenCheck
+	for _, t := range f.toggles() {
+		if t.NeedKey != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// NeedsOff reports whether any needed resource is off.
+func (f MapGenForm) NeedsOff() bool {
+	return slices.ContainsFunc(f.Needs(), func(t *MapGenCheck) bool { return !t.Checked })
+}
+
+// needMsgs are the warnings of the resources mapgen.NeededResources names.
+var needMsgs = map[string]i18n.Msg{
+	"iron-ore":   i18n.M("mapgen.need.iron_ore"),
+	"copper-ore": i18n.M("mapgen.need.copper_ore"),
+	"stone":      i18n.M("mapgen.need.stone"),
+	"crude-oil":  i18n.M("mapgen.need.crude_oil"),
+	"coal":       i18n.M("mapgen.need.coal"),
+}
+
+// setOpen opens one planet in every tab: the planet with the first error,
+// else want if the form has it, else the first planet. Each tab's rows are
+// one exclusive group, so only one can be open (DESIGN 8.7).
+func (f *MapGenForm) setOpen(want string) {
+	tabs := [][]MapGenPlanet{f.Resources, f.Terrain}
+	has := false
+	for _, tab := range tabs {
+		for _, p := range tab {
+			has = has || p.Planet == want
+		}
+	}
+	if !has {
+		want = ""
+	}
+	if errored := f.erroredPlanet(); errored != "" {
+		want = errored
+	}
+	if want == "" {
+		for _, tab := range tabs {
+			if len(tab) > 0 {
+				want = tab[0].Planet
+				break
+			}
+		}
+	}
+	f.OpenPlanet = want
+	for _, tab := range tabs {
+		at := slices.IndexFunc(tab, func(p MapGenPlanet) bool { return p.Planet == want })
+		for i := range tab {
+			tab[i].Open = i == max(at, 0)
+		}
+	}
+}
+
+// erroredPlanet is the planet of the first field with an error, or "".
+func (f MapGenForm) erroredPlanet() string {
+	for _, tab := range [][]MapGenPlanet{f.Resources, f.Terrain} {
+		for _, p := range tab {
+			for _, g := range p.Groups {
+				for _, s := range g.Selects {
+					if !s.Error.IsZero() {
+						return p.Planet
+					}
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // TabOf names the tab that holds a field id, or "".
@@ -454,7 +556,8 @@ type mgControl struct {
 	// topLevel is a 1.1 setting that the game stores outside
 	// autoplace_controls: water and cliffs.
 	topLevel bool
-	// toggle is a resource the game lets you switch off; off is size 0.
+	// toggle is a resource or cliffs the game lets you switch off; off is
+	// size 0, or on 1.1 cliff_settings.richness 0 (mapgen.CliffToggle).
 	toggle bool
 }
 
@@ -485,12 +588,17 @@ func mgPlanets(line string, spaceAge bool) []mgPlanet {
 	for _, p := range names {
 		planet := mgPlanet{name: p}
 		for _, c := range mapgen.Controls(line, p) {
-			planet.controls = append(planet.controls, controlFor(c))
+			mc := controlFor(c)
+			if c.Category == mapgen.CategoryCliff && mapgen.CliffToggle(line, p) {
+				mc.toggle = true
+			}
+			planet.controls = append(planet.controls, mc)
 		}
 		if line == gamesettings.Line11 && p == "nauvis" {
 			planet.controls = append(planet.controls,
 				mgControl{name: "water", legend: controlMsg("water"), category: mapgen.CategoryTerrain, topLevel: true, settings: waterSettings()},
-				mgControl{name: "nauvis_cliff", legend: controlMsg("nauvis_cliff"), category: mapgen.CategoryCliff, topLevel: true, settings: cliffSettings()})
+				mgControl{name: "nauvis_cliff", legend: controlMsg("nauvis_cliff"), category: mapgen.CategoryCliff, topLevel: true,
+					settings: cliffSettings(), toggle: mapgen.CliffToggle(line, p)})
 		}
 		out = append(out, planet)
 	}
@@ -570,6 +678,12 @@ var knownFieldNames = func() map[string]bool {
 	return known
 }()
 
+// enemyTips are the game's tips for an enemy control's settings, by key.
+var enemyTips = map[string]i18n.Msg{
+	"frequency": i18n.M("mapgen.tip.enemy_frequency"),
+	"size":      i18n.M("mapgen.tip.enemy_size"),
+}
+
 // buildMapGenForm lays out the form; posted says what the request holds for
 // a select's name.
 func buildMapGenForm(line string, spaceAge bool, posted func(name string) (string, bool)) MapGenForm {
@@ -578,24 +692,25 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 		Seed:   MapGenText{ID: mgSeedID, Name: mgSeed},
 		Width:  MapGenText{ID: mgWidthID, Name: mgWidth, Label: i18n.M("mapgen.width.label"), Value: "0"},
 		Height: MapGenText{ID: mgHeightID, Name: mgHeight, Label: i18n.M("mapgen.height.label"), Value: "0"},
-		StartingArea: MapGenSelect{ID: mgStartID, Name: mgStart, Label: i18n.M("mapgen.start.label"),
+		StartingArea: MapGenSelect{ID: mgStartID, Name: mgStart, Label: i18n.M("mapgen.start.label"), Tip: i18n.M("mapgen.tip.starting_area"),
 			Value: mgDefaultStep, Options: optionsWithNone, path: "starting_area"},
 		Peaceful: MapGenCheck{ID: "mg-peaceful", Name: mgPeaceful, Label: i18n.M("mapgen.peaceful.label"),
-			Hint: i18n.M("mapgen.peaceful.hint"), path: "peaceful_mode"},
+			Tip: i18n.M("mapgen.peaceful.hint"), path: "peaceful_mode"},
 		Raw: MapGenText{ID: mgRawID, Name: mgRaw, Value: rawPrefill(line)},
 	}
 	if line != gamesettings.Line11 {
 		f.NoEnemies = MapGenCheck{ID: "mg-no-enemies", Name: mgNoEnemies, Label: i18n.M("mapgen.no_enemies.label"),
-			Hint: i18n.M("mapgen.no_enemies.hint"), path: "no_enemies_mode"}
+			Tip: i18n.M("mapgen.no_enemies.hint"), path: "no_enemies_mode"}
 	}
 	if v, ok := posted(mgStart); ok {
 		f.StartingArea.Value = v
 		f.StartingArea.Options = withExtra(f.StartingArea.Options, v)
 	}
+	needed := mapgen.NeededResources()
 	for _, p := range mgPlanets(line, spaceAge) {
 		summary := planetMsg(p.name)
-		res := MapGenPlanet{ID: "mg-resources-" + p.name, Summary: summary, Open: len(f.Resources) == 0}
-		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Summary: summary, Open: len(f.Terrain) == 0}
+		res := MapGenPlanet{ID: "mg-resources-" + p.name, Planet: p.name, Tab: tabResources, Summary: summary}
+		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Planet: p.name, Tab: tabTerrain, Summary: summary}
 		if p.name == "nauvis" {
 			ter.Groups = append(ter.Groups, mapTypeGroup(line, posted))
 		}
@@ -604,6 +719,10 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 			if c.toggle {
 				g.Toggle = &MapGenCheck{ID: fieldID(p.name, c.name, mgOn), Name: fieldName(p.name, c.name, mgOn),
 					Label: c.legend, Checked: true, Preset: true}
+				if p.name == "nauvis" && slices.Contains(needed, c.name) {
+					g.Toggle.NeedKey = c.name
+					g.Toggle.Need = needMsgs[c.name]
+				}
 			}
 			for _, s := range c.settings {
 				name := fieldName(p.name, c.name, s.key)
@@ -612,11 +731,17 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 				if !c.topLevel {
 					sel.path = "autoplace_controls." + c.name + "." + s.key
 				}
+				if c.tab() == tabEnemy {
+					sel.Tip = enemyTips[s.key]
+				}
 				// A resource's box stands in for its size's "None", as in the game.
 				if s.none && (!c.toggle || s.key != "size") {
 					sel.Options = optionsWithNone
 				}
-				if v, ok := posted(name); ok {
+				if v, ok := posted(name); ok && c.toggle && s.key == "size" && v == mgNone {
+					// A size of none is the box off, as the game shows it.
+					g.Toggle.Checked = false
+				} else if ok {
 					sel.Value = v
 					sel.Options = withExtra(sel.Options, v)
 				}
@@ -643,6 +768,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 			f.Terrain = append(f.Terrain, ter)
 		}
 	}
+	f.setOpen("")
 	return f
 }
 
@@ -671,10 +797,11 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		form.NoEnemies.Checked = vals.Get(mgNoEnemies) != ""
 	}
 	// Each box comes after a hidden "off" of the same name, so an unticked
-	// box posts "off" alone. A post without the name leaves the resource on.
+	// box posts "off" alone. A post without the name leaves the box as the
+	// size made it.
 	for _, t := range form.toggles() {
 		if vs, ok := vals[t.Name]; ok {
-			t.Checked = slices.Contains(vs, "on")
+			t.Checked = t.Checked && slices.Contains(vs, "on")
 		}
 	}
 	if v, ok := posted(mgSeed); ok {
@@ -729,9 +856,7 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 			for gi := range p.Groups {
 				g := &p.Groups[gi]
 				for si := range g.Selects {
-					if !checkSelect(&g.Selects[si], i18n.M("mapgen.field.name", "control", g.Legend, "setting", g.Selects[si].Label)) {
-						p.Open = true
-					}
+					checkSelect(&g.Selects[si], i18n.M("mapgen.field.name", "control", g.Legend, "setting", g.Selects[si].Label))
 				}
 			}
 		}
@@ -757,6 +882,7 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 			fail(mgRawID, rawErrorMsg(fe, form.Raw.Value))
 		}
 	}
+	form.setOpen("")
 	if len(problems) > 0 {
 		return form, nil, problems
 	}
@@ -1005,6 +1131,10 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 			case c.topLevel:
 				cliff["cliff_elevation_interval"] = num(40 / stored(p.name, c, c.settings[0]))
 				cliff["richness"] = num(stored(p.name, c, c.settings[1]))
+				if c.toggle && !f.resourceOn(p.name, c.name) {
+					// 1.1's own off value; on 2.x it would reach every planet.
+					cliff["richness"] = num(0)
+				}
 			default:
 				entry := map[string]json.RawMessage{}
 				if b, ok := rawControls[c.name]; ok {

@@ -11,8 +11,12 @@
   "js.generate.preview_ready": "Aperçu de la carte prêt.",
   "js.preview.zoom": "Zoom {level}",
   "js.preview.drawing": "Dessin de {planet}…",
+  "js.preview.previous": "Planète précédente : {planet}",
+  "js.preview.next": "Planète suivante : {planet}",
+  "js.preview.download": "Télécharger la carte : {planet}",
   "js.generate.reset": "Paramètres de la carte réinitialisés au préréglage {preset}.",
   "js.generate.ach_setting": "{setting} désactive certains succès.",
   "js.generate.ach_clear": "Plus aucun paramètre ne désactive les succès.",
-  "js.generate.moved": "{field} réglé sur {value} pour que la plage reste valide."
+  "js.generate.moved": "{field} réglé sur {value} pour que la plage reste valide.",
+  "js.preview.download_territories": "Télécharger la carte avec les territoires : {planet}"
 }

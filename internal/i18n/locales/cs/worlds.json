@@ -320,6 +320,7 @@
   "worlds.world.rollback_text": "Poslední aktualizace pořídila snímek „{label}“ ({when}). Vrácení zpět ho obnoví a svět se vrátí na Factorio {version}.",
   "worlds.world.saves": "Uložené hry",
   "worlds.world.server_link": "Přejít na stránku serveru",
+  "worlds.world.updating": "Aktualizace na Factorio {version}…",
   "worlds.world.server_page": "stránku serveru",
   "worlds.world.snapshots": "Snímky",
   "worlds.world.switch.busy": "Na serveru probíhá operace, například přepnutí. Viz {link}.",
@@ -408,11 +409,51 @@
   "worlds.generate.preview.download": "Stáhnout {planet} (PNG)",
   "worlds.generate.preview.download_all": "Stáhnout všechny vykreslené planety (ZIP)",
   "worlds.generate.preview.updating": "Vykresluje se náhled mapy pro aktuální nastavení…",
-  "worlds.generate.large.previous": "Předchozí",
-  "worlds.generate.large.next": "Další",
   "worlds.generate.large.zoom_out": "Oddálit",
   "worlds.generate.large.zoom_in": "Přiblížit",
   "worlds.generate.large.close": "Zavřít",
-  "worlds.generate.large.keys": "Šipky vlevo a vpravo ukazují předchozí a další planetu, plus a minus mění přiblížení, Escape zavírá.",
-  "worlds.generate.preview.pin": "Špendlík označuje střed mapy, kde hráči začínají."
+  "worlds.generate.large.keys": "Šipky vlevo a vpravo ukazují předchozí a další planetu, plus a minus mění přiblížení, 0 přizpůsobí obrázek, Escape zavírá. Po přiblížení lze obrázek přetáhnout, klepnutím na místo ho vystředit, nebo se po něm pohybovat šipkami.",
+  "worlds.generate.preview.pin": "Špendlík označuje střed mapy, kde hráči začínají.",
+  "worlds.generate.preview.size_label": "Velikost náhledu",
+  "worlds.generate.preview.size_option": "{size} × {size} dlaždic",
+  "worlds.generate.preview.size_default": "{size} × {size} dlaždic (výchozí)",
+  "worlds.generate.preview.size_hint": "Kolik mapy kolem jejího středu náhled ukazuje. Velké rozměry ukazují podrobnosti ve velkém zobrazení.",
+  "worlds.generate.error.preview_size": "Je třeba vybrat jednu z velikostí v seznamu.",
+  "worlds.generate.territories.label": "Zobrazit teritoria ničitelů",
+  "worlds.generate.territories.hint": "Jejich nalezení trvá o několik sekund déle.",
+  "worlds.generate.territories.too_big_hint": "Zobrazují se u velikostí náhledu do {size} × {size} dlaždic. Pro jejich zobrazení je třeba zvolit menší velikost náhledu.",
+  "worlds.generate.territories.finding": "Hledají se teritoria ničitelů…",
+  "worlds.generate.territories.counts": "Teritoria ničitelů v tomto obrázku: {list}.",
+  "worlds.generate.territories.none": "Tento obrázek neobsahuje žádná teritoria ničitelů.",
+  "worlds.generate.territories.no_vulcanus": "Teritoria ničitelů mají jen světy se Space Age, a to na planetě Vulcanus.",
+  "worlds.generate.territories.too_big": "Teritoria ničitelů se zobrazují u velikostí náhledu do {size} × {size} dlaždic. Je třeba zvolit menší velikost náhledu.",
+  "worlds.generate.territories.invalid": "Nastavení obsahuje chyby, proto se teritoria ničitelů nenašla. Je třeba opravit chyby uvedené v náhledu mapy.",
+  "worlds.generate.territories.busy": "Právě se vytváří jiný náhled mapy, proto se teritoria ničitelů nenašla. Je třeba několik sekund počkat a zkusit to znovu.",
+  "worlds.generate.territories.draw_busy": "Právě se kreslí jiné obrázky s teritorii. Je třeba několik sekund počkat a stáhnout znovu.",
+  "worlds.generate.territories.timeout": "Hledání teritorií ničitelů trvalo příliš dlouho a bylo zastaveno. Je třeba zkusit to znovu nebo zvolit menší velikost náhledu.",
+  "worlds.generate.territories.oom": "Hře při hledání teritorií ničitelů došla paměť. Je třeba zvolit menší velikost náhledu.",
+  "worlds.generate.territories.failed": "Hře se nepodařilo najít teritoria ničitelů. Náhled mapy i generování světa přesto fungují. Pokud se to opakuje, je třeba zkontrolovat protokol Foremanu.",
+  "worlds.generate.territories.request_failed": "Požadavek na teritoria ničitelů selhal. Je třeba zkontrolovat, zda je Foreman dostupný a zda je přihlášení stále platné, a zkusit to znovu.",
+  "worlds.generate.territories.retry": "Zkusit znovu",
+  "worlds.generate.territories.download": "Stáhnout {planet} s teritorii (PNG)",
+  "worlds.generate.territories.count.small": {
+    "one": "{count} malé",
+    "few": "{count} malá",
+    "other": "{count} malých"
+  },
+  "worlds.generate.territories.count.medium": {
+    "one": "{count} střední",
+    "few": "{count} střední",
+    "other": "{count} středních"
+  },
+  "worlds.generate.territories.count.big": {
+    "one": "{count} velké",
+    "few": "{count} velká",
+    "other": "{count} velkých"
+  },
+  "worlds.generate.territories.count.unknown": {
+    "one": "{count} neznámé velikosti",
+    "few": "{count} neznámé velikosti",
+    "other": "{count} neznámé velikosti"
+  }
 }

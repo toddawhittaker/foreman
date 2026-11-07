@@ -11,8 +11,12 @@
   "js.generate.preview_ready": "Предпросмотр карты готов.",
   "js.preview.zoom": "Масштаб {level}",
   "js.preview.drawing": "Рисуется {planet}…",
+  "js.preview.previous": "Предыдущая планета: {planet}",
+  "js.preview.next": "Следующая планета: {planet}",
+  "js.preview.download": "Скачать карту: {planet}",
   "js.generate.reset": "Настройки карты сброшены к шаблону {preset}.",
   "js.generate.ach_setting": "{setting} отключает некоторые достижения.",
   "js.generate.ach_clear": "Теперь ни одна настройка не отключает достижения.",
-  "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым."
+  "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым.",
+  "js.preview.download_territories": "Скачать карту с территориями: {planet}"
 }

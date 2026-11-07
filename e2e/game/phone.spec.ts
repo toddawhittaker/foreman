@@ -1,10 +1,9 @@
 /// <reference types="node" />
 import { test, expect, type Page } from "@playwright/test";
-import { checkPage } from "../tests/foreman.js";
+import { checkPage, listeningPort } from "../tests/foreman.js";
 import { spawn } from "node:child_process";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
-import { createServer } from "node:net";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -36,18 +35,6 @@ const dataDir = join(repo, ".cache", "e2e-game", worldID);
 // The game takes a while to load a map and to answer on RCON.
 const gameTimeout = { timeout: 180_000 };
 
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer();
-    srv.on("error", reject);
-    srv.listen(0, "127.0.0.1", () => {
-      const addr = srv.address();
-      const port = typeof addr === "object" && addr ? addr.port : 0;
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
 // One call to the Docker API over the socket.
 function dockerCall(method: string, path: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
@@ -75,7 +62,6 @@ async function removeContainer(name = container) {
 
 async function startForeman() {
   mkdirSync(dataDir, { recursive: true });
-  const port = await freePort();
   let out = "";
   const proc = spawn(join(repo, "bin", "foreman"), ["serve"], {
     env: {
@@ -86,7 +72,7 @@ async function startForeman() {
       FOREMAN_GAME_GID: String(process.getgid?.() ?? 0),
       // The Playwright container is on this run's own network, which the game joins too.
       FOREMAN_GAME_NETWORK: process.env.FOREMAN_E2E_GAME_NETWORK ?? "",
-      FOREMAN_LISTEN: `127.0.0.1:${port}`,
+      FOREMAN_LISTEN: "127.0.0.1:0",
       HTTPS_PROXY: "http://127.0.0.1:9",
       HTTP_PROXY: "http://127.0.0.1:9",
     },
@@ -94,6 +80,10 @@ async function startForeman() {
   });
   proc.stdout.on("data", (d) => (out += d));
   proc.stderr.on("data", (d) => (out += d));
+  const port = await listeningPort(proc).catch((e: Error) => {
+    proc.kill("SIGTERM");
+    throw new Error(`${e.message}:\n${out}`);
+  });
   const url = `http://127.0.0.1:${port}`;
   const deadline = Date.now() + 10_000;
   for (;;) {

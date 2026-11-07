@@ -308,6 +308,7 @@
   "worlds.world.rollback_text": "The last update took the snapshot \"{label}\" on {when}. Rolling back restores it and returns the world to Factorio {version}.",
   "worlds.world.saves": "Saves",
   "worlds.world.server_link": "Go to the Server page",
+  "worlds.world.updating": "Updating to Factorio {version}…",
   "worlds.world.server_page": "the Server page",
   "worlds.world.snapshots": "Snapshots",
   "worlds.world.switch.busy": "An operation is running on the server, such as a switch. See {link}.",
@@ -396,11 +397,47 @@
   "worlds.generate.preview.download": "Download {planet} (PNG)",
   "worlds.generate.preview.download_all": "Download all drawn planets (zip)",
   "worlds.generate.preview.updating": "Drawing the map preview for the current settings…",
-  "worlds.generate.large.previous": "Previous",
-  "worlds.generate.large.next": "Next",
   "worlds.generate.large.zoom_out": "Zoom out",
   "worlds.generate.large.zoom_in": "Zoom in",
   "worlds.generate.large.close": "Close",
-  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, and Escape closes.",
-  "worlds.generate.preview.pin": "The pin marks the centre of the map, where players start."
+  "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
+  "worlds.generate.preview.pin": "The pin marks the centre of the map, where players start.",
+  "worlds.generate.preview.size_label": "Preview size",
+  "worlds.generate.preview.size_option": "{size} × {size} tiles",
+  "worlds.generate.preview.size_default": "{size} × {size} tiles (default)",
+  "worlds.generate.preview.size_hint": "How much of the map, around its centre, the preview shows. Big sizes show their detail in the large view.",
+  "worlds.generate.error.preview_size": "Choose one of the sizes in the list.",
+  "worlds.generate.territories.label": "Show demolisher territories",
+  "worlds.generate.territories.hint": "Finding them takes a few seconds more.",
+  "worlds.generate.territories.too_big_hint": "Shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size to show them.",
+  "worlds.generate.territories.finding": "Finding the demolisher territories…",
+  "worlds.generate.territories.counts": "Demolisher territories in this picture: {list}.",
+  "worlds.generate.territories.none": "This picture has no demolisher territories.",
+  "worlds.generate.territories.no_vulcanus": "Only Space Age worlds have demolisher territories, on Vulcanus.",
+  "worlds.generate.territories.too_big": "Demolisher territories are shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size.",
+  "worlds.generate.territories.invalid": "The settings have problems, so the demolisher territories were not found. Fix the problems the map preview lists.",
+  "worlds.generate.territories.busy": "Another map preview is being made, so the demolisher territories were not found. Wait a few seconds, then try again.",
+  "worlds.generate.territories.draw_busy": "Other pictures with territories are being drawn right now. Wait a few seconds, then download again.",
+  "worlds.generate.territories.timeout": "Finding the demolisher territories took too long and was stopped. Try again, or choose a smaller preview size.",
+  "worlds.generate.territories.oom": "The game ran out of memory finding the demolisher territories. Choose a smaller preview size.",
+  "worlds.generate.territories.failed": "The game could not find the demolisher territories. The map preview and Generate still work. If it keeps failing, check Foreman's log.",
+  "worlds.generate.territories.request_failed": "The request for the demolisher territories failed. Check that Foreman is reachable and that you are still signed in, then try again.",
+  "worlds.generate.territories.retry": "Try again",
+  "worlds.generate.territories.download": "Download {planet} with territories (PNG)",
+  "worlds.generate.territories.count.small": {
+    "one": "{count} small",
+    "other": "{count} small"
+  },
+  "worlds.generate.territories.count.medium": {
+    "one": "{count} medium",
+    "other": "{count} medium"
+  },
+  "worlds.generate.territories.count.big": {
+    "one": "{count} big",
+    "other": "{count} big"
+  },
+  "worlds.generate.territories.count.unknown": {
+    "one": "{count} of unknown size",
+    "other": "{count} of unknown size"
+  }
 }

@@ -301,11 +301,11 @@ func addKey(t *testing.T, keys map[string]bool, n parse.Node) {
 }
 
 // goKeys collects the literal keys of M, T, HTML and Link calls in the
-// non-test Go files of internal/web and internal/i18n.
+// non-test Go files of internal/web, internal/i18n and internal/territory.
 func goKeys(t *testing.T) map[string]bool {
 	t.Helper()
 	keys := map[string]bool{}
-	for _, dir := range []string{".", "../i18n"} {
+	for _, dir := range []string{".", "../i18n", "../territory"} {
 		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
 		if err != nil {
 			t.Fatal(err)

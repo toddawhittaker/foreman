@@ -16,7 +16,8 @@ import (
 // The Enemy and Advanced settings Generate offers from map-settings.json
 // (SPEC 5.6; DESIGN 8.7). Each field shows its value in the units the game's
 // own map generator shows (minutes, percent, "40" for an evolution time
-// factor of 0.000004). Fields are named "ms." and the dotted path of the
+// factor of 0.000004), with no unit where the game shows none; the tip
+// gives the scale. Fields are named "ms." and the dotted path of the
 // value in the file.
 
 const msPrefix = "ms."
@@ -62,7 +63,9 @@ var (
 type msDef struct {
 	path  string
 	label i18n.Msg
-	kind  msKind
+	// tip explains the setting, in the game's words where it has them.
+	tip  i18n.Msg
+	kind msKind
 	// scale converts the file's value to the shown one (shown = stored × scale).
 	scale float64
 	unit  i18n.Msg // the unit after the field, or none
@@ -99,44 +102,44 @@ const (
 // shows those its own file holds.
 var msGroups = []msGroup{
 	{tabEnemy, i18n.M("mapgen.ms.expansion"), []msDef{
-		{path: "enemy_expansion.enabled", label: i18n.M("mapgen.ms.enabled"), kind: msToggle},
+		{path: "enemy_expansion.enabled", label: i18n.M("mapgen.ms.enabled"), tip: i18n.M("mapgen.tip.expansion"), kind: msToggle},
 		// The limits are the game screen's, in the shown units.
-		{path: "enemy_expansion.min_expansion_distance", label: i18n.M("mapgen.ms.min_distance"), kind: msWhole, scale: 1, lo: 1, hi: 20},
-		{path: "enemy_expansion.max_expansion_distance", label: i18n.M("mapgen.ms.max_distance"), kind: msWhole, scale: 1, lo: 2, hi: 20},
-		{path: "enemy_expansion.settler_group_min_size", label: i18n.M("mapgen.ms.min_group"), kind: msWhole, scale: 1, lo: 1, hi: 20, replacedBy: "enemy_expansion.evolution_group_size_factor"},
-		{path: "enemy_expansion.settler_group_max_size", label: i18n.M("mapgen.ms.max_group"), kind: msWhole, scale: 1, lo: 1, hi: 40, replacedBy: "enemy_expansion.evolution_group_size_factor"},
-		{path: "enemy_expansion.evolution_group_size_factor", label: i18n.M("mapgen.ms.group_factor"), scale: 1, whole: true, lo: 1, hi: 20},
-		{path: "enemy_expansion.min_expansion_cooldown", label: i18n.M("mapgen.ms.min_cooldown"), scale: 1.0 / 3600, whole: true, lo: 1, hi: 60, unit: i18n.M("mapgen.unit.minutes")},
-		{path: "enemy_expansion.max_expansion_cooldown", label: i18n.M("mapgen.ms.max_cooldown"), scale: 1.0 / 3600, whole: true, lo: 5, hi: 180, unit: i18n.M("mapgen.unit.minutes")},
+		{path: "enemy_expansion.min_expansion_distance", label: i18n.M("mapgen.ms.min_distance"), tip: i18n.M("mapgen.tip.min_distance"), kind: msWhole, scale: 1, lo: 1, hi: 20},
+		{path: "enemy_expansion.max_expansion_distance", label: i18n.M("mapgen.ms.max_distance"), tip: i18n.M("mapgen.tip.max_distance"), kind: msWhole, scale: 1, lo: 2, hi: 20},
+		{path: "enemy_expansion.settler_group_min_size", label: i18n.M("mapgen.ms.min_group"), tip: i18n.M("mapgen.tip.min_group"), kind: msWhole, scale: 1, lo: 1, hi: 20, replacedBy: "enemy_expansion.evolution_group_size_factor"},
+		{path: "enemy_expansion.settler_group_max_size", label: i18n.M("mapgen.ms.max_group"), tip: i18n.M("mapgen.tip.max_group"), kind: msWhole, scale: 1, lo: 1, hi: 40, replacedBy: "enemy_expansion.evolution_group_size_factor"},
+		{path: "enemy_expansion.evolution_group_size_factor", label: i18n.M("mapgen.ms.group_factor"), tip: i18n.M("mapgen.tip.group_factor"), scale: 1, whole: true, lo: 1, hi: 20},
+		{path: "enemy_expansion.min_expansion_cooldown", label: i18n.M("mapgen.ms.min_cooldown"), tip: i18n.M("mapgen.tip.min_cooldown"), scale: 1.0 / 3600, whole: true, lo: 1, hi: 60, unit: i18n.M("mapgen.unit.minutes")},
+		{path: "enemy_expansion.max_expansion_cooldown", label: i18n.M("mapgen.ms.max_cooldown"), tip: i18n.M("mapgen.tip.max_cooldown"), scale: 1.0 / 3600, whole: true, lo: 5, hi: 180, unit: i18n.M("mapgen.unit.minutes")},
 	}},
 	{tabEnemy, i18n.M("mapgen.ms.evolution"), []msDef{
-		{path: "enemy_evolution.enabled", label: i18n.M("mapgen.ms.enabled"), kind: msToggle},
-		{path: "enemy_evolution.time_factor", label: i18n.M("mapgen.ms.time_factor"), scale: 1e7, whole: true, hi: 1000, unit: i18n.M("mapgen.unit.e7")},
-		{path: "enemy_evolution.destroy_factor", label: i18n.M("mapgen.ms.destroy_factor"), scale: 1e5, whole: true, hi: 1000, unit: i18n.M("mapgen.unit.e5")},
-		{path: "enemy_evolution.pollution_factor", label: i18n.M("mapgen.ms.pollution_factor"), scale: 1e7, whole: true, hi: 1000, unit: i18n.M("mapgen.unit.e7")},
+		{path: "enemy_evolution.enabled", label: i18n.M("mapgen.ms.enabled"), tip: i18n.M("mapgen.tip.evolution"), kind: msToggle},
+		{path: "enemy_evolution.time_factor", label: i18n.M("mapgen.ms.time_factor"), tip: i18n.M("mapgen.tip.time_factor"), scale: 1e7, whole: true, hi: 1000},
+		{path: "enemy_evolution.destroy_factor", label: i18n.M("mapgen.ms.destroy_factor"), tip: i18n.M("mapgen.tip.destroy_factor"), scale: 1e5, whole: true, hi: 1000},
+		{path: "enemy_evolution.pollution_factor", label: i18n.M("mapgen.ms.pollution_factor"), tip: i18n.M("mapgen.tip.pollution_factor"), scale: 1e7, whole: true, hi: 1000},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.technology"), []msDef{
 		// Only 1.1's file holds these three.
-		{path: "difficulty_settings.recipe_difficulty", label: i18n.M("mapgen.ms.recipe_difficulty"), kind: msChoice, choices: msNormalExpensive},
-		{path: "difficulty_settings.technology_difficulty", label: i18n.M("mapgen.ms.technology_difficulty"), kind: msChoice, choices: msNormalExpensive},
-		{path: "difficulty_settings.research_queue_setting", label: i18n.M("mapgen.ms.research_queue"), kind: msChoice, choices: msResearchQueue},
+		{path: "difficulty_settings.recipe_difficulty", label: i18n.M("mapgen.ms.recipe_difficulty"), tip: i18n.M("mapgen.tip.recipe_difficulty"), kind: msChoice, choices: msNormalExpensive},
+		{path: "difficulty_settings.technology_difficulty", label: i18n.M("mapgen.ms.technology_difficulty"), tip: i18n.M("mapgen.tip.technology_difficulty"), kind: msChoice, choices: msNormalExpensive},
+		{path: "difficulty_settings.research_queue_setting", label: i18n.M("mapgen.ms.research_queue"), tip: i18n.M("mapgen.tip.research_queue"), kind: msChoice, choices: msResearchQueue},
 		// The runtime API's range for the multiplier.
-		{path: "difficulty_settings.technology_price_multiplier", label: i18n.M("mapgen.ms.price"), scale: 1, whole: true, lo: 1, hi: 100000},
+		{path: "difficulty_settings.technology_price_multiplier", label: i18n.M("mapgen.ms.price"), tip: i18n.M("mapgen.tip.price"), scale: 1, whole: true, lo: 1, hi: 100000},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.pollution"), []msDef{
-		{path: "pollution.enabled", label: i18n.M("mapgen.ms.enabled"), kind: msToggle},
-		{path: "pollution.diffusion_ratio", label: i18n.M("mapgen.ms.diffusion"), scale: 100, whole: true, hi: 25, unit: i18n.M("mapgen.unit.percent")},
-		{path: "pollution.ageing", label: i18n.M("mapgen.ms.absorption"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
-		{path: "pollution.enemy_attack_pollution_consumption_modifier", label: i18n.M("mapgen.ms.attack_cost"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
-		{path: "pollution.min_pollution_to_damage_trees", label: i18n.M("mapgen.ms.tree_damage"), scale: 1, whole: true, hi: 9999},
-		{path: "pollution.pollution_per_tree_damage", label: i18n.M("mapgen.ms.per_tree"), scale: 1, whole: true, hi: 9999},
+		{path: "pollution.enabled", label: i18n.M("mapgen.ms.enabled"), tip: i18n.M("mapgen.tip.pollution"), kind: msToggle},
+		{path: "pollution.diffusion_ratio", label: i18n.M("mapgen.ms.diffusion"), tip: i18n.M("mapgen.tip.diffusion"), scale: 100, whole: true, hi: 25, unit: i18n.M("mapgen.unit.percent")},
+		{path: "pollution.ageing", label: i18n.M("mapgen.ms.absorption"), tip: i18n.M("mapgen.tip.absorption"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
+		{path: "pollution.enemy_attack_pollution_consumption_modifier", label: i18n.M("mapgen.ms.attack_cost"), tip: i18n.M("mapgen.tip.attack_cost"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
+		{path: "pollution.min_pollution_to_damage_trees", label: i18n.M("mapgen.ms.tree_damage"), tip: i18n.M("mapgen.tip.tree_damage"), scale: 1, whole: true, hi: 9999},
+		{path: "pollution.pollution_per_tree_damage", label: i18n.M("mapgen.ms.per_tree"), tip: i18n.M("mapgen.tip.per_tree"), scale: 1, whole: true, hi: 9999},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.asteroids"), []msDef{
-		{path: "asteroids.spawning_rate", label: i18n.M("mapgen.ms.spawning"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
+		{path: "asteroids.spawning_rate", label: i18n.M("mapgen.ms.spawning"), tip: i18n.M("mapgen.tip.spawning"), scale: 100, whole: true, lo: 10, hi: 400, unit: i18n.M("mapgen.unit.percent")},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.spoiling"), []msDef{
 		// The game shows the rate, 10% to 1000%; the file stores the time modifier, 10 to 0.1.
-		{path: "difficulty_settings.spoil_time_modifier", label: i18n.M("mapgen.ms.spoil_rate"), inverse: true, whole: true, unit: i18n.M("mapgen.unit.percent"), lo: 10, hi: 1000},
+		{path: "difficulty_settings.spoil_time_modifier", label: i18n.M("mapgen.ms.spoil_rate"), tip: i18n.M("mapgen.tip.spoil_rate"), inverse: true, whole: true, unit: i18n.M("mapgen.unit.percent"), lo: 10, hi: 1000},
 	}},
 }
 
@@ -160,6 +163,7 @@ type MapSettingsChoice struct {
 type MapSettingsField struct {
 	ID, Name string
 	Label    i18n.Msg
+	Tip      i18n.Msg
 	Unit     i18n.Msg
 	Toggle   bool
 	// Value is the shown value; Checked a toggle's state. Preset is the
@@ -176,6 +180,17 @@ type MapSettingsField struct {
 	Error                   i18n.Msg
 	Ach                     *AchWarn
 	Blocked                 bool
+	// group is the group's name, which a toggle's tip is about: its label is only "Enabled".
+	group i18n.Msg
+}
+
+// Toggletip explains the field.
+func (f MapSettingsField) Toggletip() Toggletip {
+	about := f.Label
+	if f.Toggle {
+		about = f.group
+	}
+	return Toggletip{f.ID, about, f.Tip}
 }
 
 // MapSettingsGroup is one fieldset.
@@ -302,7 +317,7 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 			if _, replaced := base[d.replacedBy]; !ok || replaced {
 				continue
 			}
-			fl := MapSettingsField{ID: msFieldID(d.path), Name: msPrefix + d.path, Label: d.label, Toggle: d.kind == msToggle}
+			fl := MapSettingsField{ID: msFieldID(d.path), Name: msPrefix + d.path, Label: d.label, Tip: d.tip, Toggle: d.kind == msToggle, group: g.legend}
 			fl.Unit = d.unit
 			var stored any
 			if fl.Toggle {

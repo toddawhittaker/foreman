@@ -2,6 +2,7 @@ package web
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -22,6 +23,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/territory"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // The map preview's paths under PathGeneratePreview: one picture to show,
@@ -50,34 +53,40 @@ const (
 const previewDeadline = game.PreviewWait + game.PreviewLimit + 30*time.Second
 
 // MapPreviewer makes the map preview pictures: one PNG for each planet
-// asked for, from the settings Generate would write (SPEC 5.6, 14.3). The
+// asked for, from the settings Generate would write (SPEC 5.6, 14.3), and
+// reads where Vulcanus's demolisher territories lie in the same map. The
 // game controller provides it. Seed is always set, so the world made later
 // has the same map.
 type MapPreviewer interface {
 	Preview(ctx context.Context, req game.PreviewRequest) ([]game.PNG, error)
+	Territories(ctx context.Context, req game.PreviewRequest) (territory.Result, error)
 }
 
 // previewTTL is how long a preview's pictures are kept (SPEC 5.6).
 const previewTTL = 15 * time.Minute
 
-// The pictures held at once: 8 users' previews and 48 MB in all, so a few
-// admins cannot fill the memory (SPEC 5.6).
+// The pictures held at once: 8 users' previews and 96 MiB in all, so a few
+// admins cannot fill the memory (SPEC 5.6). One user's Space Age set at the
+// largest size is about 35 MB, so a second user does not evict it.
 const (
 	maxPreviews     = 8
-	maxPreviewBytes = 48 << 20
+	maxPreviewBytes = 96 << 20
 )
 
 // previewEntry is one user's current preview: the pictures drawn so far
-// from one set of settings, under a random token.
+// from one set of settings, under a random token, and Vulcanus's demolisher
+// territories once they are read. bytes counts both.
 type previewEntry struct {
-	token   string
-	key     string // settingsKey of the settings drawn
-	name    string // the world name typed, for download names
-	seed    string
-	expires time.Time
-	planets []string // in the order drawn
-	images  map[string][]byte
-	bytes   int
+	token       string
+	key         string // settingsKey of the settings drawn
+	name        string // the world name typed, for download names
+	seed        string
+	expires     time.Time
+	planets     []string // in the order drawn
+	images      map[string][]byte
+	territories *territory.Result
+	size        int // the side, in pixels, of the pictures the territories are read for
+	bytes       int
 }
 
 // previewStore holds each user's current preview (SPEC 5.6). Nothing else
@@ -94,15 +103,16 @@ func newPreviewStore(now func() time.Time) *previewStore {
 }
 
 // settingsKey is a hash of everything that changes the map, so the same
-// settings find the pictures already drawn. The planet and the world name
-// are not part of it.
+// settings find the pictures already drawn. The size is part of it, as it
+// changes every picture; the planet and the world name are not.
 func settingsKey(req game.PreviewRequest) string {
 	b, _ := json.Marshal(struct {
 		Version, Preset     string
 		SpaceAge            bool
 		Seed                uint32
+		Size                int
 		MapGen, MapSettings []byte
-	}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, req.MapGenSettings, req.MapSettings})
+	}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, cmp.Or(req.Size, game.PreviewSizeDefault), req.MapGenSettings, req.MapSettings})
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
@@ -138,18 +148,7 @@ func (p *previewStore) missing(user int64, key, name string, planets []string) (
 func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.sweepLocked()
-	e, ok := p.byUser[user]
-	if !ok || e.key != key {
-		e = &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
-	} else {
-		// entry() hands copies of the stored entry to handlers that read the
-		// map and slice after the lock is gone, so they are never written in
-		// place. The picture bytes are shared; they are never changed.
-		c := *e
-		c.images, c.planets = maps.Clone(e.images), slices.Clone(e.planets)
-		e = &c
-	}
+	e := p.joinLocked(user, key, seed)
 	grown := e.bytes
 	for _, im := range images {
 		if len(im.Data) > game.MaxPreviewPNG {
@@ -166,7 +165,72 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 		}
 		e.images[im.Planet] = im.Data
 	}
-	e.bytes, e.name = grown, name
+	e.bytes = grown
+	return p.keepLocked(user, e, name), nil
+}
+
+// addTerritories keeps the territories read for pictures of size pixels, as
+// add keeps pictures, and returns the preview's token.
+func (p *previewStore) addTerritories(user int64, key, name, seed string, size int, res territory.Result) (string, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	e := p.joinLocked(user, key, seed)
+	grown := e.bytes - territoryBytes(e.territories) + territoryBytes(&res)
+	if grown > maxPreviewBytes {
+		return "", errors.New("the map preview is too large")
+	}
+	e.territories, e.size, e.bytes = &res, size, grown
+	return p.keepLocked(user, e, name), nil
+}
+
+// territoriesOf returns the territories the user's preview holds for these
+// settings, and keeps the preview another 15 minutes.
+func (p *previewStore) territoriesOf(user int64, key string) (territory.Result, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.sweepLocked()
+	e, ok := p.byUser[user]
+	if !ok || e.key != key || e.territories == nil {
+		return territory.Result{}, false
+	}
+	e.expires = p.now().Add(previewTTL)
+	return *e.territories, true
+}
+
+// territoryBytes is about what a territory result holds in memory: two
+// ints a chunk, and a string and a slice header a territory.
+func territoryBytes(r *territory.Result) int {
+	if r == nil {
+		return 0
+	}
+	n := 0
+	for _, t := range r.Territories {
+		n += 40 + 16*len(t.Chunks)
+	}
+	return n
+}
+
+// joinLocked returns the entry new results of these settings go into: a
+// copy of the user's current one when its settings are the same, else a
+// new one.
+func (p *previewStore) joinLocked(user int64, key, seed string) *previewEntry {
+	p.sweepLocked()
+	e, ok := p.byUser[user]
+	if !ok || e.key != key {
+		return &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
+	}
+	// entry() hands copies of the stored entry to handlers that read the
+	// map and slice after the lock is gone, so they are never written in
+	// place. The picture bytes and territories are shared; they never change.
+	c := *e
+	c.images, c.planets = maps.Clone(e.images), slices.Clone(e.planets)
+	return &c
+}
+
+// keepLocked makes e the user's preview, the newest, and drops other users'
+// previews, oldest first, to keep the limits. It returns e's token.
+func (p *previewStore) keepLocked(user int64, e *previewEntry, name string) string {
+	e.name = name
 	e.expires = p.now().Add(previewTTL)
 	p.dropLocked(user)
 	for len(p.order) > 0 && (len(p.order) >= maxPreviews || p.totalLocked()+e.bytes > maxPreviewBytes) {
@@ -174,7 +238,7 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 	}
 	p.byUser[user] = e
 	p.order = append(p.order, user)
-	return e.token, nil
+	return e.token
 }
 
 // entry returns a copy of the user's preview under token, if it has not
@@ -226,13 +290,17 @@ func (p *previewStore) totalLocked() int {
 // PreviewView is the Map preview section. Error holds why no pictures
 // were made.
 type PreviewView struct {
-	Token    string
-	Seed     string
+	Token string
+	Seed  string
+	// Size is the side of each picture in tiles.
+	Size     int
 	Pictures []PreviewPicture
 	// Planets are every planet the world will have, for the planet choice
 	// shown when only one of them was drawn (DESIGN 8.8).
 	Planets []PreviewPlanet
 	Error   i18n.Msg
+	// Territories is the box that shows Vulcanus's demolisher territories.
+	Territories TerritoryBox
 }
 
 // PreviewPlanet is one planet the preview can draw.
@@ -263,11 +331,19 @@ func (v PreviewView) Current() string {
 // DownloadPath is where the picture is served as a file.
 func (p PreviewPicture) DownloadPath() string { return p.Path + "/download" }
 
-// ZipPath is where all the drawn planets are served as one zip.
-func (v PreviewView) ZipPath() string { return PathGeneratePreview + "/" + v.Token + "/" + zipName }
+// ZipPath is where all the drawn planets are served as one zip, Vulcanus
+// with its territories while they are shown.
+func (v PreviewView) ZipPath() string {
+	p := PathGeneratePreview + "/" + v.Token + "/" + zipName
+	if v.Territories.Drawn() {
+		p += "?" + territoriesQuery + "=1"
+	}
+	return p
+}
 
 func (s *server) previewRoutes() {
 	s.handleUpload("POST "+PathGeneratePreview, generateFormLimit, s.requireUser(s.handleGeneratePreview))
+	s.handleUpload("POST "+pathTerritories, generateFormLimit, s.requireUser(s.handleGenerateTerritories))
 	s.mux.HandleFunc("GET "+pathPicture, s.requireUser(s.handlePicture))
 	// A zip of five planets is several MB; a slow link needs the idle deadline.
 	s.handleLong("GET "+pathPictureDownload, s.requireUser(s.handlePictureDownload))
@@ -322,11 +398,8 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	req := game.PreviewRequest{
-		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
-		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings,
-	}
-	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10)}
+	req := previewRequest(f, nw)
+	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize}
 	for _, planet := range all {
 		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: planetMsg(planet)})
 	}
@@ -344,12 +417,24 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		view.Token = ""
 		view.Error = s.previewFailure(r, nw.GameVersion, err)
 	}
+	// Without script the territories are read here, after the pictures; with
+	// it the page asks for them once the picture has arrived (DESIGN 8.8).
+	script := auto || r.Header.Get("HX-Request") == "true"
+	view.Territories = s.territoryBox(w, r, u, req, f.Name, view, !script)
 	if auto {
 		// The page keeps the form as typed and swaps in the section alone.
 		s.fragment(w, r, s.generatePage(f, view), "generate-preview")
 		return
 	}
 	s.page(w, r, http.StatusOK, u.Username, s.generatePage(f, view))
+}
+
+// previewRequest is the preview of the settings Generate would write.
+func previewRequest(f GenerateForm, nw world.NewWorld) game.PreviewRequest {
+	return game.PreviewRequest{
+		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
+		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings, Size: f.PreviewSize,
+	}
 }
 
 // drawPreview runs the preview for req.Planets and keeps the pictures. The
@@ -424,7 +509,16 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 		s.notFound(w, r, u)
 		return
 	}
-	w.Header().Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, planet)+".png"))
+	png, have, err := territoryDownload(r, e, planet, png)
+	switch {
+	case err != nil:
+		s.drawFailure(w, r, u, err)
+		return
+	case !have:
+		s.notFound(w, r, u)
+		return
+	}
+	w.Header().Set("Content-Disposition", attachment(territoryFileName(r, planet, previewFileName(e.name, e.seed, planet))+".png"))
 	writePNG(w, png)
 }
 
@@ -436,6 +530,20 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 		s.notFound(w, r, u)
 		return
 	}
+	// Drawn before the reply starts, so a failure can still say so.
+	images := maps.Clone(e.images)
+	if png, have := images[territoryPlanet]; have {
+		drawn, have, err := territoryDownload(r, e, territoryPlanet, png)
+		switch {
+		case err != nil:
+			s.drawFailure(w, r, u, err)
+			return
+		case !have:
+			s.notFound(w, r, u)
+			return
+		}
+		images[territoryPlanet] = drawn
+	}
 	h := w.Header()
 	h.Set("Content-Type", "application/zip")
 	h.Set("Cache-Control", "no-store")
@@ -444,11 +552,11 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 	zw := zip.NewWriter(w)
 	for _, planet := range e.planets {
 		// A PNG is compressed already.
-		fw, err := zw.CreateHeader(&zip.FileHeader{Name: previewFileName(e.name, e.seed, planet) + ".png", Method: zip.Store})
+		fw, err := zw.CreateHeader(&zip.FileHeader{Name: territoryFileName(r, planet, previewFileName(e.name, e.seed, planet)) + ".png", Method: zip.Store})
 		if err != nil {
 			return
 		}
-		if _, err := fw.Write(e.images[planet]); err != nil {
+		if _, err := fw.Write(images[planet]); err != nil {
 			return
 		}
 	}

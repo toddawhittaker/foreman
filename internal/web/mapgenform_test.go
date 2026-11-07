@@ -620,7 +620,8 @@ func TestPartialMarkup(t *testing.T) {
 				}
 			}
 			for _, m := range reField.FindAllStringSubmatch(body, -1) {
-				if !labelled[m[1]] {
+				// A hidden field is not one a person fills in.
+				if !labelled[m[1]] && !strings.Contains(m[0], `type="hidden"`) {
 					t.Errorf("%s %s: field %s has no label", c.line, l.Tag, m[1])
 				}
 			}

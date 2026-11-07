@@ -16,6 +16,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/releases"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -359,9 +360,10 @@ func TestUpdateFormShowsCountdownOnlyWhenRunning(t *testing.T) {
 	g.wantMissing("running form", form, "Leave the server stopped")
 }
 
-// SPEC 10.3, 17.9: only the active world is updated; another world's page
-// offers the switch as its main control, and a POST for it changes nothing.
-func TestUpdateOfAnInactiveWorldIsRefused(t *testing.T) {
+// SPEC 10.3: a world that is not active is updated too. The request sends
+// the admin to the world's page, which shows the busy note and then the
+// result, and nothing starts or stops.
+func TestUpdateOfAnInactiveWorld(t *testing.T) {
 	g := newUpdateRig(t, &fakeReleases{})
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
@@ -369,21 +371,176 @@ func TestUpdateOfAnInactiveWorldIsRefused(t *testing.T) {
 	saveA, saveB := g.readSave(a), g.readSave(b)
 
 	bPage := g.get(worldPath(b))
-	g.wantContains("inactive world page", bPage, `id="act-switch">Switch to this world</a>`)
-	g.wantMissing("inactive world page", bPage, `id="act-update"`)
-	aPage := g.get(worldPath(a))
-	g.wantContains("active world page", aPage, `id="act-update"`, `href="`+updateURL(a)+`"`)
-	g.wantMissing("active world page", aPage, "Switch to this world to update it")
+	g.wantContains("inactive world page", bPage, `id="act-switch">Switch to this world</a>`, `id="act-update"`, `href="`+updateURL(b)+`"`)
+	g.wantMissing("inactive world page", bPage, "Switch to this world to update it", "Done:")
+	form := g.get(updateURL(b))
+	g.wantContains("update page", form, "Update Bravo from Factorio "+oldVersion, `action="`+updateURL(b)+`"`)
+	g.wantMissing("update page", form, `id="action-error"`)
 
-	g.wantContains("update page", g.get(updateURL(b)), "Switch to this world to update it")
-	rep := g.post(updateURL(b), url.Values{"game_version": {newVersion}})
-	if rep.StatusCode != http.StatusConflict || !strings.Contains(rep.body, "Switch to this world to update it") {
-		t.Errorf("POST: %d\n%s", rep.StatusCode, rep.body)
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	if err := g.waitResult(b, game.AuditUpdate); err != nil {
+		t.Fatal(err)
 	}
-	g.wantUnchanged("an update of an inactive world", b, oldVersion, saveB, 0)
-	g.wantUnchanged("an update of an inactive world", a, oldVersion, saveA, 0)
-	if len(g.mutations()) != 0 {
-		t.Errorf("a refused update reached Docker: %q", g.mutations())
+	if got := g.version(b); got != newVersion {
+		t.Errorf("version %s, want %s", got, newVersion)
+	}
+	// A reload of the activity block, once the action has ended, asks the browser to reload the page.
+	poll := g.do(http.MethodGet, worldPath(b), nil, http.Header{"Cookie": {g.cookie.String()}, "HX-Request": {"true"}})
+	if poll.Header.Get("HX-Refresh") != "true" {
+		t.Errorf("the reload after the update did not ask for a page refresh: %v", poll.Header)
+	}
+	if plain := g.do(http.MethodGet, worldPath(b), nil, http.Header{"Cookie": {g.cookie.String()}}); plain.Header.Get("HX-Refresh") != "" {
+		t.Error("a plain visit asked for a refresh")
+	}
+	page := g.get(worldPath(b) + ownResultQuery)
+	g.wantContains("world page after", page, `id="world-activity"`, `id="world-result" tabindex="-1" autofocus>`,
+		"The game version is updated.", "<code>"+newVersion+"</code>")
+	g.wantMissing("world page after", page, `hx-trigger="every`, `message--error`)
+	// The result belongs to the visit the update sent the admin to, not to every later one.
+	later := g.get(worldPath(b))
+	g.wantMissing("a later visit", later, "The game version is updated.", `id="world-result"`)
+	list, err := g.worlds.Snapshots(b)
+	if err != nil || len(list) != 1 || list[0].Label != world.LabelBeforeUpdate || list[0].Reason != world.ReasonGameUpdate {
+		t.Fatalf("snapshots %+v, %v", list, err)
+	}
+	if !bytes.Equal(g.readSave(b), saveB) {
+		t.Error("the update changed the save")
+	}
+	if g.version(a) != oldVersion || !bytes.Equal(g.readSave(a), saveA) {
+		t.Error("the update changed the other world")
+	}
+	if others, _ := g.worlds.Snapshots(a); len(others) != 0 {
+		t.Errorf("the other world has snapshots: %+v", others)
+	}
+	for _, c := range g.mutations() {
+		if strings.Contains(c, "/containers/") {
+			t.Errorf("the update touched a container: %q", g.mutations())
+		}
+	}
+	if other := g.get(worldPath(a)); strings.Contains(other, "The game version is updated.") {
+		t.Errorf("the other world's page shows the result:\n%s", other)
+	}
+}
+
+// SPEC 10.3, 7.4: a refusal by the pre-start check of an update of a world
+// that is not active shows on the world's page, and nothing changes.
+func TestUpdateOfAnInactiveWorldShowsARefusalOnItsPage(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.newWorld("Bravo", "2.1.24-space-age-testmod.zip", true)
+	g.addImage(newVersion)
+	save := g.readSave(b)
+
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	if err := g.waitResult(b, game.AuditUpdate); err == nil {
+		t.Fatal("the update was not refused")
+	}
+	page := g.get(worldPath(b) + ownResultQuery)
+	g.wantContains("world page", page, "Bravo", `id="world-result"`)
+	g.wantMissing("world page", page, "The game version is updated.")
+	g.wantUnchanged("a refused update of an inactive world", b, oldVersion, save, 0)
+}
+
+// SPEC 10.3, 7.4, 17.9: when every problem allows it, a refused update of a
+// world that is not active offers "Update anyway" on the world's page, and
+// that box goes ahead after the snapshot.
+func TestUpdateOfAnInactiveWorldOffersUpdateAnyway(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	g.newWorld("Alpha", fixtureNoSA, false)
+	// The save uses Space Age, and the world has it off.
+	b := g.newWorld("Bravo", "2.1.24-space-age.zip", false)
+	g.addImage(newVersion)
+
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	if err := g.waitResult(b, game.AuditUpdate); err == nil {
+		t.Fatal("the update was not refused")
+	}
+	page := g.get(worldPath(b) + ownResultQuery)
+	g.wantContains("world page", page, `message--warning`, `action="`+updateURL(b)+`"`, `name="anyway" value="1"`,
+		`name="game_version" value="`+newVersion+`"`, `id="act-anyway">Update anyway</button>`)
+	seen := regexp.MustCompile(`name="seen" value="([^"]*)"`).FindStringSubmatch(page)
+	if seen == nil {
+		t.Fatalf("the box sends no fingerprint:\n%s", page)
+	}
+	if g.version(b) != oldVersion {
+		t.Fatal("the refusal changed the version")
+	}
+
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{
+		"game_version": {newVersion}, "anyway": {"1"}, "seen": {html.UnescapeString(seen[1])}, "countdown": {"60"}}))
+	if err := g.waitResult(b, game.AuditUpdate); err != nil {
+		t.Fatalf("update anyway: %v", err)
+	}
+	if got := g.version(b); got != newVersion {
+		t.Errorf("version %s, want %s", got, newVersion)
+	}
+}
+
+// SPEC 7.9, 10.3: the busy note links to the Server page only when that page
+// shows the operation: for the active world, or a switch.
+func TestWorldPageBusyNoteLinksToTheServerPageOnlyWhenItShowsTheOperation(t *testing.T) {
+	sum := world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.1"}
+	note := i18n.M("worlds.world.updating", "version", "2.1.25")
+	plain := pageHTML(t, WorldPage{World: sum, Working: true, Busy: note})
+	if !strings.Contains(plain, "Updating to Factorio 2.1.25…") || strings.Contains(plain, `id="world-server-link"`) {
+		t.Errorf("a world that is not active must say what it updates to and not link to the Server page:\n%s", plain)
+	}
+	linked := pageHTML(t, WorldPage{World: sum, Working: true, Busy: note, ServerLink: true})
+	if !strings.Contains(linked, `<a href="/" id="world-server-link">`) {
+		t.Errorf("the link lacks its fixed id:\n%s", linked)
+	}
+}
+
+// SPEC 10.3: while an operation runs on a world, its page shows the busy note
+// and reloads that block until the operation ends.
+func TestWorldPageReloadsItsActivityWhileBusy(t *testing.T) {
+	sum := world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.1"}
+	busy := pageHTML(t, WorldPage{World: sum, Working: true, Busy: i18n.M("worlds.busy.operation", "action", i18n.M("worlds.busy.action.update"))})
+	for _, want := range []string{`id="world-activity" hx-get="/worlds/base"`, `hx-trigger="every 2s"`, "An operation is running on this world: update."} {
+		if !strings.Contains(busy, want) {
+			t.Errorf("busy world page lacks %q:\n%s", want, busy)
+		}
+	}
+	// Before the controller shows an operation, the action is already running.
+	early := pageHTML(t, WorldPage{World: sum, Working: true})
+	if !strings.Contains(early, `hx-trigger="every 2s"`) || strings.Contains(early, "An operation is running") {
+		t.Errorf("a world page of an action not yet an operation must reload and show no note:\n%s", early)
+	}
+	idle := pageHTML(t, WorldPage{World: sum, UpdateFailure: &Failure{Message: i18n.M("server.error.unfinished")}})
+	if strings.Contains(idle, `hx-trigger="every`) || !strings.Contains(idle, `id="world-activity"`) {
+		t.Errorf("an idle world page must keep its block and stop reloading it:\n%s", idle)
+	}
+}
+
+// SPEC 10.4: a world that is not active is rolled back too, in the request,
+// and nothing starts or stops.
+func TestRollbackOfAnInactiveWorld(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.newWorld("Bravo", fixtureNoSA, false)
+	g.addImage(newVersion)
+	original := g.readSave(b)
+	g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+	if err := g.waitResult(b, game.AuditUpdate); err != nil {
+		t.Fatal(err)
+	}
+	before := len(g.mutations())
+
+	g.wantContains("world page", g.get(worldPath(b)), `id="act-rollback"`, "Roll back to "+oldVersion)
+	rep := g.post(rollbackURL(b), url.Values{})
+	if rep.StatusCode != http.StatusSeeOther || !strings.HasPrefix(rep.Header.Get("Location"), snapshotsPath(b)) {
+		t.Fatalf("rollback: %d to %q\n%s", rep.StatusCode, rep.Header.Get("Location"), rep.body)
+	}
+	if got := g.version(b); got != oldVersion {
+		t.Errorf("version %s after rollback, want %s", got, oldVersion)
+	}
+	if !bytes.Equal(g.readSave(b), original) {
+		t.Error("the save is not what it was before the update")
+	}
+	for _, c := range g.mutations()[before:] {
+		if strings.Contains(c, "/containers/") {
+			t.Errorf("the rollback touched a container: %q", g.mutations()[before:])
+		}
 	}
 }
 

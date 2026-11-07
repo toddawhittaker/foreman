@@ -490,7 +490,6 @@
   "server.console.announce.reply": "Odpowiedź na {command}: {reply}",
   "server.update.snapshot": "Wykona migawkę świata {world} z etykietą „{label}”. Jeśli migawka się nie powiedzie, nic więcej się nie stanie.",
   "server.switch.undo": "Aby cofnąć, należy przełączyć z powrotem na {from} albo przywrócić migawkę na stronie Migawki.",
-  "server.update.not_active": "Aby zaktualizować ten świat, należy najpierw na niego przełączyć.",
   "server.step.seconds_left": {
     "one": "pozostała {count} sekunda",
     "few": "pozostały {count} sekundy",

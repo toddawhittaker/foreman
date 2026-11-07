@@ -97,8 +97,8 @@ func (e *gameEnv) runUIBPreviews(t *testing.T, line, version string) {
 					t.Fatal(err)
 				}
 				t.Logf("%s: %d bytes, %dx%d", planet, len(pngs[0].Data), img.Bounds().Dx(), img.Bounds().Dy())
-				if img.Bounds().Dx() != PreviewSize || img.Bounds().Dy() != PreviewSize {
-					t.Errorf("picture is %dx%d, want %dx%d tiles", img.Bounds().Dx(), img.Bounds().Dy(), PreviewSize, PreviewSize)
+				if img.Bounds().Dx() != PreviewSizeDefault || img.Bounds().Dy() != PreviewSizeDefault {
+					t.Errorf("picture is %dx%d, want %dx%d tiles", img.Bounds().Dx(), img.Bounds().Dy(), PreviewSizeDefault, PreviewSizeDefault)
 				}
 				if len(pngs[0].Data) > MaxPreviewPNG {
 					t.Errorf("picture is %d bytes, over the %d cap", len(pngs[0].Data), MaxPreviewPNG)
@@ -155,4 +155,44 @@ func (e *gameEnv) runUIBPreviews(t *testing.T, line, version string) {
 		}
 		e.previewLeftovers(t, "after the next preview")
 	})
+}
+
+// TestRealGamePreviewsAtTheLargestSize draws every planet at 4096 tiles on
+// every line: inside the picture cap and PreviewLimit (a longer run is
+// ErrPreviewTimeout) and inside the container's memory limit (a kill is a
+// *PreviewError with OOM).
+func TestRealGamePreviewsAtTheLargestSize(t *testing.T) {
+	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
+	e := newGameEnv(t)
+	for _, g := range gameTags {
+		if only != "" && only != g.tag {
+			continue
+		}
+		t.Run("v"+g.tag, func(t *testing.T) {
+			e.requireImage(t, ImageRef(g.version))
+			c, _ := e.controller(t)
+			spaceAge := false
+			if l, _ := mapgen.LineOf(g.tag); len(l.SpaceAgeMods) > 0 {
+				spaceAge = true
+			}
+			for _, planet := range mapgen.Planets(g.tag, spaceAge) {
+				begin := time.Now()
+				pngs, err := c.Preview(context.Background(), PreviewRequest{
+					GameVersion: g.version, SpaceAge: spaceAge, Seed: 1234, Size: PreviewSizeMax, Planets: []string{planet},
+				})
+				if err != nil {
+					t.Fatalf("%s at %d: %v", planet, PreviewSizeMax, err)
+				}
+				img, err := png.Decode(bytes.NewReader(pngs[0].Data))
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Logf("TIMING %s %s: %s, %d bytes, %dx%d", g.version, planet, time.Since(begin).Round(10*time.Millisecond), len(pngs[0].Data), img.Bounds().Dx(), img.Bounds().Dy())
+				if img.Bounds().Dx() != PreviewSizeMax || img.Bounds().Dy() != PreviewSizeMax {
+					t.Errorf("%s: picture is %dx%d, want %d", planet, img.Bounds().Dx(), img.Bounds().Dy(), PreviewSizeMax)
+				}
+				e.previewLeftovers(t, "after "+planet)
+			}
+		})
+	}
 }

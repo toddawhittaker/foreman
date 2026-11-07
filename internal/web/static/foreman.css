@@ -57,6 +57,10 @@
   /* The pin sits on the map's own colours, which do not follow the theme. */
   --color-pin-face: #ffffff;
   --color-pin-edge: #000000;
+  /* Demolisher territories, as the downloaded picture draws them: the game's red, lighter. */
+  --color-territory-stripe: rgb(200 20 20 / 33.3%);
+  --color-territory-border: rgb(255 30 30);
+  --color-territory-outline: #101010;
   --measure: 70ch;
   --page-max: 64rem;
 }
@@ -674,8 +678,10 @@ legend {
   line-height: 1.45;
 }
 
-/* Checkboxes and radios keep their own 1.25rem look; the .check label is the target. */
-.field input:not([type="checkbox"], [type="radio"]),
+/* Checkboxes and radios keep their own 1.25rem look; the .check label is the
+   target. A slider is no box either: padding would stop its knob short of the
+   track's ends. */
+.field input:not([type="checkbox"], [type="radio"], [type="range"]),
 .field select,
 .field textarea {
   inline-size: 100%;
@@ -878,6 +884,12 @@ legend {
   block-size: 1.25rem;
   margin: 0;
   accent-color: var(--color-selected);
+}
+
+/* A box that cannot change now stays focusable, so its reason is heard. */
+.check input[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
@@ -1592,15 +1604,41 @@ td > .hint {
   letter-spacing: 0.02em;
 }
 
+/* A resource's or cliffs' on/off box is a control, so its name keeps full
+   strength, on or off; while off, only the settings it turns off grey. */
+.autoplace > legend .check {
+  color: var(--color-text);
+}
+
+.autoplace:disabled .field label,
+.autoplace:disabled .step__value {
+  color: var(--color-text-muted);
+}
+
 .mapgen-checks {
   display: grid;
   gap: var(--space-3);
 }
 
-/* A checkbox row with its hint under it, not a labelled field. */
+/* A checkbox row with its tip under it, not a labelled field. */
 .mapgen-check {
+  position: relative;
   display: grid;
   gap: var(--space-1);
+}
+
+/* A setting's name and its tip button share a line; with a slider, the step
+   in words sits at the line's end (DESIGN 7.7, 8.7). */
+.field__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.field__head > label {
+  min-inline-size: 0;
 }
 
 /* A setting of steps: its name, then the select or, with script on a wide
@@ -1611,7 +1649,7 @@ td > .hint {
 }
 
 /* A setting's name never breaks inside a word; a long one wraps between words. */
-.step > label {
+.step label {
   overflow-wrap: normal;
   hyphens: manual;
 }
@@ -1623,44 +1661,52 @@ td > .hint {
     row-gap: var(--space-2);
   }
 
-  /* The name and the step in words share the first line while they fit, and
-     the words drop under the name between words when they do not; the
-     slider has a line to itself. */
+  /* Fixed rows: the name and the step in words, then the slider, then the
+     warning and the tip. Nothing in them depends on the words' length, so
+     the slider never moves while it is dragged. */
   .js-on .step {
-    display: flex;
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: baseline;
     align-content: start;
-    column-gap: var(--space-2);
-    row-gap: 0;
+    gap: 0 var(--space-2);
   }
 
   .js-on .step > * {
-    flex: 1 1 100%;
-    min-inline-size: 0;
+    grid-column: 1 / -1;
   }
 
+  /* A name with no tip button holds the first column, the words the second. */
   .js-on .step > label {
-    flex: 1 1 auto;
+    grid-column: 1;
   }
 
   .js-on .step > .step__value {
-    flex: 0 1 auto;
-    margin-inline-start: auto;
+    grid-row: 1;
+    grid-column: 2;
   }
 
   .js-on .step select {
     display: none;
   }
 
-  /* The slider has its own line, so the value's width never moves it. */
+  /* The words keep room for the longest step in every language, "100 %
+     (по умолчанию)", so the name's line never reflows as they change. Beside
+     a tip button they end the line, or take a line of their own when the
+     name leaves no room, and keep it. */
   .js-on .step__value {
     display: block;
+    min-inline-size: 20ch;
     color: var(--color-text);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
     text-align: end;
+    white-space: nowrap;
+  }
+
+  .js-on .field__head > .step__value {
+    order: 1;
+    margin-inline-start: auto;
   }
 
   .js-on .step__range {
@@ -1747,6 +1793,86 @@ td > .hint {
   max-inline-size: calc(12ch + 2 * var(--space-3) + 2 * var(--border-width));
 }
 
+/* 7.7 Toggletip: an (i) button after a setting's name, and its text. Without
+   script the button is hidden and the text is a hint under the field. */
+.tip {
+  display: none;
+}
+
+.tip__text {
+  max-inline-size: 60ch;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.js-on .tip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.js-on .tip:hover,
+.js-on .tip[aria-expanded="true"] {
+  color: var(--color-text);
+}
+
+.tip:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 0;
+}
+
+.tip svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.tip .tip__dot {
+  fill: currentColor;
+}
+
+/* A touch screen gets a 44 px target (SPEC 17.2). */
+@media (pointer: coarse) {
+  .js-on .tip {
+    inline-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
+
+/* The field holds its tip; the script places it under the button and keeps it on screen. */
+.field:has(> .tip__text) {
+  position: relative;
+}
+
+.js-on .tip__text {
+  position: absolute;
+  z-index: 3;
+  display: none;
+  inline-size: max-content;
+  max-inline-size: min(22rem, var(--tip-room, calc(100vw - 2 * var(--space-4))));
+  hyphens: manual;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.js-on .tip__text.is-open {
+  display: block;
+}
+
 .mode-panel input.mono {
   font-family: var(--font-mono);
 }
@@ -1806,8 +1932,16 @@ td > .hint {
   color: var(--color-text-muted);
 }
 
-.modified:empty {
-  display: none;
+/* "[modified]" and the reset keep their room while unseen, so the row wraps
+   the same either way and nothing below moves when they appear (DESIGN 8.6). */
+.modified:empty::before {
+  content: attr(data-word);
+  visibility: hidden;
+}
+
+.preset-row > #preset-reset[hidden] {
+  display: inline-flex;
+  visibility: hidden;
 }
 
 /* Random seed needs script, so it shows only once the script has run. */
@@ -1943,6 +2077,12 @@ td > .hint {
   gap: var(--space-3);
 }
 
+/* A picture is as wide as its column, but no taller than the window less its
+   caption and download line, so it is seen whole; never under 16rem. */
+.preview {
+  --picture-most: max(16rem, calc(100dvh - 2 * var(--target-min) - var(--space-4)));
+}
+
 .version-fields,
 .map-section {
   display: grid;
@@ -1996,9 +2136,9 @@ form:has(#mode-exchange:checked) .achievements {
 .pictures img {
   display: block;
   inline-size: 100%;
-  max-inline-size: 32rem;
   block-size: auto;
   aspect-ratio: 1;
+  image-rendering: pixelated;
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
 }
@@ -2028,6 +2168,15 @@ form:has(#mode-exchange:checked) .achievements {
   max-inline-size: 100%;
 }
 
+/* Centred when the window's height caps it; the caption and download line up with its edge.
+   A picture is not text, so the reading measure on list items does not apply. */
+.pictures li,
+.preview-placeholder__picture {
+  inline-size: min(100%, var(--picture-most));
+  max-inline-size: none;
+  justify-self: center;
+}
+
 .pictures li {
   display: grid;
   gap: var(--space-2);
@@ -2041,12 +2190,10 @@ form:has(#mode-exchange:checked) .achievements {
 .pictures .picture {
   display: block;
   inline-size: 100%;
-  max-inline-size: 32rem;
 }
 
 /* A download link is a full-height target of its own. */
-.preview .download,
-.large-view__download {
+.preview .download {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
@@ -2086,7 +2233,6 @@ form:has(#mode-exchange:checked) .achievements {
   display: grid;
   place-items: center;
   inline-size: 100%;
-  max-inline-size: 32rem;
   aspect-ratio: 1;
   padding: var(--space-4);
   background: var(--color-deep);
@@ -2111,8 +2257,9 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: 1lh;
 }
 
-/* 8.8 The large view: the whole screen, the picture fitted, zoomed by
-   scaling with sharp pixels (one tile is one pixel on 2.x). */
+/* 8.8 The large view: the whole screen, the picture fitted, zoomed and
+   panned in a scrolling frame with sharp pixels (one tile is one pixel on
+   2.x). The controls sit over the picture. */
 .large-view {
   inline-size: 100%;
   max-inline-size: 100%;
@@ -2139,41 +2286,54 @@ form:has(#mode-exchange:checked) .achievements {
 
 .large-view__bar {
   display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.large-view__head {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
   min-inline-size: 0;
 }
 
-.large-view__bar h2 {
+.large-view__head h2 {
+  min-inline-size: 0;
   margin: 0;
   font-size: var(--text-lg);
 }
 
-.large-view__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+/* Its line is held, so news does not shrink the picture. */
+.large-view__status {
+  min-block-size: 1lh;
+  margin: 0;
 }
 
-.large-view__controls [hidden] {
-  display: none;
+.large-view__stage {
+  position: relative;
+  display: grid;
+  min-block-size: 0;
 }
 
-/* The value has a reserved width, so the buttons beside it do not move. */
-.large-view__zoom {
-  min-inline-size: 11ch;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
+/* The page's own gestures are off inside it: one finger drags, two pinch. */
 .large-view__frame {
   container-type: size;
   display: flex;
   min-block-size: 0;
   overflow: auto;
+  touch-action: none;
+  user-select: none;
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
   --zoom: 1;
+}
+
+.large-view__frame[data-zoomed] {
+  cursor: grab;
+}
+
+.large-view__frame[data-zoomed]:active {
+  cursor: grabbing;
 }
 
 /* Auto margins centre a fitted picture and never push a zoomed one out of reach. */
@@ -2188,6 +2348,107 @@ form:has(#mode-exchange:checked) .achievements {
   block-size: auto;
   aspect-ratio: 1;
   image-rendering: pixelated;
+}
+
+/* A round icon control with a hidden name; 24 px, and 44 px for a finger (SPEC 17.2). */
+.icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.icon-button[hidden] {
+  display: none;
+}
+
+.icon-button[aria-disabled="true"] {
+  cursor: default;
+}
+
+.icon-button svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (pointer: coarse) {
+  .icon-button {
+    inline-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
+
+/* Shown while the pointer is over the picture or focus is on a control; always where there is no hover. */
+.large-view__edge,
+.large-view__close,
+.large-view__zoom {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.large-view__stage:hover :is(.large-view__edge, .large-view__close, .large-view__zoom),
+.large-view__stage:has(:focus-visible) :is(.large-view__edge, .large-view__close, .large-view__zoom) {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .large-view__edge,
+  .large-view__close,
+  .large-view__zoom {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .large-view__edge,
+  .large-view__close,
+  .large-view__zoom {
+    transition: none;
+  }
+}
+
+/* Clear of the frame's scroll bars at the end edges. */
+.large-view__edge {
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+}
+
+.large-view__edge--prev {
+  inset-inline-start: var(--space-2);
+}
+
+.large-view__edge--next {
+  inset-inline-end: var(--space-5);
+}
+
+.large-view__close {
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-5);
+}
+
+.large-view__zoom {
+  display: flex;
+  gap: var(--space-2);
+  inset-block-end: var(--space-5);
+  inset-inline-end: var(--space-5);
 }
 
 /* A picture with the start marked: the pin's tip on the centre. */
@@ -2220,8 +2481,78 @@ form:has(#mode-exchange:checked) .achievements {
   fill: var(--color-pin-edge);
 }
 
-.large-view__status:empty {
+/* The planet choice and the territory box share a line when there is room. */
+.preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--space-3) var(--space-5);
+}
+
+.preview-controls > * {
+  min-inline-size: 0;
+}
+
+/* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture
+   pixels, so they scale and pan with it; the labels keep one size, like the pin. */
+.territories {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The thumbnail's picture has a border; the overlay covers only the map. */
+.pictures .territories {
+  inset: var(--border-width);
+}
+
+.territories svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+#territory-stripes path {
+  fill: var(--color-territory-stripe);
+}
+
+.territories__border {
+  fill: none;
+  stroke: var(--color-territory-border);
+  stroke-width: 2;
+}
+
+/* White on a dark ring reads on every part of the map, as the pin does. */
+.territories__label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: var(--color-pin-face);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow:
+    -1px -1px 0 var(--color-territory-outline), 1px -1px 0 var(--color-territory-outline),
+    -1px 1px 0 var(--color-territory-outline), 1px 1px 0 var(--color-territory-outline),
+    -2px 0 0 var(--color-territory-outline), 2px 0 0 var(--color-territory-outline),
+    0 -2px 0 var(--color-territory-outline), 0 2px 0 var(--color-territory-outline);
+}
+
+.preview[aria-busy="true"] .territories {
+  opacity: 0.6;
+}
+
+/* While the box is ticked, a line is held for the list, so nothing moves when it arrives. */
+.preview:has(#preview-territories:checked) .territory-result {
+  min-block-size: 1lh;
+}
+
+.territory-result:empty {
   display: none;
+}
+
+.preview:has(#preview-territories:checked) .territory-result:empty {
+  display: block;
 }
 
 .message pre {
@@ -2270,6 +2601,11 @@ form:has(#mode-exchange:checked) .achievements {
 
   .field input[type="file"]::file-selector-button {
     border-inline-end-color: ButtonText;
+  }
+
+  /* A label's ring is a shadow, which forced colours drop; it sits on the map, not the page. */
+  .territories__label {
+    forced-color-adjust: none;
   }
 
   /* The shape's fill must survive: draw it in the system text colour. */

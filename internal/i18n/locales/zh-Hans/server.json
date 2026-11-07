@@ -468,7 +468,6 @@
   "server.console.announce.reply": "对 {command} 的回复：{reply}",
   "server.update.snapshot": "为 {world} 创建快照，标签为“{label}”。如果快照失败，不会进行其他操作。",
   "server.switch.undo": "要撤销，请切换回 {from}，或在“快照”页面恢复一个快照。",
-  "server.update.not_active": "切换到此世界后才能更新它。",
   "server.step.seconds_left": {
     "other": "还剩 {count} 秒"
   },

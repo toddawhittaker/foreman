@@ -16,6 +16,9 @@
 # Screenshots taken by agents
 screenshots/
 
+# Your own make settings (DEPLOY_DIR)
+/local.mk
+
 # Build and tool output
 /bin/
 /.cache/

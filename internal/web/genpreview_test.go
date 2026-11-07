@@ -51,7 +51,7 @@ func TestPreviewStoreFindsTheSameSettings(t *testing.T) {
 	}
 }
 
-// SPEC 5.6: at most 8 users' previews, 48 MB in all, 8 MB a picture, and
+// SPEC 5.6: at most 8 users' previews, 96 MiB in all, 16 MiB a picture, and
 // 15 minutes.
 func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
@@ -75,9 +75,9 @@ func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 	}
 
 	if _, err := st.add(1, "k", "", "1", []game.PNG{{Planet: "nauvis", Data: make([]byte, game.MaxPreviewPNG+1)}}); err == nil {
-		t.Error("a picture over 8 MB was kept")
+		t.Error("a picture over the cap was kept")
 	}
-	// Six pictures of 8 MB fill the 48 MB; the users before go to make room.
+	// Six pictures at the cap fill the 96 MiB; the users before go to make room.
 	pic := make([]byte, game.MaxPreviewPNG)
 	for user := range int64(6) {
 		if _, err := st.add(100+user, "k", "", "1", []game.PNG{{Planet: "nauvis", Data: pic}}); err != nil {
@@ -88,7 +88,7 @@ func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 		t.Errorf("%d bytes held, over %d", total, maxPreviewBytes)
 	}
 	if _, err := st.add(100, "k", "", "1", []game.PNG{{Planet: "gleba", Data: pic}, {Planet: "fulgora", Data: pic}, {Planet: "aquilo", Data: pic}, {Planet: "vulcanus", Data: pic}, {Planet: "x", Data: pic}, {Planet: "y", Data: pic}}); err == nil {
-		t.Error("one user's preview over 48 MB was kept")
+		t.Error("one user's preview over 96 MiB was kept")
 	}
 
 	tok, _ := st.add(200, "k", "", "1", onePNG("nauvis"))
@@ -355,5 +355,126 @@ func TestAutomaticPreviewDrawsOnePlanet(t *testing.T) {
 	// Each run drew one planet: nauvis, then gleba; nauvis again was stored.
 	if len(prev.got) != 2 || !slices.Equal(prev.got[0].Planets, []string{"nauvis"}) || !slices.Equal(prev.got[1].Planets, []string{"gleba"}) {
 		t.Errorf("runs %+v", prev.got)
+	}
+}
+
+// SPEC 5.6: the size changes every picture, so it is part of the key; the
+// same size finds the pictures already drawn, and no size means the default.
+func TestSettingsKeyIncludesTheSize(t *testing.T) {
+	base := game.PreviewRequest{GameVersion: "2.1.24", Seed: 7, Size: 1280}
+	bigger := base
+	bigger.Size = 2048
+	if settingsKey(base) == settingsKey(bigger) {
+		t.Error("two sizes share a key")
+	}
+	same := base
+	same.Planets = []string{"gleba"}
+	if settingsKey(base) != settingsKey(same) {
+		t.Error("the planet changed the key")
+	}
+	unset := base
+	unset.Size = 0
+	if settingsKey(base) != settingsKey(unset) {
+		t.Error("no size and the default size have different keys")
+	}
+}
+
+// SPEC 5.6: a preview of another size draws again; the same size, or none
+// (the default), does not run again.
+func TestPreviewAtAnotherSizeDrawsAgain(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	hn.withActive("2.1.24")
+	form := generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "42", "planet", "nauvis", "preview_size", "2048")
+	body := hn.postLong(PathGeneratePreview, form, c).Body.String()
+	if len(prev.got) != 1 || prev.got[0].Size != 2048 {
+		t.Fatalf("requests %+v", prev.got)
+	}
+	if !strings.Contains(body, `width="2048" height="2048"`) || !strings.Contains(body, `<option value="2048" selected>`) {
+		t.Errorf("the page does not show the size:\n%s", body)
+	}
+	hn.postLong(PathGeneratePreview, form, c)
+	if len(prev.got) != 1 {
+		t.Errorf("the same size ran again: %d runs", len(prev.got))
+	}
+	form.Set("preview_size", "1280")
+	hn.postLong(PathGeneratePreview, form, c)
+	if len(prev.got) != 2 || prev.got[1].Size != 1280 {
+		t.Errorf("another size did not run: %+v", prev.got)
+	}
+	// A form with no size field is the default size.
+	form.Del("preview_size")
+	hn.postLong(PathGeneratePreview, form, c)
+	if len(prev.got) != 2 {
+		t.Errorf("no size ran again: %d runs", len(prev.got))
+	}
+}
+
+// SPEC 5.6: a size off the steps is a field error and nothing is drawn.
+func TestPreviewRefusesASizeOffTheSteps(t *testing.T) {
+	for _, bad := range []string{"900", "1100", "4224", "99999", "-1280", "wide", "1280.5", "1e3"} {
+		prev := &fakePreviewer{}
+		hn := newGenerateHarness(t, prev)
+		c := hn.signIn()
+		hn.withActive("2.1.24")
+		form := generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "42", "preview_size", bad)
+		rec := hn.postLong(PathGeneratePreview, form, c)
+		body := rec.Body.String()
+		if rec.Code != http.StatusBadRequest || len(prev.got) != 0 {
+			t.Errorf("size %q: status %d, %d runs", bad, rec.Code, len(prev.got))
+		}
+		if !strings.Contains(body, "Choose one of the sizes in the list.") || !strings.Contains(body, `<option value="1280" selected>`) {
+			t.Errorf("size %q: no field error, or the bad value is kept:\n%s", bad, body)
+		}
+		// An automatic request says it in the fragment, with a link to the field.
+		form.Set("auto", "1")
+		auto := hn.postLong(PathGeneratePreview, form, c, withHeader("HX-Request", "true")).Body.String()
+		if !strings.Contains(auto, `data-preview="invalid"`) || !strings.Contains(auto, `href="#generate-preview-size"`) || len(prev.got) != 0 {
+			t.Errorf("size %q: the fragment is wrong, or a run was made:\n%s", bad, auto)
+		}
+	}
+}
+
+// SPEC 5.6: the size survives a form that is sent back with an error, and a
+// bad one does not stop the world from being made.
+func TestPreviewSizeSurvivesAnErrorRoundTrip(t *testing.T) {
+	hn := newGenerateHarness(t, &fakePreviewer{})
+	c := hn.signIn()
+	hn.withActive("2.1.24")
+	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "3328"), c)
+	body := rec.Body.String()
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="3328" selected>`) {
+		t.Errorf("status %d; the size was not kept:\n%s", rec.Code, body)
+	}
+	// The sizes are plain digits, with no thousands separator, in every language.
+	for _, want := range []string{">1024 × 1024 tiles</option>", ">1280 × 1280 tiles (default)</option>", ">4096 × 4096 tiles</option>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the size select lacks %q", want)
+		}
+	}
+	rec = hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "5", "preview_size", "7"), c)
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("a bad preview size stopped the world being made: status %d", rec.Code)
+	}
+}
+
+// SPEC 5.6: the pictures are 16 MiB at most, and 96 MiB are held in all, so
+// one Space Age set at the largest size is not evicted by a second user's.
+func TestPreviewStoreHoldsTwoLargeSets(t *testing.T) {
+	st := newPreviewStore(time.Now)
+	var set []game.PNG
+	for _, planet := range []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"} {
+		set = append(set, game.PNG{Planet: planet, Data: make([]byte, 9<<20)})
+	}
+	first, err := st.add(1, "k", "", "1", set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.add(2, "k", "", "1", set); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := st.get(first, 1, "gleba"); !ok {
+		t.Error("the first user's set was evicted by the second's")
 	}
 }

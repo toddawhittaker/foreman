@@ -38,6 +38,11 @@ is a copy and goes stale if they change without it.
   library cannot make relative to an open folder).
 - `golang.org/x/text`, direct from Epic 6, for language matching, plural
   rules and number formats (SPEC 22), v0.43.0.
+- `golang.org/x/image` v0.47.0, direct from fixes batch 2, to draw the
+  demolisher territory labels into a downloaded map preview PNG (SPEC
+  5.6): its `font/opentype` rasteriser and the Go Bold font, because the
+  standard library cannot draw text. A committed subset of Noto Sans CJK
+  SC Bold (OFL licence, 2.5 KB) covers the Chinese labels (ADR 0011).
 - govulncheck v1.9.0, run by `make vuln`.
 - CI: GitHub Actions on the `ubuntu-24.04` runner. Every action is
   pinned to a full commit: `actions/checkout` v7.0.1,
@@ -286,14 +291,15 @@ Rejected:
 |---|---|
 | `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. The Stop hook and the merge gate run it. |
 | `make check-go` | Fails when the local Go, or the Go in the build image, differs from `GO_VERSION` (ADR 0001). |
-| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. |
+| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. `TEST_TIMEOUT` (default 30m) is the time limit, because the web package takes about 11 minutes under `-race` on a loaded machine. |
 | `make lint` | golangci-lint, in its pinned image. |
 | `make fmt-check` | Fails when a Go file is not formatted. This is the only place format is checked. |
 | `make fmt` | Rewrite formatting. |
 | `make build` | The static binary, with frontend files embedded. |
 | `make image` | Build the container image with a local tag. |
+| `make deploy` | Builds the image from the checkout and recreates only the Foreman service in a local Compose stack (`docker compose up -d --no-deps`), so the proxy, the outpost and a running game stay up. `DEPLOY_DIR` (the stack folder) has no default, because nothing in the repository names a deployment: pass it or set it in the untracked `local.mk`. `DEPLOY_SERVICE` (default `foreman`), `DEPLOY_IMAGE` (default `IMAGE`) and `DEPLOY_TIMEOUT` (default 120 s, as the image's health check runs every 30 s) can be set the same way. It refuses a checkout with uncommitted changes unless `FORCE=1`, waits for the container to report healthy and fails if it does not, then prints the image ID and the commit. |
 | `make run` | Run Foreman from source against `./.dev-data` (also set as `FOREMAN_HOST_DATA_DIR`), with your own user and group as the game's. It contacts Docker at `DOCKER_HOST` (the default socket unless you set it) to show and control the game. If Docker cannot be reached the Server page shows "Unknown" with the reason and the other pages work. |
-| `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. A test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. |
+| `make e2e` | Playwright and axe against the built binary and the fake game, at desktop width and 320 px, in dark and light. A test that needs Docker points `DOCKER_HOST` at the fake game's Unix socket, so no real Docker or game is used. `E2E_ARGS` passes specs or flags to Playwright, for example `make e2e E2E_ARGS="tests/large-view.spec.ts --repeat-each 5"`. |
 | `make test-game` | The game controller against the real Docker daemon and the game test images (`GAME_IMAGE_*`, section 1), one after another, because they share the game port. It first checks that each image's plain tag on the host is the pinned digest. It checks start to InGame with RCON, the newest-save and chosen-save rules, players, the console, graceful and forced stop, a corrupt save crash loop, no password in relayed lines, the save reader on a save the game wrote, and re-attach to a running game, update and rollback with the real game: 2.0.77 to 2.1.24 and 2.1.23 to 2.1.24, each reaching InGame and rolling back to a byte-identical save, and Generate (a preset, custom settings and real exchange strings, each reaching InGame with the chosen seed; map previews; a settings save on a running game) and the first settings save. `TAG=1.1`, `2.0` or `2.1` runs one line, and checks only the images that line's tests use (`2.0` and `2.1` include the update tests). Containers are named `foreman-e3test-*` and removed afterwards. Nothing is downloaded: an image must already be on the host. |
 | `make e2e-game` | The vision's phone scenario at 320 px against the real 2.1 image, and a switch from one world to another and back: Playwright in its pinned image, with the host's Docker socket, runs `bin/foreman`, which starts the game on a Docker network made for the run; the target removes the game container and the network on exit. It refuses, with a `docker pull` hint, when the image is missing or is not the pinned digest. For milestone gates and epic pull requests; run it only on a development machine (docs/WORKFLOW.md). |
 | `make test-catalogue` | Created in Epic 9. Re-runs the crash reason catalogue's scenarios (SPEC 8.8) against `factoriotools/factorio:$(VERSION)`, for example `VERSION=2.1.22`. Downloads nothing: the image must already be on the host. |

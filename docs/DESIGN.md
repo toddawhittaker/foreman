@@ -942,6 +942,57 @@ old world's open page reloads onto the Server page after the operation
 ends, moves focus to the `h1`, and writes the result sentence
 to `#announcer`.
 
+When an operation's result shows on the same page after a reload (the
+update of a world that is not active, on its world page), focus moves to
+the result message itself (`tabindex="-1"`), which reads the whole
+result with its reason, and nothing is also written to `#announcer`, so
+it is said once.
+
+### 7.7 Toggletip
+
+A short explanation of one setting, behind an (i) button after its name,
+as the game's map generator has it (SPEC 5.6, 17).
+
+```html
+<div class="field">
+  <div class="field__head">
+    <label for="ms-time-factor">Time factor</label>
+    <button type="button" class="tip" aria-expanded="false"
+            aria-controls="ms-time-factor-tip" aria-describedby="ms-time-factor-tip">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16">…</svg>
+      <span class="visually-hidden">About Time factor</span>
+    </button>
+  </div>
+  <input id="ms-time-factor" … aria-describedby="ms-time-factor-tip ms-time-factor-ach">
+  <p class="ach" id="ms-time-factor-ach"></p>
+  <p class="tip__text" id="ms-time-factor-tip">Controls how fast evolution increases over time. …</p>
+</div>
+```
+
+- **Words.** The game's own tooltip (`*-description` in the game's
+  `core.cfg`) in every language, without its "Note:" line about
+  achievements, which Foreman shows its own way (8.7). Where the game
+  has none, plain words, translated as usual (SPEC 22.6). A tip may add
+  what the game's number means ("40 means 0.000004").
+- **The button** is named "About" and the setting; for a group's
+  "Enabled" box it names the group. The icon is a 16 px circled "i" in
+  `text-muted` (`text` on hover and while open), in a 24 px round target,
+  44 px with a coarse pointer (`pointer: coarse`). Focus is the usual
+  ring (5).
+- **The text** is in the page, so the field's `aria-describedby` and the
+  button's name it: a screen reader hears it with the field, and with the
+  button. Without script the button is hidden and the text is a hint
+  under the field (`--text-sm`, `text-muted`).
+- **With script** (`toggletip.js`) the text is a box over the page:
+  `surface`, 1px `border`, `--radius`, `--text-sm` in `text`, at most
+  22rem wide. It opens on a click or tap (and stays), on keyboard focus,
+  and on mouse hover (and closes when the pointer leaves both the button
+  and the text). Escape, a tap elsewhere or moving focus away closes it.
+  One is open at a time. The script places it under its button, or above
+  it when there is no room below, and moves it left to keep 8 px from the
+  window's right edge, so it fits at 320 px. `aria-expanded` follows.
+- Nothing moves when a tip opens: the box lies over what follows.
+
 ## 8. Patterns for later screens
 
 These are not built in Epic 1. They are here so Epics 2 and 3 start from
@@ -1140,7 +1191,11 @@ in this order:
 its values (htmx redraws `#map-settings`; the preset and the seed are
 outside it, so focus and a typed seed stay). "[modified]" and the reset
 button show once any setting differs from the preset; the seed is not a
-setting of the preset. Reset is a submit button to the refresh route, so
+setting of the preset. Their room is kept while they are not shown (the
+word and the button are there but invisible, and out of the
+accessibility tree), so the row wraps the same way either way, and
+nothing below it, such as the slider being dragged, moves when they come
+or go. On a phone they hold a line of their own under the select. Reset is a submit button to the refresh route, so
 it also works without script; with htmx it redraws the tabs in place.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
@@ -1200,9 +1255,26 @@ starts."
   the four panels stack under their legends. After a failed submit the
   page opens on the tab holding the first error, and a summary link (or
   focus) that lands in another tab opens it first.
-- **Per planet.** Resources and Terrain hold one closed `details` per
-  planet (the first open, any with an error open); a world with one
-  planet shows its groups directly.
+- **Per planet.** Resources and Terrain hold one `details` per planet;
+  a world with one planet shows its groups directly. Each tab's planet
+  rows form one exclusive group (`name="planet-<tab>"`): opening one
+  closes the other, and focus stays on the summary the person used. One
+  click opens a row and it stays open. The open planet is the same in
+  every tab, is kept over a round trip in the hidden `open_planet`
+  field, and is the planet with the first error when there is one.
+  Opening a row switches the preview to that planet, and the live region
+  says "Preview: Fulgora" once; a tab switch says nothing. Choosing a
+  planet in the preview opens its row without moving focus.
+- **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
+  every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
+  box in their legend, as resources do, and their continuity select no
+  longer offers "None". There is no achievement warning.
+- **Needed resources.** While a Nauvis resource the game needs (iron
+  ore, copper ore, stone, crude oil and coal) is off, a warning shows
+  under its box ("…unless a mod provides it"), and a `message--warning`
+  summary beside the achievements summary lists each one. It is a
+  warning, not a block. The live region says it once when the box goes
+  off and once when it comes back on.
 - **One fieldset per control**, its legend the game's name, small and
   muted so the groups read as one list. Its settings sit in a grid
   `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 13rem with sliders.
@@ -1215,10 +1287,18 @@ starts."
   select's label, `aria-valuetext` the step's words) and an `output` with
   those words. On a `map-section` container at least 34rem wide the
   style sheet shows the slider and output and hides the select; narrower
-  (phones, 200% text) it shows the select. The name and the value share
-  the first line while they fit, and the value drops under the name
-  (between words) when they do not; the name never breaks inside a word.
-  The slider has a line to itself, so the value's width never moves it.
+  (phones, 200% text) it shows the select. The row has fixed lines: the
+  name (with its tip button, if any) and the value, then the slider, then
+  the warning and the tip. The value keeps room for the longest step in
+  any language (`min-inline-size: 20ch`, tabular numbers), so moving the
+  slider never reflows the row; when the name leaves no room beside it,
+  the value takes a line of its own, and keeps it. The name never breaks
+  inside a word. The slider is not a boxed field: no padding, edge or
+  width cap, so its knob reaches both ends of the track at the first and
+  last step, and the fill ends under the knob.
+- **While an on/off box is off**, its name stays at full strength (it is
+  a control); the names and values of the settings it turns off turn
+  `text-muted`, and the browser greys their sliders.
 - **Density on a wide panel.** On a `map-section` at least 34rem wide the
   groups sit closer (8px between groups and under a group's name), and
   with a fine pointer (`pointer: fine`) the sliders and the planet
@@ -1233,11 +1313,17 @@ starts."
   (2.x), then the raw map-gen JSON `details`.
 - **Map-settings fields** (`ms.<dotted path>`) show what the version's
   file holds, in the units the game's map generator shows: cooldowns in
-  minutes, ratios and modifiers in percent, evolution factors as "40"
-  with a "× 10⁻⁷" unit after the field. A group's "Enabled" checkbox heads
+  minutes, ratios and modifiers in percent, evolution factors as plain
+  numbers ("40"), as the game shows them, with no unit; the tip says what
+  the number means. A group's "Enabled" checkbox heads
   it on its own row. Numbers are mono text fields 12ch wide with the unit
   beside them. 2.1's evolution group size factor replaces 2.0's group
   sizes.
+- **Tips.** Every setting of the Enemy and Advanced tabs has a
+  toggletip (7.7): the enemy bases' frequency and size, the starting
+  area, No enemies, Peaceful mode, and each map-settings field, a
+  group's "Enabled" box explaining the group. Width and Height keep their
+  visible hint instead, as the game has no tip for them.
 - **Spoiling rate** is shown as the game shows it, 10% to 1000%, the
   inverse of the stored `spoil_time_modifier` (shown % = 100 / stored).
 - **Limits.** Every number field takes whole numbers within the game
@@ -1265,6 +1351,12 @@ on a download).
   are not saved yet, with seed 123456. It redraws as you change them.
   "Generate world" makes exactly this map. The pin marks the centre of
   the map, where players start."
+- **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
+  wide panel, a select of 25 sizes elsewhere) above the section, outside
+  the part a reply replaces: 1024 to 4096 tiles square in steps of 128,
+  1280 by default, and a hint that big sizes show their detail in the
+  large view. A change redraws like any other, and the choice is kept
+  over a form error.
 - **Drawn by itself** (with script). On page load, and 0.8 s after the
   last change to anything in the form that changes the map: the preset,
   the seed, any setting, the way to make the map, the pasted exchange
@@ -1295,8 +1387,13 @@ on a download).
   each a link to its field, with no focus moved.
 - **Pictures.** A `ul` (no bullets) of `figure`s, each with a
   `figcaption` naming the planet. The `img` has `width` and `height`,
-  `inline-size: 100%`, `max-inline-size: 32rem` and `aspect-ratio: 1`, so
-  its space is held. Alt text: "Map preview of Nauvis, seed 123456".
+  `inline-size: 100%`, `aspect-ratio: 1` and `image-rendering:
+  pixelated`, so its space is held and its tiles stay sharp. Each item
+  fills its column but is no taller than the window less its caption and
+  download line (`min(100%, max(16rem, 100dvh - 2 x target - space-4))`),
+  centred, with the caption and download lined up with its edge; the
+  held box before the first picture follows the same rule, so nothing
+  moves. Alt text: "Map preview of Nauvis, seed 123456".
   Several pictures (Preview map) sit in a grid,
   `repeat(auto-fit, minmax(16rem, 1fr))`. The picture is a link to its
   file; its name adds "(opens the large view)" with script and "(opens
@@ -1313,21 +1410,89 @@ on a download).
   after the list. Both are links with `download`, each a 44px target.
   Files are named after the world, the seed and the planet.
 - **The large view** is a native `dialog` opened with `showModal()`, so
-  the browser keeps focus inside it and Escape closes it. It fills the
-  screen (`bg` face, no shadow): a bar with the planet's name (h2, the
-  dialog's name), then Previous, Next, Zoom out, the zoom level ("Zoom
-  200%", from `Intl.NumberFormat`), Zoom in, the planet's download and
-  Close, wrapping as needed, and a one-line key hint; then the picture in
-  a scrolling frame. Previous and Next step through the world's planets
-  and wrap; a planet not drawn yet is drawn and shown in place. Zoom is
-  1, 2, 4 and 8 times the fitted size, scaling the picture with
-  `image-rendering: pixelated` (one tile is one pixel on 2.x), keeping the
-  middle of the view. Keys: left and right arrows step (inside the
-  zoomed frame they scroll it instead), plus and minus zoom, 0 fits.
-  Content outside a modal dialog is inert, so the dialog has its own
-  `role="status"` line for its news. On close, focus goes to the link of
-  the picture last shown. A click with a modifier key opens the file as
-  the browser would. Pinch zoom on phones is the browser's own.
+  the browser keeps focus inside it and Escape closes it. It works as a
+  picture viewer and fills the screen (`bg` face, no shadow). A bar holds
+  the planet's name (h2, the dialog's name) with a download icon link beside it ("Download Nauvis
+  map"), and under them a `role="status"` line whose height is held
+  (content outside a modal dialog is inert, so the dialog says its own
+  news). Then the picture in a scrolling frame, which has focus on open,
+  and a one-line key hint under it.
+  - Over the picture: Previous and Next arrows on its left and right
+    edges, named after where they lead ("Previous planet: Aquilo"); a
+    round X in the top corner ("Close"); Zoom out and Zoom in in the
+    bottom corner, the single-pointer way to zoom (WCAG 2.5.1). They show
+    while the pointer is over the picture or a control in it has
+    keyboard focus, and always under `(hover: none)`. Each is an
+    icon button (8.8 icons below), 24 px, 44 px under
+    `(pointer: coarse)`. Previous and Next step through the world's
+    planets and wrap; a planet not drawn yet is drawn and shown in place.
+  - Zoom is a factor of the fitted size, from 1 up to the larger of 8
+    and 8 CSS pixels per tile (so a 4096 picture still reaches real
+    tiles). Each wheel notch, plus or minus key, or zoom button
+    multiplies it by 1.15; the wheel zooms around the pointer, the keys
+    and buttons around the frame's centre, by setting the frame's scroll
+    position, so the pin stays on the map with no sums. A zoom from a key
+    or button is said in the status line ("Zoom 132%", from
+    `Intl.NumberFormat`). The picture scales with `image-rendering:
+    pixelated` (one tile is one pixel on 2.x).
+  - Panning: drag the zoomed picture (pointer capture), or use the
+    frame's scroll bars, or the arrow keys while the frame has focus. On
+    touch screens one finger drags and two pinch around their middle
+    (`touch-action: none` on the frame). A tap (one pointer, under 6 px
+    of movement) on a zoomed picture centres the spot tapped, so panning
+    never needs a drag (WCAG 2.5.7).
+  - Keys: left and right arrows step (inside the zoomed frame they scroll
+    it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
+    Alt or Meta held the browser keeps its own zoom keys.
+  - Nothing animates under reduced motion; otherwise only the controls'
+    opacity fades, in 120 ms.
+  - On close, focus goes to the link of the picture last shown. A click
+    with a modifier key opens the file as the browser would. When the
+    view or the Planet select moves to another planet the page gets a
+    `preview:planet` event, and the view starts from the hidden
+    `#open-planet` field when the settings set it.
+- **Demolisher territories** (Vulcanus, Space Age). A "Show demolisher
+  territories" checkbox (7.2) beside the Planet select, shown only while
+  Vulcanus's picture is shown, off by default, with the hint "Finding them
+  takes a few seconds more." Above 3072 tiles it is `aria-disabled="true"`
+  with no name, so Tab still reaches it and its reason is heard but it
+  cannot change or send; its hint names that size and says to choose a smaller one. It is a named field,
+  so "Preview map" without script reads the territories after the
+  pictures, in the same request; a ticked choice is kept in a hidden field
+  while another planet is viewed. With script, the territories are asked
+  for (`POST /generate/preview/territories`, the same form) only once the
+  picture has arrived, so the picture never waits; the newest request
+  wins, and a new draw, a change of settings or another planet viewed
+  drops the one on its way. Meanwhile a line under the picture says
+  "Finding the demolisher territories…"; that line's height is held while
+  the box is ticked.
+  - The overlay is an inline SVG inside the picture's `.map`, in picture
+    pixels (`viewBox` of the size, `preserveAspectRatio="none"`), so it
+    scales and pans with the picture: each territory's chunk runs as
+    rectangles filled with a stripe pattern matching the downloaded PNG
+    (pixels where x - y modulo 56 is under 28, bars from top left to bottom right as in the game, `--color-territory-stripe`,
+    rgb 200 20 20 at a third), one border path along every edge between
+    owners and around the free start area (`--color-territory-border`, 2
+    CSS px at any zoom with `vector-effect: non-scaling-stroke`); the start
+    area has no stripes. Each territory's size in words ("Small",
+    "Medium", "Big", "Unknown") is an HTML label placed by percent at its
+    chunks' mean, at `--text-sm` bold white with a near-black ring of
+    text shadows, so it keeps its size under zoom like the pin. The
+    overlay is `aria-hidden`; a `p` under the picture says the same in
+    words: "Demolisher territories in this picture: 12 small, 6
+    medium." The large view shows a copy of the same overlay.
+  - While they are shown, Vulcanus's download reads "Download Vulcanus
+    with territories (PNG)" and its file, and Vulcanus's file in the zip,
+    have the overlay drawn in by the server (`?territories=1`), named
+    with "-territories". Unticking takes the overlay, the list and the
+    query away again.
+  - A busy or failed run, or a failed request, is an error (7.3) under
+    the picture with a "Try again" button; the page's picture stays.
+    The announcement is the error sentence alone, not the button label.
+- **Icons** (the large view only). Inline SVG on a 16 by 16 grid, drawn
+  with a 2 px `currentColor` stroke and no fill, `aria-hidden`, inside a
+  round `.icon-button` (`bg` face, 1 px `border`) whose name is visually
+  hidden text. No icon stands without that name.
 - **Without script** "Preview map" posts the form to
   `/generate/preview` and the answer is the same page, every value kept,
   a blank seed now holding the seed used, with every planet's picture;
@@ -1513,9 +1678,10 @@ Left out because no Epic 1 to 3 screen needs it. Add each when a real
 screen does, in this document first.
 
 - A manual theme switch. The system setting decides (SPEC 17.3).
-- Icons of any kind, except the map preview's pin (8.8).
-- Modal dialogs other than the map preview's large view (8.8), pop-overs,
-  menus, tab panels and toasts. (The nav links
+- Icons of any kind, except the map preview's pin, the large view's
+  controls (8.8) and the toggletip's (i) (7.7).
+- Modal dialogs other than the map preview's large view (8.8), menus,
+  tab panels and toasts. (The nav links
   only look like tabs; they are ordinary links.) The confirmation step
   (7.4) and the message (7.3) cover Epics 1 to 3.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
