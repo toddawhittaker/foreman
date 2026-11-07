@@ -103,6 +103,20 @@
       </div>
       <div class="gen-preview">
         {{- if $.Page.CanPreview}}
+        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider and redraws on a change. */}}
+        <div class="field step">
+          <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
+          <select id="generate-preview-size" name="preview_size"
+            {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>
+            {{- range .PreviewSizes}}
+            <option value="{{.Size}}"{{if .Chosen}} selected{{end}}>{{if .Default}}{{t "worlds.generate.preview.size_default" "size" (print .Size)}}{{else}}{{t "worlds.generate.preview.size_option" "size" (print .Size)}}{{end}}</option>
+            {{- end}}
+          </select>
+          <p class="hint" id="generate-preview-size-hint">{{t "worlds.generate.preview.size_hint"}}</p>
+          {{- if not .PreviewSizeError.IsZero}}
+          <p class="error" id="generate-preview-size-error"><strong>{{t "common.error.label"}}</strong> {{msg .PreviewSizeError}}</p>
+          {{- end}}
+        </div>
         {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
         <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
         {{- end}}

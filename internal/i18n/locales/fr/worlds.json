@@ -402,5 +402,10 @@
   "worlds.generate.large.zoom_in": "Zoomer",
   "worlds.generate.large.close": "Fermer",
   "worlds.generate.large.keys": "Les flèches gauche et droite montrent la planète précédente et la suivante, plus et moins zooment, Échap ferme.",
-  "worlds.generate.preview.pin": "L’épingle marque le centre de la carte, où les joueurs commencent."
+  "worlds.generate.preview.pin": "L’épingle marque le centre de la carte, où les joueurs commencent.",
+  "worlds.generate.preview.size_label": "Preview size",
+  "worlds.generate.preview.size_option": "{size} × {size} tiles",
+  "worlds.generate.preview.size_default": "{size} × {size} tiles (default)",
+  "worlds.generate.preview.size_hint": "How much of the map, around its centre, the preview shows. Big sizes show their detail in the large view.",
+  "worlds.generate.error.preview_size": "Choose one of the sizes in the list."
 }

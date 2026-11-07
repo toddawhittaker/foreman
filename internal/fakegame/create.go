@@ -171,17 +171,21 @@ func saveZip(id string, v [3]uint16, mods []string) ([]byte, error) {
 func byteOf(n int) byte { return byte(n) } //nolint:gosec // the callers' values are under 256
 
 // drawPreview is --generate-map-preview: it writes <planet>.png for each
-// planet in the work folder bound at /out. The picture is a solid square
-// whose colour comes from the planet and the seed, so a test can tell two
-// previews apart.
+// planet in the work folder bound at /out. The picture is a solid square, as
+// many pixels a side as --map-preview-size says, whose colour comes from the
+// planet and the seed, so a test can tell two previews apart.
 func drawPreview(c dockertest.Container) error {
 	dir := mountSource(c, gameenv.PreviewMount)
 	if dir == "" {
 		return fmt.Errorf("the fake game's preview container has no folder bound at %s", gameenv.PreviewMount)
 	}
 	seed := envValue(c.Spec.Env, gameenv.Seed)
+	size, err := strconv.Atoi(envValue(c.Spec.Env, gameenv.PreviewSize))
+	if err != nil || size <= 0 {
+		return fmt.Errorf("the fake game's preview container has no valid %s", gameenv.PreviewSize)
+	}
 	for _, p := range strings.Fields(envValue(c.Spec.Env, gameenv.PreviewPlanets)) {
-		b, err := previewPNG(p, seed)
+		b, err := previewPNG(p, seed, size)
 		if err != nil {
 			return err
 		}
@@ -192,17 +196,13 @@ func drawPreview(c dockertest.Container) error {
 	return nil
 }
 
-func previewPNG(planet, seed string) ([]byte, error) {
+func previewPNG(planet, seed string, size int) ([]byte, error) {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(planet + "/" + seed))
 	sum := h.Sum32()
-	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
 	fill := color.RGBA{R: byteOf(int(sum & 0xff)), G: byteOf(int(sum >> 8 & 0xff)), B: byteOf(int(sum >> 16 & 0xff)), A: 255}
-	for y := range 64 {
-		for x := range 64 {
-			img.Set(x, y, fill)
-		}
-	}
+	// One palette colour keeps a 4096-pixel square small and quick to encode.
+	img := image.NewPaletted(image.Rect(0, 0, size, size), color.Palette{fill})
 	var b bytes.Buffer
 	if err := png.Encode(&b, img); err != nil {
 		return nil, err

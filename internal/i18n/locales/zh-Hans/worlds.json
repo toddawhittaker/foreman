@@ -390,5 +390,10 @@
   "worlds.generate.large.zoom_in": "放大",
   "worlds.generate.large.close": "关闭",
   "worlds.generate.large.keys": "左右方向键显示上一个和下一个星球，加号和减号缩放，Esc 键关闭。",
-  "worlds.generate.preview.pin": "图钉标记地图中心，即玩家的出生点。"
+  "worlds.generate.preview.pin": "图钉标记地图中心，即玩家的出生点。",
+  "worlds.generate.preview.size_label": "Preview size",
+  "worlds.generate.preview.size_option": "{size} × {size} tiles",
+  "worlds.generate.preview.size_default": "{size} × {size} tiles (default)",
+  "worlds.generate.preview.size_hint": "How much of the map, around its centre, the preview shows. Big sizes show their detail in the large view.",
+  "worlds.generate.error.preview_size": "Choose one of the sizes in the list."
 }

@@ -1265,6 +1265,12 @@ on a download).
   are not saved yet, with seed 123456. It redraws as you change them.
   "Generate world" makes exactly this map. The pin marks the centre of
   the map, where players start."
+- **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
+  wide panel, a select of 25 sizes elsewhere) above the section, outside
+  the part a reply replaces: 1024 to 4096 tiles square in steps of 128,
+  1280 by default, and a hint that big sizes show their detail in the
+  large view. A change redraws like any other, and the choice is kept
+  over a form error.
 - **Drawn by itself** (with script). On page load, and 0.8 s after the
   last change to anything in the form that changes the map: the preset,
   the seed, any setting, the way to make the map, the pasted exchange

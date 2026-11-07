@@ -402,5 +402,10 @@
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
   "worlds.generate.large.keys": "Las flechas izquierda y derecha muestran el planeta anterior y el siguiente, más y menos hacen zoom y Escape cierra.",
-  "worlds.generate.preview.pin": "El marcador señala el centro del mapa, donde empiezan los jugadores."
+  "worlds.generate.preview.pin": "El marcador señala el centro del mapa, donde empiezan los jugadores.",
+  "worlds.generate.preview.size_label": "Preview size",
+  "worlds.generate.preview.size_option": "{size} × {size} tiles",
+  "worlds.generate.preview.size_default": "{size} × {size} tiles (default)",
+  "worlds.generate.preview.size_hint": "How much of the map, around its centre, the preview shows. Big sizes show their detail in the large view.",
+  "worlds.generate.error.preview_size": "Choose one of the sizes in the list."
 }

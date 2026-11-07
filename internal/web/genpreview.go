@@ -2,6 +2,7 @@ package web
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -60,11 +61,12 @@ type MapPreviewer interface {
 // previewTTL is how long a preview's pictures are kept (SPEC 5.6).
 const previewTTL = 15 * time.Minute
 
-// The pictures held at once: 8 users' previews and 48 MB in all, so a few
-// admins cannot fill the memory (SPEC 5.6).
+// The pictures held at once: 8 users' previews and 96 MiB in all, so a few
+// admins cannot fill the memory (SPEC 5.6). One user's Space Age set at the
+// largest size is about 35 MB, so a second user does not evict it.
 const (
 	maxPreviews     = 8
-	maxPreviewBytes = 48 << 20
+	maxPreviewBytes = 96 << 20
 )
 
 // previewEntry is one user's current preview: the pictures drawn so far
@@ -94,15 +96,16 @@ func newPreviewStore(now func() time.Time) *previewStore {
 }
 
 // settingsKey is a hash of everything that changes the map, so the same
-// settings find the pictures already drawn. The planet and the world name
-// are not part of it.
+// settings find the pictures already drawn. The size is part of it, as it
+// changes every picture; the planet and the world name are not.
 func settingsKey(req game.PreviewRequest) string {
 	b, _ := json.Marshal(struct {
 		Version, Preset     string
 		SpaceAge            bool
 		Seed                uint32
+		Size                int
 		MapGen, MapSettings []byte
-	}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, req.MapGenSettings, req.MapSettings})
+	}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, cmp.Or(req.Size, game.PreviewSizeDefault), req.MapGenSettings, req.MapSettings})
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
@@ -226,8 +229,10 @@ func (p *previewStore) totalLocked() int {
 // PreviewView is the Map preview section. Error holds why no pictures
 // were made.
 type PreviewView struct {
-	Token    string
-	Seed     string
+	Token string
+	Seed  string
+	// Size is the side of each picture in tiles.
+	Size     int
 	Pictures []PreviewPicture
 	// Planets are every planet the world will have, for the planet choice
 	// shown when only one of them was drawn (DESIGN 8.8).
@@ -324,9 +329,9 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	req := game.PreviewRequest{
 		GameVersion: nw.GameVersion, SpaceAge: nw.SpaceAge, Preset: nw.Preset, Seed: *nw.Seed,
-		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings,
+		MapGenSettings: nw.MapGenSettings, MapSettings: nw.MapSettings, Size: f.PreviewSize,
 	}
-	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10)}
+	view := &PreviewView{Seed: strconv.FormatUint(uint64(req.Seed), 10), Size: f.PreviewSize}
 	for _, planet := range all {
 		view.Planets = append(view.Planets, PreviewPlanet{Planet: planet, Name: planetMsg(planet)})
 	}

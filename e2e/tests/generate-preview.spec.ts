@@ -130,6 +130,63 @@ test.describe("with script", () => {
     expect(await runs(fakeGame!)).toBe(before + 1);
   });
 
+  // SPEC 5.6, DESIGN 8.7, 8.8: the preview's size is a slider on a wide panel
+  // and a select on a phone; steps of one change send one request after the
+  // pause; the picture is drawn at the size; and the size survives a form
+  // that comes back with an error.
+  test("the preview size redraws once after the pause and is kept over an error", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(pictures(page)).toHaveCount(1);
+    const select = page.locator("#generate-preview-size");
+    const img = pictures(page);
+    await expect(select).toHaveValue("1280");
+    await expect(select.locator("option")).toHaveCount(25);
+    await expect(select.locator("option").first()).toHaveText("1024 × 1024 tiles");
+    await expect(select.locator("option:checked")).toHaveText("1280 × 1280 tiles (default)");
+    await expect(select.locator("option").last()).toHaveText("4096 × 4096 tiles");
+    await expect(page.locator("#generate-preview-size-hint")).toContainText("Big sizes show their detail in the large view.");
+    await expect(img).toHaveAttribute("width", "1280");
+    await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
+    await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(1280);
+
+    const sent = autoRequests(page);
+    if ((page.viewportSize()?.width ?? 1280) > 600) {
+      const slider = page.locator("#generate-preview-size-range");
+      await expect(slider).toBeVisible();
+      await expect(select).toBeHidden();
+      await expect(slider).toHaveAccessibleName("Preview size");
+      await expect(page.locator("#generate-preview-size-value")).toHaveText("1280 × 1280 tiles (default)");
+      await slider.focus();
+      // Three steps in a row are one request, not three.
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      await expect(select).toHaveValue("1664");
+      await expect(page.locator("#generate-preview-size-value")).toHaveText("1664 × 1664 tiles");
+    } else {
+      await expect(select).toBeVisible();
+      await expect(page.locator("#generate-preview-size-range")).toBeHidden();
+      await select.selectOption("1664");
+    }
+    await expect(img).toHaveAttribute("width", "1664");
+    await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
+    await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(1664);
+    await expect(page.locator("#announcer")).toHaveText("Map preview ready.");
+    await page.waitForTimeout(1200);
+    expect(sent.map((r) => field(r, "preview_size"))).toEqual(["1664"]);
+
+    // The largest size draws too.
+    await select.selectOption("4096", { force: true });
+    await expect(img).toHaveAttribute("width", "4096");
+    await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
+    await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(4096);
+
+    // With no name the form comes back with its error, the size kept.
+    await page.getByLabel("World name").press("Enter");
+    await expect(page.locator("#error-summary")).toBeFocused();
+    await expect(page.locator("#generate-preview-size")).toHaveValue("4096");
+  });
+
   test("the large view works by keyboard alone at 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto("/generate");

@@ -118,7 +118,7 @@ func TestPreviewContainerDrawsPictures(t *testing.T) {
 		Image:  image21,
 		Labels: map[string]string{gameenv.LabelPreview: "/data"},
 		Env: []string{
-			gameenv.PreviewPlanets + "=nauvis vulcanus", gameenv.Seed + "=9",
+			gameenv.PreviewPlanets + "=nauvis vulcanus", gameenv.Seed + "=9", gameenv.PreviewSize + "=1536",
 		},
 		HostConfig: docker.HostConfig{Binds: []string{r.world + ":" + gameenv.PreviewMount}, NetworkMode: "none"},
 	}
@@ -137,8 +137,11 @@ func TestPreviewContainerDrawsPictures(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := png.Decode(bytes.NewReader(b)); err != nil {
+		cfg, err := png.DecodeConfig(bytes.NewReader(b))
+		if err != nil {
 			t.Errorf("%s is not a PNG: %v", p, err)
+		} else if cfg.Width != 1536 || cfg.Height != 1536 {
+			t.Errorf("%s is %dx%d, want 1536x1536", p, cfg.Width, cfg.Height)
 		}
 	}
 	if entries, _ := os.ReadDir(filepath.Join(r.world, world.ConfigDir)); len(entries) != 1 {
