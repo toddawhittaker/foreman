@@ -70,8 +70,8 @@ async function snapshotLabels(page: Page, id: string): Promise<string> {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
-  // SPEC 10.2, 10.3: the active world offers Update, another world says how to get it.
-  test("the world page shows the version, and offers Update only for the active world", async ({ page, foreman, fakeGame }) => {
+  // SPEC 10.2, 10.3: every world that can be updated offers Update.
+  test("the world page shows the version, and offers Update for every world", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     seedSecond(foreman);
 
@@ -79,16 +79,13 @@ test.describe("with the fake game", () => {
     await expect(page.locator("dl.facts")).toContainText("2.1.24");
     const panel = page.getByRole("region", { name: "Game version" });
     await expect(panel.getByRole("link", { name: "Update game version" })).toHaveAttribute("href", "/worlds/base/update");
-    await expect(panel.getByText("Switch to this world to update it.")).toHaveCount(0);
     // No update has happened yet, so there is nothing to roll back.
     await expect(page.getByRole("link", { name: /Roll back to/ })).toHaveCount(0);
 
     await page.goto("/worlds/second");
     await expect(page.locator("dl.facts")).toContainText("2.1.24");
     const other = page.getByRole("region", { name: "Game version" });
-    // The version is stated once, in the facts; the way to update another
-    // world is the page's own Switch button (SPEC 17.9).
-    await expect(other.getByRole("link", { name: "Update game version" })).toHaveCount(0);
+    await expect(other.getByRole("link", { name: "Update game version" })).toHaveAttribute("href", "/worlds/second/update");
     await expect(page.locator("#act-switch")).toHaveText("Switch to this world");
     await checkPage(page);
   });
@@ -251,18 +248,36 @@ test.describe("with the fake game", () => {
     expect(await snapshotLabels(page, "base")).not.toContain("Before update");
   });
 
-  // SPEC 10.3: only the active world updates; a form sent for another world changes nothing.
-  test("a world that is not the active one cannot be updated", async ({ page, foreman, fakeGame }) => {
+  // SPEC 10.3, 10.4: a world that is not active updates and rolls back with no start or stop; its own
+  // page follows the update and shows the result.
+  test("a world that is not the active one updates and rolls back", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     seedSecond(foreman);
+    const before = await creates(g);
 
-    const resp = await page.request.post("/worlds/second/update", { form: { game_version: "2.1.25" }, maxRedirects: 0 });
-    expect(resp.status()).toBe(409);
-    expect(await resp.text()).toContain("Switch to this world to update it.");
+    await page.goto("/worlds/second/update");
+    await page.getByLabel("Or type a version").fill("2.1.25");
+    await page.getByRole("button", { name: "Update game version" }).click();
+
+    await expect(page).toHaveURL("/worlds/second");
+    await expect(page.locator("#world-activity")).toContainText("The game version is updated.", live);
+    await expect(page.locator("dl.facts")).toContainText("2.1.25");
+    expect(diskVersion(foreman, "second")).toBe("2.1.25");
+    expect(diskVersion(foreman, "base")).toBe("2.1.24");
+    expect(await hasImage(g, image2125)).toBe(true);
+    expect(await creates(g)).toBe(before);
+    expect(await snapshotLabels(page, "second")).toContain("Before update");
+    await page.goto("/worlds/second");
+    await checkPage(page);
+
+    await page.getByRole("link", { name: "Roll back to 2.1.24" }).click();
+    await checkPage(page);
+    await page.getByRole("button", { name: "Roll back to 2.1.24" }).click();
+    await expect(page).toHaveURL(/\/worlds\/second\/snapshots\?undo=/);
     expect(diskVersion(foreman, "second")).toBe("2.1.24");
-    expect((await pulls(g)).length).toBe(0);
-    expect(await snapshotLabels(page, "second")).not.toContain("Before update");
+    expect(await creates(g)).toBe(before);
+    expect(foreman.logs()).not.toMatch(/"level":"ERROR"/);
   });
 
   // SPEC 10.3, 7.4, 17.5: the refusal box is the confirmation for update anyway.

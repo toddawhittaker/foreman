@@ -95,6 +95,23 @@ The targets (STACK.md, section 13):
 - `make e2e`: build the binary and the fake game, and run the Playwright
   and axe tests in the Playwright image. No real Docker or game is used.
 - `make image`: build the container image as `foreman:dev`.
+- `make deploy`: build the image from your checkout and restart only the
+  Foreman service in a local Docker Compose stack. Nothing in the
+  repository names a stack, so set `DEPLOY_DIR` to its folder, either as
+  `make deploy DEPLOY_DIR=/path/to/stack` or once in `local.mk` in the
+  repository root (git ignores that file):
+
+  ```make
+  DEPLOY_DIR = /path/to/stack
+  ```
+
+  The service is `foreman` and the image `foreman:dev` unless you set
+  `DEPLOY_SERVICE` or `DEPLOY_IMAGE` there too. Only Foreman is
+  recreated, so the proxy and a running game keep going. The target waits
+  up to `DEPLOY_TIMEOUT` seconds (120) for the container to report
+  healthy, fails if it does not, and prints the image ID and the commit.
+  It refuses a checkout with uncommitted changes unless you pass
+  `FORCE=1`, so what runs matches a commit.
 - `make vuln`: govulncheck. It needs the network, so it is not in
   `verify`.
 - `make ci`: `verify`, `e2e` and `image` in turn: everything CI checks,

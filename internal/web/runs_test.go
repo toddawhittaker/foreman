@@ -26,6 +26,30 @@ func waitRuns(t *testing.T, ok func() bool) {
 	}
 }
 
+// A world's page keeps reloading while an action runs on it, and the result
+// is stored in the same step that ends the run, so the page never sees a
+// moment with neither.
+func TestInFlightEndsWithTheResultStored(t *testing.T) {
+	g := newGameRuns()
+	defer g.close()
+	if g.inFlight("w") {
+		t.Fatal("an action in flight before any ran")
+	}
+	release := make(chan struct{})
+	g.run("w", true, func(context.Context) actionResult {
+		<-release
+		return actionResult{Action: game.AuditUpdate}
+	})
+	if !g.inFlight("w") || g.inFlight("other") {
+		t.Error("the running action is not in flight on its own world only")
+	}
+	close(release)
+	waitRuns(t, func() bool { return !g.inFlight("w") })
+	if res, ok := g.result("w"); !ok || res.Action != game.AuditUpdate {
+		t.Errorf("result %+v, %v after the action left flight", res, ok)
+	}
+}
+
 // An image download holds no world lock, so a start asked for during
 // it is the world's result, not an aside.
 func TestStartDuringDownloadIsTheResult(t *testing.T) {

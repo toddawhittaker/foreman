@@ -137,9 +137,12 @@ func serve(cfg *config.Config) error {
 	// The sweeper uses the store, so it must stop before the store closes.
 	defer func() { stopSweep(); sweeping.Wait() }()
 
+	ln, err := listen(cfg.Listen)
+	if err != nil {
+		return err
+	}
 	errc := make(chan error, 1)
-	go func() { errc <- srv.ListenAndServe() }()
-	slog.Info("listening", "addr", cfg.Listen)
+	go func() { errc <- srv.Serve(ln) }()
 	select {
 	case err := <-errc:
 		return err
@@ -154,6 +157,17 @@ func serve(cfg *config.Config) error {
 		return err
 	}
 	return nil
+}
+
+// listen binds before it logs, so the logged address is the real one even for
+// port 0, and the e2e harness reads its port from that line.
+func listen(addr string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("listening", "addr", ln.Addr().String())
+	return ln, nil
 }
 
 // gameConfig fills the controller's settings.
