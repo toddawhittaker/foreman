@@ -942,6 +942,12 @@ old world's open page reloads onto the Server page after the operation
 ends, moves focus to the `h1`, and writes the result sentence
 to `#announcer`.
 
+When an operation's result shows on the same page after a reload (the
+update of a world that is not active, on its world page), focus moves to
+the result message itself (`tabindex="-1"`), which reads the whole
+result with its reason, and nothing is also written to `#announcer`, so
+it is said once.
+
 ### 7.7 Toggletip
 
 A short explanation of one setting, behind an (i) button after its name,
@@ -1249,9 +1255,26 @@ starts."
   the four panels stack under their legends. After a failed submit the
   page opens on the tab holding the first error, and a summary link (or
   focus) that lands in another tab opens it first.
-- **Per planet.** Resources and Terrain hold one closed `details` per
-  planet (the first open, any with an error open); a world with one
-  planet shows its groups directly.
+- **Per planet.** Resources and Terrain hold one `details` per planet;
+  a world with one planet shows its groups directly. Each tab's planet
+  rows form one exclusive group (`name="planet-<tab>"`): opening one
+  closes the other, and focus stays on the summary the person used. One
+  click opens a row and it stays open. The open planet is the same in
+  every tab, is kept over a round trip in the hidden `open_planet`
+  field, and is the planet with the first error when there is one.
+  Opening a row switches the preview to that planet, and the live region
+  says "Preview: Fulgora" once; a tab switch says nothing. Choosing a
+  planet in the preview opens its row without moving focus.
+- **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
+  every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
+  box in their legend, as resources do, and their continuity select no
+  longer offers "None". There is no achievement warning.
+- **Needed resources.** While a Nauvis resource the game needs (iron
+  ore, copper ore, stone, crude oil and coal) is off, a warning shows
+  under its box ("…unless a mod provides it"), and a `message--warning`
+  summary beside the achievements summary lists each one. It is a
+  warning, not a block. The live region says it once when the box goes
+  off and once when it comes back on.
 - **One fieldset per control**, its legend the game's name, small and
   muted so the groups read as one list. Its settings sit in a grid
   `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 13rem with sliders.

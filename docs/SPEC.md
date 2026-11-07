@@ -504,6 +504,21 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - A resource the game lets you switch off has an on/off box. Off writes
     size 0, the game's own off value; frequency 0 is not off (2.1.24
     crashes on it). A post that lacks the box keeps the resource on.
+  - **Cliffs off.** Cliffs have the same on/off box where the game lets
+    them be switched off: Nauvis on every line, and Gleba and Fulgora on
+    2.x; Vulcanus has no cliff control. Off writes
+    `cliff_settings.richness = 0` on 1.1, and
+    `autoplace_controls.<planet>_cliff.size = 0` on 2.x. On 2.x
+    `cliff_settings.richness` is never written as 0, because there it
+    removes cliffs on every planet. These keys were proved by counting
+    cliffs in real games on 1.1.110, 2.0.77 and 2.1.24. Cliffs off
+    disables no achievement.
+  - **One planet open at a time.** With several planets, each tab shows
+    one planet's settings open at a time, the same planet in every tab
+    and over a round trip, or the planet with the first error. The
+    preview follows the open planet, and choosing a planet in the
+    preview opens its settings, so the person sees the planet they are
+    changing.
   - Nauvis has a **map type**: Nauvis elevation (the default), Lakes and
     Island on 2.x; Normal and Island on 1.1. The default writes no
     `elevation` key. Other planets keep their own.
@@ -522,8 +537,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
     2 to 20; minimum cooldown 1 to 60 minutes, maximum 5 to 180; on 1.1
     and 2.0, minimum group size 1 to 20 and maximum 1 to 40; on 2.1,
     evolution group size factor 1 to 20 in place of the group sizes.
-  - Evolution: time factor and pollution factor 0 to 1000 (× 10⁻⁷),
-    destroy factor 0 to 1000 (× 10⁻⁵).
+  - Evolution: time factor and pollution factor 0 to 1000 (stored × 10⁻⁷),
+    destroy factor 0 to 1000 (stored × 10⁻⁵). They show as plain numbers,
+    as the game shows them, and each setting's tip (17.14) says the scale.
   - Technology: price multiplier 1 to 100000 (the game screen's lower end; the screen shows no upper end, so 100000 is a practical cap).
     On 1.1 also recipe difficulty and technology difficulty (Normal or
     Expensive) and research queue (After victory, Always or Never).
@@ -548,6 +564,12 @@ not) or a map exchange string, with Space Age on or off. (P0)
   one summary of the game's reasons sits by the Generate button. The
   server works out the same answer from the files it would write.
   Exchange strings get no warning.
+- **Needed-resource warnings.** While iron ore, copper ore, stone, crude
+  oil or coal is off on Nauvis, a warning under its box and a summary by
+  the Generate button say the game needs it unless a mod provides it.
+  Every line needs all five (plastic needs coal); uranium is not needed.
+  It is a warning, not a refusal, because a mod may supply the resource
+  and Foreman does not inspect mods for it.
 - **Decision D9 (settled 2026-11-06, ADR 0009): Foreman decodes the
   exchange string itself, in Go**, for the 1.1, 2.0 and 2.1 lines
   (`internal/mapexchange`). It is a port of rfvgyhn's
@@ -581,8 +603,11 @@ not) or a map exchange string, with Space Age on or off. (P0)
   `--generate-map-preview` (with `--map-preview-planet` on 2.x), run in a
   locked-down one-off container (14.3); the headless game cannot take a
   screenshot. It is drawn from exactly the settings Generate would write,
-  1280 by 1280 pixels (on 2.x one pixel is one tile, and the game has no
-  closer scale, so zooming scales the picture with sharp pixels).
+  square, at a size of 1024 to 4096 tiles in steps of 128, 1280 by
+  default; any other size is a field error (on 2.x one pixel is one tile,
+  and the game has no closer scale, so zooming scales the picture with
+  sharp pixels). The steps keep the control a short list, and 4096 was
+  measured to draw every planet within the container's limits (14.3).
   Previewing is optional. It uses only an image already downloaded, and
   otherwise says the image must be downloaded first; it never downloads
   one (3.7).
@@ -596,17 +621,38 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - The caption says the picture shows the current, unsaved settings,
     with the seed used, and a pin marks the centre of the map. A blank
     seed field takes the seed the preview used; a typed seed is kept.
-  - **The large view** is a dialog in the page with Previous and Next
-    (a planet not drawn yet is drawn there), zoom from 100% to 800%, the
-    planet's download, and Close.
+  - **The large view** is a dialog in the page that works as a picture
+    viewer, with Previous and Next (a planet not drawn yet is drawn
+    there), the planet's download, and Close. Zoom is continuous, in
+    steps of 1.15 by wheel, keys, buttons or pinch, from the fitted size
+    up to the larger of 8 times the fitted size and 8 CSS pixels per
+    tile; a fixed 800% would leave a 4096 picture at about 2 pixels per
+    tile. The picture pans by drag, keys, or a tap that centres the spot
+    tapped (17.14).
   - **Downloads**: one planet's PNG, or every drawn planet as a zip,
     named after the world, the seed and the planet.
+  - **Demolisher territories** (Vulcanus, Space Age, 2.x). A "Show
+    demolisher territories" box, shown only while Vulcanus is viewed and
+    kept while another planet is, draws each territory over the picture
+    with its size, and lists the counts under it in words. Foreman reads
+    them from the game itself, in a one-off container (14.3, ADR 0011),
+    only after the picture has arrived (`POST
+    /generate/preview/territories`), and holds them with the preview.
+    The box is offered up to 3072 tiles: 4096 ran out of the
+    container's 1 GiB on 2.1.24, and 3072 peaked at 750 MiB and 27
+    seconds, leaving room on a slow server. While the box is on, the
+    downloads take `?territories=1` and the server draws the territories
+    into Vulcanus's PNG, and into Vulcanus's file in the zip, named with
+    `-territories`; the overlay PNG is drawn per request, one at a time,
+    and not stored.
   - One preview runs at a time across Foreman; a request waits up to 20
     seconds for its turn (14.3). Each user has one current preview, keyed
     by its settings, with a picture per planet; asking again for a planet
     already drawn reuses it. The pictures are held in memory under a
     random token tied to the user for 15 minutes, at most 8 users'
-    previews and 48 MB at once, and only that user can fetch them.
+    previews and 96 MiB at once, and only that user can fetch them. The
+    total fits one Space Age user's five planets at 4096 plus territories,
+    so a second user does not evict the first.
 - Generate records the audit entry `generate` (12.9). A refusal appears on
   the form, in the page's language.
 
@@ -1149,7 +1195,12 @@ the version picker (10.7), for example from 2.1.19 to 2.1.24, or from a
 the local Docker does not hold it (a tag already held is not downloaded
 again; "Download game image" downloads it again on request, 3.7), and
 restart and confirm "InGame" only if the game was running (a stopped world
-stays stopped, as in a switch, 7.9). Only the active world can be updated.
+stays stopped, as in a switch, 7.9). Any world can be updated, active or
+not. A world that is not active never runs, so nothing stops or starts;
+the world lock keeps a switch out meanwhile, and the pre-start check still
+runs as advice. Its update runs in the background, and its own world page
+shows the progress and then the result, with "Update anyway" after a
+pre-start refusal, as on the Server page.
 A world's version only ever moves up: Factorio cannot load a save in an
 older version than the one that wrote it, so the picker offers only newer
 releases and Foreman refuses an older one. The only way back is rollback
@@ -1163,7 +1214,8 @@ newest "Before update" snapshot whose version is older than the world's
 current one, and takes the usual "Before restore" snapshot first as the undo.
 Pruning (6.6) never removes a world's newest "Before update" snapshot.
 When the local Docker no longer holds the previous version's image, the
-start is refused as in 3.7. (P0)
+start is refused as in 3.7. A world that is not active can be rolled
+back too, and nothing starts. (P0)
 
 10.5. Foreman never updates a game version, a mod, or itself on its own.
 (P0)
@@ -1445,7 +1497,22 @@ and one more is refused at once. A request whose browser goes away stops
 waiting, and if its preview is already running, the container is stopped
 and deleted with its folder. A container whose create call failed is
 deleted by its name. A leftover container (found by label) or folder from a crash is removed at
-the start of the next preview, not at startup.
+the start of the next preview, not at startup. The preview's 1 GiB stands
+at 4096 tiles: the measured peak was about 553 MiB and the slowest run
+under 6 seconds.
+
+Demolisher territories (5.6) use a second kind of preview container,
+`foreman-territories-<folder>`, with the same label, endpoints, host
+settings, limits, slot and cleanup. Its work folder holds a small mod with
+only a control script, and the game runs one `--create` with the
+preview's seed, preset and settings files, and no server. The script reads
+the territories when the map is created, writes them as JSON with
+`helpers.write_file`, and the game exits. Foreman reads that file through
+the work folder, at most 2 MiB and 1,000 territories, and checks every
+entry, because the game container is untrusted (14.1). RCON is not used:
+the container has no network, the image has no RCON client, and exec is
+forbidden above. A control-only mod adds no prototypes, so the map is the
+same as the picture's.
 
 To share a network with the game (4.4), Foreman reads its own container
 with `GET /containers/{id}/json`, which gives the networks it is on and
@@ -1476,7 +1543,12 @@ before they replace anything. Pasted text has limits too: a map exchange
 string is at most 64 KB and inflates to at most 1 MB (5.6), and a settings
 or map-gen JSON text, including the raw editors' and the files written to a
 world's `config/`, is at most 1 MB and must be one JSON object (11.2). A
-map preview picture is at most 8 MB. (P0)
+map preview picture is at most 16 MiB: at 4096 tiles Gleba measured 8.8
+MB and Vulcanus 8.5 MB, over the old 8 MB cap, and every other planet
+under 6 MB. Foreman reads the game's output (pictures and the territory
+file) only from regular files, so a named pipe left by the game cannot
+hang the read. Drawing territories into a download runs one at a time,
+with at most 4 waiting; one more is refused with "busy". (P0)
 
 14.7. **Requests that change state** require a signed-in session and
 protection against cross-site request forgery. A browser post is accepted
@@ -1671,6 +1743,19 @@ when empty has an asterisk after its label, drawn by CSS so the label's
 accessible name does not change, and each form with such a field has one
 "* Required" note. An optional field has no mark. A placeholder, where
 there is one, is an example and never repeats the label. (P1)
+
+17.14. **Toggletips and the picture viewer.** A setting may explain
+itself with a toggletip (DESIGN 7.7): an (i) button named "About" and the
+setting. It opens on click, tap, keyboard focus or hover, and closes on
+Escape or a tap elsewhere. Its text is in the page, describes the field,
+and shows under the field without script. The map preview's large view
+(5.6) puts its controls over the picture: Previous, Next, Close, and Zoom
+out and Zoom in, kept as the single-pointer way to zoom besides pinch and
+wheel (WCAG 2.5.1). They show on hover, on keyboard focus, and always
+under `(hover: none)`. On a zoomed picture a tap centres the spot tapped,
+so panning never needs a drag (WCAG 2.5.7). The tip buttons and the
+viewer's controls are 24 px targets, and 44 px on touch screens
+(`pointer: coarse`). (P1)
 
 ## 18. Epics, in order
 
