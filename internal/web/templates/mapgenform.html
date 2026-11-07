@@ -1,104 +1,204 @@
-{{/* The map-gen form of Generate (DESIGN 8.7). Takes MapGenForm; the page wraps it in its own "custom settings" fieldset. */}}
-{{define "mapgenform" -}}
-<div class="mapgen">
-  {{- if not .FromPreset.IsZero}}
-  <p class="hint" id="mg-preset-note">{{msg .FromPreset}}</p>
-  {{- end}}
-  <fieldset>
-    <legend>{{t "mapgen.map.legend"}}</legend>
-    {{- with .Seed}}
-    <div class="field">
-      <label for="{{.ID}}">{{t "mapgen.seed.label"}}</label>
-      <p class="hint" id="{{.ID}}-hint">{{t "mapgen.seed.hint"}}</p>
-      <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono"
-        inputmode="numeric" autocomplete="off" spellcheck="false"
-        {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
-      {{- if not .Error.IsZero}}
-      <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-      {{- end}}
-    </div>
+{{/* The map settings of Generate: the tabs Resources, Terrain, Enemy and
+     Advanced, as the game's map generator has them (DESIGN 8.7). Without
+     script the tabs stack, each under its own heading. Takes GenerateForm. */}}
+{{define "mapgen-panels" -}}
+<fieldset class="tabset">
+  <legend class="visually-hidden">{{t "mapgen.tab.legend"}}</legend>
+  <div class="tablist">
+    {{- range .Tabs}}
+    <label class="tab"><input type="radio" name="tab" id="tab-{{.}}" value="{{.}}"{{if eq . $.Tab}} checked{{end}}>
+      {{- if eq . "resources"}}{{t "mapgen.tab.resources"}}{{else if eq . "terrain"}}{{t "mapgen.tab.terrain"}}{{else if eq . "enemy"}}{{t "mapgen.tab.enemy"}}{{else}}{{t "mapgen.tab.advanced"}}{{end}}</label>
     {{- end}}
-    <div class="mapgen-pair">
-      {{- with .Width}}
-      <div class="field">
-        <label for="{{.ID}}">{{t "mapgen.width.label"}}</label>
-        <p class="hint" id="{{.ID}}-hint">{{t "mapgen.size.hint"}}</p>
-        <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono"
-          inputmode="numeric" autocomplete="off" spellcheck="false"
-          {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
-        {{- if not .Error.IsZero}}
-        <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-        {{- end}}
-      </div>
-      {{- end}}
-      {{- with .Height}}
-      <div class="field">
-        <label for="{{.ID}}">{{t "mapgen.height.label"}}</label>
-        <p class="hint" id="{{.ID}}-hint">{{t "mapgen.size.hint"}}</p>
-        <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono"
-          inputmode="numeric" autocomplete="off" spellcheck="false"
-          {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
-        {{- if not .Error.IsZero}}
-        <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-        {{- end}}
-      </div>
-      {{- end}}
-    </div>
-    {{template "mapgen-select" .StartingArea}}
-    {{template "mapgen-group" .Water}}
-    {{template "mapgen-group" .Cliffs}}
-    <div class="mapgen-check">
-      <label class="check"><input type="checkbox" id="mg-peaceful" name="mg.peaceful" aria-describedby="mg-peaceful-hint"{{if .Peaceful}} checked{{end}}> {{t "mapgen.peaceful.label"}}</label>
-      <p class="hint" id="mg-peaceful-hint">{{t "mapgen.peaceful.hint"}}</p>
-    </div>
-  </fieldset>
-  {{- range .Planets}}
-  <details id="{{.ID}}"{{if .Open}} open{{end}}>
-    <summary>{{msg .Summary}}</summary>
-    <div class="mapgen-body">
-      {{- range .Groups}}
-      {{template "mapgen-group" .}}
-      {{- end}}
-    </div>
-  </details>
+  </div>
+</fieldset>
+
+<fieldset class="tab-panel" id="panel-resources">
+  <legend>{{t "mapgen.tab.resources"}}</legend>
+  {{template "mapgen-planets" .MapGen.Resources}}
+</fieldset>
+
+<fieldset class="tab-panel" id="panel-terrain">
+  <legend>{{t "mapgen.tab.terrain"}}</legend>
+  {{template "mapgen-planets" .MapGen.Terrain}}
+</fieldset>
+
+<fieldset class="tab-panel" id="panel-enemy">
+  <legend>{{t "mapgen.tab.enemy"}}</legend>
+  {{- range .MapGen.Enemy}}
+  {{template "mapgen-group" .}}
   {{- end}}
-  <details id="mg-raw-details"{{if .RawOpen}} open{{end}}>
+  <div class="mapgen-checks">
+    {{template "mapgen-check" .MapGen.NoEnemies}}
+    {{template "mapgen-check" .MapGen.Peaceful}}
+  </div>
+  {{template "mapgen-select" .MapGen.StartingArea}}
+  {{- if .MapSettings.Untested}}
+  {{template "ms-untested" .}}
+  {{- else}}
+  {{- range .MapSettings.InTab "enemy"}}
+  {{template "ms-group" .}}
+  {{- end}}
+  {{- end}}
+</fieldset>
+
+<fieldset class="tab-panel" id="panel-advanced">
+  <legend>{{t "mapgen.tab.advanced"}}</legend>
+  <fieldset class="autoplace">
+    <legend>{{t "mapgen.map.legend"}}</legend>
+    {{template "mapgen-size" .MapGen.Width}}
+    {{template "mapgen-size" .MapGen.Height}}
+  </fieldset>
+  {{- if not .MapSettings.Untested}}
+  {{- range .MapSettings.InTab "advanced"}}
+  {{template "ms-group" .}}
+  {{- end}}
+  {{- end}}
+  <details id="mg-raw-details"{{if .MapGen.RawOpen}} open{{end}}>
     <summary>{{t "mapgen.raw.summary"}}</summary>
-    {{- with .Raw}}
+    {{- with .MapGen.Raw}}
     <div class="field">
       <label for="{{.ID}}">{{t "mapgen.raw.label"}}</label>
       <p class="hint" id="{{.ID}}-hint">{{t "mapgen.raw.hint"}}</p>
       <textarea id="{{.ID}}" name="{{.Name}}" rows="10" wrap="off" class="mono"
-        spellcheck="false" autocapitalize="off" autocomplete="off"
-        {{- if $.RawInvalid}} aria-invalid="true" aria-describedby="{{.ID}}-hint error-summary"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>{{.Value}}</textarea>
+        spellcheck="false" autocapitalize="off" autocomplete="off"{{if $.MapGen.RawModified}} data-modified="true"{{end}}
+        {{- if $.MapGen.RawInvalid}} aria-invalid="true" aria-describedby="{{.ID}}-hint error-summary"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>{{.Value}}</textarea>
     </div>
     {{- end}}
   </details>
+</fieldset>
+{{- end}}
+
+{{/* The note that stands in for the map settings on a version with no tested layout. Takes GenerateForm. */}}
+{{define "ms-untested" -}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "mapgen.ms.untested" "version" .Version}}</p>
 </div>
 {{- end}}
 
-{{/* One autoplace control: its name, then its settings side by side. Takes MapGenGroup. */}}
+{{/* One planet's controls per tab: in a details element each when the world has several planets. Takes []MapGenPlanet. */}}
+{{define "mapgen-planets" -}}
+{{- if eq (len .) 1}}
+{{- range (index . 0).Groups}}
+{{template "mapgen-group" .}}
+{{- end}}
+{{- else}}
+{{- range .}}
+<details id="{{.ID}}"{{if .Open}} open{{end}}>
+  <summary>{{msg .Summary}}</summary>
+  <div class="mapgen-body">
+    {{- range .Groups}}
+    {{template "mapgen-group" .}}
+    {{- end}}
+  </div>
+</details>
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{/* One autoplace control: its name, then its settings side by side. A
+     resource the game lets you switch off has its on/off box in the legend,
+     which stays usable when the script disables the fieldset; the hidden
+     "off" before it is what an unticked box sends. Takes MapGenGroup. */}}
 {{define "mapgen-group" -}}
-<fieldset class="autoplace">
+<fieldset class="autoplace" id="{{.ID}}">
+  {{- with .Toggle}}
+  <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"{{if .Checked}} checked{{end}}> {{msg .Label}}</label></legend>
+  {{- else}}
   <legend>{{msg .Legend}}</legend>
+  {{- end}}
   {{- range .Selects}}
   {{template "mapgen-select" .}}
   {{- end}}
 </fieldset>
 {{- end}}
 
-{{/* One select of steps. Takes MapGenSelect. */}}
+{{/* One setting of steps: a select. With script, on a wide panel, a slider
+     over the same steps stands in for it and shows the step in words; the
+     select is still what is sent (DESIGN 8.7). Takes MapGenSelect. */}}
 {{define "mapgen-select" -}}
-<div class="field">
-  <label for="{{.ID}}">{{msg .Label}}</label>
-  <select id="{{.ID}}" name="{{.Name}}"{{if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-error"{{end}}>
+<div class="field{{if not .Plain}} step{{end}}">
+  <label for="{{.ID}}" id="{{.ID}}-label">{{msg .Label}}</label>
+  <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
+    aria-describedby="{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
     {{- $chosen := .Value}}
     {{- range .Options}}
     <option value="{{.Value}}"{{if eq .Value $chosen}} selected{{end}}>{{msg .Label}}</option>
     {{- end}}
   </select>
+  <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
   {{- if not .Error.IsZero}}
   <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
   {{- end}}
 </div>
+{{- end}}
+
+{{/* A checkbox of the Enemy tab. Takes MapGenCheck; one with no Name is left out. */}}
+{{define "mapgen-check" -}}
+{{- if .Name}}
+<div class="mapgen-check">
+  <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" data-preset="{{if .Preset}}on{{end}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
+    aria-describedby="{{.ID}}-hint {{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
+  <p class="hint" id="{{.ID}}-hint">{{msg .Hint}}</p>
+  <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+</div>
+{{- end}}
+{{- end}}
+
+{{/* The width or height. Takes MapGenText. */}}
+{{define "mapgen-size" -}}
+<div class="field">
+  <label for="{{.ID}}">{{msg .Label}}</label>
+  <p class="hint" id="{{.ID}}-hint">{{t "mapgen.size.hint"}}</p>
+  <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" data-preset="{{.Preset}}"
+    inputmode="numeric" autocomplete="off" spellcheck="false"
+    {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
+  {{- if not .Error.IsZero}}
+  <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* A group of map settings. Takes MapSettingsGroup. */}}
+{{define "ms-group" -}}
+<fieldset class="autoplace ms-group">
+  <legend>{{msg .Legend}}</legend>
+  {{- range .Fields}}
+  {{- if .Toggle}}
+  <div class="mapgen-check">
+    <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
+      aria-describedby="{{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
+    <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+  </div>
+  {{- else if .Choices}}
+  <div class="field">
+    <label for="{{.ID}}">{{msg .Label}}</label>
+    <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-error"{{end}}>
+      {{- range .Choices}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{msg .Label}}</option>
+      {{- end}}
+    </select>
+    {{- if not .Error.IsZero}}
+    <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    {{- end}}
+  </div>
+  {{- else}}
+  <div class="field">
+    <label for="{{.ID}}">{{msg .Label}}</label>
+    <div class="inline-row">
+      <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" inputmode="decimal" autocomplete="off" spellcheck="false"
+        {{- if .Max}} data-min="{{.Min}}" data-max="{{.Max}}"{{end}}{{if .MinField}} data-min-field="{{.MinField}}" data-gap="{{.Gap}}"{{end}}
+        data-preset="{{.Preset}}"{{with .Ach}} data-ach="{{.Test}}"{{if .Limit}} data-ach-limit="{{.Limit}}"{{end}} data-ach-reason="{{.Reason}}"{{end}}
+        aria-describedby="{{if not .Unit.IsZero}}{{.ID}}-unit {{end}}{{.ID}}-ach{{if not .Error.IsZero}} {{.ID}}-error{{end}}"{{if not .Error.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .Unit.IsZero}}
+      <span class="unit" id="{{.ID}}-unit">{{msg .Unit}}</span>
+      {{- end}}
+    </div>
+    <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
+    {{- if not .Error.IsZero}}
+    <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    {{- end}}
+  </div>
+  {{- end}}
+  {{- end}}
+</fieldset>
 {{- end}}

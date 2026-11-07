@@ -56,8 +56,9 @@ lint:
 
 # One race-enabled run gives both the test result and the coverage floor.
 test:
-	go test -race -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./...
-	@total=$$(go tool cover -func=coverage.out | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
+	@cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
+	go test -race -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
+	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
 	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
 		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
 	fi; \
@@ -107,7 +108,8 @@ define CHECK_GAME_IMAGE
 endef
 
 # The controller against the real Docker daemon and the pinned game images,
-# one image at a time (they share the game port). TAG=1.1, 2.0 or 2.1 runs one.
+# one image at a time (they share the game port, so -p 1 runs the packages one
+# after another too). TAG=1.1, 2.0 or 2.1 runs one.
 # The images each TAG's tests run: TAG=2.0 and 2.1 include the 2.0.77 to
 # 2.1.24 update, and 2.1 the 2.1.23 to 2.1.24 one too.
 TEST_GAME_USES_ := 1.1 2.0 2.1 2.1-prev
@@ -122,7 +124,7 @@ test-game:
 	$(if $(filter 2.1,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1)))
 	$(if $(filter 2.1-prev,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1_PREV)))
 	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) GAME_IMAGE_2_1_PREV=$(GAME_IMAGE_2_1_PREV) \
-		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -timeout 30m -v -run TestRealGame ./internal/game/
+		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -p 1 -timeout 30m -v -run TestRealGame ./internal/game/ ./internal/web/
 
 # The phone scenario against the real game: Playwright in its pinned image,
 # with the host's Docker socket, starts bin/foreman, which starts the pinned

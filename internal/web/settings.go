@@ -77,12 +77,13 @@ func (w settingsWorld) text() []byte {
 }
 
 // formText is the text the form reads. A world with no file starts with its
-// own name as the server name, so a first save has one (SPEC 11.1).
+// own name as the server name and auto-pause on, so a first save has both
+// (SPEC 11.1).
 func (w settingsWorld) formText() []byte {
 	if w.cfg.Found {
 		return w.cfg.Data
 	}
-	return append(append([]byte(`{"name": `), jsonString(w.sum.Name)...), '}')
+	return append(append([]byte(`{"name": `), jsonString(w.sum.Name)...), `, "auto_pause": true}`...)
 }
 
 // load finds the world named in the path and reads its two settings files.
@@ -127,7 +128,7 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 // formPage fills the form from the settings text and admin names given.
 func (sw settingsWorld) formPage(text []byte, names []string) SettingsPage {
 	p := SettingsPage{
-		WorldID: sw.sum.ID, WorldName: sw.sum.Name, ReadOnly: sw.readOnly,
+		WorldID: sw.sum.ID, WorldName: sw.sum.Name, Active: sw.sum.Active, ReadOnly: sw.readOnly,
 		Running: sw.running, AdminsBroken: sw.adminsBroken,
 		Admins: strings.Join(names, "\n"),
 	}
@@ -200,9 +201,20 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 	}
 	p := sw.formPage(text, names)
 	p.Edit = edit
+	p.Connected = h.connected(r.Context(), sw, p.Admins)
 	p.PasswordPending = p.PasswordSet && !bytes.Equal(carriedPassword(sw.formText()), carriedPassword(text))
 	h.fillDone(&p, sw, r)
 	h.s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// connected lists who is in the running game and could be made an admin, for
+// the form (SPEC 11.1, 8.1). It is empty when the game is not running, when
+// nobody is on, and when the game cannot say.
+func (h *settingsHandlers) connected(ctx context.Context, sw settingsWorld, adminsText string) []string {
+	if h.s.game == nil || !sw.running || sw.adminsBroken || !sw.readOnly.IsZero() {
+		return nil
+	}
+	return connected(h.s.online(ctx, sw.sum.ID).Names, adminsText)
 }
 
 // fillDone shows the result of the save the browser was sent back from. The
@@ -259,6 +271,9 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	} else {
 		edit = ""
 	}
+	if !sw.adminsBroken {
+		in.addMadeAdmin()
+	}
 	var names []string
 	var adminErr i18n.Msg
 	if in.AdminsPosted && !sw.adminsBroken {
@@ -281,6 +296,7 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		p.Name, p.Description, p.MaxPlayers = in.Name, in.Description, in.MaxPlayers
 		p.Interval, p.Slots, p.Verify, p.AutoPause = in.Interval, in.Slots, in.Verify, in.AutoPause
 		p.Admins, p.Edit, p.formErrors = in.Admins, edit, errs
+		p.Connected = h.connected(r.Context(), sw, in.Admins)
 		p.PasswordDropped = in.Password != ""
 		if v := gamesettings.Visibility(in.Visibility); slices.Contains(gamesettings.FormVisibilities, v) {
 			p.Visibility = in.Visibility
@@ -566,6 +582,11 @@ type ChangeRow struct {
 
 func (SettingsPreviewPage) templateName() string { return "settingspreview" }
 func (SettingsPreviewPage) navItem() string      { return PathWorlds }
+
+// Tabs are the world's pages, with Settings current (DESIGN 6).
+func (p SettingsPreviewPage) Tabs() WorldTabs {
+	return settingsTabs(p.WorldID, true)
+}
 
 func (p SettingsPreviewPage) WorldPath() string     { return worldPath(p.WorldID) }
 func (p SettingsPreviewPage) ConfirmPath() string   { return settingsConfirmPath(p.WorldID) }

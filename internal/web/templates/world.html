@@ -2,8 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a></div>
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if .World.Unreadable}}
 <p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>
 {{- else if .World.Newer}}
@@ -34,10 +34,10 @@
   <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
 </div>
 {{- end}}
+{{- /* The world page's one primary action, on a world that is not active (SPEC 7.9). */}}
 {{- if .CanSwitch}}
-<section class="panel" aria-labelledby="switch-heading">
-  <h2 id="switch-heading">{{t "worlds.world.switch.heading"}}</h2>
-  <p>{{t "worlds.world.switch.text"}}</p>
+<section class="panel" aria-label="{{t "worlds.world.switch.heading"}}">
+  <p class="hint">{{t "worlds.world.switch.text"}}</p>
   {{- with .MissingImage}}
   <div class="message message--note">
     <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.world.switch.missing_image" "image" (code .)}}</p>
@@ -47,14 +47,11 @@
     <a href="{{.SwitchPath}}" class="button button--primary" id="act-switch">{{t "worlds.world.switch.button"}}</a>
   </div>
 </section>
-{{- else if or .SwitchBusy (not .SwitchNote.IsZero)}}
-<section class="panel" aria-labelledby="switch-heading">
-  <h2 id="switch-heading">{{t "worlds.world.switch.heading"}}</h2>
-  <p>{{if .SwitchBusy}}{{tHTML "worlds.world.switch.busy" "link" (link serverPath "worlds.world.server_page")}}{{else}}{{msg .SwitchNote}}{{end}}</p>
-</section>
+{{- else if .SwitchBusy}}
+<p>{{tHTML "worlds.world.switch.busy" "link" (link serverPath "worlds.world.server_page")}}</p>
 {{- end}}
 <section class="panel" aria-labelledby="facts-heading">
-  <h2 id="facts-heading">{{t "worlds.world.about"}}</h2>
+  <h2 id="facts-heading" class="visually-hidden">{{t "worlds.world.about"}}</h2>
   <dl class="facts">
     <div><dt>{{t "worlds.world.folder"}}</dt><dd><code>{{.World.ID}}</code></dd></div>
     <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
@@ -65,19 +62,10 @@
     {{- end}}
     <div><dt>{{t "worlds.fact.disk_use"}}</dt><dd>{{if .World.SizeUnknown}}{{t "worlds.unknown_lower"}}{{else}}{{bytes .World.DiskBytes}}{{end}}</dd></div>
   </dl>
-  <div class="actions">
-    <a href="{{.SavesPath}}" class="button">{{t "worlds.world.saves"}}</a>
-    <a href="{{.SnapshotsPath}}" class="button">{{t "worlds.world.snapshots"}}</a>
-    {{- if not (or .World.Newer .World.Unreadable)}}
-    <a href="{{worldsPath}}/{{.World.ID}}/settings" class="button" id="act-settings">{{t "worlds.world.settings"}}</a>
-    <a href="{{.ClonePath}}" class="button" id="act-clone">{{t "worlds.world.clone"}}</a>
-    {{- end}}
-  </div>
 </section>
 {{- if not (or .World.Newer .World.Unreadable)}}
 <section class="panel" aria-labelledby="version-heading">
   <h2 id="version-heading">{{t "worlds.fact.game_version"}}</h2>
-  <p>{{if .World.GameVersion}}{{tHTML "worlds.world.runs" "version" (code .World.GameVersion)}}{{else}}{{t "worlds.world.runs_unknown"}}{{end}}</p>
   {{- with .ReleasesPath}}
   <div id="release-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML">
     <p>{{t "worlds.world.checking_release"}}</p>
@@ -87,9 +75,9 @@
   <div class="actions">
     <a href="{{.UpdatePath}}" class="button" id="act-update">{{t "worlds.world.update"}}</a>
   </div>
-  {{- else}}
-  <p>{{t "server.update.not_active"}}</p>
   {{- end}}
+  {{- /* A world that is not active is updated after a switch; the page's own
+       Switch button, at its top, is that control (SPEC 17.9). */}}
   {{- with .Rollback}}
   <p>{{tHTML "worlds.world.rollback_text" "label" (snapLabel .Snapshot) "when" (momentUTC .Snapshot.TakenAt) "version" (code .Version)}}</p>
   <div class="actions">
@@ -102,34 +90,39 @@
 <form method="post" action="{{.RenamePath}}" class="panel" novalidate aria-labelledby="rename-heading">
   <h2 id="rename-heading">{{t "worlds.world.rename.heading"}}</h2>
   {{template "summary" .Problems}}
-  <p>{{t "worlds.world.rename.text"}}</p>
+  {{template "required-note"}}
   <div class="field">
-    <label for="name">{{t "worlds.world.rename.label"}}</label>
-    <input id="name" name="name" type="text" value="{{.Name}}" required maxlength="100"
-      {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-error"{{end}}>
+    <label for="name" class="required">{{t "worlds.world.rename.label"}}</label>
+    <p class="hint" id="name-hint">{{t "worlds.world.rename.text"}}</p>
+    <div class="inline-row">
+      <input id="name" name="name" type="text" value="{{.Name}}" required maxlength="100"
+        {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-hint name-error"{{else}} aria-describedby="name-hint"{{end}}>
+      <button type="submit" class="button">{{t "worlds.world.rename.button"}}</button>
+    </div>
     {{- if not .NameError.IsZero}}
     <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
     {{- end}}
   </div>
-  <div class="actions">
-    <button type="submit" class="button">{{t "worlds.world.rename.button"}}</button>
-  </div>
 </form>
 {{- end}}
 <section class="panel" aria-labelledby="delete-heading">
-  <h2 id="delete-heading">{{t "worlds.world.delete.heading"}}</h2>
+  <h2 id="delete-heading">{{t "worlds.world.more.heading"}}</h2>
   {{- $refusal := .DeleteRefusal}}
   {{- if not $refusal.IsZero}}
-  <p>{{msg $refusal}}</p>
-  {{- if $.Page.DeleteWaitsOnServer}}
-  <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
-  {{- end}}
+  <p class="hint">{{msg $refusal}}</p>
   {{- else}}
-  <p>{{t "worlds.world.delete.text"}}</p>
-  <div class="actions">
-    <a href="{{.DeletePath}}" class="button">{{t "worlds.world.delete.button"}}</a>
-  </div>
+  <p class="hint">{{t "worlds.world.delete.text"}}</p>
   {{- end}}
+  <div class="actions">
+    {{- if not (or .World.Newer .World.Unreadable)}}
+    <a href="{{.ClonePath}}" class="button" id="act-clone">{{t "worlds.world.clone"}}</a>
+    {{- end}}
+    {{- if $refusal.IsZero}}
+    <a href="{{.DeletePath}}" class="button">{{t "worlds.world.delete.button"}}</a>
+    {{- else if $.Page.DeleteWaitsOnServer}}
+    <a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a>
+    {{- end}}
+  </div>
 </section>
 {{end}}
 {{- end}}

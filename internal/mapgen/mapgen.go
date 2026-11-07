@@ -12,16 +12,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 )
 
 //go:embed data
 var files embed.FS
 
 // Control categories the form treats apart from the others, as the game
-// names them. The game's other categories are resource and enemy.
+// names them. The game's other category is enemy.
 const (
-	CategoryTerrain = "terrain"
-	CategoryCliff   = "cliff"
+	CategoryResource = "resource"
+	CategoryTerrain  = "terrain"
+	CategoryCliff    = "cliff"
 )
 
 // Control is one autoplace control: a setting with its own frequency and
@@ -30,6 +32,9 @@ type Control struct {
 	Name     string `json:"name"`
 	Category string `json:"category"`
 	Richness bool   `json:"richness"`
+	// CanBeDisabled says the game's map generator offers an on/off box for
+	// the control.
+	CanBeDisabled bool `json:"can_be_disabled"`
 }
 
 type planet struct {
@@ -42,22 +47,75 @@ type lineData struct {
 	GameVersion string   `json:"game_version"`
 	Presets     []string `json:"presets"`
 	Planets     []planet `json:"planets"`
+	MapTypes    []string `json:"map_types"`
 }
 
-// Lines lists the supported game lines, oldest first.
-var Lines = []string{"1.1", "2.0", "2.1"}
+// GameLine is one supported game line and what the rest of Foreman needs to
+// know about it.
+type GameLine struct {
+	// Name is the line as "major.minor", such as "2.0".
+	Name string
+	// SpaceAgeMods are the Space Age DLC mods the line ships; none when the
+	// line has no Space Age (SPEC 9.7).
+	SpaceAgeMods []string
+	// AlwaysOnMods are built-in mods that are not part of Space Age and stay
+	// enabled with Space Age off.
+	AlwaysOnMods []string
+}
 
-var versionRE = regexp.MustCompile(`^(1\.1|2\.0|2\.1)\.(?:0|[1-9][0-9]*)$`)
+// supported is the one list of supported game lines, oldest first. Adding a
+// line starts here, with its data under data/ (SPEC 10.8).
+var supported = []GameLine{
+	{Name: "1.1"},
+	{Name: "2.0", SpaceAgeMods: []string{"elevated-rails", "quality", "space-age"}},
+	{Name: "2.1", SpaceAgeMods: []string{"elevated-rails", "quality", "space-age"}, AlwaysOnMods: []string{"recycler"}},
+}
+
+// Lines lists the names of the supported game lines, oldest first.
+var Lines = func() []string {
+	names := make([]string, len(supported))
+	for i, l := range supported {
+		names[i] = l.Name
+	}
+	return names
+}()
+
+var (
+	// dottedRE is a version of two or more dotted numbers: "2.0", "2.0.77".
+	dottedRE = regexp.MustCompile(`^(\d+\.\d+)(?:\.\d+)*$`)
+	// patchRE is an exact patch release, with no leading zeros in the patch.
+	patchRE = regexp.MustCompile(`^(\d+\.\d+)\.(?:0|[1-9][0-9]*)$`)
+)
+
+// LineOf returns the supported line a version belongs to. The version is
+// dotted numbers: a line ("2.0") or a release ("2.0.77"). It reports false
+// for a line Foreman does not support and for anything not dotted numbers.
+// The returned slices are copies.
+func LineOf(version string) (GameLine, bool) {
+	m := dottedRE.FindStringSubmatch(version)
+	if m == nil {
+		return GameLine{}, false
+	}
+	for _, l := range supported {
+		if l.Name == m[1] {
+			l.SpaceAgeMods = slices.Clone(l.SpaceAgeMods)
+			l.AlwaysOnMods = slices.Clone(l.AlwaysOnMods)
+			return l, true
+		}
+	}
+	return GameLine{}, false
+}
 
 // Line returns the game line ("2.0") of an exact patch release ("2.0.77").
 // It reports false for a line Foreman does not support and for anything that
 // is not a full patch release (SPEC 10.7, 10.8).
 func Line(version string) (string, bool) {
-	m := versionRE.FindStringSubmatch(version)
+	m := patchRE.FindStringSubmatch(version)
 	if m == nil {
 		return "", false
 	}
-	return m[1], true
+	l, ok := LineOf(m[1])
+	return l.Name, ok
 }
 
 // parsed is each line's data. The embedded data is part of the
@@ -77,6 +135,10 @@ var parsed = func() map[string]lineData {
 	}
 	return m
 }()
+
+// DataVersion returns the game version a line's data was read from, or ""
+// for an unknown line.
+func DataVersion(line string) string { return parsed[line].GameVersion }
 
 // Presets returns the names the game accepts for --preset on a line, in the
 // order its map generator lists them. It returns nil for an unknown line.

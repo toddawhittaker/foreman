@@ -9,9 +9,10 @@
   "common.signedin": "Angemeldet als {user}",
   "common.signout": "Abmelden",
   "common.language.label": "Sprache",
-  "common.language.submit": "Wechseln",
   "common.countdown.label": "Countdown in Sekunden",
-  "common.countdown.hint": "Spieler, die online sind, sehen im Spiel eine Warnung, dann speichert das Spiel und stoppt. 0 bis 600 Sekunden; 0 heißt keine Warnung: Das Spiel speichert und stoppt sofort. Ist niemand online, wird niemand gewarnt.",
+  "common.countdown.hint": "Spieler, die online sind, sehen im Spiel eine Warnung, dann speichert das Spiel und stoppt. 0 bis 600 Sekunden; 0 heißt keine Warnung.",
+  "common.countdown.none": "Keine Warnung",
+  "common.required.note": "Pflichtfeld",
   "common.summary.heading": {
     "one": "Behebe dieses Problem, um fortzufahren",
     "other": "Behebe {count} Probleme, um fortzufahren"
@@ -52,5 +53,8 @@
   "common.label.note": "Hinweis:",
   "common.label.busy": "Beschäftigt:",
   "common.confirm.will": "Dabei passiert Folgendes:",
-  "common.list.sep": ", "
+  "common.list.sep": ", ",
+  "common.menu.account": "{user}, {language}: Konto- und Sprachmenü",
+  "common.menu.language": "{language}: Sprachmenü",
+  "common.countdown.none_name": "Keine Warnung: Countdown auf 0 Sekunden setzen"
 }

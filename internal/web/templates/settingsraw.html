@@ -1,9 +1,11 @@
 {{define "title"}}{{t "settings.raw.title" "file" .Page.File "world" .Page.WorldName}}{{end}}
 
+{{define "scripts"}}<script src="{{static "settingsraw.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.FormPath}}">{{t "settings.raw.back"}}</a></div>
 <h1>{{t "settings.raw.title" "file" .File "world" .WorldName}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
@@ -31,8 +33,8 @@
     <p class="hint" id="content-hint">{{t "settings.raw.hint" "size" (bytes .MaxBytes)}}</p>
     <p class="hint" id="content-secrets">{{t "settings.raw.secrets"}}</p>
     <textarea id="content" name="content" class="code" rows="24" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off"
-      aria-describedby="content-hint content-secrets{{if .Problems}} error-summary{{end}}"
-      {{- if .Problems}} aria-invalid="true"{{end}}
+      aria-describedby="content-hint content-secrets{{if .Problems}} error-summary-heading{{end}}"
+      {{- if .Problems}} aria-invalid="true" data-error-lines="{{.ErrorLineList}}"{{end}}
       {{- if not .ReadOnly.IsZero}} readonly{{end}}>{{.Text}}</textarea>
   </div>
   {{- if .ReadOnly.IsZero}}

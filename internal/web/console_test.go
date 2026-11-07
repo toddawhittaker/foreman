@@ -3,10 +3,13 @@ package web
 import (
 	"bufio"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 )
 
@@ -121,6 +124,64 @@ func (g *gameRig) startRunning() string {
 
 func consoleSendPath(id string) string { return worldPath(id) + "/console" }
 
+// SPEC 8.6: Download log sends the lines the Console shows, as a text file
+// named for the world, and only to someone signed in. The masking of
+// secrets is checked with every other page in TestNoSecretLeaksFromServerControl.
+func TestConsoleLogDownload(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	g.fake.Daemon().EmitLog(game.ContainerName(id), docker.Stdout, "  12.345 Error ServerMultiplayerManager.cpp:1: something broke")
+	deadline := time.Now().Add(10 * time.Second)
+	var rec *httptest.ResponseRecorder
+	for {
+		rec = g.harness.get(consolePath(id, "/log"), withCookie(g.cookie))
+		if strings.Contains(rec.Body.String(), "something broke") || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "  12.345 Error ServerMultiplayerManager.cpp:1: something broke\n") {
+		t.Fatalf("log download: %d\n%s", rec.Code, rec.Body.String())
+	}
+	h := rec.Header()
+	if got := h.Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Errorf("Content-Type %q", got)
+	}
+	if got := h.Get("Content-Disposition"); got != `attachment; filename="foreman-`+id+`-log.txt"` {
+		t.Errorf("Content-Disposition %q", got)
+	}
+	if got := strings.Count(rec.Body.String(), "\n"); got != len(g.ctrl.Lines(id)) {
+		t.Errorf("%d lines sent, the Console keeps %d", got, len(g.ctrl.Lines(id)))
+	}
+	// The Console links to it.
+	if page := g.get(PathConsole); !strings.Contains(page, `href="`+consolePath(id, "/log")+`" download`) {
+		t.Error("the Console page has no Download log link")
+	}
+	if rec := g.harness.get(consolePath(id, "/log")); rec.Code == http.StatusOK {
+		t.Errorf("a signed-out request got the log: %d", rec.Code)
+	}
+	if rec := g.harness.get(consolePath("no-such-world", "/log"), withCookie(g.cookie)); rec.Code != http.StatusNotFound {
+		t.Errorf("an unknown world: %d", rec.Code)
+	}
+}
+
+// SPEC 8.6, 17.4: the game's own Error and Warning lines are coloured, and
+// keep their word; other lines are plain.
+func TestLogLineClass(t *testing.T) {
+	var p ConsolePage
+	for line, want := range map[string]string{
+		"  12.345 Error ServerMultiplayerManager.cpp:1: broke": "log-error",
+		"   0.100 Warning Mod.cpp:2: odd":                      "log-warning",
+		"   1.000 Info Server started":                         "",
+		"2026-11-06 12:00:00 [CHAT] alice: Error here":         "",
+		"Error without a time":                                 "",
+	} {
+		if got := p.LineClass(line); got != want {
+			t.Errorf("%q: %q, want %q", line, got, want)
+		}
+	}
+}
+
 // SPEC 8.4, 12.9: a command gets the game's reply, shown in the history,
 // and is audited under the signed-in user. Without JavaScript the post
 // redirects to the reply.
@@ -225,7 +286,7 @@ func TestConsoleNotRunning(t *testing.T) {
 	if len(g.audit()) != 0 {
 		t.Errorf("audited: %+v", g.audit())
 	}
-	if !strings.Contains(g.get(PathConsole), `<h1>Console</h1>`) {
+	if !strings.Contains(g.get(PathConsole), `<span id="server-title">Base <span class="state state--stopped">Stopped</span></span>`) {
 		t.Error("the console page does not open while the game is stopped")
 	}
 }

@@ -2,8 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
-<h1>{{t "worlds.snapshots.title" "world" .WorldName}}</h1>
+<h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if not .Done.IsZero}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
@@ -25,7 +25,7 @@
 
 <section class="panel" aria-labelledby="disk-heading">
   <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
-  <dl class="facts">
+  <dl class="facts facts--inline">
     <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
     <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
   </dl>
@@ -43,14 +43,14 @@
   <div class="field">
     <label for="label">{{t "worlds.snapshots.take.label"}}</label>
     <p class="hint" id="label-hint">{{t "worlds.snapshots.take.hint" "count" 100}}</p>
-    <input id="label" name="label" type="text" value="{{.Label}}" maxlength="100" autocomplete="off"
-      {{- if not .LabelError.IsZero}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
+    <div class="inline-row">
+      <input id="label" name="label" type="text" value="{{.Label}}" maxlength="100" autocomplete="off"
+        {{- if not .LabelError.IsZero}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
+      <button type="submit" class="button button--primary">{{t "worlds.snapshots.take.button"}}</button>
+    </div>
     {{- if not .LabelError.IsZero}}
     <p class="error" id="label-error"><strong>{{t "common.error.label"}}</strong> {{msg .LabelError}}</p>
     {{- end}}
-  </div>
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{t "worlds.snapshots.take.button"}}</button>
   </div>
 </form>
 
@@ -58,11 +58,10 @@
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   <input type="hidden" name="world" value="{{.WorldID}}">
   <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
-  <div class="actions">
-    <button type="submit" class="button">{{t "worlds.snapshots.delete_selected"}}</button>
-    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
-  </div>
   <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
+  <div class="actions">
+    <button type="submit" class="button button--quiet" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
+  </div>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
@@ -76,7 +75,7 @@
       <tr role="row">
         <td role="cell">
           <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
-          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
+          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--quiet" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
         </td>
         <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}</td>
         <td class="num" role="cell" data-label="{{t "worlds.snapshots.size_label"}}">{{bytes .DiskSize}}</td>
@@ -84,6 +83,10 @@
       {{- end}}
     </tbody>
   </table>
+  {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
+  <div class="actions">
+    <button type="submit" class="button">{{t "worlds.snapshots.delete_selected"}}</button>
+  </div>
   {{- if .More}}
   <div class="actions"><a href="{{.AllPath}}">{{t "worlds.snapshots.older"}}</a></div>
   {{- end}}

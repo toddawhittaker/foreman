@@ -2,8 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .To.Name}}</a></div>
-<h1>{{t "server.switch.title" "world" .To.Name}}</h1>
+<h1 id="confirm-heading">{{if .Refusal.IsZero}}{{t "server.switch.heading" "from" .From.Name "to" .To.Name}}{{else}}{{t "server.switch.title" "world" .To.Name}}{{end}}</h1>
 {{template "summary" .Problems}}
 {{- if not .Refusal.IsZero}}
 <div class="message message--error">
@@ -11,8 +10,7 @@
 </div>
 <div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .To.Name}}</a></div>
 {{- else}}
-<section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{t "server.switch.heading" "from" .From.Name "to" .To.Name}}</h2>
+<section class="confirm">
   {{- if .Changed}}
   <div class="message message--warning" id="action-changed" tabindex="-1" autofocus>
     <p><strong>{{t "common.label.warning"}}</strong> {{msg .ChangedLead}}</p>

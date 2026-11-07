@@ -37,6 +37,9 @@
   "settings.admins.hint": "Jedna nazwa gracza w wierszu.",
   "settings.admins.broken": "{file} nie jest listą nazw graczy, więc administratorów nie można tu zmienić. Plik należy poprawić w folderze config świata.",
   "settings.admins.bad_name": "Wiersz {line} nie jest użyteczną nazwą gracza. Nazwa może mieć do {max} bajtów i nie może zawierać spacji, znaków sterujących ani niewidocznych.",
+  "settings.connected.heading": "Teraz połączeni",
+  "settings.connected.hint": "Gracze, którzy są teraz w grze i nie są jeszcze administratorami. „Dodaj admina” dodaje nazwę do listy powyżej i pokazuje zmiany do sprawdzenia, zanim cokolwiek zostanie zapisane.",
+  "settings.connected.make_admin": "Dodaj admina",
   "settings.error.whole": "Należy podać liczbę całkowitą od 0 do {max}.",
   "settings.preview.button": "Zobacz zmiany",
   "settings.cancel": "Anuluj",
@@ -50,7 +53,6 @@
   "settings.error.invalid": "Foreman ponownie sprawdził nowe ustawienia i je odrzucił, więc nic nie zostało zapisane. Należy otworzyć edytor JSON, aby zobaczyć, co jest nie tak.",
   "settings.error.too_big": "Plik ustawień przekroczyłby {size}. Należy usunąć jego część.",
   "settings.raw.title": "Edycja {file} świata {world}",
-  "settings.raw.back": "Wróć do formularza ustawień",
   "settings.raw.label": "Zawartość {file}",
   "settings.raw.hint": "Jeden obiekt JSON, do {size}. Foreman sprawdza znane sobie klucze, a pozostałe zapisuje bez zmian.",
   "settings.raw.secrets": "Hasło gry, hasło factorio.com i token nie są tu pokazane. Zostają zachowane, dopóki ten tekst nie nada kluczowi nowej wartości. Pusta wartość je usuwa.",
@@ -101,5 +103,6 @@
   "settings.preview.step_admins_live": "Awansuje i zdegraduje tych graczy w działającej grze; gra zaktualizuje {file}.",
   "settings.preview.undo": "Aby cofnąć, należy przywrócić tę migawkę na stronie Migawki.",
   "settings.preview.save": "Zapisz ustawienia",
-  "settings.preview.back": "Wróć i edytuj"
+  "settings.preview.back": "Wróć i edytuj",
+  "settings.rail.label": "Sekcje ustawień"
 }

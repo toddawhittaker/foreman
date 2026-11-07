@@ -1,0 +1,73 @@
+{
+  "death-world": {
+    "enemy_evolution": {
+      "pollution_factor": 1.2e-06,
+      "time_factor": 2e-05
+    },
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    },
+    "pollution": {
+      "ageing": 0.5,
+      "enemy_attack_pollution_consumption_modifier": 0.5
+    }
+  },
+  "death-world-marathon": {
+    "difficulty_settings": {
+      "technology_price_multiplier": 4
+    },
+    "enemy_evolution": {
+      "pollution_factor": 1e-06,
+      "time_factor": 1.5e-05
+    },
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    },
+    "pollution": {
+      "ageing": 0.5,
+      "enemy_attack_pollution_consumption_modifier": 0.8
+    }
+  },
+  "default": {
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    }
+  },
+  "island": {
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    }
+  },
+  "lakes": {
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    }
+  },
+  "marathon": {
+    "difficulty_settings": {
+      "technology_price_multiplier": 4
+    },
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    }
+  },
+  "rail-world": {
+    "enemy_evolution": {
+      "time_factor": 2e-06
+    },
+    "enemy_expansion": {
+      "enabled": false,
+      "min_expansion_cooldown": 36000
+    }
+  },
+  "ribbon-world": {
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    }
+  },
+  "rich-resources": {
+    "enemy_expansion": {
+      "min_expansion_cooldown": 36000
+    }
+  }
+}

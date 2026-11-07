@@ -1,6 +1,10 @@
 {
+  "js.generate.ach_clear": "5b460d48",
+  "js.generate.ach_setting": "02a6197d",
+  "js.generate.moved": "b25839e0",
   "js.generate.options": "ad98e7d9",
   "js.generate.preview_ready": "a77a46a0",
+  "js.generate.reset": "8ef97a54",
   "js.import.many": "9aaa55cf",
   "js.import.same": "686dab4f",
   "js.import.same.unreadable": "6e09151d",
@@ -8,5 +12,7 @@
   "js.import.suggested": "560df32a",
   "js.import.warning": "9c7d2841",
   "js.live.moved": "c36e62ed",
-  "js.live.stopped": "b13b1d68"
+  "js.live.stopped": "b13b1d68",
+  "js.preview.drawing": "a3841339",
+  "js.preview.zoom": "4b516611"
 }

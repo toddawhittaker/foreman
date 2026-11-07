@@ -6,30 +6,36 @@
 // already pulled). Nothing here runs at startup (SPEC 4.2).
 //
 //	go run extract.go [version ...]   (default: the versions in defaultVersions)
+//
+// It also copies each tested image's map-settings.example.json to
+// data/<line>/map-settings-<version>.json, one per map-settings layout.
 package main
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
 )
 
 var defaultVersions = []string{"1.1.110", "2.0.77", "2.1.24"}
 
-// dlcMods are the built-in mods that Space Age turns on; recycler is part of
-// the base game from 2.1 (SPEC 9.7).
-var dlcMods = []string{"elevated-rails", "quality", "space-age"}
+// mapSettingsOnly are tested images of an older map-settings layout of a
+// line: only their map-settings example is read, the line's other data comes
+// from defaultVersions. 2.1.9 has the layout before 2.1.13 (SPEC 5.6).
+var mapSettingsOnly = []string{"2.1.9"}
 
 type control struct {
 	Name     string `json:"name"`
 	Category string `json:"category"`
 	Richness bool   `json:"richness"`
+	// CanBeDisabled says the game's map generator offers an on/off box.
+	CanBeDisabled bool `json:"can_be_disabled"`
 }
 
 type planet struct {
@@ -42,12 +48,22 @@ type lineData struct {
 	GameVersion string   `json:"game_version"`
 	Presets     []string `json:"presets"`
 	Planets     []planet `json:"planets"`
+	// MapTypes are the elevation expressions Nauvis's map type offers, the
+	// default first.
+	MapTypes []string `json:"map_types"`
 }
 
 type rawControl struct {
 	Category string `json:"category"`
 	Richness *bool  `json:"richness"`
 	Order    string `json:"order"`
+	// CanBeDisabled is absent when true, the game's default.
+	CanBeDisabled *bool `json:"can_be_disabled"`
+}
+
+type rawNoise struct {
+	IntendedProperty string `json:"intended_property"`
+	Order            string `json:"order"`
 }
 
 type rawPlanet struct {
@@ -61,9 +77,8 @@ type rawDump struct {
 	Presets  map[string]map[string]json.RawMessage `json:"map-gen-presets"`
 	Controls map[string]rawControl                 `json:"autoplace-control"`
 	Planets  map[string]rawPlanet                  `json:"planet"`
+	Noise    map[string]rawNoise                   `json:"noise-expression"`
 }
-
-var versionRE = regexp.MustCompile(`^(1\.1|2\.0|2\.1)\.\d+$`)
 
 func main() {
 	versions := os.Args[1:]
@@ -76,14 +91,44 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	if len(os.Args) > 1 {
+		return
+	}
+	for _, v := range mapSettingsOnly {
+		if err := extractMapSettings(v); err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", v, err)
+			os.Exit(1)
+		}
+	}
+}
+
+// extractMapSettings copies the image's own map-settings example. The game
+// refuses a map-settings file missing any key its version knows (SPEC 5.6),
+// so the file is kept per image and never written by hand.
+func extractMapSettings(version string) error {
+	line, ok := mapgen.Line(version)
+	if !ok {
+		return fmt.Errorf("not a patch release of a supported line")
+	}
+	b, err := dockerOut("factoriotools/factorio:"+version, "cat", "/opt/factorio/data/map-settings.example.json")
+	if err != nil {
+		return err
+	}
+	if !json.Valid(b) {
+		return fmt.Errorf("map-settings.example.json is not valid JSON")
+	}
+	dir := filepath.Join("data", line)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "map-settings-"+version+".json"), b, 0o644)
 }
 
 func extract(version string) error {
-	m := versionRE.FindStringSubmatch(version)
-	if m == nil {
+	line, ok := mapgen.Line(version)
+	if !ok {
 		return fmt.Errorf("not a patch release of a supported line")
 	}
-	line := m[1]
 	image := "factoriotools/factorio:" + version
 
 	base, err := dump(image, line, false)
@@ -92,6 +137,10 @@ func extract(version string) error {
 	}
 	out := lineData{GameVersion: version}
 	out.Presets, err = presetNames(base)
+	if err != nil {
+		return err
+	}
+	out.MapTypes, err = mapTypes(base)
 	if err != nil {
 		return err
 	}
@@ -143,6 +192,9 @@ func extract(version string) error {
 	if err := os.WriteFile(filepath.Join(dir, "map-gen-settings.json"), b, 0o644); err != nil {
 		return err
 	}
+	if err := extractMapSettings(version); err != nil {
+		return err
+	}
 	fmt.Printf("%s: %d presets, %d planets\n", version, len(out.Presets), len(out.Planets))
 	return nil
 }
@@ -179,6 +231,28 @@ func presetNames(d rawDump) ([]string, error) {
 	return names, nil
 }
 
+// mapTypes lists the noise expressions meant for elevation: the game's map
+// type choices. The one named "elevation" is the default and comes first.
+func mapTypes(d rawDump) ([]string, error) {
+	if d.Noise["elevation"].IntendedProperty != "elevation" {
+		return nil, fmt.Errorf("no default elevation expression in the data dump")
+	}
+	var names []string
+	for n, e := range d.Noise {
+		if e.IntendedProperty == "elevation" && n != "elevation" {
+			names = append(names, n)
+		}
+	}
+	sort.Slice(names, func(i, j int) bool {
+		a, b := d.Noise[names[i]].Order, d.Noise[names[j]].Order
+		if a != b {
+			return a < b
+		}
+		return names[i] < names[j]
+	})
+	return append([]string{"elevation"}, names...), nil
+}
+
 // planets lists the planets in the dump. A planet that the base game already
 // has (known) must come out the same with the DLC on; one that differs means
 // the extract cannot be trusted.
@@ -212,6 +286,18 @@ func planets(d rawDump, spaceAge bool, known []planet) ([]planet, error) {
 		}
 		if prev != nil {
 			p.SpaceAge = prev.SpaceAge
+			// Space Age makes some controls impossible to switch off; the
+			// stricter answer is kept for both.
+			if len(p.Controls) == len(prev.Controls) {
+				for i := range p.Controls {
+					if !p.Controls[i].CanBeDisabled {
+						prev.Controls[i].CanBeDisabled = false
+					}
+				}
+				for i := range p.Controls {
+					p.Controls[i].CanBeDisabled = prev.Controls[i].CanBeDisabled
+				}
+			}
 			if !reflect.DeepEqual(*prev, p) {
 				return nil, fmt.Errorf("planet %s differs with Space Age on", e.name)
 			}
@@ -241,7 +327,8 @@ func buildPlanet(name string, spaceAge bool, controls []string, d rawDump) (plan
 		default:
 			return p, fmt.Errorf("control %s has category %q", c, rc.Category)
 		}
-		p.Controls = append(p.Controls, control{Name: c, Category: rc.Category, Richness: rc.Richness != nil && *rc.Richness})
+		p.Controls = append(p.Controls, control{Name: c, Category: rc.Category, Richness: rc.Richness != nil && *rc.Richness,
+			CanBeDisabled: rc.CanBeDisabled == nil || *rc.CanBeDisabled})
 	}
 	return p, nil
 }
@@ -257,15 +344,13 @@ func dump(image, line string, spaceAge bool) (rawDump, error) {
 	if err := os.Chmod(work, 0o777); err != nil {
 		return d, err
 	}
+	gl, _ := mapgen.LineOf(line)
 	mods := `{"name":"base","enabled":true}`
-	for _, m := range dlcMods {
-		if line == "1.1" {
-			break
-		}
+	for _, m := range gl.SpaceAgeMods {
 		mods += fmt.Sprintf(`,{"name":%q,"enabled":%t}`, m, spaceAge)
 	}
-	if line == "2.1" {
-		mods += `,{"name":"recycler","enabled":true}`
+	for _, m := range gl.AlwaysOnMods {
+		mods += fmt.Sprintf(`,{"name":%q,"enabled":true}`, m)
 	}
 	files := map[string]string{
 		"config.ini":         "[path]\nread-data=/opt/factorio/data\nwrite-data=/work\n",

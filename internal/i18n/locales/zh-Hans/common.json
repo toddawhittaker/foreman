@@ -9,9 +9,10 @@
   "common.signedin": "已登录：{user}",
   "common.signout": "退出登录",
   "common.language.label": "语言",
-  "common.language.submit": "切换",
   "common.countdown.label": "倒计时（秒）",
-  "common.countdown.hint": "在线玩家会在游戏中看到警告，然后游戏保存并停止。范围为 0 到 600 秒；0 表示不发出警告：游戏立即保存并停止。如果没有人在线，则不会警告任何人。",
+  "common.countdown.hint": "在线玩家会在游戏中看到警告，然后游戏保存并停止。0 到 600 秒；0 表示不警告。",
+  "common.countdown.none": "不警告",
+  "common.required.note": "必填",
   "common.summary.heading": {
     "other": "请修正 {count} 个问题后继续"
   },
@@ -48,5 +49,8 @@
   "common.label.note": "提示：",
   "common.label.busy": "忙碌：",
   "common.confirm.will": "将会：",
-  "common.list.sep": "、"
+  "common.list.sep": "、",
+  "common.menu.account": "{user}，{language}：账户和语言菜单",
+  "common.menu.language": "{language}：语言菜单",
+  "common.countdown.none_name": "不警告：将倒计时设为 0 秒"
 }

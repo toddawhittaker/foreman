@@ -8,8 +8,8 @@ import type { Page } from "@playwright/test";
 const live = { timeout: 20_000 };
 const image20 = "factoriotools/factorio:2.0.77";
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
-const active = (page: Page, name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+const badge = (page: Page) => page.locator("main h1 .state");
+const active = (page: Page, name: string) => page.locator("#server-title", { hasText: name });
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typeof seedSecond>[1] = {}) {
   await createAdmin(page);
@@ -23,7 +23,7 @@ async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typ
 async function openSwitch(page: Page) {
   await page.goto("/worlds/second");
   await page.getByRole("link", { name: "Switch to this world" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Second");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Base to Second?");
 }
 
 test.describe("with the fake game", () => {
@@ -34,7 +34,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, g, { version: "2.0.77", fixture: "2.0.77-no-space-age.zip" });
 
     await openSwitch(page);
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     const steps = confirm.getByRole("listitem");
     await expect(steps.first()).toContainText(`Download the game image ${image20}`);
     await expect(steps.first()).toContainText("If the download fails, nothing else happens.");
@@ -59,7 +59,7 @@ test.describe("with the fake game", () => {
     await expect(badge(page)).toHaveText("Running", live);
 
     await openSwitch(page);
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm.locator(".message--warning")).toContainText("foreman-test");
     await expect(confirm.getByRole("button", { name: "Switch and start anyway" })).toBeVisible();
     await expect(confirm.getByRole("checkbox")).toHaveCount(0); // the countdown field alone says how to skip the warning (SPEC 7.6)

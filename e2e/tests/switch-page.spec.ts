@@ -6,8 +6,8 @@ import type { Page } from "@playwright/test";
 
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
-const active = (page: Page, name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+const badge = (page: Page) => page.locator("main h1 .state");
+const active = (page: Page, name: string) => page.locator("#server-title", { hasText: name });
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typeof seedSecond>[1] = {}) {
   await createAdmin(page);
@@ -26,7 +26,7 @@ async function startBase(page: Page) {
 async function openSwitch(page: Page, id: string, name: string) {
   await page.goto(`/worlds/${id}`);
   await page.getByRole("link", { name: "Switch to this world" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Switch to ${name}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(new RegExp(`^Switch from .+ to ${name}\\?$`));
 }
 
 const creates = async (g: FakeGame) =>
@@ -42,7 +42,7 @@ test.describe("with the fake game", () => {
     await g.call("/join", { name: "foreman-base", player: "alice" });
 
     await openSwitch(page, "second", "Second");
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("save the game and stop Base");
     await expect(confirm).toContainText('both labelled "Before switch"');
     await expect(confirm).toContainText("Start the game on Second");
@@ -78,7 +78,7 @@ test.describe("with the fake game", () => {
 
     // Back again is a full switch with its own confirmation.
     await openSwitch(page, "base", "Base");
-    await expect(page.getByRole("region", { name: /Switch from Second to Base/ })).toBeVisible();
+    await expect(page.locator("section.confirm")).toBeVisible();
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Switch to Base" }).click();
     await expect(active(page, "Base")).toBeVisible(live);
@@ -132,13 +132,13 @@ test.describe("with the fake game", () => {
     // A form that does not say which world was active is refused outright.
     const bare = await page.request.post("/worlds/second/switch", { form: {}, maxRedirects: 0 });
     expect(bare.status()).toBe(400);
-    // The active world has no Switch button on its own page, and says why.
+    // The active world has no Switch button on its own page; its Active badge says why.
     await page.goto("/worlds/base");
     await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveCount(0);
-    await expect(page.getByRole("region", { name: "Switch" })).toContainText("This is the active world.");
+    await expect(page.locator("main h1 .badge--active")).toHaveText("Active");
     await checkPage(page);
     await page.goto("/worlds/second");
-    await expect(page.getByRole("region", { name: "Switch" })).toContainText("When the server is stopped, the confirmation lets you leave it stopped instead.");
+    await expect(page.getByRole("region", { name: "Switch" })).toContainText("Foreman snapshots both worlds first, then starts this one.");
   });
 
   test("a bad countdown keeps the form with the field's error", async ({ page, foreman, fakeGame }) => {
@@ -160,7 +160,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await openSwitch(page, "second", "Second");
 
-    const confirm = page.getByRole("region", { name: /Switch from Base to Second/ });
+    const confirm = page.locator("section.confirm");
     const problems = confirm.locator(".message--warning");
     await expect(problems).toContainText("foreman-test");
     await expect(problems).toContainText("Second's own mods folder");
@@ -197,7 +197,7 @@ test.describe("with the fake game", () => {
 
     await g.call("/rcon-refuse", { name: "foreman-second", on: false });
     await page.getByRole("link", { name: "Switch back to Base" }).click();
-    await expect(page.getByRole("region", { name: /Switch from Second to Base/ })).toBeVisible();
+    await expect(page.locator("section.confirm")).toBeVisible();
     await checkPage(page);
   });
 

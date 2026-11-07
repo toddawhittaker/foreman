@@ -56,7 +56,7 @@ func settingsRawCase(errors bool) SettingsRawPage {
 	p := SettingsRawPage{WorldID: "base", WorldName: longName, Text: "{\n  \"name\": \"x\"\n}\n"}
 	if errors {
 		p.Running = true
-		p.Errors = rawProblems([]gamesettings.FieldError{
+		p.Errors, p.ErrorLines = rawProblems([]gamesettings.FieldError{
 			{Line: 2, Key: "max_players", Code: gamesettings.CodeWrongType, Want: "integer"},
 			{Line: 2, Code: gamesettings.CodeSyntax},
 		}, p.Text)
@@ -730,7 +730,7 @@ func TestSettingsNewerWorldIsReadOnly(t *testing.T) {
 	}
 	body := r.getAs(r.cookie, r.path("")).Body.String()
 	if !strings.Contains(body, "A newer version of Foreman wrote this world, so this version cannot change it.") ||
-		strings.Contains(body, "Preview changes") || !strings.Contains(body, "<fieldset disabled>") {
+		strings.Contains(body, "Preview changes") || !strings.Contains(body, `<fieldset id="settings-listing" disabled>`) {
 		t.Errorf("read-only form:\n%s", body)
 	}
 	raw := r.getAs(r.cookie, r.path("/raw/server-settings.json")).Body.String()
@@ -869,7 +869,7 @@ func TestSettingsRunningWorld(t *testing.T) {
 	}
 	// The page the redirect names, built from the known path rather than the header.
 	done := g.get(path + "?saved=1&restart=1&live=1")
-	for _, want := range []string{"Done:", "Settings saved.", "take effect after a restart", `href="/worlds/` + id + `/restart"`, "Restart server"} {
+	for _, want := range []string{"Done:", "Settings saved.", "take effect after a restart", `href="/worlds/` + id + `/restart?from=%2Fworlds%2F` + id + `%2Fsettings"`, "Restart server"} {
 		if !strings.Contains(done, want) {
 			t.Errorf("done page lacks %q:\n%s", want, done)
 		}

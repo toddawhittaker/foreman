@@ -1,20 +1,22 @@
-import { test, expect, checkPage, createAdmin } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, openMenu, pickLanguage, signOut } from "./foreman.js";
 
 // SPEC 22.2: the menu on the sign-in page switches the language, the html
 // lang follows, and the choice holds on the next pages.
 test("the language menu switches to German and the choice persists", async ({ page }) => {
   await createAdmin(page);
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signOut(page);
   await page.goto("/signin");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
-  await page.getByLabel("Language").selectOption("de");
-  await page.getByRole("button", { name: "Change" }).click();
+  await pickLanguage(page, "de");
 
   await expect(page).toHaveURL("/signin");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Anmelden");
-  await expect(page.getByLabel("Sprache")).toHaveValue("de");
+  // The menu's summary names the language shown, and its list marks it.
+  await expect(page.locator("details.menu > summary .menu__lang")).toHaveText("Deutsch");
+  await openMenu(page);
+  await expect(page.getByRole("group", { name: "Sprache (Language)" }).getByRole("button", { name: "Deutsch" })).toHaveAttribute("aria-current", "true");
   await checkPage(page);
 
   await page.goto("/no-such-page");
@@ -25,15 +27,16 @@ test("the language menu switches to German and the choice persists", async ({ pa
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Du bist abgemeldet");
 });
 
-// The menu is a plain form: it works by keyboard alone.
+// The menu is a details element and plain buttons: it works by keyboard alone.
 test("the language menu works from the keyboard", async ({ page }) => {
   await createAdmin(page);
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signOut(page);
   await page.goto("/signin");
-  await page.getByLabel("Language").focus();
-  await page.keyboard.press("End");
-  await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Change" })).toBeFocused();
+  await page.locator("details.menu > summary").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("details.menu")).toHaveAttribute("open", "");
+  for (let i = 0; i < 8; i++) await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Čeština" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("html")).toHaveAttribute("lang", "cs");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Přihlášení");

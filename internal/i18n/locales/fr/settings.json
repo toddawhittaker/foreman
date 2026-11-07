@@ -37,6 +37,9 @@
   "settings.admins.hint": "Un nom de joueur par ligne.",
   "settings.admins.broken": "{file} n’est pas une liste de noms de joueurs, donc les administrateurs ne peuvent pas être modifiés ici. Corrigez le fichier dans le dossier config du monde.",
   "settings.admins.bad_name": "La ligne {line} n’est pas un nom de joueur utilisable. Un nom peut compter jusqu’à {max} octets et ne peut pas contenir d’espaces, de caractères de contrôle ni de caractères invisibles.",
+  "settings.connected.heading": "Connectés actuellement",
+  "settings.connected.hint": "Joueurs actuellement dans la partie qui ne sont pas encore administrateurs. « Nommer administrateur » ajoute le nom à la liste ci-dessus et affiche les modifications à vérifier avant d’enregistrer quoi que ce soit.",
+  "settings.connected.make_admin": "Nommer administrateur",
   "settings.error.whole": "Saisissez un nombre entier de 0 à {max}.",
   "settings.preview.button": "Prévisualiser les modifications",
   "settings.cancel": "Annuler",
@@ -50,7 +53,6 @@
   "settings.error.invalid": "Foreman a de nouveau vérifié les nouveaux paramètres et les a refusés, donc rien n’a été enregistré. Ouvrez l’éditeur JSON pour voir ce qui ne va pas.",
   "settings.error.too_big": "Le fichier de paramètres dépasserait {size}. Supprimez-en une partie.",
   "settings.raw.title": "Modifier {file} de {world}",
-  "settings.raw.back": "Retour au formulaire des paramètres",
   "settings.raw.label": "Contenu de {file}",
   "settings.raw.hint": "Un objet JSON, jusqu’à {size}. Foreman vérifie les clés qu’il connaît et enregistre les autres telles quelles.",
   "settings.raw.secrets": "Le mot de passe de la partie, le mot de passe factorio.com et le jeton ne sont pas affichés ici. Ils sont conservés tant que ce texte ne donne pas de nouvelle valeur à une clé. Une valeur vide les supprime.",
@@ -101,5 +103,6 @@
   "settings.preview.step_admins_live": "Promouvoir et rétrograder ces joueurs dans la partie en cours ; le jeu met à jour {file}.",
   "settings.preview.undo": "Pour annuler, restaurez cet instantané depuis la page Instantanés.",
   "settings.preview.save": "Enregistrer les paramètres",
-  "settings.preview.back": "Revenir et modifier"
+  "settings.preview.back": "Revenir et modifier",
+  "settings.rail.label": "Sections des paramètres"
 }

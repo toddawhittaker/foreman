@@ -186,10 +186,12 @@ func TestPreviewTimesOutAndCleansUp(t *testing.T) {
 	}
 }
 
-// SPEC 14.3: one preview runs at a time across Foreman; a second caller is
-// told so at once and no second container is made.
+// SPEC 14.3: one preview runs at a time across Foreman; a second caller
+// waits for its turn, is told the slot is busy once the wait is over, and no
+// second container is made meanwhile.
 func TestPreviewIsOneAtATime(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
+	r.c.previewWait = 200 * time.Millisecond
 	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
 		t.Fatal(err)
 	}
@@ -200,13 +202,17 @@ func TestPreviewIsOneAtATime(t *testing.T) {
 		first <- err
 	}()
 	r.waitPreviewContainer()
+	start := time.Now()
 	if _, err := r.c.Preview(context.Background(), previewRequest()); !errors.Is(err, ErrPreviewBusy) {
 		t.Errorf("second preview: %v, want ErrPreviewBusy", err)
+	}
+	if waited := time.Since(start); waited < r.c.previewWait {
+		t.Errorf("the second preview gave up after %v, before its wait of %v", waited, r.c.previewWait)
 	}
 	if n := len(r.previewContainers()); n != 1 {
 		t.Errorf("%d preview containers", n)
 	}
-	// A caller who goes away does not leave the container behind.
+	// A caller who goes away does not leave the container or its folder behind.
 	cancel()
 	if err := <-first; !errors.Is(err, context.Canceled) {
 		t.Errorf("first preview: %v, want context.Canceled", err)
@@ -214,11 +220,95 @@ func TestPreviewIsOneAtATime(t *testing.T) {
 	if left := r.previewContainers(); len(left) != 0 {
 		t.Errorf("%d preview containers left", len(left))
 	}
+	if left := r.previewFolders(); len(left) != 0 {
+		t.Errorf("work folders left: %v", left)
+	}
 	if err := r.game.SetPreviewMode(fakegame.PreviewOK); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.c.Preview(context.Background(), previewRequest()); err != nil {
 		t.Errorf("the preview slot was not freed: %v", err)
+	}
+}
+
+// SPEC 5.6: a preview asked for while another runs waits for it and then
+// draws, rather than being refused.
+func TestPreviewWaitsForItsTurn(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if err := r.game.SetPreviewMode(fakegame.PreviewSlow); err != nil {
+		t.Fatal(err)
+	}
+	first := make(chan error, 1)
+	go func() {
+		_, err := r.c.Preview(context.Background(), previewRequest())
+		first <- err
+	}()
+	r.waitPreviewContainer()
+	pngs, err := r.c.Preview(context.Background(), previewRequest())
+	if err != nil || len(pngs) != 1 {
+		t.Fatalf("the waiting preview: %d pictures, %v", len(pngs), err)
+	}
+	if err := <-first; err != nil {
+		t.Errorf("first preview: %v", err)
+	}
+}
+
+// SPEC 14.3: a caller who goes away while waiting stops waiting, and makes
+// no container.
+func TestPreviewDroppedWhileWaiting(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _, _ = r.c.Preview(ctx, previewRequest()) }()
+	r.waitPreviewContainer()
+	waiting, stop := context.WithCancel(context.Background())
+	second := make(chan error, 1)
+	go func() {
+		_, err := r.c.Preview(waiting, previewRequest())
+		second <- err
+	}()
+	time.Sleep(50 * time.Millisecond)
+	stop()
+	select {
+	case err := <-second:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("dropped preview: %v, want context.Canceled", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the dropped preview kept waiting")
+	}
+	if n := len(r.previewContainers()); n != 1 {
+		t.Errorf("%d preview containers, want only the running one", n)
+	}
+}
+
+// SPEC 14.3: a request dropped in the middle of a run stops the container
+// and removes it and its work folder.
+func TestPreviewDroppedMidRunCleansUp(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if err := r.game.SetPreviewMode(fakegame.PreviewSlow); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := r.c.Preview(ctx, previewRequest())
+		done <- err
+	}()
+	r.waitPreviewContainer()
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("error %v, want context.Canceled", err)
+	}
+	time.Sleep(2 * fakegame.PreviewSlowDelay)
+	if left := r.previewContainers(); len(left) != 0 {
+		t.Errorf("%d preview containers left", len(left))
+	}
+	if left := r.previewFolders(); len(left) != 0 {
+		t.Errorf("work folders left: %v", left)
 	}
 }
 
@@ -338,11 +428,55 @@ func TestReadPreviewsRefusesWhatIsNotAPicture(t *testing.T) {
 	if _, err := readPreviews(base, "p", []string{"nauvis"}); err == nil {
 		t.Error("a file that is not a PNG was accepted")
 	}
-	put("nauvis.png", append(append([]byte{}, pngSignature...), make([]byte, maxPreviewPNG)...))
+	put("nauvis.png", append(append([]byte{}, pngSignature...), make([]byte, MaxPreviewPNG)...))
 	if _, err := readPreviews(base, "p", []string{"nauvis"}); err == nil {
 		t.Error("a picture over the cap was accepted")
 	}
 	if _, err := readPreviews(base, "p", []string{"gleba"}); err == nil {
 		t.Error("a missing picture was accepted")
+	}
+}
+
+// SPEC 5.6: the pictures are 1280 tiles across on every line.
+func TestPreviewScriptDraws1280(t *testing.T) {
+	if !strings.Contains(previewScript, "--map-preview-size 1280 ") {
+		t.Errorf("the preview script does not ask for 1280 pixels:\n%s", previewScript)
+	}
+}
+
+// SPEC 14.3: when creating the container fails after Docker made it, the
+// container is still removed, by its name.
+func TestPreviewRemovesAContainerWhoseCreateFailed(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.game.Daemon().SetCallFailure("POST", "create", 500, "connection lost")
+	if _, err := r.c.Preview(context.Background(), previewRequest()); err == nil {
+		t.Fatal("the preview worked though creating the container failed")
+	}
+	if left := r.previewContainers(); len(left) != 0 {
+		t.Errorf("%d preview containers left", len(left))
+	}
+}
+
+// SPEC 14.3: only a few callers may wait for the preview slot; one beyond
+// that is refused at once.
+func TestPreviewRefusesTooManyWaiters(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	if err := r.game.SetPreviewMode(fakegame.PreviewHangs); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _, _ = r.c.Preview(ctx, previewRequest()) }()
+	r.waitPreviewContainer()
+	for range maxPreviewWaiters {
+		go func() { _, _ = r.c.Preview(ctx, previewRequest()) }()
+	}
+	eventually(t, func() bool { return len(r.c.previewWaiting) == maxPreviewWaiters }, "the waiters to queue")
+	start := time.Now()
+	if _, err := r.c.Preview(context.Background(), previewRequest()); !errors.Is(err, ErrPreviewBusy) {
+		t.Errorf("preview beyond the waiting limit: %v, want ErrPreviewBusy", err)
+	}
+	if time.Since(start) > PreviewWait/2 {
+		t.Error("the extra preview waited instead of being refused at once")
 	}
 }

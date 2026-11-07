@@ -2,20 +2,20 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
-<h1>{{t "worlds.delete.title" "world" .World.Name}}</h1>
+{{- $refusal := .Refusal}}
+<h1 id="confirm-heading">{{if $refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}</h1>
+{{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}
-{{- $refusal := .Refusal}}
 {{- if not $refusal.IsZero}}
 <p>{{msg $refusal}}</p>
+<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
 {{- else}}
-<section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{t "worlds.delete.question" "world" .World.Name}}</h2>
+<section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{if .World.SizeUnknown}}{{tHTML "worlds.delete.folder_unknown" "folder" (code (printf "worlds/%s" .World.ID))}}{{else}}{{tHTML "worlds.delete.folder" "folder" (code (printf "worlds/%s" .World.ID)) "size" (bytes .World.DiskBytes)}}{{end}}</li>
@@ -26,8 +26,9 @@
       <input type="checkbox" name="final_snapshot"{{if .FinalSnapshot}} checked{{end}}>
       {{if .World.SizeUnknown}}{{t "worlds.delete.final_unknown" "label" (t "worlds.snapshot.label.before_delete")}}{{else}}{{t "worlds.delete.final" "label" (t "worlds.snapshot.label.before_delete") "size" (bytes .World.DiskBytes)}}{{end}}
     </label>
+    {{template "required-note"}}
     <div class="field">
-      <label for="confirm-name">{{t "worlds.delete.name_label"}}</label>
+      <label for="confirm-name" class="required">{{t "worlds.delete.name_label"}}</label>
       <p class="hint" id="confirm-name-hint">{{tHTML "worlds.delete.name_hint" "name" (strong .World.Name)}}</p>
       <input id="confirm-name" name="confirm_name" type="text" value="{{.ConfirmName}}" autocomplete="off" required
         {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="confirm-name-hint confirm-name-error"{{else}} aria-describedby="confirm-name-hint"{{end}}>

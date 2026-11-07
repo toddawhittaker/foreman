@@ -58,7 +58,9 @@ test("saves page lists a world's saves, newest first", async ({ page, foreman })
   seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Saves of Family base");
+  // The world's name leads, and the Saves tab says which page this is (DESIGN 6).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Family base");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" })).toHaveAttribute("aria-current", "page");
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0).getByRole("link")).toHaveText("new.zip");
@@ -68,7 +70,7 @@ test("saves page lists a world's saves, newest first", async ({ page, foreman })
   await expect(rows.nth(0)).toContainText(`${newSave.length} B`);
   await expect(rows.nth(1).getByRole("link")).toHaveText("old.zip");
   await expect(rows.nth(1)).not.toContainText("Loads next");
-  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/worlds/family-base");
   await checkPage(page);
 });
 
@@ -242,7 +244,7 @@ test("a very long save name wraps in the table and the radio list", async ({ pag
   await page.goto("/worlds/longs/saves");
   await expect(page.getByRole("link", { name })).toBeVisible();
   await expect(page.getByRole("group", { name: "Save to load" })).toBeVisible();
-  expect(await page.locator("fieldset").evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+  expect(await page.locator("main fieldset").evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
   await checkPage(page);
 });
 

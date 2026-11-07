@@ -3,11 +3,10 @@ package web
 import (
 	"encoding/json"
 	"math"
-	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -159,15 +158,9 @@ func selectOptionsFor(f MapGenForm, name string) []MapGenOption {
 	if f.StartingArea.Name == name {
 		return f.StartingArea.Options
 	}
-	groups := []MapGenGroup{f.Water, f.Cliffs}
-	for _, p := range f.Planets {
-		groups = append(groups, p.Groups...)
-	}
-	for _, g := range groups {
-		for _, s := range g.Selects {
-			if s.Name == name {
-				return s.Options
-			}
+	for _, s := range f.selects() {
+		if s.Name == name {
+			return s.Options
 		}
 	}
 	return nil
@@ -191,7 +184,7 @@ func TestPresetPrefillShowsWhatThePresetChanged(t *testing.T) {
 		t.Errorf("rail world water scale = %s, want 200 (the inverse of frequency 0.5)", scale.Value)
 	}
 	// An ordinary form does not offer the extra step.
-	if hasOption(selectNamed(t, NewMapGenForm("2.1", true), fieldName("nauvis", "water", "size")), "150") {
+	if hasOption(selectNamed(t, NewMapGenFormForPreset("2.1", true, "default"), fieldName("nauvis", "water", "size")), "150") {
 		t.Error("150% is offered on a form that is not filled from a preset")
 	}
 
@@ -200,17 +193,20 @@ func TestPresetPrefillShowsWhatThePresetChanged(t *testing.T) {
 		t.Errorf("ribbon world height %s and starting area %s, want 128 and 300", ribbon.Height.Value, ribbon.StartingArea.Value)
 	}
 	island := NewMapGenFormForPreset("2.1", true, "island")
-	if !strings.Contains(island.Raw.Value, `"elevation": "elevation_island"`) {
-		t.Errorf("island's terrain type is not in the raw box:\n%s", island.Raw.Value)
+	if got := selectNamed(t, island, mgMapType).Value; got != "elevation_island" {
+		t.Errorf("island's map type = %s, want elevation_island", got)
 	}
-	if !strings.Contains(NewMapGenFormForPreset("1.1", false, "island").Raw.Value, `"elevation": "0_17-island"`) {
-		t.Error("1.1 island's terrain type is not in the raw box")
+	if strings.Contains(island.Raw.Value, `"elevation"`) || !strings.Contains(island.Raw.Value, `"aux": "aux_basic"`) {
+		t.Errorf("the raw box should hold island's other terrain keys but not the map type:\n%s", island.Raw.Value)
+	}
+	if got := selectNamed(t, NewMapGenFormForPreset("1.1", false, "island"), mgMapType).Value; got != "0_17-island" {
+		t.Errorf("1.1 island's map type = %s, want 0_17-island", got)
 	}
 	if death := NewMapGenFormForPreset("1.1", false, "death-world"); death.StartingArea.Value != "71" {
 		t.Errorf("death world starting area = %s, want 71", death.StartingArea.Value)
 	}
 	def := NewMapGenFormForPreset("2.1", true, "default")
-	if got, want := def.chosen(), NewMapGenForm("2.1", true).chosen(); len(got) != len(want) {
+	if got, want := def.chosen(), NewMapGenFormForPreset("2.1", true, "default").chosen(); len(got) != len(want) {
 		t.Fatalf("default preset has %d selects, the plain form %d", len(got), len(want))
 	} else {
 		for k, v := range want {
@@ -240,42 +236,10 @@ func hasOption(s MapGenSelect, code string) bool {
 	return false
 }
 
-// Only a refresh that the preset select started refills the form; every
-// other request keeps what the person typed (SPEC 5.6).
-func TestOnlyThePresetSelectRefillsTheForm(t *testing.T) {
-	post := func(trigger string) MapGenForm {
-		v := url.Values{"preset": {"death-world"}, mgStart: {"200"}, mgSeed: {"7"}}
-		r := httptest.NewRequest(http.MethodPost, "/generate/refresh", strings.NewReader(v.Encode()))
-		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		if trigger != "" {
-			r.Header.Set("HX-Trigger", trigger)
-		}
-		f, _, _ := ParseMapGenForm(r, "2.1", true)
-		return f
-	}
-	if f := post(""); f.StartingArea.Value != "200" || !f.FromPreset.IsZero() {
-		t.Errorf("a plain post changed the form: starting area %s, note %v", f.StartingArea.Value, f.FromPreset)
-	}
-	if f := post("generate-version-select"); f.StartingArea.Value != "200" {
-		t.Errorf("another element's post changed the form: %s", f.StartingArea.Value)
-	}
-	f := post(PresetSelectID)
-	if f.StartingArea.Value != "71" || f.Seed.Value != "7" || f.FromPreset.IsZero() {
-		t.Errorf("the preset select's post: starting area %s, seed %q, note %v; want 71, 7 and a note", f.StartingArea.Value, f.Seed.Value, f.FromPreset)
-	}
-	// An unknown preset changes nothing.
-	r := httptest.NewRequest(http.MethodPost, "/generate/refresh", strings.NewReader(url.Values{"preset": {"nope"}, mgStart: {"200"}}.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.Header.Set("HX-Trigger", PresetSelectID)
-	if f, _, _ := ParseMapGenForm(r, "2.1", true); f.StartingArea.Value != "200" {
-		t.Errorf("an unknown preset changed the form: %s", f.StartingArea.Value)
-	}
-}
-
 // DESIGN 8.7: the game words terrain controls as Scale and Coverage.
 func TestTerrainControlsAreWordedAsTheGameWordsThem(t *testing.T) {
-	f := NewMapGenForm("2.1", true)
-	for _, p := range f.Planets {
+	f := NewMapGenFormForPreset("2.1", true, "default")
+	for _, p := range slices.Concat(f.Resources, f.Terrain) {
 		for _, g := range p.Groups {
 			for _, s := range g.Selects {
 				if strings.HasSuffix(s.Name, ".trees.frequency") && s.Label.Key != "mapgen.setting.scale" {

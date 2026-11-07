@@ -1,43 +1,48 @@
 {{define "title"}}{{t "worlds.generate.title"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "generate.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "generate.js"}}" defer></script>
+{{- if .Page.CanPreview}}<script src="{{static "preview.js"}}" defer></script>{{end}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a></div>
 <h1>{{t "worlds.generate.title"}}</h1>
-<p>{{t "worlds.generate.intro"}}</p>
-<form method="post" action="{{.Path}}" class="panel" id="generate-form" novalidate aria-labelledby="generate-heading">
-  <h2 id="generate-heading">{{t "worlds.generate.heading"}}</h2>
+<p class="hint">{{t "worlds.generate.intro"}}</p>
+<form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate data-tab="{{.Form.Tab}}" data-ach-word="{{t "mapgen.achievement.warning"}}">
+  {{- /* The first submit button is the one Enter presses; without this it would be the hidden preset reset. */}}
+  <button type="submit" id="generate-default" hidden></button>
   {{template "summary" .Problems}}
+  {{template "required-note"}}
   {{- with .Form}}
   <div class="field">
-    <label for="generate-name">{{t "worlds.import.name.label"}}</label>
+    <label for="generate-name" class="required">{{t "worlds.import.name.label"}}</label>
     <p class="hint" id="generate-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
-    <input id="generate-name" name="name" type="text" value="{{.Name}}" required maxlength="100" autocomplete="off"
+    <input id="generate-name" name="name" type="text" value="{{.Name}}" required maxlength="100" autocomplete="off" placeholder="{{t "worlds.name.placeholder"}}"
       {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="generate-name-hint generate-name-error"{{else}} aria-describedby="generate-name-hint"{{end}}>
     {{- if not .NameError.IsZero}}
     <p class="error" id="generate-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
     {{- end}}
   </div>
-  {{/* A change here redraws the map options for the new line (htmx); without script the server does it when the form is sent. */}}
-  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#map-key-box" hx-select="#map-key-box" hx-select-oob="#preset-field,#custom-fields" hx-swap="outerHTML" hx-sync="this:replace">
+  {{/* A change here redraws the map settings for the new line (htmx); without script the server does it when the form is sent. */}}
+  <div class="version-fields" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#line-box" hx-select="#line-box" hx-select-oob="#ach-summary" hx-swap="outerHTML" hx-sync="this:replace">
     <div class="field">
       <label for="generate-version-select">{{t "worlds.fact.game_version"}}</label>
       <select id="generate-version-select" name="game_version" hx-get="{{$.Page.VersionsPath}}" hx-trigger="load" hx-target="this" hx-select="unset" hx-swap="beforeend">
         <option value="">{{if .DefaultVersion}}{{t "worlds.generate.version.same" "version" .DefaultVersion}}{{else}}{{t "worlds.generate.version.choose"}}{{end}}</option>
       </select>
     </div>
-    <div class="field">
-      <label for="generate-version">{{t "worlds.import.version.typed"}}</label>
-      <p class="hint" id="generate-version-hint">{{t "worlds.import.version.hint"}}</p>
-      <input id="generate-version" name="game_version_typed" type="text" value="{{.Typed}}"
-        inputmode="decimal" autocomplete="off" spellcheck="false"
-        {{- if not .VersionError.IsZero}} aria-invalid="true" aria-describedby="generate-version-hint generate-version-error"{{else}} aria-describedby="generate-version-hint"{{end}}>
-      {{- if not .VersionError.IsZero}}
-      <p class="error" id="generate-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
-      {{- end}}
-    </div>
+    <details class="disclosure"{{if or .Typed (not .VersionError.IsZero)}} open{{end}}>
+      <summary>{{t "worlds.generate.version.other"}}</summary>
+      <div class="field">
+        <label for="generate-version">{{t "worlds.import.version.typed"}}</label>
+        <p class="hint" id="generate-version-hint">{{t "worlds.import.version.hint"}}</p>
+        <input id="generate-version" name="game_version_typed" type="text" value="{{.Typed}}"
+          inputmode="decimal" autocomplete="off" spellcheck="false" class="mono"
+          {{- if not .VersionError.IsZero}} aria-invalid="true" aria-describedby="generate-version-hint generate-version-error"{{else}} aria-describedby="generate-version-hint"{{end}}>
+        {{- if not .VersionError.IsZero}}
+        <p class="error" id="generate-version-error"><strong>{{t "common.error.label"}}</strong> {{msg .VersionError}}</p>
+        {{- end}}
+      </div>
+    </details>
     <div class="field">
       <label class="check"><input type="checkbox" id="generate-space-age" name="space_age" aria-describedby="generate-space-age-hint{{if not .SpaceAgeError.IsZero}} generate-space-age-error{{end}}"
         {{- if not .SpaceAgeError.IsZero}} aria-invalid="true"{{end}}{{if .SpaceAge}} checked{{end}}> {{t "worlds.import.space_age.label"}}</label>
@@ -55,47 +60,36 @@
   {{- end}}
 
   <div id="map-section" class="map-section">
-    <div id="map-key-box">
-      <input type="hidden" name="map_key" value="{{.MapKey}}">
-      {{- if .Reset}}
-      <div class="message message--note" id="map-reset" tabindex="-1">
-        <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
-      </div>
-      {{- end}}
-    </div>
-    <input type="hidden" id="filled-seed" name="filled_seed" value="{{.FilledSeed}}">
-    <fieldset>
+    <fieldset class="modes">
       <legend>{{t "worlds.generate.mode.legend"}}</legend>
-
-      <div class="mode-option">
-        <label class="check"><input type="radio" id="mode-preset" name="mode" value="preset"{{if eq .Mode "preset"}} checked{{end}}> {{t "worlds.generate.mode.preset"}}</label>
-        <div class="mode-fields">
-          <div class="field" id="preset-field">
-            <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
-            <select id="generate-preset" name="preset" hx-post="{{$.Page.RefreshPath}}" hx-trigger="change" hx-target="#custom-fields" hx-select="#custom-fields" hx-swap="outerHTML" hx-sync="this:replace"{{if not .PresetError.IsZero}} aria-invalid="true" aria-describedby="generate-preset-error"{{end}}>
-              {{- range .Presets}}
-              <option value="{{.}}"{{if eq . $.Page.Form.Preset}} selected{{end}}>{{msg ($.Page.Form.PresetMsg .)}}</option>
-              {{- end}}
-            </select>
-            {{- if not .PresetError.IsZero}}
-            <p class="error" id="generate-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
-            {{- end}}
-          </div>
-          <div class="field">
-            <label for="generate-seed">{{t "worlds.generate.seed.label"}}</label>
-            <p class="hint" id="generate-seed-hint">{{t "worlds.generate.seed.hint"}}</p>
-            <input id="generate-seed" name="seed" type="text" value="{{.Seed}}" class="mono" inputmode="numeric" autocomplete="off" spellcheck="false"
-              {{- if not .SeedError.IsZero}} aria-invalid="true" aria-describedby="generate-seed-hint generate-seed-error"{{else}} aria-describedby="generate-seed-hint"{{end}}>
-            {{- if not .SeedError.IsZero}}
-            <p class="error" id="generate-seed-error"><strong>{{t "common.error.label"}}</strong> {{msg .SeedError}}</p>
-            {{- end}}
-          </div>
-        </div>
+      <div class="mode">
+        <label class="check"><input type="radio" id="mode-settings" name="mode" value="settings" aria-describedby="mode-settings-hint"{{if eq .Mode "settings"}} checked{{end}}> {{t "worlds.generate.mode.settings"}}</label>
+        <p class="hint" id="mode-settings-hint">{{t "worlds.generate.mode.settings_hint"}}</p>
       </div>
+      <div class="mode">
+        <label class="check"><input type="radio" id="mode-exchange" name="mode" value="exchange" aria-describedby="mode-exchange-hint"{{if eq .Mode "exchange"}} checked{{end}}> {{t "worlds.generate.mode.exchange"}}</label>
+        <p class="hint" id="mode-exchange-hint">{{t "worlds.generate.mode.exchange_hint"}}</p>
+      </div>
+    </fieldset>
+    <input type="hidden" id="filled-seed" name="filled_seed" value="{{.FilledSeed}}">
+    {{- if not .FormError.IsZero}}
+    <p class="error" id="generate-form-error"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
+    {{- end}}
 
-      <div class="mode-option">
-        <label class="check"><input type="radio" id="mode-exchange" name="mode" value="exchange"{{if eq .Mode "exchange"}} checked{{end}}> {{t "worlds.generate.mode.exchange"}}</label>
-        <div class="mode-fields">
+    {{/* The settings beside the preview on a wide panel, above it on a narrow one (DESIGN 8.6). */}}
+    <div class="gen-layout">
+      {{- /* Everything here follows the game line, so a version change redraws it whole. */}}
+      <div class="gen-main" id="line-box">
+        <div id="map-key-box">
+          <input type="hidden" name="map_key" value="{{.MapKey}}">
+          {{- if .Reset}}
+          <div class="message message--note" id="map-reset" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
+            <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
+          </div>
+          {{- end}}
+        </div>
+        {{template "map-settings" .}}
+        <div class="mode-panel mode-panel--exchange">
           <div class="field">
             <label for="exchange-string">{{t "worlds.generate.exchange.label"}}</label>
             <p class="hint" id="exchange-hint">{{t "worlds.generate.exchange.hint"}}</p>
@@ -107,74 +101,108 @@
           </div>
         </div>
       </div>
-
-      <div class="mode-option">
-        <label class="check"><input type="radio" id="mode-custom" name="mode" value="custom"{{if eq .Mode "custom"}} checked{{end}}> {{t "worlds.generate.mode.custom"}}</label>
-        <div class="mode-fields" id="custom-fields">
-          <fieldset class="mode-custom">
-            <legend>{{t "worlds.generate.custom.legend"}}</legend>
-            {{template "mapgenform" .MapGen}}
-          </fieldset>
+      <div class="gen-preview">
+        {{- if $.Page.CanPreview}}
+        {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
+        <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
+        {{- end}}
+        {{template "generate-preview" $.Page}}
+        <div id="preview-wait" class="wait" role="status">
+          <p>{{t "worlds.generate.preview.wait"}}</p>
+          <progress aria-label="{{t "worlds.generate.preview.wait_label"}}"></progress>
         </div>
+        {{/* Shown by the script when the preview request itself fails; htmx swaps nothing then. */}}
+        <template id="preview-failed">
+          <section aria-labelledby="preview-failed-heading">
+            <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
+            <div class="message message--error">
+              <p><strong>{{t "common.error.label"}}</strong> {{t "worlds.generate.preview.request_failed"}}</p>
+            </div>
+          </section>
+        </template>
+        {{- if $.Page.CanPreview}}
+        {{template "generate-large-view"}}
+        {{- end}}
       </div>
-    </fieldset>
-    {{- if not .FormError.IsZero}}
-    <p class="error" id="generate-form-error"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
-    {{- end}}
+    </div>
   </div>
+  {{template "achievements" .}}
   {{- end}}
-
-  {{template "generate-preview" $.Page}}
-  <div id="preview-wait" class="wait" role="status">
-    <p>{{t "worlds.generate.preview.wait"}}</p>
-    <progress aria-label="{{t "worlds.generate.preview.wait_label"}}"></progress>
-  </div>
-  {{/* Shown by the script when the preview request itself fails; htmx swaps nothing then. */}}
-  <template id="preview-failed">
-    <section aria-labelledby="preview-failed-heading">
-      <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
-      <div class="message message--error">
-        <p><strong>{{t "common.error.label"}}</strong> {{t "worlds.generate.preview.request_failed"}}</p>
-      </div>
-    </section>
-  </template>
   <div class="actions">
     <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
-      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed,#mg-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
+      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
-    <a href="{{worldsPath}}">{{t "worlds.back.worlds"}}</a>
+    <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
   </div>
 </form>
 {{end}}
 {{- end}}
 
-{{/* The Map preview section, or an empty slot the browser swaps it into. Takes GeneratePage. */}}
-{{define "generate-preview" -}}
-<div id="preview" class="preview">
-  {{- with .Preview}}
-  <section aria-labelledby="preview-heading">
-    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
-    {{- if .Error.IsZero}}
-    <p>{{t "worlds.generate.preview.made" "seed" .Seed}}</p>
-    <ul class="pictures" role="list">
-      {{- range .Pictures}}
-      <li>
-        <figure>
-          <a href="{{.Path}}"><img src="{{.Path}}" width="1024" height="1024" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy"></a>
-          <figcaption>{{msg .Name}}</figcaption>
-        </figure>
-      </li>
-      {{- end}}
-    </ul>
-    <p class="hint">{{t "worlds.generate.preview.kept"}}</p>
-    {{- else}}
-    <div class="message message--error">
-      <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-    </div>
-    {{- end}}
-  </section>
+{{/* The map settings: the preset, the seed and the tabs. The preset select
+     and the reset redraw this part (htmx); without script the form is sent
+     and the server does it (DESIGN 8.6). Takes GenerateForm. */}}
+{{define "map-settings" -}}
+<div class="mode-panel mode-panel--settings">
+<div id="preset-box" class="mode-panel">
+  {{- if .Refilled}}
+  <div class="message message--note" id="map-refilled" tabindex="-1" autofocus>
+    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.refilled" "preset" (.PresetMsg .Preset)}}</p>
+  </div>
   {{- end}}
+  <div class="field">
+    <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
+    <div class="inline-row preset-row">
+      <select id="generate-preset" name="preset" hx-post="{{.RefreshPath}}" hx-trigger="change" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary" hx-swap="outerHTML" hx-sync="this:replace"
+        aria-describedby="preset-modified{{if not .PresetError.IsZero}} generate-preset-error{{end}}"{{if not .PresetError.IsZero}} aria-invalid="true"{{end}}>
+        {{- range .Presets}}
+        <option value="{{.}}"{{if eq . $.Preset}} selected{{end}}>{{msg ($.PresetMsg .)}}</option>
+        {{- end}}
+      </select>
+      <span class="modified" id="preset-modified" data-word="{{t "mapgen.preset.modified"}}">{{if .Modified}}{{t "mapgen.preset.modified"}}{{end}}</span>
+      <button type="submit" class="button button--quiet" id="preset-reset" name="reset" value="1" formaction="{{.RefreshPath}}"
+        hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary" hx-swap="outerHTML"{{if not .Modified}} hidden{{end}}>{{t "mapgen.preset.reset"}}</button>
+    </div>
+    {{- if not .PresetError.IsZero}}
+    <p class="error" id="generate-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
+    {{- end}}
+  </div>
+</div>
+  {{- /* The seed is not the preset's, so a redraw of the settings leaves it as typed. */}}
+  {{- with .MapGen.Seed}}
+  <div class="field">
+    <label for="{{.ID}}">{{t "mapgen.seed.label"}}</label>
+    <p class="hint" id="{{.ID}}-hint">{{t "mapgen.seed.hint"}}</p>
+    <div class="inline-row">
+      <input id="{{.ID}}" name="{{.Name}}" type="text" value="{{.Value}}" class="mono" inputmode="numeric" autocomplete="off" spellcheck="false"
+        {{- if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-hint {{.ID}}-error"{{else}} aria-describedby="{{.ID}}-hint"{{end}}>
+      {{- /* It needs script, so the style sheet shows it only once the script has run. */}}
+      <button type="button" class="button seed-random" id="seed-random">{{t "mapgen.seed.random"}}</button>
+    </div>
+    {{- if not .Error.IsZero}}
+    <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    {{- end}}
+  </div>
+  {{- end}}
+</div>
+<div id="map-settings" class="mode-panel mode-panel--settings">
+  <input type="hidden" name="filled_from" value="{{.FilledFrom}}">
+  <input type="hidden" name="settings_shown" value="1">
+  {{template "mapgen-panels" .}}
+</div>
+{{- end}}
+
+{{/* One summary of the achievements the settings turn off, by the Generate
+     button (SPEC 5.6). The script shows and hides its lines as fields change.
+     Takes GenerateForm. */}}
+{{define "achievements" -}}
+<div class="message message--warning achievements" id="ach-summary"{{if not .Blocked}} hidden{{end}}>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.achievement.summary"}}</p>
+  <ul>
+    {{- range .Reasons}}
+    <li data-reason="{{.Key}}"{{if not .Active}} hidden{{end}}>{{msg .Msg}}</li>
+    {{- end}}
+  </ul>
 </div>
 {{- end}}

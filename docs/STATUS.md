@@ -1383,3 +1383,89 @@ sections.
   `map-settings.json` after creation (#207), whitelist enforcement, and a
   check of a string's planets against the world's mods (the game's create
   step reports that).
+
+## UI batch
+
+Serves SPEC 3.2 (`FOREMAN_PUBLIC_ADDRESS`), 5.6 (Generate and the map
+preview), 7.1, 7.6, 8.6, 11.1 to 11.3, 11.5, 14.3, 17 (17.10 and the new
+17.13) and 22, with DESIGN.md sections 1 to 8. ADR 0010 records why
+Generate writes complete map-settings files. The plan's lasting rules are
+in those sections. Issues closed: #220, #221, #232 to #242 and #244.
+
+### Delivered
+
+- **Look and shell.** A flat style with an orange primary button; a
+  header with the rusty logo and a user menu holding the languages and
+  Sign out; required fields marked by an asterisk with one note per form
+  (SPEC 17.13); number fields 10 characters wide.
+- **Server page.** The heading is the active world's name with its live
+  state badge; a "Players join at" line with Copy address from
+  `FOREMAN_PUBLIC_ADDRESS`, hidden when it is blank; Overview and Console
+  tabs; the switch list replaced by a link to the Worlds list, so a switch
+  is 3 clicks. The Console colours the game's Error and Warning lines and
+  offers Download log.
+- **World pages** have tabs (Overview, Saves, Snapshots, Settings) with
+  the Active badge on each, and no "Back to" links. Confirmation pages
+  open with one `h1` that asks the question.
+- **Stop and restart.** A "No warning" button sets the countdown to 0;
+  Cancel returns to the page that opened the form.
+- **Settings.** Make admin for connected players, auto-pause on when the
+  key is missing (and written on a first save), the raw editor's caret on
+  the named line, world tabs and a section rail.
+- **Generate.** One game-like form: a preset fills the Resources, Terrain,
+  Enemy and Advanced tabs, "[modified]" with a reset, Random seed, sliders
+  on wide panels and selects on phones, the full map-settings values per
+  version with the game screen's limits and minimum and maximum pairs
+  kept in order, Spoiling rate as the game shows it, 1.1's difficulty and
+  research queue choices, each resource's on/off box, Nauvis's map type,
+  and moisture and terrain type scale and bias. An unchanged preset
+  passes `--preset`; any change writes both files complete. Achievement
+  warnings show live and the server confirms them.
+- **Map preview.** 1280 by 1280, drawn on load and after changes (newest
+  wins, one planet at a time, pictures reused), the seed used and a start
+  pin, a large view with Previous, Next and zoom, PNG and zip downloads.
+  Previews wait up to 20 seconds for their turn, and a cancelled preview
+  leaves no container or folder.
+- **Internals.** One list of supported game lines in `internal/mapgen`;
+  `make test` writes a coverage profile per run; `make test-game` also
+  runs the web package's real-game tests.
+- All new text is translated and reviewed in the eight languages.
+
+### Verified
+
+- `make verify` green on every task head; the full `make e2e` suite in all
+  four projects (1280 and 320 px, dark and light), with new specs for the
+  header, hub, required fields, confirmation pages, Generate, the preview
+  and the fixes.
+- Real-game checks on 1.1.110, 2.0.77 and 2.1.24 (and 2.1.9, 2.1.12,
+  2.1.18, 2.1.23 for the layouts): previews at 1280 per planet with
+  cleanup after normal and cancelled runs; the complete files for every
+  preset reach the in-game state and read back as written, including
+  Space Age worlds on all five planets; the spoiling rate's direction;
+  map type, resource off, and moisture and terrain bias read back from
+  `--create`; first-save auto-pause stops ticks with nobody connected.
+
+### Gaps left
+
+- The Console page keeps two live streams by design: the game's log lines
+  and the page facts that carry the live badge.
+- With two Generate tabs open, each one's preview replaces the other's,
+  because each user has one current preview.
+- A preset chosen during the sub-second settings redraw (after a version
+  or Space Age change) is lost.
+- Moisture and terrain type scale and bias use the same steps on every
+  line; they were read from the game's screen, not its data.
+- Exchange strings get no achievement warnings.
+- Versions 2.1.13 to 2.1.17 have no tested map-settings layout, so their
+  Enemy and Advanced settings are not offered. The edge tags 2.1.12 and
+  2.1.18 used by the real-game layout check are not digest-pinned in the
+  Makefile.
+- Whether the game really disables achievements is decided in its client
+  and is not tested; the table comes from the game's own text.
+  `enemy_expansion.min_base_spacing` on 1.1 cannot be read back.
+- The large view has no pinch zoom of its own (the browser's works).
+- The live-fit announcement for a moved field that alone crosses an
+  achievement line is covered only through the shared announcement path;
+  no such pair exists today.
+- Not built, by decision: changing map settings after a map is made
+  (#207; see SPEC 11.5).

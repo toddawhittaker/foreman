@@ -75,15 +75,16 @@ func TestMovedEventCarriesTheSentence(t *testing.T) {
 	}
 }
 
-// DESIGN 7.1: a world page that cannot offer the switch says why, in one line.
+// DESIGN 7.1: a world page that cannot offer the switch says why: the
+// active world by its badge, a busy one in a line.
 func TestWorldPageSaysWhyThereIsNoSwitch(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 	active := g.get(worldPath(a))
-	g.wantContains("active world", active, "This is the active world.")
+	g.wantContains("active world", active, `<span class="badge badge--active">Active</span>`)
 	g.wantMissing("active world", active, "Switch to this world")
-	g.wantContains("other world", g.get(worldPath(b)), "Switch to this world", "then starts this world. When the server is stopped, the confirmation lets you leave it stopped instead.")
+	g.wantContains("other world", g.get(worldPath(b)), "Switch to this world", "Foreman snapshots both worlds first, then starts this one.")
 
 	g.startGame(a)
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"30"}}))

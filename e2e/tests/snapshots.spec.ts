@@ -37,10 +37,12 @@ test("empty snapshot list names the next step", async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman, "family-base");
   await page.goto("/worlds/family-base/snapshots");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Snapshots of Family base");
+  // The world's name leads, and the Snapshots tab says which page this is (DESIGN 6).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Family base");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Snapshots" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText(/No snapshots yet/)).toBeVisible();
   await expect(page.getByText("Free space")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/worlds/family-base");
   await checkPage(page);
 });
 
@@ -146,6 +148,6 @@ test("the done message leads to the snapshot's Restore link", async ({ page, for
   await checkPage(page);
 
   await target.click();
-  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
 });

@@ -2,8 +2,8 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .WorldName}}</a></div>
-<h1>{{t "settings.title" "world" .WorldName}}</h1>
+<h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "world-tabs" .Tabs}}
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
@@ -42,16 +42,36 @@
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.note.running"}}</p>
 </div>
 {{- end}}
+{{/* The rail of section links shows only on a wide panel (DESIGN 8.10); a phone scrolls. */}}
+<div class="settings-wrap">
+<div class="settings-layout">
+<nav class="settings-rail" aria-label="{{t "settings.rail.label"}}">
+  <ul role="list">
+    <li><a href="#settings-listing">{{t "settings.listing"}}</a></li>
+    <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
+    <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
+    <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
+    <li><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></li>
+  </ul>
+</nav>
+<div class="settings-main">
 <form method="post" action="{{.Path}}" class="panel settings" novalidate>
   {{template "summary" .Problems}}
+  {{- if .Editable}}
+  {{template "required-note"}}
+  {{- end}}
+  {{- if .Connected}}
+  {{- /* The first submit button is the one Enter presses; without this it would be a Make admin button. */}}
+  <button type="submit" hidden></button>
+  {{- end}}
   {{- if .Edit}}
   <input type="hidden" name="edit" value="{{.Edit}}">
   {{- end}}
-  <fieldset{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-listing"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.listing"}}</legend>
     <div class="field">
-      <label for="name">{{t "settings.name.label"}}</label>
-      <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off"
+      <label for="name" class="required">{{t "settings.name.label"}}</label>
+      <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off" required placeholder="{{t "worlds.name.placeholder"}}"
         {{- if not .NameError.IsZero}} aria-invalid="true" aria-describedby="name-error"{{end}}>
       {{- if not .NameError.IsZero}}
       <p class="error" id="name-error"><strong>{{t "common.error.label"}}</strong> {{msg .NameError}}</p>
@@ -71,7 +91,7 @@
     </fieldset>
   </fieldset>
 
-  <fieldset{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-joining"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.joining"}}</legend>
     <fieldset>
       <legend>{{t "settings.password.legend"}}</legend>
@@ -106,7 +126,7 @@
     <label class="check"><input type="checkbox" name="require_user_verification"{{if .Verify}} checked{{end}}> {{t "settings.verify.label"}}</label>
   </fieldset>
 
-  <fieldset{{if not .Editable}} disabled{{end}}>
+  <fieldset id="settings-saving"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.saving"}}</legend>
     <div class="field field--short">
       <label for="autosave-interval">{{t "settings.interval.label"}}</label>
@@ -128,7 +148,7 @@
   </fieldset>
 
   {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
-  <fieldset>
+  <fieldset id="settings-admins">
     <legend>{{t "settings.admins.legend"}}</legend>
     {{- if .AdminsBroken}}
     <p class="hint">{{t "settings.admins.broken" "file" .AdminFile}}</p>
@@ -143,6 +163,15 @@
       <p class="error" id="admins-error"><strong>{{t "common.error.label"}}</strong> {{msg .AdminsError}}</p>
       {{- end}}
     </div>
+    {{- if and .Editable .Connected}}
+    <h3 id="connected-heading">{{t "settings.connected.heading"}}</h3>
+    <p class="hint" id="connected-hint">{{t "settings.connected.hint"}}</p>
+    <ul aria-labelledby="connected-heading" aria-describedby="connected-hint">
+      {{- range .Connected}}
+      <li>{{.}} <button type="submit" class="button" name="make_admin" value="{{.}}">{{t "settings.connected.make_admin"}}<span class="visually-hidden"> {{.}}</span></button></li>
+      {{- end}}
+    </ul>
+    {{- end}}
     {{- end}}
   </fieldset>
 
@@ -154,6 +183,9 @@
   {{- end}}
 </form>
 {{- end}}
-<div class="actions"><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></div>
+<div class="actions settings-raw-link"><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></div>
+</div>
+</div>
+</div>
 {{- end}}
 {{- end}}

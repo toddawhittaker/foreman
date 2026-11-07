@@ -44,7 +44,7 @@ func TestWorldsPageInGerman(t *testing.T) {
 		SnapshotAdds: map[string]uint64{"base": 1_500_000},
 	}
 	_, body := renderIn(t, r, pageCase{status: 200, user: "todd", page: p}, "de")
-	for _, want := range []string{"<h1>Welten</h1>", "Spielversion", "2,1 GB", "Snapshots belegen zusätzlich 1,5 MB", ">Base</a>"} {
+	for _, want := range []string{"<h1>Welten</h1>", "Spielversion", "2,1 GB", `Snapshots belegen zusätzlich <span class="nowrap">1,5 MB</span>`, ">Base</a>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("German worlds page lacks %q:\n%s", want, body)
 		}

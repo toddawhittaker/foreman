@@ -1,0 +1,112 @@
+{{/* The Map preview section, or an empty slot the browser swaps it into. Takes GeneratePage. */}}
+{{define "generate-preview" -}}
+<div id="preview" class="preview"{{with .Preview}} data-seed="{{.Seed}}" data-filled-seed="{{$.Form.FilledSeed}}"{{end}}>
+  {{- with .Preview}}
+  <section aria-labelledby="preview-heading">
+    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+    {{- if .Error.IsZero}}
+    <p>{{t "worlds.generate.preview.made" "seed" .Seed}} {{t "worlds.generate.preview.pin"}}</p>
+    {{- if .Choose}}
+    {{/* Picking a planet draws it; it needs script, so the style sheet hides it without (DESIGN 8.8). */}}
+    <div class="field preview-planet">
+      <label for="preview-planet">{{t "worlds.generate.preview.planet"}}</label>
+      <select id="preview-planet">
+        {{- range .Planets}}
+        <option value="{{.Planet}}"{{if eq .Planet $.Preview.Current}} selected{{end}}>{{msg .Name}}</option>
+        {{- end}}
+      </select>
+    </div>
+    {{- end}}
+    <ul class="pictures" role="list">
+      {{- range .Pictures}}
+      <li>
+        <figure>
+          <a href="{{.Path}}" class="picture" data-planet="{{.Planet}}"><span class="map"><img src="{{.Path}}" width="1280" height="1280" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy">{{template "map-pin"}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
+          <figcaption>{{msg .Name}}</figcaption>
+        </figure>
+        <a href="{{.DownloadPath}}" class="download" download>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+      </li>
+      {{- end}}
+    </ul>
+    {{- if gt (len .Planets) 1}}
+    <p><a href="{{.ZipPath}}" class="download" download>{{t "worlds.generate.preview.download_all"}}</a></p>
+    {{- end}}
+    <p class="hint">{{t "worlds.generate.preview.kept"}}</p>
+    {{- else}}
+    <div class="message message--error">
+      <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    </div>
+    {{- end}}
+  </section>
+  {{- else}}{{if .CanPreview}}
+  {{/* Holds the first preview's space until it arrives, so nothing moves: the picture's box and,
+       unseen, the lines around it. Space Age means several planets, so a planet choice. Script only (DESIGN 8.8). */}}
+  <section aria-labelledby="preview-heading" class="preview-placeholder">
+    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+    <p class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.made" "seed" ""}} {{t "worlds.generate.preview.pin"}}</p>
+    {{- if .Form.SpaceAge}}
+    <div class="field preview-placeholder__hold" aria-hidden="true"><span>{{t "worlds.generate.preview.planet"}}</span><span class="preview-placeholder__control"></span></div>
+    {{- end}}
+    <div class="preview-placeholder__picture">
+      {{- /* Says what fills it; the status line above already reads this out, so it is hidden from screen readers. */}}
+      <span class="preview-placeholder__map" aria-hidden="true">{{t "worlds.generate.preview.updating"}}</span>
+      <span class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.planet"}}</span>
+      <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    </div>
+    {{- if .Form.SpaceAge}}
+    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    {{- end}}
+    <p class="hint preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.kept"}}</p>
+  </section>
+  {{- end}}
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* The large view of one picture, opened in the page by the script (DESIGN 8.8).
+     Without script the picture link opens the picture itself. */}}
+{{define "generate-large-view" -}}
+<dialog id="large-view" class="large-view" aria-labelledby="large-title">
+  <div class="large-view__bar">
+    <h2 id="large-title"></h2>
+    <div class="large-view__controls">
+      <button type="button" class="button" id="large-prev">{{t "worlds.generate.large.previous"}}</button>
+      <button type="button" class="button" id="large-next">{{t "worlds.generate.large.next"}}</button>
+      <button type="button" class="button" id="large-out">{{t "worlds.generate.large.zoom_out"}}</button>
+      <output id="large-zoom" class="large-view__zoom" for="large-out large-in"></output>
+      <button type="button" class="button" id="large-in">{{t "worlds.generate.large.zoom_in"}}</button>
+      <a href="" class="large-view__download" id="large-download" download></a>
+      <button type="button" class="button" id="large-close">{{t "worlds.generate.large.close"}}</button>
+    </div>
+    <p class="hint" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
+  </div>
+  {{/* It scrolls when zoomed, so it takes focus for the arrow keys. */}}
+  <div class="large-view__frame" id="large-frame" tabindex="0" role="group" aria-labelledby="large-title" aria-describedby="large-keys">
+    <span class="map large-view__map"><img id="large-img" src="data:," alt="" width="1280" height="1280">{{template "map-pin"}}</span>
+  </div>
+  {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
+  <p id="large-status" class="large-view__status" role="status"></p>
+</dialog>
+{{- end}}
+
+{{/* Where players start: the centre of the map, which the preview is drawn
+     around. The caption says so once, so the mark itself is hidden from
+     screen readers. Its white face and black edge read on every planet. */}}
+{{define "map-pin" -}}
+<svg class="pin" aria-hidden="true" focusable="false" viewBox="0 0 24 32" width="24" height="32"><path d="M12 30.5C12 30.5 2.5 18.5 2.5 11.5a9.5 9.5 0 0 1 19 0c0 7-9.5 19-9.5 19z"/><circle cx="12" cy="11.5" r="3.5"/></svg>
+{{- end}}
+
+{{/* The answer to an automatic preview request whose settings are not valid:
+     the problems, in the preview's slot, with no focus moved. Takes GeneratePage. */}}
+{{define "generate-preview-invalid" -}}
+<div id="preview" class="preview" data-preview="invalid">
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{t "common.summary.heading" "count" (len .Problems)}}</p>
+    <ul>
+      {{- range .Problems}}
+      <li><a href="#{{.FieldID}}">{{msg .Message}}</a></li>
+      {{- end}}
+    </ul>
+  </div>
+</div>
+{{- end}}

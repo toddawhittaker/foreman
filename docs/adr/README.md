@@ -39,3 +39,4 @@ record has four parts:
 | [0007](0007-imported-from-in-world-json.md) | Where a world was imported from is kept in `world.json` and matched by the save's name, size and modification time, not a hash. |
 | [0008](0008-message-catalogue.md) | Languages: an in-repo `internal/i18n` over `x/text`, dotted keys with a hash check, message ids in view models, one catalogue file per area. |
 | [0009](0009-map-exchange-string-in-go.md) | Generate decodes a map exchange string in Go, a port of rfvgyhn's parser (MIT), refusing what it cannot read exactly; golden strings from the real game keep it honest. |
+| [0010](0010-full-map-settings-files.md) | A changed Generate form writes both map files complete and passes no `--preset`; an unchanged preset passes `--preset` alone. |

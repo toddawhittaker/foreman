@@ -3,7 +3,6 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -92,20 +91,23 @@ func TestEveryControlHasAName(t *testing.T) {
 	}
 }
 
-// The groups follow the game's data for each line (SPEC 5.6, DESIGN 8.7).
+// The groups follow the game's data for each line, in the tabs the game's
+// map generator has: resources, terrain (with cliffs) and enemies (SPEC 5.6,
+// DESIGN 8.7).
 func TestFormFollowsTheGameLine(t *testing.T) {
 	for _, c := range testLines {
-		f := NewMapGenForm(c.line, c.spaceAge)
+		f := NewMapGenFormForPreset(c.line, c.spaceAge, "default")
 		wantPlanets := mapgen.Planets(c.line, c.spaceAge)
-		if len(f.Planets) != len(wantPlanets) {
-			t.Fatalf("%s sa=%v: %d planet groups, want %d", c.line, c.spaceAge, len(f.Planets), len(wantPlanets))
-		}
 		names := f.chosen()
-		for i, p := range wantPlanets {
+		for _, p := range wantPlanets {
 			for _, ctl := range mapgen.Controls(c.line, p) {
+				want := map[string]string{"resource": tabResources, "terrain": tabTerrain, "cliff": tabTerrain, "enemy": tabEnemy}[ctl.Category]
 				for _, s := range []string{"frequency", "size"} {
 					if _, ok := names[fieldName(p, ctl.Name, s)]; !ok {
 						t.Errorf("%s: no %s field for %s %s", c.line, s, p, ctl.Name)
+					}
+					if got := f.TabOf(fieldID(p, ctl.Name, s)); got != want {
+						t.Errorf("%s: %s %s %s is in tab %q, want %q", c.line, p, ctl.Name, s, got, want)
 					}
 				}
 				_, has := names[fieldName(p, ctl.Name, "richness")]
@@ -113,42 +115,41 @@ func TestFormFollowsTheGameLine(t *testing.T) {
 					t.Errorf("%s: %s %s richness field = %v, game says %v", c.line, p, ctl.Name, has, ctl.Richness)
 				}
 			}
-			if f.Planets[i].Open != (i == 0) {
-				t.Errorf("%s: planet %s open = %v", c.line, p, f.Planets[i].Open)
+		}
+		// Each planet has its own group of resources, the first open.
+		if len(f.Resources) != len(wantPlanets) {
+			t.Errorf("%s sa=%v: %d planets with resources, want %d", c.line, c.spaceAge, len(f.Resources), len(wantPlanets))
+		}
+		for i, pl := range f.Resources {
+			if pl.Open != (i == 0) || pl.Summary.IsZero() {
+				t.Errorf("%s: resources of %s open %v, summary %v", c.line, pl.ID, pl.Open, pl.Summary)
 			}
 		}
-		// Water and cliffs sit in the Map fieldset on every line, and nowhere else.
-		if len(f.Water.Selects) != 2 || len(f.Cliffs.Selects) != 2 {
-			t.Errorf("%s: water has %d fields and cliffs %d", c.line, len(f.Water.Selects), len(f.Cliffs.Selects))
-		}
-		for _, g := range f.Planets[0].Groups {
-			if g.Selects[0].Name == fieldName("nauvis", "water", "frequency") || g.Selects[0].Name == fieldName("nauvis", "nauvis_cliff", "frequency") {
-				t.Errorf("%s: Nauvis shows %s twice", c.line, g.Selects[0].Name)
+		// Water and cliffs are terrain on every line, 1.1's included.
+		for _, id := range []string{fieldID("nauvis", "water", "frequency"), fieldID("nauvis", "nauvis_cliff", "size")} {
+			if f.TabOf(id) != tabTerrain {
+				t.Errorf("%s: %s is not in Terrain", c.line, id)
 			}
 		}
-		// A single planet's summary is not led by its name (DESIGN 8.7).
-		if len(wantPlanets) == 1 && f.Planets[0].Summary.Key != "mapgen.planet.summary_only" {
-			t.Errorf("%s: summary %v", c.line, f.Planets[0].Summary)
-		}
-		if len(wantPlanets) > 1 && f.Planets[0].Summary.Key != "mapgen.planet.summary" {
-			t.Errorf("%s: summary %v", c.line, f.Planets[0].Summary)
+		if (f.NoEnemies.Name != "") != (c.line != "1.1") {
+			t.Errorf("%s: No enemies offered = %v", c.line, f.NoEnemies.Name != "")
 		}
 	}
 	// Per-line differences: 2.x has rocks and Space Age's planets; 1.1 has neither.
-	if _, ok := NewMapGenForm("1.1", true).chosen()[fieldName("nauvis", "rocks", "size")]; ok {
+	if _, ok := NewMapGenFormForPreset("1.1", true, "default").chosen()[fieldName("nauvis", "rocks", "size")]; ok {
 		t.Error("1.1 offers rocks")
 	}
-	if _, ok := NewMapGenForm("2.0", false).chosen()[fieldName("vulcanus", "calcite", "size")]; ok {
+	if _, ok := NewMapGenFormForPreset("2.0", false, "default").chosen()[fieldName("vulcanus", "calcite", "size")]; ok {
 		t.Error("2.0 without Space Age offers Vulcanus")
 	}
-	if _, ok := NewMapGenForm("2.0", true).chosen()[fieldName("vulcanus", "calcite", "size")]; !ok {
+	if _, ok := NewMapGenFormForPreset("2.0", true, "default").chosen()[fieldName("vulcanus", "calcite", "size")]; !ok {
 		t.Error("2.0 with Space Age lacks Vulcanus")
 	}
 	// 1.1 trees have richness; 2.x trees do not.
-	if _, ok := NewMapGenForm("1.1", false).chosen()[fieldName("nauvis", "trees", "richness")]; !ok {
+	if _, ok := NewMapGenFormForPreset("1.1", false, "default").chosen()[fieldName("nauvis", "trees", "richness")]; !ok {
 		t.Error("1.1 trees lack richness")
 	}
-	if _, ok := NewMapGenForm("2.0", false).chosen()[fieldName("nauvis", "trees", "richness")]; ok {
+	if _, ok := NewMapGenFormForPreset("2.0", false, "default").chosen()[fieldName("nauvis", "trees", "richness")]; ok {
 		t.Error("2.0 trees have richness")
 	}
 }
@@ -201,6 +202,12 @@ func TestUntouchedFormMatchesTheGamesExample(t *testing.T) {
 					}
 				}
 				continue
+			}
+			if keys, ok := mapgen.TerrainKeysOf(c.line); ok && k == "property_expression_names" {
+				// A bias of 0 is left out, as the game's own generator writes it.
+				ex := wv.(map[string]any)
+				delete(ex, keys.MoistureBias)
+				delete(ex, keys.AuxBias)
 			}
 			wj, _ := json.Marshal(wv)
 			gj, _ := json.Marshal(gv)
@@ -320,10 +327,10 @@ func TestBadValuesAreRefusedAtTheirField(t *testing.T) {
 	if f.StartingArea.Value != mgDefaultStep {
 		t.Errorf("a bad choice was kept: %q", f.StartingArea.Value)
 	}
-	if !f.Planets[1].Open {
+	if !f.Resources[1].Open {
 		t.Error("the Vulcanus group holding an error is closed")
 	}
-	if f.Planets[2].Open {
+	if f.Resources[2].Open {
 		t.Error("a group without an error opened")
 	}
 	body := renderPartial(t, i18n.English, f)
@@ -390,7 +397,7 @@ func TestFormRoundTripsThroughItsPage(t *testing.T) {
 		if !bytes.Equal(j1, j2) {
 			t.Errorf("%s sa=%v: file changed on the second trip\n%s\n%s", c.line, c.spaceAge, j1, j2)
 		}
-		if f2.Seed.Value != "42" || !f2.Peaceful || f2.StartingArea.Value != "71" {
+		if f2.Seed.Value != "42" || !f2.Peaceful.Checked || f2.StartingArea.Value != "71" {
 			t.Errorf("%s: the page lost the fixed fields: %+v", c.line, f2.Seed)
 		}
 		if !strings.Contains(f2.Raw.Value, "elevation_island") {
@@ -402,39 +409,19 @@ func TestFormRoundTripsThroughItsPage(t *testing.T) {
 var (
 	reSelect   = regexp.MustCompile(`(?s)<select id="[^"]*" name="([^"]+)"[^>]*>(.*?)</select>`)
 	reSelected = regexp.MustCompile(`<option value="([^"]*)" selected>`)
-	reText     = regexp.MustCompile(`<input id="[^"]*" name="(mg\.[a-z]+)" type="text" value="([^"]*)"`)
-	reArea     = regexp.MustCompile(`(?s)<textarea[^>]*name="mg\.raw"[^>]*>(.*?)</textarea>`)
-	reChecked  = regexp.MustCompile(`name="mg\.peaceful"[^>]*checked`)
 )
 
 // formValues reads a page as a browser would post it.
 func formValues(t *testing.T, page string) url.Values {
 	t.Helper()
-	v := url.Values{}
-	for _, m := range reSelect.FindAllStringSubmatch(page, -1) {
-		sel := reSelected.FindStringSubmatch(m[2])
-		if sel == nil {
-			t.Fatalf("select %s has nothing selected", m[1])
-		}
-		v.Set(m[1], sel[1])
-	}
-	for _, m := range reText.FindAllStringSubmatch(page, -1) {
-		v.Set(m[1], html.UnescapeString(m[2]))
-	}
-	if m := reArea.FindStringSubmatch(page); m != nil {
-		v.Set(mgRaw, html.UnescapeString(m[1]))
-	}
-	if reChecked.MatchString(page) {
-		v.Set(mgPeaceful, "on")
-	}
-	return v
+	return fieldValues(page)
 }
 
 func renderPartial(t *testing.T, loc i18n.Locale, f MapGenForm) string {
 	t.Helper()
 	r := newTestRenderer(t)
 	var b bytes.Buffer
-	if err := r.pages[loc]["signedout"].ExecuteTemplate(&b, "mapgenform", f); err != nil {
+	if err := r.pages[loc]["generate"].ExecuteTemplate(&b, "map-settings", GenerateForm{MapGen: f, Preset: "default", Presets: []string{"default"}}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	return b.String()
@@ -444,7 +431,7 @@ func renderPartial(t *testing.T, loc i18n.Locale, f MapGenForm) string {
 // and what it holds passes the same check as a typed edit (SPEC 11.2).
 func TestRawBoxPrefill(t *testing.T) {
 	for _, line := range mapgen.Lines {
-		raw := NewMapGenForm(line, false).Raw.Value
+		raw := NewMapGenFormForPreset(line, false, "default").Raw.Value
 		if fes := gamesettings.Validate(gamesettings.FileMapGen, line, []byte(raw)); len(fes) > 0 {
 			t.Errorf("%s: prefill fails Validate: %+v\n%s", line, fes, raw)
 		}
@@ -496,7 +483,7 @@ func TestFormWinsOverRawBox(t *testing.T) {
     "coal": {"size": 4, "note": 1},
     "modded-ore": {"frequency": 2, "size": 3, "richness": 4}
   },
-  "property_expression_names": {"elevation": "elevation_island"},
+  "property_expression_names": {"elevation": "elevation_island", "aux": "aux_basic"},
   "default_enable_all_autoplace_controls": false
 }`},
 	})
@@ -509,8 +496,12 @@ func TestFormWinsOverRawBox(t *testing.T) {
 	approx(t, "coal size", sub(t, ac, "coal")["size"], 2)
 	approx(t, "kept raw sub-key", sub(t, ac, "coal")["note"], 1)
 	approx(t, "mod control", sub(t, ac, "modded-ore")["richness"], 4)
-	if sub(t, m, "property_expression_names")["elevation"] != "elevation_island" {
+	pen := sub(t, m, "property_expression_names")
+	if pen["aux"] != "aux_basic" {
 		t.Error("the raw box's own key was dropped")
+	}
+	if _, ok := pen["elevation"]; ok {
+		t.Errorf("the raw box's map type beat the form's default: %v", pen["elevation"])
 	}
 	if m["default_enable_all_autoplace_controls"] != false {
 		t.Error("an uncovered raw key was dropped")
@@ -600,9 +591,10 @@ func TestPartialMarkup(t *testing.T) {
 	reDesc := regexp.MustCompile(`aria-describedby="([^"]+)"`)
 	reWrapped := regexp.MustCompile(`<label[^>]*><input[^>]* id="([^"]+)"`)
 	reField := regexp.MustCompile(`<(?:select|textarea|input)[^>]* id="([^"]+)"`)
+	reLabelledBy := regexp.MustCompile(`<input[^>]* id="([^"]+)"[^>]* aria-labelledby="([^"]+)"`)
 	for _, c := range testLines {
 		for _, l := range i18n.Languages {
-			body := renderPartial(t, l.Tag, NewMapGenForm(c.line, c.spaceAge))
+			body := renderPartial(t, l.Tag, NewMapGenFormForPreset(c.line, c.spaceAge, "default"))
 			ids := map[string]int{}
 			for _, m := range reID.FindAllStringSubmatch(body, -1) {
 				ids[m[1]]++
@@ -616,6 +608,10 @@ func TestPartialMarkup(t *testing.T) {
 			// A checkbox inside its label has no "for".
 			for _, m := range reWrapped.FindAllStringSubmatch(body, -1) {
 				labelled[m[1]] = true
+			}
+			// A slider is named by its select's label.
+			for _, m := range reLabelledBy.FindAllStringSubmatch(body, -1) {
+				labelled[m[1]] = ids[m[2]] > 0
 			}
 			for _, m := range reFor.FindAllStringSubmatch(body, -1) {
 				labelled[m[1]] = true
@@ -646,7 +642,7 @@ func TestPartialMarkup(t *testing.T) {
 // Closed groups still ship every field, but the page stays small enough for
 // a phone (SPEC 17.2).
 func TestPartialSize(t *testing.T) {
-	body := renderPartial(t, i18n.English, NewMapGenForm("2.1", true))
+	body := renderPartial(t, i18n.English, NewMapGenFormForPreset("2.1", true, "default"))
 	if len(body) > 100_000 {
 		t.Errorf("the form is %d bytes", len(body))
 	}

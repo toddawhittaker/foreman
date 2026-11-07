@@ -1,14 +1,12 @@
 package web
 
 import (
-	"context"
 	"html"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -217,7 +215,10 @@ func TestUnknownStateShowsNoStaleFacts(t *testing.T) {
 		p.Status.GameVersion = "2.1.20"
 	})
 	facts := fragmentHTML(t, p, "server-facts")
-	wantAll(t, "facts", facts, "Unknown", "Foreman cannot reach Docker.")
+	wantAll(t, "facts", facts, "Foreman cannot reach Docker.")
+	// The live facts carry the heading's badge, which says Unknown (DESIGN 7.5).
+	p.Live = true
+	wantAll(t, "live facts", fragmentHTML(t, p, "server-facts"), `<span id="server-title" hx-swap-oob="innerHTML">`, "Unknown")
 	wantNone(t, "facts", facts, "old.zip", "CPU", "Memory", "Uptime", "2.1.20")
 	players := fragmentHTML(t, p, "server-players")
 	wantAll(t, "players", players, "Foreman cannot see whether anyone is online.")
@@ -236,7 +237,7 @@ func TestSwitchShowsTheNewActiveWorld(t *testing.T) {
 			p.Status.Operation = &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "alpha", To: "bravo", Presented: presented}}
 		})
 		link := fragmentHTML(t, p, "server-active")
-		wantAll(t, "active", link, `href="/worlds/`+strings.ToLower(active)+`" id="act-world">Active world: `+active+`</a>`)
+		wantAll(t, "active", link, `href="/worlds/`+strings.ToLower(active)+`" id="act-world">World page</a>`)
 		facts := fragmentHTML(t, p, "server-facts")
 		wantAll(t, "facts", facts, "<dt>Switching</dt><dd>From Alpha to Bravo</dd>")
 		if presented == strings.Contains(facts, "alpha.zip") {
@@ -359,35 +360,6 @@ func TestStartAnywayRestoreOnlyWhenNewest(t *testing.T) {
 	}
 }
 
-// A request the browser abandoned is not a server fault: listing the other
-// worlds on a cancelled context logs nothing, while a real failure to list
-// still logs an error.
-func TestOtherWorldsLogsOnlyRealFailures(t *testing.T) {
-	g := newGameRig(t, image21)
-	g.newWorld("Base", fixtureNoSA, false)
-	var logs strings.Builder
-	s := &server{worlds: g.worlds, log: slog.New(slog.NewTextHandler(&logs, nil))}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if got := s.otherWorlds(ctx); got != nil {
-		t.Errorf("a cancelled request listed %v", got)
-	}
-	if logs.Len() != 0 {
-		t.Errorf("a cancelled request was logged:\n%s", logs.String())
-	}
-
-	if err := os.RemoveAll(g.worlds.Dirs().Worlds); err != nil {
-		t.Fatal(err)
-	}
-	if got := s.otherWorlds(context.Background()); got != nil {
-		t.Errorf("a failed listing returned %v", got)
-	}
-	if !strings.Contains(logs.String(), "level=ERROR") || !strings.Contains(logs.String(), "list worlds") {
-		t.Errorf("a real failure was not logged as an error:\n%s", logs.String())
-	}
-}
-
 // SPEC 17.9: the Server page after the admin's own cancel stop or snapshot is
 // marked, so its Done message takes focus; a plain load is not.
 func TestFollowsOwnAction(t *testing.T) {
@@ -441,20 +413,21 @@ func TestSnapshotFromServerPage(t *testing.T) {
 	}
 }
 
-// SPEC 17.7, 17.10: the Server page lists every other world with its own
-// switch button, and the Done message after a switch offers the way back.
+// SPEC 17.7, 17.10: the Server page links to the Worlds list, where each
+// world has its Switch button, and the Done message after a switch offers
+// the way back.
 func TestServerPageSwitchesAndSwitchesBack(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
 	body := g.get(PathServer)
-	g.wantContains("server page", body, `<a href="`+switchPath(b)+`" class="button" id="act-switch-`+b+`">Switch to Bravo</a>`)
-	g.wantMissing("server page", body, "Switch to Alpha")
+	g.wantContains("server page", body, `<a href="/worlds" id="act-switch-world">Switch world</a>`)
+	g.wantMissing("server page", body, "Switch to Bravo", "Switch to Alpha")
+	g.wantContains("worlds list", g.get(PathWorlds), `href="`+switchPath(b)+`"`)
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
-	body = g.waitPage("Active world: Bravo", "The worlds are switched, from Alpha to Bravo.")
-	g.wantContains("after the switch", body, `href="`+switchPath(a)+`" class="button" id="act-undo">Switch back to Alpha</a>`,
-		`<a href="`+switchPath(a)+`" class="button" id="act-switch-`+a+`">Switch to Alpha</a>`)
+	body = g.waitPage(`id="server-title">Bravo <span`, "The worlds are switched, from Alpha to Bravo.")
+	g.wantContains("after the switch", body, `href="`+switchPath(a)+`" class="button" id="act-undo">Switch back to Alpha</a>`)
 }
 
 // SPEC 3.7: a world that is not active says on its page when this host

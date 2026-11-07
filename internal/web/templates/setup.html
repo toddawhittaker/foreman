@@ -6,8 +6,9 @@
 <form method="post" action="{{setupPath}}" class="panel" novalidate>
   {{template "summary" .Problems}}
   <p>{{t "accounts.setup.intro"}}</p>
+  {{template "required-note"}}
   <div class="field">
-    <label for="username">{{t "accounts.username.label"}}</label>
+    <label for="username" class="required">{{t "accounts.username.label"}}</label>
     <input id="username" name="username" type="text" value="{{.Username}}" required
       autocomplete="username" autocapitalize="none" spellcheck="false"
       {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="username-error"{{end}}>
@@ -16,7 +17,7 @@
     {{- end}}
   </div>
   <div class="field">
-    <label for="password">{{t "accounts.password.label"}}</label>
+    <label for="password" class="required">{{t "accounts.password.label"}}</label>
     {{- if gt .MinPasswordLength 0}}
     <p class="hint" id="password-hint">{{t "accounts.setup.password.hint" "count" .MinPasswordLength}}</p>
     {{- end}}
@@ -29,7 +30,7 @@
     {{- end}}
   </div>
   <div class="field">
-    <label for="confirm">{{t "accounts.setup.confirm.label"}}</label>
+    <label for="confirm" class="required">{{t "accounts.setup.confirm.label"}}</label>
     <input id="confirm" name="confirm" type="password" required autocomplete="new-password"
       {{- if not .ConfirmError.IsZero}} aria-invalid="true" aria-describedby="confirm-error"{{end}}>
     {{- if not .ConfirmError.IsZero}}

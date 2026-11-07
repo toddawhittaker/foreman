@@ -9,9 +9,10 @@
   "common.signedin": "Signed in as {user}",
   "common.signout": "Sign out",
   "common.language.label": "Language",
-  "common.language.submit": "Change",
   "common.countdown.label": "Countdown in seconds",
-  "common.countdown.hint": "Players online see a warning in game, then the game saves and stops. From 0 to 600 seconds; 0 means no warning: the game saves and stops at once. Nobody is warned if nobody is online.",
+  "common.countdown.hint": "Players online see a warning in game, then the game saves and stops. 0 to 600 seconds; 0 means no warning.",
+  "common.countdown.none": "No warning",
+  "common.required.note": "Required",
   "common.summary.heading": {
     "one": "Fix this problem to continue",
     "other": "Fix {count} problems to continue"
@@ -52,5 +53,8 @@
   "common.label.note": "Note:",
   "common.label.busy": "Busy:",
   "common.confirm.will": "This will:",
-  "common.list.sep": ", "
+  "common.list.sep": ", ",
+  "common.menu.account": "{user}, {language}: account and language menu",
+  "common.menu.language": "{language}: language menu",
+  "common.countdown.none_name": "No warning: set the countdown to 0 seconds"
 }

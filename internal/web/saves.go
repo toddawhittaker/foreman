@@ -53,6 +53,8 @@ type SaveRow struct {
 // SavesPage is a world's saves (SPEC 5.11, DESIGN 8.3).
 type SavesPage struct {
 	WorldName string
+	// Active marks the active world in the heading, as on its Overview.
+	Active    bool
 	WorldHref string
 	SavesHref string
 	LoadHref  string
@@ -79,6 +81,12 @@ type SavesPage struct {
 
 func (SavesPage) templateName() string { return "saves" }
 func (SavesPage) navItem() string      { return PathWorlds }
+
+// Tabs links the world's pages; a world a newer Foreman wrote has no
+// settings to show (DESIGN 6).
+func (p SavesPage) Tabs() WorldTabs {
+	return WorldTabs{Path: p.WorldHref, Current: "saves", Settings: !p.Newer}
+}
 
 func (p SavesPage) hasErrors() bool { return len(p.Problems()) > 0 }
 
@@ -140,6 +148,9 @@ func (s *server) showSaves(w http.ResponseWriter, r *http.Request, u store.User,
 	if err != nil {
 		s.notFoundOrFail(w, r, u, "list saves", err)
 		return
+	}
+	if sum, err := s.worlds.Get(r.Context(), r.PathValue("id")); err == nil {
+		p.Active = sum.Active
 	}
 	if edit != nil {
 		edit(&p)

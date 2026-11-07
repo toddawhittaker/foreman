@@ -8,5 +8,11 @@
   "js.live.moved": "Aktywny świat został zmieniony.",
   "js.live.stopped": "Aktualizacje na żywo zostały zatrzymane. Należy odświeżyć stronę, aby zobaczyć aktualny stan.",
   "js.generate.options": "Zaktualizowano opcje mapy dla wybranej wersji gry i ustawienia Ery Kosmosu.",
-  "js.generate.preview_ready": "Podgląd mapy jest gotowy."
+  "js.generate.preview_ready": "Podgląd mapy jest gotowy.",
+  "js.preview.zoom": "Powiększenie {level}",
+  "js.preview.drawing": "Rysowanie: {planet}…",
+  "js.generate.reset": "Ustawienia mapy przywrócono do zestawu ustawień {preset}.",
+  "js.generate.ach_setting": "{setting} wyłącza niektóre osiągnięcia.",
+  "js.generate.ach_clear": "Teraz żadne ustawienie nie wyłącza osiągnięć.",
+  "js.generate.moved": "{field}: ustawiono {value}, aby zakres pozostał prawidłowy."
 }

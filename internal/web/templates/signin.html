@@ -14,8 +14,9 @@
   </div>
   {{- end}}
   {{template "summary" .Problems}}
+  {{template "required-note"}}
   <div class="field">
-    <label for="username">{{t "accounts.username.label"}}</label>
+    <label for="username" class="required">{{t "accounts.username.label"}}</label>
     <input id="username" name="username" type="text" value="{{.Username}}" required
       autocomplete="username" autocapitalize="none" spellcheck="false"
       {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="username-error"{{end}}>
@@ -24,7 +25,7 @@
     {{- end}}
   </div>
   <div class="field">
-    <label for="password">{{t "accounts.password.label"}}</label>
+    <label for="password" class="required">{{t "accounts.password.label"}}</label>
     <input id="password" name="password" type="password" required autocomplete="current-password"
       {{- if not .PasswordError.IsZero}} aria-invalid="true" aria-describedby="password-error"{{end}}>
     {{- if not .PasswordError.IsZero}}

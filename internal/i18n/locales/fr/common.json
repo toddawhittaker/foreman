@@ -9,9 +9,10 @@
   "common.signedin": "Connecté en tant que {user}",
   "common.signout": "Se déconnecter",
   "common.language.label": "Langue",
-  "common.language.submit": "Changer",
   "common.countdown.label": "Compte à rebours en secondes",
-  "common.countdown.hint": "Les joueurs en ligne voient un avertissement dans le jeu, puis le jeu sauvegarde et s’arrête. De 0 à 600 secondes ; 0 signifie aucun avertissement : le jeu sauvegarde et s’arrête aussitôt. Personne n’est averti si personne n’est en ligne.",
+  "common.countdown.hint": "Les joueurs en ligne voient un avertissement dans le jeu, puis le jeu enregistre et s'arrête. De 0 à 600 secondes ; 0 signifie sans avertissement.",
+  "common.countdown.none": "Sans avertissement",
+  "common.required.note": "Obligatoire",
   "common.summary.heading": {
     "one": "Corrigez ce problème pour continuer",
     "other": "Corrigez {count} problèmes pour continuer"
@@ -52,5 +53,8 @@
   "common.label.note": "Remarque :",
   "common.label.busy": "Occupé :",
   "common.confirm.will": "Foreman va :",
-  "common.list.sep": ", "
+  "common.list.sep": ", ",
+  "common.menu.account": "{user}, {language} : menu du compte et de la langue",
+  "common.menu.language": "{language} : menu de la langue",
+  "common.countdown.none_name": "Sans avertissement : régler le compte à rebours sur 0 seconde"
 }

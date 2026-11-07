@@ -3,11 +3,13 @@ package mapexchange
 // The read order below is the game's binary layout and must not change;
 // each line-specific field is read only on the lines that write it.
 
-// The 2.1 patch numbers at which the map-settings layout changes. Compatible
-// reads the same constants (layout.go), so the two cannot disagree.
+import "github.com/toddawhittaker/foreman/internal/mapgen"
+
+// The 2.1 patch numbers at which the map-settings layout changes, from
+// mapgen, which also gives Compatible its layout boundaries.
 const (
-	dispatchCooldownAddedIn   = 13 // adds enemy_expansion.build_base_unit_dispatch_cooldown
-	pollutionRestoreRemovedIn = 18 // removes pollution.max_pollution_to_restore_trees
+	dispatchCooldownAddedIn   = mapgen.DispatchCooldownAddedIn
+	pollutionRestoreRemovedIn = mapgen.PollutionRestoreRemovedIn
 )
 
 func readFSR(r *reader, field string) FrequencySizeRichness {

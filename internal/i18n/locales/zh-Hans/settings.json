@@ -37,6 +37,9 @@
   "settings.admins.hint": "每行一个玩家名称。",
   "settings.admins.broken": "{file} 不是玩家名称列表，因此无法在此更改管理员。请修复该世界 config 文件夹中的文件。",
   "settings.admins.bad_name": "第 {line} 行不是可用的玩家名称。名称最多 {max} 字节，且不能包含空格、控制字符或不可见字符。",
+  "settings.connected.heading": "当前在线",
+  "settings.connected.hint": "现在在游戏中且还不是管理员的玩家。点击“设为管理员”会把名称加入上方的列表，并在保存任何内容之前显示更改供检查。",
+  "settings.connected.make_admin": "设为管理员",
   "settings.error.whole": "请输入 0 到 {max} 之间的整数。",
   "settings.preview.button": "预览更改",
   "settings.cancel": "取消",
@@ -50,7 +53,6 @@
   "settings.error.invalid": "Foreman 再次检查新设置后予以拒绝，因此未保存任何内容。请打开 JSON 编辑器查看问题所在。",
   "settings.error.too_big": "设置文件将超过 {size}。请删除一部分内容。",
   "settings.raw.title": "编辑 {world} 的 {file}",
-  "settings.raw.back": "返回设置表单",
   "settings.raw.label": "{file} 的内容",
   "settings.raw.hint": "一个 JSON 对象，最大 {size}。Foreman 会检查它认识的键，其他键按原样保存。",
   "settings.raw.secrets": "游戏密码、factorio.com 密码和令牌不会在此显示。除非此文本为某个键给出新值，否则它们会保留。空值表示移除。",
@@ -101,5 +103,6 @@
   "settings.preview.step_admins_live": "在正在运行的游戏中提升和降级这些玩家，游戏会更新 {file}。",
   "settings.preview.undo": "要撤销，请在“快照”页面恢复该快照。",
   "settings.preview.save": "保存设置",
-  "settings.preview.back": "返回并编辑"
+  "settings.preview.back": "返回并编辑",
+  "settings.rail.label": "设置分区"
 }

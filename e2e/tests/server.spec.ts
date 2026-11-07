@@ -8,7 +8,7 @@ const container = "foreman-base";
 // notice can take that long to show.
 const live = { timeout: 20_000 };
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = (page: Page) => page.locator("main h1 .state");
 
 async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { image?: boolean; fixture?: string; spaceAge?: boolean; mods?: Record<string, string> } = {}) {
   await createAdmin(page);
@@ -45,7 +45,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
 
     await page.getByRole("link", { name: "Stop server" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop Base");
     await expect(page.getByLabel("Countdown in seconds")).toHaveValue("60");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("2");
@@ -93,7 +93,7 @@ test.describe("with the fake game", () => {
     const creates = async () => (await fakeGame!.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
     const before = await creates();
     await page.getByRole("link", { name: "Restart server" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart Base");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restart server" }).click();
@@ -108,7 +108,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
     await page.getByRole("link", { name: "Force stop" }).click();
-    const confirm = page.getByRole("region", { name: /Force stop the game running Base/ });
+    const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("Lose all progress since the last save");
     await expect(confirm.getByRole("button", { name: "Force stop" })).toHaveClass(/button--danger/);
     await checkPage(page);
@@ -292,7 +292,7 @@ test.describe("with the fake game", () => {
     await expect(steps.locator("[aria-current=step]")).toContainText("Save the game", live);
     await checkPage(page);
     await page.getByRole("link", { name: "Force stop" }).click();
-    await page.getByRole("region", { name: /Force stop/ }).getByRole("button", { name: "Force stop" }).click();
+    await page.locator("section.confirm").getByRole("button", { name: "Force stop" }).click();
     await expect(badge(page)).toHaveText("Stopped", live);
   });
 
@@ -318,7 +318,7 @@ test.describe("with the fake game", () => {
   // and offers the download in place of Start; then the world is ready.
   test("a missing image is said before Start and downloaded as its own action", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!, { image: false });
-    const control = page.getByRole("region", { name: "Start and stop" });
+    const control = page.locator("main [sse-swap=control]");
     await expect(control).toContainText(`Base runs on the game image ${image21}, which is not on this host, so it cannot start yet.`);
     await expect(control.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await checkPage(page);
@@ -341,7 +341,7 @@ test.describe("with the fake game", () => {
 
     await page.getByRole("link", { name: /^Restore/ }).first().click();
     await expect(page.getByLabel("Countdown in seconds")).toBeVisible();
-    await expect(page.getByRole("region", { name: /Restore the snapshot/ })).toContainText("Start the game again");
+    await expect(page.locator("section.confirm")).toContainText("Start the game again");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restore snapshot" }).click();
@@ -361,7 +361,7 @@ test.describe("with Docker unreachable", () => {
     seedWorld(foreman);
     await page.goto("/");
     await expect(badge(page)).toHaveText("Unknown", live);
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("Foreman cannot reach Docker");
+    await expect(page.locator("main [sse-swap=facts]")).toContainText("Foreman cannot reach Docker");
     await expect(page.getByRole("button", { name: "Start server" })).toHaveCount(0);
     await expect(page.locator("main").getByText("Foreman cannot start or stop the game until it can ask Docker about it.")).toBeVisible();
     await checkPage(page);

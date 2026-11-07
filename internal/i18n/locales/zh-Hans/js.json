@@ -8,5 +8,11 @@
   "js.live.moved": "活动世界已更改。",
   "js.live.stopped": "实时更新已停止。请重新加载页面以查看当前状态。",
   "js.generate.options": "已按所选游戏版本和太空时代设置更新地图选项。",
-  "js.generate.preview_ready": "地图预览已就绪。"
+  "js.generate.preview_ready": "地图预览已就绪。",
+  "js.preview.zoom": "缩放 {level}",
+  "js.preview.drawing": "正在绘制{planet}…",
+  "js.generate.reset": "地图设置已重置为预设“{preset}”。",
+  "js.generate.ach_setting": "{setting}将禁用部分成就。",
+  "js.generate.ach_clear": "现在没有设置会禁用成就。",
+  "js.generate.moved": "{field}已设为 {value}，以保持范围有效。"
 }

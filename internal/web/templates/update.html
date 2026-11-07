@@ -2,16 +2,14 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.WorldPath}}">{{t "server.back_to" "world" .World.Name}}</a></div>
-<h1>{{t "server.update.title" "world" .World.Name}}</h1>
+<h1 id="confirm-heading">{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}</h1>
 {{template "summary" .Problems}}
 {{- if not .Refusal.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Refusal}}</p>
 </div>
 {{- end}}
-<section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}</h2>
+<section class="confirm">
   <form method="post" action="{{.Path}}" novalidate>
     <p id="update-forward">{{t "server.update.forward"}}</p>
     <div class="field">

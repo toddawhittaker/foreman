@@ -1,4 +1,4 @@
-import { test, expect, checkPage } from "./foreman.js";
+import { test, expect, checkPage, openMenu } from "./foreman.js";
 
 // SPEC 12.5: a trusted proxy's identity header signs the user in. The
 // browser connects from 127.0.0.1, which is the trusted range here; the
@@ -21,6 +21,7 @@ test("a trusted header signs the user in", async ({ page }) => {
   await page.setExtraHTTPHeaders({ "X-Test-User": "alice", "X-Test-Groups": "staff, factorio" });
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Server");
+  await openMenu(page);
   await expect(page.getByText("Signed in as alice")).toBeVisible();
   await checkPage(page);
 });

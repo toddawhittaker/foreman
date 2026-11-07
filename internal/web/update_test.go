@@ -359,8 +359,8 @@ func TestUpdateFormShowsCountdownOnlyWhenRunning(t *testing.T) {
 	g.wantMissing("running form", form, "Leave the server stopped")
 }
 
-// SPEC 10.3: only the active world is updated; another world's page says to
-// switch first, and a POST for it changes nothing.
+// SPEC 10.3, 17.9: only the active world is updated; another world's page
+// offers the switch as its main control, and a POST for it changes nothing.
 func TestUpdateOfAnInactiveWorldIsRefused(t *testing.T) {
 	g := newUpdateRig(t, &fakeReleases{})
 	a := g.newWorld("Alpha", fixtureNoSA, false)
@@ -369,7 +369,7 @@ func TestUpdateOfAnInactiveWorldIsRefused(t *testing.T) {
 	saveA, saveB := g.readSave(a), g.readSave(b)
 
 	bPage := g.get(worldPath(b))
-	g.wantContains("inactive world page", bPage, "Switch to this world to update it")
+	g.wantContains("inactive world page", bPage, `id="act-switch">Switch to this world</a>`)
 	g.wantMissing("inactive world page", bPage, `id="act-update"`)
 	aPage := g.get(worldPath(a))
 	g.wantContains("active world page", aPage, `id="act-update"`, `href="`+updateURL(a)+`"`)

@@ -1,12 +1,14 @@
 {{define "title"}}{{t "server.title"}}{{end}}
 
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
-<script src="{{static "countdown.js"}}" defer></script>{{end}}
+<script src="{{static "countdown.js"}}" defer></script>
+<script src="{{static "copy.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<h1>{{t "server.title"}}</h1>
 {{- if not .HasWorld}}
+<h1>{{t "server.title"}}</h1>
+{{template "server-tabs" "overview"}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
   <p class="empty">{{t "server.none.text"}}</p>
@@ -15,58 +17,54 @@
 {{- else}}
 <div sse-swap="announce" hidden></div>
 <div sse-swap="moved" hidden></div>
-<div class="actions" sse-swap="active">{{template "server-active" .}}</div>
+{{/* The world's name and its state lead the page; focus comes here after an operation (DESIGN 6, 7.5). */}}
+<header class="page-head">
+  <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
+  {{template "server-join" .JoinAddress}}
+</header>
+{{template "server-tabs" "overview"}}
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
-<section class="panel" aria-labelledby="control-heading">
-  <h2 id="control-heading" tabindex="-1">{{t "server.control.heading"}}</h2>
-  <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
-</section>
-<section class="panel" aria-labelledby="status-heading">
-  <h2 id="status-heading">{{t "server.status.heading"}}</h2>
-  <div sse-swap="facts">{{template "server-facts" .}}</div>
-</section>
+<div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
+<div sse-swap="facts">{{template "server-facts" .}}</div>
 <section class="panel" aria-labelledby="players-heading">
   <h2 id="players-heading">{{t "server.players.heading"}}</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
-<div sse-swap="others">{{template "server-others" .}}</div>
+<div class="links" sse-swap="active">{{template "server-active" .}}</div>
 {{- end}}
 {{- end}}
 {{- end}}
 
-{{/* The worlds the admin can switch to. It is empty while an operation runs
-     and comes back when it ends, so a page loaded during a start offers
-     the switch once the game is running (SPEC 17.7, DESIGN 7.1). */}}
-{{define "server-others" -}}
-{{- with .OtherWorlds}}
-<section class="panel" aria-labelledby="others-heading">
-  <h2 id="others-heading">{{t "server.others.heading"}}</h2>
-  <ul class="worlds" role="list">
-    {{- range .}}
-    <li>
-      <h3>{{.Name}}</h3>
-      <p>{{if .GameVersion}}{{if .SpaceAge}}{{tHTML "server.others.version_space_age" "version" (code .GameVersion)}}{{else}}{{tHTML "server.others.version" "version" (code .GameVersion)}}{{end}}{{else if .SpaceAge}}{{t "server.others.unknown_space_age"}}{{else}}{{t "server.others.unknown"}}{{end}}</p>
-      <div class="actions"><a href="{{$.SwitchPath .ID}}" class="button" id="act-switch-{{.ID}}">{{t "server.others.switch" "world" .Name}}</a></div>
-    </li>
-    {{- end}}
-  </ul>
-</section>
+{{/* Where players join, when the operator set FOREMAN_PUBLIC_ADDRESS (SPEC
+     3.2). Copy needs the Clipboard API, which browsers give only on HTTPS or
+     localhost, so copy.js shows the button only where it works. Takes the
+     address. */}}
+{{define "server-join" -}}
+{{- with .}}
+<p class="join">{{tHTML "server.join.text" "address" (code .)}}
+  <button type="button" class="button button--quiet" id="copy-address" data-copy="{{.}}" hidden>{{t "server.join.copy"}}</button>
+  <span id="copy-done" hidden>{{t "server.join.copied"}}</span></p>
 {{- end}}
 {{- end}}
 
-{{/* The link to the active world's page. During a switch it moves to the
-     new world once that is active (SPEC 7.9). */}}
+{{/* The page's links, on one row. During a switch they move to the new world
+     once it is active (SPEC 7.9). Switching starts from the Worlds list,
+     where each world has its Switch button (SPEC 17.7, 17.10). */}}
 {{define "server-active" -}}
-<a href="{{.ActivePath}}" id="act-world">{{t "server.active" "world" .ActiveName}}</a>
+<a href="{{.ActivePath}}" id="act-world">{{t "server.links.world"}}</a>
 <a href="{{.ActiveSettingsPath}}" id="act-settings">{{t "settings.link"}}</a>
+<a href="{{worldsPath}}" id="act-switch-world">{{t "server.links.switch"}}</a>
 {{- end}}
 
 {{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
      focus, because it is replaced whenever a figure changes. Figures that
      cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
 {{define "server-facts" -}}
-<dl class="facts">
-  <div><dt>{{t "server.facts.state"}}</dt><dd><span class="state state--{{.Status.State}}">{{msg .StateWord}}</span></dd></div>
+{{- if .Live}}
+{{- /* The heading's badge changes with the facts, so it travels with them (DESIGN 7.5). */}}
+<span id="server-title" hx-swap-oob="innerHTML">{{template "server-title" .}}</span>
+{{- end}}
+<dl class="facts facts--inline">
   {{- if not .Switching.IsZero}}
   <div><dt>{{t "server.facts.switching"}}</dt><dd>{{msg .Switching}}</dd></div>
   {{- end}}
@@ -256,7 +254,7 @@
 </div>
 {{- end}}
 {{- if .ShowOperation}}
-<h3>{{msg .OperationHeading}}</h3>
+<h2 class="op-heading">{{msg .OperationHeading}}</h2>
 {{template "server-steps" .OperationList}}
 {{- end}}
 {{- with .CancelStopPath}}
@@ -274,7 +272,7 @@
 <div class="actions"><a href="{{.Path}}" class="button" id="act-switch-back">{{t "server.switch_back" "world" .Name}}</a></div>
 {{- end}}
 {{- if .ShowDownload}}
-<h3>{{if .Status.Download.Done}}{{t "server.op.download_failed"}}{{else}}{{t "server.op.download"}}{{end}}</h3>
+<h2 class="op-heading">{{if .Status.Download.Done}}{{t "server.op.download_failed"}}{{else}}{{t "server.op.download"}}{{end}}</h2>
 {{template "server-steps" .DownloadList}}
 {{- end}}
 {{- if and .Crashed (not .CrashLeads)}}

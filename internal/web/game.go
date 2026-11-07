@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -285,7 +286,7 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 // serverPage builds the server page for a world from its status, asking
 // the game who is online when it is running.
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
-	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID), Now: s.now()}
+	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID), Now: s.now(), JoinAddress: s.joinAddress()}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	if !p.HaveResult && s.runs.cancelPending(sum.ID) {
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
@@ -305,11 +306,6 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 			p.Image, p.ImageMissing = ref, !present
 		}
 	}
-	// Not while an operation runs: a switch would be refused (DESIGN 7.1).
-	// Each switch confirmation runs its own checks (SPEC 17.7, 17.8).
-	if !p.Busy() {
-		p.OtherWorlds = s.otherWorlds(ctx)
-	}
 	if st.State == game.StateRunning {
 		ctx, cancel := context.WithTimeout(ctx, playersLimit)
 		defer cancel()
@@ -319,24 +315,13 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 	return p
 }
 
-// otherWorlds lists the worlds the Server page offers to switch to: every
-// readable one that is not the active world.
-func (s *server) otherWorlds(ctx context.Context) []world.Summary {
-	list, err := s.worlds.List(ctx)
-	if err != nil {
-		// A browser that left mid-request is not a server fault.
-		if ctx.Err() == nil {
-			s.log.Error("list worlds", "error", err)
-		}
-		return nil
+// joinAddress is the host:port players join, or "" when the operator set
+// none: Foreman never guesses it (SPEC 3.2).
+func (s *server) joinAddress() string {
+	if s.cfg == nil {
+		return ""
 	}
-	var out []world.Summary
-	for _, ws := range list {
-		if !ws.Active && !ws.Unreadable && !ws.Newer {
-			out = append(out, ws)
-		}
-	}
-	return out
+	return s.cfg.PublicAddress
 }
 
 // startAnywaySnapshot returns a world's newest snapshot when it is a
@@ -544,6 +529,9 @@ func (o Online) Disconnected() i18n.Msg {
 type StopPage struct {
 	World   world.Summary
 	Restart bool
+	// From is the page the person came from, already checked by returnPath;
+	// Cancel returns there. Empty means the Server page.
+	From string
 	CountdownForm
 }
 
@@ -556,12 +544,28 @@ func (p StopPage) Problems() []Problem {
 	return problems(Problem{"countdown", p.CountdownError})
 }
 
-// Path is where the form posts.
+// fromQuery names the query value that says where a stop page's Cancel goes.
+const fromQuery = "from"
+
+// Path is where the form posts. It carries From, so a refused countdown shows
+// the page again with the same way back.
 func (p StopPage) Path() string {
+	to := gamePath(p.World.ID, "stop")
 	if p.Restart {
-		return gamePath(p.World.ID, "restart")
+		to = gamePath(p.World.ID, "restart")
 	}
-	return gamePath(p.World.ID, "stop")
+	if p.From != "" {
+		to += "?" + fromQuery + "=" + url.QueryEscape(p.From)
+	}
+	return to
+}
+
+// Back is where Cancel goes.
+func (p StopPage) Back() string {
+	if p.From != "" {
+		return p.From
+	}
+	return PathServer
 }
 
 func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -572,7 +576,7 @@ func (s *server) handleStopForm(w http.ResponseWriter, r *http.Request, u store.
 	restart := strings.HasSuffix(r.URL.Path, "/restart")
 	form := defaultCountdown()
 	form.Online = s.online(r.Context(), sum.ID)
-	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
+	s.page(w, r, http.StatusOK, u.Username, StopPage{World: sum, Restart: restart, From: returnPath(r.URL.Query().Get(fromQuery)), CountdownForm: form})
 }
 
 // handleStop stops or restarts a world's game gracefully (SPEC 7.6, 7.8).
@@ -594,7 +598,7 @@ func (s *server) handleStop(w http.ResponseWriter, r *http.Request, u store.User
 	form, stop := readCountdown(r)
 	if !form.CountdownError.IsZero() {
 		form.Online = s.online(r.Context(), sum.ID)
-		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, CountdownForm: form})
+		s.page(w, r, http.StatusBadRequest, u.Username, StopPage{World: sum, Restart: restart, From: returnPath(r.URL.Query().Get(fromQuery)), CountdownForm: form})
 		return
 	}
 	by, opts := actor(u), anywayOptions(r)

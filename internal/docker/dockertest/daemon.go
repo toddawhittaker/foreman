@@ -125,7 +125,8 @@ type failure struct {
 
 // SetCallFailure makes every container call with this method and action
 // (such as POST start, POST kill or GET logs) answer with status and
-// message, until it is called again with status 0.
+// message, until it is called again with status 0. For POST create the
+// container is made first and then the failure is answered.
 func (d *Daemon) SetCallFailure(method, action string, status int, message string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()

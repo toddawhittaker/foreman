@@ -112,8 +112,19 @@ func pageCases() []pageCase {
 		{"generate errors", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
 			f.Name, f.Mode, f.Reset = longName, modeExchange, true
 			f.NameError, f.VersionError, f.SpaceAgeError = msgNameEmpty(), msgBadGameVersion(), msgSpaceAgeOld()
-			f.PresetError, f.SeedError = i18n.M("worlds.generate.error.preset"), i18n.M("worlds.generate.error.seed")
+			f.PresetError = i18n.M("worlds.generate.error.preset")
 			f.ExchangeError, f.FormError = i18n.M("worlds.generate.error.exchange_empty"), i18n.M("worlds.generate.error.settings")
+		})}},
+		{"generate settings errors and warnings", "todd", 400, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+			f.Preset, f.Modified, f.Tab = "death-world", true, tabEnemy
+			f.MapGen.Peaceful.Checked, f.MapGen.Peaceful.Blocked = true, true
+			f.MapGen.Seed.Error = i18n.M("mapgen.err.seed", "max", "4294967295")
+			f.SettingsProblems = []Problem{{FieldID: mgSeedID, Message: f.MapGen.Seed.Error}}
+			f.Reasons = []AchReason{{Key: "mapgen.achievement.not_in_peaceful_mode", Msg: achievementMsgs["mapgen.achievement.not_in_peaceful_mode"], Active: true}}
+		})}},
+		{"generate untested layout", "todd", 200, GeneratePage{Form: generateCase(func(f *GenerateForm) {
+			f.Version, f.Line, f.MapKey, f.Presets = "2.1.15", "2.1", "2.1|1", mapgen.Presets("2.1")
+			f.fill("2.1.15", nil)
 		})}},
 		{"clone with save", "todd", 200, ClonePage{World: world.Summary{ID: "base", Name: longName, GameVersion: "2.0.77", SpaceAge: true},
 			Name: longName + " (copy)", Choice: cloneKeep, SaveName: "autosave_3.zip", SaveTime: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC), RunningNote: true}},
@@ -291,7 +302,8 @@ func TestVersionFragments(t *testing.T) {
 // generateCase is the Generate form as first offered, with edit applied.
 func generateCase(edit func(*GenerateForm)) GenerateForm {
 	f := GenerateForm{Version: "2.0.77", DefaultVersion: "2.0.77", SpaceAge: true, Download: true, CanDownload: true,
-		Mode: modePreset, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Seed: "42", MapGen: NewMapGenForm("2.0", true)}
+		Mode: modeSettings, Preset: "default", Presets: mapgen.Presets("2.0"), Line: "2.0", MapKey: "2.0|1", Tab: tabResources}
+	f.fill("2.0.77", &MapGenText{Value: "42"})
 	if edit != nil {
 		edit(&f)
 	}
@@ -322,11 +334,12 @@ func renderIn(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) (*httptest
 }
 
 var (
-	reInput      = regexp.MustCompile(`<input\b[^>]*>`)
-	reID         = regexp.MustCompile(`\bid="([^"]*)"`)
-	reDescribed  = regexp.MustCompile(`aria-describedby="([^"]*)"`)
-	reHrefAnchor = regexp.MustCompile(`href="#([^"]*)"`)
-	reTitle      = regexp.MustCompile(`<title>([^<]+)</title>`)
+	reInput       = regexp.MustCompile(`<input\b[^>]*>`)
+	reID          = regexp.MustCompile(`\bid="([^"]*)"`)
+	rePlaceholder = regexp.MustCompile(`\bplaceholder="([^"]*)"`)
+	reDescribed   = regexp.MustCompile(`aria-describedby="([^"]*)"`)
+	reHrefAnchor  = regexp.MustCompile(`href="#([^"]*)"`)
+	reTitle       = regexp.MustCompile(`<title>([^<]+)</title>`)
 )
 
 // Every page renders and meets the document rules every screen shares
@@ -389,11 +402,13 @@ func checkPage(t *testing.T, r *Renderer, c pageCase, loc i18n.Locale) {
 			t.Errorf("input without id: %s", in)
 			continue
 		}
-		if !strings.Contains(body, `<label for="`+m[1]+`">`) {
+		if !regexp.MustCompile(`<label for="` + regexp.QuoteMeta(m[1]) + `"[ >]`).MatchString(body) {
 			t.Errorf("input %q has no label", m[1])
 		}
-		if strings.Contains(in, "placeholder") {
-			t.Errorf("input %q uses a placeholder", m[1])
+		// A placeholder may give an example, never the label (DESIGN 7.2):
+		// the label above is required, and the example must not repeat it.
+		if p := rePlaceholder.FindStringSubmatch(in); p != nil && strings.Contains(body, `">`+p[1]+`</label>`) {
+			t.Errorf("input %q's placeholder repeats its label", m[1])
 		}
 	}
 	for _, m := range reDescribed.FindAllStringSubmatch(body, -1) {
@@ -703,10 +718,10 @@ func TestStaticHandler(t *testing.T) {
 func TestPageAssetsResolve(t *testing.T) {
 	r := newTestRenderer(t)
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
-	re := regexp.MustCompile(`(?:href|src)="(` + regexp.QuoteMeta(PathStatic) + `[^"]+)"`)
+	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 7 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension and time.js, found %v", found)
+	if len(found) != 10 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js and the logo at two sizes, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

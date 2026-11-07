@@ -14,44 +14,57 @@
 <script src="{{static "vendor/htmx.min.js"}}" defer></script>
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
 <script src="{{static "time.js"}}" defer></script>
+<script src="{{static "menu.js"}}" defer></script>
 {{block "scripts" .}}{{end}}
 </head>
 <body>
 <a class="skip" href="#main">{{t "common.skip"}}</a>
 <header class="site">
-  <a href="{{serverPath}}" class="product">Foreman</a>
+  {{- /* The logo is decorative beside the name, so the link's name is "Foreman". */}}
+  <a href="{{serverPath}}" class="product"><img src="{{static "icons/logo-32.png"}}" srcset="{{static "icons/logo-64.png"}} 2x" alt="" width="32" height="32"><span class="product__name">Foreman</span></a>
   {{- if .User}}
   <nav aria-label="{{t "common.nav.label"}}">
     <ul class="tabs" role="list">
-      <li><a href="{{serverPath}}"{{if .Current serverPath}} aria-current="page"{{end}}>{{t "common.nav.server"}}</a></li>
-      <li><a href="{{consolePath}}"{{if .Current consolePath}} aria-current="page"{{end}}>{{t "common.nav.console"}}</a></li>
-      <li><a href="{{worldsPath}}"{{if .Current worldsPath}} aria-current="page"{{end}}>{{t "common.nav.worlds"}}</a></li>
-      <li><a href="{{snapshotsTabPath}}"{{if .Current snapshotsTabPath}} aria-current="page"{{end}}>{{t "common.nav.snapshots"}}</a></li>
+      {{- /* "page" only on the page itself; "true" on the section a page belongs to (DESIGN 6). */}}
+      <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}</a></li>
+      <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
+      <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
     </ul>
   </nav>
-  <form method="post" action="{{signOutPath}}" class="signout">
-    <span class="user">{{t "common.signedin" "user" .User}}</span>
-    <button type="submit" class="button">{{t "common.signout"}}</button>
-  </form>
   {{- end}}
+  {{- /* A native details element, so the menu opens by keyboard and without script (DESIGN 6, "User menu"). */}}
+  {{- $langName := ""}}{{range languages}}{{if eq .Tag.String lang}}{{$langName = .Name}}{{end}}{{end}}
+  {{- /* The name says what the button opens and starts with the words it shows (WCAG 2.5.3). */}}
+  <details class="menu">
+    <summary aria-label="{{if .User}}{{t "common.menu.account" "user" .User "language" $langName}}{{else}}{{t "common.menu.language" "language" $langName}}{{end}}">{{with .User}}<span class="menu__user">{{.}}</span> {{end}}<span class="menu__lang">{{$langName}}</span></summary>
+    <div class="menu__panel">
+      {{- with .User}}
+      <p class="hint">{{t "common.signedin" "user" .}}</p>
+      {{- end}}
+      <form method="post" action="{{languagePath}}">
+        <fieldset>
+          <legend>{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</legend>
+          <ul role="list">
+            {{- range languages}}
+            <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"{{if eq .Tag.String lang}} aria-current="true"{{end}}>{{.Name}}</button></li>
+            {{- end}}
+          </ul>
+        </fieldset>
+        {{- with .Return}}
+        <input type="hidden" name="return" value="{{.}}">
+        {{- end}}
+      </form>
+      {{- if .User}}
+      <form method="post" action="{{signOutPath}}">
+        <button type="submit" class="menu__item">{{t "common.signout"}}</button>
+      </form>
+      {{- end}}
+    </div>
+  </details>
 </header>
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{template "content" .}}
 </main>
-<footer class="site">
-  <form method="post" action="{{languagePath}}" class="language">
-    <label for="language">{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</label>
-    <select id="language" name="lang">
-      {{- range languages}}
-      <option value="{{.Tag}}" lang="{{.Tag}}"{{if eq .Tag.String lang}} selected{{end}}>{{.Name}}</option>
-      {{- end}}
-    </select>
-    {{- with .Return}}
-    <input type="hidden" name="return" value="{{.}}">
-    {{- end}}
-    <button type="submit" class="button">{{t "common.language.submit"}}</button>
-  </form>
-</footer>
 <div id="announcer" class="visually-hidden" aria-live="polite"></div>
 <script type="application/json" id="i18n">{{jsStrings}}</script>
 </body>
@@ -73,12 +86,17 @@
 <div class="field">
   <label for="countdown">{{t "common.countdown.label"}}</label>
   <p class="hint" id="countdown-hint">{{t "common.countdown.hint"}}</p>
-  <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
-    {{- if not .CountdownError.IsZero}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
+  {{- /* No warning sets the field to 0. It needs script, so it starts hidden and the hint says 0 means no warning (SPEC 7.6: no checkbox). */}}
+  <div class="inline-row">
+    <input id="countdown" name="countdown" type="text" inputmode="numeric" value="{{.Countdown}}" autocomplete="off"
+      {{- if not .CountdownError.IsZero}} aria-invalid="true" aria-describedby="countdown-hint countdown-error"{{else}} aria-describedby="countdown-hint"{{end}}>
+    <button type="button" class="button" id="countdown-zero" aria-label="{{t "common.countdown.none_name"}}" hidden>{{t "common.countdown.none"}}</button>
+  </div>
   {{- if not .CountdownError.IsZero}}
   <p class="error" id="countdown-error"><strong>{{t "common.error.label"}}</strong> {{msg .CountdownError}}</p>
   {{- end}}
 </div>
+<script src="{{static "nowarning.js"}}" defer></script>
 {{- end}}
 
 {{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}
@@ -93,4 +111,43 @@
   </ul>
 </div>
 {{end}}
+{{- end}}
+
+{{/* The note that explains the asterisk on required fields (DESIGN 7.2). Screen
+     readers hear "required" from each field's attribute instead. */}}
+{{define "required-note" -}}
+<p class="hint required-note"><span class="req" aria-hidden="true">*</span> {{t "common.required.note"}}</p>
+{{- end}}
+
+
+{{/* The heading's words: the world's name and its state badge (DESIGN 7.5).
+     During a switch the name is the new world's once it is active (SPEC
+     7.9). Takes a page with ActiveName, Status and StateWord. */}}
+{{define "server-title" -}}
+{{.ActiveName}} <span class="state state--{{.Status.State}}">{{msg .StateWord}}</span>
+{{- end}}
+
+{{/* The tabs of the server view (DESIGN 6, "Sub-navigation"). Takes
+     "overview" or "console". */}}
+{{define "server-tabs" -}}
+<nav class="subnav" aria-label="{{t "server.tabs.label"}}">
+  <ul role="list">
+    <li><a href="{{serverPath}}"{{if eq . "overview"}} aria-current="page"{{end}}>{{t "server.tabs.overview"}}</a></li>
+    <li><a href="{{consolePath}}"{{if eq . "console"}} aria-current="page"{{end}}>{{t "common.nav.console"}}</a></li>
+  </ul>
+</nav>
+{{- end}}
+
+{{/* The tabs of a world's pages (DESIGN 6, "Sub-navigation"). Takes WorldTabs. */}}
+{{define "world-tabs" -}}
+<nav class="subnav" aria-label="{{t "worlds.tabs.label"}}">
+  <ul role="list">
+    <li><a href="{{.Path}}"{{if eq .Current "overview"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.tabs.overview"}}</a></li>
+    <li><a href="{{.Path}}/saves"{{if eq .Current "saves"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.saves"}}</a></li>
+    <li><a href="{{.Path}}/snapshots"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
+    {{- if .Settings}}
+    <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a></li>
+    {{- end}}
+  </ul>
+</nav>
 {{- end}}

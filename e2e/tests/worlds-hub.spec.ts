@@ -50,7 +50,7 @@ test("each world but the active one has a Switch button on the list", async ({ p
 
   await button.click();
   await expect(page).toHaveURL("/worlds/second/switch");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Second");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Base to Second?");
 });
 
 // DESIGN 7.1: one primary action per page, and the destructive one last.
@@ -61,9 +61,10 @@ test("on a world page Switch is the main action, Rename is plain and Delete come
   await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveClass(/button--primary/);
   await expect(page.getByRole("button", { name: "Rename world" })).not.toHaveClass(/button--primary/);
   await expect(page.locator("main .button--primary")).toHaveCount(1);
-  const headings = await page.locator("main h2").allTextContents();
-  expect(headings[0]).toBe("Switch");
-  expect(headings.at(-1)).toBe("Delete");
+  // Switch leads, right under the tabs; Copy or delete is last.
+  const regions = await page.locator("main > section").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? el.querySelector("h2")?.textContent));
+  expect(regions[0]).toBe("Switch");
+  expect(regions.at(-1)).toBe("Copy or delete");
   await checkPage(page);
 });
 
@@ -89,7 +90,7 @@ test("a running switch is shown on both of its worlds and not on others", async 
   await setUp(page, foreman, g);
   await page.goto("/");
   await page.getByRole("button", { name: "Start server" }).click();
-  await expect(page.getByRole("region", { name: "Status" }).locator(".state")).toHaveText("Running", live);
+  await expect(page.locator("main h1 .state")).toHaveText("Running", live);
   await g.call("/join", { name: "foreman-base", player: "alice" });
 
   // The countdown holds the switch open on its first step.
@@ -113,7 +114,7 @@ test("a running switch is shown on both of its worlds and not on others", async 
   }
   await page.goto("/worlds/third");
   await expect(page.getByText("Switching from Base to Second")).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "Switch" })).toContainText("An operation is running on the server, such as a switch.");
+  await expect(page.locator("main")).toContainText("An operation is running on the server, such as a switch.");
   await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveCount(0);
   // Third is not part of the switch, so it can still be deleted.
   await expect(page.getByRole("link", { name: "Delete world" })).toBeVisible();
