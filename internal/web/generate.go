@@ -1,6 +1,7 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapexchange"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -108,8 +110,11 @@ type GenerateForm struct {
 	// preset that the page had not shown yet.
 	Reset, Refilled bool
 
-	NameError, VersionError, SpaceAgeError, PresetError, ExchangeError, FormError i18n.Msg
-	SettingsProblems                                                              []Problem
+	// PreviewSize is the map preview's side in tiles; zero is the default.
+	PreviewSize int
+
+	NameError, VersionError, SpaceAgeError, PresetError, ExchangeError, FormError, PreviewSizeError i18n.Msg
+	SettingsProblems                                                                                []Problem
 }
 
 func (GeneratePage) templateName() string { return "generate" }
@@ -131,6 +136,7 @@ func (p GeneratePage) Problems() []Problem {
 	if f.Mode == modeSettings {
 		all = append(all, f.SettingsProblems...)
 	}
+	all = append(all, Problem{previewSizeID, f.PreviewSizeError})
 	return problems(all...)
 }
 
@@ -237,6 +243,7 @@ func (s *server) handleGenerateRefresh(w http.ResponseWriter, r *http.Request, u
 func (f *GenerateForm) clearErrors() {
 	f.NameError, f.VersionError, f.SpaceAgeError, f.PresetError = i18n.Msg{}, i18n.Msg{}, i18n.Msg{}, i18n.Msg{}
 	f.ExchangeError, f.FormError, f.SettingsProblems = i18n.Msg{}, i18n.Msg{}, nil
+	f.PreviewSizeError = i18n.Msg{}
 	f.MapGen.Seed.Error = i18n.Msg{}
 }
 
@@ -306,6 +313,47 @@ func (s *server) audit(ctx context.Context, u store.User, action, worldID, detai
 	})
 	if err != nil {
 		s.log.Error("could not record the action in the audit log", "action", action, "world", worldID, "error", err)
+	}
+}
+
+// previewSizeField and previewSizeID name the map preview's size control.
+const (
+	previewSizeField = "preview_size"
+	previewSizeID    = "generate-preview-size"
+)
+
+// PreviewSizeOption is one choice of the preview size select.
+type PreviewSizeOption struct {
+	Size            int
+	Default, Chosen bool
+}
+
+// PreviewSizes lists every size the preview can be drawn at, the form's
+// marked as chosen.
+func (f GenerateForm) PreviewSizes() []PreviewSizeOption {
+	chosen := cmp.Or(f.PreviewSize, game.PreviewSizeDefault)
+	var out []PreviewSizeOption
+	for n := game.PreviewSizeMin; n <= game.PreviewSizeMax; n += game.PreviewSizeStep {
+		out = append(out, PreviewSizeOption{Size: n, Default: n == game.PreviewSizeDefault, Chosen: n == chosen})
+	}
+	return out
+}
+
+// readPreviewSize reads the preview size. A blank one is the default. One
+// off the steps is a field error for a preview, which draws at it; the
+// world's own maker never uses the size, so it falls back to the default.
+func (f *GenerateForm) readPreviewSize(raw string, kind readKind) {
+	f.PreviewSize = game.PreviewSizeDefault
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return
+	}
+	n, err := strconv.Atoi(raw)
+	switch {
+	case err == nil && game.ValidPreviewSize(n):
+		f.PreviewSize = n
+	case kind == kindPreview:
+		f.PreviewSizeError = i18n.M("worlds.generate.error.preview_size")
 	}
 }
 
@@ -385,6 +433,7 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	if f.Mode != modeExchange {
 		f.Mode = modeSettings
 	}
+	f.readPreviewSize(r.PostFormValue(previewSizeField), kind)
 	if !slices.Contains(f.Tabs(), f.Tab) {
 		f.Tab = tabResources
 	}

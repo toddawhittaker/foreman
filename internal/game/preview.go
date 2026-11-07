@@ -36,16 +36,21 @@ const (
 	// maxPreviewWaiters is how many previews may wait for the slot; one
 	// more is ErrPreviewBusy at once.
 	maxPreviewWaiters = 8
-	// PreviewSize is the width and height of each picture, in pixels. On 2.x
-	// a pixel is a tile; on 1.1 the default scale is one tile too.
-	PreviewSize = 1280
+	// A picture is a square of this many pixels a side, from PreviewSizeMin to
+	// PreviewSizeMax in steps of PreviewSizeStep (two chunks on each side). On
+	// 2.x a pixel is a tile; on 1.1 the default scale is one tile too.
+	PreviewSizeMin     = 1024
+	PreviewSizeMax     = 4096
+	PreviewSizeStep    = 128
+	PreviewSizeDefault = 1280
 	// previewMemory is the container's memory limit in bytes, with no swap.
-	// A Space Age planet drew within 512 MB; this leaves room for a patch that
-	// needs more.
+	// The peak at the largest size, 4096 pixels, is about 553 MiB; this leaves
+	// room for a patch that needs more.
 	previewMemory = 1 << 30
-	// MaxPreviewPNG is the largest picture Foreman reads back (SPEC 5.6).
-	// Real ones at 1280 pixels are under 1 MB.
-	MaxPreviewPNG = 8 << 20
+	// MaxPreviewPNG is the largest picture Foreman reads back (SPEC 5.6). The
+	// largest measured at 4096 pixels is Gleba, 8.91 MB; this leaves room for
+	// a busier seed. At 1280 pixels they are under 1 MB.
+	MaxPreviewPNG = 16 << 20
 	previewPoll   = 250 * time.Millisecond
 	// previewDir is the folder of the data directory that holds a preview's
 	// work folder, which exists only while the preview runs.
@@ -100,12 +105,28 @@ type PreviewRequest struct {
 	SpaceAge    bool
 	Preset      string
 	Seed        uint32
+	// Size is the picture's side in pixels; zero means PreviewSizeDefault.
+	// Anything else must be on the steps of PreviewSizeMin to PreviewSizeMax.
+	Size int
 	// MapGenSettings and MapSettings are the JSON of the two settings files,
 	// or nil for none.
 	MapGenSettings, MapSettings []byte
 	// Planets are drawn in this order; each must be in
 	// mapgen.Planets(line, SpaceAge).
 	Planets []string
+}
+
+// ValidPreviewSize reports whether n is a size a preview can be drawn at.
+func ValidPreviewSize(n int) bool {
+	return n >= PreviewSizeMin && n <= PreviewSizeMax && (n-PreviewSizeMin)%PreviewSizeStep == 0
+}
+
+// size is the picture's side, with the default for a request that gave none.
+func (r PreviewRequest) size() int {
+	if r.Size == 0 {
+		return PreviewSizeDefault
+	}
+	return r.Size
 }
 
 // PNG is one planet's picture.
@@ -119,7 +140,7 @@ type PNG struct {
 var previewScript = strings.Join([]string{
 	`for p in $` + gameenv.PreviewPlanets + `; do`,
 	`set -- --config ` + gameenv.PreviewMount + `/config.ini --mod-directory ` + gameenv.PreviewMount + `/` + world.ModsDir +
-		` --generate-map-preview ` + gameenv.PreviewMount + `/"$p".png --map-preview-size ` + strconv.Itoa(PreviewSize) + ` --map-gen-seed "$` + gameenv.Seed + `"`,
+		` --generate-map-preview ` + gameenv.PreviewMount + `/"$p".png --map-preview-size "$` + gameenv.PreviewSize + `" --map-gen-seed "$` + gameenv.Seed + `"`,
 	`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
 	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + ` ]; then set -- "$@" --map-gen-settings ` + gameenv.PreviewMount + `/` + world.MapGenSettingsFile + `; fi`,
 	`if [ -f ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + ` ]; then set -- "$@" --map-settings ` + gameenv.PreviewMount + `/` + world.MapSettingsFile + `; fi`,
@@ -220,6 +241,9 @@ func checkPreview(req PreviewRequest) (line string, err error) {
 			return "", fmt.Errorf("%w: planet %q", ErrPreviewInvalid, p)
 		}
 	}
+	if !ValidPreviewSize(req.size()) {
+		return "", fmt.Errorf("%w: size %d", ErrPreviewInvalid, req.Size)
+	}
 	if req.Preset != "" && !slices.Contains(mapgen.Presets(line), req.Preset) {
 		return "", fmt.Errorf("%w: preset %q", ErrPreviewInvalid, req.Preset)
 	}
@@ -276,14 +300,20 @@ func makePreviewDir(base *os.Root, req PreviewRequest) (string, error) {
 	return name, nil
 }
 
-// runPreview runs the one-off container to its end and removes it. Whatever
-// happens, the container does not outlive the call: it is killed and deleted
-// with a context that a cancelled request cannot cut short.
+// runPreview runs the preview's container to its end, within PreviewLimit.
 func (c *Controller) runPreview(ctx context.Context, image, dir, line string, req PreviewRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, c.previewLimit)
 	defer cancel()
-	name := "foreman-preview-" + dir
-	id, err := c.docker.CreateContainer(ctx, name, c.previewSpec(image, dir, line, req))
+	return c.runOneOff(ctx, "foreman-preview-"+dir, c.previewSpec(image, dir, line, req))
+}
+
+// runOneOff makes and starts a one-off container, waits for it to exit, and
+// removes it. Whatever happens, the container does not outlive the call: it
+// is killed and deleted with a context that a cancelled request cannot cut
+// short. A run past ctx's deadline is ErrPreviewTimeout; a non-zero exit is
+// a *PreviewError.
+func (c *Controller) runOneOff(ctx context.Context, name string, spec docker.ContainerSpec) error {
+	id, err := c.docker.CreateContainer(ctx, name, spec)
 	if err != nil {
 		// Docker may have made the container before the call failed; the
 		// name is all there is to find it by.
@@ -332,6 +362,7 @@ func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) do
 	env := []string{
 		gameenv.PreviewPlanets + "=" + strings.Join(req.Planets, " "),
 		gameenv.Seed + "=" + strconv.FormatUint(uint64(req.Seed), 10),
+		gameenv.PreviewSize + "=" + strconv.Itoa(req.size()),
 	}
 	if req.Preset != "" {
 		env = append(env, gameenv.Preset+"="+req.Preset)
@@ -347,17 +378,24 @@ func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) do
 		Entrypoint: []string{"/bin/sh"},
 		Cmd:        []string{"-c", previewScript},
 		User:       c.user,
-		HostConfig: docker.HostConfig{
-			Binds:          []string{filepath.Join(c.hostData, previewDir, dir) + ":" + gameenv.PreviewMount},
-			CapDrop:        []string{"ALL"},
-			SecurityOpt:    []string{"no-new-privileges"},
-			RestartPolicy:  docker.RestartPolicy{Name: "no"},
-			NetworkMode:    "none",
-			ReadonlyRootfs: true,
-			Memory:         previewMemory,
-			MemorySwap:     previewMemory,
-			Tmpfs:          map[string]string{previewWrite: "rw,noexec,nosuid,size=64m,mode=1777"},
-		},
+		HostConfig: c.oneOffHostConfig(dir),
+	}
+}
+
+// oneOffHostConfig is the locked-down shape every one-off game container
+// shares: no network, a read-only root, no capabilities, a memory limit, no
+// restart, a tmpfs write folder and one bind mount, dir under previewDir.
+func (c *Controller) oneOffHostConfig(dir string) docker.HostConfig {
+	return docker.HostConfig{
+		Binds:          []string{filepath.Join(c.hostData, previewDir, dir) + ":" + gameenv.PreviewMount},
+		CapDrop:        []string{"ALL"},
+		SecurityOpt:    []string{"no-new-privileges"},
+		RestartPolicy:  docker.RestartPolicy{Name: "no"},
+		NetworkMode:    "none",
+		ReadonlyRootfs: true,
+		Memory:         previewMemory,
+		MemorySwap:     previewMemory,
+		Tmpfs:          map[string]string{previewWrite: "rw,noexec,nosuid,size=64m,mode=1777"},
 	}
 }
 

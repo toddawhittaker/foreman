@@ -21,7 +21,7 @@
       {{- range .Pictures}}
       <li>
         <figure>
-          <a href="{{.Path}}" class="picture" data-planet="{{.Planet}}"><span class="map"><img src="{{.Path}}" width="1280" height="1280" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy">{{template "map-pin"}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
+          <a href="{{.Path}}" class="picture" data-planet="{{.Planet}}"><span class="map"><img src="{{.Path}}" width="{{$.Preview.Size}}" height="{{$.Preview.Size}}" alt="{{t "worlds.generate.preview.alt" "planet" (msg .Name) "seed" $.Preview.Seed}}" loading="lazy">{{template "map-pin"}}</span><span class="visually-hidden nojs-only"> {{t "worlds.generate.preview.opens_picture"}}</span><span class="visually-hidden js-only"> {{t "worlds.generate.preview.opens_large"}}</span></a>
           <figcaption>{{msg .Name}}</figcaption>
         </figure>
         <a href="{{.DownloadPath}}" class="download" download>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
@@ -82,7 +82,7 @@
   </div>
   {{/* It scrolls when zoomed, so it takes focus for the arrow keys. */}}
   <div class="large-view__frame" id="large-frame" tabindex="0" role="group" aria-labelledby="large-title" aria-describedby="large-keys">
-    <span class="map large-view__map"><img id="large-img" src="data:," alt="" width="1280" height="1280">{{template "map-pin"}}</span>
+    <span class="map large-view__map"><img id="large-img" src="data:," alt="">{{template "map-pin"}}</span>
   </div>
   {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
   <p id="large-status" class="large-view__status" role="status"></p>

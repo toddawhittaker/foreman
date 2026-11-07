@@ -20,6 +20,8 @@ const (
 const (
 	// PreviewPlanets lists the planets to draw, separated by spaces.
 	PreviewPlanets = "FOREMAN_PREVIEW_PLANETS"
+	// PreviewSize is the picture's side in pixels.
+	PreviewSize = "FOREMAN_PREVIEW_SIZE"
 	// PreviewPlanetFlag is set on 2.x, where --map-preview-planet exists.
 	PreviewPlanetFlag = "FOREMAN_PREVIEW_PLANET_FLAG"
 )

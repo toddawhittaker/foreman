@@ -2,12 +2,14 @@ package game
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"image/png"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -437,10 +439,84 @@ func TestReadPreviewsRefusesWhatIsNotAPicture(t *testing.T) {
 	}
 }
 
-// SPEC 5.6: the pictures are 1280 tiles across on every line.
-func TestPreviewScriptDraws1280(t *testing.T) {
-	if !strings.Contains(previewScript, "--map-preview-size 1280 ") {
-		t.Errorf("the preview script does not ask for 1280 pixels:\n%s", previewScript)
+// SPEC 5.6: the size comes from the environment, never from the script's
+// text, so no value of the request is built into it.
+func TestPreviewScriptTakesTheSizeFromTheEnvironment(t *testing.T) {
+	if !strings.Contains(previewScript, `--map-preview-size "$`+gameenv.PreviewSize+`" `) {
+		t.Errorf("the preview script does not read %s:\n%s", gameenv.PreviewSize, previewScript)
+	}
+	if strings.Contains(previewScript, "1280") {
+		t.Error("a size is built into the preview script")
+	}
+}
+
+// SPEC 5.6: the size reaches the container as the environment variable, and
+// a request with no size is the default, 1280.
+func TestPreviewSizeIsPassedToTheContainer(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	for _, c := range []struct{ size, want int }{{0, 1280}, {1024, 1024}, {1280, 1280}, {3968, 3968}, {4096, 4096}} {
+		req := previewRequest()
+		req.Size = c.size
+		env := r.c.previewSpec(image21, "p", "2.1", req).Env
+		if want := gameenv.PreviewSize + "=" + strconv.Itoa(c.want); !slices.Contains(env, want) {
+			t.Errorf("size %d: environment %v lacks %s", c.size, env, want)
+		}
+	}
+}
+
+// SPEC 5.6: the picture is as many pixels a side as asked.
+func TestPreviewDrawsAtTheRequestedSize(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	for _, size := range []int{0, 1024, 4096} {
+		req := previewRequest()
+		req.Size = size
+		pngs, err := r.c.Preview(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, err := png.Decode(bytes.NewReader(pngs[0].Data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := cmp.Or(size, PreviewSizeDefault)
+		if b := img.Bounds(); b.Dx() != want || b.Dy() != want {
+			t.Errorf("size %d: picture is %dx%d, want %d", size, b.Dx(), b.Dy(), want)
+		}
+	}
+}
+
+// SPEC 5.6: only 1024 to 4096 in steps of 128 is drawn; anything else is
+// refused before Docker is called.
+func TestPreviewRefusesSizesOffTheSteps(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	for _, size := range []int{-1280, 1, 896, 1023, 1025, 1100, 1281, 4097, 4224, 5120, 8192} {
+		req := previewRequest()
+		req.Size = size
+		if _, err := r.c.Preview(context.Background(), req); !errors.Is(err, ErrPreviewInvalid) {
+			t.Errorf("size %d: error %v, want ErrPreviewInvalid", size, err)
+		}
+	}
+	if len(r.game.State().Calls) != 0 {
+		t.Errorf("Docker was called: %v", r.game.State().Calls)
+	}
+	var steps []int
+	for n := range 5000 {
+		if ValidPreviewSize(n) {
+			steps = append(steps, n)
+		}
+	}
+	if len(steps) != 25 || steps[0] != 1024 || steps[24] != 4096 || steps[2] != 1280 {
+		t.Errorf("valid sizes %v, want 25 from 1024 to 4096", steps)
+	}
+}
+
+// SPEC 14.3: the one-off helper a later task shares gives the container its
+// locked-down shape, and the bind names the work folder.
+func TestOneOffHostConfig(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	h := r.c.oneOffHostConfig("p-xyz")
+	if len(h.Binds) != 1 || h.Binds[0] != filepath.Join(r.data, "previews", "p-xyz")+":/out" || h.NetworkMode != "none" || !h.ReadonlyRootfs {
+		t.Errorf("host config %+v", h)
 	}
 }
 
