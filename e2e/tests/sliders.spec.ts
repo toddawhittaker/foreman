@@ -152,6 +152,25 @@ test("a slider stepped with the keyboard keeps its place", async ({ page }) => {
   await page.screenshot({ path: `../screenshots/sliders-de-${test.info().project.name}.png` });
 });
 
+// The value beside a slider is for the eye: Chrome would read an output as a
+// polite live region, so each step would be spoken twice. The slider's own
+// aria-valuetext carries the words.
+test("a slider's value is not announced, and the slider names its step", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/generate");
+  const range = page.locator("#mg-nauvis-iron-ore-frequency-range");
+  const value = page.locator("#mg-nauvis-iron-ore-frequency-value");
+  await expect(range).toBeVisible();
+  await expect(value).toBeVisible();
+  await expect(value).toHaveAttribute("aria-hidden", "true");
+  await expect(page.locator("#map-settings").getByRole("status")).toHaveCount(0);
+  await range.focus();
+  await page.keyboard.press("End");
+  const words = (await value.textContent())!.trim();
+  expect(words).not.toBe("");
+  await expect(range).toHaveAttribute("aria-valuetext", words);
+});
+
 // A resource's on/off box is a control: its name keeps full strength while
 // off, and only the settings it turns off grey.
 test("an off box keeps its name at full strength and greys its settings", async ({ page }) => {
