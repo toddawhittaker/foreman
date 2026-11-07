@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -131,6 +132,17 @@ func pageCases() []pageCase {
 		{"clone fresh only errors", "todd", 400, ClonePage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "1.1.110"},
 			Name: "", Choice: cloneFresh, FreshOnlyWhy: i18n.M("worlds.clone.no_save"), NameError: msgNameEmpty(),
 			Error: msgBusy(), ErrorBusy: true}},
+		{"account none", "todd", 200, AccountPage{Source: factorioaccount.None, CanStore: true}},
+		{"account stored", "todd", 200, AccountPage{Source: factorioaccount.Stored, CanStore: true, UpdatedAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC),
+			UpdatedBy: longName, Return: "/worlds/base/mods", Done: i18n.M("account.done.saved")}},
+		{"account env", "todd", 200, AccountPage{Source: factorioaccount.Env}},
+		{"account unreadable", "todd", 200, AccountPage{Source: factorioaccount.Unreadable, CanStore: true}},
+		{"account no key", "todd", 200, AccountPage{Source: factorioaccount.None}},
+		{"account unreadable without a key", "todd", 200, AccountPage{Source: factorioaccount.Unreadable}},
+		{"account errors", "todd", 400, AccountPage{Source: factorioaccount.None, CanStore: true,
+			UsernameError: i18n.M("account.username.missing"), TokenError: i18n.M("account.token.missing")}},
+		{"account errors without a key", "todd", 400, AccountPage{Source: factorioaccount.None,
+			UsernameError: i18n.M("account.username.missing"), TokenError: i18n.M("account.field.control"), Error: i18n.M("account.error.nokey")}},
 		{"signed out", "", 200, SignedOutPage{}},
 		{"sign in empty", "", 200, SignInPage{}},
 		{"sign in one error", "", 401, SignInPage{Username: "todd",

@@ -55,6 +55,7 @@
         {{- end}}
       </form>
       {{- if .User}}
+      <a href="{{accountPath}}" class="menu__item"{{if .Current accountPath}} aria-current="page"{{end}}>{{t "account.title"}}</a>
       <form method="post" action="{{signOutPath}}">
         <button type="submit" class="menu__item">{{t "common.signout"}}</button>
       </form>
