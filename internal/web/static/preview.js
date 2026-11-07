@@ -2,7 +2,8 @@
 // and about 0.8 s after the last change to the map's settings, only for the
 // planet being viewed; the newest request wins and older ones are dropped.
 // It never moves focus. The large view opens each picture in the page, with
-// Previous, Next and zoom; without script the picture link opens the file.
+// Previous, Next, zoom and panning; without script the picture link opens
+// the file. Another planet viewed is told as a "preview:planet" event.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
@@ -16,7 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let pending = null; // the AbortController of the request on its way
   let drawing = ""; // the planet the request on its way is for
   let refreshing = 0; // htmx redraws of the settings still on their way
-  let viewing = ""; // the planet shown, blank for the first
+  // The planet shown, blank for the first; the settings may say which planet is open.
+  const open = document.getElementById("open-planet");
+  let viewing = open && open.value ? open.value : "";
 
   const dialog = document.getElementById("large-view");
   const status = document.getElementById("preview-status");
@@ -180,7 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("input", (e) => { if (counts(e.target)) soon(); });
   document.addEventListener("change", (e) => {
     if (e.target.id === "preview-planet") {
-      viewing = e.target.value;
+      view(e.target.value);
       drop();
       draw(true);
       return;
@@ -204,11 +207,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (refreshing === 0 && button().getAttribute("aria-disabled") !== "true") soon();
   });
 
-  // The large view.
-  const zooms = [1, 2, 4, 8];
-  let zoom = 0;
+  // The large view: a picture viewer over a scrolling frame (DESIGN 8.8).
+  // Zoom is a factor of the fitted size, from 1 up to the larger of 8 and
+  // 8 CSS pixels per tile; scrolling keeps the pin inside the picture.
+  const factor = 1.15;
+  let zoom = 1;
+  let tiles = 0; // the shown picture's width in tiles
   const lang = document.documentElement.lang || undefined;
   const el = (id) => document.getElementById(id);
+  const frame = () => el("large-frame");
 
   // The list from the last section that had one: a section holding only an
   // error has none, and Previous and Next must still move then.
@@ -221,29 +228,81 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const firstPlanet = () => planets()[0] || "";
 
-  function setZoom(i) {
-    const frame = el("large-frame");
-    const before = { x: (frame.scrollLeft + frame.clientWidth / 2) / (frame.scrollWidth || 1), y: (frame.scrollTop + frame.clientHeight / 2) / (frame.scrollHeight || 1) };
-    zoom = Math.max(0, Math.min(zooms.length - 1, i));
-    frame.style.setProperty("--zoom", String(zooms[zoom]));
-    el("large-zoom").textContent = strings["js.preview.zoom"].replace("{level}", new Intl.NumberFormat(lang, { style: "percent" }).format(zooms[zoom]));
-    el("large-out").setAttribute("aria-disabled", String(zoom === 0));
-    el("large-in").setAttribute("aria-disabled", String(zoom === zooms.length - 1));
-    // The middle of what was shown stays in the middle.
-    frame.scrollLeft = before.x * frame.scrollWidth - frame.clientWidth / 2;
-    frame.scrollTop = before.y * frame.scrollHeight - frame.clientHeight / 2;
+  function nameOf(planet) {
+    const pick = el("preview-planet");
+    const option = pick && [...pick.options].find((o) => o.value === planet);
+    if (option) return option.text;
+    const link = pictureLink(planet);
+    const caption = link && link.closest("figure").querySelector("figcaption");
+    return caption ? caption.textContent.trim() : planet;
+  }
+
+  // Another planet viewed is told to the page, so its settings row can follow.
+  function view(planet) {
+    const was = viewing || firstPlanet();
+    viewing = planet;
+    if (planet !== was) document.dispatchEvent(new CustomEvent("preview:planet", { detail: { planet } }));
+  }
+
+  // Measured from the picture itself, as the frame's own size is rounded.
+  function maxZoom() {
+    const fit = frame().querySelector(".map").getBoundingClientRect().width / zoom || 1;
+    return Math.max(8, (8 * (tiles || fit)) / fit);
+  }
+
+  // Sets the zoom, keeping the spot of the picture under a point of the
+  // window (the frame's centre when none is given) under that point.
+  function zoomTo(next, x, y) {
+    const f = frame();
+    const map = f.querySelector(".map");
+    if (x === undefined) {
+      const box = f.getBoundingClientRect();
+      x = box.left + f.clientWidth / 2;
+      y = box.top + f.clientHeight / 2;
+    }
+    const before = map.getBoundingClientRect();
+    const u = (x - before.left) / (before.width || 1);
+    const v = (y - before.top) / (before.height || 1);
+    const most = maxZoom();
+    zoom = Math.min(most, Math.max(1, next));
+    f.style.setProperty("--zoom", String(zoom));
+    const after = map.getBoundingClientRect();
+    f.scrollLeft += after.left + u * after.width - x;
+    f.scrollTop += after.top + v * after.height - y;
+    f.toggleAttribute("data-zoomed", zoom > 1);
+    el("large-out").setAttribute("aria-disabled", String(zoom <= 1));
+    el("large-in").setAttribute("aria-disabled", String(zoom >= most * 0.9999));
+  }
+
+  // A zoom from a key or a button is said as text; a wheel or a pinch is seen.
+  function zoomSaid(next) {
+    zoomTo(next);
+    el("large-status").textContent = strings["js.preview.zoom"].replace("{level}", new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 }).format(zoom));
+  }
+
+  // The arrows are named after the planets they lead to.
+  function nameArrows() {
+    const list = planets();
+    const many = list.length > 1;
+    el("large-prev").hidden = !many;
+    el("large-next").hidden = !many;
+    if (!many) return;
+    const at = Math.max(0, list.indexOf(viewing || list[0]));
+    const near = (by) => nameOf(list[(at + by + list.length) % list.length]);
+    el("large-prev-name").textContent = strings["js.preview.previous"].replace("{planet}", near(-1));
+    el("large-next-name").textContent = strings["js.preview.next"].replace("{planet}", near(1));
   }
 
   // Shows a planet's picture, or draws it first when it has not been drawn.
   function show(planet) {
-    const link = document.querySelector(`#preview a.picture[data-planet="${CSS.escape(planet)}"]`);
-    viewing = planet;
+    const link = pictureLink(planet);
+    const pick = el("preview-planet");
+    if (pick) pick.value = planet;
+    view(planet);
+    nameArrows();
     if (!link) {
       // The dialog names the planet at once and shows no other planet's picture meanwhile.
-      const pick = el("preview-planet");
-      if (pick) pick.value = planet;
-      const option = pick && [...pick.options].find((o) => o.value === planet);
-      const name = option ? option.text : planet;
+      const name = nameOf(planet);
       el("large-title").textContent = name;
       el("large-frame").dataset.missing = "true";
       el("large-download").hidden = true;
@@ -257,18 +316,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const img = link.querySelector("img");
     const figure = link.closest("figure");
     const download = link.closest("li").querySelector("a.download");
-    el("large-title").textContent = figure.querySelector("figcaption").textContent.trim();
+    const name = figure.querySelector("figcaption").textContent.trim();
+    tiles = Number(img.getAttribute("width")) || img.naturalWidth;
+    el("large-title").textContent = name;
     el("large-frame").removeAttribute("data-missing");
     el("large-img").src = img.src;
     el("large-img").alt = img.alt;
     el("large-download").href = download ? download.href : link.href;
-    el("large-download").textContent = download ? download.textContent : "";
+    el("large-download-name").textContent = strings["js.preview.download"].replace("{planet}", name);
     el("large-download").hidden = false;
-    const many = planets().length > 1;
-    el("large-prev").hidden = !many;
-    el("large-next").hidden = !many;
-    const pick = el("preview-planet");
-    if (pick) pick.value = planet;
+    // A bigger picture may allow more zoom, or a smaller one less.
+    if (dialog.open) zoomTo(zoom);
     return true;
   }
 
@@ -289,12 +347,12 @@ document.addEventListener("DOMContentLoaded", () => {
       show(link.dataset.planet);
       el("large-status").textContent = "";
       dialog.showModal();
-      setZoom(0);
+      zoomTo(1);
     });
     el("large-prev").addEventListener("click", () => step(-1));
     el("large-next").addEventListener("click", () => step(1));
-    el("large-in").addEventListener("click", () => setZoom(zoom + 1));
-    el("large-out").addEventListener("click", () => setZoom(zoom - 1));
+    el("large-in").addEventListener("click", () => zoomSaid(zoom * factor));
+    el("large-out").addEventListener("click", () => zoomSaid(zoom / factor));
     el("large-close").addEventListener("click", () => dialog.close());
     // A picture the server no longer has (kept 15 minutes) is drawn again,
     // once; the frame shows nothing meanwhile rather than a broken image.
@@ -313,14 +371,67 @@ document.addEventListener("DOMContentLoaded", () => {
       el("large-status").textContent = status ? status.dataset.text : "";
       draw(true);
     });
-    // The arrows step between planets; a zoomed picture with focus scrolls with them instead.
+
+    // One wheel notch is one step; a touchpad's small moves are part steps.
+    frame().addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const steps = e.deltaMode === 0 ? Math.max(-1, Math.min(1, e.deltaY / 100)) : Math.sign(e.deltaY);
+      zoomTo(zoom * Math.pow(factor, -steps), e.clientX, e.clientY);
+    }, { passive: false });
+
+    // One pointer drags the picture; two pinch, zooming around their middle.
+    const pointers = new Map();
+    let spread = 0;
+    let middle = null;
+    frame().addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      frame().setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      spread = 0;
+      if (pointers.size !== 2) return;
+      const [a, b] = [...pointers.values()];
+      spread = Math.hypot(a.x - b.x, a.y - b.y);
+      middle = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    });
+    frame().addEventListener("pointermove", (e) => {
+      const last = pointers.get(e.pointerId);
+      if (!last) return;
+      const f = frame();
+      if (pointers.size === 1) {
+        f.scrollLeft -= e.clientX - last.x;
+        f.scrollTop -= e.clientY - last.y;
+      }
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size !== 2) return;
+      const [a, b] = [...pointers.values()];
+      const apart = Math.hypot(a.x - b.x, a.y - b.y);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (spread) {
+        f.scrollLeft -= mid.x - middle.x;
+        f.scrollTop -= mid.y - middle.y;
+        zoomTo((zoom * apart) / spread, mid.x, mid.y);
+      }
+      spread = apart;
+      middle = mid;
+    });
+    const lift = (e) => {
+      pointers.delete(e.pointerId);
+      spread = 0;
+    };
+    frame().addEventListener("pointerup", lift);
+    frame().addEventListener("pointercancel", lift);
+    frame().addEventListener("lostpointercapture", lift);
+
+    // The arrows step between planets; a zoomed picture with focus scrolls
+    // with them instead. The browser's own zoom keys are left alone.
     const arrows = { ArrowLeft: -1, ArrowRight: 1 };
     dialog.addEventListener("keydown", (e) => {
-      const panning = e.target.id === "large-frame" && zoom > 0;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const panning = e.target === frame() && zoom > 1;
       if (arrows[e.key] && !panning) step(arrows[e.key]);
-      else if (e.key === "+" || e.key === "=") setZoom(zoom + 1);
-      else if (e.key === "-") setZoom(zoom - 1);
-      else if (e.key === "0") setZoom(0);
+      else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
+      else if (e.key === "-") zoomSaid(zoom / factor);
+      else if (e.key === "0") zoomSaid(1);
       else return;
       e.preventDefault();
     });

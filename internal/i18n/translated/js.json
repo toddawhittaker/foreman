@@ -13,6 +13,9 @@
   "js.import.warning": "9c7d2841",
   "js.live.moved": "c36e62ed",
   "js.live.stopped": "b13b1d68",
+  "js.preview.download": "f567b26c",
   "js.preview.drawing": "a3841339",
+  "js.preview.next": "8fa4d2f1",
+  "js.preview.previous": "ebf5cb46",
   "js.preview.zoom": "4b516611"
 }

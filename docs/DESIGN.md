@@ -1301,8 +1301,13 @@ on a download).
   each a link to its field, with no focus moved.
 - **Pictures.** A `ul` (no bullets) of `figure`s, each with a
   `figcaption` naming the planet. The `img` has `width` and `height`,
-  `inline-size: 100%`, `max-inline-size: 32rem` and `aspect-ratio: 1`, so
-  its space is held. Alt text: "Map preview of Nauvis, seed 123456".
+  `inline-size: 100%`, `aspect-ratio: 1` and `image-rendering:
+  pixelated`, so its space is held and its tiles stay sharp. Each item
+  fills its column but is no taller than the window less its caption and
+  download line (`min(100%, max(16rem, 100dvh - 2 x target - space-4))`),
+  centred, with the caption and download lined up with its edge; the
+  held box before the first picture follows the same rule, so nothing
+  moves. Alt text: "Map preview of Nauvis, seed 123456".
   Several pictures (Preview map) sit in a grid,
   `repeat(auto-fit, minmax(16rem, 1fr))`. The picture is a link to its
   file; its name adds "(opens the large view)" with script and "(opens
@@ -1319,21 +1324,49 @@ on a download).
   after the list. Both are links with `download`, each a 44px target.
   Files are named after the world, the seed and the planet.
 - **The large view** is a native `dialog` opened with `showModal()`, so
-  the browser keeps focus inside it and Escape closes it. It fills the
-  screen (`bg` face, no shadow): a bar with the planet's name (h2, the
-  dialog's name), then Previous, Next, Zoom out, the zoom level ("Zoom
-  200%", from `Intl.NumberFormat`), Zoom in, the planet's download and
-  Close, wrapping as needed, and a one-line key hint; then the picture in
-  a scrolling frame. Previous and Next step through the world's planets
-  and wrap; a planet not drawn yet is drawn and shown in place. Zoom is
-  1, 2, 4 and 8 times the fitted size, scaling the picture with
-  `image-rendering: pixelated` (one tile is one pixel on 2.x), keeping the
-  middle of the view. Keys: left and right arrows step (inside the
-  zoomed frame they scroll it instead), plus and minus zoom, 0 fits.
-  Content outside a modal dialog is inert, so the dialog has its own
-  `role="status"` line for its news. On close, focus goes to the link of
-  the picture last shown. A click with a modifier key opens the file as
-  the browser would. Pinch zoom on phones is the browser's own.
+  the browser keeps focus inside it and Escape closes it. It works as a
+  picture viewer and fills the screen (`bg` face, no shadow). A bar holds
+  the planet's name (h2, the dialog's name) with a download icon link beside it ("Download Nauvis
+  map"), and under them a `role="status"` line whose height is held
+  (content outside a modal dialog is inert, so the dialog says its own
+  news). Then the picture in a scrolling frame, which has focus on open,
+  and a one-line key hint under it.
+  - Over the picture: Previous and Next arrows on its left and right
+    edges, named after where they lead ("Previous planet: Aquilo"); a
+    round X in the top corner ("Close"); Zoom out and Zoom in in the
+    bottom corner, the single-pointer way to zoom (WCAG 2.5.1). They show
+    while the pointer is over the picture or a control in it has
+    keyboard focus, and always under `(hover: none)`. Each is an
+    icon button (8.8 icons below), 24 px, 44 px under
+    `(pointer: coarse)`. Previous and Next step through the world's
+    planets and wrap; a planet not drawn yet is drawn and shown in place.
+  - Zoom is a factor of the fitted size, from 1 up to the larger of 8
+    and 8 CSS pixels per tile (so a 4096 picture still reaches real
+    tiles). Each wheel notch, plus or minus key, or zoom button
+    multiplies it by 1.15; the wheel zooms around the pointer, the keys
+    and buttons around the frame's centre, by setting the frame's scroll
+    position, so the pin stays on the map with no sums. A zoom from a key
+    or button is said in the status line ("Zoom 132%", from
+    `Intl.NumberFormat`). The picture scales with `image-rendering:
+    pixelated` (one tile is one pixel on 2.x).
+  - Panning: drag the zoomed picture (pointer capture), or use the
+    frame's scroll bars, or the arrow keys while the frame has focus. On
+    touch screens one finger drags and two pinch around their middle
+    (`touch-action: none` on the frame).
+  - Keys: left and right arrows step (inside the zoomed frame they scroll
+    it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
+    Alt or Meta held the browser keeps its own zoom keys.
+  - Nothing animates under reduced motion; otherwise only the controls'
+    opacity fades, in 120 ms.
+  - On close, focus goes to the link of the picture last shown. A click
+    with a modifier key opens the file as the browser would. When the
+    view or the Planet select moves to another planet the page gets a
+    `preview:planet` event, and the view starts from the hidden
+    `#open-planet` field when the settings set it.
+- **Icons** (the large view only). Inline SVG on a 16 by 16 grid, drawn
+  with a 2 px `currentColor` stroke and no fill, `aria-hidden`, inside a
+  round `.icon-button` (`bg` face, 1 px `border`) whose name is visually
+  hidden text. No icon stands without that name.
 - **Without script** "Preview map" posts the form to
   `/generate/preview` and the answer is the same page, every value kept,
   a blank seed now holding the seed used, with every planet's picture;
@@ -1519,9 +1552,10 @@ Left out because no Epic 1 to 3 screen needs it. Add each when a real
 screen does, in this document first.
 
 - A manual theme switch. The system setting decides (SPEC 17.3).
-- Icons of any kind, except the map preview's pin (8.8).
-- Modal dialogs other than the map preview's large view (8.8), pop-overs,
-  menus, tab panels and toasts. (The nav links
+- Icons of any kind, except the map preview's pin and the large view's
+  controls (8.8).
+- Modal dialogs other than the map preview's large view (8.8), pop-overs
+  (other than the large view's controls over its picture), menus, tab panels and toasts. (The nav links
   only look like tabs; they are ordinary links.) The confirmation step
   (7.4) and the message (7.3) cover Epics 1 to 3.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for

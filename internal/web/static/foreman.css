@@ -1943,6 +1943,12 @@ td > .hint {
   gap: var(--space-3);
 }
 
+/* A picture is as wide as its column, but no taller than the window less its
+   caption and download line, so it is seen whole; never under 16rem. */
+.preview {
+  --picture-most: max(16rem, calc(100dvh - 2 * var(--target-min) - var(--space-4)));
+}
+
 .version-fields,
 .map-section {
   display: grid;
@@ -1996,9 +2002,9 @@ form:has(#mode-exchange:checked) .achievements {
 .pictures img {
   display: block;
   inline-size: 100%;
-  max-inline-size: 32rem;
   block-size: auto;
   aspect-ratio: 1;
+  image-rendering: pixelated;
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
 }
@@ -2028,6 +2034,15 @@ form:has(#mode-exchange:checked) .achievements {
   max-inline-size: 100%;
 }
 
+/* Centred when the window's height caps it; the caption and download line up with its edge.
+   A picture is not text, so the reading measure on list items does not apply. */
+.pictures li,
+.preview-placeholder__picture {
+  inline-size: min(100%, var(--picture-most));
+  max-inline-size: none;
+  justify-self: center;
+}
+
 .pictures li {
   display: grid;
   gap: var(--space-2);
@@ -2041,7 +2056,6 @@ form:has(#mode-exchange:checked) .achievements {
 .pictures .picture {
   display: block;
   inline-size: 100%;
-  max-inline-size: 32rem;
 }
 
 /* A download link is a full-height target of its own. */
@@ -2086,7 +2100,6 @@ form:has(#mode-exchange:checked) .achievements {
   display: grid;
   place-items: center;
   inline-size: 100%;
-  max-inline-size: 32rem;
   aspect-ratio: 1;
   padding: var(--space-4);
   background: var(--color-deep);
@@ -2111,8 +2124,9 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: 1lh;
 }
 
-/* 8.8 The large view: the whole screen, the picture fitted, zoomed by
-   scaling with sharp pixels (one tile is one pixel on 2.x). */
+/* 8.8 The large view: the whole screen, the picture fitted, zoomed and
+   panned in a scrolling frame with sharp pixels (one tile is one pixel on
+   2.x). The controls sit over the picture. */
 .large-view {
   inline-size: 100%;
   max-inline-size: 100%;
@@ -2139,41 +2153,54 @@ form:has(#mode-exchange:checked) .achievements {
 
 .large-view__bar {
   display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.large-view__head {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
   min-inline-size: 0;
 }
 
-.large-view__bar h2 {
+.large-view__head h2 {
+  min-inline-size: 0;
   margin: 0;
   font-size: var(--text-lg);
 }
 
-.large-view__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+/* Its line is held, so news does not shrink the picture. */
+.large-view__status {
+  min-block-size: 1lh;
+  margin: 0;
 }
 
-.large-view__controls [hidden] {
-  display: none;
+.large-view__stage {
+  position: relative;
+  display: grid;
+  min-block-size: 0;
 }
 
-/* The value has a reserved width, so the buttons beside it do not move. */
-.large-view__zoom {
-  min-inline-size: 11ch;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
+/* The page's own gestures are off inside it: one finger drags, two pinch. */
 .large-view__frame {
   container-type: size;
   display: flex;
   min-block-size: 0;
   overflow: auto;
+  touch-action: none;
+  user-select: none;
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
   --zoom: 1;
+}
+
+.large-view__frame[data-zoomed] {
+  cursor: grab;
+}
+
+.large-view__frame[data-zoomed]:active {
+  cursor: grabbing;
 }
 
 /* Auto margins centre a fitted picture and never push a zoomed one out of reach. */
@@ -2188,6 +2215,107 @@ form:has(#mode-exchange:checked) .achievements {
   block-size: auto;
   aspect-ratio: 1;
   image-rendering: pixelated;
+}
+
+/* A round icon control with a hidden name; 24 px, and 44 px for a finger (SPEC 17.2). */
+.icon-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--color-secondary-hover);
+  color: var(--color-text);
+}
+
+.icon-button[hidden] {
+  display: none;
+}
+
+.icon-button[aria-disabled="true"] {
+  cursor: default;
+}
+
+.icon-button svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (pointer: coarse) {
+  .icon-button {
+    inline-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
+
+/* Shown while the pointer is over the picture or focus is on a control; always where there is no hover. */
+.large-view__edge,
+.large-view__close,
+.large-view__zoom {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.large-view__stage:hover :is(.large-view__edge, .large-view__close, .large-view__zoom),
+.large-view__stage:has(:focus-visible) :is(.large-view__edge, .large-view__close, .large-view__zoom) {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .large-view__edge,
+  .large-view__close,
+  .large-view__zoom {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .large-view__edge,
+  .large-view__close,
+  .large-view__zoom {
+    transition: none;
+  }
+}
+
+/* Clear of the frame's scroll bars at the end edges. */
+.large-view__edge {
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+}
+
+.large-view__edge--prev {
+  inset-inline-start: var(--space-2);
+}
+
+.large-view__edge--next {
+  inset-inline-end: var(--space-5);
+}
+
+.large-view__close {
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-5);
+}
+
+.large-view__zoom {
+  display: flex;
+  gap: var(--space-2);
+  inset-block-end: var(--space-5);
+  inset-inline-end: var(--space-5);
 }
 
 /* A picture with the start marked: the pin's tip on the centre. */
@@ -2218,10 +2346,6 @@ form:has(#mode-exchange:checked) .achievements {
 
 .pin circle {
   fill: var(--color-pin-edge);
-}
-
-.large-view__status:empty {
-  display: none;
 }
 
 .message pre {

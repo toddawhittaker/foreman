@@ -75,7 +75,10 @@ test.describe("Generate", () => {
     await expect(img).toHaveCount(1);
     await expect(box).toHaveCount(0);
     const after = (await img.boundingBox())!;
+    // The held box is the picture's own box.
     expect(after.height).toBeCloseTo(before.height, 0);
+    expect(after.width).toBeCloseTo(before.width, 0);
+    expect(after.x).toBeCloseTo(before.x, 0);
     // What is below moves by a line at most: the seed and file names are not known yet.
     const moved = (await page.locator("#generate-button").boundingBox())!.y - actions.y;
     expect(Math.abs(moved)).toBeLessThan(48);
@@ -145,7 +148,7 @@ test.describe("Generate", () => {
     await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
     await expect(dialog(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
     await expect(dialog(page).locator("#large-status")).toHaveText("Vulcanus");
-    await expect(dialog(page).getByRole("link", { name: "Download Vulcanus (PNG)" })).toBeVisible();
+    await expect(dialog(page).getByRole("link", { name: "Download Vulcanus map" })).toBeVisible();
   });
 
   // Previous before a planet's picture arrives drops that draw: the earlier picture, its status and Close's focus stay right.
