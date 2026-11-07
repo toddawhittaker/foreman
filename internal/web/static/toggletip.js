@@ -58,7 +58,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     const button = tipButton(e.target);
     if (!button) return;
-    if (open && open.button === button && open.pinned) hide();
+    // Enter and Space (detail 0) toggle by whether the tip is shown, since focus
+    // already showed it. A pointer click on a tip that hover showed pins it.
+    const shown = open && open.button === button;
+    if (shown && (open.pinned || e.detail === 0)) hide();
     else show(button, true);
   });
 
@@ -90,8 +93,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 150);
   });
 
+  // A press elsewhere closes it. A touch on its text closes it too, because on
+  // a phone the text can cover the field it explains; a mouse may select the text.
   document.addEventListener("pointerdown", (e) => {
-    if (open && !open.button.contains(e.target) && !open.text.contains(e.target)) hide();
+    if (!open || open.button.contains(e.target)) return;
+    if (!open.text.contains(e.target) || e.pointerType !== "mouse") hide();
   });
 
   document.addEventListener("keydown", (e) => {

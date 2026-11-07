@@ -401,42 +401,42 @@
   "worlds.generate.large.close": "Fermer",
   "worlds.generate.large.keys": "Left and right arrows show the previous and next planet, plus and minus zoom, 0 fits the picture, and Escape closes. When zoomed in, drag the picture, or tap a spot to centre it, or use the arrow keys on it to move around.",
   "worlds.generate.preview.pin": "L’épingle marque le centre de la carte, où les joueurs commencent.",
-  "worlds.generate.preview.size_label": "Preview size",
-  "worlds.generate.preview.size_option": "{size} × {size} tiles",
-  "worlds.generate.preview.size_default": "{size} × {size} tiles (default)",
-  "worlds.generate.preview.size_hint": "How much of the map, around its centre, the preview shows. Big sizes show their detail in the large view.",
-  "worlds.generate.error.preview_size": "Choose one of the sizes in the list.",
-  "worlds.generate.territories.label": "Show demolisher territories",
-  "worlds.generate.territories.hint": "Finding them takes a few seconds more.",
-  "worlds.generate.territories.too_big_hint": "Shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size to show them.",
-  "worlds.generate.territories.finding": "Finding the demolisher territories…",
-  "worlds.generate.territories.counts": "Demolisher territories in this picture: {list}.",
-  "worlds.generate.territories.none": "This picture has no demolisher territories.",
-  "worlds.generate.territories.no_vulcanus": "Only Space Age worlds have demolisher territories, on Vulcanus.",
-  "worlds.generate.territories.too_big": "Demolisher territories are shown for preview sizes up to {size} × {size} tiles. Choose a smaller preview size.",
-  "worlds.generate.territories.invalid": "The settings have problems, so the demolisher territories were not found. Fix the problems the map preview lists.",
-  "worlds.generate.territories.busy": "Another map preview is being made, so the demolisher territories were not found. Wait a few seconds, then try again.",
-  "worlds.generate.territories.draw_busy": "Other pictures with territories are being drawn right now. Wait a few seconds, then download again.",
-  "worlds.generate.territories.timeout": "Finding the demolisher territories took too long and was stopped. Try again, or choose a smaller preview size.",
-  "worlds.generate.territories.oom": "The game ran out of memory finding the demolisher territories. Choose a smaller preview size.",
-  "worlds.generate.territories.failed": "The game could not find the demolisher territories. The map preview and Generate still work. If it keeps failing, check Foreman's log.",
-  "worlds.generate.territories.request_failed": "The request for the demolisher territories failed. Check that Foreman is reachable and that you are still signed in, then try again.",
-  "worlds.generate.territories.retry": "Try again",
-  "worlds.generate.territories.download": "Download {planet} with territories (PNG)",
+  "worlds.generate.preview.size_label": "Taille de l’aperçu",
+  "worlds.generate.preview.size_option": "{size} × {size} cases",
+  "worlds.generate.preview.size_default": "{size} × {size} cases (par défaut)",
+  "worlds.generate.preview.size_hint": "La part de la carte, autour de son centre, que montre l’aperçu. Les grandes tailles montrent leurs détails dans la grande vue.",
+  "worlds.generate.error.preview_size": "Choisissez l’une des tailles de la liste.",
+  "worlds.generate.territories.label": "Afficher les territoires des démolisseurs",
+  "worlds.generate.territories.hint": "Les trouver prend quelques secondes de plus.",
+  "worlds.generate.territories.too_big_hint": "Ils s’affichent pour les tailles d’aperçu jusqu’à {size} × {size} cases. Choisissez une taille d’aperçu plus petite pour les afficher.",
+  "worlds.generate.territories.finding": "Recherche des territoires des démolisseurs…",
+  "worlds.generate.territories.counts": "Territoires de démolisseurs dans cette image : {list}.",
+  "worlds.generate.territories.none": "Cette image ne contient aucun territoire de démolisseur.",
+  "worlds.generate.territories.no_vulcanus": "Seuls les mondes avec l’Ère spatiale ont des territoires de démolisseurs, sur Vulcanus.",
+  "worlds.generate.territories.too_big": "Les territoires des démolisseurs s’affichent pour les tailles d’aperçu jusqu’à {size} × {size} cases. Choisissez une taille d’aperçu plus petite.",
+  "worlds.generate.territories.invalid": "Les réglages comportent des problèmes, donc les territoires des démolisseurs n’ont pas été trouvés. Corrigez les problèmes indiqués par l’aperçu de la carte.",
+  "worlds.generate.territories.busy": "Un autre aperçu de carte est en cours de création, donc les territoires des démolisseurs n’ont pas été trouvés. Attendez quelques secondes, puis réessayez.",
+  "worlds.generate.territories.draw_busy": "D’autres images avec territoires sont en cours de dessin. Attendez quelques secondes, puis téléchargez de nouveau.",
+  "worlds.generate.territories.timeout": "La recherche des territoires des démolisseurs a pris trop de temps et a été arrêtée. Réessayez ou choisissez une taille d’aperçu plus petite.",
+  "worlds.generate.territories.oom": "Le jeu a manqué de mémoire pendant la recherche des territoires des démolisseurs. Choisissez une taille d’aperçu plus petite.",
+  "worlds.generate.territories.failed": "Le jeu n’a pas pu trouver les territoires des démolisseurs. L’aperçu de la carte et la génération fonctionnent toujours. Si l’échec persiste, consultez le journal de Foreman.",
+  "worlds.generate.territories.request_failed": "La demande des territoires des démolisseurs a échoué. Vérifiez que Foreman est joignable et que vous êtes toujours connecté, puis réessayez.",
+  "worlds.generate.territories.retry": "Réessayer",
+  "worlds.generate.territories.download": "Télécharger {planet} avec les territoires (PNG)",
   "worlds.generate.territories.count.small": {
-    "one": "{count} small",
-    "other": "{count} small"
+    "one": "{count} petit",
+    "other": "{count} petits"
   },
   "worlds.generate.territories.count.medium": {
-    "one": "{count} medium",
-    "other": "{count} medium"
+    "one": "{count} moyen",
+    "other": "{count} moyens"
   },
   "worlds.generate.territories.count.big": {
-    "one": "{count} big",
-    "other": "{count} big"
+    "one": "{count} grand",
+    "other": "{count} grands"
   },
   "worlds.generate.territories.count.unknown": {
-    "one": "{count} of unknown size",
-    "other": "{count} of unknown size"
+    "one": "{count} de taille inconnue",
+    "other": "{count} de taille inconnue"
   }
 }

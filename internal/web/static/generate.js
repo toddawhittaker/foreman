@@ -92,6 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const label = document.getElementById(select.id + "-label");
       const value = document.createElement("output");
       value.className = "step__value";
+      // An output is a live region; the slider's aria-valuetext already speaks the step.
+      value.setAttribute("aria-hidden", "true");
       value.id = select.id + "-value";
       value.htmlFor = select.id + "-range";
       if (label) label.after(value);

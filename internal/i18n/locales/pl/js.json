@@ -11,12 +11,12 @@
   "js.generate.preview_ready": "Podgląd mapy jest gotowy.",
   "js.preview.zoom": "Powiększenie {level}",
   "js.preview.drawing": "Rysowanie: {planet}…",
-  "js.preview.previous": "Previous planet: {planet}",
-  "js.preview.next": "Next planet: {planet}",
-  "js.preview.download": "Download {planet} map",
+  "js.preview.previous": "Poprzednia planeta: {planet}",
+  "js.preview.next": "Następna planeta: {planet}",
+  "js.preview.download": "Pobierz mapę: {planet}",
   "js.generate.reset": "Ustawienia mapy przywrócono do zestawu ustawień {preset}.",
   "js.generate.ach_setting": "{setting} wyłącza niektóre osiągnięcia.",
   "js.generate.ach_clear": "Teraz żadne ustawienie nie wyłącza osiągnięć.",
   "js.generate.moved": "{field}: ustawiono {value}, aby zakres pozostał prawidłowy.",
-  "js.preview.download_territories": "Download {planet} map with territories"
+  "js.preview.download_territories": "Pobierz mapę z terytoriami: {planet}"
 }

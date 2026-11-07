@@ -162,40 +162,63 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 	if err != nil {
 		return nil, err
 	}
-	if err := c.takePreviewSlot(ctx); err != nil {
+	var pngs []PNG
+	err = c.previewRun(ctx, req, "preview", func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
+		if err := container(c.previewSpec(ref, name, line, req)); err != nil {
+			return err
+		}
+		pngs, err = readPreviews(base, name, req.Planets)
+		return err
+	})
+	if err != nil {
 		return nil, err
+	}
+	return pngs, nil
+}
+
+// previewRun is what Preview and Territories share (SPEC 14.3): the one
+// slot, the image check, the base folder with its stale sweep, and a work
+// folder removed afterwards. run is called with the work folder's name; the
+// container func it is given runs one container to its end within
+// previewLimit, as "foreman-<kind>-<folder>". The slot and folder are held
+// until run returns, so run may read the folder.
+func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind string,
+	run func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error) error {
+	if err := c.takePreviewSlot(ctx); err != nil {
+		return err
 	}
 	defer func() { <-c.previewSlot }()
 
 	ref, err := c.imageFor(req.GameVersion)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if _, err := c.docker.InspectImage(ctx, ref); errors.Is(err, docker.ErrNotFound) {
-		return nil, ErrPreviewImageMissing
+		return ErrPreviewImageMissing
 	} else if err != nil {
-		return nil, err
+		return err
 	}
 	base, err := c.previewBase()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() { _ = base.Close() }()
 	c.removeStalePreviews(ctx, base)
 
 	name, err := makePreviewDir(base, req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() {
 		if err := base.RemoveAll(name); err != nil {
-			c.log.Warn("could not remove a map preview's work folder", "folder", name, "error", err)
+			c.log.Warn("could not remove a work folder", "kind", kind, "folder", name, "error", err)
 		}
 	}()
-	if err := c.runPreview(ctx, ref, name, line, req); err != nil {
-		return nil, err
-	}
-	return readPreviews(base, name, req.Planets)
+	return run(base, ref, name, func(spec docker.ContainerSpec) error {
+		runCtx, cancel := context.WithTimeout(ctx, c.previewLimit)
+		defer cancel()
+		return c.runOneOff(runCtx, "foreman-"+kind+"-"+name, spec)
+	})
 }
 
 // takePreviewSlot waits for the one preview slot, up to previewWait, with
@@ -297,13 +320,6 @@ func makePreviewDir(base *os.Root, req PreviewRequest) (string, error) {
 		}
 	}
 	return name, nil
-}
-
-// runPreview runs the preview's container to its end, within PreviewLimit.
-func (c *Controller) runPreview(ctx context.Context, image, dir, line string, req PreviewRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, c.previewLimit)
-	defer cancel()
-	return c.runOneOff(ctx, "foreman-preview-"+dir, c.previewSpec(image, dir, line, req))
 }
 
 // runOneOff makes and starts a one-off container, waits for it to exit, and
