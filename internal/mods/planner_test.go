@@ -33,6 +33,11 @@ func (s saveWorlds) SaveMods(string, string) (savefile.Save, error) {
 	return savefile.Save{Mods: s.save}, nil
 }
 
+// PreStartCheck names game.zip as the save that loads.
+func (s saveWorlds) PreStartCheck(string) (world.PreCheck, error) {
+	return world.PreCheck{Save: "game.zip"}, nil
+}
+
 type fixture struct {
 	t       *testing.T
 	m       *world.Manager
@@ -311,5 +316,102 @@ func TestAvailabilitySummaryUsesTheCache(t *testing.T) {
 	}
 	if n := f.portal.FullCalls("visible-planets"); n != 1 {
 		t.Fatalf("%d /full calls, want 1", n)
+	}
+}
+
+// saveUses makes the save that loads hold these mods besides base.
+func (f *fixture) saveUses(names ...string) {
+	f.t.Helper()
+	save := []savefile.Mod{{Name: "base", Version: savefile.Version{Major: 2, Patch: 72}}}
+	for _, n := range names {
+		save = append(save, savefile.Mod{Name: n, Version: savefile.Version{Major: 1, Minor: 5, Patch: 5}})
+	}
+	f.planner.Worlds = saveWorlds{Manager: f.m, save: save}
+}
+
+func (f *fixture) drops(p Plan) []string {
+	f.t.Helper()
+	got, err := f.planner.SaveDrops(context.Background(), f.id, p)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return got
+}
+
+// SPEC 9.4, 9.10: only mods the loading save uses are dropped from it.
+func TestSaveDropsListsDisabledAndRemovedModsTheSaveUses(t *testing.T) {
+	f := newFixture(t, "visible-planets_1.5.5", "chest-auto-sort_1.3.0")
+	f.saveUses("visible-planets", "chest-auto-sort")
+	for _, kind := range []Kind{KindDisable, KindRemove} {
+		p := f.plan(Request{Kind: kind, Names: []string{"visible-planets", "chest-auto-sort"}})
+		if got := f.drops(p); !slices.Equal(got, []string{"chest-auto-sort", "visible-planets"}) {
+			t.Errorf("%s drops %v, want both, sorted", kind, got)
+		}
+	}
+}
+
+func TestSaveDropsLeavesOutAModTheSaveDoesNotUse(t *testing.T) {
+	f := newFixture(t, "visible-planets_1.5.5", "chest-auto-sort_1.3.0")
+	f.saveUses("visible-planets")
+	p := f.plan(Request{Kind: KindRemove, Names: []string{"visible-planets", "chest-auto-sort"}})
+	if got := f.drops(p); !slices.Equal(got, []string{"visible-planets"}) {
+		t.Errorf("drops %v, want only visible-planets", got)
+	}
+	// Updating a mod drops nothing.
+	if got := f.drops(f.plan(Request{Kind: KindUpdate, Names: []string{"visible-planets"}})); len(got) != 0 {
+		t.Errorf("update drops %v, want none", got)
+	}
+}
+
+func TestSaveDropsNeverListsBuiltInMods(t *testing.T) {
+	f := newFixture(t, "visible-planets_1.5.5")
+	f.saveUses("space-age", "visible-planets")
+	forged := Plan{Changes: []Change{
+		{Name: "space-age", Action: ActDisable},
+		{Name: "base", Action: ActRemove},
+		{Name: "visible-planets", Action: ActDisable},
+	}}
+	if got := f.drops(forged); !slices.Equal(got, []string{"visible-planets"}) {
+		t.Errorf("drops %v, want only visible-planets", got)
+	}
+}
+
+// A sync that continues without a save's mod drops it whether the world has
+// no file for it or has it at another version.
+func TestSaveDropsListsASyncContinuedWithout(t *testing.T) {
+	without := map[string]Choice{"visible-planets": {Kind: ChoiceWithout, Confirmed: true}}
+	for name, zips := range map[string][]string{"no file": nil, "another version": {"visible-planets_1.5.0"}} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t, zips...)
+			f.saveUses("visible-planets")
+			req, err := f.planner.SyncRequest(f.id, "game.zip", without)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := f.drops(f.plan(req)); !slices.Equal(got, []string{"visible-planets"}) {
+				t.Errorf("drops %v, want visible-planets once", got)
+			}
+		})
+	}
+}
+
+// A choice other than a confirmed "continue without" drops nothing.
+func TestSaveDropsIgnoresOtherChoices(t *testing.T) {
+	f := newFixture(t)
+	f.saveUses("visible-planets")
+	for _, c := range []Choice{{Kind: ChoiceWithout}, {Kind: ChoiceNearest}} {
+		req, _ := f.planner.SyncRequest(f.id, "game.zip", map[string]Choice{"visible-planets": c})
+		if got := f.drops(f.plan(req)); len(got) != 0 {
+			t.Errorf("choice %+v drops %v, want none", c, got)
+		}
+	}
+}
+
+func TestSaveDropsWithoutASaveIsEmpty(t *testing.T) {
+	f := newFixture(t, "visible-planets_1.5.5")
+	// The real world has no save, so the pre-start check names none.
+	p := f.plan(Request{Kind: KindRemove, Names: []string{"visible-planets"}})
+	if got := f.drops(p); len(got) != 0 {
+		t.Errorf("drops %v, want none", got)
 	}
 }
