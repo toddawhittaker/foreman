@@ -11,12 +11,12 @@
   "js.generate.preview_ready": "地图预览已就绪。",
   "js.preview.zoom": "缩放 {level}",
   "js.preview.drawing": "正在绘制{planet}…",
-  "js.preview.previous": "Previous planet: {planet}",
-  "js.preview.next": "Next planet: {planet}",
-  "js.preview.download": "Download {planet} map",
+  "js.preview.previous": "上一个星球：{planet}",
+  "js.preview.next": "下一个星球：{planet}",
+  "js.preview.download": "下载 {planet} 地图",
   "js.generate.reset": "地图设置已重置为预设“{preset}”。",
   "js.generate.ach_setting": "{setting}将禁用部分成就。",
   "js.generate.ach_clear": "现在没有设置会禁用成就。",
   "js.generate.moved": "{field}已设为 {value}，以保持范围有效。",
-  "js.preview.download_territories": "Download {planet} map with territories"
+  "js.preview.download_territories": "下载带领地的 {planet} 地图"
 }
