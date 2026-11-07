@@ -169,6 +169,18 @@
       aria-describedby="{{.ID}}-ach"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
     <p class="ach" id="{{.ID}}-ach">{{if .Blocked}}{{t "mapgen.achievement.warning"}}{{end}}</p>
   </div>
+  {{- else if .Choices}}
+  <div class="field">
+    <label for="{{.ID}}">{{msg .Label}}</label>
+    <select id="{{.ID}}" name="{{.Name}}" data-preset="{{.Preset}}"{{if not .Error.IsZero}} aria-invalid="true" aria-describedby="{{.ID}}-error"{{end}}>
+      {{- range .Choices}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{msg .Label}}</option>
+      {{- end}}
+    </select>
+    {{- if not .Error.IsZero}}
+    <p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+    {{- end}}
+  </div>
   {{- else}}
   <div class="field">
     <label for="{{.ID}}">{{msg .Label}}</label>

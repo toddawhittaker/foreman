@@ -27,6 +27,34 @@ const (
 	msNumber msKind = iota // a number of 0 or more
 	msWhole                // a whole number of 0 or more
 	msToggle               // true or false, as a checkbox
+	msChoice               // one of a fixed list of numbers or words, as a select
+)
+
+// msOption is one choice of an msChoice field: the value the file stores (an
+// int or a string, which stays the kind it is) and its words.
+type msOption struct {
+	stored any
+	label  i18n.Msg
+}
+
+// shown is the option's value as the form posts it.
+func (o msOption) shown() string {
+	if n, ok := o.stored.(int); ok {
+		return strconv.Itoa(n)
+	}
+	return o.stored.(string)
+}
+
+var (
+	msNormalExpensive = []msOption{
+		{0, i18n.M("mapgen.ms.choice.normal")},
+		{1, i18n.M("mapgen.ms.choice.expensive")},
+	}
+	msResearchQueue = []msOption{
+		{"after-victory", i18n.M("mapgen.ms.choice.after_victory")},
+		{"always", i18n.M("mapgen.ms.choice.always")},
+		{"never", i18n.M("mapgen.ms.choice.never")},
+	}
 )
 
 // msDef is one field: the value's path, its words, and how it is shown.
@@ -39,6 +67,8 @@ type msDef struct {
 	unit  i18n.Msg // the unit after the field, or none
 	// lo and hi bound the shown value when hi is not 0 (the game's own limits).
 	lo, hi float64
+	// choices lists the options of an msChoice field.
+	choices []msOption
 	// replacedBy is a path whose presence means the game no longer shows this
 	// one: 2.1's group size factor replaced the group sizes.
 	replacedBy string
@@ -79,6 +109,10 @@ var msGroups = []msGroup{
 		{path: "enemy_evolution.pollution_factor", label: i18n.M("mapgen.ms.pollution_factor"), scale: 1e7, unit: i18n.M("mapgen.unit.e7")},
 	}},
 	{tabAdvanced, i18n.M("mapgen.ms.technology"), []msDef{
+		// Only 1.1's file holds these three.
+		{path: "difficulty_settings.recipe_difficulty", label: i18n.M("mapgen.ms.recipe_difficulty"), kind: msChoice, choices: msNormalExpensive},
+		{path: "difficulty_settings.technology_difficulty", label: i18n.M("mapgen.ms.technology_difficulty"), kind: msChoice, choices: msNormalExpensive},
+		{path: "difficulty_settings.research_queue_setting", label: i18n.M("mapgen.ms.research_queue"), kind: msChoice, choices: msResearchQueue},
 		// The runtime API's range for the multiplier.
 		{path: "difficulty_settings.technology_price_multiplier", label: i18n.M("mapgen.ms.price"), scale: 1, lo: 0.001, hi: 100000},
 	}},
@@ -108,6 +142,13 @@ type AchWarn struct {
 	Reason string
 }
 
+// MapSettingsChoice is one option of a select field.
+type MapSettingsChoice struct {
+	Value    string
+	Label    i18n.Msg
+	Selected bool
+}
+
 // MapSettingsField is one field of the Enemy or Advanced tab.
 type MapSettingsField struct {
 	ID, Name string
@@ -119,6 +160,8 @@ type MapSettingsField struct {
 	Value   string
 	Checked bool
 	Preset  string
+	// Choices is set for a select; Value is then the chosen option's value.
+	Choices []MapSettingsChoice
 	Error   i18n.Msg
 	Ach     *AchWarn
 	Blocked bool
@@ -263,6 +306,26 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 				if fl.Checked != on {
 					overrides[d.path] = fl.Checked
 				}
+			} else if d.kind == msChoice {
+				fl.Preset = presetChoice(pv)
+				fl.Value = fl.Preset
+				if vs, ok := posted[fl.Name]; ok && len(vs) > 0 {
+					fl.Value = vs[0]
+				}
+				var chosen *msOption
+				for i, o := range d.choices {
+					fl.Choices = append(fl.Choices, MapSettingsChoice{Value: o.shown(), Label: o.label, Selected: o.shown() == fl.Value})
+					if o.shown() == fl.Value {
+						chosen = &d.choices[i]
+					}
+				}
+				switch {
+				case chosen == nil:
+					fl.Error = i18n.M("mapgen.err.step", "field", d.label)
+					problems = append(problems, Problem{FieldID: fl.ID, Message: fl.Error})
+				case fl.Value != fl.Preset:
+					overrides[d.path] = chosen.stored
+				}
 			} else {
 				n, _ := pv.(float64)
 				fl.Preset = shown(n, d.scale)
@@ -298,6 +361,15 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 		}
 	}
 	return form, overrides, problems
+}
+
+// presetChoice is a preset's number or word as a choice's value.
+func presetChoice(v any) string {
+	if n, ok := v.(float64); ok {
+		return shown(n, 1)
+	}
+	s, _ := v.(string)
+	return s
 }
 
 // parseShown reads a shown value and returns it in shown units, or the
