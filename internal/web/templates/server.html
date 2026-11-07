@@ -268,7 +268,7 @@
 {{- if .Errors}}
 <div class="message message--warning">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.notice" "count" .Errors "world" .World.Name}}</p>
-  <div class="actions"><a href="{{.FixPath}}" id="act-mods-fix">{{t "mods.notice.fix"}}</a></div>
+  <div class="actions"><a href="{{.FixPath}}" class="button" id="act-mods-fix">{{t "mods.notice.fix"}}</a></div>
 </div>
 {{- end}}
 {{- end}}

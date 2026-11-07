@@ -82,7 +82,7 @@ test.describe("a save's mod the portal does not have", () => {
   test("an uploaded zip answers the choice in the plan, and is installed", async ({ page, foreman }) => {
     await page.goto(syncPlan);
     const form = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
-    await form.getByLabel("Zip of foreman-test 0.1.0").setInputFiles({ name: "foreman-test_0.1.0.zip", mimeType: "application/zip", buffer: testModZip() });
+    await form.getByLabel("Zip of foreman-test 0.1.0", { exact: true }).setInputFiles({ name: "foreman-test_0.1.0.zip", mimeType: "application/zip", buffer: testModZip() });
     await form.getByRole("button", { name: "Upload zip" }).click();
 
     await expect(page.getByLabel("Use the uploaded zip of foreman-test 0.1.0")).toBeChecked();
@@ -99,7 +99,7 @@ test.describe("a save's mod the portal does not have", () => {
     await page.goto(syncPlan);
     const other = makeZip({ "other_1.0.0/info.json": JSON.stringify({ name: "other", version: "1.0.0", factorio_version: "2.1" }) });
     const form = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
-    await form.getByLabel("Zip of foreman-test 0.1.0").setInputFiles({ name: "other_1.0.0.zip", mimeType: "application/zip", buffer: other });
+    await form.getByLabel("Zip of foreman-test 0.1.0", { exact: true }).setInputFiles({ name: "other_1.0.0.zip", mimeType: "application/zip", buffer: other });
     await form.getByRole("button", { name: "Upload zip" }).click();
     await expect(page.locator("#mod-foreman-test-zip-error")).toContainText("This zip holds other, not foreman-test.");
     await expect(page.locator("#mod-foreman-test-zip")).toHaveAttribute("aria-invalid", "true");
@@ -112,13 +112,13 @@ test.describe("a save's mod the portal does not have", () => {
   test("a refused zip gets an error summary with focus on it", async ({ page }) => {
     await page.goto(syncPlan);
     const form = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
-    await form.getByLabel("Zip of foreman-test 0.1.0").setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
+    await form.getByLabel("Zip of foreman-test 0.1.0", { exact: true }).setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
     await form.getByRole("button", { name: "Upload zip" }).click();
     const summary = page.locator("#error-summary");
     await expect(summary).toBeFocused();
     await expect(summary).toContainText("This file is not a mod zip");
     await summary.getByRole("link").click();
-    await expect(form.getByLabel("Zip of foreman-test 0.1.0")).toBeFocused();
+    await expect(form.getByLabel("Zip of foreman-test 0.1.0", { exact: true })).toBeFocused();
     await checkPage(page);
   });
 
@@ -153,7 +153,7 @@ test("a refused zip keeps the other mods' answers", async ({ page, foreman, fake
   await box.check();
   await expect(page.locator("#announcer")).toHaveText(/^Plan updated: /);
   const group = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });
-  await group.getByLabel("Zip of foreman-test 0.1.0").setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
+  await group.getByLabel("Zip of foreman-test 0.1.0", { exact: true }).setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
   await group.getByRole("button", { name: "Upload zip" }).click();
   await expect(page.locator("#error-summary")).toBeFocused();
   await expect(page.getByLabel("Continue without recycler")).toBeChecked();

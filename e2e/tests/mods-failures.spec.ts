@@ -132,7 +132,8 @@ test.describe("a download fails", () => {
     {
       name: "the portal goes down after the plan",
       prepare: (portal) => portal.setDown(true),
-      message: /could not be downloaded from the mod portal|could not reach the mod portal/,
+      // The plan was just made, so the post reads the portal's answers from the cache and the download is what fails.
+      message: /A mod could not be downloaded from the mod portal\. Nothing was changed\./,
     },
   ];
 

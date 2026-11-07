@@ -134,7 +134,7 @@ test.describe("a mod players cannot get", () => {
     expect((await portal.state()).refused).toEqual([]);
   });
 
-  // SPEC 17.2: targets are at least 24 px, so the Fix link stands alone under the sentence; the notice is a live region beside the facts.
+  // SPEC 17.2: targets are at least 24 px, so Fix is a button under the sentence; the notice is a live region beside the facts.
   test("the Server page notice passes the page checks", async ({ page, foreman, fakeGame, fakePortal }) => {
     await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
     await setUpModsWorld(page, foreman, fakeGame!, { ...spaceAge, mods });
@@ -144,7 +144,9 @@ test.describe("a mod players cannot get", () => {
     // It sits with the status facts, before the players (DESIGN 7.3).
     const players = page.getByRole("heading", { level: 2, name: "Players online" });
     expect((await notice.boundingBox())!.y).toBeLessThan((await players.boundingBox())!.y);
-    expect((await notice.getByRole("link", { name: "Fix" }).boundingBox())!.height).toBeGreaterThanOrEqual(24);
+    // The Fix link has a button face, so it is a full target at any width and in any language (DESIGN 6, rule 3).
+    const fix = (await notice.getByRole("link", { name: "Fix" }).boundingBox())!;
+    expect(Math.min(fix.width, fix.height)).toBeGreaterThanOrEqual(44);
     await checkPage(page);
     await page.screenshot({ path: `../screenshots/mods-notice-${test.info().project.name}.png`, fullPage: true });
   });
