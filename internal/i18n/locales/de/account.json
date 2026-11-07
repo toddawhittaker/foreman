@@ -12,9 +12,9 @@
   "account.stored": "Gespeichert am {when} von {user}.",
   "account.username.label": "factorio.com-Benutzername",
   "account.token.label": "factorio.com-Token",
-  "account.token.hint": "Dein Token steht auf deiner factorio.com-Profilseite. Er wird verschlüsselt gespeichert und nie wieder angezeigt.",
+  "account.token.hint": "Dein Token steht auf deiner factorio.com-Profilseite. Es wird verschlüsselt gespeichert und nie wieder angezeigt.",
   "account.username.missing": "Gib den factorio.com-Benutzernamen ein",
-  "account.token.missing": "Gib den factorio.com-Token ein",
+  "account.token.missing": "Gib das factorio.com-Token ein",
   "account.field.control": "Entferne Steuerzeichen",
   "account.retype": "Benutzername und Token werden nie wieder angezeigt. Gib beide erneut ein.",
   "account.error.env": "Das Konto kommt aus der Umgebung und lässt sich hier nicht ändern.",
@@ -25,5 +25,6 @@
   "account.replace": "Konto ersetzen",
   "account.remove.heading": "Konto entfernen",
   "account.remove.hint": "Mod-Downloads sind aus, bis wieder ein Konto eingegeben wird.",
-  "account.remove": "Konto entfernen"
+  "account.remove": "Konto entfernen",
+  "account.back": "Zurück"
 }

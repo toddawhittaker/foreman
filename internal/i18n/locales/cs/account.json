@@ -25,5 +25,6 @@
   "account.replace": "Nahradit účet",
   "account.remove.heading": "Odstranění účtu",
   "account.remove.hint": "Stahování modů se zastaví, dokud se účet nezadá znovu.",
-  "account.remove": "Odstranit účet"
+  "account.remove": "Odstranit účet",
+  "account.back": "Zpět"
 }

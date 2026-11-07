@@ -150,26 +150,32 @@ func TestAccountFromTheEnvironmentHasNoForm(t *testing.T) {
 	}
 }
 
-// SPEC 9.11: without a secret key nothing can be stored, and the page says
-// how to fix that.
-func TestAccountWithoutASecretKeyIsDisabled(t *testing.T) {
+// SPEC 9.11: without a secret key nothing can be stored, so the page says
+// how to fix that and offers no form, not a disabled one; a post is refused
+// with no field errors, since there are no fields.
+func TestAccountWithoutASecretKeyHasNoForm(t *testing.T) {
 	ah := newAccountHarness(t, nil)
 	c := ah.signIn()
-	body := ah.get(PathAccount, withCookie(c)).Body.String()
-	for _, want := range []string{"<code>FOREMAN_SECRET_KEY</code>", "<code>FOREMAN_FACTORIO_USERNAME</code>", "<code>FOREMAN_FACTORIO_TOKEN</code>"} {
+	body := ah.get(PathAccount+"?return=/worlds/base/mods", withCookie(c)).Body.String()
+	for _, want := range []string{"<code>FOREMAN_SECRET_KEY</code>", "<code>FOREMAN_FACTORIO_USERNAME</code>", "<code>FOREMAN_FACTORIO_TOKEN</code>",
+		`<a href="/worlds/base/mods" id="act-back">Go back</a>`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	if n := strings.Count(body, " disabled"); n != 3 {
-		t.Errorf("%d disabled controls, want both fields and the button\n%s", n, body)
+	for _, bad := range []string{" disabled", `id="account-username"`, `id="account-token"`, `action="/settings/factorio-account"`} {
+		if strings.Contains(body, bad) {
+			t.Errorf("page has %q\n%s", bad, body)
+		}
 	}
 
-	rec := ah.post(PathAccount, accountForm(acctUser, acctToken), withCookie(c))
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "no secret key is set") {
-		t.Errorf("post: %d\n%s", rec.Code, rec.Body)
+	for _, form := range []url.Values{accountForm(acctUser, acctToken), accountForm("", "")} {
+		rec := ah.post(PathAccount, form, withCookie(c))
+		if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "no secret key is set") || strings.Contains(rec.Body.String(), "error-summary") {
+			t.Errorf("post: %d\n%s", rec.Code, rec.Body)
+		}
+		ah.wantNoSecrets("a post without a key", rec.Body.String(), acctUser, acctToken)
 	}
-	ah.wantNoSecrets("a post without a key", rec.Body.String(), acctUser, acctToken)
 }
 
 // SPEC 9.11, 11.4, 12.9: save, see the stored line, replace, remove. No

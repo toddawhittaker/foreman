@@ -25,5 +25,6 @@
   "account.replace": "Replace account",
   "account.remove.heading": "Remove the account",
   "account.remove.hint": "Mod downloads stop until an account is entered again.",
-  "account.remove": "Remove account"
+  "account.remove": "Remove account",
+  "account.back": "Go back"
 }

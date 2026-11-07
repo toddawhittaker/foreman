@@ -43,13 +43,12 @@
   "mods.col.actions": "Actions",
   "mods.state.on": "Activé",
   "mods.state.off": "Désactivé",
-  "mods.built_in.hint": "Suit le réglage de l’Ère spatiale du monde",
   "mods.row.update": "Mettre à jour vers {version}",
   "mods.row.enable": "Activer",
   "mods.row.disable": "Désactiver",
   "mods.row.remove": "Retirer",
   "mods.status.loading": "Recherche de mises à jour sur le portail de mods…",
-  "mods.status.unreachable": "Foreman n’a pas pu joindre le portail de mods et n’a donc pas pu rechercher de mises à jour ni les mods que les joueurs ne peuvent pas télécharger.",
+  "mods.status.unreachable": "Foreman n’a pas pu joindre le portail de mods et n’a donc pas pu rechercher les mises à jour ni vérifier les mods que les joueurs ne peuvent pas télécharger.",
   "mods.status.retry": "Vérifier à nouveau",
   "mods.status.updates": {
     "one": "{count} mod a une mise à jour pour cette version du jeu.",
@@ -60,10 +59,10 @@
     "one": "{count} mod du portail de mods est à jour.",
     "other": "Les {count} mods du portail de mods sont à jour."
   },
-  "mods.flag.gone": "Les joueurs ne peuvent pas rejoindre avec {mod} {version} : le portail de mods n’a plus cette version, leur jeu ne peut donc pas la télécharger. La version {update} est sur le portail.",
-  "mods.flag.gone_none": "Les joueurs ne peuvent pas rejoindre avec {mod} {version} : le portail de mods n’a plus cette version et n’en a aucune pour cette version du jeu.",
+  "mods.flag.gone": "Les joueurs ne peuvent pas rejoindre la partie avec {mod} {version} : le portail de mods n’a plus cette version, leur jeu ne peut donc pas la télécharger. La version {update} est sur le portail.",
+  "mods.flag.gone_none": "Les joueurs ne peuvent pas rejoindre la partie avec {mod} {version} : le portail de mods n’a plus cette version et n’en a aucune pour cette version du jeu.",
   "mods.flag.deprecated": "{mod} est marqué comme obsolète sur le portail de mods, les joueurs ne peuvent donc pas le trouver dans le navigateur de mods du jeu.",
-  "mods.flag.not_on_portal": "{mod} {version} n’est pas sur le portail de mods, le jeu des joueurs ne peut donc pas le télécharger lorsqu’ils rejoignent. Les joueurs ont besoin du fichier de votre part.",
+  "mods.flag.not_on_portal": "{mod} {version} n’est pas sur le portail de mods, le jeu des joueurs ne peut donc pas le télécharger lorsqu’ils rejoignent la partie. Les joueurs ont besoin du fichier de votre part.",
   "mods.flag.fix_update": "Mettre {mod} à jour vers {version}",
   "mods.flag.fix_remove": "Retirer {mod}",
   "mods.notice": {
@@ -71,7 +70,7 @@
     "other": "Les joueurs ne peuvent plus télécharger {count} mods de {world}, ils ne peuvent donc pas rejoindre."
   },
   "mods.notice.fix": "Corriger",
-  "mods.sync.heading": "Faire correspondre à la sauvegarde",
+  "mods.sync.heading": "Faire correspondre les mods à la sauvegarde",
   "mods.sync.text": "Fait des mods du monde ceux avec lesquels la sauvegarde {save} a été créée : installe ceux qui manquent, change les versions et désactive les autres. Vous voyez d’abord le plan.",
   "mods.sync.button": "Faire correspondre les mods à la sauvegarde",
   "mods.sync.no_save": "Ce monde n’a pas encore de sauvegarde, il n’y a donc rien à faire correspondre.",
@@ -83,7 +82,7 @@
   "mods.upload.hint": "Le fichier .zip d’un mod, de {limit} au plus. Foreman lit son nom et sa version dans son info.json et affiche le plan avant de rien modifier.",
   "mods.upload.button": "Envoyer le mod",
   "mods.upload.not_mod": "Ce fichier n’est pas un zip de mod : il n’a pas de info.json lisible dans un dossier à sa racine. Choisissez le fichier .zip du mod.",
-  "mods.upload.bad_name": "Le info.json du mod donne un nom ou une version que Foreman ne peut pas utiliser comme nom de fichier. Choisissez un autre fichier.",
+  "mods.upload.bad_name": "Le fichier info.json du mod donne un nom ou une version que Foreman ne peut pas utiliser comme nom de fichier. Choisissez un autre fichier.",
   "mods.upload.wrong_mod": "Ce zip contient {got}, et non {mod}. Choisissez le zip de {mod}.",
   "mods.settings.heading": "Paramètres des mods",
   "mods.settings.text": "Les valeurs des paramètres des mods se trouvent dans {file}. Téléchargez-le pour en garder une copie ou pour l’utiliser dans un autre monde.",
@@ -216,5 +215,16 @@
   "mods.error.download_failed": "Un mod n’a pas pu être téléchargé depuis le portail de mods. Rien n’a été modifié. Réessayez dans un instant.",
   "mods.done": "Les mods de {world} sont modifiés. Foreman a d’abord pris l’instantané « {label} ».",
   "mods.undo": "Annuler cette modification des mods",
-  "mods.changed.next": "Rouvrir les mods"
+  "mods.changed.next": "Rouvrir les mods",
+  "mods.plan.redrawn": {
+    "one": "Plan mis à jour : {count} mod change.",
+    "other": "Plan mis à jour : {count} mods changent."
+  },
+  "mods.plan.redrawn_conflicts": {
+    "one": "Plan mis à jour : il comporte un conflit et ne peut donc pas être appliqué.",
+    "other": "Plan mis à jour : il comporte {count} conflits et ne peut donc pas être appliqué."
+  },
+  "mods.error.cross_site": "Ce plan a été ouvert depuis un autre site, Foreman ne l’a donc pas établi. Rien n’a été modifié. Choisissez « Réessayer » pour voir le plan.",
+  "mods.built_in.note": "Les mods intégrés font partie du jeu et suivent le réglage de l’Ère spatiale du monde.",
+  "mods.built_in.settings": "Modifier l’Ère spatiale dans les paramètres du monde"
 }

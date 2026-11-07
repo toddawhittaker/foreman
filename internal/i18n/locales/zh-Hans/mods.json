@@ -11,7 +11,7 @@
   "mods.search.long": {
     "other": "最多输入 {count} 个字符。"
   },
-  "mods.search.title": "{world} 中与“{query}”匹配的模组",
+  "mods.search.title": "为 {world} 搜索“{query}”的结果",
   "mods.search.title_empty": "为 {world} 查找模组",
   "mods.search.results_heading": "与“{query}”匹配的模组",
   "mods.search.unreachable": "Foreman 无法连接模组门户，因此无法搜索。请稍后重试。",
@@ -39,7 +39,6 @@
   "mods.col.actions": "操作",
   "mods.state.on": "已启用",
   "mods.state.off": "已禁用",
-  "mods.built_in.hint": "跟随此世界的太空时代设置",
   "mods.row.update": "更新到 {version}",
   "mods.row.enable": "启用",
   "mods.row.disable": "禁用",
@@ -57,14 +56,14 @@
   "mods.flag.gone": "玩家无法使用 {mod} {version} 加入：模组门户已没有该版本，因此其游戏无法下载。门户上有版本 {update}。",
   "mods.flag.gone_none": "玩家无法使用 {mod} {version} 加入：模组门户已没有该版本，也没有适用于此游戏版本的版本。",
   "mods.flag.deprecated": "{mod} 在模组门户上被标记为已弃用，因此玩家无法在游戏的模组浏览器中找到它。",
-  "mods.flag.not_on_portal": "{mod} {version} 不在模组门户上，因此玩家加入时其游戏无法下载它。玩家需要从你这里获取该文件。",
+  "mods.flag.not_on_portal": "{mod} {version} 不在模组门户上，因此玩家加入时其游戏无法下载它。玩家需要另行获取该文件。",
   "mods.flag.fix_update": "将 {mod} 更新到 {version}",
   "mods.flag.fix_remove": "移除 {mod}",
   "mods.notice": {
     "other": "玩家已无法下载 {world} 的 {count} 个模组，因此无法加入。"
   },
   "mods.notice.fix": "修复",
-  "mods.sync.heading": "与存档保持一致",
+  "mods.sync.heading": "使模组与存档一致",
   "mods.sync.text": "将世界的模组改为存档 {save} 制作时使用的模组：安装缺少的，更改版本，并禁用其余的。会先显示计划。",
   "mods.sync.button": "使模组与存档一致",
   "mods.sync.no_save": "此世界还没有存档，因此没有可对照的内容。",
@@ -199,5 +198,14 @@
   "mods.error.download_failed": "无法从模组门户下载某个模组。未做任何更改。请稍后重试。",
   "mods.done": "{world} 的模组已更改。Foreman 先创建了快照“{label}”。",
   "mods.undo": "撤销此次模组更改",
-  "mods.changed.next": "重新打开模组页面"
+  "mods.changed.next": "重新打开模组页面",
+  "mods.plan.redrawn": {
+    "other": "计划已更新：将更改 {count} 个模组。"
+  },
+  "mods.plan.redrawn_conflicts": {
+    "other": "计划已更新：存在 {count} 个冲突，因此无法应用。"
+  },
+  "mods.error.cross_site": "此计划是从其他网站打开的，因此 Foreman 未制定该计划。未做任何更改。选择“重试”即可查看计划。",
+  "mods.built_in.note": "内置模组随游戏提供，并跟随世界的太空时代设置。",
+  "mods.built_in.settings": "在世界设置中更改太空时代"
 }

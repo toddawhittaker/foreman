@@ -43,7 +43,6 @@
   "mods.col.actions": "Actions",
   "mods.state.on": "Enabled",
   "mods.state.off": "Disabled",
-  "mods.built_in.hint": "Follows the world's Space Age setting",
   "mods.row.update": "Update to {version}",
   "mods.row.enable": "Enable",
   "mods.row.disable": "Disable",
@@ -71,7 +70,7 @@
     "other": "{count} mods of {world} can no longer be downloaded by players, so they cannot join."
   },
   "mods.notice.fix": "Fix",
-  "mods.sync.heading": "Match the save",
+  "mods.sync.heading": "Match mods to the save",
   "mods.sync.text": "Makes the world's mods the ones the save {save} was made with: installs the missing ones, changes versions, and disables the rest. You see the plan first.",
   "mods.sync.button": "Match mods to the save",
   "mods.sync.no_save": "This world has no save yet, so there is nothing to match.",
@@ -201,7 +200,7 @@
   "mods.conflict.bad_request": "Foreman cannot make this change. Go back to the mods and start again.",
   "mods.error.unreadable": "Foreman cannot read this world's files, so it cannot change its mods.",
   "mods.error.portal": "Foreman could not reach the mod portal, so it could not work out the plan. Nothing was changed. Try again in a moment.",
-  "mods.error.staged_gone": "The uploaded zip is no longer on the server, as after a restart of Foreman. Nothing was changed. Upload it again.",
+  "mods.error.staged_gone": "The uploaded zip is no longer on the server, for example after Foreman restarts. Nothing was changed. Upload it again.",
   "mods.error.no_save": "This world has no save, so there are no mods to match. Upload a save first.",
   "mods.error.save_gone": "The save is no longer in the world. Nothing was changed. Open the plan again from the Mods tab.",
   "mods.error.save_unreadable": "Foreman could not read the mod list in the save, so it cannot match the mods. Nothing was changed.",
@@ -216,5 +215,16 @@
   "mods.error.download_failed": "A mod could not be downloaded from the mod portal. Nothing was changed. Try again in a moment.",
   "mods.done": "The mods of {world} are changed. Foreman took the snapshot \"{label}\" first.",
   "mods.undo": "Undo this mod change",
-  "mods.changed.next": "Open the mods again"
+  "mods.changed.next": "Open the mods again",
+  "mods.plan.redrawn": {
+    "one": "Plan updated: {count} mod changes.",
+    "other": "Plan updated: {count} mods change."
+  },
+  "mods.plan.redrawn_conflicts": {
+    "one": "Plan updated: it has a conflict, so it cannot be applied.",
+    "other": "Plan updated: it has {count} conflicts, so it cannot be applied."
+  },
+  "mods.error.cross_site": "This plan was opened from another site, so Foreman did not work it out. Nothing was changed. Choose Try again to see the plan.",
+  "mods.built_in.note": "Built-in mods come with the game and follow the world's Space Age setting.",
+  "mods.built_in.settings": "Change Space Age in the world's settings"
 }

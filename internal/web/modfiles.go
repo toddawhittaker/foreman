@@ -24,13 +24,23 @@ const (
 	PathModSettings = "/worlds/{id}/mods/" + world.ModSettingsFile
 )
 
-// MaxModUpload is the size limit of a mod zip, the same as a download's
-// (plan ruling 11).
-const MaxModUpload = 200 << 20
+// The upload limits in megabytes, as the pages say them: a mod zip's is the
+// same as a download's (plan ruling 11); mod-settings.dat holds only
+// setting values.
+const (
+	modUploadMB      = 200
+	settingsUploadMB = 4
+)
 
-// MaxSettingsUpload is the size limit of mod-settings.dat, which holds
-// only setting values.
-const MaxSettingsUpload = 4 << 20
+// MaxModUpload and MaxSettingsUpload are those limits in bytes.
+const (
+	MaxModUpload      = modUploadMB << 20
+	MaxSettingsUpload = settingsUploadMB << 20
+)
+
+// megabytes says a limit as whole megabytes, "200 MB", the figure the spec
+// gives, rather than the "209.7 MB" its bytes read as in decimal units.
+func megabytes(n int) i18n.Msg { return i18n.M("common.bytes.mb", "n", n) }
 
 // The upload forms' fields.
 const (
@@ -48,7 +58,7 @@ func (s *server) modFileRoutes() {
 func modZipError(err error) i18n.Msg {
 	switch {
 	case errors.Is(err, world.ErrModTooBig):
-		return i18n.M("worlds.upload.too_large", "limit", i18n.Size(MaxModUpload))
+		return i18n.M("worlds.upload.too_large", "limit", megabytes(modUploadMB))
 	case errors.Is(err, world.ErrModName):
 		return i18n.M("mods.upload.bad_name")
 	}
@@ -89,13 +99,19 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return
 	}
-	values := map[string]string{"kind": "", "save": "", "for": ""}
-	sync := func() bool { return values["kind"] == string(mods.KindSync) }
+	// A sync plan's upload form carries the plan's answers in its query
+	// (ModPlanPage.UploadAction), so a refusal or the new plan keeps them.
+	q := r.URL.Query()
+	plan, sync := readPlanForm(q)
+	sync = sync && plan.Kind == mods.KindSync
+	countdown := defaultCountdown()
+	if c := q.Get("countdown"); c != "" {
+		countdown.Countdown = c
+	}
 	refuse := func(msg i18n.Msg, status int) {
-		if sync() {
-			f := planForm{Kind: mods.KindSync, Save: values["save"], Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}}
-			p := s.planPage(r.Context(), sum, f, defaultCountdown())
-			p.UploadError, p.UploadFor = msg, values["for"]
+		if sync {
+			p := s.planPage(r.Context(), sum, plan, countdown)
+			p.UploadError, p.UploadFor = msg, q.Get("for")
 			s.page(w, r, status, u.Username, p)
 			return
 		}
@@ -114,7 +130,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	defer func() { _ = worlds.Close() }()
-	up, err := receiveFileWithFields(r, worlds, ".", modUploadField, s.worlds.Dirs().Worlds, MaxModUpload, values)
+	up, err := receiveFileWithFields(r, worlds, ".", modUploadField, s.worlds.Dirs().Worlds, MaxModUpload, map[string]string{})
 	if err != nil {
 		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
 			refuse(msg, status)
@@ -129,17 +145,18 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 		refuse(modZipError(err), http.StatusUnprocessableEntity)
 		return
 	}
-	f := planForm{Kind: mods.KindUpload, Staged: up.Temp, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}}
-	if sync() {
-		if info.Name != values["for"] {
+	f := planForm{Kind: mods.KindUpload, Choices: map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{}}
+	if sync {
+		if want := q.Get("for"); info.Name != want {
 			_ = s.worlds.RemoveStaged(up.Temp)
-			refuse(i18n.M("mods.upload.wrong_mod", "mod", values["for"], "got", info.Name), http.StatusUnprocessableEntity)
+			refuse(i18n.M("mods.upload.wrong_mod", "mod", want, "got", info.Name), http.StatusUnprocessableEntity)
 			return
 		}
-		f.Kind, f.Save = mods.KindSync, values["save"]
+		f = plan
 		f.Choices[info.Name] = mods.ChoiceUpload
 	}
-	p := s.planPage(r.Context(), sum, f, defaultCountdown())
+	f.Staged = up.Temp
+	p := s.planPage(r.Context(), sum, f, countdown)
 	s.page(w, r, planStatus(p), u.Username, p)
 }
 

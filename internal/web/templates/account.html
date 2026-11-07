@@ -5,8 +5,7 @@
 <div class="field">
   <label for="account-username" class="required">{{t "account.username.label"}}</label>
   <input id="account-username" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false"
-    {{- if .NoKeyNotice}} disabled{{end}}
-    {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="account-username-error{{if .NoKeyNotice}} account-nokey{{end}}"{{else if .NoKeyNotice}} aria-describedby="account-nokey"{{end}}>
+    {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="account-username-error"{{end}}>
   {{- if not .UsernameError.IsZero}}
   <p class="error" id="account-username-error"><strong>{{t "common.error.label"}}</strong> {{msg .UsernameError}}</p>
   {{- end}}
@@ -15,8 +14,7 @@
   <label for="account-token" class="required">{{t "account.token.label"}}</label>
   <p class="hint" id="account-token-hint">{{t "account.token.hint"}}</p>
   <input id="account-token" name="token" type="password" required autocomplete="off" autocapitalize="none" spellcheck="false"
-    {{- if .NoKeyNotice}} disabled{{end}}
-    {{- if not .TokenError.IsZero}} aria-invalid="true"{{end}} aria-describedby="account-token-hint{{if not .TokenError.IsZero}} account-token-error{{end}}{{if .NoKeyNotice}} account-nokey{{end}}">
+    {{- if not .TokenError.IsZero}} aria-invalid="true"{{end}} aria-describedby="account-token-hint{{if not .TokenError.IsZero}} account-token-error{{end}}">
   {{- if not .TokenError.IsZero}}
   <p class="error" id="account-token-error"><strong>{{t "common.error.label"}}</strong> {{msg .TokenError}}</p>
   {{- end}}
@@ -58,6 +56,12 @@
 {{- else}}
 <p id="account-none">{{t "account.none"}}</p>
 {{- end}}
+{{- /* Without a secret key nothing can be stored, so the note above stands in for the form. */}}
+{{- if .NoKeyNotice}}
+{{- with .Return}}
+<div class="actions"><a href="{{.}}" id="act-back">{{t "account.back"}}</a></div>
+{{- end}}
+{{- else}}
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-form-heading">
   <h2 id="account-form-heading">{{if .Stored}}{{t "account.form.replace"}}{{else}}{{t "account.form.enter"}}{{end}}</h2>
   {{- if .Retype}}
@@ -69,12 +73,13 @@
   <input type="hidden" name="return" value="{{.}}">
   {{- end}}
   <div class="actions">
-    <button type="submit" class="button button--primary"{{if .NoKeyNotice}} disabled{{end}}>{{if .Stored}}{{t "account.replace"}}{{else}}{{t "account.save"}}{{end}}</button>
+    <button type="submit" class="button button--primary">{{if .Stored}}{{t "account.replace"}}{{else}}{{t "account.save"}}{{end}}</button>
     {{- with .Return}}
     <a href="{{.}}">{{t "worlds.cancel"}}</a>
     {{- end}}
   </div>
 </form>
+{{- end}}
 {{- if .Stored}}
 <form method="post" action="{{.Path}}" class="panel" aria-labelledby="account-remove-heading">
   <h2 id="account-remove-heading">{{t "account.remove.heading"}}</h2>

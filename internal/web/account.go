@@ -134,6 +134,12 @@ func (s *server) handleAccount(w http.ResponseWriter, r *http.Request, u store.U
 		return
 	}
 
+	// Without a key the page has no fields to point a field error at.
+	if p.NoKeyNotice() {
+		p.Error = i18n.M("account.error.nokey")
+		s.page(w, r, http.StatusConflict, u.Username, p)
+		return
+	}
 	username, usernameProblem := checkAccountField(r.PostFormValue("username"), i18n.M("account.username.missing"))
 	token, tokenProblem := checkAccountField(r.PostFormValue("token"), i18n.M("account.token.missing"))
 	if !usernameProblem.IsZero() || !tokenProblem.IsZero() {

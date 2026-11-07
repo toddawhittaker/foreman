@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
@@ -163,9 +162,15 @@ type ModsPage struct {
 	Done       i18n.Msg
 	Failure    *Failure
 	Undo       *Offer
-	// UploadLimit and SettingsLimit are the upload size limits.
-	UploadLimit, SettingsLimit uint64
 }
+
+// UploadLimit and SettingsLimit say the upload size limits.
+func (ModsPage) UploadLimit() i18n.Msg   { return megabytes(modUploadMB) }
+func (ModsPage) SettingsLimit() i18n.Msg { return megabytes(settingsUploadMB) }
+
+// SettingsTabPath is the world's Settings tab, where Space Age is turned on
+// or off for the built-in mods.
+func (p ModsPage) SettingsTabPath() string { return settingsPath(p.World.ID) }
 
 func (ModsPage) templateName() string { return "mods" }
 func (ModsPage) navItem() string      { return PathWorlds }
@@ -253,7 +258,7 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 
 // modsPage reads the world's mods and what the tab offers.
 func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, error) {
-	p := ModsPage{World: sum, CountdownForm: defaultCountdown(), UploadLimit: MaxModUpload, SettingsLimit: MaxSettingsUpload}
+	p := ModsPage{World: sum, CountdownForm: defaultCountdown()}
 	if sum.Newer || sum.Unreadable {
 		return p, nil
 	}
@@ -435,10 +440,10 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 			fix = append(fix, f.Name)
 		}
 	}
-	// Every error has an update: the fix is one plan. Otherwise the Mods
-	// tab shows each flag with its own fix.
+	// Every error has an update: the fix is one plan, if a plan can name
+	// them all. Otherwise the Mods tab shows each flag with its own fix.
 	n.FixPath = modsPath(sum.ID)
-	if len(fix) > 0 && len(fix) == n.Errors {
+	if len(fix) > 0 && len(fix) == n.Errors && len(fix) <= maxPlanNames {
 		n.FixPath = kindPlanPath(sum.ID, mods.KindUpdate, fix...)
 	}
 	s.fragment(w, r, n, "mods-notice")
@@ -556,6 +561,10 @@ const (
 	confirmPrefix = "confirm-"
 )
 
+// maxPlanNames bounds the mods one plan request names, and the optional
+// mods it ticks.
+const maxPlanNames = 50
+
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
 
 // readPlanForm reads a request from a query or a posted form; ok is false
@@ -567,7 +576,8 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		DropsConfirmed: v.Get(dropsField) == "1",
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
 	}
-	if !slices.Contains(planKinds, f.Kind) {
+	// Each name can cost a portal request, so a crafted list is bounded.
+	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames {
 		return planForm{}, false
 	}
 	for k, vals := range v {
@@ -602,6 +612,18 @@ func (f planForm) query() url.Values {
 	return q
 }
 
+// answers is the form with the "continue without" boxes too, for the
+// upload form of an unresolved mod, so a refused zip keeps every answer.
+func (f planForm) answers() url.Values {
+	q := f.query()
+	for name, ok := range f.Confirmed {
+		if ok {
+			q.Set(confirmPrefix+name, "1")
+		}
+	}
+	return q
+}
+
 // ModPlanPage shows a mod change before it applies (SPEC 9.2, 17.5, 17.8).
 type ModPlanPage struct {
 	World world.Summary
@@ -632,6 +654,9 @@ type ModPlanPage struct {
 	// DropsError is the unticked box after a post.
 	Drops      []string
 	DropsError i18n.Msg
+	// Redraw says a script asked for the plan after a change on the page:
+	// the plan is announced and focus stays where it was (WCAG 4.1.3).
+	Redraw bool
 }
 
 // dropsField is the box that confirms the Drops.
@@ -649,15 +674,83 @@ func (p ModPlanPage) hasErrors() bool {
 // Problems lists the form's field errors in page order.
 func (p ModPlanPage) Problems() []Problem {
 	var out []Problem
-	for i, u := range p.Plan.Unresolved {
+	for _, u := range p.Plan.Unresolved {
 		if msg, ok := p.ConfirmErrors[u.Name]; ok {
-			out = append(out, Problem{confirmID(i), msg})
+			out = append(out, Problem{modID(u.Name, "confirm"), msg})
+		}
+		if u.Name == p.UploadFor && !p.UploadError.IsZero() {
+			out = append(out, Problem{modID(u.Name, "zip"), p.UploadError})
 		}
 	}
 	return append(out, problems(Problem{dropsField, p.DropsError}, Problem{"countdown", p.CountdownError})...)
 }
 
-func confirmID(i int) string { return "confirm-" + strconv.Itoa(i) }
+// modID is the id of a part of a mod's controls, made from the mod's name,
+// so focus stays on the same mod when the plan is redrawn. Bytes an id
+// cannot hold plainly are written as ".xx", which no name has, so two names
+// never share an id.
+func modID(name, part string) string {
+	var b strings.Builder
+	b.WriteString("mod-")
+	for _, c := range []byte(name) {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '-', c == '_':
+			b.WriteByte(c)
+		default:
+			b.WriteString("." + hex.EncodeToString([]byte{c}))
+		}
+	}
+	return b.String() + "-" + part
+}
+
+// ModID is modID for the template.
+func (ModPlanPage) ModID(name, part string) string { return modID(name, part) }
+
+// UploadAction is where an unresolved mod's zip is posted: its query holds
+// every answer on the page, so the plan that comes back keeps them.
+func (p ModPlanPage) UploadAction(name string) string {
+	q := p.Form.answers()
+	q.Set("for", name)
+	if p.Countdown != "" {
+		q.Set("countdown", p.Countdown)
+	}
+	return p.UploadPath() + "?" + q.Encode()
+}
+
+// UploadLimit says the zip size limit.
+func (ModPlanPage) UploadLimit() i18n.Msg { return megabytes(modUploadMB) }
+
+// AsksRequired reports whether the form has a box or a field that must be
+// filled, so it explains the required mark (DESIGN 7.2).
+func (p ModPlanPage) AsksRequired() bool {
+	if len(p.Drops) > 0 {
+		return true
+	}
+	for _, u := range p.Plan.Unresolved {
+		switch p.Choice(u.Name) {
+		case string(mods.ChoiceWithout):
+			return true
+		case string(mods.ChoiceUpload):
+			if p.Form.Staged == "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Announce is the sentence a screen reader hears after a redraw.
+func (p ModPlanPage) Announce() i18n.Msg {
+	switch {
+	case !p.Error.IsZero():
+		return p.Error
+	case len(p.Plan.Conflicts) > 0:
+		return i18n.M("mods.plan.redrawn_conflicts", "count", len(p.Plan.Conflicts))
+	case p.Nothing():
+		return i18n.M("mods.plan.nothing")
+	}
+	return i18n.M("mods.plan.redrawn", "count", p.Count())
+}
 
 func (p ModPlanPage) Path() string       { return modsPath(p.World.ID) + "/plan" }
 func (p ModPlanPage) ModsPath() string   { return modsPath(p.World.ID) }
@@ -912,21 +1005,49 @@ func (p ModPlanPage) UploadedFor(name string) bool {
 // Ticked reports whether the admin ticked an optional mod.
 func (p ModPlanPage) Ticked(name string) bool { return slices.Contains(p.Form.Optional, name) }
 
-// ConfirmID is the id of an unresolved mod's "continue without" box.
-func (ModPlanPage) ConfirmID(i int) string { return confirmID(i) }
-
 func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
 		return
 	}
-	f, ok := readPlanForm(r.URL.Query())
+	q := r.URL.Query()
+	f, ok := readPlanForm(q)
 	if !ok {
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
-	p := s.planPage(r.Context(), sum, f, defaultCountdown())
+	// A plan asks the portal about every mod it names, so another site's
+	// page may not make a signed-in browser ask for one. The admin's own
+	// click on Try again is same-origin.
+	if !fromThisSite(r) {
+		p := ModPlanPage{World: sum, Form: f, Error: i18n.M("mods.error.cross_site"), Retry: planPath(sum.ID, f.query())}
+		s.page(w, r, http.StatusForbidden, u.Username, p)
+		return
+	}
+	form := defaultCountdown()
+	if c, ok := q["countdown"]; ok {
+		form.Countdown = c[0]
+	}
+	p := s.planPage(r.Context(), sum, f, form)
+	// htmx swaps only a 2xx reply, so a redraw that finds a conflict or a
+	// portal failure still answers 200 for the page to show it.
+	if r.Header.Get("HX-Request") != "" {
+		p.Redraw = true
+		s.page(w, r, http.StatusOK, u.Username, p)
+		return
+	}
 	s.page(w, r, planStatus(p), u.Username, p)
+}
+
+// fromThisSite reports whether a request came from Foreman's own pages or
+// the browser itself (an address typed or a bookmark). Browsers that send
+// no Sec-Fetch-Site are let through, as the cross-origin check does.
+func fromThisSite(r *http.Request) bool {
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "", "same-origin", "none":
+		return true
+	}
+	return false
 }
 
 func planStatus(p ModPlanPage) int {

@@ -25,5 +25,6 @@
   "account.replace": "替换账户",
   "account.remove.heading": "移除账户",
   "account.remove.hint": "在重新输入账户之前，模组下载将停止。",
-  "account.remove": "移除账户"
+  "account.remove": "移除账户",
+  "account.back": "返回"
 }

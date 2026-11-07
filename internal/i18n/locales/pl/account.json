@@ -25,5 +25,6 @@
   "account.replace": "Zastąp konto",
   "account.remove.heading": "Usunięcie konta",
   "account.remove.hint": "Pobieranie modyfikacji zostanie zatrzymane, dopóki konto nie zostanie wpisane ponownie.",
-  "account.remove": "Usuń konto"
+  "account.remove": "Usuń konto",
+  "account.back": "Wróć"
 }

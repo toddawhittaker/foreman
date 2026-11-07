@@ -43,7 +43,6 @@
   "mods.col.actions": "Acciones",
   "mods.state.on": "Activado",
   "mods.state.off": "Desactivado",
-  "mods.built_in.hint": "Sigue el ajuste de Space Age del mundo",
   "mods.row.update": "Actualizar a {version}",
   "mods.row.enable": "Activar",
   "mods.row.disable": "Desactivar",
@@ -71,7 +70,7 @@
     "other": "Los jugadores ya no pueden descargar {count} mods de {world}, así que no pueden unirse."
   },
   "mods.notice.fix": "Arreglar",
-  "mods.sync.heading": "Igualar a la partida guardada",
+  "mods.sync.heading": "Igualar los mods a la partida guardada",
   "mods.sync.text": "Deja como mods del mundo los que se usaron al crear la partida guardada {save}: instala los que faltan, cambia versiones y desactiva el resto. Primero ves el plan.",
   "mods.sync.button": "Igualar los mods a la partida guardada",
   "mods.sync.no_save": "Este mundo aún no tiene ninguna partida guardada, así que no hay nada que igualar.",
@@ -216,5 +215,16 @@
   "mods.error.download_failed": "No se pudo descargar un mod del portal de mods. No se cambió nada. Inténtalo de nuevo en un momento.",
   "mods.done": "Los mods de {world} están cambiados. Foreman tomó primero la instantánea «{label}».",
   "mods.undo": "Deshacer este cambio de mods",
-  "mods.changed.next": "Volver a abrir los mods"
+  "mods.changed.next": "Volver a abrir los mods",
+  "mods.plan.redrawn": {
+    "one": "Plan actualizado: cambia {count} mod.",
+    "other": "Plan actualizado: cambian {count} mods."
+  },
+  "mods.plan.redrawn_conflicts": {
+    "one": "Plan actualizado: tiene un conflicto, así que no se puede aplicar.",
+    "other": "Plan actualizado: tiene {count} conflictos, así que no se puede aplicar."
+  },
+  "mods.error.cross_site": "Este plan se abrió desde otro sitio, así que Foreman no lo calculó. No se cambió nada. Elige «Intentar de nuevo» para ver el plan.",
+  "mods.built_in.note": "Los mods integrados vienen con el juego y siguen el ajuste de Space Age del mundo.",
+  "mods.built_in.settings": "Cambiar Space Age en la configuración del mundo"
 }

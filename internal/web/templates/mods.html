@@ -59,9 +59,12 @@
 <section class="panel" aria-labelledby="installed-heading">
   <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
   {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (plan ruling 2). */}}
-  <div id="mod-status" class="mod-status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
+  <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
     <p class="empty">{{t "mods.status.loading"}}</p>
   </div>
+  {{- if .BuiltInCount}}
+  <p>{{t "mods.built_in.note"}} <a href="{{.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.settings"}}</a></p>
+  {{- end}}
   <table role="table" class="mod-list">
     <caption>{{t "mods.installed.caption" "world" .World.Name "count" (len .Mods)}} {{t "mods.installed.enabled" "count" .Enabled}}</caption>
     <thead role="rowgroup">
@@ -74,18 +77,16 @@
           {{- if .BuiltIn}} <span class="badge">{{t "mods.badge.built_in"}}</span>{{else if .Local}} <span class="badge">{{t "mods.badge.local"}}</span>{{end}}</td>
         <td role="cell" data-label="{{t "mods.col.state"}}">{{if .Enabled}}{{t "mods.state.on"}}{{else}}{{t "mods.state.off"}}{{end}}</td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
-          {{- if .BuiltIn}}
-          <span class="hint">{{t "mods.built_in.hint"}}</span>
-          {{- else}}
+          {{- if not .BuiltIn}}
           <div class="row-actions">
             {{- if not .Local}}<span id="{{$.Page.UpdateSlot .Name}}" hidden></span>{{end}}
             {{- if .Enabled}}
-            <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}</a>
+            <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> {{.Name}}</span></a>
             {{- else}}
-            <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}</a>
+            <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> {{.Name}}</span></a>
             {{- end}}
             {{- if not .Local}}
-            <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet">{{t "mods.row.remove"}}</a>
+            <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet">{{t "mods.row.remove"}}<span class="visually-hidden"> {{.Name}}</span></a>
             {{- end}}
           </div>
           {{- end}}
@@ -113,11 +114,10 @@
 <section class="panel" aria-labelledby="upload-heading">
   <h2 id="upload-heading">{{t "mods.upload.heading"}}</h2>
   <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" novalidate>
-    <input type="hidden" name="kind" value="upload">
     {{template "required-note"}}
     <div class="field">
       <label for="mod-file" class="required">{{t "mods.upload.label"}}</label>
-      <p class="hint" id="mod-file-hint">{{t "mods.upload.hint" "limit" (bytes .UploadLimit)}}</p>
+      <p class="hint" id="mod-file-hint">{{t "mods.upload.hint" "limit" .UploadLimit}}</p>
       <input id="mod-file" name="mod" type="file" accept=".zip,application/zip" required
         aria-describedby="mod-file-hint{{if not .UploadError.IsZero}} mod-file-error{{end}}"
         {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
@@ -139,7 +139,8 @@
   {{- else}}
   <p class="empty">{{tHTML "mods.settings.none" "file" (code .SettingsFile)}}</p>
   {{- end}}
-  <form method="post" action="{{.SettingsPath}}" enctype="multipart/form-data" novalidate>
+  {{- /* The form says what will happen, so it is the confirmation (DESIGN 7.4). */}}
+  <form method="post" action="{{.SettingsPath}}" enctype="multipart/form-data" class="confirm" novalidate>
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
     <p>{{t "common.confirm.will"}}</p>
     <ul>
@@ -153,13 +154,13 @@
       {{- end}}
       <li>{{t "mods.plan.undo"}}</li>
     </ul>
+    {{template "required-note"}}
     {{- if .Running}}
     {{template "countdown" .CountdownForm}}
     {{- end}}
-    {{template "required-note"}}
     <div class="field">
       <label for="settings-file" class="required">{{tHTML "mods.settings.label" "file" (code .SettingsFile)}}</label>
-      <p class="hint" id="settings-file-hint">{{t "mods.settings.hint" "limit" (bytes .SettingsLimit)}}</p>
+      <p class="hint" id="settings-file-hint">{{t "mods.settings.hint" "limit" .SettingsLimit}}</p>
       <input id="settings-file" name="settings" type="file" accept=".dat" required
         aria-describedby="settings-file-hint{{if not .SettingsError.IsZero}} settings-file-error{{end}}"
         {{- if not .SettingsError.IsZero}} aria-invalid="true"{{end}}>
@@ -202,7 +203,7 @@
 <div class="actions"><a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a></div>
 {{- /* Each row's Update button goes into its place in the table. */}}
 {{- range .Updates}}
-<span id="{{$.UpdateSlot .Name}}" hx-swap-oob="true"><a href="{{$.UpdatePath .Name}}" class="button">{{t "mods.row.update" "version" .To}}</a></span>
+<span id="{{$.UpdateSlot .Name}}" hx-swap-oob="true"><a href="{{$.UpdatePath .Name}}" class="button">{{t "mods.row.update" "version" .To}}<span class="visually-hidden"> {{.Name}}</span></a></span>
 {{- end}}
 {{- else if .Checked}}
 <p>{{t "mods.status.current" "count" .Checked}}</p>

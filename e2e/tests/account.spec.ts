@@ -143,15 +143,15 @@ test.describe("with a secret key", () => {
 });
 
 test.describe("without a secret key", () => {
-  test("the form is off and says how to turn it on", async ({ page }) => {
+  test("the page says how to turn it on, with no form to fill", async ({ page }) => {
     await createAdmin(page);
     await openAccountPage(page);
     const note = page.locator("#account-nokey");
     await expect(note).toContainText("FOREMAN_SECRET_KEY");
     await expect(note).toContainText("FOREMAN_FACTORIO_USERNAME");
-    await expect(page.getByLabel("factorio.com username")).toBeDisabled();
-    await expect(page.getByLabel("factorio.com token")).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Save account" })).toBeDisabled();
+    // A form that cannot be used is not shown at all, disabled or otherwise.
+    await expect(page.locator("main form")).toHaveCount(0);
+    await expect(page.getByLabel("factorio.com username")).toHaveCount(0);
     await checkPage(page);
   });
 });
