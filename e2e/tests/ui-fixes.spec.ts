@@ -144,6 +144,50 @@ test.describe("Generate", () => {
     await expect(dialog(page).getByRole("link", { name: "Download Vulcanus (PNG)" })).toBeVisible();
   });
 
+  // Previous before a planet's picture arrives drops that draw: the earlier picture, its status and Close's focus stay right.
+  test("Previous before an undrawn planet arrives keeps the earlier planet and its focus", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/preview", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.keyboard.press("ArrowRight");
+    await expect(dialog(page).locator("#large-status")).toContainText("Drawing Vulcanus");
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
+    release();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
+    await dialog(page).getByRole("button", { name: "Close" }).click();
+    await expect(section(page).getByRole("link", { name: /Map preview of Nauvis/ })).toBeFocused();
+  });
+
+  // After one failed draw, Previous and Next still move and try again, one request for each press.
+  test("after a failed draw in the large view, Previous and Next still move and retry", async ({ page, fakeGame }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await fakeGame!.call("/preview-mode", { mode: "fail" });
+    await page.keyboard.press("ArrowRight");
+    await expect(dialog(page).locator("#large-status")).toContainText("The game could not make the map preview.");
+    await fakeGame!.call("/preview-mode", { mode: "ok" });
+    const sent: Request[] = [];
+    page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    await expect(dialog(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+    await page.waitForTimeout(1200);
+    expect(sent.length).toBe(1);
+  });
+
   // WCAG 1.4.10: at 400% zoom (320 by 200) or a phone on its side the picture keeps its room and the dialog scrolls.
   for (const [w, h] of [[320, 200], [568, 320]]) {
     test(`the large view keeps the picture usable at ${w} by ${h}`, async ({ page }) => {
@@ -292,6 +336,22 @@ test.describe("Generate", () => {
     await low.press("Tab");
     await expect(high).toHaveValue("12");
     await expect(page.locator("#announcer")).toHaveText("Maximum group size set to 12 to keep the range valid.");
+  });
+
+  // A change that moves a field and also turns the achievement warning on says both, in one announcement.
+  test("a live-fit move that also turns the achievement warning on says both", async ({ page }) => {
+    await page.goto("/generate");
+    await tab(page, "Enemy").click();
+    const low = page.getByLabel("Minimum expansion distance");
+    const seen = await recordAnnouncer(page);
+    // A spin of the number box sends input and change together.
+    await low.evaluate((el) => {
+      const box = el as HTMLInputElement;
+      box.value = "9";
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await expect.poll(seen).toContain("Minimum expansion distance turns off some achievements. Maximum expansion distance set to 10 to keep the range valid.");
   });
 
   // A preset chosen after the game line changed fills the new line's settings.

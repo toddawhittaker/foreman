@@ -229,8 +229,8 @@ type MapGenPlanet struct {
 }
 
 // MapGenForm is the map-gen part of Generate's form and what a post is read
-// back into. Build one with NewMapGenForm or ParseMapGenForm. Its fields fall
-// into the tabs the game's map generator has: Resources and Terrain per
+// back into. Build one with NewMapGenFormForPreset or ParseMapGenForm. Its
+// fields fall into the tabs the game's map generator has: Resources and Terrain per
 // planet, Enemy, and Advanced (DESIGN 8.7).
 type MapGenForm struct {
 	line     string

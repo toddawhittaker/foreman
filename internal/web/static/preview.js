@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let timer = 0;
   let sent = 0; // the number of the newest request; a reply to an older one is ignored
   let pending = null; // the AbortController of the request on its way
+  let drawing = ""; // the planet the request on its way is for
   let refreshing = 0; // htmx redraws of the settings still on their way
   let viewing = ""; // the planet shown, blank for the first
 
@@ -67,6 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const seedSent = seed ? seed.value : "";
     const ctrl = new AbortController();
     pending = ctrl;
+    drawing = viewing || firstPlanet();
     setStatus(true);
     let html;
     try {
@@ -208,10 +210,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const lang = document.documentElement.lang || undefined;
   const el = (id) => document.getElementById(id);
 
+  // The list from the last section that had one: a section holding only an
+  // error has none, and Previous and Next must still move then.
+  let known = [];
   function planets() {
     const pick = el("preview-planet");
-    if (pick) return [...pick.options].map((o) => o.value);
-    return [...document.querySelectorAll("#preview a.picture")].map((a) => a.dataset.planet);
+    const found = pick ? [...pick.options].map((o) => o.value) : [...document.querySelectorAll("#preview a.picture")].map((a) => a.dataset.planet);
+    if (found.length) known = found;
+    return known;
   }
   const firstPlanet = () => planets()[0] || "";
 
@@ -245,6 +251,9 @@ document.addEventListener("DOMContentLoaded", () => {
       draw(true);
       return false;
     }
+    // A draw on its way for another planet is dropped, or its reply would
+    // replace this picture and its link.
+    if (pending && drawing !== planet) drop();
     const img = link.querySelector("img");
     const figure = link.closest("figure");
     const download = link.closest("li").querySelector("a.download");
