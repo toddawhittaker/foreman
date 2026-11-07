@@ -343,11 +343,26 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("Countdown in seconds")).toBeVisible();
     await expect(page.locator("section.confirm")).toContainText("Start the game again");
     await checkPage(page);
+    // A Server page already open hears the restore finish. The page the
+    // form lands on may load after it finished; it then shows the message
+    // but reads nothing out, since a first load is never announced
+    // (DESIGN 7.5). The running state's own sentence can follow at once,
+    // so every sentence is kept, not only the last.
+    const watcher = await page.context().newPage();
+    await watcher.goto("/");
+    await expect(badge(watcher)).toHaveText("Running", live);
+    await watcher.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { seen: string[] }).seen = seen;
+      const a = document.getElementById("announcer")!;
+      new MutationObserver(() => { if (a.textContent) seen.push(a.textContent); }).observe(a, { childList: true, characterData: true, subtree: true });
+    });
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restore snapshot" }).click();
     await expect(page).toHaveURL("/");
     await expect(page.locator(".message--success")).toContainText("The world is restored", live);
-    await expect(page.locator("#announcer")).toHaveText("The world is restored.");
+    await expect.poll(() => watcher.evaluate(() => (window as unknown as { seen: string[] }).seen), live).toContain("The world is restored.");
+    await watcher.close();
     await expect(badge(page)).toHaveText("Running", live);
     await checkPage(page);
   });
