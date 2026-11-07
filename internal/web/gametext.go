@@ -10,6 +10,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/savefile"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -116,6 +117,14 @@ var refusals = []struct {
 	{world.ErrVersionNotNewer, i18n.M("server.error.version_not_newer")},
 	{world.ErrVersionUnsupported, i18n.M("server.error.version_unsupported")},
 	{world.ErrNoRollback, i18n.M("server.error.no_rollback")},
+	{world.ErrModsChanged, i18n.M("mods.error.changed")},
+	{world.ErrBuiltinMod, i18n.M("mods.error.built_in")},
+	{world.ErrLocalMod, i18n.M("mods.error.local")},
+	{game.ErrNoModFetcher, i18n.M("mods.error.no_account")},
+	{modportal.ErrChecksum, i18n.M("mods.error.checksum")},
+	{modportal.ErrUnauthorized, i18n.M("mods.error.unauthorized")},
+	{modportal.ErrNotOnPortal, i18n.M("mods.error.download_gone")},
+	{modportal.ErrUnreachable, i18n.M("mods.error.download_failed")},
 }
 
 // startErrorMsg words why the game did not start (SPEC 7.3, 8.7). The
@@ -483,6 +492,9 @@ var stepNames = map[string]i18n.Msg{
 	game.StepSetVersion:     i18n.M("server.step.set_version"),
 	game.StepSnapshotBoth:   i18n.M("server.step.snapshot_both"),
 	game.StepPresent:        i18n.M("server.step.present"),
+	game.StepDownloadMods:   i18n.M("server.step.download_mods"),
+	game.StepSnapshotMods:   i18n.M("server.step.snapshot_mods"),
+	game.StepApplyMods:      i18n.M("server.step.apply_mods"),
 }
 
 // stepName is a step's words; a step this page does not know keeps the

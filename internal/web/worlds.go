@@ -112,6 +112,8 @@ type WorldPage struct {
 	// import whose version could not be checked.
 	Done    i18n.Msg
 	Warning i18n.Msg
+	// ImportSync, after an import, offers to match the mods to the save.
+	ImportSync string
 	// Download is "running" or "failed" while the world's last game image
 	// download is so, else "" (SPEC 3.7).
 	Download string
@@ -188,6 +190,7 @@ var busyActions = map[string]i18n.Msg{
 	game.AuditImageDownload: i18n.M("worlds.busy.action.image_download"), game.ActionRestore: i18n.M("worlds.busy.action.restore"),
 	game.AuditSwitch: i18n.M("worlds.busy.action.switch"), game.AuditUpdate: i18n.M("worlds.busy.action.update"),
 	game.AuditRollback: i18n.M("worlds.busy.action.rollback"), actionSnapshot: i18n.M("worlds.busy.action.snapshot"),
+	game.AuditMods: i18n.M("worlds.busy.action.mods"),
 }
 
 // busyText says what the running operation is doing to a world, or returns

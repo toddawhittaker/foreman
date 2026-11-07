@@ -2769,3 +2769,60 @@ form:has(#mode-exchange:checked) .achievements {
 .changes del {
   color: var(--color-text-muted);
 }
+
+/* Mods (SPEC 9). The portal's status keeps one line's room while it loads,
+   so the table below moves only when there is something to say. */
+.mod-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  min-block-size: var(--target-min);
+}
+
+.mod-list code {
+  color: var(--color-text-muted);
+}
+
+/* Search results are a list with a rule between rows, not cards (DESIGN 8.2). */
+.mod-results {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  list-style: none;
+}
+
+.mod-results > li {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-line);
+  overflow-wrap: anywhere;
+}
+
+.mod-plan,
+.unresolved-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.plan-groups {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.plan-groups dt {
+  font-weight: 600;
+}
+
+.plan-groups dd {
+  overflow-wrap: anywhere;
+}
+
+/* A long confirmation sentence starts beside the top of its box. */
+.confirm-without,
+.message .check {
+  align-items: start;
+}
