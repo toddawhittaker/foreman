@@ -61,9 +61,9 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await expect(open).not.toHaveClass(/button--danger/);
   await open.click();
   await expect(page).toHaveURL("/worlds/family-base/delete");
-  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete Family base");
-  await expect(page.getByRole("heading", { name: 'Delete the world "Family base"?' })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText('Delete the world "Family base"?');
+  await expect(page.getByRole("heading")).toHaveCount(1);
   await expect(page.getByLabel(/Take a final snapshot first/)).toBeChecked();
   await expect(page.getByRole("button", { name: "Delete world" })).toHaveClass(/button--danger/);
   await expect(page.getByRole("link", { name: "Cancel, keep the world" })).toHaveAttribute("href", "/worlds/family-base");
@@ -81,7 +81,7 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await checkPage(page);
   await done.getByRole("link", { name: "Go to Deleted worlds" }).click();
   await expect(page).toHaveURL("/deleted");
-  await expect(page.getByRole("link", { name: "Back to worlds" })).toHaveAttribute("href", "/worlds");
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Before delete");
@@ -97,7 +97,8 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   // A deleted world is recreated; no "Before restore" snapshot is promised.
   await expect(page.getByText(/Foreman will recreate this world from the snapshot/)).toBeVisible();
   await expect(page.locator(".confirm")).not.toContainText("Before restore");
-  await expect(page.getByRole("link", { name: "Back to worlds" })).toHaveAttribute("href", "/worlds");
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Cancel, keep the world as it is" })).toBeVisible();
   await checkPage(page);
   await page.getByRole("button", { name: "Restore snapshot" }).click();
 

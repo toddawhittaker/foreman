@@ -193,11 +193,14 @@ func TestPresetPrefillShowsWhatThePresetChanged(t *testing.T) {
 		t.Errorf("ribbon world height %s and starting area %s, want 128 and 300", ribbon.Height.Value, ribbon.StartingArea.Value)
 	}
 	island := NewMapGenFormForPreset("2.1", true, "island")
-	if !strings.Contains(island.Raw.Value, `"elevation": "elevation_island"`) {
-		t.Errorf("island's terrain type is not in the raw box:\n%s", island.Raw.Value)
+	if got := selectNamed(t, island, mgMapType).Value; got != "elevation_island" {
+		t.Errorf("island's map type = %s, want elevation_island", got)
 	}
-	if !strings.Contains(NewMapGenFormForPreset("1.1", false, "island").Raw.Value, `"elevation": "0_17-island"`) {
-		t.Error("1.1 island's terrain type is not in the raw box")
+	if strings.Contains(island.Raw.Value, `"elevation"`) || !strings.Contains(island.Raw.Value, `"aux": "aux_basic"`) {
+		t.Errorf("the raw box should hold island's other terrain keys but not the map type:\n%s", island.Raw.Value)
+	}
+	if got := selectNamed(t, NewMapGenFormForPreset("1.1", false, "island"), mgMapType).Value; got != "0_17-island" {
+		t.Errorf("1.1 island's map type = %s, want 0_17-island", got)
 	}
 	if death := NewMapGenFormForPreset("1.1", false, "death-world"); death.StartingArea.Value != "71" {
 		t.Errorf("death world starting area = %s, want 71", death.StartingArea.Value)

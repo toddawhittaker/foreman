@@ -203,6 +203,12 @@ func TestUntouchedFormMatchesTheGamesExample(t *testing.T) {
 				}
 				continue
 			}
+			if keys, ok := mapgen.TerrainKeysOf(c.line); ok && k == "property_expression_names" {
+				// A bias of 0 is left out, as the game's own generator writes it.
+				ex := wv.(map[string]any)
+				delete(ex, keys.MoistureBias)
+				delete(ex, keys.AuxBias)
+			}
 			wj, _ := json.Marshal(wv)
 			gj, _ := json.Marshal(gv)
 			if !bytes.Equal(wj, gj) {
@@ -477,7 +483,7 @@ func TestFormWinsOverRawBox(t *testing.T) {
     "coal": {"size": 4, "note": 1},
     "modded-ore": {"frequency": 2, "size": 3, "richness": 4}
   },
-  "property_expression_names": {"elevation": "elevation_island"},
+  "property_expression_names": {"elevation": "elevation_island", "aux": "aux_basic"},
   "default_enable_all_autoplace_controls": false
 }`},
 	})
@@ -490,8 +496,12 @@ func TestFormWinsOverRawBox(t *testing.T) {
 	approx(t, "coal size", sub(t, ac, "coal")["size"], 2)
 	approx(t, "kept raw sub-key", sub(t, ac, "coal")["note"], 1)
 	approx(t, "mod control", sub(t, ac, "modded-ore")["richness"], 4)
-	if sub(t, m, "property_expression_names")["elevation"] != "elevation_island" {
+	pen := sub(t, m, "property_expression_names")
+	if pen["aux"] != "aux_basic" {
 		t.Error("the raw box's own key was dropped")
+	}
+	if _, ok := pen["elevation"]; ok {
+		t.Errorf("the raw box's map type beat the form's default: %v", pen["elevation"])
 	}
 	if m["default_enable_all_autoplace_controls"] != false {
 		t.Error("an uncovered raw key was dropped")

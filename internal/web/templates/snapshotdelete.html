@@ -2,15 +2,14 @@
 
 {{define "content" -}}
 {{with .Page}}
-<div class="actions"><a href="{{.BackPath}}">{{t "worlds.snapshots.delete.back"}}</a></div>
-<h1>{{t "worlds.snapshots.delete.title" "world" .WorldName}}</h1>
+{{- /* The span keeps the time inside the sentence: main h1 is a flex row. */}}
+<h1 id="confirm-heading" tabindex="-1"><span>{{tHTML "worlds.snapshots.delete.question" "label" (snapLabel .Snapshot) "world" .WorldName "when" (momentUTCSeconds .Snapshot.TakenAt)}}</span></h1>
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}
 <section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">{{tHTML "worlds.snapshots.delete.question" "label" (snapLabel .Snapshot) "world" .WorldName "when" (momentUTCSeconds .Snapshot.TakenAt)}}</h2>
   {{- with .Rollback}}
   <div class="message message--warning">
     <p><strong>{{t "common.label.warning"}}</strong> {{t "worlds.snapshots.delete.rollback" "world" $.Page.WorldName "version" .}}</p>

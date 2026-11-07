@@ -19,62 +19,74 @@
         {
           "name": "iron-ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "copper-ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "stone",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "coal",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "crude-oil",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "uranium-ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "water",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         },
         {
           "name": "trees",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         },
         {
           "name": "rocks",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         },
         {
           "name": "enemy-base",
           "category": "enemy",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": false
         },
         {
           "name": "nauvis_cliff",
           "category": "cliff",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         },
         {
           "name": "starting_area_moisture",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         }
       ]
     },
@@ -85,27 +97,32 @@
         {
           "name": "vulcanus_coal",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "calcite",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "sulfuric_acid_geyser",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "tungsten_ore",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "vulcanus_volcanism",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": false
         }
       ]
     },
@@ -116,27 +133,32 @@
         {
           "name": "gleba_stone",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "gleba_cliff",
           "category": "cliff",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         },
         {
           "name": "gleba_water",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": false
         },
         {
           "name": "gleba_plants",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": false
         },
         {
           "name": "gleba_enemy_base",
           "category": "enemy",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": false
         }
       ]
     },
@@ -147,17 +169,20 @@
         {
           "name": "fulgora_cliff",
           "category": "cliff",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": true
         },
         {
           "name": "fulgora_islands",
           "category": "terrain",
-          "richness": false
+          "richness": false,
+          "can_be_disabled": false
         },
         {
           "name": "scrap",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         }
       ]
     },
@@ -168,19 +193,27 @@
         {
           "name": "aquilo_crude_oil",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "lithium_brine",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         },
         {
           "name": "fluorine_vent",
           "category": "resource",
-          "richness": true
+          "richness": true,
+          "can_be_disabled": true
         }
       ]
     }
+  ],
+  "map_types": [
+    "elevation",
+    "elevation_lakes",
+    "elevation_island"
   ]
 }

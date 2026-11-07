@@ -38,6 +38,14 @@ const (
 	mgNoEnemies = "mg.no_enemies"
 	mgRaw       = "mg.raw"
 	mgPrefix    = "mg."
+	// Nauvis's map type, and the moisture and terrain type scales.
+	mgMapType       = "mg.map_type"
+	mgMoistureScale = "mg.moisture.scale"
+	mgAuxScale      = "mg.aux.scale"
+	mgMoistureBias  = "mg.moisture.bias"
+	mgAuxBias       = "mg.aux.bias"
+	// mgOn ends the name of a resource's on/off box.
+	mgOn = "on"
 )
 
 // IDs of the fixed fields, for the error summary's links.
@@ -72,7 +80,7 @@ var mgSteps = []mgStep{
 // world's water coverage, ribbon world's cliff continuity). A select shows one
 // only when it holds it, so opening the form never changes a preset's values
 // (DESIGN 8.7).
-var mgExtraSteps = []mgStep{{"75", 0.75}, {"150", 1.5}}
+var mgExtraSteps = []mgStep{{"75", 0.75}, {"150", 1.5}, {"133", 4.0 / 3}}
 
 const mgNone = "0"
 
@@ -170,6 +178,10 @@ type MapGenSelect struct {
 	// Ach is the achievement line in step codes; Blocked says the value crosses it.
 	Ach     *AchWarn
 	Blocked bool
+	// Plain is a select of names, not steps, so it never becomes a slider.
+	Plain bool
+	// def is the value a bad post falls back to; "" means mgDefaultStep.
+	def string
 	// stored is the value's path in map-gen-settings.json and whether the
 	// field shows its inverse; "" for 1.1's water and cliffs.
 	path   string
@@ -198,8 +210,12 @@ type MapGenCheck struct {
 }
 
 // MapGenGroup is the settings of one autoplace control, under its name.
+// A control the game lets you switch off has Toggle: its box sits in the
+// legend, so it stays usable while the script disables the rest.
 type MapGenGroup struct {
+	ID      string
 	Legend  i18n.Msg
+	Toggle  *MapGenCheck
 	Selects []MapGenSelect
 }
 
@@ -257,6 +273,19 @@ func (f *MapGenForm) selects() []*MapGenSelect {
 	return append(out, &f.StartingArea)
 }
 
+// toggles lists every resource's on/off box, in page order.
+func (f *MapGenForm) toggles() []*MapGenCheck {
+	var out []*MapGenCheck
+	for pi := range f.Resources {
+		for gi := range f.Resources[pi].Groups {
+			if t := f.Resources[pi].Groups[gi].Toggle; t != nil {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
+}
+
 // TabOf names the tab that holds a field id, or "".
 func (f MapGenForm) TabOf(id string) string {
 	in := func(planets []MapGenPlanet) bool {
@@ -292,6 +321,11 @@ func (f MapGenForm) Modified() bool {
 			return true
 		}
 	}
+	for _, t := range f.toggles() {
+		if t.Checked != t.Preset {
+			return true
+		}
+	}
 	return f.RawModified || f.Peaceful.Checked != f.Peaceful.Preset || f.NoEnemies.Checked != f.NoEnemies.Preset ||
 		!sameShown(f.Width.Value, f.Width.Preset) || !sameShown(f.Height.Value, f.Height.Preset)
 }
@@ -304,6 +338,13 @@ func (f *MapGenForm) withPreset(p MapGenForm) {
 	}
 	for _, s := range f.selects() {
 		s.Preset = codes[s.Name]
+	}
+	on := map[string]bool{}
+	for _, t := range p.toggles() {
+		on[t.Name] = t.Checked
+	}
+	for _, t := range f.toggles() {
+		t.Preset = on[t.Name]
 	}
 	f.Width.Preset, f.Height.Preset = p.Width.Value, p.Height.Value
 	f.Peaceful.Preset, f.NoEnemies.Preset = p.Peaceful.Checked, p.NoEnemies.Checked
@@ -413,6 +454,8 @@ type mgControl struct {
 	// topLevel is a 1.1 setting that the game stores outside
 	// autoplace_controls: water and cliffs.
 	topLevel bool
+	// toggle is a resource the game lets you switch off; off is size 0.
+	toggle bool
 }
 
 type mgPlanet struct {
@@ -479,7 +522,8 @@ func terrainSettings(richness bool) []mgSetting {
 }
 
 func controlFor(c mapgen.Control) mgControl {
-	mc := mgControl{name: c.Name, legend: controlMsg(c.Name), category: c.Category}
+	mc := mgControl{name: c.Name, legend: controlMsg(c.Name), category: c.Category,
+		toggle: c.Category == mapgen.CategoryResource && c.CanBeDisabled}
 	switch c.Category {
 	case mapgen.CategoryTerrain:
 		mc.settings = terrainSettings(c.Richness)
@@ -509,10 +553,14 @@ func fieldID(planet, control, setting string) string {
 // another "mg." name is told apart from one meant for another line or for
 // a world without Space Age.
 var knownFieldNames = func() map[string]bool {
-	known := map[string]bool{mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgNoEnemies: true, mgRaw: true}
+	known := map[string]bool{mgWidth: true, mgHeight: true, mgStart: true, mgPeaceful: true, mgNoEnemies: true, mgRaw: true,
+		mgMapType: true, mgMoistureScale: true, mgAuxScale: true, mgMoistureBias: true, mgAuxBias: true}
 	for _, line := range mapgen.Lines {
 		for _, p := range mgPlanets(line, true) {
 			for _, c := range p.controls {
+				if c.toggle {
+					known[fieldName(p.name, c.name, mgOn)] = true
+				}
 				for _, s := range c.settings {
 					known[fieldName(p.name, c.name, s.key)] = true
 				}
@@ -556,8 +604,15 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 		summary := planetMsg(p.name)
 		res := MapGenPlanet{ID: "mg-resources-" + p.name, Summary: summary, Open: len(f.Resources) == 0}
 		ter := MapGenPlanet{ID: "mg-terrain-" + p.name, Summary: summary, Open: len(f.Terrain) == 0}
+		if p.name == "nauvis" {
+			ter.Groups = append(ter.Groups, mapTypeGroup(line, posted))
+		}
 		for _, c := range p.controls {
-			g := MapGenGroup{Legend: c.legend}
+			g := MapGenGroup{ID: "mg-" + p.name + "-" + c.name, Legend: c.legend}
+			if c.toggle {
+				g.Toggle = &MapGenCheck{ID: fieldID(p.name, c.name, mgOn), Name: fieldName(p.name, c.name, mgOn),
+					Label: c.legend, Checked: true, Preset: true}
+			}
 			for _, s := range c.settings {
 				name := fieldName(p.name, c.name, s.key)
 				sel := MapGenSelect{ID: fieldID(p.name, c.name, s.key), Name: name, Label: s.label,
@@ -565,7 +620,8 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 				if !c.topLevel {
 					sel.path = "autoplace_controls." + c.name + "." + s.key
 				}
-				if s.none {
+				// A resource's box stands in for its size's "None", as in the game.
+				if s.none && (!c.toggle || s.key != "size") {
 					sel.Options = optionsWithNone
 				}
 				if v, ok := posted(name); ok {
@@ -582,6 +638,11 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 			default:
 				res.Groups = append(res.Groups, g)
 			}
+		}
+		if _, ok := mapgen.TerrainKeysOf(line); ok && p.name == "nauvis" {
+			ter.Groups = append(ter.Groups,
+				terrainGroup("moisture", i18n.M("mapgen.moisture.legend"), posted),
+				terrainGroup("aux", i18n.M("mapgen.aux.legend"), posted))
 		}
 		if len(res.Groups) > 0 {
 			f.Resources = append(f.Resources, res)
@@ -616,6 +677,13 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 	form.Peaceful.Checked = vals.Get(mgPeaceful) != ""
 	if form.NoEnemies.Name != "" {
 		form.NoEnemies.Checked = vals.Get(mgNoEnemies) != ""
+	}
+	// Each box comes after a hidden "off" of the same name, so an unticked
+	// box posts "off" alone. A post without the name leaves the resource on.
+	for _, t := range form.toggles() {
+		if vs, ok := vals[t.Name]; ok {
+			t.Checked = slices.Contains(vs, "on")
+		}
 	}
 	if v, ok := posted(mgSeed); ok {
 		form.Seed.Value = strings.TrimSpace(v)
@@ -656,6 +724,9 @@ func parseMapGenValues(vals url.Values, line string, spaceAge bool) (form MapGen
 		}
 		// The bad value is not echoed or kept.
 		s.Value = mgDefaultStep
+		if s.def != "" {
+			s.Value = s.def
+		}
 		s.Error = i18n.M("mapgen.err.step", "field", field)
 		fail(s.ID, s.Error)
 		return false
@@ -822,10 +893,24 @@ func rawPrefill(line string) string {
 				kept = append(kept, im)
 			}
 			m.val = writeMembers(kept)
+		case m.key == "property_expression_names":
+			m.val = withoutCoveredPen(line, m.val)
 		}
 		keep = append(keep, m)
 	}
 	return string(indent(writeMembers(keep))) + "\n"
+}
+
+// resourceOn reports whether a resource's on/off box is ticked; a control
+// with no box is always on.
+func (f MapGenForm) resourceOn(planet, control string) bool {
+	name := fieldName(planet, control, mgOn)
+	for _, t := range f.toggles() {
+		if t.Name == name {
+			return t.Checked
+		}
+	}
+	return true
 }
 
 // num writes a multiplier without float noise.
@@ -940,6 +1025,10 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 				for _, s := range c.settings {
 					entry[s.key] = num(stored(p.name, c, s))
 				}
+				if c.toggle && !f.resourceOn(p.name, c.name) {
+					// The game's own off value; frequency 0 crashes 2.1.
+					entry["size"] = num(0)
+				}
 				known[c.name] = true
 				controlOrder = append(controlOrder, jsonMember{c.name, writeMembers(withPreferred(entry, "frequency", "size", "richness"))})
 			}
@@ -983,9 +1072,15 @@ func buildMapGen(f MapGenForm, rawB []byte) ([]byte, bool) {
 		add("cliff_settings", v)
 	}
 
+	pen, ok := buildPen(f, raw["property_expression_names"], chosen)
+	if !ok {
+		return nil, false
+	}
+	add("property_expression_names", pen)
+
 	rest := map[string]json.RawMessage{}
 	for k, v := range raw {
-		if !rawCovered(f.line, k) && k != "autoplace_controls" && k != "cliff_settings" {
+		if !rawCovered(f.line, k) && k != "autoplace_controls" && k != "cliff_settings" && k != "property_expression_names" {
 			rest[k] = v
 		}
 	}

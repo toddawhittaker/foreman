@@ -23,7 +23,7 @@ async function setUp(page: Page, f: Foreman, g: FakeGame, second: Parameters<typ
 async function openSwitch(page: Page) {
   await page.goto("/worlds/second");
   await page.getByRole("link", { name: "Switch to this world" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Second");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Base to Second?");
 }
 
 test.describe("with the fake game", () => {
