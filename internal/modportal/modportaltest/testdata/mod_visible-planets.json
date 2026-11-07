@@ -1,0 +1,184 @@
+{
+ "category": "tweaks",
+ "created_at": "2024-11-30T02:42:59.437000Z",
+ "downloads_count": 155092,
+ "name": "visible-planets",
+ "owner": "Nauviax",
+ "releases": [
+  {
+   "download_url": "/download/visible-planets/674c1e8a6e4e2d7dbe63024d",
+   "file_name": "visible-planets_1.0.10.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0",
+     "?naufulglebunusilo",
+     "?tenebris",
+     "?terrapalus",
+     "?real-starry-universe",
+     "?maraxsis"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2024-12-01T08:30:02.583000Z",
+   "sha1": "dc81cd5dc9c45e1d8b38b257695827165dda82aa",
+   "version": "1.0.10"
+  },
+  {
+   "download_url": "/download/visible-planets/674e4fcf442046c1de083378",
+   "file_name": "visible-planets_1.1.3.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2024-12-03T00:24:47.245000Z",
+   "sha1": "82aa1330af247354d3036f172e4b78a8d09fb23a",
+   "version": "1.1.3"
+  },
+  {
+   "download_url": "/download/visible-planets/6782dcfc95f9d2a303fbf199",
+   "file_name": "visible-planets_1.2.16.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2025-01-11T21:05:00.184000Z",
+   "sha1": "e5c2f260d0d4cfe12718cd7cbe1aaf7a42a6909d",
+   "version": "1.2.16"
+  },
+  {
+   "download_url": "/download/visible-planets/679ada60c053296b8c1fcd2e",
+   "file_name": "visible-planets_1.3.1.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0",
+     "?PlanetsLib >= 1.1.27"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2025-01-30T01:48:16.585000Z",
+   "sha1": "8fd7066d6e8322a6389126a5259aeb3133e6d7e9",
+   "version": "1.3.1"
+  },
+  {
+   "download_url": "/download/visible-planets/67fe27c3a2c3e278f9bfa0af",
+   "feature_flags": [
+    "space-travel"
+   ],
+   "file_name": "visible-planets_1.4.8.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0",
+     "?PlanetsLib >= 1.1.27"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2025-04-15T09:32:51.244000Z",
+   "sha1": "44138a8e5dcb3a6ff4567425dd1f59a549c33eb9",
+   "version": "1.4.8"
+  },
+  {
+   "download_url": "/download/visible-planets/692139632940e87c8a47220c",
+   "feature_flags": [
+    "space-travel"
+   ],
+   "file_name": "visible-planets_1.5.8.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0",
+     "?PlanetsLib >= 1.1.27"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2025-11-22T04:17:39.296000Z",
+   "sha1": "1f720a502dbcee2ff4678e1fd939b8038cf9de0a",
+   "version": "1.5.8"
+  },
+  {
+   "download_url": "/download/visible-planets/69234e91be9a8b404fadde3e",
+   "feature_flags": [
+    "space-travel"
+   ],
+   "file_name": "visible-planets_1.6.1.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0",
+     "?PlanetsLib >= 1.1.27"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2025-11-23T18:12:33.636000Z",
+   "sha1": "a50d911b4d7580152881636c2ba3b7a20edd83a1",
+   "version": "1.6.1"
+  },
+  {
+   "download_url": "/download/visible-planets/69e34f807f899521acf22f9d",
+   "feature_flags": [
+    "space-travel"
+   ],
+   "file_name": "visible-planets_1.7.2.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.0",
+     "space-age >= 2.0",
+     "?PlanetsLib >= 1.1.27"
+    ],
+    "factorio_version": "2.0"
+   },
+   "released_at": "2026-04-18T09:31:44.554000Z",
+   "sha1": "28675850f6c5ff96d55093b42e2798f245e4f03b",
+   "version": "1.7.2"
+  },
+  {
+   "download_url": "/download/visible-planets/6a3e07658da3c2b5fa84aa11",
+   "feature_flags": [
+    "space-travel"
+   ],
+   "file_name": "visible-planets_1.8.0.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.1",
+     "space-age >= 2.1",
+     "?PlanetsLib >= 1.19.0"
+    ],
+    "factorio_version": "2.1"
+   },
+   "released_at": "2026-06-26T05:00:21.039000Z",
+   "sha1": "43827ef0135141bb021af086dc1b1abf363c0bb4",
+   "version": "1.8.0"
+  },
+  {
+   "download_url": "/download/visible-planets/6a3faa7df92afce66cc72aed",
+   "feature_flags": [
+    "space-travel"
+   ],
+   "file_name": "visible-planets_1.8.2.zip",
+   "info_json": {
+    "dependencies": [
+     "base >= 2.1",
+     "space-age >= 2.1",
+     "?PlanetsLib >= 1.19.0"
+    ],
+    "factorio_version": "2.1"
+   },
+   "released_at": "2026-06-27T10:48:29.565000Z",
+   "sha1": "a519a4075e252eae84059e07edb20313bd34b3fa",
+   "version": "1.8.2"
+  }
+ ],
+ "requires_space_age": true,
+ "score": -77.99999999999989,
+ "summary": "Render the local planet behind platforms when in orbit.",
+ "title": "Visible Planets in Space",
+ "updated_at": "2026-06-27T10:48:29.568000Z"
+}
