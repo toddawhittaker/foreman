@@ -169,9 +169,13 @@ type MapSettingsField struct {
 	Preset  string
 	// Choices is set for a select; Value is then the chosen option's value.
 	Choices []MapSettingsChoice
-	Error   i18n.Msg
-	Ach     *AchWarn
-	Blocked bool
+	// Min and Max are the limits of a number field. A maximum that must
+	// follow a minimum also names it (MinField, an element id) and how far
+	// apart they stay (Gap, "1" or "0"), for the script to move the other one.
+	Min, Max, MinField, Gap string
+	Error                   i18n.Msg
+	Ach                     *AchWarn
+	Blocked                 bool
 }
 
 // MapSettingsGroup is one fieldset.
@@ -336,6 +340,15 @@ func readMapSettings(version, preset string, posted url.Values) (form MapSetting
 				}
 			} else {
 				n, _ := pv.(float64)
+				fl.Min, fl.Max = shown(d.lo, 1), shown(d.hi, 1)
+				for _, o := range msOrders {
+					if _, has := base[o.min]; has && o.max == d.path {
+						fl.MinField, fl.Gap = msFieldID(o.min), "0"
+						if o.strict {
+							fl.Gap = "1"
+						}
+					}
+				}
 				fl.Preset = presetShown(n, d)
 				fl.Value = fl.Preset
 				// A field the post lacks, as when the line changed under the page, keeps the preset's value.

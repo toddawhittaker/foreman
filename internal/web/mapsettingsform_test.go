@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -322,6 +323,50 @@ func TestGroupSizeBounds(t *testing.T) {
 		fl, _ := choiceField(form, max)
 		if len(problems) != 1 || problems[0].FieldID != fl.ID || fl.Error.Args["other"] == nil {
 			t.Errorf("%s: maximum 8 below minimum 9: %v", version, problems)
+		}
+	}
+}
+
+// The page tells the script each field's limits, and for a maximum which
+// field is its minimum and how far apart they must stay, so the script can move
+// the other field as the game does.
+func TestLimitAttributesInTheForm(t *testing.T) {
+	hn := newGenerateHarness(t, nil)
+	c := hn.signIn()
+	hn.withActive("2.1.24")
+	tag := func(version, id string) string {
+		line, _ := mapgen.Line(version)
+		body := hn.postLong(PathGenerateRefresh, generateForm("game_version_typed", version, "map_key", line+"|1", "preset", "default", "filled_from", "none"), c).Body.String()
+		m := regexp.MustCompile(`<input id="` + id + `"[^>]*>`).FindString(body)
+		if m == "" {
+			t.Fatalf("%s: no input %s", version, id)
+		}
+		return m
+	}
+	const x = "ms-enemy-expansion-"
+	for _, tc := range []struct {
+		version, id string
+		want        []string
+		absent      []string
+	}{
+		{"2.1.24", x + "max-expansion-distance", []string{`min="2"`, `max="20"`, `data-min-field="` + x + `min-expansion-distance"`, `data-gap="1"`}, nil},
+		{"2.1.24", x + "min-expansion-distance", []string{`min="1"`, `max="20"`}, []string{"data-min-field", "data-gap"}},
+		{"2.1.24", x + "max-expansion-cooldown", []string{`min="5"`, `max="180"`, `data-min-field="` + x + `min-expansion-cooldown"`, `data-gap="0"`}, nil},
+		{"2.1.24", "ms-enemy-evolution-time-factor", []string{`min="0"`, `max="1000"`}, []string{"data-min-field"}},
+		{"1.1.110", x + "settler-group-max-size", []string{`min="1"`, `max="40"`, `data-min-field="` + x + `settler-group-min-size"`, `data-gap="0"`}, nil},
+		// 1.1 has no minimum distance, so the maximum has nothing to follow.
+		{"1.1.110", x + "max-expansion-distance", []string{`max="20"`}, []string{"data-min-field"}},
+	} {
+		got := tag(tc.version, tc.id)
+		for _, w := range tc.want {
+			if !strings.Contains(got, w) {
+				t.Errorf("%s %s: lacks %s in %s", tc.version, tc.id, w, got)
+			}
+		}
+		for _, a := range tc.absent {
+			if strings.Contains(got, a) {
+				t.Errorf("%s %s: has %s in %s", tc.version, tc.id, a, got)
+			}
 		}
 	}
 }
