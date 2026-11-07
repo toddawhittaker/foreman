@@ -13,6 +13,9 @@
 {{- if not .Done.IsZero}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+  {{- with .ImportSync}}
+  <div class="actions"><a href="{{.}}" class="button" id="act-import-sync">{{t "mods.sync.import"}}</a></div>
+  {{- end}}
 </div>
 {{- end}}
 {{- if not .Warning.IsZero}}

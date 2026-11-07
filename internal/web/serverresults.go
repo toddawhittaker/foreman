@@ -111,6 +111,8 @@ func otherError(action string, why i18n.Msg) i18n.Msg {
 		return i18n.M("server.other.rollback", "why", why)
 	case actionSnapshot:
 		return i18n.M("server.other.snapshot", "why", why)
+	case game.AuditMods:
+		return i18n.M("server.other.mods", "why", why)
 	}
 	return i18n.M("server.other.action", "why", why)
 }
@@ -129,6 +131,8 @@ func cancelledMsg(action string) (msg, short i18n.Msg) {
 		return i18n.M("server.cancelled.update"), i18n.M("server.cancelled.update_short")
 	case game.AuditRollback:
 		return i18n.M("server.cancelled.rollback"), i18n.M("server.cancelled.rollback_short")
+	case game.AuditMods:
+		return i18n.M("server.cancelled.mods"), i18n.M("server.cancelled.mods_short")
 	case game.AuditSwitch:
 		return i18n.Msg{}, i18n.M("server.cancelled.switch_short")
 	}
@@ -175,6 +179,8 @@ func (p ServerPage) Done() i18n.Msg {
 			"label", i18n.M("worlds.snapshot.label.before_switch"))
 	case actionSnapshot:
 		return i18n.M("server.done.snapshot", "label", p.Result.Taken, "world", p.World.Name)
+	case game.AuditMods:
+		return i18n.M("mods.done", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_mods"))
 	}
 	return i18n.Msg{}
 }
@@ -197,6 +203,10 @@ func (p ServerPage) Undo() *Offer {
 		if p.Result.Undo != "" {
 			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: i18n.M("server.undo.rollback")}
 		}
+	case game.AuditMods:
+		if p.Result.Undo != "" {
+			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: i18n.M("mods.undo")}
+		}
 	case game.AuditUpdate:
 		if r := p.Rollback; r != nil {
 			return &Offer{Path: r.Path, Label: i18n.M("server.undo.update", "version", r.Version)}
@@ -218,6 +228,7 @@ var doneAnnouncement = map[string]i18n.Msg{
 	game.AuditUpdate:   i18n.M("server.done.update_short"),
 	game.AuditRollback: i18n.M("server.done.rollback_short"),
 	actionSnapshot:     i18n.M("server.done.snapshot_short"),
+	game.AuditMods:     i18n.M("server.done.mods_short"),
 }
 
 // labelled puts a message's leading word, such as "Error:", before it.

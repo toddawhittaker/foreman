@@ -56,6 +56,9 @@ type ServerPage struct {
 	// FocusResult is true when this load follows the admin's own cancel stop
 	// or snapshot, so the Done message takes focus and is read out.
 	FocusResult bool
+	// ModsNotice says the page loads its line about mods players cannot get
+	// (#131), which needs the mod portal.
+	ModsNotice bool
 }
 
 // navPage marks a nav item as the page itself rather than a page inside its
@@ -402,6 +405,8 @@ func (p ServerPage) OperationHeading() i18n.Msg {
 		return choose(failed, i18n.M("server.op.update_failed"), i18n.M("server.op.update"))
 	case game.AuditRollback:
 		return choose(failed, i18n.M("server.op.rollback_failed"), i18n.M("server.op.rollback"))
+	case game.AuditMods:
+		return choose(failed, i18n.M("server.op.mods_failed"), i18n.M("server.op.mods"))
 	case game.AuditSwitch:
 		if sw := o.Switch; sw != nil {
 			from, to := p.name(sw.From), p.name(sw.To)
@@ -525,6 +530,12 @@ type Failure struct {
 	// Undo names the "Before restore" snapshot a failed restore took, and
 	// UndoPath is where restoring it is confirmed.
 	Undo, UndoPath string
+	// UndoLabel names the snapshot Undo restores when it is not a "Before
+	// restore" one.
+	UndoLabel i18n.Msg
+	// Sync offers to match the world's mods to its save when the pre-start
+	// check found mods missing or off (SPEC 9.8, 17.9).
+	Sync *Offer
 	// Next is a link that follows the message, or nil.
 	Next *Offer
 	// In says which step list holds the message: "operation", "download",
@@ -566,6 +577,9 @@ func (p ServerPage) Failure() *Failure {
 	if f.Undo != "" {
 		f.UndoPath = restorePath(p.World.ID, f.Undo)
 	}
+	if p.Result.Action == game.AuditMods {
+		f.UndoLabel = i18n.M("worlds.snapshot.label.before_mods")
+	}
 	if p.Crashed() && p.CrashLeads() {
 		f.Earlier = p.Result.At
 	}
@@ -589,6 +603,13 @@ func (p ServerPage) Failure() *Failure {
 		if pe.Check.CanStartAnyway() {
 			f.Anyway = p.anyway(pe.Check)
 		}
+		id := p.World.ID
+		if switching && p.Result.Target != "" {
+			id = p.Result.Target
+		}
+		f.Sync = syncOffer(pe.Check, id)
+	case errors.Is(err, world.ErrModsChanged):
+		f.Message, f.Next = failureText(err), &Offer{Path: modsPath(p.World.ID), Label: i18n.M("mods.changed.next")}
 	case errors.As(err, &de):
 		if !de.NotFound {
 			f.Message = downloadFailure(de, p.Result.Action == game.AuditSwitch)

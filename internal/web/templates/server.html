@@ -31,6 +31,10 @@
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
 <div class="links" sse-swap="active">{{template "server-active" .}}</div>
+{{- /* Asks the mod portal after the page has opened, so it never slows the page; at the end, so nothing above it moves (plan ruling 2). */}}
+{{- with .ModNoticePath}}
+<div id="mods-notice" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML"></div>
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
@@ -52,6 +56,7 @@
      where each world has its Switch button (SPEC 17.7, 17.10). */}}
 {{define "server-active" -}}
 <a href="{{.ActivePath}}" id="act-world">{{t "server.links.world"}}</a>
+<a href="{{.ActiveModsPath}}" id="act-mods">{{t "mods.tab"}}</a>
 <a href="{{.ActiveSettingsPath}}" id="act-settings">{{t "settings.link"}}</a>
 <a href="{{worldsPath}}" id="act-switch-world">{{t "server.links.switch"}}</a>
 {{- end}}
@@ -251,5 +256,16 @@
 {{- end}}
 {{- if not .ActionsNote.IsZero}}
 <p>{{msg .ActionsNote}}</p>
+{{- end}}
+{{- end}}
+
+{{/* One line about mods players can no longer download, with its fix
+     (#131). Empty when there are none or the portal cannot be asked.
+     Takes ModNotice. */}}
+{{define "mods-notice" -}}
+{{- if .Errors}}
+<div class="message message--warning">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.notice" "count" .Errors "world" .World.Name}} <a href="{{.FixPath}}" id="act-mods-fix">{{t "mods.notice.fix"}}</a></p>
+</div>
 {{- end}}
 {{- end}}

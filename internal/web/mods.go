@@ -1,0 +1,1285 @@
+package web
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/url"
+	"os"
+	"reflect"
+	"slices"
+	"strconv"
+	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/factorioaccount"
+	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/savefile"
+	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/world"
+)
+
+// A world's mods pages (SPEC 9).
+const (
+	PathWorldMods = "/worlds/{id}/mods"
+	PathModStatus = "/worlds/{id}/mods/status"
+	PathModNotice = "/worlds/{id}/mods/notice"
+	PathModSearch = "/worlds/{id}/mods/search"
+	PathModPlan   = "/worlds/{id}/mods/plan"
+)
+
+// ModPortal is what the mods pages ask the mod portal; *modportal.Client
+// has it.
+type ModPortal interface {
+	mods.Portal
+	Search(ctx context.Context, line, query string) ([]modportal.Hit, error)
+	Download(ctx context.Context, username, token string, r modportal.Release, dst *os.File) error
+}
+
+// accountFetcher downloads with the factorio.com account the service holds
+// now, so a newly entered account works without a restart (SPEC 9.11).
+type accountFetcher struct {
+	account *factorioaccount.Service
+	portal  ModPortal
+}
+
+func (f accountFetcher) Download(ctx context.Context, r modportal.Release, dst *os.File) error {
+	acct, src, _, err := f.account.Get(ctx)
+	if err != nil {
+		return err
+	}
+	if src != factorioaccount.Env && src != factorioaccount.Stored {
+		return game.ErrNoModFetcher
+	}
+	return f.portal.Download(ctx, acct.Username.Reveal(), acct.Token.Reveal(), r, dst)
+}
+
+func modsPath(id string) string { return worldPath(id) + "/mods" }
+
+// planPath is the plan page for a request given as query values.
+func planPath(id string, q url.Values) string {
+	return modsPath(id) + "/plan?" + q.Encode()
+}
+
+func kindPlanPath(id string, kind mods.Kind, names ...string) string {
+	q := url.Values{"kind": {string(kind)}}
+	if len(names) > 0 {
+		q["name"] = names
+	}
+	return planPath(id, q)
+}
+
+// syncPath is the plan that matches a world's mods to the save that loads
+// (SPEC 9.8, 7.11).
+func syncPath(id string) string { return kindPlanPath(id, mods.KindSync) }
+
+// gameLine is a game version's major.minor line, as the portal names it.
+func gameLine(version string) string {
+	parts := strings.SplitN(version, ".", 3)
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[0] + "." + parts[1]
+}
+
+func (s *server) modRoutes() {
+	s.mux.HandleFunc("GET "+PathWorldMods, s.requireUser(s.handleMods))
+	s.mux.HandleFunc("GET "+PathModStatus, s.requireUser(s.handleModStatus))
+	s.mux.HandleFunc("GET "+PathModNotice, s.requireUser(s.handleModNotice))
+	s.mux.HandleFunc("GET "+PathModSearch, s.requireUser(s.handleModSearch))
+	s.mux.HandleFunc("GET "+PathModPlan, s.requireUser(s.handlePlanForm))
+	s.mux.HandleFunc("POST "+PathModPlan, s.requireUser(s.handlePlan))
+	s.modFileRoutes()
+}
+
+// modsWorld finds the world in the path when Foreman can change its mods,
+// or answers the request itself.
+func (s *server) modsWorld(w http.ResponseWriter, r *http.Request, u store.User) (world.Summary, bool) {
+	if s.game == nil || s.planner == nil {
+		s.notFound(w, r, u)
+		return world.Summary{}, false
+	}
+	return s.findWorld(w, r, u)
+}
+
+// downloadsOn reports whether a factorio.com account is set, so mods can
+// be downloaded (SPEC 9.11). A database failure counts as no account.
+func (s *server) downloadsOn(ctx context.Context) bool {
+	_, src, _, err := s.account.Get(ctx)
+	if err != nil {
+		s.log.Error("read the factorio.com account", "error", err)
+		return false
+	}
+	return src == factorioaccount.Env || src == factorioaccount.Stored
+}
+
+// accountLink is the account page, returning to back after saving.
+func accountLink(back string) string {
+	return PathAccount + "?" + url.Values{"return": {back}}.Encode()
+}
+
+// loadingSave is the save the game loads next: the chosen one, else the
+// newest (SPEC 7.11); "" when the world has none.
+func (s *server) loadingSave(id string) (string, error) {
+	list, err := s.worlds.Saves(id)
+	if err != nil {
+		return "", err
+	}
+	if list.LoadSave != "" && slices.ContainsFunc(list.Saves, func(sv world.Save) bool { return sv.Name == list.LoadSave }) {
+		return list.LoadSave, nil
+	}
+	if len(list.Saves) == 0 {
+		return "", nil
+	}
+	return list.Saves[0].Name, nil
+}
+
+// ModsPage is a world's Mods tab (SPEC 9).
+type ModsPage struct {
+	World world.Summary
+	Mods  []world.InstalledMod
+	// NoAccount says mod downloads are off (SPEC 9.11).
+	NoAccount bool
+	// LoadSave is the save that loads, whose mods "Match" reads; "" for none.
+	LoadSave string
+	// HasSettings says the world has a mod-settings.dat to download.
+	HasSettings bool
+	Running     bool
+	CountdownForm
+	// Fingerprint is the mods folder the settings upload was offered for.
+	Fingerprint   string
+	UploadError   i18n.Msg
+	SettingsError i18n.Msg
+	// Busy, ServerLink and Working follow an action on the world, as the
+	// world page does; Done, Failure and Undo say how a mod change of a
+	// world that is not active ended (SPEC 17.9).
+	Busy       i18n.Msg
+	ServerLink bool
+	Working    bool
+	Done       i18n.Msg
+	Failure    *Failure
+	Undo       *Offer
+	// UploadLimit and SettingsLimit are the upload size limits.
+	UploadLimit, SettingsLimit uint64
+}
+
+func (ModsPage) templateName() string { return "mods" }
+func (ModsPage) navItem() string      { return PathWorlds }
+
+func (p ModsPage) hasErrors() bool { return len(p.Problems()) > 0 }
+
+// Problems lists the upload fields' errors.
+func (p ModsPage) Problems() []Problem {
+	return problems(Problem{"mod-file", p.UploadError}, Problem{"settings-file", p.SettingsError}, Problem{"countdown", p.CountdownError})
+}
+
+// Paths the tab links and posts to.
+func (p ModsPage) Path() string         { return modsPath(p.World.ID) }
+func (p ModsPage) StatusPath() string   { return modsPath(p.World.ID) + "/status" }
+func (p ModsPage) SearchPath() string   { return modsPath(p.World.ID) + "/search" }
+func (p ModsPage) SyncPath() string     { return syncPath(p.World.ID) }
+func (p ModsPage) UploadPath() string   { return modsPath(p.World.ID) + "/upload" }
+func (p ModsPage) SettingsPath() string { return modsPath(p.World.ID) + "/" + world.ModSettingsFile }
+func (p ModsPage) SavesPath() string    { return worldPath(p.World.ID) + "/saves" }
+func (p ModsPage) AccountPath() string  { return accountLink(p.Path()) }
+func (p ModsPage) Tabs() WorldTabs      { return worldTabs(p.World, "mods") }
+
+// RowPath is the plan page for one mod and one change.
+func (p ModsPage) RowPath(kind, name string) string {
+	return kindPlanPath(p.World.ID, mods.Kind(kind), name)
+}
+
+// UpdateSlot is the id of a row's place for its Update button, which the
+// portal status fills in later.
+func (ModsPage) UpdateSlot(name string) string { return updateSlot(name) }
+
+func updateSlot(name string) string {
+	sum := sha256.Sum256([]byte(name))
+	return "mod-update-" + hex.EncodeToString(sum[:6])
+}
+
+// Line is the world's game line, such as "2.0".
+func (p ModsPage) Line() string { return gameLine(p.World.GameVersion) }
+
+// SettingsFile is the mod settings file's name.
+func (ModsPage) SettingsFile() string { return world.ModSettingsFile }
+
+// BuiltInCount counts the built-in mods, which every world lists.
+func (p ModsPage) BuiltInCount() int {
+	n := 0
+	for _, m := range p.Mods {
+		if m.BuiltIn {
+			n++
+		}
+	}
+	return n
+}
+
+// Enabled counts the mods that are on.
+func (p ModsPage) Enabled() int {
+	n := 0
+	for _, m := range p.Mods {
+		if m.Enabled {
+			n++
+		}
+	}
+	return n
+}
+
+func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	p, err := s.modsPage(r.Context(), sum)
+	if err != nil {
+		s.notFoundOrFail(w, r, u, "list mods", err)
+		return
+	}
+	// Only the activity block polls; once the action ends the page reloads
+	// whole, so the list is current.
+	if r.Header.Get("HX-Request") != "" && !p.Working {
+		w.Header().Set("HX-Refresh", "true")
+	}
+	if followsOwnAction(r) {
+		s.modsOutcome(&p)
+	}
+	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// modsPage reads the world's mods and what the tab offers.
+func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, error) {
+	p := ModsPage{World: sum, CountdownForm: defaultCountdown(), UploadLimit: MaxModUpload, SettingsLimit: MaxSettingsUpload}
+	if sum.Newer || sum.Unreadable {
+		return p, nil
+	}
+	list, err := s.worlds.Mods(sum.ID)
+	if err != nil {
+		return ModsPage{}, err
+	}
+	p.Mods = list
+	if p.Fingerprint, err = s.worlds.ModsFingerprint(sum.ID); err != nil {
+		return ModsPage{}, err
+	}
+	if p.LoadSave, err = s.loadingSave(sum.ID); err != nil {
+		return ModsPage{}, err
+	}
+	p.HasSettings = s.hasModSettings(sum.ID)
+	p.NoAccount = !s.downloadsOn(ctx)
+	op := s.game.Status(sum.ID).Operation
+	p.Running = game.IsRunning(s.game.Status(sum.ID).State)
+	p.Busy = busyText(op, s.worldName)
+	p.ServerLink = !p.Busy.IsZero() && (sum.Active || op.Switch != nil)
+	p.Working = !p.Busy.IsZero() || s.runs.inFlight(sum.ID)
+	return p, nil
+}
+
+// modsOutcome says how the last mod change of a world that is not active
+// ended; the Server page says it for the active world (SPEC 17.9).
+func (s *server) modsOutcome(p *ModsPage) {
+	if p.World.Active {
+		return
+	}
+	res, ok := s.runs.result(p.World.ID)
+	if !ok || res.Action != game.AuditMods {
+		return
+	}
+	if res.Undo != "" {
+		p.Undo = &Offer{Path: restorePath(p.World.ID, res.Undo), Label: i18n.M("mods.undo")}
+	}
+	if res.Err == nil {
+		p.Done = i18n.M("mods.done", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_mods"))
+		return
+	}
+	p.Failure = &Failure{Message: failureText(res.Err), Refused: game.IsRefusal(res.Err)}
+	if errors.Is(res.Err, world.ErrModsChanged) {
+		p.Failure.Next = &Offer{Path: p.Path(), Label: i18n.M("mods.changed.next")}
+	}
+}
+
+// ModStatus is what the portal says about a world's mods: updates (SPEC
+// 9.3) and mods players cannot get (#131). It loads after the tab.
+type ModStatus struct {
+	World       world.Summary
+	Unreachable bool
+	Updates     []mods.Update
+	Flags       []mods.Flag
+	Checked     int // portal mods asked about
+}
+
+func (ModStatus) templateName() string { return "mods" }
+
+// UpdateAllPath is the plan that updates every mod with an update.
+func (p ModStatus) UpdateAllPath() string { return kindPlanPath(p.World.ID, mods.KindUpdate) }
+func (p ModStatus) Path() string          { return modsPath(p.World.ID) }
+
+// UpdatePath is the plan for one mod's update.
+func (p ModStatus) UpdatePath(name string) string {
+	return kindPlanPath(p.World.ID, mods.KindUpdate, name)
+}
+
+// RemovePath is the plan that removes a mod.
+func (p ModStatus) RemovePath(name string) string {
+	return kindPlanPath(p.World.ID, mods.KindRemove, name)
+}
+
+// UpdateSlot is the row place an update's button goes in.
+func (ModStatus) UpdateSlot(name string) string { return updateSlot(name) }
+
+// FlagText words one flag (#131).
+func (ModStatus) FlagText(f mods.Flag) i18n.Msg {
+	switch f.Code {
+	case mods.FlagVersionGone:
+		if f.Update == "" {
+			return i18n.M("mods.flag.gone_none", "mod", f.Name, "version", f.Version)
+		}
+		return i18n.M("mods.flag.gone", "mod", f.Name, "version", f.Version, "update", f.Update)
+	case mods.FlagDeprecated:
+		return i18n.M("mods.flag.deprecated", "mod", f.Name)
+	}
+	return i18n.M("mods.flag.not_on_portal", "mod", f.Name, "version", f.Version)
+}
+
+// FlagClass is the message kind of a flag.
+func (ModStatus) FlagClass(f mods.Flag) string {
+	switch f.Severity {
+	case mods.SevError:
+		return "message--error"
+	case mods.SevWarning:
+		return "message--warning"
+	}
+	return "message--note"
+}
+
+// FlagWord is the leading word of a flag's message (DESIGN 7.3).
+func (ModStatus) FlagWord(f mods.Flag) i18n.Msg {
+	switch f.Severity {
+	case mods.SevError:
+		return i18n.M("common.error.label")
+	case mods.SevWarning:
+		return i18n.M("common.label.warning")
+	}
+	return i18n.M("common.label.note")
+}
+
+// handleModStatus asks the portal for updates and availability. A portal
+// that cannot be reached is said once, never read as "no updates".
+func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	st := ModStatus{World: sum}
+	var err error
+	if st.Updates, err = s.planner.Updates(r.Context(), sum.ID); err == nil {
+		st.Flags, err = s.planner.Availability(r.Context(), sum.ID)
+	}
+	if err != nil {
+		s.portalTrouble("check the mods on the portal", sum.ID, err)
+		st = ModStatus{World: sum, Unreachable: true}
+	}
+	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil {
+		for _, m := range list {
+			if m.Enabled && !m.BuiltIn && !m.Local {
+				st.Checked++
+			}
+		}
+	}
+	s.fragment(w, r, st, "mod-status")
+}
+
+// portalTrouble logs a portal failure: an unreachable portal is the
+// network's business, anything else Foreman's.
+func (s *server) portalTrouble(what, id string, err error) {
+	if errors.Is(err, modportal.ErrUnreachable) || errors.Is(err, context.Canceled) {
+		s.log.Warn(what, "world", id, "error", err)
+		return
+	}
+	s.log.Error(what, "world", id, "error", err)
+}
+
+// ModNotice is the Server page's one line about mods players cannot get
+// (#131, plan ruling 2). It is empty when there are none or the portal
+// cannot be asked.
+type ModNotice struct {
+	World   world.Summary
+	Errors  int
+	FixPath string
+}
+
+func (ModNotice) templateName() string { return "server" }
+
+// handleModNotice loads after the Server page, so the portal never slows
+// its first paint.
+func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	n := ModNotice{World: sum}
+	flags, err := s.planner.Availability(r.Context(), sum.ID)
+	if err != nil {
+		s.portalTrouble("check the mods on the portal", sum.ID, err)
+	}
+	var fix []string
+	for _, f := range flags {
+		if f.Severity != mods.SevError {
+			continue
+		}
+		n.Errors++
+		if f.Code == mods.FlagVersionGone && f.Update != "" {
+			fix = append(fix, f.Name)
+		}
+	}
+	// Every error has an update: the fix is one plan. Otherwise the Mods
+	// tab shows each flag with its own fix.
+	n.FixPath = modsPath(sum.ID)
+	if len(fix) > 0 && len(fix) == n.Errors {
+		n.FixPath = kindPlanPath(sum.ID, mods.KindUpdate, fix...)
+	}
+	s.fragment(w, r, n, "mods-notice")
+}
+
+// ActiveModsPath is the Mods tab of the world the Server page is about.
+func (p ServerPage) ActiveModsPath() string { return p.ActivePath() + "/mods" }
+
+// ModNoticePath loads the Server page's mods notice, or is "" when Foreman
+// has no portal to ask.
+func (p ServerPage) ModNoticePath() string {
+	if !p.HasWorld || !p.ModsNotice {
+		return ""
+	}
+	return modsPath(p.World.ID) + "/notice"
+}
+
+// ModSearchPage lists the portal's mods that match a search (SPEC 9.1).
+type ModSearchPage struct {
+	World      world.Summary
+	Query      string
+	QueryError i18n.Msg
+	Hits       []modportal.Hit
+	// Installed names the mods the world has already.
+	Installed   map[string]bool
+	Unreachable bool
+	NoAccount   bool
+}
+
+func (ModSearchPage) templateName() string { return "modsearch" }
+func (ModSearchPage) navItem() string      { return PathWorlds }
+func (p ModSearchPage) hasErrors() bool    { return !p.QueryError.IsZero() }
+
+// Problems lists the search field's error.
+func (p ModSearchPage) Problems() []Problem { return problems(Problem{"mod-search", p.QueryError}) }
+
+func (p ModSearchPage) Path() string     { return modsPath(p.World.ID) + "/search" }
+func (p ModSearchPage) ModsPath() string { return modsPath(p.World.ID) }
+func (p ModSearchPage) Line() string     { return gameLine(p.World.GameVersion) }
+func (p ModSearchPage) AccountPath() string {
+	return accountLink(p.Path() + "?" + url.Values{"q": {p.Query}}.Encode())
+}
+
+// Tabs mark the Mods tab as the section the search belongs to.
+func (p ModSearchPage) Tabs() WorldTabs {
+	t := worldTabs(p.World, "mods")
+	t.Under = true
+	return t
+}
+
+// InstallPath is the plan that installs one mod.
+func (p ModSearchPage) InstallPath(name string) string {
+	return kindPlanPath(p.World.ID, mods.KindInstall, name)
+}
+
+// handleModSearch searches the portal's list for the world's game line. It
+// needs no account (SPEC 9.11).
+func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	p := ModSearchPage{World: sum, Query: strings.TrimSpace(r.URL.Query().Get("q")), Installed: map[string]bool{}}
+	if p.Query == "" {
+		p.QueryError = i18n.M("mods.search.missing")
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	if len(p.Query) > maxSearchQuery {
+		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	p.NoAccount = !s.downloadsOn(r.Context())
+	if list, err := s.worlds.Mods(sum.ID); err == nil {
+		for _, m := range list {
+			p.Installed[m.Name] = true
+		}
+	}
+	hits, err := s.portal.Search(r.Context(), gameLine(sum.GameVersion), p.Query)
+	if err != nil {
+		s.portalTrouble("search the mod portal", sum.ID, err)
+		p.Unreachable = true
+		s.page(w, r, http.StatusBadGateway, u.Username, p)
+		return
+	}
+	p.Hits = hits
+	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// maxSearchQuery bounds a search, which is only a name or a few words.
+const maxSearchQuery = 100
+
+// planForm is a mod change request as the plan page's form carries it, so
+// the server can recompute the plan instead of storing one (plan ruling 7).
+type planForm struct {
+	Kind     mods.Kind
+	Names    []string
+	Optional []string
+	// Save is the save a sync reads; Staged is an uploaded zip waiting in
+	// the staging area (SPEC 9.5, 9.10).
+	Save, Staged string
+	// Choices and Confirmed are the admin's answers for unresolved mods.
+	Choices   map[string]mods.ChoiceKind
+	Confirmed map[string]bool
+	// Hash and Fingerprint are the plan and mods folder the page showed.
+	Hash, Fingerprint string
+	// DropsConfirmed is the box that accepts losing what dropped mods
+	// built. The names are worked out again on the post, never read.
+	DropsConfirmed bool
+}
+
+const (
+	choicePrefix  = "choice-"
+	confirmPrefix = "confirm-"
+)
+
+var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
+
+// readPlanForm reads a request from a query or a posted form; ok is false
+// for one no page offers.
+func readPlanForm(v url.Values) (planForm, bool) {
+	f := planForm{
+		Kind: mods.Kind(v.Get("kind")), Names: v["name"], Optional: v["optional"],
+		Save: v.Get("save"), Staged: v.Get("staged"), Hash: v.Get("hash"), Fingerprint: v.Get("fingerprint"),
+		DropsConfirmed: v.Get(dropsField) == "1",
+		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
+	}
+	if !slices.Contains(planKinds, f.Kind) {
+		return planForm{}, false
+	}
+	for k, vals := range v {
+		switch {
+		case strings.HasPrefix(k, choicePrefix):
+			switch c := mods.ChoiceKind(vals[0]); c {
+			case mods.ChoiceUpload, mods.ChoiceNearest, mods.ChoiceWithout:
+				f.Choices[strings.TrimPrefix(k, choicePrefix)] = c
+			}
+		case strings.HasPrefix(k, confirmPrefix):
+			f.Confirmed[strings.TrimPrefix(k, confirmPrefix)] = vals[0] == "1"
+		}
+	}
+	return f, true
+}
+
+// query is the form as query values, for a link back to the same plan.
+func (f planForm) query() url.Values {
+	q := url.Values{"kind": {string(f.Kind)}}
+	if len(f.Names) > 0 {
+		q["name"] = f.Names
+	}
+	if len(f.Optional) > 0 {
+		q["optional"] = f.Optional
+	}
+	if f.Save != "" {
+		q.Set("save", f.Save)
+	}
+	for name, c := range f.Choices {
+		q.Set(choicePrefix+name, string(c))
+	}
+	return q
+}
+
+// ModPlanPage shows a mod change before it applies (SPEC 9.2, 17.5, 17.8).
+type ModPlanPage struct {
+	World world.Summary
+	Form  planForm
+	Plan  mods.Plan
+	// Hash is the plan's digest the form posts back; Fingerprint the mods
+	// folder's.
+	Hash, Fingerprint string
+	// Uploaded is the uploaded zip's mod, for an upload's heading.
+	Uploaded world.ModInfo
+	Running  bool
+	CountdownForm
+	NoAccount bool
+	// Changed says the plan is not the one the admin confirmed, so nothing
+	// was applied (SPEC 17.8).
+	Changed bool
+	// Error says why there is no plan; Retry offers to try again.
+	Error i18n.Msg
+	Retry string
+	// ConfirmErrors are unticked "continue without" boxes, by mod name.
+	ConfirmErrors map[string]i18n.Msg
+	Busy          i18n.Msg
+	// UploadError is a refused zip for the unresolved mod UploadFor.
+	UploadError i18n.Msg
+	UploadFor   string
+	// Drops are the mods the plan turns off or removes that the loading save
+	// uses: the game deletes what they built once it starts without them.
+	// DropsError is the unticked box after a post.
+	Drops      []string
+	DropsError i18n.Msg
+}
+
+// dropsField is the box that confirms the Drops.
+const dropsField = "confirm-drops"
+
+// DropsText lists the dropped mods for a sentence.
+func (p ModPlanPage) DropsText() string { return strings.Join(p.Drops, ", ") }
+
+func (ModPlanPage) templateName() string { return "modplan" }
+func (ModPlanPage) navItem() string      { return PathWorlds }
+func (p ModPlanPage) hasErrors() bool {
+	return len(p.Problems()) > 0 || !p.Error.IsZero() || len(p.Plan.Conflicts) > 0
+}
+
+// Problems lists the form's field errors in page order.
+func (p ModPlanPage) Problems() []Problem {
+	var out []Problem
+	for i, u := range p.Plan.Unresolved {
+		if msg, ok := p.ConfirmErrors[u.Name]; ok {
+			out = append(out, Problem{confirmID(i), msg})
+		}
+	}
+	return append(out, problems(Problem{dropsField, p.DropsError}, Problem{"countdown", p.CountdownError})...)
+}
+
+func confirmID(i int) string { return "confirm-" + strconv.Itoa(i) }
+
+func (p ModPlanPage) Path() string       { return modsPath(p.World.ID) + "/plan" }
+func (p ModPlanPage) ModsPath() string   { return modsPath(p.World.ID) }
+func (p ModPlanPage) UploadPath() string { return modsPath(p.World.ID) + "/upload" }
+func (p ModPlanPage) SavesPath() string  { return worldPath(p.World.ID) + "/saves" }
+func (p ModPlanPage) Line() string       { return gameLine(p.World.GameVersion) }
+
+// AccountPath returns here after the account is entered. An upload cannot
+// be posted again from a link, so it returns to the Mods tab.
+func (p ModPlanPage) AccountPath() string {
+	if p.Form.Staged != "" {
+		return accountLink(p.ModsPath())
+	}
+	return accountLink(planPath(p.World.ID, p.Form.query()))
+}
+
+// Tabs mark the Mods tab as the section the plan belongs to.
+func (p ModPlanPage) Tabs() WorldTabs {
+	t := worldTabs(p.World, "mods")
+	t.Under = true
+	return t
+}
+
+// Heading is the page's question, naming the world (DESIGN 7.4).
+func (p ModPlanPage) Heading() i18n.Msg {
+	w := p.World.Name
+	one := ""
+	if len(p.Form.Names) == 1 {
+		one = p.Form.Names[0]
+	}
+	switch p.Form.Kind {
+	case mods.KindInstall:
+		if one != "" {
+			return i18n.M("mods.plan.heading.install", "mod", one, "world", w)
+		}
+	case mods.KindUpdate:
+		if one != "" {
+			return i18n.M("mods.plan.heading.update_one", "mod", one, "world", w)
+		}
+		return i18n.M("mods.plan.heading.update", "world", w)
+	case mods.KindSync:
+		return i18n.M("mods.plan.heading.sync", "world", w, "save", p.Form.Save)
+	case mods.KindEnable:
+		return i18n.M("mods.plan.heading.enable", "mod", one, "world", w)
+	case mods.KindDisable:
+		return i18n.M("mods.plan.heading.disable", "mod", one, "world", w)
+	case mods.KindRemove:
+		return i18n.M("mods.plan.heading.remove", "mod", one, "world", w)
+	case mods.KindUpload:
+		return i18n.M("mods.plan.heading.upload", "mod", p.Uploaded.Name, "version", p.Uploaded.Version, "world", w)
+	}
+	return i18n.M("mods.plan.heading.change", "world", w)
+}
+
+// Count is how many mods the plan changes.
+func (p ModPlanPage) Count() int {
+	n := 0
+	for _, c := range p.Plan.Changes {
+		if c.Action != mods.ActKeep {
+			n++
+		}
+	}
+	return n
+}
+
+// Downloads is how many mods the plan downloads.
+func (p ModPlanPage) Downloads() int {
+	n := 0
+	for _, c := range p.Plan.Changes {
+		if c.Release != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// Button is the confirming button's words, repeating the verb (DESIGN 7.4).
+func (p ModPlanPage) Button() i18n.Msg {
+	n := p.Count()
+	switch p.Form.Kind {
+	case mods.KindUpdate:
+		return i18n.M("mods.plan.button.update", "count", n)
+	case mods.KindSync:
+		return i18n.M("mods.plan.button.sync", "count", n)
+	case mods.KindEnable:
+		return i18n.M("mods.plan.button.enable", "count", n)
+	case mods.KindDisable:
+		return i18n.M("mods.plan.button.disable", "count", n)
+	case mods.KindRemove:
+		return i18n.M("mods.plan.button.remove", "count", n)
+	}
+	return i18n.M("mods.plan.button.install", "count", n)
+}
+
+// Nothing says the plan changes no mod and asks nothing.
+func (p ModPlanPage) Nothing() bool {
+	return p.Error.IsZero() && p.Count() == 0 && len(p.Plan.Conflicts) == 0 && len(p.Plan.Unresolved) == 0
+}
+
+// CanApply says the confirming button is shown: every check the apply runs
+// has passed, apart from an unticked "continue without" box, which is a
+// field error after the post (DESIGN 7.1, 7.2, SPEC 17.8).
+func (p ModPlanPage) CanApply() bool {
+	if !p.Error.IsZero() || !p.Busy.IsZero() || len(p.Plan.Conflicts) > 0 || p.Count() == 0 && len(p.Plan.Unresolved) == 0 {
+		return false
+	}
+	if p.NoAccount && p.Downloads() > 0 {
+		return false
+	}
+	for _, u := range p.Plan.Unresolved {
+		c := u.Choice
+		if c == nil || c.Kind == mods.ChoiceUpload && c.Upload == nil || c.Kind == mods.ChoiceNearest && u.Nearest == "" {
+			return false
+		}
+	}
+	return true
+}
+
+// PlanGroup is one kind of change in the plan's list.
+type PlanGroup struct {
+	Title i18n.Msg
+	Items []i18n.Msg
+}
+
+var groupTitles = []struct {
+	act   mods.Action
+	title i18n.Msg
+}{
+	{mods.ActInstall, i18n.M("mods.plan.group.install")},
+	{mods.ActUpgrade, i18n.M("mods.plan.group.upgrade")},
+	{mods.ActDowngrade, i18n.M("mods.plan.group.downgrade")},
+	{mods.ActEnable, i18n.M("mods.plan.group.enable")},
+	{mods.ActDisable, i18n.M("mods.plan.group.disable")},
+	{mods.ActRemove, i18n.M("mods.plan.group.remove")},
+	{mods.ActKeep, i18n.M("mods.plan.group.keep")},
+}
+
+// Groups lists the changes by kind, in the order they matter.
+func (p ModPlanPage) Groups() []PlanGroup {
+	var out []PlanGroup
+	for _, g := range groupTitles {
+		var items []i18n.Msg
+		for _, c := range p.Plan.Changes {
+			if c.Action == g.act {
+				items = append(items, changeText(c))
+			}
+		}
+		if len(items) > 0 {
+			out = append(out, PlanGroup{Title: g.title, Items: items})
+		}
+	}
+	return out
+}
+
+// changeText words one change and why it is in the plan.
+func changeText(c mods.Change) i18n.Msg {
+	var what i18n.Msg
+	switch {
+	case c.Action == mods.ActRemove:
+		what = i18n.M("mods.plan.item.name", "mod", c.Name, "version", c.From)
+	case c.From != "" && c.From != c.To:
+		what = i18n.M("mods.plan.item.from_to", "mod", c.Name, "from", c.From, "to", c.To)
+	case c.Upload:
+		what = i18n.M("mods.plan.item.uploaded", "mod", c.Name, "version", c.To)
+	default:
+		what = i18n.M("mods.plan.item.name", "mod", c.Name, "version", c.To)
+	}
+	var why i18n.Msg
+	switch c.Why.Code {
+	case mods.WhyRequiredBy:
+		why = i18n.M("mods.plan.why.required_by", "mod", c.Why.Of)
+	case mods.WhyOptionalOf:
+		why = i18n.M("mods.plan.why.optional_of", "mod", c.Why.Of)
+	case mods.WhyFromSave:
+		why = i18n.M("mods.plan.why.from_save")
+	case mods.WhyNotInSave:
+		why = i18n.M("mods.plan.why.not_in_save")
+	}
+	if !why.IsZero() {
+		what = i18n.M("mods.plan.item.why", "item", what, "why", why)
+	}
+	if c.Warning == mods.WarnOlderThanSave {
+		what = join(what, i18n.M("mods.plan.warn.older"))
+	}
+	return what
+}
+
+// ConflictTexts word the plan's conflicts (SPEC 9.2).
+func (p ModPlanPage) ConflictTexts() []i18n.Msg {
+	out := make([]i18n.Msg, len(p.Plan.Conflicts))
+	for i, c := range p.Plan.Conflicts {
+		out[i] = conflictText(c)
+	}
+	return out
+}
+
+func conflictText(c mods.Conflict) i18n.Msg {
+	switch c.Code {
+	case mods.ConflictIncompatible:
+		return i18n.M("mods.conflict.incompatible", "mod", c.Mod, "other", c.Other)
+	case mods.ConflictSpaceAgeOff:
+		if c.Other == "" {
+			return i18n.M("mods.conflict.space_age_save", "mod", c.Mod)
+		}
+		return i18n.M("mods.conflict.space_age_off", "mod", c.Mod, "other", c.Other)
+	case mods.ConflictNoRelease:
+		return i18n.M("mods.conflict.no_release", "mod", c.Mod, "needs", needsText(c.Needs))
+	case mods.ConflictVersion:
+		return i18n.M("mods.conflict.version", "mod", c.Mod, "version", c.Version, "needs", needsText(c.Needs))
+	case mods.ConflictNotOnPortal:
+		return i18n.M("mods.conflict.not_on_portal", "mod", c.Mod)
+	case mods.ConflictRequiredBy:
+		return i18n.M("mods.conflict.required_by", "mod", c.Mod, "other", c.Other)
+	case mods.ConflictBuiltIn:
+		return i18n.M("mods.conflict.built_in", "mod", c.Mod)
+	case mods.ConflictLocal:
+		return i18n.M("mods.conflict.local", "mod", c.Mod)
+	case mods.ConflictNotInstalled:
+		return i18n.M("mods.conflict.not_installed", "mod", c.Mod)
+	case mods.ConflictBadDep:
+		return i18n.M("mods.conflict.bad_dependency", "mod", c.Mod, "text", c.Text)
+	case mods.ConflictTooComplex:
+		return i18n.M("mods.conflict.too_complex")
+	}
+	return i18n.M("mods.conflict.bad_request")
+}
+
+// needsText lists the version constraints, such as "base >= 2.0 (from
+// space-exploration)".
+func needsText(needs []mods.Need) string {
+	parts := make([]string, len(needs))
+	for i, n := range needs {
+		parts[i] = strings.TrimSpace(n.Op+" "+n.Version) + " (" + n.By + ")"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// Choice is the answer the form holds for an unresolved mod; upload by
+// default (SPEC 9.10).
+func (p ModPlanPage) Choice(name string) string {
+	if c, ok := p.Form.Choices[name]; ok {
+		return string(c)
+	}
+	return string(mods.ChoiceUpload)
+}
+
+// UploadedFor reports whether the staged zip answers name's upload.
+func (p ModPlanPage) UploadedFor(name string) bool {
+	return p.Form.Staged != "" && p.Uploaded.Name == name
+}
+
+// Ticked reports whether the admin ticked an optional mod.
+func (p ModPlanPage) Ticked(name string) bool { return slices.Contains(p.Form.Optional, name) }
+
+// ConfirmID is the id of an unresolved mod's "continue without" box.
+func (ModPlanPage) ConfirmID(i int) string { return confirmID(i) }
+
+func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	f, ok := readPlanForm(r.URL.Query())
+	if !ok {
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+		return
+	}
+	p := s.planPage(r.Context(), sum, f, defaultCountdown())
+	s.page(w, r, planStatus(p), u.Username, p)
+}
+
+func planStatus(p ModPlanPage) int {
+	switch {
+	case !p.Error.IsZero():
+		return http.StatusBadGateway
+	case len(p.Plan.Conflicts) > 0:
+		return http.StatusConflict
+	}
+	return http.StatusOK
+}
+
+// planPage works out the plan for f now. A failure to do so is in Error.
+func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, form CountdownForm) ModPlanPage {
+	p := ModPlanPage{World: sum, Form: f, CountdownForm: form, ConfirmErrors: map[string]i18n.Msg{}}
+	st := s.game.Status(sum.ID)
+	p.Running = game.IsRunning(st.State)
+	p.Busy = busyText(st.Operation, s.worldName)
+	p.NoAccount = !s.downloadsOn(ctx)
+	if sum.Newer || sum.Unreadable {
+		p.Error = i18n.M("mods.error.unreadable")
+		return p
+	}
+	req, err := s.planRequest(sum.ID, &p)
+	if err == nil {
+		p.Plan, p.Fingerprint, err = s.planner.Plan(ctx, sum.ID, req)
+	}
+	if err != nil {
+		p.Error, p.Retry = s.planError(sum.ID, err), planPath(sum.ID, f.query())
+		return p
+	}
+	p.Hash = planHash(p.Plan)
+	p.Drops = s.planDrops(ctx, sum.ID, p.Plan)
+	return p
+}
+
+// saveDropper names the mods a plan turns off that the loading save uses.
+// *mods.Planner gets SaveDrops in a parallel change; until it has it,
+// fallbackDrops does the same from the save's mod list.
+type saveDropper interface {
+	SaveDrops(ctx context.Context, worldID string, plan mods.Plan) ([]string, error)
+}
+
+// planDrops lists the plan's dropped mods, leaving out unresolved mods,
+// which have their own box. A save that cannot be read drops nothing here;
+// the pre-start check reports it.
+func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan) []string {
+	var drops []string
+	var err error
+	if d, ok := any(s.planner).(saveDropper); ok {
+		drops, err = d.SaveDrops(ctx, id, plan)
+	} else {
+		drops, err = s.fallbackDrops(id, plan)
+	}
+	if err != nil {
+		s.log.Warn("read the mods of the save that loads", "world", id, "error", err)
+		return nil
+	}
+	return slices.DeleteFunc(drops, func(n string) bool {
+		return slices.ContainsFunc(plan.Unresolved, func(u mods.Unresolved) bool { return u.Name == n })
+	})
+}
+
+func (s *server) fallbackDrops(id string, plan mods.Plan) ([]string, error) {
+	save, err := s.loadingSave(id)
+	if err != nil || save == "" {
+		return nil, err
+	}
+	sv, err := s.worlds.SaveMods(id, save)
+	if err != nil {
+		return nil, err
+	}
+	used := map[string]bool{}
+	for _, m := range sv.Mods {
+		used[m.Name] = true
+	}
+	var out []string
+	for _, c := range plan.Changes {
+		if (c.Action == mods.ActDisable || c.Action == mods.ActRemove) && used[c.Name] {
+			out = append(out, c.Name)
+		}
+	}
+	return out, nil
+}
+
+// errStagedGone says an uploaded zip is no longer waiting, as after a
+// restart of Foreman.
+var errStagedGone = errors.New("the uploaded mod zip is gone")
+
+// planRequest builds the resolver's request from the form, reading a
+// sync's save and an uploaded zip's info.json again.
+func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
+	f := &p.Form
+	var up *mods.Upload
+	if f.Staged != "" {
+		info, err := s.stagedInfo(f.Staged)
+		if err != nil {
+			return mods.Request{}, err
+		}
+		p.Uploaded = info
+		up = &mods.Upload{Name: info.Name, Version: info.Version, Dependencies: info.Dependencies}
+	}
+	switch f.Kind {
+	case mods.KindUpload:
+		if up == nil {
+			return mods.Request{}, errStagedGone
+		}
+		return mods.Request{Kind: mods.KindUpload, Upload: up, Optional: f.Optional}, nil
+	case mods.KindSync:
+		if f.Save == "" {
+			save, err := s.loadingSave(id)
+			if err != nil {
+				return mods.Request{}, err
+			}
+			if save == "" {
+				return mods.Request{}, world.ErrNoSaves
+			}
+			f.Save = save
+		}
+		// Upload is the default choice, so a staged zip answers its mod
+		// unless another choice was made.
+		if _, chose := f.Choices[p.Uploaded.Name]; up != nil && !chose {
+			f.Choices[up.Name] = mods.ChoiceUpload
+		}
+		choices := map[string]mods.Choice{}
+		for name, kind := range f.Choices {
+			c := mods.Choice{Kind: kind, Confirmed: f.Confirmed[name]}
+			if kind == mods.ChoiceUpload && up != nil && up.Name == name {
+				c.Upload = up
+			}
+			choices[name] = c
+		}
+		req, err := s.planner.SyncRequest(id, f.Save, choices)
+		req.Optional = f.Optional
+		return req, err
+	}
+	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional}, nil
+}
+
+// planError words why no plan could be made.
+func (s *server) planError(id string, err error) i18n.Msg {
+	switch {
+	case errors.Is(err, modportal.ErrUnreachable):
+		s.portalTrouble("make a mod plan", id, err)
+		return i18n.M("mods.error.portal")
+	case errors.Is(err, errStagedGone), errors.Is(err, os.ErrNotExist) && strings.Contains(err.Error(), world.PrefixPartial):
+		return i18n.M("mods.error.staged_gone")
+	case errors.Is(err, world.ErrModZip), errors.Is(err, world.ErrModName), errors.Is(err, world.ErrModTooBig):
+		return modZipError(err)
+	case errors.Is(err, world.ErrNoSaves):
+		return i18n.M("mods.error.no_save")
+	case errors.Is(err, world.ErrSaveNotFound):
+		return i18n.M("mods.error.save_gone")
+	}
+	if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
+		return msg
+	}
+	for _, e := range []error{savefile.ErrNotZip, savefile.ErrNoLevelData, savefile.ErrFormat, savefile.ErrTruncated} {
+		if errors.Is(err, e) {
+			return i18n.M("mods.error.save_unreadable")
+		}
+	}
+	s.log.Error("make a mod plan", "world", id, "error", err)
+	return i18n.M("mods.error.plan")
+}
+
+// planHash digests the plan the page shows. Ticking "continue without"
+// does not change what will happen, so it does not change the digest.
+func planHash(p mods.Plan) string {
+	p.Hash = ""
+	p.Unresolved = slices.Clone(p.Unresolved)
+	for i, u := range p.Unresolved {
+		if u.Choice != nil {
+			c := *u.Choice
+			c.Confirmed = false
+			p.Unresolved[i].Choice = &c
+		}
+	}
+	b, _ := json.Marshal(p)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// handlePlan applies a plan the admin confirmed. It recomputes the plan
+// first; when that is not the plan shown, or the mods folder moved on, it
+// applies nothing and shows the new plan (plan ruling 7, SPEC 17.8).
+func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modsWorld(w, r, u)
+	if !ok {
+		return
+	}
+	if !s.readForm(w, r) {
+		return
+	}
+	f, ok := readPlanForm(r.PostForm)
+	if !ok {
+		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+		return
+	}
+	form, stop := readCountdown(r)
+	p := s.planPage(r.Context(), sum, f, form)
+	if !p.Running {
+		p.CountdownError = i18n.Msg{}
+	}
+	switch {
+	case !p.Error.IsZero():
+		s.page(w, r, http.StatusBadGateway, u.Username, p)
+		return
+	case p.Hash != f.Hash || p.Fingerprint != f.Fingerprint:
+		p.Changed, p.CountdownForm = true, CountdownForm{Countdown: form.Countdown}
+		s.page(w, r, http.StatusConflict, u.Username, p)
+		return
+	}
+	for _, un := range p.Plan.Unresolved {
+		if un.Choice != nil && un.Choice.Kind == mods.ChoiceWithout && !un.Choice.Confirmed {
+			p.ConfirmErrors[un.Name] = i18n.M("mods.unresolved.confirm_missing", "mod", un.Name)
+		}
+	}
+	if len(p.Drops) > 0 && !f.DropsConfirmed {
+		p.DropsError = i18n.M("mods.drops.confirm_missing")
+	}
+	if len(p.Problems()) > 0 {
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	if !p.CanApply() {
+		s.page(w, r, http.StatusConflict, u.Username, p)
+		return
+	}
+	installed, err := s.worlds.Mods(sum.ID)
+	if err != nil {
+		s.fail(w, r, "list mods", err)
+		return
+	}
+	staged := ""
+	if p.UsesUpload() {
+		staged = f.Staged
+	}
+	downloads, change, err := mods.ToChange(p.Plan, installed, staged)
+	if err != nil {
+		s.fail(w, r, "turn the plan into a change", err)
+		return
+	}
+	op := game.ModOp{Change: change, Fingerprint: p.Fingerprint, Summary: planSummary(p.Plan)}
+	// A save's mod the admin chose to go on without is dropped knowingly too.
+	confirmed := slices.Clone(p.Drops)
+	for _, un := range p.Plan.Unresolved {
+		if un.Choice != nil && un.Choice.Kind == mods.ChoiceWithout && un.Choice.Confirmed {
+			confirmed = append(confirmed, un.Name)
+		}
+	}
+	setConfirmedDrops(&op, confirmed)
+	for _, d := range downloads {
+		op.Downloads = append(op.Downloads, game.ModDownload{Mod: d.Name, Release: d.Release})
+	}
+	// A zip the plan does not use is not kept waiting.
+	unused := ""
+	if staged == "" {
+		unused = f.Staged
+	}
+	s.applyMods(w, r, u, sum, op, stop, unused)
+}
+
+// UsesUpload reports whether a change in the plan comes from the staged zip.
+func (p ModPlanPage) UsesUpload() bool {
+	return slices.ContainsFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Upload })
+}
+
+// planSummary is what the audit log records: mod names and versions only.
+func planSummary(p mods.Plan) string {
+	var parts []string
+	for _, c := range p.Changes {
+		if c.Action == mods.ActKeep {
+			continue
+		}
+		parts = append(parts, string(c.Action)+" "+strings.TrimSpace(c.Name+" "+c.To))
+	}
+	out := strings.Join(parts, ", ")
+	if len(out) > maxSummary {
+		out = out[:maxSummary] + "…"
+	}
+	return out
+}
+
+const maxSummary = 500
+
+// applyMods runs one mod change in the background (plan ruling 1). The
+// Server page follows the active world's; the Mods tab any other world's.
+// The result names the "Before mod change" snapshot, for undo.
+func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string) {
+	id, by := sum.ID, actor(u)
+	to := PathServer
+	if !sum.Active {
+		to = modsPath(id) + ownResultQuery
+	}
+	before := s.newestModSnapshot(id)
+	s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
+		err := s.game.ApplyMods(ctx, id, by, op, stop)
+		if unused != "" {
+			_ = s.worlds.RemoveStaged(unused)
+		}
+		res := s.finish(id, game.AuditMods, err)
+		if after := s.newestModSnapshot(id); after != before {
+			res.Undo = after
+		}
+		return res
+	})
+}
+
+// newestModSnapshot is the name of the world's newest "Before mod change"
+// snapshot, or "".
+func (s *server) newestModSnapshot(id string) string {
+	list, err := s.worlds.Snapshots(id)
+	if err != nil {
+		s.log.Error("list snapshots", "world", id, "error", err)
+		return ""
+	}
+	for _, sn := range list {
+		if sn.Reason == world.ReasonMods {
+			return sn.Name
+		}
+	}
+	return ""
+}
+
+// syncOffer is the link that matches a world's mods to its save, when the
+// pre-start check found a mod of the save missing or turned off (SPEC 9.8,
+// 17.9), or nil.
+func syncOffer(check world.PreCheck, id string) *Offer {
+	for _, pr := range check.Problems {
+		if pr.Kind == world.ProblemModMissing || pr.Kind == world.ProblemModDisabled {
+			return &Offer{Path: syncPath(id), Label: i18n.M("mods.sync.offer")}
+		}
+	}
+	return nil
+}
+
+// UndoName is the label of the snapshot the failure's undo restores.
+func (f *Failure) UndoName() i18n.Msg {
+	if !f.UndoLabel.IsZero() {
+		return f.UndoLabel
+	}
+	return i18n.M("worlds.snapshot.label.before_restore")
+}
+
+// setConfirmedDrops hands ApplyMods the mods the admin accepted losing, so
+// the restart's pre-start check lets their absence pass. game.ModOp gains
+// ConfirmedDrops in a parallel change; until then this sets nothing.
+// TODO(merge): replace with op.ConfirmedDrops = names once that lands.
+func setConfirmedDrops(op *game.ModOp, names []string) {
+	f := reflect.ValueOf(op).Elem().FieldByName("ConfirmedDrops")
+	if f.IsValid() && f.CanSet() && f.Type() == reflect.TypeOf(names) {
+		f.Set(reflect.ValueOf(slices.Clone(names)))
+	}
+}

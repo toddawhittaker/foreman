@@ -42,7 +42,7 @@ type pageCase struct {
 }
 
 func pageCases() []pageCase {
-	return []pageCase{
+	return append([]pageCase{
 		{"worlds empty", "todd", 200, WorldsPage{}},
 		{"worlds after delete", "todd", 200, WorldsPage{Deleted: longName}},
 		{"worlds long user", longName, 200, WorldsPage{}},
@@ -269,7 +269,7 @@ func pageCases() []pageCase {
 		{"settings raw errors", "todd", 400, settingsRawCase(true)},
 		{"settings preview", "todd", 200, settingsPreviewCase()},
 		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
-	}
+	}, modPageCases()...)
 }
 
 // The version fragments render each of their states (SPEC 10.2, 10.7).
