@@ -69,8 +69,9 @@ func hasPair(p Plan, code ConflictCode, mod, other string) bool {
 	})
 }
 
-func installed(name, v string, enabled bool) world.InstalledMod {
-	return world.InstalledMod{Name: name, Version: v, File: name + "_" + v + ".zip", Enabled: enabled}
+// installed is a mod zip in the world; deps are its info.json's.
+func installed(name, v string, enabled bool, deps ...string) world.InstalledMod {
+	return world.InstalledMod{Name: name, Version: v, File: name + "_" + v + ".zip", Enabled: enabled, Dependencies: deps}
 }
 
 func asked() Reason         { return Reason{Code: WhyAsked} }
@@ -185,7 +186,7 @@ func TestIncompatible(t *testing.T) {
 	}
 	// An installed mod that refuses the new one also conflicts.
 	p = portal{"a": {rel("1.0.0", "2.0")}, "b": {rel("1.0.0", "2.0", "! a")}}
-	w = World{Mods: []world.InstalledMod{installed("b", "1.0.0", true)}}
+	w = World{Mods: []world.InstalledMod{installed("b", "1.0.0", true, "! a")}}
 	if plan := resolve(t, p, w, Request{Kind: KindInstall, Names: []string{"a"}}); !hasConflict(plan, ConflictIncompatible, "b") {
 		t.Errorf("conflicts = %+v", plan.Conflicts)
 	}
@@ -241,14 +242,16 @@ func TestOptionalOffers(t *testing.T) {
 	}
 	plan = resolve(t, p, w, Request{Kind: KindInstall, Names: []string{"a"}, Optional: []string{"b"}})
 	wantChange(t, plan, "b", ActInstall, "1.0.0", optOf("a"))
-	if len(plan.Optional) != 0 {
-		t.Errorf("ticked optional still offered: %+v", plan.Optional)
+	// SPEC 9.2: a ticked optional stays offered, ticked, so the page keeps
+	// its box and posts it back.
+	if want := []Offer{{Name: "b", Of: "a", Chosen: true}}; !slices.Equal(plan.Optional, want) {
+		t.Errorf("offers after ticking = %+v, want %+v", plan.Optional, want)
 	}
 }
 
 func TestRemoveRequiredIsRefused(t *testing.T) {
 	p := portal{"a": {rel("1.0.0", "2.0", "b")}, "b": {rel("1.0.0", "2.0")}}
-	w := World{Mods: []world.InstalledMod{installed("a", "1.0.0", true), installed("b", "1.0.0", true)}}
+	w := World{Mods: []world.InstalledMod{installed("a", "1.0.0", true, "b"), installed("b", "1.0.0", true)}}
 	for _, k := range []Kind{KindRemove, KindDisable} {
 		plan := resolve(t, p, w, Request{Kind: k, Names: []string{"b"}})
 		if !hasPair(plan, ConflictRequiredBy, "b", "a") || plan.Applicable() {
@@ -266,7 +269,7 @@ func TestRemoveRequiredIsRefused(t *testing.T) {
 
 func TestEnableAndUnknown(t *testing.T) {
 	p := portal{"a": {rel("1.0.0", "2.0", "b")}, "b": {rel("1.0.0", "2.0")}}
-	w := World{Mods: []world.InstalledMod{installed("a", "1.0.0", false)}}
+	w := World{Mods: []world.InstalledMod{installed("a", "1.0.0", false, "b")}}
 	plan := resolve(t, p, w, Request{Kind: KindEnable, Names: []string{"a"}})
 	wantChange(t, plan, "a", ActEnable, "1.0.0", asked())
 	wantChange(t, plan, "b", ActInstall, "1.0.0", by("a"))
@@ -416,14 +419,14 @@ func TestHashStable(t *testing.T) {
 		"b": {rel("1.0.0", "2.0")}, "c": {rel("1.0.0", "2.0")}, "d": {rel("1.0.0", "2.0")},
 	}
 	req := Request{Kind: KindInstall, Names: []string{"a"}}
-	first := resolve(t, p, World{}, req)
+	first := HashPlan(resolve(t, p, World{}, req), nil)
 	for range 20 {
-		if again := resolve(t, p, World{}, req); again.Hash != first.Hash {
-			t.Fatalf("hash changed: %s vs %s", again.Hash, first.Hash)
+		if again := HashPlan(resolve(t, p, World{}, req), nil); again != first {
+			t.Fatalf("hash changed: %s vs %s", again, first)
 		}
 	}
 	other := resolve(t, p, World{}, Request{Kind: KindInstall, Names: []string{"a"}, Optional: []string{"d"}})
-	if other.Hash == first.Hash || len(first.Hash) != 64 {
-		t.Errorf("hash %q does not reflect the plan", first.Hash)
+	if HashPlan(other, nil) == first || len(first) != 64 {
+		t.Errorf("hash %q does not reflect the plan", first)
 	}
 }

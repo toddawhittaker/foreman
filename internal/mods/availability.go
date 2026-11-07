@@ -48,7 +48,7 @@ func (p *Planner) Availability(ctx context.Context, worldID string) ([]Flag, err
 	if err != nil {
 		return nil, err
 	}
-	line := gameLine(w.GameVersion)
+	line := GameLine(w.GameVersion)
 	mods := checkable(w.Mods)
 	results, err := p.fetch(ctx, mods)
 	if err != nil {
@@ -74,21 +74,4 @@ func (p *Planner) Availability(ctx context.Context, worldID string) ([]Flag, err
 		}
 	}
 	return flags, nil
-}
-
-// AvailabilityErrors counts a world's error flags, for the Server page
-// notice. The client's 15-minute cache keeps repeat calls from costing
-// more portal requests.
-func (p *Planner) AvailabilityErrors(ctx context.Context, worldID string) (int, error) {
-	flags, err := p.Availability(ctx, worldID)
-	if err != nil {
-		return 0, err
-	}
-	n := 0
-	for _, f := range flags {
-		if f.Severity == SevError {
-			n++
-		}
-	}
-	return n, nil
 }

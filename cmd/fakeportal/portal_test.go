@@ -193,6 +193,20 @@ func TestAnAddedModIsSearchable(t *testing.T) {
 	}
 }
 
+// A release may be made for another game line, so a 2.1 world has releases
+// to choose from.
+func TestAnAddedReleaseKeepsItsGameLine(t *testing.T) {
+	control(t, "/add", map[string]any{"name": "fp-line", "version": "1.0.0"})
+	control(t, "/add", map[string]any{"name": "fp-line", "version": "1.1.0", "line": "2.1"})
+	m, err := modportal.New().Mod(context.Background(), "fp-line")
+	if err != nil || len(m.Releases) != 2 {
+		t.Fatalf("mod = %+v, err = %v", m, err)
+	}
+	if got := m.Releases[0].FactorioVersion + " " + m.Releases[1].FactorioVersion; got != "2.0 2.1" {
+		t.Errorf("game lines %q, want 2.0 then 2.1", got)
+	}
+}
+
 func TestPortalDownAndFailingAPI(t *testing.T) {
 	control(t, "/down", map[string]any{"down": true})
 	_, err := modportal.New().Mod(context.Background(), "visible-planets")

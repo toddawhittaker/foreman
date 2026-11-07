@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // DepKind is the kind of a dependency, from its prefix.
@@ -83,7 +85,7 @@ func (d Dep) String() string {
 // Allows reports whether a version of the named mod meets the dependency's
 // version constraint.
 func (d Dep) Allows(version string) bool {
-	c := compareVersions(version, d.Version)
+	c := world.CompareVersions(version, d.Version)
 	switch d.Op {
 	case "<":
 		return c < 0
@@ -101,25 +103,3 @@ func (d Dep) Allows(version string) bool {
 
 // required reports whether the dependency must be present and enabled.
 func (d Dep) required() bool { return d.Kind == Required || d.Kind == NoOrder }
-
-// compareVersions compares dotted numbers such as "1.10.2"; a missing or
-// non-numeric part counts as 0.
-func compareVersions(a, b string) int {
-	pa, pb := strings.Split(a, "."), strings.Split(b, ".")
-	for i := range max(len(pa), len(pb)) {
-		var x, y uint64
-		if i < len(pa) {
-			x, _ = strconv.ParseUint(pa[i], 10, 32)
-		}
-		if i < len(pb) {
-			y, _ = strconv.ParseUint(pb[i], 10, 32)
-		}
-		if x != y {
-			if x < y {
-				return -1
-			}
-			return 1
-		}
-	}
-	return 0
-}

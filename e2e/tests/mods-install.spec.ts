@@ -104,16 +104,17 @@ test.describe("an optional dependency", () => {
     await checkPage(page);
   });
 
-  // SPEC 9.2: the admin includes optional dependencies one by one. The offer drops out of the redrawn plan once
-  // ticked (resolve.go leaves a chosen optional out of the offers), so the box is gone and the post carries no
-  // "optional" value: the server's plan differs from the one shown, and nothing is applied.
-  test.fail("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
+  // SPEC 9.2: the admin includes optional dependencies one by one. A ticked offer stays in the redrawn plan,
+  // ticked, so the post carries it and the server's plan is the one shown.
+  test("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
     await addMods(fakePortal!);
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
     await page.getByLabel("fp-opt, offered by fp-main").check();
+    await expect(page.getByLabel("fp-opt, offered by fp-main")).toBeChecked();
     await page.getByRole("button", { name: "Install 2 mods" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", { timeout: 5_000 });
+    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    for (const name of ["fp-main", "fp-opt"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", `${name}_1.0.0.zip`))).toBe(true);
   });
 
   test.describe("without script", () => {
@@ -136,11 +137,13 @@ test.describe("an optional dependency", () => {
       await expect(page).toHaveURL(/optional=fp-opt/);
     });
 
-    // The same fault as above, reached with Recalculate.
-    test.fail("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
+    // The same, reached with Recalculate.
+    test("a ticked optional mod is installed when the plan is confirmed", async ({ page, foreman, fakeGame, fakePortal }) => {
       await recalculate(page, foreman, fakeGame!, fakePortal!);
+      await expect(page.getByLabel("fp-opt, offered by fp-main")).toBeChecked();
       await page.getByRole("button", { name: "Install 2 mods" }).click();
-      await expect(page).toHaveURL("/", { timeout: 5_000 });
+      await expect(page).toHaveURL("/", live);
+      for (const name of ["fp-main", "fp-opt"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", `${name}_1.0.0.zip`))).toBe(true);
     });
   });
 });
