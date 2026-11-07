@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let timer = 0;
   let sent = 0; // the number of the newest request; a reply to an older one is ignored
   let pending = null; // the AbortController of the request on its way
+  let pendingInView = false; // whether that request was asked for by the large view
   let drawing = ""; // the planet the request on its way is for
   let refreshing = 0; // htmx redraws of the settings still on their way
   // The planet shown, blank for the first; the settings may say which planet is open.
@@ -26,12 +27,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const dialog = document.getElementById("large-view");
   const status = document.getElementById("preview-status");
 
+  // Only the newest words are said: a later announcement or status text
+  // cancels one still waiting, so older news never overwrites newer.
+  let saying = 0;
   function announce(said) {
     // Outside an open modal dialog the page is inert, so the dialog says it itself.
     const target = dialog && dialog.open ? document.getElementById("large-status") : document.getElementById("announcer");
+    clearTimeout(saying);
     if (!target) return;
     target.textContent = "";
-    setTimeout(() => { target.textContent = said; }, 50);
+    saying = setTimeout(() => { target.textContent = said; }, 50);
+  }
+  function largeStatus(text) {
+    clearTimeout(saying);
+    document.getElementById("large-status").textContent = text;
   }
 
   function setStatus(on) {
@@ -182,6 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const seedSent = seed ? seed.value : "";
     const ctrl = new AbortController();
     pending = ctrl;
+    pendingInView = Boolean(dialog && dialog.open);
     drawing = viewing || firstPlanet();
     setStatus(true);
     let html;
@@ -417,7 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // A zoom from a key or a button is said as text; a wheel or a pinch is seen.
   function zoomSaid(next) {
     zoomTo(next);
-    el("large-status").textContent = strings["js.preview.zoom"].replace("{level}", new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 }).format(zoom));
+    largeStatus(strings["js.preview.zoom"].replace("{level}", new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 }).format(zoom)));
   }
 
   // The arrows are named after the planets they lead to.
@@ -447,7 +457,7 @@ document.addEventListener("DOMContentLoaded", () => {
       el("large-frame").dataset.missing = "true";
       el("large-download").hidden = true;
       largeOverlay(null);
-      el("large-status").textContent = strings["js.preview.drawing"].replace("{planet}", name);
+      largeStatus(strings["js.preview.drawing"].replace("{planet}", name));
       draw(true);
       return false;
     }
@@ -488,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       redrawn = false;
       show(link.dataset.planet);
-      el("large-status").textContent = "";
+      largeStatus("");
       dialog.showModal();
       zoomTo(1);
     });
@@ -507,11 +517,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (redrawn) {
         const message = document.getElementById("preview-failed");
         const text = message ? message.content.querySelector(".message").textContent : "";
-        el("large-status").textContent = text.replace(/\s+/g, " ").trim();
+        largeStatus(text.replace(/\s+/g, " ").trim());
         return;
       }
       redrawn = true;
-      el("large-status").textContent = status ? status.dataset.text : "";
+      largeStatus(status ? status.dataset.text : "");
       draw(true);
     });
 
@@ -585,6 +595,9 @@ document.addEventListener("DOMContentLoaded", () => {
     dialog.addEventListener("close", () => {
       let link = pictureLink(viewing);
       if (!link) {
+        // The close event comes a moment after the dialog shuts, so a planet
+        // picked on the page meanwhile is already being drawn; it is kept.
+        if (pending && !pendingInView) return;
         if (pending) drop();
         link = document.querySelector("#preview a.picture");
         if (link) show(link.dataset.planet);
