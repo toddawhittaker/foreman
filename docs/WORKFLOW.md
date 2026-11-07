@@ -79,8 +79,10 @@ The targets (STACK.md, section 13):
 - `make ci`: `verify`, `e2e` and `image` in turn: everything CI checks,
   in one local run.
 - `make tidy`: `go mod tidy`.
-- `make test-game`: run the game controller against the real Docker daemon
-  and the game test images (STACK.md, section 1), one after another.
+- `make test-game`: run the real-game tests in `./internal/game/` and
+  `./internal/web/` against the real Docker daemon and the game test
+  images (STACK.md, section 1), one package at a time (`-p 1`), because
+  both bind the game's UDP port.
   `TAG=1.1`, `2.0` or `2.1` runs one. It does not download the game
   images: pull each one first with the `docker pull` command in the error
   it prints. It starts containers named `foreman-e3test-*` and removes

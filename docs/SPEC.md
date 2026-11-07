@@ -77,6 +77,7 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Not built yet: Foreman refuses to start when it is set |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
 | `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
+| `FOREMAN_PUBLIC_ADDRESS` | none | The host name or IP address players type into Factorio, with an optional port (34197 when none is given). The Server page shows it as a join line (7.1). When it is blank the line is hidden: Foreman never guesses the address |
 | `FOREMAN_AUTH_METHODS` | `local` | A comma-separated list of `local` and `headers`. Empty means `local`. `oidc` joins the list with OIDC (12.7) |
 | `FOREMAN_AUTH_USER_HEADER` | none | Header that names the user. Required when `headers` is on (12.5) |
 | `FOREMAN_AUTH_GROUPS_HEADER` | none | Header that lists the user's groups. Required when `headers` is on (12.5) |
@@ -447,8 +448,8 @@ Import also does the following.
 - **Reading the page** takes only each world's `world.json`; it does not
   measure disk use. (P0)
 
-5.6. **Generate** a new world from a preset and a seed, a map exchange
-string, or custom map-gen settings, with Space Age on or off. (P0)
+5.6. **Generate** a new world from map settings (a preset, changed or
+not) or a map exchange string, with Space Age on or off. (P0)
 
 - **Nothing is made until the first start.** Generate writes only the world
   folder, `world.json` with `new_map` (5.1) and the settings files below.
@@ -458,24 +459,95 @@ string, or custom map-gen settings, with Space Age on or off. (P0)
   `mods/mod-list.json`; the start step already makes it. The game version
   and Space Age choices work as in Import (5.5): Space Age is refused
   before 2.0, and the image can be downloaded with the world.
-- **Three ways to say how the map is made.** A *preset* is one of the
-  game's own names, passed to `--preset`, with a seed passed to
-  `--map-gen-seed`; no file is written. An *exchange string* is decoded by
-  Foreman and both its files are written (`map-gen-settings.json`,
-  `map-settings.json`). *Custom settings* write `map-gen-settings.json`
-  alone. A blank seed is filled with a random one that the form keeps, so
-  the world matches the preview. The presets are, on 1.1: default,
-  rich-resources, marathon, death-world, death-world-marathon, rail-world,
-  ribbon-world and island; 2.0 and 2.1 add lakes. These names, the
-  planets and the autoplace controls are read from each game line's image
-  when the project is built and embedded in Foreman; nothing is read or
-  downloaded at startup.
-- **The custom form** has every autoplace control's frequency, size and
-  richness for each game line, and on 2.x for each planet, plus seed, width,
-  height, starting area, water, cliffs and peaceful mode. A raw JSON box
-  covers the rest (11.5). It opens filled from the chosen preset. Foreman
-  refuses a form the game would refuse: a frequency of none, for example,
-  is not offered.
+- **Two ways to make the map**, chosen first as labelled radios with a
+  line each: *Map settings* or *Map exchange string*. An exchange string
+  is decoded by Foreman and both its files are written
+  (`map-gen-settings.json`, `map-settings.json`).
+- **One form for map settings.** Choosing a preset fills every tab from
+  it. Once any field differs from the preset, the form shows the game's
+  own word "[modified]" and a "Reset to preset default" button. The tabs
+  are the game's: Resources, Terrain, Enemy and Advanced; without script
+  they stack under their headings. A hidden `filled_from` field names the
+  preset the fields were filled from. When it differs from the chosen
+  preset (a page without script), the page comes back filled from the new
+  preset with a note, and nothing is made. "Random seed" fills a seed from
+  0 to 4294967295 in the browser. A blank seed is filled with a random one
+  that the form keeps, so the world matches the preview.
+- **What is written** (ADR 0010). An unchanged preset is passed to
+  `--preset`, with the seed in `--map-gen-seed`, and no file is written.
+  Any change writes both files complete and passes no `--preset`, because
+  the game lets a preset win over the files. The map-settings file is the
+  example file from that exact version's image, with the preset's values
+  as the game applies them, plus the form's changes. It is always
+  complete, because the game refuses a `map-settings.json` that lacks a
+  key its version knows. Both built files are checked against the game
+  line's key types and ranges, as the raw editor checks (11.2), before
+  they are previewed or written.
+- **Untested layouts.** The map-settings layout changed at 2.1.13 and
+  2.1.18, and no tested image covers 2.1.13 to 2.1.17. On those versions
+  the Enemy and Advanced tabs offer no map-settings fields and say why.
+  A changed default preset writes the map-gen file alone, which the game
+  pairs with its own default map settings. A changed other preset is
+  refused on the form, with what to do instead.
+- The presets are, on 1.1: default, rich-resources, marathon,
+  death-world, death-world-marathon, rail-world, ribbon-world and island;
+  2.0 and 2.1 add lakes. These names, the planets, the autoplace
+  controls, the map types and each version's map-settings file are read
+  from each game image when the project is built and embedded in
+  Foreman; nothing is read or downloaded at startup.
+- **Map-gen fields** (Resources and Terrain, plus the starting area, No
+  enemies and Peaceful mode on Enemy, and width and height on Advanced).
+  Every autoplace control's frequency, size and richness for each game
+  line and, on 2.x, each planet, as a choice of the game's own steps,
+  plus seed, water and cliffs. Foreman refuses a form the game would
+  refuse: a frequency of none, for example, is not offered.
+  - A resource the game lets you switch off has an on/off box. Off writes
+    size 0, the game's own off value; frequency 0 is not off (2.1.24
+    crashes on it). A post that lacks the box keeps the resource on.
+  - Nauvis has a **map type**: Nauvis elevation (the default), Lakes and
+    Island on 2.x; Normal and Island on 1.1. The default writes no
+    `elevation` key. Other planets keep their own.
+  - **Moisture and terrain type** each have a scale, 12 steps from 17% to
+    600% (the file holds the inverse), and a bias, -0.50 to 0.50 in steps
+    of 0.05, written only when it is not 0. The game's data does not list
+    these steps; they are the game's own map generator screen's, read on
+    1.1, 2.0 and 2.1 on 2026-11-06.
+  - A raw JSON box covers the rest (11.5); the fields win for every key
+    they cover.
+- **Map-settings fields** (Enemy and Advanced) are the ones the version's
+  file holds, in the units the game's screen shows. Each number takes a
+  whole number within the game screen's own ends (read on 2.1.24 and
+  1.1.110):
+  - Enemy expansion: minimum expansion distance 1 to 20 chunks, maximum
+    2 to 20; minimum cooldown 1 to 60 minutes, maximum 5 to 180; on 1.1
+    and 2.0, minimum group size 1 to 20 and maximum 1 to 40; on 2.1,
+    evolution group size factor 1 to 20 in place of the group sizes.
+  - Evolution: time factor and pollution factor 0 to 1000 (× 10⁻⁷),
+    destroy factor 0 to 1000 (× 10⁻⁵).
+  - Technology: price multiplier 1 to 100000 (the game screen's lower end; the screen shows no upper end, so 100000 is a practical cap).
+    On 1.1 also recipe difficulty and technology difficulty (Normal or
+    Expensive) and research queue (After victory, Always or Never).
+  - Pollution: diffusion ratio 0 to 25%, absorption modifier and attack
+    cost modifier 10 to 400%, minimum to damage trees and absorbed per
+    damaged tree 0 to 9999.
+  - Asteroids (2.x): spawning rate 10 to 400%.
+  - Spoiling (2.x): **spoiling rate** 10% to 1000%, shown as the game
+    shows it, which is 100 divided by the stored `spoil_time_modifier`
+    (checked in a real game: a rate of 200% halves spoil times).
+  - Maximum expansion distance must be above the minimum; maximum cooldown
+    and maximum group size must be at least their minimum. When a change
+    pushes one of a pair past the other, the browser moves the other field
+    to fit, as the game does, and says so. The server refuses a bad pair,
+    with the error on the maximum, in case the browser did not.
+- **Achievement warnings.** A table per game line in `internal/mapgen`,
+  built from the game's own text, says which settings disable
+  achievements (on 1.1, enemy base frequency or size below 100% and
+  peaceful mode; 2.x adds no enemies, a larger starting area, more trees,
+  and pollution, evolution or expansion turned off or eased). A short
+  warning shows under each setting as soon as it crosses the line, and
+  one summary of the game's reasons sits by the Generate button. The
+  server works out the same answer from the files it would write.
+  Exchange strings get no warning.
 - **Decision D9 (settled 2026-11-06, ADR 0009): Foreman decodes the
   exchange string itself, in Go**, for the 1.1, 2.0 and 2.1 lines
   (`internal/mapexchange`). It is a port of rfvgyhn's
@@ -502,18 +574,39 @@ string, or custom map-gen settings, with Space Age on or off. (P0)
     take it;
   - a refusal names the string's version and the reason, and never quotes
     the string.
-- **Map preview (P1).** A "Preview map" step on the Generate page shows a
-  picture of the map, one for each planet the world will have: Nauvis only
-  on 1.1 and on 2.x without Space Age, and Nauvis, Vulcanus, Gleba, Fulgora
-  and Aquilo with Space Age. The picture comes from the game's own
+- **Map preview (P1).** The Generate page shows a picture of the map, one
+  for each planet the world will have: Nauvis only on 1.1 and on 2.x
+  without Space Age, and Nauvis, Vulcanus, Gleba, Fulgora and Aquilo with
+  Space Age. The picture comes from the game's own
   `--generate-map-preview` (with `--map-preview-planet` on 2.x), run in a
   locked-down one-off container (14.3); the headless game cannot take a
-  screenshot. It is drawn from exactly the settings Generate would write.
+  screenshot. It is drawn from exactly the settings Generate would write,
+  1280 by 1280 pixels (on 2.x one pixel is one tile, and the game has no
+  closer scale, so zooming scales the picture with sharp pixels).
   Previewing is optional. It uses only an image already downloaded, and
   otherwise says the image must be downloaded first; it never downloads
-  one (3.7). One preview runs at a time. The pictures are held in memory
-  under a random token tied to the user for 15 minutes, at most 8 previews
-  and 48 MB at once, and only that user can fetch them.
+  one (3.7).
+  - **It draws by itself** with script: on page load, and 0.8 seconds
+    after the last change to anything that changes the map. The newest
+    request wins; a change cancels the one on its way, and Foreman stops
+    its run. An automatic draw draws only the planet being viewed; picking
+    another planet draws it. "Preview map" draws every planet, and is the
+    way without script. An automatic request whose settings are invalid
+    gets the problems in the preview's place, and nothing moves focus.
+  - The caption says the picture shows the current, unsaved settings,
+    with the seed used, and a pin marks the centre of the map. A blank
+    seed field takes the seed the preview used; a typed seed is kept.
+  - **The large view** is a dialog in the page with Previous and Next
+    (a planet not drawn yet is drawn there), zoom from 100% to 800%, the
+    planet's download, and Close.
+  - **Downloads**: one planet's PNG, or every drawn planet as a zip,
+    named after the world, the seed and the planet.
+  - One preview runs at a time across Foreman; a request waits up to 20
+    seconds for its turn (14.3). Each user has one current preview, keyed
+    by its settings, with a picture per planet; asking again for a planet
+    already drawn reuses it. The pictures are held in memory under a
+    random token tied to the user for 15 minutes, at most 8 users'
+    previews and 48 MB at once, and only that user can fetch them.
 - Generate records the audit entry `generate` (12.9). A refusal appears on
   the form, in the page's language.
 
@@ -680,6 +773,17 @@ cannot read the game container, the state is **unknown** and the page says
 why; Foreman keeps serving every page. The Server page is where setup and
 sign-in land. (P0)
 
+- **The Server page's heading** is the active world's name with its state
+  badge beside it, and the badge updates live. The Console page has the
+  same heading.
+- **The join line** reads "Players join at host:port", from
+  `FOREMAN_PUBLIC_ADDRESS` (3.2), with a Copy address button that shows
+  only where the browser can copy. With the variable blank there is no
+  line.
+- The page has Overview and Console tabs, and its links to the World
+  page, Settings and Switch world sit on one row. Switch world opens the
+  Worlds list, where each world has its Switch button (17.10).
+
 7.2. Alongside the state: uptime, game version, active world, the loaded
 save, and CPU and memory use. (P0)
 
@@ -749,8 +853,13 @@ server, sent at the start of the countdown and again at 30 and 10 seconds
 before the end. If RCON cannot be reached, Foreman says so and offers a
 forced stop instead of silently forcing one. An exit after a stop Foreman
 asked for is never reported as a crash, whatever its exit code. The form
-names who is online. The seconds field is the only way to skip the warning:
-there is no separate checkbox. (P0)
+names who is online. The seconds field is the only way to skip the warning.
+Beside it a one-tap **No warning** button sets the field to 0 seconds and
+moves focus there. It needs script, so without script it stays hidden and
+the hint says that 0 means no warning. There is no separate stop-now
+checkbox. The page's Cancel returns to the page that opened it (the
+settings page after a save, for example) when that is one of Foreman's
+own pages, and to the Server page otherwise. (P0)
 
 While players are warned, the Server page shows the time left and who was
 online when the countdown began, and offers **Cancel stop**. Cancelling
@@ -908,6 +1017,11 @@ otherwise. The game prints its RCON password as `<private>`, but Foreman
 still removes the RCON password, the game password and the factorio.com
 username, password and token from every line before showing or keeping it, and masks a printed password command (8.4, 14.8).
 Any `--rcon-password` value in a line is always masked. (P0)
+
+The game's own Error and Warning lines are coloured; the word stays in
+the line, so colour is not the only sign (17.4). **Download log**
+(`GET /worlds/{id}/console/log`) sends the kept lines, already masked, as
+a text file, so it holds nothing the page would not show (14.8).
 
 8.7. **Crash detection.** When the game stops without being asked to,
 Foreman marks it crashed. It polls Docker every few seconds, and again when
@@ -1104,6 +1218,14 @@ raw JSON editor for everything else. (P0 form; P1 raw editor)
   that lacks one of the three.
 - **The form changes only the keys it shows.** Every other key, and the
   file's layout and key order, are kept.
+- **Auto-pause is on unless the file says otherwise.** A missing
+  `auto_pause` key shows as on, the game's own default. The first save on
+  a world with no file writes `auto_pause: true` with the three keys
+  above. An explicit `false` is kept.
+- **Make admin.** On a running world the page lists the connected players
+  who are not admins, each with a Make admin button. It adds the name to
+  the admins and goes through the normal preview and confirm (11.3). A
+  name the game could not be sent (above) is not listed.
 
 11.2. The raw editor validates before saving and refuses invalid input
 with the line and the reason. (P1)
@@ -1111,7 +1233,8 @@ with the line and the reason. (P1)
 - The editor covers `server-settings.json`. The text must be at most 1 MB
   and one JSON object. Known keys are type-checked and range-checked for
   the world's game line (1.1, 2.0 or 2.1), from the example file in that
-  line's image. Unknown keys are kept, and the diff lists them as keys
+  line's image. Following an error's link puts the caret on its line.
+  Unknown keys are kept, and the diff lists them as keys
   Foreman does not check. An error never shows a value from the file.
 - A secret key (11.4) is left out of the editor's text and put back when
   the change is saved.
@@ -1134,7 +1257,8 @@ takes a snapshot first. (P0)
   warning. If the snapshot or the audit entry fails, nothing is written.
 - **A running world.** The game reads `server-settings.json` only when it
   starts, so the page says the change takes effect after a restart and
-  links to Restart. An admin change applies at once (11.1). If the files
+  links to Restart. That link opens the same stop page as the Server
+  page's Restart, and its Cancel comes back to the settings (7.6). An admin change applies at once (11.1). If the files
   were written but a promote or demote could not be sent, the page says
   the save was partial.
 - A world a newer Foreman wrote is shown read-only (5.1).
@@ -1152,6 +1276,11 @@ and the factorio.com `username`, `password` and `token`. (P0)
 form-and-raw editor. Map-gen settings are edited only when generating a
 world (section 5.6). (P1 for map-gen as part of generate; P2 for editing
 map-settings afterwards, issue #207)
+
+The game reads both files only at `--create`, when it makes the map.
+Editing `map-settings.json` later has no effect, so Foreman offers map
+settings only at Generate. Changing them in a running game would need a
+separate design (issue #207).
 
 ## 12. Sign-in and users
 
@@ -1310,8 +1439,12 @@ no network, a read-only root, every capability dropped, `no-new-privileges`,
 no restart, a memory limit of 1 GiB with no swap, the game's write folder
 on a size-limited tmpfs and a 60-second limit, after which it is deleted.
 Its only bind mount is a fresh folder under the data directory, never a
-world's folder, which is deleted afterwards. One runs at a time. A
-leftover container (found by label) or folder from a crash is removed at
+world's folder, which is deleted afterwards. One runs at a time. A request
+waits up to 20 seconds for its turn and is then refused; at most 8 wait,
+and one more is refused at once. A request whose browser goes away stops
+waiting, and if its preview is already running, the container is stopped
+and deleted with its folder. A container whose create call failed is
+deleted by its name. A leftover container (found by label) or folder from a crash is removed at
 the start of the next preview, not at startup.
 
 To share a network with the game (4.4), Foreman reads its own container
@@ -1509,10 +1642,12 @@ with the defaults accepted, these take at most:
 | Start the active world | 1 |
 | Stop or restart it, warning players | 2 |
 | Take a snapshot | 1 |
-| Switch to another world, downloading its game image if needed | 3 |
+| Switch to another world, downloading its game image if needed (Switch world, the world's Switch, confirm) | 3 |
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
 | Recover after a failed start or a crash loop | 2 |
+| Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
+| Clone the active world (World page, Clone world, Clone world) | 3 |
 
 A click is one activation of a button, link or choice in a list. Typing
 in a field doesn't count. Each task's end-to-end test counts its clicks
@@ -1530,6 +1665,12 @@ Durations, such as uptime, are not times of day and are left alone. (P1)
 its rows at a narrow width (a snapshot list at 200% text on a phone) keeps
 its table, row and cell roles for assistive technology, and none of its
 content may overflow its panel. (P1)
+
+17.13. **Required fields are marked.** Every field the server refuses
+when empty has an asterisk after its label, drawn by CSS so the label's
+accessible name does not change, and each form with such a field has one
+"* Required" note. An optional field has no mark. A placeholder, where
+there is one, is an example and never repeats the label. (P1)
 
 ## 18. Epics, in order
 
