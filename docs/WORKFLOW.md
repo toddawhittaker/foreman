@@ -209,6 +209,12 @@ Install gitleaks from https://github.com/gitleaks/gitleaks/releases or
 your package manager. Files that legitimately contain secret-shaped
 strings are allowlisted in `.gitleaks.toml`.
 
+The same hooks folder holds a commit-msg hook. It refuses a commit message
+that names an AI assistant as a co-author (a `Co-authored-by:` line for
+Claude or Anthropic, or a "Generated with Claude Code" line). Agents write
+commit messages themselves, so Claude Code's own attribution setting cannot
+stop such a line; this hook does.
+
 ## Dependencies
 
 Versions are pinned exactly and the lockfile is committed. Each world
