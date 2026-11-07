@@ -260,10 +260,14 @@ export const test = base.extend<{
   // Opt in with test.use({ fakePortalOn: true }): Foreman then reaches the fake mod portal through its proxy.
   fakePortalOn: boolean;
   fakePortal: FakePortal | undefined;
+  // Opt in with test.use({ portalAccountOn: true }) beside fakePortalOn: Foreman then starts with the fake's
+  // factorio.com account in its environment (SPEC 9.11), so mod downloads are on.
+  portalAccountOn: boolean;
 }>({
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
   fakePortalOn: [false, { option: true }],
+  portalAccountOn: [false, { option: true }],
   fakePortal: async ({ fakePortalOn }, use) => {
     if (!fakePortalOn) {
       await use(undefined);
@@ -282,11 +286,12 @@ export const test = base.extend<{
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame, fakePortal }, use, testInfo) => {
+  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn }, use, testInfo) => {
     const env = {
       ...(fakeGame ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork } : {}),
       // Loopback addresses are never proxied, so only the portal's hosts go through.
       ...(fakePortal ? { HTTPS_PROXY: fakePortal.proxy, SSL_CERT_FILE: fakePortal.caFile } : {}),
+      ...(fakePortal && portalAccountOn ? { FOREMAN_FACTORIO_USERNAME: fakePortal.username, FOREMAN_FACTORIO_TOKEN: fakePortal.token } : {}),
       ...foremanEnv,
     };
     const f = await startForeman(env);
@@ -316,6 +321,19 @@ const repo = join(import.meta.dirname, "..", "..");
 
 // The image Foreman runs for 2.1.24 worlds: the exact tag, with the Makefile's digest left off (SPEC 10.1).
 export const image21 = /^GAME_IMAGE_2_1\s*:=\s*([^\s@]+)/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
+
+// The same for 2.0 worlds, and the game version it names. The fake portal's generated mods are made for 2.0.
+export const image20 = /^GAME_IMAGE_2_0\s*:=\s*([^\s@]+)/m.exec(readFileSync(join(repo, "Makefile"), "utf8"))![1];
+export const version20 = image20.split(":")[1];
+
+// What the Server page and the click budgets read: the state badge, the "Done:" box, and the wait for a slow step.
+export const live = { timeout: 20_000 };
+export const stateBadge = (page: Page) => page.locator("main h1 .state");
+export const doneBox = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
+
+// How many game containers the fake has been asked to create, so a test sees a game start again.
+export const creates = async (g: FakeGame) =>
+  (await g.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
 
 export const adminPassword = "correct horse battery";
 
@@ -392,34 +410,46 @@ export function makeZip(entries: Record<string, string>): Buffer {
   return Buffer.concat([...parts, dirBytes, end]);
 }
 
-// Makes the active world "base", a 2.1 world holding one real save (SPEC
-// 5.1: a world is a folder a person can make by hand), with a game password
-// when one is given.
+// A mod zip to seed into the world's mods folder: factorio is the game line its
+// info.json declares; the version defaults to 1.0.0.
+export interface SeedMod {
+  factorio: string;
+  version?: string;
+  enabled?: boolean;
+  deps?: string[];
+}
+
+// Makes the active world "base", a 2.1.24 world unless version says otherwise,
+// holding one real save (SPEC 5.1: a world is a folder a person can make by
+// hand), with a game password when one is given.
 export function seedWorld(
   f: Foreman,
-  // mods maps the name of each enabled mod to the Factorio version its zip declares.
-  opts: { fixture?: string; spaceAge?: boolean; gamePassword?: string; mods?: Record<string, string> } = {},
+  // mods maps the name of each mod to the Factorio version its zip declares, or to a SeedMod.
+  opts: { fixture?: string; spaceAge?: boolean; gamePassword?: string; mods?: Record<string, string | SeedMod>; version?: string } = {},
 ) {
+  const version = opts.version ?? "2.1.24";
   const dir = join(f.dataDir, "worlds", "base");
   for (const sub of ["saves", "mods", "config"]) mkdirSync(join(dir, sub), { recursive: true });
   writeFileSync(
     join(dir, "world.json"),
-    JSON.stringify({ format_version: 1, name: "Base", game_version: "2.1.24", space_age: opts.spaceAge ?? false, created_at: "2026-11-01T10:00:00Z" }),
+    JSON.stringify({ format_version: 1, name: "Base", game_version: version, space_age: opts.spaceAge ?? false, created_at: "2026-11-01T10:00:00Z" }),
   );
   if (opts.gamePassword) {
     writeFileSync(join(dir, "config", "server-settings.json"), JSON.stringify({ name: "Base", description: "", visibility: { public: false, lan: false }, game_password: opts.gamePassword }));
   }
   if (opts.mods) {
     const spaceAgeOn = opts.spaceAge ?? false;
+    // The 2.1 line has the always-on built-in mod "recycler"; 2.0 does not.
     const list = [
       { name: "base", enabled: true },
-      { name: "recycler", enabled: true },
+      ...(version.startsWith("2.1") ? [{ name: "recycler", enabled: true }] : []),
       ...["elevated-rails", "quality", "space-age"].map((name) => ({ name, enabled: spaceAgeOn })),
     ];
-    for (const [name, factorio] of Object.entries(opts.mods)) {
-      const info = JSON.stringify({ name, version: "1.0.0", factorio_version: factorio });
-      writeFileSync(join(dir, "mods", `${name}_1.0.0.zip`), makeZip({ [`${name}_1.0.0/info.json`]: info }));
-      list.push({ name, enabled: true });
+    for (const [name, seed] of Object.entries(opts.mods)) {
+      const { factorio, version: modVersion = "1.0.0", enabled = true, deps } = typeof seed === "string" ? ({ factorio: seed } as SeedMod) : seed;
+      const info = JSON.stringify({ name, version: modVersion, factorio_version: factorio, ...(deps ? { dependencies: deps } : {}) });
+      writeFileSync(join(dir, "mods", `${name}_${modVersion}.zip`), makeZip({ [`${name}_${modVersion}/info.json`]: info }));
+      list.push({ name, enabled });
     }
     writeFileSync(join(dir, "mods", "mod-list.json"), JSON.stringify({ mods: list }));
   }
@@ -450,6 +480,20 @@ export function seedSecond(f: Foreman, opts: { fixture?: string; spaceAge?: bool
   copyFileSync(join(repo, "internal", "savefile", "testdata", fixture), save);
   const at = opts.playedAt ?? new Date(Date.now() - 3_600_000);
   utimesSync(save, at, at);
+}
+
+// The mods tests' start: signs in as the admin, seeds the active world "base" and its game image, and
+// ends on the Server page. With start, the game is started and the page shows it running.
+export async function setUpModsWorld(page: Page, f: Foreman, g: FakeGame, opts: Parameters<typeof seedWorld>[1] & { start?: boolean } = {}) {
+  await createAdmin(page);
+  // A mod list is always written, so the world's mods show as the game would load them.
+  seedWorld(f, { mods: {}, ...opts });
+  await g.call("/image", { ref: opts.version?.startsWith("2.0") ? image20 : image21, on: true });
+  await page.goto("/");
+  await expect(stateBadge(page)).toHaveText("Stopped", live);
+  if (!opts.start) return;
+  await page.getByRole("button", { name: "Start server" }).click();
+  await expect(stateBadge(page)).toHaveText("Running", live);
 }
 
 // After a switch the Server page loads again; the sentence is
