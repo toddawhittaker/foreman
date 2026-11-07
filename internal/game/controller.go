@@ -72,12 +72,14 @@ const (
 	AuditSwitch        = "switch"
 	AuditUpdate        = "game-update"
 	AuditRollback      = "rollback"
+	AuditMods          = "mods"
 	// A start, restart, switch or update the checks refused before anything
 	// was done is recorded under its own action, with the reason (SPEC 12.9).
 	AuditStartRefused   = "start-refused"
 	AuditRestartRefused = "restart-refused"
 	AuditSwitchRefused  = "switch-refused"
 	AuditUpdateRefused  = "game-update-refused"
+	AuditModsRefused    = "mods-refused"
 )
 
 // Errors a caller can test for with errors.Is. The text is shown to the admin.
@@ -225,10 +227,11 @@ type Controller struct {
 	closed  bool          // Run has returned; no goroutine may start
 	poke    chan struct{} // asks the monitor to look now
 
-	mu        sync.Mutex // guards the fields below; never held while taking a worldRun's mu
-	runs      map[string]*worldRun
-	listed    bool  // the monitor has listed Foreman's containers at least once
-	dockerErr error // the last listing failed
+	mu         sync.Mutex // guards the fields below; never held while taking a worldRun's mu
+	modFetcher ModFetcher
+	runs       map[string]*worldRun
+	listed     bool  // the monitor has listed Foreman's containers at least once
+	dockerErr  error // the last listing failed
 	// subnets are the game networks' address ranges at the last good read;
 	// subnetsKnown says there has been one (SPEC 12.6).
 	subnets      []netip.Prefix
@@ -866,7 +869,7 @@ func (c *Controller) pokeMonitor() {
 // refusedActions names the audit action of each refusable action.
 var refusedActions = map[string]string{
 	AuditStart: AuditStartRefused, AuditRestart: AuditRestartRefused, AuditSwitch: AuditSwitchRefused,
-	AuditUpdate: AuditUpdateRefused,
+	AuditUpdate: AuditUpdateRefused, AuditMods: AuditModsRefused,
 }
 
 // IsRefusal reports whether err is a check refusing the world as it is,
@@ -876,7 +879,8 @@ func IsRefusal(err error) bool {
 	var pe *PrecheckError
 	return errors.As(err, &pe) ||
 		errors.Is(err, ErrSwitchSame) || errors.Is(err, ErrSwitchNotActive) ||
-		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning)
+		errors.Is(err, ErrSwitchNoTarget) || errors.Is(err, ErrSwitchTargetRunning) ||
+		errors.Is(err, world.ErrModsChanged)
 }
 
 // checkFailed handles an error from the checks a start, restart or switch
