@@ -178,6 +178,7 @@ test.describe("with script", () => {
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+    await expect(dialog.getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
     await page.getByRole("button", { name: "Close" }).press("Enter");
     await expect(section(page).getByRole("link", { name: /Map preview of Vulcanus/ })).toBeFocused();
   });

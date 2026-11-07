@@ -98,7 +98,12 @@ test.describe("Generate", () => {
     let gone = true;
     await page.route(/\/generate\/preview\/[^/]+\/[a-z-]+$/, (route) => (gone ? route.fulfill({ status: 404, body: "" }) : route.continue()));
     const sent: Request[] = [];
-    page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
+    // The picture is back from the moment the new request starts, before its reply asks for the file.
+    page.on("request", (r) => {
+      if (!isAuto(r)) return;
+      sent.push(r);
+      if (sent.length === 2) gone = false;
+    });
     await page.goto("/generate");
     await expect.poll(() => sent.length).toBe(1);
     await expect(section(page).getByRole("link", { name: /opens the large view/ })).toBeVisible();
@@ -106,7 +111,6 @@ test.describe("Generate", () => {
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
     // The broken picture is hidden, a new one is asked for, and the dialog says so.
     await expect.poll(() => sent.length).toBe(2);
-    gone = false;
     await expect(dialog(page).locator("#large-frame")).not.toHaveAttribute("data-missing", /.*/);
     await expect.poll(() => dialog(page).locator("#large-img").evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
@@ -166,6 +170,27 @@ test.describe("Generate", () => {
     await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
     await expect(dialog(page).locator("#large-status")).toHaveText("Nauvis");
     await dialog(page).getByRole("button", { name: "Close" }).click();
+    await expect(section(page).getByRole("link", { name: /Map preview of Nauvis/ })).toBeFocused();
+  });
+
+  // Close while a planet is still being drawn: focus stays on a picture that is there, and the late reply changes nothing.
+  test("closing the large view while a planet is drawing keeps focus on a picture", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/preview", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.keyboard.press("ArrowRight");
+    await expect(dialog(page).locator("#large-status")).toContainText("Drawing Vulcanus");
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toBeHidden();
+    release();
+    await page.waitForTimeout(800);
     await expect(section(page).getByRole("link", { name: /Map preview of Nauvis/ })).toBeFocused();
   });
 

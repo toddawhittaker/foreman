@@ -326,8 +326,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     // Focus goes back to the picture shown, which is the one that opened it
     // or, after Next, its neighbour.
+    // A planet still being drawn when the dialog closes is dropped: its reply
+    // would swap the picture that has the focus away.
     dialog.addEventListener("close", () => {
-      const link = document.querySelector(`#preview a.picture[data-planet="${CSS.escape(viewing)}"]`) || document.querySelector("#preview a.picture");
+      let link = pictureLink(viewing);
+      if (!link) {
+        if (pending) drop();
+        link = document.querySelector("#preview a.picture");
+        if (link) show(link.dataset.planet);
+      }
       if (link) link.focus();
     });
   }
