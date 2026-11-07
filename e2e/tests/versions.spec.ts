@@ -263,9 +263,11 @@ test.describe("with the fake game", () => {
     await expect(page).toHaveURL("/worlds/second?result=1");
     const result = page.locator("#world-result");
     await expect(result).toContainText("The game version is updated.", live);
-    // DESIGN 7.6: the reloaded page puts focus on the result and reads it out.
+    // DESIGN 7.6: the reloaded page puts focus on the result, which reads it out;
+    // the announcer must not say it a second time (it would have, 500 ms later).
     await expect(result).toBeFocused();
-    await expect(page.locator("#announcer")).toContainText("Done: The game version is updated.", live);
+    await page.waitForTimeout(1500);
+    await expect(page.locator("#announcer")).toBeEmpty();
     await expect(page.locator("dl.facts")).toContainText("2.1.25");
     expect(diskVersion(foreman, "second")).toBe("2.1.25");
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
@@ -328,7 +330,8 @@ test.describe("with the fake game", () => {
     await expect(refusal).toContainText("base.zip uses Space Age", live);
     await expect(refusal).toContainText('labelled "Before update"');
     await expect(page.locator("#world-result")).toBeFocused();
-    await expect(page.locator("#announcer")).toContainText("Warning:", live);
+    await page.waitForTimeout(1500);
+    await expect(page.locator("#announcer")).toBeEmpty();
     expect(diskVersion(foreman, "second")).toBe("2.1.24");
     await checkPage(page);
 
