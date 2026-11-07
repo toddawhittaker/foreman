@@ -265,7 +265,7 @@
   "worlds.snapshots.restore": "Obnovit",
   "worlds.snapshots.restore_named": "Obnovit {label}, pořízeno {when}",
   "worlds.snapshots.select_automatic": "Vybrat všechny automatické",
-  "worlds.snapshots.select_hint": "Zaškrtněte snímky a zvolte Smazat vybrané. Nic se nesmaže bez potvrzení.",
+  "worlds.snapshots.select_hint": "Je třeba zaškrtnout snímky a zvolit Smazat vybrané. Nic se nesmaže bez potvrzení.",
   "worlds.snapshots.size_label": "Velikost:",
   "worlds.snapshots.take.heading": "Pořízení snímku",
   "worlds.snapshots.take.hint": {

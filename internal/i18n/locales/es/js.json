@@ -11,7 +11,7 @@
   "js.generate.preview_ready": "Vista previa del mapa lista.",
   "js.preview.zoom": "Zoom {level}",
   "js.preview.drawing": "Dibujando {planet}…",
-  "js.generate.reset": "Ajustes del mapa restablecidos al preajuste {preset}.",
+  "js.generate.reset": "Ajustes del mapa restablecidos al ajuste predefinido {preset}.",
   "js.generate.ach_setting": "{setting} desactiva algunos logros.",
   "js.generate.ach_clear": "Ahora ningún ajuste desactiva logros.",
   "js.generate.moved": "{field} cambiado a {value} para que el rango siga siendo válido."
