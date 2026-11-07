@@ -51,11 +51,11 @@ test("a preset world takes three clicks from the Server page and says its map is
   await page.getByRole("link", { name: "Generate a world" }).click();
   await expect(page).toHaveURL("/generate");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Generate a world");
-  // The version is the active world's, the preset is the default, the seed is blank.
+  // The version is the active world's, the preset is the default, the seed is blank, or the one a preview drawn on load used.
   await expect(page.getByLabel("Game version")).toContainText("2.1.24, same as the active world");
   await expect(mode(page, "Map settings")).toBeChecked();
   await expect(page.locator("#generate-preset")).toHaveValue("default");
-  await expect(page.locator("#generate-seed")).toHaveValue("");
+  await expect(page.locator("#generate-seed")).toHaveValue(/^\d*$/);
   await checkPage(page);
 
   await page.getByLabel("World name").fill("Fresh start");
@@ -513,6 +513,71 @@ test("steps are sliders on a wide panel and selects on a phone", async ({ page, 
   }
   await expect(page.locator("#preset-modified")).toHaveText("[modified]");
   await checkPage(page);
+});
+
+// SPEC 5.6: the Terrain tab's map type and scales, and a resource's on/off
+// box, as the game's map generator has them. Off writes size 0, the game's
+// own off value; map type and scales go into property_expression_names.
+test("a resource switched off, a map type, a scale and a bias reach the file", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await page.getByLabel("World name").fill("Dry island");
+  const iron = page.getByRole("checkbox", { name: "Iron ore", exact: true });
+  await expect(iron).toBeChecked();
+  await iron.uncheck();
+  await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+  await tab(page, "Terrain").click();
+  const mapType = page.getByLabel("Map type");
+  await expect(mapType).toBeVisible();
+  await expect(page.locator("#mg-map-type-range")).toHaveCount(0);
+  await mapType.selectOption({ label: "Island elevation" });
+  await setStep(page, "mg-moisture-scale", "200");
+  await expect(page.locator("#mg-moisture-group legend")).toHaveText("Moisture");
+  // Bias is a slider on a wide panel and a select on a phone, as every step is.
+  const bias = page.locator("#mg-aux-bias");
+  const biasSlider = page.locator("#mg-aux-bias-range");
+  if ((page.viewportSize()?.width ?? 1280) > 600) {
+    await expect(biasSlider).toBeVisible();
+    await expect(biasSlider).toHaveAccessibleName("Bias");
+    await expect(page.locator("#mg-aux-bias-value")).toHaveText("0.00 (default)");
+    await biasSlider.focus();
+    await page.keyboard.press("Home");
+    await expect(bias).toHaveValue("-50");
+  } else {
+    await expect(bias).toBeVisible();
+    await expect(biasSlider).toBeHidden();
+    await bias.selectOption("-50");
+  }
+  await checkPage(page);
+  await page.getByRole("button", { name: "Generate world" }).click();
+  await expect(page).toHaveURL("/worlds/dry-island?generated=1");
+  const mg = JSON.parse(readFileSync(configFile(foreman.dataDir, "dry-island", "map-gen-settings.json"), "utf8"));
+  expect(mg.autoplace_controls["iron-ore"].size).toBe(0);
+  expect(mg.autoplace_controls["copper-ore"].size).toBe(1);
+  expect(mg.property_expression_names.elevation).toBe("elevation_island");
+  expect(mg.property_expression_names["control:moisture:frequency"]).toBe("0.5");
+  expect(mg.property_expression_names["control:aux:frequency"]).toBe("1");
+  expect(mg.property_expression_names["control:aux:bias"]).toBe("-0.5");
+  // A bias of 0 is left out, as the game's own generator writes it.
+  expect(mg.property_expression_names["control:moisture:bias"]).toBeUndefined();
+  expect(worldJSON(foreman.dataDir, "dry-island").new_map.preset ?? "").toBe("");
+});
+
+test("the island preset fills the map type, and default leaves it out of the file", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await page.locator("#generate-preset").selectOption({ label: "Island" });
+  await tab(page, "Terrain").click();
+  await expect(page.getByLabel("Map type")).toHaveValue("elevation_island");
+  await page.locator("#generate-preset").selectOption({ label: "Default" });
+  await expect(page.getByLabel("Map type")).toHaveValue("elevation");
+  await page.getByLabel("World name").fill("Plain");
+  await setStep(page, "mg-aux-scale", "50");
+  await page.getByRole("button", { name: "Generate world" }).click();
+  await expect(page).toHaveURL("/worlds/plain?generated=1");
+  const mg = JSON.parse(readFileSync(configFile(foreman.dataDir, "plain", "map-gen-settings.json"), "utf8"));
+  expect(mg.property_expression_names.elevation).toBeUndefined();
+  expect(mg.property_expression_names["control:aux:frequency"]).toBe("2");
 });
 
 // DESIGN 8.6 (ruling 2): "[modified]" shows once anything changes, with a reset.
