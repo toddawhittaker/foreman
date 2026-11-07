@@ -148,6 +148,6 @@ test("the done message leads to the snapshot's Restore link", async ({ page, for
   await checkPage(page);
 
   await target.click();
-  await expect(page.getByRole("link", { name: "Back to Family base" })).toHaveAttribute("href", "/worlds/family-base");
+  await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
 });

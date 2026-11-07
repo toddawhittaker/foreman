@@ -208,7 +208,7 @@ func TestStartRefusedListsNoSkippedSteps(t *testing.T) {
 		p.Result, p.HaveResult = actionResult{Action: game.AuditStart, Err: pe}, true
 	})
 	html := controlHTML(t, p)
-	if !strings.Contains(html, "<h3>Start refused</h3>") || strings.Contains(html, "Skipped") || strings.Contains(html, game.StepLoad) {
+	if !strings.Contains(html, "<h2>Start refused</h2>") || strings.Contains(html, "Skipped") || strings.Contains(html, game.StepLoad) {
 		t.Errorf("refused start:\n%s", html)
 	}
 }

@@ -45,7 +45,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
 
     await page.getByRole("link", { name: "Stop server" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop Base");
     await expect(page.getByLabel("Countdown in seconds")).toHaveValue("60");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("2");
@@ -93,7 +93,7 @@ test.describe("with the fake game", () => {
     const creates = async () => (await fakeGame!.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
     const before = await creates();
     await page.getByRole("link", { name: "Restart server" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart Base");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("0");
     await page.getByRole("button", { name: "Restart server" }).click();

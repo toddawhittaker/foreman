@@ -41,20 +41,16 @@ func TestWorldsTabIsCurrentOnWorldPages(t *testing.T) {
 	}
 }
 
-// Every page under a world goes back to it, and the others back to the
-// list, with one pattern and one wording.
+// Pages that have no tab or Cancel to leave by (the import form, a refused
+// delete) keep one "Back to" link, with one pattern and one wording.
 func TestBackLinks(t *testing.T) {
 	r := newTestRenderer(t)
-	sum := world.Summary{ID: "base", Name: "Base"}
 	for _, c := range []struct {
 		page Page
 		want string
 	}{
 		{ImportPage{}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
-		{DeletedPage{}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
-		{RestorePage{WorldID: "base", WorldName: "Base"}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
-		{RestorePage{WorldID: "base", WorldName: "Base", Deleted: true}, `<div class="actions"><a href="/worlds">Back to worlds</a></div>`},
-		{DeletePage{World: sum}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
+		{DeletePage{World: world.Summary{ID: "base", Name: "Base", Active: true}}, `<div class="actions"><a href="/worlds/base">Back to Base</a></div>`},
 	} {
 		_, body := render(t, r, pageCase{status: 200, user: "todd", page: c.page})
 		wantIn(t, c.page.templateName(), body, c.want)
