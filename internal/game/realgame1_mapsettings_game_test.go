@@ -31,12 +31,20 @@ const uibPrefix = "uib-realgame1"
 // generateUIB is generate with a name of its own.
 func (e *gameEnv) generateUIB(t *testing.T, label string, nw world.NewWorld) string {
 	t.Helper()
-	nw.Name = fmt.Sprintf("%s %s %s", uibPrefix, label, e.run)
+	return e.generateNamed(t, uibPrefix, label, nw)
+}
+
+// generateNamed makes a world whose name starts with prefix, so its container
+// (foreman-<prefix>-...) is recognisable, and removes the container at the
+// end of the test.
+func (e *gameEnv) generateNamed(t *testing.T, prefix, label string, nw world.NewWorld) string {
+	t.Helper()
+	nw.Name = fmt.Sprintf("%s %s %s", prefix, label, e.run)
 	id, err := e.worlds.Generate(context.Background(), nw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(ContainerName(id), "foreman-"+uibPrefix+"-") {
+	if !strings.HasPrefix(ContainerName(id), "foreman-"+prefix+"-") {
 		t.Fatalf("container name %s is not recognisable as this test's", ContainerName(id))
 	}
 	t.Cleanup(func() { e.removeContainer(t, ContainerName(id)) })
