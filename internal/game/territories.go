@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"slices"
@@ -179,23 +178,19 @@ func (c *Controller) territoriesSpec(image, dir string, req PreviewRequest) dock
 	}
 }
 
-// readTerritories reads the run's JSON from the work folder, at most one byte
-// more than territory.MaxJSON, and parses it for a picture of size pixels.
-// The game's script is untrusted (SPEC 14.1), so Parse does the checking.
+// readTerritories reads the run's JSON from the work folder, at most
+// territory.MaxJSON bytes, and parses it for a picture of size pixels. The
+// game's script is untrusted (SPEC 14.1): the file must be a regular file, so
+// a named pipe cannot hold the read, and Parse does the checking.
 func readTerritories(base *os.Root, dir string, size int) (territory.Result, error) {
 	root, err := base.OpenRoot(dir)
 	if err != nil {
 		return territory.Result{}, err
 	}
 	defer func() { _ = root.Close() }()
-	f, err := root.Open(gameenv.TerritoryFile)
+	b, err := world.ReadSmallFile(root, gameenv.TerritoryFile, territory.MaxJSON)
 	if err != nil {
-		return territory.Result{}, fmt.Errorf("the game made no territory file: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-	b, err := io.ReadAll(io.LimitReader(f, territory.MaxJSON+1))
-	if err != nil {
-		return territory.Result{}, err
+		return territory.Result{}, fmt.Errorf("the game made no usable territory file: %w", err)
 	}
 	return territory.Parse(b, size)
 }

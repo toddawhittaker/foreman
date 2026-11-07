@@ -103,6 +103,26 @@ test("plus and minus zoom around the centre, 0 fits, and the level is said", asy
   expect(await largeImg(page).evaluate((i) => getComputedStyle(i).imageRendering)).toBe("pixelated");
 });
 
+// The planet's name is said a moment after a step; a zoom made in that
+// moment is newer, so it is what the status keeps.
+test("a zoom right after a step is not overwritten by the planet's name", async ({ page }) => {
+  // Every planet drawn, so a step shows its picture at once and says its name.
+  await page.goto("/generate");
+  await page.getByRole("button", { name: "Preview map" }).click();
+  await expect(section(page).getByRole("img")).toHaveCount(5);
+  await section(page).getByRole("link", { name: /Vulcanus.*opens the large view/ }).click();
+  await expect(largeImg(page)).toHaveAttribute("alt", /^Map preview of Vulcanus/);
+  await page.evaluate(() => {
+    const view = document.getElementById("large-view")!;
+    for (const key of ["ArrowLeft", "+"]) view.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+  await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
+  // Longer than the announcement's delay.
+  await page.waitForTimeout(200);
+  await expect(page.locator("#large-status")).toHaveText("Zoom 115%");
+});
+
 test("dragging moves a zoomed picture, and the arrow keys on it pan instead of stepping", async ({ page }) => {
   await openLarge(page);
   for (let i = 0; i < 8; i++) await page.keyboard.press("+");
@@ -273,6 +293,20 @@ test.describe("the planet viewed", () => {
     await section(page).getByLabel("Planet").selectOption("fulgora");
     await expect(section(page).getByRole("img", { name: /^Map preview of Fulgora/ })).toBeVisible();
     expect(await seen()).toEqual(["vulcanus", "nauvis", "fulgora"]);
+  });
+
+  // The dialog's close event comes a moment after it shuts; a planet picked
+  // in that moment is still drawn, and the planet viewed stays the one picked.
+  test("a planet picked as the large view closes is drawn", async ({ page }) => {
+    await openLarge(page);
+    await page.evaluate(() => {
+      (document.getElementById("large-view") as HTMLDialogElement).close();
+      const pick = document.getElementById("preview-planet") as HTMLSelectElement;
+      pick.value = "fulgora";
+      pick.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await expect(section(page).getByRole("img", { name: /^Map preview of Fulgora/ })).toBeVisible();
+    await expect(section(page).getByLabel("Planet")).toHaveValue("fulgora");
   });
 
   test("the preview starts from the planet open in the settings", async ({ page }) => {

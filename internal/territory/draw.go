@@ -2,13 +2,16 @@ package territory
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
@@ -55,14 +58,51 @@ var fonts = sync.OnceValues(func() ([]*sfnt.Font, error) {
 	return out, nil
 })
 
-// renderSlot lets one render run at a time: decoding a 4096 picture alone
-// takes 64 MB.
+// renderSlot lets one render run at a time. The peak is the decoded picture
+// plus its RGBA copy: the game's PNG is untrusted and may be 16-bit, which
+// decodes at 8 bytes a pixel, so at MaxSize (3072 square) that is about
+// 75 MB plus 38 MB, about 115 MB with the encoder's buffers on top. Raising
+// MaxSize, or the number of renders at once, needs this checked again.
 var renderSlot = make(chan struct{}, 1)
 
+// maxWaiting is how many callers may queue for renderSlot. Each holds its
+// source picture (up to 16 MB) while it waits.
+const maxWaiting = 4
+
+// waiting counts the callers queued for renderSlot.
+var waiting atomic.Int32
+
+// ErrBusy means too many callers are already waiting for the render slot.
+var ErrBusy = errors.New("too many pictures are being drawn")
+
+// acquire takes renderSlot, waiting until ctx ends. It refuses with ErrBusy
+// when maxWaiting callers are already waiting.
+func acquire(ctx context.Context) error {
+	select {
+	case renderSlot <- struct{}{}:
+		return nil
+	default:
+	}
+	if waiting.Add(1) > maxWaiting {
+		waiting.Add(-1)
+		return ErrBusy
+	}
+	defer waiting.Add(-1)
+	select {
+	case renderSlot <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // DrawPNG draws ov over the PNG src, which must be ov.Size pixels square,
-// and returns the new PNG. label gives the word for each size.
-func DrawPNG(src []byte, ov Overlay, label func(size string) string) ([]byte, error) {
-	renderSlot <- struct{}{}
+// and returns the new PNG. label gives the word for each size. It waits for
+// the render slot until ctx ends, and is ErrBusy when the queue is full.
+func DrawPNG(ctx context.Context, src []byte, ov Overlay, label func(size string) string) ([]byte, error) {
+	if err := acquire(ctx); err != nil {
+		return nil, err
+	}
 	defer func() { <-renderSlot }()
 
 	cfg, err := png.DecodeConfig(bytes.NewReader(src))
