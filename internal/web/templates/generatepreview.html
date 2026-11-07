@@ -140,7 +140,7 @@
 {{define "territory-overlay" -}}
 <span class="territories" aria-hidden="true"><svg viewBox="0 0 {{.Size}} {{.Size}}" preserveAspectRatio="none" focusable="false">
   {{- /* The large view's copy drops these and uses the page's; one id per page. */}}
-  <defs><pattern id="territory-stripes" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M0 0H28L0 28ZM56 0V28L28 56H0Z"/></pattern></defs>
+  <defs><pattern id="territory-stripes" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M0 0H28L56 28V56ZM0 28L28 56H0Z"/></pattern></defs>
   <g fill="url(#territory-stripes)">{{range .Runs}}<rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}"/>{{end}}</g>
   {{- if .Border}}<path class="territories__border" d="{{.Border}}" vector-effect="non-scaling-stroke"/>{{end -}}
 </svg>

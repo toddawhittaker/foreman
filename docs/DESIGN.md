@@ -1381,7 +1381,7 @@ on a download).
     pixels (`viewBox` of the size, `preserveAspectRatio="none"`), so it
     scales and pans with the picture: each territory's chunk runs as
     rectangles filled with a stripe pattern matching the downloaded PNG
-    (pixels where x + y modulo 56 is under 28, `--color-territory-stripe`,
+    (pixels where x - y modulo 56 is under 28, bars from top left to bottom right as in the game, `--color-territory-stripe`,
     rgb 200 20 20 at a third), one border path along every edge between
     owners and around the free start area (`--color-territory-border`, 2
     CSS px at any zoom with `vector-effect: non-scaling-stroke`); the start

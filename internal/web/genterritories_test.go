@@ -258,9 +258,9 @@ func TestTerritoryDownloadsDrawThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Pixel 579,606 is in the small territory, on a stripe, clear of its
+	// Pixel 577,606 is in the small territory, on a stripe, clear of its
 	// border and label; 0,0 is in no territory.
-	if c := color.RGBAModel.Convert(drawn.At(579, 606)).(color.RGBA); c.R <= c.G {
+	if c := color.RGBAModel.Convert(drawn.At(577, 606)).(color.RGBA); c.R <= c.G {
 		t.Errorf("the territory is not drawn: %v", c)
 	}
 	if c := color.RGBAModel.Convert(drawn.At(0, 0)).(color.RGBA); c != (color.RGBA{100, 100, 100, 255}) {

@@ -230,6 +230,28 @@ test("a failed request says so and offers to try again", async ({ page }) => {
   await expect(box(page)).toBeFocused();
 });
 
+test("unticking while a picture is drawn wins over the reply", async ({ page }) => {
+  await vulcanus(page);
+  await box(page).check();
+  await expect(list(page)).toHaveText(counts);
+  // Hold the next picture's reply, which was asked for with the box ticked.
+  const held: Route[] = [];
+  const picture = (u: URL) => u.pathname.endsWith("/generate/preview");
+  await page.route(picture, (r) => { held.push(r); });
+  // Left before the request goes, so ticking the box later fires no change on it.
+  await page.locator("#generate-seed").fill("888");
+  await page.locator("#generate-seed").blur();
+  await expect.poll(() => held.length).toBe(1);
+  await box(page).uncheck();
+  await held[0].continue();
+  await page.unroute(picture);
+  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 888" })).toBeVisible();
+  await expect(box(page)).not.toBeChecked();
+  await expect(overlay(page)).toHaveCount(0);
+  await expect(list(page)).toHaveCount(0);
+  await expect(section(page).getByRole("link", { name: "Download Vulcanus (PNG)" })).toHaveAttribute("href", /\/vulcanus\/download$/);
+});
+
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 

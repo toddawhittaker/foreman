@@ -201,7 +201,15 @@ document.addEventListener("DOMContentLoaded", () => {
     setStatus(false);
     const fresh = new DOMParser().parseFromString(html, "text/html").getElementById("preview");
     if (!fresh) return;
+    // A tick or untick made while the picture was drawn is newer than the reply.
+    const before = terrBox();
+    const ticked = before && !before.disabled ? before.checked : null;
     swap(fresh);
+    const after = terrBox();
+    if (ticked !== null && after && !after.disabled && after.checked !== ticked) {
+      after.checked = ticked;
+      if (!ticked) clearTerritories();
+    }
     // The seed used is kept, so the world made is the one previewed (SPEC 5.6).
     if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) seed.value = fresh.dataset.seed;
     const filled = formEl().querySelector("#filled-seed");
