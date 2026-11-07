@@ -1,0 +1,93 @@
+{{define "title"}}{{t "account.title"}}{{end}}
+
+{{/* The two fields. Nothing is ever put in a value attribute (SPEC 11.4). */}}
+{{define "account-fields" -}}
+<div class="field">
+  <label for="account-username" class="required">{{t "account.username.label"}}</label>
+  <input id="account-username" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false"
+    {{- if .NoKeyNotice}} disabled{{end}}
+    {{- if not .UsernameError.IsZero}} aria-invalid="true" aria-describedby="account-username-error{{if .NoKeyNotice}} account-nokey{{end}}"{{else if .NoKeyNotice}} aria-describedby="account-nokey"{{end}}>
+  {{- if not .UsernameError.IsZero}}
+  <p class="error" id="account-username-error"><strong>{{t "common.error.label"}}</strong> {{msg .UsernameError}}</p>
+  {{- end}}
+</div>
+<div class="field">
+  <label for="account-token" class="required">{{t "account.token.label"}}</label>
+  <p class="hint" id="account-token-hint">{{t "account.token.hint"}}</p>
+  <input id="account-token" name="token" type="password" required autocomplete="off" autocapitalize="none" spellcheck="false"
+    {{- if .NoKeyNotice}} disabled{{end}}
+    {{- if not .TokenError.IsZero}} aria-invalid="true"{{end}} aria-describedby="account-token-hint{{if not .TokenError.IsZero}} account-token-error{{end}}{{if .NoKeyNotice}} account-nokey{{end}}">
+  {{- if not .TokenError.IsZero}}
+  <p class="error" id="account-token-error"><strong>{{t "common.error.label"}}</strong> {{msg .TokenError}}</p>
+  {{- end}}
+</div>
+{{- end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{t "account.title"}}</h1>
+{{- if not .Done.IsZero}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+</div>
+{{- end}}
+{{template "summary" .Problems}}
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="account-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+</div>
+{{- end}}
+<p>{{t "account.intro"}}</p>
+{{- if .FromEnv}}
+<section class="panel" aria-labelledby="account-env-heading">
+  <h2 id="account-env-heading">{{t "account.env.state"}}</h2>
+  <p>{{tHTML "account.env.text" "username" (code "FOREMAN_FACTORIO_USERNAME") "token" (code "FOREMAN_FACTORIO_TOKEN")}}</p>
+</section>
+{{- else}}
+{{- if .NoKeyNotice}}
+<div class="message message--note" id="account-nokey">
+  <p><strong>{{t "common.label.note"}}</strong> {{tHTML "account.nokey" "key" (code "FOREMAN_SECRET_KEY") "username" (code "FOREMAN_FACTORIO_USERNAME") "token" (code "FOREMAN_FACTORIO_TOKEN")}}</p>
+</div>
+{{- end}}
+{{- if .Unreadable}}
+<div class="message message--warning" id="account-unreadable">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "account.unreadable"}}{{if .CanStore}} {{t "account.unreadable.again"}}{{end}}</p>
+</div>
+{{- else if .Stored}}
+<p id="account-stored">{{tHTML "account.stored" "when" (momentUTC .UpdatedAt) "user" .UpdatedBy}}</p>
+{{- else}}
+<p id="account-none">{{t "account.none"}}</p>
+{{- end}}
+<form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-form-heading">
+  <h2 id="account-form-heading">{{if .Stored}}{{t "account.form.replace"}}{{else}}{{t "account.form.enter"}}{{end}}</h2>
+  {{- if .Retype}}
+  <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
+  {{- end}}
+  {{template "required-note"}}
+  {{template "account-fields" .}}
+  {{- with .Return}}
+  <input type="hidden" name="return" value="{{.}}">
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button button--primary"{{if .NoKeyNotice}} disabled{{end}}>{{if .Stored}}{{t "account.replace"}}{{else}}{{t "account.save"}}{{end}}</button>
+    {{- with .Return}}
+    <a href="{{.}}">{{t "worlds.cancel"}}</a>
+    {{- end}}
+  </div>
+</form>
+{{- if .Stored}}
+<form method="post" action="{{.Path}}" class="panel" aria-labelledby="account-remove-heading">
+  <h2 id="account-remove-heading">{{t "account.remove.heading"}}</h2>
+  <p>{{t "account.remove.hint"}}</p>
+  <input type="hidden" name="action" value="remove">
+  {{- with .Return}}
+  <input type="hidden" name="return" value="{{.}}">
+  {{- end}}
+  <div class="actions">
+    <button type="submit" class="button">{{t "account.remove"}}</button>
+  </div>
+</form>
+{{- end}}
+{{- end}}
+{{end}}
+{{- end}}

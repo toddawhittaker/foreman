@@ -15,8 +15,10 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -46,6 +48,9 @@ type Deps struct {
 	// Previewer makes the map previews of Generate (SPEC 5.6); nil means the
 	// page offers no preview.
 	Previewer MapPreviewer
+	// Account finds and stores the factorio.com account (SPEC 9.11); nil
+	// means no account is set in the environment and no key is set.
+	Account *factorioaccount.Service
 	// HostDataDir is the data directory's path on the Docker host (SPEC
 	// 3.5), so a page can name a folder the admin reaches there.
 	HostDataDir string
@@ -63,6 +68,7 @@ type server struct {
 	// made, held for 15 minutes (SPEC 5.6).
 	previewer MapPreviewer
 	previews  *previewStore
+	account   *factorioaccount.Service
 	hostData  string
 	runs      *gameRuns
 	console   *consoleHistory
@@ -105,6 +111,12 @@ func NewHandler(d Deps) (*Handler, error) {
 	if now == nil {
 		now = time.Now
 	}
+	account := d.Account
+	if account == nil {
+		if account, err = factorioaccount.New(factorioaccount.Account{}, secret.Secret{}, d.Store); err != nil {
+			return nil, err
+		}
+	}
 	s := &server{
 		cfg:       d.Config,
 		store:     d.Store,
@@ -113,6 +125,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		releases:  d.Releases,
 		previewer: d.Previewer,
 		previews:  newPreviewStore(now),
+		account:   account,
 		hostData:  d.HostDataDir,
 		runs:      newGameRuns(),
 		gameNets:  d.GameNets,
@@ -175,6 +188,7 @@ func (s *server) routes() {
 	s.generateRoutes()
 	s.cloneRoutes()
 	s.settingsRoutes()
+	s.accountRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
