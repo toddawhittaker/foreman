@@ -184,7 +184,7 @@ func TestPresetPrefillShowsWhatThePresetChanged(t *testing.T) {
 		t.Errorf("rail world water scale = %s, want 200 (the inverse of frequency 0.5)", scale.Value)
 	}
 	// An ordinary form does not offer the extra step.
-	if hasOption(selectNamed(t, NewMapGenForm("2.1", true), fieldName("nauvis", "water", "size")), "150") {
+	if hasOption(selectNamed(t, NewMapGenFormForPreset("2.1", true, "default"), fieldName("nauvis", "water", "size")), "150") {
 		t.Error("150% is offered on a form that is not filled from a preset")
 	}
 
@@ -206,7 +206,7 @@ func TestPresetPrefillShowsWhatThePresetChanged(t *testing.T) {
 		t.Errorf("death world starting area = %s, want 71", death.StartingArea.Value)
 	}
 	def := NewMapGenFormForPreset("2.1", true, "default")
-	if got, want := def.chosen(), NewMapGenForm("2.1", true).chosen(); len(got) != len(want) {
+	if got, want := def.chosen(), NewMapGenFormForPreset("2.1", true, "default").chosen(); len(got) != len(want) {
 		t.Fatalf("default preset has %d selects, the plain form %d", len(got), len(want))
 	} else {
 		for k, v := range want {
@@ -238,7 +238,7 @@ func hasOption(s MapGenSelect, code string) bool {
 
 // DESIGN 8.7: the game words terrain controls as Scale and Coverage.
 func TestTerrainControlsAreWordedAsTheGameWordsThem(t *testing.T) {
-	f := NewMapGenForm("2.1", true)
+	f := NewMapGenFormForPreset("2.1", true, "default")
 	for _, p := range slices.Concat(f.Resources, f.Terrain) {
 		for _, g := range p.Groups {
 			for _, s := range g.Selects {

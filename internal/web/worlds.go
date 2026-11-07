@@ -126,7 +126,6 @@ func (p WorldPage) Problems() []Problem { return problems(Problem{"name", p.Name
 
 // Paths the world page links and posts to.
 func (p WorldPage) RenamePath() string    { return worldPath(p.World.ID) + "/rename" }
-func (p WorldPage) SavesPath() string     { return worldPath(p.World.ID) + "/saves" }
 func (p WorldPage) SnapshotsPath() string { return worldPath(p.World.ID) + "/snapshots" }
 func (p WorldPage) DeletePath() string    { return deletePath(p.World.ID) }
 func (p WorldPage) SwitchPath() string    { return switchPath(p.World.ID) }

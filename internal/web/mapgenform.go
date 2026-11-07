@@ -570,14 +570,6 @@ var knownFieldNames = func() map[string]bool {
 	return known
 }()
 
-// NewMapGenForm is the form as it first opens: every setting as the game
-// ships it, for a world of the given game line (SPEC 5.6).
-func NewMapGenForm(line string, spaceAge bool) MapGenForm {
-	f := buildMapGenForm(line, spaceAge, func(string) (string, bool) { return "", false })
-	f.withPreset(f)
-	return f
-}
-
 // buildMapGenForm lays out the form; posted says what the request holds for
 // a select's name.
 func buildMapGenForm(line string, spaceAge bool, posted func(name string) (string, bool)) MapGenForm {
