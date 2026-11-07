@@ -725,9 +725,15 @@ moves to its heading. Without JavaScript the page still works. No
 `window.confirm()`, which cannot say enough, and no modal dialog, which
 is harder to get right on a phone and adds nothing here.
 
+The page's one `h1` is the question, first in `main`, with no "Back to"
+link above it and no second heading inside the box. The box holds only
+"This will:", the list and the form. The world tabs (6, Shell) and
+Cancel are the ways out.
+
 ```html
-<section class="confirm" aria-labelledby="confirm-heading">
-  <h2 id="confirm-heading" tabindex="-1">Delete the world "Family base 2025"?</h2>
+<h1 id="confirm-heading">Delete the world "Family base 2025"?</h1>
+<nav class="subnav" aria-label="World pages">…</nav>
+<section class="confirm">
   <p>This will:</p>
   <ul>
     <li>Delete the folder <code>worlds/family-base-2025</code>, with its 14 saves,
@@ -755,7 +761,8 @@ Rules:
 
 - The box is a section, but unlike other sections it is boxed: background
   `surface`, 1px `danger` border, `--radius`, padding `var(--space-4)`, a
-  grid with `gap: var(--space-3)`. Its heading stays `heading`. It is the only
+  grid with `gap: var(--space-3)`. It carries no landmark name of its own,
+  so it does not repeat the `h1`. It is the only
   place where danger colour fills an area larger than a button.
 - **The heading is a question that names the thing**: the world, the
   snapshot, the save. Never "Are you sure?".
@@ -1220,9 +1227,10 @@ starts."
 - **Enemy tab:** the enemy controls (Nauvis's and Gleba's), No enemies
   (2.x) and Peaceful mode with their hints, the starting area, then the
   map-settings groups "Enemy expansion" and "Evolution".
-- **Advanced tab:** Width and Height, the groups Technology (price
-  multiplier), Pollution, Asteroids and Spoiling (2.x), then the raw
-  map-gen JSON `details`.
+- **Advanced tab:** Width and Height, the groups Technology (on 1.1
+  Recipe difficulty, Technology difficulty and Research queue as
+  selects, then the price multiplier), Pollution, Asteroids and Spoiling
+  (2.x), then the raw map-gen JSON `details`.
 - **Map-settings fields** (`ms.<dotted path>`) show what the version's
   file holds, in the units the game's map generator shows: cooldowns in
   minutes, ratios and modifiers in percent, evolution factors as "40"
@@ -1230,6 +1238,16 @@ starts."
   it on its own row. Numbers are mono text fields 12ch wide with the unit
   beside them. 2.1's evolution group size factor replaces 2.0's group
   sizes.
+- **Spoiling rate** is shown as the game shows it, 10% to 1000%, the
+  inverse of the stored `spoil_time_modifier` (shown % = 100 / stored).
+- **Limits.** Every number field takes whole numbers within the game
+  screen's own ends (SPEC 5.6), carried as `data-min` and `data-max`. A
+  maximum that must follow its minimum also carries `data-min-field` and
+  `data-gap`. When a change pushes a minimum past its maximum, or the
+  reverse, the script moves the other field to fit, as the game does,
+  and announces it ("set to … to keep the range valid") together with
+  anything the change itself said. Without script the server refuses the
+  bad pair with an error on the maximum field.
 - **Raw map-gen JSON** (SPEC 11.5) is as before: the fields win for every
   key they cover.
 
