@@ -75,7 +75,10 @@
 </div>
 {{- end}}
 
-{{/* One planet's controls per tab: in a details element each when the world has several planets. Takes []MapGenPlanet. */}}
+{{/* One planet's controls per tab: in a details element each when the world
+     has several planets. A tab's rows are one exclusive group, so opening one
+     closes the other; the script keeps the same planet open in every tab and
+     the preview on it (DESIGN 8.7). Takes []MapGenPlanet. */}}
 {{define "mapgen-planets" -}}
 {{- if eq (len .) 1}}
 {{- range (index . 0).Groups}}
@@ -83,7 +86,7 @@
 {{- end}}
 {{- else}}
 {{- range .}}
-<details id="{{.ID}}"{{if .Open}} open{{end}}>
+<details id="{{.ID}}" name="planet-{{.Tab}}" data-planet="{{.Planet}}" data-said="{{t "mapgen.planet.preview_said" "planet" (msg .Summary)}}"{{if .Open}} open{{end}}>
   <summary>{{msg .Summary}}</summary>
   <div class="mapgen-body">
     {{- range .Groups}}
@@ -96,13 +99,18 @@
 {{- end}}
 
 {{/* One autoplace control: its name, then its settings side by side. A
-     resource the game lets you switch off has its on/off box in the legend,
-     which stays usable when the script disables the fieldset; the hidden
-     "off" before it is what an unticked box sends. Takes MapGenGroup. */}}
+     resource or cliffs the game lets you switch off has its on/off box in the
+     legend, which stays usable when the script disables the fieldset; the
+     hidden "off" before it is what an unticked box sends. A resource the game
+     needs warns while off (SPEC 5.6). Takes MapGenGroup. */}}
 {{define "mapgen-group" -}}
 <fieldset class="autoplace" id="{{.ID}}">
   {{- with .Toggle}}
-  <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"{{if .Checked}} checked{{end}}> {{msg .Label}}</label></legend>
+  <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"
+    {{- if .NeedKey}} data-need="{{msg .Need}}" data-need-clear="{{t "mapgen.need.clear" "resource" (msg .Label)}}" data-need-key="{{.NeedKey}}" aria-describedby="{{.ID}}-need"{{end}}{{if .Checked}} checked{{end}}> {{msg .Label}}</label></legend>
+  {{- if .NeedKey}}
+  <p class="ach" id="{{.ID}}-need">{{if not .Checked}}{{msg .Need}}{{end}}</p>
+  {{- end}}
   {{- else}}
   <legend>{{msg .Legend}}</legend>
   {{- end}}
