@@ -176,7 +176,7 @@
   "mapgen.tip.enemy_size": "La taille de chaque base ennemie.",
   "mapgen.tip.evolution": "Détermine si l'évolution des ennemis est activée.",
   "mapgen.tip.expansion": "Cela permet de désactiver ou d'activer globalement la logique de l'expansion des ennemis.",
-  "mapgen.tip.group_factor": "Dans quelle mesure le facteur d'évolution influe-t-il sur la taille des groupes d'expansion ennemis ?.",
+  "mapgen.tip.group_factor": "Dans quelle mesure le facteur d'évolution influe-t-il sur la taille des groupes d'expansion ennemis ?",
   "mapgen.tip.max_cooldown": "Délai maximum entre la création de nouvelles bases ennemies.",
   "mapgen.tip.max_distance": "Distance maximale à laquelle les ennemis chercheront à s'étendre à partir d'autres bases ennemies.",
   "mapgen.tip.max_group": "La taille maximale d'un groupe d'alien partant fonder une colonie, modifié par le niveau actuel d’évolution.",
