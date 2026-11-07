@@ -11,7 +11,7 @@
   "js.generate.preview_ready": "Podgląd mapy jest gotowy.",
   "js.preview.zoom": "Powiększenie {level}",
   "js.preview.drawing": "Rysowanie: {planet}…",
-  "js.generate.reset": "Ustawienia mapy przywrócono do ustawienia wstępnego {preset}.",
+  "js.generate.reset": "Ustawienia mapy przywrócono do zestawu ustawień {preset}.",
   "js.generate.ach_setting": "{setting} wyłącza niektóre osiągnięcia.",
   "js.generate.ach_clear": "Teraz żadne ustawienie nie wyłącza osiągnięć.",
   "js.generate.moved": "{field}: ustawiono {value}, aby zakres pozostał prawidłowy."

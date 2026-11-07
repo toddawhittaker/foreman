@@ -403,7 +403,7 @@
   "server.switch.moved": "{world} jest teraz aktywnym światem.",
   "server.update.title": "Aktualizacja {world}",
   "server.update.heading": "Zaktualizować {world} z Factorio {version}?",
-  "server.update.forward": "Wersja gry zmienia się tylko do przodu. Powrót jest możliwy przez „Cofnij do …” na stronie świata.",
+  "server.update.forward": "Wersja gry zmienia się tylko do przodu. Powrót jest możliwy przyciskiem „Cofnij do …” na stronie świata.",
   "server.update.select": "Nowa wersja gry",
   "server.update.choose": "Wybierz wersję",
   "server.update.typed": "Albo wpisz wersję",

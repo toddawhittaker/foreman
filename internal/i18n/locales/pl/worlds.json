@@ -265,7 +265,7 @@
   "worlds.snapshots.restore": "Przywróć",
   "worlds.snapshots.restore_named": "Przywróć: {label}, utworzono {when}",
   "worlds.snapshots.select_automatic": "Zaznacz wszystkie automatyczne",
-  "worlds.snapshots.select_hint": "Zaznacz migawki i wybierz „Usuń zaznaczone”. Nic nie zostanie usunięte bez potwierdzenia.",
+  "worlds.snapshots.select_hint": "Należy zaznaczyć migawki i wybrać „Usuń zaznaczone”. Nic nie zostanie usunięte bez potwierdzenia.",
   "worlds.snapshots.size_label": "Rozmiar:",
   "worlds.snapshots.take.heading": "Wykonanie migawki",
   "worlds.snapshots.take.hint": {
