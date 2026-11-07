@@ -191,6 +191,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (counts(e.target)) soon();
   });
 
+  // Redrawn settings may have other planets (Space Age, the game line), so the
+  // planet viewed is the one they hold open, or the first when they lost it.
+  function followSettings() {
+    const held = document.getElementById("open-planet");
+    const rows = [...document.querySelectorAll("#map-settings [data-planet]")].map((d) => d.dataset.planet);
+    if (held && held.value) viewing = held.value;
+    else if (rows.length && !rows.includes(viewing)) viewing = "";
+    known = [];
+  }
+
   const isRefresh = (e) => (e.detail.pathInfo ? e.detail.pathInfo.requestPath : "").endsWith("/generate/refresh");
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (isRefresh(e)) {
@@ -203,6 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.addEventListener("htmx:afterRequest", (e) => {
     if (!isRefresh(e)) return;
     refreshing = Math.max(0, refreshing - 1);
+    if (refreshing === 0) followSettings();
     // A redraw that ends while Preview map runs leaves that preview to finish.
     if (refreshing === 0 && button().getAttribute("aria-disabled") !== "true") soon();
   });

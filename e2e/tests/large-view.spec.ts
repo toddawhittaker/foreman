@@ -295,6 +295,44 @@ test.describe("the planet viewed", () => {
     await expect(section(page).getByLabel("Planet")).toHaveValue("gleba");
     expect(await seen()).toEqual([]);
   });
+
+  // A planet the new settings do not have is never asked for: the preview goes back to one they have.
+  for (const change of ["Space Age off", "version 1.1"] as const) {
+    test(`after picking Vulcanus, ${change} draws a planet the line has`, async ({ page, fakeGame }) => {
+      // The 1.1 game image is here too, so its preview can be drawn.
+      await fakeGame!.call("/image", { ref: image21.replace(/:[^:]+$/, ":1.1.110"), on: true });
+      await page.goto("/generate");
+      await expect(section(page).getByRole("img")).toHaveCount(1);
+      await section(page).getByLabel("Planet").selectOption("vulcanus");
+      await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
+      const replies: { planet: string | null; status: number }[] = [];
+      page.on("response", (r) => {
+        const q = r.request();
+        if (q.method() !== "POST" || !q.url().endsWith("/generate/preview")) return;
+        const form = new URLSearchParams(q.postData() ?? "");
+        if (form.get("auto") === "1") replies.push({ planet: form.get("planet"), status: r.status() });
+      });
+      if (change === "Space Age off") {
+        await page.getByLabel("Space Age is on").uncheck();
+      } else {
+        const d = page.locator("details.disclosure");
+        if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator("summary").click();
+        await page.getByLabel("Or type a version").fill("1.1.110");
+        await page.getByLabel("Or type a version").press("Tab");
+        // 1.1 has no Space Age, and the preview says so until it is off.
+        await expect(page.locator("#preview").getByText("Space Age needs Factorio 2.0 or later")).toBeVisible();
+        await page.getByLabel("Space Age is on").uncheck();
+      }
+      await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+      await page.waitForTimeout(1200);
+      expect(replies.length).toBeGreaterThan(0);
+      for (const r of replies) {
+        expect(r.status).toBe(200);
+        expect([null, "nauvis"]).toContain(r.planet);
+      }
+      await expect(section(page).getByRole("alert")).toHaveCount(0);
+    });
+  }
 });
 
 // The preview picture fills its column, capped by the window's height and centred.
