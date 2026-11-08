@@ -67,8 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let terrPending = null;
   const terrPlanet = "vulcanus";
   const terrBox = () => document.getElementById("preview-territories");
-  // Above the size cap the box stays reachable by Tab but cannot change.
-  const boxLocked = (b) => b.getAttribute("aria-disabled") === "true";
   const terrSlot = () => document.getElementById("territory-result");
 
   function dropTerritories() {
@@ -111,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const box = terrBox();
     const link = pictureLink(terrPlanet);
     const slot = terrSlot();
-    if (!box || !box.checked || boxLocked(box) || !link || !slot) return;
+    if (!box || !box.checked || !link || !slot) return;
     // The server already showed the ones it holds for these settings.
     if (link.querySelector(".territories")) return;
     const n = terrSent;
@@ -217,10 +215,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!fresh) return;
     // A tick or untick made while the picture was drawn is newer than the reply.
     const before = terrBox();
-    const ticked = before && !boxLocked(before) ? before.checked : null;
+    const ticked = before ? before.checked : null;
     swap(fresh);
     const after = terrBox();
-    if (ticked !== null && after && !boxLocked(after) && after.checked !== ticked) {
+    if (ticked !== null && after && after.checked !== ticked) {
       after.checked = ticked;
       if (!ticked) clearTerritories();
     }
@@ -319,9 +317,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return !["generate-name", "generate-download"].includes(t.id);
   }
   document.addEventListener("input", (e) => { if (counts(e.target)) soon(); });
-  document.addEventListener("click", (e) => {
-    if (e.target.id === "preview-territories" && boxLocked(e.target)) e.preventDefault();
-  });
   document.addEventListener("change", (e) => {
     if (e.target.id === "preview-territories") {
       if (e.target.checked) territories(true);

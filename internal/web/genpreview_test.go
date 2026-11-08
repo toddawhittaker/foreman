@@ -442,16 +442,20 @@ func TestPreviewSizeSurvivesAnErrorRoundTrip(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
 	hn.withActive("2.1.24")
-	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "3328"), c)
+	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "2816"), c)
 	body := rec.Body.String()
-	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="3328" selected>`) {
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="2816" selected>`) {
 		t.Errorf("status %d; the size was not kept:\n%s", rec.Code, body)
 	}
 	// The sizes are plain digits, with no thousands separator, in every language.
-	for _, want := range []string{">1024 × 1024 tiles</option>", ">1280 × 1280 tiles (default)</option>", ">4096 × 4096 tiles</option>"} {
+	for _, want := range []string{">1024 × 1024 tiles</option>", ">1280 × 1280 tiles (default)</option>", ">3072 × 3072 tiles</option>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the size select lacks %q", want)
 		}
+	}
+	// One cap for every preview: the territory cap (SPEC 5.6).
+	if strings.Contains(body, `<option value="3200"`) {
+		t.Error("the size select offers more than 3072 tiles")
 	}
 	rec = hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "5", "preview_size", "7"), c)
 	if rec.Code != http.StatusSeeOther {

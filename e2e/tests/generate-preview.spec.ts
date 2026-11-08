@@ -147,10 +147,10 @@ test.describe("with script", () => {
     const select = page.locator("#generate-preview-size");
     const img = pictures(page);
     await expect(select).toHaveValue("1280");
-    await expect(select.locator("option")).toHaveCount(25);
+    await expect(select.locator("option")).toHaveCount(17);
     await expect(select.locator("option").first()).toHaveText("1024 × 1024 tiles");
     await expect(select.locator("option:checked")).toHaveText("1280 × 1280 tiles (default)");
-    await expect(select.locator("option").last()).toHaveText("4096 × 4096 tiles");
+    await expect(select.locator("option").last()).toHaveText("3072 × 3072 tiles");
     await expect(page.locator("#generate-preview-size-hint")).toHaveText("How much of the map, around its center, the preview shows. The pin is where players start.");
     await expect(img).toHaveAttribute("width", "1280");
     await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
@@ -182,16 +182,16 @@ test.describe("with script", () => {
     await page.waitForTimeout(1200);
     expect(sent.map((r) => field(r, "preview_size"))).toEqual(["1664"]);
 
-    // The largest size draws too.
-    await select.selectOption("4096", { force: true });
-    await expect(img).toHaveAttribute("width", "4096");
+    // The largest size, the territory cap, draws too (SPEC 5.6).
+    await select.selectOption("3072", { force: true });
+    await expect(img).toHaveAttribute("width", "3072");
     await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
-    await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(4096);
+    await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(3072);
 
     // With no name the form comes back with its error, the size kept.
     await page.getByLabel("World name").press("Enter");
     await expect(page.locator("#error-summary")).toBeFocused();
-    await expect(page.locator("#generate-preview-size")).toHaveValue("4096");
+    await expect(page.locator("#generate-preview-size")).toHaveValue("3072");
   });
 
   test("the large view works by keyboard alone at 320 px", async ({ page }) => {

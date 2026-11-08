@@ -611,11 +611,13 @@ not) or a map exchange string, with Space Age on or off. (P0)
   `--generate-map-preview` (with `--map-preview-planet` on 2.x), run in a
   locked-down one-off container (14.3); the headless game cannot take a
   screenshot. It is drawn from exactly the settings Generate would write,
-  square, at a size of 1024 to 4096 tiles in steps of 128, 1280 by
+  square, at a size of 1024 to 3072 tiles in steps of 128, 1280 by
   default; any other size is a field error (on 2.x one pixel is one tile,
   and the game has no closer scale, so zooming scales the picture with
-  sharp pixels). The steps keep the control a short list, and 4096 was
-  measured to draw every planet within the container's limits (14.3).
+  sharp pixels). The steps keep the control a short list. The most is
+  the demolisher territory cap below, so every size offered can show
+  them; 4096 was measured to draw every planet within the container's
+  limits (14.3), but its territories ran out of memory.
   Previewing is optional. It uses only an image already downloaded, and
   otherwise says the image must be downloaded first; it never downloads
   one (3.7).
@@ -634,7 +636,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     there), the planet's download, and Close. Zoom is continuous, in
     steps of 1.15 by wheel, keys, buttons or pinch, from the fitted size
     up to the larger of 8 times the fitted size and 8 CSS pixels per
-    tile; a fixed 800% would leave a 4096 picture at about 2 pixels per
+    tile; a fixed 800% would leave a 3072 picture at under 3 pixels per
     tile. The picture pans by drag, keys, or a tap that centres the spot
     tapped (17.14).
   - **Downloads**: one planet's PNG, or every drawn planet as a zip,
@@ -646,7 +648,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     them from the game itself, in a one-off container (14.3, ADR 0011),
     only after the picture has arrived (`POST
     /generate/preview/territories`), and holds them with the preview.
-    The box is offered up to 3072 tiles: 4096 ran out of the
+    Territories are read up to 3072 tiles, the preview's own most: 4096 ran out of the
     container's 1 GiB on 2.1.24, and 3072 peaked at 750 MiB and 27
     seconds, leaving room on a slow server. While the box is on, the
     downloads take `?territories=1` and the server draws the territories
@@ -659,7 +661,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     already drawn reuses it. The pictures are held in memory under a
     random token tied to the user for 15 minutes, at most 8 users'
     previews and 96 MiB at once, and only that user can fetch them. The
-    total fits one Space Age user's five planets at 4096 plus territories,
+    total fits one Space Age user's five planets at the largest size plus territories,
     so a second user does not evict the first.
 - Generate records the audit entry `generate` (12.9). A refusal appears on
   the form, in the page's language.

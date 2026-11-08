@@ -226,7 +226,7 @@ test("the download icon by the heading downloads the planet shown", async ({ pag
 });
 
 // Ruling C4: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
-for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["4096", null]] as const) {
+for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072", null]] as const) {
   test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, async ({ page }) => {
     if (viewport) await page.setViewportSize(viewport);
     await page.goto("/generate");

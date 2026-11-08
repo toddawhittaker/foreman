@@ -174,8 +174,6 @@
   "worlds.generate.territories.request_failed": "770dc46d",
   "worlds.generate.territories.retry": "d8b8392e",
   "worlds.generate.territories.timeout": "ff39fdab",
-  "worlds.generate.territories.too_big": "1be50dca",
-  "worlds.generate.territories.too_big_hint": "c79280e1",
   "worlds.generate.title": "ef8a6fe3",
   "worlds.generate.version.choose": "ae8211ce",
   "worlds.generate.version.other": "2e945125",
