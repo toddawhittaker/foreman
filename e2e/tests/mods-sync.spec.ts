@@ -20,6 +20,19 @@ const syncPlan = "/worlds/base/mods/plan?kind=sync";
 const modsFolder = (dataDir: string) => join(dataDir, "worlds", "base", "mods");
 const modsTable = (page: Page) => page.getByRole("table", { name: /Mods of Base/ });
 
+// At 320 px each choice is its box and one run of words: a mod name inside
+// the words must not become a flex column of its own.
+async function expectWholeChoiceLabels(page: Page) {
+  if ((page.viewportSize()?.width ?? 1000) > 320) return;
+  const split = await page.locator("#mod-plan label.check").evaluateAll((labels) =>
+    labels
+      .filter((l) => [...l.childNodes].filter((n) => n.nodeType === Node.ELEMENT_NODE || n.textContent!.trim() !== "").length > 2)
+      .map((l) => l.textContent!.trim()),
+  );
+  expect(split).toEqual([]);
+  expect(await page.locator("#mod-plan label.check").count()).toBeGreaterThan(0);
+}
+
 // A zip of foreman-test, as the admin would upload it.
 const testModZip = (version = "0.1.0") =>
   makeZip({ [`foreman-test_${version}/info.json`]: JSON.stringify({ name: "foreman-test", version, factorio_version: "2.1", dependencies: ["base"] }) });
@@ -42,6 +55,7 @@ test.describe("a save's mod the portal does not have", () => {
     // Upload is the default and no zip is uploaded yet, so there is nothing to confirm.
     await expect(page.locator("#act-apply")).toHaveCount(0);
     await expect(page.getByLabel("Zip of foreman-test 0.1.0", { exact: true })).toBeVisible();
+    await expectWholeChoiceLabels(page);
     await checkPage(page);
     await page.screenshot({ path: `../screenshots/mods-plan-unresolved-${test.info().project.name}.png`, fullPage: true });
   });
@@ -176,6 +190,7 @@ test("the nearest release is one of three choices, and it is downloaded and inst
   // The save's built-in recycler is a 2.1 mod, which this 2.0 world lacks; it is dropped knowingly.
   await page.getByLabel("Continue without recycler").check();
   await page.locator("#mod-recycler-confirm").check();
+  await expectWholeChoiceLabels(page);
   await checkPage(page);
 
   await page.locator("#act-apply").click();
@@ -213,6 +228,7 @@ test("ticking an optional mod that conflicts shows the conflict", async ({ page,
   await portal.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf"]);
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-other": "2.0" } });
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main");
+  await expectWholeChoiceLabels(page);
   await page.getByLabel("fp-conf, offered by fp-main").check();
   await expect(page.locator("#plan-conflicts")).toContainText("fp-conf cannot run together with fp-other.", { timeout: 3_000 });
   await expect(page.locator("#announcer")).toHaveText("Plan updated: it has a conflict, so it cannot be applied.");

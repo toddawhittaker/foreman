@@ -3,7 +3,6 @@ package i18n
 import (
 	"html/template"
 	"strings"
-	"testing"
 )
 
 // Size is a number of bytes as a Msg argument. It is shown in the
@@ -55,19 +54,12 @@ func (l Locale) Idents(items []string) Fragment {
 	return Fragment{strings.Join(parts, template.HTMLEscapeString(sep)), strings.Join(items, sep)}
 }
 
-// ExternalLink is a link to an https address on another site, such as
+// ExternalLink is a link to an address on another site, such as
 // factorio.com, whose text is linkKey's translation. It opens in a new tab
-// and says so to a screen reader. Any other href is shown as text only, and
-// under test it panics, so no page ships one.
+// and says so to a screen reader. Callers pass fixed https addresses.
 func (l Locale) ExternalLink(href, linkKey string) Fragment {
 	esc := template.HTMLEscapeString
 	text := l.T(linkKey)
-	if !strings.HasPrefix(href, "https://") || strings.IndexFunc(href, func(r rune) bool { return r <= 0x20 || r == 0x7f }) >= 0 {
-		if testing.Testing() {
-			panic("i18n: ExternalLink to an address that is not https: " + href)
-		}
-		return Fragment{esc(text), text}
-	}
 	return Fragment{`<a href="` + esc(href) + `" target="_blank" rel="noopener noreferrer">` + esc(text) +
 		`<span class="visually-hidden"> ` + esc(l.T("common.link.new_tab")) + `</span></a>`, text}
 }

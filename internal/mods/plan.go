@@ -36,10 +36,6 @@ type SaveMod struct {
 	Name, Version string
 }
 
-// Upload is another name for world.ModInfo, the info.json of an uploaded
-// mod zip (SPEC 9.5); new code uses world.ModInfo.
-type Upload = world.ModInfo
-
 // ChoiceKind is the admin's decision for an unresolved mod (SPEC 9.10).
 type ChoiceKind string
 

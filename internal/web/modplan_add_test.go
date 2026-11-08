@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", "Mods you asked for:", "aai-industry 1.0.0", "Add another mod",
 		`<input type="hidden" name="q" value="aai">`, `id="add-search" name="q" type="search" value="aai"`,
 		// The mod in the plan and the installed one say so; the others can be added.
-		`<span class="badge" id="mod-aai-industry-add" tabindex="-1">In plan</span>`,
+		`<span class="badge" id="mod-aai-industry-add" tabindex="-1">In plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></span>`,
 		`hx-get="`+plan+`?added=aai-containers&amp;kind=install&amp;name=aai-industry&amp;name=aai-containers&amp;q=aai"`,
 		`hx-push-url="`+plan+`?kind=install&amp;name=aai-industry&amp;name=aai-containers&amp;q=aai"`,
 		// A stopped world's install is the primary action (DESIGN 7.1).
@@ -183,4 +184,58 @@ func TestPlanAccountLinkReturnsToThePlan(t *testing.T) {
 	form := accountForm(acctUser, acctToken)
 	form.Set("return", back)
 	ah.wantRedirect(ah.post(PathAccount, form, withCookie(c)), back)
+}
+
+// A search from "Add another mod" reloads the page with focus on its
+// results, not on the conflict box above the plan; a plain load of the same
+// plan still puts focus on the conflict.
+func TestAddSearchKeepsFocusOnResults(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("fp-conf", "1.0.0", "! beta")
+	g.portal.AddZip("fp-main", "1.0.0", "? fp-conf")
+	id := g.world20("Base", "beta_1.0.0")
+	q := url.Values{"kind": {"install"}, "name": {"fp-main"}, "optional": {"fp-conf"}, "q": {"fp"}}
+	_, plainLoad := g.getStatus(planPath(id, q))
+	wantIn(t, "plain load", plainLoad, `id="plan-conflicts" tabindex="-1" autofocus`, `<input type="hidden" name="add" value="1">`)
+	if strings.Contains(plainLoad, `id="add-heading" tabindex="-1" autofocus`) {
+		t.Error("a plain load puts focus on the search")
+	}
+	q.Set("add", "1")
+	_, searched := g.getStatus(planPath(id, q))
+	wantIn(t, "search", searched, `id="add-heading" tabindex="-1" autofocus`)
+	if n := strings.Count(between(searched, `id="mod-plan"`, `</main>`), "autofocus"); n != 1 {
+		t.Errorf("a search page has %d autofocus, want 1", n)
+	}
+	// The marker is the search form's alone; the plan's links do not carry it.
+	if regexp.MustCompile(`(href|hx-get|hx-push-url)="[^"]*add=1`).MatchString(searched) {
+		t.Error("a link carries the search marker")
+	}
+	// A redraw sends the whole page's fields, the marker too, and still
+	// leaves focus where it is.
+	rec := g.harness.get(planPath(id, q), withCookie(g.cookie), withHeader("HX-Request", "true"))
+	if strings.Contains(between(rec.Body.String(), `id="mod-plan"`, `</main>`), "autofocus") {
+		t.Error("a redraw with the search marker moves focus")
+	}
+}
+
+// Only the plan page searches the portal for "Add another mod"; applying
+// the plan, which carries the search along, does not search again.
+func TestPlanApplyDoesNotSearch(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base")
+	before := g.portal.ListCalls()
+	_, body := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "q": {"alp"}}))
+	if g.portal.ListCalls() == before {
+		t.Fatal("the plan page did not search")
+	}
+	v := planValues(t, body)
+	if v.Get("q") != "alp" {
+		t.Fatalf("the plan form does not carry the search: %v", v)
+	}
+	before = g.portal.ListCalls()
+	g.wantRedirectHome(g.post(modsPath(id)+"/plan", v))
+	if n := g.portal.ListCalls() - before; n != 0 {
+		t.Errorf("applying the plan searched the portal %d times", n)
+	}
 }

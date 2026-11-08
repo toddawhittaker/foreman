@@ -236,7 +236,7 @@ func TestToChangeRemoveTurnsTheModOff(t *testing.T) {
 
 func TestToChangeUploadCarriesTheStagedName(t *testing.T) {
 	f := newFixture(t)
-	p := f.plan(Request{Kind: KindUpload, Upload: &Upload{Name: "my-own-mod", Version: "0.1.0"}})
+	p := f.plan(Request{Kind: KindUpload, Upload: &world.ModInfo{Name: "my-own-mod", Version: "0.1.0"}})
 	d, c := f.toChange(p, ".partial-123")
 	if len(d) != 0 || !slices.Equal(c.Add, []string{".partial-123"}) || !c.Enabled["my-own-mod"] {
 		t.Fatalf("downloads %+v, change %+v", d, c)

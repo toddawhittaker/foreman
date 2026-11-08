@@ -249,7 +249,7 @@
     "one": "Plan updated: it has a conflict, so it cannot be applied.",
     "other": "Plan updated: it has {count} conflicts, so it cannot be applied."
   },
-  "mods.error.cross_site": "This plan was opened from another site, so Foreman did not work it out. Nothing was changed. Choose Try again to see the plan.",
+  "mods.error.cross_site": "This plan was opened from another site, so Foreman did not work it out. Nothing was changed. Choose \"Try again\" to see the plan.",
   "mods.built_in.line_space_age": "Built in, version {version}: {mods}. They follow Space Age.",
   "mods.built_in.line": "Built in, version {version}: {mods}.",
   "mods.built_in.change": "Change Space Age"

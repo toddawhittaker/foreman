@@ -68,10 +68,10 @@
   "mods.flag.fix_update": "Mettre {mod} à jour vers {version}",
   "mods.flag.fix_remove": "Retirer {mod}",
   "mods.notice": {
-    "one": "Les joueurs ne peuvent plus télécharger {count} mod de {world}, ils ne peuvent donc pas rejoindre.",
-    "other": "Les joueurs ne peuvent plus télécharger {count} mods de {world}, ils ne peuvent donc pas rejoindre."
+    "one": "Les joueurs ne peuvent plus télécharger {count} mod de {world}, ils ne peuvent donc pas rejoindre la partie.",
+    "other": "Les joueurs ne peuvent plus télécharger {count} mods de {world}, ils ne peuvent donc pas rejoindre la partie."
   },
-  "mods.notice.one": "{mod} {version} n’est plus sur le portail de mods, les joueurs ne peuvent donc pas rejoindre.",
+  "mods.notice.one": "{mod} {version} n’est plus sur le portail de mods, les joueurs ne peuvent donc pas rejoindre la partie.",
   "mods.notice.update": "Mettre {mod} à jour",
   "mods.notice.review": {
     "one": "Vérifier {count} mod",
@@ -246,7 +246,7 @@
     "other": "{mod} retiré. Le plan compte {count} mods."
   },
   "mods.plan.redrawn_conflicts": {
-    "one": "Plan mis à jour : il comporte un conflit et ne peut donc pas être appliqué.",
+    "one": "Plan mis à jour : il comporte {count} conflit et ne peut donc pas être appliqué.",
     "other": "Plan mis à jour : il comporte {count} conflits et ne peut donc pas être appliqué."
   },
   "mods.error.cross_site": "Ce plan a été ouvert depuis un autre site, Foreman ne l’a donc pas établi. Rien n’a été modifié. Choisissez « Réessayer » pour voir le plan.",
