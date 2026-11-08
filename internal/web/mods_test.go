@@ -466,7 +466,7 @@ func TestDisableOnInactiveWorldReportsOnModsTab(t *testing.T) {
 	wantIn(t, "mods tab", tab, "Disabled alpha in Other.", "Undo this mod change", ">Disabled<")
 }
 
-// Todd's ruling: turning off a mod the loading save uses needs its own
+// SPEC 9.4: turning off a mod the loading save uses needs its own
 // confirmation, since the game deletes what the mod built.
 func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	g := newModsRig(t, true)

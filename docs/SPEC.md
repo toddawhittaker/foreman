@@ -896,7 +896,10 @@ Each problem says what the game would delete. The admin can fix the world
 bullet and an unreadable save only, **start anyway**. The refusal itself is the
 confirmation: it names exactly what the game will delete, the snapshot
 taken first and how to undo it, and its button starts at once, with no
-second page. A restart offers restart anyway the same way. The button
+second page. The box gives the problem, then the fix and the restore of the
+snapshot taken, and puts going ahead last, behind a closed choice ("Or start
+anyway"). It never sends the admin to the host's file system. A restart
+offers restart anyway the same way. The button
 carries what the box showed (the kinds of problem, the mods they name and
 whether the game runs); when the check before anything changes finds
 otherwise, Foreman refuses, shows the box again with what is true now, and
@@ -1260,14 +1263,19 @@ search still works. Giving only one of the two variables, or a key shorter
 than 32 characters, is a startup error (3.2). The account page is at
 `/settings/factorio-account`. It says "Set by environment" when the
 variables hold the account, and offers no form then. A stored account is
-replaced or removed there; neither the username nor the token is shown back,
+replaced or removed there. The page leads with whether mod downloads are on,
+says that every admin's downloads use this one account, and keeps the
+replace form folded while an account is stored; neither the username nor the token is shown back,
 and the token is not checked against factorio.com when saved. A stored
 account that cannot be opened (the key changed) is treated as not set and
 asked for again; it never stops Foreman. How it is sealed is in ADR 0013.
 (P0)
 
 9.12. Downloaded mods are checked against the SHA-1 checksum the portal
-publishes, and a mismatch is refused. (P0)
+publishes, and a mismatch is refused. A download that fails names the mod
+and version, says whether the world kept running, and offers "Try again"
+(the same plan, two clicks) or, for a refused login, the account page.
+(P0)
 
 9.13. **One operation per change.** Every mod change goes through one path:
 install, update, update all, sync from a save, the fix for a flagged mod,
@@ -1287,7 +1295,9 @@ restore confirmation (6.5), which for a "Before mod change" snapshot is
 headed "Undo the mod changes in" the world and first lists, from both mods
 folders, the mods undo removes, puts back, returns to an earlier version or
 turns back on or off; when a folder cannot be read it is the usual restore
-page. The audit log records the operation
+page. A finished change says which mods were installed, updated, turned on
+or off, or removed. After any failed operation, the steps that never ran
+fold into one line (DESIGN 7.6). The audit log records the operation
 as `mods`. A change is refused before anything is touched when the game
 cannot be stopped (paused, not ready, or RCON unreachable) or the mods
 folder no longer matches the plan. (P0)
@@ -1878,6 +1888,7 @@ with the defaults accepted, these take at most:
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
 | Recover after a failed start or a crash loop | 2 |
+| Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 

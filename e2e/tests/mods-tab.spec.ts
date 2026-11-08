@@ -56,7 +56,7 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
   // A folder mod: its badge, no portal link, no Remove.
   await expect(row("my-local-tweaks")).toContainText("Local folder");
   await expect(row("my-local-tweaks").getByRole("link", { name: /Remove|on the mod portal/ })).toHaveCount(0);
-  // Remove is the only red control (DESIGN 7.1, the ruling on 375).
+  // Remove is the only red control (DESIGN 7.1).
   const red = await page.locator("main a, main button").evaluateAll((els) => {
     const probe = document.createElement("span");
     probe.style.color = "var(--color-danger-text)";

@@ -577,6 +577,10 @@ the block padding is `--space-2` so a two-line label is not cramped.
   from the save, a forced stop. A change that only stops and starts the
   game again, such as installing or updating a mod while it runs, is not:
   its button is primary, and its steps say in words that the game restarts.
+- **In a dense table the destructive control is quiet red text.** Remove
+  in the Mods tab's rows is a quiet button in `danger-text`, the only red
+  control there (8.11). Its click opens the confirmation, so the filled
+  danger button is still kept for the confirming step (7.4).
 - Use `<a class="button">` only for navigation that looks like an action
   ("Upload a save" leading to the upload page). Anything that changes
   state is a `<button>` inside a `<form method="post">`.
@@ -799,6 +803,14 @@ Rules:
   result, which restores that snapshot." Where the result offers no such
   button (a settings change, "start anyway"), it says where to restore:
   "To undo, restore that snapshot from the Snapshots page."
+- **Undoing a mod change says what it undoes.** The Undo button of a mod
+  change opens the restore confirmation (SPEC 6.5), headed "Undo the mod
+  changes in <world>?". Its first list names the mods the undo removes,
+  puts back, returns to an earlier version, or turns back on or off, one
+  line each, ahead of the usual "This will" list. After the second and later
+  change of a run on a stopped world the button reads "Undo the mod changes
+  since <time>" and the Done text says no new snapshot was taken. When a
+  mods folder cannot be read, the page is the plain restore confirmation.
 - After the action, the result page shows a Done message (7.3) naming
   the snapshot that was taken, linked.
 
@@ -1854,14 +1866,21 @@ visible-planets" when the portal has no release to update to). With
 several: "Review N mods". It links straight to the plan, so fixing it is
 two clicks (SPEC 17.10).
 
-**The account page** (`/settings/factorio-account`) is one page of
-`section.panel`s: "Set by environment" naming the two variables, with no
-form, or, with a secret key, the form (username, and a token as a password
-field with `autocomplete="off"`, its hint linking to the factorio.com
-profile page in a new tab), or, with a stored account, "Stored on
-`<date>` by `<user>`", a Replace form and a Remove button. Nothing it
-holds is ever put in a value attribute: after a refused form both fields
-are empty and the page asks for both again. With no secret key and no
+**The account page** (`/settings/factorio-account`) leads with the state, as
+one sentence: "Mod downloads are on. The account was stored on `<date>` by
+`<user>`." or "Mod downloads are off: no account is set." (an unreadable
+stored account leads with a Warning instead). An intro and a line that all
+admins share this one account follow. Then one of three things. "Set by
+environment" is a `section.panel` naming the two variables, with no form.
+With a secret key and no stored account, the form is open: a username, and
+a token as a password field with `autocomplete="off"` whose hint links to
+the factorio.com profile page in a new tab, and a primary "Save account".
+With a stored account the form is folded into a closed `details.disclosure`
+"Replace the account", and its button and Remove are secondary, since
+replacing is rare and the state sentence already answers the common
+question; a refused replace opens it again. Nothing the account holds is
+ever put in a value attribute or shown: after a refused form both fields are
+empty and the page asks for both again. With no secret key and no
 environment account the page is a note and a Go back link, with no
 disabled form. A `return` parameter, checked as in SPEC 14.17, sends the
 browser back to the page that asked after a save, and Cancel goes there

@@ -10,7 +10,7 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 below uses the new numbers.
 
 Epics 1 to 8, the Gate A fixes and the fix batches after Gate A (hub
-fixes, polish fixes, UI batch, fixes batch 2) are done. Gate A (SPEC 19.1)
+fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3) are done. Gate A (SPEC 19.1)
 passed on 2026-11-05. Gate B (SPEC 19.2) follows Epic 8.
 
 ## Epic 1: Foundation
@@ -1710,3 +1710,131 @@ version players cannot download is flagged), and the running-switch flake
   fix offered for a conflict, #345 denser search results); editing mod
   setting values (#339, SPEC 9.6 P2); and the American spelling sweep,
   including "labelled" (#320). The public mod download page is #132.
+
+## Fixes batch 3
+
+Serves SPEC 6.2, 7.4, 7.9, 9.1 to 9.4, 9.7, 9.11 to 9.13, 14.8, 17.9 and
+17.10 (a new row), with DESIGN.md 7.1, 7.4, 7.6 and 8.11, and ADR 0014
+(one snapshot for a run of mod changes on a stopped world). The plan's
+lasting rules are in those sections. Issues closed: #337, #341, #344,
+#345, #354 to #360, #362 to #377 (every number in that range except #361,
+which was the plan's own pull request).
+
+### Delivered
+
+- **Recommended dependencies (#357).** Factorio 2.1's "+" prefix parses.
+  A recommended mod is an optional one that starts ticked. One the portal
+  lacks, or one that would conflict, is left out with a note and never
+  blocks the plan. A sync adds none. A recommended mod is offered only for
+  a mod the plan changes, so disabling or removing an unrelated mod never
+  asks the portal.
+- **Drop warning on a running world (#358).** Stopping the game saves
+  every enabled mod, so on a running world disabling or removing any mod
+  asks for the drop confirmation. A stopped world still reads the save on
+  disk.
+- **Test race (#337).** A test changed controller fields while the monitor
+  ran; fixed.
+- **Account page (#354, #377).** It leads with one sentence saying whether
+  mod downloads are on, says that every admin shares the one factorio.com
+  account (also in the README), and folds the Replace form away while an
+  account is stored. Replacing now costs one more click, on purpose.
+- **Pre-start refusal (#356, #363).** Lists use the box's full width (the
+  step rule is now `.steps > li`). The box gives the problem, then the main
+  fix, then the restore of the snapshot taken, with "Or start anyway" last
+  in a closed choice. The advice to copy files into a host folder is gone,
+  from the refusal and the switch page.
+- **A mod version the portal dropped (#359, #362).** A start, restart or
+  switch of a world whose enabled mod is at a version the portal no longer
+  offers is refused, with "Update *mod*" first and start anyway kept. The
+  portal is asked once per action, for at most 5 seconds, from the cache
+  where it can. A portal that is down or slow never blocks a start; the
+  result says it was not checked. A switch that will not start the world
+  skips the check. The Server page's mods notice reloads whenever an
+  operation ends, and is not read out again when nothing changed.
+- **One snapshot per run of mod changes (#341, #370).** On a stopped
+  world only the first change since the game launched takes a snapshot
+  (a marker file names it; ADR 0014). Undo then reads "Undo the mod changes
+  since <time>". The undo confirmation lists the mods it removes, puts
+  back, returns to an earlier version, or turns on or off. A running world
+  still snapshots every change. The plan page says when the run's snapshot
+  is kept.
+- **Mod search (#355, #345).** Results are a table, ten rows a page, with
+  the total count in the caption. Several mods can be ticked and added to
+  one plan from the Mods tab's search. The portal client no longer cuts the
+  results at 25. The plan page's "Add another mod" uses the same table. The
+  world is back in the `h1`.
+- **Mods tab (#360, #342, #343, #365, #371, #372, #373).** One summary line
+  with "Update all"; each mod's flags and fix in its own row; a two-column
+  table that stacks on a phone; "up to date" counts only mods the portal
+  has at their installed version; the built-in mods in one plain line; the
+  tab says whether the mods match the loading save; upload and
+  `mod-settings.dat` replace are folded away.
+- **Operation results (#366, #367, #369).** A failed mod download names the
+  mod and version, says whether the world kept running, and offers Try again
+  (2 clicks) or the account page. After any failed operation the steps that
+  never ran fold into one line. A finished mod change says which mods were
+  installed, updated, turned on or off, or removed.
+- **Mod plan page (#374, #344, #364, #376, #368, #375).** Changes first,
+  short steps. A conflict offers "Remove *mod* as part of this plan" or
+  "Disable *mod* too" as a control, in one snapshot, and hides the steps.
+  The drop warning comes first and is said once. Red is for what destroys
+  something: removing a mod, dropping save content, continuing without.
+  Installing or updating a mod while the game runs is a primary button.
+- **Spec and design.** SPEC 17.10 has a new row for Try again (2 clicks)
+  and the second-mod row says "on the plan page". DESIGN 7.1 names the
+  quiet red Remove, 7.4 describes the undo confirmation and the new refusal
+  box, and 8.11 describes the new account page.
+- All new text is translated into the eight languages, and two
+  second-agent reviews (SPEC 22.6) corrected the translations. The mod
+  enable and disable wording was reworded in all eight.
+
+### Verified
+
+- `make verify` green on every task head, and the whole `make e2e` suite
+  (with 4 workers) after the changes to shared files; the last full run,
+  at the portal and notice review fixes, was 2028 passed, 116 skipped, 0
+  failed. The two expected-failure tests in `errorlog.spec.ts` show as
+  failures by design.
+- New specs: refusal-layout, mods-search, mods-tab, mods-undo,
+  mods-failures and mods-prestart, each at desktop and 320 px, in both
+  themes, with the accessibility scan. The click-budget test counts the new
+  rows.
+- Real games: the drop on a running world (#358), one snapshot per run
+  (#341) and recommended dependencies (#357) were run against
+  `factoriotools/factorio` 1.1, 2.0 and 2.1 and pass (the recommended
+  dependency test runs on 2.1 only, where "+" exists). They are in
+  `internal/game/realgame1_modsplan_game_test.go`.
+- `FuzzParseDep` for 20 seconds with the "+" prefix: pass.
+
+### Gaps left
+
+- Per-admin factorio.com accounts are still future work (#354).
+- Deferred to a later batch: #340 (choose a mod's version) and #378.
+- Code-review refactors left for later: `restoremods.go` re-reads mod lists
+  the world package already parses; the web layer works out which snapshot
+  undoes a change from the files; `currentCount` re-reads the mods list.
+- Flagged rows on the Mods tab are not sorted first. At 320 px a row with
+  Update wraps Remove to a second line, and a folder mod's Disable sits at
+  the row's end instead of under the others'.
+- The Undo button's time is the server's UTC text, not local. A local-only
+  mode in `time.js` would fix it, but every page uses that script.
+- The snapshot step reads "done" when a run's snapshot is reused.
+- The refusal and the Server page notice can show together, and then the
+  page has two "Update *mod*" buttons for the same plan.
+- The pre-start refusal's main fix is a secondary button, because DESIGN
+  7.1 forbids a primary one while the game runs. If a live update redraws
+  the control region while "Or start anyway" is open, it closes again.
+- A game version update and the restart after a mod change do not ask the
+  portal. The start-anyway box says the game drops from the save whatever
+  depends on the problems, which says nothing useful for a gone mod.
+- Other mod-change failures (after the stop) keep their generic words, and
+  a plan that used an uploaded zip has no Try again.
+- No fix is offered for a conflict from a mod with no release, Space Age
+  off, or a mod not on the portal. `settings.preview.undo` keeps the old
+  "restore from the Snapshots page" wording.
+- `server.problem.modlist_space_age_on` and `_off` still say "turned
+  off/on" for entries in `mod-list.json`.
+- The search page's old `.mod-results*` and `.mod-summary` CSS is unused
+  and not yet removed; there is no filter-as-you-type.
+- Some code comments still cite issue numbers, and some older tests cite
+  "ruling N" from earlier epics.
