@@ -217,7 +217,11 @@ func (e *gameEnv) runModRunSnapshot(t *testing.T, tag, fixture, version string) 
 	c, _ := e.controller(t)
 	fetch := newFetcher()
 	c.SetModFetcher(fetch)
-	portal := probePortal(t, fetch, version, "1.0.0", "2.0.0", "3.0.0")
+	// An install takes the newest release, so the portal gains releases as
+	// the test goes, the way the real one does.
+	v1 := probePortal(t, fetch, version, "1.0.0")
+	v2 := probePortal(t, fetch, version, "1.0.0", "2.0.0")
+	v3 := probePortal(t, fetch, version, "1.0.0", "2.0.0", "3.0.0")
 	id := e.newWorld(t, tag, version, "run", fixture, map[string]time.Duration{"main.zip": time.Hour})
 	stopOpts := StopOptions{Countdown: 2 * time.Second}
 	apply := func(op ModOp) {
@@ -238,13 +242,13 @@ func (e *gameEnv) runModRunSnapshot(t *testing.T, tag, fixture, version string) 
 	before := e.modsSummary(t, id)
 
 	// Three changes in a row take one snapshot.
-	op, _ := e.planOp(t, portal, id, mods.Request{Kind: mods.KindInstall, Names: []string{probeMod}}, false, false)
+	op, _ := e.planOp(t, v1, id, mods.Request{Kind: mods.KindInstall, Names: []string{probeMod}}, false, false)
 	apply(op)
 	snapCount(1)
 	first := e.modsSnapshots(t, id)[0]
-	op, _ = e.planOp(t, portal, id, mods.Request{Kind: mods.KindUpdate, Names: []string{probeMod}}, false, false)
+	op, _ = e.planOp(t, v2, id, mods.Request{Kind: mods.KindUpdate, Names: []string{probeMod}}, false, false)
 	apply(op)
-	op, _ = e.planOp(t, portal, id, mods.Request{Kind: mods.KindDisable, Names: []string{probeMod}}, false, true)
+	op, _ = e.planOp(t, v2, id, mods.Request{Kind: mods.KindDisable, Names: []string{probeMod}}, false, true)
 	apply(op)
 	snapCount(1)
 	if got := e.modsSnapshots(t, id)[0].Name; got != first.Name {
@@ -274,9 +278,9 @@ func (e *gameEnv) runModRunSnapshot(t *testing.T, tag, fixture, version string) 
 	// A restore ends the run, so the next change snapshots again. A start that
 	// reaches InGame ends it too.
 	n := len(e.modsSnapshots(t, id))
-	op, _ = e.planOp(t, portal, id, mods.Request{Kind: mods.KindInstall, Names: []string{probeMod}}, false, false)
+	op, _ = e.planOp(t, v1, id, mods.Request{Kind: mods.KindInstall, Names: []string{probeMod}}, false, false)
 	apply(op)
-	op, _ = e.planOp(t, portal, id, mods.Request{Kind: mods.KindUpdate, Names: []string{probeMod}}, false, false)
+	op, _ = e.planOp(t, v2, id, mods.Request{Kind: mods.KindUpdate, Names: []string{probeMod}}, false, false)
 	apply(op)
 	snapCount(n + 1)
 
@@ -285,7 +289,7 @@ func (e *gameEnv) runModRunSnapshot(t *testing.T, tag, fixture, version string) 
 	}
 	e.requireBackInGame(t, c, id, version, time.Time{})
 	if !anyLineHas(currentRun(c, id), probeLoaded("2.0.0")) {
-		t.Fatalf("the game did not load %s 2.0.0", probeMod)
+		t.Fatalf("the game did not load %s 2.0.0; mods %s", probeMod, e.modsSummary(t, id))
 	}
 	for _, l := range currentRun(c, id) {
 		if strings.Contains(l, inGameLine) {
@@ -295,10 +299,13 @@ func (e *gameEnv) runModRunSnapshot(t *testing.T, tag, fixture, version string) 
 	if err := c.Stop(ctx, id, admin, stopOpts); err != nil {
 		t.Fatalf("stop: %v", err)
 	}
-	op, _ = e.planOp(t, portal, id, mods.Request{Kind: mods.KindUpdate, Names: []string{probeMod}}, false, false)
+	op, _ = e.planOp(t, v3, id, mods.Request{Kind: mods.KindUpdate, Names: []string{probeMod}}, false, false)
 	apply(op)
 	snapCount(n + 2)
-	op, _ = e.planOp(t, portal, id, mods.Request{Kind: mods.KindRemove, Names: []string{probeMod}}, false, true)
+	if zips := e.zipsInMods(t, id); !slices.Equal(zips, []string{probeFile("3.0.0")}) {
+		t.Fatalf("after the update the mods folder holds %v, want only %s", zips, probeFile("3.0.0"))
+	}
+	op, _ = e.planOp(t, v3, id, mods.Request{Kind: mods.KindRemove, Names: []string{probeMod}}, false, true)
 	apply(op)
 	snapCount(n + 2)
 }
@@ -355,13 +362,13 @@ func TestRealGameModRecommendedDependency(t *testing.T) {
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				e.runRecommended(t, g.tag, g.fixture, g.version, tc.onPortal, tc.declined, tc.wantRecInMod)
+				e.runRecommended(t, g.tag, g.fixture, g.version, tc.name, tc.onPortal, tc.declined, tc.wantRecInMod)
 			})
 		}
 	}
 }
 
-func (e *gameEnv) runRecommended(t *testing.T, tag, fixture, version string, onPortal, declined, wantRec bool) {
+func (e *gameEnv) runRecommended(t *testing.T, tag, fixture, version, label string, onPortal, declined, wantRec bool) {
 	ctx := context.Background()
 	c, _ := e.controller(t)
 	fetch := newFetcher()
@@ -375,7 +382,7 @@ func (e *gameEnv) runRecommended(t *testing.T, tag, fixture, version string, onP
 	if onPortal {
 		portal[recDep] = modportal.Mod{Name: recDep, Releases: []modportal.Release{recRel}}
 	}
-	id := e.newWorld(t, tag, version, "recommended", fixture, map[string]time.Duration{"main.zip": time.Hour})
+	id := e.newWorld(t, tag, version, "recommended "+label, fixture, map[string]time.Duration{"main.zip": time.Hour})
 
 	req := mods.Request{Kind: mods.KindInstall, Names: []string{recMain}}
 	if declined {
