@@ -1159,7 +1159,9 @@ Removing a mod that another enabled mod requires is refused with the
 reason. Built-in mods cannot be removed, and a mod installed as a folder is
 shown as "local" and never replaced. Turning off or removing a mod that the
 save about to load uses needs a confirmation on the plan page, a ticked box
-that says the game will delete what that mod built. The restart after the
+that says the game will delete what that mod built. While the world's
+game runs, every enabled mod counts as used, since stopping it to apply
+the change saves the world with all of them. The restart after the
 change then passes exactly those mods in the pre-start check (7.4), and the
 world ends running. Without the confirmation the plan cannot be applied. A
 confirmation given on a stopped world is not remembered for the next Start.
