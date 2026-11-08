@@ -2656,11 +2656,6 @@ form:has(#mode-exchange:checked) .achievements {
   font-weight: 400;
 }
 
-/* The counts are for screen readers, so no line is held once they arrive. */
-.preview:has(#preview-territories:checked) .territory-result:has(> .territory-counts) {
-  min-block-size: 0;
-}
-
 /* The key help shares the planet's line, at its end, while it fits. */
 .large-view__head {
   flex-wrap: wrap;
