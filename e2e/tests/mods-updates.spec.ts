@@ -36,8 +36,8 @@ test.describe("updates", () => {
     await checkPage(page);
 
     await page.getByRole("button", { name: "Update 2 mods" }).click();
-    // The world is stopped, so it stays stopped.
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    // The world is stopped, so it stays stopped. The Done box names each update (SPEC 17.9).
+    await expect(doneBox(page)).toContainText("Updated fp-up1 to 1.1.0 and fp-up2 to 1.2.0 in Base.", live);
     await expect(stateBadge(page)).toHaveText("Stopped");
     expect(existsSync(modsFile(foreman.dataDir, "fp-up1_1.1.0.zip"))).toBe(true);
     expect(existsSync(modsFile(foreman.dataDir, "fp-up2_1.2.0.zip"))).toBe(true);
@@ -76,7 +76,7 @@ test.describe("updates", () => {
     await row.getByRole("link", { name: "Update to 1.1.0" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Update fp-up1 in Base?" })).toBeVisible();
     await page.getByRole("button", { name: "Update 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     expect(existsSync(modsFile(foreman.dataDir, "fp-up1_1.1.0.zip"))).toBe(true);
     expect(existsSync(modsFile(foreman.dataDir, "fp-up2_1.0.0.zip"))).toBe(true);
   });
@@ -128,7 +128,7 @@ test.describe("a mod players cannot get", () => {
     await expect(page.locator("#mod-plan")).toContainText("visible-planets 1.5.5 to 1.7.2");
     await checkPage(page);
     await page.getByRole("button", { name: "Update 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(existsSync(modsFile(foreman.dataDir, "visible-planets_1.7.2.zip"))).toBe(true);

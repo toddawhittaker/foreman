@@ -1,6 +1,7 @@
 import { test, expect, checkPage, setUpModsWorld, doneBox, stateBadge, creates, live, makeZip, version20, type FakeGame, type FakePortal, type Foreman } from "./foreman.js";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { countClicks, expectWithin } from "./clicks.js";
 
 // SPEC 9.2, 9.11, 9.12, 17.8, 17.5: what a mod change does when something is
 // wrong: the plan moves, there is no account, a download fails. In every case
@@ -36,7 +37,7 @@ test.describe("the plan changes between the page and the post", () => {
 
     // The page shows the new plan, and confirming that one applies it.
     await page.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     expect(existsSync(join(modsDir(foreman), "fp-late_1.0.0.zip"))).toBe(true);
   });
 
@@ -52,7 +53,7 @@ test.describe("the plan changes between the page and the post", () => {
     const other = await page.context().newPage();
     await other.goto(`${foreman.url}/worlds/base/mods/plan?kind=install&name=fp-first`);
     await other.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(doneBox(other)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(other)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await other.close();
 
     await page.getByRole("button", { name: "Install 1 mod" }).click();
@@ -96,7 +97,7 @@ test.describe("no factorio.com account", () => {
     expect(html).not.toContain(portal.token);
     expect(html).not.toContain(portal.username);
     await page.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     expect(existsSync(join(modsDir(foreman), "fp-nodl_1.0.0.zip"))).toBe(true);
     expect(foreman.logs()).not.toContain(portal.token);
     expect((await portal.state()).refused).toEqual([]);
@@ -111,29 +112,33 @@ test.describe("no factorio.com account", () => {
 
     await page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /fp-local/ }).getByRole("link", { name: "Disable" }).click();
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   });
 });
 
 test.describe("a download fails", () => {
   test.use({ portalAccountOn: true });
 
-  const cases: { name: string; prepare: (portal: FakePortal) => Promise<void>; message: RegExp }[] = [
+  // SPEC 9.12, 17.9: the error names the mod, says the game kept running, and offers the next step as a control.
+  const cases: { name: string; prepare: (portal: FakePortal) => Promise<void>; message: RegExp; next: string }[] = [
     {
       name: "the checksum is wrong",
       prepare: (portal) => portal.setMode("fp-bad", "1.0.0", "wrong-sha1"),
-      message: /did not match the checksum the mod portal publishes/,
+      message: /fp-bad 1\.0\.0 did not match the checksum the mod portal publishes, so Foreman did not use it\. Nothing was changed, and Base kept running\./,
+      next: "Try again",
     },
     {
       name: "the portal answers 401",
       prepare: (portal) => portal.setMode("fp-bad", "1.0.0", "unauthorized"),
-      message: /factorio\.com refused the username or token/,
+      message: /factorio\.com refused the username or token, so fp-bad 1\.0\.0 was not downloaded\. Nothing was changed, and Base kept running\./,
+      next: "Check the factorio.com account",
     },
     {
       name: "the portal goes down after the plan",
       prepare: (portal) => portal.setDown(true),
       // The plan was just made, so the post reads the portal's answers from the cache and the download is what fails.
-      message: /A mod could not be downloaded from the mod portal\. Nothing was changed\./,
+      message: /fp-bad 1\.0\.0 could not be downloaded from the mod portal\. Nothing was changed, and Base kept running\./,
+      next: "Try again",
     },
   ];
 
@@ -150,8 +155,13 @@ test.describe("a download fails", () => {
       await c.prepare(portal);
       await page.getByRole("button", { name: "Install 1 mod" }).click();
 
-      // The failure is in words, on the Server page or the plan page.
-      await expect(page.locator("main")).toContainText(c.message, live);
+      // The failure is in words on the Server page, with its next step as a control.
+      const box = page.locator(".steps .message--error");
+      await expect(box).toContainText(c.message, live);
+      await expect(box.locator("#act-fix")).toHaveText(c.next);
+      // The steps that never ran fold into one line (DESIGN 7.6).
+      await expect(page.locator("[sse-swap=control] > ol.steps > li")).toHaveCount(1);
+      await expect(page.locator("summary#act-later-operation")).toHaveText(/^\d+ later steps were not run\.$/);
       await checkPage(page);
       expect(await creates(g)).toBe(before.creates);
       expect(readFileSync(join(modsDir(foreman), "mod-list.json"), "utf8")).toBe(before.list);
@@ -166,4 +176,52 @@ test.describe("a download fails", () => {
       expect((await portal.state()).refused).toEqual([]);
     });
   }
+});
+
+// SPEC 17.9, 17.10: after a failed download, Try again opens the same plan,
+// so retrying takes 2 clicks (Try again, Install 1 mod) instead of 4.
+test.describe("retrying a failed mod change", () => {
+  test.use({ portalAccountOn: true });
+
+  test("Try again opens the same plan, and installing it works: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const portal = fakePortal!;
+    await portal.add("fp-bad", "1.0.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, fakeGame!, { ...world, start: true });
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-bad");
+    await portal.setMode("fp-bad", "1.0.0", "wrong-sha1");
+    await page.getByRole("button", { name: "Install 1 mod" }).click();
+    await expect(page.locator(".steps .message--error")).toContainText("Nothing was changed, and Base kept running.", live);
+
+    // The folded steps open to show each step that never ran.
+    await page.locator("summary#act-later-operation").click();
+    await expect(page.locator("details .steps > li").first()).toContainText("Skipped");
+    await checkPage(page);
+
+    await portal.setMode("fp-bad", "1.0.0", "normal");
+    const clicks = await countClicks(page);
+    await page.getByRole("link", { name: "Try again" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Install fp-bad in Base?" })).toBeVisible();
+    await page.getByRole("button", { name: "Install 1 mod" }).click();
+    await expect(doneBox(page)).toContainText("Installed fp-bad in Base.", live);
+    expect(existsSync(join(modsDir(foreman), "fp-bad_1.0.0.zip"))).toBe(true);
+    await expectWithin(clicks, 2, "retry a failed mod change");
+  });
+
+  test("a refused login links to the account page, which returns to the plan", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const portal = fakePortal!;
+    await portal.add("fp-bad", "1.0.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, fakeGame!, world);
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-bad");
+    await portal.setMode("fp-bad", "1.0.0", "unauthorized");
+    await page.getByRole("button", { name: "Install 1 mod" }).click();
+    await expect(page.locator(".steps .message--error")).toContainText("Nothing was changed, and Base stayed stopped.", live);
+
+    // The account page returns to the same plan, so the fix ends one click from trying again.
+    const link = page.getByRole("link", { name: "Check the factorio.com account" });
+    const back = new URL(String(await link.getAttribute("href")), foreman.url).searchParams.get("return");
+    expect(back).toBe("/worlds/base/mods/plan?kind=install&name=fp-bad");
+    await link.click();
+    await expect(page).toHaveURL(/\/settings\/factorio-account\?return=/);
+    await checkPage(page);
+  });
 });

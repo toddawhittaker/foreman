@@ -68,7 +68,7 @@ test("two mods from one search: added in place, then one install with one snapsh
 
   // One confirm, one snapshot, every mod installed.
   await page.getByRole("button", { name: "Install 3 mods" }).click();
-  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   for (const f of ["fp-lamp_1.0.0.zip", "fp-lamp-colours_1.2.0.zip", "fp-lamp-lib_1.0.0.zip"]) expect(existsSync(join(modsDir(foreman.dataDir), f))).toBe(true);
   expect(snapshots(foreman.dataDir)).toBe(1);
 });

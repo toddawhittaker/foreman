@@ -364,10 +364,11 @@ func (s *server) modsOutcome(p *ModsPage) {
 		p.Undo = &Offer{Path: restorePath(p.World.ID, res.Undo), Label: i18n.M("mods.undo")}
 	}
 	if res.Err == nil {
-		p.Done = i18n.M("mods.done", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_mods"))
+		p.Done = modsDone(res.Mods.Changes, p.World.Name)
 		return
 	}
-	p.Failure = &Failure{Message: failureText(res.Err), Refused: game.IsRefusal(res.Err)}
+	p.Failure = &Failure{Refused: game.IsRefusal(res.Err)}
+	p.Failure.Message, p.Failure.Fix = modsFailure(res.Err, res.Mods, p.World.Name, s.game.Status(p.World.ID).State, p.Path())
 	if errors.Is(res.Err, world.ErrModsChanged) {
 		p.Failure.Next = &Offer{Path: p.Path(), Label: i18n.M("mods.changed.next")}
 	}
@@ -1664,7 +1665,12 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	if staged == "" {
 		unused = f.Staged
 	}
-	s.applyMods(w, r, u, sum, op, stop, unused)
+	// Trying again opens this plan anew, unless it used the uploaded zip.
+	shown := modResult{Changes: p.Plan.Changes}
+	if !p.UsesUpload() {
+		shown.Retry = planPath(sum.ID, f.query())
+	}
+	s.applyMods(w, r, u, sum, op, stop, unused, shown)
 }
 
 // UsesUpload reports whether a change in the plan comes from the staged zip.
@@ -1693,7 +1699,7 @@ const maxSummary = 500
 // applyMods runs one mod change in the background (SPEC 9.13). The
 // Server page follows the active world's; the Mods tab any other world's.
 // The result names the "Before mod change" snapshot, for undo.
-func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string) {
+func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult) {
 	id, by := sum.ID, actor(u)
 	to := PathServer
 	if !sum.Active {
@@ -1706,6 +1712,7 @@ func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User,
 			_ = s.worlds.RemoveStaged(unused)
 		}
 		res := s.finish(id, game.AuditMods, err)
+		res.Mods = shown
 		if after := s.newestModSnapshot(id); after != before {
 			res.Undo = after
 		}

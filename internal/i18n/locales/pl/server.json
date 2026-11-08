@@ -157,6 +157,11 @@
   "server.step.refused": "Odrzucone",
   "server.step.failed": "Niepowodzenie",
   "server.step.skipped": "Pominięte",
+  "server.steps.not_run": {
+    "one": "Nie wykonano {count} kolejnego kroku.",
+    "few": "Nie wykonano {count} kolejnych kroków.",
+    "many": "Nie wykonano {count} kolejnych kroków."
+  },
   "server.step.waiting": "Oczekiwanie",
   "server.step.other": "{name}",
   "server.step.warn": "Ostrzeż graczy",
@@ -265,6 +270,58 @@
   "server.done.mods_short": "Modyfikacje zostały zmienione.",
   "server.done.rollback_short": "Świat został cofnięty.",
   "server.done.snapshot_short": "Migawka została wykonana.",
+  "server.mods_done.snapshot": "Foreman najpierw wykonał migawkę „{label}”.",
+  "server.mods_done.install": "Zainstalowano w świecie {world}: {mods}.",
+  "server.mods_done.upgrade": "Zaktualizowano w świecie {world}: {mods}.",
+  "server.mods_done.downgrade": "Obniżono wersję w świecie {world}: {mods}.",
+  "server.mods_done.enable": "Włączono w świecie {world}: {mods}.",
+  "server.mods_done.disable": "Wyłączono w świecie {world}: {mods}.",
+  "server.mods_done.remove": "Usunięto ze świata {world}: {mods}.",
+  "server.mods_done.to": "{mod} do {version}",
+  "server.mods_done.many": {
+    "one": "Zmieniono {count} modyfikację w świecie {world}: {kinds}.",
+    "few": "Zmieniono {count} modyfikacje w świecie {world}: {kinds}.",
+    "many": "Zmieniono {count} modyfikacji w świecie {world}: {kinds}."
+  },
+  "server.mods_done.count.install": {
+    "one": "zainstalowano: {count}",
+    "few": "zainstalowano: {count}",
+    "many": "zainstalowano: {count}"
+  },
+  "server.mods_done.count.upgrade": {
+    "one": "zaktualizowano: {count}",
+    "few": "zaktualizowano: {count}",
+    "many": "zaktualizowano: {count}"
+  },
+  "server.mods_done.count.downgrade": {
+    "one": "obniżono wersję: {count}",
+    "few": "obniżono wersję: {count}",
+    "many": "obniżono wersję: {count}"
+  },
+  "server.mods_done.count.enable": {
+    "one": "włączono: {count}",
+    "few": "włączono: {count}",
+    "many": "włączono: {count}"
+  },
+  "server.mods_done.count.disable": {
+    "one": "wyłączono: {count}",
+    "few": "wyłączono: {count}",
+    "many": "wyłączono: {count}"
+  },
+  "server.mods_done.count.remove": {
+    "one": "usunięto: {count}",
+    "few": "usunięto: {count}",
+    "many": "usunięto: {count}"
+  },
+  "server.mods_failed.checksum": "Modyfikacja {mod} {version} nie zgadzała się z sumą kontrolną publikowaną przez portal modyfikacji, więc Foreman jej nie użył.",
+  "server.mods_failed.unauthorized": "factorio.com odrzuciło nazwę użytkownika lub token, więc nie pobrano modyfikacji {mod} {version}.",
+  "server.mods_failed.gone": "Portal modyfikacji nie ma już modyfikacji {mod} {version}.",
+  "server.mods_failed.download": "Nie udało się pobrać modyfikacji {mod} {version} z portalu modyfikacji.",
+  "server.mods_failed.kept_running": "Nic nie zmieniono, a świat {world} nadal działa.",
+  "server.mods_failed.stayed_stopped": "Nic nie zmieniono, a świat {world} pozostaje zatrzymany.",
+  "server.mods_failed.unchanged": "Nic nie zmieniono.",
+  "server.mods_failed.try_again": "Spróbuj ponownie",
+  "server.mods_failed.account": "Sprawdź konto factorio.com",
   "server.undo.restore": "Cofnij to przywrócenie",
   "server.undo.rollback": "Odwróć cofnięcie wersji",
   "server.undo.update": "Cofnij do {version}",

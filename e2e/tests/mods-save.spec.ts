@@ -47,7 +47,7 @@ test.describe("turning off a mod the loading save uses", () => {
     // With it: the game restarts without the mod and ends running.
     await box.check();
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(modEnabled(foreman.dataDir, "foreman-test")).toBe(false);
@@ -69,7 +69,7 @@ test.describe("turning off a mod the loading save uses", () => {
     await expect(page.locator(".message--warning").filter({ hasText: "The save that loads uses 1 mod this change turns off: fp-extra." })).toBeVisible();
     await page.locator("#confirm-drops").check();
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(modEnabled(foreman.dataDir, "fp-extra")).toBe(false);
   });

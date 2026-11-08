@@ -285,7 +285,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await page.getByRole("button", { name: "Search" }).click();
     await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
     await page.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     await expectWithin(clicks, 4, "search and install a mod");
@@ -307,7 +307,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
     await page.getByRole("link", { name: "Add to plan fp-signs-extra", exact: true }).click();
     await page.getByRole("button", { name: "Install 2 mods" }).click();
-    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     // One restart, and one snapshot for both mods.
     expect(await creates(g)).toBe(before + 1);
@@ -331,7 +331,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     // The portal's answer loads after the page; waiting for it is not a click.
     await page.getByRole("link", { name: "Update all" }).click();
     await page.getByRole("button", { name: "Update 2 mods" }).click();
-    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     for (const f of ["fp-up1_1.1.0.zip", "fp-up2_1.1.0.zip"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", f))).toBe(true);
     await expectWithin(clicks, 3, "update all");
@@ -359,7 +359,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
 
     await page.getByRole("link", { name: "Update visible-planets" }).click();
     await page.getByRole("button", { name: "Update 1 mod" }).click();
-    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.7.2.zip"))).toBe(true);
     await expectWithin(clicks, 2, "fix a mod players cannot get");
@@ -383,7 +383,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     // The Server page's notice offers the same plan; the refusal's own button is the one used here.
     await refusal.getByRole("link", { name: "Update visible-planets" }).click();
     await page.getByRole("button", { name: "Update 1 mod" }).click();
-    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(badge(page)).toHaveText("Running", live);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.7.2.zip"))).toBe(true);
@@ -398,7 +398,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await startGame(page, clicks);
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-signs");
     await page.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     const installed = join(foreman.dataDir, "worlds", "base", "mods", "fp-signs_1.0.0.zip");
     expect(existsSync(installed)).toBe(true);

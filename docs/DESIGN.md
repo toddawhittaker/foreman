@@ -943,6 +943,15 @@ width, up to the message's reading width. Text inside a message fills that one w
 so a paragraph and a nested list item wrap alike. The words carry the state, so forced
 colours needs no rule.
 
+After an operation fails, the steps after the failed one never ran. When
+there are two or more, they fold into one line under the list, a native
+`<details class="disclosure">` whose summary says how many: "9 later
+steps were not run." Opening it shows them as a second `ol.steps`, each
+"Skipped". This keeps the error and its controls next to the page's
+buttons on a phone, instead of a screen of grey rows. While an operation
+runs nothing folds: the waiting steps are its progress. A refusal by the
+pre-start check already leaves out the steps that never ran.
+
 When an operation changes the active world (a switch), the
 old world's open page reloads onto the Server page after the operation
 ends, moves focus to the `h1`, and writes the result sentence

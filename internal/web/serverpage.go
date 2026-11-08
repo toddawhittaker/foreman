@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -453,9 +454,10 @@ func (p ServerPage) DownloadList() stepList {
 
 // Steps are the steps the list shows. After a refusal by the pre-start
 // check the steps that never ran are left out, since nothing was tried.
+// After a failure the steps after the failed one fold into Later.
 func (l stepList) Steps() []game.Step {
 	if !l.refused() {
-		return l.Op.Steps
+		return l.Op.Steps[:len(l.Op.Steps)-len(l.Later())]
 	}
 	var out []game.Step
 	for _, s := range l.Op.Steps {
@@ -464,6 +466,25 @@ func (l stepList) Steps() []game.Step {
 		}
 	}
 	return out
+}
+
+// Later are the steps a failure left unrun, when there are two or more:
+// they fold into one line, so the error and the controls after it stay
+// close (DESIGN 7.6). While the operation runs, every step shows.
+func (l stepList) Later() []game.Step {
+	if !l.Op.Done || l.refused() {
+		return nil
+	}
+	steps := l.Op.Steps
+	i := slices.IndexFunc(steps, func(s game.Step) bool { return s.State == game.StepFailed })
+	if i < 0 {
+		return nil
+	}
+	later := steps[i+1:]
+	if len(later) < 2 || slices.ContainsFunc(later, func(s game.Step) bool { return s.State != game.StepSkipped }) {
+		return nil
+	}
+	return later
 }
 
 // Left says how long the countdown on a step has to run, or is zero.
@@ -635,6 +656,8 @@ func (p ServerPage) Failure() *Failure {
 		// world lacks its image must never offer the old world's.
 		f.Message = i18n.M("server.error.image_missing")
 		f.Download = p.Result.Action != game.AuditSwitch || p.Result.Target == p.World.ID
+	case p.Result.Action == game.AuditMods:
+		f.Message, f.Fix = modsFailure(err, p.Result.Mods, p.World.Name, p.Status.State, PathServer)
 	default:
 		f.Message = failureText(err)
 	}
