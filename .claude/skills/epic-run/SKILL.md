@@ -42,8 +42,11 @@ line per step, so the run survives a context reset.
    `make verify`, read the diff, check that the files it claims are in the
    PR (`gh pr view <n> --json files`), and rule on anything
    it did outside its file list. Then run the browser tests for every
-   file the task touched (below). A task PR does not wait for its GitHub
-   CI run; the full CI run gates only the epic PR into main (step 13).
+   file the task touched (below). Task PRs into the epic run no GitHub
+   CI; CI runs on each push to the epic branch. After a merge, check
+   that push's run (`gh run list --branch epic/<n>-<name> --limit 1`)
+   when it finishes; a failure becomes a fix task at once. The full CI
+   run gates the epic PR into main (step 13).
    - **Browser tests by file, not by task.** For each changed file, run
      every e2e spec that loads a page using it: a template, its handler,
      and the specs that visit that page; a script, every page that loads
