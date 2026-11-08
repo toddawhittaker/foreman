@@ -184,8 +184,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return exchange && exchange.checked && text && text.value.trim() === "";
   }
 
-  // A draw after a change (change true) made in the large view says so
-  // there, as the page's own line does, and says the new map is ready.
+  // A draw after a settings change (change true) made in the large view
+  // says so there, as the page's own line does, and says the new map is ready.
   async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
@@ -371,7 +371,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isRefresh(e)) {
       refreshing++;
       drop();
-      // The redraw replaces the settings' rows, so the fields go home first.
+      // The redraw replaces the settings' rows, so the fields go home first. This
+      // covers only a redraw started while the view is open; one already on its
+      // way when the view opens keeps fillPanel waiting until it lands.
       putBack();
     }
     // Preview map asks for every planet; nothing automatic may overwrite it,
@@ -442,12 +444,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (panel) panel.hidden = true;
   }
 
-  // A tab's fields for one planet: its row's body, or with one planet, the tab's groups.
+  // A tab's fields for one planet: its row's body, or on a world of one
+  // planet, the tab's groups. A tab that holds one planet's groups without a
+  // row on a world of several gives none, as they may be another planet's.
   function fieldsOf(tab, planet) {
     const fieldset = el("panel-" + tab);
     if (!fieldset) return [];
     const rows = [...fieldset.querySelectorAll(":scope > details[data-planet]")];
-    if (!rows.length) return [...fieldset.children].filter((n) => n.tagName !== "LEGEND");
+    if (!rows.length) return planets().length <= 1 ? [...fieldset.children].filter((n) => n.tagName !== "LEGEND") : [];
     const row = rows.find((d) => d.dataset.planet === planet);
     const body = row && row.querySelector(":scope > .mapgen-body");
     return body ? [body] : [];
@@ -455,7 +459,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function fillPanel(planet) {
     const panel = el("large-settings");
-    if (!panel || !dialog.open || planet === panelPlanet) return;
+    // A settings redraw on its way would replace the rows moved; its end fills the view.
+    if (!panel || !dialog.open || planet === panelPlanet || refreshing > 0) return;
     putBack();
     // An exchange string makes the map by itself; the settings are not used.
     if (!formEl().querySelector("#mode-settings:checked")) return;

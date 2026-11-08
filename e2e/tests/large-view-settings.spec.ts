@@ -170,6 +170,50 @@ test.describe("on a wide screen", () => {
     await expect(page.locator(`#mg-resources-vulcanus #${vulcanus}`)).toHaveCount(1);
   });
 
+  // A settings redraw on its way when the view opens: the view takes the redrawn fields once it lands, so there is one copy of each.
+  test("opening the view while the settings are redrawn shows the new fields, one copy of each", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    const sent: Request[] = [];
+    page.on("request", (r) => { if (isAuto(r)) sent.push(r); });
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/refresh", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.locator("#generate-preset").selectOption("rich-resources");
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(dialog(page)).toBeVisible();
+    release();
+    await expect(panel(page).locator(".step select").first()).toBeAttached();
+    const twice = await panel(page).locator("[id]").evaluateAll((els) => els.map((e) => e.id).filter((id) => document.querySelectorAll(`[id="${id}"]`).length !== 1));
+    expect(twice).toEqual([]);
+    // An edit there reaches the next preview and stays once the view closes.
+    const select = panel(page).locator(".step select").first();
+    const id = (await select.getAttribute("id"))!;
+    const name = (await select.getAttribute("name"))!;
+    await page.locator(`#${id}-range`).focus();
+    await page.keyboard.press("ArrowLeft");
+    const after = await select.inputValue();
+    await expect.poll(() => sent.some((r) => field(r, name) === after)).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(`#mg-resources-nauvis #${id}`)).toHaveValue(after);
+    await expect(page.locator(`[id="${id}"]`)).toHaveCount(1);
+  });
+
+  // Every way the view closes puts the fields back, not only Close and Escape. The view fills the
+  // screen, so there is no backdrop to click; a script's close stands in for any other way.
+  test("closing the view another way puts the fields back", async ({ page }) => {
+    await page.goto("/generate");
+    const iron = (await firstSelect(page, "resources", "nauvis"))!;
+    await openLarge(page);
+    await expect(panel(page).locator(`#${iron}`)).toHaveCount(1);
+    await page.evaluate(() => (document.getElementById("large-view") as HTMLDialogElement).close());
+    await expect(dialog(page)).toBeHidden();
+    await expect(page.locator(`#mg-resources-nauvis #${iron}`)).toHaveCount(1);
+  });
+
   // SPEC 17.10: looking at a planet in the large view, change its setting and see the new map.
   test("changing the setting of the planet in the large view takes one click", async ({ page }) => {
     await openLarge(page);

@@ -162,8 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let needsOff = new Set();
   // Redraws "[modified]", the reset button, each warning and the summary.
   function refresh() {
-    const settings = document.getElementById("map-settings");
-    if (!settings) return;
+    if (!document.getElementById("map-settings")) return;
     const word = formEl().dataset.achWord || "";
     let modified = false;
     const active = new Set();
