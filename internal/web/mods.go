@@ -360,11 +360,9 @@ func (s *server) modsOutcome(p *ModsPage) {
 	if !ok || res.Action != game.AuditMods {
 		return
 	}
-	if res.Undo != "" {
-		p.Undo = &Offer{Path: restorePath(p.World.ID, res.Undo), Label: i18n.M("mods.undo")}
-	}
+	p.Undo = modsUndo(p.World.ID, res)
 	if res.Err == nil {
-		p.Done = modsDone(res.Mods.Changes, p.World.Name)
+		p.Done = modsDone(res.Mods, p.World.Name)
 		return
 	}
 	p.Failure = &Failure{Refused: game.IsRefusal(res.Err)}
@@ -1705,7 +1703,8 @@ func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User,
 	if !sum.Active {
 		to = modsPath(id) + ownResultQuery
 	}
-	before := s.newestModSnapshot(id)
+	newest := s.newestModSnapshot(id)
+	run, inRun := s.worlds.ModRunSnapshot(id)
 	s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
 		err := s.game.ApplyMods(ctx, id, by, op, stop)
 		if unused != "" {
@@ -1713,9 +1712,7 @@ func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User,
 		}
 		res := s.finish(id, game.AuditMods, err)
 		res.Mods = shown
-		if after := s.newestModSnapshot(id); after != before {
-			res.Undo = after
-		}
+		res.Undo, res.Mods.Since = s.modUndoSnapshot(id, err, newest, run, inRun)
 		return res
 	})
 }
