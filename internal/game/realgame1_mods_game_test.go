@@ -3,7 +3,7 @@
 package game
 
 // A mod change against the real game on each line (SPEC 9.2 to 9.7, 7.4, 6.2
-// and the Epic 8 plan's ruling 1): ApplyMods installs, updates and disables a
+// and 9.13): ApplyMods installs, updates and disables a
 // made-up mod in a running world, with a fake download in place of the portal.
 // The mod's control.lua logs one unique line per version, so the game's own
 // log shows which version it loaded. Run by `make test-game`, never by `make

@@ -58,7 +58,7 @@
 
 <section class="panel" aria-labelledby="installed-heading">
   <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
-  {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (plan ruling 2). */}}
+  {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (SPEC 9.3). */}}
   <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
     <p class="empty">{{t "mods.status.loading"}}</p>
   </div>

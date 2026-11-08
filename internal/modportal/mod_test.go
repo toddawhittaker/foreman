@@ -272,7 +272,7 @@ func TestParseModSortsReleases(t *testing.T) {
 	}
 }
 
-// Plan ruling 11 for SPEC 14.10: a release whose file_name is not
+// SPEC 14.10: a release whose file_name is not
 // <name>_<version>.zip is not used, whatever part is wrong.
 func TestParseModDropsReleasesNamedForAnotherMod(t *testing.T) {
 	m, err := parseMod([]byte(`{"name":"m","releases":[

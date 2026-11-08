@@ -1655,7 +1655,10 @@ version players cannot download is flagged), and the running-switch flake
   next to the status facts, with a Fix link that goes straight to the
   plan. The pre-start refusal and the import result link to "Match the mods
   to the save". A plan request names at most 50 mods and is refused
-  cross-site. Everything is in all eight languages.
+  cross-site. Everything is in all eight languages. A second agent checked
+  every new string (SPEC 22.6) twice: at the first review, and again at the
+  confirmation round for the later strings, including the last screen
+  task's. The fixes from both rounds are applied.
 - **Click budgets** (SPEC 17.10), measured: install one mod 4, two mods 5,
   update all 3, fix a flagged mod 2, undo a mod change 2.
 - **Tests and real-game checks.** A test-only fake portal (`cmd/fakeportal`)

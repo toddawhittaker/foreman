@@ -109,7 +109,7 @@ func parseMod(body []byte) (Mod, error) {
 		Deprecated: doc.Deprecated,
 	}
 	for _, r := range doc.Releases {
-		// Plan ruling 11 for SPEC 14.10: a release is named
+		// SPEC 14.10: a release is named
 		// <name>_<version>.zip, or it is not used.
 		if r.Version == "" || r.FileName != doc.Name+"_"+r.Version+".zip" {
 			continue
