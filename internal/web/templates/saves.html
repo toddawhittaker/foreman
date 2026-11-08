@@ -6,12 +6,12 @@
 {{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
-<div class="message message--success">
+<div class="message message--success" tabindex="-1"{{if not .Chosen}} autofocus{{end}}>
   <p><strong>{{t "common.label.done"}}</strong> {{tHTML "worlds.saves.uploaded" "file" (code .Uploaded)}}</p>
 </div>
 {{- end}}
 {{- if .Chosen}}
-<div class="message message--success">
+<div class="message message--success" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{if .LoadSave}}{{tHTML "worlds.saves.chosen" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.chosen_newest"}}{{end}}</p>
 </div>
 {{- end}}
