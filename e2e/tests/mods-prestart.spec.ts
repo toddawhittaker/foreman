@@ -55,8 +55,9 @@ for (const down of [
   { name: "the portal answers with an error", set: (p: FakePortal) => p.failApi(503) },
 ]) {
   test(`${down.name}: the start goes ahead and says the portal was not checked`, async ({ page, foreman, fakeGame, fakePortal }) => {
-    await goneWorld(page, foreman, fakeGame!, fakePortal!);
+    // Down before the first page asks, so no answer is cached (SPEC 9.1).
     await down.set(fakePortal!);
+    await goneWorld(page, foreman, fakeGame!, fakePortal!);
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(stateBadge(page)).toHaveText("Running", live);
     await expect(page.locator("#portal-unchecked")).toHaveText(
@@ -69,9 +70,9 @@ for (const down of [
 
 // Issue 362: the notice loads again when the fix ends, and takes no room once empty.
 test("the Server page notice goes once its fix is done, without a reload", async ({ page, foreman, fakeGame, fakePortal }) => {
-  await goneWorld(page, foreman, fakeGame!, fakePortal!);
   // The game runs with the mod: it started while the portal could not be asked.
   await fakePortal!.setDown(true);
+  await goneWorld(page, foreman, fakeGame!, fakePortal!);
   await page.getByRole("button", { name: "Start server" }).click();
   await expect(stateBadge(page)).toHaveText("Running", live);
   await fakePortal!.setDown(false);

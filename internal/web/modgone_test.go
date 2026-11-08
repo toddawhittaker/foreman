@@ -109,6 +109,20 @@ func TestOperationEndReloadsTheModsNotice(t *testing.T) {
 	if strings.Contains(rec.Body.String(), event) {
 		t.Error("the first send asked for the notice again")
 	}
+	// A page drawn while the operation ran may hold a stale notice, so an
+	// operation already ended by the first send still reloads it.
+	l = &liveStream{render: r, sent: map[string]string{}, opRunning: true}
+	rec = httptest.NewRecorder()
+	l.w, l.rc = rec, http.NewResponseController(rec)
+	if err := l.send(op(true)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rec.Body.String(), event) {
+		t.Error("an operation that ended before the stream opened did not reload the notice")
+	}
+	if got := op(false).liveURL(); got != "/worlds/base/events?op=1" {
+		t.Errorf("live URL while an operation runs: %q", got)
+	}
 }
 
 // SPEC 7.4: a start that could not ask the portal says so in one line.

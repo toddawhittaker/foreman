@@ -340,14 +340,15 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
   // Issue 131: the portal has no 1.5.5 of visible-planets.
   test("fix a mod players cannot get, from the Server page notice: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
     await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
+    // The game runs with the mod: it started while the portal could not be asked (SPEC 7.4),
+    // down from the first page on, so no answer is cached.
+    await fakePortal!.setDown(true);
     await setUpModsWorld(page, foreman, fakeGame!, {
       version: version20,
       fixture: "2.0.77-space-age.zip",
       spaceAge: true,
       mods: { "visible-planets": { factorio: "2.0", version: "1.5.5", deps: ["base >= 2.0", "space-age >= 2.0"] } },
     });
-    // The game runs with the mod: it started while the portal could not be asked (SPEC 7.4).
-    await fakePortal!.setDown(true);
     const clicks = await countClicks(page);
     await startGame(page, clicks);
     await fakePortal!.setDown(false);

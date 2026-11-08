@@ -68,6 +68,11 @@ func (p ServerPage) liveURL() string {
 	if !p.HasWorld {
 		return ""
 	}
+	// A page drawn while an operation runs says so, so the stream knows its
+	// mods notice may be stale once the operation ends (SPEC 9.3).
+	if o := p.Status.Operation; o != nil && !o.Done {
+		return gamePath(p.World.ID, "events") + "?" + opRunningParam + "=1"
+	}
 	return gamePath(p.World.ID, "events")
 }
 
@@ -385,7 +390,8 @@ func showOp(o *game.Operation) bool { return o != nil && (!o.Done || o.Error != 
 // the world's mods (SPEC 7.4).
 func (p ServerPage) PortalUnchecked() bool {
 	o := p.Status.Operation
-	return o != nil && o.PortalUnchecked && !p.opSuperseded() && !p.cancelled()
+	// A failed or refused action has its own message to read first.
+	return o != nil && o.PortalUnchecked && o.Error == "" && !p.opSuperseded() && !p.cancelled()
 }
 
 // OperationHeading names the operation in the step list.
