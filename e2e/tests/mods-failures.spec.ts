@@ -74,7 +74,7 @@ test.describe("no factorio.com account", () => {
     // Search needs no account, but says downloads are off.
     await page.goto("/worlds/base/mods/search?q=fp-nodl");
     await expect(page.locator(".message--note")).toContainText("Mod downloads are off because Foreman has no factorio.com account. Searching still works.");
-    await expect(page.getByRole("heading", { level: 3, name: "fp-nodl" })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "fp-nodl" })).toBeVisible();
     await checkPage(page);
 
     await page.getByRole("link", { name: "Add to plan fp-nodl", exact: true }).click();

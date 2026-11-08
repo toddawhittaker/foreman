@@ -2917,3 +2917,66 @@ form:has(#mode-exchange:checked) .achievements {
 .message .check {
   align-items: start;
 }
+
+/* Mod search results: a table, one row per mod (DESIGN 8.3, SPEC 9.1).
+   Every cell starts at the top, so a mod's version and downloads sit on
+   its title's line however tall the first cell grows. */
+.mod-hits td {
+  vertical-align: top;
+}
+
+.mod-hits td:first-child > * + * {
+  margin-block-start: var(--space-1);
+}
+
+.mod-hits .check {
+  align-items: start;
+}
+
+/* The box sits beside the title's first line, not the middle of a wrapped one. */
+.mod-hits .check input {
+  margin-block-start: 0.125rem;
+}
+
+/* A mod without a box (installed, or in the plan) lines its title up with the ticked ones. */
+.mod-hits--pick .mod-hits__name {
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+.mod-hits__title {
+  font-weight: 600;
+}
+
+.mod-hits .badge {
+  white-space: nowrap;
+}
+
+.mod-hits__summary > p {
+  max-inline-size: var(--measure);
+  padding-block-end: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* With a mouse the box's label and the details toggle need no touch-sized
+   row (WCAG 2.5.8 asks 24 px), so a row is about 100 px tall, not 140. */
+@media (pointer: fine) {
+  .mod-hits .check {
+    min-block-size: 1.5rem;
+  }
+
+  .mod-hits__summary > summary {
+    min-block-size: 1.5rem;
+    padding-block: var(--space-1);
+  }
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pager__at {
+  font-size: var(--text-sm);
+}

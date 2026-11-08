@@ -44,6 +44,13 @@ type modsRig struct {
 // sets the fake's factorio.com account in the environment.
 func newModsRig(t *testing.T, withAccount bool) *modsRig {
 	t.Helper()
+	return newModsRigWrapped(t, withAccount, nil)
+}
+
+// newModsRigWrapped is newModsRig with the portal client wrapped, for a test
+// that needs answers the recorded list does not have.
+func newModsRigWrapped(t *testing.T, withAccount bool, wrap func(ModPortal) ModPortal) *modsRig {
+	t.Helper()
 	fake := fakegame.New(t, fakegame.Config{Images: []string{image21, game.ImageRef(v20)}})
 	g := newGameRigOn(t, fake.Host(), fake)
 	p := modportaltest.New(t)
@@ -55,7 +62,11 @@ func newModsRig(t *testing.T, withAccount bool) *modsRig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := NewHandler(Deps{Config: g.cfg, Store: g.store, Worlds: g.worlds, Game: g.ctrl, Portal: modportal.NewForTest(p.URL),
+	var portal ModPortal = modportal.NewForTest(p.URL)
+	if wrap != nil {
+		portal = wrap(portal)
+	}
+	h, err := NewHandler(Deps{Config: g.cfg, Store: g.store, Worlds: g.worlds, Game: g.ctrl, Portal: portal,
 		Account: acct, Log: g.slog, Now: g.clock.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -625,7 +636,8 @@ func modPageCases() []pageCase {
 			SettingsError: i18n.M("mods.settings.empty"), Failure: &Failure{Message: i18n.M("mods.error.changed")}}},
 		{"mods unreadable", "todd", 200, ModsPage{World: world.Summary{ID: "x", Name: "X", Unreadable: true}}},
 		{"mod search", "todd", 200, ModSearchPage{World: w, Query: "alpha", NoAccount: true, Installed: map[string]bool{"alpha": true},
-			Hits: []modportal.Hit{{Name: "alpha", Title: "Alpha", Summary: longName, LatestVersion: "1.0.0", FactorioVersion: "2.0", Downloads: 12345}, {Name: "beta", Title: "beta"}}}},
+			Picks: []string{"beta", "elsewhere"}, Paged: true, PickError: i18n.M("mods.search.pick_none"),
+			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", Summary: longName, LatestVersion: "1.0.0", FactorioVersion: "2.0", Downloads: 12345}, {Name: "beta", Title: "beta"}, {Name: longName, Title: longName, Summary: "s"}, {Name: "m4"}, {Name: "m5"}, {Name: "m6"}, {Name: "m7"}, {Name: "m8"}, {Name: "m9"}, {Name: "m10"}, {Name: "m11"}}, 1)}},
 		{"mod search empty", "todd", 200, ModSearchPage{World: w, QueryError: i18n.M("mods.search.missing")}},
 		{"mod search down", "todd", 200, ModSearchPage{World: w, Query: "x", Unreachable: true}},
 		{"mod plan", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Running: true, CountdownForm: defaultCountdown(), NoAccount: true,
@@ -639,7 +651,7 @@ func modPageCases() []pageCase {
 		{"mod plan redrawn", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Redraw: true}},
 		{"mod plan adding", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Query: "a", Added: "alpha"},
 			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true, Installed: map[string]bool{"gamma": true},
-			Hits: []modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0"}}}},
+			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0", Summary: longName}}, 1)}},
 		{"mod plan add search down", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}, Query: "a"},
 			Plan: mods.Plan{Changes: plan.Changes[:1]}, AddUnreachable: true}},
 	}

@@ -1688,11 +1688,24 @@ A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod
 change", which goes to the restore confirmation (7.4).
 
-**Search** (`/worlds/{id}/mods/search?q=`). The heading is the query. Each
-result is an `h3` with the mod's title, its summary, a `dl` of latest
-version, game version and downloads, the portal link, and one "Add to
-plan" button (secondary, hidden text names the mod). "Installed" and "In
-plan" are badges in its place. Search works without an account.
+**Search** (`/worlds/{id}/mods/search?q=`). The `h1` is the world, as on
+the Mods tab; "Find a mod" is an `h2` with the form, and "Mods matching
+"krastorio"" an `h2` over the results. The results are a table (8.3) of
+ten rows a page: Mod, Latest version, Downloads. Its caption says how many
+match in all and which ones show ("25 mods for Factorio 2.0 match. Showing
+1 to 10."), so a cut is never hidden. The first cell holds a box labelled
+with the title (weight 600) and the name in `code`, then "Add to plan"
+(secondary, hidden text names the mod), then a closed "Details" `details`
+with the summary and the portal link. The game version is not repeated: the
+search only finds mods for the world's line. "Installed" and "In plan" are
+badges in place of the box and the button. "Add ticked mods to plan" after
+the table starts one plan with every ticked mod; with none ticked the page
+says so (7.2). The page controls ("Previous page", "Page 2 of 3", "Next
+page") are buttons of the same form, so ticks on other pages are kept as
+hidden fields and named under the table; after a page change focus goes to
+the results heading. With a mouse (`pointer: fine`) the box's label and the
+Details toggle are 24 px tall, so a row is about 100 px. Search works
+without an account.
 
 **The plan page** (`/worlds/{id}/mods/plan`) is a 7.4 confirmation. The
 `h1` is a question naming the world and the mod: "Install visible-planets
@@ -1730,7 +1743,11 @@ search the person came from), never on the server. In order:
   without". Cancel is a link.
 - "Add another mod": its own `role="search"` form, filled with the search
   the person came from and carrying `add=1`, which keeps focus on the
-  heading after a page load. Results say "Add to plan", "In plan" (the
+  heading after a page load. Results are the search page's table without
+  boxes, since each "Add to plan" here adds at once; its page controls are
+  links that carry `add=1`, and a "Back to the plan" link follows them. An
+  empty search says the Mods tab's sentence ("No mod for Factorio 2.0
+  matches. Try a shorter part of the name."). Results say "Add to plan", "In plan" (the
   badge takes the button's id) or "Installed". Adding or removing redraws
   the plan in place; `#announcer` says "Added visible-planets. The plan has
   2 mods." and focus stays on the badge, or goes to the "Mods you asked
