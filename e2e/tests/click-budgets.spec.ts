@@ -1,7 +1,7 @@
 import { test, expect, createAdmin, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 17.10: the common tasks, started on the Server page with the
@@ -123,6 +123,22 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByRole("button", { name: "Take snapshot" }).click();
     await expect(done(page)).toContainText('Foreman took the snapshot "Manual snapshot" of Base.', live);
     await expectWithin(clicks, 1, "snapshot");
+  });
+
+  // Not yet a row of the SPEC 17.10 table: World page, Saves, then the older
+  // save's own Load next button (it was 4, with a radio list and its button).
+  test("choose an older save to load: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    const saves = join(foreman.dataDir, "worlds", "base", "saves");
+    copyFileSync(join(saves, "base.zip"), join(saves, "older.zip"));
+    const old = new Date(Date.now() - 2 * 3_600_000);
+    utimesSync(join(saves, "older.zip"), old, old);
+    await page.getByRole("link", { name: "World page" }).click();
+    await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" }).click();
+    await page.getByRole("button", { name: "Load next: older.zip" }).click();
+    await expect(page.getByText("The server will load older.zip the next time it starts.")).toBeVisible();
+    expect(JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "world.json"), "utf8")).load_save).toBe("older.zip");
+    await expectWithin(clicks, 3, "choose an older save");
   });
 
   // The second world's game image is not on the host, so the switch downloads it.

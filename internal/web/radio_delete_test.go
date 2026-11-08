@@ -5,59 +5,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
-
-var reRadio = regexp.MustCompile(`<input\b[^>]*type="radio"[^>]*>`)
-
-// DESIGN 7.2: when a radio group has an error, each radio points at the
-// error text, so a screen reader announces it on whichever radio has focus.
-func TestRadioGroupsPointEveryRadioAtTheError(t *testing.T) {
-	r := newTestRenderer(t)
-	cases := []struct {
-		name   string
-		page   Page
-		errID  string
-		radios int
-	}{
-		{"saves", SavesPage{WorldName: "Base", WorldHref: "/worlds/base", SavesHref: "/worlds/base/saves",
-			LoadHref: "/worlds/base/load-save", UploadLimit: MaxSaveUpload, NewestSelected: true,
-			LoadError: i18n.M("worlds.saves.choose"),
-			Rows:      []SaveRow{{Name: "a.zip", Href: "/x"}, {Name: "b.zip", Href: "/y"}}}, "load-save-error", 3},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			_, body := render(t, r, pageCase{status: 422, page: c.page})
-			radios := reRadio.FindAllString(body, -1)
-			if len(radios) != c.radios {
-				t.Fatalf("%d radios, want %d:\n%s", len(radios), c.radios, body)
-			}
-			for _, in := range radios {
-				if !strings.Contains(in, `aria-describedby="`+c.errID+`"`) || !strings.Contains(in, `aria-invalid="true"`) {
-					t.Errorf("radio lacks describedby %s or aria-invalid: %s", c.errID, in)
-				}
-			}
-		})
-	}
-}
-
-// Without an error the radios carry no description.
-func TestRadiosHaveNoDescriptionWithoutAnError(t *testing.T) {
-	r := newTestRenderer(t)
-	_, body := render(t, r, pageCase{status: 200, page: SavesPage{WorldName: "Base", WorldHref: "/worlds/base",
-		SavesHref: "/worlds/base/saves", LoadHref: "/worlds/base/load-save", NewestSelected: true,
-		Rows: []SaveRow{{Name: "a.zip", Href: "/x"}}}})
-	for _, in := range reRadio.FindAllString(body, -1) {
-		if strings.Contains(in, "aria-describedby") {
-			t.Errorf("radio has a description with no error: %s", in)
-		}
-	}
-}
 
 const (
 	reasonActive     = "This is the active world. Switch to another world before deleting it."

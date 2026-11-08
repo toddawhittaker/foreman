@@ -225,7 +225,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!ticked) clearTerritories();
     }
     // The seed used is kept, so the world made is the one previewed (SPEC 5.6).
-    if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) seed.value = fresh.dataset.seed;
+    // It is the page's own choice, not the person's, so leaving does not warn about it.
+    if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) {
+      seed.value = fresh.dataset.seed;
+      seed.defaultValue = fresh.dataset.seed;
+    }
     const filled = formEl().querySelector("#filled-seed");
     if (filled && fresh.dataset.filledSeed) filled.value = fresh.dataset.filledSeed;
     markInvalid(fresh);

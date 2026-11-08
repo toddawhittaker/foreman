@@ -53,5 +53,4 @@ test("checkboxes and radios are tick-sized on every page that has one", async ({
   await expectSmallControls(page, "/worlds/base/clone", 2);
   await expectSmallControls(page, "/worlds/base/settings", 4);
   await expectSmallControls(page, "/worlds/second/delete", 1);
-  await expectSmallControls(page, "/worlds/base/saves", 2);
 });
