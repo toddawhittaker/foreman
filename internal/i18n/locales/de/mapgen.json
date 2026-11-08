@@ -119,7 +119,7 @@
   "mapgen.preset.other": "{name}",
   "mapgen.preset.rail_world": "Eisenbahnwelt",
   "mapgen.preset.reset": "Auf Standard zurücksetzen",
-  "mapgen.preset.undo": "Zurücksetzen rückgängig machen",
+  "mapgen.preset.undo": "Rückgängig machen",
   "mapgen.preset.ribbon_world": "Streifenwelt",
   "mapgen.preset.rich_resources": "Ressourcenreich",
   "mapgen.raw.err.not_object": "Die Kartengenerator-Einstellungen müssen ein einzelnes JSON-Objekt sein: Schlüssel zwischen geschweiften Klammern.",

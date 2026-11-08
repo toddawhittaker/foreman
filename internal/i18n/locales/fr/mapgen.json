@@ -118,7 +118,7 @@
   "mapgen.preset.modified": "[modifié]",
   "mapgen.preset.other": "{name}",
   "mapgen.preset.rail_world": "Monde du rail",
-  "mapgen.preset.reset": "Rétablir les valeurs par défaut",
+  "mapgen.preset.reset": "Réinitialiser",
   "mapgen.preset.undo": "Annuler la réinitialisation",
   "mapgen.preset.ribbon_world": "Monde ruban",
   "mapgen.preset.rich_resources": "Ressources riches",

@@ -61,7 +61,7 @@ test.describe("with the fake game", () => {
     await checkPage(page);
 
     await page.getByRole("button", { name: "Cancel stop" }).click();
-    await expect(done(page)).toContainText("The stop was cancelled. Nothing was saved or stopped, and nothing changed.", live);
+    await expect(done(page)).toContainText("The stop was canceled. Nothing was saved or stopped, and nothing changed.", live);
     await expect(done(page)).toContainText(/Finished at .*\d{1,2}:\d{2}.* \((now|\d+ seconds? ago)\)\./);
     await expect(badge(page)).toHaveText("Running");
     await expect(page.locator(".message--error")).toHaveCount(0);
@@ -87,7 +87,7 @@ test.describe("with the fake game", () => {
     // While players are warned, the status names both worlds.
     await expect(page.locator("main [sse-swap=facts]")).toContainText("From Base to Second", live);
     await page.getByRole("button", { name: "Cancel stop" }).click();
-    await expect(done(page)).toContainText("The switch to Second was cancelled. Base is still the active world, and nothing changed.", live);
+    await expect(done(page)).toContainText("The switch to Second was canceled. Base is still the active world, and nothing changed.", live);
     await expect(page.locator("#server-title", { hasText: "Base" })).toBeVisible();
     await expect(badge(page)).toHaveText("Running");
 

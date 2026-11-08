@@ -38,7 +38,7 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await expect(steps.getByRole("listitem")).toHaveText([
     "Download 1 mod from the mod portal and check its checksum.",
     "Warn the players, then save and stop Base.",
-    'Take a snapshot labelled "Before mod change".',
+    'Take a snapshot labeled "Before mod change".',
     "Change the mods, then start Base again.",
   ]);
   await expect(page.locator("#countdown")).toBeVisible();

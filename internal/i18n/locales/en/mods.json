@@ -181,7 +181,7 @@
   "mods.version.installed": "{version} (installed)",
   "mods.version.same": "Nothing changes at this version. Choose another version to see what would change.",
   "mods.plan.warn_stop": "Warn the players, then save and stop the server.",
-  "mods.plan.snapshot": "Take a snapshot of {world}, labelled \"{label}\". If the snapshot fails, nothing else happens.",
+  "mods.plan.snapshot": "Take a snapshot of {world}, labeled \"{label}\". If the snapshot fails, nothing else happens.",
   "mods.plan.asked.remove": "Remove from plan",
   "mods.plan.add.heading": "Add another mod",
   "mods.plan.add.back": "Back to the plan",
@@ -321,7 +321,7 @@
     "other": "Download {count} mods from the mod portal and check their checksums."
   },
   "mods.plan.step.stop": "Warn the players, then save and stop {world}.",
-  "mods.plan.step.snapshot": "Take a snapshot labelled \"{label}\".",
+  "mods.plan.step.snapshot": "Take a snapshot labeled \"{label}\".",
   "mods.plan.step.snapshot_kept": "Keep the snapshot from {time}, which already covers this change.",
   "mods.plan.step.change_start": "Change the mods, then start {world} again.",
   "mods.plan.step.change_stopped": "Change the mods. {world} stays stopped, as it is now.",
