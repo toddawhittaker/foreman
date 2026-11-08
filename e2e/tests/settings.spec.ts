@@ -433,6 +433,12 @@ test.describe("a running world with players", () => {
     await fakeGame!.call("/join", { name: "foreman-base", player: "bob" });
     await page.reload();
     await expect(page.getByRole("heading", { name: "Connected now" })).toBeVisible();
+    // Headings follow on from the h1 without skipping a level.
+    const levels = await page.locator("main").getByRole("heading").evaluateAll((els) => els.map((el) => Number(el.tagName.slice(1))));
+    expect(levels[0]).toBe(1);
+    levels.forEach((level, i) => {
+      if (i > 0) expect(level, `heading ${i} after ${levels.slice(0, i)}`).toBeLessThanOrEqual(levels[i - 1] + 1);
+    });
     await expect(page.getByRole("button", { name: "Make admin alice" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Make admin bob" })).toHaveCount(0);
     await checkPage(page);

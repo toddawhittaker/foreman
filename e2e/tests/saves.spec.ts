@@ -110,6 +110,8 @@ test("an uploaded save appears, is kept byte for byte, and loads as the newest",
 
   await expect(page).toHaveURL(/\/worlds\/family-base\/saves\?uploaded=/);
   await expect(page.getByText("Done: Uploaded from elsewhere.zip.")).toBeVisible();
+  // DESIGN 7.6: the reload puts focus on the result.
+  await expect(page.locator(".message--success", { hasText: "Uploaded from elsewhere.zip." })).toBeFocused();
   await expect(page.locator("tbody tr")).toHaveCount(3);
   await expect(page.locator("tbody tr").first().getByRole("link")).toHaveText("from elsewhere.zip");
   expect(readFileSync(join(dir, "saves", "from elsewhere.zip")).equals(upload)).toBe(true);
@@ -189,6 +191,8 @@ test("choosing which save loads is kept, and going back to the newest clears it"
 
   await expect(page).toHaveURL(/saves\?chosen=1/);
   await expect(page.getByText("The server will load old.zip the next time it starts.")).toBeVisible();
+  // DESIGN 7.6: the reload puts focus on the result.
+  await expect(page.locator(".message--success", { hasText: "The server will load old.zip" })).toBeFocused();
   // SPEC 7.11: the choice applies once, and the page says so.
   await expect(page.getByText("The game loads old.zip at the next start, then the newest save again.")).toBeVisible();
   await expect(rows.nth(1)).toContainText("Loads next");

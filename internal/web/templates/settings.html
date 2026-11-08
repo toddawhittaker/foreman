@@ -164,7 +164,7 @@
       {{- end}}
     </div>
     {{- if and .Editable .Connected}}
-    <h3 id="connected-heading">{{t "settings.connected.heading"}}</h3>
+    <h2 id="connected-heading">{{t "settings.connected.heading"}}</h2>
     <p class="hint" id="connected-hint">{{t "settings.connected.hint"}}</p>
     <ul aria-labelledby="connected-heading" aria-describedby="connected-hint">
       {{- range .Connected}}
