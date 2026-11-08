@@ -125,6 +125,9 @@
     const done = region?.querySelector("#done-message");
     if (!done) return;
     region.removeAttribute("data-focus-result");
+    // A screen reader reads the box once, on focus, so its times must already
+    // be local; time.js would only get to them after the swap settles.
+    window.foremanTimes?.run(done);
     done.focus();
   }
   focusDone();
