@@ -1165,7 +1165,15 @@ held to it. A recommended dependency (the "+" prefix of Factorio 2.1) is
 an optional one that starts ticked; one the portal lacks or that would
 conflict is left out with a note and never blocks the plan. A sync adds
 none. Dependencies of installed mods are read from their own
-`info.json`, so turning mods off or on and removing them need no portal. A
+`info.json`, so turning mods off or on and removing them need no portal.
+Each mod an install or an update names has a version list on the plan
+page: "Newest that fits", chosen at first, then the portal's releases for
+the world's game line, newest first, with the installed one marked.
+Choosing a release draws the plan again with that release and the
+dependencies it needs; the mods it pulls in still take the newest release
+that fits. Foreman checks a chosen version against the portal's releases on
+the world's line on every request, and downloads only a release from that
+list; a version the portal does not have there is a conflict. A
 search result's "Add to plan" starts one plan, and "Add another mod" on the
 plan page adds more: several mods are one plan, one snapshot and one
 restart. A conflict that turning off one installed mod would clear offers
@@ -1183,7 +1191,13 @@ timer. A mod that is turned off is not updated by "update all". The tab
 says what the portal answered in one summary line above the installed mods,
 with "Update all", and each mod's update and flags in that mod's own row,
 with the fix there. "Up to date" counts only the mods the portal has at
-their installed version. (P0)
+their installed version. Each row of a mod the portal has also offers
+"Change version": the plan for that mod held at its installed version,
+whose version list (9.2) offers every release on the world's line, older
+ones too. Going back after a bad update is choosing the release before it,
+a downgrade with its snapshot like any mod change (9.4, 9.13). Until
+another release is chosen the plan changes nothing and has no apply
+button. (P0)
 
 The Server page shows one line when an enabled mod's installed version is
 gone from the mod portal, so players cannot join, with its fix: one plan

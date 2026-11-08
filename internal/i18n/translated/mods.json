@@ -16,6 +16,7 @@
   "mods.conflict.incompatible": "2c8639ff",
   "mods.conflict.local": "469b14dd",
   "mods.conflict.no_release": "a79f3b1d",
+  "mods.conflict.no_such_release": "41850f70",
   "mods.conflict.not_installed": "99abfcd8",
   "mods.conflict.not_on_portal": "03df2362",
   "mods.conflict.required_by": "8c5c4e3e",
@@ -108,6 +109,7 @@
   "mods.plan.heading.update": "b6c710e7",
   "mods.plan.heading.update_one": "9154f80a",
   "mods.plan.heading.upload": "c5404ff0",
+  "mods.plan.heading.version": "eb879644",
   "mods.plan.item.from_to": "2febd368",
   "mods.plan.item.name": "ab767f8d",
   "mods.plan.item.uploaded": "f185f8c0",
@@ -150,6 +152,7 @@
   "mods.row.not_on_portal": "2624495a",
   "mods.row.remove": "c3812fc4",
   "mods.row.update": "839c0d0a",
+  "mods.row.version": "b8b6c8ad",
   "mods.search.add": "0b583b91",
   "mods.search.add_ticked": "1d362835",
   "mods.search.button": "49c266ba",
@@ -226,5 +229,12 @@
   "mods.upload.not_mod": "42b3bc07",
   "mods.upload.summary": "f379d5fb",
   "mods.upload.text": "f49bbc7f",
-  "mods.upload.wrong_mod": "ee2ff178"
+  "mods.upload.wrong_mod": "ee2ff178",
+  "mods.version.hint": "b7e312c3",
+  "mods.version.installed": "cfe11dda",
+  "mods.version.label": "e0388938",
+  "mods.version.legend": "f89ea270",
+  "mods.version.newest": "bcb9d1d1",
+  "mods.version.newest_is": "bad72c06",
+  "mods.version.same": "c94c6595"
 }

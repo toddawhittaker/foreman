@@ -193,6 +193,17 @@ func (p ModsPage) RowPath(kind, name string) string {
 	return kindPlanPath(p.World.ID, mods.Kind(kind), name)
 }
 
+// VersionPath is the plan page for one mod held at its installed version,
+// where its version list offers every release on the world's line (SPEC 9.3).
+func (p ModsPage) VersionPath(m world.InstalledMod) string {
+	q := url.Values{"kind": {string(mods.KindUpdate)}, "name": {m.Name}, versionPrefix + m.Name: {m.Version}}
+	return planPath(p.World.ID, q)
+}
+
+// VersionSlot is the id of a row's Change version, which the portal status
+// takes away for a mod the portal does not have.
+func (ModsPage) VersionSlot(name string) string { return slotID("version", name) }
+
 // UpdateSlot is the id of a row's place for its Update button, which the
 // portal status fills in later.
 func (ModsPage) UpdateSlot(name string) string { return slotID("update", name) }
@@ -389,9 +400,10 @@ func (p ModStatus) UpdatePath(name string) string {
 }
 
 // Slot ids of a row's places the status fills.
-func (ModStatus) UpdateSlot(name string) string { return slotID("update", name) }
-func (ModStatus) PortalSlot(name string) string { return slotID("portal", name) }
-func (ModStatus) NoteSlot(name string) string   { return slotID("note", name) }
+func (ModStatus) UpdateSlot(name string) string  { return slotID("update", name) }
+func (ModStatus) PortalSlot(name string) string  { return slotID("portal", name) }
+func (ModStatus) NoteSlot(name string) string    { return slotID("note", name) }
+func (ModStatus) VersionSlot(name string) string { return slotID("version", name) }
 
 // Count counts the flags of one severity, for the summary line.
 func (p ModStatus) Count(sev mods.Severity) int {
@@ -782,6 +794,10 @@ type planForm struct {
 	// the sentence the redraw announces (SPEC 9.2, 17.9).
 	AlsoDisable, AlsoRemove []string
 	Fixed                   string
+	// Versions are the releases the admin chose for asked mods of an
+	// install or update, by name; a mod without one gets the newest that
+	// fits (SPEC 9.2, 9.3).
+	Versions map[string]string
 }
 
 const (
@@ -789,6 +805,7 @@ const (
 	confirmPrefix    = "confirm-"
 	alsoDisableField = "also-disable"
 	alsoRemoveField  = "also-remove"
+	versionPrefix    = "version-"
 )
 
 // maxPlanNames bounds the mods one plan request names, and the optional
@@ -823,6 +840,22 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		len(f.AlsoDisable)+len(f.AlsoRemove) > maxPlanNames {
 		return planForm{}, false
 	}
+	// Only an asked mod of an install or update has a version list. The
+	// resolver checks the version against the portal's releases; here it
+	// need only look like one.
+	if f.Kind == mods.KindInstall || f.Kind == mods.KindUpdate {
+		f.Versions = map[string]string{}
+		for _, n := range f.Names {
+			ver := v.Get(versionPrefix + n)
+			if ver == "" {
+				continue
+			}
+			if _, ok := world.ParseGameVersion(ver); !ok {
+				return planForm{}, false
+			}
+			f.Versions[n] = ver
+		}
+	}
 	for k, vals := range v {
 		switch {
 		case strings.HasPrefix(k, choicePrefix):
@@ -842,6 +875,11 @@ func (f planForm) query() url.Values {
 	q := url.Values{"kind": {string(f.Kind)}}
 	if len(f.Names) > 0 {
 		q["name"] = f.Names
+	}
+	for _, n := range f.Names {
+		if ver := f.Versions[n]; ver != "" {
+			q.Set(versionPrefix+n, ver)
+		}
 	}
 	if len(f.Optional) > 0 {
 		q["optional"] = f.Optional
@@ -1168,7 +1206,12 @@ func (p ModPlanPage) Heading() i18n.Msg {
 			return i18n.M("mods.plan.heading.install_some", "world", w)
 		}
 	case mods.KindUpdate:
-		if len(p.Form.Names) == 1 {
+		switch {
+		case len(p.Form.Versions) > 0 && len(p.Form.Names) == 1:
+			return i18n.M("mods.plan.heading.version", "mod", one, "world", w)
+		case len(p.Form.Versions) > 0:
+			return i18n.M("mods.plan.heading.change", "world", w)
+		case len(p.Form.Names) == 1:
 			return i18n.M("mods.plan.heading.update_one", "mod", one, "world", w)
 		}
 		return i18n.M("mods.plan.heading.update", "world", w)
@@ -1211,7 +1254,8 @@ func (p ModPlanPage) Downloads() int {
 // Button is the confirming button's words, repeating the verb (DESIGN 7.4).
 func (p ModPlanPage) Button() i18n.Msg {
 	n := p.Count()
-	if p.extraKinds() {
+	// A chosen version may go back, so an update with one says "Change".
+	if p.extraKinds() || p.Form.Kind == mods.KindUpdate && len(p.Form.Versions) > 0 {
 		return i18n.M("mods.plan.button.change", "count", n)
 	}
 	switch p.Form.Kind {
@@ -1299,6 +1343,8 @@ func conflictText(c mods.Conflict) i18n.Msg {
 		return i18n.M("mods.conflict.space_age_off", "mod", i18n.Ident(c.Mod), "other", i18n.Ident(c.Other))
 	case mods.ConflictNoRelease:
 		return i18n.M("mods.conflict.no_release", "mod", i18n.Ident(c.Mod), "needs", needsText(c.Needs))
+	case mods.ConflictNoSuchRelease:
+		return i18n.M("mods.conflict.no_such_release", "mod", i18n.Ident(c.Mod), "version", c.Version)
 	case mods.ConflictVersion:
 		return i18n.M("mods.conflict.version", "mod", i18n.Ident(c.Mod), "version", c.Version, "needs", needsText(c.Needs))
 	case mods.ConflictNotOnPortal:
@@ -1533,7 +1579,7 @@ func (s *server) kindRequest(id string, p *ModPlanPage) (mods.Request, error) {
 		req.Optional = f.Optional
 		return req, err
 	}
-	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional, Declined: f.Declined}, nil
+	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional, Declined: f.Declined, Versions: f.Versions}, nil
 }
 
 // planError words why no plan could be made.

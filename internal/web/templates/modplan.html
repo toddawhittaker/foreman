@@ -56,7 +56,8 @@
   <p><strong>{{t "common.label.note"}}</strong> {{t "mods.plan.no_account" "count" .Downloads}} <a href="{{.AccountPath}}" id="act-account">{{t "mods.no_account.link"}}</a></p>
 </div>
 {{- end}}
-{{- if .Nothing}}
+{{- $versions := .Versions}}
+{{- if and .Nothing (not $versions)}}
 <p>{{t "mods.plan.nothing"}}</p>
 <div class="actions"><a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a></div>
 {{- else}}
@@ -116,6 +117,35 @@
     </details>
     {{- end}}
     {{- end}}
+    {{- if .Nothing}}
+    <p id="plan-same">{{t "mods.version.same"}}</p>
+    {{- end}}
+    {{- /* Choosing a release redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). */}}
+    {{- with $versions}}
+    {{- /* One mod's list is one field; several share a fieldset and its hint. */}}
+    {{- $many := gt (len .) 1}}
+    {{- if $many}}
+    <fieldset class="plan-versions">
+      <legend>{{t "mods.version.legend"}}</legend>
+      <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
+    {{- end}}
+      {{- range .}}
+      <div class="field">
+        <label for="{{.ID}}">{{tHTML "mods.version.label" "mod" (ident .Name)}}</label>
+        {{- if not $many}}
+        <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
+        {{- end}}
+        <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$.Page.Path}}" aria-describedby="plan-versions-hint">
+          {{- range .Options}}
+          <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Label.IsZero}}{{.Value}}{{else}}{{msg .Label}}{{end}}</option>
+          {{- end}}
+        </select>
+      </div>
+      {{- end}}
+    {{- if $many}}
+    </fieldset>
+    {{- end}}
+    {{- end}}
     {{- with .Plan.Optional}}
     <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
@@ -169,12 +199,12 @@
       {{- end}}
     </fieldset>
     {{- end}}
-    {{- if or .Plan.Optional .Plan.Unresolved}}
+    {{- if or .Plan.Optional .Plan.Unresolved $versions}}
     {{- /* With script, a change redraws the plan; without it, this button does. */}}
     <noscript><div class="actions"><button type="submit" class="button" formmethod="get" formaction="{{.Path}}" formnovalidate>{{t "mods.plan.recalculate"}}</button></div></noscript>
     {{- end}}
     {{- /* A plan with a conflict cannot be applied, so it does not say what applying does (SPEC 17.8). */}}
-    {{- if not .Plan.Conflicts}}
+    {{- if not (or .Plan.Conflicts .Nothing)}}
     <p id="plan-steps">{{t "common.confirm.will"}}</p>
     <ol class="plan-steps">
       {{- with .Downloads}}
@@ -226,6 +256,9 @@
     {{- end}}
     {{- range .Form.Declined}}
     <input type="hidden" name="declined" value="{{.}}">
+    {{- end}}
+    {{- range $name, $v := .Form.Versions}}
+    <input type="hidden" name="version-{{$name}}" value="{{$v}}">
     {{- end}}
     {{- template "plan-also" .Form}}
     <div class="field">
