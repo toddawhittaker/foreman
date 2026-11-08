@@ -151,6 +151,10 @@
   "server.step.refused": "Abgelehnt",
   "server.step.failed": "Fehlgeschlagen",
   "server.step.skipped": "Übersprungen",
+  "server.steps.not_run": {
+    "one": "{count} weiterer Schritt wurde nicht ausgeführt.",
+    "other": "{count} weitere Schritte wurden nicht ausgeführt."
+  },
   "server.step.waiting": "Wartet",
   "server.step.other": "{name}",
   "server.step.warn": "Spieler warnen",
@@ -259,6 +263,51 @@
   "server.done.mods_short": "Die Mods sind geändert.",
   "server.done.rollback_short": "Die Welt ist zurückgerollt.",
   "server.done.snapshot_short": "Der Snapshot ist erstellt.",
+  "server.mods_done.snapshot": "Foreman hat zuvor den Snapshot „{label}“ erstellt.",
+  "server.mods_done.install": "In {world} installiert: {mods}.",
+  "server.mods_done.upgrade": "In {world} aktualisiert: {mods}.",
+  "server.mods_done.downgrade": "In {world} auf eine ältere Version gesetzt: {mods}.",
+  "server.mods_done.enable": "In {world} eingeschaltet: {mods}.",
+  "server.mods_done.disable": "In {world} ausgeschaltet: {mods}.",
+  "server.mods_done.remove": "Aus {world} entfernt: {mods}.",
+  "server.mods_done.to": "{mod} auf {version}",
+  "server.mods_done.many": {
+    "one": "{count} Mod in {world} geändert: {kinds}.",
+    "other": "{count} Mods in {world} geändert: {kinds}."
+  },
+  "server.mods_done.count.install": {
+    "one": "{count} installiert",
+    "other": "{count} installiert"
+  },
+  "server.mods_done.count.upgrade": {
+    "one": "{count} aktualisiert",
+    "other": "{count} aktualisiert"
+  },
+  "server.mods_done.count.downgrade": {
+    "one": "{count} auf ältere Version",
+    "other": "{count} auf ältere Version"
+  },
+  "server.mods_done.count.enable": {
+    "one": "{count} eingeschaltet",
+    "other": "{count} eingeschaltet"
+  },
+  "server.mods_done.count.disable": {
+    "one": "{count} ausgeschaltet",
+    "other": "{count} ausgeschaltet"
+  },
+  "server.mods_done.count.remove": {
+    "one": "{count} entfernt",
+    "other": "{count} entfernt"
+  },
+  "server.mods_failed.checksum": "{mod} {version} stimmte nicht mit der Prüfsumme überein, die das Mod-Portal veröffentlicht, deshalb hat Foreman die Mod nicht verwendet.",
+  "server.mods_failed.unauthorized": "factorio.com hat den Benutzernamen oder das Token abgelehnt, deshalb wurde {mod} {version} nicht heruntergeladen.",
+  "server.mods_failed.gone": "Das Mod-Portal hat {mod} {version} nicht mehr.",
+  "server.mods_failed.download": "{mod} {version} konnte nicht vom Mod-Portal heruntergeladen werden.",
+  "server.mods_failed.kept_running": "Es wurde nichts geändert, und {world} läuft weiter.",
+  "server.mods_failed.stayed_stopped": "Es wurde nichts geändert, und {world} bleibt gestoppt.",
+  "server.mods_failed.unchanged": "Es wurde nichts geändert.",
+  "server.mods_failed.try_again": "Erneut versuchen",
+  "server.mods_failed.account": "Das factorio.com-Konto prüfen",
   "server.undo.restore": "Diese Wiederherstellung rückgängig machen",
   "server.undo.rollback": "Dieses Zurückrollen rückgängig machen",
   "server.undo.update": "Auf {version} zurückrollen",

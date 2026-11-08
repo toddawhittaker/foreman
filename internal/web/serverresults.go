@@ -1,12 +1,16 @@
 package web
 
 import (
+	"cmp"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/mods"
 )
 
 // How the last action on the Server page ended, and the next step it offers
@@ -180,9 +184,161 @@ func (p ServerPage) Done() i18n.Msg {
 	case actionSnapshot:
 		return i18n.M("server.done.snapshot", "label", p.Result.Taken, "world", p.World.Name)
 	case game.AuditMods:
-		return i18n.M("mods.done", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_mods"))
+		return modsDone(p.Result.Mods.Changes, p.World.Name)
 	}
 	return i18n.Msg{}
+}
+
+// modResult is what a mod change's result keeps from its plan: the
+// changes, to say what changed, and the plan's page, to try it again
+// (SPEC 9.14, 17.9). Retry is "" when the plan cannot be opened again, as
+// when it used an uploaded zip, which is gone after the change.
+type modResult struct {
+	Changes []mods.Change
+	Retry   string
+}
+
+// modsDoneNamed is how many mods a Done message names before "and N more".
+const modsDoneNamed = 3
+
+// modsDone says what a finished mod change did to world, then the snapshot
+// it took first (SPEC 17.9). A change with no mod in it, such as a
+// settings upload, keeps the plain sentence.
+func modsDone(changes []mods.Change, world string) i18n.Msg {
+	what := modsChanged(changes, world)
+	if what.IsZero() {
+		return i18n.M("mods.done", "world", world, "label", i18n.M("worlds.snapshot.label.before_mods"))
+	}
+	return join(what, i18n.M("server.mods_done.snapshot", "label", i18n.M("worlds.snapshot.label.before_mods")))
+}
+
+// modActs are the kinds of change a Done message names, in the order a
+// mixed change counts them.
+var modActs = []mods.Action{mods.ActInstall, mods.ActUpgrade, mods.ActDowngrade, mods.ActEnable, mods.ActDisable, mods.ActRemove}
+
+// modActDone is the sentence of a change of one kind.
+func modActDone(act mods.Action, items i18n.Msg, world string) i18n.Msg {
+	switch act {
+	case mods.ActInstall:
+		return i18n.M("server.mods_done.install", "mods", items, "world", world)
+	case mods.ActUpgrade:
+		return i18n.M("server.mods_done.upgrade", "mods", items, "world", world)
+	case mods.ActDowngrade:
+		return i18n.M("server.mods_done.downgrade", "mods", items, "world", world)
+	case mods.ActEnable:
+		return i18n.M("server.mods_done.enable", "mods", items, "world", world)
+	case mods.ActDisable:
+		return i18n.M("server.mods_done.disable", "mods", items, "world", world)
+	}
+	return i18n.M("server.mods_done.remove", "mods", items, "world", world)
+}
+
+// modActCount counts the mods of one kind in a mixed change.
+func modActCount(act mods.Action, n int) i18n.Msg {
+	switch act {
+	case mods.ActInstall:
+		return i18n.M("server.mods_done.count.install", "count", n)
+	case mods.ActUpgrade:
+		return i18n.M("server.mods_done.count.upgrade", "count", n)
+	case mods.ActDowngrade:
+		return i18n.M("server.mods_done.count.downgrade", "count", n)
+	case mods.ActEnable:
+		return i18n.M("server.mods_done.count.enable", "count", n)
+	case mods.ActDisable:
+		return i18n.M("server.mods_done.count.disable", "count", n)
+	}
+	return i18n.M("server.mods_done.count.remove", "count", n)
+}
+
+// modsChanged names the mods a change of one kind touched ("Installed a,
+// b and c in Base."), or counts each kind of a mixed one ("Changed 12 mods
+// in Base: 9 updated, 3 installed."). It is zero when no mod changed.
+func modsChanged(changes []mods.Change, world string) i18n.Msg {
+	by := map[mods.Action][]mods.Change{}
+	n := 0
+	for _, c := range changes {
+		if slices.Contains(modActs, c.Action) {
+			by[c.Action] = append(by[c.Action], c)
+			n++
+		}
+	}
+	if n == 0 {
+		return i18n.Msg{}
+	}
+	var kinds []i18n.Msg
+	for _, act := range modActs {
+		if cs := by[act]; len(by) == 1 && len(cs) > 0 {
+			return modActDone(act, modItems(act, cs), world)
+		} else if len(cs) > 0 {
+			kinds = append(kinds, modActCount(act, len(cs)))
+		}
+	}
+	return i18n.M("server.mods_done.many", "count", n, "world", world, "kinds", listMsg(kinds))
+}
+
+// modItems lists up to modsDoneNamed mods, with the version a changed
+// version went to, and how many more there are.
+func modItems(act mods.Action, cs []mods.Change) i18n.Msg {
+	var items []i18n.Msg
+	for _, c := range cs[:min(len(cs), modsDoneNamed)] {
+		if act == mods.ActUpgrade || act == mods.ActDowngrade {
+			items = append(items, i18n.M("server.mods_done.to", "mod", i18n.Ident(c.Name), "version", c.To))
+		} else {
+			items = append(items, i18n.M("server.list.names", "names", i18n.Ident(c.Name)))
+		}
+	}
+	switch {
+	case len(cs) > modsDoneNamed:
+		return i18n.M("server.list.more", "names", listMsg(items), "count", len(cs)-modsDoneNamed)
+	case len(items) == 1:
+		return items[0]
+	}
+	return andList([]i18n.Msg{listMsg(items[:len(items)-1]), items[len(items)-1]})
+}
+
+// modsFailure words a mod change that failed (SPEC 9.12, 17.9). A failed
+// download names the mod and version, says nothing was changed and
+// whether world kept running, and offers the next step as a control: the
+// account page for a refused login, else trying the same plan again. Back
+// is where the account page returns when there is no plan to return to.
+// Any other failure keeps its usual words and no fix.
+func modsFailure(err error, res modResult, world string, state game.State, back string) (i18n.Msg, *Offer) {
+	account := &Offer{Path: accountLink(cmp.Or(res.Retry, back)), Label: i18n.M("server.mods_failed.account")}
+	if errors.Is(err, game.ErrNoModFetcher) {
+		return failureText(err), account
+	}
+	de, ok := errors.AsType[*game.ModDownloadError](err)
+	if !ok {
+		return failureText(err), nil
+	}
+	mod, version := i18n.Ident(de.Mod), de.Version
+	var what i18n.Msg
+	switch {
+	case errors.Is(err, modportal.ErrChecksum):
+		what = i18n.M("server.mods_failed.checksum", "mod", mod, "version", version)
+	case errors.Is(err, modportal.ErrUnauthorized):
+		what = i18n.M("server.mods_failed.unauthorized", "mod", mod, "version", version)
+	case errors.Is(err, modportal.ErrNotOnPortal):
+		what = i18n.M("server.mods_failed.gone", "mod", mod, "version", version)
+	default:
+		what = i18n.M("server.mods_failed.download", "mod", mod, "version", version)
+	}
+	// The download comes before the stop, so the game is as it was.
+	switch state {
+	case game.StateRunning:
+		what = join(what, i18n.M("server.mods_failed.kept_running", "world", world))
+	case game.StateStopped:
+		what = join(what, i18n.M("server.mods_failed.stayed_stopped", "world", world))
+	default:
+		what = join(what, i18n.M("server.mods_failed.unchanged"))
+	}
+	switch {
+	case errors.Is(err, modportal.ErrUnauthorized):
+		return what, account
+	case res.Retry != "":
+		return what, &Offer{Path: res.Retry, Label: i18n.M("server.mods_failed.try_again")}
+	}
+	return what, nil
 }
 
 // DoneAt is when the action in the Done message ended.
@@ -258,6 +414,13 @@ func resultAnnouncement(p ServerPage) i18n.Msg {
 	case p.cancelled():
 		_, short := cancelledMsg(p.Result.Action)
 		said = append(said, short)
+	case !p.Done().IsZero() && p.Result.Action == game.AuditMods:
+		// Which mods changed is the news; the snapshot is said on the page.
+		what := modsChanged(p.Result.Mods.Changes, p.World.Name)
+		if what.IsZero() {
+			what = doneAnnouncement[game.AuditMods]
+		}
+		said = append(said, what)
 	case !p.Done().IsZero():
 		said = append(said, doneAnnouncement[p.Result.Action])
 	}

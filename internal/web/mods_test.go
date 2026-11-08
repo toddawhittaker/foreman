@@ -326,7 +326,9 @@ func TestInstallAppliesThePlanAndOffersUndo(t *testing.T) {
 		t.Error("no Before mod change snapshot")
 	}
 	page := g.get(PathServer)
-	wantIn(t, "server page", page, "The mods of Base are changed", "Undo this mod change", `/worlds/`+id+`/snapshots/`)
+	// The Done box names what changed (SPEC 17.9).
+	wantIn(t, "server page", plain(page), "Installed alpha and beta in Base.")
+	wantIn(t, "server page", page, "Undo this mod change", `/worlds/`+id+`/snapshots/`)
 	for _, e := range g.audit() {
 		if strings.Contains(e.Detail, modportaltest.Token) {
 			t.Error("the audit log holds the token")
@@ -405,7 +407,7 @@ func TestDisableOnInactiveWorldReportsOnModsTab(t *testing.T) {
 		t.Fatal(err)
 	}
 	tab := g.get(modsPath(id) + ownResultQuery)
-	wantIn(t, "mods tab", tab, "The mods of Other are changed", "Undo this mod change", ">Disabled<")
+	wantIn(t, "mods tab", tab, "Turned off alpha in Other.", "Undo this mod change", ">Disabled<")
 }
 
 // Todd's ruling: turning off a mod the loading save uses needs its own

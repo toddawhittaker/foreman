@@ -145,6 +145,9 @@
   "server.step.refused": "已拒绝",
   "server.step.failed": "失败",
   "server.step.skipped": "已跳过",
+  "server.steps.not_run": {
+    "other": "后续 {count} 个步骤未运行。"
+  },
   "server.step.waiting": "等待中",
   "server.step.other": "{name}",
   "server.step.warn": "警告玩家",
@@ -253,6 +256,44 @@
   "server.done.mods_short": "模组已更改。",
   "server.done.rollback_short": "世界已回滚。",
   "server.done.snapshot_short": "快照已创建。",
+  "server.mods_done.snapshot": "Foreman 先创建了快照“{label}”。",
+  "server.mods_done.install": "已在 {world} 中安装 {mods}。",
+  "server.mods_done.upgrade": "已在 {world} 中更新 {mods}。",
+  "server.mods_done.downgrade": "已在 {world} 中降级 {mods}。",
+  "server.mods_done.enable": "已在 {world} 中开启 {mods}。",
+  "server.mods_done.disable": "已在 {world} 中关闭 {mods}。",
+  "server.mods_done.remove": "已从 {world} 中移除 {mods}。",
+  "server.mods_done.to": "{mod} 至 {version}",
+  "server.mods_done.many": {
+    "other": "已在 {world} 中更改 {count} 个模组：{kinds}。"
+  },
+  "server.mods_done.count.install": {
+    "other": "安装 {count} 个"
+  },
+  "server.mods_done.count.upgrade": {
+    "other": "更新 {count} 个"
+  },
+  "server.mods_done.count.downgrade": {
+    "other": "降级 {count} 个"
+  },
+  "server.mods_done.count.enable": {
+    "other": "开启 {count} 个"
+  },
+  "server.mods_done.count.disable": {
+    "other": "关闭 {count} 个"
+  },
+  "server.mods_done.count.remove": {
+    "other": "移除 {count} 个"
+  },
+  "server.mods_failed.checksum": "{mod} {version} 与模组门户发布的校验和不一致，因此 Foreman 未使用它。",
+  "server.mods_failed.unauthorized": "factorio.com 拒绝了用户名或令牌，因此未下载 {mod} {version}。",
+  "server.mods_failed.gone": "模组门户已不再提供 {mod} {version}。",
+  "server.mods_failed.download": "无法从模组门户下载 {mod} {version}。",
+  "server.mods_failed.kept_running": "未做任何更改，{world} 仍在运行。",
+  "server.mods_failed.stayed_stopped": "未做任何更改，{world} 仍处于停止状态。",
+  "server.mods_failed.unchanged": "未做任何更改。",
+  "server.mods_failed.try_again": "重试",
+  "server.mods_failed.account": "检查 factorio.com 账户",
   "server.undo.restore": "撤销此次恢复",
   "server.undo.rollback": "撤销此次回滚",
   "server.undo.update": "回滚到 {version}",

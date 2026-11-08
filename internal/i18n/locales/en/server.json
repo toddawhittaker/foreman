@@ -151,6 +151,10 @@
   "server.step.refused": "Refused",
   "server.step.failed": "Failed",
   "server.step.skipped": "Skipped",
+  "server.steps.not_run": {
+    "one": "{count} later step was not run.",
+    "other": "{count} later steps were not run."
+  },
   "server.step.waiting": "Waiting",
   "server.step.other": "{name}",
   "server.step.warn": "Warn players",
@@ -259,6 +263,51 @@
   "server.done.mods_short": "The mods are changed.",
   "server.done.rollback_short": "The world is rolled back.",
   "server.done.snapshot_short": "The snapshot is taken.",
+  "server.mods_done.snapshot": "Foreman took the snapshot \"{label}\" first.",
+  "server.mods_done.install": "Installed {mods} in {world}.",
+  "server.mods_done.upgrade": "Updated {mods} in {world}.",
+  "server.mods_done.downgrade": "Downgraded {mods} in {world}.",
+  "server.mods_done.enable": "Turned on {mods} in {world}.",
+  "server.mods_done.disable": "Turned off {mods} in {world}.",
+  "server.mods_done.remove": "Removed {mods} from {world}.",
+  "server.mods_done.to": "{mod} to {version}",
+  "server.mods_done.many": {
+    "one": "Changed {count} mod in {world}: {kinds}.",
+    "other": "Changed {count} mods in {world}: {kinds}."
+  },
+  "server.mods_done.count.install": {
+    "one": "{count} installed",
+    "other": "{count} installed"
+  },
+  "server.mods_done.count.upgrade": {
+    "one": "{count} updated",
+    "other": "{count} updated"
+  },
+  "server.mods_done.count.downgrade": {
+    "one": "{count} downgraded",
+    "other": "{count} downgraded"
+  },
+  "server.mods_done.count.enable": {
+    "one": "{count} turned on",
+    "other": "{count} turned on"
+  },
+  "server.mods_done.count.disable": {
+    "one": "{count} turned off",
+    "other": "{count} turned off"
+  },
+  "server.mods_done.count.remove": {
+    "one": "{count} removed",
+    "other": "{count} removed"
+  },
+  "server.mods_failed.checksum": "{mod} {version} did not match the checksum the mod portal publishes, so Foreman did not use it.",
+  "server.mods_failed.unauthorized": "factorio.com refused the username or token, so {mod} {version} was not downloaded.",
+  "server.mods_failed.gone": "The mod portal no longer has {mod} {version}.",
+  "server.mods_failed.download": "{mod} {version} could not be downloaded from the mod portal.",
+  "server.mods_failed.kept_running": "Nothing was changed, and {world} kept running.",
+  "server.mods_failed.stayed_stopped": "Nothing was changed, and {world} stayed stopped.",
+  "server.mods_failed.unchanged": "Nothing was changed.",
+  "server.mods_failed.try_again": "Try again",
+  "server.mods_failed.account": "Check the factorio.com account",
   "server.undo.restore": "Undo this restore",
   "server.undo.rollback": "Undo this rollback",
   "server.undo.update": "Roll back to {version}",

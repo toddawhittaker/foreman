@@ -82,6 +82,8 @@ type actionResult struct {
 	Taken any
 	// Version is the game version an update was asked to go to.
 	Version string
+	// Mods is what a mod change's result keeps from its plan.
+	Mods modResult
 	// At is when the action ended.
 	At time.Time
 }

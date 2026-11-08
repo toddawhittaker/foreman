@@ -56,6 +56,18 @@ type ModDownload struct {
 	Release modportal.Release
 }
 
+// ModDownloadError is a failed download of one mod release, so the page
+// can name it (SPEC 17.9). Err is the cause.
+type ModDownloadError struct {
+	Mod, Version string
+	Err          error
+}
+
+func (e *ModDownloadError) Error() string {
+	return "download " + e.Mod + " " + e.Version + ": " + e.Err.Error()
+}
+func (e *ModDownloadError) Unwrap() error { return e.Err }
+
 // ModOp is one mod change (SPEC 9.2 to 9.6). Every kind of change, from an
 // install to a settings upload, is one of these.
 type ModOp struct {
@@ -275,7 +287,7 @@ func (c *Controller) downloadMods(ctx context.Context, o *opRun, downloads []Mod
 			staged = append(staged, name)
 		}
 		if err != nil {
-			return staged, fmt.Errorf("download %s %s: %w", d.Mod, d.Release.Version, err)
+			return staged, &ModDownloadError{Mod: d.Mod, Version: d.Release.Version, Err: err}
 		}
 		if err := world.CheckSpace(dir, 0); err != nil {
 			return staged, err

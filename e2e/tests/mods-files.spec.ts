@@ -32,7 +32,7 @@ test.describe("upload a mod zip", () => {
     await expect(async () => expect(readFileSync(modsFile(foreman.dataDir, "mod-list.json"), "utf8")).not.toContain("up-mod")).toPass();
 
     await page.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(readFileSync(modsFile(foreman.dataDir, "up-mod_2.3.4.zip")).equals(upZip)).toBe(true);

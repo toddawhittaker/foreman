@@ -327,6 +327,10 @@ func TestApplyModsFailedDownloadLeavesTheGameUntouched(t *testing.T) {
 			if !errors.Is(err, cause) {
 				t.Fatalf("ApplyMods = %v, want %v", err, cause)
 			}
+			// The page names the mod that failed (SPEC 17.9).
+			if de, ok := errors.AsType[*ModDownloadError](err); !ok || de.Mod != "other" || de.Version != "1.0.0" {
+				t.Errorf("ApplyMods = %#v, want a ModDownloadError naming other 1.0.0", err)
+			}
 			if got := f.called(); len(got) != 2 {
 				t.Errorf("downloads %v, want both tried", got)
 			}

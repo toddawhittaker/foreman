@@ -25,7 +25,7 @@ test("a change to the other world ends on its Mods tab, with an undo that restor
   // The result is on this world's own tab; the Server page is not the place for it.
   await expect(page).toHaveURL(/\/worlds\/second\/mods/);
   const result = page.locator("#world-result");
-  await expect(result).toContainText("The mods of Second are changed. Foreman took the snapshot \"Before mod change\" first.", live);
+  await expect(result).toContainText("Installed fp-other in Second. Foreman took the snapshot \"Before mod change\" first.", live);
   expect(existsSync(installed)).toBe(true);
   await expect(page.getByRole("table", { name: /Mods of Second/ }).getByRole("row", { name: /fp-other/ })).toContainText("Enabled");
   await checkPage(page);
@@ -44,5 +44,5 @@ test("the active world's change still reports on the Server page", async ({ page
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-here");
   await page.getByRole("button", { name: "Install 1 mod" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.locator(".message--success").filter({ hasText: "Done:" })).toContainText("The mods of Base are changed.", live);
+  await expect(page.locator(".message--success").filter({ hasText: "Done:" })).toContainText("Installed fp-here in Base.", live);
 });

@@ -157,6 +157,11 @@
   "server.step.refused": "Отклонено",
   "server.step.failed": "Не удалось",
   "server.step.skipped": "Пропущено",
+  "server.steps.not_run": {
+    "one": "{count} следующий шаг не выполнен.",
+    "few": "{count} следующих шага не выполнены.",
+    "many": "{count} следующих шагов не выполнено."
+  },
   "server.step.waiting": "Ожидание",
   "server.step.other": "{name}",
   "server.step.warn": "Предупредить игроков",
@@ -265,6 +270,58 @@
   "server.done.mods_short": "Моды изменены.",
   "server.done.rollback_short": "Мир откачен.",
   "server.done.snapshot_short": "Снимок сделан.",
+  "server.mods_done.snapshot": "Сначала Foreman сделал снимок «{label}».",
+  "server.mods_done.install": "В мире {world} установлено: {mods}.",
+  "server.mods_done.upgrade": "В мире {world} обновлено: {mods}.",
+  "server.mods_done.downgrade": "В мире {world} понижена версия: {mods}.",
+  "server.mods_done.enable": "В мире {world} включено: {mods}.",
+  "server.mods_done.disable": "В мире {world} выключено: {mods}.",
+  "server.mods_done.remove": "Из мира {world} удалено: {mods}.",
+  "server.mods_done.to": "{mod} до {version}",
+  "server.mods_done.many": {
+    "one": "В мире {world} изменён {count} мод: {kinds}.",
+    "few": "В мире {world} изменено {count} мода: {kinds}.",
+    "many": "В мире {world} изменено {count} модов: {kinds}."
+  },
+  "server.mods_done.count.install": {
+    "one": "установлено: {count}",
+    "few": "установлено: {count}",
+    "many": "установлено: {count}"
+  },
+  "server.mods_done.count.upgrade": {
+    "one": "обновлено: {count}",
+    "few": "обновлено: {count}",
+    "many": "обновлено: {count}"
+  },
+  "server.mods_done.count.downgrade": {
+    "one": "понижена версия: {count}",
+    "few": "понижена версия: {count}",
+    "many": "понижена версия: {count}"
+  },
+  "server.mods_done.count.enable": {
+    "one": "включено: {count}",
+    "few": "включено: {count}",
+    "many": "включено: {count}"
+  },
+  "server.mods_done.count.disable": {
+    "one": "выключено: {count}",
+    "few": "выключено: {count}",
+    "many": "выключено: {count}"
+  },
+  "server.mods_done.count.remove": {
+    "one": "удалено: {count}",
+    "few": "удалено: {count}",
+    "many": "удалено: {count}"
+  },
+  "server.mods_failed.checksum": "Мод {mod} {version} не совпал с контрольной суммой, которую публикует портал модов, поэтому Foreman его не использовал.",
+  "server.mods_failed.unauthorized": "factorio.com отклонил имя пользователя или токен, поэтому мод {mod} {version} не скачан.",
+  "server.mods_failed.gone": "На портале модов больше нет мода {mod} {version}.",
+  "server.mods_failed.download": "Не удалось скачать мод {mod} {version} с портала модов.",
+  "server.mods_failed.kept_running": "Ничего не изменено, мир {world} продолжает работать.",
+  "server.mods_failed.stayed_stopped": "Ничего не изменено, мир {world} остаётся остановленным.",
+  "server.mods_failed.unchanged": "Ничего не изменено.",
+  "server.mods_failed.try_again": "Попробовать снова",
+  "server.mods_failed.account": "Проверить учётную запись factorio.com",
   "server.undo.restore": "Отменить это восстановление",
   "server.undo.rollback": "Отменить этот откат",
   "server.undo.update": "Откатить до {version}",

@@ -157,6 +157,11 @@
   "server.step.refused": "Odmítnuto",
   "server.step.failed": "Selhalo",
   "server.step.skipped": "Přeskočeno",
+  "server.steps.not_run": {
+    "one": "{count} další krok nebyl proveden.",
+    "few": "{count} další kroky nebyly provedeny.",
+    "other": "{count} dalších kroků nebylo provedeno."
+  },
   "server.step.waiting": "Čeká se",
   "server.step.other": "{name}",
   "server.step.warn": "Upozornit hráče",
@@ -265,6 +270,58 @@
   "server.done.mods_short": "Mody jsou změněny.",
   "server.done.rollback_short": "Svět byl vrácen zpět.",
   "server.done.snapshot_short": "Snímek je pořízen.",
+  "server.mods_done.snapshot": "Foreman nejprve pořídil snímek „{label}“.",
+  "server.mods_done.install": "Ve světě {world} nainstalováno: {mods}.",
+  "server.mods_done.upgrade": "Ve světě {world} aktualizováno: {mods}.",
+  "server.mods_done.downgrade": "Ve světě {world} snížena verze: {mods}.",
+  "server.mods_done.enable": "Ve světě {world} zapnuto: {mods}.",
+  "server.mods_done.disable": "Ve světě {world} vypnuto: {mods}.",
+  "server.mods_done.remove": "Ze světa {world} odebráno: {mods}.",
+  "server.mods_done.to": "{mod} na {version}",
+  "server.mods_done.many": {
+    "one": "Ve světě {world} byl změněn {count} mod: {kinds}.",
+    "few": "Ve světě {world} byly změněny {count} mody: {kinds}.",
+    "other": "Ve světě {world} bylo změněno {count} modů: {kinds}."
+  },
+  "server.mods_done.count.install": {
+    "one": "nainstalováno: {count}",
+    "few": "nainstalováno: {count}",
+    "other": "nainstalováno: {count}"
+  },
+  "server.mods_done.count.upgrade": {
+    "one": "aktualizováno: {count}",
+    "few": "aktualizováno: {count}",
+    "other": "aktualizováno: {count}"
+  },
+  "server.mods_done.count.downgrade": {
+    "one": "snížena verze: {count}",
+    "few": "snížena verze: {count}",
+    "other": "snížena verze: {count}"
+  },
+  "server.mods_done.count.enable": {
+    "one": "zapnuto: {count}",
+    "few": "zapnuto: {count}",
+    "other": "zapnuto: {count}"
+  },
+  "server.mods_done.count.disable": {
+    "one": "vypnuto: {count}",
+    "few": "vypnuto: {count}",
+    "other": "vypnuto: {count}"
+  },
+  "server.mods_done.count.remove": {
+    "one": "odebráno: {count}",
+    "few": "odebráno: {count}",
+    "other": "odebráno: {count}"
+  },
+  "server.mods_failed.checksum": "Mod {mod} {version} neodpovídal kontrolnímu součtu, který portál modů zveřejňuje, proto ho Foreman nepoužil.",
+  "server.mods_failed.unauthorized": "factorio.com odmítl uživatelské jméno nebo token, proto nebyl mod {mod} {version} stažen.",
+  "server.mods_failed.gone": "Portál modů už mod {mod} {version} nemá.",
+  "server.mods_failed.download": "Mod {mod} {version} se nepodařilo stáhnout z portálu modů.",
+  "server.mods_failed.kept_running": "Nic se nezměnilo a svět {world} dál běží.",
+  "server.mods_failed.stayed_stopped": "Nic se nezměnilo a svět {world} zůstává zastavený.",
+  "server.mods_failed.unchanged": "Nic se nezměnilo.",
+  "server.mods_failed.try_again": "Zkusit znovu",
+  "server.mods_failed.account": "Zkontrolovat účet factorio.com",
   "server.undo.restore": "Zrušit toto obnovení",
   "server.undo.rollback": "Zrušit toto vrácení zpět",
   "server.undo.update": "Vrátit zpět na {version}",

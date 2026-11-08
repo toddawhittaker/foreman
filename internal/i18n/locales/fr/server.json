@@ -151,6 +151,10 @@
   "server.step.refused": "Refusé",
   "server.step.failed": "Échoué",
   "server.step.skipped": "Ignoré",
+  "server.steps.not_run": {
+    "one": "{count} étape suivante n’a pas été exécutée.",
+    "other": "{count} étapes suivantes n’ont pas été exécutées."
+  },
   "server.step.waiting": "En attente",
   "server.step.other": "{name}",
   "server.step.warn": "Prévenir les joueurs",
@@ -259,6 +263,51 @@
   "server.done.mods_short": "Les mods sont modifiés.",
   "server.done.rollback_short": "Le monde est revenu en arrière.",
   "server.done.snapshot_short": "L’instantané est pris.",
+  "server.mods_done.snapshot": "Foreman a d’abord pris l’instantané « {label} ».",
+  "server.mods_done.install": "Installation terminée dans {world} : {mods}.",
+  "server.mods_done.upgrade": "Mise à jour terminée dans {world} : {mods}.",
+  "server.mods_done.downgrade": "Retour à une version plus ancienne dans {world} : {mods}.",
+  "server.mods_done.enable": "Activation terminée dans {world} : {mods}.",
+  "server.mods_done.disable": "Désactivation terminée dans {world} : {mods}.",
+  "server.mods_done.remove": "Retrait terminé dans {world} : {mods}.",
+  "server.mods_done.to": "{mod} vers {version}",
+  "server.mods_done.many": {
+    "one": "{count} mod modifié dans {world} : {kinds}.",
+    "other": "{count} mods modifiés dans {world} : {kinds}."
+  },
+  "server.mods_done.count.install": {
+    "one": "{count} installé",
+    "other": "{count} installés"
+  },
+  "server.mods_done.count.upgrade": {
+    "one": "{count} mis à jour",
+    "other": "{count} mis à jour"
+  },
+  "server.mods_done.count.downgrade": {
+    "one": "{count} rétrogradé",
+    "other": "{count} rétrogradés"
+  },
+  "server.mods_done.count.enable": {
+    "one": "{count} activé",
+    "other": "{count} activés"
+  },
+  "server.mods_done.count.disable": {
+    "one": "{count} désactivé",
+    "other": "{count} désactivés"
+  },
+  "server.mods_done.count.remove": {
+    "one": "{count} retiré",
+    "other": "{count} retirés"
+  },
+  "server.mods_failed.checksum": "{mod} {version} ne correspondait pas à la somme de contrôle publiée par le portail de mods, Foreman ne l’a donc pas utilisé.",
+  "server.mods_failed.unauthorized": "factorio.com a refusé le nom d’utilisateur ou le jeton, {mod} {version} n’a donc pas été téléchargé.",
+  "server.mods_failed.gone": "Le portail de mods n’a plus {mod} {version}.",
+  "server.mods_failed.download": "{mod} {version} n’a pas pu être téléchargé depuis le portail de mods.",
+  "server.mods_failed.kept_running": "Rien n’a été modifié, et {world} est toujours en marche.",
+  "server.mods_failed.stayed_stopped": "Rien n’a été modifié, et {world} reste arrêté.",
+  "server.mods_failed.unchanged": "Rien n’a été modifié.",
+  "server.mods_failed.try_again": "Réessayer",
+  "server.mods_failed.account": "Vérifier le compte factorio.com",
   "server.undo.restore": "Annuler cette restauration",
   "server.undo.rollback": "Annuler ce retour en arrière",
   "server.undo.update": "Revenir à {version}",

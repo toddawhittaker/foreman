@@ -162,6 +162,17 @@
   </li>
   {{- end}}
 </ol>
+{{- /* After a failure the steps that never ran fold into one line, still there for whoever opens it (DESIGN 7.6). */}}
+{{- with .Later}}
+<details class="disclosure">
+<summary id="act-later-{{$.In}}">{{t "server.steps.not_run" "count" (len .)}}</summary>
+<ol class="steps" role="list">
+  {{- range .}}
+  <li><span class="step-state">{{msg ($.StepWord .State)}}</span> <span class="step-name">{{msg ($.StepName .)}}</span></li>
+  {{- end}}
+</ol>
+</details>
+{{- end}}
 {{- end}}
 
 {{/* Operations, crashes and the actions for the current state. Every

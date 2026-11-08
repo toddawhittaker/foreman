@@ -41,7 +41,7 @@ test("a start refused for a mod players cannot download: update first, then star
 
   await fix.click();
   await page.getByRole("button", { name: "Update 1 mod" }).click();
-  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.7.2.zip"))).toBe(true);
   await expect(notice(page)).toBeEmpty(live);
 
@@ -81,7 +81,7 @@ test("the Server page notice goes once its fix is done, without a reload", async
 
   await notice(page).getByRole("link", { name: "Update visible-planets" }).click();
   await page.getByRole("button", { name: "Update 1 mod" }).click();
-  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   await expect(stateBadge(page)).toHaveText("Running", live);
   await expect(notice(page)).toBeEmpty(live);
   await expect(notice(page)).toHaveAttribute("role", "status");
