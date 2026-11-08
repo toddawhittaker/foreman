@@ -24,7 +24,8 @@ test("two mods from one search: added in place, then one install with one snapsh
   await page.goto("/worlds/base/mods/search?q=fp-lamp");
   await checkPage(page);
   await shot(page, "mods-search");
-  // A search result goes to the plan; the portal page opens in a new tab and names its mod.
+  // A search result goes to the plan; the portal page, under its Details, opens in a new tab and names its mod.
+  await page.locator(".mod-hits summary").first().click();
   const portalLink = page.getByRole("link", { name: "Mod portal for fp-lamp, opens in a new tab", exact: true });
   await expect(portalLink).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-lamp");
   await expect(portalLink).toHaveAttribute("target", "_blank");

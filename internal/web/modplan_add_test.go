@@ -25,7 +25,7 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 
 	_, search := g.getStatus(modsPath(id) + "/search?q=aai")
 	wantIn(t, "search", search,
-		`href="`+plan+`?kind=install&amp;name=aai-industry&amp;q=aai" class="button">Add to plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></a>`,
+		`href="`+plan+`?kind=install&amp;name=aai-industry&amp;q=aai" class="button" id="mod-aai-industry-add">Add to plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></a>`,
 		`href="https://mods.factorio.com/mod/aai-industry" class="portal-link" target="_blank" rel="noopener noreferrer"`)
 	if strings.Contains(search, "Install aai-industry") {
 		t.Error("a search result still installs at once")
@@ -206,7 +206,7 @@ func TestAddSearchKeepsFocusOnResults(t *testing.T) {
 	if n := strings.Count(between(searched, `id="mod-plan"`, `</main>`), "autofocus"); n != 1 {
 		t.Errorf("a search page has %d autofocus, want 1", n)
 	}
-	// The marker is the search form's alone; the plan's links do not carry it.
+	// The marker is the search form's and its page links' alone; the add and remove links do not carry it.
 	if regexp.MustCompile(`(href|hx-get|hx-push-url)="[^"]*add=1`).MatchString(searched) {
 		t.Error("a link carries the search marker")
 	}

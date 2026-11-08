@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const maxHits = 25
-
 // listEntry is one mod of the portal's list, with the lower-case forms the
 // search compares against.
 type listEntry struct {
@@ -22,7 +20,8 @@ type listEntry struct {
 // needs a login, which SPEC 9.11 keeps out of search, so the whole list for
 // the line is fetched once, kept for 15 minutes, and searched here: an exact
 // name first, then names that start with the query, then names or titles
-// that contain it, each group by downloads, at most 25 in all.
+// that contain it, each group by downloads. It returns every match; the
+// page shows them a page at a time (SPEC 9.1).
 func (c *Client) Search(ctx context.Context, line, query string) ([]Hit, error) {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -52,9 +51,6 @@ func (c *Client) Search(ctx context.Context, line, query string) ([]Hit, error) 
 			return group[i].Name < group[j].Name
 		})
 		out = append(out, group...)
-	}
-	if len(out) > maxHits {
-		out = out[:maxHits]
 	}
 	return out, nil
 }

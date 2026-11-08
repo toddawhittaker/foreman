@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
@@ -511,7 +512,14 @@ type ModSearchPage struct {
 	World      world.Summary
 	Query      string
 	QueryError i18n.Msg
-	Hits       []modportal.Hit
+	Results    ModHits
+	// Picks are the mods ticked to add, on this page of results or another;
+	// PickError says none was ticked when "Add ticked mods" was chosen.
+	Picks     []string
+	PickError i18n.Msg
+	// Paged says a page button brought the admin here, so focus goes to
+	// the results.
+	Paged bool
 	// Installed names the mods the world has already.
 	Installed   map[string]bool
 	Unreachable bool
@@ -520,10 +528,23 @@ type ModSearchPage struct {
 
 func (ModSearchPage) templateName() string { return "modsearch" }
 func (ModSearchPage) navItem() string      { return PathWorlds }
-func (p ModSearchPage) hasErrors() bool    { return !p.QueryError.IsZero() }
+func (p ModSearchPage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
-// Problems lists the search field's error.
-func (p ModSearchPage) Problems() []Problem { return problems(Problem{"mod-search", p.QueryError}) }
+// Problems lists the search field's error, then the ticks'.
+func (p ModSearchPage) Problems() []Problem {
+	return problems(Problem{"mod-search", p.QueryError}, Problem{p.firstPick(), p.PickError})
+}
+
+// firstPick is the id of the first box on the page, where the ticks' error
+// points.
+func (p ModSearchPage) firstPick() string {
+	for _, h := range p.Results.Rows {
+		if !p.Installed[h.Name] {
+			return modID(h.Name, "pick")
+		}
+	}
+	return "pick-error"
+}
 
 func (p ModSearchPage) Path() string     { return modsPath(p.World.ID) + "/search" }
 func (p ModSearchPage) ModsPath() string { return modsPath(p.World.ID) }
@@ -539,20 +560,56 @@ func (p ModSearchPage) Tabs() WorldTabs {
 	return t
 }
 
-// AddPath is the plan that installs one mod, keeping the search so the
-// plan page can offer the same results to add more.
+// Picking says the results have boxes to tick several mods at once.
+func (ModSearchPage) Picking() bool { return true }
+
+// HitState is what a result offers: "installed" or "add".
+func (p ModSearchPage) HitState(name string) string {
+	if p.Installed[name] {
+		return "installed"
+	}
+	return "add"
+}
+
+// Picked reports whether a result's box is ticked.
+func (p ModSearchPage) Picked(name string) bool { return slices.Contains(p.Picks, name) }
+
+// PicksElsewhere are the ticked mods not on this page of results, which the
+// form carries along unseen.
+func (p ModSearchPage) PicksElsewhere() []string {
+	return slices.DeleteFunc(slices.Clone(p.Picks), func(n string) bool {
+		return slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return h.Name == n })
+	})
+}
+
+// CanPick says the form has a mod that "Add ticked mods" could add.
+func (p ModSearchPage) CanPick() bool {
+	return len(p.Picks) > 0 || slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return !p.Installed[h.Name] })
+}
+
+// ModID is modID for the template.
+func (ModSearchPage) ModID(name, part string) string { return modID(name, part) }
+
+// AddPath is the plan that installs one mod, keeping the search and its
+// page so the plan page can offer the same results to add more.
 func (p ModSearchPage) AddPath(name string) string {
-	return planPath(p.World.ID, planForm{Kind: mods.KindInstall, Names: []string{name}, Query: p.Query}.query())
+	return planPath(p.World.ID, p.planForm([]string{name}).query())
+}
+
+func (p ModSearchPage) planForm(names []string) planForm {
+	return planForm{Kind: mods.KindInstall, Names: names, Query: p.Query, Page: p.Results.Page}
 }
 
 // handleModSearch searches the portal's list for the world's game line. It
-// needs no account (SPEC 9.11).
+// needs no account (SPEC 9.11). "Add ticked mods" sends the ticked mods to
+// one plan; a page button keeps them ticked.
 func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
 		return
 	}
-	p := ModSearchPage{World: sum, Query: strings.TrimSpace(r.URL.Query().Get("q")), Installed: map[string]bool{}}
+	q := r.URL.Query()
+	p := ModSearchPage{World: sum, Query: strings.TrimSpace(q.Get("q")), Installed: map[string]bool{}, Paged: q.Has("page")}
 	if p.Query == "" {
 		p.QueryError = i18n.M("mods.search.missing")
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
@@ -561,6 +618,22 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 	if len(p.Query) > maxSearchQuery {
 		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	// A plan names at most maxPlanNames mods, so more ticks are not kept.
+	for _, n := range q["pick"] {
+		if !slices.Contains(p.Picks, n) && len(p.Picks) < maxPlanNames {
+			p.Picks = append(p.Picks, n)
+		}
+	}
+	page := readPage(q.Get("page"))
+	adding := q.Get("picked") == "1"
+	if adding {
+		page = readPage(q.Get("at"))
+	}
+	if adding && len(p.Picks) > 0 {
+		p.Results.Page = page
+		http.Redirect(w, r, planPath(sum.ID, p.planForm(p.Picks).query()), http.StatusSeeOther) //nolint:gosec // a local path; the ticked names are only query values
 		return
 	}
 	p.NoAccount = !s.downloadsOn(r.Context())
@@ -576,7 +649,12 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		s.page(w, r, http.StatusBadGateway, u.Username, p)
 		return
 	}
-	p.Hits = hits
+	p.Results = pageOfHits(hits, page)
+	if adding {
+		p.PickError = i18n.M("mods.search.pick_none")
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -603,8 +681,10 @@ type planForm struct {
 	// DropsConfirmed is the box that accepts losing what dropped mods
 	// built. The names are worked out again on the post, never read.
 	DropsConfirmed bool
-	// Query is the search the install plan's "Add another mod" shows.
+	// Query is the search the install plan's "Add another mod" shows, and
+	// Page the page of its results.
 	Query string
+	Page  int
 	// Added and Removed name the mod a click just added to or took out of
 	// the plan, for the sentence the redraw announces. Links carry them;
 	// the plan does not.
@@ -634,7 +714,7 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		DropsConfirmed: v.Get(dropsField) == "1",
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
 		Query: strings.TrimSpace(v.Get("q")), Added: v.Get("added"), Removed: v.Get("removed"),
-		Searched: v.Get("add") == "1",
+		Searched: v.Get("add") == "1", Page: readPage(v.Get("page")),
 	}
 	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
 		if !slices.Contains(f.Optional, n) && !slices.Contains(f.Declined, n) {
@@ -679,6 +759,9 @@ func (f planForm) query() url.Values {
 	}
 	if f.Query != "" {
 		q.Set("q", f.Query)
+		if f.Page > 1 {
+			q.Set("page", strconv.Itoa(f.Page))
+		}
 	}
 	return q
 }
@@ -734,9 +817,10 @@ type ModPlanPage struct {
 	// Redraw says a script asked for the plan after a change on the page:
 	// the plan is announced and focus stays where it was (WCAG 4.1.3).
 	Redraw bool
-	// Hits are the "Add another mod" search's results; Installed names the
-	// world's mods. AddUnreachable says the portal could not be asked.
-	Hits           []modportal.Hit
+	// Results are the "Add another mod" search's page of results; Installed
+	// names the world's mods. AddUnreachable says the portal could not be
+	// asked.
+	Results        ModHits
 	Installed      map[string]bool
 	AddUnreachable bool
 }
@@ -784,6 +868,34 @@ func (p ModPlanPage) InPlan(name string) bool {
 
 // CanAdd says another mod fits in one plan request.
 func (p ModPlanPage) CanAdd() bool { return len(p.Form.Names) < maxPlanNames }
+
+// Picking is false: each result's Add redraws the plan at once, so a box to
+// tick would only cost a click more.
+func (ModPlanPage) Picking() bool { return false }
+
+// HitState is what an "Add another mod" result offers: "in_plan",
+// "installed", "add", or nothing when the plan is full.
+func (p ModPlanPage) HitState(name string) string {
+	switch {
+	case p.InPlan(name):
+		return "in_plan"
+	case p.Installed[name]:
+		return "installed"
+	case p.CanAdd():
+		return "add"
+	}
+	return ""
+}
+
+// PagePath is the plan with another page of the search's results; the
+// marker puts focus on them as a new search does.
+func (p ModPlanPage) PagePath(page int) string {
+	f := p.Form
+	f.Page = page
+	q := f.query()
+	q.Set("add", "1")
+	return planPath(p.World.ID, q) + "#add-heading"
+}
 
 // AddPath is the plan with name added; PlanWith is the same plan without
 // the note of what was added, for the address bar.
@@ -1290,7 +1402,7 @@ func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
 		p.AddUnreachable = true
 		return
 	}
-	p.Hits = hits
+	p.Results = pageOfHits(hits, p.Form.Page)
 }
 
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
