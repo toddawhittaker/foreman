@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -69,10 +70,10 @@ func (p ServerPage) liveURL() string {
 	if !p.HasWorld {
 		return ""
 	}
-	// A page drawn while an operation runs says so, so the stream knows its
-	// mods notice may be stale once the operation ends (SPEC 9.3).
-	if o := p.Status.Operation; o != nil && !o.Done {
-		return gamePath(p.World.ID, "events") + "?" + opRunningParam + "=1"
+	// The stream reloads the mods notice once an operation the page has not
+	// seen ends (SPEC 9.3).
+	if o := p.Status.Operation; o != nil && o.Done {
+		return gamePath(p.World.ID, "events") + "?" + doneOpParam + "=" + strconv.FormatUint(o.ID, 10)
 	}
 	return gamePath(p.World.ID, "events")
 }

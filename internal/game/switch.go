@@ -105,6 +105,12 @@ type SwitchPlan struct {
 // in the plan instead, because the admin still chooses what to do about
 // them.
 func (c *Controller) PlanSwitch(ctx context.Context, from, to string) (SwitchPlan, error) {
+	return c.planSwitch(ctx, from, to, true)
+}
+
+// planSwitch asks the portal only when portal is set: a switch that will
+// not start the world has no use for its answer (SPEC 7.9).
+func (c *Controller) planSwitch(ctx context.Context, from, to string, portal bool) (SwitchPlan, error) {
 	if c.switches == nil {
 		return SwitchPlan{}, ErrSwitchUnavailable
 	}
@@ -141,7 +147,7 @@ func (c *Controller) PlanSwitch(ctx context.Context, from, to string) (SwitchPla
 	default:
 		return SwitchPlan{}, ErrSwitchUnsettled
 	}
-	check, err := c.precheckReadOnly(ctx, to, "", StartOptions{portal: true})
+	check, err := c.precheckReadOnly(ctx, to, "", StartOptions{portal: portal})
 	if _, refused := errors.AsType[*PrecheckError](err); err != nil && !refused {
 		return SwitchPlan{}, err
 	}
@@ -218,7 +224,7 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 	if !start {
 		opts.Anyway = false
 	}
-	plan, err := c.PlanSwitch(ctx, from, to)
+	plan, err := c.planSwitch(ctx, from, to, start)
 	detail := switchDetail(from, to, plan, opts, start)
 	if err != nil {
 		if isSwitchRefusal(err) {

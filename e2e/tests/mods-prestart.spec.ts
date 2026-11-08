@@ -47,6 +47,8 @@ test("a start refused for a mod players cannot download: update first, then star
 
   await page.getByRole("button", { name: "Start server" }).click();
   await expect(stateBadge(page)).toHaveText("Running", live);
+  // The stop link comes in the same render as the note would, once the start has ended.
+  await expect(page.locator("#act-stop")).toBeVisible(live);
   await expect(page.locator("#portal-unchecked")).toHaveCount(0);
 });
 
@@ -87,4 +89,37 @@ test("the Server page notice goes once its fix is done, without a reload", async
   await expect(notice(page)).toHaveAttribute("role", "status");
   expect((await notice(page).boundingBox())?.height ?? 0).toBe(0);
   await checkPage(page);
+});
+
+// SPEC 9.3: the notice loads again when any operation ends, even one this page did not start,
+// but an unchanged answer is not swapped in, so a screen reader does not read it again.
+test("an operation that leaves the notice as it was reloads it without swapping it", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.setDown(true);
+  await goneWorld(page, foreman, fakeGame!, fakePortal!);
+  await page.getByRole("button", { name: "Start server" }).click();
+  await expect(stateBadge(page)).toHaveText("Running", live);
+  await fakePortal!.setDown(false);
+  await page.goto("/");
+  await expect(notice(page)).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
+  await notice(page).evaluate((el) => {
+    const w = window as unknown as { noticeChanges: number; noticeLoads: number };
+    w.noticeChanges = 0;
+    w.noticeLoads = 0;
+    new MutationObserver(() => w.noticeChanges++).observe(el, { childList: true, subtree: true, characterData: true });
+    // htmx fires this once the answer is handled, swapped or not.
+    el.addEventListener("htmx:afterRequest", () => w.noticeLoads++);
+  });
+
+  // Another tab stops the game; this page only follows it live.
+  const reloaded = page.waitForResponse("**/worlds/base/mods/notice");
+  const other = await page.context().newPage();
+  await other.goto("/");
+  await other.getByRole("link", { name: "Stop server" }).click();
+  await other.getByRole("button", { name: "Stop server" }).click();
+  await expect(stateBadge(page)).toHaveText("Stopped", live);
+  expect((await reloaded).status()).toBe(200);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { noticeLoads: number }).noticeLoads), live).toBe(1);
+  await expect(notice(page)).toContainText("visible-planets 1.5.5 is gone");
+  expect(await page.evaluate(() => (window as unknown as { noticeChanges: number }).noticeChanges)).toBe(0);
+  await other.close();
 });

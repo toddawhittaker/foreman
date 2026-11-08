@@ -1,9 +1,12 @@
 package mods
 
 import (
+	"context"
+	"errors"
 	"slices"
 	"testing"
 
+	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -98,4 +101,54 @@ func TestRecommendedNotAddedBySync(t *testing.T) {
 	if _, ok := change(plan, "lane"); ok {
 		t.Errorf("sync added a recommended mod: %+v", plan.Changes)
 	}
+}
+
+// An installed mod that stays as it is does not pull in its missing "+"
+// dependencies: the default applies only to mods the plan changes, and
+// turning mods off or on needs no portal (SPEC 9.2).
+func TestRecommendedOfUnchangedModStaysOut(t *testing.T) {
+	w := World{GameVersion: game, Mods: []world.InstalledMod{
+		installed("k2", "2.1.4", true, "+ lane"),
+		installed("z", "1.0.0", true),
+		installed("y", "1.0.0", false),
+	}}
+	p := portal{"k2": {rel("2.1.4", "2.0", "+ lane")}, "z": {rel("1.0.0", "2.0"), rel("1.1.0", "2.0")},
+		"y": {rel("1.0.0", "2.0")}}
+	for _, req := range []Request{
+		{Kind: KindDisable, Names: []string{"z"}},
+		{Kind: KindRemove, Names: []string{"z"}},
+		{Kind: KindEnable, Names: []string{"y"}},
+	} {
+		// Turning off needs no portal at all; turning on may look up the
+		// mod it turns on, but never the unrelated lane.
+		lookup := func(ctx context.Context, name string) (modportal.Mod, error) {
+			if req.Kind != KindEnable || name == "lane" {
+				t.Errorf("%v plan asked the portal for %s", req.Kind, name)
+				return modportal.Mod{}, errors.New("no portal")
+			}
+			return p.lookup(ctx, name)
+		}
+		plan, err := Resolve(context.Background(), w, req, lookup)
+		if err != nil {
+			t.Fatalf("%v: %v", req.Kind, err)
+		}
+		if _, ok := change(plan, "lane"); ok {
+			t.Errorf("%v plan installs lane: %+v", req.Kind, plan.Changes)
+		}
+	}
+	// Update all: k2 is already newest, so lane stays out while z upgrades.
+	lookup := func(ctx context.Context, name string) (modportal.Mod, error) {
+		if name == "lane" {
+			t.Errorf("update-all plan asked the portal for lane")
+		}
+		return p.lookup(ctx, name)
+	}
+	plan, err := Resolve(context.Background(), w, Request{Kind: KindUpdate}, lookup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := change(plan, "lane"); ok {
+		t.Errorf("update-all plan installs lane: %+v", plan.Changes)
+	}
+	wantChange(t, plan, "z", ActUpgrade, "1.1.0", asked())
 }
