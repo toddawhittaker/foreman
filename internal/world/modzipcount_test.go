@@ -3,6 +3,7 @@ package world
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"strconv"
 	"testing"
 )
@@ -76,5 +77,59 @@ func TestZipEntriesOverPassesAModZip(t *testing.T) {
 	}
 	if zipEntriesOver(bytes.NewReader([]byte("not a zip")), 9, maxModZipEntries) {
 		t.Error("a file that is not a zip counted as over")
+	}
+}
+
+// zipEnd is where the end of central directory record starts in b.
+func zipEnd(b []byte) int {
+	return bytes.LastIndex(b, []byte("PK\x05\x06"))
+}
+
+// archive/zip finds an end record anywhere in the last 65 KiB, with junk
+// after it, so the count must find it there too.
+func TestZipEntriesOverFindsTheEndRecordBeforeTrailingJunk(t *testing.T) {
+	b := append(manyEntries(t, maxModZipEntries+10), make([]byte, 66000)...)
+	if !zipEntriesOver(bytes.NewReader(b), int64(len(b)), maxModZipEntries) {
+		t.Error("an end record 66000 bytes before the end was not found")
+	}
+}
+
+// archive/zip starts reading at the end record less the directory size,
+// even when that makes its base offset negative.
+func TestZipEntriesOverCountsFromANegativeBase(t *testing.T) {
+	b := manyEntries(t, maxModZipEntries+10)
+	e := zipEnd(b)
+	start := int(binary.LittleEndian.Uint32(b[e+16:]))
+	binary.LittleEndian.PutUint16(b[e+8:], 0)
+	binary.LittleEndian.PutUint16(b[e+10:], 0)
+	binary.LittleEndian.PutUint32(b[e+12:], uint32(e-start))  //nolint:gosec // small test values
+	binary.LittleEndian.PutUint32(b[e+16:], uint32(len(b)-1)) //nolint:gosec // small test values
+	if !zipEntriesOver(bytes.NewReader(b), int64(len(b)), maxModZipEntries) {
+		t.Error("headers read from endAt-dirSize were not counted")
+	}
+}
+
+// A directory size of 0xffff is not a zip64 trigger for archive/zip, so a
+// fake zip64 record behind it must not be believed.
+func TestZipEntriesOverIgnoresZip64WithoutGosTrigger(t *testing.T) {
+	b := manyEntries(t, maxModZipEntries+10)
+	e := zipEnd(b)
+	start := binary.LittleEndian.Uint32(b[e+16:])
+	head, end := append([]byte{}, b[:e]...), append([]byte{}, b[e:]...)
+	z64 := make([]byte, 56)
+	binary.LittleEndian.PutUint32(z64, 0x06064b50)
+	binary.LittleEndian.PutUint64(z64[32:], 1)
+	binary.LittleEndian.PutUint64(z64[48:], uint64(len(head)))
+	loc := make([]byte, 20)
+	binary.LittleEndian.PutUint32(loc, 0x07064b50)
+	binary.LittleEndian.PutUint64(loc[8:], uint64(len(head)))
+	binary.LittleEndian.PutUint32(loc[16:], 1)
+	binary.LittleEndian.PutUint16(end[8:], 0)
+	binary.LittleEndian.PutUint16(end[10:], 0)
+	binary.LittleEndian.PutUint32(end[12:], 0xffff)
+	binary.LittleEndian.PutUint32(end[16:], start)
+	b = append(append(append(head, z64...), loc...), end...)
+	if !zipEntriesOver(bytes.NewReader(b), int64(len(b)), maxModZipEntries) {
+		t.Error("a fake zip64 record hid the headers archive/zip reads")
 	}
 }

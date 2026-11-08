@@ -15,12 +15,20 @@ func portalDown(context.Context, string) (modportal.Mod, error) {
 	return modportal.Mod{}, modportal.ErrUnreachable
 }
 
+// read marks m's info.json as read: no dependencies is an empty list.
+func read(m world.InstalledMod) world.InstalledMod {
+	if m.Dependencies == nil {
+		m.Dependencies = []string{}
+	}
+	return m
+}
+
 // SPEC 9.2, 9.4: turning a mod off, on, or removing it reads the installed
 // mods' dependencies from their own info.json, so it works with the portal
 // down.
 func TestTurningModsOffAndOnNeedsNoPortal(t *testing.T) {
 	w := World{GameVersion: game, Mods: []world.InstalledMod{
-		installed("a", "1.0.0", true, "b"), installed("b", "1.0.0", true), installed("c", "1.0.0", false, "b"),
+		installed("a", "1.0.0", true, "b"), read(installed("b", "1.0.0", true)), installed("c", "1.0.0", false, "b"),
 	}}
 	for _, req := range []Request{
 		{Kind: KindDisable, Names: []string{"a"}},
@@ -235,4 +243,23 @@ func TestAPlanFromAHalfAppliedChangeApplies(t *testing.T) {
 			}
 		})
 	}
+}
+
+// An installed mod whose info.json was read and lists nothing has no
+// dependencies, and the portal is not asked.
+func TestInstalledModWithNoDependenciesNeedsNoPortal(t *testing.T) {
+	w := World{GameVersion: game, Mods: []world.InstalledMod{read(installed("a", "1.0.0", false))}}
+	plan, err := Resolve(context.Background(), w, Request{Kind: KindEnable, Names: []string{"a"}}, portalDown)
+	if err != nil || !plan.Applicable() {
+		t.Errorf("enable a with the portal down: %v, conflicts %+v", err, plan.Conflicts)
+	}
+}
+
+// An installed mod whose info.json could not be read (nil dependencies)
+// takes its dependencies from the portal instead of assuming none.
+func TestInstalledModWithUnreadInfoAsksThePortal(t *testing.T) {
+	p := portal{"a": {rel("1.0.0", "2.0", "b")}, "b": {rel("1.0.0", "2.0")}}
+	w := World{GameVersion: game, Mods: []world.InstalledMod{installed("a", "1.0.0", false)}}
+	plan := resolve(t, p, w, Request{Kind: KindEnable, Names: []string{"a"}})
+	wantChange(t, plan, "b", ActInstall, "1.0.0", by("a"))
 }

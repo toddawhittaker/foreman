@@ -450,9 +450,9 @@ func (r *resolver) readDeps(name string, t *target) error {
 		raw = t.upload.Dependencies
 	case t.release != nil:
 		raw = t.release.Dependencies
-	case t.installed && t.version == t.from:
+	case t.installed && t.version == t.from && t.localDeps != nil:
 		// The installed zip or folder says, so a change that keeps it needs
-		// no portal (SPEC 9.2).
+		// no portal (SPEC 9.2). Nil means its info.json could not be read.
 		raw = t.localDeps
 	case t.version != "":
 		mod, err := r.mod(name)

@@ -3,6 +3,7 @@ package mods
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"slices"
 
 	"github.com/toddawhittaker/foreman/internal/modportal"
@@ -134,6 +135,12 @@ func (p *Planner) world(ctx context.Context, worldID string) (World, error) {
 	return World{GameVersion: s.GameVersion, SpaceAge: s.SpaceAge, Mods: installed}, nil
 }
 
+// worldAway reports an error from a world briefly missing or busy, as
+// during a restore: a portal check then has nothing to report.
+func worldAway(err error) bool {
+	return errors.Is(err, fs.ErrNotExist) || errors.Is(err, world.ErrBusy)
+}
+
 // Download is one release the apply operation must fetch and stage.
 type Download struct {
 	Name    string
@@ -201,9 +208,13 @@ type Update struct {
 // Updates lists, for each enabled portal mod, the newest release on the
 // world's game line when it is newer than the installed one (SPEC 9.3).
 // Mods the portal does not have are skipped; any other portal failure is
-// returned, never read as "no update".
+// returned, never read as "no update". A world briefly missing or busy
+// has none.
 func (p *Planner) Updates(ctx context.Context, worldID string) ([]Update, error) {
 	w, err := p.world(ctx, worldID)
+	if worldAway(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

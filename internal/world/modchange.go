@@ -43,13 +43,14 @@ func (m *Manager) StageMod() (f *os.File, name string, err error) {
 		return nil, "", err
 	}
 	defer func() { _ = worlds.Close() }()
-	removeOldStagedMods(worlds, time.Now())
 	return CreateModTemp(worlds)
 }
 
 // CreateModTemp creates an empty staged mod file at the top of root, the
-// worlds folder, and returns it open with its name.
+// worlds folder, and returns it open with its name. Staged mods older than
+// an hour are removed first, for uploads as well as downloads.
 func CreateModTemp(root *os.Root) (*os.File, string, error) {
+	removeOldStagedMods(root, time.Now())
 	return createTempNamed(root, PrefixModStaging+randomSuffix(), FileMode)
 }
 
