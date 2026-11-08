@@ -3,8 +3,10 @@ package mods
 import (
 	"context"
 	"errors"
+	"io/fs"
 
 	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // FlagCode names a problem players may have getting a world's mod.
@@ -42,9 +44,13 @@ type Flag struct {
 
 // Availability checks each enabled mod that is neither built in nor a
 // folder against the portal. A portal failure is returned as an error,
-// never as flags.
+// never as flags. A world briefly missing or busy, as during a restore, has
+// nothing to report and is not an error.
 func (p *Planner) Availability(ctx context.Context, worldID string) ([]Flag, error) {
 	w, err := p.world(ctx, worldID)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, world.ErrBusy) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
