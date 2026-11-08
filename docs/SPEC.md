@@ -84,6 +84,8 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_AUTH_REQUIRED_GROUP` | none | Group a user must belong to. Required when `headers` is on (12.5) |
 | `FOREMAN_TRUSTED_PROXIES` | none | Address ranges whose headers are honoured. Required when `headers` is on (12.6) |
 | `FOREMAN_SESSION_IDLE` | `168h` | Idle time before a session ends, as a Go duration (12.8) |
+| `FOREMAN_FACTORIO_USERNAME`, `FOREMAN_FACTORIO_TOKEN` | none | The factorio.com account that downloads mods (9.11). Set both or neither: one alone is a startup error. Either may use its `_FILE` form |
+| `FOREMAN_SECRET_KEY` | none | At least 32 characters; a shorter key is a startup error. It seals secrets an admin enters in the UI (9.11). Without it, an account cannot be stored in the UI. Changing it makes stored secrets unreadable, so they must be entered again. It may use its `_FILE` form |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | The Docker socket, or a socket proxy |
 
 A `tcp://` `DOCKER_HOST` is not encrypted and not authenticated. Use it
@@ -697,7 +699,8 @@ before the operation changes any file. If the snapshot fails, the
 operation does not run. A switch snapshots both worlds, labelled "Before
 switch" with reason `switch` (7.9). A confirmed settings save snapshots
 the world first, labelled "Before settings change" with reason `settings`
-(11.3). (P0)
+(11.3). A mod change snapshots it, labelled "Before mod change" with reason
+`mods` (9.2). (P0)
 
 6.3. An admin can take a snapshot by hand at any time. (P0)
 
@@ -733,7 +736,7 @@ figures can add up to less than the total. (P0)
 `snapshot.json` manifest (6.1). The folder is named by its UTC time, for
 example `20261103T142501Z`, with `-2` added on a clash. The manifest
 holds the label, the reason (`manual`, `before-delete`, `before-restore`,
-`settings`, or the risky operation), the time, who took it, and for each file its
+`settings`, `mods`, or the risky operation), the time, who took it, and for each file its
 path, size and modification time to the nanosecond. For each save and mod
 zip it also holds a SHA-256 hash, which Foreman reuses from the previous
 snapshot when the file's inode, size and modification time are unchanged.
@@ -1116,27 +1119,55 @@ because the game's autosaves can then fail. (P1)
 ## 9. Mods (per world)
 
 9.1. **Search** the mod portal by name and see each mod's summary, latest
-version, supported game versions, and download count. (P0)
+version, supported game versions, and download count. Foreman reads the
+portal's whole mod list for the world's game line once (15-minute cache)
+and searches it in memory: an exact name first, then names that start with
+the text, then names or titles that contain it, each group by downloads,
+the first 25 shown. It does this because the portal's own search needs
+credentials, and search must work without them (9.11, ADR 0012). Search
+results, the plan's asked-for rows and installed mods link to the mod's page
+at `https://mods.factorio.com/mod/<name>`, in a new tab; built-in and folder
+mods have no link. (P0)
 
 9.2. **Install** with dependency resolution. Foreman reads required,
 optional and incompatible dependencies and version constraints, and
 before changing anything shows the plan: what will be installed,
 upgraded, or left alone, and any conflict. The admin can include optional
-dependencies one by one. A plan with a conflict cannot be applied. (P0)
+dependencies one by one. A plan with a conflict cannot be applied. The
+resolver is greedy and does not backtrack. For each required dependency it
+keeps the installed version when that meets every constraint, and otherwise
+takes the newest release on the world's game line that does. Built-in mods
+count as present at the game version. An optional dependency's version
+limit holds even while its mod is off, so turning it on in the same plan is
+held to it. Dependencies of installed mods are read from their own
+`info.json`, so turning mods off or on and removing them need no portal. A
+search result's "Add to plan" starts one plan, and "Add another mod" on the
+plan page adds more: several mods are one plan, one snapshot and one
+restart. (P0)
 
 9.3. **Update.** Show which mods in a world have a newer version
 compatible with the world's game version, and apply any or all as one
-snapshotted operation. (P0)
+snapshotted operation. Nothing updates by itself: Foreman checks for
+updates when a Mods tab opens, after the page has loaded, and never on a
+timer. A mod that is turned off is not updated by "update all". (P0)
 
 9.4. **Enable, disable and remove** a mod, each as a snapshotted change.
 Removing a mod that another enabled mod requires is refused with the
-reason. (P0)
+reason. Built-in mods cannot be removed, and a mod installed as a folder is
+shown as "local" and never replaced. Turning off or removing a mod that the
+save about to load uses needs a confirmation on the plan page, a ticked box
+that says the game will delete what that mod built. The restart after the
+change then passes exactly those mods in the pre-start check (7.4), and the
+world ends running. Without the confirmation the plan cannot be applied. A
+confirmation given on a stopped world is not remembered for the next Start.
+(P0)
 
 9.5. **Upload** a local mod zip. Foreman reads its `info.json` to name and
 version it, and treats it as any other mod afterwards. (P1)
 
 9.6. **Mod settings.** Upload and download `mod-settings.dat`. (P0)
-Editing its values in the UI. (P2)
+The page shows where the Factorio client keeps the file and, for a running
+world, says Foreman restarts it. Editing its values in the UI. (P2)
 
 9.7. **Built-in mods** (`base` and the DLC mods for the world's game
 version, section 2) are never offered for download or removal. Their
@@ -1145,9 +1176,9 @@ every DLC mod, off enables only `base`. (P0)
 
 9.8. **Sync from save**: read a save's mod list and versions and make the
 world's mods match: install missing ones, change versions, and disable
-extras. The plan is shown before it applies (as in 9.2). Mods the portal
-no longer has are listed by name as unresolved, and the admin decides.
-(P0)
+extras. Extras are disabled, never removed. The plan is shown before it
+applies (as in 9.2). Mods the portal no longer has are listed by name as
+unresolved, and the admin decides. (P0)
 
 9.9. **The save reader.** Foreman reads a save's game version and mod
 list itself, from the header of `level.dat0` inside the save zip, without
@@ -1162,18 +1193,63 @@ and Foreman offers an upload of that mod's zip. Two other choices, each
 explicit: use the nearest release compatible with the world's game
 version, shown as a change in the plan; or continue without the mod,
 only after a confirmation that the game will delete that mod's content
-from the world, and a snapshot. (P0)
+from the world, and a snapshot. The nearest release is the lowest release
+above the missing version on the world's game line; when there is none, the
+newest release below it, with a warning. (P0)
 
 9.11. **Portal credentials.** The factorio.com username and token come
 from `FOREMAN_FACTORIO_USERNAME` and `FOREMAN_FACTORIO_TOKEN` (or their
 `_FILE` forms) first. If those are absent, an admin can enter them in the
 UI, where they are stored encrypted with a key from
 `FOREMAN_SECRET_KEY` (or its `_FILE` form). They are never shown back. If
-neither source has them, mod downloads are disabled with an explanation;
-search still works. (P0)
+neither source has them, mod downloads are disabled with an explanation and
+a link to the account page, which returns to where the admin came from;
+search still works. Giving only one of the two variables, or a key shorter
+than 32 characters, is a startup error (3.2). The account page is at
+`/settings/factorio-account`. It says "Set by environment" when the
+variables hold the account, and offers no form then. A stored account is
+replaced or removed there; neither the username nor the token is shown back,
+and the token is not checked against factorio.com when saved. A stored
+account that cannot be opened (the key changed) is treated as not set and
+asked for again; it never stops Foreman. How it is sealed is in ADR 0013.
+(P0)
 
 9.12. Downloaded mods are checked against the SHA-1 checksum the portal
 publishes, and a mismatch is refused. (P0)
+
+9.13. **One operation per change.** Every mod change goes through one path:
+install, update, update all, sync from a save, the fix for a flagged mod,
+enable, disable, remove, a mod upload and a `mod-settings.dat` upload. On a
+running world it is one operation shaped like a game version update (10.3):
+download every release first, then warn the players and stop the game, take
+the snapshot (6.2), apply the change, run the pre-start check (7.4), and
+start. A download, checksum or zip that fails leaves the game running and
+the world untouched. The change is also checked against the mods folder
+after the downloads and before the stop, so a change the folder would
+refuse costs no downtime. A stopped world skips the stop and the start. A
+world that is not active is changed the same way and reports on its own
+Mods tab, with "Undo this mod change". The audit log records the operation
+as `mods`. A change is refused before anything is touched when the game
+cannot be stopped (paused, not ready, or RCON unreachable) or the mods
+folder no longer matches the plan. (P0)
+
+9.14. **The plan is carried, not stored.** Foreman keeps no plan on the
+server. The plan page posts the request, a hash of the plan (which covers
+the mods dropped under 9.4) and a fingerprint of the mods folder (file names,
+sizes, times, and the content of `mod-list.json`). The server works the
+plan out again; when the hash or the fingerprint differs it applies
+nothing and shows the new plan with "The plan changed" (17.8). The
+fingerprint is read again after the game stops, because the game may write
+files as it exits. (P0)
+
+9.15. **How the game treats mod files** (checked in a real game on 1.1, 2.0
+and 2.1). When `mods/` holds two zips of one mod the game loads the higher
+version, so a plan starts from the newest zip and deletes the other zips of
+a mod it changes or removes. The game rewrites `mod-list.json` when it exits,
+with the same meaning but not the same bytes, and adds a mod the list left
+out as on. It writes `mod-settings.dat` at its first start, and only when
+a mod declares settings. A mod change that turns off a mod the save uses
+ends with the pre-start refusal unless the admin confirmed the drop (9.4).
 
 ## 10. Game versions
 
@@ -1548,7 +1624,12 @@ MB and Vulcanus 8.5 MB, over the old 8 MB cap, and every other planet
 under 6 MB. Foreman reads the game's output (pictures and the territory
 file) only from regular files, so a named pipe left by the game cannot
 hang the read. Drawing territories into a download runs one at a time,
-with at most 4 waiting; one more is refused with "busy". (P0)
+with at most 4 waiting; one more is refused with "busy". A mod zip that
+lists more than 10,000 entries is left unread: the entries are counted from
+the zip's end record before its directory is built, so a crafted zip costs
+almost nothing to refuse. A mod or `mod-settings.dat` upload waits in a
+staging file at the top of the worlds folder, and a staged mod nobody
+applied is removed an hour later. (P0)
 
 14.7. **Requests that change state** require a signed-in session and
 protection against cross-site request forgery. A browser post is accepted
@@ -1583,7 +1664,22 @@ size of a game image is one request for a single tag, read at most 64 KB and
 limited to 3 seconds, made only when the image is missing and a page says
 how big the download is; any failure leaves the size out. Image
 pulls are made by the Docker daemon, not by Foreman. It does not follow
-redirects for webhooks. (P0)
+redirects for webhooks.
+The mod portal's base is fixed at `https://mods.factorio.com`; there is no
+setting for it. Its API calls take at most 10 seconds, follow no redirects,
+and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
+4 mod detail requests run at once. A download link is followed only when it
+starts with `/download/` on that base, and its `file_name` must equal
+`<name>_<version>.zip`. A download takes at most 5 minutes, reads at most
+200 MB, and follows at most 2 redirects, each only to an `https` address
+whose host ends in `.factorio.com`. The real portal redirects to
+`dl-mod.factorio.com`. The redirect carries no `Referer` header, because Go
+would copy the token-bearing address into it. An error message never holds
+the request's query string, because the token rides in it (14.8).
+A mod plan request names at most 50 mods and ticks at most 50 optional
+ones, so one request cannot start unbounded portal calls. A plan page
+opened by a request marked cross-site or same-site in `Sec-Fetch-Site` is
+refused with a page that offers "Try again", and asks the portal nothing. (P0)
 
 14.11. **Least privilege.** Foreman's container runs as non-root with a
 read-only root filesystem except its data directory and a temporary
@@ -1717,6 +1813,10 @@ with the defaults accepted, these take at most:
 | Switch to another world, downloading its game image if needed (Switch world, the world's Switch, confirm) | 3 |
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
+| Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
+| Install a second mod in the same change (one more Add to plan) | 5 |
+| Update all mods (Mods, Update all, Update N mods) | 3 |
+| Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Recover after a failed start or a crash loop | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |

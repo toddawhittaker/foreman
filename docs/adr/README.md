@@ -41,3 +41,5 @@ record has four parts:
 | [0009](0009-map-exchange-string-in-go.md) | Generate decodes a map exchange string in Go, a port of rfvgyhn's parser (MIT), refusing what it cannot read exactly; golden strings from the real game keep it honest. |
 | [0010](0010-full-map-settings-files.md) | A changed Generate form writes both map files complete and passes no `--preset`; an unchanged preset passes `--preset` alone. |
 | [0011](0011-demolisher-territories-by-control-mod.md) | Demolisher territories come from a control-only mod in a one-off `--create` run (not RCON), drawn into the PNG in Go with `x/image` and a Noto subset, offered up to 3072 tiles. |
+| [0012](0012-mod-portal-client-and-search-source.md) | The mod portal client uses a fixed base, a checked download (2 redirects to `.factorio.com` only, no `Referer`, no token in errors), and searches the per-line mod list locally, because the portal's search needs credentials. |
+| [0013](0013-sealed-stored-secrets.md) | Secrets typed into the UI are sealed with AES-GCM under an HKDF key from `FOREMAN_SECRET_KEY`, with a version byte and the row name as authenticated data, in a keyed `stored_secrets` table. |
