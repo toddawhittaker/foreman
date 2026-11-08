@@ -652,7 +652,12 @@ not) or a map exchange string, with Space Age on or off. (P0)
     up to the larger of 8 times the fitted size and 8 CSS pixels per
     tile; a fixed 800% would leave a 3072 picture at under 3 pixels per
     tile. The picture pans by drag, keys, or a tap that centres the spot
-    tapped (17.14).
+    tapped (17.14). Where the view is wide enough for both, the planet's
+    own Resources and Terrain fields sit beside the map, the same fields
+    as the page's, not copies, so a change there redraws the picture
+    after the usual pause and is kept when the view closes; narrower, the
+    view is the map alone. Focus decides the keys: on the map the arrows
+    step or pan, in a field they belong to the field.
   - **Downloads**: one planet's PNG, or every drawn planet as a zip,
     named after the world, the seed and the planet.
   - **Demolisher territories** (Vulcanus, Space Age, 2.x). A "Show

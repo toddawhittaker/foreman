@@ -1251,7 +1251,15 @@ back." Undo sends the form as it was before the reset to the refresh
 route, so the server draws every value back; focus returns to the reset
 and the live region says "Your map settings are back." Any change in the
 settings, the preset or the seed ends the Undo, since it would throw
-that change away. Clicks: one to reset, one to undo.
+that change away, and so does a game version or Space Age change, since
+Undo would mix two game lines; the tab shown is a view and keeps it. An
+Undo that ends while it has the focus hands it to the reset (or the
+preset, when there is nothing to reset). A change made while the reset
+is on its way does not end it: the reply replaces the fields anyway, so
+Undo is offered as ever and brings back the settings as they were when
+Reset was pressed. Focus stays where the person moved it (a field keeps
+it across the redraw), and the live region says the usual sentence.
+Clicks: one to reset, one to undo.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
 the page back, filled from the new preset, with a Note "The settings
@@ -1400,8 +1408,11 @@ what this map looks like" (no clicks: it is drawn as the page opens and
 as the settings change), "look at another planet" (one click on its
 settings row, which the person opens anyway to change it), "see every
 planet" (one click, All planets, or Preview map), "back to one planet"
-(one click, One planet), "look closely" (one click on the picture) and
-"keep the pictures" (one click on a download).
+(one click, One planet), "look closely" (one click on the picture),
+"keep the pictures" (one click on a download) and, on a wide screen,
+"change the setting of the planet I am looking at large" (one click, on
+the setting beside the map; it was three, or four for a Terrain setting:
+close the view, the tab, the setting, and the picture again).
 
 - **Where.** A "Map preview" `section` (h2) full width under the
   settings, on every width, above the achievements summary and the
@@ -1428,8 +1439,9 @@ planet" (one click, All planets, or Preview map), "back to one planet"
 - **One planet or all.** On a world with several planets, a choice under
   the heading line, drawn as tabs (radios, as 8.7's tabs, one tab stop;
   legend "Preview shows", for screen readers only): **One planet**
-  (checked by default) and **All planets**. It needs script, so without
-  it the style sheet hides it. There is no planet picker: opening a
+  (checked by default) and **All planets**. It stays when a draw fails,
+  still showing the choice made, so One planet is one click back. It
+  needs script, so without it the style sheet hides it. There is no planet picker: opening a
   planet's settings row already picks the planet.
   - One planet: an automatic request (`auto=1`, `preview_view=one`)
     draws only the planet whose settings row is open, as one large
@@ -1519,7 +1531,35 @@ planet" (one click, All planets, or Preview map), "back to one planet"
     never needs a drag (WCAG 2.5.7).
   - Keys: left and right arrows step (inside the zoomed frame they scroll
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
-    Alt or Meta held the browser keeps its own zoom keys.
+    Alt or Meta held the browser keeps its own zoom keys. Focus decides:
+    a settings field (below) keeps every key of its own, so an arrow
+    moves a slider and never the map; Escape closes from anywhere.
+  - **Settings beside the map** (#399). Where the view is at least 77rem
+    wide (a 1280 px desktop is), the planet shown has its Resources and
+    Terrain settings in a 38rem column on the map's left, under the
+    headings "Resources" and "Terrain" (h3), scrolling on their own; the
+    map keeps the rest, never narrower than the column. 38rem leaves the
+    column's fields a 34rem `map-section` after its padding and scroll
+    bar, so they are sliders as on the page. Narrower, the view is map
+    only, as before. They are the form's own fields, not copies: the
+    script moves the planet's rows into the view as it opens (only in
+    Map settings mode; an exchange string does not use them) and puts
+    them back as it closes, however it closes, and before a version,
+    Space Age, preset or reset redraw; a redraw already on its way when
+    the view opens is let land first, so there is never a second copy.
+    A tab that has no planet rows lends its fields only on a world of one
+    planet. So the form sends, checks, marks "[modified]", resets,
+    undoes and warns on leaving as for any change on the page. Moving to
+    another planet moves its settings in. A change there redraws as one
+    on the page does, 0.8 s after the last change, the newest request
+    winning; while it runs the picture fades to 60%, the frame is
+    `aria-busy`, and a line beside the status line, seen but not read
+    out as on the page, says "Drawing the map preview for the current
+    settings…". The status line (`role="status"`) then says "Map preview
+    ready." It holds only that, warnings and errors: achievement and
+    needed-resource warnings are said there, as the page around the
+    dialog is inert. When the view narrows past 77rem while a field in
+    the column has focus, focus moves to the map's frame.
   - Nothing animates under reduced motion; otherwise only the controls'
     opacity fades, in 120 ms.
   - On close, focus goes to the link of the picture last shown. A click
