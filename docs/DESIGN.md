@@ -1399,8 +1399,11 @@ what this map looks like" (no clicks: it is drawn as the page opens and
 as the settings change), "look at another planet" (one click on its
 settings row, which the person opens anyway to change it), "see every
 planet" (one click, All planets, or Preview map), "back to one planet"
-(one click, One planet), "look closely" (one click on the picture) and
-"keep the pictures" (one click on a download).
+(one click, One planet), "look closely" (one click on the picture),
+"keep the pictures" (one click on a download) and, on a wide screen,
+"change the setting of the planet I am looking at large" (one click, on
+the setting beside the map; it was three, or four for a Terrain setting:
+close the view, the tab, the setting, and the picture again).
 
 - **Where.** A "Map preview" `section` (h2) full width under the
   settings, on every width, above the achievements summary and the
@@ -1519,7 +1522,29 @@ planet" (one click, All planets, or Preview map), "back to one planet"
     never needs a drag (WCAG 2.5.7).
   - Keys: left and right arrows step (inside the zoomed frame they scroll
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
-    Alt or Meta held the browser keeps its own zoom keys.
+    Alt or Meta held the browser keeps its own zoom keys. Focus decides:
+    a settings field (below) keeps every key of its own, so an arrow
+    moves a slider and never the map; Escape closes from anywhere.
+  - **Settings beside the map** (#399). Where the view is at least 77rem
+    wide (a 1280 px desktop is), the planet shown has its Resources and
+    Terrain settings in a 38rem column on the map's left, under the
+    headings "Resources" and "Terrain" (h3), scrolling on their own; the
+    map keeps the rest, never narrower than the column. 38rem leaves the
+    column's fields a 34rem `map-section` after its padding and scroll
+    bar, so they are sliders as on the page. Narrower, the view is map
+    only, as before. They are the form's own fields, not copies: the
+    script moves the planet's rows into the view as it opens (only in
+    Map settings mode; an exchange string does not use them) and puts
+    them back as it closes, and before a version, Space Age, preset or
+    reset redraw. So the form sends, checks, marks "[modified]", resets,
+    undoes and warns on leaving as for any change on the page. Moving to
+    another planet moves its settings in. A change there redraws as one
+    on the page does, 0.8 s after the last change, the newest request
+    winning; while it runs the picture fades to 60%, the frame is
+    `aria-busy`, and the status line says "Drawing the map preview for
+    the current settings…", then "Map preview ready." Achievement and
+    needed-resource warnings are said in the status line too, as the
+    page around the dialog is inert.
   - Nothing animates under reduced motion; otherwise only the controls'
     opacity fades, in 120 ms.
   - On close, focus goes to the link of the picture last shown. A click

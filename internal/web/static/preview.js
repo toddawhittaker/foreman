@@ -7,6 +7,8 @@
 // the file. Another planet viewed is told as a "preview:planet" event.
 // Vulcanus's demolisher territories, when their box is ticked, are asked
 // for after its picture arrives and drawn over it and in the large view.
+// On a wide screen the large view holds the viewed planet's own Resources and
+// Terrain fields beside the map, so a change there redraws it in place.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
@@ -50,6 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (status) status.textContent = on ? status.dataset.text : "";
     const slot = document.getElementById("preview");
     if (slot) slot.setAttribute("aria-busy", on ? "true" : "false");
+    // The large view fades its picture the same way while the next one is drawn.
+    const big = document.getElementById("large-frame");
+    if (big) big.setAttribute("aria-busy", on && dialog && dialog.open ? "true" : "false");
   }
 
   function drop() {
@@ -179,7 +184,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return exchange && exchange.checked && text && text.value.trim() === "";
   }
 
-  async function draw(say) {
+  // A draw after a change (change true) made in the large view says so
+  // there, as the page's own line does, and says the new map is ready.
+  async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
     const n = sent;
@@ -200,6 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
     pendingInView = Boolean(dialog && dialog.open);
     drawing = showAll ? "*" : viewing || firstPlanet();
     setStatus(true);
+    if (change && pendingInView && status) largeStatus(status.dataset.text);
     let html;
     try {
       const res = await fetch(path, { method: "POST", body, signal: ctrl.signal, headers: { "HX-Request": "true" }, credentials: "same-origin" });
@@ -248,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const planet = viewing || firstPlanet();
       if (!error && pictureLink(planet)) {
         show(planet);
-        announce(el("large-title").textContent);
+        announce(change ? strings["js.generate.preview_ready"] : el("large-title").textContent);
       } else if (error) announce(words(error));
       return;
     }
@@ -309,15 +317,17 @@ document.addEventListener("DOMContentLoaded", () => {
     drop();
     // A preview the person asked for is older than this change, so it goes too.
     if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
-    timer = setTimeout(() => draw(true), pause);
+    timer = setTimeout(() => draw(true, true), pause);
   }
 
   // Which changes redraw: anything in the form that changes the map. The
   // name, the tabs, the download box and the preview's own controls do not;
   // version and Space Age redraw the settings first, and that redraw asks.
+  // The settings shown in the large view count as where they came from.
   function counts(t) {
     if (!t.closest || !t.closest("#generate-form")) return false;
-    if (t.closest("#preview, #large-view, .version-fields, .tabset")) return false;
+    if (t.closest("#preview, .version-fields, .tabset")) return false;
+    if (t.closest("#large-view") && !t.closest("#large-settings")) return false;
     return !["generate-name", "generate-download"].includes(t.id);
   }
   document.addEventListener("input", (e) => { if (counts(e.target)) soon(); });
@@ -361,6 +371,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isRefresh(e)) {
       refreshing++;
       drop();
+      // The redraw replaces the settings' rows, so the fields go home first.
+      putBack();
     }
     // Preview map asks for every planet; nothing automatic may overwrite it,
     // and later draws keep showing them all.
@@ -380,6 +392,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isRefresh(e)) return;
     refreshing = Math.max(0, refreshing - 1);
     if (refreshing === 0) followSettings();
+    if (refreshing === 0 && dialog && dialog.open) fillPanel(viewing || firstPlanet());
     // A redraw that ends while Preview map runs leaves that preview to finish.
     if (refreshing === 0 && button().getAttribute("aria-disabled") !== "true") soon();
   });
@@ -412,6 +425,53 @@ document.addEventListener("DOMContentLoaded", () => {
     const link = pictureLink(planet);
     const caption = link && link.closest("figure").querySelector("figcaption");
     return caption ? caption.textContent.trim() : planet;
+  }
+
+  // The planet's own Resources and Terrain fields, moved into the large view
+  // while it is open and put back where they were when it closes, so there
+  // is one copy of each and the form sends, checks and resets them as ever
+  // (DESIGN 8.8). The style sheet shows them only where the view is wide
+  // enough; elsewhere they wait unseen until the view closes.
+  let moved = []; // each field group moved, and the mark where it goes back
+  let panelPlanet = "";
+  function putBack() {
+    moved.forEach(({ node, mark }) => mark.replaceWith(node));
+    moved = [];
+    panelPlanet = "";
+    const panel = el("large-settings");
+    if (panel) panel.hidden = true;
+  }
+
+  // A tab's fields for one planet: its row's body, or with one planet, the tab's groups.
+  function fieldsOf(tab, planet) {
+    const fieldset = el("panel-" + tab);
+    if (!fieldset) return [];
+    const rows = [...fieldset.querySelectorAll(":scope > details[data-planet]")];
+    if (!rows.length) return [...fieldset.children].filter((n) => n.tagName !== "LEGEND");
+    const row = rows.find((d) => d.dataset.planet === planet);
+    const body = row && row.querySelector(":scope > .mapgen-body");
+    return body ? [body] : [];
+  }
+
+  function fillPanel(planet) {
+    const panel = el("large-settings");
+    if (!panel || !dialog.open || planet === panelPlanet) return;
+    putBack();
+    // An exchange string makes the map by itself; the settings are not used.
+    if (!formEl().querySelector("#mode-settings:checked")) return;
+    for (const tab of ["resources", "terrain"]) {
+      const part = el("large-" + tab);
+      const nodes = fieldsOf(tab, planet);
+      part.hidden = nodes.length === 0;
+      nodes.forEach((node) => {
+        const mark = document.createComment("");
+        node.before(mark);
+        part.append(node);
+        moved.push({ node, mark });
+      });
+    }
+    panel.hidden = moved.length === 0;
+    panelPlanet = planet;
   }
 
   // Another planet viewed is told to the page, so its settings row can follow.
@@ -475,6 +535,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const link = pictureLink(planet);
     view(planet);
     nameArrows();
+    fillPanel(planet);
     if (!link) {
       // The dialog names the planet at once and shows no other planet's picture meanwhile.
       const name = nameOf(planet);
@@ -525,6 +586,8 @@ document.addEventListener("DOMContentLoaded", () => {
       show(link.dataset.planet);
       largeStatus("");
       dialog.showModal();
+      // Before the zoom is set, as the settings narrow the picture's frame.
+      fillPanel(link.dataset.planet);
       zoomTo(1);
     });
     el("large-prev").addEventListener("click", () => step(-1));
@@ -612,10 +675,12 @@ document.addEventListener("DOMContentLoaded", () => {
     frame().addEventListener("lostpointercapture", lift);
 
     // The arrows step between planets; a zoomed picture with focus scrolls
-    // with them instead. The browser's own zoom keys are left alone.
+    // with them instead. The browser's own zoom keys are left alone, and a
+    // settings field keeps every key of its own (Escape still closes).
     const arrows = { ArrowLeft: -1, ArrowRight: 1 };
     dialog.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.closest && e.target.closest("#large-settings")) return;
       const panning = e.target === frame() && zoom > 1;
       if (arrows[e.key] && !panning) step(arrows[e.key]);
       else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
@@ -629,6 +694,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // A planet still being drawn when the dialog closes is dropped: its reply
     // would swap the picture that has the focus away.
     dialog.addEventListener("close", () => {
+      putBack();
       let link = pictureLink(viewing);
       if (!link) {
         // The close event comes a moment after the dialog shuts, so a planet

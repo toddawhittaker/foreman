@@ -2637,6 +2637,60 @@ form:has(#mode-exchange:checked) .achievements {
   margin-inline-start: auto;
 }
 
+/* Generate's large view with the planet's settings beside the map (DESIGN
+   8.8). The settings column is 38rem, so its fields stay sliders (a
+   map-section of 34rem) after its padding and scroll bar; it shows once the
+   map beside it can be as wide again, 77rem in all. Narrower, map only. */
+.large-view {
+  container: large-view / inline-size;
+}
+
+.large-view__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-block-size: 0;
+}
+
+.large-view__settings {
+  display: none;
+}
+
+@container large-view (min-width: 77rem) {
+  .large-view__body:has(> .large-view__settings:not([hidden])) {
+    grid-template-columns: 38rem minmax(0, 1fr);
+  }
+
+  /* It scrolls on its own; the padding keeps focus rings inside it. */
+  .large-view__settings:not([hidden]) {
+    container: map-section / inline-size;
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    min-block-size: 0;
+    padding: var(--space-2);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+.large-view__settings > section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.large-view__settings > section[hidden] {
+  display: none;
+}
+
+/* While the next picture is drawn the shown one fades, as on the page. */
+.large-view__frame[aria-busy="true"] .large-view__map > img,
+.large-view__frame[aria-busy="true"] .territories {
+  opacity: 0.6;
+}
+
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
 @media (forced-colors: active) {
   .tabs a[aria-current],

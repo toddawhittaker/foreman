@@ -16,8 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!formEl()) return;
   formEl().classList.add("js-on");
 
+  // The settings the large view holds are its own (DESIGN 8.8), and outside
+  // an open modal dialog the page is inert, so the dialog says the news then.
+  const settingsIn = "#map-settings, #large-settings";
   function announce(said) {
-    const announcer = document.getElementById("announcer");
+    const view = document.getElementById("large-view");
+    const announcer = document.getElementById(view && view.open ? "large-status" : "announcer");
     if (!announcer) return;
     announcer.textContent = "";
     setTimeout(() => { announcer.textContent = said; }, 50);
@@ -163,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const word = formEl().dataset.achWord || "";
     let modified = false;
     const active = new Set();
-    settings.querySelectorAll("[data-preset]").forEach((el) => {
+    document.querySelectorAll(`:is(${settingsIn}) [data-preset]`).forEach((el) => {
       if (differs(el)) modified = true;
       if (!el.dataset.ach) return;
       const blocked = crosses(el);
@@ -187,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // A resource the game needs warns while off; a warning, not a block (SPEC 5.6).
     const off = new Set();
     needsOff = off;
-    settings.querySelectorAll("input[data-need]").forEach((box) => {
+    document.querySelectorAll(`:is(${settingsIn}) input[data-need]`).forEach((box) => {
       if (!box.checked) off.add(box.dataset.needKey);
       const note = document.getElementById(box.id + "-need");
       const text = box.checked ? "" : box.dataset.need;
@@ -248,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
         syncSlider(select);
       }
     }
-    if (t.closest("#map-settings")) changed(t);
+    if (t.closest(settingsIn)) changed(t);
   });
 
   document.addEventListener("change", (e) => {
@@ -263,7 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const typed = document.getElementById("generate-version");
       if (typed) typed.value = "";
     }
-    if (t.closest("#map-settings")) changed(t);
+    if (t.closest(settingsIn)) changed(t);
   });
 
   // A minimum and its maximum keep at least their gap apart, as the game's
@@ -398,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // or Space Age change does end it, as Undo would mix two game lines.
   ["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
     if (!undoValues || !e.target.closest || views.has(e.target.name)) return;
-    if (e.target.closest("#line-box") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
+    if (e.target.closest("#line-box, #large-settings") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
   }));
 
   const actions = "#preview-button, #generate-button, #generate-default";
