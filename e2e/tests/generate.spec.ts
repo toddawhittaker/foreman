@@ -253,7 +253,7 @@ test.describe("map preview", () => {
     // The blank seed now holds the one the pictures used.
     const seed = await page.locator("#generate-seed").inputValue();
     expect(seed).toMatch(/^\d+$/);
-    await expect(section).toContainText(`seed ${seed}`);
+    await expect(section).toContainText(`Seed ${seed}`);
     const sizes = await section.getByRole("img").evaluateAll((imgs) => (imgs as HTMLImageElement[]).map((i) => i.naturalWidth));
     expect(sizes.every((w) => w > 0)).toBe(true);
     await checkPage(page);

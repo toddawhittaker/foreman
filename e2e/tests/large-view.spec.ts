@@ -188,6 +188,26 @@ test("the arrows and the X show on hover and on keyboard focus, named after wher
   await expect(section(page).getByRole("link", { name: /Map preview of Nauvis/ })).toBeFocused();
 });
 
+// The key help is one short line at the top, beside the planet's name on a
+// desktop, and the frame still names it as its description.
+test("the key help is one line in the bar above the picture", async ({ page }) => {
+  await openLarge(page);
+  const keys = page.locator("#large-keys");
+  await expect(keys).toHaveText("Keys: ← → planet, + − zoom, 0 fit, Esc close");
+  await expect(frame(page)).toHaveAccessibleDescription("Keys: ← → planet, + − zoom, 0 fit, Esc close");
+  const k = (await keys.boundingBox())!;
+  const f = (await frame(page).boundingBox())!;
+  expect(k.y + k.height).toBeLessThanOrEqual(f.y);
+  const lines = await keys.evaluate((p) => p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight));
+  expect(lines).toBeLessThan(1.5);
+  if ((page.viewportSize()?.width ?? 0) > 320) {
+    const h = (await page.locator("#large-title").boundingBox())!;
+    expect(k.y).toBeLessThan(h.y + h.height);
+    expect(k.y + k.height).toBeGreaterThan(h.y);
+  }
+  await checkPage(page);
+});
+
 test("the download icon by the heading downloads the planet shown", async ({ page }) => {
   await openLarge(page);
   const icon = dialog(page).getByRole("link", { name: "Download Nauvis map" });
@@ -274,7 +294,6 @@ test.describe("on a touch screen, without dragging", () => {
   // WCAG 2.5.7: one tap on a zoomed picture centres the spot tapped.
   test("a tap centres the spot tapped, and a drag still pans", async ({ page }) => {
     await openLarge(page);
-    await expect(page.locator("#large-keys")).toContainText("tap a spot to centre it");
     const cdp = await page.context().newCDPSession(page);
     const touch = (type: "touchStart" | "touchMove" | "touchEnd", points: { x: number; y: number }[]) =>
       cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points.map((p, id) => ({ ...p, id })) });
