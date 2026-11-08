@@ -106,7 +106,7 @@ test.describe("a save's mod the portal does not have", () => {
     await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
     expect(readFileSync(join(modsFolder(foreman.dataDir), "foreman-test_0.1.0.zip")).equals(testModZip())).toBe(true);
     await page.goto("/worlds/base/mods");
-    await expect(modsTable(page).getByRole("row", { name: /foreman-test/ })).toContainText("Enabled");
+    await expect(modsTable(page).getByRole("row", { name: /foreman-test/ })).not.toContainText("Disabled");
   });
 
   test("a zip of another mod is refused where it was sent, and the choice is kept", async ({ page }) => {

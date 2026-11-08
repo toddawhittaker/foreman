@@ -1171,7 +1171,11 @@ restart. (P0)
 compatible with the world's game version, and apply any or all as one
 snapshotted operation. Nothing updates by itself: Foreman checks for
 updates when a Mods tab opens, after the page has loaded, and never on a
-timer. A mod that is turned off is not updated by "update all". (P0)
+timer. A mod that is turned off is not updated by "update all". The tab
+says what the portal answered in one summary line above the installed mods,
+with "Update all", and each mod's update and flags in that mod's own row,
+with the fix there. "Up to date" counts only the mods the portal has at
+their installed version. (P0)
 
 The Server page shows one line when an enabled mod's installed version is
 gone from the mod portal, so players cannot join, with its fix: one plan
@@ -1210,13 +1214,18 @@ world, says Foreman restarts it. Editing its values in the UI. (P2)
 9.7. **Built-in mods** (`base` and the DLC mods for the world's game
 version, section 2) are never offered for download or removal. Their
 enabled state follows the world's Space Age flag: on enables `base` and
-every DLC mod, off enables only `base`. (P0)
+every DLC mod, off enables only `base`. The Mods tab names them in one line
+that says which are on, which are off and why, with a link to the setting.
+(P0)
 
 9.8. **Sync from save**: read a save's mod list and versions and make the
 world's mods match: install missing ones, change versions, and disable
 extras. Extras are disabled, never removed. The plan is shown before it
 applies (as in 9.2). Mods the portal no longer has are listed by name as
-unresolved, and the admin decides. (P0)
+unresolved, and the admin decides. The Mods tab reads the save that loads
+(9.9, no portal) and says whether the world's mods already match it,
+counting what differs; it offers the match only when they differ or the
+save cannot be read. (P0)
 
 9.9. **The save reader.** Foreman reads a save's game version and mod
 list itself, from the header of `level.dat0` inside the save zip, without

@@ -1650,12 +1650,14 @@ conflicts, notices, headings and button labels, so a name such as
 `.button` the name breaks only when it does not fit, and `.button .ident`
 is `display: contents`. Mod badges are `white-space: nowrap`.
 
-**Portal links.** Search results, the plan's asked-for rows and installed
-mods carry a quiet link, "Mod portal", to
-`https://mods.factorio.com/mod/<name>` with `target="_blank"` and
-`rel="noopener noreferrer"`. Its hidden text finishes the name: "for
-visible-planets, opens in a new tab". Built-in and folder mods have none;
-the portal status removes the link of any mod the portal does not have.
+**Portal links.** Search results and the plan's asked-for rows carry a
+quiet link, "Mod portal", to `https://mods.factorio.com/mod/<name>` with
+`target="_blank"` and `rel="noopener noreferrer"`. Its hidden text finishes
+the name: "for visible-planets, opens in a new tab". In the installed table
+the mod's name is that link (a 44 px target), with the hidden text "on the
+mod portal, opens in a new tab", so every row has the same shape. Built-in
+and folder mods have none; the portal status turns the name of any mod the
+portal does not have back into plain text.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, then
 sections in this order, each a `section.panel`:
@@ -1666,27 +1668,58 @@ sections in this order, each a `section.panel`:
 - "Find a mod": one `role="search"` form, a field and Search.
 - "Installed mods". A status block (`role="status"`, so a late answer is
   announced) loads after the page ("Checking the mod portal for updates…"),
-  then shows how many mods have an update with "Update all" (primary), each
-  flag of the availability check as a Warning or Error (7.3) with its fix
-  button, or "All N mods from the mod portal are up to date". If the portal
-  cannot be reached it says so with "Check again". Then one line for the
-  built-in mods ("Built in, version 2.0.77: base, elevated-rails, quality,
-  space-age. They follow Space Age." and a "Change Space Age" link to the
-  Settings tab; without Space Age, no last sentence), then a table (8.3)
-  of the other mods: mod, state (a word, "Enabled" or "Disabled"), and the
-  actions Update to X (appears when the status finds one), Enable or
-  Disable, and Remove. Each action's hidden text names its mod. A folder
-  mod shows a "Local folder" badge and no actions. Built-in mods are never in the table.
-  The table uses the reading width (`--measure`), the same as the notices.
-- "Match mods to the save": a sentence naming the save and a secondary
-  button to the sync plan; a world with no save says so and links to
-  upload one.
-- "Upload a mod": a file field with the size limit in its hint, and an
-  upload button that goes to the plan page.
-- "Mod settings": the help first, saying where the Factorio client keeps
-  `mod-settings.dat` (Windows, macOS and Linux paths in `code`) and, for a
-  running world, that Foreman restarts it; then the download link, then a
-  replace form with the 7.4 "This will" list beside the button.
+  then shows one summary line: how many mods stop players joining, are
+  deprecated, or are not on the portal, then how many have an update, with
+  "Update all" (primary) beside the words; or "All N mods from the mod
+  portal are up to date", counting only mods the portal has at their
+  installed version, and nothing about it when there are none. The line is
+  an Error box (7.3) only when a mod stops players joining. If the portal
+  cannot be reached it says so with "Check again". There is no "Check
+  again" otherwise: the portal's answers are kept 15 minutes, so it would
+  show the same answer.
+- One line for the built-in mods, which follow Space Age: "Built in,
+  version 2.0.77: base, elevated-rails, quality, space-age. Space Age is
+  on, so all of them are on. Change Space Age", or "Built in, version
+  2.0.77: base. Space Age is off, so elevated-rails, quality, space-age are
+  off. Turn on Space Age"; both links go to the Settings tab. A game
+  without Space Age has no last sentence and no link.
+- A table (8.3) of the other mods in two columns, Mod and Actions, at the
+  reading width (`--measure`). The first cell holds the name (the portal
+  link), the version, a "Disabled" badge only when the mod is off (on is
+  the usual state, so it has no word; the caption says how many are on),
+  and a "Local folder" badge for a folder mod. Under them, filled in by the
+  status, each flag of the availability check is a short line with its
+  leading word: "Error: Players cannot join: the mod portal no longer has
+  version 1.5.5 …", "Warning: Deprecated on the mod portal …", "Note: Not
+  on the mod portal …". The actions keep one order, lined up on the end so
+  Disable and Remove sit in the same place in every row: Update to X (when
+  the status finds one, or as the fix for a gone version), Enable or
+  Disable, and Remove. Remove is a quiet button in `danger-text`, the only
+  red control on the tab, since it is the one change that destroys
+  something; its confirmation is the plan page. Each action's hidden text
+  names its mod. A folder mod has no Remove. Built-in mods are never in the
+  table. When the panel is narrower than 36rem the row stacks, the actions
+  under the name, so a name never breaks letter by letter (17.12: the table
+  roles stay).
+- "Match mods to the save": the tab reads the save that loads (SPEC 9.9)
+  and says "The mods match the save base.zip." with no button, or "The mods
+  differ from the save base.zip:" with a list of counts (not installed,
+  disabled here, at another version, enabled and not in the save) and a
+  secondary button to the sync plan. A save Foreman cannot read keeps the
+  general sentence and the button; a world with no save says so and links
+  to upload one.
+- "Upload a mod": one line, then a closed `details.disclosure` "Upload a
+  mod zip" holding the file field (size limit in its hint) and the upload
+  button, which goes to the plan page. A refused file opens it.
+- "Mod settings", only when the world has a mod that is not built in, a
+  `mod-settings.dat`, or a refused upload: the text and the download link
+  stay in view; the replace form is in a closed `details.disclosure`
+  "Replace mod-settings.dat": the help saying where the Factorio client
+  keeps the file (Windows, macOS and Linux paths in `code`) and, for a
+  running world, that Foreman restarts it; then the field, the countdown
+  while the game runs, the 7.4 "This will" list and the button. Replacing
+  is undone by its snapshot, so the form is not a red box. A refused file
+  opens it.
 
 A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod

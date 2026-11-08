@@ -136,6 +136,9 @@ type ModsPage struct {
 	NoAccount bool
 	// LoadSave is the save that loads, whose mods "Match" reads; "" for none.
 	LoadSave string
+	// SaveDiff is how the world's mods differ from LoadSave's; nil when
+	// there is no save or Foreman cannot read it (SPEC 9.8, 9.9).
+	SaveDiff *SaveDiff
 	// HasSettings says the world has a mod-settings.dat to download.
 	HasSettings bool
 	Running     bool
@@ -216,15 +219,40 @@ func (p ModsPage) Rows() []world.InstalledMod {
 	return out
 }
 
-// BuiltIns names the built-in mods that are on.
-func (p ModsPage) BuiltIns() []string {
+// BuiltIns names the built-in mods that are on. They follow the world's
+// Space Age flag (SPEC 9.7), which the pre-start check holds mod-list.json
+// to, so the flag is read rather than a list the game has not written yet.
+func (p ModsPage) BuiltIns() []string { return p.builtIns(true) }
+
+// BuiltInsOff names the built-in mods that are off: the Space Age ones
+// while Space Age is off.
+func (p ModsPage) BuiltInsOff() []string { return p.builtIns(false) }
+
+func (p ModsPage) builtIns(on bool) []string {
+	spaceAge := world.SpaceAgeMods(p.World.GameVersion)
 	var out []string
 	for _, m := range p.Mods {
-		if m.BuiltIn && m.Enabled {
+		if m.BuiltIn && (p.World.SpaceAge || !slices.Contains(spaceAge, m.Name)) == on {
 			out = append(out, m.Name)
 		}
 	}
 	return out
+}
+
+// ShowSettings says the tab offers mod-settings.dat: a world with only
+// built-in mods has no settings to keep, unless it has the file or an
+// upload of it was just refused.
+func (p ModsPage) ShowSettings() bool {
+	return len(p.Rows()) > 0 || p.HasSettings || !p.SettingsError.IsZero() || !p.CountdownError.IsZero()
+}
+
+// NoteSlot is the id of a row's place for what the portal says about the
+// mod, which the portal status fills in later.
+func (ModsPage) NoteSlot(name string) string { return noteSlot(name) }
+
+func noteSlot(name string) string {
+	sum := sha256.Sum256([]byte(name))
+	return "mod-note-" + hex.EncodeToString(sum[:6])
 }
 
 // BuiltInVersion is the built-in mods' version, the game's own.
@@ -302,6 +330,16 @@ func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, err
 	if p.LoadSave, err = s.loadingSave(sum.ID); err != nil {
 		return ModsPage{}, err
 	}
+	if p.LoadSave != "" {
+		// Only the save's header is read, so this is quick (SPEC 9.9). A save
+		// Foreman cannot read leaves the offer to match as it is.
+		if save, serr := s.worlds.SaveMods(sum.ID, p.LoadSave); serr == nil {
+			d := compareSave(followSpaceAge(list, p.BuiltInsOff()), save)
+			p.SaveDiff = &d
+		} else {
+			s.log.Warn("read the mods of the save", "world", sum.ID, "error", serr)
+		}
+	}
 	p.HasSettings = s.hasModSettings(sum.ID)
 	p.NoAccount = !s.downloadsOn(ctx)
 	op := s.game.Status(sum.ID).Operation
@@ -336,13 +374,15 @@ func (s *server) modsOutcome(p *ModsPage) {
 }
 
 // ModStatus is what the portal says about a world's mods: updates (SPEC
-// 9.3) and mods players cannot get (#131). It loads after the tab.
+// 9.3) and mods players cannot get (#131). It loads after the tab: one
+// summary line above the table, and each mod's news in its own row.
 type ModStatus struct {
 	World       world.Summary
 	Unreachable bool
 	Updates     []mods.Update
 	Flags       []mods.Flag
-	Checked     int // portal mods asked about
+	// Current counts the mods the portal has at their installed version.
+	Current int
 }
 
 func (ModStatus) templateName() string { return "mods" }
@@ -356,44 +396,89 @@ func (p ModStatus) UpdatePath(name string) string {
 	return kindPlanPath(p.World.ID, mods.KindUpdate, name)
 }
 
-// RemovePath is the plan that removes a mod.
-func (p ModStatus) RemovePath(name string) string {
-	return kindPlanPath(p.World.ID, mods.KindRemove, name)
+// Slot ids of a row's places the status fills.
+func (ModStatus) UpdateSlot(name string) string { return updateSlot(name) }
+func (ModStatus) PortalSlot(name string) string { return portalSlot(name) }
+func (ModStatus) NoteSlot(name string) string   { return noteSlot(name) }
+
+// Count counts the flags of one severity, for the summary line.
+func (p ModStatus) Count(sev mods.Severity) int {
+	n := 0
+	for _, f := range p.Flags {
+		if f.Severity == sev {
+			n++
+		}
+	}
+	return n
 }
 
-// UpdateSlot is the row place an update's button goes in.
-func (ModStatus) UpdateSlot(name string) string { return updateSlot(name) }
+// StatusRow is what the status puts in one mod's row.
+type StatusRow struct {
+	Name string
+	// UpdateTo is the version its Update button offers; "" for none.
+	UpdateTo    string
+	Flags       []mods.Flag
+	NotOnPortal bool
+}
 
-// PortalSlot is the id of a row's portal link.
-func (ModStatus) PortalSlot(name string) string { return portalSlot(name) }
+// Rows gathers the updates and flags by mod. A mod whose installed
+// version is gone gets its fix, the update, even when that release is not
+// newer than the installed one.
+func (p ModStatus) Rows() []StatusRow {
+	var out []StatusRow
+	at := map[string]int{}
+	row := func(name string) *StatusRow {
+		i, ok := at[name]
+		if !ok {
+			i = len(out)
+			at[name] = i
+			out = append(out, StatusRow{Name: name})
+		}
+		return &out[i]
+	}
+	for _, u := range p.Updates {
+		row(u.Name).UpdateTo = u.To
+	}
+	for _, f := range p.Flags {
+		r := row(f.Name)
+		r.Flags = append(r.Flags, f)
+		switch {
+		case f.Code == mods.FlagNotOnPortal:
+			r.NotOnPortal = true
+		case f.Code == mods.FlagVersionGone && f.Update != "" && r.UpdateTo == "":
+			r.UpdateTo = f.Update
+		}
+	}
+	return out
+}
 
-// FlagText words one flag (#131).
+// FlagText words one flag in its mod's row, so it need not name the mod
+// (#131).
 func (ModStatus) FlagText(f mods.Flag) i18n.Msg {
-	mod := i18n.Ident(f.Name)
 	switch f.Code {
 	case mods.FlagVersionGone:
 		if f.Update == "" {
-			return i18n.M("mods.flag.gone_none", "mod", mod, "version", f.Version)
+			return i18n.M("mods.row.gone_none", "version", f.Version)
 		}
-		return i18n.M("mods.flag.gone", "mod", mod, "version", f.Version, "update", f.Update)
+		return i18n.M("mods.row.gone", "version", f.Version)
 	case mods.FlagDeprecated:
-		return i18n.M("mods.flag.deprecated", "mod", mod)
+		return i18n.M("mods.row.deprecated")
 	}
-	return i18n.M("mods.flag.not_on_portal", "mod", mod, "version", f.Version)
+	return i18n.M("mods.row.not_on_portal")
 }
 
-// FlagClass is the message kind of a flag.
+// FlagClass is the kind of a flag, which colours its leading word.
 func (ModStatus) FlagClass(f mods.Flag) string {
 	switch f.Severity {
 	case mods.SevError:
-		return "message--error"
+		return "mod-flag--error"
 	case mods.SevWarning:
-		return "message--warning"
+		return "mod-flag--warning"
 	}
-	return "message--note"
+	return "mod-flag--note"
 }
 
-// FlagWord is the leading word of a flag's message (DESIGN 7.3).
+// FlagWord is the leading word of a flag (DESIGN 7.3).
 func (ModStatus) FlagWord(f mods.Flag) i18n.Msg {
 	switch f.Severity {
 	case mods.SevError:
@@ -420,14 +505,28 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 		st = ModStatus{World: sum, Unreachable: true}
 	}
-	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil {
-		for _, m := range list {
-			if m.Enabled && !m.BuiltIn && !m.Local {
-				st.Checked++
-			}
-		}
+	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil && !st.Unreachable {
+		st.Current = currentCount(list, st.Flags)
 	}
 	s.fragment(w, r, st, "mod-status")
+}
+
+// currentCount counts the enabled portal mods the portal has at their
+// installed version: not those it lacks, nor those whose version is gone.
+func currentCount(list []world.InstalledMod, flags []mods.Flag) int {
+	missing := map[string]bool{}
+	for _, f := range flags {
+		if f.Code == mods.FlagNotOnPortal || f.Code == mods.FlagVersionGone {
+			missing[f.Name] = true
+		}
+	}
+	n := 0
+	for _, m := range list {
+		if m.Enabled && !m.BuiltIn && !m.Local && !missing[m.Name] {
+			n++
+		}
+	}
+	return n
 }
 
 // portalTrouble logs a portal failure: an unreachable portal is the

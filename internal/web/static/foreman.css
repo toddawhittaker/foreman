@@ -2797,14 +2797,144 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
+/* The summary's sentences, with Update all beside them while they fit. */
+.mod-status__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.mod-status__line > p {
+  flex: 1 1 20rem;
+  min-inline-size: 0;
+}
+
 .mod-list code {
   color: var(--color-text-muted);
 }
 
-/* The table keeps the reading width the status notices above it have, so
-   the tab is one column, not a narrow one beside a wide one. */
+/* Two columns (DESIGN 8.11): a mod, and its actions in one fixed order,
+   lined up on the end so Disable and Remove sit in the same place in every
+   row whether or not an Update comes before them. */
 .mod-list {
   max-inline-size: var(--measure);
+}
+
+.mod-list td {
+  vertical-align: top;
+}
+
+.mod-list th:last-child,
+.mod-list td:last-child {
+  text-align: end;
+}
+
+.mod-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+}
+
+.mod-name {
+  min-inline-size: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The name is the portal link, a full-size target (DESIGN 8.3). */
+a.mod-name {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.mod-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin-block-start: 0;
+}
+
+/* Remove is the one red control: it is the change that destroys something. */
+.mod-list .mod-remove,
+.mod-list .mod-remove:hover {
+  color: var(--color-danger-text);
+}
+
+/* What the portal says about one mod, under its name; the leading word
+   says the kind, so colour is never the only sign (SPEC 17.4). */
+.mod-flags {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-end: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.mod-flag--error > strong {
+  color: var(--color-danger-text);
+}
+
+.mod-flag--warning > strong {
+  color: var(--color-warn);
+}
+
+.mod-flag--note > strong {
+  color: var(--color-info);
+}
+
+/* On a phone the actions drop under the name in the same row, so the name
+   keeps the panel's width (SPEC 17.12: the table roles stay). Above this
+   the actions stay on one line, which leaves a name at least 15rem. */
+@container (max-width: 36rem) {
+  .mod-list tr,
+  .mod-list td {
+    display: block;
+  }
+
+  .mod-list thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .mod-list tr {
+    padding-block: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .mod-list td,
+  .mod-list td:last-child {
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  .mod-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* Tighter buttons, so Update, Disable and Remove share a 320 px line. */
+  .mod-actions .button:not(.button--quiet) {
+    padding-inline: var(--space-3);
+  }
+}
+
+.sync-diff,
+.mod-settings-will ul {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+}
+
+.mod-settings-will {
+  display: grid;
+  gap: var(--space-2);
 }
 
 /* In a button a name breaks only when it is wider than the box, as the
@@ -2850,36 +2980,10 @@ form:has(#mode-exchange:checked) .achievements {
   min-inline-size: 0;
 }
 
-.mod-results--short > li {
-  gap: 0;
-  padding-block: var(--space-2);
-}
-
-.mod-results__title {
-  font-weight: 600;
-}
-
 /* A mod's short badge stays whole. Badges elsewhere, such as a save's
    "loads next", are long in some languages and must wrap at 320 px. */
-:is(.mod-list, .mod-results) .badge {
+.mod-list .badge {
   white-space: nowrap;
-}
-
-/* Search results are a list with a rule between rows, not cards (DESIGN 8.2). */
-.mod-results {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  padding: 0;
-  list-style: none;
-}
-
-.mod-results > li {
-  display: grid;
-  gap: var(--space-2);
-  min-inline-size: 0;
-  padding-block: var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-line);
-  overflow-wrap: anywhere;
 }
 
 .mod-plan {
