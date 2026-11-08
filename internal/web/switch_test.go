@@ -158,10 +158,10 @@ func TestSwitchAnyway(t *testing.T) {
 
 	form := g.get(switchPath(b))
 	g.wantContains("confirmation", form, "The save that would load in Bravo does not match that world:", "foreman-test",
-		`&#34;Before switch&#34;`, `&#34;Before start anyway&#34;`, "own mods folder, then start Bravo again",
+		`&#34;Before switch&#34;`, `&#34;Before start anyway&#34;`, "Match the mods to the save", "/worlds/bravo/mods/plan?kind=sync",
 		`name="choice" value="anyway"`, "Switch and start anyway", `name="choice" value="stopped"`, "Switch, leave stopped",
 		`name="countdown"`, "To undo, switch back to Alpha")
-	g.wantMissing("confirmation", form, ">Switch to Bravo</button>", "Start Bravo after switching", "import the world again")
+	g.wantMissing("confirmation", form, ">Switch to Bravo</button>", "Start Bravo after switching", "import the world again", "cannot add mods", "own mods folder")
 
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}, "choice": {"anyway"}, "seen": {seenIn(t, form)}}))
 	g.waitPage(`id="server-title">Bravo <span`, running, "The worlds are switched")

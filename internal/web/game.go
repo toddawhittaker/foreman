@@ -295,7 +295,7 @@ func (s *server) activeWorld(ctx context.Context) (world.Summary, bool, error) {
 // serverPage builds the server page for a world from its status, asking
 // the game who is online when it is running.
 func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Status) ServerPage {
-	p := ServerPage{World: sum, HasWorld: true, Status: st, ModsFolder: hostModsFolder(s.hostData, sum.ID), Now: s.now(), JoinAddress: s.joinAddress()}
+	p := ServerPage{World: sum, HasWorld: true, Status: st, Now: s.now(), JoinAddress: s.joinAddress()}
 	p.Result, p.HaveResult = s.runs.result(sum.ID)
 	if !p.HaveResult && s.runs.cancelPending(sum.ID) {
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())

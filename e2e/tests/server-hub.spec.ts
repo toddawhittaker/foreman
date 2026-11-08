@@ -143,6 +143,7 @@ test.describe("with the fake game", () => {
     const g = fakeGame!;
     await setUp(page, foreman, g, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
     await page.getByRole("button", { name: "Start server" }).click();
+    await page.locator("summary", { hasText: "Or start anyway" }).click();
     await page.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
     await g.call("/crash-loop", { name: container, on: true });

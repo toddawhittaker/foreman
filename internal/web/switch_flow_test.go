@@ -213,17 +213,6 @@ func TestStartRefusedListsNoSkippedSteps(t *testing.T) {
 	}
 }
 
-// #145: the advice for missing mods names the world's own mods folder on
-// the host, from the host data folder Foreman was given.
-func TestHostModsFolder(t *testing.T) {
-	if got, want := hostModsFolder("/srv/foreman", "base"), "/srv/foreman/worlds/base/mods/"; got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-	if got := hostModsFolder("", "base"); got != "" {
-		t.Errorf("an unknown host folder gave %q", got)
-	}
-}
-
 // SPEC 7.4, 7.9: when problems appear between the confirmation and the
 // switch, the Server page's box goes ahead as "Switch and start anyway"
 // does, so the switch handler starts the new world without asking again.
