@@ -29,7 +29,7 @@ func TestPlanVersionList(t *testing.T) {
 		t.Fatalf("status %d\n%s", code, body)
 	}
 	wantIn(t, "default", plain(body), "ver-a 2.0.0", `<label for="mod-ver-a-version">Version of ver-a</label>`,
-		`<select id="mod-ver-a-version" name="version-ver-a" hx-get="`+plan+`" hx-trigger="change delay:300ms" hx-sync="closest form:replace" aria-describedby="plan-versions-hint">`,
+		`<select id="mod-ver-a-version" name="version-ver-a" hx-get="`+plan+`" aria-describedby="plan-versions-hint">`,
 		`<option value="" selected>Newest that fits (2.0.0)</option>`, `<option value="2.0.0">2.0.0</option>`, `<option value="1.0.0">1.0.0</option>`,
 		"Only releases for Factorio 2.0")
 	if strings.Contains(body, "0.9.0") {
@@ -215,5 +215,10 @@ func TestKeptHidesAnAskedModOnlyWithAVersionList(t *testing.T) {
 	p.Plan.Releases = map[string][]string{"a": {"1.0.0"}}
 	if got := p.Kept(); len(got) != 0 {
 		t.Errorf("with releases: kept %v", got)
+	}
+	// A key with no release for the world's line still gets a version list.
+	p.Plan.Releases = map[string][]string{"a": nil}
+	if got := p.Kept(); len(got) != 0 {
+		t.Errorf("with a nil release list: kept %v", got)
 	}
 }
