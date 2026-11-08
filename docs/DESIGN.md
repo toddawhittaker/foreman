@@ -572,6 +572,11 @@ the block padding is `--space-2` so a two-line label is not cramped.
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **secondary**, not danger. Red is kept for
   the moment the thing actually happens, so it still means something.
+- **Destructive means something is lost**: a world, a snapshot or a save
+  deleted, a restore over a world, a mod removed, what a mod built dropped
+  from the save, a forced stop. A change that only stops and starts the
+  game again, such as installing or updating a mod while it runs, is not:
+  its button is primary, and its steps say in words that the game restarts.
 - Use `<a class="button">` only for navigation that looks like an action
   ("Upload a save" leading to the upload page). Anything that changes
   state is a `<button>` inside a `<form method="post">`.
@@ -1755,17 +1760,41 @@ without an account.
 
 **The plan page** (`/worlds/{id}/mods/plan`) is a 7.4 confirmation. The
 `h1` is a question naming the world and the mod: "Install visible-planets
-in Family base 2025?", "Install mods in Family base 2025?" for several. The
-plan lives in the address and the form (`name=` repeated, `q=` for the
-search the person came from), never on the server. In order:
+in Family base 2025?", "Install mods in Family base 2025?" for several,
+"Change the mods of Family base 2025?" once a conflict's fix adds a mod to
+turn off. The `h1` lays out as one run of text, so a mod's name has one
+space each side and wraps like a word. The plan lives in the address and
+the form (`name=` repeated, `q=` for the search the person came from,
+`also-disable=` and `also-remove=` for the fixes taken), never on the
+server. Every kind of change (install, update, enable, disable, remove,
+sync, upload) has the same shape, changes first. In order:
 
 - At most one of these at the top, each taking focus on a full page load
   and not on a redraw: a Warning "The plan changed since you saw it ...",
   an Error when the portal cannot be reached, an Error listing conflicts
-  with every code worded (a conflict has no apply button).
+  with every code worded (a conflict has no apply button). A conflict that
+  turning off one installed mod clears carries its fix as a secondary
+  button under it (SPEC 17.9): "Remove *mod* as part of this plan" for two
+  mods that cannot run together (the one not asked for; a folder mod is
+  disabled instead), "Disable *mod* too" for a mod another needs. The fix
+  redraws the plan with both changes and puts focus on the "Changes:"
+  label, or on the conflicts if one is left. An install plan's conflict box
+  also has "Back to search".
 - A Note when the plan downloads and Foreman has no account, with the link.
-- "Mods you asked for", each row with its portal link and, when there are
-  two or more, "Remove from plan"; then "What they need".
+- The required note and, when the change turns off or removes a mod the
+  loading save uses, a Warning that says it once ("The save that loads
+  uses foreman-test. Without it, the game deletes everything foreman-test
+  built in the world.") with its required box ("Delete what foreman-test
+  built. The snapshot "Before mod change" keeps a copy."). It is first so a
+  phone shows it without scrolling. Unticked, the field error and the error
+  summary (7.2) name the mod, or count several.
+- "Changes:", a label (the box holds no heading, 7.4), then the changes
+  grouped Install, Upgrade, Downgrade, Enable, Disable and Remove in a
+  `dl`, one mod a line with its reason in brackets ("visible-planets needs
+  it"). The mods an install asked for come first in their group, each line
+  with its portal link and, when there are two or more, "Remove from
+  plan". The mods the plan needs and leaves as they are fold into one
+  closed `details`, "2 other mods stay as they are".
 - "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
   the plan with htmx; a "Recalculate the plan" button does it without script.
 - For each unresolved mod a `fieldset` with its legend ("The mod portal
@@ -1773,20 +1802,22 @@ search the person came from), never on the server. In order:
   and the zip field with its own Upload zip button tied to an empty form so
   choosing a file never redraws. "Nearest" has its hint beside it only when
   offered. Continue without shows its own required box.
-- "This will:" the ordered steps: download (count, with the checksum
-  sentence), warn the players and stop (only while the game runs, with the
-  countdown field), the snapshot labelled "Before mod change", then the
-  changes grouped Install, Upgrade, Downgrade, Enable, Disable, Remove and
-  Leave alone, each item with its reason in brackets ("visible-planets
-  needs it"), start the server again, and the undo line.
-- A Warning and a required box when the change turns off or removes a mod
-  the loading save uses: the game deletes what it built. Unticked, the
-  field error and the error summary (7.2) say so.
-- The confirm button repeats the verb and the count ("Install 2 mods",
-  "Update 1 mod"). It is primary for install, update, enable and sync on a
-  stopped world, and danger (7.1) for any change on a running world, any
-  that disables or removes a mod or drops save content, and "continue
-  without". Cancel is a link.
+- "This will:" and an ordered list of short steps: "Download 3 mods from
+  the mod portal and check their checksums." (when it downloads), "Warn the
+  players, then save and stop Base." (only while the game runs), "Take a
+  snapshot labelled "Before mod change".", and "Change the mods, then start
+  Base again." or "Change the mods. Base stays stopped, as it is now." Then
+  one sentence for every failure, "If a step fails, the steps after it do
+  not happen.", and the undo: the one-click Undo the result offers, not a
+  trip to the Snapshots tab. A plan with a conflict leaves the steps out,
+  since it cannot be applied.
+- The countdown field while the game runs, then the confirm button, which
+  repeats the verb and the count ("Install 2 mods", "Update 1 mod"; "Change
+  2 mods" when a fix mixes kinds). Box and button are danger (7.1) only
+  when the plan destroys something: it removes a mod, drops what a mod
+  built from the save, or goes on "continue without". Anything else is
+  primary with a plain box (`confirm--plain`, a `line` border), on a
+  running world too: the steps say the restart. Cancel is a link.
 - "Add another mod": its own `role="search"` form, filled with the search
   the person came from and carrying `add=1`, which keeps focus on the
   heading after a page load. Results are the search page's table without
@@ -1796,13 +1827,14 @@ search the person came from), never on the server. In order:
   matches. Try a shorter part of the name."). Results say "Add to plan", "In plan" (the
   badge takes the button's id) or "Installed". Adding or removing redraws
   the plan in place; `#announcer` says "Added visible-planets. The plan has
-  2 mods." and focus stays on the badge, or goes to the "Mods you asked
-  for" label after a removal. Without script every add and remove link is
+  2 mods." and focus stays on the badge, or goes to the "Changes:" label
+  after a removal. Without script every add and remove link is
   the plan's own URL.
 
-A redraw never moves focus, always answers 200 so htmx swaps it in, and
-says the new plan in one sentence through `#announcer`; a conflict is
-announced, not focused. Control ids follow the mod's name
+A redraw moves focus only when the control used is gone (a removal or a
+fix, above), always answers 200 so htmx swaps it in, and says the new plan
+in one sentence through `#announcer`; a conflict is announced, not focused,
+unless a fix's redraw leaves one. Control ids follow the mod's name
 (`mod-<name>-optional`, `-upload`, `-nearest`, `-without`, `-confirm`,
 `-zip`) so focus survives a redraw. A refused zip is in the error summary,
 which takes focus and links to the field, and its form carries every

@@ -62,6 +62,9 @@ type Request struct {
 	Upload   *world.ModInfo    // the uploaded zip's info.json, for KindUpload
 	SaveMods []SaveMod         // for KindSync
 	Choices  map[string]Choice // for KindSync, by mod name
+	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
+	// off in the same plan, whatever its kind (SPEC 9.2, 17.9).
+	AlsoDisable, AlsoRemove []string
 }
 
 // Action is what a plan does to one mod.

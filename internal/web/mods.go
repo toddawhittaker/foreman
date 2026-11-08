@@ -780,11 +780,18 @@ type planForm struct {
 	// Searched is a search from "Add another mod": its results heading
 	// takes focus, not the messages above the plan.
 	Searched bool
+	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
+	// off in the same plan; Fixed names the one a click just added, for
+	// the sentence the redraw announces (SPEC 9.2, 17.9).
+	AlsoDisable, AlsoRemove []string
+	Fixed                   string
 }
 
 const (
-	choicePrefix  = "choice-"
-	confirmPrefix = "confirm-"
+	choicePrefix     = "choice-"
+	confirmPrefix    = "confirm-"
+	alsoDisableField = "also-disable"
+	alsoRemoveField  = "also-remove"
 )
 
 // maxPlanNames bounds the mods one plan request names, and the optional
@@ -803,6 +810,7 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
 		Query: strings.TrimSpace(v.Get("q")), Added: v.Get("added"), Removed: v.Get("removed"),
 		Searched: v.Get("add") == "1", Page: readPage(v.Get("page")),
+		AlsoDisable: v[alsoDisableField], AlsoRemove: v[alsoRemoveField], Fixed: v.Get("fixed"),
 	}
 	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
 		if !slices.Contains(f.Optional, n) && !slices.Contains(f.Declined, n) {
@@ -810,7 +818,8 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		}
 	}
 	// Each name can cost a portal request, so a crafted list is bounded.
-	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames || len(f.Declined) > maxPlanNames {
+	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames || len(f.Declined) > maxPlanNames ||
+		len(f.AlsoDisable)+len(f.AlsoRemove) > maxPlanNames {
 		return planForm{}, false
 	}
 	for k, vals := range v {
@@ -838,6 +847,12 @@ func (f planForm) query() url.Values {
 	}
 	if len(f.Declined) > 0 {
 		q["declined"] = f.Declined
+	}
+	if len(f.AlsoDisable) > 0 {
+		q[alsoDisableField] = f.AlsoDisable
+	}
+	if len(f.AlsoRemove) > 0 {
+		q[alsoRemoveField] = f.AlsoRemove
 	}
 	if f.Save != "" {
 		q.Set("save", f.Save)
@@ -911,41 +926,13 @@ type ModPlanPage struct {
 	Results        ModHits
 	Installed      map[string]bool
 	AddUnreachable bool
+	// Have are the world's mods now, for the conflicts' fixes.
+	Have []world.InstalledMod
 }
 
 // Adding says the plan installs mods the admin picks, so it lists them
 // with a way to take one out and offers to add another (SPEC 9.1, 9.2).
 func (p ModPlanPage) Adding() bool { return p.Form.Kind == mods.KindInstall && p.Form.Staged == "" }
-
-// AskedRow is one mod the admin asked for in an install plan.
-type AskedRow struct {
-	Name string
-	// Text words the mod's change; zero when the plan does not change it.
-	Text i18n.Msg
-	// Portal says the mod comes from the mod portal, so it has a page there.
-	Portal bool
-}
-
-// Asked lists the mods the admin asked for, in the order they were added.
-func (p ModPlanPage) Asked() []AskedRow {
-	out := make([]AskedRow, 0, len(p.Form.Names))
-	for _, name := range p.Form.Names {
-		row := AskedRow{Name: name}
-		if i := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == name }); i >= 0 {
-			c := p.Plan.Changes[i]
-			row.Text, row.Portal = changeText(c), c.Release != nil
-		}
-		out = append(out, row)
-	}
-	return out
-}
-
-// Needed lists, by kind, the changes the asked-for mods bring with them.
-func (p ModPlanPage) Needed() []PlanGroup {
-	return groups(slices.DeleteFunc(slices.Clone(p.Plan.Changes), func(c mods.Change) bool {
-		return slices.Contains(p.Form.Names, c.Name)
-	}))
-}
 
 // InPlan reports whether the plan already installs or changes a mod.
 func (p ModPlanPage) InPlan(name string) bool {
@@ -1013,21 +1000,26 @@ func without(names []string, name string) []string {
 	return slices.DeleteFunc(slices.Clone(names), func(n string) bool { return n == name })
 }
 
-// Danger says the confirming button is the danger style: the plan stops
-// a running game, takes mods away, or drops what the save built. Adding or
-// updating mods of a stopped world is the primary action (DESIGN 7.1).
+// Danger says the plan destroys something, so its box and button are the
+// danger style: it removes a mod, drops what the save built, or goes on
+// without a save's mod. Anything else is the primary action, on a running
+// world too, whose restart the steps say in words (DESIGN 7.1, 8.11).
 func (p ModPlanPage) Danger() bool {
-	if p.Running || len(p.Drops) > 0 {
+	if len(p.Drops) > 0 || slices.ContainsFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Action == mods.ActRemove }) {
 		return true
-	}
-	for _, c := range p.Plan.Changes {
-		if c.Action == mods.ActDisable || c.Action == mods.ActRemove {
-			return true
-		}
 	}
 	return slices.ContainsFunc(p.Plan.Unresolved, func(u mods.Unresolved) bool {
 		return u.Choice != nil && u.Choice.Kind == mods.ChoiceWithout
 	})
+}
+
+// dropsMissing is the error for an unticked drops box: it names the one
+// mod, or counts several.
+func dropsMissing(drops []string) i18n.Msg {
+	if len(drops) == 1 {
+		return i18n.M("mods.drops.confirm_missing_one", "mod", i18n.Ident(drops[0]))
+	}
+	return i18n.M("mods.drops.confirm_missing", "count", len(drops))
 }
 
 // dropsField is the box that confirms the Drops.
@@ -1116,6 +1108,8 @@ func (p ModPlanPage) Announce() i18n.Msg {
 		return i18n.M("mods.plan.redrawn_conflicts", "count", len(p.Plan.Conflicts))
 	case p.Nothing():
 		return i18n.M("mods.plan.nothing")
+	case p.Form.Fixed != "":
+		return i18n.M("mods.plan.fixed", "mod", p.Form.Fixed, "count", p.Count())
 	case p.Form.Added != "":
 		return i18n.M("mods.plan.added", "mod", p.Form.Added, "count", p.Count())
 	case p.Form.Removed != "":
@@ -1152,6 +1146,9 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	var one any = ""
 	if len(p.Form.Names) == 1 {
 		one = i18n.Ident(p.Form.Names[0])
+	}
+	if len(p.Form.AlsoDisable)+len(p.Form.AlsoRemove) > 0 {
+		return i18n.M("mods.plan.heading.change", "world", w)
 	}
 	switch p.Form.Kind {
 	case mods.KindInstall:
@@ -1205,6 +1202,9 @@ func (p ModPlanPage) Downloads() int {
 // Button is the confirming button's words, repeating the verb (DESIGN 7.4).
 func (p ModPlanPage) Button() i18n.Msg {
 	n := p.Count()
+	if p.extraKinds() {
+		return i18n.M("mods.plan.button.change", "count", n)
+	}
 	switch p.Form.Kind {
 	case mods.KindUpdate:
 		return i18n.M("mods.plan.button.update", "count", n)
@@ -1244,44 +1244,6 @@ func (p ModPlanPage) CanApply() bool {
 	return true
 }
 
-// PlanGroup is one kind of change in the plan's list.
-type PlanGroup struct {
-	Title i18n.Msg
-	Items []i18n.Msg
-}
-
-var groupTitles = []struct {
-	act   mods.Action
-	title i18n.Msg
-}{
-	{mods.ActInstall, i18n.M("mods.plan.group.install")},
-	{mods.ActUpgrade, i18n.M("mods.plan.group.upgrade")},
-	{mods.ActDowngrade, i18n.M("mods.plan.group.downgrade")},
-	{mods.ActEnable, i18n.M("mods.plan.group.enable")},
-	{mods.ActDisable, i18n.M("mods.plan.group.disable")},
-	{mods.ActRemove, i18n.M("mods.plan.group.remove")},
-	{mods.ActKeep, i18n.M("mods.plan.group.keep")},
-}
-
-// Groups lists the changes by kind, in the order they matter.
-func (p ModPlanPage) Groups() []PlanGroup { return groups(p.Plan.Changes) }
-
-func groups(changes []mods.Change) []PlanGroup {
-	var out []PlanGroup
-	for _, g := range groupTitles {
-		var items []i18n.Msg
-		for _, c := range changes {
-			if c.Action == g.act {
-				items = append(items, changeText(c))
-			}
-		}
-		if len(items) > 0 {
-			out = append(out, PlanGroup{Title: g.title, Items: items})
-		}
-	}
-	return out
-}
-
 // changeText words one change and why it is in the plan.
 func changeText(c mods.Change) i18n.Msg {
 	var what i18n.Msg
@@ -1315,15 +1277,6 @@ func changeText(c mods.Change) i18n.Msg {
 		what = join(what, i18n.M("mods.plan.warn.older"))
 	}
 	return what
-}
-
-// ConflictTexts word the plan's conflicts (SPEC 9.2).
-func (p ModPlanPage) ConflictTexts() []i18n.Msg {
-	out := make([]i18n.Msg, len(p.Plan.Conflicts))
-	for i, c := range p.Plan.Conflicts {
-		out[i] = conflictText(c)
-	}
-	return out
 }
 
 func conflictText(c mods.Conflict) i18n.Msg {
@@ -1466,6 +1419,9 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		return p
 	}
 	p.Drops = s.planDrops(ctx, sum.ID, p.Plan, p.Running)
+	if p.Have, err = s.worlds.Mods(sum.ID); err != nil {
+		s.log.Warn("list the mods for the plan's fixes", "world", sum.ID, "error", err)
+	}
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
 	return p
 }
@@ -1479,10 +1435,8 @@ func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
 		return
 	}
 	p.Installed = map[string]bool{}
-	if list, err := s.worlds.Mods(p.World.ID); err == nil {
-		for _, m := range list {
-			p.Installed[m.Name] = true
-		}
+	for _, m := range p.Have {
+		p.Installed[m.Name] = true
 	}
 	hits, err := s.portal.Search(ctx, mods.GameLine(p.World.GameVersion), p.Form.Query)
 	if err != nil {
@@ -1514,6 +1468,13 @@ var errStagedGone = errors.New("the uploaded mod zip is gone")
 // planRequest builds the resolver's request from the form, reading a
 // sync's save and an uploaded zip's info.json again.
 func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
+	req, err := s.kindRequest(id, p)
+	req.AlsoDisable, req.AlsoRemove = p.Form.AlsoDisable, p.Form.AlsoRemove
+	return req, err
+}
+
+// kindRequest is the request for the form's kind of change.
+func (s *server) kindRequest(id string, p *ModPlanPage) (mods.Request, error) {
 	f := &p.Form
 	var up *world.ModInfo
 	if f.Staged != "" {
@@ -1624,7 +1585,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 		}
 	}
 	if len(p.Drops) > 0 && !f.DropsConfirmed {
-		p.DropsError = i18n.M("mods.drops.confirm_missing")
+		p.DropsError = dropsMissing(p.Drops)
 	}
 	if len(p.Problems()) > 0 {
 		s.page(w, r, http.StatusBadRequest, u.Username, p)

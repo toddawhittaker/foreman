@@ -171,28 +171,19 @@
     "other": "Dieser Plan lädt {count} Mods herunter, und Downloads sind aus, weil Foreman kein factorio.com-Konto hat."
   },
   "mods.plan.nothing": "Nichts muss geändert werden: Die Mods sind schon wie gewünscht.",
-  "mods.plan.download": {
-    "one": "{count} Mod vom Mod-Portal herunterladen und gegen ihre Prüfsumme prüfen. Schlägt der Download fehl, passiert sonst nichts.",
-    "other": "{count} Mods vom Mod-Portal herunterladen und jede gegen ihre Prüfsumme prüfen. Schlägt ein Download fehl, passiert sonst nichts."
-  },
   "mods.plan.warn_stop": "Die Spieler warnen, dann den Server speichern und stoppen.",
   "mods.plan.snapshot": "Einen Snapshot von {world} mit der Bezeichnung „{label}“ erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
-  "mods.plan.change": "Die Mods ändern:",
-  "mods.plan.asked.heading": "Mods, die du ausgewählt hast:",
   "mods.plan.asked.remove": "Aus dem Plan entfernen",
-  "mods.plan.needed.heading": "Was sie brauchen:",
-  "mods.plan.change_above": "Die oben aufgeführten Mod-Änderungen vornehmen.",
   "mods.plan.add.heading": "Eine weitere Mod hinzufügen",
   "mods.plan.add.back": "Zurück zum Plan",
   "mods.plan.start": "Den Server wieder starten.",
-  "mods.plan.undo": "Zum Rückgängigmachen diesen Snapshot auf der Seite „Snapshots“ wiederherstellen.",
+  "mods.plan.undo": "Danach erscheint beim Ergebnis ein Rückgängig mit einem Klick, das diesen Snapshot wiederherstellt.",
   "mods.plan.group.install": "Installieren",
   "mods.plan.group.upgrade": "Auf neuere Version",
   "mods.plan.group.downgrade": "Auf ältere Version",
   "mods.plan.group.enable": "Aktivieren",
   "mods.plan.group.disable": "Deaktivieren",
   "mods.plan.group.remove": "Entfernen",
-  "mods.plan.group.keep": "Unverändert lassen",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} {from} auf {to}",
   "mods.plan.item.uploaded": "{mod} {version}, aus der hochgeladenen Zip-Datei",
@@ -246,17 +237,20 @@
   "mods.unresolved.upload_label": "Zip-Datei von {mod} {version}",
   "mods.unresolved.upload_button": "Zip-Datei hochladen",
   "mods.drops.warning": {
-    "one": "Der Speicherstand, der geladen wird, nutzt {count} Mod, die diese Änderung deaktiviert: {mods}. Startet das Spiel ohne sie, löscht es alles, was sie der Welt hinzugefügt hat.",
-    "other": "Der Speicherstand, der geladen wird, nutzt {count} Mods, die diese Änderung deaktiviert: {mods}. Startet das Spiel ohne sie, löscht es alles, was sie der Welt hinzugefügt haben."
+    "one": "Der Speicherstand, der geladen wird, nutzt {mods}. Ohne sie löscht das Spiel alles, was {mods} in der Welt gebaut hat.",
+    "other": "Der Speicherstand, der geladen wird, nutzt {count} Mods, die diese Änderung deaktiviert: {mods}. Ohne sie löscht das Spiel alles, was sie in der Welt gebaut haben."
   },
-  "mods.drops.confirm_missing": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese Mods hinzugefügt haben, oder brich die Änderung ab.",
+  "mods.drops.confirm_missing": {
+    "one": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese Mod gebaut hat, oder brich ab.",
+    "other": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese {count} Mods gebaut haben, oder brich ab."
+  },
   "mods.conflict.incompatible": "{mod} kann nicht zusammen mit {other} laufen.",
   "mods.conflict.space_age_off": "{mod} braucht {other}, die zu Space Age gehört, und Space Age ist für diese Welt aus.",
   "mods.conflict.space_age_save": "Der Speicherstand nutzt {mod}, die zu Space Age gehört, und Space Age ist für diese Welt aus. Aktiviere zuerst Space Age in den Einstellungen der Welt.",
   "mods.conflict.no_release": "Keine Version von {mod} für diese Spielversion erfüllt, was der Plan braucht: {needs}.",
   "mods.conflict.version": "{mod} {version} erfüllt nicht, was der Plan braucht: {needs}.",
   "mods.conflict.not_on_portal": "{mod} ist nicht auf dem Mod-Portal. Lade stattdessen die Zip-Datei hoch.",
-  "mods.conflict.required_by": "{other} braucht {mod}. Deaktiviere oder entferne zuerst {other}.",
+  "mods.conflict.required_by": "{other} braucht {mod}.",
   "mods.conflict.built_in": "{mod} ist ins Spiel eingebaut. Diese Mod folgt der Space-Age-Einstellung der Welt und wird nicht von Hand geändert.",
   "mods.conflict.local": "{mod} ist als Ordner installiert, und Foreman ersetzt nie eine Mod, die als Ordner vorliegt. Ändere sie im Mod-Ordner der Welt.",
   "mods.conflict.not_installed": "{mod} ist in dieser Welt nicht installiert.",
@@ -302,5 +296,35 @@
   "mods.built_in.line_on": "Eingebaut, Version {version}: {mods}. Space Age ist aktiviert, deshalb sind alle aktiviert.",
   "mods.built_in.line_off": "Eingebaut, Version {version}: {mods}. Space Age ist deaktiviert, deshalb sind {off} deaktiviert.",
   "mods.built_in.change": "Space Age ändern",
-  "mods.built_in.turn_on": "Space Age aktivieren"
+  "mods.built_in.turn_on": "Space Age aktivieren",
+  "mods.plan.button.change": {
+    "one": "{count} Mod ändern",
+    "other": "{count} Mods ändern"
+  },
+  "mods.plan.changes": "Änderungen:",
+  "mods.plan.kept": {
+    "one": "{count} weitere Mod bleibt unverändert",
+    "other": "{count} weitere Mods bleiben unverändert"
+  },
+  "mods.plan.step.download": {
+    "one": "{count} Mod vom Mod-Portal herunterladen und ihre Prüfsumme prüfen.",
+    "other": "{count} Mods vom Mod-Portal herunterladen und ihre Prüfsummen prüfen."
+  },
+  "mods.plan.step.stop": "Die Spieler warnen, dann {world} speichern und stoppen.",
+  "mods.plan.step.snapshot": "Einen Snapshot mit der Bezeichnung „{label}“ erstellen.",
+  "mods.plan.step.change_start": "Die Mods ändern, dann {world} wieder starten.",
+  "mods.plan.step.change_stopped": "Die Mods ändern. {world} bleibt gestoppt, wie jetzt.",
+  "mods.plan.step.fails": "Schlägt ein Schritt fehl, folgen die Schritte danach nicht.",
+  "mods.plan.fix.remove": "{mod} in diesem Plan mit entfernen",
+  "mods.plan.fix.disable": "{mod} auch deaktivieren",
+  "mods.plan.back_search": "Zurück zur Suche",
+  "mods.plan.fixed": {
+    "one": "Der Plan schaltet jetzt auch {mod} ab. Er ändert {count} Mod.",
+    "other": "Der Plan schaltet jetzt auch {mod} ab. Er ändert {count} Mods."
+  },
+  "mods.drops.confirm": {
+    "one": "Löschen, was {mods} gebaut hat. Der Snapshot „{label}“ behält eine Kopie.",
+    "other": "Löschen, was {mods} gebaut haben. Der Snapshot „{label}“ behält eine Kopie."
+  },
+  "mods.drops.confirm_missing_one": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was {mod} gebaut hat, oder brich ab."
 }

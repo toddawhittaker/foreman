@@ -1165,7 +1165,12 @@ none. Dependencies of installed mods are read from their own
 `info.json`, so turning mods off or on and removing them need no portal. A
 search result's "Add to plan" starts one plan, and "Add another mod" on the
 plan page adds more: several mods are one plan, one snapshot and one
-restart. (P0)
+restart. A conflict that turning off one installed mod would clear offers
+that as a control on the plan page (17.9): "Remove *mod* as part of this
+plan" when two mods cannot run together, "Disable *mod* too" when an
+enabled mod needs one the plan turns off. It draws the plan again with
+both changes, still one snapshot. A plan with a conflict does not list
+the steps of applying it. (P0)
 
 9.3. **Update.** Show which mods in a world have a newer version
 compatible with the world's game version, and apply any or all as one
@@ -1188,7 +1193,7 @@ by the pre-start check (7.4). (P1)
 
 9.4. **Enable, disable and remove** a mod, each as a snapshotted change.
 Removing a mod that another enabled mod requires is refused with the
-reason. Built-in mods cannot be removed, and a mod installed as a folder is
+reason, and the plan offers to disable that mod too (9.2). Built-in mods cannot be removed, and a mod installed as a folder is
 shown as "local" and never replaced. Turning off or removing a mod that the
 save about to load uses needs a confirmation on the plan page, a ticked box
 that says the game will delete what that mod built. While the world's

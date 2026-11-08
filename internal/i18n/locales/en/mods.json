@@ -171,28 +171,19 @@
     "other": "This plan downloads {count} mods, and downloads are off because Foreman has no factorio.com account."
   },
   "mods.plan.nothing": "Nothing needs to change: the mods are already as asked.",
-  "mods.plan.download": {
-    "one": "Download {count} mod from the mod portal and check it against its checksum. If the download fails, nothing else happens.",
-    "other": "Download {count} mods from the mod portal and check each against its checksum. If a download fails, nothing else happens."
-  },
   "mods.plan.warn_stop": "Warn the players, then save and stop the server.",
   "mods.plan.snapshot": "Take a snapshot of {world}, labelled \"{label}\". If the snapshot fails, nothing else happens.",
-  "mods.plan.change": "Change the mods:",
-  "mods.plan.asked.heading": "Mods you asked for:",
   "mods.plan.asked.remove": "Remove from plan",
-  "mods.plan.needed.heading": "What they need:",
-  "mods.plan.change_above": "Make the mod changes listed above.",
   "mods.plan.add.heading": "Add another mod",
   "mods.plan.add.back": "Back to the plan",
   "mods.plan.start": "Start the server again.",
-  "mods.plan.undo": "To undo, restore that snapshot from the Snapshots tab.",
+  "mods.plan.undo": "When it is done, a one-click Undo appears with the result, which restores that snapshot.",
   "mods.plan.group.install": "Install",
   "mods.plan.group.upgrade": "Upgrade",
   "mods.plan.group.downgrade": "Downgrade",
   "mods.plan.group.enable": "Enable",
   "mods.plan.group.disable": "Disable",
   "mods.plan.group.remove": "Remove",
-  "mods.plan.group.keep": "Leave alone",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} {from} to {to}",
   "mods.plan.item.uploaded": "{mod} {version}, from the uploaded zip",
@@ -246,17 +237,20 @@
   "mods.unresolved.upload_label": "Zip of {mod} {version}",
   "mods.unresolved.upload_button": "Upload zip",
   "mods.drops.warning": {
-    "one": "The save that loads uses {count} mod this change turns off: {mods}. When the game starts without it, the game deletes everything it added to the world.",
-    "other": "The save that loads uses {count} mods this change turns off: {mods}. When the game starts without them, the game deletes everything they added to the world."
+    "one": "The save that loads uses {mods}. Without it, the game deletes everything {mods} built in the world.",
+    "other": "The save that loads uses {count} mods this change turns off: {mods}. Without them, the game deletes everything they built in the world."
   },
-  "mods.drops.confirm_missing": "Tick the box to confirm that the game will delete what these mods added, or cancel the change.",
+  "mods.drops.confirm_missing": {
+    "one": "Tick the box to confirm that the game deletes what this mod built, or cancel.",
+    "other": "Tick the box to confirm that the game deletes what these {count} mods built, or cancel."
+  },
   "mods.conflict.incompatible": "{mod} cannot run together with {other}.",
   "mods.conflict.space_age_off": "{mod} needs {other}, which comes with Space Age, and Space Age is off for this world.",
   "mods.conflict.space_age_save": "The save uses {mod}, which comes with Space Age, and Space Age is off for this world. Turn Space Age on in the world's settings first.",
   "mods.conflict.no_release": "No release of {mod} for this game version meets what the plan needs: {needs}.",
   "mods.conflict.version": "{mod} {version} does not meet what the plan needs: {needs}.",
   "mods.conflict.not_on_portal": "{mod} is not on the mod portal. Upload its zip instead.",
-  "mods.conflict.required_by": "{other} needs {mod}. Disable or remove {other} first.",
+  "mods.conflict.required_by": "{other} needs {mod}.",
   "mods.conflict.built_in": "{mod} is built into the game. It follows the world's Space Age setting and is not changed by hand.",
   "mods.conflict.local": "{mod} is installed as a folder, and Foreman never replaces a folder mod. Change it in the world's mods folder.",
   "mods.conflict.not_installed": "{mod} is not installed in this world.",
@@ -302,5 +296,35 @@
   "mods.built_in.line_on": "Built in, version {version}: {mods}. Space Age is on, so all of them are on.",
   "mods.built_in.line_off": "Built in, version {version}: {mods}. Space Age is off, so {off} are off.",
   "mods.built_in.change": "Change Space Age",
-  "mods.built_in.turn_on": "Turn on Space Age"
+  "mods.built_in.turn_on": "Turn on Space Age",
+  "mods.plan.button.change": {
+    "one": "Change {count} mod",
+    "other": "Change {count} mods"
+  },
+  "mods.plan.changes": "Changes:",
+  "mods.plan.kept": {
+    "one": "{count} other mod stays as it is",
+    "other": "{count} other mods stay as they are"
+  },
+  "mods.plan.step.download": {
+    "one": "Download {count} mod from the mod portal and check its checksum.",
+    "other": "Download {count} mods from the mod portal and check their checksums."
+  },
+  "mods.plan.step.stop": "Warn the players, then save and stop {world}.",
+  "mods.plan.step.snapshot": "Take a snapshot labelled \"{label}\".",
+  "mods.plan.step.change_start": "Change the mods, then start {world} again.",
+  "mods.plan.step.change_stopped": "Change the mods. {world} stays stopped, as it is now.",
+  "mods.plan.step.fails": "If a step fails, the steps after it do not happen.",
+  "mods.plan.fix.remove": "Remove {mod} as part of this plan",
+  "mods.plan.fix.disable": "Disable {mod} too",
+  "mods.plan.back_search": "Back to search",
+  "mods.plan.fixed": {
+    "one": "The plan now turns off {mod} too. It changes {count} mod.",
+    "other": "The plan now turns off {mod} too. It changes {count} mods."
+  },
+  "mods.drops.confirm": {
+    "one": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy.",
+    "other": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy."
+  },
+  "mods.drops.confirm_missing_one": "Tick the box to confirm that the game deletes what {mod} built, or cancel."
 }
