@@ -63,7 +63,7 @@
 {{- else}}
 <section class="confirm{{if not .Danger}} confirm--plain{{end}}">
   {{- /* A choice's control asks for the plan again (hx-get); the form gives it what to send and where the new plan goes. */}}
-  <form method="post" action="{{.Path}}" novalidate hx-include="closest form" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
+  <form method="post" action="{{.Path}}" novalidate hx-include="closest form" hx-sync="this:replace" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
     <input type="hidden" name="add" value="1">
     <input type="hidden" name="kind" value="{{.Form.Kind}}">
     {{- range .Form.Names}}
@@ -120,7 +120,7 @@
     {{- if .Nothing}}
     <p id="plan-same">{{t "mods.version.same"}}</p>
     {{- end}}
-    {{- /* Choosing a release redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press, so the redraw waits for them to stop and a newer one replaces an older. */}}
+    {{- /* Choosing a release redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press; the form replaces an older redraw with the newest, so the last choice wins. */}}
     {{- with $versions}}
     {{- /* One mod's list is one field; several share a fieldset and its hint. */}}
     {{- $many := gt (len .) 1}}
@@ -135,7 +135,7 @@
         {{- if not $many}}
         <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
         {{- end}}
-        <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$.Page.Path}}" hx-trigger="change delay:300ms" hx-sync="closest form:replace" aria-describedby="plan-versions-hint">
+        <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$.Page.Path}}" aria-describedby="plan-versions-hint">
           {{- range .Options}}
           <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Label.IsZero}}{{.Value}}{{else}}{{msg .Label}}{{end}}</option>
           {{- end}}

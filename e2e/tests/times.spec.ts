@@ -129,4 +129,5 @@ test("the crash-loop Restore offer names the local time", async ({ page, foreman
   const restore = page.locator("#act-recover-restore");
   await expect(restore).toHaveText(/^Restore "Before start anyway" \(.*\d:\d\d.*\b(EST|EDT)\)$/);
   await expect(restore).not.toHaveText(/UTC|ago|now/);
+  await checkPage(page);
 });
