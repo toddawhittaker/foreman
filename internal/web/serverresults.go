@@ -11,6 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // How the last action on the Server page ended, and the next step it offers
@@ -184,7 +185,7 @@ func (p ServerPage) Done() i18n.Msg {
 	case actionSnapshot:
 		return i18n.M("server.done.snapshot", "label", p.Result.Taken, "world", p.World.Name)
 	case game.AuditMods:
-		return modsDone(p.Result.Mods.Changes, p.World.Name)
+		return modsDone(p.Result.Mods, p.World.Name)
 	}
 	return i18n.Msg{}
 }
@@ -196,20 +197,67 @@ func (p ServerPage) Done() i18n.Msg {
 type modResult struct {
 	Changes []mods.Change
 	Retry   string
+	// Since is when the snapshot the change reused was taken, before an
+	// earlier change of the same run (SPEC 9.4); zero when it took its own.
+	Since time.Time
 }
 
 // modsDoneNamed is how many mods a Done message names before "and N more".
 const modsDoneNamed = 3
 
 // modsDone says what a finished mod change did to world, then the snapshot
-// it took first (SPEC 17.9). A change with no mod in it, such as a
-// settings upload, keeps the plain sentence.
-func modsDone(changes []mods.Change, world string) i18n.Msg {
-	what := modsChanged(changes, world)
-	if what.IsZero() {
-		return i18n.M("mods.done", "world", world, "label", i18n.M("worlds.snapshot.label.before_mods"))
+// it took first, or the earlier one it kept (SPEC 9.4, 17.9). A change with
+// no mod in it, such as a settings upload, keeps the plain sentence.
+func modsDone(res modResult, world string) i18n.Msg {
+	label := i18n.M("worlds.snapshot.label.before_mods")
+	what := modsChanged(res.Changes, world)
+	switch {
+	case !res.Since.IsZero() && what.IsZero():
+		what = i18n.M("server.mods_done.changed", "world", world)
+	case what.IsZero():
+		return i18n.M("mods.done", "world", world, "label", label)
 	}
-	return join(what, i18n.M("server.mods_done.snapshot", "label", i18n.M("worlds.snapshot.label.before_mods")))
+	if !res.Since.IsZero() {
+		return join(what, i18n.M("server.mods_done.kept", "label", label, "time", momentUTC(res.Since)))
+	}
+	return join(what, i18n.M("server.mods_done.snapshot", "label", label))
+}
+
+// modUndoSnapshot is the snapshot that undoes a mod change, given the
+// world's newest mod snapshot and its open run of mod changes from before
+// it (SPEC 9.4, 17.9), and when that run began if the change continued it.
+// It is "" when no snapshot undoes the change: a refusal touches nothing,
+// and a failure that left the run's files as they were changed nothing.
+func (s *server) modUndoSnapshot(id string, err error, newest string, run world.Snapshot, inRun bool) (string, time.Time) {
+	now, open := s.worlds.ModRunSnapshot(id)
+	switch {
+	case err == nil && open && inRun && now.Name == run.Name:
+		return now.Name, run.TakenAt
+	case err == nil && open:
+		return now.Name, time.Time{}
+	}
+	if after := s.newestModSnapshot(id); after != "" && after != newest {
+		return after, time.Time{}
+	}
+	// The change reused the run's snapshot and then changed the files without
+	// recording the run, so that snapshot still undoes it.
+	if inRun && !open && (err == nil || !game.IsRefusal(err)) {
+		return run.Name, run.TakenAt
+	}
+	return "", time.Time{}
+}
+
+// modsUndo offers the snapshot that undoes a mod change; after a run of
+// changes it names when the run began, since it undoes them all (SPEC 9.4).
+func modsUndo(id string, res actionResult) *Offer {
+	if res.Undo == "" {
+		return nil
+	}
+	label := i18n.M("mods.undo")
+	if !res.Mods.Since.IsZero() {
+		label = i18n.M("server.undo.mods_since", "time", momentUTC(res.Mods.Since))
+	}
+	return &Offer{Path: restorePath(id, res.Undo), Label: label}
 }
 
 // modActs are the kinds of change a Done message names, in the order a
@@ -360,9 +408,7 @@ func (p ServerPage) Undo() *Offer {
 			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: i18n.M("server.undo.rollback")}
 		}
 	case game.AuditMods:
-		if p.Result.Undo != "" {
-			return &Offer{Path: restorePath(p.World.ID, p.Result.Undo), Label: i18n.M("mods.undo")}
-		}
+		return modsUndo(p.World.ID, p.Result)
 	case game.AuditUpdate:
 		if r := p.Rollback; r != nil {
 			return &Offer{Path: r.Path, Label: i18n.M("server.undo.update", "version", r.Version)}

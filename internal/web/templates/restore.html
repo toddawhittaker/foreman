@@ -1,8 +1,12 @@
-{{define "title"}}{{t "server.restore.title" "world" .Page.WorldName}}{{end}}
+{{define "title"}}{{if .Page.ModUndo}}{{t "server.restore.mods.title" "world" .Page.WorldName}}{{else}}{{t "server.restore.title" "world" .Page.WorldName}}{{end}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
+{{- if .ModUndo}}
+<h1 id="confirm-heading">{{t "server.restore.mods.heading" "world" .WorldName}}</h1>
+{{- else}}
 <h1 id="confirm-heading">{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}</h1>
+{{- end}}
 {{template "summary" .Problems}}
 {{- if not .Error.IsZero}}
 <div class="message message--error" id="action-error" tabindex="-1" autofocus>
@@ -14,6 +18,15 @@
 </div>
 {{- end}}
 <section class="confirm">
+  {{- /* What undo does to the mods comes first, in the admin's words; the steps that do it follow (SPEC 17.5). */}}
+  {{- with .ModUndo}}
+  <p>{{tHTML "server.restore.mods.lead" "label" (snapLabel $.Page.Snapshot) "time" (momentUTC $.Page.Snapshot.TakenAt)}}</p>
+  <ul id="mod-undo">
+    {{- range .}}
+    <li>{{msgHTML .}}</li>
+    {{- end}}
+  </ul>
+  {{- end}}
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .Deleted}}

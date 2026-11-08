@@ -46,13 +46,13 @@ func TestModsDoneNamesTheChange(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := english(modsDone(c.changes, "Base")); got != c.want+snap {
+			if got := english(modsDone(modResult{Changes: c.changes}, "Base")); got != c.want+snap {
 				t.Errorf("got  %q\nwant %q", got, c.want+snap)
 			}
 		})
 	}
 	// A settings upload changes no mod, so the plain sentence stays.
-	if got := english(modsDone(nil, "Base")); got != `The mods of Base are changed. Foreman took the snapshot "Before mod change" first.` {
+	if got := english(modsDone(modResult{}, "Base")); got != `The mods of Base are changed. Foreman took the snapshot "Before mod change" first.` {
 		t.Errorf("no changes: %q", got)
 	}
 }
