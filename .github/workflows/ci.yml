@@ -1,17 +1,22 @@
 name: ci
 
+# Pull requests into an epic branch run no CI: the orchestrator's local
+# checks gate those merges, and CI runs on each push to the epic branch
+# instead, so a CI-only failure shows up minutes after the merge behind it.
 on:
   pull_request:
-  push:
     branches: [main]
+  push:
+    branches: [main, 'epic/**']
 
 permissions:
   contents: read
 
-# A new push to a pull request cancels that pull request's older run.
+# A new push to a pull request or an epic branch cancels that ref's older
+# run; the newer tree holds the older change too. Runs on main all finish.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # The jobs run in parallel; together they are `make ci`. The `ci` job at the
 # end is the one check the ruleset on main requires, so adding a job here
@@ -31,8 +36,9 @@ jobs:
       code: ${{ steps.decide.outputs.code }}
       tree: ${{ steps.decide.outputs.tree }}
     steps:
-      # Depth 2 holds the pull request's merge commit and its first parent,
-      # the base it is merged onto.
+      # Depth 2 holds the pull request's merge commit, or the pushed commit,
+      # and its first parent: the base it is merged onto, or the branch's
+      # previous head.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
@@ -59,7 +65,7 @@ jobs:
           fi
 
           # A push to main runs in full unless its tree was already tested.
-          if [ "$EVENT" != pull_request ]; then
+          if [ "$EVENT" != pull_request ] && [ "$GITHUB_REF" = refs/heads/main ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi

@@ -13,7 +13,10 @@ for anything `gh` has no command for, such as a PR's changed files.
 `make verify` run locally on a PR's head commit is the check that gates
 every merge, and the orchestrator or the merger agent runs it before
 merging. The CI workflow in `.github/workflows/ci.yml` runs on every
-pull request and every push to `main`. Its jobs run in parallel and
+pull request into `main`, every push to `main`, and every push to an
+`epic/` branch. A task pull request into an epic branch runs no CI; the
+push its merge makes does, and a failure there becomes a fix task at
+once. Its jobs run in parallel and
 together check the same things as `make ci`, plus the image size limit:
 `make verify` is split into `vet`, `lint` and `test` jobs, the type check
 runs with `e2e`, and `image` builds the container. A final `ci` job passes
@@ -25,17 +28,18 @@ never needs a ruleset change. Read a failing run's log with
 
 A first `changes` job decides whether the build and test jobs (`verify`,
 `e2e` and `image`) run. It skips them in two cases. First, when a pull
-request changes only files that nothing in the build, the tests or CI
+request or a push to an epic branch changes only files that nothing in the build, the tests or CI
 reads: anything under `docs/`, `.claude/` or `.githooks/`, and Markdown
 files anywhere outside `.github/`. Second, when an earlier green run
-already tested the same git tree, on a pull request or a push to `main`.
+already tested the same git tree, on a pull request or a push. So the
+epic pull request into `main` reuses the run on the epic branch's head.
 Every full green run records its tree as an artifact named
 `tested-tree-<tree hash>`, kept 30 days, so a tree is re-tested on a fresh
 runner now and then. Markers from forks' pull requests are ignored. A push
 to `main` is never skipped for being documentation only. If the lookup
 fails, everything runs; if `changes` itself fails, `ci` fails.
 
-A `trailers` job runs on every pull request, even when the rest is
+A `trailers` job runs on every pull request into `main`, even when the rest is
 skipped. It fails when a commit in the pull request, or its title or body,
 credits an AI assistant as co-author, and names the commit. Editing the
 title or body does not rerun CI, so an edit is checked at the next push.

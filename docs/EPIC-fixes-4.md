@@ -21,8 +21,9 @@ batch, by Todd's ruling.
 
 - R1. The Generate tasks all edit `generate.html`, `mapgenform.html`,
   `generatepreview.html`, `generate.js`, `preview.js`, `generate.go` and
-  `mapgen.json`, so they run one after another (lane G), each cut from the
-  batch head after the one before it lands.
+  `mapgen.json`, so they run one after another (lane G), each started from the
+  previous task's head as soon as that head passes the orchestrator's
+  checks, without waiting for its merge.
 - R2. #319 and #322 are one task: both are about choosing between all
   planets and one planet in the preview.
 - R3. `foreman.css` is the one shared file. A wave-one task may only add
@@ -64,9 +65,16 @@ outside it says so in its report.
   `foreman.css`), checked again by the orchestrator before the squash
   merge.
 - After each wave: `make verify` and full `make e2e` on the batch head.
-- Reviews at the end: code-reviewer, a11y-reviewer, security-reviewer (S
-  sets which save file loads; M chooses which portal release downloads),
-  and a second-agent translation review of the new strings (SPEC 22.6).
+- Reviews per task, started as each task PR merges and run while the
+  next tasks work: code-reviewer always, a11y-reviewer for screens,
+  security-reviewer for S (sets which save file loads) and M (chooses
+  which portal release downloads). Findings go into the lane's next task
+  or a small fix task at once.
+- At the end: one integration review (code-reviewer across tasks and dead
+  code, a11y-reviewer for flows that cross tasks), and a second-agent
+  translation review of the new strings (SPEC 22.6).
+- A task PR stuck for more than 30 minutes gets its own time-boxed fix
+  agent; its lane continues from the last verified head.
 - Real-game check: S and M change which save and which mod versions the
   game loads, so a tester runs them against a real
   `factoriotools/factorio` container before the batch pull request. It
