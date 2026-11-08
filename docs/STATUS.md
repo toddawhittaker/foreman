@@ -10,8 +10,9 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 below uses the new numbers.
 
 Epics 1 to 8, the Gate A fixes and the fix batches after Gate A (hub
-fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3) are done. Gate A (SPEC 19.1)
-passed on 2026-11-05. Gate B (SPEC 19.2) follows Epic 8.
+fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4)
+are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2)
+follows Epic 8.
 
 ## Epic 1: Foundation
 
@@ -1068,8 +1069,8 @@ remembered.
   than the Snapshots tab total. The list has no column total.
 - There is no unit test for the bulk delete refusal while a game operation
   runs. The single delete has the same gap.
-- The Deleted worlds page still shows UTC in its Restore link names, and
-  setup does not carry a return path.
+- Setup does not carry a return path. (The Deleted worlds page's Restore
+  link names showed UTC; closed in fixes batch 4.)
 - The "Taken:" and "Size:" labels of stacked snapshot rows are English
   text in `foreman.css`; i18n (#87) must move them into templates.
 - The restore page shows a snapshot's size without `snapshot.json`, while
@@ -1809,15 +1810,15 @@ which was the plan's own pull request).
 ### Gaps left
 
 - Per-admin factorio.com accounts are still future work (#354).
-- Deferred to a later batch: #340 (choose a mod's version) and #378.
+- Closed in fixes batch 4: #340 (choose a mod's version) and #378.
 - Code-review refactors left for later: `restoremods.go` re-reads mod lists
   the world package already parses; the web layer works out which snapshot
   undoes a change from the files; `currentCount` re-reads the mods list.
 - Flagged rows on the Mods tab are not sorted first. At 320 px a row with
   Update wraps Remove to a second line, and a folder mod's Disable sits at
   the row's end instead of under the others'.
-- The Undo button's time is the server's UTC text, not local. A local-only
-  mode in `time.js` would fix it, but every page uses that script.
+- Closed in fixes batch 4: the Undo button's time was the server's UTC
+  text; it now shows local time.
 - The snapshot step reads "done" when a run's snapshot is reused.
 - The refusal and the Server page notice can show together, and then the
   page has two "Update *mod*" buttons for the same plan.
@@ -1838,3 +1839,144 @@ which was the plan's own pull request).
   and not yet removed; there is no filter-as-you-type.
 - Some code comments still cite issue numbers, and some older tests cite
   "ruling N" from earlier epics.
+
+## Fixes batch 4
+
+Serves SPEC 5.6, 5.11, 7.4, 7.11, 9.2, 9.3, 17.5, 17.9 to 17.12 and 22,
+with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
+#323, #340, #378, #398 and #399. The sweep of the remaining "labelled" and
+"cancelled" in English strings (#320) was a separate task of the batch.
+
+### Delivered
+
+- **Generate page (#315, #316, #320, #321, #323).** Leaving Generate asks
+  with the browser's own "leave this page?" question (`beforeunload`)
+  when a setting differs from what the page loaded with. It does not ask
+  for views (tab, preview size, territory box), after a successful
+  Generate, or when nothing changed. A redraw of a dirty form keeps the
+  mark, and a page restored from the browser's back-forward cache warns
+  again. The "Without iron ore" warning sits on its own line under the
+  resource's grid, so the columns line up. The thumbnail's territory
+  labels are short ("Sm.", "Med.", "Big") and pulled inward so they stay
+  inside the picture; the counts stay as visually hidden text, still
+  announced. The seed shows at the end of the "Map preview" heading's
+  line, the size hint is one line and says what the pin is, and the large
+  view's key help is one line on a desktop. English on Generate uses
+  American spelling.
+- **One planet or All planets (#319, #322).** The Planet select is gone:
+  opening a planet's settings row picks the planet. On a world with
+  several planets the preview has two tabs, One planet (the default, one
+  large picture) and All planets (thumbnails). "Preview map" draws every
+  planet and selects All planets, so One planet is one click back.
+  Without script the tabs are hidden and Preview map works as before.
+- **One size cap (#317).** The Preview size runs 1024 to 3072 tiles, the
+  same cap as the territory box, which lost its turned-off state.
+- **Reset to defaults with Undo (#318).** One button resets the whole
+  world to the version's default preset and values, keeping the seed. It
+  asks no confirmation, because nothing saved changes; "Undo reset"
+  takes its place with focus and puts every value back in one click
+  (SPEC 17.9). Any later change to the settings, preset, seed, game
+  version or Space Age ends the Undo, and focus never drops to the page
+  body. Without script the reset is a plain round trip with no Undo.
+- **Settings beside the large map (#399).** In a large view at least
+  77rem wide, in Map settings mode, the viewed planet's Resources and
+  Terrain settings sit in a column on the left, with the map on the right.
+  They are the form's own fields, moved in when the view opens and back
+  when it closes or before any redraw of the form, so sending, checking,
+  "[modified]", reset, Undo and the leave warning behave as for a change
+  on the page. A change redraws the map after the page's usual pause; the
+  newest request wins. Keys belong to the focused field; Escape closes
+  the view. Narrower views, phones and exchange-string maps show the map
+  only. Changing a planet's setting while looking at it takes 1 click
+  instead of 3 or 4.
+- **Saves tab (#398, SPEC 7.11).** One list of saves replaces the radio
+  list and its "Use this choice" button. The row that loads next has a
+  "Loads next" badge; every other row has "Load next". The newest row's
+  button sets the choice back to "the newest save" (an empty choice), so
+  later autosaves win, and it is offered whenever a save is chosen, so a
+  choice that points at a save removed by hand can always be cleared.
+  Choosing an older save takes 3 clicks from the Server page, down from 4.
+  The form works without script; the server still checks the posted name.
+- **Mod versions (#340, SPEC 9.2, 9.3).** The plan page gives each mod an
+  install or update names a "Version of *mod*" list: "Newest that fits"
+  first, then the world's game line's releases, newest first, the
+  installed one marked. At the installed version the page says "Nothing
+  changes at this version". Each portal mod's row on the Mods tab has
+  "Change version", which is also how to go back after a bad update.
+  The server checks every chosen version against the portal's release
+  list (a new `no-such-release` conflict) and always downloads the
+  portal's own release record. A plan's release list is left out of its
+  hash. Changing a mod's version takes 4 clicks. The plan form syncs
+  all redraws so the newest choice wins. A focused Change version link
+  that the status takes away hands focus to the row's mod name, which
+  reads its note.
+- **Local times (SPEC 17.11).** The Undo button, the crash-loop Restore
+  offer and the Deleted worlds Restore link names show the browser's zone
+  (a `time` element; inside a button the local time alone, without "ago").
+  The Server page's Done box is localized just before it takes focus
+  (`window.foremanTimes.run`), so a screen reader never reads the UTC
+  text.
+- **Headings (#378, SPEC 17.12).** Section headings (`h2`) are 1.25rem at
+  weight 650, and each top-level panel after the first has a one-pixel
+  rule above it. `h3` is unchanged. DESIGN 2 and 4 record it.
+- **Tests.** The flaky refusal-layout restart test waited too little for
+  a refusal arriving by a live update; the test now waits. New real-game
+  tests cover a chosen save loading and a cleared choice loading the
+  newest (SPEC 7.11), and a mod held to an older release with one
+  snapshot first and Undo (SPEC 9.2 to 9.4). The real-game phone scenario
+  was out of date with the Server page header; it now matches.
+- **Spec and process.** SPEC 17.10 has two new rows (older save, change a
+  mod's version). I18N says English uses American spelling. The
+  `epic-run` skill's rules template now makes task agents run only fast
+  checks (each under 3 minutes, in the foreground) and leaves the full
+  `make verify`, `make e2e`, `make test-game` and `make e2e-game` to the
+  orchestrator.
+- All new and changed text is in the eight languages.
+
+### Verified
+
+- Task heads ran fast checks (`make check-go fmt-check vet lint typecheck`,
+  `go test` for the changed packages, and the browser specs for the
+  touched pages, desktop and 320 px, both themes, with the accessibility
+  scan). Late in the batch the full `make verify` and `make e2e` moved to
+  the orchestrator, who runs them on the batch head before merging.
+- Every new test was run first against the base and failed there: for
+  example 17 failures for the Generate changes, and the local-time and
+  late-redraw tests.
+- Full browser runs on task heads: 2052 passed after the first Generate
+  task, 2036 after the Saves task, and 2104 in six shards after the
+  second Generate task, with 116 skipped and none failing apart from
+  `errorlog.spec.ts`'s two expected failures.
+- Real games: `make test-game` passed on 1.1, 2.0 and 2.1 with the new
+  tests, and the 3072-tile preview test passed. `make e2e-game` passes
+  after the phone scenario fix.
+- Several fast-check runs were made at machine loads of 70 to 100 from
+  another project.
+
+### Gaps left
+
+- The large view's settings column has Resources and Terrain only; the
+  Enemy and Advanced settings are not in it.
+- In All planets mode a change made in the large view redraws every
+  planet, as it does on the page.
+- The large view's key help does not say that keys inside a setting work
+  the setting (arrows move a slider, not the map).
+- The large view's column `h3` headings look like body text.
+- The mod plan page's "Add another mod" panel has no section rule, because
+  it follows a confirmation box.
+- The newest Saves row's button is named after its file ("Load next:
+  name.zip") though it loads "the newest save".
+- The Load next buttons do not line up in a column when save names differ
+  in length.
+- On a phone, All planets is one column of full-width pictures. The key
+  help takes two lines at 320 px. Without script, Reset has no Undo.
+- "Update all mods" has no per-mod version lists.
+- There is no click-budget test for "Change a mod's version" (4 clicks),
+  though SPEC 17.10 lists it. The new strings keep the Generate preview's
+  0.75rem label size, which has no design token.
+- The Generate page was not checked in screenshots after the heading
+  change.
+- Hand-test: NVDA's reading of a focused Undo or Restore link when the
+  Server page's control region redraws.
+- Still deferred: #400 (a headless game per preview), #353, #339 (P2),
+  #132, #92, #206 and #207.

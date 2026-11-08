@@ -1915,12 +1915,14 @@ with the defaults accepted, these take at most:
 | Start the active world | 1 |
 | Stop or restart it, warning players | 2 |
 | Take a snapshot | 1 |
+| Choose an older save to load (World page, Saves, Load next) | 3 |
 | Switch to another world, downloading its game image if needed (Switch world, the world's Switch, confirm) | 3 |
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
 | Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
 | Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
+| Change a mod's version (Mods, Change version, choose the version, Change 1 mod) | 4 |
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
 | Recover after a failed start or a crash loop | 2 |
