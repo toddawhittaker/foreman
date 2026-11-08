@@ -3,13 +3,18 @@
 <div id="preview" class="preview"{{with .Preview}} data-seed="{{.Seed}}" data-filled-seed="{{$.Form.FilledSeed}}"{{end}}>
   {{- with .Preview}}
   <section aria-labelledby="preview-heading">
-    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+    {{/* The seed shares the heading's line, so the picture sits close to its controls (SPEC 5.6). */}}
+    <div class="section-head">
+      <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+      {{- if .Error.IsZero}}
+      <p class="hint">{{t "worlds.generate.preview.seed" "seed" .Seed}}</p>
+      {{- end}}
+    </div>
     {{- if .Territories.Carry}}
     {{/* The box is not here to send the choice, so it is kept for when it is (DESIGN 8.8). */}}
     <input type="hidden" name="territories" value="1">
     {{- end}}
     {{- if .Error.IsZero}}
-    <p>{{t "worlds.generate.preview.made" "seed" .Seed}} {{t "worlds.generate.preview.pin"}}</p>
     {{- if or .Choose .Territories.Show}}
     <div class="preview-controls">
       {{- if .Choose}}
@@ -70,8 +75,11 @@
   {{/* Holds the first preview's space until it arrives, so nothing moves: the picture's box and,
        unseen, the lines around it. Space Age means several planets, so a planet choice. Script only (DESIGN 8.8). */}}
   <section aria-labelledby="preview-heading" class="preview-placeholder">
-    <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
-    <p class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.made" "seed" ""}} {{t "worlds.generate.preview.pin"}}</p>
+    <div class="section-head">
+      <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
+      {{- /* The longest seed, unseen, so the heading's line wraps as it will. */}}
+      <p class="hint preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.seed" "seed" "4294967295"}}</p>
+    </div>
     {{- if .Form.SpaceAge}}
     <div class="field preview-placeholder__hold" aria-hidden="true"><span>{{t "worlds.generate.preview.planet"}}</span><span class="preview-placeholder__control"></span></div>
     {{- end}}
@@ -100,6 +108,7 @@
     <div class="large-view__head">
       <h2 id="large-title"></h2>
       <a href="" class="icon-button" id="large-download" download><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13.5h10"/></svg><span class="visually-hidden" id="large-download-name"></span></a>
+      <p class="hint large-view__keys" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
     </div>
     {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
     <p id="large-status" class="large-view__status" role="status"></p>
@@ -117,7 +126,6 @@
       <button type="button" class="icon-button" id="large-in"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10M8 3v10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_in"}}</span></button>
     </div>
   </div>
-  <p class="hint" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
 </dialog>
 {{- end}}
 
@@ -144,14 +152,14 @@
   <g fill="url(#territory-stripes)">{{range .Runs}}<rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}"/>{{end}}</g>
   {{- if .Border}}<path class="territories__border" d="{{.Border}}" vector-effect="non-scaling-stroke"/>{{end -}}
 </svg>
-  {{- range .Labels}}<span class="territories__label" style="left: {{.Left}}%; top: {{.Top}}%">{{.Text}}</span>{{end -}}
+  {{- range .Labels}}<span class="territories__label" style="left: {{.Left}}%; top: {{.Top}}%; --x: {{.Left}}; --y: {{.Top}}"><span class="territories__short">{{.Short}}</span><span class="territories__long">{{.Text}}</span></span>{{end -}}
 </span>
 {{- end}}
 
 {{/* The territories in words, or why there are none, with the next step. Takes TerritoryView. */}}
 {{define "territory-result" -}}
 {{- if .Error.IsZero}}
-<p class="territory-counts">{{.Counts}}</p>
+<p class="territory-counts visually-hidden">{{.Counts}}</p>
 {{- else}}
 <div class="message message--error">
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>

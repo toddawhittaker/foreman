@@ -39,14 +39,20 @@ test.describe("with script", () => {
     await setUp(page, foreman, fakeGame!);
   });
 
-  test("draws Nauvis on load, keeps the seed it used, and says the settings are unsaved", async ({ page }) => {
+  test("draws Nauvis on load, keeps the seed it used, and names that seed beside the heading", async ({ page }) => {
     await page.goto("/generate");
     await expect(pictures(page)).toHaveCount(1);
     await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+$/);
     const seed = await page.locator("#generate-seed").inputValue();
     expect(seed).toMatch(/^\d+$/);
-    await expect(section(page)).toContainText(`Drawn from the current settings, which are not saved yet, with seed ${seed}.`);
-    await expect(section(page)).toContainText("The pin marks the centre of the map, where players start.");
+    // The seed shares the heading's line, so the picture sits close to the controls.
+    const seedLine = section(page).getByText(`Seed ${seed}`, { exact: true });
+    await expect(seedLine).toBeVisible();
+    const heading = (await section(page).getByRole("heading", { name: "Map preview" }).boundingBox())!;
+    const said = (await seedLine.boundingBox())!;
+    expect(Math.abs(said.y + said.height / 2 - (heading.y + heading.height / 2))).toBeLessThan(4);
+    await expect(section(page)).not.toContainText("Drawn from the current settings");
+    await expect(section(page)).not.toContainText("The pin marks");
     // The pin is drawn over the picture and hidden from screen readers.
     await expect(section(page).locator("svg.pin")).toHaveAttribute("aria-hidden", "true");
     await expect(page.getByLabel("Planet")).toHaveValue("nauvis");
@@ -145,7 +151,7 @@ test.describe("with script", () => {
     await expect(select.locator("option").first()).toHaveText("1024 × 1024 tiles");
     await expect(select.locator("option:checked")).toHaveText("1280 × 1280 tiles (default)");
     await expect(select.locator("option").last()).toHaveText("4096 × 4096 tiles");
-    await expect(page.locator("#generate-preview-size-hint")).toContainText("Big sizes show their detail in the large view.");
+    await expect(page.locator("#generate-preview-size-hint")).toHaveText("How much of the map, around its center, the preview shows.");
     await expect(img).toHaveAttribute("width", "1280");
     await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
     await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(1280);
@@ -324,4 +330,20 @@ test.describe("without script", () => {
     await link.click();
     await expect(page).toHaveURL(href!);
   });
+});
+
+// The preview's text is short and in American English: the size hint fits
+// one line on a desktop, and nothing says "centre".
+test("the preview's words are short and spelled the American way", async ({ page, foreman, fakeGame }) => {
+  await setUp(page, foreman, fakeGame!);
+  await page.goto("/generate");
+  await expect(pictures(page)).toHaveCount(1);
+  const hint = page.locator("#generate-preview-size-hint");
+  await expect(hint).toHaveText("How much of the map, around its center, the preview shows.");
+  if ((page.viewportSize()?.width ?? 0) > 320) {
+    const lines = await hint.evaluate((h) => h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight));
+    expect(lines).toBeLessThan(1.5);
+  }
+  // The large view's words are in the page too, so this covers them.
+  expect(await page.evaluate(() => document.body.textContent)).not.toMatch(/\b(centre|colour|labelled|behaviour)\b/i);
 });

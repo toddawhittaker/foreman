@@ -2327,7 +2327,7 @@ form:has(#mode-exchange:checked) .achievements {
 /* The picture keeps a usable height on a short screen (400% zoom, a phone on its side); the dialog scrolls instead. */
 .large-view[open] {
   display: grid;
-  grid-template-rows: auto minmax(16rem, 1fr) auto;
+  grid-template-rows: auto minmax(16rem, 1fr);
   gap: var(--space-3);
 }
 
@@ -2573,10 +2573,12 @@ form:has(#mode-exchange:checked) .achievements {
   stroke-width: 2;
 }
 
-/* White on a dark ring reads on every part of the map, as the pin does. */
+/* White on a dark ring reads on every part of the map, as the pin does. A
+   label is pulled in by as much of its width as its spot is across the
+   picture, so one at an edge stays inside it. */
 .territories__label {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(calc(var(--x) * -1%), calc(var(--y) * -1%));
   color: var(--color-pin-face);
   font-size: var(--text-sm);
   font-weight: 700;
@@ -2637,6 +2639,35 @@ form:has(#mode-exchange:checked) .achievements {
   .wait progress {
     display: none;
   }
+}
+
+/* Generate's tighter preview (DESIGN 8.8): the thumbnail's territory
+   labels, the territory counts and the large view's key line. */
+
+/* The thumbnail shows short labels in small plain type; the large view keeps the words. */
+.pictures .territories__long,
+.large-view .territories__short {
+  display: none;
+}
+
+/* 0.75rem: the type scale has nothing smaller than --text-sm, which crowds a small picture. */
+.pictures .territories__label {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* The counts are for screen readers, so no line is held once they arrive. */
+.preview:has(#preview-territories:checked) .territory-result:has(> .territory-counts) {
+  min-block-size: 0;
+}
+
+/* The key help shares the planet's line, at its end, while it fits. */
+.large-view__head {
+  flex-wrap: wrap;
+}
+
+.large-view__head > .large-view__keys {
+  margin-inline-start: auto;
 }
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
