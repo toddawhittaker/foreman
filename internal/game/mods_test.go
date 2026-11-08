@@ -304,7 +304,7 @@ func TestApplyModsKeepsAnUploadInChangeAdd(t *testing.T) {
 	}
 }
 
-// SPEC 9.12, ruling 1: a download that fails, here on a checksum after a
+// SPEC 9.12: a download that fails, here on a checksum after a
 // good first one, leaves the running game, the files, the snapshots and the
 // staged files exactly as they were.
 func TestApplyModsFailedDownloadLeavesTheGameUntouched(t *testing.T) {
