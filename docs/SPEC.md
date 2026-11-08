@@ -467,7 +467,15 @@ not) or a map exchange string, with Space Age on or off. (P0)
   (`map-gen-settings.json`, `map-settings.json`).
 - **One form for map settings.** Choosing a preset fills every tab from
   it. Once any field differs from the preset, the form shows the game's
-  own word "[modified]" and a "Reset to preset default" button. The tabs
+  own word "[modified]". **One "Reset to defaults"** for the whole world,
+  shown while a field differs or a preset other than the default is
+  chosen, returns the preset and every map setting to the default
+  preset of the chosen version and Space Age choice, keeping the seed,
+  and the preview redraws. It asks no confirmation: it changes nothing
+  saved, so 17.5 does not apply, and "Undo reset" takes its place with
+  the focus until the next change, sending every value it threw away
+  back (17.9). Without script the reset is a plain round trip with no
+  Undo. The tabs
   are the game's: Resources, Terrain, Enemy and Advanced; without script
   they stack under their headings. A hidden `filled_from` field names the
   preset the fields were filled from. When it differs from the chosen
@@ -524,9 +532,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - **One planet open at a time.** With several planets, each tab shows
     one planet's settings open at a time, the same planet in every tab
     and over a round trip, or the planet with the first error. The
-    preview follows the open planet, and choosing a planet in the
-    preview opens its settings, so the person sees the planet they are
-    changing.
+    preview follows the open planet, and a planet the large view moves
+    to opens its settings, so the person sees the planet they are
+    changing; the preview has no planet picker of its own.
   - Nauvis has a **map type**: Nauvis elevation (the default), Lakes and
     Island on 2.x; Normal and Island on 1.1. The default writes no
     `elevation` key. Other planets keep their own.
@@ -624,13 +632,19 @@ not) or a map exchange string, with Space Age on or off. (P0)
   - **It draws by itself** with script: on page load, and 0.8 seconds
     after the last change to anything that changes the map. The newest
     request wins; a change cancels the one on its way, and Foreman stops
-    its run. An automatic draw draws only the planet being viewed; picking
-    another planet draws it. "Preview map" draws every planet, and is the
-    way without script. An automatic request whose settings are invalid
-    gets the problems in the preview's place, and nothing moves focus.
-  - The caption says the picture shows the current, unsaved settings,
-    with the seed used, and a pin marks the centre of the map. A blank
-    seed field takes the seed the preview used; a typed seed is kept.
+    its run. On a world with several planets the preview offers **One
+    planet** (the default: one large picture of the planet whose settings
+    are open, so opening another planet's settings draws that one) or
+    **All planets** (every planet as thumbnails), one click each way;
+    an automatic draw follows the choice, and pictures already drawn
+    with the same settings are reused. "Preview map" draws every planet
+    and chooses All planets, and is the way without script. An automatic
+    request whose settings are invalid gets the problems in the
+    preview's place, and nothing moves focus.
+  - The seed used is named beside the heading, and the size hint and
+    each picture's text say the pin marks where players start, the
+    centre of the map. A blank seed field takes the seed the preview
+    used; a typed seed is kept.
   - **The large view** is a dialog in the page that works as a picture
     viewer, with Previous and Next (a planet not drawn yet is drawn
     there), the planet's download, and Close. Zoom is continuous, in
