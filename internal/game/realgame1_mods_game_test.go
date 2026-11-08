@@ -14,8 +14,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -36,15 +38,33 @@ func probeLine(version string) string {
 	return parts[0] + "." + parts[1]
 }
 
-// probeZip builds the made-up mod as the portal serves a mod: one top folder
-// named name_version, an info.json, a settings.lua, a data.lua and a
-// control.lua that logs a unique line.
-func probeZip(t *testing.T, gameVersion, version string) []byte {
+// zipOfFiles builds a mod as the portal serves one: a single top folder named
+// name_version, holding the given files.
+func zipOfFiles(t *testing.T, name, version string, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	dir := probeMod + "_" + version + "/"
-	files := map[string]string{
+	dir := name + "_" + version + "/"
+	for _, file := range slices.Sorted(maps.Keys(files)) {
+		f, err := zw.Create(dir + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.Write([]byte(files[file])); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// probeZip builds the made-up mod: an info.json, a settings.lua, a data.lua
+// and a control.lua that logs a unique line.
+func probeZip(t *testing.T, gameVersion, version string) []byte {
+	t.Helper()
+	return zipOfFiles(t, probeMod, version, map[string]string{
 		"info.json": `{"name":"` + probeMod + `","version":"` + version + `","title":"Foreman probe",` +
 			`"author":"foreman tests","description":"made up for the real-game test",` +
 			`"factorio_version":"` + probeLine(gameVersion) + `"}`,
@@ -53,20 +73,7 @@ func probeZip(t *testing.T, gameVersion, version string) []byte {
 		"data.lua": "-- nothing to define\n",
 		// A setting gives the game a reason to write mod-settings.dat.
 		"settings.lua": `data:extend({{type = "bool-setting", name = "foreman-t10-flag", setting_type = "startup", default_value = true}})` + "\n",
-	}
-	for _, name := range []string{"info.json", "settings.lua", "data.lua", "control.lua"} {
-		f, err := zw.Create(dir + name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := f.Write([]byte(files[name])); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := zw.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return buf.Bytes()
+	})
 }
 
 func probeFile(version string) string { return probeMod + "_" + version + ".zip" }
@@ -178,6 +185,31 @@ func (e *gameEnv) staged(t *testing.T) []string {
 	return out
 }
 
+// requireBackInGame is the check a mod change ends with: a new run of the
+// game (started after prev) reached InGame, logged no error, and the
+// controller says so.
+func (e *gameEnv) requireBackInGame(t *testing.T, c *Controller, id, version string, prev time.Time) {
+	t.Helper()
+	st := c.Status(id)
+	if st.State != StateRunning || st.GameVersion != version {
+		t.Fatalf("state %s (%s), game version %q, want running on %s", st.State, st.Reason, st.GameVersion, version)
+	}
+	if !st.StartedAt.After(prev) {
+		t.Fatalf("the game started at %v, not after %v, so it was not restarted", st.StartedAt, prev)
+	}
+	if !anyLineHas(currentRun(c, id), inGameLine) {
+		t.Fatalf("the game's log has no %q line for the new run", inGameLine)
+	}
+	for _, l := range currentRun(c, id) {
+		if strings.Contains(l, " Error ") {
+			t.Errorf("the game logged an error: %s", l)
+		}
+	}
+	if _, reply, err := c.Console(context.Background(), id, admin, "/version", "/version"); err != nil || !strings.Contains(reply, version) {
+		t.Fatalf("/version reply %q, err %v", reply, err)
+	}
+}
+
 func TestRealGameModsChange(t *testing.T) {
 	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
 	e := newGameEnv(t)
@@ -209,28 +241,9 @@ func (e *gameEnv) runModsChange(t *testing.T, tag, fixture, version string) {
 			t.FailNow() // later steps depend on this one
 		}
 	}
-	// backInGame is the check every step ends with: a new run of the game
-	// reached InGame, and the controller says so.
 	backInGame := func(t *testing.T, prev time.Time) {
 		t.Helper()
-		st := c.Status(id)
-		if st.State != StateRunning || st.GameVersion != version {
-			t.Fatalf("state %s (%s), game version %q, want running on %s", st.State, st.Reason, st.GameVersion, version)
-		}
-		if !st.StartedAt.After(prev) {
-			t.Fatalf("the game started at %v, not after %v, so it was not restarted", st.StartedAt, prev)
-		}
-		if !anyLineHas(currentRun(c, id), inGameLine) {
-			t.Fatalf("the game's log has no %q line for the new run", inGameLine)
-		}
-		for _, l := range currentRun(c, id) {
-			if strings.Contains(l, " Error ") {
-				t.Errorf("the game logged an error: %s", l)
-			}
-		}
-		if _, reply, err := c.Console(ctx, id, admin, "/version", "/version"); err != nil || !strings.Contains(reply, version) {
-			t.Fatalf("/version reply %q, err %v", reply, err)
-		}
+		e.requireBackInGame(t, c, id, version, prev)
 	}
 	loads := func(v string) bool { return anyLineHas(currentRun(c, id), "Loading mod "+probeMod+" "+v) }
 	logged := func(text string) bool { return anyLineHas(currentRun(c, id), text) }
