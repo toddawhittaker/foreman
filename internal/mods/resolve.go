@@ -127,9 +127,16 @@ func resolveOnce(ctx context.Context, w World, req Request, lookup Lookup, cache
 }
 
 // wants reports whether an optional dependency is turned on: ticked, or
-// recommended and not unticked. A sync takes only the save's mods.
-func (r *resolver) wants(d Dep) bool {
-	return r.chosen[d.Name] || (d.Kind == Recommended && r.recommend && !r.declined[d.Name])
+// recommended by a mod this plan changes and not unticked. A sync takes
+// only the save's mods.
+func (r *resolver) wants(d Dep, of *target) bool {
+	return r.chosen[d.Name] || (d.Kind == Recommended && r.recommend && of.changes() && !r.declined[d.Name])
+}
+
+// changes reports whether the plan installs, re-versions, replaces or turns
+// on this mod; an installed mod left as it is pulls in nothing new (SPEC 9.2).
+func (t *target) changes() bool {
+	return !t.installed || t.version != t.from || t.upload != nil || (t.enabled && !t.fromEnabled)
 }
 
 // unavailable names the recommended mods behind this round's conflicts:
@@ -439,10 +446,10 @@ func (r *resolver) settle(name string) error {
 		// that was on already is not offered. A built-in mod follows the
 		// Space Age flag, not a box (SPEC 9.7).
 		builtin := r.targets[d.Name] != nil && r.targets[d.Name].builtin
-		if d.optional() && !builtin && !r.wasOn(d.Name) && (r.wants(d) || !r.present(d.Name)) {
+		if d.optional() && !builtin && !r.wasOn(d.Name) && (r.wants(d, t) || !r.present(d.Name)) {
 			r.offers[name] = append(r.offers[name], d)
 		}
-		if !d.required() && !r.wants(d) && !r.present(d.Name) {
+		if !d.required() && !r.wants(d, t) && !r.present(d.Name) {
 			// The game holds an optional mod to this limit if anything turns
 			// it on, later in this walk too.
 			if d.Op != "" {
@@ -672,7 +679,7 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 		p.Changes = append(p.Changes, c)
 		if c.Action != ActKeep && c.Action != ActDisable && c.Action != ActRemove {
 			for _, d := range r.offers[n] {
-				o := Offer{Name: d.Name, Of: n, Chosen: r.wants(d), Recommended: d.Kind == Recommended}
+				o := Offer{Name: d.Name, Of: n, Chosen: r.wants(d, t), Recommended: d.Kind == Recommended}
 				if left[d.Name] {
 					p.Unavailable = append(p.Unavailable, o)
 				} else {

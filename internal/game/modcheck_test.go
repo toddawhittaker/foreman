@@ -112,25 +112,6 @@ func TestStartGoesAheadWhenThePortalIsTooSlow(t *testing.T) {
 	}
 }
 
-func TestStartUsesThePortalAnswerItHas(t *testing.T) {
-	r := newRig(t, rigOptions{})
-	p := r.withPortal()
-	id := r.newWorld("Cached")
-	r.putModZip(id, "fp-here", "2.1")
-	p.AddZipFor("2.1", "fp-here", "1.0.0")
-
-	r.start(id)
-	if err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{}); err != nil {
-		t.Fatalf("restart: %v", err)
-	}
-	if n := p.FullCalls("fp-here"); n != 1 {
-		t.Errorf("the portal was asked %d times for fp-here, want once", n)
-	}
-	if r.c.Status(id).Operation.PortalUnchecked {
-		t.Error("an answered check says the portal could not be checked")
-	}
-}
-
 func TestStartIsNotRefusedForFolderModsOrModsNotOnThePortal(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	r.withPortal()
@@ -208,5 +189,60 @@ func TestSwitchGoesAheadWhenThePortalIsDown(t *testing.T) {
 	st := r.c.Status(b)
 	if st.State != StateRunning || !st.Operation.PortalUnchecked {
 		t.Errorf("state %s, operation %+v", st.State, st.Operation)
+	}
+}
+
+// uncachedPortal asks the fake portal through a new client each time, so a
+// count of calls shows how often an action asks, not what a cache kept.
+type uncachedPortal struct{ url string }
+
+func (u uncachedPortal) Mod(ctx context.Context, name string) (modportal.Mod, error) {
+	return modportal.NewForTest(u.url).Mod(ctx, name)
+}
+
+func (u uncachedPortal) Mods(ctx context.Context, names []string) map[string]modportal.ModResult {
+	return modportal.NewForTest(u.url).Mods(ctx, names)
+}
+
+// SPEC 7.4: a restart checks twice, before the stop and before the start,
+// but asks the portal once.
+func TestRestartAsksThePortalOncePerAction(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	p := modportaltest.New(t)
+	r.c.SetModCheck(&mods.Planner{Worlds: r.worlds, Portal: uncachedPortal{p.URL}})
+	id := r.newWorld("Once")
+	r.putModZip(id, "fp-here", "2.1")
+	p.AddZipFor("2.1", "fp-here", "1.0.0")
+
+	r.start(id)
+	before := p.FullCalls("fp-here")
+	if err := r.c.Restart(context.Background(), id, admin, StopOptions{}, StartOptions{}); err != nil {
+		t.Fatalf("restart: %v", err)
+	}
+	if n := p.FullCalls("fp-here") - before; n != 1 {
+		t.Errorf("the restart asked the portal %d times for fp-here, want once", n)
+	}
+	if r.c.Status(id).Operation.PortalUnchecked {
+		t.Error("an answered check says the portal could not be checked")
+	}
+}
+
+// SPEC 7.9: a switch that leaves the new world stopped does not ask the
+// portal, since a gone mod only matters to a start.
+func TestSwitchWithoutStartDoesNotAskThePortal(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	p := r.withPortal()
+	a, b := r.twoWorlds()
+	r.putModZip(b, "fp-gone", "2.1")
+	p.AddZipFor("2.1", "fp-gone", "1.1.0")
+
+	if err := r.c.Switch(context.Background(), a, b, admin, StopOptions{}, StartOptions{}, false); err != nil {
+		t.Fatalf("switch: %v", err)
+	}
+	if n := p.FullCalls("fp-gone"); n != 0 {
+		t.Errorf("the switch asked the portal %d times, want none", n)
+	}
+	if r.active() != b {
+		t.Error("the switch did not make the new world active")
 	}
 }

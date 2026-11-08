@@ -42,7 +42,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	if err != nil {
 		return
 	}
-	out.opRunning = r.URL.Query().Get(opRunningParam) != ""
+	out.doneOp, _ = strconv.ParseUint(r.URL.Query().Get(doneOpParam), 10, 64)
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
@@ -127,16 +127,16 @@ type liveStream struct {
 	state   game.State // the last state sent
 	result  string     // the last results sent, as read out
 	moved   bool       // the page was told to follow a switch
-	// opRunning is set while the page last saw an operation running.
-	opRunning bool
+	// doneOp is the ID of the last ended operation the page has seen.
+	doneOp uint64
 }
 
 // modsRecheckEvent tells the Server page to load its mods notice again.
 const modsRecheckEvent = "mods"
 
-// opRunningParam on the stream's address says the page was drawn while an
-// operation ran.
-const opRunningParam = "op"
+// doneOpParam on the stream's address names the ended operation the page
+// was drawn with, so the stream does not reload a notice already current.
+const doneOpParam = "op"
 
 // ModNoticeTrigger loads the mods notice with the page, and again each time
 // an operation on the world ends.
@@ -164,9 +164,11 @@ func (l *liveStream) send(p ServerPage) error {
 	// An operation that has just ended may have fixed a mod players could
 	// not download, or brought one in, so the mods notice asks again
 	// (SPEC 9.3).
-	o := p.Status.Operation
-	recheck := l.opRunning && o != nil && o.Done
-	l.started, l.state, l.result, l.opRunning = true, p.Status.State, result, o != nil && !o.Done
+	recheck := false
+	if o := p.Status.Operation; o != nil && o.Done && o.ID != l.doneOp {
+		recheck, l.doneOp = true, o.ID
+	}
+	l.started, l.state, l.result = true, p.Status.State, result
 
 	wrote := false
 	if recheck {
