@@ -38,11 +38,13 @@ line per step, so the run survives a context reset.
 6. **Write the shared rules file** in the scratchpad (template below) and
    point every task prompt at it. Each prompt adds the task row, the base
    commit, the files in scope, and what done looks like.
-7. **Verify each report** before merging: in the agent's worktree run
-   `make verify`, read the diff, check that the files it claims are in the
-   PR (`gh pr view <n> --json files`), and rule on anything
-   it did outside its file list. Then run the browser tests for every
-   file the task touched (below). Task PRs into the epic run no GitHub
+7. **Verify each report** before merging: the orchestrator runs the full
+   `make verify` and the browser suite for every touched file (below) in
+   its own background runs, under the machine load gate. Read the diff,
+   check that the files it claims are in the PR (`gh pr view <n> --json
+   files`), and rule on anything it did outside its file list. Then run
+   the browser tests for every file the task touched (below). Task PRs
+   into the epic run no GitHub
    CI; CI runs on each push to the epic branch. After a merge, check
    that push's run (`gh run list --branch epic/<n>-<name> --limit 1`)
    when it finishes; a failure becomes a fix task at once. The full CI
@@ -140,12 +142,14 @@ docs/EPIC-<n>.md on the epic branch; read your task's row.
   SPEC.md invariant. Anything a user can see ships with end-to-end tests.
 - A failure near your code is yours until it is shown to fail the same way
   on the base without your change.
-- Before the PR: `make verify` green, and the browser tests for every
-  file you touched, not only your own new tests: each e2e spec that
-  loads a page using a changed template, handler, script, style or
-  locale file (`make e2e E2E_ARGS="tests/a.spec.ts ..."`); a file every
-  page uses means the whole suite. Run tests in the foreground; do not
-  wait on monitors. Report the commands and counts.
+- Before the PR (fast checks only): every command you run must finish in
+  under 3 minutes, in the foreground. Run `make check-go fmt-check vet lint
+  typecheck`, `go test` for the packages you changed (each under `timeout
+  170`), and the e2e specs for the pages your files touch (`make e2e
+  E2E_ARGS="tests/a.spec.ts ... --workers=4"`, split so each run is under
+  3 minutes). Never run the full `make verify`, the full `make e2e`,
+  `make test-game` or `make e2e-game`: the orchestrator runs them and sends
+  failures back to you. Report the commands and counts.
 - Do not edit docs/STATUS.md, the plan, or the SPEC.md epic list. Put a
   proposed STATUS line (delivered, gaps left) in the PR body.
 - Never `git add -A`. No attribution lines. Never force-push; merge the
