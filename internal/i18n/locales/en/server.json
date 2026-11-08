@@ -263,6 +263,7 @@
   "server.undo.rollback": "Undo this rollback",
   "server.undo.update": "Roll back to {version}",
   "server.precheck.changed": "The world or the server changed since the page showed it, so Foreman did not go ahead. Read the message again before you choose.",
+  "server.portal_unchecked": "Foreman could not reach the mod portal in time, so it did not check that players can download this world's mods.",
   "server.precheck.start": "Foreman did not start the game, because the save that would load does not match the world:",
   "server.precheck.switch": "Foreman did not switch, because the save that would load in the new world does not match that world:",
   "server.precheck.start_cannot_run": "Foreman did not start the game, because {world} cannot run in this game:",
@@ -271,6 +272,8 @@
   "server.precheck.switch_cannot_run_unnamed": "Foreman did not switch, because the world cannot run in this game:",
   "server.precheck.update": "Foreman did not update the game version, because the save does not match {world} on Factorio {version}:",
   "server.precheck.update_cannot_run": "Foreman did not update the game version, because {world} cannot run in Factorio {version}:",
+  "server.precheck.start_players": "Foreman did not start the game, because players could not join it:",
+  "server.precheck.switch_players": "Foreman did not switch, because players could not join the new world:",
   "server.problem.game_version": "The world is set to Factorio {version}. Foreman runs only Factorio 1.1, 2.0 and 2.1.",
   "server.problem.no_save": "The world has no save. Upload a save first; without one the game would make a new map.",
   "server.problem.save_gone": "The save chosen to load, {save}, is no longer in the world. Choose another save.",
@@ -284,6 +287,8 @@
   "server.problem.mod_missing_many": "{save} uses {mods}, but this world has no files for them.",
   "server.problem.mod_disabled_one": "{save} uses {mods}, but it is turned off in this world.",
   "server.problem.mod_disabled_many": "{save} uses {mods}, but they are turned off in this world.",
+  "server.problem.mod_gone_one": "The mod portal no longer has {mod} {version}, so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save.",
+  "server.problem.mod_gone_many": "The mod portal no longer has {mods}, so players' games cannot download them and they cannot join. Going ahead anyway deletes nothing from the save.",
   "server.problem.mod_version_first": {
     "one": "{world} cannot run on Factorio {version}: {count} of its mods was made for Factorio {for}, and the game refuses to load it: {names}.",
     "other": "{world} cannot run on Factorio {version}: {count} of its mods were made for Factorio {for}, and the game refuses to load them: {names}."
@@ -397,6 +402,7 @@
   "server.switch.start_after": "Start {to} after switching",
   "server.switch.problems_lead": "The save that would load in {world} does not match that world:",
   "server.switch.cannot_run_lead": "{world} cannot run in this game:",
+  "server.switch.players_lead": "Players could not join {world}:",
   "server.switch.no_from": "The form does not say which world is active. Go back, reload the page and try again.",
   "server.switch.note_refused": "{world} is still the active world, and nothing changed.",
   "server.switch.note_presented": "{world} is now the active world, but the switch did not finish.",

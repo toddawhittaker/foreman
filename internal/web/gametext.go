@@ -389,6 +389,15 @@ func problemMsg(p world.Problem) i18n.Msg {
 		return i18n.M("server.problem.mod_disabled_many", "save", p.Save, "mods", mods)
 	case world.ProblemModGameVersion:
 		return modVersionMsg(p)
+	case world.ProblemModGone:
+		if len(p.Gone) == 1 {
+			return i18n.M("server.problem.mod_gone_one", "mod", p.Gone[0].Name, "version", p.Gone[0].Version)
+		}
+		named := make([]string, len(p.Gone))
+		for i, g := range p.Gone {
+			named[i] = g.Name + " " + g.Version
+		}
+		return i18n.M("server.problem.mod_gone_many", "mods", strings.Join(named, ", "))
 	}
 	// A problem this page does not know yet keeps its English.
 	return i18n.M("server.problem.other", "text", p.Text)
@@ -443,11 +452,29 @@ func onlyModVersions(check world.PreCheck) bool {
 	return true
 }
 
+// onlyGoneMods reports whether the check found problems and every one is
+// mods the portal no longer offers, so the save is not what fails: players
+// could not join.
+func onlyGoneMods(check world.PreCheck) bool {
+	for _, pr := range check.Problems {
+		if pr.Kind != world.ProblemModGone {
+			return false
+		}
+	}
+	return len(check.Problems) > 0
+}
+
 // precheckLeadFor opens the message for a refused start or switch. When the
 // only problems are mods made for another Factorio, the save is not what
 // fails, so the lead says the world cannot run instead. name is the world
 // that cannot run; "" says "the world".
 func precheckLeadFor(check world.PreCheck, switching bool, name string) i18n.Msg {
+	if onlyGoneMods(check) {
+		if switching {
+			return i18n.M("server.precheck.switch_players")
+		}
+		return i18n.M("server.precheck.start_players")
+	}
 	if len(check.Problems) == 0 || !onlyModVersions(check) {
 		if switching {
 			return i18n.M("server.precheck.switch")

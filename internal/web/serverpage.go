@@ -68,6 +68,11 @@ func (p ServerPage) liveURL() string {
 	if !p.HasWorld {
 		return ""
 	}
+	// A page drawn while an operation runs says so, so the stream knows its
+	// mods notice may be stale once the operation ends (SPEC 9.3).
+	if o := p.Status.Operation; o != nil && !o.Done {
+		return gamePath(p.World.ID, "events") + "?" + opRunningParam + "=1"
+	}
 	return gamePath(p.World.ID, "events")
 }
 
@@ -380,6 +385,15 @@ func (p ServerPage) ShowDownload() bool { return showOp(p.Status.Download) }
 
 func showOp(o *game.Operation) bool { return o != nil && (!o.Done || o.Error != "") }
 
+// PortalUnchecked says the last start, restart or switch could not ask the
+// mod portal, so it went ahead without knowing whether players can download
+// the world's mods (SPEC 7.4).
+func (p ServerPage) PortalUnchecked() bool {
+	o := p.Status.Operation
+	// A failed or refused action has its own message to read first.
+	return o != nil && o.PortalUnchecked && o.Error == "" && !p.opSuperseded() && !p.cancelled()
+}
+
 // OperationHeading names the operation in the step list.
 func (p ServerPage) OperationHeading() i18n.Msg {
 	o := p.Status.Operation
@@ -602,7 +616,7 @@ func (p ServerPage) Failure() *Failure {
 		if switching && p.Result.Target != "" {
 			id = p.Result.Target
 		}
-		f.Fix = syncOffer(pe.Check, id)
+		f.Fix = precheckFix(pe.Check, id)
 	case errors.Is(err, world.ErrModsChanged):
 		f.Message, f.Next = failureText(err), &Offer{Path: modsPath(p.World.ID), Label: i18n.M("mods.changed.next")}
 	case errors.As(err, &de):

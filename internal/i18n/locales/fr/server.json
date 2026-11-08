@@ -263,6 +263,7 @@
   "server.undo.rollback": "Annuler ce retour en arrière",
   "server.undo.update": "Revenir à {version}",
   "server.precheck.changed": "Le monde ou le serveur a changé depuis que la page l’a affiché, donc Foreman n’a pas poursuivi. Relisez le message avant de choisir.",
+  "server.portal_unchecked": "Foreman n’a pas pu joindre le portail de mods à temps, il n’a donc pas vérifié que les joueurs peuvent télécharger les mods de ce monde.",
   "server.precheck.start": "Foreman n’a pas démarré le jeu, car la sauvegarde qui serait chargée ne correspond pas au monde :",
   "server.precheck.switch": "Foreman n’a pas basculé, car la sauvegarde qui serait chargée dans le nouveau monde ne correspond pas à ce monde :",
   "server.precheck.start_cannot_run": "Foreman n’a pas démarré le jeu, car {world} ne peut pas fonctionner dans ce jeu :",
@@ -271,6 +272,8 @@
   "server.precheck.switch_cannot_run_unnamed": "Foreman n’a pas basculé, car le monde ne peut pas fonctionner dans ce jeu :",
   "server.precheck.update": "Foreman n’a pas mis à jour la version du jeu, car la sauvegarde ne correspond pas à {world} sous Factorio {version} :",
   "server.precheck.update_cannot_run": "Foreman n’a pas mis à jour la version du jeu, car {world} ne peut pas fonctionner sous Factorio {version} :",
+  "server.precheck.start_players": "Foreman n’a pas démarré le jeu, car les joueurs ne pourraient pas rejoindre la partie :",
+  "server.precheck.switch_players": "Foreman n’a pas basculé, car les joueurs ne pourraient pas rejoindre le nouveau monde :",
   "server.problem.game_version": "Le monde est réglé sur Factorio {version}. Foreman n’exécute que Factorio 1.1, 2.0 et 2.1.",
   "server.problem.no_save": "Le monde n’a aucune sauvegarde. Envoyez d’abord une sauvegarde ; sans elle, le jeu créerait une nouvelle carte.",
   "server.problem.save_gone": "La sauvegarde choisie pour le chargement, {save}, n’est plus dans le monde. Choisissez une autre sauvegarde.",
@@ -284,6 +287,8 @@
   "server.problem.mod_missing_many": "{save} utilise {mods}, mais ce monde n’a pas de fichiers pour eux.",
   "server.problem.mod_disabled_one": "{save} utilise {mods}, mais il est désactivé dans ce monde.",
   "server.problem.mod_disabled_many": "{save} utilise {mods}, mais ils sont désactivés dans ce monde.",
+  "server.problem.mod_gone_one": "Le portail de mods n’a plus {mod} {version}, le jeu des joueurs ne peut donc pas le télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
+  "server.problem.mod_gone_many": "Le portail de mods n’a plus {mods}, le jeu des joueurs ne peut donc pas les télécharger et ils ne peuvent pas rejoindre la partie. Continuer quand même ne supprime rien de la sauvegarde.",
   "server.problem.mod_version_first": {
     "one": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods a été conçu pour Factorio {for}, et le jeu refuse de le charger : {names}.",
     "other": "{world} ne peut pas fonctionner sous Factorio {version} : {count} de ses mods ont été conçus pour Factorio {for}, et le jeu refuse de les charger : {names}."
@@ -397,6 +402,7 @@
   "server.switch.start_after": "Démarrer {to} après le basculement",
   "server.switch.problems_lead": "La sauvegarde qui serait chargée dans {world} ne correspond pas à ce monde :",
   "server.switch.cannot_run_lead": "{world} ne peut pas fonctionner dans ce jeu :",
+  "server.switch.players_lead": "Les joueurs ne pourraient pas rejoindre {world} :",
   "server.switch.no_from": "Le formulaire n’indique pas quel monde est actif. Revenez en arrière, rechargez la page et réessayez.",
   "server.switch.note_refused": "{world} reste le monde actif, et rien n’a changé.",
   "server.switch.note_presented": "{world} est maintenant le monde actif, mais le basculement ne s’est pas terminé.",

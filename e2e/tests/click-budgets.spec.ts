@@ -340,6 +340,9 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
   // Issue 131: the portal has no 1.5.5 of visible-planets.
   test("fix a mod players cannot get, from the Server page notice: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
     await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
+    // The game runs with the mod: it started while the portal could not be asked (SPEC 7.4),
+    // down from the first page on, so no answer is cached.
+    await fakePortal!.setDown(true);
     await setUpModsWorld(page, foreman, fakeGame!, {
       version: version20,
       fixture: "2.0.77-space-age.zip",
@@ -348,6 +351,8 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     });
     const clicks = await countClicks(page);
     await startGame(page, clicks);
+    await fakePortal!.setDown(false);
+    await page.goto("/");
     // The notice loads after the Server page; the count starts when it is there.
     await expect(page.locator("#mods-notice")).toContainText("cannot join", live);
     await clicks.reset();
@@ -358,6 +363,31 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expect(badge(page)).toHaveText("Running", live);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.7.2.zip"))).toBe(true);
     await expectWithin(clicks, 2, "fix a mod players cannot get");
+  });
+
+  // Issue 359: the start refuses the mod players cannot download, and the
+  // refusal's first button opens the same plan as the notice.
+  test("fix and start a world refused for a mod players cannot download: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
+    await setUpModsWorld(page, foreman, fakeGame!, {
+      version: version20,
+      fixture: "2.0.77-space-age.zip",
+      spaceAge: true,
+      mods: { "visible-planets": { factorio: "2.0", version: "1.5.5", deps: ["base >= 2.0", "space-age >= 2.0"] } },
+    });
+    const clicks = await countClicks(page);
+
+    await page.getByRole("button", { name: "Start server" }).click();
+    const refusal = page.locator(".message").filter({ hasText: "Foreman did not start the game, because players could not join it:" });
+    await expect(refusal).toBeVisible(live);
+    // The Server page's notice offers the same plan; the refusal's own button is the one used here.
+    await refusal.getByRole("link", { name: "Update visible-planets" }).click();
+    await page.getByRole("button", { name: "Update 1 mod" }).click();
+    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await page.getByRole("button", { name: "Start server" }).click();
+    await expect(badge(page)).toHaveText("Running", live);
+    expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.7.2.zip"))).toBe(true);
+    await expectWithin(clicks, 4, "fix and start a world refused for a mod");
   });
 
   test("undo a mod change: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {

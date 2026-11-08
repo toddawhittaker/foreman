@@ -36,6 +36,10 @@ const (
 	// ProblemModGameVersion: enabled mods were made for another Factorio
 	// than the one the game runs, so the game would refuse to load.
 	ProblemModGameVersion ProblemKind = "mod-game-version"
+	// ProblemModGone: enabled mods are at versions the mod portal no
+	// longer offers, so players' games cannot download them to join. The
+	// game package finds it, since it needs the portal.
+	ProblemModGone ProblemKind = "mod-gone"
 )
 
 // Problem is one reason not to start, in words for the admin.
@@ -64,6 +68,14 @@ type Problem struct {
 	// the running line, Minor.
 	World, UpdateTo, Minor string
 	Groups                 []ModGroup
+	// Gone words a mod gone problem: each mod and the version installed.
+	Gone []GoneMod
+}
+
+// GoneMod is a mod at a version the mod portal no longer offers. Update is
+// the newest release on the world's game line, or "" when there is none.
+type GoneMod struct {
+	Name, Version, Update string
 }
 
 // ModGroup is the mods made for one Factorio version: the first few names,
@@ -83,6 +95,10 @@ type PreCheck struct {
 	// could not be read.
 	SaveVersion savefile.Version
 	Problems    []Problem
+	// PortalUnchecked is set when the mod portal could not be asked in
+	// time, so the world starts without knowing whether players can
+	// download its mods (SPEC 7.4).
+	PortalUnchecked bool
 }
 
 // OK reports whether the world can start with no confirmation.

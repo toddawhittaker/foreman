@@ -95,10 +95,14 @@ test.describe("a mod players cannot get", () => {
     const portal = fakePortal!;
     // Downloadable newer releases; with these added, the portal's /full lists no 1.5.5.
     await portal.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
+    // The game runs with the mod: it started while the portal could not be asked (SPEC 7.4).
+    await portal.setDown(true);
     await setUpModsWorld(page, foreman, g, { ...spaceAge, mods, start: true });
+    await portal.setDown(false);
     const before = await creates(g);
 
     // The Server page loads the notice after it opens.
+    await page.goto("/");
     const notice = page.locator("#mods-notice");
     await expect(notice).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
 

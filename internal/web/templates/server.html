@@ -28,8 +28,8 @@
 {{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (SPEC 9.3, DESIGN 8.11). */}}
 <div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
-{{- with .ModNoticePath}}
-<div id="mods-notice" class="mods-notice" role="status" hx-get="{{.}}" hx-trigger="load" hx-swap="innerHTML"></div>
+{{- if .ModNoticePath}}
+<div id="mods-notice" class="mods-notice" role="status" hx-get="{{.ModNoticePath}}" hx-trigger="{{.ModNoticeTrigger}}" hx-swap="innerHTML"></div>
 {{- end}}
 </div>
 <section class="panel" aria-labelledby="players-heading">
@@ -188,6 +188,11 @@
     {{- end}}
     <a href="{{$.SnapshotsPath}}" id="act-snapshots">{{t "server.go_snapshots"}}</a>
   </div>
+</div>
+{{- end}}
+{{- if .PortalUnchecked}}
+<div class="message message--note" id="portal-unchecked">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "server.portal_unchecked"}}</p>
 </div>
 {{- end}}
 {{- if .ShowOperation}}
