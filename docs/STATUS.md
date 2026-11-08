@@ -1986,5 +1986,12 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   change.
 - Hand-test: NVDA's reading of a focused Undo or Restore link when the
   Server page's control region redraws.
+- No test presses Tab through the large view's dialog, or Escape on an
+  info tip's button inside its settings column (the first Escape should
+  close the tip, the second the view).
+- generate-leave.spec.ts has no accessibility scan of the states it
+  reaches (edited, after a reset redraw, with Undo reset showing).
+- The Server page does not say which save loads next while the world is
+  stopped (#419).
 - Still deferred: #400 (a headless game per preview), #353, #339 (P2),
   #132, #92, #206 and #207.
