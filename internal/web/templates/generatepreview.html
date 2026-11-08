@@ -112,7 +112,11 @@
       <p class="hint large-view__keys" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
     </div>
     {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
-    <p id="large-status" class="large-view__status" role="status"></p>
+    <div class="large-view__news">
+      <p id="large-status" class="large-view__status" role="status"></p>
+      {{- /* Seen, not read out, as on the page: the picture fades and "Map preview ready." follows. */}}
+      <p id="large-drawing" class="hint large-view__drawing"></p>
+    </div>
   </div>
   <div class="large-view__body">
     {{/* On a wide view, the planet's own Resources and Terrain fields, which the script

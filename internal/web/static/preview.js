@@ -55,6 +55,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // The large view fades its picture the same way while the next one is drawn.
     const big = document.getElementById("large-frame");
     if (big) big.setAttribute("aria-busy", on && dialog && dialog.open ? "true" : "false");
+    const note = document.getElementById("large-drawing");
+    if (note && !on) note.textContent = "";
   }
 
   function drop() {
@@ -185,7 +187,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // A draw after a settings change (change true) made in the large view
-  // says so there, as the page's own line does, and says the new map is ready.
+  // shows a drawing line there, as the page does, not read out, and says
+  // when the new map is ready.
   async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
@@ -207,7 +210,8 @@ document.addEventListener("DOMContentLoaded", () => {
     pendingInView = Boolean(dialog && dialog.open);
     drawing = showAll ? "*" : viewing || firstPlanet();
     setStatus(true);
-    if (change && pendingInView && status) largeStatus(status.dataset.text);
+    const note = el("large-drawing");
+    if (change && pendingInView && status && note) note.textContent = status.dataset.text;
     let html;
     try {
       const res = await fetch(path, { method: "POST", body, signal: ctrl.signal, headers: { "HX-Request": "true" }, credentials: "same-origin" });
@@ -600,6 +604,14 @@ document.addEventListener("DOMContentLoaded", () => {
     el("large-in").addEventListener("click", () => zoomSaid(zoom * factor));
     el("large-out").addEventListener("click", () => zoomSaid(zoom / factor));
     el("large-close").addEventListener("click", () => dialog.close());
+    // A settings field the view hides as it narrows gives the focus to the map,
+    // whether the browser has already dropped it or not.
+    new ResizeObserver(() => {
+      const panel = el("large-settings");
+      if (!dialog.open || !panel || panel.checkVisibility()) return;
+      const at = document.activeElement;
+      if (panel.contains(at) || at === document.body || at === dialog) frame().focus();
+    }).observe(dialog);
     // A picture the server no longer has (kept 15 minutes) is drawn again,
     // once; the frame shows nothing meanwhile rather than a broken image.
     let redrawn = false;

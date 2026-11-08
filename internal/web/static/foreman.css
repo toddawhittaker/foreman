@@ -2685,6 +2685,18 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
+/* The status line and the drawing line share the held line while they fit. */
+.large-view__news {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+}
+
+.large-view__drawing {
+  margin: 0;
+}
+
 /* While the next picture is drawn the shown one fades, as on the page. */
 .large-view__frame[aria-busy="true"] .large-view__map > img,
 .large-view__frame[aria-busy="true"] .territories {

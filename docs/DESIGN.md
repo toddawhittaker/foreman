@@ -1248,9 +1248,11 @@ that change away, and so does a game version or Space Age change, since
 Undo would mix two game lines; the tab shown is a view and keeps it. An
 Undo that ends while it has the focus hands it to the reset (or the
 preset, when there is nothing to reset). A change made while the reset
-is on its way ends the Undo before it is offered: focus goes to the
-preset and the live region says only "Map settings reset to the
-defaults for this game version." Clicks: one to reset, one to undo.
+is on its way does not end it: the reply replaces the fields anyway, so
+Undo is offered as ever and brings back the settings as they were when
+Reset was pressed. Focus stays where the person moved it (a field keeps
+it across the redraw), and the live region says the usual sentence.
+Clicks: one to reset, one to undo.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
 the page back, filled from the new preset, with a Note "The settings
@@ -1535,16 +1537,22 @@ close the view, the tab, the setting, and the picture again).
     only, as before. They are the form's own fields, not copies: the
     script moves the planet's rows into the view as it opens (only in
     Map settings mode; an exchange string does not use them) and puts
-    them back as it closes, and before a version, Space Age, preset or
-    reset redraw. So the form sends, checks, marks "[modified]", resets,
+    them back as it closes, however it closes, and before a version,
+    Space Age, preset or reset redraw; a redraw already on its way when
+    the view opens is let land first, so there is never a second copy.
+    A tab that has no planet rows lends its fields only on a world of one
+    planet. So the form sends, checks, marks "[modified]", resets,
     undoes and warns on leaving as for any change on the page. Moving to
     another planet moves its settings in. A change there redraws as one
     on the page does, 0.8 s after the last change, the newest request
     winning; while it runs the picture fades to 60%, the frame is
-    `aria-busy`, and the status line says "Drawing the map preview for
-    the current settings…", then "Map preview ready." Achievement and
-    needed-resource warnings are said in the status line too, as the
-    page around the dialog is inert.
+    `aria-busy`, and a line beside the status line, seen but not read
+    out as on the page, says "Drawing the map preview for the current
+    settings…". The status line (`role="status"`) then says "Map preview
+    ready." It holds only that, warnings and errors: achievement and
+    needed-resource warnings are said there, as the page around the
+    dialog is inert. When the view narrows past 77rem while a field in
+    the column has focus, focus moves to the map's frame.
   - Nothing animates under reduced motion; otherwise only the controls'
     opacity fades, in 120 ms.
   - On close, focus goes to the link of the picture last shown. A click

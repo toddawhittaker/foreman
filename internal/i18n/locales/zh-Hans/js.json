@@ -15,7 +15,6 @@
   "js.preview.next": "下一个星球：{planet}",
   "js.preview.download": "下载 {planet} 地图",
   "js.generate.reset": "地图设置已重置为此游戏版本的默认值。“撤销重置”可恢复之前的更改。",
-  "js.generate.reset_only": "地图设置已重置为此游戏版本的默认值。",
   "js.generate.undone": "已恢复之前的地图设置。",
   "js.generate.ach_setting": "{setting}将禁用部分成就。",
   "js.generate.ach_clear": "现在没有设置会禁用成就。",

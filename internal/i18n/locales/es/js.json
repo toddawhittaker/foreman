@@ -15,7 +15,6 @@
   "js.preview.next": "Planeta siguiente: {planet}",
   "js.preview.download": "Descargar mapa de {planet}",
   "js.generate.reset": "Ajustes del mapa restablecidos a los valores por defecto de esta versión del juego. «Deshacer el restablecimiento» recupera tus cambios.",
-  "js.generate.reset_only": "Ajustes del mapa restablecidos a los valores por defecto de esta versión del juego.",
   "js.generate.undone": "Tus ajustes del mapa han vuelto.",
   "js.generate.ach_setting": "{setting} desactiva algunos logros.",
   "js.generate.ach_clear": "Ahora ningún ajuste desactiva logros.",

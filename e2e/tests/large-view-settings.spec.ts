@@ -100,10 +100,15 @@ test.describe("on a wide screen", () => {
     // Zoom keys belong to the field too.
     await page.keyboard.press("+");
     await expect(status(page)).not.toHaveText("Zoom 115%");
-    // The slow redraw shows as on the page: the picture fades and the line says so; then the map is ready.
+    // The slow redraw shows as on the page: the picture fades and a line, not read out, says so; then the map is ready.
     await expect(frame(page)).toHaveAttribute("aria-busy", "true");
-    await expect(status(page)).toHaveText("Drawing the map preview for the current settings…");
+    const drawing = page.locator("#large-drawing");
+    await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
+    await expect(drawing).toBeVisible();
+    expect(await drawing.evaluate((p) => p.closest("[role=status], [aria-live]"))).toBeNull();
+    await expect(status(page)).not.toHaveText(/Drawing/);
     release();
+    await expect(drawing).toHaveText("");
     await expect(status(page)).toHaveText("Map preview ready.");
     await expect(frame(page)).toHaveAttribute("aria-busy", "false");
     // One request for the two steps, after the pause, with the new value.
@@ -212,6 +217,34 @@ test.describe("on a wide screen", () => {
     await page.evaluate(() => (document.getElementById("large-view") as HTMLDialogElement).close());
     await expect(dialog(page)).toBeHidden();
     await expect(page.locator(`#mg-resources-nauvis #${iron}`)).toHaveCount(1);
+  });
+
+  // The page around the dialog is inert, so a warning is said in the view's own status line.
+  test("a warning a change in the view brings is still said", async ({ page }) => {
+    await openLarge(page);
+    await page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { seen: string[] }).seen = seen;
+      const s = document.getElementById("large-status")!;
+      new MutationObserver(() => { if (s.textContent) seen.push(s.textContent); }).observe(s, { childList: true, characterData: true, subtree: true });
+    });
+    const seen = () => page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+    const box = panel(page).locator("input[type=checkbox][data-need]").first();
+    const need = (await box.getAttribute("data-need"))!;
+    await box.uncheck();
+    await expect.poll(seen).toContain(need);
+    await expect.poll(seen).toContain("Map preview ready.");
+    expect((await seen()).filter((t) => t.startsWith("Drawing"))).toEqual([]);
+  });
+
+  // A field that the view hides as it narrows does not keep the focus.
+  test("narrowing the view with a settings field focused moves focus to the map", async ({ page }) => {
+    await openLarge(page);
+    const range = panel(page).locator(".step__range").first();
+    await range.focus();
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await expect(panel(page)).toBeHidden();
+    await expect(frame(page)).toBeFocused();
   });
 
   // SPEC 17.10: looking at a planet in the large view, change its setting and see the new map.

@@ -388,8 +388,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const next = reset && !reset.hidden ? reset : document.getElementById("generate-preset");
     if (had && next) next.focus();
   }
+  // The reset's reply replaces the fields anyway, so a change made while it is
+  // on its way leaves the Undo to bring back the form as it was when Reset was pressed.
+  let resetting = false;
   document.body.addEventListener("htmx:beforeRequest", (e) => {
-    if (e.detail.elt && e.detail.elt.id === "preset-reset") undoValues = new FormData(formEl());
+    if (!e.detail.elt || e.detail.elt.id !== "preset-reset") return;
+    undoValues = new FormData(formEl());
+    resetting = true;
+  });
+  document.body.addEventListener("htmx:afterRequest", (e) => {
+    if (e.detail.elt && e.detail.elt.id === "preset-reset") resetting = false;
   });
   document.body.addEventListener("htmx:configRequest", (e) => {
     if (!e.detail.elt || e.detail.elt.id !== "preset-undo" || !undoValues) return;
@@ -400,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // A view (the tab shown) changes no setting, so it keeps the Undo; a version
   // or Space Age change does end it, as Undo would mix two game lines.
   ["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
-    if (!undoValues || !e.target.closest || views.has(e.target.name)) return;
+    if (!undoValues || resetting || !e.target.closest || views.has(e.target.name)) return;
     if (e.target.closest("#line-box, #large-settings") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
   }));
 
@@ -497,17 +505,14 @@ document.addEventListener("DOMContentLoaded", () => {
       // Each out-of-band part is a swap of its own; the settings' swap speaks for them all.
       if (e.target.id !== "map-settings" && e.target.id !== "line-box") return;
       if (sender && sender.id === "preset-reset") {
-        // Reset is hidden once nothing differs; Undo takes its place, with the focus.
+        // Reset is hidden once nothing differs; Undo takes its place, with the
+        // focus Reset had. Focus the person moved on, as into a field, stays there.
         if (undo && undoValues) {
+          const at = document.activeElement;
           undo.hidden = false;
-          undo.focus();
-          announce(strings["js.generate.reset"]);
-        } else {
-          // A change made while the reset was on its way ended the Undo, so it is neither offered nor said.
-          const preset = document.getElementById("generate-preset");
-          if (preset) preset.focus();
-          announce(strings["js.generate.reset_only"]);
+          if (at === document.getElementById("preset-reset") || at === document.body) undo.focus();
         }
+        announce(strings["js.generate.reset"]);
       } else if (sender && sender.id === "preset-undo") {
         hideUndo();
         const reset = document.getElementById("preset-reset");

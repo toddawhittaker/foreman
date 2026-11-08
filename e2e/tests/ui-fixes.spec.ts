@@ -366,8 +366,9 @@ test.describe("Generate", () => {
     release();
   });
 
-  // A change made while the reset is on its way ends the Undo, so the reply cannot offer it or say it.
-  test("a change made while Reset is on its way leaves focus on the preset and says the reset alone", async ({ page }) => {
+  // The reset's reply replaces the fields anyway, so Undo is always offered after it and
+  // brings back the settings as they were when Reset was pressed; focus stays where it was.
+  test("a change made while Reset is on its way still gets Undo, which brings back the settings from before the reset", async ({ page }) => {
     await page.goto("/generate");
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
@@ -381,10 +382,13 @@ test.describe("Generate", () => {
     await page.getByRole("button", { name: "Reset to defaults" }).click();
     await page.getByLabel("Maximum expansion distance").fill("4");
     release();
-    await expect(page.locator("#generate-preset")).toBeFocused();
-    await expect.poll(seen).toContain("Map settings reset to the defaults for this game version.");
-    expect(await seen()).not.toContain("Map settings reset to the defaults for this game version. Undo reset brings your changes back.");
-    await expect(page.getByRole("button", { name: "Undo reset" })).toBeHidden();
+    const undo = page.getByRole("button", { name: "Undo reset" });
+    await expect(undo).toBeVisible();
+    await expect(page.getByLabel("Maximum expansion distance")).toBeFocused();
+    await expect.poll(seen).toContain("Map settings reset to the defaults for this game version. Undo reset brings your changes back.");
+    await page.unroute("**/generate/refresh");
+    await undo.click();
+    await expect(page.getByLabel("Maximum expansion distance")).toHaveValue("3");
   });
 
   // Focus never falls to the page when the Undo it was on ends.

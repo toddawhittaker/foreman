@@ -15,7 +15,6 @@
   "js.preview.next": "Next planet: {planet}",
   "js.preview.download": "Download {planet} map",
   "js.generate.reset": "Map settings reset to the defaults for this game version. Undo reset brings your changes back.",
-  "js.generate.reset_only": "Map settings reset to the defaults for this game version.",
   "js.generate.undone": "Your map settings are back.",
   "js.generate.ach_setting": "{setting} turns off some achievements.",
   "js.generate.ach_clear": "No setting turns off achievements now.",

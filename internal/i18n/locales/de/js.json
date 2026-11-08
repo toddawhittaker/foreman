@@ -15,7 +15,6 @@
   "js.preview.next": "Nächster Planet: {planet}",
   "js.preview.download": "Karte {planet} herunterladen",
   "js.generate.reset": "Karteneinstellungen auf den Standard dieser Spielversion zurückgesetzt. „Zurücksetzen rückgängig machen“ holt deine Änderungen zurück.",
-  "js.generate.reset_only": "Karteneinstellungen auf den Standard dieser Spielversion zurückgesetzt.",
   "js.generate.undone": "Deine Karteneinstellungen sind wieder da.",
   "js.generate.ach_setting": "{setting} deaktiviert einige Errungenschaften.",
   "js.generate.ach_clear": "Jetzt deaktiviert keine Einstellung mehr Errungenschaften.",

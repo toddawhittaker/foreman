@@ -14,7 +14,6 @@ func init() {
 		"js.preview.download",
 		"js.preview.download_territories",
 		"js.generate.reset",
-		"js.generate.reset_only",
 		"js.generate.undone",
 		"js.generate.ach_setting",
 		"js.generate.ach_clear",
