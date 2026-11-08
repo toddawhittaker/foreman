@@ -8,7 +8,7 @@
 // errors gets focus on its error summary; an old summary is removed when a
 // redraw leaves the form in place. While a preview runs the buttons are
 // marked aria-disabled rather than disabled, so the one the person pressed
-// keeps focus.
+// keeps focus. Leaving with unsaved settings asks first.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   // The whole form is swapped when it comes back with errors, so it is looked up each time.
@@ -335,6 +335,39 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.closest("#generate-form .tab-panel")) reveal(e.target);
   });
 
+  // Leaving with settings that are not saved asks the browser's own question
+  // (SPEC 5.6). Not saved: a field that differs from what the page loaded
+  // with, or a form the server sent back with errors. The tab, the preview
+  // size and the territory box are views, not settings.
+  const views = new Set(["tab", "preview_size", "territories"]);
+  let unsaved = Boolean(document.getElementById("error-summary"));
+  let submitting = false;
+  function differsFromLoaded(el) {
+    if (!el.name || views.has(el.name)) return false;
+    if (el.type === "checkbox" || el.type === "radio") return el.checked !== el.defaultChecked;
+    if (el.tagName === "SELECT") {
+      const loaded = [...el.options].filter((o) => o.defaultSelected).pop() || el.options[0];
+      return Boolean(loaded) && el.value !== loaded.value;
+    }
+    if (el.tagName !== "TEXTAREA" && el.tagName !== "INPUT") return false;
+    return el.value !== el.defaultValue;
+  }
+  const isDirty = () => unsaved || [...formEl().elements].some(differsFromLoaded);
+  window.addEventListener("beforeunload", (e) => {
+    if (submitting || !isDirty()) return;
+    e.preventDefault();
+    // Older browsers ask only when this is set.
+    e.returnValue = "";
+  });
+  // Generate itself leaves the page; Preview map and Reset are htmx requests and never submit.
+  document.addEventListener("submit", (e) => {
+    if (e.target === formEl() && !e.defaultPrevented) submitting = true;
+  });
+  // Preview map's reply rewrites the seed field, which then reads as loaded; what was unsaved stays so.
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    if (e.detail.requestConfig && e.detail.requestConfig.elt && e.detail.requestConfig.elt.id === "preview-button" && isDirty()) unsaved = true;
+  });
+
   const actions = "#preview-button, #generate-button, #generate-default";
   const isPreview = (e) => e.detail.elt && e.detail.elt.id === "preview-button";
 
@@ -400,6 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = document.getElementById("error-summary");
     // The form came back whole, with its errors: they are what to read next.
     if (xhr && xhr.getResponseHeader("HX-Retarget") === "#generate-form") {
+      unsaved = true;
       const again = document.getElementById("generate-form");
       if (again) {
         again.classList.add("js-on");

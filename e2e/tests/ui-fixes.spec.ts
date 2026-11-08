@@ -274,7 +274,7 @@ test.describe("Generate", () => {
     });
     await section(page).getByRole("link", { name: /opens the large view/ }).focus();
     await expect.poll(() => sent.length).toBe(1);
-    await expect(section(page)).toContainText("seed 4242");
+    await expect(section(page)).toContainText("Seed 4242");
     await expect(section(page).getByRole("link", { name: /Map preview of Nauvis, seed 4242/ })).toBeFocused();
   });
 

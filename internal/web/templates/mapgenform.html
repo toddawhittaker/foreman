@@ -108,9 +108,6 @@
   {{- with .Toggle}}
   <legend><input type="hidden" name="{{.Name}}" value="off"><label class="check"><input type="checkbox" id="{{.ID}}" name="{{.Name}}" value="on" data-preset="{{if .Preset}}on{{end}}" data-disables="{{$.ID}}"
     {{- if .NeedKey}} data-need="{{msg .Need}}" data-need-clear="{{t "mapgen.need.clear" "resource" (msg .Label)}}" data-need-key="{{.NeedKey}}" aria-describedby="{{.ID}}-need"{{end}}{{if .Checked}} checked{{end}}> {{msg .Label}}</label></legend>
-  {{- if .NeedKey}}
-  <p class="ach" id="{{.ID}}-need">{{if not .Checked}}{{msg .Need}}{{end}}</p>
-  {{- end}}
   {{- else}}
   <legend>{{msg .Legend}}</legend>
   {{- end}}
@@ -118,6 +115,10 @@
   {{template "mapgen-select" .}}
   {{- end}}
 </fieldset>
+{{- /* Under the settings, outside their grid, so they keep every other row's columns. */}}
+{{- with .Toggle}}{{if .NeedKey}}
+<p class="ach" id="{{.ID}}-need">{{if not .Checked}}{{msg .Need}}{{end}}</p>
+{{- end}}{{end}}
 {{- end}}
 
 {{/* The (i) button of a toggletip, after a setting's name. Without script it

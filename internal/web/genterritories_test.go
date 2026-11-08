@@ -101,8 +101,12 @@ func TestTerritoriesAnswerFromTheStore(t *testing.T) {
 		`<div id="territory-reply">`, `<span class="territories" aria-hidden="true"><svg viewBox="0 0 1280 1280" preserveAspectRatio="none"`,
 		`<pattern id="territory-stripes" width="56" height="56" patternUnits="userSpaceOnUse">`, `vector-effect="non-scaling-stroke"`,
 		`<rect x="576" y="576" width="32" height="32"/>`, `<rect x="672" y="576" width="64" height="32"/>`,
-		`<span class="territories__label" style="left: 46.25%; top: 46.25%">Small</span>`, `>Medium</span>`, `>Big</span>`,
-		`<p class="territory-counts">Demolisher territories in this picture: 1 small, 1 medium, 1 big.</p>`,
+		// Short words for the small picture, whole ones for the large view, and where each sits for the style sheet.
+		`<span class="territories__label" style="left: 46.25%; top: 46.25%; --x: 46.25; --y: 46.25"><span class="territories__short">Sm</span><span class="territories__long">Small</span></span>`,
+		`<span class="territories__short">Med</span><span class="territories__long">Medium</span>`,
+		`<span class="territories__short">Big</span><span class="territories__long">Big</span>`,
+		// The counts are for screen readers; the picture shows the territories.
+		`<p class="territory-counts visually-hidden">Demolisher territories in this picture: 1 small, 1 medium, 1 big.</p>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the fragment lacks %q:\n%s", want, body)

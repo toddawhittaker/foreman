@@ -146,6 +146,32 @@ test("a needed resource warns while off, under its box and in the summary", asyn
   await expect(page.locator("#announcer")).toHaveText("Warning cleared: Coal is on.");
 });
 
+// The warning takes a line of its own under the resource's settings, so they
+// keep the columns every other resource's row has.
+test("a needed resource's warning leaves its settings in line with the other rows", async ({ page }) => {
+  await page.goto("/generate");
+  const columns = (id: string) =>
+    page.locator(`#${id} > .field`).evaluateAll((fs) => fs.map((f) => {
+      const r = f.getBoundingClientRect();
+      return { x: Math.round(r.left), w: Math.round(r.width) };
+    }));
+  const tops = (id: string) => page.locator(`#${id} > .field`).evaluateAll((fs) => fs.map((f) => Math.round(f.getBoundingClientRect().top)));
+  const copper = await columns("mg-nauvis-copper-ore");
+  expect(await columns("mg-nauvis-iron-ore")).toEqual(copper);
+  await page.locator("#mg-nauvis-iron-ore-on").uncheck();
+  const warning = page.locator("#mg-nauvis-iron-ore-on-need");
+  await expect(warning).toHaveText(/^Without iron ore on Nauvis/);
+  expect(await columns("mg-nauvis-iron-ore")).toEqual(copper);
+  // The warning sits under the settings, not in a column of its own.
+  const w = (await warning.boundingBox())!;
+  const settings = (await page.locator("#mg-nauvis-iron-ore").boundingBox())!;
+  expect(w.y).toBeGreaterThanOrEqual(settings.y + settings.height);
+  expect(Math.round(w.x)).toBe(Math.round(settings.x));
+  // On a wide panel the settings share one row, as copper's do.
+  expect(new Set(await tops("mg-nauvis-iron-ore")).size).toBe(new Set(await tops("mg-nauvis-copper-ore")).size);
+  await checkPage(page);
+});
+
 test("the server shows the same warning after a round trip", async ({ page }) => {
   await page.goto("/generate");
   await page.locator("#mg-nauvis-stone-on").uncheck();
