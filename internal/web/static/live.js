@@ -140,7 +140,8 @@
   // same row instead of the top of the page.
   document.addEventListener("htmx:oobBeforeSwap", (e) => {
     const old = e.detail.target;
-    if (!old.contains(document.activeElement)) return;
+    // Only a row's version slot (VersionSlot in mods.go); htmx keeps focus for other swaps.
+    if (!old.id.startsWith("mod-version-") || !old.contains(document.activeElement)) return;
     const row = old.closest("tr");
     setTimeout(() => {
       if (row && document.activeElement === document.body) row.querySelector("span.mod-name[tabindex]")?.focus();
