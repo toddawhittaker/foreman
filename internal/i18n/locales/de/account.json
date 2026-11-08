@@ -1,7 +1,7 @@
 {
   "account.title": "factorio.com-Konto",
   "account.intro": "Foreman nutzt dieses Konto, um Mods vom Factorio-Mod-Portal herunterzuladen. Die Suche nach Mods funktioniert auch ohne das Konto.",
-  "account.shared": "Die Mod-Downloads aller Admins laufen über dieses eine Konto, das dem factorio.com-Benutzer gehört, der es besitzt. Wenn du lieber nicht dein eigenes verwenden möchtest, lege ein eigenes factorio.com-Konto nur für diesen Server an und gib dieses ein.",
+  "account.shared": "Die Mod-Downloads aller Admins laufen über dieses eine Konto. Wenn du nicht dein eigenes factorio.com-Konto verwenden möchtest, lege ein eigenes Konto nur für diesen Server an und gib dieses ein.",
   "account.done.saved": "Das Konto ist gespeichert.",
   "account.done.removed": "Das Konto ist entfernt.",
   "account.env.state": "Durch die Umgebung festgelegt",

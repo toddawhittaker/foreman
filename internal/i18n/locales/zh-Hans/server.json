@@ -262,8 +262,8 @@
   "server.mods_done.install": "已在 {world} 中安装 {mods}。",
   "server.mods_done.upgrade": "已在 {world} 中更新 {mods}。",
   "server.mods_done.downgrade": "已在 {world} 中降级 {mods}。",
-  "server.mods_done.enable": "已在 {world} 中开启 {mods}。",
-  "server.mods_done.disable": "已在 {world} 中关闭 {mods}。",
+  "server.mods_done.enable": "已在 {world} 中启用 {mods}。",
+  "server.mods_done.disable": "已在 {world} 中禁用 {mods}。",
   "server.mods_done.remove": "已从 {world} 中移除 {mods}。",
   "server.mods_done.to": "{mod} 至 {version}",
   "server.mods_done.many": {
@@ -279,10 +279,10 @@
     "other": "降级 {count} 个"
   },
   "server.mods_done.count.enable": {
-    "other": "开启 {count} 个"
+    "other": "已启用 {count} 个"
   },
   "server.mods_done.count.disable": {
-    "other": "关闭 {count} 个"
+    "other": "已禁用 {count} 个"
   },
   "server.mods_done.count.remove": {
     "other": "移除 {count} 个"
@@ -323,8 +323,8 @@
   "server.problem.space_age_off": "{save} 使用了太空时代（{mods}），但此世界已关闭太空时代。",
   "server.problem.mod_missing_one": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
   "server.problem.mod_missing_many": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
-  "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已关闭。",
-  "server.problem.mod_disabled_many": "{save} 使用了 {mods}，但在此世界中已关闭。",
+  "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已禁用。",
+  "server.problem.mod_disabled_many": "{save} 使用了 {mods}，但在此世界中已禁用。",
   "server.problem.mod_gone_one": "模组门户上已没有 {mod} {version}，因此玩家的游戏无法下载它，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
   "server.problem.mod_gone_many": "模组门户上已没有 {mods}，因此玩家的游戏无法下载它们，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
   "server.problem.mod_version_first": {
@@ -491,8 +491,8 @@
   "server.restore.mods.remove": "移除 {mods}。",
   "server.restore.mods.put_back": "放回 {mods}。",
   "server.restore.mods.version": "将 {mod} 恢复到 {version}。",
-  "server.restore.mods.on": "重新开启 {mods}。",
-  "server.restore.mods.off": "重新关闭 {mods}。",
+  "server.restore.mods.on": "重新启用 {mods}。",
+  "server.restore.mods.off": "重新禁用 {mods}。",
   "server.restore.mods.settings": "将模组设置 mod-settings.dat 恢复原样。",
   "server.versions.title": "Factorio 版本",
   "server.versions.text": "打开世界页面，可查看是否有更新的 Factorio 版本发布。",

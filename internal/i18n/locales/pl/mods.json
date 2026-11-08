@@ -246,8 +246,8 @@
   "mods.optional.hint": "Modyfikacja z planu może z nich korzystać, ale ich nie wymaga. Zaznaczenie jednej dodaje ją razem ze wszystkim, czego wymaga.",
   "mods.optional.item": "{mod}, oferowana przez {of}",
   "mods.recommended.item": "{mod}, polecana przez {of}",
-  "mods.recommended.hint": "Polecane modyfikacje są już zaznaczone. Odznaczenie jednej ją pomija.",
-  "mods.recommended.unavailable": "{mod}, polecana przez {of}, zostaje pominięta: portal modów nie ma pasującej wersji.",
+  "mods.recommended.hint": "Polecane modyfikacje są już zaznaczone. Odznaczenie modyfikacji spowoduje jej pominięcie.",
+  "mods.recommended.unavailable": "{mod}, polecana przez {of}, zostaje pominięta: portal modyfikacji nie ma pasującej wersji.",
   "mods.unresolved.legend": "Portal modyfikacji nie ma {mod} {version}",
   "mods.unresolved.hint": "Zapis utworzono z tą wersją. Należy wybrać, co zrobić; do tego czasu planu nie można zastosować.",
   "mods.unresolved.nearest_hint": "„Najbliższe” oznacza wydanie najbliższe tej wersji dla Factorio {line}.",
@@ -260,7 +260,7 @@
   "mods.unresolved.upload_label": "Plik zip {mod} {version}",
   "mods.unresolved.upload_button": "Prześlij plik zip",
   "mods.drops.warning": {
-    "one": "Wczytywany zapis używa {mods}. Bez niej gra usunie wszystko, co zostało przez nią zbudowane w świecie.",
+    "one": "Wczytywany zapis używa {mods}, którą ta zmiana wyłącza. Bez niej gra usunie wszystko, co zostało przez nią zbudowane w świecie.",
     "few": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Bez nich gra usunie wszystko, co zostało przez nie zbudowane w świecie.",
     "many": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Bez nich gra usunie wszystko, co zostało przez nie zbudowane w świecie."
   },
@@ -338,14 +338,14 @@
     "many": "{count} innych modyfikacji pozostaje bez zmian"
   },
   "mods.plan.step.download": {
-    "one": "Pobierz {count} modyfikację z portalu modyfikacji i sprawdź jej sumę kontrolną.",
-    "few": "Pobierz {count} modyfikacje z portalu modyfikacji i sprawdź ich sumy kontrolne.",
-    "many": "Pobierz {count} modyfikacji z portalu modyfikacji i sprawdź ich sumy kontrolne."
+    "one": "Pobranie {count} modyfikacji z portalu modyfikacji i sprawdzenie jej sumy kontrolnej.",
+    "few": "Pobranie {count} modyfikacji z portalu modyfikacji i sprawdzenie ich sum kontrolnych.",
+    "many": "Pobranie {count} modyfikacji z portalu modyfikacji i sprawdzenie ich sum kontrolnych."
   },
-  "mods.plan.step.stop": "Ostrzeż graczy, a potem zapisz i zatrzymaj świat {world}.",
-  "mods.plan.step.snapshot": "Wykonaj migawkę z etykietą „{label}”.",
-  "mods.plan.step.change_start": "Zmień modyfikacje, a potem ponownie uruchom świat {world}.",
-  "mods.plan.step.change_stopped": "Zmień modyfikacje. Świat {world} pozostaje zatrzymany, tak jak teraz.",
+  "mods.plan.step.stop": "Ostrzeżenie graczy, potem zapis i zatrzymanie świata {world}.",
+  "mods.plan.step.snapshot": "Wykonanie migawki z etykietą „{label}”.",
+  "mods.plan.step.change_start": "Zmiana modyfikacji, potem ponowne uruchomienie świata {world}.",
+  "mods.plan.step.change_stopped": "Zmiana modyfikacji. Świat {world} pozostaje zatrzymany, tak jak teraz.",
   "mods.plan.step.fails": "Jeśli krok się nie powiedzie, kolejne kroki nie zostaną wykonane.",
   "mods.plan.fix.remove": "Usuń {mod} w ramach tego planu",
   "mods.plan.fix.disable": "Wyłącz też {mod}",
@@ -356,9 +356,9 @@
     "many": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikacji."
   },
   "mods.drops.confirm": {
-    "one": "Usuń to, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",
-    "few": "Usuń to, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
-    "many": "Usuń to, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
+    "one": "Usunięcie tego, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",
+    "few": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
+    "many": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
   },
   "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować."
 }

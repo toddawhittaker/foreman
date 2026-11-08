@@ -214,7 +214,7 @@
   "mods.unresolved.upload_label": "{mod} {version} 的 zip 文件",
   "mods.unresolved.upload_button": "上传 zip 文件",
   "mods.drops.warning": {
-    "other": "加载的存档使用 {count} 个此更改会关闭的模组：{mods}。没有它们，游戏会删除它们在世界中建造的一切。"
+    "other": "加载的存档使用 {count} 个此更改会禁用的模组：{mods}。没有它们，游戏会删除它们在世界中建造的一切。"
   },
   "mods.drops.confirm_missing": {
     "other": "请勾选复选框，确认游戏会删除这 {count} 个模组建造的内容，或取消。"
@@ -287,7 +287,7 @@
   "mods.plan.fix.disable": "同时禁用 {mod}",
   "mods.plan.back_search": "返回搜索",
   "mods.plan.fixed": {
-    "other": "计划现在也会关闭 {mod}。它更改 {count} 个模组。"
+    "other": "计划现在也会禁用 {mod}。它更改 {count} 个模组。"
   },
   "mods.drops.confirm": {
     "other": "删除这 {count} 个模组建造的内容：{mods}。快照“{label}”保留一份副本。"

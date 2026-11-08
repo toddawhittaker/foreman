@@ -1,7 +1,7 @@
 {
   "account.title": "Compte factorio.com",
   "account.intro": "Foreman utilise ce compte pour télécharger des mods depuis le portail de mods de Factorio. La recherche de mods fonctionne sans lui.",
-  "account.shared": "Les téléchargements de mods de tous les administrateurs passent par ce seul compte, qui appartient à l’utilisateur de factorio.com qui le possède. Si vous préférez ne pas utiliser le vôtre, créez un compte factorio.com distinct, réservé à ce serveur, et saisissez-le.",
+  "account.shared": "Les téléchargements de mods de tous les administrateurs passent par ce seul compte. Si vous préférez ne pas utiliser votre propre compte factorio.com, créez-en un distinct, réservé à ce serveur, et saisissez-le.",
   "account.done.saved": "Le compte est enregistré.",
   "account.done.removed": "Le compte est supprimé.",
   "account.env.state": "Défini par l’environnement",

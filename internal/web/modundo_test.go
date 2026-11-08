@@ -50,8 +50,8 @@ func TestModUndoStepsSayWhatUndoDoes(t *testing.T) {
 		"Remove fp-lamp 1.0.0 and fp-lamp-lib 1.0.0.",
 		"Put back gone 2.0.0.",
 		"Put visible-planets back to 1.5.5.",
-		"Turn far-reach back on.",
-		"Turn space-age back off.",
+		"Enable far-reach again.",
+		"Disable space-age again.",
 		"Put back the mod settings, mod-settings.dat, as they were.",
 	}
 	if !slices.Equal(got, want) {
@@ -64,7 +64,7 @@ func TestModUndoStepsSayWhatUndoDoes(t *testing.T) {
 	// settings, so only zip mods are compared.
 	was.listed = nil
 	got = englishAll(modUndoSteps(was, now))
-	if slices.Contains(got, "Turn space-age back off.") || !slices.Contains(got, "Turn far-reach back on.") {
+	if slices.Contains(got, "Disable space-age again.") || !slices.Contains(got, "Enable far-reach again.") {
 		t.Errorf("no mod list: %q", got)
 	}
 }
@@ -87,7 +87,7 @@ func TestUndoAfterARunOfModChanges(t *testing.T) {
 		return g.get(modsPath(id) + ownResultQuery)
 	}
 	tab := disable("alpha")
-	wantIn(t, "first change", text(tab), "Turned off alpha in Other.", `Foreman took the snapshot "Before mod change" first.`, "Undo this mod change")
+	wantIn(t, "first change", text(tab), "Disabled alpha in Other.", `Foreman took the snapshot "Before mod change" first.`, "Undo this mod change")
 
 	tab = disable("beta")
 	if n := g.modSnapshots(id); n != 1 {
@@ -98,7 +98,7 @@ func TestUndoAfterARunOfModChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	since := list[0].TakenAt.UTC().Format("2006-01-02 15:04 UTC")
-	wantIn(t, "second change", text(tab), "Turned off beta in Other.",
+	wantIn(t, "second change", text(tab), "Disabled beta in Other.",
 		`Foreman took no new snapshot: "Before mod change" from `+since+` undoes this change and the ones before it.`,
 		"Undo the mod changes since "+since)
 	if strings.Contains(text(tab), "Undo this mod change") {
@@ -108,7 +108,7 @@ func TestUndoAfterARunOfModChanges(t *testing.T) {
 	page := text(g.get(restorePath(id, list[0].Name)))
 	wantIn(t, "undo confirmation", page, "Undo the mod changes in Other?",
 		`The mods go back to how they were in the snapshot "Before mod change" from `+since,
-		"Turn alpha and beta back on.", "Restore snapshot")
+		"Enable alpha and beta again.", "Restore snapshot")
 }
 
 // SPEC 9.4: a snapshot whose mod list cannot be read leaves the plain

@@ -277,7 +277,7 @@
   "server.mods_done.upgrade": "В мире {world} обновлено: {mods}.",
   "server.mods_done.downgrade": "В мире {world} понижена версия: {mods}.",
   "server.mods_done.enable": "В мире {world} включено: {mods}.",
-  "server.mods_done.disable": "В мире {world} выключено: {mods}.",
+  "server.mods_done.disable": "В мире {world} отключено: {mods}.",
   "server.mods_done.remove": "Из мира {world} удалено: {mods}.",
   "server.mods_done.to": "{mod} до {version}",
   "server.mods_done.many": {
@@ -306,9 +306,9 @@
     "many": "включено: {count}"
   },
   "server.mods_done.count.disable": {
-    "one": "выключено: {count}",
-    "few": "выключено: {count}",
-    "many": "выключено: {count}"
+    "one": "отключено: {count}",
+    "few": "отключено: {count}",
+    "many": "отключено: {count}"
   },
   "server.mods_done.count.remove": {
     "one": "удалено: {count}",
@@ -351,8 +351,8 @@
   "server.problem.space_age_off": "{save} использует Space Age ({mods}), но для этого мира Space Age выключен.",
   "server.problem.mod_missing_one": "{save} использует {mods}, но в этом мире нет файла для него.",
   "server.problem.mod_missing_many": "{save} использует {mods}, но в этом мире нет соответствующих файлов.",
-  "server.problem.mod_disabled_one": "{save} использует {mods}, но в этом мире он выключен.",
-  "server.problem.mod_disabled_many": "{save} использует моды: {mods}. В этом мире они выключены.",
+  "server.problem.mod_disabled_one": "{save} использует {mods}, но в этом мире он отключён.",
+  "server.problem.mod_disabled_many": "{save} использует моды: {mods}. В этом мире они отключены.",
   "server.problem.mod_gone_one": "На портале модов больше нет {mod} {version}, поэтому игра игроков не может его скачать, и они не могут зайти. Если продолжить всё равно, из сохранения ничего не удалится.",
   "server.problem.mod_gone_many": "На портале модов больше нет {mods}, поэтому игра игроков не может их скачать, и они не могут зайти. Если продолжить всё равно, из сохранения ничего не удалится.",
   "server.problem.mod_version_first": {
@@ -528,7 +528,7 @@
   "server.restore.mods.put_back": "Вернуть: {mods}.",
   "server.restore.mods.version": "Вернуть {mod} к версии {version}.",
   "server.restore.mods.on": "Снова включить: {mods}.",
-  "server.restore.mods.off": "Снова выключить: {mods}.",
+  "server.restore.mods.off": "Снова отключить: {mods}.",
   "server.restore.mods.settings": "Вернуть прежние настройки модов, mod-settings.dat.",
   "server.versions.title": "Версии Factorio",
   "server.versions.text": "Откройте страницу мира, чтобы узнать, вышел ли более новый выпуск Factorio.",

@@ -215,7 +215,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
 
   // The fix redraws the plan in place with fp-other removed too, says so, and puts focus on the changes.
   await conflicts.getByRole("link", { name: "Remove fp-other as part of this plan" }).click();
-  await expect(page.locator("#announcer")).toHaveText("The plan now turns off fp-other too. It changes 2 mods.");
+  await expect(page.locator("#announcer")).toHaveText("The plan now disables fp-other too. It changes 2 mods.");
   await expect(page.getByRole("heading", { level: 1, name: "Change the mods of Base?" })).toBeVisible();
   await expect(page.locator("#plan-changes")).toBeFocused();
   await expect(page.locator("#plan-conflicts")).toHaveCount(0);
@@ -251,7 +251,7 @@ test("removing a needed mod offers to disable the one that needs it, in one chan
   await expect(page.locator("#plan-steps")).toBeVisible();
   await checkPage(page);
   await page.getByRole("button", { name: "Change 2 mods" }).click();
-  await expect(doneBox(page)).toContainText(/Changed 2 mods in Base: 1 turned off, 1 removed\. Foreman took the snapshot "Before mod change" first\./, live);
+  await expect(doneBox(page)).toContainText(/Changed 2 mods in Base: 1 disabled, 1 removed\. Foreman took the snapshot "Before mod change" first\./, live);
   const list = JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "mods", "mod-list.json"), "utf8")).mods as { name: string; enabled: boolean }[];
   expect(readdirSync(join(foreman.dataDir, "worlds", "base", "mods")).filter((f) => f.startsWith("fp-lib"))).toEqual([]);
   expect(list.find((m) => m.name === "fp-needer")?.enabled).toBe(false);

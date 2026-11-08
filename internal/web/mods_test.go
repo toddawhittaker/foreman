@@ -463,7 +463,7 @@ func TestDisableOnInactiveWorldReportsOnModsTab(t *testing.T) {
 		t.Fatal(err)
 	}
 	tab := g.get(modsPath(id) + ownResultQuery)
-	wantIn(t, "mods tab", tab, "Turned off alpha in Other.", "Undo this mod change", ">Disabled<")
+	wantIn(t, "mods tab", tab, "Disabled alpha in Other.", "Undo this mod change", ">Disabled<")
 }
 
 // Todd's ruling: turning off a mod the loading save uses needs its own
@@ -478,7 +478,7 @@ func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	g.writeMod(id, "foreman-test", "0.1.0")
 	_, body := g.getStatus(kindPlanPath(id, mods.KindDisable, "foreman-test"))
 	// Issue 376: the warning comes first and says it once, and one mod is one mod.
-	wantIn(t, "plan", plain(body), "The save that loads uses foreman-test. Without it, the game deletes everything foreman-test built in the world.",
+	wantIn(t, "plan", plain(body), "The save that loads uses foreman-test, which this change disables. Without it, the game deletes everything foreman-test built in the world.",
 		`name="confirm-drops"`, `Delete what foreman-test built. The snapshot &#34;Before mod change&#34; keeps a copy.`)
 	if strings.Index(body, `id="plan-drops"`) > strings.Index(body, `id="plan-changes"`) {
 		t.Error("the drop warning comes after the plan's changes")
@@ -519,7 +519,7 @@ func TestPlanChangesWhenTheDropsChange(t *testing.T) {
 	if g.modSnapshots(id) != 0 {
 		t.Error("a plan with changed drops was applied")
 	}
-	wantIn(t, "new plan", plain(rep.body), "The save that loads uses foreman-test.", `name="confirm-drops"`)
+	wantIn(t, "new plan", plain(rep.body), "The save that loads uses foreman-test, which this change disables.", `name="confirm-drops"`)
 }
 
 // SPEC 9.8, 9.10: a save's mod the portal lacks blocks the sync, offers an

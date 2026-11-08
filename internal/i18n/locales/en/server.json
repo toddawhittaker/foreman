@@ -264,13 +264,13 @@
   "server.done.rollback_short": "The world is rolled back.",
   "server.done.snapshot_short": "The snapshot is taken.",
   "server.mods_done.snapshot": "Foreman took the snapshot \"{label}\" first.",
-  "server.mods_done.changed": "The mods of {world} are changed.",
+  "server.mods_done.changed": "The mods of {world} were changed.",
   "server.mods_done.kept": "Foreman took no new snapshot: \"{label}\" from {time} undoes this change and the ones before it.",
   "server.mods_done.install": "Installed {mods} in {world}.",
   "server.mods_done.upgrade": "Updated {mods} in {world}.",
   "server.mods_done.downgrade": "Downgraded {mods} in {world}.",
-  "server.mods_done.enable": "Turned on {mods} in {world}.",
-  "server.mods_done.disable": "Turned off {mods} in {world}.",
+  "server.mods_done.enable": "Enabled {mods} in {world}.",
+  "server.mods_done.disable": "Disabled {mods} in {world}.",
   "server.mods_done.remove": "Removed {mods} from {world}.",
   "server.mods_done.to": "{mod} to {version}",
   "server.mods_done.many": {
@@ -290,12 +290,12 @@
     "other": "{count} downgraded"
   },
   "server.mods_done.count.enable": {
-    "one": "{count} turned on",
-    "other": "{count} turned on"
+    "one": "{count} enabled",
+    "other": "{count} enabled"
   },
   "server.mods_done.count.disable": {
-    "one": "{count} turned off",
-    "other": "{count} turned off"
+    "one": "{count} disabled",
+    "other": "{count} disabled"
   },
   "server.mods_done.count.remove": {
     "one": "{count} removed",
@@ -337,8 +337,8 @@
   "server.problem.space_age_off": "{save} uses Space Age ({mods}), but Space Age is off for this world.",
   "server.problem.mod_missing_one": "{save} uses {mods}, but this world has no file for it.",
   "server.problem.mod_missing_many": "{save} uses {mods}, but this world has no files for them.",
-  "server.problem.mod_disabled_one": "{save} uses {mods}, but it is turned off in this world.",
-  "server.problem.mod_disabled_many": "{save} uses {mods}, but they are turned off in this world.",
+  "server.problem.mod_disabled_one": "{save} uses {mods}, but it is disabled in this world.",
+  "server.problem.mod_disabled_many": "{save} uses {mods}, but they are disabled in this world.",
   "server.problem.mod_gone_one": "The mod portal no longer has {mod} {version}, so players' games cannot download it and they cannot join. Going ahead anyway deletes nothing from the save.",
   "server.problem.mod_gone_many": "The mod portal no longer has {mods}, so players' games cannot download them and they cannot join. Going ahead anyway deletes nothing from the save.",
   "server.problem.mod_version_first": {
@@ -509,8 +509,8 @@
   "server.restore.mods.remove": "Remove {mods}.",
   "server.restore.mods.put_back": "Put back {mods}.",
   "server.restore.mods.version": "Put {mod} back to {version}.",
-  "server.restore.mods.on": "Turn {mods} back on.",
-  "server.restore.mods.off": "Turn {mods} back off.",
+  "server.restore.mods.on": "Enable {mods} again.",
+  "server.restore.mods.off": "Disable {mods} again.",
   "server.restore.mods.settings": "Put back the mod settings, mod-settings.dat, as they were.",
   "server.versions.title": "Factorio versions",
   "server.versions.text": "Open a world's page to see whether a newer Factorio release is out.",

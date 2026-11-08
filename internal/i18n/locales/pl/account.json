@@ -1,7 +1,7 @@
 {
   "account.title": "Konto factorio.com",
   "account.intro": "Foreman używa tego konta do pobierania modyfikacji z portalu modyfikacji Factorio. Wyszukiwanie modyfikacji działa także bez niego.",
-  "account.shared": "Pobieranie modyfikacji przez wszystkich administratorów odbywa się przez to jedno konto, które należy do użytkownika factorio.com, będącego jego właścicielem. Jeśli nie należy używać własnego konta, można założyć osobne konto factorio.com tylko dla tego serwera i wpisać je tutaj.",
+  "account.shared": "Pobieranie modyfikacji przez wszystkich administratorów odbywa się przez to jedno konto. Aby nie używać własnego konta factorio.com, można założyć osobne konto tylko dla tego serwera i wpisać je tutaj.",
   "account.done.saved": "Konto zostało zapisane.",
   "account.done.removed": "Konto zostało usunięte.",
   "account.env.state": "Ustawione przez środowisko",

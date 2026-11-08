@@ -26,7 +26,7 @@ test.describe("turning off a mod the loading save uses", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Disable foreman-test in Base?" })).toBeVisible();
     // Issue 376: the warning comes first in the plan and says it once; the box is the go-ahead.
     const warning = page.locator("#plan-drops");
-    await expect(warning).toContainText("The save that loads uses foreman-test. Without it, the game deletes everything foreman-test built in the world.");
+    await expect(warning).toContainText("The save that loads uses foreman-test, which this change disables. Without it, the game deletes everything foreman-test built in the world.");
     const box = page.getByRole("checkbox", { name: 'Delete what foreman-test built. The snapshot "Before mod change" keeps a copy.' });
     await expect(box).toHaveId("confirm-drops");
     await expect(box).not.toBeChecked();
@@ -73,7 +73,7 @@ test.describe("turning off a mod the loading save uses", () => {
   test("on a running world, a mod the save on disk lacks still asks first", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, { ...withMod, mods: { ...withMod.mods, "fp-extra": "2.1" }, start: true });
     await page.goto("/worlds/base/mods/plan?kind=disable&name=fp-extra");
-    await expect(page.locator("#plan-drops")).toContainText("The save that loads uses fp-extra.");
+    await expect(page.locator("#plan-drops")).toContainText("The save that loads uses fp-extra, which this change disables.");
     await page.locator("#confirm-drops").check();
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
     await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);

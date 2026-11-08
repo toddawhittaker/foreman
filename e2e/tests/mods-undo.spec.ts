@@ -50,7 +50,7 @@ test("three changes on a stopped world share one snapshot, and undo lists and pu
   await setUpModsWorld(page, foreman, fakeGame!, { mods });
 
   await change(page, "disable", "fp-a", "Disable 1 mod");
-  await expect(doneBox(page)).toContainText(`Turned off fp-a in Base. ${took}`);
+  await expect(doneBox(page)).toContainText(`Disabled fp-a in Base. ${took}`);
   await expect(undoOne(page)).toBeVisible();
   const [first] = modSnapshots(foreman);
   expect(first).toBeDefined();
@@ -64,7 +64,7 @@ test("three changes on a stopped world share one snapshot, and undo lists and pu
   await expect(undoOne(page)).toHaveCount(0);
 
   await change(page, "disable", "fp-b", "Disable 1 mod");
-  await expect(doneBox(page)).toContainText("Turned off fp-b in Base.");
+  await expect(doneBox(page)).toContainText("Disabled fp-b in Base.");
   await expect(doneBox(page)).toContainText(kept);
   await expect(undoRun(page)).toHaveAttribute("href", `/worlds/base/snapshots/${first.name}/restore`);
   expect(modSnapshots(foreman)).toHaveLength(1);
@@ -77,7 +77,7 @@ test("three changes on a stopped world share one snapshot, and undo lists and pu
   await expect(page.getByRole("heading", { level: 1, name: "Undo the mod changes in Base?" })).toBeVisible();
   await expect(page.locator("main")).toContainText('The mods go back to how they were in the snapshot "Before mod change" from');
   const steps = page.locator("#mod-undo > li");
-  await expect(steps).toHaveText(["Remove fp-new 1.0.0.", "Turn fp-a and fp-b back on."]);
+  await expect(steps).toHaveText(["Remove fp-new 1.0.0.", "Enable fp-a and fp-b again."]);
   await checkPage(page);
   await page.getByRole("button", { name: "Restore snapshot" }).click();
   await expect(doneBox(page)).toContainText("The world is restored.", live);
@@ -99,7 +99,7 @@ test("after a start and a stop the next change takes a new snapshot, and the und
   await expect(stateBadge(page)).toHaveText("Stopped", live);
 
   await change(page, "disable", "fp-b", "Disable 1 mod");
-  await expect(doneBox(page)).toContainText(`Turned off fp-b in Base. ${took}`);
+  await expect(doneBox(page)).toContainText(`Disabled fp-b in Base. ${took}`);
   const snaps = modSnapshots(foreman);
   expect(snaps).toHaveLength(2);
   expect(snaps[1].takenAt > first.takenAt).toBe(true);
@@ -116,10 +116,10 @@ test("after a start and a stop the next change takes a new snapshot, and the und
 test("on a running world each change takes its own snapshot", async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { mods, start: true });
   await change(page, "disable", "fp-a", "Disable 1 mod");
-  await expect(doneBox(page)).toContainText(`Turned off fp-a in Base. ${took}`, live);
+  await expect(doneBox(page)).toContainText(`Disabled fp-a in Base. ${took}`, live);
   await expect(stateBadge(page)).toHaveText("Running", live);
   await change(page, "disable", "fp-b", "Disable 1 mod");
-  await expect(doneBox(page)).toContainText(`Turned off fp-b in Base. ${took}`, live);
+  await expect(doneBox(page)).toContainText(`Disabled fp-b in Base. ${took}`, live);
   await expect(stateBadge(page)).toHaveText("Running", live);
   const snaps = modSnapshots(foreman);
   expect(snaps).toHaveLength(2);
@@ -138,7 +138,7 @@ test("a settings save between two mod changes ends the sharing", async ({ page, 
   await expect(page.locator(".message--success")).toContainText("Settings saved.");
 
   await change(page, "disable", "fp-b", "Disable 1 mod");
-  await expect(doneBox(page)).toContainText(`Turned off fp-b in Base. ${took}`);
+  await expect(doneBox(page)).toContainText(`Disabled fp-b in Base. ${took}`);
   const snaps = modSnapshots(foreman);
   expect(snaps).toHaveLength(2);
   await expect(undoOne(page)).toHaveAttribute("href", `/worlds/base/snapshots/${snaps[1].name}/restore`);

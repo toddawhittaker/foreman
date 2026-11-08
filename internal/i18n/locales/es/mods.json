@@ -30,9 +30,9 @@
   "mods.hits.page": "Página {page} de {pages}",
   "mods.hits.prev": "Página anterior",
   "mods.hits.next": "Página siguiente",
-  "mods.search.pick_hint": "Marca varios mods para añadirlos a un solo plan, o usa el botón Añadir al plan de un mod.",
+  "mods.search.pick_hint": "Marca varios mods para añadirlos a un solo plan, o usa el botón «Añadir al plan» de un mod.",
   "mods.search.add_ticked": "Añadir los mods marcados al plan",
-  "mods.search.pick_none": "No hay nada marcado. Marca los mods que quieras añadir, o usa el botón Añadir al plan de un mod.",
+  "mods.search.pick_none": "No hay nada marcado. Marca los mods que quieras añadir, o usa el botón «Añadir al plan» de un mod.",
   "mods.search.picked_elsewhere": "También marcados en otras páginas: {mods}.",
   "mods.fact.latest": "Última versión",
   "mods.fact.downloads": "Descargas",
@@ -237,7 +237,7 @@
   "mods.unresolved.upload_label": "Zip de {mod} {version}",
   "mods.unresolved.upload_button": "Subir zip",
   "mods.drops.warning": {
-    "one": "La partida guardada que se carga usa {mods}. Sin él, el juego borra todo lo que {mods} construyó en el mundo.",
+    "one": "La partida guardada que se carga usa {mods}, que este cambio desactiva. Sin él, el juego borra todo lo que {mods} construyó en el mundo.",
     "other": "La partida guardada que se carga usa {count} mods que este cambio desactiva: {mods}. Sin ellos, el juego borra todo lo que construyeron en el mundo."
   },
   "mods.drops.confirm_missing": {
