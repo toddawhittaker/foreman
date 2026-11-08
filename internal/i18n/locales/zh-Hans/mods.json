@@ -154,27 +154,19 @@
     "other": "此计划需要下载 {count} 个模组，但 Foreman 没有 factorio.com 账户，因此下载已关闭。"
   },
   "mods.plan.nothing": "无需更改：模组已经符合要求。",
-  "mods.plan.download": {
-    "other": "从模组门户下载 {count} 个模组，并逐个对照校验和检查。如果下载失败，不会执行其他操作。"
-  },
   "mods.plan.warn_stop": "警告玩家，然后保存并停止服务器。",
   "mods.plan.snapshot": "为 {world} 创建快照，标签为“{label}”。如果快照失败，不会执行其他操作。",
-  "mods.plan.change": "更改模组：",
-  "mods.plan.asked.heading": "已选择的模组：",
   "mods.plan.asked.remove": "从计划中移除",
-  "mods.plan.needed.heading": "它们需要的模组：",
-  "mods.plan.change_above": "进行上面列出的模组更改。",
   "mods.plan.add.heading": "添加其他模组",
   "mods.plan.add.back": "返回计划",
   "mods.plan.start": "重新启动服务器。",
-  "mods.plan.undo": "如需撤销，请在“快照”页面恢复该快照。",
+  "mods.plan.undo": "完成后，结果旁会出现一键撤销，用于恢复该快照。",
   "mods.plan.group.install": "安装",
   "mods.plan.group.upgrade": "升级",
   "mods.plan.group.downgrade": "降级",
   "mods.plan.group.enable": "启用",
   "mods.plan.group.disable": "禁用",
   "mods.plan.group.remove": "移除",
-  "mods.plan.group.keep": "保持不变",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} {from} 到 {to}",
   "mods.plan.item.uploaded": "{mod} {version}，来自已上传的 zip 文件",
@@ -222,16 +214,18 @@
   "mods.unresolved.upload_label": "{mod} {version} 的 zip 文件",
   "mods.unresolved.upload_button": "上传 zip 文件",
   "mods.drops.warning": {
-    "other": "将要加载的存档使用了 {count} 个会被此更改关闭的模组：{mods}。游戏在没有它们的情况下启动时，会删除它们添加到世界中的所有内容。"
+    "other": "加载的存档使用 {count} 个此更改会关闭的模组：{mods}。没有它们，游戏会删除它们在世界中建造的一切。"
   },
-  "mods.drops.confirm_missing": "请勾选复选框，确认游戏会删除这些模组添加的内容，或取消此更改。",
+  "mods.drops.confirm_missing": {
+    "other": "请勾选复选框，确认游戏会删除这 {count} 个模组建造的内容，或取消。"
+  },
   "mods.conflict.incompatible": "{mod} 无法与 {other} 一起运行。",
   "mods.conflict.space_age_off": "{mod} 需要 {other}，它属于太空时代，而此世界已关闭太空时代。",
   "mods.conflict.space_age_save": "存档使用了 {mod}，它属于太空时代，而此世界已关闭太空时代。请先在世界设置中开启太空时代。",
   "mods.conflict.no_release": "{mod} 没有适用于此游戏版本且满足计划要求的发布版本：{needs}。",
   "mods.conflict.version": "{mod} {version} 不满足计划的要求：{needs}。",
   "mods.conflict.not_on_portal": "{mod} 不在模组门户上。请改为上传其 zip 文件。",
-  "mods.conflict.required_by": "{other} 需要 {mod}。请先禁用或移除 {other}。",
+  "mods.conflict.required_by": "{other} 需要 {mod}。",
   "mods.conflict.built_in": "{mod} 内置于游戏中。它跟随世界的太空时代设置，不能手动更改。",
   "mods.conflict.local": "{mod} 以文件夹形式安装，而 Foreman 从不替换文件夹形式的模组。请在世界的模组文件夹中更改它。",
   "mods.conflict.not_installed": "{mod} 未安装在此世界中。",
@@ -273,5 +267,30 @@
   "mods.built_in.line_on": "内置，版本 {version}：{mods}。太空时代已启用，因此全部启用。",
   "mods.built_in.line_off": "内置，版本 {version}：{mods}。太空时代已禁用，因此 {off} 已禁用。",
   "mods.built_in.change": "更改太空时代",
-  "mods.built_in.turn_on": "启用太空时代"
+  "mods.built_in.turn_on": "启用太空时代",
+  "mods.plan.button.change": {
+    "other": "更改 {count} 个模组"
+  },
+  "mods.plan.changes": "更改：",
+  "mods.plan.kept": {
+    "other": "另有 {count} 个模组保持不变"
+  },
+  "mods.plan.step.download": {
+    "other": "从模组门户下载 {count} 个模组，并检查其校验和。"
+  },
+  "mods.plan.step.stop": "警告玩家，然后保存并停止 {world}。",
+  "mods.plan.step.snapshot": "创建标签为“{label}”的快照。",
+  "mods.plan.step.change_start": "更改模组，然后重新启动 {world}。",
+  "mods.plan.step.change_stopped": "更改模组。{world} 保持停止，与现在一样。",
+  "mods.plan.step.fails": "如果某一步失败，之后的步骤不会执行。",
+  "mods.plan.fix.remove": "在此计划中一并移除 {mod}",
+  "mods.plan.fix.disable": "同时禁用 {mod}",
+  "mods.plan.back_search": "返回搜索",
+  "mods.plan.fixed": {
+    "other": "计划现在也会关闭 {mod}。它更改 {count} 个模组。"
+  },
+  "mods.drops.confirm": {
+    "other": "删除这 {count} 个模组建造的内容：{mods}。快照“{label}”保留一份副本。"
+  },
+  "mods.drops.confirm_missing_one": "请勾选复选框，确认游戏会删除 {mod} 建造的内容，或取消。"
 }

@@ -430,3 +430,26 @@ func TestHashStable(t *testing.T) {
 		t.Errorf("hash %q does not reflect the plan", first)
 	}
 }
+
+// SPEC 9.2, 17.9: a conflict's fix turns another mod off in the same plan,
+// so the plan resolves without the conflict.
+func TestAlsoTurnOffFixesConflicts(t *testing.T) {
+	p := portal{"a": {rel("1.0.0", "2.0", "! b")}, "b": {rel("1.0.0", "2.0")}}
+	w := World{Mods: []world.InstalledMod{installed("b", "1.0.0", true)}}
+	plan := resolve(t, p, w, Request{Kind: KindInstall, Names: []string{"a"}, AlsoRemove: []string{"b"}})
+	if !plan.Applicable() {
+		t.Fatalf("conflicts = %+v", plan.Conflicts)
+	}
+	wantChange(t, plan, "a", ActInstall, "1.0.0", asked())
+	wantChange(t, plan, "b", ActRemove, "", asked())
+
+	// Disabling a mod another needs: disabling that one too clears it.
+	p = portal{"a": {rel("1.0.0", "2.0", "b")}, "b": {rel("1.0.0", "2.0")}}
+	w = World{Mods: []world.InstalledMod{installed("a", "1.0.0", true, "b"), installed("b", "1.0.0", true)}}
+	plan = resolve(t, p, w, Request{Kind: KindRemove, Names: []string{"b"}, AlsoDisable: []string{"a"}})
+	if !plan.Applicable() {
+		t.Fatalf("conflicts = %+v", plan.Conflicts)
+	}
+	wantChange(t, plan, "b", ActRemove, "", asked())
+	wantChange(t, plan, "a", ActDisable, "1.0.0", asked())
+}

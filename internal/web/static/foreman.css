@@ -879,7 +879,7 @@ legend {
   border-radius: var(--radius);
 }
 
-.confirm ul {
+.confirm :is(ul, ol) {
   display: grid;
   gap: var(--space-2);
   padding-inline-start: var(--space-5);
@@ -1211,8 +1211,10 @@ main h1 {
   gap: var(--space-2) var(--space-3);
 }
 
-/* A heading with a time in its sentence reads as one line of text, not a row of parts. */
-main h1:has(> time) {
+/* A heading with a time or a mod's name in its sentence reads as one run of
+   text, not a row of parts with gaps around the name (DESIGN 8.11). */
+main h1:has(> time),
+main h1:has(> .ident) {
   display: block;
 }
 
@@ -2956,18 +2958,24 @@ a.mod-name {
   min-block-size: var(--target-min);
 }
 
-/* The mods an install plan asks for: each with its portal link and its
-   way out of the plan, wrapping under the name when the box is narrow. */
+/* A mod plan that destroys nothing is not a danger box (DESIGN 7.1, 8.11). */
+.confirm--plain {
+  border-color: var(--color-line);
+}
+
 .plan-label {
   font-weight: 600;
 }
 
-.confirm .plan-asked {
+/* The plan's changes, one mod a line; an asked-for mod's portal link and
+   way out of the plan wrap under its name when the box is narrow. */
+.confirm .plan-items {
   padding-inline-start: 0;
   list-style: none;
+  gap: 0;
 }
 
-.plan-asked > li {
+.plan-items > li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2977,7 +2985,7 @@ a.mod-name {
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
-.plan-asked__text {
+.plan-items__text {
   flex: 1 1 12rem;
   min-inline-size: 0;
 }
@@ -3014,8 +3022,7 @@ a.mod-name {
 
 .plan-groups {
   display: grid;
-  gap: var(--space-2);
-  margin-block-start: var(--space-2);
+  gap: var(--space-3);
 }
 
 .plan-groups dt {

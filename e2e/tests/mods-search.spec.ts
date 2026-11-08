@@ -47,7 +47,7 @@ test("25 results: a table a page at a time, ticks kept across pages, one plan fo
 
   // One plan with both, and the same page of the same search below it.
   await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
-  const asked = page.getByRole("list", { name: "Mods you asked for:" });
+  const asked = page.locator("#mod-plan .plan-groups");
   await expect(asked).toContainText("fp-pg-01 1.0.0");
   await expect(asked).toContainText("fp-pg-12 1.0.0");
   await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();

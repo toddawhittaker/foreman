@@ -33,8 +33,12 @@ test("two mods from one search: added in place, then one install with one snapsh
   await page.getByRole("link", { name: "Add to plan fp-lamp", exact: true }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-lamp in Base?" })).toBeVisible();
-  const asked = page.getByRole("list", { name: "Mods you asked for:" });
+  const asked = page.locator("#mod-plan .plan-groups");
   await expect(asked).toContainText("fp-lamp 1.0.0");
+  // Issue 364: the heading is one run of text, so the name has one space each side and breaks like a word.
+  const h1 = page.locator("#confirm-heading");
+  expect(await h1.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+  expect(await h1.evaluate((el) => (el as HTMLElement).innerText)).toBe("Install fp-lamp in Base?");
   // A stopped world's install is the primary action, not a danger (DESIGN 7.1).
   await expect(page.getByRole("button", { name: "Install 1 mod" })).toHaveClass(/button--primary/);
   // The same search waits under the plan, after the confirm button.
@@ -62,7 +66,7 @@ test("two mods from one search: added in place, then one install with one snapsh
   // Taking one out redraws again and puts focus on the list.
   await asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
   await expect(page.locator("#announcer")).toHaveText("Removed fp-lamp-colours. The plan has 1 mod.");
-  await expect(page.locator("#asked-heading")).toBeFocused();
+  await expect(page.locator("#plan-changes")).toBeFocused();
   await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
   await add.getByRole("link", { name: "Add to plan fp-lamp-colours", exact: true }).click();
 

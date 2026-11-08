@@ -188,29 +188,19 @@
     "many": "Ten plan pobiera {count} modyfikacji, a pobieranie jest wyłączone, ponieważ Foreman nie ma konta factorio.com."
   },
   "mods.plan.nothing": "Nic nie trzeba zmieniać: modyfikacje są już takie, jak żądano.",
-  "mods.plan.download": {
-    "one": "Pobierz {count} modyfikację z portalu modyfikacji i sprawdź ją względem sumy kontrolnej. Jeśli pobieranie się nie powiedzie, nic więcej się nie dzieje.",
-    "few": "Pobierz {count} modyfikacje z portalu modyfikacji i sprawdź każdą względem jej sumy kontrolnej. Jeśli pobieranie się nie powiedzie, nic więcej się nie dzieje.",
-    "many": "Pobierz {count} modyfikacji z portalu modyfikacji i sprawdź każdą względem jej sumy kontrolnej. Jeśli pobieranie się nie powiedzie, nic więcej się nie dzieje."
-  },
   "mods.plan.warn_stop": "Ostrzeż graczy, a potem zapisz grę i zatrzymaj serwer.",
   "mods.plan.snapshot": "Wykonaj migawkę świata {world} z etykietą „{label}”. Jeśli migawka się nie powiedzie, nic więcej się nie dzieje.",
-  "mods.plan.change": "Zmień modyfikacje:",
-  "mods.plan.asked.heading": "Wybrane modyfikacje:",
   "mods.plan.asked.remove": "Usuń z planu",
-  "mods.plan.needed.heading": "Czego potrzebują:",
-  "mods.plan.change_above": "Wprowadź zmiany modyfikacji wymienione powyżej.",
   "mods.plan.add.heading": "Dodaj kolejną modyfikację",
   "mods.plan.add.back": "Wróć do planu",
   "mods.plan.start": "Ponownie uruchom serwer.",
-  "mods.plan.undo": "Aby cofnąć, należy przywrócić tę migawkę na stronie „Migawki”.",
+  "mods.plan.undo": "Po zakończeniu przy wyniku pojawi się cofnięcie jednym kliknięciem, które przywraca tę migawkę.",
   "mods.plan.group.install": "Instalacja",
   "mods.plan.group.upgrade": "Podniesienie wersji",
   "mods.plan.group.downgrade": "Obniżenie wersji",
   "mods.plan.group.enable": "Włączenie",
   "mods.plan.group.disable": "Wyłączenie",
   "mods.plan.group.remove": "Usunięcie",
-  "mods.plan.group.keep": "Bez zmian",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} z {from} na {to}",
   "mods.plan.item.uploaded": "{mod} {version}, z przesłanego pliku zip",
@@ -270,18 +260,22 @@
   "mods.unresolved.upload_label": "Plik zip {mod} {version}",
   "mods.unresolved.upload_button": "Prześlij plik zip",
   "mods.drops.warning": {
-    "one": "Wczytywany zapis używa {count} modyfikacji, którą ta zmiana wyłącza: {mods}. Gdy gra uruchomi się bez niej, usunie wszystko, co zostało przez nią dodane do świata.",
-    "few": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Gdy gra uruchomi się bez nich, usunie wszystko, co zostało przez nie dodane do świata.",
-    "many": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Gdy gra uruchomi się bez nich, usunie wszystko, co zostało przez nie dodane do świata."
+    "one": "Wczytywany zapis używa {mods}. Bez niej gra usunie wszystko, co zostało przez nią zbudowane w świecie.",
+    "few": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Bez nich gra usunie wszystko, co zostało przez nie zbudowane w świecie.",
+    "many": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Bez nich gra usunie wszystko, co zostało przez nie zbudowane w świecie."
   },
-  "mods.drops.confirm_missing": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co dodały te modyfikacje, albo anulować zmianę.",
+  "mods.drops.confirm_missing": {
+    "one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {count} modyfikację, albo anulować.",
+    "few": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {count} modyfikacje, albo anulować.",
+    "many": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {count} modyfikacji, albo anulować."
+  },
   "mods.conflict.incompatible": "{mod} nie może działać razem z {other}.",
   "mods.conflict.space_age_off": "{mod} wymaga {other} z Ery Kosmosu, a Era Kosmosu jest wyłączona dla tego świata.",
   "mods.conflict.space_age_save": "Zapis używa {mod} z Ery Kosmosu, a Era Kosmosu jest wyłączona dla tego świata. Najpierw należy włączyć Erę Kosmosu w ustawieniach świata.",
   "mods.conflict.no_release": "Żadne wydanie {mod} dla tej wersji gry nie spełnia wymagań planu: {needs}.",
   "mods.conflict.version": "{mod} {version} nie spełnia wymagań planu: {needs}.",
   "mods.conflict.not_on_portal": "{mod} nie ma w portalu modyfikacji. Zamiast tego należy przesłać jej plik zip.",
-  "mods.conflict.required_by": "{other} wymaga {mod}. Najpierw należy wyłączyć lub usunąć {other}.",
+  "mods.conflict.required_by": "{other} wymaga {mod}.",
   "mods.conflict.built_in": "{mod} jest wbudowana w grę. Zależy od ustawienia Ery Kosmosu w świecie i nie zmienia się jej ręcznie.",
   "mods.conflict.local": "{mod} jest zainstalowana jako folder, a Foreman nigdy nie zastępuje modyfikacji w folderze. Należy ją zmienić w folderze modyfikacji świata.",
   "mods.conflict.not_installed": "{mod} nie jest zainstalowana w tym świecie.",
@@ -331,5 +325,40 @@
   "mods.built_in.line_on": "Wbudowane, wersja {version}: {mods}. Era Kosmosu jest włączona, więc wszystkie są włączone.",
   "mods.built_in.line_off": "Wbudowane, wersja {version}: {mods}. Era Kosmosu jest wyłączona, więc {off} są wyłączone.",
   "mods.built_in.change": "Zmień Erę Kosmosu",
-  "mods.built_in.turn_on": "Włącz Erę Kosmosu"
+  "mods.built_in.turn_on": "Włącz Erę Kosmosu",
+  "mods.plan.button.change": {
+    "one": "Zmień {count} modyfikację",
+    "few": "Zmień {count} modyfikacje",
+    "many": "Zmień {count} modyfikacji"
+  },
+  "mods.plan.changes": "Zmiany:",
+  "mods.plan.kept": {
+    "one": "{count} inna modyfikacja pozostaje bez zmian",
+    "few": "{count} inne modyfikacje pozostają bez zmian",
+    "many": "{count} innych modyfikacji pozostaje bez zmian"
+  },
+  "mods.plan.step.download": {
+    "one": "Pobierz {count} modyfikację z portalu modyfikacji i sprawdź jej sumę kontrolną.",
+    "few": "Pobierz {count} modyfikacje z portalu modyfikacji i sprawdź ich sumy kontrolne.",
+    "many": "Pobierz {count} modyfikacji z portalu modyfikacji i sprawdź ich sumy kontrolne."
+  },
+  "mods.plan.step.stop": "Ostrzeż graczy, a potem zapisz i zatrzymaj świat {world}.",
+  "mods.plan.step.snapshot": "Wykonaj migawkę z etykietą „{label}”.",
+  "mods.plan.step.change_start": "Zmień modyfikacje, a potem ponownie uruchom świat {world}.",
+  "mods.plan.step.change_stopped": "Zmień modyfikacje. Świat {world} pozostaje zatrzymany, tak jak teraz.",
+  "mods.plan.step.fails": "Jeśli krok się nie powiedzie, kolejne kroki nie zostaną wykonane.",
+  "mods.plan.fix.remove": "Usuń {mod} w ramach tego planu",
+  "mods.plan.fix.disable": "Wyłącz też {mod}",
+  "mods.plan.back_search": "Wróć do wyszukiwania",
+  "mods.plan.fixed": {
+    "one": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikację.",
+    "few": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikacje.",
+    "many": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikacji."
+  },
+  "mods.drops.confirm": {
+    "one": "Usuń to, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",
+    "few": "Usuń to, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
+    "many": "Usuń to, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
+  },
+  "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować."
 }

@@ -171,28 +171,19 @@
     "other": "Este plan descarga {count} mods, y las descargas están desactivadas porque Foreman no tiene una cuenta de factorio.com."
   },
   "mods.plan.nothing": "No hace falta cambiar nada: los mods ya están como se pidió.",
-  "mods.plan.download": {
-    "one": "Descargar {count} mod del portal de mods y comprobarlo con su suma de comprobación. Si la descarga falla, no ocurre nada más.",
-    "other": "Descargar {count} mods del portal de mods y comprobar cada uno con su suma de comprobación. Si una descarga falla, no ocurre nada más."
-  },
   "mods.plan.warn_stop": "Avisar a los jugadores, guardar y detener el servidor.",
   "mods.plan.snapshot": "Tomar una instantánea de {world}, con la etiqueta «{label}». Si la instantánea falla, no ocurre nada más.",
-  "mods.plan.change": "Cambiar los mods:",
-  "mods.plan.asked.heading": "Mods que pediste:",
   "mods.plan.asked.remove": "Quitar del plan",
-  "mods.plan.needed.heading": "Lo que necesitan:",
-  "mods.plan.change_above": "Hacer los cambios de mods indicados arriba.",
   "mods.plan.add.heading": "Añadir otro mod",
   "mods.plan.add.back": "Volver al plan",
   "mods.plan.start": "Iniciar el servidor de nuevo.",
-  "mods.plan.undo": "Para deshacerlo, restaura esa instantánea desde la página «Instantáneas».",
+  "mods.plan.undo": "Al terminar, el resultado ofrece deshacer con un clic, que restaura esa instantánea.",
   "mods.plan.group.install": "Instalar",
   "mods.plan.group.upgrade": "Pasar a una versión más nueva",
   "mods.plan.group.downgrade": "Volver a una versión más antigua",
   "mods.plan.group.enable": "Activar",
   "mods.plan.group.disable": "Desactivar",
   "mods.plan.group.remove": "Quitar",
-  "mods.plan.group.keep": "Dejar como está",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} {from} a {to}",
   "mods.plan.item.uploaded": "{mod} {version}, del zip subido",
@@ -246,17 +237,20 @@
   "mods.unresolved.upload_label": "Zip de {mod} {version}",
   "mods.unresolved.upload_button": "Subir zip",
   "mods.drops.warning": {
-    "one": "La partida guardada que se carga usa {count} mod que este cambio desactiva: {mods}. Cuando el juego se inicie sin él, borrará todo lo que añadió al mundo.",
-    "other": "La partida guardada que se carga usa {count} mods que este cambio desactiva: {mods}. Cuando el juego se inicie sin ellos, borrará todo lo que añadieron al mundo."
+    "one": "La partida guardada que se carga usa {mods}. Sin él, el juego borra todo lo que {mods} construyó en el mundo.",
+    "other": "La partida guardada que se carga usa {count} mods que este cambio desactiva: {mods}. Sin ellos, el juego borra todo lo que construyeron en el mundo."
   },
-  "mods.drops.confirm_missing": "Marca la casilla para confirmar que el juego borrará lo que añadieron estos mods, o cancela el cambio.",
+  "mods.drops.confirm_missing": {
+    "one": "Marca la casilla para confirmar que el juego borra lo que construyó este mod, o cancela.",
+    "other": "Marca la casilla para confirmar que el juego borra lo que construyeron estos {count} mods, o cancela."
+  },
   "mods.conflict.incompatible": "{mod} no puede funcionar junto con {other}.",
   "mods.conflict.space_age_off": "{mod} necesita {other}, que viene con Space Age, y Space Age está desactivado para este mundo.",
   "mods.conflict.space_age_save": "La partida guardada usa {mod}, que viene con Space Age, y Space Age está desactivado para este mundo. Activa primero Space Age en los ajustes del mundo.",
   "mods.conflict.no_release": "Ninguna versión de {mod} para esta versión del juego cumple lo que necesita el plan: {needs}.",
   "mods.conflict.version": "{mod} {version} no cumple lo que necesita el plan: {needs}.",
   "mods.conflict.not_on_portal": "{mod} no está en el portal de mods. Sube su zip en su lugar.",
-  "mods.conflict.required_by": "{other} necesita {mod}. Desactiva o quita primero {other}.",
+  "mods.conflict.required_by": "{other} necesita {mod}.",
   "mods.conflict.built_in": "{mod} está integrado en el juego. Sigue el ajuste de Space Age del mundo y no se cambia a mano.",
   "mods.conflict.local": "{mod} está instalado como carpeta, y Foreman nunca reemplaza un mod en carpeta. Cámbialo en la carpeta de mods del mundo.",
   "mods.conflict.not_installed": "{mod} no está instalado en este mundo.",
@@ -302,5 +296,35 @@
   "mods.built_in.line_on": "Integrados, versión {version}: {mods}. Space Age está activado, así que todos están activados.",
   "mods.built_in.line_off": "Integrados, versión {version}: {mods}. Space Age está desactivado, así que {off} están desactivados.",
   "mods.built_in.change": "Cambiar Space Age",
-  "mods.built_in.turn_on": "Activar Space Age"
+  "mods.built_in.turn_on": "Activar Space Age",
+  "mods.plan.button.change": {
+    "one": "Cambiar {count} mod",
+    "other": "Cambiar {count} mods"
+  },
+  "mods.plan.changes": "Cambios:",
+  "mods.plan.kept": {
+    "one": "{count} mod más se queda como está",
+    "other": "{count} mods más se quedan como están"
+  },
+  "mods.plan.step.download": {
+    "one": "Descargar {count} mod del portal de mods y comprobar su suma de comprobación.",
+    "other": "Descargar {count} mods del portal de mods y comprobar sus sumas de comprobación."
+  },
+  "mods.plan.step.stop": "Avisar a los jugadores, guardar y detener {world}.",
+  "mods.plan.step.snapshot": "Tomar una instantánea con la etiqueta «{label}».",
+  "mods.plan.step.change_start": "Cambiar los mods e iniciar {world} de nuevo.",
+  "mods.plan.step.change_stopped": "Cambiar los mods. {world} sigue detenido, como ahora.",
+  "mods.plan.step.fails": "Si un paso falla, los pasos siguientes no se hacen.",
+  "mods.plan.fix.remove": "Quitar {mod} en este mismo plan",
+  "mods.plan.fix.disable": "Desactivar también {mod}",
+  "mods.plan.back_search": "Volver a la búsqueda",
+  "mods.plan.fixed": {
+    "one": "Ahora el plan también desactiva {mod}. Cambia {count} mod.",
+    "other": "Ahora el plan también desactiva {mod}. Cambia {count} mods."
+  },
+  "mods.drops.confirm": {
+    "one": "Borrar lo que {mods} construyó. La instantánea «{label}» conserva una copia.",
+    "other": "Borrar lo que construyeron estos {count} mods: {mods}. La instantánea «{label}» conserva una copia."
+  },
+  "mods.drops.confirm_missing_one": "Marca la casilla para confirmar que el juego borra lo que {mod} construyó, o cancela."
 }

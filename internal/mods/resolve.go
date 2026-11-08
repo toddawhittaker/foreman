@@ -114,6 +114,8 @@ func resolveOnce(ctx context.Context, w World, req Request, lookup Lookup, cache
 	default:
 		r.conflict(Conflict{Code: ConflictBadRequest})
 	}
+	r.turnOff(req.AlsoDisable, false)
+	r.turnOff(req.AlsoRemove, true)
 	if err != nil {
 		return nil, nil, err
 	}

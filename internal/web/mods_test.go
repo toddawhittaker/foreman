@@ -159,7 +159,7 @@ var reHidden = regexp.MustCompile(`<input type="hidden" name="([^"]+)" value="([
 // planValues reads the plan form's hidden fields from a page.
 func planValues(t *testing.T, body string) url.Values {
 	t.Helper()
-	form := between(body, `<section class="confirm">`, `</form>`)
+	form := between(body, `<section class="confirm`, `</form>`)
 	if form == "" {
 		t.Fatalf("no plan form:\n%s", body)
 	}
@@ -477,10 +477,15 @@ func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	g.copySave(id, "2.1.24-space-age-testmod.zip")
 	g.writeMod(id, "foreman-test", "0.1.0")
 	_, body := g.getStatus(kindPlanPath(id, mods.KindDisable, "foreman-test"))
-	wantIn(t, "plan", plain(body), "The save that loads uses 1 mod this change turns off: foreman-test", `name="confirm-drops"`)
+	// Issue 376: the warning comes first and says it once, and one mod is one mod.
+	wantIn(t, "plan", plain(body), "The save that loads uses foreman-test. Without it, the game deletes everything foreman-test built in the world.",
+		`name="confirm-drops"`, `Delete what foreman-test built. The snapshot &#34;Before mod change&#34; keeps a copy.`)
+	if strings.Index(body, `id="plan-drops"`) > strings.Index(body, `id="plan-changes"`) {
+		t.Error("the drop warning comes after the plan's changes")
+	}
 	v := planValues(t, body)
 	rep := g.post(modsPath(id)+"/plan", v)
-	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(rep.body, "Tick the box to confirm") || g.modSnapshots(id) != 0 {
+	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(plain(rep.body), "Tick the box to confirm that the game deletes what foreman-test built, or cancel.") || g.modSnapshots(id) != 0 {
 		t.Fatalf("unconfirmed drop: %d\n%s", rep.StatusCode, rep.body)
 	}
 	v.Set("confirm-drops", "1")
@@ -514,7 +519,7 @@ func TestPlanChangesWhenTheDropsChange(t *testing.T) {
 	if g.modSnapshots(id) != 0 {
 		t.Error("a plan with changed drops was applied")
 	}
-	wantIn(t, "new plan", plain(rep.body), "turns off: foreman-test", `name="confirm-drops"`)
+	wantIn(t, "new plan", plain(rep.body), "The save that loads uses foreman-test.", `name="confirm-drops"`)
 }
 
 // SPEC 9.8, 9.10: a save's mod the portal lacks blocks the sync, offers an
@@ -699,7 +704,7 @@ func modPageCases() []pageCase {
 		{"mod search empty", "todd", 200, ModSearchPage{World: w, QueryError: i18n.M("mods.search.missing")}},
 		{"mod search down", "todd", 200, ModSearchPage{World: w, Query: "x", Unreachable: true}},
 		{"mod plan", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Running: true, CountdownForm: defaultCountdown(), NoAccount: true,
-			Changed: true, Drops: []string{"gamma"}, DropsError: i18n.M("mods.drops.confirm_missing"),
+			Changed: true, Drops: []string{"gamma"}, DropsError: dropsMissing([]string{"gamma"}),
 			ConfirmErrors: map[string]i18n.Msg{"old": i18n.M("mods.unresolved.confirm_missing", "mod", "old")}}},
 		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: defaultCountdown()}},
 		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: "/x"}},
