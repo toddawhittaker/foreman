@@ -162,12 +162,10 @@ test("focus moves to the mod's name when the status hides Change version", async
   await checkPage(page);
 });
 
-// The move to the name is only for the Change version slot: another slot's
-// swap leaves focus to htmx.
-test("a swap of the Update slot does not move focus to the mod's name", async ({ page, foreman, fakeGame, fakePortal }) => {
-  await fakePortal!.add("fp-upd", "1.0.0", ["base >= 2.0"]);
-  await fakePortal!.add("fp-upd", "1.1.0", ["base >= 2.0"]);
-  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-upd": "2.0" } });
+// The move to the name is only for the Change version slot. Another slot in
+// the row, here the note, is swapped with focus inside it; focus is left to htmx.
+test("a swap of another slot does not move focus to the mod's name", async ({ page, foreman, fakeGame }) => {
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
   let release!: () => void;
   const held = new Promise<void>((r) => (release = r));
   await page.route("**/mods/status", async (route) => {
@@ -175,15 +173,16 @@ test("a swap of the Update slot does not move focus to the mod's name", async ({
     await route.continue();
   });
   await page.goto("/worlds/base/mods");
-  const row = page.locator("tr", { hasText: "fp-upd" });
-  // The empty slot is given focus, so its swap takes away the focused element.
-  await row.locator("span[id^=mod-update-]").evaluate((el) => {
-    el.hidden = false;
-    el.tabIndex = -1;
-    el.focus();
+  const row = page.locator("tr", { hasText: "zz-private" });
+  // The empty note is made focusable and focused, so its swap takes focus away.
+  await row.locator("div[id^=mod-note-]").evaluate((el) => {
+    (el as HTMLElement).hidden = false;
+    (el as HTMLElement).tabIndex = -1;
+    (el as HTMLElement).focus();
   });
   release();
-  await expect(row.getByRole("link", { name: /^Update to 1\.1\.0/ })).toBeVisible(live);
+  await expect(row.getByRole("link", { name: "Change version zz-private", exact: true })).toHaveCount(0, live);
   await page.waitForTimeout(200);
-  await expect(row.locator("span.mod-name")).not.toBeFocused();
+  const onName = await page.evaluate(() => !!document.activeElement?.closest(".mod-name"));
+  expect(onName).toBe(false);
 });

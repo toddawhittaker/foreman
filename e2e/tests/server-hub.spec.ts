@@ -67,7 +67,7 @@ test.describe("with the fake game", () => {
     await expect(page.locator(".message--error")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Cancel stop" })).toHaveCount(0);
     const sent = await commands(g);
-    expect(sent).toContain("The server stop was cancelled.");
+    expect(sent).toContain("The server stop was canceled.");
     expect(sent).not.toContain("/server-save");
     await checkPage(page);
   });
