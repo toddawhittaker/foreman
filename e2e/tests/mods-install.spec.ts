@@ -30,7 +30,7 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await expect(page.getByRole("heading", { level: 3, name: "fp-signs" })).toBeVisible();
   await checkPage(page);
 
-  await page.getByRole("link", { name: "Install fp-signs" }).click();
+  await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-signs in Base?" })).toBeVisible();
   await expect(page.locator("#mod-plan")).toContainText("fp-signs 1.0.0");
   // A running game: the plan says it will warn and stop it, and asks for the countdown.
@@ -66,7 +66,7 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
   await setUpModsWorld(page, foreman, fakeGame!, world);
 
   await page.goto("/worlds/base/mods/search?q=fp-a");
-  await page.getByRole("link", { name: "Install fp-a" }).click();
+  await page.getByRole("link", { name: "Add to plan fp-a", exact: true }).click();
   const plan = page.locator("#mod-plan");
   await expect(plan).toContainText("fp-a 1.0.0");
   await expect(plan).toContainText("fp-b 1.0.0 (fp-a needs it)");
@@ -162,7 +162,7 @@ test("an incompatibility is a conflict: the error is shown and there is no butto
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-other": "2.0" } });
 
   await page.goto("/worlds/base/mods/search?q=fp-clash");
-  await page.getByRole("link", { name: "Install fp-clash" }).click();
+  await page.getByRole("link", { name: "Add to plan fp-clash", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-clash in Base?" })).toBeVisible();
   const conflicts = page.locator("#plan-conflicts");
   await expect(conflicts).toContainText("This plan cannot be applied because of a conflict:");

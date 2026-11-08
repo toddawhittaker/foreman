@@ -54,6 +54,7 @@
   "common.label.busy": "Beschäftigt:",
   "common.confirm.will": "Dabei passiert Folgendes:",
   "common.list.sep": ", ",
+  "common.link.new_tab": "(öffnet in einem neuen Tab)",
   "common.menu.account": "{user}, {language}: Konto- und Sprachmenü",
   "common.menu.language": "{language}: Sprachmenü",
   "common.countdown.none_name": "Keine Warnung: Countdown auf 0 Sekunden setzen"

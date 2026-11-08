@@ -58,6 +58,7 @@
   "common.label.busy": "Zajęty:",
   "common.confirm.will": "Co się stanie:",
   "common.list.sep": ", ",
+  "common.link.new_tab": "(otwiera się w nowej karcie)",
   "common.menu.account": "{user}, {language}: menu konta i języka",
   "common.menu.language": "{language}: menu języka",
   "common.countdown.none_name": "Bez ostrzeżenia: ustaw odliczanie na 0 sekund"

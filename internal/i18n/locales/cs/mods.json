@@ -23,13 +23,15 @@
     "other": "{count} modů pro Factorio {line}"
   },
   "mods.search.none": "Žádný mod pro Factorio {line} neodpovídá. Je třeba zkusit kratší část názvu.",
-  "mods.search.install": "Nainstalovat {mod}",
+  "mods.search.add": "Přidat do plánu",
   "mods.fact.latest": "Nejnovější verze",
   "mods.fact.game_version": "Verze hry",
   "mods.fact.downloads": "Stažení",
   "mods.badge.installed": "Nainstalovaný",
-  "mods.badge.built_in": "Vestavěný",
+  "mods.badge.in_plan": "V plánu",
   "mods.badge.local": "Místní složka",
+  "mods.portal.link": "Portál modů",
+  "mods.portal.for": "pro {mod}, otevře se na nové kartě",
   "mods.installed.heading": "Nainstalované mody",
   "mods.installed.caption": {
     "one": "Mody světa {world}: {count} mod.",
@@ -76,7 +78,13 @@
     "few": "Hráči už nemohou stáhnout {count} mody světa {world}, takže se nemohou připojit.",
     "other": "Hráči už nemohou stáhnout {count} modů světa {world}, takže se nemohou připojit."
   },
-  "mods.notice.fix": "Opravit",
+  "mods.notice.one": "{mod} {version} už na portálu modů není, takže se hráči nemohou připojit.",
+  "mods.notice.update": "Aktualizovat {mod}",
+  "mods.notice.review": {
+    "one": "Zkontrolovat {count} mod",
+    "few": "Zkontrolovat {count} mody",
+    "other": "Zkontrolovat {count} modů"
+  },
   "mods.sync.heading": "Přizpůsobit mody uložené hře",
   "mods.sync.text": "Nastaví mody světa na ty, se kterými byla vytvořena uložená hra {save}: chybějící nainstaluje, změní verze a ostatní vypne. Nejdřív se zobrazí plán.",
   "mods.sync.button": "Přizpůsobit mody uložené hře",
@@ -95,6 +103,9 @@
   "mods.settings.text": "Hodnoty nastavení modů jsou v souboru {file}. Lze si ho stáhnout, aby se zachovala kopie nebo aby se použil v jiném světě.",
   "mods.settings.download": "Stáhnout mod-settings.dat",
   "mods.settings.none": "Tento svět zatím nemá soubor {file}. Hra ho zapíše při prvním spuštění s mody.",
+  "mods.settings.where": "Klient Factorio má tento soubor ve své složce modů: Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Nastavení při spuštění platí od příštího spuštění světa.",
+  "mods.settings.apply_running": "Nastavení při spuštění platí od příštího spuštění světa, proto ho Foreman restartuje.",
   "mods.settings.replace": "Nahradit {file} zvoleným souborem.",
   "mods.settings.label": "Nový {file}",
   "mods.settings.hint": "Nejvýše {limit}.",
@@ -102,6 +113,7 @@
   "mods.settings.empty": "Tento soubor je prázdný. Je třeba zvolit soubor mod-settings.dat.",
   "mods.settings.changed": "Mody světa se změnily po otevření této stránky, proto se nic nezměnilo. Je třeba stránku zkontrolovat a soubor nahrát znovu.",
   "mods.plan.heading.install": "Nainstalovat {mod} do světa {world}?",
+  "mods.plan.heading.install_some": "Nainstalovat mody do světa {world}?",
   "mods.plan.heading.update": "Aktualizovat mody světa {world}?",
   "mods.plan.heading.update_one": "Aktualizovat {mod} ve světě {world}?",
   "mods.plan.heading.sync": "Přizpůsobit mody světa {world} uložené hře {save}?",
@@ -134,6 +146,11 @@
   "mods.plan.warn_stop": "Upozornit hráče, pak uložit hru a zastavit server.",
   "mods.plan.snapshot": "Pořídit snímek světa {world} se štítkem „{label}“. Pokud snímek selže, nestane se nic dalšího.",
   "mods.plan.change": "Změnit mody:",
+  "mods.plan.asked.heading": "Vybrané mody:",
+  "mods.plan.asked.remove": "Odebrat z plánu",
+  "mods.plan.needed.heading": "Co potřebují:",
+  "mods.plan.change_above": "Provést změny modů uvedené výše.",
+  "mods.plan.add.heading": "Přidat další mod",
   "mods.plan.start": "Znovu spustit server.",
   "mods.plan.undo": "Pro vrácení zpět je třeba tento snímek obnovit na stránce „Snímky“.",
   "mods.plan.group.install": "Instalace",
@@ -187,7 +204,8 @@
   "mods.optional.hint": "Mod v plánu je může používat, ale nepotřebuje je. Zaškrtnutím jednoho se přidá i se vším, co potřebuje.",
   "mods.optional.item": "{mod}, nabízí {of}",
   "mods.unresolved.legend": "Portál modů nemá {mod} {version}",
-  "mods.unresolved.hint": "Uložená hra byla vytvořena s touto verzí. Je třeba zvolit, co dělat; dokud se tak nestane, plán nelze použít. „Nejbližší“ znamená nejbližší vydání pro Factorio {line}.",
+  "mods.unresolved.hint": "Uložená hra byla vytvořena s touto verzí. Je třeba zvolit, co dělat; dokud se tak nestane, plán nelze použít.",
+  "mods.unresolved.nearest_hint": "„Nejbližší“ znamená nejbližší vydání pro Factorio {line}.",
   "mods.unresolved.upload": "Nahrát zip s {mod} {version}",
   "mods.unresolved.uploaded": "Použít nahraný zip s {mod} {version}",
   "mods.unresolved.nearest": "Použít {mod} {version}, nejbližší vydání pro Factorio {line}",
@@ -238,12 +256,23 @@
     "few": "Plán aktualizován: mění se {count} mody.",
     "other": "Plán aktualizován: mění se {count} modů."
   },
+  "mods.plan.added": {
+    "one": "Přidán {mod}. Plán má {count} mod.",
+    "few": "Přidán {mod}. Plán má {count} mody.",
+    "other": "Přidán {mod}. Plán má {count} modů."
+  },
+  "mods.plan.removed": {
+    "one": "Odebrán {mod}. Plán má {count} mod.",
+    "few": "Odebrán {mod}. Plán má {count} mody.",
+    "other": "Odebrán {mod}. Plán má {count} modů."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plán aktualizován: má konflikt, a proto ho nelze použít.",
     "few": "Plán aktualizován: má {count} konflikty, a proto ho nelze použít.",
     "other": "Plán aktualizován: má {count} konfliktů, a proto ho nelze použít."
   },
   "mods.error.cross_site": "Tento plán byl otevřen z jiného webu, proto ho Foreman nesestavil. Nic se nezměnilo. Plán se zobrazí po volbě „Zkusit znovu“.",
-  "mods.built_in.note": "Vestavěné mody jsou součástí hry a řídí se nastavením Space Age světa.",
-  "mods.built_in.settings": "Změnit Space Age v nastavení světa"
+  "mods.built_in.line_space_age": "Vestavěné, verze {version}: {mods}. Řídí se nastavením Space Age.",
+  "mods.built_in.line": "Vestavěné, verze {version}: {mods}.",
+  "mods.built_in.change": "Změnit Space Age"
 }

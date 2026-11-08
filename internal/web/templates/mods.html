@@ -62,40 +62,42 @@
   <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
     <p class="empty">{{t "mods.status.loading"}}</p>
   </div>
-  {{- if .BuiltInCount}}
-  <p>{{t "mods.built_in.note"}} <a href="{{.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.settings"}}</a></p>
+  {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
+  {{- with .BuiltIns}}
+  <p id="mods-built-in" class="mods-built-in">{{if $.Page.HasSpaceAge}}{{tHTML "mods.built_in.line_space_age" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.change"}}</a>{{else}}{{tHTML "mods.built_in.line" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}}{{end}}</p>
   {{- end}}
+  {{- with .Rows}}
   <table role="table" class="mod-list">
-    <caption>{{t "mods.installed.caption" "world" .World.Name "count" (len .Mods)}} {{t "mods.installed.enabled" "count" .Enabled}}</caption>
+    <caption>{{t "mods.installed.caption" "world" $.Page.World.Name "count" (len .)}} {{t "mods.installed.enabled" "count" $.Page.Enabled}}</caption>
     <thead role="rowgroup">
       <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.col.state"}}</th><th scope="col" role="columnheader">{{t "mods.col.actions"}}</th></tr>
     </thead>
     <tbody role="rowgroup">
-      {{- range .Mods}}
+      {{- range .}}
       <tr role="row">
-        <td role="cell"><span class="mod-name">{{.Name}}</span> <code class="nowrap">{{.Version}}</code>
-          {{- if .BuiltIn}} <span class="badge">{{t "mods.badge.built_in"}}</span>{{else if .Local}} <span class="badge">{{t "mods.badge.local"}}</span>{{end}}</td>
+        <td role="cell"><span class="mod-name ident" translate="no">{{.Name}}</span> <code class="nowrap">{{.Version}}</code>
+          {{- if .Local}} <span class="badge">{{t "mods.badge.local"}}</span>{{end}}
+          {{- /* The portal status takes the link away for a mod the portal does not have. */}}
+          {{- if not .Local}} <span id="{{$.Page.PortalSlot .Name}}">{{template "portal-link" .Name}}</span>{{end}}</td>
         <td role="cell" data-label="{{t "mods.col.state"}}">{{if .Enabled}}{{t "mods.state.on"}}{{else}}{{t "mods.state.off"}}{{end}}</td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
-          {{- if not .BuiltIn}}
           <div class="row-actions">
             {{- if not .Local}}<span id="{{$.Page.UpdateSlot .Name}}" hidden></span>{{end}}
             {{- if .Enabled}}
-            <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> {{.Name}}</span></a>
+            <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
             {{- else}}
-            <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> {{.Name}}</span></a>
+            <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
             {{- end}}
             {{- if not .Local}}
-            <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet">{{t "mods.row.remove"}}<span class="visually-hidden"> {{.Name}}</span></a>
+            <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
             {{- end}}
           </div>
-          {{- end}}
         </td>
       </tr>
       {{- end}}
     </tbody>
   </table>
-  {{- if eq (len .Mods) .BuiltInCount}}
+  {{- else}}
   <p class="empty">{{t "mods.installed.none"}}</p>
   {{- end}}
 </section>
@@ -142,6 +144,22 @@
   {{- /* The form says what will happen, so it is the confirmation (DESIGN 7.4). */}}
   <form method="post" action="{{.SettingsPath}}" enctype="multipart/form-data" class="confirm" novalidate>
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+    {{- /* Where the file is, then the field, then what the upload will do beside its button. */}}
+    <p id="settings-file-help">{{tHTML "mods.settings.where" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}} {{if .Running}}{{t "mods.settings.apply_running"}}{{else}}{{t "mods.settings.apply"}}{{end}}</p>
+    {{template "required-note"}}
+    <div class="field">
+      <label for="settings-file" class="required">{{tHTML "mods.settings.label" "file" (code .SettingsFile)}}</label>
+      <p class="hint" id="settings-file-hint">{{t "mods.settings.hint" "limit" .SettingsLimit}}</p>
+      <input id="settings-file" name="settings" type="file" accept=".dat" required
+        aria-describedby="settings-file-help settings-file-hint{{if not .SettingsError.IsZero}} settings-file-error{{end}}"
+        {{- if not .SettingsError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .SettingsError.IsZero}}
+      <p class="error" id="settings-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .SettingsError}}</p>
+      {{- end}}
+    </div>
+    {{- if .Running}}
+    {{template "countdown" .CountdownForm}}
+    {{- end}}
     <p>{{t "common.confirm.will"}}</p>
     <ul>
       {{- if .Running}}
@@ -154,20 +172,6 @@
       {{- end}}
       <li>{{t "mods.plan.undo"}}</li>
     </ul>
-    {{template "required-note"}}
-    {{- if .Running}}
-    {{template "countdown" .CountdownForm}}
-    {{- end}}
-    <div class="field">
-      <label for="settings-file" class="required">{{tHTML "mods.settings.label" "file" (code .SettingsFile)}}</label>
-      <p class="hint" id="settings-file-hint">{{t "mods.settings.hint" "limit" .SettingsLimit}}</p>
-      <input id="settings-file" name="settings" type="file" accept=".dat" required
-        aria-describedby="settings-file-hint{{if not .SettingsError.IsZero}} settings-file-error{{end}}"
-        {{- if not .SettingsError.IsZero}} aria-invalid="true"{{end}}>
-      {{- if not .SettingsError.IsZero}}
-      <p class="error" id="settings-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .SettingsError}}</p>
-      {{- end}}
-    </div>
     <div class="actions">
       <button type="submit" class="button">{{t "mods.settings.button"}}</button>
     </div>
@@ -188,22 +192,25 @@
 {{- else}}
 {{- range .Flags}}
 <div class="message {{$.FlagClass .}}">
-  <p><strong>{{msg ($.FlagWord .)}}</strong> {{msg ($.FlagText .)}}</p>
+  <p><strong>{{msg ($.FlagWord .)}}</strong> {{msgHTML ($.FlagText .)}}</p>
   <div class="actions">
     {{- if and (eq .Code "version-gone") .Update}}
-    <a href="{{$.UpdatePath .Name}}" class="button">{{t "mods.flag.fix_update" "mod" .Name "version" .Update}}</a>
+    <a href="{{$.UpdatePath .Name}}" class="button">{{tHTML "mods.flag.fix_update" "mod" (ident .Name) "version" .Update}}</a>
     {{- else}}
-    <a href="{{$.RemovePath .Name}}" class="button">{{t "mods.flag.fix_remove" "mod" .Name}}</a>
+    <a href="{{$.RemovePath .Name}}" class="button">{{tHTML "mods.flag.fix_remove" "mod" (ident .Name)}}</a>
     {{- end}}
   </div>
 </div>
+{{- if eq .Code "not-on-portal"}}
+<span id="{{$.PortalSlot .Name}}" hx-swap-oob="delete"></span>
+{{- end}}
 {{- end}}
 {{- if .Updates}}
 <p>{{t "mods.status.updates" "count" (len .Updates)}}</p>
 <div class="actions"><a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a></div>
 {{- /* Each row's Update button goes into its place in the table. */}}
 {{- range .Updates}}
-<span id="{{$.UpdateSlot .Name}}" hx-swap-oob="true"><a href="{{$.UpdatePath .Name}}" class="button">{{t "mods.row.update" "version" .To}}<span class="visually-hidden"> {{.Name}}</span></a></span>
+<span id="{{$.UpdateSlot .Name}}" hx-swap-oob="true"><a href="{{$.UpdatePath .Name}}" class="button">{{t "mods.row.update" "version" .To}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a></span>
 {{- end}}
 {{- else if .Checked}}
 <p>{{t "mods.status.current" "count" .Checked}}</p>

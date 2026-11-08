@@ -303,6 +303,14 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 		"codes":  loc.Codes,
 		"nowrap": i18n.NoWrap,
 		"strong": i18n.Strong,
+		// ident wraps a name a program reads, such as a mod's, so it never
+		// hyphenates; idents is a list of them.
+		"ident":  i18n.Ident,
+		"idents": loc.Idents,
+		// extLink links to an https address off this site, in a new tab.
+		"extLink": loc.ExternalLink,
+		// portalPath is a mod's page on the mod portal.
+		"portalPath": portalPath,
 		// game marks Factorio's own words, for tHTML.
 		"game": i18n.Game,
 		// m makes a Msg to fill a placeholder, such as a snapshot label:
@@ -333,7 +341,7 @@ func localeFuncs(loc i18n.Locale) template.FuncMap {
 
 // partials are template files that no route renders on their own: every page
 // loads them, and each defines templates the pages include.
-var partials = []string{"mapgenform", "generatepreview", "failure"}
+var partials = []string{"mapgenform", "generatepreview", "failure", "modportal"}
 
 var partialFiles = func() []string {
 	out := make([]string, len(partials))

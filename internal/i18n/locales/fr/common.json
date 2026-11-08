@@ -54,6 +54,7 @@
   "common.label.busy": "Occupé :",
   "common.confirm.will": "Foreman va :",
   "common.list.sep": ", ",
+  "common.link.new_tab": "(s’ouvre dans un nouvel onglet)",
   "common.menu.account": "{user}, {language} : menu du compte et de la langue",
   "common.menu.language": "{language} : menu de la langue",
   "common.countdown.none_name": "Sans avertissement : régler le compte à rebours sur 0 seconde"

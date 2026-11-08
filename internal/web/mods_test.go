@@ -207,19 +207,39 @@ func TestModsTabListsMods(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status %d\n%s", code, g.logs.String())
 	}
-	wantIn(t, "mods tab", body, `>alpha</span>`, `>folder-mod</span>`, "Built in", "Local folder",
+	wantIn(t, "mods tab", body, `>alpha</span>`, `>folder-mod</span>`, "Local folder",
 		`href="/worlds/`+id+`/mods/plan?kind=remove&amp;name=alpha"`, `href="/worlds/`+id+`/mods/plan?kind=disable&amp;name=alpha"`,
 		`hx-get="/worlds/`+id+`/mods/status"`, "Match mods to the save", `aria-current="page">Mods</a>`,
-		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod; the built-in note is said once.
-		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> alpha</span>`, `Remove<span class="visually-hidden"> alpha</span>`,
-		"Built-in mods come with the game", `href="/worlds/`+id+`/settings" id="act-built-in-settings"`, "at most 200 MB", "At most 4 MB")
-	if n := strings.Count(body, "world&#39;s Space Age setting"); n != 1 {
-		t.Errorf("the built-in note is said %d times", n)
+		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
+		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
+		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
+		// SPEC 9.7: the built-in mods are one line above the table, with the way to change them.
+		`>base</span>`, "They follow Space Age.", `href="/worlds/`+id+`/settings" id="act-built-in-settings">Change Space Age</a>`,
+		"at most 200 MB", "At most 4 MB",
+		// A portal mod's row links to its portal page, in a new tab, and names the mod.
+		`<a href="https://mods.factorio.com/mod/alpha" class="portal-link" target="_blank" rel="noopener noreferrer">Mod portal<span class="visually-hidden"> for <span class="ident" translate="no">alpha</span>, opens in a new tab</span></a>`,
+		// SPEC 9.6: where the client keeps mod-settings.dat, then the field, then what the upload does.
+		`%APPDATA%\Factorio\mods`, "Startup settings apply when the world next starts.")
+	if n := strings.Count(body, "They follow Space Age"); n != 1 {
+		t.Errorf("the built-in line is said %d times", n)
+	}
+	table := between(body, "<table", "</table>")
+	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base"} {
+		if strings.Contains(table, bad) {
+			t.Errorf("the table has %s", bad)
+		}
 	}
 	for _, bad := range []string{"name=base", "kind=remove&amp;name=folder-mod"} {
 		if strings.Contains(body, bad) {
 			t.Errorf("the tab offers %s", bad)
 		}
+	}
+	help, field, will := strings.Index(body, `id="settings-file-help"`), strings.Index(body, `id="settings-file"`), strings.LastIndex(body, "This will:")
+	if help > field || field > will {
+		t.Errorf("the settings form is not help, field, then what it will do: %d %d %d", help, field, will)
+	}
+	if strings.Contains(body, "Foreman restarts it") {
+		t.Error("a stopped world says Foreman restarts it")
 	}
 	if strings.Contains(body, "Mod downloads are off") {
 		t.Error("the tab says downloads are off with an account set")
@@ -239,7 +259,7 @@ func TestModStatusUpdatesAndFlags(t *testing.T) {
 		t.Fatalf("status %d", code)
 	}
 	wantIn(t, "status", body, "2 mods have an update", `kind=update"`, "Update all", `hx-swap-oob="true"`, "Update to 1.1.0",
-		"the mod portal no longer has that version", "Update beta to 2.0.0")
+		"the mod portal no longer has that version", `Update <span class="ident" translate="no">beta</span> to 2.0.0`)
 }
 
 func TestModStatusPortalDownSaysSo(t *testing.T) {
@@ -281,7 +301,7 @@ func TestInstallAppliesThePlanAndOffersUndo(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, body)
 	}
-	wantIn(t, "plan", body, "Install alpha in Base?", "Install 2 mods", "beta 1.0.0 (alpha needs it)", "Before mod change", "Download 2 mods")
+	wantIn(t, "plan", plain(body), "Install alpha in Base?", "Install 2 mods", "beta 1.0.0 (alpha needs it)", "Before mod change", "Download 2 mods")
 	v := planValues(t, body)
 	g.wantRedirectHome(g.post(modsPath(id)+"/plan", v))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
@@ -354,7 +374,7 @@ func TestPlanConflictHasNoButton(t *testing.T) {
 	if code != http.StatusConflict {
 		t.Fatalf("status %d", code)
 	}
-	wantIn(t, "plan", body, "cannot be applied", "alpha cannot run together with beta")
+	wantIn(t, "plan", plain(body), "cannot be applied", "alpha cannot run together with beta")
 	if strings.Contains(body, `id="act-apply"`) {
 		t.Error("a conflicting plan offers to apply")
 	}
@@ -387,7 +407,7 @@ func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	g.copySave(id, "2.1.24-space-age-testmod.zip")
 	g.writeMod(id, "foreman-test", "0.1.0")
 	_, body := g.getStatus(kindPlanPath(id, mods.KindDisable, "foreman-test"))
-	wantIn(t, "plan", body, "The save that loads uses 1 mod this change turns off: foreman-test", `name="confirm-drops"`)
+	wantIn(t, "plan", plain(body), "The save that loads uses 1 mod this change turns off: foreman-test", `name="confirm-drops"`)
 	v := planValues(t, body)
 	rep := g.post(modsPath(id)+"/plan", v)
 	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(rep.body, "Tick the box to confirm") || g.modSnapshots(id) != 0 {
@@ -424,7 +444,7 @@ func TestPlanChangesWhenTheDropsChange(t *testing.T) {
 	if g.modSnapshots(id) != 0 {
 		t.Error("a plan with changed drops was applied")
 	}
-	wantIn(t, "new plan", rep.body, "turns off: foreman-test", `name="confirm-drops"`)
+	wantIn(t, "new plan", plain(rep.body), "turns off: foreman-test", `name="confirm-drops"`)
 }
 
 // SPEC 9.8, 9.10: a save's mod the portal lacks blocks the sync, offers an
@@ -437,7 +457,7 @@ func TestSyncUnresolvedChoices(t *testing.T) {
 	}
 	g.copySave(id, "2.1.24-space-age-testmod.zip")
 	_, body := g.getStatus(syncPath(id))
-	wantIn(t, "sync", body, "The mod portal does not have foreman-test 0.1.0", "Upload the zip of foreman-test 0.1.0",
+	wantIn(t, "sync", plain(body), "The mod portal does not have foreman-test 0.1.0", "Upload the zip of foreman-test 0.1.0",
 		"Continue without foreman-test", `name="mod" type="file"`)
 	if strings.Contains(body, `id="act-apply"`) {
 		t.Error("an unresolved sync offers to apply")
@@ -540,7 +560,7 @@ func TestServerModNotice(t *testing.T) {
 		t.Error("the notice is in the first paint")
 	}
 	_, frag := g.getStatus(modsPath(id) + "/notice")
-	wantIn(t, "notice", frag, "1 mod of Base can no longer be downloaded", `href="/worlds/`+id+`/mods/plan?kind=update&amp;name=beta"`)
+	wantIn(t, "notice", plain(frag), "beta 1.0.0 is gone from the mod portal, so players cannot join.", "Update beta", `href="/worlds/`+id+`/mods/plan?kind=update&amp;name=beta"`)
 	g.portal.FailAPI(http.StatusInternalServerError)
 	g.portal.AddZip("other", "1.0.0")
 	g.writeMod(id, "other", "0.5.0")
@@ -616,6 +636,11 @@ func modPageCases() []pageCase {
 		{"mod plan zip refused", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindSync, Save: "base.zip"},
 			Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "old mod", Version: "0.1.0"}}}, UploadFor: "old mod", UploadError: i18n.M("mods.upload.not_mod")}},
 		{"mod plan redrawn", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Redraw: true}},
+		{"mod plan adding", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Query: "a", Added: "alpha"},
+			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true, Installed: map[string]bool{"gamma": true},
+			Hits: []modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0"}}}},
+		{"mod plan add search down", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}, Query: "a"},
+			Plan: mods.Plan{Changes: plan.Changes[:1]}, AddUnreachable: true}},
 	}
 }
 
@@ -707,7 +732,7 @@ func TestPlanRedrawShowsAConflict(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("redraw %d", rec.Code)
 	}
-	wantIn(t, "redraw", body, "fp-conf cannot run together with beta", `id="plan-conflicts"`,
+	wantIn(t, "redraw", plain(body), "fp-conf cannot run together with beta", `id="plan-conflicts"`,
 		`<div hx-swap-oob="innerHTML:#announcer">Plan updated: it has a conflict, so it cannot be applied.</div>`)
 	if strings.Contains(between(body, `id="mod-plan"`, `</main>`), "autofocus") {
 		t.Error("a redraw moves focus")
@@ -789,3 +814,11 @@ func TestRefusedUnresolvedZipKeepsTheAnswers(t *testing.T) {
 	wantIn(t, "refused", rep.body, `id="error-summary"`, `<a href="#mod-foreman-test-zip">This file is not a mod zip`,
 		`id="mod-foreman-test-zip-error"`, `id="mod-recycler-without" hx-get="/worlds/`+id+`/mods/plan" checked`, `id="mod-recycler-confirm" required hx-get="/worlds/`+id+`/mods/plan" checked`)
 }
+
+// plain is a page with its mod names unwrapped, so a test can look for a
+// sentence that names a mod (DESIGN 8.3, identifiers never hyphenate).
+func plain(body string) string {
+	return identSpan.ReplaceAllString(body, "$1")
+}
+
+var identSpan = regexp.MustCompile(`<span class="ident" translate="no">([^<]*)</span>`)

@@ -178,7 +178,8 @@ li {
   overflow-wrap: anywhere;
 }
 
-/* Prose breaks at syllables in the page's own language when a word does not fit. */
+/* Prose breaks at syllables in the page's own language when a word does not
+   fit, but only a long word, and never leaving fewer than four letters on a line. */
 p,
 li,
 dd,
@@ -189,6 +190,15 @@ h1,
 h2,
 h3 {
   hyphens: auto;
+  hyphenate-limit-chars: 10 4 4;
+}
+
+/* A name a program reads, such as a mod's, is never hyphenated: a hyphen
+   would read as part of the name. It breaks anywhere only when it does not
+   fit (DESIGN 8.3). */
+.ident {
+  hyphens: manual;
+  overflow-wrap: anywhere;
 }
 
 a {
@@ -2781,6 +2791,70 @@ form:has(#mode-exchange:checked) .achievements {
 
 .mod-list code {
   color: var(--color-text-muted);
+}
+
+/* The table keeps the reading width the status notices above it have, so
+   the tab is one column, not a narrow one beside a wide one. */
+.mod-list {
+  max-inline-size: var(--measure);
+}
+
+/* In a button a name breaks only when it is wider than the box, as the
+   button's own words do, so the button keeps its width. A button is a flex
+   box, so the name joins its words' line rather than becoming a flex item,
+   which would drop the space before it. */
+.button .ident {
+  display: contents;
+  overflow-wrap: break-word;
+}
+
+/* Quiet links that are still full-size targets, in a row or in a sentence. */
+.portal-link,
+.mods-built-in a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+/* The mods an install plan asks for: each with its portal link and its
+   way out of the plan, wrapping under the name when the box is narrow. */
+.plan-label {
+  font-weight: 600;
+}
+
+.confirm .plan-asked {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.plan-asked > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-4);
+  min-inline-size: 0;
+  padding-block: var(--space-1);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.plan-asked__text {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+}
+
+.mod-results--short > li {
+  gap: 0;
+  padding-block: var(--space-2);
+}
+
+.mod-results__title {
+  font-weight: 600;
+}
+
+/* A mod's short badge stays whole. Badges elsewhere, such as a save's
+   "loads next", are long in some languages and must wrap at 320 px. */
+:is(.mod-list, .mod-results) .badge {
+  white-space: nowrap;
 }
 
 /* Search results are a list with a rule between rows, not cards (DESIGN 8.2). */

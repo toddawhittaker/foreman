@@ -35,9 +35,9 @@
   <ul class="mod-results" role="list">
     {{- range .Hits}}
     <li>
-      <h3>{{if .Title}}{{.Title}}{{else}}{{.Name}}{{end}}</h3>
-      {{- if ne .Title .Name}}
-      <p class="hint"><code>{{.Name}}</code></p>
+      <h3>{{if .Title}}{{.Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}</h3>
+      {{- if and .Title (ne .Title .Name)}}
+      <p class="hint"><code translate="no">{{.Name}}</code></p>
       {{- end}}
       {{- with .Summary}}
       <p class="mod-summary">{{.}}</p>
@@ -51,8 +51,9 @@
         {{- if index $.Page.Installed .Name}}
         <span class="badge">{{t "mods.badge.installed"}}</span>
         {{- else}}
-        <a href="{{$.Page.InstallPath .Name}}" class="button">{{t "mods.search.install" "mod" (or .Title .Name)}}</a>
+        <a href="{{$.Page.AddPath .Name}}" class="button">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
         {{- end}}
+        {{template "portal-link" .Name}}
       </div>
     </li>
     {{- end}}

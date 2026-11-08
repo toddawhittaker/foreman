@@ -100,7 +100,7 @@ test.describe("a mod players cannot get", () => {
 
     // The Server page loads the notice after it opens.
     const notice = page.locator("#mods-notice");
-    await expect(notice).toContainText("1 mod of Base can no longer be downloaded by players, so they cannot join.", live);
+    await expect(notice).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
 
     await page.goto("/worlds/base/mods");
     const error = page.locator("#mod-status .message--error");
@@ -115,7 +115,7 @@ test.describe("a mod players cannot get", () => {
 
     await page.goto("/");
     await expect(notice).toContainText("cannot join", live);
-    await notice.getByRole("link", { name: "Fix" }).click();
+    await notice.getByRole("link", { name: "Update visible-planets" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Update visible-planets in Base?" })).toBeVisible();
     await expect(page.locator("#mod-plan")).toContainText("visible-planets 1.5.5 to 1.7.2");
     await checkPage(page);
@@ -134,7 +134,7 @@ test.describe("a mod players cannot get", () => {
     expect((await portal.state()).refused).toEqual([]);
   });
 
-  // SPEC 17.2: targets are at least 24 px, so Fix is a button under the sentence; the notice is a live region beside the facts.
+  // SPEC 17.2: targets are at least 24 px, so the fix is a button under the sentence; the notice is a live region beside the facts.
   test("the Server page notice passes the page checks", async ({ page, foreman, fakeGame, fakePortal }) => {
     await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
     await setUpModsWorld(page, foreman, fakeGame!, { ...spaceAge, mods });
@@ -144,8 +144,8 @@ test.describe("a mod players cannot get", () => {
     // It sits with the status facts, before the players (DESIGN 7.3).
     const players = page.getByRole("heading", { level: 2, name: "Players online" });
     expect((await notice.boundingBox())!.y).toBeLessThan((await players.boundingBox())!.y);
-    // The Fix link has a button face, so it is a full target at any width and in any language (DESIGN 6, rule 3).
-    const fix = (await notice.getByRole("link", { name: "Fix" }).boundingBox())!;
+    // The fix link has a button face, so it is a full target at any width and in any language (DESIGN 6, rule 3).
+    const fix = (await notice.getByRole("link", { name: "Update visible-planets" }).boundingBox())!;
     expect(Math.min(fix.width, fix.height)).toBeGreaterThanOrEqual(44);
     await checkPage(page);
     await page.screenshot({ path: `../screenshots/mods-notice-${test.info().project.name}.png`, fullPage: true });

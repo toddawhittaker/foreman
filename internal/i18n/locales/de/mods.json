@@ -21,13 +21,15 @@
     "other": "{count} Mods für Factorio {line}"
   },
   "mods.search.none": "Keine Mod für Factorio {line} passt. Versuche einen kürzeren Teil des Namens.",
-  "mods.search.install": "{mod} installieren",
+  "mods.search.add": "Zum Plan hinzufügen",
   "mods.fact.latest": "Neueste Version",
   "mods.fact.game_version": "Spielversion",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installiert",
-  "mods.badge.built_in": "Eingebaut",
+  "mods.badge.in_plan": "Im Plan",
   "mods.badge.local": "Lokaler Ordner",
+  "mods.portal.link": "Mod-Portal",
+  "mods.portal.for": "für {mod}, öffnet in einem neuen Tab",
   "mods.installed.heading": "Installierte Mods",
   "mods.installed.caption": {
     "one": "Mods von {world}: {count} Mod.",
@@ -69,7 +71,12 @@
     "one": "Spieler können {count} Mod von {world} nicht mehr herunterladen, deshalb können sie nicht beitreten.",
     "other": "Spieler können {count} Mods von {world} nicht mehr herunterladen, deshalb können sie nicht beitreten."
   },
-  "mods.notice.fix": "Beheben",
+  "mods.notice.one": "{mod} {version} ist nicht mehr auf dem Mod-Portal, deshalb können Spieler nicht beitreten.",
+  "mods.notice.update": "{mod} aktualisieren",
+  "mods.notice.review": {
+    "one": "{count} Mod prüfen",
+    "other": "{count} Mods prüfen"
+  },
   "mods.sync.heading": "Mods an den Speicherstand angleichen",
   "mods.sync.text": "Macht die Mods der Welt zu denen, mit denen der Speicherstand {save} erstellt wurde: Fehlende werden installiert, Versionen geändert und alle übrigen deaktiviert. Du siehst vorher den Plan.",
   "mods.sync.button": "Mods an den Speicherstand angleichen",
@@ -88,6 +95,9 @@
   "mods.settings.text": "Die Werte der Mod-Einstellungen liegen in {file}. Lade die Datei herunter, um eine Kopie zu behalten oder sie in einer anderen Welt zu verwenden.",
   "mods.settings.download": "mod-settings.dat herunterladen",
   "mods.settings.none": "Diese Welt hat noch keine {file}. Das Spiel schreibt eine, wenn es zum ersten Mal mit Mods läuft.",
+  "mods.settings.where": "Dein Factorio-Client bewahrt die Datei in seinem Mod-Ordner auf: Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Starteinstellungen gelten, wenn die Welt das nächste Mal startet.",
+  "mods.settings.apply_running": "Starteinstellungen gelten, wenn die Welt das nächste Mal startet, deshalb startet Foreman sie neu.",
   "mods.settings.replace": "{file} durch die gewählte Datei ersetzen.",
   "mods.settings.label": "Neue {file}",
   "mods.settings.hint": "Höchstens {limit}.",
@@ -95,6 +105,7 @@
   "mods.settings.empty": "Diese Datei ist leer. Wähle eine mod-settings.dat-Datei.",
   "mods.settings.changed": "Die Mods der Welt haben sich geändert, nachdem diese Seite geöffnet wurde, deshalb wurde nichts geändert. Prüfe die Seite und lade die Datei dann erneut hoch.",
   "mods.plan.heading.install": "{mod} in {world} installieren?",
+  "mods.plan.heading.install_some": "Mods in {world} installieren?",
   "mods.plan.heading.update": "Die Mods von {world} aktualisieren?",
   "mods.plan.heading.update_one": "{mod} in {world} aktualisieren?",
   "mods.plan.heading.sync": "Die Mods von {world} an den Speicherstand {save} angleichen?",
@@ -124,6 +135,11 @@
   "mods.plan.warn_stop": "Die Spieler warnen, dann den Server speichern und stoppen.",
   "mods.plan.snapshot": "Einen Snapshot von {world} mit der Bezeichnung „{label}“ erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
   "mods.plan.change": "Die Mods ändern:",
+  "mods.plan.asked.heading": "Mods, die du ausgewählt hast:",
+  "mods.plan.asked.remove": "Aus dem Plan entfernen",
+  "mods.plan.needed.heading": "Was sie brauchen:",
+  "mods.plan.change_above": "Die oben aufgeführten Mod-Änderungen vornehmen.",
+  "mods.plan.add.heading": "Eine weitere Mod hinzufügen",
   "mods.plan.start": "Den Server wieder starten.",
   "mods.plan.undo": "Zum Rückgängigmachen diesen Snapshot auf der Seite „Snapshots“ wiederherstellen.",
   "mods.plan.group.install": "Installieren",
@@ -171,7 +187,8 @@
   "mods.optional.hint": "Eine Mod im Plan kann diese nutzen, braucht sie aber nicht. Hake eine an, um sie samt allem, was sie braucht, hinzuzufügen.",
   "mods.optional.item": "{mod}, angeboten von {of}",
   "mods.unresolved.legend": "Das Mod-Portal hat {mod} {version} nicht",
-  "mods.unresolved.hint": "Der Speicherstand wurde mit dieser Version erstellt. Wähle, was geschehen soll; der Plan kann erst angewendet werden, wenn du das getan hast. „Nächstliegend“ ist die Version für Factorio {line}, die dieser Version am nächsten kommt.",
+  "mods.unresolved.hint": "Der Speicherstand wurde mit dieser Version erstellt. Wähle, was geschehen soll; der Plan kann erst angewendet werden, wenn du das getan hast.",
+  "mods.unresolved.nearest_hint": "„Nächstliegend“ ist die Version für Factorio {line}, die dieser Version am nächsten kommt.",
   "mods.unresolved.upload": "Die Zip-Datei von {mod} {version} hochladen",
   "mods.unresolved.uploaded": "Die hochgeladene Zip-Datei von {mod} {version} verwenden",
   "mods.unresolved.nearest": "{mod} {version} verwenden, die nächstliegende Version für Factorio {line}",
@@ -220,11 +237,20 @@
     "one": "Plan aktualisiert: {count} Mod wird geändert.",
     "other": "Plan aktualisiert: {count} Mods werden geändert."
   },
+  "mods.plan.added": {
+    "one": "{mod} hinzugefügt. Der Plan umfasst {count} Mod.",
+    "other": "{mod} hinzugefügt. Der Plan umfasst {count} Mods."
+  },
+  "mods.plan.removed": {
+    "one": "{mod} entfernt. Der Plan umfasst {count} Mod.",
+    "other": "{mod} entfernt. Der Plan umfasst {count} Mods."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan aktualisiert: Er hat einen Konflikt und kann deshalb nicht angewendet werden.",
     "other": "Plan aktualisiert: Er hat {count} Konflikte und kann deshalb nicht angewendet werden."
   },
   "mods.error.cross_site": "Dieser Plan wurde von einer anderen Website aus geöffnet, deshalb hat Foreman ihn nicht berechnet. Es wurde nichts geändert. Wähle „Erneut versuchen“, um den Plan zu sehen.",
-  "mods.built_in.note": "Eingebaute Mods gehören zum Spiel und folgen der Space-Age-Einstellung der Welt.",
-  "mods.built_in.settings": "Space Age in den Einstellungen der Welt ändern"
+  "mods.built_in.line_space_age": "Eingebaut, Version {version}: {mods}. Sie folgen der Space-Age-Einstellung.",
+  "mods.built_in.line": "Eingebaut, Version {version}: {mods}.",
+  "mods.built_in.change": "Space Age ändern"
 }

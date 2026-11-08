@@ -21,13 +21,15 @@
     "other": "{count} mods para Factorio {line}"
   },
   "mods.search.none": "Ningún mod para Factorio {line} coincide. Prueba con una parte más corta del nombre.",
-  "mods.search.install": "Instalar {mod}",
+  "mods.search.add": "Añadir al plan",
   "mods.fact.latest": "Última versión",
   "mods.fact.game_version": "Versión del juego",
   "mods.fact.downloads": "Descargas",
   "mods.badge.installed": "Instalado",
-  "mods.badge.built_in": "Integrado",
+  "mods.badge.in_plan": "En el plan",
   "mods.badge.local": "Carpeta local",
+  "mods.portal.link": "Portal de mods",
+  "mods.portal.for": "de {mod}, se abre en una pestaña nueva",
   "mods.installed.heading": "Mods instalados",
   "mods.installed.caption": {
     "one": "Mods de {world}: {count} mod.",
@@ -69,7 +71,12 @@
     "one": "Los jugadores ya no pueden descargar {count} mod de {world}, así que no pueden unirse.",
     "other": "Los jugadores ya no pueden descargar {count} mods de {world}, así que no pueden unirse."
   },
-  "mods.notice.fix": "Arreglar",
+  "mods.notice.one": "{mod} {version} ya no está en el portal de mods, así que los jugadores no pueden unirse.",
+  "mods.notice.update": "Actualizar {mod}",
+  "mods.notice.review": {
+    "one": "Revisar {count} mod",
+    "other": "Revisar {count} mods"
+  },
   "mods.sync.heading": "Igualar los mods a la partida guardada",
   "mods.sync.text": "Deja como mods del mundo los que se usaron al crear la partida guardada {save}: instala los que faltan, cambia versiones y desactiva el resto. Primero ves el plan.",
   "mods.sync.button": "Igualar los mods a la partida guardada",
@@ -88,6 +95,9 @@
   "mods.settings.text": "Los valores de los ajustes de los mods están en {file}. Descárgalo para conservar una copia o para usarlo en otro mundo.",
   "mods.settings.download": "Descargar mod-settings.dat",
   "mods.settings.none": "Este mundo aún no tiene {file}. El juego escribe uno la primera vez que se ejecuta con mods.",
+  "mods.settings.where": "Tu cliente de Factorio lo guarda en su carpeta de mods: Windows {windows}, macOS {macos}, Linux {linux}.",
+  "mods.settings.apply": "Los ajustes de inicio se aplican la próxima vez que se inicie el mundo.",
+  "mods.settings.apply_running": "Los ajustes de inicio se aplican la próxima vez que se inicie el mundo, así que Foreman lo reinicia.",
   "mods.settings.replace": "Reemplazar {file} por el archivo que elijas.",
   "mods.settings.label": "Nuevo {file}",
   "mods.settings.hint": "{limit} como máximo.",
@@ -95,6 +105,7 @@
   "mods.settings.empty": "Este archivo está vacío. Elige un archivo mod-settings.dat.",
   "mods.settings.changed": "Los mods del mundo cambiaron después de abrir esta página, así que no se cambió nada. Revisa la página y vuelve a subir el archivo.",
   "mods.plan.heading.install": "¿Instalar {mod} en {world}?",
+  "mods.plan.heading.install_some": "¿Instalar mods en {world}?",
   "mods.plan.heading.update": "¿Actualizar los mods de {world}?",
   "mods.plan.heading.update_one": "¿Actualizar {mod} en {world}?",
   "mods.plan.heading.sync": "¿Igualar los mods de {world} a la partida guardada {save}?",
@@ -124,6 +135,11 @@
   "mods.plan.warn_stop": "Avisar a los jugadores, guardar y detener el servidor.",
   "mods.plan.snapshot": "Tomar una instantánea de {world}, con la etiqueta «{label}». Si la instantánea falla, no ocurre nada más.",
   "mods.plan.change": "Cambiar los mods:",
+  "mods.plan.asked.heading": "Mods que pediste:",
+  "mods.plan.asked.remove": "Quitar del plan",
+  "mods.plan.needed.heading": "Lo que necesitan:",
+  "mods.plan.change_above": "Hacer los cambios de mods indicados arriba.",
+  "mods.plan.add.heading": "Añadir otro mod",
   "mods.plan.start": "Iniciar el servidor de nuevo.",
   "mods.plan.undo": "Para deshacerlo, restaura esa instantánea desde la página «Instantáneas».",
   "mods.plan.group.install": "Instalar",
@@ -171,7 +187,8 @@
   "mods.optional.hint": "Un mod del plan puede usar estos, pero no los necesita. Marca uno para añadirlo, con todo lo que necesite.",
   "mods.optional.item": "{mod}, ofrecido por {of}",
   "mods.unresolved.legend": "El portal de mods no tiene {mod} {version}",
-  "mods.unresolved.hint": "La partida guardada se creó con esta versión. Elige qué hacer; el plan no se puede aplicar hasta que lo hagas. «La más cercana» es la versión más cercana para Factorio {line}.",
+  "mods.unresolved.hint": "La partida guardada se creó con esta versión. Elige qué hacer; el plan no se puede aplicar hasta que lo hagas.",
+  "mods.unresolved.nearest_hint": "«La más cercana» es la versión más cercana para Factorio {line}.",
   "mods.unresolved.upload": "Subir el zip de {mod} {version}",
   "mods.unresolved.uploaded": "Usar el zip subido de {mod} {version}",
   "mods.unresolved.nearest": "Usar {mod} {version}, la versión más cercana para Factorio {line}",
@@ -220,11 +237,20 @@
     "one": "Plan actualizado: cambia {count} mod.",
     "other": "Plan actualizado: cambian {count} mods."
   },
+  "mods.plan.added": {
+    "one": "Se añadió {mod}. El plan tiene {count} mod.",
+    "other": "Se añadió {mod}. El plan tiene {count} mods."
+  },
+  "mods.plan.removed": {
+    "one": "Se quitó {mod}. El plan tiene {count} mod.",
+    "other": "Se quitó {mod}. El plan tiene {count} mods."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plan actualizado: tiene un conflicto, así que no se puede aplicar.",
     "other": "Plan actualizado: tiene {count} conflictos, así que no se puede aplicar."
   },
   "mods.error.cross_site": "Este plan se abrió desde otro sitio, así que Foreman no lo calculó. No se cambió nada. Elige «Intentar de nuevo» para ver el plan.",
-  "mods.built_in.note": "Los mods integrados vienen con el juego y siguen el ajuste de Space Age del mundo.",
-  "mods.built_in.settings": "Cambiar Space Age en la configuración del mundo"
+  "mods.built_in.line_space_age": "Integrados, versión {version}: {mods}. Siguen el ajuste de Space Age.",
+  "mods.built_in.line": "Integrados, versión {version}: {mods}.",
+  "mods.built_in.change": "Cambiar Space Age"
 }

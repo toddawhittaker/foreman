@@ -270,7 +270,7 @@ func templateKeys(t *testing.T) map[string]bool {
 					switch id.Ident {
 					case "t", "tHTML":
 						addKey(t, keys, n.Args[1])
-					case "link":
+					case "link", "extLink":
 						if len(n.Args) > 2 {
 							addKey(t, keys, n.Args[2])
 						}
@@ -334,7 +334,7 @@ func goKeys(t *testing.T) map[string]bool {
 				switch name {
 				case "M", "T", "HTML":
 					at = []int{0}
-				case "Link":
+				case "Link", "ExternalLink":
 					at = []int{1}
 				}
 				for _, i := range at {
