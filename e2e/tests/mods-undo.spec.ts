@@ -14,7 +14,7 @@ const mods = { "fp-a": "2.1", "fp-b": "2.1" };
 const kept = /Foreman took no new snapshot: "Before mod change" from .+ undoes this change and the ones before it\./;
 const took = 'Foreman took the snapshot "Before mod change" first.';
 const undoOne = (page: Page) => page.getByRole("link", { name: "Undo this mod change", exact: true });
-const undoRun = (page: Page) => page.getByRole("link", { name: /^Undo the mod changes since \d{4}-\d\d-\d\d \d\d:\d\d UTC$/ });
+const undoRun = (page: Page) => page.getByRole("link", { name: /^Undo the mod changes since \S.*\d:\d\d.*\S$/ });
 
 // The world's "Before mod change" snapshots, oldest first.
 function modSnapshots(f: Foreman): { name: string; takenAt: string }[] {

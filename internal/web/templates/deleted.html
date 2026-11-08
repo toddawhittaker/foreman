@@ -16,7 +16,7 @@
       {{- $id := .ID}}
       {{- range .Snapshots}}
       <tr role="row">
-        <td role="cell">{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<br><a class="button" href="{{$.Page.RestorePath $id .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{t "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (utcSeconds .TakenAt)}}</span></a></td>
+        <td role="cell">{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<br><a class="button" href="{{$.Page.RestorePath $id .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></td>
         <td role="cell" data-label="{{t "worlds.col.taken"}}">{{template "when" .TakenAt}}</td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
       </tr>

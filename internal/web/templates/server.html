@@ -195,7 +195,7 @@
   <p><strong>{{t "common.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (momentUTC $.DoneAt)}}</p>
   <div class="actions">
     {{- with $.Undo}}
-    <a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a>
+    <a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a>
     {{- end}}
     <a href="{{$.SnapshotsPath}}" id="act-snapshots">{{t "server.go_snapshots"}}</a>
   </div>
