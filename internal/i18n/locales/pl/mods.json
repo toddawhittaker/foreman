@@ -190,11 +190,7 @@
     "many": "Ten plan pobiera {count} modyfikacji, a pobieranie jest wyłączone, ponieważ Foreman nie ma konta factorio.com."
   },
   "mods.plan.nothing": "Nic nie trzeba zmieniać: modyfikacje są już takie, jak żądano.",
-  "mods.version.legend": {
-    "one": "Wersja",
-    "few": "Wersje",
-    "many": "Wersje"
-  },
+  "mods.version.legend": "Wersje",
   "mods.version.hint": "Lista zawiera tylko wydania dla Factorio {line}, czyli wersji gry tego świata. Wybranie innego tworzy plan od nowa.",
   "mods.version.label": "Wersja {mod}",
   "mods.version.newest": "Najnowsza pasująca",

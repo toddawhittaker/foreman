@@ -190,11 +190,7 @@
     "other": "Tento plán stahuje {count} modů a stahování je vypnuté, protože Foreman nemá účet factorio.com."
   },
   "mods.plan.nothing": "Není třeba nic měnit: mody už jsou, jak se požadovalo.",
-  "mods.version.legend": {
-    "one": "Verze",
-    "few": "Verze",
-    "other": "Verze"
-  },
+  "mods.version.legend": "Verze",
   "mods.version.hint": "Seznam obsahuje jen vydání pro Factorio {line}, tedy verzi hry tohoto světa. Volba jiného vydání plán sestaví znovu.",
   "mods.version.label": "Verze {mod}",
   "mods.version.newest": "Nejnovější vyhovující",

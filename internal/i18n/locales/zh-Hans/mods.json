@@ -156,9 +156,7 @@
     "other": "此计划需要下载 {count} 个模组，但 Foreman 没有 factorio.com 账户，因此下载已关闭。"
   },
   "mods.plan.nothing": "无需更改：模组已经符合要求。",
-  "mods.version.legend": {
-    "other": "版本"
-  },
+  "mods.version.legend": "版本",
   "mods.version.hint": "只列出适用于 Factorio {line}（此世界的游戏版本）的发布版本。选择其他版本会重新生成计划。",
   "mods.version.label": "{mod} 的版本",
   "mods.version.newest": "最新的适用版本",

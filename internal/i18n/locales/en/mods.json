@@ -173,10 +173,7 @@
     "other": "This plan downloads {count} mods, and downloads are off because Foreman has no factorio.com account."
   },
   "mods.plan.nothing": "Nothing needs to change: the mods are already as asked.",
-  "mods.version.legend": {
-    "one": "Version",
-    "other": "Versions"
-  },
+  "mods.version.legend": "Versions",
   "mods.version.hint": "Only releases for Factorio {line}, the game version of this world, are listed. Choosing another one draws the plan again.",
   "mods.version.label": "Version of {mod}",
   "mods.version.newest": "Newest that fits",

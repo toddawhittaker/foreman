@@ -126,7 +126,7 @@
     {{- $many := gt (len .) 1}}
     {{- if $many}}
     <fieldset class="plan-versions">
-      <legend>{{t "mods.version.legend" "count" (len .)}}</legend>
+      <legend>{{t "mods.version.legend"}}</legend>
       <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
     {{- end}}
       {{- range .}}

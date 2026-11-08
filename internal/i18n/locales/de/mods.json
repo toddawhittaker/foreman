@@ -173,10 +173,7 @@
     "other": "Dieser Plan lädt {count} Mods herunter, und Downloads sind aus, weil Foreman kein factorio.com-Konto hat."
   },
   "mods.plan.nothing": "Nichts muss geändert werden: Die Mods sind schon wie gewünscht.",
-  "mods.version.legend": {
-    "one": "Version",
-    "other": "Versionen"
-  },
+  "mods.version.legend": "Versionen",
   "mods.version.hint": "Nur Versionen für Factorio {line}, die Spielversion dieser Welt, stehen in der Liste. Wählst du eine andere, wird der Plan neu erstellt.",
   "mods.version.label": "Version von {mod}",
   "mods.version.newest": "Neueste passende",
