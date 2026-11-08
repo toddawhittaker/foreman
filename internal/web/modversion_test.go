@@ -29,7 +29,7 @@ func TestPlanVersionList(t *testing.T) {
 		t.Fatalf("status %d\n%s", code, body)
 	}
 	wantIn(t, "default", plain(body), "ver-a 2.0.0", `<label for="mod-ver-a-version">Version of ver-a</label>`,
-		`<select id="mod-ver-a-version" name="version-ver-a" hx-get="`+plan+`" aria-describedby="plan-versions-hint">`,
+		`<select id="mod-ver-a-version" name="version-ver-a" hx-get="`+plan+`" hx-trigger="change delay:300ms" hx-sync="closest form:replace" aria-describedby="plan-versions-hint">`,
 		`<option value="" selected>Newest that fits (2.0.0)</option>`, `<option value="2.0.0">2.0.0</option>`, `<option value="1.0.0">1.0.0</option>`,
 		"Only releases for Factorio 2.0")
 	if strings.Contains(body, "0.9.0") {
@@ -126,10 +126,17 @@ func TestPlanVersionIsChecked(t *testing.T) {
 		}
 		wantIn(t, v, plain(body), "The mod portal has no release "+v+" of ver-c for this game version. Choose another version.",
 			`<option value="`+v+`" selected>`+v+`</option>`)
-		// Posting it anyway applies nothing.
-		vals := url.Values{"kind": {"install"}, "name": {"ver-c"}, "version-ver-c": {v}}
-		if rep := g.post(plan, vals); rep.StatusCode != http.StatusConflict {
+		// Posting it anyway, with the page's own form, applies nothing.
+		vals := planValues(t, body)
+		vals.Set("version-ver-c", v)
+		rep := g.post(plan, vals)
+		if rep.StatusCode != http.StatusConflict {
 			t.Errorf("%s: post status %d", v, rep.StatusCode)
+		}
+		wantIn(t, v+" post", plain(rep.body), "The mod portal has no release "+v+" of ver-c")
+		// The plan is the one the page showed, so only the conflict refuses it.
+		if strings.Contains(rep.body, `id="plan-changed"`) {
+			t.Errorf("%s: post refused as a changed plan, not by the conflict", v)
 		}
 	}
 	for _, bad := range []string{"../../etc", "1.0", "1.0.0.0", "1.0.99999", "x"} {
@@ -195,4 +202,18 @@ func TestStatusHidesChangeVersion(t *testing.T) {
 	id := g.world20("Base", "zz-not-on-portal_1.0.0")
 	_, body := g.getStatus(modsPath(id) + "/status")
 	wantIn(t, "status", body, `<span id="`+slotID("version", "zz-not-on-portal")+`" hidden hx-swap-oob="true"></span>`)
+}
+
+// An asked mod kept at its version is left out of Kept only when its
+// version list shows it; without the portal's releases it stays listed.
+func TestKeptHidesAnAskedModOnlyWithAVersionList(t *testing.T) {
+	keep := mods.Change{Name: "a", Action: mods.ActKeep, Why: mods.Reason{Code: mods.WhyAsked}}
+	p := ModPlanPage{Form: planForm{Kind: mods.KindUpdate, Names: []string{"a"}}, Plan: mods.Plan{Changes: []mods.Change{keep}}}
+	if got := p.Kept(); len(got) != 1 || got[0].Name != "a" {
+		t.Errorf("without releases: kept %v", got)
+	}
+	p.Plan.Releases = map[string][]string{"a": {"1.0.0"}}
+	if got := p.Kept(); len(got) != 0 {
+		t.Errorf("with releases: kept %v", got)
+	}
 }

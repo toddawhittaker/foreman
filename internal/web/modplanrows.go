@@ -79,7 +79,7 @@ func (p ModPlanPage) askedOrder(it PlanItem) int {
 func (p ModPlanPage) Kept() []PlanItem {
 	var out []PlanItem
 	for _, c := range p.Plan.Changes {
-		if c.Action == mods.ActKeep && c.Why.Code != mods.WhyAsked {
+		if c.Action == mods.ActKeep && (c.Why.Code != mods.WhyAsked || p.Plan.Releases[c.Name] == nil) {
 			out = append(out, p.item(c))
 		}
 	}
@@ -207,7 +207,7 @@ type VersionOption struct {
 // first, with the installed one marked (SPEC 9.2, 9.3). A mod the portal
 // lacks, a folder mod and a built-in mod have none.
 func (p ModPlanPage) Versions() []VersionRow {
-	if p.Form.Kind != mods.KindInstall && p.Form.Kind != mods.KindUpdate || p.Form.Staged != "" {
+	if p.Form.Kind != mods.KindInstall && p.Form.Kind != mods.KindUpdate {
 		return nil
 	}
 	var out []VersionRow

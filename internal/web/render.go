@@ -264,11 +264,9 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"utc":              func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":          func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
-		// never wrap (DESIGN 8.3); utcSeconds tells apart two snapshots
-		// taken in the same minute.
-		"day":        func(t time.Time) string { return t.UTC().Format("2006-01-02") },
-		"clock":      func(t time.Time) string { return t.UTC().Format("15:04 UTC") },
-		"utcSeconds": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04:05 UTC") },
+		// never wrap (DESIGN 8.3).
+		"day":   func(t time.Time) string { return t.UTC().Format("2006-01-02") },
+		"clock": func(t time.Time) string { return t.UTC().Format("15:04 UTC") },
 		// momentUTC and momentUTCSeconds are a <time> element for a sentence
 		// that holds a time, for tHTML.
 		"momentUTC": momentUTC,

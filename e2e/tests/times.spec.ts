@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, setUpModsWorld, doneBox, live, image21, stateBadge } from "./foreman.js";
 
 // Taking a snapshot asks Docker whether the game is running (SPEC 6.10).
 test.use({ fakeGameOn: true, timezoneId: "America/New_York", locale: "en-US" });
@@ -73,4 +73,60 @@ test("the relative time does not sit stale", async ({ page, foreman }) => {
   await expect(time).toHaveText(/\((now|\d+ seconds? ago)\)$/);
   await page.clock.fastForward(125_000);
   await expect(time).toHaveText(/\(2 minutes ago\)$/);
+});
+
+// SPEC 17.11: the Restore links on the Deleted worlds page name the time in
+// the browser's zone, with no relative text in the name.
+test("a Restore link on the Deleted worlds page names the local time", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  await page.goto("/worlds/second/delete");
+  await page.getByLabel("Type the world's name to confirm").fill("Second");
+  await page.getByRole("button", { name: "Delete world" }).click();
+  await page.goto("/deleted");
+  const link = page.getByRole("link", { name: /^Restore Before delete, taken / });
+  await expect(link).toHaveAccessibleName(/\b(EST|EDT)$/);
+  await expect(link).not.toHaveAccessibleName(/UTC|ago|now/);
+  await checkPage(page);
+});
+
+test.describe("the Undo button", () => {
+  test.use({ fakePortalOn: true, portalAccountOn: true });
+
+  // SPEC 17.11: the Undo button names when the run of mod changes began in
+  // the browser's zone; a button's label has no relative text.
+  test("names the local time", async ({ page, foreman, fakeGame }) => {
+    await setUpModsWorld(page, foreman, fakeGame!, { mods: { "fp-a": "2.1", "fp-b": "2.1" } });
+    for (const name of ["fp-a", "fp-b"]) {
+      await page.goto(`/worlds/base/mods/plan?kind=disable&name=${name}`);
+      await page.getByRole("button", { name: "Disable 1 mod" }).click();
+      await expect(page).toHaveURL("/");
+      await expect(doneBox(page)).toBeVisible(live);
+    }
+    const undo = page.locator("#act-undo");
+    await expect(undo).toHaveText(/^Undo the mod changes since .*\d:\d\d.*\b(EST|EDT)$/);
+    await expect(undo).not.toHaveText(/UTC|ago|now/);
+    await checkPage(page);
+  });
+});
+
+// SPEC 17.11: the crash-loop box's Restore offer names the snapshot's time
+// in the browser's zone, with no relative text in a button.
+test("the crash-loop Restore offer names the local time", async ({ page, foreman, fakeGame }) => {
+  test.setTimeout(90_000);
+  await createAdmin(page);
+  seedWorld(foreman, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await page.goto("/");
+  await expect(stateBadge(page)).toHaveText("Stopped", live);
+  await page.getByRole("button", { name: "Start server" }).click();
+  await page.locator("summary", { hasText: "Or start anyway" }).click();
+  await page.getByRole("button", { name: "Start anyway" }).click();
+  await expect(stateBadge(page)).toHaveText("Running", live);
+  await fakeGame!.call("/crash-loop", { name: "foreman-base", on: true });
+  await expect(stateBadge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
+  const restore = page.locator("#act-recover-restore");
+  await expect(restore).toHaveText(/^Restore "Before start anyway" \(.*\d:\d\d.*\b(EST|EDT)\)$/);
+  await expect(restore).not.toHaveText(/UTC|ago|now/);
 });

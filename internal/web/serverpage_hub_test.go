@@ -188,7 +188,7 @@ func TestCrashLoopOffersRecovery(t *testing.T) {
 	})
 	html := controlHTML(t, switched)
 	wantAll(t, "crash loop", html,
-		`href="`+restorePath("base", snap.Name)+`" class="button" id="act-recover-restore">Restore &#34;Before start anyway&#34; (2026-11-04 09:59 UTC)</a>`,
+		`href="`+restorePath("base", snap.Name)+`" class="button" id="act-recover-restore">Restore &#34;Before start anyway&#34; (<time datetime="2026-11-04T09:59:00Z">2026-11-04 09:59 UTC</time>)</a>`,
 		`href="/worlds/alpha/switch" class="button" id="act-switch-back">Switch back to Alpha</a>`,
 		"then try to start it again.", ">Try to start again<")
 	wantNone(t, "crash loop", html, "<strong>Note:</strong>", "Worlds page", `id="act-undo"`)

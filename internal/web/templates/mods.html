@@ -23,7 +23,7 @@
 <div class="message message--success" id="world-result" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- with .Undo}}
-  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a></div>
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -31,7 +31,7 @@
 <div id="world-result" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
   {{template "server-failure" .}}
   {{- with $.Page.Undo}}
-  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a></div>
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -261,7 +261,7 @@
 </div>
 {{- end}}
 {{- if .NotOnPortal}}
-<span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" hx-swap-oob="true">{{.Name}}</span>
+<span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" tabindex="-1" hx-swap-oob="true">{{.Name}}</span>
 <span id="{{$.VersionSlot .Name}}" hidden hx-swap-oob="true"></span>
 {{- end}}
 {{- end}}

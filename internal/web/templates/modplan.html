@@ -120,7 +120,7 @@
     {{- if .Nothing}}
     <p id="plan-same">{{t "mods.version.same"}}</p>
     {{- end}}
-    {{- /* Choosing a release redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). */}}
+    {{- /* Choosing a release redraws the plan and its dependencies; the server checks it against the portal's list (SPEC 9.2, 9.3). Arrow keys on a closed list fire a change per press, so the redraw waits for them to stop and a newer one replaces an older. */}}
     {{- with $versions}}
     {{- /* One mod's list is one field; several share a fieldset and its hint. */}}
     {{- $many := gt (len .) 1}}
@@ -135,7 +135,7 @@
         {{- if not $many}}
         <p class="hint" id="plan-versions-hint">{{t "mods.version.hint" "line" $.Page.Line}}</p>
         {{- end}}
-        <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$.Page.Path}}" aria-describedby="plan-versions-hint">
+        <select id="{{.ID}}" name="version-{{.Name}}" hx-get="{{$.Page.Path}}" hx-trigger="change delay:300ms" hx-sync="closest form:replace" aria-describedby="plan-versions-hint">
           {{- range .Options}}
           <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{if .Label.IsZero}}{{.Value}}{{else}}{{msg .Label}}{{end}}</option>
           {{- end}}

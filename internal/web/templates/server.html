@@ -134,7 +134,7 @@
   {{- if or .RecoverRestore .RecoverSwitch}}
   <div class="actions">
     {{- with .RecoverRestore}}
-    <a href="{{.Path}}" class="button" id="act-recover-restore">{{msg .Label}}</a>
+    <a href="{{.Path}}" class="button" id="act-recover-restore">{{msgHTML .Label}}</a>
     {{- end}}
     {{- with .RecoverSwitch}}
     <a href="{{.Path}}" class="button" id="act-switch-back">{{t "server.switch_back" "world" .Name}}</a>
@@ -195,7 +195,7 @@
   <p><strong>{{t "common.label.done"}}</strong> {{tHTML "server.done.box" "message" .Done "time" (momentUTC $.DoneAt)}}</p>
   <div class="actions">
     {{- with $.Undo}}
-    <a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a>
+    <a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a>
     {{- end}}
     <a href="{{$.SnapshotsPath}}" id="act-snapshots">{{t "server.go_snapshots"}}</a>
   </div>

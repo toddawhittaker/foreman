@@ -103,3 +103,23 @@ test("a version the portal has not got is a conflict with no apply button", asyn
   await expect(page.locator("#act-apply")).toHaveText("Install 1 mod");
   await checkPage(page);
 });
+
+// DESIGN 5: when the status takes away a focused Change version link, focus
+// stays in the row, on the mod's name, not at the top of the page.
+test("focus moves to the mod's name when the status hides Change version", async ({ page, foreman, fakeGame }) => {
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
+  // The status is held back until Change version has focus.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/status", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/worlds/base/mods");
+  const change = page.getByRole("link", { name: "Change version zz-private", exact: true });
+  await change.focus();
+  release();
+  await expect(change).toHaveCount(0, live);
+  const name = page.locator("tr", { hasText: "zz-private" }).locator("span.mod-name");
+  await expect(name).toBeFocused();
+});

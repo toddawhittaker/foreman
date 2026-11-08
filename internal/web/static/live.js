@@ -132,6 +132,18 @@
     if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
 
+  // The Mods tab's status takes Change version away from a mod the portal
+  // lacks. When that link had focus, focus goes to the mod's name in the
+  // same row instead of the top of the page.
+  document.addEventListener("htmx:oobBeforeSwap", (e) => {
+    const old = e.detail.target;
+    if (!old.contains(document.activeElement)) return;
+    const row = old.closest("tr");
+    setTimeout(() => {
+      if (row && document.activeElement === document.body) row.querySelector("span.mod-name[tabindex]")?.focus();
+    });
+  });
+
   // The mods notice is a status region and loads again after each operation
   // (SPEC 9.3). Swapping in the same content would have a screen reader read
   // it again, so an unchanged answer is dropped. Both sides go through the
