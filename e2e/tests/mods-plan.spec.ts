@@ -123,22 +123,25 @@ test("the Mods tab: built-in mods in one line, portal links, and where mod-setti
   await page.goto("/worlds/base/mods");
   await expect(page.locator("#mod-status")).not.toContainText("Checking the mod portal", live);
   const line = page.locator("#mods-built-in");
-  await expect(line).toHaveText("Built in, version 2.0.77: base, elevated-rails, quality, space-age. They follow Space Age. Change Space Age");
+  await expect(line).toHaveText("Built in, version 2.0.77: base, elevated-rails, quality, space-age. Space Age is on, so all of them are on. Change Space Age");
   await expect(line.getByRole("link", { name: "Change Space Age" })).toHaveAttribute("href", "/worlds/base/settings");
   const table = page.getByRole("table", { name: /Mods of Base/ });
   await expect(table.getByRole("row", { name: /space-age/ })).toHaveCount(0);
-  await expect(table.getByRole("link", { name: "Mod portal for fp-here, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-here");
-  // A mod the portal does not have gets no portal link once the portal has answered.
-  await expect(table.getByRole("link", { name: /Mod portal for fp-gone-from-portal/ })).toHaveCount(0);
+  // The mod's name is its portal link (issue 360).
+  await expect(table.getByRole("link", { name: "fp-here on the mod portal, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-here");
+  // A mod the portal does not have gets no portal link once the portal has answered; its name stays.
+  await expect(table.getByRole("link", { name: /fp-gone-from-portal on the mod portal/ })).toHaveCount(0);
+  await expect(table.getByRole("row", { name: /fp-gone-from-portal/ })).toContainText("Note: Not on the mod portal");
+  // The settings help is in the folded replace form (issue 371).
+  await page.locator("#mod-settings-replace > summary").click();
   await expect(page.locator("#settings-file-help")).toContainText("Windows %APPDATA%\\Factorio\\mods, macOS ~/Library/Application Support/factorio/mods, Linux ~/.factorio/mods.");
   await expect(page.locator("#settings-file-help")).toContainText("Startup settings apply when the world next starts.");
-  // Mod names never break with a hyphen, in a table cell or in a button (DESIGN 8.3).
+  // Mod names never break with a hyphen in a table cell (DESIGN 8.3).
   expect(await page.locator("td .ident").first().evaluate((el) => getComputedStyle(el).hyphens)).toBe("manual");
-  expect(await page.locator("#mod-status .button .ident").first().evaluate((el) => getComputedStyle(el).hyphens)).toBe("manual");
-  // The notices and the table share one width, so the tab is one column.
-  const notice = (await page.locator("#mod-status .message").first().boundingBox())!;
+  // The summary line and the table share one width, so the tab is one column.
+  const summary = (await page.locator("#mod-status .mod-status__line").boundingBox())!;
   const box = (await table.boundingBox())!;
-  expect(Math.abs(notice.width - box.width)).toBeLessThan(2);
+  expect(Math.abs(summary.width - box.width)).toBeLessThan(2);
   await checkPage(page);
   await shot(page, "mods-tab-portal");
 });

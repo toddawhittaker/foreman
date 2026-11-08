@@ -2797,8 +2797,10 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
-/* The summary's sentences, with Update all beside them while they fit. */
+/* The summary's sentences, with Update all beside them while they fit, at
+   the table's width so the tab is one column. */
 .mod-status__line {
+  max-inline-size: var(--measure);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
