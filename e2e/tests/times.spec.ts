@@ -131,3 +131,26 @@ test("the crash-loop Restore offer names the local time", async ({ page, foreman
   await expect(restore).not.toHaveText(/UTC|ago|now/);
   await checkPage(page);
 });
+
+// SPEC 17.11: when a finished operation's Done box takes focus, its time is
+// already in the browser's zone; a screen reader reads the box once, on focus.
+test("the Done box shows local time at the moment it takes focus", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  await page.goto("/?result=1");
+  await expect(stateBadge(page)).toHaveText("Stopped", live);
+  await expect(doneBox(page)).toHaveCount(0);
+  await page.evaluate(() => {
+    const w = window as unknown as { textAtFocus?: string };
+    document.addEventListener("focusin", (e) => {
+      const el = e.target as HTMLElement;
+      if (el.id === "done-message" && w.textAtFocus === undefined) w.textAtFocus = el.textContent ?? "";
+    });
+  });
+  await page.evaluate(() => fetch("/worlds/base/take-snapshot", { method: "POST", body: new URLSearchParams() }));
+  await expect(doneBox(page)).toContainText("Foreman took the snapshot", live);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { textAtFocus?: string }).textAtFocus)).toBeDefined();
+  const text = await page.evaluate(() => (window as unknown as { textAtFocus?: string }).textAtFocus!);
+  expect(text).toMatch(/\b(EST|EDT)\b/);
+  expect(text).not.toContain("UTC");
+});
