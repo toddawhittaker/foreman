@@ -182,7 +182,7 @@ test.describe("with the fake game", () => {
     await expect(refusal.getByRole("link", { name: "Match the mods to the save" })).toBeVisible();
     await expect(refusal).not.toContainText("cannot add mods");
     await expect(refusal).not.toContainText("on the host");
-    await expect(refusal).toContainText('labelled "Before start anyway"');
+    await expect(refusal).toContainText('labeled "Before start anyway"');
     await expect(refusal).toContainText("To undo, restore that snapshot from the Snapshots page.");
     await expect(badge(page)).toHaveText("Stopped");
     // The box alone leads: nothing tells the admin to fix the world first.

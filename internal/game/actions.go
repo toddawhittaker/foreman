@@ -443,10 +443,10 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 }
 
 // errCountdownCancelled is the cause CancelStop gives the countdown's context.
-var errCountdownCancelled = errors.New("the stop countdown was cancelled")
+var errCountdownCancelled = errors.New("the stop countdown was canceled")
 
 // cancelledText is the chat line that tells warned players the stop is off.
-const cancelledText = "The server stop was cancelled."
+const cancelledText = "The server stop was canceled."
 
 // countdown warns players and waits out the countdown, which CancelStop can
 // end early. A cancel returns ErrStopCancelled with the stop's steps

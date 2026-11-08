@@ -172,6 +172,12 @@ h2.op-heading {
   line-height: 1.4;
 }
 
+/* Settings: the connected-players heading is an h2 for the outline but sits inside the admins fieldset, so it is set as an h3. */
+#connected-heading {
+  font-size: var(--text-md);
+  line-height: 1.4;
+}
+
 p,
 li {
   max-inline-size: var(--measure);

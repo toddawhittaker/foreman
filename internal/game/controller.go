@@ -93,7 +93,7 @@ var (
 	ErrSaveTimeout     = errors.New("the game did not finish saving in time, so nothing was stopped or snapshotted. Try again, or use Force stop")
 	ErrStartFailed     = errors.New("the game did not start")
 	ErrCancelled       = errors.New("a forced stop interrupted this")
-	ErrStopCancelled   = errors.New("the stop was cancelled, so nothing was stopped or saved and the game runs on")
+	ErrStopCancelled   = errors.New("the stop was canceled, so nothing was stopped or saved and the game runs on")
 	ErrNoCountdown     = errors.New("there is no stop countdown to cancel. It may have just ended")
 	ErrDownloading     = errors.New("the game image is already being downloaded")
 	ErrForeign         = errors.New("a Docker container with this world's container name exists, but Foreman did not create it. Rename or remove that container, then try again")

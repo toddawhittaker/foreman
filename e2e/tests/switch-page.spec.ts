@@ -44,7 +44,7 @@ test.describe("with the fake game", () => {
     await openSwitch(page, "second", "Second");
     const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("save the game and stop Base");
-    await expect(confirm).toContainText('both labelled "Before switch"');
+    await expect(confirm).toContainText('both labeled "Before switch"');
     await expect(confirm).toContainText("Start the game on Second");
     await expect(page.getByLabel("Countdown in seconds")).toHaveValue("60");
     await expect(confirm.getByRole("button", { name: "Switch to Second" })).toHaveClass(/button--danger/);
@@ -167,8 +167,8 @@ test.describe("with the fake game", () => {
     await expect(problems.getByRole("link", { name: "Match the mods to the save" })).toHaveAttribute("href", "/worlds/second/mods/plan?kind=sync");
     await expect(problems).not.toContainText("cannot add mods");
     await expect(problems).not.toContainText("on the host");
-    await expect(confirm).toContainText('both labelled "Before switch"');
-    await expect(confirm).toContainText('labelled "Before start anyway"');
+    await expect(confirm).toContainText('both labeled "Before switch"');
+    await expect(confirm).toContainText('labeled "Before start anyway"');
     await expect(confirm).toContainText("To undo, switch back to Base");
     await expect(confirm.getByRole("button", { name: "Switch, leave stopped" })).toBeVisible();
     await expect(confirm.getByRole("button", { name: "Switch to Second" })).toHaveCount(0);
