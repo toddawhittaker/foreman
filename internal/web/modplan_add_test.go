@@ -153,6 +153,14 @@ func TestServerModNoticeNamesTheFix(t *testing.T) {
 	_, frag := g.getStatus(modsPath(id) + "/notice")
 	wantIn(t, "two errors", frag, "2 mods of Base can no longer be downloaded", ">Review 2 mods</a>", `href="/worlds/`+id+`/mods"`)
 
+	// Two gone mods that both have updates: the button says what its plan does.
+	g3 := newModsRig(t, true)
+	g3.portal.AddZip("beta", "2.0.0")
+	g3.portal.AddZip("gamma", "2.0.0")
+	id3 := g3.world20("Base", "beta_1.0.0", "gamma_1.0.0")
+	_, frag = g3.getStatus(modsPath(id3) + "/notice")
+	wantIn(t, "two updates", frag, ">Update 2 mods</a>", `href="/worlds/`+id3+`/mods/plan?kind=update&amp;name=beta&amp;name=gamma"`)
+
 	g2 := newModsRig(t, true)
 	id2 := g2.world20("Base", "beta_1.0.0")
 	g2.portal.AddZipFor("1.1", "beta", "0.5.0")

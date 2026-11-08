@@ -272,7 +272,7 @@
   "mods.error.unauthorized": "factorio.com refused the username or token, so no mod was downloaded. Nothing was changed. Check the factorio.com account.",
   "mods.error.download_gone": "The mod portal no longer has a mod the plan downloads. Nothing was changed. Open the mods again to see the new plan.",
   "mods.error.download_failed": "A mod could not be downloaded from the mod portal. Nothing was changed. Try again in a moment.",
-  "mods.done": "The mods of {world} are changed. Foreman took the snapshot \"{label}\" first.",
+  "mods.done": "The mods of {world} were changed. Foreman took the snapshot \"{label}\" first.",
   "mods.undo": "Undo this mod change",
   "mods.changed.next": "Open the mods again",
   "mods.plan.redrawn": {
@@ -312,6 +312,7 @@
   },
   "mods.plan.step.stop": "Warn the players, then save and stop {world}.",
   "mods.plan.step.snapshot": "Take a snapshot labelled \"{label}\".",
+  "mods.plan.step.snapshot_kept": "Keep the snapshot from {time}, which already covers this change.",
   "mods.plan.step.change_start": "Change the mods, then start {world} again.",
   "mods.plan.step.change_stopped": "Change the mods. {world} stays stopped, as it is now.",
   "mods.plan.step.fails": "If a step fails, the steps after it do not happen.",
@@ -319,8 +320,12 @@
   "mods.plan.fix.disable": "Disable {mod} too",
   "mods.plan.back_search": "Back to search",
   "mods.plan.fixed": {
-    "one": "The plan now disables {mod} too. It changes {count} mod.",
-    "other": "The plan now disables {mod} too. It changes {count} mods."
+    "one": "Plan updated. It changes {count} mod.",
+    "other": "Plan updated. It changes {count} mods."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan updated. {count} conflict left.",
+    "other": "Plan updated. {count} conflicts left."
   },
   "mods.drops.confirm": {
     "one": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy.",

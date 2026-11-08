@@ -272,7 +272,7 @@
   "mods.error.unauthorized": "factorio.com hat den Benutzernamen oder das Token abgelehnt, deshalb wurde keine Mod heruntergeladen. Es wurde nichts geändert. Prüfe das factorio.com-Konto.",
   "mods.error.download_gone": "Das Mod-Portal hat eine Mod, die der Plan herunterlädt, nicht mehr. Es wurde nichts geändert. Öffne die Mods erneut, um den neuen Plan zu sehen.",
   "mods.error.download_failed": "Eine Mod konnte nicht vom Mod-Portal heruntergeladen werden. Es wurde nichts geändert. Versuche es gleich noch einmal.",
-  "mods.done": "Die Mods von {world} sind geändert. Foreman hat zuvor den Snapshot „{label}“ erstellt.",
+  "mods.done": "Die Mods von {world} wurden geändert. Foreman hat zuvor den Snapshot „{label}“ erstellt.",
   "mods.undo": "Diese Mod-Änderung rückgängig machen",
   "mods.changed.next": "Die Mods erneut öffnen",
   "mods.plan.redrawn": {
@@ -312,6 +312,7 @@
   },
   "mods.plan.step.stop": "Die Spieler warnen, dann {world} speichern und stoppen.",
   "mods.plan.step.snapshot": "Einen Snapshot mit der Bezeichnung „{label}“ erstellen.",
+  "mods.plan.step.snapshot_kept": "Den Snapshot von {time} behalten, der diese Änderung bereits abdeckt.",
   "mods.plan.step.change_start": "Die Mods ändern, dann {world} wieder starten.",
   "mods.plan.step.change_stopped": "Die Mods ändern. {world} bleibt gestoppt, wie jetzt.",
   "mods.plan.step.fails": "Schlägt ein Schritt fehl, folgen die Schritte danach nicht.",
@@ -319,8 +320,12 @@
   "mods.plan.fix.disable": "{mod} auch deaktivieren",
   "mods.plan.back_search": "Zurück zur Suche",
   "mods.plan.fixed": {
-    "one": "Der Plan schaltet jetzt auch {mod} ab. Er ändert {count} Mod.",
-    "other": "Der Plan schaltet jetzt auch {mod} ab. Er ändert {count} Mods."
+    "one": "Plan aktualisiert. Er ändert {count} Mod.",
+    "other": "Plan aktualisiert. Er ändert {count} Mods."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan aktualisiert. {count} Konflikt übrig.",
+    "other": "Plan aktualisiert. {count} Konflikte übrig."
   },
   "mods.drops.confirm": {
     "one": "Löschen, was {mods} gebaut hat. Der Snapshot „{label}“ behält eine Kopie.",

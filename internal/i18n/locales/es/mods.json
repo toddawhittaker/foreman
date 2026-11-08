@@ -272,7 +272,7 @@
   "mods.error.unauthorized": "factorio.com rechazó el nombre de usuario o el token, así que no se descargó ningún mod. No se cambió nada. Revisa la cuenta de factorio.com.",
   "mods.error.download_gone": "El portal de mods ya no tiene un mod que el plan descarga. No se cambió nada. Vuelve a abrir los mods para ver el plan nuevo.",
   "mods.error.download_failed": "No se pudo descargar un mod del portal de mods. No se cambió nada. Inténtalo de nuevo en un momento.",
-  "mods.done": "Los mods de {world} están cambiados. Foreman tomó primero la instantánea «{label}».",
+  "mods.done": "Los mods de {world} se cambiaron. Foreman tomó primero la instantánea «{label}».",
   "mods.undo": "Deshacer este cambio de mods",
   "mods.changed.next": "Volver a abrir los mods",
   "mods.plan.redrawn": {
@@ -312,6 +312,7 @@
   },
   "mods.plan.step.stop": "Avisar a los jugadores, guardar y detener {world}.",
   "mods.plan.step.snapshot": "Tomar una instantánea con la etiqueta «{label}».",
+  "mods.plan.step.snapshot_kept": "Conservar la instantánea de {time}, que ya cubre este cambio.",
   "mods.plan.step.change_start": "Cambiar los mods e iniciar {world} de nuevo.",
   "mods.plan.step.change_stopped": "Cambiar los mods. {world} sigue detenido, como ahora.",
   "mods.plan.step.fails": "Si un paso falla, los pasos siguientes no se hacen.",
@@ -319,8 +320,12 @@
   "mods.plan.fix.disable": "Desactivar también {mod}",
   "mods.plan.back_search": "Volver a la búsqueda",
   "mods.plan.fixed": {
-    "one": "Ahora el plan también desactiva {mod}. Cambia {count} mod.",
-    "other": "Ahora el plan también desactiva {mod}. Cambia {count} mods."
+    "one": "Plan actualizado. Cambia {count} mod.",
+    "other": "Plan actualizado. Cambia {count} mods."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan actualizado. Queda {count} conflicto.",
+    "other": "Plan actualizado. Quedan {count} conflictos."
   },
   "mods.drops.confirm": {
     "one": "Borrar lo que {mods} construyó. La instantánea «{label}» conserva una copia.",

@@ -230,7 +230,7 @@ func TestModsTabListsMods(t *testing.T) {
 		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		"at most 200 MB", "At most 4 MB",
 		// #360: a portal mod's name is the link to its portal page, in a new tab.
-		`<a href="https://mods.factorio.com/mod/alpha" id="`+portalSlot("alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
+		`<a href="https://mods.factorio.com/mod/alpha" id="`+slotID("portal", "alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
 		// #373: the save's mods are read and the differences counted; the save uses neither mod.
 		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
 		// #371: the rare forms fold away.
@@ -283,8 +283,8 @@ func TestModStatusUpdatesAndFlags(t *testing.T) {
 	wantIn(t, "status", body, "2 mods have an update", `kind=update"`, "Update all", "Update to 1.1.0",
 		// beta 1.0.0 is gone: an error summary, and the row says so with its fix, the update.
 		`message message--error`, "1 mod stops players joining. Its row says how to fix it.",
-		`<span id="`+updateSlot("beta")+`" hx-swap-oob="true"><a href="/worlds/`+id+`/mods/plan?kind=update&amp;name=beta" class="button">Update to 2.0.0`,
-		`<div id="`+noteSlot("beta")+`" class="mod-flags" hx-swap-oob="true">`,
+		`<span id="`+slotID("update", "beta")+`" hx-swap-oob="true"><a href="/worlds/`+id+`/mods/plan?kind=update&amp;name=beta" class="button">Update to 2.0.0`,
+		`<div id="`+slotID("note", "beta")+`" class="mod-flags" hx-swap-oob="true">`,
 		"the mod portal no longer has version 1.0.0")
 	if strings.Contains(body, "up to date") {
 		t.Error("the status says up to date while updates wait")
@@ -300,7 +300,7 @@ func TestModStatusCurrentCount(t *testing.T) {
 	_, body := g.getStatus(modsPath(id) + "/status")
 	wantIn(t, "status", body, "1 mod from the mod portal is up to date.", "1 mod is not on the mod portal.",
 		// The portal's link goes; the name stays.
-		`<span id="`+portalSlot("zz-not-on-portal")+`" class="mod-name ident" translate="no" hx-swap-oob="true">zz-not-on-portal</span>`,
+		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name ident" translate="no" hx-swap-oob="true">zz-not-on-portal</span>`,
 		"Not on the mod portal, so players")
 	if strings.Contains(body, "message--error") {
 		t.Error("a note reads as an error")
@@ -843,6 +843,16 @@ func TestPlanRequestIsBounded(t *testing.T) {
 	}
 	if code, _ := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "optional": names})); code != http.StatusBadRequest {
 		t.Errorf("51 optional mods: %d", code)
+	}
+	// The bound counts the raw values, before duplicates are dropped.
+	same := make([]string, maxPlanNames+1)
+	for i := range same {
+		same[i] = "x"
+	}
+	for _, field := range []string{"declined", "offered"} {
+		if code, _ := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, field: same})); code != http.StatusBadRequest {
+			t.Errorf("51 repeated %s values: %d", field, code)
+		}
 	}
 	path := kindPlanPath(id, mods.KindInstall, "alpha")
 	for _, site := range []string{"cross-site", "same-site"} {

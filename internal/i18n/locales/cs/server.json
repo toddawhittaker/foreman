@@ -267,7 +267,7 @@
   "server.done.restore_short": "Svět je obnoven.",
   "server.done.switch_short": "Světy jsou přepnuty.",
   "server.done.update_short": "Verze hry je aktualizována.",
-  "server.done.mods_short": "Mody jsou změněny.",
+  "server.done.mods_short": "Mody byly změněny.",
   "server.done.rollback_short": "Svět byl vrácen zpět.",
   "server.done.snapshot_short": "Snímek je pořízen.",
   "server.mods_done.snapshot": "Foreman nejprve pořídil snímek „{label}“.",

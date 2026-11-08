@@ -87,7 +87,7 @@ test.describe("a save's mod the portal does not have", () => {
     await page.locator("#act-apply").click();
     await expect(page.locator("#error-summary")).toHaveCount(0);
     // The plan changes no mod file, so the Done box keeps the plain sentence.
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText("The mods of Base were changed.", live);
     // The save's mod stays out of the world.
     expect(existsSync(join(modsFolder(foreman.dataDir), "foreman-test_0.1.0.zip"))).toBe(false);
     await page.goto("/worlds/base/mods");

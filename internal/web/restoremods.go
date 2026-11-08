@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -100,12 +101,12 @@ func (st modState) enabled(name string) bool {
 func modUndoSteps(was, now modState) []i18n.Msg {
 	var remove, putBack, on, off []i18n.Msg
 	var versions []i18n.Msg
-	for _, name := range sortedKeys(now.zips) {
+	for _, name := range slices.Sorted(maps.Keys(now.zips)) {
 		if _, ok := was.zips[name]; !ok {
 			remove = append(remove, modItem(name, now.zips[name]))
 		}
 	}
-	for _, name := range sortedKeys(was.zips) {
+	for _, name := range slices.Sorted(maps.Keys(was.zips)) {
 		v, ok := now.zips[name]
 		switch {
 		case !ok:
@@ -163,15 +164,6 @@ func modUndoSteps(was, now modState) []i18n.Msg {
 
 func modItem(name, version string) i18n.Msg {
 	return i18n.M("server.restore.mods.item", "mod", i18n.Ident(name), "version", version)
-}
-
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
-	return keys
 }
 
 // andNames lists items as "a, b and c".

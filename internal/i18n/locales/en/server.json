@@ -260,7 +260,7 @@
   "server.done.restore_short": "The world is restored.",
   "server.done.switch_short": "The worlds are switched.",
   "server.done.update_short": "The game version is updated.",
-  "server.done.mods_short": "The mods are changed.",
+  "server.done.mods_short": "The mods were changed.",
   "server.done.rollback_short": "The world is rolled back.",
   "server.done.snapshot_short": "The snapshot is taken.",
   "server.mods_done.snapshot": "Foreman took the snapshot \"{label}\" first.",

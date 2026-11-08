@@ -167,3 +167,17 @@ test("the Server page notice names the mod and its fix", async ({ page, foreman,
   await checkPage(page);
   await shot(page, "mods-server-notice");
 });
+
+// WCAG 4.1.2, 1.4.3: the fold of mods the plan needs and leaves as they are is scanned open.
+test("the plan's fold of mods that stay as they are opens and passes the checks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-user", "1.0.0", ["base >= 2.0", "fp-base-lib >= 1.0.0"]);
+  await fakePortal!.add("fp-base-lib", "1.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-base-lib": { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-user");
+  const kept = page.locator("#mod-plan details.disclosure");
+  await expect(kept.locator("summary")).toHaveText("1 other mod stays as it is");
+  await expect(kept.getByText("fp-base-lib")).toBeHidden();
+  await kept.locator("summary").click();
+  await expect(kept.getByText("fp-base-lib")).toBeVisible();
+  await checkPage(page);
+});

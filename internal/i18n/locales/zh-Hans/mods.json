@@ -280,6 +280,7 @@
   },
   "mods.plan.step.stop": "警告玩家，然后保存并停止 {world}。",
   "mods.plan.step.snapshot": "创建标签为“{label}”的快照。",
+  "mods.plan.step.snapshot_kept": "保留 {time} 的快照，它已涵盖此次更改。",
   "mods.plan.step.change_start": "更改模组，然后重新启动 {world}。",
   "mods.plan.step.change_stopped": "更改模组。{world} 保持停止，与现在一样。",
   "mods.plan.step.fails": "如果某一步失败，之后的步骤不会执行。",
@@ -287,7 +288,10 @@
   "mods.plan.fix.disable": "同时禁用 {mod}",
   "mods.plan.back_search": "返回搜索",
   "mods.plan.fixed": {
-    "other": "计划现在也会禁用 {mod}。它更改 {count} 个模组。"
+    "other": "计划已更新。它更改 {count} 个模组。"
+  },
+  "mods.plan.fixed_conflicts": {
+    "other": "计划已更新。还剩 {count} 个冲突。"
   },
   "mods.drops.confirm": {
     "other": "删除这 {count} 个模组建造的内容：{mods}。快照“{label}”保留一份副本。"

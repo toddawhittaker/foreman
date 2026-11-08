@@ -297,7 +297,7 @@
   "mods.error.unauthorized": "factorio.com odmítl uživatelské jméno nebo token, proto nebyl stažen žádný mod. Nic se nezměnilo. Je třeba zkontrolovat účet factorio.com.",
   "mods.error.download_gone": "Portál modů už nemá mod, který plán stahuje. Nic se nezměnilo. Je třeba znovu otevřít mody, aby se zobrazil nový plán.",
   "mods.error.download_failed": "Mod se nepodařilo stáhnout z portálu modů. Nic se nezměnilo. Za chvíli je třeba zkusit to znovu.",
-  "mods.done": "Mody světa {world} jsou změněny. Foreman nejprve pořídil snímek „{label}“.",
+  "mods.done": "Mody světa {world} byly změněny. Foreman nejprve pořídil snímek „{label}“.",
   "mods.undo": "Vrátit tuto změnu modů",
   "mods.changed.next": "Znovu otevřít mody",
   "mods.plan.redrawn": {
@@ -344,6 +344,7 @@
   },
   "mods.plan.step.stop": "Upozornit hráče, pak uložit a zastavit svět {world}.",
   "mods.plan.step.snapshot": "Pořídit snímek se štítkem „{label}“.",
+  "mods.plan.step.snapshot_kept": "Ponechat snímek z {time}, který tuto změnu již pokrývá.",
   "mods.plan.step.change_start": "Změnit mody, pak znovu spustit svět {world}.",
   "mods.plan.step.change_stopped": "Změnit mody. Svět {world} zůstane zastavený jako teď.",
   "mods.plan.step.fails": "Pokud krok selže, další kroky se neprovedou.",
@@ -351,9 +352,14 @@
   "mods.plan.fix.disable": "Vypnout také {mod}",
   "mods.plan.back_search": "Zpět k hledání",
   "mods.plan.fixed": {
-    "one": "Plán teď vypíná také {mod}. Mění {count} mod.",
-    "few": "Plán teď vypíná také {mod}. Mění {count} mody.",
-    "other": "Plán teď vypíná také {mod}. Mění {count} modů."
+    "one": "Plán aktualizován. Mění {count} mod.",
+    "few": "Plán aktualizován. Mění {count} mody.",
+    "other": "Plán aktualizován. Mění {count} modů."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plán aktualizován. Zbývá {count} konflikt.",
+    "few": "Plán aktualizován. Zbývají {count} konflikty.",
+    "other": "Plán aktualizován. Zbývá {count} konfliktů."
   },
   "mods.drops.confirm": {
     "one": "Smazat, co {mods} postavil. Kopii uchovává snímek „{label}“.",

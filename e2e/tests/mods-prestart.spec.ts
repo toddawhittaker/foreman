@@ -38,6 +38,10 @@ test("a start refused for a mod players cannot download: update first, then star
   await expect(box.getByText("Or start anyway")).toBeVisible();
   await checkPage(page);
   await shot(page, "prestart-gone-refused");
+  // The folded choice is scanned open too.
+  await box.getByText("Or start anyway").click();
+  await expect(box.getByRole("button", { name: "Start anyway" })).toBeVisible();
+  await checkPage(page);
 
   await fix.click();
   await page.getByRole("button", { name: "Update 1 mod" }).click();
