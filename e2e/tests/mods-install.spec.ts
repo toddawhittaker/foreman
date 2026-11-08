@@ -51,7 +51,7 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await page.goto("/worlds/base/mods");
   const row = modsTable(page).getByRole("row", { name: /fp-signs/ });
   await expect(row).toContainText("1.0.0");
-  await expect(row).toContainText("Enabled");
+  await expect(row).not.toContainText("Disabled");
   // Foreman reached the portal through the fake's proxy, and nothing else was asked for.
   expect(await portal.count("mods.factorio.com", "/api/mods")).toBeGreaterThan(0);
   expect(await portal.count("dl-mod.factorio.com", "/cdn/")).toBe(1);
@@ -76,7 +76,7 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
   await page.getByRole("button", { name: "Install 3 mods" }).click();
   await expect(doneBox(page)).toContainText(/Done: Installed fp-\w, fp-\w and fp-\w in Base\. Foreman took the snapshot "Before mod change" first\./, live);
   await page.goto("/worlds/base/mods");
-  for (const name of ["fp-a", "fp-b", "fp-c"]) await expect(modsTable(page).getByRole("row", { name: new RegExp(name) })).toContainText("Enabled");
+  for (const name of ["fp-a", "fp-b", "fp-c"]) await expect(modsTable(page).getByRole("row", { name: new RegExp(name) })).not.toContainText("Disabled");
   for (const name of ["fp-a", "fp-b", "fp-c"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", `${name}_1.0.0.zip`))).toBe(true);
   expect((await portal.state()).refused).toEqual([]);
 });

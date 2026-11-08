@@ -225,18 +225,24 @@ func TestModsTabListsMods(t *testing.T) {
 		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
 		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
 		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
-		// SPEC 9.7: the built-in mods are one line above the table, with the way to change them.
-		`>base</span>`, "They follow Space Age.", `href="/worlds/`+id+`/settings" id="act-built-in-settings">Change Space Age</a>`,
+		// SPEC 9.7, #372: the built-in line says which are off and why, with the way to turn them on.
+		`>base</span>`, "Space Age is off, so", `>space-age</span> are off.`,
+		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		"at most 200 MB", "At most 4 MB",
-		// A portal mod's row links to its portal page, in a new tab, and names the mod.
-		`<a href="https://mods.factorio.com/mod/alpha" class="portal-link" target="_blank" rel="noopener noreferrer">Mod portal<span class="visually-hidden"> for <span class="ident" translate="no">alpha</span>, opens in a new tab</span></a>`,
+		// #360: a portal mod's name is the link to its portal page, in a new tab.
+		`<a href="https://mods.factorio.com/mod/alpha" id="`+portalSlot("alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
+		// #373: the save's mods are read and the differences counted; the save uses neither mod.
+		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
+		// #371: the rare forms fold away.
+		`<details class="disclosure" id="mod-upload">`, `<details class="disclosure" id="mod-settings-replace">`,
 		// SPEC 9.6: where the client keeps mod-settings.dat, then the field, then what the upload does.
 		`%APPDATA%\Factorio\mods`, "Startup settings apply when the world next starts.")
-	if n := strings.Count(body, "They follow Space Age"); n != 1 {
+	if n := strings.Count(body, "Space Age is off"); n != 1 {
 		t.Errorf("the built-in line is said %d times", n)
 	}
 	table := between(body, "<table", "</table>")
-	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base"} {
+	// #360, #343: two columns, and a state word only for a mod that is off.
+	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base", "Enabled", ">State<", "Mod portal"} {
 		if strings.Contains(table, bad) {
 			t.Errorf("the table has %s", bad)
 		}
@@ -256,10 +262,14 @@ func TestModsTabListsMods(t *testing.T) {
 	if strings.Contains(body, "Mod downloads are off") {
 		t.Error("the tab says downloads are off with an account set")
 	}
+	// Red only for what destroys something: no danger box on the tab.
+	if strings.Contains(body, `class="confirm"`) || strings.Contains(body, "button--danger") {
+		t.Error("the Mods tab has a red box or button")
+	}
 }
 
-// SPEC 9.3, #131: the status fragment counts updates, fills each row's
-// Update, and words each flag with its fix.
+// SPEC 9.3, #131, #342: the status is one summary line, and each mod's
+// update and flags go into its own row with the fix there.
 func TestModStatusUpdatesAndFlags(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("alpha", "1.0.0")
@@ -270,8 +280,54 @@ func TestModStatusUpdatesAndFlags(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
 	}
-	wantIn(t, "status", body, "2 mods have an update", `kind=update"`, "Update all", `hx-swap-oob="true"`, "Update to 1.1.0",
-		"the mod portal no longer has that version", `Update <span class="ident" translate="no">beta</span> to 2.0.0`)
+	wantIn(t, "status", body, "2 mods have an update", `kind=update"`, "Update all", "Update to 1.1.0",
+		// beta 1.0.0 is gone: an error summary, and the row says so with its fix, the update.
+		`message message--error`, "1 mod stops players joining. Its row says how to fix it.",
+		`<span id="`+updateSlot("beta")+`" hx-swap-oob="true"><a href="/worlds/`+id+`/mods/plan?kind=update&amp;name=beta" class="button">Update to 2.0.0`,
+		`<div id="`+noteSlot("beta")+`" class="mod-flags" hx-swap-oob="true">`,
+		"the mod portal no longer has version 1.0.0")
+	if strings.Contains(body, "up to date") {
+		t.Error("the status says up to date while updates wait")
+	}
+}
+
+// #365: "up to date" counts only mods the portal has at their installed
+// version, and is not said when there are none.
+func TestModStatusCurrentCount(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base", "alpha_1.0.0", "zz-not-on-portal_1.0.0")
+	_, body := g.getStatus(modsPath(id) + "/status")
+	wantIn(t, "status", body, "1 mod from the mod portal is up to date.", "1 mod is not on the mod portal.",
+		// The portal's link goes; the name stays.
+		`<span id="`+portalSlot("zz-not-on-portal")+`" class="mod-name ident" translate="no" hx-swap-oob="true">zz-not-on-portal</span>`,
+		"Not on the mod portal, so players")
+	if strings.Contains(body, "message--error") {
+		t.Error("a note reads as an error")
+	}
+
+	alone := g.world20("Alone", "zz-not-on-portal_1.0.0")
+	_, body = g.getStatus(modsPath(alone) + "/status")
+	if strings.Contains(body, "up to date") {
+		t.Errorf("a world whose only mod the portal lacks says up to date:\n%s", body)
+	}
+}
+
+func TestCurrentCount(t *testing.T) {
+	list := []world.InstalledMod{
+		{Name: "base", BuiltIn: true, Enabled: true},
+		{Name: "ok", Enabled: true}, {Name: "deprecated", Enabled: true},
+		{Name: "gone", Enabled: true}, {Name: "missing", Enabled: true},
+		{Name: "off"}, {Name: "folder", Local: true, Enabled: true},
+	}
+	flags := []mods.Flag{
+		{Code: mods.FlagDeprecated, Name: "deprecated"},
+		{Code: mods.FlagVersionGone, Name: "gone"},
+		{Code: mods.FlagNotOnPortal, Name: "missing"},
+	}
+	if n := currentCount(list, flags); n != 2 {
+		t.Errorf("current = %d, want 2 (ok and deprecated)", n)
+	}
 }
 
 func TestModStatusPortalDownSaysSo(t *testing.T) {
@@ -532,7 +588,7 @@ func TestModUpload(t *testing.T) {
 // comes back out as a download.
 func TestModSettingsUploadAndDownload(t *testing.T) {
 	g := newModsRig(t, true)
-	id := g.world20("Base")
+	id := g.world20("Base", "alpha_1.0.0")
 	_, tab := g.getStatus(modsPath(id))
 	fp := regexp.MustCompile(`name="fingerprint" value="([^"]+)"`).FindStringSubmatch(tab)
 	if fp == nil {
@@ -842,7 +898,7 @@ var identSpan = regexp.MustCompile(`<span class="ident" translate="no">([^<]*)</
 // so a mod plan can never read or remove it.
 func TestSettingsUploadIsNotStaged(t *testing.T) {
 	g := newModsRig(t, true)
-	id := g.world20("Base")
+	id := g.world20("Base", "alpha_1.0.0")
 	_, tab := g.getStatus(modsPath(id))
 	fp := regexp.MustCompile(`name="fingerprint" value="([^"]+)"`).FindStringSubmatch(tab)
 	if fp == nil {

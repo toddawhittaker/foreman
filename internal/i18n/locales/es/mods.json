@@ -51,18 +51,33 @@
     "other": "{count} están activados."
   },
   "mods.installed.none": "Este mundo solo tiene los mods integrados en el juego. Busca un mod arriba para instalarlo.",
+  "mods.installed.portal": "en el portal de mods, se abre en una pestaña nueva",
   "mods.col.mod": "Mod",
-  "mods.col.state": "Estado",
   "mods.col.actions": "Acciones",
-  "mods.state.on": "Activado",
   "mods.state.off": "Desactivado",
   "mods.row.update": "Actualizar a {version}",
   "mods.row.enable": "Activar",
   "mods.row.disable": "Desactivar",
   "mods.row.remove": "Quitar",
+  "mods.row.gone": "Los jugadores no pueden unirse: el portal de mods ya no tiene la versión {version}, así que su juego no puede descargarla.",
+  "mods.row.gone_none": "Los jugadores no pueden unirse: el portal de mods ya no tiene la versión {version} ni ninguna para esta versión del juego. Quita el mod o desactívalo.",
+  "mods.row.deprecated": "Marcado como obsoleto en el portal de mods, así que los jugadores no lo encuentran en el explorador de mods del juego.",
+  "mods.row.not_on_portal": "No está en el portal de mods, así que los juegos de los jugadores no pueden descargarlo. Los jugadores necesitan que les pases el archivo.",
   "mods.status.loading": "Buscando actualizaciones en el portal de mods…",
   "mods.status.unreachable": "Foreman no pudo conectar con el portal de mods, así que no pudo buscar actualizaciones ni mods que los jugadores no puedan descargar.",
   "mods.status.retry": "Comprobar de nuevo",
+  "mods.status.errors": {
+    "one": "{count} mod impide que los jugadores se unan. Su fila dice cómo arreglarlo.",
+    "other": "{count} mods impiden que los jugadores se unan. Sus filas dicen cómo arreglarlo."
+  },
+  "mods.status.warnings": {
+    "one": "{count} mod está marcado como obsoleto en el portal de mods.",
+    "other": "{count} mods están marcados como obsoletos en el portal de mods."
+  },
+  "mods.status.notes": {
+    "one": "{count} mod no está en el portal de mods.",
+    "other": "{count} mods no están en el portal de mods."
+  },
   "mods.status.updates": {
     "one": "{count} mod tiene una actualización para esta versión del juego.",
     "other": "{count} mods tienen una actualización para esta versión del juego."
@@ -72,11 +87,6 @@
     "one": "{count} mod del portal de mods está actualizado.",
     "other": "Los {count} mods del portal de mods están actualizados."
   },
-  "mods.flag.gone": "Los jugadores no pueden unirse con {mod} {version}: el portal de mods ya no tiene esa versión, así que su juego no puede descargarla. La versión {update} está en el portal.",
-  "mods.flag.gone_none": "Los jugadores no pueden unirse con {mod} {version}: el portal de mods ya no tiene esa versión y no tiene ninguna para esta versión del juego.",
-  "mods.flag.deprecated": "{mod} está marcado como obsoleto en el portal de mods, así que los jugadores no lo encuentran en el explorador de mods del juego.",
-  "mods.flag.not_on_portal": "{mod} {version} no está en el portal de mods, así que los juegos de los jugadores no pueden descargarlo al unirse. Los jugadores necesitan que les pases el archivo.",
-  "mods.flag.fix_update": "Actualizar {mod} a {version}",
   "mods.flag.fix_remove": "Quitar {mod}",
   "mods.notice": {
     "one": "Los jugadores ya no pueden descargar {count} mod de {world}, así que no pueden unirse.",
@@ -90,12 +100,33 @@
   },
   "mods.sync.heading": "Igualar los mods a la partida guardada",
   "mods.sync.text": "Deja como mods del mundo los que se usaron al crear la partida guardada {save}: instala los que faltan, cambia versiones y desactiva el resto. Primero ves el plan.",
+  "mods.sync.match": "Los mods coinciden con la partida guardada {save}.",
+  "mods.sync.differ": "Los mods difieren de la partida guardada {save}:",
+  "mods.sync.missing": {
+    "one": "{count} mod que usa la partida guardada no está instalado",
+    "other": "{count} mods que usa la partida guardada no están instalados"
+  },
+  "mods.sync.off": {
+    "one": "{count} mod que usa la partida guardada está desactivado aquí",
+    "other": "{count} mods que usa la partida guardada están desactivados aquí"
+  },
+  "mods.sync.version": {
+    "one": "{count} mod que usa la partida guardada está instalado en otra versión",
+    "other": "{count} mods que usa la partida guardada están instalados en otra versión"
+  },
+  "mods.sync.extra": {
+    "one": "{count} mod activado no está en la partida guardada",
+    "other": "{count} mods activados no están en la partida guardada"
+  },
+  "mods.sync.what": "Igualar instala los mods que faltan, cambia versiones y desactiva el resto. Primero ves el plan.",
   "mods.sync.button": "Igualar los mods a la partida guardada",
   "mods.sync.no_save": "Este mundo aún no tiene ninguna partida guardada, así que no hay nada que igualar.",
   "mods.sync.upload_save": "Subir una partida guardada",
   "mods.sync.offer": "Igualar los mods a la partida guardada",
   "mods.sync.import": "Igualar los mods de este mundo a su partida guardada",
   "mods.upload.heading": "Subir un mod",
+  "mods.upload.text": "Instala un mod desde un archivo .zip que tengas.",
+  "mods.upload.summary": "Subir el zip de un mod",
   "mods.upload.label": "Zip del mod",
   "mods.upload.hint": "El archivo .zip de un mod, de {limit} como máximo. Foreman lee su nombre y su versión en su info.json y muestra el plan antes de cambiar nada.",
   "mods.upload.button": "Subir mod",
@@ -106,6 +137,7 @@
   "mods.settings.text": "Los valores de los ajustes de los mods están en {file}. Descárgalo para conservar una copia o para usarlo en otro mundo.",
   "mods.settings.download": "Descargar mod-settings.dat",
   "mods.settings.none": "Este mundo aún no tiene {file}. El juego escribe uno la primera vez que se ejecuta con mods.",
+  "mods.settings.summary": "Reemplazar {file}",
   "mods.settings.where": "Tu cliente de Factorio lo guarda en su carpeta de mods: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Los ajustes de inicio se aplican la próxima vez que se inicie el mundo.",
   "mods.settings.apply_running": "Los ajustes de inicio se aplican la próxima vez que se inicie el mundo, así que Foreman lo reinicia.",
@@ -266,7 +298,9 @@
     "other": "Plan actualizado: tiene {count} conflictos, así que no se puede aplicar."
   },
   "mods.error.cross_site": "Este plan se abrió desde otro sitio, así que Foreman no lo calculó. No se cambió nada. Elige «Intentar de nuevo» para ver el plan.",
-  "mods.built_in.line_space_age": "Integrados, versión {version}: {mods}. Siguen el ajuste de Space Age.",
   "mods.built_in.line": "Integrados, versión {version}: {mods}.",
-  "mods.built_in.change": "Cambiar Space Age"
+  "mods.built_in.line_on": "Integrados, versión {version}: {mods}. Space Age está activado, así que todos están activados.",
+  "mods.built_in.line_off": "Integrados, versión {version}: {mods}. Space Age está desactivado, así que {off} están desactivados.",
+  "mods.built_in.change": "Cambiar Space Age",
+  "mods.built_in.turn_on": "Activar Space Age"
 }

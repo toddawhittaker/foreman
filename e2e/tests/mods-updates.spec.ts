@@ -107,14 +107,18 @@ test.describe("a mod players cannot get", () => {
     await expect(notice).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
 
     await page.goto("/worlds/base/mods");
+    // Issue 342: one summary line, red only because players cannot join; each mod's news is in its row.
     const error = page.locator("#mod-status .message--error");
-    await expect(error).toContainText("Players cannot join with visible-planets 1.5.5", live);
-    await expect(error).toContainText("Version 1.7.2 is on the portal.");
-    await expect(error.getByRole("link", { name: "Update visible-planets to 1.7.2" })).toBeVisible();
-    // chest-auto-sort is marked deprecated on the portal: a warning, with no error.
-    const warning = page.locator("#mod-status .message--warning");
-    await expect(warning).toContainText("chest-auto-sort is marked deprecated on the mod portal");
-    await expect(page.locator("#mod-status .message--error")).toHaveCount(1);
+    await expect(error).toContainText("1 mod stops players joining. Its row says how to fix it.", live);
+    await expect(error).toContainText("1 mod is deprecated on the mod portal.");
+    const table = page.getByRole("table", { name: /Mods of Base/ });
+    const gone = table.getByRole("row", { name: /visible-planets/ });
+    await expect(gone).toContainText("Error: Players cannot join: the mod portal no longer has version 1.5.5");
+    await expect(gone.getByRole("link", { name: "Update to 1.7.2 visible-planets" })).toBeVisible();
+    // chest-auto-sort is marked deprecated on the portal: a warning in its row, with no error.
+    const deprecated = table.getByRole("row", { name: /chest-auto-sort/ });
+    await expect(deprecated).toContainText("Warning: Deprecated on the mod portal");
+    await expect(deprecated).not.toContainText("Error:");
     await checkPage(page);
 
     await page.goto("/");
@@ -132,7 +136,7 @@ test.describe("a mod players cannot get", () => {
 
     // The error is gone from the tab; the deprecated warning stays.
     await page.goto("/worlds/base/mods");
-    await expect(page.locator("#mod-status .message--warning")).toContainText("chest-auto-sort is marked deprecated", live);
+    await expect(page.locator("#mod-status")).toContainText("1 mod is deprecated on the mod portal.", live);
     await expect(page.locator("#mod-status .message--error")).toHaveCount(0);
     await expect(page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /visible-planets/ })).toContainText("1.7.2");
     expect((await portal.state()).refused).toEqual([]);

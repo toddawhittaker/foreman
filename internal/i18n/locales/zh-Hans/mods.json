@@ -47,18 +47,30 @@
     "other": "已启用 {count} 个。"
   },
   "mods.installed.none": "此世界只有游戏内置的模组。可在上方查找并安装模组。",
+  "mods.installed.portal": "（模组门户，在新标签页中打开）",
   "mods.col.mod": "模组",
-  "mods.col.state": "状态",
   "mods.col.actions": "操作",
-  "mods.state.on": "已启用",
   "mods.state.off": "已禁用",
   "mods.row.update": "更新到 {version}",
   "mods.row.enable": "启用",
   "mods.row.disable": "禁用",
   "mods.row.remove": "移除",
+  "mods.row.gone": "玩家无法加入：模组门户已没有版本 {version}，因此其游戏无法下载。",
+  "mods.row.gone_none": "玩家无法加入：模组门户已没有版本 {version}，也没有适用于此游戏版本的版本。请移除或禁用该模组。",
+  "mods.row.deprecated": "在模组门户上被标记为已弃用，因此玩家无法在游戏的模组浏览器中找到它。",
+  "mods.row.not_on_portal": "不在模组门户上，因此玩家的游戏无法下载它。玩家需要另行获取该文件。",
   "mods.status.loading": "正在向模组门户检查更新…",
   "mods.status.unreachable": "Foreman 无法连接模组门户，因此无法检查更新，也无法检查玩家无法下载的模组。",
   "mods.status.retry": "重新检查",
+  "mods.status.errors": {
+    "other": "有 {count} 个模组使玩家无法加入。其所在行说明了修复方法。"
+  },
+  "mods.status.warnings": {
+    "other": "有 {count} 个模组在模组门户上被标记为已弃用。"
+  },
+  "mods.status.notes": {
+    "other": "有 {count} 个模组不在模组门户上。"
+  },
   "mods.status.updates": {
     "other": "有 {count} 个模组在此游戏版本上有更新。"
   },
@@ -66,11 +78,6 @@
   "mods.status.current": {
     "other": "来自模组门户的 {count} 个模组均为最新。"
   },
-  "mods.flag.gone": "玩家无法使用 {mod} {version} 加入：模组门户已没有该版本，因此其游戏无法下载。门户上有版本 {update}。",
-  "mods.flag.gone_none": "玩家无法使用 {mod} {version} 加入：模组门户已没有该版本，也没有适用于此游戏版本的版本。",
-  "mods.flag.deprecated": "{mod} 在模组门户上被标记为已弃用，因此玩家无法在游戏的模组浏览器中找到它。",
-  "mods.flag.not_on_portal": "{mod} {version} 不在模组门户上，因此玩家加入时其游戏无法下载它。玩家需要另行获取该文件。",
-  "mods.flag.fix_update": "将 {mod} 更新到 {version}",
   "mods.flag.fix_remove": "移除 {mod}",
   "mods.notice": {
     "other": "玩家已无法下载 {world} 的 {count} 个模组，因此无法加入。"
@@ -82,12 +89,29 @@
   },
   "mods.sync.heading": "使模组与存档一致",
   "mods.sync.text": "将世界的模组改为存档 {save} 制作时使用的模组：安装缺少的，更改版本，并禁用其余的。会先显示计划。",
+  "mods.sync.match": "模组与存档 {save} 一致。",
+  "mods.sync.differ": "模组与存档 {save} 不同：",
+  "mods.sync.missing": {
+    "other": "存档使用的 {count} 个模组未安装"
+  },
+  "mods.sync.off": {
+    "other": "存档使用的 {count} 个模组在此处已禁用"
+  },
+  "mods.sync.version": {
+    "other": "存档使用的 {count} 个模组安装的是其他版本"
+  },
+  "mods.sync.extra": {
+    "other": "{count} 个已启用的模组不在存档中"
+  },
+  "mods.sync.what": "使其一致会安装缺少的模组、更改版本并禁用其余的。会先显示计划。",
   "mods.sync.button": "使模组与存档一致",
   "mods.sync.no_save": "此世界还没有存档，因此没有可对照的内容。",
   "mods.sync.upload_save": "上传存档",
   "mods.sync.offer": "使模组与存档一致",
   "mods.sync.import": "使此世界的模组与其存档一致",
   "mods.upload.heading": "上传模组",
+  "mods.upload.text": "从已有的 .zip 文件安装模组。",
+  "mods.upload.summary": "上传模组 zip 文件",
   "mods.upload.label": "模组 zip 文件",
   "mods.upload.hint": "模组的 .zip 文件，最大 {limit}。Foreman 从其 info.json 读取名称和版本，并在更改任何内容之前显示计划。",
   "mods.upload.button": "上传模组",
@@ -98,6 +122,7 @@
   "mods.settings.text": "模组设置的值保存在 {file} 中。可下载该文件以保留副本，或在其他世界中使用。",
   "mods.settings.download": "下载 mod-settings.dat",
   "mods.settings.none": "此世界还没有 {file}。游戏首次带模组运行时会写入一个。",
+  "mods.settings.summary": "替换 {file}",
   "mods.settings.where": "Factorio 客户端将该文件保存在其模组文件夹中：Windows {windows}，macOS {macos}，Linux {linux}。",
   "mods.settings.apply": "启动设置在世界下次启动时生效。",
   "mods.settings.apply_running": "启动设置在世界下次启动时生效，因此 Foreman 会重启它。",
@@ -244,7 +269,9 @@
     "other": "计划已更新：存在 {count} 个冲突，因此无法应用。"
   },
   "mods.error.cross_site": "此计划是从其他网站打开的，因此 Foreman 未制定该计划。未做任何更改。选择“重试”即可查看计划。",
-  "mods.built_in.line_space_age": "内置，版本 {version}：{mods}。它们跟随太空时代设置。",
   "mods.built_in.line": "内置，版本 {version}：{mods}。",
-  "mods.built_in.change": "更改太空时代"
+  "mods.built_in.line_on": "内置，版本 {version}：{mods}。太空时代已启用，因此全部启用。",
+  "mods.built_in.line_off": "内置，版本 {version}：{mods}。太空时代已禁用，因此 {off} 已禁用。",
+  "mods.built_in.change": "更改太空时代",
+  "mods.built_in.turn_on": "启用太空时代"
 }

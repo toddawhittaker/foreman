@@ -55,18 +55,36 @@
     "many": "Włączonych jest {count}."
   },
   "mods.installed.none": "Ten świat ma tylko modyfikacje wbudowane w grę. Aby zainstalować modyfikację, należy ją znaleźć powyżej.",
+  "mods.installed.portal": "w portalu modyfikacji, otwiera się w nowej karcie",
   "mods.col.mod": "Modyfikacja",
-  "mods.col.state": "Stan",
   "mods.col.actions": "Akcje",
-  "mods.state.on": "Włączona",
   "mods.state.off": "Wyłączona",
   "mods.row.update": "Zaktualizuj do {version}",
   "mods.row.enable": "Włącz",
   "mods.row.disable": "Wyłącz",
   "mods.row.remove": "Usuń",
+  "mods.row.gone": "Gracze nie mogą dołączyć: portal modyfikacji nie ma już wersji {version}, więc ich gra nie może jej pobrać.",
+  "mods.row.gone_none": "Gracze nie mogą dołączyć: portal modyfikacji nie ma już wersji {version} ani żadnej dla tej wersji gry. Należy usunąć lub wyłączyć modyfikację.",
+  "mods.row.deprecated": "Oznaczona w portalu modyfikacji jako przestarzała, więc gracze nie znajdą jej w przeglądarce modyfikacji w grze.",
+  "mods.row.not_on_portal": "Nie ma jej w portalu modyfikacji, więc gry graczy nie mogą jej pobrać. Gracze muszą dostać plik w inny sposób.",
   "mods.status.loading": "Sprawdzanie aktualizacji w portalu modyfikacji…",
   "mods.status.unreachable": "Foreman nie mógł połączyć się z portalem modyfikacji, więc nie sprawdził aktualizacji ani modyfikacji, których gracze nie mogą pobrać.",
   "mods.status.retry": "Sprawdź ponownie",
+  "mods.status.errors": {
+    "one": "{count} modyfikacja uniemożliwia graczom dołączenie. Jej wiersz mówi, jak to naprawić.",
+    "few": "{count} modyfikacje uniemożliwiają graczom dołączenie. Ich wiersze mówią, jak to naprawić.",
+    "many": "{count} modyfikacji uniemożliwia graczom dołączenie. Ich wiersze mówią, jak to naprawić."
+  },
+  "mods.status.warnings": {
+    "one": "{count} modyfikacja jest oznaczona w portalu modyfikacji jako przestarzała.",
+    "few": "{count} modyfikacje są oznaczone w portalu modyfikacji jako przestarzałe.",
+    "many": "{count} modyfikacji jest oznaczonych w portalu modyfikacji jako przestarzałe."
+  },
+  "mods.status.notes": {
+    "one": "{count} modyfikacja jest niedostępna w portalu modyfikacji.",
+    "few": "{count} modyfikacje są niedostępne w portalu modyfikacji.",
+    "many": "{count} modyfikacji jest niedostępnych w portalu modyfikacji."
+  },
   "mods.status.updates": {
     "one": "{count} modyfikacja ma aktualizację dla tej wersji gry.",
     "few": "{count} modyfikacje mają aktualizację dla tej wersji gry.",
@@ -78,11 +96,6 @@
     "few": "Wszystkie {count} modyfikacje z portalu modyfikacji są aktualne.",
     "many": "Wszystkich {count} modyfikacji z portalu modyfikacji jest aktualnych."
   },
-  "mods.flag.gone": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji, więc ich gra nie może jej pobrać. Na portalu jest wersja {update}.",
-  "mods.flag.gone_none": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji ani żadnej dla tej wersji gry.",
-  "mods.flag.deprecated": "Modyfikacja {mod} jest oznaczona w portalu modyfikacji jako przestarzała, więc gracze nie znajdą jej w przeglądarce modyfikacji w grze.",
-  "mods.flag.not_on_portal": "Modyfikacji {mod} {version} nie ma w portalu modyfikacji, więc gry graczy nie mogą jej pobrać przy dołączaniu. Gracze muszą dostać plik w inny sposób.",
-  "mods.flag.fix_update": "Zaktualizuj {mod} do {version}",
   "mods.flag.fix_remove": "Usuń {mod}",
   "mods.notice": {
     "one": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć.",
@@ -98,12 +111,37 @@
   },
   "mods.sync.heading": "Dopasuj modyfikacje do zapisu",
   "mods.sync.text": "Ustawia modyfikacje świata na te, z którymi utworzono zapis {save}: instaluje brakujące, zmienia wersje i wyłącza pozostałe. Najpierw widać plan.",
+  "mods.sync.match": "Modyfikacje pasują do zapisu {save}.",
+  "mods.sync.differ": "Modyfikacje różnią się od zapisu {save}:",
+  "mods.sync.missing": {
+    "one": "{count} modyfikacja używana w zapisie nie jest zainstalowana",
+    "few": "{count} modyfikacje używane w zapisie nie są zainstalowane",
+    "many": "{count} modyfikacji używanych w zapisie nie jest zainstalowanych"
+  },
+  "mods.sync.off": {
+    "one": "{count} modyfikacja używana w zapisie jest tu wyłączona",
+    "few": "{count} modyfikacje używane w zapisie są tu wyłączone",
+    "many": "{count} modyfikacji używanych w zapisie jest tu wyłączonych"
+  },
+  "mods.sync.version": {
+    "one": "{count} modyfikacja używana w zapisie jest zainstalowana w innej wersji",
+    "few": "{count} modyfikacje używane w zapisie są zainstalowane w innej wersji",
+    "many": "{count} modyfikacji używanych w zapisie jest zainstalowanych w innej wersji"
+  },
+  "mods.sync.extra": {
+    "one": "{count} włączona modyfikacja nie występuje w zapisie",
+    "few": "{count} włączone modyfikacje nie występują w zapisie",
+    "many": "{count} włączonych modyfikacji nie występuje w zapisie"
+  },
+  "mods.sync.what": "Dopasowanie instaluje brakujące modyfikacje, zmienia wersje i wyłącza pozostałe. Najpierw widać plan.",
   "mods.sync.button": "Dopasuj modyfikacje do zapisu",
   "mods.sync.no_save": "Ten świat nie ma jeszcze zapisu, więc nie ma czego dopasowywać.",
   "mods.sync.upload_save": "Prześlij zapis",
   "mods.sync.offer": "Dopasuj modyfikacje do zapisu",
   "mods.sync.import": "Dopasuj modyfikacje tego świata do jego zapisu",
   "mods.upload.heading": "Prześlij modyfikację",
+  "mods.upload.text": "Instalacja modyfikacji z własnego pliku .zip.",
+  "mods.upload.summary": "Prześlij plik zip modyfikacji",
   "mods.upload.label": "Plik zip modyfikacji",
   "mods.upload.hint": "Plik .zip modyfikacji, co najwyżej {limit}. Foreman odczytuje jej nazwę i wersję z pliku info.json i pokazuje plan, zanim cokolwiek zmieni.",
   "mods.upload.button": "Prześlij modyfikację",
@@ -114,6 +152,7 @@
   "mods.settings.text": "Wartości ustawień modyfikacji znajdują się w pliku {file}. Można go pobrać, aby zachować kopię lub użyć go w innym świecie.",
   "mods.settings.download": "Pobierz mod-settings.dat",
   "mods.settings.none": "Ten świat nie ma jeszcze pliku {file}. Gra tworzy go przy pierwszym uruchomieniu z modyfikacjami.",
+  "mods.settings.summary": "Zastąp {file}",
   "mods.settings.where": "Klient Factorio przechowuje ten plik w swoim folderze modyfikacji: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Ustawienia startowe zaczną obowiązywać przy następnym uruchomieniu świata.",
   "mods.settings.apply_running": "Ustawienia startowe zaczną obowiązywać przy następnym uruchomieniu świata, więc Foreman go zrestartuje.",
@@ -288,7 +327,9 @@
     "many": "Plan zaktualizowany: ma {count} konfliktów, więc nie można go zastosować."
   },
   "mods.error.cross_site": "Ten plan otwarto z innej witryny, więc Foreman go nie ustalił. Nic nie zmieniono. Aby zobaczyć plan, należy wybrać „Spróbuj ponownie”.",
-  "mods.built_in.line_space_age": "Wbudowane, wersja {version}: {mods}. Zależą od ustawienia Ery Kosmosu.",
   "mods.built_in.line": "Wbudowane, wersja {version}: {mods}.",
-  "mods.built_in.change": "Zmień Erę Kosmosu"
+  "mods.built_in.line_on": "Wbudowane, wersja {version}: {mods}. Era Kosmosu jest włączona, więc wszystkie są włączone.",
+  "mods.built_in.line_off": "Wbudowane, wersja {version}: {mods}. Era Kosmosu jest wyłączona, więc {off} są wyłączone.",
+  "mods.built_in.change": "Zmień Erę Kosmosu",
+  "mods.built_in.turn_on": "Włącz Erę Kosmosu"
 }
