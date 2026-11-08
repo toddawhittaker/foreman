@@ -14,10 +14,10 @@
     {{/* The box is not here to send the choice, so it is kept for when it is (DESIGN 8.8). */}}
     <input type="hidden" name="territories" value="1">
     {{- end}}
-    {{- if .Error.IsZero}}
     {{- if .Choice}}
-    {{/* One planet large, the one whose settings are open, or every planet small. It needs
-         script, so the style sheet hides it without; Preview map then draws them all (DESIGN 8.8). */}}
+    {{/* One planet large, the one whose settings are open, or every planet small, kept after a
+         failed draw as the way back. It needs script, so the style sheet hides it without;
+         Preview map then draws them all (DESIGN 8.8). */}}
     <fieldset class="tabset preview-view">
       <legend class="visually-hidden">{{t "worlds.generate.preview.view_legend"}}</legend>
       <div class="tablist">
@@ -30,17 +30,14 @@
       {{- range .Planets}}<option value="{{.Planet}}">{{msg .Name}}</option>{{end -}}
     </datalist>
     {{- end}}
-    {{- if .Territories.Show}}
-    <div class="preview-controls">
-      {{- with .Territories}}{{if .Show}}
-      {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
-      <div class="field territory-box">
-        <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}> {{t "worlds.generate.territories.label"}}</label>
-        <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
-      </div>
-      {{- end}}{{end}}
+    {{- if .Error.IsZero}}
+    {{- with .Territories}}{{if .Show}}
+    {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
+    <div class="field territory-box">
+      <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}> {{t "worlds.generate.territories.label"}}</label>
+      <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
     </div>
-    {{- end}}
+    {{- end}}{{end}}
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}
@@ -115,19 +112,35 @@
       <p class="hint large-view__keys" id="large-keys">{{t "worlds.generate.large.keys"}}</p>
     </div>
     {{/* Content outside the open dialog is inert, so the dialog says its own news. */}}
-    <p id="large-status" class="large-view__status" role="status"></p>
-  </div>
-  {{/* The controls sit over the picture; the frame scrolls when zoomed, so it takes focus for the arrow keys. */}}
-  <div class="large-view__stage">
-    <div class="large-view__frame" id="large-frame" tabindex="0" role="group" aria-labelledby="large-title" aria-describedby="large-keys" autofocus>
-      <span class="map large-view__map"><img id="large-img" src="data:," alt="" draggable="false">{{template "map-pin"}}</span>
+    <div class="large-view__news">
+      <p id="large-status" class="large-view__status" role="status"></p>
+      {{- /* Seen, not read out, as on the page: the picture fades and "Map preview ready." follows. */}}
+      <p id="large-drawing" class="hint large-view__drawing"></p>
     </div>
-    <button type="button" class="icon-button large-view__edge large-view__edge--prev" id="large-prev"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M10 3 5 8l5 5"/></svg><span class="visually-hidden" id="large-prev-name"></span></button>
-    <button type="button" class="icon-button large-view__edge large-view__edge--next" id="large-next"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m6 3 5 5-5 5"/></svg><span class="visually-hidden" id="large-next-name"></span></button>
-    <button type="button" class="icon-button large-view__close" id="large-close"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg><span class="visually-hidden">{{t "worlds.generate.large.close"}}</span></button>
-    <div class="large-view__zoom">
-      <button type="button" class="icon-button" id="large-out"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_out"}}</span></button>
-      <button type="button" class="icon-button" id="large-in"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10M8 3v10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_in"}}</span></button>
+  </div>
+  <div class="large-view__body">
+    {{/* On a wide view, the planet's own Resources and Terrain fields, which the script
+         moves in while the view is open and back when it closes: one copy of each (DESIGN 8.8). */}}
+    <div class="large-view__settings" id="large-settings" hidden>
+      <section id="large-resources" aria-labelledby="large-resources-heading">
+        <h3 id="large-resources-heading">{{t "mapgen.tab.resources"}}</h3>
+      </section>
+      <section id="large-terrain" aria-labelledby="large-terrain-heading">
+        <h3 id="large-terrain-heading">{{t "mapgen.tab.terrain"}}</h3>
+      </section>
+    </div>
+    {{/* The controls sit over the picture; the frame scrolls when zoomed, so it takes focus for the arrow keys. */}}
+    <div class="large-view__stage">
+      <div class="large-view__frame" id="large-frame" tabindex="0" role="group" aria-labelledby="large-title" aria-describedby="large-keys" autofocus>
+        <span class="map large-view__map"><img id="large-img" src="data:," alt="" draggable="false">{{template "map-pin"}}</span>
+      </div>
+      <button type="button" class="icon-button large-view__edge large-view__edge--prev" id="large-prev"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M10 3 5 8l5 5"/></svg><span class="visually-hidden" id="large-prev-name"></span></button>
+      <button type="button" class="icon-button large-view__edge large-view__edge--next" id="large-next"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m6 3 5 5-5 5"/></svg><span class="visually-hidden" id="large-next-name"></span></button>
+      <button type="button" class="icon-button large-view__close" id="large-close"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg><span class="visually-hidden">{{t "worlds.generate.large.close"}}</span></button>
+      <div class="large-view__zoom">
+        <button type="button" class="icon-button" id="large-out"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_out"}}</span></button>
+        <button type="button" class="icon-button" id="large-in"><svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16"><path d="M3 8h10M8 3v10"/></svg><span class="visually-hidden">{{t "worlds.generate.large.zoom_in"}}</span></button>
+      </div>
     </div>
   </div>
 </dialog>

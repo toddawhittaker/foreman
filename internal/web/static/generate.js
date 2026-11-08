@@ -16,8 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!formEl()) return;
   formEl().classList.add("js-on");
 
+  // The settings the large view holds are its own (DESIGN 8.8), and outside
+  // an open modal dialog the page is inert, so the dialog says the news then.
+  const settingsIn = "#map-settings, #large-settings";
   function announce(said) {
-    const announcer = document.getElementById("announcer");
+    const view = document.getElementById("large-view");
+    const announcer = document.getElementById(view && view.open ? "large-status" : "announcer");
     if (!announcer) return;
     announcer.textContent = "";
     setTimeout(() => { announcer.textContent = said; }, 50);
@@ -158,12 +162,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let needsOff = new Set();
   // Redraws "[modified]", the reset button, each warning and the summary.
   function refresh() {
-    const settings = document.getElementById("map-settings");
-    if (!settings) return;
+    if (!document.getElementById("map-settings")) return;
     const word = formEl().dataset.achWord || "";
     let modified = false;
     const active = new Set();
-    settings.querySelectorAll("[data-preset]").forEach((el) => {
+    document.querySelectorAll(`:is(${settingsIn}) [data-preset]`).forEach((el) => {
       if (differs(el)) modified = true;
       if (!el.dataset.ach) return;
       const blocked = crosses(el);
@@ -187,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // A resource the game needs warns while off; a warning, not a block (SPEC 5.6).
     const off = new Set();
     needsOff = off;
-    settings.querySelectorAll("input[data-need]").forEach((box) => {
+    document.querySelectorAll(`:is(${settingsIn}) input[data-need]`).forEach((box) => {
       if (!box.checked) off.add(box.dataset.needKey);
       const note = document.getElementById(box.id + "-need");
       const text = box.checked ? "" : box.dataset.need;
@@ -248,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
         syncSlider(select);
       }
     }
-    if (t.closest("#map-settings")) changed(t);
+    if (t.closest(settingsIn)) changed(t);
   });
 
   document.addEventListener("change", (e) => {
@@ -263,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const typed = document.getElementById("generate-version");
       if (typed) typed.value = "";
     }
-    if (t.closest("#map-settings")) changed(t);
+    if (t.closest(settingsIn)) changed(t);
   });
 
   // A minimum and its maximum keep at least their gap apart, as the game's
@@ -377,10 +380,24 @@ document.addEventListener("DOMContentLoaded", () => {
   function hideUndo() {
     undoValues = null;
     const undo = document.getElementById("preset-undo");
-    if (undo) undo.hidden = true;
+    if (!undo) return;
+    const had = document.activeElement === undo;
+    undo.hidden = true;
+    // Focus never falls to the page: Reset takes it back, or the preset while there is nothing to reset.
+    const reset = document.getElementById("preset-reset");
+    const next = reset && !reset.hidden ? reset : document.getElementById("generate-preset");
+    if (had && next) next.focus();
   }
+  // The reset's reply replaces the fields anyway, so a change made while it is
+  // on its way leaves the Undo to bring back the form as it was when Reset was pressed.
+  let resetting = false;
   document.body.addEventListener("htmx:beforeRequest", (e) => {
-    if (e.detail.elt && e.detail.elt.id === "preset-reset") undoValues = new FormData(formEl());
+    if (!e.detail.elt || e.detail.elt.id !== "preset-reset") return;
+    undoValues = new FormData(formEl());
+    resetting = true;
+  });
+  document.body.addEventListener("htmx:afterRequest", (e) => {
+    if (e.detail.elt && e.detail.elt.id === "preset-reset") resetting = false;
   });
   document.body.addEventListener("htmx:configRequest", (e) => {
     if (!e.detail.elt || e.detail.elt.id !== "preset-undo" || !undoValues) return;
@@ -388,8 +405,11 @@ document.addEventListener("DOMContentLoaded", () => {
     [...new Set(sent.keys())].forEach((k) => sent.delete(k));
     undoValues.forEach((v, k) => sent.append(k, v));
   });
+  // A view (the tab shown) changes no setting, so it keeps the Undo; a version
+  // or Space Age change does end it, as Undo would mix two game lines.
   ["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
-    if (undoValues && e.target.closest && e.target.closest("#line-box")) hideUndo();
+    if (!undoValues || resetting || !e.target.closest || views.has(e.target.name)) return;
+    if (e.target.closest("#line-box, #large-settings") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
   }));
 
   const actions = "#preview-button, #generate-button, #generate-default";
@@ -485,10 +505,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // Each out-of-band part is a swap of its own; the settings' swap speaks for them all.
       if (e.target.id !== "map-settings" && e.target.id !== "line-box") return;
       if (sender && sender.id === "preset-reset") {
-        // Reset is hidden once nothing differs; Undo takes its place, with the focus.
+        // Reset is hidden once nothing differs; Undo takes its place, with the
+        // focus Reset had. Focus the person moved on, as into a field, stays there.
         if (undo && undoValues) {
+          const at = document.activeElement;
           undo.hidden = false;
-          undo.focus();
+          if (at === document.getElementById("preset-reset") || at === document.body) undo.focus();
         }
         announce(strings["js.generate.reset"]);
       } else if (sender && sender.id === "preset-undo") {

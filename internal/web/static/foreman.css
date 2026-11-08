@@ -923,12 +923,6 @@ legend {
   accent-color: var(--color-selected);
 }
 
-/* A box that cannot change now stays focusable, so its reason is heard. */
-.check input[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
 .state {
   display: inline-flex;
@@ -2533,18 +2527,6 @@ form:has(#mode-exchange:checked) .achievements {
   fill: var(--color-pin-edge);
 }
 
-/* The territory box and its hint share a line when there is room. */
-.preview-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: var(--space-3) var(--space-5);
-}
-
-.preview-controls > * {
-  min-inline-size: 0;
-}
-
 /* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture
    pixels, so they scale and pan with it; the labels keep one size, like the pin. */
 .territories {
@@ -2669,6 +2651,72 @@ form:has(#mode-exchange:checked) .achievements {
 
 .large-view__head > .large-view__keys {
   margin-inline-start: auto;
+}
+
+/* Generate's large view with the planet's settings beside the map (DESIGN
+   8.8). The settings column is 38rem, so its fields stay sliders (a
+   map-section of 34rem) after its padding and scroll bar; it shows once the
+   map beside it can be as wide again, 77rem in all. Narrower, map only. */
+.large-view {
+  container: large-view / inline-size;
+}
+
+.large-view__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-block-size: 0;
+}
+
+.large-view__settings {
+  display: none;
+}
+
+@container large-view (min-width: 77rem) {
+  .large-view__body:has(> .large-view__settings:not([hidden])) {
+    grid-template-columns: 38rem minmax(0, 1fr);
+  }
+
+  /* It scrolls on its own; the padding keeps focus rings inside it. */
+  .large-view__settings:not([hidden]) {
+    container: map-section / inline-size;
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    min-block-size: 0;
+    padding: var(--space-2);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+.large-view__settings > section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.large-view__settings > section[hidden] {
+  display: none;
+}
+
+/* The status line and the drawing line share the held line while they fit. */
+.large-view__news {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+}
+
+.large-view__drawing {
+  margin: 0;
+}
+
+/* While the next picture is drawn the shown one fades, as on the page. */
+.large-view__frame[aria-busy="true"] .large-view__map > img,
+.large-view__frame[aria-busy="true"] .territories {
+  opacity: 0.6;
 }
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
