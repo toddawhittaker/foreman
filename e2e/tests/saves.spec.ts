@@ -220,11 +220,18 @@ test.describe("without JavaScript", () => {
 
 test("a chosen save that was removed by hand is explained", async ({ page, foreman }) => {
   await createAdmin(page);
-  seedTwoSaves(foreman, { load_save: "gone.zip" });
+  const dir = seedTwoSaves(foreman, { load_save: "gone.zip" });
   await page.goto("/worlds/family-base/saves");
   await expect(page.getByText("The chosen save gone.zip is no longer in the saves folder")).toBeVisible();
-  await expect(page.locator("tbody tr").nth(0)).toContainText("Loads next");
+  const newest = page.locator("tbody tr").nth(0);
+  await expect(newest).toContainText("Loads next");
   await checkPage(page);
+  // The stale choice can be cleared from the newest row (SPEC 7.11).
+  await newest.getByRole("button", { name: "Load next: new.zip" }).click();
+  await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
+  await expect(page.getByText("is no longer in the saves folder")).toHaveCount(0);
+  await expect(newest).toContainText("Loads next");
+  expect(loadSaveOf(dir) ?? "").toBe("");
 });
 
 test("a world a newer Foreman wrote can be downloaded from but not changed", async ({ page, foreman }) => {
@@ -293,7 +300,7 @@ test("at large text the rows stack and keep their roles", async ({ page, foreman
 // DESIGN 7.3: the success and note kinds are drawn, not left as plain text.
 test("success and note messages have their own colours", async ({ page, foreman }) => {
   await createAdmin(page);
-  seedTwoSaves(foreman, { load_save: "gone.zip" });
+  const dir = seedTwoSaves(foreman, { load_save: "gone.zip" });
   await page.goto("/worlds/family-base/saves");
   const note = page.locator(".message--note");
   await expect(note).toBeVisible();

@@ -34,8 +34,6 @@
   {{- if .Rows}}
   {{- if not .Newer}}
   <p>{{if and .LoadSave (not .LoadMissing)}}{{tHTML "worlds.saves.load.pinned" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.load.text"}}{{end}}</p>
-  {{- end}}
-  {{- if not .Newer}}
   <form method="post" action="{{.LoadHref}}">
   {{- end}}
   <table class="save-list" role="table">
@@ -47,7 +45,8 @@
       {{- range .Rows}}
       <tr role="row">
         <td role="cell"><div class="save-name"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}
-          {{- if and (not $.Page.Newer) (not .Loads)}}
+          {{- /* The newest row has an empty LoadValue; with a choice set it offers to clear it. */}}
+          {{- if and (not $.Page.Newer) (or (not .Loads) (and $.Page.LoadSave (not .LoadValue)))}}
           <button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{t "worlds.saves.load_next_named" "file" .Name}}</span></button>
           {{- end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>

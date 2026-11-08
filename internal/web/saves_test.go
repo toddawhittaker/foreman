@@ -402,4 +402,26 @@ func TestSavePageWhenChosenSaveVanished(t *testing.T) {
 	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, i18n.English.T("worlds.saves.loads_next")) {
 		t.Error("the newest save should load next")
 	}
+	// The stale choice must be clearable: the newest row posts "the newest save".
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, loadButton("")) {
+		t.Errorf("newest row should offer to clear the missing choice:\n%s", row)
+	}
+	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {""}}), "/worlds/"+id+"/saves?chosen=1")
+	if got := hn.loadSaveOf(id); got != "" {
+		t.Errorf("load_save %q after clearing", got)
+	}
+}
+
+// SPEC 7.11: when the chosen save is the newest file, its row shows the badge
+// and still offers the button, so the choice can be cleared.
+func TestSavePageWhenChosenSaveIsNewest(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, _ := savesWorld(t, hn)
+	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {"new.zip"}}), "/worlds/"+id+"/saves?chosen=1")
+	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	row := saveRow(t, body, "new.zip")
+	if !strings.Contains(row, i18n.English.T("worlds.saves.loads_next")) || !strings.Contains(row, loadButton("")) {
+		t.Errorf("newest chosen row should show the badge and the button:\n%s", row)
+	}
 }
