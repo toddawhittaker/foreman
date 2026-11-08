@@ -126,10 +126,17 @@ func TestPlanVersionIsChecked(t *testing.T) {
 		}
 		wantIn(t, v, plain(body), "The mod portal has no release "+v+" of ver-c for this game version. Choose another version.",
 			`<option value="`+v+`" selected>`+v+`</option>`)
-		// Posting it anyway applies nothing.
-		vals := url.Values{"kind": {"install"}, "name": {"ver-c"}, "version-ver-c": {v}}
-		if rep := g.post(plan, vals); rep.StatusCode != http.StatusConflict {
+		// Posting it anyway, with the page's own form, applies nothing.
+		vals := planValues(t, body)
+		vals.Set("version-ver-c", v)
+		rep := g.post(plan, vals)
+		if rep.StatusCode != http.StatusConflict {
 			t.Errorf("%s: post status %d", v, rep.StatusCode)
+		}
+		wantIn(t, v+" post", plain(rep.body), "The mod portal has no release "+v+" of ver-c")
+		// The plan is the one the page showed, so only the conflict refuses it.
+		if strings.Contains(rep.body, `id="plan-changed"`) {
+			t.Errorf("%s: post refused as a changed plan, not by the conflict", v)
 		}
 	}
 	for _, bad := range []string{"../../etc", "1.0", "1.0.0.0", "1.0.99999", "x"} {
