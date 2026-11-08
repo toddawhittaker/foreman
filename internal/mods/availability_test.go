@@ -20,3 +20,16 @@ func TestAvailabilityIsQuietWhileTheWorldFolderIsSwapped(t *testing.T) {
 		t.Errorf("Availability = %+v, %v; want nothing", flags, err)
 	}
 }
+
+// The Mods page's update check is quiet too while the folder is swapped.
+func TestUpdatesIsQuietWhileTheWorldFolderIsSwapped(t *testing.T) {
+	f := newFixture(t, "visible-planets_1.5.5")
+	dir := filepath.Join(f.m.Dirs().Worlds, f.id)
+	if err := os.Rename(dir, dir+"-away"); err != nil {
+		t.Fatal(err)
+	}
+	updates, err := f.planner.Updates(context.Background(), f.id)
+	if err != nil || len(updates) != 0 {
+		t.Errorf("Updates = %+v, %v; want nothing", updates, err)
+	}
+}

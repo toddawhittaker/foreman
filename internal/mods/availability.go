@@ -3,10 +3,8 @@ package mods
 import (
 	"context"
 	"errors"
-	"io/fs"
 
 	"github.com/toddawhittaker/foreman/internal/modportal"
-	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // FlagCode names a problem players may have getting a world's mod.
@@ -48,7 +46,7 @@ type Flag struct {
 // nothing to report and is not an error.
 func (p *Planner) Availability(ctx context.Context, worldID string) ([]Flag, error) {
 	w, err := p.world(ctx, worldID)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, world.ErrBusy) {
+	if worldAway(err) {
 		return nil, nil
 	}
 	if err != nil {
