@@ -1270,7 +1270,6 @@ main h1:has(> time) {
   font-size: var(--text-sm);
   font-weight: 600;
   line-height: 1.5;
-  white-space: nowrap;
 }
 
 /* An outline in link colour, so it does not compete with the orange primary button. */
@@ -2801,8 +2800,11 @@ form:has(#mode-exchange:checked) .achievements {
 }
 
 /* In a button a name breaks only when it is wider than the box, as the
-   button's own words do, so the button keeps its width. */
+   button's own words do, so the button keeps its width. A button is a flex
+   box, so the name joins its words' line rather than becoming a flex item,
+   which would drop the space before it. */
 .button .ident {
+  display: contents;
   overflow-wrap: break-word;
 }
 
@@ -2847,6 +2849,12 @@ form:has(#mode-exchange:checked) .achievements {
 
 .mod-results__title {
   font-weight: 600;
+}
+
+/* A mod's short badge stays whole. Badges elsewhere, such as a save's
+   "loads next", are long in some languages and must wrap at 320 px. */
+:is(.mod-list, .mod-results) .badge {
+  white-space: nowrap;
 }
 
 /* Search results are a list with a rule between rows, not cards (DESIGN 8.2). */

@@ -132,7 +132,10 @@ test("the Server page notice names the mod and its fix", async ({ page, foreman,
   });
   const notice = page.locator("#mods-notice");
   await expect(notice).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
-  await expect(notice.getByRole("link", { name: "Update visible-planets" })).toHaveAttribute("href", "/worlds/base/mods/plan?kind=update&name=visible-planets");
+  const fix = notice.getByRole("link", { name: "Update visible-planets" });
+  await expect(fix).toHaveAttribute("href", "/worlds/base/mods/plan?kind=update&name=visible-planets");
+  // The name joins the button's line, space and all, rather than becoming a flex item of its own.
+  expect(await fix.evaluate((a) => getComputedStyle(a.querySelector(".ident")!).display)).toBe("contents");
   await checkPage(page);
   await shot(page, "mods-server-notice");
 });
