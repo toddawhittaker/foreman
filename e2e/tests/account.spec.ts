@@ -34,6 +34,7 @@ test.describe("with a secret key", () => {
     await createAdmin(page);
     await openAccountPage(page);
     await expect(page.locator("#account-none")).toContainText("No account is set");
+    await expect(page.locator("#account-shared")).toContainText("Every admin’s mod downloads use this one account");
     await expect(page.getByLabel("factorio.com token")).toHaveAttribute("type", "password");
     await checkPage(page);
 

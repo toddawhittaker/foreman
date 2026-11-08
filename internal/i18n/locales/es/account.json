@@ -1,6 +1,7 @@
 {
   "account.title": "Cuenta de factorio.com",
   "account.intro": "Foreman usa esta cuenta para descargar mods del portal de mods de Factorio. La búsqueda de mods funciona sin ella.",
+  "account.shared": "Las descargas de mods de todos los administradores usan esta única cuenta, que pertenece al usuario de factorio.com que la posee. Si prefieres no usar la tuya, crea una cuenta de factorio.com aparte solo para este servidor e introdúcela.",
   "account.done.saved": "La cuenta se ha guardado.",
   "account.done.removed": "La cuenta se ha quitado.",
   "account.env.state": "Definida por el entorno",
