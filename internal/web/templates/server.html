@@ -134,7 +134,7 @@
   {{- if or .RecoverRestore .RecoverSwitch}}
   <div class="actions">
     {{- with .RecoverRestore}}
-    <a href="{{.Path}}" class="button" id="act-recover-restore">{{msg .Label}}</a>
+    <a href="{{.Path}}" class="button" id="act-recover-restore">{{msgHTML .Label}}</a>
     {{- end}}
     {{- with .RecoverSwitch}}
     <a href="{{.Path}}" class="button" id="act-switch-back">{{t "server.switch_back" "world" .Name}}</a>

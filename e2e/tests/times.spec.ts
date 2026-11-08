@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, setUpModsWorld, doneBox, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, setUpModsWorld, doneBox, live, image21, stateBadge } from "./foreman.js";
 
 // Taking a snapshot asks Docker whether the game is running (SPEC 6.10).
 test.use({ fakeGameOn: true, timezoneId: "America/New_York", locale: "en-US" });
@@ -109,4 +109,24 @@ test.describe("the Undo button", () => {
     await expect(undo).not.toHaveText(/UTC|ago|now/);
     await checkPage(page);
   });
+});
+
+// SPEC 17.11: the crash-loop box's Restore offer names the snapshot's time
+// in the browser's zone, with no relative text in a button.
+test("the crash-loop Restore offer names the local time", async ({ page, foreman, fakeGame }) => {
+  test.setTimeout(90_000);
+  await createAdmin(page);
+  seedWorld(foreman, { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true });
+  await fakeGame!.call("/image", { ref: image21, on: true });
+  await page.goto("/");
+  await expect(stateBadge(page)).toHaveText("Stopped", live);
+  await page.getByRole("button", { name: "Start server" }).click();
+  await page.locator("summary", { hasText: "Or start anyway" }).click();
+  await page.getByRole("button", { name: "Start anyway" }).click();
+  await expect(stateBadge(page)).toHaveText("Running", live);
+  await fakeGame!.call("/crash-loop", { name: "foreman-base", on: true });
+  await expect(stateBadge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
+  const restore = page.locator("#act-recover-restore");
+  await expect(restore).toHaveText(/^Restore "Before start anyway" \(.*\d:\d\d.*\b(EST|EDT)\)$/);
+  await expect(restore).not.toHaveText(/UTC|ago|now/);
 });
