@@ -68,7 +68,7 @@ test("a start the check refuses leads to the plan that matches the mods to the s
   await page.getByRole("button", { name: "Start server" }).click();
   const link = page.getByRole("link", { name: "Match the mods to the save" });
   await expect(link).toBeVisible(live);
-  await expect(page.getByRole("button", { name: "Start anyway" })).toBeVisible();
+  await expect(page.locator("summary", { hasText: "Or start anyway" })).toBeVisible();
   await checkPage(page);
 
   await link.click();

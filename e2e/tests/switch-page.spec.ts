@@ -163,7 +163,10 @@ test.describe("with the fake game", () => {
     const confirm = page.locator("section.confirm");
     const problems = confirm.locator(".message--warning");
     await expect(problems).toContainText("foreman-test");
-    await expect(problems).toContainText("Second's own mods folder");
+    // The fix is a control, and the page never sends the admin to the host (SPEC 9.8, 17.9).
+    await expect(problems.getByRole("link", { name: "Match the mods to the save" })).toHaveAttribute("href", "/worlds/second/mods/plan?kind=sync");
+    await expect(problems).not.toContainText("cannot add mods");
+    await expect(problems).not.toContainText("on the host");
     await expect(confirm).toContainText('both labelled "Before switch"');
     await expect(confirm).toContainText('labelled "Before start anyway"');
     await expect(confirm).toContainText("To undo, switch back to Base");

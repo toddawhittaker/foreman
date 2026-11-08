@@ -41,11 +41,12 @@ type SwitchPage struct {
 	// StartAfter is the "Start after switching" box, offered when the game
 	// is stopped; it is ticked by default.
 	StartAfter bool
-	// Lead, CheckProblems and Advice word the new world's pre-start
-	// problems. Seen fingerprints them for "Switch and start anyway".
+	// Lead and CheckProblems word the new world's pre-start problems, and
+	// Fix offers to match its mods to its save (SPEC 9.8, 17.8). Seen
+	// fingerprints them for "Switch and start anyway".
 	Lead          i18n.Msg
 	CheckProblems []i18n.Msg
-	Advice        i18n.Msg
+	Fix           *Offer
 	Seen          string
 	CountdownForm
 	// Changed is set when the switch was not done because what the page
@@ -157,7 +158,7 @@ func (s *server) switchPage(ctx context.Context, from string, to world.Summary, 
 	if p.HasProblems() {
 		p.Lead = switchProblemsLead(p.Plan.Check, to.Name)
 		p.CheckProblems = problemMsgs(p.Plan.Check.Problems)
-		p.Advice = anywayAdvice(p.Plan.Check.Problems, to.Name, hostModsFolder(s.hostData, to.ID))
+		p.Fix = syncOffer(p.Plan.Check, to.ID)
 		p.Seen = game.AnywayFingerprint(p.Plan.Check, p.Plan.Running)
 	}
 	return p, nil

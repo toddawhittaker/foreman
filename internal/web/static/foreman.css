@@ -814,7 +814,15 @@ legend {
 .message ul {
   display: grid;
   gap: var(--space-2);
+  list-style-type: disc;
   padding-inline-start: var(--space-5);
+}
+
+/* Going ahead anyway opens below its choice, spaced like the box (DESIGN 7.4). */
+.anyway-body {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-end: var(--space-1);
 }
 
 /* A link standing alone in a list is a full-size target (DESIGN 7 rule 3). */
@@ -995,7 +1003,7 @@ legend {
 }
 
 /* The word and the step side by side, so each step is one row even on a phone. */
-.steps li {
+.steps > li {
   display: grid;
   grid-template-columns: 6rem minmax(0, 1fr);
   align-items: baseline;
@@ -1003,7 +1011,7 @@ legend {
   max-inline-size: none;
 }
 
-.steps li[aria-current="step"] {
+.steps > li[aria-current="step"] {
   font-weight: 600;
 }
 
@@ -1043,14 +1051,14 @@ legend {
 }
 
 /* A failed step's message sits on its own line under the word, at any width. */
-.steps li > .message {
+.steps > li > .message {
   grid-column: 1 / -1;
 }
 
 /* A narrow panel, such as a phone at large text, puts the word above the
    step, so the step's name keeps the full width (DESIGN 3). */
 @container (max-width: 14rem) {
-  .steps li {
+  .steps > li {
     grid-template-columns: minmax(0, 1fr);
   }
 
