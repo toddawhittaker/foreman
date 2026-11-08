@@ -196,3 +196,17 @@ func TestStatusHidesChangeVersion(t *testing.T) {
 	_, body := g.getStatus(modsPath(id) + "/status")
 	wantIn(t, "status", body, `<span id="`+slotID("version", "zz-not-on-portal")+`" hidden hx-swap-oob="true"></span>`)
 }
+
+// An asked mod kept at its version is left out of Kept only when its
+// version list shows it; without the portal's releases it stays listed.
+func TestKeptHidesAnAskedModOnlyWithAVersionList(t *testing.T) {
+	keep := mods.Change{Name: "a", Action: mods.ActKeep, Why: mods.Reason{Code: mods.WhyAsked}}
+	p := ModPlanPage{Form: planForm{Kind: mods.KindUpdate, Names: []string{"a"}}, Plan: mods.Plan{Changes: []mods.Change{keep}}}
+	if got := p.Kept(); len(got) != 1 || got[0].Name != "a" {
+		t.Errorf("without releases: kept %v", got)
+	}
+	p.Plan.Releases = map[string][]string{"a": {"1.0.0"}}
+	if got := p.Kept(); len(got) != 0 {
+		t.Errorf("with releases: kept %v", got)
+	}
+}
