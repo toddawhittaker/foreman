@@ -22,27 +22,44 @@ const (
 // caught. Reads of the regular file that results never block. The caller
 // closes it. Errors name the file only.
 func openRegular(root *os.Root, name string) (*os.File, fs.FileInfo, error) {
+	for try := 1; ; try++ {
+		f, info, replaced, err := openRegularOnce(root, name)
+		// An atomic replace (WriteFileAtomic) between the check and the open
+		// swaps one regular file for another; check the new one.
+		if replaced && try < openRegularTries {
+			continue
+		}
+		return f, info, err
+	}
+}
+
+// openRegularTries bounds the re-checks when the file keeps being replaced.
+const openRegularTries = 5
+
+// openRegularOnce is one check and open. replaced reports that the opened
+// file is regular but not the one Lstat saw.
+func openRegularOnce(root *os.Root, name string) (f *os.File, info fs.FileInfo, replaced bool, err error) {
 	linfo, err := root.Lstat(name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	if !linfo.Mode().IsRegular() {
-		return nil, nil, fmt.Errorf("%s is not a regular file", name)
+		return nil, nil, false, fmt.Errorf("%s is not a regular file", name)
 	}
-	f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	f, err = root.OpenFile(name, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
-	info, err := f.Stat()
+	info, err = f.Stat()
 	if err != nil {
 		_ = f.Close()
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	if !info.Mode().IsRegular() || !os.SameFile(info, linfo) {
 		_ = f.Close()
-		return nil, nil, fmt.Errorf("%s is not a regular file", name)
+		return nil, nil, info.Mode().IsRegular(), fmt.Errorf("%s is not a regular file", name)
 	}
-	return f, info, nil
+	return f, info, false, nil
 }
 
 // ReadSmallFile reads a file the game container can write (world.json,
