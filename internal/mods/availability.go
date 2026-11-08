@@ -42,9 +42,13 @@ type Flag struct {
 
 // Availability checks each enabled mod that is neither built in nor a
 // folder against the portal. A portal failure is returned as an error,
-// never as flags.
+// never as flags. A world briefly missing or busy, as during a restore, has
+// nothing to report and is not an error.
 func (p *Planner) Availability(ctx context.Context, worldID string) ([]Flag, error) {
 	w, err := p.world(ctx, worldID)
+	if worldAway(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
