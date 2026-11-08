@@ -357,8 +357,8 @@
   },
   "mods.drops.confirm": {
     "one": "Smazat, co {mods} postavil. Kopii uchovává snímek „{label}“.",
-    "few": "Smazat, co {mods} postavily. Kopii uchovává snímek „{label}“.",
-    "other": "Smazat, co {mods} postavily. Kopii uchovává snímek „{label}“."
+    "few": "Smazat, co postavily tyto {count} mody: {mods}. Kopii uchovává snímek „{label}“.",
+    "other": "Smazat, co postavilo těchto {count} modů: {mods}. Kopii uchovává snímek „{label}“."
   },
   "mods.drops.confirm_missing_one": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co {mod} postavil, nebo zrušit."
 }

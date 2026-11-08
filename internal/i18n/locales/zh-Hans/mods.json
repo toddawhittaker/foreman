@@ -290,7 +290,7 @@
     "other": "计划现在也会关闭 {mod}。它更改 {count} 个模组。"
   },
   "mods.drops.confirm": {
-    "other": "删除 {mods} 建造的内容。快照“{label}”保留一份副本。"
+    "other": "删除这 {count} 个模组建造的内容：{mods}。快照“{label}”保留一份副本。"
   },
   "mods.drops.confirm_missing_one": "请勾选复选框，确认游戏会删除 {mod} 建造的内容，或取消。"
 }

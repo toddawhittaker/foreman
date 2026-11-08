@@ -324,7 +324,7 @@
   },
   "mods.drops.confirm": {
     "one": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy.",
-    "other": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy."
+    "other": "Delete what these {count} mods built: {mods}. The snapshot \"{label}\" keeps a copy."
   },
   "mods.drops.confirm_missing_one": "Tick the box to confirm that the game deletes what {mod} built, or cancel."
 }

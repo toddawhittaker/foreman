@@ -324,7 +324,7 @@
   },
   "mods.drops.confirm": {
     "one": "Löschen, was {mods} gebaut hat. Der Snapshot „{label}“ behält eine Kopie.",
-    "other": "Löschen, was {mods} gebaut haben. Der Snapshot „{label}“ behält eine Kopie."
+    "other": "Löschen, was diese {count} Mods gebaut haben: {mods}. Der Snapshot „{label}“ behält eine Kopie."
   },
   "mods.drops.confirm_missing_one": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was {mod} gebaut hat, oder brich ab."
 }

@@ -324,7 +324,7 @@
   },
   "mods.drops.confirm": {
     "one": "Borrar lo que {mods} construyó. La instantánea «{label}» conserva una copia.",
-    "other": "Borrar lo que construyeron {mods}. La instantánea «{label}» conserva una copia."
+    "other": "Borrar lo que construyeron estos {count} mods: {mods}. La instantánea «{label}» conserva una copia."
   },
   "mods.drops.confirm_missing_one": "Marca la casilla para confirmar que el juego borra lo que {mod} construyó, o cancela."
 }

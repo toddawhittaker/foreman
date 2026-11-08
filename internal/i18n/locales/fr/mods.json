@@ -324,7 +324,7 @@
   },
   "mods.drops.confirm": {
     "one": "Supprimer ce que {mods} a construit. L’instantané « {label} » en garde une copie.",
-    "other": "Supprimer ce que {mods} ont construit. L’instantané « {label} » en garde une copie."
+    "other": "Supprimer ce que ces {count} mods ont construit : {mods}. L’instantané « {label} » en garde une copie."
   },
   "mods.drops.confirm_missing_one": "Cochez la case pour confirmer que le jeu supprime ce que {mod} a construit, ou annulez."
 }

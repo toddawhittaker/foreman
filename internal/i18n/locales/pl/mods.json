@@ -357,8 +357,8 @@
   },
   "mods.drops.confirm": {
     "one": "Usuń to, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",
-    "few": "Usuń to, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",
-    "many": "Usuń to, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”."
+    "few": "Usuń to, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
+    "many": "Usuń to, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
   },
   "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować."
 }
