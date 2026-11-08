@@ -85,6 +85,111 @@ func TestStageModRemovesAbandonedStagedMods(t *testing.T) {
 	}
 }
 
+// SPEC 6.11: an upload, which stages through CreateModTemp, removes
+// abandoned staged mods too.
+func TestCreateModTempRemovesAbandonedStagedMods(t *testing.T) {
+	m, _, _ := checkWorld(t, "2.0.77", false)
+	top := m.Dirs().Worlds
+	p := filepath.Join(top, PrefixModStaging+"old")
+	if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(p, old, old); err != nil {
+		t.Fatal(err)
+	}
+	worlds, err := m.OpenWorlds()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = worlds.Close() }()
+	f, _, err := CreateModTemp(worlds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	if exists(p) {
+		t.Error("an abandoned staged mod was kept")
+	}
+}
+
+// Code N1: an info.json that lists no dependencies gives an empty list, so a
+// plan knows it was read; nil is left for one that could not be read.
+func TestModsTellsNoDependenciesFromUnreadable(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	putModZip(t, dir, "a_1.0.0.zip", "a_1.0.0", `{"name":"a","version":"1.0.0"}`)
+	if err := os.WriteFile(filepath.Join(dir, ModsDir, "broken_1.0.0.zip"), []byte("not a zip"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	folder := filepath.Join(dir, ModsDir, "local")
+	if err := os.MkdirAll(folder, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(folder, "info.json"), []byte(`{"name":"local","version":"0.1.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mods, err := m.Mods(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mod := range mods {
+		switch mod.Name {
+		case "a", "local":
+			if mod.Dependencies == nil || len(mod.Dependencies) != 0 {
+				t.Errorf("%s: dependencies %#v, want an empty list", mod.Name, mod.Dependencies)
+			}
+		case "broken":
+			if mod.Dependencies != nil {
+				t.Errorf("unreadable zip: dependencies %#v, want nil", mod.Dependencies)
+			}
+		}
+	}
+}
+
+// A zip's info.json is read once per name, size and modification time, so
+// listing mods on each page view does not re-open every zip.
+func TestModsCachesZipInfoUntilTheZipChanges(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	zipPath := filepath.Join(dir, ModsDir, "a_1.0.0.zip")
+	putModZip(t, dir, "a_1.0.0.zip", "a_1.0.0", `{"name":"a","version":"1.0.0","dependencies":["x"]}`)
+	depsOf := func() []string {
+		t.Helper()
+		mods, err := m.Mods(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, mod := range mods {
+			if mod.File == "a_1.0.0.zip" {
+				return mod.Dependencies
+			}
+		}
+		t.Fatal("a_1.0.0.zip not listed")
+		return nil
+	}
+	if got := depsOf(); !slices.Equal(got, []string{"x"}) {
+		t.Fatalf("first read %q", got)
+	}
+	st, err := os.Stat(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Same size and time, other contents: the cached info is used.
+	putModZip(t, dir, "a_1.0.0.zip", "a_1.0.0", `{"name":"a","version":"1.0.0","dependencies":["y"]}`)
+	if err := os.Chtimes(zipPath, st.ModTime(), st.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if got := depsOf(); !slices.Equal(got, []string{"x"}) {
+		t.Errorf("unchanged zip re-read: %q", got)
+	}
+	later := st.ModTime().Add(time.Second)
+	if err := os.Chtimes(zipPath, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if got := depsOf(); !slices.Equal(got, []string{"y"}) {
+		t.Errorf("changed zip not re-read: %q", got)
+	}
+}
+
 // ReadStaged checks the name itself: only a staged file at the top of the
 // worlds folder is read.
 func TestReadStagedRefusesOtherNames(t *testing.T) {
