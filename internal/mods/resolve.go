@@ -77,7 +77,13 @@ func Resolve(ctx context.Context, w World, req Request, lookup Lookup) (Plan, er
 		}
 		out := r.unavailable()
 		if len(out) == 0 {
-			return r.plan(unresolved, left), nil
+			p := r.plan(unresolved, left)
+			if req.Kind == KindInstall || req.Kind == KindUpdate {
+				if p.Releases, err = r.releases(req.Names); err != nil {
+					return Plan{}, err
+				}
+			}
+			return p, nil
 		}
 		for _, n := range out {
 			declined[n], left[n] = true, true
@@ -101,8 +107,10 @@ func resolveOnce(ctx context.Context, w World, req Request, lookup Lookup, cache
 	switch req.Kind {
 	case KindInstall:
 		r.install(req.Names)
+		err = r.choose(req.Names, req.Versions)
 	case KindUpdate:
 		r.update(req.Names)
+		err = r.choose(req.Names, req.Versions)
 	case KindEnable:
 		r.enable(req.Names)
 	case KindDisable, KindRemove:
@@ -256,6 +264,61 @@ func (r *resolver) update(names []string) {
 			t.newest, t.why = true, Reason{Code: WhyAsked}
 		}
 	}
+}
+
+// choose holds asked mods to the releases the admin chose. The installed
+// version needs no portal; any other must be a release the portal has on
+// the world's line, so a posted version never reaches a download unchecked.
+func (r *resolver) choose(names []string, versions map[string]string) error {
+	for _, n := range names {
+		v, ok := versions[n]
+		t := r.targets[n]
+		if !ok || t == nil || t.builtin || t.local {
+			continue
+		}
+		if t.installed && v == t.from {
+			t.version, t.release, t.fixed, t.newest = v, nil, true, false
+			continue
+		}
+		mod, err := r.mod(n)
+		if err != nil {
+			return err
+		}
+		rel := findRelease(mod, v, r.line)
+		if rel == nil {
+			r.conflict(Conflict{Code: ConflictNoSuchRelease, Mod: n, Version: v})
+			continue
+		}
+		t.version, t.release, t.fixed, t.newest = v, rel, true, false
+	}
+	return nil
+}
+
+// releases lists each named mod's releases on the world's line, newest
+// first, for the plan page's version lists.
+func (r *resolver) releases(names []string) (map[string][]string, error) {
+	out := map[string][]string{}
+	for _, n := range names {
+		if t := r.targets[n]; t == nil || t.builtin || t.local {
+			continue
+		}
+		mod, err := r.mod(n)
+		if err != nil {
+			return nil, err
+		}
+		if mod == nil {
+			continue
+		}
+		var vs []string
+		for _, rel := range mod.Releases {
+			if rel.FactorioVersion == r.line && !slices.Contains(vs, rel.Version) {
+				vs = append(vs, rel.Version)
+			}
+		}
+		slices.SortFunc(vs, func(a, b string) int { return world.CompareVersions(b, a) })
+		out[n] = vs
+	}
+	return out, nil
 }
 
 func (r *resolver) enable(names []string) {

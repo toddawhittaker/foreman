@@ -74,11 +74,12 @@ func (p ModPlanPage) askedOrder(it PlanItem) int {
 	return slices.Index(p.Form.Names, it.Name)
 }
 
-// Kept lists the mods the plan needs and leaves as they are.
+// Kept lists the mods the plan needs and leaves as they are. An asked mod
+// kept at its version is not one of them: its version list shows it.
 func (p ModPlanPage) Kept() []PlanItem {
 	var out []PlanItem
 	for _, c := range p.Plan.Changes {
-		if c.Action == mods.ActKeep {
+		if c.Action == mods.ActKeep && c.Why.Code != mods.WhyAsked {
 			out = append(out, p.item(c))
 		}
 	}
@@ -186,3 +187,62 @@ type PlanRow struct {
 
 // Row pairs an item with the page.
 func (p ModPlanPage) Row(it PlanItem) PlanRow { return PlanRow{p, it} }
+
+// VersionRow is one asked mod's version list on the plan page.
+type VersionRow struct {
+	Name, ID string
+	Options  []VersionOption
+}
+
+// VersionOption is one entry of a version list. Value "" is the newest
+// release that fits; a zero Label shows the version as it is.
+type VersionOption struct {
+	Value    string
+	Label    i18n.Msg
+	Selected bool
+}
+
+// Versions are the version lists of the mods an install or update asks
+// for: the newest that fits, then every release on the world's line, newest
+// first, with the installed one marked (SPEC 9.2, 9.3). A mod the portal
+// lacks, a folder mod and a built-in mod have none.
+func (p ModPlanPage) Versions() []VersionRow {
+	if p.Form.Kind != mods.KindInstall && p.Form.Kind != mods.KindUpdate || p.Form.Staged != "" {
+		return nil
+	}
+	var out []VersionRow
+	for _, n := range p.Form.Names {
+		rels, ok := p.Plan.Releases[n]
+		if !ok {
+			continue
+		}
+		var from, to string
+		if i := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == n }); i >= 0 {
+			from, to = p.Plan.Changes[i].From, p.Plan.Changes[i].To
+		}
+		chosen := p.Form.Versions[n]
+		vs := slices.Clone(rels)
+		// The installed version, and a chosen one the portal lacks, show
+		// too, so the list always says what the plan holds.
+		for _, v := range []string{from, chosen} {
+			if v != "" && !slices.Contains(vs, v) {
+				vs = append(vs, v)
+			}
+		}
+		slices.SortFunc(vs, func(a, b string) int { return world.CompareVersions(b, a) })
+		newest := i18n.M("mods.version.newest")
+		if chosen == "" && to != "" {
+			newest = i18n.M("mods.version.newest_is", "version", to)
+		}
+		row := VersionRow{Name: n, ID: modID(n, "version"), Options: []VersionOption{{Label: newest, Selected: chosen == ""}}}
+		for _, v := range vs {
+			o := VersionOption{Value: v, Selected: v == chosen}
+			if v == from {
+				o.Label = i18n.M("mods.version.installed", "version", v)
+			}
+			row.Options = append(row.Options, o)
+		}
+		out = append(out, row)
+	}
+	return out
+}
