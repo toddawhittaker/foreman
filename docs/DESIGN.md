@@ -1244,7 +1244,13 @@ back." Undo sends the form as it was before the reset to the refresh
 route, so the server draws every value back; focus returns to the reset
 and the live region says "Your map settings are back." Any change in the
 settings, the preset or the seed ends the Undo, since it would throw
-that change away. Clicks: one to reset, one to undo.
+that change away, and so does a game version or Space Age change, since
+Undo would mix two game lines; the tab shown is a view and keeps it. An
+Undo that ends while it has the focus hands it to the reset (or the
+preset, when there is nothing to reset). A change made while the reset
+is on its way ends the Undo before it is offered: focus goes to the
+preset and the live region says only "Map settings reset to the
+defaults for this game version." Clicks: one to reset, one to undo.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
 the page back, filled from the new preset, with a Note "The settings
@@ -1421,8 +1427,9 @@ planet" (one click, All planets, or Preview map), "back to one planet"
 - **One planet or all.** On a world with several planets, a choice under
   the heading line, drawn as tabs (radios, as 8.7's tabs, one tab stop;
   legend "Preview shows", for screen readers only): **One planet**
-  (checked by default) and **All planets**. It needs script, so without
-  it the style sheet hides it. There is no planet picker: opening a
+  (checked by default) and **All planets**. It stays when a draw fails,
+  still showing the choice made, so One planet is one click back. It
+  needs script, so without it the style sheet hides it. There is no planet picker: opening a
   planet's settings row already picks the planet.
   - One planet: an automatic request (`auto=1`, `preview_view=one`)
     draws only the planet whose settings row is open, as one large

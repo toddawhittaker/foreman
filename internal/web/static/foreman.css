@@ -907,12 +907,6 @@ legend {
   accent-color: var(--color-selected);
 }
 
-/* A box that cannot change now stays focusable, so its reason is heard. */
-.check input[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
 .state {
   display: inline-flex;
@@ -2515,18 +2509,6 @@ form:has(#mode-exchange:checked) .achievements {
 
 .pin circle {
   fill: var(--color-pin-edge);
-}
-
-/* The territory box and its hint share a line when there is room. */
-.preview-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: var(--space-3) var(--space-5);
-}
-
-.preview-controls > * {
-  min-inline-size: 0;
 }
 
 /* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture

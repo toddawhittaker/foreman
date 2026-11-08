@@ -14,10 +14,10 @@
     {{/* The box is not here to send the choice, so it is kept for when it is (DESIGN 8.8). */}}
     <input type="hidden" name="territories" value="1">
     {{- end}}
-    {{- if .Error.IsZero}}
     {{- if .Choice}}
-    {{/* One planet large, the one whose settings are open, or every planet small. It needs
-         script, so the style sheet hides it without; Preview map then draws them all (DESIGN 8.8). */}}
+    {{/* One planet large, the one whose settings are open, or every planet small, kept after a
+         failed draw as the way back. It needs script, so the style sheet hides it without;
+         Preview map then draws them all (DESIGN 8.8). */}}
     <fieldset class="tabset preview-view">
       <legend class="visually-hidden">{{t "worlds.generate.preview.view_legend"}}</legend>
       <div class="tablist">
@@ -30,17 +30,14 @@
       {{- range .Planets}}<option value="{{.Planet}}">{{msg .Name}}</option>{{end -}}
     </datalist>
     {{- end}}
-    {{- if .Territories.Show}}
-    <div class="preview-controls">
-      {{- with .Territories}}{{if .Show}}
-      {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
-      <div class="field territory-box">
-        <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}> {{t "worlds.generate.territories.label"}}</label>
-        <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
-      </div>
-      {{- end}}{{end}}
+    {{- if .Error.IsZero}}
+    {{- with .Territories}}{{if .Show}}
+    {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
+    <div class="field territory-box">
+      <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}> {{t "worlds.generate.territories.label"}}</label>
+      <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
     </div>
-    {{- end}}
+    {{- end}}{{end}}
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}

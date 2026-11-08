@@ -43,9 +43,9 @@ const (
 	// MaxTerritories is the most territories Parse accepts. A 4096 picture
 	// held 142.
 	MaxTerritories = 1000
-	// MaxPicture is the largest picture size Parse accepts, the largest
-	// preview there is.
-	MaxPicture = 4096
+	// MaxPicture is the largest picture size Parse accepts: MaxSize, the
+	// largest preview there is (SPEC 5.6).
+	MaxPicture = MaxSize
 	// MaxSize is the largest preview size territories are offered for, kept
 	// low to fail safe (SPEC 5.6). At 3584, 2.0 took 32 s on a fast desktop
 	// and 2.1 used 88% of the container's 1 GiB, too little room for a slow

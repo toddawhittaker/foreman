@@ -377,7 +377,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function hideUndo() {
     undoValues = null;
     const undo = document.getElementById("preset-undo");
-    if (undo) undo.hidden = true;
+    if (!undo) return;
+    const had = document.activeElement === undo;
+    undo.hidden = true;
+    // Focus never falls to the page: Reset takes it back, or the preset while there is nothing to reset.
+    const reset = document.getElementById("preset-reset");
+    const next = reset && !reset.hidden ? reset : document.getElementById("generate-preset");
+    if (had && next) next.focus();
   }
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (e.detail.elt && e.detail.elt.id === "preset-reset") undoValues = new FormData(formEl());
@@ -388,8 +394,11 @@ document.addEventListener("DOMContentLoaded", () => {
     [...new Set(sent.keys())].forEach((k) => sent.delete(k));
     undoValues.forEach((v, k) => sent.append(k, v));
   });
+  // A view (the tab shown) changes no setting, so it keeps the Undo; a version
+  // or Space Age change does end it, as Undo would mix two game lines.
   ["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
-    if (undoValues && e.target.closest && e.target.closest("#line-box")) hideUndo();
+    if (!undoValues || !e.target.closest || views.has(e.target.name)) return;
+    if (e.target.closest("#line-box") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
   }));
 
   const actions = "#preview-button, #generate-button, #generate-default";
@@ -489,8 +498,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (undo && undoValues) {
           undo.hidden = false;
           undo.focus();
+          announce(strings["js.generate.reset"]);
+        } else {
+          // A change made while the reset was on its way ended the Undo, so it is neither offered nor said.
+          const preset = document.getElementById("generate-preset");
+          if (preset) preset.focus();
+          announce(strings["js.generate.reset_only"]);
         }
-        announce(strings["js.generate.reset"]);
       } else if (sender && sender.id === "preset-undo") {
         hideUndo();
         const reset = document.getElementById("preset-reset");

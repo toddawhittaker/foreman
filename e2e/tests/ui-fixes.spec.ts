@@ -332,6 +332,94 @@ test.describe("Generate", () => {
     await expect(page.getByRole("button", { name: "Reset to defaults" })).toBeVisible();
   });
 
+  // A tab is a view, not a setting (SPEC 5.6), so showing another one keeps the Undo.
+  test("showing another settings tab after Reset to defaults keeps the Undo, which still works", async ({ page }) => {
+    await page.goto("/generate");
+    await tab(page, "Enemy").click();
+    await page.getByLabel("Maximum expansion distance").fill("3");
+    await page.getByRole("button", { name: "Reset to defaults" }).click();
+    const undo = page.getByRole("button", { name: "Undo reset" });
+    await expect(undo).toBeVisible();
+    await tab(page, "Resources").click();
+    await expect(undo).toBeVisible();
+    await undo.click();
+    await tab(page, "Enemy").click();
+    await expect(page.getByLabel("Maximum expansion distance")).toHaveValue("3");
+  });
+
+  // Undo would send one game version's settings with another's line, so a version or Space Age change ends it at once.
+  test("a Space Age change ends the Undo before the settings are redrawn", async ({ page }) => {
+    await page.goto("/generate");
+    await tab(page, "Enemy").click();
+    await page.getByLabel("Maximum expansion distance").fill("3");
+    await page.getByRole("button", { name: "Reset to defaults" }).click();
+    const undo = page.getByRole("button", { name: "Undo reset" });
+    await expect(undo).toBeVisible();
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/refresh", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.getByLabel("Space Age is on").uncheck();
+    await expect(undo).toBeHidden();
+    release();
+  });
+
+  // A change made while the reset is on its way ends the Undo, so the reply cannot offer it or say it.
+  test("a change made while Reset is on its way leaves focus on the preset and says the reset alone", async ({ page }) => {
+    await page.goto("/generate");
+    await tab(page, "Enemy").click();
+    await page.getByLabel("Maximum expansion distance").fill("3");
+    const seen = await recordAnnouncer(page);
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/generate/refresh", async (route) => {
+      await held;
+      await route.continue().catch(() => {});
+    });
+    await page.getByRole("button", { name: "Reset to defaults" }).click();
+    await page.getByLabel("Maximum expansion distance").fill("4");
+    release();
+    await expect(page.locator("#generate-preset")).toBeFocused();
+    await expect.poll(seen).toContain("Map settings reset to the defaults for this game version.");
+    expect(await seen()).not.toContain("Map settings reset to the defaults for this game version. Undo reset brings your changes back.");
+    await expect(page.getByRole("button", { name: "Undo reset" })).toBeHidden();
+  });
+
+  // Focus never falls to the page when the Undo it was on ends.
+  test("when the focused Undo ends, focus goes to Reset to defaults", async ({ page }) => {
+    await page.goto("/generate");
+    await tab(page, "Enemy").click();
+    await page.getByLabel("Maximum expansion distance").fill("3");
+    await page.getByRole("button", { name: "Reset to defaults" }).press("Enter");
+    const undo = page.getByRole("button", { name: "Undo reset" });
+    await expect(undo).toBeFocused();
+    // A change that does not move focus, as a script or a late redraw would make.
+    await page.getByLabel("Maximum expansion distance").evaluate((f) => {
+      (f as HTMLInputElement).value = "4";
+      f.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await expect(undo).toBeHidden();
+    await expect(page.getByRole("button", { name: "Reset to defaults" })).toBeFocused();
+  });
+
+  // The way back to one planet stays after a failed draw of every planet (DESIGN 8.8).
+  test("after All planets fails to draw, One planet is still there and draws one", async ({ page, fakeGame }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await tab(page, "All planets").click();
+    await expect(section(page).getByRole("img")).toHaveCount(5);
+    await fakeGame!.call("/preview-mode", { mode: "fail" });
+    await page.getByLabel("Seed").fill("4242");
+    await expect(section(page).getByText("The game could not make the map preview.")).toBeVisible();
+    await expect(page.getByRole("radio", { name: "All planets" })).toBeChecked();
+    await fakeGame!.call("/preview-mode", { mode: "ok" });
+    await tab(page, "One planet").click();
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await checkPage(page);
+  });
+
   test("the achievement warning names the setting, and its end is said", async ({ page }) => {
     await page.goto("/generate");
     await tab(page, "Enemy").click();
