@@ -35,6 +35,18 @@
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}
+{{- /* The state leads: whether mod downloads work is what an admin comes to learn. */}}
+{{- if not .FromEnv}}
+{{- if .Unreadable}}
+<div class="message message--warning" id="account-unreadable">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "account.unreadable"}}{{if .CanStore}} {{t "account.unreadable.again"}}{{end}}</p>
+</div>
+{{- else if .Stored}}
+<p id="account-stored">{{tHTML "account.stored" "when" (momentUTC .UpdatedAt) "user" .UpdatedBy}}</p>
+{{- else}}
+<p id="account-none">{{t "account.none"}}</p>
+{{- end}}
+{{- end}}
 <p>{{t "account.intro"}}</p>
 <p id="account-shared">{{t "account.shared"}}</p>
 {{- if .FromEnv}}
@@ -48,23 +60,36 @@
   <p><strong>{{t "common.label.note"}}</strong> {{tHTML "account.nokey" "key" (code "FOREMAN_SECRET_KEY") "username" (code "FOREMAN_FACTORIO_USERNAME") "token" (code "FOREMAN_FACTORIO_TOKEN")}}</p>
 </div>
 {{- end}}
-{{- if .Unreadable}}
-<div class="message message--warning" id="account-unreadable">
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "account.unreadable"}}{{if .CanStore}} {{t "account.unreadable.again"}}{{end}}</p>
-</div>
-{{- else if .Stored}}
-<p id="account-stored">{{tHTML "account.stored" "when" (momentUTC .UpdatedAt) "user" .UpdatedBy}}</p>
-{{- else}}
-<p id="account-none">{{t "account.none"}}</p>
-{{- end}}
 {{- /* Without a secret key nothing can be stored, so the note above stands in for the form. */}}
 {{- if .NoKeyNotice}}
 {{- with .Return}}
 <div class="actions"><a href="{{.}}" id="act-back">{{t "account.back"}}</a></div>
 {{- end}}
 {{- else}}
+{{- if .Stored}}
+{{- /* Replacing is rare, so it folds away and stays secondary; a refused post reopens it. */}}
+<details class="disclosure" id="account-replace"{{if .Retype}} open{{end}}>
+  <summary id="account-replace-summary">{{t "account.form.replace"}}</summary>
+  <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-replace-summary">
+    {{- if .Retype}}
+    <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
+    {{- end}}
+    {{template "required-note"}}
+    {{template "account-fields" .}}
+    {{- with .Return}}
+    <input type="hidden" name="return" value="{{.}}">
+    {{- end}}
+    <div class="actions">
+      <button type="submit" class="button">{{t "account.replace"}}</button>
+      {{- with .Return}}
+      <a href="{{.}}">{{t "worlds.cancel"}}</a>
+      {{- end}}
+    </div>
+  </form>
+</details>
+{{- else}}
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-form-heading">
-  <h2 id="account-form-heading">{{if .Stored}}{{t "account.form.replace"}}{{else}}{{t "account.form.enter"}}{{end}}</h2>
+  <h2 id="account-form-heading">{{t "account.form.enter"}}</h2>
   {{- if .Retype}}
   <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
   {{- end}}
@@ -74,12 +99,13 @@
   <input type="hidden" name="return" value="{{.}}">
   {{- end}}
   <div class="actions">
-    <button type="submit" class="button button--primary">{{if .Stored}}{{t "account.replace"}}{{else}}{{t "account.save"}}{{end}}</button>
+    <button type="submit" class="button button--primary">{{t "account.save"}}</button>
     {{- with .Return}}
     <a href="{{.}}">{{t "worlds.cancel"}}</a>
     {{- end}}
   </div>
 </form>
+{{- end}}
 {{- end}}
 {{- if .Stored}}
 <form method="post" action="{{.Path}}" class="panel" aria-labelledby="account-remove-heading">
