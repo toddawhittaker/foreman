@@ -166,7 +166,7 @@ func TestSnapshotTables(t *testing.T) {
 		{ID: "base", Name: "Base", Snapshots: p.Snapshots}}}})
 	wantIn(t, "deleted page", body,
 		`<th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th>`,
-		`<span class="nowrap">14:25 UTC</span>`, "taken 2026-11-03 14:25:30 UTC")
+		`<span class="nowrap">14:25 UTC</span>`, `taken <time datetime="2026-11-03T14:25:30Z">2026-11-03 14:25:30 UTC</time>`)
 }
 
 // DESIGN 7.2: an error on the load choice says what to do in a full
