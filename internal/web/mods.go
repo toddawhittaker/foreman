@@ -589,6 +589,9 @@ type planForm struct {
 	Kind     mods.Kind
 	Names    []string
 	Optional []string
+	// Declined are recommended mods the admin unticked. A box cannot send
+	// "unticked", so each recommended box sends its name as "offered" too.
+	Declined []string
 	// Save is the save a sync reads; Staged is an uploaded zip waiting in
 	// the staging area (SPEC 9.5, 9.10).
 	Save, Staged string
@@ -633,8 +636,13 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		Query: strings.TrimSpace(v.Get("q")), Added: v.Get("added"), Removed: v.Get("removed"),
 		Searched: v.Get("add") == "1",
 	}
+	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
+		if !slices.Contains(f.Optional, n) && !slices.Contains(f.Declined, n) {
+			f.Declined = append(f.Declined, n)
+		}
+	}
 	// Each name can cost a portal request, so a crafted list is bounded.
-	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames {
+	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames || len(f.Declined) > maxPlanNames {
 		return planForm{}, false
 	}
 	for k, vals := range v {
@@ -659,6 +667,9 @@ func (f planForm) query() url.Values {
 	}
 	if len(f.Optional) > 0 {
 		q["optional"] = f.Optional
+	}
+	if len(f.Declined) > 0 {
+		q["declined"] = f.Declined
 	}
 	if f.Save != "" {
 		q.Set("save", f.Save)
@@ -1090,6 +1101,8 @@ func changeText(c mods.Change) i18n.Msg {
 		why = i18n.M("mods.plan.why.required_by", "mod", i18n.Ident(c.Why.Of))
 	case mods.WhyOptionalOf:
 		why = i18n.M("mods.plan.why.optional_of", "mod", i18n.Ident(c.Why.Of))
+	case mods.WhyRecommendedBy:
+		why = i18n.M("mods.plan.why.recommended_by", "mod", i18n.Ident(c.Why.Of))
 	case mods.WhyFromSave:
 		why = i18n.M("mods.plan.why.from_save")
 	case mods.WhyNotInSave:
@@ -1168,8 +1181,11 @@ func (p ModPlanPage) UploadedFor(name string) bool {
 	return p.Form.Staged != "" && p.Uploaded.Name == name
 }
 
-// Ticked reports whether the admin ticked an optional mod.
-func (p ModPlanPage) Ticked(name string) bool { return slices.Contains(p.Form.Optional, name) }
+// HasRecommended reports whether any offered mod is recommended, for the
+// hint that says those start ticked.
+func (p ModPlanPage) HasRecommended() bool {
+	return slices.ContainsFunc(p.Plan.Optional, func(o mods.Offer) bool { return o.Recommended })
+}
 
 func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
@@ -1249,7 +1265,7 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		p.Error, p.Retry = s.planError(sum.ID, err), planPath(sum.ID, f.query())
 		return p
 	}
-	p.Drops = s.planDrops(ctx, sum.ID, p.Plan)
+	p.Drops = s.planDrops(ctx, sum.ID, p.Plan, p.Running)
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
 	return p
 }
@@ -1280,8 +1296,8 @@ func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
 // which have their own box. A save that cannot be read drops nothing here;
 // the pre-start check reports it.
-func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan) []string {
-	drops, err := s.planner.SaveDrops(ctx, id, plan)
+func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan, running bool) []string {
+	drops, err := s.planner.SaveDrops(ctx, id, plan, running)
 	if err != nil {
 		s.log.Warn("read the mods of the save that loads", "world", id, "error", err)
 		return nil
@@ -1313,7 +1329,7 @@ func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
 		if up == nil {
 			return mods.Request{}, errStagedGone
 		}
-		return mods.Request{Kind: mods.KindUpload, Upload: up, Optional: f.Optional}, nil
+		return mods.Request{Kind: mods.KindUpload, Upload: up, Optional: f.Optional, Declined: f.Declined}, nil
 	case mods.KindSync:
 		if f.Save == "" {
 			save, err := s.loadingSave(id)
@@ -1342,7 +1358,7 @@ func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
 		req.Optional = f.Optional
 		return req, err
 	}
-	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional}, nil
+	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional, Declined: f.Declined}, nil
 }
 
 // planError words why no plan could be made.
