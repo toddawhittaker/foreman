@@ -8,8 +8,11 @@ test.use({ fakeGameOn: true, fakePortalOn: true });
 
 const save = "2.1.24-space-age-testmod.zip";
 
-// Opens the start-anyway disclosure, if the box has one.
+// Opens the start-anyway disclosure, if the box has one. The start runs in
+// the background, so the refusal can reach the page by a live update after
+// it loads; the box must be there before it is looked in.
 async function openAnyway(box: Locator) {
+  await expect(box).toBeVisible(live);
   const summary = box.locator("details > summary");
   if ((await summary.count()) > 0 && !(await box.locator("details").getAttribute("open"))) await summary.click();
 }

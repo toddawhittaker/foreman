@@ -1153,6 +1153,8 @@ func (p ModPlanPage) Announce() i18n.Msg {
 		return i18n.M("mods.plan.fixed_conflicts", "count", len(p.Plan.Conflicts))
 	case len(p.Plan.Conflicts) > 0:
 		return i18n.M("mods.plan.redrawn_conflicts", "count", len(p.Plan.Conflicts))
+	case p.Nothing() && len(p.Versions()) > 0:
+		return i18n.M("mods.version.same")
 	case p.Nothing():
 		return i18n.M("mods.plan.nothing")
 	case p.Form.Fixed != "":

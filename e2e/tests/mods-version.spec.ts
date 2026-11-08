@@ -47,6 +47,43 @@ test("the plan lists the line's releases, newest that fits first, and an older o
   expect(existsSync(modsFile(foreman.dataDir, "fp-ver_2.0.0.zip"))).toBe(false);
 });
 
+// SPEC 9.2: the newest choice wins. An older redraw that is still on its way
+// must not bring back the older choice.
+test("a late redraw does not undo a newer version choice", async ({ page, foreman, fakeGame, fakePortal }) => {
+  const portal = fakePortal!;
+  await portal.add("fp-race", "1.0.0", ["base >= 2.0"]);
+  await portal.add("fp-race", "2.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, world);
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-race");
+  const version = page.getByLabel("Version of fp-race");
+  await expect(version).toHaveValue("");
+
+  // The first redraw is held until the second choice is made.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  let first!: () => void;
+  const firstSeen = new Promise<void>((r) => (first = r));
+  let n = 0;
+  await page.route("**/mods/plan?*", async (route) => {
+    if (!route.request().headers()["hx-request"] || ++n > 1) return route.continue();
+    first();
+    await held;
+    await route.continue().catch(() => {});
+  });
+  await version.selectOption("1.0.0");
+  await firstSeen;
+  await version.selectOption("2.0.0");
+  release();
+
+  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-race 2.0.0");
+  await expect(page.locator("#announcer")).toHaveText("Plan updated: 1 mod changes.");
+  // Wait out any late swap, then check the choice stayed.
+  await page.waitForTimeout(1000);
+  await expect(page.getByLabel("Version of fp-race")).toHaveValue("2.0.0");
+  await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-race 2.0.0");
+  await checkPage(page);
+});
+
 // Clicks from the Mods tab: Change version, the version, Change 1 mod (SPEC 17.10).
 test("Change version goes back after a bad update, with a snapshot first", async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;
@@ -101,5 +138,26 @@ test("a version the portal has not got is a conflict with no apply button", asyn
   await expect(page.getByLabel("Version of fp-odd").locator("option:checked")).toHaveText("9.9.9");
   await page.getByLabel("Version of fp-odd").selectOption("");
   await expect(page.locator("#act-apply")).toHaveText("Install 1 mod");
+  await checkPage(page);
+});
+
+// DESIGN 5: when the status takes away a focused Change version link, focus
+// stays in the row, on the mod's name, not at the top of the page.
+test("focus moves to the mod's name when the status hides Change version", async ({ page, foreman, fakeGame }) => {
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
+  // The status is held back until Change version has focus.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/status", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/worlds/base/mods");
+  const change = page.getByRole("link", { name: "Change version zz-private", exact: true });
+  await change.focus();
+  release();
+  await expect(change).toHaveCount(0, live);
+  const name = page.locator("tr", { hasText: "zz-private" }).locator("span.mod-name");
+  await expect(name).toBeFocused();
   await checkPage(page);
 });

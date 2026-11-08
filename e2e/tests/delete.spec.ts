@@ -85,7 +85,7 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Before delete");
-  await expect(rows.first().locator("time")).toHaveText(/\d{1,2}:\d{2}.*\((now|\d+ seconds? ago)\)$/);
+  await expect(rows.first().locator("td").nth(1).locator("time")).toHaveText(/\d{1,2}:\d{2}.*\((now|\d+ seconds? ago)\)$/);
   // Three columns, the reason above the label (DESIGN 8.3).
   await expect(page.locator("thead th")).toHaveText(["Snapshot", "Taken", "Size"]);
   // The reason is not repeated above a label that says the same.

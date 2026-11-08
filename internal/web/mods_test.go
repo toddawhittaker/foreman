@@ -300,7 +300,7 @@ func TestModStatusCurrentCount(t *testing.T) {
 	_, body := g.getStatus(modsPath(id) + "/status")
 	wantIn(t, "status", body, "1 mod from the mod portal is up to date.", "1 mod is not on the mod portal.",
 		// The portal's link goes; the name stays.
-		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name ident" translate="no" hx-swap-oob="true">zz-not-on-portal</span>`,
+		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="`+slotID("note", "zz-not-on-portal")+`" hx-swap-oob="true">zz-not-on-portal</span>`,
 		"Not on the mod portal, so players")
 	if strings.Contains(body, "message--error") {
 		t.Error("a note reads as an error")
