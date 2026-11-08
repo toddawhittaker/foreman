@@ -257,6 +257,7 @@
   "server.undo.rollback": "撤销此次回滚",
   "server.undo.update": "回滚到 {version}",
   "server.precheck.changed": "自页面显示以来，世界或服务器已发生变化，因此 Foreman 没有继续。请在选择之前重新阅读该消息。",
+  "server.portal_unchecked": "Foreman 未能及时连接模组门户，因此没有检查玩家能否下载此世界的模组。",
   "server.precheck.start": "Foreman 没有启动游戏，因为将要加载的存档与世界不匹配：",
   "server.precheck.switch": "Foreman 没有切换，因为新世界中将要加载的存档与该世界不匹配：",
   "server.precheck.start_cannot_run": "Foreman 没有启动游戏，因为 {world} 无法在此游戏中运行：",
@@ -265,6 +266,8 @@
   "server.precheck.switch_cannot_run_unnamed": "Foreman 没有切换，因为该世界无法在此游戏中运行：",
   "server.precheck.update": "Foreman 没有更新游戏版本，因为存档与 Factorio {version} 上的 {world} 不匹配：",
   "server.precheck.update_cannot_run": "Foreman 没有更新游戏版本，因为 {world} 无法在 Factorio {version} 中运行：",
+  "server.precheck.start_players": "Foreman 没有启动游戏，因为玩家将无法加入：",
+  "server.precheck.switch_players": "Foreman 没有切换，因为玩家将无法加入新世界：",
   "server.problem.game_version": "该世界设置为 Factorio {version}。Foreman 只运行 Factorio 1.1、2.0 和 2.1。",
   "server.problem.no_save": "该世界没有存档。请先上传存档；没有存档时，游戏会创建新地图。",
   "server.problem.save_gone": "选定要加载的存档 {save} 已不在该世界中。请选择其他存档。",
@@ -278,6 +281,8 @@
   "server.problem.mod_missing_many": "{save} 使用了 {mods}，但此世界中没有相应的文件。",
   "server.problem.mod_disabled_one": "{save} 使用了 {mods}，但在此世界中已关闭。",
   "server.problem.mod_disabled_many": "{save} 使用了 {mods}，但在此世界中已关闭。",
+  "server.problem.mod_gone_one": "模组门户上已没有 {mod} {version}，因此玩家的游戏无法下载它，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
+  "server.problem.mod_gone_many": "模组门户上已没有 {mods}，因此玩家的游戏无法下载它们，玩家也就无法加入。仍然继续不会从存档中删除任何内容。",
   "server.problem.mod_version_first": {
     "other": "{world} 无法在 Factorio {version} 上运行：它的 {count} 个模组是为 Factorio {for} 制作的，游戏拒绝加载：{names}。"
   },
@@ -389,6 +394,7 @@
   "server.switch.start_after": "切换后启动 {to}",
   "server.switch.problems_lead": "将在 {world} 中加载的存档与该世界不匹配：",
   "server.switch.cannot_run_lead": "{world} 无法在此游戏中运行：",
+  "server.switch.players_lead": "玩家将无法加入 {world}：",
   "server.switch.no_from": "表单没有说明哪个世界是活动世界。请返回，刷新页面，然后重试。",
   "server.switch.note_refused": "{world} 仍是活动世界，没有任何改变。",
   "server.switch.note_presented": "{world} 现在是活动世界，但切换没有完成。",

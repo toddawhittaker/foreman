@@ -159,6 +159,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		s.portal, s.planner = d.Portal, &mods.Planner{Worlds: d.Worlds, Portal: d.Portal}
 		if d.Game != nil {
 			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal})
+			d.Game.SetModCheck(s.planner)
 		}
 	}
 	s.routes()

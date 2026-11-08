@@ -263,6 +263,7 @@
   "server.undo.rollback": "Deshacer esta reversión",
   "server.undo.update": "Revertir a {version}",
   "server.precheck.changed": "El mundo o el servidor cambió desde que la página lo mostró, así que Foreman no siguió adelante. Vuelve a leer el mensaje antes de elegir.",
+  "server.portal_unchecked": "Foreman no pudo conectar con el portal de mods a tiempo, así que no comprobó que los jugadores puedan descargar los mods de este mundo.",
   "server.precheck.start": "Foreman no inició el juego, porque la partida guardada que se cargaría no coincide con el mundo:",
   "server.precheck.switch": "Foreman no hizo el cambio, porque la partida guardada que se cargaría en el mundo nuevo no coincide con ese mundo:",
   "server.precheck.start_cannot_run": "Foreman no inició el juego, porque {world} no puede ejecutarse en este juego:",
@@ -271,6 +272,8 @@
   "server.precheck.switch_cannot_run_unnamed": "Foreman no hizo el cambio, porque el mundo no puede ejecutarse en este juego:",
   "server.precheck.update": "Foreman no actualizó la versión del juego, porque la partida guardada no coincide con {world} en Factorio {version}:",
   "server.precheck.update_cannot_run": "Foreman no actualizó la versión del juego, porque {world} no puede ejecutarse en Factorio {version}:",
+  "server.precheck.start_players": "Foreman no inició el juego, porque los jugadores no podrían unirse:",
+  "server.precheck.switch_players": "Foreman no hizo el cambio, porque los jugadores no podrían unirse al mundo nuevo:",
   "server.problem.game_version": "El mundo está fijado en Factorio {version}. Foreman solo ejecuta Factorio 1.1, 2.0 y 2.1.",
   "server.problem.no_save": "El mundo no tiene ninguna partida guardada. Sube primero una partida guardada; sin ella el juego crearía un mapa nuevo.",
   "server.problem.save_gone": "La partida guardada elegida para cargar, {save}, ya no está en el mundo. Elige otra partida guardada.",
@@ -284,6 +287,8 @@
   "server.problem.mod_missing_many": "{save} usa {mods}, pero este mundo no tiene archivos para ellos.",
   "server.problem.mod_disabled_one": "{save} usa {mods}, pero está desactivado en este mundo.",
   "server.problem.mod_disabled_many": "{save} usa {mods}, pero están desactivados en este mundo.",
+  "server.problem.mod_gone_one": "El portal de mods ya no tiene {mod} {version}, así que el juego de los jugadores no puede descargarlo y no pueden unirse. Continuar igualmente no borra nada de la partida guardada.",
+  "server.problem.mod_gone_many": "El portal de mods ya no tiene {mods}, así que el juego de los jugadores no puede descargarlos y no pueden unirse. Continuar igualmente no borra nada de la partida guardada.",
   "server.problem.mod_version_first": {
     "one": "{world} no puede ejecutarse en Factorio {version}: {count} de sus mods se hizo para Factorio {for}, y el juego se niega a cargarlo: {names}.",
     "other": "{world} no puede ejecutarse en Factorio {version}: {count} de sus mods se hicieron para Factorio {for}, y el juego se niega a cargarlos: {names}."
@@ -397,6 +402,7 @@
   "server.switch.start_after": "Iniciar {to} después de cambiar",
   "server.switch.problems_lead": "La partida guardada que se cargaría en {world} no coincide con ese mundo:",
   "server.switch.cannot_run_lead": "{world} no puede ejecutarse en este juego:",
+  "server.switch.players_lead": "Los jugadores no podrían unirse a {world}:",
   "server.switch.no_from": "El formulario no indica qué mundo está activo. Vuelve atrás, recarga la página y vuelve a intentarlo.",
   "server.switch.note_refused": "{world} sigue siendo el mundo activo, y no cambió nada.",
   "server.switch.note_presented": "{world} es ahora el mundo activo, pero el cambio no terminó.",

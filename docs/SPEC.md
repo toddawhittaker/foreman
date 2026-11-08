@@ -873,11 +873,24 @@ compares it with the world. It refuses to start, and says why, when:
   over;
 - an enabled mod in the world declares a Factorio major.minor different
   from the world's game version; this refusal has no start anyway, since
-  the game cannot load such a mod.
+  the game cannot load such a mod;
+- for a start, restart or switch, an enabled mod's installed version is
+  one the mod portal no longer offers (9.3), so players' games cannot
+  download it and they could not join. Foreman asks the portal once per
+  action, in the check before anything changes, with answers from the
+  15-minute cache (9.1) where it has them, and waits at most 5 seconds in
+  all. A portal that cannot be reached or does not answer in time never
+  blocks the start: the action goes ahead, and its result says in one line
+  that Foreman could not check the portal. Folder mods and mods the portal
+  does not have at all are not refused, since players need their files
+  from the admin whatever Foreman does. The refusal's first fix is
+  "Update *mod*" (or "Update N mods"), the same plan the Server page's
+  notice opens (9.3), and it says that going ahead deletes nothing from
+  the save.
 
 Each problem says what the game would delete. The admin can fix the world
-(for example with sync from save) or, for the first bullet and for an
-unreadable save only, **start anyway**. The refusal itself is the
+(for example with sync from save) or, for the first bullet, the mod portal
+bullet and an unreadable save only, **start anyway**. The refusal itself is the
 confirmation: it names exactly what the game will delete, the snapshot
 taken first and how to undo it, and its button starts at once, with no
 second page. A restart offers restart anyway the same way. The button
@@ -1156,6 +1169,15 @@ compatible with the world's game version, and apply any or all as one
 snapshotted operation. Nothing updates by itself: Foreman checks for
 updates when a Mods tab opens, after the page has loaded, and never on a
 timer. A mod that is turned off is not updated by "update all". (P0)
+
+The Server page shows one line when an enabled mod's installed version is
+gone from the mod portal, so players cannot join, with its fix: one plan
+that updates the mod to the newest release on the world's line ("Update
+*mod*"), or its removal when no release is left. It loads after the page,
+says nothing when the portal cannot be asked, and loads again whenever an
+operation on the world ends, so the line goes once its fix is done,
+without a reload. A start, restart or switch of such a world is refused
+by the pre-start check (7.4). (P1)
 
 9.4. **Enable, disable and remove** a mod, each as a snapshotted change.
 Removing a mod that another enabled mod requires is refused with the
@@ -1825,6 +1847,7 @@ with the defaults accepted, these take at most:
 | Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
+| Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
 | Recover after a failed start or a crash loop | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |

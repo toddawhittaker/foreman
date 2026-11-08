@@ -141,12 +141,11 @@ func (c *Controller) PlanSwitch(ctx context.Context, from, to string) (SwitchPla
 	default:
 		return SwitchPlan{}, ErrSwitchUnsettled
 	}
-	var pe *PrecheckError
-	if err := c.precheckReadOnly(to, "", StartOptions{}); errors.As(err, &pe) {
-		plan.Check = pe.Check
-	} else if err != nil {
+	check, err := c.precheckReadOnly(ctx, to, "", StartOptions{portal: true})
+	if _, refused := errors.AsType[*PrecheckError](err); err != nil && !refused {
 		return SwitchPlan{}, err
 	}
+	plan.Check = check
 	ref, present, err := c.ImageFor(ctx, to)
 	if err != nil {
 		return SwitchPlan{}, err
@@ -235,6 +234,7 @@ func (c *Controller) Switch(ctx context.Context, from, to string, by Actor, stop
 	}
 	// Compared before the stop; the check after the snapshots does not.
 	opts.confirmed = true
+	opts.carryPortal(plan.Check)
 	if err := c.audit(ctx, by, AuditSwitch, from, detail); err != nil {
 		return err
 	}

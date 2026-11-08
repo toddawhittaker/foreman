@@ -467,30 +467,18 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 	if err != nil {
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 	}
-	var fix []string
+	var gone []world.GoneMod
 	for _, f := range flags {
 		if f.Severity != mods.SevError {
 			continue
 		}
 		n.Errors++
 		n.Mod, n.Version = f.Name, f.Version
-		if f.Code == mods.FlagVersionGone && f.Update != "" {
-			fix = append(fix, f.Name)
-		}
+		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
 	}
-	n.Update = len(fix) == n.Errors
-	switch {
-	case n.Errors == 1 && n.Update:
-		n.FixPath = kindPlanPath(sum.ID, mods.KindUpdate, n.Mod)
-	case n.Errors == 1:
-		// No release is left to update to, so the fix the Mods tab offers.
-		n.FixPath = kindPlanPath(sum.ID, mods.KindRemove, n.Mod)
-	case n.Update && len(fix) <= maxPlanNames:
-		// Every error has an update: the fix is one plan.
-		n.FixPath = kindPlanPath(sum.ID, mods.KindUpdate, fix...)
-	default:
-		// The Mods tab shows each flag with its own fix.
-		n.FixPath = modsPath(sum.ID)
+	n.Update = !slices.ContainsFunc(gone, func(g world.GoneMod) bool { return g.Update == "" })
+	if n.Errors > 0 {
+		n.FixPath = goneFix(sum.ID, gone).Path
 	}
 	s.fragment(w, r, n, "mods-notice")
 }

@@ -126,7 +126,15 @@ type liveStream struct {
 	state   game.State // the last state sent
 	result  string     // the last results sent, as read out
 	moved   bool       // the page was told to follow a switch
+	opEnded bool       // the last operation sent had ended
 }
+
+// modsRecheckEvent tells the Server page to load its mods notice again.
+const modsRecheckEvent = "mods"
+
+// ModNoticeTrigger loads the mods notice with the page, and again each time
+// an operation on the world ends.
+func (ServerPage) ModNoticeTrigger() string { return "load, sse:" + modsRecheckEvent }
 
 // send writes each region of p that changed since the last send. A new
 // result, or else a new state, also goes to #announcer (DESIGN 7.5). A
@@ -147,9 +155,21 @@ func (l *liveStream) send(p ServerPage) error {
 	if !say.IsZero() && !p.StartBlocked().IsZero() {
 		say = join(say, blockedAnnouncement)
 	}
-	l.started, l.state, l.result = true, p.Status.State, result
+	// An operation that has just ended may have fixed a mod players could
+	// not download, or brought one in, so the mods notice asks again
+	// (SPEC 9.3).
+	ended := p.Status.Operation != nil && p.Status.Operation.Done
+	recheck := l.started && ended && !l.opEnded
+	l.started, l.state, l.result, l.opEnded = true, p.Status.State, result, ended
 
 	wrote := false
+	if recheck {
+		// An event with no data is never delivered, so it carries a word.
+		if err := l.event(modsRecheckEvent, "ended"); err != nil {
+			return err
+		}
+		wrote = true
+	}
 	for _, region := range liveRegions {
 		var b strings.Builder
 		if err := l.render.Fragment(&b, l.loc, p, "server-"+region); err != nil {

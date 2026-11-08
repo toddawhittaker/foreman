@@ -263,6 +263,7 @@
   "server.undo.rollback": "Dieses Zurückrollen rückgängig machen",
   "server.undo.update": "Auf {version} zurückrollen",
   "server.precheck.changed": "Die Welt oder der Server hat sich geändert, seit die Seite sie angezeigt hat, deshalb hat Foreman nicht weitergemacht. Lies die Meldung noch einmal, bevor du dich entscheidest.",
+  "server.portal_unchecked": "Foreman hat das Mod-Portal nicht rechtzeitig erreicht und deshalb nicht geprüft, ob Spieler die Mods dieser Welt herunterladen können.",
   "server.precheck.start": "Foreman hat das Spiel nicht gestartet, weil der Speicherstand, der geladen würde, nicht zur Welt passt:",
   "server.precheck.switch": "Foreman hat nicht gewechselt, weil der Speicherstand, der in der neuen Welt geladen würde, nicht zu dieser Welt passt:",
   "server.precheck.start_cannot_run": "Foreman hat das Spiel nicht gestartet, weil {world} in diesem Spiel nicht laufen kann:",
@@ -271,6 +272,8 @@
   "server.precheck.switch_cannot_run_unnamed": "Foreman hat nicht gewechselt, weil die Welt in diesem Spiel nicht laufen kann:",
   "server.precheck.update": "Foreman hat die Spielversion nicht aktualisiert, weil der Speicherstand nicht zu {world} unter Factorio {version} passt:",
   "server.precheck.update_cannot_run": "Foreman hat die Spielversion nicht aktualisiert, weil {world} unter Factorio {version} nicht laufen kann:",
+  "server.precheck.start_players": "Foreman hat das Spiel nicht gestartet, weil Spieler ihm nicht beitreten könnten:",
+  "server.precheck.switch_players": "Foreman hat nicht gewechselt, weil Spieler der neuen Welt nicht beitreten könnten:",
   "server.problem.game_version": "Die Welt ist auf Factorio {version} eingestellt. Foreman führt nur Factorio 1.1, 2.0 und 2.1 aus.",
   "server.problem.no_save": "Die Welt hat keinen Speicherstand. Lade zuerst einen Speicherstand hoch; ohne ihn würde das Spiel eine neue Karte erzeugen.",
   "server.problem.save_gone": "Der zum Laden gewählte Speicherstand {save} ist nicht mehr in der Welt. Wähle einen anderen Speicherstand.",
@@ -284,6 +287,8 @@
   "server.problem.mod_missing_many": "{save} nutzt {mods}, aber diese Welt hat dafür keine Dateien.",
   "server.problem.mod_disabled_one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt ausgeschaltet.",
   "server.problem.mod_disabled_many": "{save} nutzt {mods}, aber diese Mods sind in dieser Welt ausgeschaltet.",
+  "server.problem.mod_gone_one": "Das Mod-Portal hat {mod} {version} nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
+  "server.problem.mod_gone_many": "Das Mod-Portal hat {mods} nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
   "server.problem.mod_version_first": {
     "one": "{world} kann unter Factorio {version} nicht laufen: {count} ihrer Mods wurde für Factorio {for} erstellt, und das Spiel weigert sich, sie zu laden: {names}.",
     "other": "{world} kann unter Factorio {version} nicht laufen: {count} ihrer Mods wurden für Factorio {for} erstellt, und das Spiel weigert sich, sie zu laden: {names}."
@@ -397,6 +402,7 @@
   "server.switch.start_after": "{to} nach dem Wechsel starten",
   "server.switch.problems_lead": "Der Speicherstand, der in {world} geladen würde, passt nicht zu dieser Welt:",
   "server.switch.cannot_run_lead": "{world} kann in diesem Spiel nicht laufen:",
+  "server.switch.players_lead": "Spieler könnten {world} nicht beitreten:",
   "server.switch.no_from": "Das Formular sagt nicht, welche Welt aktiv ist. Geh zurück, lade die Seite neu und versuche es erneut.",
   "server.switch.note_refused": "{world} ist weiterhin die aktive Welt, und nichts hat sich geändert.",
   "server.switch.note_presented": "{world} ist jetzt die aktive Welt, aber der Wechsel wurde nicht beendet.",
