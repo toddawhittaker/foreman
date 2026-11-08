@@ -6,7 +6,7 @@
 {{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}
 {{- if .Uploaded}}
-<div class="message message--success" tabindex="-1" autofocus>
+<div class="message message--success" tabindex="-1"{{if not .Chosen}} autofocus{{end}}>
   <p><strong>{{t "common.label.done"}}</strong> {{tHTML "worlds.saves.uploaded" "file" (code .Uploaded)}}</p>
 </div>
 {{- end}}
