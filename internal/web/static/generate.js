@@ -176,7 +176,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const mark = document.getElementById("preset-modified");
     if (mark) mark.textContent = modified ? mark.dataset.word : "";
     const reset = document.getElementById("preset-reset");
-    if (reset) reset.hidden = !modified;
+    // Reset to defaults has something to do while a setting differs or another preset is chosen; "default" is the game's own preset name.
+    const preset = document.getElementById("generate-preset");
+    if (reset) reset.hidden = !modified && (!preset || preset.value === "default");
     const summary = document.getElementById("ach-summary");
     if (summary) {
       summary.querySelectorAll("li[data-reason]").forEach((li) => { li.hidden = !active.has(li.dataset.reason); });
@@ -367,6 +369,29 @@ document.addEventListener("DOMContentLoaded", () => {
     if (elt && elt.closest && elt.closest("#generate-form") && isDirty()) unsaved = true;
   });
 
+  // Reset to defaults throws every change away, so it is undone in one click
+  // (SPEC 5.6, 17.9): the form as it was is kept and Undo sends it back for
+  // the server to draw. Any later change to the settings ends the Undo, which
+  // would otherwise throw that change away.
+  let undoValues = null;
+  function hideUndo() {
+    undoValues = null;
+    const undo = document.getElementById("preset-undo");
+    if (undo) undo.hidden = true;
+  }
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    if (e.detail.elt && e.detail.elt.id === "preset-reset") undoValues = new FormData(formEl());
+  });
+  document.body.addEventListener("htmx:configRequest", (e) => {
+    if (!e.detail.elt || e.detail.elt.id !== "preset-undo" || !undoValues) return;
+    const sent = e.detail.formData;
+    [...new Set(sent.keys())].forEach((k) => sent.delete(k));
+    undoValues.forEach((v, k) => sent.append(k, v));
+  });
+  ["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
+    if (undoValues && e.target.closest && e.target.closest("#line-box")) hideUndo();
+  }));
+
   const actions = "#preview-button, #generate-button, #generate-default";
   const isPreview = (e) => e.detail.elt && e.detail.elt.id === "preview-button";
 
@@ -456,13 +481,21 @@ document.addEventListener("DOMContentLoaded", () => {
       blockedBefore = refresh();
       // Choosing a preset redraws what the person is looking at; nothing more is read out.
       const sender = e.detail.requestConfig && e.detail.requestConfig.elt;
+      const undo = document.getElementById("preset-undo");
+      // Each out-of-band part is a swap of its own; the settings' swap speaks for them all.
+      if (e.target.id !== "map-settings" && e.target.id !== "line-box") return;
       if (sender && sender.id === "preset-reset") {
-        // Reset is hidden once nothing differs, so focus goes to the preset it went back to.
-        const preset = document.getElementById("generate-preset");
-        if (preset) {
-          preset.focus();
-          announce(strings["js.generate.reset"].replace("{preset}", preset.selectedIndex >= 0 ? preset.options[preset.selectedIndex].text : ""));
+        // Reset is hidden once nothing differs; Undo takes its place, with the focus.
+        if (undo && undoValues) {
+          undo.hidden = false;
+          undo.focus();
         }
+        announce(strings["js.generate.reset"]);
+      } else if (sender && sender.id === "preset-undo") {
+        hideUndo();
+        const reset = document.getElementById("preset-reset");
+        if (reset && !reset.hidden) reset.focus();
+        announce(strings["js.generate.undone"]);
       } else if (!(sender && sender.id === "generate-preset")) announce(strings["js.generate.options"]);
     } else if (path.endsWith("/generate/preview")) {
       const failedMsg = document.querySelector("#preview .message");

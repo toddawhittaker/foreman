@@ -176,8 +176,11 @@
         {{- end}}
       </select>
       <span class="modified" id="preset-modified" data-word="{{t "mapgen.preset.modified"}}">{{if .Modified}}{{t "mapgen.preset.modified"}}{{end}}</span>
+      {{- /* One reset for the whole world, back to the version's default preset; the seed stays (SPEC 5.6). */}}
       <button type="submit" class="button button--quiet" id="preset-reset" name="reset" value="1" formaction="{{.RefreshPath}}"
-        hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary" hx-swap="outerHTML"{{if not .Modified}} hidden{{end}}>{{t "mapgen.preset.reset"}}</button>
+        hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML"{{if .AtDefaults}} hidden{{end}}>{{t "mapgen.preset.reset"}}</button>
+      {{- /* Takes the reset's place once it has run, and sends the settings it threw away back (script only). */}}
+      <button type="button" class="button button--quiet" id="preset-undo" hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML" hidden>{{t "mapgen.preset.undo"}}</button>
     </div>
     {{- if not .PresetError.IsZero}}
     <p class="error" id="generate-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>

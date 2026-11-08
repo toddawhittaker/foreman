@@ -66,6 +66,19 @@ test("a preset change asks, even once it is changed back", async ({ page }) => {
   expect(asked).toEqual(["beforeunload"]);
 });
 
+test("an edit thrown away by Reset to defaults still asks, as Undo can bring it back", async ({ page }) => {
+  const asked = leaveQuestions(page, "dismiss");
+  await page.goto("/generate");
+  await page.locator("#generate-preset").selectOption("rich-resources");
+  await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
+  await page.getByRole("button", { name: "Reset to defaults" }).click();
+  await expect(page.getByRole("button", { name: "Undo reset" })).toBeVisible();
+  await expect(page.locator("#generate-preset")).toHaveValue("default");
+  await cancel(page);
+  await expect.poll(() => asked).toEqual(["beforeunload"]);
+  await expect(page).toHaveURL("/generate");
+});
+
 test("a typed seed still asks after Preview map rewrites the seed field", async ({ page }) => {
   const asked = leaveQuestions(page, "dismiss");
   await page.goto("/generate");

@@ -2626,6 +2626,11 @@ form:has(#mode-exchange:checked) .achievements {
   }
 }
 
+/* Generate's Undo reset takes Reset to defaults' place once it has run (DESIGN 8.6). */
+.preset-row:has(> #preset-undo:not([hidden])) > #preset-reset {
+  display: none;
+}
+
 /* Generate's tighter preview (DESIGN 8.8): the thumbnail's territory
    labels, the territory counts and the large view's key line. */
 
