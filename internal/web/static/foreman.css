@@ -155,9 +155,9 @@ h1 {
 }
 
 h2 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 h3 {
@@ -526,6 +526,22 @@ form.panel,
 .panel > form {
   display: grid;
   gap: var(--space-4);
+}
+
+/* A section's title sits closer to its content than the content's own parts do (DESIGN 4). */
+.panel > h2,
+.panel > .section-head {
+  margin-block-end: calc(var(--space-2) - var(--space-3));
+}
+
+form.panel > h2 {
+  margin-block-end: calc(var(--space-2) - var(--space-4));
+}
+
+/* Sections after the first read as blocks: a rule above each, no card (DESIGN 4, 8.1). */
+main > .panel ~ .panel {
+  padding-block-start: var(--space-5);
+  border-block-start: var(--border-width) solid var(--color-line);
 }
 
 /* Single-column grids use minmax(0, 1fr), so a long word or a wide child

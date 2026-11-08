@@ -70,14 +70,16 @@ downloaded.
 The root size is left at the browser default (normally 16 px) so that a
 person's own text-size setting works. Every size is in `rem`. The steps
 are a ratio of about 1.125, which keeps headings close to body text: on a
-320 px screen, big headings waste lines.
+320 px screen, big headings waste lines. A section heading is the one step
+that jumps (1.25rem against 1rem), so a person scrolling a phone can find
+where a section starts.
 
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
 | `--text-sm` | 0.875rem (14 px) | 1.45 | 400 | Hints, table captions, timestamps, the log and console |
 | `--text-md` | 1rem (16 px) | 1.5 | 400 | Body, form controls, buttons, table cells; `h3` at weight 600 |
-| `--text-lg` | 1.125rem (18 px) | 1.3 | 600 | `h2`, section headings, the world name in a list item |
-| `--text-xl` | 1.25rem (20 px) | 1.3 | 600 | Not used for headings; kept for the scale |
+| `--text-lg` | 1.125rem (18 px) | 1.3 | 600 | The world name in a list item |
+| `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings |
 | `--text-2xl` | 1.5rem (24 px) | 1.25 | 650 | `h1`, one per page |
 
 Rules:
@@ -263,10 +265,10 @@ A 4 px base, in `rem` so it scales with text size.
 | Token | Value | Typical use |
 |---|---|---|
 | `--space-1` | 0.25rem (4 px) | Gap between a badge's shape and its word; the header's block padding |
-| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block |
+| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the space under a section's `h2` |
 | `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; message padding; the page's side padding at phone width |
 | `--space-4` | 1rem (16 px) | Gap between form fields; confirmation box padding; page padding from 40rem up |
-| `--space-5` | 1.5rem (24 px) | Gap between sections inside `main`; the page's side padding from 40rem up |
+| `--space-5` | 1.5rem (24 px) | Gap between sections inside `main`, and the padding under each section's top rule; the page's side padding from 40rem up |
 | `--space-6` | 2rem (32 px) | Gap before a page's closing actions |
 
 Other fixed values, also tokens:
@@ -286,7 +288,12 @@ There is none. Nothing has a shadow, a bevel or a gradient. Every field,
 button, message, badge and box has a 1 px border, so its edge shows in
 forced-colours mode as well (section 6, "Forced colours"). A group inside
 a long form, such as a settings fieldset, has a 1 px `line` above it
-instead of a box.
+instead of a box. A section in `main` after the first has the same rule
+above it, with `--space-5` of padding under the rule and the grid gap above
+it, so sections read as blocks without cards. The space under a section's `h2` is
+`--space-2`, closer than the content's own parts, which
+use `--space-3` or `--space-4`. A confirmation box is not a section and has
+no rule; it has its border.
 
 ### Rules
 
