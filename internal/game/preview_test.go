@@ -18,6 +18,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/territory"
 )
 
 func previewRequest() PreviewRequest {
@@ -454,7 +455,7 @@ func TestPreviewScriptTakesTheSizeFromTheEnvironment(t *testing.T) {
 // a request with no size is the default, 1280.
 func TestPreviewSizeIsPassedToTheContainer(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
-	for _, c := range []struct{ size, want int }{{0, 1280}, {1024, 1024}, {1280, 1280}, {3968, 3968}, {4096, 4096}} {
+	for _, c := range []struct{ size, want int }{{0, 1280}, {1024, 1024}, {1280, 1280}, {2944, 2944}, {3072, 3072}} {
 		req := previewRequest()
 		req.Size = c.size
 		env := r.c.previewSpec(image21, "p", "2.1", req).Env
@@ -467,7 +468,7 @@ func TestPreviewSizeIsPassedToTheContainer(t *testing.T) {
 // SPEC 5.6: the picture is as many pixels a side as asked.
 func TestPreviewDrawsAtTheRequestedSize(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
-	for _, size := range []int{0, 1024, 4096} {
+	for _, size := range []int{0, 1024, PreviewSizeMax} {
 		req := previewRequest()
 		req.Size = size
 		pngs, err := r.c.Preview(context.Background(), req)
@@ -485,11 +486,11 @@ func TestPreviewDrawsAtTheRequestedSize(t *testing.T) {
 	}
 }
 
-// SPEC 5.6: only 1024 to 4096 in steps of 128 is drawn; anything else is
+// SPEC 5.6: only 1024 to 3072 (the territory cap) in steps of 128 is drawn; anything else is
 // refused before Docker is called.
 func TestPreviewRefusesSizesOffTheSteps(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
-	for _, size := range []int{-1280, 1, 896, 1023, 1025, 1100, 1281, 4097, 4224, 5120, 8192} {
+	for _, size := range []int{-1280, 1, 896, 1023, 1025, 1100, 1281, 3073, 3200, 4096, 8192} {
 		req := previewRequest()
 		req.Size = size
 		if _, err := r.c.Preview(context.Background(), req); !errors.Is(err, ErrPreviewInvalid) {
@@ -505,8 +506,8 @@ func TestPreviewRefusesSizesOffTheSteps(t *testing.T) {
 			steps = append(steps, n)
 		}
 	}
-	if len(steps) != 25 || steps[0] != 1024 || steps[24] != 4096 || steps[2] != 1280 {
-		t.Errorf("valid sizes %v, want 25 from 1024 to 4096", steps)
+	if len(steps) != 17 || steps[0] != 1024 || steps[16] != 3072 || steps[2] != 1280 || PreviewSizeMax != territory.MaxSize {
+		t.Errorf("valid sizes %v, want 17 from 1024 to 3072, the territory cap", steps)
 	}
 }
 

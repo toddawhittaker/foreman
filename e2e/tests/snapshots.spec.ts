@@ -73,7 +73,7 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
 
   await rows.first().getByRole("link", { name: /Restore/ }).click();
   await expect(page.getByRole("heading", { name: /Restore the snapshot "Before the rocket"/ })).toBeVisible();
-  await expect(page.getByText(/labelled "Before restore"\. If the snapshot fails, nothing else happens/)).toBeVisible();
+  await expect(page.getByText(/labeled "Before restore"\. If the snapshot fails, nothing else happens/)).toBeVisible();
   await checkPage(page);
   await page.getByRole("button", { name: "Restore snapshot" }).click();
 

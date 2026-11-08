@@ -195,7 +195,7 @@ test.describe("with the fake game", () => {
     const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("everything played since the update is lost");
     await expect(confirm).toContainText('Restore the snapshot "Before update"');
-    await expect(confirm).toContainText('labelled "Before restore"');
+    await expect(confirm).toContainText('labeled "Before restore"');
     await expect(confirm.getByRole("button", { name: "Roll back to 2.1.24" })).toHaveClass(/button--danger/);
     await checkPage(page);
 
@@ -301,7 +301,7 @@ test.describe("with the fake game", () => {
     const refusal = page.locator(".message--warning").filter({ hasText: "Space Age" });
     await expect(refusal).toBeVisible(live);
     await expect(refusal).toContainText("base.zip uses Space Age");
-    await expect(refusal).toContainText('labelled "Before update"');
+    await expect(refusal).toContainText('labeled "Before update"');
     // Update anyway, and the steps it takes, wait behind their own choice.
     await expect(refusal.getByRole("button", { name: "Update anyway" })).toBeHidden();
     await expect(refusal.locator("summary")).toHaveText("Or update anyway");
@@ -331,7 +331,7 @@ test.describe("with the fake game", () => {
 
     const refusal = page.locator("#world-result .message--warning");
     await expect(refusal).toContainText("base.zip uses Space Age", live);
-    await expect(refusal).toContainText('labelled "Before update"');
+    await expect(refusal).toContainText('labeled "Before update"');
     await expect(page.locator("#world-result")).toBeFocused();
     await page.waitForTimeout(1500);
     await expect(page.locator("#announcer")).toBeEmpty();

@@ -35,7 +35,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Cancel stop" }).click();
 
     await expect(page).toHaveURL("/?result=1");
-    await expect(done(page)).toContainText("The stop was cancelled.", live);
+    await expect(done(page)).toContainText("The stop was canceled.", live);
     await expect.poll(() => focusedId(page)).toBe("done-message");
     // The live stream's first update replaces the region; focus stays.
     await page.waitForTimeout(1000);

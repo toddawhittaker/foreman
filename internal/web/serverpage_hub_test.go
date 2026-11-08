@@ -99,9 +99,9 @@ func TestDoneOffersUndoAndItsTime(t *testing.T) {
 // changed and drops the step list of skipped steps.
 func TestCancelledStopIsReportedAsDone(t *testing.T) {
 	for action, want := range map[string]string{
-		game.AuditStop:    "The stop was cancelled. Nothing was saved or stopped, and nothing changed.",
-		game.AuditRestart: "The restart was cancelled.",
-		game.AuditSwitch:  "The switch to Bravo was cancelled. " + html.EscapeString(longName) + " is still the active world, and nothing changed.",
+		game.AuditStop:    "The stop was canceled. Nothing was saved or stopped, and nothing changed.",
+		game.AuditRestart: "The restart was canceled.",
+		game.AuditSwitch:  "The switch to Bravo was canceled. " + html.EscapeString(longName) + " is still the active world, and nothing changed.",
 	} {
 		p := serverCase(game.StateRunning, func(p *ServerPage) {
 			p.Result, p.HaveResult = actionResult{Action: action, Err: game.ErrStopCancelled, Target: "bravo", At: msgT0}, true
@@ -115,7 +115,7 @@ func TestCancelledStopIsReportedAsDone(t *testing.T) {
 		html := controlHTML(t, p)
 		wantAll(t, action, html, "<strong>Done:</strong> "+want)
 		wantNone(t, action, html, "Error:", `<ol class="steps"`, "act-undo", "Switch back")
-		if got := english(resultAnnouncement(p)); !strings.Contains(got, "was cancelled.") {
+		if got := english(resultAnnouncement(p)); !strings.Contains(got, "was canceled.") {
 			t.Errorf("%s: announcement %q", action, got)
 		}
 	}
@@ -188,7 +188,7 @@ func TestCrashLoopOffersRecovery(t *testing.T) {
 	})
 	html := controlHTML(t, switched)
 	wantAll(t, "crash loop", html,
-		`href="`+restorePath("base", snap.Name)+`" class="button" id="act-recover-restore">Restore &#34;Before start anyway&#34; (2026-11-04 09:59 UTC)</a>`,
+		`href="`+restorePath("base", snap.Name)+`" class="button" id="act-recover-restore">Restore &#34;Before start anyway&#34; (<time datetime="2026-11-04T09:59:00Z">2026-11-04 09:59 UTC</time>)</a>`,
 		`href="/worlds/alpha/switch" class="button" id="act-switch-back">Switch back to Alpha</a>`,
 		"then try to start it again.", ">Try to start again<")
 	wantNone(t, "crash loop", html, "<strong>Note:</strong>", "Worlds page", `id="act-undo"`)
@@ -327,7 +327,7 @@ func TestCancelStopOverHTTP(t *testing.T) {
 	closeEvents()
 
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))
-	body := g.waitPage(running, "The stop was cancelled.")
+	body := g.waitPage(running, "The stop was canceled.")
 	g.wantMissing("server page", body, "Error:", "Cancel stop")
 	if !g.hasAudit(game.AuditStopCancel) {
 		t.Error("no stop-cancel audit entry")
@@ -371,7 +371,7 @@ func TestFollowsOwnAction(t *testing.T) {
 	}
 }
 
-// SPEC 7.6: the page says the action was cancelled from the finished
+// SPEC 7.6: the page says the action was canceled from the finished
 // operation alone, before the run's result is stored.
 func TestCancelledShowsFromTheOperation(t *testing.T) {
 	op := &game.Operation{Action: game.AuditRestart, Done: true, Error: game.ErrStopCancelled.Error()}
@@ -380,7 +380,7 @@ func TestCancelledShowsFromTheOperation(t *testing.T) {
 		t.Fatal("a cancelled operation was not recognised")
 	}
 	p := ServerPage{World: world.Summary{ID: "base", Name: "Base"}, Result: res, HaveResult: true}
-	if got := english(p.Done()); !strings.Contains(got, "The restart was cancelled.") {
+	if got := english(p.Done()); !strings.Contains(got, "The restart was canceled.") {
 		t.Errorf("Done %q", got)
 	}
 	sw := &game.Operation{Action: game.AuditSwitch, Done: true, Error: game.ErrStopCancelled.Error(),

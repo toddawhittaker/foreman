@@ -110,6 +110,8 @@ test("an uploaded save appears, is kept byte for byte, and loads as the newest",
 
   await expect(page).toHaveURL(/\/worlds\/family-base\/saves\?uploaded=/);
   await expect(page.getByText("Done: Uploaded from elsewhere.zip.")).toBeVisible();
+  // DESIGN 7.6: the reload puts focus on the result.
+  await expect(page.locator(".message--success", { hasText: "Uploaded from elsewhere.zip." })).toBeFocused();
   await expect(page.locator("tbody tr")).toHaveCount(3);
   await expect(page.locator("tbody tr").first().getByRole("link")).toHaveText("from elsewhere.zip");
   expect(readFileSync(join(dir, "saves", "from elsewhere.zip")).equals(upload)).toBe(true);
@@ -173,39 +175,67 @@ test("an upload over the limit is refused before it is stored", async ({ page, f
   await checkPage(page);
 });
 
+// SPEC 7.11: one list of saves; each row that does not load next has a
+// "Load next" button, so an older save is one click away, and the newest
+// row's button goes back to the newest save.
 test("choosing which save loads is kept, and going back to the newest clears it", async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
 
-  await expect(page.getByRole("radio", { name: "The newest save" })).toBeChecked();
-  await page.getByRole("radio", { name: "old.zip" }).check();
-  await page.getByRole("button", { name: "Use this choice" }).click();
+  const rows = page.locator("tbody tr");
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await expect(rows.nth(0)).toContainText("Loads next");
+  await expect(rows.nth(0).getByRole("button")).toHaveCount(0);
+  await page.getByRole("button", { name: "Load next: old.zip" }).click();
 
   await expect(page).toHaveURL(/saves\?chosen=1/);
   await expect(page.getByText("The server will load old.zip the next time it starts.")).toBeVisible();
-  await expect(page.getByRole("radio", { name: "old.zip" })).toBeChecked();
-  await expect(page.locator("tbody tr").nth(1)).toContainText("Loads next");
-  await expect(page.locator("tbody tr").nth(0)).not.toContainText("Loads next");
+  // DESIGN 7.6: the reload puts focus on the result.
+  await expect(page.locator(".message--success", { hasText: "The server will load old.zip" })).toBeFocused();
+  // SPEC 7.11: the choice applies once, and the page says so.
+  await expect(page.getByText("The game loads old.zip at the next start, then the newest save again.")).toBeVisible();
+  await expect(rows.nth(1)).toContainText("Loads next");
+  await expect(rows.nth(1).getByRole("button")).toHaveCount(0);
+  await expect(rows.nth(0)).not.toContainText("Loads next");
   expect(loadSaveOf(dir)).toBe("old.zip");
   // Everything else in world.json is kept.
   expect(JSON.parse(readFileSync(join(dir, "world.json"), "utf8"))).toMatchObject({ name: "Family base", game_version: "2.0.72", space_age: true });
   await checkPage(page);
 
-  await page.getByRole("radio", { name: "The newest save" }).check();
-  await page.getByRole("button", { name: "Use this choice" }).click();
+  await page.getByRole("button", { name: "Load next: new.zip" }).click();
   await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
-  await expect(page.locator("tbody tr").nth(0)).toContainText("Loads next");
+  await expect(rows.nth(0)).toContainText("Loads next");
   expect(loadSaveOf(dir) ?? "").toBe("");
+});
+
+// Without JavaScript the row buttons are plain form posts.
+test.describe("without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+  test("a row's Load next still chooses the save", async ({ page, foreman }) => {
+    await createAdmin(page);
+    const dir = seedTwoSaves(foreman);
+    await page.goto("/worlds/family-base/saves");
+    await page.getByRole("button", { name: "Load next: old.zip" }).click();
+    await expect(page.getByText("The server will load old.zip the next time it starts.")).toBeVisible();
+    expect(loadSaveOf(dir)).toBe("old.zip");
+  });
 });
 
 test("a chosen save that was removed by hand is explained", async ({ page, foreman }) => {
   await createAdmin(page);
-  seedTwoSaves(foreman, { load_save: "gone.zip" });
+  const dir = seedTwoSaves(foreman, { load_save: "gone.zip" });
   await page.goto("/worlds/family-base/saves");
   await expect(page.getByText("The chosen save gone.zip is no longer in the saves folder")).toBeVisible();
-  await expect(page.getByRole("radio", { name: "The newest save" })).toBeChecked();
+  const newest = page.locator("tbody tr").nth(0);
+  await expect(newest).toContainText("Loads next");
   await checkPage(page);
+  // The stale choice can be cleared from the newest row (SPEC 7.11).
+  await newest.getByRole("button", { name: "Load next: new.zip" }).click();
+  await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
+  await expect(page.getByText("is no longer in the saves folder")).toHaveCount(0);
+  await expect(newest).toContainText("Loads next");
+  expect(loadSaveOf(dir) ?? "").toBe("");
 });
 
 test("a world a newer Foreman wrote can be downloaded from but not changed", async ({ page, foreman }) => {
@@ -215,7 +245,7 @@ test("a world a newer Foreman wrote can be downloaded from but not changed", asy
   await expect(page.getByText("A newer version of Foreman wrote this world")).toBeVisible();
   await expect(page.getByRole("link", { name: "new.zip", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload save" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Use this choice" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Load next/ })).toHaveCount(0);
   await checkPage(page);
 });
 
@@ -230,6 +260,9 @@ test("a long list ends in Show older", async ({ page, foreman }) => {
   seedWorld(foreman, "many", { name: "Many" }, saves);
   await page.goto("/worlds/many/saves");
   await expect(page.locator("tbody tr")).toHaveCount(50);
+  // One list: each save's name appears once on the page, in its row.
+  await expect(page.getByText("save-30.zip", { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^Load next/ })).toHaveCount(49);
   await checkPage(page);
   await page.getByRole("link", { name: "Show older saves" }).click();
   await expect(page.locator("tbody tr")).toHaveCount(52);
@@ -237,21 +270,41 @@ test("a long list ends in Show older", async ({ page, foreman }) => {
 });
 
 // DESIGN 6, "The 320 px rules": a long save name wraps instead of widening the page.
-test("a very long save name wraps in the table and the radio list", async ({ page, foreman }) => {
+test("a very long save name wraps in the table", async ({ page, foreman }) => {
   await createAdmin(page);
   const name = "autosave-with-a-very-long-name-".repeat(4) + ".zip";
-  seedWorld(foreman, "longs", { name: "Long " + "w".repeat(80) }, [{ name, content: newSave, at: "2026-11-03T14:25:00Z" }]);
+  const older = "older-" + name;
+  seedWorld(foreman, "longs", { name: "Long " + "w".repeat(80) }, [
+    { name: older, content: oldSave, at: "2026-11-01T09:00:00Z" },
+    { name, content: newSave, at: "2026-11-03T14:25:00Z" },
+  ]);
   await page.goto("/worlds/longs/saves");
-  await expect(page.getByRole("link", { name })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Save to load" })).toBeVisible();
-  expect(await page.locator("main fieldset").evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+  await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Load next: ${older}` })).toBeVisible();
+  await checkPage(page);
+});
+
+// SPEC 17.12: at 200% text on a phone the rows stack, keep their table
+// roles, and the Load next button stays inside its panel.
+test("at large text the rows stack and keep their roles", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedTwoSaves(foreman);
+  await page.goto("/worlds/family-base/saves");
+  await page.addStyleTag({ content: "html { font-size: 200% }" });
+  await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("row")).toHaveCount(3);
+  const button = page.getByRole("button", { name: "Load next: old.zip" });
+  const panel = page.locator("section.panel").filter({ has: button });
+  const b = (await button.boundingBox())!;
+  const p = (await panel.boundingBox())!;
+  expect(b.x + b.width).toBeLessThanOrEqual(p.x + p.width + 0.5);
   await checkPage(page);
 });
 
 // DESIGN 7.3: the success and note kinds are drawn, not left as plain text.
 test("success and note messages have their own colours", async ({ page, foreman }) => {
   await createAdmin(page);
-  seedTwoSaves(foreman, { load_save: "gone.zip" });
+  const dir = seedTwoSaves(foreman, { load_save: "gone.zip" });
   await page.goto("/worlds/family-base/saves");
   const note = page.locator(".message--note");
   await expect(note).toBeVisible();
@@ -259,8 +312,7 @@ test("success and note messages have their own colours", async ({ page, foreman 
   const plain = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   const noteBg = await bg(note);
   expect(noteBg).not.toBe(plain);
-  await page.getByRole("radio", { name: "old.zip" }).check();
-  await page.getByRole("button", { name: "Use this choice" }).click();
+  await page.getByRole("button", { name: "Load next: old.zip" }).click();
   const ok = page.locator(".message--success");
   await expect(ok).toBeVisible();
   expect(await bg(ok)).not.toBe(noteBg);
@@ -269,26 +321,21 @@ test("success and note messages have their own colours", async ({ page, foreman 
 });
 
 // DESIGN 7.2: a save that vanished between showing the page and choosing it
-// is refused in words, the summary leads to the first radio, and every
-// radio in the group is marked invalid.
+// is refused in words above the list, and the summary leads to that error.
 test("choosing a save that has since gone is refused in words", async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman);
   await page.goto("/worlds/family-base/saves");
-  await page.getByRole("radio", { name: "old.zip" }).check();
   rmSync(join(dir, "saves", "old.zip"));
-  await page.getByRole("button", { name: "Use this choice" }).click();
+  await page.getByRole("button", { name: "Load next: old.zip" }).click();
 
   const msg = "Choose a save from the list. That save is no longer in the saves folder.";
-  await expect(page.locator("#load-save-error")).toHaveText("Error: " + msg);
+  const error = page.locator("#load-save-error");
+  await expect(error).toHaveText("Error: " + msg);
   const link = page.locator("#error-summary").getByRole("link", { name: msg });
-  await expect(link).toHaveAttribute("href", "#load-newest");
-  const radios = page.getByRole("group", { name: "Save to load" }).getByRole("radio");
-  for (const radio of await radios.all()) {
-    await expect(radio).toHaveAttribute("aria-invalid", "true");
-    await expect(radio).toHaveAccessibleDescription("Error: " + msg);
-  }
+  await expect(link).toHaveAttribute("href", "#load-save-error");
   await link.click();
-  await expect(page.getByRole("radio", { name: "The newest save" })).toBeFocused();
+  await expect(error).toBeFocused();
+  expect(loadSaveOf(dir) ?? "").toBe("");
   await checkPage(page);
 });

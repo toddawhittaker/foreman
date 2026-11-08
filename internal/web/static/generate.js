@@ -8,7 +8,7 @@
 // errors gets focus on its error summary; an old summary is removed when a
 // redraw leaves the form in place. While a preview runs the buttons are
 // marked aria-disabled rather than disabled, so the one the person pressed
-// keeps focus.
+// keeps focus. Leaving with unsaved settings asks first.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   // The whole form is swapped when it comes back with errors, so it is looked up each time.
@@ -16,8 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!formEl()) return;
   formEl().classList.add("js-on");
 
+  // The settings the large view holds are its own (DESIGN 8.8), and outside
+  // an open modal dialog the page is inert, so the dialog says the news then.
+  const settingsIn = "#map-settings, #large-settings";
   function announce(said) {
-    const announcer = document.getElementById("announcer");
+    const view = document.getElementById("large-view");
+    const announcer = document.getElementById(view && view.open ? "large-status" : "announcer");
     if (!announcer) return;
     announcer.textContent = "";
     setTimeout(() => { announcer.textContent = said; }, 50);
@@ -69,17 +73,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // A row opened to follow the choice already made says and sends nothing.
     if (!field || field.value === d.dataset.planet) return;
     openRow(d.dataset.planet);
-    const pick = document.getElementById("preview-planet");
-    if (pick && pick.value !== d.dataset.planet && [...pick.options].some((o) => o.value === d.dataset.planet)) {
-      pick.value = d.dataset.planet;
-      pick.dispatchEvent(new Event("change", { bubbles: true }));
-      announce(d.dataset.said);
-    }
+    // The preview shows the planet whose settings are open; it cancels the event when it switches, which is said.
+    const told = new CustomEvent("settings:planet", { detail: { planet: d.dataset.planet }, cancelable: true });
+    if (!document.dispatchEvent(told)) announce(d.dataset.said);
   }, true);
-  // A planet chosen in the preview opens its row, and focus stays where it is.
-  document.addEventListener("change", (e) => {
-    if (e.target.id === "preview-planet") openRow(e.target.value);
-  });
+  // A planet shown in the large view opens its row, and focus stays where it is.
   document.addEventListener("preview:planet", (e) => {
     if (e.detail && e.detail.planet) openRow(e.detail.planet);
   });
@@ -164,12 +162,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let needsOff = new Set();
   // Redraws "[modified]", the reset button, each warning and the summary.
   function refresh() {
-    const settings = document.getElementById("map-settings");
-    if (!settings) return;
+    if (!document.getElementById("map-settings")) return;
     const word = formEl().dataset.achWord || "";
     let modified = false;
     const active = new Set();
-    settings.querySelectorAll("[data-preset]").forEach((el) => {
+    document.querySelectorAll(`:is(${settingsIn}) [data-preset]`).forEach((el) => {
       if (differs(el)) modified = true;
       if (!el.dataset.ach) return;
       const blocked = crosses(el);
@@ -182,7 +179,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const mark = document.getElementById("preset-modified");
     if (mark) mark.textContent = modified ? mark.dataset.word : "";
     const reset = document.getElementById("preset-reset");
-    if (reset) reset.hidden = !modified;
+    // Reset to defaults has something to do while a setting differs or another preset is chosen; "default" is the game's own preset name.
+    const preset = document.getElementById("generate-preset");
+    if (reset) reset.hidden = !modified && (!preset || preset.value === "default");
     const summary = document.getElementById("ach-summary");
     if (summary) {
       summary.querySelectorAll("li[data-reason]").forEach((li) => { li.hidden = !active.has(li.dataset.reason); });
@@ -191,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // A resource the game needs warns while off; a warning, not a block (SPEC 5.6).
     const off = new Set();
     needsOff = off;
-    settings.querySelectorAll("input[data-need]").forEach((box) => {
+    document.querySelectorAll(`:is(${settingsIn}) input[data-need]`).forEach((box) => {
       if (!box.checked) off.add(box.dataset.needKey);
       const note = document.getElementById(box.id + "-need");
       const text = box.checked ? "" : box.dataset.need;
@@ -252,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
         syncSlider(select);
       }
     }
-    if (t.closest("#map-settings")) changed(t);
+    if (t.closest(settingsIn)) changed(t);
   });
 
   document.addEventListener("change", (e) => {
@@ -267,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const typed = document.getElementById("generate-version");
       if (typed) typed.value = "";
     }
-    if (t.closest("#map-settings")) changed(t);
+    if (t.closest(settingsIn)) changed(t);
   });
 
   // A minimum and its maximum keep at least their gap apart, as the game's
@@ -335,6 +334,84 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.closest("#generate-form .tab-panel")) reveal(e.target);
   });
 
+  // Leaving with settings that are not saved asks the browser's own question
+  // (SPEC 5.6). Not saved: a field that differs from what the page loaded
+  // with, or a form the server sent back with errors. The tab, the preview
+  // size, the territory box and the one-or-all choice are views, not settings.
+  const views = new Set(["tab", "preview_size", "territories", "preview_view"]);
+  let unsaved = Boolean(document.getElementById("error-summary"));
+  let submitting = false;
+  function differsFromLoaded(el) {
+    if (!el.name || views.has(el.name)) return false;
+    if (el.type === "checkbox" || el.type === "radio") return el.checked !== el.defaultChecked;
+    if (el.tagName === "SELECT") {
+      const loaded = [...el.options].filter((o) => o.defaultSelected).pop() || el.options[0];
+      return Boolean(loaded) && el.value !== loaded.value;
+    }
+    if (el.tagName !== "TEXTAREA" && el.tagName !== "INPUT") return false;
+    return el.value !== el.defaultValue;
+  }
+  const isDirty = () => unsaved || [...formEl().elements].some(differsFromLoaded);
+  window.addEventListener("beforeunload", (e) => {
+    if (submitting || !isDirty()) return;
+    e.preventDefault();
+    // Older browsers ask only when this is set.
+    e.returnValue = "";
+  });
+  // Generate itself leaves the page; Preview map and Reset are htmx requests and never submit.
+  document.addEventListener("submit", (e) => {
+    if (e.target === formEl() && !e.defaultPrevented) submitting = true;
+  });
+  // A page restored from the back-forward cache did not leave after all.
+  window.addEventListener("pageshow", () => { submitting = false; });
+  // A redraw (Preview map's seed; a version, Space Age, preset or reset) puts in
+  // fields that load with the edited values, so what was unsaved stays so, even
+  // if a setting is later changed back (SPEC 5.6).
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    const elt = e.detail.requestConfig && e.detail.requestConfig.elt;
+    if (elt && elt.closest && elt.closest("#generate-form") && isDirty()) unsaved = true;
+  });
+
+  // Reset to defaults throws every change away, so it is undone in one click
+  // (SPEC 5.6, 17.9): the form as it was is kept and Undo sends it back for
+  // the server to draw. Any later change to the settings ends the Undo, which
+  // would otherwise throw that change away.
+  let undoValues = null;
+  function hideUndo() {
+    undoValues = null;
+    const undo = document.getElementById("preset-undo");
+    if (!undo) return;
+    const had = document.activeElement === undo;
+    undo.hidden = true;
+    // Focus never falls to the page: Reset takes it back, or the preset while there is nothing to reset.
+    const reset = document.getElementById("preset-reset");
+    const next = reset && !reset.hidden ? reset : document.getElementById("generate-preset");
+    if (had && next) next.focus();
+  }
+  // The reset's reply replaces the fields anyway, so a change made while it is
+  // on its way leaves the Undo to bring back the form as it was when Reset was pressed.
+  let resetting = false;
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    if (!e.detail.elt || e.detail.elt.id !== "preset-reset") return;
+    undoValues = new FormData(formEl());
+    resetting = true;
+  });
+  document.body.addEventListener("htmx:afterRequest", (e) => {
+    if (e.detail.elt && e.detail.elt.id === "preset-reset") resetting = false;
+  });
+  document.body.addEventListener("htmx:configRequest", (e) => {
+    if (!e.detail.elt || e.detail.elt.id !== "preset-undo" || !undoValues) return;
+    const sent = e.detail.formData;
+    [...new Set(sent.keys())].forEach((k) => sent.delete(k));
+    undoValues.forEach((v, k) => sent.append(k, v));
+  });
+  // A view (the tab shown) changes no setting, so it keeps the Undo; a version
+  // or Space Age change does end it, as Undo would mix two game lines.
+  ["input", "change"].forEach((type) => document.addEventListener(type, (e) => {
+    if (!undoValues || resetting || !e.target.closest || views.has(e.target.name)) return;
+    if (e.target.closest("#line-box, #large-settings") || (type === "change" && e.target.closest(".version-fields"))) hideUndo();
+  }));
+
   const actions = "#preview-button, #generate-button, #generate-default";
   const isPreview = (e) => e.detail.elt && e.detail.elt.id === "preview-button";
 
@@ -400,6 +477,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = document.getElementById("error-summary");
     // The form came back whole, with its errors: they are what to read next.
     if (xhr && xhr.getResponseHeader("HX-Retarget") === "#generate-form") {
+      unsaved = true;
       const again = document.getElementById("generate-form");
       if (again) {
         again.classList.add("js-on");
@@ -423,13 +501,23 @@ document.addEventListener("DOMContentLoaded", () => {
       blockedBefore = refresh();
       // Choosing a preset redraws what the person is looking at; nothing more is read out.
       const sender = e.detail.requestConfig && e.detail.requestConfig.elt;
+      const undo = document.getElementById("preset-undo");
+      // Each out-of-band part is a swap of its own; the settings' swap speaks for them all.
+      if (e.target.id !== "map-settings" && e.target.id !== "line-box") return;
       if (sender && sender.id === "preset-reset") {
-        // Reset is hidden once nothing differs, so focus goes to the preset it went back to.
-        const preset = document.getElementById("generate-preset");
-        if (preset) {
-          preset.focus();
-          announce(strings["js.generate.reset"].replace("{preset}", preset.selectedIndex >= 0 ? preset.options[preset.selectedIndex].text : ""));
+        // Reset is hidden once nothing differs; Undo takes its place, with the
+        // focus Reset had. Focus the person moved on, as into a field, stays there.
+        if (undo && undoValues) {
+          const at = document.activeElement;
+          undo.hidden = false;
+          if (at === document.getElementById("preset-reset") || at === document.body) undo.focus();
         }
+        announce(strings["js.generate.reset"]);
+      } else if (sender && sender.id === "preset-undo") {
+        hideUndo();
+        const reset = document.getElementById("preset-reset");
+        if (reset && !reset.hidden) reset.focus();
+        announce(strings["js.generate.undone"]);
       } else if (!(sender && sender.id === "generate-preset")) announce(strings["js.generate.options"]);
     } else if (path.endsWith("/generate/preview")) {
       const failedMsg = document.querySelector("#preview .message");

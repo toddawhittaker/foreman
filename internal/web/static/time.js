@@ -2,8 +2,8 @@
 // how long ago it was, refreshed every minute. Without this script the page
 // keeps the UTC text the server wrote (DESIGN 9). Durations such as the
 // uptime are left alone. A time inside visually hidden text (part of a
-// control's spoken name) gets the local time only: relative text there
-// would go stale and make the name long.
+// control's spoken name) or inside a button's label gets the local time
+// only: relative text there would go stale and make the name long.
 (function () {
   "use strict";
 
@@ -84,7 +84,7 @@
     var order = clockParts[0].type === "timeZoneName" ? [dayNode, zone, clockNode] : [dayNode, clockNode, zone];
     el.replaceChildren(order[0], " ", order[1], " ", order[2]);
     el.dataset.local = "true";
-    if (el.closest(".visually-hidden")) {
+    if (el.closest(".visually-hidden, .button")) {
       return;
     }
     var age = document.createElement("span");
@@ -116,9 +116,15 @@
     });
   }
 
+  // A time already shown in local time is skipped (data-local), so calling
+  // this again on the same element is harmless.
   function run(root) {
     root.querySelectorAll("time[datetime]").forEach(localize);
   }
+
+  // Lets a script put a region in local time before a screen reader reads it,
+  // without waiting for the page to settle.
+  window.foremanTimes = { run: run };
 
   run(document);
   setInterval(refresh, 60000);

@@ -70,14 +70,16 @@ downloaded.
 The root size is left at the browser default (normally 16 px) so that a
 person's own text-size setting works. Every size is in `rem`. The steps
 are a ratio of about 1.125, which keeps headings close to body text: on a
-320 px screen, big headings waste lines.
+320 px screen, big headings waste lines. A section heading is the one step
+that jumps (1.25rem against 1rem), so a person scrolling a phone can find
+where a section starts.
 
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
 | `--text-sm` | 0.875rem (14 px) | 1.45 | 400 | Hints, table captions, timestamps, the log and console |
 | `--text-md` | 1rem (16 px) | 1.5 | 400 | Body, form controls, buttons, table cells; `h3` at weight 600 |
-| `--text-lg` | 1.125rem (18 px) | 1.3 | 600 | `h2`, section headings, the world name in a list item |
-| `--text-xl` | 1.25rem (20 px) | 1.3 | 600 | Not used for headings; kept for the scale |
+| `--text-lg` | 1.125rem (18 px) | 1.3 | 600 | The world name in a list item |
+| `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings |
 | `--text-2xl` | 1.5rem (24 px) | 1.25 | 650 | `h1`, one per page |
 
 Rules:
@@ -263,10 +265,10 @@ A 4 px base, in `rem` so it scales with text size.
 | Token | Value | Typical use |
 |---|---|---|
 | `--space-1` | 0.25rem (4 px) | Gap between a badge's shape and its word; the header's block padding |
-| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block |
+| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the space under a section's `h2` |
 | `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; message padding; the page's side padding at phone width |
 | `--space-4` | 1rem (16 px) | Gap between form fields; confirmation box padding; page padding from 40rem up |
-| `--space-5` | 1.5rem (24 px) | Gap between sections inside `main`; the page's side padding from 40rem up |
+| `--space-5` | 1.5rem (24 px) | Gap between sections inside `main`, and the padding under each section's top rule; the page's side padding from 40rem up |
 | `--space-6` | 2rem (32 px) | Gap before a page's closing actions |
 
 Other fixed values, also tokens:
@@ -286,14 +288,21 @@ There is none. Nothing has a shadow, a bevel or a gradient. Every field,
 button, message, badge and box has a 1 px border, so its edge shows in
 forced-colours mode as well (section 6, "Forced colours"). A group inside
 a long form, such as a settings fieldset, has a 1 px `line` above it
-instead of a box.
+instead of a box. A section in `main` after the first has the same rule
+above it, with `--space-5` of padding under the rule and the grid gap above
+it, so sections read as blocks without cards. The space under a section's `h2` is
+`--space-2`, closer than the content's own parts, which
+use `--space-3` or `--space-4`. A confirmation box is not a section and has
+no rule; it has its border.
 
 ### Rules
 
 - A component never sets its own outer margin. The parent spaces its
-  children with `gap` (flex or grid). The one exception is prose flow
-  inside a block of text, which uses the default paragraph margins reset
-  to `margin-block: 0 var(--space-3)`.
+  children with `gap` (flex or grid). There are two exceptions. The first is
+  prose flow inside a block of text, which uses the default paragraph margins reset
+  to `margin-block: 0 var(--space-3)`. The second is a section heading: a
+  panel's `h2` or section head pulls the panel's gap in with a negative
+  block-end margin, so the space under it is `--space-2`.
 - Use logical properties (`padding-inline`, `margin-block`,
   `inset-inline-start`), never left and right.
 
@@ -664,7 +673,7 @@ the block padding is `--space-2` so a two-line label is not cramped.
   `div.field`: the `.field` rule excludes `[type="checkbox"]` and
   `[type="radio"]`, so the input stays 1.25rem square.
 - A group of radios or checkboxes is a `fieldset` with a `legend` styled
-  like a label. "Which save loads" (SPEC 7.11) is a radio group.
+  like a label. The save that loads next (SPEC 7.11) is chosen with a "Load next" button on each row of the saves table (DESIGN 8.3).
 - **File inputs** are native, inside the same 44 px box as other
   fields. `::file-selector-button` is styled as a secondary button (7.1):
   transparent face, text `text`, weight 600, `secondary-hover` on hover, `padding-inline: var(--space-4)`, a 1px `border` rule on its
@@ -1216,7 +1225,7 @@ in this order:
    reverse); without `:has()` both show and the server reads the chosen
    one.
    - Map settings: the preset select with "[modified]" (the game's word)
-     and a quiet "Reset to preset default" button after it; the seed with
+     and a quiet "Reset to defaults" button after it; the seed with
      a "Random seed" button; then the tabs of 8.7.
    - Map exchange string: a mono `textarea`, as before.
 5. The preview slot (8.8).
@@ -1225,14 +1234,34 @@ in this order:
 
 **Preset, "[modified]" and reset.** Choosing a preset fills every tab with
 its values (htmx redraws `#map-settings`; the preset and the seed are
-outside it, so focus and a typed seed stay). "[modified]" and the reset
-button show once any setting differs from the preset; the seed is not a
-setting of the preset. Their room is kept while they are not shown (the
+outside it, so focus and a typed seed stay). "[modified]" shows once any
+setting differs from the preset; the seed is not a setting of the
+preset. "Reset to defaults" is the one reset for the whole world (SPEC
+5.6): it shows while a setting differs or a preset other than the
+default is chosen, and puts the default preset and its values back,
+keeping the seed. Their room is kept while they are not shown (the
 word and the button are there but invisible, and out of the
 accessibility tree), so the row wraps the same way either way, and
 nothing below it, such as the slider being dragged, moves when they come
 or go. On a phone they hold a line of their own under the select. Reset is a submit button to the refresh route, so
-it also works without script; with htmx it redraws the tabs in place.
+it also works without script; with htmx it redraws the tabs and the
+preset select in place. It asks nothing first, because nothing saved
+changes; instead "Undo reset" (quiet, script only) takes its place in
+the row with the focus, and the live region says "Map settings reset to
+the defaults for this game version. Undo reset brings your changes
+back." Undo sends the form as it was before the reset to the refresh
+route, so the server draws every value back; focus returns to the reset
+and the live region says "Your map settings are back." Any change in the
+settings, the preset or the seed ends the Undo, since it would throw
+that change away, and so does a game version or Space Age change, since
+Undo would mix two game lines; the tab shown is a view and keeps it. An
+Undo that ends while it has the focus hands it to the reset (or the
+preset, when there is nothing to reset). A change made while the reset
+is on its way does not end it: the reply replaces the fields anyway, so
+Undo is offered as ever and brings back the settings as they were when
+Reset was pressed. Focus stays where the person moved it (a field keeps
+it across the redraw), and the live region says the usual sentence.
+Clicks: one to reset, one to undo.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
 the page back, filled from the new preset, with a Note "The settings
@@ -1299,8 +1328,9 @@ starts."
   every tab, is kept over a round trip in the hidden `open_planet`
   field, and is the planet with the first error when there is one.
   Opening a row switches the preview to that planet, and the live region
-  says "Preview: Fulgora" once; a tab switch says nothing. Choosing a
-  planet in the preview opens its row without moving focus.
+  says "Preview: Fulgora" once (with One planet chosen, 8.8); a tab
+  switch says nothing. A planet the large view moves to opens its row
+  without moving focus.
 - **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
   every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
   box in their legend, as resources do, and their continuity select no
@@ -1377,22 +1407,28 @@ starts."
 
 Preview is optional and adds no screen to Generate. The tasks are "see
 what this map looks like" (no clicks: it is drawn as the page opens and
-as the settings change), "look at another planet" (one choice), "look
-closely" (one click on the picture) and "keep the pictures" (one click
-on a download).
+as the settings change), "look at another planet" (one click on its
+settings row, which the person opens anyway to change it), "see every
+planet" (one click, All planets, or Preview map), "back to one planet"
+(one click, One planet), "look closely" (one click on the picture),
+"keep the pictures" (one click on a download) and, on a wide screen,
+"change the setting of the planet I am looking at large" (one click, on
+the setting beside the map; it was three, or four for a Terrain setting:
+close the view, the tab, the setting, and the picture again).
 
 - **Where.** A "Map preview" `section` (h2) full width under the
   settings, on every width, above the achievements summary and the
-  action row. Its first line: "Drawn from the current settings, which
-  are not saved yet, with seed 123456. It redraws as you change them.
-  "Generate world" makes exactly this map. The pin marks the centre of
-  the map, where players start."
+  action row. The heading's line also holds the seed used, "Seed
+  123456", at its end while it fits, so the picture sits close to its
+  controls.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
-  wide panel, a select of 25 sizes elsewhere) above the section, outside
-  the part a reply replaces: 1024 to 4096 tiles square in steps of 128,
-  1280 by default, and a hint that big sizes show their detail in the
-  large view. A change redraws like any other, and the choice is kept
-  over a form error.
+  wide panel, a select of 17 sizes elsewhere) above the section, outside
+  the part a reply replaces: 1024 to 3072 tiles square in steps of 128,
+  1280 by default. The most is the demolisher territory cap, so every
+  size offered can show them (SPEC 5.6). Its hint: "How much of the map,
+  around its center, the preview shows. The pin is where players
+  start." A change redraws like any other, and the choice is kept over a
+  form error.
 - **Drawn by itself** (with script). On page load, and 0.8 s after the
   last change to anything in the form that changes the map: the preset,
   the seed, any setting, the way to make the map, the pasted exchange
@@ -1402,18 +1438,32 @@ on a download).
   its way (the server stops its run) and a late reply is ignored. A
   pressed "Preview map" is aborted by a later change too. Exchange mode
   with nothing pasted draws nothing and empties the section.
-- **One planet at a time.** An automatic request (`auto=1`) draws only
-  the planet being viewed: the first, or the one picked. A "Planet"
-  select under the first line (script only, and only on a world with
-  several planets) picks it and draws it at once; returning to a planet
-  already drawn with the same settings shows the stored picture with no
-  run. "Preview map" still draws every planet, which is also the page
-  without script.
+- **One planet or all.** On a world with several planets, a choice under
+  the heading line, drawn as tabs (radios, as 8.7's tabs, one tab stop;
+  legend "Preview shows", for screen readers only): **One planet**
+  (checked by default) and **All planets**. It stays when a draw fails,
+  still showing the choice made, so One planet is one click back. It
+  needs script, so without it the style sheet hides it. There is no planet picker: opening a
+  planet's settings row already picks the planet.
+  - One planet: an automatic request (`auto=1`, `preview_view=one`)
+    draws only the planet whose settings row is open, as one large
+    picture; opening another row draws that planet, and the live region
+    says "Preview: Fulgora" once. Returning to a planet already drawn
+    with the same settings shows the stored picture with no run.
+  - All planets (`preview_view=all`): every planet, as thumbnails in the
+    grid below; only the planets not drawn yet are run, and each later
+    change redraws them all. Opening a row then draws nothing, but it is
+    the planet One planet shows next.
+  - "Preview map" draws every planet and chooses All planets, so One
+    planet is always one click back. It is also the page without script.
+  - The section's hidden `datalist` of the world's planets and their
+    names serves the large view's Previous and Next.
 - **Seed.** A blank seed field is filled with the seed the preview used,
   so the world made is the one previewed; a seed the person typed is
   never overwritten.
 - **Focus and news.** Nothing automatic moves focus; a control in the
-  section that had focus (the planet select) keeps it across the redraw.
+  section that had focus (the One planet or All planets choice, the
+  territory box) keeps it across the redraw.
   While a request runs, the previous picture stays, faded to 60%, the
   section is `aria-busy`, and a one-line note above it says "Drawing the
   map preview for the current settings…"; that line's height is held once
@@ -1429,7 +1479,7 @@ on a download).
   download line (`min(100%, max(16rem, 100dvh - 2 x target - space-4))`),
   centred, with the caption and download lined up with its edge; the
   held box before the first picture follows the same rule, so nothing
-  moves. Alt text: "Map preview of Nauvis, seed 123456".
+  moves. Alt text: "Map preview of Nauvis, seed 123456. The pin is where players start."
   Several pictures (Preview map) sit in a grid,
   `repeat(auto-fit, minmax(16rem, 1fr))`. The picture is a link to its
   file; its name adds "(opens the large view)" with script and "(opens
@@ -1440,7 +1490,8 @@ on a download).
   view. White face, black edge and dot (`--color-pin-face`,
   `--color-pin-edge`, the same in both themes, because the map's own
   colours do not follow the theme), so it reads on every planet. It is
-  `aria-hidden`; the section's first line says what it marks.
+  `aria-hidden`; the size hint and the picture's alt text say what it
+  marks.
 - **Downloads** (#237). Under each picture, "Download Nauvis (PNG)"; on
   a world with several planets, one "Download all drawn planets (zip)"
   after the list. Both are links with `download`, each a 44px target.
@@ -1451,8 +1502,11 @@ on a download).
   the planet's name (h2, the dialog's name) with a download icon link beside it ("Download Nauvis
   map"), and under them a `role="status"` line whose height is held
   (content outside a modal dialog is inert, so the dialog says its own
-  news). Then the picture in a scrolling frame, which has focus on open,
-  and a one-line key hint under it.
+  news). The key help sits in the bar too, at the end of the name's line
+  while it fits: "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit,
+  Esc close. Tap to center." It is one line on a desktop and may take two
+  at 320 px; the frame names it as its description. Then the picture in
+  a scrolling frame, which has focus on open.
   - Over the picture: Previous and Next arrows on its left and right
     edges, named after where they lead ("Previous planet: Aquilo"); a
     round X in the top corner ("Close"); Zoom out and Zoom in in the
@@ -1463,7 +1517,7 @@ on a download).
     `(pointer: coarse)`. Previous and Next step through the world's
     planets and wrap; a planet not drawn yet is drawn and shown in place.
   - Zoom is a factor of the fitted size, from 1 up to the larger of 8
-    and 8 CSS pixels per tile (so a 4096 picture still reaches real
+    and 8 CSS pixels per tile (so a 3072 picture still reaches real
     tiles). Each wheel notch, plus or minus key, or zoom button
     multiplies it by 1.15; the wheel zooms around the pointer, the keys
     and buttons around the frame's centre, by setting the frame's scroll
@@ -1479,20 +1533,48 @@ on a download).
     never needs a drag (WCAG 2.5.7).
   - Keys: left and right arrows step (inside the zoomed frame they scroll
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
-    Alt or Meta held the browser keeps its own zoom keys.
+    Alt or Meta held the browser keeps its own zoom keys. Focus decides:
+    a settings field (below) keeps every key of its own, so an arrow
+    moves a slider and never the map; Escape closes from anywhere.
+  - **Settings beside the map** (#399). Where the view is at least 77rem
+    wide (a 1280 px desktop is), the planet shown has its Resources and
+    Terrain settings in a 38rem column on the map's left, under the
+    headings "Resources" and "Terrain" (h3), scrolling on their own; the
+    map keeps the rest, never narrower than the column. 38rem leaves the
+    column's fields a 34rem `map-section` after its padding and scroll
+    bar, so they are sliders as on the page. Narrower, the view is map
+    only, as before. They are the form's own fields, not copies: the
+    script moves the planet's rows into the view as it opens (only in
+    Map settings mode; an exchange string does not use them) and puts
+    them back as it closes, however it closes, and before a version,
+    Space Age, preset or reset redraw; a redraw already on its way when
+    the view opens is let land first, so there is never a second copy.
+    A tab that has no planet rows lends its fields only on a world of one
+    planet. So the form sends, checks, marks "[modified]", resets,
+    undoes and warns on leaving as for any change on the page. Moving to
+    another planet moves its settings in. A change there redraws as one
+    on the page does, 0.8 s after the last change, the newest request
+    winning; while it runs the picture fades to 60%, the frame is
+    `aria-busy`, and a line beside the status line, seen but not read
+    out as on the page, says "Drawing the map preview for the current
+    settings…". The status line (`role="status"`) then says "Map preview
+    ready." It holds only that, warnings and errors: achievement and
+    needed-resource warnings are said there, as the page around the
+    dialog is inert. When the view narrows past 77rem while a field in
+    the column has focus, focus moves to the map's frame.
   - Nothing animates under reduced motion; otherwise only the controls'
     opacity fades, in 120 ms.
   - On close, focus goes to the link of the picture last shown. A click
     with a modifier key opens the file as the browser would. When the
-    view or the Planet select moves to another planet the page gets a
-    `preview:planet` event, and the view starts from the hidden
-    `#open-planet` field when the settings set it.
+    view moves to another planet the page gets a `preview:planet` event,
+    which opens that planet's settings row; an opened row tells the
+    preview with a `settings:planet` event. The view starts from the
+    hidden `#open-planet` field when the settings set it.
 - **Demolisher territories** (Vulcanus, Space Age). A "Show demolisher
-  territories" checkbox (7.2) beside the Planet select, shown only while
-  Vulcanus's picture is shown, off by default, with the hint "Finding them
-  takes a few seconds more." Above 3072 tiles it is `aria-disabled="true"`
-  with no name, so Tab still reaches it and its reason is heard but it
-  cannot change or send; its hint names that size and says to choose a smaller one. It is a named field,
+  territories" checkbox (7.2) under the One planet or All planets
+  choice, shown only while Vulcanus's picture is shown, off by default,
+  with the hint "Finding them takes a few seconds more." Every preview
+  size offered can show them, so it is never turned off. It is a named field,
   so "Preview map" without script reads the territories after the
   pictures, in the same request; a ticked choice is kept in a hidden field
   while another planet is viewed. With script, the territories are asked
@@ -1510,13 +1592,18 @@ on a download).
     rgb 200 20 20 at a third), one border path along every edge between
     owners and around the free start area (`--color-territory-border`, 2
     CSS px at any zoom with `vector-effect: non-scaling-stroke`); the start
-    area has no stripes. Each territory's size in words ("Small",
-    "Medium", "Big", "Unknown") is an HTML label placed by percent at its
-    chunks' mean, at `--text-sm` bold white with a near-black ring of
-    text shadows, so it keeps its size under zoom like the pin. The
-    overlay is `aria-hidden`; a `p` under the picture says the same in
-    words: "Demolisher territories in this picture: 12 small, 6
-    medium." The large view shows a copy of the same overlay.
+    area has no stripes. Each territory's size is an HTML label placed by
+    percent at its chunks' mean, white with a near-black ring of text
+    shadows, so it keeps its size under zoom like the pin: in the
+    thumbnail a short word ("Sm.", "Med.", "Big", "?",
+    `territory.ShortLabel`) at 12 px regular, so it does not crowd a small
+    picture; in the large view the full word ("Small", "Medium", "Big",
+    "Unknown") at `--text-sm` bold. The overlay is `aria-hidden`; a
+    visually hidden `p` under the picture says the same in words for
+    screen readers: "Demolisher territories in this picture: 12 small, 6
+    medium." Its line stays held while the box is ticked, so nothing
+    under the picture moves when the counts arrive. The large view shows
+    a copy of the same overlay.
   - While they are shown, Vulcanus's download reads "Download Vulcanus
     with territories (PNG)" and its file, and Vulcanus's file in the zip,
     have the overlay drawn in by the server (`?territories=1`), named
@@ -1724,7 +1811,11 @@ sections in this order, each a `section.panel`:
   on the mod portal …". The actions keep one order, lined up on the end so
   Disable and Remove sit in the same place in every row: Update to X (when
   the status finds one, or as the fix for a gone version), Enable or
-  Disable, and Remove. Remove is a quiet button in `danger-text`, the only
+  Disable, and Remove. "Change version" is a quiet button beside the
+  version it changes, after the badges, so the actions still share one
+  320 px line; it opens the plan with the mod held at its version, and the
+  status takes it away for a mod the portal does not have. A folder mod has
+  none. Remove is a quiet button in `danger-text`, the only
   red control on the tab, since it is the one change that destroys
   something; its confirmation is the plan page. Each action's hidden text
   names its mod. A folder mod has no Remove. Built-in mods are never in the
@@ -1811,6 +1902,14 @@ sync, upload) has the same shape, changes first. In order:
   with its portal link and, when there are two or more, "Remove from
   plan". The mods the plan needs and leaves as they are fold into one
   closed `details`, "2 other mods stay as they are".
+- For each mod an install or update names, a `select` "Version of *mod*"
+  (SPEC 9.2): "Newest that fits (2.0.0)", then the releases for the
+  world's line, newest first, the installed one marked "(installed)". One
+  mod's list is a plain field with the hint under its label; several share
+  a `fieldset` "Versions". Choosing one redraws the plan with htmx and focus
+  stays on the list. While the chosen release is the installed one, "Nothing
+  changes at this version" takes the place of the changes, and there are no
+  steps and no apply button.
 - "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
   the plan with htmx; a "Recalculate the plan" button does it without script.
 - For each unresolved mod a `fieldset` with its legend ("The mod portal
@@ -1901,7 +2000,8 @@ too.
   viewer's zone, such as "Nov 3, 2:25 PM EST (2 days ago)". The year shows
   only when it is not the current year. The relative part is visible text
   only and is refreshed every minute. A time inside `.visually-hidden`
-  text, such as a link's spoken name, gets the absolute local time and no
+  text, such as a link's spoken name, or inside a button label (the Undo
+  button, the Restore offer and links), gets the absolute local time and no
   relative part, so the name stays short and never goes stale. Without
   JavaScript the UTC text stays. A table cell keeps its date and clock in
   separate `nowrap` spans, and the zone is its own unit after the

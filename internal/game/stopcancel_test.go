@@ -110,7 +110,7 @@ func TestCancelStopDuringCountdown(t *testing.T) {
 		t.Errorf("audit %v", a)
 	}
 	// Players who were warned are told it is off.
-	if !slices.ContainsFunc(r.commands(id), func(c string) bool { return strings.Contains(c, "cancelled") }) {
+	if !slices.ContainsFunc(r.commands(id), func(c string) bool { return strings.Contains(c, "canceled") }) {
 		t.Errorf("players were not told the stop is off: %q", r.commands(id))
 	}
 	// The game can be stopped again as usual.

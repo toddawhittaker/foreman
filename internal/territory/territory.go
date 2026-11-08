@@ -43,10 +43,11 @@ const (
 	// MaxTerritories is the most territories Parse accepts. A 4096 picture
 	// held 142.
 	MaxTerritories = 1000
-	// MaxPicture is the largest picture size Parse accepts, the largest
-	// preview there is.
-	MaxPicture = 4096
-	// MaxSize is the largest preview size territories are offered for, kept
+	// MaxPicture is the largest picture size Parse accepts: MaxSize, the
+	// largest preview there is (SPEC 5.6).
+	MaxPicture = MaxSize
+	// MaxSize is the largest preview size territories are offered for, and
+	// also the largest preview size there is (game.PreviewSizeMax), kept
 	// low to fail safe (SPEC 5.6). At 3584, 2.0 took 32 s on a fast desktop
 	// and 2.1 used 88% of the container's 1 GiB, too little room for a slow
 	// home server; 3072 used at most 750 MiB (73%) and 27 s. 4096 ran out of
@@ -165,4 +166,18 @@ func Label(l i18n.Locale, size string) string {
 		return l.T("mapgen.territory.big")
 	}
 	return l.T("mapgen.territory.unknown")
+}
+
+// ShortLabel is the size as the small picture shows it, so it fits there
+// (DESIGN 8.8).
+func ShortLabel(l i18n.Locale, size string) string {
+	switch size {
+	case Small:
+		return l.T("mapgen.territory.short.small")
+	case Medium:
+		return l.T("mapgen.territory.short.medium")
+	case Big:
+		return l.T("mapgen.territory.short.big")
+	}
+	return l.T("mapgen.territory.short.unknown")
 }

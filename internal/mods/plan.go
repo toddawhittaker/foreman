@@ -65,6 +65,10 @@ type Request struct {
 	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
 	// off in the same plan, whatever its kind (SPEC 9.2, 17.9).
 	AlsoDisable, AlsoRemove []string
+	// Versions holds asked mods of an install or update to the release the
+	// admin chose, by name; the resolver checks each against the portal's
+	// releases on the world's line (SPEC 9.2, 9.3).
+	Versions map[string]string
 }
 
 // Action is what a plan does to one mod.
@@ -136,6 +140,10 @@ const (
 	ConflictBadDep       ConflictCode = "bad-dependency"
 	ConflictTooComplex   ConflictCode = "too-complex"
 	ConflictBadRequest   ConflictCode = "bad-request"
+
+	// ConflictNoSuchRelease: the portal has no release Version of Mod on
+	// the world's line, as for a version the admin chose.
+	ConflictNoSuchRelease ConflictCode = "no-such-release"
 )
 
 // Need is one version constraint on a mod and the mod that set it.
@@ -178,6 +186,10 @@ type Plan struct {
 	// Unavailable are recommended mods left out because the portal lacks
 	// them or they would conflict; they never block the plan (SPEC 9.2).
 	Unavailable []Offer
+	// Releases lists, newest first, the portal's releases on the world's
+	// line of each mod an install or update names, for its version list.
+	// It is not the plan, so it is not hashed.
+	Releases map[string][]string `json:"-"`
 }
 
 // Applicable reports whether the plan may be applied: no conflict, and

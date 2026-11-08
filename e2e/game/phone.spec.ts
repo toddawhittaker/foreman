@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { test, expect, type Page } from "@playwright/test";
-import { checkPage, listeningPort } from "../tests/foreman.js";
+import { checkPage, listeningPort, stateBadge } from "../tests/foreman.js";
 import { spawn } from "node:child_process";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
@@ -137,7 +137,9 @@ function newestSave(): number {
   return Math.max(...readdirSync(saves).filter((n) => n.endsWith(".zip")).map((n) => statSync(join(saves, n)).mtimeMs));
 }
 
-const badge = (page: Page) => page.getByRole("region", { name: "Status" }).locator(".state");
+const badge = stateBadge;
+// The facts list beside the heading: uptime, game version, save.
+const facts = (page: Page) => page.locator("main [sse-swap=facts]");
 
 // The real game loads a small map in about a second, so an operation may be
 // over before a check can look at it. A page script notes every step the page
@@ -166,7 +168,7 @@ async function checkMidOperation(page: Page) {
 // The names on a world's Saves page, as a person sees them.
 async function savesOf(page: Page, base: string, id: string): Promise<string[]> {
   await page.goto(`${base}/worlds/${id}/saves`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Saves of /);
+  await expect(page.getByRole("heading", { level: 2, name: "Saves" })).toBeVisible();
   return (await page.locator("table tbody tr td:first-child a").allTextContents()).map((t) => t.trim()).sort();
 }
 
@@ -195,7 +197,8 @@ test("from a phone: start, see who is on, restart with a warning, stop", async (
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await page.goto(foreman.url + "/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Server");
+    // The page leads with the world name and its state (DESIGN 6).
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Phone /);
     await expect(badge(page)).toHaveText("Stopped", { timeout: 20_000 });
     await expect(page.getByText("Nobody can be online while the game is not running.")).toBeVisible();
     await checkPage(page);
@@ -213,7 +216,7 @@ test("from a phone: start, see who is on, restart with a warning, stop", async (
     console.log("TIMING " + startTiming);
     // The page followed the game without a reload (SPEC 16.3).
     expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(1);
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("2.1.24");
+    await expect(facts(page)).toContainText("2.1.24");
     // The container is the pinned image, made by Foreman for this world.
     const inspected = JSON.parse((await dockerCall("GET", `/containers/${container}/json`)).body);
     expect(inspected.Config.Image).toBe(image21);
@@ -227,7 +230,7 @@ test("from a phone: start, see who is on, restart with a warning, stop", async (
 
     // Restart with a short countdown. Nobody is online, so nobody is warned.
     await page.getByRole("link", { name: "Restart server" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart Phone");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("5");
     await page.getByRole("button", { name: "Restart server" }).click();
@@ -244,7 +247,7 @@ test("from a phone: start, see who is on, restart with a warning, stop", async (
 
     // Stop, again with a short countdown.
     await page.getByRole("link", { name: "Stop server" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop the server");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop Phone");
     await page.getByLabel("Countdown in seconds").fill("5");
     await page.getByRole("button", { name: "Stop server" }).click();
     await expect(page).toHaveURL(foreman.url + "/");
@@ -282,7 +285,8 @@ test("from a phone: switch to another world and back with no save lost", async (
     seedWorld();
     seedWorld(worldBID, "Other", false);
 
-    const active = (name: string) => page.getByRole("link", { name: `Active world: ${name}` });
+    // The Server page names the active world in its heading (DESIGN 6).
+    const active = (name: string) => page.getByRole("heading", { level: 1 }).filter({ hasText: name });
     await page.goto(foreman.url + "/");
     await expect(badge(page)).toHaveText("Stopped", { timeout: 20_000 });
     await page.getByRole("button", { name: "Start server" }).click();
@@ -298,8 +302,8 @@ test("from a phone: switch to another world and back with no save lost", async (
     const t0 = Date.now();
     await page.goto(foreman.url + `/worlds/${worldBID}`);
     await page.getByRole("link", { name: "Switch to this world" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Other");
-    await expect(page.getByRole("region", { name: /Switch from Phone to Other/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Phone to Other?");
+    await expect(page.locator("section.confirm")).toBeVisible();
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("5");
     await page.getByRole("button", { name: "Switch to Other" }).click();
@@ -323,7 +327,7 @@ test("from a phone: switch to another world and back with no save lost", async (
     const t1 = Date.now();
     await page.goto(foreman.url + `/worlds/${worldID}`);
     await page.getByRole("link", { name: "Switch to this world" }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch to Phone");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Switch from Other to Phone?");
     await checkPage(page);
     await page.getByLabel("Countdown in seconds").fill("5");
     await page.getByRole("button", { name: "Switch to Phone" }).click();
@@ -334,7 +338,7 @@ test("from a phone: switch to another world and back with no save lost", async (
     const back = `switch B back to A, to Running: ${Math.round((Date.now() - t1) / 1000)} s`;
     test.info().annotations.push({ type: "timing", description: back });
     console.log("TIMING " + back);
-    await expect(page.getByRole("region", { name: "Status" })).toContainText("2.1.24");
+    await expect(facts(page)).toContainText("2.1.24");
     await expect(page.getByText("Nobody is online.")).toBeVisible({ timeout: 30_000 });
     await checkPage(page);
     expect(await isRunning(container)).toBe(true);

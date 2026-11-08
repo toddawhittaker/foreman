@@ -72,13 +72,13 @@ func TestSnapshotAfterCancelNeverShowsTheCancelledMessage(t *testing.T) {
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))
 	g.waitPage("Cancel stop")
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))
-	g.waitPage("The stop was cancelled.")
+	g.waitPage("The stop was canceled.")
 
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "take-snapshot"), url.Values{}))
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		body := g.get(PathServer)
-		g.wantMissing("page after the snapshot began", body, "was cancelled")
+		g.wantMissing("page after the snapshot began", body, "was canceled")
 		if strings.Contains(body, "Foreman took the snapshot") {
 			return
 		}

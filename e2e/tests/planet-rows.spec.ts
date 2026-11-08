@@ -85,7 +85,6 @@ test("opening a row switches the preview to that planet, and says so once", asyn
   });
   const said = () => page.evaluate(() => (window as unknown as { said: string[] }).said.filter((t) => t.startsWith("Preview:")));
   await row(page, "resources", "gleba").locator("summary").click();
-  await expect(page.locator("#preview-planet")).toHaveValue("gleba");
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
   await expect.poll(said).toEqual(["Preview: Gleba"]);
   // A tab switch shows the same planet and says nothing new.
@@ -95,18 +94,23 @@ test("opening a row switches the preview to that planet, and says so once", asyn
   expect(await said()).toEqual(["Preview: Gleba"]);
 });
 
-test("choosing a planet in the preview opens its row without moving focus", async ({ page }) => {
+test("a planet the large view moves to opens its row without moving focus", async ({ page }) => {
   await page.goto("/generate");
   await expect(pictures(page)).toHaveCount(1);
-  const pick = page.locator("#preview-planet");
-  await pick.selectOption("vulcanus");
+  await page.getByRole("region", { name: "Map preview" }).getByRole("link", { name: /opens the large view/ }).click();
+  await page.keyboard.press("ArrowRight");
   await expect.poll(() => openRows(page, "resources")).toEqual(["vulcanus"]);
   // Opening the row moves no focus into the settings.
   expect(await page.evaluate(() => !!document.activeElement?.closest("#map-settings"))).toBe(false);
   await expect(page.locator("#open-planet")).toHaveValue("vulcanus");
-  // Another script may ask for a planet too.
-  await page.evaluate(() => document.dispatchEvent(new CustomEvent("preview:planet", { detail: { planet: "fulgora" } })));
-  await expect.poll(() => openRows(page, "resources")).toEqual(["fulgora"]);
+  await page.keyboard.press("Escape");
+  // With every planet shown, opening a row redraws nothing, and One planet then shows it.
+  await page.locator("label.tab", { hasText: "All planets" }).click();
+  await expect(pictures(page)).toHaveCount(5);
+  await row(page, "resources", "fulgora").locator("summary").click();
+  await page.locator("label.tab", { hasText: "One planet" }).click();
+  await expect(pictures(page)).toHaveCount(1);
+  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Fulgora/);
 });
 
 test("cliffs can be switched off, which disables their settings and marks the preset modified", async ({ page }) => {
@@ -144,6 +148,32 @@ test("a needed resource warns while off, under its box and in the summary", asyn
   await expect(page.locator("#mg-nauvis-coal-on-need")).toHaveText("");
   await expect(summary).toBeHidden();
   await expect(page.locator("#announcer")).toHaveText("Warning cleared: Coal is on.");
+});
+
+// The warning takes a line of its own under the resource's settings, so they
+// keep the columns every other resource's row has.
+test("a needed resource's warning leaves its settings in line with the other rows", async ({ page }) => {
+  await page.goto("/generate");
+  const columns = (id: string) =>
+    page.locator(`#${id} > .field`).evaluateAll((fs) => fs.map((f) => {
+      const r = f.getBoundingClientRect();
+      return { x: Math.round(r.left), w: Math.round(r.width) };
+    }));
+  const tops = (id: string) => page.locator(`#${id} > .field`).evaluateAll((fs) => fs.map((f) => Math.round(f.getBoundingClientRect().top)));
+  const copper = await columns("mg-nauvis-copper-ore");
+  expect(await columns("mg-nauvis-iron-ore")).toEqual(copper);
+  await page.locator("#mg-nauvis-iron-ore-on").uncheck();
+  const warning = page.locator("#mg-nauvis-iron-ore-on-need");
+  await expect(warning).toHaveText(/^Without iron ore on Nauvis/);
+  expect(await columns("mg-nauvis-iron-ore")).toEqual(copper);
+  // The warning sits under the settings, not in a column of its own.
+  const w = (await warning.boundingBox())!;
+  const settings = (await page.locator("#mg-nauvis-iron-ore").boundingBox())!;
+  expect(w.y).toBeGreaterThanOrEqual(settings.y + settings.height);
+  expect(Math.round(w.x)).toBe(Math.round(settings.x));
+  // On a wide panel the settings share one row, as copper's do.
+  expect(new Set(await tops("mg-nauvis-iron-ore")).size).toBe(new Set(await tops("mg-nauvis-copper-ore")).size);
+  await checkPage(page);
 });
 
 test("the server shows the same warning after a round trip", async ({ page }) => {

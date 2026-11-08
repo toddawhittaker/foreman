@@ -108,12 +108,12 @@ func TestParseRefuses(t *testing.T) {
 }
 
 func TestParseRefusesSize(t *testing.T) {
-	for _, size := range []int{0, -128, 100, 1300, MaxPicture + 64} {
+	for _, size := range []int{0, -128, 100, 1300, 3584, MaxPicture + 128} {
 		if _, err := Parse([]byte(`{"territories":[]}`), size); !errors.Is(err, ErrInvalid) {
 			t.Errorf("size %d: err %v, want ErrInvalid", size, err)
 		}
 	}
-	for _, size := range []int{64, 1024, 1280, MaxSize, 3584, MaxPicture} {
+	for _, size := range []int{64, 1024, 1280, MaxSize} {
 		if _, err := Parse([]byte(`{"territories":[]}`), size); err != nil {
 			t.Errorf("size %d: %v", size, err)
 		}
@@ -121,7 +121,7 @@ func TestParseRefusesSize(t *testing.T) {
 }
 
 // The territory sizes are offered only up to MaxSize, which must be a
-// preview size: 1024 to 4096 in steps of 128. It is 3072, the largest size
+// preview size: 1024 to 3072 in steps of 128. It is 3072, the largest size
 // measured with room to spare on 2.0 and 2.1: 750 MiB of 1 GiB and 27 s of
 // 60 at worst.
 func TestMaxSizeIsAPreviewSize(t *testing.T) {
@@ -137,6 +137,14 @@ func TestLabel(t *testing.T) {
 	for size, want := range map[string]string{Small: "Small", Medium: "Medium", Big: "Big", Unknown: "Unknown", "other": "Unknown"} {
 		if got := Label(i18n.English, size); got != want {
 			t.Errorf("Label(%q) = %q, want %q", size, got, want)
+		}
+	}
+}
+
+func TestShortLabel(t *testing.T) {
+	for size, want := range map[string]string{Small: "Sm.", Medium: "Med.", Big: "Big", Unknown: "?", "other": "?"} {
+		if got := ShortLabel(i18n.English, size); got != want {
+			t.Errorf("ShortLabel(%q) = %q, want %q", size, got, want)
 		}
 	}
 }

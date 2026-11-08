@@ -1,7 +1,7 @@
 import { test, expect, createAdmin, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 17.10: the common tasks, started on the Server page with the
@@ -123,6 +123,22 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByRole("button", { name: "Take snapshot" }).click();
     await expect(done(page)).toContainText('Foreman took the snapshot "Manual snapshot" of Base.', live);
     await expectWithin(clicks, 1, "snapshot");
+  });
+
+  // World page, Saves, then the older save's own Load next button (it was 4,
+  // with a radio list and its button).
+  test("choose an older save to load: 3 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    const saves = join(foreman.dataDir, "worlds", "base", "saves");
+    copyFileSync(join(saves, "base.zip"), join(saves, "older.zip"));
+    const old = new Date(Date.now() - 2 * 3_600_000);
+    utimesSync(join(saves, "older.zip"), old, old);
+    await page.getByRole("link", { name: "World page" }).click();
+    await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" }).click();
+    await page.getByRole("button", { name: "Load next: older.zip" }).click();
+    await expect(page.getByText("The server will load older.zip the next time it starts.")).toBeVisible();
+    expect(JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "world.json"), "utf8")).load_save).toBe("older.zip");
+    await expectWithin(clicks, 3, "choose an older save");
   });
 
   // The second world's game image is not on the host, so the switch downloads it.
@@ -413,5 +429,26 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     // The old mods are back.
     expect(existsSync(installed)).toBe(false);
     await expectWithin(clicks, 2, "undo a mod change");
+  });
+
+  // Choosing from the list takes a click in a browser; selectOption makes none,
+  // so the count here is 3, and the budget still covers the real 4.
+  test("change a mod's version: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const portal = fakePortal!;
+    await portal.add("fp-back", "1.0.0", ["base >= 2.0"]);
+    await portal.add("fp-back", "1.1.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-back": { factorio: "2.0", version: "1.1.0", deps: ["base >= 2.0"] } } });
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+
+    await page.getByRole("link", { name: "Mods", exact: true }).click();
+    await page.getByRole("link", { name: "Change version fp-back", exact: true }).click();
+    await page.getByLabel("Version of fp-back").selectOption("1.0.0");
+    await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
+    await page.getByRole("button", { name: "Change 1 mod" }).click();
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
+    await expect(badge(page)).toHaveText("Running", live);
+    expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-back_1.0.0.zip"))).toBe(true);
+    await expectWithin(clicks, 4, "change a mod's version");
   });
 });

@@ -87,7 +87,7 @@ func TestUndoAfterARunOfModChanges(t *testing.T) {
 		return g.get(modsPath(id) + ownResultQuery)
 	}
 	_, before := g.getStatus(kindPlanPath(id, mods.KindDisable, "alpha"))
-	wantIn(t, "plan before a run", plain(before), "Take a snapshot labelled")
+	wantIn(t, "plan before a run", plain(before), "Take a snapshot labeled")
 	tab := disable("alpha")
 	wantIn(t, "first change", text(tab), "Disabled alpha in Other.", `Foreman took the snapshot "Before mod change" first.`, "Undo this mod change")
 

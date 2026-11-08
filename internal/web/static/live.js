@@ -125,11 +125,27 @@
     const done = region?.querySelector("#done-message");
     if (!done) return;
     region.removeAttribute("data-focus-result");
+    // A screen reader reads the box once, on focus, so its times must already
+    // be local; time.js would only get to them after the swap settles.
+    window.foremanTimes?.run(done);
     done.focus();
   }
   focusDone();
   document.addEventListener("htmx:sseMessage", (e) => {
     if (e.target.hasAttribute("data-focus-result")) focusDone();
+  });
+
+  // The Mods tab's status takes Change version away from a mod the portal
+  // lacks. When that link had focus, focus goes to the mod's name in the
+  // same row instead of the top of the page.
+  document.addEventListener("htmx:oobBeforeSwap", (e) => {
+    const old = e.detail.target;
+    // Only a row's version slot (VersionSlot in mods.go); htmx keeps focus for other swaps.
+    if (!old.id.startsWith("mod-version-") || !old.contains(document.activeElement)) return;
+    const row = old.closest("tr");
+    setTimeout(() => {
+      if (row && document.activeElement === document.body) row.querySelector("span.mod-name[tabindex]")?.focus();
+    });
   });
 
   // The mods notice is a status region and loads again after each operation

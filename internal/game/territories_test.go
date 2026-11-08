@@ -170,7 +170,6 @@ func TestTerritoriesRefusesWhatHasNone(t *testing.T) {
 		"on 1.1":                 func(q *PreviewRequest) { q.GameVersion = "1.1.110" },
 		"on a line, not a patch": func(q *PreviewRequest) { q.GameVersion = "2.1" },
 		"above the most":         func(q *PreviewRequest) { q.Size = territory.MaxSize + PreviewSizeStep },
-		"at the preview's most":  func(q *PreviewRequest) { q.Size = PreviewSizeMax },
 		"off the steps":          func(q *PreviewRequest) { q.Size = 1100 },
 		"an unknown preset":      func(q *PreviewRequest) { q.Preset = "x; touch y" },
 		"settings not JSON":      func(q *PreviewRequest) { q.MapGenSettings = []byte(`{"a":`) },

@@ -568,25 +568,43 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 	if v := pageValues(t, hn.postLong(PathGenerateRefresh, changed, c).Body.String()); v.Get("mg.start") != "100" || v.Get("seed") != "8" {
 		t.Errorf("reset: starting area %q, seed %q; want 100 and 8", v.Get("mg.start"), v.Get("seed"))
 	}
+	// SPEC 5.6 (#318): Reset to defaults is for the whole world: another
+	// preset, changed, goes back to the version's default preset.
+	other := pagePresetValues(t, hn, c, "2.0.77", "death-world")
+	other.Set("mg.start", "300")
+	other.Set("seed", "8")
+	other.Set("reset", "1")
+	body = hn.postLong(PathGenerateRefresh, other, c).Body.String()
+	v := pageValues(t, body)
+	if v.Get("filled_from") != "default" || v.Get("mg.start") != "100" || v.Get("seed") != "8" || v.Get("mg.nauvis.enemy-base.size") != "100" ||
+		!strings.Contains(body, `<option value="default" selected>`) {
+		t.Errorf("reset to defaults: filled from %q, starting area %q, seed %q, enemy size %q", v.Get("filled_from"), v.Get("mg.start"), v.Get("seed"), v.Get("mg.nauvis.enemy-base.size"))
+	}
 }
 
-// "[modified]" and its reset show once any setting differs from the
-// preset, and never for the seed alone.
+// "[modified]" shows once any setting differs from the preset, and never
+// for the seed alone; Reset to defaults shows then, and for any preset but
+// the default (SPEC 5.6).
 func TestGenerateShowsModified(t *testing.T) {
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
 	hn.withActive("2.0.77")
-	form := pagePresetValues(t, hn, c, "2.0.77", "rail-world")
+	form := pagePresetValues(t, hn, c, "2.0.77", "default")
 	form.Set("seed", "12")
 	body := hn.postLong(PathGenerateRefresh, form, c).Body.String()
-	if strings.Contains(body, `id="preset-modified" data-word="[modified]">[modified]`) || !strings.Contains(body, `id="preset-reset" name="reset" value="1"`) || !strings.Contains(body, "hidden>Reset to preset default") {
-		t.Error("an unchanged preset shows [modified] or its reset")
+	if strings.Contains(body, `id="preset-modified" data-word="[modified]">[modified]`) || !strings.Contains(body, `id="preset-reset" name="reset" value="1"`) || !strings.Contains(body, "hidden>Reset to defaults") {
+		t.Error("the defaults show [modified] or the reset")
+	}
+	form = pagePresetValues(t, hn, c, "2.0.77", "rail-world")
+	body = hn.postLong(PathGenerateRefresh, form, c).Body.String()
+	if strings.Contains(body, `data-word="[modified]">[modified]</span>`) || strings.Contains(body, "hidden>Reset to defaults") {
+		t.Error("another preset, unchanged, shows [modified] or hides the reset")
 	}
 	for _, change := range [][2]string{{"mg.nauvis.iron-ore.size", "100"}, {"ms.pollution.ageing", "50"}, {"mg.width", "100"}, {"mg.raw", "{}"}} {
 		f := pagePresetValues(t, hn, c, "2.0.77", "rail-world")
 		f.Set(change[0], change[1])
 		body := hn.postLong(PathGenerateRefresh, f, c).Body.String()
-		if !strings.Contains(body, `data-word="[modified]">[modified]</span>`) || strings.Contains(body, "hidden>Reset to preset default") {
+		if !strings.Contains(body, `data-word="[modified]">[modified]</span>`) || strings.Contains(body, "hidden>Reset to defaults") {
 			t.Errorf("%s changed: no [modified] with its reset", change[0])
 		}
 	}

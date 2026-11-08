@@ -49,6 +49,9 @@ const (
 // presetSelectID is the id of Generate's preset select.
 const presetSelectID = "generate-preset"
 
+// defaultPreset is the game's own default, which Reset to defaults returns to.
+const defaultPreset = "default"
+
 // newSeed picks the seed for a blank seed field. Tests replace it.
 var newSeed = func() uint32 { return mrand.Uint32() } //nolint:gosec // a map seed is not a secret
 
@@ -164,6 +167,10 @@ func (GenerateForm) RefreshPath() string { return PathGenerateRefresh }
 // PresetMsg is a preset's name in the game's own words.
 func (GenerateForm) PresetMsg(name string) i18n.Msg { return PresetMsg(name) }
 
+// AtDefaults is true while the settings are the default preset's, so
+// there is nothing for Reset to defaults to do.
+func (f GenerateForm) AtDefaults() bool { return f.Preset == defaultPreset && !f.Modified }
+
 func (s *server) generateRoutes() {
 	s.mux.HandleFunc("GET "+PathGenerate, s.requireUser(s.handleGenerateForm))
 	s.handleUpload("POST "+PathGenerate, generateFormLimit, s.requireUser(s.handleGenerate))
@@ -218,7 +225,7 @@ func (s *server) handleGenerateForm(w http.ResponseWriter, r *http.Request, u st
 	spaceAge := lineHasSpaceAge(line)
 	f := GenerateForm{
 		Version: version, DefaultVersion: version, SpaceAge: spaceAge, Download: true,
-		Mode: modeSettings, Preset: "default", Line: line, Presets: mapgen.Presets(line),
+		Mode: modeSettings, Preset: defaultPreset, Line: line, Presets: mapgen.Presets(line),
 		MapKey: mapKey(line, spaceAge), Tab: tabResources,
 	}
 	f.fill(version, nil)
@@ -485,10 +492,14 @@ func (s *server) readGenerate(r *http.Request, kind readKind) (f GenerateForm, n
 	}
 	if !slices.Contains(f.Presets, f.Preset) {
 		if kind == kindRefresh || f.Preset == "" {
-			f.Preset = "default"
+			f.Preset = defaultPreset
 		} else {
 			f.PresetError = i18n.M("worlds.generate.error.preset")
 		}
+	}
+	// Reset to defaults is for the whole world: the version's default preset (SPEC 5.6).
+	if r.PostFormValue("reset") != "" && f.PresetError.IsZero() {
+		f.Preset = defaultPreset
 	}
 	// The version the map settings are laid out for: the world's, or the
 	// line's own when the version is not settled yet.
@@ -586,7 +597,7 @@ func (s *server) settingsWorld(f *GenerateForm, nw *world.NewWorld, mapGen []byt
 				return nil
 			}
 			nw.MapGenSettings, nw.MapSettings = mapGen, ms
-		case f.Preset == "default":
+		case f.Preset == defaultPreset:
 			// The game's own map settings are the default preset's.
 			nw.MapGenSettings = mapGen
 		default:
@@ -595,7 +606,7 @@ func (s *server) settingsWorld(f *GenerateForm, nw *world.NewWorld, mapGen []byt
 			f.PresetError = i18n.M("worlds.generate.error.untested_preset", "version", f.Version)
 			return nil
 		}
-	} else if f.Preset != "default" {
+	} else if f.Preset != defaultPreset {
 		nw.Preset = f.Preset
 	}
 	if n := f.MapGen.SeedNumber(); n != nil {

@@ -155,9 +155,9 @@ h1 {
 }
 
 h2 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 h3 {
@@ -168,6 +168,12 @@ h3 {
 
 /* An operation's heading is an h2 for the outline but sits inside its section, so it is set as an h3. */
 h2.op-heading {
+  font-size: var(--text-md);
+  line-height: 1.4;
+}
+
+/* Settings: the connected-players heading is an h2 for the outline but sits inside the admins fieldset, so it is set as an h3. */
+#connected-heading {
   font-size: var(--text-md);
   line-height: 1.4;
 }
@@ -526,6 +532,22 @@ form.panel,
 .panel > form {
   display: grid;
   gap: var(--space-4);
+}
+
+/* A section's title sits closer to its content than the content's own parts do (DESIGN 4). */
+.panel > h2,
+.panel > .section-head {
+  margin-block-end: calc(var(--space-2) - var(--space-3));
+}
+
+form.panel > h2 {
+  margin-block-end: calc(var(--space-2) - var(--space-4));
+}
+
+/* Sections after the first read as blocks: a rule above each, no card (DESIGN 4, 8.1). */
+main > .panel ~ .panel {
+  padding-block-start: var(--space-5);
+  border-block-start: var(--border-width) solid var(--color-line);
 }
 
 /* Single-column grids use minmax(0, 1fr), so a long word or a wide child
@@ -905,12 +927,6 @@ legend {
   block-size: 1.25rem;
   margin: 0;
   accent-color: var(--color-selected);
-}
-
-/* A box that cannot change now stays focusable, so its reason is heard. */
-.check input[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 /* 7.5 Server-state badge: the word plus a drawn shape, never colour alone. */
@@ -1417,6 +1433,34 @@ td > .hint {
 
   .snapshot-list .row-actions .button,
   .snapshot-list td > .button {
+    padding-inline: var(--space-3);
+  }
+}
+
+/* Saves tab (SPEC 7.11, DESIGN 8.3): a save's name, its "Loads next" badge
+   and its Load next button share a line when they fit, and wrap when not. */
+.save-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.save-name > a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+}
+
+/* On a phone the size and time take smaller text, as in the snapshot tables,
+   so the name column keeps room. */
+@container (max-width: 24rem) {
+  .save-list td:not(:first-child) {
+    font-size: var(--text-sm);
+  }
+
+  .save-list .button {
     padding-inline: var(--space-3);
   }
 }
@@ -2168,27 +2212,12 @@ form:has(#mode-exchange:checked) .achievements {
 
 /* The picture link names what it opens: the file without script, the large view with it. */
 .js-on .nojs-only,
-.js-only,
-.preview-planet {
+.js-only {
   display: none;
 }
 
 .js-on .js-only {
   display: inline;
-}
-
-.js-on .preview-planet {
-  display: grid;
-}
-
-/* Planet choice and downloads need no more width than their words. */
-.field.preview-planet {
-  justify-items: start;
-}
-
-.field.preview-planet select {
-  inline-size: auto;
-  max-inline-size: 100%;
 }
 
 /* Centred when the window's height caps it; the caption and download line up with its edge.
@@ -2299,7 +2328,7 @@ form:has(#mode-exchange:checked) .achievements {
 /* The picture keeps a usable height on a short screen (400% zoom, a phone on its side); the dialog scrolls instead. */
 .large-view[open] {
   display: grid;
-  grid-template-rows: auto minmax(16rem, 1fr) auto;
+  grid-template-rows: auto minmax(16rem, 1fr);
   gap: var(--space-3);
 }
 
@@ -2504,18 +2533,6 @@ form:has(#mode-exchange:checked) .achievements {
   fill: var(--color-pin-edge);
 }
 
-/* The planet choice and the territory box share a line when there is room. */
-.preview-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: var(--space-3) var(--space-5);
-}
-
-.preview-controls > * {
-  min-inline-size: 0;
-}
-
 /* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture
    pixels, so they scale and pan with it; the labels keep one size, like the pin. */
 .territories {
@@ -2545,10 +2562,12 @@ form:has(#mode-exchange:checked) .achievements {
   stroke-width: 2;
 }
 
-/* White on a dark ring reads on every part of the map, as the pin does. */
+/* White on a dark ring reads on every part of the map, as the pin does. A
+   label is pulled in by as much of its width as its spot is across the
+   picture, so one at an edge stays inside it. */
 .territories__label {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(calc(var(--x) * -1%), calc(var(--y) * -1%));
   color: var(--color-pin-face);
   font-size: var(--text-sm);
   font-weight: 700;
@@ -2609,6 +2628,101 @@ form:has(#mode-exchange:checked) .achievements {
   .wait progress {
     display: none;
   }
+}
+
+/* Generate's Undo reset takes Reset to defaults' place once it has run (DESIGN 8.6). */
+.preset-row:has(> #preset-undo:not([hidden])) > #preset-reset {
+  display: none;
+}
+
+/* Generate's tighter preview (DESIGN 8.8): the thumbnail's territory
+   labels, the territory counts and the large view's key line. */
+
+/* The thumbnail shows short labels in small plain type; the large view keeps the words. */
+.pictures .territories__long,
+.large-view .territories__short {
+  display: none;
+}
+
+/* 0.75rem: the type scale has nothing smaller than --text-sm, which crowds a small picture. */
+.pictures .territories__label {
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* The key help shares the planet's line, at its end, while it fits. */
+.large-view__head {
+  flex-wrap: wrap;
+}
+
+.large-view__head > .large-view__keys {
+  margin-inline-start: auto;
+}
+
+/* Generate's large view with the planet's settings beside the map (DESIGN
+   8.8). The settings column is 38rem, so its fields stay sliders (a
+   map-section of 34rem) after its padding and scroll bar; it shows once the
+   map beside it can be as wide again, 77rem in all. Narrower, map only. */
+.large-view {
+  container: large-view / inline-size;
+}
+
+.large-view__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-block-size: 0;
+}
+
+.large-view__settings {
+  display: none;
+}
+
+@container large-view (min-width: 77rem) {
+  .large-view__body:has(> .large-view__settings:not([hidden])) {
+    grid-template-columns: 38rem minmax(0, 1fr);
+  }
+
+  /* It scrolls on its own; the padding keeps focus rings inside it. */
+  .large-view__settings:not([hidden]) {
+    container: map-section / inline-size;
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    min-block-size: 0;
+    padding: var(--space-2);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+.large-view__settings > section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.large-view__settings > section[hidden] {
+  display: none;
+}
+
+/* The status line and the drawing line share the held line while they fit. */
+.large-view__news {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+}
+
+.large-view__drawing {
+  margin: 0;
+}
+
+/* While the next picture is drawn the shown one fades, as on the page. */
+.large-view__frame[aria-busy="true"] .large-view__map > img,
+.large-view__frame[aria-busy="true"] .territories {
+  opacity: 0.6;
 }
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */
@@ -2860,6 +2974,12 @@ a.mod-name {
   flex-wrap: nowrap;
   justify-content: flex-end;
   margin-block-start: 0;
+}
+
+/* Change version sits in the name's line, so it lines up with the name when
+   that line wraps; the line's gap already spaces it (SPEC 9.3). */
+.mod-line .mod-version {
+  padding-inline: 0;
 }
 
 /* Remove is the one red control: it is the change that destroys something. */

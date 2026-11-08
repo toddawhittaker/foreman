@@ -23,7 +23,7 @@
 <div class="message message--success" id="world-result" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
   {{- with .Undo}}
-  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a></div>
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -31,7 +31,7 @@
 <div id="world-result" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
   {{template "server-failure" .}}
   {{- with $.Page.Undo}}
-  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a></div>
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msgHTML .Label}}</a></div>
   {{- end}}
 </div>
 {{- end}}
@@ -89,7 +89,11 @@
             {{- end}}
             <code>{{.Version}}</code>
             {{- if not .Enabled}}<span class="badge">{{t "mods.state.off"}}</span>{{end}}
-            {{- if .Local}}<span class="badge">{{t "mods.badge.local"}}</span>{{end}}
+            {{- if .Local}}<span class="badge">{{t "mods.badge.local"}}</span>
+            {{- else}}
+            {{- /* Beside the version it changes, so the actions keep their 320 px line. Any release on the world's line, older too, so it also goes back after a bad update (SPEC 9.3). The status takes it away for a mod the portal lacks. */}}
+            <a href="{{$.Page.VersionPath .}}" id="{{$.Page.VersionSlot .Name}}" class="button button--quiet mod-version">{{t "mods.row.version"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            {{- end}}
           </div>
           {{- if not .Local}}<div id="{{$.Page.NoteSlot .Name}}" hidden></div>{{end}}
         </td>
@@ -257,7 +261,8 @@
 </div>
 {{- end}}
 {{- if .NotOnPortal}}
-<span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" hx-swap-oob="true">{{.Name}}</span>
+<span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="{{$.NoteSlot .Name}}" hx-swap-oob="true">{{.Name}}</span>
+<span id="{{$.VersionSlot .Name}}" hidden hx-swap-oob="true"></span>
 {{- end}}
 {{- end}}
 {{- end}}
