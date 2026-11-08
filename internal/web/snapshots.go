@@ -76,6 +76,9 @@ type RestorePage struct {
 	// Active is true when the world is the active one, whose restore shows
 	// its result on the Server page (SPEC 17.7).
 	Active bool
+	// ModUndo says what restoring a "Before mod change" snapshot does to
+	// the world's mods; nil for any other restore (SPEC 9.4, 17.5).
+	ModUndo []i18n.Msg
 	CountdownForm
 }
 
@@ -313,6 +316,9 @@ func (s *server) restoreTarget(w http.ResponseWriter, r *http.Request, u store.U
 	}
 	p := RestorePage{WorldID: id, WorldName: name, Snapshot: snap, Deleted: !found, CountdownForm: defaultCountdown()}
 	p.Active = found && sum.Active
+	if found {
+		p.ModUndo = s.modUndo(id, snap)
+	}
 	if found && s.game != nil {
 		switch s.game.Status(id).State {
 		case game.StateRunning, game.StateStarting, game.StateStopping, game.StateCrashed:

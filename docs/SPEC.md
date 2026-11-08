@@ -1275,7 +1275,14 @@ the world untouched. The change is also checked against the mods folder
 after the downloads and before the stop, so a change the folder would
 refuse costs no downtime. A stopped world skips the stop and the start. A
 world that is not active is changed the same way and reports on its own
-Mods tab, with "Undo this mod change". The audit log records the operation
+Mods tab, with "Undo this mod change". After a later change of a run on a
+stopped world (9.4) the undo reads "Undo the mod changes since" the run's
+snapshot time, and the result says no new snapshot was taken. Undo opens the
+restore confirmation (6.5), which for a "Before mod change" snapshot is
+headed "Undo the mod changes in" the world and first lists, from both mods
+folders, the mods undo removes, puts back, returns to an earlier version or
+turns back on or off; when a folder cannot be read it is the usual restore
+page. The audit log records the operation
 as `mods`. A change is refused before anything is touched when the game
 cannot be stopped (paused, not ready, or RCON unreachable) or the mods
 folder no longer matches the plan. (P0)
