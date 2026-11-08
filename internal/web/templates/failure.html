@@ -9,9 +9,12 @@
     {{- end}}
   </ul>
   {{- end}}
+  {{- with .Sync}}
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-sync-mods">{{msg .Label}}</a></div>
+  {{- end}}
   {{- if .Undo}}
-  <p>{{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
-  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
+  <p>{{t "server.failure.undo_text" "label" .UndoName}}</p>
+  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button" "label" .UndoName}}</a></div>
   {{- end}}
   {{- with .Anyway}}
   {{- if not .Advice.IsZero}}

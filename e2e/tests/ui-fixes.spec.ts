@@ -436,7 +436,7 @@ test.describe("world pages", () => {
     test(`${path} shows the world's tabs with ${current} marked`, async ({ page }) => {
       await page.goto(path);
       const tabs = page.getByRole("navigation", { name: "World pages" });
-      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Settings"]);
+      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Mods", "Settings"]);
       await expect(tabs.getByRole("link", { name: current })).toHaveAttribute("aria-current", "true");
       await expect(tabs.locator("[aria-current=page]")).toHaveCount(0);
       await checkPage(page);
@@ -444,7 +444,7 @@ test.describe("world pages", () => {
   }
 
   // The badge on Overview is on every tab of the active world, and only there.
-  for (const sub of ["", "/saves", "/snapshots", "/settings"]) {
+  for (const sub of ["", "/saves", "/snapshots", "/mods", "/settings"]) {
     test(`the Active badge shows on the active world's ${sub || "/"} tab`, async ({ page }) => {
       await page.goto(`/worlds/base${sub}`);
       await expect(page.locator("h1 .badge--active")).toHaveText("Active");

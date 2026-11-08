@@ -1,0 +1,67 @@
+{{define "title"}}{{if .Page.Query}}{{t "mods.search.title" "query" .Page.Query "world" .Page.World.Name}}{{else}}{{t "mods.search.title_empty" "world" .Page.World.Name}}{{end}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{if .Query}}{{t "mods.search.results_heading" "query" .Query}}{{else}}{{t "mods.search.heading"}}{{end}}</h1>
+{{template "world-tabs" .Tabs}}
+{{template "summary" .Problems}}
+{{- if .NoAccount}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "mods.no_account"}} <a href="{{.AccountPath}}" id="act-account">{{t "mods.no_account.link"}}</a></p>
+</div>
+{{- end}}
+<form method="get" action="{{.Path}}" role="search" class="panel">
+  <div class="field">
+    <label for="mod-search">{{t "mods.search.label"}}</label>
+    <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
+    <div class="inline-row">
+      <input id="mod-search" name="q" type="search" value="{{.Query}}" autocomplete="off" spellcheck="false" maxlength="100"
+        {{- if not .QueryError.IsZero}} aria-invalid="true" aria-describedby="mod-search-hint mod-search-error"{{else}} aria-describedby="mod-search-hint"{{end}}>
+      <button type="submit" class="button">{{t "mods.search.button"}}</button>
+    </div>
+    {{- if not .QueryError.IsZero}}
+    <p class="error" id="mod-search-error"><strong>{{t "common.error.label"}}</strong> {{msg .QueryError}}</p>
+    {{- end}}
+  </div>
+</form>
+{{- if .Unreachable}}
+<div class="message message--error">
+  <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
+</div>
+{{- else if .Query}}
+<section class="panel" aria-labelledby="results-heading">
+  <h2 id="results-heading">{{t "mods.search.count" "count" (len .Hits) "line" .Line}}</h2>
+  {{- if .Hits}}
+  <ul class="mod-results" role="list">
+    {{- range .Hits}}
+    <li>
+      <h3>{{if .Title}}{{.Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}</h3>
+      {{- if and .Title (ne .Title .Name)}}
+      <p class="hint"><code translate="no">{{.Name}}</code></p>
+      {{- end}}
+      {{- with .Summary}}
+      <p class="mod-summary">{{.}}</p>
+      {{- end}}
+      <dl class="facts facts--inline">
+        <div><dt>{{t "mods.fact.latest"}}</dt><dd><code>{{.LatestVersion}}</code></dd></div>
+        <div><dt>{{t "mods.fact.game_version"}}</dt><dd><code>{{.FactorioVersion}}</code></dd></div>
+        <div><dt>{{t "mods.fact.downloads"}}</dt><dd>{{num .Downloads}}</dd></div>
+      </dl>
+      <div class="actions">
+        {{- if index $.Page.Installed .Name}}
+        <span class="badge">{{t "mods.badge.installed"}}</span>
+        {{- else}}
+        <a href="{{$.Page.AddPath .Name}}" class="button">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+        {{- end}}
+        {{template "portal-link" .Name}}
+      </div>
+    </li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
+  {{- end}}
+</section>
+{{- end}}
+{{end}}
+{{- end}}

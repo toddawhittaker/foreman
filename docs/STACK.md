@@ -185,7 +185,7 @@ saved.
 - **Stored portal credentials (SPEC 9.11)**: AES-GCM from the standard
   library, with the key derived through HKDF from `FOREMAN_SECRET_KEY`.
   Each stored value starts with a version byte so the format can change.
-  Hard to undo.
+  Hard to undo (ADR 0013).
 - **Logging secrets (SPEC 14.8, 15.1)**: logs use `log/slog` in JSON.
   Secrets are held in a `Secret` type that always logs as "[redacted]".
 
@@ -225,7 +225,12 @@ Cheap to change.
   these, ordinary tests and the end-to-end tests need no game. The fake
   game is built by `make e2e` and is never in the image. It is not the real
   Docker: its restart delay is capped at 3 seconds (Docker backs off to a
-  minute) and the `on-failure` restart policy is not modelled.
+  minute) and the `on-failure` restart policy is not modelled. The mod
+  portal is faked the same way: `internal/modportal/modportaltest` serves
+  recorded replies in Go tests, and `cmd/fakeportal`, built by `make e2e`,
+  is an HTTPS proxy with its own test certificate authority that the
+  browser tests reach through `HTTPS_PROXY` and `SSL_CERT_FILE`, so the
+  product has no portal setting (ADR 0012).
 - **Real game**: Go integration tests behind the `game` build tag run
   against a real `factoriotools/factorio` container (`make test-game`),
   and a Playwright scenario runs against the real 2.1 image (`make

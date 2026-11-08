@@ -21,7 +21,9 @@ import (
 	"github.com/toddawhittaker/foreman/internal/config"
 	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/web"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -119,7 +121,11 @@ func serve(cfg *config.Config) error {
 	monitoring.Go(func() { games.Run(monitorCtx) })
 	defer func() { stopMonitor(); monitoring.Wait() }()
 
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, HostDataDir: hostDir, Log: slog.Default()})
+	portalAccount, err := factorioaccount.New(factorioaccount.Account{Username: cfg.FactorioUsername, Token: cfg.FactorioToken}, cfg.SecretKey, st)
+	if err != nil {
+		return err
+	}
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}

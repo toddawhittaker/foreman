@@ -28,7 +28,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
 	test-game e2e-game vuln ci tidy i18n-hash deploy
 
 verify: check-go fmt-check vet lint test typecheck
@@ -88,6 +88,10 @@ build:
 build-fakegame:
 	CGO_ENABLED=0 go build -trimpath -o bin/fakegame ./cmd/fakegame
 
+# The fake mod portal for the end-to-end tests, likewise never in the image.
+build-fakeportal:
+	CGO_ENABLED=0 go build -trimpath -o bin/fakeportal ./cmd/fakeportal
+
 image:
 	docker build --build-arg GO_IMAGE=$(GO_IMAGE) -t $(IMAGE) .
 
@@ -102,7 +106,7 @@ SHARD ?=
 # E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
 E2E_ARGS ?=
 
-e2e: build build-fakegame e2e-deps
+e2e: build build-fakegame build-fakeportal e2e-deps
 	$(DOCKER_RUN) --ipc=host -e CI -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install playwright test $(if $(SHARD),--shard=$(SHARD)) $(E2E_ARGS)
 
 # Foreman runs a world on the plain tag factoriotools/factorio:<version>, so

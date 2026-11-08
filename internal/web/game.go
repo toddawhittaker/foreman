@@ -301,6 +301,7 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
 	}
 	p.Others = s.runs.others(sum.ID)
+	p.ModsNotice = s.planner != nil
 	s.switchNames(&p)
 	if p.HaveResult && p.Result.Err == nil && p.Result.Action == game.AuditUpdate {
 		p.Rollback = s.rollbackOffer(sum.ID)

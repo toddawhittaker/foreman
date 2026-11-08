@@ -403,7 +403,9 @@ instead of a box.
   22.2), in a `fieldset` whose legend is "Language" (plus "(Language)" in
   English off English), each button marked with its `lang`, the current
   one with `aria-current="true"` and a 3 px `selected` mark at its start;
-  then Sign out, still a `POST` form with a button, never a link, so a
+  then a "factorio.com account" link to `/settings/factorio-account`
+(`aria-current="page"` there, and a divider line above it), the only
+account link Foreman has, then Sign out, still a `POST` form with a button, never a link, so a
   crawler or prefetch cannot sign anyone out. Each item is a 44 px
   target. It opens and closes with Enter or Space and works without
   script; `menu.js` also closes it on Escape (focus returns to the
@@ -422,7 +424,7 @@ instead of a box.
   and lines.
 - **Sub-navigation.** The tabs' look, under the page's `h1`, with a 1 px
   `line` under the row: the Server view has Overview and Console; a world
-  has Overview, Saves, Snapshots and Settings. Each is a `nav` with its
+  has Overview, Saves, Snapshots, Mods and Settings. Each is a `nav` with its
   own name ("Server pages", "World pages") holding a list of links; the
   current page's link has `aria-current="page"`. On a container under
   30rem the tabs share the row out between them; in long languages they
@@ -1629,6 +1631,143 @@ message naming the snapshot, linked. When a restart is needed the
 message ends with a "Restart server" link to the restart form (7.4), so
 the next step is a control.
 
+### 8.11 Mods (SPEC 9)
+
+Every world has a Mods tab (6), `GET /worlds/{id}/mods`, between Snapshots and Settings.
+The Server page has a Mods link beside "World page" and "Settings" for the
+active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
+confirmation step) and 7.6 (the result), and use no new component but the
+small ones below. All counts use plural messages (SPEC 22).
+
+**Mod names** are wrapped in `span.ident` (`translate="no"`,
+`hyphens: manual; overflow-wrap: anywhere`) in tables, plan text,
+conflicts, notices, headings and button labels, so a name such as
+`visible-planets` never hyphenates or loses the space before it. Inside a
+`.button` the name breaks only when it does not fit, and `.button .ident`
+is `display: contents`. Mod badges are `white-space: nowrap`.
+
+**Portal links.** Search results, the plan's asked-for rows and installed
+mods carry a quiet link, "Mod portal", to
+`https://mods.factorio.com/mod/<name>` with `target="_blank"` and
+`rel="noopener noreferrer"`. Its hidden text finishes the name: "for
+visible-planets, opens in a new tab". Built-in and folder mods have none;
+the portal status removes the link of any mod the portal does not have.
+
+**The Mods tab.** One `h1`, the world's name with the Active badge, then
+sections in this order, each a `section.panel`:
+
+- A Note when Foreman has no factorio.com account: "Mod downloads are off
+  ... Searching still works", with a link to the account page that comes
+  back to this tab.
+- "Find a mod": one `role="search"` form, a field and Search.
+- "Installed mods". A status block (`role="status"`, so a late answer is
+  announced) loads after the page ("Checking the mod portal for updates…"),
+  then shows how many mods have an update with "Update all" (primary), each
+  flag of the availability check as a Warning or Error (7.3) with its fix
+  button, or "All N mods from the mod portal are up to date". If the portal
+  cannot be reached it says so with "Check again". Then one line for the
+  built-in mods ("Built in, version 2.0.77: base, elevated-rails, quality,
+  space-age. They follow Space Age." and a "Change Space Age" link to the
+  Settings tab; without Space Age, no last sentence), then a table (8.3)
+  of the other mods: mod, state (a word, "Enabled" or "Disabled"), and the
+  actions Update to X (appears when the status finds one), Enable or
+  Disable, and Remove. Each action's hidden text names its mod. A folder
+  mod shows a "Local folder" badge and no actions. Built-in mods are never in the table.
+  The table uses the reading width (`--measure`), the same as the notices.
+- "Match mods to the save": a sentence naming the save and a secondary
+  button to the sync plan; a world with no save says so and links to
+  upload one.
+- "Upload a mod": a file field with the size limit in its hint, and an
+  upload button that goes to the plan page.
+- "Mod settings": the help first, saying where the Factorio client keeps
+  `mod-settings.dat` (Windows, macOS and Linux paths in `code`) and, for a
+  running world, that Foreman restarts it; then the download link, then a
+  replace form with the 7.4 "This will" list beside the button.
+
+A change to a world that is not active reports on its own Mods tab: a
+steps list (7.6) while it runs, then a Done message with "Undo this mod
+change", which goes to the restore confirmation (7.4).
+
+**Search** (`/worlds/{id}/mods/search?q=`). The heading is the query. Each
+result is an `h3` with the mod's title, its summary, a `dl` of latest
+version, game version and downloads, the portal link, and one "Add to
+plan" button (secondary, hidden text names the mod). "Installed" and "In
+plan" are badges in its place. Search works without an account.
+
+**The plan page** (`/worlds/{id}/mods/plan`) is a 7.4 confirmation. The
+`h1` is a question naming the world and the mod: "Install visible-planets
+in Family base 2025?", "Install mods in Family base 2025?" for several. The
+plan lives in the address and the form (`name=` repeated, `q=` for the
+search the person came from), never on the server. In order:
+
+- At most one of these at the top, each taking focus on a full page load
+  and not on a redraw: a Warning "The plan changed since you saw it ...",
+  an Error when the portal cannot be reached, an Error listing conflicts
+  with every code worded (a conflict has no apply button).
+- A Note when the plan downloads and Foreman has no account, with the link.
+- "Mods you asked for", each row with its portal link and, when there are
+  two or more, "Remove from plan"; then "What they need".
+- "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
+  the plan with htmx; a "Recalculate the plan" button does it without script.
+- For each unresolved mod a `fieldset` with its legend ("The mod portal
+  does not have X 1.2.3"), radios for upload, nearest and continue without,
+  and the zip field with its own Upload zip button tied to an empty form so
+  choosing a file never redraws. "Nearest" has its hint beside it only when
+  offered. Continue without shows its own required box.
+- "This will:" the ordered steps: download (count, with the checksum
+  sentence), warn the players and stop (only while the game runs, with the
+  countdown field), the snapshot labelled "Before mod change", then the
+  changes grouped Install, Upgrade, Downgrade, Enable, Disable, Remove and
+  Leave alone, each item with its reason in brackets ("visible-planets
+  needs it"), start the server again, and the undo line.
+- A Warning and a required box when the change turns off or removes a mod
+  the loading save uses: the game deletes what it built. Unticked, the
+  field error and the error summary (7.2) say so.
+- The confirm button repeats the verb and the count ("Install 2 mods",
+  "Update 1 mod"). It is primary for install, update, enable and sync on a
+  stopped world, and danger (7.1) for any change on a running world, any
+  that disables or removes a mod or drops save content, and "continue
+  without". Cancel is a link.
+- "Add another mod": its own `role="search"` form, filled with the search
+  the person came from and carrying `add=1`, which keeps focus on the
+  heading after a page load. Results say "Add to plan", "In plan" (the
+  badge takes the button's id) or "Installed". Adding or removing redraws
+  the plan in place; `#announcer` says "Added visible-planets. The plan has
+  2 mods." and focus stays on the badge, or goes to the "Mods you asked
+  for" label after a removal. Without script every add and remove link is
+  the plan's own URL.
+
+A redraw never moves focus, always answers 200 so htmx swaps it in, and
+says the new plan in one sentence through `#announcer`; a conflict is
+announced, not focused. Control ids follow the mod's name
+(`mod-<name>-optional`, `-upload`, `-nearest`, `-without`, `-confirm`,
+`-zip`) so focus survives a redraw. A refused zip is in the error summary,
+which takes focus and links to the field, and its form carries every
+answer on the page so none is lost. Each `.check` label wraps its words in
+one `span`, so a name never becomes its own column at 320 px.
+
+**The Server page notice.** Next to the status facts, where the game
+network warning sits, a `role="status"` block loads after the page and
+takes no room when empty. With one flagged mod: "visible-planets 1.5.5 is
+gone from the mod portal, so players cannot join." and, on a line of its
+own with a full-size target, "Update visible-planets" (or "Remove
+visible-planets" when the portal has no release to update to). With
+several: "Review N mods". It links straight to the plan, so fixing it is
+two clicks (SPEC 17.10).
+
+**The account page** (`/settings/factorio-account`) is one page of
+`section.panel`s: "Set by environment" naming the two variables, with no
+form, or, with a secret key, the form (username, and a token as a password
+field with `autocomplete="off"`, its hint linking to the factorio.com
+profile page in a new tab), or, with a stored account, "Stored on
+`<date>` by `<user>`", a Replace form and a Remove button. Nothing it
+holds is ever put in a value attribute: after a refused form both fields
+are empty and the page asks for both again. With no secret key and no
+environment account the page is a note and a Go back link, with no
+disabled form. A `return` parameter, checked as in SPEC 14.17, sends the
+browser back to the page that asked after a save, and Cancel goes there
+too.
+
 ## 9. Writing
 
 - Plain words, sentence case, no exclamation marks, no "Oops".
@@ -1687,7 +1826,6 @@ screen does, in this document first.
 - Charts for CPU and memory. Numbers in the status `dl` are enough for
   SPEC 7.2.
 - Pagination. See 8.4.
-- Mod search results, dependency plans and the mod list (Epic 8).
 - The world-switch progress screen beyond the step list in 7.6 (Epic 4).
 - Chat (Epic 9).
 - A print stylesheet.

@@ -1,0 +1,219 @@
+{{define "title"}}{{t "mods.title" "world" .Page.World.Name}}{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "world-tabs" .Tabs}}
+{{template "summary" .Problems}}
+{{- if or .World.Newer .World.Unreadable}}
+<p>{{t "mods.error.unreadable"}}</p>
+{{- else}}
+{{- /* While a mod change of this world runs, this block reloads until it ends, as on the world page (DESIGN 7.6). */}}
+<div id="world-activity"{{if .Working}} hx-get="{{.Path}}" hx-trigger="every 2s" hx-select="#world-activity" hx-swap="outerHTML"{{end}}>
+{{- if not .Busy.IsZero}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
+  {{- if .ServerLink}}
+  <div class="actions"><a href="{{serverPath}}" id="world-server-link">{{t "worlds.world.server_link"}}</a></div>
+  {{- end}}
+</div>
+{{- end}}
+{{- if not .Done.IsZero}}
+<div class="message message--success" id="world-result" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+  {{- with .Undo}}
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a></div>
+  {{- end}}
+</div>
+{{- end}}
+{{- with .Failure}}
+<div id="world-result" tabindex="-1"{{if not $.Page.Problems}} autofocus{{end}}>
+  {{template "server-failure" .}}
+  {{- with $.Page.Undo}}
+  <div class="actions"><a href="{{.Path}}" class="button" id="act-undo">{{msg .Label}}</a></div>
+  {{- end}}
+</div>
+{{- end}}
+</div>
+{{- if .NoAccount}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "mods.no_account"}} <a href="{{.AccountPath}}" id="act-account">{{t "mods.no_account.link"}}</a></p>
+</div>
+{{- end}}
+
+<section class="panel" aria-labelledby="search-heading">
+  <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
+  <form method="get" action="{{.SearchPath}}" role="search">
+    <div class="field">
+      <label for="mod-search">{{t "mods.search.label"}}</label>
+      <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
+      <div class="inline-row">
+        <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="100" aria-describedby="mod-search-hint">
+        <button type="submit" class="button">{{t "mods.search.button"}}</button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<section class="panel" aria-labelledby="installed-heading">
+  <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
+  {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (SPEC 9.3). */}}
+  <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
+    <p class="empty">{{t "mods.status.loading"}}</p>
+  </div>
+  {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
+  {{- with .BuiltIns}}
+  <p id="mods-built-in" class="mods-built-in">{{if $.Page.HasSpaceAge}}{{tHTML "mods.built_in.line_space_age" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.change"}}</a>{{else}}{{tHTML "mods.built_in.line" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}}{{end}}</p>
+  {{- end}}
+  {{- with .Rows}}
+  <table role="table" class="mod-list">
+    <caption>{{t "mods.installed.caption" "world" $.Page.World.Name "count" (len .)}} {{t "mods.installed.enabled" "count" $.Page.Enabled}}</caption>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.col.state"}}</th><th scope="col" role="columnheader">{{t "mods.col.actions"}}</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+      {{- range .}}
+      <tr role="row">
+        <td role="cell"><span class="mod-name ident" translate="no">{{.Name}}</span> <code class="nowrap">{{.Version}}</code>
+          {{- if .Local}} <span class="badge">{{t "mods.badge.local"}}</span>{{end}}
+          {{- /* The portal status takes the link away for a mod the portal does not have. */}}
+          {{- if not .Local}} <span id="{{$.Page.PortalSlot .Name}}">{{template "portal-link" .Name}}</span>{{end}}</td>
+        <td role="cell" data-label="{{t "mods.col.state"}}">{{if .Enabled}}{{t "mods.state.on"}}{{else}}{{t "mods.state.off"}}{{end}}</td>
+        <td role="cell" data-label="{{t "mods.col.actions"}}">
+          <div class="row-actions">
+            {{- if not .Local}}<span id="{{$.Page.UpdateSlot .Name}}" hidden></span>{{end}}
+            {{- if .Enabled}}
+            <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            {{- else}}
+            <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            {{- end}}
+            {{- if not .Local}}
+            <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            {{- end}}
+          </div>
+        </td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+  {{- else}}
+  <p class="empty">{{t "mods.installed.none"}}</p>
+  {{- end}}
+</section>
+
+<section class="panel" aria-labelledby="sync-heading">
+  <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
+  {{- if .LoadSave}}
+  <p>{{tHTML "mods.sync.text" "save" (code .LoadSave)}}</p>
+  <div class="actions"><a href="{{.SyncPath}}" class="button" id="act-sync">{{t "mods.sync.button"}}</a></div>
+  {{- else}}
+  <p class="empty">{{t "mods.sync.no_save"}}</p>
+  <div class="actions"><a href="{{.SavesPath}}">{{t "mods.sync.upload_save"}}</a></div>
+  {{- end}}
+</section>
+
+<section class="panel" aria-labelledby="upload-heading">
+  <h2 id="upload-heading">{{t "mods.upload.heading"}}</h2>
+  <form method="post" action="{{.UploadPath}}" enctype="multipart/form-data" novalidate>
+    {{template "required-note"}}
+    <div class="field">
+      <label for="mod-file" class="required">{{t "mods.upload.label"}}</label>
+      <p class="hint" id="mod-file-hint">{{t "mods.upload.hint" "limit" .UploadLimit}}</p>
+      <input id="mod-file" name="mod" type="file" accept=".zip,application/zip" required
+        aria-describedby="mod-file-hint{{if not .UploadError.IsZero}} mod-file-error{{end}}"
+        {{- if not .UploadError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .UploadError.IsZero}}
+      <p class="error" id="mod-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .UploadError}}</p>
+      {{- end}}
+    </div>
+    <div class="actions">
+      <button type="submit" class="button">{{t "mods.upload.button"}}</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel" aria-labelledby="settings-heading">
+  <h2 id="settings-heading">{{t "mods.settings.heading"}}</h2>
+  <p>{{tHTML "mods.settings.text" "file" (code .SettingsFile)}}</p>
+  {{- if .HasSettings}}
+  <div class="actions"><a href="{{.SettingsPath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a></div>
+  {{- else}}
+  <p class="empty">{{tHTML "mods.settings.none" "file" (code .SettingsFile)}}</p>
+  {{- end}}
+  {{- /* The form says what will happen, so it is the confirmation (DESIGN 7.4). */}}
+  <form method="post" action="{{.SettingsPath}}" enctype="multipart/form-data" class="confirm" novalidate>
+    <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+    {{- /* Where the file is, then the field, then what the upload will do beside its button. */}}
+    <p id="settings-file-help">{{tHTML "mods.settings.where" "windows" (code `%APPDATA%\Factorio\mods`) "macos" (code "~/Library/Application Support/factorio/mods") "linux" (code "~/.factorio/mods")}} {{if .Running}}{{t "mods.settings.apply_running"}}{{else}}{{t "mods.settings.apply"}}{{end}}</p>
+    {{template "required-note"}}
+    <div class="field">
+      <label for="settings-file" class="required">{{tHTML "mods.settings.label" "file" (code .SettingsFile)}}</label>
+      <p class="hint" id="settings-file-hint">{{t "mods.settings.hint" "limit" .SettingsLimit}}</p>
+      <input id="settings-file" name="settings" type="file" accept=".dat" required
+        aria-describedby="settings-file-help settings-file-hint{{if not .SettingsError.IsZero}} settings-file-error{{end}}"
+        {{- if not .SettingsError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .SettingsError.IsZero}}
+      <p class="error" id="settings-file-error"><strong>{{t "common.error.label"}}</strong> {{msg .SettingsError}}</p>
+      {{- end}}
+    </div>
+    {{- if .Running}}
+    {{template "countdown" .CountdownForm}}
+    {{- end}}
+    <p>{{t "common.confirm.will"}}</p>
+    <ul>
+      {{- if .Running}}
+      <li>{{t "mods.plan.warn_stop"}}</li>
+      {{- end}}
+      <li>{{t "mods.plan.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_mods")}}</li>
+      <li>{{tHTML "mods.settings.replace" "file" (code .SettingsFile)}}</li>
+      {{- if .Running}}
+      <li>{{t "mods.plan.start"}}</li>
+      {{- end}}
+      <li>{{t "mods.plan.undo"}}</li>
+    </ul>
+    <div class="actions">
+      <button type="submit" class="button">{{t "mods.settings.button"}}</button>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{end}}
+{{- end}}
+
+{{/* What the portal says about the world's mods: updates (SPEC 9.3) and
+     mods players cannot get, each with its fix (#131). Takes ModStatus. */}}
+{{define "mod-status" -}}
+{{- if .Unreachable}}
+<div class="message message--warning">
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.status.unreachable"}}</p>
+  <div class="actions"><a href="{{.Path}}" class="button">{{t "mods.status.retry"}}</a></div>
+</div>
+{{- else}}
+{{- range .Flags}}
+<div class="message {{$.FlagClass .}}">
+  <p><strong>{{msg ($.FlagWord .)}}</strong> {{msgHTML ($.FlagText .)}}</p>
+  <div class="actions">
+    {{- if and (eq .Code "version-gone") .Update}}
+    <a href="{{$.UpdatePath .Name}}" class="button">{{tHTML "mods.flag.fix_update" "mod" (ident .Name) "version" .Update}}</a>
+    {{- else}}
+    <a href="{{$.RemovePath .Name}}" class="button">{{tHTML "mods.flag.fix_remove" "mod" (ident .Name)}}</a>
+    {{- end}}
+  </div>
+</div>
+{{- if eq .Code "not-on-portal"}}
+<span id="{{$.PortalSlot .Name}}" hx-swap-oob="delete"></span>
+{{- end}}
+{{- end}}
+{{- if .Updates}}
+<p>{{t "mods.status.updates" "count" (len .Updates)}}</p>
+<div class="actions"><a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a></div>
+{{- /* Each row's Update button goes into its place in the table. */}}
+{{- range .Updates}}
+<span id="{{$.UpdateSlot .Name}}" hx-swap-oob="true"><a href="{{$.UpdatePath .Name}}" class="button">{{t "mods.row.update" "version" .To}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a></span>
+{{- end}}
+{{- else if .Checked}}
+<p>{{t "mods.status.current" "count" .Checked}}</p>
+{{- end}}
+{{- end}}
+{{- end}}

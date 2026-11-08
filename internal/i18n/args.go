@@ -37,3 +37,29 @@ func (l Locale) Codes(items []string) Fragment {
 	}
 	return Fragment{strings.Join(parts, template.HTMLEscapeString(sep)), strings.Join(items, sep)}
 }
+
+// Ident is a name a program reads, such as a mod's: it never breaks with a
+// hyphen, and a page translator leaves it as it is.
+func Ident(s string) Fragment {
+	return Fragment{`<span class="ident" translate="no">` + template.HTMLEscapeString(s) + `</span>`, s}
+}
+
+// Idents is a run of Idents, joined by the language's list separator.
+func (l Locale) Idents(items []string) Fragment {
+	sep := l.T("common.list.sep")
+	parts := make([]string, len(items))
+	for i, it := range items {
+		parts[i] = Ident(it).html
+	}
+	return Fragment{strings.Join(parts, template.HTMLEscapeString(sep)), strings.Join(items, sep)}
+}
+
+// ExternalLink is a link to an address on another site, such as
+// factorio.com, whose text is linkKey's translation. It opens in a new tab
+// and says so to a screen reader. Callers pass fixed https addresses.
+func (l Locale) ExternalLink(href, linkKey string) Fragment {
+	esc := template.HTMLEscapeString
+	text := l.T(linkKey)
+	return Fragment{`<a href="` + esc(href) + `" target="_blank" rel="noopener noreferrer">` + esc(text) +
+		`<span class="visually-hidden"> ` + esc(l.T("common.link.new_tab")) + `</span></a>`, text}
+}

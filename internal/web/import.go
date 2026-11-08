@@ -595,6 +595,14 @@ func (s *server) importFacts(p *WorldPage, r *http.Request) {
 	q := r.URL.Query()
 	if q.Get(importedQuery) != "" {
 		p.Done = i18n.M("worlds.world.imported", "name", p.World.Name)
+		// The save may need mods the folder did not bring (SPEC 9.8, 17.9).
+		if s.planner != nil && s.game != nil {
+			if check, err := s.worlds.PreStartCheck(p.World.ID); err == nil {
+				if o := syncOffer(check, p.World.ID); o != nil {
+					p.ImportSync = o.Path
+				}
+			}
+		}
 		if q.Get(uncheckedQuery) != "" {
 			p.Warning = i18n.M("worlds.world.unchecked", "version", p.World.GameVersion)
 		}

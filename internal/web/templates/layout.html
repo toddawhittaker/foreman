@@ -55,6 +55,7 @@
         {{- end}}
       </form>
       {{- if .User}}
+      <a href="{{accountPath}}" class="menu__item"{{if .Current accountPath}} aria-current="page"{{end}}>{{t "account.title"}}</a>
       <form method="post" action="{{signOutPath}}">
         <button type="submit" class="menu__item">{{t "common.signout"}}</button>
       </form>
@@ -146,6 +147,7 @@
     <li><a href="{{.Path}}/saves"{{if eq .Current "saves"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.saves"}}</a></li>
     <li><a href="{{.Path}}/snapshots"{{if eq .Current "snapshots"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.snapshots"}}</a></li>
     {{- if .Settings}}
+    <li><a href="{{.Path}}/mods"{{if eq .Current "mods"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "mods.tab"}}</a></li>
     <li><a href="{{.Path}}/settings"{{if eq .Current "settings"}} aria-current="{{if $.Under}}true{{else}}page{{end}}"{{end}}>{{t "worlds.world.settings"}}</a></li>
     {{- end}}
   </ul>

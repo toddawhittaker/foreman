@@ -1,0 +1,262 @@
+{{define "title"}}{{msg .Page.Heading}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+{{- /* A redraw swaps in the heading too, as adding or taking out a mod changes it. */}}
+<h1 id="confirm-heading"{{if .Redraw}} hx-swap-oob="true"{{end}}>{{msgHTML .Heading}}</h1>
+{{template "world-tabs" .Tabs}}
+{{- /* A redraw says the new plan through #announcer; focus stays where it was (WCAG 4.1.3). */}}
+{{- if .Redraw}}
+<div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
+{{- end}}
+{{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (SPEC 9.14). */}}
+<div id="mod-plan" class="mod-plan">
+{{template "summary" .Problems}}
+{{- if .Changed}}
+<div class="message message--warning" id="plan-changed" tabindex="-1"{{if not (or .Problems .Redraw .Form.Searched)}} autofocus{{end}}>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.plan.changed" "world" .World.Name}}</p>
+</div>
+{{- end}}
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="plan-error" tabindex="-1"{{if not (or .Changed .Problems .Redraw .Form.Searched)}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  <div class="actions">
+    {{- with .Retry}}<a href="{{.}}" class="button">{{t "mods.plan.retry"}}</a>{{end}}
+    <a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a>
+  </div>
+</div>
+{{- else}}
+{{- with .ConflictTexts}}
+<div class="message message--error" id="plan-conflicts" tabindex="-1"{{if not (or $.Page.Changed $.Page.Problems $.Page.Redraw $.Page.Form.Searched)}} autofocus{{end}}>
+  <p><strong>{{t "common.error.label"}}</strong> {{t "mods.plan.conflicts" "count" (len .)}}</p>
+  <ul>
+    {{- range .}}
+    <li>{{msgHTML .}}</li>
+    {{- end}}
+  </ul>
+</div>
+{{- end}}
+{{- if not .Busy.IsZero}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}} {{t "mods.plan.busy"}}</p>
+</div>
+{{- end}}
+{{- if and .NoAccount .Downloads}}
+<div class="message message--note">
+  <p><strong>{{t "common.label.note"}}</strong> {{t "mods.plan.no_account" "count" .Downloads}} <a href="{{.AccountPath}}" id="act-account">{{t "mods.no_account.link"}}</a></p>
+</div>
+{{- end}}
+{{- if .Nothing}}
+<p>{{t "mods.plan.nothing"}}</p>
+<div class="actions"><a href="{{.ModsPath}}">{{t "mods.plan.back"}}</a></div>
+{{- else}}
+<section class="confirm">
+  {{- /* A choice's control asks for the plan again (hx-get); the form gives it what to send and where the new plan goes. */}}
+  <form method="post" action="{{.Path}}" novalidate hx-include="closest form" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">
+    <input type="hidden" name="add" value="1">
+    <input type="hidden" name="kind" value="{{.Form.Kind}}">
+    {{- range .Form.Names}}
+    <input type="hidden" name="name" value="{{.}}">
+    {{- end}}
+    {{- with .Form.Save}}
+    <input type="hidden" name="save" value="{{.}}">
+    {{- end}}
+    {{- with .Form.Staged}}
+    <input type="hidden" name="staged" value="{{.}}">
+    {{- end}}
+    <input type="hidden" name="hash" value="{{.Hash}}">
+    <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+    {{- with .Form.Query}}
+    <input type="hidden" name="q" value="{{.}}">
+    {{- end}}
+    {{- if .Adding}}
+    {{- /* The mods asked for, then what they bring with them (SPEC 9.2). */}}
+    <p id="asked-heading" class="plan-label" tabindex="-1"{{if and .Redraw .Form.Removed}} autofocus{{end}}>{{t "mods.plan.asked.heading"}}</p>
+    <ul class="plan-asked" role="list" aria-labelledby="asked-heading">
+      {{- range .Asked}}
+      <li>
+        <span class="plan-asked__text">{{if .Text.IsZero}}<span class="ident" translate="no">{{.Name}}</span>{{else}}{{msgHTML .Text}}{{end}}</span>
+        {{- if .Portal}}
+        {{template "portal-link" .Name}}
+        {{- end}}
+        {{- if gt (len $.Page.Form.Names) 1}}
+        {{- /* Taking a mod out redraws the plan; the link holds the plan without it, for a page without script. */}}
+        <a href="{{$.Page.PlanWithout .Name}}" class="button button--quiet" id="{{$.Page.ModID .Name "remove"}}" hx-get="{{$.Page.RemovePath .Name}}" hx-push-url="{{$.Page.PlanWithout .Name}}" hx-params="none">{{t "mods.plan.asked.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+        {{- end}}
+      </li>
+      {{- end}}
+    </ul>
+    {{- with .Needed}}
+    <p class="plan-label" id="needed-heading">{{t "mods.plan.needed.heading"}}</p>
+    <dl class="plan-groups">
+      {{- range .}}
+      <div><dt>{{msg .Title}}</dt><dd><ul>{{range .Items}}<li>{{msgHTML .}}</li>{{end}}</ul></dd></div>
+      {{- end}}
+    </dl>
+    {{- end}}
+    {{- end}}
+    {{- with .Plan.Optional}}
+    <fieldset>
+      <legend>{{t "mods.optional.legend"}}</legend>
+      <p class="hint">{{t "mods.optional.hint"}}</p>
+      {{- range .}}
+      <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="{{$.Page.ModID .Name "optional"}}" hx-get="{{$.Page.Path}}"{{if $.Page.Ticked .Name}} checked{{end}}> <span>{{tHTML "mods.optional.item" "mod" (ident .Name) "of" (ident .Of)}}</span></label>
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    <p>{{t "common.confirm.will"}}</p>
+    <ul>
+      {{- with .Downloads}}
+      <li>{{t "mods.plan.download" "count" .}}</li>
+      {{- end}}
+      {{- if .Running}}
+      <li>{{t "mods.plan.warn_stop"}}</li>
+      {{- end}}
+      <li>{{t "mods.plan.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_mods")}}</li>
+      {{- if .Adding}}
+      <li>{{t "mods.plan.change_above"}}</li>
+      {{- else}}
+      {{- with .Groups}}
+      <li>{{t "mods.plan.change"}}
+        <dl class="plan-groups">
+          {{- range .}}
+          <div><dt>{{msg .Title}}</dt><dd><ul>{{range .Items}}<li>{{msgHTML .}}</li>{{end}}</ul></dd></div>
+          {{- end}}
+        </dl>
+      </li>
+      {{- end}}
+      {{- end}}
+      {{- if .Running}}
+      <li>{{t "mods.plan.start"}}</li>
+      {{- else}}
+      <li>{{t "server.anyway.leave_stopped"}}</li>
+      {{- end}}
+      <li>{{t "mods.plan.undo"}}</li>
+    </ul>
+    {{- if .AsksRequired}}
+    {{template "required-note"}}
+    {{- end}}
+    {{- range .Plan.Unresolved}}
+    {{- $choice := $.Page.Choice .Name}}
+    <fieldset>
+      <legend>{{tHTML "mods.unresolved.legend" "mod" (ident .Name) "version" .Version}}</legend>
+      <p class="hint">{{t "mods.unresolved.hint"}}{{if .Nearest}} {{t "mods.unresolved.nearest_hint" "line" $.Page.Line}}{{end}}</p>
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="upload" id="{{$.Page.ModID .Name "upload"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "upload"}} checked{{end}}> <span>{{if $.Page.UploadedFor .Name}}{{tHTML "mods.unresolved.uploaded" "mod" (ident .Name) "version" $.Page.Uploaded.Version}}{{else}}{{tHTML "mods.unresolved.upload" "mod" (ident .Name) "version" .Version}}{{end}}</span></label>
+      {{- if .Nearest}}
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="nearest" id="{{$.Page.ModID .Name "nearest"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "nearest"}} checked{{end}}> <span>{{tHTML "mods.unresolved.nearest" "mod" (ident .Name) "version" .Nearest "line" $.Page.Line}}</span></label>
+      {{- end}}
+      <label class="check"><input type="radio" name="choice-{{.Name}}" value="without" id="{{$.Page.ModID .Name "without"}}" hx-get="{{$.Page.Path}}"{{if eq $choice "without"}} checked{{end}}> <span>{{tHTML "mods.unresolved.without" "mod" (ident .Name)}}</span></label>
+      {{- if eq $choice "without"}}
+      {{- $id := $.Page.ModID .Name "confirm"}}
+      {{- $err := index $.Page.ConfirmErrors .Name}}
+      <label class="check confirm-without required" for="{{$id}}"><input type="checkbox" name="confirm-{{.Name}}" value="1" id="{{$id}}" required hx-get="{{$.Page.Path}}"{{if and .Choice .Choice.Confirmed}} checked{{end}}{{if not $err.IsZero}} aria-invalid="true" aria-describedby="{{$id}}-error"{{end}}> <span>{{tHTML "mods.unresolved.confirm" "mod" (ident .Name) "label" (m "worlds.snapshot.label.before_mods")}}</span></label>
+      {{- if not $err.IsZero}}
+      <p class="error" id="{{$id}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $err}}</p>
+      {{- end}}
+      {{- else if and (eq $choice "upload") (not $.Page.Form.Staged)}}
+      {{- /* The zip belongs to its own form (after this one), so choosing a file never redraws the plan; one zip per change (SPEC 9.10). */}}
+      {{- $id := $.Page.ModID .Name "zip"}}
+      {{- $upErr := and (eq $.Page.UploadFor .Name) (not $.Page.UploadError.IsZero)}}
+      <div class="field">
+        <label for="{{$id}}" class="required">{{tHTML "mods.unresolved.upload_label" "mod" (ident .Name) "version" .Version}}</label>
+        <p class="hint" id="{{$id}}-hint">{{t "mods.upload.hint" "limit" $.Page.UploadLimit}}</p>
+        <input id="{{$id}}" name="mod" type="file" accept=".zip,application/zip" required form="{{$id}}-form"
+          aria-describedby="{{$id}}-hint{{if $upErr}} {{$id}}-error{{end}}"{{if $upErr}} aria-invalid="true"{{end}}>
+        {{- if $upErr}}
+        <p class="error" id="{{$id}}-error"><strong>{{t "common.error.label"}}</strong> {{msg $.Page.UploadError}}</p>
+        {{- end}}
+      </div>
+      <div class="actions"><button type="submit" class="button" form="{{$id}}-form">{{t "mods.unresolved.upload_button"}}</button></div>
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    {{- if or .Plan.Optional .Plan.Unresolved}}
+    {{- /* With script, a change redraws the plan; without it, this button does. */}}
+    <noscript><div class="actions"><button type="submit" class="button" formmethod="get" formaction="{{.Path}}" formnovalidate>{{t "mods.plan.recalculate"}}</button></div></noscript>
+    {{- end}}
+    {{- if .Drops}}
+    {{- /* The game deletes what a mod the save uses built once it starts without it; the box is the go-ahead (SPEC 9.10, 17.5). */}}
+    <div class="message message--warning">
+      <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "mods.drops.warning" "count" (len .Drops) "mods" (idents .Drops)}}</p>
+      <label class="check required" for="confirm-drops"><input type="checkbox" name="confirm-drops" value="1" id="confirm-drops" required hx-get="{{.Path}}"{{if .Form.DropsConfirmed}} checked{{end}}{{if not .DropsError.IsZero}} aria-invalid="true" aria-describedby="confirm-drops-error"{{end}}> <span>{{tHTML "mods.unresolved.confirm" "mod" (idents .Drops) "label" (m "worlds.snapshot.label.before_mods")}}</span></label>
+      {{- if not .DropsError.IsZero}}
+      <p class="error" id="confirm-drops-error"><strong>{{t "common.error.label"}}</strong> {{msg .DropsError}}</p>
+      {{- end}}
+    </div>
+    {{- end}}
+    {{- if and .Running .CanApply}}
+    {{template "countdown" .CountdownForm}}
+    {{- end}}
+    <div class="actions">
+      {{- if .CanApply}}
+      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}</button>
+      {{- end}}
+      <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
+    </div>
+  </form>
+  {{- /* The unresolved mods' zip forms, empty: each one's field and button sit in the mod's group above. */}}
+  {{- if not .Form.Staged}}
+  {{- range .Plan.Unresolved}}
+  {{- if eq ($.Page.Choice .Name) "upload"}}
+  <form method="post" action="{{$.Page.UploadAction .Name}}" enctype="multipart/form-data" id="{{$.Page.ModID .Name "zip"}}-form" novalidate hidden></form>
+  {{- end}}
+  {{- end}}
+  {{- end}}
+</section>
+{{- end}}
+{{- if .Adding}}
+{{- /* More mods join the same plan, so they share one snapshot and one restart. It comes after the confirm button, which stays the page's next step (SPEC 9.1, 9.2). */}}
+<section class="panel" aria-labelledby="add-heading">
+  <h2 id="add-heading" tabindex="-1"{{if and .Form.Searched (not .Redraw)}} autofocus{{end}}>{{t "mods.plan.add.heading"}}</h2>
+  <form method="get" action="{{.Path}}#add-heading" role="search">
+    <input type="hidden" name="kind" value="{{.Form.Kind}}">
+    {{- range .Form.Names}}
+    <input type="hidden" name="name" value="{{.}}">
+    {{- end}}
+    {{- range .Form.Optional}}
+    <input type="hidden" name="optional" value="{{.}}">
+    {{- end}}
+    <div class="field">
+      <label for="add-search">{{t "mods.search.label"}}</label>
+      <p class="hint" id="add-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
+      <div class="inline-row">
+        <input id="add-search" name="q" type="search" value="{{.Form.Query}}" autocomplete="off" spellcheck="false" maxlength="100" aria-describedby="add-search-hint">
+        <button type="submit" class="button">{{t "mods.search.button"}}</button>
+      </div>
+    </div>
+  </form>
+  {{- if .AddUnreachable}}
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
+  </div>
+  {{- else if .Form.Query}}
+  <p id="add-results">{{t "mods.search.count" "count" (len .Hits) "line" .Line}}</p>
+  {{- if .Hits}}
+  <ul class="mod-results mod-results--short" role="list" aria-labelledby="add-results">
+    {{- range .Hits}}
+    <li>
+      <p><span class="mod-results__title">{{if .Title}}{{.Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}</span>
+        {{- if and .Title (ne .Title .Name)}} <code translate="no">{{.Name}}</code>{{end}} <code class="nowrap">{{.LatestVersion}}</code></p>
+      <div class="actions">
+        {{- $id := $.Page.ModID .Name "add"}}
+        {{- /* After an add, focus stays here: the badge takes the button's id (WCAG 4.1.3). */}}
+        {{- if $.Page.InPlan .Name}}
+        <span class="badge" id="{{$id}}" tabindex="-1">{{t "mods.badge.in_plan"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></span>
+        {{- else if index $.Page.Installed .Name}}
+        <span class="badge">{{t "mods.badge.installed"}}</span>
+        {{- else if $.Page.CanAdd}}
+        <a href="{{$.Page.PlanWith .Name}}" class="button" id="{{$id}}" hx-get="{{$.Page.AddPath .Name}}" hx-push-url="{{$.Page.PlanWith .Name}}" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+        {{- end}}
+        {{template "portal-link" .Name}}
+      </div>
+    </li>
+    {{- end}}
+  </ul>
+  {{- end}}
+  {{- end}}
+</section>
+{{- end}}
+{{- end}}
+</div>
+{{end}}
+{{- end}}

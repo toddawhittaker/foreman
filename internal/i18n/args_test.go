@@ -56,3 +56,33 @@ func TestLinkRefusesForeignHref(t *testing.T) {
 		}()
 	}
 }
+
+// An ident never hyphenates and is left alone by a page translator; it
+// escapes what it wraps (DESIGN 8.3).
+func TestIdent(t *testing.T) {
+	if got := Ident(`a<b>`).html; got != `<span class="ident" translate="no">a&lt;b&gt;</span>` {
+		t.Errorf("ident: %s", got)
+	}
+	if got := Locale("zh-Hans").Idents([]string{"base", "quality"}); got.text != "base、quality" || strings.Count(got.html, `class="ident"`) != 2 {
+		t.Errorf("idents: %+v", got)
+	}
+}
+
+// An external link opens in a new tab and says so, and only an https
+// address is a link.
+func TestExternalLink(t *testing.T) {
+	got := English.ExternalLink("https://factorio.com/profile", "account.token.profile").html
+	want := `<a href="https://factorio.com/profile" target="_blank" rel="noopener noreferrer">your factorio.com profile page<span class="visually-hidden"> (opens in a new tab)</span></a>`
+	if got != want {
+		t.Errorf("link: %s", got)
+	}
+	// The address is escaped, so it cannot leave its attribute; the plain
+	// form is the link text alone.
+	f := English.ExternalLink(`https://x.example/"><b>`, "account.token.profile")
+	if strings.Contains(f.html, "<b>") || !strings.Contains(f.html, `href="https://x.example/&#34;&gt;&lt;b&gt;"`) {
+		t.Errorf("unescaped href: %s", f.html)
+	}
+	if f.text != "your factorio.com profile page" {
+		t.Errorf("text: %q", f.text)
+	}
+}

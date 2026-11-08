@@ -121,7 +121,7 @@ type secCase struct {
 	data   string
 }
 
-const secret = "TOPSECRET"
+const topSecret = "TOPSECRET"
 
 func newSecCase(t *testing.T) *secCase {
 	t.Helper()
@@ -137,7 +137,7 @@ func newSecCase(t *testing.T) *secCase {
 		t.Fatal(err)
 	}
 	data := filepath.Dir(ls.worlds.Dirs().Worlds)
-	if err := os.WriteFile(filepath.Join(data, "secret.zip"), []byte(secret), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(data, "secret.zip"), []byte(topSecret), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(ls.worlds.Dirs().Imports, "real"), 0o750); err != nil {
@@ -201,7 +201,7 @@ func TestHostilePathsOverHTTP(t *testing.T) {
 		if got.StatusCode == http.StatusOK || got.StatusCode == http.StatusSeeOther || got.StatusCode >= 500 {
 			t.Errorf("%s: status %d", what, got.StatusCode)
 		}
-		if strings.Contains(got.body, secret) {
+		if strings.Contains(got.body, topSecret) {
 			t.Errorf("%s: response holds the secret file", what)
 		}
 	}

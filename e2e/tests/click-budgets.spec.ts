@@ -1,7 +1,7 @@
-import { test, expect, createAdmin, seedWorld, seedSecond, image21, type Foreman, type FakeGame } from "./foreman.js";
+import { test, expect, createAdmin, seedWorld, seedSecond, setUpModsWorld, image21, version20, live, creates, stateBadge as badge, doneBox as done, type Foreman, type FakeGame } from "./foreman.js";
 import { countClicks, expectWithin, type Clicks } from "./clicks.js";
 import type { Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 // SPEC 17.10: the common tasks, started on the Server page with the
@@ -10,17 +10,10 @@ import { join } from "node:path";
 // found by role and name only, so a change of layout does not break them.
 
 const container = "foreman-base";
-const live = { timeout: 20_000 };
-
-const badge = (page: Page) => page.locator("main h1 .state");
-const done = (page: Page) => page.locator(".message--success").filter({ hasText: "Done:" });
 const active = (page: Page, name: string) => page.locator("#server-title", { hasText: name });
 
 const diskVersion = (f: Foreman, id: string): string =>
   JSON.parse(readFileSync(join(f.dataDir, "worlds", id, "world.json"), "utf8")).game_version;
-
-const creates = async (g: FakeGame) =>
-  (await g.state()).calls.filter((c) => c.startsWith("POST ") && c.includes("/containers/create")).length;
 
 // Signs in as the admin, seeds the active world "base" (and "second" when
 // asked) and ends on the Server page with the game stopped.
@@ -171,7 +164,7 @@ test.describe("click budgets, with the fake game", () => {
   });
 
   // SPEC 17.10 lists the undo of a switch, an update, a restore and a mod change.
-  // The switch is the "switch back" test above; the mod change waits for Epic 8.
+  // The switch is the "switch back" test above; the mod change is in the mods rows at the end.
   test("undo a restore: 2 clicks", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     const clicks = await setUp(page, foreman, g);
@@ -209,9 +202,6 @@ test.describe("click budgets, with the fake game", () => {
     await expect.poll(() => diskVersion(foreman, "base"), live).toBe("2.1.24");
     await expectWithin(clicks, 2, "undo an update");
   });
-
-  // Epic 8 adds the mod change. Its undo must then take 2 clicks too.
-  test.skip("undo a mod change: 2 clicks", () => {});
 
   // A save that uses a mod the world lacks makes the game crash on every start, so a start anyway loops.
   async function crashLoopAfterStartAnyway(page: Page, g: FakeGame) {
@@ -268,5 +258,127 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
     await expectWithin(clicks, 2, "recover after a refused start");
+  });
+});
+
+// SPEC 17.10, mods rows: the fake portal's generated mods are made for Factorio
+// 2.0, so these worlds are 2.0 worlds. Downloads are on (SPEC 9.11).
+test.describe("click budgets for mods, with the fake game and the fake portal", () => {
+  test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
+
+  const world = { version: version20, fixture: "2.0.77-no-space-age.zip" };
+
+  test("search for a mod and install it: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const g = fakeGame!;
+    await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, g, world);
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+    const before = await creates(g);
+
+    // Typing the name is not a click; the clicks are Mods, Search, Add to plan, and the plan's button.
+    await page.getByRole("link", { name: "Mods", exact: true }).click();
+    await page.getByLabel("Mod name").fill("fp-signs");
+    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
+    await page.getByRole("button", { name: "Install 1 mod" }).click();
+    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(badge(page)).toHaveText("Running", live);
+    expect(await creates(g)).toBe(before + 1);
+    await expectWithin(clicks, 4, "search and install a mod");
+  });
+
+  // A second mod from the same search joins the plan: one more click, still one snapshot and one restart.
+  test("search for two mods and install both: 5 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const g = fakeGame!;
+    await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
+    await fakePortal!.add("fp-signs-extra", "1.0.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, g, world);
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+    const before = await creates(g);
+
+    await page.getByRole("link", { name: "Mods", exact: true }).click();
+    await page.getByLabel("Mod name").fill("fp-signs");
+    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();
+    await page.getByRole("link", { name: "Add to plan fp-signs-extra", exact: true }).click();
+    await page.getByRole("button", { name: "Install 2 mods" }).click();
+    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(badge(page)).toHaveText("Running", live);
+    // One restart, and one snapshot for both mods.
+    expect(await creates(g)).toBe(before + 1);
+    const snaps = readdirSync(join(foreman.dataDir, "snapshots", "base")).filter((n) => /^\d{8}T\d{6}Z/.test(n));
+    expect(snaps).toHaveLength(1);
+    for (const f of ["fp-signs_1.0.0.zip", "fp-signs-extra_1.0.0.zip"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", f))).toBe(true);
+    await expectWithin(clicks, 5, "search and install two mods");
+  });
+
+  test("update all the mods: 3 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const portal = fakePortal!;
+    for (const name of ["fp-up1", "fp-up2"]) {
+      await portal.add(name, "1.0.0", ["base >= 2.0"]);
+      await portal.add(name, "1.1.0", ["base >= 2.0"]);
+    }
+    await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-up1": "2.0", "fp-up2": "2.0" } });
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+
+    await page.getByRole("link", { name: "Mods", exact: true }).click();
+    // The portal's answer loads after the page; waiting for it is not a click.
+    await page.getByRole("link", { name: "Update all" }).click();
+    await page.getByRole("button", { name: "Update 2 mods" }).click();
+    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(badge(page)).toHaveText("Running", live);
+    for (const f of ["fp-up1_1.1.0.zip", "fp-up2_1.1.0.zip"]) expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", f))).toBe(true);
+    await expectWithin(clicks, 3, "update all");
+  });
+
+  // Issue 131: the portal has no 1.5.5 of visible-planets.
+  test("fix a mod players cannot get, from the Server page notice: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    await fakePortal!.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
+    await setUpModsWorld(page, foreman, fakeGame!, {
+      version: version20,
+      fixture: "2.0.77-space-age.zip",
+      spaceAge: true,
+      mods: { "visible-planets": { factorio: "2.0", version: "1.5.5", deps: ["base >= 2.0", "space-age >= 2.0"] } },
+    });
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+    // The notice loads after the Server page; the count starts when it is there.
+    await expect(page.locator("#mods-notice")).toContainText("cannot join", live);
+    await clicks.reset();
+
+    await page.getByRole("link", { name: "Update visible-planets" }).click();
+    await page.getByRole("button", { name: "Update 1 mod" }).click();
+    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(badge(page)).toHaveText("Running", live);
+    expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "visible-planets_1.7.2.zip"))).toBe(true);
+    await expectWithin(clicks, 2, "fix a mod players cannot get");
+  });
+
+  test("undo a mod change: 2 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const g = fakeGame!;
+    await fakePortal!.add("fp-signs", "1.0.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, g, world);
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+    await page.goto("/worlds/base/mods/plan?kind=install&name=fp-signs");
+    await page.getByRole("button", { name: "Install 1 mod" }).click();
+    await expect(done(page)).toContainText("The mods of Base are changed.", live);
+    await expect(badge(page)).toHaveText("Running", live);
+    const installed = join(foreman.dataDir, "worlds", "base", "mods", "fp-signs_1.0.0.zip");
+    expect(existsSync(installed)).toBe(true);
+    const before = await creates(g);
+    await clicks.reset();
+
+    await page.getByRole("link", { name: "Undo this mod change" }).click();
+    await page.getByRole("button", { name: "Restore snapshot" }).click();
+    await expect.poll(() => creates(g), live).toBe(before + 1);
+    await expect(done(page)).toContainText("The world is restored.", live);
+    await expect(badge(page)).toHaveText("Running", live);
+    // The old mods are back.
+    expect(existsSync(installed)).toBe(false);
+    await expectWithin(clicks, 2, "undo a mod change");
   });
 });

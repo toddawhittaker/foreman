@@ -15,8 +15,11 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/auth"
 	"github.com/toddawhittaker/foreman/internal/config"
+	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -46,6 +49,12 @@ type Deps struct {
 	// Previewer makes the map previews of Generate (SPEC 5.6); nil means the
 	// page offers no preview.
 	Previewer MapPreviewer
+	// Account finds and stores the factorio.com account (SPEC 9.11); nil
+	// means no account is set in the environment and no key is set.
+	Account *factorioaccount.Service
+	// Portal is the Factorio mod portal (SPEC 9); nil means the mods pages
+	// are off.
+	Portal ModPortal
 	// HostDataDir is the data directory's path on the Docker host (SPEC
 	// 3.5), so a page can name a folder the admin reaches there.
 	HostDataDir string
@@ -63,15 +72,19 @@ type server struct {
 	// made, held for 15 minutes (SPEC 5.6).
 	previewer MapPreviewer
 	previews  *previewStore
-	hostData  string
-	runs      *gameRuns
-	console   *consoleHistory
-	log       *slog.Logger
-	now       func() time.Time
-	render    *Renderer
-	sessions  *auth.SessionManager
-	limiter   *auth.Limiter
-	headers   auth.HeaderConfig
+	account   *factorioaccount.Service
+	// portal and planner: the mod portal and the plans made from it (SPEC 9).
+	portal   ModPortal
+	planner  *mods.Planner
+	hostData string
+	runs     *gameRuns
+	console  *consoleHistory
+	log      *slog.Logger
+	now      func() time.Time
+	render   *Renderer
+	sessions *auth.SessionManager
+	limiter  *auth.Limiter
+	headers  auth.HeaderConfig
 	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
 	gameNets GameSubnetter
@@ -105,6 +118,12 @@ func NewHandler(d Deps) (*Handler, error) {
 	if now == nil {
 		now = time.Now
 	}
+	account := d.Account
+	if account == nil {
+		if account, err = factorioaccount.New(factorioaccount.Account{}, secret.Secret{}, d.Store); err != nil {
+			return nil, err
+		}
+	}
 	s := &server{
 		cfg:       d.Config,
 		store:     d.Store,
@@ -113,6 +132,7 @@ func NewHandler(d Deps) (*Handler, error) {
 		releases:  d.Releases,
 		previewer: d.Previewer,
 		previews:  newPreviewStore(now),
+		account:   account,
 		hostData:  d.HostDataDir,
 		runs:      newGameRuns(),
 		gameNets:  d.GameNets,
@@ -134,6 +154,12 @@ func NewHandler(d Deps) (*Handler, error) {
 	}
 	if s.gameNets == nil && d.Game != nil {
 		s.gameNets = d.Game
+	}
+	if d.Portal != nil {
+		s.portal, s.planner = d.Portal, &mods.Planner{Worlds: d.Worlds, Portal: d.Portal}
+		if d.Game != nil {
+			d.Game.SetModFetcher(accountFetcher{account: account, portal: d.Portal})
+		}
 	}
 	s.routes()
 
@@ -175,6 +201,8 @@ func (s *server) routes() {
 	s.generateRoutes()
 	s.cloneRoutes()
 	s.settingsRoutes()
+	s.accountRoutes()
+	s.modRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)

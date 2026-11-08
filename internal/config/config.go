@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 // Defaults for variables that have one.
@@ -30,21 +32,24 @@ const (
 
 // Variable names.
 const (
-	varDataDir     = "FOREMAN_DATA_DIR"
-	varHostDataDir = "FOREMAN_HOST_DATA_DIR"
-	varGameUID     = "FOREMAN_GAME_UID"
-	varGameGID     = "FOREMAN_GAME_GID"
-	varListen      = "FOREMAN_LISTEN"
-	varPublicURL   = "FOREMAN_PUBLIC_URL"
-	varPublicAddr  = "FOREMAN_PUBLIC_ADDRESS"
-	varAuthMethods = "FOREMAN_AUTH_METHODS"
-	varUserHeader  = "FOREMAN_AUTH_USER_HEADER"
-	varGroupHeader = "FOREMAN_AUTH_GROUPS_HEADER"
-	varGroup       = "FOREMAN_AUTH_REQUIRED_GROUP"
-	varProxies     = "FOREMAN_TRUSTED_PROXIES"
-	varSessionIdle = "FOREMAN_SESSION_IDLE"
-	varDockerHost  = "DOCKER_HOST"
-	varGameNetwork = "FOREMAN_GAME_NETWORK"
+	varDataDir       = "FOREMAN_DATA_DIR"
+	varHostDataDir   = "FOREMAN_HOST_DATA_DIR"
+	varGameUID       = "FOREMAN_GAME_UID"
+	varGameGID       = "FOREMAN_GAME_GID"
+	varListen        = "FOREMAN_LISTEN"
+	varPublicURL     = "FOREMAN_PUBLIC_URL"
+	varPublicAddr    = "FOREMAN_PUBLIC_ADDRESS"
+	varAuthMethods   = "FOREMAN_AUTH_METHODS"
+	varUserHeader    = "FOREMAN_AUTH_USER_HEADER"
+	varGroupHeader   = "FOREMAN_AUTH_GROUPS_HEADER"
+	varGroup         = "FOREMAN_AUTH_REQUIRED_GROUP"
+	varProxies       = "FOREMAN_TRUSTED_PROXIES"
+	varSessionIdle   = "FOREMAN_SESSION_IDLE"
+	varDockerHost    = "DOCKER_HOST"
+	varGameNetwork   = "FOREMAN_GAME_NETWORK"
+	varFactorioUser  = "FOREMAN_FACTORIO_USERNAME"
+	varFactorioToken = "FOREMAN_FACTORIO_TOKEN"
+	varSecretKey     = "FOREMAN_SECRET_KEY"
 	// varNetworkContainer is read only to refuse it (SPEC 4.13).
 	varNetworkContainer = "FOREMAN_GAME_NETWORK_CONTAINER"
 )
@@ -68,6 +73,11 @@ type Config struct {
 	SessionIdle    time.Duration
 	DockerHost     string
 	GameNetwork    string // the Docker network the game joins; empty means work it out (SPEC 4.4)
+	// FactorioUsername and FactorioToken are the portal account from the
+	// environment (SPEC 9.11): both set or both empty.
+	FactorioUsername, FactorioToken secret.Secret
+	// SecretKey seals stored secrets; empty when unset (SPEC 9.11).
+	SecretKey secret.Secret
 }
 
 // SecureCookies reports whether session cookies carry the Secure flag,
@@ -164,6 +174,8 @@ func load(e env) (*Config, error) {
 		fail("%s is set, but VPN sidecars (SPEC 4.13) are not built yet. Unset it to start Foreman.", varNetworkContainer)
 	}
 
+	loadSecrets(e, c, &errs)
+
 	c.SessionIdle = DefaultSessionIdle
 	if raw, ok := e.get(varSessionIdle); ok {
 		if d, err := time.ParseDuration(raw); err != nil || d <= 0 {
@@ -177,6 +189,37 @@ func load(e env) (*Config, error) {
 		return nil, errors.Join(errs...)
 	}
 	return c, nil
+}
+
+// loadSecrets reads the portal account and the secret key. The messages name
+// the variables and never the values.
+func loadSecrets(e env, c *Config, errs *[]error) {
+	user, haveUser, userErr := e.lookup(varFactorioUser)
+	token, haveToken, tokenErr := e.lookupSecret(varFactorioToken)
+	for _, err := range []error{userErr, tokenErr} {
+		if err != nil {
+			*errs = append(*errs, err)
+		}
+	}
+	switch {
+	case userErr != nil || tokenErr != nil:
+	case haveUser != haveToken:
+		*errs = append(*errs, fmt.Errorf("%s and %s must be set together; only one is set", varFactorioUser, varFactorioToken))
+	case haveUser:
+		c.FactorioUsername, c.FactorioToken = secret.New(user), token
+	}
+
+	key, haveKey, err := e.lookupSecret(varSecretKey)
+	if err != nil {
+		*errs = append(*errs, err)
+	}
+	if haveKey {
+		if len(key.Reveal()) < secret.MinKeyLength {
+			*errs = append(*errs, fmt.Errorf("%s must be at least %d characters long", varSecretKey, secret.MinKeyLength))
+		} else {
+			c.SecretKey = key
+		}
+	}
 }
 
 func canonicalHeader(name string) string {

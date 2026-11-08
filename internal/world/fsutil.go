@@ -55,7 +55,11 @@ func CreateTemp(root *os.Root, dir string) (*os.File, string, error) {
 // has that mode from the moment it exists, since anyone who opens it while
 // it is wider can read what is written later (SPEC 14.8).
 func createTempMode(root *os.Root, dir string, mode fs.FileMode) (*os.File, string, error) {
-	name := path.Join(dir, PrefixPartial+randomSuffix())
+	return createTempNamed(root, path.Join(dir, PrefixPartial+randomSuffix()), mode)
+}
+
+// createTempNamed creates the new file name inside root with mode.
+func createTempNamed(root *os.Root, name string, mode fs.FileMode) (*os.File, string, error) {
 	f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
 		return nil, "", err
