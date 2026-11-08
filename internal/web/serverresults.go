@@ -335,13 +335,10 @@ func modItems(act mods.Action, cs []mods.Change) i18n.Msg {
 			items = append(items, i18n.M("server.list.names", "names", i18n.Ident(c.Name)))
 		}
 	}
-	switch {
-	case len(cs) > modsDoneNamed:
+	if len(cs) > modsDoneNamed {
 		return i18n.M("server.list.more", "names", listMsg(items), "count", len(cs)-modsDoneNamed)
-	case len(items) == 1:
-		return items[0]
 	}
-	return andList([]i18n.Msg{listMsg(items[:len(items)-1]), items[len(items)-1]})
+	return andNames(items)
 }
 
 // modsFailure words a mod change that failed (SPEC 9.12, 17.9). A failed

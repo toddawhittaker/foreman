@@ -108,7 +108,7 @@ test.describe("mod-settings.dat", () => {
 
     await page.locator("#settings-file").setInputFiles({ name: "mod-settings.dat", mimeType: "application/octet-stream", buffer: fresh });
     await page.getByRole("button", { name: "Upload mod settings" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText("The mods of Base were changed.", live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(readFileSync(modsFile(foreman.dataDir, "mod-settings.dat")).equals(fresh)).toBe(true);

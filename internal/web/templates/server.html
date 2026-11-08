@@ -284,12 +284,12 @@
 {{- if eq .Errors 1}}
 <div class="message message--warning">
   <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "mods.notice.one" "mod" (ident .Mod) "version" .Version}}</p>
-  <div class="actions"><a href="{{.FixPath}}" class="button" id="act-mods-fix">{{if .Update}}{{tHTML "mods.notice.update" "mod" (ident .Mod)}}{{else}}{{tHTML "mods.flag.fix_remove" "mod" (ident .Mod)}}{{end}}</a></div>
+  <div class="actions"><a href="{{.Fix.Path}}" class="button" id="act-mods-fix">{{msgHTML .Fix.Label}}</a></div>
 </div>
 {{- else if .Errors}}
 <div class="message message--warning">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.notice" "count" .Errors "world" .World.Name}}</p>
-  <div class="actions"><a href="{{.FixPath}}" class="button" id="act-mods-fix">{{t "mods.notice.review" "count" .Errors}}</a></div>
+  <div class="actions"><a href="{{.Fix.Path}}" class="button" id="act-mods-fix">{{msgHTML .Fix.Label}}</a></div>
 </div>
 {{- end}}
 {{- end}}

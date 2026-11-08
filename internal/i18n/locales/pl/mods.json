@@ -344,6 +344,7 @@
   },
   "mods.plan.step.stop": "Ostrzeżenie graczy, potem zapis i zatrzymanie świata {world}.",
   "mods.plan.step.snapshot": "Wykonanie migawki z etykietą „{label}”.",
+  "mods.plan.step.snapshot_kept": "Zachowanie migawki z {time}, która już obejmuje tę zmianę.",
   "mods.plan.step.change_start": "Zmiana modyfikacji, potem ponowne uruchomienie świata {world}.",
   "mods.plan.step.change_stopped": "Zmiana modyfikacji. Świat {world} pozostaje zatrzymany, tak jak teraz.",
   "mods.plan.step.fails": "Jeśli krok się nie powiedzie, kolejne kroki nie zostaną wykonane.",
@@ -351,9 +352,14 @@
   "mods.plan.fix.disable": "Wyłącz też {mod}",
   "mods.plan.back_search": "Wróć do wyszukiwania",
   "mods.plan.fixed": {
-    "one": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikację.",
-    "few": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikacje.",
-    "many": "Plan wyłącza teraz także {mod}. Zmienia {count} modyfikacji."
+    "one": "Plan zaktualizowany. Zmienia {count} modyfikację.",
+    "few": "Plan zaktualizowany. Zmienia {count} modyfikacje.",
+    "many": "Plan zaktualizowany. Zmienia {count} modyfikacji."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan zaktualizowany. Pozostał {count} konflikt.",
+    "few": "Plan zaktualizowany. Pozostały {count} konflikty.",
+    "many": "Plan zaktualizowany. Pozostało {count} konfliktów."
   },
   "mods.drops.confirm": {
     "one": "Usunięcie tego, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",

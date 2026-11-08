@@ -52,7 +52,7 @@ func TestModsDoneNamesTheChange(t *testing.T) {
 		})
 	}
 	// A settings upload changes no mod, so the plain sentence stays.
-	if got := english(modsDone(modResult{}, "Base")); got != `The mods of Base are changed. Foreman took the snapshot "Before mod change" first.` {
+	if got := english(modsDone(modResult{}, "Base")); got != `The mods of Base were changed. Foreman took the snapshot "Before mod change" first.` {
 		t.Errorf("no changes: %q", got)
 	}
 }

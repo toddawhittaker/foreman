@@ -5,7 +5,7 @@
 {{- /* A redraw swaps in the heading too, as adding or taking out a mod changes it. */}}
 <h1 id="confirm-heading"{{if .Redraw}} hx-swap-oob="true"{{end}}>{{msgHTML .Heading}}</h1>
 {{template "world-tabs" .Tabs}}
-{{- /* A redraw says the new plan through #announcer; focus stays where it was (WCAG 4.1.3). */}}
+{{- /* A redraw says the new plan through #announcer; focus stays where it was, except after a conflict fix, which moves it to the conflicts or changes and so gets a short sentence (WCAG 4.1.3). */}}
 {{- if .Redraw}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}
@@ -183,7 +183,11 @@
       {{- if .Running}}
       <li>{{t "mods.plan.step.stop" "world" .World.Name}}</li>
       {{- end}}
+      {{- if .RunSnapshot.IsZero}}
       <li>{{t "mods.plan.step.snapshot" "label" (m "worlds.snapshot.label.before_mods")}}</li>
+      {{- else}}
+      <li>{{tHTML "mods.plan.step.snapshot_kept" "time" (momentUTC .RunSnapshot)}}</li>
+      {{- end}}
       <li>{{if .Running}}{{t "mods.plan.step.change_start" "world" .World.Name}}{{else}}{{t "mods.plan.step.change_stopped" "world" .World.Name}}{{end}}</li>
     </ol>
     <p>{{t "mods.plan.step.fails"}} {{t "mods.plan.undo"}}</p>

@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -194,11 +195,13 @@ func (p ModsPage) RowPath(kind, name string) string {
 
 // UpdateSlot is the id of a row's place for its Update button, which the
 // portal status fills in later.
-func (ModsPage) UpdateSlot(name string) string { return updateSlot(name) }
+func (ModsPage) UpdateSlot(name string) string { return slotID("update", name) }
 
-func updateSlot(name string) string {
+// slotID is the id of a mod row's place for one kind of late content; the
+// name is hashed so any mod name makes a valid id.
+func slotID(kind, name string) string {
 	sum := sha256.Sum256([]byte(name))
-	return "mod-update-" + hex.EncodeToString(sum[:6])
+	return "mod-" + kind + "-" + hex.EncodeToString(sum[:6])
 }
 
 // Line is the world's game line, such as "2.0".
@@ -248,12 +251,7 @@ func (p ModsPage) ShowSettings() bool {
 
 // NoteSlot is the id of a row's place for what the portal says about the
 // mod, which the portal status fills in later.
-func (ModsPage) NoteSlot(name string) string { return noteSlot(name) }
-
-func noteSlot(name string) string {
-	sum := sha256.Sum256([]byte(name))
-	return "mod-note-" + hex.EncodeToString(sum[:6])
-}
+func (ModsPage) NoteSlot(name string) string { return slotID("note", name) }
 
 // BuiltInVersion is the built-in mods' version, the game's own.
 func (p ModsPage) BuiltInVersion() string {
@@ -282,15 +280,10 @@ func (p ModsPage) Enabled() int {
 
 // PortalSlot is the id of a row's portal link, which the portal status
 // takes away for a mod the portal does not have.
-func (ModsPage) PortalSlot(name string) string { return portalSlot(name) }
+func (ModsPage) PortalSlot(name string) string { return slotID("portal", name) }
 
 // portalPath is a mod's page on the mod portal.
 func portalPath(name string) string { return "https://mods.factorio.com/mod/" + url.PathEscape(name) }
-
-func portalSlot(name string) string {
-	sum := sha256.Sum256([]byte(name))
-	return "mod-portal-" + hex.EncodeToString(sum[:6])
-}
 
 func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
@@ -396,9 +389,9 @@ func (p ModStatus) UpdatePath(name string) string {
 }
 
 // Slot ids of a row's places the status fills.
-func (ModStatus) UpdateSlot(name string) string { return updateSlot(name) }
-func (ModStatus) PortalSlot(name string) string { return portalSlot(name) }
-func (ModStatus) NoteSlot(name string) string   { return noteSlot(name) }
+func (ModStatus) UpdateSlot(name string) string { return slotID("update", name) }
+func (ModStatus) PortalSlot(name string) string { return slotID("portal", name) }
+func (ModStatus) NoteSlot(name string) string   { return slotID("note", name) }
 
 // Count counts the flags of one severity, for the summary line.
 func (p ModStatus) Count(sev mods.Severity) int {
@@ -544,11 +537,9 @@ func (s *server) portalTrouble(what, id string, err error) {
 type ModNotice struct {
 	World  world.Summary
 	Errors int
-	// Mod and Version name the mod when there is one; Update says its fix
-	// is an update, else a removal.
+	// Mod and Version name the mod when there is exactly one.
 	Mod, Version string
-	Update       bool
-	FixPath      string
+	Fix          Offer
 }
 
 func (ModNotice) templateName() string { return "server" }
@@ -574,9 +565,8 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 		n.Mod, n.Version = f.Name, f.Version
 		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
 	}
-	n.Update = !slices.ContainsFunc(gone, func(g world.GoneMod) bool { return g.Update == "" })
 	if n.Errors > 0 {
-		n.FixPath = goneFix(sum.ID, gone).Path
+		n.Fix = goneFix(sum.ID, gone)
 	}
 	s.fragment(w, r, n, "mods-notice")
 }
@@ -819,6 +809,10 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		Searched: v.Get("add") == "1", Page: readPage(v.Get("page")),
 		AlsoDisable: v[alsoDisableField], AlsoRemove: v[alsoRemoveField], Fixed: v.Get("fixed"),
 	}
+	// The de-duplication below is quadratic, so the raw lists are bounded first.
+	if len(v["declined"])+len(v["offered"]) > maxPlanNames {
+		return planForm{}, false
+	}
 	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
 		if !slices.Contains(f.Optional, n) && !slices.Contains(f.Declined, n) {
 			f.Declined = append(f.Declined, n)
@@ -905,6 +899,10 @@ type ModPlanPage struct {
 	// Uploaded is the uploaded zip's mod, for an upload's heading.
 	Uploaded world.ModInfo
 	Running  bool
+	// RunSnapshot is when the snapshot of an open run of mod changes was
+	// taken, on a stopped world: the change keeps it and takes no new one
+	// (SPEC 9.4). Zero when the change takes a snapshot.
+	RunSnapshot time.Time
 	CountdownForm
 	NoAccount bool
 	// Changed says the plan is not the one the admin confirmed, so nothing
@@ -1106,17 +1104,21 @@ func (p ModPlanPage) AsksRequired() bool {
 	return false
 }
 
-// Announce is the sentence a screen reader hears after a redraw.
+// Announce is the sentence a screen reader hears after a redraw. After a
+// conflict fix focus moves to the conflicts or the changes, which the
+// reader then reads out, so that sentence stays short.
 func (p ModPlanPage) Announce() i18n.Msg {
 	switch {
 	case !p.Error.IsZero():
 		return p.Error
+	case p.Form.Fixed != "" && len(p.Plan.Conflicts) > 0:
+		return i18n.M("mods.plan.fixed_conflicts", "count", len(p.Plan.Conflicts))
 	case len(p.Plan.Conflicts) > 0:
 		return i18n.M("mods.plan.redrawn_conflicts", "count", len(p.Plan.Conflicts))
 	case p.Nothing():
 		return i18n.M("mods.plan.nothing")
 	case p.Form.Fixed != "":
-		return i18n.M("mods.plan.fixed", "mod", p.Form.Fixed, "count", p.Count())
+		return i18n.M("mods.plan.fixed", "count", p.Count())
 	case p.Form.Added != "":
 		return i18n.M("mods.plan.added", "mod", p.Form.Added, "count", p.Count())
 	case p.Form.Removed != "":
@@ -1154,7 +1156,7 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	if len(p.Form.Names) == 1 {
 		one = i18n.Ident(p.Form.Names[0])
 	}
-	if len(p.Form.AlsoDisable)+len(p.Form.AlsoRemove) > 0 {
+	if p.extraKinds() {
 		return i18n.M("mods.plan.heading.change", "world", w)
 	}
 	switch p.Form.Kind {
@@ -1411,6 +1413,11 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 	p := ModPlanPage{World: sum, Form: f, CountdownForm: form, ConfirmErrors: map[string]i18n.Msg{}}
 	st := s.game.Status(sum.ID)
 	p.Running = game.IsRunning(st.State)
+	if !p.Running {
+		if run, ok := s.worlds.ModRunSnapshot(sum.ID); ok {
+			p.RunSnapshot = run.TakenAt
+		}
+	}
 	p.Busy = busyText(st.Operation, s.worldName)
 	p.NoAccount = !s.downloadsOn(ctx)
 	if sum.Newer || sum.Unreadable {

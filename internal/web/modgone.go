@@ -21,9 +21,9 @@ func goneFix(id string, gone []world.GoneMod) Offer {
 	all := len(names) == len(gone)
 	switch {
 	case len(gone) == 1 && all:
-		return Offer{Path: kindPlanPath(id, mods.KindUpdate, gone[0].Name), Label: i18n.M("mods.notice.update", "mod", gone[0].Name)}
+		return Offer{Path: kindPlanPath(id, mods.KindUpdate, gone[0].Name), Label: i18n.M("mods.notice.update", "mod", i18n.Ident(gone[0].Name))}
 	case len(gone) == 1:
-		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", gone[0].Name)}
+		return Offer{Path: kindPlanPath(id, mods.KindRemove, gone[0].Name), Label: i18n.M("mods.flag.fix_remove", "mod", i18n.Ident(gone[0].Name))}
 	case all && len(names) <= maxPlanNames:
 		return Offer{Path: kindPlanPath(id, mods.KindUpdate, names...), Label: i18n.M("mods.plan.button.update", "count", len(names))}
 	}

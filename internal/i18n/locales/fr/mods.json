@@ -312,6 +312,7 @@
   },
   "mods.plan.step.stop": "Avertir les joueurs, puis sauvegarder et arrêter {world}.",
   "mods.plan.step.snapshot": "Prendre un instantané nommé « {label} ».",
+  "mods.plan.step.snapshot_kept": "Conserver l’instantané du {time}, qui couvre déjà cette modification.",
   "mods.plan.step.change_start": "Modifier les mods, puis démarrer à nouveau {world}.",
   "mods.plan.step.change_stopped": "Modifier les mods. {world} reste arrêté, comme maintenant.",
   "mods.plan.step.fails": "Si une étape échoue, les étapes suivantes n’ont pas lieu.",
@@ -319,8 +320,12 @@
   "mods.plan.fix.disable": "Désactiver aussi {mod}",
   "mods.plan.back_search": "Retour à la recherche",
   "mods.plan.fixed": {
-    "one": "Le plan désactive maintenant aussi {mod}. Il modifie {count} mod.",
-    "other": "Le plan désactive maintenant aussi {mod}. Il modifie {count} mods."
+    "one": "Plan mis à jour. Il modifie {count} mod.",
+    "other": "Plan mis à jour. Il modifie {count} mods."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan mis à jour. Il reste {count} conflit.",
+    "other": "Plan mis à jour. Il reste {count} conflits."
   },
   "mods.drops.confirm": {
     "one": "Supprimer ce que {mods} a construit. L’instantané « {label} » en garde une copie.",

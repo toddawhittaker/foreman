@@ -86,8 +86,17 @@ func TestUndoAfterARunOfModChanges(t *testing.T) {
 		}
 		return g.get(modsPath(id) + ownResultQuery)
 	}
+	_, before := g.getStatus(kindPlanPath(id, mods.KindDisable, "alpha"))
+	wantIn(t, "plan before a run", plain(before), "Take a snapshot labelled")
 	tab := disable("alpha")
 	wantIn(t, "first change", text(tab), "Disabled alpha in Other.", `Foreman took the snapshot "Before mod change" first.`, "Undo this mod change")
+
+	// Inside the run the plan says it keeps the run's snapshot, not that it takes one.
+	_, inRun := g.getStatus(kindPlanPath(id, mods.KindDisable, "beta"))
+	wantIn(t, "plan in a run", plain(inRun), "Keep the snapshot from ", ", which already covers this change.")
+	if strings.Contains(inRun, "Take a snapshot") {
+		t.Error("a plan inside a run still promises a new snapshot")
+	}
 
 	tab = disable("beta")
 	if n := g.modSnapshots(id); n != 1 {

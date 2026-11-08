@@ -215,7 +215,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
 
   // The fix redraws the plan in place with fp-other removed too, says so, and puts focus on the changes.
   await conflicts.getByRole("link", { name: "Remove fp-other as part of this plan" }).click();
-  await expect(page.locator("#announcer")).toHaveText("The plan now disables fp-other too. It changes 2 mods.");
+  await expect(page.locator("#announcer")).toHaveText("Plan updated. It changes 2 mods.");
   await expect(page.getByRole("heading", { level: 1, name: "Change the mods of Base?" })).toBeVisible();
   await expect(page.locator("#plan-changes")).toBeFocused();
   await expect(page.locator("#plan-conflicts")).toHaveCount(0);
