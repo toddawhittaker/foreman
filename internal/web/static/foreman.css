@@ -2862,6 +2862,12 @@ a.mod-name {
   margin-block-start: 0;
 }
 
+/* Change version sits in the name's line, so it lines up with the name when
+   that line wraps; the line's gap already spaces it (SPEC 9.3). */
+.mod-line .mod-version {
+  padding-inline: 0;
+}
+
 /* Remove is the one red control: it is the change that destroys something. */
 .mod-list .mod-remove,
 .mod-list .mod-remove:hover {

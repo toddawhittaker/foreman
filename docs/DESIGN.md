@@ -1724,7 +1724,11 @@ sections in this order, each a `section.panel`:
   on the mod portal …". The actions keep one order, lined up on the end so
   Disable and Remove sit in the same place in every row: Update to X (when
   the status finds one, or as the fix for a gone version), Enable or
-  Disable, and Remove. Remove is a quiet button in `danger-text`, the only
+  Disable, and Remove. "Change version" is a quiet button beside the
+  version it changes, after the badges, so the actions still share one
+  320 px line; it opens the plan with the mod held at its version, and the
+  status takes it away for a mod the portal does not have. A folder mod has
+  none. Remove is a quiet button in `danger-text`, the only
   red control on the tab, since it is the one change that destroys
   something; its confirmation is the plan page. Each action's hidden text
   names its mod. A folder mod has no Remove. Built-in mods are never in the
@@ -1811,6 +1815,14 @@ sync, upload) has the same shape, changes first. In order:
   with its portal link and, when there are two or more, "Remove from
   plan". The mods the plan needs and leaves as they are fold into one
   closed `details`, "2 other mods stay as they are".
+- For each mod an install or update names, a `select` "Version of *mod*"
+  (SPEC 9.2): "Newest that fits (2.0.0)", then the releases for the
+  world's line, newest first, the installed one marked "(installed)". One
+  mod's list is a plain field with the hint under its label; several share
+  a `fieldset` "Versions". Choosing one redraws the plan with htmx and focus
+  stays on the list. While the chosen release is the installed one, "Nothing
+  changes at this version" takes the place of the changes, and there are no
+  steps and no apply button.
 - "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
   the plan with htmx; a "Recalculate the plan" button does it without script.
 - For each unresolved mod a `fieldset` with its legend ("The mod portal
