@@ -1952,8 +1952,9 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   task, 2036 after the Saves task, and 2104 in six shards after the
   second Generate task, with 116 skipped and none failing apart from
   `errorlog.spec.ts`'s two expected failures.
-- The last Generate task's own runs were fast checks only; the full suite
-  runs on the batch head.
+- The last Generate task ran fast checks itself; before its merge the
+  orchestrator ran `make verify` and the whole browser suite on it: 2,182
+  passed, with only `errorlog.spec.ts`'s two expected failures.
 - Real games: `make test-game` passed on 1.1, 2.0 and 2.1 with the new
   tests, and the 3072-tile preview test passed. `make e2e-game` passes
   after the phone scenario fix.
