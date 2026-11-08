@@ -1,6 +1,6 @@
 import { test, expect, checkPage, createAdmin, adminPassword, seedWorld, seedSecond, image21, openMenu, pickLanguage, type Foreman } from "./foreman.js";
 import type { APIRequestContext, BrowserContext, Locator, Page } from "@playwright/test";
-import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { catalogue, languages, pluralCategory, t, type Lang } from "./i18n.js";
 
@@ -341,9 +341,12 @@ async function sweepSubmit(page: Page, lang: Lang, label: string, submit: () => 
   }
 }
 
-// A second save the load form can choose, which a test may then remove.
+// A second, older save with its own Load next button, which a test may then remove.
 function copyExtraSave(f: Foreman) {
-  copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), join(f.dataDir, "worlds", "base", "saves", "extra.zip"));
+  const p = join(f.dataDir, "worlds", "base", "saves", "extra.zip");
+  copyFileSync(join(fixtures, "2.1.24-no-space-age.zip"), p);
+  const old = new Date(Date.now() - 2 * 3_600_000);
+  utimesSync(p, old, old);
 }
 
 const fixtures = join(import.meta.dirname, "..", "..", "internal", "savefile", "testdata");
@@ -490,16 +493,18 @@ test.describe("layout at 320 px in every language", () => {
         failures,
       );
 
-      // The 422 error pages of the load-save and rename forms. The load form has a
-      // radio group that always has one choice, so the choice is removed here.
+      // The 422 error pages of the load-save and rename forms. Each Load next
+      // button always sends a choice, so its name is removed here.
       await sweepSubmit(
         page,
         lang,
         "/worlds/base/saves with no save chosen",
         async () => {
+          await copyExtraSave(foreman);
           await page.goto("/worlds/base/saves");
-          await page.locator("input[name=load]").evaluateAll((els) => els.forEach((e) => ((e as HTMLInputElement).checked = false)));
-          await page.locator("form[action$=load-save] button[type=submit]").click();
+          const button = page.locator("form[action$=load-save] button[value='extra.zip']");
+          await button.evaluate((e) => e.removeAttribute("name"));
+          await button.click();
           await expect(page.locator("#load-save-error")).toBeVisible();
         },
         failures,
@@ -511,9 +516,8 @@ test.describe("layout at 320 px in every language", () => {
         async () => {
           await copyExtraSave(foreman);
           await page.goto("/worlds/base/saves");
-          await page.locator("input[name=load][value='extra.zip']").check();
           rmSync(join(foreman.dataDir, "worlds", "base", "saves", "extra.zip"));
-          await page.locator("form[action$=load-save] button[type=submit]").click();
+          await page.locator("button[name=load][value='extra.zip']").click();
           await expect(page.locator("#load-save-error")).toBeVisible();
         },
         failures,
