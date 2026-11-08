@@ -125,8 +125,8 @@ test.describe("click budgets, with the fake game", () => {
     await expectWithin(clicks, 1, "snapshot");
   });
 
-  // Not yet a row of the SPEC 17.10 table: World page, Saves, then the older
-  // save's own Load next button (it was 4, with a radio list and its button).
+  // World page, Saves, then the older save's own Load next button (it was 4,
+  // with a radio list and its button).
   test("choose an older save to load: 3 clicks", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!);
     const saves = join(foreman.dataDir, "worlds", "base", "saves");
@@ -429,5 +429,26 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     // The old mods are back.
     expect(existsSync(installed)).toBe(false);
     await expectWithin(clicks, 2, "undo a mod change");
+  });
+
+  // Choosing from the list takes a click in a browser; selectOption makes none,
+  // so the count here is 3, and the budget still covers the real 4.
+  test("change a mod's version: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+    const portal = fakePortal!;
+    await portal.add("fp-back", "1.0.0", ["base >= 2.0"]);
+    await portal.add("fp-back", "1.1.0", ["base >= 2.0"]);
+    await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-back": { factorio: "2.0", version: "1.1.0", deps: ["base >= 2.0"] } } });
+    const clicks = await countClicks(page);
+    await startGame(page, clicks);
+
+    await page.getByRole("link", { name: "Mods", exact: true }).click();
+    await page.getByRole("link", { name: "Change version fp-back", exact: true }).click();
+    await page.getByLabel("Version of fp-back").selectOption("1.0.0");
+    await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
+    await page.getByRole("button", { name: "Change 1 mod" }).click();
+    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
+    await expect(badge(page)).toHaveText("Running", live);
+    expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-back_1.0.0.zip"))).toBe(true);
+    await expectWithin(clicks, 4, "change a mod's version");
   });
 });
