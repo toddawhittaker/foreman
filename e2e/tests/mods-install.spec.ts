@@ -81,6 +81,29 @@ test("a chain three levels deep: the plan lists what is needed and why, and all 
   expect((await portal.state()).refused).toEqual([]);
 });
 
+// SPEC 9.2: a "+" dependency starts ticked and can be unticked; one the portal lacks does not block the plan.
+test("a recommended dependency starts ticked, and one the portal lacks is left out", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-lane", "1.3.1");
+  await fakePortal!.add("fp-k2", "2.1.4", ["base >= 2.0", "+ fp-lane >= 1.3.0", "+ fp-gone"]);
+  await setUpModsWorld(page, foreman, fakeGame!, world);
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-k2");
+  const box = page.getByLabel("fp-lane, recommended by fp-k2");
+  await expect(box).toBeChecked();
+  await expect(page.locator("#plan-unavailable")).toContainText("fp-gone, recommended by fp-k2, is left out");
+  await expect(page.getByRole("button", { name: "Install 2 mods" })).toBeVisible();
+  await checkPage(page);
+
+  await box.uncheck();
+  await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
+  await expect(box).not.toBeChecked();
+  await expect(box).toBeFocused();
+  await box.check();
+  await page.getByRole("button", { name: "Install 2 mods" }).click();
+  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-k2_2.1.4.zip"))).toBe(true);
+  expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-lane_1.3.1.zip"))).toBe(true);
+});
+
 test.describe("an optional dependency", () => {
   async function addMods(portal: FakePortal) {
     await portal.add("fp-opt", "1.0.0");

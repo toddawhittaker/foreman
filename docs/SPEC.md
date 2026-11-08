@@ -1139,7 +1139,10 @@ keeps the installed version when that meets every constraint, and otherwise
 takes the newest release on the world's game line that does. Built-in mods
 count as present at the game version. An optional dependency's version
 limit holds even while its mod is off, so turning it on in the same plan is
-held to it. Dependencies of installed mods are read from their own
+held to it. A recommended dependency (the "+" prefix of Factorio 2.1) is
+an optional one that starts ticked; one the portal lacks or that would
+conflict is left out with a note and never blocks the plan. A sync adds
+none. Dependencies of installed mods are read from their own
 `info.json`, so turning mods off or on and removing them need no portal. A
 search result's "Add to plan" starts one plan, and "Add another mod" on the
 plan page adds more: several mods are one plan, one snapshot and one

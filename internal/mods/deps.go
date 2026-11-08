@@ -22,6 +22,7 @@ const (
 	Optional                      // "?"
 	HiddenOptional                // "(?)"
 	Incompatible                  // "!"
+	Recommended                   // "+": optional, but on by default (Factorio 2.1)
 )
 
 // Dep is one parsed dependency string from a mod's info.json.
@@ -56,6 +57,8 @@ func ParseDep(s string) (Dep, error) {
 		d.Kind, rest = Optional, rest[1:]
 	case strings.HasPrefix(rest, "~"):
 		d.Kind, rest = NoOrder, rest[1:]
+	case strings.HasPrefix(rest, "+"):
+		d.Kind, rest = Recommended, rest[1:]
 	}
 	rest = strings.TrimSpace(rest)
 	if m := depVersionRE.FindStringSubmatch(rest); m != nil {
@@ -75,7 +78,7 @@ func ParseDep(s string) (Dep, error) {
 
 // String writes the dependency back in info.json form.
 func (d Dep) String() string {
-	prefix := map[DepKind]string{NoOrder: "~ ", Optional: "? ", HiddenOptional: "(?) ", Incompatible: "! "}[d.Kind]
+	prefix := map[DepKind]string{NoOrder: "~ ", Optional: "? ", HiddenOptional: "(?) ", Incompatible: "! ", Recommended: "+ "}[d.Kind]
 	if d.Op == "" {
 		return prefix + d.Name
 	}
@@ -103,3 +106,6 @@ func (d Dep) Allows(version string) bool {
 
 // required reports whether the dependency must be present and enabled.
 func (d Dep) required() bool { return d.Kind == Required || d.Kind == NoOrder }
+
+// optional reports whether the admin may choose the dependency.
+func (d Dep) optional() bool { return d.Kind == Optional || d.Kind == Recommended }
