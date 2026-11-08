@@ -24,8 +24,8 @@
       <li>{{msgHTML .}}</li>
       {{- end}}
     </ul>
-    {{- if not .Advice.IsZero}}
-    <p>{{msg .Advice}}</p>
+    {{- with .Fix}}
+    <div class="actions"><a href="{{.Path}}" class="button" id="act-fix">{{msg .Label}}</a></div>
     {{- end}}
   </div>
   {{- end}}

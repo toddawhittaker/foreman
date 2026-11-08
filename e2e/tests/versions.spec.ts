@@ -302,12 +302,15 @@ test.describe("with the fake game", () => {
     await expect(refusal).toBeVisible(live);
     await expect(refusal).toContainText("base.zip uses Space Age");
     await expect(refusal).toContainText('labelled "Before update"');
-    await expect(refusal.getByRole("button", { name: "Update anyway" })).toBeVisible();
+    // Update anyway, and the steps it takes, wait behind their own choice.
+    await expect(refusal.getByRole("button", { name: "Update anyway" })).toBeHidden();
+    await expect(refusal.locator("summary")).toHaveText("Or update anyway");
     // Nothing changed while the box is up.
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
     expect((await pulls(g)).length).toBe(0);
     await checkPage(page);
 
+    await refusal.locator("summary", { hasText: "Or update anyway" }).click();
     await refusal.getByRole("button", { name: "Update anyway" }).click();
     await expect.poll(() => diskVersion(foreman, "base"), live).toBe("2.1.25");
     expect(await snapshotLabels(page, "base")).toContain("Before update");
@@ -335,6 +338,7 @@ test.describe("with the fake game", () => {
     expect(diskVersion(foreman, "second")).toBe("2.1.24");
     await checkPage(page);
 
+    await refusal.locator("summary", { hasText: "Or update anyway" }).click();
     await refusal.getByRole("button", { name: "Update anyway" }).click();
     await expect(page).toHaveURL("/worlds/second?result=1");
     await expect(page.locator("#world-result")).toContainText("The game version is updated.", live);

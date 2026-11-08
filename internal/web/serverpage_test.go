@@ -352,15 +352,43 @@ func TestRefusalBoxAndStepWord(t *testing.T) {
 }
 
 // DESIGN 7.5: the read-out of a refusal with a choice says the choice is
-// there, so a screen reader user knows to look for the button.
+// there, so a screen reader user knows to look for it.
 func TestRefusalAnnouncementNamesTheChoice(t *testing.T) {
 	for action, verb := range map[string]string{game.AuditStart: "start anyway", game.AuditRestart: "restart anyway", game.AuditSwitch: "switch anyway"} {
 		p := serverCase(game.StateStopped, func(p *ServerPage) {
 			err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemSaveUnreadable, Text: "x", StartAnyway: true}}}}
 			p.Result, p.HaveResult = actionResult{Action: action, Err: err, Target: "other"}, true
 		})
-		if got, want := english(resultAnnouncement(p)), "You can "+verb+"; the button is below."; !strings.Contains(got, want) {
+		if got, want := english(resultAnnouncement(p)), "You can "+verb+"; the choice is below."; !strings.Contains(got, want) {
 			t.Errorf("%s: %q lacks %q", action, got, want)
+		}
+	}
+}
+
+// SPEC 7.4, 17.9, DESIGN 7.4: a refused mod change states its one problem in
+// the lead, offers the main fix first and the restore second, and keeps
+// going ahead anyway, with its steps, behind its own choice. It never sends
+// the admin to copy files on the host.
+func TestRefusalOrdersFixRestoreAnyway(t *testing.T) {
+	p := serverCase(game.StateRunning, func(p *ServerPage) {
+		err := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Kind: world.ProblemModMissing,
+			Save: "a.zip", Mods: []string{"m"}, StartAnyway: true}}}}
+		p.Result, p.HaveResult = actionResult{Action: game.AuditMods, Err: err, Undo: "20261107T100000Z"}, true
+	})
+	html := controlHTML(t, p)
+	order := []string{"does not match the world: a.zip uses m", `id="act-fix"`, `Restore &#34;Before mod change&#34;`,
+		`<details class="disclosure anyway">`, `<summary id="act-anyway-open">Or start anyway</summary>`, "If you choose Start anyway", `id="act-anyway"`}
+	at := -1
+	for _, w := range order {
+		i := strings.Index(html, w)
+		if i <= at {
+			t.Fatalf("%q is missing or out of order:\n%s", w, html)
+		}
+		at = i
+	}
+	for _, n := range []string{"<li>a.zip", "To put the world back", "cannot add mods", "on the host"} {
+		if strings.Contains(html, n) {
+			t.Errorf("has %q:\n%s", n, html)
 		}
 	}
 }

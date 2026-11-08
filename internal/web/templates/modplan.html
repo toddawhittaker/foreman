@@ -68,6 +68,9 @@
     <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
     {{- with .Form.Query}}
     <input type="hidden" name="q" value="{{.}}">
+    {{- if gt $.Page.Form.Page 1}}
+    <input type="hidden" name="page" value="{{$.Page.Form.Page}}">
+    {{- end}}
     {{- end}}
     {{- if .Adding}}
     {{- /* The mods asked for, then what they bring with them (SPEC 9.2). */}}
@@ -243,28 +246,13 @@
     <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
   </div>
   {{- else if .Form.Query}}
-  <p id="add-results">{{t "mods.search.count" "count" (len .Hits) "line" .Line}}</p>
-  {{- if .Hits}}
-  <ul class="mod-results mod-results--short" role="list" aria-labelledby="add-results">
-    {{- range .Hits}}
-    <li>
-      <p><span class="mod-results__title">{{if .Title}}{{.Title}}{{else}}<span class="ident" translate="no">{{.Name}}</span>{{end}}</span>
-        {{- if and .Title (ne .Title .Name)}} <code translate="no">{{.Name}}</code>{{end}} <code class="nowrap">{{.LatestVersion}}</code></p>
-      <div class="actions">
-        {{- $id := $.Page.ModID .Name "add"}}
-        {{- /* After an add, focus stays here: the badge takes the button's id (WCAG 4.1.3). */}}
-        {{- if $.Page.InPlan .Name}}
-        <span class="badge" id="{{$id}}" tabindex="-1">{{t "mods.badge.in_plan"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></span>
-        {{- else if index $.Page.Installed .Name}}
-        <span class="badge">{{t "mods.badge.installed"}}</span>
-        {{- else if $.Page.CanAdd}}
-        <a href="{{$.Page.PlanWith .Name}}" class="button" id="{{$id}}" hx-get="{{$.Page.AddPath .Name}}" hx-push-url="{{$.Page.PlanWith .Name}}" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-        {{- end}}
-        {{template "portal-link" .Name}}
-      </div>
-    </li>
-    {{- end}}
-  </ul>
+  {{- if .Results.Rows}}
+  {{template "mod-hits" .}}
+  {{template "mod-pager" .}}
+  {{- /* The plan and its Install button are above; this takes the admin back without scrolling past every result. */}}
+  <div class="actions"><a href="#confirm-heading">{{t "mods.plan.add.back"}}</a></div>
+  {{- else}}
+  <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
   {{- end}}
   {{- end}}
 </section>

@@ -26,8 +26,8 @@ test("search, install and confirm: progress, then Done on the Server page, the g
 
   await page.getByLabel("Mod name").fill("fp-signs");
   await page.getByRole("button", { name: "Search" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: /1 mod for Factorio 2\.0/ })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 3, name: "fp-signs" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "1 mod for Factorio 2.0 matches." })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "fp-signs" })).toBeVisible();
   await checkPage(page);
 
   await page.getByRole("link", { name: "Add to plan fp-signs", exact: true }).click();

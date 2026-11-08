@@ -207,6 +207,7 @@ test.describe("click budgets, with the fake game", () => {
   async function crashLoopAfterStartAnyway(page: Page, g: FakeGame) {
     test.setTimeout(120_000);
     await page.getByRole("button", { name: "Start server" }).click();
+    await page.locator("summary", { hasText: "Or start anyway" }).click();
     await page.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
     await g.call("/crash-loop", { name: container, on: true });
@@ -248,13 +249,15 @@ test.describe("click budgets, with the fake game", () => {
     await expectWithin(clicks, 2, "recover by switching back");
   });
 
-  // A start the checks refuse leaves its fix on the page: starting anyway is one click.
+  // A start the checks refuse leaves its fix on the page: starting anyway is
+  // its choice, then its button.
   test("recover after a refused start: 2 clicks", async ({ page, foreman, fakeGame }) => {
     const clicks = await setUp(page, foreman, fakeGame!, { world: { fixture: "2.1.24-space-age-testmod.zip", spaceAge: true } });
     await page.getByRole("button", { name: "Start server" }).click();
-    await expect(page.getByRole("button", { name: "Start anyway" })).toBeVisible(live);
+    await expect(page.locator("summary", { hasText: "Or start anyway" })).toBeVisible(live);
     await clicks.reset();
 
+    await page.locator("summary", { hasText: "Or start anyway" }).click();
     await page.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
     await expectWithin(clicks, 2, "recover after a refused start");

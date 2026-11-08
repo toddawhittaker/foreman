@@ -1121,13 +1121,16 @@ because the game's autosaves can then fail. (P1)
 
 ## 9. Mods (per world)
 
-9.1. **Search** the mod portal by name and see each mod's summary, latest
-version, supported game versions, and download count. Foreman reads the
+9.1. **Search** the mod portal by name and see each mod's latest version
+and download count, with its summary on demand. Foreman reads the
 portal's whole mod list for the world's game line once (15-minute cache)
 and searches it in memory: an exact name first, then names that start with
-the text, then names or titles that contain it, each group by downloads,
-the first 25 shown. It does this because the portal's own search needs
-credentials, and search must work without them (9.11, ADR 0012). Search
+the text, then names or titles that contain it, each group by downloads.
+It does this because the portal's own search needs credentials, and
+search must work without them (9.11, ADR 0012). Every match is kept; the
+results show ten at a time, in a table that says how many match in all
+and which ones it shows, with links to the other pages. On the search
+page several results can be ticked and added to one plan at once. Search
 results, the plan's asked-for rows and installed mods link to the mod's page
 at `https://mods.factorio.com/mod/<name>`, in a new tab; built-in and folder
 mods have no link. (P0)
@@ -1827,7 +1830,7 @@ with the defaults accepted, these take at most:
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
 | Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
-| Install a second mod in the same change (one more Add to plan) | 5 |
+| Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Recover after a failed start or a crash loop | 2 |
