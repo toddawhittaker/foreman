@@ -1683,9 +1683,10 @@ and one more is refused at once. A request whose browser goes away stops
 waiting, and if its preview is already running, the container is stopped
 and deleted with its folder. A container whose create call failed is
 deleted by its name. A leftover container (found by label) or folder from a crash is removed at
-the start of the next preview, not at startup. The preview's 1 GiB stands
-at 4096 tiles: the measured peak was about 553 MiB and the slowest run
-under 6 seconds.
+the start of the next preview, not at startup. The preview's 1 GiB covers
+up to 4096 tiles (the measured peak was about 553 MiB and the slowest run
+under 6 seconds), which leaves headroom over the 3072 tiles the previews
+now stop at.
 
 Demolisher territories (5.6) use a second kind of preview container,
 `foreman-territories-<folder>`, with the same label, endpoints, host
@@ -1731,7 +1732,7 @@ or map-gen JSON text, including the raw editors' and the files written to a
 world's `config/`, is at most 1 MB and must be one JSON object (11.2). A
 map preview picture is at most 16 MiB: at 4096 tiles Gleba measured 8.8
 MB and Vulcanus 8.5 MB, over the old 8 MB cap, and every other planet
-under 6 MB. Foreman reads the game's output (pictures and the territory
+under 6 MB. Previews stop at 3072 tiles, so the cap has headroom. Foreman reads the game's output (pictures and the territory
 file) only from regular files, so a named pipe left by the game cannot
 hang the read. Drawing territories into a download runs one at a time,
 with at most 4 waiting; one more is refused with "busy". A mod zip that
@@ -1943,8 +1944,9 @@ and fails when a task goes over budget. (P1)
 `time` element with a UTC `datetime`. In the browser it is shown in the
 viewer's own zone, with a short zone name and, in visible text, how long
 ago it was, refreshed every minute. A time inside text only a screen
-reader hears (a control's name) shows the local time alone, so the name
-does not go stale. Without JavaScript the page keeps its UTC text.
+reader hears (a control's name) or inside a button label (the Undo
+button, the Restore offer) shows the local time alone, so the name does
+not go stale. Without JavaScript the page keeps its UTC text.
 Durations, such as uptime, are not times of day and are left alone. (P1)
 
 17.12. **Tables keep their meaning when they reflow.** A table that stacks

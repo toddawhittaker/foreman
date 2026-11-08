@@ -46,7 +46,8 @@ const (
 	// MaxPicture is the largest picture size Parse accepts: MaxSize, the
 	// largest preview there is (SPEC 5.6).
 	MaxPicture = MaxSize
-	// MaxSize is the largest preview size territories are offered for, kept
+	// MaxSize is the largest preview size territories are offered for, and
+	// also the largest preview size there is (game.PreviewSizeMax), kept
 	// low to fail safe (SPEC 5.6). At 3584, 2.0 took 32 s on a fast desktop
 	// and 2.1 used 88% of the container's 1 GiB, too little room for a slow
 	// home server; 3072 used at most 750 MiB (73%) and 27 s. 4096 ran out of

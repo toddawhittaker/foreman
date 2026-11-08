@@ -1877,7 +1877,10 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   takes its place with focus and puts every value back in one click
   (SPEC 17.9). Any later change to the settings, preset, seed, game
   version or Space Age ends the Undo, and focus never drops to the page
-  body. Without script the reset is a plain round trip with no Undo.
+  body. A change made while a reset is on its way does not stop Undo
+  from being offered; it brings back the settings as they were when Reset
+  was pressed. Without script the reset is a plain round trip with no
+  Undo.
 - **Settings beside the large map (#399).** In a large view at least
   77rem wide, in Map settings mode, the viewed planet's Resources and
   Terrain settings sit in a column on the left, with the map on the right.
@@ -1886,8 +1889,10 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   "[modified]", reset, Undo and the leave warning behave as for a change
   on the page. A change redraws the map after the page's usual pause; the
   newest request wins. Keys belong to the focused field; Escape closes
-  the view. Narrower views, phones and exchange-string maps show the map
-  only. Changing a planet's setting while looking at it takes 1 click
+  the view. While the map redraws, a visible line says so without being
+  read out; the status line says only "Map preview ready.", warnings and
+  errors. If the view narrows with a field focused, focus moves to the map.
+  Narrower views, phones and exchange-string maps show the map only. Changing a planet's setting while looking at it takes 1 click
   instead of 3 or 4.
 - **Saves tab (#398, SPEC 7.11).** One list of saves replaces the radio
   list and its "Use this choice" button. The row that loads next has a
@@ -1947,6 +1952,8 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   task, 2036 after the Saves task, and 2104 in six shards after the
   second Generate task, with 116 skipped and none failing apart from
   `errorlog.spec.ts`'s two expected failures.
+- The last Generate task's own runs were fast checks only; the full suite
+  runs on the batch head.
 - Real games: `make test-game` passed on 1.1, 2.0 and 2.1 with the new
   tests, and the 3072-tile preview test passed. `make e2e-game` passes
   after the phone scenario fix.

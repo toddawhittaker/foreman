@@ -298,9 +298,11 @@ no rule; it has its border.
 ### Rules
 
 - A component never sets its own outer margin. The parent spaces its
-  children with `gap` (flex or grid). The one exception is prose flow
-  inside a block of text, which uses the default paragraph margins reset
-  to `margin-block: 0 var(--space-3)`.
+  children with `gap` (flex or grid). There are two exceptions. The first is
+  prose flow inside a block of text, which uses the default paragraph margins reset
+  to `margin-block: 0 var(--space-3)`. The second is a section heading: a
+  panel's `h2` or section head pulls the panel's gap in with a negative
+  block-end margin, so the space under it is `--space-2`.
 - Use logical properties (`padding-inline`, `margin-block`,
   `inset-inline-start`), never left and right.
 
@@ -1998,7 +2000,8 @@ too.
   viewer's zone, such as "Nov 3, 2:25 PM EST (2 days ago)". The year shows
   only when it is not the current year. The relative part is visible text
   only and is refreshed every minute. A time inside `.visually-hidden`
-  text, such as a link's spoken name, gets the absolute local time and no
+  text, such as a link's spoken name, or inside a button label (the Undo
+  button, the Restore offer and links), gets the absolute local time and no
   relative part, so the name stays short and never goes stale. Without
   JavaScript the UTC text stays. A table cell keeps its date and clock in
   separate `nowrap` spans, and the zone is its own unit after the
