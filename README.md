@@ -198,6 +198,9 @@ from a game network's address range (SPEC 12.5, 12.6).
 
 Searching for mods needs no account. Downloading them needs a
 factorio.com account name and token, which Foreman uses only to download.
+Every admin's downloads use this one account, which belongs to the
+factorio.com user who owns it. If you would rather not use your own, create
+a separate factorio.com account just for this server.
 
 1. Sign in at factorio.com and open <https://factorio.com/profile>. Your
    username and your token are shown there. Treat the token like a
