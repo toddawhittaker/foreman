@@ -69,17 +69,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // A row opened to follow the choice already made says and sends nothing.
     if (!field || field.value === d.dataset.planet) return;
     openRow(d.dataset.planet);
-    const pick = document.getElementById("preview-planet");
-    if (pick && pick.value !== d.dataset.planet && [...pick.options].some((o) => o.value === d.dataset.planet)) {
-      pick.value = d.dataset.planet;
-      pick.dispatchEvent(new Event("change", { bubbles: true }));
-      announce(d.dataset.said);
-    }
+    // The preview shows the planet whose settings are open; it cancels the event when it switches, which is said.
+    const told = new CustomEvent("settings:planet", { detail: { planet: d.dataset.planet }, cancelable: true });
+    if (!document.dispatchEvent(told)) announce(d.dataset.said);
   }, true);
-  // A planet chosen in the preview opens its row, and focus stays where it is.
-  document.addEventListener("change", (e) => {
-    if (e.target.id === "preview-planet") openRow(e.target.value);
-  });
+  // A planet shown in the large view opens its row, and focus stays where it is.
   document.addEventListener("preview:planet", (e) => {
     if (e.detail && e.detail.planet) openRow(e.detail.planet);
   });
@@ -338,8 +332,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Leaving with settings that are not saved asks the browser's own question
   // (SPEC 5.6). Not saved: a field that differs from what the page loaded
   // with, or a form the server sent back with errors. The tab, the preview
-  // size and the territory box are views, not settings.
-  const views = new Set(["tab", "preview_size", "territories"]);
+  // size, the territory box and the one-or-all choice are views, not settings.
+  const views = new Set(["tab", "preview_size", "territories", "preview_view"]);
   let unsaved = Boolean(document.getElementById("error-summary"));
   let submitting = false;
   function differsFromLoaded(el) {

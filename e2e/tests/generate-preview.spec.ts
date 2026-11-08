@@ -55,8 +55,11 @@ test.describe("with script", () => {
     await expect(section(page)).not.toContainText("The pin marks");
     // The pin is drawn over the picture and hidden from screen readers.
     await expect(section(page).locator("svg.pin")).toHaveAttribute("aria-hidden", "true");
-    await expect(page.getByLabel("Planet")).toHaveValue("nauvis");
-    await expect(page.getByLabel("Planet").locator("option")).toHaveCount(5);
+    // No planet picker repeats the settings' planet rows; the choice is one planet or all (SPEC 5.6).
+    await expect(page.getByLabel("Planet", { exact: true })).toHaveCount(0);
+    await expect(section(page).getByRole("radio", { name: "One planet" })).toBeChecked();
+    await expect(section(page).getByRole("radio", { name: "All planets" })).not.toBeChecked();
+    await expect(section(page).getByRole("group", { name: "Preview shows" })).toBeVisible();
     const link = section(page).getByRole("link", { name: /Map preview of Nauvis, seed \d+\. The pin is where players start\. \(opens the large view\)/ });
     await expect(link).toBeVisible();
     // The page load does not announce anything or move focus.
@@ -116,25 +119,84 @@ test.describe("with script", () => {
     await expect.poll(() => sent.length).toBe(1);
   });
 
-  test("picking a planet draws only that planet, and going back reuses the stored picture", async ({ page, fakeGame }) => {
+  test("opening a planet's settings draws only that planet, and going back reuses the stored picture", async ({ page, fakeGame }) => {
     await page.goto("/generate");
     await expect(pictures(page)).toHaveCount(1);
     const sent = autoRequests(page);
     const before = await runs(fakeGame!);
-    const planet = page.getByLabel("Planet");
-    await planet.focus();
-    await planet.selectOption("vulcanus");
+    const summary = page.locator("#mg-resources-vulcanus summary");
+    await summary.click();
     await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus, seed \d+\. The pin is where players start\.$/);
     await expect(pictures(page)).toHaveCount(1);
     expect(sent.map((r) => field(r, "planet"))).toEqual(["vulcanus"]);
-    // An automatic request never moves focus, and keeping it on the choice is not a move.
-    await expect(page.getByLabel("Planet")).toBeFocused();
+    // An automatic request never moves focus.
+    await expect(summary).toBeFocused();
     await expect(page.locator("#announcer")).toHaveText("Map preview ready.");
     expect(await runs(fakeGame!)).toBe(before + 1);
 
-    await page.getByLabel("Planet").selectOption("nauvis");
+    await page.locator("#mg-resources-nauvis summary").click();
     await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
     expect(await runs(fakeGame!)).toBe(before + 1);
+  });
+
+  // SPEC 5.6, DESIGN 8.8: one large map of the planet being edited, or every
+  // planet as thumbnails, one click each way; the choice holds as settings change.
+  test("All planets draws every planet small, and One planet goes back to the open planet", async ({ page, fakeGame }) => {
+    await page.goto("/generate");
+    await expect(pictures(page)).toHaveCount(1);
+    const sent = autoRequests(page);
+    const one = section(page).getByRole("radio", { name: "One planet" });
+    const all = section(page).getByRole("radio", { name: "All planets" });
+    const tab = (name: string) => section(page).locator("label.tab", { hasText: name });
+    // One click: every planet, only the four not drawn yet are run.
+    await tab("All planets").click();
+    await expect(pictures(page)).toHaveCount(5);
+    await expect(all).toBeChecked();
+    await expect(all).toBeFocused();
+    expect(sent.map((r) => [field(r, "preview_view"), field(r, "planet")])).toEqual([["all", undefined]]);
+    const thumb = (await pictures(page).first().boundingBox())!;
+    // Opening another planet's settings draws nothing more while all are shown.
+    const runsAll = await runs(fakeGame!);
+    await page.locator("#mg-resources-gleba summary").click();
+    await page.waitForTimeout(1000);
+    expect(sent).toHaveLength(1);
+    // One click back: that planet, large, from the stored pictures.
+    await tab("One planet").click();
+    await expect(pictures(page)).toHaveCount(1);
+    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
+    await expect(one).toBeChecked();
+    expect(await runs(fakeGame!)).toBe(runsAll);
+    const large = (await pictures(page).boundingBox())!;
+    if ((page.viewportSize()?.width ?? 1280) > 600) expect(large.width).toBeGreaterThan(thumb.width * 1.5);
+    await checkPage(page);
+
+    // A change of settings with all shown redraws all of them.
+    await tab("All planets").click();
+    await expect(pictures(page)).toHaveCount(5);
+    await page.locator("#generate-seed").fill("31337");
+    await expect(pictures(page).first()).toHaveAccessibleName(/seed 31337/);
+    await expect(pictures(page)).toHaveCount(5);
+    expect(field(sent[sent.length - 1], "preview_view")).toBe("all");
+  });
+
+  // #322: after Preview map draws every planet there is a way back to one.
+  test("after Preview map, One planet goes back to the planet being edited", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(pictures(page)).toHaveCount(1);
+    await page.getByRole("button", { name: "Preview map" }).click();
+    await expect(pictures(page)).toHaveCount(5);
+    await expect(section(page).getByRole("radio", { name: "All planets" })).toBeChecked();
+    await section(page).locator("label.tab", { hasText: "One planet" }).click();
+    await expect(pictures(page)).toHaveCount(1);
+    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis/);
+  });
+
+  test("a world with one planet offers no choice", async ({ page }) => {
+    await page.goto("/generate");
+    await page.getByLabel("Space Age is on").uncheck();
+    await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
+    await expect(pictures(page)).toHaveCount(1);
+    await expect(section(page).getByRole("radio")).toHaveCount(0);
   });
 
   // SPEC 5.6, DESIGN 8.7, 8.8: the preview's size is a slider on a wide panel
@@ -256,7 +318,7 @@ test.describe("with script", () => {
     await page.getByLabel("World name").fill("Mega base");
     await expect(pictures(page)).toHaveCount(1);
     const seed = await page.locator("#generate-seed").inputValue();
-    await page.getByLabel("Planet").selectOption("gleba");
+    await page.locator("#mg-resources-gleba summary").click();
     await expect(pictures(page)).toHaveAccessibleName(/Gleba/);
 
     const png = section(page).getByRole("link", { name: "Download Gleba (PNG)" });
@@ -324,7 +386,8 @@ test.describe("without script", () => {
     await expect(section(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(pictures(page)).toHaveCount(5);
-    await expect(page.getByLabel("Planet")).toHaveCount(0);
+    // The one-or-all choice needs script, so it is not offered.
+    await expect(section(page).getByRole("radio")).toHaveCount(0);
     const link = section(page).getByRole("link", { name: /^Map preview of Nauvis, seed \d+\. The pin is where players start\. \(opens the full-size picture\)$/ });
     const href = await link.getAttribute("href");
     await link.click();

@@ -31,7 +31,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 async function vulcanus(page: Page) {
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
 }
 
@@ -53,7 +53,7 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", asyn
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await expect(box(page)).toHaveCount(0);
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
   await expect(box(page)).not.toBeChecked();
   await expect(box(page)).toHaveAccessibleDescription("Finding them takes a few seconds more.");
@@ -61,11 +61,11 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", asyn
   await expect(overlay(page)).toHaveCount(0);
   await checkPage(page);
   // Another planet has no box.
-  await section(page).getByLabel("Planet").selectOption("gleba");
+  await page.locator("#mg-resources-gleba summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Gleba/ })).toBeVisible();
   await expect(box(page)).toHaveCount(0);
   // Without Space Age there is no Vulcanus, so no box.
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
   await page.getByLabel("Space Age is on").uncheck();
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
@@ -213,13 +213,13 @@ test("looking at another planet drops the territory request", async ({ page }) =
   page.on("requestfailed", (r) => { if (isTerritories(new URL(r.url()).pathname)) aborted.push(r.url()); });
   await box(page).check();
   await expect.poll(() => hold.held.length).toBe(1);
-  await section(page).getByLabel("Planet").selectOption("nauvis");
+  await page.locator("#mg-resources-nauvis summary").click();
   await expect.poll(() => aborted.length).toBe(1);
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
   await page.waitForTimeout(500);
   expect(hold.held.length).toBe(1);
   // Back on Vulcanus the box is still ticked, and they are asked for again.
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeChecked();
   await expect.poll(() => hold.held.length).toBe(2);
   await hold.release();

@@ -185,7 +185,7 @@ func TestTerritoryBoxShowsOnlyForVulcanus(t *testing.T) {
 		t.Errorf("Nauvis shows the box, or loses the choice:\n%s", nauvis)
 	}
 	off := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "territories", ""), c, hx).Body.String()
-	if !strings.Contains(off, box) || strings.Contains(off, " checked>") || strings.Contains(off, `name="territories" value="1">`) {
+	if !strings.Contains(off, box) || strings.Contains(off, " checked> Show demolisher") || strings.Contains(off, `name="territories" value="1">`) {
 		t.Errorf("Vulcanus lacks the box, or it is ticked when off:\n%s", off)
 	}
 	if !strings.Contains(off, "Show demolisher territories") || !strings.Contains(off, "Finding them takes a few seconds more.") {

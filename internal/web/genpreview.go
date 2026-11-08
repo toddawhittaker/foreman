@@ -45,6 +45,10 @@ const (
 	// "generate-preview-invalid" fragment, with status 200, in the preview's
 	// slot, and the form is left alone.
 	previewAutoField = "auto"
+	// previewViewField is the section's choice of one planet or all of them;
+	// previewViewAll makes an automatic request draw every planet.
+	previewViewField = "preview_view"
+	previewViewAll   = "all"
 )
 
 // previewDeadline is how long a preview request may take to answer: the
@@ -316,17 +320,12 @@ type PreviewPicture struct {
 	Path   string
 }
 
-// Choose is true when one picture of several planets is shown, so the
-// section offers the others.
-func (v PreviewView) Choose() bool { return len(v.Planets) > 1 && len(v.Pictures) == 1 }
+// Choice is true when the world has several planets, so the section offers
+// one planet or all of them (DESIGN 8.8).
+func (v PreviewView) Choice() bool { return len(v.Planets) > 1 }
 
-// Current is the planet of the one picture shown, or blank.
-func (v PreviewView) Current() string {
-	if len(v.Pictures) == 1 {
-		return v.Pictures[0].Planet
-	}
-	return ""
-}
+// All is true when several pictures are shown.
+func (v PreviewView) All() bool { return len(v.Pictures) > 1 }
 
 // DownloadPath is where the picture is served as a file.
 func (p PreviewPicture) DownloadPath() string { return p.Path + "/download" }
@@ -390,6 +389,8 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	switch p := r.PostFormValue(previewPlanetField); {
 	case p != "" && slices.Contains(all, p):
 		planets = []string{p}
+	case auto && r.PostFormValue(previewViewField) == previewViewAll:
+		// "All planets" is chosen, so every planet is drawn (DESIGN 8.8).
 	case auto && len(all) > 0:
 		// An automatic preview draws only the planet viewed: the first, unless
 		// one was picked that these settings still have (DESIGN 8.8).

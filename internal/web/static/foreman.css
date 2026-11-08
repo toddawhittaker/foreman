@@ -2196,27 +2196,12 @@ form:has(#mode-exchange:checked) .achievements {
 
 /* The picture link names what it opens: the file without script, the large view with it. */
 .js-on .nojs-only,
-.js-only,
-.preview-planet {
+.js-only {
   display: none;
 }
 
 .js-on .js-only {
   display: inline;
-}
-
-.js-on .preview-planet {
-  display: grid;
-}
-
-/* Planet choice and downloads need no more width than their words. */
-.field.preview-planet {
-  justify-items: start;
-}
-
-.field.preview-planet select {
-  inline-size: auto;
-  max-inline-size: 100%;
 }
 
 /* Centred when the window's height caps it; the caption and download line up with its edge.
@@ -2532,7 +2517,7 @@ form:has(#mode-exchange:checked) .achievements {
   fill: var(--color-pin-edge);
 }
 
-/* The planet choice and the territory box share a line when there is room. */
+/* The territory box and its hint share a line when there is room. */
 .preview-controls {
   display: flex;
   flex-wrap: wrap;
