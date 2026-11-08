@@ -632,7 +632,7 @@ func findRelease(mod *modportal.Mod, version, line string) *modportal.Release {
 }
 
 // nearest is the lowest release on line above version, else the newest
-// below it (plan ruling for SPEC 9.10).
+// below it (SPEC 9.10).
 func nearest(mod *modportal.Mod, version, line string) string {
 	if mod == nil {
 		return ""

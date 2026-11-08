@@ -440,7 +440,7 @@ func (s *server) portalTrouble(what, id string, err error) {
 }
 
 // ModNotice is the Server page's one line about mods players cannot get
-// (#131, plan ruling 2). It is empty when there are none or the portal
+// (#131, SPEC 9.3). It is empty when there are none or the portal
 // cannot be asked.
 type ModNotice struct {
 	World  world.Summary
@@ -584,7 +584,7 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 const maxSearchQuery = 100
 
 // planForm is a mod change request as the plan page's form carries it, so
-// the server can recompute the plan instead of storing one (plan ruling 7).
+// the server can recompute the plan instead of storing one (SPEC 9.14).
 type planForm struct {
 	Kind     mods.Kind
 	Names    []string
@@ -1374,7 +1374,7 @@ func (s *server) planError(id string, err error) i18n.Msg {
 
 // handlePlan applies a plan the admin confirmed. It recomputes the plan
 // first; when that is not the plan shown, or the mods folder moved on, it
-// applies nothing and shows the new plan (plan ruling 7, SPEC 17.8).
+// applies nothing and shows the new plan (SPEC 9.14, 17.8).
 func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
@@ -1475,7 +1475,7 @@ func planSummary(p mods.Plan) string {
 
 const maxSummary = 500
 
-// applyMods runs one mod change in the background (plan ruling 1). The
+// applyMods runs one mod change in the background (SPEC 9.13). The
 // Server page follows the active world's; the Mods tab any other world's.
 // The result names the "Before mod change" snapshot, for undo.
 func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string) {

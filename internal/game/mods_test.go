@@ -21,8 +21,8 @@ import (
 )
 
 // These tests pin what a mod change must hold (SPEC 9.2 to 9.6, 6.2, 7.4,
-// 10.3, 12.9, and the Epic 8 plan's ruling that a change on a running world
-// is one operation like a game update):
+// 10.3, 12.9, and 9.13: a change on a running world is one operation like a
+// game update):
 //
 //   - the downloads come first, and a failed one leaves the game running
 //     and the world, its snapshots and its staged files untouched;

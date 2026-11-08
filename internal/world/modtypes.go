@@ -9,8 +9,8 @@ type InstalledMod struct {
 	Local   bool // installed as a folder; never replaced
 	BuiltIn bool // base or a DLC mod (SPEC 9.7)
 	// Dependencies are the raw strings from the mod's own info.json, so a
-	// plan can read them without the portal; nil when it has none or it
-	// cannot be read.
+	// plan can read them without the portal; empty when it has none, nil
+	// when info.json cannot be read.
 	Dependencies []string
 }
 

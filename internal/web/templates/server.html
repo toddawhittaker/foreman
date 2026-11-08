@@ -25,7 +25,7 @@
 {{template "server-tabs" "overview"}}
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
 <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
-{{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (plan ruling 2). */}}
+{{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (SPEC 9.3, DESIGN 8.11). */}}
 <div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
 {{- with .ModNoticePath}}

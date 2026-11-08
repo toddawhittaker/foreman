@@ -42,7 +42,7 @@ var ErrNoStagedUpload = errors.New("mods: the plan uses an upload but none was s
 
 // Plan resolves req against the world's mods. The fingerprint is read
 // first, so a mods folder that changes while resolving is caught when the
-// plan is applied (plan ruling 7).
+// plan is applied (SPEC 9.14).
 func (p *Planner) Plan(ctx context.Context, worldID string, req Request) (Plan, string, error) {
 	fp, err := p.Worlds.ModsFingerprint(worldID)
 	if err != nil {

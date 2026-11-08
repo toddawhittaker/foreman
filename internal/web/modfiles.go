@@ -24,7 +24,7 @@ const (
 )
 
 // The upload limits in megabytes, as the pages say them: a mod zip's is the
-// same as a download's (plan ruling 11); mod-settings.dat holds only
+// same as a download's (SPEC 14.6, 14.10); mod-settings.dat holds only
 // setting values.
 const (
 	modUploadMB      = 200
@@ -164,7 +164,7 @@ func (s *server) handleModUpload(w http.ResponseWriter, r *http.Request, u store
 }
 
 // handleSettingsUpload replaces the world's mod-settings.dat as one
-// snapshotted mod change (SPEC 9.6, plan ruling 8). The upload form says
+// snapshotted mod change (SPEC 9.6, 9.13). The upload form says
 // what will happen, so it is the confirmation (DESIGN 7.4).
 func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)

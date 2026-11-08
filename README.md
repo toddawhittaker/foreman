@@ -14,8 +14,8 @@ a save is never lost.
 
 Early development; no image is published yet, so you build it yourself
 (`make image`). Built so far: sign-in, worlds and snapshots, server
-control, switching worlds and game versions. Mods and generating worlds
-come in later epics. See [docs/STATUS.md](docs/STATUS.md)
+control, switching worlds and game versions, generating worlds, game
+settings, languages and mods. See [docs/STATUS.md](docs/STATUS.md)
 for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
 
@@ -193,6 +193,33 @@ from a game network's address range (SPEC 12.5, 12.6).
    "Before switch" snapshot. The game is stopped gracefully and started
    again on the new world, with that world's game version, if it was
    running. To go back, switch to the first world the same way.
+
+### Installing mods
+
+Searching for mods needs no account. Downloading them needs a
+factorio.com account name and token, which Foreman uses only to download.
+
+1. Sign in at factorio.com and open <https://factorio.com/profile>. Your
+   username and your token are shown there. Treat the token like a
+   password.
+2. Give them to Foreman in one of two ways:
+   - Set `FOREMAN_FACTORIO_USERNAME` and `FOREMAN_FACTORIO_TOKEN` in
+     Foreman's environment. Set both or neither. Each also has a `_FILE`
+     form (`FOREMAN_FACTORIO_TOKEN_FILE`) that names a file holding the
+     value, for Docker secrets.
+   - Or set `FOREMAN_SECRET_KEY` (or `FOREMAN_SECRET_KEY_FILE`) to a
+     random string of at least 32 characters, and then enter the username
+     and token on Foreman's factorio.com account page, from the user menu.
+     Foreman stores them encrypted with that key and never shows them
+     again. If you change the key, enter them again. Keep the key apart
+     from the data directory.
+3. Open a world's **Mods** tab, search, choose **Add to plan**, and read
+   the plan before you confirm. A change to a running world downloads
+   first, then warns the players, stops the game, takes a "Before mod
+   change" snapshot, applies the change and starts the game again.
+
+If neither the variables nor the stored account are set, the Mods tab says
+downloads are off and links to the account page.
 
 ### VPN sidecars (not built yet)
 

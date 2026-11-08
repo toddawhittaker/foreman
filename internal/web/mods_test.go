@@ -30,7 +30,7 @@ import (
 )
 
 // Tests for the Mods tab, search, the plan page and the mod files (SPEC 9,
-// 17.8, 17.9, plan rulings 1, 2, 7, 8). The portal is the Go fake; nothing
+// 9.13, 9.14, 17.8, 17.9). The portal is the Go fake; nothing
 // here reaches the real one.
 
 const v20 = "2.0.77"
@@ -326,7 +326,7 @@ func TestInstallAppliesThePlanAndOffersUndo(t *testing.T) {
 	}
 }
 
-// Plan ruling 7, SPEC 17.8: a mods folder that changed after the plan was
+// SPEC 9.14, 17.8: a mods folder that changed after the plan was
 // shown applies nothing and shows the new plan.
 func TestPlanChangedAppliesNothing(t *testing.T) {
 	g := newModsRig(t, true)
@@ -545,7 +545,7 @@ func TestModSettingsUploadAndDownload(t *testing.T) {
 	}
 }
 
-// Plan ruling 2: the Server page loads its notice after the page, and the
+// SPEC 9.3, DESIGN 8.11: the Server page loads its notice after the page, and the
 // notice's Fix goes straight to the plan that updates the mod.
 func TestServerModNotice(t *testing.T) {
 	g := newModsRig(t, true)

@@ -9,9 +9,9 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 (old 6 Mods is now 8, old 8 is 9, old 9 is 10, old 10 is 11). Older text
 below uses the new numbers.
 
-Epics 1 to 7, the Gate A fixes and the two fix batches after Gate A (hub
-fixes, polish fixes) are done, and Gate A (SPEC 19.1) passed on
-2026-11-05.
+Epics 1 to 8, the Gate A fixes and the fix batches after Gate A (hub
+fixes, polish fixes, UI batch, fixes batch 2) are done. Gate A (SPEC 19.1)
+passed on 2026-11-05. Gate B (SPEC 19.2) follows Epic 8.
 
 ## Epic 1: Foundation
 
@@ -1576,3 +1576,137 @@ closed: #93, #265, #272 and #274 to #284.
 - The slider row jump of #279 could not be reproduced on the base; the
   fixed grid and the tests rule it out by construction.
 - No swipe between planets in the large view (optional in the issue).
+
+## Epic 8: Mods
+
+Serves SPEC 18.8 (section 9, all of 9.1 to 9.15), 3.2, 6.2, 6.7, 14.6,
+14.10 and 17.10, with DESIGN.md 8.11, ADR 0012 (the portal client and
+where search reads from) and ADR 0013 (sealed stored secrets). The plan's
+lasting rules are in those sections. Closes #131 (a world using a mod
+version players cannot download is flagged), and the running-switch flake
+#327.
+
+### Delivered
+
+- **Portal client** (`internal/modportal`). A fixed base,
+  `https://mods.factorio.com`, with no setting for it. It lists the mods of
+  a game line once and searches that list in memory (exact name, prefix,
+  then substring, by downloads, 25 shown), reads one mod's details, and
+  downloads a release with a running SHA-1. A download follows at most 2
+  redirects, only to `https` hosts ending in `.factorio.com`, sends no
+  `Referer`, and is capped at 200 MB and 5 minutes. The real portal
+  redirects to `dl-mod.factorio.com`, confirmed with a real token. Errors
+  never carry the query string. Replies are cached in memory for 15
+  minutes (404s too, errors never), at most 4 detail requests run at once,
+  and nothing is fetched at startup. A Go fake portal (`modportaltest`)
+  serves recorded replies and the failure modes.
+- **Resolver and planner** (`internal/mods`). A parser for dependency
+  strings (fuzzed) and a greedy resolver: keep the installed version when
+  it fits, else the newest release on the world's line. It covers install,
+  update, update all, enable, disable, remove, upload and sync. Plans read
+  installed mods' dependencies from their own `info.json`, so disabling,
+  enabling and removing work with the portal down. Conflicts and reasons
+  are codes plus mod names, so they translate. Sync pins the save's exact
+  versions, disables extras and never removes them; "nearest release" is
+  the next one up on the line, else the newest below, with a warning.
+  Updates are found when a Mods tab opens. The availability check (#131)
+  flags a version the portal no longer has (error), a deprecated mod
+  (warning) and a mod not on the portal (note). `Planner.SaveDrops` names
+  the mods a change turns off that the loading save uses. `HashPlan` covers
+  the plan and those drops.
+- **Account and sealed secrets.** `FOREMAN_FACTORIO_USERNAME`,
+  `FOREMAN_FACTORIO_TOKEN` and `FOREMAN_SECRET_KEY`, each with `_FILE`.
+  One of the two account variables alone, or a key under 32 characters, is
+  a startup error. The account page (`/settings/factorio-account`) shows
+  "Set by environment", the enter form, or a stored account with Replace
+  and Remove, writes audit entries without values, never shows either
+  value back, and returns to the page that asked. The stored account is an
+  AES-GCM sealed row of the new `stored_secrets` table (migration 0005,
+  `internal/secret`, `internal/factorioaccount`); an unopenable row asks
+  for the account again. A "factorio.com account" link is in the user menu.
+- **World layer** (`internal/world`). Listing mods (built-in first, folder
+  mods marked local), the mods fingerprint, reading a save's mods, staging
+  and reading uploaded zips, and `ApplyModsHeld`, which places zips, writes
+  `mod-list.json` keeping unknown keys, removes replaced zips and writes
+  `mod-settings.dat`. The newest of two zips of one mod is used and the
+  others are deleted. The zip entry count is made from the end record by
+  the same rules as Go's `archive/zip`; zip info is cached by name, size
+  and time; staged mods older than an hour are removed. The snapshot
+  reason is `mods`, labelled "Before mod change". A read of `mod-list.json`
+  during an atomic replace no longer fails with "not a regular file".
+- **Apply operation** (`Controller.ApplyMods`). One operation, shaped like
+  a game update: download every release first, then warn and stop,
+  snapshot, apply, pre-start check and start. A failed download or
+  checksum leaves the game and the world untouched; the change is checked
+  against the folder before the stop; the fingerprint is read again after
+  the stop. `ModOp.ConfirmedDrops` lets the restart pass exactly the mods
+  the admin confirmed, so a confirmed drop ends with the game running. A
+  world that was started anyway comes back after a mod change. Audited as
+  `mods` and `mods-refused`.
+- **Screens** (DESIGN 8.11). The Mods tab (search, installed table, status
+  block, built-in mods in one line, match to the save, mod upload,
+  `mod-settings.dat` download and upload with help text), the search page,
+  and the plan page, whose "Add to plan" and "Add another mod" build one
+  plan with several mods: one snapshot and one restart. The plan page
+  carries the request, a plan hash and the folder fingerprint, so a change
+  between page and post applies nothing and shows "The plan changed". Mod
+  names never hyphenate. Portal links appear on search results, plan rows
+  and installed rows. The Server page has a Mods link and a one-line notice
+  next to the status facts, with a Fix link that goes straight to the
+  plan. The pre-start refusal and the import result link to "Match the mods
+  to the save". A plan request names at most 50 mods and is refused
+  cross-site. Everything is in all eight languages. A second agent checked
+  every new string (SPEC 22.6) twice: at the first review, and again at the
+  confirmation round for the later strings, including the last screen
+  task's. The fixes from both rounds are applied.
+- **Click budgets** (SPEC 17.10), measured: install one mod 4, two mods 5,
+  update all 3, fix a flagged mod 2, undo a mod change 2.
+- **Tests and real-game checks.** A test-only fake portal (`cmd/fakeportal`)
+  is an HTTPS proxy with its own certificate authority, reached through
+  `HTTPS_PROXY` and `SSL_CERT_FILE`; the product has no portal setting or
+  test hook. Seven `mods-*.spec.ts` files, the account spec and the click
+  budgets run in all four projects with the axe scan and phone width. Each
+  review finding has a test that failed first. In real games on 1.1, 2.0
+  and 2.1 (`make test-game`), a made-up mod is installed, updated and
+  disabled through `ApplyMods`, and the tests record that the game loads
+  the higher of two zips of one mod, rewrites `mod-list.json` at exit (same
+  meaning, other bytes), and writes `mod-settings.dat` at its first start
+  and only when a mod declares settings.
+
+### Verified
+
+- `make verify` green on every task head, coverage above 90 percent.
+- Full `make e2e` on the last task heads: 1924 passed, 116 skipped (the
+  usual project skips), 0 failed. The last task's own specs passed 88 of 88
+  after a regression it found was fixed.
+- `make test-game` on 1.1, 2.0 and 2.1: all pass, including
+  `TestRealGameModsChange` (with the confirmed drop) and
+  `TestRealGameModFilesHandling`.
+- A real token downloaded a release through the redirect to
+  `dl-mod.factorio.com`.
+- No test calls the real portal.
+
+### Gaps left
+
+- A confirmed drop on a stopped world is not remembered for the next Start,
+  so that Start is refused until the admin starts anyway.
+- A drop that is not a mod problem, for example a Space Age mismatch, is not
+  passable.
+- A sync plan accepts one uploaded zip.
+- The sync after an import is offered only when the pre-start check finds a
+  save mod missing or off.
+- The in-progress display of a change to a world that is not active is only
+  lightly tested: the fake download is too fast to catch it, so the tests
+  check the step list.
+- Removing a stored factorio.com account asks no confirmation, and the
+  token is not checked against factorio.com when it is saved.
+- A disabled mod is not updated by "update all", and folder mods are not
+  checked for availability.
+- A data race in an `internal/game` test (`selfContainer` read during
+  `refreshSubnets`) is #337; it is not fixed here.
+- Deferred, filed as issues: choose a mod's version (#340); one snapshot for
+  a run of changes on a stopped world (#341); the Mods tab review items
+  (#342 portal status in each row, #343 a two-column table on phones, #344 a
+  fix offered for a conflict, #345 denser search results); editing mod
+  setting values (#339, SPEC 9.6 P2); and the American spelling sweep,
+  including "labelled" (#320). The public mod download page is #132.

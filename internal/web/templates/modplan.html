@@ -9,7 +9,7 @@
 {{- if .Redraw}}
 <div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
 {{- end}}
-{{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (plan ruling 7). */}}
+{{- /* Ticking an optional mod or choosing for an unresolved one redraws this block with the new plan (SPEC 9.14). */}}
 <div id="mod-plan" class="mod-plan">
 {{template "summary" .Problems}}
 {{- if .Changed}}
