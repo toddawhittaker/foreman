@@ -715,3 +715,27 @@ func TestApplyModsStoppedRunSharesOneSnapshotUntilALaunch(t *testing.T) {
 		t.Fatalf("%d mod snapshots after a launch and another change, want 2", n)
 	}
 }
+
+// SPEC 9.4, ADR 0014: a start the pre-start check refuses never launches
+// the game, so it does not end the run; the next change reuses its snapshot.
+func TestARefusedStartDoesNotEndTheRun(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Refused")
+	f := newFetcher()
+	r.c.SetModFetcher(f)
+	dl := r.offer(f, "oldline", "1.0.0", "1.1") // made for another game line
+	if err := r.applyMods(id, r.modOp(id, "install oldline", dl)); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := errors.AsType[*PrecheckError](r.c.Start(context.Background(), id, admin, StartOptions{})); !ok {
+		t.Fatal("the start was not refused by the pre-start check")
+	}
+	op := r.modOp(id, "disable oldline")
+	op.Change.Enabled = map[string]bool{"oldline": false}
+	if err := r.applyMods(id, op); err != nil {
+		t.Fatal(err)
+	}
+	if n := r.modSnapshotCount(id); n != 1 {
+		t.Fatalf("%d mod snapshots after a refused start, want 1", n)
+	}
+}

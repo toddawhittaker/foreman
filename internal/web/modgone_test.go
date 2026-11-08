@@ -74,55 +74,50 @@ func TestPrecheckFix(t *testing.T) {
 	}
 }
 
-// Issue 362: when an operation on the world ends, the stream tells the
-// Server page to load its mods notice again, once.
+// SPEC 9.3: whenever an operation the page has not seen ends, the stream
+// tells the Server page to load its mods notice again, once. It need not
+// have seen the operation running: a short one can start and end within
+// one send.
 func TestOperationEndReloadsTheModsNotice(t *testing.T) {
 	r := newTestRenderer(t)
-	l := &liveStream{render: r, sent: map[string]string{}}
-	rec := httptest.NewRecorder()
-	l.w, l.rc = rec, http.NewResponseController(rec)
-	op := func(done bool) ServerPage {
+	op := func(id uint64, done bool) ServerPage {
 		return serverCase(game.StateRunning, func(p *ServerPage) {
-			p.Status.Operation = &game.Operation{Action: game.AuditMods, Done: done}
+			p.Status.Operation = &game.Operation{Action: game.AuditMods, Done: done, ID: id}
 		})
 	}
 	event := "event: " + modsRecheckEvent + "\n"
-	for i, step := range []struct {
-		page ServerPage
-		want int
-	}{{op(false), 0}, {op(false), 0}, {op(true), 1}, {op(true), 0}} {
-		rec.Body.Reset()
-		if err := l.send(step.page); err != nil {
-			t.Fatal(err)
+	sends := func(l *liveStream, steps []ServerPage, want []int) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		l.w, l.rc = rec, http.NewResponseController(rec)
+		for i, page := range steps {
+			rec.Body.Reset()
+			if err := l.send(page); err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Count(rec.Body.String(), event); got != want[i] {
+				t.Errorf("send %d: %d mods events, want %d:\n%s", i, got, want[i], rec.Body.String())
+			}
 		}
-		if got := strings.Count(rec.Body.String(), event); got != step.want {
-			t.Errorf("send %d: %d mods events, want %d:\n%s", i, got, step.want, rec.Body.String())
-		}
 	}
-	// A page that opens after the operation ended loaded the notice itself.
-	l = &liveStream{render: r, sent: map[string]string{}}
-	rec = httptest.NewRecorder()
-	l.w, l.rc = rec, http.NewResponseController(rec)
-	if err := l.send(op(true)); err != nil {
-		t.Fatal(err)
+	// Seen running, then ended; then a second operation seen only ended.
+	sends(&liveStream{render: r, sent: map[string]string{}},
+		[]ServerPage{op(1, false), op(1, false), op(1, true), op(1, true), op(2, true), op(2, true)},
+		[]int{0, 0, 1, 0, 1, 0})
+
+	// A page drawn with operation 1 ended already loaded the notice after it.
+	page := op(1, true)
+	if got := page.liveURL(); got != "/worlds/base/events?op=1" {
+		t.Fatalf("live URL after operation 1: %q", got)
 	}
-	if strings.Contains(rec.Body.String(), event) {
-		t.Error("the first send asked for the notice again")
-	}
-	// A page drawn while the operation ran may hold a stale notice, so an
-	// operation already ended by the first send still reloads it.
-	l = &liveStream{render: r, sent: map[string]string{}, opRunning: true}
-	rec = httptest.NewRecorder()
-	l.w, l.rc = rec, http.NewResponseController(rec)
-	if err := l.send(op(true)); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(rec.Body.String(), event) {
-		t.Error("an operation that ended before the stream opened did not reload the notice")
-	}
-	if got := op(false).liveURL(); got != "/worlds/base/events?op=1" {
+	sends(&liveStream{render: r, sent: map[string]string{}, doneOp: 1}, []ServerPage{op(1, true)}, []int{0})
+
+	// A page drawn while an operation ran has no ended one to name, so the
+	// operation ending before the stream opens still reloads the notice.
+	if got := op(1, false).liveURL(); got != "/worlds/base/events" {
 		t.Errorf("live URL while an operation runs: %q", got)
 	}
+	sends(&liveStream{render: r, sent: map[string]string{}}, []ServerPage{op(1, true)}, []int{1})
 }
 
 // SPEC 7.4: a start that could not ask the portal says so in one line.

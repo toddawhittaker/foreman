@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -458,6 +459,9 @@ type Operation struct {
 	// world started without knowing whether players can download its mods
 	// (SPEC 7.4).
 	PortalUnchecked bool
+	// ID tells one operation from the next, so a page can see that a new
+	// one ended (SPEC 9.3). Zero for an image download.
+	ID uint64
 }
 
 // CountdownEnds returns when the stop's countdown ends while players are
@@ -488,9 +492,12 @@ func (o *Operation) clone() *Operation {
 	return &out
 }
 
+// opIDs numbers the operations newOperation makes.
+var opIDs atomic.Uint64
+
 // newOperation makes an operation whose steps all wait.
 func newOperation(action string, steps ...[]string) *Operation {
-	op := &Operation{Action: action}
+	op := &Operation{Action: action, ID: opIDs.Add(1)}
 	for _, list := range steps {
 		for _, s := range list {
 			op.Steps = append(op.Steps, Step{Name: s, State: StepWaiting})
