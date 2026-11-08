@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 // savesWorld makes a world with two saves and returns its id and folder.
@@ -293,37 +295,91 @@ func TestSaveUploadRefusedForNewerWorld(t *testing.T) {
 	}
 }
 
+// saveRow returns the table row that holds the named save's link.
+func saveRow(t *testing.T, body, name string) string {
+	t.Helper()
+	i := strings.Index(body, ">"+name+"</a>")
+	if i < 0 {
+		t.Fatalf("no row for %s", name)
+	}
+	start := strings.LastIndex(body[:i], "<tr")
+	end := i + strings.Index(body[i:], "</tr>")
+	return body[start:end]
+}
+
+// loadButton is the start of a row's "Load next" button, with the value it posts.
+func loadButton(value string) string {
+	return `<button type="submit" class="button" name="load" value="` + value + `">`
+}
+
+// loadSaveOf reads a world's chosen save from its world.json.
+func (hn *harness) loadSaveOf(id string) string {
+	hn.t.Helper()
+	list, err := hn.worlds.Saves(id)
+	if err != nil {
+		hn.t.Fatal(err)
+	}
+	return list.LoadSave
+}
+
+// SPEC 7.11, DESIGN 8.3: each save's row says whether it loads next, and
+// every other row has one button that makes it the one that loads. The
+// newest row's button chooses "the newest save", so later autosaves win.
 func TestChooseSave(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()
 	id, _ := savesWorld(t, hn)
+	loads := i18n.English.T("worlds.saves.loads_next")
 
-	rec := hn.chooseSave(c, id, url.Values{"load": {"old.zip"}})
-	hn.wantRedirect(rec, "/worlds/"+id+"/saves?chosen=1")
 	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
-	// The older save is marked as the one that loads, and its radio is checked.
-	if !strings.Contains(body, `value="old.zip" checked`) || strings.Contains(body, `value="new.zip" checked`) {
-		t.Errorf("radio not on old.zip:\n%s", body)
+	if strings.Contains(body, `type="radio"`) {
+		t.Error("the page still has a radio list")
 	}
-	row := body[strings.Index(body, ">old.zip<"):]
-	if i := strings.Index(row, "Loads next"); i < 0 || i > strings.Index(row, "</tr>") {
-		t.Error("old.zip not marked as loading next")
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, loads) || strings.Contains(row, "<button") {
+		t.Errorf("newest row should load next with no button:\n%s", row)
+	}
+	if row := saveRow(t, body, "old.zip"); strings.Contains(row, loads) || !strings.Contains(row, loadButton("old.zip")) ||
+		!strings.Contains(row, "Load next: old.zip") {
+		t.Errorf("older row should offer Load next:\n%s", row)
+	}
+
+	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {"old.zip"}}), "/worlds/"+id+"/saves?chosen=1")
+	body = hn.get("/worlds/"+id+"/saves?chosen=1", withCookie(c)).Body.String()
+	wantIn(t, "chosen page", body, "The server will load <code>old.zip</code> the next time it starts.")
+	if row := saveRow(t, body, "old.zip"); !strings.Contains(row, loads) || strings.Contains(row, "<button") {
+		t.Errorf("chosen row should load next with no button:\n%s", row)
+	}
+	if row := saveRow(t, body, "new.zip"); strings.Contains(row, loads) || !strings.Contains(row, loadButton("")) {
+		t.Errorf("newest row should offer the newest save:\n%s", row)
+	}
+	if got := hn.loadSaveOf(id); got != "old.zip" {
+		t.Errorf("load_save %q", got)
 	}
 
 	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {""}}), "/worlds/"+id+"/saves?chosen=1")
-	body = hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
-	if !strings.Contains(body, `value="" checked`) {
-		t.Error("newest not checked after reset")
+	body = hn.get("/worlds/"+id+"/saves?chosen=1", withCookie(c)).Body.String()
+	wantIn(t, "newest page", body, i18n.English.T("worlds.saves.chosen_newest"))
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, loads) {
+		t.Error("newest not loading next after the reset")
+	}
+	if got := hn.loadSaveOf(id); got != "" {
+		t.Errorf("load_save %q after the reset", got)
 	}
 
+	// The posted name is checked against the world's saves on the server.
 	for name, form := range map[string]url.Values{
 		"unknown": {"load": {"nope.zip"}},
 		"escape":  {"load": {"../world.json"}},
 		"none":    {},
 	} {
 		rec := hn.chooseSave(c, id, form)
-		if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `href="#load-newest"`) {
+		body := rec.Body.String()
+		if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(body, `href="#load-save-error"`) ||
+			!strings.Contains(body, `id="load-save-error" tabindex="-1"`) {
 			t.Errorf("%s: %d", name, rec.Code)
+		}
+		if got := hn.loadSaveOf(id); got != "" {
+			t.Errorf("%s: load_save changed to %q", name, got)
 		}
 	}
 	if rec := hn.chooseSave(c, "nope", url.Values{"load": {""}}); rec.Code != http.StatusNotFound {
@@ -340,7 +396,10 @@ func TestSavePageWhenChosenSaveVanished(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
-	if !strings.Contains(body, "no longer in the saves folder") || !strings.Contains(body, `value="" checked`) {
+	if !strings.Contains(body, "no longer in the saves folder") {
 		t.Error("missing chosen save not explained")
+	}
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, i18n.English.T("worlds.saves.loads_next")) {
+		t.Error("the newest save should load next")
 	}
 }

@@ -169,8 +169,8 @@ func TestSnapshotTables(t *testing.T) {
 		`<span class="nowrap">14:25 UTC</span>`, "taken 2026-11-03 14:25:30 UTC")
 }
 
-// DESIGN 7.2: an error on the load choice sends focus to its first radio,
-// marks every radio invalid, and says what to do in a full sentence.
+// DESIGN 7.2: an error on the load choice says what to do in a full
+// sentence, above the saves, and the summary sends focus to it.
 func TestLoadChoiceError(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()
@@ -180,9 +180,9 @@ func TestLoadChoiceError(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Errorf("status %d", rec.Code)
 	}
-	wantIn(t, "saves page", body, i18n.English.T("worlds.saves.gone"), `href="#load-newest"`, `id="load-newest"`)
-	if n := strings.Count(body, `name="load"`); n == 0 || strings.Count(body, `aria-invalid="true" aria-describedby="load-save-error">`) < n {
-		t.Errorf("not every radio of %d is marked invalid", n)
+	wantIn(t, "saves page", body, i18n.English.T("worlds.saves.gone"), `href="#load-save-error"`, `id="load-save-error" tabindex="-1"`)
+	if e, tbl := strings.Index(body, `id="load-save-error"`), strings.Index(body, "<table"); e > tbl {
+		t.Error("the error should come before the saves table")
 	}
 }
 
