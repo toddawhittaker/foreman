@@ -261,7 +261,7 @@
 </div>
 {{- end}}
 {{- if .NotOnPortal}}
-<span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" tabindex="-1" hx-swap-oob="true">{{.Name}}</span>
+<span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="{{$.NoteSlot .Name}}" hx-swap-oob="true">{{.Name}}</span>
 <span id="{{$.VersionSlot .Name}}" hidden hx-swap-oob="true"></span>
 {{- end}}
 {{- end}}

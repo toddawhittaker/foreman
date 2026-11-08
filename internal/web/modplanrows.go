@@ -79,7 +79,8 @@ func (p ModPlanPage) askedOrder(it PlanItem) int {
 func (p ModPlanPage) Kept() []PlanItem {
 	var out []PlanItem
 	for _, c := range p.Plan.Changes {
-		if c.Action == mods.ActKeep && (c.Why.Code != mods.WhyAsked || p.Plan.Releases[c.Name] == nil) {
+		_, listed := p.Plan.Releases[c.Name]
+		if c.Action == mods.ActKeep && (c.Why.Code != mods.WhyAsked || !listed) {
 			out = append(out, p.item(c))
 		}
 	}
