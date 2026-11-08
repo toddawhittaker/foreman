@@ -700,7 +700,10 @@ operation does not run. A switch snapshots both worlds, labelled "Before
 switch" with reason `switch` (7.9). A confirmed settings save snapshots
 the world first, labelled "Before settings change" with reason `settings`
 (11.3). A mod change snapshots it, labelled "Before mod change" with reason
-`mods` (9.2). (P0)
+`mods` (9.2). On a stopped world, a run of mod changes shares the snapshot
+taken before its first change; the run ends when the game launches or any
+other change touches the world's files, and whenever Foreman cannot be sure
+the run still holds it takes a new snapshot (9.4, ADR 0014). (P0)
 
 6.3. An admin can take a snapshot by hand at any time. (P0)
 
@@ -1165,7 +1168,12 @@ the change saves the world with all of them. The restart after the
 change then passes exactly those mods in the pre-start check (7.4), and the
 world ends running. Without the confirmation the plan cannot be applied. A
 confirmation given on a stopped world is not remembered for the next Start.
-(P0)
+On a stopped world, only the first mod change since the game last launched
+takes a snapshot; later ones reuse it, so undo returns the world to before
+the first, and the page can say "Undo the mod changes since" that
+snapshot's time. A start refused by the pre-start check does not end the
+run, since the world's files did not change. A running world snapshots
+every change. (P0)
 
 9.5. **Upload** a local mod zip. Foreman reads its `info.json` to name and
 version it, and treats it as any other mod afterwards. (P1)
