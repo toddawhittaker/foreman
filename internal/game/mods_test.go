@@ -671,3 +671,43 @@ func TestConfirmedDropNeedsEveryNamedMod(t *testing.T) {
 		}
 	}
 }
+
+func (r *rig) modSnapshotCount(id string) int {
+	n := 0
+	for _, s := range r.snapshots(id) {
+		if s.Reason == world.ReasonMods {
+			n++
+		}
+	}
+	return n
+}
+
+// SPEC 9.4: a run of changes on a stopped world shares one snapshot until
+// the game launches.
+func TestApplyModsStoppedRunSharesOneSnapshotUntilALaunch(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Run")
+	r.putModZip(id, "oldmod", "2.1")
+	for _, on := range []bool{false, true, false} {
+		op := r.modOp(id, "toggle oldmod")
+		op.Change.Enabled = map[string]bool{"oldmod": on}
+		if err := r.applyMods(id, op); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := r.modSnapshotCount(id); n != 1 {
+		t.Fatalf("%d mod snapshots after three stopped changes, want 1", n)
+	}
+	r.start(id)
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	op := r.modOp(id, "enable oldmod")
+	op.Change.Enabled = map[string]bool{"oldmod": true}
+	if err := r.applyMods(id, op); err != nil {
+		t.Fatal(err)
+	}
+	if n := r.modSnapshotCount(id); n != 2 {
+		t.Fatalf("%d mod snapshots after a launch and another change, want 2", n)
+	}
+}

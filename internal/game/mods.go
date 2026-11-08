@@ -174,7 +174,10 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 	}
 
 	o.begin(StepSnapshotMods)
-	if _, err := c.worlds.AutoSnapshot(id, world.ReasonMods, world.LabelBeforeMods, by.Username); err != nil {
+	// A stopped world may reuse the snapshot from before its run of mod
+	// changes (SPEC 9.4).
+	snap, err := c.worlds.ModSnapshotHeld(id, by.Username, wasRunning)
+	if err != nil {
 		return staged, fmt.Errorf("take the snapshot before the mod change: %w", err)
 	}
 	o.done(StepSnapshotMods)
@@ -195,6 +198,7 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 	o.done(StepApplyMods)
 
 	if !wasRunning {
+		c.worlds.ContinueModRunHeld(id, snap)
 		o.skip(StepCheck)
 		o.skip(launchSteps...)
 		return staged, nil
