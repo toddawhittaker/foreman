@@ -16,14 +16,25 @@
   "mods.search.title_empty": "Find a mod for {world}",
   "mods.search.results_heading": "Mods matching \"{query}\"",
   "mods.search.unreachable": "Foreman could not reach the mod portal, so it could not search. Try again in a moment.",
-  "mods.search.count": {
-    "one": "{count} mod for Factorio {line}",
-    "other": "{count} mods for Factorio {line}"
-  },
   "mods.search.none": "No mod for Factorio {line} matches. Try a shorter part of the name.",
   "mods.search.add": "Add to plan",
+  "mods.hits.count": {
+    "one": "{count} mod for Factorio {line} matches.",
+    "other": "{count} mods for Factorio {line} match."
+  },
+  "mods.hits.showing": "Showing {first} to {last}.",
+  "mods.hits.summary": "Details",
+  "mods.hits.latest_label": "Latest version:",
+  "mods.hits.downloads_label": "Downloads:",
+  "mods.hits.pages": "Result pages",
+  "mods.hits.page": "Page {page} of {pages}",
+  "mods.hits.prev": "Previous page",
+  "mods.hits.next": "Next page",
+  "mods.search.pick_hint": "Tick several mods to add them to one plan, or use a mod's own Add to plan button.",
+  "mods.search.add_ticked": "Add ticked mods to plan",
+  "mods.search.pick_none": "Nothing is ticked. Tick the mods to add, or use a mod's own Add to plan button.",
+  "mods.search.picked_elsewhere": "Also ticked on other pages: {mods}.",
   "mods.fact.latest": "Latest version",
-  "mods.fact.game_version": "Game version",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installed",
   "mods.badge.in_plan": "In plan",
@@ -40,18 +51,33 @@
     "other": "{count} are enabled."
   },
   "mods.installed.none": "This world has only the mods built into the game. Find a mod above to install one.",
+  "mods.installed.portal": "on the mod portal, opens in a new tab",
   "mods.col.mod": "Mod",
-  "mods.col.state": "State",
   "mods.col.actions": "Actions",
-  "mods.state.on": "Enabled",
   "mods.state.off": "Disabled",
   "mods.row.update": "Update to {version}",
   "mods.row.enable": "Enable",
   "mods.row.disable": "Disable",
   "mods.row.remove": "Remove",
+  "mods.row.gone": "Players cannot join: the mod portal no longer has version {version}, so their game cannot download it.",
+  "mods.row.gone_none": "Players cannot join: the mod portal no longer has version {version} and has none for this game version. Remove the mod or disable it.",
+  "mods.row.deprecated": "Deprecated on the mod portal, so players cannot find it in the game's mod browser.",
+  "mods.row.not_on_portal": "Not on the mod portal, so players' games cannot download it. Players need the file from you.",
   "mods.status.loading": "Checking the mod portal for updates…",
   "mods.status.unreachable": "Foreman could not reach the mod portal, so it could not check for updates or for mods players cannot download.",
   "mods.status.retry": "Check again",
+  "mods.status.errors": {
+    "one": "{count} mod stops players joining. Its row says how to fix it.",
+    "other": "{count} mods stop players joining. Their rows say how to fix them."
+  },
+  "mods.status.warnings": {
+    "one": "{count} mod is deprecated on the mod portal.",
+    "other": "{count} mods are deprecated on the mod portal."
+  },
+  "mods.status.notes": {
+    "one": "{count} mod is not on the mod portal.",
+    "other": "{count} mods are not on the mod portal."
+  },
   "mods.status.updates": {
     "one": "{count} mod has an update for this game version.",
     "other": "{count} mods have an update for this game version."
@@ -61,11 +87,6 @@
     "one": "{count} mod from the mod portal is up to date.",
     "other": "All {count} mods from the mod portal are up to date."
   },
-  "mods.flag.gone": "Players cannot join with {mod} {version}: the mod portal no longer has that version, so their game cannot download it. Version {update} is on the portal.",
-  "mods.flag.gone_none": "Players cannot join with {mod} {version}: the mod portal no longer has that version, and has none for this game version.",
-  "mods.flag.deprecated": "{mod} is marked deprecated on the mod portal, so players cannot find it in the game's mod browser.",
-  "mods.flag.not_on_portal": "{mod} {version} is not on the mod portal, so players' games cannot download it when they join. Players need the file from you.",
-  "mods.flag.fix_update": "Update {mod} to {version}",
   "mods.flag.fix_remove": "Remove {mod}",
   "mods.notice": {
     "one": "{count} mod of {world} can no longer be downloaded by players, so they cannot join.",
@@ -79,12 +100,33 @@
   },
   "mods.sync.heading": "Match mods to the save",
   "mods.sync.text": "Makes the world's mods the ones the save {save} was made with: installs the missing ones, changes versions, and disables the rest. You see the plan first.",
+  "mods.sync.match": "The mods match the save {save}.",
+  "mods.sync.differ": "The mods differ from the save {save}:",
+  "mods.sync.missing": {
+    "one": "{count} mod the save uses is not installed",
+    "other": "{count} mods the save uses are not installed"
+  },
+  "mods.sync.off": {
+    "one": "{count} mod the save uses is disabled here",
+    "other": "{count} mods the save uses are disabled here"
+  },
+  "mods.sync.version": {
+    "one": "{count} mod the save uses is installed at another version",
+    "other": "{count} mods the save uses are installed at another version"
+  },
+  "mods.sync.extra": {
+    "one": "{count} enabled mod is not in the save",
+    "other": "{count} enabled mods are not in the save"
+  },
+  "mods.sync.what": "Matching installs the missing mods, changes versions and disables the rest. You see the plan first.",
   "mods.sync.button": "Match mods to the save",
   "mods.sync.no_save": "This world has no save yet, so there is nothing to match.",
   "mods.sync.upload_save": "Upload a save",
   "mods.sync.offer": "Match the mods to the save",
   "mods.sync.import": "Match this world's mods to its save",
   "mods.upload.heading": "Upload a mod",
+  "mods.upload.text": "Install a mod from a .zip file you have.",
+  "mods.upload.summary": "Upload a mod zip",
   "mods.upload.label": "Mod zip",
   "mods.upload.hint": "A mod's .zip file, at most {limit}. Foreman reads its name and version from its info.json and shows the plan before it changes anything.",
   "mods.upload.button": "Upload mod",
@@ -95,6 +137,7 @@
   "mods.settings.text": "The values of the mods' settings live in {file}. Download it to keep a copy or to use it in another world.",
   "mods.settings.download": "Download mod-settings.dat",
   "mods.settings.none": "This world has no {file} yet. The game writes one when it first runs with mods.",
+  "mods.settings.summary": "Replace {file}",
   "mods.settings.where": "Your Factorio client keeps it in its mods folder: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Startup settings apply when the world next starts.",
   "mods.settings.apply_running": "Startup settings apply when the world next starts, so Foreman restarts it.",
@@ -128,33 +171,26 @@
     "other": "This plan downloads {count} mods, and downloads are off because Foreman has no factorio.com account."
   },
   "mods.plan.nothing": "Nothing needs to change: the mods are already as asked.",
-  "mods.plan.download": {
-    "one": "Download {count} mod from the mod portal and check it against its checksum. If the download fails, nothing else happens.",
-    "other": "Download {count} mods from the mod portal and check each against its checksum. If a download fails, nothing else happens."
-  },
   "mods.plan.warn_stop": "Warn the players, then save and stop the server.",
   "mods.plan.snapshot": "Take a snapshot of {world}, labelled \"{label}\". If the snapshot fails, nothing else happens.",
-  "mods.plan.change": "Change the mods:",
-  "mods.plan.asked.heading": "Mods you asked for:",
   "mods.plan.asked.remove": "Remove from plan",
-  "mods.plan.needed.heading": "What they need:",
-  "mods.plan.change_above": "Make the mod changes listed above.",
   "mods.plan.add.heading": "Add another mod",
+  "mods.plan.add.back": "Back to the plan",
   "mods.plan.start": "Start the server again.",
-  "mods.plan.undo": "To undo, restore that snapshot from the Snapshots tab.",
+  "mods.plan.undo": "When it is done, a one-click Undo appears with the result, which restores that snapshot.",
   "mods.plan.group.install": "Install",
   "mods.plan.group.upgrade": "Upgrade",
   "mods.plan.group.downgrade": "Downgrade",
   "mods.plan.group.enable": "Enable",
   "mods.plan.group.disable": "Disable",
   "mods.plan.group.remove": "Remove",
-  "mods.plan.group.keep": "Leave alone",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} {from} to {to}",
   "mods.plan.item.uploaded": "{mod} {version}, from the uploaded zip",
   "mods.plan.item.why": "{item} ({why})",
   "mods.plan.why.required_by": "{mod} needs it",
   "mods.plan.why.optional_of": "offered by {mod}",
+  "mods.plan.why.recommended_by": "recommended by {mod}",
   "mods.plan.why.from_save": "the save uses it",
   "mods.plan.why.not_in_save": "the save does not use it",
   "mods.plan.warn.older": "This release is older than the one the save was made with.",
@@ -186,6 +222,9 @@
   "mods.optional.legend": "Optional mods",
   "mods.optional.hint": "A mod in the plan can use these, but does not need them. Tick one to add it, with anything it needs.",
   "mods.optional.item": "{mod}, offered by {of}",
+  "mods.recommended.item": "{mod}, recommended by {of}",
+  "mods.recommended.hint": "Mods marked as recommended start ticked. Untick one to leave it out.",
+  "mods.recommended.unavailable": "{mod}, recommended by {of}, is left out: the mod portal has no version that fits.",
   "mods.unresolved.legend": "The mod portal does not have {mod} {version}",
   "mods.unresolved.hint": "The save was made with this version. Choose what to do; the plan cannot be applied until you do.",
   "mods.unresolved.nearest_hint": "Nearest means the closest release for Factorio {line}.",
@@ -198,17 +237,20 @@
   "mods.unresolved.upload_label": "Zip of {mod} {version}",
   "mods.unresolved.upload_button": "Upload zip",
   "mods.drops.warning": {
-    "one": "The save that loads uses {count} mod this change turns off: {mods}. When the game starts without it, the game deletes everything it added to the world.",
-    "other": "The save that loads uses {count} mods this change turns off: {mods}. When the game starts without them, the game deletes everything they added to the world."
+    "one": "The save that loads uses {mods}, which this change disables. Without it, the game deletes everything {mods} built in the world.",
+    "other": "The save that loads uses {count} mods this change disables: {mods}. Without them, the game deletes everything they built in the world."
   },
-  "mods.drops.confirm_missing": "Tick the box to confirm that the game will delete what these mods added, or cancel the change.",
+  "mods.drops.confirm_missing": {
+    "one": "Tick the box to confirm that the game deletes what this mod built, or cancel.",
+    "other": "Tick the box to confirm that the game deletes what these {count} mods built, or cancel."
+  },
   "mods.conflict.incompatible": "{mod} cannot run together with {other}.",
   "mods.conflict.space_age_off": "{mod} needs {other}, which comes with Space Age, and Space Age is off for this world.",
   "mods.conflict.space_age_save": "The save uses {mod}, which comes with Space Age, and Space Age is off for this world. Turn Space Age on in the world's settings first.",
   "mods.conflict.no_release": "No release of {mod} for this game version meets what the plan needs: {needs}.",
   "mods.conflict.version": "{mod} {version} does not meet what the plan needs: {needs}.",
   "mods.conflict.not_on_portal": "{mod} is not on the mod portal. Upload its zip instead.",
-  "mods.conflict.required_by": "{other} needs {mod}. Disable or remove {other} first.",
+  "mods.conflict.required_by": "{other} needs {mod}.",
   "mods.conflict.built_in": "{mod} is built into the game. It follows the world's Space Age setting and is not changed by hand.",
   "mods.conflict.local": "{mod} is installed as a folder, and Foreman never replaces a folder mod. Change it in the world's mods folder.",
   "mods.conflict.not_installed": "{mod} is not installed in this world.",
@@ -230,7 +272,7 @@
   "mods.error.unauthorized": "factorio.com refused the username or token, so no mod was downloaded. Nothing was changed. Check the factorio.com account.",
   "mods.error.download_gone": "The mod portal no longer has a mod the plan downloads. Nothing was changed. Open the mods again to see the new plan.",
   "mods.error.download_failed": "A mod could not be downloaded from the mod portal. Nothing was changed. Try again in a moment.",
-  "mods.done": "The mods of {world} are changed. Foreman took the snapshot \"{label}\" first.",
+  "mods.done": "The mods of {world} were changed. Foreman took the snapshot \"{label}\" first.",
   "mods.undo": "Undo this mod change",
   "mods.changed.next": "Open the mods again",
   "mods.plan.redrawn": {
@@ -250,7 +292,44 @@
     "other": "Plan updated: it has {count} conflicts, so it cannot be applied."
   },
   "mods.error.cross_site": "This plan was opened from another site, so Foreman did not work it out. Nothing was changed. Choose \"Try again\" to see the plan.",
-  "mods.built_in.line_space_age": "Built in, version {version}: {mods}. They follow Space Age.",
   "mods.built_in.line": "Built in, version {version}: {mods}.",
-  "mods.built_in.change": "Change Space Age"
+  "mods.built_in.line_on": "Built in, version {version}: {mods}. Space Age is on, so all of them are on.",
+  "mods.built_in.line_off": "Built in, version {version}: {mods}. Space Age is off, so {off} are off.",
+  "mods.built_in.change": "Change Space Age",
+  "mods.built_in.turn_on": "Turn on Space Age",
+  "mods.plan.button.change": {
+    "one": "Change {count} mod",
+    "other": "Change {count} mods"
+  },
+  "mods.plan.changes": "Changes:",
+  "mods.plan.kept": {
+    "one": "{count} other mod stays as it is",
+    "other": "{count} other mods stay as they are"
+  },
+  "mods.plan.step.download": {
+    "one": "Download {count} mod from the mod portal and check its checksum.",
+    "other": "Download {count} mods from the mod portal and check their checksums."
+  },
+  "mods.plan.step.stop": "Warn the players, then save and stop {world}.",
+  "mods.plan.step.snapshot": "Take a snapshot labelled \"{label}\".",
+  "mods.plan.step.snapshot_kept": "Keep the snapshot from {time}, which already covers this change.",
+  "mods.plan.step.change_start": "Change the mods, then start {world} again.",
+  "mods.plan.step.change_stopped": "Change the mods. {world} stays stopped, as it is now.",
+  "mods.plan.step.fails": "If a step fails, the steps after it do not happen.",
+  "mods.plan.fix.remove": "Remove {mod} as part of this plan",
+  "mods.plan.fix.disable": "Disable {mod} too",
+  "mods.plan.back_search": "Back to search",
+  "mods.plan.fixed": {
+    "one": "Plan updated. It changes {count} mod.",
+    "other": "Plan updated. It changes {count} mods."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan updated. {count} conflict left.",
+    "other": "Plan updated. {count} conflicts left."
+  },
+  "mods.drops.confirm": {
+    "one": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy.",
+    "other": "Delete what these {count} mods built: {mods}. The snapshot \"{label}\" keeps a copy."
+  },
+  "mods.drops.confirm_missing_one": "Tick the box to confirm that the game deletes what {mod} built, or cancel."
 }

@@ -86,7 +86,8 @@ test.describe("a save's mod the portal does not have", () => {
     await box.check();
     await page.locator("#act-apply").click();
     await expect(page.locator("#error-summary")).toHaveCount(0);
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    // The plan changes no mod file, so the Done box keeps the plain sentence.
+    await expect(doneBox(page)).toContainText("The mods of Base were changed.", live);
     // The save's mod stays out of the world.
     expect(existsSync(join(modsFolder(foreman.dataDir), "foreman-test_0.1.0.zip"))).toBe(false);
     await page.goto("/worlds/base/mods");
@@ -103,10 +104,10 @@ test.describe("a save's mod the portal does not have", () => {
     await expect(page.locator("#mod-plan")).toContainText("foreman-test 0.1.0, from the uploaded zip");
     await checkPage(page);
     await page.locator("#act-apply").click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     expect(readFileSync(join(modsFolder(foreman.dataDir), "foreman-test_0.1.0.zip")).equals(testModZip())).toBe(true);
     await page.goto("/worlds/base/mods");
-    await expect(modsTable(page).getByRole("row", { name: /foreman-test/ })).toContainText("Enabled");
+    await expect(modsTable(page).getByRole("row", { name: /foreman-test/ })).not.toContainText("Disabled");
   });
 
   test("a zip of another mod is refused where it was sent, and the choice is kept", async ({ page }) => {
@@ -194,7 +195,7 @@ test("the nearest release is one of three choices, and it is downloaded and inst
   await checkPage(page);
 
   await page.locator("#act-apply").click();
-  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   expect(existsSync(join(modsFolder(foreman.dataDir), "foreman-test_0.9.0.zip"))).toBe(true);
   expect((await fakePortal!.state()).refused).toEqual([]);
 });
@@ -215,7 +216,7 @@ test("in a 2.1 world the nearest release is the next one up on the 2.1 line", as
   await checkPage(page);
 
   await page.locator("#act-apply").click();
-  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   expect(existsSync(join(modsFolder(foreman.dataDir), "foreman-test_0.9.0.zip"))).toBe(true);
   expect((await fakePortal!.state()).refused).toEqual([]);
 });

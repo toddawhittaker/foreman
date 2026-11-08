@@ -24,7 +24,8 @@ test("two mods from one search: added in place, then one install with one snapsh
   await page.goto("/worlds/base/mods/search?q=fp-lamp");
   await checkPage(page);
   await shot(page, "mods-search");
-  // A search result goes to the plan; the portal page opens in a new tab and names its mod.
+  // A search result goes to the plan; the portal page, under its Details, opens in a new tab and names its mod.
+  await page.locator(".mod-hits summary").first().click();
   const portalLink = page.getByRole("link", { name: "Mod portal for fp-lamp, opens in a new tab", exact: true });
   await expect(portalLink).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-lamp");
   await expect(portalLink).toHaveAttribute("target", "_blank");
@@ -32,8 +33,12 @@ test("two mods from one search: added in place, then one install with one snapsh
   await page.getByRole("link", { name: "Add to plan fp-lamp", exact: true }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Install fp-lamp in Base?" })).toBeVisible();
-  const asked = page.getByRole("list", { name: "Mods you asked for:" });
+  const asked = page.locator("#mod-plan .plan-groups");
   await expect(asked).toContainText("fp-lamp 1.0.0");
+  // Issue 364: the heading is one run of text, so the name has one space each side and breaks like a word.
+  const h1 = page.locator("#confirm-heading");
+  expect(await h1.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+  expect(await h1.evaluate((el) => (el as HTMLElement).innerText)).toBe("Install fp-lamp in Base?");
   // A stopped world's install is the primary action, not a danger (DESIGN 7.1).
   await expect(page.getByRole("button", { name: "Install 1 mod" })).toHaveClass(/button--primary/);
   // The same search waits under the plan, after the confirm button.
@@ -61,13 +66,13 @@ test("two mods from one search: added in place, then one install with one snapsh
   // Taking one out redraws again and puts focus on the list.
   await asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" }).click();
   await expect(page.locator("#announcer")).toHaveText("Removed fp-lamp-colours. The plan has 1 mod.");
-  await expect(page.locator("#asked-heading")).toBeFocused();
+  await expect(page.locator("#plan-changes")).toBeFocused();
   await expect(page.getByRole("button", { name: "Install 1 mod" })).toBeVisible();
   await add.getByRole("link", { name: "Add to plan fp-lamp-colours", exact: true }).click();
 
   // One confirm, one snapshot, every mod installed.
   await page.getByRole("button", { name: "Install 3 mods" }).click();
-  await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+  await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   for (const f of ["fp-lamp_1.0.0.zip", "fp-lamp-colours_1.2.0.zip", "fp-lamp-lib_1.0.0.zip"]) expect(existsSync(join(modsDir(foreman.dataDir), f))).toBe(true);
   expect(snapshots(foreman.dataDir)).toBe(1);
 });
@@ -122,22 +127,25 @@ test("the Mods tab: built-in mods in one line, portal links, and where mod-setti
   await page.goto("/worlds/base/mods");
   await expect(page.locator("#mod-status")).not.toContainText("Checking the mod portal", live);
   const line = page.locator("#mods-built-in");
-  await expect(line).toHaveText("Built in, version 2.0.77: base, elevated-rails, quality, space-age. They follow Space Age. Change Space Age");
+  await expect(line).toHaveText("Built in, version 2.0.77: base, elevated-rails, quality, space-age. Space Age is on, so all of them are on. Change Space Age");
   await expect(line.getByRole("link", { name: "Change Space Age" })).toHaveAttribute("href", "/worlds/base/settings");
   const table = page.getByRole("table", { name: /Mods of Base/ });
   await expect(table.getByRole("row", { name: /space-age/ })).toHaveCount(0);
-  await expect(table.getByRole("link", { name: "Mod portal for fp-here, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-here");
-  // A mod the portal does not have gets no portal link once the portal has answered.
-  await expect(table.getByRole("link", { name: /Mod portal for fp-gone-from-portal/ })).toHaveCount(0);
+  // The mod's name is its portal link (issue 360).
+  await expect(table.getByRole("link", { name: "fp-here on the mod portal, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-here");
+  // A mod the portal does not have gets no portal link once the portal has answered; its name stays.
+  await expect(table.getByRole("link", { name: /fp-gone-from-portal on the mod portal/ })).toHaveCount(0);
+  await expect(table.getByRole("row", { name: /fp-gone-from-portal/ })).toContainText("Note: Not on the mod portal");
+  // The settings help is in the folded replace form (issue 371).
+  await page.locator("#mod-settings-replace > summary").click();
   await expect(page.locator("#settings-file-help")).toContainText("Windows %APPDATA%\\Factorio\\mods, macOS ~/Library/Application Support/factorio/mods, Linux ~/.factorio/mods.");
   await expect(page.locator("#settings-file-help")).toContainText("Startup settings apply when the world next starts.");
-  // Mod names never break with a hyphen, in a table cell or in a button (DESIGN 8.3).
+  // Mod names never break with a hyphen in a table cell (DESIGN 8.3).
   expect(await page.locator("td .ident").first().evaluate((el) => getComputedStyle(el).hyphens)).toBe("manual");
-  expect(await page.locator("#mod-status .button .ident").first().evaluate((el) => getComputedStyle(el).hyphens)).toBe("manual");
-  // The notices and the table share one width, so the tab is one column.
-  const notice = (await page.locator("#mod-status .message").first().boundingBox())!;
+  // The summary line and the table share one width, so the tab is one column.
+  const summary = (await page.locator("#mod-status .mod-status__line").boundingBox())!;
   const box = (await table.boundingBox())!;
-  expect(Math.abs(notice.width - box.width)).toBeLessThan(2);
+  expect(Math.abs(summary.width - box.width)).toBeLessThan(2);
   await checkPage(page);
   await shot(page, "mods-tab-portal");
 });
@@ -158,4 +166,18 @@ test("the Server page notice names the mod and its fix", async ({ page, foreman,
   expect(await fix.evaluate((a) => getComputedStyle(a.querySelector(".ident")!).display)).toBe("contents");
   await checkPage(page);
   await shot(page, "mods-server-notice");
+});
+
+// WCAG 4.1.2, 1.4.3: the fold of mods the plan needs and leaves as they are is scanned open.
+test("the plan's fold of mods that stay as they are opens and passes the checks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-user", "1.0.0", ["base >= 2.0", "fp-base-lib >= 1.0.0"]);
+  await fakePortal!.add("fp-base-lib", "1.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-base-lib": { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-user");
+  const kept = page.locator("#mod-plan details.disclosure");
+  await expect(kept.locator("summary")).toHaveText("1 other mod stays as it is");
+  await expect(kept.getByText("fp-base-lib")).toBeHidden();
+  await kept.locator("summary").click();
+  await expect(kept.getByText("fp-base-lib")).toBeVisible();
+  await checkPage(page);
 });

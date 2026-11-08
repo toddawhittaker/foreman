@@ -58,9 +58,13 @@ type Request struct {
 	Kind     Kind
 	Names    []string          // install, update, enable, disable, remove
 	Optional []string          // optional dependencies the admin ticked
+	Declined []string          // recommended dependencies the admin unticked
 	Upload   *world.ModInfo    // the uploaded zip's info.json, for KindUpload
 	SaveMods []SaveMod         // for KindSync
 	Choices  map[string]Choice // for KindSync, by mod name
+	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
+	// off in the same plan, whatever its kind (SPEC 9.2, 17.9).
+	AlsoDisable, AlsoRemove []string
 }
 
 // Action is what a plan does to one mod.
@@ -85,8 +89,10 @@ const (
 	WhyAsked      ReasonCode = "asked"
 	WhyRequiredBy ReasonCode = "required-by"
 	WhyOptionalOf ReasonCode = "optional-of"
-	WhyFromSave   ReasonCode = "from-save"
-	WhyNotInSave  ReasonCode = "not-in-save"
+	// WhyRecommendedBy is a "+" dependency, on unless the admin unticks it.
+	WhyRecommendedBy ReasonCode = "recommended-by"
+	WhyFromSave      ReasonCode = "from-save"
+	WhyNotInSave     ReasonCode = "not-in-save"
 )
 
 // Reason is a code plus the mod it names, if any; the web layer words it.
@@ -156,9 +162,11 @@ type Unresolved struct {
 
 // Offer is an optional dependency the admin may tick. Chosen is true once
 // it is ticked: it stays offered, so the page keeps its box (SPEC 9.2).
+// A recommended one starts ticked.
 type Offer struct {
-	Name, Of string
-	Chosen   bool
+	Name, Of    string
+	Chosen      bool
+	Recommended bool
 }
 
 // Plan is the resolved change, shown before anything applies.
@@ -167,6 +175,9 @@ type Plan struct {
 	Conflicts  []Conflict
 	Unresolved []Unresolved
 	Optional   []Offer
+	// Unavailable are recommended mods left out because the portal lacks
+	// them or they would conflict; they never block the plan (SPEC 9.2).
+	Unavailable []Offer
 }
 
 // Applicable reports whether the plan may be applied: no conflict, and

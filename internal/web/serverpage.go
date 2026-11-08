@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"path/filepath"
+	"slices"
+	"strconv"
 	"time"
 
-	"github.com/toddawhittaker/foreman/internal/datadir"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -37,9 +37,6 @@ type ServerPage struct {
 	// (SPEC 3.7).
 	Image        string
 	ImageMissing bool
-	// ModsFolder is the world's mods folder on the host, for advice about
-	// missing mods; "" when not known.
-	ModsFolder string
 	// Now is when the page was built, for the countdown's time left.
 	Now time.Time
 	// Rollback undoes an update that worked (SPEC 10.4); set only then.
@@ -72,6 +69,11 @@ func (ServerPage) navItem() string      { return PathServer + navPage }
 func (p ServerPage) liveURL() string {
 	if !p.HasWorld {
 		return ""
+	}
+	// The stream reloads the mods notice once an operation the page has not
+	// seen ends (SPEC 9.3).
+	if o := p.Status.Operation; o != nil && o.Done {
+		return gamePath(p.World.ID, "events") + "?" + doneOpParam + "=" + strconv.FormatUint(o.ID, 10)
 	}
 	return gamePath(p.World.ID, "events")
 }
@@ -385,6 +387,15 @@ func (p ServerPage) ShowDownload() bool { return showOp(p.Status.Download) }
 
 func showOp(o *game.Operation) bool { return o != nil && (!o.Done || o.Error != "") }
 
+// PortalUnchecked says the last start, restart or switch could not ask the
+// mod portal, so it went ahead without knowing whether players can download
+// the world's mods (SPEC 7.4).
+func (p ServerPage) PortalUnchecked() bool {
+	o := p.Status.Operation
+	// A failed or refused action has its own message to read first.
+	return o != nil && o.PortalUnchecked && o.Error == "" && !p.opSuperseded() && !p.cancelled()
+}
+
 // OperationHeading names the operation in the step list.
 func (p ServerPage) OperationHeading() i18n.Msg {
 	o := p.Status.Operation
@@ -444,9 +455,10 @@ func (p ServerPage) DownloadList() stepList {
 
 // Steps are the steps the list shows. After a refusal by the pre-start
 // check the steps that never ran are left out, since nothing was tried.
+// After a failure the steps after the failed one fold into Later.
 func (l stepList) Steps() []game.Step {
 	if !l.refused() {
-		return l.Op.Steps
+		return l.Op.Steps[:len(l.Op.Steps)-len(l.Later())]
 	}
 	var out []game.Step
 	for _, s := range l.Op.Steps {
@@ -455,6 +467,25 @@ func (l stepList) Steps() []game.Step {
 		}
 	}
 	return out
+}
+
+// Later are the steps a failure left unrun, when there are two or more:
+// they fold into one line, so the error and the controls after it stay
+// close (DESIGN 7.6). While the operation runs, every step shows.
+func (l stepList) Later() []game.Step {
+	if !l.Op.Done || l.refused() {
+		return nil
+	}
+	steps := l.Op.Steps
+	i := slices.IndexFunc(steps, func(s game.Step) bool { return s.State == game.StepFailed })
+	if i < 0 {
+		return nil
+	}
+	later := steps[i+1:]
+	if len(later) < 2 || slices.ContainsFunc(later, func(s game.Step) bool { return s.State != game.StepSkipped }) {
+		return nil
+	}
+	return later
 }
 
 // Left says how long the countdown on a step has to run, or is zero.
@@ -533,9 +564,9 @@ type Failure struct {
 	// UndoLabel names the snapshot Undo restores when it is not a "Before
 	// restore" one.
 	UndoLabel i18n.Msg
-	// Sync offers to match the world's mods to its save when the pre-start
-	// check found mods missing or off (SPEC 9.8, 17.9).
-	Sync *Offer
+	// Fix is the main fix a refusal offers first, such as matching the
+	// world's mods to its save (SPEC 9.8, 17.9), or nil.
+	Fix *Offer
 	// Next is a link that follows the message, or nil.
 	Next *Offer
 	// In says which step list holds the message: "operation", "download",
@@ -607,7 +638,7 @@ func (p ServerPage) Failure() *Failure {
 		if switching && p.Result.Target != "" {
 			id = p.Result.Target
 		}
-		f.Sync = syncOffer(pe.Check, id)
+		f.Fix = precheckFix(pe.Check, id)
 	case errors.Is(err, world.ErrModsChanged):
 		f.Message, f.Next = failureText(err), &Offer{Path: modsPath(p.World.ID), Label: i18n.M("mods.changed.next")}
 	case errors.As(err, &de):
@@ -626,6 +657,8 @@ func (p ServerPage) Failure() *Failure {
 		// world lacks its image must never offer the old world's.
 		f.Message = i18n.M("server.error.image_missing")
 		f.Download = p.Result.Action != game.AuditSwitch || p.Result.Target == p.World.ID
+	case p.Result.Action == game.AuditMods:
+		f.Message, f.Fix = modsFailure(err, p.Result.Mods, p.World.Name, p.Status.State, PathServer)
 	default:
 		f.Message = failureText(err)
 	}
@@ -652,10 +685,11 @@ func (p ServerPage) Failure() *Failure {
 // check's problems. It names every step and the snapshots taken first, so
 // its button acts at once (SPEC 7.4, 17.5).
 type Anyway struct {
-	// Path is where the button posts; Verb is the button's words, and
-	// Offer says the button is there, for a screen reader.
-	Path        string
-	Verb, Offer i18n.Msg
+	// Path is where the button posts; Verb is the button's words, Open
+	// the words of the choice that shows it, and Offer says the choice is
+	// there, for a screen reader.
+	Path              string
+	Verb, Open, Offer i18n.Msg
 	// Switch is set for a switch; Restart for a restart of a running game;
 	// Update for a game version update to Version.
 	Switch, Restart, Update bool
@@ -669,22 +703,20 @@ type Anyway struct {
 	Countdown int
 	// Seen fingerprints what the box shows, so a stale box is refused.
 	Seen string
-	// Advice says how to keep what missing mods built, or is zero.
-	Advice i18n.Msg
 }
 
 // anyway builds the offer for the last refused action.
 func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 	a := &Anyway{
-		Path: p.StartPath(), Verb: i18n.M("server.anyway.start"), Offer: i18n.M("server.anyway.start_offer"), World: p.World.Name,
-		Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems, p.World.Name, p.ModsFolder),
-		Running: game.IsRunning(p.Status.State),
+		Path: p.StartPath(), Verb: i18n.M("server.anyway.start"), Open: i18n.M("server.anyway.start_open"), Offer: i18n.M("server.anyway.start_offer"), World: p.World.Name,
+		Countdown: defaultCountdownSeconds,
+		Running:   game.IsRunning(p.Status.State),
 	}
 	switch p.Result.Action {
 	case game.AuditRestart:
-		a.Path, a.Verb, a.Offer, a.Restart = p.RestartPath(), i18n.M("server.anyway.restart"), i18n.M("server.anyway.restart_offer"), true
+		a.Path, a.Verb, a.Open, a.Offer, a.Restart = p.RestartPath(), i18n.M("server.anyway.restart"), i18n.M("server.anyway.restart_open"), i18n.M("server.anyway.restart_offer"), true
 	case game.AuditSwitch:
-		a.Path, a.Verb, a.Offer, a.Switch = switchPath(p.Result.Target), i18n.M("server.anyway.switch"), i18n.M("server.anyway.switch_offer"), true
+		a.Path, a.Verb, a.Open, a.Offer, a.Switch = switchPath(p.Result.Target), i18n.M("server.anyway.switch"), i18n.M("server.anyway.switch_open"), i18n.M("server.anyway.switch_offer"), true
 		a.World, a.From, a.FromID = p.name(p.Result.Target), p.World.Name, p.World.ID
 	case game.AuditUpdate:
 		// The refusal came from the start after the version was set, so
@@ -699,8 +731,8 @@ func (p ServerPage) anyway(check world.PreCheck) *Anyway {
 
 // updateAnyway is the offer to update a world that is not active past the
 // pre-start check, shown on the world's own page (SPEC 10.3, 7.4).
-func updateAnyway(check world.PreCheck, sum world.Summary, version, folder string) *Anyway {
-	a := &Anyway{World: sum.Name, Countdown: defaultCountdownSeconds, Advice: anywayAdvice(check.Problems, sum.Name, folder)}
+func updateAnyway(check world.PreCheck, sum world.Summary, version string) *Anyway {
+	a := &Anyway{World: sum.Name, Countdown: defaultCountdownSeconds}
 	a.toUpdate(sum.ID, version)
 	a.Seen = game.AnywayFingerprint(check, a.Running)
 	return a
@@ -708,42 +740,7 @@ func updateAnyway(check world.PreCheck, sum world.Summary, version, folder strin
 
 // toUpdate makes the offer an update of the world id to version.
 func (a *Anyway) toUpdate(id, version string) {
-	a.Path, a.Verb, a.Offer, a.Update, a.Version = updatePath(id), i18n.M("server.anyway.update"), i18n.M("server.anyway.update_offer"), true, version
-}
-
-// anywayAdvice says how to keep what missing mods built; the lead already
-// says what the game drops. Mods that are only turned off need no file. The
-// fix is the named world's own mods folder, at its host path when known,
-// since importing again would make a second world.
-func anywayAdvice(problems []world.Problem, name, folder string) i18n.Msg {
-	missing := 0
-	for _, pr := range problems {
-		if pr.Kind == world.ProblemModMissing {
-			missing += len(pr.Mods)
-		}
-	}
-	if missing == 0 {
-		return i18n.Msg{}
-	}
-	// One mod is "that mod" and several "those mods"; the count is not shown.
-	switch {
-	case folder != "" && missing == 1:
-		return i18n.M("server.anyway.advice_folder_one", "world", name, "folder", folder)
-	case folder != "":
-		return i18n.M("server.anyway.advice_folder_many", "world", name, "folder", folder)
-	case missing == 1:
-		return i18n.M("server.anyway.advice_one", "world", name)
-	}
-	return i18n.M("server.anyway.advice_many", "world", name)
-}
-
-// hostModsFolder is a world's mods folder on the Docker host, or "" when
-// the host path is not known (SPEC 3.5, 5.2).
-func hostModsFolder(hostData, id string) string {
-	if hostData == "" {
-		return ""
-	}
-	return filepath.Join(datadir.Worlds(hostData), id, world.ModsDir) + "/"
+	a.Path, a.Verb, a.Open, a.Offer, a.Update, a.Version = updatePath(id), i18n.M("server.anyway.update"), i18n.M("server.anyway.update_open"), i18n.M("server.anyway.update_offer"), true, version
 }
 
 // durationISO is d as an ISO 8601 duration in whole minutes, for datetime.

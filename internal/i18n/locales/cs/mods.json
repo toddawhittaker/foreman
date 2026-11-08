@@ -17,15 +17,26 @@
   "mods.search.title_empty": "Najít mod pro svět {world}",
   "mods.search.results_heading": "Mody odpovídající „{query}“",
   "mods.search.unreachable": "Foreman se nemohl spojit s portálem modů, a proto nemohl hledat. Za chvíli je třeba zkusit to znovu.",
-  "mods.search.count": {
-    "one": "{count} mod pro Factorio {line}",
-    "few": "{count} mody pro Factorio {line}",
-    "other": "{count} modů pro Factorio {line}"
-  },
   "mods.search.none": "Žádný mod pro Factorio {line} neodpovídá. Je třeba zkusit kratší část názvu.",
   "mods.search.add": "Přidat do plánu",
+  "mods.hits.count": {
+    "one": "{count} mod pro Factorio {line} odpovídá.",
+    "few": "{count} mody pro Factorio {line} odpovídají.",
+    "other": "{count} modů pro Factorio {line} odpovídá."
+  },
+  "mods.hits.showing": "Zobrazeno {first} až {last}.",
+  "mods.hits.summary": "Podrobnosti",
+  "mods.hits.latest_label": "Nejnovější verze:",
+  "mods.hits.downloads_label": "Stažení:",
+  "mods.hits.pages": "Stránky výsledků",
+  "mods.hits.page": "Stránka {page} z {pages}",
+  "mods.hits.prev": "Předchozí stránka",
+  "mods.hits.next": "Další stránka",
+  "mods.search.pick_hint": "Zaškrtnutím několika modů je lze přidat do jednoho plánu, nebo lze použít tlačítko „Přidat do plánu“ u konkrétního modu.",
+  "mods.search.add_ticked": "Přidat zaškrtnuté mody do plánu",
+  "mods.search.pick_none": "Nic není zaškrtnuto. Je třeba zaškrtnout mody k přidání, nebo použít tlačítko „Přidat do plánu“ u konkrétního modu.",
+  "mods.search.picked_elsewhere": "Zaškrtnuto i na jiných stránkách: {mods}.",
   "mods.fact.latest": "Nejnovější verze",
-  "mods.fact.game_version": "Verze hry",
   "mods.fact.downloads": "Stažení",
   "mods.badge.installed": "Nainstalovaný",
   "mods.badge.in_plan": "V plánu",
@@ -44,18 +55,36 @@
     "other": "Zapnutých je {count}."
   },
   "mods.installed.none": "Tento svět má jen mody vestavěné do hry. Mod k instalaci lze najít výše.",
+  "mods.installed.portal": "na portálu modů, otevře se na nové kartě",
   "mods.col.mod": "Mod",
-  "mods.col.state": "Stav",
   "mods.col.actions": "Akce",
-  "mods.state.on": "Zapnutý",
   "mods.state.off": "Vypnutý",
   "mods.row.update": "Aktualizovat na {version}",
   "mods.row.enable": "Zapnout",
   "mods.row.disable": "Vypnout",
   "mods.row.remove": "Odebrat",
+  "mods.row.gone": "Hráči se nemohou připojit: portál modů už nemá verzi {version}, takže ji jejich hra nemůže stáhnout.",
+  "mods.row.gone_none": "Hráči se nemohou připojit: portál modů už nemá verzi {version} ani žádnou pro tuto verzi hry. Mod je třeba odebrat nebo vypnout.",
+  "mods.row.deprecated": "Na portálu modů označen jako zastaralý, takže ho hráči nenajdou v prohlížeči modů ve hře.",
+  "mods.row.not_on_portal": "Není na portálu modů, takže ho hry hráčů nemohou stáhnout. Hráči musí soubor získat jinak.",
   "mods.status.loading": "Kontrolují se aktualizace na portálu modů…",
   "mods.status.unreachable": "Foreman se nemohl spojit s portálem modů, a proto nemohl zkontrolovat aktualizace ani mody, které hráči nemohou stáhnout.",
   "mods.status.retry": "Zkontrolovat znovu",
+  "mods.status.errors": {
+    "one": "{count} mod brání hráčům v připojení. Jeho řádek říká, jak to opravit.",
+    "few": "{count} mody brání hráčům v připojení. Jejich řádky říkají, jak to opravit.",
+    "other": "{count} modů brání hráčům v připojení. Jejich řádky říkají, jak to opravit."
+  },
+  "mods.status.warnings": {
+    "one": "{count} mod je na portálu modů označen jako zastaralý.",
+    "few": "{count} mody jsou na portálu modů označeny jako zastaralé.",
+    "other": "{count} modů je na portálu modů označeno jako zastaralé."
+  },
+  "mods.status.notes": {
+    "one": "{count} mod není na portálu modů.",
+    "few": "{count} mody nejsou na portálu modů.",
+    "other": "{count} modů není na portálu modů."
+  },
   "mods.status.updates": {
     "one": "{count} mod má aktualizaci pro tuto verzi hry.",
     "few": "{count} mody mají aktualizaci pro tuto verzi hry.",
@@ -67,11 +96,6 @@
     "few": "{count} mody z portálu modů jsou aktuální.",
     "other": "{count} modů z portálu modů je aktuálních."
   },
-  "mods.flag.gone": "Hráči se s {mod} {version} nemohou připojit: portál modů už tuto verzi nemá, takže ji jejich hra nemůže stáhnout. Na portálu je verze {update}.",
-  "mods.flag.gone_none": "Hráči se s {mod} {version} nemohou připojit: portál modů už tuto verzi nemá a nemá žádnou pro tuto verzi hry.",
-  "mods.flag.deprecated": "{mod} je na portálu modů označen jako zastaralý, takže ho hráči nenajdou v prohlížeči modů ve hře.",
-  "mods.flag.not_on_portal": "{mod} {version} není na portálu modů, takže ho hry hráčů nemohou při připojování stáhnout. Hráči musí soubor získat jinak.",
-  "mods.flag.fix_update": "Aktualizovat {mod} na {version}",
   "mods.flag.fix_remove": "Odebrat {mod}",
   "mods.notice": {
     "one": "Hráči už nemohou stáhnout {count} mod světa {world}, takže se nemohou připojit.",
@@ -87,12 +111,37 @@
   },
   "mods.sync.heading": "Přizpůsobit mody uložené hře",
   "mods.sync.text": "Nastaví mody světa na ty, se kterými byla vytvořena uložená hra {save}: chybějící nainstaluje, změní verze a ostatní vypne. Nejdřív se zobrazí plán.",
+  "mods.sync.match": "Mody odpovídají uložené hře {save}.",
+  "mods.sync.differ": "Mody se liší od uložené hry {save}:",
+  "mods.sync.missing": {
+    "one": "{count} mod, který uložená hra používá, není nainstalovaný",
+    "few": "{count} mody, které uložená hra používá, nejsou nainstalované",
+    "other": "{count} modů, které uložená hra používá, není nainstalovaných"
+  },
+  "mods.sync.off": {
+    "one": "{count} mod, který uložená hra používá, je tu vypnutý",
+    "few": "{count} mody, které uložená hra používá, jsou tu vypnuté",
+    "other": "{count} modů, které uložená hra používá, je tu vypnutých"
+  },
+  "mods.sync.version": {
+    "one": "{count} mod, který uložená hra používá, je nainstalovaný v jiné verzi",
+    "few": "{count} mody, které uložená hra používá, jsou nainstalované v jiné verzi",
+    "other": "{count} modů, které uložená hra používá, je nainstalovaných v jiné verzi"
+  },
+  "mods.sync.extra": {
+    "one": "{count} zapnutý mod není v uložené hře",
+    "few": "{count} zapnuté mody nejsou v uložené hře",
+    "other": "{count} zapnutých modů není v uložené hře"
+  },
+  "mods.sync.what": "Přizpůsobení nainstaluje chybějící mody, změní verze a ostatní vypne. Nejdřív se zobrazí plán.",
   "mods.sync.button": "Přizpůsobit mody uložené hře",
   "mods.sync.no_save": "Tento svět zatím nemá žádnou uloženou hru, takže není co přizpůsobovat.",
   "mods.sync.upload_save": "Nahrát uloženou hru",
   "mods.sync.offer": "Přizpůsobit mody uložené hře",
   "mods.sync.import": "Přizpůsobit mody tohoto světa jeho uložené hře",
   "mods.upload.heading": "Nahrát mod",
+  "mods.upload.text": "Instalace modu z vlastního souboru .zip.",
+  "mods.upload.summary": "Nahrát soubor zip s modem",
   "mods.upload.label": "Soubor zip s modem",
   "mods.upload.hint": "Soubor .zip s modem, nejvýše {limit}. Foreman přečte jeho název a verzi z info.json a před jakoukoli změnou ukáže plán.",
   "mods.upload.button": "Nahrát mod",
@@ -103,6 +152,7 @@
   "mods.settings.text": "Hodnoty nastavení modů jsou v souboru {file}. Lze si ho stáhnout, aby se zachovala kopie nebo aby se použil v jiném světě.",
   "mods.settings.download": "Stáhnout mod-settings.dat",
   "mods.settings.none": "Tento svět zatím nemá soubor {file}. Hra ho zapíše při prvním spuštění s mody.",
+  "mods.settings.summary": "Nahradit {file}",
   "mods.settings.where": "Klient Factorio má tento soubor ve své složce modů: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Nastavení při spuštění platí od příštího spuštění světa.",
   "mods.settings.apply_running": "Nastavení při spuštění platí od příštího spuštění světa, proto ho Foreman restartuje.",
@@ -138,34 +188,26 @@
     "other": "Tento plán stahuje {count} modů a stahování je vypnuté, protože Foreman nemá účet factorio.com."
   },
   "mods.plan.nothing": "Není třeba nic měnit: mody už jsou, jak se požadovalo.",
-  "mods.plan.download": {
-    "one": "Stáhnout {count} mod z portálu modů a zkontrolovat ho podle kontrolního součtu. Pokud stahování selže, nestane se nic dalšího.",
-    "few": "Stáhnout {count} mody z portálu modů a zkontrolovat každý podle jeho kontrolního součtu. Pokud stahování selže, nestane se nic dalšího.",
-    "other": "Stáhnout {count} modů z portálu modů a zkontrolovat každý podle jeho kontrolního součtu. Pokud stahování selže, nestane se nic dalšího."
-  },
   "mods.plan.warn_stop": "Upozornit hráče, pak uložit hru a zastavit server.",
   "mods.plan.snapshot": "Pořídit snímek světa {world} se štítkem „{label}“. Pokud snímek selže, nestane se nic dalšího.",
-  "mods.plan.change": "Změnit mody:",
-  "mods.plan.asked.heading": "Vybrané mody:",
   "mods.plan.asked.remove": "Odebrat z plánu",
-  "mods.plan.needed.heading": "Co potřebují:",
-  "mods.plan.change_above": "Provést změny modů uvedené výše.",
   "mods.plan.add.heading": "Přidat další mod",
+  "mods.plan.add.back": "Zpět k plánu",
   "mods.plan.start": "Znovu spustit server.",
-  "mods.plan.undo": "Pro vrácení zpět je třeba tento snímek obnovit na stránce „Snímky“.",
+  "mods.plan.undo": "Po dokončení se u výsledku objeví vrácení zpět jedním kliknutím, které tento snímek obnoví.",
   "mods.plan.group.install": "Instalace",
   "mods.plan.group.upgrade": "Zvýšení verze",
   "mods.plan.group.downgrade": "Snížení verze",
   "mods.plan.group.enable": "Zapnutí",
   "mods.plan.group.disable": "Vypnutí",
   "mods.plan.group.remove": "Odebrání",
-  "mods.plan.group.keep": "Beze změny",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} z {from} na {to}",
   "mods.plan.item.uploaded": "{mod} {version}, z nahraného zipu",
   "mods.plan.item.why": "{item} ({why})",
   "mods.plan.why.required_by": "potřebuje ho {mod}",
   "mods.plan.why.optional_of": "nabízí ho {mod}",
+  "mods.plan.why.recommended_by": "doporučuje ho {mod}",
   "mods.plan.why.from_save": "uložená hra ho používá",
   "mods.plan.why.not_in_save": "uložená hra ho nepoužívá",
   "mods.plan.warn.older": "Toto vydání je starší než to, se kterým byla vytvořena uložená hra.",
@@ -203,6 +245,9 @@
   "mods.optional.legend": "Volitelné mody",
   "mods.optional.hint": "Mod v plánu je může používat, ale nepotřebuje je. Zaškrtnutím jednoho se přidá i se vším, co potřebuje.",
   "mods.optional.item": "{mod}, nabízí {of}",
+  "mods.recommended.item": "{mod}, doporučuje ho {of}",
+  "mods.recommended.hint": "Doporučené mody jsou už zaškrtnuté. Zrušením zaškrtnutí se mod vynechá.",
+  "mods.recommended.unavailable": "{mod}, který doporučuje {of}, se vynechá: portál modů nemá žádnou vhodnou verzi.",
   "mods.unresolved.legend": "Portál modů nemá {mod} {version}",
   "mods.unresolved.hint": "Uložená hra byla vytvořena s touto verzí. Je třeba zvolit, co dělat; dokud se tak nestane, plán nelze použít.",
   "mods.unresolved.nearest_hint": "„Nejbližší“ znamená nejbližší vydání pro Factorio {line}.",
@@ -215,18 +260,22 @@
   "mods.unresolved.upload_label": "Zip s {mod} {version}",
   "mods.unresolved.upload_button": "Nahrát zip",
   "mods.drops.warning": {
-    "one": "Načítaná uložená hra používá {count} mod, který tato změna vypíná: {mods}. Když se hra spustí bez něj, smaže vše, co do světa přidal.",
-    "few": "Načítaná uložená hra používá {count} mody, které tato změna vypíná: {mods}. Když se hra spustí bez nich, smaže vše, co do světa přidaly.",
-    "other": "Načítaná uložená hra používá {count} modů, které tato změna vypíná: {mods}. Když se hra spustí bez nich, smaže vše, co do světa přidaly."
+    "one": "Načítaná uložená hra používá {mods}, který tato změna vypíná. Bez něj hra smaže vše, co {mods} ve světě postavil.",
+    "few": "Načítaná uložená hra používá {count} mody, které tato změna vypíná: {mods}. Bez nich hra smaže vše, co ve světě postavily.",
+    "other": "Načítaná uložená hra používá {count} modů, které tato změna vypíná: {mods}. Bez nich hra smaže vše, co ve světě postavily."
   },
-  "mods.drops.confirm_missing": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co tyto mody přidaly, nebo změnu zrušit.",
+  "mods.drops.confirm_missing": {
+    "one": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co postavil {count} mod, nebo zrušit.",
+    "few": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co postavily {count} mody, nebo zrušit.",
+    "other": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co postavilo {count} modů, nebo zrušit."
+  },
   "mods.conflict.incompatible": "{mod} nemůže běžet společně s {other}.",
   "mods.conflict.space_age_off": "{mod} potřebuje {other}, který patří ke Space Age, a Space Age je pro tento svět vypnuto.",
   "mods.conflict.space_age_save": "Uložená hra používá {mod}, který patří ke Space Age, a Space Age je pro tento svět vypnuto. Nejdřív je třeba zapnout Space Age v nastavení světa.",
   "mods.conflict.no_release": "Žádné vydání {mod} pro tuto verzi hry nesplňuje, co plán potřebuje: {needs}.",
   "mods.conflict.version": "{mod} {version} nesplňuje, co plán potřebuje: {needs}.",
   "mods.conflict.not_on_portal": "{mod} není na portálu modů. Je třeba místo toho nahrát jeho zip.",
-  "mods.conflict.required_by": "{other} potřebuje {mod}. Nejdřív je třeba vypnout nebo odebrat {other}.",
+  "mods.conflict.required_by": "{other} potřebuje {mod}.",
   "mods.conflict.built_in": "{mod} je vestavěn do hry. Řídí se nastavením Space Age světa a ručně se nemění.",
   "mods.conflict.local": "{mod} je nainstalován jako složka a Foreman nikdy nenahrazuje mod ve složce. Je třeba ho změnit ve složce modů světa.",
   "mods.conflict.not_installed": "{mod} není v tomto světě nainstalován.",
@@ -248,7 +297,7 @@
   "mods.error.unauthorized": "factorio.com odmítl uživatelské jméno nebo token, proto nebyl stažen žádný mod. Nic se nezměnilo. Je třeba zkontrolovat účet factorio.com.",
   "mods.error.download_gone": "Portál modů už nemá mod, který plán stahuje. Nic se nezměnilo. Je třeba znovu otevřít mody, aby se zobrazil nový plán.",
   "mods.error.download_failed": "Mod se nepodařilo stáhnout z portálu modů. Nic se nezměnilo. Za chvíli je třeba zkusit to znovu.",
-  "mods.done": "Mody světa {world} jsou změněny. Foreman nejprve pořídil snímek „{label}“.",
+  "mods.done": "Mody světa {world} byly změněny. Foreman nejprve pořídil snímek „{label}“.",
   "mods.undo": "Vrátit tuto změnu modů",
   "mods.changed.next": "Znovu otevřít mody",
   "mods.plan.redrawn": {
@@ -272,7 +321,50 @@
     "other": "Plán aktualizován: má {count} konfliktů, a proto ho nelze použít."
   },
   "mods.error.cross_site": "Tento plán byl otevřen z jiného webu, proto ho Foreman nesestavil. Nic se nezměnilo. Plán se zobrazí po volbě „Zkusit znovu“.",
-  "mods.built_in.line_space_age": "Vestavěné, verze {version}: {mods}. Řídí se nastavením Space Age.",
   "mods.built_in.line": "Vestavěné, verze {version}: {mods}.",
-  "mods.built_in.change": "Změnit Space Age"
+  "mods.built_in.line_on": "Vestavěné, verze {version}: {mods}. Space Age je zapnutý, takže jsou zapnuté všechny.",
+  "mods.built_in.line_off": "Vestavěné, verze {version}: {mods}. Space Age je vypnutý, takže {off} jsou vypnuté.",
+  "mods.built_in.change": "Změnit Space Age",
+  "mods.built_in.turn_on": "Zapnout Space Age",
+  "mods.plan.button.change": {
+    "one": "Změnit {count} mod",
+    "few": "Změnit {count} mody",
+    "other": "Změnit {count} modů"
+  },
+  "mods.plan.changes": "Změny:",
+  "mods.plan.kept": {
+    "one": "{count} další mod zůstává beze změny",
+    "few": "{count} další mody zůstávají beze změny",
+    "other": "{count} dalších modů zůstává beze změny"
+  },
+  "mods.plan.step.download": {
+    "one": "Stáhnout {count} mod z portálu modů a zkontrolovat jeho kontrolní součet.",
+    "few": "Stáhnout {count} mody z portálu modů a zkontrolovat jejich kontrolní součty.",
+    "other": "Stáhnout {count} modů z portálu modů a zkontrolovat jejich kontrolní součty."
+  },
+  "mods.plan.step.stop": "Upozornit hráče, pak uložit a zastavit svět {world}.",
+  "mods.plan.step.snapshot": "Pořídit snímek se štítkem „{label}“.",
+  "mods.plan.step.snapshot_kept": "Ponechat snímek z {time}, který tuto změnu již pokrývá.",
+  "mods.plan.step.change_start": "Změnit mody, pak znovu spustit svět {world}.",
+  "mods.plan.step.change_stopped": "Změnit mody. Svět {world} zůstane zastavený jako teď.",
+  "mods.plan.step.fails": "Pokud krok selže, další kroky se neprovedou.",
+  "mods.plan.fix.remove": "Odebrat {mod} v rámci tohoto plánu",
+  "mods.plan.fix.disable": "Vypnout také {mod}",
+  "mods.plan.back_search": "Zpět k hledání",
+  "mods.plan.fixed": {
+    "one": "Plán aktualizován. Mění {count} mod.",
+    "few": "Plán aktualizován. Mění {count} mody.",
+    "other": "Plán aktualizován. Mění {count} modů."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plán aktualizován. Zbývá {count} konflikt.",
+    "few": "Plán aktualizován. Zbývají {count} konflikty.",
+    "other": "Plán aktualizován. Zbývá {count} konfliktů."
+  },
+  "mods.drops.confirm": {
+    "one": "Smazat, co {mods} postavil. Kopii uchovává snímek „{label}“.",
+    "few": "Smazat, co postavily tyto {count} mody: {mods}. Kopii uchovává snímek „{label}“.",
+    "other": "Smazat, co postavilo těchto {count} modů: {mods}. Kopii uchovává snímek „{label}“."
+  },
+  "mods.drops.confirm_missing_one": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co {mod} postavil, nebo zrušit."
 }

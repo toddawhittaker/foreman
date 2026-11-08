@@ -16,14 +16,25 @@
   "mods.search.title_empty": "Eine Mod für {world} finden",
   "mods.search.results_heading": "Mods, die zu „{query}“ passen",
   "mods.search.unreachable": "Foreman konnte das Mod-Portal nicht erreichen und deshalb nicht suchen. Versuche es gleich noch einmal.",
-  "mods.search.count": {
-    "one": "{count} Mod für Factorio {line}",
-    "other": "{count} Mods für Factorio {line}"
-  },
   "mods.search.none": "Keine Mod für Factorio {line} passt. Versuche einen kürzeren Teil des Namens.",
   "mods.search.add": "Zum Plan hinzufügen",
+  "mods.hits.count": {
+    "one": "{count} Mod für Factorio {line} passt.",
+    "other": "{count} Mods für Factorio {line} passen."
+  },
+  "mods.hits.showing": "Angezeigt: {first} bis {last}.",
+  "mods.hits.summary": "Details",
+  "mods.hits.latest_label": "Neueste Version:",
+  "mods.hits.downloads_label": "Downloads:",
+  "mods.hits.pages": "Ergebnisseiten",
+  "mods.hits.page": "Seite {page} von {pages}",
+  "mods.hits.prev": "Vorherige Seite",
+  "mods.hits.next": "Nächste Seite",
+  "mods.search.pick_hint": "Hake mehrere Mods an, um sie in einen Plan aufzunehmen, oder nutze den Button „Zum Plan hinzufügen“ einer Mod.",
+  "mods.search.add_ticked": "Angehakte Mods zum Plan hinzufügen",
+  "mods.search.pick_none": "Nichts ist angehakt. Hake die Mods an, die du hinzufügen willst, oder nutze den Button „Zum Plan hinzufügen“ einer Mod.",
+  "mods.search.picked_elsewhere": "Auch auf anderen Seiten angehakt: {mods}.",
   "mods.fact.latest": "Neueste Version",
-  "mods.fact.game_version": "Spielversion",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installiert",
   "mods.badge.in_plan": "Im Plan",
@@ -40,18 +51,33 @@
     "other": "{count} sind aktiviert."
   },
   "mods.installed.none": "Diese Welt hat nur die im Spiel eingebauten Mods. Finde oben eine Mod, um sie zu installieren.",
+  "mods.installed.portal": "auf dem Mod-Portal, öffnet in einem neuen Tab",
   "mods.col.mod": "Mod",
-  "mods.col.state": "Zustand",
   "mods.col.actions": "Aktionen",
-  "mods.state.on": "Aktiviert",
   "mods.state.off": "Deaktiviert",
   "mods.row.update": "Auf {version} aktualisieren",
   "mods.row.enable": "Aktivieren",
   "mods.row.disable": "Deaktivieren",
   "mods.row.remove": "Entfernen",
+  "mods.row.gone": "Spieler können nicht beitreten: Das Mod-Portal hat Version {version} nicht mehr, deshalb kann ihr Spiel sie nicht herunterladen.",
+  "mods.row.gone_none": "Spieler können nicht beitreten: Das Mod-Portal hat Version {version} nicht mehr und keine für diese Spielversion. Entferne die Mod oder deaktiviere sie.",
+  "mods.row.deprecated": "Auf dem Mod-Portal als veraltet markiert, deshalb finden Spieler diese Mod nicht im Mod-Browser des Spiels.",
+  "mods.row.not_on_portal": "Nicht auf dem Mod-Portal, deshalb können die Spiele der Spieler sie nicht herunterladen. Die Spieler brauchen die Datei von dir.",
   "mods.status.loading": "Das Mod-Portal wird auf Aktualisierungen geprüft …",
   "mods.status.unreachable": "Foreman konnte das Mod-Portal nicht erreichen und deshalb weder Aktualisierungen noch Mods prüfen, die Spieler nicht herunterladen können.",
   "mods.status.retry": "Erneut prüfen",
+  "mods.status.errors": {
+    "one": "{count} Mod hindert Spieler am Beitreten. Ihre Zeile sagt, wie du das behebst.",
+    "other": "{count} Mods hindern Spieler am Beitreten. Ihre Zeilen sagen, wie du das behebst."
+  },
+  "mods.status.warnings": {
+    "one": "{count} Mod ist auf dem Mod-Portal als veraltet markiert.",
+    "other": "{count} Mods sind auf dem Mod-Portal als veraltet markiert."
+  },
+  "mods.status.notes": {
+    "one": "{count} Mod ist nicht auf dem Mod-Portal.",
+    "other": "{count} Mods sind nicht auf dem Mod-Portal."
+  },
   "mods.status.updates": {
     "one": "{count} Mod hat eine Aktualisierung für diese Spielversion.",
     "other": "{count} Mods haben eine Aktualisierung für diese Spielversion."
@@ -61,11 +87,6 @@
     "one": "{count} Mod vom Mod-Portal ist aktuell.",
     "other": "Alle {count} Mods vom Mod-Portal sind aktuell."
   },
-  "mods.flag.gone": "Spieler können mit {mod} {version} nicht beitreten: Das Mod-Portal hat diese Version nicht mehr, deshalb kann ihr Spiel sie nicht herunterladen. Version {update} ist auf dem Portal.",
-  "mods.flag.gone_none": "Spieler können mit {mod} {version} nicht beitreten: Das Mod-Portal hat diese Version nicht mehr und keine für diese Spielversion.",
-  "mods.flag.deprecated": "{mod} ist auf dem Mod-Portal als veraltet markiert, deshalb finden Spieler diese Mod nicht im Mod-Browser des Spiels.",
-  "mods.flag.not_on_portal": "{mod} {version} ist nicht auf dem Mod-Portal, deshalb können die Spiele der Spieler sie beim Beitreten nicht herunterladen. Die Spieler brauchen die Datei von dir.",
-  "mods.flag.fix_update": "{mod} auf {version} aktualisieren",
   "mods.flag.fix_remove": "{mod} entfernen",
   "mods.notice": {
     "one": "Spieler können {count} Mod von {world} nicht mehr herunterladen, deshalb können sie nicht beitreten.",
@@ -79,12 +100,33 @@
   },
   "mods.sync.heading": "Mods an den Speicherstand angleichen",
   "mods.sync.text": "Macht die Mods der Welt zu denen, mit denen der Speicherstand {save} erstellt wurde: Fehlende werden installiert, Versionen geändert und alle übrigen deaktiviert. Du siehst vorher den Plan.",
+  "mods.sync.match": "Die Mods passen zum Speicherstand {save}.",
+  "mods.sync.differ": "Die Mods weichen vom Speicherstand {save} ab:",
+  "mods.sync.missing": {
+    "one": "{count} Mod, die der Speicherstand nutzt, ist nicht installiert",
+    "other": "{count} Mods, die der Speicherstand nutzt, sind nicht installiert"
+  },
+  "mods.sync.off": {
+    "one": "{count} Mod, die der Speicherstand nutzt, ist hier deaktiviert",
+    "other": "{count} Mods, die der Speicherstand nutzt, sind hier deaktiviert"
+  },
+  "mods.sync.version": {
+    "one": "{count} Mod, die der Speicherstand nutzt, ist in einer anderen Version installiert",
+    "other": "{count} Mods, die der Speicherstand nutzt, sind in einer anderen Version installiert"
+  },
+  "mods.sync.extra": {
+    "one": "{count} aktivierte Mod ist nicht im Speicherstand",
+    "other": "{count} aktivierte Mods sind nicht im Speicherstand"
+  },
+  "mods.sync.what": "Das Angleichen installiert die fehlenden Mods, ändert Versionen und deaktiviert alle übrigen. Du siehst vorher den Plan.",
   "mods.sync.button": "Mods an den Speicherstand angleichen",
   "mods.sync.no_save": "Diese Welt hat noch keinen Speicherstand, also gibt es nichts anzugleichen.",
   "mods.sync.upload_save": "Einen Speicherstand hochladen",
   "mods.sync.offer": "Die Mods an den Speicherstand angleichen",
   "mods.sync.import": "Die Mods dieser Welt an ihren Speicherstand angleichen",
   "mods.upload.heading": "Eine Mod hochladen",
+  "mods.upload.text": "Installiere eine Mod aus einer .zip-Datei, die du hast.",
+  "mods.upload.summary": "Zip-Datei einer Mod hochladen",
   "mods.upload.label": "Zip-Datei der Mod",
   "mods.upload.hint": "Die .zip-Datei einer Mod, höchstens {limit}. Foreman liest Name und Version aus ihrer info.json und zeigt den Plan, bevor etwas geändert wird.",
   "mods.upload.button": "Mod hochladen",
@@ -95,6 +137,7 @@
   "mods.settings.text": "Die Werte der Mod-Einstellungen liegen in {file}. Lade die Datei herunter, um eine Kopie zu behalten oder sie in einer anderen Welt zu verwenden.",
   "mods.settings.download": "mod-settings.dat herunterladen",
   "mods.settings.none": "Diese Welt hat noch keine {file}. Das Spiel schreibt eine, wenn es zum ersten Mal mit Mods läuft.",
+  "mods.settings.summary": "{file} ersetzen",
   "mods.settings.where": "Dein Factorio-Client bewahrt die Datei in seinem Mod-Ordner auf: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Starteinstellungen gelten, wenn die Welt das nächste Mal startet.",
   "mods.settings.apply_running": "Starteinstellungen gelten, wenn die Welt das nächste Mal startet, deshalb startet Foreman sie neu.",
@@ -128,33 +171,26 @@
     "other": "Dieser Plan lädt {count} Mods herunter, und Downloads sind aus, weil Foreman kein factorio.com-Konto hat."
   },
   "mods.plan.nothing": "Nichts muss geändert werden: Die Mods sind schon wie gewünscht.",
-  "mods.plan.download": {
-    "one": "{count} Mod vom Mod-Portal herunterladen und gegen ihre Prüfsumme prüfen. Schlägt der Download fehl, passiert sonst nichts.",
-    "other": "{count} Mods vom Mod-Portal herunterladen und jede gegen ihre Prüfsumme prüfen. Schlägt ein Download fehl, passiert sonst nichts."
-  },
   "mods.plan.warn_stop": "Die Spieler warnen, dann den Server speichern und stoppen.",
   "mods.plan.snapshot": "Einen Snapshot von {world} mit der Bezeichnung „{label}“ erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
-  "mods.plan.change": "Die Mods ändern:",
-  "mods.plan.asked.heading": "Mods, die du ausgewählt hast:",
   "mods.plan.asked.remove": "Aus dem Plan entfernen",
-  "mods.plan.needed.heading": "Was sie brauchen:",
-  "mods.plan.change_above": "Die oben aufgeführten Mod-Änderungen vornehmen.",
   "mods.plan.add.heading": "Eine weitere Mod hinzufügen",
+  "mods.plan.add.back": "Zurück zum Plan",
   "mods.plan.start": "Den Server wieder starten.",
-  "mods.plan.undo": "Zum Rückgängigmachen diesen Snapshot auf der Seite „Snapshots“ wiederherstellen.",
+  "mods.plan.undo": "Danach erscheint beim Ergebnis ein Rückgängig mit einem Klick, das diesen Snapshot wiederherstellt.",
   "mods.plan.group.install": "Installieren",
   "mods.plan.group.upgrade": "Auf neuere Version",
   "mods.plan.group.downgrade": "Auf ältere Version",
   "mods.plan.group.enable": "Aktivieren",
   "mods.plan.group.disable": "Deaktivieren",
   "mods.plan.group.remove": "Entfernen",
-  "mods.plan.group.keep": "Unverändert lassen",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} {from} auf {to}",
   "mods.plan.item.uploaded": "{mod} {version}, aus der hochgeladenen Zip-Datei",
   "mods.plan.item.why": "{item} ({why})",
   "mods.plan.why.required_by": "{mod} braucht sie",
   "mods.plan.why.optional_of": "von {mod} angeboten",
+  "mods.plan.why.recommended_by": "von {mod} empfohlen",
   "mods.plan.why.from_save": "der Speicherstand nutzt sie",
   "mods.plan.why.not_in_save": "der Speicherstand nutzt sie nicht",
   "mods.plan.warn.older": "Diese Version ist älter als die, mit der der Speicherstand erstellt wurde.",
@@ -186,6 +222,9 @@
   "mods.optional.legend": "Optionale Mods",
   "mods.optional.hint": "Eine Mod im Plan kann diese nutzen, braucht sie aber nicht. Hake eine an, um sie samt allem, was sie braucht, hinzuzufügen.",
   "mods.optional.item": "{mod}, angeboten von {of}",
+  "mods.recommended.item": "{mod}, empfohlen von {of}",
+  "mods.recommended.hint": "Als empfohlen markierte Mods sind schon angehakt. Entferne den Haken, um eine wegzulassen.",
+  "mods.recommended.unavailable": "{mod}, empfohlen von {of}, wird weggelassen: Das Mod-Portal hat keine passende Version.",
   "mods.unresolved.legend": "Das Mod-Portal hat {mod} {version} nicht",
   "mods.unresolved.hint": "Der Speicherstand wurde mit dieser Version erstellt. Wähle, was geschehen soll; der Plan kann erst angewendet werden, wenn du das getan hast.",
   "mods.unresolved.nearest_hint": "„Nächstliegend“ ist die Version für Factorio {line}, die dieser Version am nächsten kommt.",
@@ -198,17 +237,20 @@
   "mods.unresolved.upload_label": "Zip-Datei von {mod} {version}",
   "mods.unresolved.upload_button": "Zip-Datei hochladen",
   "mods.drops.warning": {
-    "one": "Der Speicherstand, der geladen wird, nutzt {count} Mod, die diese Änderung deaktiviert: {mods}. Startet das Spiel ohne sie, löscht es alles, was sie der Welt hinzugefügt hat.",
-    "other": "Der Speicherstand, der geladen wird, nutzt {count} Mods, die diese Änderung deaktiviert: {mods}. Startet das Spiel ohne sie, löscht es alles, was sie der Welt hinzugefügt haben."
+    "one": "Der Speicherstand, der geladen wird, nutzt {mods}, die diese Änderung deaktiviert. Ohne sie löscht das Spiel alles, was {mods} in der Welt gebaut hat.",
+    "other": "Der Speicherstand, der geladen wird, nutzt {count} Mods, die diese Änderung deaktiviert: {mods}. Ohne sie löscht das Spiel alles, was sie in der Welt gebaut haben."
   },
-  "mods.drops.confirm_missing": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese Mods hinzugefügt haben, oder brich die Änderung ab.",
+  "mods.drops.confirm_missing": {
+    "one": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese Mod gebaut hat, oder brich ab.",
+    "other": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was diese {count} Mods gebaut haben, oder brich ab."
+  },
   "mods.conflict.incompatible": "{mod} kann nicht zusammen mit {other} laufen.",
   "mods.conflict.space_age_off": "{mod} braucht {other}, die zu Space Age gehört, und Space Age ist für diese Welt aus.",
   "mods.conflict.space_age_save": "Der Speicherstand nutzt {mod}, die zu Space Age gehört, und Space Age ist für diese Welt aus. Aktiviere zuerst Space Age in den Einstellungen der Welt.",
   "mods.conflict.no_release": "Keine Version von {mod} für diese Spielversion erfüllt, was der Plan braucht: {needs}.",
   "mods.conflict.version": "{mod} {version} erfüllt nicht, was der Plan braucht: {needs}.",
   "mods.conflict.not_on_portal": "{mod} ist nicht auf dem Mod-Portal. Lade stattdessen die Zip-Datei hoch.",
-  "mods.conflict.required_by": "{other} braucht {mod}. Deaktiviere oder entferne zuerst {other}.",
+  "mods.conflict.required_by": "{other} braucht {mod}.",
   "mods.conflict.built_in": "{mod} ist ins Spiel eingebaut. Diese Mod folgt der Space-Age-Einstellung der Welt und wird nicht von Hand geändert.",
   "mods.conflict.local": "{mod} ist als Ordner installiert, und Foreman ersetzt nie eine Mod, die als Ordner vorliegt. Ändere sie im Mod-Ordner der Welt.",
   "mods.conflict.not_installed": "{mod} ist in dieser Welt nicht installiert.",
@@ -230,7 +272,7 @@
   "mods.error.unauthorized": "factorio.com hat den Benutzernamen oder das Token abgelehnt, deshalb wurde keine Mod heruntergeladen. Es wurde nichts geändert. Prüfe das factorio.com-Konto.",
   "mods.error.download_gone": "Das Mod-Portal hat eine Mod, die der Plan herunterlädt, nicht mehr. Es wurde nichts geändert. Öffne die Mods erneut, um den neuen Plan zu sehen.",
   "mods.error.download_failed": "Eine Mod konnte nicht vom Mod-Portal heruntergeladen werden. Es wurde nichts geändert. Versuche es gleich noch einmal.",
-  "mods.done": "Die Mods von {world} sind geändert. Foreman hat zuvor den Snapshot „{label}“ erstellt.",
+  "mods.done": "Die Mods von {world} wurden geändert. Foreman hat zuvor den Snapshot „{label}“ erstellt.",
   "mods.undo": "Diese Mod-Änderung rückgängig machen",
   "mods.changed.next": "Die Mods erneut öffnen",
   "mods.plan.redrawn": {
@@ -250,7 +292,44 @@
     "other": "Plan aktualisiert: Er hat {count} Konflikte und kann deshalb nicht angewendet werden."
   },
   "mods.error.cross_site": "Dieser Plan wurde von einer anderen Website aus geöffnet, deshalb hat Foreman ihn nicht berechnet. Es wurde nichts geändert. Wähle „Erneut versuchen“, um den Plan zu sehen.",
-  "mods.built_in.line_space_age": "Eingebaut, Version {version}: {mods}. Sie folgen der Space-Age-Einstellung.",
   "mods.built_in.line": "Eingebaut, Version {version}: {mods}.",
-  "mods.built_in.change": "Space Age ändern"
+  "mods.built_in.line_on": "Eingebaut, Version {version}: {mods}. Space Age ist aktiviert, deshalb sind alle aktiviert.",
+  "mods.built_in.line_off": "Eingebaut, Version {version}: {mods}. Space Age ist deaktiviert, deshalb sind {off} deaktiviert.",
+  "mods.built_in.change": "Space Age ändern",
+  "mods.built_in.turn_on": "Space Age aktivieren",
+  "mods.plan.button.change": {
+    "one": "{count} Mod ändern",
+    "other": "{count} Mods ändern"
+  },
+  "mods.plan.changes": "Änderungen:",
+  "mods.plan.kept": {
+    "one": "{count} weitere Mod bleibt unverändert",
+    "other": "{count} weitere Mods bleiben unverändert"
+  },
+  "mods.plan.step.download": {
+    "one": "{count} Mod vom Mod-Portal herunterladen und ihre Prüfsumme prüfen.",
+    "other": "{count} Mods vom Mod-Portal herunterladen und ihre Prüfsummen prüfen."
+  },
+  "mods.plan.step.stop": "Die Spieler warnen, dann {world} speichern und stoppen.",
+  "mods.plan.step.snapshot": "Einen Snapshot mit der Bezeichnung „{label}“ erstellen.",
+  "mods.plan.step.snapshot_kept": "Den Snapshot von {time} behalten, der diese Änderung bereits abdeckt.",
+  "mods.plan.step.change_start": "Die Mods ändern, dann {world} wieder starten.",
+  "mods.plan.step.change_stopped": "Die Mods ändern. {world} bleibt gestoppt, wie jetzt.",
+  "mods.plan.step.fails": "Schlägt ein Schritt fehl, folgen die Schritte danach nicht.",
+  "mods.plan.fix.remove": "{mod} in diesem Plan mit entfernen",
+  "mods.plan.fix.disable": "{mod} auch deaktivieren",
+  "mods.plan.back_search": "Zurück zur Suche",
+  "mods.plan.fixed": {
+    "one": "Plan aktualisiert. Er ändert {count} Mod.",
+    "other": "Plan aktualisiert. Er ändert {count} Mods."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan aktualisiert. {count} Konflikt übrig.",
+    "other": "Plan aktualisiert. {count} Konflikte übrig."
+  },
+  "mods.drops.confirm": {
+    "one": "Löschen, was {mods} gebaut hat. Der Snapshot „{label}“ behält eine Kopie.",
+    "other": "Löschen, was diese {count} Mods gebaut haben: {mods}. Der Snapshot „{label}“ behält eine Kopie."
+  },
+  "mods.drops.confirm_missing_one": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was {mod} gebaut hat, oder brich ab."
 }

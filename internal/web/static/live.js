@@ -131,4 +131,16 @@
   document.addEventListener("htmx:sseMessage", (e) => {
     if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
+
+  // The mods notice is a status region and loads again after each operation
+  // (SPEC 9.3). Swapping in the same content would have a screen reader read
+  // it again, so an unchanged answer is dropped. Both sides go through the
+  // same parser, so they compare alike.
+  document.addEventListener("htmx:beforeSwap", (e) => {
+    const target = e.detail.target;
+    if (target?.id !== "mods-notice") return;
+    const next = document.createElement("template");
+    next.innerHTML = e.detail.serverResponse;
+    if (next.innerHTML === target.innerHTML) e.detail.shouldSwap = false;
+  });
 })();

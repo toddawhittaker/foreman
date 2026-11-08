@@ -20,6 +20,8 @@ test.describe("upload a mod zip", () => {
     await setUpModsWorld(page, foreman, g, { ...world, start: true });
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
+    // Uploading is rare, so its form is folded away (#371).
+    await page.locator("#mod-upload > summary").click();
     await page.locator("#mod-file").setInputFiles({ name: "up-mod_2.3.4.zip", mimeType: "application/zip", buffer: upZip });
     await page.getByRole("button", { name: "Upload mod", exact: true }).click();
 
@@ -32,7 +34,7 @@ test.describe("upload a mod zip", () => {
     await expect(async () => expect(readFileSync(modsFile(foreman.dataDir, "mod-list.json"), "utf8")).not.toContain("up-mod")).toPass();
 
     await page.getByRole("button", { name: "Install 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(readFileSync(modsFile(foreman.dataDir, "up-mod_2.3.4.zip")).equals(upZip)).toBe(true);
@@ -40,17 +42,20 @@ test.describe("upload a mod zip", () => {
     await page.goto("/worlds/base/mods");
     const row = modsTable(page).getByRole("row", { name: /up-mod/ });
     await expect(row).toContainText("2.3.4");
-    await expect(row).toContainText("Enabled");
+    await expect(row).not.toContainText("Disabled");
   });
 
   test("a file that is not a mod zip is refused on the Mods tab, with the error summary", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     await page.goto("/worlds/base/mods");
+    await page.locator("#mod-upload > summary").click();
     await page.locator("#mod-file").setInputFiles({ name: "junk.zip", mimeType: "application/zip", buffer: Buffer.from("not a zip") });
     await page.getByRole("button", { name: "Upload mod", exact: true }).click();
     await expect(page.locator("#error-summary")).toBeFocused();
     await expect(page.locator("#mod-file-error")).toContainText("This file is not a mod zip");
     await expect(page.locator("#mod-file")).toHaveAttribute("aria-invalid", "true");
+    // The refused form stays open, so the summary's link reaches the field.
+    await expect(page.locator("#mod-upload")).toHaveAttribute("open", "");
     await checkPage(page);
   });
 });
@@ -59,8 +64,15 @@ test.describe("mod-settings.dat", () => {
   const old = Buffer.from("OLD-SETTINGS-\x00\x01\x02");
   const fresh = Buffer.from("NEW-SETTINGS-\x00\x03\x04\x05");
 
-  test("a world with none says so and offers no download", async ({ page, foreman, fakeGame }) => {
+  test("a world with only built-in mods has no Mod settings section", async ({ page, foreman, fakeGame }) => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
+    await page.goto("/worlds/base/mods");
+    await expect(page.getByRole("heading", { level: 2, name: "Upload a mod" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Mod settings" })).toHaveCount(0);
+  });
+
+  test("a world with none says so and offers no download", async ({ page, foreman, fakeGame }) => {
+    await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "some-mod": "2.0" } });
     await page.goto("/worlds/base/mods");
     await expect(page.getByRole("link", { name: "Download mod-settings.dat" })).toHaveCount(0);
     await expect(page.locator("#settings-heading + p + p, #settings-heading ~ p.empty")).toContainText("has no mod-settings.dat yet");
@@ -86,13 +98,17 @@ test.describe("mod-settings.dat", () => {
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
     const form = page.locator("form", { has: page.locator("#settings-file") });
+    // Replacing is rare, so its form is folded away (#371); the download stays in view.
+    await expect(form).toBeHidden();
+    await expect(page.getByRole("link", { name: "Download mod-settings.dat" })).toBeVisible();
+    await page.locator("#mod-settings-replace > summary").click();
     await expect(form.locator("#countdown")).toBeVisible();
     await expect(form).toContainText("Warn the players, then save and stop the server.");
     await checkPage(page);
 
     await page.locator("#settings-file").setInputFiles({ name: "mod-settings.dat", mimeType: "application/octet-stream", buffer: fresh });
     await page.getByRole("button", { name: "Upload mod settings" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText("The mods of Base were changed.", live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(readFileSync(modsFile(foreman.dataDir, "mod-settings.dat")).equals(fresh)).toBe(true);
@@ -104,6 +120,7 @@ test.describe("mod-settings.dat", () => {
     await setUpModsWorld(page, foreman, fakeGame!, world);
     writeFileSync(modsFile(foreman.dataDir, "mod-settings.dat"), old);
     await page.goto("/worlds/base/mods");
+    await page.locator("#mod-settings-replace > summary").click();
     await page.locator("#settings-file").setInputFiles({ name: "mod-settings.dat", mimeType: "application/octet-stream", buffer: Buffer.alloc(0) });
     await page.getByRole("button", { name: "Upload mod settings" }).click();
     await expect(page.locator("#error-summary")).toBeFocused();

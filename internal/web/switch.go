@@ -41,11 +41,12 @@ type SwitchPage struct {
 	// StartAfter is the "Start after switching" box, offered when the game
 	// is stopped; it is ticked by default.
 	StartAfter bool
-	// Lead, CheckProblems and Advice word the new world's pre-start
-	// problems. Seen fingerprints them for "Switch and start anyway".
+	// Lead and CheckProblems word the new world's pre-start problems, and
+	// Fix offers to match its mods to its save (SPEC 9.8, 17.8). Seen
+	// fingerprints them for "Switch and start anyway".
 	Lead          i18n.Msg
 	CheckProblems []i18n.Msg
-	Advice        i18n.Msg
+	Fix           *Offer
 	Seen          string
 	CountdownForm
 	// Changed is set when the switch was not done because what the page
@@ -81,8 +82,12 @@ func (SwitchPage) ChangedLead() i18n.Msg { return changedLead }
 
 // switchProblemsLead opens the list of the new world's problems. When the
 // only problems are mods made for another Factorio, the save is not what
-// fails, so the lead says the world cannot run instead.
+// fails, so the lead says the world cannot run instead; when they are only
+// mods players cannot download, it says players could not join.
 func switchProblemsLead(check world.PreCheck, name string) i18n.Msg {
+	if onlyGoneMods(check) {
+		return i18n.M("server.switch.players_lead", "world", name)
+	}
 	if !onlyModVersions(check) {
 		return i18n.M("server.switch.problems_lead", "world", name)
 	}
@@ -157,7 +162,7 @@ func (s *server) switchPage(ctx context.Context, from string, to world.Summary, 
 	if p.HasProblems() {
 		p.Lead = switchProblemsLead(p.Plan.Check, to.Name)
 		p.CheckProblems = problemMsgs(p.Plan.Check.Problems)
-		p.Advice = anywayAdvice(p.Plan.Check.Problems, to.Name, hostModsFolder(s.hostData, to.ID))
+		p.Fix = precheckFix(p.Plan.Check, to.ID)
 		p.Seen = game.AnywayFingerprint(p.Plan.Check, p.Plan.Running)
 	}
 	return p, nil

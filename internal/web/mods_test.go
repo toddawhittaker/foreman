@@ -44,6 +44,13 @@ type modsRig struct {
 // sets the fake's factorio.com account in the environment.
 func newModsRig(t *testing.T, withAccount bool) *modsRig {
 	t.Helper()
+	return newModsRigWrapped(t, withAccount, nil)
+}
+
+// newModsRigWrapped is newModsRig with the portal client wrapped, for a test
+// that needs answers the recorded list does not have.
+func newModsRigWrapped(t *testing.T, withAccount bool, wrap func(ModPortal) ModPortal) *modsRig {
+	t.Helper()
 	fake := fakegame.New(t, fakegame.Config{Images: []string{image21, game.ImageRef(v20)}})
 	g := newGameRigOn(t, fake.Host(), fake)
 	p := modportaltest.New(t)
@@ -55,7 +62,11 @@ func newModsRig(t *testing.T, withAccount bool) *modsRig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := NewHandler(Deps{Config: g.cfg, Store: g.store, Worlds: g.worlds, Game: g.ctrl, Portal: modportal.NewForTest(p.URL),
+	var portal ModPortal = modportal.NewForTest(p.URL)
+	if wrap != nil {
+		portal = wrap(portal)
+	}
+	h, err := NewHandler(Deps{Config: g.cfg, Store: g.store, Worlds: g.worlds, Game: g.ctrl, Portal: portal,
 		Account: acct, Log: g.slog, Now: g.clock.Now})
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +159,7 @@ var reHidden = regexp.MustCompile(`<input type="hidden" name="([^"]+)" value="([
 // planValues reads the plan form's hidden fields from a page.
 func planValues(t *testing.T, body string) url.Values {
 	t.Helper()
-	form := between(body, `<section class="confirm">`, `</form>`)
+	form := between(body, `<section class="confirm`, `</form>`)
 	if form == "" {
 		t.Fatalf("no plan form:\n%s", body)
 	}
@@ -214,18 +225,24 @@ func TestModsTabListsMods(t *testing.T) {
 		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
 		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
 		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
-		// SPEC 9.7: the built-in mods are one line above the table, with the way to change them.
-		`>base</span>`, "They follow Space Age.", `href="/worlds/`+id+`/settings" id="act-built-in-settings">Change Space Age</a>`,
+		// SPEC 9.7, #372: the built-in line says which are off and why, with the way to turn them on.
+		`>base</span>`, "Space Age is off, so", `>space-age</span> are off.`,
+		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		"at most 200 MB", "At most 4 MB",
-		// A portal mod's row links to its portal page, in a new tab, and names the mod.
-		`<a href="https://mods.factorio.com/mod/alpha" class="portal-link" target="_blank" rel="noopener noreferrer">Mod portal<span class="visually-hidden"> for <span class="ident" translate="no">alpha</span>, opens in a new tab</span></a>`,
+		// #360: a portal mod's name is the link to its portal page, in a new tab.
+		`<a href="https://mods.factorio.com/mod/alpha" id="`+slotID("portal", "alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
+		// #373: the save's mods are read and the differences counted; the save uses neither mod.
+		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
+		// #371: the rare forms fold away.
+		`<details class="disclosure" id="mod-upload">`, `<details class="disclosure" id="mod-settings-replace">`,
 		// SPEC 9.6: where the client keeps mod-settings.dat, then the field, then what the upload does.
 		`%APPDATA%\Factorio\mods`, "Startup settings apply when the world next starts.")
-	if n := strings.Count(body, "They follow Space Age"); n != 1 {
+	if n := strings.Count(body, "Space Age is off"); n != 1 {
 		t.Errorf("the built-in line is said %d times", n)
 	}
 	table := between(body, "<table", "</table>")
-	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base"} {
+	// #360, #343: two columns, and a state word only for a mod that is off.
+	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base", "Enabled", ">State<", "Mod portal"} {
 		if strings.Contains(table, bad) {
 			t.Errorf("the table has %s", bad)
 		}
@@ -245,10 +262,14 @@ func TestModsTabListsMods(t *testing.T) {
 	if strings.Contains(body, "Mod downloads are off") {
 		t.Error("the tab says downloads are off with an account set")
 	}
+	// Red only for what destroys something: no danger box on the tab.
+	if strings.Contains(body, `class="confirm"`) || strings.Contains(body, "button--danger") {
+		t.Error("the Mods tab has a red box or button")
+	}
 }
 
-// SPEC 9.3, #131: the status fragment counts updates, fills each row's
-// Update, and words each flag with its fix.
+// SPEC 9.3, #131, #342: the status is one summary line, and each mod's
+// update and flags go into its own row with the fix there.
 func TestModStatusUpdatesAndFlags(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("alpha", "1.0.0")
@@ -259,8 +280,54 @@ func TestModStatusUpdatesAndFlags(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
 	}
-	wantIn(t, "status", body, "2 mods have an update", `kind=update"`, "Update all", `hx-swap-oob="true"`, "Update to 1.1.0",
-		"the mod portal no longer has that version", `Update <span class="ident" translate="no">beta</span> to 2.0.0`)
+	wantIn(t, "status", body, "2 mods have an update", `kind=update"`, "Update all", "Update to 1.1.0",
+		// beta 1.0.0 is gone: an error summary, and the row says so with its fix, the update.
+		`message message--error`, "1 mod stops players joining. Its row says how to fix it.",
+		`<span id="`+slotID("update", "beta")+`" hx-swap-oob="true"><a href="/worlds/`+id+`/mods/plan?kind=update&amp;name=beta" class="button">Update to 2.0.0`,
+		`<div id="`+slotID("note", "beta")+`" class="mod-flags" hx-swap-oob="true">`,
+		"the mod portal no longer has version 1.0.0")
+	if strings.Contains(body, "up to date") {
+		t.Error("the status says up to date while updates wait")
+	}
+}
+
+// #365: "up to date" counts only mods the portal has at their installed
+// version, and is not said when there are none.
+func TestModStatusCurrentCount(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base", "alpha_1.0.0", "zz-not-on-portal_1.0.0")
+	_, body := g.getStatus(modsPath(id) + "/status")
+	wantIn(t, "status", body, "1 mod from the mod portal is up to date.", "1 mod is not on the mod portal.",
+		// The portal's link goes; the name stays.
+		`<span id="`+slotID("portal", "zz-not-on-portal")+`" class="mod-name ident" translate="no" hx-swap-oob="true">zz-not-on-portal</span>`,
+		"Not on the mod portal, so players")
+	if strings.Contains(body, "message--error") {
+		t.Error("a note reads as an error")
+	}
+
+	alone := g.world20("Alone", "zz-not-on-portal_1.0.0")
+	_, body = g.getStatus(modsPath(alone) + "/status")
+	if strings.Contains(body, "up to date") {
+		t.Errorf("a world whose only mod the portal lacks says up to date:\n%s", body)
+	}
+}
+
+func TestCurrentCount(t *testing.T) {
+	list := []world.InstalledMod{
+		{Name: "base", BuiltIn: true, Enabled: true},
+		{Name: "ok", Enabled: true}, {Name: "deprecated", Enabled: true},
+		{Name: "gone", Enabled: true}, {Name: "missing", Enabled: true},
+		{Name: "off"}, {Name: "folder", Local: true, Enabled: true},
+	}
+	flags := []mods.Flag{
+		{Code: mods.FlagDeprecated, Name: "deprecated"},
+		{Code: mods.FlagVersionGone, Name: "gone"},
+		{Code: mods.FlagNotOnPortal, Name: "missing"},
+	}
+	if n := currentCount(list, flags); n != 2 {
+		t.Errorf("current = %d, want 2 (ok and deprecated)", n)
+	}
 }
 
 func TestModStatusPortalDownSaysSo(t *testing.T) {
@@ -315,7 +382,9 @@ func TestInstallAppliesThePlanAndOffersUndo(t *testing.T) {
 		t.Error("no Before mod change snapshot")
 	}
 	page := g.get(PathServer)
-	wantIn(t, "server page", page, "The mods of Base are changed", "Undo this mod change", `/worlds/`+id+`/snapshots/`)
+	// The Done box names what changed (SPEC 17.9).
+	wantIn(t, "server page", plain(page), "Installed alpha and beta in Base.")
+	wantIn(t, "server page", page, "Undo this mod change", `/worlds/`+id+`/snapshots/`)
 	for _, e := range g.audit() {
 		if strings.Contains(e.Detail, modportaltest.Token) {
 			t.Error("the audit log holds the token")
@@ -394,10 +463,10 @@ func TestDisableOnInactiveWorldReportsOnModsTab(t *testing.T) {
 		t.Fatal(err)
 	}
 	tab := g.get(modsPath(id) + ownResultQuery)
-	wantIn(t, "mods tab", tab, "The mods of Other are changed", "Undo this mod change", ">Disabled<")
+	wantIn(t, "mods tab", tab, "Disabled alpha in Other.", "Undo this mod change", ">Disabled<")
 }
 
-// Todd's ruling: turning off a mod the loading save uses needs its own
+// SPEC 9.4: turning off a mod the loading save uses needs its own
 // confirmation, since the game deletes what the mod built.
 func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	g := newModsRig(t, true)
@@ -408,10 +477,15 @@ func TestDroppingASaveModNeedsConfirmation(t *testing.T) {
 	g.copySave(id, "2.1.24-space-age-testmod.zip")
 	g.writeMod(id, "foreman-test", "0.1.0")
 	_, body := g.getStatus(kindPlanPath(id, mods.KindDisable, "foreman-test"))
-	wantIn(t, "plan", plain(body), "The save that loads uses 1 mod this change turns off: foreman-test", `name="confirm-drops"`)
+	// Issue 376: the warning comes first and says it once, and one mod is one mod.
+	wantIn(t, "plan", plain(body), "The save that loads uses foreman-test, which this change disables. Without it, the game deletes everything foreman-test built in the world.",
+		`name="confirm-drops"`, `Delete what foreman-test built. The snapshot &#34;Before mod change&#34; keeps a copy.`)
+	if strings.Index(body, `id="plan-drops"`) > strings.Index(body, `id="plan-changes"`) {
+		t.Error("the drop warning comes after the plan's changes")
+	}
 	v := planValues(t, body)
 	rep := g.post(modsPath(id)+"/plan", v)
-	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(rep.body, "Tick the box to confirm") || g.modSnapshots(id) != 0 {
+	if rep.StatusCode != http.StatusBadRequest || !strings.Contains(plain(rep.body), "Tick the box to confirm that the game deletes what foreman-test built, or cancel.") || g.modSnapshots(id) != 0 {
 		t.Fatalf("unconfirmed drop: %d\n%s", rep.StatusCode, rep.body)
 	}
 	v.Set("confirm-drops", "1")
@@ -445,7 +519,7 @@ func TestPlanChangesWhenTheDropsChange(t *testing.T) {
 	if g.modSnapshots(id) != 0 {
 		t.Error("a plan with changed drops was applied")
 	}
-	wantIn(t, "new plan", plain(rep.body), "turns off: foreman-test", `name="confirm-drops"`)
+	wantIn(t, "new plan", plain(rep.body), "The save that loads uses foreman-test, which this change disables.", `name="confirm-drops"`)
 }
 
 // SPEC 9.8, 9.10: a save's mod the portal lacks blocks the sync, offers an
@@ -519,7 +593,7 @@ func TestModUpload(t *testing.T) {
 // comes back out as a download.
 func TestModSettingsUploadAndDownload(t *testing.T) {
 	g := newModsRig(t, true)
-	id := g.world20("Base")
+	id := g.world20("Base", "alpha_1.0.0")
 	_, tab := g.getStatus(modsPath(id))
 	fp := regexp.MustCompile(`name="fingerprint" value="([^"]+)"`).FindStringSubmatch(tab)
 	if fp == nil {
@@ -625,11 +699,12 @@ func modPageCases() []pageCase {
 			SettingsError: i18n.M("mods.settings.empty"), Failure: &Failure{Message: i18n.M("mods.error.changed")}}},
 		{"mods unreadable", "todd", 200, ModsPage{World: world.Summary{ID: "x", Name: "X", Unreadable: true}}},
 		{"mod search", "todd", 200, ModSearchPage{World: w, Query: "alpha", NoAccount: true, Installed: map[string]bool{"alpha": true},
-			Hits: []modportal.Hit{{Name: "alpha", Title: "Alpha", Summary: longName, LatestVersion: "1.0.0", FactorioVersion: "2.0", Downloads: 12345}, {Name: "beta", Title: "beta"}}}},
+			Picks: []string{"beta", "elsewhere"}, Paged: true, PickError: i18n.M("mods.search.pick_none"),
+			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", Summary: longName, LatestVersion: "1.0.0", FactorioVersion: "2.0", Downloads: 12345}, {Name: "beta", Title: "beta"}, {Name: longName, Title: longName, Summary: "s"}, {Name: "m4"}, {Name: "m5"}, {Name: "m6"}, {Name: "m7"}, {Name: "m8"}, {Name: "m9"}, {Name: "m10"}, {Name: "m11"}}, 1)}},
 		{"mod search empty", "todd", 200, ModSearchPage{World: w, QueryError: i18n.M("mods.search.missing")}},
 		{"mod search down", "todd", 200, ModSearchPage{World: w, Query: "x", Unreachable: true}},
 		{"mod plan", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Running: true, CountdownForm: defaultCountdown(), NoAccount: true,
-			Changed: true, Drops: []string{"gamma"}, DropsError: i18n.M("mods.drops.confirm_missing"),
+			Changed: true, Drops: []string{"gamma"}, DropsError: dropsMissing([]string{"gamma"}),
 			ConfirmErrors: map[string]i18n.Msg{"old": i18n.M("mods.unresolved.confirm_missing", "mod", "old")}}},
 		{"mod plan ready", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}}, Plan: mods.Plan{Changes: plan.Changes[:1]}, Running: true, CountdownForm: defaultCountdown()}},
 		{"mod plan error", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindUpdate}, Error: i18n.M("mods.error.portal"), Retry: "/x"}},
@@ -639,7 +714,7 @@ func modPageCases() []pageCase {
 		{"mod plan redrawn", "todd", 200, ModPlanPage{World: w, Form: form, Plan: plan, Redraw: true}},
 		{"mod plan adding", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha", longName}, Query: "a", Added: "alpha"},
 			Plan: mods.Plan{Changes: plan.Changes[:2], Optional: plan.Optional}, Redraw: true, Installed: map[string]bool{"gamma": true},
-			Hits: []modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0"}}}},
+			Results: pageOfHits([]modportal.Hit{{Name: "alpha", Title: "Alpha", LatestVersion: "1.0.0"}, {Name: "gamma"}, {Name: "delta", Title: longName, LatestVersion: "2.0.0", Summary: longName}}, 1)}},
 		{"mod plan add search down", "todd", 200, ModPlanPage{World: w, Form: planForm{Kind: mods.KindInstall, Names: []string{"alpha"}, Query: "a"},
 			Plan: mods.Plan{Changes: plan.Changes[:1]}, AddUnreachable: true}},
 	}
@@ -769,6 +844,16 @@ func TestPlanRequestIsBounded(t *testing.T) {
 	if code, _ := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, "optional": names})); code != http.StatusBadRequest {
 		t.Errorf("51 optional mods: %d", code)
 	}
+	// The bound counts the raw values, before duplicates are dropped.
+	same := make([]string, maxPlanNames+1)
+	for i := range same {
+		same[i] = "x"
+	}
+	for _, field := range []string{"declined", "offered"} {
+		if code, _ := g.getStatus(planPath(id, url.Values{"kind": {"install"}, "name": {"alpha"}, field: same})); code != http.StatusBadRequest {
+			t.Errorf("51 repeated %s values: %d", field, code)
+		}
+	}
 	path := kindPlanPath(id, mods.KindInstall, "alpha")
 	for _, site := range []string{"cross-site", "same-site"} {
 		rec := g.harness.get(path, withCookie(g.cookie), withHeader("Sec-Fetch-Site", site))
@@ -828,7 +913,7 @@ var identSpan = regexp.MustCompile(`<span class="ident" translate="no">([^<]*)</
 // so a mod plan can never read or remove it.
 func TestSettingsUploadIsNotStaged(t *testing.T) {
 	g := newModsRig(t, true)
-	id := g.world20("Base")
+	id := g.world20("Base", "alpha_1.0.0")
 	_, tab := g.getStatus(modsPath(id))
 	fp := regexp.MustCompile(`name="fingerprint" value="([^"]+)"`).FindStringSubmatch(tab)
 	if fp == nil {

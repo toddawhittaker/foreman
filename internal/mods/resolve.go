@@ -44,8 +44,10 @@ type resolver struct {
 	line      string
 	targets   map[string]*target
 	needs     map[string]map[string]Dep // mod -> requirer -> dep
-	offers    map[string][]string       // requirer -> optional names
+	offers    map[string][]Dep          // requirer -> optional dependencies
 	chosen    map[string]bool
+	declined  map[string]bool // recommended mods the admin unticked, or left out
+	recommend bool            // recommended mods start ticked
 	cache     map[string]*modportal.Mod
 	conflicts []Conflict
 	queue     []string
@@ -57,11 +59,38 @@ type resolver struct {
 // world's game line that meets every constraint collected so far. It
 // returns an error only when the portal fails in a way other than not
 // having a mod.
+//
+// A recommended mod that cannot be had is left out and the change
+// resolved again without it, so it never blocks the plan. Each round
+// leaves out at least one more mod, so the rounds end.
 func Resolve(ctx context.Context, w World, req Request, lookup Lookup) (Plan, error) {
+	cache := map[string]*modportal.Mod{}
+	declined := map[string]bool{}
+	for _, n := range req.Declined {
+		declined[n] = true
+	}
+	left := map[string]bool{}
+	for {
+		r, unresolved, err := resolveOnce(ctx, w, req, lookup, cache, declined)
+		if err != nil {
+			return Plan{}, err
+		}
+		out := r.unavailable()
+		if len(out) == 0 {
+			return r.plan(unresolved, left), nil
+		}
+		for _, n := range out {
+			declined[n], left[n] = true, true
+		}
+	}
+}
+
+func resolveOnce(ctx context.Context, w World, req Request, lookup Lookup, cache map[string]*modportal.Mod, declined map[string]bool) (*resolver, []Unresolved, error) {
 	r := &resolver{
 		ctx: ctx, lookup: lookup, line: GameLine(w.GameVersion),
 		targets: map[string]*target{}, needs: map[string]map[string]Dep{},
-		offers: map[string][]string{}, chosen: map[string]bool{}, cache: map[string]*modportal.Mod{},
+		offers: map[string][]Dep{}, chosen: map[string]bool{}, cache: cache,
+		declined: declined, recommend: req.Kind != KindSync,
 	}
 	for _, n := range req.Optional {
 		r.chosen[n] = true
@@ -85,14 +114,84 @@ func Resolve(ctx context.Context, w World, req Request, lookup Lookup) (Plan, er
 	default:
 		r.conflict(Conflict{Code: ConflictBadRequest})
 	}
+	r.turnOff(req.AlsoDisable, false)
+	r.turnOff(req.AlsoRemove, true)
 	if err != nil {
-		return Plan{}, err
+		return nil, nil, err
 	}
 	if err := r.walk(); err != nil {
-		return Plan{}, err
+		return nil, nil, err
 	}
 	r.check()
-	return r.plan(unresolved), nil
+	return r, unresolved, nil
+}
+
+// wants reports whether an optional dependency is turned on: ticked, or
+// recommended by a mod this plan changes and not unticked. A sync takes
+// only the save's mods.
+func (r *resolver) wants(d Dep, of *target) bool {
+	return r.chosen[d.Name] || (d.Kind == Recommended && r.recommend && of.changes() && !r.declined[d.Name])
+}
+
+// changes reports whether the plan installs, re-versions, replaces or turns
+// on this mod; an installed mod left as it is pulls in nothing new (SPEC 9.2).
+func (t *target) changes() bool {
+	return !t.installed || t.version != t.from || t.upload != nil || (t.enabled && !t.fromEnabled)
+}
+
+// unavailable names the recommended mods behind this round's conflicts:
+// each conflict's mods, followed up the chain of what pulled them in.
+func (r *resolver) unavailable() []string {
+	var out []string
+	for _, c := range r.conflicts {
+		names := []string{c.Mod, c.Other}
+		for _, n := range c.Needs {
+			names = append(names, n.By)
+		}
+		for _, n := range names {
+			if m := r.recommendedRoot(n); m != "" && !slices.Contains(out, m) {
+				out = append(out, m)
+			}
+		}
+	}
+	return out
+}
+
+// recommendedRoot is the mod that only a recommendation brought into the
+// plan and that, through required dependencies, brought in name.
+func (r *resolver) recommendedRoot(name string) string {
+	for range len(r.targets) {
+		t := r.targets[name]
+		switch {
+		case t == nil || !t.enabled:
+			return ""
+		case t.why.Code == WhyRecommendedBy:
+			if r.wasOn(name) || r.chosen[name] || r.declined[name] || r.requiredByEnabled(name) {
+				return ""
+			}
+			return name
+		case t.why.Code == WhyRequiredBy:
+			name = t.why.Of
+		default:
+			return ""
+		}
+	}
+	return ""
+}
+
+// requiredByEnabled reports whether an enabled mod needs name outright.
+func (r *resolver) requiredByEnabled(name string) bool {
+	for n, t := range r.targets {
+		if n == name || !t.enabled {
+			continue
+		}
+		for _, d := range t.deps {
+			if d.Name == name && d.required() {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r *resolver) addWorld(w World) {
@@ -344,11 +443,13 @@ func (r *resolver) settle(name string) error {
 			continue
 		}
 		// A ticked optional stays offered, so the page keeps its box; one
-		// that was on already is not offered.
-		if d.Kind == Optional && !r.wasOn(d.Name) && (r.chosen[d.Name] || !r.present(d.Name)) {
-			r.offers[name] = append(r.offers[name], d.Name)
+		// that was on already is not offered. A built-in mod follows the
+		// Space Age flag, not a box (SPEC 9.7).
+		builtin := r.targets[d.Name] != nil && r.targets[d.Name].builtin
+		if d.optional() && !builtin && !r.wasOn(d.Name) && (r.wants(d, t) || !r.present(d.Name)) {
+			r.offers[name] = append(r.offers[name], d)
 		}
-		if !d.required() && !r.chosen[d.Name] && !r.present(d.Name) {
+		if !d.required() && !r.wants(d, t) && !r.present(d.Name) {
 			// The game holds an optional mod to this limit if anything turns
 			// it on, later in this walk too.
 			if d.Op != "" {
@@ -357,7 +458,10 @@ func (r *resolver) settle(name string) error {
 			continue
 		}
 		why := Reason{Code: WhyRequiredBy, Of: name}
-		if !d.required() {
+		switch {
+		case d.Kind == Recommended:
+			why.Code = WhyRecommendedBy
+		case !d.required():
 			why.Code = WhyOptionalOf
 		}
 		r.need(d.Name, name, d)
@@ -532,7 +636,8 @@ func (r *resolver) activeNeeds(name string) []Need {
 	return out
 }
 
-func (r *resolver) plan(unresolved []Unresolved) Plan {
+// plan writes the final round; left names the recommended mods left out.
+func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 	var p Plan
 	names := make([]string, 0, len(r.targets))
 	for n := range r.targets {
@@ -573,17 +678,22 @@ func (r *resolver) plan(unresolved []Unresolved) Plan {
 		}
 		p.Changes = append(p.Changes, c)
 		if c.Action != ActKeep && c.Action != ActDisable && c.Action != ActRemove {
-			for _, o := range r.offers[n] {
-				p.Optional = append(p.Optional, Offer{Name: o, Of: n, Chosen: r.chosen[o]})
+			for _, d := range r.offers[n] {
+				o := Offer{Name: d.Name, Of: n, Chosen: r.wants(d, t), Recommended: d.Kind == Recommended}
+				if left[d.Name] {
+					p.Unavailable = append(p.Unavailable, o)
+				} else {
+					p.Optional = append(p.Optional, o)
+				}
 			}
 		}
 	}
 	p.Conflicts = dedupe(r.conflicts)
 	p.Unresolved = unresolved
 	slices.SortFunc(p.Unresolved, func(a, b Unresolved) int { return strings.Compare(a.Name, b.Name) })
-	slices.SortFunc(p.Optional, func(a, b Offer) int {
-		return strings.Compare(a.Name+"\x00"+a.Of, b.Name+"\x00"+b.Of)
-	})
+	byName := func(a, b Offer) int { return strings.Compare(a.Name+"\x00"+a.Of, b.Name+"\x00"+b.Of) }
+	slices.SortFunc(p.Optional, byName)
+	slices.SortFunc(p.Unavailable, byName)
 	return p
 }
 

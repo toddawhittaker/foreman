@@ -53,7 +53,7 @@ func (c *Controller) Update(ctx context.Context, id, version string, by Actor, s
 		return c.refused(ctx, by, AuditUpdate, id, detail, err)
 	}
 	opts.running = IsRunning(c.Status(id).State)
-	if err := c.precheckReadOnly(id, version, opts); err != nil {
+	if _, err := c.precheckReadOnly(ctx, id, version, opts); err != nil {
 		return c.checkFailed(ctx, by, AuditUpdate, id, detail, err)
 	}
 	// Only a game started again joins the network.
@@ -125,7 +125,7 @@ func (c *Controller) updateLocked(ctx context.Context, o *opRun, by Actor, versi
 		return nil
 	}
 	o.begin(StepCheck)
-	if _, err := c.precheck(id, opts); err != nil {
+	if _, err := c.precheck(ctx, id, opts); err != nil {
 		return err
 	}
 	o.done(StepCheck)

@@ -814,7 +814,15 @@ legend {
 .message ul {
   display: grid;
   gap: var(--space-2);
+  list-style-type: disc;
   padding-inline-start: var(--space-5);
+}
+
+/* Going ahead anyway opens below its choice, spaced like the box (DESIGN 7.4). */
+.anyway-body {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-end: var(--space-1);
 }
 
 /* A link standing alone in a list is a full-size target (DESIGN 7 rule 3). */
@@ -871,7 +879,7 @@ legend {
   border-radius: var(--radius);
 }
 
-.confirm ul {
+.confirm :is(ul, ol) {
   display: grid;
   gap: var(--space-2);
   padding-inline-start: var(--space-5);
@@ -995,7 +1003,7 @@ legend {
 }
 
 /* The word and the step side by side, so each step is one row even on a phone. */
-.steps li {
+.steps > li {
   display: grid;
   grid-template-columns: 6rem minmax(0, 1fr);
   align-items: baseline;
@@ -1003,7 +1011,7 @@ legend {
   max-inline-size: none;
 }
 
-.steps li[aria-current="step"] {
+.steps > li[aria-current="step"] {
   font-weight: 600;
 }
 
@@ -1043,14 +1051,14 @@ legend {
 }
 
 /* A failed step's message sits on its own line under the word, at any width. */
-.steps li > .message {
+.steps > li > .message {
   grid-column: 1 / -1;
 }
 
 /* A narrow panel, such as a phone at large text, puts the word above the
    step, so the step's name keeps the full width (DESIGN 3). */
 @container (max-width: 14rem) {
-  .steps li {
+  .steps > li {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1203,8 +1211,10 @@ main h1 {
   gap: var(--space-2) var(--space-3);
 }
 
-/* A heading with a time in its sentence reads as one line of text, not a row of parts. */
-main h1:has(> time) {
+/* A heading with a time or a mod's name in its sentence reads as one run of
+   text, not a row of parts with gaps around the name (DESIGN 8.11). */
+main h1:has(> time),
+main h1:has(> .ident) {
   display: block;
 }
 
@@ -2789,14 +2799,146 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
+/* The summary's sentences, with Update all beside them while they fit, at
+   the table's width so the tab is one column. */
+.mod-status__line {
+  max-inline-size: var(--measure);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.mod-status__line > p {
+  flex: 1 1 20rem;
+  min-inline-size: 0;
+}
+
 .mod-list code {
   color: var(--color-text-muted);
 }
 
-/* The table keeps the reading width the status notices above it have, so
-   the tab is one column, not a narrow one beside a wide one. */
+/* Two columns (DESIGN 8.11): a mod, and its actions in one fixed order,
+   lined up on the end so Disable and Remove sit in the same place in every
+   row whether or not an Update comes before them. */
 .mod-list {
   max-inline-size: var(--measure);
+}
+
+.mod-list td {
+  vertical-align: top;
+}
+
+.mod-list th:last-child,
+.mod-list td:last-child {
+  text-align: end;
+}
+
+.mod-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  min-block-size: var(--target-min);
+  min-inline-size: 0;
+}
+
+.mod-name {
+  min-inline-size: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The name is the portal link, a full-size target (DESIGN 8.3). */
+a.mod-name {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.mod-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin-block-start: 0;
+}
+
+/* Remove is the one red control: it is the change that destroys something. */
+.mod-list .mod-remove,
+.mod-list .mod-remove:hover {
+  color: var(--color-danger-text);
+}
+
+/* What the portal says about one mod, under its name; the leading word
+   says the kind, so colour is never the only sign (SPEC 17.4). */
+.mod-flags {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-end: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.mod-flag--error > strong {
+  color: var(--color-danger-text);
+}
+
+.mod-flag--warning > strong {
+  color: var(--color-warn);
+}
+
+.mod-flag--note > strong {
+  color: var(--color-info);
+}
+
+/* On a phone the actions drop under the name in the same row, so the name
+   keeps the panel's width (SPEC 17.12: the table roles stay). Above this
+   the actions stay on one line, which leaves a name at least 15rem. */
+@container (max-width: 36rem) {
+  .mod-list tr,
+  .mod-list td {
+    display: block;
+  }
+
+  .mod-list thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .mod-list tr {
+    padding-block: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .mod-list td,
+  .mod-list td:last-child {
+    padding: 0;
+    border: 0;
+    text-align: start;
+  }
+
+  .mod-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* Tighter buttons, so Update, Disable and Remove share a 320 px line. */
+  .mod-actions .button:not(.button--quiet) {
+    padding-inline: var(--space-3);
+  }
+}
+
+.sync-diff,
+.mod-settings-will ul {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+}
+
+.mod-settings-will {
+  display: grid;
+  gap: var(--space-2);
 }
 
 /* In a button a name breaks only when it is wider than the box, as the
@@ -2816,18 +2958,24 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
-/* The mods an install plan asks for: each with its portal link and its
-   way out of the plan, wrapping under the name when the box is narrow. */
+/* A mod plan that destroys nothing is not a danger box (DESIGN 7.1, 8.11). */
+.confirm--plain {
+  border-color: var(--color-line);
+}
+
 .plan-label {
   font-weight: 600;
 }
 
-.confirm .plan-asked {
+/* The plan's changes, one mod a line; an asked-for mod's portal link and
+   way out of the plan wrap under its name when the box is narrow. */
+.confirm .plan-items {
   padding-inline-start: 0;
   list-style: none;
+  gap: 0;
 }
 
-.plan-asked > li {
+.plan-items > li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2837,41 +2985,15 @@ form:has(#mode-exchange:checked) .achievements {
   border-block-end: var(--border-width) solid var(--color-line);
 }
 
-.plan-asked__text {
+.plan-items__text {
   flex: 1 1 12rem;
   min-inline-size: 0;
 }
 
-.mod-results--short > li {
-  gap: 0;
-  padding-block: var(--space-2);
-}
-
-.mod-results__title {
-  font-weight: 600;
-}
-
 /* A mod's short badge stays whole. Badges elsewhere, such as a save's
    "loads next", are long in some languages and must wrap at 320 px. */
-:is(.mod-list, .mod-results) .badge {
+.mod-list .badge {
   white-space: nowrap;
-}
-
-/* Search results are a list with a rule between rows, not cards (DESIGN 8.2). */
-.mod-results {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  padding: 0;
-  list-style: none;
-}
-
-.mod-results > li {
-  display: grid;
-  gap: var(--space-2);
-  min-inline-size: 0;
-  padding-block: var(--space-3);
-  border-block-end: var(--border-width) solid var(--color-line);
-  overflow-wrap: anywhere;
 }
 
 .mod-plan {
@@ -2900,8 +3022,7 @@ form:has(#mode-exchange:checked) .achievements {
 
 .plan-groups {
   display: grid;
-  gap: var(--space-2);
-  margin-block-start: var(--space-2);
+  gap: var(--space-3);
 }
 
 .plan-groups dt {
@@ -2916,4 +3037,67 @@ form:has(#mode-exchange:checked) .achievements {
 .confirm-without,
 .message .check {
   align-items: start;
+}
+
+/* Mod search results: a table, one row per mod (DESIGN 8.3, SPEC 9.1).
+   Every cell starts at the top, so a mod's version and downloads sit on
+   its title's line however tall the first cell grows. */
+.mod-hits td {
+  vertical-align: top;
+}
+
+.mod-hits td:first-child > * + * {
+  margin-block-start: var(--space-1);
+}
+
+.mod-hits .check {
+  align-items: start;
+}
+
+/* The box sits beside the title's first line, not the middle of a wrapped one. */
+.mod-hits .check input {
+  margin-block-start: 0.125rem;
+}
+
+/* A mod without a box (installed, or in the plan) lines its title up with the ticked ones. */
+.mod-hits--pick .mod-hits__name {
+  padding-inline-start: calc(1.25rem + var(--space-3));
+}
+
+.mod-hits__title {
+  font-weight: 600;
+}
+
+.mod-hits .badge {
+  white-space: nowrap;
+}
+
+.mod-hits__summary > p {
+  max-inline-size: var(--measure);
+  padding-block-end: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* With a mouse the box's label and the details toggle need no touch-sized
+   row (WCAG 2.5.8 asks 24 px), so a row is about 100 px tall, not 140. */
+@media (pointer: fine) {
+  .mod-hits .check {
+    min-block-size: 1.5rem;
+  }
+
+  .mod-hits__summary > summary {
+    min-block-size: 1.5rem;
+    padding-block: var(--space-1);
+  }
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pager__at {
+  font-size: var(--text-sm);
 }

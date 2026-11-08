@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
@@ -211,6 +212,7 @@ type Controller struct {
 	crashWindow   time.Duration
 	rconCallLimit time.Duration
 	previewLimit  time.Duration
+	modCheckLimit time.Duration
 
 	previewWait time.Duration
 
@@ -229,6 +231,7 @@ type Controller struct {
 
 	mu         sync.Mutex // guards the fields below; never held while taking a worldRun's mu
 	modFetcher ModFetcher
+	modCheck   ModAvailability
 	runs       map[string]*worldRun
 	listed     bool  // the monitor has listed Foreman's containers at least once
 	dockerErr  error // the last listing failed
@@ -276,7 +279,8 @@ func New(cfg Config) (*Controller, error) {
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
 		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit, previewWait: PreviewWait,
-		previewSlot: make(chan struct{}, 1), previewWaiting: make(chan struct{}, maxPreviewWaiters),
+		modCheckLimit: ModCheckTimeout,
+		previewSlot:   make(chan struct{}, 1), previewWaiting: make(chan struct{}, maxPreviewWaiters),
 		ctx: ctx, cancel: cancel,
 		poke: make(chan struct{}, 1),
 		runs: map[string]*worldRun{},
@@ -451,6 +455,13 @@ type Operation struct {
 	// Players are who was online when the stop's countdown began; empty
 	// when there was no countdown (SPEC 7.6).
 	Players []Player
+	// PortalUnchecked says the check could not ask the mod portal, so the
+	// world started without knowing whether players can download its mods
+	// (SPEC 7.4).
+	PortalUnchecked bool
+	// ID tells one operation from the next, so a page can see that a new
+	// one ended (SPEC 9.3). Zero for an image download.
+	ID uint64
 }
 
 // CountdownEnds returns when the stop's countdown ends while players are
@@ -481,9 +492,12 @@ func (o *Operation) clone() *Operation {
 	return &out
 }
 
+// opIDs numbers the operations newOperation makes.
+var opIDs atomic.Uint64
+
 // newOperation makes an operation whose steps all wait.
 func newOperation(action string, steps ...[]string) *Operation {
-	op := &Operation{Action: action}
+	op := &Operation{Action: action, ID: opIDs.Add(1)}
 	for _, list := range steps {
 		for _, s := range list {
 			op.Steps = append(op.Steps, Step{Name: s, State: StepWaiting})

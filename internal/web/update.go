@@ -256,9 +256,9 @@ func (s *server) updateOutcome(sum world.Summary) (i18n.Msg, *Failure) {
 		f.Message = join(changedLead, f.Message)
 	}
 	f.Problems = problemMsgs(pe.Check.Problems)
-	f.Sync = syncOffer(pe.Check, sum.ID)
+	f.Fix = syncOffer(pe.Check, sum.ID)
 	if pe.Check.CanStartAnyway() {
-		f.Anyway = updateAnyway(pe.Check, sum, res.Version, hostModsFolder(s.hostData, sum.ID))
+		f.Anyway = updateAnyway(pe.Check, sum, res.Version)
 	}
 	return i18n.Msg{}, f
 }

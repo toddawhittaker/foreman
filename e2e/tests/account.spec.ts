@@ -33,7 +33,14 @@ test.describe("with a secret key", () => {
   test("save, see the stored line, replace and remove", async ({ page, foreman }) => {
     await createAdmin(page);
     await openAccountPage(page);
-    await expect(page.locator("#account-none")).toContainText("No account is set");
+    // The state leads the page in one sentence, before the intro (SPEC 9.11).
+    await expect(page.locator("#account-none")).toHaveText("Mod downloads are off: no account is set.");
+    await expect(page.locator("main")).not.toContainText("Searching for mods still works");
+    await expect(page.locator("#account-none + p")).toContainText("Foreman uses this account");
+    // With no account the form is open and its button is the primary action.
+    await expect(page.getByRole("button", { name: "Save account" })).toHaveClass(/button--primary/);
+    await expect(page.locator("main details")).toHaveCount(0);
+    await expect(page.locator("#account-shared")).toContainText("Every admin’s mod downloads use this one account");
     await expect(page.getByLabel("factorio.com token")).toHaveAttribute("type", "password");
     await checkPage(page);
 
@@ -42,13 +49,19 @@ test.describe("with a secret key", () => {
     await page.getByRole("button", { name: "Save account" }).click();
     await expect(page).toHaveURL("/settings/factorio-account?done=saved");
     await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
-    await expect(page.locator("#account-stored")).toContainText(/^Stored on .+ by admin\.$/);
+    await expect(page.locator("#account-stored")).toContainText(/^Mod downloads are on\. The account was stored on .+ by admin\.$/);
     await expect(page.locator("#account-stored time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
     await expectNoValues(page, username, token);
     await checkPage(page);
 
-    // Replace: the same two fields, the new values stored.
-    await expect(page.getByRole("heading", { name: "Replace the account" })).toBeVisible();
+    // Replace is folded away and secondary; opening it takes one click.
+    const replace = page.locator("details#account-replace");
+    await expect(replace).not.toHaveAttribute("open", "");
+    await expect(page.getByLabel("factorio.com username")).toBeHidden();
+    await expect(page.getByRole("button", { name: "Remove account" })).not.toHaveClass(/button--primary/);
+    await replace.getByText("Replace the account").click();
+    await expect(page.getByRole("button", { name: "Replace account" })).not.toHaveClass(/button--primary/);
+    await checkPage(page);
     await page.getByLabel("factorio.com username").fill("second-user");
     await page.getByLabel("factorio.com token").fill("second-token");
     await page.getByRole("button", { name: "Replace account" }).click();
@@ -98,9 +111,38 @@ test.describe("with a secret key", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
 
+    // Replace by keyboard: the summary opens the form, and Enter in a field submits it.
+    await tabTo(page, page.getByText("Replace the account"));
+    await page.keyboard.press("Enter");
+    await expect(page.locator("details#account-replace")).toHaveAttribute("open", "");
+    await tabTo(page, page.getByLabel("factorio.com username"));
+    await page.keyboard.type("second-user");
+    await tabTo(page, page.getByLabel("factorio.com token"));
+    await page.keyboard.type("second-token");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".message--success")).toHaveText("Done: The account is saved.");
+
     await tabTo(page, page.getByRole("button", { name: "Remove account" }));
     await page.keyboard.press("Enter");
     await expect(page.locator(".message--success")).toHaveText("Done: The account is removed.");
+  });
+
+  test("a refused replace opens the form again and asks for both fields", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/factorio-account");
+    await page.getByLabel("factorio.com username").fill(username);
+    await page.getByLabel("factorio.com token").fill(token);
+    await page.getByRole("button", { name: "Save account" }).click();
+    await expect(page.locator("#account-stored")).toBeVisible();
+
+    await page.getByText("Replace the account").click();
+    await page.getByLabel("factorio.com username").fill("second-user");
+    await page.getByRole("button", { name: "Replace account" }).click();
+    await expect(page.locator("#error-summary")).toContainText("Enter the factorio.com token");
+    await expect(page.locator("details#account-replace")).toHaveAttribute("open", "");
+    await expect(page.locator("#account-token-error")).toBeVisible();
+    await expect(page.getByLabel("factorio.com username")).toHaveValue("");
+    await checkPage(page);
   });
 
   test("goes back to the page that sent the admin, and only to a local path", async ({ page }) => {
@@ -114,6 +156,7 @@ test.describe("with a secret key", () => {
 
     // An outside address is dropped: there is no way back, and saving stays here.
     await page.goto("/settings/factorio-account?return=https%3A%2F%2Fevil.example%2F");
+    await page.getByText("Replace the account").click();
     await expect(page.getByRole("link", { name: "Cancel" })).toHaveCount(0);
     await page.getByLabel("factorio.com username").fill(username);
     await page.getByLabel("factorio.com token").fill(token);

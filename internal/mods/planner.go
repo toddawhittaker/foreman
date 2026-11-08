@@ -79,25 +79,35 @@ func (p *Planner) SyncRequest(worldID, save string, choices map[string]Choice) (
 // first (SPEC 9.4, 9.10). Built-in mods follow the Space Age flag and never
 // appear. A world with no save, or one Foreman cannot read, drops nothing
 // it can name; the pre-start check then still refuses.
-func (p *Planner) SaveDrops(ctx context.Context, worldID string, plan Plan) ([]string, error) {
-	check, err := p.Worlds.PreStartCheck(worldID)
-	if err != nil {
-		return nil, err
-	}
-	if check.Save == "" || slices.ContainsFunc(check.Problems, func(pr world.Problem) bool { return pr.Kind == world.ProblemSaveUnreadable }) {
-		return nil, nil
-	}
-	save, err := p.Worlds.SaveMods(worldID, check.Save)
-	if err != nil {
-		return nil, err
-	}
+//
+// While the world's game is running, stopping it to apply the plan saves
+// the world with every mod enabled now, so each of those counts as used
+// too, whatever the save on disk holds.
+func (p *Planner) SaveDrops(ctx context.Context, worldID string, plan Plan, running bool) ([]string, error) {
 	w, err := p.world(ctx, worldID)
 	if err != nil {
 		return nil, err
 	}
 	inSave := map[string]bool{}
-	for _, m := range save.Mods {
-		inSave[m.Name] = true
+	if running {
+		for _, m := range w.Mods {
+			if m.Enabled {
+				inSave[m.Name] = true
+			}
+		}
+	}
+	check, err := p.Worlds.PreStartCheck(worldID)
+	if err != nil {
+		return nil, err
+	}
+	if check.Save != "" && !slices.ContainsFunc(check.Problems, func(pr world.Problem) bool { return pr.Kind == world.ProblemSaveUnreadable }) {
+		save, err := p.Worlds.SaveMods(worldID, check.Save)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range save.Mods {
+			inSave[m.Name] = true
+		}
 	}
 	builtIn := map[string]bool{}
 	for _, m := range w.Mods {

@@ -227,7 +227,7 @@ func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	op := game.ModOp{Change: world.ModChange{Settings: data}, Fingerprint: values["fingerprint"], Summary: "upload " + world.ModSettingsFile}
-	s.applyMods(w, r, u, sum, op, stop, "")
+	s.applyMods(w, r, u, sum, op, stop, "", modResult{})
 }
 
 // handleSettingsDownload sends the world's mod-settings.dat (SPEC 9.6).

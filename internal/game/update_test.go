@@ -394,13 +394,15 @@ func TestUpdateRunningWorld(t *testing.T) {
 // SPEC 10.3, 4.4: the game network matters only to a game that is started
 // again, so a stopped world updates even when FOREMAN_GAME_NETWORK is wrong.
 func TestUpdateStoppedWorldSkipsTheGameNetworkCheck(t *testing.T) {
-	r := newRig(t, rigOptions{})
+	r := newRig(t, rigOptions{noRun: true})
 	id := r.versionWorld("Stopped", "2.0.77", "2.0.77-no-space-age.zip")
 	r.game.SetImage(ImageRef("2.1.24"), true)
 	d := r.game.Daemon()
 	d.Seed(dockertest.Container{Name: "foreman-self", Status: "running", Networks: map[string]string{"bridge": "172.17.0.9/16"}})
 	self, _ := d.Container("foreman-self")
 	r.c.network, r.c.selfID = "", self.ID
+	// The monitor reads these fields, so it starts only once they are set.
+	r.stop = r.run(r.c)
 	if _, err := r.c.gameNetwork(context.Background()); !errors.Is(err, ErrNetwork) {
 		t.Fatalf("gameNetwork = %v, want the network refused", err)
 	}

@@ -36,8 +36,8 @@ test.describe("updates", () => {
     await checkPage(page);
 
     await page.getByRole("button", { name: "Update 2 mods" }).click();
-    // The world is stopped, so it stays stopped.
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    // The world is stopped, so it stays stopped. The Done box names each update (SPEC 17.9).
+    await expect(doneBox(page)).toContainText("Updated fp-up1 to 1.1.0 and fp-up2 to 1.2.0 in Base.", live);
     await expect(stateBadge(page)).toHaveText("Stopped");
     expect(existsSync(modsFile(foreman.dataDir, "fp-up1_1.1.0.zip"))).toBe(true);
     expect(existsSync(modsFile(foreman.dataDir, "fp-up2_1.2.0.zip"))).toBe(true);
@@ -76,7 +76,7 @@ test.describe("updates", () => {
     await row.getByRole("link", { name: "Update to 1.1.0" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Update fp-up1 in Base?" })).toBeVisible();
     await page.getByRole("button", { name: "Update 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     expect(existsSync(modsFile(foreman.dataDir, "fp-up1_1.1.0.zip"))).toBe(true);
     expect(existsSync(modsFile(foreman.dataDir, "fp-up2_1.0.0.zip"))).toBe(true);
   });
@@ -95,22 +95,30 @@ test.describe("a mod players cannot get", () => {
     const portal = fakePortal!;
     // Downloadable newer releases; with these added, the portal's /full lists no 1.5.5.
     await portal.add("visible-planets", "1.7.2", ["base >= 2.0", "space-age >= 2.0"]);
+    // The game runs with the mod: it started while the portal could not be asked (SPEC 7.4).
+    await portal.setDown(true);
     await setUpModsWorld(page, foreman, g, { ...spaceAge, mods, start: true });
+    await portal.setDown(false);
     const before = await creates(g);
 
     // The Server page loads the notice after it opens.
+    await page.goto("/");
     const notice = page.locator("#mods-notice");
     await expect(notice).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
 
     await page.goto("/worlds/base/mods");
+    // Issue 342: one summary line, red only because players cannot join; each mod's news is in its row.
     const error = page.locator("#mod-status .message--error");
-    await expect(error).toContainText("Players cannot join with visible-planets 1.5.5", live);
-    await expect(error).toContainText("Version 1.7.2 is on the portal.");
-    await expect(error.getByRole("link", { name: "Update visible-planets to 1.7.2" })).toBeVisible();
-    // chest-auto-sort is marked deprecated on the portal: a warning, with no error.
-    const warning = page.locator("#mod-status .message--warning");
-    await expect(warning).toContainText("chest-auto-sort is marked deprecated on the mod portal");
-    await expect(page.locator("#mod-status .message--error")).toHaveCount(1);
+    await expect(error).toContainText("1 mod stops players joining. Its row says how to fix it.", live);
+    await expect(error).toContainText("1 mod is deprecated on the mod portal.");
+    const table = page.getByRole("table", { name: /Mods of Base/ });
+    const gone = table.getByRole("row", { name: /visible-planets/ });
+    await expect(gone).toContainText("Error: Players cannot join: the mod portal no longer has version 1.5.5");
+    await expect(gone.getByRole("link", { name: "Update to 1.7.2 visible-planets" })).toBeVisible();
+    // chest-auto-sort is marked deprecated on the portal: a warning in its row, with no error.
+    const deprecated = table.getByRole("row", { name: /chest-auto-sort/ });
+    await expect(deprecated).toContainText("Warning: Deprecated on the mod portal");
+    await expect(deprecated).not.toContainText("Error:");
     await checkPage(page);
 
     await page.goto("/");
@@ -120,7 +128,7 @@ test.describe("a mod players cannot get", () => {
     await expect(page.locator("#mod-plan")).toContainText("visible-planets 1.5.5 to 1.7.2");
     await checkPage(page);
     await page.getByRole("button", { name: "Update 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(existsSync(modsFile(foreman.dataDir, "visible-planets_1.7.2.zip"))).toBe(true);
@@ -128,7 +136,7 @@ test.describe("a mod players cannot get", () => {
 
     // The error is gone from the tab; the deprecated warning stays.
     await page.goto("/worlds/base/mods");
-    await expect(page.locator("#mod-status .message--warning")).toContainText("chest-auto-sort is marked deprecated", live);
+    await expect(page.locator("#mod-status")).toContainText("1 mod is deprecated on the mod portal.", live);
     await expect(page.locator("#mod-status .message--error")).toHaveCount(0);
     await expect(page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /visible-planets/ })).toContainText("1.7.2");
     expect((await portal.state()).refused).toEqual([]);

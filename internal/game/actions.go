@@ -73,15 +73,25 @@ type StartOptions struct {
 	// set once the first check has compared Seen, so later checks, after
 	// the stop, do not compare again.
 	running, confirmed bool
+	// portal asks the mod portal in the check (SPEC 7.4). A start, restart
+	// or switch asks it in its first check only; carryPortal hands what
+	// that found, in gone and unchecked, to the checks after.
+	portal, unchecked bool
+	gone              []world.Problem
 }
 
 // AnywayFingerprint names what a go-ahead anyway confirms: the kinds of
 // problem and the mods they name, and whether the game runs, since that
 // changes the steps. Problem texts are left out, as their wording may
-// change without the plan changing.
+// change without the plan changing. Mods the portal no longer offers are
+// left out too: the game deletes nothing for them, and a portal that
+// cannot be asked the second time must not undo the admin's go-ahead.
 func AnywayFingerprint(check world.PreCheck, running bool) string {
 	parts := make([]string, 0, len(check.Problems)+1)
 	for _, p := range check.Problems {
+		if p.Kind == world.ProblemModGone {
+			continue
+		}
 		mods := slices.Clone(p.Mods)
 		slices.Sort(mods)
 		parts = append(parts, string(p.Kind)+":"+strings.Join(mods, ","))
@@ -120,7 +130,9 @@ func (c *Controller) Start(ctx context.Context, id string, by Actor, opts StartO
 	ctx, o := c.beginOp(ctx, c.world(id), AuditStart, startSteps(opts))
 	o.begin(StepCheck)
 	opts.running = IsRunning(c.Status(id).State)
-	check, err := c.precheck(id, opts)
+	opts.portal = true
+	check, err := c.precheck(ctx, id, opts)
+	o.notePortal(check)
 	if err != nil {
 		return o.end(c.checkFailed(ctx, by, AuditStart, id, opts.auditDetail(), err))
 	}
@@ -176,7 +188,8 @@ func (c *Controller) startLocked(ctx context.Context, o *opRun, by Actor, opts S
 func (c *Controller) checkLocked(ctx context.Context, o *opRun, by Actor, opts StartOptions) error {
 	id := o.w.id
 	o.begin(StepCheck)
-	check, err := c.precheck(id, opts)
+	check, err := c.precheck(ctx, id, opts)
+	o.notePortal(check)
 	if err != nil {
 		return err
 	}
@@ -228,7 +241,7 @@ func (c *Controller) PreStartCheck(id string) (world.PreCheck, error) {
 // precheck runs the pre-start check (SPEC 7.4) after making sure the world
 // has a mod list (SPEC 7.3). It returns a *PrecheckError unless the world may
 // start, with or without "Start anyway".
-func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, error) {
+func (c *Controller) precheck(ctx context.Context, id string, opts StartOptions) (world.PreCheck, error) {
 	if err := c.worlds.EnsureModList(id); err != nil {
 		return world.PreCheck{}, err
 	}
@@ -236,6 +249,7 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 	if err != nil {
 		return world.PreCheck{}, err
 	}
+	check = c.portalCheck(ctx, id, check, opts)
 	return check, c.allowStart(check, opts)
 }
 
@@ -245,21 +259,22 @@ func (c *Controller) precheck(id string, opts StartOptions) (world.PreCheck, err
 // the world's own. A
 // missing mod list is not written: the start writes one that matches the
 // Space Age flag, so the problem it would cause is left out.
-func (c *Controller) precheckReadOnly(id, version string, opts StartOptions) error {
+func (c *Controller) precheckReadOnly(ctx context.Context, id, version string, opts StartOptions) (world.PreCheck, error) {
 	check, err := c.worlds.PreStartCheckAt(id, version)
 	if err != nil {
-		return err
+		return world.PreCheck{}, err
 	}
 	missing, err := c.modListMissing(id)
 	if err != nil {
-		return err
+		return world.PreCheck{}, err
 	}
 	if missing {
 		check.Problems = slices.DeleteFunc(check.Problems, func(p world.Problem) bool {
 			return p.Kind == world.ProblemModListSpaceAge
 		})
 	}
-	return c.allowStart(check, opts)
+	check = c.portalCheck(ctx, id, check, opts)
+	return check, c.allowStart(check, opts)
 }
 
 // allowStart returns a *PrecheckError unless the check lets the world start.
@@ -704,10 +719,13 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 	// Compared before the stop, so a restart never refuses with the game
 	// already stopped.
 	opts.running = IsRunning(c.Status(id).State)
-	if _, err := c.precheck(id, opts); err != nil {
+	opts.portal = true
+	check, err := c.precheck(ctx, id, opts)
+	if err != nil {
 		return c.checkFailed(ctx, by, AuditRestart, id, opts.auditDetail(), err)
 	}
 	opts.confirmed = true
+	opts.carryPortal(check)
 	if err := c.audit(ctx, by, AuditRestart, id, opts.auditDetail()); err != nil {
 		return err
 	}

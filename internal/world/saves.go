@@ -297,6 +297,8 @@ var ErrSaveInFuture = errors.New("another save in this world has a modification 
 // of the save that will load, empty when the world has none. The caller
 // holds Lock(id) and the game is stopped.
 func (m *Manager) PrepareLoad(id string) (string, error) {
+	// A game that launches ends the run of mod changes (SPEC 9.4).
+	m.endModRun(id)
 	root, err := m.OpenWorld(id)
 	if err != nil {
 		return "", err

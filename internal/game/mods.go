@@ -56,6 +56,18 @@ type ModDownload struct {
 	Release modportal.Release
 }
 
+// ModDownloadError is a failed download of one mod release, so the page
+// can name it (SPEC 17.9). Err is the cause.
+type ModDownloadError struct {
+	Mod, Version string
+	Err          error
+}
+
+func (e *ModDownloadError) Error() string {
+	return "download " + e.Mod + " " + e.Version + ": " + e.Err.Error()
+}
+func (e *ModDownloadError) Unwrap() error { return e.Err }
+
 // ModOp is one mod change (SPEC 9.2 to 9.6). Every kind of change, from an
 // install to a settings upload, is one of these.
 type ModOp struct {
@@ -174,7 +186,10 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 	}
 
 	o.begin(StepSnapshotMods)
-	if _, err := c.worlds.AutoSnapshot(id, world.ReasonMods, world.LabelBeforeMods, by.Username); err != nil {
+	// A stopped world may reuse the snapshot from before its run of mod
+	// changes (SPEC 9.4).
+	snap, err := c.worlds.ModSnapshotHeld(id, by.Username, wasRunning)
+	if err != nil {
 		return staged, fmt.Errorf("take the snapshot before the mod change: %w", err)
 	}
 	o.done(StepSnapshotMods)
@@ -195,6 +210,7 @@ func (c *Controller) modsLocked(ctx context.Context, o *opRun, by Actor, op ModO
 	o.done(StepApplyMods)
 
 	if !wasRunning {
+		c.worlds.ContinueModRunHeld(id, snap)
 		o.skip(StepCheck)
 		o.skip(launchSteps...)
 		return staged, nil
@@ -271,7 +287,7 @@ func (c *Controller) downloadMods(ctx context.Context, o *opRun, downloads []Mod
 			staged = append(staged, name)
 		}
 		if err != nil {
-			return staged, fmt.Errorf("download %s %s: %w", d.Mod, d.Release.Version, err)
+			return staged, &ModDownloadError{Mod: d.Mod, Version: d.Release.Version, Err: err}
 		}
 		if err := world.CheckSpace(dir, 0); err != nil {
 			return staged, err

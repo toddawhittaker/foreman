@@ -1,25 +1,34 @@
 {{/* The last action's error and what can be done next, on the Server page and on a world's own page. Takes *Failure. */}}
 {{define "server-failure" -}}
 <div class="message {{.Class}}">
-  <p><strong>{{msg .Word}}</strong> {{if not .Earlier.IsZero}}{{tHTML "server.failure.earlier" "time" (momentUTC .Earlier) "message" .Message}}{{else}}{{msgHTML .Message}}{{end}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{msg .Label}}</a>{{end}}</p>
-  {{- with .Problems}}
+  {{- /* One problem reads as one sentence after the lead; several are a list (DESIGN 7.3). */}}
+  <p><strong>{{msg .Word}}</strong> {{if not .Earlier.IsZero}}{{tHTML "server.failure.earlier" "time" (momentUTC .Earlier) "message" .Message}}{{else}}{{msgHTML .Message}}{{end}}{{if eq (len .Problems) 1}} {{msgHTML (index .Problems 0)}}{{end}}{{with .Next}} <a href="{{.Path}}" id="act-failure-next">{{msg .Label}}</a>{{end}}</p>
+  {{- if gt (len .Problems) 1}}
   <ul>
-    {{- range .}}
+    {{- range .Problems}}
     <li>{{msgHTML .}}</li>
     {{- end}}
   </ul>
   {{- end}}
-  {{- with .Sync}}
-  <div class="actions"><a href="{{.Path}}" class="button" id="act-sync-mods">{{msg .Label}}</a></div>
-  {{- end}}
-  {{- if .Undo}}
+  {{- if and .Undo (not .Refused)}}
   <p>{{t "server.failure.undo_text" "label" .UndoName}}</p>
-  <div class="actions"><a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button" "label" .UndoName}}</a></div>
+  {{- end}}
+  {{- /* The main fix first, then the restore; going ahead anyway waits behind its own choice (SPEC 17.9). */}}
+  {{- if or .Fix .Undo}}
+  <div class="actions">
+    {{- with .Fix}}
+    <a href="{{.Path}}" class="button" id="act-fix">{{msg .Label}}</a>
+    {{- end}}
+    {{- if .Undo}}
+    <a href="{{.UndoPath}}" class="button" id="act-undo-failed">{{t "server.failure.undo_button" "label" .UndoName}}</a>
+    {{- end}}
+  </div>
   {{- end}}
   {{- with .Anyway}}
-  {{- if not .Advice.IsZero}}
-  <p>{{msg .Advice}}</p>
-  {{- end}}
+  {{- /* The box is the confirmation (SPEC 7.4): opening it shows every step, and its button acts at once. */}}
+  <details class="disclosure anyway">
+  <summary id="act-anyway-open">{{msg .Open}}</summary>
+  <div class="anyway-body">
   <p>{{t "server.anyway.intro" "verb" .Verb}}</p>
   <ul>
     {{- if .Update}}
@@ -67,6 +76,8 @@
     {{- end}}
     <button type="submit" class="button button--danger" id="act-anyway">{{msg .Verb}}</button>
   </form>
+  </div>
+  </details>
   {{- end}}
 </div>
 {{- end}}

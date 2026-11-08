@@ -25,7 +25,7 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 
 	_, search := g.getStatus(modsPath(id) + "/search?q=aai")
 	wantIn(t, "search", search,
-		`href="`+plan+`?kind=install&amp;name=aai-industry&amp;q=aai" class="button">Add to plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></a>`,
+		`href="`+plan+`?kind=install&amp;name=aai-industry&amp;q=aai" class="button" id="mod-aai-industry-add">Add to plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></a>`,
 		`href="https://mods.factorio.com/mod/aai-industry" class="portal-link" target="_blank" rel="noopener noreferrer"`)
 	if strings.Contains(search, "Install aai-industry") {
 		t.Error("a search result still installs at once")
@@ -35,7 +35,7 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("plan %d\n%s", code, one)
 	}
-	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", "Mods you asked for:", "aai-industry 1.0.0", "Add another mod",
+	wantIn(t, "plan of one", plain(one), "Install aai-industry in Base?", `<p class="plan-label" id="plan-changes" tabindex="-1">Changes:</p>`, "aai-industry 1.0.0", "Add another mod",
 		`<input type="hidden" name="q" value="aai">`, `id="add-search" name="q" type="search" value="aai"`,
 		// The mod in the plan and the installed one say so; the others can be added.
 		`<span class="badge" id="mod-aai-industry-add" tabindex="-1">In plan<span class="visually-hidden"> <span translate="no">aai-industry</span></span></span>`,
@@ -58,7 +58,7 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 	rec := g.harness.get(plan+"?added=aai-containers&kind=install&name=aai-industry&name=aai-containers&q=aai", withCookie(g.cookie), withHeader("HX-Request", "true"))
 	two := rec.Body.String()
 	wantIn(t, "redraw", plain(two), `<div hx-swap-oob="innerHTML:#announcer">Added aai-containers. The plan has 3 mods.</div>`,
-		`<h1 id="confirm-heading" hx-swap-oob="true">Install mods in Base?</h1>`, "fp-lib 1.0.0 (aai-containers needs it)", "What they need:",
+		`<h1 id="confirm-heading" hx-swap-oob="true">Install mods in Base?</h1>`, "fp-lib 1.0.0 (aai-containers needs it)", "<dt>Install</dt>",
 		`id="mod-aai-containers-add" tabindex="-1">In plan`, "Install 3 mods", "Remove from plan")
 	if strings.Contains(between(two, `id="mod-plan"`, `</main>`), "autofocus") {
 		t.Error("adding a mod moves focus")
@@ -66,7 +66,7 @@ func TestAddToPlanTwoModsOneSnapshot(t *testing.T) {
 
 	// Taking one out again puts focus on the list it left.
 	rec = g.harness.get(plan+"?kind=install&name=aai-industry&q=aai&removed=aai-containers", withCookie(g.cookie), withHeader("HX-Request", "true"))
-	wantIn(t, "removed", rec.Body.String(), `Removed aai-containers. The plan has 1 mod.`, `id="asked-heading" class="plan-label" tabindex="-1" autofocus`)
+	wantIn(t, "removed", rec.Body.String(), `Removed aai-containers. The plan has 1 mod.`, `<p class="plan-label" id="plan-changes" tabindex="-1" autofocus>Changes:</p>`)
 
 	// One confirm: both mods and the library, one snapshot.
 	_, both := g.getStatus(plan + "?kind=install&name=aai-industry&name=aai-containers&q=aai")
@@ -99,7 +99,8 @@ func TestAddSearchNotOfferedWithoutAPlan(t *testing.T) {
 	}
 }
 
-// DESIGN 7.1: danger is for what takes something away or stops the game.
+// DESIGN 7.1, 8.11: danger is for what destroys something; a restart of a
+// running world is said in words, not in red (issue 375).
 func TestPlanButtonStyle(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -108,8 +109,9 @@ func TestPlanButtonStyle(t *testing.T) {
 	}{
 		{"install, stopped", ModPlanPage{Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActInstall}}}}, false},
 		{"update, stopped", ModPlanPage{Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActUpgrade}}}}, false},
-		{"install, running", ModPlanPage{Running: true, Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActInstall}}}}, true},
-		{"disable", ModPlanPage{Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActDisable}}}}, true},
+		{"install, running", ModPlanPage{Running: true, Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActInstall}}}}, false},
+		{"update, running", ModPlanPage{Running: true, Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActUpgrade}}}}, false},
+		{"disable", ModPlanPage{Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActDisable}}}}, false},
 		{"remove", ModPlanPage{Plan: mods.Plan{Changes: []mods.Change{{Name: "a", Action: mods.ActRemove}}}}, true},
 		{"drops save content", ModPlanPage{Drops: []string{"a"}, Plan: mods.Plan{Changes: []mods.Change{{Name: "b", Action: mods.ActInstall}}}}, true},
 		{"continue without", ModPlanPage{Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "a", Choice: &mods.Choice{Kind: mods.ChoiceWithout}}}}}, true},
@@ -121,14 +123,14 @@ func TestPlanButtonStyle(t *testing.T) {
 	}
 }
 
-// The plan page leaves out an empty "Change the mods" and explains Nearest
-// only beside a Nearest choice.
+// The plan page leaves out an empty "Changes" and explains Nearest only
+// beside a Nearest choice.
 func TestPlanPageOmitsWhatItDoesNotOffer(t *testing.T) {
 	r := newTestRenderer(t)
 	p := ModPlanPage{World: world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.77"}, Form: planForm{Kind: mods.KindSync, Save: "s.zip"}, Hash: "h",
 		Plan: mods.Plan{Unresolved: []mods.Unresolved{{Name: "gone", Version: "1.0.0"}}}}
 	_, body := renderIn(t, r, pageCase{"plan", "todd", 200, p}, "en")
-	if strings.Contains(body, "Change the mods:") {
+	if strings.Contains(body, `id="plan-changes"`) {
 		t.Error("an unresolved-only plan shows an empty change list")
 	}
 	if strings.Contains(body, "Nearest means") {
@@ -150,6 +152,14 @@ func TestServerModNoticeNamesTheFix(t *testing.T) {
 	g.portal.AddZipFor("1.1", "gamma", "0.5.0")
 	_, frag := g.getStatus(modsPath(id) + "/notice")
 	wantIn(t, "two errors", frag, "2 mods of Base can no longer be downloaded", ">Review 2 mods</a>", `href="/worlds/`+id+`/mods"`)
+
+	// Two gone mods that both have updates: the button says what its plan does.
+	g3 := newModsRig(t, true)
+	g3.portal.AddZip("beta", "2.0.0")
+	g3.portal.AddZip("gamma", "2.0.0")
+	id3 := g3.world20("Base", "beta_1.0.0", "gamma_1.0.0")
+	_, frag = g3.getStatus(modsPath(id3) + "/notice")
+	wantIn(t, "two updates", frag, ">Update 2 mods</a>", `href="/worlds/`+id3+`/mods/plan?kind=update&amp;name=beta&amp;name=gamma"`)
 
 	g2 := newModsRig(t, true)
 	id2 := g2.world20("Base", "beta_1.0.0")
@@ -206,7 +216,7 @@ func TestAddSearchKeepsFocusOnResults(t *testing.T) {
 	if n := strings.Count(between(searched, `id="mod-plan"`, `</main>`), "autofocus"); n != 1 {
 		t.Errorf("a search page has %d autofocus, want 1", n)
 	}
-	// The marker is the search form's alone; the plan's links do not carry it.
+	// The marker is the search form's and its page links' alone; the add and remove links do not carry it.
 	if regexp.MustCompile(`(href|hx-get|hx-push-url)="[^"]*add=1`).MatchString(searched) {
 		t.Error("a link carries the search marker")
 	}

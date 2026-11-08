@@ -72,7 +72,9 @@ func TestSearchGroupOrder(t *testing.T) {
 	}
 }
 
-func TestSearchTopTwentyFive(t *testing.T) {
+// Every match comes back, best first, so the page can say how many there
+// are and page through them (SPEC 9.1).
+func TestSearchEveryMatch(t *testing.T) {
 	c := handlerClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(listBody(manyRows(40)))
 	})
@@ -80,7 +82,7 @@ func TestSearchTopTwentyFive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(hits) != 25 || hits[0].Name != "mod-39" || hits[24].Name != "mod-15" {
+	if len(hits) != 40 || hits[0].Name != "mod-39" || hits[39].Name != "mod-00" {
 		t.Errorf("got %d hits, first %q, last %q", len(hits), hits[0].Name, hits[len(hits)-1].Name)
 	}
 }

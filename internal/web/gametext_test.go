@@ -184,7 +184,7 @@ func TestProblemWords(t *testing.T) {
 		{world.Problem{Kind: world.ProblemSpaceAgeOff, Save: "a.zip", Names: []string{"space-age", "quality"}}, "a.zip uses Space Age (space-age, quality), but Space Age is off for this world."},
 		{world.Problem{Kind: world.ProblemModMissing, Save: "a.zip", Mods: []string{"x"}}, "a.zip uses x, but this world has no file for it."},
 		{world.Problem{Kind: world.ProblemModMissing, Save: "a.zip", Mods: []string{"x", "y"}}, "a.zip uses x, y, but this world has no files for them."},
-		{world.Problem{Kind: world.ProblemModDisabled, Save: "a.zip", Mods: []string{"x", "y"}}, "a.zip uses x, y, but they are turned off in this world."},
+		{world.Problem{Kind: world.ProblemModDisabled, Save: "a.zip", Mods: []string{"x", "y"}}, "a.zip uses x, y, but they are disabled in this world."},
 		{world.Problem{Kind: world.ProblemModListSpaceAge, SpaceAge: true, Names: []string{"quality"}}, "Space Age is on for this world, but mod-list.json has quality turned off. Fix the mod list before starting."},
 		{world.Problem{Kind: world.ProblemModGameVersion, World: "Check", GameVersion: "2.0.77", UpdateTo: "2.1",
 			Groups: []world.ModGroup{{Version: "2.1", Count: 2, Shown: []string{"b", "c"}}, {Version: "1.1", Count: 1, Shown: []string{"a"}}}},

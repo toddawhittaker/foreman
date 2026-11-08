@@ -100,7 +100,7 @@ func TestAccountPageWithNoAccountOffersTheForm(t *testing.T) {
 		t.Fatalf("status %d", rec.Code)
 	}
 	for _, want := range []string{
-		"No account is set, so mod downloads are off.",
+		"Mod downloads are off: no account is set.",
 		`name="username"`, `name="token" type="password" required autocomplete="off"`,
 		`<button type="submit" class="button button--primary">Save account</button>`,
 	} {
@@ -196,7 +196,7 @@ func TestAccountSaveReplaceRemove(t *testing.T) {
 	}
 
 	body := ah.get(PathAccount+"?done=saved", withCookie(c)).Body.String()
-	for _, want := range []string{"<strong>Done:</strong> The account is saved.", "Stored on", `<time datetime="`, "by alice", "Replace account", "Remove account"} {
+	for _, want := range []string{"<strong>Done:</strong> The account is saved.", "Mod downloads are on. The account was stored on", `<time datetime="`, `<details class="disclosure" id="account-replace">`, `<button type="submit" class="button">Replace account</button>`, "by alice", "Replace account", "Remove account"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q\n%s", want, body)
 		}
@@ -216,7 +216,7 @@ func TestAccountSaveReplaceRemove(t *testing.T) {
 		t.Errorf("remove audit entries %q", got)
 	}
 	body = ah.get(PathAccount+"?done=removed", withCookie(c)).Body.String()
-	if !strings.Contains(body, "<strong>Done:</strong> The account is removed.") || !strings.Contains(body, "No account is set") {
+	if !strings.Contains(body, "<strong>Done:</strong> The account is removed.") || !strings.Contains(body, "no account is set") {
 		t.Errorf("page after remove:\n%s", body)
 	}
 	ah.wantNoSecrets("the removed page", body, acctUser, acctToken, "second-user-1", "second-token-2")

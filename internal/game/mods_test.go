@@ -304,7 +304,7 @@ func TestApplyModsKeepsAnUploadInChangeAdd(t *testing.T) {
 	}
 }
 
-// SPEC 9.12, ruling 1: a download that fails, here on a checksum after a
+// SPEC 9.12: a download that fails, here on a checksum after a
 // good first one, leaves the running game, the files, the snapshots and the
 // staged files exactly as they were.
 func TestApplyModsFailedDownloadLeavesTheGameUntouched(t *testing.T) {
@@ -326,6 +326,10 @@ func TestApplyModsFailedDownloadLeavesTheGameUntouched(t *testing.T) {
 			err := r.applyMods(id, r.modOp(id, "install both", good, bad))
 			if !errors.Is(err, cause) {
 				t.Fatalf("ApplyMods = %v, want %v", err, cause)
+			}
+			// The page names the mod that failed (SPEC 17.9).
+			if de, ok := errors.AsType[*ModDownloadError](err); !ok || de.Mod != "other" || de.Version != "1.0.0" {
+				t.Errorf("ApplyMods = %#v, want a ModDownloadError naming other 1.0.0", err)
 			}
 			if got := f.called(); len(got) != 2 {
 				t.Errorf("downloads %v, want both tried", got)
@@ -669,5 +673,69 @@ func TestConfirmedDropNeedsEveryNamedMod(t *testing.T) {
 		if got := confirmedDrop(c.p, c.drops); got != c.want {
 			t.Errorf("confirmedDrop(%+v, %v) = %v, want %v", c.p, c.drops, got, c.want)
 		}
+	}
+}
+
+func (r *rig) modSnapshotCount(id string) int {
+	n := 0
+	for _, s := range r.snapshots(id) {
+		if s.Reason == world.ReasonMods {
+			n++
+		}
+	}
+	return n
+}
+
+// SPEC 9.4: a run of changes on a stopped world shares one snapshot until
+// the game launches.
+func TestApplyModsStoppedRunSharesOneSnapshotUntilALaunch(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Run")
+	r.putModZip(id, "oldmod", "2.1")
+	for _, on := range []bool{false, true, false} {
+		op := r.modOp(id, "toggle oldmod")
+		op.Change.Enabled = map[string]bool{"oldmod": on}
+		if err := r.applyMods(id, op); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := r.modSnapshotCount(id); n != 1 {
+		t.Fatalf("%d mod snapshots after three stopped changes, want 1", n)
+	}
+	r.start(id)
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	op := r.modOp(id, "enable oldmod")
+	op.Change.Enabled = map[string]bool{"oldmod": true}
+	if err := r.applyMods(id, op); err != nil {
+		t.Fatal(err)
+	}
+	if n := r.modSnapshotCount(id); n != 2 {
+		t.Fatalf("%d mod snapshots after a launch and another change, want 2", n)
+	}
+}
+
+// SPEC 9.4, ADR 0014: a start the pre-start check refuses never launches
+// the game, so it does not end the run; the next change reuses its snapshot.
+func TestARefusedStartDoesNotEndTheRun(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Refused")
+	f := newFetcher()
+	r.c.SetModFetcher(f)
+	dl := r.offer(f, "oldline", "1.0.0", "1.1") // made for another game line
+	if err := r.applyMods(id, r.modOp(id, "install oldline", dl)); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := errors.AsType[*PrecheckError](r.c.Start(context.Background(), id, admin, StartOptions{})); !ok {
+		t.Fatal("the start was not refused by the pre-start check")
+	}
+	op := r.modOp(id, "disable oldline")
+	op.Change.Enabled = map[string]bool{"oldline": false}
+	if err := r.applyMods(id, op); err != nil {
+		t.Fatal(err)
+	}
+	if n := r.modSnapshotCount(id); n != 1 {
+		t.Fatalf("%d mod snapshots after a refused start, want 1", n)
 	}
 }

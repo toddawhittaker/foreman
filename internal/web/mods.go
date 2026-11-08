@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -135,6 +137,9 @@ type ModsPage struct {
 	NoAccount bool
 	// LoadSave is the save that loads, whose mods "Match" reads; "" for none.
 	LoadSave string
+	// SaveDiff is how the world's mods differ from LoadSave's; nil when
+	// there is no save or Foreman cannot read it (SPEC 9.8, 9.9).
+	SaveDiff *SaveDiff
 	// HasSettings says the world has a mod-settings.dat to download.
 	HasSettings bool
 	Running     bool
@@ -190,11 +195,13 @@ func (p ModsPage) RowPath(kind, name string) string {
 
 // UpdateSlot is the id of a row's place for its Update button, which the
 // portal status fills in later.
-func (ModsPage) UpdateSlot(name string) string { return updateSlot(name) }
+func (ModsPage) UpdateSlot(name string) string { return slotID("update", name) }
 
-func updateSlot(name string) string {
+// slotID is the id of a mod row's place for one kind of late content; the
+// name is hashed so any mod name makes a valid id.
+func slotID(kind, name string) string {
 	sum := sha256.Sum256([]byte(name))
-	return "mod-update-" + hex.EncodeToString(sum[:6])
+	return "mod-" + kind + "-" + hex.EncodeToString(sum[:6])
 }
 
 // Line is the world's game line, such as "2.0".
@@ -215,16 +222,36 @@ func (p ModsPage) Rows() []world.InstalledMod {
 	return out
 }
 
-// BuiltIns names the built-in mods that are on.
-func (p ModsPage) BuiltIns() []string {
+// BuiltIns names the built-in mods that are on. They follow the world's
+// Space Age flag (SPEC 9.7), which the pre-start check holds mod-list.json
+// to, so the flag is read rather than a list the game has not written yet.
+func (p ModsPage) BuiltIns() []string { return p.builtIns(true) }
+
+// BuiltInsOff names the built-in mods that are off: the Space Age ones
+// while Space Age is off.
+func (p ModsPage) BuiltInsOff() []string { return p.builtIns(false) }
+
+func (p ModsPage) builtIns(on bool) []string {
+	spaceAge := world.SpaceAgeMods(p.World.GameVersion)
 	var out []string
 	for _, m := range p.Mods {
-		if m.BuiltIn && m.Enabled {
+		if m.BuiltIn && (p.World.SpaceAge || !slices.Contains(spaceAge, m.Name)) == on {
 			out = append(out, m.Name)
 		}
 	}
 	return out
 }
+
+// ShowSettings says the tab offers mod-settings.dat: a world with only
+// built-in mods has no settings to keep, unless it has the file or an
+// upload of it was just refused.
+func (p ModsPage) ShowSettings() bool {
+	return len(p.Rows()) > 0 || p.HasSettings || !p.SettingsError.IsZero() || !p.CountdownError.IsZero()
+}
+
+// NoteSlot is the id of a row's place for what the portal says about the
+// mod, which the portal status fills in later.
+func (ModsPage) NoteSlot(name string) string { return slotID("note", name) }
 
 // BuiltInVersion is the built-in mods' version, the game's own.
 func (p ModsPage) BuiltInVersion() string {
@@ -253,15 +280,10 @@ func (p ModsPage) Enabled() int {
 
 // PortalSlot is the id of a row's portal link, which the portal status
 // takes away for a mod the portal does not have.
-func (ModsPage) PortalSlot(name string) string { return portalSlot(name) }
+func (ModsPage) PortalSlot(name string) string { return slotID("portal", name) }
 
 // portalPath is a mod's page on the mod portal.
 func portalPath(name string) string { return "https://mods.factorio.com/mod/" + url.PathEscape(name) }
-
-func portalSlot(name string) string {
-	sum := sha256.Sum256([]byte(name))
-	return "mod-portal-" + hex.EncodeToString(sum[:6])
-}
 
 func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
@@ -301,6 +323,16 @@ func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, err
 	if p.LoadSave, err = s.loadingSave(sum.ID); err != nil {
 		return ModsPage{}, err
 	}
+	if p.LoadSave != "" {
+		// Only the save's header is read, so this is quick (SPEC 9.9). A save
+		// Foreman cannot read leaves the offer to match as it is.
+		if save, serr := s.worlds.SaveMods(sum.ID, p.LoadSave); serr == nil {
+			d := compareSave(followSpaceAge(list, p.BuiltInsOff()), save)
+			p.SaveDiff = &d
+		} else {
+			s.log.Warn("read the mods of the save", "world", sum.ID, "error", serr)
+		}
+	}
 	p.HasSettings = s.hasModSettings(sum.ID)
 	p.NoAccount = !s.downloadsOn(ctx)
 	op := s.game.Status(sum.ID).Operation
@@ -321,27 +353,28 @@ func (s *server) modsOutcome(p *ModsPage) {
 	if !ok || res.Action != game.AuditMods {
 		return
 	}
-	if res.Undo != "" {
-		p.Undo = &Offer{Path: restorePath(p.World.ID, res.Undo), Label: i18n.M("mods.undo")}
-	}
+	p.Undo = modsUndo(p.World.ID, res)
 	if res.Err == nil {
-		p.Done = i18n.M("mods.done", "world", p.World.Name, "label", i18n.M("worlds.snapshot.label.before_mods"))
+		p.Done = modsDone(res.Mods, p.World.Name)
 		return
 	}
-	p.Failure = &Failure{Message: failureText(res.Err), Refused: game.IsRefusal(res.Err)}
+	p.Failure = &Failure{Refused: game.IsRefusal(res.Err)}
+	p.Failure.Message, p.Failure.Fix = modsFailure(res.Err, res.Mods, p.World.Name, s.game.Status(p.World.ID).State, p.Path())
 	if errors.Is(res.Err, world.ErrModsChanged) {
 		p.Failure.Next = &Offer{Path: p.Path(), Label: i18n.M("mods.changed.next")}
 	}
 }
 
 // ModStatus is what the portal says about a world's mods: updates (SPEC
-// 9.3) and mods players cannot get (#131). It loads after the tab.
+// 9.3) and mods players cannot get (#131). It loads after the tab: one
+// summary line above the table, and each mod's news in its own row.
 type ModStatus struct {
 	World       world.Summary
 	Unreachable bool
 	Updates     []mods.Update
 	Flags       []mods.Flag
-	Checked     int // portal mods asked about
+	// Current counts the mods the portal has at their installed version.
+	Current int
 }
 
 func (ModStatus) templateName() string { return "mods" }
@@ -355,44 +388,89 @@ func (p ModStatus) UpdatePath(name string) string {
 	return kindPlanPath(p.World.ID, mods.KindUpdate, name)
 }
 
-// RemovePath is the plan that removes a mod.
-func (p ModStatus) RemovePath(name string) string {
-	return kindPlanPath(p.World.ID, mods.KindRemove, name)
+// Slot ids of a row's places the status fills.
+func (ModStatus) UpdateSlot(name string) string { return slotID("update", name) }
+func (ModStatus) PortalSlot(name string) string { return slotID("portal", name) }
+func (ModStatus) NoteSlot(name string) string   { return slotID("note", name) }
+
+// Count counts the flags of one severity, for the summary line.
+func (p ModStatus) Count(sev mods.Severity) int {
+	n := 0
+	for _, f := range p.Flags {
+		if f.Severity == sev {
+			n++
+		}
+	}
+	return n
 }
 
-// UpdateSlot is the row place an update's button goes in.
-func (ModStatus) UpdateSlot(name string) string { return updateSlot(name) }
+// StatusRow is what the status puts in one mod's row.
+type StatusRow struct {
+	Name string
+	// UpdateTo is the version its Update button offers; "" for none.
+	UpdateTo    string
+	Flags       []mods.Flag
+	NotOnPortal bool
+}
 
-// PortalSlot is the id of a row's portal link.
-func (ModStatus) PortalSlot(name string) string { return portalSlot(name) }
+// Rows gathers the updates and flags by mod. A mod whose installed
+// version is gone gets its fix, the update, even when that release is not
+// newer than the installed one.
+func (p ModStatus) Rows() []StatusRow {
+	var out []StatusRow
+	at := map[string]int{}
+	row := func(name string) *StatusRow {
+		i, ok := at[name]
+		if !ok {
+			i = len(out)
+			at[name] = i
+			out = append(out, StatusRow{Name: name})
+		}
+		return &out[i]
+	}
+	for _, u := range p.Updates {
+		row(u.Name).UpdateTo = u.To
+	}
+	for _, f := range p.Flags {
+		r := row(f.Name)
+		r.Flags = append(r.Flags, f)
+		switch {
+		case f.Code == mods.FlagNotOnPortal:
+			r.NotOnPortal = true
+		case f.Code == mods.FlagVersionGone && f.Update != "" && r.UpdateTo == "":
+			r.UpdateTo = f.Update
+		}
+	}
+	return out
+}
 
-// FlagText words one flag (#131).
+// FlagText words one flag in its mod's row, so it need not name the mod
+// (#131).
 func (ModStatus) FlagText(f mods.Flag) i18n.Msg {
-	mod := i18n.Ident(f.Name)
 	switch f.Code {
 	case mods.FlagVersionGone:
 		if f.Update == "" {
-			return i18n.M("mods.flag.gone_none", "mod", mod, "version", f.Version)
+			return i18n.M("mods.row.gone_none", "version", f.Version)
 		}
-		return i18n.M("mods.flag.gone", "mod", mod, "version", f.Version, "update", f.Update)
+		return i18n.M("mods.row.gone", "version", f.Version)
 	case mods.FlagDeprecated:
-		return i18n.M("mods.flag.deprecated", "mod", mod)
+		return i18n.M("mods.row.deprecated")
 	}
-	return i18n.M("mods.flag.not_on_portal", "mod", mod, "version", f.Version)
+	return i18n.M("mods.row.not_on_portal")
 }
 
-// FlagClass is the message kind of a flag.
+// FlagClass is the kind of a flag, which colours its leading word.
 func (ModStatus) FlagClass(f mods.Flag) string {
 	switch f.Severity {
 	case mods.SevError:
-		return "message--error"
+		return "mod-flag--error"
 	case mods.SevWarning:
-		return "message--warning"
+		return "mod-flag--warning"
 	}
-	return "message--note"
+	return "mod-flag--note"
 }
 
-// FlagWord is the leading word of a flag's message (DESIGN 7.3).
+// FlagWord is the leading word of a flag (DESIGN 7.3).
 func (ModStatus) FlagWord(f mods.Flag) i18n.Msg {
 	switch f.Severity {
 	case mods.SevError:
@@ -419,14 +497,28 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 		st = ModStatus{World: sum, Unreachable: true}
 	}
-	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil {
-		for _, m := range list {
-			if m.Enabled && !m.BuiltIn && !m.Local {
-				st.Checked++
-			}
-		}
+	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil && !st.Unreachable {
+		st.Current = currentCount(list, st.Flags)
 	}
 	s.fragment(w, r, st, "mod-status")
+}
+
+// currentCount counts the enabled portal mods the portal has at their
+// installed version: not those it lacks, nor those whose version is gone.
+func currentCount(list []world.InstalledMod, flags []mods.Flag) int {
+	missing := map[string]bool{}
+	for _, f := range flags {
+		if f.Code == mods.FlagNotOnPortal || f.Code == mods.FlagVersionGone {
+			missing[f.Name] = true
+		}
+	}
+	n := 0
+	for _, m := range list {
+		if m.Enabled && !m.BuiltIn && !m.Local && !missing[m.Name] {
+			n++
+		}
+	}
+	return n
 }
 
 // portalTrouble logs a portal failure: an unreachable portal is the
@@ -445,11 +537,9 @@ func (s *server) portalTrouble(what, id string, err error) {
 type ModNotice struct {
 	World  world.Summary
 	Errors int
-	// Mod and Version name the mod when there is one; Update says its fix
-	// is an update, else a removal.
+	// Mod and Version name the mod when there is exactly one.
 	Mod, Version string
-	Update       bool
-	FixPath      string
+	Fix          Offer
 }
 
 func (ModNotice) templateName() string { return "server" }
@@ -466,30 +556,17 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 	if err != nil {
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 	}
-	var fix []string
+	var gone []world.GoneMod
 	for _, f := range flags {
 		if f.Severity != mods.SevError {
 			continue
 		}
 		n.Errors++
 		n.Mod, n.Version = f.Name, f.Version
-		if f.Code == mods.FlagVersionGone && f.Update != "" {
-			fix = append(fix, f.Name)
-		}
+		gone = append(gone, world.GoneMod{Name: f.Name, Version: f.Version, Update: f.Update})
 	}
-	n.Update = len(fix) == n.Errors
-	switch {
-	case n.Errors == 1 && n.Update:
-		n.FixPath = kindPlanPath(sum.ID, mods.KindUpdate, n.Mod)
-	case n.Errors == 1:
-		// No release is left to update to, so the fix the Mods tab offers.
-		n.FixPath = kindPlanPath(sum.ID, mods.KindRemove, n.Mod)
-	case n.Update && len(fix) <= maxPlanNames:
-		// Every error has an update: the fix is one plan.
-		n.FixPath = kindPlanPath(sum.ID, mods.KindUpdate, fix...)
-	default:
-		// The Mods tab shows each flag with its own fix.
-		n.FixPath = modsPath(sum.ID)
+	if n.Errors > 0 {
+		n.Fix = goneFix(sum.ID, gone)
 	}
 	s.fragment(w, r, n, "mods-notice")
 }
@@ -511,7 +588,14 @@ type ModSearchPage struct {
 	World      world.Summary
 	Query      string
 	QueryError i18n.Msg
-	Hits       []modportal.Hit
+	Results    ModHits
+	// Picks are the mods ticked to add, on this page of results or another;
+	// PickError says none was ticked when "Add ticked mods" was chosen.
+	Picks     []string
+	PickError i18n.Msg
+	// Paged says a page button brought the admin here, so focus goes to
+	// the results.
+	Paged bool
 	// Installed names the mods the world has already.
 	Installed   map[string]bool
 	Unreachable bool
@@ -520,10 +604,23 @@ type ModSearchPage struct {
 
 func (ModSearchPage) templateName() string { return "modsearch" }
 func (ModSearchPage) navItem() string      { return PathWorlds }
-func (p ModSearchPage) hasErrors() bool    { return !p.QueryError.IsZero() }
+func (p ModSearchPage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
-// Problems lists the search field's error.
-func (p ModSearchPage) Problems() []Problem { return problems(Problem{"mod-search", p.QueryError}) }
+// Problems lists the search field's error, then the ticks'.
+func (p ModSearchPage) Problems() []Problem {
+	return problems(Problem{"mod-search", p.QueryError}, Problem{p.firstPick(), p.PickError})
+}
+
+// firstPick is the id of the first box on the page, where the ticks' error
+// points.
+func (p ModSearchPage) firstPick() string {
+	for _, h := range p.Results.Rows {
+		if !p.Installed[h.Name] {
+			return modID(h.Name, "pick")
+		}
+	}
+	return "pick-error"
+}
 
 func (p ModSearchPage) Path() string     { return modsPath(p.World.ID) + "/search" }
 func (p ModSearchPage) ModsPath() string { return modsPath(p.World.ID) }
@@ -539,20 +636,56 @@ func (p ModSearchPage) Tabs() WorldTabs {
 	return t
 }
 
-// AddPath is the plan that installs one mod, keeping the search so the
-// plan page can offer the same results to add more.
+// Picking says the results have boxes to tick several mods at once.
+func (ModSearchPage) Picking() bool { return true }
+
+// HitState is what a result offers: "installed" or "add".
+func (p ModSearchPage) HitState(name string) string {
+	if p.Installed[name] {
+		return "installed"
+	}
+	return "add"
+}
+
+// Picked reports whether a result's box is ticked.
+func (p ModSearchPage) Picked(name string) bool { return slices.Contains(p.Picks, name) }
+
+// PicksElsewhere are the ticked mods not on this page of results, which the
+// form carries along unseen.
+func (p ModSearchPage) PicksElsewhere() []string {
+	return slices.DeleteFunc(slices.Clone(p.Picks), func(n string) bool {
+		return slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return h.Name == n })
+	})
+}
+
+// CanPick says the form has a mod that "Add ticked mods" could add.
+func (p ModSearchPage) CanPick() bool {
+	return len(p.Picks) > 0 || slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return !p.Installed[h.Name] })
+}
+
+// ModID is modID for the template.
+func (ModSearchPage) ModID(name, part string) string { return modID(name, part) }
+
+// AddPath is the plan that installs one mod, keeping the search and its
+// page so the plan page can offer the same results to add more.
 func (p ModSearchPage) AddPath(name string) string {
-	return planPath(p.World.ID, planForm{Kind: mods.KindInstall, Names: []string{name}, Query: p.Query}.query())
+	return planPath(p.World.ID, p.planForm([]string{name}).query())
+}
+
+func (p ModSearchPage) planForm(names []string) planForm {
+	return planForm{Kind: mods.KindInstall, Names: names, Query: p.Query, Page: p.Results.Page}
 }
 
 // handleModSearch searches the portal's list for the world's game line. It
-// needs no account (SPEC 9.11).
+// needs no account (SPEC 9.11). "Add ticked mods" sends the ticked mods to
+// one plan; a page button keeps them ticked.
 func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
 		return
 	}
-	p := ModSearchPage{World: sum, Query: strings.TrimSpace(r.URL.Query().Get("q")), Installed: map[string]bool{}}
+	q := r.URL.Query()
+	p := ModSearchPage{World: sum, Query: strings.TrimSpace(q.Get("q")), Installed: map[string]bool{}, Paged: q.Has("page")}
 	if p.Query == "" {
 		p.QueryError = i18n.M("mods.search.missing")
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
@@ -561,6 +694,27 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 	if len(p.Query) > maxSearchQuery {
 		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	// A plan names at most maxPlanNames mods, so more ticks are not kept.
+	for _, n := range q["pick"] {
+		if len(n) > maxPickName {
+			p.QueryError = i18n.M("mods.search.long", "count", maxPickName)
+			s.page(w, r, http.StatusBadRequest, u.Username, p)
+			return
+		}
+		if !slices.Contains(p.Picks, n) && len(p.Picks) < maxPlanNames {
+			p.Picks = append(p.Picks, n)
+		}
+	}
+	page := readPage(q.Get("page"))
+	adding := q.Get("picked") == "1"
+	if adding {
+		page = readPage(q.Get("at"))
+	}
+	if adding && len(p.Picks) > 0 {
+		p.Results.Page = page
+		http.Redirect(w, r, planPath(sum.ID, p.planForm(p.Picks).query()), http.StatusSeeOther) //nolint:gosec // a local path; the ticked names are only query values
 		return
 	}
 	p.NoAccount = !s.downloadsOn(r.Context())
@@ -576,12 +730,21 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		s.page(w, r, http.StatusBadGateway, u.Username, p)
 		return
 	}
-	p.Hits = hits
+	p.Results = pageOfHits(hits, page)
+	if adding {
+		p.PickError = i18n.M("mods.search.pick_none")
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
 // maxSearchQuery bounds a search, which is only a name or a few words.
 const maxSearchQuery = 100
+
+// maxPickName bounds one ticked mod name, which goes into the redirect to the
+// plan page; the portal's names are far shorter.
+const maxPickName = 100
 
 // planForm is a mod change request as the plan page's form carries it, so
 // the server can recompute the plan instead of storing one (SPEC 9.14).
@@ -589,6 +752,9 @@ type planForm struct {
 	Kind     mods.Kind
 	Names    []string
 	Optional []string
+	// Declined are recommended mods the admin unticked. A box cannot send
+	// "unticked", so each recommended box sends its name as "offered" too.
+	Declined []string
 	// Save is the save a sync reads; Staged is an uploaded zip waiting in
 	// the staging area (SPEC 9.5, 9.10).
 	Save, Staged string
@@ -600,8 +766,10 @@ type planForm struct {
 	// DropsConfirmed is the box that accepts losing what dropped mods
 	// built. The names are worked out again on the post, never read.
 	DropsConfirmed bool
-	// Query is the search the install plan's "Add another mod" shows.
+	// Query is the search the install plan's "Add another mod" shows, and
+	// Page the page of its results.
 	Query string
+	Page  int
 	// Added and Removed name the mod a click just added to or took out of
 	// the plan, for the sentence the redraw announces. Links carry them;
 	// the plan does not.
@@ -609,11 +777,18 @@ type planForm struct {
 	// Searched is a search from "Add another mod": its results heading
 	// takes focus, not the messages above the plan.
 	Searched bool
+	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
+	// off in the same plan; Fixed names the one a click just added, for
+	// the sentence the redraw announces (SPEC 9.2, 17.9).
+	AlsoDisable, AlsoRemove []string
+	Fixed                   string
 }
 
 const (
-	choicePrefix  = "choice-"
-	confirmPrefix = "confirm-"
+	choicePrefix     = "choice-"
+	confirmPrefix    = "confirm-"
+	alsoDisableField = "also-disable"
+	alsoRemoveField  = "also-remove"
 )
 
 // maxPlanNames bounds the mods one plan request names, and the optional
@@ -631,10 +806,21 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		DropsConfirmed: v.Get(dropsField) == "1",
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
 		Query: strings.TrimSpace(v.Get("q")), Added: v.Get("added"), Removed: v.Get("removed"),
-		Searched: v.Get("add") == "1",
+		Searched: v.Get("add") == "1", Page: readPage(v.Get("page")),
+		AlsoDisable: v[alsoDisableField], AlsoRemove: v[alsoRemoveField], Fixed: v.Get("fixed"),
+	}
+	// The de-duplication below is quadratic, so the raw lists are bounded first.
+	if len(v["declined"])+len(v["offered"]) > maxPlanNames {
+		return planForm{}, false
+	}
+	for _, n := range append(slices.Clone(v["declined"]), v["offered"]...) {
+		if !slices.Contains(f.Optional, n) && !slices.Contains(f.Declined, n) {
+			f.Declined = append(f.Declined, n)
+		}
 	}
 	// Each name can cost a portal request, so a crafted list is bounded.
-	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames {
+	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames || len(f.Declined) > maxPlanNames ||
+		len(f.AlsoDisable)+len(f.AlsoRemove) > maxPlanNames {
 		return planForm{}, false
 	}
 	for k, vals := range v {
@@ -660,6 +846,15 @@ func (f planForm) query() url.Values {
 	if len(f.Optional) > 0 {
 		q["optional"] = f.Optional
 	}
+	if len(f.Declined) > 0 {
+		q["declined"] = f.Declined
+	}
+	if len(f.AlsoDisable) > 0 {
+		q[alsoDisableField] = f.AlsoDisable
+	}
+	if len(f.AlsoRemove) > 0 {
+		q[alsoRemoveField] = f.AlsoRemove
+	}
 	if f.Save != "" {
 		q.Set("save", f.Save)
 	}
@@ -668,6 +863,9 @@ func (f planForm) query() url.Values {
 	}
 	if f.Query != "" {
 		q.Set("q", f.Query)
+		if f.Page > 1 {
+			q.Set("page", strconv.Itoa(f.Page))
+		}
 	}
 	return q
 }
@@ -701,6 +899,10 @@ type ModPlanPage struct {
 	// Uploaded is the uploaded zip's mod, for an upload's heading.
 	Uploaded world.ModInfo
 	Running  bool
+	// RunSnapshot is when the snapshot of an open run of mod changes was
+	// taken, on a stopped world: the change keeps it and takes no new one
+	// (SPEC 9.4). Zero when the change takes a snapshot.
+	RunSnapshot time.Time
 	CountdownForm
 	NoAccount bool
 	// Changed says the plan is not the one the admin confirmed, so nothing
@@ -723,46 +925,19 @@ type ModPlanPage struct {
 	// Redraw says a script asked for the plan after a change on the page:
 	// the plan is announced and focus stays where it was (WCAG 4.1.3).
 	Redraw bool
-	// Hits are the "Add another mod" search's results; Installed names the
-	// world's mods. AddUnreachable says the portal could not be asked.
-	Hits           []modportal.Hit
+	// Results are the "Add another mod" search's page of results; Installed
+	// names the world's mods. AddUnreachable says the portal could not be
+	// asked.
+	Results        ModHits
 	Installed      map[string]bool
 	AddUnreachable bool
+	// Have are the world's mods now, for the conflicts' fixes.
+	Have []world.InstalledMod
 }
 
 // Adding says the plan installs mods the admin picks, so it lists them
 // with a way to take one out and offers to add another (SPEC 9.1, 9.2).
 func (p ModPlanPage) Adding() bool { return p.Form.Kind == mods.KindInstall && p.Form.Staged == "" }
-
-// AskedRow is one mod the admin asked for in an install plan.
-type AskedRow struct {
-	Name string
-	// Text words the mod's change; zero when the plan does not change it.
-	Text i18n.Msg
-	// Portal says the mod comes from the mod portal, so it has a page there.
-	Portal bool
-}
-
-// Asked lists the mods the admin asked for, in the order they were added.
-func (p ModPlanPage) Asked() []AskedRow {
-	out := make([]AskedRow, 0, len(p.Form.Names))
-	for _, name := range p.Form.Names {
-		row := AskedRow{Name: name}
-		if i := slices.IndexFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Name == name }); i >= 0 {
-			c := p.Plan.Changes[i]
-			row.Text, row.Portal = changeText(c), c.Release != nil
-		}
-		out = append(out, row)
-	}
-	return out
-}
-
-// Needed lists, by kind, the changes the asked-for mods bring with them.
-func (p ModPlanPage) Needed() []PlanGroup {
-	return groups(slices.DeleteFunc(slices.Clone(p.Plan.Changes), func(c mods.Change) bool {
-		return slices.Contains(p.Form.Names, c.Name)
-	}))
-}
 
 // InPlan reports whether the plan already installs or changes a mod.
 func (p ModPlanPage) InPlan(name string) bool {
@@ -773,6 +948,34 @@ func (p ModPlanPage) InPlan(name string) bool {
 
 // CanAdd says another mod fits in one plan request.
 func (p ModPlanPage) CanAdd() bool { return len(p.Form.Names) < maxPlanNames }
+
+// Picking is false: each result's Add redraws the plan at once, so a box to
+// tick would only cost a click more.
+func (ModPlanPage) Picking() bool { return false }
+
+// HitState is what an "Add another mod" result offers: "in_plan",
+// "installed", "add", or nothing when the plan is full.
+func (p ModPlanPage) HitState(name string) string {
+	switch {
+	case p.InPlan(name):
+		return "in_plan"
+	case p.Installed[name]:
+		return "installed"
+	case p.CanAdd():
+		return "add"
+	}
+	return ""
+}
+
+// PagePath is the plan with another page of the search's results; the
+// marker puts focus on them as a new search does.
+func (p ModPlanPage) PagePath(page int) string {
+	f := p.Form
+	f.Page = page
+	q := f.query()
+	q.Set("add", "1")
+	return planPath(p.World.ID, q) + "#add-heading"
+}
 
 // AddPath is the plan with name added; PlanWith is the same plan without
 // the note of what was added, for the address bar.
@@ -802,21 +1005,26 @@ func without(names []string, name string) []string {
 	return slices.DeleteFunc(slices.Clone(names), func(n string) bool { return n == name })
 }
 
-// Danger says the confirming button is the danger style: the plan stops
-// a running game, takes mods away, or drops what the save built. Adding or
-// updating mods of a stopped world is the primary action (DESIGN 7.1).
+// Danger says the plan destroys something, so its box and button are the
+// danger style: it removes a mod, drops what the save built, or goes on
+// without a save's mod. Anything else is the primary action, on a running
+// world too, whose restart the steps say in words (DESIGN 7.1, 8.11).
 func (p ModPlanPage) Danger() bool {
-	if p.Running || len(p.Drops) > 0 {
+	if len(p.Drops) > 0 || slices.ContainsFunc(p.Plan.Changes, func(c mods.Change) bool { return c.Action == mods.ActRemove }) {
 		return true
-	}
-	for _, c := range p.Plan.Changes {
-		if c.Action == mods.ActDisable || c.Action == mods.ActRemove {
-			return true
-		}
 	}
 	return slices.ContainsFunc(p.Plan.Unresolved, func(u mods.Unresolved) bool {
 		return u.Choice != nil && u.Choice.Kind == mods.ChoiceWithout
 	})
+}
+
+// dropsMissing is the error for an unticked drops box: it names the one
+// mod, or counts several.
+func dropsMissing(drops []string) i18n.Msg {
+	if len(drops) == 1 {
+		return i18n.M("mods.drops.confirm_missing_one", "mod", i18n.Ident(drops[0]))
+	}
+	return i18n.M("mods.drops.confirm_missing", "count", len(drops))
 }
 
 // dropsField is the box that confirms the Drops.
@@ -896,15 +1104,21 @@ func (p ModPlanPage) AsksRequired() bool {
 	return false
 }
 
-// Announce is the sentence a screen reader hears after a redraw.
+// Announce is the sentence a screen reader hears after a redraw. After a
+// conflict fix focus moves to the conflicts or the changes, which the
+// reader then reads out, so that sentence stays short.
 func (p ModPlanPage) Announce() i18n.Msg {
 	switch {
 	case !p.Error.IsZero():
 		return p.Error
+	case p.Form.Fixed != "" && len(p.Plan.Conflicts) > 0:
+		return i18n.M("mods.plan.fixed_conflicts", "count", len(p.Plan.Conflicts))
 	case len(p.Plan.Conflicts) > 0:
 		return i18n.M("mods.plan.redrawn_conflicts", "count", len(p.Plan.Conflicts))
 	case p.Nothing():
 		return i18n.M("mods.plan.nothing")
+	case p.Form.Fixed != "":
+		return i18n.M("mods.plan.fixed", "count", p.Count())
 	case p.Form.Added != "":
 		return i18n.M("mods.plan.added", "mod", p.Form.Added, "count", p.Count())
 	case p.Form.Removed != "":
@@ -941,6 +1155,9 @@ func (p ModPlanPage) Heading() i18n.Msg {
 	var one any = ""
 	if len(p.Form.Names) == 1 {
 		one = i18n.Ident(p.Form.Names[0])
+	}
+	if p.extraKinds() {
+		return i18n.M("mods.plan.heading.change", "world", w)
 	}
 	switch p.Form.Kind {
 	case mods.KindInstall:
@@ -994,6 +1211,9 @@ func (p ModPlanPage) Downloads() int {
 // Button is the confirming button's words, repeating the verb (DESIGN 7.4).
 func (p ModPlanPage) Button() i18n.Msg {
 	n := p.Count()
+	if p.extraKinds() {
+		return i18n.M("mods.plan.button.change", "count", n)
+	}
 	switch p.Form.Kind {
 	case mods.KindUpdate:
 		return i18n.M("mods.plan.button.update", "count", n)
@@ -1033,44 +1253,6 @@ func (p ModPlanPage) CanApply() bool {
 	return true
 }
 
-// PlanGroup is one kind of change in the plan's list.
-type PlanGroup struct {
-	Title i18n.Msg
-	Items []i18n.Msg
-}
-
-var groupTitles = []struct {
-	act   mods.Action
-	title i18n.Msg
-}{
-	{mods.ActInstall, i18n.M("mods.plan.group.install")},
-	{mods.ActUpgrade, i18n.M("mods.plan.group.upgrade")},
-	{mods.ActDowngrade, i18n.M("mods.plan.group.downgrade")},
-	{mods.ActEnable, i18n.M("mods.plan.group.enable")},
-	{mods.ActDisable, i18n.M("mods.plan.group.disable")},
-	{mods.ActRemove, i18n.M("mods.plan.group.remove")},
-	{mods.ActKeep, i18n.M("mods.plan.group.keep")},
-}
-
-// Groups lists the changes by kind, in the order they matter.
-func (p ModPlanPage) Groups() []PlanGroup { return groups(p.Plan.Changes) }
-
-func groups(changes []mods.Change) []PlanGroup {
-	var out []PlanGroup
-	for _, g := range groupTitles {
-		var items []i18n.Msg
-		for _, c := range changes {
-			if c.Action == g.act {
-				items = append(items, changeText(c))
-			}
-		}
-		if len(items) > 0 {
-			out = append(out, PlanGroup{Title: g.title, Items: items})
-		}
-	}
-	return out
-}
-
 // changeText words one change and why it is in the plan.
 func changeText(c mods.Change) i18n.Msg {
 	var what i18n.Msg
@@ -1090,6 +1272,8 @@ func changeText(c mods.Change) i18n.Msg {
 		why = i18n.M("mods.plan.why.required_by", "mod", i18n.Ident(c.Why.Of))
 	case mods.WhyOptionalOf:
 		why = i18n.M("mods.plan.why.optional_of", "mod", i18n.Ident(c.Why.Of))
+	case mods.WhyRecommendedBy:
+		why = i18n.M("mods.plan.why.recommended_by", "mod", i18n.Ident(c.Why.Of))
 	case mods.WhyFromSave:
 		why = i18n.M("mods.plan.why.from_save")
 	case mods.WhyNotInSave:
@@ -1102,15 +1286,6 @@ func changeText(c mods.Change) i18n.Msg {
 		what = join(what, i18n.M("mods.plan.warn.older"))
 	}
 	return what
-}
-
-// ConflictTexts word the plan's conflicts (SPEC 9.2).
-func (p ModPlanPage) ConflictTexts() []i18n.Msg {
-	out := make([]i18n.Msg, len(p.Plan.Conflicts))
-	for i, c := range p.Plan.Conflicts {
-		out[i] = conflictText(c)
-	}
-	return out
 }
 
 func conflictText(c mods.Conflict) i18n.Msg {
@@ -1168,8 +1343,11 @@ func (p ModPlanPage) UploadedFor(name string) bool {
 	return p.Form.Staged != "" && p.Uploaded.Name == name
 }
 
-// Ticked reports whether the admin ticked an optional mod.
-func (p ModPlanPage) Ticked(name string) bool { return slices.Contains(p.Form.Optional, name) }
+// HasRecommended reports whether any offered mod is recommended, for the
+// hint that says those start ticked.
+func (p ModPlanPage) HasRecommended() bool {
+	return slices.ContainsFunc(p.Plan.Optional, func(o mods.Offer) bool { return o.Recommended })
+}
 
 func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
@@ -1235,6 +1413,11 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 	p := ModPlanPage{World: sum, Form: f, CountdownForm: form, ConfirmErrors: map[string]i18n.Msg{}}
 	st := s.game.Status(sum.ID)
 	p.Running = game.IsRunning(st.State)
+	if !p.Running {
+		if run, ok := s.worlds.ModRunSnapshot(sum.ID); ok {
+			p.RunSnapshot = run.TakenAt
+		}
+	}
 	p.Busy = busyText(st.Operation, s.worldName)
 	p.NoAccount = !s.downloadsOn(ctx)
 	if sum.Newer || sum.Unreadable {
@@ -1249,7 +1432,10 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 		p.Error, p.Retry = s.planError(sum.ID, err), planPath(sum.ID, f.query())
 		return p
 	}
-	p.Drops = s.planDrops(ctx, sum.ID, p.Plan)
+	p.Drops = s.planDrops(ctx, sum.ID, p.Plan, p.Running)
+	if p.Have, err = s.worlds.Mods(sum.ID); err != nil {
+		s.log.Warn("list the mods for the plan's fixes", "world", sum.ID, "error", err)
+	}
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
 	return p
 }
@@ -1263,10 +1449,8 @@ func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
 		return
 	}
 	p.Installed = map[string]bool{}
-	if list, err := s.worlds.Mods(p.World.ID); err == nil {
-		for _, m := range list {
-			p.Installed[m.Name] = true
-		}
+	for _, m := range p.Have {
+		p.Installed[m.Name] = true
 	}
 	hits, err := s.portal.Search(ctx, mods.GameLine(p.World.GameVersion), p.Form.Query)
 	if err != nil {
@@ -1274,14 +1458,14 @@ func (s *server) addSearch(ctx context.Context, p *ModPlanPage) {
 		p.AddUnreachable = true
 		return
 	}
-	p.Hits = hits
+	p.Results = pageOfHits(hits, p.Form.Page)
 }
 
 // planDrops lists the plan's dropped mods, leaving out unresolved mods,
 // which have their own box. A save that cannot be read drops nothing here;
 // the pre-start check reports it.
-func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan) []string {
-	drops, err := s.planner.SaveDrops(ctx, id, plan)
+func (s *server) planDrops(ctx context.Context, id string, plan mods.Plan, running bool) []string {
+	drops, err := s.planner.SaveDrops(ctx, id, plan, running)
 	if err != nil {
 		s.log.Warn("read the mods of the save that loads", "world", id, "error", err)
 		return nil
@@ -1298,6 +1482,13 @@ var errStagedGone = errors.New("the uploaded mod zip is gone")
 // planRequest builds the resolver's request from the form, reading a
 // sync's save and an uploaded zip's info.json again.
 func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
+	req, err := s.kindRequest(id, p)
+	req.AlsoDisable, req.AlsoRemove = p.Form.AlsoDisable, p.Form.AlsoRemove
+	return req, err
+}
+
+// kindRequest is the request for the form's kind of change.
+func (s *server) kindRequest(id string, p *ModPlanPage) (mods.Request, error) {
 	f := &p.Form
 	var up *world.ModInfo
 	if f.Staged != "" {
@@ -1313,7 +1504,7 @@ func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
 		if up == nil {
 			return mods.Request{}, errStagedGone
 		}
-		return mods.Request{Kind: mods.KindUpload, Upload: up, Optional: f.Optional}, nil
+		return mods.Request{Kind: mods.KindUpload, Upload: up, Optional: f.Optional, Declined: f.Declined}, nil
 	case mods.KindSync:
 		if f.Save == "" {
 			save, err := s.loadingSave(id)
@@ -1342,7 +1533,7 @@ func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
 		req.Optional = f.Optional
 		return req, err
 	}
-	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional}, nil
+	return mods.Request{Kind: f.Kind, Names: f.Names, Optional: f.Optional, Declined: f.Declined}, nil
 }
 
 // planError words why no plan could be made.
@@ -1408,7 +1599,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 		}
 	}
 	if len(p.Drops) > 0 && !f.DropsConfirmed {
-		p.DropsError = i18n.M("mods.drops.confirm_missing")
+		p.DropsError = dropsMissing(p.Drops)
 	}
 	if len(p.Problems()) > 0 {
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
@@ -1449,7 +1640,12 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request, u store.User
 	if staged == "" {
 		unused = f.Staged
 	}
-	s.applyMods(w, r, u, sum, op, stop, unused)
+	// Trying again opens this plan anew, unless it used the uploaded zip.
+	shown := modResult{Changes: p.Plan.Changes}
+	if !p.UsesUpload() {
+		shown.Retry = planPath(sum.ID, f.query())
+	}
+	s.applyMods(w, r, u, sum, op, stop, unused, shown)
 }
 
 // UsesUpload reports whether a change in the plan comes from the staged zip.
@@ -1478,22 +1674,22 @@ const maxSummary = 500
 // applyMods runs one mod change in the background (SPEC 9.13). The
 // Server page follows the active world's; the Mods tab any other world's.
 // The result names the "Before mod change" snapshot, for undo.
-func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string) {
+func (s *server) applyMods(w http.ResponseWriter, r *http.Request, u store.User, sum world.Summary, op game.ModOp, stop game.StopOptions, unused string, shown modResult) {
 	id, by := sum.ID, actor(u)
 	to := PathServer
 	if !sum.Active {
 		to = modsPath(id) + ownResultQuery
 	}
-	before := s.newestModSnapshot(id)
+	newest := s.newestModSnapshot(id)
+	run, inRun := s.worlds.ModRunSnapshot(id)
 	s.beginTo(w, r, to, []string{id}, true, func(ctx context.Context) actionResult {
 		err := s.game.ApplyMods(ctx, id, by, op, stop)
 		if unused != "" {
 			_ = s.worlds.RemoveStaged(unused)
 		}
 		res := s.finish(id, game.AuditMods, err)
-		if after := s.newestModSnapshot(id); after != before {
-			res.Undo = after
-		}
+		res.Mods = shown
+		res.Undo, res.Mods.Since = s.modUndoSnapshot(id, err, newest, run, inRun)
 		return res
 	})
 }

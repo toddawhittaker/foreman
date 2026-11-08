@@ -24,18 +24,25 @@ test.describe("turning off a mod the loading save uses", () => {
     await page.getByRole("table", { name: /Mods of Base/ }).getByRole("row", { name: /foreman-test/ }).getByRole("link", { name: "Disable" }).click();
 
     await expect(page.getByRole("heading", { level: 1, name: "Disable foreman-test in Base?" })).toBeVisible();
-    const warning = page.locator(".message--warning").filter({ hasText: "The save that loads uses 1 mod this change turns off: foreman-test." });
-    await expect(warning).toContainText("the game deletes everything it added to the world");
-    const box = page.locator("#confirm-drops");
+    // Issue 376: the warning comes first in the plan and says it once; the box is the go-ahead.
+    const warning = page.locator("#plan-drops");
+    await expect(warning).toContainText("The save that loads uses foreman-test, which this change disables. Without it, the game deletes everything foreman-test built in the world.");
+    const box = page.getByRole("checkbox", { name: 'Delete what foreman-test built. The snapshot "Before mod change" keeps a copy.' });
+    await expect(box).toHaveId("confirm-drops");
     await expect(box).not.toBeChecked();
+    const top = async (sel: string) => (await page.locator(sel).boundingBox())!.y;
+    expect(await top("#plan-drops")).toBeLessThan(await top("#plan-changes"));
     await expect(page.locator("#countdown")).toBeVisible();
+    // It drops what the save built, so it is the red plan.
+    await expect(page.getByRole("button", { name: "Disable 1 mod" })).toHaveClass(/button--danger/);
     await checkPage(page);
+    await page.screenshot({ path: `../screenshots/i-plan-drop-${test.info().project.name}.png`, fullPage: true });
 
     // Without the box: a field error, the focus on the summary whose link goes to the box, and nothing applied.
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
     const summary = page.locator("#error-summary");
     await expect(summary).toBeFocused();
-    await expect(summary).toContainText("Tick the box to confirm that the game will delete what these mods added");
+    await expect(summary).toContainText("Tick the box to confirm that the game deletes what foreman-test built, or cancel.");
     await expect(box).toHaveAttribute("aria-invalid", "true");
     await expect(page.locator("#confirm-drops-error")).toContainText("Tick the box");
     await checkPage(page);
@@ -47,7 +54,7 @@ test.describe("turning off a mod the loading save uses", () => {
     // With it: the game restarts without the mod and ends running.
     await box.check();
     await page.getByRole("button", { name: "Disable 1 mod" }).click();
-    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(stateBadge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(modEnabled(foreman.dataDir, "foreman-test")).toBe(false);
@@ -61,6 +68,18 @@ test.describe("turning off a mod the loading save uses", () => {
     await expect(page.locator("#confirm-drops")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Disable 1 mod" })).toBeVisible();
   });
+
+  // SPEC 9.4: a running game saves every enabled mod when it stops, so a mod installed since the save on disk counts too.
+  test("on a running world, a mod the save on disk lacks still asks first", async ({ page, foreman, fakeGame }) => {
+    await setUpModsWorld(page, foreman, fakeGame!, { ...withMod, mods: { ...withMod.mods, "fp-extra": "2.1" }, start: true });
+    await page.goto("/worlds/base/mods/plan?kind=disable&name=fp-extra");
+    await expect(page.locator("#plan-drops")).toContainText("The save that loads uses fp-extra, which this change disables.");
+    await page.locator("#confirm-drops").check();
+    await page.getByRole("button", { name: "Disable 1 mod" }).click();
+    await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
+    await expect(stateBadge(page)).toHaveText("Running", live);
+    expect(modEnabled(foreman.dataDir, "fp-extra")).toBe(false);
+  });
 });
 
 test("a start the check refuses leads to the plan that matches the mods to the save", async ({ page, foreman, fakeGame }) => {
@@ -68,7 +87,7 @@ test("a start the check refuses leads to the plan that matches the mods to the s
   await page.getByRole("button", { name: "Start server" }).click();
   const link = page.getByRole("link", { name: "Match the mods to the save" });
   await expect(link).toBeVisible(live);
-  await expect(page.getByRole("button", { name: "Start anyway" })).toBeVisible();
+  await expect(page.locator("summary", { hasText: "Or start anyway" })).toBeVisible();
   await checkPage(page);
 
   await link.click();

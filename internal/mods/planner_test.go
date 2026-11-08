@@ -324,7 +324,7 @@ func (f *fixture) saveUses(names ...string) {
 
 func (f *fixture) drops(p Plan) []string {
 	f.t.Helper()
-	got, err := f.planner.SaveDrops(context.Background(), f.id, p)
+	got, err := f.planner.SaveDrops(context.Background(), f.id, p, false)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -406,5 +406,23 @@ func TestSaveDropsWithoutASaveIsEmpty(t *testing.T) {
 	p := f.plan(Request{Kind: KindRemove, Names: []string{"visible-planets"}})
 	if got := f.drops(p); len(got) != 0 {
 		t.Errorf("drops %v, want none", got)
+	}
+}
+
+// A running game saves every enabled mod when it stops to apply the plan,
+// so one the save on disk lacks is still dropped (SPEC 9.4).
+func TestSaveDropsOfARunningWorldCountEnabledMods(t *testing.T) {
+	f := newFixture(t, "visible-planets_1.5.5", "chest-auto-sort_1.3.0")
+	f.saveUses("chest-auto-sort")
+	p := f.plan(Request{Kind: KindDisable, Names: []string{"visible-planets"}})
+	if got := f.drops(p); len(got) != 0 {
+		t.Errorf("stopped world drops %v, want none", got)
+	}
+	got, err := f.planner.SaveDrops(context.Background(), f.id, p, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(got, []string{"visible-planets"}) {
+		t.Errorf("running world drops %v, want visible-planets", got)
 	}
 }

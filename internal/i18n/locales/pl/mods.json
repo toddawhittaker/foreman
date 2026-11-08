@@ -17,15 +17,26 @@
   "mods.search.title_empty": "Znajdź modyfikację dla świata {world}",
   "mods.search.results_heading": "Modyfikacje pasujące do „{query}”",
   "mods.search.unreachable": "Foreman nie mógł połączyć się z portalem modyfikacji, więc nie wyszukał. Należy spróbować ponownie za chwilę.",
-  "mods.search.count": {
-    "one": "{count} modyfikacja dla Factorio {line}",
-    "few": "{count} modyfikacje dla Factorio {line}",
-    "many": "{count} modyfikacji dla Factorio {line}"
-  },
   "mods.search.none": "Żadna modyfikacja dla Factorio {line} nie pasuje. Należy spróbować krótszej części nazwy.",
   "mods.search.add": "Dodaj do planu",
+  "mods.hits.count": {
+    "one": "{count} modyfikacja dla Factorio {line} pasuje.",
+    "few": "{count} modyfikacje dla Factorio {line} pasują.",
+    "many": "{count} modyfikacji dla Factorio {line} pasuje."
+  },
+  "mods.hits.showing": "Wyświetlono od {first} do {last}.",
+  "mods.hits.summary": "Szczegóły",
+  "mods.hits.latest_label": "Najnowsza wersja:",
+  "mods.hits.downloads_label": "Pobrania:",
+  "mods.hits.pages": "Strony wyników",
+  "mods.hits.page": "Strona {page} z {pages}",
+  "mods.hits.prev": "Poprzednia strona",
+  "mods.hits.next": "Następna strona",
+  "mods.search.pick_hint": "Można zaznaczyć kilka modyfikacji, aby dodać je do jednego planu, albo użyć przycisku „Dodaj do planu” przy modyfikacji.",
+  "mods.search.add_ticked": "Dodaj zaznaczone modyfikacje do planu",
+  "mods.search.pick_none": "Nic nie jest zaznaczone. Należy zaznaczyć modyfikacje do dodania albo użyć przycisku „Dodaj do planu” przy modyfikacji.",
+  "mods.search.picked_elsewhere": "Zaznaczone także na innych stronach: {mods}.",
   "mods.fact.latest": "Najnowsza wersja",
-  "mods.fact.game_version": "Wersja gry",
   "mods.fact.downloads": "Pobrania",
   "mods.badge.installed": "Zainstalowana",
   "mods.badge.in_plan": "W planie",
@@ -44,18 +55,36 @@
     "many": "Włączonych jest {count}."
   },
   "mods.installed.none": "Ten świat ma tylko modyfikacje wbudowane w grę. Aby zainstalować modyfikację, należy ją znaleźć powyżej.",
+  "mods.installed.portal": "w portalu modyfikacji, otwiera się w nowej karcie",
   "mods.col.mod": "Modyfikacja",
-  "mods.col.state": "Stan",
   "mods.col.actions": "Akcje",
-  "mods.state.on": "Włączona",
   "mods.state.off": "Wyłączona",
   "mods.row.update": "Zaktualizuj do {version}",
   "mods.row.enable": "Włącz",
   "mods.row.disable": "Wyłącz",
   "mods.row.remove": "Usuń",
+  "mods.row.gone": "Gracze nie mogą dołączyć: portal modyfikacji nie ma już wersji {version}, więc ich gra nie może jej pobrać.",
+  "mods.row.gone_none": "Gracze nie mogą dołączyć: portal modyfikacji nie ma już wersji {version} ani żadnej dla tej wersji gry. Należy usunąć lub wyłączyć modyfikację.",
+  "mods.row.deprecated": "Oznaczona w portalu modyfikacji jako przestarzała, więc gracze nie znajdą jej w przeglądarce modyfikacji w grze.",
+  "mods.row.not_on_portal": "Nie ma jej w portalu modyfikacji, więc gry graczy nie mogą jej pobrać. Gracze muszą dostać plik w inny sposób.",
   "mods.status.loading": "Sprawdzanie aktualizacji w portalu modyfikacji…",
   "mods.status.unreachable": "Foreman nie mógł połączyć się z portalem modyfikacji, więc nie sprawdził aktualizacji ani modyfikacji, których gracze nie mogą pobrać.",
   "mods.status.retry": "Sprawdź ponownie",
+  "mods.status.errors": {
+    "one": "{count} modyfikacja uniemożliwia graczom dołączenie. Jej wiersz mówi, jak to naprawić.",
+    "few": "{count} modyfikacje uniemożliwiają graczom dołączenie. Ich wiersze mówią, jak to naprawić.",
+    "many": "{count} modyfikacji uniemożliwia graczom dołączenie. Ich wiersze mówią, jak to naprawić."
+  },
+  "mods.status.warnings": {
+    "one": "{count} modyfikacja jest oznaczona w portalu modyfikacji jako przestarzała.",
+    "few": "{count} modyfikacje są oznaczone w portalu modyfikacji jako przestarzałe.",
+    "many": "{count} modyfikacji jest oznaczonych w portalu modyfikacji jako przestarzałe."
+  },
+  "mods.status.notes": {
+    "one": "{count} modyfikacja jest niedostępna w portalu modyfikacji.",
+    "few": "{count} modyfikacje są niedostępne w portalu modyfikacji.",
+    "many": "{count} modyfikacji jest niedostępnych w portalu modyfikacji."
+  },
   "mods.status.updates": {
     "one": "{count} modyfikacja ma aktualizację dla tej wersji gry.",
     "few": "{count} modyfikacje mają aktualizację dla tej wersji gry.",
@@ -67,11 +96,6 @@
     "few": "Wszystkie {count} modyfikacje z portalu modyfikacji są aktualne.",
     "many": "Wszystkich {count} modyfikacji z portalu modyfikacji jest aktualnych."
   },
-  "mods.flag.gone": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji, więc ich gra nie może jej pobrać. Na portalu jest wersja {update}.",
-  "mods.flag.gone_none": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji ani żadnej dla tej wersji gry.",
-  "mods.flag.deprecated": "Modyfikacja {mod} jest oznaczona w portalu modyfikacji jako przestarzała, więc gracze nie znajdą jej w przeglądarce modyfikacji w grze.",
-  "mods.flag.not_on_portal": "Modyfikacji {mod} {version} nie ma w portalu modyfikacji, więc gry graczy nie mogą jej pobrać przy dołączaniu. Gracze muszą dostać plik w inny sposób.",
-  "mods.flag.fix_update": "Zaktualizuj {mod} do {version}",
   "mods.flag.fix_remove": "Usuń {mod}",
   "mods.notice": {
     "one": "Gracze nie mogą już pobrać {count} modyfikacji świata {world}, więc nie mogą dołączyć.",
@@ -87,12 +111,37 @@
   },
   "mods.sync.heading": "Dopasuj modyfikacje do zapisu",
   "mods.sync.text": "Ustawia modyfikacje świata na te, z którymi utworzono zapis {save}: instaluje brakujące, zmienia wersje i wyłącza pozostałe. Najpierw widać plan.",
+  "mods.sync.match": "Modyfikacje pasują do zapisu {save}.",
+  "mods.sync.differ": "Modyfikacje różnią się od zapisu {save}:",
+  "mods.sync.missing": {
+    "one": "{count} modyfikacja używana w zapisie nie jest zainstalowana",
+    "few": "{count} modyfikacje używane w zapisie nie są zainstalowane",
+    "many": "{count} modyfikacji używanych w zapisie nie jest zainstalowanych"
+  },
+  "mods.sync.off": {
+    "one": "{count} modyfikacja używana w zapisie jest tu wyłączona",
+    "few": "{count} modyfikacje używane w zapisie są tu wyłączone",
+    "many": "{count} modyfikacji używanych w zapisie jest tu wyłączonych"
+  },
+  "mods.sync.version": {
+    "one": "{count} modyfikacja używana w zapisie jest zainstalowana w innej wersji",
+    "few": "{count} modyfikacje używane w zapisie są zainstalowane w innej wersji",
+    "many": "{count} modyfikacji używanych w zapisie jest zainstalowanych w innej wersji"
+  },
+  "mods.sync.extra": {
+    "one": "{count} włączona modyfikacja nie występuje w zapisie",
+    "few": "{count} włączone modyfikacje nie występują w zapisie",
+    "many": "{count} włączonych modyfikacji nie występuje w zapisie"
+  },
+  "mods.sync.what": "Dopasowanie instaluje brakujące modyfikacje, zmienia wersje i wyłącza pozostałe. Najpierw widać plan.",
   "mods.sync.button": "Dopasuj modyfikacje do zapisu",
   "mods.sync.no_save": "Ten świat nie ma jeszcze zapisu, więc nie ma czego dopasowywać.",
   "mods.sync.upload_save": "Prześlij zapis",
   "mods.sync.offer": "Dopasuj modyfikacje do zapisu",
   "mods.sync.import": "Dopasuj modyfikacje tego świata do jego zapisu",
   "mods.upload.heading": "Prześlij modyfikację",
+  "mods.upload.text": "Instalacja modyfikacji z własnego pliku .zip.",
+  "mods.upload.summary": "Prześlij plik zip modyfikacji",
   "mods.upload.label": "Plik zip modyfikacji",
   "mods.upload.hint": "Plik .zip modyfikacji, co najwyżej {limit}. Foreman odczytuje jej nazwę i wersję z pliku info.json i pokazuje plan, zanim cokolwiek zmieni.",
   "mods.upload.button": "Prześlij modyfikację",
@@ -103,6 +152,7 @@
   "mods.settings.text": "Wartości ustawień modyfikacji znajdują się w pliku {file}. Można go pobrać, aby zachować kopię lub użyć go w innym świecie.",
   "mods.settings.download": "Pobierz mod-settings.dat",
   "mods.settings.none": "Ten świat nie ma jeszcze pliku {file}. Gra tworzy go przy pierwszym uruchomieniu z modyfikacjami.",
+  "mods.settings.summary": "Zastąp {file}",
   "mods.settings.where": "Klient Factorio przechowuje ten plik w swoim folderze modyfikacji: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Ustawienia startowe zaczną obowiązywać przy następnym uruchomieniu świata.",
   "mods.settings.apply_running": "Ustawienia startowe zaczną obowiązywać przy następnym uruchomieniu świata, więc Foreman go zrestartuje.",
@@ -138,34 +188,26 @@
     "many": "Ten plan pobiera {count} modyfikacji, a pobieranie jest wyłączone, ponieważ Foreman nie ma konta factorio.com."
   },
   "mods.plan.nothing": "Nic nie trzeba zmieniać: modyfikacje są już takie, jak żądano.",
-  "mods.plan.download": {
-    "one": "Pobierz {count} modyfikację z portalu modyfikacji i sprawdź ją względem sumy kontrolnej. Jeśli pobieranie się nie powiedzie, nic więcej się nie dzieje.",
-    "few": "Pobierz {count} modyfikacje z portalu modyfikacji i sprawdź każdą względem jej sumy kontrolnej. Jeśli pobieranie się nie powiedzie, nic więcej się nie dzieje.",
-    "many": "Pobierz {count} modyfikacji z portalu modyfikacji i sprawdź każdą względem jej sumy kontrolnej. Jeśli pobieranie się nie powiedzie, nic więcej się nie dzieje."
-  },
   "mods.plan.warn_stop": "Ostrzeż graczy, a potem zapisz grę i zatrzymaj serwer.",
   "mods.plan.snapshot": "Wykonaj migawkę świata {world} z etykietą „{label}”. Jeśli migawka się nie powiedzie, nic więcej się nie dzieje.",
-  "mods.plan.change": "Zmień modyfikacje:",
-  "mods.plan.asked.heading": "Wybrane modyfikacje:",
   "mods.plan.asked.remove": "Usuń z planu",
-  "mods.plan.needed.heading": "Czego potrzebują:",
-  "mods.plan.change_above": "Wprowadź zmiany modyfikacji wymienione powyżej.",
   "mods.plan.add.heading": "Dodaj kolejną modyfikację",
+  "mods.plan.add.back": "Wróć do planu",
   "mods.plan.start": "Ponownie uruchom serwer.",
-  "mods.plan.undo": "Aby cofnąć, należy przywrócić tę migawkę na stronie „Migawki”.",
+  "mods.plan.undo": "Po zakończeniu przy wyniku pojawi się cofnięcie jednym kliknięciem, które przywraca tę migawkę.",
   "mods.plan.group.install": "Instalacja",
   "mods.plan.group.upgrade": "Podniesienie wersji",
   "mods.plan.group.downgrade": "Obniżenie wersji",
   "mods.plan.group.enable": "Włączenie",
   "mods.plan.group.disable": "Wyłączenie",
   "mods.plan.group.remove": "Usunięcie",
-  "mods.plan.group.keep": "Bez zmian",
   "mods.plan.item.name": "{mod} {version}",
   "mods.plan.item.from_to": "{mod} z {from} na {to}",
   "mods.plan.item.uploaded": "{mod} {version}, z przesłanego pliku zip",
   "mods.plan.item.why": "{item} ({why})",
   "mods.plan.why.required_by": "potrzebuje jej {mod}",
   "mods.plan.why.optional_of": "oferowana przez {mod}",
+  "mods.plan.why.recommended_by": "polecana przez {mod}",
   "mods.plan.why.from_save": "zapis jej używa",
   "mods.plan.why.not_in_save": "zapis jej nie używa",
   "mods.plan.warn.older": "To wydanie jest starsze niż to, z którym utworzono zapis.",
@@ -203,6 +245,9 @@
   "mods.optional.legend": "Modyfikacje opcjonalne",
   "mods.optional.hint": "Modyfikacja z planu może z nich korzystać, ale ich nie wymaga. Zaznaczenie jednej dodaje ją razem ze wszystkim, czego wymaga.",
   "mods.optional.item": "{mod}, oferowana przez {of}",
+  "mods.recommended.item": "{mod}, polecana przez {of}",
+  "mods.recommended.hint": "Polecane modyfikacje są już zaznaczone. Odznaczenie modyfikacji spowoduje jej pominięcie.",
+  "mods.recommended.unavailable": "{mod}, polecana przez {of}, zostaje pominięta: portal modyfikacji nie ma pasującej wersji.",
   "mods.unresolved.legend": "Portal modyfikacji nie ma {mod} {version}",
   "mods.unresolved.hint": "Zapis utworzono z tą wersją. Należy wybrać, co zrobić; do tego czasu planu nie można zastosować.",
   "mods.unresolved.nearest_hint": "„Najbliższe” oznacza wydanie najbliższe tej wersji dla Factorio {line}.",
@@ -215,18 +260,22 @@
   "mods.unresolved.upload_label": "Plik zip {mod} {version}",
   "mods.unresolved.upload_button": "Prześlij plik zip",
   "mods.drops.warning": {
-    "one": "Wczytywany zapis używa {count} modyfikacji, którą ta zmiana wyłącza: {mods}. Gdy gra uruchomi się bez niej, usunie wszystko, co zostało przez nią dodane do świata.",
-    "few": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Gdy gra uruchomi się bez nich, usunie wszystko, co zostało przez nie dodane do świata.",
-    "many": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Gdy gra uruchomi się bez nich, usunie wszystko, co zostało przez nie dodane do świata."
+    "one": "Wczytywany zapis używa {mods}, którą ta zmiana wyłącza. Bez niej gra usunie wszystko, co zostało przez nią zbudowane w świecie.",
+    "few": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Bez nich gra usunie wszystko, co zostało przez nie zbudowane w świecie.",
+    "many": "Wczytywany zapis używa {count} modyfikacji, które ta zmiana wyłącza: {mods}. Bez nich gra usunie wszystko, co zostało przez nie zbudowane w świecie."
   },
-  "mods.drops.confirm_missing": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co dodały te modyfikacje, albo anulować zmianę.",
+  "mods.drops.confirm_missing": {
+    "one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {count} modyfikację, albo anulować.",
+    "few": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {count} modyfikacje, albo anulować.",
+    "many": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {count} modyfikacji, albo anulować."
+  },
   "mods.conflict.incompatible": "{mod} nie może działać razem z {other}.",
   "mods.conflict.space_age_off": "{mod} wymaga {other} z Ery Kosmosu, a Era Kosmosu jest wyłączona dla tego świata.",
   "mods.conflict.space_age_save": "Zapis używa {mod} z Ery Kosmosu, a Era Kosmosu jest wyłączona dla tego świata. Najpierw należy włączyć Erę Kosmosu w ustawieniach świata.",
   "mods.conflict.no_release": "Żadne wydanie {mod} dla tej wersji gry nie spełnia wymagań planu: {needs}.",
   "mods.conflict.version": "{mod} {version} nie spełnia wymagań planu: {needs}.",
   "mods.conflict.not_on_portal": "{mod} nie ma w portalu modyfikacji. Zamiast tego należy przesłać jej plik zip.",
-  "mods.conflict.required_by": "{other} wymaga {mod}. Najpierw należy wyłączyć lub usunąć {other}.",
+  "mods.conflict.required_by": "{other} wymaga {mod}.",
   "mods.conflict.built_in": "{mod} jest wbudowana w grę. Zależy od ustawienia Ery Kosmosu w świecie i nie zmienia się jej ręcznie.",
   "mods.conflict.local": "{mod} jest zainstalowana jako folder, a Foreman nigdy nie zastępuje modyfikacji w folderze. Należy ją zmienić w folderze modyfikacji świata.",
   "mods.conflict.not_installed": "{mod} nie jest zainstalowana w tym świecie.",
@@ -272,7 +321,50 @@
     "many": "Plan zaktualizowany: ma {count} konfliktów, więc nie można go zastosować."
   },
   "mods.error.cross_site": "Ten plan otwarto z innej witryny, więc Foreman go nie ustalił. Nic nie zmieniono. Aby zobaczyć plan, należy wybrać „Spróbuj ponownie”.",
-  "mods.built_in.line_space_age": "Wbudowane, wersja {version}: {mods}. Zależą od ustawienia Ery Kosmosu.",
   "mods.built_in.line": "Wbudowane, wersja {version}: {mods}.",
-  "mods.built_in.change": "Zmień Erę Kosmosu"
+  "mods.built_in.line_on": "Wbudowane, wersja {version}: {mods}. Era Kosmosu jest włączona, więc wszystkie są włączone.",
+  "mods.built_in.line_off": "Wbudowane, wersja {version}: {mods}. Era Kosmosu jest wyłączona, więc {off} są wyłączone.",
+  "mods.built_in.change": "Zmień Erę Kosmosu",
+  "mods.built_in.turn_on": "Włącz Erę Kosmosu",
+  "mods.plan.button.change": {
+    "one": "Zmień {count} modyfikację",
+    "few": "Zmień {count} modyfikacje",
+    "many": "Zmień {count} modyfikacji"
+  },
+  "mods.plan.changes": "Zmiany:",
+  "mods.plan.kept": {
+    "one": "{count} inna modyfikacja pozostaje bez zmian",
+    "few": "{count} inne modyfikacje pozostają bez zmian",
+    "many": "{count} innych modyfikacji pozostaje bez zmian"
+  },
+  "mods.plan.step.download": {
+    "one": "Pobranie {count} modyfikacji z portalu modyfikacji i sprawdzenie jej sumy kontrolnej.",
+    "few": "Pobranie {count} modyfikacji z portalu modyfikacji i sprawdzenie ich sum kontrolnych.",
+    "many": "Pobranie {count} modyfikacji z portalu modyfikacji i sprawdzenie ich sum kontrolnych."
+  },
+  "mods.plan.step.stop": "Ostrzeżenie graczy, potem zapis i zatrzymanie świata {world}.",
+  "mods.plan.step.snapshot": "Wykonanie migawki z etykietą „{label}”.",
+  "mods.plan.step.snapshot_kept": "Zachowanie migawki z {time}, która już obejmuje tę zmianę.",
+  "mods.plan.step.change_start": "Zmiana modyfikacji, potem ponowne uruchomienie świata {world}.",
+  "mods.plan.step.change_stopped": "Zmiana modyfikacji. Świat {world} pozostaje zatrzymany, tak jak teraz.",
+  "mods.plan.step.fails": "Jeśli krok się nie powiedzie, kolejne kroki nie zostaną wykonane.",
+  "mods.plan.fix.remove": "Usuń {mod} w ramach tego planu",
+  "mods.plan.fix.disable": "Wyłącz też {mod}",
+  "mods.plan.back_search": "Wróć do wyszukiwania",
+  "mods.plan.fixed": {
+    "one": "Plan zaktualizowany. Zmienia {count} modyfikację.",
+    "few": "Plan zaktualizowany. Zmienia {count} modyfikacje.",
+    "many": "Plan zaktualizowany. Zmienia {count} modyfikacji."
+  },
+  "mods.plan.fixed_conflicts": {
+    "one": "Plan zaktualizowany. Pozostał {count} konflikt.",
+    "few": "Plan zaktualizowany. Pozostały {count} konflikty.",
+    "many": "Plan zaktualizowany. Pozostało {count} konfliktów."
+  },
+  "mods.drops.confirm": {
+    "one": "Usunięcie tego, co zostało zbudowane przez {mods}. Kopię zachowuje migawka „{label}”.",
+    "few": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
+    "many": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
+  },
+  "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować."
 }

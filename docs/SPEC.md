@@ -700,7 +700,10 @@ operation does not run. A switch snapshots both worlds, labelled "Before
 switch" with reason `switch` (7.9). A confirmed settings save snapshots
 the world first, labelled "Before settings change" with reason `settings`
 (11.3). A mod change snapshots it, labelled "Before mod change" with reason
-`mods` (9.2). (P0)
+`mods` (9.2). On a stopped world, a run of mod changes shares the snapshot
+taken before its first change; the run ends when the game launches or any
+other change touches the world's files, and whenever Foreman cannot be sure
+the run still holds it takes a new snapshot (9.4, ADR 0014). (P0)
 
 6.3. An admin can take a snapshot by hand at any time. (P0)
 
@@ -873,14 +876,30 @@ compares it with the world. It refuses to start, and says why, when:
   over;
 - an enabled mod in the world declares a Factorio major.minor different
   from the world's game version; this refusal has no start anyway, since
-  the game cannot load such a mod.
+  the game cannot load such a mod;
+- for a start, restart or switch, an enabled mod's installed version is
+  one the mod portal no longer offers (9.3), so players' games cannot
+  download it and they could not join. Foreman asks the portal once per
+  action, in the check before anything changes, with answers from the
+  15-minute cache (9.1) where it has them, and waits at most 5 seconds in
+  all. A portal that cannot be reached or does not answer in time never
+  blocks the start: the action goes ahead, and its result says in one line
+  that Foreman could not check the portal. Folder mods and mods the portal
+  does not have at all are not refused, since players need their files
+  from the admin whatever Foreman does. The refusal's first fix is
+  "Update *mod*" (or "Update N mods"), the same plan the Server page's
+  notice opens (9.3), and it says that going ahead deletes nothing from
+  the save.
 
 Each problem says what the game would delete. The admin can fix the world
-(for example with sync from save) or, for the first bullet and for an
-unreadable save only, **start anyway**. The refusal itself is the
+(for example with sync from save) or, for the first bullet, the mod portal
+bullet and an unreadable save only, **start anyway**. The refusal itself is the
 confirmation: it names exactly what the game will delete, the snapshot
 taken first and how to undo it, and its button starts at once, with no
-second page. A restart offers restart anyway the same way. The button
+second page. The box gives the problem, then the fix and the restore of the
+snapshot taken, and puts going ahead last, behind a closed choice ("Or start
+anyway"). It never sends the admin to the host's file system. A restart
+offers restart anyway the same way. The button
 carries what the box showed (the kinds of problem, the mods they name and
 whether the game runs); when the check before anything changes finds
 otherwise, Foreman refuses, shows the box again with what is true now, and
@@ -1118,13 +1137,16 @@ because the game's autosaves can then fail. (P1)
 
 ## 9. Mods (per world)
 
-9.1. **Search** the mod portal by name and see each mod's summary, latest
-version, supported game versions, and download count. Foreman reads the
+9.1. **Search** the mod portal by name and see each mod's latest version
+and download count, with its summary on demand. Foreman reads the
 portal's whole mod list for the world's game line once (15-minute cache)
 and searches it in memory: an exact name first, then names that start with
-the text, then names or titles that contain it, each group by downloads,
-the first 25 shown. It does this because the portal's own search needs
-credentials, and search must work without them (9.11, ADR 0012). Search
+the text, then names or titles that contain it, each group by downloads.
+It does this because the portal's own search needs credentials, and
+search must work without them (9.11, ADR 0012). Every match is kept; the
+results show ten at a time, in a table that says how many match in all
+and which ones it shows, with links to the other pages. On the search
+page several results can be ticked and added to one plan at once. Search
 results, the plan's asked-for rows and installed mods link to the mod's page
 at `https://mods.factorio.com/mod/<name>`, in a new tab; built-in and folder
 mods have no link. (P0)
@@ -1139,28 +1161,56 @@ keeps the installed version when that meets every constraint, and otherwise
 takes the newest release on the world's game line that does. Built-in mods
 count as present at the game version. An optional dependency's version
 limit holds even while its mod is off, so turning it on in the same plan is
-held to it. Dependencies of installed mods are read from their own
+held to it. A recommended dependency (the "+" prefix of Factorio 2.1) is
+an optional one that starts ticked; one the portal lacks or that would
+conflict is left out with a note and never blocks the plan. A sync adds
+none. Dependencies of installed mods are read from their own
 `info.json`, so turning mods off or on and removing them need no portal. A
 search result's "Add to plan" starts one plan, and "Add another mod" on the
 plan page adds more: several mods are one plan, one snapshot and one
-restart. (P0)
+restart. A conflict that turning off one installed mod would clear offers
+that as a control on the plan page (17.9): "Remove *mod* as part of this
+plan" when two mods cannot run together, "Disable *mod* too" when an
+enabled mod needs one the plan turns off. It draws the plan again with
+both changes, still one snapshot. A plan with a conflict does not list
+the steps of applying it. (P0)
 
 9.3. **Update.** Show which mods in a world have a newer version
 compatible with the world's game version, and apply any or all as one
 snapshotted operation. Nothing updates by itself: Foreman checks for
 updates when a Mods tab opens, after the page has loaded, and never on a
-timer. A mod that is turned off is not updated by "update all". (P0)
+timer. A mod that is turned off is not updated by "update all". The tab
+says what the portal answered in one summary line above the installed mods,
+with "Update all", and each mod's update and flags in that mod's own row,
+with the fix there. "Up to date" counts only the mods the portal has at
+their installed version. (P0)
+
+The Server page shows one line when an enabled mod's installed version is
+gone from the mod portal, so players cannot join, with its fix: one plan
+that updates the mod to the newest release on the world's line ("Update
+*mod*"), or its removal when no release is left. It loads after the page,
+says nothing when the portal cannot be asked, and loads again whenever an
+operation on the world ends, so the line goes once its fix is done,
+without a reload. A start, restart or switch of such a world is refused
+by the pre-start check (7.4). (P1)
 
 9.4. **Enable, disable and remove** a mod, each as a snapshotted change.
 Removing a mod that another enabled mod requires is refused with the
-reason. Built-in mods cannot be removed, and a mod installed as a folder is
+reason, and the plan offers to disable that mod too (9.2). Built-in mods cannot be removed, and a mod installed as a folder is
 shown as "local" and never replaced. Turning off or removing a mod that the
 save about to load uses needs a confirmation on the plan page, a ticked box
-that says the game will delete what that mod built. The restart after the
+that says the game will delete what that mod built. While the world's
+game runs, every enabled mod counts as used, since stopping it to apply
+the change saves the world with all of them. The restart after the
 change then passes exactly those mods in the pre-start check (7.4), and the
 world ends running. Without the confirmation the plan cannot be applied. A
 confirmation given on a stopped world is not remembered for the next Start.
-(P0)
+On a stopped world, only the first mod change since the game last launched
+takes a snapshot; later ones reuse it, so undo returns the world to before
+the first, and the page can say "Undo the mod changes since" that
+snapshot's time. A start refused by the pre-start check does not end the
+run, since the world's files did not change. A running world snapshots
+every change. (P0)
 
 9.5. **Upload** a local mod zip. Foreman reads its `info.json` to name and
 version it, and treats it as any other mod afterwards. (P1)
@@ -1172,13 +1222,18 @@ world, says Foreman restarts it. Editing its values in the UI. (P2)
 9.7. **Built-in mods** (`base` and the DLC mods for the world's game
 version, section 2) are never offered for download or removal. Their
 enabled state follows the world's Space Age flag: on enables `base` and
-every DLC mod, off enables only `base`. (P0)
+every DLC mod, off enables only `base`. The Mods tab names them in one line
+that says which are on, which are off and why, with a link to the setting.
+(P0)
 
 9.8. **Sync from save**: read a save's mod list and versions and make the
 world's mods match: install missing ones, change versions, and disable
 extras. Extras are disabled, never removed. The plan is shown before it
 applies (as in 9.2). Mods the portal no longer has are listed by name as
-unresolved, and the admin decides. (P0)
+unresolved, and the admin decides. The Mods tab reads the save that loads
+(9.9, no portal) and says whether the world's mods already match it,
+counting what differs; it offers the match only when they differ or the
+save cannot be read. (P0)
 
 9.9. **The save reader.** Foreman reads a save's game version and mod
 list itself, from the header of `level.dat0` inside the save zip, without
@@ -1208,14 +1263,19 @@ search still works. Giving only one of the two variables, or a key shorter
 than 32 characters, is a startup error (3.2). The account page is at
 `/settings/factorio-account`. It says "Set by environment" when the
 variables hold the account, and offers no form then. A stored account is
-replaced or removed there; neither the username nor the token is shown back,
+replaced or removed there. The page leads with whether mod downloads are on,
+says that every admin's downloads use this one account, and keeps the
+replace form folded while an account is stored; neither the username nor the token is shown back,
 and the token is not checked against factorio.com when saved. A stored
 account that cannot be opened (the key changed) is treated as not set and
 asked for again; it never stops Foreman. How it is sealed is in ADR 0013.
 (P0)
 
 9.12. Downloaded mods are checked against the SHA-1 checksum the portal
-publishes, and a mismatch is refused. (P0)
+publishes, and a mismatch is refused. A download that fails names the mod
+and version, says whether the world kept running, and offers "Try again"
+(the same plan, two clicks) or, for a refused login, the account page.
+(P0)
 
 9.13. **One operation per change.** Every mod change goes through one path:
 install, update, update all, sync from a save, the fix for a flagged mod,
@@ -1228,7 +1288,16 @@ the world untouched. The change is also checked against the mods folder
 after the downloads and before the stop, so a change the folder would
 refuse costs no downtime. A stopped world skips the stop and the start. A
 world that is not active is changed the same way and reports on its own
-Mods tab, with "Undo this mod change". The audit log records the operation
+Mods tab, with "Undo this mod change". After a later change of a run on a
+stopped world (9.4) the undo reads "Undo the mod changes since" the run's
+snapshot time, and the result says no new snapshot was taken. Undo opens the
+restore confirmation (6.5), which for a "Before mod change" snapshot is
+headed "Undo the mod changes in" the world and first lists, from both mods
+folders, the mods undo removes, puts back, returns to an earlier version or
+turns back on or off; when a folder cannot be read it is the usual restore
+page. A finished change says which mods were installed, updated, turned on
+or off, or removed. After any failed operation, the steps that never ran
+fold into one line (DESIGN 7.6). The audit log records the operation
 as `mods`. A change is refused before anything is touched when the game
 cannot be stopped (paused, not ready, or RCON unreachable) or the mods
 folder no longer matches the plan. (P0)
@@ -1814,10 +1883,12 @@ with the defaults accepted, these take at most:
 | Switch back after a switch | 2 |
 | Undo the last change (switch, update, restore, mod change) | 2 |
 | Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
-| Install a second mod in the same change (one more Add to plan) | 5 |
+| Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
+| Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
 | Recover after a failed start or a crash loop | 2 |
+| Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 

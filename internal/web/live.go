@@ -42,6 +42,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	if err != nil {
 		return
 	}
+	out.doneOp, _ = strconv.ParseUint(r.URL.Query().Get(doneOpParam), 10, 64)
 
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
@@ -126,7 +127,20 @@ type liveStream struct {
 	state   game.State // the last state sent
 	result  string     // the last results sent, as read out
 	moved   bool       // the page was told to follow a switch
+	// doneOp is the ID of the last ended operation the page has seen.
+	doneOp uint64
 }
+
+// modsRecheckEvent tells the Server page to load its mods notice again.
+const modsRecheckEvent = "mods"
+
+// doneOpParam on the stream's address names the ended operation the page
+// was drawn with, so the stream does not reload a notice already current.
+const doneOpParam = "op"
+
+// ModNoticeTrigger loads the mods notice with the page, and again each time
+// an operation on the world ends.
+func (ServerPage) ModNoticeTrigger() string { return "load, sse:" + modsRecheckEvent }
 
 // send writes each region of p that changed since the last send. A new
 // result, or else a new state, also goes to #announcer (DESIGN 7.5). A
@@ -147,9 +161,23 @@ func (l *liveStream) send(p ServerPage) error {
 	if !say.IsZero() && !p.StartBlocked().IsZero() {
 		say = join(say, blockedAnnouncement)
 	}
+	// An operation that has just ended may have fixed a mod players could
+	// not download, or brought one in, so the mods notice asks again
+	// (SPEC 9.3).
+	recheck := false
+	if o := p.Status.Operation; o != nil && o.Done && o.ID != l.doneOp {
+		recheck, l.doneOp = true, o.ID
+	}
 	l.started, l.state, l.result = true, p.Status.State, result
 
 	wrote := false
+	if recheck {
+		// An event with no data is never delivered, so it carries a word.
+		if err := l.event(modsRecheckEvent, "ended"); err != nil {
+			return err
+		}
+		wrote = true
+	}
 	for _, region := range liveRegions {
 		var b strings.Builder
 		if err := l.render.Fragment(&b, l.loc, p, "server-"+region); err != nil {

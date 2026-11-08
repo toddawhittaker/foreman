@@ -572,6 +572,15 @@ the block padding is `--space-2` so a two-line label is not cramped.
 - A button that leads to a confirmation step, such as the first "Delete
   world" on a world's page, is **secondary**, not danger. Red is kept for
   the moment the thing actually happens, so it still means something.
+- **Destructive means something is lost**: a world, a snapshot or a save
+  deleted, a restore over a world, a mod removed, what a mod built dropped
+  from the save, a forced stop. A change that only stops and starts the
+  game again, such as installing or updating a mod while it runs, is not:
+  its button is primary, and its steps say in words that the game restarts.
+- **In a dense table the destructive control is quiet red text.** Remove
+  in the Mods tab's rows is a quiet button in `danger-text`, the only red
+  control there (8.11). Its click opens the confirmation, so the filled
+  danger button is still kept for the confirming step (7.4).
 - Use `<a class="button">` only for navigation that looks like an action
   ("Upload a save" leading to the upload page). Anything that changes
   state is a `<button>` inside a `<form method="post">`.
@@ -788,8 +797,20 @@ Rules:
   with a field error ("Type Family base 2025 exactly, or cancel"). Other
   confirmations are one click, so typing does not become a habit.
 - **Undo is named.** When the action can be undone from a snapshot, the
-  confirmation says where: "To undo, restore that snapshot from the
-  Snapshots page."
+  confirmation says how. Where the result offers a one-click Undo (a
+  restore, a rollback, an update, a switch, a mod change), it says so, as
+  the mod plan does: "When it is done, a one-click Undo appears with the
+  result, which restores that snapshot." Where the result offers no such
+  button (a settings change, "start anyway"), it says where to restore:
+  "To undo, restore that snapshot from the Snapshots page."
+- **Undoing a mod change says what it undoes.** The Undo button of a mod
+  change opens the restore confirmation (SPEC 6.5), headed "Undo the mod
+  changes in <world>?". Its first list names the mods the undo removes,
+  puts back, returns to an earlier version, or turns back on or off, one
+  line each, ahead of the usual "This will" list. After the second and later
+  change of a run on a stopped world the button reads "Undo the mod changes
+  since <time>" and the Done text says no new snapshot was taken. When a
+  mods folder cannot be read, the page is the plain restore confirmation.
 - After the action, the result page shows a Done message (7.3) naming
   the snapshot that was taken, linked.
 
@@ -799,9 +820,13 @@ failed pre-start check (7.4, which must name exactly what the game will
 delete), switching worlds (7.9), and in later epics destructive player
 actions (8.2). Start and restart anyway have no page of their
 own: the Warning that reports the refusal on the Server page is the
-confirmation (SPEC 7.4). It lists what the game drops, then the steps,
-the snapshots and the undo as above, and its danger button posts the
-action at once. Restart uses the default 60-second countdown there. A
+confirmation (SPEC 7.4). It states the problem (one problem is a
+sentence after the lead; several are a list), then a row with the main fix
+first, such as "Match the mods to the save", and the restore of the
+snapshot the action took second. Going ahead anyway sits last, in a closed
+`details` ("Or start anyway"): opening it shows the steps, the snapshots
+and the undo as above, and its danger button posts the action at once. It
+never tells the admin to copy files on the host. Restart uses the default 60-second countdown there. A
 switch has its own confirmation page (SPEC 7.9, 17.8) that shows the new
 world's problems before anything runs, and offers "Switch, leave stopped"
 and, when every problem allows it, a danger button "Switch and start
@@ -938,6 +963,15 @@ with a choice); it spans both columns (`grid-column: 1 / -1`) at any
 width, up to the message's reading width. Text inside a message fills that one width,
 so a paragraph and a nested list item wrap alike. The words carry the state, so forced
 colours needs no rule.
+
+After an operation fails, the steps after the failed one never ran. When
+there are two or more, they fold into one line under the list, a native
+`<details class="disclosure">` whose summary says how many: "9 later
+steps were not run." Opening it shows them as a second `ol.steps`, each
+"Skipped". This keeps the error and its controls next to the page's
+buttons on a phone, instead of a screen of grey rows. While an operation
+runs nothing folds: the waiting steps are its progress. A refusal by the
+pre-start check already leaves out the steps that never ran.
 
 When an operation changes the active world (a switch), the
 old world's open page reloads onto the Server page after the operation
@@ -1646,12 +1680,14 @@ conflicts, notices, headings and button labels, so a name such as
 `.button` the name breaks only when it does not fit, and `.button .ident`
 is `display: contents`. Mod badges are `white-space: nowrap`.
 
-**Portal links.** Search results, the plan's asked-for rows and installed
-mods carry a quiet link, "Mod portal", to
-`https://mods.factorio.com/mod/<name>` with `target="_blank"` and
-`rel="noopener noreferrer"`. Its hidden text finishes the name: "for
-visible-planets, opens in a new tab". Built-in and folder mods have none;
-the portal status removes the link of any mod the portal does not have.
+**Portal links.** Search results and the plan's asked-for rows carry a
+quiet link, "Mod portal", to `https://mods.factorio.com/mod/<name>` with
+`target="_blank"` and `rel="noopener noreferrer"`. Its hidden text finishes
+the name: "for visible-planets, opens in a new tab". In the installed table
+the mod's name is that link (a 44 px target), with the hidden text "on the
+mod portal, opens in a new tab", so every row has the same shape. Built-in
+and folder mods have none; the portal status turns the name of any mod the
+portal does not have back into plain text.
 
 **The Mods tab.** One `h1`, the world's name with the Active badge, then
 sections in this order, each a `section.panel`:
@@ -1662,51 +1698,119 @@ sections in this order, each a `section.panel`:
 - "Find a mod": one `role="search"` form, a field and Search.
 - "Installed mods". A status block (`role="status"`, so a late answer is
   announced) loads after the page ("Checking the mod portal for updates…"),
-  then shows how many mods have an update with "Update all" (primary), each
-  flag of the availability check as a Warning or Error (7.3) with its fix
-  button, or "All N mods from the mod portal are up to date". If the portal
-  cannot be reached it says so with "Check again". Then one line for the
-  built-in mods ("Built in, version 2.0.77: base, elevated-rails, quality,
-  space-age. They follow Space Age." and a "Change Space Age" link to the
-  Settings tab; without Space Age, no last sentence), then a table (8.3)
-  of the other mods: mod, state (a word, "Enabled" or "Disabled"), and the
-  actions Update to X (appears when the status finds one), Enable or
-  Disable, and Remove. Each action's hidden text names its mod. A folder
-  mod shows a "Local folder" badge and no actions. Built-in mods are never in the table.
-  The table uses the reading width (`--measure`), the same as the notices.
-- "Match mods to the save": a sentence naming the save and a secondary
-  button to the sync plan; a world with no save says so and links to
-  upload one.
-- "Upload a mod": a file field with the size limit in its hint, and an
-  upload button that goes to the plan page.
-- "Mod settings": the help first, saying where the Factorio client keeps
-  `mod-settings.dat` (Windows, macOS and Linux paths in `code`) and, for a
-  running world, that Foreman restarts it; then the download link, then a
-  replace form with the 7.4 "This will" list beside the button.
+  then shows one summary line: how many mods stop players joining, are
+  deprecated, or are not on the portal, then how many have an update, with
+  "Update all" (primary) beside the words; or "All N mods from the mod
+  portal are up to date", counting only mods the portal has at their
+  installed version, and nothing about it when there are none. The line is
+  an Error box (7.3) only when a mod stops players joining. If the portal
+  cannot be reached it says so with "Check again". There is no "Check
+  again" otherwise: the portal's answers are kept 15 minutes, so it would
+  show the same answer.
+- One line for the built-in mods, which follow Space Age: "Built in,
+  version 2.0.77: base, elevated-rails, quality, space-age. Space Age is
+  on, so all of them are on. Change Space Age", or "Built in, version
+  2.0.77: base. Space Age is off, so elevated-rails, quality, space-age are
+  off. Turn on Space Age"; both links go to the Settings tab. A game
+  without Space Age has no last sentence and no link.
+- A table (8.3) of the other mods in two columns, Mod and Actions, at the
+  reading width (`--measure`). The first cell holds the name (the portal
+  link), the version, a "Disabled" badge only when the mod is off (on is
+  the usual state, so it has no word; the caption says how many are on),
+  and a "Local folder" badge for a folder mod. Under them, filled in by the
+  status, each flag of the availability check is a short line with its
+  leading word: "Error: Players cannot join: the mod portal no longer has
+  version 1.5.5 …", "Warning: Deprecated on the mod portal …", "Note: Not
+  on the mod portal …". The actions keep one order, lined up on the end so
+  Disable and Remove sit in the same place in every row: Update to X (when
+  the status finds one, or as the fix for a gone version), Enable or
+  Disable, and Remove. Remove is a quiet button in `danger-text`, the only
+  red control on the tab, since it is the one change that destroys
+  something; its confirmation is the plan page. Each action's hidden text
+  names its mod. A folder mod has no Remove. Built-in mods are never in the
+  table. When the panel is narrower than 36rem the row stacks, the actions
+  under the name, so a name never breaks letter by letter (17.12: the table
+  roles stay).
+- "Match mods to the save": the tab reads the save that loads (SPEC 9.9)
+  and says "The mods match the save base.zip." with no button, or "The mods
+  differ from the save base.zip:" with a list of counts (not installed,
+  disabled here, at another version, enabled and not in the save) and a
+  secondary button to the sync plan. A save Foreman cannot read keeps the
+  general sentence and the button; a world with no save says so and links
+  to upload one.
+- "Upload a mod": one line, then a closed `details.disclosure` "Upload a
+  mod zip" holding the file field (size limit in its hint) and the upload
+  button, which goes to the plan page. A refused file opens it.
+- "Mod settings", only when the world has a mod that is not built in, a
+  `mod-settings.dat`, or a refused upload: the text and the download link
+  stay in view; the replace form is in a closed `details.disclosure`
+  "Replace mod-settings.dat": the help saying where the Factorio client
+  keeps the file (Windows, macOS and Linux paths in `code`) and, for a
+  running world, that Foreman restarts it; then the field, the countdown
+  while the game runs, the 7.4 "This will" list and the button. Replacing
+  is undone by its snapshot, so the form is not a red box. A refused file
+  opens it.
 
 A change to a world that is not active reports on its own Mods tab: a
 steps list (7.6) while it runs, then a Done message with "Undo this mod
 change", which goes to the restore confirmation (7.4).
 
-**Search** (`/worlds/{id}/mods/search?q=`). The heading is the query. Each
-result is an `h3` with the mod's title, its summary, a `dl` of latest
-version, game version and downloads, the portal link, and one "Add to
-plan" button (secondary, hidden text names the mod). "Installed" and "In
-plan" are badges in its place. Search works without an account.
+**Search** (`/worlds/{id}/mods/search?q=`). The `h1` is the world, as on
+the Mods tab; "Find a mod" is an `h2` with the form, and "Mods matching
+"krastorio"" an `h2` over the results. The results are a table (8.3) of
+ten rows a page: Mod, Latest version, Downloads. Its caption says how many
+match in all and which ones show ("25 mods for Factorio 2.0 match. Showing
+1 to 10."), so a cut is never hidden. The first cell holds a box labelled
+with the title (weight 600) and the name in `code`, then "Add to plan"
+(secondary, hidden text names the mod), then a closed "Details" `details`
+with the summary and the portal link. The game version is not repeated: the
+search only finds mods for the world's line. "Installed" and "In plan" are
+badges in place of the box and the button. "Add ticked mods to plan" after
+the table starts one plan with every ticked mod; with none ticked the page
+says so (7.2). The page controls ("Previous page", "Page 2 of 3", "Next
+page") are buttons of the same form, so ticks on other pages are kept as
+hidden fields and named under the table; after a page change focus goes to
+the results heading. With a mouse (`pointer: fine`) the box's label and the
+Details toggle are 24 px tall, so a row is about 100 px. Search works
+without an account.
 
 **The plan page** (`/worlds/{id}/mods/plan`) is a 7.4 confirmation. The
 `h1` is a question naming the world and the mod: "Install visible-planets
-in Family base 2025?", "Install mods in Family base 2025?" for several. The
-plan lives in the address and the form (`name=` repeated, `q=` for the
-search the person came from), never on the server. In order:
+in Family base 2025?", "Install mods in Family base 2025?" for several,
+"Change the mods of Family base 2025?" once a conflict's fix adds a mod to
+turn off. The `h1` lays out as one run of text, so a mod's name has one
+space each side and wraps like a word. The plan lives in the address and
+the form (`name=` repeated, `q=` for the search the person came from,
+`also-disable=` and `also-remove=` for the fixes taken), never on the
+server. Every kind of change (install, update, enable, disable, remove,
+sync, upload) has the same shape, changes first. In order:
 
 - At most one of these at the top, each taking focus on a full page load
   and not on a redraw: a Warning "The plan changed since you saw it ...",
   an Error when the portal cannot be reached, an Error listing conflicts
-  with every code worded (a conflict has no apply button).
+  with every code worded (a conflict has no apply button). A conflict that
+  turning off one installed mod clears carries its fix as a secondary
+  button under it (SPEC 17.9): "Remove *mod* as part of this plan" for two
+  mods that cannot run together (the one not asked for; a folder mod is
+  disabled instead), "Disable *mod* too" for a mod another needs. The fix
+  redraws the plan with both changes and puts focus on the "Changes:"
+  label, or on the conflicts if one is left. An install plan's conflict box
+  also has "Back to search".
 - A Note when the plan downloads and Foreman has no account, with the link.
-- "Mods you asked for", each row with its portal link and, when there are
-  two or more, "Remove from plan"; then "What they need".
+- The required note and, when the change turns off or removes a mod the
+  loading save uses, a Warning that says it once ("The save that loads
+  uses foreman-test. Without it, the game deletes everything foreman-test
+  built in the world.") with its required box ("Delete what foreman-test
+  built. The snapshot "Before mod change" keeps a copy."). It is first so a
+  phone shows it without scrolling. Unticked, the field error and the error
+  summary (7.2) name the mod, or count several.
+- "Changes:", a label (the box holds no heading, 7.4), then the changes
+  grouped Install, Upgrade, Downgrade, Enable, Disable and Remove in a
+  `dl`, one mod a line with its reason in brackets ("visible-planets needs
+  it"). The mods an install asked for come first in their group, each line
+  with its portal link and, when there are two or more, "Remove from
+  plan". The mods the plan needs and leaves as they are fold into one
+  closed `details`, "2 other mods stay as they are".
 - "Optional mods" as checkboxes, "Mod, offered by Mod". Ticking one redraws
   the plan with htmx; a "Recalculate the plan" button does it without script.
 - For each unresolved mod a `fieldset` with its legend ("The mod portal
@@ -1714,32 +1818,39 @@ search the person came from), never on the server. In order:
   and the zip field with its own Upload zip button tied to an empty form so
   choosing a file never redraws. "Nearest" has its hint beside it only when
   offered. Continue without shows its own required box.
-- "This will:" the ordered steps: download (count, with the checksum
-  sentence), warn the players and stop (only while the game runs, with the
-  countdown field), the snapshot labelled "Before mod change", then the
-  changes grouped Install, Upgrade, Downgrade, Enable, Disable, Remove and
-  Leave alone, each item with its reason in brackets ("visible-planets
-  needs it"), start the server again, and the undo line.
-- A Warning and a required box when the change turns off or removes a mod
-  the loading save uses: the game deletes what it built. Unticked, the
-  field error and the error summary (7.2) say so.
-- The confirm button repeats the verb and the count ("Install 2 mods",
-  "Update 1 mod"). It is primary for install, update, enable and sync on a
-  stopped world, and danger (7.1) for any change on a running world, any
-  that disables or removes a mod or drops save content, and "continue
-  without". Cancel is a link.
+- "This will:" and an ordered list of short steps: "Download 3 mods from
+  the mod portal and check their checksums." (when it downloads), "Warn the
+  players, then save and stop Base." (only while the game runs), "Take a
+  snapshot labelled "Before mod change".", and "Change the mods, then start
+  Base again." or "Change the mods. Base stays stopped, as it is now." Then
+  one sentence for every failure, "If a step fails, the steps after it do
+  not happen.", and the undo: the one-click Undo the result offers, not a
+  trip to the Snapshots tab. A plan with a conflict leaves the steps out,
+  since it cannot be applied.
+- The countdown field while the game runs, then the confirm button, which
+  repeats the verb and the count ("Install 2 mods", "Update 1 mod"; "Change
+  2 mods" when a fix mixes kinds). Box and button are danger (7.1) only
+  when the plan destroys something: it removes a mod, drops what a mod
+  built from the save, or goes on "continue without". Anything else is
+  primary with a plain box (`confirm--plain`, a `line` border), on a
+  running world too: the steps say the restart. Cancel is a link.
 - "Add another mod": its own `role="search"` form, filled with the search
   the person came from and carrying `add=1`, which keeps focus on the
-  heading after a page load. Results say "Add to plan", "In plan" (the
+  heading after a page load. Results are the search page's table without
+  boxes, since each "Add to plan" here adds at once; its page controls are
+  links that carry `add=1`, and a "Back to the plan" link follows them. An
+  empty search says the Mods tab's sentence ("No mod for Factorio 2.0
+  matches. Try a shorter part of the name."). Results say "Add to plan", "In plan" (the
   badge takes the button's id) or "Installed". Adding or removing redraws
   the plan in place; `#announcer` says "Added visible-planets. The plan has
-  2 mods." and focus stays on the badge, or goes to the "Mods you asked
-  for" label after a removal. Without script every add and remove link is
+  2 mods." and focus stays on the badge, or goes to the "Changes:" label
+  after a removal. Without script every add and remove link is
   the plan's own URL.
 
-A redraw never moves focus, always answers 200 so htmx swaps it in, and
-says the new plan in one sentence through `#announcer`; a conflict is
-announced, not focused. Control ids follow the mod's name
+A redraw moves focus only when the control used is gone (a removal or a
+fix, above), always answers 200 so htmx swaps it in, and says the new plan
+in one sentence through `#announcer`; a conflict is announced, not focused,
+unless a fix's redraw leaves one. Control ids follow the mod's name
 (`mod-<name>-optional`, `-upload`, `-nearest`, `-without`, `-confirm`,
 `-zip`) so focus survives a redraw. A refused zip is in the error summary,
 which takes focus and links to the field, and its form carries every
@@ -1755,14 +1866,21 @@ visible-planets" when the portal has no release to update to). With
 several: "Review N mods". It links straight to the plan, so fixing it is
 two clicks (SPEC 17.10).
 
-**The account page** (`/settings/factorio-account`) is one page of
-`section.panel`s: "Set by environment" naming the two variables, with no
-form, or, with a secret key, the form (username, and a token as a password
-field with `autocomplete="off"`, its hint linking to the factorio.com
-profile page in a new tab), or, with a stored account, "Stored on
-`<date>` by `<user>`", a Replace form and a Remove button. Nothing it
-holds is ever put in a value attribute: after a refused form both fields
-are empty and the page asks for both again. With no secret key and no
+**The account page** (`/settings/factorio-account`) leads with the state, as
+one sentence: "Mod downloads are on. The account was stored on `<date>` by
+`<user>`." or "Mod downloads are off: no account is set." (an unreadable
+stored account leads with a Warning instead). An intro and a line that all
+admins share this one account follow. Then one of three things. "Set by
+environment" is a `section.panel` naming the two variables, with no form.
+With a secret key and no stored account, the form is open: a username, and
+a token as a password field with `autocomplete="off"` whose hint links to
+the factorio.com profile page in a new tab, and a primary "Save account".
+With a stored account the form is folded into a closed `details.disclosure`
+"Replace the account", and its button and Remove are secondary, since
+replacing is rare and the state sentence already answers the common
+question; a refused replace opens it again. Nothing the account holds is
+ever put in a value attribute or shown: after a refused form both fields are
+empty and the page asks for both again. With no secret key and no
 environment account the page is a note and a Go back link, with no
 disabled form. A `return` parameter, checked as in SPEC 14.17, sends the
 browser back to the page that asked after a save, and Cancel goes there

@@ -2,3 +2,83 @@
 {{define "portal-link" -}}
 <a href="{{portalPath .}}" class="portal-link" target="_blank" rel="noopener noreferrer">{{t "mods.portal.link"}}<span class="visually-hidden"> {{tHTML "mods.portal.for" "mod" (ident .)}}</span></a>
 {{- end}}
+
+{{/* One page of a mod search's results, a row per mod (DESIGN 8.3, SPEC 9.1). Takes the search page, whose rows have boxes to tick several mods, or the plan page, whose Add redraws the plan. */}}
+{{define "mod-hits" -}}
+{{- $p := .}}
+{{- with .Results}}
+<table class="mod-hits{{if $p.Picking}} mod-hits--pick{{end}}" role="table">
+  <caption>{{t "mods.hits.count" "count" .Total "line" $p.Line}}{{if gt .Pages 1}} {{t "mods.hits.showing" "first" .First "last" .Last}}{{end}}</caption>
+  <thead role="rowgroup">
+    <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.fact.latest"}}</th><th scope="col" class="num" role="columnheader">{{t "mods.fact.downloads"}}</th></tr>
+  </thead>
+  <tbody role="rowgroup">
+    {{- range .Rows}}
+    {{- $state := $p.HitState .Name}}
+    {{- $add := $p.ModID .Name "add"}}
+    <tr role="row">
+      <td role="cell">
+        {{- if and $p.Picking (eq $state "add")}}
+        <label class="check"><input type="checkbox" name="pick" value="{{.Name}}" id="{{$p.ModID .Name "pick"}}"{{if $p.Picked .Name}} checked{{end}}{{if not $p.PickError.IsZero}} aria-invalid="true" aria-describedby="pick-error"{{end}}> <span>{{template "mod-hit-name" .}}</span></label>
+        {{- else}}
+        <p class="mod-hits__name">{{template "mod-hit-name" .}}</p>
+        {{- end}}
+        {{- if $state}}
+        <div class="row-actions">
+          {{- if eq $state "in_plan"}}
+          {{- /* After an add, focus stays here: the badge takes the button's id (WCAG 4.1.3). */}}
+          <span class="badge" id="{{$add}}" tabindex="-1">{{t "mods.badge.in_plan"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></span>
+          {{- else if eq $state "installed"}}
+          <span class="badge">{{t "mods.badge.installed"}}</span>
+          {{- else if and (eq $state "add") $p.Picking}}
+          <a href="{{$p.AddPath .Name}}" class="button" id="{{$add}}">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+          {{- else if eq $state "add"}}
+          <a href="{{$p.PlanWith .Name}}" class="button" id="{{$add}}" hx-get="{{$p.AddPath .Name}}" hx-push-url="{{$p.PlanWith .Name}}" hx-select="#mod-plan" hx-target="#mod-plan" hx-swap="outerHTML">{{t "mods.search.add"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+          {{- end}}
+        </div>
+        {{- end}}
+        {{- /* The summary and the portal link are on demand, so a row stays three lines at 320 px. */}}
+        <details class="disclosure mod-hits__summary"><summary>{{t "mods.hits.summary"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></summary>
+          {{- with .Summary}}<p>{{.}}</p>{{end}}
+          <p>{{template "portal-link" .Name}}</p>
+        </details>
+      </td>
+      <td role="cell" data-label="{{t "mods.hits.latest_label"}}"><code class="nowrap" translate="no">{{.LatestVersion}}</code></td>
+      <td class="num" role="cell" data-label="{{t "mods.hits.downloads_label"}}">{{num .Downloads}}</td>
+    </tr>
+    {{- end}}
+  </tbody>
+</table>
+{{- end}}
+{{- end}}
+
+{{/* A result's title, then its name when the two differ. Takes a modportal.Hit. */}}
+{{define "mod-hit-name" -}}
+{{if and .Title (ne .Title .Name)}}<span class="mod-hits__title">{{.Title}}</span> <code translate="no">{{.Name}}</code>{{else}}<span class="mod-hits__title ident" translate="no">{{.Name}}</span>{{end}}
+{{- end}}
+
+{{/* The pages of a mod search's results. The search page's are buttons of its form, so ticked boxes come along; the plan page's are links. */}}
+{{define "mod-pager" -}}
+{{- $p := .}}
+{{- with .Results}}
+{{- if gt .Pages 1}}
+<nav class="pager" aria-label="{{t "mods.hits.pages"}}">
+  {{- if gt .Page 1}}
+  {{- if $p.Picking}}
+  <button type="submit" class="button button--quiet" name="page" value="{{.Prev}}">{{t "mods.hits.prev"}}</button>
+  {{- else}}
+  <a href="{{$p.PagePath .Prev}}" class="button button--quiet">{{t "mods.hits.prev"}}</a>
+  {{- end}}
+  {{- end}}
+  <span class="pager__at">{{t "mods.hits.page" "page" .Page "pages" .Pages}}</span>
+  {{- if lt .Page .Pages}}
+  {{- if $p.Picking}}
+  <button type="submit" class="button button--quiet" name="page" value="{{.Next}}">{{t "mods.hits.next"}}</button>
+  {{- else}}
+  <a href="{{$p.PagePath .Next}}" class="button button--quiet">{{t "mods.hits.next"}}</a>
+  {{- end}}
+  {{- end}}
+</nav>
+{{- end}}
+{{- end}}
+{{- end}}
