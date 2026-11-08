@@ -75,7 +75,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(page.getByRole("heading", { name: "Start refused" })).toBeVisible(live);
     await expect(page.locator("main")).toContainText("foreman-test");
-    await expect(page.getByRole("button", { name: "Start anyway" })).toBeVisible();
+    await expect(page.locator("summary", { hasText: "Or start anyway" })).toBeVisible();
     await expect(page.locator(".steps")).not.toContainText("Skipped");
     await checkPage(page);
   });

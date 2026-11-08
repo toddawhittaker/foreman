@@ -799,9 +799,13 @@ failed pre-start check (7.4, which must name exactly what the game will
 delete), switching worlds (7.9), and in later epics destructive player
 actions (8.2). Start and restart anyway have no page of their
 own: the Warning that reports the refusal on the Server page is the
-confirmation (SPEC 7.4). It lists what the game drops, then the steps,
-the snapshots and the undo as above, and its danger button posts the
-action at once. Restart uses the default 60-second countdown there. A
+confirmation (SPEC 7.4). It states the problem (one problem is a
+sentence after the lead; several are a list), then a row with the main fix
+first, such as "Match the mods to the save", and the restore of the
+snapshot the action took second. Going ahead anyway sits last, in a closed
+`details` ("Or start anyway"): opening it shows the steps, the snapshots
+and the undo as above, and its danger button posts the action at once. It
+never tells the admin to copy files on the host. Restart uses the default 60-second countdown there. A
 switch has its own confirmation page (SPEC 7.9, 17.8) that shows the new
 world's problems before anything runs, and offers "Switch, leave stopped"
 and, when every problem allows it, a danger button "Switch and start

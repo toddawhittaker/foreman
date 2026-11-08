@@ -178,7 +178,10 @@ test.describe("with the fake game", () => {
     await expect(refusal.locator("p strong").first()).toHaveText("Warning:");
     await expect(refusal).toContainText("base.zip uses foreman-test, but this world has no file for it.");
     await expect(refusal).not.toContainText("removes everything");
-    await expect(refusal).toContainText("Foreman cannot add mods to a world yet.");
+    // The fix is the button; nothing sends the admin to the host's files (SPEC 9.8, 17.9).
+    await expect(refusal.getByRole("link", { name: "Match the mods to the save" })).toBeVisible();
+    await expect(refusal).not.toContainText("cannot add mods");
+    await expect(refusal).not.toContainText("on the host");
     await expect(refusal).toContainText('labelled "Before start anyway"');
     await expect(refusal).toContainText("To undo, restore that snapshot from the Snapshots page.");
     await expect(badge(page)).toHaveText("Stopped");
@@ -187,7 +190,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("button", { name: "Try to start again" })).toHaveCount(0);
     await expect(page.locator(".message--note")).toHaveCount(0);
     // One reading width for all the text in the box.
-    const widths = await refusal.locator("p, li").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
+    const widths = await refusal.locator("p:visible, li:visible").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
     // Nothing was tried, so the list is titled "Start refused" and leaves out
     // the steps that never ran; the check reads Refused, styled as a warning
@@ -201,6 +204,7 @@ test.describe("with the fake game", () => {
     await expect(page.locator(".steps")).not.toContainText("Skipped");
     await checkPage(page);
 
+    await refusal.locator("summary", { hasText: "Or start anyway" }).click();
     await refusal.getByRole("button", { name: "Start anyway" }).click();
     await expect(badge(page)).toHaveText("Running", live);
 
@@ -258,7 +262,7 @@ test.describe("with the fake game", () => {
     expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
     await expect(page.locator(".message--warning")).toContainText("does not match the world", live);
     await expect(page.locator("#announcer")).toHaveText(/^Warning: Foreman did not start the game, because the save that would load does not match the world/);
-    await expect(page.locator("#announcer")).toContainText("You can start anyway; the button is below.");
+    await expect(page.locator("#announcer")).toContainText("You can start anyway; the choice is below.");
     await expect(page.locator("#announcer")).not.toContainText("Server is now");
   });
 
