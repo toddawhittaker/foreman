@@ -23,8 +23,22 @@
 
 <section class="panel" aria-labelledby="saves-heading">
   <h2 id="saves-heading">{{t "worlds.saves.heading"}}</h2>
+  {{- if .LoadMissing}}
+  <div class="message message--note">
+    <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
+  </div>
+  {{- end}}
+  {{- if not .LoadError.IsZero}}
+  <p class="error" id="load-save-error" tabindex="-1"><strong>{{t "common.error.label"}}</strong> {{msg .LoadError}}</p>
+  {{- end}}
   {{- if .Rows}}
-  <table role="table">
+  {{- if not .Newer}}
+  <p>{{if and .LoadSave (not .LoadMissing)}}{{tHTML "worlds.saves.load.pinned" "file" (code .LoadSave)}}{{else}}{{t "worlds.saves.load.text"}}{{end}}</p>
+  {{- end}}
+  {{- if not .Newer}}
+  <form method="post" action="{{.LoadHref}}">
+  {{- end}}
+  <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
       <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th></tr>
@@ -32,13 +46,19 @@
     <tbody role="rowgroup">
       {{- range .Rows}}
       <tr role="row">
-        <td role="cell"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</td>
+        <td role="cell"><div class="save-name"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}
+          {{- if and (not $.Page.Newer) (not .Loads)}}
+          <button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{t "worlds.saves.load_next_named" "file" .Name}}</span></button>
+          {{- end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
         <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
       </tr>
       {{- end}}
     </tbody>
   </table>
+  {{- if not .Newer}}
+  </form>
+  {{- end}}
   {{- if .OlderHref}}
   <div class="actions"><a href="{{.OlderHref}}">{{t "worlds.saves.older"}}</a></div>
   {{- end}}
@@ -68,31 +88,6 @@
   </form>
 </section>
 
-<section class="panel" aria-labelledby="load-heading">
-  <h2 id="load-heading">{{t "worlds.saves.load.heading"}}</h2>
-  <form method="post" action="{{.LoadHref}}">
-    <p>{{t "worlds.saves.load.text"}}</p>
-    {{- if .LoadMissing}}
-    <div class="message message--note">
-      <p><strong>{{t "common.label.note"}}</strong> {{tHTML "worlds.saves.load.missing" "file" (code .LoadSave)}}</p>
-    </div>
-    {{- end}}
-    {{- $invalid := not .LoadError.IsZero}}
-    <fieldset{{if $invalid}} aria-describedby="load-save-error"{{end}}>
-      <legend>{{t "worlds.saves.load.legend"}}</legend>
-      <label class="check"><input type="radio" id="load-newest" name="load" value=""{{if .NewestSelected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> {{t "worlds.saves.load.newest"}}</label>
-      {{- range .Rows}}
-      <label class="check"><input type="radio" name="load" value="{{.Name}}"{{if .Selected}} checked{{end}}{{if $invalid}} aria-invalid="true" aria-describedby="load-save-error"{{end}}> {{.Name}}</label>
-      {{- end}}
-      {{- if $invalid}}
-      <p class="error" id="load-save-error"><strong>{{t "common.error.label"}}</strong> {{msg .LoadError}}</p>
-      {{- end}}
-    </fieldset>
-    <div class="actions">
-      <button type="submit" class="button button--primary">{{t "worlds.saves.load.button"}}</button>
-    </div>
-  </form>
-</section>
 {{- end}}
 {{end}}
 {{- end}}

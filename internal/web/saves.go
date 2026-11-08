@@ -22,16 +22,16 @@ const (
 	patternLoadSave = "/worlds/{id}/load-save"
 )
 
-// Names of the form fields: the file on the upload form and the radio group
-// on the load form.
+// Names of the form fields: the file on the upload form and the button a
+// row of the saves table submits.
 const (
 	saveUploadField = "save"
 	saveLoadField   = "load"
 )
 
-// loadFirstID is the id of the first radio in the load choice, where the
-// error summary sends focus (DESIGN 7.2).
-const loadFirstID = "load-newest"
+// loadErrorID is the id of the load choice's error, where the error summary
+// sends focus (DESIGN 7.2).
+const loadErrorID = "load-save-error"
 
 func (s *server) saveRoutes() {
 	s.mux.HandleFunc("GET "+patternSaves, s.requireUser(s.handleSaves))
@@ -42,12 +42,14 @@ func (s *server) saveRoutes() {
 
 // SaveRow is one row of the saves table.
 type SaveRow struct {
-	Name     string
-	Href     string
-	Size     uint64
-	Saved    time.Time
-	Loads    bool // the save the game loads next
-	Selected bool // checked in the load choice
+	Name  string
+	Href  string
+	Size  uint64
+	Saved time.Time
+	Loads bool // the save the game loads next
+	// LoadValue is what the row's "Load next" button posts: the save's name,
+	// or empty on the newest row, so later autosaves still win (SPEC 7.11).
+	LoadValue string
 }
 
 // SavesPage is a world's saves (SPEC 5.11, DESIGN 8.3).
@@ -68,9 +70,7 @@ type SavesPage struct {
 	LoadSave string
 	// LoadMissing is true when the chosen save is no longer in the folder.
 	LoadMissing bool
-	// NewestSelected checks the "newest save" choice.
-	NewestSelected bool
-	UploadLimit    uint64
+	UploadLimit uint64
 	// Uploaded and Chosen report what the last request did.
 	Uploaded string
 	Chosen   bool
@@ -94,7 +94,7 @@ func (p SavesPage) hasErrors() bool { return len(p.Problems()) > 0 }
 func (p SavesPage) Problems() []Problem {
 	return problems(
 		Problem{"save-file", p.UploadError},
-		Problem{loadFirstID, p.LoadError},
+		Problem{loadErrorID, p.LoadError},
 	)
 }
 
@@ -121,7 +121,6 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 	}
 	chosen := slices.IndexFunc(list.Saves, func(sv world.Save) bool { return sv.Name == list.LoadSave })
 	p.LoadMissing = list.LoadSave != "" && chosen < 0
-	p.NewestSelected = list.LoadSave == "" || p.LoadMissing
 	// The save that loads next: the chosen one, else the newest.
 	loads := max(chosen, 0)
 	shown := list.Saves
@@ -130,14 +129,17 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 		p.OlderHref = p.SavesHref + "?all=1"
 	}
 	for i, sv := range shown {
-		p.Rows = append(p.Rows, SaveRow{
-			Name:     sv.Name,
-			Href:     saveHref(id, sv.Name),
-			Size:     uint64(sv.Size), //nolint:gosec // a file size is never negative
-			Saved:    sv.ModTime,
-			Loads:    i == loads,
-			Selected: i == chosen,
-		})
+		row := SaveRow{
+			Name:  sv.Name,
+			Href:  saveHref(id, sv.Name),
+			Size:  uint64(sv.Size), //nolint:gosec // a file size is never negative
+			Saved: sv.ModTime,
+			Loads: i == loads,
+		}
+		if i > 0 {
+			row.LoadValue = sv.Name
+		}
+		p.Rows = append(p.Rows, row)
 	}
 	return p, nil
 }
