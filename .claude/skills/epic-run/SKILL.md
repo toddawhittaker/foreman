@@ -27,8 +27,11 @@ line per step, so the run survives a context reset.
    unless the request already said to run the epic through without
    stopping. Record the approval in the epic's memory file.
 4. **Split tasks** so no two agents edit the same files. When files must
-   overlap, put the later task in a second wave cut from the epic head
-   after the first wave lands.
+   overlap, chain them: the later task starts from the earlier task's
+   head as soon as that head passes step 7, without waiting for its
+   merge or its review. After the earlier PR squash-merges, the later
+   agent merges the epic branch in (or merger rebuilds its branch by
+   diff-apply), so its PR shows only its own change.
 5. **Pick models** per the delegation rules in CLAUDE.md: Haiku for
    mechanical work, Sonnet at high effort when the prompt settles every
    choice, Opus for design or diagnosis.
@@ -61,16 +64,22 @@ line per step, so the run survives a context reset.
    or the reviews.
    Merge only after reading the check result: never chain `gh pr merge`
    after a wait in one command.
-9. **Reviews** after every task PR has landed, on a read-only worktree at
-   the epic head, in parallel:
-   - code-reviewer always, including dead code across the repo;
-   - security-reviewer when the epic touches sign-in, trusted headers,
+9. **Reviews, per task as it lands.** As soon as a task PR merges, start
+   its reviews in the background on a read-only worktree at that merge
+   commit, scoped to the task's diff, while the next tasks run:
+   - code-reviewer always;
+   - security-reviewer when the task touches sign-in, trusted headers,
      sessions, the Docker API, RCON, file paths or uploads, webhooks, or
      secrets;
    - a11y-reviewer when it touches the web UI.
-10. **Fix round.** Rule on each finding: fix now through task PRs, or
-    record as a STATUS gap. Land fixes the same way, then have each
-    reviewer confirm its findings are closed.
+   After the last task lands, run one integration review on the epic
+   head: code-reviewer for how the tasks fit together and dead code
+   across the repo, plus a11y-reviewer for flows that cross tasks.
+10. **Fix round, per task.** Rule on each finding as its review returns:
+    fix now, or record as a STATUS gap. A fix goes into the next task of
+    the same lane when one is still to run, otherwise into a small fix
+    task started at once, not saved up for the end. Land fixes the same
+    way, then have the reviewer confirm its findings are closed.
 11. **Real-game check** when the epic touches server control, world
     switching, snapshots, mods or versions: run the change against a real
     `factoriotools/factorio` container (the WORKFLOW.md procedure, once
@@ -88,6 +97,11 @@ line per step, so the run survives a context reset.
 15. **Stop.** Report the PR and wait. Todd merges main.
 
 ## Gotchas
+
+- A task PR stuck for more than 30 minutes (a flaky or failing test,
+  a conflict, a slow diagnosis) becomes its own task: hand the failure to
+  a separate, time-boxed agent with the failing output, and keep the
+  chain moving from the last verified head. Do not hold a lane on it.
 
 - Worktree agents start at `main`. Always give the exact base commit and
   tell them to `git reset --hard` to it.
