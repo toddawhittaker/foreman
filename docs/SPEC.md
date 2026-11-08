@@ -1139,7 +1139,10 @@ keeps the installed version when that meets every constraint, and otherwise
 takes the newest release on the world's game line that does. Built-in mods
 count as present at the game version. An optional dependency's version
 limit holds even while its mod is off, so turning it on in the same plan is
-held to it. Dependencies of installed mods are read from their own
+held to it. A recommended dependency (the "+" prefix of Factorio 2.1) is
+an optional one that starts ticked; one the portal lacks or that would
+conflict is left out with a note and never blocks the plan. A sync adds
+none. Dependencies of installed mods are read from their own
 `info.json`, so turning mods off or on and removing them need no portal. A
 search result's "Add to plan" starts one plan, and "Add another mod" on the
 plan page adds more: several mods are one plan, one snapshot and one
@@ -1156,7 +1159,9 @@ Removing a mod that another enabled mod requires is refused with the
 reason. Built-in mods cannot be removed, and a mod installed as a folder is
 shown as "local" and never replaced. Turning off or removing a mod that the
 save about to load uses needs a confirmation on the plan page, a ticked box
-that says the game will delete what that mod built. The restart after the
+that says the game will delete what that mod built. While the world's
+game runs, every enabled mod counts as used, since stopping it to apply
+the change saves the world with all of them. The restart after the
 change then passes exactly those mods in the pre-start check (7.4), and the
 world ends running. Without the confirmation the plan cannot be applied. A
 confirmation given on a stopped world is not remembered for the next Start.

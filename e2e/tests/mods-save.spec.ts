@@ -61,6 +61,18 @@ test.describe("turning off a mod the loading save uses", () => {
     await expect(page.locator("#confirm-drops")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Disable 1 mod" })).toBeVisible();
   });
+
+  // SPEC 9.4: a running game saves every enabled mod when it stops, so a mod installed since the save on disk counts too.
+  test("on a running world, a mod the save on disk lacks still asks first", async ({ page, foreman, fakeGame }) => {
+    await setUpModsWorld(page, foreman, fakeGame!, { ...withMod, mods: { ...withMod.mods, "fp-extra": "2.1" }, start: true });
+    await page.goto("/worlds/base/mods/plan?kind=disable&name=fp-extra");
+    await expect(page.locator(".message--warning").filter({ hasText: "The save that loads uses 1 mod this change turns off: fp-extra." })).toBeVisible();
+    await page.locator("#confirm-drops").check();
+    await page.getByRole("button", { name: "Disable 1 mod" }).click();
+    await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
+    await expect(stateBadge(page)).toHaveText("Running", live);
+    expect(modEnabled(foreman.dataDir, "fp-extra")).toBe(false);
+  });
 });
 
 test("a start the check refuses leads to the plan that matches the mods to the save", async ({ page, foreman, fakeGame }) => {

@@ -98,11 +98,21 @@
     {{- with .Plan.Optional}}
     <fieldset>
       <legend>{{t "mods.optional.legend"}}</legend>
-      <p class="hint">{{t "mods.optional.hint"}}</p>
+      <p class="hint">{{t "mods.optional.hint"}}{{if $.Page.HasRecommended}} {{t "mods.recommended.hint"}}{{end}}</p>
       {{- range .}}
-      <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="{{$.Page.ModID .Name "optional"}}" hx-get="{{$.Page.Path}}"{{if $.Page.Ticked .Name}} checked{{end}}> <span>{{tHTML "mods.optional.item" "mod" (ident .Name) "of" (ident .Of)}}</span></label>
+      {{- if .Recommended}}
+      <input type="hidden" name="offered" value="{{.Name}}">
+      {{- end}}
+      <label class="check"><input type="checkbox" name="optional" value="{{.Name}}" id="{{$.Page.ModID .Name "optional"}}" hx-get="{{$.Page.Path}}"{{if .Chosen}} checked{{end}}> <span>{{if .Recommended}}{{tHTML "mods.recommended.item" "mod" (ident .Name) "of" (ident .Of)}}{{else}}{{tHTML "mods.optional.item" "mod" (ident .Name) "of" (ident .Of)}}{{end}}</span></label>
       {{- end}}
     </fieldset>
+    {{- end}}
+    {{- with .Plan.Unavailable}}
+    <ul class="hint" id="plan-unavailable">
+      {{- range .}}
+      <li>{{tHTML "mods.recommended.unavailable" "mod" (ident .Name) "of" (ident .Of)}}</li>
+      {{- end}}
+    </ul>
     {{- end}}
     <p>{{t "common.confirm.will"}}</p>
     <ul>
@@ -215,6 +225,9 @@
     {{- end}}
     {{- range .Form.Optional}}
     <input type="hidden" name="optional" value="{{.}}">
+    {{- end}}
+    {{- range .Form.Declined}}
+    <input type="hidden" name="declined" value="{{.}}">
     {{- end}}
     <div class="field">
       <label for="add-search">{{t "mods.search.label"}}</label>
