@@ -88,19 +88,6 @@ type TerritoryLabel struct {
 	Text, Short string
 }
 
-// shortLabel is the size as the small picture shows it, so it fits there (DESIGN 8.8).
-func shortLabel(l i18n.Locale, size string) string {
-	switch size {
-	case territory.Small:
-		return l.T("mapgen.territory.short.small")
-	case territory.Medium:
-		return l.T("mapgen.territory.short.medium")
-	case territory.Big:
-		return l.T("mapgen.territory.short.big")
-	}
-	return l.T("mapgen.territory.short.unknown")
-}
-
 // IsTerritoryPicture is true for the picture the territories are drawn on.
 func (v PreviewView) IsTerritoryPicture(p PreviewPicture) bool {
 	return p.Planet == territoryPlanet && v.Territories.Show
@@ -128,7 +115,7 @@ func territoryView(loc i18n.Locale, res territory.Result, size int) *TerritoryVi
 	pct := func(px float64) float64 { return math.Round(px/float64(size)*1e5) / 1e3 }
 	for _, s := range ov.Shapes {
 		v.Runs = append(v.Runs, s.Runs...)
-		v.Labels = append(v.Labels, TerritoryLabel{Left: pct(s.LabelX), Top: pct(s.LabelY), Text: territory.Label(loc, s.Size), Short: shortLabel(loc, s.Size)})
+		v.Labels = append(v.Labels, TerritoryLabel{Left: pct(s.LabelX), Top: pct(s.LabelY), Text: territory.Label(loc, s.Size), Short: territory.ShortLabel(loc, s.Size)})
 	}
 	if len(ov.Counts) == 0 {
 		v.Counts = loc.T("worlds.generate.territories.none")

@@ -116,9 +116,9 @@ test("ticked, the territories come after the picture, over it and in words under
   await expect(o.locator("svg")).toHaveAttribute("preserveAspectRatio", "none");
   await expect(o.locator("rect")).toHaveCount(9); // three runs a territory, three chunks wide
   await expect(o.locator("path.territories__border")).toHaveAttribute("vector-effect", "non-scaling-stroke");
-  expect(await labels(o)).toEqual(["Sm", "Med", "Big"]);
+  expect(await labels(o)).toEqual(["Sm.", "Med.", "Big"]);
   // The picture's name is not changed by the labels inside its link.
-  await expect(section(page).getByRole("link", { name: /^Map preview of Vulcanus, seed \d+ \(opens the large view\)$/ })).toBeVisible();
+  await expect(section(page).getByRole("link", { name: /^Map preview of Vulcanus, seed \d+\. The pin is where players start\. \(opens the large view\)$/ })).toBeVisible();
   // The overlay covers the map exactly, and the labels keep the text size.
   const img = (await section(page).locator("a.picture img").boundingBox())!;
   const svg = (await o.locator("svg").boundingBox())!;
@@ -222,7 +222,7 @@ test("a change of settings drops the territory request on its way", async ({ pag
   await page.locator("#generate-seed").fill("777");
   await expect.poll(() => aborted.length).toBe(1);
   // The new picture comes, then a new request for its territories.
-  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 777" })).toBeVisible();
+  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 777. The pin is where players start." })).toBeVisible();
   await expect.poll(() => hold.held.length).toBe(2);
   await hold.release();
   await expect(list(page)).toHaveText(counts);
@@ -281,7 +281,7 @@ test("unticking while a picture is drawn wins over the reply", async ({ page }) 
   await box(page).uncheck();
   await held[0].continue();
   await page.unroute(picture);
-  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 888" })).toBeVisible();
+  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 888. The pin is where players start." })).toBeVisible();
   await expect(box(page)).not.toBeChecked();
   await expect(overlay(page)).toHaveCount(0);
   await expect(list(page)).toHaveCount(0);
