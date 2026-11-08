@@ -363,9 +363,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("submit", (e) => {
     if (e.target === formEl() && !e.defaultPrevented) submitting = true;
   });
-  // Preview map's reply rewrites the seed field, which then reads as loaded; what was unsaved stays so.
+  // A page restored from the back-forward cache did not leave after all.
+  window.addEventListener("pageshow", () => { submitting = false; });
+  // A redraw (Preview map's seed; a version, Space Age, preset or reset) puts in
+  // fields that load with the edited values, so what was unsaved stays so, even
+  // if a setting is later changed back (SPEC 5.6).
   document.body.addEventListener("htmx:beforeSwap", (e) => {
-    if (e.detail.requestConfig && e.detail.requestConfig.elt && e.detail.requestConfig.elt.id === "preview-button" && isDirty()) unsaved = true;
+    const elt = e.detail.requestConfig && e.detail.requestConfig.elt;
+    if (elt && elt.closest && elt.closest("#generate-form") && isDirty()) unsaved = true;
   });
 
   const actions = "#preview-button, #generate-button, #generate-default";

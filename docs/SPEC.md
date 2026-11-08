@@ -475,6 +475,12 @@ not) or a map exchange string, with Space Age on or off. (P0)
   preset with a note, and nothing is made. "Random seed" fills a seed from
   0 to 4294967295 in the browser. A blank seed is filled with a random one
   that the form keeps, so the world matches the preview.
+- **Leaving with unsaved settings** asks the browser's own leave-page
+  question. Once a redraw of the form (a version, Space Age, preset or
+  reset change, or Preview map's seed) has replaced fields that held
+  unsaved edits, the page counts as unsaved until it is left or the world
+  is made, even if the edits are later changed back, because asking once
+  too often is safer than losing settings silently.
 - **What is written** (ADR 0010). An unchanged preset is passed to
   `--preset`, with the seed in `--map-gen-seed`, and no file is written.
   Any change writes both files complete and passes no `--preset`, because

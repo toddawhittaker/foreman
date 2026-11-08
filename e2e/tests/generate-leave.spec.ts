@@ -52,24 +52,62 @@ test("a changed setting asks before leaving, and staying keeps it", async ({ pag
   await expect(page.getByLabel("World name")).toHaveValue("Half done");
 });
 
-test("a preset change asks, and changing it back does not", async ({ page }) => {
+test("a preset change asks, even once it is changed back", async ({ page }) => {
   const asked = leaveQuestions(page, "accept");
   await page.goto("/generate");
   await page.locator("#generate-preset").selectOption("rich-resources");
-  await expect(page.locator("#preset-modified")).toBeAttached();
-  await page.locator("#generate-preset").selectOption("default");
-  // Wait for the redraw of the default's settings to land.
-  await expect(page.locator("#mg-nauvis-iron-ore-size")).toHaveValue("100");
-  await cancel(page);
-  await expect(page).toHaveURL("/worlds");
-  expect(asked).toEqual([]);
-
-  await page.goto("/generate");
-  await page.locator("#generate-preset").selectOption("rich-resources");
   await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
+  // The redraw put in fields that load with the edited values, so the mark is
+  // kept: asking once too often fails safe (SPEC 5.6).
+  await page.locator("#generate-preset").selectOption("default");
+  await expect(page.locator("#mg-nauvis-iron-ore-richness")).toHaveValue("100");
   await cancel(page);
   await expect(page).toHaveURL("/worlds");
   expect(asked).toEqual(["beforeunload"]);
+});
+
+test("a typed seed still asks after Preview map rewrites the seed field", async ({ page }) => {
+  const asked = leaveQuestions(page, "dismiss");
+  await page.goto("/generate");
+  await expect(pictures(page)).toHaveCount(1);
+  await page.locator("#generate-seed").fill("4242");
+  await page.getByRole("button", { name: "Preview map" }).click();
+  await expect(pictures(page)).toHaveCount(5);
+  await cancel(page);
+  await expect.poll(() => asked).toEqual(["beforeunload"]);
+  await expect(page).toHaveURL("/generate");
+});
+
+test("an edited setting still asks after Space Age is ticked and unticked", async ({ page }) => {
+  const asked = leaveQuestions(page, "dismiss");
+  await page.goto("/generate");
+  await expect(pictures(page)).toHaveCount(1);
+  await page.locator("#mg-nauvis-iron-ore-size").evaluate((s) => {
+    (s as HTMLSelectElement).value = "200";
+    s.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  const spaceAge = page.getByLabel("Space Age is on");
+  await spaceAge.uncheck();
+  await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(0);
+  await spaceAge.check();
+  await expect(page.locator("#mg-resources-vulcanus")).toHaveCount(1);
+  await cancel(page);
+  await expect.poll(() => asked).toEqual(["beforeunload"]);
+  await expect(page).toHaveURL("/generate");
+});
+
+test("the preview size and the territory box are views: changing them leaves without asking", async ({ page }) => {
+  const asked = leaveQuestions(page, "dismiss");
+  await page.goto("/generate");
+  await expect(pictures(page)).toHaveCount(1);
+  await page.locator("#generate-preview-size").selectOption("2048", { force: true });
+  await expect(pictures(page)).toHaveAttribute("width", "2048");
+  await page.locator("#mg-resources-vulcanus summary").click();
+  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
+  await page.getByLabel("Show demolisher territories").check();
+  await cancel(page);
+  await expect(page).toHaveURL("/worlds");
+  expect(asked).toEqual([]);
 });
 
 test("a world made successfully leaves without asking", async ({ page }) => {
