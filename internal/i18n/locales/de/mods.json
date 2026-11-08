@@ -237,7 +237,7 @@
   "mods.unresolved.upload_label": "Zip-Datei von {mod} {version}",
   "mods.unresolved.upload_button": "Zip-Datei hochladen",
   "mods.drops.warning": {
-    "one": "Der Speicherstand, der geladen wird, nutzt {mods}. Ohne sie löscht das Spiel alles, was {mods} in der Welt gebaut hat.",
+    "one": "Der Speicherstand, der geladen wird, nutzt {mods}, die diese Änderung deaktiviert. Ohne sie löscht das Spiel alles, was {mods} in der Welt gebaut hat.",
     "other": "Der Speicherstand, der geladen wird, nutzt {count} Mods, die diese Änderung deaktiviert: {mods}. Ohne sie löscht das Spiel alles, was sie in der Welt gebaut haben."
   },
   "mods.drops.confirm_missing": {

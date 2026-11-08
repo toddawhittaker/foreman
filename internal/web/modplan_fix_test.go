@@ -43,7 +43,7 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 
 	// A redraw from the fix announces it and puts focus on the changes.
 	rec := g.harness.get(plan+"?also-remove=fp-other&fixed=fp-other&kind=install&name=fp-clash&q=fp-c", withCookie(g.cookie), withHeader("HX-Request", "true"))
-	wantIn(t, "redraw", rec.Body.String(), "The plan now turns off fp-other too. It changes 2 mods.", `<p class="plan-label" id="plan-changes" tabindex="-1" autofocus>Changes:</p>`)
+	wantIn(t, "redraw", rec.Body.String(), "The plan now disables fp-other too. It changes 2 mods.", `<p class="plan-label" id="plan-changes" tabindex="-1" autofocus>Changes:</p>`)
 
 	// Applying it removes the other mod in the same change, with one snapshot.
 	g.wantRedirectHome(g.post(plan, planValues(t, body)))

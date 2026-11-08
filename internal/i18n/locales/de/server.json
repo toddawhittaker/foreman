@@ -264,13 +264,13 @@
   "server.done.rollback_short": "Die Welt ist zurückgerollt.",
   "server.done.snapshot_short": "Der Snapshot ist erstellt.",
   "server.mods_done.snapshot": "Foreman hat zuvor den Snapshot „{label}“ erstellt.",
-  "server.mods_done.changed": "Die Mods von {world} sind geändert.",
+  "server.mods_done.changed": "Die Mods von {world} wurden geändert.",
   "server.mods_done.kept": "Foreman hat keinen neuen Snapshot erstellt: „{label}“ von {time} macht diese Änderung und die vorherigen rückgängig.",
   "server.mods_done.install": "In {world} installiert: {mods}.",
   "server.mods_done.upgrade": "In {world} aktualisiert: {mods}.",
   "server.mods_done.downgrade": "In {world} auf eine ältere Version gesetzt: {mods}.",
-  "server.mods_done.enable": "In {world} eingeschaltet: {mods}.",
-  "server.mods_done.disable": "In {world} ausgeschaltet: {mods}.",
+  "server.mods_done.enable": "In {world} aktiviert: {mods}.",
+  "server.mods_done.disable": "In {world} deaktiviert: {mods}.",
   "server.mods_done.remove": "Aus {world} entfernt: {mods}.",
   "server.mods_done.to": "{mod} auf {version}",
   "server.mods_done.many": {
@@ -290,12 +290,12 @@
     "other": "{count} auf ältere Version"
   },
   "server.mods_done.count.enable": {
-    "one": "{count} eingeschaltet",
-    "other": "{count} eingeschaltet"
+    "one": "{count} aktiviert",
+    "other": "{count} aktiviert"
   },
   "server.mods_done.count.disable": {
-    "one": "{count} ausgeschaltet",
-    "other": "{count} ausgeschaltet"
+    "one": "{count} deaktiviert",
+    "other": "{count} deaktiviert"
   },
   "server.mods_done.count.remove": {
     "one": "{count} entfernt",
@@ -337,8 +337,8 @@
   "server.problem.space_age_off": "{save} nutzt Space Age ({mods}), aber Space Age ist für diese Welt ausgeschaltet.",
   "server.problem.mod_missing_one": "{save} nutzt {mods}, aber diese Welt hat dafür keine Datei.",
   "server.problem.mod_missing_many": "{save} nutzt {mods}, aber diese Welt hat dafür keine Dateien.",
-  "server.problem.mod_disabled_one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt ausgeschaltet.",
-  "server.problem.mod_disabled_many": "{save} nutzt {mods}, aber diese Mods sind in dieser Welt ausgeschaltet.",
+  "server.problem.mod_disabled_one": "{save} nutzt {mods}, aber diese Mod ist in dieser Welt deaktiviert.",
+  "server.problem.mod_disabled_many": "{save} nutzt {mods}, aber diese Mods sind in dieser Welt deaktiviert.",
   "server.problem.mod_gone_one": "Das Mod-Portal hat {mod} {version} nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
   "server.problem.mod_gone_many": "Das Mod-Portal hat {mods} nicht mehr, deshalb kann das Spiel der Spieler sie nicht herunterladen, und sie können nicht beitreten. Trotzdem fortzufahren löscht nichts aus dem Speicherstand.",
   "server.problem.mod_version_first": {
@@ -509,8 +509,8 @@
   "server.restore.mods.remove": "Entfernen: {mods}.",
   "server.restore.mods.put_back": "Wieder installieren: {mods}.",
   "server.restore.mods.version": "{mod} wieder auf {version} setzen.",
-  "server.restore.mods.on": "Wieder einschalten: {mods}.",
-  "server.restore.mods.off": "Wieder ausschalten: {mods}.",
+  "server.restore.mods.on": "Wieder aktivieren: {mods}.",
+  "server.restore.mods.off": "Wieder deaktivieren: {mods}.",
   "server.restore.mods.settings": "Die Mod-Einstellungen, mod-settings.dat, so wiederherstellen, wie sie waren.",
   "server.versions.title": "Factorio-Versionen",
   "server.versions.text": "Öffne die Seite einer Welt, um zu sehen, ob ein neueres Factorio-Release erschienen ist.",

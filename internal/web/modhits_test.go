@@ -125,6 +125,25 @@ func TestSearchAddTicked(t *testing.T) {
 		`<p class="error" id="pick-error">`, `aria-invalid="true" aria-describedby="pick-error"`, "Showing 11 to 20.")
 }
 
+// A ticked name longer than a mod name can be is refused, not echoed into the
+// redirect to the plan page.
+func TestSearchRefusesLongPick(t *testing.T) {
+	g, id := pagerRig(t)
+	long := strings.Repeat("a", maxPickName+1)
+	rec := g.harness.get(modsPath(id)+"/search?q=pager&pick=pager-01&pick="+long+"&picked=1", withCookie(g.cookie))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("long pick: %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Errorf("redirected to %q", loc)
+	}
+	wantIn(t, "long pick", plain(rec.Body.String()), "Enter at most 100 characters.")
+	ok := g.harness.get(modsPath(id)+"/search?q=pager&pick="+strings.Repeat("a", maxPickName)+"&picked=1", withCookie(g.cookie))
+	if ok.Code != http.StatusSeeOther {
+		t.Errorf("a name at the limit: %d", ok.Code)
+	}
+}
+
 // The plan page's "Add another mod" is the same table with links to its
 // pages, and an empty search says what to try (#355).
 func TestAddAnotherModPages(t *testing.T) {

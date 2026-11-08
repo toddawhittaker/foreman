@@ -30,10 +30,10 @@
   "mods.hits.page": "Page {page} sur {pages}",
   "mods.hits.prev": "Page précédente",
   "mods.hits.next": "Page suivante",
-  "mods.search.pick_hint": "Cochez plusieurs mods pour les ajouter à un seul plan, ou utilisez le bouton Ajouter au plan d'un mod.",
+  "mods.search.pick_hint": "Cochez plusieurs mods pour les ajouter à un seul plan, ou utilisez le bouton « Ajouter au plan » d’un mod.",
   "mods.search.add_ticked": "Ajouter les mods cochés au plan",
-  "mods.search.pick_none": "Rien n'est coché. Cochez les mods à ajouter, ou utilisez le bouton Ajouter au plan d'un mod.",
-  "mods.search.picked_elsewhere": "Également cochés sur d'autres pages : {mods}.",
+  "mods.search.pick_none": "Rien n’est coché. Cochez les mods à ajouter, ou utilisez le bouton « Ajouter au plan » d’un mod.",
+  "mods.search.picked_elsewhere": "Également cochés sur d’autres pages : {mods}.",
   "mods.fact.latest": "Dernière version",
   "mods.fact.downloads": "Téléchargements",
   "mods.badge.installed": "Installé",
@@ -237,7 +237,7 @@
   "mods.unresolved.upload_label": "Zip de {mod} {version}",
   "mods.unresolved.upload_button": "Envoyer le zip",
   "mods.drops.warning": {
-    "one": "La sauvegarde chargée utilise {mods}. Sans lui, le jeu supprime tout ce que {mods} a construit dans le monde.",
+    "one": "La sauvegarde chargée utilise {mods}, que ce changement désactive. Sans lui, le jeu supprime tout ce que {mods} a construit dans le monde.",
     "other": "La sauvegarde chargée utilise {count} mods que ce changement désactive : {mods}. Sans eux, le jeu supprime tout ce qu’ils ont construit dans le monde."
   },
   "mods.drops.confirm_missing": {

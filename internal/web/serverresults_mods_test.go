@@ -34,15 +34,15 @@ func TestModsDoneNamesTheChange(t *testing.T) {
 		{"two downgrades", []mods.Change{change(mods.ActDowngrade, "a", "1.0.0"), change(mods.ActDowngrade, "b", "2.0.0")},
 			"Downgraded a to 1.0.0 and b to 2.0.0 in Base."},
 		{"turned off", []mods.Change{change(mods.ActDisable, "foreman-test", "1")},
-			"Turned off foreman-test in Base."},
-		{"turned on", []mods.Change{change(mods.ActEnable, "x", "1")}, "Turned on x in Base."},
+			"Disabled foreman-test in Base."},
+		{"turned on", []mods.Change{change(mods.ActEnable, "x", "1")}, "Enabled x in Base."},
 		{"removed", []mods.Change{change(mods.ActRemove, "x", "")}, "Removed x from Base."},
 		{"five updates", []mods.Change{change(mods.ActUpgrade, "a", "1"), change(mods.ActUpgrade, "b", "2"), change(mods.ActUpgrade, "c", "3"),
 			change(mods.ActUpgrade, "d", "4"), change(mods.ActUpgrade, "e", "5")},
 			"Updated a to 1, b to 2, c to 3 and 2 more in Base."},
 		{"mixed", []mods.Change{change(mods.ActUpgrade, "a", "1"), change(mods.ActInstall, "b", "1"), change(mods.ActUpgrade, "c", "1"),
 			change(mods.ActDisable, "d", "1")},
-			"Changed 4 mods in Base: 1 installed, 2 updated, 1 turned off."},
+			"Changed 4 mods in Base: 1 installed, 2 updated, 1 disabled."},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

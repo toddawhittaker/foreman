@@ -708,6 +708,11 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 	}
 	// A plan names at most maxPlanNames mods, so more ticks are not kept.
 	for _, n := range q["pick"] {
+		if len(n) > maxPickName {
+			p.QueryError = i18n.M("mods.search.long", "count", maxPickName)
+			s.page(w, r, http.StatusBadRequest, u.Username, p)
+			return
+		}
 		if !slices.Contains(p.Picks, n) && len(p.Picks) < maxPlanNames {
 			p.Picks = append(p.Picks, n)
 		}
@@ -746,6 +751,10 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 
 // maxSearchQuery bounds a search, which is only a name or a few words.
 const maxSearchQuery = 100
+
+// maxPickName bounds one ticked mod name, which goes into the redirect to the
+// plan page; the portal's names are far shorter.
+const maxPickName = 100
 
 // planForm is a mod change request as the plan page's form carries it, so
 // the server can recompute the plan instead of storing one (SPEC 9.14).

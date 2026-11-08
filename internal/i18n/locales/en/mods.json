@@ -237,8 +237,8 @@
   "mods.unresolved.upload_label": "Zip of {mod} {version}",
   "mods.unresolved.upload_button": "Upload zip",
   "mods.drops.warning": {
-    "one": "The save that loads uses {mods}. Without it, the game deletes everything {mods} built in the world.",
-    "other": "The save that loads uses {count} mods this change turns off: {mods}. Without them, the game deletes everything they built in the world."
+    "one": "The save that loads uses {mods}, which this change disables. Without it, the game deletes everything {mods} built in the world.",
+    "other": "The save that loads uses {count} mods this change disables: {mods}. Without them, the game deletes everything they built in the world."
   },
   "mods.drops.confirm_missing": {
     "one": "Tick the box to confirm that the game deletes what this mod built, or cancel.",
@@ -319,8 +319,8 @@
   "mods.plan.fix.disable": "Disable {mod} too",
   "mods.plan.back_search": "Back to search",
   "mods.plan.fixed": {
-    "one": "The plan now turns off {mod} too. It changes {count} mod.",
-    "other": "The plan now turns off {mod} too. It changes {count} mods."
+    "one": "The plan now disables {mod} too. It changes {count} mod.",
+    "other": "The plan now disables {mod} too. It changes {count} mods."
   },
   "mods.drops.confirm": {
     "one": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy.",

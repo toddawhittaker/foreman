@@ -1,7 +1,7 @@
 {
   "account.title": "factorio.com 账户",
   "account.intro": "Foreman 使用此账户从 Factorio 模组门户下载模组。没有它时仍可搜索模组。",
-  "account.shared": "所有管理员下载模组都使用这一个账户，它属于拥有它的 factorio.com 用户。若不想使用个人账户，可专为此服务器另建一个 factorio.com 账户并在此输入。",
+  "account.shared": "所有管理员下载模组都使用这一个账户。若不想使用个人的 factorio.com 账户，可专为此服务器另建一个账户并在此输入。",
   "account.done.saved": "账户已保存。",
   "account.done.removed": "账户已移除。",
   "account.env.state": "由环境变量设置",

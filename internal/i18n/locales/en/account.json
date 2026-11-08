@@ -1,7 +1,7 @@
 {
   "account.title": "factorio.com account",
   "account.intro": "Foreman uses this account to download mods from the Factorio mod portal. Searching for mods works without it.",
-  "account.shared": "Every admin’s mod downloads use this one account, which belongs to the factorio.com user who owns it. If you would rather not use your own, create a separate factorio.com account just for this server and enter that one.",
+  "account.shared": "Every admin’s mod downloads use this one account. If you would rather not use your own factorio.com account, create a separate one just for this server and enter that.",
   "account.done.saved": "The account is saved.",
   "account.done.removed": "The account is removed.",
   "account.env.state": "Set by environment",

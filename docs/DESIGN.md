@@ -793,8 +793,12 @@ Rules:
   with a field error ("Type Family base 2025 exactly, or cancel"). Other
   confirmations are one click, so typing does not become a habit.
 - **Undo is named.** When the action can be undone from a snapshot, the
-  confirmation says where: "To undo, restore that snapshot from the
-  Snapshots page."
+  confirmation says how. Where the result offers a one-click Undo (a
+  restore, a rollback, an update, a switch, a mod change), it says so, as
+  the mod plan does: "When it is done, a one-click Undo appears with the
+  result, which restores that snapshot." Where the result offers no such
+  button (a settings change, "start anyway"), it says where to restore:
+  "To undo, restore that snapshot from the Snapshots page."
 - After the action, the result page shows a Done message (7.3) naming
   the snapshot that was taken, linked.
 
