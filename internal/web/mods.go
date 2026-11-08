@@ -606,6 +606,9 @@ type planForm struct {
 	// the plan, for the sentence the redraw announces. Links carry them;
 	// the plan does not.
 	Added, Removed string
+	// Searched is a search from "Add another mod": its results heading
+	// takes focus, not the messages above the plan.
+	Searched bool
 }
 
 const (
@@ -628,6 +631,7 @@ func readPlanForm(v url.Values) (planForm, bool) {
 		DropsConfirmed: v.Get(dropsField) == "1",
 		Choices:        map[string]mods.ChoiceKind{}, Confirmed: map[string]bool{},
 		Query: strings.TrimSpace(v.Get("q")), Added: v.Get("added"), Removed: v.Get("removed"),
+		Searched: v.Get("add") == "1",
 	}
 	// Each name can cost a portal request, so a crafted list is bounded.
 	if !slices.Contains(planKinds, f.Kind) || len(f.Names) > maxPlanNames || len(f.Optional) > maxPlanNames {
@@ -1191,6 +1195,10 @@ func (s *server) handlePlanForm(w http.ResponseWriter, r *http.Request, u store.
 		form.Countdown = c[0]
 	}
 	p := s.planPage(r.Context(), sum, f, form)
+	// Only the plan page searches; applying a plan never does.
+	if p.Error.IsZero() {
+		s.addSearch(r.Context(), &p)
+	}
 	// htmx swaps only a 2xx reply, so a redraw that finds a conflict or a
 	// portal failure still answers 200 for the page to show it.
 	if r.Header.Get("HX-Request") != "" {
@@ -1243,7 +1251,6 @@ func (s *server) planPage(ctx context.Context, sum world.Summary, f planForm, fo
 	}
 	p.Drops = s.planDrops(ctx, sum.ID, p.Plan)
 	p.Hash = mods.HashPlan(p.Plan, p.Drops)
-	s.addSearch(ctx, &p)
 	return p
 }
 
@@ -1292,14 +1299,14 @@ var errStagedGone = errors.New("the uploaded mod zip is gone")
 // sync's save and an uploaded zip's info.json again.
 func (s *server) planRequest(id string, p *ModPlanPage) (mods.Request, error) {
 	f := &p.Form
-	var up *mods.Upload
+	var up *world.ModInfo
 	if f.Staged != "" {
 		info, err := s.stagedInfo(f.Staged)
 		if err != nil {
 			return mods.Request{}, err
 		}
 		p.Uploaded = info
-		up = &mods.Upload{Name: info.Name, Version: info.Version, Dependencies: info.Dependencies}
+		up = &info
 	}
 	switch f.Kind {
 	case mods.KindUpload:

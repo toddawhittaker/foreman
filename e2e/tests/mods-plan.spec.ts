@@ -49,7 +49,9 @@ test("two mods from one search: added in place, then one install with one snapsh
   await expect(page.locator("#announcer")).toHaveText("Added fp-lamp-colours. The plan has 3 mods.");
   await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
   await expect(page.locator("#mod-fp-lamp-colours-add")).toBeFocused();
-  await expect(page.locator("#mod-fp-lamp-colours-add")).toHaveText("In plan");
+  // The focused badge names its mod to a screen reader.
+  await expect(page.locator("#mod-fp-lamp-colours-add")).toHaveText("In plan fp-lamp-colours");
+  await expect(page.locator("#mod-fp-lamp-colours-add .visually-hidden")).toHaveText(" fp-lamp-colours");
   await expect(page).toHaveURL(/name=fp-lamp&name=fp-lamp-colours/);
   await expect(page.locator("#mod-plan")).toContainText("fp-lamp-lib 1.0.0 (fp-lamp-colours needs it)");
   await expect(asked.getByRole("link", { name: "Remove from plan fp-lamp-colours" })).toBeVisible();
@@ -68,6 +70,24 @@ test("two mods from one search: added in place, then one install with one snapsh
   await expect(doneBox(page)).toContainText("The mods of Base are changed.", live);
   for (const f of ["fp-lamp_1.0.0.zip", "fp-lamp-colours_1.2.0.zip", "fp-lamp-lib_1.0.0.zip"]) expect(existsSync(join(modsDir(foreman.dataDir), f))).toBe(true);
   expect(snapshots(foreman.dataDir)).toBe(1);
+});
+
+// A search from "Add another mod" loads the page again; focus lands on the
+// search's heading, not on the conflict box above the plan.
+test("a search from Add another mod keeps focus on its results", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-conf", "1.0.0", ["base >= 2.0", "! fp-other"]);
+  await fakePortal!.add("fp-main", "1.0.0", ["base >= 2.0", "? fp-conf"]);
+  await fakePortal!.add("fp-extra", "1.0.0");
+  await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-other": "2.0" } });
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-main&optional=fp-conf");
+  await expect(page.locator("#plan-conflicts")).toBeFocused();
+  const add = page.getByRole("region", { name: "Add another mod" });
+  await add.getByLabel("Mod name").fill("fp-extra");
+  await add.getByRole("button", { name: "Search" }).click();
+  await expect(add.getByRole("link", { name: "Add to plan fp-extra", exact: true })).toBeVisible();
+  await expect(page.locator("#add-heading")).toBeFocused();
+  await expect(page.locator("#plan-conflicts")).not.toBeFocused();
+  await checkPage(page);
 });
 
 test.describe("without script", () => {

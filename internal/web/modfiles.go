@@ -187,7 +187,8 @@ func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	defer func() { _ = worlds.Close() }()
-	up, err := s.receiveStaged(r, worlds, settingsUploadField, MaxSettingsUpload, values)
+	// A plain temp file, so it is never taken for a staged mod zip.
+	up, err := receiveFileWithFields(r, worlds, ".", settingsUploadField, s.worlds.Dirs().Worlds, MaxSettingsUpload, values)
 	if err != nil {
 		if status, msg := worldError(err); status != http.StatusInternalServerError && !msg.IsZero() {
 			refuse(msg, status, defaultCountdown())
@@ -196,8 +197,8 @@ func (s *server) handleSettingsUpload(w http.ResponseWriter, r *http.Request, u 
 		s.fail(w, r, "receive mod-settings.dat", err)
 		return
 	}
-	data, err := os.ReadFile(s.worlds.StagedPath(up.Temp))
-	_ = s.worlds.RemoveStaged(up.Temp)
+	data, err := worlds.ReadFile(up.Temp)
+	_ = worlds.Remove(up.Temp)
 	if err != nil {
 		s.fail(w, r, "read mod-settings.dat", err)
 		return

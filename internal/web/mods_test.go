@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
@@ -822,3 +823,64 @@ func plain(body string) string {
 }
 
 var identSpan = regexp.MustCompile(`<span class="ident" translate="no">([^<]*)</span>`)
+
+// mod-settings.dat arrives in a plain temp file, never a staged mod's name,
+// so a mod plan can never read or remove it.
+func TestSettingsUploadIsNotStaged(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.world20("Base")
+	_, tab := g.getStatus(modsPath(id))
+	fp := regexp.MustCompile(`name="fingerprint" value="([^"]+)"`).FindStringSubmatch(tab)
+	if fp == nil {
+		t.Fatal("no fingerprint on the tab")
+	}
+	var b bytes.Buffer
+	mw := multipart.NewWriter(&b)
+	_ = mw.WriteField("fingerprint", fp[1])
+	fw, _ := mw.CreateFormFile("settings", "mod-settings.dat")
+	_, _ = fw.Write(bytes.Repeat([]byte{2}, 64<<10))
+	_ = mw.Close()
+	body := b.Bytes()
+	// Send all but the end, look for the temp file, then finish.
+	pr, pw := io.Pipe()
+	req, err := http.NewRequest(http.MethodPost, g.url+modsPath(id)+"/mod-settings.dat", pr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.ContentLength = int64(len(body))
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.AddCookie(g.cookie)
+	done := make(chan error, 1)
+	go func() {
+		resp, err := g.client.Do(req)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+		done <- err
+	}()
+	cut := len(body) - 100
+	if _, err := pw.Write(body[:cut]); err != nil {
+		t.Fatal(err)
+	}
+	var temp string
+	for i := 0; i < 500 && temp == ""; i++ {
+		entries, _ := os.ReadDir(g.worlds.Dirs().Worlds)
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), world.PrefixPartial) {
+				temp = e.Name()
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_, _ = pw.Write(body[cut:])
+	_ = pw.Close()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if temp == "" {
+		t.Fatal("no temp file seen during the upload")
+	}
+	if strings.HasPrefix(temp, world.PrefixModStaging) {
+		t.Errorf("mod-settings.dat was received as a staged mod: %s", temp)
+	}
+}

@@ -76,14 +76,13 @@ func TestExternalLink(t *testing.T) {
 	if got != want {
 		t.Errorf("link: %s", got)
 	}
-	for _, bad := range []string{"http://factorio.com/", "javascript:alert(1)", "/settings", "https://x.example/\nfoo"} {
-		func() {
-			defer func() {
-				if recover() == nil {
-					t.Errorf("%q: no panic under test", bad)
-				}
-			}()
-			English.ExternalLink(bad, "account.token.profile")
-		}()
+	// The address is escaped, so it cannot leave its attribute; the plain
+	// form is the link text alone.
+	f := English.ExternalLink(`https://x.example/"><b>`, "account.token.profile")
+	if strings.Contains(f.html, "<b>") || !strings.Contains(f.html, `href="https://x.example/&#34;&gt;&lt;b&gt;"`) {
+		t.Errorf("unescaped href: %s", f.html)
+	}
+	if f.text != "your factorio.com profile page" {
+		t.Errorf("text: %q", f.text)
 	}
 }

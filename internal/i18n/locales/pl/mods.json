@@ -65,7 +65,7 @@
   "mods.status.current": {
     "one": "{count} modyfikacja z portalu modyfikacji jest aktualna.",
     "few": "Wszystkie {count} modyfikacje z portalu modyfikacji są aktualne.",
-    "many": "Wszystkie {count} modyfikacji z portalu modyfikacji są aktualne."
+    "many": "Wszystkich {count} modyfikacji z portalu modyfikacji jest aktualnych."
   },
   "mods.flag.gone": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji, więc ich gra nie może jej pobrać. Na portalu jest wersja {update}.",
   "mods.flag.gone_none": "Gracze nie mogą dołączyć z {mod} {version}: portal modyfikacji nie ma już tej wersji ani żadnej dla tej wersji gry.",

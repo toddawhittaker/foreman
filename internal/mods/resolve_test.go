@@ -308,14 +308,14 @@ func TestUpdate(t *testing.T) {
 
 func TestUpload(t *testing.T) {
 	p := portal{"b": {rel("1.0.0", "2.0")}}
-	up := &Upload{Name: "mine", Version: "0.1.0", Dependencies: []string{"b", "base >= 2.0"}}
+	up := &world.ModInfo{Name: "mine", Version: "0.1.0", Dependencies: []string{"b", "base >= 2.0"}}
 	plan := resolve(t, p, World{}, Request{Kind: KindUpload, Upload: up})
 	wantChange(t, plan, "mine", ActInstall, "0.1.0", asked())
 	wantChange(t, plan, "b", ActInstall, "1.0.0", by("mine"))
 	if c, _ := change(plan, "mine"); !c.Upload || c.Release != nil {
 		t.Errorf("upload change = %+v", c)
 	}
-	bad := &Upload{Name: "mine", Version: "0.1.0", Dependencies: []string{"b >="}}
+	bad := &world.ModInfo{Name: "mine", Version: "0.1.0", Dependencies: []string{"b >="}}
 	if plan := resolve(t, p, World{}, Request{Kind: KindUpload, Upload: bad}); !hasConflict(plan, ConflictBadDep, "mine") {
 		t.Errorf("conflicts = %+v", plan.Conflicts)
 	}
@@ -387,7 +387,7 @@ func TestSync(t *testing.T) {
 	if plan := resolve(t, p, w, Request{Kind: KindSync, SaveMods: save, Choices: choices}); plan.Applicable() {
 		t.Error("continue without, unconfirmed, is applicable")
 	}
-	choices["vanished"] = Choice{Kind: ChoiceUpload, Upload: &Upload{Name: "vanished", Version: "1.0.0"}}
+	choices["vanished"] = Choice{Kind: ChoiceUpload, Upload: &world.ModInfo{Name: "vanished", Version: "1.0.0"}}
 	plan = resolve(t, p, w, Request{Kind: KindSync, SaveMods: save, Choices: choices})
 	if c, _ := change(plan, "vanished"); !c.Upload || c.To != "1.0.0" || !plan.Applicable() {
 		t.Errorf("upload choice: %+v %+v", c, plan.Conflicts)
