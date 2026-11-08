@@ -15,24 +15,28 @@
     <input type="hidden" name="territories" value="1">
     {{- end}}
     {{- if .Error.IsZero}}
-    {{- if or .Choose .Territories.Show}}
-    <div class="preview-controls">
-      {{- if .Choose}}
-      {{/* Picking a planet draws it; it needs script, so the style sheet hides it without (DESIGN 8.8). */}}
-      <div class="field preview-planet">
-        <label for="preview-planet">{{t "worlds.generate.preview.planet"}}</label>
-        <select id="preview-planet">
-          {{- range .Planets}}
-          <option value="{{.Planet}}"{{if eq .Planet $.Preview.Current}} selected{{end}}>{{msg .Name}}</option>
-          {{- end}}
-        </select>
+    {{- if .Choice}}
+    {{/* One planet large, the one whose settings are open, or every planet small. It needs
+         script, so the style sheet hides it without; Preview map then draws them all (DESIGN 8.8). */}}
+    <fieldset class="tabset preview-view">
+      <legend class="visually-hidden">{{t "worlds.generate.preview.view_legend"}}</legend>
+      <div class="tablist">
+        <label class="tab"><input type="radio" name="preview_view" id="preview-view-one" value="one"{{if not .All}} checked{{end}}>{{t "worlds.generate.preview.view_one"}}</label>
+        <label class="tab"><input type="radio" name="preview_view" id="preview-view-all" value="all"{{if .All}} checked{{end}}>{{t "worlds.generate.preview.view_all"}}</label>
       </div>
-      {{- end}}
+    </fieldset>
+    {{/* The world's planets and their names, for the large view's Previous and Next. */}}
+    <datalist id="preview-planets">
+      {{- range .Planets}}<option value="{{.Planet}}">{{msg .Name}}</option>{{end -}}
+    </datalist>
+    {{- end}}
+    {{- if .Territories.Show}}
+    <div class="preview-controls">
       {{- with .Territories}}{{if .Show}}
       {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). */}}
       <div class="field territory-box">
-        <label class="check"><input type="checkbox" id="preview-territories"{{if not .Disabled}} name="territories"{{end}} value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}{{if .Disabled}} aria-disabled="true"{{end}}> {{t "worlds.generate.territories.label"}}</label>
-        <p class="hint" id="preview-territories-hint">{{if .Disabled}}{{t "worlds.generate.territories.too_big_hint" "size" (print .MaxSize)}}{{else}}{{t "worlds.generate.territories.hint"}}{{end}}</p>
+        <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1" aria-describedby="preview-territories-hint"{{if .Checked}} checked{{end}}> {{t "worlds.generate.territories.label"}}</label>
+        <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
       </div>
       {{- end}}{{end}}
     </div>
@@ -73,7 +77,7 @@
   </section>
   {{- else}}{{if .CanPreview}}
   {{/* Holds the first preview's space until it arrives, so nothing moves: the picture's box and,
-       unseen, the lines around it. Space Age means several planets, so a planet choice. Script only (DESIGN 8.8). */}}
+       unseen, the lines around it. Space Age means several planets, so the choice of one or all. Script only (DESIGN 8.8). */}}
   <section aria-labelledby="preview-heading" class="preview-placeholder">
     <div class="section-head">
       <h2 id="preview-heading">{{t "worlds.generate.preview.heading"}}</h2>
@@ -81,12 +85,12 @@
       <p class="hint preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.seed" "seed" "4294967295"}}</p>
     </div>
     {{- if .Form.SpaceAge}}
-    <div class="field preview-placeholder__hold" aria-hidden="true"><span>{{t "worlds.generate.preview.planet"}}</span><span class="preview-placeholder__control"></span></div>
+    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     {{- end}}
     <div class="preview-placeholder__picture">
       {{- /* Says what fills it; the status line above already reads this out, so it is hidden from screen readers. */}}
       <span class="preview-placeholder__map" aria-hidden="true">{{t "worlds.generate.preview.updating"}}</span>
-      <span class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.planet"}}</span>
+      <span class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.view_one"}}</span>
       <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     </div>
     {{- if .Form.SpaceAge}}

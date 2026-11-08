@@ -102,8 +102,8 @@ func TestTerritoriesAnswerFromTheStore(t *testing.T) {
 		`<pattern id="territory-stripes" width="56" height="56" patternUnits="userSpaceOnUse">`, `vector-effect="non-scaling-stroke"`,
 		`<rect x="576" y="576" width="32" height="32"/>`, `<rect x="672" y="576" width="64" height="32"/>`,
 		// Short words for the small picture, whole ones for the large view, and where each sits for the style sheet.
-		`<span class="territories__label" style="left: 46.25%; top: 46.25%; --x: 46.25; --y: 46.25"><span class="territories__short">Sm</span><span class="territories__long">Small</span></span>`,
-		`<span class="territories__short">Med</span><span class="territories__long">Medium</span>`,
+		`<span class="territories__label" style="left: 46.25%; top: 46.25%; --x: 46.25; --y: 46.25"><span class="territories__short">Sm.</span><span class="territories__long">Small</span></span>`,
+		`<span class="territories__short">Med.</span><span class="territories__long">Medium</span>`,
 		`<span class="territories__short">Big</span><span class="territories__long">Big</span>`,
 		// The counts are for screen readers; the picture shows the territories.
 		`<p class="territory-counts visually-hidden">Demolisher territories in this picture: 1 small, 1 medium, 1 big.</p>`,
@@ -150,7 +150,7 @@ func TestTerritoryRefusalsAreWorded(t *testing.T) {
 		{"memory", vulcanusForm(), &game.PreviewError{ExitCode: 137, OOM: true}, "The game ran out of memory finding the demolisher territories.", 1, true},
 		{"game failed", vulcanusForm(), &game.PreviewError{ExitCode: 1}, "The game could not find the demolisher territories.", 1, true},
 		{"other", vulcanusForm(), errors.New("docker is gone"), "The game could not find the demolisher territories.", 1, true},
-		{"too big", vulcanusForm("preview_size", "3200"), nil, "Demolisher territories are shown for preview sizes up to 3072 × 3072 tiles.", 0, false},
+		{"above the size cap", vulcanusForm("preview_size", "3200"), nil, "The settings have problems, so the demolisher territories were not found.", 0, false},
 		{"no space age", vulcanusForm("space_age", "", "map_key", "2.1|0"), nil, "Only Space Age worlds have demolisher territories", 0, false},
 		{"bad settings", vulcanusForm("preview_size", "999"), nil, "The settings have problems, so the demolisher territories were not found.", 0, false},
 	}
@@ -174,8 +174,8 @@ func TestTerritoryRefusalsAreWorded(t *testing.T) {
 }
 
 // DESIGN 8.8: the box shows only beside Vulcanus's picture on a Space Age
-// world; above the largest size it is turned off with a hint naming that
-// size; a ticked choice is kept while another planet is viewed.
+// world, at every size offered; a ticked choice is kept while another planet
+// is viewed.
 func TestTerritoryBoxShowsOnlyForVulcanus(t *testing.T) {
 	hn, _, c := newTerritoryHarness(t)
 	hx := withHeader("HX-Request", "true")
@@ -185,20 +185,15 @@ func TestTerritoryBoxShowsOnlyForVulcanus(t *testing.T) {
 		t.Errorf("Nauvis shows the box, or loses the choice:\n%s", nauvis)
 	}
 	off := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "territories", ""), c, hx).Body.String()
-	if !strings.Contains(off, box) || strings.Contains(off, " checked>") || strings.Contains(off, `name="territories" value="1">`) {
+	if !strings.Contains(off, box) || strings.Contains(off, " checked> Show demolisher") || strings.Contains(off, `name="territories" value="1">`) {
 		t.Errorf("Vulcanus lacks the box, or it is ticked when off:\n%s", off)
 	}
 	if !strings.Contains(off, "Show demolisher territories") || !strings.Contains(off, "Finding them takes a few seconds more.") {
 		t.Errorf("the box's words are missing:\n%s", off)
 	}
-	big := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3200"), c, hx).Body.String()
-	if !strings.Contains(big, `aria-describedby="preview-territories-hint" aria-disabled="true">`) || strings.Contains(big, `id="preview-territories" name=`) ||
-		!strings.Contains(big, "Shown for preview sizes up to 3072 × 3072 tiles.") || !strings.Contains(big, `<input type="hidden" name="territories" value="1">`) {
-		t.Errorf("above 3072 the box is not turned off with its hint:\n%s", big)
-	}
-	hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3072"), c, hx)
-	if body := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3072"), c, hx).Body.String(); strings.Contains(body, `aria-disabled="true">`) {
-		t.Error("3072 itself is turned off")
+	// Every size offered can show them, the largest too (SPEC 5.6).
+	if body := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "preview_size", "3072"), c, hx).Body.String(); !strings.Contains(body, `id="preview-territories" name="territories"`) {
+		t.Errorf("3072 cannot send the box:\n%s", body)
 	}
 	noSA := hn.postLong(PathGeneratePreview, vulcanusForm("auto", "1", "space_age", "", "map_key", "2.1|0", "planet", ""), c, hx).Body.String()
 	if strings.Contains(noSA, box) {

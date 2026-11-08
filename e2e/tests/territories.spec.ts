@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
 
 // SPEC 5.6, DESIGN 8.8: Vulcanus's demolisher territories on the map preview.
@@ -31,7 +31,7 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 async function vulcanus(page: Page) {
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
 }
 
@@ -53,7 +53,7 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", asyn
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await expect(box(page)).toHaveCount(0);
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
   await expect(box(page)).not.toBeChecked();
   await expect(box(page)).toHaveAccessibleDescription("Finding them takes a few seconds more.");
@@ -61,39 +61,15 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", asyn
   await expect(overlay(page)).toHaveCount(0);
   await checkPage(page);
   // Another planet has no box.
-  await section(page).getByLabel("Planet").selectOption("gleba");
+  await page.locator("#mg-resources-gleba summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Gleba/ })).toBeVisible();
   await expect(box(page)).toHaveCount(0);
   // Without Space Age there is no Vulcanus, so no box.
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
   await page.getByLabel("Space Age is on").uncheck();
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
   await expect(box(page)).toHaveCount(0);
-});
-
-test("above 3072 tiles the box is turned off, with a hint naming the largest size", async ({ page }) => {
-  await vulcanus(page);
-  await page.locator("#generate-preview-size").selectOption("3200", { force: true });
-  await expect(section(page).getByRole("img")).toHaveAttribute("width", "3200");
-  await expect(box(page)).toBeDisabled();
-  await expect(box(page)).toHaveAccessibleDescription("Shown for preview sizes up to 3072 × 3072 tiles. Choose a smaller preview size to show them.");
-  await expect(box(page)).toHaveAttribute("aria-disabled", "true");
-  await checkPage(page);
-  // Tab still reaches it, so its reason is heard, but it cannot change or send.
-  let asked = 0;
-  await page.route(territoryURL, (r) => { asked++; return r.continue(); });
-  await tabTo(page, box(page));
-  await page.keyboard.press("Space");
-  await expect(box(page)).not.toBeChecked();
-  await box(page).click({ force: true });
-  await expect(box(page)).not.toBeChecked();
-  expect(await box(page).getAttribute("name")).toBeNull();
-  expect(asked).toBe(0);
-  await page.unroute(territoryURL);
-  await page.locator("#generate-preview-size").selectOption("3072", { force: true });
-  await expect(section(page).getByRole("img")).toHaveAttribute("width", "3072");
-  await expect(box(page)).toBeEnabled();
 });
 
 test("ticked, the territories come after the picture, over it and in words under it", async ({ page }) => {
@@ -116,9 +92,9 @@ test("ticked, the territories come after the picture, over it and in words under
   await expect(o.locator("svg")).toHaveAttribute("preserveAspectRatio", "none");
   await expect(o.locator("rect")).toHaveCount(9); // three runs a territory, three chunks wide
   await expect(o.locator("path.territories__border")).toHaveAttribute("vector-effect", "non-scaling-stroke");
-  expect(await labels(o)).toEqual(["Sm", "Med", "Big"]);
+  expect(await labels(o)).toEqual(["Sm.", "Med.", "Big"]);
   // The picture's name is not changed by the labels inside its link.
-  await expect(section(page).getByRole("link", { name: /^Map preview of Vulcanus, seed \d+ \(opens the large view\)$/ })).toBeVisible();
+  await expect(section(page).getByRole("link", { name: /^Map preview of Vulcanus, seed \d+\. The pin is where players start\. \(opens the large view\)$/ })).toBeVisible();
   // The overlay covers the map exactly, and the labels keep the text size.
   const img = (await section(page).locator("a.picture img").boundingBox())!;
   const svg = (await o.locator("svg").boundingBox())!;
@@ -222,7 +198,7 @@ test("a change of settings drops the territory request on its way", async ({ pag
   await page.locator("#generate-seed").fill("777");
   await expect.poll(() => aborted.length).toBe(1);
   // The new picture comes, then a new request for its territories.
-  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 777" })).toBeVisible();
+  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 777. The pin is where players start." })).toBeVisible();
   await expect.poll(() => hold.held.length).toBe(2);
   await hold.release();
   await expect(list(page)).toHaveText(counts);
@@ -237,13 +213,13 @@ test("looking at another planet drops the territory request", async ({ page }) =
   page.on("requestfailed", (r) => { if (isTerritories(new URL(r.url()).pathname)) aborted.push(r.url()); });
   await box(page).check();
   await expect.poll(() => hold.held.length).toBe(1);
-  await section(page).getByLabel("Planet").selectOption("nauvis");
+  await page.locator("#mg-resources-nauvis summary").click();
   await expect.poll(() => aborted.length).toBe(1);
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
   await page.waitForTimeout(500);
   expect(hold.held.length).toBe(1);
   // Back on Vulcanus the box is still ticked, and they are asked for again.
-  await section(page).getByLabel("Planet").selectOption("vulcanus");
+  await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeChecked();
   await expect.poll(() => hold.held.length).toBe(2);
   await hold.release();
@@ -281,7 +257,7 @@ test("unticking while a picture is drawn wins over the reply", async ({ page }) 
   await box(page).uncheck();
   await held[0].continue();
   await page.unroute(picture);
-  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 888" })).toBeVisible();
+  await expect(section(page).getByRole("img", { name: "Map preview of Vulcanus, seed 888. The pin is where players start." })).toBeVisible();
   await expect(box(page)).not.toBeChecked();
   await expect(overlay(page)).toHaveCount(0);
   await expect(list(page)).toHaveCount(0);

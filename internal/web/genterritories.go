@@ -41,15 +41,12 @@ type TerritoryBox struct {
 	// On is true when the person ticked the box, even where it is not shown,
 	// so the choice survives a look at another planet.
 	On bool
-	// Disabled is true when the preview is larger than territories are read
-	// for.
-	Disabled bool
 	// Result is the territories read, or why they were not; nil until asked.
 	Result *TerritoryView
 }
 
 // Checked is true when the box shows as ticked.
-func (b TerritoryBox) Checked() bool { return b.On && b.Show && !b.Disabled }
+func (b TerritoryBox) Checked() bool { return b.On && b.Show }
 
 // Carry is true when the choice is kept in a hidden field, as the box is
 // not there to send it.
@@ -63,9 +60,6 @@ func (b TerritoryBox) Drawn() bool { return b.Checked() && b.Result != nil && b.
 func (TerritoryBox) RequestFailed() *TerritoryView {
 	return &TerritoryView{Error: i18n.M("worlds.generate.territories.request_failed"), Retry: true}
 }
-
-// MaxSize is the largest preview size territories are read for.
-func (TerritoryBox) MaxSize() int { return territory.MaxSize }
 
 // TerritoryView is the overlay of one picture: in picture pixels, which the
 // page scales with the picture, and labels placed in percent at a fixed
@@ -86,19 +80,6 @@ type TerritoryView struct {
 type TerritoryLabel struct {
 	Left, Top   float64
 	Text, Short string
-}
-
-// shortLabel is the size as the small picture shows it, so it fits there (DESIGN 8.8).
-func shortLabel(l i18n.Locale, size string) string {
-	switch size {
-	case territory.Small:
-		return l.T("mapgen.territory.short.small")
-	case territory.Medium:
-		return l.T("mapgen.territory.short.medium")
-	case territory.Big:
-		return l.T("mapgen.territory.short.big")
-	}
-	return l.T("mapgen.territory.short.unknown")
 }
 
 // IsTerritoryPicture is true for the picture the territories are drawn on.
@@ -128,7 +109,7 @@ func territoryView(loc i18n.Locale, res territory.Result, size int) *TerritoryVi
 	pct := func(px float64) float64 { return math.Round(px/float64(size)*1e5) / 1e3 }
 	for _, s := range ov.Shapes {
 		v.Runs = append(v.Runs, s.Runs...)
-		v.Labels = append(v.Labels, TerritoryLabel{Left: pct(s.LabelX), Top: pct(s.LabelY), Text: territory.Label(loc, s.Size), Short: shortLabel(loc, s.Size)})
+		v.Labels = append(v.Labels, TerritoryLabel{Left: pct(s.LabelX), Top: pct(s.LabelY), Text: territory.Label(loc, s.Size), Short: territory.ShortLabel(loc, s.Size)})
 	}
 	if len(ov.Counts) == 0 {
 		v.Counts = loc.T("worlds.generate.territories.none")
@@ -159,11 +140,8 @@ func countMsg(c territory.Count) i18n.Msg {
 // before anything runs, or is zero when they can be.
 func territoryRefusal(req game.PreviewRequest) i18n.Msg {
 	line, _ := mapgen.Line(req.GameVersion)
-	switch {
-	case !req.SpaceAge || !slices.Contains(mapgen.Planets(line, true), territoryPlanet):
+	if !req.SpaceAge || !slices.Contains(mapgen.Planets(line, true), territoryPlanet) {
 		return i18n.M("worlds.generate.territories.no_vulcanus")
-	case req.Size > territory.MaxSize:
-		return i18n.M("worlds.generate.territories.too_big", "size", strconv.Itoa(territory.MaxSize))
 	}
 	return i18n.Msg{}
 }
@@ -224,9 +202,8 @@ func (s *server) territoryFailure(r *http.Request, version string, err error) i1
 // from the store, or read now when run is true.
 func (s *server) territoryBox(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, name string, view *PreviewView, run bool) TerritoryBox {
 	b := TerritoryBox{
-		On:       r.PostFormValue(territoriesField) != "",
-		Show:     view.Error.IsZero() && slices.ContainsFunc(view.Pictures, func(p PreviewPicture) bool { return p.Planet == territoryPlanet }),
-		Disabled: req.Size > territory.MaxSize,
+		On:   r.PostFormValue(territoriesField) != "",
+		Show: view.Error.IsZero() && slices.ContainsFunc(view.Pictures, func(p PreviewPicture) bool { return p.Planet == territoryPlanet }),
 	}
 	if b.Checked() {
 		b.Result = s.territories(w, r, u, req, name, run)

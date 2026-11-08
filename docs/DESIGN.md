@@ -1216,7 +1216,7 @@ in this order:
    reverse); without `:has()` both show and the server reads the chosen
    one.
    - Map settings: the preset select with "[modified]" (the game's word)
-     and a quiet "Reset to preset default" button after it; the seed with
+     and a quiet "Reset to defaults" button after it; the seed with
      a "Random seed" button; then the tabs of 8.7.
    - Map exchange string: a mono `textarea`, as before.
 5. The preview slot (8.8).
@@ -1225,14 +1225,26 @@ in this order:
 
 **Preset, "[modified]" and reset.** Choosing a preset fills every tab with
 its values (htmx redraws `#map-settings`; the preset and the seed are
-outside it, so focus and a typed seed stay). "[modified]" and the reset
-button show once any setting differs from the preset; the seed is not a
-setting of the preset. Their room is kept while they are not shown (the
+outside it, so focus and a typed seed stay). "[modified]" shows once any
+setting differs from the preset; the seed is not a setting of the
+preset. "Reset to defaults" is the one reset for the whole world (SPEC
+5.6): it shows while a setting differs or a preset other than the
+default is chosen, and puts the default preset and its values back,
+keeping the seed. Their room is kept while they are not shown (the
 word and the button are there but invisible, and out of the
 accessibility tree), so the row wraps the same way either way, and
 nothing below it, such as the slider being dragged, moves when they come
 or go. On a phone they hold a line of their own under the select. Reset is a submit button to the refresh route, so
-it also works without script; with htmx it redraws the tabs in place.
+it also works without script; with htmx it redraws the tabs and the
+preset select in place. It asks nothing first, because nothing saved
+changes; instead "Undo reset" (quiet, script only) takes its place in
+the row with the focus, and the live region says "Map settings reset to
+the defaults for this game version. Undo reset brings your changes
+back." Undo sends the form as it was before the reset to the refresh
+route, so the server draws every value back; focus returns to the reset
+and the live region says "Your map settings are back." Any change in the
+settings, the preset or the seed ends the Undo, since it would throw
+that change away. Clicks: one to reset, one to undo.
 A hidden `filled_from` names the preset the tabs were filled from. A page
 without script that sends a new preset with the old preset's values gets
 the page back, filled from the new preset, with a Note "The settings
@@ -1299,8 +1311,9 @@ starts."
   every tab, is kept over a round trip in the hidden `open_planet`
   field, and is the planet with the first error when there is one.
   Opening a row switches the preview to that planet, and the live region
-  says "Preview: Fulgora" once; a tab switch says nothing. Choosing a
-  planet in the preview opens its row without moving focus.
+  says "Preview: Fulgora" once (with One planet chosen, 8.8); a tab
+  switch says nothing. A planet the large view moves to opens its row
+  without moving focus.
 - **Cliffs off.** Cliffs that the game lets you switch off (Nauvis on
   every line, Gleba and Fulgora on 2.x, never Vulcanus) have an on/off
   box in their legend, as resources do, and their continuity select no
@@ -1377,22 +1390,25 @@ starts."
 
 Preview is optional and adds no screen to Generate. The tasks are "see
 what this map looks like" (no clicks: it is drawn as the page opens and
-as the settings change), "look at another planet" (one choice), "look
-closely" (one click on the picture) and "keep the pictures" (one click
-on a download).
+as the settings change), "look at another planet" (one click on its
+settings row, which the person opens anyway to change it), "see every
+planet" (one click, All planets, or Preview map), "back to one planet"
+(one click, One planet), "look closely" (one click on the picture) and
+"keep the pictures" (one click on a download).
 
 - **Where.** A "Map preview" `section` (h2) full width under the
   settings, on every width, above the achievements summary and the
-  action row. Its first line: "Drawn from the current settings, which
-  are not saved yet, with seed 123456. It redraws as you change them.
-  "Generate world" makes exactly this map. The pin marks the centre of
-  the map, where players start."
+  action row. The heading's line also holds the seed used, "Seed
+  123456", at its end while it fits, so the picture sits close to its
+  controls.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
-  wide panel, a select of 25 sizes elsewhere) above the section, outside
-  the part a reply replaces: 1024 to 4096 tiles square in steps of 128,
-  1280 by default, and a hint that big sizes show their detail in the
-  large view. A change redraws like any other, and the choice is kept
-  over a form error.
+  wide panel, a select of 17 sizes elsewhere) above the section, outside
+  the part a reply replaces: 1024 to 3072 tiles square in steps of 128,
+  1280 by default. The most is the demolisher territory cap, so every
+  size offered can show them (SPEC 5.6). Its hint: "How much of the map,
+  around its center, the preview shows. The pin is where players
+  start." A change redraws like any other, and the choice is kept over a
+  form error.
 - **Drawn by itself** (with script). On page load, and 0.8 s after the
   last change to anything in the form that changes the map: the preset,
   the seed, any setting, the way to make the map, the pasted exchange
@@ -1402,18 +1418,31 @@ on a download).
   its way (the server stops its run) and a late reply is ignored. A
   pressed "Preview map" is aborted by a later change too. Exchange mode
   with nothing pasted draws nothing and empties the section.
-- **One planet at a time.** An automatic request (`auto=1`) draws only
-  the planet being viewed: the first, or the one picked. A "Planet"
-  select under the first line (script only, and only on a world with
-  several planets) picks it and draws it at once; returning to a planet
-  already drawn with the same settings shows the stored picture with no
-  run. "Preview map" still draws every planet, which is also the page
-  without script.
+- **One planet or all.** On a world with several planets, a choice under
+  the heading line, drawn as tabs (radios, as 8.7's tabs, one tab stop;
+  legend "Preview shows", for screen readers only): **One planet**
+  (checked by default) and **All planets**. It needs script, so without
+  it the style sheet hides it. There is no planet picker: opening a
+  planet's settings row already picks the planet.
+  - One planet: an automatic request (`auto=1`, `preview_view=one`)
+    draws only the planet whose settings row is open, as one large
+    picture; opening another row draws that planet, and the live region
+    says "Preview: Fulgora" once. Returning to a planet already drawn
+    with the same settings shows the stored picture with no run.
+  - All planets (`preview_view=all`): every planet, as thumbnails in the
+    grid below; only the planets not drawn yet are run, and each later
+    change redraws them all. Opening a row then draws nothing, but it is
+    the planet One planet shows next.
+  - "Preview map" draws every planet and chooses All planets, so One
+    planet is always one click back. It is also the page without script.
+  - The section's hidden `datalist` of the world's planets and their
+    names serves the large view's Previous and Next.
 - **Seed.** A blank seed field is filled with the seed the preview used,
   so the world made is the one previewed; a seed the person typed is
   never overwritten.
 - **Focus and news.** Nothing automatic moves focus; a control in the
-  section that had focus (the planet select) keeps it across the redraw.
+  section that had focus (the One planet or All planets choice, the
+  territory box) keeps it across the redraw.
   While a request runs, the previous picture stays, faded to 60%, the
   section is `aria-busy`, and a one-line note above it says "Drawing the
   map preview for the current settings…"; that line's height is held once
@@ -1429,7 +1458,7 @@ on a download).
   download line (`min(100%, max(16rem, 100dvh - 2 x target - space-4))`),
   centred, with the caption and download lined up with its edge; the
   held box before the first picture follows the same rule, so nothing
-  moves. Alt text: "Map preview of Nauvis, seed 123456".
+  moves. Alt text: "Map preview of Nauvis, seed 123456. The pin is where players start."
   Several pictures (Preview map) sit in a grid,
   `repeat(auto-fit, minmax(16rem, 1fr))`. The picture is a link to its
   file; its name adds "(opens the large view)" with script and "(opens
@@ -1440,7 +1469,8 @@ on a download).
   view. White face, black edge and dot (`--color-pin-face`,
   `--color-pin-edge`, the same in both themes, because the map's own
   colours do not follow the theme), so it reads on every planet. It is
-  `aria-hidden`; the section's first line says what it marks.
+  `aria-hidden`; the size hint and the picture's alt text say what it
+  marks.
 - **Downloads** (#237). Under each picture, "Download Nauvis (PNG)"; on
   a world with several planets, one "Download all drawn planets (zip)"
   after the list. Both are links with `download`, each a 44px target.
@@ -1451,8 +1481,11 @@ on a download).
   the planet's name (h2, the dialog's name) with a download icon link beside it ("Download Nauvis
   map"), and under them a `role="status"` line whose height is held
   (content outside a modal dialog is inert, so the dialog says its own
-  news). Then the picture in a scrolling frame, which has focus on open,
-  and a one-line key hint under it.
+  news). The key help sits in the bar too, at the end of the name's line
+  while it fits: "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit,
+  Esc close. Tap to center." It is one line on a desktop and may take two
+  at 320 px; the frame names it as its description. Then the picture in
+  a scrolling frame, which has focus on open.
   - Over the picture: Previous and Next arrows on its left and right
     edges, named after where they lead ("Previous planet: Aquilo"); a
     round X in the top corner ("Close"); Zoom out and Zoom in in the
@@ -1463,7 +1496,7 @@ on a download).
     `(pointer: coarse)`. Previous and Next step through the world's
     planets and wrap; a planet not drawn yet is drawn and shown in place.
   - Zoom is a factor of the fitted size, from 1 up to the larger of 8
-    and 8 CSS pixels per tile (so a 4096 picture still reaches real
+    and 8 CSS pixels per tile (so a 3072 picture still reaches real
     tiles). Each wheel notch, plus or minus key, or zoom button
     multiplies it by 1.15; the wheel zooms around the pointer, the keys
     and buttons around the frame's centre, by setting the frame's scroll
@@ -1484,15 +1517,15 @@ on a download).
     opacity fades, in 120 ms.
   - On close, focus goes to the link of the picture last shown. A click
     with a modifier key opens the file as the browser would. When the
-    view or the Planet select moves to another planet the page gets a
-    `preview:planet` event, and the view starts from the hidden
-    `#open-planet` field when the settings set it.
+    view moves to another planet the page gets a `preview:planet` event,
+    which opens that planet's settings row; an opened row tells the
+    preview with a `settings:planet` event. The view starts from the
+    hidden `#open-planet` field when the settings set it.
 - **Demolisher territories** (Vulcanus, Space Age). A "Show demolisher
-  territories" checkbox (7.2) beside the Planet select, shown only while
-  Vulcanus's picture is shown, off by default, with the hint "Finding them
-  takes a few seconds more." Above 3072 tiles it is `aria-disabled="true"`
-  with no name, so Tab still reaches it and its reason is heard but it
-  cannot change or send; its hint names that size and says to choose a smaller one. It is a named field,
+  territories" checkbox (7.2) under the One planet or All planets
+  choice, shown only while Vulcanus's picture is shown, off by default,
+  with the hint "Finding them takes a few seconds more." Every preview
+  size offered can show them, so it is never turned off. It is a named field,
   so "Preview map" without script reads the territories after the
   pictures, in the same request; a ticked choice is kept in a hidden field
   while another planet is viewed. With script, the territories are asked
@@ -1510,13 +1543,18 @@ on a download).
     rgb 200 20 20 at a third), one border path along every edge between
     owners and around the free start area (`--color-territory-border`, 2
     CSS px at any zoom with `vector-effect: non-scaling-stroke`); the start
-    area has no stripes. Each territory's size in words ("Small",
-    "Medium", "Big", "Unknown") is an HTML label placed by percent at its
-    chunks' mean, at `--text-sm` bold white with a near-black ring of
-    text shadows, so it keeps its size under zoom like the pin. The
-    overlay is `aria-hidden`; a `p` under the picture says the same in
-    words: "Demolisher territories in this picture: 12 small, 6
-    medium." The large view shows a copy of the same overlay.
+    area has no stripes. Each territory's size is an HTML label placed by
+    percent at its chunks' mean, white with a near-black ring of text
+    shadows, so it keeps its size under zoom like the pin: in the
+    thumbnail a short word ("Sm.", "Med.", "Big", "?",
+    `territory.ShortLabel`) at 12 px regular, so it does not crowd a small
+    picture; in the large view the full word ("Small", "Medium", "Big",
+    "Unknown") at `--text-sm` bold. The overlay is `aria-hidden`; a
+    visually hidden `p` under the picture says the same in words for
+    screen readers: "Demolisher territories in this picture: 12 small, 6
+    medium." Its line stays held while the box is ticked, so nothing
+    under the picture moves when the counts arrive. The large view shows
+    a copy of the same overlay.
   - While they are shown, Vulcanus's download reads "Download Vulcanus
     with territories (PNG)" and its file, and Vulcanus's file in the zip,
     have the overlay drawn in by the server (`?territories=1`), named

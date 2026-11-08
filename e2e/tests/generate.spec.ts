@@ -248,7 +248,7 @@ test.describe("map preview", () => {
     await page.getByRole("button", { name: "Preview map" }).click();
     const section = page.getByRole("region", { name: "Map preview" });
     await expect(section.getByRole("img")).toHaveCount(5);
-    await expect(section.getByRole("img", { name: /^Map preview of Nauvis, seed \d+$/ })).toBeVisible();
+    await expect(section.getByRole("img", { name: /^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/ })).toBeVisible();
     await expect(page.locator("#announcer")).toContainText("Map preview ready.");
     // The blank seed now holds the one the pictures used.
     const seed = await page.locator("#generate-seed").inputValue();
@@ -622,24 +622,33 @@ test("the island preset fills the map type, and default leaves it out of the fil
 test("[modified] shows once a setting changes, and Reset puts the preset back", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
+  const mark = page.locator("#preset-modified");
+  const reset = page.getByRole("button", { name: "Reset to defaults" });
+  // The defaults leave the reset nothing to do.
+  await expect(reset).toBeHidden();
+  await tab(page, "Enemy").click();
+  const defaultDistance = await page.getByLabel("Maximum expansion distance").inputValue();
+  await tab(page, "Resources").click();
   await page.locator("#generate-preset").selectOption({ label: "Death world" });
   await expect(page.locator("#mg-nauvis-enemy-base-size")).toHaveValue("200");
-  const mark = page.locator("#preset-modified");
-  const reset = page.getByRole("button", { name: "Reset to preset default" });
   await expect(mark).toHaveText("");
-  await expect(reset).toBeHidden();
+  // Another preset is not the defaults, so the reset is offered (SPEC 5.6).
+  await expect(reset).toBeVisible();
   await page.locator("#generate-seed").fill("5");
   await expect(mark).toHaveText("");
   await tab(page, "Enemy").click();
   await page.getByLabel("Maximum expansion distance").fill("3");
   await expect(mark).toHaveText("[modified]");
-  await expect(reset).toBeVisible();
   await page.getByLabel("Maximum expansion distance").fill("5");
   await expect(mark).toHaveText("");
   await page.getByLabel("Maximum expansion distance").fill("2");
   await reset.click();
-  await expect(page.getByLabel("Maximum expansion distance")).toHaveValue("5");
+  // The whole world goes back: the default preset and its values; the seed stays.
+  await expect(page.locator("#generate-preset")).toHaveValue("default");
+  await expect(page.getByLabel("Maximum expansion distance")).toHaveValue(defaultDistance);
+  await expect(page.locator("#mg-nauvis-enemy-base-size")).toHaveValue("100");
   await expect(mark).toHaveText("");
+  await expect(reset).toBeHidden();
   await expect(page.locator("#generate-seed")).toHaveValue("5");
   await checkPage(page);
 });
@@ -735,7 +744,7 @@ test.describe("without script", () => {
     await page.getByLabel("Width").fill("64");
     await page.getByRole("button", { name: "Generate world" }).click(); // no name: shown again, changed
     await expect(page.locator("#preset-modified")).toHaveText("[modified]");
-    await page.getByRole("button", { name: "Reset to preset default" }).click();
+    await page.getByRole("button", { name: "Reset to defaults" }).click();
     await expect(page.getByLabel("Width")).toHaveValue("0");
   });
 });

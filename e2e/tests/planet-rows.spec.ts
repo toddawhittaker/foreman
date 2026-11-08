@@ -85,7 +85,6 @@ test("opening a row switches the preview to that planet, and says so once", asyn
   });
   const said = () => page.evaluate(() => (window as unknown as { said: string[] }).said.filter((t) => t.startsWith("Preview:")));
   await row(page, "resources", "gleba").locator("summary").click();
-  await expect(page.locator("#preview-planet")).toHaveValue("gleba");
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Gleba/);
   await expect.poll(said).toEqual(["Preview: Gleba"]);
   // A tab switch shows the same planet and says nothing new.
@@ -95,18 +94,23 @@ test("opening a row switches the preview to that planet, and says so once", asyn
   expect(await said()).toEqual(["Preview: Gleba"]);
 });
 
-test("choosing a planet in the preview opens its row without moving focus", async ({ page }) => {
+test("a planet the large view moves to opens its row without moving focus", async ({ page }) => {
   await page.goto("/generate");
   await expect(pictures(page)).toHaveCount(1);
-  const pick = page.locator("#preview-planet");
-  await pick.selectOption("vulcanus");
+  await page.getByRole("region", { name: "Map preview" }).getByRole("link", { name: /opens the large view/ }).click();
+  await page.keyboard.press("ArrowRight");
   await expect.poll(() => openRows(page, "resources")).toEqual(["vulcanus"]);
   // Opening the row moves no focus into the settings.
   expect(await page.evaluate(() => !!document.activeElement?.closest("#map-settings"))).toBe(false);
   await expect(page.locator("#open-planet")).toHaveValue("vulcanus");
-  // Another script may ask for a planet too.
-  await page.evaluate(() => document.dispatchEvent(new CustomEvent("preview:planet", { detail: { planet: "fulgora" } })));
-  await expect.poll(() => openRows(page, "resources")).toEqual(["fulgora"]);
+  await page.keyboard.press("Escape");
+  // With every planet shown, opening a row redraws nothing, and One planet then shows it.
+  await page.locator("label.tab", { hasText: "All planets" }).click();
+  await expect(pictures(page)).toHaveCount(5);
+  await row(page, "resources", "fulgora").locator("summary").click();
+  await page.locator("label.tab", { hasText: "One planet" }).click();
+  await expect(pictures(page)).toHaveCount(1);
+  await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Fulgora/);
 });
 
 test("cliffs can be switched off, which disables their settings and marks the preset modified", async ({ page }) => {

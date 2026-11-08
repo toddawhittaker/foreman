@@ -189,17 +189,18 @@ test("the arrows and the X show on hover and on keyboard focus, named after wher
 });
 
 // The key help is one short line at the top, beside the planet's name on a
-// desktop, and the frame still names it as its description.
+// desktop, and the frame still names it as its description. At 320 px the
+// sentence about panning and tapping cannot fit one line, so it may take two.
 test("the key help is one line in the bar above the picture", async ({ page }) => {
   await openLarge(page);
   const keys = page.locator("#large-keys");
-  await expect(keys).toHaveText("Keys: ← → planet, + − zoom, 0 fit, Esc close");
-  await expect(frame(page)).toHaveAccessibleDescription("Keys: ← → planet, + − zoom, 0 fit, Esc close");
+  await expect(keys).toHaveText("Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.");
+  await expect(frame(page)).toHaveAccessibleDescription("Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.");
   const k = (await keys.boundingBox())!;
   const f = (await frame(page).boundingBox())!;
   expect(k.y + k.height).toBeLessThanOrEqual(f.y);
   const lines = await keys.evaluate((p) => p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight));
-  expect(lines).toBeLessThan(1.5);
+  expect(lines).toBeLessThan((page.viewportSize()?.width ?? 0) > 320 ? 1.5 : 2.5);
   if ((page.viewportSize()?.width ?? 0) > 320) {
     const h = (await page.locator("#large-title").boundingBox())!;
     expect(k.y).toBeLessThan(h.y + h.height);
@@ -226,7 +227,7 @@ test("the download icon by the heading downloads the planet shown", async ({ pag
 });
 
 // Ruling C4: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
-for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["4096", null]] as const) {
+for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072", null]] as const) {
   test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, async ({ page }) => {
     if (viewport) await page.setViewportSize(viewport);
     await page.goto("/generate");
@@ -337,7 +338,7 @@ test.describe("the planet viewed", () => {
     return () => page.evaluate(() => (window as unknown as { seen: string[] }).seen);
   }
 
-  test("moving in the large view or picking a planet tells the page", async ({ page }) => {
+  test("moving in the large view tells the page; opening a row is not told back", async ({ page }) => {
     const seen = await recordEvents(page);
     await openLarge(page);
     expect(await seen()).toEqual([]);
@@ -348,9 +349,9 @@ test.describe("the planet viewed", () => {
     expect(await seen()).toEqual(["vulcanus", "nauvis"]);
     await expect(dialog(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
     await page.keyboard.press("Escape");
-    await section(page).getByLabel("Planet").selectOption("fulgora");
+    await page.locator("#mg-resources-fulgora summary").click();
     await expect(section(page).getByRole("img", { name: /^Map preview of Fulgora/ })).toBeVisible();
-    expect(await seen()).toEqual(["vulcanus", "nauvis", "fulgora"]);
+    expect(await seen()).toEqual(["vulcanus", "nauvis"]);
   });
 
   // A tab leaves out a planet with nothing to set there, so the row of the
@@ -372,18 +373,16 @@ test.describe("the planet viewed", () => {
     await expect(page.locator("#open-planet")).toHaveValue("aquilo");
   });
 
-  // The dialog's close event comes a moment after it shuts; a planet picked
-  // in that moment is still drawn, and the planet viewed stays the one picked.
-  test("a planet picked as the large view closes is drawn", async ({ page }) => {
+  // The dialog's close event comes a moment after it shuts; a planet opened
+  // in that moment is still drawn, and the planet viewed stays the one opened.
+  test("a planet opened as the large view closes is drawn", async ({ page }) => {
     await openLarge(page);
     await page.evaluate(() => {
       (document.getElementById("large-view") as HTMLDialogElement).close();
-      const pick = document.getElementById("preview-planet") as HTMLSelectElement;
-      pick.value = "fulgora";
-      pick.dispatchEvent(new Event("change", { bubbles: true }));
+      (document.querySelector("#mg-resources-fulgora summary") as HTMLElement).click();
     });
     await expect(section(page).getByRole("img", { name: /^Map preview of Fulgora/ })).toBeVisible();
-    await expect(section(page).getByLabel("Planet")).toHaveValue("fulgora");
+    await expect(page.locator("#open-planet")).toHaveValue("fulgora");
   });
 
   test("the preview starts from the planet open in the settings", async ({ page }) => {
@@ -403,7 +402,6 @@ test.describe("the planet viewed", () => {
     });
     await page.goto("/generate");
     await expect(section(page).getByRole("img", { name: /^Map preview of Gleba/ })).toBeVisible();
-    await expect(section(page).getByLabel("Planet")).toHaveValue("gleba");
     expect(await seen()).toEqual([]);
   });
 
@@ -414,7 +412,7 @@ test.describe("the planet viewed", () => {
       await fakeGame!.call("/image", { ref: image21.replace(/:[^:]+$/, ":1.1.110"), on: true });
       await page.goto("/generate");
       await expect(section(page).getByRole("img")).toHaveCount(1);
-      await section(page).getByLabel("Planet").selectOption("vulcanus");
+      await page.locator("#mg-resources-vulcanus summary").click();
       await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
       const replies: { planet: string | null; status: number }[] = [];
       page.on("response", (r) => {

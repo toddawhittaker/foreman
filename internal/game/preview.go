@@ -21,6 +21,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/territory"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -37,18 +38,19 @@ const (
 	maxPreviewWaiters = 8
 	// A picture is a square of this many pixels a side, from PreviewSizeMin to
 	// PreviewSizeMax in steps of PreviewSizeStep (two chunks on each side). On
-	// 2.x a pixel is a tile; on 1.1 the default scale is one tile too.
+	// 2.x a pixel is a tile; on 1.1 the default scale is one tile too. The
+	// most is the territory cap, so every size offered can show them (SPEC 5.6).
 	PreviewSizeMin     = 1024
-	PreviewSizeMax     = 4096
+	PreviewSizeMax     = territory.MaxSize
 	PreviewSizeStep    = 128
 	PreviewSizeDefault = 1280
 	// previewMemory is the container's memory limit in bytes, with no swap.
-	// The peak at the largest size, 4096 pixels, is about 553 MiB; this leaves
-	// room for a patch that needs more.
+	// The peak measured at 4096 pixels, above today's most, was about 553
+	// MiB; this leaves room for a patch that needs more.
 	previewMemory = 1 << 30
 	// MaxPreviewPNG is the largest picture Foreman reads back (SPEC 5.6). The
-	// largest measured at 4096 pixels is Gleba, 8.91 MB; this leaves room for
-	// a busier seed. At 1280 pixels they are under 1 MB.
+	// largest measured at 4096 pixels, above today's most, was Gleba, 8.91
+	// MB; this leaves room for a busier seed. At 1280 pixels they are under 1 MB.
 	MaxPreviewPNG = 16 << 20
 	previewPoll   = 250 * time.Millisecond
 	// previewDir is the folder of the data directory that holds a preview's

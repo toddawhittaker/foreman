@@ -157,7 +157,7 @@ func (e *gameEnv) runUIBPreviews(t *testing.T, line, version string) {
 	})
 }
 
-// TestRealGamePreviewsAtTheLargestSize draws every planet at 4096 tiles on
+// TestRealGamePreviewsAtTheLargestSize draws every planet at PreviewSizeMax tiles on
 // every line: inside the picture cap and PreviewLimit (a longer run is
 // ErrPreviewTimeout) and inside the container's memory limit (a kill is a
 // *PreviewError with OOM).

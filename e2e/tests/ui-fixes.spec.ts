@@ -278,16 +278,58 @@ test.describe("Generate", () => {
     await expect(section(page).getByRole("link", { name: /Map preview of Nauvis, seed 4242/ })).toBeFocused();
   });
 
-  test("Reset to preset default puts focus on the preset and says so", async ({ page }) => {
+  // SPEC 5.6, 17.9 (#318): Reset to defaults throws every change away, so
+  // Undo takes its place with the focus, and one press brings them back.
+  test("Reset to defaults offers Undo in its place, which brings every change back", async ({ page }) => {
+    await page.goto("/generate");
+    await page.locator("#generate-preset").selectOption("rich-resources");
+    await expect(page.locator("#mg-nauvis-iron-ore-richness")).not.toHaveValue("100");
+    const richness = await page.locator("#mg-nauvis-iron-ore-richness").inputValue();
+    await tab(page, "Enemy").click();
+    await page.getByLabel("Maximum expansion distance").fill("3");
+    const reset = page.getByRole("button", { name: "Reset to defaults" });
+    const undo = page.getByRole("button", { name: "Undo reset" });
+    // Every text the live region is given; the preview's own news follows a moment later.
+    await page.evaluate(() => {
+      const w = window as unknown as { said: string[] };
+      w.said = [];
+      const a = document.getElementById("announcer")!;
+      new MutationObserver(() => { if (a.textContent) w.said.push(a.textContent); }).observe(a, { childList: true, characterData: true, subtree: true });
+    });
+    const said = () => page.evaluate(() => (window as unknown as { said: string[] }).said);    await expect(undo).toBeHidden();
+    await reset.focus();
+    await page.keyboard.press("Enter");
+    await expect(undo).toBeFocused();
+    await expect(reset).toBeHidden();
+    await expect(page.locator("#generate-preset")).toHaveValue("default");
+    await expect(page.getByLabel("Maximum expansion distance")).not.toHaveValue("3");
+    await expect.poll(said).toContain("Map settings reset to the defaults for this game version. Undo reset brings your changes back.");
+    // Undo takes the reset's place, so the row does not grow.
+    const u = (await undo.boundingBox())!;
+    const p = (await page.locator("#generate-preset").boundingBox())!;
+    if ((page.viewportSize()?.width ?? 0) > 600) expect(Math.abs(u.y + u.height / 2 - (p.y + p.height / 2))).toBeLessThan(4);
+    await checkPage(page);
+
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#generate-preset")).toHaveValue("rich-resources");
+    await expect(page.getByLabel("Maximum expansion distance")).toHaveValue("3");
+    await expect(page.locator("#mg-nauvis-iron-ore-richness")).toHaveValue(richness);
+    await expect(page.locator("#preset-modified")).toHaveText("[modified]");
+    await expect(undo).toBeHidden();
+    await expect(reset).toBeFocused();
+    await expect.poll(said).toContain("Your map settings are back.");
+  });
+
+  test("a change after Reset to defaults ends the Undo, so it cannot throw the change away", async ({ page }) => {
     await page.goto("/generate");
     await tab(page, "Enemy").click();
     await page.getByLabel("Maximum expansion distance").fill("3");
-    const reset = page.getByRole("button", { name: "Reset to preset default" });
-    await reset.focus();
-    await page.keyboard.press("Enter");
-    await expect(reset).toBeHidden();
-    await expect(page.locator("#generate-preset")).toBeFocused();
-    await expect(page.locator("#announcer")).toHaveText(/^Map settings reset to the .+ preset\.$/);
+    await page.getByRole("button", { name: "Reset to defaults" }).click();
+    const undo = page.getByRole("button", { name: "Undo reset" });
+    await expect(undo).toBeVisible();
+    await page.getByLabel("Maximum expansion distance").fill("4");
+    await expect(undo).toBeHidden();
+    await expect(page.getByRole("button", { name: "Reset to defaults" })).toBeVisible();
   });
 
   test("the achievement warning names the setting, and its end is said", async ({ page }) => {

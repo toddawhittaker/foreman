@@ -166,3 +166,17 @@ func Label(l i18n.Locale, size string) string {
 	}
 	return l.T("mapgen.territory.unknown")
 }
+
+// ShortLabel is the size as the small picture shows it, so it fits there
+// (DESIGN 8.8).
+func ShortLabel(l i18n.Locale, size string) string {
+	switch size {
+	case Small:
+		return l.T("mapgen.territory.short.small")
+	case Medium:
+		return l.T("mapgen.territory.short.medium")
+	case Big:
+		return l.T("mapgen.territory.short.big")
+	}
+	return l.T("mapgen.territory.short.unknown")
+}

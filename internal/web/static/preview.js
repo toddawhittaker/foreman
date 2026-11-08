@@ -1,6 +1,7 @@
 // The map preview on Generate (SPEC 5.6; DESIGN 8.8). It draws on page load
-// and about 0.8 s after the last change to the map's settings, only for the
-// planet being viewed; the newest request wins and older ones are dropped.
+// and about 0.8 s after the last change to the map's settings, for the planet
+// whose settings are open, or for every planet once "All planets" or Preview
+// map is chosen; the newest request wins and older ones are dropped.
 // It never moves focus. The large view opens each picture in the page, with
 // Previous, Next, zoom and panning; without script the picture link opens
 // the file. Another planet viewed is told as a "preview:planet" event.
@@ -18,11 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let sent = 0; // the number of the newest request; a reply to an older one is ignored
   let pending = null; // the AbortController of the request on its way
   let pendingInView = false; // whether that request was asked for by the large view
-  let drawing = ""; // the planet the request on its way is for
+  let drawing = ""; // the planet the request on its way is for, or "*" for every planet
   let refreshing = 0; // htmx redraws of the settings still on their way
   // The planet shown, blank for the first; the settings may say which planet is open.
   const open = document.getElementById("open-planet");
   let viewing = open && open.value ? open.value : "";
+  // Whether every planet is shown, small, rather than the viewed one, large.
+  let showAll = false;
 
   const dialog = document.getElementById("large-view");
   const status = document.getElementById("preview-status");
@@ -67,8 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let terrPending = null;
   const terrPlanet = "vulcanus";
   const terrBox = () => document.getElementById("preview-territories");
-  // Above the size cap the box stays reachable by Tab but cannot change.
-  const boxLocked = (b) => b.getAttribute("aria-disabled") === "true";
   const terrSlot = () => document.getElementById("territory-result");
 
   function dropTerritories() {
@@ -111,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const box = terrBox();
     const link = pictureLink(terrPlanet);
     const slot = terrSlot();
-    if (!box || !box.checked || boxLocked(box) || !link || !slot) return;
+    if (!box || !box.checked || !link || !slot) return;
     // The server already showed the ones it holds for these settings.
     if (link.querySelector(".territories")) return;
     const n = terrSent;
@@ -190,13 +191,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Sent as htmx sends a form, URL-encoded.
     const body = new URLSearchParams(new FormData(formEl()));
     body.set("auto", "1");
-    if (viewing) body.set("planet", viewing);
+    body.set("preview_view", showAll ? "all" : "one");
+    if (viewing && !showAll) body.set("planet", viewing);
     const seed = formEl().querySelector("#generate-seed");
     const seedSent = seed ? seed.value : "";
     const ctrl = new AbortController();
     pending = ctrl;
     pendingInView = Boolean(dialog && dialog.open);
-    drawing = viewing || firstPlanet();
+    drawing = showAll ? "*" : viewing || firstPlanet();
     setStatus(true);
     let html;
     try {
@@ -217,10 +219,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!fresh) return;
     // A tick or untick made while the picture was drawn is newer than the reply.
     const before = terrBox();
-    const ticked = before && !boxLocked(before) ? before.checked : null;
+    const ticked = before ? before.checked : null;
     swap(fresh);
     const after = terrBox();
-    if (ticked !== null && after && !boxLocked(after) && after.checked !== ticked) {
+    if (ticked !== null && after && after.checked !== ticked) {
       after.checked = ticked;
       if (!ticked) clearTerritories();
     }
@@ -319,22 +321,29 @@ document.addEventListener("DOMContentLoaded", () => {
     return !["generate-name", "generate-download"].includes(t.id);
   }
   document.addEventListener("input", (e) => { if (counts(e.target)) soon(); });
-  document.addEventListener("click", (e) => {
-    if (e.target.id === "preview-territories" && boxLocked(e.target)) e.preventDefault();
-  });
   document.addEventListener("change", (e) => {
     if (e.target.id === "preview-territories") {
       if (e.target.checked) territories(true);
       else clearTerritories();
       return;
     }
-    if (e.target.id === "preview-planet") {
-      view(e.target.value);
-      drop();
+    if (e.target.name === "preview_view") {
+      showAll = e.target.value === "all";
       draw(true);
       return;
     }
     if (counts(e.target)) soon();
+  });
+
+  // Opening a planet's settings shows that planet; with every planet shown,
+  // it is the one "One planet" will show (DESIGN 8.8).
+  document.addEventListener("settings:planet", (e) => {
+    const planet = e.detail.planet;
+    if (planet === (viewing || firstPlanet())) return;
+    viewing = planet;
+    if (showAll) return;
+    e.preventDefault();
+    draw(true);
   });
 
   // Redrawn settings may have other planets (Space Age, the game line), so the
@@ -353,12 +362,19 @@ document.addEventListener("DOMContentLoaded", () => {
       refreshing++;
       drop();
     }
-    // Preview map asks for every planet; nothing automatic may overwrite it.
-    if (e.detail.elt === button()) drop();
+    // Preview map asks for every planet; nothing automatic may overwrite it,
+    // and later draws keep showing them all.
+    if (e.detail.elt === button()) {
+      drop();
+      showAll = true;
+    }
   });
   // Preview map's pictures are in place; the territories come after them.
   document.body.addEventListener("htmx:afterSwap", (e) => {
-    if (e.target.id === "preview") territories(false);
+    if (e.target.id !== "preview") return;
+    const all = el("preview-view-all");
+    if (all) showAll = all.checked;
+    territories(false);
   });
   document.body.addEventListener("htmx:afterRequest", (e) => {
     if (!isRefresh(e)) return;
@@ -382,7 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // error has none, and Previous and Next must still move then.
   let known = [];
   function planets() {
-    const pick = el("preview-planet");
+    const pick = el("preview-planets");
     const found = pick ? [...pick.options].map((o) => o.value) : [...document.querySelectorAll("#preview a.picture")].map((a) => a.dataset.planet);
     if (found.length) known = found;
     return known;
@@ -390,7 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const firstPlanet = () => planets()[0] || "";
 
   function nameOf(planet) {
-    const pick = el("preview-planet");
+    const pick = el("preview-planets");
     const option = pick && [...pick.options].find((o) => o.value === planet);
     if (option) return option.text;
     const link = pictureLink(planet);
@@ -457,8 +473,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Shows a planet's picture, or draws it first when it has not been drawn.
   function show(planet) {
     const link = pictureLink(planet);
-    const pick = el("preview-planet");
-    if (pick) pick.value = planet;
     view(planet);
     nameArrows();
     if (!link) {
@@ -474,7 +488,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // A draw on its way for another planet is dropped, or its reply would
     // replace this picture and its link.
-    if (pending && drawing !== planet) drop();
+    if (pending && drawing !== "*" && drawing !== planet) drop();
     const img = link.querySelector("img");
     const figure = link.closest("figure");
     const download = link.closest("li").querySelector("a.download");

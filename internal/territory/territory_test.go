@@ -141,6 +141,14 @@ func TestLabel(t *testing.T) {
 	}
 }
 
+func TestShortLabel(t *testing.T) {
+	for size, want := range map[string]string{Small: "Sm.", Medium: "Med.", Big: "Big", Unknown: "?", "other": "?"} {
+		if got := ShortLabel(i18n.English, size); got != want {
+			t.Errorf("ShortLabel(%q) = %q, want %q", size, got, want)
+		}
+	}
+}
+
 // Every glyph of every language's label words is in the fonts the PNG is
 // drawn with, so a translation that needs a new glyph fails here (SPEC
 // 22.5) rather than drawing boxes. fonts/NOTICE says how to add one.

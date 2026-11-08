@@ -348,13 +348,47 @@ func TestAutomaticPreviewDrawsOnePlanet(t *testing.T) {
 		if !strings.Contains(body, `/`+tc.want+`"`) || strings.Count(body, `<img src="`) != 1 {
 			t.Errorf("planet %q: want one picture of %s:\n%s", tc.planet, tc.want, body)
 		}
-		if strings.Count(body, "<option ") != 5 || !strings.Contains(body, `<option value="`+tc.want+`" selected>`) {
-			t.Errorf("planet %q: the planet choice is wrong:\n%s", tc.planet, body)
+		if strings.Count(body, "<option ") != 5 || !strings.Contains(body, `id="preview-view-one" value="one" checked>`) || strings.Contains(body, `value="all" checked`) {
+			t.Errorf("planet %q: the view choice is wrong:\n%s", tc.planet, body)
 		}
 	}
 	// Each run drew one planet: nauvis, then gleba; nauvis again was stored.
 	if len(prev.got) != 2 || !slices.Equal(prev.got[0].Planets, []string{"nauvis"}) || !slices.Equal(prev.got[1].Planets, []string{"gleba"}) {
 		t.Errorf("runs %+v", prev.got)
+	}
+}
+
+// DESIGN 8.8: with "All planets" chosen, an automatic request draws every
+// planet, only those not drawn yet, and offers the way back to one planet.
+// A world with one planet offers no choice.
+func TestAutomaticPreviewDrawsAllPlanetsWhenChosen(t *testing.T) {
+	prev := &fakePreviewer{}
+	hn := newGenerateHarness(t, prev)
+	c := hn.signIn()
+	hn.withActive("2.1.24")
+	hx := withHeader("HX-Request", "true")
+	form := generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "42", "auto", "1", "planet", "nauvis")
+	hn.postLong(PathGeneratePreview, form, c, hx)
+	form.Del("planet")
+	form.Set("preview_view", "all")
+	body := hn.postLong(PathGeneratePreview, form, c, hx).Body.String()
+	if strings.Count(body, `<img src="`) != 5 || !strings.Contains(body, `id="preview-view-all" value="all" checked>`) || !strings.Contains(body, `id="preview-view-one" value="one">`) {
+		t.Errorf("want five pictures with All planets chosen and One planet offered:\n%s", body)
+	}
+	if len(prev.got) != 2 || len(prev.got[1].Planets) != 4 || slices.Contains(prev.got[1].Planets, "nauvis") {
+		t.Errorf("runs %+v; the second should draw the four planets not drawn yet", prev.got)
+	}
+	// Back to one planet: the stored picture, with no run.
+	form.Set("preview_view", "one")
+	form.Set("planet", "fulgora")
+	body = hn.postLong(PathGeneratePreview, form, c, hx).Body.String()
+	if strings.Count(body, `<img src="`) != 1 || !strings.Contains(body, `/fulgora"`) || len(prev.got) != 2 {
+		t.Errorf("one planet is not shown from the store (%d runs):\n%s", len(prev.got), body)
+	}
+	one := generateForm("game_version_typed", "2.1.24", "map_key", "2.1|0", "seed", "42", "auto", "1", "preview_view", "all")
+	one.Del("space_age")
+	if body := hn.postLong(PathGeneratePreview, one, c, hx).Body.String(); strings.Contains(body, "preview-view-") {
+		t.Errorf("a one-planet world offers the view choice:\n%s", body)
 	}
 }
 
@@ -442,16 +476,20 @@ func TestPreviewSizeSurvivesAnErrorRoundTrip(t *testing.T) {
 	hn := newGenerateHarness(t, &fakePreviewer{})
 	c := hn.signIn()
 	hn.withActive("2.1.24")
-	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "3328"), c)
+	rec := hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "name", " ", "preview_size", "2816"), c)
 	body := rec.Body.String()
-	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="3328" selected>`) {
+	if rec.Code != http.StatusBadRequest || !strings.Contains(body, `<option value="2816" selected>`) {
 		t.Errorf("status %d; the size was not kept:\n%s", rec.Code, body)
 	}
 	// The sizes are plain digits, with no thousands separator, in every language.
-	for _, want := range []string{">1024 × 1024 tiles</option>", ">1280 × 1280 tiles (default)</option>", ">4096 × 4096 tiles</option>"} {
+	for _, want := range []string{">1024 × 1024 tiles</option>", ">1280 × 1280 tiles (default)</option>", ">3072 × 3072 tiles</option>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the size select lacks %q", want)
 		}
+	}
+	// One cap for every preview: the territory cap (SPEC 5.6).
+	if strings.Contains(body, `<option value="3200"`) {
+		t.Error("the size select offers more than 3072 tiles")
 	}
 	rec = hn.postLong(PathGenerate, generateForm("game_version_typed", "2.1.24", "map_key", "2.1|1", "seed", "5", "preview_size", "7"), c)
 	if rec.Code != http.StatusSeeOther {
