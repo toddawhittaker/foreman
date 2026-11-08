@@ -20,14 +20,17 @@ test.describe("mods tab", () => {
     // Built-in mods are one line above the table, not rows, with the way to change them (SPEC 9.7).
     await expect(table.getByRole("row", { name: /\bbase\b/ })).toHaveCount(0);
     await expect(page.locator("#mods-built-in")).toContainText("Built in, version 2.1.24: base");
-    await expect(page.getByText("They follow Space Age.")).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Change Space Age", exact: true })).toHaveAttribute("href", "/worlds/base/settings");
+    // Issue 372: it says which are off, and why, with the way to turn them on.
+    await expect(page.locator("#mods-built-in")).toContainText("Space Age is off, so elevated-rails, quality, space-age are off.");
+    await expect(page.getByRole("link", { name: "Turn on Space Age", exact: true })).toHaveAttribute("href", "/worlds/base/settings");
     // Each row's buttons name their mod for a screen reader.
     await expect(table.getByRole("link", { name: "Disable other" })).toBeVisible();
     await expect(table.getByRole("link", { name: "Remove other" })).toBeVisible();
     // The portal cannot be reached here, and the tab says so in words, in a live region.
     await expect(page.locator("#mod-status")).toHaveAttribute("role", "status");
     await expect(page.locator("#mod-status")).toContainText("could not reach the mod portal");
+    // Issue 373: the save's mods are read, so the tab says they differ before any click.
+    await expect(page.locator("#sync-state")).toContainText("The mods differ from the save base.zip:");
     await expect(page.getByRole("link", { name: "Match mods to the save" })).toBeVisible();
     await checkPage(page);
     await page.screenshot({ path: `../screenshots/mods-tab-${test.info().project.name}.png`, fullPage: true });

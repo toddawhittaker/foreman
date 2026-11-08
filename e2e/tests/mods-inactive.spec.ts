@@ -27,7 +27,7 @@ test("a change to the other world ends on its Mods tab, with an undo that restor
   const result = page.locator("#world-result");
   await expect(result).toContainText("The mods of Second are changed. Foreman took the snapshot \"Before mod change\" first.", live);
   expect(existsSync(installed)).toBe(true);
-  await expect(page.getByRole("table", { name: /Mods of Second/ }).getByRole("row", { name: /fp-other/ })).toContainText("Enabled");
+  await expect(page.getByRole("table", { name: /Mods of Second/ }).getByRole("row", { name: /fp-other/ })).not.toContainText("Disabled");
   await checkPage(page);
 
   // Undo is two clicks: the link, then Restore snapshot.

@@ -51,18 +51,33 @@
     "other": "{count} are enabled."
   },
   "mods.installed.none": "This world has only the mods built into the game. Find a mod above to install one.",
+  "mods.installed.portal": "on the mod portal, opens in a new tab",
   "mods.col.mod": "Mod",
-  "mods.col.state": "State",
   "mods.col.actions": "Actions",
-  "mods.state.on": "Enabled",
   "mods.state.off": "Disabled",
   "mods.row.update": "Update to {version}",
   "mods.row.enable": "Enable",
   "mods.row.disable": "Disable",
   "mods.row.remove": "Remove",
+  "mods.row.gone": "Players cannot join: the mod portal no longer has version {version}, so their game cannot download it.",
+  "mods.row.gone_none": "Players cannot join: the mod portal no longer has version {version} and has none for this game version. Remove the mod or disable it.",
+  "mods.row.deprecated": "Deprecated on the mod portal, so players cannot find it in the game's mod browser.",
+  "mods.row.not_on_portal": "Not on the mod portal, so players' games cannot download it. Players need the file from you.",
   "mods.status.loading": "Checking the mod portal for updates…",
   "mods.status.unreachable": "Foreman could not reach the mod portal, so it could not check for updates or for mods players cannot download.",
   "mods.status.retry": "Check again",
+  "mods.status.errors": {
+    "one": "{count} mod stops players joining. Its row says how to fix it.",
+    "other": "{count} mods stop players joining. Their rows say how to fix them."
+  },
+  "mods.status.warnings": {
+    "one": "{count} mod is deprecated on the mod portal.",
+    "other": "{count} mods are deprecated on the mod portal."
+  },
+  "mods.status.notes": {
+    "one": "{count} mod is not on the mod portal.",
+    "other": "{count} mods are not on the mod portal."
+  },
   "mods.status.updates": {
     "one": "{count} mod has an update for this game version.",
     "other": "{count} mods have an update for this game version."
@@ -72,11 +87,6 @@
     "one": "{count} mod from the mod portal is up to date.",
     "other": "All {count} mods from the mod portal are up to date."
   },
-  "mods.flag.gone": "Players cannot join with {mod} {version}: the mod portal no longer has that version, so their game cannot download it. Version {update} is on the portal.",
-  "mods.flag.gone_none": "Players cannot join with {mod} {version}: the mod portal no longer has that version, and has none for this game version.",
-  "mods.flag.deprecated": "{mod} is marked deprecated on the mod portal, so players cannot find it in the game's mod browser.",
-  "mods.flag.not_on_portal": "{mod} {version} is not on the mod portal, so players' games cannot download it when they join. Players need the file from you.",
-  "mods.flag.fix_update": "Update {mod} to {version}",
   "mods.flag.fix_remove": "Remove {mod}",
   "mods.notice": {
     "one": "{count} mod of {world} can no longer be downloaded by players, so they cannot join.",
@@ -90,12 +100,33 @@
   },
   "mods.sync.heading": "Match mods to the save",
   "mods.sync.text": "Makes the world's mods the ones the save {save} was made with: installs the missing ones, changes versions, and disables the rest. You see the plan first.",
+  "mods.sync.match": "The mods match the save {save}.",
+  "mods.sync.differ": "The mods differ from the save {save}:",
+  "mods.sync.missing": {
+    "one": "{count} mod the save uses is not installed",
+    "other": "{count} mods the save uses are not installed"
+  },
+  "mods.sync.off": {
+    "one": "{count} mod the save uses is disabled here",
+    "other": "{count} mods the save uses are disabled here"
+  },
+  "mods.sync.version": {
+    "one": "{count} mod the save uses is installed at another version",
+    "other": "{count} mods the save uses are installed at another version"
+  },
+  "mods.sync.extra": {
+    "one": "{count} enabled mod is not in the save",
+    "other": "{count} enabled mods are not in the save"
+  },
+  "mods.sync.what": "Matching installs the missing mods, changes versions and disables the rest. You see the plan first.",
   "mods.sync.button": "Match mods to the save",
   "mods.sync.no_save": "This world has no save yet, so there is nothing to match.",
   "mods.sync.upload_save": "Upload a save",
   "mods.sync.offer": "Match the mods to the save",
   "mods.sync.import": "Match this world's mods to its save",
   "mods.upload.heading": "Upload a mod",
+  "mods.upload.text": "Install a mod from a .zip file you have.",
+  "mods.upload.summary": "Upload a mod zip",
   "mods.upload.label": "Mod zip",
   "mods.upload.hint": "A mod's .zip file, at most {limit}. Foreman reads its name and version from its info.json and shows the plan before it changes anything.",
   "mods.upload.button": "Upload mod",
@@ -106,6 +137,7 @@
   "mods.settings.text": "The values of the mods' settings live in {file}. Download it to keep a copy or to use it in another world.",
   "mods.settings.download": "Download mod-settings.dat",
   "mods.settings.none": "This world has no {file} yet. The game writes one when it first runs with mods.",
+  "mods.settings.summary": "Replace {file}",
   "mods.settings.where": "Your Factorio client keeps it in its mods folder: Windows {windows}, macOS {macos}, Linux {linux}.",
   "mods.settings.apply": "Startup settings apply when the world next starts.",
   "mods.settings.apply_running": "Startup settings apply when the world next starts, so Foreman restarts it.",
@@ -266,7 +298,9 @@
     "other": "Plan updated: it has {count} conflicts, so it cannot be applied."
   },
   "mods.error.cross_site": "This plan was opened from another site, so Foreman did not work it out. Nothing was changed. Choose \"Try again\" to see the plan.",
-  "mods.built_in.line_space_age": "Built in, version {version}: {mods}. They follow Space Age.",
   "mods.built_in.line": "Built in, version {version}: {mods}.",
-  "mods.built_in.change": "Change Space Age"
+  "mods.built_in.line_on": "Built in, version {version}: {mods}. Space Age is on, so all of them are on.",
+  "mods.built_in.line_off": "Built in, version {version}: {mods}. Space Age is off, so {off} are off.",
+  "mods.built_in.change": "Change Space Age",
+  "mods.built_in.turn_on": "Turn on Space Age"
 }
