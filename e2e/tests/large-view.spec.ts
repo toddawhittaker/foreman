@@ -193,8 +193,8 @@ test("the arrows and the X show on hover and on keyboard focus, named after wher
 test("the key help is one line in the bar above the picture", async ({ page }) => {
   await openLarge(page);
   const keys = page.locator("#large-keys");
-  await expect(keys).toHaveText("Keys: ← → planet, + − zoom, 0 fit, Esc close");
-  await expect(frame(page)).toHaveAccessibleDescription("Keys: ← → planet, + − zoom, 0 fit, Esc close");
+  await expect(keys).toHaveText("Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.");
+  await expect(frame(page)).toHaveAccessibleDescription("Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.");
   const k = (await keys.boundingBox())!;
   const f = (await frame(page).boundingBox())!;
   expect(k.y + k.height).toBeLessThanOrEqual(f.y);

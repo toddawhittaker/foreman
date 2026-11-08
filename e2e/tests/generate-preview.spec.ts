@@ -42,7 +42,7 @@ test.describe("with script", () => {
   test("draws Nauvis on load, keeps the seed it used, and names that seed beside the heading", async ({ page }) => {
     await page.goto("/generate");
     await expect(pictures(page)).toHaveCount(1);
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+$/);
+    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
     const seed = await page.locator("#generate-seed").inputValue();
     expect(seed).toMatch(/^\d+$/);
     // The seed shares the heading's line, so the picture sits close to the controls.
@@ -57,7 +57,7 @@ test.describe("with script", () => {
     await expect(section(page).locator("svg.pin")).toHaveAttribute("aria-hidden", "true");
     await expect(page.getByLabel("Planet")).toHaveValue("nauvis");
     await expect(page.getByLabel("Planet").locator("option")).toHaveCount(5);
-    const link = section(page).getByRole("link", { name: /Map preview of Nauvis, seed \d+ \(opens the large view\)/ });
+    const link = section(page).getByRole("link", { name: /Map preview of Nauvis, seed \d+\. The pin is where players start\. \(opens the large view\)/ });
     await expect(link).toBeVisible();
     // The page load does not announce anything or move focus.
     await expect(page.locator("#announcer")).toHaveText("");
@@ -71,7 +71,7 @@ test.describe("with script", () => {
     const seed = page.locator("#generate-seed");
     await seed.fill("");
     await seed.pressSequentially("424242", { delay: 60 });
-    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 424242");
+    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 424242. The pin is where players start.");
     await expect(page.locator("#announcer")).toHaveText("Map preview ready.");
     // The first request goes out after the pause, and only once.
     await page.waitForTimeout(1200);
@@ -94,11 +94,11 @@ test.describe("with script", () => {
     // The first run is under way (the slow game takes half a second); change again.
     await expect(page.locator("#preview-status")).toHaveText("Drawing the map preview for the current settings…");
     await seed.fill("222");
-    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222");
+    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
     expect(failed).toEqual(["111"]);
     // The dropped run never shows, even if it ends later.
     await page.waitForTimeout(800);
-    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222");
+    await expect(pictures(page)).toHaveAccessibleName("Map preview of Nauvis, seed 222. The pin is where players start.");
     await expect(page.locator("#preview-status")).toHaveText("");
   });
 
@@ -124,7 +124,7 @@ test.describe("with script", () => {
     const planet = page.getByLabel("Planet");
     await planet.focus();
     await planet.selectOption("vulcanus");
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus, seed \d+$/);
+    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus, seed \d+\. The pin is where players start\.$/);
     await expect(pictures(page)).toHaveCount(1);
     expect(sent.map((r) => field(r, "planet"))).toEqual(["vulcanus"]);
     // An automatic request never moves focus, and keeping it on the choice is not a move.
@@ -133,7 +133,7 @@ test.describe("with script", () => {
     expect(await runs(fakeGame!)).toBe(before + 1);
 
     await page.getByLabel("Planet").selectOption("nauvis");
-    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+$/);
+    await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/);
     expect(await runs(fakeGame!)).toBe(before + 1);
   });
 
@@ -151,7 +151,7 @@ test.describe("with script", () => {
     await expect(select.locator("option").first()).toHaveText("1024 × 1024 tiles");
     await expect(select.locator("option:checked")).toHaveText("1280 × 1280 tiles (default)");
     await expect(select.locator("option").last()).toHaveText("4096 × 4096 tiles");
-    await expect(page.locator("#generate-preview-size-hint")).toHaveText("How much of the map, around its center, the preview shows.");
+    await expect(page.locator("#generate-preview-size-hint")).toHaveText("How much of the map, around its center, the preview shows. The pin is where players start.");
     await expect(img).toHaveAttribute("width", "1280");
     await img.scrollIntoViewIfNeeded(); // a picture below the fold is not loaded yet
     await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(1280);
@@ -325,7 +325,7 @@ test.describe("without script", () => {
     await page.getByRole("button", { name: "Preview map" }).click();
     await expect(pictures(page)).toHaveCount(5);
     await expect(page.getByLabel("Planet")).toHaveCount(0);
-    const link = section(page).getByRole("link", { name: /^Map preview of Nauvis, seed \d+ \(opens the full-size picture\)$/ });
+    const link = section(page).getByRole("link", { name: /^Map preview of Nauvis, seed \d+\. The pin is where players start\. \(opens the full-size picture\)$/ });
     const href = await link.getAttribute("href");
     await link.click();
     await expect(page).toHaveURL(href!);
@@ -339,7 +339,7 @@ test("the preview's words are short and spelled the American way", async ({ page
   await page.goto("/generate");
   await expect(pictures(page)).toHaveCount(1);
   const hint = page.locator("#generate-preview-size-hint");
-  await expect(hint).toHaveText("How much of the map, around its center, the preview shows.");
+  await expect(hint).toHaveText("How much of the map, around its center, the preview shows. The pin is where players start.");
   if ((page.viewportSize()?.width ?? 0) > 320) {
     const lines = await hint.evaluate((h) => h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight));
     expect(lines).toBeLessThan(1.5);

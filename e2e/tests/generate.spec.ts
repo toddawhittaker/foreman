@@ -248,7 +248,7 @@ test.describe("map preview", () => {
     await page.getByRole("button", { name: "Preview map" }).click();
     const section = page.getByRole("region", { name: "Map preview" });
     await expect(section.getByRole("img")).toHaveCount(5);
-    await expect(section.getByRole("img", { name: /^Map preview of Nauvis, seed \d+$/ })).toBeVisible();
+    await expect(section.getByRole("img", { name: /^Map preview of Nauvis, seed \d+\. The pin is where players start\.$/ })).toBeVisible();
     await expect(page.locator("#announcer")).toContainText("Map preview ready.");
     // The blank seed now holds the one the pictures used.
     const seed = await page.locator("#generate-seed").inputValue();
