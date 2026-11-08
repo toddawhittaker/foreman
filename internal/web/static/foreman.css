@@ -1437,10 +1437,6 @@ td > .hint {
   min-inline-size: 0;
 }
 
-.save-name > .button {
-  white-space: nowrap;
-}
-
 /* On a phone the size and time take smaller text, as in the snapshot tables,
    so the name column keeps room. */
 @container (max-width: 24rem) {
@@ -1450,12 +1446,6 @@ td > .hint {
 
   .save-list .button {
     padding-inline: var(--space-3);
-  }
-}
-
-@container (max-width: 14rem) {
-  .save-name > .button {
-    white-space: normal;
   }
 }
 

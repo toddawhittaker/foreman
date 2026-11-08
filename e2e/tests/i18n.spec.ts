@@ -502,7 +502,7 @@ test.describe("layout at 320 px in every language", () => {
         async () => {
           await copyExtraSave(foreman);
           await page.goto("/worlds/base/saves");
-          const button = page.locator("button[name=load][value='extra.zip']");
+          const button = page.locator("form[action$=load-save] button[value='extra.zip']");
           await button.evaluate((e) => e.removeAttribute("name"));
           await button.click();
           await expect(page.locator("#load-save-error")).toBeVisible();
