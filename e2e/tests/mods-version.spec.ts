@@ -118,7 +118,7 @@ test("Change version goes back after a bad update, with a snapshot first", async
   await version.selectOption("1.0.0");
   await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
   await expect(page.locator("#plan-steps")).toBeVisible();
-  await expect(page.locator(".plan-steps")).toContainText('Take a snapshot labelled "Before mod change".');
+  await expect(page.locator(".plan-steps")).toContainText('Take a snapshot labeled "Before mod change".');
   await checkPage(page);
   await shot(page, "mods-version-back");
 
@@ -160,4 +160,29 @@ test("focus moves to the mod's name when the status hides Change version", async
   const name = page.locator("tr", { hasText: "zz-private" }).locator("span.mod-name");
   await expect(name).toBeFocused();
   await checkPage(page);
+});
+
+// The move to the name is only for the Change version slot. Another slot in
+// the row, here the note, is swapped with focus inside it; focus is left to htmx.
+test("a swap of another slot does not move focus to the mod's name", async ({ page, foreman, fakeGame }) => {
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/status", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/worlds/base/mods");
+  const row = page.locator("tr", { hasText: "zz-private" });
+  // The empty note is made focusable and focused, so its swap takes focus away.
+  await row.locator("div[id^=mod-note-]").evaluate((el) => {
+    (el as HTMLElement).hidden = false;
+    (el as HTMLElement).tabIndex = -1;
+    (el as HTMLElement).focus();
+  });
+  release();
+  await expect(row.getByRole("link", { name: "Change version zz-private", exact: true })).toHaveCount(0, live);
+  await page.waitForTimeout(200);
+  const onName = await page.evaluate(() => !!document.activeElement?.closest(".mod-name"));
+  expect(onName).toBe(false);
 });

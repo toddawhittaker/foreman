@@ -53,7 +53,7 @@ test.describe("stop countdown", () => {
     await page.mouse.down();
     await page.waitForTimeout(1500);
     await page.mouse.up();
-    await expect(done(page)).toContainText("The stop was cancelled.", live);
+    await expect(done(page)).toContainText("The stop was canceled.", live);
     await expect(badge(page)).toHaveText("Running");
   });
 

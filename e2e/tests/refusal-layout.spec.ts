@@ -61,7 +61,7 @@ test("a refused start states the problem, offers the fix first, and keeps Start 
   await anyway.locator("summary").focus();
   await page.keyboard.press("Enter");
   await expect(box.getByText("If you choose Start anyway, Foreman will:")).toBeVisible();
-  await expect(box).toContainText('Take a snapshot of Base, labelled "Before start anyway".');
+  await expect(box).toContainText('Take a snapshot of Base, labeled "Before start anyway".');
   await expectFullWidthItems(box);
   await checkPage(page);
 
