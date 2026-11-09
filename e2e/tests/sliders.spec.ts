@@ -262,11 +262,193 @@ test("each kind of slider reaches the track's ends at its first and last step", 
   await expectEnds(page);
 });
 
+// The middle row of a picture, read in a blank page: one [r, g, b] per device pixel.
+async function middleRow(page: Page, png: Buffer) {
+  const blank = await page.context().newPage();
+  const row = await blank.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const g = c.getContext("2d")!;
+    g.drawImage(img, 0, 0);
+    const data = g.getImageData(0, Math.floor(c.height / 2), c.width, 1).data;
+    return Array.from({ length: c.width }, (_, i) => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
+  }, png.toString("base64"));
+  await blank.close();
+  return row;
+}
+
+// DESIGN 8.7: the default step sits at the middle of the track, so the knob
+// is centred at "100%" (or bias 0) whatever the number of steps either side.
+// The knob is the accent colour: from the track's start it runs to the knob's
+// right edge at the default, and to the knob's own width at the first step.
+async function expectCentred(page: Page) {
+  await page.goto("/generate");
+  for (const [t, id] of kinds) {
+    await tab(page, tabNames.en[t]).click();
+    const range = page.locator(`#${id}-range`);
+    await expect(range).toBeVisible();
+    const dpr = await page.evaluate(() => window.devicePixelRatio);
+    // A mouse resting over a slider would darken its knob.
+    await page.mouse.move(0, 0);
+    const atDefault = await middleRow(page, await range.screenshot({ animations: "disabled" }));
+    await range.focus();
+    await page.keyboard.press("Home");
+    const atFirst = await middleRow(page, await range.screenshot({ animations: "disabled" }));
+
+    const knob = atFirst[Math.round(4 * dpr)];
+    const isKnob = (px: number[]) => apart(px, knob) < 40;
+    // The knob at the first step, from its left edge to its right.
+    const left = atFirst.findIndex(isKnob);
+    let right = left;
+    while (right < atFirst.length && isKnob(atFirst[right])) right++;
+    const width = right - left;
+    expect(width, `${id}: the knob is found`).toBeGreaterThan(4 * dpr);
+    expect(width, `${id}: the knob is found`).toBeLessThan(atFirst.length / 4);
+    // At the default, the fill runs to the knob's right edge.
+    let edge = Math.round(atDefault.length / 4);
+    while (edge < atDefault.length && isKnob(atDefault[edge])) edge++;
+    // The knob at the first step touches the track's start and at the last its end, so the middle of its travel is the middle of the picture.
+    const middle = atFirst.length / 2;
+    expect(Math.abs(edge - width / 2 - middle) / dpr, `${id}: the knob's centre is off the track's middle by this many px`).toBeLessThanOrEqual(1);
+  }
+}
+
+test("each kind of slider has its knob at the track's middle at its default", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expectCentred(page);
+});
+
+// The steps are not evenly spaced on the track (the default is in the
+// middle whatever the number of steps either side), so a key's one-unit move
+// must still land on the next step, in both directions, and a click on the
+// track must land on the nearest step.
+test("each kind of slider takes one step per key press, and the nearest step to a click", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/generate");
+  let farApart = 0;
+  for (const [t, id] of kinds) {
+    await tab(page, tabNames.en[t]).click();
+    const range = page.locator(`#${id}-range`);
+    const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
+    const count = await page.locator(`#${id} option`).count();
+    await range.focus();
+    await page.keyboard.press("Home");
+    expect(await index(), `${id} at Home`).toBe(0);
+    for (let i = 1; i < count; i++) {
+      await page.keyboard.press("ArrowRight");
+      expect(await index(), `${id} right to step ${i}`).toBe(i);
+    }
+    await page.keyboard.press("ArrowRight");
+    expect(await index(), `${id} stays at the last step`).toBe(count - 1);
+    for (let i = count - 2; i >= 0; i--) {
+      await page.keyboard.press("ArrowLeft");
+      expect(await index(), `${id} left to step ${i}`).toBe(i);
+    }
+    // A click lands on the step nearest to where it was made. Where each step
+    // sits is read back by moving the select to each, then the pointer is
+    // aimed with the browser's own mapping of a click to a value (the knob's
+    // width is lost at each end of the travel).
+    const box = (await range.boundingBox())!;
+    const max = Number(await range.getAttribute("max"));
+    const places = await range.evaluate((el: HTMLInputElement, n) => {
+      const select = document.getElementById(el.dataset.for!) as HTMLSelectElement;
+      const at: number[] = [];
+      for (let i = 0; i < n; i++) {
+        select.selectedIndex = i;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        at.push(Number(el.value));
+      }
+      return at;
+    }, count);
+    expect(places[0], `${id}: first step at the start`).toBe(0);
+    expect(places[count - 1], `${id}: last step at the end`).toBe(max);
+    const knob = 16;
+    const xOf = (value: number) => box.x + knob / 2 + (value / max) * (box.width - knob);
+    const slack = max * 0.02;
+    for (const part of [0.25, 0.75]) {
+      const target = ((part * box.width - knob / 2) / (box.width - knob)) * max;
+      const near = Math.min(...places.map((p) => Math.abs(p - target)));
+      const allowed = places.map((p, i) => [p, i]).filter(([p]) => Math.abs(p - target) <= near + slack).map(([, i]) => i);
+      await page.mouse.click(box.x + box.width * part, box.y + box.height / 2);
+      expect(allowed, `${id}: a click at ${part} lands on the nearest step`).toContain(await index());
+      expect(Number(await range.inputValue()), `${id}: the knob sits on that step`).toBe(places[await index()]);
+      await page.mouse.move(0, 0);
+    }
+    // Where the steps are far apart, a click a little off the step it is on
+    // stays on it: a pointer takes the nearest, where a key takes the next.
+    const gap = places[2] - places[1];
+    if (gap >= 5) {
+      farApart++;
+      await range.focus();
+      await page.keyboard.press("Home");
+      await page.keyboard.press("ArrowRight");
+      expect(await index()).toBe(1);
+      await page.mouse.click(xOf(places[1] + 1), box.y + box.height / 2);
+      expect(await index(), `${id}: a click just past step 1 stays on it`).toBe(1);
+      await page.mouse.move(0, 0);
+    }
+  }
+  expect(farApart, "some kind of slider has steps far apart on its track").toBeGreaterThan(0);
+});
+
+// A pointer's turn ends with its release, which a menu or a drag out of the
+// window can lose, and only the main button drags a slider: so a right press,
+// or a press never released, must not make the next key jump to the nearest.
+test("a key moves one step after a right press or a press that was never released", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/generate");
+  await tab(page, tabNames.en[1]).click();
+  const id = "mg-nauvis-trees-size";
+  const range = page.locator(`#${id}-range`);
+  const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
+  await range.focus();
+  await page.keyboard.press("Home");
+  for (const button of [2, 0]) {
+    const before = await index();
+    await range.evaluate((el, b) => el.dispatchEvent(new PointerEvent("pointerdown", { button: b, bubbles: true })), button);
+    await page.keyboard.press("ArrowRight");
+    expect(await index(), `after a press of button ${button}`).toBe(before + 1);
+  }
+});
+
+// PageUp and PageDown move a larger part of the track than an arrow, and
+// still land on a step, going the way of the key.
+test("each kind of slider moves with PageUp and PageDown", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/generate");
+  for (const [t, id] of kinds) {
+    await tab(page, tabNames.en[t]).click();
+    const range = page.locator(`#${id}-range`);
+    const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
+    await range.focus();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("PageUp");
+    const up = await index();
+    expect(up, `${id}: PageUp from the first step`).toBeGreaterThan(0);
+    await page.keyboard.press("PageUp");
+    expect(await index(), `${id}: PageUp again`).toBeGreaterThan(up);
+    await page.keyboard.press("End");
+    await page.keyboard.press("PageDown");
+    const down = await index();
+    expect(down, `${id}: PageDown from the last step`).toBeLessThan(await page.locator(`#${id} option`).count() - 1);
+    await page.keyboard.press("PageDown");
+    expect(await index(), `${id}: PageDown again`).toBeLessThan(down);
+  }
+});
+
 test.describe("at 200% zoom", () => {
   // Half the CSS pixels across, each drawn as two device pixels.
   test.use({ viewport: { width: 640, height: 450 }, deviceScaleFactor: 2 });
 
   test("each kind of slider reaches the track's ends at its first and last step", async ({ page }) => {
     await expectEnds(page);
+  });
+
+  test("each kind of slider has its knob at the track's middle at its default", async ({ page }) => {
+    await expectCentred(page);
   });
 });
