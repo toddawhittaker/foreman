@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"slices"
 	"strconv"
@@ -18,13 +19,19 @@ import (
 	"github.com/toddawhittaker/foreman/internal/territory"
 )
 
-// Limits on what Parse accepts from the game. The measuring run decides
-// their final values (SPEC 14.6).
+// Limits on what Parse accepts from the game (SPEC 14.6). The largest count
+// measured, Nauvis at 3072 tiles with resource frequency and size at 600%,
+// wrote 97,948 bytes and 1,113 patches of 6 resources.
 const (
-	// MaxJSON is the most bytes Parse reads.
-	MaxJSON = 1 << 20
-	// MaxPatches is the most patches Parse accepts.
+	// MaxJSON is the most bytes Parse reads: over five times the largest
+	// file measured, 97,948 bytes.
+	MaxJSON = 512 << 10
+	// MaxPatches is the most patches Parse accepts: over four times the most
+	// measured, 1,113.
 	MaxPatches = 5000
+	// MaxResources is the most resources a file may list. A planet has at
+	// most 6 in the base game and Space Age.
+	MaxResources = 64
 	// maxNumber is the largest whole number the file may hold: the largest
 	// that a JSON number carries exactly in the game's floating point.
 	maxNumber = 1 << 53
@@ -89,9 +96,9 @@ func ControlName(planet, entity string) string {
 	return strings.ReplaceAll(entity, "_", "-")
 }
 
-// num is a JSON number, kept as written so a value past 2^53 is refused
-// rather than rounded. A string is not a number, though json.Number would
-// take "100".
+// num is a JSON number, kept as written so that whole can check its exact
+// value instead of a rounded float64. A string is not a number, though
+// json.Number would take "100".
 type num string
 
 func (n *num) UnmarshalJSON(b []byte) error {
@@ -102,7 +109,8 @@ func (n *num) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// gameJSON is what the count script writes.
+// gameJSON is what the count script writes. encoding/json matches field
+// names without regard to case, so "Planet" is read as "planet".
 type gameJSON struct {
 	Planet    string        `json:"planet"`
 	Resources resourceTable `json:"resources"`
@@ -222,6 +230,9 @@ func Parse(b []byte, size int, planet string) (Result, error) {
 	if !namePattern.MatchString(g.Planet) || g.Planet != planet {
 		return Result{}, invalid("the file is for another planet")
 	}
+	if len(g.Resources) > MaxResources {
+		return Result{}, invalid("more than %d resources", MaxResources)
+	}
 	if len(g.Patches) > MaxPatches {
 		return Result{}, invalid("more than %d patches", MaxPatches)
 	}
@@ -293,11 +304,11 @@ func checkPatch(i int, p patchJSON, half int) (Patch, error) {
 	if !namePattern.MatchString(p.Name) {
 		return Patch{}, invalid("patch %d has a bad name", i)
 	}
-	h := int64(half)
-	x, okx := whole(p.X, -h, h-1)
-	y, oky := whole(p.Y, -h, h-1)
+	// The label tile is bounded by the box, and the box by the picture.
+	x, okx := whole(p.X, -maxNumber, maxNumber)
+	y, oky := whole(p.Y, -maxNumber, maxNumber)
 	if !okx || !oky {
-		return Patch{}, invalid("patch %d has a label tile outside the picture", i)
+		return Patch{}, invalid("patch %d has a label tile that is not a whole number", i)
 	}
 	amount, oka := whole(p.Amount, 0, maxNumber)
 	n, okn := whole(p.N, 1, maxNumber)
@@ -309,7 +320,7 @@ func checkPatch(i int, p patchJSON, half int) (Patch, error) {
 	}
 	var box [4]int
 	for j, c := range p.Box {
-		v, ok := whole(c, -h, h-1)
+		v, ok := whole(c, -int64(half), int64(half)-1)
 		if !ok {
 			return Patch{}, invalid("patch %d has a box outside the picture", i)
 		}
@@ -325,16 +336,24 @@ func checkPatch(i int, p patchJSON, half int) (Patch, error) {
 }
 
 // whole reads n as a whole number from lo to hi. A number written as 3e2 or
-// 100.0 counts, since the game's JSON writer may use either.
+// 100.0 counts, since the game's JSON writer may use either, but only when
+// its exact value is whole and under 2^53, the most the game's floating
+// point holds exactly: 9007199254740993.0 is refused, not rounded down.
 func whole(n num, lo, hi int64) (int64, bool) {
 	if i, err := strconv.ParseInt(string(n), 10, 64); err == nil {
 		return i, i >= lo && i <= hi
 	}
-	f, err := strconv.ParseFloat(string(n), 64)
-	if err != nil || f < float64(lo) || f > float64(hi) || f != float64(int64(f)) {
+	// 128 bits hold every whole number under 2^53 and its neighbours, so a
+	// value that rounds at this precision is not one of them.
+	f, _, err := big.ParseFloat(string(n), 10, 128, big.ToNearestEven)
+	if err != nil || f.Acc() != big.Exact || !f.IsInt() || f.IsInf() {
 		return 0, false
 	}
-	return int64(f), true
+	i, acc := f.Int64()
+	if acc != big.Exact || i <= -maxNumber || i >= maxNumber || i < lo || i > hi {
+		return 0, false
+	}
+	return i, true
 }
 
 // area is the number of tiles a patch's box covers.
