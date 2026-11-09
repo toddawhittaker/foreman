@@ -121,7 +121,7 @@
          The count waits for the picture and is dropped when the view, the planet or a setting changes. */}}
     <div class="large-view__amounts" id="large-amounts-bar" data-ready="{{t "worlds.generate.resources.ready"}}">
       <label class="check"><input type="checkbox" id="large-amounts"> {{t "worlds.generate.resources.label"}}</label>
-      {{- /* Seen, not read out, like the drawing line; the status line says when they are ready. */}}
+      {{- /* The bar is seen; the status line says the sentence once as the count starts, after any news of the picture or planet, and says when the amounts are ready (SPEC 17.15). */}}
       <div class="wait large-view__counting" id="large-counting" hidden>
         <p class="hint" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
         <progress aria-labelledby="large-counting-text"></progress>
@@ -137,6 +137,8 @@
         </div>
       </template>
     </div>
+    {{- /* Vulcanus's territories in words while they are shown; the script fills it from the page's own sentence. */}}
+    <p class="visually-hidden" id="large-territory-counts"></p>
   </div>
   <div class="large-view__body">
     {{/* On a wide view, the planet's own Resources and Terrain fields, which the script
@@ -206,10 +208,12 @@
 {{- if .Error.IsZero}}
 <details class="disclosure resource-text">
   <summary>{{t "worlds.generate.resources.summary" "count" .Patches}}</summary>
+  {{- /* The totals are a level below the settings' sections, under one heading for the list. */}}
+  <h3 class="visually-hidden">{{t "worlds.generate.resources.summary" "count" .Patches}}</h3>
   {{- if .Lists}}
   <p class="hint">{{t "worlds.generate.resources.edge"}}</p>
   {{- range .Lists}}
-  <h3>{{.Total}}</h3>
+  <h4>{{.Total}}</h4>
   <ul>
     {{- range .Patches}}<li>{{.}}</li>{{end}}
   </ul>

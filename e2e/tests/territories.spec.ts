@@ -169,6 +169,11 @@ test("the large view shows the same overlay, aligned under zoom", async ({ page 
     expect(b.x).toBeGreaterThanOrEqual(fitted.x);
     expect(b.x + b.width).toBeLessThanOrEqual(fitted.x + fitted.width);
   }
+  // The overlay is hidden from screen readers, so the dialog carries the page's sentence itself (SPEC 17).
+  const words = dialog.locator("#large-territory-counts");
+  await expect(words).toHaveText(counts);
+  await expect(words).toBeVisible();
+  await expect(dialog.getByText(counts)).toHaveCount(1);
   // Its copy uses the page's pattern: the id is there once.
   await expect(page.locator("#territory-stripes")).toHaveCount(1);
   await expect(dialog.locator("#large-download")).toHaveAttribute("href", /territories=1$/);
@@ -185,6 +190,7 @@ test("the large view shows the same overlay, aligned under zoom", async ({ page 
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("dialog", { name: "Gleba" })).toBeVisible();
   await expect(dialog.locator(".territories")).toHaveCount(0);
+  await expect(words).toBeEmpty();
 });
 
 test("a change of settings drops the territory request on its way", async ({ page }) => {
