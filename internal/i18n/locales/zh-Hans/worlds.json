@@ -427,5 +427,24 @@
   },
   "worlds.generate.territories.count.unknown": {
     "other": "{count} 个未知大小"
-  }
+  },
+  "worlds.generate.resources.label": "显示资源数量",
+  "worlds.generate.resources.counting": "正在统计地图中的资源…最多可能需要一分钟。",
+  "worlds.generate.resources.ready": "资源数量已就绪。",
+  "worlds.generate.resources.summary": {
+    "other": "资源数量文字版（{count} 处矿区）"
+  },
+  "worlds.generate.resources.edge": "位置以距玩家出生点的格数表示，格式为 (x, y)。被图片边缘截断的矿区只统计图片内的部分。",
+  "worlds.generate.resources.total": "{resource}：共 {amount}",
+  "worlds.generate.resources.total_yield": "{resource}：共 {percent}% 产率",
+  "worlds.generate.resources.patch": "{amount}，位于 ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "{percent}% 产率，位于 ({x}, {y})",
+  "worlds.generate.resources.none": "这张图片中没有资源矿区。",
+  "worlds.generate.resources.invalid": "设置存在问题，因此未能统计资源。请修正地图预览中列出的问题。",
+  "worlds.generate.resources.busy": "正在生成另一个地图预览，因此未能统计资源。请等待几秒钟，然后重试。",
+  "worlds.generate.resources.timeout": "统计资源用时过长，已被停止。请重试，或选择更小的预览大小。",
+  "worlds.generate.resources.oom": "游戏在统计资源时内存不足。请选择更小的预览大小。",
+  "worlds.generate.resources.failed": "游戏无法统计资源，但地图预览和生成世界仍可使用。如果持续失败，请查看 Foreman 的日志。",
+  "worlds.generate.resources.request_failed": "资源数量请求失败。请确认能够访问 Foreman 且仍处于登录状态，然后重试。",
+  "worlds.generate.resources.retry": "重试"
 }

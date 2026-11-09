@@ -459,5 +459,26 @@
     "one": "{count} neznámé velikosti",
     "few": "{count} neznámé velikosti",
     "other": "{count} neznámé velikosti"
-  }
+  },
+  "worlds.generate.resources.label": "Zobrazit množství surovin",
+  "worlds.generate.resources.counting": "Počítají se suroviny na mapě… Může to trvat až minutu.",
+  "worlds.generate.resources.ready": "Množství surovin jsou připravena.",
+  "worlds.generate.resources.summary": {
+    "one": "Množství surovin jako text ({count} naleziště)",
+    "few": "Množství surovin jako text ({count} naleziště)",
+    "other": "Množství surovin jako text ({count} nalezišť)"
+  },
+  "worlds.generate.resources.edge": "Místa jsou v polích od místa startu hráčů, jako (x, y). Naleziště, které okraj obrázku protíná, se počítá jen svou částí uvnitř.",
+  "worlds.generate.resources.total": "{resource}: celkem {amount}",
+  "worlds.generate.resources.total_yield": "{resource}: celkem {percent} % výnosu",
+  "worlds.generate.resources.patch": "{amount} na ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "{percent} % výnosu na ({x}, {y})",
+  "worlds.generate.resources.none": "Tento obrázek neobsahuje žádná naleziště surovin.",
+  "worlds.generate.resources.invalid": "Nastavení obsahuje chyby, proto se suroviny nespočítaly. Je třeba opravit chyby uvedené v náhledu mapy.",
+  "worlds.generate.resources.busy": "Právě se vytváří jiný náhled mapy, proto se suroviny nespočítaly. Je třeba několik sekund počkat a zkusit to znovu.",
+  "worlds.generate.resources.timeout": "Počítání surovin trvalo příliš dlouho a bylo zastaveno. Je třeba zkusit to znovu nebo zvolit menší velikost náhledu.",
+  "worlds.generate.resources.oom": "Hře při počítání surovin došla paměť. Je třeba zvolit menší velikost náhledu.",
+  "worlds.generate.resources.failed": "Hře se nepodařilo spočítat suroviny. Náhled mapy i generování světa přesto fungují. Pokud se to opakuje, je třeba zkontrolovat protokol Foremanu.",
+  "worlds.generate.resources.request_failed": "Požadavek na množství surovin selhal. Je třeba zkontrolovat, zda je Foreman dostupný a zda je přihlášení stále platné, a zkusit to znovu.",
+  "worlds.generate.resources.retry": "Zkusit znovu"
 }

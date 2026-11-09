@@ -443,5 +443,25 @@
   "worlds.generate.territories.count.unknown": {
     "one": "{count} of unknown size",
     "other": "{count} of unknown size"
-  }
+  },
+  "worlds.generate.resources.label": "Show resource amounts",
+  "worlds.generate.resources.counting": "Counting resources in the map… This can take up to a minute.",
+  "worlds.generate.resources.ready": "Resource amounts ready.",
+  "worlds.generate.resources.summary": {
+    "one": "Resource amounts as text ({count} patch)",
+    "other": "Resource amounts as text ({count} patches)"
+  },
+  "worlds.generate.resources.edge": "Places are tiles from where players start, as (x, y). A patch that the edge of the picture cuts counts only its part inside.",
+  "worlds.generate.resources.total": "{resource}: {amount} in total",
+  "worlds.generate.resources.total_yield": "{resource}: {percent}% yield in total",
+  "worlds.generate.resources.patch": "{amount} at ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "{percent}% yield at ({x}, {y})",
+  "worlds.generate.resources.none": "This picture has no resource patches.",
+  "worlds.generate.resources.invalid": "The settings have problems, so the resources were not counted. Fix the problems the map preview lists.",
+  "worlds.generate.resources.busy": "Another map preview is being made, so the resources were not counted. Wait a few seconds, then try again.",
+  "worlds.generate.resources.timeout": "Counting the resources took too long and was stopped. Try again, or choose a smaller preview size.",
+  "worlds.generate.resources.oom": "The game ran out of memory counting the resources. Choose a smaller preview size.",
+  "worlds.generate.resources.failed": "The game could not count the resources. The map preview and Generate still work. If it keeps failing, check Foreman's log.",
+  "worlds.generate.resources.request_failed": "The request for the resource amounts failed. Check that Foreman is reachable and that you are still signed in, then try again.",
+  "worlds.generate.resources.retry": "Try again"
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/resource"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/territory"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -58,12 +59,13 @@ const previewDeadline = game.PreviewWait + game.PreviewLimit + 30*time.Second
 
 // MapPreviewer makes the map preview pictures: one PNG for each planet
 // asked for, from the settings Generate would write (SPEC 5.6, 14.3), and
-// reads where Vulcanus's demolisher territories lie in the same map. The
-// game controller provides it. Seed is always set, so the world made later
+// reads where Vulcanus's demolisher territories lie in the same map, and
+// counts one planet's resource patches in it. The game controller provides it. Seed is always set, so the world made later
 // has the same map.
 type MapPreviewer interface {
 	Preview(ctx context.Context, req game.PreviewRequest) ([]game.PNG, error)
 	Territories(ctx context.Context, req game.PreviewRequest) (territory.Result, error)
+	Resources(ctx context.Context, req game.PreviewRequest, planet string) (resource.Result, error)
 }
 
 // previewTTL is how long a preview's pictures are kept (SPEC 5.6).
@@ -79,7 +81,8 @@ const (
 
 // previewEntry is one user's current preview: the pictures drawn so far
 // from one set of settings, under a random token, and Vulcanus's demolisher
-// territories once they are read. bytes counts both.
+// territories once they are read, and each planet's resource amounts once
+// counted. bytes counts them all.
 type previewEntry struct {
 	token       string
 	key         string // settingsKey of the settings drawn
@@ -89,7 +92,8 @@ type previewEntry struct {
 	planets     []string // in the order drawn
 	images      map[string][]byte
 	territories *territory.Result
-	size        int // the side, in pixels, of the pictures the territories are read for
+	size        int                         // the side, in pixels, of the pictures the territories are read for
+	resources   map[string]*resource.Result // by planet
 	bytes       int
 }
 
@@ -225,9 +229,9 @@ func (p *previewStore) joinLocked(user int64, key, seed string) *previewEntry {
 	}
 	// entry() hands copies of the stored entry to handlers that read the
 	// map and slice after the lock is gone, so they are never written in
-	// place. The picture bytes and territories are shared; they never change.
+	// place. The picture bytes, territories and counts are shared; they never change.
 	c := *e
-	c.images, c.planets = maps.Clone(e.images), slices.Clone(e.planets)
+	c.images, c.planets, c.resources = maps.Clone(e.images), slices.Clone(e.planets), maps.Clone(e.resources)
 	return &c
 }
 
@@ -308,6 +312,9 @@ type PreviewView struct {
 	Error    i18n.Msg
 	// Territories is the box that shows Vulcanus's demolisher territories.
 	Territories TerritoryBox
+	// Resources is one planet's resource amounts for the large view, or why
+	// there are none; set only in the answer to its own request.
+	Resources *ResourceView
 }
 
 // PreviewPlanet is one planet the preview can draw.
@@ -346,6 +353,7 @@ func (v PreviewView) ZipPath() string {
 func (s *server) previewRoutes() {
 	s.handleUpload("POST "+PathGeneratePreview, generateFormLimit, s.requireUser(s.handleGeneratePreview))
 	s.handleUpload("POST "+pathTerritories, generateFormLimit, s.requireUser(s.handleGenerateTerritories))
+	s.handleUpload("POST "+pathResources, generateFormLimit, s.requireUser(s.handleGenerateResources))
 	s.mux.HandleFunc("GET "+pathPicture, s.requireUser(s.handlePicture))
 	// A zip of five planets is several MB; a slow link needs the idle deadline.
 	s.handleLong("GET "+pathPictureDownload, s.requireUser(s.handlePictureDownload))
