@@ -83,15 +83,64 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Sliders: the select is the field that is sent; the slider moves it.
+  // The default step ("100", or "0" for bias) sits at the track's middle: the
+  // steps below it and above it each take half of the track, whatever their
+  // number. With no default, or one at an end, the track is the plain index.
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  function track(select) {
+    const last = select.options.length - 1;
+    const values = [...select.options].map((o) => o.value);
+    let d = values.indexOf("100");
+    if (d < 0) d = values.indexOf("0");
+    if (d <= 0 || d >= last) return { last, max: last, at: (i) => i };
+    const below = d;
+    const above = last - d;
+    const half = (below * above) / gcd(below, above);
+    return {
+      last,
+      max: 2 * half,
+      at: (i) => (i <= d ? i * (half / below) : half + (i - d) * (half / above)),
+    };
+  }
+
+  // The step whose place on the track is nearest to a value.
+  function nearestStep(t, value) {
+    let best = 0;
+    for (let i = 1; i <= t.last; i++) {
+      if (Math.abs(t.at(i) - value) < Math.abs(t.at(best) - value)) best = i;
+    }
+    return best;
+  }
+
   function syncSlider(select) {
     const range = document.getElementById(select.id + "-range");
     const value = document.getElementById(select.id + "-value");
     const text = select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : "";
     if (range) {
-      range.value = String(select.selectedIndex);
+      range.value = String(track(select).at(Math.max(select.selectedIndex, 0)));
       range.setAttribute("aria-valuetext", text);
     }
     if (value) value.textContent = text;
+  }
+
+  // The step a slider's new value stands for. Under a pointer, the nearest.
+  // From the keys or a screen reader's increment, which move one unit of the
+  // track, the next step the way it went, so a small step never sticks.
+  let pointerOnRange = false;
+  document.addEventListener("pointerdown", (e) => {
+    pointerOnRange = e.target.classList.contains("step__range");
+  }, true);
+  for (const type of ["pointerup", "pointercancel"]) {
+    window.addEventListener(type, () => { pointerOnRange = false; }, true);
+  }
+  function stepOfSlider(range, select) {
+    const t = track(select);
+    const value = Number(range.value);
+    const now = Math.max(select.selectedIndex, 0);
+    const near = nearestStep(t, value);
+    if (pointerOnRange || near !== now) return near;
+    const way = Math.sign(value - t.at(now));
+    return Math.min(Math.max(now + way, 0), t.last);
   }
 
   // Each select of steps gets a slider over the same steps and an output
@@ -112,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
       range.className = "step__range";
       range.id = select.id + "-range";
       range.min = "0";
-      range.max = String(select.options.length - 1);
+      range.max = String(track(select).max);
       range.step = "1";
       range.dataset.for = select.id;
       range.setAttribute("aria-labelledby", select.id + "-label");
@@ -247,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (t.classList.contains("step__range")) {
       const select = document.getElementById(t.dataset.for);
       if (select) {
-        select.selectedIndex = Number(t.value);
+        select.selectedIndex = stepOfSlider(t, select);
         syncSlider(select);
       }
     }
