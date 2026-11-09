@@ -284,6 +284,28 @@ func (e *gameEnv) count(t *testing.T, c *Controller, req PreviewRequest, planet,
 	dumpCount(t, fmt.Sprintf("%s-%s-%d%s", req.GameVersion, planet, req.size(), strings.ReplaceAll(label, " ", "-")), r.file)
 	t.Logf("MEASURE %s %s %d%s: wall %s, peak %d MiB, file %d bytes, %d patches: %s",
 		req.GameVersion, planet, req.size(), label, r.wall.Round(100*time.Millisecond), r.peak>>20, r.bytes, len(r.file.Patches), r.summary())
+	// Foreman's own path gives the same patches and totals, checked by
+	// resource.Parse.
+	res, err := c.Resources(context.Background(), req, planet)
+	if err != nil {
+		t.Fatalf("Resources: %v", err)
+	}
+	if len(res.Patches) != len(r.file.Patches) || len(res.Resources) != len(r.file.Resources) {
+		t.Errorf("Resources gave %d patches of %d resources, the file %d of %d",
+			len(res.Patches), len(res.Resources), len(r.file.Patches), len(r.file.Resources))
+	}
+	var colors []string
+	for name, got := range res.Resources {
+		f := r.file.Resources[name]
+		// Iron ore's map colour is the same on every line; a colour scaled
+		// twice is refused by Parse, and one never scaled would not match.
+		if got.Total != int64(f.Total) || name == "iron-ore" && got.Color != [3]uint8{105, 133, 147} {
+			t.Errorf("%s: total %d (file %v), color %v", name, got.Total, f.Total, got.Color)
+		}
+		colors = append(colors, fmt.Sprintf("%s %v", name, got.Color))
+	}
+	slices.Sort(colors)
+	t.Logf("COLORS %s %s: %s", req.GameVersion, planet, strings.Join(colors, ", "))
 	return r
 }
 

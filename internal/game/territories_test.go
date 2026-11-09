@@ -53,7 +53,7 @@ func TestTerritoriesRadiusFollowsTheSize(t *testing.T) {
 	for size, want := range map[int]string{0: "20", 1024: "16", 3072: "48"} {
 		req := territoriesRequest()
 		req.Size = size
-		env := r.c.territoriesSpec(image21, "p", req).Env
+		env := r.c.controlModSpec(image21, "p", req, territoryMod, territoriesEnv(req)).Env
 		if w := gameenv.TerritoryRadius + "=" + want; !slices.Contains(env, w) {
 			t.Errorf("size %d: environment %v lacks %s", size, env, w)
 		}
@@ -134,7 +134,7 @@ func TestTerritoriesSpecHasThePreviewsLimits(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	req := territoriesRequest()
 	req.Preset = "death-world"
-	got := r.c.territoriesSpec(image21, "p-abc", req)
+	got := r.c.controlModSpec(image21, "p-abc", req, territoryMod, territoriesEnv(req))
 	want := r.c.previewSpec(image21, "p-abc", "2.1", previewRequest())
 	if !reflect.DeepEqual(got.HostConfig, want.HostConfig) {
 		t.Errorf("host config %+v, want the preview's %+v", got.HostConfig, want.HostConfig)
@@ -302,6 +302,16 @@ func TestTerritoriesFailureAndMissingImage(t *testing.T) {
 	}
 }
 
+// readTerritoryFile reads a territory run's file from the work folder "p"
+// of base, as Territories does, and parses it for a 1280 picture.
+func readTerritoryFile(base *os.Root) (territory.Result, error) {
+	b, err := readControlModOutput(base, "p", territoryMod)
+	if err != nil {
+		return territory.Result{}, err
+	}
+	return territory.Parse(b, 1280)
+}
+
 // SPEC 14.1: the game's file is untrusted. A missing, malformed or too big
 // file is refused.
 func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
@@ -318,16 +328,16 @@ func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := readTerritories(base, "p", 1280); err == nil {
+	if _, err := readTerritoryFile(base); err == nil {
 		t.Error("a missing file was accepted")
 	}
 	put([]byte(`{"territories": [{"unit": "small-demolisher", "chunks": [[0, 0]]}]}`))
-	if res, err := readTerritories(base, "p", 1280); err != nil || len(res.Territories) != 1 {
+	if res, err := readTerritoryFile(base); err != nil || len(res.Territories) != 1 {
 		t.Errorf("a good file: %v, %v", res, err)
 	}
 	// A territory wholly outside the picture is dropped.
 	put([]byte(`{"territories": [{"unit": "small-demolisher", "chunks": [[500, 500]]}]}`))
-	if res, err := readTerritories(base, "p", 1280); err != nil || len(res.Territories) != 0 {
+	if res, err := readTerritoryFile(base); err != nil || len(res.Territories) != 0 {
 		t.Errorf("an outside territory: %v, %v", res, err)
 	}
 	for name, b := range map[string][]byte{
@@ -338,7 +348,7 @@ func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
 		"trailing bytes": []byte(`{"territories": []} {}`),
 	} {
 		put(b)
-		if _, err := readTerritories(base, "p", 1280); err == nil {
+		if _, err := readTerritoryFile(base); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 	}
@@ -390,7 +400,7 @@ func failsPromptly(t *testing.T, read func() error) error {
 func TestReadTerritoriesRefusesANamedPipe(t *testing.T) {
 	base := fifoAt(t, gameenv.TerritoryFile)
 	err := failsPromptly(t, func() error {
-		_, err := readTerritories(base, "p", 1280)
+		_, err := readTerritoryFile(base)
 		return err
 	})
 	if err == nil {

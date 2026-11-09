@@ -37,8 +37,8 @@ type cannedPatch struct {
 
 // cannedPatches all lie within 100 tiles of the centre, so they fit the
 // smallest picture (radius 3, tiles -96 to 95). The large ore has a big
-// patch and two small ones whose labels are within 10 tiles of each other,
-// so a test can see labels overlap.
+// patch and two small ones whose labels are within 8 tiles of each other on
+// both axes, so a test can see labels overlap.
 var cannedPatches = []cannedPatch{
 	{"large", -50, -30, 12_345_678, 900, [4]int{-70, -55, -45, -5}},
 	{"large", -40, -30, 250_000, 30, [4]int{-43, -33, -37, -27}},
