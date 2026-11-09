@@ -90,8 +90,9 @@ The targets (STACK.md, section 13):
   before every commit.
 - `make test`: the unit tests and the coverage floor alone. Locally it
   splits the web package's tests across `TEST_SHARDS` processes (default:
-  one per CPU; `TEST_SHARDS=1` runs one process). CI sets `CI`, so it
-  always runs one.
+  one per CPU, limited by available memory at 1.5 GiB each; `TEST_SHARDS=1`
+  runs one process). `make test-shards` shows the count without testing.
+  CI sets `CI`, so it always runs one.
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It
