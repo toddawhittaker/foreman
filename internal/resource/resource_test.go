@@ -149,14 +149,19 @@ func TestParseRefusals(t *testing.T) {
 		"huge amount":             rep(`"amount": 100,`, `"amount": 9007199254740993,`),
 		"overflowing amount":      rep(`"amount": 100,`, `"amount": 1e999,`),
 		"huge total":              rep(`"total": 900000`, `"total": 9007199254740993`),
+		"huge float amount":       rep(`"amount": 100,`, `"amount": 9007199254740993.0,`),
+		"huge exponent amount":    rep(`"amount": 100,`, `"amount": 9.007199254740993e15,`),
+		"past 2^53 as a float":    rep(`"amount": 100,`, `"amount": 9007199254740994.0,`),
+		"underflowing amount":     rep(`"amount": 100,`, `"amount": 1e-999999999,`),
+		"underflowing x":          rep(`"x": -20, "y": 10`, `"x": 1e-999999999, "y": 10`),
+		"long number":             rep(`"amount": 100,`, `"amount": 100.000000000000000000000000000000,`),
+		"inexact long fraction":   rep(`"amount": 100,`, `"amount": 100.00000000000000000000000000000000000000001,`),
+		"huge x":                  rep(`"x": -20, "y": 10`, `"x": 9007199254740993, "y": 10`),
 		"fraction total":          rep(`"total": 300`, `"total": 300.5`),
 		"missing amount":          rep(`"amount": 100, `, ``),
 		"zero entities":           rep(`"n": 4`, `"n": 0`),
 		"fraction entities":       rep(`"n": 4`, `"n": 4.5`),
 		"negative entities":       rep(`"n": 4`, `"n": -1`),
-		"x past the right edge":   rep(`"x": -20, "y": 10`, `"x": 64, "y": 10`),
-		"x past the left edge":    rep(`"x": -20, "y": 10`, `"x": -65, "y": 10`),
-		"y past the bottom":       rep(`"x": -20, "y": 10`, `"x": -20, "y": 64`),
 		"fractional x":            rep(`"x": -20, "y": 10`, `"x": -20.5, "y": 10`),
 		"box too short":           rep(`"box": [-22, 8, -18, 12]`, `"box": [-22, 8, -18]`),
 		"box too long":            rep(`"box": [-22, 8, -18, 12]`, `"box": [-22, 8, -18, 12, 0]`),
@@ -192,6 +197,49 @@ func TestParseRefusals(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// SPEC 14.1: a label tile is bounded by its box, and the box by the
+// picture. Each case breaks one rule only, and is refused for that rule.
+func TestParseLabelAndBoxBounds(t *testing.T) {
+	cases := map[string]struct{ old, new, want string }{
+		"label x right of its box": {`"x": -20, "y": 10`, `"x": -17, "y": 10`, "label tile outside its box"},
+		"label x left of its box":  {`"x": -20, "y": 10`, `"x": -23, "y": 10`, "label tile outside its box"},
+		"label y below its box":    {`"x": -20, "y": 10`, `"x": -20, "y": 13`, "label tile outside its box"},
+		"label past the edge":      {`"x": -20, "y": 10`, `"x": 64, "y": 10`, "label tile outside its box"},
+		"box past the right edge":  {`"x": 30, "y": -30, "amount": 200, "n": 40, "box": [20, -40, 40, -20]`, `"x": 30, "y": -30, "amount": 200, "n": 40, "box": [20, -40, 64, -20]`, "box outside the picture"},
+		"box past the top edge":    {`"x": 30, "y": -30, "amount": 200, "n": 40, "box": [20, -40, 40, -20]`, `"x": 30, "y": -30, "amount": 200, "n": 40, "box": [20, -65, 40, -20]`, "box outside the picture"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if !strings.Contains(good, tc.old) {
+				t.Fatalf("good lacks %q", tc.old)
+			}
+			err := parseErr(t, strings.Replace(good, tc.old, tc.new, 1))
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error %q, want one about %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// Whole numbers in float or exponent form are taken only when exact and
+// under 2^53, so a value the game's floating point cannot hold is refused
+// rather than rounded.
+func TestWhole(t *testing.T) {
+	for in, want := range map[string]bool{
+		"0": true, "9007199254740992": true, "9007199254740993": false,
+		"3e2": true, "100.0": true, "9007199254740991.0": true,
+		"9007199254740992.0": true, "9.007199254740992e15": true,
+		"9007199254740993.0": false, "9.007199254740993e15": false, "9007199254740994.0": false,
+		"100.5": false, "1e999": false, "1e-999": false, "1e-999999999": false, "-1e-999999999": false,
+		"0e5": true, "0.0": true, "-0.0": true, "0e-999999999": true,
+		"100.000000000000000000000000001": false,
+	} {
+		if _, ok := whole(num(in), 0, maxNumber); ok != want {
+			t.Errorf("whole(%s): %v, want %v", in, ok, want)
+		}
 	}
 }
 
@@ -233,8 +281,8 @@ func TestParseSize(t *testing.T) {
 }
 
 func TestParseLimits(t *testing.T) {
-	if MaxJSON != 1<<20 || MaxPatches != 5000 {
-		t.Fatalf("limits are %d and %d", MaxJSON, MaxPatches)
+	if MaxJSON != 512<<10 || MaxPatches != 5000 || MaxResources != 64 {
+		t.Fatalf("limits are %d, %d and %d", MaxJSON, MaxPatches, MaxResources)
 	}
 	big := good + strings.Repeat(" ", MaxJSON)
 	if _, err := Parse([]byte(big), 128, "nauvis"); !errors.Is(err, ErrInvalid) {
@@ -299,5 +347,48 @@ func TestControlName(t *testing.T) {
 		if got := ControlName(c.planet, c.entity); got != c.want {
 			t.Errorf("ControlName(%q, %q) = %q, want %q", c.planet, c.entity, got, c.want)
 		}
+	}
+}
+
+// SPEC 14.1: a file may list at most MaxResources resources.
+func TestParseMaxResources(t *testing.T) {
+	build := func(n int) string {
+		rs := make([]string, n)
+		ps := make([]string, n)
+		for i := range rs {
+			rs[i] = fmt.Sprintf(`"r%d":{"total":1,"infinite":false,"normal":0,"color":[0,0,0]}`, i)
+			ps[i] = fmt.Sprintf(`{"name":"r%d","x":0,"y":0,"amount":1,"n":1,"box":[0,0,0,0]}`, i)
+		}
+		return fmt.Sprintf(`{"planet":"nauvis","resources":{%s},"patches":[%s]}`, strings.Join(rs, ","), strings.Join(ps, ","))
+	}
+	if _, err := Parse([]byte(build(MaxResources)), 128, "nauvis"); err != nil {
+		t.Errorf("MaxResources resources: %v", err)
+	}
+	if err := parseErr(t, build(MaxResources+1)); !strings.Contains(err.Error(), fmt.Sprintf("more than %d resources", MaxResources)) {
+		t.Errorf("over MaxResources: %v", err)
+	}
+}
+
+// SPEC 14.1: a number token longer than maxNumberLen bytes is refused
+// before it is read, so a file of long digit strings costs no more than one
+// of short ones; zero in its accepted forms still parses.
+func TestParseNumberLength(t *testing.T) {
+	long := "1" + strings.Repeat("0", maxNumberLen)
+	in := strings.Replace(good, `"amount": 100,`, `"amount": `+long+`,`, 1)
+	if err := parseErr(t, in); err == nil {
+		t.Fatal("unreachable")
+	}
+	ok := strings.Replace(good, `"amount": 100,`, `"amount": 100.`+strings.Repeat("0", maxNumberLen-4)+`,`, 1)
+	if _, err := Parse([]byte(ok), 128, "nauvis"); err != nil {
+		t.Errorf("a number of exactly %d bytes: %v", maxNumberLen, err)
+	}
+	zeros := strings.NewReplacer(`"normal": 0,`, `"normal": 0e5,`).Replace(good)
+	zeros = strings.Replace(zeros, `[104, 132, 146]`, `[0.0, 132, 146]`, 1)
+	if _, err := Parse([]byte(zeros), 128, "nauvis"); err != nil {
+		t.Errorf("0e5 and 0.0: %v", err)
+	}
+	var n num
+	if err := n.UnmarshalJSON([]byte(long)); err == nil {
+		t.Errorf("a %d-byte number was taken", len(long))
 	}
 }

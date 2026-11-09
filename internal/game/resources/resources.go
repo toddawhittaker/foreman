@@ -15,9 +15,8 @@ const (
 	ModDir     = ModName + "_" + ModVersion
 )
 
-// Files the mod folder holds besides info.json.
+// Files the mod folder holds besides info.json and control.lua.
 const (
-	ControlFile = "control.lua"
 	// ParamsFile is written for each run; it returns {radius = N, planet =
 	// "<name>"}, the picture's half width in chunks and the planet to
 	// count, since a mod can read neither files nor the environment.

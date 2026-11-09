@@ -11,8 +11,15 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/territory"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
+
+// chunkRadius is the picture's half width in chunks: a control mod reads
+// chunks -radius to radius-1 on each axis.
+func chunkRadius(req PreviewRequest) int {
+	return req.size() / (2 * territory.ChunkTiles)
+}
 
 // controlMod is a control-only mod that a one-off preview container runs to
 // read something from the map a preview would draw (SPEC 5.6, 14.3, ADR

@@ -15,10 +15,49 @@ import (
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game/resources"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/resource"
 )
 
 func resourcesRequest() PreviewRequest {
 	return PreviewRequest{GameVersion: "2.1.24", SpaceAge: true, Seed: 7}
+}
+
+// SPEC 5.6, 14.1: a count returns the patches the game's script wrote,
+// parsed for the picture's size and planet, largest box first; the
+// container and the work folder are gone after.
+func TestResourcesReadsTheGamesFile(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	for _, planet := range []string{"nauvis", "vulcanus", "aquilo"} {
+		res, err := r.c.Resources(context.Background(), resourcesRequest(), planet)
+		if err != nil {
+			t.Fatalf("%s: %v", planet, err)
+		}
+		// The fake game writes seven patches of three resources, one infinite.
+		if res.Planet != planet || len(res.Patches) != 7 || len(res.Resources) != 3 {
+			t.Errorf("%s: planet %q, %d patches, %d resources", planet, res.Planet, len(res.Patches), len(res.Resources))
+		}
+		var yields int
+		for i, p := range res.Patches {
+			if _, ok := resource.Yield(p); ok {
+				yields++
+			}
+			if i > 0 {
+				a, b := res.Patches[i-1].Box, p.Box
+				if (a[2]-a[0]+1)*(a[3]-a[1]+1) < (b[2]-b[0]+1)*(b[3]-b[1]+1) {
+					t.Errorf("%s: patch %d has a larger box than the one before it", planet, i)
+				}
+			}
+		}
+		if yields != 2 {
+			t.Errorf("%s: %d patches with a yield, want the 2 of the infinite resource", planet, yields)
+		}
+	}
+	if left := r.previewContainers(); len(left) != 0 {
+		t.Errorf("%d containers left", len(left))
+	}
+	if left := r.previewFolders(); len(left) != 0 {
+		t.Errorf("work folders left: %v", left)
+	}
 }
 
 // SPEC 5.6: the radius reaches the game as half the picture in chunks, and
@@ -61,7 +100,7 @@ func TestResourcesWorkFolderAndContainer(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			done := make(chan error, 1)
 			go func() {
-				_, err := r.c.resourceCount(ctx, req, tc.planet)
+				_, err := r.c.Resources(ctx, req, tc.planet)
 				done <- err
 			}()
 			c := r.waitPreviewContainer()
@@ -172,7 +211,7 @@ func TestResourcesRefusesWhatHasNone(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			req := resourcesRequest()
 			tc.mutate(&req)
-			if _, err := r.c.resourceCount(context.Background(), req, tc.planet); !errors.Is(err, ErrPreviewInvalid) {
+			if _, err := r.c.Resources(context.Background(), req, tc.planet); !errors.Is(err, ErrPreviewInvalid) {
 				t.Errorf("error %v, want ErrPreviewInvalid", err)
 			}
 		})
@@ -180,11 +219,8 @@ func TestResourcesRefusesWhatHasNone(t *testing.T) {
 	if len(r.game.State().Calls) != 0 {
 		t.Errorf("Docker was called: %v", r.game.State().Calls)
 	}
-	// Every planet the map has, on every line, reaches the game (here one
-	// that fails); req.Planets plays no part.
-	if err := r.game.SetPreviewMode(fakegame.PreviewFails); err != nil {
-		t.Fatal(err)
-	}
+	// Every planet the map has, on every line, is counted; req.Planets plays
+	// no part.
 	for _, ok := range []struct {
 		version  string
 		spaceAge bool
@@ -193,9 +229,8 @@ func TestResourcesRefusesWhatHasNone(t *testing.T) {
 		{"1.1.110", false, "nauvis"}, {"2.0.77", false, "nauvis"}, {"2.1.24", true, "aquilo"},
 	} {
 		req := PreviewRequest{GameVersion: ok.version, SpaceAge: ok.spaceAge, Planets: []string{"x"}, Size: PreviewSizeMax}
-		var pe *PreviewError
-		if _, err := r.c.resourceCount(context.Background(), req, ok.planet); !errors.As(err, &pe) {
-			t.Errorf("%s %s: %v, want the game's own failure", ok.version, ok.planet, err)
+		if res, err := r.c.Resources(context.Background(), req, ok.planet); err != nil || res.Planet != ok.planet {
+			t.Errorf("%s %s: %v, %v", ok.version, ok.planet, res.Planet, err)
 		}
 	}
 }
@@ -211,7 +246,7 @@ func TestResourcesShareThePreviewSlot(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	first := make(chan error, 1)
 	go func() {
-		_, err := r.c.resourceCount(ctx, resourcesRequest(), "nauvis")
+		_, err := r.c.Resources(ctx, resourcesRequest(), "nauvis")
 		first <- err
 	}()
 	r.waitPreviewContainer()
@@ -221,7 +256,7 @@ func TestResourcesShareThePreviewSlot(t *testing.T) {
 	if _, err := r.c.Territories(context.Background(), territoriesRequest()); !errors.Is(err, ErrPreviewBusy) {
 		t.Errorf("territory run during a count: %v, want ErrPreviewBusy", err)
 	}
-	if _, err := r.c.resourceCount(context.Background(), resourcesRequest(), "nauvis"); !errors.Is(err, ErrPreviewBusy) {
+	if _, err := r.c.Resources(context.Background(), resourcesRequest(), "nauvis"); !errors.Is(err, ErrPreviewBusy) {
 		t.Errorf("second count: %v, want ErrPreviewBusy", err)
 	}
 	if n := len(r.previewContainers()); n != 1 {
@@ -249,7 +284,7 @@ func TestResourcesCancelAndTimeoutCleanUp(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		_, err := r.c.resourceCount(ctx, resourcesRequest(), "nauvis")
+		_, err := r.c.Resources(ctx, resourcesRequest(), "nauvis")
 		done <- err
 	}()
 	r.waitPreviewContainer()
@@ -258,7 +293,7 @@ func TestResourcesCancelAndTimeoutCleanUp(t *testing.T) {
 		t.Fatalf("error %v, want context.Canceled", err)
 	}
 	r.c.previewLimit = 300 * time.Millisecond
-	if _, err := r.c.resourceCount(context.Background(), resourcesRequest(), "nauvis"); !errors.Is(err, ErrPreviewTimeout) {
+	if _, err := r.c.Resources(context.Background(), resourcesRequest(), "nauvis"); !errors.Is(err, ErrPreviewTimeout) {
 		t.Fatalf("error %v, want ErrPreviewTimeout", err)
 	}
 	if left := r.previewContainers(); len(left) != 0 {
@@ -277,14 +312,14 @@ func TestResourcesFailureAndMissingImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pe *PreviewError
-	if _, err := r.c.resourceCount(context.Background(), resourcesRequest(), "nauvis"); !errors.As(err, &pe) || pe.ExitCode != 1 {
+	if _, err := r.c.Resources(context.Background(), resourcesRequest(), "nauvis"); !errors.As(err, &pe) || pe.ExitCode != 1 {
 		t.Errorf("error %v, want a *PreviewError with exit 1", err)
 	}
 	if len(r.previewContainers()) != 0 || len(r.previewFolders()) != 0 {
 		t.Error("the container or folder was left")
 	}
 	r.game.SetImage(image21, false)
-	if _, err := r.c.resourceCount(context.Background(), resourcesRequest(), "nauvis"); !errors.Is(err, ErrPreviewImageMissing) {
+	if _, err := r.c.Resources(context.Background(), resourcesRequest(), "nauvis"); !errors.Is(err, ErrPreviewImageMissing) {
 		t.Errorf("error %v, want ErrPreviewImageMissing", err)
 	}
 	if len(r.calls("POST /images/create")) != 0 {
@@ -317,11 +352,11 @@ func TestReadResourcesRefusesWhatIsNotRight(t *testing.T) {
 	if b, err := readControlModOutput(base, "p", resourceMod); err != nil || string(b) != string(good) {
 		t.Errorf("a good file: %q, %v", b, err)
 	}
-	put([]byte(strings.Repeat("a", resourcesMaxJSON)))
+	put([]byte(strings.Repeat("a", resource.MaxJSON)))
 	if _, err := readControlModOutput(base, "p", resourceMod); err != nil {
 		t.Errorf("a file of exactly the limit: %v", err)
 	}
-	put([]byte(strings.Repeat("a", resourcesMaxJSON+1)))
+	put([]byte(strings.Repeat("a", resource.MaxJSON+1)))
 	if _, err := readControlModOutput(base, "p", resourceMod); err == nil {
 		t.Error("a file over the limit was accepted")
 	}
