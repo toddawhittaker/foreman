@@ -190,6 +190,23 @@ test("a tick during the pause after a settings change waits for the new picture"
   await expect(labels(page)).toHaveCount(7);
 });
 
+test("Preview map clicked during a change's pause leaves the box working", async ({ page }) => {
+  const asked: string[] = [];
+  page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img")).toHaveCount(1);
+  // The change starts the pause; Preview map, at once, drops its draw and draws every planet.
+  await page.locator("#generate-seed").fill("4242");
+  await page.getByRole("button", { name: "Preview map" }).click();
+  await expect(section(page).getByRole("img")).toHaveCount(5);
+  await expect(section(page).getByRole("img").first()).toHaveAccessibleName(/seed 4242/);
+  await section(page).getByRole("link", { name: /opens the large view/ }).first().click();
+  await expect(dialog(page)).toBeVisible();
+  await box(page).check();
+  await expect.poll(() => asked.length).toBe(1);
+  await expect(labels(page)).toHaveCount(7);
+});
+
 test("unticking or closing the view drops the count on its way", async ({ page }) => {
   await openLarge(page);
   const hold = holdCounts(page);

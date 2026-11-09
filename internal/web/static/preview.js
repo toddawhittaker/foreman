@@ -68,6 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
     sent++;
     if (pending) pending.abort();
     pending = null;
+    // The pause's draw is dropped with it; soon() sets this again after its own drop().
+    waiting = false;
     setStatus(false);
     dropTerritories();
     clearAmounts();
