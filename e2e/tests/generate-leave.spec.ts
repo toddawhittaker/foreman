@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, openMenu } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, openMenu, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // SPEC 5.6: leaving Generate with settings that differ from what was loaded
@@ -251,6 +251,63 @@ test("a form sent back with errors asks before leaving", async ({ page }) => {
   await stay(page).click();
   await expect(page).toHaveURL(/\/generate$/);
   await expect(page.locator("#generate-seed")).toHaveValue("777");
+});
+
+test("a download link is not leaving, so it asks nothing", async ({ page }) => {
+  const asked = browserQuestions(page);
+  await edit(page);
+  await page.evaluate(() => {
+    const a = document.createElement("a");
+    a.href = "/worlds";
+    a.download = "worlds.html";
+    a.textContent = "Save the list";
+    document.querySelector("main")!.append(a);
+  });
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Save the list" }).click();
+  await download;
+  await expect(leaveDialog(page)).toBeHidden();
+  await expect(page).toHaveURL("/generate");
+  expect(asked).toEqual([]);
+});
+
+test("the dialog opens from the keyboard and keeps Tab inside until it is closed", async ({ page }) => {
+  await edit(page);
+  await tabTo(page, cancel(page));
+  await page.keyboard.press("Enter");
+  await expect(leaveDialog(page)).toBeVisible();
+  await expect(stay(page)).toBeFocused();
+  // The page behind is inert, so Tab either stays in the dialog or leaves the page for the browser's own controls (nothing focused in the page); it never reaches the form behind.
+  const behind = () => page.evaluate(() => {
+    const active = document.activeElement;
+    return Boolean(active && active !== document.body && !active.closest("#leave-dialog"));
+  });
+  for (const key of ["Tab", "Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab"]) {
+    await page.keyboard.press(key);
+    expect(await behind(), `focus after ${key} is on the page behind the dialog`).toBe(false);
+  }
+  await stay(page).focus();
+  await page.keyboard.press("Escape");
+  await expect(leaveDialog(page)).toBeHidden();
+  await expect(cancel(page)).toBeFocused();
+});
+
+// If the page does not go (a cancelled navigation, a link that is a file),
+// Leave must not leave the next attempt unasked.
+test("after Leave, a navigation that does not happen is asked about again", async ({ page }) => {
+  // A file sent as a download: the page stays where it is.
+  await page.route("**/snapshots", (route) => route.fulfill({ status: 200, headers: { "content-disposition": "attachment; filename=x.txt", "content-type": "text/plain" }, body: "x" }));
+  const asked = browserQuestions(page, "dismiss");
+  await edit(page);
+  const link = page.getByRole("banner").getByRole("link", { name: "Snapshots" });
+  await link.click();
+  const download = page.waitForEvent("download");
+  await leave(page).click();
+  await download;
+  await expect(page).toHaveURL("/generate");
+  expect(asked).toEqual([]);
+  await link.click();
+  await expect(leaveDialog(page)).toBeVisible();
 });
 
 // Reload, closing the tab, the address bar and Back cannot be caught by a

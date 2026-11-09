@@ -128,9 +128,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // track, the next step the way it went, so a small step never sticks.
   let pointerOnRange = false;
   document.addEventListener("pointerdown", (e) => {
-    pointerOnRange = e.target.classList.contains("step__range");
+    pointerOnRange = e.button === 0 && e.target.classList.contains("step__range");
   }, true);
-  for (const type of ["pointerup", "pointercancel"]) {
+  // A release can be lost (a menu, a drag out of the window), so a key press also ends the pointer's turn.
+  for (const type of ["pointerup", "pointercancel", "keydown"]) {
     window.addEventListener(type, () => { pointerOnRange = false; }, true);
   }
   function stepOfSlider(range, select) {
@@ -403,7 +404,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const isDirty = () => unsaved || [...formEl().elements].some(differsFromLoaded);
   window.addEventListener("beforeunload", (e) => {
-    if (submitting || leaving || !isDirty()) return;
+    // Leave skips the question once; if the navigation is then cancelled, the next leave asks again.
+    if (leaving) {
+      leaving = false;
+      return;
+    }
+    if (submitting || !isDirty()) return;
     e.preventDefault();
     // Older browsers ask only when this is set.
     e.returnValue = "";

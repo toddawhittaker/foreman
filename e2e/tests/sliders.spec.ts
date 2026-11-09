@@ -311,8 +311,8 @@ async function expectCentred(page: Page) {
     // At the default, the fill runs to the knob's right edge.
     let edge = Math.round(atDefault.length / 4);
     while (edge < atDefault.length && isKnob(atDefault[edge])) edge++;
-    // The first step's knob touches the track's start, so the track's middle is half way between the two ends.
-    const middle = left + (atFirst.length - 2 * left) / 2;
+    // The knob at the first step touches the track's start and at the last its end, so the middle of its travel is the middle of the picture.
+    const middle = atFirst.length / 2;
     expect(Math.abs(edge - width / 2 - middle) / dpr, `${id}: the knob's centre is off the track's middle by this many px`).toBeLessThanOrEqual(1);
   }
 }
@@ -329,6 +329,7 @@ test("each kind of slider has its knob at the track's middle at its default", as
 test("each kind of slider takes one step per key press, and the nearest step to a click", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/generate");
+  let farApart = 0;
   for (const [t, id] of kinds) {
     await tab(page, tabNames.en[t]).click();
     const range = page.locator(`#${id}-range`);
@@ -347,27 +348,95 @@ test("each kind of slider takes one step per key press, and the nearest step to 
       await page.keyboard.press("ArrowLeft");
       expect(await index(), `${id} left to step ${i}`).toBe(i);
     }
-    // A click a quarter and three quarters along the track lands where the track says.
+    // A click lands on the step nearest to where it was made. Where each step
+    // sits is read back by moving the select to each, then the pointer is
+    // aimed with the browser's own mapping of a click to a value (the knob's
+    // width is lost at each end of the travel).
     const box = (await range.boundingBox())!;
     const max = Number(await range.getAttribute("max"));
+    const places = await range.evaluate((el: HTMLInputElement, n) => {
+      const select = document.getElementById(el.dataset.for!) as HTMLSelectElement;
+      const at: number[] = [];
+      for (let i = 0; i < n; i++) {
+        select.selectedIndex = i;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        at.push(Number(el.value));
+      }
+      return at;
+    }, count);
+    expect(places[0], `${id}: first step at the start`).toBe(0);
+    expect(places[count - 1], `${id}: last step at the end`).toBe(max);
+    const knob = 16;
+    const xOf = (value: number) => box.x + knob / 2 + (value / max) * (box.width - knob);
+    const slack = max * 0.02;
     for (const part of [0.25, 0.75]) {
+      const target = ((part * box.width - knob / 2) / (box.width - knob)) * max;
+      const near = Math.min(...places.map((p) => Math.abs(p - target)));
+      const allowed = places.map((p, i) => [p, i]).filter(([p]) => Math.abs(p - target) <= near + slack).map(([, i]) => i);
       await page.mouse.click(box.x + box.width * part, box.y + box.height / 2);
-      const got = Number(await range.inputValue());
-      const steps = await range.evaluate((el: HTMLInputElement, n) => {
-        // Where each step sits: the select's own steps, read back by moving to each.
-        const select = document.getElementById(el.dataset.for!) as HTMLSelectElement;
-        const at: number[] = [];
-        for (let i = 0; i < n; i++) {
-          select.selectedIndex = i;
-          select.dispatchEvent(new Event("change", { bubbles: true }));
-          at.push(Number(el.value));
-        }
-        return at;
-      }, count);
-      expect(steps, `${id}: first step at the start, last at the end`).toEqual(expect.arrayContaining([0, max]));
-      expect(steps, `${id}: after a click at ${part} the slider sits on a step`).toContain(got);
+      expect(allowed, `${id}: a click at ${part} lands on the nearest step`).toContain(await index());
+      expect(Number(await range.inputValue()), `${id}: the knob sits on that step`).toBe(places[await index()]);
       await page.mouse.move(0, 0);
     }
+    // Where the steps are far apart, a click a little off the step it is on
+    // stays on it: a pointer takes the nearest, where a key takes the next.
+    const gap = places[2] - places[1];
+    if (gap >= 5) {
+      farApart++;
+      await range.focus();
+      await page.keyboard.press("Home");
+      await page.keyboard.press("ArrowRight");
+      expect(await index()).toBe(1);
+      await page.mouse.click(xOf(places[1] + 1), box.y + box.height / 2);
+      expect(await index(), `${id}: a click just past step 1 stays on it`).toBe(1);
+      await page.mouse.move(0, 0);
+    }
+  }
+  expect(farApart, "some kind of slider has steps far apart on its track").toBeGreaterThan(0);
+});
+
+// A pointer's turn ends with its release, which a menu or a drag out of the
+// window can lose, and only the main button drags a slider: so a right press,
+// or a press never released, must not make the next key jump to the nearest.
+test("a key moves one step after a right press or a press that was never released", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/generate");
+  await tab(page, tabNames.en[1]).click();
+  const id = "mg-nauvis-trees-size";
+  const range = page.locator(`#${id}-range`);
+  const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
+  await range.focus();
+  await page.keyboard.press("Home");
+  for (const button of [2, 0]) {
+    const before = await index();
+    await range.evaluate((el, b) => el.dispatchEvent(new PointerEvent("pointerdown", { button: b, bubbles: true })), button);
+    await page.keyboard.press("ArrowRight");
+    expect(await index(), `after a press of button ${button}`).toBe(before + 1);
+  }
+});
+
+// PageUp and PageDown move a larger part of the track than an arrow, and
+// still land on a step, going the way of the key.
+test("each kind of slider moves with PageUp and PageDown", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/generate");
+  for (const [t, id] of kinds) {
+    await tab(page, tabNames.en[t]).click();
+    const range = page.locator(`#${id}-range`);
+    const index = () => page.locator(`#${id}`).evaluate((s: HTMLSelectElement) => s.selectedIndex);
+    await range.focus();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("PageUp");
+    const up = await index();
+    expect(up, `${id}: PageUp from the first step`).toBeGreaterThan(0);
+    await page.keyboard.press("PageUp");
+    expect(await index(), `${id}: PageUp again`).toBeGreaterThan(up);
+    await page.keyboard.press("End");
+    await page.keyboard.press("PageDown");
+    const down = await index();
+    expect(down, `${id}: PageDown from the last step`).toBeLessThan(await page.locator(`#${id} option`).count() - 1);
+    await page.keyboard.press("PageDown");
+    expect(await index(), `${id}: PageDown again`).toBeLessThan(down);
   }
 });
 
