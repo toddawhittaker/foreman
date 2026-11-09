@@ -2003,9 +2003,19 @@ Serves SPEC 5.6, 14.1, 14.3, 14.6, 14.7 and 17, with DESIGN.md 7.4, 8.7,
 view), #422 (Foreman's own leave dialog) and #423 (sliders centred on 100%).
 Built in four lanes at once: the count run and its measurements, the
 parser and fake game, the web side, and the sliders and leave dialog. The
-pull requests were #430 to #436.
+pull requests were #430 to #436, then #438 and #439 for the integration
+review.
 
-Integration review: (orchestrator fills)
+Integration review: a code review across the tasks and an accessibility
+review of the flows between them, on the epic head. Fixed in #439: the fake
+game now writes the game's real entity names, and the real-game test checks
+names exactly (`resource.EntityName`); one shared mod-info helper and one
+shared failure mapper for territories and resources; one rule for yield;
+spike-only measuring tests removed. Fixed in #438: the counting sentence is
+also spoken after a redraw or a planet change; on Vulcanus the territory
+counts are inside the large view; the text list's totals are h4 under a
+hidden h3. Kept: `color` in the count file (the real-game alignment check
+uses it); ←/→ change the planet from anywhere in the view (SPEC 5.6).
 
 ### Delivered
 
