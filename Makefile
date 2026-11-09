@@ -62,8 +62,8 @@ lint:
 TEST_TIMEOUT ?= 30m
 
 # Local runs split the web package's tests across this many processes at
-# once, one per CPU. CI keeps one process, as it always has: the GitHub
-# runner has too few CPUs for a split to pay.
+# once, one per CPU. CI keeps one process on purpose, so it stays the
+# plain `go test ./...` run it has always been.
 TEST_SHARDS ?= $(if $(CI),1,$(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1))
 
 # One race-enabled run gives both the test result and the coverage floor.
