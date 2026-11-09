@@ -151,7 +151,10 @@ func TestParseRefusals(t *testing.T) {
 		"huge total":              rep(`"total": 900000`, `"total": 9007199254740993`),
 		"huge float amount":       rep(`"amount": 100,`, `"amount": 9007199254740993.0,`),
 		"huge exponent amount":    rep(`"amount": 100,`, `"amount": 9.007199254740993e15,`),
-		"2^53 as a float":         rep(`"amount": 100,`, `"amount": 9007199254740992.0,`),
+		"past 2^53 as a float":    rep(`"amount": 100,`, `"amount": 9007199254740994.0,`),
+		"underflowing amount":     rep(`"amount": 100,`, `"amount": 1e-999999999,`),
+		"underflowing x":          rep(`"x": -20, "y": 10`, `"x": 1e-999999999, "y": 10`),
+		"long number":             rep(`"amount": 100,`, `"amount": 100.000000000000000000000000000000,`),
 		"inexact long fraction":   rep(`"amount": 100,`, `"amount": 100.00000000000000000000000000000000000000001,`),
 		"huge x":                  rep(`"x": -20, "y": 10`, `"x": 9007199254740993, "y": 10`),
 		"fraction total":          rep(`"total": 300`, `"total": 300.5`),
@@ -228,9 +231,11 @@ func TestWhole(t *testing.T) {
 	for in, want := range map[string]bool{
 		"0": true, "9007199254740992": true, "9007199254740993": false,
 		"3e2": true, "100.0": true, "9007199254740991.0": true,
-		"9007199254740992.0": false, "9007199254740993.0": false, "9.007199254740993e15": false,
-		"100.5": false, "1e999": false, "1e-999": false, "-0.0": true,
-		"100.00000000000000000000000000000000000000001": false,
+		"9007199254740992.0": true, "9.007199254740992e15": true,
+		"9007199254740993.0": false, "9.007199254740993e15": false, "9007199254740994.0": false,
+		"100.5": false, "1e999": false, "1e-999": false, "1e-999999999": false, "-1e-999999999": false,
+		"0e5": true, "0.0": true, "-0.0": true, "0e-999999999": true,
+		"100.000000000000000000000000001": false,
 	} {
 		if _, ok := whole(num(in), 0, maxNumber); ok != want {
 			t.Errorf("whole(%s): %v, want %v", in, ok, want)
@@ -359,7 +364,31 @@ func TestParseMaxResources(t *testing.T) {
 	if _, err := Parse([]byte(build(MaxResources)), 128, "nauvis"); err != nil {
 		t.Errorf("MaxResources resources: %v", err)
 	}
-	if err := parseErr(t, build(MaxResources+1)); !strings.Contains(err.Error(), "resources") {
+	if err := parseErr(t, build(MaxResources+1)); !strings.Contains(err.Error(), fmt.Sprintf("more than %d resources", MaxResources)) {
 		t.Errorf("over MaxResources: %v", err)
+	}
+}
+
+// SPEC 14.1: a number token longer than maxNumberLen bytes is refused
+// before it is read, so a file of long digit strings costs no more than one
+// of short ones; zero in its accepted forms still parses.
+func TestParseNumberLength(t *testing.T) {
+	long := "1" + strings.Repeat("0", maxNumberLen)
+	in := strings.Replace(good, `"amount": 100,`, `"amount": `+long+`,`, 1)
+	if err := parseErr(t, in); err == nil {
+		t.Fatal("unreachable")
+	}
+	ok := strings.Replace(good, `"amount": 100,`, `"amount": 100.`+strings.Repeat("0", maxNumberLen-4)+`,`, 1)
+	if _, err := Parse([]byte(ok), 128, "nauvis"); err != nil {
+		t.Errorf("a number of exactly %d bytes: %v", maxNumberLen, err)
+	}
+	zeros := strings.NewReplacer(`"normal": 0,`, `"normal": 0e5,`).Replace(good)
+	zeros = strings.Replace(zeros, `[104, 132, 146]`, `[0.0, 132, 146]`, 1)
+	if _, err := Parse([]byte(zeros), 128, "nauvis"); err != nil {
+		t.Errorf("0e5 and 0.0: %v", err)
+	}
+	var n num
+	if err := n.UnmarshalJSON([]byte(long)); err == nil {
+		t.Errorf("a %d-byte number was taken", len(long))
 	}
 }
