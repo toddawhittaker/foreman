@@ -29,6 +29,18 @@ var resourceMod = controlMod{
 	maxOutput: resource.MaxJSON,
 }
 
+// resourceInfo is the count mod's info.json. It depends on Space Age only
+// when the map has it.
+func resourceInfo(line string, spaceAge bool) []byte {
+	deps := []string{"base"}
+	if spaceAge {
+		deps = append(deps, "space-age")
+	}
+	return modInfo(resources.ModName, resources.ModVersion, "Foreman resources",
+		"Counts one planet's resource patches for Foreman's map preview. Adds no prototypes.",
+		line, deps...)
+}
+
 // Resources counts the resource patches of planet in the map a preview of
 // req would draw (SPEC 5.6). It is a one-off container like Preview's, with
 // the same single slot, stale cleanup, work folder and limits (SPEC 14.3),
@@ -44,7 +56,7 @@ func (c *Controller) Resources(ctx context.Context, req PreviewRequest, planet s
 	if err != nil {
 		return resource.Result{}, err
 	}
-	b, err := c.runControlMod(ctx, req, resourceMod, resources.InfoJSON(line, req.SpaceAge), resourcesEnv(req, planet))
+	b, err := c.runControlMod(ctx, req, resourceMod, resourceInfo(line, req.SpaceAge), resourcesEnv(req, planet))
 	if err != nil {
 		return resource.Result{}, err
 	}

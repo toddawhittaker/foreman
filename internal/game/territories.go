@@ -31,8 +31,13 @@ var territoryMod = controlMod{
 	maxOutput: territory.MaxJSON,
 }
 
-// territoriesScript is the territory run's shell script (controlMod.script).
-var territoriesScript = territoryMod.script()
+// territoryInfo is the territory mod's info.json. It needs Space Age, which
+// has Vulcanus.
+func territoryInfo(line string) []byte {
+	return modInfo(territories.ModName, territories.ModVersion, "Foreman territories",
+		"Writes Vulcanus's demolisher territories for Foreman's map preview. Adds no prototypes.",
+		line, "base", "space-age")
+}
 
 // Territories reads where Vulcanus's demolisher territories lie in the map a
 // preview of req would draw (SPEC 5.6). It is a one-off container like
@@ -48,7 +53,7 @@ func (c *Controller) Territories(ctx context.Context, req PreviewRequest) (terri
 	if err != nil {
 		return territory.Result{}, err
 	}
-	b, err := c.runControlMod(ctx, req, territoryMod, territories.InfoJSON(line), territoriesEnv(req))
+	b, err := c.runControlMod(ctx, req, territoryMod, territoryInfo(line), territoriesEnv(req))
 	if err != nil {
 		return territory.Result{}, err
 	}

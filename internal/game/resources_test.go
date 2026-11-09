@@ -129,7 +129,7 @@ func TestResourcesWorkFolderAndContainer(t *testing.T) {
 			if !enabled["base"] || enabled["space-age"] != tc.spaceAge || !enabled[resources.ModName] {
 				t.Errorf("enabled mods %v", enabled)
 			}
-			if string(read("mods/"+resources.ModDir+"/info.json")) != string(resources.InfoJSON(tc.line, tc.spaceAge)) ||
+			if string(read("mods/"+resources.ModDir+"/info.json")) != string(resourceInfo(tc.line, tc.spaceAge)) ||
 				string(read("mods/"+resources.ModDir+"/control.lua")) != string(resources.Control) {
 				t.Errorf("the mod folder is not info.json for %s and control.lua", tc.line)
 			}
