@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -83,7 +84,7 @@ func TestResourcesAnswerFromTheStore(t *testing.T) {
 		`<span class="resources__label" style="left: 46.133%; top: 47.695%; --x: 46.133; --y: 47.695" data-amount="12345678" data-kind="amount"></span>`,
 		`data-amount="3" data-kind="yield"`,
 		`<summary>Resource amounts as text (4 patches)</summary>`,
-		"Places are tiles from where players start, as (x, y).",
+		"Positions are in tiles from where players start, as (x, y).",
 		`<h3>Iron ore: 12,595,678 in total</h3>`,
 		`<li>12,345,678 at (-50, -30)</li><li>250,000 at (-40, -30)</li>`,
 		`<h3>Copper ore: 1,500,000 in total</h3>`,
@@ -115,10 +116,12 @@ func TestResourcesAnswerFromTheStore(t *testing.T) {
 	if len(prev.runs) != 3 || prev.planets[1] != "vulcanus" || prev.runs[2].Seed != 7 {
 		t.Errorf("another planet or seed did not count: %v %+v", prev.planets, prev.runs)
 	}
-	// Coming back to the first settings counts again: a settings change made a new preview.
+	// The count of other settings did not replace the user's preview: the
+	// first settings still answer from it, and seed 7 counts again.
 	hn.postLong(pathResources, planetForm("nauvis"), c, hx)
+	hn.postLong(pathResources, planetForm("nauvis", "seed", "7"), c, hx)
 	if len(prev.runs) != 4 {
-		t.Errorf("old settings answered from a replaced preview: %d runs", len(prev.runs))
+		t.Errorf("a count of other settings replaced the preview: %d runs", len(prev.runs))
 	}
 }
 
@@ -170,7 +173,7 @@ func TestResourceFailuresAreWorded(t *testing.T) {
 		{"no image", planetForm("nauvis"), game.ErrPreviewImageMissing, "the game image for Factorio 2.1.24 is not downloaded here", 1, false},
 		{"memory", planetForm("nauvis"), &game.PreviewError{ExitCode: 137, OOM: true}, "The game ran out of memory counting the resources.", 1, true},
 		{"game failed", planetForm("nauvis"), &game.PreviewError{ExitCode: 1}, "The game could not count the resources.", 1, true},
-		{"invalid file", planetForm("nauvis"), resource.ErrInvalid, "The game could not count the resources.", 1, true},
+		{"invalid file", planetForm("nauvis"), fmt.Errorf("patch 3: %w", resource.ErrInvalid), "The game could not count the resources.", 1, false},
 		{"bad settings", planetForm("nauvis", "preview_size", "999"), nil, "The settings have problems, so the resources were not counted.", 0, false},
 	}
 	for _, tc := range cases {
@@ -304,5 +307,34 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page lacks %q", want)
 		}
+	}
+}
+
+// SPEC 5.6: a count or territories that arrive after the person moved on to
+// other settings are answered but not kept, so they never replace the newer
+// preview and its pictures.
+func TestLateResultsDoNotReplaceANewerPreview(t *testing.T) {
+	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+	st := newPreviewStore(func() time.Time { return now })
+	tok, _ := st.add(1, "new", "World", "8", onePNG("nauvis"))
+	if got, err := st.addResources(1, "old", "World", "7", "nauvis", nauvisCount); err != nil || got != "" {
+		t.Errorf("a late count: token %q, %v", got, err)
+	}
+	if got, err := st.addTerritories(1, "old", "World", "7", 1280, threeTerritories); err != nil || got != "" {
+		t.Errorf("late territories: token %q, %v", got, err)
+	}
+	e := st.byUser[1]
+	if e.token != tok || e.key != "new" || len(e.images) != 1 || e.resources != nil || e.territories != nil || e.bytes != len(pngBytes) {
+		t.Errorf("the newer preview changed: %+v", e)
+	}
+	if _, ok := st.resourcesOf(1, "old", "nauvis"); ok {
+		t.Error("the late count is found")
+	}
+	// With no preview at all, a result starts one, as before.
+	if got, _ := st.addResources(2, "k", "", "1", "nauvis", nauvisCount); got == "" {
+		t.Error("a user with no preview kept no count")
+	}
+	if got, _ := st.addTerritories(3, "k", "", "1", 1280, threeTerritories); got == "" {
+		t.Error("a user with no preview kept no territories")
 	}
 }

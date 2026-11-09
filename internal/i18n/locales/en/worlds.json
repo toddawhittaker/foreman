@@ -451,7 +451,7 @@
     "one": "Resource amounts as text ({count} patch)",
     "other": "Resource amounts as text ({count} patches)"
   },
-  "worlds.generate.resources.edge": "Places are tiles from where players start, as (x, y). A patch that the edge of the picture cuts counts only its part inside.",
+  "worlds.generate.resources.edge": "Positions are in tiles from where players start, as (x, y). A patch cut by the edge of the picture counts only the part inside it.",
   "worlds.generate.resources.total": "{resource}: {amount} in total",
   "worlds.generate.resources.total_yield": "{resource}: {percent}% yield in total",
   "worlds.generate.resources.patch": "{amount} at ({x}, {y})",

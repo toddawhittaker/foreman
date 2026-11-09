@@ -110,6 +110,8 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   // The wait is seen: a line and an indeterminate bar.
   await expect(counting(page)).toBeVisible();
   await expect(counting(page)).toContainText("Counting resources in the map… This can take up to a minute.");
+  // Said once as it starts.
+  await expect(status(page)).toHaveText("Counting resources in the map… This can take up to a minute.");
   await expect(labels(page)).toHaveCount(0);
   await shot(page, "resources-counting");
   await hold.release();
@@ -164,6 +166,30 @@ test("labels never overlap at the fitted size, and zooming in shows more", async
   await expectNoOverlap(page);
 });
 
+test("unticking clears the status line's news of the count", async ({ page }) => {
+  await openLarge(page);
+  await box(page).check();
+  await expect(status(page)).toHaveText("Resource amounts ready.");
+  await box(page).uncheck();
+  await expect(status(page)).toBeEmpty();
+  await expect(labels(page)).toHaveCount(0);
+});
+
+test("a tick during the pause after a settings change waits for the new picture", async ({ page }) => {
+  test.skip(!isWide(page), "the settings show beside the map only where both fit");
+  await openLarge(page);
+  const events: string[] = [];
+  page.on("request", (r) => { if (isResources(r.url())) events.push("count"); });
+  page.on("response", (r) => { if (r.url().endsWith("/generate/preview")) events.push("picture"); });
+  await page.locator("#large-settings .step__range").first().focus();
+  await page.keyboard.press("ArrowLeft");
+  await box(page).check();
+  await expect.poll(() => events.includes("count")).toBe(true);
+  expect(events.indexOf("picture")).toBeGreaterThanOrEqual(0);
+  expect(events.indexOf("picture")).toBeLessThan(events.indexOf("count"));
+  await expect(labels(page)).toHaveCount(7);
+});
+
 test("unticking or closing the view drops the count on its way", async ({ page }) => {
   await openLarge(page);
   const hold = holdCounts(page);
@@ -184,8 +210,18 @@ test("unticking or closing the view drops the count on its way", async ({ page }
   await expect(labels(page)).toHaveCount(0);
 });
 
-test("another planet drops the count and counts the planet shown", async ({ page }) => {
-  await openLarge(page);
+test("another planet drops the count and counts the planet shown, around its demolisher labels", async ({ page }) => {
+  // Vulcanus's territories are ticked on the page first, so its large view has demolisher labels.
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img")).toHaveCount(1);
+  await page.locator("#mg-resources-vulcanus summary").click();
+  await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
+  await page.getByLabel("Show demolisher territories").check();
+  await expect(section(page).locator(".territory-counts")).toHaveText(/^Demolisher territories in this picture/);
+  await page.locator("#mg-resources-nauvis summary").click();
+  await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+  await section(page).getByRole("link", { name: /opens the large view/ }).click();
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
   const hold = holdCounts(page);
   await hold.start();
   const aborted: string[] = [];
@@ -201,6 +237,23 @@ test("another planet drops the count and counts the planet shown", async ({ page
   expect(planetOf(hold.held[1].request())).toBe("vulcanus");
   await hold.release();
   await expect(labels(page)).toHaveCount(7);
+  await expect(dialog(page).locator(".territories__label")).toHaveCount(3);
+  // A demolisher label is always kept: one put over the largest amount's label hides that label.
+  const covered = await dialog(page).locator(".map").evaluate((map) => {
+    const label = map.querySelector<HTMLElement>(".resources__label:not([hidden])")!;
+    const terr = map.querySelector<HTMLElement>(".territories__label")!;
+    for (const p of ["left", "top", "--x", "--y"]) terr.style.setProperty(p, label.style.getPropertyValue(p));
+    return [...map.querySelectorAll(".resources__label")].indexOf(label);
+  });
+  await dialog(page).locator("#large-frame").focus();
+  // A zoom places the labels again; each step lands before the next, so the map's size changes.
+  await page.keyboard.press("+");
+  await page.waitForFunction(() => document.getElementById("large-frame")!.hasAttribute("data-zoomed"));
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.keyboard.press("0");
+  await expect(labels(page).nth(covered)).toBeHidden();
+  const l = await expectNoOverlap(page);
+  expect(l.kept.length).toBeGreaterThan(1);
   // Named as the planet's own map setting is.
   await summary(page).click();
   await expect(result(page).getByRole("heading", { level: 3 }).first()).toHaveText(/^Coal: /);
@@ -258,7 +311,13 @@ test("from the keyboard: tick the box, then read the amounts as text", async ({ 
   await page.keyboard.press("Enter");
   await expect(result(page).locator("details")).toHaveAttribute("open");
   await expect(result(page).getByRole("listitem")).toHaveCount(7);
-  await expect(result(page).getByText("Places are tiles from where players start, as (x, y).")).toBeVisible();
+  await expect(result(page).getByText("Positions are in tiles from where players start, as (x, y).")).toBeVisible();
+  // Another planet empties the list; focus goes back to the box rather than being lost.
+  await summary(page).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect(box(page)).toBeFocused();
+  await expect(labels(page)).toHaveCount(7);
   // Focus stays inside the view, which still closes with Escape.
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toBeHidden();

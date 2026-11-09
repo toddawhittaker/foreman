@@ -78,7 +78,7 @@ func resourceView(loc i18n.Locale, line, planet string, res resource.Result, siz
 	for n := range byName {
 		names = append(names, n)
 	}
-	// Largest first; a well field by its yield, an ore by its amount, then by name.
+	// Largest total amount first, then by name.
 	slices.SortFunc(names, func(a, b string) int {
 		return cmp.Or(cmp.Compare(res.Resources[b].Total, res.Resources[a].Total), cmp.Compare(a, b))
 	})
@@ -134,8 +134,9 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 	}
 	res, err := s.previewer.Resources(r.Context(), req, planet)
 	if err != nil {
-		// A missing image is not there on a second try either.
-		return &ResourceView{Error: s.resourceFailure(r, req.GameVersion, err), Retry: !errors.Is(err, game.ErrPreviewImageMissing)}
+		// A missing image, or a count the game wrote wrongly, is the same on a second try.
+		retry := !errors.Is(err, game.ErrPreviewImageMissing) && !errors.Is(err, resource.ErrInvalid)
+		return &ResourceView{Error: s.resourceFailure(r, req.GameVersion, err), Retry: retry}
 	}
 	if _, err := s.previews.addResources(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), planet, res); err != nil {
 		s.log.Error("keep resource amounts", "error", err)
@@ -198,10 +199,14 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 }
 
 // addResources keeps the amounts counted on planet, as add keeps pictures,
-// and returns the preview's token.
+// and returns the preview's token. A count of settings other than the
+// user's current preview is not kept, and the token is blank.
 func (p *previewStore) addResources(user int64, key, name, seed, planet string, res resource.Result) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.otherLocked(user, key) {
+		return "", nil
+	}
 	e := p.joinLocked(user, key, seed)
 	grown := e.bytes - resourceBytes(e.resources[planet]) + resourceBytes(&res)
 	if grown > maxPreviewBytes {

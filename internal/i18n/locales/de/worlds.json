@@ -448,15 +448,15 @@
   "worlds.generate.resources.counting": "Die Ressourcen der Karte werden gezählt … Das kann bis zu einer Minute dauern.",
   "worlds.generate.resources.ready": "Ressourcenmengen bereit.",
   "worlds.generate.resources.summary": {
-    "one": "Ressourcenmengen als Text ({count} Vorkommen)",
-    "other": "Ressourcenmengen als Text ({count} Vorkommen)"
+    "one": "Ressourcenmengen als Text ({count} Ressourcenfeld)",
+    "other": "Ressourcenmengen als Text ({count} Ressourcenfelder)"
   },
-  "worlds.generate.resources.edge": "Orte sind Felder ab dem Startpunkt der Spieler, als (x, y). Ein Vorkommen, das der Bildrand schneidet, zählt nur mit seinem Teil im Bild.",
+  "worlds.generate.resources.edge": "Positionen sind in Kacheln ab dem Startpunkt der Spieler angegeben, als (x, y). Ein Ressourcenfeld, das der Bildrand schneidet, zählt nur mit seinem Teil im Bild.",
   "worlds.generate.resources.total": "{resource}: insgesamt {amount}",
   "worlds.generate.resources.total_yield": "{resource}: insgesamt {percent} % Ertrag",
   "worlds.generate.resources.patch": "{amount} bei ({x}, {y})",
   "worlds.generate.resources.patch_yield": "{percent} % Ertrag bei ({x}, {y})",
-  "worlds.generate.resources.none": "Dieses Bild enthält keine Ressourcenvorkommen.",
+  "worlds.generate.resources.none": "Dieses Bild enthält keine Ressourcenfelder.",
   "worlds.generate.resources.invalid": "Die Einstellungen haben Probleme, deshalb wurden die Ressourcen nicht gezählt. Behebe die Probleme, die die Kartenvorschau auflistet.",
   "worlds.generate.resources.busy": "Es wird gerade eine andere Kartenvorschau erstellt, deshalb wurden die Ressourcen nicht gezählt. Warte ein paar Sekunden und versuche es dann erneut.",
   "worlds.generate.resources.timeout": "Das Zählen der Ressourcen hat zu lange gedauert und wurde abgebrochen. Versuche es erneut oder wähle eine kleinere Vorschaugröße.",

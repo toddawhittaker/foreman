@@ -178,10 +178,15 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 }
 
 // addTerritories keeps the territories read for pictures of size pixels, as
-// add keeps pictures, and returns the preview's token.
+// add keeps pictures, and returns the preview's token. Territories of
+// settings other than the user's current preview are not kept, and the
+// token is blank.
 func (p *previewStore) addTerritories(user int64, key, name, seed string, size int, res territory.Result) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.otherLocked(user, key) {
+		return "", nil
+	}
 	e := p.joinLocked(user, key, seed)
 	grown := e.bytes - territoryBytes(e.territories) + territoryBytes(&res)
 	if grown > maxPreviewBytes {
@@ -216,6 +221,15 @@ func territoryBytes(r *territory.Result) int {
 		n += 40 + 16*len(t.Chunks)
 	}
 	return n
+}
+
+// otherLocked is true when the user's current preview is of other settings:
+// the person moved on while a run went, so its result must not replace the
+// newer preview.
+func (p *previewStore) otherLocked(user int64, key string) bool {
+	p.sweepLocked()
+	e, ok := p.byUser[user]
+	return ok && e.key != key
 }
 
 // joinLocked returns the entry new results of these settings go into: a

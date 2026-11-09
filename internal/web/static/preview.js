@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const pause = 800;
 
   let timer = 0;
+  // A settings change waits out the pause before its draw; the picture shown meanwhile is of older settings.
+  let waiting = false;
   let sent = 0; // the number of the newest request; a reply to an older one is ignored
   let pending = null; // the AbortController of the request on its way
   let pendingInView = false; // whether that request was asked for by the large view
@@ -196,6 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
+    waiting = false;
     const n = sent;
     if (nothingToDraw()) {
       const slot = document.getElementById("preview");
@@ -323,6 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function soon() {
     drop();
+    waiting = true;
     // A preview the person asked for is older than this change, so it goes too.
     if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
     timer = setTimeout(() => draw(true, true), pause);
@@ -434,6 +438,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function clearAmounts() {
+    const slot = el("large-amounts-result");
+    // The Try again button or the list's summary goes with the slot, so focus goes back to the box.
+    if (slot && slot.contains(document.activeElement)) el("large-amounts").focus();
+    // A status line still about this count says nothing now.
+    const said = el("large-status");
+    const bar = el("large-amounts-bar");
+    const line = el("large-counting-text");
+    if (said && bar && line && [bar.dataset.ready, words(line)].includes(said.textContent)) largeStatus("");
+    clearTimeout(amountsSaying);
     amountsSent++;
     if (amountsPending) amountsPending.abort();
     amountsPending = null;
@@ -441,7 +454,6 @@ document.addEventListener("DOMContentLoaded", () => {
     counting(false);
     const map = largeMap();
     if (map) map.querySelectorAll(".resources").forEach((o) => o.remove());
-    const slot = el("large-amounts-result");
     if (slot) slot.replaceChildren();
     const news = el("large-amounts-news");
     if (news) news.textContent = "";
@@ -452,7 +464,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const box = el("large-amounts");
     const planet = viewing || firstPlanet();
     const slot = el("large-amounts-result");
-    if (!box || !box.checked || !dialog || !dialog.open || !slot || !pictureLink(planet)) return;
+    if (!box || !box.checked || waiting || !dialog || !dialog.open || !slot || !pictureLink(planet)) return;
     if (amountsPlanet === planet) return; // shown, failed, or on its way
     clearAmounts();
     amountsPlanet = planet;
@@ -460,6 +472,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const ctrl = new AbortController();
     amountsPending = ctrl;
     counting(true);
+    // Said once as it starts (SPEC 17); the bar beside it is only seen.
+    announce(words(el("large-counting-text")));
     const body = new URLSearchParams(new FormData(formEl()));
     body.set("planet", planet);
     let html;
@@ -491,6 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // The status line says the amounts are ready. A failure is shown beside the
   // box, so it is said unseen: the sentence only, not Try again's label.
+  let amountsSaying = 0;
   function sayAmounts(slot) {
     const why = slot.querySelector(".message p");
     const news = el("large-amounts-news");
@@ -501,7 +516,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (!news) return;
     news.textContent = "";
-    setTimeout(() => { news.textContent = words(why); }, 50);
+    clearTimeout(amountsSaying);
+    amountsSaying = setTimeout(() => { news.textContent = words(why); }, 50);
   }
 
   // Each label is the amount, short in the page's language ("1.2M"), or a

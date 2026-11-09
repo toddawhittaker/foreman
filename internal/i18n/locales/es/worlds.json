@@ -451,7 +451,7 @@
     "one": "Cantidades de recursos en texto ({count} yacimiento)",
     "other": "Cantidades de recursos en texto ({count} yacimientos)"
   },
-  "worlds.generate.resources.edge": "Las posiciones son casillas desde donde empiezan los jugadores, como (x, y). Un yacimiento que corta el borde de la imagen cuenta solo su parte de dentro.",
+  "worlds.generate.resources.edge": "Las posiciones están en casillas desde donde empiezan los jugadores, como (x, y). Un yacimiento cortado por el borde de la imagen solo cuenta su parte de dentro.",
   "worlds.generate.resources.total": "{resource}: {amount} en total",
   "worlds.generate.resources.total_yield": "{resource}: {percent} % de rendimiento en total",
   "worlds.generate.resources.patch": "{amount} en ({x}, {y})",
