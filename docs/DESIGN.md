@@ -745,6 +745,21 @@ moves to its heading. Without JavaScript the page still works. No
 `window.confirm()`, which cannot say enough, and no modal dialog, which
 is harder to get right on a phone and adds nothing here.
 
+**The one exception is the Generate page's leave dialog**, because
+leaving there throws away typed settings and no step can come between a
+link and its page. When the settings are unsaved, a plain click on a link
+or the submit of a form other than Generate's (language, Sign out) opens a
+native `dialog` with `showModal()`, styled as the confirmation box (a
+`surface` face, `--radius`, padding `--space-4`) with a `::backdrop`, and
+checked at 320 px. Its name is the question, "Leave without saving these
+map settings?"; one sentence says the new world's settings are not saved;
+"Stay on this page" (primary) has focus on open and "Leave without
+saving" (secondary) goes on. Stay and Escape close it and return focus to
+what was used, or to the user menu's button when that was a button inside
+the menu, which has closed. Reload, closing the tab, the address bar and
+Back keep the browser's own question (`beforeunload`), which Leave
+silences for the navigation it starts (SPEC 5.6, 17.15).
+
 The page's one `h1` is the question, first in `main`, with no "Back to"
 link above it and no second heading inside the box. The box holds only
 "This will:", the list and the form. The world tabs (6, Shell) and
@@ -1362,6 +1377,18 @@ starts."
   inside a word. The slider is not a boxed field: no padding, edge or
   width cap, so its knob reaches both ends of the track at the first and
   last step, and the fill ends under the knob.
+- **The default step sits in the middle.** A slider's track is not the
+  step index. Each step has a place on the track so that the default
+  ("100", or "0" for a bias) is at the middle, with the steps below it
+  spread over the left half and those above over the right (so the
+  terrain scale, with 5 steps below and 6 above, and the sizes with
+  "None", with 6 and 5, are balanced too). A click takes the nearest step;
+  an arrow or a screen reader's increment always moves one step, even
+  where the steps lie far apart on the track; Home, End and the Page keys
+  work as they do natively. A select with no default step, or with the
+  default at an end, keeps the plain index track. `aria-valuetext` is still
+  the step's words, and the select, the values sent and the labels do not
+  change (SPEC 5.6).
 - **While an on/off box is off**, its name stays at full strength (it is
   a control); the names and values of the settings it turns off turn
   `text-muted`, and the browser greys their sliders.
@@ -1612,6 +1639,59 @@ close the view, the tab, the setting, and the picture again).
   - A busy or failed run, or a failed request, is an error (7.3) under
     the picture with a "Try again" button; the page's picture stays.
     The announcement is the error sentence alone, not the button label.
+- **Resource amounts** (every planet; SPEC 5.6, 17.15). A "Show resource
+  amounts" checkbox (7.2) in the large view's bar, under the status lines,
+  so it is there with the settings column and in a map-only view. It has
+  no `name`, so it is a view and never part of the form; it is off when the
+  page loads and stays as set while the page lives, for every planet.
+  - **Asking.** The amounts are asked for (`POST
+    /generate/preview/resources`, the form and the planet) only once the
+    shown planet's picture is there, so the picture never waits. A new
+    draw, a change in the settings column, another planet, unticking or
+    closing aborts the request and removes the labels at once; the
+    server's stored counts make going back quick.
+  - **While counting.** A visible line, "Counting resources in the map…
+    This can take up to a minute.", and an indeterminate `progress` in the
+    `.wait` look (hidden under reduced motion). Unlike the drawing line, the
+    sentence is announced once by the status line when a count starts, also
+    after a redraw or a change of planet, so a person who cannot see the
+    bar still knows it can take a minute; the bar itself is not named
+    again. "Resource amounts ready." follows in the status line. At 320 px
+    the map shifts down while the line shows; that is accepted.
+  - **Labels.** One HTML label per patch placed by percent of the picture
+    inside `.map`, beside the territory overlay and before the pin,
+    `aria-hidden`, in the same face as the territory labels (white with a
+    near-black ring of text shadows, at `--text-sm`, bold), by the same CSS
+    rule with a second selector. The text is the amount through
+    `Intl.NumberFormat(lang, {notation: "compact", maximumFractionDigits:
+    1})`, such as "1.2M", "1,2 Mio." or "120万", and for a well its yield as
+    `{style: "percent", maximumFractionDigits: 0}`; no new number strings.
+    A greedy pass in the script measures each label once, works out its
+    box at the map's current scale, and keeps labels in the server's order
+    (largest patch first), hiding any that meets one already placed, a
+    demolisher label or the pin. It runs when the labels arrive and from
+    a `ResizeObserver` on the map, at most once a frame, with a 64 px cell
+    grid so a few thousand labels stay cheap. Zooming in therefore shows
+    more labels, and a label is never smaller or larger.
+  - **The text list.** Under the box, a collapsed `details`, "Resource
+    amounts as text (N patches)", also in the settings-column view and
+    readable inside the dialog. A hidden `h3` heads it; each resource is an
+    `h4` giving its total (or its total yield) and a list of its patches
+    sorted by amount, each as "12,345,678 at (-50, -30)" or "300% yield at
+    (50, -50)". One sentence says positions are tiles from where players
+    start and that an edge cuts a patch. A picture without patches says so.
+    Lists, not a table, so the reflow rules (SPEC 17.12) do not apply.
+  - **Failures.** Busy, timeout, out of memory, missing image, failed and
+    invalid each show an error (7.3) beside the box with "Try again" where
+    a retry can work. The sentence is announced once, by a visually hidden
+    `role="status"` in the bar, so the status line does not also carry it
+    and it is not read twice; the button's label is not announced. When the
+    list or the button had focus and the result is cleared, focus moves to
+    the box.
+  - **Territory counts.** On Vulcanus, with the territory box ticked, the
+    visually hidden sentence that counts the demolisher territories in words
+    appears inside the large view too, for the same reason: the page
+    outside the dialog is inert.
 - **Icons** (the large view only). Inline SVG on a 16 by 16 grid, drawn
   with a 2 px `currentColor` stroke and no fill, `aria-hidden`, inside a
   round `.icon-button` (`bg` face, 1 px `border`) whose name is visually
@@ -2037,7 +2117,8 @@ screen does, in this document first.
 - A manual theme switch. The system setting decides (SPEC 17.3).
 - Icons of any kind, except the map preview's pin, the large view's
   controls (8.8) and the toggletip's (i) (7.7).
-- Modal dialogs other than the map preview's large view (8.8), menus,
+- Modal dialogs other than the map preview's large view (8.8) and the
+  Generate page's leave dialog (7.4), menus,
   tab panels and toasts. (The nav links
   only look like tabs; they are ordinary links.) The confirmation step
   (7.4) and the message (7.3) cover Epics 1 to 3.
