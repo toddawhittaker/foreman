@@ -390,6 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const views = new Set(["tab", "preview_size", "territories", "preview_view"]);
   let unsaved = Boolean(document.getElementById("error-summary"));
   let submitting = false;
+  let leaving = false;
   function differsFromLoaded(el) {
     if (!el.name || views.has(el.name)) return false;
     if (el.type === "checkbox" || el.type === "radio") return el.checked !== el.defaultChecked;
@@ -402,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const isDirty = () => unsaved || [...formEl().elements].some(differsFromLoaded);
   window.addEventListener("beforeunload", (e) => {
-    if (submitting || !isDirty()) return;
+    if (submitting || leaving || !isDirty()) return;
     e.preventDefault();
     // Older browsers ask only when this is set.
     e.returnValue = "";
@@ -412,7 +413,60 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === formEl() && !e.defaultPrevented) submitting = true;
   });
   // A page restored from the back-forward cache did not leave after all.
-  window.addEventListener("pageshow", () => { submitting = false; });
+  window.addEventListener("pageshow", () => {
+    submitting = false;
+    leaving = false;
+  });
+
+  // Leaving by a link or a form of the page (the menu, the language, sign out,
+  // Cancel) asks in Foreman's own dialog, which says more than the browser's
+  // question. Reload, closing the tab, the address bar and Back cannot be
+  // caught and keep the browser's question above.
+  const leaveDialog = document.getElementById("leave-dialog");
+  let leaveOpener = null;
+  let leaveGo = null;
+  function askToLeave(opener, go) {
+    leaveOpener = opener;
+    leaveGo = go;
+    leaveDialog.showModal();
+  }
+  if (leaveDialog) {
+    // A plain click on a link to another page. A modified click, a download,
+    // a link with a target, a same-page "#" link and the pictures that open
+    // the large view in place are not leaving.
+    document.addEventListener("click", (e) => {
+      const link = e.target.closest && e.target.closest("a[href]");
+      if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      if (link.hasAttribute("download") || link.hasAttribute("target") || link.classList.contains("picture")) return;
+      if (link.protocol !== "http:" && link.protocol !== "https:") return;
+      if (link.hash && link.href.split("#")[0] === location.href.split("#")[0]) return;
+      if (leaving || submitting || !isDirty()) return;
+      e.preventDefault();
+      askToLeave(link, () => location.assign(link.href));
+    }, true);
+    // The header's language and sign-out forms; the Generate form itself is not leaving.
+    document.addEventListener("submit", (e) => {
+      const form = e.target;
+      if (form === formEl() || leaving || submitting || !isDirty()) return;
+      e.preventDefault();
+      const submitter = e.submitter;
+      askToLeave(submitter || document.activeElement, () => form.requestSubmit(submitter));
+    }, true);
+    document.getElementById("leave-go").addEventListener("click", () => {
+      leaving = true;
+      leaveDialog.close();
+      leaveGo();
+    });
+    document.getElementById("leave-stay").addEventListener("click", () => leaveDialog.close());
+    // Stay and Escape both close it; focus goes back to what was used.
+    // A button in the user menu is hidden once the menu has closed, so the menu's own button gets it.
+    leaveDialog.addEventListener("close", () => {
+      if (leaving || !leaveOpener) return;
+      const closed = leaveOpener.matches("summary") ? null : leaveOpener.closest("details:not([open])");
+      const to = closed ? closed.querySelector(":scope > summary") : leaveOpener;
+      if (to) to.focus();
+    });
+  }
   // A redraw (Preview map's seed; a version, Space Age, preset or reset) puts in
   // fields that load with the edited values, so what was unsaved stays so, even
   // if a setting is later changed back (SPEC 5.6).
