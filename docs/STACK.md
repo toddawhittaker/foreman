@@ -208,7 +208,8 @@ Rejected:
 Cheap to change.
 
 - **Unit tests**: `go test -race`, with no assertion library. One test
-  renders every template.
+  renders every template. Local runs split `internal/web`'s tests across
+  several processes, and CI uses one.
 - **End-to-end tests**: Playwright Test in TypeScript, with
   `@axe-core/playwright` for the accessibility scan SPEC 17.1 requires,
   run at desktop width and at 320 px. They run inside the pinned
@@ -294,9 +295,9 @@ Rejected:
 
 | Target | What it does |
 |---|---|
-| `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. The Stop hook and the merge gate run it. |
+| `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. Locally `make test` splits the web package across processes, and CI runs it as one. The Stop hook and the merge gate run it. |
 | `make check-go` | Fails when the local Go, or the Go in the build image, differs from `GO_VERSION` (ADR 0001). |
-| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. `TEST_TIMEOUT` (default 30m) is the time limit, because the web package takes about 11 minutes under `-race` on a loaded machine. |
+| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. `TEST_TIMEOUT` (default 30m) is the time limit, because the web package takes about 11 minutes under `-race` on a loaded machine in one process. `TEST_SHARDS` is how many processes run the web package's tests at once: one per CPU by default, and 1 when `CI` is set, so CI runs the plain `go test ./...` as before. With more than one, the web test binary is built once, its tests are dealt round-robin to the shards, the other packages run beside them, and the coverage folders are merged before the floor check. A failing shard's output is printed in full. |
 | `make lint` | golangci-lint, in its pinned image. |
 | `make fmt-check` | Fails when a Go file is not formatted. This is the only place format is checked. |
 | `make fmt` | Rewrite formatting. |

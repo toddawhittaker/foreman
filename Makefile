@@ -61,7 +61,13 @@ lint:
 # past go test's 10-minute default, so the limit is set here with room.
 TEST_TIMEOUT ?= 30m
 
+# Local runs split the web package's tests across this many processes at
+# once, one per CPU. CI keeps one process on purpose, so it stays the
+# plain `go test ./...` run it has always been.
+TEST_SHARDS ?= $(if $(CI),1,$(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1))
+
 # One race-enabled run gives both the test result and the coverage floor.
+ifeq ($(TEST_SHARDS),1)
 test:
 	@cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
 	go test -race -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
@@ -70,6 +76,57 @@ test:
 		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
 	fi; \
 	echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
+else
+# With more than one shard, the web package's test binary is built once and
+# its tests are dealt round-robin to TEST_SHARDS processes. The other
+# packages run beside them. Each process writes coverage to its own folder,
+# and the folders are merged before the floor check.
+test:
+	@n=$(TEST_SHARDS); \
+	case "$$n" in ''|*[!0-9]*|0) echo "TEST_SHARDS must be a positive whole number."; exit 1;; esac; \
+	work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
+	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/web.test" ./internal/web || exit $$?; \
+	(cd internal/web && "$$work/web.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/tests"; \
+	total=$$(wc -l < "$$work/tests"); \
+	if [ "$$total" -eq 0 ]; then echo "Found no tests in internal/web."; exit 1; fi; \
+	if [ "$$n" -gt "$$total" ]; then n=$$total; fi; \
+	pkgs=$$(go list ./... | grep -v '/internal/web$$'); \
+	mkdir "$$work/cov-other"; \
+	dirs="$$work/cov-other"; \
+	( go test -race -count=1 -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... $$pkgs -args -test.gocoverdir="$$work/cov-other" > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
+	i=0; while [ "$$i" -lt "$$n" ]; do \
+		awk -v n="$$n" -v i="$$i" '(NR - 1) % n == i' "$$work/tests" > "$$work/shard$$i.list"; \
+		run=$$(paste -sd'|' "$$work/shard$$i.list"); \
+		mkdir "$$work/cov$$i"; \
+		dirs="$$dirs,$$work/cov$$i"; \
+		( t0=$$(date +%s); cd internal/web && "$$work/web.test" -test.run "^($$run)\$$" -test.timeout $(TEST_TIMEOUT) -test.gocoverdir="$$work/cov$$i" > "$$work/shard$$i.out" 2>&1; \
+		  echo "$$? $$(( $$(date +%s) - t0 ))" > "$$work/shard$$i.rc" ) & \
+		i=$$((i + 1)); \
+	done; \
+	wait; \
+	failed=0; i=0; while [ "$$i" -lt "$$n" ]; do \
+		rc=1; secs=0; read rc secs < "$$work/shard$$i.rc" || true; \
+		count=$$(wc -l < "$$work/shard$$i.list"); \
+		if [ "$$rc" -eq 0 ]; then \
+			printf 'ok    internal/web shard %s/%s  %s tests  %ss\n' $$((i + 1)) "$$n" "$$count" "$$secs"; \
+		else \
+			printf 'FAIL  internal/web shard %s/%s  %s tests  %ss\n' $$((i + 1)) "$$n" "$$count" "$$secs"; \
+			cat "$$work/shard$$i.out"; failed=1; \
+		fi; \
+		i=$$((i + 1)); \
+	done; \
+	cat "$$work/other.out"; \
+	read rc < "$$work/other.rc" || rc=1; \
+	if [ "$$rc" -ne 0 ]; then failed=1; fi; \
+	if [ "$$failed" -ne 0 ]; then exit 1; fi; \
+	cov="$$work/cover.out"; \
+	go tool covdata textfmt -i="$$dirs" -o "$$cov" || exit $$?; \
+	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
+	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
+		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
+	fi; \
+	echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
+endif
 
 e2e/node_modules/.package-lock.json: e2e/package.json e2e/package-lock.json
 	@mkdir -p $(CACHE)/home
