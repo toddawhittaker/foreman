@@ -3221,3 +3221,26 @@ a.mod-name {
 .pager__at {
   font-size: var(--text-sm);
 }
+
+/* Foreman's own question when leaving Generate with settings that are not
+   saved (DESIGN 7.4, 12): the confirmation box look, over a dimmed page. */
+.leave-dialog {
+  container-type: inline-size;
+  inline-size: min(32rem, calc(100% - 2 * var(--space-3)));
+  max-inline-size: none;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.leave-dialog[open] {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leave-dialog::backdrop {
+  /* Black dims the page in both themes; a text colour would lighten the dark one. */
+  background: rgb(0 0 0 / 50%);
+}

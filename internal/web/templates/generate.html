@@ -152,6 +152,15 @@
     <a href="{{worldsPath}}">{{t "worlds.cancel"}}</a>
   </div>
 </form>
+{{/* Foreman's own question when leaving with settings that are not saved (DESIGN 7.4, 12); the script opens it. */}}
+<dialog id="leave-dialog" class="leave-dialog" aria-labelledby="leave-title" aria-describedby="leave-text">
+  <h2 id="leave-title">{{t "worlds.generate.leave.title"}}</h2>
+  <p id="leave-text">{{t "worlds.generate.leave.text"}}</p>
+  <div class="actions">
+    <button type="button" class="button button--primary" id="leave-stay">{{t "worlds.generate.leave.stay"}}</button>
+    <button type="button" class="button" id="leave-go">{{t "worlds.generate.leave.leave"}}</button>
+  </div>
+</dialog>
 {{end}}
 {{- end}}
 

@@ -147,7 +147,9 @@ test.describe("on a wide screen", () => {
     await page.keyboard.press("Escape");
     await expect(dialog(page)).toBeHidden();
     await page.getByRole("link", { name: "Cancel" }).click();
-    await expect.poll(() => asked).toEqual(["beforeunload"]);
+    await expect(page.getByRole("dialog", { name: "Leave without saving these map settings?" })).toBeVisible();
+    await page.getByRole("button", { name: "Stay on this page" }).click();
+    expect(asked).toEqual([]);
     await expect(page).toHaveURL("/generate");
   });
 
