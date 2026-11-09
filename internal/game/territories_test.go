@@ -106,7 +106,7 @@ func TestTerritoriesWorkFolderAndContainer(t *testing.T) {
 	if !enabled["base"] || !enabled["space-age"] || !enabled[territories.ModName] {
 		t.Errorf("enabled mods %v", enabled)
 	}
-	if string(read("mods/"+territories.ModDir+"/info.json")) != string(territories.InfoJSON("2.1")) ||
+	if string(read("mods/"+territories.ModDir+"/info.json")) != string(territoryInfo("2.1")) ||
 		string(read("mods/"+territories.ModDir+"/control.lua")) != string(territories.Control) {
 		t.Error("the mod folder is not info.json for 2.1 and control.lua")
 	}
@@ -146,17 +146,18 @@ func TestTerritoriesSpecHasThePreviewsLimits(t *testing.T) {
 	if strings.Contains(strings.Join(got.Cmd, " "), "death-world") {
 		t.Error("a value is built into the script")
 	}
+	script := territoryMod.script()
 	for _, need := range []string{
 		`--create /out/territories.zip`, `--map-gen-seed "$` + gameenv.Seed + `"`,
 		`--preset "$` + gameenv.Preset + `"`, `--map-gen-settings`, `--map-settings`,
 		`cp /tmp/factorio/script-output/territories.json /out/territories.json`,
 		`> /out/mods/foreman-territories_1.0.0/radius.lua`,
 	} {
-		if !strings.Contains(territoriesScript, need) {
-			t.Errorf("the script lacks %s:\n%s", need, territoriesScript)
+		if !strings.Contains(script, need) {
+			t.Errorf("the script lacks %s:\n%s", need, script)
 		}
 	}
-	if strings.Contains(territoriesScript, "--start-server") {
+	if strings.Contains(script, "--start-server") {
 		t.Error("the territory run starts a server")
 	}
 }

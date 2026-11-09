@@ -228,7 +228,7 @@ func (e *gameEnv) measure(t *testing.T, c *Controller, req PreviewRequest, plane
 	}
 	stop := e.peakMemory()
 	begin := time.Now()
-	b, err := c.runControlMod(context.Background(), req, m, resources.InfoJSON(line, req.SpaceAge), resourcesEnv(req, planet))
+	b, err := c.runControlMod(context.Background(), req, m, resourceInfo(line, req.SpaceAge), resourcesEnv(req, planet))
 	wall := time.Since(begin)
 	peak := stop()
 	e.previewLeftovers(t, "after the count")
@@ -391,17 +391,6 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 					t.Errorf("no patch of %s at 3072", ctl.Name)
 				}
 			}
-			if line != "2.1" && line != "1.1" || os.Getenv("FOREMAN_RESOURCE_NO_GAPS") != "" {
-				return
-			}
-			// The spike's checks of the gaps, on 2.1 and 1.1 only.
-			req := PreviewRequest{GameVersion: version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
-			for _, extra := range []string{", well_gap = 12", ", well_gap = 48", ", ore_gap = 1", ", ore_gap = 3"} {
-				r := e.countWith(t, c, req, planet, extra)
-				t.Logf("GAP %s %s 3072%s: %d patches (default %d): %s", version, planet, extra, len(r.file.Patches), len(big.file.Patches), r.summary())
-			}
-			logWells(t, big.file)
-			logFragments(t, big.file, 3072)
 		})
 	}
 	t.Run("nauvis 3072 at 600%", func(t *testing.T) {
@@ -427,186 +416,6 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 		e.stage(t, c, req, "nauvis", false, "")
 		e.stage(t, c, req, "nauvis", true, "")
 	})
-}
-
-// hasResourceFor reports whether the file has a patch whose entity is the
-// control's resource: the control name with the planet's prefix dropped and
-// _ as -, matched either way round.
-func hasResourceFor(f countFile, planet, control string) bool {
-	want := strings.ReplaceAll(strings.TrimPrefix(control, planet+"_"), "_", "-")
-	for name := range f.Resources {
-		got := strings.ReplaceAll(strings.TrimPrefix(name, planet+"_"), "_", "-")
-		if got == want || strings.HasPrefix(got, want) || strings.HasPrefix(want, got) {
-			return true
-		}
-	}
-	return false
-}
-
-// boxGap is the distance on the farther axis between two boxes' nearest
-// tiles: 1 when they touch at a side or corner, 0 when they overlap.
-func boxGap(a, b [4]int) int {
-	dx := max(a[0]-b[2], b[0]-a[2], 0)
-	dy := max(a[1]-b[3], b[1]-a[3], 0)
-	return max(dx, dy)
-}
-
-// nearestGap is the smallest boxGap from patch i to another patch of the
-// same resource, or -1 when there is none.
-func nearestGap(f countFile, i int) int {
-	best := -1
-	for j, q := range f.Patches {
-		if j != i && q.Name == f.Patches[i].Name {
-			if g := boxGap(f.Patches[i].Box, q.Box); best < 0 || g < best {
-				best = g
-			}
-		}
-	}
-	return best
-}
-
-// logFragments logs, for each ore, its patches of fewer than 10 entities:
-// how many touch the picture's edge, how many lie within 3 tiles of another
-// patch of the same ore, and their share of the ore's total.
-func logFragments(t *testing.T, f countFile, size int) {
-	t.Helper()
-	for name, r := range f.Resources {
-		if r.Infinite {
-			continue
-		}
-		var small, edge, near int
-		var amount float64
-		for i, p := range f.Patches {
-			if p.Name != name || p.N >= 10 {
-				continue
-			}
-			small++
-			amount += p.Amount
-			if p.Box[0] == -size/2 || p.Box[1] == -size/2 || p.Box[2] == size/2-1 || p.Box[3] == size/2-1 {
-				edge++
-			}
-			if g := nearestGap(f, i); g >= 0 && g <= 3 {
-				near++
-			}
-		}
-		if small > 0 {
-			t.Logf("FRAGMENTS %s: %d under 10 entities, %d at the edge, %d within 3 tiles of another, %.3f%% of the total",
-				name, small, edge, near, 100*amount/max(r.Total, 1))
-		}
-	}
-}
-
-// logWells logs, for each infinite resource, each patch's wells, box and
-// the box gap to the nearest other patch of it, to judge whether the well
-// gap joins one field or splits it.
-func logWells(t *testing.T, f countFile) {
-	t.Helper()
-	for name, r := range f.Resources {
-		if !r.Infinite {
-			continue
-		}
-		var parts []string
-		for i, p := range f.Patches {
-			if p.Name == name {
-				parts = append(parts, fmt.Sprintf("%d wells %dx%d gap %d", p.N, p.Box[2]-p.Box[0]+1, p.Box[3]-p.Box[1]+1, nearestGap(f, i)))
-			}
-		}
-		slices.Sort(parts)
-		t.Logf("WELLS %s: %s", name, strings.Join(parts, "; "))
-	}
-}
-
-// wellsLua is a test-only stand-in for the count mod that writes every
-// resource prototype found, with its flags, and every entity of a resource
-// whose product is a fluid, so the spike can judge the well gap.
-const wellsLua = `local params = require("params")
-script.on_init(function()
-  local h = helpers or game
-  local s = game.surfaces[params.planet]
-  if not s then
-    local p = game.planets[params.planet]
-    s = p.surface or p.create_surface()
-  end
-  s.request_to_generate_chunks({ 0, 0 }, params.radius)
-  s.force_generate_chunk_requests()
-  local protos, wells, seen = {}, {}, {}
-  local r = params.radius
-  for cx = -r, r - 1 do
-    for cy = -r, r - 1 do
-      for _, e in pairs(s.find_entities_filtered({ area = { { cx * 32, cy * 32 }, { cx * 32 + 32, cy * 32 + 32 } }, type = "resource" })) do
-        local name = e.name
-        if not protos[name] then
-          local pr = e.prototype
-          local fluid = false
-          for _, p in pairs(pr.mineable_properties.products or {}) do
-            if p.type == "fluid" then fluid = true end
-          end
-          protos[name] = { infinite = pr.infinite_resource and true or false, normal = pr.normal_resource_amount or 0,
-            category = pr.resource_category or "", fluid = fluid }
-        end
-        local x, y = math.floor(e.position.x), math.floor(e.position.y)
-        local k = name .. ":" .. x .. ":" .. y
-        if protos[name].fluid and not seen[k] then
-          seen[k] = true
-          wells[#wells + 1] = { name = name, x = x, y = y }
-        end
-      end
-    end
-  end
-  h.write_file("resources.json", h.table_to_json({ protos = protos, wells = wells }), false)
-end)
-`
-
-// TestRealGameD2ResourceWells logs, for each planet with wells, how many
-// groups single-linkage clustering makes at each well gap, so a gap on a
-// plateau can be chosen, and each resource prototype's flags.
-func TestRealGameD2ResourceWells(t *testing.T) {
-	only := os.Getenv("FOREMAN_TEST_GAME_TAG")
-	e := newGameEnv(t)
-	for _, g := range gameTags {
-		if only != "" && only != g.tag || g.tag == "2.0" {
-			continue
-		}
-		t.Run("v"+g.tag, func(t *testing.T) {
-			e.requireImage(t, ImageRef(g.version))
-			c, _ := e.controller(t)
-			spaceAge := g.tag != "1.1"
-			for _, planet := range mapgen.Planets(g.tag, spaceAge) {
-				m := resourceMod
-				m.control = []byte(wellsLua)
-				m.params = countParams("")
-				req := PreviewRequest{GameVersion: g.version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
-				b, _, _, err := e.measure(t, c, req, planet, m)
-				if err != nil {
-					t.Fatal(err)
-				}
-				var f struct {
-					Protos map[string]any `json:"protos"`
-					Wells  json.RawMessage
-				}
-				if err := json.Unmarshal(b, &f); err != nil {
-					t.Fatal(err)
-				}
-				var wells []struct {
-					Name string
-					X, Y int
-				}
-				_ = json.Unmarshal(f.Wells, &wells)
-				t.Logf("PROTOS %s %s: %v", g.version, planet, f.Protos)
-				by := map[string][][2]int{}
-				for _, w := range wells {
-					by[w.Name] = append(by[w.Name], [2]int{w.X, w.Y})
-				}
-				for name, ws := range by {
-					var parts []string
-					for _, d := range []int{4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48} {
-						parts = append(parts, fmt.Sprintf("%d:%d", d, clusters(ws, d)))
-					}
-					t.Logf("CLUSTERS %s %s %s (%d wells): %s", g.version, planet, name, len(ws), strings.Join(parts, " "))
-				}
-			}
-		})
-	}
 }
 
 // clusters is the number of groups of points joined when their distance on
@@ -876,11 +685,18 @@ func checkGrouping(t *testing.T, res resource.Result, scan map[string]scanned) {
 	}
 }
 
+// hasResourceFor reports whether the file has the resource entity the
+// control sets.
+func hasResourceFor(f countFile, planet, control string) bool {
+	_, ok := f.Resources[resource.EntityName(planet, control)]
+	return ok
+}
+
 // resourceFor is the resource entity a planet's control makes, matched by
 // the name the map generator control shows.
 func resourceFor(names []string, planet, control string) (string, bool) {
 	for _, n := range names {
-		if resource.ControlName(planet, n) == resource.ControlName(planet, control) {
+		if n == resource.EntityName(planet, control) {
 			return n, true
 		}
 	}

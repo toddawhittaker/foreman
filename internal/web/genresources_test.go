@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/resource"
 )
 
@@ -336,5 +337,28 @@ func TestLateResultsDoNotReplaceANewerPreview(t *testing.T) {
 	}
 	if got, _ := st.addTerritories(3, "k", "", "1", 1280, threeTerritories); got == "" {
 		t.Error("a user with no preview kept no territories")
+	}
+}
+
+// A resource entity is shown under the name of the map generator control
+// that sets it, on every planet; one with no control keeps its game name.
+func TestResourceNameFindsTheControl(t *testing.T) {
+	for _, c := range []struct{ line, planet, entity string }{
+		{"2.1", "nauvis", "iron-ore"},
+		{"2.1", "nauvis", "crude-oil"},
+		{"2.1", "vulcanus", "coal"},
+		{"2.1", "vulcanus", "tungsten-ore"},
+		{"2.1", "vulcanus", "sulfuric-acid-geyser"},
+		{"2.1", "gleba", "stone"},
+		{"2.1", "aquilo", "crude-oil"},
+		{"2.1", "aquilo", "lithium-brine"},
+	} {
+		got := resourceName(i18n.English, c.line, c.planet, c.entity)
+		if got == c.entity || strings.Contains(got, "_") {
+			t.Errorf("%s %s: %q is not the control's name (%q)", c.planet, c.entity, c.entity, got)
+		}
+	}
+	if got := resourceName(i18n.English, "2.1", "vulcanus", "no-such-ore"); got != "no-such-ore" {
+		t.Errorf("a resource with no control is shown as %q", got)
 	}
 }

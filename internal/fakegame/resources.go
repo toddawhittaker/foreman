@@ -14,14 +14,15 @@ import (
 
 // planetResources is what the canned count finds on a planet: a large ore,
 // a small ore and an infinite resource. Some planets have fewer real
-// resources than that, so the fake borrows names; only the shape matters to
+// resources than that, so the fake borrows names. They are resource entity
+// names, as the game writes them; only the shape matters to
 // a test.
 var planetResources = map[string]struct{ large, small, infinite string }{
 	"nauvis":   {"iron-ore", "copper-ore", "crude-oil"},
-	"vulcanus": {"vulcanus_coal", "calcite", "sulfuric-acid-geyser"},
-	"gleba":    {"gleba_stone", "iron-ore", "crude-oil"},
+	"vulcanus": {"coal", "calcite", "sulfuric-acid-geyser"},
+	"gleba":    {"stone", "iron-ore", "crude-oil"},
 	"fulgora":  {"scrap", "iron-ore", "crude-oil"},
-	"aquilo":   {"iron-ore", "copper-ore", "aquilo_crude_oil"},
+	"aquilo":   {"iron-ore", "copper-ore", "crude-oil"},
 }
 
 // normalAmount is an infinite resource's normal amount in the canned count.
