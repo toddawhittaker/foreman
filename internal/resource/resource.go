@@ -88,16 +88,15 @@ func Yield(p Patch) (percent float64, ok bool) {
 	return 100 * float64(p.Amount) / float64(p.Normal), true
 }
 
-// ControlName is the name of the planet's map generator control that sets
-// a resource entity: the entity's name without the planet's prefix and with
-// hyphens for underscores. An entity with no such control keeps its name.
-func ControlName(planet, entity string) string {
+// EntityName maps a planet's map-generator control name to the resource
+// entity it sets: it drops a "<planet>_" prefix and turns "_" into "-".
+func EntityName(planet, control string) string {
 	if planet != "" {
-		if rest, ok := strings.CutPrefix(entity, planet+"_"); ok && rest != "" {
-			entity = rest
+		if rest, ok := strings.CutPrefix(control, planet+"_"); ok && rest != "" {
+			control = rest
 		}
 	}
-	return strings.ReplaceAll(entity, "_", "-")
+	return strings.ReplaceAll(control, "_", "-")
 }
 
 // num is a JSON number, kept as written so that whole can check its exact

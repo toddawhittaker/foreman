@@ -329,14 +329,17 @@ func TestYield(t *testing.T) {
 	}
 }
 
-func TestControlName(t *testing.T) {
-	for _, c := range []struct{ planet, entity, want string }{
+// EntityName turns a control name, as the map generator settings call it,
+// into the resource entity's name.
+func TestEntityName(t *testing.T) {
+	for _, c := range []struct{ planet, control, want string }{
 		{"nauvis", "iron-ore", "iron-ore"},
 		{"nauvis", "crude-oil", "crude-oil"},
 		{"vulcanus", "vulcanus_coal", "coal"},
 		{"gleba", "gleba_stone", "stone"},
 		{"aquilo", "aquilo_crude_oil", "crude-oil"},
 		{"vulcanus", "tungsten_ore", "tungsten-ore"},
+		{"vulcanus", "sulfuric_acid_geyser", "sulfuric-acid-geyser"},
 		{"aquilo", "lithium_brine", "lithium-brine"},
 		{"vulcanus", "gleba_stone", "gleba-stone"},
 		{"vulcanus", "vulcanus_", "vulcanus-"},
@@ -344,8 +347,8 @@ func TestControlName(t *testing.T) {
 		{"vulcanus", "vulcanusx_coal", "vulcanusx-coal"},
 		{"", "a_b", "a-b"},
 	} {
-		if got := ControlName(c.planet, c.entity); got != c.want {
-			t.Errorf("ControlName(%q, %q) = %q, want %q", c.planet, c.entity, got, c.want)
+		if got := EntityName(c.planet, c.control); got != c.want {
+			t.Errorf("EntityName(%q, %q) = %q, want %q", c.planet, c.control, got, c.want)
 		}
 	}
 }

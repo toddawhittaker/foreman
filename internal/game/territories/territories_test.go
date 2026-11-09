@@ -2,32 +2,13 @@ package territories
 
 import (
 	"bytes"
-	"encoding/json"
-	"slices"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 )
 
-// The game loads the mod only when factorio_version is its own line, and
-// only with Space Age, which has Vulcanus.
-func TestInfoJSON(t *testing.T) {
-	for _, line := range []string{"2.0", "2.1"} {
-		var info struct {
-			Name            string   `json:"name"`
-			Version         string   `json:"version"`
-			FactorioVersion string   `json:"factorio_version"`
-			Dependencies    []string `json:"dependencies"`
-		}
-		b := InfoJSON(line)
-		if err := json.Unmarshal(b, &info); err != nil {
-			t.Fatal(err)
-		}
-		if info.FactorioVersion != line || info.Name != ModName || info.Version != ModVersion ||
-			!slices.Contains(info.Dependencies, "space-age") {
-			t.Errorf("%s: info.json is %s", line, b)
-		}
-	}
+// The mod folder is named after the mod and its version.
+func TestModDir(t *testing.T) {
 	if ModDir != "foreman-territories_1.0.0" {
 		t.Errorf("ModDir %q", ModDir)
 	}

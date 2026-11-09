@@ -88,13 +88,14 @@ func resourceView(loc i18n.Locale, line, planet string, res resource.Result, siz
 		r := res.Resources[n]
 		label := resourceName(loc, line, planet, n)
 		list := ResourceList{Total: loc.T("worlds.generate.resources.total", "resource", label, "amount", r.Total)}
-		if r.Infinite && r.Normal > 0 {
-			list.Total = loc.T("worlds.generate.resources.total_yield", "resource", label, "percent", yieldPercent(r.Total, r.Normal))
+		// The total is a yield by the same rule as a patch's.
+		if y, ok := totalYield(r); ok {
+			list.Total = loc.T("worlds.generate.resources.total_yield", "resource", label, "percent", wholePercent(y))
 		}
 		for _, p := range ps {
 			x, y := strconv.Itoa(p.X), strconv.Itoa(p.Y)
-			if _, ok := resource.Yield(p); ok {
-				list.Patches = append(list.Patches, loc.T("worlds.generate.resources.patch_yield", "percent", yieldPercent(p.Amount, p.Normal), "x", x, "y", y))
+			if pct, ok := resource.Yield(p); ok {
+				list.Patches = append(list.Patches, loc.T("worlds.generate.resources.patch_yield", "percent", wholePercent(pct), "x", x, "y", y))
 				continue
 			}
 			list.Patches = append(list.Patches, loc.T("worlds.generate.resources.patch", "amount", p.Amount, "x", x, "y", y))
@@ -104,17 +105,24 @@ func resourceView(loc i18n.Locale, line, planet string, res resource.Result, siz
 	return v
 }
 
-// yieldPercent is an infinite resource's yield in whole percent.
-func yieldPercent(amount, normal int64) int64 {
-	return int64(math.Round(100 * float64(amount) / float64(normal)))
+// totalYield is an infinite resource's total as a yield, by the rule
+// resource.Yield gives a patch; ok is false for an ore.
+func totalYield(r resource.Resource) (percent float64, ok bool) {
+	if !r.Infinite {
+		return 0, false
+	}
+	return resource.Yield(resource.Patch{Amount: r.Total, Normal: r.Normal})
 }
+
+// wholePercent is a yield, as resource.Yield gives it, in whole percent.
+func wholePercent(y float64) int64 { return int64(math.Round(y)) }
 
 // resourceName is the name of the planet's map generator control that sets
 // the resource, as the settings show it; a resource with none shows its
 // game name.
 func resourceName(loc i18n.Locale, line, planet, entity string) string {
 	for _, c := range mapgen.Controls(line, planet) {
-		if c.Category == mapgen.CategoryResource && (c.Name == entity || resource.ControlName(planet, c.Name) == entity) {
+		if c.Category == mapgen.CategoryResource && resource.EntityName(planet, c.Name) == entity {
 			return loc.Format(controlMsg(c.Name))
 		}
 	}
@@ -136,7 +144,7 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 	if err != nil {
 		// A missing image, or a count the game wrote wrongly, is the same on a second try.
 		retry := !errors.Is(err, game.ErrPreviewImageMissing) && !errors.Is(err, resource.ErrInvalid)
-		return &ResourceView{Error: s.resourceFailure(r, req.GameVersion, err), Retry: retry}
+		return &ResourceView{Error: s.controlModFailure(r, req.GameVersion, err, "resource count", resourceMsgs), Retry: retry}
 	}
 	if _, err := s.previews.addResources(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), planet, res); err != nil {
 		s.log.Error("keep resource amounts", "error", err)
@@ -145,28 +153,42 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 	return resourceView(localeOf(r), line, planet, res, req.Size)
 }
 
-// resourceFailure words why no amounts were counted, and logs what is
-// Foreman's fault. Nothing from the game's file is logged (SPEC 14.1).
-func (s *server) resourceFailure(r *http.Request, version string, err error) i18n.Msg {
+// resourceMsgs is how a failed resource count is worded.
+var resourceMsgs = failureMsgs{
+	busy:    i18n.M("worlds.generate.resources.busy"),
+	timeout: i18n.M("worlds.generate.resources.timeout"),
+	oom:     i18n.M("worlds.generate.resources.oom"),
+	failed:  i18n.M("worlds.generate.resources.failed"),
+}
+
+// failureMsgs is how a failed control-mod run (a resource count or a
+// territory run) is worded. Whole messages, not a key prefix, so that every
+// catalogue key stays a literal the key check can find.
+type failureMsgs struct{ busy, timeout, oom, failed i18n.Msg }
+
+// controlModFailure words why a control-mod run, called what in the log,
+// gave nothing, and logs what is Foreman's fault. Nothing from the game's
+// file is logged (SPEC 14.1).
+func (s *server) controlModFailure(r *http.Request, version string, err error, what string, m failureMsgs) i18n.Msg {
 	pf, failure := errors.AsType[*game.PreviewError](err)
 	switch {
 	case errors.Is(err, game.ErrPreviewImageMissing):
 		return i18n.M("worlds.generate.preview.no_image", "version", version)
 	case errors.Is(err, game.ErrPreviewBusy):
-		return i18n.M("worlds.generate.resources.busy")
+		return m.busy
 	case errors.Is(err, game.ErrPreviewTimeout):
-		return i18n.M("worlds.generate.resources.timeout")
+		return m.timeout
 	case failure:
-		s.log.Warn("resource count failed", "version", version, "oom", pf.OOM)
+		s.log.Warn(what+" failed", "version", version, "oom", pf.OOM)
 		if pf.OOM {
-			return i18n.M("worlds.generate.resources.oom")
+			return m.oom
 		}
 	default:
 		if r.Context().Err() == nil {
-			s.log.Error("resource count", "version", version, "error", err)
+			s.log.Error(what, "version", version, "error", err)
 		}
 	}
-	return i18n.M("worlds.generate.resources.failed")
+	return m.failed
 }
 
 // handleGenerateResources answers the large view's request for the amounts

@@ -3,10 +3,7 @@
 // 14.3).
 package resources
 
-import (
-	_ "embed"
-	"encoding/json"
-)
+import _ "embed"
 
 // The mod's name and version, and so its folder under the mod directory.
 const (
@@ -27,32 +24,3 @@ const (
 //
 //go:embed control.lua
 var Control []byte
-
-// InfoJSON is the mod's info.json for a game line such as "2.1". The game
-// loads a mod only when its factorio_version is the game's own line. It
-// depends on Space Age only when the map has it.
-func InfoJSON(line string, spaceAge bool) []byte {
-	deps := []string{"base"}
-	if spaceAge {
-		deps = append(deps, "space-age")
-	}
-	// Marshalling a plain struct of strings cannot fail.
-	b, _ := json.MarshalIndent(struct {
-		Name            string   `json:"name"`
-		Version         string   `json:"version"`
-		Title           string   `json:"title"`
-		Author          string   `json:"author"`
-		FactorioVersion string   `json:"factorio_version"`
-		Description     string   `json:"description"`
-		Dependencies    []string `json:"dependencies"`
-	}{
-		Name:            ModName,
-		Version:         ModVersion,
-		Title:           "Foreman resources",
-		Author:          "Foreman",
-		FactorioVersion: line,
-		Description:     "Counts one planet's resource patches for Foreman's map preview. Adds no prototypes.",
-		Dependencies:    deps,
-	}, "", "  ")
-	return append(b, '\n')
-}

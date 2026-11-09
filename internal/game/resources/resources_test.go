@@ -2,42 +2,13 @@ package resources
 
 import (
 	"bytes"
-	"encoding/json"
-	"slices"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 )
 
-// The game loads the mod only when factorio_version is its own line. It
-// depends on Space Age only when the map has it, so 1.1 and a 2.x map
-// without Space Age load it too.
-func TestInfoJSON(t *testing.T) {
-	for _, tc := range []struct {
-		line     string
-		spaceAge bool
-		want     []string
-	}{
-		{"1.1", false, []string{"base"}},
-		{"2.0", false, []string{"base"}},
-		{"2.0", true, []string{"base", "space-age"}},
-		{"2.1", true, []string{"base", "space-age"}},
-	} {
-		var info struct {
-			Name            string   `json:"name"`
-			Version         string   `json:"version"`
-			FactorioVersion string   `json:"factorio_version"`
-			Dependencies    []string `json:"dependencies"`
-		}
-		b := InfoJSON(tc.line, tc.spaceAge)
-		if err := json.Unmarshal(b, &info); err != nil {
-			t.Fatal(err)
-		}
-		if info.FactorioVersion != tc.line || info.Name != ModName || info.Version != ModVersion ||
-			!slices.Equal(info.Dependencies, tc.want) {
-			t.Errorf("%s, Space Age %v: info.json is %s", tc.line, tc.spaceAge, b)
-		}
-	}
+// The mod folder is named after the mod and its version.
+func TestModDir(t *testing.T) {
 	if ModDir != "foreman-resources_1.0.0" {
 		t.Errorf("ModDir %q", ModDir)
 	}
