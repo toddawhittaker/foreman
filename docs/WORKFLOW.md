@@ -89,9 +89,10 @@ The targets (STACK.md, section 13):
   coverage floor across `internal/`, and a type check of `e2e/`. Run it
   before every commit.
 - `make test`: the unit tests and the coverage floor alone. Locally it
-  splits the web package's tests across `TEST_SHARDS` processes (default:
-  one per CPU, limited by available memory at 1.5 GiB each; `TEST_SHARDS=1`
-  runs one process). `make test-shards` shows the count without testing.
+  runs the web, game and world packages' tests as small batches on
+  `TEST_SHARDS` worker processes (default: one per CPU, limited by available
+  memory at 1.5 GiB each; `TEST_SHARDS=1` runs one process). `make
+  test-shards` shows the count without testing.
   CI sets `CI`, so it always runs one.
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.

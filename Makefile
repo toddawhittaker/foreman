@@ -61,13 +61,33 @@ lint:
 # past go test's 10-minute default, so the limit is set here with room.
 TEST_TIMEOUT ?= 30m
 
-# Local runs split the web package's tests across this many processes at
-# once. The default, auto, is one per CPU, held down so the processes fit in
-# the memory left (1.5 GiB each, the race detector's cost); see
-# RESOLVE_SHARDS below. A number sets the count outright. CI keeps one
-# process on purpose, so it stays the plain `go test ./...` run it has
-# always been.
+# Local runs draw batches of tests from a queue (POOL_PKGS below) with this
+# many workers, each a process, at once. The default, auto, is one per CPU,
+# held down so the processes fit in the memory left (1.5 GiB each, the race
+# detector's cost); see RESOLVE_SHARDS below. A number sets the count
+# outright. CI keeps one process on purpose, so it stays the plain
+# `go test ./...` run it has always been.
 TEST_SHARDS ?= $(if $(CI),1,auto)
+
+# The slow packages whose tests make up the local queue. The order sets who
+# goes first in each round of the queue.
+POOL_PKGS := ./internal/game ./internal/world ./internal/web
+
+# How many tests one queued batch holds. Each batch is a new process, so
+# small batches balance the workers better but pay the start-up cost (the
+# race detector and the coverage counters) more often; large ones the
+# reverse.
+TEST_BATCH ?= 8
+
+# One queued batch, run by `sh -c` with the fields of a queue line as
+# arguments: the package folder, the test binary, the batch name and the
+# anchored -test.run pattern. The caller sets POOL_WORK to the work folder.
+# The output, and the exit code and seconds, are written there for the report.
+define POOL_BATCH
+dir=$$1; bin=$$2; id=$$3; run=$$4; t0=$$(date +%s); mkdir "$$POOL_WORK/cov/$$id"; \
+( cd "$$dir" && "$$bin" -test.run "$$run" -test.timeout $(TEST_TIMEOUT) -test.gocoverdir="$$POOL_WORK/cov/$$id" ) > "$$POOL_WORK/out/$$id" 2>&1; rc=$$?; \
+echo "$$rc $$(( $$(date +%s) - t0 ))" > "$$POOL_WORK/rc/$$id"
+endef
 
 # Sets n (the process count) and msg (the count and why) in the shell. For
 # a number it checks the number. For auto it counts CPUs, then takes the
@@ -121,49 +141,63 @@ test:
 	fi; \
 	echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
 else
-# With more than one shard, the web package's test binary is built once and
-# its tests are dealt round-robin to TEST_SHARDS processes. The other
-# packages run beside them. Each process writes coverage to its own folder,
-# and the folders are merged before the floor check.
+# With more than one worker, the slow packages' test binaries are built once
+# and their tests become a queue of small batches, which TEST_SHARDS workers
+# draw from one at a time. Each batch is its own process. The other packages
+# run beside the pool. Each batch writes coverage to its own folder, and the
+# folders are merged before the floor check.
 test:
 	@$(RESOLVE_SHARDS); \
 	work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
-	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/web.test" ./internal/web || exit $$?; \
-	(cd internal/web && "$$work/web.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/tests"; \
-	total=$$(wc -l < "$$work/tests"); \
-	if [ "$$total" -eq 0 ]; then echo "Found no tests in internal/web."; exit 1; fi; \
-	if [ "$$n" -gt "$$total" ]; then n=$$total; word=processes; if [ "$$n" -eq 1 ]; then word=process; fi; msg="$$n $$word ($$why; no more than the $$total tests)"; fi; \
-	echo "Splitting internal/web into $$msg."; \
-	pkgs=$$(go list ./... | grep -v '/internal/web$$'); \
-	mkdir "$$work/cov-other"; \
-	dirs="$$work/cov-other"; \
+	mkdir "$$work/bin" "$$work/lists" "$$work/cov" "$$work/cov-other" "$$work/out" "$$work/rc" && \
+	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/bin/" $(POOL_PKGS) || exit $$?; \
+	for p in $(POOL_PKGS); do \
+		base=$${p##*/}; \
+		(cd "$$p" && "$$work/bin/$$base.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/lists/$$base"; \
+		if [ ! -s "$$work/lists/$$base" ]; then echo "Found no tests in $${p#./}." >&2; exit 1; fi; \
+		awk -v size=$(TEST_BATCH) '{ r = r (r == "" ? "" : "|") $$0 } NR % size == 0 { print r; r = "" } END { if (r != "") print r }' "$$work/lists/$$base" | \
+		{ i=0; while read -r run; do \
+			i=$$((i + 1)); \
+			printf '%s %s %s %s-%03d %s\n' "$$i" "$${p#./}" "$$work/bin/$$base.test" "$$base" "$$i" "^($$run)\$$"; \
+		done; }; \
+	done > "$$work/queue.in" || exit $$?; \
+	sort -s -n -k1,1 "$$work/queue.in" | cut -d' ' -f2- > "$$work/queue"; \
+	batches=$$(wc -l < "$$work/queue"); \
+	if [ "$$n" -gt "$$batches" ]; then n=$$batches; fi; \
+	word=workers; if [ "$$n" -eq 1 ]; then word=worker; fi; \
+	names=$$(echo $(patsubst ./%,%,$(POOL_PKGS)) | awk '{ s = $$1; for (i = 2; i < NF; i++) s = s ", " $$i; if (NF > 1) s = s " and " $$NF; print s }'); \
+	echo "Running $$names as $$batches batches on $$n $$word ($$why)."; \
+	go list $(POOL_PKGS) > "$$work/pool.pkgs"; \
+	pkgs=$$(go list ./... | grep -vxFf "$$work/pool.pkgs"); \
 	( go test -race -count=1 -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... $$pkgs -args -test.gocoverdir="$$work/cov-other" > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
-	i=0; while [ "$$i" -lt "$$n" ]; do \
-		awk -v n="$$n" -v i="$$i" '(NR - 1) % n == i' "$$work/tests" > "$$work/shard$$i.list"; \
-		run=$$(paste -sd'|' "$$work/shard$$i.list"); \
-		mkdir "$$work/cov$$i"; \
-		dirs="$$dirs,$$work/cov$$i"; \
-		( t0=$$(date +%s); cd internal/web && "$$work/web.test" -test.run "^($$run)\$$" -test.timeout $(TEST_TIMEOUT) -test.gocoverdir="$$work/cov$$i" > "$$work/shard$$i.out" 2>&1; \
-		  echo "$$? $$(( $$(date +%s) - t0 ))" > "$$work/shard$$i.rc" ) & \
-		i=$$((i + 1)); \
-	done; \
+	POOL_WORK="$$work" xargs -P "$$n" -n 4 sh -c '$(POOL_BATCH)' sh < "$$work/queue"; \
 	wait; \
-	failed=0; i=0; while [ "$$i" -lt "$$n" ]; do \
-		rc=1; secs=0; read rc secs < "$$work/shard$$i.rc" || true; \
-		count=$$(wc -l < "$$work/shard$$i.list"); \
-		if [ "$$rc" -eq 0 ]; then \
-			printf 'ok    internal/web shard %s/%s  %s tests  %ss\n' $$((i + 1)) "$$n" "$$count" "$$secs"; \
+	failed=0; \
+	for p in $(POOL_PKGS); do \
+		base=$${p##*/}; bad=0; count=0; slow=0; \
+		while read -r dir bin id run; do \
+			case "$$id" in "$$base"-*) ;; *) continue;; esac; \
+			count=$$((count + 1)); rc=1; secs=0; \
+			read rc secs < "$$work/rc/$$id" || true; \
+			if [ "$$rc" -ne 0 ]; then bad=$$((bad + 1)); echo "$$id" >> "$$work/failed"; fi; \
+			if [ "$$secs" -gt "$$slow" ]; then slow=$$secs; fi; \
+		done < "$$work/queue"; \
+		tests=$$(wc -l < "$$work/lists/$$base"); \
+		if [ "$$bad" -eq 0 ]; then \
+			printf 'ok    %s  %s tests in %s batches  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$slow"; \
 		else \
-			printf 'FAIL  internal/web shard %s/%s  %s tests  %ss\n' $$((i + 1)) "$$n" "$$count" "$$secs"; \
-			cat "$$work/shard$$i.out"; failed=1; \
+			printf 'FAIL  %s  %s tests in %s batches, %s failed  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$bad" "$$slow"; failed=1; \
 		fi; \
-		i=$$((i + 1)); \
 	done; \
 	cat "$$work/other.out"; \
 	read rc < "$$work/other.rc" || rc=1; \
 	if [ "$$rc" -ne 0 ]; then failed=1; fi; \
+	if [ -s "$$work/failed" ]; then \
+		while read -r id; do echo "Output of failed batch $$id:"; cat "$$work/out/$$id"; done < "$$work/failed"; \
+	fi; \
 	if [ "$$failed" -ne 0 ]; then exit 1; fi; \
 	cov="$$work/cover.out"; \
+	dirs=$$(ls -d "$$work"/cov/* "$$work/cov-other" | paste -sd, -); \
 	go tool covdata textfmt -i="$$dirs" -o "$$cov" || exit $$?; \
 	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
 	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
