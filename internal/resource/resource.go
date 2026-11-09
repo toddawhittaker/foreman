@@ -35,6 +35,10 @@ const (
 	// maxNumber is the largest whole number the file may hold: the largest
 	// that a JSON number carries exactly in the game's floating point.
 	maxNumber = 1 << 53
+	// maxNumberLen is the longest number token read. The game writes at most
+	// 17 significant digits and an exponent; a cap keeps a file of long
+	// digit strings as cheap to read as any other.
+	maxNumberLen = 32
 )
 
 // ErrInvalid is JSON from the game that Parse refuses.
@@ -104,6 +108,9 @@ type num string
 func (n *num) UnmarshalJSON(b []byte) error {
 	if len(b) == 0 || (b[0] != '-' && (b[0] < '0' || b[0] > '9')) {
 		return errors.New("not a number")
+	}
+	if len(b) > maxNumberLen {
+		return errors.New("a number is too long")
 	}
 	*n = num(b)
 	return nil
@@ -337,7 +344,7 @@ func checkPatch(i int, p patchJSON, half int) (Patch, error) {
 
 // whole reads n as a whole number from lo to hi. A number written as 3e2 or
 // 100.0 counts, since the game's JSON writer may use either, but only when
-// its exact value is whole and under 2^53, the most the game's floating
+// its exact value is whole and at most 2^53, the most the game's floating
 // point holds exactly: 9007199254740993.0 is refused, not rounded down.
 func whole(n num, lo, hi int64) (int64, bool) {
 	if i, err := strconv.ParseInt(string(n), 10, 64); err == nil {
@@ -349,11 +356,24 @@ func whole(n num, lo, hi int64) (int64, bool) {
 	if err != nil || f.Acc() != big.Exact || !f.IsInt() || f.IsInf() {
 		return 0, false
 	}
+	// A value too small for the exponent's range comes back as an exact 0,
+	// so 0 is taken only when every digit written is 0.
+	if f.Sign() == 0 && strings.ContainsAny(mantissa(string(n)), "123456789") {
+		return 0, false
+	}
 	i, acc := f.Int64()
-	if acc != big.Exact || i <= -maxNumber || i >= maxNumber || i < lo || i > hi {
+	if acc != big.Exact || i < -maxNumber || i > maxNumber || i < lo || i > hi {
 		return 0, false
 	}
 	return i, true
+}
+
+// mantissa is a number's digits before its exponent.
+func mantissa(s string) string {
+	if i := strings.IndexAny(s, "eE"); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
 
 // area is the number of tiles a patch's box covers.
