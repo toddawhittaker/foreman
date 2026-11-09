@@ -459,5 +459,26 @@
     "one": "{count} o nieznanym rozmiarze",
     "few": "{count} o nieznanym rozmiarze",
     "many": "{count} o nieznanym rozmiarze"
-  }
+  },
+  "worlds.generate.resources.label": "Pokaż ilości zasobów",
+  "worlds.generate.resources.counting": "Liczenie zasobów na mapie… Może to potrwać do minuty.",
+  "worlds.generate.resources.ready": "Ilości zasobów są gotowe.",
+  "worlds.generate.resources.summary": {
+    "one": "Ilości zasobów jako tekst ({count} złoże)",
+    "few": "Ilości zasobów jako tekst ({count} złoża)",
+    "many": "Ilości zasobów jako tekst ({count} złóż)"
+  },
+  "worlds.generate.resources.edge": "Położenie podano w kafelkach od miejsca startu graczy, jako (x, y). Złoże przecięte krawędzią obrazu jest liczone tylko w części widocznej na obrazie.",
+  "worlds.generate.resources.total": "{resource}: łącznie {amount}",
+  "worlds.generate.resources.total_yield": "{resource}: łącznie {percent}% uzysku",
+  "worlds.generate.resources.patch": "{amount} w ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "{percent}% uzysku w ({x}, {y})",
+  "worlds.generate.resources.none": "Na tym obrazie nie ma złóż zasobów.",
+  "worlds.generate.resources.invalid": "Ustawienia zawierają błędy, dlatego nie policzono zasobów. Należy poprawić problemy wymienione w podglądzie mapy.",
+  "worlds.generate.resources.busy": "Trwa tworzenie innego podglądu mapy, dlatego nie policzono zasobów. Należy odczekać kilka sekund i spróbować ponownie.",
+  "worlds.generate.resources.timeout": "Liczenie zasobów trwało zbyt długo i zostało zatrzymane. Należy spróbować ponownie lub wybrać mniejszy rozmiar podglądu.",
+  "worlds.generate.resources.oom": "Grze zabrakło pamięci podczas liczenia zasobów. Należy wybrać mniejszy rozmiar podglądu.",
+  "worlds.generate.resources.failed": "Gra nie zdołała policzyć zasobów. Podgląd mapy i generowanie nadal działają. Jeśli błąd się powtarza, należy sprawdzić dziennik Foremana.",
+  "worlds.generate.resources.request_failed": "Żądanie ilości zasobów nie powiodło się. Należy sprawdzić, czy Foreman jest osiągalny i czy sesja nadal trwa, a następnie spróbować ponownie.",
+  "worlds.generate.resources.retry": "Spróbuj ponownie"
 }
