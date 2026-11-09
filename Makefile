@@ -65,8 +65,8 @@ TEST_TIMEOUT ?= 30m
 # many workers, each a process, at once. The default, auto, is one per CPU,
 # held down so the processes fit in the memory left (1.5 GiB each, the race
 # detector's cost); see RESOLVE_SHARDS below. A number sets the count
-# outright. CI keeps one process on purpose, so it stays the plain
-# `go test ./...` run it has always been.
+# outright. Under CI the default is one process, the plain `go test ./...`
+# run; the CI workflow passes TEST_SHARDS=auto to use the pool.
 TEST_SHARDS ?= $(if $(CI),1,auto)
 
 # The slow packages whose tests make up the local queue. The order sets who
@@ -236,7 +236,8 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
-# SHARD=1/4 runs the first of four slices of the tests; empty runs them all.
+# SHARD=1/8 runs the first of eight slices of the tests (CI uses eight); empty
+# runs them all.
 SHARD ?=
 # E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
 E2E_ARGS ?=
