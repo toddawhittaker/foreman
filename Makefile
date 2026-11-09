@@ -28,7 +28,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test test-shards typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
 	test-game e2e-game vuln ci tidy i18n-hash deploy
 
 verify: check-go fmt-check vet lint test typecheck
@@ -62,9 +62,53 @@ lint:
 TEST_TIMEOUT ?= 30m
 
 # Local runs split the web package's tests across this many processes at
-# once, one per CPU. CI keeps one process on purpose, so it stays the
-# plain `go test ./...` run it has always been.
-TEST_SHARDS ?= $(if $(CI),1,$(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1))
+# once. The default, auto, is one per CPU, held down so the processes fit in
+# the memory left (1.5 GiB each, the race detector's cost); see
+# RESOLVE_SHARDS below. A number sets the count outright. CI keeps one
+# process on purpose, so it stays the plain `go test ./...` run it has
+# always been.
+TEST_SHARDS ?= $(if $(CI),1,auto)
+
+# Sets n (the process count) and msg (the count and why) in the shell. For
+# a number it checks the number. For auto it counts CPUs, then takes the
+# smallest memory headroom it can find: MemAvailable, and for every cgroup v2
+# level from this process's own up to the root, the limit (memory.high, or
+# memory.max when that is max) minus memory.current. Agents on a shared
+# machine run under such a limit, and past memory.high the kernel throttles
+# allocations instead of failing them, which is far slower than fewer
+# processes. awk does the arithmetic because the values pass 32 bits. With no
+# headroom figure at all (not Linux, no cgroup v2), n is the CPU count.
+define RESOLVE_SHARDS
+n=$(TEST_SHARDS); \
+case "$$n" in \
+auto) \
+	cpus=$$(getconf _NPROCESSORS_ONLN 2>/dev/null); \
+	case "$$cpus" in ''|*[!0-9]*|0) cpus=1;; esac; \
+	ma=$$(awk '/^MemAvailable:/ { printf "%.0f", $$2 * 1024 }' /proc/meminfo 2>/dev/null); \
+	pairs=""; \
+	d="/sys/fs/cgroup$$(sed -n 's/^0:://p' /proc/self/cgroup 2>/dev/null)"; d="$${d%/}"; \
+	while :; do \
+		cur=$$(cat "$$d/memory.current" 2>/dev/null); \
+		lim=$$(cat "$$d/memory.high" 2>/dev/null); \
+		case "$$lim" in ''|max) lim=$$(cat "$$d/memory.max" 2>/dev/null);; esac; \
+		case "$$cur$$lim" in ''|*[!0-9]*) ;; *) pairs="$$pairs $$lim:$$cur";; esac; \
+		case "$$d" in /sys/fs/cgroup/*) d="$${d%/*}";; *) break;; esac; \
+	done; \
+	res=$$(awk -v cpus="$$cpus" -v ma="$$ma" -v pairs="$$pairs" 'BEGIN { have = 0; if (ma != "") { have = 1; m = ma + 0 }; k = split(pairs, p, " "); for (i = 1; i <= k; i++) { split(p[i], q, ":"); h = q[1] - q[2]; if (h < 0) h = 0; if (!have || h < m) m = h; have = 1 }; if (!have) { print cpus, "-"; exit }; c = int(m / 1610612736); if (c > cpus) c = cpus; if (c < 1) c = 1; printf "%d %.1f\n", c, m / 1073741824 }'); \
+	n=$${res%% *}; gib=$${res#* }; \
+	cpuword=CPUs; if [ "$$cpus" -eq 1 ]; then cpuword=CPU; fi; \
+	if [ "$$gib" = "-" ]; then why="$$cpus $$cpuword, memory headroom unknown"; else why="$$cpus $$cpuword, $$gib GiB memory headroom"; fi;; \
+*) \
+	case "$$n" in ''|*[!0-9]*|0) echo "TEST_SHARDS must be a positive whole number or auto."; exit 1;; esac; \
+	why="$(if $(filter file,$(origin TEST_SHARDS)),CI,set by TEST_SHARDS)";; \
+esac; \
+word=processes; if [ "$$n" -eq 1 ]; then word=process; fi; \
+msg="$$n $$word ($$why)"
+endef
+
+# Shows how many processes `make test` would use, and why, without testing.
+test-shards:
+	@$(RESOLVE_SHARDS); echo "$$msg."
 
 # One race-enabled run gives both the test result and the coverage floor.
 ifeq ($(TEST_SHARDS),1)
@@ -82,14 +126,14 @@ else
 # packages run beside them. Each process writes coverage to its own folder,
 # and the folders are merged before the floor check.
 test:
-	@n=$(TEST_SHARDS); \
-	case "$$n" in ''|*[!0-9]*|0) echo "TEST_SHARDS must be a positive whole number."; exit 1;; esac; \
+	@$(RESOLVE_SHARDS); \
 	work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
 	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/web.test" ./internal/web || exit $$?; \
 	(cd internal/web && "$$work/web.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/tests"; \
 	total=$$(wc -l < "$$work/tests"); \
 	if [ "$$total" -eq 0 ]; then echo "Found no tests in internal/web."; exit 1; fi; \
-	if [ "$$n" -gt "$$total" ]; then n=$$total; fi; \
+	if [ "$$n" -gt "$$total" ]; then n=$$total; word=processes; if [ "$$n" -eq 1 ]; then word=process; fi; msg="$$n $$word ($$why; no more than the $$total tests)"; fi; \
+	echo "Splitting internal/web into $$msg."; \
 	pkgs=$$(go list ./... | grep -v '/internal/web$$'); \
 	mkdir "$$work/cov-other"; \
 	dirs="$$work/cov-other"; \
