@@ -14,9 +14,8 @@ const (
 	ModDir     = ModName + "_" + ModVersion
 )
 
-// Files the mod folder holds besides info.json.
+// Files the mod folder holds besides info.json and control.lua.
 const (
-	ControlFile = "control.lua"
 	// RadiusFile is written for each run; it returns the picture's half
 	// width in chunks, since a mod can read neither files nor the
 	// environment.

@@ -29,17 +29,14 @@ local function surface_of(name)
   return p.surface or p.create_surface()
 end
 
--- color_of turns a prototype's map colour into whole 0-255 values. The game
--- reads colours back as 0-1.
+-- color_of turns a prototype's map colour into whole 0-255 values. On 1.1,
+-- 2.0 and 2.1 alike the game reads a map colour back as r, g and b already
+-- scaled to 0-255 (iron ore is 105, 133, 147), so it is only rounded.
 local function color_of(c)
   if not c then
     return { 255, 255, 255 }
   end
-  local r, g, b = c.r or c[1] or 0, c.g or c[2] or 0, c.b or c[3] or 0
-  if r <= 1 and g <= 1 and b <= 1 then
-    r, g, b = r * 255, g * 255, b * 255
-  end
-  return { math.floor(r + 0.5), math.floor(g + 0.5), math.floor(b + 0.5) }
+  return { math.floor(c.r + 0.5), math.floor(c.g + 0.5), math.floor(c.b + 0.5) }
 end
 
 -- resource_prototypes returns every resource prototype: prototypes on 2.x,

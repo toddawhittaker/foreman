@@ -3,11 +3,9 @@ package game
 import (
 	"context"
 	"fmt"
-	"os"
 	"slices"
 	"strconv"
 
-	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game/territories"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
@@ -75,21 +73,5 @@ func checkTerritories(req PreviewRequest) (line string, err error) {
 
 // territoriesEnv is the territory run's own environment: the radius.
 func territoriesEnv(req PreviewRequest) []string {
-	return []string{gameenv.TerritoryRadius + "=" + strconv.Itoa(req.size()/(2*territory.ChunkTiles))}
-}
-
-// territoriesSpec is the territory run's container: a preview container with
-// its own command and environment, and the same limits (SPEC 14.3).
-func (c *Controller) territoriesSpec(image, dir string, req PreviewRequest) docker.ContainerSpec {
-	return c.controlModSpec(image, dir, req, territoryMod, territoriesEnv(req))
-}
-
-// readTerritories reads the run's JSON from the work folder, at most
-// territory.MaxJSON bytes, and parses it for a picture of size pixels.
-func readTerritories(base *os.Root, dir string, size int) (territory.Result, error) {
-	b, err := readControlModOutput(base, dir, territoryMod)
-	if err != nil {
-		return territory.Result{}, err
-	}
-	return territory.Parse(b, size)
+	return []string{gameenv.TerritoryRadius + "=" + strconv.Itoa(chunkRadius(req))}
 }

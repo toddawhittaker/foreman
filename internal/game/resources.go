@@ -9,13 +9,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game/resources"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
-	"github.com/toddawhittaker/foreman/internal/territory"
+	"github.com/toddawhittaker/foreman/internal/resource"
 )
-
-// resourcesMaxJSON is the most bytes of resources.json that are read. The
-// largest measured, Nauvis at 3072 with resources at 600%, was under 100 KB
-// (SPEC 5.6).
-const resourcesMaxJSON = 1 << 20
 
 // resourceMod is the resource count's control mod. Its params file returns
 // the picture's half width in chunks and the planet to count. The planet is
@@ -31,21 +26,29 @@ var resourceMod = controlMod{
 		modFile(resources.ModDir, resources.ParamsFile),
 	save:      "resources.zip",
 	output:    gameenv.ResourceFile,
-	maxOutput: resourcesMaxJSON,
+	maxOutput: resource.MaxJSON,
 }
 
-// resourceCount counts the resource patches of planet in the map a preview
-// of req would draw (SPEC 5.6), and returns the raw resources.json. It is a
-// one-off container like Preview's, with the same single slot, stale
-// cleanup, work folder and limits (SPEC 14.3). req.Planets is ignored.
-// Errors are ErrPreviewInvalid, ErrPreviewBusy, ErrPreviewImageMissing,
-// ErrPreviewTimeout or a *PreviewError, as for Preview.
-func (c *Controller) resourceCount(ctx context.Context, req PreviewRequest, planet string) ([]byte, error) {
+// Resources counts the resource patches of planet in the map a preview of
+// req would draw (SPEC 5.6). It is a one-off container like Preview's, with
+// the same single slot, stale cleanup, work folder and limits (SPEC 14.3),
+// that creates the map with a control-only mod and leaves a JSON file of at
+// most resource.MaxJSON bytes. planet must be one the request's map has;
+// req.Planets is ignored. The file is checked by resource.Parse against the
+// picture's size and the planet (SPEC 14.1). Errors are ErrPreviewInvalid,
+// ErrPreviewBusy, ErrPreviewImageMissing, ErrPreviewTimeout, a *PreviewError
+// (OOM set when the run ran out of memory), or one wrapping
+// resource.ErrInvalid.
+func (c *Controller) Resources(ctx context.Context, req PreviewRequest, planet string) (resource.Result, error) {
 	line, err := checkResources(req, planet)
 	if err != nil {
-		return nil, err
+		return resource.Result{}, err
 	}
-	return c.runControlMod(ctx, req, resourceMod, resources.InfoJSON(line, req.SpaceAge), resourcesEnv(req, planet))
+	b, err := c.runControlMod(ctx, req, resourceMod, resources.InfoJSON(line, req.SpaceAge), resourcesEnv(req, planet))
+	if err != nil {
+		return resource.Result{}, err
+	}
+	return resource.Parse(b, req.size(), planet)
 }
 
 // checkResources refuses a planet the request's map does not have, then
@@ -65,7 +68,7 @@ func checkResources(req PreviewRequest, planet string) (string, error) {
 // resourcesEnv is the count run's own environment: the radius and the planet.
 func resourcesEnv(req PreviewRequest, planet string) []string {
 	return []string{
-		gameenv.ResourceRadius + "=" + strconv.Itoa(req.size()/(2*territory.ChunkTiles)),
+		gameenv.ResourceRadius + "=" + strconv.Itoa(chunkRadius(req)),
 		gameenv.ResourcePlanet + "=" + planet,
 	}
 }
