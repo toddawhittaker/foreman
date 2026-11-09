@@ -39,7 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
   let saying = 0;
+  // News a count's start owes the newer words said in the same moment: a
+  // planet's name or "Map preview ready." must not hide that a count began.
+  let alsoSaid = "";
   function announce(said) {
+    if (alsoSaid) said += (/[.…!?]$/.test(said) ? " " : ". ") + alsoSaid;
     // Outside an open modal dialog the page is inert, so the dialog says it itself.
     const target = dialog && dialog.open ? document.getElementById("large-status") : document.getElementById("announcer");
     clearTimeout(saying);
@@ -168,6 +172,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // uses the page's stripe pattern, so no id is there twice.
   function largeOverlay(link) {
     const map = document.querySelector("#large-view .map");
+    // The overlay is hidden from screen readers, so the dialog carries the
+    // page's sentence about it (SPEC 17.15), a line a sighted person does not need.
+    const said = document.getElementById("large-territory-counts");
+    if (said) said.textContent = "";
     if (!map) return;
     map.querySelectorAll(".territories").forEach((o) => o.remove());
     const overlay = link && link.querySelector(".territories");
@@ -175,6 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const copy = overlay.cloneNode(true);
     copy.querySelectorAll("defs").forEach((d) => d.remove());
     map.insertBefore(copy, map.querySelector(".pin"));
+    const counts = document.querySelector("#territory-result .territory-counts");
+    if (said && counts) said.textContent = words(counts);
     placeLabels();
   }
 
@@ -474,8 +484,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const ctrl = new AbortController();
     amountsPending = ctrl;
     counting(true);
-    // Said once as it starts (SPEC 17); the bar beside it is only seen.
-    announce(words(el("large-counting-text")));
+    // Said once as it starts (SPEC 17.15); the bar beside it is only seen.
+    const startSaid = words(el("large-counting-text"));
+    announce(startSaid);
+    // A draw or a step that follows in this moment says it as well (SPEC 17.15).
+    alsoSaid = startSaid;
+    queueMicrotask(() => { alsoSaid = ""; });
     const body = new URLSearchParams(new FormData(formEl()));
     body.set("planet", planet);
     let html;

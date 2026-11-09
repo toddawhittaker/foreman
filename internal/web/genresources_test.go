@@ -86,10 +86,10 @@ func TestResourcesAnswerFromTheStore(t *testing.T) {
 		`data-amount="3" data-kind="yield"`,
 		`<summary>Resource amounts as text (4 patches)</summary>`,
 		"Positions are in tiles from where players start, as (x, y).",
-		`<h3>Iron ore: 12,595,678 in total</h3>`,
+		`<h4>Iron ore: 12,595,678 in total</h4>`,
 		`<li>12,345,678 at (-50, -30)</li><li>250,000 at (-40, -30)</li>`,
-		`<h3>Copper ore: 1,500,000 in total</h3>`,
-		`<h3>Crude oil: 300% yield in total</h3>`,
+		`<h4>Copper ore: 1,500,000 in total</h4>`,
+		`<h4>Crude oil: 300% yield in total</h4>`,
 		`<li>300% yield at (50, -50)</li>`,
 	} {
 		if !strings.Contains(body, want) {
@@ -145,7 +145,7 @@ func TestResourceNamesAndAnEmptyCount(t *testing.T) {
 		},
 	}
 	body := hn.postLong(pathResources, planetForm("vulcanus"), c, withHeader("HX-Request", "true")).Body.String()
-	for _, want := range []string{"<h3>Coal: 10 in total</h3>", "<h3>Sulfuric acid geyser: 600% yield in total</h3>", "<h3>mystery-ore: 5 in total</h3>", "(3 patches)"} {
+	for _, want := range []string{"<h4>Coal: 10 in total</h4>", "<h4>Sulfuric acid geyser: 600% yield in total</h4>", "<h4>mystery-ore: 5 in total</h4>", "(3 patches)"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("lacks %q:\n%s", want, body)
 		}

@@ -130,7 +130,9 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   await expect(summary(page)).toHaveText("Resource amounts as text (7 patches)");
   await expect(result(page).locator("details")).not.toHaveAttribute("open");
   await summary(page).click();
-  await expect(result(page).getByRole("heading", { level: 3 })).toHaveText([
+  // The totals sit under one heading for the list, a level below the settings' sections.
+  await expect(result(page).getByRole("heading", { level: 3 })).toHaveText("Resource amounts as text (7 patches)");
+  await expect(result(page).getByRole("heading", { level: 4 })).toHaveText([
     "Iron ore: 12,685,678 in total",
     "Copper ore: 1,503,000 in total",
     "Crude oil: 350% yield in total",
@@ -252,6 +254,8 @@ test("another planet drops the count and counts the planet shown, around its dem
   // Vulcanus is counted once its picture is there.
   await expect.poll(() => hold.held.length).toBe(2);
   expect(planetOf(hold.held[1].request())).toBe("vulcanus");
+  // The planet's name does not hide that a count began (SPEC 17).
+  await expect(status(page)).toHaveText("Vulcanus. Counting resources in the map… This can take up to a minute.");
   await hold.release();
   await expect(labels(page)).toHaveCount(7);
   await expect(dialog(page).locator(".territories__label")).toHaveCount(3);
@@ -273,7 +277,7 @@ test("another planet drops the count and counts the planet shown, around its dem
   expect(l.kept.length).toBeGreaterThan(1);
   // Named as the planet's own map setting is.
   await summary(page).click();
-  await expect(result(page).getByRole("heading", { level: 3 }).first()).toHaveText(/^Coal: /);
+  await expect(result(page).getByRole("heading", { level: 4 }).first()).toHaveText(/^Coal: /);
 });
 
 test("a settings change drops the labels at once and counts again after the new picture", async ({ page }) => {
@@ -285,6 +289,8 @@ test("a settings change drops the labels at once and counts again after the new 
   page.on("request", (r) => { if (isResources(r.url())) asked.push(r); });
   const draws: string[] = [];
   page.on("response", (r) => { if (r.url().endsWith("/generate/preview")) draws.push(r.url()); });
+  const hold = holdCounts(page);
+  await hold.start();
   // On a wide view the setting is a slider beside the map.
   await page.locator("#large-settings .step__range").first().focus();
   await page.keyboard.press("ArrowLeft");
@@ -293,6 +299,9 @@ test("a settings change drops the labels at once and counts again after the new 
   // Asked only once the redraw's picture has come.
   await expect.poll(() => asked.length).toBe(1);
   expect(draws.length).toBeGreaterThan(0);
+  // The picture's "ready" does not hide that a count began (SPEC 17): both are said.
+  await expect(status(page)).toHaveText(/^Map preview ready\. Counting resources in the map… This can take up to a minute\.$/);
+  await hold.release();
   await expect(labels(page)).toHaveCount(7);
   await expect(status(page)).toHaveText("Resource amounts ready.");
 });
