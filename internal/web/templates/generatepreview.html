@@ -117,6 +117,26 @@
       {{- /* Seen, not read out, as on the page: the picture fades and "Map preview ready." follows. */}}
       <p id="large-drawing" class="hint large-view__drawing"></p>
     </div>
+    {{/* A view, not a setting, so it has no name; off on load, kept while the page lives (SPEC 5.6).
+         The count waits for the picture and is dropped when the view, the planet or a setting changes. */}}
+    <div class="large-view__amounts" id="large-amounts-bar" data-ready="{{t "worlds.generate.resources.ready"}}">
+      <label class="check"><input type="checkbox" id="large-amounts"> {{t "worlds.generate.resources.label"}}</label>
+      {{- /* Seen, not read out, like the drawing line; the status line says when they are ready. */}}
+      <div class="wait large-view__counting" id="large-counting" hidden>
+        <p class="hint" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        <progress aria-labelledby="large-counting-text"></progress>
+      </div>
+      <div class="large-view__amounts-result" id="large-amounts-result"></div>
+      {{- /* A failure is said here, unseen, as the message beside the box already shows it. */}}
+      <p class="visually-hidden" id="large-amounts-news" role="status"></p>
+      {{/* Shown by the script when its request for the amounts fails outright. */}}
+      <template id="resource-failed">
+        <div class="message message--error">
+          <p><strong>{{t "common.error.label"}}</strong> {{t "worlds.generate.resources.request_failed"}}</p>
+          <p><button type="button" class="button" data-resource-retry>{{t "worlds.generate.resources.retry"}}</button></p>
+        </div>
+      </template>
+    </div>
   </div>
   <div class="large-view__body">
     {{/* On a wide view, the planet's own Resources and Terrain fields, which the script
@@ -155,6 +175,57 @@
   <div class="territory-result">{{template "territory-result" .}}</div>
   {{- end}}
 </div>
+{{- end}}
+
+{{/* The answer to the large view's request for one planet's resource amounts:
+     the labels, which the script puts over the large view's map, and the same
+     amounts as text, or why there are none. Takes GeneratePage. */}}
+{{define "generate-resources" -}}
+<div id="resource-reply">
+  {{- with .Preview.Resources}}{{if .Error.IsZero}}{{template "resource-overlay" .}}{{end}}
+  <div class="resource-result">{{template "resource-result" .}}</div>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* One label a patch, largest box first, placed in percent of the picture and
+     held at one type size like the territory labels. The script writes each
+     value short in the page's language and hides the ones that would overlap.
+     The text list says the same, so this is hidden from screen readers (SPEC 17).
+     data-amount is an ore's amount, or a well field's yield as a fraction. Takes ResourceView. */}}
+{{define "resource-overlay" -}}
+<span class="resources" aria-hidden="true">
+  {{- range .Labels}}<span class="resources__label" style="left: {{.Left}}%; top: {{.Top}}%; --x: {{.Left}}; --y: {{.Top}}" data-amount="{{.Value}}" data-kind="{{.Kind}}"></span>{{end -}}
+</span>
+{{- end}}
+
+{{/* The amounts as text, collapsed: one list a resource with its total, then
+     each patch and where it is from the start, largest first; or why there
+     are none, with Try again where it can work. Takes ResourceView. */}}
+{{define "resource-result" -}}
+{{- if .Error.IsZero}}
+<details class="disclosure resource-text">
+  <summary>{{t "worlds.generate.resources.summary" "count" .Patches}}</summary>
+  {{- if .Lists}}
+  <p class="hint">{{t "worlds.generate.resources.edge"}}</p>
+  {{- range .Lists}}
+  <h3>{{.Total}}</h3>
+  <ul>
+    {{- range .Patches}}<li>{{.}}</li>{{end}}
+  </ul>
+  {{- end}}
+  {{- else}}
+  <p>{{t "worlds.generate.resources.none"}}</p>
+  {{- end}}
+</details>
+{{- else}}
+<div class="message message--error">
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  {{- if .Retry}}
+  <p><button type="button" class="button" data-resource-retry>{{t "worlds.generate.resources.retry"}}</button></p>
+  {{- end}}
+</div>
+{{- end}}
 {{- end}}
 
 {{/* Vulcanus's demolisher territories over its picture, in picture pixels:

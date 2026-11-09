@@ -2535,7 +2535,8 @@ form:has(#mode-exchange:checked) .achievements {
 
 /* Vulcanus's demolisher territories over its picture (DESIGN 8.8): in picture
    pixels, so they scale and pan with it; the labels keep one size, like the pin. */
-.territories {
+.territories,
+.resources {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -2565,7 +2566,8 @@ form:has(#mode-exchange:checked) .achievements {
 /* White on a dark ring reads on every part of the map, as the pin does. A
    label is pulled in by as much of its width as its spot is across the
    picture, so one at an edge stays inside it. */
-.territories__label {
+.territories__label,
+.resources__label {
   position: absolute;
   transform: translate(calc(var(--x) * -1%), calc(var(--y) * -1%));
   color: var(--color-pin-face);
@@ -2628,6 +2630,53 @@ form:has(#mode-exchange:checked) .achievements {
   .wait progress {
     display: none;
   }
+}
+
+/* A planet's resource amounts in the large view (SPEC 5.6, 17): the box, then
+   the counting line or, in its place, the amounts as text or the error, on the
+   same line while they fit, so the map keeps its size as the count lands. */
+.large-view__amounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-1) var(--space-4);
+  min-inline-size: 0;
+}
+
+.large-view__counting:not([hidden]) {
+  display: grid;
+  flex: 1 1 16rem;
+}
+
+.large-view__counting > p {
+  margin: 0;
+}
+
+.large-view__amounts-result {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+.large-view__amounts-result:empty {
+  display: none;
+}
+
+.resource-text[open] {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-end: var(--space-2);
+}
+
+.resource-text :is(p, h3, ul) {
+  margin: 0;
+}
+
+.resource-text h3 {
+  font-size: var(--text-md);
+}
+
+.resource-text ul {
+  padding-inline-start: var(--space-5);
 }
 
 /* Generate's Undo reset takes Reset to defaults' place once it has run (DESIGN 8.6). */
