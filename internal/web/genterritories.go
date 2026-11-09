@@ -165,7 +165,7 @@ func (s *server) territories(w http.ResponseWriter, r *http.Request, u store.Use
 	res, err := s.previewer.Territories(r.Context(), req)
 	if err != nil {
 		// A missing image is not there on a second try either.
-		return &TerritoryView{Error: s.territoryFailure(r, req.GameVersion, err), Retry: !errors.Is(err, game.ErrPreviewImageMissing)}
+		return &TerritoryView{Error: s.controlModFailure(r, req.GameVersion, err, "territory run", territoryMsgs), Retry: !errors.Is(err, game.ErrPreviewImageMissing)}
 	}
 	if _, err := s.previews.addTerritories(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), req.Size, res); err != nil {
 		s.log.Error("keep demolisher territories", "error", err)
@@ -174,28 +174,12 @@ func (s *server) territories(w http.ResponseWriter, r *http.Request, u store.Use
 	return territoryView(localeOf(r), res, req.Size)
 }
 
-// territoryFailure words why no territories were read, and logs what is
-// Foreman's fault.
-func (s *server) territoryFailure(r *http.Request, version string, err error) i18n.Msg {
-	pf, failure := errors.AsType[*game.PreviewError](err)
-	switch {
-	case errors.Is(err, game.ErrPreviewImageMissing):
-		return i18n.M("worlds.generate.preview.no_image", "version", version)
-	case errors.Is(err, game.ErrPreviewBusy):
-		return i18n.M("worlds.generate.territories.busy")
-	case errors.Is(err, game.ErrPreviewTimeout):
-		return i18n.M("worlds.generate.territories.timeout")
-	case failure:
-		s.log.Warn("territory run failed", "version", version, "oom", pf.OOM)
-		if pf.OOM {
-			return i18n.M("worlds.generate.territories.oom")
-		}
-	default:
-		if r.Context().Err() == nil {
-			s.log.Error("territory run", "version", version, "error", err)
-		}
-	}
-	return i18n.M("worlds.generate.territories.failed")
+// territoryMsgs is how a failed territory run is worded.
+var territoryMsgs = failureMsgs{
+	busy:    i18n.M("worlds.generate.territories.busy"),
+	timeout: i18n.M("worlds.generate.territories.timeout"),
+	oom:     i18n.M("worlds.generate.territories.oom"),
+	failed:  i18n.M("worlds.generate.territories.failed"),
 }
 
 // territoryBox is the box under the pictures of view, with the territories

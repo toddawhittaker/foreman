@@ -69,6 +69,22 @@ func (m controlMod) script() string {
 	}, "\n")
 }
 
+// modInfo is a control mod's info.json. The game loads a mod only when its
+// factorio_version is the game's own line, here a line such as "2.1".
+func modInfo(name, version, title, description, line string, deps ...string) []byte {
+	// Marshalling a plain struct of strings cannot fail.
+	b, _ := json.MarshalIndent(struct {
+		Name            string   `json:"name"`
+		Version         string   `json:"version"`
+		Title           string   `json:"title"`
+		Author          string   `json:"author"`
+		FactorioVersion string   `json:"factorio_version"`
+		Description     string   `json:"description"`
+		Dependencies    []string `json:"dependencies"`
+	}{name, version, title, "Foreman", line, description, deps}, "", "  ")
+	return append(b, '\n')
+}
+
 // modFile is where, in the container, the file named file goes in the
 // folder dir of a mod.
 func modFile(dir, file string) string {
