@@ -93,7 +93,8 @@ The targets (STACK.md, section 13):
   `TEST_SHARDS` worker processes (default: one per CPU, limited by available
   memory at 1.5 GiB each; `TEST_SHARDS=1` runs one process). `make
   test-shards` shows the count without testing.
-  CI sets `CI`, so it always runs one.
+  Under `CI` the default is one process, but the CI workflow passes
+  `TEST_SHARDS=auto`, so CI uses the same pool.
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It
