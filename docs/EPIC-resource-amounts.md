@@ -46,6 +46,18 @@ run after this epic.
 - R8. Machine load: every heavy run waits for the load gate (load under 20,
   12 GB free), uses at most 4 browser workers, and at most two full
   `make e2e` runs go at once.
+- R9. Todd, 2026-11-08: three lanes on three machines. This machine runs T1
+  and then T3. pve1-dev runs T2a, its wiring step and T4, and every game
+  container run. linux-dev runs T2b and full checks (`make verify`,
+  `make e2e`), never a game container and never anything of the live
+  deployment.
+- R10. Todd, 2026-11-08, the O1 default for overnight: if the spike goes
+  over at 3072, try the lean count run (trees, decoratives and enemy bases
+  off), proven by identical patches with and without them on all three
+  lines. If that proof fails, cap the box at the largest size measured to
+  fit.
+- R11. T2b is built to the contract below, before T2a has measured.
+  Its limits are named constants that the spike's numbers then set.
 
 ## Tasks
 
@@ -56,14 +68,64 @@ T3. `foreman.css` and the `worlds.json` locale files (eight languages plus
 files belong to T2. The real-game test file is created by T2a and extended
 by T4. There are no migrations.
 
-| Task | Issues | Owner, model | Files it may touch | Order |
-|---|---|---|---|---|
-| T1 Sliders and leave dialog | #423, #422 | builder, Sonnet high (two commits, one PR) | generate.js, generate.html, foreman.css (new `.leave-dialog` block only), locales/*/worlds.json and translated/worlds.json (`worlds.generate.leave.*` only), e2e/tests/sliders.spec.ts, e2e/tests/generate-leave.spec.ts (new) | Wave 1 |
-| T2a Spike: count mod and measurements | part of #400 | builder, Opus medium | internal/game/controlmod.go (new), territories.go, territories/territories.go, resources.go (new), resources/control.lua and resources/resources.go (new), internal/gameenv/territories.go, a new internal/game real-game resources test (timing and patch counts per planet and line) | Wave 1, beside T1; stops and reports |
-| T2b Parser, limits, fake game | part of #400 | builder, Sonnet high | internal/resource/ (new), internal/game/resources*.go and their unit tests, internal/fakegame/territories.go (`makePreview`), internal/fakegame/resources.go (new) and its test | After T2a and any O1 ruling |
-| T3 Web and large-view UI | #400 | ui-designer, Opus medium | internal/web/genresources.go and its test (new), genpreview.go, generatepreview.html, preview.js, foreman.css (resource block, shared label selector), locales/*/worlds.json and translated/worlds.json (`worlds.generate.resources.*`), e2e/tests/resources.spec.ts (new) | From T1's and T2b's verified heads |
-| T4 Real-game tests | part of #400 | tester, Sonnet high | the real-game file from T2a; optionally internal/web/genresources_game_test.go (new) | After T2b, beside T3 |
-| Fold | all | builder, Sonnet high | docs/STATUS.md, SPEC.md, DESIGN.md, ADR 0015, delete this plan | Last |
+| Task | Issues | Machine | Owner, model | Files it may touch | Order |
+|---|---|---|---|---|---|
+| T1 Sliders and leave dialog | #423, #422 | this one | builder, Sonnet high (two commits, one PR) | generate.js, generate.html, foreman.css (new `.leave-dialog` block only), locales/*/worlds.json and translated/worlds.json (`worlds.generate.leave.*` only), e2e/tests/sliders.spec.ts, e2e/tests/generate-leave.spec.ts | Wave 1 |
+| T2a Spike: count mod and measurements | part of #400 | pve1-dev | builder, Opus medium | internal/game/controlmod.go (new), territories.go, territories/territories.go, resources.go (new), resources/control.lua and resources/resources.go (new), internal/game/realgame2_resources_game_test.go (new) | Wave 1; stops and reports numbers |
+| T2b Parser and fake game | part of #400 | linux-dev | builder, Sonnet high | internal/resource/ (new), internal/fakegame/territories.go (`makePreview` only), internal/fakegame/resources.go and resources_test.go (new) | Wave 1, to the contract |
+| T2c Wiring | part of #400 | pve1-dev (T2a's agent) | builder, Opus medium | internal/game/resources.go, internal/game/resources_test.go (new), limits in internal/resource set from the spike | After T2a and T2b land |
+| T3 Web and large-view UI | #400 | this one | ui-designer, Opus medium | internal/web/genresources.go and its test (new), genpreview.go, generatepreview.html, preview.js, foreman.css (resource block, shared label selector), locales/*/worlds.json and translated/worlds.json (`worlds.generate.resources.*`), e2e/tests/resources.spec.ts (new) | After T1 and T2c |
+| T4 Real-game tests | part of #400 | pve1-dev | tester, Sonnet high | internal/game/realgame2_resources_game_test.go; optionally internal/web/genresources_game_test.go (new) | After T2c, beside T3 |
+| Fold | all | this one | builder, Sonnet high | docs/STATUS.md, SPEC.md, DESIGN.md, ADR 0015, delete this plan | Last |
+
+The names a count run shares with the fake game are already on the epic
+branch in `internal/gameenv/resources.go` (the lanes commit).
+
+### Contract for the three lanes
+
+The count run's Lua writes `resources.json` (gameenv.ResourceFile) in this
+shape. T2a writes it, T2b parses it and makes the fake game write it.
+
+```json
+{
+  "planet": "nauvis",
+  "resources": {
+    "iron-ore":  {"total": 41230000, "infinite": false, "normal": 0,      "color": [104, 132, 146]},
+    "crude-oil": {"total": 9300000,  "infinite": true,  "normal": 300000, "color": [194, 52, 173]}
+  },
+  "patches": [
+    {"name": "iron-ore", "x": -120, "y": 64, "amount": 1234567, "n": 812, "box": [-150, 40, -98, 90]}
+  ]
+}
+```
+
+- Coordinates are whole tiles in the game's own frame. The picture covers
+  `[-size/2, size/2)` on each axis. `x, y` is the label tile, which is a
+  tile of the patch; `box` is `[min x, min y, max x, max y]`, both corners
+  inside the patch's tiles, inclusive.
+- `amount` and `total` are whole numbers, ≥ 0 and ≤ 2^53. `n` ≥ 1 is the
+  entity count. `normal` is the prototype's `normal_resource_amount`, > 0
+  when `infinite`, 0 otherwise. `color` is the prototype's `map_color` as
+  whole 0–255 values (Lua scales 0–1 colours up).
+- Every patch's `name` is a key of `resources`, and for each resource the
+  patch amounts sum to `total`.
+- Lua's `table_to_json` writes an empty table as `[]` or `{}`, so either is
+  accepted for an empty `resources` or `patches`.
+- Names match `^[a-z0-9_-]{1,64}$`.
+
+The Go side (T2b), in `internal/resource`:
+
+- `Parse(b []byte, size int, planet string) (Result, error)`, refusing with
+  an error that wraps `ErrInvalid`; unknown fields refused; `MaxJSON`
+  (1 MiB) and `MaxPatches` (5,000) as named constants.
+- `Result{Planet string; Resources map[string]Resource; Patches []Patch}`,
+  with patches sorted by box area, largest first, ties by name, then x, then y.
+- `Patch` carries `Name`, `X`, `Y`, `Amount`, `Entities`, `Box`; `Resource`
+  carries `Total`, `Infinite`, `Normal`, `Color`.
+- `Yield(p Patch) (percent float64, ok bool)`: 100 × amount ÷ normal for
+  an infinite resource, `ok` false for ores.
+- `ControlName(planet, entity string) string`: drops a `<planet>_` prefix
+  and turns `_` into `-` (R6, design 1.1 "Resource names").
 
 Each task's prompt names its exact file list; a task that must touch a file
 outside it says so in its report.
@@ -89,7 +151,7 @@ outside it says so in its report.
 
 ## Open choices
 
-- O1 waits on T2a's numbers (design section 5). O2 and O3 are settled as
+- O1 waits on T2a's numbers (design section 5); R10 is the overnight default. O2 and O3 are settled as
   R2 and R3.
 
 ---
