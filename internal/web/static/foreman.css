@@ -2632,13 +2632,13 @@ form:has(#mode-exchange:checked) .achievements {
   }
 }
 
-/* A planet's resource amounts in the large view (SPEC 5.6, 17): the box, the
-   counting line and the amounts as text share the bar's last line while they
-   fit; the text list and any error take a line of their own. */
+/* A planet's resource amounts in the large view (SPEC 5.6, 17): the box, then
+   the counting line or, in its place, the amounts as text or the error, on the
+   same line while they fit, so the map keeps its size as the count lands. */
 .large-view__amounts {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-1) var(--space-4);
   min-inline-size: 0;
 }
@@ -2653,7 +2653,7 @@ form:has(#mode-exchange:checked) .achievements {
 }
 
 .large-view__amounts-result {
-  flex: 1 1 100%;
+  flex: 1 1 16rem;
   min-inline-size: 0;
 }
 

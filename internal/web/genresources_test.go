@@ -299,6 +299,7 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 		`<progress aria-labelledby="large-counting-text"></progress>`,
 		`data-ready="Resource amounts ready."`,
 		`<template id="resource-failed">`,
+		`<p class="visually-hidden" id="large-amounts-news" role="status"></p>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page lacks %q", want)

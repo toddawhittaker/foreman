@@ -443,6 +443,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (map) map.querySelectorAll(".resources").forEach((o) => o.remove());
     const slot = el("large-amounts-result");
     if (slot) slot.replaceChildren();
+    const news = el("large-amounts-news");
+    if (news) news.textContent = "";
     sizes = new Map();
   }
 
@@ -487,12 +489,19 @@ document.addEventListener("DOMContentLoaded", () => {
     sayAmounts(slot);
   }
 
-  // The status line says the amounts are ready, or why not: the sentence
-  // only, not the Try again button's label.
+  // The status line says the amounts are ready. A failure is shown beside the
+  // box, so it is said unseen: the sentence only, not Try again's label.
   function sayAmounts(slot) {
     const why = slot.querySelector(".message p");
-    const bar = el("large-amounts-bar");
-    announce(why ? words(why) : bar ? bar.dataset.ready : "");
+    const news = el("large-amounts-news");
+    if (!why) {
+      const bar = el("large-amounts-bar");
+      if (bar) announce(bar.dataset.ready);
+      return;
+    }
+    if (!news) return;
+    news.textContent = "";
+    setTimeout(() => { news.textContent = words(why); }, 50);
   }
 
   // Each label is the amount, short in the page's language ("1.2M"), or a

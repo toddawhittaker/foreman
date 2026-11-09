@@ -127,6 +127,8 @@
         <progress aria-labelledby="large-counting-text"></progress>
       </div>
       <div class="large-view__amounts-result" id="large-amounts-result"></div>
+      {{- /* A failure is said here, unseen, as the message beside the box already shows it. */}}
+      <p class="visually-hidden" id="large-amounts-news" role="status"></p>
       {{/* Shown by the script when its request for the amounts fails outright. */}}
       <template id="resource-failed">
         <div class="message message--error">

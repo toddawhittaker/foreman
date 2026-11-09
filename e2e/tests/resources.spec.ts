@@ -27,6 +27,7 @@ const resourceURL = (u: URL) => u.pathname.endsWith("/generate/preview/resources
 const planetOf = (r: Request) => new URLSearchParams(r.postData() ?? "").get("planet");
 // The view needs 77rem for the settings beside the map; the desktop projects are 1280 wide.
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 1240;
+const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png` });
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
@@ -110,9 +111,11 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   await expect(counting(page)).toBeVisible();
   await expect(counting(page)).toContainText("Counting resources in the map… This can take up to a minute.");
   await expect(labels(page)).toHaveCount(0);
+  await shot(page, "resources-counting");
   await hold.release();
   await expect(labels(page)).toHaveCount(7);
   await expect(counting(page)).toBeHidden();
+  await shot(page, "resources-labels");
   await expect(status(page)).toHaveText("Resource amounts ready.");
   // Short amounts, an infinite resource as its yield; hidden from screen readers.
   await expect(dialog(page).locator(".resources")).toHaveAttribute("aria-hidden", "true");
@@ -132,6 +135,7 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   ]);
   await expect(result(page).getByRole("listitem").first()).toHaveText("12,345,678 at (-50, -30)");
   await expect(result(page).getByRole("listitem").filter({ hasText: "yield" })).toHaveText(["300% yield at (50, -50)", "50% yield at (-60, 60)"]);
+  await shot(page, "resources-text");
   await checkPage(page);
   // Kept while the page lives: closed and opened again, it is still ticked and shows at once.
   await page.keyboard.press("Escape");
@@ -153,6 +157,7 @@ test("labels never overlap at the fitted size, and zooming in shows more", async
   for (let i = 0; i < 20; i++) await page.keyboard.press("+");
   await expect.poll(async () => (await layout(page)).shown.length).toBeGreaterThan(fitted.shown.length);
   await expectNoOverlap(page);
+  await shot(page, "resources-zoomed");
   // Back at the fitted size, the same few again.
   await page.keyboard.press("0");
   await expect.poll(async () => (await layout(page)).shown.length).toBe(fitted.shown.length);
@@ -210,8 +215,9 @@ test("a settings change drops the labels at once and counts again after the new 
   page.on("request", (r) => { if (isResources(r.url())) asked.push(r); });
   const draws: string[] = [];
   page.on("response", (r) => { if (r.url().endsWith("/generate/preview")) draws.push(r.url()); });
-  const select = page.locator("#large-settings .step select").first();
-  await select.selectOption({ index: 0 });
+  // On a wide view the setting is a slider beside the map.
+  await page.locator("#large-settings .step__range").first().focus();
+  await page.keyboard.press("ArrowLeft");
   await expect(labels(page)).toHaveCount(0);
   await expect(result(page)).toBeEmpty();
   // Asked only once the redraw's picture has come.
@@ -226,11 +232,14 @@ test("a failed request says so and offers to try again", async ({ page }) => {
   await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
   await box(page).check();
   await expect(result(page)).toContainText("The request for the resource amounts failed.");
-  await expect(status(page)).toContainText("The request for the resource amounts failed.");
-  // The sentence alone, without the button's label after it.
-  await expect(status(page)).not.toContainText("Try again");
+  // Said once, unseen, as the message shows it: the sentence alone, without the button's label.
+  const news = page.locator("#large-amounts-news");
+  await expect(news).toHaveText("Error: The request for the resource amounts failed. Check that Foreman is reachable and that you are still signed in, then try again.");
+  await expect(news).toHaveAttribute("role", "status");
+  await expect(status(page)).not.toContainText("The request for the resource amounts failed.");
   await expect(counting(page)).toBeHidden();
   await expect(labels(page)).toHaveCount(0);
+  await shot(page, "resources-failed");
   await checkPage(page);
   await page.unroute(resourceURL);
   await result(page).getByRole("button", { name: "Try again" }).click();
