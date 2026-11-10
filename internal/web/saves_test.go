@@ -482,3 +482,26 @@ func TestSavesButtonsHaveTheirOwnColumn(t *testing.T) {
 		t.Errorf("the button is not in the row's last cell:\n%s", row)
 	}
 }
+
+// DESIGN 8.3: the button cell has its own class, and a row with no button has
+// a truly empty cell, so the phone layout can collapse it; a world a newer
+// Foreman wrote has no button cells at all.
+func TestSavesButtonCell(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, dir := savesWorld(t, hn)
+	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, `<td role="cell" class="save-load" data-label=""></td>`) {
+		t.Errorf("the newest row's button cell is not empty:\n%s", row)
+	}
+	if row := saveRow(t, body, "old.zip"); !strings.Contains(row, `<td role="cell" class="save-load" data-label=""><button `) {
+		t.Errorf("the older row's button cell:\n%s", row)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "world.json"), []byte(`{"format_version": 9, "name": "Future"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	body = hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	if strings.Contains(body, "save-load") {
+		t.Error("a newer world's table has a button cell")
+	}
+}

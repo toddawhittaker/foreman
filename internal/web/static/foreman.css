@@ -1465,8 +1465,13 @@ td > .hint {
     align-items: center;
   }
 
-  .save-list td:last-child {
+  .save-list .save-load {
     grid-column: 1 / -1;
+  }
+
+  /* A row with no button takes no line. */
+  .save-list .save-load:empty {
+    display: none;
   }
 }
 

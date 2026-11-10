@@ -365,6 +365,23 @@ test.describe("at phone width", () => {
     await page.goto("/worlds/family-base/saves");
     await expect(page.getByRole("button", { name: "Load next: old.zip" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // A row with no button has no empty line under it.
+    await expect(page.locator("tbody tr").nth(0).locator("td.save-load")).toHaveCSS("display", "none");
     await checkPage(page);
+  });
+
+  // A world a newer Foreman wrote has no button column, so the time stays
+  // beside the name under its own header.
+  test("a newer world's rows keep their time beside the name", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedTwoSaves(foreman, { format_version: 9 });
+    await page.goto("/worlds/family-base/saves");
+    const row = page.locator("tbody tr").nth(0);
+    await expect(row.locator("td.save-load")).toHaveCount(0);
+    const name = (await row.locator("td").nth(0).boundingBox())!;
+    const saved = (await row.locator("td").nth(2).boundingBox())!;
+    expect(saved.y).toBeLessThan(name.y + name.height);
+    expect(saved.x).toBeGreaterThan(name.x + name.width - 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
