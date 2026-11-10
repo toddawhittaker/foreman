@@ -18,6 +18,10 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await portal.add("fp-signs", "1.0.0", ["base >= 2.0"]);
   await setUpModsWorld(page, foreman, g, { ...world, start: true });
   const before = await creates(g);
+  // A player online makes the stop count down, which holds the install while the page shows its steps;
+  // with nobody online the fake game restarts so fast that the steps can be gone before the page loads.
+  await g.call("/join", { name: "foreman-base", player: "alice" });
+  await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
 
   await page.getByRole("link", { name: "Mods", exact: true }).click();
   await expect(page).toHaveURL("/worlds/base/mods");
@@ -51,10 +55,13 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/i-plan-install-running-${test.info().project.name}.png`, fullPage: true });
 
+  // Long enough for the Server page to load under a busy machine; the steps show only while the install runs.
+  await page.getByLabel("Countdown in seconds").fill("10");
   await page.getByRole("button", { name: "Install 1 mod" }).click();
   await expect(page).toHaveURL("/");
-  // The steps show while it runs and after.
-  await expect(page.locator(".steps li").filter({ hasText: "Download the mods" })).toBeVisible();
+  // One look at the list while it runs: the download done, the warning counting down.
+  const running = page.locator("ol.steps").filter({ hasText: /Done Download the mods/ }).filter({ hasText: /Warn players: \d+ seconds left/ });
+  await expect(running).toBeVisible(live);
   await expect(doneBox(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
   await expect(stateBadge(page)).toHaveText("Running", live);
   // A fresh container for the restart.
