@@ -443,20 +443,26 @@ func TestWorldPageSaysImageIsMissing(t *testing.T) {
 	g.wantMissing("with the image", g.get(worldPath(b)), "which is not on this host")
 }
 
-// SPEC 7.11, 17.7: while a save other than the newest is chosen, the facts
-// name it with a link to the Saves tab, stopped or running. Otherwise the
-// facts are unchanged, and a switch that made another world active hides it.
+// SPEC 7.11, 17.7, DESIGN 7.5: while a save other than the newest is chosen,
+// the Server page names it with a link to the Saves tab, stopped or running.
+// The line has a region of its own, so a figure changing in the facts never
+// replaces the link. Otherwise the line is empty, and a switch that made
+// another world active hides it.
 func TestLoadsNextFact(t *testing.T) {
 	for _, state := range []game.State{game.StateStopped, game.StateRunning} {
 		p := serverCase(state, func(p *ServerPage) { p.LoadsNext = "old.zip" })
-		wantAll(t, string(state), fragmentHTML(t, p, "server-facts"),
-			`<dt>Loads next</dt><dd><a class="button button--quiet" href="/worlds/base/saves" id="act-loads-next">old.zip</a></dd>`)
-		bare := fragmentHTML(t, serverCase(state, func(*ServerPage) {}), "server-facts")
+		wantAll(t, string(state), fragmentHTML(t, p, "server-loads"),
+			`<dt>Loads next</dt><dd><a class="button button--quiet" href="/worlds/base/saves" id="act-loads-next">old.zip<span class="visually-hidden">, on the Saves tab</span></a></dd>`)
+		wantNone(t, string(state)+" facts", fragmentHTML(t, p, "server-facts"), "Loads next", "act-loads-next")
+		bare := fragmentHTML(t, serverCase(state, func(*ServerPage) {}), "server-loads")
 		wantNone(t, string(state)+" without a choice", bare, "Loads next", "act-loads-next")
+		if bare == "" {
+			t.Error("the region must never be empty, or its change back to nothing is not delivered")
+		}
 	}
 	p := serverCase(game.StateStarting, func(p *ServerPage) {
 		p.LoadsNext = "old.zip"
 		p.Status.Operation = &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "base", To: "bravo", Presented: true}}
 	})
-	wantNone(t, "after a switch", fragmentHTML(t, p, "server-facts"), "Loads next", "old.zip")
+	wantNone(t, "after a switch", fragmentHTML(t, p, "server-loads"), "Loads next", "old.zip")
 }

@@ -164,7 +164,7 @@ test.describe("with the fake game", () => {
   test("the page says which older save loads next, stopped or running", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
-    const facts = page.locator("main [sse-swap=facts]");
+    const facts = page.locator("main [sse-swap=loads]");
     await expect(facts).not.toContainText("Loads next");
 
     // base.zip is older than a newer autosave, and is chosen.
@@ -176,7 +176,7 @@ test.describe("with the fake game", () => {
     writeFileSync(join(dir, "world.json"), JSON.stringify({ ...meta, load_save: "base.zip" }));
 
     await page.goto("/");
-    const link = facts.getByRole("link", { name: "base.zip" });
+    const link = facts.getByRole("link", { name: /^base\.zip ?, on the Saves tab$/ });
     await expect(facts.getByText("Loads next")).toBeVisible();
     await expect(link).toHaveAttribute("href", "/worlds/base/saves");
     await checkPage(page);
@@ -184,7 +184,9 @@ test.describe("with the fake game", () => {
     // A start uses the choice up (SPEC 7.11), so a newer autosave and the choice come again while the game runs.
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(badge(page)).toHaveText("Running", live);
-    await expect(facts.getByText("Save loaded")).toBeVisible(live);
+    await expect(page.getByText("Save loaded")).toBeVisible(live);
+    // The start used the choice up, and the page says so without a reload.
+    await expect(facts).not.toContainText("Loads next");
     const later = new Date(Date.now() + 60_000);
     utimesSync(join(dir, "saves", "newer.zip"), later, later);
     writeFileSync(join(dir, "world.json"), JSON.stringify({ ...meta, load_save: "base.zip" }));
@@ -198,7 +200,7 @@ test.describe("with the fake game", () => {
     // Choosing the newest again clears the line.
     writeFileSync(join(dir, "world.json"), JSON.stringify({ ...meta }));
     await page.goto("/");
-    await expect(facts.getByText("Save loaded")).toBeVisible(live);
+    await expect(page.getByText("Save loaded")).toBeVisible(live);
     await expect(facts).not.toContainText("Loads next");
   });
 

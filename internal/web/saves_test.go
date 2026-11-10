@@ -293,6 +293,13 @@ func TestSaveUploadRefusedForNewerWorld(t *testing.T) {
 	if !strings.Contains(body, "new.zip") || strings.Contains(body, "<form method=\"post\" action=\"/worlds/"+id) {
 		t.Error("newer world page wrong")
 	}
+	// With nothing to change, the table has no button column or header.
+	if got := strings.Count(body, "<th "); got != 3 {
+		t.Errorf("a newer world's table has %d headers, want 3", got)
+	}
+	if row := saveRow(t, body, "new.zip"); strings.Count(row, "<td") != 3 || strings.Contains(row, "<button") {
+		t.Errorf("a newer world's row has a button cell:\n%s", row)
+	}
 }
 
 // saveRow returns the table row that holds the named save's link.

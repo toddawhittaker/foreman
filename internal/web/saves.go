@@ -147,13 +147,16 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 // chosenIndex is the place of the chosen save in the list, or -1 when none
 // is chosen or the chosen file is gone.
 func chosenIndex(list world.SaveList) int {
-	return slices.IndexFunc(list.Saves, func(sv world.Save) bool { return list.LoadSave != "" && sv.Name == list.LoadSave })
+	return slices.IndexFunc(list.Saves, func(sv world.Save) bool { return sv.Name == list.LoadSave })
 }
 
 // loadsNext is the name of the save the game loads at its next start when
 // that is not the newest, or "" when the newest loads: no choice is set,
 // the newest is chosen, or the chosen file is gone (SPEC 7.11, 17.7).
 func (s *server) loadsNext(id string) string {
+	if s.worlds.LoadChoice(id) == "" {
+		return ""
+	}
 	list, err := s.worlds.Saves(id)
 	if err != nil {
 		return ""

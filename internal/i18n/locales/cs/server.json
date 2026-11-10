@@ -32,6 +32,7 @@
   "server.facts.unknown": "Neznámá",
   "server.facts.save": "Načtená uložená hra",
   "server.facts.loads_next": "Načte se příště",
+  "server.facts.loads_next_link": ", na kartě Uložené hry",
   "server.facts.cpu": "Procesor",
   "server.facts.cpu_value": "{percent}%",
   "server.facts.memory": "Paměť",

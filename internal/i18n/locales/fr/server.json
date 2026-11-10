@@ -31,6 +31,7 @@
   "server.facts.unknown": "Inconnue",
   "server.facts.save": "Sauvegarde chargée",
   "server.facts.loads_next": "Chargée ensuite",
+  "server.facts.loads_next_link": ", dans l’onglet Sauvegardes",
   "server.facts.cpu": "Processeur",
   "server.facts.cpu_value": "{percent} %",
   "server.facts.memory": "Mémoire",

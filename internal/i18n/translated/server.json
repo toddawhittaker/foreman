@@ -171,6 +171,7 @@
   "server.facts.cpu_value": "02a35530",
   "server.facts.game_version": "583311d6",
   "server.facts.loads_next": "48f569dd",
+  "server.facts.loads_next_link": "0a418800",
   "server.facts.memory": "c3963aed",
   "server.facts.not_running": "9e3856ee",
   "server.facts.save": "23301090",

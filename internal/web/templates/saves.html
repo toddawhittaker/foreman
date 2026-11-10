@@ -51,7 +51,7 @@
         {{- /* The button names itself, so its cell has an empty label: the stacked layout adds none. */}}
         <td role="cell" data-label="">
           {{- /* The newest row has an empty LoadValue; with a choice set it offers to clear it. */}}
-          {{- if and (not $.Page.Newer) (or (not .Loads) (and $.Page.LoadSave (not .LoadValue)))}}
+          {{- if or (not .Loads) (and $.Page.LoadSave (not .LoadValue))}}
           <button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{t "worlds.saves.load_next_named" "file" .Name}}</span></button>
           {{- end}}
         </td>

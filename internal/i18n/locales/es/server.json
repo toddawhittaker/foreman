@@ -31,6 +31,7 @@
   "server.facts.unknown": "Desconocida",
   "server.facts.save": "Partida guardada cargada",
   "server.facts.loads_next": "Se carga la próxima vez",
+  "server.facts.loads_next_link": ", en la pestaña Partidas guardadas",
   "server.facts.cpu": "CPU",
   "server.facts.cpu_value": "{percent} %",
   "server.facts.memory": "Memoria",

@@ -31,6 +31,7 @@
   "server.facts.unknown": "Unknown",
   "server.facts.save": "Save loaded",
   "server.facts.loads_next": "Loads next",
+  "server.facts.loads_next_link": ", on the Saves tab",
   "server.facts.cpu": "CPU",
   "server.facts.cpu_value": "{percent}%",
   "server.facts.memory": "Memory",

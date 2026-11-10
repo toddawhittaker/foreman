@@ -15,7 +15,7 @@ import (
 // liveRegions are the parts of the server page a live update replaces.
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
-var liveRegions = []string{"active", "facts", "players", "control"}
+var liveRegions = []string{"active", "facts", "loads", "players", "control"}
 
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
