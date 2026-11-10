@@ -185,7 +185,7 @@ func TestProblemWords(t *testing.T) {
 		{world.Problem{Kind: world.ProblemModMissing, Save: "a.zip", Mods: []string{"x"}}, "a.zip uses x, but this world has no file for it."},
 		{world.Problem{Kind: world.ProblemModMissing, Save: "a.zip", Mods: []string{"x", "y"}}, "a.zip uses x, y, but this world has no files for them."},
 		{world.Problem{Kind: world.ProblemModDisabled, Save: "a.zip", Mods: []string{"x", "y"}}, "a.zip uses x, y, but they are disabled in this world."},
-		{world.Problem{Kind: world.ProblemModListSpaceAge, SpaceAge: true, Names: []string{"quality"}}, "Space Age is on for this world, but mod-list.json has quality turned off. Fix the mod list before starting."},
+		{world.Problem{Kind: world.ProblemModListSpaceAge, SpaceAge: true, Names: []string{"quality"}}, "Space Age is on for this world, but mod-list.json does not enable quality: it lists them as disabled or leaves them out. Fix the mod list before starting."},
 		{world.Problem{Kind: world.ProblemModGameVersion, World: "Check", GameVersion: "2.0.77", UpdateTo: "2.1",
 			Groups: []world.ModGroup{{Version: "2.1", Count: 2, Shown: []string{"b", "c"}}, {Version: "1.1", Count: 1, Shown: []string{"a"}}}},
 			"Check cannot run on Factorio 2.0.77: 2 of its mods were made for Factorio 2.1, and the game refuses to load them: b, c. " +

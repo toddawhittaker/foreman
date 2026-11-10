@@ -226,6 +226,8 @@ type Status struct {
 	// release of on the world's line other than the installed one to its
 	// installed version: the mods Change version has a choice for (SPEC 9.3).
 	Changeable map[string]string
+	// Installed is the world's mod list as the check read it.
+	Installed []world.InstalledMod
 }
 
 // Status reads the world once and asks the portal once for the Mods tab.
@@ -252,7 +254,7 @@ func (p *Planner) Status(ctx context.Context, worldID string) (Status, error) {
 		return Status{}, err
 	}
 	enabled := checkable(w.Mods)
-	st := Status{Updates: updates(enabled, results, line), Flags: flags(enabled, results, line), Changeable: map[string]string{}}
+	st := Status{Updates: updates(enabled, results, line), Flags: flags(enabled, results, line), Changeable: map[string]string{}, Installed: w.Mods}
 	for _, m := range portal {
 		for _, rel := range results[m.Name].Mod.Releases {
 			if rel.FactorioVersion == line && rel.Version != m.Version {

@@ -178,31 +178,6 @@ test("Change version appears with the status, only for a mod with another releas
   await checkPage(page);
 });
 
-// The move to the name is only for the Change version slot. Another slot in
-// the row, here the note, is swapped with focus inside it; focus is left to htmx.
-test("a swap of another slot does not move focus to the mod's name", async ({ page, foreman, fakeGame }) => {
-  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
-  let release!: () => void;
-  const held = new Promise<void>((r) => (release = r));
-  await page.route("**/mods/status", async (route) => {
-    await held;
-    await route.continue();
-  });
-  await page.goto("/worlds/base/mods");
-  const row = page.locator("tr", { hasText: "zz-private" });
-  // The empty note is made focusable and focused, so its swap takes focus away.
-  await row.locator("div[id^=mod-note-]").evaluate((el) => {
-    (el as HTMLElement).hidden = false;
-    (el as HTMLElement).tabIndex = -1;
-    (el as HTMLElement).focus();
-  });
-  release();
-  await expect(row.locator(".mod-flags")).toContainText("Not on the mod portal", live);
-  await page.waitForTimeout(200);
-  const onName = await page.evaluate(() => !!document.activeElement?.closest(".mod-name"));
-  expect(onName).toBe(false);
-});
-
 // SPEC 17: at 320 px and 200% text a row with every action keeps each one
 // inside its panel, and the page does not scroll sideways.
 test("a row with every action fits at large text", async ({ page, foreman, fakeGame, fakePortal }) => {

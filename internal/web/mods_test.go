@@ -969,3 +969,45 @@ func TestSettingsUploadIsNotStaged(t *testing.T) {
 		t.Errorf("mod-settings.dat was received as a staged mod: %s", temp)
 	}
 }
+
+// SPEC 9.3, 7.4: when the Server page shows a refusal that carries the fix
+// for the mods players cannot download, its mods notice keeps its words and
+// drops its own button for the same plan.
+func TestServerModNoticeDropsItsButtonForTheRefusalsFix(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("beta", "2.0.0")
+	id := g.world20("Base", "beta_1.0.0")
+	fix := `href="/worlds/` + id + `/mods/plan?kind=update&amp;name=beta"`
+	_, frag := g.getStatus(modsPath(id) + "/notice")
+	wantIn(t, "notice before a refusal", frag, fix)
+
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
+	if err := g.waitResult(id, game.AuditStart); !game.IsRefusal(err) {
+		t.Fatalf("the start was not refused: %v", err)
+	}
+	page := g.get(PathServer)
+	if got := strings.Count(page, fix); got != 1 {
+		t.Errorf("the page holds the update link %d times, want 1 (the refusal's)", got)
+	}
+	_, frag = g.getStatus(modsPath(id) + "/notice")
+	if strings.Contains(frag, "act-mods-fix") || strings.Contains(frag, "Update beta") {
+		t.Errorf("the notice still has its button:\n%s", frag)
+	}
+	wantIn(t, "notice after a refusal", plain(frag), "beta 1.0.0 is gone from the mod portal, so players cannot join.")
+}
+
+// SPEC 9.3: the Mods tab counts the mods the portal has at their installed
+// version from the list the status read; a status that read nothing, as when
+// the world is briefly away, has no count.
+func TestModStatusCountsCurrentMods(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base", "alpha_1.0.0")
+	code, frag := g.getStatus(modsPath(id) + "/status")
+	if code != http.StatusOK || !strings.Contains(frag, "up to date") {
+		t.Fatalf("got %d\n%s", code, frag)
+	}
+	if n := currentCount(nil, nil); n != 0 {
+		t.Errorf("a status that read nothing counts %d, want 0", n)
+	}
+}

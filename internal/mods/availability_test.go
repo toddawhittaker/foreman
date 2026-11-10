@@ -30,7 +30,7 @@ func TestStatusIsQuietWhileTheWorldFolderIsSwapped(t *testing.T) {
 		t.Fatal(err)
 	}
 	st, err := f.planner.Status(context.Background(), f.id)
-	if err != nil || len(st.Updates) != 0 || len(st.Flags) != 0 || len(st.Changeable) != 0 {
+	if err != nil || len(st.Updates) != 0 || len(st.Flags) != 0 || len(st.Changeable) != 0 || len(st.Installed) != 0 {
 		t.Errorf("Status = %+v, %v; want nothing", st, err)
 	}
 }

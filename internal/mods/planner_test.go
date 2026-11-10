@@ -463,3 +463,23 @@ func TestStatusAsksThePortalOncePerMod(t *testing.T) {
 		t.Errorf("asked the portal %d times, want 1", n)
 	}
 }
+
+// The status hands back the mod list it read, so the Mods tab need not read
+// the world a second time to count the mods that are current.
+func TestStatusReturnsTheInstalledMods(t *testing.T) {
+	f := newFixture(t, "alpha_1.1.0", "zz-private_0.1.0")
+	f.portal.AddZip("alpha", "1.1.0")
+	st, err := f.planner.Status(context.Background(), f.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, m := range st.Installed {
+		names = append(names, m.Name)
+	}
+	for _, want := range []string{"base", "alpha", "zz-private"} {
+		if !slices.Contains(names, want) {
+			t.Errorf("Installed lacks %s: %v", want, names)
+		}
+	}
+}
