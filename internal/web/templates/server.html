@@ -63,8 +63,9 @@
 <a href="{{worldsPath}}" id="act-switch-world">{{t "server.links.switch"}}</a>
 {{- end}}
 
-{{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Nothing in it can take
-     focus, because it is replaced whenever a figure changes. Figures that
+{{/* The status facts (SPEC 7.1, 7.2, DESIGN 7.5). Only the Saves link can
+     take focus, and it keeps its id, so htmx puts focus back on it when the
+     facts are replaced after a figure changes. Figures that
      cannot be known now are left out rather than shown stale (SPEC 7.1). */}}
 {{define "server-facts" -}}
 {{- if .Live}}
@@ -85,6 +86,10 @@
   <div><dt>{{t "server.facts.cpu"}}</dt><dd>{{t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent)}}</dd></div>
   <div><dt>{{t "server.facts.memory"}}</dt><dd>{{bytes .Status.MemoryBytes}}</dd></div>
   {{- end}}
+  {{- end}}
+  {{- /* The chosen save is a fact about the world, not the run, so it shows while stopped or running (SPEC 7.11, 17.7). */}}
+  {{- if .ShowLoadsNext}}
+  <div><dt>{{t "server.facts.loads_next"}}</dt><dd><a class="button button--quiet" href="{{.SavesPath}}" id="act-loads-next">{{.LoadsNext}}</a></dd></div>
   {{- end}}
 </dl>
 {{- if not .Reason.IsZero}}

@@ -30,6 +30,7 @@
   "server.facts.game_version": "Versión del juego",
   "server.facts.unknown": "Desconocida",
   "server.facts.save": "Partida guardada cargada",
+  "server.facts.loads_next": "Se carga la próxima vez",
   "server.facts.cpu": "CPU",
   "server.facts.cpu_value": "{percent} %",
   "server.facts.memory": "Memoria",

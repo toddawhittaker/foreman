@@ -1,5 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, type Foreman, type FakeGame } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { readFileSync, utimesSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 // The Server page is the hub for the active world (SPEC 7.6, 7.9, 17.7 to
 // 17.10): stopping can be cancelled, results offer their undo as a button,
@@ -155,6 +157,49 @@ test.describe("with the fake game", () => {
     await checkPage(page);
     await crash.getByRole("link", { name: /^Restore "Before start anyway" \(/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: /Restore the snapshot "Before start anyway"/ })).toBeVisible();
+  });
+
+  // SPEC 7.11, 17.7: with an older save chosen, the Server page names it and
+  // links to the Saves tab, stopped or running; with none chosen, it says nothing.
+  test("the page says which older save loads next, stopped or running", async ({ page, foreman, fakeGame }) => {
+    const g = fakeGame!;
+    await setUp(page, foreman, g);
+    const facts = page.locator("main [sse-swap=facts]");
+    await expect(facts).not.toContainText("Loads next");
+
+    // base.zip is older than a newer autosave, and is chosen.
+    const dir = join(foreman.dataDir, "worlds", "base");
+    writeFileSync(join(dir, "saves", "newer.zip"), "x");
+    const now = new Date();
+    utimesSync(join(dir, "saves", "newer.zip"), now, now);
+    const meta = JSON.parse(readFileSync(join(dir, "world.json"), "utf8"));
+    writeFileSync(join(dir, "world.json"), JSON.stringify({ ...meta, load_save: "base.zip" }));
+
+    await page.goto("/");
+    const link = facts.getByRole("link", { name: "base.zip" });
+    await expect(facts.getByText("Loads next")).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/worlds/base/saves");
+    await checkPage(page);
+
+    // A start uses the choice up (SPEC 7.11), so a newer autosave and the choice come again while the game runs.
+    await page.getByRole("button", { name: "Start server" }).click();
+    await expect(badge(page)).toHaveText("Running", live);
+    await expect(facts.getByText("Save loaded")).toBeVisible(live);
+    const later = new Date(Date.now() + 60_000);
+    utimesSync(join(dir, "saves", "newer.zip"), later, later);
+    writeFileSync(join(dir, "world.json"), JSON.stringify({ ...meta, load_save: "base.zip" }));
+    await page.goto("/");
+    await expect(facts.getByText("Loads next")).toBeVisible();
+    await expect(link).toBeVisible();
+
+    await link.click();
+    await expect(page).toHaveURL("/worlds/base/saves");
+
+    // Choosing the newest again clears the line.
+    writeFileSync(join(dir, "world.json"), JSON.stringify({ ...meta }));
+    await page.goto("/");
+    await expect(facts.getByText("Save loaded")).toBeVisible(live);
+    await expect(facts).not.toContainText("Loads next");
   });
 
   // SPEC 3.7: a world's page says before any switch that its image is missing.

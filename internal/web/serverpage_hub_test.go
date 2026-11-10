@@ -442,3 +442,21 @@ func TestWorldPageSaysImageIsMissing(t *testing.T) {
 	g.addImage("2.1.24")
 	g.wantMissing("with the image", g.get(worldPath(b)), "which is not on this host")
 }
+
+// SPEC 7.11, 17.7: while a save other than the newest is chosen, the facts
+// name it with a link to the Saves tab, stopped or running. Otherwise the
+// facts are unchanged, and a switch that made another world active hides it.
+func TestLoadsNextFact(t *testing.T) {
+	for _, state := range []game.State{game.StateStopped, game.StateRunning} {
+		p := serverCase(state, func(p *ServerPage) { p.LoadsNext = "old.zip" })
+		wantAll(t, string(state), fragmentHTML(t, p, "server-facts"),
+			`<dt>Loads next</dt><dd><a class="button button--quiet" href="/worlds/base/saves" id="act-loads-next">old.zip</a></dd>`)
+		bare := fragmentHTML(t, serverCase(state, func(*ServerPage) {}), "server-facts")
+		wantNone(t, string(state)+" without a choice", bare, "Loads next", "act-loads-next")
+	}
+	p := serverCase(game.StateStarting, func(p *ServerPage) {
+		p.LoadsNext = "old.zip"
+		p.Status.Operation = &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "base", To: "bravo", Presented: true}}
+	})
+	wantNone(t, "after a switch", fragmentHTML(t, p, "server-facts"), "Loads next", "old.zip")
+}

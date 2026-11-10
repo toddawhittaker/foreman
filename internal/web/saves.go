@@ -119,7 +119,7 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 		LoadSave:    list.LoadSave,
 		UploadLimit: MaxSaveUpload,
 	}
-	chosen := slices.IndexFunc(list.Saves, func(sv world.Save) bool { return sv.Name == list.LoadSave })
+	chosen := chosenIndex(list)
 	p.LoadMissing = list.LoadSave != "" && chosen < 0
 	// The save that loads next: the chosen one, else the newest.
 	loads := max(chosen, 0)
@@ -142,6 +142,26 @@ func (s *server) buildSavesPage(id string, all bool) (SavesPage, error) {
 		p.Rows = append(p.Rows, row)
 	}
 	return p, nil
+}
+
+// chosenIndex is the place of the chosen save in the list, or -1 when none
+// is chosen or the chosen file is gone.
+func chosenIndex(list world.SaveList) int {
+	return slices.IndexFunc(list.Saves, func(sv world.Save) bool { return list.LoadSave != "" && sv.Name == list.LoadSave })
+}
+
+// loadsNext is the name of the save the game loads at its next start when
+// that is not the newest, or "" when the newest loads: no choice is set,
+// the newest is chosen, or the chosen file is gone (SPEC 7.11, 17.7).
+func (s *server) loadsNext(id string) string {
+	list, err := s.worlds.Saves(id)
+	if err != nil {
+		return ""
+	}
+	if i := chosenIndex(list); i > 0 {
+		return list.Saves[i].Name
+	}
+	return ""
 }
 
 // showSaves renders a world's saves page. edit adds what the request did.

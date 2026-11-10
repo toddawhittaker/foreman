@@ -339,3 +339,32 @@ test("choosing a save that has since gone is refused in words", async ({ page, f
   expect(loadSaveOf(dir) ?? "").toBe("");
   await checkPage(page);
 });
+
+// DESIGN 8.3: the Load next buttons share one column, so they line up
+// whatever the lengths of the names.
+test("the Load next buttons line up when names differ in length", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "aligned", { name: "Aligned" }, [
+    { name: "a.zip", content: oldSave, at: "2026-11-01T09:00:00Z" },
+    { name: "a-much-longer-save-name.zip", content: oldSave, at: "2026-11-02T09:00:00Z" },
+    { name: "newest.zip", content: newSave, at: "2026-11-03T14:25:00Z" },
+  ]);
+  await page.goto("/worlds/aligned/saves");
+  const left = async (name: string) => (await page.getByRole("button", { name: `Load next: ${name}` }).boundingBox())!.x;
+  expect(Math.abs((await left("a.zip")) - (await left("a-much-longer-save-name.zip")))).toBeLessThanOrEqual(1);
+  await checkPage(page);
+});
+
+// SPEC 17.2, 22.7: with the button in its own column, a phone still shows
+// the whole row without a sideways scroll.
+test.describe("at phone width", () => {
+  test.use({ viewport: { width: 320, height: 700 } });
+  test("the table with its button column fits", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedTwoSaves(foreman);
+    await page.goto("/worlds/family-base/saves");
+    await expect(page.getByRole("button", { name: "Load next: old.zip" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await checkPage(page);
+  });
+});
