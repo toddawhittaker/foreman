@@ -28,6 +28,7 @@
 {{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (SPEC 9.3, DESIGN 8.11). */}}
 <div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
+<div sse-swap="loads">{{template "server-loads" .}}</div>
 {{- if .ModNoticePath}}
 <div id="mods-notice" class="mods-notice" role="status" hx-get="{{.ModNoticePath}}" hx-trigger="{{.ModNoticeTrigger}}" hx-swap="innerHTML"></div>
 {{- end}}
@@ -90,6 +91,22 @@
 {{- if not .Reason.IsZero}}
 <p>{{msgHTML .Reason}}</p>
 {{- end}}
+{{- end}}
+
+{{/* The save that loads at the next start, when an older one is chosen
+     (SPEC 7.11, 17.7). It has a region of its own, sent only when it changes,
+     because its link takes focus and the facts are replaced whenever a figure
+     changes (DESIGN 7.5). It is a fact about the world, not the run, so it
+     shows stopped or running. The wrapper is always there, so a change back
+     to nothing still sends a non-empty event. */}}
+{{define "server-loads" -}}
+<div class="loads-next">
+  {{- if .ShowLoadsNext}}
+  <dl class="facts facts--inline">
+    <div><dt>{{t "server.facts.loads_next"}}</dt><dd><a class="button button--quiet" href="{{.SavesPath}}" id="act-loads-next">{{.LoadsNext}}<span class="visually-hidden">{{t "server.facts.loads_next_link"}}</span></a></dd></div>
+  </dl>
+  {{- end}}
+</div>
 {{- end}}
 
 {{/* Who is online now and for how long (SPEC 8.1). While a stop warns

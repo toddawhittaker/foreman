@@ -293,6 +293,13 @@ func TestSaveUploadRefusedForNewerWorld(t *testing.T) {
 	if !strings.Contains(body, "new.zip") || strings.Contains(body, "<form method=\"post\" action=\"/worlds/"+id) {
 		t.Error("newer world page wrong")
 	}
+	// With nothing to change, the table has no button column or header.
+	if got := strings.Count(body, "<th "); got != 3 {
+		t.Errorf("a newer world's table has %d headers, want 3", got)
+	}
+	if row := saveRow(t, body, "new.zip"); strings.Count(row, "<td") != 3 || strings.Contains(row, "<button") {
+		t.Errorf("a newer world's row has a button cell:\n%s", row)
+	}
 }
 
 // saveRow returns the table row that holds the named save's link.
@@ -423,5 +430,78 @@ func TestSavePageWhenChosenSaveIsNewest(t *testing.T) {
 	row := saveRow(t, body, "new.zip")
 	if !strings.Contains(row, i18n.English.T("worlds.saves.loads_next")) || !strings.Contains(row, loadButton("")) {
 		t.Errorf("newest chosen row should show the badge and the button:\n%s", row)
+	}
+}
+
+// SPEC 7.11, 17.7: the Server page names the chosen save only when an older
+// one is chosen and its file is still there. With no choice, the newest
+// chosen, or the chosen file gone, the newest loads and nothing is named.
+func TestLoadsNext(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, dir := savesWorld(t, hn)
+	s := &server{worlds: hn.worlds}
+
+	if got := s.loadsNext(id); got != "" {
+		t.Errorf("no choice: %q", got)
+	}
+	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {"old.zip"}}), "/worlds/"+id+"/saves?chosen=1")
+	if got := s.loadsNext(id); got != "old.zip" {
+		t.Errorf("older chosen: %q", got)
+	}
+	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {"new.zip"}}), "/worlds/"+id+"/saves?chosen=1")
+	if got := s.loadsNext(id); got != "" {
+		t.Errorf("newest chosen by name: %q", got)
+	}
+	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {"old.zip"}}), "/worlds/"+id+"/saves?chosen=1")
+	if err := os.Remove(filepath.Join(dir, "saves", "old.zip")); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.loadsNext(id); got != "" {
+		t.Errorf("chosen file gone: %q", got)
+	}
+	if got := s.loadsNext("nope"); got != "" {
+		t.Errorf("unknown world: %q", got)
+	}
+}
+
+// DESIGN 8.3: the Load next buttons share one column, after Saved, so they
+// line up whatever the names' lengths, and the column has a header.
+func TestSavesButtonsHaveTheirOwnColumn(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, _ := savesWorld(t, hn)
+	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	wantIn(t, "header", body, `<th scope="col" class="visually-hidden" role="columnheader">Load next</th></tr>`)
+	row := saveRow(t, body, "old.zip")
+	nameCell := row[:strings.Index(row, "</td>")]
+	if strings.Contains(nameCell, "<button") {
+		t.Errorf("the button is still in the name cell:\n%s", nameCell)
+	}
+	if !strings.HasSuffix(strings.TrimSpace(row[:strings.LastIndex(row, "</td>")]), "</button>") {
+		t.Errorf("the button is not in the row's last cell:\n%s", row)
+	}
+}
+
+// DESIGN 8.3: the button cell has its own class, and a row with no button has
+// a truly empty cell, so the phone layout can collapse it; a world a newer
+// Foreman wrote has no button cells at all.
+func TestSavesButtonCell(t *testing.T) {
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	id, dir := savesWorld(t, hn)
+	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, `<td role="cell" class="save-load" data-label=""></td>`) {
+		t.Errorf("the newest row's button cell is not empty:\n%s", row)
+	}
+	if row := saveRow(t, body, "old.zip"); !strings.Contains(row, `<td role="cell" class="save-load" data-label=""><button `) {
+		t.Errorf("the older row's button cell:\n%s", row)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "world.json"), []byte(`{"format_version": 9, "name": "Future"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	body = hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
+	if strings.Contains(body, "save-load") {
+		t.Error("a newer world's table has a button cell")
 	}
 }

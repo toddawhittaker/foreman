@@ -39,18 +39,20 @@
   <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
-      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th></tr>
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th>{{if not .Newer}}<th scope="col" class="visually-hidden" role="columnheader">{{t "worlds.saves.load_next"}}</th>{{end}}</tr>
     </thead>
     <tbody role="rowgroup">
       {{- range .Rows}}
       <tr role="row">
-        <td role="cell"><div class="save-name"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}
-          {{- /* The newest row has an empty LoadValue; with a choice set it offers to clear it. */}}
-          {{- if and (not $.Page.Newer) (or (not .Loads) (and $.Page.LoadSave (not .LoadValue)))}}
-          <button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{t "worlds.saves.load_next_named" "file" .Name}}</span></button>
-          {{- end}}</div></td>
+        <td role="cell"><div class="save-name"><a href="{{.Href}}">{{.Name}}</a>{{if .Loads}} <span class="badge badge--active">{{t "worlds.saves.loads_next"}}</span>{{end}}</div></td>
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
         <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
+        {{- if not $.Page.Newer}}
+        {{- /* The button names itself, so its cell has an empty label: the stacked layout adds none. The cell is truly empty when the row has no button, so the phone layout can collapse it. The newest row has an empty LoadValue; with a choice set it offers to clear it. */}}
+        <td role="cell" class="save-load" data-label="">
+          {{- if or (not .Loads) (and $.Page.LoadSave (not .LoadValue))}}<button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{t "worlds.saves.load_next_named" "file" .Name}}</span></button>{{end -}}
+        </td>
+        {{- end}}
       </tr>
       {{- end}}
     </tbody>
