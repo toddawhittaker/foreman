@@ -9,10 +9,10 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 (old 6 Mods is now 8, old 8 is 9, old 9 is 10, old 10 is 11). Older text
 below uses the new numbers.
 
-Epics 1 to 8, the Gate A fixes and the fix batches after Gate A (hub
-fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4)
-and the Resource amounts epic are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2)
-follows Epic 8.
+Epics 1 to 8, the Gate A fixes, the fix batches after Gate A (hub
+fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
+the Resource amounts epic and fixes batch 5 are done. Gate A (SPEC 19.1)
+passed on 2026-11-05. Gate B (SPEC 19.2) follows fixes batch 5.
 
 ## Epic 1: Foundation
 
@@ -1811,17 +1811,20 @@ which was the plan's own pull request).
 
 - Per-admin factorio.com accounts are still future work (#354).
 - Closed in fixes batch 4: #340 (choose a mod's version) and #378.
-- Code-review refactors left for later: `restoremods.go` re-reads mod lists
-  the world package already parses; the web layer works out which snapshot
-  undoes a change from the files; `currentCount` re-reads the mods list.
-- Flagged rows on the Mods tab are not sorted first. At 320 px a row with
-  Update wraps Remove to a second line, and a folder mod's Disable sits at
-  the row's end instead of under the others'.
+- Code-review refactors left for later: the web layer works out which
+  snapshot undoes a change from the files. Closed in fixes batch 5:
+  `restoremods.go` re-reading mod lists the world package already parses,
+  and `currentCount` re-reading the mods list.
+- Flagged rows on the Mods tab are not sorted first (still open; see fixes
+  batch 5). Closed in fixes batch 5: at 320 px a row with Update wrapped
+  Remove to a second line, and a folder mod's Disable sat at the row's end
+  instead of under the others'.
 - Closed in fixes batch 4: the Undo button's time was the server's UTC
   text; it now shows local time.
 - The snapshot step reads "done" when a run's snapshot is reused.
-- The refusal and the Server page notice can show together, and then the
-  page has two "Update *mod*" buttons for the same plan.
+- Closed in fixes batch 5: the refusal and the Server page notice could
+  show together with two "Update *mod*" buttons for the same plan; the
+  notice now drops its own.
 - The pre-start refusal's main fix is a secondary button, because DESIGN
   7.1 forbids a primary one while the game runs. If a live update redraws
   the control region while "Or start anyway" is open, it closes again.
@@ -1831,14 +1834,16 @@ which was the plan's own pull request).
 - Other mod-change failures (after the stop) keep their generic words, and
   a plan that used an uploaded zip has no Try again.
 - No fix is offered for a conflict from a mod with no release, Space Age
-  off, or a mod not on the portal. `settings.preview.undo` keeps the old
-  "restore from the Snapshots page" wording.
-- `server.problem.modlist_space_age_on` and `_off` still say "turned
-  off/on" for entries in `mod-list.json`.
-- The search page's old `.mod-results*` and `.mod-summary` CSS is unused
-  and not yet removed; there is no filter-as-you-type.
-- Some code comments still cite issue numbers, and some older tests cite
-  "ruling N" from earlier epics.
+  off, or a mod not on the portal. Closed in fixes batch 5:
+  `settings.preview.undo` kept the old "restore from the Snapshots page"
+  wording.
+- Closed in fixes batch 5: `server.problem.modlist_space_age_on` and `_off`
+  said "turned off/on" for entries in `mod-list.json`; they now say
+  enabled/disabled.
+- There is no filter-as-you-type on the search page. Closed (found already
+  gone in fixes batch 5): the old `.mod-results*` and `.mod-summary` CSS.
+- Closed in fixes batch 5: code comments citing issue numbers, and older
+  tests citing "ruling N" from earlier epics.
 
 ## Fixes batch 4
 
@@ -1967,32 +1972,30 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   Enemy and Advanced settings are not in it.
 - In All planets mode a change made in the large view redraws every
   planet, as it does on the page.
-- The large view's key help does not say that keys inside a setting work
-  the setting (arrows move a slider, not the map).
-- The large view's column `h3` headings look like body text.
+- Closed in fixes batch 5: the large view's key help did not say that keys
+  inside a setting work the setting, and its column `h3` headings looked
+  like body text.
 - The mod plan page's "Add another mod" panel has no section rule, because
   it follows a confirmation box.
-- The newest Saves row's button is named after its file ("Load next:
-  name.zip") though it loads "the newest save".
-- The Load next buttons do not line up in a column when save names differ
-  in length.
+- Closed in fixes batch 5: the newest Saves row's button was named after
+  its file though it loads "the newest save", and the Load next buttons did
+  not line up when save names differ in length.
 - On a phone, All planets is one column of full-width pictures. The key
   help takes two lines at 320 px. Without script, Reset has no Undo.
 - "Update all mods" has no per-mod version lists.
-- There is no click-budget test for "Change a mod's version" (4 clicks),
-  though SPEC 17.10 lists it. The new strings keep the Generate preview's
+- Closed (found already there in fixes batch 5): the click-budget test for
+  "Change a mod's version" (4 clicks, SPEC 17.10). The new strings keep the Generate preview's
   0.75rem label size, which has no design token.
 - The Generate page was not checked in screenshots after the heading
   change.
 - Hand-test: NVDA's reading of a focused Undo or Restore link when the
   Server page's control region redraws.
-- No test presses Tab through the large view's dialog, or Escape on an
-  info tip's button inside its settings column (the first Escape should
-  close the tip, the second the view).
+- Closed in fixes batch 5: no test pressed Tab through the large view's
+  dialog, or Escape on an info tip's button inside its settings column.
 - generate-leave.spec.ts has no accessibility scan of the states it
   reaches (edited, after a reset redraw, with Undo reset showing).
-- The Server page does not say which save loads next while the world is
-  stopped (#419).
+- Closed in fixes batch 5: the Server page did not say which save loads
+  next while the world is stopped (#419).
 - Still deferred: #400 (a headless game per preview), #353, #339 (P2),
   #132, #92, #206 and #207.
 
@@ -2135,10 +2138,6 @@ uses it); ←/→ change the planet from anywhere in the view (SPEC 5.6).
   game's own generation peaks at 825 MiB, 913 MiB with the entities found).
   It fails safe with the existing out-of-memory message. 1.1 fits it
   (1,017 MiB measured).
-- **Lithium brine shows an amount, not a yield.** The game says it is
-  finite (`infinite_resource` false, normal amount 50,000), so the file's
-  `infinite` flag is false for it. The plan listed it among the yield
-  resources. This is a provisional ruling and waits on Todd.
 - **At 320 px the map shifts while counting.** The counting line and bar
   take room in the bar. Accepted.
 - **One user can fill the 8 preview queue places** with concurrent
@@ -2150,13 +2149,155 @@ uses it); ←/→ change the planet from anywhere in the view (SPEC 5.6).
 - ←/→ change the planet even from the amounts list; this is the large
   view's rule that arrows step the planet unless the focus is in a settings
   field (SPEC 5.6), kept.
-- Enter in a decimal field inside the large view's settings column creates
-  the world (a question for Todd; no change made).
 - Amounts cover the picture only: a patch cut by the edge counts the part
-  inside it, and the page says so. No amounts in the PNG download, the zip
-  or the thumbnail, and no mods' resources (the preview never loads mods,
-  ADR 0011).
+  inside it, and the page says so. No mods' resources (the preview never loads mods,
+  ADR 0011). Closed in fixes batch 5: amounts in the PNG download, the zip
+  and the One planet picture.
 - Territories and resources on Vulcanus are two separate runs (about 27 s
   and 24 s) when both boxes are on.
 - Hand-test: NVDA's and VoiceOver's reading of the counting sentence and of
   a failure when it is said by the hidden live region.
+
+## Fixes batch 5
+
+Serves SPEC 5.6, 7.3, 7.11, 8.7, 9.3, 17, 17.7, 17.10 and 17.15, with
+DESIGN.md 8.3, 8.7, 8.8 and 8.11 and ADR 0016. Chosen by Todd on
+2026-11-09 before Gate B. Issues closed: #441 (resource amounts on One
+planet and in downloads), #424 (Change version as a row action) and #419
+(the save that loads next on the Server page), with gaps from fixes
+batches 3 and 4 and the Resource amounts epic. The pull requests were
+#444 and #448 (Enter), #447 (amounts), #445 (Mods tab rows), #446 (Loads
+next and Saves), #453 (large view polish), #452 (mod-change wording), #455
+(comment cleanup), and three flake fixes found on the way, #449, #451 and
+#454.
+
+Rulings (Todd, 2026-11-09): lithium brine stays an amount, not a yield,
+because the game marks it finite (SPEC 5.6 already says so); Enter in a
+field of the large view's settings does nothing. Ruled by the orchestrator:
+flagged mod rows are not sorted first, because the flags arrive after the
+page loads and moving rows under the focus hurts more than it helps (Todd
+may revisit).
+
+### Delivered
+
+- **Enter in the large view's settings (SPEC 5.6).** Enter in a text,
+  decimal, check box, radio or slider field inside the settings column only
+  blocks the form's submit: it never creates the world and sends no change
+  of its own, so the value commits once, when the field is left. Enter on a
+  button there still presses it, Enter in the main form is unchanged, and a
+  composing Enter (keyCode 229) is left alone.
+- **Resource amounts on One planet and in downloads (#441, SPEC 5.6,
+  17.15).** The One planet picture has its own "Show resource amounts" box,
+  off on load and kept while the page lives, with the same count path as the
+  large view (`preview.js`): counting line and bar, announcements,
+  cancelling, Try again, labels without overlap. Only one count runs at a
+  time. While a box is ticked, a planet's download (`?amounts=1`) and the
+  "Download all" zip draw the amounts the preview store already holds; a
+  planet without held counts is served plain under its plain name. The link
+  says "with resource amounts" or "with territories and resource amounts",
+  and the files end in `-amounts` or `-territories-amounts`. No download
+  path counts, and there are no new routes and no Docker calls. Labels in a
+  download read as the page's `Intl.NumberFormat` output in all eight
+  languages, from a table of CLDR compact and percent patterns in
+  `internal/web/compact.go` (ADR 0015). `internal/territory` draws the
+  captions after the territory labels in the same look. The Chinese Noto
+  subset gained the digits, `.`, `,`, `%`, 万 and 亿, and `fonts/NOTICE` pins
+  its exact source and command. Four new strings in eight languages, and
+  `worlds.generate.territories.draw_busy` reworded since amounts share the
+  render queue.
+- **Change version as a row action (#424, SPEC 9.3, 17; DESIGN 8.11).**
+  Change version is a quiet button among the row's actions, after Update,
+  shown only when the portal lists another release of the mod for the
+  world's game line. The tab draws an empty slot that the portal status
+  fills, so nothing appears and then disappears. One planner call
+  (`mods.Planner.Status`) reads the world once and asks the portal once for
+  the updates, flags and changeable mods; a world briefly away gets an empty
+  status. The actions are two groups (Update and Change version, then
+  Disable or Enable and Remove), so Remove never wraps alone at 320 px, and
+  on wide screens a folder mod's Disable lines up with the others'.
+- **Loads next and Saves (#419, SPEC 7.11, 17.7).** While an older save is
+  chosen and its file exists, the Server page shows a "Loads next" fact
+  naming it, with a link to the Saves tab, stopped or running, in a live
+  region of its own (`loads`) so a status event never replaces the link.
+  `Manager.LoadChoice` reads `world.json` only, so redraws no longer list
+  saves. On the Saves tab the Load next buttons sit in their own last
+  column, and at phone width each row is a grid with the button on its own
+  line. The newest row's button is named "Load next: the newest save".
+- **Large view polish (SPEC 5.6, 17.15; DESIGN 8.8).** The Resources and
+  Terrain headings are set at `--text-lg` over a rule; a hint at the top of
+  the column says "In a setting, the keys change the setting: an arrow moves
+  a slider, not the map." Tab wraps inside the dialog in both directions,
+  where Chromium's modal dialog let focus leave for the browser. The amounts
+  block is shared as `.resource-amounts`. Thumbnail resource labels match
+  the territory labels in size, inset and forced colours. A page count that
+  finishes or fails while the view is open is said once when it closes. At
+  320 px a short "Counting…" shows beside the One planet box (seen, not
+  said).
+- **Mod-change wording and reads (SPEC 7.4, 9.3, 9.8 to 9.10).** When the
+  pre-start refusal carries the same plan as the Server page's mods notice,
+  the notice keeps its text and drops its own Update button.
+  `server.problem.modlist_space_age_on`/`_off` say enabled/disabled, and
+  `settings.preview.undo` says the message after saving links to the
+  snapshot. `restoremods.go` reads `mod-list.json` through
+  `world.ModListStates`, and `mods.Status` carries the list it read, so the
+  status handler does not read it twice. The dead version-slot focus rule in
+  `live.js` was removed.
+- **Comment cleanup.** About 75 references to issues, rulings, epics and
+  review codes in comments and test names now cite a SPEC section or are
+  dropped. No behaviour change.
+- **Races found and fixed.** The monitor counts each world's operations
+  (`worldRun.ops`) and drops a Docker look taken before or during one, so a
+  start that finishes between the read and the lock no longer shows as
+  stopped (SPEC 8.7; ADR 0016). When Start's container check sees the game
+  stop before the log follower reads why, it reads the start's container
+  log, so a save that failed to load is reported as such either way (SPEC
+  7.3, 8.7; ADR 0016); under load this had failed 53 of 400 runs, 0 after.
+  Two tests were fixed at their cause: the sliders "any width" test measures
+  each step once (still near its 90 s limit at a load of about 100), and the
+  mods-install test holds the install with a countdown so the page sees its
+  steps.
+- **Spec and process.** SPEC 5.6, 7.11, 8.7, 9.3, 17.7 and 17.15 and DESIGN
+  8.3, 8.7, 8.8, 8.11 and the Server page's facts carry the lasting rules;
+  ADR 0016 records the two race fixes and ADR 0015 the download wording
+  table. The plan was deleted.
+
+### Verified
+
+- Each task: `make verify` and the full `make e2e` on its head before
+  merge, plus the browser specs for the pages it touched at 1280 and 320 px
+  in both themes. New tests were run against the base first where they
+  could fail there (Enter creating the world, the monitor's stale look, the
+  failed-load classification, Tab leaving the dialog).
+- Real games at 1514442: `make test-game` 391 subtests on 1.1.110, 2.0.77,
+  2.1.24 and 2.1.23, and `make e2e-game` 2 passed.
+- real-game recheck after #454: <to be filled by the orchestrator>
+- Flake loops: `TestStartLoadFailure` 0 of 400 under 24 busy loops with
+  `-race` (53 of 400 before); the mods-install test 120 of 120 under load
+  (1 of 120 failed before).
+
+### Gaps left
+
+- **Flagged mod rows are not sorted first.** Dropped by the orchestrator:
+  the flags arrive after the page loads, and moving rows under the focus
+  hurts. Todd may revisit.
+- **Mods tab rows on phones.** Disable and Remove shift once when the status
+  fills Change version, as they already did for Update. In German and
+  French a folder mod's Disable can sit up to about 3em off the others' on
+  wide screens.
+- No Change version when the mod portal cannot be reached (the tab keeps
+  "could not reach the mod portal").
+- A chosen save that has gone is silent on the Server page; the pre-start
+  check refuses. A choice made in another tab shows on a stopped world's
+  Server page only at the next status change or reload.
+- The Saves button cell's text is `--text-sm` at 320 px.
+- The large view's settings hint is not reached by Tab, and Close is far
+  down the view's tab order (Escape closes it).
+- The Escape-on-info-tip test moves an Enemy field into the column, since
+  no Resources or Terrain setting has a tip yet.
+- A world briefly away shows 0 up to date on the Mods tab.
+- If Docker's newest run stops loading for another reason, Start reports
+  the earlier run's failed load.
+- **Watch item.** `TestInvariantCrashAtEveryPointOfASwitch` failed once
+  under stress loops ("cannot tell its state") and passed 8 of 8 after.
+- Still deferred: #353, #339 (P2), #207, #206, #132 and #92, and Enemy and
+  Advanced settings in the large view.
