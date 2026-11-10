@@ -30,6 +30,8 @@
   "server.facts.game_version": "Spielversion",
   "server.facts.unknown": "Unbekannt",
   "server.facts.save": "Geladener Speicherstand",
+  "server.facts.loads_next": "Wird als Nächstes geladen",
+  "server.facts.loads_next_link": ", im Reiter Speicherstände",
   "server.facts.cpu": "CPU",
   "server.facts.cpu_value": "{percent} %",
   "server.facts.memory": "Arbeitsspeicher",

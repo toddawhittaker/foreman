@@ -29,6 +29,8 @@
   "server.facts.game_version": "游戏版本",
   "server.facts.unknown": "未知",
   "server.facts.save": "已加载的存档",
+  "server.facts.loads_next": "下次加载",
+  "server.facts.loads_next_link": "，在“存档”标签页",
   "server.facts.cpu": "CPU",
   "server.facts.cpu_value": "{percent}%",
   "server.facts.memory": "内存",

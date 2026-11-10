@@ -568,3 +568,28 @@ func TestFinishLogsOnlyRealFailures(t *testing.T) {
 		t.Errorf("a real failure was not logged as an error: %v", lines)
 	}
 }
+
+// SPEC 7.11, 17.7: the page the server builds names the chosen older save,
+// and says nothing once the newest is chosen again.
+func TestServerPageNamesTheOlderSaveThatLoadsNext(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", "2.1.24-no-space-age.zip", false)
+	newer := filepath.Join(g.worlds.Dirs().Worlds, id, world.SavesDir, "newer.zip")
+	if err := os.WriteFile(newer, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if body := g.waitPage(stopped); strings.Contains(body, "Loads next") {
+		t.Errorf("no choice, yet the page names a save:\n%s", body)
+	}
+	if err := g.worlds.SetLoadSave(id, "base.zip"); err != nil {
+		t.Fatal(err)
+	}
+	g.waitPage(stopped, `<dt>Loads next</dt><dd><a class="button button--quiet" href="/worlds/`+id+`/saves" id="act-loads-next">base.zip`)
+	if err := g.worlds.SetLoadSave(id, ""); err != nil {
+		t.Fatal(err)
+	}
+	if body := g.waitPage(stopped); strings.Contains(body, "Loads next") {
+		t.Errorf("the newest chosen again, yet the page names a save:\n%s", body)
+	}
+}

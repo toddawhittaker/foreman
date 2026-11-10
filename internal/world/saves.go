@@ -136,6 +136,22 @@ func (m *Manager) Saves(id string) (SaveList, error) {
 	return out, err
 }
 
+// LoadChoice is the name of the save chosen to load at the next start, or
+// "" when none is chosen (SPEC 7.11). It reads only world.json, so a page
+// that redraws often does not list the saves folder.
+func (m *Manager) LoadChoice(id string) string {
+	root, err := m.OpenWorld(id)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := ReadMeta(root)
+	if err != nil {
+		return ""
+	}
+	return meta.LoadSave
+}
+
 // OpenSave opens a save for download. The caller closes the file.
 func (m *Manager) OpenSave(id, name string) (*os.File, fs.FileInfo, error) {
 	if !ValidSaveName(name) {
