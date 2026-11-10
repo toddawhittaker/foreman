@@ -672,9 +672,14 @@ not) or a map exchange string, with Space Age on or off. (P0)
     as the page's, not copies, so a change there redraws the picture
     after the usual pause and is kept when the view closes; narrower, the
     view is the map alone. Focus decides the keys: on the map the arrows
-    step or pan, in a field they belong to the field.
+    step or pan, in a field they belong to the field. Enter in a field of
+    those settings commits the value when the field is left and does
+    nothing else; it never generates the world. Enter on a button there
+    presses it, and Enter in the main form is unchanged.
   - **Downloads**: one planet's PNG, or every drawn planet as a zip,
-    named after the world, the seed and the planet.
+    named after the world, the seed and the planet, with `-territories`,
+    `-amounts` or `-territories-amounts` when those are drawn in, and the
+    link says what is drawn.
   - **Demolisher territories** (Vulcanus, Space Age, 2.x). A "Show
     demolisher territories" box, shown only while Vulcanus is viewed and
     kept while another planet is, draws each territory over the picture
@@ -690,9 +695,10 @@ not) or a map exchange string, with Space Age on or off. (P0)
     `-territories`; the overlay PNG is drawn per request, one at a time,
     and not stored.
   - **Resource amounts** (every planet). A "Show resource amounts" box in
-    the large view's bar, off when the page loads and kept while the page
-    lives. It is a view, not a setting: it has no name and is never sent
-    with the form. Foreman counts the resources of one planet at a time, in
+    the large view's bar, and one on the One planet picture, each its own
+    choice, off when the page loads and kept while the page lives; one
+    count runs at a time. It is a view, not a setting: it has no name and
+    is never sent with the form. Foreman counts the resources of one planet at a time, in
     the real map, only after that planet's picture is shown (`POST
     /generate/preview/resources`, the form and a `planet` that must be one
     of the world's planets, or the request is refused and no game runs),
@@ -719,10 +725,14 @@ not) or a map exchange string, with Space Age on or off. (P0)
       patch, and the position in the list is in tiles from where players
       start, as (x, y).
     - **Bounds.** Amounts cover the picture only, so a patch cut by its
-      edge counts the part inside, and the page says so. Nothing is drawn
-      into the PNG download, the zip or the thumbnail. The preview never
+      edge counts the part inside, and the page says so. The preview never
       loads the world's mods (ADR 0011), so only the base game's and Space
       Age's resources appear.
+    - **Downloads.** While a box is ticked, the planet's PNG
+      (`?amounts=1`) and each planet's file in the zip draw the amounts the
+      preview already holds, worded as the page's compact notation in the
+      page language (ADR 0015). A download never starts a count: a planet
+      with no held amounts downloads plain, under its plain name.
     - **Cost, measured** with seed 123456 at default settings, at 3072 tiles
       (the most offered), on every planet, on 1.1.110, 2.0.77 and 2.1.24: at
       most 757 MiB and 33 s (Gleba on 2.1.24), against the 1 GiB and 60 s
@@ -1110,7 +1120,9 @@ in the future, which would pin that save above every later autosave.
 A chosen save applies once: when the start that loads it reaches "InGame",
 the choice resets to the latest save (`load_save` is removed from
 `world.json`). After a crash, the game therefore restarts from the newest
-autosave.
+autosave. While a save other than the newest is chosen and its file
+exists, the Server page names it as the save that loads next, stopped or
+running (17.7).
 One function decides "the newest save", and the pre-start check (7.4)
 uses it, so the check reads the save the game will load. (P0)
 
@@ -1188,7 +1200,11 @@ failed-load line. It does not use the exit code, because the same failure
 exits with different codes in different game versions (1.1 exits 0 after a
 failed load). It names the reason when it can: a mod that failed to load, a
 corrupt save, a version mismatch, a port in use, or out of memory.
-Otherwise it says the reason is unknown. The Server page shows only that
+Otherwise it says the reason is unknown. A save that fails to load is
+reported as a failed load whichever check sees the stop first, the log or
+the container poll (ADR 0016), and a Docker look taken before or during an
+operation on the world is dropped, so it never overwrites what the
+operation set. The Server page shows only that
 summary, masked like every log line, and links to the full log on the
 Console page (8.6); it
 never guesses a reason. (P0 to detect a crash; P1 to name the reason)
@@ -1280,8 +1296,11 @@ timer. A mod that is turned off is not updated by "update all". The tab
 says what the portal answered in one summary line above the installed mods,
 with "Update all", and each mod's update and flags in that mod's own row,
 with the fix there. "Up to date" counts only the mods the portal has at
-their installed version. Each row of a mod the portal has also offers
-"Change version": the plan for that mod held at its installed version,
+their installed version. A row also offers "Change version" when the portal
+lists a release of the mod for the world's game line other than the
+installed one; the portal status fills it in, so it is never shown and then
+taken away, and a folder mod or a portal that cannot be reached shows none.
+It opens the plan for that mod held at its installed version,
 whose version list (9.2) offers every release on the world's line, older
 ones too. Going back after a bad update is choosing the release before it,
 a downgrade with its snapshot like any mod change (9.4, 9.13). Until
@@ -1295,7 +1314,9 @@ that updates the mod to the newest release on the world's line ("Update
 says nothing when the portal cannot be asked, and loads again whenever an
 operation on the world ends, so the line goes once its fix is done,
 without a reload. A start, restart or switch of such a world is refused
-by the pre-start check (7.4). (P1)
+by the pre-start check (7.4). When that refusal shows and carries the same
+plan, the line keeps its text and drops its own button, so one plan never
+has two "Update *mod*" buttons. (P1)
 
 9.4. **Enable, disable and remove** a mod, each as a snapshotted change.
 Removing a mod that another enabled mod requires is refused with the
@@ -1977,7 +1998,10 @@ world's own page manages that world (rename, delete, saves, snapshots,
 mods, settings), and offers switching to it, but never sends the admin
 there to finish a task begun on the Server page. Text that changes every
 second, such as a countdown, updates only itself and never replaces the
-controls beside it. (P1)
+controls beside it. While an older save is chosen to load next (7.11), the
+page's facts say "Loads next" with the save's name and a link to the Saves
+tab, in a live region of its own, so a status change never replaces the
+link. (P1)
 
 17.8. **Problems come before the confirmation.** A confirmation page runs
 the checks its action would run, and shows any problem, with its fix, on
@@ -2074,7 +2098,11 @@ leave dialog (5.6) is a modal `dialog` named by its question, with "Stay on
 this page" focused on open; Escape closes it like Stay, and it passes the
 accessibility scan at 1280 and 320 px. In the large view the arrow keys step
 the planet unless focus is in a settings field, including from the amounts
-list. (P1)
+list. Tab goes round the large view's controls, from the last back to the
+first. The One planet picture's box is announced as the large view's is;
+at 320 px a short "Counting…" beside it is seen, not said, and a page count
+that ends while the large view is open is said once when the view closes.
+(P1)
 
 ## 18. Epics, in order
 
