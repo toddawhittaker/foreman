@@ -1,11 +1,19 @@
 package web
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"image/png"
+	"io"
+	"math"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +21,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/resource"
+	"github.com/toddawhittaker/foreman/internal/territory"
 )
 
 // The previewer most tests use counts no resources; they never ask.
@@ -360,5 +369,149 @@ func TestResourceNameFindsTheControl(t *testing.T) {
 	}
 	if got := resourceName(i18n.English, "2.1", "vulcanus", "no-such-ore"); got != "no-such-ore" {
 		t.Errorf("a resource with no control is shown as %q", got)
+	}
+}
+
+// SPEC 5.6: with amountsQuery a download draws in the amounts the preview
+// already holds for its planet, and a planet without them is served plain:
+// no download, zip or page ever counts (the fake records every count).
+func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
+	hn, prev, c := newResourceHarness(t)
+	prev.png = realPNG(t, game.PreviewSizeDefault)
+	hx := withHeader("HX-Request", "true")
+	all := planetForm("")
+	all.Del("planet")
+	page := func() string { return hn.postLong(PathGeneratePreview, all, c, hx).Body.String() }
+	body := page()
+	token := strings.Split(pictureOf(t, body), "/")[3]
+	base := PathGeneratePreview + "/" + token
+	if strings.Contains(body, "data-counted") {
+		t.Error("a planet is marked counted before any count")
+	}
+	name := func(rec *httptest.ResponseRecorder) string { return rec.Header().Get("Content-Disposition") }
+
+	// Nothing held: asked for, the amounts are left out, and nothing is counted.
+	rec := hn.getLong(base+"/nauvis/download?amounts=1", c)
+	if rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), prev.png) || strings.Contains(name(rec), "amounts") {
+		t.Errorf("uncounted: status %d, drawn %v, named %q", rec.Code, !bytes.Equal(rec.Body.Bytes(), prev.png), name(rec))
+	}
+	hn.getLong(base+"/all.zip?amounts=1", c)
+	if len(prev.runs) != 0 {
+		t.Fatalf("a download counted: %v", prev.planets)
+	}
+
+	hn.postLong(pathResources, planetForm("nauvis"), c, hx)
+	if len(prev.runs) != 1 {
+		t.Fatalf("%d counts", len(prev.runs))
+	}
+	body = page()
+	if strings.Count(body, "data-counted") != 1 || !regexp.MustCompile(`/nauvis/download"[^>]*data-counted`).MatchString(body) {
+		t.Errorf("only Nauvis is marked counted:\n%s", body)
+	}
+
+	rec = hn.getLong(base+"/nauvis/download?amounts=1", c)
+	if rec.Code != http.StatusOK || bytes.Equal(rec.Body.Bytes(), prev.png) || !strings.Contains(name(rec), `filename="Fresh_start-123456-nauvis-amounts.png"`) {
+		t.Fatalf("counted: status %d, named %q", rec.Code, name(rec))
+	}
+	if _, err := png.Decode(bytes.NewReader(rec.Body.Bytes())); err != nil {
+		t.Errorf("the drawn picture is not a PNG: %v", err)
+	}
+	if rec := hn.getLong(base+"/nauvis/download", c); !bytes.Equal(rec.Body.Bytes(), prev.png) {
+		t.Error("a download not asking for the amounts drew them")
+	}
+	if rec := hn.getLong(base+"/vulcanus/download?amounts=1", c); !bytes.Equal(rec.Body.Bytes(), prev.png) || strings.Contains(name(rec), "amounts") {
+		t.Error("Vulcanus, not counted, was drawn on")
+	}
+
+	zrec := hn.getLong(base+"/all.zip?amounts=1", c)
+	zr, err := zip.NewReader(bytes.NewReader(zrec.Body.Bytes()), int64(zrec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	drawn := 0
+	for _, f := range zr.File {
+		rc, _ := f.Open()
+		b, _ := io.ReadAll(rc)
+		_ = rc.Close()
+		isNauvis := strings.Contains(f.Name, "nauvis")
+		if isNauvis != !bytes.Equal(b, prev.png) || isNauvis != (f.Name == "Fresh_start-123456-nauvis-amounts.png") {
+			t.Errorf("%s: drawn on is %v", f.Name, !bytes.Equal(b, prev.png))
+		}
+		if isNauvis {
+			drawn++
+		}
+	}
+	if len(zr.File) != 5 || drawn != 1 {
+		t.Errorf("%d files, %d drawn", len(zr.File), drawn)
+	}
+	if len(prev.runs) != 1 {
+		t.Errorf("a download counted: %v", prev.planets)
+	}
+}
+
+// SPEC 5.6: Vulcanus's download with both draws the territories and the
+// amounts in one picture, the amounts worded as the page words them in the
+// page's language.
+func TestDownloadDrawsTerritoriesAndAmountsTogether(t *testing.T) {
+	src := realPNG(t, 256)
+	res := nauvisCount
+	e := previewEntry{territories: &threeTerritories, size: 256, resources: map[string]*resource.Result{"vulcanus": &res}}
+	orig := drawPNG
+	t.Cleanup(func() { drawPNG = orig })
+	var got territory.Overlay
+	drawPNG = func(_ context.Context, b []byte, ov territory.Overlay, _ func(string) string) ([]byte, error) {
+		got = ov
+		return b, nil
+	}
+	r := httptest.NewRequest(http.MethodGet, "/x?territories=1&amounts=1", nil)
+	r = r.WithContext(context.WithValue(r.Context(), localeKey{}, i18n.Locale("de")))
+	_, suffix, ok, err := drawnDownload(r, e, "vulcanus", src)
+	if err != nil || !ok || suffix != "-territories-amounts" {
+		t.Fatalf("suffix %q, ok %v, %v", suffix, ok, err)
+	}
+	if got.Size != 256 || len(got.Shapes) == 0 {
+		t.Errorf("the territories are not drawn: %+v", got)
+	}
+	var texts []string
+	for _, cap := range got.Captions {
+		texts = append(texts, cap.Text)
+	}
+	if want := []string{"12,3 Mio.", "300 %", "1,5 Mio.", "250.000"}; !slices.Equal(texts, want) {
+		t.Errorf("captions %q, want %q", texts, want)
+	}
+	// The largest patch's label sits where the page puts it: tile -50 of 256 is 78.5 px in.
+	if c := got.Captions[0]; math.Abs(c.U-78.5/256) > 1e-4 {
+		t.Errorf("the first caption is at %v", c.U)
+	}
+	// Only the territories: the amounts are not drawn, even though held.
+	r = httptest.NewRequest(http.MethodGet, "/x?territories=1", nil)
+	if _, suffix, _, _ = drawnDownload(r, e, "vulcanus", src); suffix != "-territories" || len(got.Captions) != 0 {
+		t.Errorf("suffix %q, %d captions", suffix, len(got.Captions))
+	}
+}
+
+// SPEC 5.6: the One planet picture has its own box, unticked and without a
+// name, script only; All planets has none.
+func TestOnePlanetHasTheResourceBox(t *testing.T) {
+	hn, _, c := newResourceHarness(t)
+	hx := withHeader("HX-Request", "true")
+	one := planetForm("nauvis", "auto", "1")
+	body := hn.postLong(PathGeneratePreview, one, c, hx).Body.String()
+	for _, want := range []string{
+		`<div class="js-only"><div class="large-view__amounts" id="preview-amounts-bar" data-ready="Resource amounts ready.">`,
+		`<input type="checkbox" id="preview-amounts"> Show resource amounts</label>`,
+		`<div class="wait large-view__counting" id="preview-counting" hidden>`,
+		`<progress aria-labelledby="preview-counting-text"></progress>`,
+		`<p class="visually-hidden" id="preview-amounts-news" role="status"></p>`,
+		`data-amounts="Download Nauvis with resource amounts (PNG)"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("One planet lacks %q:\n%s", want, body)
+		}
+	}
+	all := planetForm("", "auto", "1", "preview_view", "all")
+	all.Del("planet")
+	if body := hn.postLong(PathGeneratePreview, all, c, hx).Body.String(); strings.Contains(body, `id="preview-amounts"`) {
+		t.Error("All planets has the box")
 	}
 }

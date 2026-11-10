@@ -236,3 +236,120 @@ func TestDrawPNGFreesTheSlot(t *testing.T) {
 		t.Errorf("slot holds %d, %d waiting", len(renderSlot), waiting.Load())
 	}
 }
+
+// whiteBounds is the box of the label text's white pixels in img.
+func whiteBounds(img image.Image) (image.Rectangle, int) {
+	var r image.Rectangle
+	n := 0
+	b := img.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if at(img, x, y) == textColour {
+				r = r.Union(image.Rect(x, y, x+1, y+1))
+				n++
+			}
+		}
+	}
+	return r, n
+}
+
+// Captions are drawn with the territory labels' look, and pulled in at an
+// edge as the page places them, so one at a corner stays whole inside.
+func TestDrawPNGCaptionsPulledIn(t *testing.T) {
+	ov := Overlay{Size: 256, Captions: []Caption{{Text: "12.3M", U: 1, V: 1}}}
+	out, err := DrawPNG(context.Background(), greyPNG(t, 256), ov, noLabel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, n := whiteBounds(decode(t, out))
+	if n == 0 {
+		t.Fatal("the caption drew nothing")
+	}
+	if r.Max.X > 254 || r.Max.Y > 254 || r.Max.X < 230 || r.Max.Y < 230 {
+		t.Errorf("caption at %v, want inside the bottom right corner", r)
+	}
+	if countOutline(decode(t, out)) == 0 {
+		t.Error("the caption has no outline")
+	}
+}
+
+func countOutline(img image.Image) int {
+	n := 0
+	b := img.Bounds()
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			if at(img, x, y) == outlineColour {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// A caption that would meet one drawn already, or a territory's label, is
+// left out; the first, as the largest patch, wins.
+func TestDrawPNGCaptionsNeverOverlap(t *testing.T) {
+	one := Overlay{Size: 256, Captions: []Caption{{Text: "12.3M", U: 0.5, V: 0.2}}}
+	two := Overlay{Size: 256, Captions: []Caption{{Text: "12.3M", U: 0.5, V: 0.2}, {Text: "4.5K", U: 0.51, V: 0.21}, {Text: "7K", U: 0.1, V: 0.9}}}
+	count := func(ov Overlay) int {
+		out, err := DrawPNG(context.Background(), greyPNG(t, 256), ov, noLabel)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, n := whiteBounds(decode(t, out))
+		return n
+	}
+	alone, far := count(one), count(Overlay{Size: 256, Captions: two.Captions[2:]})
+	if got := count(two); got != alone+far {
+		t.Errorf("drew %d white pixels, want %d: the overlapping caption left out, the far one drawn", got, alone+far)
+	}
+	// A territory label in the middle keeps its place; a caption on it goes.
+	var chunks []Chunk
+	for y := -2; y < 2; y++ {
+		for x := -2; x < 2; x++ {
+			chunks = append(chunks, Chunk{x, y})
+		}
+	}
+	terr := Geometry(Result{Territories: []Territory{{Big, chunks}}}, 256)
+	label := func(string) string { return "Big" }
+	draw := func(ov Overlay) int {
+		out, err := DrawPNG(context.Background(), greyPNG(t, 256), ov, label)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, n := whiteBounds(decode(t, out))
+		return n
+	}
+	bare := draw(terr)
+	terr.Captions = []Caption{{Text: "300%", U: 0.5, V: 0.5}}
+	if got := draw(terr); got != bare {
+		t.Errorf("a caption over the territory label was drawn: %d white pixels, want %d", got, bare)
+	}
+}
+
+// Chinese amounts use the subset's digits and 万 and 亿, and draw as text.
+func TestDrawPNGChineseAmounts(t *testing.T) {
+	for _, text := range []string{"123.5万", "1.2亿", "1.2万亿", "1,235%"} {
+		if !Covered(text) {
+			t.Errorf("no font has every glyph of %q", text)
+		}
+	}
+	fs, err := fonts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fontFor(fs, "1.2万") != 1 {
+		t.Error("a Chinese amount is not drawn with the subset")
+	}
+	// A narrow no-break space, French grouping, draws as a no-break space.
+	if !Covered("1 235 %") {
+		t.Error("French grouping is not covered")
+	}
+	out, err := DrawPNG(context.Background(), greyPNG(t, 128), Overlay{Size: 128, Captions: []Caption{{Text: "1.2万", U: 0.5, V: 0.5}}}, noLabel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, n := whiteBounds(decode(t, out)); n < 20 {
+		t.Errorf("the Chinese amount drew %d white pixels", n)
+	}
+}

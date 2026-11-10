@@ -68,10 +68,11 @@
         </div>
         {{/* Shown by the script when its request for the territories fails. */}}
         <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
-        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}">
+        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}"{{if .Counted}} data-counted{{end}}>
           {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
         {{- else}}
-        <a href="{{.DownloadPath}}" class="download" download>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        {{/* The script adds the amounts, and says so, while the box above is ticked and they are counted (SPEC 5.6). */}}
+        <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}"{{if .Counted}} data-counted{{end}}>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
         {{- end}}
       </li>
       {{- end}}

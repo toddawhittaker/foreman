@@ -450,4 +450,53 @@ test.describe("on the One planet picture", () => {
     await expect(pageLabels(page)).toHaveCount(7);
     await expect(pageBox(page)).toBeFocused();
   });
+  test("downloads draw in the held amounts while the box is ticked, and never count", async ({ page }) => {
+    const asked: string[] = [];
+    page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
+    await onePlanet(page);
+    const one = section(page).locator("li a.download");
+    const zip = section(page).getByRole("link", { name: "Download all drawn planets (zip)" });
+    await expect(one).toHaveText("Download Nauvis (PNG)");
+    await pageBox(page).check();
+    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(one).toHaveText("Download Nauvis with resource amounts (PNG)");
+    await expect(one).toHaveAttribute("href", /\/nauvis\/download\?amounts=1$/);
+    await expect(zip).toHaveAttribute("href", /\/all\.zip\?amounts=1$/);
+    const res = await page.request.get(await one.getAttribute("href") ?? "");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-disposition"]).toContain("-nauvis-amounts.png");
+    expect((await page.request.get(await zip.getAttribute("href") ?? "")).status()).toBe(200);
+    // The large view's download follows its own box.
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(dialog(page)).toBeVisible();
+    await expect(page.locator("#large-download")).not.toHaveAttribute("href", /amounts/);
+    await expect(page.locator("#large-download-name")).toHaveText("Download Nauvis map");
+    await box(page).check();
+    await expect(labels(page)).toHaveCount(7);
+    await expect(page.locator("#large-download")).toHaveAttribute("href", /\?amounts=1$/);
+    await expect(page.locator("#large-download-name")).toHaveText("Download Nauvis map with resource amounts");
+    await page.keyboard.press("Escape");
+    // One count for the page and one for the view, answered from what was held; the downloads asked for none.
+    expect(asked.length).toBe(2);
+    await pageBox(page).uncheck();
+    await expect(one).toHaveText("Download Nauvis (PNG)");
+    await expect(one).not.toHaveAttribute("href", /amounts/);
+    await expect(zip).not.toHaveAttribute("href", /amounts/);
+  });
+
+  test("Vulcanus's download says when it draws territories and amounts", async ({ page }) => {
+    await onePlanet(page);
+    await page.locator("#mg-resources-vulcanus summary").click();
+    await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
+    await page.getByLabel("Show demolisher territories").check();
+    await expect(section(page).locator(".territory-counts")).toHaveText(/^Demolisher territories in this picture/);
+    await pageBox(page).check();
+    await expect(pageLabels(page)).toHaveCount(7);
+    const one = section(page).locator("li a.download");
+    await expect(one).toHaveText("Download Vulcanus with territories and resource amounts (PNG)");
+    const res = await page.request.get(await one.getAttribute("href") ?? "");
+    expect(res.headers()["content-disposition"]).toContain("-vulcanus-territories-amounts.png");
+    await page.getByLabel("Show demolisher territories").uncheck();
+    await expect(one).toHaveText("Download Vulcanus with resource amounts (PNG)");
+  });
 });

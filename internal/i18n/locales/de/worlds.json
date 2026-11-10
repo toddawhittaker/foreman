@@ -421,13 +421,15 @@
   "worlds.generate.territories.no_vulcanus": "Nur Welten mit Space Age haben Zertrümmerer-Territorien, und zwar auf Vulcanus.",
   "worlds.generate.territories.invalid": "Die Einstellungen haben Probleme, deshalb wurden die Zertrümmerer-Territorien nicht gefunden. Behebe die Probleme, die die Kartenvorschau auflistet.",
   "worlds.generate.territories.busy": "Es wird gerade eine andere Kartenvorschau erstellt, deshalb wurden die Zertrümmerer-Territorien nicht gefunden. Warte ein paar Sekunden und versuche es dann erneut.",
-  "worlds.generate.territories.draw_busy": "Gerade werden andere Bilder mit Territorien gezeichnet. Warte ein paar Sekunden und lade dann erneut herunter.",
+  "worlds.generate.territories.draw_busy": "Gerade werden andere Bilder mit Beschriftungen gezeichnet. Warte ein paar Sekunden und lade dann erneut herunter.",
   "worlds.generate.territories.timeout": "Das Suchen der Zertrümmerer-Territorien hat zu lange gedauert und wurde abgebrochen. Versuche es erneut oder wähle eine kleinere Vorschaugröße.",
   "worlds.generate.territories.oom": "Dem Spiel ging beim Suchen der Zertrümmerer-Territorien der Speicher aus. Wähle eine kleinere Vorschaugröße.",
   "worlds.generate.territories.failed": "Das Spiel konnte die Zertrümmerer-Territorien nicht finden. Die Kartenvorschau und das Generieren funktionieren weiterhin. Wenn es weiter scheitert, sieh im Protokoll von Foreman nach.",
   "worlds.generate.territories.request_failed": "Die Anfrage für die Zertrümmerer-Territorien ist fehlgeschlagen. Prüfe, ob Foreman erreichbar ist und du noch angemeldet bist, und versuche es dann erneut.",
   "worlds.generate.territories.retry": "Erneut versuchen",
   "worlds.generate.territories.download": "{planet} mit Territorien herunterladen (PNG)",
+  "worlds.generate.resources.download": "{planet} mit Ressourcenmengen herunterladen (PNG)",
+  "worlds.generate.resources.download_both": "{planet} mit Territorien und Ressourcenmengen herunterladen (PNG)",
   "worlds.generate.territories.count.small": {
     "one": "{count} kleines",
     "other": "{count} kleine"

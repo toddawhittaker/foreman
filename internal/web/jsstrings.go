@@ -13,6 +13,8 @@ func init() {
 		"js.preview.next",
 		"js.preview.download",
 		"js.preview.download_territories",
+		"js.preview.download_amounts",
+		"js.preview.download_both",
 		"js.generate.reset",
 		"js.generate.undone",
 		"js.generate.ach_setting",

@@ -10,6 +10,8 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -38,6 +40,9 @@ var (
 // outline holds the offsets the dark copies of a label are drawn at, a ring
 // about 2 px wide around the white text.
 var outline = []image.Point{{-2, 0}, {2, 0}, {0, -2}, {0, 2}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}}
+
+// outlineWidth is how far the outline reaches past the text, in pixels.
+const outlineWidth = 2
 
 // notoLabels is Noto Sans CJK SC Bold cut down to the Simplified Chinese
 // labels' glyphs (fonts/NOTICE); Go Bold has no CJK.
@@ -132,10 +137,28 @@ func DrawPNG(ctx context.Context, src []byte, ov Overlay, label func(size string
 		return nil, err
 	}
 	px := float64(max(16, ov.Size/64))
-	for _, s := range ov.Shapes {
-		if err := drawLabel(img, fs, px, label(s.Size), s.LabelX, s.LabelY); err != nil {
+	faces := make([]font.Face, len(fs))
+	for i, f := range fs {
+		if faces[i], err = opentype.NewFace(f, &opentype.FaceOptions{Size: px, DPI: 72, Hinting: font.HintingFull}); err != nil {
 			return nil, err
 		}
+		defer func() { _ = faces[i].Close() }()
+	}
+	var drawn []image.Rectangle
+	for _, s := range ov.Shapes {
+		drawn = append(drawn, drawLabel(img, fs, faces, label(s.Size), s.LabelX, s.LabelY))
+	}
+	for _, l := range ov.Captions {
+		text := strings.ReplaceAll(l.Text, "\u202f", "\u00a0")
+		w, h := measure(fs, faces, text)
+		// The box's top left, pulled in as the page's style sheet does.
+		x0 := min(max(0, l.U*float64(ov.Size-w)), float64(max(0, ov.Size-w)))
+		y0 := min(max(0, l.V*float64(ov.Size-h)), float64(max(0, ov.Size-h)))
+		box := image.Rect(int(x0), int(y0), int(x0)+w, int(y0)+h).Inset(-labelGap)
+		if slices.ContainsFunc(drawn, box.Overlaps) {
+			continue
+		}
+		drawn = append(drawn, drawLabel(img, fs, faces, text, x0+float64(w)/2, y0+float64(h)/2))
 	}
 	var out bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
@@ -179,14 +202,13 @@ func border(img *image.RGBA, seg Segment) {
 	draw.Draw(img, area.Intersect(img.Bounds()), image.NewUniform(borderColour), image.Point{}, draw.Src)
 }
 
+// labelGap is the room, in pixels, kept between two labels.
+const labelGap = 2
+
 // drawLabel writes text centred on x, y in white with a dark outline, in the
-// first font that has all its glyphs.
-func drawLabel(img *image.RGBA, fs []*sfnt.Font, px float64, text string, x, y float64) error {
-	face, err := opentype.NewFace(fontFor(fs, text), &opentype.FaceOptions{Size: px, DPI: 72, Hinting: font.HintingFull})
-	if err != nil {
-		return err
-	}
-	defer func() { _ = face.Close() }()
+// first font that has all its glyphs, and returns the box it covers.
+func drawLabel(img *image.RGBA, fs []*sfnt.Font, faces []font.Face, text string, x, y float64) image.Rectangle {
+	face := faces[fontFor(fs, text)]
 	m := face.Metrics()
 	width := font.MeasureString(face, text)
 	dot := fixed.Point26_6{
@@ -201,18 +223,40 @@ func drawLabel(img *image.RGBA, fs []*sfnt.Font, px float64, text string, x, y f
 	d.Src = image.NewUniform(textColour)
 	d.Dot = dot
 	d.DrawString(text)
-	return nil
+	w, h := measure(fs, faces, text)
+	return image.Rect(0, 0, w, h).Add(image.Pt(int(x)-w/2, int(y)-h/2)).Inset(-labelGap)
+}
+
+// measure is the width and height of text as drawLabel draws it, its
+// outline included.
+func measure(fs []*sfnt.Font, faces []font.Face, text string) (w, h int) {
+	face := faces[fontFor(fs, text)]
+	m := face.Metrics()
+	ring := 2 * outlineWidth
+	return font.MeasureString(face, text).Ceil() + ring, (m.Ascent + m.Descent).Ceil() + ring
 }
 
 // fontFor picks the first font that has every glyph of text, or the first
-// font if none has; the glyph test keeps the labels covered.
-func fontFor(fs []*sfnt.Font, text string) *sfnt.Font {
-	for _, f := range fs {
+// font if none has; the glyph tests keep the labels covered.
+func fontFor(fs []*sfnt.Font, text string) int {
+	for i, f := range fs {
 		if hasGlyphs(f, text) {
-			return f
+			return i
 		}
 	}
-	return fs[0]
+	return 0
+}
+
+// Covered is true when one of the fonts the labels are drawn with has every
+// glyph of text, so it draws without boxes. A narrow no-break space is drawn
+// as a no-break space, which they have.
+func Covered(text string) bool {
+	fs, err := fonts()
+	if err != nil {
+		return false
+	}
+	text = strings.ReplaceAll(text, "\u202f", "\u00a0")
+	return hasGlyphs(fs[fontFor(fs, text)], text)
 }
 
 func hasGlyphs(f *sfnt.Font, text string) bool {

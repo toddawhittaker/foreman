@@ -109,8 +109,35 @@ document.addEventListener("DOMContentLoaded", () => {
       else url.searchParams.delete("territories");
       a.setAttribute("href", url.pathname + url.search);
     }
-    if (one) one.textContent = on ? one.dataset.territories : one.dataset.plain;
+    if (one) nameDownload(one);
     if (dialog && dialog.open && (viewing || firstPlanet()) === terrPlanet) show(terrPlanet);
+  }
+
+  // A download says what it draws in, as its link asks for it.
+  function nameDownload(a) {
+    const q = new URL(a.href).searchParams;
+    const terr = q.has("territories");
+    const amt = q.has("amounts");
+    const text = terr && amt ? a.dataset.both : terr ? a.dataset.territories : amt ? a.dataset.amounts : a.dataset.plain;
+    if (text) a.textContent = text;
+  }
+  function askFor(href, name, on) {
+    const url = new URL(href, location.href);
+    if (on) url.searchParams.set(name, "1");
+    else url.searchParams.delete(name);
+    return url.pathname + url.search;
+  }
+
+  // While the page's box is ticked, each download draws in the amounts held
+  // for its planet, which the server marks; the zip draws every planet's held.
+  function amountDownloads() {
+    const on = Boolean(el("preview-amounts") && pageAmounts);
+    document.querySelectorAll("#preview li a.download").forEach((a) => {
+      a.setAttribute("href", askFor(a.href, "amounts", on && a.hasAttribute("data-counted")));
+      nameDownload(a);
+    });
+    const zip = document.querySelector('#preview a.download[href*="/all.zip"]');
+    if (zip) zip.setAttribute("href", askFor(zip.href, "amounts", on));
   }
 
   function clearTerritories() {
@@ -294,6 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function keepPageAmounts() {
     const box = el("preview-amounts");
     if (box) box.checked = pageAmounts;
+    amountDownloads();
   }
 
   const words = (node) => node.textContent.replace(/\s+/g, " ").trim();
@@ -370,6 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
       pageAmounts = e.target.checked;
       if (pageAmounts) amounts();
       else clearAmounts();
+      amountDownloads();
       return;
     }
     if (e.target.id === "preview-territories") {
@@ -562,6 +591,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const result = reply && reply.querySelector(".resource-result");
     if (!result) return;
     slot.replaceChildren(...[...result.childNodes].map((node) => document.importNode(node, true)));
+    // The server holds this count now, so the planet's download can draw it.
+    const download = !slot.querySelector(".message") && pictureLink(planet) && pictureLink(planet).closest("li").querySelector("a.download");
+    if (download) download.toggleAttribute("data-counted", true);
+    amountDownloads();
+    if (at === places.large) largeDownload(planet);
     const overlay = reply.querySelector(".resources");
     const map = at.map(planet);
     if (overlay && map) writeLabels(map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
@@ -812,15 +846,27 @@ document.addEventListener("DOMContentLoaded", () => {
     el("large-frame").removeAttribute("data-missing");
     el("large-img").src = img.src;
     el("large-img").alt = img.alt;
-    el("large-download").href = download ? download.href : link.href;
-    const drawnIn = download && new URL(download.href).searchParams.has("territories");
-    el("large-download-name").textContent = strings[drawnIn ? "js.preview.download_territories" : "js.preview.download"].replace("{planet}", name);
+    largeDownload(planet);
     largeOverlay(link);
     el("large-download").hidden = false;
     // A bigger picture may allow more zoom, or a smaller one less.
     if (dialog.open) zoomTo(zoom);
     amounts();
     return true;
+  }
+
+  // The view's download is the page's, drawing in the amounts while the
+  // view's own box is ticked and they are held.
+  function largeDownload(planet) {
+    const link = pictureLink(planet);
+    if (!link) return;
+    const download = link.closest("li").querySelector("a.download");
+    const counted = Boolean(download && download.hasAttribute("data-counted"));
+    const href = askFor(download ? download.href : link.href, "amounts", ticked(places.large) && counted);
+    const q = new URL(href, location.href).searchParams;
+    const key = q.has("territories") ? (q.has("amounts") ? "js.preview.download_both" : "js.preview.download_territories") : q.has("amounts") ? "js.preview.download_amounts" : "js.preview.download";
+    el("large-download").setAttribute("href", href);
+    el("large-download-name").textContent = strings[key].replace("{planet}", nameOf(planet));
   }
 
   function step(by) {
@@ -959,6 +1005,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el("large-amounts").addEventListener("change", (e) => {
       if (e.target.checked) amounts();
       else clearAmounts();
+      largeDownload(viewing || firstPlanet());
     });
     dialog.addEventListener("close", () => {
       // Amounts on the page's picture stay; the view's own go with it.

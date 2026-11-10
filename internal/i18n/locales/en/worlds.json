@@ -421,13 +421,15 @@
   "worlds.generate.territories.no_vulcanus": "Only Space Age worlds have demolisher territories, on Vulcanus.",
   "worlds.generate.territories.invalid": "The settings have problems, so the demolisher territories were not found. Fix the problems the map preview lists.",
   "worlds.generate.territories.busy": "Another map preview is being made, so the demolisher territories were not found. Wait a few seconds, then try again.",
-  "worlds.generate.territories.draw_busy": "Other pictures with territories are being drawn right now. Wait a few seconds, then download again.",
+  "worlds.generate.territories.draw_busy": "Other pictures with labels are being drawn right now. Wait a few seconds, then download again.",
   "worlds.generate.territories.timeout": "Finding the demolisher territories took too long and was stopped. Try again, or choose a smaller preview size.",
   "worlds.generate.territories.oom": "The game ran out of memory finding the demolisher territories. Choose a smaller preview size.",
   "worlds.generate.territories.failed": "The game could not find the demolisher territories. The map preview and Generate still work. If it keeps failing, check Foreman's log.",
   "worlds.generate.territories.request_failed": "The request for the demolisher territories failed. Check that Foreman is reachable and that you are still signed in, then try again.",
   "worlds.generate.territories.retry": "Try again",
   "worlds.generate.territories.download": "Download {planet} with territories (PNG)",
+  "worlds.generate.resources.download": "Download {planet} with resource amounts (PNG)",
+  "worlds.generate.resources.download_both": "Download {planet} with territories and resource amounts (PNG)",
   "worlds.generate.territories.count.small": {
     "one": "{count} small",
     "other": "{count} small"

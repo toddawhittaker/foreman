@@ -2,6 +2,7 @@ package web
 
 import (
 	"archive/zip"
+	"bytes"
 	"cmp"
 	"context"
 	"crypto/sha256"
@@ -9,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image/png"
 	"maps"
 	"net/http"
 	"slices"
@@ -342,6 +344,9 @@ type PreviewPicture struct {
 	Planet string
 	Name   i18n.Msg
 	Path   string
+	// Counted is true when the preview holds the planet's resource amounts,
+	// so its download can draw them.
+	Counted bool
 }
 
 // Choice is true when the world has several planets, so the section offers
@@ -436,8 +441,9 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 		view.Token, err = s.drawPreview(w, r, u, req, key, f.Name, view.Seed)
 	}
 	if err == nil {
+		counted := s.previews.countedPlanets(u.ID, key)
 		for _, planet := range planets {
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
+			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet), Counted: slices.Contains(counted, planet)})
 		}
 	} else {
 		view.Token = ""
@@ -535,7 +541,7 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 		s.notFound(w, r, u)
 		return
 	}
-	png, have, err := territoryDownload(r, e, planet, png)
+	png, suffix, have, err := drawnDownload(r, e, planet, png)
 	switch {
 	case err != nil:
 		s.drawFailure(w, r, u, err)
@@ -544,7 +550,7 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 		s.notFound(w, r, u)
 		return
 	}
-	w.Header().Set("Content-Disposition", attachment(territoryFileName(r, planet, previewFileName(e.name, e.seed, planet))+".png"))
+	w.Header().Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, planet)+suffix+".png"))
 	writePNG(w, png)
 }
 
@@ -558,8 +564,9 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 	}
 	// Drawn before the reply starts, so a failure can still say so.
 	images := maps.Clone(e.images)
-	if png, have := images[territoryPlanet]; have {
-		drawn, have, err := territoryDownload(r, e, territoryPlanet, png)
+	suffixes := map[string]string{}
+	for _, planet := range e.planets {
+		drawn, suffix, have, err := drawnDownload(r, e, planet, images[planet])
 		switch {
 		case err != nil:
 			s.drawFailure(w, r, u, err)
@@ -568,7 +575,7 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 			s.notFound(w, r, u)
 			return
 		}
-		images[territoryPlanet] = drawn
+		images[planet], suffixes[planet] = drawn, suffix
 	}
 	h := w.Header()
 	h.Set("Content-Type", "application/zip")
@@ -578,7 +585,7 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 	zw := zip.NewWriter(w)
 	for _, planet := range e.planets {
 		// A PNG is compressed already.
-		fw, err := zw.CreateHeader(&zip.FileHeader{Name: territoryFileName(r, planet, previewFileName(e.name, e.seed, planet)) + ".png", Method: zip.Store})
+		fw, err := zw.CreateHeader(&zip.FileHeader{Name: previewFileName(e.name, e.seed, planet) + suffixes[planet] + ".png", Method: zip.Store})
 		if err != nil {
 			return
 		}
@@ -587,6 +594,39 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 		}
 	}
 	_ = zw.Close()
+}
+
+// drawnDownload is a planet's picture src with what the download asks for
+// drawn in (SPEC 5.6): Vulcanus's territories (territoriesQuery), and the
+// planet's resource amounts (amountsQuery) when the preview holds them; a
+// planet without held amounts is served plain, as nothing is counted for a
+// download. suffix names what was drawn, for the file's name. ok is false
+// when the territories are asked for and the preview has none.
+func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (out []byte, suffix string, ok bool, err error) {
+	q := r.URL.Query()
+	var ov territory.Overlay
+	if q.Get(territoriesQuery) == "1" && planet == territoryPlanet {
+		if e.territories == nil {
+			return nil, "", false, nil
+		}
+		ov, suffix = territory.Geometry(*e.territories, e.size), "-territories"
+	}
+	loc := localeOf(r)
+	if q.Get(amountsQuery) == "1" {
+		cfg, err := png.DecodeConfig(bytes.NewReader(src))
+		if err != nil {
+			return nil, "", false, err
+		}
+		caps, held := amountCaptions(loc, e, planet, cfg.Width)
+		if held {
+			ov.Size, ov.Captions, suffix = cfg.Width, caps, suffix+"-amounts"
+		}
+	}
+	if suffix == "" {
+		return src, "", true, nil
+	}
+	out, err = drawPNG(r.Context(), src, ov, func(size string) string { return territory.Label(loc, size) })
+	return out, suffix, true, err
 }
 
 func writePNG(w http.ResponseWriter, png []byte) {
