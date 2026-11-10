@@ -3,6 +3,8 @@ package web
 import (
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -195,13 +197,47 @@ func TestPlanVersionListShape(t *testing.T) {
       <legend>Versions</legend>`, `id="mod-ver-d-version"`, `id="mod-ver-e-version"`)
 }
 
-// The portal status takes Change version away from a mod the portal does
-// not have, as it does the name's link.
-func TestStatusHidesChangeVersion(t *testing.T) {
+// SPEC 9.3: Change version stays only for a mod the portal has another
+// release of on the world's line, on or off. The status takes it away from
+// a mod with no other release, one with others only for another line, and
+// one the portal lacks; a folder mod never has it.
+func TestStatusKeepsChangeVersionOnlyWithAnotherRelease(t *testing.T) {
 	g := newModsRig(t, true)
-	id := g.world20("Base", "zz-not-on-portal_1.0.0")
+	g.portal.AddZip("ver-two", "1.0.0")
+	g.portal.AddZip("ver-two", "1.1.0")
+	g.portal.AddZip("ver-off", "1.0.0")
+	g.portal.AddZip("ver-off", "2.0.0")
+	g.portal.AddZip("ver-solo", "1.0.0")
+	g.portal.AddZip("ver-line", "1.0.0")
+	g.portal.AddZipFor("1.1", "ver-line", "0.9.0")
+	id := g.world20("Base", "ver-two_1.1.0", "ver-off_2.0.0", "ver-solo_1.0.0", "ver-line_1.0.0", "zz-not-on-portal_1.0.0")
+	list := `{"mods":[{"name":"base","enabled":true},{"name":"ver-off","enabled":false}]}`
+	if err := os.WriteFile(filepath.Join(g.modsDir(id), "mod-list.json"), []byte(list), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(g.modsDir(id), "folder-mod"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	gone := func(name string) string {
+		return `<span id="` + slotID("version", name) + `" hidden hx-swap-oob="true"></span>`
+	}
+	_, tab := g.getStatus(modsPath(id))
+	if strings.Contains(tab, slotID("version", "folder-mod")) {
+		t.Error("a folder mod has Change version")
+	}
 	_, body := g.getStatus(modsPath(id) + "/status")
-	wantIn(t, "status", body, `<span id="`+slotID("version", "zz-not-on-portal")+`" hidden hx-swap-oob="true"></span>`)
+	wantIn(t, "status", body, gone("ver-solo"), gone("ver-line"), gone("zz-not-on-portal"))
+	for _, kept := range []string{"ver-two", "ver-off"} {
+		if strings.Contains(body, gone(kept)) {
+			t.Errorf("the status takes Change version from %s, which has another release", kept)
+		}
+	}
+
+	// A portal that cannot be reached lists no release, so none is offered.
+	g.portal.FailAPI(http.StatusInternalServerError)
+	other := g.world20("Other", "ver-x_1.0.0")
+	_, body = g.getStatus(modsPath(other) + "/status")
+	wantIn(t, "portal down", body, "could not reach the mod portal", gone("ver-x"))
 }
 
 // An asked mod kept at its version is left out of Kept only when its

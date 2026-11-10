@@ -3,6 +3,7 @@ package mods
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -424,5 +425,32 @@ func TestSaveDropsOfARunningWorldCountEnabledMods(t *testing.T) {
 	}
 	if !slices.Equal(got, []string{"visible-planets"}) {
 		t.Errorf("running world drops %v, want visible-planets", got)
+	}
+}
+
+// SPEC 9.3: Change version has something to choose only when the portal
+// has a release of the mod on the world's line other than the installed one.
+func TestChangeableNeedsAnotherReleaseOnTheWorldsLine(t *testing.T) {
+	f := newFixture(t, "alpha_1.1.0", "solo_1.0.0", "other-line_1.0.0", "zz-not-on-portal_1.0.0")
+	f.portal.AddZip("alpha", "1.0.0")
+	f.portal.AddZip("alpha", "1.1.0")
+	f.portal.AddZip("solo", "1.0.0")
+	f.portal.AddZip("other-line", "1.0.0")
+	f.portal.AddZipFor("1.1", "other-line", "0.9.0")
+	got, err := f.planner.Changeable(context.Background(), f.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]bool{"alpha": true}; !maps.Equal(got, want) {
+		t.Fatalf("changeable %v, want %v", got, want)
+	}
+}
+
+// A portal failure is an error, never "nothing to change".
+func TestChangeableReportsAPortalFailure(t *testing.T) {
+	f := newFixture(t, "alpha_1.1.0")
+	f.portal.FailAPI(500)
+	if _, err := f.planner.Changeable(context.Background(), f.id); err == nil {
+		t.Fatal("no error with the portal down")
 	}
 }

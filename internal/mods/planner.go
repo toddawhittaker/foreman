@@ -247,6 +247,42 @@ func (p *Planner) Updates(ctx context.Context, worldID string) ([]Update, error)
 	return out, nil
 }
 
+// Changeable names the portal mods, on or off, that the portal has a
+// release of on the world's game line other than the installed one: the
+// mods Change version has a choice for (SPEC 9.3). As in Updates, a mod the
+// portal lacks has none, any other portal failure is returned, and a world
+// briefly missing or busy has none.
+func (p *Planner) Changeable(ctx context.Context, worldID string) (map[string]bool, error) {
+	w, err := p.world(ctx, worldID)
+	if worldAway(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	line := GameLine(w.GameVersion)
+	var mods []world.InstalledMod
+	for _, m := range w.Mods {
+		if !m.BuiltIn && !m.Local {
+			mods = append(mods, m)
+		}
+	}
+	results, err := p.fetch(ctx, mods)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, m := range mods {
+		for _, rel := range results[m.Name].Mod.Releases {
+			if rel.FactorioVersion == line && rel.Version != m.Version {
+				out[m.Name] = true
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
 // checkable is the enabled mods that are neither built in nor folders.
 func checkable(installed []world.InstalledMod) []world.InstalledMod {
 	var out []world.InstalledMod

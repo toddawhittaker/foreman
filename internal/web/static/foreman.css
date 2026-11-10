@@ -2983,7 +2983,7 @@ form:has(#mode-exchange:checked) .achievements {
 
 /* Two columns (DESIGN 8.11): a mod, and its actions in one fixed order,
    lined up on the end so Disable and Remove sit in the same place in every
-   row whether or not an Update comes before them. */
+   row whether or not Update or Change version come before them. */
 .mod-list {
   max-inline-size: var(--measure);
 }
@@ -3019,16 +3019,29 @@ a.mod-name {
   min-block-size: var(--target-min);
 }
 
-.mod-actions {
-  flex-wrap: nowrap;
+/* Two groups, each kept on its own line while it fits: what the portal
+   offers (Update, Change version), then Disable and Remove. When the column
+   is too narrow for both, the portal's group goes above, so Remove never
+   ends up alone and Disable keeps its place (DESIGN 8.11). */
+.mod-actions,
+.mod-actions__portal,
+.mod-actions__fixed {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--space-2);
   margin-block-start: 0;
 }
 
-/* Change version sits in the name's line, so it lines up with the name when
-   that line wraps; the line's gap already spaces it (SPEC 9.3). */
-.mod-line .mod-version {
-  padding-inline: 0;
+/* Empty until the status fills it, and empty again for a mod with nothing
+   to offer, so it takes no gap. */
+.mod-actions__portal:not(:has(a)) {
+  display: none;
+}
+
+/* A folder mod has no Remove; its room keeps Disable under the others'. */
+.mod-remove-room {
+  visibility: hidden;
 }
 
 /* Remove is the one red control: it is the change that destroys something. */
@@ -3060,7 +3073,8 @@ a.mod-name {
 
 /* On a phone the actions drop under the name in the same row, so the name
    keeps the panel's width (SPEC 17.12: the table roles stay). Above this
-   the actions stay on one line, which leaves a name at least 15rem. */
+   the actions sit beside the name, their groups one above the other when
+   the column is too narrow for both. */
 @container (max-width: 36rem) {
   .mod-list tr,
   .mod-list td {
@@ -3087,14 +3101,21 @@ a.mod-name {
     text-align: start;
   }
 
-  .mod-actions {
-    flex-wrap: wrap;
+  .mod-actions,
+  .mod-actions__portal,
+  .mod-actions__fixed {
     justify-content: flex-start;
   }
 
-  /* Tighter buttons, so Update, Disable and Remove share a 320 px line. */
+  /* Tighter buttons, so each group keeps one line at 320 px, and a row
+     with no update keeps Change version, Disable and Remove on one. The
+     quiet ones keep a 44 px height and the gap between them. */
   .mod-actions .button:not(.button--quiet) {
     padding-inline: var(--space-3);
+  }
+
+  .mod-actions .button--quiet {
+    padding-inline: var(--space-1);
   }
 }
 

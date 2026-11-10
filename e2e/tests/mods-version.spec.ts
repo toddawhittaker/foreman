@@ -102,7 +102,10 @@ test("Change version goes back after a bad update, with a snapshot first", async
   const table = page.getByRole("table", { name: /Mods of Base/ });
   const row = table.getByRole("row", { name: /fp-back/ });
   await expect(table.getByRole("row", { name: new RegExp(long) }).getByRole("link", { name: "Update to 1.10.0" })).toBeVisible(live);
-  await expect(table.getByRole("row", { name: new RegExp(long) }).getByRole("link", { name: "Change version " + long, exact: true })).toBeVisible();
+  const longRow = table.getByRole("row", { name: new RegExp(long) });
+  await expect(longRow.getByRole("link", { name: "Change version " + long, exact: true })).toBeVisible();
+  // It is one of the row's actions, after Update and before Disable (DESIGN 8.11).
+  await expect(longRow.locator(".mod-actions a")).toHaveText([`Update to 1.10.0 ${long}`, `Change version ${long}`, `Disable ${long}`, `Remove ${long}`]);
   await checkPage(page);
   await shot(page, "mods-version-tab");
   await row.getByRole("link", { name: "Change version fp-back", exact: true }).click();
@@ -162,6 +165,28 @@ test("focus moves to the mod's name when the status hides Change version", async
   await checkPage(page);
 });
 
+// SPEC 9.3: a mod the portal has at one release only has nothing to change
+// to, so the status takes Change version away; focus on it moves to the
+// mod's name, which is still its portal link.
+test("Change version goes from a mod with no other release, and focus moves to its name", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-solo", "1.0.0", ["base >= 2.0"]);
+  await fakePortal!.add("fp-solo", "0.9.0", ["base >= 2.1"], "2.1");
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-solo": { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  await page.route("**/mods/status", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/worlds/base/mods");
+  const change = page.getByRole("link", { name: "Change version fp-solo", exact: true });
+  await change.focus();
+  release();
+  await expect(change).toHaveCount(0, live);
+  await expect(page.getByRole("link", { name: "fp-solo on the mod portal, opens in a new tab" })).toBeFocused();
+  await checkPage(page);
+});
+
 // The move to the name is only for the Change version slot. Another slot in
 // the row, here the note, is swapped with focus inside it; focus is left to htmx.
 test("a swap of another slot does not move focus to the mod's name", async ({ page, foreman, fakeGame }) => {
@@ -185,4 +210,26 @@ test("a swap of another slot does not move focus to the mod's name", async ({ pa
   await page.waitForTimeout(200);
   const onName = await page.evaluate(() => !!document.activeElement?.closest(".mod-name"));
   expect(onName).toBe(false);
+});
+
+// SPEC 17: at 320 px and 200% text a row with every action keeps each one
+// inside its panel, and the page does not scroll sideways.
+test("a row with every action fits at large text", async ({ page, foreman, fakeGame, fakePortal }) => {
+  const long = "fp-a-rather-long-mod-name-for-the-row";
+  await fakePortal!.add(long, "1.0.0", ["base >= 2.0"]);
+  await fakePortal!.add(long, "1.10.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { [long]: { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  await page.goto("/worlds/base/mods");
+  await page.addStyleTag({ content: "html { font-size: 200% }" });
+  const row = page.getByRole("row", { name: new RegExp(long) });
+  await expect(row.getByRole("link", { name: "Update to 1.10.0 " + long })).toBeVisible(live);
+  const panel = (await page.locator("section.panel").filter({ has: row }).boundingBox())!;
+  for (const name of ["Update to 1.10.0 ", "Change version ", "Disable ", "Remove "]) {
+    const b = (await row.getByRole("link", { name: name + long, exact: true }).boundingBox())!;
+    expect(b.x).toBeGreaterThanOrEqual(panel.x - 0.5);
+    expect(b.x + b.width).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await checkPage(page);
+  await page.screenshot({ path: `../screenshots/mods-version-large-text-${test.info().project.name}.png`, fullPage: true });
 });

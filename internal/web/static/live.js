@@ -135,16 +135,17 @@
     if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
 
-  // The Mods tab's status takes Change version away from a mod the portal
-  // lacks. When that link had focus, focus goes to the mod's name in the
-  // same row instead of the top of the page.
+  // The Mods tab's status takes Change version away unless the portal has
+  // another release (SPEC 9.3). When that link had focus, focus goes to the
+  // mod's name in the same row instead of the top of the page: its portal
+  // link, or the plain name the status leaves for a mod the portal lacks.
   document.addEventListener("htmx:oobBeforeSwap", (e) => {
     const old = e.detail.target;
     // Only a row's version slot (VersionSlot in mods.go); htmx keeps focus for other swaps.
     if (!old.id.startsWith("mod-version-") || !old.contains(document.activeElement)) return;
     const row = old.closest("tr");
     setTimeout(() => {
-      if (row && document.activeElement === document.body) row.querySelector("span.mod-name[tabindex]")?.focus();
+      if (row && document.activeElement === document.body) row.querySelector("a.mod-name, span.mod-name[tabindex]")?.focus();
     });
   });
 

@@ -201,7 +201,7 @@ func (p ModsPage) VersionPath(m world.InstalledMod) string {
 }
 
 // VersionSlot is the id of a row's Change version, which the portal status
-// takes away for a mod the portal does not have.
+// takes away unless the portal has another release on the world's line.
 func (ModsPage) VersionSlot(name string) string { return slotID("version", name) }
 
 // UpdateSlot is the id of a row's place for its Update button, which the
@@ -386,6 +386,10 @@ type ModStatus struct {
 	Flags       []mods.Flag
 	// Current counts the mods the portal has at their installed version.
 	Current int
+	// NoVersion names the portal mods whose Change version goes: the
+	// portal lists no other release of them on the world's line, or cannot
+	// be reached (SPEC 9.3).
+	NoVersion []string
 }
 
 func (ModStatus) templateName() string { return "mods" }
@@ -501,16 +505,22 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	st := ModStatus{World: sum}
+	var changeable map[string]bool
 	var err error
 	if st.Updates, err = s.planner.Updates(r.Context(), sum.ID); err == nil {
-		st.Flags, err = s.planner.Availability(r.Context(), sum.ID)
+		if st.Flags, err = s.planner.Availability(r.Context(), sum.ID); err == nil {
+			changeable, err = s.planner.Changeable(r.Context(), sum.ID)
+		}
 	}
 	if err != nil {
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
-		st = ModStatus{World: sum, Unreachable: true}
+		st, changeable = ModStatus{World: sum, Unreachable: true}, nil
 	}
-	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil && !st.Unreachable {
-		st.Current = currentCount(list, st.Flags)
+	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil {
+		if !st.Unreachable {
+			st.Current = currentCount(list, st.Flags)
+		}
+		st.NoVersion = noVersion(list, changeable)
 	}
 	s.fragment(w, r, st, "mod-status")
 }
@@ -531,6 +541,17 @@ func currentCount(list []world.InstalledMod, flags []mods.Flag) int {
 		}
 	}
 	return n
+}
+
+// noVersion names the table's portal mods that are not changeable.
+func noVersion(list []world.InstalledMod, changeable map[string]bool) []string {
+	var out []string
+	for _, m := range list {
+		if !m.BuiltIn && !m.Local && !changeable[m.Name] {
+			out = append(out, m.Name)
+		}
+	}
+	return out
 }
 
 // portalTrouble logs a portal failure: an unreachable portal is the
