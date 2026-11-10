@@ -466,14 +466,20 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [320, 640]]) {
   });
 }
 
-// SPEC 5.6: Enter in a text or decimal field of the settings beside the large
-// map does nothing; the value still commits as on change. Enter in a field of
+// SPEC 5.6: Enter in a field of the settings beside the large map does
+// nothing; the value commits when the field is left, once. Enter in a field of
 // the main form outside the large view still generates the world, and Enter on
 // a button in the view still presses it.
 test.describe("Enter in the large view's settings", () => {
   test.beforeEach(({ page }) => test.skip((page.viewportSize()?.width ?? 0) < 1240, "the settings show beside the map only where both fit"));
 
-  const worlds = (foreman: { dataDir: string }) => readdirSync(join(foreman.dataDir, "worlds")).sort();
+  const worlds = (foreman: { dataDir: string }) => {
+    try {
+      return readdirSync(join(foreman.dataDir, "worlds")).sort();
+    } catch {
+      return [];
+    }
+  };
 
   // The large view holds only sliders and selects today. A text field there
   // is the form's own decimal field moved in, as preview.js moves a planet's
@@ -510,7 +516,27 @@ test.describe("Enter in the large view's settings", () => {
     await expect(dialog(page)).toBeVisible();
     await expect(decimal).toBeFocused();
     await expect(decimal).toHaveValue("1.5");
+    expect(await page.evaluate(() => (window as unknown as { changes: string[] }).changes)).toEqual([]);
+    await decimal.blur();
     expect(await page.evaluate(() => (window as unknown as { changes: string[] }).changes)).toEqual(["1.5"]);
+    expect(posts).toEqual([]);
+    expect(worlds(foreman)).toEqual(before);
+  });
+
+  test("does not create the world from a slider, a box or a list there", async ({ page, foreman }) => {
+    await openLarge(page);
+    const before = worlds(foreman);
+    const posts: string[] = [];
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/generate")) posts.push(r.url()); });
+    // Each kind of control shown there: the sliders stand in for most lists.
+    for (const kind of ['input[type="range"]', 'input[type="checkbox"]', "select"]) {
+      const control = page.locator(`#large-settings ${kind}`).filter({ visible: true }).first();
+      if (kind === 'input[type="range"]') await expect(control).toBeVisible();
+      if (await control.count()) await control.press("Enter");
+    }
+    await page.waitForTimeout(800);
+    await expect(page).toHaveURL("/generate");
+    await expect(dialog(page)).toBeVisible();
     expect(posts).toEqual([]);
     expect(worlds(foreman)).toEqual(before);
   });
