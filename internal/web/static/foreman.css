@@ -1453,6 +1453,23 @@ td > .hint {
   min-inline-size: 0;
 }
 
+/* On a phone the Load next button takes a line under its row, because four
+   columns do not fit 320 px in the longer languages. Every row, the header
+   included, shares fixed column widths so the size and time still line up; a
+   long time wraps in its column. Below 14rem the general rule that stacks
+   every cell takes over. */
+@container (min-width: 14rem) and (max-width: 24rem) {
+  .save-list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 4.5rem 6rem;
+    align-items: center;
+  }
+
+  .save-list td:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* On a phone the size and time take smaller text, as in the snapshot tables,
    so the name column keeps room. */
 @container (max-width: 24rem) {

@@ -472,7 +472,7 @@ func TestSavesButtonsHaveTheirOwnColumn(t *testing.T) {
 	c := hn.signIn()
 	id, _ := savesWorld(t, hn)
 	body := hn.get("/worlds/"+id+"/saves", withCookie(c)).Body.String()
-	wantIn(t, "header", body, `<span class="visually-hidden">Load next</span></th></tr>`)
+	wantIn(t, "header", body, `<th scope="col" class="visually-hidden" role="columnheader">Load next</th></tr>`)
 	row := saveRow(t, body, "old.zip")
 	nameCell := row[:strings.Index(row, "</td>")]
 	if strings.Contains(nameCell, "<button") {

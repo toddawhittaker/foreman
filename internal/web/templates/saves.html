@@ -39,7 +39,7 @@
   <table class="save-list" role="table">
     <caption>{{t "worlds.saves.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
-      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th>{{if not .Newer}}<th scope="col" role="columnheader"><span class="visually-hidden">{{t "worlds.saves.load_next"}}</span></th>{{end}}</tr>
+      <tr role="row"><th scope="col" role="columnheader">{{t "worlds.saves.col.name"}}</th><th scope="col" class="num" role="columnheader">{{t "worlds.col.size"}}</th><th scope="col" role="columnheader">{{t "worlds.saves.col.saved"}}</th>{{if not .Newer}}<th scope="col" class="visually-hidden" role="columnheader">{{t "worlds.saves.load_next"}}</th>{{end}}</tr>
     </thead>
     <tbody role="rowgroup">
       {{- range .Rows}}
