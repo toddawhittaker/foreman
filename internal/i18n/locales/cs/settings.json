@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "Pořídí automatický snímek světa {world}. Pokud se snímek nezdaří, nic dalšího se nestane.",
   "settings.preview.step_write": "Zapíše {file}.",
   "settings.preview.step_admins_live": "Povýší a degraduje tyto hráče v běžící hře; hra aktualizuje {file}.",
-  "settings.preview.undo": "Pro vrácení je třeba obnovit tento snímek. Zpráva po uložení na něj odkazuje.",
+  "settings.preview.undo": "Pro vrácení je třeba obnovit tento snímek na stránce Snímky; zpráva po uložení na něj odkazuje.",
   "settings.preview.save": "Uložit nastavení",
   "settings.preview.back": "Vrátit se a upravit",
   "settings.rail.label": "Části nastavení"

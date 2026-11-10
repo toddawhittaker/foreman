@@ -60,7 +60,7 @@ test("change a setting from the Server page in three clicks, and the password ne
   await expect(rows.filter({ hasText: "max_players" }).locator("ins")).toHaveText("8");
   await expect(rows.filter({ hasText: "description" }).locator("ins")).toHaveText('"Come play\\nBring snacks"');
   await expect(page.getByText("Take an automatic snapshot of Base")).toBeVisible();
-  await expect(page.getByText("To undo, restore that snapshot. The message after saving links to it.")).toBeVisible();
+  await expect(page.getByText("To undo, restore that snapshot from the Snapshots page; the message after saving links to it.")).toBeVisible();
   expect(read(foreman.dataDir)).not.toContain("max_players");
   await expectNoSecret(page);
   await checkPage(page);

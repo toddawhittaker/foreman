@@ -144,6 +144,18 @@
     if (target?.id !== "mods-notice") return;
     const next = document.createElement("template");
     next.innerHTML = e.detail.serverResponse;
-    if (next.innerHTML === target.innerHTML) e.detail.shouldSwap = false;
+    if (next.innerHTML === target.innerHTML) {
+      e.detail.shouldSwap = false;
+      return;
+    }
+    // The notice drops its button when the refusal on the page carries the
+    // same fix; focus that had the button goes to the refusal's.
+    target.dataset.hadFocus = target.contains(document.activeElement) ? "1" : "";
+  });
+  document.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail.target;
+    if (target?.id !== "mods-notice" || !target.dataset.hadFocus) return;
+    delete target.dataset.hadFocus;
+    if (!target.contains(document.activeElement)) document.getElementById("act-fix")?.focus();
   });
 })();

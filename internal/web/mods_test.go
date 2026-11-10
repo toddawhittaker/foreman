@@ -995,3 +995,19 @@ func TestServerModNoticeDropsItsButtonForTheRefusalsFix(t *testing.T) {
 	}
 	wantIn(t, "notice after a refusal", plain(frag), "beta 1.0.0 is gone from the mod portal, so players cannot join.")
 }
+
+// SPEC 9.3: the Mods tab counts the mods the portal has at their installed
+// version from the list the status read; a status that read nothing, as when
+// the world is briefly away, has no count.
+func TestModStatusCountsCurrentMods(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base", "alpha_1.0.0")
+	code, frag := g.getStatus(modsPath(id) + "/status")
+	if code != http.StatusOK || !strings.Contains(frag, "up to date") {
+		t.Fatalf("got %d\n%s", code, frag)
+	}
+	if n := currentCount(nil, nil); n != 0 {
+		t.Errorf("a status that read nothing counts %d, want 0", n)
+	}
+}
