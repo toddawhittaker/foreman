@@ -50,7 +50,8 @@ commit-msg hook also runs (see "Secret scanning").
 
 CI runs on GitHub-hosted `ubuntu-24.04` runners, so the job's operating
 system changes only when we change it. A push to a pull request cancels
-that pull request's older run, and each job stops after 15 minutes.
+that pull request's older run. Each job has a time limit: 25 minutes for
+the `verify` checks and 15 or fewer for the rest.
 
 The repository is public. CI runs whatever code a pull request brings,
 so a pull request from anyone outside the repository waits for a
@@ -87,7 +88,13 @@ The targets (STACK.md, section 13):
   golangci-lint, the unit tests with the race detector and the 70%
   coverage floor across `internal/`, and a type check of `e2e/`. Run it
   before every commit.
-- `make test`: the unit tests and the coverage floor alone.
+- `make test`: the unit tests and the coverage floor alone. Locally it
+  runs the web, game and world packages' tests as small batches on
+  `TEST_SHARDS` worker processes (default: one per CPU, limited by available
+  memory at 1.5 GiB each; `TEST_SHARDS=1` runs one process). `make
+  test-shards` shows the count without testing.
+  Under `CI` the default is one process, but the CI workflow passes
+  `TEST_SHARDS=auto`, so CI uses the same pool.
 - `make lint` and `make fmt`: check or rewrite formatting, and lint.
 - `make build`: the static binary at `bin/foreman`.
 - `make run`: serve locally on port 8080, with data in `.dev-data/`. It

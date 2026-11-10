@@ -208,7 +208,9 @@ Rejected:
 Cheap to change.
 
 - **Unit tests**: `go test -race`, with no assertion library. One test
-  renders every template.
+  renders every template. Local runs queue small batches of tests from
+  `internal/web`, `internal/game` and `internal/world` for several worker
+  processes, and so does CI.
 - **End-to-end tests**: Playwright Test in TypeScript, with
   `@axe-core/playwright` for the accessibility scan SPEC 17.1 requires,
   run at desktop width and at 320 px. They run inside the pinned
@@ -241,7 +243,7 @@ Cheap to change.
 - **In CI**: parallel jobs that together are `make ci`, with `make
   verify` split into `vet`, `lint` and `test` so its slow parts do not
   wait on each other, since they grow with the code. The end-to-end tests
-  run as four shards (`make e2e SHARD=1/4` and so on; an empty `SHARD`
+  run as eight shards (`make e2e SHARD=1/8` and so on; an empty `SHARD`
   runs them all). Go modules and build output, the lint and npm
   caches, and the image's build layers are cached between runs. Each job
   gets a fresh runner, so nothing needs cleaning up afterwards.
@@ -294,9 +296,10 @@ Rejected:
 
 | Target | What it does |
 |---|---|
-| `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. The Stop hook and the merge gate run it. |
+| `make verify` | `check-go`, the format check, `go vet`, golangci-lint, `make test`, and a type check of the end-to-end tests. Fast. `make test` runs the slow packages' tests as batches on several processes, locally and in CI. The Stop hook and the merge gate run it. |
 | `make check-go` | Fails when the local Go, or the Go in the build image, differs from `GO_VERSION` (ADR 0001). |
-| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. `TEST_TIMEOUT` (default 30m) is the time limit, because the web package takes about 11 minutes under `-race` on a loaded machine. |
+| `make test` | Unit tests with `-race`. Fails when statement coverage across `internal/` is below 70%. `TEST_TIMEOUT` (default 30m) is the time limit, because the web package takes about 11 minutes under `-race` on a loaded machine in one process. `TEST_SHARDS` is how many worker processes run tests at once. The default, `auto`, is one per CPU, limited to the memory available at 1.5 GiB per process, because a race-enabled process uses about 1.3 GiB and agents sharing a machine run under a cgroup limit past which the kernel throttles allocations. The memory available is the smallest of `MemAvailable` and each cgroup v2 level's limit (`memory.high`, or `memory.max`) minus its `memory.current`. A number sets the count outright. When `CI` is set and nothing else sets it, the default is 1, the plain `go test ./...`; the CI workflow passes `TEST_SHARDS=auto` to use the pool. `make test` prints the count it chose. With more than one, the test binaries of `internal/web`, `internal/game` and `internal/world` (`POOL_PKGS`) are built once, and their tests are cut, in listed order, into batches of `TEST_BATCH` tests (default 8; small batches balance the workers better, large ones pay the per-process start-up cost less often). The batches form one queue, interleaved package by package so the long tests start early, and the workers take them one at a time, each batch in its own process. The other packages run beside them, and every process writes coverage to its own folder, merged before the floor check. The report has one line per pooled package with its slowest batch. A failing batch's output is printed in full. |
+| `make test-shards` | Prints how many worker processes `make test` would use and why, without running any tests. |
 | `make lint` | golangci-lint, in its pinned image. |
 | `make fmt-check` | Fails when a Go file is not formatted. This is the only place format is checked. |
 | `make fmt` | Rewrite formatting. |

@@ -483,12 +483,27 @@ not) or a map exchange string, with Space Age on or off. (P0)
   preset with a note, and nothing is made. "Random seed" fills a seed from
   0 to 4294967295 in the browser. A blank seed is filled with a random one
   that the form keeps, so the world matches the preview.
-- **Leaving with unsaved settings** asks the browser's own leave-page
-  question. Once a redraw of the form (a version, Space Age, preset or
+- **Leaving with unsaved settings** asks. A plain click on a link of the
+  page, or the submit of a form other than Generate's (language, Sign
+  out), opens Foreman's own dialog, a modal `dialog` (17.15) that names
+  what is lost and offers "Stay on this page" and "Leave without saving".
+  Stay or Escape closes it and puts focus back on what was used. Reload,
+  closing the tab, the address bar and Back still get the browser's own
+  leave-page question (`beforeunload`), which stays quiet once Leave was
+  chosen; a link opened with a modifier key, a download, a link with a
+  target, a same-page `#` link and the picture links that open the large
+  view are not caught. Once a redraw of the form (a version, Space Age, preset or
   reset change, or Preview map's seed) has replaced fields that held
   unsaved edits, the page counts as unsaved until it is left or the world
   is made, even if the edits are later changed back, because asking once
   too often is safer than losing settings silently.
+- **Steps as sliders.** Where a step setting shows as a slider (DESIGN
+  8.7), its default step ("100%", or "0" for a bias) sits at the middle of
+  the track, however many steps lie either side, so equal moves from the
+  middle mean equal changes of kind. A click takes the nearest step; a key
+  press or a screen reader's increment always moves one step. A setting
+  with no default step, or a default at an end, uses the plain track. The
+  select and the values sent do not change.
 - **What is written** (ADR 0010). An unchanged preset is passed to
   `--preset`, with the seed in `--map-gen-seed`, and no file is written.
   Any change writes both files complete and passes no `--preset`, because
@@ -674,6 +689,53 @@ not) or a map exchange string, with Space Age on or off. (P0)
     into Vulcanus's PNG, and into Vulcanus's file in the zip, named with
     `-territories`; the overlay PNG is drawn per request, one at a time,
     and not stored.
+  - **Resource amounts** (every planet). A "Show resource amounts" box in
+    the large view's bar, off when the page loads and kept while the page
+    lives. It is a view, not a setting: it has no name and is never sent
+    with the form. Foreman counts the resources of one planet at a time, in
+    the real map, only after that planet's picture is shown (`POST
+    /generate/preview/resources`, the form and a `planet` that must be one
+    of the world's planets, or the request is refused and no game runs),
+    in a one-off container (14.3, ADR 0015), and holds each planet's count
+    with the preview. A new draw, a change of settings, another planet,
+    unticking or closing drops the request on its way, and a change of
+    settings takes the labels away at once. The large view labels each
+    patch with its amount in the page language's short form (compact
+    number notation, such as "1.2M"), in the territory labels' look, and
+    places them largest first so that none overlap another label, a
+    demolisher label or the pin; zooming in shows more. A collapsed text
+    list gives every patch, by resource, for keyboard and screen-reader
+    users (17.15).
+    - **Patches.** Ores of one resource are one patch where their tiles
+      are within 2 tiles of each other (a gap of one tile joins them: at
+      a gap of 0 Fulgora's scrap broke into 3,301 patches, 2,743 of them
+      under 10 entities). Wells are the resources whose mineable product is
+      a fluid (crude oil, sulfuric acid, fluorine, lithium brine), and wells
+      of one resource within 24 tiles are one patch, because 12 tiles split
+      real fields. A well shows its **yield**, 100 × the patch's summed
+      amount ÷ the resource's normal amount, when the game says the
+      resource is infinite (crude oil, sulfuric acid, fluorine); lithium
+      brine is finite and shows an amount. The label tile is a tile of the
+      patch, and the position in the list is in tiles from where players
+      start, as (x, y).
+    - **Bounds.** Amounts cover the picture only, so a patch cut by its
+      edge counts the part inside, and the page says so. Nothing is drawn
+      into the PNG download, the zip or the thumbnail. The preview never
+      loads the world's mods (ADR 0011), so only the base game's and Space
+      Age's resources appear.
+    - **Cost, measured** with seed 123456 at default settings, at 3072 tiles
+      (the most offered), on every planet, on 1.1.110, 2.0.77 and 2.1.24: at
+      most 757 MiB and 33 s (Gleba on 2.1.24), against the 1 GiB and 60 s
+      limits (14.3), so no size is held back. Nauvis with resource
+      frequency and size at 600% runs out of memory in the game itself on
+      2.x (generating alone peaks at 825 MiB), and fails safe with the
+      out-of-memory message and "choose a smaller preview size"; 1.1 fits
+      it.
+    - **While it runs and after.** A visible line and an indeterminate bar
+      say that counting can take up to a minute. Busy, timeout, out of
+      memory, missing image, failed and invalid settings each have their own
+      sentence beside the box, with Try again where a retry can work; the
+      picture and Generate are not affected.
   - One preview runs at a time across Foreman; a request waits up to 20
     seconds for its turn (14.3). Each user has one current preview, keyed
     by its settings, with a picture per planet; asking again for a planet
@@ -1701,6 +1763,15 @@ the container has no network, the image has no RCON client, and exec is
 forbidden above. A control-only mod adds no prototypes, so the map is the
 same as the picture's.
 
+Resource amounts (5.6) use a third kind, `foreman-resources-<folder>`, in
+the same way: the same label, endpoints, host settings, limits, slot and
+cleanup, and a small mod with only a control script (it shares the code
+that writes and reads such a mod with the territory run). The script
+counts one planet, taken only from the world's own planet list and never
+from user text, and writes the patches as JSON; Foreman reads that file
+through the work folder and checks every entry under the limits in 14.6.
+No new Docker endpoint is used.
+
 To share a network with the game (4.4), Foreman reads its own container
 with `GET /containers/{id}/json`, which gives the networks it is on and
 their address ranges. It names the game network in the
@@ -1732,9 +1803,20 @@ or map-gen JSON text, including the raw editors' and the files written to a
 world's `config/`, is at most 1 MB and must be one JSON object (11.2). A
 map preview picture is at most 16 MiB: at 4096 tiles Gleba measured 8.8
 MB and Vulcanus 8.5 MB, over the old 8 MB cap, and every other planet
-under 6 MB. Previews stop at 3072 tiles, so the cap has headroom. Foreman reads the game's output (pictures and the territory
-file) only from regular files, so a named pipe left by the game cannot
-hang the read. Drawing territories into a download runs one at a time,
+under 6 MB. Previews stop at 3072 tiles, so the cap has headroom. Foreman reads the game's output (pictures, the territory file and the
+resource file) only from regular files, so a named pipe left by the game cannot
+hang the read. The resource file (5.6) is at most 512 KiB, 5,000 patches and 64
+resources, against a measured most of 98 KB, 1,113 patches and 6
+resources. Every number is a whole number from 0 to 2^53 (a string is
+refused, and a number written with more than 32 bytes is refused before it
+is read), names match `^[a-z0-9_-]{1,64}$`, unknown fields are refused,
+every box lies inside the picture and its label tile inside the box, each
+patch's resource is listed, a resource's `infinite` flag agrees with its
+normal amount, and the patch amounts add up to the resource's total. Each
+resource carries its map colour as three whole 0 to 255 values, as the game
+reads them; the real-game test uses it to check that a label tile lies on
+that colour in the preview picture (5.6). An error names counts, never
+text from the file. Drawing territories into a download runs one at a time,
 with at most 4 waiting; one more is refused with "busy". A mod zip that
 lists more than 10,000 entries is left unread: the entries are counted from
 the zip's end record before its directory is built, so a crafted zip costs
@@ -1972,6 +2054,27 @@ under `(hover: none)`. On a zoomed picture a tap centres the spot tapped,
 so panning never needs a drag (WCAG 2.5.7). The tip buttons and the
 viewer's controls are 24 px targets, and 44 px on touch screens
 (`pointer: coarse`). (P1)
+
+17.15. **Resource amounts, the leave dialog and the large view's news.**
+The labels on the picture are `aria-hidden`; the same information is a
+collapsed `details` under the box, "Resource amounts as text (N patches)",
+with a hidden `h3` and, for each resource, an `h4` giving its total, then
+a list of its patches sorted by amount, each as "12,345,678 at (-50, -30)"
+or "300% yield at (50, -50)". The large view says its own news, because the
+page outside the open dialog is inert: the counting sentence ("Counting
+resources in the map… This can take up to a minute.") is announced once,
+when a count starts, including after a redraw or a change of planet, and
+the bar beside it is only seen; the status line says "Resource amounts
+ready." when it ends. A failure is shown as a message beside the box with
+Try again and is announced once, the sentence alone, by a visually hidden
+live region, so it is not read twice. When the list or Try again held
+focus and the result is cleared, focus moves to the box. On Vulcanus the
+territory counts sentence appears inside the large view too. Foreman's
+leave dialog (5.6) is a modal `dialog` named by its question, with "Stay on
+this page" focused on open; Escape closes it like Stay, and it passes the
+accessibility scan at 1280 and 320 px. In the large view the arrow keys step
+the planet unless focus is in a settings field, including from the amounts
+list. (P1)
 
 ## 18. Epics, in order
 

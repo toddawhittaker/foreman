@@ -122,7 +122,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -131,8 +131,10 @@ jobs:
             run: make check-go fmt-check vet
           - check: lint
             run: make lint
+          # CI uses the same worker pool as a local run. `make test` alone,
+          # with CI set, still gives the single-process `go test ./...`.
           - check: test
-            run: make test
+            run: make test TEST_SHARDS=auto
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -154,8 +156,8 @@ jobs:
 
       - run: ${{ matrix.run }}
 
-  # The end-to-end tests, in four slices that run side by side. The check
-  # names (e2e (1/4) and so on) are not required by the ruleset; the `ci`
+  # The end-to-end tests, in eight slices that run side by side. The check
+  # names (e2e (1/8) and so on) are not required by the ruleset; the `ci`
   # job below waits for every slice.
   e2e:
     name: e2e (${{ matrix.shard }})
@@ -166,7 +168,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/4', '2/4', '3/4', '4/4']
+        shard: ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -188,7 +190,7 @@ jobs:
 
       # The type check is part of `make verify`; it runs here because it
       # needs the same Playwright image and packages. One slice is enough.
-      - if: matrix.shard == '1/4'
+      - if: matrix.shard == '1/8'
         run: make typecheck
 
       - run: make e2e SHARD=${{ matrix.shard }}

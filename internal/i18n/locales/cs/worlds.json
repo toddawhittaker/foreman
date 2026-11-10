@@ -416,6 +416,10 @@
   "worlds.generate.large.zoom_in": "Přiblížit",
   "worlds.generate.large.close": "Zavřít",
   "worlds.generate.large.keys": "Klávesy: ← → planeta (při přiblížení posun), + − přiblížení, 0 přizpůsobit, Esc zavřít. Klepnutí vycentruje místo.",
+  "worlds.generate.leave.title": "Opustit stránku bez uložení tohoto nastavení mapy?",
+  "worlds.generate.leave.text": "Nastavení nového světa není uloženo. Po opuštění stránky bude ztraceno.",
+  "worlds.generate.leave.stay": "Zůstat na stránce",
+  "worlds.generate.leave.leave": "Opustit bez uložení",
   "worlds.generate.preview.size_label": "Velikost náhledu",
   "worlds.generate.preview.size_option": "{size} × {size} dlaždic",
   "worlds.generate.preview.size_default": "{size} × {size} dlaždic (výchozí)",
@@ -455,5 +459,26 @@
     "one": "{count} neznámé velikosti",
     "few": "{count} neznámé velikosti",
     "other": "{count} neznámé velikosti"
-  }
+  },
+  "worlds.generate.resources.label": "Zobrazit množství surovin",
+  "worlds.generate.resources.counting": "Počítají se suroviny na mapě… Může to trvat až minutu.",
+  "worlds.generate.resources.ready": "Množství surovin je připraveno.",
+  "worlds.generate.resources.summary": {
+    "one": "Množství surovin jako text ({count} ložisko)",
+    "few": "Množství surovin jako text ({count} ložiska)",
+    "other": "Množství surovin jako text ({count} ložisek)"
+  },
+  "worlds.generate.resources.edge": "Polohy jsou uvedeny v dlaždicích od místa startu hráčů jako (x, y). Ložisko, které protíná okraj obrázku, se počítá jen svou částí uvnitř.",
+  "worlds.generate.resources.total": "{resource}: celkem {amount}",
+  "worlds.generate.resources.total_yield": "{resource}: celková výtěžnost {percent} %",
+  "worlds.generate.resources.patch": "{amount} na ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "výtěžnost {percent} % na ({x}, {y})",
+  "worlds.generate.resources.none": "Tento obrázek neobsahuje žádná ložiska surovin.",
+  "worlds.generate.resources.invalid": "Nastavení obsahuje chyby, proto se suroviny nespočítaly. Je třeba opravit chyby uvedené v náhledu mapy.",
+  "worlds.generate.resources.busy": "Právě se vytváří jiný náhled mapy, proto se suroviny nespočítaly. Je třeba několik sekund počkat a zkusit to znovu.",
+  "worlds.generate.resources.timeout": "Počítání surovin trvalo příliš dlouho a bylo zastaveno. Je třeba zkusit to znovu nebo zvolit menší velikost náhledu.",
+  "worlds.generate.resources.oom": "Hře při počítání surovin došla paměť. Je třeba zvolit menší velikost náhledu.",
+  "worlds.generate.resources.failed": "Hře se nepodařilo spočítat suroviny. Náhled mapy i generování světa přesto fungují. Pokud se to opakuje, je třeba zkontrolovat protokol Foremanu.",
+  "worlds.generate.resources.request_failed": "Požadavek na množství surovin selhal. Je třeba zkontrolovat, zda je Foreman dostupný a zda je přihlášení stále platné, a zkusit to znovu.",
+  "worlds.generate.resources.retry": "Zkusit znovu"
 }

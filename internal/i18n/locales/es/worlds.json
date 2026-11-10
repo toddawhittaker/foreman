@@ -404,6 +404,10 @@
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
   "worlds.generate.large.keys": "Teclas: ← → planeta (con zoom, desplazar), + − zoom, 0 ajustar, Esc cerrar. Toca para centrar.",
+  "worlds.generate.leave.title": "¿Salir sin guardar esta configuración del mapa?",
+  "worlds.generate.leave.text": "La configuración del nuevo mundo no está guardada. Si sales, se perderá.",
+  "worlds.generate.leave.stay": "Quedarse en esta página",
+  "worlds.generate.leave.leave": "Salir sin guardar",
   "worlds.generate.preview.size_label": "Tamaño de la vista previa",
   "worlds.generate.preview.size_option": "{size} × {size} casillas",
   "worlds.generate.preview.size_default": "{size} × {size} casillas (por defecto)",
@@ -439,5 +443,25 @@
   "worlds.generate.territories.count.unknown": {
     "one": "{count} de tamaño desconocido",
     "other": "{count} de tamaño desconocido"
-  }
+  },
+  "worlds.generate.resources.label": "Mostrar las cantidades de recursos",
+  "worlds.generate.resources.counting": "Contando los recursos del mapa… Puede tardar hasta un minuto.",
+  "worlds.generate.resources.ready": "Cantidades de recursos listas.",
+  "worlds.generate.resources.summary": {
+    "one": "Cantidades de recursos en texto ({count} yacimiento)",
+    "other": "Cantidades de recursos en texto ({count} yacimientos)"
+  },
+  "worlds.generate.resources.edge": "Las posiciones están en casillas desde donde empiezan los jugadores, como (x, y). Un yacimiento cortado por el borde de la imagen solo cuenta su parte de dentro.",
+  "worlds.generate.resources.total": "{resource}: {amount} en total",
+  "worlds.generate.resources.total_yield": "{resource}: {percent} % de rendimiento en total",
+  "worlds.generate.resources.patch": "{amount} en ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "{percent} % de rendimiento en ({x}, {y})",
+  "worlds.generate.resources.none": "Esta imagen no tiene yacimientos de recursos.",
+  "worlds.generate.resources.invalid": "Los ajustes tienen problemas, por lo que no se contaron los recursos. Corrige los problemas que indica la vista previa del mapa.",
+  "worlds.generate.resources.busy": "Se está creando otra vista previa del mapa, por lo que no se contaron los recursos. Espera unos segundos y vuelve a intentarlo.",
+  "worlds.generate.resources.timeout": "Contar los recursos tardó demasiado y se detuvo. Inténtalo de nuevo o elige un tamaño de vista previa menor.",
+  "worlds.generate.resources.oom": "Al contar los recursos, el juego se quedó sin memoria. Elige un tamaño de vista previa menor.",
+  "worlds.generate.resources.failed": "El juego no pudo contar los recursos. La vista previa del mapa y la generación siguen funcionando. Si sigue fallando, revisa el registro de Foreman.",
+  "worlds.generate.resources.request_failed": "Falló la solicitud de las cantidades de recursos. Comprueba que Foreman esté accesible y que sigas con la sesión iniciada, y vuelve a intentarlo.",
+  "worlds.generate.resources.retry": "Reintentar"
 }

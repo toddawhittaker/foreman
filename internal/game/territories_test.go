@@ -53,7 +53,7 @@ func TestTerritoriesRadiusFollowsTheSize(t *testing.T) {
 	for size, want := range map[int]string{0: "20", 1024: "16", 3072: "48"} {
 		req := territoriesRequest()
 		req.Size = size
-		env := r.c.territoriesSpec(image21, "p", req).Env
+		env := r.c.controlModSpec(image21, "p", req, territoryMod, territoriesEnv(req)).Env
 		if w := gameenv.TerritoryRadius + "=" + want; !slices.Contains(env, w) {
 			t.Errorf("size %d: environment %v lacks %s", size, env, w)
 		}
@@ -106,7 +106,7 @@ func TestTerritoriesWorkFolderAndContainer(t *testing.T) {
 	if !enabled["base"] || !enabled["space-age"] || !enabled[territories.ModName] {
 		t.Errorf("enabled mods %v", enabled)
 	}
-	if string(read("mods/"+territories.ModDir+"/info.json")) != string(territories.InfoJSON("2.1")) ||
+	if string(read("mods/"+territories.ModDir+"/info.json")) != string(territoryInfo("2.1")) ||
 		string(read("mods/"+territories.ModDir+"/control.lua")) != string(territories.Control) {
 		t.Error("the mod folder is not info.json for 2.1 and control.lua")
 	}
@@ -134,7 +134,7 @@ func TestTerritoriesSpecHasThePreviewsLimits(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	req := territoriesRequest()
 	req.Preset = "death-world"
-	got := r.c.territoriesSpec(image21, "p-abc", req)
+	got := r.c.controlModSpec(image21, "p-abc", req, territoryMod, territoriesEnv(req))
 	want := r.c.previewSpec(image21, "p-abc", "2.1", previewRequest())
 	if !reflect.DeepEqual(got.HostConfig, want.HostConfig) {
 		t.Errorf("host config %+v, want the preview's %+v", got.HostConfig, want.HostConfig)
@@ -146,17 +146,18 @@ func TestTerritoriesSpecHasThePreviewsLimits(t *testing.T) {
 	if strings.Contains(strings.Join(got.Cmd, " "), "death-world") {
 		t.Error("a value is built into the script")
 	}
+	script := territoryMod.script()
 	for _, need := range []string{
 		`--create /out/territories.zip`, `--map-gen-seed "$` + gameenv.Seed + `"`,
 		`--preset "$` + gameenv.Preset + `"`, `--map-gen-settings`, `--map-settings`,
 		`cp /tmp/factorio/script-output/territories.json /out/territories.json`,
 		`> /out/mods/foreman-territories_1.0.0/radius.lua`,
 	} {
-		if !strings.Contains(territoriesScript, need) {
-			t.Errorf("the script lacks %s:\n%s", need, territoriesScript)
+		if !strings.Contains(script, need) {
+			t.Errorf("the script lacks %s:\n%s", need, script)
 		}
 	}
-	if strings.Contains(territoriesScript, "--start-server") {
+	if strings.Contains(script, "--start-server") {
 		t.Error("the territory run starts a server")
 	}
 }
@@ -302,6 +303,16 @@ func TestTerritoriesFailureAndMissingImage(t *testing.T) {
 	}
 }
 
+// readTerritoryFile reads a territory run's file from the work folder "p"
+// of base, as Territories does, and parses it for a 1280 picture.
+func readTerritoryFile(base *os.Root) (territory.Result, error) {
+	b, err := readControlModOutput(base, "p", territoryMod)
+	if err != nil {
+		return territory.Result{}, err
+	}
+	return territory.Parse(b, 1280)
+}
+
 // SPEC 14.1: the game's file is untrusted. A missing, malformed or too big
 // file is refused.
 func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
@@ -318,16 +329,16 @@ func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := readTerritories(base, "p", 1280); err == nil {
+	if _, err := readTerritoryFile(base); err == nil {
 		t.Error("a missing file was accepted")
 	}
 	put([]byte(`{"territories": [{"unit": "small-demolisher", "chunks": [[0, 0]]}]}`))
-	if res, err := readTerritories(base, "p", 1280); err != nil || len(res.Territories) != 1 {
+	if res, err := readTerritoryFile(base); err != nil || len(res.Territories) != 1 {
 		t.Errorf("a good file: %v, %v", res, err)
 	}
 	// A territory wholly outside the picture is dropped.
 	put([]byte(`{"territories": [{"unit": "small-demolisher", "chunks": [[500, 500]]}]}`))
-	if res, err := readTerritories(base, "p", 1280); err != nil || len(res.Territories) != 0 {
+	if res, err := readTerritoryFile(base); err != nil || len(res.Territories) != 0 {
 		t.Errorf("an outside territory: %v, %v", res, err)
 	}
 	for name, b := range map[string][]byte{
@@ -338,7 +349,7 @@ func TestReadTerritoriesRefusesWhatIsNotRight(t *testing.T) {
 		"trailing bytes": []byte(`{"territories": []} {}`),
 	} {
 		put(b)
-		if _, err := readTerritories(base, "p", 1280); err == nil {
+		if _, err := readTerritoryFile(base); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 	}
@@ -390,7 +401,7 @@ func failsPromptly(t *testing.T, read func() error) error {
 func TestReadTerritoriesRefusesANamedPipe(t *testing.T) {
 	base := fifoAt(t, gameenv.TerritoryFile)
 	err := failsPromptly(t, func() error {
-		_, err := readTerritories(base, "p", 1280)
+		_, err := readTerritoryFile(base)
 		return err
 	})
 	if err == nil {

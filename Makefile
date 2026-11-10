@@ -28,7 +28,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOCACHE=$(CACHE)/go-build -e GOMODCACHE=$(CACHE)/gomod \
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
-.PHONY: verify check-go fmt-check fmt vet lint test typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
+.PHONY: verify check-go fmt-check fmt vet lint test test-shards typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
 	test-game e2e-game vuln ci tidy i18n-hash deploy
 
 verify: check-go fmt-check vet lint test typecheck
@@ -61,7 +61,77 @@ lint:
 # past go test's 10-minute default, so the limit is set here with room.
 TEST_TIMEOUT ?= 30m
 
+# Local runs draw batches of tests from a queue (POOL_PKGS below) with this
+# many workers, each a process, at once. The default, auto, is one per CPU,
+# held down so the processes fit in the memory left (1.5 GiB each, the race
+# detector's cost); see RESOLVE_SHARDS below. A number sets the count
+# outright. Under CI the default is one process, the plain `go test ./...`
+# run; the CI workflow passes TEST_SHARDS=auto to use the pool.
+TEST_SHARDS ?= $(if $(CI),1,auto)
+
+# The slow packages whose tests make up the local queue. The order sets who
+# goes first in each round of the queue.
+POOL_PKGS := ./internal/game ./internal/world ./internal/web
+
+# How many tests one queued batch holds. Each batch is a new process, so
+# small batches balance the workers better but pay the start-up cost (the
+# race detector and the coverage counters) more often; large ones the
+# reverse.
+TEST_BATCH ?= 8
+
+# One queued batch, run by `sh -c` with the fields of a queue line as
+# arguments: the package folder, the test binary, the batch name and the
+# anchored -test.run pattern. The caller sets POOL_WORK to the work folder.
+# The output, and the exit code and seconds, are written there for the report.
+define POOL_BATCH
+dir=$$1; bin=$$2; id=$$3; run=$$4; t0=$$(date +%s); mkdir "$$POOL_WORK/cov/$$id"; \
+( cd "$$dir" && "$$bin" -test.run "$$run" -test.timeout $(TEST_TIMEOUT) -test.gocoverdir="$$POOL_WORK/cov/$$id" ) > "$$POOL_WORK/out/$$id" 2>&1; rc=$$?; \
+echo "$$rc $$(( $$(date +%s) - t0 ))" > "$$POOL_WORK/rc/$$id"
+endef
+
+# Sets n (the process count) and msg (the count and why) in the shell. For
+# a number it checks the number. For auto it counts CPUs, then takes the
+# smallest memory headroom it can find: MemAvailable, and for every cgroup v2
+# level from this process's own up to the root, the limit (memory.high, or
+# memory.max when that is max) minus memory.current. Agents on a shared
+# machine run under such a limit, and past memory.high the kernel throttles
+# allocations instead of failing them, which is far slower than fewer
+# processes. awk does the arithmetic because the values pass 32 bits. With no
+# headroom figure at all (not Linux, no cgroup v2), n is the CPU count.
+define RESOLVE_SHARDS
+n=$(TEST_SHARDS); \
+case "$$n" in \
+auto) \
+	cpus=$$(getconf _NPROCESSORS_ONLN 2>/dev/null); \
+	case "$$cpus" in ''|*[!0-9]*|0) cpus=1;; esac; \
+	ma=$$(awk '/^MemAvailable:/ { printf "%.0f", $$2 * 1024 }' /proc/meminfo 2>/dev/null); \
+	pairs=""; \
+	d="/sys/fs/cgroup$$(sed -n 's/^0:://p' /proc/self/cgroup 2>/dev/null)"; d="$${d%/}"; \
+	while :; do \
+		cur=$$(cat "$$d/memory.current" 2>/dev/null); \
+		lim=$$(cat "$$d/memory.high" 2>/dev/null); \
+		case "$$lim" in ''|max) lim=$$(cat "$$d/memory.max" 2>/dev/null);; esac; \
+		case "$$cur$$lim" in ''|*[!0-9]*) ;; *) pairs="$$pairs $$lim:$$cur";; esac; \
+		case "$$d" in /sys/fs/cgroup/*) d="$${d%/*}";; *) break;; esac; \
+	done; \
+	res=$$(awk -v cpus="$$cpus" -v ma="$$ma" -v pairs="$$pairs" 'BEGIN { have = 0; if (ma != "") { have = 1; m = ma + 0 }; k = split(pairs, p, " "); for (i = 1; i <= k; i++) { split(p[i], q, ":"); h = q[1] - q[2]; if (h < 0) h = 0; if (!have || h < m) m = h; have = 1 }; if (!have) { print cpus, "-"; exit }; c = int(m / 1610612736); if (c > cpus) c = cpus; if (c < 1) c = 1; printf "%d %.1f\n", c, m / 1073741824 }'); \
+	n=$${res%% *}; gib=$${res#* }; \
+	cpuword=CPUs; if [ "$$cpus" -eq 1 ]; then cpuword=CPU; fi; \
+	if [ "$$gib" = "-" ]; then why="$$cpus $$cpuword, memory headroom unknown"; else why="$$cpus $$cpuword, $$gib GiB memory headroom"; fi;; \
+*) \
+	case "$$n" in ''|*[!0-9]*|0) echo "TEST_SHARDS must be a positive whole number or auto."; exit 1;; esac; \
+	why="$(if $(filter file,$(origin TEST_SHARDS)),CI,set by TEST_SHARDS)";; \
+esac; \
+word=processes; if [ "$$n" -eq 1 ]; then word=process; fi; \
+msg="$$n $$word ($$why)"
+endef
+
+# Shows how many processes `make test` would use, and why, without testing.
+test-shards:
+	@$(RESOLVE_SHARDS); echo "$$msg."
+
 # One race-enabled run gives both the test result and the coverage floor.
+ifeq ($(TEST_SHARDS),1)
 test:
 	@cov=$$(mktemp) && trap 'rm -f "$$cov"' EXIT && \
 	go test -race -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... -coverprofile="$$cov" ./... || exit $$?; \
@@ -70,6 +140,71 @@ test:
 		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
 	fi; \
 	echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
+else
+# With more than one worker, the slow packages' test binaries are built once
+# and their tests become a queue of small batches, which TEST_SHARDS workers
+# draw from one at a time. Each batch is its own process. The other packages
+# run beside the pool. Each batch writes coverage to its own folder, and the
+# folders are merged before the floor check.
+test:
+	@$(RESOLVE_SHARDS); \
+	work=$$(mktemp -d) && trap 'rm -rf "$$work"' EXIT && \
+	mkdir "$$work/bin" "$$work/lists" "$$work/cov" "$$work/cov-other" "$$work/out" "$$work/rc" && \
+	go test -c -race -covermode=atomic -coverpkg=./internal/... -o "$$work/bin/" $(POOL_PKGS) || exit $$?; \
+	for p in $(POOL_PKGS); do \
+		base=$${p##*/}; \
+		(cd "$$p" && "$$work/bin/$$base.test" -test.list '.*' 2>/dev/null) | grep -v '^Benchmark' > "$$work/lists/$$base"; \
+		if [ ! -s "$$work/lists/$$base" ]; then echo "Found no tests in $${p#./}." >&2; exit 1; fi; \
+		awk -v size=$(TEST_BATCH) '{ r = r (r == "" ? "" : "|") $$0 } NR % size == 0 { print r; r = "" } END { if (r != "") print r }' "$$work/lists/$$base" | \
+		{ i=0; while read -r run; do \
+			i=$$((i + 1)); \
+			printf '%s %s %s %s-%03d %s\n' "$$i" "$${p#./}" "$$work/bin/$$base.test" "$$base" "$$i" "^($$run)\$$"; \
+		done; }; \
+	done > "$$work/queue.in" || exit $$?; \
+	sort -s -n -k1,1 "$$work/queue.in" | cut -d' ' -f2- > "$$work/queue"; \
+	batches=$$(wc -l < "$$work/queue"); \
+	if [ "$$n" -gt "$$batches" ]; then n=$$batches; fi; \
+	word=workers; if [ "$$n" -eq 1 ]; then word=worker; fi; \
+	names=$$(echo $(patsubst ./%,%,$(POOL_PKGS)) | awk '{ s = $$1; for (i = 2; i < NF; i++) s = s ", " $$i; if (NF > 1) s = s " and " $$NF; print s }'); \
+	echo "Running $$names as $$batches batches on $$n $$word ($$why)."; \
+	go list $(POOL_PKGS) > "$$work/pool.pkgs"; \
+	pkgs=$$(go list ./... | grep -vxFf "$$work/pool.pkgs"); \
+	( go test -race -count=1 -timeout $(TEST_TIMEOUT) -covermode=atomic -coverpkg=./internal/... $$pkgs -args -test.gocoverdir="$$work/cov-other" > "$$work/other.out" 2>&1; echo $$? > "$$work/other.rc" ) & \
+	POOL_WORK="$$work" xargs -P "$$n" -n 4 sh -c '$(POOL_BATCH)' sh < "$$work/queue"; \
+	wait; \
+	failed=0; \
+	for p in $(POOL_PKGS); do \
+		base=$${p##*/}; bad=0; count=0; slow=0; \
+		while read -r dir bin id run; do \
+			case "$$id" in "$$base"-*) ;; *) continue;; esac; \
+			count=$$((count + 1)); rc=1; secs=0; \
+			read rc secs < "$$work/rc/$$id" || true; \
+			if [ "$$rc" -ne 0 ]; then bad=$$((bad + 1)); echo "$$id" >> "$$work/failed"; fi; \
+			if [ "$$secs" -gt "$$slow" ]; then slow=$$secs; fi; \
+		done < "$$work/queue"; \
+		tests=$$(wc -l < "$$work/lists/$$base"); \
+		if [ "$$bad" -eq 0 ]; then \
+			printf 'ok    %s  %s tests in %s batches  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$slow"; \
+		else \
+			printf 'FAIL  %s  %s tests in %s batches, %s failed  slowest batch %ss\n' "$${p#./}" "$$tests" "$$count" "$$bad" "$$slow"; failed=1; \
+		fi; \
+	done; \
+	cat "$$work/other.out"; \
+	read rc < "$$work/other.rc" || rc=1; \
+	if [ "$$rc" -ne 0 ]; then failed=1; fi; \
+	if [ -s "$$work/failed" ]; then \
+		while read -r id; do echo "Output of failed batch $$id:"; cat "$$work/out/$$id"; done < "$$work/failed"; \
+	fi; \
+	if [ "$$failed" -ne 0 ]; then exit 1; fi; \
+	cov="$$work/cover.out"; \
+	dirs=$$(ls -d "$$work"/cov/* "$$work/cov-other" | paste -sd, -); \
+	go tool covdata textfmt -i="$$dirs" -o "$$cov" || exit $$?; \
+	total=$$(go tool cover -func="$$cov" | awk '/^total:/ { sub("%", "", $$3); print $$3 }'); \
+	if awk -v t="$$total" -v f=$(COVERAGE_FLOOR) 'BEGIN { exit !(t < f) }'; then \
+		echo "Coverage across internal/ is $$total%, below the floor of $(COVERAGE_FLOOR)%."; exit 1; \
+	fi; \
+	echo "Coverage across internal/: $$total% (floor $(COVERAGE_FLOOR)%)."
+endif
 
 e2e/node_modules/.package-lock.json: e2e/package.json e2e/package-lock.json
 	@mkdir -p $(CACHE)/home
@@ -101,7 +236,8 @@ run:
 		FOREMAN_DATA_DIR=$(CURDIR)/.dev-data FOREMAN_HOST_DATA_DIR=$(CURDIR)/.dev-data \
 		go run ./cmd/foreman serve
 
-# SHARD=1/4 runs the first of four slices of the tests; empty runs them all.
+# SHARD=1/8 runs the first of eight slices of the tests (CI uses eight); empty
+# runs them all.
 SHARD ?=
 # E2E_ARGS passes specs or flags to Playwright, e.g. E2E_ARGS="tests/tips.spec.ts".
 E2E_ARGS ?=

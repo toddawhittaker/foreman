@@ -11,7 +11,7 @@ below uses the new numbers.
 
 Epics 1 to 8, the Gate A fixes and the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4)
-are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2)
+and the Resource amounts epic are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2)
 follows Epic 8.
 
 ## Epic 1: Foundation
@@ -1995,3 +1995,168 @@ with DESIGN.md 2, 4, 7.2, 8.3, 8.6 to 8.8 and 8.11. Issues closed: #315 to
   stopped (#419).
 - Still deferred: #400 (a headless game per preview), #353, #339 (P2),
   #132, #92, #206 and #207.
+
+## Resource amounts
+
+Serves SPEC 5.6, 14.1, 14.3, 14.6, 14.7 and 17, with DESIGN.md 7.4, 8.7,
+8.8 and 12 and ADR 0015. Issues closed: #400 (resource amounts in the large
+view), #422 (Foreman's own leave dialog) and #423 (sliders centred on 100%).
+Built in four lanes at once: the count run and its measurements, the
+parser and fake game, the web side, and the sliders and leave dialog. The
+pull requests were #430 to #436, then #438 and #439 for the integration
+review.
+
+Integration review: a code review across the tasks and an accessibility
+review of the flows between them, on the epic head. Fixed in #439: the fake
+game now writes the game's real entity names, and the real-game test checks
+names exactly (`resource.EntityName`); one shared mod-info helper and one
+shared failure mapper for territories and resources; one rule for yield;
+spike-only measuring tests removed. Fixed in #438: the counting sentence is
+also spoken after a redraw or a planet change; on Vulcanus the territory
+counts are inside the large view; the text list's totals are h4 under a
+hidden h3. Kept: `color` in the count file (the real-game alignment check
+uses it); ←/→ change the planet from anywhere in the view (SPEC 5.6).
+
+### Delivered
+
+- **Resource amounts in the large view (#400, SPEC 5.6).** A "Show
+  resource amounts" box in the large view's bar, off when the page loads
+  and kept while the page lives. Once the shown planet's picture is
+  there, `POST /generate/preview/resources` counts that one planet in the
+  real map and labels each resource patch with its amount ("1.2M",
+  through `Intl.NumberFormat` compact notation, so it reads right in all
+  eight languages with no new number strings). Wells (resources whose
+  product is a fluid: crude oil, sulfuric acid, fluorine, lithium brine
+  and the geysers) show yield as a percentage; ores show their amount.
+  Labels share the territory labels' look, are placed greedily so none
+  overlap, and more of them show as you zoom in. A collapsed "Resource
+  amounts as text" list gives every patch for keyboard and screen-reader
+  users. Counts are kept per planet with the preview, so going back is
+  instant; a settings change drops them at once. Busy, timeout, out of
+  memory, image missing, failed and invalid each have their own sentence,
+  with Try again where a retry helps. All new text is in the eight
+  languages (17 `worlds.generate.resources.*` strings).
+- **The count run (SPEC 5.6, 14.3).** A third kind of preview container,
+  `foreman-resources-<folder>`, with the same slot, cleanup, host settings
+  and limits as the picture and territory runs. A control-only mod
+  (`foreman-resources`) reads the resource entities one chunk at a time,
+  groups them in Lua and writes `resources.json`. Ores join at a gap of 2
+  tiles, wells within 24 (ADR 0015). The code that runs a control-only mod
+  moved out of `territories.go` into `internal/game/controlmod.go`, which
+  territories and resources now share.
+- **The parser (SPEC 14.1, 14.6).** `internal/resource` checks the file as
+  untrusted input: at most 512 KiB, 5,000 patches and 64 resources;
+  unknown fields refused; whole numbers from 0 to 2^53 only (a number token
+  is at most 32 bytes, and float and exponent spellings are read exactly);
+  names matching `^[a-z0-9_-]{1,64}$`; every box inside the picture and
+  every label tile inside its box; patch amounts that add up to each
+  resource's total. Errors carry counts, never text from the file. The
+  fake game answers a count with canned patches, so the browser specs run
+  without a game.
+- **Sliders centred on 100% (#423).** Each map-generator slider puts its
+  default step ("100", or "0" for bias) at the middle of the track. A click
+  takes the nearest step; a key press or a screen reader's increment always
+  moves one step. A select with no default, or a default at an end, keeps
+  the plain track. Nothing changed on the server, in the posted values or
+  in the labels.
+- **Foreman's own leave dialog (#422).** A plain click on a link, or the
+  submit of a form other than Generate (language, Sign out), opens a dialog
+  when the settings are unsaved. Stay or Escape closes it and returns focus
+  to what was used (the user menu's button if the link was in the closed
+  menu). Leave goes on without the browser's own question. `beforeunload`
+  is unchanged and still covers reload, closing the tab, the address bar
+  and Back. Four `worlds.generate.leave.*` strings in all eight languages.
+- **Real-game checks.** `TestRealGameD2ResourceInvariants` runs on 1.1.110
+  (Nauvis) and 2.0.77 and 2.1.24 (all five planets) and pins: the same
+  request gives the same result and a distant seed gives other patches; a
+  resource switched off has no patches; richness 200% gives 1.99 to 2.01
+  times the total; wells are the fluid-product resources only, and ores
+  never show a yield; the patch count equals a test-only scan's clusters at
+  the stated gaps, with the same entities, amounts and boxes; each label is
+  a tile of its patch; at each large ore patch's label tile the preview
+  picture has the resource's map colour (this is what the file's `color` is
+  for); 3072 on every planet fits 60 s and 1 GiB; a cancelled count returns
+  within about 150 ms and leaves no container, folder or held slot.
+- **Measured (seed 123456, default settings, 3072 tiles).** Peaks are the
+  container's `memory.peak`; times run from the call to the end of the read.
+  On 2.1.24 Gleba was the slowest at 29 to 33 s and the largest at 750 to
+  757 MiB; Vulcanus 24 s and 750 MiB; Nauvis 21 s and 734 MiB; Fulgora 22 s
+  and 676 MiB; Aquilo 13 s and 676 MiB. On 2.0.77 the peaks were 609 to
+  686 MiB and on 1.1.110 Nauvis 339 MiB in 18 s. No default run came near
+  the limits, so there is no size cap and no lean run. At 1280 tiles every
+  run took 4 to 8 s and peaked under 470 MiB. The largest file was 97,948
+  bytes (1.1 at 600% resource settings) and the most patches 1,113; at
+  default settings 79,683 bytes and 956 patches (Fulgora).
+- **Findings that changed the design.** 1.1's `--create` does run a mod's
+  `on_init`. A well gap of 12 tiles split real fields, so it is 24. Ores
+  fragment on Fulgora (3,301 scrap patches, 2,743 of them under 10
+  entities) and Vulcanus, so ores join at a gap of 2 tiles. Lithium brine
+  is finite in the game, so grouping by "infinite" was wrong and wells are
+  now resources whose product is a fluid. The game already reads
+  `map_color` back as 0 to 255, so the file's colours are used as read. A
+  first Lua that kept 400 bytes per tile ran out of memory at 600%; the
+  committed Lua keeps a key, an amount and a parent per tile and gives
+  identical patches on all 22 default runs.
+- **Spec and process.** SPEC 5.6, 14.3, 14.6 and 17.15 and DESIGN 7.4, 8.7,
+  8.8 and 12 carry the lasting rules; ADR 0015 records why the count is
+  made as it is. The epic plan was deleted.
+
+### Verified
+
+- Task heads ran fast checks (`make check-go fmt-check vet lint
+  typecheck`, `go test` for the changed packages, and the browser specs for
+  the touched pages at 1280 and 320 px in both themes, with the
+  accessibility scan). Every new test was run against the base first where
+  it could fail there (the centring test and the removal of a parser check
+  or of Lua's union).
+- Browser specs on the web head: `resources.spec.ts` (8 tests on 4
+  projects) and `territories.spec.ts` 70 passed, 2 skipped (wide-only on
+  phones); `large-view.spec.ts` and `large-view-settings.spec.ts` 102
+  passed, 18 skipped; `sliders.spec.ts` 46 passed, 38 skipped (phones skip
+  sliders); `generate-leave.spec.ts` 72 passed, including an axe scan of the
+  open dialog at 1280 and 320 px.
+- Real games on 1.1.110, 2.0.77 and 2.1.24 on the pve1-dev lane: the
+  measurements above, the invariants test (1.1: 46 s, 2.0: 298 s, 2.1:
+  301 s), and the territory test after the shared-code move (18 territories
+  at 1280, 83 at 3072). With Lua's `union` made a no-op, or tiles dropped at
+  `x % 97`, the invariants fail as intended.
+- Screenshots of the counting, labels, text list, zoomed and failed states
+  at desktop and phone widths in both themes were reviewed.
+- The full `make verify`, `make e2e` and `make test-game` on the epic head
+  are the orchestrator's; their results are in the integration review.
+
+### Gaps left
+
+- **Alignment on Fulgora and Aquilo is not checked.** The preview draws only
+  part of those tiles (scrap on a quarter of its tiles, oil for 61% of
+  wells), so the colour-at-the-label test skips them and says why. Wells are
+  not alignment-checked on any planet.
+- **Nauvis at 600% resource settings runs out of memory on 2.x** (the
+  game's own generation peaks at 825 MiB, 913 MiB with the entities found).
+  It fails safe with the existing out-of-memory message. 1.1 fits it
+  (1,017 MiB measured).
+- **Lithium brine shows an amount, not a yield.** The game says it is
+  finite (`infinite_resource` false, normal amount 50,000), so the file's
+  `infinite` flag is false for it. The plan listed it among the yield
+  resources. This is a provisional ruling and waits on Todd.
+- **At 320 px the map shifts while counting.** The counting line and bar
+  take room in the bar. Accepted.
+- **One user can fill the 8 preview queue places** with concurrent
+  requests. This is by design for every preview route (SPEC 14.3), and is
+  accepted.
+- The leave dialog does not catch a link opened with a modifier key,
+  downloads, links with a target, same-page `#` links or the picture links
+  that open the large view, and has no click-outside-to-close.
+- ←/→ change the planet even from the amounts list; this is the large
+  view's rule that arrows step the planet unless the focus is in a settings
+  field (SPEC 5.6), kept.
+- Enter in a decimal field inside the large view's settings column creates
+  the world (a question for Todd; no change made).
+- Amounts cover the picture only: a patch cut by the edge counts the part
+  inside it, and the page says so. No amounts in the PNG download, the zip
+  or the thumbnail, and no mods' resources (the preview never loads mods,
+  ADR 0011).
+- Territories and resources on Vulcanus are two separate runs (about 27 s
+  and 24 s) when both boxes are on.
+- Hand-test: NVDA's and VoiceOver's reading of the counting sentence and of
+  a failure when it is said by the hidden live region.

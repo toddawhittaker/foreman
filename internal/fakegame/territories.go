@@ -13,10 +13,13 @@ import (
 )
 
 // makePreview does what a preview container was started for: pictures, or
-// a territory run's JSON.
+// a territory or resource run's JSON.
 func makePreview(c dockertest.Container) error {
-	if envValue(c.Spec.Env, gameenv.PreviewKind) == gameenv.KindTerritories {
+	switch envValue(c.Spec.Env, gameenv.PreviewKind) {
+	case gameenv.KindTerritories:
 		return writeTerritories(c)
+	case gameenv.KindResources:
+		return writeResources(c)
 	}
 	return drawPreview(c)
 }

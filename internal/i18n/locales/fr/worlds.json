@@ -404,6 +404,10 @@
   "worlds.generate.large.zoom_in": "Zoomer",
   "worlds.generate.large.close": "Fermer",
   "worlds.generate.large.keys": "Touches : ← → planète (déplacer si zoomé), + − zoom, 0 ajuster, Échap fermer. Touchez pour centrer.",
+  "worlds.generate.leave.title": "Quitter la page sans enregistrer ces paramètres de la carte ?",
+  "worlds.generate.leave.text": "Les paramètres du nouveau monde ne sont pas enregistrés. Si vous quittez la page, ils seront perdus.",
+  "worlds.generate.leave.stay": "Rester sur cette page",
+  "worlds.generate.leave.leave": "Quitter sans enregistrer",
   "worlds.generate.preview.size_label": "Taille de l’aperçu",
   "worlds.generate.preview.size_option": "{size} × {size} cases",
   "worlds.generate.preview.size_default": "{size} × {size} cases (par défaut)",
@@ -439,5 +443,25 @@
   "worlds.generate.territories.count.unknown": {
     "one": "{count} de taille inconnue",
     "other": "{count} de taille inconnue"
-  }
+  },
+  "worlds.generate.resources.label": "Afficher les quantités de ressources",
+  "worlds.generate.resources.counting": "Comptage des ressources de la carte… Cela peut prendre jusqu’à une minute.",
+  "worlds.generate.resources.ready": "Quantités de ressources prêtes.",
+  "worlds.generate.resources.summary": {
+    "one": "Quantités de ressources en texte ({count} gisement)",
+    "other": "Quantités de ressources en texte ({count} gisements)"
+  },
+  "worlds.generate.resources.edge": "Les positions sont en cases depuis le point de départ des joueurs, sous la forme (x, y). Un gisement coupé par le bord de l’image ne compte que sa partie à l’intérieur.",
+  "worlds.generate.resources.total": "{resource} : {amount} au total",
+  "worlds.generate.resources.total_yield": "{resource} : {percent} % de rendement au total",
+  "worlds.generate.resources.patch": "{amount} en ({x}, {y})",
+  "worlds.generate.resources.patch_yield": "{percent} % de rendement en ({x}, {y})",
+  "worlds.generate.resources.none": "Cette image ne contient aucun gisement de ressources.",
+  "worlds.generate.resources.invalid": "Les réglages comportent des problèmes, donc les ressources n’ont pas été comptées. Corrigez les problèmes indiqués par l’aperçu de la carte.",
+  "worlds.generate.resources.busy": "Un autre aperçu de carte est en cours de création, donc les ressources n’ont pas été comptées. Attendez quelques secondes, puis réessayez.",
+  "worlds.generate.resources.timeout": "Le comptage des ressources a pris trop de temps et a été arrêté. Réessayez ou choisissez une taille d’aperçu plus petite.",
+  "worlds.generate.resources.oom": "Le jeu a manqué de mémoire pendant le comptage des ressources. Choisissez une taille d’aperçu plus petite.",
+  "worlds.generate.resources.failed": "Le jeu n’a pas pu compter les ressources. L’aperçu de la carte et la génération fonctionnent toujours. Si l’échec persiste, consultez le journal de Foreman.",
+  "worlds.generate.resources.request_failed": "La demande des quantités de ressources a échoué. Vérifiez que Foreman est joignable et que vous êtes toujours connecté, puis réessayez.",
+  "worlds.generate.resources.retry": "Réessayer"
 }

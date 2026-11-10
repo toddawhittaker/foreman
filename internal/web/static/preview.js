@@ -9,6 +9,8 @@
 // for after its picture arrives and drawn over it and in the large view.
 // On a wide screen the large view holds the viewed planet's own Resources and
 // Terrain fields beside the map, so a change there redraws it in place.
+// While "Show resource amounts" is ticked, the large view asks for the amounts
+// of the planet it shows once the picture is there, and labels the patches.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
@@ -18,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const pause = 800;
 
   let timer = 0;
+  // A settings change waits out the pause before its draw; the picture shown meanwhile is of older settings.
+  let waiting = false;
   let sent = 0; // the number of the newest request; a reply to an older one is ignored
   let pending = null; // the AbortController of the request on its way
   let pendingInView = false; // whether that request was asked for by the large view
@@ -35,7 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
   let saying = 0;
+  // News a count's start owes the newer words said in the same moment: a
+  // planet's name or "Map preview ready." must not hide that a count began.
+  let alsoSaid = "";
   function announce(said) {
+    if (alsoSaid) said += (/[.…!?]$/.test(said) ? " " : ". ") + alsoSaid;
     // Outside an open modal dialog the page is inert, so the dialog says it itself.
     const target = dialog && dialog.open ? document.getElementById("large-status") : document.getElementById("announcer");
     clearTimeout(saying);
@@ -64,8 +72,11 @@ document.addEventListener("DOMContentLoaded", () => {
     sent++;
     if (pending) pending.abort();
     pending = null;
+    // The pause's draw is dropped with it; soon() sets this again after its own drop().
+    waiting = false;
     setStatus(false);
     dropTerritories();
+    clearAmounts();
   }
 
   // Vulcanus's demolisher territories (SPEC 5.6; DESIGN 8.8) are asked for
@@ -161,6 +172,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // uses the page's stripe pattern, so no id is there twice.
   function largeOverlay(link) {
     const map = document.querySelector("#large-view .map");
+    // The overlay is hidden from screen readers, so the dialog carries the
+    // page's sentence about it (SPEC 17.15), a line a sighted person does not need.
+    const said = document.getElementById("large-territory-counts");
+    if (said) said.textContent = "";
     if (!map) return;
     map.querySelectorAll(".territories").forEach((o) => o.remove());
     const overlay = link && link.querySelector(".territories");
@@ -168,6 +183,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const copy = overlay.cloneNode(true);
     copy.querySelectorAll("defs").forEach((d) => d.remove());
     map.insertBefore(copy, map.querySelector(".pin"));
+    const counts = document.querySelector("#territory-result .territory-counts");
+    if (said && counts) said.textContent = words(counts);
+    placeLabels();
   }
 
   document.addEventListener("click", (e) => {
@@ -192,6 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function draw(say, change) {
     if (refreshing > 0) return; // the redraw's end asks again, with the settings it brings
     drop();
+    waiting = false;
     const n = sent;
     if (nothingToDraw()) {
       const slot = document.getElementById("preview");
@@ -319,6 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function soon() {
     drop();
+    waiting = true;
     // A preview the person asked for is older than this change, so it goes too.
     if (button().getAttribute("aria-disabled") === "true") htmx.trigger(button(), "htmx:abort");
     timer = setTimeout(() => draw(true, true), pause);
@@ -412,6 +432,170 @@ document.addEventListener("DOMContentLoaded", () => {
   const lang = document.documentElement.lang || undefined;
   const el = (id) => document.getElementById(id);
   const frame = () => el("large-frame");
+
+  // One planet's resource amounts in the large view (SPEC 5.6): asked for
+  // while the box is ticked, once the planet's picture is shown there, so the
+  // picture never waits. A draw, a change of settings, another planet,
+  // closing the view or unticking drops the request on its way and the
+  // labels at once; the server keeps what it counted, so going back is quick.
+  const amountsPath = path + "/resources";
+  let amountsSent = 0;
+  let amountsPending = null;
+  let amountsPlanet = ""; // the planet whose amounts are shown or on their way
+  const largeMap = () => document.querySelector("#large-view .map");
+
+  function counting(on) {
+    const line = el("large-counting");
+    if (line) line.hidden = !on;
+  }
+
+  function clearAmounts() {
+    const slot = el("large-amounts-result");
+    // The Try again button or the list's summary goes with the slot, so focus goes back to the box.
+    if (slot && slot.contains(document.activeElement)) el("large-amounts").focus();
+    // A status line still about this count says nothing now.
+    const said = el("large-status");
+    const bar = el("large-amounts-bar");
+    const line = el("large-counting-text");
+    if (said && bar && line && [bar.dataset.ready, words(line)].includes(said.textContent)) largeStatus("");
+    clearTimeout(amountsSaying);
+    amountsSent++;
+    if (amountsPending) amountsPending.abort();
+    amountsPending = null;
+    amountsPlanet = "";
+    counting(false);
+    const map = largeMap();
+    if (map) map.querySelectorAll(".resources").forEach((o) => o.remove());
+    if (slot) slot.replaceChildren();
+    const news = el("large-amounts-news");
+    if (news) news.textContent = "";
+    sizes = new Map();
+  }
+
+  async function amounts() {
+    const box = el("large-amounts");
+    const planet = viewing || firstPlanet();
+    const slot = el("large-amounts-result");
+    if (!box || !box.checked || waiting || !dialog || !dialog.open || !slot || !pictureLink(planet)) return;
+    if (amountsPlanet === planet) return; // shown, failed, or on its way
+    clearAmounts();
+    amountsPlanet = planet;
+    const n = amountsSent;
+    const ctrl = new AbortController();
+    amountsPending = ctrl;
+    counting(true);
+    // Said once as it starts (SPEC 17.15); the bar beside it is only seen.
+    const startSaid = words(el("large-counting-text"));
+    announce(startSaid);
+    // A draw or a step that follows in this moment says it as well (SPEC 17.15).
+    alsoSaid = startSaid;
+    queueMicrotask(() => { alsoSaid = ""; });
+    const body = new URLSearchParams(new FormData(formEl()));
+    body.set("planet", planet);
+    let html;
+    try {
+      const res = await fetch(amountsPath, { method: "POST", body, signal: ctrl.signal, headers: { "HX-Request": "true" }, credentials: "same-origin" });
+      if (!res.ok || res.redirected) throw new Error(String(res.status));
+      html = await res.text();
+    } catch {
+      if (n !== amountsSent || ctrl.signal.aborted) return;
+      amountsPending = null;
+      counting(false);
+      const failed = el("resource-failed");
+      if (failed) slot.replaceChildren(failed.content.cloneNode(true));
+      sayAmounts(slot);
+      return;
+    }
+    if (n !== amountsSent) return;
+    amountsPending = null;
+    counting(false);
+    const reply = new DOMParser().parseFromString(html, "text/html").getElementById("resource-reply");
+    const result = reply && reply.querySelector(".resource-result");
+    if (!result) return;
+    slot.replaceChildren(...[...result.childNodes].map((node) => document.importNode(node, true)));
+    const overlay = reply.querySelector(".resources");
+    const map = largeMap();
+    if (overlay && map) writeLabels(map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
+    sayAmounts(slot);
+  }
+
+  // The status line says the amounts are ready. A failure is shown beside the
+  // box, so it is said unseen: the sentence only, not Try again's label.
+  let amountsSaying = 0;
+  function sayAmounts(slot) {
+    const why = slot.querySelector(".message p");
+    const news = el("large-amounts-news");
+    if (!why) {
+      const bar = el("large-amounts-bar");
+      if (bar) announce(bar.dataset.ready);
+      return;
+    }
+    if (!news) return;
+    news.textContent = "";
+    clearTimeout(amountsSaying);
+    amountsSaying = setTimeout(() => { news.textContent = words(why); }, 50);
+  }
+
+  // Each label is the amount, short in the page's language ("1.2M"), or a
+  // well field's yield as a percentage; measured once, as its size is fixed.
+  let sizes = new Map(); // each label of the shown amounts, in the server's order, and its size
+  function writeLabels(overlay) {
+    const amount = new Intl.NumberFormat(lang, { notation: "compact", maximumFractionDigits: 1 });
+    const yieldOf = new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 });
+    const labels = [...overlay.querySelectorAll(".resources__label")];
+    labels.forEach((l) => { l.textContent = (l.dataset.kind === "yield" ? yieldOf : amount).format(Number(l.dataset.amount)); });
+    sizes = new Map(labels.map((l) => [l, [l.offsetWidth, l.offsetHeight]]));
+    placeLabels();
+  }
+
+  // Labels never overlap: in the server's order, largest patch first, each is
+  // shown only where it meets no label already placed, no demolisher label
+  // and not the pin, which are always kept. Zooming in makes room for more.
+  // The boxes are kept in a grid of cells, so each label checks only its own.
+  const cell = 64;
+  const gap = 2;
+  function placeLabels() {
+    const map = largeMap();
+    if (!map || !sizes.size || !dialog || !dialog.open) return;
+    const w = map.clientWidth;
+    const h = map.clientHeight;
+    const origin = map.getBoundingClientRect();
+    const grid = new Map();
+    const cells = (b, each) => {
+      for (let cx = Math.floor(b.x0 / cell); cx <= Math.floor(b.x1 / cell); cx++) {
+        for (let cy = Math.floor(b.y0 / cell); cy <= Math.floor(b.y1 / cell); cy++) {
+          if (each(cx + "," + cy)) return true;
+        }
+      }
+      return false;
+    };
+    const meets = (b) => cells(b, (k) => (grid.get(k) || []).some((o) => b.x0 < o.x1 && o.x0 < b.x1 && b.y0 < o.y1 && o.y0 < b.y1));
+    const take = (b) => cells(b, (k) => { if (!grid.has(k)) grid.set(k, []); grid.get(k).push(b); });
+    map.querySelectorAll(".territories__label, .pin").forEach((kept) => {
+      const r = kept.getBoundingClientRect();
+      take({ x0: r.left - origin.left - gap, y0: r.top - origin.top - gap, x1: r.right - origin.left + gap, y1: r.bottom - origin.top + gap });
+    });
+    for (const [label, [lw, lh]] of sizes) {
+      // Pulled in by as much of its size as its spot is across the map, as the style sheet does, so it stays inside.
+      const u = Number(label.style.getPropertyValue("--x")) / 100;
+      const v = Number(label.style.getPropertyValue("--y")) / 100;
+      const x0 = Math.min(Math.max(0, u * (w - lw)), Math.max(0, w - lw));
+      const y0 = Math.min(Math.max(0, v * (h - lh)), Math.max(0, h - lh));
+      const b = { x0: x0 - gap, y0: y0 - gap, x1: x0 + lw + gap, y1: y0 + lh + gap };
+      const free = !meets(b);
+      label.hidden = !free;
+      if (free) take(b);
+    }
+  }
+
+  // After each zoom and resize, once a frame: the map's own size changes with both.
+  let placing = 0;
+  if (largeMap()) {
+    new ResizeObserver(() => {
+      if (placing) return;
+      placing = requestAnimationFrame(() => { placing = 0; placeLabels(); });
+    }).observe(largeMap());
+  }
 
   // The list from the last section that had one: a section holding only an
   // error has none, and Previous and Next must still move then.
@@ -575,6 +759,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el("large-download").hidden = false;
     // A bigger picture may allow more zoom, or a smaller one less.
     if (dialog.open) zoomTo(zoom);
+    amounts();
     return true;
   }
 
@@ -598,6 +783,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Before the zoom is set, as the settings narrow the picture's frame.
       fillPanel(link.dataset.planet);
       zoomTo(1);
+      amounts();
     });
     el("large-prev").addEventListener("click", () => step(-1));
     el("large-next").addEventListener("click", () => step(1));
@@ -710,7 +896,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // or, after Next, its neighbour.
     // A planet still being drawn when the dialog closes is dropped: its reply
     // would swap the picture that has the focus away.
+    el("large-amounts").addEventListener("change", (e) => {
+      if (e.target.checked) amounts();
+      else clearAmounts();
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("[data-resource-retry]")) return;
+      // The button goes with the message, so focus goes back to the box.
+      el("large-amounts").focus();
+      clearAmounts();
+      amounts();
+    });
     dialog.addEventListener("close", () => {
+      clearAmounts();
       putBack();
       let link = pictureLink(viewing);
       if (!link) {
