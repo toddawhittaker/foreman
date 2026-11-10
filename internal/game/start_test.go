@@ -652,6 +652,25 @@ func TestStartLoadFailure(t *testing.T) {
 	eventually(t, func() bool { return r.container(id).Status == "exited" }, "the container to stop")
 }
 
+// SPEC 8.7, 7.3: the start's wait can see the game stop before the log
+// follower reads why, or after Docker's restart began a new run. The log
+// still says the save did not load, so the error must say so too.
+func TestStartStoppedAfterAFailedLoadSaysTheSaveDidNotLoad(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Corrupt")
+	r.game.SetCrashLoop(ContainerName(id), true)
+	if err := r.c.Start(context.Background(), id, admin, StartOptions{}); !errors.Is(err, ErrStartFailed) {
+		t.Fatalf("got %v", err)
+	}
+	err := r.c.stoppedWhileLoading(context.Background(), r.c.world(id), r.container(id).ID)
+	if err.Kind != StartLoadFailed || err.Detail != "Opening zip /factorio/saves/save.zip failed: I/O error" {
+		t.Fatalf("got %+v, want the save that did not load and the game's reason", err)
+	}
+	if !strings.Contains(err.Error(), "could not load the save") {
+		t.Errorf("message %q", err)
+	}
+}
+
 func TestStartTimeout(t *testing.T) {
 	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 10 * time.Second}})
 	r.c.startTimeout = 200 * time.Millisecond

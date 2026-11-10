@@ -51,9 +51,19 @@ type loadFailure struct {
 	// byRequired lists the mods by the version they were made for.
 	byRequired map[string][]string
 	errLine    string
+	// failed is whether a run said it could not load its save, and
+	// loadError the game's last words on why (SPEC 8.7).
+	failed    bool
+	loadError string
 }
 
 func (f *loadFailure) add(raw string) {
+	switch ev := ParseLine(raw); ev.Kind {
+	case KindLoadFailed:
+		f.failed = true
+	case KindLoadError:
+		f.loadError = cut(ev.Detail, maxKeptText)
+	}
 	line := strings.TrimSpace(secondsPrefix.ReplaceAllString(strings.TrimSuffix(raw, "\r"), ""))
 	if m := modBullet.FindStringSubmatch(line); m != nil {
 		f.mod = cut(m[1], maxKeptText)
@@ -177,20 +187,34 @@ func cut(s string, n int) string {
 	return s
 }
 
-// loadFailureReason reads the log of the container's run and returns the
-// game's own reason it stopped while loading, as the end of the start
-// failure's message, or "" when the log gives none or cannot be read. Every
-// start makes a fresh container (ADR 0003), so its log holds every run of
-// this start, Docker's restarts after a crash included, and nothing older.
-func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string) LoadReason {
+// stoppedWhileLoading reads the log of the container's run after the game
+// stopped while loading and words why (SPEC 7.3, 8.7). The log decides,
+// not what the follower has read so far: the container can stop, and
+// Docker restart it, before the follower reaches the failure line, and a
+// restart's first line begins a new run. Every start makes a fresh
+// container (ADR 0003), so its log holds every run of this start, Docker's
+// restarts after a crash included, and nothing older.
+func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid string) *StartError {
+	f := c.readLoadLog(ctx, cid)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if f.failed {
+		return &StartError{Kind: StartLoadFailed, Detail: w.redact(f.loadError)}
+	}
+	return &StartError{Kind: StartStopped, Reason: f.reason(w.redact)}
+}
+
+// readLoadLog reads the container's log once, within the limits above. A
+// log that cannot be read gives what was read before the error.
+func (c *Controller) readLoadLog(ctx context.Context, cid string) loadFailure {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
+	var f loadFailure
 	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{})
 	if err != nil {
-		return LoadReason{}
+		return f
 	}
 	defer func() { _ = s.Close() }()
-	var f loadFailure
 	read := 0
 	for lines := 0; lines < maxLoadFailureLines && read < maxLoadFailureBytes; lines++ {
 		l, err := s.Next()
@@ -200,7 +224,5 @@ func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid str
 		read += len(l.Text) + 1
 		f.add(l.Text)
 	}
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return f.reason(w.redact)
+	return f
 }
