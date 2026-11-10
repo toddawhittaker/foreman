@@ -179,7 +179,7 @@ test.describe("with script", () => {
     expect(field(sent[sent.length - 1], "preview_view")).toBe("all");
   });
 
-  // #322: after Preview map draws every planet there is a way back to one.
+  // SPEC 5.6: after Preview map draws every planet there is a way back to one.
   test("after Preview map, One planet goes back to the planet being edited", async ({ page }) => {
     await page.goto("/generate");
     await expect(pictures(page)).toHaveCount(1);

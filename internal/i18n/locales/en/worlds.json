@@ -406,7 +406,7 @@
   "worlds.generate.large.zoom_in": "Zoom in",
   "worlds.generate.large.close": "Close",
   "worlds.generate.large.keys": "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.",
-  "worlds.generate.large.keys_settings": "In a setting, keys work the setting: an arrow moves a slider, not the map.",
+  "worlds.generate.large.keys_settings": "In a setting, the keys change the setting: an arrow moves a slider, not the map.",
   "worlds.generate.leave.title": "Leave without saving these map settings?",
   "worlds.generate.leave.text": "The new world's settings are not saved. If you leave, they are lost.",
   "worlds.generate.leave.stay": "Stay on this page",

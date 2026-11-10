@@ -228,7 +228,7 @@ test("the download icon by the heading downloads the planet shown", async ({ pag
   await expect(dialog(page).getByRole("link", { name: "Download Vulcanus map" })).toBeVisible();
 });
 
-// Ruling C4: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
+// SPEC 17.15: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
 for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072", null]] as const) {
   test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, async ({ page }) => {
     if (viewport) await page.setViewportSize(viewport);
@@ -252,6 +252,39 @@ for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072"
     expect(Math.abs((await width(page)) / most - 1)).toBeLessThan(0.001);
   });
 }
+
+// DESIGN 8.8: Tab goes round the view's controls and never out of it,
+// on a phone too, and also when Zoom in is aria-disabled at the most zoom.
+test("Tab goes round the large view's controls and never leaves it, even at the most zoom", async ({ page }) => {
+  await openLarge(page);
+  const zoomIn = dialog(page).getByRole("button", { name: "Zoom in" });
+  for (let i = 0; i < 80 && (await zoomIn.getAttribute("aria-disabled")) !== "true"; i++) await page.keyboard.press("+");
+  await expect(zoomIn).toHaveAttribute("aria-disabled", "true");
+  const where = () => page.evaluate(() => {
+    const a = document.activeElement;
+    return { id: a?.id ?? "", inside: Boolean(a?.closest("#large-view")) };
+  });
+  // Zoom in is aria-disabled but still a stop, and the last one: Tab wraps to the first.
+  await zoomIn.focus();
+  await page.keyboard.press("Tab");
+  const first = await where();
+  expect(first.inside).toBe(true);
+  expect(first.id).not.toBe("large-in");
+  // Shift+Tab from the first leads back to the last.
+  await page.keyboard.press("Shift+Tab");
+  expect((await where()).id).toBe("large-in");
+  // A whole round: focus stays in the view and comes back to Zoom in.
+  await page.keyboard.press("Tab");
+  const round: string[] = [first.id];
+  for (let i = 0; i < 300 && round.at(-1) !== "large-in"; i++) {
+    await page.keyboard.press("Tab");
+    const at = await where();
+    expect(at.inside).toBe(true);
+    round.push(at.id);
+  }
+  expect(round.at(-1)).toBe("large-in");
+  expect(round.length).toBeGreaterThanOrEqual(3);
+});
 
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true, isMobile: true });

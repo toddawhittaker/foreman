@@ -406,7 +406,7 @@
   "worlds.generate.large.zoom_in": "Vergrößern",
   "worlds.generate.large.close": "Schließen",
   "worlds.generate.large.keys": "Tasten: ← → Planet (gezoomt verschieben), + − Zoom, 0 einpassen, Esc schließen. Tippen zentriert.",
-  "worlds.generate.large.keys_settings": "In einer Einstellung bedienen die Tasten die Einstellung: Ein Pfeil bewegt einen Schieberegler, nicht die Karte.",
+  "worlds.generate.large.keys_settings": "In einer Einstellung steuern die Tasten diese Einstellung: Ein Pfeil bewegt einen Schieberegler, nicht die Karte.",
   "worlds.generate.leave.title": "Die Seite verlassen, ohne diese Karteneinstellungen zu speichern?",
   "worlds.generate.leave.text": "Die Einstellungen der neuen Welt sind nicht gespeichert. Wenn du die Seite verlässt, gehen sie verloren.",
   "worlds.generate.leave.stay": "Auf der Seite bleiben",

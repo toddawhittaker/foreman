@@ -6,7 +6,7 @@ import { join } from "node:path";
 // SPEC 7.4, 9.3: the pre-start check refuses a world using a mod version the
 // mod portal no longer offers, offers the update first, and fails safe when
 // the portal cannot be asked. The Server page's notice follows the fix
-// without a reload (issue 362). The portal's generated mods are made for
+// without a reload. The portal's generated mods are made for
 // Factorio 2.0, so these worlds are 2.0 worlds.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 

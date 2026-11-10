@@ -96,7 +96,7 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
     return Math.round(phone ? b.x : b.x + b.width);
   };
   expect(await disableAt("my-local-tweaks")).toBe(await disableAt("fp-mod-01"));
-  // On a phone the actions drop under the name, so the name keeps the width (issue 343).
+  // On a phone the actions drop under the name, so the name keeps the width.
   const name = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").locator(".mod-name"));
   const disable = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").getByRole("link", { name: /^Disable/ }));
   if (phone) {

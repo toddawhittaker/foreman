@@ -11,7 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/modportal"
 )
 
-// SPEC 9.1, #355, #345: search results are a table shown a page at a time;
+// SPEC 9.1: search results are a table shown a page at a time;
 // the count says how many match in all, so a cut is never hidden.
 func TestPageOfHits(t *testing.T) {
 	all := make([]modportal.Hit, 25)
@@ -65,7 +65,7 @@ func TestSearchPagesAndTable(t *testing.T) {
 		t.Fatalf("search %d", code)
 	}
 	main := between(body, "<main", "</main>")
-	// The world is the page's heading, the matches a section under it (#345).
+	// The world is the page's heading, the matches a section under it.
 	wantIn(t, "search", plain(body), "<h1>Base <span",
 		`<span class="mod-hits__title">Pager 00</span> <code translate="no">pager-00</code>`,
 		`<summary>Details<span class="visually-hidden"> <span translate="no">pager-00</span></span></summary><p>Pages through pager-00</p>`,
@@ -145,7 +145,7 @@ func TestSearchRefusesLongPick(t *testing.T) {
 }
 
 // The plan page's "Add another mod" is the same table with links to its
-// pages, and an empty search says what to try (#355).
+// pages, and an empty search says what to try.
 func TestAddAnotherModPages(t *testing.T) {
 	g, id := pagerRig(t)
 	q := url.Values{"kind": {"install"}, "name": {"pager-00"}, "q": {"pager"}}

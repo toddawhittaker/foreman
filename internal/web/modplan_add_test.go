@@ -100,7 +100,7 @@ func TestAddSearchNotOfferedWithoutAPlan(t *testing.T) {
 }
 
 // DESIGN 7.1, 8.11: danger is for what destroys something; a restart of a
-// running world is said in words, not in red (issue 375).
+// running world is said in words, not in red.
 func TestPlanButtonStyle(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -142,7 +142,7 @@ func TestPlanPageOmitsWhatItDoesNotOffer(t *testing.T) {
 	}
 }
 
-// #131: the Server page's notice names the mod and its fix; several mods
+// SPEC 9.3: the Server page's notice names the mod and its fix; several mods
 // are one review.
 func TestServerModNoticeNamesTheFix(t *testing.T) {
 	g := newModsRig(t, true)

@@ -406,7 +406,7 @@
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
   "worlds.generate.large.keys": "Teclas: ← → planeta (con zoom, desplazar), + − zoom, 0 ajustar, Esc cerrar. Toca para centrar.",
-  "worlds.generate.large.keys_settings": "En un ajuste, las teclas manejan el ajuste: una flecha mueve un control deslizante, no el mapa.",
+  "worlds.generate.large.keys_settings": "En un ajuste, las teclas controlan ese ajuste: una flecha mueve un control deslizante, no el mapa.",
   "worlds.generate.leave.title": "¿Salir sin guardar esta configuración del mapa?",
   "worlds.generate.leave.text": "La configuración del nuevo mundo no está guardada. Si sales, se perderá.",
   "worlds.generate.leave.stay": "Quedarse en esta página",

@@ -54,7 +54,7 @@ type ServerPage struct {
 	// or snapshot, so the Done message takes focus and is read out.
 	FocusResult bool
 	// ModsNotice says the page loads its line about mods players cannot get
-	// (#131), which needs the mod portal.
+	// (SPEC 9.3), which needs the mod portal.
 	ModsNotice bool
 	// LoadsNext names the save chosen to load at the next start when it is
 	// not the newest; "" when the newest loads (SPEC 7.11, 17.7).

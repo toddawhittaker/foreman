@@ -1,7 +1,7 @@
 import { test, expect, checkPage, setUpModsWorld, version20 } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
-// SPEC 9.1, 9.2, 17.10, #355, #345: a search with many results is a table
+// SPEC 9.1, 9.2, 17.10: a search with many results is a table
 // shown ten at a time, with boxes to add several mods to one plan, on the
 // Mods tab's search and under the plan's "Add another mod".
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
@@ -17,7 +17,7 @@ test.beforeEach(async ({ page, foreman, fakeGame, fakePortal }) => {
 
 test("25 results: a table a page at a time, ticks kept across pages, one plan for the ticked mods", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg");
-  // The world is the heading; the matches are a section that says how many there are in all (#345).
+  // The world is the heading; the matches are a section that says how many there are in all.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base/);
   await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg"' })).toBeVisible();
   const table = page.getByRole("table", { name: "25 mods for Factorio 2.0 match. Showing 1 to 10." });
@@ -84,7 +84,7 @@ test("Add ticked mods with nothing ticked says so on the search page", async ({ 
   await checkPage(page);
 });
 
-test("a search under Add another mod that finds nothing says what to try (#355)", async ({ page }) => {
+test("a search under Add another mod that finds nothing says what to try", async ({ page }) => {
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-pg-00");
   const add = page.getByRole("region", { name: "Add another mod" });
   await add.getByLabel("Mod name").fill("no such mod anywhere");

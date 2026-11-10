@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-// SPEC 9.2 and 9.3 (issue 340): choosing a mod's version on the plan page, and
+// SPEC 9.2 and 9.3: choosing a mod's version on the plan page, and
 // Change version in the installed table, which also goes back after a bad
 // update. The fake portal's mods are made for Factorio 2.0.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
