@@ -48,9 +48,9 @@
         <td class="num" role="cell" data-label="{{t "worlds.col.size"}}">{{bytes .Size}}</td>
         <td role="cell" data-label="{{t "worlds.saves.col.saved"}}">{{template "when" .Saved}}</td>
         {{- if not $.Page.Newer}}
-        {{- /* The button names itself, so its cell has an empty label: the stacked layout adds none. The cell is truly empty when the row has no button, so the phone layout can collapse it. The newest row has an empty LoadValue; with a choice set it offers to clear it. */}}
+        {{- /* The button names itself, so its cell has an empty label: the stacked layout adds none. The cell is truly empty when the row has no button, so the phone layout can collapse it. The newest row has an empty LoadValue; with a choice set it offers to clear it, and its button is named for the newest save, as that is what it loads, not its file. */}}
         <td role="cell" class="save-load" data-label="">
-          {{- if or (not .Loads) (and $.Page.LoadSave (not .LoadValue))}}<button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{t "worlds.saves.load_next_named" "file" .Name}}</span></button>{{end -}}
+          {{- if or (not .Loads) (and $.Page.LoadSave (not .LoadValue))}}<button type="submit" class="button" name="load" value="{{.LoadValue}}"><span aria-hidden="true">{{t "worlds.saves.load_next"}}</span><span class="visually-hidden">{{if .LoadValue}}{{t "worlds.saves.load_next_named" "file" .Name}}{{else}}{{t "worlds.saves.load_next_newest"}}{{end}}</span></button>{{end -}}
         </td>
         {{- end}}
       </tr>

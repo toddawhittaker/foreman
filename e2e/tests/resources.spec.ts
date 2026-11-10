@@ -458,11 +458,22 @@ test.describe("on the One planet picture", () => {
     // The view's status line never reads the page's news.
     await expect(status(page)).toBeEmpty();
     await expect(announcer(page)).toHaveText("Counting resources in the map… This can take up to a minute.");
+    await announcer(page).evaluate((s) => {
+      const said: string[] = [];
+      (window as unknown as { said: string[] }).said = said;
+      new MutationObserver(() => { if (s.textContent) said.push(s.textContent); }).observe(s, { childList: true, characterData: true, subtree: true });
+    });
     await page.keyboard.press("Escape");
     await expect(pageResult(page).locator("summary")).toHaveText("Resource amounts as text (7 patches)");
+    // Back on the page, it is said once there, as the page could not say it while the view was open.
+    await expect(announcer(page)).toHaveText("Resource amounts ready.");
+    await page.waitForTimeout(300);
+    const said = await page.evaluate(() => (window as unknown as { said: string[] }).said);
+    expect(said.filter((t) => t === "Resource amounts ready.")).toHaveLength(1);
+    expect(hold.held.length).toBe(0);
   });
 
-  test("a page failure while the view is open is shown on the page after, not said", async ({ page }) => {
+  test("a page failure while the view is open is shown, then said once the view closes", async ({ page }) => {
     await onePlanet(page);
     let fail!: () => void;
     const go = new Promise<void>((r) => (fail = r));
@@ -479,7 +490,53 @@ test.describe("on the One planet picture", () => {
     await expect(dialog(page)).toBeHidden();
     await expect(pageResult(page)).toContainText("The request for the resource amounts failed.");
     await expect(pageResult(page).getByRole("button", { name: "Try again" })).toBeVisible();
-    await expect(page.locator("#preview-amounts-news")).toBeEmpty();
+    // Said once on the page, the sentence alone, now that it can be heard.
+    await expect(page.locator("#preview-amounts-news")).toHaveText(/^Error: The request for the resource amounts failed\./);
+    await expect(announcer(page)).not.toHaveText("Resource amounts ready.");
+  });
+
+  // At 320 px the counting line is under the picture, out of sight of the box, so the box
+  // says beside itself that it is counting; the line under the picture says the rest.
+  test("ticking the box shows beside it that it is counting", async ({ page }) => {
+    await onePlanet(page);
+    const busy = page.locator("#preview-amounts-busy");
+    await expect(busy).toBeHidden();
+    const hold = holdCounts(page);
+    await hold.start();
+    await pageBox(page).check();
+    await expect.poll(() => hold.held.length).toBe(1);
+    await expect(busy).toBeVisible();
+    await expect(busy).toHaveText("Counting…");
+    // Seen, not said: the status line already says the whole sentence once.
+    await expect(busy).toHaveAttribute("aria-hidden", "true");
+    // On the box's own line, in view with it.
+    const b = (await pageBox(page).locator("xpath=..").boundingBox())!;
+    const h = (await busy.boundingBox())!;
+    expect(h.y).toBeLessThan(b.y + b.height);
+    expect(h.y + h.height).toBeGreaterThan(b.y);
+    expect(h.x + h.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    await expect(busy).toBeInViewport();
+    await shot(page, "resources-one-planet-counting");
+    await hold.release();
+    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(busy).toBeHidden();
+  });
+
+  // DESIGN 8.8: the thumbnail's labels are the territory labels' small type, over the map only.
+  test("the thumbnail's labels are small and lie over the map inside its border", async ({ page }) => {
+    await onePlanet(page);
+    await pageBox(page).check();
+    await expect(pageLabels(page)).toHaveCount(7);
+    const look = await pageLabels(page).first().evaluate((l) => { const s = getComputedStyle(l); return { size: s.fontSize, weight: s.fontWeight }; });
+    expect(look).toEqual({ size: "12px", weight: "400" });
+    const img = (await section(page).locator("a.picture img").boundingBox())!;
+    const o = (await section(page).locator("a.picture .resources").boundingBox())!;
+    expect(Math.abs(o.x - img.x - 1)).toBeLessThan(0.6);
+    expect(Math.abs(o.y - img.y - 1)).toBeLessThan(0.6);
+    expect(Math.abs(o.width - (img.width - 2))).toBeLessThan(0.6);
+    // Forced colours drop the dark ring, so the labels keep their own colours, as territory labels do.
+    await page.emulateMedia({ forcedColors: "active" });
+    expect(await pageLabels(page).first().evaluate((l) => getComputedStyle(l).forcedColorAdjust)).toBe("none");
   });
 
   test("the picture does not move as the count comes and goes", async ({ page }) => {

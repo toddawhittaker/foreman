@@ -171,6 +171,7 @@
   "worlds.saves.load.text": "The game loads the newest save when the server starts. To load another one, choose Load next on its row.",
   "worlds.saves.load_next": "Load next",
   "worlds.saves.load_next_named": "Load next: {file}",
+  "worlds.saves.load_next_newest": "Load next: the newest save",
   "worlds.saves.loads_next": "Loads next",
   "worlds.saves.newer": "A newer version of Foreman wrote this world, so this version cannot change it. You can still download its saves.",
   "worlds.saves.older": "Show older saves",
@@ -405,6 +406,7 @@
   "worlds.generate.large.zoom_in": "Zoom in",
   "worlds.generate.large.close": "Close",
   "worlds.generate.large.keys": "Keys: ← → planet (pan when zoomed), + − zoom, 0 fit, Esc close. Tap to center.",
+  "worlds.generate.large.keys_settings": "In a setting, keys work the setting: an arrow moves a slider, not the map.",
   "worlds.generate.leave.title": "Leave without saving these map settings?",
   "worlds.generate.leave.text": "The new world's settings are not saved. If you leave, they are lost.",
   "worlds.generate.leave.stay": "Stay on this page",
@@ -449,6 +451,7 @@
   },
   "worlds.generate.resources.label": "Show resource amounts",
   "worlds.generate.resources.counting": "Counting resources in the map… This can take up to a minute.",
+  "worlds.generate.resources.counting_short": "Counting…",
   "worlds.generate.resources.ready": "Resource amounts ready.",
   "worlds.generate.resources.summary": {
     "one": "Resource amounts as text ({count} patch)",

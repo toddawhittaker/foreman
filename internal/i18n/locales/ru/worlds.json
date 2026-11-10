@@ -176,6 +176,7 @@
   "worlds.saves.load.text": "При запуске сервера игра загружает самое новое сохранение. Чтобы загрузить другое, выберите «Загрузить следующим» в его строке.",
   "worlds.saves.load_next": "Загрузить следующим",
   "worlds.saves.load_next_named": "Загрузить следующим: {file}",
+  "worlds.saves.load_next_newest": "Загрузить следующим: самое новое сохранение",
   "worlds.saves.loads_next": "Загрузится следующим",
   "worlds.saves.newer": "Этот мир записала более новая версия Foreman, поэтому эта версия не может его изменить. Сохранения по-прежнему можно скачать.",
   "worlds.saves.older": "Показать более старые сохранения",
@@ -417,6 +418,7 @@
   "worlds.generate.large.zoom_in": "Увеличить",
   "worlds.generate.large.close": "Закрыть",
   "worlds.generate.large.keys": "Клавиши: ← → планета (сдвиг при увеличении), + − масштаб, 0 вписать, Esc закрыть. Касание центрирует.",
+  "worlds.generate.large.keys_settings": "В настройке клавиши управляют самой настройкой: стрелка двигает ползунок, а не карту.",
   "worlds.generate.leave.title": "Уйти, не сохранив эти настройки карты?",
   "worlds.generate.leave.text": "Настройки нового мира не сохранены. Если вы уйдёте, они будут потеряны.",
   "worlds.generate.leave.stay": "Остаться на странице",
@@ -465,6 +467,7 @@
   },
   "worlds.generate.resources.label": "Показывать количество ресурсов",
   "worlds.generate.resources.counting": "Подсчёт ресурсов на карте… Это может занять до минуты.",
+  "worlds.generate.resources.counting_short": "Подсчёт…",
   "worlds.generate.resources.ready": "Количество ресурсов подсчитано.",
   "worlds.generate.resources.summary": {
     "one": "Количество ресурсов текстом ({count} месторождение)",

@@ -307,7 +307,7 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 	body := hn.get(PathGenerate, withCookie(c)).Body.String()
 	for _, want := range []string{
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
-		`<div class="wait large-view__counting" id="large-counting" hidden>`,
+		`<div class="wait resource-amounts__counting" id="large-counting" hidden>`,
 		`<p class="hint" id="large-counting-text">Counting resources in the map… This can take up to a minute.</p>`,
 		// The sentence is said as a count starts; the bar is not named again (DESIGN 8.8).
 		`<progress aria-hidden="true"></progress>`,
@@ -506,9 +506,10 @@ func TestOnePlanetHasTheResourceBox(t *testing.T) {
 	one := planetForm("nauvis", "auto", "1")
 	body := hn.postLong(PathGeneratePreview, one, c, hx).Body.String()
 	for _, want := range []string{
-		`<div class="js-only"><label class="check"><input type="checkbox" id="preview-amounts"> Show resource amounts</label></div>`,
-		`<div class="js-only"><div class="large-view__amounts" id="preview-amounts-bar" data-ready="Resource amounts ready.">`,
-		`<div class="wait large-view__counting" id="preview-counting" hidden>`,
+		`<div class="js-only"><div class="resource-box"><label class="check"><input type="checkbox" id="preview-amounts"> Show resource amounts</label>`,
+		`<span class="hint resource-box__busy" id="preview-amounts-busy" aria-hidden="true">Counting…</span></div></div>`,
+		`<div class="js-only"><div class="resource-amounts" id="preview-amounts-bar" data-ready="Resource amounts ready.">`,
+		`<div class="wait resource-amounts__counting" id="preview-counting" hidden>`,
 		`<progress aria-hidden="true"></progress>`,
 		`<p class="visually-hidden" id="preview-amounts-news" role="status"></p>`,
 		`data-amounts="Download Nauvis with resource amounts (PNG)"`,
