@@ -522,7 +522,7 @@ func TestDroppingContainerDoesNotBlockStatus(t *testing.T) {
 	conn := <-accepted
 	defer func() { _ = conn.Close() }()
 
-	go r.c.observe(w, nil)
+	go r.c.observe(w, nil, 0)
 	time.Sleep(100 * time.Millisecond)
 	done := make(chan struct{})
 	go func() {
@@ -649,5 +649,41 @@ func TestLoadedSaveNotMaskedByShortPassword(t *testing.T) {
 	}
 	if got := save("1"); got == "1" {
 		t.Error("a save named as the password was shown")
+	}
+}
+
+// SPEC 8.7: a look at Docker taken before a start must not land after it.
+// The monitor reads Docker first and takes the world's lock later; a start
+// that runs in between would otherwise show its game as stopped, and a
+// switch that keeps the run state would then leave the new world stopped.
+func TestMonitorDropsALookTakenBeforeAnOperation(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Stale")
+	r.start(id)
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	w := r.c.world(id)
+	w.mu.Lock()
+	ops := w.ops
+	w.mu.Unlock()
+	stale, err := r.docker.InspectContainer(context.Background(), r.container(id).ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale.State.Status == "running" {
+		t.Fatalf("the look before the start says %q", stale.State.Status)
+	}
+	r.start(id)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Fatalf("after the start: %s", got)
+	}
+	r.c.observeInspect(context.Background(), w, stale, nil, ops)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Errorf("a look from before the start made the running game %s", got)
+	}
+	r.c.observe(w, nil, ops)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Errorf("an empty list from before the start made the running game %s", got)
 	}
 }
