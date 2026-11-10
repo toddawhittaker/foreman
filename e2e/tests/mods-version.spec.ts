@@ -102,7 +102,10 @@ test("Change version goes back after a bad update, with a snapshot first", async
   const table = page.getByRole("table", { name: /Mods of Base/ });
   const row = table.getByRole("row", { name: /fp-back/ });
   await expect(table.getByRole("row", { name: new RegExp(long) }).getByRole("link", { name: "Update to 1.10.0" })).toBeVisible(live);
-  await expect(table.getByRole("row", { name: new RegExp(long) }).getByRole("link", { name: "Change version " + long, exact: true })).toBeVisible();
+  const longRow = table.getByRole("row", { name: new RegExp(long) });
+  await expect(longRow.getByRole("link", { name: "Change version " + long, exact: true })).toBeVisible();
+  // It is one of the row's actions, after Update and before Disable (DESIGN 8.11).
+  await expect(longRow.locator(".mod-actions a")).toHaveText([`Update to 1.10.0 ${long}`, `Change version ${long}`, `Disable ${long}`, `Remove ${long}`]);
   await checkPage(page);
   await shot(page, "mods-version-tab");
   await row.getByRole("link", { name: "Change version fp-back", exact: true }).click();
@@ -141,11 +144,23 @@ test("a version the portal has not got is a conflict with no apply button", asyn
   await checkPage(page);
 });
 
-// DESIGN 5: when the status takes away a focused Change version link, focus
-// stays in the row, on the mod's name, not at the top of the page.
-test("focus moves to the mod's name when the status hides Change version", async ({ page, foreman, fakeGame }) => {
-  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
-  // The status is held back until Change version has focus.
+// SPEC 9.3: the tab draws no Change version until the portal status says a
+// different release exists, so nothing appears and then slides away under a
+// thumb. A mod with one release on the line, or one the portal lacks, never
+// gets it; a mod with another release gets it when the status arrives.
+test("Change version appears with the status, only for a mod with another release", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-two", "1.0.0", ["base >= 2.0"]);
+  await fakePortal!.add("fp-two", "1.1.0", ["base >= 2.0"]);
+  await fakePortal!.add("fp-solo", "1.0.0", ["base >= 2.0"]);
+  await fakePortal!.add("fp-solo", "0.9.0", ["base >= 2.1"], "2.1");
+  await setUpModsWorld(page, foreman, fakeGame!, {
+    ...world,
+    mods: {
+      "fp-two": { factorio: "2.0", version: "1.1.0", deps: ["base >= 2.0"] },
+      "fp-solo": { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] },
+      "zz-private": "2.0",
+    },
+  });
   let release!: () => void;
   const held = new Promise<void>((r) => (release = r));
   await page.route("**/mods/status", async (route) => {
@@ -153,12 +168,13 @@ test("focus moves to the mod's name when the status hides Change version", async
     await route.continue();
   });
   await page.goto("/worlds/base/mods");
-  const change = page.getByRole("link", { name: "Change version zz-private", exact: true });
-  await change.focus();
+  const change = (n: string) => page.getByRole("link", { name: "Change version " + n, exact: true });
+  await expect(page.getByRole("row", { name: /fp-two/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Change version/ })).toHaveCount(0);
   release();
-  await expect(change).toHaveCount(0, live);
-  const name = page.locator("tr", { hasText: "zz-private" }).locator("span.mod-name");
-  await expect(name).toBeFocused();
+  await expect(change("fp-two")).toBeVisible(live);
+  await expect(change("fp-solo")).toHaveCount(0);
+  await expect(change("zz-private")).toHaveCount(0);
   await checkPage(page);
 });
 
@@ -181,8 +197,32 @@ test("a swap of another slot does not move focus to the mod's name", async ({ pa
     (el as HTMLElement).focus();
   });
   release();
-  await expect(row.getByRole("link", { name: "Change version zz-private", exact: true })).toHaveCount(0, live);
+  await expect(row.locator(".mod-flags")).toContainText("Not on the mod portal", live);
   await page.waitForTimeout(200);
   const onName = await page.evaluate(() => !!document.activeElement?.closest(".mod-name"));
   expect(onName).toBe(false);
+});
+
+// SPEC 17: at 320 px and 200% text a row with every action keeps each one
+// inside its panel, and the page does not scroll sideways.
+test("a row with every action fits at large text", async ({ page, foreman, fakeGame, fakePortal }) => {
+  const long = "fp-a-rather-long-mod-name-for-the-row";
+  await fakePortal!.add(long, "1.0.0", ["base >= 2.0"]);
+  await fakePortal!.add(long, "1.10.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { [long]: { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  // A phone's width in every project, so the desktop runs cannot pass on room alone.
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/worlds/base/mods");
+  await page.addStyleTag({ content: "html { font-size: 200% }" });
+  const row = page.getByRole("row", { name: new RegExp(long) });
+  await expect(row.getByRole("link", { name: "Update to 1.10.0 " + long })).toBeVisible(live);
+  const panel = (await page.locator("section.panel").filter({ has: row }).boundingBox())!;
+  for (const name of ["Update to 1.10.0 ", "Change version ", "Disable ", "Remove "]) {
+    const b = (await row.getByRole("link", { name: name + long, exact: true }).boundingBox())!;
+    expect(b.x).toBeGreaterThanOrEqual(panel.x - 0.5);
+    expect(b.x + b.width).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await checkPage(page);
+  await page.screenshot({ path: `../screenshots/mods-version-large-text-${test.info().project.name}.png`, fullPage: true });
 });
