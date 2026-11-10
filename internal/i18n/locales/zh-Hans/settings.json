@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "为 {world} 创建自动快照。如果快照失败，不会进行其他操作。",
   "settings.preview.step_write": "写入 {file}。",
   "settings.preview.step_admins_live": "在正在运行的游戏中提升和降级这些玩家，游戏会更新 {file}。",
-  "settings.preview.undo": "要撤销，请在“快照”页面恢复该快照。",
+  "settings.preview.undo": "要撤销，请恢复该快照。保存后的提示中有指向它的链接。",
   "settings.preview.save": "保存设置",
   "settings.preview.back": "返回并编辑",
   "settings.rail.label": "设置分区"

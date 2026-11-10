@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "Prendre un instantané automatique de {world}. Si l’instantané échoue, rien d’autre ne se passe.",
   "settings.preview.step_write": "Écrire {file}.",
   "settings.preview.step_admins_live": "Promouvoir et rétrograder ces joueurs dans la partie en cours ; le jeu met à jour {file}.",
-  "settings.preview.undo": "Pour annuler, restaurez cet instantané depuis la page Instantanés.",
+  "settings.preview.undo": "Pour annuler, restaurez cet instantané. Le message affiché après l’enregistrement y renvoie par un lien.",
   "settings.preview.save": "Enregistrer les paramètres",
   "settings.preview.back": "Revenir et modifier",
   "settings.rail.label": "Sections des paramètres"

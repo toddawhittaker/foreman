@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "Einen automatischen Snapshot von {world} erstellen. Schlägt der Snapshot fehl, passiert sonst nichts.",
   "settings.preview.step_write": "{file} schreiben.",
   "settings.preview.step_admins_live": "Diese Spieler im laufenden Spiel zu Admins befördern oder degradieren; das Spiel aktualisiert dabei {file}.",
-  "settings.preview.undo": "Zum Rückgängigmachen stelle diesen Snapshot auf der Seite „Snapshots“ wieder her.",
+  "settings.preview.undo": "Zum Rückgängigmachen stelle diesen Snapshot wieder her. Die Meldung nach dem Speichern verlinkt ihn.",
   "settings.preview.save": "Einstellungen speichern",
   "settings.preview.back": "Zurück und bearbeiten",
   "settings.rail.label": "Abschnitte der Einstellungen"

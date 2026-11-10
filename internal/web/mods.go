@@ -517,8 +517,8 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 		st = ModStatus{World: sum, Unreachable: true}
 	}
-	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil && !st.Unreachable {
-		st.Current = currentCount(list, st.Flags)
+	if !st.Unreachable {
+		st.Current = currentCount(ps.Installed, st.Flags)
 	}
 	s.fragment(w, r, st, "mod-status")
 }
@@ -587,8 +587,22 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 	}
 	if n.Errors > 0 {
 		n.Fix = goneFix(sum.ID, gone)
+		if s.refusalOffers(sum, n.Fix) {
+			n.Fix = Offer{}
+		}
 	}
 	s.fragment(w, r, n, "mods-notice")
+}
+
+// refusalOffers reports whether the Server page shows a refusal whose main
+// fix is the offer, so the page never carries two buttons for one plan.
+func (s *server) refusalOffers(sum world.Summary, fix Offer) bool {
+	res, ok := s.runs.result(sum.ID)
+	if !ok {
+		return false
+	}
+	f := ServerPage{World: sum, HaveResult: true, Result: res}.Failure()
+	return f != nil && f.Fix != nil && f.Fix.Path == fix.Path
 }
 
 // ActiveModsPath is the Mods tab of the world the Server page is about.

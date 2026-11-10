@@ -295,18 +295,23 @@
 {{- end}}
 
 {{/* One line about mods players can no longer download, with its fix
-     (#131). Empty when there are none or the portal cannot be asked.
+     (#131). Empty when there are none or the portal cannot be asked. The
+     button goes when the page's refusal already carries the same fix.
      Takes ModNotice. */}}
 {{define "mods-notice" -}}
 {{- if eq .Errors 1}}
 <div class="message message--warning">
   <p><strong>{{t "common.label.warning"}}</strong> {{tHTML "mods.notice.one" "mod" (ident .Mod) "version" .Version}}</p>
+  {{- if .Fix.Path}}
   <div class="actions"><a href="{{.Fix.Path}}" class="button" id="act-mods-fix">{{msgHTML .Fix.Label}}</a></div>
+  {{- end}}
 </div>
 {{- else if .Errors}}
 <div class="message message--warning">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.notice" "count" .Errors "world" .World.Name}}</p>
+  {{- if .Fix.Path}}
   <div class="actions"><a href="{{.Fix.Path}}" class="button" id="act-mods-fix">{{msgHTML .Fix.Label}}</a></div>
+  {{- end}}
 </div>
 {{- end}}
 {{- end}}

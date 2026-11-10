@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "Take an automatic snapshot of {world}. If the snapshot fails, nothing else happens.",
   "settings.preview.step_write": "Write {file}.",
   "settings.preview.step_admins_live": "Promote and demote these players in the running game, which updates {file}.",
-  "settings.preview.undo": "To undo, restore that snapshot from the Snapshots page.",
+  "settings.preview.undo": "To undo, restore that snapshot. The message after saving links to it.",
   "settings.preview.save": "Save settings",
   "settings.preview.back": "Go back and edit",
   "settings.rail.label": "Settings sections"

@@ -56,6 +56,19 @@ test("a start refused for a mod players cannot download: update first, then star
   await expect(page.locator("#portal-unchecked")).toHaveCount(0);
 });
 
+// SPEC 9.3, 7.4: the refusal carries the fix, so the notice keeps its words and drops its own button.
+test("a refusal and the notice for one plan show one Update button", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await goneWorld(page, foreman, fakeGame!, fakePortal!);
+  await page.goto("/");
+  await expect(notice(page).getByRole("link", { name: "Update visible-planets" })).toBeVisible(live);
+  await page.getByRole("button", { name: "Start server" }).click();
+  await expect(refusal(page)).toBeVisible(live);
+  await expect(notice(page)).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
+  await expect(notice(page).getByRole("link", { name: "Update visible-planets" })).toHaveCount(0, live);
+  await expect(page.getByRole("link", { name: "Update visible-planets" })).toHaveCount(1);
+  await checkPage(page);
+});
+
 for (const down of [
   { name: "the portal cannot be reached", set: (p: FakePortal) => p.setDown(true) },
   { name: "the portal answers with an error", set: (p: FakePortal) => p.failApi(503) },

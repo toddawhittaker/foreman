@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "Wykona automatyczną migawkę świata {world}. Jeśli migawka się nie powiedzie, nic więcej się nie stanie.",
   "settings.preview.step_write": "Zapisze {file}.",
   "settings.preview.step_admins_live": "Awansuje i zdegraduje tych graczy w działającej grze; gra zaktualizuje {file}.",
-  "settings.preview.undo": "Aby cofnąć, należy przywrócić tę migawkę na stronie Migawki.",
+  "settings.preview.undo": "Aby cofnąć, należy przywrócić tę migawkę. Komunikat po zapisaniu zawiera odnośnik do niej.",
   "settings.preview.save": "Zapisz ustawienia",
   "settings.preview.back": "Wróć i edytuj",
   "settings.rail.label": "Sekcje ustawień"
