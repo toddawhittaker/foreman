@@ -177,7 +177,7 @@ func (c *Controller) waitInGame(ctx context.Context, w *worldRun, cid string, re
 		case <-poll.C:
 			cont, err := c.docker.InspectContainer(ctx, cid)
 			if err == nil && (cont.State.Status != "running" || cont.RestartCount > restarts) {
-				return &StartError{Kind: StartStopped, Reason: c.loadFailureReason(ctx, w, cid)}
+				return c.stoppedWhileLoading(ctx, w, cid)
 			}
 		case <-deadline:
 			return &StartError{Kind: StartLoadTimeout, Timeout: c.startTimeout}

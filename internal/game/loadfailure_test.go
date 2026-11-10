@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/secret"
 )
@@ -175,15 +177,20 @@ func TestLoadFailureBoundsWhatItKeeps(t *testing.T) {
 
 // startWhileGameDies starts a world whose game is still loading, then puts
 // the lines in its log and makes the game exit. It returns Start's error.
-func startWhileGameDies(t *testing.T, lines func(rconPassword string) []string) (string, error) {
+// prepare, when set, runs just before the lines are put, with the number of
+// lines the log holds then.
+func startWhileGameDies(t *testing.T, lines func(rconPassword string) []string, prepare func(d *dockertest.Daemon, logged int)) (string, error) {
 	t.Helper()
 	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 30 * time.Second}})
 	id := r.newWorld("Dies")
 	done := make(chan error, 1)
 	go func() { done <- r.c.Start(context.Background(), id, admin, StartOptions{}) }()
+	// Docker marks the container running before the game writes its first
+	// lines, so wait for the game's own "Loading map" line.
 	eventually(t, func() bool {
-		for _, c := range r.game.State().Containers {
-			if c.Name == ContainerName(id) && c.Status == "running" {
+		for _, c := range r.game.Daemon().Containers() {
+			if c.Name == ContainerName(id) && c.Status == "running" &&
+				slices.ContainsFunc(c.Log, func(e dockertest.LogEntry) bool { return strings.Contains(e.Text, "Loading map ") }) {
 				return true
 			}
 		}
@@ -194,6 +201,17 @@ func startWhileGameDies(t *testing.T, lines func(rconPassword string) []string) 
 		t.Fatal(err)
 	}
 	pw := rconPW.Reveal()
+	if prepare != nil {
+		d := r.game.Daemon()
+		logged := -1
+		for _, c := range d.Containers() {
+			if c.Name == ContainerName(id) {
+				logged = len(c.Log)
+			}
+		}
+		prepare(d, logged)
+		t.Cleanup(func() { d.HoldFollowers(false); d.CutLogReads(0) })
+	}
 	for _, l := range lines(pw) {
 		if !r.game.Daemon().EmitLog(ContainerName(id), docker.Stderr, l) {
 			t.Fatal("no container to log to")
@@ -219,7 +237,7 @@ func TestStartExplainsIncompatibleMods(t *testing.T) {
 			"• mining-patch-planner",
 			incompatible,
 		}
-	})
+	}, nil)
 	if !errors.Is(err, ErrStartFailed) {
 		t.Fatalf("got %v", err)
 	}
@@ -235,7 +253,7 @@ func TestStartExplainsIncompatibleMods(t *testing.T) {
 func TestStartLoadFailureNeverShowsTheRCONPassword(t *testing.T) {
 	pw, err := startWhileGameDies(t, func(pw string) []string {
 		return []string{fmt.Sprintf("   2.000 Error Util.cpp:81: bad rcon password %s given", pw)}
-	})
+	}, nil)
 	if !errors.Is(err, ErrStartFailed) {
 		t.Fatalf("got %v", err)
 	}
@@ -247,8 +265,137 @@ func TestStartLoadFailureNeverShowsTheRCONPassword(t *testing.T) {
 func TestStartLoadFailureWithNothingToShowKeepsThePlainText(t *testing.T) {
 	_, err := startWhileGameDies(t, func(pw string) []string {
 		return []string{"+ exec factorio --rcon-password " + pw}
-	})
+	}, nil)
 	if want := "the game did not start: the game stopped while it was loading"; err == nil || err.Error() != want {
 		t.Fatalf("got %v, want %q", err, want)
+	}
+}
+
+// The game's lines for one run that cannot load its save, as 2.1 writes
+// them.
+func failedRun(reason string) []string {
+	out := []string{"   0.985 Loading map /factorio/saves/save.zip: 4096 bytes."}
+	if reason != "" {
+		out = append(out, `   0.985 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "`+reason+`"`)
+	}
+	return append(out, "   0.985 Info ServerMultiplayerManager.cpp:809: updateTick(1) changing state from(CreatingGame) to(InitializationFailed)")
+}
+
+func readAll(lines ...[]string) loadFailure {
+	var f loadFailure
+	for _, ls := range lines {
+		for _, l := range ls {
+			f.add(l)
+		}
+	}
+	return f
+}
+
+// SPEC 8.7: a failed load is told with the reason its own run gave, never
+// an older run's.
+func TestLoadFailurePairsAFailureWithItsOwnRun(t *testing.T) {
+	f := readAll(failedRun("first"), failedRun("second"))
+	if !f.failed || f.failError != "second" {
+		t.Errorf("failed %v with %q, want the newest run's reason", f.failed, f.failError)
+	}
+	f = readAll(failedRun("first"), failedRun(""))
+	if !f.failed || f.failError != "" {
+		t.Errorf("failed %v with %q, want no reason: the newest run gave none", f.failed, f.failError)
+	}
+}
+
+// A run Docker began after the failure has not finished loading, so the
+// failure before it still stands.
+func TestLoadFailureStandsWhileTheNextRunLoads(t *testing.T) {
+	f := readAll(failedRun("first"), failedRun("")[:1])
+	if !f.failed || f.failError != "first" {
+		t.Errorf("failed %v with %q", f.failed, f.failError)
+	}
+	f = readAll(failedRun("first"), failedRun("")[:1],
+		[]string{"   1.000 Info ServerMultiplayerManager.cpp:809: updateTick(1) changing state from(CreatingGame) to(InGame)"})
+	if f.failed {
+		t.Error("a run that loaded still counts as a failed load")
+	}
+}
+
+// The error line shown is the newest run's, or the run before it while the
+// newest has said nothing yet.
+func TestLoadFailureShowsTheNewestRunsErrorLine(t *testing.T) {
+	errLine := func(s string) []string { return []string{"   1.0 Error Mod.cpp:9: " + s} }
+	run := failedRun("")[:1]
+	newest, before := readAll(errLine("old"), run, errLine("new")), readAll(errLine("old"), run)
+	if got := newest.reason(masking()).Said; got != "new" {
+		t.Errorf("said %q, want the newest run's line", got)
+	}
+	if got := before.reason(masking()).Said; got != "old" {
+		t.Errorf("said %q, want the run before's line", got)
+	}
+}
+
+// SPEC 8.6, 14.8: a long reason is masked before it is cut, on both the
+// follower's path and the log read's, and cut to the same length.
+func TestLoadFailureReasonIsMaskedThenCut(t *testing.T) {
+	pw := secret.New("S3CRETPASSWORD")
+	long := strings.Repeat("x", maxErrorLine-5) + pw.Reveal() + " tail"
+	f := readAll(failedRun(long))
+	got := shownText(masking(pw), f.failError)
+	if strings.Contains(got, "S3CR") || len([]rune(got)) > maxErrorLine {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// SPEC 7.3, 8.7: when the follower has not read the failure by the time the
+// game stops, a read that fails or ends early falls back to a plain stop,
+// and shows no secret.
+func TestStartStoppedWhenTheLogReadFailsOrEndsEarly(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		prepare func(d *dockertest.Daemon, logged int)
+		want    string
+	}{
+		{"fails", func(d *dockertest.Daemon, _ int) {
+			d.HoldFollowers(true)
+			d.SetCallFailure("GET", "logs", 500, "the log is gone")
+		}, "the game did not start: the game stopped while it was loading"},
+		{"ends early", func(d *dockertest.Daemon, logged int) {
+			d.HoldFollowers(true)
+			d.CutLogReads(logged + 1)
+		}, "the game did not start. Factorio said: bad rcon password " + Mask + " given"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pw, err := startWhileGameDies(t, func(pw string) []string {
+				return append([]string{"   2.000 Error Util.cpp:81: bad rcon password " + pw + " given"}, failedRun("cannot open "+pw)...)
+			}, tc.prepare)
+			var se *StartError
+			if !errors.As(err, &se) || se.Kind != StartStopped || err.Error() != tc.want {
+				t.Fatalf("got %v, want %q", err, tc.want)
+			}
+			if strings.Contains(err.Error(), pw) {
+				t.Fatal("the message holds the RCON password")
+			}
+		})
+	}
+}
+
+// SPEC 8.7: the read keeps the newest lines, so a chatty earlier run cannot
+// push the newest run's failure out of what is read, by lines or by bytes.
+func TestStartFindsTheNewestFailurePastTheReadCap(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		chatter []string
+	}{
+		{"lines", slices.Repeat([]string{"   1.0 chatter"}, maxLoadFailureLines)},
+		{"bytes", slices.Repeat([]string{strings.Repeat("c", 60000)}, maxLoadFailureBytes/60000+2)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := startWhileGameDies(t, func(string) []string {
+				lines := append(failedRun("old"), tc.chatter...)
+				return append(lines, failedRun("new")...)
+			}, func(d *dockertest.Daemon, _ int) { d.HoldFollowers(true) })
+			var se *StartError
+			if !errors.As(err, &se) || se.Kind != StartLoadFailed || se.Detail != "new" {
+				t.Fatalf("got %v, want the newest run's failed load", err)
+			}
+		})
 	}
 }
