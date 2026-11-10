@@ -550,7 +550,7 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 		w.run.inGame = true
 		w.crashedRun = false
 	case KindLoadError:
-		w.run.loadError = w.redact(ev.Detail)
+		w.run.loadError = shownText(w.redact, ev.Detail)
 		publish = false
 	case KindLoadFailed:
 		w.run.loadFailed, w.run.inGame = true, false

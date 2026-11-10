@@ -377,6 +377,12 @@ func (d *Daemon) logs(w http.ResponseWriter, r *http.Request, ref string) {
 		entries := append([]LogEntry(nil), c.Log[next:]...)
 		running := c.Status == "running"
 		changed := d.changed
+		if follow && d.holdFollow {
+			entries, running = nil, true
+		}
+		if !follow && d.cutReads > 0 && len(entries) > d.cutReads {
+			entries = entries[:d.cutReads]
+		}
 		d.mu.Unlock()
 
 		for _, e := range entries {

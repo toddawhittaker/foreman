@@ -671,6 +671,38 @@ func TestStartStoppedAfterAFailedLoadSaysTheSaveDidNotLoad(t *testing.T) {
 	}
 }
 
+// SPEC 8.7, 7.3, 8.9: with the follower held back, Start sees the game stop
+// before any failure line reaches it, and still says the save did not load.
+// The run is marked too, so the world's state agrees with the error.
+func TestStartLoadFailureSeenFirstByTheContainerCheck(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Corrupt")
+	d := r.game.Daemon()
+	d.HoldFollowers(true)
+	t.Cleanup(func() { d.HoldFollowers(false) })
+	r.game.SetCrashLoop(ContainerName(id), true)
+	err := r.c.Start(context.Background(), id, admin, StartOptions{})
+	var se *StartError
+	if !errors.As(err, &se) || se.Kind != StartLoadFailed || se.Detail != "Opening zip /factorio/saves/save.zip failed: I/O error" {
+		t.Fatalf("got %v, want the save that did not load and the game's reason", err)
+	}
+
+	// Once the crash loop is stopped nothing else touches the run.
+	r.waitState(id, StateCrashLooping)
+	eventually(t, func() bool { return r.container(id).Status == "exited" }, "the container to stop")
+	w := r.c.world(id)
+	w.mu.Lock()
+	w.run = runState{}
+	w.mu.Unlock()
+	_ = r.c.stoppedWhileLoading(context.Background(), w, r.container(id).ID)
+	w.mu.Lock()
+	run := w.run
+	w.mu.Unlock()
+	if !run.loadFailed || run.inGame || run.loadError != se.Detail {
+		t.Errorf("run %+v, want it marked as a failed load with the reason", run)
+	}
+}
+
 func TestStartTimeout(t *testing.T) {
 	r := newRig(t, rigOptions{fake: fakegame.Config{LoadDelay: 10 * time.Second}})
 	r.c.startTimeout = 200 * time.Millisecond
