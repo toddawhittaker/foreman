@@ -522,7 +522,7 @@ func TestDroppingContainerDoesNotBlockStatus(t *testing.T) {
 	conn := <-accepted
 	defer func() { _ = conn.Close() }()
 
-	go r.c.observe(w, nil)
+	go r.c.observe(w, nil, 0)
 	time.Sleep(100 * time.Millisecond)
 	done := make(chan struct{})
 	go func() {
@@ -649,5 +649,130 @@ func TestLoadedSaveNotMaskedByShortPassword(t *testing.T) {
 	}
 	if got := save("1"); got == "1" {
 		t.Error("a save named as the password was shown")
+	}
+}
+
+// SPEC 8.7: a look at Docker taken before a start must not land after it.
+// The monitor reads Docker first and takes the world's lock later; a start
+// that runs in between would otherwise show its game as stopped, and a
+// switch that keeps the run state would then leave the new world stopped.
+func TestMonitorDropsALookTakenBeforeAnOperation(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Stale")
+	r.start(id)
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	w := r.c.world(id)
+	w.mu.Lock()
+	ops := w.ops
+	w.mu.Unlock()
+	stale, err := r.docker.InspectContainer(context.Background(), r.container(id).ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale.State.Status == "running" {
+		t.Fatalf("the look before the start says %q", stale.State.Status)
+	}
+	r.start(id)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Fatalf("after the start: %s", got)
+	}
+	r.c.observeInspect(context.Background(), w, stale, nil, ops)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Errorf("a look from before the start made the running game %s", got)
+	}
+	r.c.observe(w, nil, ops)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Errorf("an empty list from before the start made the running game %s", got)
+	}
+}
+
+// SPEC 8.7: a look taken while an operation runs is dropped once it ends,
+// since that operation may have changed what the look saw.
+func TestMonitorDropsALookTakenDuringAnOperation(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("During")
+	r.start(id)
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	w := r.c.world(id)
+	// A start whose game is launched after the monitor's look.
+	ctx, o := r.c.beginOp(context.Background(), w, AuditStart, startSteps(StartOptions{}))
+	w.mu.Lock()
+	ops := w.ops
+	w.mu.Unlock()
+	stale, err := r.docker.InspectContainer(context.Background(), r.container(id).ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := o.end(r.c.launchLocked(ctx, o)); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Fatalf("after the start: %s", got)
+	}
+	r.c.observeInspect(context.Background(), w, stale, nil, ops)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Errorf("a look from during the start made the running game %s", got)
+	}
+	r.c.observe(w, nil, ops)
+	if got := r.c.Status(id).State; got != StateRunning {
+		t.Errorf("an empty list from during the start made the running game %s", got)
+	}
+}
+
+// SPEC 3.8, 8.7: taking on a container from an old look must not undo a
+// start that ran since. A fresh process has not taken on the world's
+// container yet, so its monitor's look would attach to it; a start then
+// replaces that container before the attach runs.
+func TestAttachDropsALookTakenBeforeAnOperation(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	id := r.newWorld("Attach")
+	r.start(id)
+	if err := r.c.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	c := r.newController(rigOptions{noRun: true})
+	w := c.world(id)
+	w.mu.Lock()
+	ops := w.ops
+	w.mu.Unlock()
+	stale, err := r.docker.InspectContainer(context.Background(), r.container(id).ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.needsAttach(w, stale, ops) {
+		t.Fatal("a fresh process does not want to take on the stopped container")
+	}
+	if err := c.Start(context.Background(), id, admin, StartOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	type held struct {
+		containerID string
+		following   bool
+		restarts    int
+		crashes     int
+		startedAt   time.Time
+	}
+	look := func() held {
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		return held{w.containerID, w.following, w.seenRestarts, len(w.crashes), w.startedAt}
+	}
+	before := look()
+	if before.containerID == stale.ID || before.containerID == "" {
+		t.Fatalf("the start did not replace the container: %q", before.containerID)
+	}
+	if c.needsAttach(w, stale, ops) {
+		t.Error("an old look still asks to take on the replaced container")
+	}
+	c.attach(w, stale, ops)
+	if got := look(); got != before {
+		t.Errorf("an old look's attach changed the world from %+v to %+v", before, got)
+	}
+	if got := c.Status(id).State; got != StateRunning {
+		t.Errorf("an old look's attach made the running game %s", got)
 	}
 }
