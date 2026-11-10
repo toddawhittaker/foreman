@@ -11,6 +11,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // SPEC 9.2: an install plan lists each asked mod's releases for the
@@ -67,9 +68,9 @@ func TestChangeVersionGoesBack(t *testing.T) {
 	id := g.world20("Base", "ver-b_1.1.0")
 	plan := "/worlds/" + id + "/mods/plan"
 
-	_, tab := g.getStatus(modsPath(id))
+	_, status := g.getStatus(modsPath(id) + "/status")
 	link := plan + "?kind=update&amp;name=ver-b&amp;version-ver-b=1.1.0"
-	wantIn(t, "tab", tab, `<a href="`+link+`" id="`+slotID("version", "ver-b")+`" class="button button--quiet mod-version">Change version<span class="visually-hidden"> <span translate="no">ver-b</span></span></a>`)
+	wantIn(t, "status", status, `<span id="`+slotID("version", "ver-b")+`" hx-swap-oob="true"><a href="`+link+`" class="button button--quiet mod-version">Change version<span class="visually-hidden"> <span translate="no">ver-b</span></span></a></span>`)
 
 	code, body := g.getStatus(plan + "?kind=update&name=ver-b&version-ver-b=1.1.0")
 	if code != http.StatusOK {
@@ -197,11 +198,12 @@ func TestPlanVersionListShape(t *testing.T) {
       <legend>Versions</legend>`, `id="mod-ver-d-version"`, `id="mod-ver-e-version"`)
 }
 
-// SPEC 9.3: Change version stays only for a mod the portal has another
-// release of on the world's line, on or off. The status takes it away from
-// a mod with no other release, one with others only for another line, and
-// one the portal lacks; a folder mod never has it.
-func TestStatusKeepsChangeVersionOnlyWithAnotherRelease(t *testing.T) {
+// SPEC 9.3: the tab draws an empty place for Change version, so nothing
+// moves under a thumb, and the status fills it only for a mod the portal
+// has another release of on the world's line, on or off. A mod with no
+// other release, one with others only for another line, one the portal
+// lacks and a folder mod never get it.
+func TestStatusGivesChangeVersionOnlyWithAnotherRelease(t *testing.T) {
 	g := newModsRig(t, true)
 	g.portal.AddZip("ver-two", "1.0.0")
 	g.portal.AddZip("ver-two", "1.1.0")
@@ -218,18 +220,18 @@ func TestStatusKeepsChangeVersionOnlyWithAnotherRelease(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(g.modsDir(id), "folder-mod"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	gone := func(name string) string {
-		return `<span id="` + slotID("version", name) + `" hidden hx-swap-oob="true"></span>`
-	}
+	filled := func(name string) string { return `<span id="` + slotID("version", name) + `" hx-swap-oob="true"><a ` }
+
 	_, tab := g.getStatus(modsPath(id))
-	if strings.Contains(tab, slotID("version", "folder-mod")) {
-		t.Error("a folder mod has Change version")
+	wantIn(t, "tab", tab, `<span id="`+slotID("version", "ver-two")+`" hidden></span>`)
+	if strings.Contains(tab, "Change version") || strings.Contains(tab, slotID("version", "folder-mod")) {
+		t.Error("the tab draws Change version before the status, or gives a folder mod a place for it")
 	}
 	_, body := g.getStatus(modsPath(id) + "/status")
-	wantIn(t, "status", body, gone("ver-solo"), gone("ver-line"), gone("zz-not-on-portal"))
-	for _, kept := range []string{"ver-two", "ver-off"} {
-		if strings.Contains(body, gone(kept)) {
-			t.Errorf("the status takes Change version from %s, which has another release", kept)
+	wantIn(t, "status", body, filled("ver-two"), filled("ver-off"), "version-ver-off=2.0.0")
+	for _, none := range []string{"ver-solo", "ver-line", "zz-not-on-portal", "folder-mod"} {
+		if strings.Contains(body, slotID("version", none)) {
+			t.Errorf("the status gives %s Change version", none)
 		}
 	}
 
@@ -237,7 +239,34 @@ func TestStatusKeepsChangeVersionOnlyWithAnotherRelease(t *testing.T) {
 	g.portal.FailAPI(http.StatusInternalServerError)
 	other := g.world20("Other", "ver-x_1.0.0")
 	_, body = g.getStatus(modsPath(other) + "/status")
-	wantIn(t, "portal down", body, "could not reach the mod portal", gone("ver-x"))
+	wantIn(t, "portal down", body, "could not reach the mod portal")
+	if strings.Contains(body, "hx-swap-oob") {
+		t.Error("an unreachable portal fills a row's slot")
+	}
+}
+
+// A world briefly away, as during a restore, makes the planner's read of
+// its mods fail with fs.ErrNotExist. The status then says nothing: no slot
+// filled, no error, no unreachable portal.
+func TestStatusOfAWorldAwaySaysNothing(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("ver-two", "1.0.0")
+	g.portal.AddZip("ver-two", "1.1.0")
+	id := g.world20("Base", "ver-two_1.1.0")
+	// The page still finds the world, but its mods cannot be read.
+	if err := os.Remove(filepath.Join(g.modsDir(id), "..", world.MetaFile)); err != nil {
+		t.Fatal(err)
+	}
+	code, body := g.getStatus(modsPath(id) + "/status")
+	if code != http.StatusOK {
+		t.Fatalf("status %d\n%s", code, body)
+	}
+	if out := strings.TrimSpace(body); out != "" {
+		t.Errorf("a world away renders %q", out)
+	}
+	if g.portal.FullCalls("ver-two") != 0 {
+		t.Error("the portal was asked about a world away")
+	}
 }
 
 // An asked mod kept at its version is left out of Kept only when its

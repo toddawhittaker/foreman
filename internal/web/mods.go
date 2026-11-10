@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -193,15 +194,9 @@ func (p ModsPage) RowPath(kind, name string) string {
 	return kindPlanPath(p.World.ID, mods.Kind(kind), name)
 }
 
-// VersionPath is the plan page for one mod held at its installed version,
-// where its version list offers every release on the world's line (SPEC 9.3).
-func (p ModsPage) VersionPath(m world.InstalledMod) string {
-	q := url.Values{"kind": {string(mods.KindUpdate)}, "name": {m.Name}, versionPrefix + m.Name: {m.Version}}
-	return planPath(p.World.ID, q)
-}
-
-// VersionSlot is the id of a row's Change version, which the portal status
-// takes away unless the portal has another release on the world's line.
+// VersionSlot is the id of a row's place for Change version, which the
+// portal status fills in when the portal has another release on the
+// world's line.
 func (ModsPage) VersionSlot(name string) string { return slotID("version", name) }
 
 // UpdateSlot is the id of a row's place for its Update button, which the
@@ -386,10 +381,9 @@ type ModStatus struct {
 	Flags       []mods.Flag
 	// Current counts the mods the portal has at their installed version.
 	Current int
-	// NoVersion names the portal mods whose Change version goes: the
-	// portal lists no other release of them on the world's line, or cannot
-	// be reached (SPEC 9.3).
-	NoVersion []string
+	// Changeable maps the mods that get Change version to their installed
+	// version (SPEC 9.3).
+	Changeable map[string]string
 }
 
 func (ModStatus) templateName() string { return "mods" }
@@ -401,6 +395,13 @@ func (p ModStatus) Path() string          { return modsPath(p.World.ID) }
 // UpdatePath is the plan for one mod's update.
 func (p ModStatus) UpdatePath(name string) string {
 	return kindPlanPath(p.World.ID, mods.KindUpdate, name)
+}
+
+// VersionPath is the plan page for one mod held at its installed version,
+// where its version list offers every release on the world's line (SPEC 9.3).
+func (p ModStatus) VersionPath(name, version string) string {
+	q := url.Values{"kind": {string(mods.KindUpdate)}, "name": {name}, versionPrefix + name: {version}}
+	return planPath(p.World.ID, q)
 }
 
 // Slot ids of a row's places the status fills.
@@ -424,7 +425,10 @@ func (p ModStatus) Count(sev mods.Severity) int {
 type StatusRow struct {
 	Name string
 	// UpdateTo is the version its Update button offers; "" for none.
-	UpdateTo    string
+	UpdateTo string
+	// Installed is the version Change version holds the mod at; "" when
+	// the portal has no other release to change to.
+	Installed   string
 	Flags       []mods.Flag
 	NotOnPortal bool
 }
@@ -456,6 +460,9 @@ func (p ModStatus) Rows() []StatusRow {
 		case f.Code == mods.FlagVersionGone && f.Update != "" && r.UpdateTo == "":
 			r.UpdateTo = f.Update
 		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(p.Changeable)) {
+		row(name).Installed = p.Changeable[name]
 	}
 	return out
 }
@@ -504,23 +511,14 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return
 	}
-	st := ModStatus{World: sum}
-	var changeable map[string]bool
-	var err error
-	if st.Updates, err = s.planner.Updates(r.Context(), sum.ID); err == nil {
-		if st.Flags, err = s.planner.Availability(r.Context(), sum.ID); err == nil {
-			changeable, err = s.planner.Changeable(r.Context(), sum.ID)
-		}
-	}
+	ps, err := s.planner.Status(r.Context(), sum.ID)
+	st := ModStatus{World: sum, Updates: ps.Updates, Flags: ps.Flags, Changeable: ps.Changeable}
 	if err != nil {
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
-		st, changeable = ModStatus{World: sum, Unreachable: true}, nil
+		st = ModStatus{World: sum, Unreachable: true}
 	}
-	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil {
-		if !st.Unreachable {
-			st.Current = currentCount(list, st.Flags)
-		}
-		st.NoVersion = noVersion(list, changeable)
+	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil && !st.Unreachable {
+		st.Current = currentCount(list, st.Flags)
 	}
 	s.fragment(w, r, st, "mod-status")
 }
@@ -541,17 +539,6 @@ func currentCount(list []world.InstalledMod, flags []mods.Flag) int {
 		}
 	}
 	return n
-}
-
-// noVersion names the table's portal mods that are not changeable.
-func noVersion(list []world.InstalledMod, changeable map[string]bool) []string {
-	var out []string
-	for _, m := range list {
-		if !m.BuiltIn && !m.Local && !changeable[m.Name] {
-			out = append(out, m.Name)
-		}
-	}
-	return out
 }
 
 // portalTrouble logs a portal failure: an unreachable portal is the

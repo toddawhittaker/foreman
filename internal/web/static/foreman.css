@@ -3039,9 +3039,11 @@ a.mod-name {
   display: none;
 }
 
-/* A folder mod has no Remove; its room keeps Disable under the others'. */
-.mod-remove-room {
-  visibility: hidden;
+/* Disable starts at the same place in every row, a folder mod's too, which
+   has no Remove: the group keeps one width, with Remove at its end. */
+.mod-actions__fixed {
+  min-inline-size: 12em;
+  justify-content: space-between;
 }
 
 /* Remove is the one red control: it is the change that destroys something. */
@@ -3105,6 +3107,12 @@ a.mod-name {
   .mod-actions__portal,
   .mod-actions__fixed {
     justify-content: flex-start;
+  }
+
+  /* Under the name every group starts at the row's start, so Disable lines
+     up without a set width, which large text could push off the panel. */
+  .mod-actions__fixed {
+    min-inline-size: 0;
   }
 
   /* Tighter buttons, so each group keeps one line at 320 px, and a row

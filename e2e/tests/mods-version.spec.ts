@@ -144,34 +144,23 @@ test("a version the portal has not got is a conflict with no apply button", asyn
   await checkPage(page);
 });
 
-// DESIGN 5: when the status takes away a focused Change version link, focus
-// stays in the row, on the mod's name, not at the top of the page.
-test("focus moves to the mod's name when the status hides Change version", async ({ page, foreman, fakeGame }) => {
-  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "zz-private": "2.0" } });
-  // The status is held back until Change version has focus.
-  let release!: () => void;
-  const held = new Promise<void>((r) => (release = r));
-  await page.route("**/mods/status", async (route) => {
-    await held;
-    await route.continue();
-  });
-  await page.goto("/worlds/base/mods");
-  const change = page.getByRole("link", { name: "Change version zz-private", exact: true });
-  await change.focus();
-  release();
-  await expect(change).toHaveCount(0, live);
-  const name = page.locator("tr", { hasText: "zz-private" }).locator("span.mod-name");
-  await expect(name).toBeFocused();
-  await checkPage(page);
-});
-
-// SPEC 9.3: a mod the portal has at one release only has nothing to change
-// to, so the status takes Change version away; focus on it moves to the
-// mod's name, which is still its portal link.
-test("Change version goes from a mod with no other release, and focus moves to its name", async ({ page, foreman, fakeGame, fakePortal }) => {
+// SPEC 9.3: the tab draws no Change version until the portal status says a
+// different release exists, so nothing appears and then slides away under a
+// thumb. A mod with one release on the line, or one the portal lacks, never
+// gets it; a mod with another release gets it when the status arrives.
+test("Change version appears with the status, only for a mod with another release", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-two", "1.0.0", ["base >= 2.0"]);
+  await fakePortal!.add("fp-two", "1.1.0", ["base >= 2.0"]);
   await fakePortal!.add("fp-solo", "1.0.0", ["base >= 2.0"]);
   await fakePortal!.add("fp-solo", "0.9.0", ["base >= 2.1"], "2.1");
-  await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-solo": { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  await setUpModsWorld(page, foreman, fakeGame!, {
+    ...world,
+    mods: {
+      "fp-two": { factorio: "2.0", version: "1.1.0", deps: ["base >= 2.0"] },
+      "fp-solo": { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] },
+      "zz-private": "2.0",
+    },
+  });
   let release!: () => void;
   const held = new Promise<void>((r) => (release = r));
   await page.route("**/mods/status", async (route) => {
@@ -179,11 +168,13 @@ test("Change version goes from a mod with no other release, and focus moves to i
     await route.continue();
   });
   await page.goto("/worlds/base/mods");
-  const change = page.getByRole("link", { name: "Change version fp-solo", exact: true });
-  await change.focus();
+  const change = (n: string) => page.getByRole("link", { name: "Change version " + n, exact: true });
+  await expect(page.getByRole("row", { name: /fp-two/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Change version/ })).toHaveCount(0);
   release();
-  await expect(change).toHaveCount(0, live);
-  await expect(page.getByRole("link", { name: "fp-solo on the mod portal, opens in a new tab" })).toBeFocused();
+  await expect(change("fp-two")).toBeVisible(live);
+  await expect(change("fp-solo")).toHaveCount(0);
+  await expect(change("zz-private")).toHaveCount(0);
   await checkPage(page);
 });
 
@@ -206,7 +197,7 @@ test("a swap of another slot does not move focus to the mod's name", async ({ pa
     (el as HTMLElement).focus();
   });
   release();
-  await expect(row.getByRole("link", { name: "Change version zz-private", exact: true })).toHaveCount(0, live);
+  await expect(row.locator(".mod-flags")).toContainText("Not on the mod portal", live);
   await page.waitForTimeout(200);
   const onName = await page.evaluate(() => !!document.activeElement?.closest(".mod-name"));
   expect(onName).toBe(false);
@@ -219,6 +210,8 @@ test("a row with every action fits at large text", async ({ page, foreman, fakeG
   await fakePortal!.add(long, "1.0.0", ["base >= 2.0"]);
   await fakePortal!.add(long, "1.10.0", ["base >= 2.0"]);
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { [long]: { factorio: "2.0", version: "1.0.0", deps: ["base >= 2.0"] } } });
+  // A phone's width in every project, so the desktop runs cannot pass on room alone.
+  await page.setViewportSize({ width: 320, height: 800 });
   await page.goto("/worlds/base/mods");
   await page.addStyleTag({ content: "html { font-size: 200% }" });
   const row = page.getByRole("row", { name: new RegExp(long) });
