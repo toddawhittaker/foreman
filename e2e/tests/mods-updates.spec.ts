@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-// SPEC 9.3 (updates) and 9.8 (mods players cannot get, issue 131), through the
+// SPEC 9.3 (updates) and 9.8 (mods players cannot get), through the
 // fake portal. The fake's generated mods are made for Factorio 2.0.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 

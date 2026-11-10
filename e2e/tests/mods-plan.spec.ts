@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-// SPEC 9.1, 9.2, 9.7, 9.11, #131: building one plan from a search, the portal
+// SPEC 9.1, 9.2, 9.7, 9.11: building one plan from a search, the portal
 // links, the built-in line, the settings help and the Server page notice,
 // through the fake portal. The portal's generated mods are made for Factorio
 // 2.0, so these worlds are 2.0 worlds.
@@ -131,12 +131,12 @@ test("the Mods tab: built-in mods in one line, portal links, and where mod-setti
   await expect(line.getByRole("link", { name: "Change Space Age" })).toHaveAttribute("href", "/worlds/base/settings");
   const table = page.getByRole("table", { name: /Mods of Base/ });
   await expect(table.getByRole("row", { name: /space-age/ })).toHaveCount(0);
-  // The mod's name is its portal link (issue 360).
+  // The mod's name is its portal link.
   await expect(table.getByRole("link", { name: "fp-here on the mod portal, opens in a new tab" })).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-here");
   // A mod the portal does not have gets no portal link once the portal has answered; its name stays.
   await expect(table.getByRole("link", { name: /fp-gone-from-portal on the mod portal/ })).toHaveCount(0);
   await expect(table.getByRole("row", { name: /fp-gone-from-portal/ })).toContainText("Note: Not on the mod portal");
-  // The settings help is in the folded replace form (issue 371).
+  // The settings help is in the folded replace form.
   await page.locator("#mod-settings-replace > summary").click();
   await expect(page.locator("#settings-file-help")).toContainText("Windows %APPDATA%\\Factorio\\mods, macOS ~/Library/Application Support/factorio/mods, Linux ~/.factorio/mods.");
   await expect(page.locator("#settings-file-help")).toContainText("Startup settings apply when the world next starts.");

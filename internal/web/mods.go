@@ -371,8 +371,8 @@ func (s *server) modsOutcome(p *ModsPage) {
 	}
 }
 
-// ModStatus is what the portal says about a world's mods: updates (SPEC
-// 9.3) and mods players cannot get (#131). It loads after the tab: one
+// ModStatus is what the portal says about a world's mods: updates and
+// mods players cannot get (SPEC 9.3). It loads after the tab: one
 // summary line above the table, and each mod's news in its own row.
 type ModStatus struct {
 	World       world.Summary
@@ -468,7 +468,7 @@ func (p ModStatus) Rows() []StatusRow {
 }
 
 // FlagText words one flag in its mod's row, so it need not name the mod
-// (#131).
+// (SPEC 9.3).
 func (ModStatus) FlagText(f mods.Flag) i18n.Msg {
 	switch f.Code {
 	case mods.FlagVersionGone:
@@ -552,7 +552,7 @@ func (s *server) portalTrouble(what, id string, err error) {
 }
 
 // ModNotice is the Server page's one line about mods players cannot get
-// (#131, SPEC 9.3). It is empty when there are none or the portal
+// (SPEC 9.3). It is empty when there are none or the portal
 // cannot be asked.
 type ModNotice struct {
 	World  world.Summary

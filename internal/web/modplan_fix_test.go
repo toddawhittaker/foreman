@@ -10,7 +10,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// SPEC 9.2, 17.9 (issue 344): a conflict offers its fix as a link to the
+// SPEC 9.2, 17.9: a conflict offers its fix as a link to the
 // same plan with the other mod removed too, and a plan that cannot be
 // applied does not list the steps of applying it.
 func TestPlanConflictOffersItsFix(t *testing.T) {

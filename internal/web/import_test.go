@@ -133,7 +133,7 @@ func TestImportListsAlreadyImportedFolders(t *testing.T) {
 	g.wantRedirectTo("/worlds/second?imported=1", g.post(PathImportFolder, url.Values{"folder": {"done"}, "name": {"Second"}}))
 }
 
-// #139: Space Age is refused for a world before 2.0.
+// SPEC 5.5: Space Age is refused for a world before 2.0.
 func TestImportRefusesSpaceAgeFor1_1(t *testing.T) {
 	g := newImportRig(t, nil)
 	g.inboxSave("old", "1.1.110-vanilla.zip")
@@ -182,7 +182,7 @@ func TestImportChecksATypedVersion(t *testing.T) {
 		"<strong>Warning:</strong> Foreman could not reach Docker Hub to check that Factorio 2.0.98 exists.")
 }
 
-// #130: a single import with the box ticked downloads the missing image
+// SPEC 5.5: a single import with the box ticked downloads the missing image
 // through the world's own download, which its page then reports.
 func TestImportDownloadsTheImage(t *testing.T) {
 	g := newImportRig(t, nil)

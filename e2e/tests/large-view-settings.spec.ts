@@ -20,7 +20,7 @@ const isAuto = (r: Request) => r.method() === "POST" && r.url().endsWith("/gener
 const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png` });
 // The view needs 77rem; the desktop projects are 1280 wide, the phone ones 320.
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 1240;
-const keysInSetting = "In a setting, keys work the setting: an arrow moves a slider, not the map.";
+const keysInSetting = "In a setting, the keys change the setting: an arrow moves a slider, not the map.";
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);

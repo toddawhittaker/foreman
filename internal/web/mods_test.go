@@ -225,15 +225,15 @@ func TestModsTabListsMods(t *testing.T) {
 		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
 		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
 		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
-		// SPEC 9.7, #372: the built-in line says which are off and why, with the way to turn them on.
+		// SPEC 9.7: the built-in line says which are off and why, with the way to turn them on.
 		`>base</span>`, "Space Age is off, so", `>space-age</span> are off.`,
 		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		"at most 200 MB", "At most 4 MB",
-		// #360: a portal mod's name is the link to its portal page, in a new tab.
+		// SPEC 9.7: a portal mod's name is the link to its portal page, in a new tab.
 		`<a href="https://mods.factorio.com/mod/alpha" id="`+slotID("portal", "alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
-		// #373: the save's mods are read and the differences counted; the save uses neither mod.
+		// SPEC 9.8: the save's mods are read and the differences counted; the save uses neither mod.
 		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
-		// #371: the rare forms fold away.
+		// SPEC 9.5: the rare forms fold away.
 		`<details class="disclosure" id="mod-upload">`, `<details class="disclosure" id="mod-settings-replace">`,
 		// SPEC 9.6: where the client keeps mod-settings.dat, then the field, then what the upload does.
 		`%APPDATA%\Factorio\mods`, "Startup settings apply when the world next starts.")
@@ -241,7 +241,7 @@ func TestModsTabListsMods(t *testing.T) {
 		t.Errorf("the built-in line is said %d times", n)
 	}
 	table := between(body, "<table", "</table>")
-	// #360, #343: two columns, and a state word only for a mod that is off.
+	// SPEC 9.3: two columns, and a state word only for a mod that is off.
 	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base", "Enabled", ">State<", "Mod portal"} {
 		if strings.Contains(table, bad) {
 			t.Errorf("the table has %s", bad)
@@ -268,7 +268,7 @@ func TestModsTabListsMods(t *testing.T) {
 	}
 }
 
-// SPEC 9.3, #131, #342: the status is one summary line, and each mod's
+// SPEC 9.3: the status is one summary line, and each mod's
 // update and flags go into its own row with the fix there.
 func TestModStatusUpdatesAndFlags(t *testing.T) {
 	g := newModsRig(t, true)
@@ -291,7 +291,7 @@ func TestModStatusUpdatesAndFlags(t *testing.T) {
 	}
 }
 
-// #365: "up to date" counts only mods the portal has at their installed
+// SPEC 9.3: "up to date" counts only mods the portal has at their installed
 // version, and is not said when there are none.
 func TestModStatusCurrentCount(t *testing.T) {
 	g := newModsRig(t, true)

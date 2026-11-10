@@ -499,7 +499,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const largeMap = () => document.querySelector("#large-view .map");
   const viewOpen = () => Boolean(dialog && dialog.open);
   // Each place's elements, and its count: the request on its way, the planet
-  // shown, failed or on its way, and the labels placed on its map.
+  // shown, failed or on its way, and the labels placed on its map. "unsaid" is
+  // read only for the page: it is the one place the open view can hide, so its
+  // count is said when the view closes.
   const newCount = () => ({ sent: 0, pending: null, done: null, asked: "", labelled: null, sizes: new Map(), saying: 0, unsaid: false });
   const places = {
     large: {
