@@ -38,6 +38,13 @@
       <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
     </div>
     {{- end}}{{end}}
+    {{- $amounts := and (not .All) .Pictures}}
+    {{- if $amounts}}
+    {{/* The One planet picture's amounts, as the large view has them: a view, not a setting, so
+         the box has no name and starts unticked; the script keeps the choice while the page lives
+         and counts after the picture. Counting needs script, so the box does too (SPEC 5.6). */}}
+    <div class="js-only"><label class="check"><input type="checkbox" id="preview-amounts"> {{t "worlds.generate.resources.label"}}</label></div>
+    {{- end}}
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}
@@ -54,16 +61,29 @@
         </div>
         {{/* Shown by the script when its request for the territories fails. */}}
         <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
-        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}">
+        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}"{{if .Counted}} data-counted{{end}}>
           {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
         {{- else}}
-        <a href="{{.DownloadPath}}" class="download" download>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        {{/* The script adds the amounts, and says so, while the box above is ticked and they are counted (SPEC 5.6). */}}
+        <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}"{{if .Counted}} data-counted{{end}}>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
         {{- end}}
       </li>
       {{- end}}
     </ul>
     {{- if gt (len .Planets) 1}}
-    <p><a href="{{.ZipPath}}" class="download" download>{{t "worlds.generate.preview.download_all"}}</a></p>
+    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}"{{if .Counted}} data-counted{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
+    {{- end}}
+    {{- if $amounts}}
+    {{/* The count's wait, failure and text list sit under the picture and its downloads, so the
+         picture does not move as they come and go (DESIGN 8.8). */}}
+    <div class="js-only"><div class="large-view__amounts" id="preview-amounts-bar" data-ready="{{t "worlds.generate.resources.ready"}}">
+      <div class="wait large-view__counting" id="preview-counting" hidden>
+        <p class="hint" id="preview-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        <progress aria-hidden="true"></progress>
+      </div>
+      <div class="large-view__amounts-result" id="preview-amounts-result"></div>
+      <p class="visually-hidden" id="preview-amounts-news" role="status"></p>
+    </div></div>
     {{- end}}
     <p class="hint">{{t "worlds.generate.preview.kept"}}</p>
     {{- else}}
@@ -84,6 +104,8 @@
     {{- if .Form.SpaceAge}}
     <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     {{- end}}
+    {{- /* The One planet picture's "Show resource amounts" box. */}}
+    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     <div class="preview-placeholder__picture">
       {{- /* Says what fills it; the status line above already reads this out, so it is hidden from screen readers. */}}
       <span class="preview-placeholder__map" aria-hidden="true">{{t "worlds.generate.preview.updating"}}</span>
@@ -124,7 +146,8 @@
       {{- /* The bar is seen; the status line says the sentence once as the count starts, after any news of the picture or planet, and says when the amounts are ready (SPEC 17.15). */}}
       <div class="wait large-view__counting" id="large-counting" hidden>
         <p class="hint" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>
-        <progress aria-labelledby="large-counting-text"></progress>
+        {{- /* The sentence is said as the count starts; the bar is not named again (DESIGN 8.8). */}}
+        <progress aria-hidden="true"></progress>
       </div>
       <div class="large-view__amounts-result" id="large-amounts-result"></div>
       {{- /* A failure is said here, unseen, as the message beside the box already shows it. */}}

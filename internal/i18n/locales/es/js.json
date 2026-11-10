@@ -19,5 +19,7 @@
   "js.generate.ach_setting": "{setting} desactiva algunos logros.",
   "js.generate.ach_clear": "Ahora ningún ajuste desactiva logros.",
   "js.generate.moved": "{field} cambiado a {value} para que el rango siga siendo válido.",
-  "js.preview.download_territories": "Descargar mapa de {planet} con territorios"
+  "js.preview.download_territories": "Descargar mapa de {planet} con territorios",
+  "js.preview.download_amounts": "Descargar mapa de {planet} con cantidades de recursos",
+  "js.preview.download_both": "Descargar mapa de {planet} con territorios y cantidades de recursos"
 }
