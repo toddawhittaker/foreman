@@ -348,3 +348,106 @@ test("from the keyboard: tick the box, then read the amounts as text", async ({ 
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toBeHidden();
 });
+
+// SPEC 5.6, 17: the same box on the One planet picture. Off on load, kept
+// while the page lives, its own choice rather than the large view's; the
+// same count, wait, failure and labels, on the picture shown on the page.
+test.describe("on the One planet picture", () => {
+  const pageBox = (page: Page) => section(page).getByRole("checkbox", { name: "Show resource amounts" });
+  const pageLabels = (page: Page) => section(page).locator(".resources__label");
+  const pageResult = (page: Page) => page.locator("#preview-amounts-result");
+  const announcer = (page: Page) => page.locator("#announcer");
+
+  async function onePlanet(page: Page) {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+  }
+
+  test("off on load, and only on the One planet view", async ({ page }) => {
+    const asked: string[] = [];
+    page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
+    await onePlanet(page);
+    await expect(pageBox(page)).toBeVisible();
+    await expect(pageBox(page)).not.toBeChecked();
+    await expect(pageBox(page)).not.toHaveAttribute("name");
+    await page.waitForTimeout(300);
+    expect(asked).toEqual([]);
+    await section(page).locator("label.tab", { hasText: "All planets" }).click();
+    await expect(section(page).getByRole("img")).toHaveCount(5);
+    await expect(pageBox(page)).toHaveCount(0);
+  });
+
+  test("ticked, the planet shown is counted after its picture and labelled there", async ({ page }) => {
+    await onePlanet(page);
+    const hold = holdCounts(page);
+    await hold.start();
+    await pageBox(page).check();
+    await expect.poll(() => hold.held.length).toBe(1);
+    expect(planetOf(hold.held[0].request())).toBe("nauvis");
+    await expect(page.locator("#preview-counting")).toBeVisible();
+    await expect(page.locator("#preview-counting")).toContainText("Counting resources in the map… This can take up to a minute.");
+    await expect(announcer(page)).toHaveText("Counting resources in the map… This can take up to a minute.");
+    await hold.release();
+    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(page.locator("#preview-counting")).toBeHidden();
+    await expect(announcer(page)).toHaveText("Resource amounts ready.");
+    await expect(section(page).locator(".resources")).toHaveAttribute("aria-hidden", "true");
+    expect(await pageLabels(page).allTextContents()).toContain("12.3M");
+    await expect(pageResult(page).locator("summary")).toHaveText("Resource amounts as text (7 patches)");
+    // Labels never overlap one another or the pin on the small picture either.
+    const l = await section(page).locator("a.picture .map").evaluate((map) => {
+      const box = (e: Element) => { const r = e.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }; };
+      return { shown: [...map.querySelectorAll(".resources__label:not([hidden])")].map(box), kept: [...map.querySelectorAll(".pin")].map(box) };
+    });
+    expect(l.shown.length).toBeGreaterThan(0);
+    for (const [i, a] of l.shown.entries()) for (const b of [...l.shown.slice(i + 1), ...l.kept]) expect(meet(a, b)).toBe(false);
+    await shot(page, "resources-one-planet");
+    await checkPage(page);
+    // Another planet's picture keeps the box ticked and counts that planet.
+    await page.locator("#mg-resources-vulcanus summary").click();
+    await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
+    await expect(pageBox(page)).toBeChecked();
+    await expect(pageLabels(page)).toHaveCount(7);
+  });
+
+  test("the large view's box is its own; the page's labels stay while it is open", async ({ page }) => {
+    await onePlanet(page);
+    await pageBox(page).check();
+    await expect(pageLabels(page)).toHaveCount(7);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(dialog(page)).toBeVisible();
+    await expect(box(page)).not.toBeChecked();
+    await expect(labels(page)).toHaveCount(0);
+    await expect(pageLabels(page)).toHaveCount(7);
+    // Ticked there, the held count is shown there; closed, the page's come back.
+    await box(page).check();
+    await expect(labels(page)).toHaveCount(7);
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toBeHidden();
+    await expect(pageBox(page)).toBeChecked();
+    await expect(pageLabels(page)).toHaveCount(7);
+  });
+
+  test("unticking drops the count on its way; a failure says so and offers to try again", async ({ page }) => {
+    await onePlanet(page);
+    const hold = holdCounts(page);
+    await hold.start();
+    const aborted: string[] = [];
+    page.on("requestfailed", (r) => { if (isResources(r.url())) aborted.push(r.url()); });
+    await pageBox(page).check();
+    await expect.poll(() => hold.held.length).toBe(1);
+    await pageBox(page).uncheck();
+    await expect.poll(() => aborted.length).toBe(1);
+    await expect(page.locator("#preview-counting")).toBeHidden();
+    await hold.release();
+    await expect(pageLabels(page)).toHaveCount(0);
+    await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
+    await pageBox(page).check();
+    await expect(pageResult(page)).toContainText("The request for the resource amounts failed.");
+    await expect(page.locator("#preview-amounts-news")).toHaveText(/^Error: The request for the resource amounts failed\./);
+    await page.unroute(resourceURL);
+    await pageResult(page).getByRole("button", { name: "Try again" }).click();
+    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageBox(page)).toBeFocused();
+  });
+});

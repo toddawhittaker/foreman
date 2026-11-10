@@ -38,6 +38,20 @@
       <p class="hint" id="preview-territories-hint">{{t "worlds.generate.territories.hint"}}</p>
     </div>
     {{- end}}{{end}}
+    {{- if and (not .All) .Pictures}}
+    {{/* The One planet picture's amounts, as the large view has them: a view, not a setting, so
+         the box has no name and starts unticked; the script keeps the choice while the page lives
+         and counts after the picture. Counting needs script, so the box does too (SPEC 5.6). */}}
+    <div class="js-only"><div class="large-view__amounts" id="preview-amounts-bar" data-ready="{{t "worlds.generate.resources.ready"}}">
+      <label class="check"><input type="checkbox" id="preview-amounts"> {{t "worlds.generate.resources.label"}}</label>
+      <div class="wait large-view__counting" id="preview-counting" hidden>
+        <p class="hint" id="preview-counting-text">{{t "worlds.generate.resources.counting"}}</p>
+        <progress aria-labelledby="preview-counting-text"></progress>
+      </div>
+      <div class="large-view__amounts-result" id="preview-amounts-result"></div>
+      <p class="visually-hidden" id="preview-amounts-news" role="status"></p>
+    </div></div>
+    {{- end}}
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}
