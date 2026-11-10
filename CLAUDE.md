@@ -88,6 +88,11 @@ Orchestration rules:
 - Agent worktrees start at `main`. Tell a worktree agent the exact commit
   to reset to, and land its work with `git diff <base> <head> | git apply
   --3way`, not a rebase.
+- In T3 Code, an agent on another linked machine gets its own worktree
+  only through `t3_thread_launch` (its `environmentId` and that machine's
+  foreman `projectId`, `workspaceStrategy: {type: "worktree", baseRef:
+  <commit>}`), then `t3_thread_wait`. `delegate_task` there runs in the
+  machine's main checkout, so it allows one agent per machine at a time.
 - Verify before relaying: run `make verify` on an agent's work; a Stop
   hook runs it for builder, tester and ui-designer.
 - When agents disagree, read the spec section in dispute and rule. If the
