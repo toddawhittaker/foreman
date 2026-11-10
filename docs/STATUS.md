@@ -2270,7 +2270,7 @@ may revisit).
   failed-load classification, Tab leaving the dialog).
 - Real games at 1514442: `make test-game` 391 subtests on 1.1.110, 2.0.77,
   2.1.24 and 2.1.23, and `make e2e-game` 2 passed.
-- real-game recheck after #454: <to be filled by the orchestrator>
+- Real-game recheck at 636bd81, after the Start race fix: `make test-game` passed with no failures (internal/game 1372 s, internal/web 92 s): every line reached InGame with RCON answering, stop, forced stop and re-attach passed, and a corrupt save is reported as "could not load the save" on 1.1, 2.0 and 2.1. `make e2e-game` passed 2 of 2 (phone start, players, restart with warning, stop; switch and back with no save lost).
 - Flake loops: `TestStartLoadFailure` 0 of 400 under 24 busy loops with
   `-race` (53 of 400 before); the mods-install test 120 of 120 under load
   (1 of 120 failed before).
