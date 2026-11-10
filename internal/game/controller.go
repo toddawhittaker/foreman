@@ -343,8 +343,9 @@ type worldRun struct {
 	opCancel context.CancelFunc
 	opDone   chan struct{} // nil when no operation is running
 	opRun    *opRun        // the operation running now; nil when none
-	// ops counts the operations begun, so the monitor can drop a look at
-	// Docker taken before the latest one: it would undo what that one did.
+	// ops counts each operation's beginning and end, so the monitor can drop
+	// a look at Docker taken before or during one: it would undo what that
+	// one did.
 	ops uint64
 	// countdownCancel ends the stop countdown running now; nil when there
 	// is none. It is set and cleared under mu, so a cancel is either in
@@ -622,6 +623,7 @@ func (o *opRun) end(err error) error {
 	o.cancel()
 	for _, w := range o.ws {
 		w.opState, w.opCancel, w.opDone, w.opRun = "", nil, nil, nil
+		w.ops++
 	}
 	o.publishLocked()
 	o.unlockAll()

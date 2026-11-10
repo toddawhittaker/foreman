@@ -170,8 +170,8 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64) bo
 	if !c.lookStillHolds(w, ops) {
 		return false
 	}
-	if cont != nil && c.needsAttach(w, *cont) {
-		c.attach(w, *cont)
+	if cont != nil && c.needsAttach(w, *cont, ops) {
+		c.attach(w, *cont, ops)
 	}
 	var old *rcon.Client
 	defer func() { closeRCON(old) }() // runs after the unlock below
@@ -266,12 +266,13 @@ func keepSince(times []time.Time, since time.Time) []time.Time {
 	return out
 }
 
-// needsAttach reports whether the container is new to the world, or was
-// taken on while stopped and now runs a game whose passwords are needed.
-func (c *Controller) needsAttach(w *worldRun, cont docker.Container) bool {
+// needsAttach reports whether the container, seen when the world's
+// operation count was ops, is new to the world, or was taken on while
+// stopped and now runs a game whose passwords are needed.
+func (c *Controller) needsAttach(w *worldRun, cont docker.Container, ops uint64) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.opDone != nil {
+	if w.opDone != nil || w.ops != ops {
 		return false
 	}
 	return w.containerID != cont.ID || (w.noSecrets && gameLive(cont.State.Status))
@@ -296,8 +297,9 @@ func (c *Controller) passwords(id string) (secret.Secret, []secret.Secret, error
 // game left running across a Foreman restart (SPEC 3.8). A live game's own
 // RCON password is needed both to talk to it and to keep it out of the
 // relayed log, so without it nothing is taken on. A stopped container needs
-// none: it is shown as stopped, and taken on again if it starts.
-func (c *Controller) attach(w *worldRun, cont docker.Container) {
+// none: it is shown as stopped, and taken on again if it starts. A look
+// taken before an operation began or ended is dropped (see worldRun.ops).
+func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	live := gameLive(cont.State.Status)
 	var addr string
 	var rconPW secret.Secret
@@ -314,9 +316,13 @@ func (c *Controller) attach(w *worldRun, cont docker.Container) {
 	if err != nil {
 		var old *rcon.Client
 		w.mu.Lock()
+		if w.opDone != nil || w.ops != ops {
+			w.mu.Unlock()
+			return
+		}
 		warn := w.attachFailed != cont.ID
 		w.attachFailed, w.attachErr = cont.ID, err
-		if w.containerID == cont.ID && w.opDone == nil {
+		if w.containerID == cont.ID {
 			// Taken on while stopped: its log must not be followed now.
 			old = c.dropContainerLocked(w)
 		}
@@ -335,7 +341,7 @@ func (c *Controller) attach(w *worldRun, cont docker.Container) {
 	defer func() { closeRCON(old) }() // runs after the unlock below
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.opDone != nil || (w.containerID == cont.ID && !w.noSecrets) {
+	if w.opDone != nil || w.ops != ops || (w.containerID == cont.ID && !w.noSecrets) {
 		return
 	}
 	old = c.dropContainerLocked(w)

@@ -53,6 +53,7 @@ async function movedWhileStepping(page: Page) {
         const now = where(range) + " " + where(label);
         if (now !== before) moved.push(`${range.id} at step ${i}: ${before} became ${now}`);
       }
+      // Every option is a step the slider can reach: the selects have no hidden or disabled options.
       if (seen.size !== select.options.length) moved.push(`${range.id} reached ${seen.size} of ${select.options.length} steps`);
       range.value = start;
       range.dispatchEvent(new Event("input", { bubbles: true }));
