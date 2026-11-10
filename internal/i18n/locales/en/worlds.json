@@ -171,6 +171,7 @@
   "worlds.saves.load.text": "The game loads the newest save when the server starts. To load another one, choose Load next on its row.",
   "worlds.saves.load_next": "Load next",
   "worlds.saves.load_next_named": "Load next: {file}",
+  "worlds.saves.load_next_newest": "Load next: the newest save",
   "worlds.saves.loads_next": "Loads next",
   "worlds.saves.newer": "A newer version of Foreman wrote this world, so this version cannot change it. You can still download its saves.",
   "worlds.saves.older": "Show older saves",

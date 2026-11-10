@@ -166,6 +166,7 @@
   "worlds.saves.load.text": "服务器启动时，游戏会加载最新的存档。若要加载其他存档，请在其所在行选择“设为下次加载”。",
   "worlds.saves.load_next": "设为下次加载",
   "worlds.saves.load_next_named": "设为下次加载：{file}",
+  "worlds.saves.load_next_newest": "设为下次加载：最新的存档",
   "worlds.saves.loads_next": "下次加载",
   "worlds.saves.newer": "此世界由更新版本的 Foreman 写入，因此当前版本无法修改。仍可下载其存档。",
   "worlds.saves.older": "显示更早的存档",

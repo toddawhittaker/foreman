@@ -1014,7 +1014,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const arrows = { ArrowLeft: -1, ArrowRight: 1 };
     // Tab goes round the view's controls and never out of it to the browser:
     // the last one leads back to the first, and Shift+Tab the other way.
-    const stops = () => [...dialog.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")]
+    const stops = () => [...dialog.querySelectorAll("a[href],button,input,select,textarea,[tabindex]")]
       .filter((n) => !n.disabled && n.tabIndex >= 0 && n.checkVisibility({ visibilityProperty: true }));
     dialog.addEventListener("keydown", (e) => {
       if (e.key !== "Tab" || e.ctrlKey || e.metaKey || e.altKey) return;

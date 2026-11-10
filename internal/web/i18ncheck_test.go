@@ -389,7 +389,7 @@ var jsWordsAllowed = map[string]bool{
 	"second": true, "minute": true, "hour": true, "day": true, "week": true, "month": true, "year": true,
 	"use strict": true,
 	// Key names for KeyboardEvent.key, not text.
-	"Escape": true, "Enter": true,
+	"Escape": true, "Enter": true, "Tab": true,
 }
 
 var (

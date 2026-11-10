@@ -171,6 +171,7 @@
   "worlds.saves.load.text": "Das Spiel lädt beim Start des Servers den neuesten Speicherstand. Um einen anderen zu laden, wähle in seiner Zeile „Als Nächstes laden“.",
   "worlds.saves.load_next": "Als Nächstes laden",
   "worlds.saves.load_next_named": "Als Nächstes laden: {file}",
+  "worlds.saves.load_next_newest": "Als Nächstes laden: den neuesten Speicherstand",
   "worlds.saves.loads_next": "Wird als Nächstes geladen",
   "worlds.saves.newer": "Eine neuere Version von Foreman hat diese Welt geschrieben, daher kann diese Version sie nicht ändern. Ihre Speicherstände kannst du weiterhin herunterladen.",
   "worlds.saves.older": "Ältere Speicherstände anzeigen",

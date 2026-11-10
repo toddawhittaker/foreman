@@ -203,7 +203,7 @@ test("choosing which save loads is kept, and going back to the newest clears it"
   expect(JSON.parse(readFileSync(join(dir, "world.json"), "utf8"))).toMatchObject({ name: "Family base", game_version: "2.0.72", space_age: true });
   await checkPage(page);
 
-  await page.getByRole("button", { name: "Load next: new.zip" }).click();
+  await page.getByRole("button", { name: "Load next: the newest save" }).click();
   await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
   await expect(rows.nth(0)).toContainText("Loads next");
   expect(loadSaveOf(dir) ?? "").toBe("");
@@ -231,7 +231,7 @@ test("a chosen save that was removed by hand is explained", async ({ page, forem
   await expect(newest).toContainText("Loads next");
   await checkPage(page);
   // The stale choice can be cleared from the newest row (SPEC 7.11).
-  await newest.getByRole("button", { name: "Load next: new.zip" }).click();
+  await newest.getByRole("button", { name: "Load next: the newest save" }).click();
   await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
   await expect(page.getByText("is no longer in the saves folder")).toHaveCount(0);
   await expect(newest).toContainText("Loads next");

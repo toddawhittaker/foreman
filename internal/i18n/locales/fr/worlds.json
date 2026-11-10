@@ -171,6 +171,7 @@
   "worlds.saves.load.text": "Au démarrage du serveur, le jeu charge la sauvegarde la plus récente. Pour en charger une autre, choisissez « Charger ensuite » sur sa ligne.",
   "worlds.saves.load_next": "Charger ensuite",
   "worlds.saves.load_next_named": "Charger ensuite : {file}",
+  "worlds.saves.load_next_newest": "Charger ensuite : la sauvegarde la plus récente",
   "worlds.saves.loads_next": "Chargée ensuite",
   "worlds.saves.newer": "Une version plus récente de Foreman a écrit ce monde, donc cette version ne peut pas le modifier. Vous pouvez toujours télécharger ses sauvegardes.",
   "worlds.saves.older": "Afficher les sauvegardes plus anciennes",

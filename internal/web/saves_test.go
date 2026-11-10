@@ -359,6 +359,10 @@ func TestChooseSave(t *testing.T) {
 	if row := saveRow(t, body, "new.zip"); strings.Contains(row, loads) || !strings.Contains(row, loadButton("")) {
 		t.Errorf("newest row should offer the newest save:\n%s", row)
 	}
+	// It loads the newest save, whichever file that is then, so it is named for that, not its file (SPEC 7.11).
+	if row := saveRow(t, body, "new.zip"); !strings.Contains(row, "Load next: the newest save") || strings.Contains(row, "Load next: new.zip") {
+		t.Errorf("newest row's button should be named for the newest save:\n%s", row)
+	}
 	if got := hn.loadSaveOf(id); got != "old.zip" {
 		t.Errorf("load_save %q", got)
 	}

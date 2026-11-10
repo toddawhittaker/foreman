@@ -176,6 +176,7 @@
   "worlds.saves.load.text": "Gra wczytuje najnowszy zapis przy uruchomieniu serwera. Aby wczytać inny, należy wybrać „Wczytaj jako następny” w jego wierszu.",
   "worlds.saves.load_next": "Wczytaj jako następny",
   "worlds.saves.load_next_named": "Wczytaj jako następny: {file}",
+  "worlds.saves.load_next_newest": "Wczytaj jako następny: najnowszy zapis",
   "worlds.saves.loads_next": "Wczytywany jako następny",
   "worlds.saves.newer": "Ten świat zapisała nowsza wersja Foremana, więc ta wersja nie może go zmieniać. Zapisy nadal można pobrać.",
   "worlds.saves.older": "Pokaż starsze zapisy",

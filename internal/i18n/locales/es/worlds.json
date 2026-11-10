@@ -171,6 +171,7 @@
   "worlds.saves.load.text": "Al iniciarse el servidor, el juego carga la partida guardada más reciente. Para cargar otra, elige «Cargar la próxima vez» en su fila.",
   "worlds.saves.load_next": "Cargar la próxima vez",
   "worlds.saves.load_next_named": "Cargar la próxima vez: {file}",
+  "worlds.saves.load_next_newest": "Cargar la próxima vez: la partida guardada más reciente",
   "worlds.saves.loads_next": "Se carga la próxima vez",
   "worlds.saves.newer": "Una versión más reciente de Foreman escribió este mundo, así que esta versión no puede modificarlo. Aun así puedes descargar sus partidas guardadas.",
   "worlds.saves.older": "Mostrar partidas guardadas anteriores",
