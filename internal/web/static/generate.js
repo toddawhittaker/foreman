@@ -540,6 +540,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, true);
 
+  // In the large view's settings column, Enter in a field is not the Generate
+  // button: it does nothing but commit the value, as leaving the field does
+  // (SPEC 5.6). Enter on a button there, and in the main form, is untouched.
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (e.key !== "Enter" || e.isComposing || !t.closest || !t.closest("#large-settings")) return;
+    if (t.tagName !== "INPUT" || ["button", "submit", "reset", "image"].includes(t.type)) return;
+    e.preventDefault();
+    if (t.type !== "checkbox" && t.type !== "radio" && t.type !== "range") t.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
   // The wait box appearing is not read out, so the start is said too.
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (!isPreview(e)) return;

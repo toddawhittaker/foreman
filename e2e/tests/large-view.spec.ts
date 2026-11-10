@@ -1,5 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 
 // SPEC 5.6, 17; DESIGN 8.8: the large view is a picture viewer. The wheel,
 // plus and minus zoom by 1.15 around the pointer or the centre, up to the
@@ -463,3 +465,67 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [320, 640]]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(w);
   });
 }
+
+// SPEC 5.6: Enter in a text or decimal field of the settings beside the large
+// map does nothing; the value still commits as on change. Enter in a field of
+// the main form outside the large view still generates the world, and Enter on
+// a button in the view still presses it.
+test.describe("Enter in the large view's settings", () => {
+  test.beforeEach(({ page }) => test.skip((page.viewportSize()?.width ?? 0) < 1240, "the settings show beside the map only where both fit"));
+
+  const worlds = (foreman: { dataDir: string }) => readdirSync(join(foreman.dataDir, "worlds")).sort();
+
+  // The large view holds only sliders and selects today. A text field there
+  // is the form's own decimal field moved in, as preview.js moves a planet's
+  // settings, so the test moves one in the same way.
+  test("does not create the world, and the value is kept", async ({ page, foreman }) => {
+    await page.goto("/generate");
+    await page.getByLabel("World name").fill("Not yet");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(dialog(page)).toBeVisible();
+    const id = await page.locator('#generate-form input[type="text"][inputmode="decimal"][name]').first().getAttribute("id");
+    expect(id).toBeTruthy();
+    await page.evaluate((i) => {
+      const panel = document.getElementById("large-settings")!;
+      panel.hidden = false;
+      panel.append(document.getElementById(i)!);
+    }, id!);
+    const decimal = page.locator(`#large-settings #${id}`);
+    await expect(decimal).toBeVisible();
+    const before = worlds(foreman);
+    const posts: string[] = [];
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/generate")) posts.push(r.url()); });
+    const changes = await decimal.evaluate((i) => {
+      const seen: string[] = [];
+      (window as unknown as { changes: string[] }).changes = seen;
+      i.addEventListener("change", () => seen.push((i as HTMLInputElement).value));
+      return seen.length;
+    });
+    expect(changes).toBe(0);
+    await decimal.fill("1.5");
+    await decimal.press("Enter");
+    await page.waitForTimeout(800);
+    await expect(page).toHaveURL("/generate");
+    await expect(dialog(page)).toBeVisible();
+    await expect(decimal).toBeFocused();
+    await expect(decimal).toHaveValue("1.5");
+    expect(await page.evaluate(() => (window as unknown as { changes: string[] }).changes)).toEqual(["1.5"]);
+    expect(posts).toEqual([]);
+    expect(worlds(foreman)).toEqual(before);
+  });
+
+  test("still presses a button there", async ({ page }) => {
+    await openLarge(page);
+    await page.locator("#large-next").press("Enter");
+    await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  });
+});
+
+test("Enter in a field of the main form, outside the large view, still generates the world", async ({ page }) => {
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img")).toHaveCount(1);
+  await page.getByLabel("World name").fill("Plain enter");
+  await page.getByLabel("World name").press("Enter");
+  await expect(page).toHaveURL("/worlds/plain-enter?generated=1");
+});
