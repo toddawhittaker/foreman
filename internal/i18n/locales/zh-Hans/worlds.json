@@ -393,6 +393,7 @@
   "worlds.generate.large.zoom_in": "放大",
   "worlds.generate.large.close": "关闭",
   "worlds.generate.large.keys": "按键：← → 切换星球（放大时平移），+ − 缩放，0 适应窗口，Esc 关闭。轻触可居中。",
+  "worlds.generate.large.keys_settings": "在设置中，按键作用于该设置：方向键移动滑块，而不是地图。",
   "worlds.generate.leave.title": "不保存这些地图设置就离开吗？",
   "worlds.generate.leave.text": "新世界的设置尚未保存。离开后，这些设置将丢失。",
   "worlds.generate.leave.stay": "留在此页面",
@@ -433,6 +434,7 @@
   },
   "worlds.generate.resources.label": "显示资源数量",
   "worlds.generate.resources.counting": "正在统计地图中的资源…最多可能需要一分钟。",
+  "worlds.generate.resources.counting_short": "正在统计…",
   "worlds.generate.resources.ready": "资源数量已就绪。",
   "worlds.generate.resources.summary": {
     "other": "资源数量文字版（{count} 处矿区）"

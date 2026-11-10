@@ -405,6 +405,7 @@
   "worlds.generate.large.zoom_in": "Zoomer",
   "worlds.generate.large.close": "Fermer",
   "worlds.generate.large.keys": "Touches : ← → planète (déplacer si zoomé), + − zoom, 0 ajuster, Échap fermer. Touchez pour centrer.",
+  "worlds.generate.large.keys_settings": "Dans un paramètre, les touches agissent sur ce paramètre : une flèche déplace un curseur, pas la carte.",
   "worlds.generate.leave.title": "Quitter la page sans enregistrer ces paramètres de la carte ?",
   "worlds.generate.leave.text": "Les paramètres du nouveau monde ne sont pas enregistrés. Si vous quittez la page, ils seront perdus.",
   "worlds.generate.leave.stay": "Rester sur cette page",
@@ -449,6 +450,7 @@
   },
   "worlds.generate.resources.label": "Afficher les quantités de ressources",
   "worlds.generate.resources.counting": "Comptage des ressources de la carte… Cela peut prendre jusqu’à une minute.",
+  "worlds.generate.resources.counting_short": "Comptage…",
   "worlds.generate.resources.ready": "Quantités de ressources prêtes.",
   "worlds.generate.resources.summary": {
     "one": "Quantités de ressources en texte ({count} gisement)",

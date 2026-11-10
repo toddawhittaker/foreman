@@ -405,6 +405,7 @@
   "worlds.generate.large.zoom_in": "Acercar",
   "worlds.generate.large.close": "Cerrar",
   "worlds.generate.large.keys": "Teclas: ← → planeta (con zoom, desplazar), + − zoom, 0 ajustar, Esc cerrar. Toca para centrar.",
+  "worlds.generate.large.keys_settings": "En un ajuste, las teclas manejan el ajuste: una flecha mueve un control deslizante, no el mapa.",
   "worlds.generate.leave.title": "¿Salir sin guardar esta configuración del mapa?",
   "worlds.generate.leave.text": "La configuración del nuevo mundo no está guardada. Si sales, se perderá.",
   "worlds.generate.leave.stay": "Quedarse en esta página",
@@ -449,6 +450,7 @@
   },
   "worlds.generate.resources.label": "Mostrar las cantidades de recursos",
   "worlds.generate.resources.counting": "Contando los recursos del mapa… Puede tardar hasta un minuto.",
+  "worlds.generate.resources.counting_short": "Contando…",
   "worlds.generate.resources.ready": "Cantidades de recursos listas.",
   "worlds.generate.resources.summary": {
     "one": "Cantidades de recursos en texto ({count} yacimiento)",

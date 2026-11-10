@@ -500,7 +500,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const viewOpen = () => Boolean(dialog && dialog.open);
   // Each place's elements, and its count: the request on its way, the planet
   // shown, failed or on its way, and the labels placed on its map.
-  const newCount = () => ({ sent: 0, pending: null, done: null, asked: "", labelled: null, sizes: new Map(), saying: 0 });
+  const newCount = () => ({ sent: 0, pending: null, done: null, asked: "", labelled: null, sizes: new Map(), saying: 0, unsaid: false });
   const places = {
     large: {
       box: "large-amounts", bar: "large-amounts-bar", counting: "large-counting", text: "large-counting-text",
@@ -546,6 +546,7 @@ document.addEventListener("DOMContentLoaded", () => {
       said.textContent = "";
     }
     clearTimeout(at.saying);
+    at.unsaid = false;
     at.sent++;
     if (at.pending) at.pending.abort();
     at.pending = null;
@@ -626,9 +627,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // The status line says the amounts are ready. A failure is shown beside the
   // box, so it is said unseen: the sentence only, not Try again's label. A
-  // place hidden behind the open view says nothing; what it shows stays.
+  // place hidden behind the open view shows it and says it once it is seen.
   function sayAmounts(at, slot) {
-    if (!at.shown()) return;
+    at.unsaid = !at.shown();
+    if (at.unsaid) return;
     const why = slot.querySelector(".message p");
     const news = el(at.news);
     if (!why) {
@@ -1010,6 +1012,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // with them instead. The browser's own zoom keys are left alone, and a
     // settings field keeps every key of its own (Escape still closes).
     const arrows = { ArrowLeft: -1, ArrowRight: 1 };
+    // Tab goes round the view's controls and never out of it to the browser:
+    // the last one leads back to the first, and Shift+Tab the other way.
+    const stops = () => [...dialog.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")]
+      .filter((n) => !n.disabled && n.tabIndex >= 0 && n.checkVisibility({ visibilityProperty: true }));
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const all = stops();
+      const to = e.shiftKey ? (e.target === all[0] ? all.at(-1) : null) : (e.target === all.at(-1) ? all[0] : null);
+      if (!to) return;
+      to.focus();
+      e.preventDefault();
+    });
     dialog.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest && e.target.closest("#large-settings")) return;
@@ -1044,8 +1058,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (link) show(link.dataset.planet);
       }
       if (link) link.focus();
-      // Counted only now when the page's picture changed while the view was open.
+      // Counted only now when the page's picture changed while the view was open;
+      // a count that landed meanwhile is said now, once.
       amounts(places.page);
+      if (places.page.unsaid) sayAmounts(places.page, el(places.page.slot));
     });
   }
 

@@ -417,6 +417,7 @@
   "worlds.generate.large.zoom_in": "Увеличить",
   "worlds.generate.large.close": "Закрыть",
   "worlds.generate.large.keys": "Клавиши: ← → планета (сдвиг при увеличении), + − масштаб, 0 вписать, Esc закрыть. Касание центрирует.",
+  "worlds.generate.large.keys_settings": "В настройке клавиши управляют самой настройкой: стрелка двигает ползунок, а не карту.",
   "worlds.generate.leave.title": "Уйти, не сохранив эти настройки карты?",
   "worlds.generate.leave.text": "Настройки нового мира не сохранены. Если вы уйдёте, они будут потеряны.",
   "worlds.generate.leave.stay": "Остаться на странице",
@@ -465,6 +466,7 @@
   },
   "worlds.generate.resources.label": "Показывать количество ресурсов",
   "worlds.generate.resources.counting": "Подсчёт ресурсов на карте… Это может занять до минуты.",
+  "worlds.generate.resources.counting_short": "Подсчёт…",
   "worlds.generate.resources.ready": "Количество ресурсов подсчитано.",
   "worlds.generate.resources.summary": {
     "one": "Количество ресурсов текстом ({count} месторождение)",
