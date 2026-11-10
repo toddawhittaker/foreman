@@ -38,15 +38,22 @@ async function movedWhileStepping(page: Page) {
       const panel = range.closest(".tab-panel")!;
       top = panel.getBoundingClientRect().y;
       const start = range.value;
+      const select = document.getElementById(range.dataset.for!) as HTMLSelectElement;
       const label = document.getElementById(range.dataset.for + "-label")!;
       const before = where(range) + " " + where(label);
+      // The row shows only its step, so each step is measured once: a
+      // layout per track value made this test outrun its time limit.
+      const seen = new Set<number>();
       for (let i = Number(range.min); i <= Number(range.max); i++) {
         range.value = String(i);
         range.dispatchEvent(new Event("input", { bubbles: true }));
+        if (seen.has(select.selectedIndex)) continue;
+        seen.add(select.selectedIndex);
         top = panel.getBoundingClientRect().y;
         const now = where(range) + " " + where(label);
         if (now !== before) moved.push(`${range.id} at step ${i}: ${before} became ${now}`);
       }
+      if (seen.size !== select.options.length) moved.push(`${range.id} reached ${seen.size} of ${select.options.length} steps`);
       range.value = start;
       range.dispatchEvent(new Event("input", { bubbles: true }));
     }
