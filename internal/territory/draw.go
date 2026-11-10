@@ -144,21 +144,26 @@ func DrawPNG(ctx context.Context, src []byte, ov Overlay, label func(size string
 		}
 		defer func() { _ = faces[i].Close() }()
 	}
+	// The boxes of the labels drawn, each measured once.
 	var drawn []image.Rectangle
 	for _, s := range ov.Shapes {
-		drawn = append(drawn, drawLabel(img, fs, faces, label(s.Size), s.LabelX, s.LabelY))
+		l := measure(fs, faces, label(s.Size))
+		box := image.Rect(0, 0, l.w, l.h).Add(image.Pt(int(s.LabelX)-l.w/2, int(s.LabelY)-l.h/2))
+		l.draw(img, box)
+		drawn = append(drawn, box)
 	}
-	for _, l := range ov.Captions {
-		text := strings.ReplaceAll(l.Text, "\u202f", "\u00a0")
-		w, h := measure(fs, faces, text)
+	for _, c := range ov.Captions {
+		l := measure(fs, faces, c.Text)
 		// The box's top left, pulled in as the page's style sheet does.
-		x0 := min(max(0, l.U*float64(ov.Size-w)), float64(max(0, ov.Size-w)))
-		y0 := min(max(0, l.V*float64(ov.Size-h)), float64(max(0, ov.Size-h)))
-		box := image.Rect(int(x0), int(y0), int(x0)+w, int(y0)+h).Inset(-labelGap)
-		if slices.ContainsFunc(drawn, box.Overlaps) {
+		x0 := int(min(max(0, c.U*float64(ov.Size-l.w)), float64(max(0, ov.Size-l.w))))
+		y0 := int(min(max(0, c.V*float64(ov.Size-l.h)), float64(max(0, ov.Size-l.h))))
+		box := image.Rect(x0, y0, x0+l.w, y0+l.h)
+		// Only the new box is widened, so labels keep labelGap apart, as on the page.
+		if slices.ContainsFunc(drawn, box.Inset(-labelGap).Overlaps) {
 			continue
 		}
-		drawn = append(drawn, drawLabel(img, fs, faces, text, x0+float64(w)/2, y0+float64(h)/2))
+		l.draw(img, box)
+		drawn = append(drawn, box)
 	}
 	var out bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
@@ -205,35 +210,44 @@ func border(img *image.RGBA, seg Segment) {
 // labelGap is the room, in pixels, kept between two labels.
 const labelGap = 2
 
-// drawLabel writes text centred on x, y in white with a dark outline, in the
-// first font that has all its glyphs, and returns the box it covers.
-func drawLabel(img *image.RGBA, fs []*sfnt.Font, faces []font.Face, text string, x, y float64) image.Rectangle {
-	face := faces[fontFor(fs, text)]
-	m := face.Metrics()
-	width := font.MeasureString(face, text)
-	dot := fixed.Point26_6{
-		X: fixed.Int26_6(x*64) - width/2,
-		Y: fixed.Int26_6(y*64) + (m.Ascent-m.Descent)/2,
-	}
-	d := font.Drawer{Dst: img, Src: image.NewUniform(outlineColour), Face: face}
-	for _, o := range outline {
-		d.Dot = dot.Add(fixed.P(o.X, o.Y))
-		d.DrawString(text)
-	}
-	d.Src = image.NewUniform(textColour)
-	d.Dot = dot
-	d.DrawString(text)
-	w, h := measure(fs, faces, text)
-	return image.Rect(0, 0, w, h).Add(image.Pt(int(x)-w/2, int(y)-h/2)).Inset(-labelGap)
+// measured is a label's text in the face that draws it, and its size with
+// the outline.
+type measured struct {
+	text string
+	face font.Face
+	w, h int
 }
 
-// measure is the width and height of text as drawLabel draws it, its
-// outline included.
-func measure(fs []*sfnt.Font, faces []font.Face, text string) (w, h int) {
+// drawnText is text as it is drawn: a narrow no-break space, which no font
+// here has, becomes a no-break space.
+func drawnText(text string) string { return strings.ReplaceAll(text, "\u202f", "\u00a0") }
+
+// measure sizes text in the first font that has all its glyphs.
+func measure(fs []*sfnt.Font, faces []font.Face, text string) measured {
+	text = drawnText(text)
 	face := faces[fontFor(fs, text)]
 	m := face.Metrics()
 	ring := 2 * outlineWidth
-	return font.MeasureString(face, text).Ceil() + ring, (m.Ascent + m.Descent).Ceil() + ring
+	return measured{text, face, font.MeasureString(face, text).Ceil() + ring, (m.Ascent + m.Descent).Ceil() + ring}
+}
+
+// draw writes the label centred in box in white with a dark outline.
+func (l measured) draw(img *image.RGBA, box image.Rectangle) {
+	m := l.face.Metrics()
+	x := float64(box.Min.X+box.Max.X) / 2
+	y := float64(box.Min.Y+box.Max.Y) / 2
+	dot := fixed.Point26_6{
+		X: fixed.Int26_6(x*64) - font.MeasureString(l.face, l.text)/2,
+		Y: fixed.Int26_6(y*64) + (m.Ascent-m.Descent)/2,
+	}
+	d := font.Drawer{Dst: img, Src: image.NewUniform(outlineColour), Face: l.face}
+	for _, o := range outline {
+		d.Dot = dot.Add(fixed.P(o.X, o.Y))
+		d.DrawString(l.text)
+	}
+	d.Src = image.NewUniform(textColour)
+	d.Dot = dot
+	d.DrawString(l.text)
 }
 
 // fontFor picks the first font that has every glyph of text, or the first
@@ -245,18 +259,6 @@ func fontFor(fs []*sfnt.Font, text string) int {
 		}
 	}
 	return 0
-}
-
-// Covered is true when one of the fonts the labels are drawn with has every
-// glyph of text, so it draws without boxes. A narrow no-break space is drawn
-// as a no-break space, which they have.
-func Covered(text string) bool {
-	fs, err := fonts()
-	if err != nil {
-		return false
-	}
-	text = strings.ReplaceAll(text, "\u202f", "\u00a0")
-	return hasGlyphs(fs[fontFor(fs, text)], text)
 }
 
 func hasGlyphs(f *sfnt.Font, text string) bool {

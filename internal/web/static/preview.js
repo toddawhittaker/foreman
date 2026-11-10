@@ -10,8 +10,8 @@
 // On a wide screen the large view holds the viewed planet's own Resources and
 // Terrain fields beside the map, so a change there redraws it in place.
 // While a "Show resource amounts" box is ticked, the large view's or the One
-// planet picture's, the amounts of the planet shown there are asked for once
-// the picture is there, and its patches labelled.
+// planet picture's, the amounts of the planet shown in that place are asked
+// for once the picture is there, and its patches labelled.
 document.addEventListener("DOMContentLoaded", () => {
   const strings = JSON.parse(document.getElementById("i18n").textContent);
   const formEl = () => document.getElementById("generate-form");
@@ -77,7 +77,8 @@ document.addEventListener("DOMContentLoaded", () => {
     waiting = false;
     setStatus(false);
     dropTerritories();
-    clearAmounts();
+    clearAmounts(places.page);
+    clearAmounts(places.large);
   }
 
   // Vulcanus's demolisher territories (SPEC 5.6; DESIGN 8.8) are asked for
@@ -129,15 +130,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // While the page's box is ticked, each download draws in the amounts held
-  // for its planet, which the server marks; the zip draws every planet's held.
+  // for its planet, which the server marks; the zip draws every planet's
+  // held, once any is, and says so.
   function amountDownloads() {
     const on = Boolean(el("preview-amounts") && pageAmounts);
+    const zip = document.querySelector('#preview a.download[href*="/all.zip"]');
     document.querySelectorAll("#preview li a.download").forEach((a) => {
       a.setAttribute("href", askFor(a.href, "amounts", on && a.hasAttribute("data-counted")));
       nameDownload(a);
     });
-    const zip = document.querySelector('#preview a.download[href*="/all.zip"]');
-    if (zip) zip.setAttribute("href", askFor(zip.href, "amounts", on));
+    if (!zip) return;
+    const drawn = on && zip.hasAttribute("data-counted");
+    zip.setAttribute("href", askFor(zip.href, "amounts", drawn));
+    zip.textContent = drawn ? zip.dataset.amounts : zip.dataset.plain;
   }
 
   function clearTerritories() {
@@ -191,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!result) return;
     const overlay = reply.querySelector(".territories");
     if (overlay) link.querySelector(".map").insertBefore(document.importNode(overlay, true), link.querySelector(".pin"));
-    placeLabels();
+    placeLabels(places.page);
     showTerritoryResult(slot, result);
     territoryDownloads(Boolean(overlay));
     if (say) announce(words(slot));
@@ -214,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
     map.insertBefore(copy, map.querySelector(".pin"));
     const counts = document.querySelector("#territory-result .territory-counts");
     if (said && counts) said.textContent = words(counts);
-    placeLabels();
+    placeLabels(places.large);
   }
 
   document.addEventListener("click", (e) => {
@@ -396,8 +401,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("change", (e) => {
     if (e.target.id === "preview-amounts") {
       pageAmounts = e.target.checked;
-      if (pageAmounts) amounts();
-      else clearAmounts();
+      if (pageAmounts) amounts(places.page);
+      else clearAmounts(places.page);
       amountDownloads();
       return;
     }
@@ -480,37 +485,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const el = (id) => document.getElementById(id);
   const frame = () => el("large-frame");
 
-  // One planet's resource amounts (SPEC 5.6), in one of two places: the large
-  // view, while it is open, or the One planet picture on the page. Each place
-  // has its own box, off on load and kept while the page lives. Ticked, the
-  // planet shown there is counted once its picture is there, so the picture
-  // never waits. A draw, a change of settings, another planet, opening or
-  // closing the view or unticking drops the request on its way and the
-  // labels at once; the server keeps what it counted, so going back is quick.
+  // One planet's resource amounts (SPEC 5.6), in two places, each with its
+  // own box, off on load and kept while the page lives: the large view, and
+  // the One planet picture on the page. Ticked, the planet shown there is
+  // counted once its picture is there, so the picture never waits. A draw or
+  // a change of settings clears both places; another planet, unticking or
+  // closing the view clears only the place it happens in. Each place speaks
+  // only while it is shown: the page is hidden behind the open view, so a
+  // page count that lands meanwhile is shown, not said. The server keeps
+  // what it counted, so going back is quick.
   const amountsPath = path + "/resources";
-  let amountsSent = 0;
-  let amountsPending = null;
-  let amountsPlanet = ""; // the planet whose amounts are shown or on their way
-  let amountsWhere = null; // the place they are shown in or on their way to
   let pageAmounts = false; // the page's box, which each new section brings unticked
   const largeMap = () => document.querySelector("#large-view .map");
+  const viewOpen = () => Boolean(dialog && dialog.open);
+  // Each place's elements, and its count: the request on its way, the planet
+  // shown, failed or on its way, and the labels placed on its map.
+  const newCount = () => ({ sent: 0, pending: null, done: null, asked: "", labelled: null, sizes: new Map(), saying: 0 });
   const places = {
     large: {
       box: "large-amounts", bar: "large-amounts-bar", counting: "large-counting", text: "large-counting-text",
-      slot: "large-amounts-result", news: "large-amounts-news",
+      slot: "large-amounts-result", news: "large-amounts-news", status: "large-status", overlays: "#large-view .resources",
+      shown: viewOpen,
       planet: () => viewing || firstPlanet(),
       map: () => largeMap(),
+      ...newCount(),
     },
     page: {
       box: "preview-amounts", bar: "preview-amounts-bar", counting: "preview-counting", text: "preview-counting-text",
-      slot: "preview-amounts-result", news: "preview-amounts-news",
+      slot: "preview-amounts-result", news: "preview-amounts-news", status: "announcer", overlays: "#preview .resources",
+      shown: () => !viewOpen(),
       // The box is there only while one planet is shown.
       planet: () => { const one = document.querySelector("#preview a.picture"); return one ? one.dataset.planet : ""; },
       map: (planet) => { const link = pictureLink(planet); return link && link.querySelector(".map"); },
+      ...newCount(),
     },
   };
-  // The modal view hides the page, so only one place is seen at a time.
-  const place = () => (dialog && dialog.open ? places.large : places.page);
+  const place = () => (viewOpen() ? places.large : places.page);
   const ticked = (at) => { const box = el(at.box); return Boolean(box && box.checked); };
 
   function counting(at, on) {
@@ -518,49 +528,47 @@ document.addEventListener("DOMContentLoaded", () => {
     if (line) line.hidden = !on;
   }
 
-  function clearAmounts() {
-    for (const at of Object.values(places)) {
-      const slot = el(at.slot);
-      // The Try again button or the list's summary goes with the slot, so focus goes back to the box.
-      if (slot && slot.contains(document.activeElement)) el(at.box).focus();
-      if (slot) slot.replaceChildren();
-      counting(at, false);
-      const news = el(at.news);
-      if (news) news.textContent = "";
+  // Clears one place; the other keeps its own count, labels and list.
+  function clearAmounts(at) {
+    const slot = el(at.slot);
+    // The Try again button or the list's summary goes with the slot, so focus goes back to the box.
+    if (slot && slot.contains(document.activeElement)) el(at.box).focus();
+    if (slot) slot.replaceChildren();
+    counting(at, false);
+    const news = el(at.news);
+    if (news) news.textContent = "";
+    // Its status line, still about this count, says nothing now.
+    const said = el(at.status);
+    const bar = el(at.bar);
+    const line = el(at.text);
+    if (said && bar && line && [bar.dataset.ready, words(line)].includes(said.textContent)) {
+      if (at.shown()) clearTimeout(saying);
+      said.textContent = "";
     }
-    // A status line still about this count says nothing now.
-    const was = amountsWhere && el(amountsWhere.bar);
-    const line = amountsWhere && el(amountsWhere.text);
-    for (const said of [el("large-status"), el("announcer")]) {
-      if (said && was && line && [was.dataset.ready, words(line)].includes(said.textContent)) {
-        clearTimeout(saying);
-        said.textContent = "";
-      }
-    }
-    clearTimeout(amountsSaying);
-    amountsSent++;
-    if (amountsPending) amountsPending.abort();
-    amountsPending = null;
-    amountsPlanet = "";
-    amountsWhere = null;
-    document.querySelectorAll("#preview .resources, #large-view .resources").forEach((o) => o.remove());
-    if (labelled && labelled !== largeMap()) resized.unobserve(labelled);
-    labelled = null;
-    sizes = new Map();
+    clearTimeout(at.saying);
+    at.sent++;
+    if (at.pending) at.pending.abort();
+    at.pending = null;
+    at.done = null;
+    at.asked = "";
+    document.querySelectorAll(at.overlays).forEach((o) => o.remove());
+    if (at.labelled && at.labelled !== largeMap()) resized.unobserve(at.labelled);
+    at.labelled = null;
+    at.sizes = new Map();
   }
 
-  async function amounts() {
-    const at = place();
+  async function amounts(at = place()) {
     const planet = at.planet();
     const slot = el(at.slot);
     if (!ticked(at) || waiting || !slot || !planet || !pictureLink(planet)) return;
-    if (amountsPlanet === planet && amountsWhere === at) return; // shown, failed, or on its way
-    clearAmounts();
-    amountsPlanet = planet;
-    amountsWhere = at;
-    const n = amountsSent;
+    // The page does not count behind the open view; the view's close asks again.
+    if (!at.shown()) return;
+    if (at.asked === planet) return; // shown, failed, or on its way
+    clearAmounts(at);
+    at.asked = planet;
+    const n = at.sent;
     const ctrl = new AbortController();
-    amountsPending = ctrl;
+    at.pending = ctrl;
     counting(at, true);
     // Said once as it starts (SPEC 17.15); the bar beside it is only seen.
     const startSaid = words(el(at.text));
@@ -571,41 +579,56 @@ document.addEventListener("DOMContentLoaded", () => {
     const body = new URLSearchParams(new FormData(formEl()));
     body.set("planet", planet);
     let html;
-    try {
+    const ask = async () => {
+      // The page's count of the same planet, still on its way when the view
+      // opened, is waited for, so the server counts once and answers this from it.
+      const other = at === places.large ? places.page : null;
+      if (other && other.done && other.asked === planet) await other.done.catch(() => {});
+      if (ctrl.signal.aborted) throw new Error("dropped");
       const res = await fetch(amountsPath, { method: "POST", body, signal: ctrl.signal, headers: { "HX-Request": "true" }, credentials: "same-origin" });
       if (!res.ok || res.redirected) throw new Error(String(res.status));
-      html = await res.text();
+      return res.text();
+    };
+    at.done = ask();
+    try {
+      html = await at.done;
     } catch {
-      if (n !== amountsSent || ctrl.signal.aborted) return;
-      amountsPending = null;
+      if (n !== at.sent || ctrl.signal.aborted) return;
+      at.pending = null;
       counting(at, false);
       const failed = el("resource-failed");
       if (failed) slot.replaceChildren(failed.content.cloneNode(true));
       sayAmounts(at, slot);
       return;
     }
-    if (n !== amountsSent) return;
-    amountsPending = null;
+    if (n !== at.sent) return;
+    at.pending = null;
     counting(at, false);
     const reply = new DOMParser().parseFromString(html, "text/html").getElementById("resource-reply");
     const result = reply && reply.querySelector(".resource-result");
     if (!result) return;
     slot.replaceChildren(...[...result.childNodes].map((node) => document.importNode(node, true)));
     // The server holds this count now, so the planet's download can draw it.
-    const download = !slot.querySelector(".message") && pictureLink(planet) && pictureLink(planet).closest("li").querySelector("a.download");
-    if (download) download.toggleAttribute("data-counted", true);
+    if (!slot.querySelector(".message")) {
+      const link = pictureLink(planet);
+      const download = link && link.closest("li").querySelector("a.download");
+      if (download) download.toggleAttribute("data-counted", true);
+      const zip = document.querySelector('#preview a.download[href*="/all.zip"]');
+      if (zip) zip.toggleAttribute("data-counted", true);
+    }
     amountDownloads();
     if (at === places.large) largeDownload(planet);
     const overlay = reply.querySelector(".resources");
     const map = at.map(planet);
-    if (overlay && map) writeLabels(map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
+    if (overlay && map) writeLabels(at, map, map.insertBefore(document.importNode(overlay, true), map.querySelector(".pin")));
     sayAmounts(at, slot);
   }
 
   // The status line says the amounts are ready. A failure is shown beside the
-  // box, so it is said unseen: the sentence only, not Try again's label.
-  let amountsSaying = 0;
+  // box, so it is said unseen: the sentence only, not Try again's label. A
+  // place hidden behind the open view says nothing; what it shows stays.
   function sayAmounts(at, slot) {
+    if (!at.shown()) return;
     const why = slot.querySelector(".message p");
     const news = el(at.news);
     if (!why) {
@@ -615,23 +638,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (!news) return;
     news.textContent = "";
-    clearTimeout(amountsSaying);
-    amountsSaying = setTimeout(() => { news.textContent = words(why); }, 50);
+    clearTimeout(at.saying);
+    at.saying = setTimeout(() => { news.textContent = words(why); }, 50);
   }
 
   // Each label is the amount, short in the page's language ("1.2M"), or a
   // well field's yield as a percentage; measured once, as its size is fixed.
-  let sizes = new Map(); // each label of the shown amounts, in the server's order, and its size
-  let labelled = null; // the map they are on
-  function writeLabels(map, overlay) {
+  function writeLabels(at, map, overlay) {
     const amount = new Intl.NumberFormat(lang, { notation: "compact", maximumFractionDigits: 1 });
     const yieldOf = new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 0 });
     const labels = [...overlay.querySelectorAll(".resources__label")];
     labels.forEach((l) => { l.textContent = (l.dataset.kind === "yield" ? yieldOf : amount).format(Number(l.dataset.amount)); });
-    sizes = new Map(labels.map((l) => [l, [l.offsetWidth, l.offsetHeight]]));
-    labelled = map;
+    at.sizes = new Map(labels.map((l) => [l, [l.offsetWidth, l.offsetHeight]]));
+    at.labelled = map;
     resized.observe(map);
-    placeLabels();
+    placeLabels(at);
   }
 
   // Labels never overlap: in the server's order, largest patch first, each is
@@ -640,9 +661,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // The boxes are kept in a grid of cells, so each label checks only its own.
   const cell = 64;
   const gap = 2;
-  function placeLabels() {
-    const map = labelled;
-    if (!map || !sizes.size) return;
+  function placeLabels(at) {
+    const map = at.labelled;
+    if (!map || !map.isConnected || !at.sizes.size) return;
     const w = map.clientWidth;
     const h = map.clientHeight;
     const origin = map.getBoundingClientRect();
@@ -661,7 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const r = kept.getBoundingClientRect();
       take({ x0: r.left - origin.left - gap, y0: r.top - origin.top - gap, x1: r.right - origin.left + gap, y1: r.bottom - origin.top + gap });
     });
-    for (const [label, [lw, lh]] of sizes) {
+    for (const [label, [lw, lh]] of at.sizes) {
       // Pulled in by as much of its size as its spot is across the map, as the style sheet does, so it stays inside.
       const u = Number(label.style.getPropertyValue("--x")) / 100;
       const v = Number(label.style.getPropertyValue("--y")) / 100;
@@ -673,21 +694,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if (free) take(b);
     }
   }
+  const placeAll = () => Object.values(places).forEach(placeLabels);
 
   document.addEventListener("click", (e) => {
     if (!e.target.closest("[data-resource-retry]")) return;
+    const at = e.target.closest("#large-view") ? places.large : places.page;
     // The button goes with the message, so focus goes back to the box.
-    const box = el(place().box);
+    const box = el(at.box);
     if (box) box.focus();
-    clearAmounts();
-    amounts();
+    clearAmounts(at);
+    amounts(at);
   });
 
   // After each zoom and resize, once a frame: the map's own size changes with both.
   let placing = 0;
   const resized = new ResizeObserver(() => {
     if (placing) return;
-    placing = requestAnimationFrame(() => { placing = 0; placeLabels(); });
+    placing = requestAnimationFrame(() => { placing = 0; placeAll(); });
   });
   if (largeMap()) resized.observe(largeMap());
 
@@ -1003,13 +1026,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // A planet still being drawn when the dialog closes is dropped: its reply
     // would swap the picture that has the focus away.
     el("large-amounts").addEventListener("change", (e) => {
-      if (e.target.checked) amounts();
-      else clearAmounts();
+      if (e.target.checked) amounts(places.large);
+      else clearAmounts(places.large);
       largeDownload(viewing || firstPlanet());
     });
     dialog.addEventListener("close", () => {
-      // Amounts on the page's picture stay; the view's own go with it.
-      if (amountsWhere === places.large) clearAmounts();
+      // The view's amounts go with it; the page's stay as they are.
+      clearAmounts(places.large);
       putBack();
       let link = pictureLink(viewing);
       if (!link) {
@@ -1021,7 +1044,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (link) show(link.dataset.planet);
       }
       if (link) link.focus();
-      amounts();
+      // Counted only now when the page's picture changed while the view was open.
+      amounts(places.page);
     });
   }
 

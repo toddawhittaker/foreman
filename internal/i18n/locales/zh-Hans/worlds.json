@@ -387,6 +387,7 @@
   "worlds.generate.preview.opens_large": "（打开大图查看）",
   "worlds.generate.preview.download": "下载 {planet}（PNG）",
   "worlds.generate.preview.download_all": "下载所有已绘制的星球（ZIP）",
+  "worlds.generate.preview.download_all_amounts": "下载所有已绘制的星球（ZIP），已统计的星球带资源数量",
   "worlds.generate.preview.updating": "正在按当前设置绘制地图预览…",
   "worlds.generate.large.zoom_out": "缩小",
   "worlds.generate.large.zoom_in": "放大",

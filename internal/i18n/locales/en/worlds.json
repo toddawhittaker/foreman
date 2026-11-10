@@ -399,6 +399,7 @@
   "worlds.generate.preview.opens_large": "(opens the large view)",
   "worlds.generate.preview.download": "Download {planet} (PNG)",
   "worlds.generate.preview.download_all": "Download all drawn planets (zip)",
+  "worlds.generate.preview.download_all_amounts": "Download all drawn planets (zip), with resource amounts where counted",
   "worlds.generate.preview.updating": "Drawing the map preview for the current settings…",
   "worlds.generate.large.zoom_out": "Zoom out",
   "worlds.generate.large.zoom_in": "Zoom in",

@@ -329,21 +329,21 @@ func TestDrawPNGCaptionsNeverOverlap(t *testing.T) {
 
 // Chinese amounts use the subset's digits and 万 and 亿, and draw as text.
 func TestDrawPNGChineseAmounts(t *testing.T) {
-	for _, text := range []string{"123.5万", "1.2亿", "1.2万亿", "1,235%"} {
-		if !Covered(text) {
-			t.Errorf("no font has every glyph of %q", text)
-		}
-	}
 	fs, err := fonts()
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, text := range []string{"123.5万", "1.2亿", "1.2万亿", "1,235%"} {
+		if !hasGlyphs(fs[1], text) {
+			t.Errorf("the Chinese subset lacks a glyph of %q", text)
+		}
+	}
 	if fontFor(fs, "1.2万") != 1 {
 		t.Error("a Chinese amount is not drawn with the subset")
 	}
-	// A narrow no-break space, French grouping, draws as a no-break space.
-	if !Covered("1 235 %") {
-		t.Error("French grouping is not covered")
+	// A narrow no-break space, French grouping, which no font has, is drawn as a no-break space.
+	if l := drawnText("1\u202f235\u00a0%"); l != "1\u00a0235\u00a0%" || !hasGlyphs(fs[fontFor(fs, l)], l) {
+		t.Errorf("French grouping is drawn as %q", l)
 	}
 	out, err := DrawPNG(context.Background(), greyPNG(t, 128), Overlay{Size: 128, Captions: []Caption{{Text: "1.2万", U: 0.5, V: 0.5}}}, noLabel)
 	if err != nil {

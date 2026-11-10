@@ -119,18 +119,14 @@ func resourceLabels(res resource.Result, size int) []ResourceLabel {
 	return out
 }
 
-// amountCaptions are the labels a download draws for planet, worded in loc
-// as the page words them, from the amounts e holds for a picture of size
-// pixels; held is false when e has none for it. Nothing is counted here.
-func amountCaptions(loc i18n.Locale, e previewEntry, planet string, size int) (caps []territory.Caption, held bool) {
-	res := e.resources[planet]
-	if res == nil {
-		return nil, false
-	}
-	for _, l := range resourceLabels(*res, size) {
+// amountCaptions are the labels a download draws from amounts already
+// counted, for a picture of size pixels, worded in loc as the page words them.
+func amountCaptions(loc i18n.Locale, res resource.Result, size int) []territory.Caption {
+	var caps []territory.Caption
+	for _, l := range resourceLabels(res, size) {
 		caps = append(caps, territory.Caption{Text: labelText(loc, l), U: l.Left / 100, V: l.Top / 100})
 	}
-	return caps, true
+	return caps
 }
 
 // totalYield is an infinite resource's total as a yield, by the rule
@@ -285,7 +281,7 @@ func (p *previewStore) resourcesOf(user int64, key, planet string) (resource.Res
 
 // countedPlanets are the planets the user's preview holds amounts for with
 // these settings, so their downloads can draw them.
-func (p *previewStore) countedPlanets(user int64, key string) []string {
+func (p *previewStore) countedPlanets(user int64, key string) map[string]bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
@@ -293,10 +289,10 @@ func (p *previewStore) countedPlanets(user int64, key string) []string {
 	if !ok || e.key != key {
 		return nil
 	}
-	var out []string
+	out := map[string]bool{}
 	for planet, res := range e.resources {
 		if res != nil {
-			out = append(out, planet)
+			out[planet] = true
 		}
 	}
 	return out

@@ -1,11 +1,17 @@
 package web
 
 import (
+	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 
+	"golang.org/x/image/font/gofont/gobold"
+	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/font/sfnt"
+
 	"github.com/toddawhittaker/foreman/internal/i18n"
-	"github.com/toddawhittaker/foreman/internal/territory"
 )
 
 // The expected strings are the browser's own: each was made once with Node
@@ -331,14 +337,57 @@ func TestLabelTextIsTheBrowsers(t *testing.T) {
 func TestLabelTextGlyphsInFonts(t *testing.T) {
 	for _, lang := range i18n.Languages {
 		for _, c := range browserAmounts[lang.Tag] {
-			if text := labelText(lang.Tag, ResourceLabel{Kind: resourceKindAmount, Value: strconv.FormatInt(c.n, 10)}); !territory.Covered(text) {
+			if text := labelText(lang.Tag, ResourceLabel{Kind: resourceKindAmount, Value: strconv.FormatInt(c.n, 10)}); !covered(t, text) {
 				t.Errorf("%s: no font has every glyph of %q", lang.Tag, text)
 			}
 		}
 		for _, c := range browserYields[lang.Tag] {
-			if text := labelText(lang.Tag, ResourceLabel{Kind: resourceKindYield, Value: c.value}); !territory.Covered(text) {
+			if text := labelText(lang.Tag, ResourceLabel{Kind: resourceKindYield, Value: c.value}); !covered(t, text) {
 				t.Errorf("%s: no font has every glyph of %q", lang.Tag, text)
 			}
 		}
 	}
+}
+
+// labelFonts are the fonts internal/territory draws labels with, in its
+// order: Go Bold, then the committed Chinese subset.
+var labelFonts = sync.OnceValues(func() ([]*sfnt.Font, error) {
+	cjk, err := os.ReadFile("../territory/fonts/NotoSansCJKsc-Bold-labels.otf")
+	if err != nil {
+		return nil, err
+	}
+	var out []*sfnt.Font
+	for _, b := range [][]byte{gobold.TTF, cjk} {
+		f, err := opentype.Parse(b)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, nil
+})
+
+// covered is true when one label font has every glyph of text as it is
+// drawn, a narrow no-break space as a no-break space.
+func covered(t *testing.T, text string) bool {
+	t.Helper()
+	fs, err := labelFonts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	text = strings.ReplaceAll(text, "\u202f", "\u00a0")
+	var buf sfnt.Buffer
+	for _, f := range fs {
+		all := true
+		for _, r := range text {
+			if g, err := f.GlyphIndex(&buf, r); err != nil || g == 0 {
+				all = false
+				break
+			}
+		}
+		if all {
+			return true
+		}
+	}
+	return false
 }

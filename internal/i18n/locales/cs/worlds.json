@@ -411,6 +411,7 @@
   "worlds.generate.preview.opens_large": "(otevře velké zobrazení)",
   "worlds.generate.preview.download": "Stáhnout {planet} (PNG)",
   "worlds.generate.preview.download_all": "Stáhnout všechny vykreslené planety (ZIP)",
+  "worlds.generate.preview.download_all_amounts": "Stáhnout všechny vykreslené planety (ZIP), s množstvím surovin tam, kde bylo spočítáno",
   "worlds.generate.preview.updating": "Vykresluje se náhled mapy pro aktuální nastavení…",
   "worlds.generate.large.zoom_out": "Oddálit",
   "worlds.generate.large.zoom_in": "Přiblížit",

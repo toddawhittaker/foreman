@@ -326,6 +326,9 @@ type PreviewView struct {
 	// still shows All planets as the choice made (DESIGN 8.8).
 	ShowsAll bool
 	Error    i18n.Msg
+	// Counted is true when the preview holds any planet's resource amounts,
+	// so the zip can draw them.
+	Counted bool
 	// Territories is the box that shows Vulcanus's demolisher territories.
 	Territories TerritoryBox
 	// Resources is one planet's resource amounts for the large view, or why
@@ -442,8 +445,9 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	if err == nil {
 		counted := s.previews.countedPlanets(u.ID, key)
+		view.Counted = len(counted) > 0
 		for _, planet := range planets {
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet), Counted: slices.Contains(counted, planet)})
+			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet), Counted: counted[planet]})
 		}
 	} else {
 		view.Token = ""
@@ -612,15 +616,17 @@ func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (
 		ov, suffix = territory.Geometry(*e.territories, e.size), "-territories"
 	}
 	loc := localeOf(r)
-	if q.Get(amountsQuery) == "1" {
+	if q.Get(amountsQuery) == "1" && e.resources[planet] != nil {
 		cfg, err := png.DecodeConfig(bytes.NewReader(src))
 		if err != nil {
 			return nil, "", false, err
 		}
-		caps, held := amountCaptions(loc, e, planet, cfg.Width)
-		if held {
-			ov.Size, ov.Captions, suffix = cfg.Width, caps, suffix+"-amounts"
+		if ov.Size == 0 {
+			ov.Size = cfg.Width
+		} else if ov.Size != cfg.Width {
+			return nil, "", false, fmt.Errorf("the picture is %d wide, its territories %d", cfg.Width, ov.Size)
 		}
+		ov.Captions, suffix = amountCaptions(loc, *e.resources[planet], cfg.Width), suffix+"-amounts"
 	}
 	if suffix == "" {
 		return src, "", true, nil

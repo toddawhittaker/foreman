@@ -411,6 +411,7 @@
   "worlds.generate.preview.opens_large": "(открывает крупный просмотр)",
   "worlds.generate.preview.download": "Скачать: {planet} (PNG)",
   "worlds.generate.preview.download_all": "Скачать все нарисованные планеты (ZIP)",
+  "worlds.generate.preview.download_all_amounts": "Скачать все нарисованные планеты (ZIP), с количеством ресурсов там, где оно подсчитано",
   "worlds.generate.preview.updating": "Рисуется предпросмотр карты по текущим настройкам…",
   "worlds.generate.large.zoom_out": "Уменьшить",
   "worlds.generate.large.zoom_in": "Увеличить",

@@ -399,6 +399,7 @@
   "worlds.generate.preview.opens_large": "(abre la vista grande)",
   "worlds.generate.preview.download": "Descargar {planet} (PNG)",
   "worlds.generate.preview.download_all": "Descargar todos los planetas dibujados (zip)",
+  "worlds.generate.preview.download_all_amounts": "Descargar todos los planetas dibujados (zip), con cantidades de recursos donde se contaron",
   "worlds.generate.preview.updating": "Dibujando la vista previa del mapa con los ajustes actuales…",
   "worlds.generate.large.zoom_out": "Alejar",
   "worlds.generate.large.zoom_in": "Acercar",

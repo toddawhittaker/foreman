@@ -309,7 +309,8 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
 		`<div class="wait large-view__counting" id="large-counting" hidden>`,
 		`<p class="hint" id="large-counting-text">Counting resources in the map… This can take up to a minute.</p>`,
-		`<progress aria-labelledby="large-counting-text"></progress>`,
+		// The sentence is said as a count starts; the bar is not named again (DESIGN 8.8).
+		`<progress aria-hidden="true"></progress>`,
 		`data-ready="Resource amounts ready."`,
 		`<template id="resource-failed">`,
 		`<p class="visually-hidden" id="large-amounts-news" role="status"></p>`,
@@ -405,8 +406,9 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 		t.Fatalf("%d counts", len(prev.runs))
 	}
 	body = page()
-	if strings.Count(body, "data-counted") != 1 || !regexp.MustCompile(`/nauvis/download"[^>]*data-counted`).MatchString(body) {
-		t.Errorf("only Nauvis is marked counted:\n%s", body)
+	if strings.Count(body, "data-counted") != 2 || !regexp.MustCompile(`/nauvis/download"[^>]*data-counted`).MatchString(body) ||
+		!regexp.MustCompile(`/all\.zip"[^>]*data-counted`).MatchString(body) {
+		t.Errorf("only Nauvis and the zip are marked counted:\n%s", body)
 	}
 
 	rec = hn.getLong(base+"/nauvis/download?amounts=1", c)
@@ -483,6 +485,12 @@ func TestDownloadDrawsTerritoriesAndAmountsTogether(t *testing.T) {
 	if c := got.Captions[0]; math.Abs(c.U-78.5/256) > 1e-4 {
 		t.Errorf("the first caption is at %v", c.U)
 	}
+	// A picture of another size than its territories is refused, not drawn wrongly.
+	e.size = 128
+	if _, _, _, err := drawnDownload(httptest.NewRequest(http.MethodGet, "/x?territories=1&amounts=1", nil), e, "vulcanus", src); err == nil {
+		t.Error("a 256 picture drew 128 territories")
+	}
+	e.size = 256
 	// Only the territories: the amounts are not drawn, even though held.
 	r = httptest.NewRequest(http.MethodGet, "/x?territories=1", nil)
 	if _, suffix, _, _ = drawnDownload(r, e, "vulcanus", src); suffix != "-territories" || len(got.Captions) != 0 {
@@ -498,16 +506,21 @@ func TestOnePlanetHasTheResourceBox(t *testing.T) {
 	one := planetForm("nauvis", "auto", "1")
 	body := hn.postLong(PathGeneratePreview, one, c, hx).Body.String()
 	for _, want := range []string{
+		`<div class="js-only"><label class="check"><input type="checkbox" id="preview-amounts"> Show resource amounts</label></div>`,
 		`<div class="js-only"><div class="large-view__amounts" id="preview-amounts-bar" data-ready="Resource amounts ready.">`,
-		`<input type="checkbox" id="preview-amounts"> Show resource amounts</label>`,
 		`<div class="wait large-view__counting" id="preview-counting" hidden>`,
-		`<progress aria-labelledby="preview-counting-text"></progress>`,
+		`<progress aria-hidden="true"></progress>`,
 		`<p class="visually-hidden" id="preview-amounts-news" role="status"></p>`,
 		`data-amounts="Download Nauvis with resource amounts (PNG)"`,
+		`data-amounts="Download all drawn planets (zip), with resource amounts where counted"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("One planet lacks %q:\n%s", want, body)
 		}
+	}
+	// The box sits above the picture; the wait, the failure and the list under it and its downloads.
+	if b, p, slot := strings.Index(body, `id="preview-amounts"`), strings.Index(body, `class="pictures"`), strings.Index(body, `id="preview-amounts-bar"`); b > p || slot < strings.Index(body, "all.zip") {
+		t.Errorf("box at %d, pictures at %d, slot at %d", b, p, slot)
 	}
 	all := planetForm("", "auto", "1", "preview_view", "all")
 	all.Del("planet")

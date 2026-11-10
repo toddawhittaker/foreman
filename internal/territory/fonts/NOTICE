@@ -18,3 +18,7 @@ Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf at the Sans2.004 tag
   python3 -m fontTools.subset NotoSansCJKsc-Bold.otf \
     --text=" 小中大型未知万亿0123456789.,%" --layout-features='' \
     --output-file=NotoSansCJKsc-Bold-labels.otf
+
+The committed subset's sha256 is
+8011926af635f6febbdf4d8da3d37224c5fbe2df434b30a535c0d63db2d62d14; a rebuild
+differs from it only in the header's timestamps and checksums.

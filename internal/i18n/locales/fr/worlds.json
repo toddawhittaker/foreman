@@ -399,6 +399,7 @@
   "worlds.generate.preview.opens_large": "(ouvre la grande vue)",
   "worlds.generate.preview.download": "Télécharger {planet} (PNG)",
   "worlds.generate.preview.download_all": "Télécharger toutes les planètes dessinées (zip)",
+  "worlds.generate.preview.download_all_amounts": "Télécharger toutes les planètes dessinées (zip), avec les quantités de ressources là où elles ont été comptées",
   "worlds.generate.preview.updating": "Dessin de l’aperçu de la carte pour les réglages actuels…",
   "worlds.generate.large.zoom_out": "Dézoomer",
   "worlds.generate.large.zoom_in": "Zoomer",
