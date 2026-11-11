@@ -262,13 +262,20 @@ func (m *Manager) ModsFingerprint(id string) (string, error) {
 }
 
 func modsFingerprint(root *os.Root) (string, error) {
+	return fingerprintMods(root, false)
+}
+
+// fingerprintMods is modsFingerprint, leaving out mod-settings.dat when
+// withoutSettings is set: a setting's value never changes what a mod
+// defines, so the definitions cache must not miss on a settings edit.
+func fingerprintMods(root *os.Root, withoutSettings bool) (string, error) {
 	h := sha256.New()
 	entries, err := fs.ReadDir(root.FS(), ModsDir)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}
 	for _, e := range entries {
-		if e.Name() == ModListFile {
+		if e.Name() == ModListFile || (withoutSettings && e.Name() == ModSettingsFile) {
 			continue
 		}
 		info, err := e.Info()

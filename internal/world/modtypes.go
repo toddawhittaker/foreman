@@ -21,8 +21,9 @@ type ModChange struct {
 	Remove   []string        // zip file names to delete from mods/
 	Enabled  map[string]bool // new enabled state, by mod name
 	Settings []byte          // new mod-settings.dat, or nil to leave it
-	// SettingsSeen is the SHA-256 (hex) of the mod-settings.dat an edit was
-	// drawn from; the change is refused when the file no longer matches.
-	// Empty skips the check, as an upload does.
+	// SettingsSeen is the SHA-256 of the mod-settings.dat an edit was drawn
+	// from, as lowercase hex; a missing file hashes as empty input. The
+	// change is refused when the file no longer matches. Empty skips the
+	// check, as an upload does.
 	SettingsSeen string
 }
