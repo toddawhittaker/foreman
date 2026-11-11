@@ -57,7 +57,8 @@ var nauvisCount = resource.Result{
 		{Name: "iron-ore", X: -50, Y: -30, Amount: 12_345_678, Entities: 900, Box: [4]int{-70, -55, -45, -5}},
 		{Name: "crude-oil", X: 50, Y: -50, Amount: 900_000, Entities: 3, Box: [4]int{46, -54, 56, -46}, Normal: 300_000},
 		{Name: "copper-ore", X: 30, Y: 40, Amount: 1_500_000, Entities: 80, Box: [4]int{26, 36, 34, 44}},
-		{Name: "iron-ore", X: -40, Y: -30, Amount: 250_000, Entities: 30, Box: [4]int{-43, -33, -37, -27}},
+		// 65 tiles below the large patch, so its label is not hidden beside it (SPEC 5.6).
+		{Name: "iron-ore", X: -40, Y: 63, Amount: 250_000, Entities: 30, Box: [4]int{-43, 60, -37, 66}},
 	},
 }
 
@@ -96,7 +97,7 @@ func TestResourcesAnswerFromTheStore(t *testing.T) {
 		`<summary>Resource amounts as text (4 patches)</summary>`,
 		"Positions are in tiles from where players start, as (x, y).",
 		`<h4>Iron ore: 12,595,678 in total</h4>`,
-		`<li>12,345,678 at (-50, -30)</li><li>250,000 at (-40, -30)</li>`,
+		`<li>12,345,678 at (-50, -30)</li><li>250,000 at (-40, 63)</li>`,
 		`<h4>Copper ore: 1,500,000 in total</h4>`,
 		`<h4>Crude oil: 300% yield in total</h4>`,
 		`<li>300% yield at (50, -50)</li>`,
@@ -527,5 +528,29 @@ func TestOnePlanetHasTheResourceBox(t *testing.T) {
 	all.Del("planet")
 	if body := hn.postLong(PathGeneratePreview, all, c, hx).Body.String(); strings.Contains(body, `id="preview-amounts"`) {
 		t.Error("All planets has the box")
+	}
+}
+
+// SPEC 5.6: a label hidden beside a richer patch keeps its list entry, and
+// the download draws the page's labels.
+func TestHiddenLabelsStayListed(t *testing.T) {
+	res := resource.Result{
+		Planet:    "nauvis",
+		Resources: map[string]resource.Resource{"iron-ore": {Total: 5000}},
+		Patches: []resource.Patch{
+			{Name: "iron-ore", X: 0, Y: 0, Amount: 4000, Box: [4]int{0, 0, 10, 10}},
+			{Name: "iron-ore", X: 20, Y: 0, Amount: 1000, Box: [4]int{20, 0, 22, 2}},
+		},
+	}
+	v := resourceView(i18n.English, "2.0", "nauvis", res, 256)
+	if len(v.Labels) != 1 || v.Labels[0].Value != "4000" {
+		t.Errorf("labels %+v, want only the 4000 patch", v.Labels)
+	}
+	if len(v.Lists) != 1 || len(v.Lists[0].Patches) != 2 {
+		t.Errorf("lists %+v, want both patches", v.Lists)
+	}
+	caps := amountCaptions(i18n.English, res, 256)
+	if len(caps) != len(v.Labels) || caps[0].U != v.Labels[0].Left/100 || caps[0].V != v.Labels[0].Top/100 {
+		t.Errorf("captions %+v differ from labels %+v", caps, v.Labels)
 	}
 }

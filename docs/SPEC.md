@@ -711,11 +711,14 @@ not) or a map exchange string, with Space Age on or off. (P0)
     places them largest first so that none overlap another label, a
     demolisher label or the pin; zooming in shows more. A collapsed text
     list gives every patch, by resource, for keyboard and screen-reader
-    users (17.15).
+    users (17.15). A patch's label is left off the picture where a patch
+    of the same resource with at least 4 times its amount lies within 64
+    tiles, box edge to box edge; the list still gives it.
     - **Patches.** Ores of one resource are one patch where their tiles
-      are within 2 tiles of each other (a gap of one tile joins them: at
-      a gap of 0 Fulgora's scrap broke into 3,301 patches, 2,743 of them
-      under 10 entities). Fulgora's scrap joins within 16 tiles instead,
+      are within 6 tiles of each other. At 2 tiles, Fulgora at 3072 tiles
+      had 946 ore patches, 578 of them under 10 entities; at 6 it has 296,
+      48 under 10. On Nauvis no two separate fields join at any gap up
+      to 16. Fulgora's scrap joins within 16 tiles instead,
       since at 2 its islands carried dozens of labels each at high
       frequency; a few labels can then join neighbouring islands across
       thin channels (ADR 0015). Wells are the resources whose mineable
