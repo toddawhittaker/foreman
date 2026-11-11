@@ -183,7 +183,7 @@ func mustFMSET(t *testing.T, lines []string, scope, name string) string {
 // type is 2 (double, every number on 1.1) or 6 (int64, on 2.x ints).
 func numberOffset(t *testing.T, file []byte, name string) (off int, isDouble bool) {
 	t.Helper()
-	key := append([]byte{0, byte(len(name))}, name...)
+	key := append([]byte{0, byte(len(name))}, name...) //nolint:gosec // short fixed names
 	i := bytes.Index(file, key)
 	if i < 0 || bytes.Contains(file[i+1:], key) {
 		t.Fatalf("setting %s is not exactly once in the file", name)
@@ -210,7 +210,7 @@ func readNumber(t *testing.T, file []byte, name string) float64 {
 	if isDouble {
 		return math.Float64frombits(u)
 	}
-	return float64(int64(u))
+	return float64(int64(u)) //nolint:gosec // two's complement read
 }
 
 // withNumber returns a copy of the file with one number setting overwritten
@@ -222,7 +222,7 @@ func withNumber(t *testing.T, file []byte, name string, v int64) []byte {
 	if isDouble {
 		binary.LittleEndian.PutUint64(out[off:], math.Float64bits(float64(v)))
 	} else {
-		binary.LittleEndian.PutUint64(out[off:], uint64(v))
+		binary.LittleEndian.PutUint64(out[off:], uint64(v)) //nolint:gosec // two's complement write
 	}
 	return out
 }
@@ -246,15 +246,15 @@ func perUserTail(t *testing.T, file []byte) []byte {
 // ---- 1: the definitions run ----
 
 type msWant struct {
-	name, mod string
-	setting   modsettings.SettingType
-	typ       modsettings.ValueType
-	def       modsettings.Value
-	min, max  *modsettings.Value
-	allowed   []modsettings.Value
-	hidden    bool
-	blank     bool
-	trim      bool
+	name     string
+	setting  modsettings.SettingType
+	typ      modsettings.ValueType
+	def      modsettings.Value
+	min, max *modsettings.Value
+	allowed  []modsettings.Value
+	hidden   bool
+	blank    bool
+	trim     bool
 	// unlimited marks a setting whose reported limits are recorded, not asserted.
 	unlimited bool
 }
