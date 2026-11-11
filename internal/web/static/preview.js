@@ -135,7 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
       a.setAttribute("href", url.pathname + url.search);
     }
     if (one) nameDownload(one);
-    if (dialog && dialog.open && (viewing || firstPlanet()) === terrPlanet) show(terrPlanet);
+    // Only a picture already there is refreshed: show() on a missing one would draw again.
+    if (link && dialog && dialog.open && (viewing || firstPlanet()) === terrPlanet) show(terrPlanet);
   }
 
   // A download says what it draws in, as its link asks for it.
