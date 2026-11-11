@@ -367,6 +367,8 @@ test("in the large view the preparation lies over the stage without moving it, a
   await page.keyboard.press("ArrowRight");
   await expect(view.locator(".download-prep")).toHaveCount(0);
   await expect.poll(heard).toMatch(/Download canceled\./);
+  // Its unseen news goes with it.
+  await expect(page.locator("#large-prep-news")).toHaveText("");
   await page.keyboard.press("ArrowLeft");
   await page.locator("#large-download").click();
   await expect(view.locator(".download-prep")).toBeVisible();
@@ -411,7 +413,41 @@ test("in the large view the preparation leaves the arrows and zoom free, and an 
   await page.keyboard.press("ArrowRight");
   await expect.poll(heard).toMatch(/Drawing Gleba….*Download canceled\./);
   await expect(block).toHaveCount(0);
+  await expect(page.locator("#large-prep-news")).toHaveText("");
   await hold.stop();
+});
+
+test("a count that fails at once withdraws its counting sentence but still says the news given with it", async ({ page }) => {
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img")).toHaveCount(1);
+  await section(page).getByRole("link", { name: /opens the large view/ }).click();
+  const view = page.locator("#large-view");
+  await expect(page.locator("#large-title")).toHaveText("Nauvis");
+  await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
+  const box = view.getByRole("checkbox", { name: "Show resource amounts" });
+  await box.check();
+  await expect(page.locator("#large-amounts-result")).toContainText("The request for the resource amounts failed.");
+  await page.unroute(resourceURL);
+  const hold = holdAll(page);
+  await hold.start();
+  await page.locator("#large-download").click();
+  await expect.poll(() => hold.held.length).toBe(1);
+  // Added last, so it answers before the hold does.
+  await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
+  const heard = await listen(page, "#large-status");
+  // Cancel, then a new count in the same moment: its sentence carries "Download canceled.".
+  await page.evaluate(() => {
+    (document.querySelector("#large-view [data-prep-cancel]") as HTMLElement).click();
+    const tick = document.getElementById("large-amounts") as HTMLInputElement;
+    tick.click();
+    tick.click();
+  });
+  await expect(page.locator("#large-amounts-result")).toContainText("The request for the resource amounts failed.");
+  await page.waitForTimeout(300);
+  await expect(page.locator("#large-status")).toHaveText("Download canceled.");
+  expect(await heard()).toMatch(/Download canceled\./);
+  expect(await heard()).not.toMatch(/Counting/);
+  await page.unroute(resourceURL);
 });
 
 test("a download clicked while a draw is on its way is refused and says why; the next download works", async ({ page }) => {

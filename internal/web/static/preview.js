@@ -644,9 +644,15 @@ document.addEventListener("DOMContentLoaded", () => {
       counting(at, false);
       // It counts no longer, so its start sentence, shown or on its way, goes;
       // said late, it would grow the status line and move the stage (SPEC 5.6).
+      // News said with it stays, and is said now, before the failure.
       const said = el(at.status);
-      if (at.shown() && waitingSaid === startSaid) clearTimeout(saying);
-      if (said && said.textContent === startSaid) said.textContent = "";
+      const without = (text) => text.replace(startSaid, "").replace(/\s+/g, " ").trim();
+      if (said && at.shown() && waitingSaid.includes(startSaid)) {
+        clearTimeout(saying);
+        said.textContent = without(waitingSaid);
+        waitingSaid = "";
+        owed = "";
+      } else if (said && said.textContent.includes(startSaid)) said.textContent = without(said.textContent);
       const failed = el("resource-failed");
       if (failed) slot.replaceChildren(failed.content.cloneNode(true));
       sayAmounts(at, slot);
@@ -747,6 +753,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (p.ctrl) p.ctrl.abort();
     if (p.block.contains(document.activeElement)) p.a.focus();
     p.block.remove();
+    // Its news goes with it, so the dialog never tells of a download no longer there.
+    const news = el("large-prep-news");
+    if (news) news.textContent = "";
     if (!said) return;
     // Owed until said, so a planet's news that follows says it as well (SPEC 17.15).
     owed = said;
