@@ -1096,7 +1096,8 @@ const statedOreGap = 6
 
 // scrapInvariant counts Fulgora at 3072 with scrap at the highest frequency
 // step, on two seeds. At a gap of 2 they gave 2,234 and 2,436 scrap
-// patches, at 12 352 and 369, and at 16 296 and 303 (ADR 0015).
+// patches, at 12 352 and 369, and at 16 296 and 303 on 2.1.24 (296 and
+// 306 on 2.0.77, ADR 0015).
 func (e *gameEnv) scrapInvariant(t *testing.T, c *Controller, line string, req PreviewRequest) {
 	req.Size = PreviewSizeMax
 	req.MapGenSettings = resourceControlSettings(t, line, true, "fulgora", func(ctl mapgen.Control) map[string]any {
