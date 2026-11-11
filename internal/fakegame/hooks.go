@@ -134,15 +134,22 @@ const (
 	PreviewFails PreviewMode = "fail" // exit 1 without drawing
 	PreviewHangs PreviewMode = "hang" // keep running until killed
 	PreviewSlow  PreviewMode = "slow" // draw and exit 0 after PreviewSlowDelay
+	// PreviewOOM is the out-of-memory killer ending the container: exit 137
+	// with OOMKilled, without drawing.
+	PreviewOOM PreviewMode = "oom"
+	// PreviewBroken makes a mod settings run write a definitions file that
+	// is not JSON, then exit 0. Other preview kinds work as in PreviewOK.
+	PreviewBroken PreviewMode = "broken"
 )
 
 // SetPreviewMode sets how later preview containers end (SPEC 5.6). The
 // default is PreviewOK.
 func (g *Game) SetPreviewMode(mode PreviewMode) error {
 	switch mode {
-	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow:
+	case PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewBroken:
 	default:
-		return fmt.Errorf("a preview mode is %q, %q, %q or %q", PreviewOK, PreviewFails, PreviewHangs, PreviewSlow)
+		return fmt.Errorf("a preview mode is %q, %q, %q, %q, %q or %q",
+			PreviewOK, PreviewFails, PreviewHangs, PreviewSlow, PreviewOOM, PreviewBroken)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -238,7 +245,7 @@ type hookRequest struct {
 //	POST /rcon-refuse   name, on
 //	POST /save-hangs    name, on
 //	POST /image         ref, on (the image is present)
-//	POST /preview-mode  mode ("ok", "fail", "hang" or "slow")
+//	POST /preview-mode  mode ("ok", "fail", "hang", "slow", "oom" or "broken")
 func (g *Game) HookHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /state", func(w http.ResponseWriter, _ *http.Request) {
