@@ -106,6 +106,20 @@ func (g *modsRig) settingsFile(id string) []byte {
 	return b
 }
 
+// settingValue reads one value from the world's mod-settings.dat.
+func (g *modsRig) settingValue(id string, setting modsettings.SettingType, name string) modsettings.Value {
+	g.t.Helper()
+	f, err := modsettings.Decode(g.settingsFile(id))
+	if err != nil {
+		g.t.Fatal(err)
+	}
+	v, ok, err := f.Get(setting, name)
+	if err != nil || !ok {
+		g.t.Fatalf("%s: %v %v", name, ok, err)
+	}
+	return v
+}
+
 func (g *modsRig) writeSettingsFile(id string, b []byte) {
 	g.t.Helper()
 	if err := os.WriteFile(filepath.Join(g.modsDir(id), world.ModSettingsFile), b, 0o600); err != nil {
@@ -188,7 +202,8 @@ func TestModSettingsFormShowsTheSettings(t *testing.T) {
 	}
 	intID := fieldOf("fm-sta-int", modsettings.Startup)
 	wantIn(t, "form", body,
-		`<label for="`+intID+`">Startup integer</label>`,
+		`<label for="`+intID+`" class="required">Startup integer</label>`, `required aria-describedby="`+intID+`-hint"`,
+		`<div hx-swap-oob="innerHTML:#announcer">Mod settings loaded.</div>`, `inputmode="numeric"`,
 		`id="`+intID+`" name="`+intID+`"`, `step="1" min="1" max="10"`,
 		`<p class="hint" id="`+intID+`-hint">An integer from 1 to 10.</p>`,
 		`type="checkbox" id="`+fieldOf("fm-sta-bool", modsettings.Startup)+`"`,
@@ -205,13 +220,14 @@ func TestModSettingsFormShowsTheSettings(t *testing.T) {
 	}
 	// SPEC 22.3: text the mod has only in English is marked so on a German page.
 	de := g.do(http.MethodGet, modSettingsEditPath(id)+"/form", nil, http.Header{"Cookie": {g.cookie.String() + "; " + LangCookie + "=de"}})
-	wantIn(t, "German form", de.body, `<label for="`+intID+`" lang="en">Startup integer</label>`, `id="`+intID+`-hint" lang="en"`)
+	wantIn(t, "German form", de.body, `<label for="`+intID+`" lang="en" class="required">Startup integer</label>`, `id="`+intID+`-hint" lang="en"`)
 }
 
-// Plan R2: a world with no save yet edits its map settings in the same form.
-func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
-	g := newModsRig(t, false)
-	id := g.world20("Fresh", "fmtest_1.0.0")
+// makeNewMap turns a world into one whose next start makes its map: no
+// save and new_map set (SPEC 5.6).
+func (g *modsRig) makeNewMap(id string) {
+	t := g.t
+	t.Helper()
 	if err := os.Remove(filepath.Join(g.modsDir(id), "..", world.SavesDir, "base.zip")); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +245,16 @@ func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
 	if err := os.WriteFile(metaPath, raw, 0o600); err != nil { //nolint:gosec // a test temp folder
 		t.Fatal(err)
 	}
+}
+
+// Plan R2: a world with no save yet edits its map settings in the same
+// form, and a save writes them.
+func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Fresh", "fmtest_1.0.0")
+	g.makeNewMap(id)
 	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
 	body, v := g.settingsForm(id)
 	if v.Get("map") != "1" {
 		t.Error("no map flag on a new map's form")
@@ -237,6 +262,38 @@ func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
 	wantIn(t, "form", body, `id="`+fieldOf("fm-glo-int", modsettings.RuntimeGlobal)+`"`, "these values go into its new map")
 	if strings.Contains(body, "These are the values for a new map.") {
 		t.Error("a new map's settings are shown read-only")
+	}
+	v.Set(fieldOf("fm-glo-int", modsettings.RuntimeGlobal), "8")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.settingValue(id, modsettings.RuntimeGlobal, "fm-glo-int"); got.Int != 8 {
+		t.Errorf("fm-glo-int is %+v, want 8", got)
+	}
+}
+
+// Plan R1: on a world with a save, map fields in a post are not written,
+// and a post that claims they were controls is refused as stale.
+func TestModSettingsMapFieldsOfASavedWorld(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	before := gameFile(t, "2.0.77")
+	g.writeSettingsFile(id, before)
+	_, v := g.settingsForm(id)
+	v.Set(fieldOf("fm-glo-int", modsettings.RuntimeGlobal), "8")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusOK || !strings.Contains(rep.body, "You changed no setting") {
+		t.Errorf("a map field on a saved world: %d", rep.StatusCode)
+	}
+	v.Set("map", "1")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusConflict {
+		t.Errorf("a map flag on a saved world: %d", rep.StatusCode)
+	}
+	if string(g.settingsFile(id)) != string(before) || g.modSnapshots(id) != 0 {
+		t.Error("a map field changed a saved world")
 	}
 }
 
@@ -354,18 +411,24 @@ func TestModSettingsRunFailures(t *testing.T) {
 		err  error
 		want string
 	}{
-		{game.ErrModSettingsImageMissing, "is not downloaded"},
-		{game.ErrModSettingsOutOfMemory, "ran out of memory"},
-		{game.ErrModSettingsTimeout, "took too long"},
-		{game.ErrModSettingsBadOutput, "in a form Foreman can read"},
+		{game.ErrModSettingsImageMissing, "Foreman needs it to read the mods&#39; settings."},
+		{game.ErrModSettingsOutOfMemory, "ran out of memory, so Foreman stopped it."},
+		{game.ErrModSettingsTimeout, "took too long, so Foreman stopped it."},
+		{fmt.Errorf("run: %w: /host/path mod text", game.ErrModSettingsBadOutput), "The game did not report the mods&#39; settings"},
 		{fmt.Errorf("lock: %w", world.ErrBusy), "Another operation is running on this world."},
+		{game.ErrPreviewBusy, "Another map preview or check is using the game."},
+		{fmt.Errorf("link: %w", world.ErrModsTooBig), "too many or too large for Foreman"},
+		{context.Canceled, "Foreman could not read the mods&#39; settings."},
 		{errors.New("boom"), "Foreman could not read the mods&#39; settings."},
 	} {
 		fakeDefs(t, nil, c.err)
 		body, _ := g.settingsForm(id)
-		wantIn(t, c.want, body, c.want, `id="act-settings-download"`, `href="/worlds/`+id+`/mods#mod-settings-replace"`, `id="act-retry"`)
-		if strings.Contains(body, "boom") {
-			t.Error("an internal error reached the page")
+		wantIn(t, c.want, body, c.want, `id="act-settings-download"`, `href="/worlds/`+id+`/mods#mod-settings-replace"`, `id="act-retry"`,
+			`<div hx-swap-oob="innerHTML:#announcer">`)
+		for _, leak := range []string{"boom", "/host/path", "mod text", "context canceled"} {
+			if strings.Contains(body, leak) {
+				t.Errorf("%q reached the page", leak)
+			}
 		}
 	}
 }
@@ -420,5 +483,137 @@ func modSettingsPageCases() []pageCase {
 		{"mod settings empty", "todd", 200, ModSettingsPage{World: w, Loaded: true, Changed: true}},
 		{"mod settings no change", "todd", 200, ModSettingsPage{World: w, Loaded: true, NoChange: true}},
 		{"mod settings busy", "todd", 200, ModSettingsPage{World: w, Loaded: true, Busy: i18n.M("mods.settings.edit.run.busy")}},
+	}
+}
+
+// SPEC 9.6, plan R8: a world with no mod-settings.dat gets one built from
+// the defaults file, with the change in it.
+func TestModSettingsSaveWithoutAFile(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	_, v := g.settingsForm(id)
+	v.Set(fieldOf("fm-sta-int", modsettings.Startup), "9")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-int"); got.Int != 9 {
+		t.Errorf("fm-sta-int is %+v, want 9", got)
+	}
+}
+
+// Factorio 1.1 stores an int setting as a double: the form shows it whole,
+// an untouched form changes nothing, and a change is written as a double.
+func TestModSettingsFactorio11File(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	defs := fmtestSettingDefs(t)
+	defs.Defaults = gameFile(t, "1.1.110")
+	fakeDefs(t, defs, nil)
+	g.writeSettingsFile(id, gameFile(t, "1.1.110"))
+	intID := fieldOf("fm-sta-int", modsettings.Startup)
+	_, v := g.settingsForm(id)
+	if got := v.Get(intID); got == "" || strings.ContainsAny(got, ".e") {
+		t.Errorf("the int shows as %q", got)
+	}
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusOK || !strings.Contains(rep.body, "You changed no setting") {
+		t.Fatalf("untouched 1.1 form: %d", rep.StatusCode)
+	}
+	v.Set(intID, "9")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-int"); got.Type != modsettings.TypeDouble || got.Double != 9 {
+		t.Errorf("fm-sta-int is %+v, want the double 9", got)
+	}
+}
+
+// Each control posts its change: a box unticked, a choice from a list, and
+// a color's opacity alone.
+func TestModSettingsEachControlChanges(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	_, v := g.settingsForm(id)
+	boolID, strID, colorID := fieldOf("fm-sta-bool", modsettings.Startup), fieldOf("fm-sta-string", modsettings.Startup), fieldOf("fm-sta-color", modsettings.Startup)
+	if v.Get(boolID) != "true" {
+		t.Fatalf("the box is not ticked: %v", v)
+	}
+	v.Del(boolID)
+	v.Set(strID, "blue")
+	v.Set(colorID+"-alpha", "0.25")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-bool"); got.Bool {
+		t.Error("the box is still on")
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-string"); got.String != "blue" {
+		t.Errorf("the choice is %q", got.String)
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-color"); got.Color.A != 0.25 || got.Color.R != 1 {
+		t.Errorf("the color is %+v", got.Color)
+	}
+}
+
+// SPEC 9.13, 17.8: on a running world the form offers the countdown and a
+// save restarts the game; a form drawn while it was stopped is refused.
+func TestModSettingsRunningWorld(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, gameFile(t, "2.0.77"))
+	_, stopped := g.settingsForm(id)
+	g.startGame(id)
+
+	stopped.Set(fieldOf("fm-sta-int", modsettings.Startup), "9")
+	if rep := g.post(modSettingsEditPath(id), stopped); rep.StatusCode != http.StatusConflict || !strings.Contains(rep.body, "Save and restart") {
+		t.Errorf("a form drawn while stopped: %d", rep.StatusCode)
+	}
+	body, v := g.settingsForm(id)
+	wantIn(t, "running form", body, `name="running" value="1"`, `id="countdown"`, "Save and restart")
+	v.Set(fieldOf("fm-sta-int", modsettings.Startup), "9")
+	v.Set("countdown", "0")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	g.waitPage(running)
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-int"); got.Int != 9 {
+		t.Errorf("fm-sta-int is %+v, want 9", got)
+	}
+}
+
+// A text value that holds a line break posts without it from an untouched
+// field, which is not a change.
+func TestReadFieldIgnoresDroppedLineBreaks(t *testing.T) {
+	f := SettingField{ID: "x", Kind: kindText, Value: "a\r\nb"}
+	r, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader("x=ab"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if _, changed := readField(r, &f); changed || !f.Error.IsZero() {
+		t.Error("an untouched text field with a line break counted as a change")
+	}
+}
+
+// A range refusal with no limit at all never shows an empty placeholder.
+func TestFieldErrorRangeWithoutLimits(t *testing.T) {
+	f := &SettingField{Label: "Big"}
+	if got := fieldError(f, &modsettings.ValidationError{MessageID: "mods.settings.edit.err.range"}); got.Key != "mods.settings.edit.err.number" {
+		t.Errorf("key %s", got.Key)
+	}
+	if got := fieldError(f, &modsettings.ValidationError{MessageID: "mods.settings.edit.err.range", Params: map[string]string{"max": "3"}}); got.Key != "mods.settings.edit.err.range_max" {
+		t.Errorf("key %s", got.Key)
 	}
 }

@@ -119,3 +119,23 @@ test.describe("edit mod settings", () => {
     await checkPage(page);
   });
 });
+
+// A number field posts a dot-decimal value whatever the browser's language,
+// so a German comma reaches the server as a number it reads.
+test.describe("a comma-decimal browser", () => {
+  test.use({ locale: "de-DE" });
+
+  test("a decimal typed with a comma is saved", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await page.goto("/worlds/base/mods/settings");
+    const field = page.getByRole("spinbutton", { name: "fm-sta-double" });
+    await expect(field).toBeVisible(live);
+    await field.clear();
+    await field.pressSequentially("2,5");
+    await expect(field).toHaveJSProperty("value", "2.5");
+    await page.locator("#mod-settings-form button[type=submit]").click();
+    await expect(page.locator(".message--success")).toBeVisible(live);
+    await page.goto("/worlds/base/mods/settings");
+    await expect(page.getByRole("spinbutton", { name: "fm-sta-double" })).toHaveValue("2.5", live);
+  });
+});

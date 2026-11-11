@@ -3431,7 +3431,7 @@ a.mod-name {
 }
 
 /* The mod settings editor (SPEC 9.6): one column, a fieldset per mod,
-   label above control and the mod's description below it. */
+   each setting's label, then its description, then its control. */
 .mod-settings {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -3464,6 +3464,10 @@ a.mod-name {
 
 .mod-settings-sub {
   font-weight: 400;
+}
+
+.mod-settings .field select[aria-invalid="true"] {
+  border: 2px solid var(--color-danger-text);
 }
 
 .mod-settings-values {

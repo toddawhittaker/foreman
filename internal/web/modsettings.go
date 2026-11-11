@@ -82,6 +82,28 @@ func (f SettingField) AlphaID() string { return f.ID + "-alpha" }
 // Editable says the field is a control rather than a value to read.
 func (f SettingField) Editable() bool { return f.Kind != kindLocked && f.Kind != kindFixed }
 
+// Required says the control must hold a value: a number, or text whose
+// setting does not allow blank (SPEC 17.13).
+func (f SettingField) Required() bool {
+	return f.Kind == kindInt || f.Kind == kindDouble || (f.Kind == kindText && !f.def.AllowBlank)
+}
+
+// InputMode is the keyboard a number field asks for: a number pad only
+// when the value cannot be negative, since phone number pads have no minus.
+func (f SettingField) InputMode() string {
+	if f.def.Min == nil || minBelowZero(*f.def.Min) {
+		return ""
+	}
+	if f.Kind == kindInt {
+		return "numeric"
+	}
+	return "decimal"
+}
+
+func minBelowZero(v modsettings.Value) bool {
+	return (v.Type == modsettings.TypeInt && v.Int < 0) || (v.Type == modsettings.TypeDouble && v.Double < 0)
+}
+
 // SettingGroup is one mod's settings.
 type SettingGroup struct {
 	Mod    string
@@ -115,6 +137,9 @@ type ModSettingsPage struct {
 	NoChange  bool
 	Busy      i18n.Msg
 	ImageLink string
+	// Fragment says the form part is answered on its own, so it tells
+	// screen readers that it loaded (WCAG 4.1.3).
+	Fragment bool
 }
 
 func (ModSettingsPage) templateName() string { return "modsettings" }
@@ -139,6 +164,19 @@ func (ModSettingsPage) SettingsFile() string { return world.ModSettingsFile }
 // CanSave says the form has a control to change.
 func (p ModSettingsPage) CanSave() bool {
 	return hasEditable(p.Startup) || (p.NewMap && hasEditable(p.Map))
+}
+
+// HasRequired says a control is required, so the form explains the mark
+// (DESIGN 7.2).
+func (p ModSettingsPage) HasRequired() bool {
+	for _, groups := range [][]SettingGroup{p.Startup, p.Map} {
+		for _, g := range groups {
+			if slices.ContainsFunc(g.Fields, SettingField.Required) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Empty says the enabled mods have no setting to show.
@@ -170,41 +208,47 @@ func (p ModSettingsPage) Problems() []Problem {
 	return append(out, problems(Problem{"countdown", p.CountdownError})...)
 }
 
-func (s *server) handleModSettingsPage(w http.ResponseWriter, r *http.Request, u store.User) {
+// modSettingsWorld finds the world in the path when its mod settings can be
+// edited, or answers the request itself.
+func (s *server) modSettingsWorld(w http.ResponseWriter, r *http.Request, u store.User) (world.Summary, bool) {
 	sum, ok := s.modsWorld(w, r, u)
-	if !ok {
-		return
-	}
-	if sum.Newer || sum.Unreadable {
+	if ok && (sum.Newer || sum.Unreadable) {
 		s.notFound(w, r, u)
-		return
+		return world.Summary{}, false
 	}
-	s.page(w, r, http.StatusOK, u.Username, ModSettingsPage{World: sum})
+	return sum, ok
 }
 
-// handleModSettingsForm is the form part, which can take a game run.
-func (s *server) handleModSettingsForm(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, ok := s.modsWorld(w, r, u)
-	if !ok {
-		return
+func (s *server) handleModSettingsPage(w http.ResponseWriter, r *http.Request, u store.User) {
+	if sum, ok := s.modSettingsWorld(w, r, u); ok {
+		s.page(w, r, http.StatusOK, u.Username, ModSettingsPage{World: sum})
 	}
-	if sum.Newer || sum.Unreadable {
-		s.notFound(w, r, u)
+}
+
+// handleModSettingsForm is the form part, which can take a game run. A
+// failure of Foreman's own still answers with the form part, so the page
+// offers the retry, the download and the upload.
+func (s *server) handleModSettingsForm(w http.ResponseWriter, r *http.Request, u store.User) {
+	sum, ok := s.modSettingsWorld(w, r, u)
+	if !ok {
 		return
 	}
 	p, _, err := s.modSettingsPage(r, sum)
 	if err != nil {
-		s.fail(w, r, "read the mod settings", err)
-		return
+		if r.Context().Err() == nil {
+			s.log.Error("read the mod settings", "world", sum.ID, "error", err)
+		}
+		p = ModSettingsPage{World: sum, Loaded: true, HasFile: p.HasFile, RunError: i18n.M("mods.settings.edit.run.failed")}
 	}
+	p.Fragment = true
 	s.fragment(w, r, p, "modsettings-form")
 }
 
-// settingsState is what a post needs beyond the page: the definitions'
-// defaults file and the world's file, both decoded (nil when absent).
+// settingsState is what a post needs beyond the page: the world's file
+// (or the defaults when it has none) and the defaults file, both decoded.
+// defaults is nil when the run's defaults file cannot be read.
 type settingsState struct {
-	defaults, current []byte
-	file              *modsettings.File
+	file, defaults *modsettings.File
 }
 
 // modSettingsPage reads the definitions and the world's file and fills
@@ -224,31 +268,45 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 	}
 	defs, err := modSettingDefs(s.game, r.Context(), sum.ID)
 	if err != nil {
-		p.RunError = s.modSettingsRunError(r, sum, err, &p)
+		// The error may hold text a mod wrote or a host path, so it goes to
+		// the log only.
+		var known bool
+		p.RunError, known = modSettingsRunError(sum, err)
+		switch {
+		case r.Context().Err() != nil:
+		case known:
+			s.log.Warn("read the mod setting definitions", "world", sum.ID, "error", err)
+		default:
+			s.log.Error("read the mod setting definitions", "world", sum.ID, "error", err)
+		}
+		if errors.Is(err, game.ErrModSettingsImageMissing) {
+			p.ImageLink = worldPath(sum.ID)
+			if sum.Active {
+				p.ImageLink = PathServer
+			}
+		}
 		return p, st, nil
 	}
-	st.defaults = defs.Defaults
-	if st.current, err = s.readModSettings(sum.ID); err != nil {
+	current, err := s.readModSettings(sum.ID)
+	if err != nil {
 		return p, st, err
 	}
-	sum256 := sha256.Sum256(st.current)
+	sum256 := sha256.Sum256(current)
 	p.Seen = hex.EncodeToString(sum256[:])
-	base := st.current
-	if base == nil {
-		base = st.defaults
+	// Only a missing entry reads the defaults; a bad defaults file leaves
+	// the definition's own default.
+	st.defaults, _ = modsettings.Decode(defs.Defaults)
+	if current == nil {
+		st.file = st.defaults
+	} else if st.file, err = modsettings.Decode(current); err != nil {
+		st.file = nil
 	}
-	if st.file, err = modsettings.Decode(base); err != nil {
-		s.log.Warn("decode mod-settings.dat", "world", sum.ID, "from_defaults", st.current == nil, "error", err)
+	if st.file == nil {
+		s.log.Warn("decode mod-settings.dat", "world", sum.ID, "from_defaults", current == nil, "error", err)
 		p.RunError = i18n.M("mods.settings.edit.unreadable")
 		return p, st, nil
 	}
-	var defaults *modsettings.File
-	if st.current != nil {
-		// Only a missing entry reads the defaults; a bad defaults file
-		// leaves the definition's own default.
-		defaults, _ = modsettings.Decode(st.defaults)
-	}
-	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, defaults, localeOf(r).String())
+	p.Startup, p.Map, p.PerUser = settingGroups(defs, st.file, st.defaults, localeOf(r).String())
 	return p, st, nil
 }
 
@@ -282,33 +340,27 @@ func (s *server) readModSettings(id string) ([]byte, error) {
 	return b, err
 }
 
-// modSettingsRunError words why the definitions could not be read. Each
-// leaves the file download and upload, which the page offers.
-func (s *server) modSettingsRunError(r *http.Request, sum world.Summary, err error, p *ModSettingsPage) i18n.Msg {
+// modSettingsRunError words why the definitions could not be read; known
+// is false for a cause the page has no words of its own for. Each leaves
+// the file download and upload, which the page offers.
+func modSettingsRunError(sum world.Summary, err error) (msg i18n.Msg, known bool) {
 	switch {
 	case errors.Is(err, game.ErrModSettingsImageMissing):
-		p.ImageLink = worldPath(sum.ID)
-		if sum.Active {
-			p.ImageLink = PathServer
-		}
-		return i18n.M("mods.settings.edit.run.no_image", "version", sum.GameVersion)
+		return i18n.M("mods.settings.edit.run.no_image", "version", sum.GameVersion), true
 	case errors.Is(err, game.ErrModSettingsOutOfMemory):
-		return i18n.M("mods.settings.edit.run.oom")
+		return i18n.M("mods.settings.edit.run.oom"), true
 	case errors.Is(err, game.ErrModSettingsTimeout):
-		return i18n.M("mods.settings.edit.run.timeout")
+		return i18n.M("mods.settings.edit.run.timeout"), true
 	case errors.Is(err, game.ErrPreviewBusy):
-		return i18n.M("mods.settings.edit.run.busy")
+		return i18n.M("mods.settings.edit.run.busy"), true
 	case errors.Is(err, world.ErrBusy):
-		return i18n.M("mods.settings.edit.run.world_busy")
+		return i18n.M("mods.settings.edit.run.world_busy"), true
+	case errors.Is(err, world.ErrModsTooBig):
+		return i18n.M("mods.settings.edit.run.too_big"), true
 	case errors.Is(err, game.ErrModSettingsBadOutput):
-		// The error may hold text a mod wrote, so it goes to the log only.
-		s.log.Warn("mod settings run gave bad output", "world", sum.ID, "error", err)
-		return i18n.M("mods.settings.edit.run.bad_output")
+		return i18n.M("mods.settings.edit.run.bad_output"), true
 	}
-	if r.Context().Err() == nil {
-		s.log.Error("read the mod setting definitions", "world", sum.ID, "error", err)
-	}
-	return i18n.M("mods.settings.edit.run.failed")
+	return i18n.M("mods.settings.edit.run.failed"), false
 }
 
 // settingGroups turns the definitions into the form's startup and map
@@ -389,11 +441,12 @@ func newField(d modsettings.Definition, file, defaults *modsettings.File, loc mo
 		f.Max = formatValue(*d.Max)
 	}
 	if !ok {
-		if f.Kind == kindLocked {
-			v = d.AllowedValues[0]
-		} else {
+		if f.Kind != kindLocked {
+			// Nothing to show or keep: not offered for editing.
+			f.Kind = kindFixed
 			return f
 		}
+		v = d.AllowedValues[0]
 	}
 	if d.Type == modsettings.TypeColor {
 		f.Value, f.Alpha = colorHex(v.Color), formatFloat(scaleColor(v.Color).A)
@@ -498,12 +551,8 @@ type settingChange struct {
 // (SPEC 9.6, 9.13): on a running world the countdown, stop, snapshot,
 // write, check and start; on a stopped one the snapshot and the write.
 func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u store.User) {
-	sum, ok := s.modsWorld(w, r, u)
+	sum, ok := s.modSettingsWorld(w, r, u)
 	if !ok {
-		return
-	}
-	if sum.Newer || sum.Unreadable {
-		s.notFound(w, r, u)
 		return
 	}
 	if !s.readForm(w, r) {
@@ -519,15 +568,17 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 		s.page(w, r, http.StatusBadGateway, u.Username, p)
 		return
 	}
-	// The form was drawn from other files: show the current ones, with
-	// nothing kept from the post.
-	if r.PostFormValue("fingerprint") != p.Fingerprint || r.PostFormValue("seen") != p.Seen {
+	// The form was drawn from other files, or said what saving does for a
+	// game that has since started or stopped, or showed the map settings
+	// otherwise (SPEC 17.8): show the current form, with nothing kept from
+	// the post. A form without the flags counts as stopped and saved.
+	if r.PostFormValue("fingerprint") != p.Fingerprint || r.PostFormValue("seen") != p.Seen ||
+		(r.PostFormValue("running") == "1") != p.Running || (r.PostFormValue("map") == "1") != p.NewMap {
 		p.Changed = true
 		s.page(w, r, http.StatusConflict, u.Username, p)
 		return
 	}
-	// The map fields count only when the form showed them as controls.
-	mapToo := p.NewMap && r.PostFormValue("map") == "1"
+	mapToo := p.NewMap
 	var changes []settingChange
 	read := func(groups []SettingGroup) {
 		for gi := range groups {
@@ -606,7 +657,9 @@ func readField(r *http.Request, f *SettingField) (settingChange, bool) {
 		}
 	default:
 		raw = r.PostFormValue(f.ID)
-		if raw == f.Value {
+		// A text input drops line breaks from its value, so a value that
+		// holds one posts without it untouched.
+		if raw == f.Value || (f.Kind == kindText && raw == stripLineBreaks(f.Value)) {
 			return settingChange{}, false
 		}
 		f.Value = raw
@@ -619,6 +672,8 @@ func readField(r *http.Request, f *SettingField) (settingChange, bool) {
 	return settingChange{def: f.def, value: v}, true
 }
 
+func stripLineBreaks(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
+
 // fieldError words a refused value with the setting's shown name. The
 // message ids are listed one by one so the catalogue check sees each.
 func fieldError(f *SettingField, e *modsettings.ValidationError) i18n.Msg {
@@ -626,7 +681,15 @@ func fieldError(f *SettingField, e *modsettings.ValidationError) i18n.Msg {
 	for k, v := range e.Params {
 		args = append(args, k, v)
 	}
-	args = append(args, "setting", f.Label)
+	// The name keeps its language and its no-translate mark (SPEC 22.3).
+	var name any = f.Label
+	switch {
+	case f.RawName:
+		name = i18n.Ident(f.Label)
+	case f.LabelLang != "":
+		name = i18n.Game(f.Label)
+	}
+	args = append(args, "setting", name)
 	switch strings.TrimPrefix(e.MessageID, "mods.settings.edit.err.") {
 	case "range":
 		_, hasMin := e.Params["min"]
@@ -636,6 +699,9 @@ func fieldError(f *SettingField, e *modsettings.ValidationError) i18n.Msg {
 			return i18n.M("mods.settings.edit.err.range_min", args...)
 		case hasMax && !hasMin:
 			return i18n.M("mods.settings.edit.err.range_max", args...)
+		case !hasMin && !hasMax:
+			// Beyond what the file can hold, with no limit of the mod's own.
+			return i18n.M("mods.settings.edit.err.number", args...)
 		}
 		return i18n.M("mods.settings.edit.err.range", args...)
 	case "whole":
@@ -665,12 +731,8 @@ func fieldError(f *SettingField, e *modsettings.ValidationError) i18n.Msg {
 // encodeChanges sets each change in the world's file, or in the defaults
 // file when the world has none, and keeps every other byte (plan R8).
 func encodeChanges(st settingsState, changes []settingChange) ([]byte, error) {
-	defaults, err := modsettings.Decode(st.defaults)
-	if err != nil {
-		return nil, fmt.Errorf("decode the defaults file: %w", err)
-	}
 	for _, c := range changes {
-		if err := st.file.Set(c.def.Setting, c.def.Name, c.value, defaults); err != nil {
+		if err := st.file.Set(c.def.Setting, c.def.Name, c.value, st.defaults); err != nil {
 			return nil, fmt.Errorf("set %s: %w", c.def.Name, err)
 		}
 	}
