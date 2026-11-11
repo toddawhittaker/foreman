@@ -33,6 +33,7 @@
   "mods.search.pick_hint": "Hake mehrere Mods an, um sie in einen Plan aufzunehmen, oder nutze den Button „Zum Plan hinzufügen“ einer Mod.",
   "mods.search.add_ticked": "Angehakte Mods zum Plan hinzufügen",
   "mods.search.pick_none": "Nichts ist angehakt. Hake die Mods an, die du hinzufügen willst, oder nutze den Button „Zum Plan hinzufügen“ einer Mod.",
+  "mods.search.pick_too_many": "Für einen Plan sind zu viele Mods angehakt. Die Grenze liegt bei {limit}. Hake einige ab und füge sie dann hinzu.",
   "mods.search.ticked_elsewhere": "Auch in anderen Suchen oder auf anderen Seiten angehakt",
   "mods.fact.latest": "Neueste Version",
   "mods.fact.downloads": "Downloads",

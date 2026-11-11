@@ -98,6 +98,16 @@ test("three searches, one tick each, one plan with all three", async ({ page }) 
   await expect(page.getByRole("button", { name: "Install 3 mods" })).toBeVisible();
 });
 
+// SPEC 9.1: Enter in the search box runs a new search, not Add ticked mods, and keeps the ticks.
+test("Enter in the search box searches and keeps the ticks", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
+  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+  await page.getByLabel("Mod name").fill("fp-pg-02");
+  await page.getByLabel("Mod name").press("Enter");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+});
+
 test("Add ticked mods with nothing ticked says so on the search page", async ({ page }) => {
   await page.goto("/worlds/base/mods/search?q=fp-pg");
   await page.getByRole("button", { name: "Add ticked mods to plan" }).click();

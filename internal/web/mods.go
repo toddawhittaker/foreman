@@ -684,8 +684,8 @@ func (p ModSearchPage) HitState(name string) string {
 // Picked reports whether a result's box is ticked.
 func (p ModSearchPage) Picked(name string) bool { return slices.Contains(p.Picks, name) }
 
-// PicksElsewhere are the ticked mods not on this page of results, which the
-// form carries along unseen.
+// PicksElsewhere are the ticked mods not on this page of results, listed
+// under the results with their own boxes so each can be unticked.
 func (p ModSearchPage) PicksElsewhere() []string {
 	return slices.DeleteFunc(slices.Clone(p.Picks), func(n string) bool {
 		return slices.ContainsFunc(p.Results.Rows, func(h modportal.Hit) bool { return h.Name == n })
@@ -719,18 +719,38 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	q := r.URL.Query()
-	p := ModSearchPage{World: sum, Query: strings.TrimSpace(q.Get("q")), Installed: map[string]bool{}, Paged: q.Has("page")}
-	// Ticks are read first so a bad search keeps them (SPEC 9.1). A plan
-	// names at most maxPlanNames mods, so more ticks are not kept.
+	page := readPage(q.Get("page"))
+	adding := q.Get("picked") == "1"
+	if adding {
+		page = readPage(q.Get("at"))
+	}
+	// A page button and Add ticked mods act on the search shown, not on
+	// whatever was typed in the box since.
+	query := q.Get("q")
+	if (q.Has("page") || adding) && q.Has("shown") {
+		query = q.Get("shown")
+	}
+	p := ModSearchPage{World: sum, Query: strings.TrimSpace(query), Installed: map[string]bool{}, Paged: q.Has("page")}
+	// Ticks are read before the search text, so a bad search keeps them and
+	// Add ticked mods needs no search at all (SPEC 9.1).
 	for _, n := range q["pick"] {
 		if len(n) > maxPickName {
 			p.QueryError = i18n.M("mods.search.long", "count", maxPickName)
 			s.page(w, r, http.StatusBadRequest, u.Username, p)
 			return
 		}
-		if !slices.Contains(p.Picks, n) && len(p.Picks) < maxPlanNames {
+		if !slices.Contains(p.Picks, n) {
 			p.Picks = append(p.Picks, n)
 		}
+	}
+	// A plan names at most maxPlanNames mods; more ticks are refused, not
+	// dropped, so none goes missing unseen.
+	if len(p.Picks) > maxPlanNames {
+		p.PickError = i18n.M("mods.search.pick_too_many", "limit", maxPlanNames)
+	} else if adding && len(p.Picks) > 0 {
+		p.Results.Page = page
+		http.Redirect(w, r, planPath(sum.ID, p.planForm(p.Picks).query()), http.StatusSeeOther) //nolint:gosec // a local path; the ticked names are only query values
+		return
 	}
 	if p.Query == "" {
 		p.QueryError = i18n.M("mods.search.missing")
@@ -740,16 +760,6 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 	if len(p.Query) > maxSearchQuery {
 		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
-	}
-	page := readPage(q.Get("page"))
-	adding := q.Get("picked") == "1"
-	if adding {
-		page = readPage(q.Get("at"))
-	}
-	if adding && len(p.Picks) > 0 {
-		p.Results.Page = page
-		http.Redirect(w, r, planPath(sum.ID, p.planForm(p.Picks).query()), http.StatusSeeOther) //nolint:gosec // a local path; the ticked names are only query values
 		return
 	}
 	p.NoAccount = !s.downloadsOn(r.Context())
@@ -766,8 +776,10 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		return
 	}
 	p.Results = pageOfHits(hits, page)
-	if adding {
+	if adding && p.PickError.IsZero() {
 		p.PickError = i18n.M("mods.search.pick_none")
+	}
+	if !p.PickError.IsZero() {
 		s.page(w, r, http.StatusBadRequest, u.Username, p)
 		return
 	}

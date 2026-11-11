@@ -33,6 +33,7 @@
   "mods.search.pick_hint": "Cochez plusieurs mods pour les ajouter à un seul plan, ou utilisez le bouton « Ajouter au plan » d’un mod.",
   "mods.search.add_ticked": "Ajouter les mods cochés au plan",
   "mods.search.pick_none": "Rien n’est coché. Cochez les mods à ajouter, ou utilisez le bouton « Ajouter au plan » d’un mod.",
+  "mods.search.pick_too_many": "Trop de mods sont cochés pour un seul plan. La limite est de {limit}. Décochez-en quelques-uns, puis ajoutez-les.",
   "mods.search.ticked_elsewhere": "Également cochés dans d’autres recherches ou sur d’autres pages",
   "mods.fact.latest": "Dernière version",
   "mods.fact.downloads": "Téléchargements",

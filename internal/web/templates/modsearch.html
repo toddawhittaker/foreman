@@ -14,7 +14,7 @@
 <form method="get" action="{{.Path}}" class="panels">
 <section class="panel" aria-labelledby="search-heading">
   <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
-  <div role="search" aria-labelledby="search-heading">
+  <div role="search">
     <div class="field">
       <label for="mod-search">{{t "mods.search.label"}}</label>
       <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
@@ -33,10 +33,12 @@
 <div class="message message--error">
   <p><strong>{{t "common.error.label"}}</strong> {{t "mods.search.unreachable"}}</p>
 </div>
-{{- else if .Query}}
+{{- else if and .Query .QueryError.IsZero}}
 <section class="panel" aria-labelledby="results-heading">
   {{- /* A page button reloads the page; focus goes to the results it asked for. */}}
   <h2 id="results-heading" tabindex="-1"{{if and .Paged (not .Problems)}} autofocus{{end}}>{{t "mods.search.results_heading" "query" .Query}}</h2>
+  {{- /* The search shown, so a page button or Add ticked mods keeps it even if the box was edited. */}}
+  <input type="hidden" name="shown" value="{{.Query}}">
   {{- if .Results.Rows}}
   {{- /* The page shown, so the plan's "Add another mod" opens at it; a page button sends its own page. */}}
   <input type="hidden" name="at" value="{{.Results.Page}}">
@@ -47,33 +49,37 @@
   {{- else}}
   <p class="empty">{{t "mods.search.none" "line" .Line}}</p>
   {{- end}}
-  {{- with .PicksElsewhere}}
-  {{- /* Mods ticked in another search or on another page, each with its own box so it can be unticked. */}}
-  <fieldset class="field" id="picks-elsewhere">
-    <legend>{{t "mods.search.ticked_elsewhere"}}</legend>
-    {{- range .}}
-    <label class="check"><input type="checkbox" name="pick" value="{{.}}" checked> <span class="ident" translate="no">{{.}}</span></label>
-    {{- end}}
-  </fieldset>
-  {{- end}}
-  {{- if not .PickError.IsZero}}
-  <p class="error" id="pick-error"><strong>{{t "common.error.label"}}</strong> {{msg .PickError}}</p>
-  {{- end}}
-  {{- if .CanPick}}
-  {{- /* Add ticked mods acts on the boxes above, so it comes after them. */}}
-  <div class="actions">
-    <button type="submit" class="button" name="picked" value="1">{{t "mods.search.add_ticked"}}</button>
-  </div>
-  {{- end}}
+  {{template "mod-picks" .}}
   {{template "mod-pager" .}}
 </section>
 {{- end}}
-{{- if or .Unreachable (not .Query)}}
-{{- /* No results to show the ticks in, so they ride along unseen to the next search. */}}
-{{- range .Picks}}
-<input type="hidden" name="pick" value="{{.}}">
-{{- end}}
+{{- /* No results to list the ticks under, so they have a section of their own. */}}
+{{- if and (or .Unreachable (not .Query) (not .QueryError.IsZero)) .Picks}}
+<section class="panel">
+  {{template "mod-picks" .}}
+</section>
 {{- end}}
 </form>
 {{end}}
+{{- end}}
+
+{{/* The mods ticked but not in the results shown, each with its own box so it can be unticked, then the ticks' error and Add ticked mods. Takes the search page. */}}
+{{define "mod-picks" -}}
+{{- with .PicksElsewhere}}
+<fieldset class="field" id="picks-elsewhere">
+  <legend>{{t "mods.search.ticked_elsewhere"}}</legend>
+  {{- range .}}
+  <label class="check"><input type="checkbox" name="pick" value="{{.}}" checked> <span class="ident" translate="no">{{.}}</span></label>
+  {{- end}}
+</fieldset>
+{{- end}}
+{{- if not .PickError.IsZero}}
+<p class="error" id="pick-error"><strong>{{t "common.error.label"}}</strong> {{msg .PickError}}</p>
+{{- end}}
+{{- if .CanPick}}
+{{- /* Add ticked mods acts on the boxes above, so it comes after them. */}}
+<div class="actions">
+  <button type="submit" class="button" name="picked" value="1">{{t "mods.search.add_ticked"}}</button>
+</div>
+{{- end}}
 {{- end}}
