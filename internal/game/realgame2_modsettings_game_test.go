@@ -85,7 +85,7 @@ func TestRealGameModSettingsApply(t *testing.T) {
 // msWorld makes a world with no save and fmtest installed as a folder mod.
 func (e *gameEnv) msWorld(t *testing.T, tag, version, label string) string {
 	t.Helper()
-	id := e.generateNamed(t, "e3test", "ms "+label+" "+tag, world.NewWorld{GameVersion: version})
+	id := e.generate(t, "ms "+label+" "+tag, world.NewWorld{GameVersion: version})
 	src := filepath.Join("testdata", "modsettings", fmtestFolder)
 	dst := e.modsPath(id, fmtestFolder)
 	err := filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
@@ -311,7 +311,7 @@ func msWants() []msWant {
 		msWant{name: "fm-sta-unbounded", setting: modsettings.Startup, typ: modsettings.TypeInt,
 			def: intV(4), unlimited: true},
 		msWant{name: "fm-sta-dallowed", setting: modsettings.Startup, typ: modsettings.TypeDouble,
-			def: dblV(1), allowed: []modsettings.Value{dblV(0.5), dblV(1), dblV(2)}},
+			def: dblV(1), allowed: []modsettings.Value{dblV(0.5), dblV(1), dblV(2)}, unlimited: true},
 	)
 	return out
 }
