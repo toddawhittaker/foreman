@@ -47,7 +47,8 @@
   <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
   <div class="message message--error" id="mod-settings-error">
     <p><strong>{{t "common.error.label"}}</strong> {{msg .RunError}}</p>
-    <p>{{tHTML "mods.settings.edit.run.fallback" "file" (code .SettingsFile)}}</p>
+    {{- /* Offer only what the world has: no file means nothing to download. */}}
+    <p>{{if .HasFile}}{{tHTML "mods.settings.edit.run.fallback" "file" (code .SettingsFile)}}{{else}}{{tHTML "mods.settings.edit.run.fallback_upload" "file" (code .SettingsFile)}}{{end}}</p>
     <div class="actions">
       {{- with .ImageLink}}
       <a href="{{.}}" class="button" id="act-image">{{if $.World.Active}}{{t "mods.settings.edit.run.server_link"}}{{else}}{{t "mods.settings.edit.run.world_link"}}{{end}}</a>
@@ -183,7 +184,7 @@
       <label for="{{.ID}}" class="mod-settings-sub">{{t "mods.settings.edit.color"}}</label>
       <input type="color" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}"{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
       <label for="{{.AlphaID}}" class="mod-settings-sub required">{{t "mods.settings.edit.alpha"}}</label>
-      <input type="number" id="{{.AlphaID}}" name="{{.AlphaID}}" value="{{.Alpha}}" min="0" max="1" step="any" inputmode="decimal" class="mod-settings-number" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+      <input type="text" id="{{.AlphaID}}" name="{{.AlphaID}}" value="{{.Alpha}}" inputmode="decimal" class="mod-settings-number" autocomplete="off" spellcheck="false" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
     </div>
     {{template "modsettings-error" .}}
   </fieldset>
@@ -199,9 +200,10 @@
       {{- end}}
     </select>
     {{- else if eq .Kind "int"}}
-    <input type="number" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}" step="1"{{with .Min}} min="{{.}}"{{end}}{{with .Max}} max="{{.}}"{{end}}{{with .InputMode}} inputmode="{{.}}"{{end}} class="mod-settings-number" autocomplete="off" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+    {{- /* Text, not type=number: a number field drops a decimal comma in some browsers (2,5 posts as 25), so the server reads the number. */}}
+    <input type="text" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}} class="mod-settings-number" autocomplete="off" spellcheck="false" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
     {{- else if eq .Kind "double"}}
-    <input type="number" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}" step="any"{{with .Min}} min="{{.}}"{{end}}{{with .Max}} max="{{.}}"{{end}}{{with .InputMode}} inputmode="{{.}}"{{end}} class="mod-settings-number" autocomplete="off" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+    <input type="text" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}} class="mod-settings-number" autocomplete="off" spellcheck="false" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
     {{- else}}
     <input type="text" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}" autocomplete="off" spellcheck="false"{{if .Required}} required{{end}}{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
     {{- end}}

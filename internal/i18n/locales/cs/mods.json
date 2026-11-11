@@ -204,6 +204,7 @@
   "mods.settings.edit.run.bad_output": "Hra nenahlásila nastavení modů ve formě, kterou Foreman umí přečíst.",
   "mods.settings.edit.run.failed": "Nastavení modů se nepodařilo přečíst.",
   "mods.settings.edit.run.fallback": "Soubor {file} lze stále stáhnout, změnit ve vlastní hře a nahrát.",
+  "mods.settings.edit.run.fallback_upload": "Soubor {file} z vlastní hry lze stále nahrát.",
   "mods.settings.edit.err.range": "Hodnota nastavení {setting} musí být od {min} do {max}.",
   "mods.settings.edit.err.range_min": "Hodnota nastavení {setting} musí být alespoň {min}.",
   "mods.settings.edit.err.range_max": "Hodnota nastavení {setting} může být nejvýše {max}.",

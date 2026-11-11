@@ -204,6 +204,7 @@
   "mods.settings.edit.run.bad_output": "Игра сообщила настройки модов в виде, который Foreman не может прочитать.",
   "mods.settings.edit.run.failed": "Foreman не удалось прочитать настройки модов.",
   "mods.settings.edit.run.fallback": "Вы по-прежнему можете скачать {file}, изменить его в своей игре и загрузить.",
+  "mods.settings.edit.run.fallback_upload": "Вы по-прежнему можете загрузить {file} из своей игры.",
   "mods.settings.edit.err.range": "Введите для {setting} значение от {min} до {max}.",
   "mods.settings.edit.err.range_min": "Введите для {setting} значение не меньше {min}.",
   "mods.settings.edit.err.range_max": "Введите для {setting} значение не больше {max}.",

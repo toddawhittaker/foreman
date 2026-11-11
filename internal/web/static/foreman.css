@@ -3457,6 +3457,7 @@ a.mod-name {
 }
 
 .field input[type="color"] {
+  flex: none;
   inline-size: var(--target-min);
   min-inline-size: var(--target-min);
   padding: var(--space-1);

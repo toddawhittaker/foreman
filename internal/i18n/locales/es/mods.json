@@ -189,6 +189,7 @@
   "mods.settings.edit.run.bad_output": "El juego no informó de los ajustes de los mods en un formato que Foreman pueda leer.",
   "mods.settings.edit.run.failed": "Foreman no pudo leer los ajustes de los mods.",
   "mods.settings.edit.run.fallback": "Aún puedes descargar {file}, cambiarlo en tu propio juego y subirlo.",
+  "mods.settings.edit.run.fallback_upload": "Aún puedes subir un {file} de tu propio juego.",
   "mods.settings.edit.err.range": "Introduce un valor de {min} a {max} para {setting}.",
   "mods.settings.edit.err.range_min": "Introduce un valor de al menos {min} para {setting}.",
   "mods.settings.edit.err.range_max": "Introduce un valor de como máximo {max} para {setting}.",

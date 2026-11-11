@@ -204,6 +204,7 @@
   "mods.settings.edit.run.bad_output": "Gra nie podała ustawień modyfikacji w formie, którą Foreman potrafi odczytać.",
   "mods.settings.edit.run.failed": "Nie udało się odczytać ustawień modyfikacji.",
   "mods.settings.edit.run.fallback": "Nadal można pobrać plik {file}, zmienić go we własnej grze i przesłać.",
+  "mods.settings.edit.run.fallback_upload": "Nadal można przesłać plik {file} z własnej gry.",
   "mods.settings.edit.err.range": "Wartość ustawienia {setting} musi wynosić od {min} do {max}.",
   "mods.settings.edit.err.range_min": "Wartość ustawienia {setting} musi wynosić co najmniej {min}.",
   "mods.settings.edit.err.range_max": "Wartość ustawienia {setting} może wynosić najwyżej {max}.",

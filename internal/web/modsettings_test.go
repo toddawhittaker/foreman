@@ -204,10 +204,10 @@ func TestModSettingsFormShowsTheSettings(t *testing.T) {
 	wantIn(t, "form", body,
 		`<label for="`+intID+`" class="required">Startup integer</label>`, `required aria-describedby="`+intID+`-hint"`,
 		`<div hx-swap-oob="innerHTML:#announcer">Mod settings loaded.</div>`, `inputmode="numeric"`,
-		`id="`+intID+`" name="`+intID+`"`, `step="1" min="1" max="10"`,
+		`<input type="text" id="`+intID+`" name="`+intID+`" value="`,
 		`<p class="hint" id="`+intID+`-hint">An integer from 1 to 10.</p>`,
 		`type="checkbox" id="`+fieldOf("fm-sta-bool", modsettings.Startup)+`"`,
-		`step="any" min="0.5" max="9.5"`,
+		`id="`+fieldOf("fm-sta-double", modsettings.Startup)+`" name="`+fieldOf("fm-sta-double", modsettings.Startup)+`" value="1.5" inputmode="decimal"`,
 		`<select id="`+fieldOf("fm-sta-string", modsettings.Startup)+`"`,
 		`type="color" id="`+fieldOf("fm-sta-color", modsettings.Startup)+`"`,
 		"The mod allows only this value.", "Foreman cannot edit this kind of setting.",
@@ -604,6 +604,17 @@ func TestReadFieldIgnoresDroppedLineBreaks(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if _, changed := readField(r, &f); changed || !f.Error.IsZero() {
 		t.Error("an untouched text field with a line break counted as a change")
+	}
+}
+
+func TestDecimalPoint(t *testing.T) {
+	for _, c := range []struct{ kind, in, want string }{
+		{kindDouble, "2,5", "2.5"}, {kindDouble, "2.5", "2.5"}, {kindDouble, "1,000.5", "1,000.5"},
+		{kindDouble, "1,2,3", "1,2,3"}, {kindInt, "2,5", "2,5"}, {kindText, "a,b", "a,b"},
+	} {
+		if got := decimalPoint(c.kind, c.in); got != c.want {
+			t.Errorf("decimalPoint(%s, %q) = %q, want %q", c.kind, c.in, got, c.want)
+		}
 	}
 }
 

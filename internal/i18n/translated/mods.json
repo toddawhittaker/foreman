@@ -213,6 +213,7 @@
   "mods.settings.edit.run.busy": "88f7e40e",
   "mods.settings.edit.run.failed": "4dc466af",
   "mods.settings.edit.run.fallback": "2bab2ecd",
+  "mods.settings.edit.run.fallback_upload": "3c816b37",
   "mods.settings.edit.run.no_image": "55f9d959",
   "mods.settings.edit.run.oom": "4aa84484",
   "mods.settings.edit.run.server_link": "9247f71d",

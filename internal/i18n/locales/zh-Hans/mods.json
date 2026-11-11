@@ -174,6 +174,7 @@
   "mods.settings.edit.run.bad_output": "游戏返回的模组设置，Foreman 无法读取其格式。",
   "mods.settings.edit.run.failed": "Foreman 无法读取模组设置。",
   "mods.settings.edit.run.fallback": "仍可下载 {file}，在自己的游戏中更改后再上传。",
+  "mods.settings.edit.run.fallback_upload": "仍可上传自己游戏中的 {file}。",
   "mods.settings.edit.err.range": "请为 {setting} 输入 {min} 到 {max} 之间的值。",
   "mods.settings.edit.err.range_min": "请为 {setting} 输入不小于 {min} 的值。",
   "mods.settings.edit.err.range_max": "请为 {setting} 输入不大于 {max} 的值。",

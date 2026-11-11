@@ -120,22 +120,22 @@ test.describe("edit mod settings", () => {
   });
 });
 
-// A number field posts a dot-decimal value whatever the browser's language,
-// so a German comma reaches the server as a number it reads.
+// A decimal typed with a comma, as a German browser user writes it, is
+// read as the number meant, not with the comma dropped.
 test.describe("a comma-decimal browser", () => {
   test.use({ locale: "de-DE" });
 
   test("a decimal typed with a comma is saved", async ({ page, foreman, fakeGame }) => {
+    // The pages stay in English; only the browser's number format is German.
+    await page.context().addCookies([{ name: "foreman_lang", value: "en", url: foreman.url }]);
     await setUp(page, foreman, fakeGame!);
     await page.goto("/worlds/base/mods/settings");
-    const field = page.getByRole("spinbutton", { name: "fm-sta-double" });
+    const field = page.getByRole("textbox", { name: "fm-sta-double" });
     await expect(field).toBeVisible(live);
-    await field.clear();
-    await field.pressSequentially("2,5");
-    await expect(field).toHaveJSProperty("value", "2.5");
+    await field.fill("2,5");
     await page.locator("#mod-settings-form button[type=submit]").click();
-    await expect(page.locator(".message--success")).toBeVisible(live);
+    await expect(doneBox(page)).toBeVisible(live);
     await page.goto("/worlds/base/mods/settings");
-    await expect(page.getByRole("spinbutton", { name: "fm-sta-double" })).toHaveValue("2.5", live);
+    await expect(page.getByRole("textbox", { name: "fm-sta-double" })).toHaveValue("2.5", live);
   });
 });

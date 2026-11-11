@@ -359,14 +359,16 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await setUpModsWorld(page, foreman, g, { ...world, mods: { fmtest: "2.0" } });
     const clicks = await countClicks(page);
     await startGame(page, clicks);
-    const before = await creates(g);
 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
     await page.getByRole("link", { name: "Edit mod settings" }).click();
-    // The form loads after the page; waiting for it is not a click.
-    await page.getByRole("checkbox", { name: "fm-sta-bool" }).click(live);
+    // The form loads after the page, from a definitions run that is a container of its own; waiting is not a click.
+    const box = page.getByRole("checkbox", { name: "fm-sta-bool" });
+    await expect(box).toBeVisible(live);
+    const before = await creates(g);
+    await box.click();
     await page.getByRole("button", { name: "Save and restart" }).click();
-    await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
+    await expect(done(page)).toContainText(/The mods of Base were changed\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     expect(await creates(g)).toBe(before + 1);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "mod-settings.dat"))).toBe(true);

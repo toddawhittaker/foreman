@@ -651,7 +651,7 @@ func readField(r *http.Request, f *SettingField) (settingChange, bool) {
 		}
 		f.Value, f.Alpha = hexColor, alpha
 		var ok bool
-		if raw, ok = colorRaw(hexColor, alpha); !ok {
+		if raw, ok = colorRaw(hexColor, decimalPoint(kindDouble, strings.TrimSpace(alpha))); !ok {
 			f.Error = fieldError(f, &modsettings.ValidationError{MessageID: "color"})
 			return settingChange{}, false
 		}
@@ -664,12 +664,22 @@ func readField(r *http.Request, f *SettingField) (settingChange, bool) {
 		}
 		f.Value = raw
 	}
-	v, verr := modsettings.Validate(f.def, raw)
+	v, verr := modsettings.Validate(f.def, decimalPoint(f.Kind, raw))
 	if verr != nil {
 		f.Error = fieldError(f, verr)
 		return settingChange{}, false
 	}
 	return settingChange{def: f.def, value: v}, true
+}
+
+// decimalPoint reads a decimal comma, as many languages write one, as the
+// point the game's numbers use: "2,5" is 2.5. Whole numbers and text are
+// left as typed.
+func decimalPoint(kind, raw string) string {
+	if kind == kindDouble && strings.Count(raw, ",") == 1 && !strings.Contains(raw, ".") {
+		return strings.Replace(raw, ",", ".", 1)
+	}
+	return raw
 }
 
 func stripLineBreaks(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
