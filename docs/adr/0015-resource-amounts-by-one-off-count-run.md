@@ -36,7 +36,7 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
   296 and 303, with 84 to 86% of islands at one to three; 24 gave 209 and
   204 but took 36 to 38 s. Any gap from 4 up lets a few labels join
   neighbouring islands across thin channels (4 to 6 of about 300 at 16).
-  Gaps above 4 are bucketed by cells as wells are, which keeps 16 at 20 s
+  Gaps above 6 are bucketed by cells as wells are, which keeps 16 at 20 s
   and 675 MiB with the same patches. Rejected: 16 for every ore (it would
   merge real, separate patches on the other planets); grouping scrap by
   island (exact, but the Lua would have to read every ground tile); 12

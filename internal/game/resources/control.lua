@@ -22,9 +22,12 @@ local well_gap = params.well_gap or 24
 local resource_gaps = { fulgora = { scrap = 16 } }
 local planet_gaps = resource_gaps[planet] or {}
 
--- Gaps above this are joined by cells, as wells are; the per-tile offsets
--- cost about gap squared per tile (ADR 0015).
-local offset_limit = 4
+-- Gaps up to this are joined by per-tile offsets, the path whose cost ADR 0015
+-- measured for the ores. Larger gaps are joined by cells, as wells are. Cells
+-- have a larger constant in dense fields (about 160 tiles compared per tile,
+-- against 90 offset lookups at gap 6), so they pay off only when the gap is
+-- big enough that offsets grow past them, as for scrap (16) and wells (24).
+local offset_limit = 6
 
 -- surface_of returns the planet's surface, making it on 2.x when the planet
 -- has none yet. 1.1 has only Nauvis, which always has one.
