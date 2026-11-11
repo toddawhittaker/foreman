@@ -12,7 +12,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -21,22 +20,21 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/datadir"
-	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 const inGameLine = "changing state from(CreatingGame) to(InGame)"
 
-// updateCases are the two updates under test. The cross-line case starts from
-// the real 2.0.77 save in the save reader's fixtures. No fixture exists for
-// 2.1.23, so the same-line case makes its save with that image.
+// updateCases are the updates under test. The real-game tests run the
+// latest patch of each line only, so there is no same-line update; the
+// cross-line case starts from the real 2.0.77 save in the save reader's
+// fixtures.
 var updateCases = []struct {
 	name, from, to string
-	fixture        string   // a fixture file, or "" to make the save with the "from" image
+	fixture        string   // a fixture file in the save reader's testdata
 	tags           []string // the FOREMAN_TEST_GAME_TAG values that include this case
 }{
 	{"cross-line 2.0.77 to 2.1.24", "2.0.77", "2.1.24", "2.0.77-no-space-age.zip", []string{"2.0", "2.1"}},
-	{"same-line 2.1.23 to 2.1.24", "2.1.23", "2.1.24", "", []string{"2.1"}},
 }
 
 func TestRealGameUpdate(t *testing.T) {
@@ -62,15 +60,9 @@ func (e *gameEnv) runUpdate(t *testing.T, from, to, fixture string) {
 	ctx := context.Background()
 	c, _ := e.controller(t)
 
-	var save []byte
-	if fixture != "" {
-		b, err := os.ReadFile(filepath.Join("..", "savefile", "testdata", fixture)) //nolint:gosec // a fixed test fixture
-		if err != nil {
-			t.Fatal(err)
-		}
-		save = b
-	} else {
-		save = e.makeSave(t, from)
+	save, err := os.ReadFile(filepath.Join("..", "savefile", "testdata", fixture)) //nolint:gosec // a fixed test fixture
+	if err != nil {
+		t.Fatal(err)
 	}
 	id := e.newWorld(t, "upd"+from, from, "main", "", nil)
 	e.putSave(t, id, "main.zip", save, time.Now().Add(-time.Hour))
@@ -264,55 +256,4 @@ func fileHash(t *testing.T, path string) string {
 	}
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
-}
-
-// makeSave has the real game of the given version create a small save, the
-// way internal/savefile/testdata/gen/gen.sh makes the fixtures: Space Age off,
-// a 64 by 64 map. The container is the test's own and is removed at the end.
-func (e *gameEnv) makeSave(t *testing.T, version string) []byte {
-	t.Helper()
-	ctx := context.Background()
-	gen := filepath.Join(repoRoot(t), "internal", "savefile", "testdata", "gen")
-	out := filepath.Join(e.data, "makesave-"+version)
-	if err := os.MkdirAll(out, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	name := fmt.Sprintf("foreman-e3test-makesave-%s-%s", strings.ReplaceAll(version, ".", "-"), e.run)
-	script := fmt.Sprintf("/opt/factorio/bin/x64/factorio --create /out/made.zip --map-gen-settings /in/mapgen.json"+
-		" --mod-directory /in/mods20-nosa && chown %d:%d /out/made.zip", e.uid, e.gid)
-	id, err := e.docker.CreateContainer(ctx, name, docker.ContainerSpec{
-		Image:      ImageRef(version),
-		Entrypoint: []string{"sh"},
-		Cmd:        []string{"-c", script},
-		User:       "0:0",
-		HostConfig: docker.HostConfig{
-			Binds: []string{gen + ":/in:ro", out + ":/out"},
-			LogConfig: docker.LogConfig{Type: "json-file", Config: map[string]string{
-				"max-size": "1m", "max-file": "1",
-			}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("create the save-making container: %v", err)
-	}
-	t.Cleanup(func() { _ = e.docker.RemoveContainer(context.Background(), id, true) })
-	if err := e.docker.StartContainer(ctx, id); err != nil {
-		t.Fatal(err)
-	}
-	waitFor(t, 2*time.Minute, "the save-making container to exit", func() bool {
-		cont, err := e.docker.InspectContainer(ctx, id)
-		return err == nil && !cont.State.Running
-	})
-	cont, err := e.docker.InspectContainer(ctx, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cont.State.ExitCode != 0 {
-		t.Fatalf("making the %s save exited with code %d", version, cont.State.ExitCode)
-	}
-	b, err := os.ReadFile(filepath.Join(out, "made.zip")) //nolint:gosec // the test's own folder
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
 }
