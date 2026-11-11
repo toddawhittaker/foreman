@@ -387,7 +387,7 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 	body := page()
 	token := strings.Split(pictureOf(t, body), "/")[3]
 	base := PathGeneratePreview + "/" + token
-	if regexp.MustCompile(`data-counted[ >]`).MatchString(body) || !strings.Contains(body, `data-counted-planets=""`) {
+	if !regexp.MustCompile(`id="preview"[^>]*data-counted-planets=""`).MatchString(body) {
 		t.Error("a planet is marked counted before any count")
 	}
 	if !strings.Contains(body, `data-planets="nauvis vulcanus gleba fulgora aquilo"`) {
@@ -412,7 +412,7 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 		t.Fatalf("%d counts", len(prev.runs))
 	}
 	body = page()
-	if !regexp.MustCompile(`/nauvis/download"[^>]*data-counted[ >]`).MatchString(body) || !strings.Contains(body, `data-counted-planets="nauvis"`) {
+	if !regexp.MustCompile(`id="preview"[^>]*data-counted-planets="nauvis"`).MatchString(body) {
 		t.Errorf("only Nauvis is marked counted:\n%s", body)
 	}
 

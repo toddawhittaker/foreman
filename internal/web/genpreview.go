@@ -363,9 +363,6 @@ type PreviewPicture struct {
 	Planet string
 	Name   i18n.Msg
 	Path   string
-	// Counted is true when the preview holds the planet's resource amounts,
-	// so its download can draw them.
-	Counted bool
 }
 
 // Choice is true when the world has several planets, so the section offers
@@ -474,7 +471,7 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 			}
 		}
 		for _, planet := range planets {
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet), Counted: counted[planet]})
+			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
 		}
 	} else {
 		view.Token = ""

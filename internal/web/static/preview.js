@@ -76,7 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // The pause's draw is dropped with it; soon() sets this again after its own drop().
     waiting = false;
     setStatus(false);
-    endPrep("");
+    // A download being prepared counts for the settings that are going.
+    endPrep(strings["js.preview.prepare_canceled"]);
     dropTerritories();
     clearAmounts(places.page);
     clearAmounts(places.large);
@@ -104,8 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // or not: a download never leaves out what the box asks for (SPEC 5.6).
   function territoryDownloads() {
     const on = new FormData(formEl()).has("territories");
-    const link = pictureLink(terrPlanet);
-    const one = link && link.closest("li").querySelector("a.download");
+    const one = downloadOf(terrPlanet);
     const zip = zipLink();
     for (const a of [one, zip]) {
       if (!a) continue;
@@ -147,24 +147,15 @@ document.addEventListener("DOMContentLoaded", () => {
     zip.textContent = on ? zip.dataset.amounts : zip.dataset.plain;
   }
 
-  // What the server holds, as it marked it and as counts made since add to it.
+  // What the server holds, as it marked it on the section and as counts made since add to it.
   const zipLink = () => document.querySelector('#preview a.download[href*="/all.zip"]');
   const listOf = (text) => (text || "").split(" ").filter(Boolean);
   const zipPlanets = (zip) => listOf(zip.dataset.planets);
-  function heldAmounts(planet) {
-    const zip = zipLink();
-    if (zip && listOf(zip.dataset.countedPlanets).includes(planet)) return true;
-    const link = pictureLink(planet);
-    const one = link && link.closest("li").querySelector("a.download");
-    return Boolean(one && one.hasAttribute("data-counted"));
-  }
+  const counted = () => { const slot = el("preview"); return slot ? listOf(slot.dataset.countedPlanets) : []; };
+  const heldAmounts = (planet) => counted().includes(planet);
   function markCounted(planet) {
-    const zip = zipLink();
-    const counted = zip ? listOf(zip.dataset.countedPlanets) : [];
-    if (zip && !counted.includes(planet)) zip.dataset.countedPlanets = [...counted, planet].join(" ");
-    const link = pictureLink(planet);
-    const one = link && link.closest("li").querySelector("a.download");
-    if (one) one.toggleAttribute("data-counted", true);
+    const slot = el("preview");
+    if (slot && !heldAmounts(planet)) slot.dataset.countedPlanets = [...counted(), planet].join(" ");
   }
   function markTerritories() {
     const zip = zipLink();
@@ -369,6 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const words = (node) => node.textContent.replace(/\s+/g, " ").trim();
   const pictureLink = (planet) => document.querySelector(`#preview a.picture[data-planet="${CSS.escape(planet)}"]`);
+  const downloadOf = (planet) => { const link = pictureLink(planet); return link && link.closest("li").querySelector("a.download"); };
 
   // The fields an automatic preview found problems in are marked, until a
   // later reply has none; a mark the server put there is left alone.
@@ -401,6 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const slot = document.getElementById("preview");
     if (!slot) return;
     const key = slot.contains(document.activeElement) ? focusKey(document.activeElement) : "";
+    if (prep && slot.contains(prep.block)) endPrep(strings["js.preview.prepare_canceled"]);
     slot.replaceWith(document.importNode(fresh, true));
     if (key) {
       const again = document.querySelector(key);
@@ -499,6 +492,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Preview map's pictures are in place; the territories come after them.
   document.body.addEventListener("htmx:afterSwap", (e) => {
     if (e.target.id !== "preview") return;
+    // The section a preparation sat in is gone; Preview map's start dropped it already.
+    if (prep && !prep.block.isConnected) endPrep("");
     const all = el("preview-view-all");
     if (all) showAll = all.checked;
     keepPageAmounts();
@@ -683,18 +678,30 @@ document.addEventListener("DOMContentLoaded", () => {
     return { zip, steps, count: list.length };
   }
 
+  // A count asked for now would be of the form's settings, newer than the
+  // pictures shown, so a preparation waits until they are drawn.
+  const redrawing = () => Boolean(pending || waiting || refreshing > 0 || button().getAttribute("aria-disabled") === "true");
+
   document.addEventListener("click", (e) => {
     const a = e.target.closest && e.target.closest("#preview a.download, #large-download");
     if (!a) return;
     if (prep) {
+      // One at a time: the one on its way says so and offers its Cancel.
       e.preventDefault();
+      prep.block.querySelector("[data-prep-cancel]").focus();
+      announce(strings["js.preview.prepare_busy"]);
       return;
     }
     const plan = prepSteps(a.getAttribute("href"));
     if (!plan.steps.length) return;
     e.preventDefault();
+    if (redrawing()) {
+      announce(strings["js.preview.prepare_redrawing"]);
+      return;
+    }
     const block = el("download-prep").content.firstElementChild.cloneNode(true);
-    a.after(block);
+    // The zip's link sits in a paragraph, which cannot hold the block's own.
+    (a.parentElement.tagName === "P" ? a.parentElement : a).after(block);
     prep = { a, block, href: a.getAttribute("href"), ...plan, at: 0, ctrl: null };
     block.querySelector("[data-prep-cancel]").addEventListener("click", () => endPrep(strings["js.preview.prepare_canceled"]));
     block.querySelector("[data-prep-retry]").addEventListener("click", () => runPrep(prep));
@@ -736,12 +743,15 @@ document.addEventListener("DOMContentLoaded", () => {
     retry.hidden = true;
     without.hidden = true;
     wait.hidden = false;
-    bar.max = p.steps.length;
     const lang = document.documentElement.lang;
     while (p.at < p.steps.length) {
       const step = p.steps[p.at];
       const vars = { planet: nameOf(step.planet), n: (p.at + 1).toLocaleString(lang), total: p.steps.length.toLocaleString(lang) };
-      bar.value = p.at;
+      // The planet counted now is half done, so the bar never sits empty; one planet only shows it works.
+      if (p.steps.length > 1) {
+        bar.max = p.steps.length;
+        bar.value = p.at + 0.5;
+      } else bar.removeAttribute("value");
       // Said once as each run starts; the bar is only seen.
       const tell = (key) => {
         text.textContent = say(key, vars);
@@ -751,9 +761,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const why = await prepStep(step, p.ctrl.signal, block, tell);
       if (prep !== p) return;
       if (why) {
+        // Focus on the download or in its block goes to the first choice, so the failure is not passed by.
+        const here = document.activeElement;
+        const lead = here === document.body || here === p.a || block.contains(here);
         wait.hidden = true;
         failure.querySelector("[data-prep-why]").textContent = say("js.preview.prepare_failed", { planet: vars.planet }) + " " + why;
         failure.hidden = false;
+        // Named with the planet, so it differs from the count's own Try again.
+        retry.textContent = say("js.preview.prepare_retry", { planet: vars.planet });
         retry.hidden = false;
         // The zip can go without the planet when others are left in it.
         if (p.zip && p.count > 1) {
@@ -761,13 +776,14 @@ document.addEventListener("DOMContentLoaded", () => {
           without.hidden = false;
         }
         announce(words(failure));
+        if (lead) (without.hidden ? retry : without).focus();
         return;
       }
       p.at++;
     }
     const href = p.href;
     const parent = p.a.parentElement;
-    endPrep("");
+    endPrep(strings["js.preview.prepare_started"]);
     // A plain link, so this handler leaves it alone, where the open view can click it.
     const go = document.createElement("a");
     go.href = href;
@@ -778,12 +794,25 @@ document.addEventListener("DOMContentLoaded", () => {
     go.remove();
   }
 
+  // The game runs one read at a time and the server answers busy after a
+  // while (SPEC 5.6), so every count and read on its way is waited out first,
+  // whichever planet it is for; its failure is its own place's to show.
+  async function othersDone() {
+    const seen = new Set();
+    for (;;) {
+      const running = [...Object.values(places).map((at) => at.pending && at.done), terrPending && terrDone].filter((d) => d && !seen.has(d));
+      if (!running.length) return;
+      running.forEach((d) => seen.add(d));
+      await Promise.all(running.map((d) => d.catch(() => {})));
+    }
+  }
+
   // One planet's step: its territories, then its amounts. It returns why it
   // failed, or "" once both are held.
   async function prepStep(step, signal, block, tell) {
     if (step.territories) {
       tell("js.preview.prepare_territories");
-      if (terrDone && terrPending) await terrDone.catch(() => {});
+      await othersDone();
       if (signal.aborted) return "";
       if (!heldTerritories()) {
         const why = await prepAsk(terrPath, null, "territory-reply", ".territory-result", block.dataset.territoriesFailed, signal);
@@ -795,9 +824,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (step.amounts) {
       tell("js.preview.prepare_amounts");
-      for (const at of [places.page, places.large]) {
-        if (at.pending && at.done && at.asked === step.planet) await at.done.catch(() => {});
-      }
+      await othersDone();
       if (signal.aborted) return "";
       if (!heldAmounts(step.planet)) {
         const why = await prepAsk(amountsPath, step.planet, "resource-reply", ".resource-result", block.dataset.amountsFailed, signal);
@@ -1071,7 +1098,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (pending && drawing !== "*" && drawing !== planet) drop();
     const img = link.querySelector("img");
     const figure = link.closest("figure");
-    const download = link.closest("li").querySelector("a.download");
     const name = figure.querySelector("figcaption").textContent.trim();
     tiles = Number(img.getAttribute("width")) || img.naturalWidth;
     el("large-title").textContent = name;
@@ -1092,7 +1118,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function largeDownload(planet) {
     const link = pictureLink(planet);
     if (!link) return;
-    const download = link.closest("li").querySelector("a.download");
+    const download = downloadOf(planet);
     const href = askFor(download ? download.href : link.href, "amounts", ticked(places.large));
     const q = new URL(href, location.href).searchParams;
     const key = q.has("territories") ? (q.has("amounts") ? "js.preview.download_both" : "js.preview.download_territories") : q.has("amounts") ? "js.preview.download_amounts" : "js.preview.download";
@@ -1234,7 +1260,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.target.closest && e.target.closest("#large-settings")) return;
       const panning = e.target === frame() && zoom > 1;
-      if (arrows[e.key] && !panning) step(arrows[e.key]);
+      // A download being prepared is for the planet shown, so the arrows leave it shown.
+      if (arrows[e.key] && !panning && !prep) step(arrows[e.key]);
       else if (e.key === "+" || e.key === "=") zoomSaid(zoom * factor);
       else if (e.key === "-") zoomSaid(zoom / factor);
       else if (e.key === "0") zoomSaid(1);
@@ -1251,6 +1278,8 @@ document.addEventListener("DOMContentLoaded", () => {
       largeDownload(viewing || firstPlanet());
     });
     dialog.addEventListener("close", () => {
+      // The view's download, and any preparation of it, go with it.
+      if (prep && dialog.contains(prep.block)) endPrep(strings["js.preview.prepare_canceled"]);
       // The view's amounts go with it; the page's stay as they are.
       clearAmounts(places.large);
       putBack();
