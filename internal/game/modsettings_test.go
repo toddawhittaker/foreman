@@ -850,22 +850,22 @@ func TestModSettingDefsCachesWhileWorldIsBusyAfterTheRun(t *testing.T) {
 
 // A mods folder with more files than a run takes is world.ErrModsTooBig,
 // which the caller can match, and no container or folder is left. The limit
-// is the world package's own, so the test makes one file more than it.
+// is lowered, so the test needs few files.
 func TestModSettingDefsModsTooBig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("makes 100,001 files")
-	}
 	r := newModSettingsRig(t)
+	const limit = 10
 	dir := filepath.Join(r.worldDir(r.id), world.ModsDir, "big_1.0.0")
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	for i := range 100_001 {
+	for i := range limit + 1 {
 		if err := os.WriteFile(filepath.Join(dir, strconv.Itoa(i)), nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	restore := world.SetLinkLimitsForTest(limit, 1<<20)
+	defer restore()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if _, err := r.c.ModSettingDefs(ctx, r.id); !errors.Is(err, world.ErrModsTooBig) {
 		t.Fatalf("error %v, want world.ErrModsTooBig", err)
