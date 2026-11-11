@@ -36,6 +36,7 @@ silently. Use the architect agent to draft spec and stack options.
   Wins on questions of intent.
 - `docs/SPEC.md` (to come): requirements. Wins on implementation detail.
 - `docs/STACK.md` (to come): technology choices and rejected options.
+- `docs/OPERATOR.md`: the operator guide, how to install and run Foreman.
 - `docs/STATUS.md` (to come, written by each epic's fold task): what each
   epic delivered and the gaps it left.
 - `docs/WORKFLOW.md`: branching, epic plans, code style, pull requests,
