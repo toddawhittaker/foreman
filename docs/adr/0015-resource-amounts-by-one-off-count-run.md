@@ -36,15 +36,15 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
   is finer (Todd's decision, 2026-11-11). Measured at 3072 tiles, seed
   123456, on 1.1.110, 2.0.77 and 2.1.24: the most ore tiles of a default
   map are Vulcanus's 141,912, and Nauvis with every resource at 600% has
-  1,097,357 to 1,133,683; 400,000 is 2.8 times the one and below a third
-  of the other. Between them, Nauvis at 200% has about 250,000 and counts
+  1,097,357 to 1,133,683; 400,000 is 2.8 times the one and 2.7 times
+  below the other; TestDenseOreTiles keeps both at 2.5 times or more. Between them, Nauvis at 200% has about 250,000 and counts
   at 6 in 38 s; at 300% (about 450,000) it took 53 to 57 s at 6, at 400%
   (about 690,000) and 600% it ran past the 60 s limit at 6 while memory was
   still under the cap, so the page said to try again. With the fallback,
   600% runs out of memory at 28 to 32 s on 2.x and the page says to choose
   a smaller size, as SPEC 5.6 promises; 300% to 500% finish in 26 to 38 s
   at up to 988 MiB (300% gives 512 patches, against 344 at 6), and on
-  1.1.110 even 600% finishes, in 35 s at 1,015 MiB. Rejected: a lower limit for every count
+  1.1.110 even 600% finishes, in 37 s at 1,014 MiB. Rejected: a lower limit for every count
   (the default maps would lose the gap of 6); keeping 6 and calling a
   timeout out of memory (a slow server times out on a map that fits).
 - Fulgora's scrap alone joins within 16 tiles, from a table in the Lua

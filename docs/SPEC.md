@@ -723,9 +723,9 @@ not) or a map exchange string, with Space Age on or off. (P0)
       400,000 ore tiles in the picture: its ores join within 2 tiles, so
       its patch list is finer. No default map comes near it (Vulcanus at
       3072 has the most, 141,912), and Nauvis with every resource at 600%
-      has about 1.1 million. At 6, such a count ran past the 60 s limit
-      before it ran out of memory, and the page said to try again where
-      only a smaller size helps (Todd's decision, 2026-11-11; ADR 0015).
+      has about 1.1 million. At 6, the richest of them (Nauvis at 400%
+      and above) ran past the 60 s limit before running out of memory,
+      and the page said to try again where only a smaller size helps (Todd's decision, 2026-11-11; ADR 0015).
       Aquilo has only wells. Fulgora's only resource, scrap, joins within
       16 tiles whatever the ore gap, since at 2 its islands carried
       dozens of labels each at high frequency: at 3072 Fulgora has 240
