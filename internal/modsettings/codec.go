@@ -30,6 +30,9 @@ const (
 	maxExactFloat = 1 << 53
 )
 
+// colorKeys are a color dictionary's components, in the order the game writes.
+var colorKeys = [4]string{"r", "g", "b", "a"}
+
 var (
 	errTruncated = errors.New("modsettings: mod-settings.dat is cut short")
 	errMalformed = errors.New("modsettings: mod-settings.dat is not a valid settings file")
@@ -39,6 +42,8 @@ var (
 	errNoValue   = errors.New("modsettings: the setting has no value node")
 	errBadSet    = errors.New("modsettings: not a setting type or name Foreman can set")
 	errNotFinite = errors.New("modsettings: a number is not finite")
+	errIntTooBig = errors.New("modsettings: this game stores whole numbers as doubles, and the value is too large to keep exactly")
+	errNoEntry   = errors.New("modsettings: the setting is in neither the file nor the defaults file")
 )
 
 // pstr is a property tree string with the exact choices the file made, so it
@@ -56,6 +61,14 @@ func (s pstr) text() string {
 		return ""
 	}
 	return string(s.data)
+}
+
+// is reports whether the string equals key, without allocating.
+func (s pstr) is(key string) bool {
+	if s.flag != 0 {
+		return key == ""
+	}
+	return string(s.data) == key
 }
 
 func newPstr(text string) pstr {
@@ -81,12 +94,26 @@ func (n *node) child(key string) *node {
 	if n == nil || (n.typ != nodeDict && n.typ != nodeList) {
 		return nil
 	}
-	for i, k := range n.keys {
-		if k.text() == key {
+	for i := range n.keys {
+		if n.keys[i].is(key) {
 			return n.vals[i]
 		}
 	}
 	return nil
+}
+
+// children returns every child of a list or dictionary under key, in order.
+func (n *node) children(key string) []*node {
+	if n == nil || (n.typ != nodeDict && n.typ != nodeList) {
+		return nil
+	}
+	var out []*node
+	for i := range n.keys {
+		if n.keys[i].is(key) {
+			out = append(out, n.vals[i])
+		}
+	}
+	return out
 }
 
 func (n *node) clone() *node {
@@ -194,8 +221,6 @@ func (r *reader) node(depth int) *node {
 		if r.err != nil {
 			return nil
 		}
-		n.keys = make([]pstr, 0, count)
-		n.vals = make([]*node, 0, count)
 		for i := uint64(0); i < count; i++ {
 			k := r.str()
 			v := r.node(depth + 1)
@@ -214,8 +239,11 @@ func (r *reader) node(depth int) *node {
 	return n
 }
 
-// Decode parses mod-settings.dat bytes. It never panics and allocates no
-// more than a small multiple of the input's size.
+// Decode parses mod-settings.dat bytes. It never panics. A list or dictionary
+// that claims more entries than the bytes left could hold is refused, and no
+// space is reserved from a claimed count, so memory grows with the entries
+// actually read: roughly 50 times the input in the worst case (many tiny
+// entries), so callers keep the input small.
 func Decode(data []byte) (*File, error) {
 	if len(data) < headerBytes+1 {
 		return nil, errTruncated
@@ -286,24 +314,31 @@ func validSetting(s SettingType) bool {
 	return s == Startup || s == RuntimeGlobal || s == RuntimePerUser
 }
 
-// valueNode finds the node holding a setting's value; ok is false when the
-// file lacks the setting. A setting without a value node is an error.
-func (f *File) valueNode(setting SettingType, name string) (n *node, found bool, err error) {
+// entries finds the group for a setting type and the value node of every entry
+// in it named name. group is nil when the file has none; an entry that is not
+// a dictionary holding a value is an error.
+func (f *File) entries(setting SettingType, name string) (group *node, values []*node, err error) {
 	if f == nil || f.root == nil || !validSetting(setting) || name == "" {
-		return nil, false, nil
+		return nil, nil, errBadSet
 	}
-	entry := f.root.child(string(setting)).child(name)
-	if entry == nil {
-		return nil, false, nil
+	group = f.root.child(string(setting))
+	if group == nil {
+		return nil, nil, nil
 	}
-	if entry.typ != nodeDict {
-		return nil, true, errMalformed
+	if group.typ != nodeDict {
+		return nil, nil, errMalformed
 	}
-	v := entry.child("value")
-	if v == nil {
-		return nil, true, errNoValue
+	for _, e := range group.children(name) {
+		if e.typ != nodeDict {
+			return group, nil, errMalformed
+		}
+		v := e.child("value")
+		if v == nil {
+			return group, nil, errNoValue
+		}
+		values = append(values, v)
 	}
-	return v, true, nil
+	return group, values, nil
 }
 
 func nodeDoubleValue(n *node) (float64, bool) {
@@ -317,10 +352,18 @@ func nodeDoubleValue(n *node) (float64, bool) {
 // game before 2.0 stores whole numbers as doubles, so an int setting reads as
 // TypeDouble there.
 func (f *File) Get(setting SettingType, name string) (Value, bool, error) {
-	n, found, err := f.valueNode(setting, name)
-	if !found || err != nil {
-		return Value{}, found, err
+	_, values, err := f.entries(setting, name)
+	if errors.Is(err, errBadSet) {
+		return Value{}, false, nil
 	}
+	if len(values) == 0 && err == nil {
+		return Value{}, false, nil
+	}
+	if err != nil {
+		return Value{}, true, err
+	}
+	// With a name written twice, the last copy is the one read.
+	n := values[len(values)-1]
 	switch n.typ {
 	case nodeBool:
 		return Value{Type: TypeBool, Bool: n.scalar != 0}, true, nil
@@ -332,7 +375,7 @@ func (f *File) Get(setting SettingType, name string) (Value, bool, error) {
 		return Value{Type: TypeString, String: n.str.text()}, true, nil
 	case nodeDict:
 		var c [4]float64
-		for i, k := range [4]string{"r", "g", "b", "a"} {
+		for i, k := range colorKeys {
 			d, ok := nodeDoubleValue(n.child(k))
 			if !ok {
 				return Value{}, true, errMismatch
@@ -342,28 +385,6 @@ func (f *File) Get(setting SettingType, name string) (Value, bool, error) {
 		return Value{Type: TypeColor, Color: Color{R: c[0], G: c[1], B: c[2], A: c[3]}}, true, nil
 	}
 	return Value{}, true, errMismatch
-}
-
-// emptyValueNode builds a value node of the right shape for v.
-func emptyValueNode(t ValueType) (*node, error) {
-	switch t {
-	case TypeBool:
-		return &node{typ: nodeBool}, nil
-	case TypeInt:
-		return &node{typ: nodeInt64}, nil
-	case TypeDouble:
-		return &node{typ: nodeDouble}, nil
-	case TypeString:
-		return &node{typ: nodeString, str: pstr{flag: 1}}, nil
-	case TypeColor:
-		n := &node{typ: nodeDict}
-		for _, k := range [4]string{"r", "g", "b", "a"} {
-			n.keys = append(n.keys, newPstr(k))
-			n.vals = append(n.vals, &node{typ: nodeDouble})
-		}
-		return n, nil
-	}
-	return nil, errMismatch
 }
 
 func finite(f float64) bool { return !math.IsNaN(f) && !math.IsInf(f, 0) }
@@ -387,7 +408,7 @@ func setNode(n *node, v Value) error {
 		case nodeDouble:
 			// Games before 2.0 store whole numbers as doubles.
 			if v.Int > maxExactFloat || v.Int < -maxExactFloat {
-				return errMismatch
+				return errIntTooBig
 			}
 			n.scalar = math.Float64bits(float64(v.Int))
 		default:
@@ -415,7 +436,7 @@ func setNode(n *node, v Value) error {
 		}
 		comps := [4]float64{v.Color.R, v.Color.G, v.Color.B, v.Color.A}
 		var targets [4]*node
-		for i, k := range [4]string{"r", "g", "b", "a"} {
+		for i, k := range colorKeys {
 			t := n.child(k)
 			if t == nil || t.typ != nodeDouble {
 				return errMismatch
@@ -435,30 +456,35 @@ func setNode(n *node, v Value) error {
 }
 
 // Set changes one setting's value. When the file lacks the setting, its node
-// is copied from defaults (the file a definitions run wrote) and then set.
-// Every other byte of the file stays as it was.
+// is copied from defaults (the file a definitions run wrote) and then set; a
+// setting in neither is an error. A name written more than once in a group has
+// every copy set, so whichever the game reads holds the value. Every other
+// byte of the file stays as it was, and a refused Set changes nothing.
 func (f *File) Set(setting SettingType, name string, v Value, defaults *File) error {
-	if f == nil || f.root == nil || !validSetting(setting) || name == "" {
-		return errBadSet
-	}
-	group := f.root.child(string(setting))
-	if group != nil && group.typ != nodeDict {
-		return errMalformed
-	}
-	if group != nil {
-		if entry := group.child(name); entry != nil {
-			if entry.typ != nodeDict {
-				return errMalformed
-			}
-			val := entry.child("value")
-			if val == nil {
-				return errNoValue
-			}
-			return setNode(val, v)
-		}
-	}
-	entry, err := newEntry(setting, name, v, defaults)
+	group, values, err := f.entries(setting, name)
 	if err != nil {
+		return err
+	}
+	if len(values) > 0 {
+		// Try every copy on a clone first, so a failure leaves them all as they were.
+		for _, val := range values {
+			if err := setNode(val.clone(), v); err != nil {
+				return err
+			}
+		}
+		for _, val := range values {
+			if err := setNode(val, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	d := defaults.group(setting).child(name)
+	if d == nil || d.typ != nodeDict || d.child("value") == nil {
+		return errNoEntry
+	}
+	entry := d.clone()
+	if err := setNode(entry.child("value"), v); err != nil {
 		return err
 	}
 	if group == nil {
@@ -483,23 +509,4 @@ func (f *File) group(setting SettingType) *node {
 		return nil
 	}
 	return g
-}
-
-// newEntry builds the node for a setting the file lacks: a copy of the
-// defaults file's node, else a plain {value: X}.
-func newEntry(setting SettingType, name string, v Value, defaults *File) (*node, error) {
-	var entry *node
-	if d := defaults.group(setting).child(name); d != nil && d.typ == nodeDict && d.child("value") != nil {
-		entry = d.clone()
-	} else {
-		val, err := emptyValueNode(v.Type)
-		if err != nil {
-			return nil, err
-		}
-		entry = &node{typ: nodeDict, keys: []pstr{newPstr("value")}, vals: []*node{val}}
-	}
-	if err := setNode(entry.child("value"), v); err != nil {
-		return nil, err
-	}
-	return entry, nil
 }

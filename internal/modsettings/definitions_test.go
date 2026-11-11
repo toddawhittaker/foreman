@@ -2,6 +2,7 @@ package modsettings
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -118,27 +119,17 @@ func TestParseDefinitionsEditable(t *testing.T) {
 	}
 }
 
-func TestParseDefinitionsRefuses(t *testing.T) {
-	one := func(body string) string { return `{"settings":[{"name":"a","setting_type":"startup",` + body + `}]}` }
+func TestParseDefinitionsRefusesShape(t *testing.T) {
 	tests := map[string]string{
-		"not json":         `{"settings":`,
-		"array root":       `[]`,
-		"settings string":  `{"settings":"x"}`,
-		"settings object":  `{"settings":{"a":1}}`,
-		"int fraction":     one(`"type":"int-setting","default_value":1.5`),
-		"int string":       one(`"type":"int-setting","default_value":"1"`),
-		"int too big":      one(`"type":"int-setting","default_value":1e30`),
-		"int huge":         one(`"type":"int-setting","maximum_value":1e999`),
-		"double huge":      one(`"type":"double-setting","default_value":1e999`),
-		"double string":    one(`"type":"double-setting","default_value":"x"`),
-		"bool number":      one(`"type":"bool-setting","default_value":1`),
-		"string number":    one(`"type":"string-setting","default_value":1`),
-		"color array":      one(`"type":"color-setting","default_value":[1,0,0,1]`),
-		"color missing g":  one(`"type":"color-setting","default_value":{"r":1,"b":0,"a":1}`),
-		"color huge":       one(`"type":"color-setting","default_value":{"r":1e999,"g":0,"b":0,"a":1}`),
-		"allowed object":   one(`"type":"int-setting","allowed_values":{"a":1}`),
-		"allowed bad item": one(`"type":"int-setting","allowed_values":[1,"x"]`),
-		"order number":     one(`"type":"int-setting","order":3`),
+		"not json":        `{"settings":`,
+		"array root":      `[]`,
+		"settings string": `{"settings":"x"}`,
+		"settings object": `{"settings":{"a":1}}`,
+		"settings item":   `{"settings":[1]}`,
+		"order number":    `{"settings":[{"name":"a","order":3}]}`,
+		"trailing":        `{"settings":[]} x`,
+		"second value":    `{"settings":[]}{}`,
+		"unclosed array":  `{"settings":[{}`,
 	}
 	for name, in := range tests {
 		if _, err := ParseDefinitions([]byte(in)); err == nil {
@@ -147,14 +138,91 @@ func TestParseDefinitionsRefuses(t *testing.T) {
 	}
 }
 
-func TestParseDefinitionsNoInputInError(t *testing.T) {
-	_, err := ParseDefinitions([]byte(`{"settings":[{"name":"SECRET-TEXT","type":"int-setting","default_value":"SECRET-TEXT"}]}`))
-	if err == nil || strings.Contains(err.Error(), "SECRET") {
-		t.Fatalf("error: %v", err)
+// A value that does not fit its type fails that one setting, not the file.
+func TestParseDefinitionsBadValueMarksOneSettingNotEditable(t *testing.T) {
+	tests := map[string]string{
+		"int fraction":       `"type":"int-setting","default_value":1.5`,
+		"int string":         `"type":"int-setting","default_value":"1"`,
+		"int too big":        `"type":"int-setting","default_value":1e30`,
+		"int huge":           `"type":"int-setting","maximum_value":1e999`,
+		"int64 limit":        `"type":"int-setting","maximum_value":9.2233720368547758e+18`,
+		"int64 limit lower":  `"type":"int-setting","minimum_value":-9.3e18`,
+		"double huge":        `"type":"double-setting","default_value":1e999`,
+		"double string":      `"type":"double-setting","default_value":"x"`,
+		"double allowed bad": `"type":"double-setting","allowed_values":["x"]`,
+		"bool number":        `"type":"bool-setting","default_value":1`,
+		"string number":      `"type":"string-setting","default_value":1`,
+		"color array":        `"type":"color-setting","default_value":[1,0,0,1]`,
+		"color missing g":    `"type":"color-setting","default_value":{"r":1,"b":0,"a":1}`,
+		"color huge":         `"type":"color-setting","default_value":{"r":1e999,"g":0,"b":0,"a":1}`,
+		"allowed object":     `"type":"int-setting","allowed_values":{"a":1}`,
+		"allowed bad item":   `"type":"int-setting","allowed_values":[1,"x"]`,
 	}
-	_, err = ParseDefinitions([]byte(`SECRET-TEXT`))
-	if err == nil || strings.Contains(err.Error(), "SECRET") {
-		t.Fatalf("error: %v", err)
+	good := `{"name":"good","setting_type":"startup","type":"bool-setting","default_value":true}`
+	for name, body := range tests {
+		in := `{"settings":[` + good + `,{"name":"a","setting_type":"startup",` + body + `},` + good + `]}`
+		defs, err := ParseDefinitions([]byte(in))
+		if err != nil || len(defs) != 3 {
+			t.Errorf("%s: %v %v", name, len(defs), err)
+			continue
+		}
+		bad := defs[1]
+		if bad.Editable || bad.Default != nil || bad.Min != nil || bad.Max != nil || len(bad.AllowedValues) != 0 {
+			t.Errorf("%s: %+v", name, bad)
+		}
+		if bad.Name != "a" || bad.Type == "" {
+			t.Errorf("%s: the setting lost its identity: %+v", name, bad)
+		}
+		if !defs[0].Editable || !defs[2].Editable || defs[2].Default == nil {
+			t.Errorf("%s: a neighbour was hurt", name)
+		}
+	}
+}
+
+func TestParseDefinitionsNoInputInError(t *testing.T) {
+	for _, in := range []string{`SECRET-TEXT`, `{"settings":[{"name":"SECRET-TEXT","order":5}]}`, `{"SECRET-TEXT":}`} {
+		_, err := ParseDefinitions([]byte(in))
+		if err == nil || strings.Contains(err.Error(), "SECRET") {
+			t.Fatalf("%q: error %v", in, err)
+		}
+	}
+}
+
+func TestParseDefinitionsDoubleAllowed(t *testing.T) {
+	defs, err := ParseDefinitions([]byte(`{"settings":[{"name":"d","setting_type":"startup","type":"double-setting","allowed_values":[0.5,1.5]},
+		{"name":"e","setting_type":"startup","type":"double-setting","allowed_values":[2.5]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(defs[0].AllowedValues) != 2 || defs[0].AllowedValues[1] != (Value{Type: TypeDouble, Double: 1.5}) {
+		t.Fatalf("%+v", defs[0].AllowedValues)
+	}
+	if v, e := Validate(defs[0], "1.5"); e != nil || v.Double != 1.5 {
+		t.Errorf("listed: %v %v", v, e)
+	}
+	if _, e := Validate(defs[0], "1.6"); e == nil || e.MessageID != errIDAllowed {
+		t.Errorf("not listed: %v", e)
+	}
+	if _, e := Validate(defs[1], "2.5"); e == nil || e.MessageID != errIDLocked {
+		t.Errorf("one allowed value must lock: %v", e)
+	}
+}
+
+func TestParseDefinitionsManyTinyEntriesStopEarly(t *testing.T) {
+	in := []byte(`{"settings":[` + strings.Repeat("{},", 690000) + `{}]}`)
+	if len(in) > MaxDefinitionsBytes {
+		t.Fatal("test data over the size limit")
+	}
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	if _, err := ParseDefinitions(in); err == nil {
+		t.Fatal("too many settings accepted")
+	}
+	runtime.ReadMemStats(&after)
+	// 10,000 definitions are about 3 MiB; the whole array would be hundreds.
+	if got := after.TotalAlloc - before.TotalAlloc; got > 32<<20 {
+		t.Fatalf("allocated %d MiB before refusing", got>>20)
 	}
 }
 
@@ -182,8 +250,8 @@ func TestParseDefinitionsLimits(t *testing.T) {
 	if defs, err := ParseDefinitions(allowed(MaxAllowedValues)); err != nil || len(defs[0].AllowedValues) != MaxAllowedValues {
 		t.Errorf("%d allowed values: %v", MaxAllowedValues, err)
 	}
-	if _, err := ParseDefinitions(allowed(MaxAllowedValues + 1)); err == nil {
-		t.Error("too many allowed values accepted")
+	if defs, err := ParseDefinitions(allowed(MaxAllowedValues + 1)); err != nil || defs[0].Editable || len(defs[0].AllowedValues) != 0 {
+		t.Errorf("too many allowed values: editable %v, %v", defs[0].Editable, err)
 	}
 }
 

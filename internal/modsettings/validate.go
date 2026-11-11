@@ -145,6 +145,18 @@ func validateDouble(def Definition, raw string) (Value, *ValidationError) {
 		p := rangeParams(def.Min, def.Max, func(v *Value) string { return strconv.FormatFloat(v.Double, 'g', -1, 64) })
 		return refuse(errIDRange, p)
 	}
+	if len(def.AllowedValues) > 0 {
+		ok := false
+		for _, a := range def.AllowedValues {
+			if a.Double == f {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return refuse(errIDAllowed, nil)
+		}
+	}
 	return Value{Type: TypeDouble, Double: f}, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"math"
 	"strconv"
 	"strings"
@@ -21,75 +22,121 @@ var (
 	errDefsValue   = errors.New("modsettings: a setting has a value that does not fit its type")
 )
 
-// luaList reads a JSON array, or the {} that Lua writes for an empty list.
-type luaList[T any] []T
-
-func (l *luaList[T]) UnmarshalJSON(b []byte) error {
+// rawList reads a JSON array, or the {} that Lua writes for an empty list.
+func rawList(b json.RawMessage) ([]json.RawMessage, error) {
 	b = bytes.TrimSpace(b)
-	if len(b) > 0 && b[0] == '{' {
+	switch {
+	case len(b) == 0 || string(b) == "null":
+		return nil, nil
+	case b[0] == '{':
 		var m map[string]json.RawMessage
-		if err := json.Unmarshal(b, &m); err != nil {
-			return err
+		if err := json.Unmarshal(b, &m); err != nil || len(m) != 0 {
+			return nil, errDefsValue
 		}
-		if len(m) != 0 {
-			return errDefsJSON
-		}
-		*l = nil
-		return nil
+		return nil, nil
 	}
-	var s []T
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+	var l []json.RawMessage
+	if err := json.Unmarshal(b, &l); err != nil {
+		return nil, errDefsValue
 	}
-	*l = s
-	return nil
+	return l, nil
 }
 
 type rawDefinition struct {
-	Name       string                   `json:"name"`
-	Mod        string                   `json:"mod"`
-	Setting    string                   `json:"setting_type"`
-	Type       string                   `json:"type"`
-	Order      string                   `json:"order"`
-	Default    json.RawMessage          `json:"default_value"`
-	Min        json.RawMessage          `json:"minimum_value"`
-	Max        json.RawMessage          `json:"maximum_value"`
-	Allowed    luaList[json.RawMessage] `json:"allowed_values"`
-	Hidden     bool                     `json:"hidden"`
-	AllowBlank bool                     `json:"allow_blank"`
-	AutoTrim   bool                     `json:"auto_trim"`
-}
-
-type rawDefinitions struct {
-	Settings luaList[rawDefinition] `json:"settings"`
+	Name       string          `json:"name"`
+	Mod        string          `json:"mod"`
+	Setting    string          `json:"setting_type"`
+	Type       string          `json:"type"`
+	Order      string          `json:"order"`
+	Default    json.RawMessage `json:"default_value"`
+	Min        json.RawMessage `json:"minimum_value"`
+	Max        json.RawMessage `json:"maximum_value"`
+	Allowed    json.RawMessage `json:"allowed_values"`
+	Hidden     bool            `json:"hidden"`
+	AllowBlank bool            `json:"allow_blank"`
+	AutoTrim   bool            `json:"auto_trim"`
 }
 
 // ParseDefinitions parses the JSON a definitions run writes, enforcing the
-// limits above and ignoring unknown fields. It keeps the file's order.
+// limits above and ignoring unknown fields. It keeps the file's order. The
+// settings array is read one entry at a time and stops at the entry past
+// MaxSettings, so a file of many tiny entries costs little. A setting whose
+// values do not fit its type is returned not editable; the file as a whole
+// fails only for its size, its JSON shape or its number of settings.
 func ParseDefinitions(data []byte) (Definitions, error) {
 	if len(data) > MaxDefinitionsBytes {
 		return nil, errDefsSize
 	}
-	var raw rawDefinitions
-	// The error is replaced so no text from the file reaches a log.
-	if err := json.Unmarshal(data, &raw); err != nil {
+	// Errors from here are replaced, so no text from the file reaches a log.
+	dec := json.NewDecoder(bytes.NewReader(data))
+	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
 		return nil, errDefsJSON
 	}
-	if len(raw.Settings) > MaxSettings {
-		return nil, errDefsCount
-	}
-	defs := make(Definitions, 0, len(raw.Settings))
-	for i := range raw.Settings {
-		d, err := convertDefinition(&raw.Settings[i])
+	defs := Definitions{}
+	for dec.More() {
+		key, err := dec.Token()
 		if err != nil {
+			return nil, errDefsJSON
+		}
+		if key != "settings" {
+			var skip json.RawMessage
+			if err := dec.Decode(&skip); err != nil {
+				return nil, errDefsJSON
+			}
+			continue
+		}
+		if defs, err = readSettings(dec, defs); err != nil {
 			return nil, err
 		}
-		defs = append(defs, d)
+	}
+	if t, err := dec.Token(); err != nil || t != json.Delim('}') {
+		return nil, errDefsJSON
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return nil, errDefsJSON
 	}
 	return defs, nil
 }
 
-func convertDefinition(r *rawDefinition) (Definition, error) {
+// readSettings reads the value of the "settings" key: an array, or the {}
+// Lua writes for an empty one (null is read as empty too).
+func readSettings(dec *json.Decoder, defs Definitions) (Definitions, error) {
+	t, err := dec.Token()
+	if err != nil {
+		return nil, errDefsJSON
+	}
+	switch t {
+	case nil:
+		return defs, nil
+	case json.Delim('{'):
+		if t, err := dec.Token(); err != nil || t != json.Delim('}') {
+			return nil, errDefsJSON
+		}
+		return defs, nil
+	case json.Delim('['):
+	default:
+		return nil, errDefsJSON
+	}
+	for dec.More() {
+		if len(defs) >= MaxSettings {
+			return nil, errDefsCount
+		}
+		var r rawDefinition
+		if err := dec.Decode(&r); err != nil {
+			return nil, errDefsJSON
+		}
+		defs = append(defs, convertDefinition(&r))
+	}
+	if t, err := dec.Token(); err != nil || t != json.Delim(']') {
+		return nil, errDefsJSON
+	}
+	return defs, nil
+}
+
+// convertDefinition builds a Definition. A setting of an unknown type, or one
+// whose values do not fit its type, comes back not editable and without
+// values.
+func convertDefinition(r *rawDefinition) Definition {
 	d := Definition{
 		Name:       r.Name,
 		Mod:        r.Mod,
@@ -102,35 +149,47 @@ func convertDefinition(r *rawDefinition) (Definition, error) {
 	}
 	d.Editable = knownValueType(d.Type) && validSetting(d.Setting) &&
 		r.Name != "" && len(r.Name) <= maxNameBytes && utf8.ValidString(r.Name) &&
+		// Go's JSON reader turns invalid UTF-8 into U+FFFD.
 		!strings.ContainsRune(r.Name, utf8.RuneError)
 	if !knownValueType(d.Type) {
-		return d, nil
+		return d
 	}
-	if len(r.Allowed) > MaxAllowedValues {
-		return d, errDefsAllowed
+	if err := fillValues(&d, r); err != nil {
+		d.Default, d.Min, d.Max, d.AllowedValues = nil, nil, nil, nil
+		d.Editable = false
 	}
-	var err error
+	return d
+}
+
+func fillValues(d *Definition, r *rawDefinition) error {
+	allowed, err := rawList(r.Allowed)
+	if err != nil {
+		return err
+	}
+	if len(allowed) > MaxAllowedValues {
+		return errDefsAllowed
+	}
 	if d.Default, err = parseOptionalValue(d.Type, r.Default); err != nil {
-		return d, err
+		return err
 	}
 	if d.Type == TypeInt || d.Type == TypeDouble {
 		if d.Min, err = parseOptionalValue(d.Type, r.Min); err != nil {
-			return d, err
+			return err
 		}
 		if d.Max, err = parseOptionalValue(d.Type, r.Max); err != nil {
-			return d, err
+			return err
 		}
 	}
-	if d.Type == TypeInt || d.Type == TypeString {
-		for _, a := range r.Allowed {
+	if d.Type == TypeInt || d.Type == TypeDouble || d.Type == TypeString {
+		for _, a := range allowed {
 			v, err := parseValue(d.Type, a)
 			if err != nil {
-				return d, err
+				return err
 			}
 			d.AllowedValues = append(d.AllowedValues, v)
 		}
 	}
-	return d, nil
+	return nil
 }
 
 func knownValueType(t ValueType) bool {

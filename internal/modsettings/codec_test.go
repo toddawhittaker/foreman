@@ -2,9 +2,12 @@ package modsettings
 
 import (
 	"bytes"
+	"encoding/binary"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -111,7 +114,7 @@ func TestGet11StoresIntAsDouble(t *testing.T) {
 	}
 }
 
-// diffBytes returns the first and last differing offsets of a and b of the
+// diffRange returns the first and last differing offsets of a and b of the
 // same length, or -1, -1.
 func diffRange(a, b []byte) (first, last int) {
 	first, last = -1, -1
@@ -279,7 +282,7 @@ func TestSetMissingEntryFromDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// An empty file: the three groups, no entries.
+	// An empty file: a root with no groups.
 	empty := []byte{2, 0, 1, 0, 24, 0, 1, 0, 0, 5, 0, 0, 0, 0, 0}
 	f, err := Decode(empty)
 	if err != nil {
@@ -340,32 +343,123 @@ func TestSetMissingEntryFromDefaults(t *testing.T) {
 	}
 }
 
-func TestSetMissingEntryWithoutDefaults(t *testing.T) {
+func TestSetMissingEntryNeedsDefaults(t *testing.T) {
 	empty := []byte{2, 0, 1, 0, 24, 0, 1, 0, 0, 5, 0, 0, 0, 0, 0}
-	cases := []Value{
-		{Type: TypeBool, Bool: true},
-		{Type: TypeInt, Int: -4},
-		{Type: TypeDouble, Double: 2.5},
-		{Type: TypeString, String: "hi"},
-		{Type: TypeString, String: ""},
-		{Type: TypeColor, Color: Color{R: 0.1, G: 0.2, B: 0.3, A: 0.4}},
-	}
-	for _, want := range cases {
+	other, _ := Decode(empty)
+	defaults, _ := Decode(readGame(t, "game-2.1.24.dat"))
+	for name, d := range map[string]*File{"nil defaults": nil, "defaults lacking the entry": other} {
 		f, _ := Decode(empty)
-		// Defaults that lack the entry behave like no defaults.
-		d, _ := Decode(empty)
-		if err := f.Set(RuntimePerUser, "fm-new", want, d); err != nil {
-			t.Fatalf("%s: %v", want.Type, err)
+		if err := f.Set(RuntimePerUser, "fm-new", Value{Type: TypeBool}, d); err == nil {
+			t.Errorf("%s: Set of an entry in neither file succeeded", name)
 		}
-		out, _ := f.Encode()
-		g, err := Decode(out)
-		if err != nil {
-			t.Fatal(err)
+		if out, _ := f.Encode(); !bytes.Equal(out, empty) {
+			t.Errorf("%s: failed Set changed the file", name)
 		}
-		got, found, err := g.Get(RuntimePerUser, "fm-new")
-		if err != nil || !found || got != want {
-			t.Errorf("%s: got %+v %v %v", want.Type, got, found, err)
-		}
+	}
+	// A defaults entry of another group does not count.
+	f, _ := Decode(empty)
+	if err := f.Set(Startup, "fm-glo-int", Value{Type: TypeInt, Int: 1}, defaults); err == nil {
+		t.Error("an entry from another group was copied")
+	}
+}
+
+func TestSetMissingEntryOn11CopiesDoubleNode(t *testing.T) {
+	defaults, err := Decode(readGame(t, "game-1.1.110.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := Decode([]byte{1, 0, 1, 0, 110, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Set(Startup, "fm-sta-int", Value{Type: TypeInt, Int: 3}, defaults); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := f.Encode()
+	// The int is a type 2 double node, as the 1.1 game reads it, not type 6.
+	want := append(append([]byte{0, 10}, "fm-sta-int"...), 5, 0, 1, 0, 0, 0, 0, 5)
+	want = append(want, "value"...)
+	want = append(want, 2, 0, 0, 0, 0, 0, 0, 0, 0x08, 0x40)
+	if !bytes.Contains(out, want) {
+		t.Fatalf("1.1 entry not a double node: %x", out)
+	}
+	g, err := Decode(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, found, err := g.Get(Startup, "fm-sta-int"); err != nil || !found || v.Type != TypeDouble || v.Double != 3 {
+		t.Fatalf("%+v %v %v", v, found, err)
+	}
+}
+
+func TestDuplicateNames(t *testing.T) {
+	// Two startup entries named "x": 1 then 2, as hand-built bytes.
+	entry := func(v byte) []byte {
+		e := []byte{0, 1, 'x', 5, 0, 1, 0, 0, 0, 0, 5}
+		e = append(e, "value"...)
+		return append(e, 1, 0, v)
+	}
+	b := []byte{1, 0, 1, 0, 1, 0, 1, 0, 0, 5, 0, 1, 0, 0, 0, 0, 7}
+	b = append(b, "startup"...)
+	b = append(b, 5, 0, 2, 0, 0, 0)
+	b = append(b, entry(0)...)
+	b = append(b, entry(1)...)
+	f, err := Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Get reads the last copy.
+	if v, _, _ := f.Get(Startup, "x"); !v.Bool {
+		t.Fatal("Get did not return the last copy")
+	}
+	if err := f.Set(Startup, "x", Value{Type: TypeBool}, nil); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := f.Encode()
+	want := append([]byte(nil), b...)
+	want[len(want)-1] = 0
+	if !bytes.Equal(out, want) {
+		t.Fatalf("Set did not write both copies\n got %x\nwant %x", out, want)
+	}
+	// A mismatch leaves both copies as they were.
+	if err := f.Set(Startup, "x", Value{Type: TypeInt, Int: 1}, nil); err == nil {
+		t.Fatal("mismatch accepted")
+	}
+	if out2, _ := f.Encode(); !bytes.Equal(out2, want) {
+		t.Fatal("failed Set changed a copy")
+	}
+}
+
+func TestSetIntTooBigFor11IsClear(t *testing.T) {
+	f, _ := Decode(readGame(t, "game-1.1.110.dat"))
+	err := f.Set(Startup, "fm-sta-int", Value{Type: TypeInt, Int: 1 << 60}, nil)
+	if !errors.Is(err, errIntTooBig) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestDecodeNestedClaimedCountsAllocateLittle(t *testing.T) {
+	// Every level claims as many entries as the rest of a 1 MiB file could
+	// hold, then holds one: a decoder that reserves from the claim would
+	// allocate gigabytes across the levels.
+	const size = 1 << 20
+	in := []byte{1, 0, 1, 0, 1, 0, 1, 0, 0}
+	for i := 0; i < maxDepth; i++ {
+		claim := uint32((size - len(in) - 1000) / minPairBytes) //nolint:gosec // under 1 MiB
+		in = append(in, 5, 0)
+		in = binary.LittleEndian.AppendUint32(in, claim)
+		in = append(in, 1, 'k')
+	}
+	in = append(in, make([]byte, size-len(in))...)
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	if _, err := Decode(in); err == nil {
+		t.Fatal("crafted file accepted")
+	}
+	runtime.ReadMemStats(&after)
+	if got := after.TotalAlloc - before.TotalAlloc; got > 4*size {
+		t.Fatalf("allocated %d bytes for a %d byte file", got, size)
 	}
 }
 
