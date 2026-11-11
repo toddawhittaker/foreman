@@ -1,9 +1,12 @@
 package game
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"strconv"
@@ -50,6 +53,9 @@ type controlMod struct {
 	output string
 	// maxOutput is the most bytes of output that are read.
 	maxOutput int64
+	// memory is the container's memory limit in bytes; zero means
+	// previewMemory.
+	memory int64
 }
 
 // script makes the params file, creates a map from the same seed, preset and
@@ -120,21 +126,25 @@ type modEntry struct {
 }
 
 // addControlMod puts the control-only mod in the work folder and enables it
-// in the mod list that makePreviewDir wrote.
+// in the mod list: the one already in the work folder's mods folder (a
+// definitions run has the world's own), else the default list that
+// makePreviewDir leaves out, for req's game.
 func addControlMod(base *os.Root, name string, req PreviewRequest, m controlMod, info []byte) error {
 	dir, err := base.OpenRoot(name)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = dir.Close() }()
-	var list struct {
-		Mods []modEntry `json:"mods"`
-	}
-	if err := json.Unmarshal(world.DefaultModList(req.GameVersion, req.SpaceAge), &list); err != nil {
+	listPath := path.Join(world.ModsDir, world.ModListFile)
+	current := world.DefaultModList(req.GameVersion, req.SpaceAge)
+	if _, err := dir.Lstat(listPath); err == nil {
+		if current, err = world.ReadSmallFile(dir, listPath, maxWorkModList); err != nil {
+			return fmt.Errorf("could not read the mod list: %w", err)
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	list.Mods = append(list.Mods, modEntry{m.name, true})
-	modList, err := json.MarshalIndent(list, "", "  ")
+	modList, err := withControlMod(current, m.name)
 	if err != nil {
 		return err
 	}
@@ -143,15 +153,45 @@ func addControlMod(base *os.Root, name string, req PreviewRequest, m controlMod,
 		return err
 	}
 	for file, data := range map[string][]byte{
-		path.Join(world.ModsDir, world.ModListFile): append(modList, '\n'),
-		path.Join(modDir, "info.json"):              info,
-		path.Join(modDir, "control.lua"):            m.control,
+		listPath:                         append(modList, '\n'),
+		path.Join(modDir, "info.json"):   info,
+		path.Join(modDir, "control.lua"): m.control,
 	} {
 		if err := dir.WriteFile(file, data, world.FileMode); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// maxWorkModList is the most bytes read of a mod list a run starts from.
+const maxWorkModList = 4 << 20
+
+// withControlMod adds an enabled entry for the mod called name to the mod
+// list JSON, keeping every other entry and field of the list as it is.
+func withControlMod(list []byte, name string) ([]byte, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(list, &top); err != nil {
+		return nil, fmt.Errorf("the mod list is not JSON: %w", err)
+	}
+	var mods []json.RawMessage
+	if raw, ok := top["mods"]; ok {
+		if err := json.Unmarshal(raw, &mods); err != nil {
+			return nil, fmt.Errorf("the mod list has no list of mods: %w", err)
+		}
+	}
+	entry, err := json.Marshal(modEntry{name, true})
+	if err != nil {
+		return nil, err
+	}
+	mods = append(mods, entry)
+	if top == nil {
+		top = map[string]json.RawMessage{}
+	}
+	if top["mods"], err = json.Marshal(mods); err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(top, "", "  ")
 }
 
 // controlModSpec is a control mod's container: a preview container with its
@@ -169,7 +209,7 @@ func (c *Controller) controlModSpec(image, dir string, req PreviewRequest, m con
 		Entrypoint: []string{"/bin/sh"},
 		Cmd:        []string{"-c", m.script()},
 		User:       c.user,
-		HostConfig: c.oneOffHostConfig(dir),
+		HostConfig: c.oneOffHostConfigMem(dir, cmp.Or(m.memory, previewMemory)),
 	}
 }
 
