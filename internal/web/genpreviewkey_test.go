@@ -2,12 +2,27 @@ package web
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/resource"
 )
+
+// SPEC 5.6: after a change to Nauvis's own controls only Nauvis is drawn
+// again, and it stays first in the zip and the planet list.
+func TestPreviewStoreKeepsThePlanetsInOrder(t *testing.T) {
+	st := newPreviewStore(time.Now)
+	order := []string{"nauvis", "vulcanus", "gleba"}
+	before := previewKey{all: "a", planets: map[string]string{"nauvis": "n1", "vulcanus": "v", "gleba": "g"}}
+	after := previewKey{all: "b", planets: map[string]string{"nauvis": "n2", "vulcanus": "v", "gleba": "g"}}
+	_, _ = st.add(1, before, "World", "7", []game.PNG{{Planet: "nauvis", Data: pngBytes}, {Planet: "vulcanus", Data: pngBytes}, {Planet: "gleba", Data: pngBytes}}, order)
+	_, _ = st.add(1, after, "World", "7", onePNG("nauvis"), order)
+	if got := st.byUser[1].planets; !slices.Equal(got, order) {
+		t.Errorf("planets %v, want %v", got, order)
+	}
+}
 
 // testKey is a key whose planets all share its one value, as before
 // planets had keys of their own.
@@ -94,7 +109,7 @@ func TestPreviewStoreKeepsPlanetsWhoseSettingsDidNotChange(t *testing.T) {
 	after := settingsKey(spaceAgeReq(t, map[string]any{"scrap": bigControl}))
 	fulgoraCount := resource.Result{Planet: "fulgora", Resources: map[string]resource.Resource{"scrap": {Total: 5}}}
 
-	_, _ = st.add(1, before, "World", "7", []game.PNG{{Planet: "nauvis", Data: pngBytes}, {Planet: "fulgora", Data: pngBytes}})
+	_, _ = st.add(1, before, "World", "7", []game.PNG{{Planet: "nauvis", Data: pngBytes}, {Planet: "fulgora", Data: pngBytes}}, nil)
 	_, _ = st.addResources(1, before, "World", "7", "nauvis", nauvisCount)
 	_, _ = st.addResources(1, before, "World", "7", "fulgora", fulgoraCount)
 
@@ -126,7 +141,7 @@ func TestPreviewStoreKeepsPlanetsWhoseSettingsDidNotChange(t *testing.T) {
 	// A seed change drops them all.
 	seed := spaceAgeReq(t, map[string]any{"scrap": bigControl})
 	seed.Seed = 8
-	_, _ = st.add(1, settingsKey(seed), "World", "8", onePNG("fulgora"))
+	_, _ = st.add(1, settingsKey(seed), "World", "8", onePNG("fulgora"), nil)
 	if _, ok := st.resourcesOf(1, settingsKey(seed), "nauvis"); ok {
 		t.Error("a new seed kept Nauvis's count")
 	}
@@ -160,7 +175,7 @@ func TestLateCountJoinsANewerPreviewOfTheSamePlanet(t *testing.T) {
 	st := newPreviewStore(func() time.Time { return now })
 	before := settingsKey(spaceAgeReq(t, nil))
 	after := settingsKey(spaceAgeReq(t, map[string]any{"scrap": bigControl}))
-	tok, _ := st.add(1, after, "World", "7", onePNG("fulgora"))
+	tok, _ := st.add(1, after, "World", "7", onePNG("fulgora"), nil)
 	if got, err := st.addResources(1, before, "World", "7", "nauvis", nauvisCount); err != nil || got != tok {
 		t.Errorf("token %q, want %q, %v", got, tok, err)
 	}

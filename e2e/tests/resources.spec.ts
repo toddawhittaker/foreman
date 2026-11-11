@@ -628,7 +628,7 @@ test.describe("on the One planet picture", () => {
     await expect(one).toHaveText("Download Nauvis with resource amounts (PNG)");
     await expect(one).toHaveAttribute("href", /\/nauvis\/download\?amounts=1$/);
     await expect(zip).toHaveAttribute("href", /\/all\.zip\?amounts=1$/);
-    await expect(zip).toHaveText("Download all drawn planets (zip), with resource amounts where counted");
+    await expect(zip).toHaveText("Download all drawn planets (zip), with resource amounts");
     const res = await page.request.get(await one.getAttribute("href") ?? "");
     expect(res.status()).toBe(200);
     expect(res.headers()["content-disposition"]).toContain("-nauvis-amounts.png");

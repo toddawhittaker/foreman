@@ -45,6 +45,9 @@ type ResourceView struct {
 	Error   i18n.Msg
 	// Retry is true when asking again may work, as after a busy or failed run.
 	Retry bool
+	// Kept is true when the preview holds the count, so a download can draw
+	// it; a count of settings the person has moved on from is shown, not kept.
+	Kept bool
 }
 
 // ResourceLabel is one patch's label, centred on Left and Top percent of the
@@ -163,7 +166,9 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 	line, _ := mapgen.Line(req.GameVersion)
 	key := settingsKey(req)
 	if res, ok := s.previews.resourcesOf(u.ID, key, planet); ok {
-		return resourceView(localeOf(r), line, planet, res, req.Size)
+		v := resourceView(localeOf(r), line, planet, res, req.Size)
+		v.Kept = true
+		return v
 	}
 	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(previewDeadline)); err != nil {
 		s.log.Warn("set the resource count's write deadline", "error", err)
@@ -174,11 +179,14 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 		retry := !errors.Is(err, game.ErrPreviewImageMissing) && !errors.Is(err, resource.ErrInvalid)
 		return &ResourceView{Error: s.controlModFailure(r, req.GameVersion, err, "resource count", resourceMsgs), Retry: retry}
 	}
-	if _, err := s.previews.addResources(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), planet, res); err != nil {
+	token, err := s.previews.addResources(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), planet, res)
+	if err != nil {
 		s.log.Error("keep resource amounts", "error", err)
 		return &ResourceView{Error: i18n.M("worlds.generate.resources.failed"), Retry: true}
 	}
-	return resourceView(localeOf(r), line, planet, res, req.Size)
+	v := resourceView(localeOf(r), line, planet, res, req.Size)
+	v.Kept = token != ""
+	return v
 }
 
 // resourceMsgs is how a failed resource count is worded.

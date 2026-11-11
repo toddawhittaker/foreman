@@ -3373,3 +3373,53 @@ a.mod-name {
   /* Black dims the page in both themes; a text colour would lighten the dark one. */
   background: rgb(0 0 0 / 50%);
 }
+
+/* A download's preparation: which planet of how many, and the choices on a failure (SPEC 5.6). */
+.download-prep {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.download-prep__wait:not([hidden]) {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.download-prep__wait > p,
+.download-prep__actions {
+  margin: 0;
+}
+
+.download-prep__wait progress {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-selected);
+}
+
+.download-prep .message[hidden] {
+  display: none;
+}
+
+.download-prep__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* In the large view it lies over the top of the stage, so the picture keeps its place (DESIGN 8.8),
+   between the Previous and Next arrows and above zoom, so no control or its focus ring is hidden. */
+.large-view__stage > .download-prep {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline: calc(var(--space-2) + 3rem) calc(var(--space-5) + 3rem);
+  max-inline-size: 30rem;
+  max-block-size: calc(100% - var(--space-5) - 3rem - var(--space-4));
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}

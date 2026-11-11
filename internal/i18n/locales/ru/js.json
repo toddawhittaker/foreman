@@ -21,5 +21,11 @@
   "js.generate.moved": "{field}: установлено {value}, чтобы диапазон оставался допустимым.",
   "js.preview.download_territories": "Скачать карту с территориями: {planet}",
   "js.preview.download_amounts": "Скачать карту с количеством ресурсов: {planet}",
-  "js.preview.download_both": "Скачать карту с территориями и количеством ресурсов: {planet}"
+  "js.preview.download_both": "Скачать карту с территориями и количеством ресурсов: {planet}",
+  "js.preview.prepare_amounts": "Подсчёт ресурсов для скачивания, планета {n} из {total}: {planet}…",
+  "js.preview.prepare_territories": "Поиск территорий разрушителей для скачивания, планета {n} из {total}: {planet}…",
+  "js.preview.prepare_failed": "Скачивание остановлено на планете: {planet}.",
+  "js.preview.prepare_without": "Скачать без планеты: {planet}",
+  "js.preview.prepare_canceled": "Скачивание отменено.",
+  "js.preview.prepare_busy": "Готовится другое скачивание. Дождитесь его или сначала отмените."
 }
