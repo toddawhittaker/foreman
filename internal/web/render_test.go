@@ -269,7 +269,7 @@ func pageCases() []pageCase {
 		{"settings raw errors", "todd", 400, settingsRawCase(true)},
 		{"settings preview", "todd", 200, settingsPreviewCase()},
 		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
-	}, modPageCases()...)
+	}, append(modPageCases(), modSettingsPageCases()...)...)
 }
 
 // The version fragments render each of their states (SPEC 10.2, 10.7).

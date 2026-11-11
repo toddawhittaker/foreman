@@ -86,6 +86,7 @@ func (s *server) modRoutes() {
 	s.mux.HandleFunc("GET "+PathModPlan, s.requireUser(s.handlePlanForm))
 	s.mux.HandleFunc("POST "+PathModPlan, s.requireUser(s.handlePlan))
 	s.modFileRoutes()
+	s.modSettingsRoutes()
 }
 
 // modsWorld finds the world in the path when Foreman can change its mods,

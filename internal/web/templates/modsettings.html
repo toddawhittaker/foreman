@@ -1,0 +1,233 @@
+{{define "title"}}{{t "mods.settings.edit.title" "world" .Page.World.Name}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "world-tabs" .Tabs}}
+{{template "summary" .Problems}}
+{{- if .Loaded}}
+{{template "modsettings-form" .}}
+{{- else}}
+{{- /* A cache miss runs the world's game for a few seconds, so the form loads after the page (SPEC 9.6). */}}
+<div id="mod-settings-form" class="mod-settings" hx-get="{{.FormPath}}" hx-trigger="load" hx-swap="outerHTML">
+  <section class="panel" aria-labelledby="mod-settings-heading">
+    <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
+    <p role="status" class="empty">{{t "mods.settings.edit.loading"}}</p>
+  </section>
+</div>
+{{- end}}
+{{- end}}
+{{end}}
+
+{{/* The form part: the settings, or why they cannot be read. Takes
+     ModSettingsPage. */}}
+{{define "modsettings-form" -}}
+{{- /* Loaded on its own, the form part says what came back through #announcer (WCAG 4.1.3). */}}
+{{- if .Fragment}}
+<div hx-swap-oob="innerHTML:#announcer">{{if not .RunError.IsZero}}{{msg .RunError}}{{else}}{{t "mods.settings.edit.loaded"}}{{end}}</div>
+{{- end}}
+<div id="mod-settings-form" class="mod-settings">
+{{- if .Changed}}
+<div class="message message--warning" id="mod-settings-changed" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.settings.edit.changed"}}</p>
+</div>
+{{- end}}
+{{- if .NoChange}}
+<div class="message message--note" id="mod-settings-nochange" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.note"}}</strong> {{t "mods.settings.edit.no_change"}}</p>
+</div>
+{{- end}}
+{{- if not .Busy.IsZero}}
+<div class="message message--note" id="mod-settings-busy" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>
+</div>
+{{- end}}
+{{- if not .RunError.IsZero}}
+<section class="panel" aria-labelledby="mod-settings-heading">
+  <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
+  <div class="message message--error" id="mod-settings-error">
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .RunError}}</p>
+    {{- /* Offer only what the world has: no file means nothing to download. */}}
+    <p>{{if .HasFile}}{{tHTML "mods.settings.edit.run.fallback" "file" (code .SettingsFile)}}{{else}}{{tHTML "mods.settings.edit.run.fallback_upload" "file" (code .SettingsFile)}}{{end}}</p>
+    <div class="actions">
+      {{- with .ImageLink}}
+      <a href="{{.}}" class="button" id="act-image">{{if $.World.Active}}{{t "mods.settings.edit.run.server_link"}}{{else}}{{t "mods.settings.edit.run.world_link"}}{{end}}</a>
+      {{- end}}
+      <a href="{{.Path}}" class="button" id="act-retry">{{t "mods.settings.edit.retry"}}</a>
+      {{- if .HasFile}}
+      <a href="{{.FilePath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a>
+      {{- end}}
+      <a href="{{.UploadPath}}" id="act-settings-upload">{{t "mods.settings.edit.upload_link"}}</a>
+    </div>
+  </div>
+</section>
+{{- else if .Empty}}
+<section class="panel" aria-labelledby="mod-settings-heading">
+  <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
+  <p class="empty">{{t "mods.settings.edit.none"}}</p>
+  <div class="actions"><a href="{{.ModsPath}}">{{t "mods.settings.edit.back"}}</a></div>
+</section>
+{{- else}}
+{{- if .CanSave}}
+{{- /* One form: it says what saving will do, so it is the confirmation, as the upload's is (DESIGN 7.4). */}}
+<form method="post" action="{{.Path}}" class="panels" novalidate>
+  <input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+  <input type="hidden" name="seen" value="{{.Seen}}">
+  {{- /* What the form said saving does depends on these; a post that differs from now is refused (SPEC 17.8). */}}
+  {{- if .NewMap}}
+  <input type="hidden" name="map" value="1">
+  {{- end}}
+  {{- if .Running}}
+  <input type="hidden" name="running" value="1">
+  {{- end}}
+{{- end}}
+<section class="panel" aria-labelledby="mod-settings-heading">
+  <h2 id="mod-settings-heading">{{t "mods.settings.edit.startup.heading"}}</h2>
+  {{- if .Startup}}
+  <p>{{if .Running}}{{t "mods.settings.apply_running"}}{{else}}{{t "mods.settings.apply"}}{{end}}</p>
+  {{- if and .CanSave .HasRequired}}
+  {{template "required-note"}}
+  {{- end}}
+  {{template "modsettings-groups" .Startup}}
+  {{- else}}
+  <p class="empty">{{t "mods.settings.edit.startup.none"}}</p>
+  {{- end}}
+</section>
+{{- if and .NewMap .Map}}
+<section class="panel" aria-labelledby="mod-settings-map-heading">
+  <h2 id="mod-settings-map-heading">{{t "mods.settings.edit.map.heading"}}</h2>
+  <p>{{t "mods.settings.edit.map.new"}}</p>
+  {{template "modsettings-groups" .Map}}
+</section>
+{{- end}}
+{{- if .CanSave}}
+<section class="panel" aria-labelledby="mod-settings-save-heading">
+  <h2 id="mod-settings-save-heading" class="visually-hidden">{{t "mods.settings.edit.save_heading"}}</h2>
+  {{- if .Running}}
+  {{template "countdown" .CountdownForm}}
+  {{- end}}
+  <div class="mod-settings-will">
+    <p>{{t "common.confirm.will"}}</p>
+    <ul>
+      {{- if .Running}}
+      <li>{{t "mods.plan.warn_stop"}}</li>
+      {{- end}}
+      <li>{{t "mods.plan.snapshot" "world" .World.Name "label" (m "worlds.snapshot.label.before_mods")}}</li>
+      <li>{{tHTML "mods.settings.edit.write" "file" (code .SettingsFile)}}</li>
+      {{- if .Running}}
+      <li>{{t "mods.plan.start"}}</li>
+      {{- end}}
+      <li>{{t "mods.plan.undo"}}</li>
+    </ul>
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
+  </div>
+</section>
+</form>
+{{- end}}
+{{- if and (not .NewMap) .Map}}
+{{- /* A save holds its own map values, which win over the file's; an admin changes them in the game (plan R1). */}}
+<section class="panel" aria-labelledby="mod-settings-map-heading">
+  <h2 id="mod-settings-map-heading">{{t "mods.settings.edit.map.heading"}}</h2>
+  <p>{{t "mods.settings.edit.map.saved"}}</p>
+  {{- range .Map}}
+  <h3 class="ident" translate="no">{{.Mod}}</h3>
+  <dl class="mod-settings-values">
+    {{- range .Fields}}
+    <div>
+      <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</dt>
+      <dd>{{template "modsettings-value" .}}</dd>
+    </div>
+    {{- end}}
+  </dl>
+  {{- end}}
+</section>
+{{- end}}
+{{- if .PerUser}}
+<p class="hint" id="mod-settings-per-user">{{t "mods.settings.edit.per_user"}}</p>
+{{- end}}
+{{- end}}
+</div>
+{{- end}}
+
+{{/* A value shown, not edited. Takes SettingField. */}}
+{{define "modsettings-value" -}}
+{{- if eq .Kind "fixed"}}{{t "mods.settings.edit.fixed"}}
+{{- else if eq .Kind "bool"}}{{if eq .Value "true"}}{{t "mods.settings.edit.on"}}{{else}}{{t "mods.settings.edit.off"}}{{end}}
+{{- else if eq .Kind "color"}}<code>{{.Value}}</code> {{t "mods.settings.edit.alpha_value" "alpha" .Alpha}}
+{{- else}}<code>{{.Value}}</code>
+{{- end}}
+{{- end}}
+
+{{/* One fieldset per mod; label, then the mod's description, then the
+     control (DESIGN 7.2). Takes []SettingGroup. */}}
+{{define "modsettings-groups" -}}
+{{- range .}}
+<fieldset class="mod-settings-group">
+  <legend class="ident" translate="no">{{.Mod}}</legend>
+  {{- range .Fields}}
+  {{- $err := not .Error.IsZero}}
+  {{- $desc := ""}}{{if .Hint}}{{$desc = print .ID "-hint"}}{{end}}{{if $err}}{{$desc = print $desc " " .ID "-error"}}{{end}}
+  {{- if eq .Kind "bool"}}
+  <div class="field">
+    <label class="check"><input type="checkbox" id="{{.ID}}" name="{{.ID}}" value="true"{{if eq .Value "true"}} checked{{end}}
+      {{- with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}> <span{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</span></label>
+    {{template "modsettings-hint" .}}
+    {{template "modsettings-error" .}}
+  </div>
+  {{- else if eq .Kind "color"}}
+  <fieldset class="field">
+    <legend{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</legend>
+    {{template "modsettings-hint" .}}
+    <div class="inline-row">
+      <label for="{{.ID}}" class="mod-settings-sub">{{t "mods.settings.edit.color"}}</label>
+      <input type="color" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}"{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+      <label for="{{.AlphaID}}" class="mod-settings-sub required">{{t "mods.settings.edit.alpha"}}</label>
+      <input type="text" id="{{.AlphaID}}" name="{{.AlphaID}}" value="{{.Alpha}}" inputmode="decimal" class="mod-settings-number" autocomplete="off" spellcheck="false" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+    </div>
+    {{template "modsettings-error" .}}
+  </fieldset>
+  {{- else if .Editable}}
+  <div class="field">
+    <label for="{{.ID}}"{{with .LabelLang}} lang="{{.}}"{{end}}{{if or .RawName .Required}} class="{{if .RawName}}ident{{end}}{{if and .RawName .Required}} {{end}}{{if .Required}}required{{end}}"{{end}}{{if .RawName}} translate="no"{{end}}>{{.Label}}</label>
+    {{template "modsettings-hint" .}}
+    {{- if eq .Kind "select"}}
+    {{- $v := .Value}}
+    <select id="{{.ID}}" name="{{.ID}}"{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+      {{- range .Options}}
+      <option value="{{.}}"{{if eq . $v}} selected{{end}}>{{.}}</option>
+      {{- end}}
+    </select>
+    {{- else if eq .Kind "int"}}
+    {{- /* Text, not type=number: a number field drops a decimal comma in some browsers (2,5 posts as 25), so the server reads the number. */}}
+    <input type="text" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}} class="mod-settings-number" autocomplete="off" spellcheck="false" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+    {{- else if eq .Kind "double"}}
+    <input type="text" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}"{{with .InputMode}} inputmode="{{.}}"{{end}} class="mod-settings-number" autocomplete="off" spellcheck="false" required{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+    {{- else}}
+    <input type="text" id="{{.ID}}" name="{{.ID}}" value="{{.Value}}" autocomplete="off" spellcheck="false"{{if .Required}} required{{end}}{{with $desc}} aria-describedby="{{.}}"{{end}}{{if $err}} aria-invalid="true"{{end}}>
+    {{- end}}
+    {{template "modsettings-error" .}}
+  </div>
+  {{- else}}
+  <dl class="mod-settings-values">
+    <div>
+      <dt{{with .LabelLang}} lang="{{.}}"{{end}}{{if .RawName}} class="ident" translate="no"{{end}}>{{.Label}}</dt>
+      <dd>{{template "modsettings-value" .}}{{if eq .Kind "locked"}} <span class="hint">{{t "mods.settings.edit.locked"}}</span>{{end}}</dd>
+    </div>
+  </dl>
+  {{- end}}
+  {{- end}}
+</fieldset>
+{{- end}}
+{{- end}}
+
+{{/* A control's description, between its label and the control. Takes SettingField. */}}
+{{define "modsettings-hint" -}}
+{{- if .Hint}}<p class="hint" id="{{.ID}}-hint"{{with .HintLang}} lang="{{.}}"{{end}}>{{.Hint}}</p>{{end}}
+{{- end}}
+
+{{/* A control's error, below it. Takes SettingField. */}}
+{{define "modsettings-error" -}}
+{{- if not .Error.IsZero}}<p class="error" id="{{.ID}}-error"><strong>{{t "common.error.label"}}</strong> {{msgHTML .Error}}</p>{{end}}
+{{- end}}
