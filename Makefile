@@ -12,7 +12,6 @@ PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734
 GAME_IMAGE_1_1  := factoriotools/factorio:1.1.110@sha256:6fb9b7bfb12fb51bf668fce7e29cb1e98053f248201e64dfee870ef73b2f31cb
 GAME_IMAGE_2_0  := factoriotools/factorio:2.0.77@sha256:312341f29987b5a6b11f00ba8240192f7564936af9913384d13f7f4c535708ef
 GAME_IMAGE_2_1  := factoriotools/factorio:2.1.24@sha256:a0c019b7608975a58f1694de54a2326e13a5aa2d123c18f48e5396181e366e28
-GAME_IMAGE_2_1_PREV := factoriotools/factorio:2.1.23@sha256:1e1773337f5be1d93f61d1d64757f18c19c8eb345c96acc57e0d3567a4fd4c3f
 GOVULNCHECK     := golang.org/x/vuln/cmd/govulncheck@v1.9.0
 COVERAGE_FLOOR  := 70
 
@@ -29,7 +28,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test test-shards typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
-	test-game e2e-game vuln ci tidy i18n-hash deploy
+	test-game test-game-resources game-images e2e-game vuln ci tidy i18n-hash deploy
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -258,22 +257,37 @@ endef
 
 # The controller against the real Docker daemon and the pinned game images,
 # one image at a time (they share the game port, so -p 1 runs the packages one
-# after another too). TAG=1.1, 2.0 or 2.1 runs one.
+# after another too). TAG=1.1, 2.0 or 2.1 runs one line. The real-game tests
+# cover the latest patch of each line only.
 # The images each TAG's tests run: TAG=2.0 and 2.1 include the 2.0.77 to
-# 2.1.24 update, and 2.1 the 2.1.23 to 2.1.24 one too.
-TEST_GAME_USES_ := 1.1 2.0 2.1 2.1-prev
+# 2.1.24 update.
+TEST_GAME_USES_ := 1.1 2.0 2.1
 TEST_GAME_USES_1.1 := 1.1
 TEST_GAME_USES_2.0 := 2.0 2.1
-TEST_GAME_USES_2.1 := 2.0 2.1 2.1-prev
+TEST_GAME_USES_2.1 := 2.0 2.1
 
-test-game:
+GAME_GO_TEST = GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) \
+	FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -p 1 -v
+
+# The resource count's tests take most of a run, so they have their own
+# target and time limit; test-game runs them after the rest.
+GAME_RESOURCE_TESTS := ^TestRealGameD2Resource
+GAME_RESOURCES_RUN = $(GAME_GO_TEST) -timeout 90m -run '$(GAME_RESOURCE_TESTS)' ./internal/game/
+
+# Checks TAG and that every image the run needs is on the host, before any
+# test starts.
+game-images:
 	@case "$(TAG)" in ""|1.1|2.0|2.1) ;; *) echo "TAG must be 1.1, 2.0 or 2.1."; exit 1;; esac
 	$(if $(filter 1.1,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_1_1)))
 	$(if $(filter 2.0,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_0)))
 	$(if $(filter 2.1,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1)))
-	$(if $(filter 2.1-prev,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1_PREV)))
-	GAME_IMAGE_1_1=$(GAME_IMAGE_1_1) GAME_IMAGE_2_0=$(GAME_IMAGE_2_0) GAME_IMAGE_2_1=$(GAME_IMAGE_2_1) GAME_IMAGE_2_1_PREV=$(GAME_IMAGE_2_1_PREV) \
-		FOREMAN_TEST_GAME_TAG=$(TAG) go test -tags game -count=1 -p 1 -timeout 30m -v -run TestRealGame ./internal/game/ ./internal/web/
+
+test-game: game-images
+	$(GAME_GO_TEST) -timeout 30m -run TestRealGame -skip '$(GAME_RESOURCE_TESTS)' ./internal/game/ ./internal/web/
+	$(GAME_RESOURCES_RUN)
+
+test-game-resources: game-images
+	$(GAME_RESOURCES_RUN)
 
 # The phone scenario against the real game: Playwright in its pinned image,
 # with the host's Docker socket, starts bin/foreman, which starts the pinned

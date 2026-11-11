@@ -135,7 +135,16 @@ The targets (STACK.md, section 13):
   `TAG=1.1`, `2.0` or `2.1` runs one. It does not download the game
   images: pull each one first with the `docker pull` command in the error
   it prints. It starts containers named `foreman-e3test-*` and removes
-  them, with their data under `.cache/test-game/`.
+  them, with their data under `.cache/test-game/`. The tests run the
+  latest patch of each line only (1.1.110, 2.0.77 and 2.1.24), and the
+  target checks that each image it needs is on the host before any test
+  starts. It runs everything but the resource count's tests within 30
+  minutes, then those tests as `make test-game-resources` does.
+- `make test-game-resources`: run only the resource count's real-game
+  tests (SPEC 5.6), with their own limit of 90 minutes, after the same
+  image check. `TAG` works as for `make test-game`. They take most of a
+  full run: about 44 minutes for the three lines, against about 14 for
+  the rest.
 - `make e2e-game`: run the phone scenario against the real 2.1 game image.
   It needs that image on the host (it prints the `docker pull` to run) and
   a Docker socket (`DOCKER_SOCK`, `/var/run/docker.sock` by default).
