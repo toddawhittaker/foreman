@@ -248,17 +248,17 @@ func TestResourcesNeedSignInAndTheSameOrigin(t *testing.T) {
 func TestPreviewStoreKeepsResourcesPerPlanet(t *testing.T) {
 	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, _ := st.add(1, "k1", "World", "7", onePNG("nauvis"))
+	tok, _ := st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"))
 	before := st.byUser[1].bytes
 	held, _ := st.entry(tok, 1)
-	if tok2, err := st.addResources(1, "k1", "World", "7", "nauvis", nauvisCount); err != nil || tok2 != tok {
+	if tok2, err := st.addResources(1, testKey("k1"), "World", "7", "nauvis", nauvisCount); err != nil || tok2 != tok {
 		t.Fatalf("token %q, %v", tok2, err)
 	}
 	if held.resources != nil {
 		t.Error("a copy taken before the count was written in place")
 	}
 	held, _ = st.entry(tok, 1)
-	_, _ = st.addResources(1, "k1", "World", "7", "vulcanus", nauvisCount)
+	_, _ = st.addResources(1, testKey("k1"), "World", "7", "vulcanus", nauvisCount)
 	if _, ok := held.resources["vulcanus"]; ok {
 		t.Error("a later planet's count reached a copy handed out before it")
 	}
@@ -266,36 +266,36 @@ func TestPreviewStoreKeepsResourcesPerPlanet(t *testing.T) {
 		t.Errorf("%d bytes, want %d", st.byUser[1].bytes, want)
 	}
 	// Counted again, a planet replaces its count rather than adding to the total.
-	_, _ = st.addResources(1, "k1", "World", "7", "nauvis", nauvisCount)
+	_, _ = st.addResources(1, testKey("k1"), "World", "7", "nauvis", nauvisCount)
 	if want := before + 2*resourceBytes(&nauvisCount); st.byUser[1].bytes != want {
 		t.Errorf("counted twice: %d bytes, want %d", st.byUser[1].bytes, want)
 	}
-	if _, ok := st.resourcesOf(1, "k1", "nauvis"); !ok {
+	if _, ok := st.resourcesOf(1, testKey("k1"), "nauvis"); !ok {
 		t.Error("the count is not found")
 	}
-	if _, ok := st.resourcesOf(1, "k1", "gleba"); ok {
+	if _, ok := st.resourcesOf(1, testKey("k1"), "gleba"); ok {
 		t.Error("a planet not counted is found")
 	}
-	if _, ok := st.resourcesOf(2, "k1", "nauvis"); ok {
+	if _, ok := st.resourcesOf(2, testKey("k1"), "nauvis"); ok {
 		t.Error("another user found it")
 	}
 	// More pictures of the same settings keep the counts; other settings drop them.
-	_, _ = st.add(1, "k1", "World", "7", onePNG("gleba"))
-	if _, ok := st.resourcesOf(1, "k1", "nauvis"); !ok {
+	_, _ = st.add(1, testKey("k1"), "World", "7", onePNG("gleba"))
+	if _, ok := st.resourcesOf(1, testKey("k1"), "nauvis"); !ok {
 		t.Error("another picture lost the count")
 	}
-	_, _ = st.add(1, "k2", "World", "8", onePNG("nauvis"))
-	if _, ok := st.resourcesOf(1, "k2", "nauvis"); ok {
+	_, _ = st.add(1, testKey("k2"), "World", "8", onePNG("nauvis"))
+	if _, ok := st.resourcesOf(1, testKey("k2"), "nauvis"); ok {
 		t.Error("new settings kept the old count")
 	}
 	// Kept 15 minutes after the last look, like the pictures.
-	_, _ = st.addResources(1, "k2", "World", "8", "nauvis", nauvisCount)
+	_, _ = st.addResources(1, testKey("k2"), "World", "8", "nauvis", nauvisCount)
 	now = now.Add(previewTTL)
-	if _, ok := st.resourcesOf(1, "k2", "nauvis"); ok {
+	if _, ok := st.resourcesOf(1, testKey("k2"), "nauvis"); ok {
 		t.Error("an expired preview's count is found")
 	}
 	tooBig := resource.Result{Patches: make([]resource.Patch, maxPreviewBytes/96+1)}
-	if _, err := st.addResources(4, "k", "", "1", "nauvis", tooBig); err == nil {
+	if _, err := st.addResources(4, testKey("k"), "", "1", "nauvis", tooBig); err == nil {
 		t.Error("a count over the whole limit was kept")
 	}
 }
@@ -327,25 +327,25 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 func TestLateResultsDoNotReplaceANewerPreview(t *testing.T) {
 	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, _ := st.add(1, "new", "World", "8", onePNG("nauvis"))
-	if got, err := st.addResources(1, "old", "World", "7", "nauvis", nauvisCount); err != nil || got != "" {
+	tok, _ := st.add(1, testKey("new"), "World", "8", onePNG("nauvis"))
+	if got, err := st.addResources(1, testKey("old"), "World", "7", "nauvis", nauvisCount); err != nil || got != "" {
 		t.Errorf("a late count: token %q, %v", got, err)
 	}
-	if got, err := st.addTerritories(1, "old", "World", "7", 1280, threeTerritories); err != nil || got != "" {
+	if got, err := st.addTerritories(1, testKey("old"), "World", "7", 1280, threeTerritories); err != nil || got != "" {
 		t.Errorf("late territories: token %q, %v", got, err)
 	}
 	e := st.byUser[1]
-	if e.token != tok || e.key != "new" || len(e.images) != 1 || e.resources != nil || e.territories != nil || e.bytes != len(pngBytes) {
+	if e.token != tok || e.key.all != "new" || len(e.images) != 1 || e.resources != nil || e.territories != nil || e.bytes != len(pngBytes) {
 		t.Errorf("the newer preview changed: %+v", e)
 	}
-	if _, ok := st.resourcesOf(1, "old", "nauvis"); ok {
+	if _, ok := st.resourcesOf(1, testKey("old"), "nauvis"); ok {
 		t.Error("the late count is found")
 	}
 	// With no preview at all, a result starts one, as before.
-	if got, _ := st.addResources(2, "k", "", "1", "nauvis", nauvisCount); got == "" {
+	if got, _ := st.addResources(2, testKey("k"), "", "1", "nauvis", nauvisCount); got == "" {
 		t.Error("a user with no preview kept no count")
 	}
-	if got, _ := st.addTerritories(3, "k", "", "1", 1280, threeTerritories); got == "" {
+	if got, _ := st.addTerritories(3, testKey("k"), "", "1", 1280, threeTerritories); got == "" {
 		t.Error("a user with no preview kept no territories")
 	}
 }

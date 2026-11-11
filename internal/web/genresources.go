@@ -246,12 +246,17 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 
 // addResources keeps the amounts counted on planet, as add keeps pictures,
 // and returns the preview's token. A count of settings other than the
-// user's current preview is not kept, and the token is blank.
-func (p *previewStore) addResources(user int64, key, name, seed, planet string, res resource.Result) (string, error) {
+// user's current preview is kept only when the planet's share of them is
+// the same; otherwise it is not kept, and the token is blank.
+func (p *previewStore) addResources(user int64, key previewKey, name, seed, planet string, res resource.Result) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.otherLocked(user, key) {
-		return "", nil
+		if p.byUser[user].key.planet(planet) != key.planet(planet) {
+			return "", nil
+		}
+		// The count fits the newer preview too, so it joins that one.
+		key = p.byUser[user].key
 	}
 	e := p.joinLocked(user, key, seed)
 	grown := e.bytes - resourceBytes(e.resources[planet]) + resourceBytes(&res)
@@ -266,13 +271,14 @@ func (p *previewStore) addResources(user int64, key, name, seed, planet string, 
 }
 
 // resourcesOf returns the amounts the user's preview holds for planet with
-// these settings, and keeps the preview another 15 minutes.
-func (p *previewStore) resourcesOf(user int64, key, planet string) (resource.Result, bool) {
+// these settings, or with any whose share for planet is the same, and keeps
+// the preview another 15 minutes.
+func (p *previewStore) resourcesOf(user int64, key previewKey, planet string) (resource.Result, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key || e.resources[planet] == nil {
+	if !ok || e.key.planet(planet) != key.planet(planet) || e.resources[planet] == nil {
 		return resource.Result{}, false
 	}
 	e.expires = p.now().Add(previewTTL)
@@ -280,18 +286,19 @@ func (p *previewStore) resourcesOf(user int64, key, planet string) (resource.Res
 }
 
 // countedPlanets are the planets the user's preview holds amounts for with
-// these settings, so their downloads can draw them.
-func (p *previewStore) countedPlanets(user int64, key string) map[string]bool {
+// these settings, or with any whose share for the planet is the same, so
+// their downloads can draw them.
+func (p *previewStore) countedPlanets(user int64, key previewKey) map[string]bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key {
+	if !ok {
 		return nil
 	}
 	out := map[string]bool{}
 	for planet, res := range e.resources {
-		if res != nil {
+		if res != nil && e.key.planet(planet) == key.planet(planet) {
 			out[planet] = true
 		}
 	}
