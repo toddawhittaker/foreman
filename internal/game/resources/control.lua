@@ -9,15 +9,22 @@
 -- Ores join a patch when their distance on both axes is at most ore_gap (6)
 -- tiles: below that, sparse ores break one island or field into many
 -- crumbs, and on Nauvis no two separate fields join at any gap up to 16
--- (ADR 0015). Wells, the entities of a resource whose product is a fluid,
--- join when their distance on both axes is at most well_gap (24) tiles; the
--- real game's fields stop merging between 18 and 40. Both gaps can be set in
--- params.lua, which only the real-game test does. Fulgora's scrap joins
+-- (ADR 0015). A count with more than dense_ore_tiles ore tiles, far more
+-- than any default map has, joins ores within dense_ore_gap (2) instead, so
+-- its patches are finer: at 6 the richest maps ran into the time limit
+-- before they ran out of memory, and the page said to try again where only
+-- a smaller size helps (ADR 0015). Wells, the entities of a resource whose
+-- product is a fluid, join when their distance on both axes is at most
+-- well_gap (24) tiles; the real game's fields stop merging between 18 and
+-- 40. The gaps and the threshold can be set in params.lua, which only the
+-- real-game test does; a set ore_gap is used as it is. Fulgora's scrap joins
 -- within 16 tiles (ADR 0015): at 2, high-frequency scrap gave each island
 -- dozens of labels; a few labels can join islands across thin channels.
 local params = require("params")
 local radius, planet = params.radius, params.planet
 local ore_gap = params.ore_gap or 6
+local dense_ore_tiles = params.dense_ore_tiles or 400000
+local dense_ore_gap = 2
 local well_gap = params.well_gap or 24
 local resource_gaps = { fulgora = { scrap = 16 } }
 local planet_gaps = resource_gaps[planet] or {}
@@ -80,10 +87,24 @@ script.on_init(function()
   surface.request_to_generate_chunks({ 0, 0 }, radius)
   surface.force_generate_chunk_requests()
 
+  -- The ore tiles that would join at ore_gap, counted without keeping
+  -- entity handles, decide whether this is a dense count.
+  local half = radius * 32
+  if not params.ore_gap then
+    local ores = 0
+    for name, proto in pairs(resource_prototypes()) do
+      if not is_well(proto) and not planet_gaps[name] then
+        ores = ores + surface.count_entities_filtered({ area = { { -half, -half }, { half, half } }, name = name })
+      end
+    end
+    if ores > dense_ore_tiles then
+      ore_gap = dense_ore_gap
+    end
+  end
+
   -- The picture covers tiles [-half, half) on each axis. A tile's key leaves
   -- room for neighbours up to the largest gap beyond each edge, and gives
   -- the tile back, so no coordinates are stored.
-  local half = radius * 32
   local largest = math.max(ore_gap, well_gap)
   for _, g in pairs(planet_gaps) do
     largest = math.max(largest, g)

@@ -4,7 +4,8 @@ package game
 
 // The resource count (SPEC 5.6, 14.3) against the real game images: every
 // planet of each line, at 1280 and 3072, and Nauvis at 3072 with resource
-// frequency and size at 600%. Each run logs its wall time, the container's
+// frequency and size at 600%, which on 2.x must end with the out-of-memory
+// error at the real limits. Each run logs its wall time, the container's
 // peak memory, the patches per resource and the file's size, and stays
 // within the preview limits. The spike also logs how the patches change
 // at 3072 with an ore gap of 2, 4 and 8 tiles, around the stated 6, on the
@@ -253,7 +254,9 @@ func (e *gameEnv) countWith(t *testing.T, c *Controller, req PreviewRequest, pla
 // stageLua is a test-only stand-in for the count mod that only generates
 // the chunks and, with scan set, finds the resource entities chunk by chunk
 // and counts them, so the game's own share of a count's time and memory is
-// seen. It writes {"tiles": n}.
+// seen. It writes {"tiles": n, "ores": m}, m being the entities of the
+// resources whose product is not a fluid, counted as the count mod counts
+// them for its dense-map threshold.
 const stageLua = `local params = require("params")
 script.on_init(function()
   local h = helpers or game
@@ -264,7 +267,7 @@ script.on_init(function()
   end
   s.request_to_generate_chunks({ 0, 0 }, params.radius)
   s.force_generate_chunk_requests()
-  local n = 0
+  local n, ores = 0, 0
   if params.scan then
     local r = params.radius
     for cx = -r, r - 1 do
@@ -272,8 +275,20 @@ script.on_init(function()
         n = n + #s.find_entities_filtered({ area = { { cx * 32, cy * 32 }, { cx * 32 + 32, cy * 32 + 32 } }, type = "resource" })
       end
     end
+    local filter = { { filter = "type", type = "resource" } }
+    local protos = prototypes and prototypes.get_entity_filtered(filter) or game.get_filtered_entity_prototypes(filter)
+    local half = r * 32
+    for name, proto in pairs(protos) do
+      local fluid = false
+      for _, p in pairs(proto.mineable_properties.products or {}) do
+        if p.type == "fluid" then fluid = true end
+      end
+      if not fluid then
+        ores = ores + s.count_entities_filtered({ area = { { -half, -half }, { half, half } }, name = name })
+      end
+    end
   end
-  h.write_file("resources.json", '{"tiles": ' .. n .. '}', false)
+  h.write_file("resources.json", '{"tiles": ' .. n .. ', "ores": ' .. ores .. '}', false)
 end)
 `
 
@@ -295,6 +310,13 @@ func (e *gameEnv) count(t *testing.T, c *Controller, req PreviewRequest, planet,
 	dumpCount(t, fmt.Sprintf("%s-%s-%d%s", req.GameVersion, planet, req.size(), strings.ReplaceAll(label, " ", "-")), r.file)
 	t.Logf("MEASURE %s %s %d%s: wall %s, peak %d MiB, file %d bytes, %d patches: %s",
 		req.GameVersion, planet, req.size(), label, r.wall.Round(100*time.Millisecond), r.peak>>20, r.bytes, len(r.file.Patches), r.summary())
+	ores := 0
+	for _, p := range r.file.Patches {
+		if statedGap(planet, p.Name) == statedOreGap {
+			ores += p.N
+		}
+	}
+	t.Logf("ORE TILES %s %s %d%s: %d", req.GameVersion, planet, req.size(), label, ores)
 	// Foreman's own path gives the same patches and totals, checked by
 	// resource.Parse.
 	res, err := c.Resources(context.Background(), req, planet)
@@ -394,7 +416,7 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 				}
 			}
 			req := PreviewRequest{GameVersion: version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
-			if !takesOreGap(planet, big.file) {
+			if !takesOreGap(planet, slices.Collect(maps.Keys(big.file.Resources))) {
 				e.oreGapUnused(t, c, req, planet, big)
 				if planet == "fulgora" {
 					fulgoraBound(t, big)
@@ -427,6 +449,18 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 			dumpCount(t, version+"-nauvis-3072-at-600", r.file)
 			t.Logf("MEASURE %s nauvis 3072 at 600%%: wall %s, peak %d MiB, file %d bytes, %d patches: %s",
 				version, wall.Round(100*time.Millisecond), peak>>20, r.bytes, len(r.file.Patches), r.summary())
+		}
+		// At the real limits the count must end with the out-of-memory error
+		// on 2.x, so the page says to choose a smaller size (SPEC 5.6).
+		prod, _ := e.controller(t)
+		stop := e.peakMemory()
+		begin := time.Now()
+		_, perr := prod.Resources(context.Background(), req, "nauvis")
+		wall, peak = time.Since(begin), stop()
+		e.previewLeftovers(t, "after the count at the real limits")
+		t.Logf("MEASURE %s nauvis 3072 at 600%% at the real limits: wall %s, peak %d MiB, error %v", version, wall.Round(100*time.Millisecond), peak>>20, perr)
+		if pe, ok := errors.AsType[*PreviewError](perr); spaceAge && (!ok || !pe.OOM) {
+			t.Errorf("error %v; want the out-of-memory error", perr)
 		}
 		// The game's own share: generating only, then generating and finding
 		// the entities, at 600% and at the defaults.
@@ -472,8 +506,8 @@ func nauvisFieldsApart(t *testing.T, two, six countRun) {
 
 // takesOreGap reports whether any resource the planet has joins at the ore
 // gap. Aquilo has only wells, and Fulgora only scrap at its own gap.
-func takesOreGap(planet string, f countFile) bool {
-	for name := range f.Resources {
+func takesOreGap(planet string, names []string) bool {
+	for _, name := range names {
 		if statedGap(planet, name) == statedOreGap {
 			return true
 		}
@@ -702,7 +736,7 @@ func patchKey(n int, amount int64, box [4]int) string { return fmt.Sprint(n, "/"
 // checkGrouping compares the count's patches with the scan's tiles: the
 // totals, the patch count against clusters, and every patch's entities,
 // amount and box against the test's own grouping.
-func checkGrouping(t *testing.T, planet string, res resource.Result, scan map[string]scanned) {
+func checkGrouping(t *testing.T, res resource.Result, scan map[string]scanned, gapOf func(name string) int) {
 	t.Helper()
 	for name := range res.Resources {
 		if _, ok := scan[name]; !ok {
@@ -714,7 +748,7 @@ func checkGrouping(t *testing.T, planet string, res resource.Result, scan map[st
 		if len(ts) == 0 {
 			continue
 		}
-		gap := statedGap(planet, name)
+		gap := gapOf(name)
 		var got []string
 		var entities int
 		var amount int64
@@ -772,6 +806,32 @@ func checkGrouping(t *testing.T, planet string, res resource.Result, scan map[st
 		t.Logf("GROUPING %s: %d tiles, %d patches", name, len(ts), len(got))
 	}
 }
+
+// denseInvariant counts with the dense-map threshold at 0, so every count is
+// dense, and checks the grouping against the scan with ores at the dense gap
+// of 2 and the other resources at their own gaps (SPEC 5.6).
+func (e *gameEnv) denseInvariant(t *testing.T, c *Controller, req PreviewRequest, planet string, base resource.Result, scan map[string]scanned) {
+	m := resourceMod
+	m.params = countParams(", dense_ore_tiles = 0")
+	b, _, _, err := e.measure(t, c, req, planet, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := resource.Parse(b, req.size(), planet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("DENSE %s %s %d: %d patches at the dense gap, %d at the ore gap", req.GameVersion, planet, req.size(), len(res.Patches), len(base.Patches))
+	checkGrouping(t, res, scan, func(name string) int {
+		if g := statedGap(planet, name); g != statedOreGap {
+			return g
+		}
+		return denseOreGap
+	})
+}
+
+// denseOreGap is the gap SPEC 5.6 states for ores in a dense count.
+const denseOreGap = 2
 
 // hasResourceFor reports whether the file has the resource entity the
 // control sets.
@@ -889,7 +949,12 @@ func (e *gameEnv) planetInvariants(t *testing.T, c *Controller, line, version st
 			t.Errorf("the next seed gave %d patches, %d at the same label tiles", len(res.Patches), same)
 		}
 	})
-	t.Run("grouping matches a scan of every tile", func(t *testing.T) { checkGrouping(t, planet, base, scan) })
+	t.Run("grouping matches a scan of every tile", func(t *testing.T) {
+		checkGrouping(t, base, scan, func(name string) int { return statedGap(planet, name) })
+	})
+	if takesOreGap(planet, resourceNames(base)) {
+		t.Run("a dense count joins ores within 2", func(t *testing.T) { e.denseInvariant(t, c, req, planet, base, scan) })
+	}
 	t.Run("wells and ores", func(t *testing.T) { checkKinds(t, base, scan) })
 	t.Run("a resource that is off has no patches", func(t *testing.T) { e.offInvariant(t, c, line, req, planet, base) })
 	t.Run("richness 200% doubles the ore", func(t *testing.T) { e.richnessInvariant(t, c, line, req, planet, base) })
