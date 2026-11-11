@@ -39,8 +39,10 @@ type modSettingDef struct {
 // cannedModSettingDefs is what the test mod fmtest declares: for each of the
 // three setting types a bool, an int, a double, a string with allowed values
 // and a color, a hidden startup bool and a startup int with one allowed
-// value. Two more settings are for the page's edge cases: one of a type
-// Foreman does not know, and a startup string that may be blank.
+// value. One more setting is of a type Foreman does not know, for the
+// page's "cannot be edited here" case; the game never writes it to
+// mod-settings.dat. Every other default equals the value in the embedded
+// defaults file.
 func cannedModSettingDefs() []modSettingDef {
 	var defs []modSettingDef
 	for _, st := range []struct{ typ, prefix string }{
@@ -53,6 +55,11 @@ func cannedModSettingDefs() []modSettingDef {
 		b.DefaultValue = true
 		i := def("int", "int-setting", "b")
 		i.DefaultValue, i.MinimumValue, i.MaximumValue = 5, 1, 10
+		if st.typ == "startup" {
+			// The test mod's settings-updates stage raises this default, and
+			// the embedded defaults file holds the raised one.
+			i.DefaultValue = 7
+		}
 		d := def("double", "double-setting", "c")
 		d.DefaultValue, d.MinimumValue, d.MaximumValue = 1.5, 0.5, 9.5
 		s := def("string", "string-setting", "d")
@@ -67,9 +74,7 @@ func cannedModSettingDefs() []modSettingDef {
 	forced.DefaultValue, forced.AllowedValues = 3, []any{3}
 	weird := modSettingDef{Name: "fm-sta-weird", Mod: "fmtest", SettingType: "startup", Type: "weird-setting", Order: "g"}
 	weird.DefaultValue = "x"
-	text := modSettingDef{Name: "fm-sta-text", Mod: "fmtest", SettingType: "startup", Type: "string-setting", Order: "f", AllowBlank: true, AutoTrim: true}
-	text.DefaultValue = ""
-	return append(defs, hidden, forced, text, weird)
+	return append(defs, hidden, forced, weird)
 }
 
 // writeModSettings is a mod settings definitions run: it leaves
@@ -89,7 +94,7 @@ func writeModSettings(c dockertest.Container, broken bool) error {
 		b = []byte(`{"settings": [{"name": "fm-sta-int", "mod": `)
 	}
 	mods := filepath.Join(dir, world.ModsDir)
-	if err := os.MkdirAll(mods, 0o750); err != nil {
+	if err := os.MkdirAll(mods, world.DirMode); err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(mods, gameenv.ModSettingsDefaultsFile), modSettingsDefaults, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder

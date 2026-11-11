@@ -3,7 +3,9 @@ package fakegame_test
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -61,8 +63,8 @@ func TestModSettingsRunWritesBothFiles(t *testing.T) {
 		t.Fatalf("state %+v, want exited with 0", st)
 	}
 	f := readDefs(t, r)
-	if len(f.Settings) != 3*5+4 {
-		t.Fatalf("%d settings, want 19", len(f.Settings))
+	if len(f.Settings) != 3*5+3 {
+		t.Fatalf("%d settings, want 18", len(f.Settings))
 	}
 	byName := map[string]map[string]any{}
 	for _, s := range f.Settings {
@@ -77,6 +79,9 @@ func TestModSettingsRunWritesBothFiles(t *testing.T) {
 		byName[s["name"].(string)] = s
 	}
 
+	if d := byName["fm-sta-int"]["default_value"]; d != 7.0 {
+		t.Errorf("fm-sta-int default is %v, want the raised 7", d)
+	}
 	i := byName["fm-glo-int"]
 	if i["setting_type"] != "runtime-global" || i["type"] != "int-setting" || i["order"] != "b" ||
 		i["default_value"] != 5.0 || i["minimum_value"] != 1.0 || i["maximum_value"] != 10.0 {
@@ -103,9 +108,6 @@ func TestModSettingsRunWritesBothFiles(t *testing.T) {
 	}
 	if w := byName["fm-sta-weird"]; w["type"] != "weird-setting" {
 		t.Errorf("fm-sta-weird is %v", w)
-	}
-	if x := byName["fm-sta-text"]; x["allow_blank"] != true || x["auto_trim"] != true || x["default_value"] != "" {
-		t.Errorf("fm-sta-text is %v", x)
 	}
 
 	got, err := os.ReadFile(filepath.Join(r.world, world.ModsDir, gameenv.ModSettingsDefaultsFile)) //nolint:gosec // a test's own temp folder
@@ -169,5 +171,77 @@ func TestBrokenModeOnlyBreaksModSettingsRuns(t *testing.T) {
 	}
 	if _, err := resourceRun(t, r, 3, "nauvis"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// valueNode is the bytes the game writes after a setting's "value" key, as
+// far as the canned types go: bool, int, double, string and color.
+func valueNode(t *testing.T, typ string, v any) []byte {
+	t.Helper()
+	f64 := func(f float64) []byte { return binary.LittleEndian.AppendUint64(nil, math.Float64bits(f)) }
+	switch typ {
+	case "bool-setting":
+		b := byte(0)
+		if v.(bool) {
+			b = 1
+		}
+		return []byte{0x01, 0x00, b}
+	case "int-setting":
+		return append([]byte{0x06, 0x00}, binary.LittleEndian.AppendUint64(nil, uint64(v.(float64)))...)
+	case "double-setting":
+		return append([]byte{0x02, 0x00}, f64(v.(float64))...)
+	case "string-setting":
+		s := v.(string)
+		return append([]byte{0x03, 0x00, 0x00, byte(len(s))}, s...) //nolint:gosec // short canned strings
+	case "color-setting":
+		c := v.(map[string]any)
+		out := []byte{0x05, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00}
+		for _, k := range []string{"r", "g", "b", "a"} {
+			out = append(out, 0x01, k[0], 0x02, 0x00)
+			out = append(out, f64(c[k].(float64))...)
+			if k != "a" {
+				out = append(out, 0x00)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// Every editable canned definition is in the embedded defaults file with its
+// default as its value, as the real game's run writes every setting. The
+// check is a byte search for the setting's name, the dictionary header and
+// the value node, so it does not depend on the codec.
+func TestCannedDefinitionsMatchTheDefaultsFile(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	modSettingsRun(t, r)
+	file, err := os.ReadFile(filepath.Join(r.world, world.ModsDir, gameenv.ModSettingsDefaultsFile)) //nolint:gosec // a test's own temp folder
+	if err != nil {
+		t.Fatal(err)
+	}
+	// After the name: a dictionary of one entry, "value".
+	header := []byte{0x05, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x05, 'v', 'a', 'l', 'u', 'e'}
+	var checked int
+	for _, d := range readDefs(t, r).Settings {
+		name, typ := d["name"].(string), d["type"].(string)
+		want := valueNode(t, typ, d["default_value"])
+		if want == nil {
+			t.Logf("%s: type %s is not editable, so the game never writes it; skipped", name, typ)
+			continue
+		}
+		prefix := append(append([]byte{byte(len(name))}, name...), header...) //nolint:gosec // short canned names
+		at := bytes.Index(file, prefix)
+		if at < 0 {
+			t.Errorf("%s is not in the defaults file", name)
+			continue
+		}
+		rest := file[at+len(prefix):]
+		if !bytes.HasPrefix(rest, want) {
+			t.Errorf("%s: the file has % x, the default is % x", name, rest[:min(len(rest), len(want))], want)
+		}
+		checked++
+	}
+	if checked != 3*5+2 {
+		t.Errorf("%d settings checked, want 17", checked)
 	}
 }
