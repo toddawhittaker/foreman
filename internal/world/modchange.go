@@ -172,7 +172,7 @@ func (m *Manager) ApplyModsHeld(id string, change ModChange, fingerprint string)
 	if err := m.EnsureModList(id); err != nil {
 		return fmt.Errorf("write the default %s: %w", ModListFile, err)
 	}
-	list, err := ReadSmallFile(root, path.Join(ModsDir, ModListFile), maxModList)
+	list, err := ReadSmallFile(root, path.Join(ModsDir, ModListFile), MaxModList)
 	if err != nil {
 		return err
 	}

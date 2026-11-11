@@ -154,7 +154,7 @@ func (m *Manager) LinkModsInto(id, dst string) error {
 			switch {
 			case name == ModListFile:
 				haveList = true
-				b, err := ReadSmallFile(src, p, maxModList)
+				b, err := ReadSmallFile(src, p, MaxModList)
 				if err != nil {
 					return err
 				}
