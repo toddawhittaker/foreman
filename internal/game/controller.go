@@ -215,6 +215,11 @@ type Controller struct {
 	modCheckLimit time.Duration
 
 	previewWait time.Duration
+	// modSettingsLimit is how long a mod settings definitions run may take.
+	modSettingsLimit time.Duration
+
+	// modSettings is the cache of mod setting definitions (SPEC 9.6).
+	modSettings modSettingsCache
 
 	// previewSlot holds a token while a map preview runs: one at a time
 	// (SPEC 14.3).
@@ -279,8 +284,8 @@ func New(cfg Config) (*Controller, error) {
 		pollInterval: pollInterval, startTimeout: StartTimeout, saveTimeout: saveTimeout,
 		rconRetry: rconRetry, crashWindow: CrashLoopWindow,
 		rconCallLimit: rcon.DefaultTimeout, previewLimit: PreviewLimit, previewWait: PreviewWait,
-		modCheckLimit: ModCheckTimeout,
-		previewSlot:   make(chan struct{}, 1), previewWaiting: make(chan struct{}, maxPreviewWaiters),
+		modCheckLimit: ModCheckTimeout, modSettingsLimit: ModSettingsLimit,
+		previewSlot: make(chan struct{}, 1), previewWaiting: make(chan struct{}, maxPreviewWaiters),
 		ctx: ctx, cancel: cancel,
 		poke: make(chan struct{}, 1),
 		runs: map[string]*worldRun{},

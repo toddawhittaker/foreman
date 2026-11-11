@@ -332,7 +332,7 @@ func TestPreCheckNoModListOn11IsFine(t *testing.T) {
 func TestPreCheckHostileModList(t *testing.T) {
 	m, id, dir := checkWorld(t, "1.1.110", false)
 	putFixture(t, dir, "1.1.110-vanilla.zip", "a.zip", t0)
-	writeFile(t, filepath.Join(dir, ModsDir, ModListFile), `{"mods":[`+strings.Repeat(" ", maxModList)+`]}`)
+	writeFile(t, filepath.Join(dir, ModsDir, ModListFile), `{"mods":[`+strings.Repeat(" ", MaxModList)+`]}`)
 	if _, err := m.PreStartCheck(id); err == nil {
 		t.Fatal("an oversized mod-list.json was accepted")
 	}
