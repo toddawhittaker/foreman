@@ -33,7 +33,7 @@
   "mods.search.pick_hint": "Hake mehrere Mods an, um sie in einen Plan aufzunehmen, oder nutze den Button „Zum Plan hinzufügen“ einer Mod.",
   "mods.search.add_ticked": "Angehakte Mods zum Plan hinzufügen",
   "mods.search.pick_none": "Nichts ist angehakt. Hake die Mods an, die du hinzufügen willst, oder nutze den Button „Zum Plan hinzufügen“ einer Mod.",
-  "mods.search.picked_elsewhere": "Auch auf anderen Seiten angehakt: {mods}.",
+  "mods.search.ticked_elsewhere": "Auch in anderen Suchen oder auf anderen Seiten angehakt",
   "mods.fact.latest": "Neueste Version",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installiert",

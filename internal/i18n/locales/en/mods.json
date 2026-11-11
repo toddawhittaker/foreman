@@ -33,7 +33,7 @@
   "mods.search.pick_hint": "Tick several mods to add them to one plan, or use a mod's own Add to plan button.",
   "mods.search.add_ticked": "Add ticked mods to plan",
   "mods.search.pick_none": "Nothing is ticked. Tick the mods to add, or use a mod's own Add to plan button.",
-  "mods.search.picked_elsewhere": "Also ticked on other pages: {mods}.",
+  "mods.search.ticked_elsewhere": "Also ticked in other searches or on other pages",
   "mods.fact.latest": "Latest version",
   "mods.fact.downloads": "Downloads",
   "mods.badge.installed": "Installed",

@@ -31,7 +31,7 @@
   "mods.search.pick_hint": "勾选多个模组可将它们加入同一个计划，也可以使用模组自己的“加入计划”按钮。",
   "mods.search.add_ticked": "将勾选的模组加入计划",
   "mods.search.pick_none": "没有勾选任何模组。请勾选要添加的模组，或使用模组自己的“加入计划”按钮。",
-  "mods.search.picked_elsewhere": "其他页上也已勾选：{mods}。",
+  "mods.search.ticked_elsewhere": "在其他搜索或其他页上也已勾选",
   "mods.fact.latest": "最新版本",
   "mods.fact.downloads": "下载量",
   "mods.badge.installed": "已安装",

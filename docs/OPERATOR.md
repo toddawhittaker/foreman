@@ -298,18 +298,20 @@ starts. Its map is made when it first starts.
    shows the token again. (If you set the account in the environment
    instead, skip this step.)
 2. Choose **Worlds**, open your world, and choose its **Mods** tab.
-3. Under **Find a mod**, type part of a mod's name in **Mod name** and
-   choose **Search**. Only mods for this world's game version are listed.
-4. Choose **Add to plan** on the mod you want. Foreman shows the plan: the
-   mod, any mods it depends on, and the steps it will take. Read it.
-5. Choose **Install 1 mod** (the count is higher when the plan adds mods
-   it depends on).
-6. Repeat steps 3 to 5 for the second and third mod. To add several mods
-   from one search at once, tick them and choose **Add ticked mods to
-   plan**; ticks are kept across pages of one search, but not into a new
-   search.
+3. Under **Find a mod**, type part of the first mod's name in **Mod name**
+   and choose **Search**. Only mods for this world's game version are
+   listed.
+4. Tick the mod you want.
+5. Search again for the second mod and tick it, then for the third. Ticks
+   are kept across new searches and pages; mods ticked in an earlier search
+   are listed under **Also ticked in other searches or on other pages**,
+   where you can untick one.
+6. Choose **Add ticked mods to plan**. Foreman shows one plan: the three
+   mods, any mods they depend on, and the steps it will take. Read it.
+7. Choose **Install 3 mods** (the count is higher when the plan adds mods
+   they depend on).
 
-Foreman takes a "Before mod change" snapshot first, so the change can be
+Foreman takes one "Before mod change" snapshot first, so the change can be
 undone. If the server were running, Foreman would warn players, stop the
 game, change the mods and start it again; on a stopped world it just
 changes the mods.

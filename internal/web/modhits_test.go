@@ -94,11 +94,32 @@ func TestSearchPagesAndTable(t *testing.T) {
 	_, last := g.getStatus(modsPath(id) + "/search?q=pager&page=3&pick=pager-21&pick=pager-01")
 	wantIn(t, "last page", plain(last), "Showing 21 to 25.", "Page 3 of 3", `id="results-heading" tabindex="-1" autofocus`,
 		`value="pager-21" id="mod-pager-21-pick" checked>`,
-		`<input type="hidden" name="pick" value="pager-01">`, "Also ticked on other pages: pager-01.",
+		`<legend>Also ticked in other searches or on other pages</legend>`,
+		`<input type="checkbox" name="pick" value="pager-01" checked>`,
 		`<input type="hidden" name="at" value="3">`, `name="page" value="2">Previous page</button>`)
 	if strings.Contains(between(last, "<main", "</main>"), "Next page") {
 		t.Error("the last page offers a next page")
 	}
+}
+
+// Ticks from earlier searches stay ticked, and can be added, through a new
+// search that finds nothing and through a search left empty, so mods found by
+// several searches go into one plan (SPEC 9.1).
+func TestSearchKeepsTicksAcrossSearches(t *testing.T) {
+	g, id := pagerRig(t)
+	_, body := g.getStatus(modsPath(id) + "/search?q=pager-05&pick=pager-21&pick=pager-22")
+	main := between(body, "<main", "</main>")
+	wantIn(t, "new search", plain(main), `<input type="checkbox" name="pick" value="pager-21" checked>`,
+		`<input type="checkbox" name="pick" value="pager-22" checked>`, `>Add ticked mods to plan</button>`)
+	// One form holds the search box and the boxes, so a new search sends the ticks.
+	if n := strings.Count(main, "<form"); n != 1 {
+		t.Errorf("%d forms, want one", n)
+	}
+	code, empty := g.getStatus(modsPath(id) + "/search?q=&pick=pager-01")
+	if code != http.StatusBadRequest {
+		t.Errorf("empty search: %d", code)
+	}
+	wantIn(t, "empty search", plain(empty), `<input type="hidden" name="pick" value="pager-01">`)
 }
 
 // Add ticked mods starts one plan with every ticked mod, at the same page of

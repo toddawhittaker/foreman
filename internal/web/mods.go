@@ -712,7 +712,7 @@ func (p ModSearchPage) planForm(names []string) planForm {
 
 // handleModSearch searches the portal's list for the world's game line. It
 // needs no account (SPEC 9.11). "Add ticked mods" sends the ticked mods to
-// one plan; a page button keeps them ticked.
+// one plan; a new search or a page button keeps them ticked.
 func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.modsWorld(w, r, u)
 	if !ok {
@@ -720,17 +720,8 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 	}
 	q := r.URL.Query()
 	p := ModSearchPage{World: sum, Query: strings.TrimSpace(q.Get("q")), Installed: map[string]bool{}, Paged: q.Has("page")}
-	if p.Query == "" {
-		p.QueryError = i18n.M("mods.search.missing")
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
-	}
-	if len(p.Query) > maxSearchQuery {
-		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
-		s.page(w, r, http.StatusBadRequest, u.Username, p)
-		return
-	}
-	// A plan names at most maxPlanNames mods, so more ticks are not kept.
+	// Ticks are read first so a bad search keeps them (SPEC 9.1). A plan
+	// names at most maxPlanNames mods, so more ticks are not kept.
 	for _, n := range q["pick"] {
 		if len(n) > maxPickName {
 			p.QueryError = i18n.M("mods.search.long", "count", maxPickName)
@@ -740,6 +731,16 @@ func (s *server) handleModSearch(w http.ResponseWriter, r *http.Request, u store
 		if !slices.Contains(p.Picks, n) && len(p.Picks) < maxPlanNames {
 			p.Picks = append(p.Picks, n)
 		}
+	}
+	if p.Query == "" {
+		p.QueryError = i18n.M("mods.search.missing")
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
+	}
+	if len(p.Query) > maxSearchQuery {
+		p.QueryError = i18n.M("mods.search.long", "count", maxSearchQuery)
+		s.page(w, r, http.StatusBadRequest, u.Username, p)
+		return
 	}
 	page := readPage(q.Get("page"))
 	adding := q.Get("picked") == "1"

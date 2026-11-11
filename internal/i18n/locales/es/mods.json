@@ -33,7 +33,7 @@
   "mods.search.pick_hint": "Marca varios mods para añadirlos a un solo plan, o usa el botón «Añadir al plan» de un mod.",
   "mods.search.add_ticked": "Añadir los mods marcados al plan",
   "mods.search.pick_none": "No hay nada marcado. Marca los mods que quieras añadir, o usa el botón «Añadir al plan» de un mod.",
-  "mods.search.picked_elsewhere": "También marcados en otras páginas: {mods}.",
+  "mods.search.ticked_elsewhere": "También marcados en otras búsquedas o en otras páginas",
   "mods.fact.latest": "Última versión",
   "mods.fact.downloads": "Descargas",
   "mods.badge.installed": "Instalado",

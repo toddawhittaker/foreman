@@ -528,6 +528,11 @@ main {
   gap: var(--space-3);
 }
 
+/* A form that spans several sections lays them out as main's own (DESIGN 4). */
+.panels {
+  display: contents;
+}
+
 form.panel,
 .panel > form {
   display: grid;
@@ -545,7 +550,8 @@ form.panel > h2 {
 }
 
 /* Sections after the first read as blocks: a rule above each, no card (DESIGN 4, 8.1). */
-main > .panel ~ .panel {
+main > .panel ~ .panel,
+main > .panels > .panel ~ .panel {
   padding-block-start: var(--space-5);
   border-block-start: var(--border-width) solid var(--color-line);
 }

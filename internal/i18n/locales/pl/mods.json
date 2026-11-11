@@ -35,7 +35,7 @@
   "mods.search.pick_hint": "Można zaznaczyć kilka modyfikacji, aby dodać je do jednego planu, albo użyć przycisku „Dodaj do planu” przy modyfikacji.",
   "mods.search.add_ticked": "Dodaj zaznaczone modyfikacje do planu",
   "mods.search.pick_none": "Nic nie jest zaznaczone. Należy zaznaczyć modyfikacje do dodania albo użyć przycisku „Dodaj do planu” przy modyfikacji.",
-  "mods.search.picked_elsewhere": "Zaznaczone także na innych stronach: {mods}.",
+  "mods.search.ticked_elsewhere": "Zaznaczone także w innych wyszukiwaniach lub na innych stronach",
   "mods.fact.latest": "Najnowsza wersja",
   "mods.fact.downloads": "Pobrania",
   "mods.badge.installed": "Zainstalowana",
