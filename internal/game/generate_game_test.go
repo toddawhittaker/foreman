@@ -257,11 +257,6 @@ func (e *gameEnv) checkPreview(t *testing.T, c *Controller, version, line string
 			t.Errorf("%s: picture is only %d pixels wide", p.Planet, img.Bounds().Dx())
 		}
 	}
-	list, err := e.docker.ListContainers(context.Background(), true, []string{"io.github.toddawhittaker.foreman.preview"})
-	if err != nil || len(list) != 0 {
-		t.Errorf("preview containers left: %d, %v", len(list), err)
-	}
-	if entries, _ := os.ReadDir(filepath.Join(e.data, previewDir)); len(entries) != 0 {
-		t.Errorf("preview folders left: %d", len(entries))
-	}
+	// Only this run's containers: another checkout's run may have left one.
+	e.previewLeftovers(t, "after the preview")
 }
