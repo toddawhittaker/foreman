@@ -145,8 +145,8 @@ func TestParseDefinitionsBadValueMarksOneSettingNotEditable(t *testing.T) {
 		"int string":         `"type":"int-setting","default_value":"1"`,
 		"int too big":        `"type":"int-setting","default_value":1e30`,
 		"int huge":           `"type":"int-setting","maximum_value":1e999`,
-		"int64 limit":        `"type":"int-setting","maximum_value":9.2233720368547758e+18`,
-		"int64 limit lower":  `"type":"int-setting","minimum_value":-9.3e18`,
+		"default past int64": `"type":"int-setting","default_value":9.2233720368547758e+18`,
+		"allowed past int64": `"type":"int-setting","allowed_values":[9223372036854776028]`,
 		"double huge":        `"type":"double-setting","default_value":1e999`,
 		"double string":      `"type":"double-setting","default_value":"x"`,
 		"double allowed bad": `"type":"double-setting","allowed_values":["x"]`,
@@ -294,4 +294,56 @@ func FuzzParseDefinitions(f *testing.F) {
 			_, _ = Validate(d, "1,0,0,1")
 		}
 	})
+}
+
+// The real game reports an int's unset bounds as the int64 limits rounded by
+// Lua's JSON writer (seen on 1.1.110, 2.0.77 and 2.1.24).
+func TestParseDefinitionsIntBoundsPastInt64MeanNoLimit(t *testing.T) {
+	in := `{"settings":[
+	 {"name":"fm-sta-unbounded","mod":"fmtest","setting_type":"startup","type":"int-setting","default_value":4,"minimum_value":-9223372036854776028,"maximum_value":9223372036854776028},
+	 {"name":"fm-sta-forced","mod":"fmtest","setting_type":"startup","type":"int-setting","default_value":3,"minimum_value":-9223372036854776028,"maximum_value":9223372036854776028,"allowed_values":[3]},
+	 {"name":"half","mod":"fmtest","setting_type":"startup","type":"int-setting","default_value":4,"minimum_value":2,"maximum_value":9223372036854776028},
+	 {"name":"half2","mod":"fmtest","setting_type":"startup","type":"int-setting","default_value":4,"minimum_value":-9.2233720368547758e+18,"maximum_value":9.3e18},
+	 {"name":"d","mod":"fmtest","setting_type":"startup","type":"double-setting","default_value":1,"minimum_value":-1.7976931348623155e+308,"maximum_value":1.7976931348623155e+308}
+	]}`
+	defs, err := ParseDefinitions([]byte(in))
+	if err != nil || len(defs) != 5 {
+		t.Fatal(len(defs), err)
+	}
+	u := defs[0]
+	if !u.Editable || u.Min != nil || u.Max != nil || u.Default == nil || u.Default.Int != 4 {
+		t.Errorf("unbounded: %+v", u)
+	}
+	if v, e := Validate(u, "123456789012"); e != nil || v.Int != 123456789012 {
+		t.Errorf("unbounded int takes any value: %v %v", v, e)
+	}
+	f := defs[1]
+	if !f.Editable || f.Min != nil || f.Max != nil || f.Default == nil || f.Default.Int != 3 ||
+		len(f.AllowedValues) != 1 || f.AllowedValues[0].Int != 3 {
+		t.Errorf("forced: %+v", f)
+	}
+	if _, e := Validate(f, "3"); e == nil || e.MessageID != errIDLocked {
+		t.Errorf("the lock stays in Validate: %v", e)
+	}
+	h := defs[2]
+	if !h.Editable || h.Min == nil || h.Min.Int != 2 || h.Max != nil {
+		t.Errorf("one real bound: %+v", h)
+	}
+	if _, e := Validate(h, "1"); e == nil || e.MessageID != errIDRange {
+		t.Errorf("real bound still checked: %v", e)
+	}
+	if v, e := Validate(h, "50"); e != nil || v.Int != 50 {
+		t.Errorf("unbounded side: %v %v", v, e)
+	}
+	if h2 := defs[3]; !h2.Editable || h2.Min != nil || h2.Max != nil {
+		t.Errorf("past-range both ways: %+v", h2)
+	}
+	// The unbounded double already stays editable with its limits.
+	d := defs[4]
+	if !d.Editable || d.Min == nil || d.Max == nil || d.Max.Double != 1.7976931348623155e+308 {
+		t.Errorf("double: %+v", d)
+	}
+	if v, e := Validate(d, "1e300"); e != nil || v.Double != 1e300 {
+		t.Errorf("double takes a big value: %v %v", v, e)
+	}
 }
