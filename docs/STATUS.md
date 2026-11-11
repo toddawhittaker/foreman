@@ -2407,8 +2407,16 @@ failed on the epic head passed after.
 - Measured at 3072 tiles, seed 123456: default maps at most 760 MiB
   (Vulcanus) and 36 s (Gleba) on 2.1.24; scrap at 600% 296 to 306
   patches at 33 s and 675 MiB.
-- The final real-game rerun on the epic head follows this fold.
-- Real-game recheck on the epic head: PENDING
+- Real-game recheck on the epic head (code at d3dae03; docs-only changes
+  after): `make test-game` passed (the main suite in internal/game 780 s
+  and internal/web 146 s, then the resource tests 2,846 s), `make
+  test-game-resources` passed on its own for all three lines (2,765 s),
+  `make e2e-game` passed (2 tests), and a cross-check on two other
+  machines passed per line: 2.0.77 in 645 s and 2.1.24 in 1,253 s, with
+  default Nauvis at 3072 giving
+  131 patches on 2.0.77 and 130 on 2.1.24, the dense invariant passing on
+  Nauvis, Vulcanus and Gleba, and Nauvis at 600% ending with the
+  out-of-memory message on both 2.x lines.
 
 ### Gaps left
 
