@@ -205,6 +205,115 @@ At each milestone gate in SPEC.md, the architect also reviews the whole
 system, one area per run, for layers and boundaries that local decisions
 have bent. The user picks which findings become an epic.
 
+## Agents on other machines
+
+In T3 Code the orchestrator can start agents on the user's other linked
+machines. Each gets its own git worktree there, so several can work on one
+machine at once without touching each other's files.
+
+### Finding the machine and the project
+
+- `t3_environment_links` lists the linked machines. Use only those with
+  `status: "reachable"`, and note each one's `environmentId`.
+- `t3_project_list` with that `environmentId` lists its projects. Pick the
+  one whose `repositoryIdentity.canonicalKey` is
+  `github.com/toddawhittaker/foreman`; its `id` is that machine's
+  `projectId`. The ids differ per machine, so never reuse one machine's.
+- The orchestrator's own address goes in every prompt: `t3_environment_read`
+  gives its `environmentId`, and `orchestrator_capabilities` gives its
+  thread id as `parentThreadId`.
+
+### Starting the agent
+
+`delegate_task` on another machine runs in that machine's main checkout:
+only one agent can run there at a time, and it can clobber uncommitted
+work. For a worktree, call `t3_thread_launch` with:
+
+```json
+{
+  "environmentId": "<that machine>",
+  "projectId": "<that machine's project id>",
+  "title": "<short task name>",
+  "workspaceStrategy": {
+    "type": "worktree",
+    "baseRef": "<a branch name that exists on origin>",
+    "branch": "<new branch for this agent>",
+    "startFromOrigin": true
+  },
+  "modelSelection": {"provider": "claudeAgent", "model": "<model id>",
+                     "options": [{"id": "effort", "value": "<low|medium|high>"}]},
+  "runtimeMode": "full-access",
+  "clientRequestId": "<unique id; reuse it only to retry this same launch>",
+  "message": "<the full prompt>"
+}
+```
+
+- `baseRef` is a branch name, never a commit hash. That machine's checkout
+  usually has not fetched the commit, and the launch fails at once ("git
+  worktree add failed"). To start at an exact commit, name the branch and
+  tell the agent to run `git fetch origin && git reset --hard <commit>`
+  (or `git checkout --detach <commit>`).
+- To stack on unmerged work, use that work's branch as `baseRef`, and tell
+  the agent to merge the real base branch in before it opens its PR.
+- The worktree appears at `~/.t3/worktrees/foreman/<branch>` there.
+- A failed launch leaves a thread with `status: "failed"`. Read it with
+  `t3_thread_read` (`view: "activity"`), fix the cause, and launch again
+  with a new `clientRequestId`.
+
+### What every remote prompt contains
+
+The agent knows only what the prompt says. No scratchpad file, session
+memory or local path reaches that machine, so everything goes inline:
+
+- The branch, the base commit, the files the agent may touch, what done
+  looks like, and the agent file to follow (`.claude/agents/<role>.md`).
+- Machine setup. Tools may not be on PATH in a non-interactive shell, so
+  say how to get them. If a prerequisite (browsers, a CLI) is missing, the
+  agent installs it when that is quick and harmless, or else reports at
+  once.
+- Quiet waits: "Run long test suites in the background with output to a
+  log, wait with one Monitor or until-loop, and post nothing while
+  waiting." If the agent tends to end its turn while waiting: "Wait in one
+  foreground command (`until ...; do sleep 20; done` with a long timeout).
+  Never end your turn while checks are still running."
+- No needless stops: "Settle small choices yourself and list them in the
+  report. Stop only for a choice the plan cannot settle."
+- The report step, always last. A remote thread's end does not wake the
+  orchestrator, so the report must arrive as a message:
+
+  > LAST STEP, required: send your report to the orchestrator with
+  > `mcp__t3-code__t3_thread_send` (load it with ToolSearch first if
+  > needed): environmentId "<orchestrator's environmentId>", threadId
+  > "<orchestrator's threadId>", mode "queue", message = your report.
+  > Then end your turn.
+
+  The report says what was checked or built and on which commit; the PR
+  number and head commit if it opened or pushed one; the exact commands
+  run, with pass and fail counts and the first error line of each failure;
+  and anything left undone or any choice it stopped on. It stays under
+  about 25 lines.
+
+### While agents run
+
+- Do not poll. Reports arrive as messages to the orchestrator's thread.
+- To redirect or stop a running agent, `t3_thread_send` with its
+  `environmentId` and `threadId`: `mode: "steer"` while its turn runs,
+  `"auto"` or `"queue"` otherwise. A stopped agent kills only the processes
+  and containers it started, sends its report by the same step, and ends.
+- Keep a backstop: a recurring CronCreate at off-minutes (for example :13
+  and :43) that reads only threads whose report is overdue, with
+  `t3_thread_read` at `limit: 1` and `afterPosition: 10000` for the status.
+  A thread that is `completed` or `failed` with no report and no PR has
+  stopped on a question, a blocker or an error. Read its last message
+  (`afterPosition` = `itemCount - 2`, `maxCharsPerItem` 2500), rule on it,
+  and send the ruling.
+
+### Cleanup
+
+When an agent's PR has merged, or its work is abandoned, remove its
+worktree and branch on that machine. Never remove a worktree before its PR
+merges: the agent may be needed again for a CI fix.
+
 ## Code style
 
 - Comments say why, never history. Do not write issue or PR numbers, epic
