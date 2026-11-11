@@ -343,9 +343,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // The seed used is kept, so the world made is the one previewed (SPEC 5.6).
     // It is the page's own choice, not the person's, so leaving does not warn about it.
+    // A box with focus is left alone, as writing moves the caret and typing would be appended; it is filled when focus leaves.
     if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) {
-      seed.value = fresh.dataset.seed;
-      seed.defaultValue = fresh.dataset.seed;
+      if (document.activeElement === seed) seedToFill = fresh.dataset.seed;
+      else fillSeed(seed, fresh.dataset.seed);
     }
     const filled = formEl().querySelector("#filled-seed");
     if (filled && fresh.dataset.filledSeed) filled.value = fresh.dataset.filledSeed;
@@ -370,6 +371,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (say) announce(error ? words(error) : strings["js.generate.preview_ready"]);
   }
+
+  // The newest previewed seed, for a seed box that had focus when it came.
+  let seedToFill = "";
+  function fillSeed(seed, value) {
+    seed.value = value;
+    seed.defaultValue = value;
+  }
+  document.addEventListener("input", (e) => { if (e.target.id === "generate-seed") seedToFill = ""; });
+  document.addEventListener("focusout", (e) => {
+    const seed = e.target;
+    const value = seedToFill;
+    if (seed.id !== "generate-seed") return;
+    seedToFill = "";
+    if (value && seed.value.trim() === "" && formEl().querySelector("#mode-settings:checked")) fillSeed(seed, value);
+  });
 
   // A new section brings the page's amounts box unticked; it shows the choice made.
   function keepPageAmounts() {

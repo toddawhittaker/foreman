@@ -84,6 +84,52 @@ test.describe("with script", () => {
     await expect(seed).toBeFocused();
   });
 
+  // Holds the page's first automatic preview until release is called.
+  async function holdFirstPreview(page: Page) {
+    let release = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    let held = () => {};
+    const arrived = new Promise<void>((r) => { held = r; });
+    let first = true;
+    await page.route("**/generate/preview", async (route) => {
+      if (!first) return route.continue();
+      first = false;
+      held();
+      await gate;
+      await route.continue();
+    });
+    return { arrived, release };
+  }
+
+  test("a seed box with focus is not written when the preview returns, so typing is not appended to", async ({ page }) => {
+    const hold = await holdFirstPreview(page);
+    await page.goto("/generate");
+    await hold.arrived;
+    const seed = page.locator("#generate-seed");
+    await seed.focus();
+    hold.release();
+    await expect(pictures(page)).toHaveCount(1);
+    await page.keyboard.type("777");
+    await expect(seed).toHaveValue("777");
+    // Leaving a box the person filled never writes the previewed seed over it.
+    await page.getByLabel("World name").focus();
+    await expect(seed).toHaveValue("777");
+  });
+
+  test("an empty seed box that had focus gets the previewed seed when it loses focus", async ({ page }) => {
+    const hold = await holdFirstPreview(page);
+    await page.goto("/generate");
+    await hold.arrived;
+    const seed = page.locator("#generate-seed");
+    await seed.focus();
+    hold.release();
+    await expect(pictures(page)).toHaveCount(1);
+    await expect(seed).toHaveValue("");
+    await page.getByLabel("World name").focus();
+    await expect(seed).toHaveValue(/^\d+$/);
+    await expect(pictures(page)).toHaveAccessibleName(new RegExp(`seed ${await seed.inputValue()}\\.`));
+  });
+
   test("a change mid-run drops the running request; the newest one wins", async ({ page, fakeGame }) => {
     await page.goto("/generate");
     await expect(pictures(page)).toHaveCount(1);
