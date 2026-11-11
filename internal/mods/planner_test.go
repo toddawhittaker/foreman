@@ -3,6 +3,7 @@ package mods
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -167,9 +168,9 @@ func TestBuiltInAndFolderModsAreNeverFlaggedOrUpdated(t *testing.T) {
 	if err != nil || len(flags) != 0 {
 		t.Fatalf("flags %+v, %v", flags, err)
 	}
-	ups, err := f.planner.Updates(context.Background(), f.id)
-	if err != nil || len(ups) != 0 {
-		t.Fatalf("updates %+v, %v", ups, err)
+	st, err := f.planner.Status(context.Background(), f.id)
+	if err != nil || len(st.Updates) != 0 || len(st.Changeable) != 0 {
+		t.Fatalf("status %+v, %v", st, err)
 	}
 	if n := f.portal.FullCalls("visible-planets") + f.portal.FullCalls("base") + f.portal.FullCalls("space-age"); n != 0 {
 		t.Fatalf("asked the portal %d times", n)
@@ -181,10 +182,11 @@ func TestUpdatesListOnlyNewerReleasesOnTheWorldsLine(t *testing.T) {
 	f.portal.AddZip("alpha", "1.0.0")
 	f.portal.AddZip("alpha", "1.1.0")
 	f.portal.AddZip("beta", "1.0.0") // older than installed
-	ups, err := f.planner.Updates(context.Background(), f.id)
+	st, err := f.planner.Status(context.Background(), f.id)
 	if err != nil {
 		t.Fatal(err)
 	}
+	ups := st.Updates
 	want := []Update{{Name: "visible-planets", From: "1.6.1", To: "1.7.2"}}
 	if !slices.Equal(ups, want) {
 		t.Fatalf("updates %+v, want %+v", ups, want)
@@ -292,8 +294,8 @@ func TestPortalDownIsAnErrorNotFlags(t *testing.T) {
 	if flags, err := f.planner.Availability(ctx, f.id); !errors.Is(err, modportal.ErrUnreachable) || flags != nil {
 		t.Fatalf("availability %+v, %v", flags, err)
 	}
-	if ups, err := f.planner.Updates(ctx, f.id); !errors.Is(err, modportal.ErrUnreachable) || ups != nil {
-		t.Fatalf("updates %+v, %v", ups, err)
+	if st, err := f.planner.Status(ctx, f.id); !errors.Is(err, modportal.ErrUnreachable) || st.Updates != nil || st.Changeable != nil {
+		t.Fatalf("status %+v, %v", st, err)
 	}
 	if _, _, err := f.planner.Plan(ctx, f.id, Request{Kind: KindUpdate}); err == nil {
 		t.Fatal("plan with the portal down")
@@ -424,5 +426,60 @@ func TestSaveDropsOfARunningWorldCountEnabledMods(t *testing.T) {
 	}
 	if !slices.Equal(got, []string{"visible-planets"}) {
 		t.Errorf("running world drops %v, want visible-planets", got)
+	}
+}
+
+// SPEC 9.3: Change version has something to choose only when the portal
+// has a release of the mod on the world's line other than the installed one.
+func TestStatusChangeableNeedsAnotherReleaseOnTheWorldsLine(t *testing.T) {
+	f := newFixture(t, "alpha_1.1.0", "solo_1.0.0", "other-line_1.0.0", "zz-not-on-portal_1.0.0")
+	f.portal.AddZip("alpha", "1.0.0")
+	f.portal.AddZip("alpha", "1.1.0")
+	f.portal.AddZip("solo", "1.0.0")
+	f.portal.AddZip("other-line", "1.0.0")
+	f.portal.AddZipFor("1.1", "other-line", "0.9.0")
+	st, err := f.planner.Status(context.Background(), f.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]string{"alpha": "1.1.0"}; !maps.Equal(st.Changeable, want) {
+		t.Fatalf("changeable %v, want %v", st.Changeable, want)
+	}
+	// The same single fetch gives the flags: the portal lacks one mod.
+	if len(st.Flags) != 1 || st.Flags[0].Code != FlagNotOnPortal || st.Flags[0].Name != "zz-not-on-portal" {
+		t.Errorf("flags %+v", st.Flags)
+	}
+}
+
+// One portal question per mod for the whole status, however many parts it has.
+func TestStatusAsksThePortalOncePerMod(t *testing.T) {
+	f := newFixture(t, "alpha_1.0.0")
+	f.portal.AddZip("alpha", "1.0.0")
+	f.portal.AddZip("alpha", "1.1.0")
+	if _, err := f.planner.Status(context.Background(), f.id); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.portal.FullCalls("alpha"); n != 1 {
+		t.Errorf("asked the portal %d times, want 1", n)
+	}
+}
+
+// The status hands back the mod list it read, so the Mods tab need not read
+// the world a second time to count the mods that are current.
+func TestStatusReturnsTheInstalledMods(t *testing.T) {
+	f := newFixture(t, "alpha_1.1.0", "zz-private_0.1.0")
+	f.portal.AddZip("alpha", "1.1.0")
+	st, err := f.planner.Status(context.Background(), f.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, m := range st.Installed {
+		names = append(names, m.Name)
+	}
+	for _, want := range []string{"base", "alpha", "zz-private"} {
+		if !slices.Contains(names, want) {
+			t.Errorf("Installed lacks %s: %v", want, names)
+		}
 	}
 }

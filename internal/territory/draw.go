@@ -10,6 +10,8 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -38,6 +40,9 @@ var (
 // outline holds the offsets the dark copies of a label are drawn at, a ring
 // about 2 px wide around the white text.
 var outline = []image.Point{{-2, 0}, {2, 0}, {0, -2}, {0, 2}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}}
+
+// outlineWidth is how far the outline reaches past the text, in pixels.
+const outlineWidth = 2
 
 // notoLabels is Noto Sans CJK SC Bold cut down to the Simplified Chinese
 // labels' glyphs (fonts/NOTICE); Go Bold has no CJK.
@@ -132,10 +137,33 @@ func DrawPNG(ctx context.Context, src []byte, ov Overlay, label func(size string
 		return nil, err
 	}
 	px := float64(max(16, ov.Size/64))
-	for _, s := range ov.Shapes {
-		if err := drawLabel(img, fs, px, label(s.Size), s.LabelX, s.LabelY); err != nil {
+	faces := make([]font.Face, len(fs))
+	for i, f := range fs {
+		if faces[i], err = opentype.NewFace(f, &opentype.FaceOptions{Size: px, DPI: 72, Hinting: font.HintingFull}); err != nil {
 			return nil, err
 		}
+		defer func() { _ = faces[i].Close() }()
+	}
+	// The boxes of the labels drawn, each measured once.
+	var drawn []image.Rectangle
+	for _, s := range ov.Shapes {
+		l := measure(fs, faces, label(s.Size))
+		box := image.Rect(0, 0, l.w, l.h).Add(image.Pt(int(s.LabelX)-l.w/2, int(s.LabelY)-l.h/2))
+		l.draw(img, box)
+		drawn = append(drawn, box)
+	}
+	for _, c := range ov.Captions {
+		l := measure(fs, faces, c.Text)
+		// The box's top left, pulled in as the page's style sheet does.
+		x0 := int(min(max(0, c.U*float64(ov.Size-l.w)), float64(max(0, ov.Size-l.w))))
+		y0 := int(min(max(0, c.V*float64(ov.Size-l.h)), float64(max(0, ov.Size-l.h))))
+		box := image.Rect(x0, y0, x0+l.w, y0+l.h)
+		// Only the new box is widened, so labels keep labelGap apart, as on the page.
+		if slices.ContainsFunc(drawn, box.Inset(-labelGap).Overlaps) {
+			continue
+		}
+		l.draw(img, box)
+		drawn = append(drawn, box)
 	}
 	var out bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
@@ -179,40 +207,58 @@ func border(img *image.RGBA, seg Segment) {
 	draw.Draw(img, area.Intersect(img.Bounds()), image.NewUniform(borderColour), image.Point{}, draw.Src)
 }
 
-// drawLabel writes text centred on x, y in white with a dark outline, in the
-// first font that has all its glyphs.
-func drawLabel(img *image.RGBA, fs []*sfnt.Font, px float64, text string, x, y float64) error {
-	face, err := opentype.NewFace(fontFor(fs, text), &opentype.FaceOptions{Size: px, DPI: 72, Hinting: font.HintingFull})
-	if err != nil {
-		return err
-	}
-	defer func() { _ = face.Close() }()
+// labelGap is the room, in pixels, kept between two labels.
+const labelGap = 2
+
+// measured is a label's text in the face that draws it, and its size with
+// the outline.
+type measured struct {
+	text string
+	face font.Face
+	w, h int
+}
+
+// drawnText is text as it is drawn: a narrow no-break space, which no font
+// here has, becomes a no-break space.
+func drawnText(text string) string { return strings.ReplaceAll(text, "\u202f", "\u00a0") }
+
+// measure sizes text in the first font that has all its glyphs.
+func measure(fs []*sfnt.Font, faces []font.Face, text string) measured {
+	text = drawnText(text)
+	face := faces[fontFor(fs, text)]
 	m := face.Metrics()
-	width := font.MeasureString(face, text)
+	ring := 2 * outlineWidth
+	return measured{text, face, font.MeasureString(face, text).Ceil() + ring, (m.Ascent + m.Descent).Ceil() + ring}
+}
+
+// draw writes the label centred in box in white with a dark outline.
+func (l measured) draw(img *image.RGBA, box image.Rectangle) {
+	m := l.face.Metrics()
+	x := float64(box.Min.X+box.Max.X) / 2
+	y := float64(box.Min.Y+box.Max.Y) / 2
 	dot := fixed.Point26_6{
-		X: fixed.Int26_6(x*64) - width/2,
+		X: fixed.Int26_6(x*64) - font.MeasureString(l.face, l.text)/2,
 		Y: fixed.Int26_6(y*64) + (m.Ascent-m.Descent)/2,
 	}
-	d := font.Drawer{Dst: img, Src: image.NewUniform(outlineColour), Face: face}
+	d := font.Drawer{Dst: img, Src: image.NewUniform(outlineColour), Face: l.face}
 	for _, o := range outline {
 		d.Dot = dot.Add(fixed.P(o.X, o.Y))
-		d.DrawString(text)
+		d.DrawString(l.text)
 	}
 	d.Src = image.NewUniform(textColour)
 	d.Dot = dot
-	d.DrawString(text)
-	return nil
+	d.DrawString(l.text)
 }
 
 // fontFor picks the first font that has every glyph of text, or the first
-// font if none has; the glyph test keeps the labels covered.
-func fontFor(fs []*sfnt.Font, text string) *sfnt.Font {
-	for _, f := range fs {
+// font if none has; the glyph tests keep the labels covered.
+func fontFor(fs []*sfnt.Font, text string) int {
+	for i, f := range fs {
 		if hasGlyphs(f, text) {
-			return f
+			return i
 		}
 	}
-	return fs[0]
+	return 0
 }
 
 func hasGlyphs(f *sfnt.Font, text string) bool {

@@ -1,5 +1,7 @@
 import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 
 // SPEC 5.6, 17; DESIGN 8.8: the large view is a picture viewer. The wheel,
 // plus and minus zoom by 1.15 around the pointer or the centre, up to the
@@ -226,7 +228,7 @@ test("the download icon by the heading downloads the planet shown", async ({ pag
   await expect(dialog(page).getByRole("link", { name: "Download Vulcanus map" })).toBeVisible();
 });
 
-// Ruling C4: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
+// SPEC 17.15: the most zoom is the larger of 8 times the fitted size and 8 CSS pixels per tile.
 for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072", null]] as const) {
   test(`the most zoom of a ${size} picture is the larger of 8 times fit and 8 px a tile`, async ({ page }) => {
     if (viewport) await page.setViewportSize(viewport);
@@ -250,6 +252,39 @@ for (const [size, viewport] of [["1280", { width: 1920, height: 1600 }], ["3072"
     expect(Math.abs((await width(page)) / most - 1)).toBeLessThan(0.001);
   });
 }
+
+// DESIGN 8.8: Tab goes round the view's controls and never out of it,
+// on a phone too, and also when Zoom in is aria-disabled at the most zoom.
+test("Tab goes round the large view's controls and never leaves it, even at the most zoom", async ({ page }) => {
+  await openLarge(page);
+  const zoomIn = dialog(page).getByRole("button", { name: "Zoom in" });
+  for (let i = 0; i < 80 && (await zoomIn.getAttribute("aria-disabled")) !== "true"; i++) await page.keyboard.press("+");
+  await expect(zoomIn).toHaveAttribute("aria-disabled", "true");
+  const where = () => page.evaluate(() => {
+    const a = document.activeElement;
+    return { id: a?.id ?? "", inside: Boolean(a?.closest("#large-view")) };
+  });
+  // Zoom in is aria-disabled but still a stop, and the last one: Tab wraps to the first.
+  await zoomIn.focus();
+  await page.keyboard.press("Tab");
+  const first = await where();
+  expect(first.inside).toBe(true);
+  expect(first.id).not.toBe("large-in");
+  // Shift+Tab from the first leads back to the last.
+  await page.keyboard.press("Shift+Tab");
+  expect((await where()).id).toBe("large-in");
+  // A whole round: focus stays in the view and comes back to Zoom in.
+  await page.keyboard.press("Tab");
+  const round: string[] = [first.id];
+  for (let i = 0; i < 300 && round.at(-1) !== "large-in"; i++) {
+    await page.keyboard.press("Tab");
+    const at = await where();
+    expect(at.inside).toBe(true);
+    round.push(at.id);
+  }
+  expect(round.at(-1)).toBe("large-in");
+  expect(round.length).toBeGreaterThanOrEqual(3);
+});
 
 test.describe("on a touch screen", () => {
   test.use({ hasTouch: true, isMobile: true });
@@ -463,3 +498,93 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [320, 640]]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(w);
   });
 }
+
+// SPEC 5.6: Enter in a field of the settings beside the large map does
+// nothing; the value commits when the field is left, once. Enter in a field of
+// the main form outside the large view still generates the world, and Enter on
+// a button in the view still presses it.
+test.describe("Enter in the large view's settings", () => {
+  test.beforeEach(({ page }) => test.skip((page.viewportSize()?.width ?? 0) < 1240, "the settings show beside the map only where both fit"));
+
+  const worlds = (foreman: { dataDir: string }) => {
+    try {
+      return readdirSync(join(foreman.dataDir, "worlds")).sort();
+    } catch {
+      return [];
+    }
+  };
+
+  // The large view holds only sliders and selects today. A text field there
+  // is the form's own decimal field moved in, as preview.js moves a planet's
+  // settings, so the test moves one in the same way.
+  test("does not create the world, and the value is kept", async ({ page, foreman }) => {
+    await page.goto("/generate");
+    await page.getByLabel("World name").fill("Not yet");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await section(page).getByRole("link", { name: /opens the large view/ }).click();
+    await expect(dialog(page)).toBeVisible();
+    const id = await page.locator('#generate-form input[type="text"][inputmode="decimal"][name]').first().getAttribute("id");
+    expect(id).toBeTruthy();
+    await page.evaluate((i) => {
+      const panel = document.getElementById("large-settings")!;
+      panel.hidden = false;
+      panel.append(document.getElementById(i)!);
+    }, id!);
+    const decimal = page.locator(`#large-settings #${id}`);
+    await expect(decimal).toBeVisible();
+    const before = worlds(foreman);
+    const posts: string[] = [];
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/generate")) posts.push(r.url()); });
+    const changes = await decimal.evaluate((i) => {
+      const seen: string[] = [];
+      (window as unknown as { changes: string[] }).changes = seen;
+      i.addEventListener("change", () => seen.push((i as HTMLInputElement).value));
+      return seen.length;
+    });
+    expect(changes).toBe(0);
+    await decimal.fill("1.5");
+    await decimal.press("Enter");
+    await page.waitForTimeout(800);
+    await expect(page).toHaveURL("/generate");
+    await expect(dialog(page)).toBeVisible();
+    await expect(decimal).toBeFocused();
+    await expect(decimal).toHaveValue("1.5");
+    expect(await page.evaluate(() => (window as unknown as { changes: string[] }).changes)).toEqual([]);
+    await decimal.blur();
+    expect(await page.evaluate(() => (window as unknown as { changes: string[] }).changes)).toEqual(["1.5"]);
+    expect(posts).toEqual([]);
+    expect(worlds(foreman)).toEqual(before);
+  });
+
+  test("does not create the world from a slider, a box or a list there", async ({ page, foreman }) => {
+    await openLarge(page);
+    const before = worlds(foreman);
+    const posts: string[] = [];
+    page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/generate")) posts.push(r.url()); });
+    // Each kind of control shown there: the sliders stand in for most lists.
+    for (const kind of ['input[type="range"]', 'input[type="checkbox"]', "select"]) {
+      const control = page.locator(`#large-settings ${kind}`).filter({ visible: true }).first();
+      if (kind === 'input[type="range"]') await expect(control).toBeVisible();
+      if (await control.count()) await control.press("Enter");
+    }
+    await page.waitForTimeout(800);
+    await expect(page).toHaveURL("/generate");
+    await expect(dialog(page)).toBeVisible();
+    expect(posts).toEqual([]);
+    expect(worlds(foreman)).toEqual(before);
+  });
+
+  test("still presses a button there", async ({ page }) => {
+    await openLarge(page);
+    await page.locator("#large-next").press("Enter");
+    await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  });
+});
+
+test("Enter in a field of the main form, outside the large view, still generates the world", async ({ page }) => {
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img")).toHaveCount(1);
+  await page.getByLabel("World name").fill("Plain enter");
+  await page.getByLabel("World name").press("Enter");
+  await expect(page).toHaveURL("/worlds/plain-enter?generated=1");
+});

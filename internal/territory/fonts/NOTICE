@@ -6,14 +6,19 @@ Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font
 Name 'Source'. Noto is a trademark of Google Inc. It is licensed under
 the SIL Open Font License, Version 1.1, in OFL.txt beside this file.
 
-It holds only the glyphs of the Simplified Chinese territory labels, so
-it stays a few kilobytes. Go Bold, from golang.org/x/image, draws every
-other language. When a label needs a glyph this file lacks, the glyph
-test in internal/territory fails; make the subset again with every
-glyph the labels need, for example with fontTools:
+It holds only the glyphs of the Simplified Chinese labels, the territory
+sizes and the resource amounts (digits, "." "," "%", 万 and 亿), so it
+stays a few kilobytes. Go Bold, from golang.org/x/image, draws every
+other language. When a label needs a glyph this file lacks, a glyph
+test in internal/territory or internal/web fails; make the subset again
+with every glyph the labels need, with fontTools 4.55.3, from
+Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf at the Sans2.004 tag
+(sha256 b5f0d1a190a7f9b43c310a8850630af12553df32c4c050543f9059732d9b4c0a):
 
-  python3 -m fontTools.subset NotoSansCJK-Bold.ttc --font-number=2 \
-    --text=" 小中大型未知" --layout-features='' \
+  python3 -m fontTools.subset NotoSansCJKsc-Bold.otf \
+    --text=" 小中大型未知万亿0123456789.,%" --layout-features='' \
     --output-file=NotoSansCJKsc-Bold-labels.otf
 
-Font number 2 of the collection is the SC face.
+The committed subset's sha256 is
+8011926af635f6febbdf4d8da3d37224c5fbe2df434b30a535c0d63db2d62d14; a rebuild
+differs from it only in the header's timestamps and checksums.

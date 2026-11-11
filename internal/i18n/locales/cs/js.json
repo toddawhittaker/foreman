@@ -19,5 +19,7 @@
   "js.generate.ach_setting": "{setting} vypne některé úspěchy.",
   "js.generate.ach_clear": "Teď už žádné nastavení úspěchy nevypíná.",
   "js.generate.moved": "{field}: nastaveno na {value}, aby rozsah zůstal platný.",
-  "js.preview.download_territories": "Stáhnout mapu s teritorii: {planet}"
+  "js.preview.download_territories": "Stáhnout mapu s teritorii: {planet}",
+  "js.preview.download_amounts": "Stáhnout mapu s množstvím surovin: {planet}",
+  "js.preview.download_both": "Stáhnout mapu s teritorii a množstvím surovin: {planet}"
 }

@@ -378,3 +378,24 @@ func TestListLastPlayedIsNewestSave(t *testing.T) {
 		t.Fatalf("list: %+v, %v", list, err)
 	}
 }
+
+// SPEC 7.11: LoadChoice reads the chosen save from world.json alone, and is
+// empty when none is chosen or the world is not there.
+func TestLoadChoice(t *testing.T) {
+	m, _ := newTestManager(t)
+	id, dir := madeWorld(t, m)
+	putSave(t, dir, "a.zip", "1", t0.Add(-time.Hour))
+	putSave(t, dir, "b.zip", "2", t0)
+	if got := m.LoadChoice(id); got != "" {
+		t.Errorf("no choice: %q", got)
+	}
+	if err := m.SetLoadSave(id, "a.zip"); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.LoadChoice(id); got != "a.zip" {
+		t.Errorf("chosen: %q", got)
+	}
+	if got := m.LoadChoice("nope"); got != "" {
+		t.Errorf("unknown world: %q", got)
+	}
+}

@@ -514,6 +514,14 @@ order and the picture agree.
 - **Status facts** (7.5) are one wrapping line (`dl.facts--inline`, a
   flex row with `gap: var(--space-2) var(--space-5)`), so they sit two or
   three to a row at 320 px.
+- **Loads next.** While an older save is chosen (SPEC 7.11), a second
+  `dl.facts--inline` under the facts says "Loads next" with the save's
+  name as a quiet button-faced link to the Saves tab, named "old.zip, on
+  the Saves tab" (a plain link measured 20 px tall on a phone, under the
+  target floor). It is a region of its own (`loads`), sent only when it
+  changes, because the facts are replaced whenever a figure changes and
+  the link may have focus. It shows stopped or running; with no choice,
+  the newest chosen, or the chosen file gone, it is empty.
 - **Force stop** is a plain link standing alone (rule 3), after the
   buttons in the control row, never a button face. It leads to its own
   confirmation (7.4), and drawn as a link it weighs less than Stop and
@@ -1112,6 +1120,11 @@ when its panel is narrower than 14rem, which is 200% text on a 320 px
 phone. Changing `display` can drop table semantics in some browsers, so
 these tables carry explicit `table`, `rowgroup`, `row`, `columnheader` and
 `cell` roles (SPEC 17.12).
+The saves table's Load next buttons sit in its own last column, under a
+visually hidden header, so they line up whatever the names' lengths; the
+newest save's button is named "Load next: the newest save". When the panel
+is 14 to 24rem wide (a phone), each saves row is a grid with fixed size
+and time columns and the button on its own line under them.
 A time is three units: the date, the clock and the zone. None breaks inside
 itself, and a wide zone such as `GMT+5:45` drops to its own line after the
 clock. Each language keeps its own order (Chinese puts the zone first), and
@@ -1562,11 +1575,19 @@ close the view, the tab, the setting, and the picture again).
     it instead), plus and minus zoom, 0 fits, Escape closes; with Ctrl,
     Alt or Meta held the browser keeps its own zoom keys. Focus decides:
     a settings field (below) keeps every key of its own, so an arrow
-    moves a slider and never the map; Escape closes from anywhere.
+    moves a slider and never the map; Escape closes from anywhere. Enter
+    in a field there does nothing but end the edit; it never creates the
+    world. Tab goes round the view's controls; from the last it returns
+    to the first, and Shift+Tab the other way, never out to the browser.
   - **Settings beside the map** (#399). Where the view is at least 77rem
     wide (a 1280 px desktop is), the planet shown has its Resources and
     Terrain settings in a 38rem column on the map's left, under the
-    headings "Resources" and "Terrain" (h3), scrolling on their own; the
+    headings "Resources" and "Terrain" (h3, at `--text-lg` with
+    line-height 1.3 over a `line` rule, as the panel names are without
+    script, 8.7), with above them the hint "In a setting, the keys change
+    the setting: an arrow moves a slider, not the map.", scrolling on
+    their own; the hint sits in the column, not on the key line, which
+    must stay one line at 1280 px. The
     map keeps the rest, never narrower than the column. 38rem leaves the
     column's fields a 34rem `map-section` after its padding and scroll
     bar, so they are sliders as on the page. Narrower, the view is map
@@ -1641,9 +1662,14 @@ close the view, the tab, the setting, and the picture again).
     The announcement is the error sentence alone, not the button label.
 - **Resource amounts** (every planet; SPEC 5.6, 17.15). A "Show resource
   amounts" checkbox (7.2) in the large view's bar, under the status lines,
-  so it is there with the settings column and in a map-only view. It has
-  no `name`, so it is a view and never part of the form; it is off when the
-  page loads and stays as set while the page lives, for every planet.
+  so it is there with the settings column and in a map-only view, and a
+  second one on the One planet picture, under the territory box and above
+  the picture, with its counting line, result and text list in a slot
+  below the picture. Each has no `name`, so it is a view and never part of
+  the form; each is off when the page loads and stays as set while the page
+  lives, for every planet, and is its own choice. Both share the
+  `.resource-amounts` block and one count path, and one count runs at a
+  time.
   - **Asking.** The amounts are asked for (`POST
     /generate/preview/resources`, the form and the planet) only once the
     shown planet's picture is there, so the picture never waits. A new
@@ -1657,12 +1683,17 @@ close the view, the tab, the setting, and the picture again).
     after a redraw or a change of planet, so a person who cannot see the
     bar still knows it can take a minute; the bar itself is not named
     again. "Resource amounts ready." follows in the status line. At 320 px
-    the map shifts down while the line shows; that is accepted.
+    the map shifts down while the line shows; that is accepted. On the One
+    planet picture a short "Counting…" shows beside the box while it
+    counts, seen and not said (`aria-hidden`), as the line below the
+    picture may be out of view at 320 px.
   - **Labels.** One HTML label per patch placed by percent of the picture
     inside `.map`, beside the territory overlay and before the pin,
     `aria-hidden`, in the same face as the territory labels (white with a
-    near-black ring of text shadows, at `--text-sm`, bold), by the same CSS
-    rule with a second selector. The text is the amount through
+    near-black ring of text shadows, at `--text-sm`, bold; on the thumbnail
+    at 0.75rem, weight 400, inset by the border, as the territory labels
+    there), by the same CSS rule with a second selector, and kept in forced
+    colours. The text is the amount through
     `Intl.NumberFormat(lang, {notation: "compact", maximumFractionDigits:
     1})`, such as "1.2M", "1,2 Mio." or "120万", and for a well its yield as
     `{style: "percent", maximumFractionDigits: 0}`; no new number strings.
@@ -1687,7 +1718,14 @@ close the view, the tab, the setting, and the picture again).
     `role="status"` in the bar, so the status line does not also carry it
     and it is not read twice; the button's label is not announced. When the
     list or the button had focus and the result is cleared, focus moves to
-    the box.
+    the box. A page count that finishes or fails while the large view is
+    open is said once on the page when the view closes.
+  - **Downloads.** While a box is ticked, a counted planet's download link
+    says "with resource amounts" (or "with territories and resource
+    amounts" on Vulcanus) and its file, and that planet's file in the zip,
+    carry the labels drawn by the server in the same look, worded as the
+    page's `Intl` output, named with "-amounts". A planet not yet counted
+    downloads plain; a download never starts a count.
   - **Territory counts.** On Vulcanus, with the territory box ticked, the
     visually hidden sentence that counts the demolisher territories in words
     appears inside the large view too, for the same reason: the page
@@ -1888,14 +1926,20 @@ sections in this order, each a `section.panel`:
   status, each flag of the availability check is a short line with its
   leading word: "Error: Players cannot join: the mod portal no longer has
   version 1.5.5 …", "Warning: Deprecated on the mod portal …", "Note: Not
-  on the mod portal …". The actions keep one order, lined up on the end so
-  Disable and Remove sit in the same place in every row: Update to X (when
-  the status finds one, or as the fix for a gone version), Enable or
-  Disable, and Remove. "Change version" is a quiet button beside the
-  version it changes, after the badges, so the actions still share one
-  320 px line; it opens the plan with the mod held at its version, and the
-  status takes it away for a mod the portal does not have. A folder mod has
-  none. Remove is a quiet button in `danger-text`, the only
+  on the mod portal …". The actions keep one order, in two groups that
+  each keep a line: Update to X (when the status finds one, or as the fix
+  for a gone version) and Change version, then Enable or Disable and
+  Remove. When the column is too narrow for both groups, the first goes
+  above, so Remove never wraps alone at 320 px. The status fills in Update
+  and Change version into empty slots, so neither appears and then
+  disappears. Change version is a quiet button, shown only when the portal
+  lists another release of the mod for the world's line; it opens the plan
+  with the mod held at its version. A folder mod has none. On wide screens
+  the Disable and Remove group keeps one width (`min-inline-size: 12em`,
+  Remove at its end), so Disable starts in the same place in every row,
+  a folder mod's too; on phones the quiet buttons have tighter side
+  padding so Change version, Disable and Remove share one 320 px line.
+  Remove is a quiet button in `danger-text`, the only
   red control on the tab, since it is the one change that destroys
   something; its confirmation is the plan page. Each action's hidden text
   names its mod. A folder mod has no Remove. Built-in mods are never in the
@@ -2043,7 +2087,9 @@ gone from the mod portal, so players cannot join." and, on a line of its
 own with a full-size target, "Update visible-planets" (or "Remove
 visible-planets" when the portal has no release to update to). With
 several: "Review N mods". It links straight to the plan, so fixing it is
-two clicks (SPEC 17.10).
+two clicks (SPEC 17.10). When the pre-start refusal shows with the same
+plan as its fix, the notice keeps its text and drops its button, so the
+page has one "Update *mod*" button per plan.
 
 **The account page** (`/settings/factorio-account`) leads with the state, as
 one sentence: "Mod downloads are on. The account was stored on `<date>` by

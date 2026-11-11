@@ -6,7 +6,7 @@ import { join } from "node:path";
 // SPEC 7.4, 9.3: the pre-start check refuses a world using a mod version the
 // mod portal no longer offers, offers the update first, and fails safe when
 // the portal cannot be asked. The Server page's notice follows the fix
-// without a reload (issue 362). The portal's generated mods are made for
+// without a reload. The portal's generated mods are made for
 // Factorio 2.0, so these worlds are 2.0 worlds.
 test.use({ fakeGameOn: true, fakePortalOn: true, portalAccountOn: true });
 
@@ -54,6 +54,37 @@ test("a start refused for a mod players cannot download: update first, then star
   // The stop link comes in the same render as the note would, once the start has ended.
   await expect(page.locator("#act-stop")).toBeVisible(live);
   await expect(page.locator("#portal-unchecked")).toHaveCount(0);
+});
+
+// SPEC 9.3, 7.4: the refusal carries the fix, so the notice keeps its words and drops its own button.
+test("a refusal and the notice for one plan show one Update button", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await goneWorld(page, foreman, fakeGame!, fakePortal!);
+  await page.goto("/");
+  await expect(notice(page).getByRole("link", { name: "Update visible-planets" })).toBeVisible(live);
+  await page.getByRole("button", { name: "Start server" }).click();
+  await expect(refusal(page)).toBeVisible(live);
+  await expect(notice(page)).toContainText("visible-planets 1.5.5 is gone from the mod portal, so players cannot join.", live);
+  await expect(notice(page).getByRole("link", { name: "Update visible-planets" })).toHaveCount(0, live);
+  await expect(page.getByRole("link", { name: "Update visible-planets" })).toHaveCount(1);
+  await checkPage(page);
+});
+
+// SPEC 9.3, 7.4: a refusal that comes from another admin's tab reaches this page by the live
+// stream; the notice drops its button then too, and focus on it goes to the refusal's.
+test("a refusal that arrives without a reload leaves one Update button and keeps focus", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await goneWorld(page, foreman, fakeGame!, fakePortal!);
+  await page.goto("/");
+  const mine = notice(page).getByRole("link", { name: "Update visible-planets" });
+  await expect(mine).toBeVisible(live);
+  await mine.focus();
+  const other = await page.context().newPage();
+  await other.goto("/");
+  await other.getByRole("button", { name: "Start server" }).click();
+  await expect(refusal(page)).toBeVisible(live);
+  await expect(mine).toHaveCount(0, live);
+  await expect(page.getByRole("link", { name: "Update visible-planets" })).toHaveCount(1);
+  await expect(page.locator("#act-fix")).toBeFocused();
+  await checkPage(page);
 });
 
 for (const down of [

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -193,15 +194,9 @@ func (p ModsPage) RowPath(kind, name string) string {
 	return kindPlanPath(p.World.ID, mods.Kind(kind), name)
 }
 
-// VersionPath is the plan page for one mod held at its installed version,
-// where its version list offers every release on the world's line (SPEC 9.3).
-func (p ModsPage) VersionPath(m world.InstalledMod) string {
-	q := url.Values{"kind": {string(mods.KindUpdate)}, "name": {m.Name}, versionPrefix + m.Name: {m.Version}}
-	return planPath(p.World.ID, q)
-}
-
-// VersionSlot is the id of a row's Change version, which the portal status
-// takes away for a mod the portal does not have.
+// VersionSlot is the id of a row's place for Change version, which the
+// portal status fills in when the portal has another release on the
+// world's line.
 func (ModsPage) VersionSlot(name string) string { return slotID("version", name) }
 
 // UpdateSlot is the id of a row's place for its Update button, which the
@@ -376,8 +371,8 @@ func (s *server) modsOutcome(p *ModsPage) {
 	}
 }
 
-// ModStatus is what the portal says about a world's mods: updates (SPEC
-// 9.3) and mods players cannot get (#131). It loads after the tab: one
+// ModStatus is what the portal says about a world's mods: updates and
+// mods players cannot get (SPEC 9.3). It loads after the tab: one
 // summary line above the table, and each mod's news in its own row.
 type ModStatus struct {
 	World       world.Summary
@@ -386,6 +381,9 @@ type ModStatus struct {
 	Flags       []mods.Flag
 	// Current counts the mods the portal has at their installed version.
 	Current int
+	// Changeable maps the mods that get Change version to their installed
+	// version (SPEC 9.3).
+	Changeable map[string]string
 }
 
 func (ModStatus) templateName() string { return "mods" }
@@ -397,6 +395,13 @@ func (p ModStatus) Path() string          { return modsPath(p.World.ID) }
 // UpdatePath is the plan for one mod's update.
 func (p ModStatus) UpdatePath(name string) string {
 	return kindPlanPath(p.World.ID, mods.KindUpdate, name)
+}
+
+// VersionPath is the plan page for one mod held at its installed version,
+// where its version list offers every release on the world's line (SPEC 9.3).
+func (p ModStatus) VersionPath(name, version string) string {
+	q := url.Values{"kind": {string(mods.KindUpdate)}, "name": {name}, versionPrefix + name: {version}}
+	return planPath(p.World.ID, q)
 }
 
 // Slot ids of a row's places the status fills.
@@ -420,7 +425,10 @@ func (p ModStatus) Count(sev mods.Severity) int {
 type StatusRow struct {
 	Name string
 	// UpdateTo is the version its Update button offers; "" for none.
-	UpdateTo    string
+	UpdateTo string
+	// Installed is the version Change version holds the mod at; "" when
+	// the portal has no other release to change to.
+	Installed   string
 	Flags       []mods.Flag
 	NotOnPortal bool
 }
@@ -453,11 +461,14 @@ func (p ModStatus) Rows() []StatusRow {
 			r.UpdateTo = f.Update
 		}
 	}
+	for _, name := range slices.Sorted(maps.Keys(p.Changeable)) {
+		row(name).Installed = p.Changeable[name]
+	}
 	return out
 }
 
 // FlagText words one flag in its mod's row, so it need not name the mod
-// (#131).
+// (SPEC 9.3).
 func (ModStatus) FlagText(f mods.Flag) i18n.Msg {
 	switch f.Code {
 	case mods.FlagVersionGone:
@@ -500,17 +511,14 @@ func (s *server) handleModStatus(w http.ResponseWriter, r *http.Request, u store
 	if !ok {
 		return
 	}
-	st := ModStatus{World: sum}
-	var err error
-	if st.Updates, err = s.planner.Updates(r.Context(), sum.ID); err == nil {
-		st.Flags, err = s.planner.Availability(r.Context(), sum.ID)
-	}
+	ps, err := s.planner.Status(r.Context(), sum.ID)
+	st := ModStatus{World: sum, Updates: ps.Updates, Flags: ps.Flags, Changeable: ps.Changeable}
 	if err != nil {
 		s.portalTrouble("check the mods on the portal", sum.ID, err)
 		st = ModStatus{World: sum, Unreachable: true}
 	}
-	if list, lerr := s.worlds.Mods(sum.ID); lerr == nil && !st.Unreachable {
-		st.Current = currentCount(list, st.Flags)
+	if !st.Unreachable {
+		st.Current = currentCount(ps.Installed, st.Flags)
 	}
 	s.fragment(w, r, st, "mod-status")
 }
@@ -544,7 +552,7 @@ func (s *server) portalTrouble(what, id string, err error) {
 }
 
 // ModNotice is the Server page's one line about mods players cannot get
-// (#131, SPEC 9.3). It is empty when there are none or the portal
+// (SPEC 9.3). It is empty when there are none or the portal
 // cannot be asked.
 type ModNotice struct {
 	World  world.Summary
@@ -579,8 +587,22 @@ func (s *server) handleModNotice(w http.ResponseWriter, r *http.Request, u store
 	}
 	if n.Errors > 0 {
 		n.Fix = goneFix(sum.ID, gone)
+		if s.refusalOffers(sum, n.Fix) {
+			n.Fix = Offer{}
+		}
 	}
 	s.fragment(w, r, n, "mods-notice")
+}
+
+// refusalOffers reports whether the Server page shows a refusal whose main
+// fix is the offer, so the page never carries two buttons for one plan.
+func (s *server) refusalOffers(sum world.Summary, fix Offer) bool {
+	res, ok := s.runs.result(sum.ID)
+	if !ok {
+		return false
+	}
+	f := ServerPage{World: sum, HaveResult: true, Result: res}.Failure()
+	return f != nil && f.Fix != nil && f.Fix.Path == fix.Path
 }
 
 // ActiveModsPath is the Mods tab of the world the Server page is about.

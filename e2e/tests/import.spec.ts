@@ -85,7 +85,7 @@ test("imports a folder from the inbox, leaves it unchanged, and says Done", asyn
   expect(worldJSON(foreman, "old-game").imported_from).toMatchObject({ folder: "saves-2025", save_size: 22 });
 });
 
-// SPEC 5.5, #155: the empty version choice names the save's version, and
+// SPEC 5.5: the empty version choice names the save's version, and
 // the world name comes from the server settings when they name one.
 test("a single folder is chosen, named from its server settings, and uses the save's version", async ({ page, foreman }) => {
   await createAdmin(page);
@@ -156,7 +156,7 @@ test("an unreadable folder asks for the version", async ({ page, foreman }) => {
   await checkPage(page);
 });
 
-// #139: Space Age that contradicts the save is warned of beside the box,
+// SPEC 5.5: Space Age that contradicts the save is warned of beside the box,
 // and Space Age on a 1.1 world is refused.
 test("Space Age that differs from the save is warned of, and refused for 1.1", async ({ page, foreman }) => {
   await createAdmin(page);
@@ -284,7 +284,7 @@ test("folders already imported are listed apart", async ({ page, foreman }) => {
   await expect(form.getByText("Already imported.")).toHaveCount(0);
 });
 
-// SPEC 5.5, #155: folders that cannot be imported are listed apart, in words.
+// SPEC 5.5: folders that cannot be imported are listed apart, in words.
 test("folders that cannot be imported are listed apart", async ({ page, foreman }) => {
   await createAdmin(page);
   mkdirSync(join(foreman.dataDir, "import", "current", "mods"), { recursive: true });

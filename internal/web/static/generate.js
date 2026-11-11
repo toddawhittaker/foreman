@@ -540,6 +540,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, true);
 
+  // In the large view's settings column, Enter in a field is not the Generate
+  // button: it does nothing, and the value commits when the field is left, as
+  // any edit does (SPEC 5.6). Enter on a button there, and in the main form, is
+  // untouched. 229 is a key still being composed by an input method.
+  const enterFields = ["text", "search", "number", "tel", "url", "email", "checkbox", "radio", "range"];
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+    if (t.tagName !== "INPUT" || !enterFields.includes(t.type) || !t.closest("#large-settings")) return;
+    e.preventDefault();
+  });
+
   // The wait box appearing is not read out, so the start is said too.
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (!isPreview(e)) return;

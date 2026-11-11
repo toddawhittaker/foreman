@@ -20,7 +20,7 @@ test.describe("upload a mod zip", () => {
     await setUpModsWorld(page, foreman, g, { ...world, start: true });
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
-    // Uploading is rare, so its form is folded away (#371).
+    // Uploading is rare, so its form is folded away.
     await page.locator("#mod-upload > summary").click();
     await page.locator("#mod-file").setInputFiles({ name: "up-mod_2.3.4.zip", mimeType: "application/zip", buffer: upZip });
     await page.getByRole("button", { name: "Upload mod", exact: true }).click();
@@ -98,7 +98,7 @@ test.describe("mod-settings.dat", () => {
     const before = await creates(g);
     await page.goto("/worlds/base/mods");
     const form = page.locator("form", { has: page.locator("#settings-file") });
-    // Replacing is rare, so its form is folded away (#371); the download stays in view.
+    // Replacing is rare, so its form is folded away; the download stays in view.
     await expect(form).toBeHidden();
     await expect(page.getByRole("link", { name: "Download mod-settings.dat" })).toBeVisible();
     await page.locator("#mod-settings-replace > summary").click();

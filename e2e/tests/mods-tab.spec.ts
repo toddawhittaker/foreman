@@ -80,7 +80,23 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
     return Math.round(phone ? b.x : b.x + b.width);
   }));
   if (!phone) expect(new Set(removeEnds).size).toBe(1);
-  // On a phone the actions drop under the name, so the name keeps the width (issue 343).
+  // Change version only where the portal has another release on the line
+  // (SPEC 9.3): the updated mods and the gone version, not a mod with one.
+  for (const n of [...updated, "visible-planets"]) await expect(row(n).getByRole("link", { name: `Change version ${n}`, exact: true })).toBeVisible();
+  for (const n of [...plain, "zz-private-tweaks", "my-local-tweaks"]) await expect(row(n).getByRole("link", { name: /^Change version/ })).toHaveCount(0);
+  // With Update and Change version, Remove still shares Disable's line, and
+  // a folder mod's Disable sits where the other rows' Disable sits (DESIGN 8.11).
+  for (const n of updated) {
+    const dis = await box(row(n).getByRole("link", { name: `Disable ${n}` }));
+    const rem = await box(row(n).getByRole("link", { name: `Remove ${n}` }));
+    expect(Math.abs(rem.y - dis.y)).toBeLessThan(2);
+  }
+  const disableAt = async (n: string) => {
+    const b = await box(row(n).getByRole("link", { name: `Disable ${n}` }));
+    return Math.round(phone ? b.x : b.x + b.width);
+  };
+  expect(await disableAt("my-local-tweaks")).toBe(await disableAt("fp-mod-01"));
+  // On a phone the actions drop under the name, so the name keeps the width.
   const name = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").locator(".mod-name"));
   const disable = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").getByRole("link", { name: /^Disable/ }));
   if (phone) {

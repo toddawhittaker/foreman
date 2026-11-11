@@ -135,19 +135,6 @@
     if (e.target.hasAttribute("data-focus-result")) focusDone();
   });
 
-  // The Mods tab's status takes Change version away from a mod the portal
-  // lacks. When that link had focus, focus goes to the mod's name in the
-  // same row instead of the top of the page.
-  document.addEventListener("htmx:oobBeforeSwap", (e) => {
-    const old = e.detail.target;
-    // Only a row's version slot (VersionSlot in mods.go); htmx keeps focus for other swaps.
-    if (!old.id.startsWith("mod-version-") || !old.contains(document.activeElement)) return;
-    const row = old.closest("tr");
-    setTimeout(() => {
-      if (row && document.activeElement === document.body) row.querySelector("span.mod-name[tabindex]")?.focus();
-    });
-  });
-
   // The mods notice is a status region and loads again after each operation
   // (SPEC 9.3). Swapping in the same content would have a screen reader read
   // it again, so an unchanged answer is dropped. Both sides go through the
@@ -157,6 +144,18 @@
     if (target?.id !== "mods-notice") return;
     const next = document.createElement("template");
     next.innerHTML = e.detail.serverResponse;
-    if (next.innerHTML === target.innerHTML) e.detail.shouldSwap = false;
+    if (next.innerHTML === target.innerHTML) {
+      e.detail.shouldSwap = false;
+      return;
+    }
+    // The notice drops its button when the refusal on the page carries the
+    // same fix; focus that had the button goes to the refusal's.
+    target.dataset.hadFocus = target.contains(document.activeElement) ? "1" : "";
+  });
+  document.addEventListener("htmx:afterSwap", (e) => {
+    const target = e.detail.target;
+    if (target?.id !== "mods-notice" || !target.dataset.hadFocus) return;
+    delete target.dataset.hadFocus;
+    if (!target.contains(document.activeElement)) document.getElementById("act-fix")?.focus();
   });
 })();

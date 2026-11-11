@@ -220,8 +220,8 @@ func (s *server) handleGenerateTerritories(w http.ResponseWriter, r *http.Reques
 // drawPNG is territory.DrawPNG; a test swaps it to fill the render queue.
 var drawPNG = territory.DrawPNG
 
-// drawFailure answers a download whose territories could not be drawn: a
-// busy render queue is a 503 the user can retry, anything else a 500.
+// drawFailure answers a download whose territories or amounts could not be
+// drawn: a busy render queue is a 503 the user can retry, anything else a 500.
 func (s *server) drawFailure(w http.ResponseWriter, r *http.Request, u store.User, err error) {
 	if !errors.Is(err, territory.ErrBusy) {
 		s.fail(w, r, "draw the demolisher territories", err)
@@ -230,27 +230,4 @@ func (s *server) drawFailure(w http.ResponseWriter, r *http.Request, u store.Use
 	w.Header().Set("Retry-After", "5")
 	s.page(w, r, http.StatusServiceUnavailable, u.Username, ErrorPage{Status: http.StatusServiceUnavailable,
 		Detail: i18n.M("worlds.generate.territories.draw_busy")})
-}
-
-// territoryDownload is src with the territories drawn in, when the request
-// asks for them on the planet that has them. ok is false when they are
-// asked for and the preview has none.
-func territoryDownload(r *http.Request, e previewEntry, planet string, src []byte) (out []byte, ok bool, err error) {
-	if r.URL.Query().Get(territoriesQuery) != "1" || planet != territoryPlanet {
-		return src, true, nil
-	}
-	if e.territories == nil {
-		return nil, false, nil
-	}
-	loc := localeOf(r)
-	out, err = drawPNG(r.Context(), src, territory.Geometry(*e.territories, e.size), func(size string) string { return territory.Label(loc, size) })
-	return out, true, err
-}
-
-// territoryFileName is a download's name with the territories drawn in.
-func territoryFileName(r *http.Request, planet, name string) string {
-	if r.URL.Query().Get(territoriesQuery) == "1" && planet == territoryPlanet {
-		return name + "-territories"
-	}
-	return name
 }

@@ -2,7 +2,6 @@ package web
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io/fs"
 	"maps"
@@ -50,23 +49,7 @@ func readModState(root *os.Root) (modState, error) {
 			st.zips[name] = version
 		}
 	}
-	b, err := world.ReadSmallFile(root, path.Join(world.ModsDir, world.ModListFile), modFileLimit)
-	switch {
-	case err == nil:
-		var doc struct {
-			Mods []struct {
-				Name    string `json:"name"`
-				Enabled bool   `json:"enabled"`
-			} `json:"mods"`
-		}
-		if err := json.Unmarshal(b, &doc); err != nil {
-			return st, errors.New("mod-list.json is not valid")
-		}
-		st.listed = map[string]bool{}
-		for _, m := range doc.Mods {
-			st.listed[m.Name] = m.Enabled
-		}
-	case !errors.Is(err, fs.ErrNotExist):
+	if st.listed, err = world.ModListStates(root); err != nil {
 		return st, err
 	}
 	st.settings, err = world.ReadSmallFile(root, path.Join(world.ModsDir, world.ModSettingsFile), modFileLimit)
