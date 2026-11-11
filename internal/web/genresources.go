@@ -45,6 +45,9 @@ type ResourceView struct {
 	Error   i18n.Msg
 	// Retry is true when asking again may work, as after a busy or failed run.
 	Retry bool
+	// Kept is true when the preview holds the count, so a download can draw
+	// it; a count of settings the person has moved on from is shown, not kept.
+	Kept bool
 }
 
 // ResourceLabel is one patch's label, centred on Left and Top percent of the
@@ -109,7 +112,11 @@ func resourceLabels(res resource.Result, size int) []ResourceLabel {
 	// The middle of a tile, as a percent of the picture, which spans [-size/2, size/2).
 	pct := func(t int) float64 { return math.Round((float64(t)+half+0.5)/float64(size)*1e5) / 1e3 }
 	var out []ResourceLabel
-	for _, p := range res.Patches {
+	hidden := resource.HiddenLabels(res.Patches)
+	for i, p := range res.Patches {
+		if hidden[i] {
+			continue
+		}
 		l := ResourceLabel{Left: pct(p.X), Top: pct(p.Y), Kind: resourceKindAmount, Value: strconv.FormatInt(p.Amount, 10)}
 		if y, ok := resource.Yield(p); ok {
 			l.Kind, l.Value = resourceKindYield, strconv.FormatFloat(y/100, 'f', -1, 64)
@@ -159,7 +166,9 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 	line, _ := mapgen.Line(req.GameVersion)
 	key := settingsKey(req)
 	if res, ok := s.previews.resourcesOf(u.ID, key, planet); ok {
-		return resourceView(localeOf(r), line, planet, res, req.Size)
+		v := resourceView(localeOf(r), line, planet, res, req.Size)
+		v.Kept = true
+		return v
 	}
 	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(previewDeadline)); err != nil {
 		s.log.Warn("set the resource count's write deadline", "error", err)
@@ -170,11 +179,14 @@ func (s *server) resources(w http.ResponseWriter, r *http.Request, u store.User,
 		retry := !errors.Is(err, game.ErrPreviewImageMissing) && !errors.Is(err, resource.ErrInvalid)
 		return &ResourceView{Error: s.controlModFailure(r, req.GameVersion, err, "resource count", resourceMsgs), Retry: retry}
 	}
-	if _, err := s.previews.addResources(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), planet, res); err != nil {
+	token, err := s.previews.addResources(u.ID, key, name, strconv.FormatUint(uint64(req.Seed), 10), planet, res)
+	if err != nil {
 		s.log.Error("keep resource amounts", "error", err)
 		return &ResourceView{Error: i18n.M("worlds.generate.resources.failed"), Retry: true}
 	}
-	return resourceView(localeOf(r), line, planet, res, req.Size)
+	v := resourceView(localeOf(r), line, planet, res, req.Size)
+	v.Kept = token != ""
+	return v
 }
 
 // resourceMsgs is how a failed resource count is worded.
@@ -246,12 +258,17 @@ func (s *server) handleGenerateResources(w http.ResponseWriter, r *http.Request,
 
 // addResources keeps the amounts counted on planet, as add keeps pictures,
 // and returns the preview's token. A count of settings other than the
-// user's current preview is not kept, and the token is blank.
-func (p *previewStore) addResources(user int64, key, name, seed, planet string, res resource.Result) (string, error) {
+// user's current preview is kept only when the planet's share of them is
+// the same; otherwise it is not kept, and the token is blank.
+func (p *previewStore) addResources(user int64, key previewKey, name, seed, planet string, res resource.Result) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.otherLocked(user, key) {
-		return "", nil
+		if p.byUser[user].key.planet(planet) != key.planet(planet) {
+			return "", nil
+		}
+		// The count fits the newer preview too, so it joins that one.
+		key = p.byUser[user].key
 	}
 	e := p.joinLocked(user, key, seed)
 	grown := e.bytes - resourceBytes(e.resources[planet]) + resourceBytes(&res)
@@ -266,13 +283,14 @@ func (p *previewStore) addResources(user int64, key, name, seed, planet string, 
 }
 
 // resourcesOf returns the amounts the user's preview holds for planet with
-// these settings, and keeps the preview another 15 minutes.
-func (p *previewStore) resourcesOf(user int64, key, planet string) (resource.Result, bool) {
+// these settings, or with any whose share for planet is the same, and keeps
+// the preview another 15 minutes.
+func (p *previewStore) resourcesOf(user int64, key previewKey, planet string) (resource.Result, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key || e.resources[planet] == nil {
+	if !ok || e.key.planet(planet) != key.planet(planet) || e.resources[planet] == nil {
 		return resource.Result{}, false
 	}
 	e.expires = p.now().Add(previewTTL)
@@ -280,18 +298,19 @@ func (p *previewStore) resourcesOf(user int64, key, planet string) (resource.Res
 }
 
 // countedPlanets are the planets the user's preview holds amounts for with
-// these settings, so their downloads can draw them.
-func (p *previewStore) countedPlanets(user int64, key string) map[string]bool {
+// these settings, or with any whose share for the planet is the same, so
+// their downloads can draw them.
+func (p *previewStore) countedPlanets(user int64, key previewKey) map[string]bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key {
+	if !ok {
 		return nil
 	}
 	out := map[string]bool{}
 	for planet, res := range e.resources {
-		if res != nil {
+		if res != nil && e.key.planet(planet) == key.planet(planet) {
 			out[planet] = true
 		}
 	}

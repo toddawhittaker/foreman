@@ -229,7 +229,7 @@ func TestPreviewMapWithoutScriptReadsTerritories(t *testing.T) {
 
 // SPEC 5.6: ?territories=1 draws them into Vulcanus's download, named so,
 // on request; without it, or for another planet, the plain picture; with
-// none read, nothing. The zip draws them into Vulcanus only.
+// none read, a refusal (409). The zip draws them into Vulcanus only.
 func TestTerritoryDownloadsDrawThem(t *testing.T) {
 	hn, prev, c := newTerritoryHarness(t)
 	form := vulcanusForm()
@@ -237,10 +237,10 @@ func TestTerritoryDownloadsDrawThem(t *testing.T) {
 	body := hn.postLong(PathGeneratePreview, form, c, withHeader("HX-Request", "true")).Body.String()
 	vulcanus := PathGeneratePreview + "/" + strings.Split(pictureOf(t, body), "/")[3] + "/vulcanus"
 	token := strings.Split(vulcanus, "/")[3]
-	if rec := hn.getLong(vulcanus+"/download?territories=1", c); rec.Code != http.StatusNotFound {
+	if rec := hn.getLong(vulcanus+"/download?territories=1", c); rec.Code != http.StatusConflict {
 		t.Errorf("territories asked for before any were read: %d", rec.Code)
 	}
-	if rec := hn.getLong(PathGeneratePreview+"/"+token+"/all.zip?territories=1", c); rec.Code != http.StatusNotFound {
+	if rec := hn.getLong(PathGeneratePreview+"/"+token+"/all.zip?territories=1", c); rec.Code != http.StatusConflict {
 		t.Errorf("zip with territories before any were read: %d", rec.Code)
 	}
 	hn.postLong(pathTerritories, vulcanusForm(), c, withHeader("HX-Request", "true"))
@@ -298,9 +298,9 @@ func TestTerritoryDownloadsDrawThem(t *testing.T) {
 func TestPreviewStoreCountsTerritories(t *testing.T) {
 	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, _ := st.add(1, "k1", "World", "7", onePNG("vulcanus"))
+	tok, _ := st.add(1, testKey("k1"), "World", "7", onePNG("vulcanus"), nil)
 	before := st.byUser[1].bytes
-	tok2, err := st.addTerritories(1, "k1", "World", "7", 1280, threeTerritories)
+	tok2, err := st.addTerritories(1, testKey("k1"), "World", "7", 1280, threeTerritories)
 	if err != nil || tok2 != tok {
 		t.Fatalf("token %q, %v", tok2, err)
 	}
@@ -308,24 +308,24 @@ func TestPreviewStoreCountsTerritories(t *testing.T) {
 	if got := st.byUser[1].bytes; got != want || territoryBytes(&threeTerritories) != 3*40+4*16 {
 		t.Errorf("%d bytes held, want %d", got, want)
 	}
-	if _, ok := st.territoriesOf(1, "k1"); !ok {
+	if _, ok := st.territoriesOf(1, testKey("k1")); !ok {
 		t.Error("the territories are not found")
 	}
-	if _, ok := st.territoriesOf(2, "k1"); ok {
+	if _, ok := st.territoriesOf(2, testKey("k1")); ok {
 		t.Error("another user found them")
 	}
 	// Read again, they replace the old ones rather than adding to the total.
-	_, _ = st.addTerritories(1, "k1", "World", "7", 1280, threeTerritories)
+	_, _ = st.addTerritories(1, testKey("k1"), "World", "7", 1280, threeTerritories)
 	if got := st.byUser[1].bytes; got != want {
 		t.Errorf("read twice: %d bytes, want %d", got, want)
 	}
 	// More pictures of the same settings keep them.
-	_, _ = st.add(1, "k1", "World", "7", onePNG("nauvis"))
-	if _, ok := st.territoriesOf(1, "k1"); !ok {
+	_, _ = st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"), nil)
+	if _, ok := st.territoriesOf(1, testKey("k1")); !ok {
 		t.Error("another planet's picture lost the territories")
 	}
-	_, _ = st.add(1, "k2", "World", "8", onePNG("vulcanus"))
-	if _, ok := st.territoriesOf(1, "k2"); ok {
+	_, _ = st.add(1, testKey("k2"), "World", "8", onePNG("vulcanus"), nil)
+	if _, ok := st.territoriesOf(1, testKey("k2")); ok {
 		t.Error("new settings kept the old territories")
 	}
 	if got := st.byUser[1].bytes; got != len(pngBytes) {
@@ -333,14 +333,14 @@ func TestPreviewStoreCountsTerritories(t *testing.T) {
 	}
 	// Territories that take the total over the limit push other users out.
 	big := territory.Result{Territories: []territory.Territory{{Size: territory.Small, Chunks: make([]territory.Chunk, maxPreviewBytes/16-3)}}}
-	if _, err := st.addTerritories(3, "k", "", "1", 1280, big); err != nil {
+	if _, err := st.addTerritories(3, testKey("k"), "", "1", 1280, big); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := st.byUser[1]; ok || st.totalLocked() > maxPreviewBytes {
 		t.Errorf("the limit was not kept: %d bytes", st.totalLocked())
 	}
 	tooBig := territory.Result{Territories: []territory.Territory{{Chunks: make([]territory.Chunk, maxPreviewBytes/16+1)}}}
-	if _, err := st.addTerritories(4, "k", "", "1", 1280, tooBig); err == nil {
+	if _, err := st.addTerritories(4, testKey("k"), "", "1", 1280, tooBig); err == nil {
 		t.Error("territories over the whole limit were kept")
 	}
 }

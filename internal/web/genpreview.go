@@ -3,11 +3,7 @@ package web
 import (
 	"archive/zip"
 	"bytes"
-	"cmp"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image/png"
@@ -87,8 +83,8 @@ const (
 // counted. bytes counts them all.
 type previewEntry struct {
 	token       string
-	key         string // settingsKey of the settings drawn
-	name        string // the world name typed, for download names
+	key         previewKey // the settings drawn
+	name        string     // the world name typed, for download names
 	seed        string
 	expires     time.Time
 	planets     []string // in the order drawn
@@ -112,50 +108,42 @@ func newPreviewStore(now func() time.Time) *previewStore {
 	return &previewStore{now: now, byUser: map[int64]*previewEntry{}}
 }
 
-// settingsKey is a hash of everything that changes the map, so the same
-// settings find the pictures already drawn. The size is part of it, as it
-// changes every picture; the planet and the world name are not.
-func settingsKey(req game.PreviewRequest) string {
-	b, _ := json.Marshal(struct {
-		Version, Preset     string
-		SpaceAge            bool
-		Seed                uint32
-		Size                int
-		MapGen, MapSettings []byte
-	}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, cmp.Or(req.Size, game.PreviewSizeDefault), req.MapGenSettings, req.MapSettings})
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
-}
-
 // missing returns the planets the user's current preview lacks for these
-// settings, and the preview's token when it has all of them. It renames
-// the preview, since the name is not part of the key.
-func (p *previewStore) missing(user int64, key, name string, planets []string) (string, []string) {
+// settings, and the preview's token when it has all of them. A picture of
+// other settings counts when its planet's share of them is the same; the
+// preview then moves to these settings. It renames the preview, since the
+// name is not part of the key.
+func (p *previewStore) missing(user int64, key previewKey, name string, planets []string) (string, []string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key {
+	if !ok {
 		return "", planets
 	}
-	e.name = name
 	var out []string
 	for _, pl := range planets {
-		if _, ok := e.images[pl]; !ok {
+		if _, ok := e.images[pl]; !ok || e.key.planet(pl) != key.planet(pl) {
 			out = append(out, pl)
 		}
 	}
 	if len(out) > 0 {
 		return "", out
 	}
+	if e.key.all != key.all {
+		return p.keepLocked(user, p.joinLocked(user, key, e.seed), name), nil
+	}
+	e.name = name
 	e.expires = p.now().Add(previewTTL)
 	return e.token, nil
 }
 
 // add keeps new pictures and returns the preview's token. Pictures of the
 // same settings join the user's current preview; other settings replace
-// it. Other users' previews go, oldest first, to keep the limits.
-func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG) (string, error) {
+// it. Other users' previews go, oldest first, to keep the limits. The
+// planets are kept in order, the world's planet order (mapgen.Planets), so
+// a planet drawn again after a change of its own settings keeps its place.
+func (p *previewStore) add(user int64, key previewKey, name, seed string, images []game.PNG, order []string) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	e := p.joinLocked(user, key, seed)
@@ -175,6 +163,14 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 		}
 		e.images[im.Planet] = im.Data
 	}
+	// A planet not in order goes last; the sort is stable, so a nil order changes nothing.
+	at := func(pl string) int {
+		if i := slices.Index(order, pl); i >= 0 {
+			return i
+		}
+		return len(order)
+	}
+	slices.SortStableFunc(e.planets, func(a, b string) int { return at(a) - at(b) })
 	e.bytes = grown
 	return p.keepLocked(user, e, name), nil
 }
@@ -183,7 +179,7 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 // add keeps pictures, and returns the preview's token. Territories of
 // settings other than the user's current preview are not kept, and the
 // token is blank.
-func (p *previewStore) addTerritories(user int64, key, name, seed string, size int, res territory.Result) (string, error) {
+func (p *previewStore) addTerritories(user int64, key previewKey, name, seed string, size int, res territory.Result) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.otherLocked(user, key) {
@@ -200,12 +196,12 @@ func (p *previewStore) addTerritories(user int64, key, name, seed string, size i
 
 // territoriesOf returns the territories the user's preview holds for these
 // settings, and keeps the preview another 15 minutes.
-func (p *previewStore) territoriesOf(user int64, key string) (territory.Result, bool) {
+func (p *previewStore) territoriesOf(user int64, key previewKey) (territory.Result, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key || e.territories == nil {
+	if !ok || e.key.all != key.all || e.territories == nil {
 		return territory.Result{}, false
 	}
 	e.expires = p.now().Add(previewTTL)
@@ -228,20 +224,46 @@ func territoryBytes(r *territory.Result) int {
 // otherLocked is true when the user's current preview is of other settings:
 // the person moved on while a run went, so its result must not replace the
 // newer preview.
-func (p *previewStore) otherLocked(user int64, key string) bool {
+func (p *previewStore) otherLocked(user int64, key previewKey) bool {
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	return ok && e.key != key
+	return ok && e.key.all != key.all
 }
 
 // joinLocked returns the entry new results of these settings go into: a
 // copy of the user's current one when its settings are the same, else a
-// new one.
-func (p *previewStore) joinLocked(user int64, key, seed string) *previewEntry {
+// new one that keeps the pictures, counts and territories of each planet
+// whose share of the settings is the same (SPEC 5.6).
+func (p *previewStore) joinLocked(user int64, key previewKey, seed string) *previewEntry {
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key {
+	if !ok {
 		return &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
+	}
+	if e.key.all != key.all {
+		n := &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
+		same := func(pl string) bool { return e.key.planet(pl) == key.planet(pl) }
+		for _, pl := range e.planets {
+			if same(pl) {
+				n.planets = append(n.planets, pl)
+				n.images[pl] = e.images[pl]
+				n.bytes += len(e.images[pl])
+			}
+		}
+		for pl, r := range e.resources {
+			if same(pl) {
+				if n.resources == nil {
+					n.resources = map[string]*resource.Result{}
+				}
+				n.resources[pl] = r
+				n.bytes += resourceBytes(r)
+			}
+		}
+		if e.territories != nil && same(territoryPlanet) {
+			n.territories, n.size = e.territories, e.size
+			n.bytes += territoryBytes(e.territories)
+		}
+		return n
 	}
 	// entry() hands copies of the stored entry to handlers that read the
 	// map and slice after the lock is gone, so they are never written in
@@ -326,9 +348,13 @@ type PreviewView struct {
 	// still shows All planets as the choice made (DESIGN 8.8).
 	ShowsAll bool
 	Error    i18n.Msg
-	// Counted is true when the preview holds any planet's resource amounts,
-	// so the zip can draw them.
-	Counted bool
+	// Drawn are the planets the zip holds, in the order drawn, and Counted
+	// those of them whose resource amounts are held, so the page knows which
+	// to count before a download with amounts (SPEC 5.6).
+	Drawn   []string
+	Counted []string
+	// TerritoriesHeld is true when the preview holds Vulcanus's territories.
+	TerritoriesHeld bool
 	// Territories is the box that shows Vulcanus's demolisher territories.
 	Territories TerritoryBox
 	// Resources is one planet's resource amounts for the large view, or why
@@ -347,9 +373,6 @@ type PreviewPicture struct {
 	Planet string
 	Name   i18n.Msg
 	Path   string
-	// Counted is true when the preview holds the planet's resource amounts,
-	// so its download can draw them.
-	Counted bool
 }
 
 // Choice is true when the world has several planets, so the section offers
@@ -358,6 +381,10 @@ func (v PreviewView) Choice() bool { return len(v.Planets) > 1 }
 
 // All is true when several pictures are shown, or were asked for.
 func (v PreviewView) All() bool { return v.ShowsAll || len(v.Pictures) > 1 }
+
+// ZipPlanets and ZipCounted are Drawn and Counted for a data attribute.
+func (v PreviewView) ZipPlanets() string { return strings.Join(v.Drawn, " ") }
+func (v PreviewView) ZipCounted() string { return strings.Join(v.Counted, " ") }
 
 // DownloadPath is where the picture is served as a file.
 func (p PreviewPicture) DownloadPath() string { return p.Path + "/download" }
@@ -445,9 +472,16 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	if err == nil {
 		counted := s.previews.countedPlanets(u.ID, key)
-		view.Counted = len(counted) > 0
+		if e, ok := s.previews.entry(view.Token, u.ID); ok {
+			view.Drawn = e.planets
+		}
+		for _, planet := range view.Drawn {
+			if counted[planet] {
+				view.Counted = append(view.Counted, planet)
+			}
+		}
 		for _, planet := range planets {
-			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet), Counted: counted[planet]})
+			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet)})
 		}
 	} else {
 		view.Token = ""
@@ -457,6 +491,9 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	// it the page asks for them once the picture has arrived (DESIGN 8.8).
 	script := auto || r.Header.Get("HX-Request") == "true"
 	view.Territories = s.territoryBox(w, r, u, req, f.Name, view, !script)
+	if view.Token != "" {
+		_, view.TerritoriesHeld = s.previews.territoriesOf(u.ID, key)
+	}
 	if auto {
 		// The page keeps the form as typed and swaps in the section alone.
 		s.fragment(w, r, s.generatePage(f, view), "generate-preview")
@@ -475,7 +512,7 @@ func previewRequest(f GenerateForm, nw world.NewWorld) game.PreviewRequest {
 
 // drawPreview runs the preview for req.Planets and keeps the pictures. The
 // request gets its own write deadline, as the run may outlast the server's.
-func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key, name, seed string) (string, error) {
+func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key previewKey, name, seed string) (string, error) {
 	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(previewDeadline)); err != nil {
 		s.log.Warn("set the map preview's write deadline", "error", err)
 	}
@@ -483,7 +520,8 @@ func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.Use
 	if err != nil {
 		return "", err
 	}
-	token, err := s.previews.add(u.ID, key, name, seed, images)
+	line, _ := mapgen.Line(req.GameVersion)
+	token, err := s.previews.add(u.ID, key, name, seed, images, mapgen.Planets(line, req.SpaceAge))
 	if err != nil {
 		s.log.Error("keep map preview", "error", err)
 		return "", errPreviewNotKept
@@ -545,13 +583,13 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 		s.notFound(w, r, u)
 		return
 	}
-	png, suffix, have, err := drawnDownload(r, e, planet, png)
+	png, suffix, err := drawnDownload(r, e, planet, png)
 	switch {
+	case errors.Is(err, errNotCounted):
+		s.notCounted(w, r, u)
+		return
 	case err != nil:
 		s.drawFailure(w, r, u, err)
-		return
-	case !have:
-		s.notFound(w, r, u)
 		return
 	}
 	w.Header().Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, planet)+suffix+".png"))
@@ -559,24 +597,38 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 }
 
 // handlePicturesZip serves every planet drawn so far as one zip, each
-// picture named as its own download would be.
+// picture named as its own download would be. withoutQuery leaves planets
+// out, so a zip with amounts can be had without a planet whose count failed
+// (SPEC 5.6).
 func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u store.User) {
 	e, ok := s.previews.entry(r.PathValue("token"), u.ID)
-	if !ok || len(e.planets) == 0 {
+	if !ok {
+		s.notFound(w, r, u)
+		return
+	}
+	without := r.URL.Query()[withoutQuery]
+	for _, planet := range without {
+		if !slices.Contains(e.planets, planet) {
+			s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+			return
+		}
+	}
+	planets := slices.DeleteFunc(slices.Clone(e.planets), func(p string) bool { return slices.Contains(without, p) })
+	if len(planets) == 0 {
 		s.notFound(w, r, u)
 		return
 	}
 	// Drawn before the reply starts, so a failure can still say so.
 	images := maps.Clone(e.images)
 	suffixes := map[string]string{}
-	for _, planet := range e.planets {
-		drawn, suffix, have, err := drawnDownload(r, e, planet, images[planet])
+	for _, planet := range planets {
+		drawn, suffix, err := drawnDownload(r, e, planet, images[planet])
 		switch {
+		case errors.Is(err, errNotCounted):
+			s.notCounted(w, r, u)
+			return
 		case err != nil:
 			s.drawFailure(w, r, u, err)
-			return
-		case !have:
-			s.notFound(w, r, u)
 			return
 		}
 		images[planet], suffixes[planet] = drawn, suffix
@@ -587,7 +639,7 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, "")+".zip"))
 	zw := zip.NewWriter(w)
-	for _, planet := range e.planets {
+	for _, planet := range planets {
 		// A PNG is compressed already.
 		fw, err := zw.CreateHeader(&zip.FileHeader{Name: previewFileName(e.name, e.seed, planet) + suffixes[planet] + ".png", Method: zip.Store})
 		if err != nil {
@@ -602,37 +654,52 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 
 // drawnDownload is a planet's picture src with what the download asks for
 // drawn in (SPEC 5.6): Vulcanus's territories (territoriesQuery), and the
-// planet's resource amounts (amountsQuery) when the preview holds them; a
-// planet without held amounts is served plain, as nothing is counted for a
-// download. suffix names what was drawn, for the file's name. ok is false
-// when the territories are asked for and the preview has none.
-func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (out []byte, suffix string, ok bool, err error) {
+// planet's resource amounts (amountsQuery). A download never counts, and
+// never comes out plain when amounts or territories were asked for: a
+// planet without them held gives errNotCounted. suffix names what was
+// drawn, for the file's name.
+func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (out []byte, suffix string, err error) {
 	q := r.URL.Query()
 	var ov territory.Overlay
 	if q.Get(territoriesQuery) == "1" && planet == territoryPlanet {
 		if e.territories == nil {
-			return nil, "", false, nil
+			return nil, "", errNotCounted
 		}
 		ov, suffix = territory.Geometry(*e.territories, e.size), "-territories"
 	}
 	loc := localeOf(r)
-	if q.Get(amountsQuery) == "1" && e.resources[planet] != nil {
+	if q.Get(amountsQuery) == "1" {
+		if e.resources[planet] == nil {
+			return nil, "", errNotCounted
+		}
 		cfg, err := png.DecodeConfig(bytes.NewReader(src))
 		if err != nil {
-			return nil, "", false, err
+			return nil, "", err
 		}
 		if ov.Size == 0 {
 			ov.Size = cfg.Width
 		} else if ov.Size != cfg.Width {
-			return nil, "", false, fmt.Errorf("the picture is %d wide, its territories %d", cfg.Width, ov.Size)
+			return nil, "", fmt.Errorf("the picture is %d wide, its territories %d", cfg.Width, ov.Size)
 		}
 		ov.Captions, suffix = amountCaptions(loc, *e.resources[planet], cfg.Width), suffix+"-amounts"
 	}
 	if suffix == "" {
-		return src, "", true, nil
+		return src, "", nil
 	}
 	out, err = drawPNG(r.Context(), src, ov, func(size string) string { return territory.Label(loc, size) })
-	return out, suffix, true, err
+	return out, suffix, err
+}
+
+// withoutQuery names a planet the zip leaves out; it may be given more than once.
+const withoutQuery = "without"
+
+// errNotCounted means a download asked for amounts the preview does not hold.
+var errNotCounted = errors.New("the planet's resource amounts are not counted")
+
+// notCounted refuses a download with amounts the preview does not hold. The
+// page counts them first, so only a stale or hand-made link gets here.
+func (s *server) notCounted(w http.ResponseWriter, r *http.Request, u store.User) {
+	s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict, Detail: i18n.M("worlds.generate.resources.not_counted")})
 }
 
 func writePNG(w http.ResponseWriter, png []byte) {

@@ -6,17 +6,36 @@
 -- {radius = N, planet = "<name>"}: the picture's half width in chunks, and
 -- the planet to count.
 --
--- Ores join a patch when their distance on both axes is at most ore_gap (2)
--- tiles: touching, corners included (YARM's rule), or one tile apart, since
--- sparse ores such as Fulgora's scrap otherwise break into thousands of
--- fragments. Wells, the entities of a resource whose product is a fluid,
--- join when their distance on both axes is at most well_gap (24) tiles; the
--- real game's fields stop merging between 18 and 40. Both gaps can be set in
--- params.lua, which only the real-game test does.
+-- Ores join a patch when their distance on both axes is at most ore_gap (6)
+-- tiles: below that, sparse ores break one island or field into many
+-- crumbs, and on Nauvis no two separate fields join at any gap up to 16
+-- (ADR 0015). A count with more than dense_ore_tiles ore tiles, far more
+-- than any default map has, joins ores within dense_ore_gap (2) instead, so
+-- its patches are finer: at 6 the richest maps ran into the time limit
+-- before they ran out of memory, and the page said to try again where only
+-- a smaller size helps (ADR 0015). Wells, the entities of a resource whose
+-- product is a fluid, join when their distance on both axes is at most
+-- well_gap (24) tiles; the real game's fields stop merging between 18 and
+-- 40. The gaps and the threshold can be set in params.lua, which only the
+-- real-game test does; a set ore_gap is used as it is. Fulgora's scrap joins
+-- within 16 tiles (ADR 0015): at 2, high-frequency scrap gave each island
+-- dozens of labels; a few labels can join islands across thin channels.
 local params = require("params")
 local radius, planet = params.radius, params.planet
-local ore_gap = params.ore_gap or 2
+local ore_gap = params.ore_gap or 6
+local dense_ore_tiles = params.dense_ore_tiles or 400000
+local dense_ore_gap = 2
 local well_gap = params.well_gap or 24
+local resource_gaps = { fulgora = { scrap = 16 } }
+local planet_gaps = resource_gaps[planet] or {}
+
+-- Gaps up to this are joined by per-tile offsets, larger ones by cells
+-- (ADR 0015). Offsets look up every position in reach whether or not a tile
+-- is there: 84 a tile at gap 6, 544 at 16. Cells compare only the tiles
+-- present in the 3 x 3 cells around, about 160 a tile in a dense field at
+-- 6, so they win only for sparse resources, which are the ones with large
+-- gaps: scrap (16) and wells (24).
+local offset_limit = 6
 
 -- surface_of returns the planet's surface, making it on 2.x when the planet
 -- has none yet. 1.1 has only Nauvis, which always has one.
@@ -68,11 +87,33 @@ script.on_init(function()
   surface.request_to_generate_chunks({ 0, 0 }, radius)
   surface.force_generate_chunk_requests()
 
+  -- The ore tiles that would join at ore_gap, counted without keeping
+  -- entity handles, decide whether this is a dense count.
+  local half = radius * 32
+  if not params.ore_gap then
+    local names = {}
+    for name, proto in pairs(resource_prototypes()) do
+      if not is_well(proto) and not planet_gaps[name] then
+        names[#names + 1] = name
+      end
+    end
+    -- An empty name list would not filter at all.
+    if #names > 0 then
+      local ores = surface.count_entities_filtered({ area = { { -half, -half }, { half, half } }, name = names })
+      if ores > dense_ore_tiles then
+        ore_gap = dense_ore_gap
+      end
+    end
+  end
+
   -- The picture covers tiles [-half, half) on each axis. A tile's key leaves
   -- room for neighbours up to the largest gap beyond each edge, and gives
   -- the tile back, so no coordinates are stored.
-  local half = radius * 32
-  local pad = math.max(ore_gap, well_gap) + 1
+  local largest = math.max(ore_gap, well_gap)
+  for _, g in pairs(planet_gaps) do
+    largest = math.max(largest, g)
+  end
+  local pad = largest + 1
   local width = 2 * (half + pad)
   local function key(x, y)
     return (x + half + pad) * width + (y + half + pad)
@@ -81,15 +122,18 @@ script.on_init(function()
     return math.floor(k / width) - half - pad, k % width - half - pad
   end
 
-  -- Ores: each pair of tiles within ore_gap is looked at once, from the
-  -- tile with the smaller (x, y).
-  local offsets = {}
-  for dx = 0, ore_gap do
-    for dy = -ore_gap, ore_gap do
-      if dx > 0 or dy > 0 then
-        offsets[#offsets + 1] = { dx, dy }
+  -- Small gaps: each pair of tiles within the gap is looked at once, from
+  -- the tile with the smaller (x, y).
+  local function offsets_of(gap)
+    local offsets = {}
+    for dx = 0, gap do
+      for dy = -gap, gap do
+        if dx > 0 or dy > 0 then
+          offsets[#offsets + 1] = { dx, dy }
+        end
       end
     end
+    return offsets
   end
 
   local resources, patches = {}, {}
@@ -140,20 +184,24 @@ script.on_init(function()
         end
       end
 
-      if is_well(proto) then
-        -- Wells: bucketed by well_gap-wide cells, so only the 3 x 3 cells
-        -- around a well can hold one within the gap.
+      local gap = well_gap
+      if not is_well(proto) then
+        gap = planet_gaps[name] or ore_gap
+      end
+      if gap > offset_limit then
+        -- Bucketed by gap-wide cells, so only the 3 x 3 cells around a tile
+        -- can hold one within the gap.
         local cells = {}
         for i = 1, n do
           local x, y = tile(keys[i])
-          local gx, gy = math.floor(x / well_gap), math.floor(y / well_gap)
+          local gx, gy = math.floor(x / gap), math.floor(y / gap)
           for ox = -1, 1 do
             for oy = -1, 1 do
               local list = cells[(gx + ox + 2048) * 4096 + gy + oy + 2048]
               if list then
                 for _, j in ipairs(list) do
                   local jx, jy = tile(keys[j])
-                  if math.abs(jx - x) <= well_gap and math.abs(jy - y) <= well_gap then
+                  if math.abs(jx - x) <= gap and math.abs(jy - y) <= gap then
                     union(i, j)
                   end
                 end
@@ -165,6 +213,7 @@ script.on_init(function()
           table.insert(cells[c], i)
         end
       else
+        local offsets = offsets_of(gap)
         for i = 1, n do
           local x, y = tile(keys[i])
           for _, o in ipairs(offsets) do

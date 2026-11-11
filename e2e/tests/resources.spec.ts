@@ -115,7 +115,7 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   await expect(labels(page)).toHaveCount(0);
   await shot(page, "resources-counting");
   await hold.release();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   await expect(counting(page)).toBeHidden();
   await shot(page, "resources-labels");
   await expect(status(page)).toHaveText("Resource amounts ready.");
@@ -125,7 +125,9 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   expect(texts).toContain("12.3M");
   expect(texts).toContain("300%");
   expect(texts).toContain("50%");
-  expect(texts).toContain("3K");
+  // Beside a patch of the same ore 4 times richer, within 64 tiles, a label
+  // is left off; the text list below still gives it (SPEC 5.6).
+  for (const hidden of ["250K", "90K", "3K"]) expect(texts).not.toContain(hidden);
   // The text list is collapsed, and names each resource with its total.
   await expect(summary(page)).toHaveText("Resource amounts as text (7 patches)");
   await expect(result(page).locator("details")).not.toHaveAttribute("open");
@@ -138,6 +140,9 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
     "Crude oil: 350% yield in total",
   ]);
   await expect(result(page).getByRole("listitem").first()).toHaveText("12,345,678 at (-50, -30)");
+  for (const hidden of ["250,000 at (-40, -30)", "90,000 at (-38, -22)", "3,000 at (36, 46)"]) {
+    await expect(result(page).getByRole("listitem").filter({ hasText: hidden })).toHaveCount(1);
+  }
   await expect(result(page).getByRole("listitem").filter({ hasText: "yield" })).toHaveText(["300% yield at (50, -50)", "50% yield at (-60, 60)"]);
   await shot(page, "resources-text");
   await checkPage(page);
@@ -146,17 +151,17 @@ test("ticked, the count comes after the picture: labels on the map and the amoun
   await expect(dialog(page)).toBeHidden();
   await section(page).getByRole("link", { name: /opens the large view/ }).click();
   await expect(box(page)).toBeChecked();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
 });
 
 test("labels never overlap at the fitted size, and zooming in shows more", async ({ page }) => {
   await openLarge(page);
   await box(page).check();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   const fitted = await expectNoOverlap(page);
-  // Two of the large ore's patches are a few tiles apart, so not every label fits.
+  // At the fitted size not every label fits.
   expect(fitted.shown.length).toBeGreaterThan(0);
-  expect(fitted.shown.length).toBeLessThan(7);
+  expect(fitted.shown.length).toBeLessThan(4);
   await dialog(page).locator("#large-frame").focus();
   for (let i = 0; i < 20; i++) await page.keyboard.press("+");
   await expect.poll(async () => (await layout(page)).shown.length).toBeGreaterThan(fitted.shown.length);
@@ -189,7 +194,7 @@ test("a tick during the pause after a settings change waits for the new picture"
   await expect.poll(() => events.includes("count")).toBe(true);
   expect(events.indexOf("picture")).toBeGreaterThanOrEqual(0);
   expect(events.indexOf("picture")).toBeLessThan(events.indexOf("count"));
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
 });
 
 test("Preview map clicked during a change's pause leaves the box working", async ({ page }) => {
@@ -206,7 +211,7 @@ test("Preview map clicked during a change's pause leaves the box working", async
   await expect(dialog(page)).toBeVisible();
   await box(page).check();
   await expect.poll(() => asked.length).toBe(1);
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
 });
 
 test("unticking or closing the view drops the count on its way", async ({ page }) => {
@@ -257,7 +262,7 @@ test("another planet drops the count and counts the planet shown, around its dem
   // The planet's name does not hide that a count began (SPEC 17).
   await expect(status(page)).toHaveText("Vulcanus. Counting resources in the map… This can take up to a minute.");
   await hold.release();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   await expect(dialog(page).locator(".territories__label")).toHaveCount(3);
   // A demolisher label is always kept: one put over the largest amount's label hides that label.
   const covered = await dialog(page).locator(".map").evaluate((map) => {
@@ -284,7 +289,7 @@ test("a settings change drops the labels at once and counts again after the new 
   test.skip(!isWide(page), "the settings show beside the map only where both fit");
   await openLarge(page);
   await box(page).check();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   const asked: Request[] = [];
   page.on("request", (r) => { if (isResources(r.url())) asked.push(r); });
   const draws: string[] = [];
@@ -302,7 +307,7 @@ test("a settings change drops the labels at once and counts again after the new 
   // The picture's "ready" does not hide that a count began (SPEC 17): both are said.
   await expect(status(page)).toHaveText(/^Map preview ready\. Counting resources in the map… This can take up to a minute\.$/);
   await hold.release();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   await expect(status(page)).toHaveText("Resource amounts ready.");
 });
 
@@ -322,7 +327,7 @@ test("a failed request says so and offers to try again", async ({ page }) => {
   await checkPage(page);
   await page.unroute(resourceURL);
   await result(page).getByRole("button", { name: "Try again" }).click();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   await expect(box(page)).toBeFocused();
   await expect(result(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
 });
@@ -343,10 +348,42 @@ test("from the keyboard: tick the box, then read the amounts as text", async ({ 
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
   await expect(box(page)).toBeFocused();
-  await expect(labels(page)).toHaveCount(7);
+  await expect(labels(page)).toHaveCount(4);
   // Focus stays inside the view, which still closes with Escape.
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toBeHidden();
+});
+
+test("another planet's settings change keeps this planet's count, so going back is quick", async ({ page, fakeGame }) => {
+  test.skip(!isWide(page), "the settings show beside the map only where both fit");
+  // Every preview picture and every count is a container the fake game is asked to create.
+  const runs = async () => ((await fakeGame!.state()) as { calls: string[] }).calls.filter((c) => c.includes("/containers/create")).length;
+  const go = async (key: string, name: string) => {
+    await dialog(page).locator("#large-frame").focus();
+    await page.keyboard.press(key);
+    await expect(page.getByRole("dialog", { name })).toBeVisible();
+    await expect(labels(page)).toHaveCount(4);
+  };
+  await openLarge(page);
+  await box(page).check();
+  await expect(labels(page)).toHaveCount(4);
+  // Nauvis, Vulcanus, Gleba, Fulgora, Aquilo: two back is Fulgora.
+  await go("ArrowLeft", "Aquilo");
+  await go("ArrowLeft", "Fulgora");
+  // A Fulgora slider: its picture and count are made again.
+  const before = await runs();
+  await page.locator("#large-settings .step__range").first().focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(labels(page)).toHaveCount(0);
+  await expect(status(page)).toHaveText("Resource amounts ready.");
+  await expect(labels(page)).toHaveCount(4);
+  const changed = await runs();
+  expect(changed).toBeGreaterThanOrEqual(before + 2);
+  // Back to Nauvis: the pictures and counts already made are used.
+  await go("ArrowRight", "Aquilo");
+  await go("ArrowRight", "Nauvis");
+  await expect(counting(page)).toBeHidden();
+  expect(await runs()).toBe(changed);
 });
 
 // SPEC 5.6, 17: the same box on the One planet picture. Off on load, kept
@@ -388,7 +425,7 @@ test.describe("on the One planet picture", () => {
     await expect(page.locator("#preview-counting")).toContainText("Counting resources in the map… This can take up to a minute.");
     await expect(announcer(page)).toHaveText("Counting resources in the map… This can take up to a minute.");
     await hold.release();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(page.locator("#preview-counting")).toBeHidden();
     await expect(announcer(page)).toHaveText("Resource amounts ready.");
     await expect(section(page).locator(".resources")).toHaveAttribute("aria-hidden", "true");
@@ -407,7 +444,7 @@ test.describe("on the One planet picture", () => {
     await page.locator("#mg-resources-vulcanus summary").click();
     await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
     await expect(pageBox(page)).toBeChecked();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
   });
 
   test("the large view's box is its own; the page's labels, list and count stay while it is open", async ({ page }) => {
@@ -415,27 +452,27 @@ test.describe("on the One planet picture", () => {
     page.on("request", (r) => { if (isResources(r.url())) asked.push(r.url()); });
     await onePlanet(page);
     await pageBox(page).check();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(announcer(page)).toHaveText("Resource amounts ready.");
     await section(page).getByRole("link", { name: /opens the large view/ }).click();
     await expect(dialog(page)).toBeVisible();
     await expect(box(page)).not.toBeChecked();
     await expect(labels(page)).toHaveCount(0);
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     // Ticked and unticked there, only the view's own amounts come and go.
     await box(page).check();
-    await expect(labels(page)).toHaveCount(7);
+    await expect(labels(page)).toHaveCount(4);
     await box(page).uncheck();
     await expect(labels(page)).toHaveCount(0);
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(pageResult(page).locator("summary")).toHaveText("Resource amounts as text (7 patches)");
     await box(page).check();
-    await expect(labels(page)).toHaveCount(7);
+    await expect(labels(page)).toHaveCount(4);
     await page.keyboard.press("Escape");
     await expect(dialog(page)).toBeHidden();
     // Closed, the page's are still there: nothing is asked again or said again.
     await expect(pageBox(page)).toBeChecked();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(pageResult(page).locator("summary")).toHaveText("Resource amounts as text (7 patches)");
     await page.waitForTimeout(300);
     expect(asked.length).toBe(3);
@@ -453,7 +490,7 @@ test.describe("on the One planet picture", () => {
     await expect(dialog(page)).toBeVisible();
     await status(page).evaluate((s) => { s.textContent = ""; });
     await hold.release();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await page.waitForTimeout(200);
     // The view's status line never reads the page's news.
     await expect(status(page)).toBeEmpty();
@@ -518,7 +555,7 @@ test.describe("on the One planet picture", () => {
     await expect(busy).toBeInViewport();
     await shot(page, "resources-one-planet-counting");
     await hold.release();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(busy).toBeHidden();
   });
 
@@ -526,7 +563,7 @@ test.describe("on the One planet picture", () => {
   test("the thumbnail's labels are small and lie over the map inside its border", async ({ page }) => {
     await onePlanet(page);
     await pageBox(page).check();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     const look = await pageLabels(page).first().evaluate((l) => { const s = getComputedStyle(l); return { size: s.fontSize, weight: s.fontWeight }; });
     expect(look).toEqual({ size: "12px", weight: "400" });
     const img = (await section(page).locator("a.picture img").boundingBox())!;
@@ -553,7 +590,7 @@ test.describe("on the One planet picture", () => {
     await expect(page.locator("#preview-counting progress")).toHaveAttribute("aria-hidden", "true");
     expect(await top()).toBeCloseTo(before, 0);
     await hold.release();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     expect(await top()).toBeCloseTo(before, 0);
   });
 
@@ -576,7 +613,7 @@ test.describe("on the One planet picture", () => {
     await expect(page.locator("#preview-amounts-news")).toHaveText(/^Error: The request for the resource amounts failed\./);
     await page.unroute(resourceURL);
     await pageResult(page).getByRole("button", { name: "Try again" }).click();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(pageBox(page)).toBeFocused();
   });
   test("downloads draw in the held amounts while the box is ticked, and never count", async ({ page }) => {
@@ -587,11 +624,11 @@ test.describe("on the One planet picture", () => {
     const zip = section(page).getByRole("link", { name: "Download all drawn planets (zip)" });
     await expect(one).toHaveText("Download Nauvis (PNG)");
     await pageBox(page).check();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     await expect(one).toHaveText("Download Nauvis with resource amounts (PNG)");
     await expect(one).toHaveAttribute("href", /\/nauvis\/download\?amounts=1$/);
     await expect(zip).toHaveAttribute("href", /\/all\.zip\?amounts=1$/);
-    await expect(zip).toHaveText("Download all drawn planets (zip), with resource amounts where counted");
+    await expect(zip).toHaveText("Download all drawn planets (zip), with resource amounts");
     const res = await page.request.get(await one.getAttribute("href") ?? "");
     expect(res.status()).toBe(200);
     expect(res.headers()["content-disposition"]).toContain("-nauvis-amounts.png");
@@ -602,7 +639,7 @@ test.describe("on the One planet picture", () => {
     await expect(page.locator("#large-download")).not.toHaveAttribute("href", /amounts/);
     await expect(page.locator("#large-download-name")).toHaveText("Download Nauvis map");
     await box(page).check();
-    await expect(labels(page)).toHaveCount(7);
+    await expect(labels(page)).toHaveCount(4);
     await expect(page.locator("#large-download")).toHaveAttribute("href", /\?amounts=1$/);
     await expect(page.locator("#large-download-name")).toHaveText("Download Nauvis map with resource amounts");
     await page.keyboard.press("Escape");
@@ -622,7 +659,7 @@ test.describe("on the One planet picture", () => {
     await page.getByLabel("Show demolisher territories").check();
     await expect(section(page).locator(".territory-counts")).toHaveText(/^Demolisher territories in this picture/);
     await pageBox(page).check();
-    await expect(pageLabels(page)).toHaveCount(7);
+    await expect(pageLabels(page)).toHaveCount(4);
     const one = section(page).locator("li a.download");
     await expect(one).toHaveText("Download Vulcanus with territories and resource amounts (PNG)");
     const res = await page.request.get(await one.getAttribute("href") ?? "");

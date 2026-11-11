@@ -21,5 +21,14 @@
   "js.generate.moved": "{field} réglé sur {value} pour que la plage reste valide.",
   "js.preview.download_territories": "Télécharger la carte avec les territoires : {planet}",
   "js.preview.download_amounts": "Télécharger la carte avec les quantités de ressources : {planet}",
-  "js.preview.download_both": "Télécharger la carte avec les territoires et les quantités de ressources : {planet}"
+  "js.preview.download_both": "Télécharger la carte avec les territoires et les quantités de ressources : {planet}",
+  "js.preview.prepare_amounts": "Comptage des ressources pour le téléchargement, planète {n} sur {total} : {planet}…",
+  "js.preview.prepare_territories": "Recherche des territoires des démolisseurs pour le téléchargement, planète {n} sur {total} : {planet}…",
+  "js.preview.prepare_failed": "Le téléchargement s’est arrêté à cette planète : {planet}.",
+  "js.preview.prepare_without": "Télécharger sans cette planète : {planet}",
+  "js.preview.prepare_canceled": "Téléchargement annulé.",
+  "js.preview.prepare_busy": "Un autre téléchargement est en préparation. Attendez-le ou annulez-le d’abord.",
+  "js.preview.prepare_retry": "Réessayer : {planet}",
+  "js.preview.prepare_started": "Téléchargement démarré.",
+  "js.preview.prepare_redrawing": "L’aperçu de la carte est en cours de dessin pour les nouveaux réglages. Téléchargez de nouveau une fois qu’il est prêt."
 }
