@@ -27,8 +27,8 @@
   "js.preview.prepare_failed": "Скачивание остановлено на планете: {planet}.",
   "js.preview.prepare_without": "Скачать без планеты: {planet}",
   "js.preview.prepare_canceled": "Скачивание отменено.",
+  "js.preview.prepare_busy": "Готовится другое скачивание. Дождитесь его или сначала отмените.",
   "js.preview.prepare_retry": "Повторить: {planet}",
-  "js.preview.prepare_busy": "Скачивание уже готовится.",
   "js.preview.prepare_started": "Скачивание началось.",
   "js.preview.prepare_redrawing": "Предпросмотр карты рисуется по новым настройкам. Скачайте снова, когда он будет готов."
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/resource"
 	"github.com/toddawhittaker/foreman/internal/territory"
 )
@@ -248,7 +249,7 @@ func TestResourcesNeedSignInAndTheSameOrigin(t *testing.T) {
 func TestPreviewStoreKeepsResourcesPerPlanet(t *testing.T) {
 	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, _ := st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"))
+	tok, _ := st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"), nil)
 	before := st.byUser[1].bytes
 	held, _ := st.entry(tok, 1)
 	if tok2, err := st.addResources(1, testKey("k1"), "World", "7", "nauvis", nauvisCount); err != nil || tok2 != tok {
@@ -280,11 +281,11 @@ func TestPreviewStoreKeepsResourcesPerPlanet(t *testing.T) {
 		t.Error("another user found it")
 	}
 	// More pictures of the same settings keep the counts; other settings drop them.
-	_, _ = st.add(1, testKey("k1"), "World", "7", onePNG("gleba"))
+	_, _ = st.add(1, testKey("k1"), "World", "7", onePNG("gleba"), nil)
 	if _, ok := st.resourcesOf(1, testKey("k1"), "nauvis"); !ok {
 		t.Error("another picture lost the count")
 	}
-	_, _ = st.add(1, testKey("k2"), "World", "8", onePNG("nauvis"))
+	_, _ = st.add(1, testKey("k2"), "World", "8", onePNG("nauvis"), nil)
 	if _, ok := st.resourcesOf(1, testKey("k2"), "nauvis"); ok {
 		t.Error("new settings kept the old count")
 	}
@@ -327,7 +328,7 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 func TestLateResultsDoNotReplaceANewerPreview(t *testing.T) {
 	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, _ := st.add(1, testKey("new"), "World", "8", onePNG("nauvis"))
+	tok, _ := st.add(1, testKey("new"), "World", "8", onePNG("nauvis"), nil)
 	if got, err := st.addResources(1, testKey("old"), "World", "7", "nauvis", nauvisCount); err != nil || got != "" {
 		t.Errorf("a late count: token %q, %v", got, err)
 	}
@@ -347,6 +348,25 @@ func TestLateResultsDoNotReplaceANewerPreview(t *testing.T) {
 	}
 	if got, _ := st.addTerritories(3, testKey("k"), "", "1", 1280, threeTerritories); got == "" {
 		t.Error("a user with no preview kept no territories")
+	}
+}
+
+// SPEC 5.6: the count's reply says whether the preview kept it, so the page
+// marks a planet counted for its downloads only when the server holds it.
+func TestCountReplySaysWhetherItWasKept(t *testing.T) {
+	hn, _, c := newResourceHarness(t)
+	hx := withHeader("HX-Request", "true")
+	all := planetForm("")
+	all.Del("planet")
+	hn.postLong(PathGeneratePreview, all, c, hx)
+	if body := hn.postLong(pathResources, planetForm("nauvis"), c, hx).Body.String(); !strings.Contains(body, "data-kept") {
+		t.Errorf("a kept count is not marked kept:\n%s", body)
+	}
+	// Another seed while the preview is of 123456: answered, not kept.
+	other := planetForm("gleba")
+	other.Set("seed", "999")
+	if body := hn.postLong(pathResources, other, c, hx).Body.String(); strings.Contains(body, "data-kept") || !strings.Contains(body, "resource-result") {
+		t.Errorf("a count of other settings is marked kept:\n%s", body)
 	}
 }
 
@@ -467,6 +487,32 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 	}
 }
 
+// SPEC 5.6: after Nauvis alone is drawn again for a change of its own
+// controls, the zip still holds the planets in the world's order.
+func TestZipKeepsThePlanetOrder(t *testing.T) {
+	hn, prev, c := newResourceHarness(t)
+	prev.png = realPNG(t, game.PreviewSizeDefault)
+	hx := withHeader("HX-Request", "true")
+	all := planetForm("", fieldName("nauvis", "iron-ore", "size"), "150")
+	all.Del("planet")
+	hn.postLong(PathGeneratePreview, all, c, hx)
+	nauvis := planetForm("nauvis", fieldName("nauvis", "iron-ore", "size"), "200")
+	body := hn.postLong(PathGeneratePreview, nauvis, c, hx).Body.String()
+	base := PathGeneratePreview + "/" + strings.Split(pictureOf(t, body), "/")[3]
+	rec := hn.getLong(base+"/all.zip", c)
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, f := range zr.File {
+		got = append(got, strings.TrimSuffix(f.Name[strings.LastIndex(f.Name, "-")+1:], ".png"))
+	}
+	if want := mapgen.Planets("2.1", true); !slices.Equal(got, want) {
+		t.Errorf("zip order %v, want %v", got, want)
+	}
+}
+
 // SPEC 5.6: a planet left out of the zip must be one the zip holds, and
 // leaving out every planet leaves nothing to serve.
 func TestZipWithoutChecksItsPlanets(t *testing.T) {
@@ -513,9 +559,9 @@ func TestDownloadDrawsTerritoriesAndAmountsTogether(t *testing.T) {
 	}
 	r := httptest.NewRequest(http.MethodGet, "/x?territories=1&amounts=1", nil)
 	r = r.WithContext(context.WithValue(r.Context(), localeKey{}, i18n.Locale("de")))
-	_, suffix, ok, err := drawnDownload(r, e, "vulcanus", src)
-	if err != nil || !ok || suffix != "-territories-amounts" {
-		t.Fatalf("suffix %q, ok %v, %v", suffix, ok, err)
+	_, suffix, err := drawnDownload(r, e, "vulcanus", src)
+	if err != nil || suffix != "-territories-amounts" {
+		t.Fatalf("suffix %q, %v", suffix, err)
 	}
 	if got.Size != 256 || len(got.Shapes) == 0 {
 		t.Errorf("the territories are not drawn: %+v", got)
@@ -533,13 +579,13 @@ func TestDownloadDrawsTerritoriesAndAmountsTogether(t *testing.T) {
 	}
 	// A picture of another size than its territories is refused, not drawn wrongly.
 	e.size = 128
-	if _, _, _, err := drawnDownload(httptest.NewRequest(http.MethodGet, "/x?territories=1&amounts=1", nil), e, "vulcanus", src); err == nil {
+	if _, _, err := drawnDownload(httptest.NewRequest(http.MethodGet, "/x?territories=1&amounts=1", nil), e, "vulcanus", src); err == nil {
 		t.Error("a 256 picture drew 128 territories")
 	}
 	e.size = 256
 	// Only the territories: the amounts are not drawn, even though held.
 	r = httptest.NewRequest(http.MethodGet, "/x?territories=1", nil)
-	if _, suffix, _, _ = drawnDownload(r, e, "vulcanus", src); suffix != "-territories" || len(got.Captions) != 0 {
+	if _, suffix, _ = drawnDownload(r, e, "vulcanus", src); suffix != "-territories" || len(got.Captions) != 0 {
 		t.Errorf("suffix %q, %d captions", suffix, len(got.Captions))
 	}
 }

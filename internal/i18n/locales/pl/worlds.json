@@ -487,5 +487,6 @@
   "worlds.generate.resources.failed": "Gra nie zdołała policzyć zasobów. Podgląd mapy i generowanie nadal działają. Jeśli błąd się powtarza, należy sprawdzić dziennik Foremana.",
   "worlds.generate.resources.request_failed": "Żądanie ilości zasobów nie powiodło się. Należy sprawdzić, czy Foreman jest osiągalny i czy sesja nadal trwa, a następnie spróbować ponownie.",
   "worlds.generate.resources.retry": "Spróbuj ponownie",
-  "worlds.generate.resources.not_counted": "To pobieranie wymaga ilości zasobów, które nie zostały policzone. Należy pobrać ponownie ze strony „Wygeneruj świat”, która najpierw je policzy."
+  "worlds.generate.resources.not_counted": "To pobieranie wymaga ilości zasobów lub terytoriów dewastatorów, których jeszcze nie ma. Należy pobrać ponownie ze strony „Wygeneruj świat”, która najpierw je ustali.",
+  "worlds.generate.resources.not_kept": "Ustawienia zmieniły się podczas liczenia zasobów, więc ilości nie zostały zapisane. Należy spróbować ponownie."
 }

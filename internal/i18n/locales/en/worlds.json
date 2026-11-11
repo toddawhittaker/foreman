@@ -470,5 +470,6 @@
   "worlds.generate.resources.failed": "The game could not count the resources. The map preview and Generate still work. If it keeps failing, check Foreman's log.",
   "worlds.generate.resources.request_failed": "The request for the resource amounts failed. Check that Foreman is reachable and that you are still signed in, then try again.",
   "worlds.generate.resources.retry": "Try again",
-  "worlds.generate.resources.not_counted": "This download asks for resource amounts that have not been counted. Download it again from the Generate a world page, which counts them first."
+  "worlds.generate.resources.not_counted": "This download asks for resource amounts or demolisher territories that are not held yet. Download it again from the Generate a world page, which counts them first.",
+  "worlds.generate.resources.not_kept": "The settings changed while the resources were counted, so the amounts were not kept. Try again."
 }

@@ -470,5 +470,6 @@
   "worlds.generate.resources.failed": "El juego no pudo contar los recursos. La vista previa del mapa y la generación siguen funcionando. Si sigue fallando, revisa el registro de Foreman.",
   "worlds.generate.resources.request_failed": "Falló la solicitud de las cantidades de recursos. Comprueba que Foreman esté accesible y que sigas con la sesión iniciada, y vuelve a intentarlo.",
   "worlds.generate.resources.retry": "Reintentar",
-  "worlds.generate.resources.not_counted": "Esta descarga pide cantidades de recursos que no se han contado. Vuelve a descargarla desde la página «Generar un mundo», que las cuenta primero."
+  "worlds.generate.resources.not_counted": "Esta descarga pide cantidades de recursos o territorios de los demoledores que aún no están disponibles. Vuelve a descargarla desde la página «Generar un mundo», que los obtiene primero.",
+  "worlds.generate.resources.not_kept": "La configuración cambió mientras se contaban los recursos, así que las cantidades no se guardaron. Inténtalo de nuevo."
 }

@@ -27,8 +27,8 @@
   "js.preview.prepare_failed": "Pobieranie zatrzymało się na planecie: {planet}.",
   "js.preview.prepare_without": "Pobierz bez planety: {planet}",
   "js.preview.prepare_canceled": "Pobieranie anulowane.",
+  "js.preview.prepare_busy": "Trwa przygotowywanie innego pobierania. Należy na nie poczekać albo najpierw je anulować.",
   "js.preview.prepare_retry": "Spróbuj ponownie: {planet}",
-  "js.preview.prepare_busy": "Pobieranie jest już przygotowywane.",
   "js.preview.prepare_started": "Pobieranie rozpoczęte.",
   "js.preview.prepare_redrawing": "Podgląd mapy jest rysowany dla nowych ustawień. Pobieranie będzie możliwe, gdy będzie gotowy."
 }

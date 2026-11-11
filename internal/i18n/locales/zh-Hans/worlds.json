@@ -453,5 +453,6 @@
   "worlds.generate.resources.failed": "游戏无法统计资源，但地图预览和生成世界仍可使用。如果持续失败，请查看 Foreman 的日志。",
   "worlds.generate.resources.request_failed": "资源数量请求失败。请确认能够访问 Foreman 且仍处于登录状态，然后重试。",
   "worlds.generate.resources.retry": "重试",
-  "worlds.generate.resources.not_counted": "此下载需要尚未统计的资源数量。请从“生成世界”页面重新下载，该页面会先统计资源。"
+  "worlds.generate.resources.not_counted": "此下载需要尚未获得的资源数量或撼地虫领地。请从“生成世界”页面重新下载，该页面会先获取它们。",
+  "worlds.generate.resources.not_kept": "统计资源时设置已更改，因此未保留资源数量。请重试。"
 }
