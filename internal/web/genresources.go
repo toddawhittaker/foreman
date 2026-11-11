@@ -109,7 +109,11 @@ func resourceLabels(res resource.Result, size int) []ResourceLabel {
 	// The middle of a tile, as a percent of the picture, which spans [-size/2, size/2).
 	pct := func(t int) float64 { return math.Round((float64(t)+half+0.5)/float64(size)*1e5) / 1e3 }
 	var out []ResourceLabel
-	for _, p := range res.Patches {
+	hidden := resource.HiddenLabels(res.Patches)
+	for i, p := range res.Patches {
+		if hidden[i] {
+			continue
+		}
 		l := ResourceLabel{Left: pct(p.X), Top: pct(p.Y), Kind: resourceKindAmount, Value: strconv.FormatInt(p.Amount, 10)}
 		if y, ok := resource.Yield(p); ok {
 			l.Kind, l.Value = resourceKindYield, strconv.FormatFloat(y/100, 'f', -1, 64)
