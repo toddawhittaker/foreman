@@ -338,7 +338,8 @@ func TestModSettingDefsNotCachedWhenKeyChangesDuringRun(t *testing.T) {
 	}
 }
 
-// Plan R6: callers who ask during a run share it.
+// Plan R6: callers who ask during a run share it; one who comes after it hits
+// the cache. Either way the game runs once.
 func TestModSettingDefsCallersShareARun(t *testing.T) {
 	r := newModSettingsRig(t)
 	const n = 4
@@ -353,14 +354,7 @@ func TestModSettingDefsCallersShareARun(t *testing.T) {
 		}()
 	}
 	c := r.waitRunning()
-	eventually(t, func() bool {
-		r.c.modSettings.mu.Lock()
-		defer r.c.modSettings.mu.Unlock()
-		for _, f := range r.c.modSettings.flights {
-			return f.waiters == n
-		}
-		return false
-	}, "all callers to wait on the run")
+	time.Sleep(100 * time.Millisecond)
 	r.finish(c, defsJSON, defaultsDat(t))
 	wg.Wait()
 	for i, res := range results {
@@ -373,39 +367,35 @@ func TestModSettingDefsCallersShareARun(t *testing.T) {
 	}
 }
 
-// A caller who goes away does not end the run for the others; when the last
-// goes, the container is stopped and removed, and nothing is kept.
-func TestModSettingDefsCancel(t *testing.T) {
+// Callers who go away get their own context's error, and the run goes on to
+// its end and is cached, so a reload during a long run finds the result.
+func TestModSettingDefsRunOutlivesItsCallers(t *testing.T) {
 	r := newModSettingsRig(t)
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	first, second := r.ask(ctx1), r.ask(ctx2)
 	c := r.waitRunning()
-	eventually(t, func() bool {
-		r.c.modSettings.mu.Lock()
-		defer r.c.modSettings.mu.Unlock()
-		for _, f := range r.c.modSettings.flights {
-			return f.waiters == 2
-		}
-		return false
-	}, "both callers to wait")
 	cancel1()
 	if res := r.result(first); !errors.Is(res.err, context.Canceled) {
 		t.Fatalf("first caller: %v, want context.Canceled", res.err)
-	}
-	if len(r.previewContainers()) != 1 {
-		t.Fatal("the run ended with a caller still waiting")
 	}
 	cancel2()
 	if res := r.result(second); !errors.Is(res.err, context.Canceled) {
 		t.Fatalf("second caller: %v, want context.Canceled", res.err)
 	}
-	eventually(t, func() bool { return len(r.previewContainers()) == 0 && len(r.previewFolders()) == 0 }, "the container and folder to go")
-	_ = c
-	r.run()
-	if r.creates() != 2 {
-		t.Errorf("%d runs, want a cancelled run not kept", r.creates())
+	if len(r.previewContainers()) != 1 {
+		t.Fatal("the run ended when its callers left")
 	}
+	r.finish(c, defsJSON, defaultsDat(t))
+	eventually(t, func() bool {
+		r.c.modSettings.mu.Lock()
+		defer r.c.modSettings.mu.Unlock()
+		return len(r.c.modSettings.entries) == 1
+	}, "the result to be cached")
+	if _, err := r.c.ModSettingDefs(context.Background(), r.id); err != nil || r.creates() != 1 {
+		t.Errorf("a call after the run: %v, %d runs, want the cache and 1 run", err, r.creates())
+	}
+	eventually(t, func() bool { return len(r.previewContainers()) == 0 && len(r.previewFolders()) == 0 }, "the container and folder to go")
 }
 
 // SPEC 9.6: each way the run fails is one of the page's errors, with
@@ -664,8 +654,8 @@ func TestReadModSettingsOutput(t *testing.T) {
 	}
 }
 
-// The territory and resource runs have no mod list of their own, so they get
-// the default one; a run that has one gets the control mod appended to it.
+// A work folder's mod list, which makePreviewDir and LinkModsInto write, gets
+// the control mod appended with every other entry and field kept.
 func TestAddControlModKeepsAnExistingList(t *testing.T) {
 	dir := t.TempDir()
 	base, err := os.OpenRoot(dir)
@@ -676,14 +666,15 @@ func TestAddControlModKeepsAnExistingList(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "p", world.ModsDir), 0o750); err != nil {
 		t.Fatal(err)
 	}
+	listFile := filepath.Join(dir, "p", world.ModsDir, world.ModListFile)
 	existing := `{"mods":[{"name":"base","enabled":false},{"name":"x","enabled":true,"version":"2"}],"extra":1}`
-	if err := os.WriteFile(filepath.Join(dir, "p", world.ModsDir, world.ModListFile), []byte(existing), 0o600); err != nil {
+	if err := os.WriteFile(listFile, []byte(existing), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := addControlMod(base, "p", PreviewRequest{GameVersion: "2.1.24", SpaceAge: true}, resourceMod, resourceInfo("2.1", true)); err != nil {
+	if err := addControlMod(base, "p", resourceMod, resourceInfo("2.1", true)); err != nil {
 		t.Fatal(err)
 	}
-	b, err := os.ReadFile(filepath.Join(dir, "p", world.ModsDir, world.ModListFile)) //nolint:gosec // the test's own folder
+	b, err := os.ReadFile(listFile) //nolint:gosec // the test's own folder
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -698,12 +689,68 @@ func TestAddControlModKeepsAnExistingList(t *testing.T) {
 		got.Mods[2]["name"] != resourceMod.name || got.Mods[2]["enabled"] != true {
 		t.Errorf("mod list %s", b)
 	}
-	// A list that is not JSON stops the run.
-	if err := os.WriteFile(filepath.Join(dir, "p", world.ModsDir, world.ModListFile), []byte("{"), 0o600); err != nil {
+	if left, _ := filepath.Glob(filepath.Join(dir, "p", world.ModsDir, world.PrefixPartial+"*")); len(left) != 0 {
+		t.Errorf("temporary files left: %v", left)
+	}
+	// A list that is not JSON, or one that is missing, stops the run.
+	if err := os.WriteFile(listFile, []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := addControlMod(base, "p", PreviewRequest{GameVersion: "2.1.24"}, resourceMod, nil); err == nil {
+	if err := addControlMod(base, "p", resourceMod, nil); err == nil {
 		t.Error("a broken mod list was accepted")
+	}
+	if err := os.Remove(listFile); err != nil {
+		t.Fatal(err)
+	}
+	if err := addControlMod(base, "p", resourceMod, nil); err == nil {
+		t.Error("a missing mod list was accepted")
+	}
+}
+
+// A mod of the control mod's name in the work folder, as a zip, a folder or
+// a list entry, is refused before anything is written.
+func TestAddControlModRefusesATakenName(t *testing.T) {
+	for name, setup := range map[string]func(mods string){
+		"a zip":          func(mods string) { writeTestFile(t, filepath.Join(mods, resourceMod.dir+".zip"), "PK") },
+		"a zip of other": func(mods string) { writeTestFile(t, filepath.Join(mods, resourceMod.name+"_2.0.0.zip"), "PK") },
+		"a folder": func(mods string) {
+			if err := os.MkdirAll(filepath.Join(mods, resourceMod.name), 0o750); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"a list entry": func(mods string) {
+			writeTestFile(t, filepath.Join(mods, world.ModListFile), `{"mods":[{"name":"`+resourceMod.name+`","enabled":false}]}`)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			base, err := os.OpenRoot(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = base.Close() }()
+			mods := filepath.Join(dir, "p", world.ModsDir)
+			if err := os.MkdirAll(mods, 0o750); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(mods, world.ModListFile)); err != nil {
+				writeTestFile(t, filepath.Join(mods, world.ModListFile), `{"mods":[]}`)
+			}
+			setup(mods)
+			if err := addControlMod(base, "p", resourceMod, nil); !errors.Is(err, errControlModTaken) {
+				t.Errorf("error %v, want errControlModTaken", err)
+			}
+			if _, err := os.Stat(filepath.Join(mods, resourceMod.dir)); err == nil {
+				t.Error("the control mod was written")
+			}
+		})
+	}
+}
+
+func writeTestFile(t *testing.T, p, text string) {
+	t.Helper()
+	if err := os.WriteFile(p, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -727,9 +774,9 @@ func TestModSettingsModFiles(t *testing.T) {
 	}
 }
 
-// The world's lock is held only while the world is read, never while the
-// game runs: a start can take it during a run, and a locked world is
-// world.ErrBusy before any Docker call.
+// The world's lock is held only while the world's mods are read, never while
+// the game runs: a start can take it during a run. A miss on a locked world is
+// world.ErrBusy, matchable by the caller, and leaves no container or folder.
 func TestModSettingDefsWorldLock(t *testing.T) {
 	r := newModSettingsRig(t)
 	unlock, err := r.worlds.Lock(r.id)
@@ -739,8 +786,8 @@ func TestModSettingDefsWorldLock(t *testing.T) {
 	if _, err := r.c.ModSettingDefs(context.Background(), r.id); !errors.Is(err, world.ErrBusy) {
 		t.Errorf("a locked world: %v, want world.ErrBusy", err)
 	}
-	if len(r.game.State().Calls) != 0 {
-		t.Errorf("Docker was called: %v", r.game.State().Calls)
+	if r.creates() != 0 || len(r.previewFolders()) != 0 {
+		t.Errorf("%d containers created, folders %v", r.creates(), r.previewFolders())
 	}
 	unlock()
 
@@ -755,11 +802,111 @@ func TestModSettingDefsWorldLock(t *testing.T) {
 	if res := r.result(ch); res.err != nil {
 		t.Fatal(res.err)
 	}
-	// The lock is free again after the run, and a work folder is not left by
-	// a world that was busy when the run began.
 	unlock, err = r.worlds.Lock(r.id)
 	if err != nil {
 		t.Fatalf("the world is still locked after the run: %v", err)
 	}
 	unlock()
+}
+
+// A cache hit needs no lock: it works while the world starts or stops.
+func TestModSettingDefsHitWhileLocked(t *testing.T) {
+	r := newModSettingsRig(t)
+	first := r.run()
+	unlock, err := r.worlds.Lock(r.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	got, err := r.c.ModSettingDefs(context.Background(), r.id)
+	if err != nil || got != first || r.creates() != 1 {
+		t.Errorf("a hit on a locked world: %v, same %v, %d runs", err, got == first, r.creates())
+	}
+}
+
+// The key is read again after the run without the lock, so a world that is
+// busy then still has its result cached.
+func TestModSettingDefsCachesWhileWorldIsBusyAfterTheRun(t *testing.T) {
+	r := newModSettingsRig(t)
+	ch := r.ask(context.Background())
+	c := r.waitRunning()
+	unlock, err := r.worlds.Lock(r.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.finish(c, defsJSON, defaultsDat(t))
+	res := r.result(ch)
+	if res.err != nil {
+		t.Fatal(res.err)
+	}
+	// The world is still locked, and the hit works.
+	got, err := r.c.ModSettingDefs(context.Background(), r.id)
+	unlock()
+	if err != nil || got != res.defs || r.creates() != 1 {
+		t.Errorf("after the run: %v, same %v, %d runs, want the cached result", err, got == res.defs, r.creates())
+	}
+}
+
+// A world mod named like Foreman's reader could stand in for it, so the run
+// is refused, however the mod is there: a list entry, a zip or a folder.
+func TestModSettingDefsRefusesAModNamedLikeTheReader(t *testing.T) {
+	list := `{"mods":[{"name":"base","enabled":true},{"name":"` + modsettingsmod.ModName + `","enabled":true}]}`
+	for name, setup := range map[string]func(r *modSettingsRig){
+		"a list entry": func(r *modSettingsRig) {
+			r.writeFile(r.id, filepath.Join(world.ModsDir, world.ModListFile), []byte(list))
+		},
+		"a zip": func(r *modSettingsRig) {
+			r.writeFile(r.id, filepath.Join(world.ModsDir, modsettingsmod.ModDir+".zip"), []byte("PK"))
+		},
+		"a folder": func(r *modSettingsRig) {
+			dir := filepath.Join(r.worldDir(r.id), world.ModsDir, modsettingsmod.ModName+"_9.9.9")
+			if err := os.MkdirAll(dir, 0o750); err != nil {
+				t.Fatal(err)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newModSettingsRig(t)
+			setup(r)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, err := r.c.ModSettingDefs(ctx, r.id)
+			if !errors.Is(err, ErrModSettingsBadOutput) || !errors.Is(err, errControlModTaken) {
+				t.Fatalf("error %v, want ErrModSettingsBadOutput for a taken name", err)
+			}
+			if r.creates() != 0 || len(r.previewFolders()) != 0 {
+				t.Errorf("%d containers created, folders %v", r.creates(), r.previewFolders())
+			}
+		})
+	}
+}
+
+// Plan R6: the cache keeps at most maxModSettingsEntries worlds, dropping
+// the least recently used; a hit counts as a use.
+func TestModSettingsCacheKeepsTheMostRecentlyUsed(t *testing.T) {
+	var c modSettingsCache
+	defs := &ModSettingDefs{}
+	for i := range maxModSettingsEntries {
+		c.put("w"+string(rune('a'+i)), "k", defs)
+	}
+	if _, ok := c.get("wa", "k"); !ok {
+		t.Fatal("the first world is missing")
+	}
+	c.put("wnew", "k", defs)
+	if len(c.entries) != maxModSettingsEntries {
+		t.Errorf("%d entries, want %d", len(c.entries), maxModSettingsEntries)
+	}
+	if _, ok := c.get("wb", "k"); ok {
+		t.Error("the least recently used world was kept")
+	}
+	for _, id := range []string{"wa", "wc", "wnew"} {
+		if _, ok := c.get(id, "k"); !ok {
+			t.Errorf("world %s was dropped", id)
+		}
+	}
+	// A new key for the same world replaces its entry, and a stale key is a miss.
+	c.put("wa", "k2", defs)
+	if _, ok := c.get("wa", "k"); ok || len(c.entries) != maxModSettingsEntries {
+		t.Errorf("the old key still hits, or the entry count is %d", len(c.entries))
+	}
 }

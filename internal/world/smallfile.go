@@ -12,7 +12,8 @@ import (
 // are far below these.
 const (
 	maxMetaFile = 1 << 20
-	maxModList  = 4 << 20
+	// MaxModList is the most bytes read of a mod-list.json.
+	MaxModList = 4 << 20
 )
 
 // openRegular opens a file inside root that the game container can write,

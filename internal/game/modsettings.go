@@ -83,154 +83,152 @@ func modSettingsInfo(line string) []byte {
 		line, "base")
 }
 
+// maxModSettingsEntries is how many worlds' definitions are kept. A result
+// is small but a deployment has few worlds that anyone edits; the least
+// recently used entry goes first.
+const maxModSettingsEntries = 8
+
 // modSettingsCache holds the definitions of each world, in memory, and the
 // runs in flight (SPEC 9.6). The zero value is ready to use.
 type modSettingsCache struct {
-	// lockMu serializes this package's own takes of a world's lock, which is
-	// not waited for: two callers reading the same world must not make each
-	// other world.ErrBusy.
-	lockMu  sync.Mutex
 	mu      sync.Mutex
-	entries map[string]modSettingsEntry
+	entries map[string]*modSettingsEntry
+	// clock counts uses, so the entry with the lowest lastUsed is the least
+	// recently used.
+	clock   uint64
 	flights map[modSettingsFlightKey]*modSettingsFlight
 }
 
 type modSettingsEntry struct {
-	key  string
-	defs *ModSettingDefs
+	key      string
+	defs     *ModSettingDefs
+	lastUsed uint64
+}
+
+// get returns the world's entry when it is for key, and marks it used.
+// mu is held.
+func (m *modSettingsCache) get(id, key string) (*ModSettingDefs, bool) {
+	e, ok := m.entries[id]
+	if !ok || e.key != key {
+		return nil, false
+	}
+	m.clock++
+	e.lastUsed = m.clock
+	return e.defs, true
+}
+
+// put keeps defs as the world's entry, and drops the least recently used
+// entries of other worlds beyond maxModSettingsEntries. mu is held.
+func (m *modSettingsCache) put(id, key string, defs *ModSettingDefs) {
+	if m.entries == nil {
+		m.entries = map[string]*modSettingsEntry{}
+	}
+	m.clock++
+	m.entries[id] = &modSettingsEntry{key, defs, m.clock}
+	for len(m.entries) > maxModSettingsEntries {
+		oldest := ""
+		for other, e := range m.entries {
+			if oldest == "" || e.lastUsed < m.entries[oldest].lastUsed {
+				oldest = other
+			}
+		}
+		delete(m.entries, oldest)
+	}
 }
 
 // modSettingsFlightKey names a run: a world's mods and game at one key.
 type modSettingsFlightKey struct{ id, key string }
 
 // modSettingsFlight is one run that every caller for the same world and key
-// shares. It ends early when no caller is left waiting.
+// shares. It runs to its end and is cached even if every caller leaves, so
+// a page that is reloaded during a long run finds the result.
 type modSettingsFlight struct {
-	done    chan struct{}
-	cancel  context.CancelFunc
-	waiters int
-	defs    *ModSettingDefs
-	err     error
+	done chan struct{}
+	defs *ModSettingDefs
+	err  error
 }
 
 // ModSettingDefs returns the world's mod setting definitions, running the
 // world's own image once and caching the result until the world's game
 // version or mods change. Callers who ask while a run for the same world and
 // key is going share it. The result is shared and must not be changed.
-// Errors are the ErrModSettings values, ErrPreviewBusy when the one preview
-// slot stayed taken, or ctx's own error.
+//
+// The cache is read without the world's lock, so a hit works while the world
+// starts or stops; a key read in the middle of a change is only a miss. A
+// miss runs the game, which takes the world's lock for a moment to read the
+// world's mods.
+//
+// Errors a caller can get: ErrModSettingsImageMissing (also for a game
+// version Foreman has no image for), ErrModSettingsOutOfMemory,
+// ErrModSettingsTimeout, ErrModSettingsBadOutput (also for a world mod named
+// like Foreman's reader); world.ErrBusy when server control holds the world
+// or the world's game version changed while the run started;
+// world.ErrModsTooBig when the world's mods are too big to link; and
+// ErrPreviewBusy when the one preview slot stayed taken. A caller whose ctx
+// ends gets ctx's error; the run goes on and its result is cached. Any other
+// error is a failure to read the world or to make the work folder.
 func (c *Controller) ModSettingDefs(ctx context.Context, id string) (*ModSettingDefs, error) {
-	key, err := c.modSettingsKey(id)
-	if err != nil {
-		return nil, err
-	}
+	// A key that cannot be read (the world is missing, or being changed) is
+	// a miss; the run reads the world again and reports the cause.
+	key, _ := c.worlds.ModSettingsKey(id)
 	fk := modSettingsFlightKey{id, key}
 	cache := &c.modSettings
 
 	cache.mu.Lock()
-	if e, ok := cache.entries[id]; ok && e.key == key {
-		cache.mu.Unlock()
-		return e.defs, nil
+	if key != "" {
+		if defs, ok := cache.get(id, key); ok {
+			cache.mu.Unlock()
+			return defs, nil
+		}
 	}
 	f := cache.flights[fk]
 	if f == nil {
-		runCtx, cancel := context.WithCancel(c.ctx)
-		f = &modSettingsFlight{done: make(chan struct{}), cancel: cancel}
+		f = &modSettingsFlight{done: make(chan struct{})}
 		if cache.flights == nil {
 			cache.flights = map[modSettingsFlightKey]*modSettingsFlight{}
 		}
 		cache.flights[fk] = f
-		go c.runModSettingsFlight(runCtx, id, fk, f)
+		if !c.spawn(func() { c.runModSettingsFlight(id, fk, f) }) {
+			delete(cache.flights, fk)
+			cache.mu.Unlock()
+			return nil, context.Canceled
+		}
 	}
-	f.waiters++
 	cache.mu.Unlock()
 
 	select {
 	case <-f.done:
 		return f.defs, f.err
 	case <-ctx.Done():
-		cache.mu.Lock()
-		f.waiters--
-		last := f.waiters == 0
-		if last && cache.flights[fk] == f {
-			// Nobody wants this run any more. A caller who comes now starts
-			// another.
-			delete(cache.flights, fk)
-		}
-		cache.mu.Unlock()
-		if last {
-			f.cancel()
-		}
 		return nil, ctx.Err()
 	}
 }
 
-// modSettingsKey reads the world's cache key under its lock, which
-// ModSettingsKey needs its caller to hold. A world whose lock is taken (a
-// start, stop or switch is going on) is world.ErrBusy.
-func (c *Controller) modSettingsKey(id string) (string, error) {
-	unlock, err := c.lockWorld(id)
-	if err != nil {
-		return "", err
-	}
-	defer unlock()
-	return c.worlds.ModSettingsKey(id)
-}
-
-// lockWorld takes the world's lock for a read of its mods. Only one such
-// read holds it at a time, so it is busy only for server control. The
-// returned function releases it once.
-func (c *Controller) lockWorld(id string) (func(), error) {
-	c.modSettings.lockMu.Lock()
-	release, err := c.worlds.Lock(id)
-	if err != nil {
-		c.modSettings.lockMu.Unlock()
-		return nil, err
-	}
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			release()
-			c.modSettings.lockMu.Unlock()
-		})
-	}, nil
-}
-
-// runModSettingsFlight is the one run for a flight. It caches the result
-// when the world's key is the same after the run as before, and under the
-// key the run read.
-func (c *Controller) runModSettingsFlight(ctx context.Context, id string, fk modSettingsFlightKey, f *modSettingsFlight) {
-	defs, before, err := c.runModSettings(ctx, id)
+// runModSettingsFlight is the one run for a flight, in the controller's own
+// context. It caches the result when the world's key after the run is the one
+// the run read with the mods. Both reads are without the world's lock: a
+// key read in the middle of a change differs, and the result is not kept.
+func (c *Controller) runModSettingsFlight(id string, fk modSettingsFlightKey, f *modSettingsFlight) {
+	defs, before, err := c.runModSettings(c.ctx, id)
+	cache := &c.modSettings
 	if err == nil {
-		after, kerr := c.modSettingsKey(id)
-		cache := &c.modSettings
+		after, kerr := c.worlds.ModSettingsKey(id)
 		cache.mu.Lock()
-		switch {
-		case kerr != nil || after != before:
+		if kerr == nil && after == before {
+			cache.put(id, before, defs)
+		} else {
 			c.log.Info("the mods changed during the mod settings run, so the result is not kept", "world", id)
-		default:
-			if cache.entries == nil {
-				cache.entries = map[string]modSettingsEntry{}
-			}
-			cache.entries[id] = modSettingsEntry{before, defs}
 		}
 		cache.mu.Unlock()
 	}
-	cache := &c.modSettings
 	cache.mu.Lock()
 	f.defs, f.err = defs, err
 	if cache.flights[fk] == f {
 		delete(cache.flights, fk)
 	}
 	cache.mu.Unlock()
-	f.cancel()
 	close(f.done)
 }
-
-// errModsChanged means the world's game version changed between the run
-// choosing an image and the world's mods being read, so the image would not
-// be the world's own.
-var errModsChanged = errors.New("the world's game version changed while the mod settings run was starting")
 
 // runModSettings runs the world's own image once and reads what it wrote. It
 // also returns the cache key the world had when its mods were read.
@@ -241,7 +239,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	}
 	line, ok := mapgen.Line(meta.GameVersion)
 	if !ok {
-		return nil, "", fmt.Errorf("%w: there is no game for Factorio %q", ErrModSettingsBadOutput, meta.GameVersion)
+		return nil, "", fmt.Errorf("%w: there is no game for Factorio %q", ErrModSettingsImageMissing, meta.GameVersion)
 	}
 	req := PreviewRequest{GameVersion: meta.GameVersion, Seed: modSettingsSeed}
 	var (
@@ -259,7 +257,7 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 	}
 	var defsJSON, defaults []byte
 	err = c.previewRunIn(ctx, plan, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
-		if err := addControlMod(base, name, req, modSettingsMod, modSettingsInfo(line)); err != nil {
+		if err := addControlMod(base, name, modSettingsMod, modSettingsInfo(line)); err != nil {
 			return err
 		}
 		if err := container(c.controlModSpec(ref, name, req, modSettingsMod, nil)); err != nil {
@@ -289,8 +287,9 @@ func (c *Controller) runModSettings(ctx context.Context, id string) (*ModSetting
 // world's mods, linked in (SPEC 9.6). The control mod is added after. It
 // holds the world's lock, which the world's mod functions need, only while it
 // reads the world: the cache key, the mods and their locale files. All three
-// are read in the one hold, so they describe the same mods. The game runs
-// without the lock.
+// are read in the one hold, so they describe the same mods. The preview slot
+// is held, so one fill runs at a time. The game runs without the lock. A
+// world that server control holds is world.ErrBusy.
 func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (key, name string, locale map[string]map[string][][]byte, err error) {
 	name, err = newWorkDir(base)
 	if err != nil {
@@ -309,7 +308,7 @@ func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (
 	if werr != nil {
 		return fail(werr)
 	}
-	unlock, err := c.lockWorld(id)
+	unlock, err := c.worlds.Lock(id)
 	if err != nil {
 		return fail(err)
 	}
@@ -319,7 +318,8 @@ func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (
 		return fail(err)
 	}
 	if meta.GameVersion != gameVersion {
-		return fail(errModsChanged)
+		// The image was chosen for another version.
+		return fail(world.ErrBusy)
 	}
 	if key, err = c.worlds.ModSettingsKey(id); err != nil {
 		return fail(err)
@@ -371,6 +371,8 @@ func modSettingsError(err error) error {
 		return ErrModSettingsImageMissing
 	case errors.Is(err, ErrPreviewTimeout):
 		return ErrModSettingsTimeout
+	case errors.Is(err, errControlModTaken):
+		return fmt.Errorf("%w: %w", ErrModSettingsBadOutput, err)
 	case errors.As(err, &pe) && pe.OOM:
 		return fmt.Errorf("%w: %w", ErrModSettingsOutOfMemory, err)
 	case errors.As(err, &pe):
