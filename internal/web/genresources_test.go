@@ -529,3 +529,27 @@ func TestOnePlanetHasTheResourceBox(t *testing.T) {
 		t.Error("All planets has the box")
 	}
 }
+
+// SPEC 5.6: a label hidden beside a richer patch keeps its list entry, and
+// the download draws the page's labels.
+func TestHiddenLabelsStayListed(t *testing.T) {
+	res := resource.Result{
+		Planet:    "nauvis",
+		Resources: map[string]resource.Resource{"iron-ore": {Total: 5000}},
+		Patches: []resource.Patch{
+			{Name: "iron-ore", X: 0, Y: 0, Amount: 4000, Box: [4]int{0, 0, 10, 10}},
+			{Name: "iron-ore", X: 20, Y: 0, Amount: 1000, Box: [4]int{20, 0, 22, 2}},
+		},
+	}
+	v := resourceView(i18n.English, "2.0", "nauvis", res, 256)
+	if len(v.Labels) != 1 || v.Labels[0].Value != "4000" {
+		t.Errorf("labels %+v, want only the 4000 patch", v.Labels)
+	}
+	if len(v.Lists) != 1 || len(v.Lists[0].Patches) != 2 {
+		t.Errorf("lists %+v, want both patches", v.Lists)
+	}
+	caps := amountCaptions(i18n.English, res, 256)
+	if len(caps) != len(v.Labels) || caps[0].U != v.Labels[0].Left/100 || caps[0].V != v.Labels[0].Top/100 {
+		t.Errorf("captions %+v differ from labels %+v", caps, v.Labels)
+	}
+}

@@ -6,10 +6,10 @@
 -- {radius = N, planet = "<name>"}: the picture's half width in chunks, and
 -- the planet to count.
 --
--- Ores join a patch when their distance on both axes is at most ore_gap (2)
--- tiles: touching, corners included (YARM's rule), or one tile apart, since
--- sparse ores such as Fulgora's scrap otherwise break into thousands of
--- fragments. Wells, the entities of a resource whose product is a fluid,
+-- Ores join a patch when their distance on both axes is at most ore_gap (6)
+-- tiles: below that, sparse ores break one island or field into many
+-- crumbs, and on Nauvis no two separate fields join at any gap up to 16
+-- (ADR 0015). Wells, the entities of a resource whose product is a fluid,
 -- join when their distance on both axes is at most well_gap (24) tiles; the
 -- real game's fields stop merging between 18 and 40. Both gaps can be set in
 -- params.lua, which only the real-game test does. Fulgora's scrap joins
@@ -17,7 +17,7 @@
 -- dozens of labels; a few labels can join islands across thin channels.
 local params = require("params")
 local radius, planet = params.radius, params.planet
-local ore_gap = params.ore_gap or 2
+local ore_gap = params.ore_gap or 6
 local well_gap = params.well_gap or 24
 local resource_gaps = { fulgora = { scrap = 16 } }
 local planet_gaps = resource_gaps[planet] or {}

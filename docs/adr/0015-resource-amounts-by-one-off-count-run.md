@@ -19,8 +19,13 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
 - Group in Lua, one resource at a time, keeping a key, an amount and a
   parent per tile; the file is under 100 KB. Rejected: Go grouping of a
   dump of every tile (10 to 30 MB).
-- Ores join within 2 tiles (a gap of one): touching only broke Fulgora's
-  scrap into 3,301 patches. Wells are resources whose mineable product is
+- Ores join within 6 tiles: touching only broke Fulgora's scrap into 3,301
+  patches, and at 2 tiles Fulgora still had 946 ore patches at 3072 (578
+  under 10 entities) against 296 (48) at 6, measured on 2.1.24 at seed
+  123456. On Nauvis no two separate fields join at any gap up to 16. The
+  gain levels off at 5 to 6; 8 barely helps Fulgora and joins more
+  Vulcanus pieces. Cost at 3072: Vulcanus 10.7 s to 16.4 s, the others
+  within 3 s, peak memory unchanged. Wells are resources whose mineable product is
   a fluid, not those flagged infinite (lithium brine is finite), and join
   within 24 tiles: 12 split real fields.
 - Fulgora's scrap alone joins within 16 tiles, from a table in the Lua
