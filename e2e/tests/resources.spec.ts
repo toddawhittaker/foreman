@@ -349,6 +349,38 @@ test("from the keyboard: tick the box, then read the amounts as text", async ({ 
   await expect(dialog(page)).toBeHidden();
 });
 
+test("another planet's settings change keeps this planet's count, so going back is quick", async ({ page, fakeGame }) => {
+  test.skip(!isWide(page), "the settings show beside the map only where both fit");
+  // Every preview picture and every count is a container the fake game is asked to create.
+  const runs = async () => ((await fakeGame!.state()) as { calls: string[] }).calls.filter((c) => c.includes("/containers/create")).length;
+  const go = async (key: string, name: string) => {
+    await dialog(page).locator("#large-frame").focus();
+    await page.keyboard.press(key);
+    await expect(page.getByRole("dialog", { name })).toBeVisible();
+    await expect(labels(page)).toHaveCount(7);
+  };
+  await openLarge(page);
+  await box(page).check();
+  await expect(labels(page)).toHaveCount(7);
+  // Nauvis, Vulcanus, Gleba, Fulgora, Aquilo: two back is Fulgora.
+  await go("ArrowLeft", "Aquilo");
+  await go("ArrowLeft", "Fulgora");
+  // A Fulgora slider: its picture and count are made again.
+  const before = await runs();
+  await page.locator("#large-settings .step__range").first().focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(labels(page)).toHaveCount(0);
+  await expect(status(page)).toHaveText("Resource amounts ready.");
+  await expect(labels(page)).toHaveCount(7);
+  const changed = await runs();
+  expect(changed).toBeGreaterThanOrEqual(before + 2);
+  // Back to Nauvis: the pictures and counts already made are used.
+  await go("ArrowRight", "Aquilo");
+  await go("ArrowRight", "Nauvis");
+  await expect(counting(page)).toBeHidden();
+  expect(await runs()).toBe(changed);
+});
+
 // SPEC 5.6, 17: the same box on the One planet picture. Off on load, kept
 // while the page lives, its own choice rather than the large view's; the
 // same count, wait, failure and labels, on the picture shown on the page.

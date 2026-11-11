@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -22,27 +23,27 @@ func onePNG(planet string) []game.PNG { return []game.PNG{{Planet: planet, Data:
 func TestPreviewStoreFindsTheSameSettings(t *testing.T) {
 	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, err := st.add(1, "k1", "World", "7", onePNG("nauvis"))
+	tok, err := st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, miss := st.missing(1, "k1", "World", []string{"nauvis"}); got != tok || miss != nil {
+	if got, miss := st.missing(1, testKey("k1"), "World", []string{"nauvis"}); got != tok || miss != nil {
 		t.Errorf("same settings: token %q, missing %v", got, miss)
 	}
-	if got, miss := st.missing(1, "k1", "World", []string{"nauvis", "gleba"}); got != "" || !slices.Equal(miss, []string{"gleba"}) {
+	if got, miss := st.missing(1, testKey("k1"), "World", []string{"nauvis", "gleba"}); got != "" || !slices.Equal(miss, []string{"gleba"}) {
 		t.Errorf("one planet more: token %q, missing %v", got, miss)
 	}
-	if got, miss := st.missing(2, "k1", "World", []string{"nauvis"}); got != "" || len(miss) != 1 {
+	if got, miss := st.missing(2, testKey("k1"), "World", []string{"nauvis"}); got != "" || len(miss) != 1 {
 		t.Errorf("another user found the preview: %q, %v", got, miss)
 	}
-	tok2, _ := st.add(1, "k1", "World", "7", onePNG("gleba"))
+	tok2, _ := st.add(1, testKey("k1"), "World", "7", onePNG("gleba"))
 	if tok2 != tok {
 		t.Error("a second planet of the same settings changed the token")
 	}
 	if _, ok := st.get(tok, 1, "nauvis"); !ok {
 		t.Error("the first planet was lost when the second was drawn")
 	}
-	tok3, _ := st.add(1, "k2", "World", "8", onePNG("nauvis"))
+	tok3, _ := st.add(1, testKey("k2"), "World", "8", onePNG("nauvis"))
 	if tok3 == tok {
 		t.Error("new settings kept the old token")
 	}
@@ -58,7 +59,7 @@ func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 	st := newPreviewStore(func() time.Time { return now })
 	var tokens []string
 	for user := range int64(maxPreviews + 3) {
-		tok, err := st.add(user, "k", "", "1", onePNG("nauvis"))
+		tok, err := st.add(user, testKey("k"), "", "1", onePNG("nauvis"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,24 +75,24 @@ func TestPreviewStoreKeepsTheLimits(t *testing.T) {
 		t.Error("the newest preview is gone")
 	}
 
-	if _, err := st.add(1, "k", "", "1", []game.PNG{{Planet: "nauvis", Data: make([]byte, game.MaxPreviewPNG+1)}}); err == nil {
+	if _, err := st.add(1, testKey("k"), "", "1", []game.PNG{{Planet: "nauvis", Data: make([]byte, game.MaxPreviewPNG+1)}}); err == nil {
 		t.Error("a picture over the cap was kept")
 	}
 	// Six pictures at the cap fill the 96 MiB; the users before go to make room.
 	pic := make([]byte, game.MaxPreviewPNG)
 	for user := range int64(6) {
-		if _, err := st.add(100+user, "k", "", "1", []game.PNG{{Planet: "nauvis", Data: pic}}); err != nil {
+		if _, err := st.add(100+user, testKey("k"), "", "1", []game.PNG{{Planet: "nauvis", Data: pic}}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if total := st.totalLocked(); total > maxPreviewBytes {
 		t.Errorf("%d bytes held, over %d", total, maxPreviewBytes)
 	}
-	if _, err := st.add(100, "k", "", "1", []game.PNG{{Planet: "gleba", Data: pic}, {Planet: "fulgora", Data: pic}, {Planet: "aquilo", Data: pic}, {Planet: "vulcanus", Data: pic}, {Planet: "x", Data: pic}, {Planet: "y", Data: pic}}); err == nil {
+	if _, err := st.add(100, testKey("k"), "", "1", []game.PNG{{Planet: "gleba", Data: pic}, {Planet: "fulgora", Data: pic}, {Planet: "aquilo", Data: pic}, {Planet: "vulcanus", Data: pic}, {Planet: "x", Data: pic}, {Planet: "y", Data: pic}}); err == nil {
 		t.Error("one user's preview over 96 MiB was kept")
 	}
 
-	tok, _ := st.add(200, "k", "", "1", onePNG("nauvis"))
+	tok, _ := st.add(200, testKey("k"), "", "1", onePNG("nauvis"))
 	now = now.Add(previewTTL)
 	if _, ok := st.get(tok, 200, "nauvis"); ok {
 		t.Error("an expired preview was served")
@@ -284,7 +285,7 @@ func TestASlowPreviewOutlastsTheWriteTimeout(t *testing.T) {
 func TestPreviewStoreAddDuringReads(t *testing.T) {
 	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, err := st.add(1, "k1", "World", "7", onePNG("nauvis"))
+	tok, err := st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +294,7 @@ func TestPreviewStoreAddDuringReads(t *testing.T) {
 	go func() {
 		defer close(done)
 		for i := range 2000 {
-			_, _ = st.add(1, "k1", "World", "7", onePNG(planets[i%len(planets)]+strings.Repeat("x", i)))
+			_, _ = st.add(1, testKey("k1"), "World", "7", onePNG(planets[i%len(planets)]+strings.Repeat("x", i)))
 		}
 	}()
 	for {
@@ -318,9 +319,9 @@ func TestPreviewStoreAddDuringReads(t *testing.T) {
 func TestPreviewStoreFoundPreviewLivesOn(t *testing.T) {
 	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
 	st := newPreviewStore(func() time.Time { return now })
-	tok, _ := st.add(1, "k1", "World", "7", onePNG("nauvis"))
+	tok, _ := st.add(1, testKey("k1"), "World", "7", onePNG("nauvis"))
 	now = now.Add(previewTTL - time.Second)
-	if got, _ := st.missing(1, "k1", "Renamed", []string{"nauvis"}); got != tok {
+	if got, _ := st.missing(1, testKey("k1"), "Renamed", []string{"nauvis"}); got != tok {
 		t.Fatal("the preview was not found")
 	}
 	now = now.Add(2 * time.Second)
@@ -398,17 +399,17 @@ func TestSettingsKeyIncludesTheSize(t *testing.T) {
 	base := game.PreviewRequest{GameVersion: "2.1.24", Seed: 7, Size: 1280}
 	bigger := base
 	bigger.Size = 2048
-	if settingsKey(base) == settingsKey(bigger) {
+	if settingsKey(base).all == settingsKey(bigger).all || settingsKey(base).planet("nauvis") == settingsKey(bigger).planet("nauvis") {
 		t.Error("two sizes share a key")
 	}
 	same := base
 	same.Planets = []string{"gleba"}
-	if settingsKey(base) != settingsKey(same) {
+	if !reflect.DeepEqual(settingsKey(base), settingsKey(same)) {
 		t.Error("the planet changed the key")
 	}
 	unset := base
 	unset.Size = 0
-	if settingsKey(base) != settingsKey(unset) {
+	if !reflect.DeepEqual(settingsKey(base), settingsKey(unset)) {
 		t.Error("no size and the default size have different keys")
 	}
 }
@@ -505,11 +506,11 @@ func TestPreviewStoreHoldsTwoLargeSets(t *testing.T) {
 	for _, planet := range []string{"nauvis", "vulcanus", "gleba", "fulgora", "aquilo"} {
 		set = append(set, game.PNG{Planet: planet, Data: make([]byte, 9<<20)})
 	}
-	first, err := st.add(1, "k", "", "1", set)
+	first, err := st.add(1, testKey("k"), "", "1", set)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.add(2, "k", "", "1", set); err != nil {
+	if _, err := st.add(2, testKey("k"), "", "1", set); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := st.get(first, 1, "gleba"); !ok {

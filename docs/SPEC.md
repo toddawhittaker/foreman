@@ -754,6 +754,14 @@ not) or a map exchange string, with Space Age on or off. (P0)
     previews and 96 MiB at once, and only that user can fetch them. The
     total fits one Space Age user's five planets at the largest size plus territories,
     so a second user does not evict the first.
+    - **Per planet.** A planet's picture, its resource count and
+      Vulcanus's territories are kept by that planet's share of the
+      settings: all of them except the other planets' own autoplace
+      controls, which cannot change its map (checked on 2.1.24). A change
+      to one planet's controls redraws and recounts that planet only; any
+      other change (seed, size, preset, game version, Space Age, the other
+      map-gen fields, map settings) drops them all. The default preset sent
+      as no files counts as the files the form writes for it.
 - Generate records the audit entry `generate` (12.9). A refusal appears on
   the form, in the page's language.
 
