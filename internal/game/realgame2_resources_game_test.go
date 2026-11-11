@@ -611,7 +611,7 @@ func patchKey(n int, amount int64, box [4]int) string { return fmt.Sprint(n, "/"
 // checkGrouping compares the count's patches with the scan's tiles: the
 // totals, the patch count against clusters, and every patch's entities,
 // amount and box against the test's own grouping.
-func checkGrouping(t *testing.T, res resource.Result, scan map[string]scanned) {
+func checkGrouping(t *testing.T, planet string, res resource.Result, scan map[string]scanned) {
 	t.Helper()
 	for name := range res.Resources {
 		if _, ok := scan[name]; !ok {
@@ -623,10 +623,7 @@ func checkGrouping(t *testing.T, res resource.Result, scan map[string]scanned) {
 		if len(ts) == 0 {
 			continue
 		}
-		gap := 2
-		if wellNames[name] {
-			gap = 24
-		}
+		gap := statedGap(planet, name)
 		var got []string
 		var entities int
 		var amount int64
@@ -801,12 +798,15 @@ func (e *gameEnv) planetInvariants(t *testing.T, c *Controller, line, version st
 			t.Errorf("the next seed gave %d patches, %d at the same label tiles", len(res.Patches), same)
 		}
 	})
-	t.Run("grouping matches a scan of every tile", func(t *testing.T) { checkGrouping(t, base, scan) })
+	t.Run("grouping matches a scan of every tile", func(t *testing.T) { checkGrouping(t, planet, base, scan) })
 	t.Run("wells and ores", func(t *testing.T) { checkKinds(t, base, scan) })
 	t.Run("a resource that is off has no patches", func(t *testing.T) { e.offInvariant(t, c, line, req, planet, base) })
 	t.Run("richness 200% doubles the ore", func(t *testing.T) { e.richnessInvariant(t, c, line, req, planet, base) })
 	t.Run("labels sit on the picture's colours", func(t *testing.T) { e.alignmentInvariant(t, c, req, planet, base) })
 	t.Run("3072 within the limits, every resource found", func(t *testing.T) { e.largestInvariant(t, c, line, req, planet) })
+	if planet == "fulgora" {
+		t.Run("high-frequency scrap gives few patches", func(t *testing.T) { e.scrapInvariant(t, c, line, req) })
+	}
 }
 
 // checkKinds checks that wells and ores come back in their own shape: the
@@ -919,6 +919,49 @@ func (e *gameEnv) richnessInvariant(t *testing.T, c *Controller, line string, re
 		// 4,209 iron ore tiles); 2.x keeps them all.
 		if abs(entities(base)-entities(res))*1000 > entities(base) {
 			t.Errorf("%s: richness changed the number of entities, %d to %d", name, entities(base), entities(res))
+		}
+	}
+}
+
+// statedGap is the gap SPEC 5.6 and ADR 0015 state for a resource: 24 tiles
+// for wells, 16 for Fulgora's scrap, 2 for every other ore.
+func statedGap(planet, name string) int {
+	switch {
+	case wellNames[name]:
+		return 24
+	case planet == "fulgora" && name == "scrap":
+		return 16
+	}
+	return 2
+}
+
+// scrapInvariant counts Fulgora at 3072 with scrap at the highest frequency
+// step, on two seeds. At a gap of 2 they gave 2,234 and 2,436 scrap
+// patches, at 12 352 and 369, and at 16 296 and 303 (ADR 0015).
+func (e *gameEnv) scrapInvariant(t *testing.T, c *Controller, line string, req PreviewRequest) {
+	req.Size = PreviewSizeMax
+	req.MapGenSettings = resourceControlSettings(t, line, true, "fulgora", func(ctl mapgen.Control) map[string]any {
+		f := 1.0
+		if ctl.Name == "scrap" {
+			f = 6
+		}
+		return map[string]any{"frequency": f, "size": 1.0, "richness": 1.0}
+	})
+	for _, seed := range []uint32{resourceSeed, resourceSeed*7919 + 1} {
+		req.Seed = seed
+		r := e.countWith(t, c, req, "fulgora", "")
+		scrap := 0
+		for _, p := range r.file.Patches {
+			if p.Name == "scrap" {
+				scrap++
+			}
+		}
+		t.Logf("SCRAP %s seed %d: wall %s, peak %d MiB, %d scrap patches", req.GameVersion, seed, r.wall.Round(100*time.Millisecond), r.peak>>20, scrap)
+		if r.wall > PreviewLimit || r.peak > previewMemory {
+			t.Errorf("seed %d over the limits: %s, %d MiB", seed, r.wall.Round(100*time.Millisecond), r.peak>>20)
+		}
+		if scrap == 0 || scrap > 320 {
+			t.Errorf("seed %d: %d scrap patches, want 1 to 320", seed, scrap)
 		}
 	}
 }

@@ -715,10 +715,13 @@ not) or a map exchange string, with Space Age on or off. (P0)
     - **Patches.** Ores of one resource are one patch where their tiles
       are within 2 tiles of each other (a gap of one tile joins them: at
       a gap of 0 Fulgora's scrap broke into 3,301 patches, 2,743 of them
-      under 10 entities). Wells are the resources whose mineable product is
-      a fluid (crude oil, sulfuric acid, fluorine, lithium brine), and wells
-      of one resource within 24 tiles are one patch, because 12 tiles split
-      real fields. A well shows its **yield**, 100 × the patch's summed
+      under 10 entities). Fulgora's scrap joins within 16 tiles instead,
+      since at 2 its islands carried dozens of labels each at high
+      frequency; a few labels can then join neighbouring islands across
+      thin channels (ADR 0015). Wells are the resources whose mineable
+      product is a fluid (crude oil, sulfuric acid, fluorine, lithium
+      brine), and wells of one resource within 24 tiles are one patch,
+      because 12 tiles split real fields. A well shows its **yield**, 100 × the patch's summed
       amount ÷ the resource's normal amount, when the game says the
       resource is infinite (crude oil, sulfuric acid, fluorine); lithium
       brine is finite and shows an amount. The label tile is a tile of the
