@@ -13,9 +13,11 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/mods"
 	"github.com/toddawhittaker/foreman/internal/modsettings"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -188,7 +190,7 @@ func TestModSettingsPageLoadsTheFormAfter(t *testing.T) {
 	}
 }
 
-// SPEC 9.6, plan R1, R9, R11: one control per startup setting, hidden ones
+// SPEC 9.6: one control per startup setting, hidden ones
 // left out, a one-value setting locked, an unknown type not editable; map
 // settings read-only on a world with a save; per-player settings one line.
 func TestModSettingsFormShowsTheSettings(t *testing.T) {
@@ -247,7 +249,7 @@ func (g *modsRig) makeNewMap(id string) {
 	}
 }
 
-// Plan R2: a world with no save yet edits its map settings in the same
+// SPEC 9.6: a world with no save yet edits its map settings in the same
 // form, and a save writes them.
 func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
 	g := newModsRig(t, false)
@@ -275,7 +277,7 @@ func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
 	}
 }
 
-// Plan R1: on a world with a save, map fields in a post are not written,
+// SPEC 9.6: on a world with a save, map fields in a post are not written,
 // and a post that claims they were controls is refused as stale.
 func TestModSettingsMapFieldsOfASavedWorld(t *testing.T) {
 	g := newModsRig(t, false)
@@ -297,7 +299,7 @@ func TestModSettingsMapFieldsOfASavedWorld(t *testing.T) {
 	}
 }
 
-// SPEC 9.6, 9.13, plan R8: a save writes only the changed value, after a
+// SPEC 9.6, 9.13: a save writes only the changed value, after a
 // snapshot, and the audit names the setting, never its value.
 func TestModSettingsSaveWritesTheChange(t *testing.T) {
 	g := newModsRig(t, false)
@@ -346,7 +348,7 @@ func TestModSettingsSaveWritesTheChange(t *testing.T) {
 	}
 }
 
-// Plan R9, DESIGN 7.2: a refused value comes back in its field with its
+// SPEC 9.6, DESIGN 7.2: a refused value comes back in its field with its
 // error, the summary links to it, and nothing is written.
 func TestModSettingsRefusesABadValue(t *testing.T) {
 	g := newModsRig(t, false)
@@ -486,7 +488,7 @@ func modSettingsPageCases() []pageCase {
 	}
 }
 
-// SPEC 9.6, plan R8: a world with no mod-settings.dat gets one built from
+// SPEC 9.6: a world with no mod-settings.dat gets one built from
 // the defaults file, with the change in it.
 func TestModSettingsSaveWithoutAFile(t *testing.T) {
 	g := newModsRig(t, false)
@@ -626,5 +628,97 @@ func TestFieldErrorRangeWithoutLimits(t *testing.T) {
 	}
 	if got := fieldError(f, &modsettings.ValidationError{MessageID: "mods.settings.edit.err.range", Params: map[string]string{"max": "3"}}); got.Key != "mods.settings.edit.err.range_max" {
 		t.Errorf("key %s", got.Key)
+	}
+}
+
+// worldFileWithStringBool is a mod-settings.dat whose startup fm-sta-bool
+// holds a string, as after a mod changed the setting's type and the world has
+// not restarted.
+func worldFileWithStringBool() []byte {
+	b := []byte{2, 0, 1, 0, 24, 0, 1, 0, 0}
+	b = append(b, 5, 0, 1, 0, 0, 0, 0, 7)
+	b = append(b, "startup"...)
+	b = append(b, 5, 0, 1, 0, 0, 0, 0, 11)
+	b = append(b, "fm-sta-bool"...)
+	b = append(b, 5, 0, 1, 0, 0, 0, 0, 5)
+	b = append(b, "value"...)
+	b = append(b, 3, 0, 0, 3)
+	return append(b, "old"...)
+}
+
+// SPEC 9.6: a stored value of another type than its definition counts as
+// missing, so the default shows, and a save still works and resets it.
+func TestModSettingsStoredValueOfTheWrongType(t *testing.T) {
+	g := newModsRig(t, false)
+	id := g.world20("Base", "fmtest_1.0.0")
+	fakeDefs(t, fmtestSettingDefs(t), nil)
+	g.writeSettingsFile(id, worldFileWithStringBool())
+	boolID, intID := fieldOf("fm-sta-bool", modsettings.Startup), fieldOf("fm-sta-int", modsettings.Startup)
+	body, v := g.settingsForm(id)
+	if v.Get(boolID) != "true" {
+		t.Fatalf("the default is not shown for the bool: %v\n%s", v, body)
+	}
+	// Saving another setting keeps working.
+	v.Set(intID, "9")
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-int"); got.Int != 9 {
+		t.Errorf("fm-sta-int is %+v, want 9", got)
+	}
+	// Changing the mismatched setting itself resets it to a bool.
+	_, v = g.settingsForm(id)
+	v.Del(boolID)
+	if rep := g.post(modSettingsEditPath(id), v); rep.StatusCode != http.StatusSeeOther {
+		t.Fatalf("save the bool: %d\n%s", rep.StatusCode, rep.body)
+	}
+	if err := g.waitResult(id, game.AuditMods); err != nil {
+		t.Fatal(err)
+	}
+	if got := g.settingValue(id, modsettings.Startup, "fm-sta-bool"); got != (modsettings.Value{Type: modsettings.TypeBool}) {
+		t.Errorf("fm-sta-bool is %+v, want false", got)
+	}
+}
+
+// SPEC 9.13: an audit summary is cut at 500 bytes without splitting a
+// character, by the mod change and the settings edit alike.
+func TestClipSummary(t *testing.T) {
+	if got := clipSummary("short"); got != "short" {
+		t.Errorf("short summary became %q", got)
+	}
+	exact := strings.Repeat("a", maxSummary)
+	if got := clipSummary(exact); got != exact {
+		t.Error("a summary at the limit was cut")
+	}
+	// Two-byte characters put a boundary at every even byte; the odd offsets
+	// shift the limit into the middle of one.
+	for _, pad := range []string{"", "x"} {
+		in := pad + strings.Repeat("é", 400)
+		got := clipSummary(in)
+		if !utf8.ValidString(got) || !strings.HasSuffix(got, "…") {
+			t.Errorf("pad %q: %q", pad, got)
+		}
+		if len(got) > maxSummary+len("…") {
+			t.Errorf("pad %q: %d bytes", pad, len(got))
+		}
+	}
+	// Four-byte characters, as in a mod name.
+	got := clipSummary("edit mod settings: " + strings.Repeat("😀", 200))
+	if !utf8.ValidString(got) || !strings.HasSuffix(got, "…") || len(got) > maxSummary+len("…") {
+		t.Errorf("%q", got)
+	}
+	names := make([]string, 0, 100)
+	for range 100 {
+		names = append(names, "mod-日本語-"+strings.Repeat("ü", 5))
+	}
+	plan := mods.Plan{}
+	for _, n := range names {
+		plan.Changes = append(plan.Changes, mods.Change{Action: mods.ActInstall, Name: n, To: "1.0.0"})
+	}
+	if s := planSummary(plan); !utf8.ValidString(s) || len(s) > maxSummary+len("…") {
+		t.Errorf("plan summary is %d bytes, valid=%v", len(s), utf8.ValidString(s))
 	}
 }

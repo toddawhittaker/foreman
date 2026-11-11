@@ -21,7 +21,7 @@ func makePreview(c dockertest.Container) error {
 	case gameenv.KindResources:
 		return writeResources(c)
 	case gameenv.KindModSettings:
-		return writeModSettings(c, false)
+		return writeModSettings(c)
 	}
 	return drawPreview(c)
 }

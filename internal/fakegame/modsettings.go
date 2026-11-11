@@ -13,7 +13,7 @@ import (
 )
 
 // modSettingsDefaults is the mod-settings.dat the real game wrote for the
-// test mod fmtest (factoriotools/factorio 2.1.24), so a run's defaults are
+// test mod fmtest (factoriotools/factorio 2.0.77), so a run's defaults are
 // bytes the game itself made.
 //
 //go:embed modsettings_defaults.dat
@@ -78,10 +78,10 @@ func cannedModSettingDefs() []modSettingDef {
 }
 
 // writeModSettings is a mod settings definitions run: it leaves
-// gameenv.ModSettingsDefsFile in the work folder and the game's defaults
-// gameenv.ModSettingsDefaultsFile in the work folder's mods folder, where the
-// game writes mod-settings.dat. With broken the definitions are not JSON.
-func writeModSettings(c dockertest.Container, broken bool) error {
+// gameenv.ModSettingsDefsFile in the work folder and the game's defaults in
+// the work folder's mods folder as world.ModSettingsFile, where the game
+// writes it.
+func writeModSettings(c dockertest.Container) error {
 	dir := mountSource(c, gameenv.PreviewMount)
 	if dir == "" {
 		return fmt.Errorf("the fake game's mod settings container has no folder bound at %s", gameenv.PreviewMount)
@@ -90,14 +90,11 @@ func writeModSettings(c dockertest.Container, broken bool) error {
 	b, _ := json.Marshal(struct {
 		Settings []modSettingDef `json:"settings"`
 	}{cannedModSettingDefs()})
-	if broken {
-		b = []byte(`{"settings": [{"name": "fm-sta-int", "mod": `)
-	}
 	mods := filepath.Join(dir, world.ModsDir)
 	if err := os.MkdirAll(mods, world.DirMode); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(mods, gameenv.ModSettingsDefaultsFile), modSettingsDefaults, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
+	if err := os.WriteFile(filepath.Join(mods, world.ModSettingsFile), modSettingsDefaults, world.FileMode); err != nil { //nolint:gosec // the fake's own test folder
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, gameenv.ModSettingsDefsFile), b, world.FileMode) //nolint:gosec // the fake's own test folder

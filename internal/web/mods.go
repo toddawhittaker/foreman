@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -1746,14 +1747,23 @@ func planSummary(p mods.Plan) string {
 		}
 		parts = append(parts, string(c.Action)+" "+strings.TrimSpace(c.Name+" "+c.To))
 	}
-	out := strings.Join(parts, ", ")
-	if len(out) > maxSummary {
-		out = out[:maxSummary] + "…"
-	}
-	return out
+	return clipSummary(strings.Join(parts, ", "))
 }
 
 const maxSummary = 500
+
+// clipSummary cuts an audit summary at maxSummary bytes, never inside a
+// character, and marks the cut.
+func clipSummary(s string) string {
+	if len(s) <= maxSummary {
+		return s
+	}
+	n := maxSummary
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n] + "…"
+}
 
 // applyMods runs one mod change in the background (SPEC 9.13). The
 // Server page follows the active world's; the Mods tab any other world's.

@@ -127,7 +127,7 @@
 </form>
 {{- end}}
 {{- if and (not .NewMap) .Map}}
-{{- /* A save holds its own map values, which win over the file's; an admin changes them in the game (plan R1). */}}
+{{- /* A save holds its own map values, which win over the file's; an admin changes them in the game (SPEC 9.6). */}}
 <section class="panel" aria-labelledby="mod-settings-map-heading">
   <h2 id="mod-settings-map-heading">{{t "mods.settings.edit.map.heading"}}</h2>
   <p>{{t "mods.settings.edit.map.saved"}}</p>

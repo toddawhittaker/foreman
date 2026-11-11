@@ -91,7 +91,7 @@ func (r *modSettingsRig) finish(c dockertest.Container, defs string, dat []byte)
 	if err := os.WriteFile(filepath.Join(dir, gameenv.ModSettingsDefsFile), []byte(defs), 0o600); err != nil {
 		r.t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, world.ModsDir, gameenv.ModSettingsDefaultsFile), dat, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, world.ModsDir, world.ModSettingsFile), dat, 0o600); err != nil {
 		r.t.Fatal(err)
 	}
 	r.game.Daemon().Exit(c.ID, 0, false)
@@ -168,7 +168,7 @@ func (r *modSettingsRig) changeMods(entry string) {
 
 // SPEC 9.6, 14.3: the run is a labelled preview container of kind
 // modsettings from the world's own image, with the preview's lockdown and
-// the definitions run's own limits (plan R3), and no value built into it.
+// the definitions run's own limits (SPEC 14.3), and no value built into it.
 func TestModSettingDefsContainer(t *testing.T) {
 	r := newModSettingsRig(t)
 	ch := r.ask(context.Background())
@@ -286,7 +286,7 @@ func TestModSettingDefsReadsTheGamesFiles(t *testing.T) {
 	}
 }
 
-// Plan R6: the result is kept; asking again does not run the game, and a
+// SPEC 14.6: the result is kept; asking again does not run the game, and a
 // change of the mods does.
 func TestModSettingDefsCaches(t *testing.T) {
 	r := newModSettingsRig(t)
@@ -305,7 +305,7 @@ func TestModSettingDefsCaches(t *testing.T) {
 	}
 }
 
-// Plan R6: another world has its own entry.
+// SPEC 14.6: another world has its own entry.
 func TestModSettingDefsCachesPerWorld(t *testing.T) {
 	r := newModSettingsRig(t)
 	r.run()
@@ -321,7 +321,7 @@ func TestModSettingDefsCachesPerWorld(t *testing.T) {
 	}
 }
 
-// Plan R6: a key that changed during the run is a result for mods that are
+// SPEC 14.6: a key that changed during the run is a result for mods that are
 // gone, so it is returned but not kept.
 func TestModSettingDefsNotCachedWhenKeyChangesDuringRun(t *testing.T) {
 	r := newModSettingsRig(t)
@@ -339,7 +339,7 @@ func TestModSettingDefsNotCachedWhenKeyChangesDuringRun(t *testing.T) {
 	}
 }
 
-// Plan R6: callers who ask during a run share it; one who comes after it hits
+// SPEC 14.6: callers who ask during a run share it; one who comes after it hits
 // the cache. Either way the game runs once.
 func TestModSettingDefsCallersShareARun(t *testing.T) {
 	r := newModSettingsRig(t)
@@ -454,7 +454,7 @@ func TestModSettingDefsErrors(t *testing.T) {
 	}
 }
 
-// Plan R3: a run past its limit is killed and is ErrModSettingsTimeout.
+// SPEC 14.3: a run past its limit is killed and is ErrModSettingsTimeout.
 func TestModSettingDefsTimeout(t *testing.T) {
 	r := newModSettingsRig(t)
 	r.c.modSettingsLimit = 300 * time.Millisecond
@@ -509,7 +509,7 @@ func TestModSettingDefsUnknownWorld(t *testing.T) {
 	}
 }
 
-// Plan R7: text comes from each enabled mod's locale files, per language,
+// SPEC 22.3: text comes from each enabled mod's locale files, per language,
 // merged in mod-name order; a language without files has no entry.
 func TestModSettingDefsLocale(t *testing.T) {
 	r := newModSettingsRig(t)
@@ -565,7 +565,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 		}
 	}
 	defsAt := func(p string) string { return filepath.Join(p, gameenv.ModSettingsDefsFile) }
-	datAt := func(p string) string { return filepath.Join(p, world.ModsDir, gameenv.ModSettingsDefaultsFile) }
+	datAt := func(p string) string { return filepath.Join(p, world.ModsDir, world.ModSettingsFile) }
 
 	t.Run("good", func(t *testing.T) {
 		base, p := newDir(t)
@@ -579,7 +579,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 	t.Run("the limits exactly", func(t *testing.T) {
 		base, p := newDir(t)
 		put(t, defsAt(p), []byte(strings.Repeat("a", modsettings.MaxDefinitionsBytes)))
-		put(t, datAt(p), []byte(strings.Repeat("a", maxDefaultsBytes)))
+		put(t, datAt(p), []byte(strings.Repeat("a", world.MaxModSettings)))
 		if _, _, err := readModSettingsOutput(base, "p"); err != nil {
 			t.Error(err)
 		}
@@ -593,7 +593,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 		},
 		"defaults too big": func(t *testing.T, p string) {
 			put(t, defsAt(p), []byte(defsJSON))
-			put(t, datAt(p), []byte(strings.Repeat("a", maxDefaultsBytes+1)))
+			put(t, datAt(p), []byte(strings.Repeat("a", world.MaxModSettings+1)))
 		},
 		"definitions a link": func(t *testing.T, p string) {
 			put(t, filepath.Join(p, "real.json"), []byte(defsJSON))
@@ -635,7 +635,7 @@ func TestReadModSettingsOutput(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(p, "elsewhere"), 0o750); err != nil {
 				t.Fatal(err)
 			}
-			put(t, filepath.Join(p, "elsewhere", gameenv.ModSettingsDefaultsFile), dat)
+			put(t, filepath.Join(p, "elsewhere", world.ModSettingsFile), dat)
 			if err := os.Symlink("elsewhere", filepath.Join(p, world.ModsDir)); err != nil {
 				t.Fatal(err)
 			}
@@ -909,7 +909,7 @@ func TestModSettingDefsRefusesAModNamedLikeTheReader(t *testing.T) {
 	}
 }
 
-// Plan R6: the cache keeps at most maxModSettingsEntries worlds, dropping
+// SPEC 14.6: the cache keeps at most maxModSettingsEntries worlds, dropping
 // the least recently used; a hit counts as a use.
 func TestModSettingsCacheKeepsTheMostRecentlyUsed(t *testing.T) {
 	var c modSettingsCache

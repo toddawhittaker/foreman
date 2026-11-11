@@ -168,7 +168,7 @@
   "mods.settings.edit.title": "Настройки модов мира {world}",
   "mods.settings.edit.heading": "Настройки модов",
   "mods.settings.edit.loading": "Чтение настроек модов. В первый раз после изменения модов Foreman запускает для этого игру, это занимает несколько секунд.",
-  "mods.settings.edit.loaded": "Настройки модов загружены.",
+  "mods.settings.edit.loaded": "Настройки модов прочитаны.",
   "mods.settings.edit.startup.heading": "Настройки запуска",
   "mods.settings.edit.startup.none": "У включённых модов нет настроек запуска.",
   "mods.settings.edit.map.heading": "Настройки карты",
