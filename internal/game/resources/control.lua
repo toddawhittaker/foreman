@@ -91,14 +91,18 @@ script.on_init(function()
   -- entity handles, decide whether this is a dense count.
   local half = radius * 32
   if not params.ore_gap then
-    local ores = 0
+    local names = {}
     for name, proto in pairs(resource_prototypes()) do
       if not is_well(proto) and not planet_gaps[name] then
-        ores = ores + surface.count_entities_filtered({ area = { { -half, -half }, { half, half } }, name = name })
+        names[#names + 1] = name
       end
     end
-    if ores > dense_ore_tiles then
-      ore_gap = dense_ore_gap
+    -- An empty name list would not filter at all.
+    if #names > 0 then
+      local ores = surface.count_entities_filtered({ area = { { -half, -half }, { half, half } }, name = names })
+      if ores > dense_ore_tiles then
+        ore_gap = dense_ore_gap
+      end
     end
   end
 
