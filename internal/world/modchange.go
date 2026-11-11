@@ -237,9 +237,9 @@ func (m *Manager) CheckModChange(id string, change ModChange) error {
 	return err
 }
 
-// maxModSettings is the largest mod-settings.dat read to compare with a
-// change's SettingsSeen. Real files are a few kilobytes.
-const maxModSettings = 4 << 20
+// MaxModSettings is the largest mod-settings.dat Foreman reads, compares
+// or accepts as an upload. Real files are a few kilobytes.
+const MaxModSettings = 4 << 20
 
 // checkSettingsSeen refuses, with ErrModsChanged, a change that carries new
 // settings drawn from a mod-settings.dat the world no longer holds. An empty
@@ -250,7 +250,7 @@ func checkSettingsSeen(root *os.Root, change ModChange) error {
 	if change.Settings == nil || change.SettingsSeen == "" {
 		return nil
 	}
-	b, err := ReadSmallFile(root, path.Join(ModsDir, ModSettingsFile), maxModSettings)
+	b, err := ReadSmallFile(root, path.Join(ModsDir, ModSettingsFile), MaxModSettings)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

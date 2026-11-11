@@ -28,7 +28,7 @@ const (
 // setting values.
 const (
 	modUploadMB      = 200
-	settingsUploadMB = 4
+	settingsUploadMB = world.MaxModSettings >> 20
 )
 
 // MaxModUpload and MaxSettingsUpload are those limits in bytes.

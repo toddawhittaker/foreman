@@ -673,3 +673,127 @@ func TestApplyModsSettingsSeenRefusalChangesNothing(t *testing.T) {
 		t.Fatal("a refused change placed files")
 	}
 }
+
+func TestModSettingsKeyChangesWithSpaceAge(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	before := settingsKey(t, m, id)
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	meta, err := ReadMeta(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta.SpaceAge = true
+	if err := WriteMeta(root, meta); err != nil {
+		t.Fatal(err)
+	}
+	on := settingsKey(t, m, id)
+	if on == before {
+		t.Fatal("turning Space Age on did not change the key")
+	}
+	meta.SpaceAge = false
+	if err := WriteMeta(root, meta); err != nil {
+		t.Fatal(err)
+	}
+	if settingsKey(t, m, id) != before {
+		t.Fatal("turning Space Age off again should give the first key back")
+	}
+}
+
+func TestLinkModsIntoRefusesAModsFolderLinkedToTheWorld(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	writeFile(t, filepath.Join(dir, "world-secret.txt"), "secret")
+	if err := os.MkdirAll(filepath.Join(dir, "config"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(dir, "config", "rconpw"), "hunter2")
+	if err := os.RemoveAll(filepath.Join(dir, ModsDir)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(".", filepath.Join(dir, ModsDir)); err != nil {
+		t.Fatal(err)
+	}
+	dst := linkDst(t)
+	if err := m.LinkModsInto(id, dst); err == nil {
+		t.Fatal("want a refusal for a mods folder that is a link")
+	}
+	if exists(filepath.Join(dst, ModsDir, "config")) || exists(filepath.Join(dst, ModsDir, "world-secret.txt")) {
+		t.Fatal("the world's own files reached the work folder")
+	}
+	if _, err := m.ModLocaleFiles(id, []string{"en"}); err == nil {
+		t.Fatal("want an error from ModLocaleFiles too")
+	}
+}
+
+func lowerLinkLimits(t *testing.T, files int, bytes int64) {
+	t.Helper()
+	oldF, oldB := linkLimitFiles, linkLimitBytes
+	linkLimitFiles, linkLimitBytes = files, bytes
+	t.Cleanup(func() { linkLimitFiles, linkLimitBytes = oldF, oldB })
+}
+
+func TestLinkModsIntoRefusesTooManyFiles(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	d := filepath.Join(dir, ModsDir, "dev_1.0.0")
+	if err := os.MkdirAll(d, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []string{"a", "b", "c", "d"} {
+		writeFile(t, filepath.Join(d, n), "x")
+	}
+	lowerLinkLimits(t, 3, 1<<20)
+	if err := m.LinkModsInto(id, linkDst(t)); !errors.Is(err, ErrModsTooBig) {
+		t.Fatalf("got %v", err)
+	}
+	lowerLinkLimits(t, 100, 1<<20)
+	if err := m.LinkModsInto(id, linkDst(t)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLinkModsIntoRefusesTooManyBytes(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	d := filepath.Join(dir, ModsDir, "dev_1.0.0")
+	if err := os.MkdirAll(d, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(d, "big"), strings.Repeat("x", 1000))
+	lowerLinkLimits(t, 100, 999)
+	if err := m.LinkModsInto(id, linkDst(t)); !errors.Is(err, ErrModsTooBig) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestLinkModsIntoCountsCopiedZipBytesButNotLinkedOnes(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	putZip(t, dir, "flib_1.0.0.zip", strings.Repeat("z", 1000))
+	lowerLinkLimits(t, 100, 999)
+	// A link costs no bytes, so the zip fits.
+	if err := m.LinkModsInto(id, linkDst(t)); err != nil {
+		t.Fatal(err)
+	}
+	// When linking fails the copy counts.
+	old := linkInto
+	linkInto = func(_, _ *os.Root, _ string) error { return syscall.EXDEV }
+	defer func() { linkInto = old }()
+	if err := m.LinkModsInto(id, linkDst(t)); !errors.Is(err, ErrModsTooBig) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestModLocaleFilesReadsOnlyFactorioLocales(t *testing.T) {
+	m, id, dir := checkWorld(t, "2.0.77", false)
+	putZip(t, dir, "mod_1.0.0.zip", cfgZip(t, "mod", map[string]string{
+		"locale/zh-CN/x.cfg":   "chinese",
+		"locale/es-ES/x.cfg":   "spanish",
+		"locale/ja/x.cfg":      "japanese",
+		"locale/zh-Hans/x.cfg": "foreman code, not factorio's",
+	}))
+	got := localeFiles(t, m, id, "ja", "zh-Hans", "zh-CN", "zh-CN", "es-ES")["mod"]
+	if len(got) != 2 || string(got["zh-CN"][0]) != "chinese" || string(got["es-ES"][0]) != "spanish" {
+		t.Fatalf("got %v", got)
+	}
+}

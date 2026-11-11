@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -21,9 +20,49 @@ import (
 // tree cannot run the copy away.
 const maxModFolderDepth = 32
 
-// localeCodeRE is the shape of a Factorio locale code such as "en" or
-// "zh-CN". A code of any other shape is never used to build a path.
-var localeCodeRE = regexp.MustCompile(`^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$`)
+// Most files and bytes one LinkModsInto call places. Hard links add no
+// bytes; copies do. A real mod pack is far below both.
+const (
+	maxLinkFiles = 100_000
+	maxLinkBytes = 4 << 30
+)
+
+// linkLimitFiles and linkLimitBytes are the limits in force; tests lower them.
+var (
+	linkLimitFiles = maxLinkFiles
+	linkLimitBytes = int64(maxLinkBytes)
+)
+
+// ErrModsTooBig is returned by LinkModsInto for a mods folder with more
+// files, or more bytes to copy, than a definitions run takes.
+var ErrModsTooBig = errors.New("the world's mods folder is too big to read its settings")
+
+// linkBudget counts what one LinkModsInto call has placed.
+type linkBudget struct {
+	files int
+	bytes int64
+}
+
+// take counts one more file of size bytes that must be copied (0 for a link).
+func (b *linkBudget) take(size int64) error {
+	b.files++
+	b.bytes += size
+	if b.files > linkLimitFiles || b.bytes > linkLimitBytes {
+		return ErrModsTooBig
+	}
+	return nil
+}
+
+// isFactorioLocale reports whether code is one of the locale folders
+// Foreman reads. Any other code is never used to build a path.
+func isFactorioLocale(code string) bool {
+	for _, c := range modsettings.FactorioLocales {
+		if c == code {
+			return true
+		}
+	}
+	return false
+}
 
 // linkInto hard-links a file between worlds' roots. Tests replace it to fake
 // a link that fails, as it does across filesystems.
@@ -85,10 +124,13 @@ func (m *Manager) LinkModsInto(id, dst string) error {
 		return err
 	}
 
-	entries, err := fs.ReadDir(src.FS(), ModsDir)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	// The game can swap mods for a link to the world's own folder, which
+	// would carry config/ into the work folder.
+	entries, err := readModsDir(src)
+	if err != nil {
 		return err
 	}
+	var budget linkBudget
 	haveList := false
 	for _, e := range entries {
 		name := e.Name()
@@ -105,7 +147,7 @@ func (m *Manager) LinkModsInto(id, dst string) error {
 			if strings.HasPrefix(name, ".") {
 				continue
 			}
-			if err := copyModFolder(src, out, p, 0); err != nil {
+			if err := copyModFolder(src, out, p, 0, &budget); err != nil {
 				return err
 			}
 		case info.Mode().IsRegular():
@@ -116,11 +158,14 @@ func (m *Manager) LinkModsInto(id, dst string) error {
 				if err != nil {
 					return err
 				}
+				if err := budget.take(int64(len(b))); err != nil {
+					return err
+				}
 				if err := WriteFileAtomic(out, p, b); err != nil {
 					return err
 				}
 			case strings.HasSuffix(name, ".zip") && !strings.HasPrefix(name, "."):
-				if err := linkOrCopy(src, out, p); err != nil {
+				if err := linkOrCopy(src, out, p, &budget); err != nil {
 					return err
 				}
 			}
@@ -137,10 +182,30 @@ func (m *Manager) LinkModsInto(id, dst string) error {
 	return WriteFileAtomic(out, path.Join(ModsDir, ModListFile), DefaultModList(meta.GameVersion, meta.SpaceAge))
 }
 
+// readModsDir lists the world's mods folder, which is empty when there is
+// none. A link or file in its place is refused: os.Root follows a link that
+// stays inside the world, and mods pointing at "." would show config/.
+func readModsDir(root *os.Root) ([]fs.DirEntry, error) {
+	info, err := root.Lstat(ModsDir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%s is not a folder", ModsDir)
+	}
+	return fs.ReadDir(root.FS(), ModsDir)
+}
+
 // linkOrCopy puts the regular file name of src at the same place in out, as
 // a hard link, or as a copy when the link fails (another filesystem, or one
 // that allows no links).
-func linkOrCopy(src, out *os.Root, name string) error {
+func linkOrCopy(src, out *os.Root, name string, budget *linkBudget) error {
+	if err := budget.take(0); err != nil {
+		return err
+	}
 	if linkInto(src, out, name) == nil {
 		// linkat does not follow a symlink swapped in after the check;
 		// confirm what landed in dst is a regular file.
@@ -150,12 +215,19 @@ func linkOrCopy(src, out *os.Root, name string) error {
 		_ = out.Remove(name)
 		return fmt.Errorf("%s changed while it was being linked", name)
 	}
+	info, err := src.Lstat(name)
+	if err != nil {
+		return err
+	}
+	if err := budget.take(info.Size()); err != nil {
+		return err
+	}
 	return copyFile(src, name, out, name)
 }
 
 // copyModFolder copies the folder dir of src to the same place in out. Only
 // regular files and folders are copied; anything else is refused.
-func copyModFolder(src, out *os.Root, dir string, depth int) error {
+func copyModFolder(src, out *os.Root, dir string, depth int, budget *linkBudget) error {
 	if depth > maxModFolderDepth {
 		return fmt.Errorf("%s is nested too deep to be a mod", dir)
 	}
@@ -172,9 +244,16 @@ func copyModFolder(src, out *os.Root, dir string, depth int) error {
 		if err != nil {
 			return err
 		}
+		size := int64(0)
+		if info.Mode().IsRegular() {
+			size = info.Size()
+		}
+		if err := budget.take(size); err != nil {
+			return err
+		}
 		switch {
 		case info.IsDir():
-			err = copyModFolder(src, out, p, depth+1)
+			err = copyModFolder(src, out, p, depth+1, budget)
 		case info.Mode().IsRegular():
 			err = copyFile(src, p, out, p)
 		default:
@@ -208,9 +287,14 @@ func (m *Manager) ModLocaleFiles(id string, codes []string) (map[string]map[stri
 	}
 	var want []string
 	for _, c := range codes {
-		if localeCodeRE.MatchString(c) && !slices.Contains(want, c) {
+		if isFactorioLocale(c) && !slices.Contains(want, c) {
 			want = append(want, c)
 		}
+	}
+
+	entries, err := readModsDir(root)
+	if err != nil {
+		return nil, err
 	}
 
 	// One source per mod name, a folder before a zip. The game loads a mod
@@ -219,10 +303,6 @@ func (m *Manager) ModLocaleFiles(id string, codes []string) (map[string]map[stri
 	sources := map[string]string{} // mod name to its path in the world
 	for name, file := range newestZips(root) {
 		sources[name] = path.Join(ModsDir, file)
-	}
-	entries, err := fs.ReadDir(root.FS(), ModsDir)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
 	}
 	for _, e := range entries {
 		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
@@ -341,9 +421,6 @@ func folderLocale(root *os.Root, dir string, codes []string, lim *localeLimit) m
 				continue
 			}
 			p := path.Join(codeDir, e.Name())
-			if st, err := root.Lstat(p); err != nil || !st.Mode().IsRegular() || st.Size() > modsettings.MaxCfgFileBytes {
-				continue
-			}
 			b, err := ReadSmallFile(root, p, modsettings.MaxCfgFileBytes)
 			if err != nil || !lim.fits(code, len(b)) {
 				continue
