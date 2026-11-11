@@ -173,10 +173,10 @@ func fillValues(d *Definition, r *rawDefinition) error {
 		return err
 	}
 	if d.Type == TypeInt || d.Type == TypeDouble {
-		if d.Min, err = parseOptionalValue(d.Type, r.Min); err != nil {
+		if d.Min, err = parseBound(d.Type, r.Min); err != nil {
 			return err
 		}
-		if d.Max, err = parseOptionalValue(d.Type, r.Max); err != nil {
+		if d.Max, err = parseBound(d.Type, r.Max); err != nil {
 			return err
 		}
 	}
@@ -210,6 +210,22 @@ func parseOptionalValue(t ValueType, raw json.RawMessage) (*Value, error) {
 		return nil, err
 	}
 	return &v, nil
+}
+
+// parseBound reads a minimum or maximum. The game reports an int setting's
+// unset bounds as the int64 limits as Lua's JSON writer rounds them
+// (-9223372036854776028 and 9223372036854776028), just past the range of an
+// int64. An int bound at or past 2^63 in magnitude means no limit, so it comes
+// back nil.
+func parseBound(t ValueType, raw json.RawMessage) (*Value, error) {
+	if t == TypeInt {
+		// An exact int64 is a real bound, even at the limits.
+		_, exact := strconv.ParseInt(string(bytes.TrimSpace(raw)), 10, 64)
+		if f, err := parseNumber(raw); exact != nil && err == nil && math.Abs(f) >= 1<<63 {
+			return nil, nil
+		}
+	}
+	return parseOptionalValue(t, raw)
 }
 
 // parseNumber reads a JSON number into a finite float64.
