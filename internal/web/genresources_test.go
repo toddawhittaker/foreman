@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"image/png"
-	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -375,8 +374,9 @@ func TestResourceNameFindsTheControl(t *testing.T) {
 }
 
 // SPEC 5.6: with amountsQuery a download draws in the amounts the preview
-// already holds for its planet, and a planet without them is served plain:
-// no download, zip or page ever counts (the fake records every count).
+// already holds for its planet, and a planet without them is refused, never
+// served plain: the page counts before it downloads, and no download or zip
+// ever counts (the fake records every count).
 func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 	hn, prev, c := newResourceHarness(t)
 	prev.png = realPNG(t, game.PreviewSizeDefault)
@@ -387,17 +387,22 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 	body := page()
 	token := strings.Split(pictureOf(t, body), "/")[3]
 	base := PathGeneratePreview + "/" + token
-	if strings.Contains(body, "data-counted") {
+	if regexp.MustCompile(`data-counted[ >]`).MatchString(body) || !strings.Contains(body, `data-counted-planets=""`) {
 		t.Error("a planet is marked counted before any count")
+	}
+	if !strings.Contains(body, `data-planets="nauvis vulcanus gleba fulgora aquilo"`) {
+		t.Errorf("the zip does not list its planets:\n%s", body)
 	}
 	name := func(rec *httptest.ResponseRecorder) string { return rec.Header().Get("Content-Disposition") }
 
-	// Nothing held: asked for, the amounts are left out, and nothing is counted.
-	rec := hn.getLong(base+"/nauvis/download?amounts=1", c)
-	if rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), prev.png) || strings.Contains(name(rec), "amounts") {
-		t.Errorf("uncounted: status %d, drawn %v, named %q", rec.Code, !bytes.Equal(rec.Body.Bytes(), prev.png), name(rec))
+	// Nothing held: asked for, the download is refused rather than served
+	// plain, and nothing is counted (SPEC 5.6).
+	if rec := hn.getLong(base+"/nauvis/download?amounts=1", c); rec.Code != http.StatusConflict {
+		t.Errorf("uncounted: status %d, want 409", rec.Code)
 	}
-	hn.getLong(base+"/all.zip?amounts=1", c)
+	if rec := hn.getLong(base+"/all.zip?amounts=1", c); rec.Code != http.StatusConflict {
+		t.Errorf("uncounted zip: status %d, want 409", rec.Code)
+	}
 	if len(prev.runs) != 0 {
 		t.Fatalf("a download counted: %v", prev.planets)
 	}
@@ -407,12 +412,11 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 		t.Fatalf("%d counts", len(prev.runs))
 	}
 	body = page()
-	if strings.Count(body, "data-counted") != 2 || !regexp.MustCompile(`/nauvis/download"[^>]*data-counted`).MatchString(body) ||
-		!regexp.MustCompile(`/all\.zip"[^>]*data-counted`).MatchString(body) {
-		t.Errorf("only Nauvis and the zip are marked counted:\n%s", body)
+	if !regexp.MustCompile(`/nauvis/download"[^>]*data-counted[ >]`).MatchString(body) || !strings.Contains(body, `data-counted-planets="nauvis"`) {
+		t.Errorf("only Nauvis is marked counted:\n%s", body)
 	}
 
-	rec = hn.getLong(base+"/nauvis/download?amounts=1", c)
+	rec := hn.getLong(base+"/nauvis/download?amounts=1", c)
 	if rec.Code != http.StatusOK || bytes.Equal(rec.Body.Bytes(), prev.png) || !strings.Contains(name(rec), `filename="Fresh_start-123456-nauvis-amounts.png"`) {
 		t.Fatalf("counted: status %d, named %q", rec.Code, name(rec))
 	}
@@ -422,33 +426,74 @@ func TestDownloadsDrawHeldAmountsAndNeverCount(t *testing.T) {
 	if rec := hn.getLong(base+"/nauvis/download", c); !bytes.Equal(rec.Body.Bytes(), prev.png) {
 		t.Error("a download not asking for the amounts drew them")
 	}
-	if rec := hn.getLong(base+"/vulcanus/download?amounts=1", c); !bytes.Equal(rec.Body.Bytes(), prev.png) || strings.Contains(name(rec), "amounts") {
-		t.Error("Vulcanus, not counted, was drawn on")
+	if rec := hn.getLong(base+"/vulcanus/download?amounts=1", c); rec.Code != http.StatusConflict {
+		t.Errorf("Vulcanus, not counted: status %d, want 409", rec.Code)
+	}
+	// Four planets still have no amounts, so the zip with amounts is refused
+	// rather than mixing plain and counted pictures.
+	if rec := hn.getLong(base+"/all.zip?amounts=1", c); rec.Code != http.StatusConflict {
+		t.Errorf("mixed zip: status %d, want 409", rec.Code)
 	}
 
-	zrec := hn.getLong(base+"/all.zip?amounts=1", c)
+	// Left out by name, the planets without amounts are not in the zip at all.
+	zrec := hn.getLong(base+"/all.zip?amounts=1&without=vulcanus&without=gleba&without=fulgora&without=aquilo", c)
 	zr, err := zip.NewReader(bytes.NewReader(zrec.Body.Bytes()), int64(zrec.Body.Len()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	drawn := 0
-	for _, f := range zr.File {
-		rc, _ := f.Open()
-		b, _ := io.ReadAll(rc)
-		_ = rc.Close()
-		isNauvis := strings.Contains(f.Name, "nauvis")
-		if isNauvis != !bytes.Equal(b, prev.png) || isNauvis != (f.Name == "Fresh_start-123456-nauvis-amounts.png") {
-			t.Errorf("%s: drawn on is %v", f.Name, !bytes.Equal(b, prev.png))
-		}
-		if isNauvis {
-			drawn++
-		}
-	}
-	if len(zr.File) != 5 || drawn != 1 {
-		t.Errorf("%d files, %d drawn", len(zr.File), drawn)
+	if len(zr.File) != 1 || zr.File[0].Name != "Fresh_start-123456-nauvis-amounts.png" {
+		t.Errorf("zip without the others holds %d files", len(zr.File))
 	}
 	if len(prev.runs) != 1 {
 		t.Errorf("a download counted: %v", prev.planets)
+	}
+
+	// Every planet counted: the zip draws them all.
+	for _, pl := range []string{"vulcanus", "gleba", "fulgora", "aquilo"} {
+		hn.postLong(pathResources, planetForm(pl), c, hx)
+	}
+	zrec = hn.getLong(base+"/all.zip?amounts=1", c)
+	zr, err = zip.NewReader(bytes.NewReader(zrec.Body.Bytes()), int64(zrec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range zr.File {
+		if !strings.HasSuffix(f.Name, "-amounts.png") {
+			t.Errorf("%s is not drawn on", f.Name)
+		}
+	}
+	if len(zr.File) != 5 {
+		t.Errorf("%d files", len(zr.File))
+	}
+}
+
+// SPEC 5.6: a planet left out of the zip must be one the zip holds, and
+// leaving out every planet leaves nothing to serve.
+func TestZipWithoutChecksItsPlanets(t *testing.T) {
+	hn, prev, c := newResourceHarness(t)
+	prev.png = realPNG(t, game.PreviewSizeDefault)
+	all := planetForm("")
+	all.Del("planet")
+	body := hn.postLong(PathGeneratePreview, all, c, withHeader("HX-Request", "true")).Body.String()
+	base := PathGeneratePreview + "/" + strings.Split(pictureOf(t, body), "/")[3]
+	if rec := hn.getLong(base+"/all.zip?without=mars", c); rec.Code != http.StatusBadRequest {
+		t.Errorf("an unknown planet: status %d, want 400", rec.Code)
+	}
+	if rec := hn.getLong(base+"/all.zip?without=nauvis&without=vulcanus&without=gleba&without=fulgora&without=aquilo", c); rec.Code != http.StatusNotFound {
+		t.Errorf("every planet left out: status %d, want 404", rec.Code)
+	}
+	rec := hn.getLong(base+"/all.zip?without=gleba", c)
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range zr.File {
+		if strings.Contains(f.Name, "gleba") {
+			t.Errorf("Gleba is in the zip: %s", f.Name)
+		}
+	}
+	if len(zr.File) != 4 {
+		t.Errorf("%d files", len(zr.File))
 	}
 }
 
@@ -514,7 +559,7 @@ func TestOnePlanetHasTheResourceBox(t *testing.T) {
 		`<progress aria-hidden="true"></progress>`,
 		`<p class="visually-hidden" id="preview-amounts-news" role="status"></p>`,
 		`data-amounts="Download Nauvis with resource amounts (PNG)"`,
-		`data-amounts="Download all drawn planets (zip), with resource amounts where counted"`,
+		`data-amounts="Download all drawn planets (zip), with resource amounts"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("One planet lacks %q:\n%s", want, body)

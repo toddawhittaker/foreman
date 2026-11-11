@@ -400,7 +400,7 @@
   "worlds.generate.preview.opens_large": "(öffnet die große Ansicht)",
   "worlds.generate.preview.download": "{planet} herunterladen (PNG)",
   "worlds.generate.preview.download_all": "Alle gezeichneten Planeten herunterladen (ZIP)",
-  "worlds.generate.preview.download_all_amounts": "Alle gezeichneten Planeten herunterladen (ZIP), mit Ressourcenmengen, wo sie gezählt wurden",
+  "worlds.generate.preview.download_all_amounts": "Alle gezeichneten Planeten herunterladen (ZIP), mit Ressourcenmengen",
   "worlds.generate.preview.updating": "Kartenvorschau für die aktuellen Einstellungen wird gezeichnet …",
   "worlds.generate.large.zoom_out": "Verkleinern",
   "worlds.generate.large.zoom_in": "Vergrößern",
@@ -469,5 +469,6 @@
   "worlds.generate.resources.oom": "Dem Spiel ging beim Zählen der Ressourcen der Speicher aus. Wähle eine kleinere Vorschaugröße.",
   "worlds.generate.resources.failed": "Das Spiel konnte die Ressourcen nicht zählen. Die Kartenvorschau und das Generieren funktionieren weiterhin. Wenn es weiter scheitert, sieh im Protokoll von Foreman nach.",
   "worlds.generate.resources.request_failed": "Die Anfrage für die Ressourcenmengen ist fehlgeschlagen. Prüfe, ob Foreman erreichbar ist und du noch angemeldet bist, und versuche es dann erneut.",
-  "worlds.generate.resources.retry": "Erneut versuchen"
+  "worlds.generate.resources.retry": "Erneut versuchen",
+  "worlds.generate.resources.not_counted": "Dieser Download verlangt Ressourcenmengen, die noch nicht gezählt wurden. Lade ihn erneut über die Seite „Welt generieren“ herunter, das sie zuerst zählt."
 }

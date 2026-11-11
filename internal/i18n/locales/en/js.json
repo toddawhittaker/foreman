@@ -21,5 +21,10 @@
   "js.generate.moved": "{field} set to {value} to keep the range valid.",
   "js.preview.download_territories": "Download {planet} map with territories",
   "js.preview.download_amounts": "Download {planet} map with resource amounts",
-  "js.preview.download_both": "Download {planet} map with territories and resource amounts"
+  "js.preview.download_both": "Download {planet} map with territories and resource amounts",
+  "js.preview.prepare_amounts": "Counting resources for the download, planet {n} of {total}: {planet}…",
+  "js.preview.prepare_territories": "Finding demolisher territories for the download, planet {n} of {total}: {planet}…",
+  "js.preview.prepare_failed": "The download stopped at {planet}.",
+  "js.preview.prepare_without": "Download without {planet}",
+  "js.preview.prepare_canceled": "Download canceled."
 }

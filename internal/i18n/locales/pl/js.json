@@ -21,5 +21,10 @@
   "js.generate.moved": "{field}: ustawiono {value}, aby zakres pozostał prawidłowy.",
   "js.preview.download_territories": "Pobierz mapę z terytoriami: {planet}",
   "js.preview.download_amounts": "Pobierz mapę z ilościami zasobów: {planet}",
-  "js.preview.download_both": "Pobierz mapę z terytoriami i ilościami zasobów: {planet}"
+  "js.preview.download_both": "Pobierz mapę z terytoriami i ilościami zasobów: {planet}",
+  "js.preview.prepare_amounts": "Liczenie zasobów do pobrania, planeta {n} z {total}: {planet}…",
+  "js.preview.prepare_territories": "Wyszukiwanie terytoriów dewastatorów do pobrania, planeta {n} z {total}: {planet}…",
+  "js.preview.prepare_failed": "Pobieranie zatrzymało się na planecie: {planet}.",
+  "js.preview.prepare_without": "Pobierz bez planety: {planet}",
+  "js.preview.prepare_canceled": "Pobieranie anulowane."
 }

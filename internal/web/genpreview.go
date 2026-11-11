@@ -338,9 +338,13 @@ type PreviewView struct {
 	// still shows All planets as the choice made (DESIGN 8.8).
 	ShowsAll bool
 	Error    i18n.Msg
-	// Counted is true when the preview holds any planet's resource amounts,
-	// so the zip can draw them.
-	Counted bool
+	// Drawn are the planets the zip holds, in the order drawn, and Counted
+	// those of them whose resource amounts are held, so the page knows which
+	// to count before a download with amounts (SPEC 5.6).
+	Drawn   []string
+	Counted []string
+	// TerritoriesHeld is true when the preview holds Vulcanus's territories.
+	TerritoriesHeld bool
 	// Territories is the box that shows Vulcanus's demolisher territories.
 	Territories TerritoryBox
 	// Resources is one planet's resource amounts for the large view, or why
@@ -370,6 +374,10 @@ func (v PreviewView) Choice() bool { return len(v.Planets) > 1 }
 
 // All is true when several pictures are shown, or were asked for.
 func (v PreviewView) All() bool { return v.ShowsAll || len(v.Pictures) > 1 }
+
+// ZipPlanets and ZipCounted are Drawn and Counted for a data attribute.
+func (v PreviewView) ZipPlanets() string { return strings.Join(v.Drawn, " ") }
+func (v PreviewView) ZipCounted() string { return strings.Join(v.Counted, " ") }
 
 // DownloadPath is where the picture is served as a file.
 func (p PreviewPicture) DownloadPath() string { return p.Path + "/download" }
@@ -457,7 +465,14 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	}
 	if err == nil {
 		counted := s.previews.countedPlanets(u.ID, key)
-		view.Counted = len(counted) > 0
+		if e, ok := s.previews.entry(view.Token, u.ID); ok {
+			view.Drawn = e.planets
+		}
+		for _, planet := range view.Drawn {
+			if counted[planet] {
+				view.Counted = append(view.Counted, planet)
+			}
+		}
 		for _, planet := range planets {
 			view.Pictures = append(view.Pictures, PreviewPicture{Planet: planet, Name: planetMsg(planet), Path: pictureURL(view.Token, planet), Counted: counted[planet]})
 		}
@@ -469,6 +484,9 @@ func (s *server) handleGeneratePreview(w http.ResponseWriter, r *http.Request, u
 	// it the page asks for them once the picture has arrived (DESIGN 8.8).
 	script := auto || r.Header.Get("HX-Request") == "true"
 	view.Territories = s.territoryBox(w, r, u, req, f.Name, view, !script)
+	if view.Token != "" {
+		_, view.TerritoriesHeld = s.previews.territoriesOf(u.ID, key)
+	}
 	if auto {
 		// The page keeps the form as typed and swaps in the section alone.
 		s.fragment(w, r, s.generatePage(f, view), "generate-preview")
@@ -559,6 +577,9 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 	}
 	png, suffix, have, err := drawnDownload(r, e, planet, png)
 	switch {
+	case errors.Is(err, errNotCounted):
+		s.notCounted(w, r, u)
+		return
 	case err != nil:
 		s.drawFailure(w, r, u, err)
 		return
@@ -571,19 +592,36 @@ func (s *server) handlePictureDownload(w http.ResponseWriter, r *http.Request, u
 }
 
 // handlePicturesZip serves every planet drawn so far as one zip, each
-// picture named as its own download would be.
+// picture named as its own download would be. withoutQuery leaves planets
+// out, so a zip with amounts can be had without a planet whose count failed
+// (SPEC 5.6).
 func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u store.User) {
 	e, ok := s.previews.entry(r.PathValue("token"), u.ID)
-	if !ok || len(e.planets) == 0 {
+	if !ok {
+		s.notFound(w, r, u)
+		return
+	}
+	without := r.URL.Query()[withoutQuery]
+	for _, planet := range without {
+		if !slices.Contains(e.planets, planet) {
+			s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
+			return
+		}
+	}
+	planets := slices.DeleteFunc(slices.Clone(e.planets), func(p string) bool { return slices.Contains(without, p) })
+	if len(planets) == 0 {
 		s.notFound(w, r, u)
 		return
 	}
 	// Drawn before the reply starts, so a failure can still say so.
 	images := maps.Clone(e.images)
 	suffixes := map[string]string{}
-	for _, planet := range e.planets {
+	for _, planet := range planets {
 		drawn, suffix, have, err := drawnDownload(r, e, planet, images[planet])
 		switch {
+		case errors.Is(err, errNotCounted):
+			s.notCounted(w, r, u)
+			return
 		case err != nil:
 			s.drawFailure(w, r, u, err)
 			return
@@ -599,7 +637,7 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Disposition", attachment(previewFileName(e.name, e.seed, "")+".zip"))
 	zw := zip.NewWriter(w)
-	for _, planet := range e.planets {
+	for _, planet := range planets {
 		// A PNG is compressed already.
 		fw, err := zw.CreateHeader(&zip.FileHeader{Name: previewFileName(e.name, e.seed, planet) + suffixes[planet] + ".png", Method: zip.Store})
 		if err != nil {
@@ -614,10 +652,11 @@ func (s *server) handlePicturesZip(w http.ResponseWriter, r *http.Request, u sto
 
 // drawnDownload is a planet's picture src with what the download asks for
 // drawn in (SPEC 5.6): Vulcanus's territories (territoriesQuery), and the
-// planet's resource amounts (amountsQuery) when the preview holds them; a
-// planet without held amounts is served plain, as nothing is counted for a
-// download. suffix names what was drawn, for the file's name. ok is false
-// when the territories are asked for and the preview has none.
+// planet's resource amounts (amountsQuery). A download never counts, and
+// never comes out plain when amounts were asked for: a planet without held
+// amounts gives errNotCounted. suffix names what was drawn, for the file's
+// name. ok is false when the territories are asked for and the preview has
+// none.
 func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (out []byte, suffix string, ok bool, err error) {
 	q := r.URL.Query()
 	var ov territory.Overlay
@@ -628,7 +667,10 @@ func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (
 		ov, suffix = territory.Geometry(*e.territories, e.size), "-territories"
 	}
 	loc := localeOf(r)
-	if q.Get(amountsQuery) == "1" && e.resources[planet] != nil {
+	if q.Get(amountsQuery) == "1" {
+		if e.resources[planet] == nil {
+			return nil, "", false, errNotCounted
+		}
 		cfg, err := png.DecodeConfig(bytes.NewReader(src))
 		if err != nil {
 			return nil, "", false, err
@@ -645,6 +687,18 @@ func drawnDownload(r *http.Request, e previewEntry, planet string, src []byte) (
 	}
 	out, err = drawPNG(r.Context(), src, ov, func(size string) string { return territory.Label(loc, size) })
 	return out, suffix, true, err
+}
+
+// withoutQuery names a planet the zip leaves out; it may be given more than once.
+const withoutQuery = "without"
+
+// errNotCounted means a download asked for amounts the preview does not hold.
+var errNotCounted = errors.New("the planet's resource amounts are not counted")
+
+// notCounted refuses a download with amounts the preview does not hold. The
+// page counts them first, so only a stale or hand-made link gets here.
+func (s *server) notCounted(w http.ResponseWriter, r *http.Request, u store.User) {
+	s.page(w, r, http.StatusConflict, u.Username, ErrorPage{Status: http.StatusConflict, Detail: i18n.M("worlds.generate.resources.not_counted")})
 }
 
 func writePNG(w http.ResponseWriter, png []byte) {

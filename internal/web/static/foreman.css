@@ -3373,3 +3373,36 @@ a.mod-name {
   /* Black dims the page in both themes; a text colour would lighten the dark one. */
   background: rgb(0 0 0 / 50%);
 }
+
+/* A download's preparation: which planet of how many, and the choices on a failure (SPEC 5.6). */
+.download-prep {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.download-prep__wait:not([hidden]) {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.download-prep__wait > p,
+.download-prep__actions {
+  margin: 0;
+}
+
+.download-prep__wait progress {
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  accent-color: var(--color-selected);
+}
+
+.download-prep .message[hidden] {
+  display: none;
+}
+
+.download-prep__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

@@ -21,5 +21,10 @@
   "js.generate.moved": "{field}: nastaveno na {value}, aby rozsah zůstal platný.",
   "js.preview.download_territories": "Stáhnout mapu s teritorii: {planet}",
   "js.preview.download_amounts": "Stáhnout mapu s množstvím surovin: {planet}",
-  "js.preview.download_both": "Stáhnout mapu s teritorii a množstvím surovin: {planet}"
+  "js.preview.download_both": "Stáhnout mapu s teritorii a množstvím surovin: {planet}",
+  "js.preview.prepare_amounts": "Počítají se suroviny pro stažení, planeta {n} z {total}: {planet}…",
+  "js.preview.prepare_territories": "Hledají se teritoria ničitelů pro stažení, planeta {n} z {total}: {planet}…",
+  "js.preview.prepare_failed": "Stahování se zastavilo u planety: {planet}.",
+  "js.preview.prepare_without": "Stáhnout bez planety: {planet}",
+  "js.preview.prepare_canceled": "Stahování bylo zrušeno."
 }

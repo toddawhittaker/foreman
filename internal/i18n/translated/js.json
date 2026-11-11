@@ -20,6 +20,11 @@
   "js.preview.download_territories": "6a4c0856",
   "js.preview.drawing": "a3841339",
   "js.preview.next": "8fa4d2f1",
+  "js.preview.prepare_amounts": "31f836e1",
+  "js.preview.prepare_canceled": "ec9841a5",
+  "js.preview.prepare_failed": "9ed6f4eb",
+  "js.preview.prepare_territories": "9554b8aa",
+  "js.preview.prepare_without": "a2372efe",
   "js.preview.previous": "ebf5cb46",
   "js.preview.zoom": "4b516611"
 }
