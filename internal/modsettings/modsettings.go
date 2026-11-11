@@ -1,10 +1,4 @@
-// Contract stub: task T1 of the mod settings epic fills these bodies.
-
 package modsettings
-
-import "errors"
-
-var errNotBuilt = errors.New("modsettings: not built yet")
 
 // Limits on untrusted input (SPEC 14.6).
 const (
@@ -81,40 +75,6 @@ type Definition struct {
 // Definitions is the parsed list from one definitions run, in file order.
 type Definitions []Definition
 
-// ParseDefinitions parses the JSON a definitions run writes, enforcing the
-// limits above and ignoring unknown fields.
-func ParseDefinitions(data []byte) (Definitions, error) {
-	return nil, errNotBuilt
-}
-
-// File is a decoded mod-settings.dat. It keeps the header, flag byte and the
-// bytes of every entry it does not change, so Encode of an unchanged File
-// returns the input byte for byte.
-type File struct {
-	// Holds the header, flag byte and entries with their raw bytes.
-}
-
-// Decode parses mod-settings.dat bytes.
-func Decode(data []byte) (*File, error) {
-	return nil, errNotBuilt
-}
-
-// Encode writes the file back out, unchanged entries byte for byte.
-func (f *File) Encode() ([]byte, error) {
-	return nil, errNotBuilt
-}
-
-// Get returns the value of one setting and whether the file holds it.
-func (f *File) Get(setting SettingType, name string) (Value, bool, error) {
-	return Value{}, false, errNotBuilt
-}
-
-// Set changes one setting's value. When the file lacks the setting, its node
-// is copied from defaults (the file a definitions run wrote) and then set.
-func (f *File) Set(setting SettingType, name string, v Value, defaults *File) error {
-	return errNotBuilt
-}
-
 // ValidationError is a refused value: a message id for the page and its
 // parameters (the setting's shown name and the limit). It never holds the
 // raw value.
@@ -126,12 +86,6 @@ type ValidationError struct {
 // Error returns the message id, for logs.
 func (e *ValidationError) Error() string { return e.MessageID }
 
-// Validate checks a value posted from the form against its definition and
-// returns it typed. A color is posted as four comma-separated components.
-func Validate(def Definition, raw string) (Value, *ValidationError) {
-	return Value{}, &ValidationError{MessageID: "not-built"}
-}
-
 // LocaleText is one setting's shown name and description in one language.
 type LocaleText struct {
 	Name        string
@@ -141,12 +95,6 @@ type LocaleText struct {
 // Locale holds setting text keyed by Foreman language code, then by setting
 // name.
 type Locale map[string]map[string]LocaleText
-
-// ParseLocaleCfg reads a .cfg file's [mod-setting-name] and
-// [mod-setting-description] sections, keyed by setting name.
-func ParseLocaleCfg(data []byte) (names, descriptions map[string]string, err error) {
-	return nil, nil, errNotBuilt
-}
 
 // FactorioLocales maps each of Foreman's eight language codes to the folder
 // name Factorio uses under a mod's locale/.
