@@ -74,8 +74,21 @@
       {{- end}}
     </ul>
     {{- if gt (len .Planets) 1}}
-    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}"{{if .Counted}} data-counted{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
+    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}" data-planets="{{.ZipPlanets}}" data-counted-planets="{{.ZipCounted}}"{{if .TerritoriesHeld}} data-territories-held{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
     {{- end}}
+    {{/* Shown under a download while the script counts what it asks for and nothing holds yet:
+         which planet of how many, Cancel, and on a failure the planet named with Try again and,
+         for the zip, the zip without it (SPEC 5.6, 17.15). */}}
+    <template id="download-prep">
+      <div class="download-prep" data-amounts-failed="{{t "worlds.generate.resources.request_failed"}}" data-territories-failed="{{t "worlds.generate.territories.request_failed"}}" data-not-kept="{{t "worlds.generate.resources.not_kept"}}">
+        <div class="download-prep__wait" data-prep-wait>
+          <p class="hint" data-prep-text></p>
+          <progress aria-hidden="true"></progress>
+        </div>
+        <div class="message message--error" data-prep-failed hidden><p><strong>{{t "common.error.label"}}</strong> <span data-prep-why></span></p></div>
+        <p class="download-prep__actions"><button type="button" class="button" data-prep-without hidden></button> <button type="button" class="button" data-prep-retry hidden>{{t "worlds.generate.resources.retry"}}</button> <button type="button" class="button" data-prep-cancel>{{t "worlds.cancel"}}</button></p>
+      </div>
+    </template>
     {{- if $amounts}}
     {{/* The count's wait, failure and text list sit under the picture and its downloads, so the
          picture does not move as they come and go (DESIGN 8.8). */}}
@@ -213,7 +226,7 @@
 {{define "generate-resources" -}}
 <div id="resource-reply">
   {{- with .Preview.Resources}}{{if .Error.IsZero}}{{template "resource-overlay" .}}{{end}}
-  <div class="resource-result">{{template "resource-result" .}}</div>
+  <div class="resource-result"{{if .Kept}} data-kept{{end}}>{{template "resource-result" .}}</div>
   {{- end}}
 </div>
 {{- end}}

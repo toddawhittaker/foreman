@@ -21,5 +21,11 @@
   "js.generate.moved": "{field}已设为 {value}，以保持范围有效。",
   "js.preview.download_territories": "下载带领地的 {planet} 地图",
   "js.preview.download_amounts": "下载带资源数量的 {planet} 地图",
-  "js.preview.download_both": "下载带领地和资源数量的 {planet} 地图"
+  "js.preview.download_both": "下载带领地和资源数量的 {planet} 地图",
+  "js.preview.prepare_amounts": "正在为下载统计资源，第 {n} 个星球，共 {total} 个：{planet}…",
+  "js.preview.prepare_territories": "正在为下载查找撼地虫领地，第 {n} 个星球，共 {total} 个：{planet}…",
+  "js.preview.prepare_failed": "下载在 {planet} 处停止。",
+  "js.preview.prepare_without": "下载时不含 {planet}",
+  "js.preview.prepare_canceled": "下载已取消。",
+  "js.preview.prepare_busy": "正在准备另一个下载。请等待其完成，或先将其取消。"
 }

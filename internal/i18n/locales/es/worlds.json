@@ -400,7 +400,7 @@
   "worlds.generate.preview.opens_large": "(abre la vista grande)",
   "worlds.generate.preview.download": "Descargar {planet} (PNG)",
   "worlds.generate.preview.download_all": "Descargar todos los planetas dibujados (zip)",
-  "worlds.generate.preview.download_all_amounts": "Descargar todos los planetas dibujados (zip), con cantidades de recursos donde se contaron",
+  "worlds.generate.preview.download_all_amounts": "Descargar todos los planetas dibujados (zip), con cantidades de recursos",
   "worlds.generate.preview.updating": "Dibujando la vista previa del mapa con los ajustes actuales…",
   "worlds.generate.large.zoom_out": "Alejar",
   "worlds.generate.large.zoom_in": "Acercar",
@@ -469,5 +469,7 @@
   "worlds.generate.resources.oom": "Al contar los recursos, el juego se quedó sin memoria. Elige un tamaño de vista previa menor.",
   "worlds.generate.resources.failed": "El juego no pudo contar los recursos. La vista previa del mapa y la generación siguen funcionando. Si sigue fallando, revisa el registro de Foreman.",
   "worlds.generate.resources.request_failed": "Falló la solicitud de las cantidades de recursos. Comprueba que Foreman esté accesible y que sigas con la sesión iniciada, y vuelve a intentarlo.",
-  "worlds.generate.resources.retry": "Reintentar"
+  "worlds.generate.resources.retry": "Reintentar",
+  "worlds.generate.resources.not_counted": "Esta descarga pide cantidades de recursos o territorios de los demoledores que aún no están disponibles. Vuelve a descargarla desde la página «Generar un mundo», que los obtiene primero.",
+  "worlds.generate.resources.not_kept": "La configuración cambió mientras se contaban los recursos, así que las cantidades no se guardaron. Inténtalo de nuevo."
 }

@@ -412,7 +412,7 @@
   "worlds.generate.preview.opens_large": "(otevře velké zobrazení)",
   "worlds.generate.preview.download": "Stáhnout {planet} (PNG)",
   "worlds.generate.preview.download_all": "Stáhnout všechny vykreslené planety (ZIP)",
-  "worlds.generate.preview.download_all_amounts": "Stáhnout všechny vykreslené planety (ZIP), s množstvím surovin tam, kde bylo spočítáno",
+  "worlds.generate.preview.download_all_amounts": "Stáhnout všechny vykreslené planety (ZIP) s množstvím surovin",
   "worlds.generate.preview.updating": "Vykresluje se náhled mapy pro aktuální nastavení…",
   "worlds.generate.large.zoom_out": "Oddálit",
   "worlds.generate.large.zoom_in": "Přiblížit",
@@ -486,5 +486,7 @@
   "worlds.generate.resources.oom": "Hře při počítání surovin došla paměť. Je třeba zvolit menší velikost náhledu.",
   "worlds.generate.resources.failed": "Hře se nepodařilo spočítat suroviny. Náhled mapy i generování světa přesto fungují. Pokud se to opakuje, je třeba zkontrolovat protokol Foremanu.",
   "worlds.generate.resources.request_failed": "Požadavek na množství surovin selhal. Je třeba zkontrolovat, zda je Foreman dostupný a zda je přihlášení stále platné, a zkusit to znovu.",
-  "worlds.generate.resources.retry": "Zkusit znovu"
+  "worlds.generate.resources.retry": "Zkusit znovu",
+  "worlds.generate.resources.not_counted": "Toto stažení vyžaduje množství surovin nebo teritoria ničitelů, která zatím nejsou k dispozici. Je třeba stáhnout znovu ze stránky „Vygenerovat svět“, která je nejprve zjistí.",
+  "worlds.generate.resources.not_kept": "Nastavení se během počítání surovin změnilo, takže množství nebylo uloženo. Je třeba to zkusit znovu."
 }

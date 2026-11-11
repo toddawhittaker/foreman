@@ -388,7 +388,7 @@
   "worlds.generate.preview.opens_large": "（打开大图查看）",
   "worlds.generate.preview.download": "下载 {planet}（PNG）",
   "worlds.generate.preview.download_all": "下载所有已绘制的星球（ZIP）",
-  "worlds.generate.preview.download_all_amounts": "下载所有已绘制的星球（ZIP），已统计的星球带资源数量",
+  "worlds.generate.preview.download_all_amounts": "下载所有已绘制的星球（ZIP），含资源数量",
   "worlds.generate.preview.updating": "正在按当前设置绘制地图预览…",
   "worlds.generate.large.zoom_out": "缩小",
   "worlds.generate.large.zoom_in": "放大",
@@ -452,5 +452,7 @@
   "worlds.generate.resources.oom": "游戏在统计资源时内存不足。请选择更小的预览大小。",
   "worlds.generate.resources.failed": "游戏无法统计资源，但地图预览和生成世界仍可使用。如果持续失败，请查看 Foreman 的日志。",
   "worlds.generate.resources.request_failed": "资源数量请求失败。请确认能够访问 Foreman 且仍处于登录状态，然后重试。",
-  "worlds.generate.resources.retry": "重试"
+  "worlds.generate.resources.retry": "重试",
+  "worlds.generate.resources.not_counted": "此下载需要尚未获得的资源数量或撼地虫领地。请从“生成世界”页面重新下载，该页面会先获取它们。",
+  "worlds.generate.resources.not_kept": "统计资源时设置已更改，因此未保留资源数量。请重试。"
 }

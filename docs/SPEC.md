@@ -713,7 +713,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     list gives every patch, by resource, for keyboard and screen-reader
     users (17.15). A patch's label is left off the picture where a patch
     of the same resource with at least 4 times its amount lies within 64
-    tiles, box edge to box edge; the list still gives it.
+    tiles on both axes, box edge to box edge; the list still gives it.
     - **Patches.** Ores of one resource are one patch where their tiles
       are within 6 tiles of each other. At 2 tiles, Fulgora at 3072 tiles
       had 946 ore patches, 578 of them under 10 entities; at 6 it has 296,
@@ -734,11 +734,24 @@ not) or a map exchange string, with Space Age on or off. (P0)
       edge counts the part inside, and the page says so. The preview never
       loads the world's mods (ADR 0011), so only the base game's and Space
       Age's resources appear.
-    - **Downloads.** While a box is ticked, the planet's PNG
-      (`?amounts=1`) and each planet's file in the zip draw the amounts the
-      preview already holds, worded as the page's compact notation in the
-      page language (ADR 0015). A download never starts a count: a planet
-      with no held amounts downloads plain, under its plain name.
+    - **Downloads.** While a box is ticked, every download carries what it
+      asks for: the planet's PNG (`?amounts=1`) and every planet in the
+      zip draw their amounts, worded as the page's compact notation in the
+      page language (ADR 0015), and Vulcanus draws its territories while
+      that box is ticked. Before the download starts, the page counts each
+      of its planets that has nothing held yet, and reads the territories
+      if none are held, one run at a time through the preview's queue
+      (14.3), with the current settings. It shows which planet of how many
+      ("planet 2 of 5") with Cancel. A planet that fails (busy, timeout,
+      out of memory, or any other failure) is named with its reason, and
+      the page offers Try again and, for the zip, the zip without that
+      planet. What is counted is kept with the preview, so the page and
+      later downloads reuse it. Closing the large view, showing another
+      planet there, or changing a setting ends the preparation and says
+      so; a click on another download meanwhile says one is being
+      prepared. The server never counts for a download and never serves
+      one plain or mixed: a link asking for amounts or territories that
+      are not held is refused (409).
     - **Cost, measured** with seed 123456 at default settings, at 3072 tiles
       (the most offered), on every planet, on 1.1.110, 2.0.77 and 2.1.24: at
       most 757 MiB and 33 s (Gleba on 2.1.24), against the 1 GiB and 60 s

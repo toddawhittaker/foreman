@@ -412,7 +412,7 @@
   "worlds.generate.preview.opens_large": "(otwiera duży widok)",
   "worlds.generate.preview.download": "Pobierz: {planet} (PNG)",
   "worlds.generate.preview.download_all": "Pobierz wszystkie narysowane planety (ZIP)",
-  "worlds.generate.preview.download_all_amounts": "Pobierz wszystkie narysowane planety (ZIP), z ilościami zasobów tam, gdzie je policzono",
+  "worlds.generate.preview.download_all_amounts": "Pobierz wszystkie narysowane planety (ZIP) z ilościami zasobów",
   "worlds.generate.preview.updating": "Rysowanie podglądu mapy dla bieżących ustawień…",
   "worlds.generate.large.zoom_out": "Pomniejsz",
   "worlds.generate.large.zoom_in": "Powiększ",
@@ -486,5 +486,7 @@
   "worlds.generate.resources.oom": "Grze zabrakło pamięci podczas liczenia zasobów. Należy wybrać mniejszy rozmiar podglądu.",
   "worlds.generate.resources.failed": "Gra nie zdołała policzyć zasobów. Podgląd mapy i generowanie nadal działają. Jeśli błąd się powtarza, należy sprawdzić dziennik Foremana.",
   "worlds.generate.resources.request_failed": "Żądanie ilości zasobów nie powiodło się. Należy sprawdzić, czy Foreman jest osiągalny i czy sesja nadal trwa, a następnie spróbować ponownie.",
-  "worlds.generate.resources.retry": "Spróbuj ponownie"
+  "worlds.generate.resources.retry": "Spróbuj ponownie",
+  "worlds.generate.resources.not_counted": "To pobieranie wymaga ilości zasobów lub terytoriów dewastatorów, których jeszcze nie ma. Należy pobrać ponownie ze strony „Wygeneruj świat”, która najpierw je ustali.",
+  "worlds.generate.resources.not_kept": "Ustawienia zmieniły się podczas liczenia zasobów, więc ilości nie zostały zapisane. Należy spróbować ponownie."
 }

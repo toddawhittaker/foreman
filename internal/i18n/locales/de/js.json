@@ -21,5 +21,11 @@
   "js.generate.moved": "{field} auf {value} gesetzt, damit der Bereich gültig bleibt.",
   "js.preview.download_territories": "Karte {planet} mit Territorien herunterladen",
   "js.preview.download_amounts": "Karte {planet} mit Ressourcenmengen herunterladen",
-  "js.preview.download_both": "Karte {planet} mit Territorien und Ressourcenmengen herunterladen"
+  "js.preview.download_both": "Karte {planet} mit Territorien und Ressourcenmengen herunterladen",
+  "js.preview.prepare_amounts": "Ressourcen für den Download werden gezählt, Planet {n} von {total}: {planet} …",
+  "js.preview.prepare_territories": "Zertrümmerer-Territorien für den Download werden gesucht, Planet {n} von {total}: {planet} …",
+  "js.preview.prepare_failed": "Der Download wurde bei {planet} angehalten.",
+  "js.preview.prepare_without": "Ohne {planet} herunterladen",
+  "js.preview.prepare_canceled": "Download abgebrochen.",
+  "js.preview.prepare_busy": "Ein anderer Download wird vorbereitet. Warte darauf oder brich ihn zuerst ab."
 }
