@@ -7,7 +7,9 @@ package game
 // frequency and size at 600%. Each run logs its wall time, the container's
 // peak memory, the patches per resource and the file's size, and stays
 // within the preview limits. The spike also logs how the patches change
-// at 3072 with an ore gap of 4 and 8 tiles, around the stated 6.
+// at 3072 with an ore gap of 2, 4 and 8 tiles, around the stated 6, on the
+// planets with an ore at that gap: not Fulgora, whose only resource is scrap
+// at its own gap, nor Aquilo, which has only wells.
 // TestRealGameD2ResourceInvariants pins what the count must always do: the
 // same map gives the same patches, a resource that is off has none, the
 // grouping matches a scan of every tile, and the numbers agree with the
@@ -391,17 +393,23 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 					t.Errorf("no patch of %s at 3072", ctl.Name)
 				}
 			}
-			for _, gap := range []int{4, 8} {
-				req := PreviewRequest{GameVersion: version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
+			req := PreviewRequest{GameVersion: version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
+			if !takesOreGap(planet, big.file) {
+				e.oreGapUnused(t, c, req, planet, big)
+				if planet == "fulgora" {
+					fulgoraBound(t, big)
+				}
+				return
+			}
+			gaps := map[int]countRun{}
+			for _, gap := range []int{2, 4, 8} {
 				r := e.countWith(t, c, req, planet, fmt.Sprintf(", ore_gap = %d", gap))
+				gaps[gap] = r
 				t.Logf("MEASURE %s %s 3072 ore gap %d: wall %s, peak %d MiB, %d patches: %s",
 					version, planet, gap, r.wall.Round(100*time.Millisecond), r.peak>>20, len(r.file.Patches), r.summary())
 			}
-			switch planet {
-			case "nauvis":
-				e.nauvisFieldsApart(t, c, version, spaceAge, big)
-			case "fulgora":
-				fulgoraBound(t, big)
+			if planet == "nauvis" {
+				nauvisFieldsApart(t, gaps[2], big)
 			}
 		})
 	}
@@ -434,10 +442,8 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 // Nauvis no two separate fields, gap-2 patches of 100 or more entities, share
 // a gap-6 patch. Each field lies inside one gap-6 patch, found as the
 // smallest box of its resource holding the field's box.
-func (e *gameEnv) nauvisFieldsApart(t *testing.T, c *Controller, version string, spaceAge bool, six countRun) {
+func nauvisFieldsApart(t *testing.T, two, six countRun) {
 	t.Helper()
-	req := PreviewRequest{GameVersion: version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
-	two := e.countWith(t, c, req, "nauvis", ", ore_gap = 2")
 	inside := func(a, b [4]int) bool { return a[0] >= b[0] && a[1] >= b[1] && a[2] <= b[2] && a[3] <= b[3] }
 	size := func(b [4]int) int { return (b[2] - b[0] + 1) * (b[3] - b[1] + 1) }
 	fields := map[int]int{}
@@ -464,8 +470,32 @@ func (e *gameEnv) nauvisFieldsApart(t *testing.T, c *Controller, version string,
 	}
 }
 
-// fulgoraBound checks Fulgora at 3072 against its count measured at the ore
-// gap of 6: 296 patches, 48 of them under 10 entities (ADR 0015).
+// takesOreGap reports whether any resource the planet has joins at the ore
+// gap. Aquilo has only wells, and Fulgora only scrap at its own gap.
+func takesOreGap(planet string, f countFile) bool {
+	for name := range f.Resources {
+		if statedGap(planet, name) == statedOreGap {
+			return true
+		}
+	}
+	return false
+}
+
+// oreGapUnused checks that a planet with no resource at the ore gap counts
+// the same patches at ore gap 2 as at the default (SPEC 5.6).
+func (e *gameEnv) oreGapUnused(t *testing.T, c *Controller, req PreviewRequest, planet string, six countRun) {
+	t.Helper()
+	two := e.countWith(t, c, req, planet, ", ore_gap = 2")
+	t.Logf("MEASURE %s %s 3072 ore gap 2: wall %s, peak %d MiB, %d patches: %s",
+		req.GameVersion, planet, two.wall.Round(100*time.Millisecond), two.peak>>20, len(two.file.Patches), two.summary())
+	if !reflect.DeepEqual(two.file, six.file) {
+		t.Errorf("ore gap 2 gave %d patches, the default %d; no resource here takes the ore gap", len(two.file.Patches), len(six.file.Patches))
+	}
+}
+
+// fulgoraBound checks Fulgora at 3072 against its count measured with scrap
+// at its gap of 16: 240 patches, 23 of them under 10 entities, on 2.1.24
+// and 237 (18) on 2.0.77 (ADR 0015).
 func fulgoraBound(t *testing.T, r countRun) {
 	t.Helper()
 	small := 0
@@ -474,8 +504,8 @@ func fulgoraBound(t *testing.T, r countRun) {
 			small++
 		}
 	}
-	if n := len(r.file.Patches); n > 300 || small > 50 {
-		t.Errorf("%d patches, %d under 10 entities; want at most 300 and 50", n, small)
+	if n := len(r.file.Patches); n > 250 || small > 30 {
+		t.Errorf("%d patches, %d under 10 entities; want at most 250 and 30", n, small)
 	}
 }
 
@@ -985,7 +1015,7 @@ func (e *gameEnv) richnessInvariant(t *testing.T, c *Controller, line string, re
 }
 
 // statedGap is the gap SPEC 5.6 and ADR 0015 state for a resource: 24 tiles
-// for wells, 16 for Fulgora's scrap, 6 for every other ore.
+// for wells, 16 for Fulgora's scrap, statedOreGap for every other ore.
 func statedGap(planet, name string) int {
 	switch {
 	case wellNames[name]:
@@ -993,8 +1023,11 @@ func statedGap(planet, name string) int {
 	case planet == "fulgora" && name == "scrap":
 		return 16
 	}
-	return 6
+	return statedOreGap
 }
+
+// statedOreGap is the gap SPEC 5.6 states for ores.
+const statedOreGap = 6
 
 // scrapInvariant counts Fulgora at 3072 with scrap at the highest frequency
 // step, on two seeds. At a gap of 2 they gave 2,234 and 2,436 scrap
