@@ -254,9 +254,9 @@ func (e *gameEnv) countWith(t *testing.T, c *Controller, req PreviewRequest, pla
 // stageLua is a test-only stand-in for the count mod that only generates
 // the chunks and, with scan set, finds the resource entities chunk by chunk
 // and counts them, so the game's own share of a count's time and memory is
-// seen. It writes {"tiles": n, "ores": m}, m being the entities of the
-// resources whose product is not a fluid, counted as the count mod counts
-// them for its dense-map threshold.
+// seen. It writes {"tiles": n, "ores": m}, m being the entities of every
+// resource whose product is not a fluid, Fulgora's scrap included. Only the
+// log reads it: on Nauvis it is the ore-tile figure ADR 0015 quotes.
 const stageLua = `local params = require("params")
 script.on_init(function()
   local h = helpers or game
@@ -438,20 +438,26 @@ func (e *gameEnv) runResources(t *testing.T, line, version string) {
 	t.Run("nauvis 3072 at 600%", func(t *testing.T) {
 		req := PreviewRequest{GameVersion: version, SpaceAge: spaceAge, Seed: resourceSeed, Size: 3072}
 		req.MapGenSettings = richMapGen(t, line, spaceAge, 6)
-		// The worst case may go over the limits; that fails safe with the
-		// out-of-memory or timeout error, so it is logged, not failed.
+		// The ore gap of 6 forced, past the real time limit, shows why a dense
+		// count joins at 2 instead (ADR 0015): on 2.x it runs out of memory
+		// only after 60 s. Logged, not failed.
 		m := resourceMod
+		m.params = countParams(", ore_gap = 6")
 		b, wall, peak, err := e.measure(t, c, req, "nauvis", m)
 		if err != nil {
-			t.Logf("MEASURE %s nauvis 3072 at 600%%: wall %s, peak %d MiB, error %v", version, wall.Round(100*time.Millisecond), peak>>20, err)
+			t.Logf("MEASURE %s nauvis 3072 at 600%% ore gap 6: wall %s, peak %d MiB, error %v", version, wall.Round(100*time.Millisecond), peak>>20, err)
 		} else {
 			r := countRun{file: parseCount(t, b, 3072, "nauvis"), bytes: len(b), wall: wall, peak: peak}
-			dumpCount(t, version+"-nauvis-3072-at-600", r.file)
-			t.Logf("MEASURE %s nauvis 3072 at 600%%: wall %s, peak %d MiB, file %d bytes, %d patches: %s",
+			dumpCount(t, version+"-nauvis-3072-at-600-gap-6", r.file)
+			t.Logf("MEASURE %s nauvis 3072 at 600%% ore gap 6: wall %s, peak %d MiB, file %d bytes, %d patches: %s",
 				version, wall.Round(100*time.Millisecond), peak>>20, r.bytes, len(r.file.Patches), r.summary())
 		}
-		// At the real limits the count must end with the out-of-memory error
-		// on 2.x, so the page says to choose a smaller size (SPEC 5.6).
+		// At the real limits the dense count must end with the out-of-memory
+		// error on 2.x, so the page says to choose a smaller size (SPEC 5.6).
+		// That assumes the host reaches the memory cap (about 30 s) before
+		// the 60 s limit, so a timeout here reads as a slow host. On 1.1 the
+		// count fits with only about 10 MiB to spare, so its success is
+		// logged and deliberately not asserted.
 		prod, _ := e.controller(t)
 		stop := e.peakMemory()
 		begin := time.Now()

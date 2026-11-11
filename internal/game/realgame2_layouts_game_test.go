@@ -25,7 +25,7 @@ func TestRealGameRG2MapSettingsLayouts(t *testing.T) {
 		t.Skip("these tests run on the 2.1 line")
 	}
 	e := newGameEnv(t)
-	version := gameTags[len(gameTags)-1].version
+	const version = "2.1.24"
 	t.Run("v"+version, func(t *testing.T) {
 		e.requireImage(t, ImageRef(version))
 		e.runLayout(t, version)
