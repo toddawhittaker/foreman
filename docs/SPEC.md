@@ -764,7 +764,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
       are not held is refused (409).
     - **Cost, measured** with seed 123456 at default settings, at 3072 tiles
       (the most offered), on every planet, on 1.1.110, 2.0.77 and 2.1.24: at
-      most 755 MiB and 36 s (Gleba on 2.1.24), against the 1 GiB and 60 s
+      most 760 MiB (Vulcanus) and 36 s (Gleba), both on 2.1.24, against the 1 GiB and 60 s
       limits (14.3), so no size is held back. Nauvis with resource
       frequency and size at 600% is a dense count (Patches above): on 2.x
       it runs out of memory at about 30 s (generating alone peaks at 822

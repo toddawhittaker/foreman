@@ -74,7 +74,7 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
 
 ## Consequences
 
-Every default run fits (at most 755 MiB and 36 s at 3072 on 1.1.110, 2.0.77
+Every default run fits (at most 760 MiB and 36 s at 3072 on 1.1.110, 2.0.77
 and 2.1.24), so there is no size cap and no lean run; both were the
 fallbacks. Nauvis at 600% is a dense count: it runs out of memory on 2.x
 within about 30 s and fails safe, and on 1.1 it fits with about 10 MiB to
