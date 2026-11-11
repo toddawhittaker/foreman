@@ -1,4 +1,5 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, wcagTags } from "./foreman.js";
+import AxeBuilder from "@axe-core/playwright";
 import type { Download, Page, Request, Route } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
@@ -19,6 +20,19 @@ const announcer = (page: Page) => page.locator("#announcer");
 const resourceURL = (u: URL) => u.pathname.endsWith("/generate/preview/resources");
 const isResources = (url: string) => new URL(url).pathname.endsWith("/generate/preview/resources");
 const planetOf = (r: Request) => new URLSearchParams(r.postData() ?? "").get("planet");
+const bar = (page: Page) => prep(page).locator("progress");
+// The bar's share done: -1 while it only shows that work goes on.
+const share = (page: Page) => bar(page).evaluate((b) => (b as HTMLProgressElement).position);
+
+// The page checked as it is, then the block again with forced colours
+// (SPEC 17); the projects run it at 320 px and in both themes.
+async function checkLooks(page: Page) {
+  await checkPage(page);
+  await page.emulateMedia({ forcedColors: "active" });
+  const results = await new AxeBuilder({ page }).include(".download-prep").withTags(wcagTags).analyze();
+  expect(results.violations, "axe on the download's block with forced colours").toEqual([]);
+  await page.emulateMedia({ forcedColors: "none" });
+}
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
@@ -27,8 +41,8 @@ test.beforeEach(async ({ page, foreman, fakeGame }) => {
 });
 
 // Nauvis, Vulcanus and Gleba drawn, one at a time, so the zip holds three
-// planets; Gleba is shown and counted.
-async function threeDrawn(page: Page, asked: string[]) {
+// planets; Gleba is shown.
+async function drawThree(page: Page, asked: string[]) {
   page.on("request", (r) => { if (isResources(r.url())) asked.push(planetOf(r) ?? ""); });
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
@@ -37,6 +51,11 @@ async function threeDrawn(page: Page, asked: string[]) {
     await expect(section(page).locator(`a.picture[data-planet="${planet}"]`)).toBeVisible();
   }
   await expect(zip(page)).toHaveAttribute("data-planets", "nauvis vulcanus gleba");
+}
+
+// As drawThree, with Gleba counted.
+async function threeDrawn(page: Page, asked: string[]) {
+  await drawThree(page, asked);
   await pageBox(page).check();
   await expect(pageLabels(page)).toHaveCount(4);
   await expect(zip(page)).toHaveText("Download all drawn planets (zip), with resource amounts");
@@ -63,20 +82,29 @@ test("the zip counts each planet without amounts, one at a time, then downloads 
   const held: Route[] = [];
   await page.route(resourceURL, (r) => { held.push(r); });
   const download = page.waitForEvent("download");
+  const heard = await listen(page, "#announcer");
   await zip(page).click();
   await expect(prep(page).locator("[data-prep-text]")).toHaveText("Counting resources for the download, planet 1 of 2: Nauvis…");
   await expect(announcer(page)).toHaveText(/planet 1 of 2: Nauvis/);
   await expect(prep(page).getByRole("button", { name: "Cancel" })).toBeVisible();
+  // Under the zip's paragraph, not inside it: the block holds paragraphs of its own.
+  await expect(page.locator("p .download-prep")).toHaveCount(0);
+  expect(await zip(page).evaluate((a) => a.parentElement!.nextElementSibling!.className)).toBe("download-prep");
   await expect.poll(() => held.length).toBe(1);
+  // The planet on its way is half a step in, so the bar never sits empty.
+  expect(await share(page)).toBeCloseTo(0.25);
+  await checkLooks(page);
   await held.shift()!.continue();
   await expect(prep(page).locator("[data-prep-text]")).toHaveText("Counting resources for the download, planet 2 of 2: Vulcanus…");
   await expect.poll(() => held.length).toBe(1);
+  expect(await share(page)).toBeCloseTo(0.75);
   await held.shift()!.continue();
   await page.unroute(resourceURL);
   const files = await names(await download);
   expect(files.map((f) => f.replace(/^.*-(\w+-amounts\.png)$/, "$1")).sort()).toEqual(["gleba-amounts.png", "nauvis-amounts.png", "vulcanus-amounts.png"]);
   await expect(prep(page)).toHaveCount(0);
-  // One count a planet: the second zip, and the page going back to Nauvis, reuse them.
+  await expect.poll(heard).toContain("Download started.");
+  // One count a planet: a second zip reuses them.
   expect(asked).toEqual(["gleba", "nauvis", "vulcanus"]);
   const again = page.waitForEvent("download");
   await zip(page).click();
@@ -97,8 +125,12 @@ test("Cancel stops the counting, says so, and puts focus back on the download", 
   await zip(page).focus();
   await page.keyboard.press("Enter");
   await expect.poll(() => held.length).toBe(1);
-  await page.keyboard.press("Tab");
+  // A second download meanwhile is refused, says why, and offers the Cancel of the one on its way.
+  const heard = await listen(page, "#announcer");
+  await section(page).locator("li a.download").click();
+  await expect(prep(page)).toHaveCount(1);
   await expect(prep(page).getByRole("button", { name: "Cancel" })).toBeFocused();
+  await expect.poll(heard).toContain("Another download is being prepared.");
   await page.keyboard.press("Enter");
   await expect(prep(page)).toHaveCount(0);
   await expect.poll(() => aborted).toEqual(["nauvis"]);
@@ -112,18 +144,23 @@ test("a planet that fails is named, with Try again and the zip without it", asyn
   const asked: string[] = [];
   await threeDrawn(page, asked);
   await page.route(resourceURL, (r) => (planetOf(r.request()) === "nauvis" ? r.fulfill({ status: 500, body: "" }) : r.continue()));
-  await zip(page).click();
+  await zip(page).focus();
+  await page.keyboard.press("Enter");
   const failed = prep(page).locator(".message");
   await expect(failed).toHaveText(/^Error: The download stopped at Nauvis\. The request for the resource amounts failed\./);
   await expect(announcer(page)).toHaveText(/^Error: The download stopped at Nauvis\./);
   const without = prep(page).getByRole("button", { name: "Download without Nauvis" });
-  const retry = prep(page).getByRole("button", { name: "Try again" });
+  // Named with the planet, so it is told apart from a count's own Try again.
+  const retry = prep(page).getByRole("button", { name: "Try again: Nauvis", exact: true });
   await expect(without).toBeVisible();
   await expect(retry).toBeVisible();
-  await checkPage(page);
+  // Focus was on the zip, so it goes to the first choice rather than past the failure.
+  await expect(without).toBeFocused();
+  await checkLooks(page);
   // Try again counts Nauvis again, and stops there again.
   await retry.click();
   await expect(failed).toBeVisible();
+  await expect(without).toBeFocused();
   expect(asked.filter((p) => p === "nauvis").length).toBe(2);
   // Without Nauvis: the rest are counted and the zip leaves Nauvis out.
   const download = page.waitForEvent("download");
@@ -150,8 +187,16 @@ test("the planet's own download waits for its count on the way, and counts after
   // Ticked, the download asks for the amounts, held or not, and says so.
   await expect(one).toHaveText("Download Nauvis with resource amounts (PNG)");
   await expect(one).toHaveAttribute("href", /\/nauvis\/download\?amounts=1$/);
+  const held: Route[] = [];
+  await page.route(resourceURL, (r) => { held.push(r); });
   const download = page.waitForEvent("download");
   await one.click();
+  await expect.poll(() => held.length).toBe(1);
+  // One planet has no steps to show, so the bar only shows that it works.
+  await expect(bar(page)).not.toHaveAttribute("value");
+  expect(await share(page)).toBe(-1);
+  await held.shift()!.continue();
+  await page.unroute(resourceURL);
   const d = await download;
   expect(d.suggestedFilename()).toMatch(/-nauvis-amounts\.png$/);
   // The failed count, then the download's own; no zip-only choice for one planet.
@@ -367,31 +412,101 @@ test("in the large view the preparation leaves the arrows and zoom free, and an 
   await hold.stop();
 });
 
-test("a draw that lands during a preparation ends it and says so; the next download works", async ({ page }) => {
+test("a download clicked while a draw is on its way is refused and says why; the next download works", async ({ page }) => {
   await page.goto("/generate");
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).locator('a.picture[data-planet="vulcanus"]')).toBeVisible();
   await pageBox(page).check();
   await expect(pageLabels(page)).toHaveCount(4);
-  // Hold the next draw, start one, then start a preparation while it is on its way.
+  // Hold the next draw, start one, then click a download while it is on its way:
+  // a count now would be of settings newer than the zip's link (SPEC 5.6).
   const draws: Route[] = [];
   const isDraw = (u: URL) => u.pathname === "/generate/preview";
   await page.route(isDraw, (r) => { draws.push(r); });
   await page.locator("#mg-resources-gleba summary").click();
   await expect.poll(() => draws.length).toBe(1);
-  const hold = holdAll(page);
-  await hold.start();
+  const asked: string[] = [];
+  page.on("request", (r) => { if (isResources(r.url())) asked.push(planetOf(r) ?? ""); });
   await zip(page).click();
-  await expect(prep(page)).toBeVisible();
-  await page.unroute(isDraw);
-  await draws.shift()!.continue();
-  await expect(section(page).locator('a.picture[data-planet="gleba"]')).toBeVisible();
+  await expect(announcer(page)).toHaveText(/The map preview is being drawn for the new settings\./);
   await expect(prep(page)).toHaveCount(0);
-  await expect(announcer(page)).toHaveText(/Download canceled\./);
-  await hold.stop();
+  expect(draws.length).toBe(1);
+  await draws.shift()!.continue();
+  await page.unroute(isDraw);
+  await expect(section(page).locator('a.picture[data-planet="gleba"]')).toBeVisible();
+  expect(asked.filter((p) => p !== "gleba")).toEqual([]);
   // The next download is prepared afresh from the new section, not refused as busy.
   const download = page.waitForEvent("download");
   await section(page).locator("li a.download").click();
   expect((await download).suggestedFilename()).toMatch(/-gleba-amounts\.png$/);
+});
+
+test("a download that stops on its only planet moves focus to Try again, named with it", async ({ page }) => {
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img")).toHaveCount(1);
+  await page.route(resourceURL, (r) => r.fulfill({ status: 500, body: "" }));
+  await pageBox(page).check();
+  await expect(page.locator("#preview-amounts-result")).toContainText("The request for the resource amounts failed.");
+  const one = section(page).locator("li a.download");
+  await one.focus();
+  await page.keyboard.press("Enter");
+  await expect(prep(page).locator(".message")).toHaveText(/^Error: The download stopped at Nauvis\./);
+  await expect(prep(page).getByRole("button", { name: "Try again: Nauvis", exact: true })).toBeFocused();
+  // No zip, so no choice to leave the planet out.
+  await expect(prep(page).getByRole("button", { name: /^Download without/ })).toHaveCount(0);
+  // The count's own Try again beside the box keeps its short name.
+  await expect(page.locator("#preview-amounts-result").getByRole("button", { name: "Try again", exact: true })).toBeVisible();
+  await checkLooks(page);
+  await page.unroute(resourceURL);
+});
+
+test("a download clicked while a changed setting waits to be drawn is refused and says why", async ({ page }) => {
+  const asked: string[] = [];
+  await threeDrawn(page, asked);
+  const refused: number[] = [];
+  page.on("response", (r) => { if (r.status() === 409) refused.push(r.status()); });
+  let downloads = 0;
+  page.on("download", () => { downloads++; });
+  // The zip's link is still the old settings' while the new ones wait out the pause.
+  const heard = await listen(page, "#announcer");
+  await page.locator("#generate-seed").fill("31337");
+  await zip(page).click();
+  await expect.poll(heard).toContain("The map preview is being drawn for the new settings. Download again once it is ready.");
+  await expect(prep(page)).toHaveCount(0);
+  // Once drawn, the download prepares and starts as ever.
+  await expect(section(page).getByText("Seed 31337")).toBeVisible();
+  const download = page.waitForEvent("download");
+  await zip(page).click();
+  await download;
+  expect(refused).toEqual([]);
+  expect(downloads).toBe(1);
+});
+
+test("closing the large view ends its download's preparation, and later downloads still work", async ({ page }) => {
+  const asked: string[] = [];
+  await drawThree(page, asked);
+  await section(page).locator('a.picture[data-planet="gleba"]').click();
+  const view = page.getByRole("dialog", { name: "Gleba" });
+  await expect(view).toBeVisible();
+  const held: Route[] = [];
+  await page.route(resourceURL, (r) => { held.push(r); });
+  await page.locator("#large-amounts").check();
+  await expect.poll(() => held.length).toBe(1);
+  let downloads = 0;
+  page.on("download", () => { downloads++; });
+  await page.locator("#large-download").click();
+  await expect(view.locator(".download-prep")).toBeVisible();
+  const heard = await listen(page, "#announcer");
+  await page.keyboard.press("Escape");
+  await expect(view).toBeHidden();
+  await expect(prep(page)).toHaveCount(0);
+  await expect.poll(heard).toContain("Download canceled.");
+  for (const r of held) await r.continue().catch(() => {});
+  await page.unroute(resourceURL);
+  expect(downloads).toBe(0);
+  // Nothing is left being prepared, so the next download is not swallowed.
+  const download = page.waitForEvent("download");
+  await zip(page).click();
+  await download;
 });

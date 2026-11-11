@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (one) nameDownload(one);
     // Only a picture already there is refreshed: show() on a missing one would draw again.
-    if (link && dialog && dialog.open && (viewing || firstPlanet()) === terrPlanet) show(terrPlanet);
+    if (pictureLink(terrPlanet) && dialog && dialog.open && (viewing || firstPlanet()) === terrPlanet) show(terrPlanet);
   }
 
   // A download says what it draws in, as its link asks for it.
@@ -168,22 +168,15 @@ document.addEventListener("DOMContentLoaded", () => {
     zip.textContent = on ? zip.dataset.amounts : zip.dataset.plain;
   }
 
-  // What the server holds, as it marked it and as counts made since add to it.
+  // What the server holds, as it marked it on the section and as counts made since add to it.
   const zipLink = () => document.querySelector('#preview a.download[href*="/all.zip"]');
   const listOf = (text) => (text || "").split(" ").filter(Boolean);
   const zipPlanets = (zip) => listOf(zip.dataset.planets);
-  function heldAmounts(planet) {
-    const zip = zipLink();
-    if (zip && listOf(zip.dataset.countedPlanets).includes(planet)) return true;
-    const one = planetDownload(planet);
-    return Boolean(one && one.hasAttribute("data-counted"));
-  }
+  const counted = () => { const slot = el("preview"); return slot ? listOf(slot.dataset.countedPlanets) : []; };
+  const heldAmounts = (planet) => counted().includes(planet);
   function markCounted(planet) {
-    const zip = zipLink();
-    const counted = zip ? listOf(zip.dataset.countedPlanets) : [];
-    if (zip && !counted.includes(planet)) zip.dataset.countedPlanets = [...counted, planet].join(" ");
-    const one = planetDownload(planet);
-    if (one) one.toggleAttribute("data-counted", true);
+    const slot = el("preview");
+    if (slot && !heldAmounts(planet)) slot.dataset.countedPlanets = [...counted(), planet].join(" ");
   }
   function markTerritories() {
     const zip = zipLink();
@@ -689,6 +682,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return { zip, steps, count: list.length };
   }
 
+  // A count asked for now would be of the form's settings, newer than the
+  // pictures shown, so a preparation waits until they are drawn.
+  const redrawing = () => Boolean(pending || waiting || refreshing > 0 || button().getAttribute("aria-disabled") === "true");
+
   document.addEventListener("click", (e) => {
     const a = e.target.closest && e.target.closest("#preview a.download, #large-download");
     if (!a) return;
@@ -697,6 +694,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // One download is prepared at a time; another link says so.
       // The same link says where its preparation is; another says one is on its way.
       const news = a === prep.a ? words(prep.block.querySelector("[data-prep-failed]").hidden ? prep.block.querySelector("[data-prep-text]") : prep.block.querySelector("[data-prep-failed]")) : strings["js.preview.prepare_busy"];
+      // Another link is offered the Cancel of the one on its way.
+      if (a !== prep.a) prep.block.querySelector("[data-prep-cancel]").focus();
       owed = news;
       announce(news);
       return;
@@ -704,11 +703,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const plan = prepSteps(a.getAttribute("href"));
     if (!plan.steps.length) return;
     e.preventDefault();
+    if (redrawing()) {
+      announce(strings["js.preview.prepare_redrawing"]);
+      return;
+    }
     const block = el("download-prep").content.firstElementChild.cloneNode(true);
     // In the large view it sits over the top of the stage, as the controls do, so the picture does not move (DESIGN 8.8).
     const inView = a.id === "large-download";
     if (inView) dialog.querySelector(".large-view__stage").prepend(block);
-    else a.after(block);
+    // The zip's link sits in a paragraph, which cannot hold the block's own.
+    else (a.parentElement.tagName === "P" ? a.parentElement : a).after(block);
     prep = { a, block, inView, planet: plan.steps[0].planet, href: a.getAttribute("href"), ...plan, at: 0, ctrl: null };
     block.querySelector("[data-prep-cancel]").addEventListener("click", () => endPrep(strings["js.preview.prepare_canceled"]));
     block.querySelector("[data-prep-retry]").addEventListener("click", () => runPrep(prep));
@@ -753,12 +757,15 @@ document.addEventListener("DOMContentLoaded", () => {
     retry.hidden = true;
     without.hidden = true;
     wait.hidden = false;
-    bar.max = p.steps.length;
     const lang = document.documentElement.lang;
     while (p.at < p.steps.length) {
       const step = p.steps[p.at];
       const vars = { planet: nameOf(step.planet), n: (p.at + 1).toLocaleString(lang), total: p.steps.length.toLocaleString(lang) };
-      bar.value = p.at;
+      // The planet counted now is half done, so the bar never sits empty; one planet only shows it works.
+      if (p.steps.length > 1) {
+        bar.max = p.steps.length;
+        bar.value = p.at + 0.5;
+      } else bar.removeAttribute("value");
       // Said once as each run starts; the bar is only seen.
       const tell = (key) => {
         text.textContent = say(key, vars);
@@ -768,9 +775,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const why = await prepStep(step, p.ctrl.signal, block, tell);
       if (prep !== p) return;
       if (why) {
+        // Focus on the download or in its block goes to the first choice, so the failure is not passed by.
+        const here = document.activeElement;
+        const lead = here === document.body || here === p.a || block.contains(here);
         wait.hidden = true;
         failure.querySelector("[data-prep-why]").textContent = say("js.preview.prepare_failed", { planet: vars.planet }) + " " + why;
         failure.hidden = false;
+        // Named with the planet, so it differs from the count's own Try again.
+        retry.textContent = say("js.preview.prepare_retry", { planet: vars.planet });
         retry.hidden = false;
         // The zip can go without the planet when others are left in it.
         if (p.zip && p.count > 1) {
@@ -778,13 +790,14 @@ document.addEventListener("DOMContentLoaded", () => {
           without.hidden = false;
         }
         announce(words(failure));
+        if (lead) (without.hidden ? retry : without).focus();
         return;
       }
       p.at++;
     }
     const href = p.href;
     const parent = p.a.parentElement;
-    endPrep("");
+    endPrep(strings["js.preview.prepare_started"]);
     // A plain link, so this handler leaves it alone, where the open view can click it.
     const go = document.createElement("a");
     go.href = href;
@@ -1092,7 +1105,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (pending && drawing !== "*" && drawing !== planet) drop();
     const img = link.querySelector("img");
     const figure = link.closest("figure");
-    const download = planetDownload(planet);
     const name = figure.querySelector("figcaption").textContent.trim();
     tiles = Number(img.getAttribute("width")) || img.naturalWidth;
     el("large-title").textContent = name;
