@@ -756,10 +756,12 @@ not) or a map exchange string, with Space Age on or off. (P0)
       out of memory, or any other failure) is named with its reason, and
       the page offers Try again and, for the zip, the zip without that
       planet. What is counted is kept with the preview, so the page and
-      later downloads reuse it. Closing the large view, showing another
-      planet there, or changing a setting ends the preparation and says
-      so; a click on another download meanwhile says one is being
-      prepared. The server never counts for a download and never serves
+      later downloads reuse it. A preparation does not start while a
+      picture is waiting to be drawn or being drawn, since its counts would
+      not match the link; the page says why. Closing the large view,
+      showing another planet there, changing a setting, or a new picture
+      arriving ends the preparation and says so; a click on another
+      download meanwhile says one is being prepared. The server never counts for a download and never serves
       one plain or mixed: a link asking for amounts or territories that
       are not held is refused (409).
     - **Cost, measured** with seed 123456 at default settings, at 3072 tiles
@@ -2139,7 +2141,12 @@ list. Tab goes round the large view's controls, from the last back to the
 first. The One planet picture's box is announced as the large view's is;
 at 320 px a short "Counting…" beside it is seen, not said, and a page count
 that ends while the large view is open is said once when the view closes.
-(P1)
+A download being prepared (5.6) announces each step politely, and its bar
+is never empty. On a failure focus moves to the first choice, and Try
+again names the planet; a click on another download moves focus to Cancel;
+when the focused button goes, focus moves to Cancel, and when the block
+closes, back to the download link. "Download started." is said when the
+download begins. (P1)
 
 ## 18. Epics, in order
 
