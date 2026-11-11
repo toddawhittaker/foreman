@@ -3,11 +3,7 @@ package web
 import (
 	"archive/zip"
 	"bytes"
-	"cmp"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image/png"
@@ -87,8 +83,8 @@ const (
 // counted. bytes counts them all.
 type previewEntry struct {
 	token       string
-	key         string // settingsKey of the settings drawn
-	name        string // the world name typed, for download names
+	key         previewKey // the settings drawn
+	name        string     // the world name typed, for download names
 	seed        string
 	expires     time.Time
 	planets     []string // in the order drawn
@@ -112,42 +108,32 @@ func newPreviewStore(now func() time.Time) *previewStore {
 	return &previewStore{now: now, byUser: map[int64]*previewEntry{}}
 }
 
-// settingsKey is a hash of everything that changes the map, so the same
-// settings find the pictures already drawn. The size is part of it, as it
-// changes every picture; the planet and the world name are not.
-func settingsKey(req game.PreviewRequest) string {
-	b, _ := json.Marshal(struct {
-		Version, Preset     string
-		SpaceAge            bool
-		Seed                uint32
-		Size                int
-		MapGen, MapSettings []byte
-	}{req.GameVersion, req.Preset, req.SpaceAge, req.Seed, cmp.Or(req.Size, game.PreviewSizeDefault), req.MapGenSettings, req.MapSettings})
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
-}
-
 // missing returns the planets the user's current preview lacks for these
-// settings, and the preview's token when it has all of them. It renames
-// the preview, since the name is not part of the key.
-func (p *previewStore) missing(user int64, key, name string, planets []string) (string, []string) {
+// settings, and the preview's token when it has all of them. A picture of
+// other settings counts when its planet's share of them is the same; the
+// preview then moves to these settings. It renames the preview, since the
+// name is not part of the key.
+func (p *previewStore) missing(user int64, key previewKey, name string, planets []string) (string, []string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key {
+	if !ok {
 		return "", planets
 	}
-	e.name = name
 	var out []string
 	for _, pl := range planets {
-		if _, ok := e.images[pl]; !ok {
+		if _, ok := e.images[pl]; !ok || e.key.planet(pl) != key.planet(pl) {
 			out = append(out, pl)
 		}
 	}
 	if len(out) > 0 {
 		return "", out
 	}
+	if e.key.all != key.all {
+		return p.keepLocked(user, p.joinLocked(user, key, e.seed), name), nil
+	}
+	e.name = name
 	e.expires = p.now().Add(previewTTL)
 	return e.token, nil
 }
@@ -155,7 +141,7 @@ func (p *previewStore) missing(user int64, key, name string, planets []string) (
 // add keeps new pictures and returns the preview's token. Pictures of the
 // same settings join the user's current preview; other settings replace
 // it. Other users' previews go, oldest first, to keep the limits.
-func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG) (string, error) {
+func (p *previewStore) add(user int64, key previewKey, name, seed string, images []game.PNG) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	e := p.joinLocked(user, key, seed)
@@ -183,7 +169,7 @@ func (p *previewStore) add(user int64, key, name, seed string, images []game.PNG
 // add keeps pictures, and returns the preview's token. Territories of
 // settings other than the user's current preview are not kept, and the
 // token is blank.
-func (p *previewStore) addTerritories(user int64, key, name, seed string, size int, res territory.Result) (string, error) {
+func (p *previewStore) addTerritories(user int64, key previewKey, name, seed string, size int, res territory.Result) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.otherLocked(user, key) {
@@ -200,12 +186,12 @@ func (p *previewStore) addTerritories(user int64, key, name, seed string, size i
 
 // territoriesOf returns the territories the user's preview holds for these
 // settings, and keeps the preview another 15 minutes.
-func (p *previewStore) territoriesOf(user int64, key string) (territory.Result, bool) {
+func (p *previewStore) territoriesOf(user int64, key previewKey) (territory.Result, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key || e.territories == nil {
+	if !ok || e.key.all != key.all || e.territories == nil {
 		return territory.Result{}, false
 	}
 	e.expires = p.now().Add(previewTTL)
@@ -228,20 +214,46 @@ func territoryBytes(r *territory.Result) int {
 // otherLocked is true when the user's current preview is of other settings:
 // the person moved on while a run went, so its result must not replace the
 // newer preview.
-func (p *previewStore) otherLocked(user int64, key string) bool {
+func (p *previewStore) otherLocked(user int64, key previewKey) bool {
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	return ok && e.key != key
+	return ok && e.key.all != key.all
 }
 
 // joinLocked returns the entry new results of these settings go into: a
 // copy of the user's current one when its settings are the same, else a
-// new one.
-func (p *previewStore) joinLocked(user int64, key, seed string) *previewEntry {
+// new one that keeps the pictures, counts and territories of each planet
+// whose share of the settings is the same (SPEC 5.6).
+func (p *previewStore) joinLocked(user int64, key previewKey, seed string) *previewEntry {
 	p.sweepLocked()
 	e, ok := p.byUser[user]
-	if !ok || e.key != key {
+	if !ok {
 		return &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
+	}
+	if e.key.all != key.all {
+		n := &previewEntry{token: newToken(), key: key, seed: seed, images: map[string][]byte{}}
+		same := func(pl string) bool { return e.key.planet(pl) == key.planet(pl) }
+		for _, pl := range e.planets {
+			if same(pl) {
+				n.planets = append(n.planets, pl)
+				n.images[pl] = e.images[pl]
+				n.bytes += len(e.images[pl])
+			}
+		}
+		for pl, r := range e.resources {
+			if same(pl) {
+				if n.resources == nil {
+					n.resources = map[string]*resource.Result{}
+				}
+				n.resources[pl] = r
+				n.bytes += resourceBytes(r)
+			}
+		}
+		if e.territories != nil && same(territoryPlanet) {
+			n.territories, n.size = e.territories, e.size
+			n.bytes += territoryBytes(e.territories)
+		}
+		return n
 	}
 	// entry() hands copies of the stored entry to handlers that read the
 	// map and slice after the lock is gone, so they are never written in
@@ -475,7 +487,7 @@ func previewRequest(f GenerateForm, nw world.NewWorld) game.PreviewRequest {
 
 // drawPreview runs the preview for req.Planets and keeps the pictures. The
 // request gets its own write deadline, as the run may outlast the server's.
-func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key, name, seed string) (string, error) {
+func (s *server) drawPreview(w http.ResponseWriter, r *http.Request, u store.User, req game.PreviewRequest, key previewKey, name, seed string) (string, error) {
 	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(previewDeadline)); err != nil {
 		s.log.Warn("set the map preview's write deadline", "error", err)
 	}
