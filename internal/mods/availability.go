@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
 // FlagCode names a problem players may have getting a world's mod.
@@ -58,24 +59,29 @@ func (p *Planner) Availability(ctx context.Context, worldID string) ([]Flag, err
 	if err != nil {
 		return nil, err
 	}
-	var flags []Flag
+	return flags(mods, results, line), nil
+}
+
+// flags are the availability problems of the mods.
+func flags(mods []world.InstalledMod, results map[string]modportal.ModResult, line string) []Flag {
+	var out []Flag
 	for _, m := range mods {
 		r := results[m.Name]
 		f := Flag{Name: m.Name, Version: m.Version}
 		if errors.Is(r.Err, modportal.ErrNotOnPortal) {
 			f.Code, f.Severity = FlagNotOnPortal, SevNote
-			flags = append(flags, f)
+			out = append(out, f)
 			continue
 		}
 		if findRelease(&r.Mod, m.Version, "") == nil {
 			gone := f
 			gone.Code, gone.Severity, gone.Update = FlagVersionGone, SevError, newestOnLine(r.Mod, line)
-			flags = append(flags, gone)
+			out = append(out, gone)
 		}
 		if r.Mod.Deprecated {
 			f.Code, f.Severity = FlagDeprecated, SevWarning
-			flags = append(flags, f)
+			out = append(out, f)
 		}
 	}
-	return flags, nil
+	return out
 }

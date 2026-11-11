@@ -225,15 +225,15 @@ func TestModsTabListsMods(t *testing.T) {
 		// a11y 4, 8, 9: the portal status is a live region; row buttons name their mod.
 		`id="mod-status" class="mod-status" role="status"`, `Disable<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
 		`Remove<span class="visually-hidden"> <span translate="no">alpha</span></span>`,
-		// SPEC 9.7, #372: the built-in line says which are off and why, with the way to turn them on.
+		// SPEC 9.7: the built-in line says which are off and why, with the way to turn them on.
 		`>base</span>`, "Space Age is off, so", `>space-age</span> are off.`,
 		`href="/worlds/`+id+`/settings" id="act-built-in-settings">Turn on Space Age</a>`,
 		"at most 200 MB", "At most 4 MB",
-		// #360: a portal mod's name is the link to its portal page, in a new tab.
+		// SPEC 9.7: a portal mod's name is the link to its portal page, in a new tab.
 		`<a href="https://mods.factorio.com/mod/alpha" id="`+slotID("portal", "alpha")+`" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">alpha</span><span class="visually-hidden"> on the mod portal, opens in a new tab</span></a>`,
-		// #373: the save's mods are read and the differences counted; the save uses neither mod.
+		// SPEC 9.8: the save's mods are read and the differences counted; the save uses neither mod.
 		"The mods differ from the save", "2 enabled mods are not in the save", `id="act-sync"`,
-		// #371: the rare forms fold away.
+		// SPEC 9.5: the rare forms fold away.
 		`<details class="disclosure" id="mod-upload">`, `<details class="disclosure" id="mod-settings-replace">`,
 		// SPEC 9.6: where the client keeps mod-settings.dat, then the field, then what the upload does.
 		`%APPDATA%\Factorio\mods`, "Startup settings apply when the world next starts.")
@@ -241,7 +241,7 @@ func TestModsTabListsMods(t *testing.T) {
 		t.Errorf("the built-in line is said %d times", n)
 	}
 	table := between(body, "<table", "</table>")
-	// #360, #343: two columns, and a state word only for a mod that is off.
+	// SPEC 9.3: two columns, and a state word only for a mod that is off.
 	for _, bad := range []string{">base</span>", "Built in", "mods.factorio.com/mod/folder-mod", "mods.factorio.com/mod/base", "Enabled", ">State<", "Mod portal"} {
 		if strings.Contains(table, bad) {
 			t.Errorf("the table has %s", bad)
@@ -268,7 +268,7 @@ func TestModsTabListsMods(t *testing.T) {
 	}
 }
 
-// SPEC 9.3, #131, #342: the status is one summary line, and each mod's
+// SPEC 9.3: the status is one summary line, and each mod's
 // update and flags go into its own row with the fix there.
 func TestModStatusUpdatesAndFlags(t *testing.T) {
 	g := newModsRig(t, true)
@@ -291,7 +291,7 @@ func TestModStatusUpdatesAndFlags(t *testing.T) {
 	}
 }
 
-// #365: "up to date" counts only mods the portal has at their installed
+// SPEC 9.3: "up to date" counts only mods the portal has at their installed
 // version, and is not said when there are none.
 func TestModStatusCurrentCount(t *testing.T) {
 	g := newModsRig(t, true)
@@ -967,5 +967,47 @@ func TestSettingsUploadIsNotStaged(t *testing.T) {
 	}
 	if strings.HasPrefix(temp, world.PrefixModStaging) {
 		t.Errorf("mod-settings.dat was received as a staged mod: %s", temp)
+	}
+}
+
+// SPEC 9.3, 7.4: when the Server page shows a refusal that carries the fix
+// for the mods players cannot download, its mods notice keeps its words and
+// drops its own button for the same plan.
+func TestServerModNoticeDropsItsButtonForTheRefusalsFix(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("beta", "2.0.0")
+	id := g.world20("Base", "beta_1.0.0")
+	fix := `href="/worlds/` + id + `/mods/plan?kind=update&amp;name=beta"`
+	_, frag := g.getStatus(modsPath(id) + "/notice")
+	wantIn(t, "notice before a refusal", frag, fix)
+
+	g.wantRedirectHome(g.post(gamePath(id, "start"), url.Values{}))
+	if err := g.waitResult(id, game.AuditStart); !game.IsRefusal(err) {
+		t.Fatalf("the start was not refused: %v", err)
+	}
+	page := g.get(PathServer)
+	if got := strings.Count(page, fix); got != 1 {
+		t.Errorf("the page holds the update link %d times, want 1 (the refusal's)", got)
+	}
+	_, frag = g.getStatus(modsPath(id) + "/notice")
+	if strings.Contains(frag, "act-mods-fix") || strings.Contains(frag, "Update beta") {
+		t.Errorf("the notice still has its button:\n%s", frag)
+	}
+	wantIn(t, "notice after a refusal", plain(frag), "beta 1.0.0 is gone from the mod portal, so players cannot join.")
+}
+
+// SPEC 9.3: the Mods tab counts the mods the portal has at their installed
+// version from the list the status read; a status that read nothing, as when
+// the world is briefly away, has no count.
+func TestModStatusCountsCurrentMods(t *testing.T) {
+	g := newModsRig(t, true)
+	g.portal.AddZip("alpha", "1.0.0")
+	id := g.world20("Base", "alpha_1.0.0")
+	code, frag := g.getStatus(modsPath(id) + "/status")
+	if code != http.StatusOK || !strings.Contains(frag, "up to date") {
+		t.Fatalf("got %d\n%s", code, frag)
+	}
+	if n := currentCount(nil, nil); n != 0 {
+		t.Errorf("a status that read nothing counts %d, want 0", n)
 	}
 }

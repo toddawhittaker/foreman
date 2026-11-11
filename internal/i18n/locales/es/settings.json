@@ -101,7 +101,7 @@
   "settings.preview.step_snapshot": "Tomar una instantánea automática de {world}. Si la instantánea falla, no pasa nada más.",
   "settings.preview.step_write": "Escribir {file}.",
   "settings.preview.step_admins_live": "Promover y degradar a estos jugadores en la partida en marcha; el juego actualiza {file}.",
-  "settings.preview.undo": "Para deshacerlo, restaura esa instantánea desde la página Instantáneas.",
+  "settings.preview.undo": "Para deshacerlo, restaura esa instantánea desde la página Instantáneas; el mensaje tras guardar enlaza a ella.",
   "settings.preview.save": "Guardar configuración",
   "settings.preview.back": "Volver y editar",
   "settings.rail.label": "Secciones de la configuración"

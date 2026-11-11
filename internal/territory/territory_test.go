@@ -160,7 +160,7 @@ func TestLabelGlyphsInFonts(t *testing.T) {
 	for _, lang := range i18n.Languages {
 		for _, size := range Sizes {
 			text := Label(lang.Tag, size)
-			if !hasGlyphs(fontFor(fs, text), text) {
+			if !hasGlyphs(fs[fontFor(fs, text)], text) {
 				t.Errorf("%s: no font has every glyph of %q", lang.Tag, text)
 			}
 		}
@@ -182,7 +182,7 @@ func TestFontsCoverChineseSizes(t *testing.T) {
 			t.Errorf("the Chinese subset lacks a glyph of %q", text)
 		}
 	}
-	if fontFor(fs, "Мелкий") != fs[0] {
+	if fontFor(fs, "Мелкий") != 0 {
 		t.Error("Cyrillic is not drawn with Go Bold")
 	}
 }

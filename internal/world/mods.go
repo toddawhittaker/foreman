@@ -28,6 +28,24 @@ type modList struct {
 	disabled map[string]bool
 }
 
+// ModListStates reads mods/mod-list.json from a world's or snapshot's root
+// and returns each listed mod's name with whether the list enables it. It
+// returns nil when there is no mod-list.json.
+func ModListStates(root *os.Root) (map[string]bool, error) {
+	list, err := readModList(root)
+	if err != nil || !list.found {
+		return nil, err
+	}
+	out := make(map[string]bool, len(list.enabled)+len(list.disabled))
+	for name := range list.enabled {
+		out[name] = true
+	}
+	for name := range list.disabled {
+		out[name] = false
+	}
+	return out, nil
+}
+
 // readModList reads mods/mod-list.json from a world's root.
 func readModList(root *os.Root) (modList, error) {
 	p := path.Join(ModsDir, ModListFile)

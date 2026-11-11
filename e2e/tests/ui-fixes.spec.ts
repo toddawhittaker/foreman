@@ -278,7 +278,7 @@ test.describe("Generate", () => {
     await expect(section(page).getByRole("link", { name: /Map preview of Nauvis, seed 4242/ })).toBeFocused();
   });
 
-  // SPEC 5.6, 17.9 (#318): Reset to defaults throws every change away, so
+  // SPEC 5.6, 17.9: Reset to defaults throws every change away, so
   // Undo takes its place with the focus, and one press brings them back.
   test("Reset to defaults offers Undo in its place, which brings every change back", async ({ page }) => {
     await page.goto("/generate");

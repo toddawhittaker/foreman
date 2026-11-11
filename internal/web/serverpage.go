@@ -54,8 +54,11 @@ type ServerPage struct {
 	// or snapshot, so the Done message takes focus and is read out.
 	FocusResult bool
 	// ModsNotice says the page loads its line about mods players cannot get
-	// (#131), which needs the mod portal.
+	// (SPEC 9.3), which needs the mod portal.
 	ModsNotice bool
+	// LoadsNext names the save chosen to load at the next start when it is
+	// not the newest; "" when the newest loads (SPEC 7.11, 17.7).
+	LoadsNext string
 }
 
 // navPage marks a nav item as the page itself rather than a page inside its
@@ -80,6 +83,7 @@ func (p ServerPage) liveURL() string {
 
 // Paths the server page links and posts to.
 func (p ServerPage) WorldPath() string     { return worldPath(p.World.ID) }
+func (p ServerPage) SavesPath() string     { return worldPath(p.World.ID) + "/saves" }
 func (p ServerPage) SnapshotsPath() string { return snapshotsPath(p.World.ID) }
 func (p ServerPage) StartPath() string     { return gamePath(p.World.ID, "start") }
 func (p ServerPage) StopPath() string      { return gamePath(p.World.ID, "stop") }
@@ -131,6 +135,13 @@ func (p ServerPage) FactsKnown() bool {
 	}
 	sw := p.switchOp()
 	return sw == nil || !sw.Presented
+}
+
+// ShowLoadsNext reports whether the chosen save is shown: not once a switch
+// has made another world active, whose choice it is not (SPEC 7.9).
+func (p ServerPage) ShowLoadsNext() bool {
+	sw := p.switchOp()
+	return p.LoadsNext != "" && (sw == nil || !sw.Presented)
 }
 
 // StateWord is the badge's word (DESIGN 7.5).

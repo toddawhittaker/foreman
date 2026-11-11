@@ -388,8 +388,8 @@ func TestCatalogueKeysUsed(t *testing.T) {
 var jsWordsAllowed = map[string]bool{
 	"second": true, "minute": true, "hour": true, "day": true, "week": true, "month": true, "year": true,
 	"use strict": true,
-	// A key name for KeyboardEvent.key, not text.
-	"Escape": true,
+	// Key names for KeyboardEvent.key, not text.
+	"Escape": true, "Enter": true, "Tab": true,
 }
 
 var (

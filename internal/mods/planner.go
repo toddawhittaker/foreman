@@ -215,25 +215,59 @@ type Update struct {
 	Name, From, To string
 }
 
-// Updates lists, for each enabled portal mod, the newest release on the
-// world's game line when it is newer than the installed one (SPEC 9.3).
-// Mods the portal does not have are skipped; any other portal failure is
-// returned, never read as "no update". A world briefly missing or busy
-// has none.
-func (p *Planner) Updates(ctx context.Context, worldID string) ([]Update, error) {
+// Status is what the portal says about a world's mods, for the Mods tab.
+type Status struct {
+	// Updates are, for each enabled portal mod, the newest release on the
+	// world's game line when it is newer than the installed one (SPEC 9.3).
+	Updates []Update
+	// Flags are the availability problems of the enabled portal mods.
+	Flags []Flag
+	// Changeable maps each portal mod, on or off, that the portal has a
+	// release of on the world's line other than the installed one to its
+	// installed version: the mods Change version has a choice for (SPEC 9.3).
+	Changeable map[string]string
+	// Installed is the world's mod list as the check read it.
+	Installed []world.InstalledMod
+}
+
+// Status reads the world once and asks the portal once for the Mods tab.
+// Mods the portal does not have get no update and no Change version; any
+// other portal failure is returned, never read as "nothing to say". A world
+// briefly missing or busy has nothing to report and is not an error.
+func (p *Planner) Status(ctx context.Context, worldID string) (Status, error) {
 	w, err := p.world(ctx, worldID)
 	if worldAway(err) {
-		return nil, nil
+		return Status{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return Status{}, err
 	}
 	line := GameLine(w.GameVersion)
-	mods := checkable(w.Mods)
-	results, err := p.fetch(ctx, mods)
-	if err != nil {
-		return nil, err
+	var portal []world.InstalledMod
+	for _, m := range w.Mods {
+		if !m.BuiltIn && !m.Local {
+			portal = append(portal, m)
+		}
 	}
+	results, err := p.fetch(ctx, portal)
+	if err != nil {
+		return Status{}, err
+	}
+	enabled := checkable(w.Mods)
+	st := Status{Updates: updates(enabled, results, line), Flags: flags(enabled, results, line), Changeable: map[string]string{}, Installed: w.Mods}
+	for _, m := range portal {
+		for _, rel := range results[m.Name].Mod.Releases {
+			if rel.FactorioVersion == line && rel.Version != m.Version {
+				st.Changeable[m.Name] = m.Version
+				break
+			}
+		}
+	}
+	return st, nil
+}
+
+// updates are the mods with a newer release on the line.
+func updates(mods []world.InstalledMod, results map[string]modportal.ModResult, line string) []Update {
 	var out []Update
 	for _, m := range mods {
 		r := results[m.Name]
@@ -244,7 +278,7 @@ func (p *Planner) Updates(ctx context.Context, worldID string) ([]Update, error)
 			out = append(out, Update{Name: m.Name, From: m.Version, To: to})
 		}
 	}
-	return out, nil
+	return out
 }
 
 // checkable is the enabled mods that are neither built in nor folders.

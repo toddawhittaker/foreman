@@ -36,6 +36,8 @@ type LogOptions struct {
 	// Timestamps asks Docker to start each line with the time it was
 	// written, in RFC 3339 with nanoseconds, and a space.
 	Timestamps bool
+	// Tail keeps only the last Tail lines; zero means all of them.
+	Tail int
 }
 
 const (
@@ -67,6 +69,9 @@ func (c *Client) Logs(ctx context.Context, id string, opts LogOptions) (*LogStre
 	}
 	if opts.Timestamps {
 		q.Set("timestamps", "1")
+	}
+	if opts.Tail > 0 {
+		q.Set("tail", strconv.Itoa(opts.Tail))
 	}
 	if !opts.Since.IsZero() {
 		q.Set("since", fmt.Sprintf("%d.%09d", opts.Since.Unix(), opts.Since.Nanosecond()))

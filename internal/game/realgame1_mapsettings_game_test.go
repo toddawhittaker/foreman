@@ -349,7 +349,7 @@ func (e *gameEnv) runUIBMapSettings(t *testing.T, line, version string) {
 		cases = append(cases, mapCase{label: p, preset: p})
 	}
 	// A change to fields the preset itself owns: with --preset the game would
-	// ignore them (docs/EPIC-ui-batch.md, ruling 1).
+	// ignore them (SPEC 5.6).
 	cases = append(cases, mapCase{
 		label: "death-world changed", preset: "death-world",
 		mapGenChanges: map[string]any{
@@ -378,7 +378,7 @@ func (e *gameEnv) runUIBMapSettings(t *testing.T, line, version string) {
 		})
 	}
 
-	// The unchanged-preset path of the ruling: --preset alone, no files. The
+	// The unchanged-preset path: --preset alone, no files. The
 	// game's own reading of the preset must be the files Foreman would write
 	// for it, so the files above are shown to be the preset.
 	for _, p := range mapgen.Presets(line) {

@@ -393,7 +393,7 @@ func TestGenerateExchangeStringMustFitTheWorld(t *testing.T) {
 	}
 }
 
-// SPEC 5.6 (ruling 1): any change writes both files complete and passes no
+// SPEC 5.6: any change writes both files complete and passes no
 // preset, because the game lets a preset win over the files.
 func TestGenerateAChangeWritesBothFilesAndNoPreset(t *testing.T) {
 	fixedSeed(t, 55)
@@ -419,7 +419,7 @@ func TestGenerateAChangeWritesBothFilesAndNoPreset(t *testing.T) {
 
 // A changed death world keeps everything else the preset sets, in both
 // files, and the change: the preset's evolution and enemy bases, and the
-// expansion distance the person set (SPEC 5.6, F4).
+// expansion distance the person set (SPEC 5.6).
 func TestGenerateAChangedPresetKeepsThePresetsOtherValues(t *testing.T) {
 	hn := newGenerateHarness(t, nil)
 	c := hn.signIn()
@@ -526,7 +526,7 @@ func fieldValues(body string) url.Values {
 	return v
 }
 
-// SPEC 5.6 (ruling 2): a page without script sends a new preset with the old
+// SPEC 5.6: a page without script sends a new preset with the old
 // preset's values. The settings are filled from the new preset and shown
 // again; nothing is made until they have been seen.
 func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
@@ -568,7 +568,7 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 	if v := pageValues(t, hn.postLong(PathGenerateRefresh, changed, c).Body.String()); v.Get("mg.start") != "100" || v.Get("seed") != "8" {
 		t.Errorf("reset: starting area %q, seed %q; want 100 and 8", v.Get("mg.start"), v.Get("seed"))
 	}
-	// SPEC 5.6 (#318): Reset to defaults is for the whole world: another
+	// SPEC 5.6: Reset to defaults is for the whole world: another
 	// preset, changed, goes back to the version's default preset.
 	other := pagePresetValues(t, hn, c, "2.0.77", "death-world")
 	other.Set("mg.start", "300")
@@ -610,7 +610,7 @@ func TestGenerateShowsModified(t *testing.T) {
 	}
 }
 
-// SPEC 5.6 (ruling 1): on a version with no tested map-settings layout the
+// SPEC 5.6: on a version with no tested map-settings layout the
 // map settings are not offered, a changed default writes only the map-gen
 // file, and a changed preset is refused before anything is made.
 func TestGenerateOnAnUntestedLayout(t *testing.T) {
@@ -642,7 +642,7 @@ func TestGenerateOnAnUntestedLayout(t *testing.T) {
 	}
 }
 
-// SPEC 5.6 (ruling 3): the warnings and the summary by the Generate button
+// SPEC 5.6: the warnings and the summary by the Generate button
 // are what mapgen.AchievementBlockers says of the files the form writes.
 func TestGenerateWarnsOfAchievementsAsTheGameDoes(t *testing.T) {
 	hn := newGenerateHarness(t, nil)

@@ -476,7 +476,7 @@ test("the version choice is not cut off at 320 px", async ({ page, foreman, fake
   expect(fits.ellipsis).toBe("ellipsis");
 });
 
-// DESIGN 8.7 (ruling 2): the settings are four tabs, drawn as tabs from radios,
+// DESIGN 8.7: the settings are four tabs, drawn as tabs from radios,
 // so the group is one tab stop and the arrow keys move between them.
 test.describe("the map settings tabs", () => {
   test.beforeEach(async ({ page, foreman, fakeGame }) => {
@@ -618,7 +618,7 @@ test("the island preset fills the map type, and default leaves it out of the fil
   expect(mg.property_expression_names["control:aux:frequency"]).toBe("2");
 });
 
-// DESIGN 8.6 (ruling 2): "[modified]" shows once anything changes, with a reset.
+// DESIGN 8.6: "[modified]" shows once anything changes, with a reset.
 test("[modified] shows once a setting changes, and Reset puts the preset back", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
@@ -653,7 +653,7 @@ test("[modified] shows once a setting changes, and Reset puts the preset back", 
   await checkPage(page);
 });
 
-// SPEC 5.6 (#235): Random seed fills a new seed from 0 to 4294967295.
+// SPEC 5.6: Random seed fills a new seed from 0 to 4294967295.
 test("Random seed fills a seed the game takes", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
@@ -673,7 +673,7 @@ test("Random seed fills a seed the game takes", async ({ page, foreman, fakeGame
   expect(String(worldJSON(foreman.dataDir, "lucky").new_map.seed)).toBe(await Promise.resolve([...seen].at(-1)));
 });
 
-// SPEC 5.6 (ruling 3, #239): a warning beside a setting as soon as it turns
+// SPEC 5.6: a warning beside a setting as soon as it turns
 // achievements off, and one summary by the Generate button.
 test("settings that turn achievements off are warned of at once", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
@@ -718,7 +718,7 @@ test("at 320 px and 200% text the settings fit", async ({ page, foreman, fakeGam
 });
 
 // Without script the tabs stack and the server does every redraw; a new
-// preset is filled before anything is made (ruling 2, filled_from).
+// preset is filled before anything is made (filled_from).
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 

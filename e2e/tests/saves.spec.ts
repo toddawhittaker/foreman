@@ -203,7 +203,7 @@ test("choosing which save loads is kept, and going back to the newest clears it"
   expect(JSON.parse(readFileSync(join(dir, "world.json"), "utf8"))).toMatchObject({ name: "Family base", game_version: "2.0.72", space_age: true });
   await checkPage(page);
 
-  await page.getByRole("button", { name: "Load next: new.zip" }).click();
+  await page.getByRole("button", { name: "Load next: the newest save" }).click();
   await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
   await expect(rows.nth(0)).toContainText("Loads next");
   expect(loadSaveOf(dir) ?? "").toBe("");
@@ -231,7 +231,7 @@ test("a chosen save that was removed by hand is explained", async ({ page, forem
   await expect(newest).toContainText("Loads next");
   await checkPage(page);
   // The stale choice can be cleared from the newest row (SPEC 7.11).
-  await newest.getByRole("button", { name: "Load next: new.zip" }).click();
+  await newest.getByRole("button", { name: "Load next: the newest save" }).click();
   await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
   await expect(page.getByText("is no longer in the saves folder")).toHaveCount(0);
   await expect(newest).toContainText("Loads next");
@@ -338,4 +338,50 @@ test("choosing a save that has since gone is refused in words", async ({ page, f
   await expect(error).toBeFocused();
   expect(loadSaveOf(dir) ?? "").toBe("");
   await checkPage(page);
+});
+
+// DESIGN 8.3: the Load next buttons share one column, so they line up
+// whatever the lengths of the names.
+test("the Load next buttons line up when names differ in length", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman, "aligned", { name: "Aligned" }, [
+    { name: "a.zip", content: oldSave, at: "2026-11-01T09:00:00Z" },
+    { name: "a-much-longer-save-name.zip", content: oldSave, at: "2026-11-02T09:00:00Z" },
+    { name: "newest.zip", content: newSave, at: "2026-11-03T14:25:00Z" },
+  ]);
+  await page.goto("/worlds/aligned/saves");
+  const left = async (name: string) => (await page.getByRole("button", { name: `Load next: ${name}` }).boundingBox())!.x;
+  expect(Math.abs((await left("a.zip")) - (await left("a-much-longer-save-name.zip")))).toBeLessThanOrEqual(1);
+  await checkPage(page);
+});
+
+// SPEC 17.2, 22.7: with the button in its own column, a phone still shows
+// the whole row without a sideways scroll.
+test.describe("at phone width", () => {
+  test.use({ viewport: { width: 320, height: 700 } });
+  test("the table with its button column fits", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedTwoSaves(foreman);
+    await page.goto("/worlds/family-base/saves");
+    await expect(page.getByRole("button", { name: "Load next: old.zip" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // A row with no button has no empty line under it.
+    await expect(page.locator("tbody tr").nth(0).locator("td.save-load")).toHaveCSS("display", "none");
+    await checkPage(page);
+  });
+
+  // A world a newer Foreman wrote has no button column, so the time stays
+  // beside the name under its own header.
+  test("a newer world's rows keep their time beside the name", async ({ page, foreman }) => {
+    await createAdmin(page);
+    seedTwoSaves(foreman, { format_version: 9 });
+    await page.goto("/worlds/family-base/saves");
+    const row = page.locator("tbody tr").nth(0);
+    await expect(row.locator("td.save-load")).toHaveCount(0);
+    const name = (await row.locator("td").nth(0).boundingBox())!;
+    const saved = (await row.locator("td").nth(2).boundingBox())!;
+    expect(saved.y).toBeLessThan(name.y + name.height);
+    expect(saved.x).toBeGreaterThan(name.x + name.width - 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
 });
