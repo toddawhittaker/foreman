@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -100,15 +101,13 @@ func (e *gameEnv) msWorld(t *testing.T, tag, version, label string) string {
 			return err
 		}
 		if rel == "info.json" {
-			// Each line accepts only its own mod line (2.1 accepts "2.0").
+			// Each line accepts only its own mod line.
 			var info map[string]any
 			if err := json.Unmarshal(b, &info); err != nil {
 				return err
 			}
-			info["factorio_version"] = "2.0"
-			if strings.HasPrefix(version, "1.1") {
-				info["factorio_version"] = "1.1"
-			}
+			// 2.1.24 refuses a mod made for "2.0".
+			info["factorio_version"] = version[:3]
 			if b, err = json.Marshal(info); err != nil {
 				return err
 			}
@@ -256,6 +255,8 @@ type msWant struct {
 	hidden    bool
 	blank     bool
 	trim      bool
+	// unlimited marks a setting whose reported limits are recorded, not asserted.
+	unlimited bool
 }
 
 func intV(n int64) modsettings.Value {
@@ -307,13 +308,30 @@ func msWants() []msWant {
 			def: strV("hello"), blank: true, trim: true},
 		msWant{name: "fm-sta-long", setting: modsettings.Startup, typ: modsettings.TypeString,
 			def: strV(msLong)},
+		msWant{name: "fm-sta-unbounded", setting: modsettings.Startup, typ: modsettings.TypeInt,
+			def: intV(4), unlimited: true},
+		msWant{name: "fm-sta-dallowed", setting: modsettings.Startup, typ: modsettings.TypeDouble,
+			def: dblV(1), allowed: []modsettings.Value{dblV(0.5), dblV(1), dblV(2)}},
 	)
 	return out
 }
 
+// sameValue compares two values. An int the game stores as a double (every
+// int on 1.1) equals the int of the same whole number.
 func sameValue(a, b modsettings.Value) bool {
 	if a.Type != b.Type {
-		return false
+		num := func(v modsettings.Value) (float64, bool) {
+			switch v.Type {
+			case modsettings.TypeInt:
+				return float64(v.Int), true
+			case modsettings.TypeDouble:
+				return v.Double, true
+			}
+			return 0, false
+		}
+		x, okx := num(a)
+		y, oky := num(b)
+		return okx && oky && x == y
 	}
 	switch a.Type {
 	case modsettings.TypeBool:
@@ -327,6 +345,13 @@ func sameValue(a, b modsettings.Value) bool {
 	default:
 		return a.Color == b.Color
 	}
+}
+
+func showPtr(v *modsettings.Value) string {
+	if v == nil {
+		return "absent"
+	}
+	return fmt.Sprintf("%+v", *v)
 }
 
 func samePtr(a, b *modsettings.Value) bool {
@@ -373,7 +398,9 @@ func (e *gameEnv) runMSDefinitions(t *testing.T, tag, version string) {
 		if d.Default == nil || !sameValue(*d.Default, w.def) {
 			t.Errorf("%s: default %+v, want %+v", w.name, d.Default, w.def)
 		}
-		if !samePtr(d.Min, w.min) || !samePtr(d.Max, w.max) {
+		if w.unlimited {
+			t.Logf("LIMITS %s %s: minimum_value %s, maximum_value %s", tag, w.name, showPtr(d.Min), showPtr(d.Max))
+		} else if !samePtr(d.Min, w.min) || !samePtr(d.Max, w.max) {
 			t.Errorf("%s: limits %+v..%+v, want %+v..%+v", w.name, d.Min, d.Max, w.min, w.max)
 		}
 		if len(d.AllowedValues) != len(w.allowed) {
@@ -463,7 +490,7 @@ func (e *gameEnv) runMSFile(t *testing.T, tag, version string) {
 		}
 	})
 
-	step("2 a file the game wrote round-trips byte for byte", func(t *testing.T) {
+	t.Run("2 a file the game wrote round-trips byte for byte", func(t *testing.T) {
 		f, err := modsettings.Decode(atStart)
 		if err != nil {
 			t.Fatalf("Decode: %v", err)
@@ -475,7 +502,7 @@ func (e *gameEnv) runMSFile(t *testing.T, tag, version string) {
 		if !bytes.Equal(back, atStart) {
 			t.Errorf("Encode gave %d bytes that differ from the game's %d", len(back), len(atStart))
 		}
-	})
+	}) // not a chained step: the game-only checks below do not need the codec
 
 	step("5 the game does not rewrite the file at exit", func(t *testing.T) {
 		stopMS(t, c, id)
@@ -513,12 +540,16 @@ func (e *gameEnv) runMSFile(t *testing.T, tag, version string) {
 	step("6 a value outside the limits or allowed values is reset at start", func(t *testing.T) {
 		bad := withNumber(t, atStart, "fm-sta-int", 99)
 		bad = withNumber(t, bad, "fm-sta-forced", 4)
+		bad = withNumber(t, bad, "fm-sta-dallowed", 3)
 		e.writeMSFile(t, id, bad)
 		e.startMS(t, c, id)
 		lines := currentRun(c, id)
 		forced := mustFMSET(t, lines, "startup", "fm-sta-forced")
 		n := mustFMSET(t, lines, "startup", "fm-sta-int")
 		t.Logf("the game read fm-sta-int 99 as %s and fm-sta-forced 4 as %s", n, forced)
+		if d := mustFMSET(t, lines, "startup", "fm-sta-dallowed"); d != "1" {
+			t.Errorf("fm-sta-dallowed is %s; 3 is not in {0.5, 1, 2} and should be reset to the default 1", d)
+		}
 		if forced != "3" {
 			t.Errorf("fm-sta-forced is %s; the one allowed value is 3", forced)
 		}
@@ -536,20 +567,15 @@ func (e *gameEnv) runMSFile(t *testing.T, tag, version string) {
 	})
 
 	step("4b a map value edited on a world with no save seeds the new map", func(t *testing.T) {
-		saves, err := filepath.Glob(filepath.Join(e.worldDir(id), world.SavesDir, "*.zip"))
-		if err != nil || len(saves) == 0 {
-			t.Fatalf("saves %v, %v", saves, err)
-		}
-		for _, s := range saves {
-			if err := os.Remove(s); err != nil {
-				t.Fatal(err)
-			}
-		}
+		// A generated world has no save until its first start, which makes
+		// the map from the file as it stands.
+		id := e.msWorld(t, tag, version, "seed")
 		e.writeMSFile(t, id, withNumber(t, atStart, "fm-glo-int", 9))
 		e.startMS(t, c, id)
 		lines := currentRun(c, id)
-		if anyLineHas(lines, "FMSET load startup") {
-			t.Fatal("the game loaded a save; the map should be new")
+		// The game saves the new map and loads it, so on_load runs too.
+		if !logHas(c, id, `"--create"`) {
+			t.Fatal("the game did not create a map")
 		}
 		if got := mustFMSET(t, lines, "global", "fm-glo-int"); got != "9" {
 			t.Errorf("fm-glo-int is %s on the new map, want the file's 9", got)
@@ -647,7 +673,7 @@ func (e *gameEnv) runMSApply(t *testing.T, tag, version string) {
 	if got, _, _ := f2.Get(modsettings.Startup, "fm-sta-long"); got.String != msLong {
 		t.Errorf("the file's fm-sta-long is %d bytes after the restart, want the 300-byte string", len(got.String))
 	}
-	if got, _, _ := f2.Get(modsettings.Startup, "fm-sta-int"); got.Int != 9 {
+	if got, _, _ := f2.Get(modsettings.Startup, "fm-sta-int"); !sameValue(got, intV(9)) {
 		t.Errorf("the file's fm-sta-int is %+v after the restart, want 9", got)
 	}
 	stopMS(t, c, id)

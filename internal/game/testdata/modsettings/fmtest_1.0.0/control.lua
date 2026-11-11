@@ -1,5 +1,5 @@
 local function dump()
-  for _, n in ipairs({"fm-sta-bool","fm-sta-int","fm-sta-double","fm-sta-string","fm-sta-color","fm-sta-blank","fm-sta-long"}) do
+  for _, n in ipairs({"fm-sta-bool","fm-sta-int","fm-sta-double","fm-sta-string","fm-sta-color","fm-sta-blank","fm-sta-long","fm-sta-unbounded","fm-sta-dallowed","fm-sta-forced"}) do
     log("FMSET startup " .. n .. "=" .. serpent.line(settings.startup[n].value))
   end
   for _, n in ipairs({"fm-glo-int","fm-glo-string"}) do
