@@ -1,6 +1,8 @@
 {{/* The Map preview section, or an empty slot the browser swaps it into. Takes GeneratePage. */}}
 {{define "generate-preview" -}}
-<div id="preview" class="preview"{{with .Preview}} data-seed="{{.Seed}}" data-filled-seed="{{$.Form.FilledSeed}}"{{end}}>
+{{- /* data-counted-planets: the drawn planets whose resource amounts the server holds, so the script
+     counts the rest before a download asks for them (SPEC 5.6). */ -}}
+<div id="preview" class="preview"{{with .Preview}} data-seed="{{.Seed}}" data-filled-seed="{{$.Form.FilledSeed}}" data-counted-planets="{{.ZipCounted}}"{{end}}>
   {{- with .Preview}}
   <section aria-labelledby="preview-heading">
     {{/* The seed shares the heading's line, so the picture sits close to its controls (SPEC 5.6). */}}
@@ -64,21 +66,21 @@
         </div>
         {{/* Shown by the script when its request for the territories fails. */}}
         <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
-        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}"{{if .Counted}} data-counted{{end}}>
+        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}">
           {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
         {{- else}}
         {{/* The script adds the amounts, and says so, while the box above is ticked and they are counted (SPEC 5.6). */}}
-        <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}"{{if .Counted}} data-counted{{end}}>{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}">{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
         {{- end}}
       </li>
       {{- end}}
     </ul>
     {{- if gt (len .Planets) 1}}
-    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}" data-planets="{{.ZipPlanets}}" data-counted-planets="{{.ZipCounted}}"{{if .TerritoriesHeld}} data-territories-held{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
+    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}" data-planets="{{.ZipPlanets}}"{{if .TerritoriesHeld}} data-territories-held{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
     {{- end}}
     {{/* Shown under a download while the script counts what it asks for and nothing holds yet:
          which planet of how many, Cancel, and on a failure the planet named with Try again and,
-         for the zip, the zip without it (SPEC 5.6, 17.15). */}}
+         for the zip, the zip without it; the script names both after the planet (SPEC 5.6, 17.15). */}}
     <template id="download-prep">
       <div class="download-prep" data-amounts-failed="{{t "worlds.generate.resources.request_failed"}}" data-territories-failed="{{t "worlds.generate.territories.request_failed"}}" data-not-kept="{{t "worlds.generate.resources.not_kept"}}">
         <div class="download-prep__wait" data-prep-wait>
@@ -86,7 +88,7 @@
           <progress aria-hidden="true"></progress>
         </div>
         <div class="message message--error" data-prep-failed hidden><p><strong>{{t "common.error.label"}}</strong> <span data-prep-why></span></p></div>
-        <p class="download-prep__actions"><button type="button" class="button" data-prep-without hidden></button> <button type="button" class="button" data-prep-retry hidden>{{t "worlds.generate.resources.retry"}}</button> <button type="button" class="button" data-prep-cancel>{{t "worlds.cancel"}}</button></p>
+        <p class="download-prep__actions"><button type="button" class="button" data-prep-without hidden></button> <button type="button" class="button" data-prep-retry hidden></button> <button type="button" class="button" data-prep-cancel>{{t "worlds.cancel"}}</button></p>
       </div>
     </template>
     {{- if $amounts}}

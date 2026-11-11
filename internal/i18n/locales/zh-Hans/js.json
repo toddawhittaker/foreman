@@ -27,5 +27,8 @@
   "js.preview.prepare_failed": "下载在 {planet} 处停止。",
   "js.preview.prepare_without": "下载时不含 {planet}",
   "js.preview.prepare_canceled": "下载已取消。",
-  "js.preview.prepare_busy": "正在准备另一个下载。请等待其完成，或先将其取消。"
+  "js.preview.prepare_busy": "正在准备另一个下载。请等待其完成，或先将其取消。",
+  "js.preview.prepare_retry": "重试：{planet}",
+  "js.preview.prepare_started": "下载已开始。",
+  "js.preview.prepare_redrawing": "正在按新设置绘制地图预览。就绪后再下载。"
 }
