@@ -1,5 +1,5 @@
 local function dump()
-  for _, n in ipairs({"fm-sta-bool","fm-sta-int","fm-sta-double","fm-sta-string","fm-sta-color"}) do
+  for _, n in ipairs({"fm-sta-bool","fm-sta-int","fm-sta-double","fm-sta-string","fm-sta-color","fm-sta-blank","fm-sta-long","fm-sta-unbounded","fm-sta-dallowed","fm-sta-forced"}) do
     log("FMSET startup " .. n .. "=" .. serpent.line(settings.startup[n].value))
   end
   for _, n in ipairs({"fm-glo-int","fm-glo-string"}) do
@@ -7,4 +7,4 @@ local function dump()
   end
 end
 script.on_init(dump)
-script.on_load(function() log("FMSET load startup fm-sta-int=" .. settings.startup["fm-sta-int"].value .. " global fm-glo-int=" .. settings.global["fm-glo-int"].value) end)
+script.on_load(function() dump() log("FMSET load startup fm-sta-int=" .. settings.startup["fm-sta-int"].value .. " global fm-glo-int=" .. settings.global["fm-glo-int"].value) end)
