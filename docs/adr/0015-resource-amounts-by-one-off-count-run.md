@@ -23,6 +23,19 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
   scrap into 3,301 patches. Wells are resources whose mineable product is
   a fluid, not those flagged infinite (lithium brine is finite), and join
   within 24 tiles: 12 split real fields.
+- Fulgora's scrap alone joins within 16 tiles, from a table in the Lua
+  keyed by planet and resource. Measured on 2.1.24 at 3072 tiles with scrap
+  frequency 600%, seeds 123456 and 977648065 (134 and 150 islands): a gap
+  of 2 gave 2,234 and 2,436 scrap patches, up to 80 on one island; 12 gave
+  352 and 369, with a quarter of islands still over three labels; 16 gave
+  296 and 303, with 84 to 86% of islands at one to three; 24 gave 209 and
+  204 but took 36 to 38 s. Any gap from 4 up lets a few labels join
+  neighbouring islands across thin channels (4 to 6 of about 300 at 16).
+  Gaps above 4 are bucketed by cells as wells are, which keeps 16 at 20 s
+  and 675 MiB with the same patches. Rejected: 16 for every ore (it would
+  merge real, separate patches on the other planets); grouping scrap by
+  island (exact, but the Lua would have to read every ground tile); 12
+  (too many labels left per island).
 - One planet per run, kept per planet with the preview (five would not fit
   60 s), and apart from territories.
 - A held, cancellable request after the picture, with an indeterminate bar.
