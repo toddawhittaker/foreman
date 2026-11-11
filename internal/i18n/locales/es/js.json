@@ -26,5 +26,9 @@
   "js.preview.prepare_territories": "Buscando los territorios de los demoledores para la descarga, planeta {n} de {total}: {planet}…",
   "js.preview.prepare_failed": "La descarga se detuvo en {planet}.",
   "js.preview.prepare_without": "Descargar sin {planet}",
-  "js.preview.prepare_canceled": "Descarga cancelada."
+  "js.preview.prepare_canceled": "Descarga cancelada.",
+  "js.preview.prepare_retry": "Reintentar: {planet}",
+  "js.preview.prepare_busy": "Ya se está preparando una descarga.",
+  "js.preview.prepare_started": "Descarga iniciada.",
+  "js.preview.prepare_redrawing": "La vista previa del mapa se está dibujando con los nuevos ajustes. Descarga de nuevo cuando esté lista."
 }

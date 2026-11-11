@@ -26,5 +26,9 @@
   "js.preview.prepare_territories": "Finding demolisher territories for the download, planet {n} of {total}: {planet}…",
   "js.preview.prepare_failed": "The download stopped at {planet}.",
   "js.preview.prepare_without": "Download without {planet}",
-  "js.preview.prepare_canceled": "Download canceled."
+  "js.preview.prepare_canceled": "Download canceled.",
+  "js.preview.prepare_retry": "Try again: {planet}",
+  "js.preview.prepare_busy": "A download is already being prepared.",
+  "js.preview.prepare_started": "Download started.",
+  "js.preview.prepare_redrawing": "The map preview is being drawn for the new settings. Download again once it is ready."
 }

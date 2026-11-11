@@ -26,5 +26,9 @@
   "js.preview.prepare_territories": "Hledají se teritoria ničitelů pro stažení, planeta {n} z {total}: {planet}…",
   "js.preview.prepare_failed": "Stahování se zastavilo u planety: {planet}.",
   "js.preview.prepare_without": "Stáhnout bez planety: {planet}",
-  "js.preview.prepare_canceled": "Stahování bylo zrušeno."
+  "js.preview.prepare_canceled": "Stahování bylo zrušeno.",
+  "js.preview.prepare_retry": "Zkusit znovu: {planet}",
+  "js.preview.prepare_busy": "Stahování se už připravuje.",
+  "js.preview.prepare_started": "Stahování bylo zahájeno.",
+  "js.preview.prepare_redrawing": "Náhled mapy se vykresluje pro nové nastavení. Stáhnout bude možné, až bude hotový."
 }

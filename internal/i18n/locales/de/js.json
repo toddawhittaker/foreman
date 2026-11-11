@@ -26,5 +26,9 @@
   "js.preview.prepare_territories": "Zertrümmerer-Territorien für den Download werden gesucht, Planet {n} von {total}: {planet} …",
   "js.preview.prepare_failed": "Der Download wurde bei {planet} angehalten.",
   "js.preview.prepare_without": "Ohne {planet} herunterladen",
-  "js.preview.prepare_canceled": "Download abgebrochen."
+  "js.preview.prepare_canceled": "Download abgebrochen.",
+  "js.preview.prepare_retry": "Erneut versuchen: {planet}",
+  "js.preview.prepare_busy": "Ein Download wird bereits vorbereitet.",
+  "js.preview.prepare_started": "Download gestartet.",
+  "js.preview.prepare_redrawing": "Die Kartenvorschau wird für die neuen Einstellungen gezeichnet. Lade erneut herunter, sobald sie fertig ist."
 }

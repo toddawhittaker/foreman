@@ -26,5 +26,9 @@
   "js.preview.prepare_territories": "Recherche des territoires des démolisseurs pour le téléchargement, planète {n} sur {total} : {planet}…",
   "js.preview.prepare_failed": "Le téléchargement s’est arrêté à cette planète : {planet}.",
   "js.preview.prepare_without": "Télécharger sans cette planète : {planet}",
-  "js.preview.prepare_canceled": "Téléchargement annulé."
+  "js.preview.prepare_canceled": "Téléchargement annulé.",
+  "js.preview.prepare_retry": "Réessayer : {planet}",
+  "js.preview.prepare_busy": "Un téléchargement est déjà en préparation.",
+  "js.preview.prepare_started": "Téléchargement démarré.",
+  "js.preview.prepare_redrawing": "L’aperçu de la carte est en cours de dessin pour les nouveaux réglages. Téléchargez de nouveau une fois qu’il est prêt."
 }
