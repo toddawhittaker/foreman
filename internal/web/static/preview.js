@@ -45,15 +45,20 @@ document.addEventListener("DOMContentLoaded", () => {
   let alsoSaid = "";
   // News owed until it is said: a download's end that newer words would hide.
   let owed = "";
-  function announce(said) {
+  // The words announce() is about to say, so a count that ends first can withdraw them.
+  let waitingSaid = "";
+  // Unseen news repeats words already shown elsewhere in the open view, so its
+  // length cannot move the stage below the status line (SPEC 5.6).
+  function announce(said, unseen) {
     if (alsoSaid) said += (/[.…!?]$/.test(said) ? " " : ". ") + alsoSaid;
     if (owed && !said.includes(owed)) said += (/[.…!?]$/.test(said) ? " " : ". ") + owed;
     // Outside an open modal dialog the page is inert, so the dialog says it itself.
-    const target = dialog && dialog.open ? document.getElementById("large-status") : document.getElementById("announcer");
+    const target = dialog && dialog.open ? document.getElementById(unseen ? "large-prep-news" : "large-status") : document.getElementById("announcer");
     clearTimeout(saying);
     if (!target) return;
     target.textContent = "";
-    saying = setTimeout(() => { target.textContent = said; owed = ""; }, 50);
+    waitingSaid = said;
+    saying = setTimeout(() => { target.textContent = said; owed = ""; waitingSaid = ""; }, 50);
   }
   function largeStatus(text) {
     clearTimeout(saying);
@@ -637,6 +642,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (n !== at.sent || ctrl.signal.aborted) return;
       at.pending = null;
       counting(at, false);
+      // It counts no longer, so its start sentence, shown or on its way, goes;
+      // said late, it would grow the status line and move the stage (SPEC 5.6).
+      const said = el(at.status);
+      if (at.shown() && waitingSaid === startSaid) clearTimeout(saying);
+      if (said && said.textContent === startSaid) said.textContent = "";
       const failed = el("resource-failed");
       if (failed) slot.replaceChildren(failed.content.cloneNode(true));
       sayAmounts(at, slot);
@@ -697,7 +707,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Another link is offered the Cancel of the one on its way.
       if (a !== prep.a) prep.block.querySelector("[data-prep-cancel]").focus();
       owed = news;
-      announce(news);
+      announce(news, prep.inView);
       return;
     }
     const plan = prepSteps(a.getAttribute("href"));
@@ -769,7 +779,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // Said once as each run starts; the bar is only seen.
       const tell = (key) => {
         text.textContent = say(key, vars);
-        announce(text.textContent);
+        // The block shows the words, so in the large view they are only said.
+        announce(text.textContent, p.inView);
       };
       p.ctrl = new AbortController();
       const why = await prepStep(step, p.ctrl.signal, block, tell);
@@ -789,7 +800,7 @@ document.addEventListener("DOMContentLoaded", () => {
           without.textContent = say("js.preview.prepare_without", { planet: vars.planet });
           without.hidden = false;
         }
-        announce(words(failure));
+        announce(words(failure), p.inView);
         if (lead) (without.hidden ? retry : without).focus();
         return;
       }

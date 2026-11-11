@@ -359,6 +359,8 @@ test("in the large view the preparation lies over the stage without moving it, a
   await page.locator("#large-download").click();
   await expect(view.locator(".large-view__stage .download-prep")).toBeVisible();
   await expect.poll(() => hold.held.length).toBe(1);
+  // Measured once the count's news is said, as a long news line once moved the stage.
+  await expect(page.locator("#large-prep-news")).toHaveText(/planet 1 of 1: Nauvis/);
   expect(await page.locator("#large-frame").boundingBox()).toEqual(stage);
   await checkPage(page);
   const heard = await listen(page, "#large-status");
@@ -403,7 +405,7 @@ test("in the large view the preparation leaves the arrows and zoom free, and an 
   for (const id of ["#large-prev", "#large-out", "#large-next", "#large-close"]) expect(await uncovered(page, id), id).toBe(true);
   // The same link again says where its preparation is.
   await page.locator("#large-download").click();
-  await expect(page.locator("#large-status")).toHaveText(/The download stopped at Vulcanus\./);
+  await expect(page.locator("#large-prep-news")).toHaveText(/The download stopped at Vulcanus\./);
   // Gleba is not drawn yet: its "Drawing" line still says the download ended.
   const heard = await listen(page, "#large-status");
   await page.keyboard.press("ArrowRight");
