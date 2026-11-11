@@ -71,6 +71,12 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
   Rejected: a background job with a true percentage (a job store, polling).
 - Labels show the amount only, in compact form; a text list names the
   resource. Rejected: "Iron 1.2M" (twice as wide).
+- A patch's label is left off the picture where a patch of the same
+  resource with at least 4 times its amount lies within 64 tiles on both
+  axes, box edge to box edge (`resource.HiddenLabels`, Todd's ruling,
+  2026-11-10); the text list keeps every patch, and downloads hide the
+  same labels as the page. At gap 6 the crumbs left beside large fields
+  still crowded the picture.
 
 ## Consequences
 
@@ -82,8 +88,11 @@ spare. A dense count's patch list is finer than a default map's. The Lua
 is proved only in a real game, against a scan of every tile; the file's map
 colour lets that test check labels against the picture.
 
-Downloads draw only counts already held and never start a run. Their
-labels must read as the page's `Intl.NumberFormat` compact and percent
+The server draws only counts already held and never starts a run for a
+download; a download asking for amounts or territories it does not hold
+is refused (409). The page counts what is missing first, one run at a time
+through the preview queue, so the 60 s limit applies to each planet, not
+to the whole zip. Download labels must read as the page's `Intl.NumberFormat` compact and percent
 output, which Go has no equivalent for, so `internal/web/compact.go` holds
 a table of the CLDR patterns for the eight languages, pinned by a test of
 literals pasted from Node's `Intl` (the same ICU data). A new language needs a row

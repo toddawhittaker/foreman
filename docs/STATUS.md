@@ -11,8 +11,12 @@ below uses the new numbers.
 
 Epics 1 to 8, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
-the Resource amounts epic and fixes batch 5 are done. Gate A (SPEC 19.1)
-passed on 2026-11-05. Gate B (SPEC 19.2) follows fixes batch 5.
+the Resource amounts epic and fixes batches 5 and 6 are done. Gate A (SPEC 19.1)
+passed on 2026-11-05. Gate B (SPEC 19.2) follows fixes batch 6.
+
+Each section describes the game images pinned at its time. Since fixes
+batch 6 the real-game tests pin only 1.1.110, 2.0.77 and 2.1.24: older
+mentions of 2.1.23 and `GAME_IMAGE_2_1_PREV` are history.
 
 ## Epic 1: Foundation
 
@@ -2301,3 +2305,126 @@ may revisit).
   under stress loops ("cannot tell its state") and passed 8 of 8 after.
 - Still deferred: #353, #339 (P2), #207, #206, #132 and #92, and Enemy and
   Advanced settings in the large view.
+
+## Fixes batch 6
+
+Serves SPEC 5.6 ("Resource amounts", "Patches", "Downloads", "Cost,
+measured"), 14.3 and 17.15, with ADR 0015, STACK 1 and 13, and WORKFLOW
+"Local development". Issues closed: #460 (downloads with amounts count
+what is missing) and #461 (crumbs of ore patches). The pull requests were
+#463 (per-planet counts), #464 (Fulgora scrap gap), #465 (ore gap 6 and
+label hiding), #466 (download preparation), #467 (ores kept on the
+per-tile scan), #468 (failed Vulcanus draw in the large view), #469
+(review fixes to the preparation) and #470 (dense counts and the real-game
+test set).
+
+Rulings (Todd, 2026-11-10): Fulgora's scrap joins within 16 tiles, other
+ores within 6, wells within 24; a label is hidden beside a patch of the
+same resource 4 times richer within 64 tiles; Download all counts every
+planet missing a count, with progress, Cancel and failure choices. (Todd,
+2026-11-11): a count over 400,000 ore tiles joins ores within 2, chosen
+over rewording the SPEC's out-of-memory promise; real-game tests run only
+the latest patch of each line.
+
+### Delivered
+
+- **Counts and pictures kept per planet (SPEC 5.6).** The preview store
+  keys each planet by its share of the settings, everything except the
+  other planets' own autoplace controls (`internal/web/genpreviewkey.go`).
+  Changing Fulgora's sliders keeps Nauvis's picture and count, and only
+  the changed planet is redrawn and recounted. On 2.1.24 with seed 123456
+  this left the other planets' pictures and counts byte-identical.
+- **Fulgora's scrap joins within 16 tiles (SPEC 5.6, ADR 0015).** Gaps
+  live in a Lua table keyed by planet and resource. At 3072 tiles and 600%
+  scrap frequency Fulgora has about 300 scrap patches instead of about
+  2,300, in 33 s and 675 MiB. A few labels can join neighbouring islands
+  across thin channels.
+- **Ores join within 6 tiles, and small labels hide (#461, SPEC 5.6).**
+  At 3072 tiles Nauvis drops from 138 ore patches to 112, Vulcanus from
+  338 to 228, Gleba from 280 to 235, with far fewer crumbs. A label is
+  left off the picture when a patch of the same resource with at least 4
+  times its amount lies within 64 tiles on both axes, box edge to box edge
+  (`resource.HiddenLabels`). Page and downloads hide the same labels; the
+  text list keeps every patch.
+- **Ores stay on the per-tile scan.** The Lua's per-tile offset scan now
+  covers gaps up to 6, the path the cost figures were measured on. Only
+  scrap (16) and wells (24) use cell buckets. Output is unchanged.
+- **Dense counts join ores within 2 (SPEC 5.6, ADR 0015).** A count with
+  more than 400,000 ore tiles in the picture joins its ores within 2. No
+  default map comes near it (Vulcanus has the most, 141,912); Nauvis at
+  600% has about 1.1 million. At 6 that map ran past the 60 s limit and
+  the page said "try again"; now it runs out of memory at about 30 s on
+  2.x and says to choose a smaller size, as SPEC 5.6 promises. A unit
+  test keeps the threshold 2.5 times away from both measured ends.
+- **Downloads count what is missing first (#460, SPEC 5.6, 14.3, 17.15).**
+  While "Show resource amounts" is ticked, every download asks for
+  amounts: the planet's PNG, the large view's download and the zip.
+  Before it starts, the page counts each planet with nothing held, and
+  reads territories if none are held, one run at a time through one
+  queue, showing "planet 2 of 5", a progress bar and Cancel. A failed
+  planet is named with its reason, with "Try again: (planet)" and, for
+  the zip, "Download without (planet)". Counts made this way stay in the
+  preview store. Closing the large view, showing another planet, changing
+  a setting or a new picture arriving ends the preparation and says
+  "Download canceled."; a preparation does not start while a redraw is
+  waiting, and says why. The server never counts for a download: one that
+  asks for amounts or territories not held is refused with 409. The zip
+  takes `without=<planet>`. One list of counted planets,
+  `data-counted-planets` on `#preview`, replaces the old per-link marks.
+- **Speakable states (SPEC 17.15).** Each step is announced politely, and
+  "Download started." when it begins. Focus moves to the first choice on a
+  failure, to Cancel when another download is clicked or the focused
+  button goes, and back to the link when the block closes. In the large
+  view the block lies over the top of the stage between Previous and Next,
+  so the picture does not move, and no control sits under it at 320 px.
+  New strings in all eight languages.
+- **A failed Vulcanus draw in the large view** is said once instead of
+  being asked for again and again.
+- **Real-game test set (STACK 1, 13).** The real-game tests pin only
+  1.1.110, 2.0.77 and 2.1.24. `make test-game` checks every image first
+  (`game-images`), runs the rest within 30 minutes, then the resource
+  tests; `make test-game-resources` runs the resource tests alone within
+  90 minutes. The 600% Nauvis count must now end with the out-of-memory
+  error on 2.0.77 and 2.1.24, and a forced dense count is checked against
+  a scan of every tile. The Generate leftover check counts only its own
+  run's containers.
+- **Spec and process.** SPEC 5.6 and 17.15 carry the rules; ADR 0015
+  records the ore gap 6, the dense exception, the scrap table, label
+  hiding and the page-side preparation. The plan was deleted.
+
+How it went: #468 fixed a Vulcanus redraw loop with a line that read a
+variable #466 had removed, so every draw threw and the zip held only the
+last planet; #469 found and fixed it, and 11 of 12 download tests that
+failed on the epic head passed after.
+
+### Verified
+
+- Each task: `make check-go fmt-check vet lint typecheck` and the e2e
+  specs it touched in all four projects (download-all 60 passed,
+  resources 86, ui-fixes 180, territories 40, large-view 94 at #469).
+- `make test-game-resources` on all three lines at #470: passed in 2,650
+  s. The rest of `make test-game` passed after the leftover-check fix.
+- Measured at 3072 tiles, seed 123456: default maps at most 760 MiB
+  (Vulcanus) and 36 s (Gleba) on 2.1.24; scrap at 600% 296 to 306
+  patches at 33 s and 675 MiB.
+- The final real-game rerun on the epic head follows this fold.
+- Real-game recheck on the epic head: PENDING
+
+### Gaps left
+
+- **No real-game test for the 2.1.9 map-settings layout or for updates
+  within a line (SPEC 10.3)** any more, since only the latest patch of
+  each line is pinned (Todd's ruling, 2026-11-11). 2.1.24 is checked to
+  refuse the 2.1.9 layout's file.
+- **1.1 at 600% Nauvis** fits with about 10 MiB to spare; its success is
+  logged, not asserted.
+- **Forced-colours contrast** of the Generate world button
+  (`#generate-button`) in the dark theme is 1.11:1 by axe. It predates
+  this batch; the forced-colours scan covers only the preparation block.
+- **`preview.js` is about 1,300 lines**, past the 800-line split point.
+- **Arrow keys in the large view** still step the planet during a
+  preparation, which ends it (SPEC 5.6).
+- Aquilo has only wells, so the ore gap and label hiding do not change it.
+- No real-game check of time and memory for five counts in a row.
+- DESIGN.md does not yet describe the preparation block.
+- Still deferred: as listed under fixes batch 5.
