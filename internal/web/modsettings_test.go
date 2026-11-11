@@ -78,6 +78,15 @@ func gameFile(t *testing.T, version string) []byte {
 	return b
 }
 
+// needCodec skips a test while package modsettings is still the epic's
+// contract stub; once the codec lands, any decode failure fails the test.
+func needCodec(t *testing.T) {
+	t.Helper()
+	if _, err := modsettings.Decode(gameFile(t, "2.0.77")); err != nil && err.Error() == "modsettings: not built yet" {
+		t.Skip("the mod-settings.dat codec is not merged yet")
+	}
+}
+
 // fakeDefs puts a stand-in for the definitions run in place for the test.
 func fakeDefs(t *testing.T, defs *game.ModSettingDefs, err error) {
 	t.Helper()
@@ -178,6 +187,7 @@ func TestModSettingsPageLoadsTheFormAfter(t *testing.T) {
 // left out, a one-value setting locked, an unknown type not editable; map
 // settings read-only on a world with a save; per-player settings one line.
 func TestModSettingsFormShowsTheSettings(t *testing.T) {
+	needCodec(t)
 	g := newModsRig(t, false)
 	id := g.world20("Base", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
@@ -210,6 +220,7 @@ func TestModSettingsFormShowsTheSettings(t *testing.T) {
 
 // Plan R2: a world with no save yet edits its map settings in the same form.
 func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
+	needCodec(t)
 	g := newModsRig(t, false)
 	id := g.world20("Fresh", "fmtest_1.0.0")
 	if err := os.Remove(filepath.Join(g.modsDir(id), "..", world.SavesDir, "base.zip")); err != nil {
@@ -243,6 +254,7 @@ func TestModSettingsNewMapEditsMapSettings(t *testing.T) {
 // SPEC 9.6, 9.13, plan R8: a save writes only the changed value, after a
 // snapshot, and the audit names the setting, never its value.
 func TestModSettingsSaveWritesTheChange(t *testing.T) {
+	needCodec(t)
 	g := newModsRig(t, false)
 	id := g.world20("Base", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
@@ -292,6 +304,7 @@ func TestModSettingsSaveWritesTheChange(t *testing.T) {
 // Plan R9, DESIGN 7.2: a refused value comes back in its field with its
 // error, the summary links to it, and nothing is written.
 func TestModSettingsRefusesABadValue(t *testing.T) {
+	needCodec(t)
 	g := newModsRig(t, false)
 	id := g.world20("Base", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
@@ -315,6 +328,7 @@ func TestModSettingsRefusesABadValue(t *testing.T) {
 // SPEC 9.13: a form drawn from another file saves nothing and shows the
 // current values.
 func TestModSettingsStaleFormSavesNothing(t *testing.T) {
+	needCodec(t)
 	g := newModsRig(t, false)
 	id := g.world20("Base", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
@@ -333,6 +347,7 @@ func TestModSettingsStaleFormSavesNothing(t *testing.T) {
 
 // A form posted with nothing changed says so and changes nothing.
 func TestModSettingsNoChange(t *testing.T) {
+	needCodec(t)
 	g := newModsRig(t, false)
 	id := g.world20("Base", "fmtest_1.0.0")
 	fakeDefs(t, fmtestSettingDefs(t), nil)
