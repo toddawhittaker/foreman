@@ -2212,6 +2212,8 @@ gate passes.
 19.2. **Gate B, after Epic 8: the new-user path works.** From `docker run`
 to a running Space Age server with three portal mods in under ten
 minutes, following only Foreman's own operator guide.
+Until Epic 11 publishes the image, the ten minutes start after `make
+image` (Todd's ruling, 2026-11-11).
 
 19.3. **Gate C, after Epic 11: v1.** Every P0 and P1 requirement is met; a
 bad mod update is undone in one click; security-reviewer finds nothing

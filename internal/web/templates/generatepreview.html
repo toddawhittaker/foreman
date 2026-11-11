@@ -157,6 +157,8 @@
       {{- /* Seen, not read out, as on the page: the picture fades and "Map preview ready." follows. */}}
       <p id="large-drawing" class="hint large-view__drawing"></p>
     </div>
+    {{- /* The preparation's news, said unseen, as its block over the stage shows it. */}}
+    <p class="visually-hidden" id="large-prep-news" role="status"></p>
     {{/* A view, not a setting, so it has no name; off on load, kept while the page lives (SPEC 5.6).
          The count waits for the picture and is dropped when the view, the planet or a setting changes. */}}
     <div class="resource-amounts" id="large-amounts-bar" data-ready="{{t "worlds.generate.resources.ready"}}">

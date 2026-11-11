@@ -45,15 +45,20 @@ document.addEventListener("DOMContentLoaded", () => {
   let alsoSaid = "";
   // News owed until it is said: a download's end that newer words would hide.
   let owed = "";
-  function announce(said) {
+  // The words announce() is about to say, so a count that ends first can withdraw them.
+  let waitingSaid = "";
+  // Unseen news repeats words already shown elsewhere in the open view, so its
+  // length cannot move the stage below the status line (SPEC 5.6).
+  function announce(said, unseen) {
     if (alsoSaid) said += (/[.…!?]$/.test(said) ? " " : ". ") + alsoSaid;
     if (owed && !said.includes(owed)) said += (/[.…!?]$/.test(said) ? " " : ". ") + owed;
     // Outside an open modal dialog the page is inert, so the dialog says it itself.
-    const target = dialog && dialog.open ? document.getElementById("large-status") : document.getElementById("announcer");
+    const target = dialog && dialog.open ? document.getElementById(unseen ? "large-prep-news" : "large-status") : document.getElementById("announcer");
     clearTimeout(saying);
     if (!target) return;
     target.textContent = "";
-    saying = setTimeout(() => { target.textContent = said; owed = ""; }, 50);
+    waitingSaid = said;
+    saying = setTimeout(() => { target.textContent = said; owed = ""; waitingSaid = ""; }, 50);
   }
   function largeStatus(text) {
     clearTimeout(saying);
@@ -338,9 +343,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // The seed used is kept, so the world made is the one previewed (SPEC 5.6).
     // It is the page's own choice, not the person's, so leaving does not warn about it.
+    // A box with focus is left alone, as writing moves the caret and typing would be appended; it is filled when focus leaves.
     if (seed && seed.value === seedSent && seedSent.trim() === "" && fresh.dataset.seed && formEl().querySelector("#mode-settings:checked")) {
-      seed.value = fresh.dataset.seed;
-      seed.defaultValue = fresh.dataset.seed;
+      if (document.activeElement === seed) seedToFill = fresh.dataset.seed;
+      else fillSeed(seed, fresh.dataset.seed);
     }
     const filled = formEl().querySelector("#filled-seed");
     if (filled && fresh.dataset.filledSeed) filled.value = fresh.dataset.filledSeed;
@@ -365,6 +371,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (say) announce(error ? words(error) : strings["js.generate.preview_ready"]);
   }
+
+  // The newest previewed seed, for a seed box that had focus when it came.
+  let seedToFill = "";
+  function fillSeed(seed, value) {
+    seed.value = value;
+    seed.defaultValue = value;
+  }
+  document.addEventListener("input", (e) => { if (e.target.id === "generate-seed") seedToFill = ""; });
+  document.addEventListener("focusout", (e) => {
+    const seed = e.target;
+    const value = seedToFill;
+    if (seed.id !== "generate-seed") return;
+    seedToFill = "";
+    if (value && seed.value.trim() === "" && formEl().querySelector("#mode-settings:checked")) fillSeed(seed, value);
+  });
 
   // A new section brings the page's amounts box unticked; it shows the choice made.
   function keepPageAmounts() {
@@ -637,6 +658,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (n !== at.sent || ctrl.signal.aborted) return;
       at.pending = null;
       counting(at, false);
+      // It counts no longer, so its start sentence, shown or on its way, goes;
+      // said late, it would grow the status line and move the stage (SPEC 5.6).
+      // News said with it stays, and is said now, before the failure.
+      const said = el(at.status);
+      const without = (text) => text.replace(startSaid, "").replace(/\s+/g, " ").trim();
+      if (said && at.shown() && waitingSaid.includes(startSaid)) {
+        clearTimeout(saying);
+        said.textContent = without(waitingSaid);
+        waitingSaid = "";
+        owed = "";
+      } else if (said && said.textContent.includes(startSaid)) said.textContent = without(said.textContent);
       const failed = el("resource-failed");
       if (failed) slot.replaceChildren(failed.content.cloneNode(true));
       sayAmounts(at, slot);
@@ -697,7 +729,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Another link is offered the Cancel of the one on its way.
       if (a !== prep.a) prep.block.querySelector("[data-prep-cancel]").focus();
       owed = news;
-      announce(news);
+      announce(news, prep.inView);
       return;
     }
     const plan = prepSteps(a.getAttribute("href"));
@@ -737,6 +769,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (p.ctrl) p.ctrl.abort();
     if (p.block.contains(document.activeElement)) p.a.focus();
     p.block.remove();
+    // Its news goes with it, so the dialog never tells of a download no longer there.
+    const news = el("large-prep-news");
+    if (news) news.textContent = "";
     if (!said) return;
     // Owed until said, so a planet's news that follows says it as well (SPEC 17.15).
     owed = said;
@@ -769,7 +804,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // Said once as each run starts; the bar is only seen.
       const tell = (key) => {
         text.textContent = say(key, vars);
-        announce(text.textContent);
+        // The block shows the words, so in the large view they are only said.
+        announce(text.textContent, p.inView);
       };
       p.ctrl = new AbortController();
       const why = await prepStep(step, p.ctrl.signal, block, tell);
@@ -789,7 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
           without.textContent = say("js.preview.prepare_without", { planet: vars.planet });
           without.hidden = false;
         }
-        announce(words(failure));
+        announce(words(failure), p.inView);
         if (lead) (without.hidden ? retry : without).focus();
         return;
       }

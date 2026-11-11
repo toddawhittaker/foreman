@@ -39,7 +39,7 @@ test("25 results: a table a page at a time, ticks kept across pages, one plan fo
   await page.keyboard.press("Enter");
   await expect(page.locator("#results-heading")).toBeFocused();
   await expect(page.getByRole("table", { name: /Showing 11 to 20\./ })).toBeVisible();
-  await expect(page.locator("#picks-elsewhere")).toHaveText("Also ticked on other pages: fp-pg-01.");
+  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
   await page.getByRole("checkbox", { name: "fp-pg-12" }).focus();
   await page.keyboard.press("Space");
   await checkPage(page);
@@ -71,6 +71,41 @@ test("25 results: a table a page at a time, ticks kept across pages, one plan fo
   await add.getByRole("link", { name: "Back to the plan" }).click();
   await expect(page).toHaveURL(/#confirm-heading$/);
   await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeInViewport();
+});
+
+// SPEC 9.1: ticks are kept across new searches, so mods found by several searches go into one plan.
+test("three searches, one tick each, one plan with all three", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
+  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+  for (const n of ["fp-pg-02", "fp-pg-03", "fp-pg-04"]) {
+    await page.getByLabel("Mod name").fill(n);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByRole("table").getByRole("checkbox", { name: n }).check();
+  }
+  // The mods ticked in earlier searches are listed with their own boxes, so one can be unticked.
+  const ticked = page.getByRole("group", { name: "Also ticked" });
+  await expect(ticked.getByRole("checkbox")).toHaveCount(3);
+  await expect(ticked.getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
+  await checkPage(page);
+  await shot(page, "mods-search-ticked");
+  await ticked.getByRole("checkbox", { name: "fp-pg-02" }).uncheck();
+  await page.getByRole("button", { name: "Add ticked mods to plan" }).click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Install mods in Base?" })).toBeVisible();
+  const asked = page.locator("#mod-plan .plan-groups");
+  for (const n of ["fp-pg-01", "fp-pg-03", "fp-pg-04"]) await expect(asked).toContainText(`${n} 1.0.0`);
+  await expect(asked).not.toContainText("fp-pg-02");
+  await expect(page.getByRole("button", { name: "Install 3 mods" })).toBeVisible();
+});
+
+// SPEC 9.1: Enter in the search box runs a new search, not Add ticked mods, and keeps the ticks.
+test("Enter in the search box searches and keeps the ticks", async ({ page }) => {
+  await page.goto("/worlds/base/mods/search?q=fp-pg-01");
+  await page.getByRole("checkbox", { name: "fp-pg-01" }).check();
+  await page.getByLabel("Mod name").fill("fp-pg-02");
+  await page.getByLabel("Mod name").press("Enter");
+  await expect(page.getByRole("heading", { level: 2, name: 'Mods matching "fp-pg-02"' })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Also ticked" }).getByRole("checkbox", { name: "fp-pg-01" })).toBeChecked();
 });
 
 test("Add ticked mods with nothing ticked says so on the search page", async ({ page }) => {

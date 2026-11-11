@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -94,11 +95,92 @@ func TestSearchPagesAndTable(t *testing.T) {
 	_, last := g.getStatus(modsPath(id) + "/search?q=pager&page=3&pick=pager-21&pick=pager-01")
 	wantIn(t, "last page", plain(last), "Showing 21 to 25.", "Page 3 of 3", `id="results-heading" tabindex="-1" autofocus`,
 		`value="pager-21" id="mod-pager-21-pick" checked>`,
-		`<input type="hidden" name="pick" value="pager-01">`, "Also ticked on other pages: pager-01.",
+		`<legend>Also ticked in other searches or on other pages</legend>`,
+		`<input type="checkbox" name="pick" value="pager-01" checked>`,
 		`<input type="hidden" name="at" value="3">`, `name="page" value="2">Previous page</button>`)
 	if strings.Contains(between(last, "<main", "</main>"), "Next page") {
 		t.Error("the last page offers a next page")
 	}
+}
+
+// Ticks from earlier searches stay ticked through a new search that finds
+// nothing and through a search left empty, and Add ticked mods adds them from
+// either, so mods found by several searches go into one plan (SPEC 9.1).
+func TestSearchKeepsTicksAcrossSearches(t *testing.T) {
+	g, id := pagerRig(t)
+	_, body := g.getStatus(modsPath(id) + "/search?q=pager-05&pick=pager-21&pick=pager-22")
+	main := between(body, "<main", "</main>")
+	wantIn(t, "new search", plain(main), `<input type="checkbox" name="pick" value="pager-21" checked>`,
+		`<input type="checkbox" name="pick" value="pager-22" checked>`, `>Add ticked mods to plan</button>`,
+		`<input type="hidden" name="shown" value="pager-05">`)
+	// One form holds the search box and the boxes, so a new search sends the ticks.
+	if n := strings.Count(main, "<form"); n != 1 {
+		t.Errorf("%d forms, want one", n)
+	}
+	for _, q := range []string{"", "%20%20", strings.Repeat("a", maxSearchQuery+1)} {
+		code, bad := g.getStatus(modsPath(id) + "/search?q=" + q + "&pick=pager-01")
+		if code != http.StatusBadRequest {
+			t.Errorf("search %q: %d", q, code)
+		}
+		wantIn(t, "bad search", plain(bad), `<input type="checkbox" name="pick" value="pager-01" checked>`, `>Add ticked mods to plan</button>`)
+		if strings.Contains(bad, "results-heading") {
+			t.Errorf("search %q shows results", q)
+		}
+	}
+	for path, names := range map[string][]string{
+		"/search?q=&pick=pager-01&picked=1":                    {"pager-01"},
+		"/search?q=other&pick=pager-01&pick=pager-02&picked=1": {"pager-01", "pager-02"},
+	} {
+		rec := g.harness.get(modsPath(id)+path, withCookie(g.cookie))
+		loc, _ := url.Parse(rec.Header().Get("Location"))
+		if rec.Code != http.StatusSeeOther || !slices.Equal(loc.Query()["name"], names) {
+			t.Errorf("%s: %d to %q, want a plan naming %v", path, rec.Code, loc, names)
+		}
+	}
+}
+
+// Paging and Add ticked mods use the search shown, not text typed in the box
+// since (SPEC 9.1).
+func TestSearchPagesTheSearchShown(t *testing.T) {
+	g, id := pagerRig(t)
+	_, body := g.getStatus(modsPath(id) + "/search?q=typed&shown=pager&page=2")
+	wantIn(t, "paged", plain(body), "Showing 11 to 20.", `<input type="hidden" name="shown" value="pager">`)
+	rec := g.harness.get(modsPath(id)+"/search?q=typed&shown=pager&at=2&pick=pager-12&picked=1", withCookie(g.cookie))
+	want := planPath(id, url.Values{"kind": {"install"}, "name": {"pager-12"}, "q": {"pager"}, "page": {"2"}})
+	if got := rec.Header().Get("Location"); got != want {
+		t.Errorf("went to %q, want %q", got, want)
+	}
+	// Enter in the box sends no page, so it runs the typed search.
+	_, typed := g.getStatus(modsPath(id) + "/search?q=pager-05&shown=pager")
+	wantIn(t, "typed", plain(typed), `<input type="hidden" name="shown" value="pager-05">`)
+}
+
+// Ticks stay on the page when the portal cannot be reached.
+func TestSearchPortalDownKeepsTicks(t *testing.T) {
+	g := newModsRig(t, true)
+	id := g.world20("Base")
+	g.portal.FailAPI(http.StatusInternalServerError)
+	code, body := g.getStatus(modsPath(id) + "/search?q=alpha&pick=beta")
+	if code != http.StatusBadGateway {
+		t.Errorf("portal down: %d", code)
+	}
+	wantIn(t, "portal down", plain(body), "could not reach the mod portal",
+		`<input type="checkbox" name="pick" value="beta" checked>`, `>Add ticked mods to plan</button>`)
+}
+
+// More ticks than one plan holds are refused with a message, not dropped.
+func TestSearchRefusesTooManyTicks(t *testing.T) {
+	g, id := pagerRig(t)
+	v := url.Values{"q": {"pager"}, "picked": {"1"}}
+	for i := range maxPlanNames + 1 {
+		v.Add("pick", fmt.Sprintf("m%02d", i))
+	}
+	rec := g.harness.get(modsPath(id)+"/search?"+v.Encode(), withCookie(g.cookie))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("too many ticks: %d", rec.Code)
+	}
+	body := plain(rec.Body.String())
+	wantIn(t, "too many", body, "Too many mods are ticked for one plan. The limit is 50.", `value="m50" checked>`)
 }
 
 // Add ticked mods starts one plan with every ticked mod, at the same page of
