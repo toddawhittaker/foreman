@@ -57,7 +57,8 @@ var nauvisCount = resource.Result{
 		{Name: "iron-ore", X: -50, Y: -30, Amount: 12_345_678, Entities: 900, Box: [4]int{-70, -55, -45, -5}},
 		{Name: "crude-oil", X: 50, Y: -50, Amount: 900_000, Entities: 3, Box: [4]int{46, -54, 56, -46}, Normal: 300_000},
 		{Name: "copper-ore", X: 30, Y: 40, Amount: 1_500_000, Entities: 80, Box: [4]int{26, 36, 34, 44}},
-		{Name: "iron-ore", X: -40, Y: -30, Amount: 250_000, Entities: 30, Box: [4]int{-43, -33, -37, -27}},
+		// 65 tiles below the large patch, so its label is not hidden beside it (SPEC 5.6).
+		{Name: "iron-ore", X: -40, Y: 63, Amount: 250_000, Entities: 30, Box: [4]int{-43, 60, -37, 66}},
 	},
 }
 
@@ -96,7 +97,7 @@ func TestResourcesAnswerFromTheStore(t *testing.T) {
 		`<summary>Resource amounts as text (4 patches)</summary>`,
 		"Positions are in tiles from where players start, as (x, y).",
 		`<h4>Iron ore: 12,595,678 in total</h4>`,
-		`<li>12,345,678 at (-50, -30)</li><li>250,000 at (-40, -30)</li>`,
+		`<li>12,345,678 at (-50, -30)</li><li>250,000 at (-40, 63)</li>`,
 		`<h4>Copper ore: 1,500,000 in total</h4>`,
 		`<h4>Crude oil: 300% yield in total</h4>`,
 		`<li>300% yield at (50, -50)</li>`,
