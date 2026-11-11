@@ -1,6 +1,8 @@
 package world
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -156,6 +158,9 @@ func (m *Manager) ApplyModsHeld(id string, change ModChange, fingerprint string)
 	} else if got != fingerprint {
 		return ErrModsChanged
 	}
+	if err := checkSettingsSeen(root, change); err != nil {
+		return err
+	}
 
 	adds, err := checkChange(worlds, root, meta, change)
 	if err != nil {
@@ -225,8 +230,35 @@ func (m *Manager) CheckModChange(id string, change ModChange) error {
 	if err != nil {
 		return err
 	}
+	if err := checkSettingsSeen(root, change); err != nil {
+		return err
+	}
 	_, err = checkChange(worlds, root, meta, change)
 	return err
+}
+
+// MaxModSettings is the largest mod-settings.dat Foreman reads, compares
+// or accepts as an upload. Real files are a few kilobytes.
+const MaxModSettings = 4 << 20
+
+// checkSettingsSeen refuses, with ErrModsChanged, a change that carries new
+// settings drawn from a mod-settings.dat the world no longer holds. An empty
+// SettingsSeen skips the check, as an upload does. A missing file counts as
+// empty. The caller holds Lock(id), so the file cannot change before the
+// write that follows.
+func checkSettingsSeen(root *os.Root, change ModChange) error {
+	if change.Settings == nil || change.SettingsSeen == "" {
+		return nil
+	}
+	b, err := ReadSmallFile(root, path.Join(ModsDir, ModSettingsFile), MaxModSettings)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	sum := sha256.Sum256(b)
+	if hex.EncodeToString(sum[:]) != change.SettingsSeen {
+		return ErrModsChanged
+	}
+	return nil
 }
 
 // checkChange reads and names the staged zips of a change and refuses one
