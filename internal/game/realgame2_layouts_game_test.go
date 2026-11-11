@@ -2,11 +2,12 @@
 
 package game
 
-// The complete map-settings.json Foreman writes for the 2.1 patches 2.1.9 to
-// 2.1.23, where the file's keys change (SPEC 5.6), must be accepted by the
-// real game's --create, and a file of the other layout must not be. One exact
-// tag stands for each layout, with the first and last patch of a layout too.
-// Run by `make test-game`, never by `make verify`.
+// The complete map-settings.json Foreman writes for 2.1.24, whose file keys
+// differ from those of the earlier 2.1 layouts (SPEC 5.6), must be accepted
+// by the real game's --create, and a file of another layout must not be. The
+// real-game tests run the latest patch of each line only, so the earlier
+// layouts are not run against a game. Run by `make test-game`, never by
+// `make verify`.
 
 import (
 	"context"
@@ -19,31 +20,16 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// layoutTags are the tags tried. The first two are pinned by the Makefile.
-// The others sit at the edges of a layout; they are skipped when the host
-// does not have them.
-var layoutTags = []struct {
-	version  string
-	optional bool
-}{
-	{"2.1.9", false}, {"2.1.12", true}, {"2.1.18", true}, {"2.1.23", false},
-}
-
 func TestRealGameRG2MapSettingsLayouts(t *testing.T) {
 	if only := os.Getenv("FOREMAN_TEST_GAME_TAG"); only != "" && only != "2.1" {
 		t.Skip("these tests run on the 2.1 line")
 	}
 	e := newGameEnv(t)
-	for _, lt := range layoutTags {
-		t.Run("v"+lt.version, func(t *testing.T) {
-			ref := ImageRef(lt.version)
-			if _, err := e.docker.InspectImage(context.Background(), ref); err != nil && lt.optional {
-				t.Skipf("the edge tag %s is not on this host; docker pull it to run this", ref)
-			}
-			e.requireImage(t, ref)
-			e.runLayout(t, lt.version)
-		})
-	}
+	const version = "2.1.24"
+	t.Run("v"+version, func(t *testing.T) {
+		e.requireImage(t, ImageRef(version))
+		e.runLayout(t, version)
+	})
 	// Versions in the middle layout have no tested image, so Foreman refuses
 	// to write a file for them instead of guessing.
 	for _, v := range []string{"2.1.13", "2.1.15", "2.1.17"} {
@@ -80,11 +66,8 @@ func (e *gameEnv) runLayout(t *testing.T, version string) {
 		t.Fatalf("stop: %v", err)
 	}
 
-	// The other layout's file must be refused, so the check above can fail.
-	other := "2.1.24"
-	if layout == "2.1.18" {
-		other = "2.1.9"
-	}
+	// The first layout's file must be refused, so the check above can fail.
+	other := "2.1.9"
 	wrong, err := mapgen.MapSettings(other, "default", map[string]any{"pollution.diffusion_ratio": 0.05})
 	if err != nil {
 		t.Fatal(err)

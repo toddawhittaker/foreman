@@ -715,13 +715,23 @@ not) or a map exchange string, with Space Age on or off. (P0)
     of the same resource with at least 4 times its amount lies within 64
     tiles on both axes, box edge to box edge; the list still gives it.
     - **Patches.** Ores of one resource are one patch where their tiles
-      are within 6 tiles of each other. At 2 tiles, Fulgora at 3072 tiles
-      had 946 ore patches, 578 of them under 10 entities; at 6 it has 296,
-      48 under 10. On Nauvis no two separate fields join at any gap up
-      to 16. Fulgora's scrap joins within 16 tiles instead,
-      since at 2 its islands carried dozens of labels each at high
-      frequency; a few labels can then join neighbouring islands across
-      thin channels (ADR 0015). Wells are the resources whose mineable
+      are within 6 tiles of each other. At 3072 tiles on 2.1.24, 2 tiles
+      gave Nauvis 138 ore patches (22 under 10 entities) against 112 (4)
+      at 6, Vulcanus 338 (118) against 228 (45) and Gleba 280 (68)
+      against 235 (28). On Nauvis no two separate fields join at any gap
+      up to 16. The one exception is a dense count, one with more than
+      400,000 ore tiles in the picture: its ores join within 2 tiles, so
+      its patch list is finer. No default map comes near it (Vulcanus at
+      3072 has the most, 141,912), and Nauvis with every resource at 600%
+      has about 1.1 million. At 6, the richest of them (Nauvis at 400%
+      and above) ran past the 60 s limit before running out of memory,
+      and the page said to try again where only a smaller size helps (Todd's decision, 2026-11-11; ADR 0015).
+      Aquilo has only wells. Fulgora's only resource, scrap, joins within
+      16 tiles whatever the ore gap, since at 2 its islands carried
+      dozens of labels each at high frequency: at 3072 Fulgora has 240
+      patches (23 under 10) at the defaults, and 296 and 303 on two seeds
+      with scrap frequency at 600% (296 and 306 on 2.0.77). A few labels can then join neighbouring islands
+      across thin channels (ADR 0015). Wells are the resources whose mineable
       product is a fluid (crude oil, sulfuric acid, fluorine, lithium
       brine), and wells of one resource within 24 tiles are one patch,
       because 12 tiles split real fields. A well shows its **yield**, 100 × the patch's summed
@@ -754,12 +764,12 @@ not) or a map exchange string, with Space Age on or off. (P0)
       are not held is refused (409).
     - **Cost, measured** with seed 123456 at default settings, at 3072 tiles
       (the most offered), on every planet, on 1.1.110, 2.0.77 and 2.1.24: at
-      most 757 MiB and 33 s (Gleba on 2.1.24), against the 1 GiB and 60 s
+      most 760 MiB (Vulcanus) and 36 s (Gleba), both on 2.1.24, against the 1 GiB and 60 s
       limits (14.3), so no size is held back. Nauvis with resource
-      frequency and size at 600% runs out of memory in the game itself on
-      2.x (generating alone peaks at 825 MiB), and fails safe with the
-      out-of-memory message and "choose a smaller preview size"; 1.1 fits
-      it.
+      frequency and size at 600% is a dense count (Patches above): on 2.x
+      it runs out of memory at about 30 s (generating alone peaks at 822
+      MiB) and fails safe with the out-of-memory message and "choose a
+      smaller preview size"; 1.1 fits it, at 1,014 MiB and 37 s.
     - **While it runs and after.** A visible line and an indeterminate bar
       say that counting can take up to a minute. Busy, timeout, out of
       memory, missing image, failed and invalid settings each have their own
