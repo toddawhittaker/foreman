@@ -139,7 +139,9 @@ The targets (STACK.md, section 13):
   latest patch of each line only (1.1.110, 2.0.77 and 2.1.24), and the
   target checks that each image it needs is on the host before any test
   starts. It runs everything but the resource count's tests within 30
-  minutes, then those tests as `make test-game-resources` does.
+  minutes, then those tests as `make test-game-resources` does. The
+  resource tests run even when the rest fail, and the target ends with
+  the first failure's status.
 - `make test-game-resources`: run only the resource count's real-game
   tests (SPEC 5.6), with their own limit of 90 minutes, after the same
   image check. `TAG` works as for `make test-game`. They take most of a

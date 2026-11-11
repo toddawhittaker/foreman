@@ -282,9 +282,14 @@ game-images:
 	$(if $(filter 2.0,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_0)))
 	$(if $(filter 2.1,$(TEST_GAME_USES_$(TAG))),$(call CHECK_GAME_IMAGE,$(GAME_IMAGE_2_1)))
 
+# The resource tests run even when the rest fail, and the first failure's
+# status is the target's.
 test-game: game-images
-	$(GAME_GO_TEST) -timeout 30m -run TestRealGame -skip '$(GAME_RESOURCE_TESTS)' ./internal/game/ ./internal/web/
-	$(GAME_RESOURCES_RUN)
+	status=0; \
+	$(GAME_GO_TEST) -timeout 30m -run TestRealGame -skip '$(GAME_RESOURCE_TESTS)' ./internal/game/ ./internal/web/ || status=$$?; \
+	$(GAME_RESOURCES_RUN) || second=$$?; \
+	[ $$status -ne 0 ] || status=$${second:-0}; \
+	exit $$status
 
 test-game-resources: game-images
 	$(GAME_RESOURCES_RUN)
