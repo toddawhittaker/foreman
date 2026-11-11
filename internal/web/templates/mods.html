@@ -89,26 +89,30 @@
             {{- end}}
             <code>{{.Version}}</code>
             {{- if not .Enabled}}<span class="badge">{{t "mods.state.off"}}</span>{{end}}
-            {{- if .Local}}<span class="badge">{{t "mods.badge.local"}}</span>
-            {{- else}}
-            {{- /* Beside the version it changes, so the actions keep their 320 px line. Any release on the world's line, older too, so it also goes back after a bad update (SPEC 9.3). The status takes it away for a mod the portal lacks. */}}
-            <a href="{{$.Page.VersionPath .}}" id="{{$.Page.VersionSlot .Name}}" class="button button--quiet mod-version">{{t "mods.row.version"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-            {{- end}}
+            {{- if .Local}}<span class="badge">{{t "mods.badge.local"}}</span>{{end}}
           </div>
           {{- if not .Local}}<div id="{{$.Page.NoteSlot .Name}}" hidden></div>{{end}}
         </td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
+          {{- /* Two groups that each keep their line: what the portal offers, filled in by the status, then Disable and Remove, which sit in the same place in every row (DESIGN 8.11). */}}
           <div class="row-actions mod-actions">
-            {{- if not .Local}}<span id="{{$.Page.UpdateSlot .Name}}" hidden></span>{{end}}
-            {{- if .Enabled}}
-            <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-            {{- else}}
-            <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-            {{- end}}
             {{- if not .Local}}
-            {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
-            <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            <div class="mod-actions__portal">
+              <span id="{{$.Page.UpdateSlot .Name}}" hidden></span>
+              <span id="{{$.Page.VersionSlot .Name}}" hidden></span>
+            </div>
             {{- end}}
+            <div class="mod-actions__fixed">
+              {{- if .Enabled}}
+              <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+              {{- else}}
+              <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+              {{- end}}
+              {{- if not .Local}}
+              {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
+              <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+              {{- end}}
+            </div>
           </div>
         </td>
       </tr>
@@ -225,7 +229,7 @@
 {{end}}
 {{- end}}
 
-{{/* What the portal says about the world's mods (SPEC 9.3, #131): one
+{{/* What the portal says about the world's mods (SPEC 9.3): one
      summary line here, and each mod's news and fix in its own row through
      the out-of-band slots. Takes ModStatus. */}}
 {{define "mod-status" -}}
@@ -260,9 +264,12 @@
   {{- end}}
 </div>
 {{- end}}
+{{- if .Installed}}
+{{- /* Any release on the world's line, older too, so it also goes back after a bad update (SPEC 9.3). */}}
+<span id="{{$.VersionSlot .Name}}" hx-swap-oob="true"><a href="{{$.VersionPath .Name .Installed}}" class="button button--quiet mod-version">{{t "mods.row.version"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a></span>
+{{- end}}
 {{- if .NotOnPortal}}
 <span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="{{$.NoteSlot .Name}}" hx-swap-oob="true">{{.Name}}</span>
-<span id="{{$.VersionSlot .Name}}" hidden hx-swap-oob="true"></span>
 {{- end}}
 {{- end}}
 {{- end}}

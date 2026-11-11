@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import { countClicks, expectWithin } from "./clicks.js";
 import type { Page, Request } from "@playwright/test";
 
@@ -20,6 +20,7 @@ const isAuto = (r: Request) => r.method() === "POST" && r.url().endsWith("/gener
 const shot = (page: Page, name: string) => page.screenshot({ path: `../screenshots/${name}-${test.info().project.name}.png` });
 // The view needs 77rem; the desktop projects are 1280 wide, the phone ones 320.
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) >= 1240;
+const keysInSetting = "In a setting, the keys change the setting: an arrow moves a slider, not the map.";
 
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
@@ -263,12 +264,94 @@ test.describe("on a wide screen", () => {
     expect(sent.length).toBe(1);
     await expectWithin(clicks, 1, "Change the setting of the planet in the large view and see it");
   });
+
+  // DESIGN 8.8: the column's headings read as headings, a step above the fields' names,
+  // and the column says that a setting keeps its own keys.
+  test("the settings' headings are set as headings, and the column says a setting keeps its keys", async ({ page }) => {
+    await openLarge(page);
+    const heading = panel(page).getByRole("heading", { level: 3, name: "Resources" });
+    const look = await heading.evaluate((h) => { const s = getComputedStyle(h); return { size: s.fontSize, weight: s.fontWeight }; });
+    expect(look).toEqual({ size: "18px", weight: "600" });
+    // A step above the groups' names inside the column.
+    const group = await panel(page).locator("legend").first().evaluate((l) => parseFloat(getComputedStyle(l).fontSize));
+    expect(group).toBeLessThan(18);
+    // At the column's top, above its headings; the map's own key help is left as it is.
+    const hint = panel(page).getByText(keysInSetting);
+    await expect(hint).toBeVisible();
+    expect((await hint.boundingBox())!.y).toBeLessThan((await heading.boundingBox())!.y);
+    await expect(page.locator("#large-keys")).not.toContainText(keysInSetting);
+  });
+
+  // The view is a modal dialog: Tab goes through its controls in the order they are
+  // seen, the settings, then the map and the controls over it, and never leaves it.
+  test("Tab moves through the view in order and stays inside it", async ({ page }) => {
+    await openLarge(page);
+    await expect(frame(page)).toBeFocused();
+    // Each stop's place in the document, or -1 when focus is outside the dialog.
+    const where = () => page.evaluate(() => {
+      const a = document.activeElement;
+      const d = document.getElementById("large-view")!;
+      if (!a || !d.contains(a)) return { at: -1, id: a ? a.id || a.tagName : "" };
+      const all = [...d.querySelectorAll("*")];
+      return { at: all.indexOf(a), id: a.matches(".step__range") ? "a slider" : a.id || a.className };
+    });
+    const start = await where();
+    const seen: { at: number; id: string }[] = [];
+    for (let i = 0; i < 400; i++) {
+      await page.keyboard.press("Tab");
+      const now = await where();
+      expect(now.at, `Tab ${i + 1} left the view for ${now.id}`).toBeGreaterThanOrEqual(0);
+      seen.push(now);
+      if (now.at === start.at) break;
+    }
+    expect(seen.at(-1)!.at, "Tab came back round to the map").toBe(start.at);
+    // In document order, wrapping once from the last control to the first.
+    const drops = seen.filter((s, i) => i > 0 && s.at < seen[i - 1].at).length;
+    expect(drops).toBe(1);
+    const ids = seen.map((s) => s.id);
+    for (const id of ["large-prev", "large-next", "large-close", "large-out", "large-in", "large-download", "large-amounts"]) expect(ids).toContain(id);
+    expect(ids).toContain("a slider");
+    // From the map: the controls over it, then round to the bar, and the settings before the map.
+    const at = (id: string) => ids.indexOf(id);
+    expect(at("large-in")).toBeLessThan(at("large-download"));
+    expect(at("large-amounts")).toBeLessThan(at("a slider"));
+    expect(at("large-prev")).toBeLessThan(at("large-next"));
+    expect(at("large-close")).toBeLessThan(at("large-in"));
+    // Shift+Tab from the first control goes round to the last.
+    await page.locator("#large-download").focus();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.locator("#large-in")).toBeFocused();
+  });
+
+  // DESIGN 7.7, 8.8: Escape closes the open info tip first; the next one closes the view.
+  test("Escape on an info tip in the settings closes the tip, then the view", async ({ page }) => {
+    await openLarge(page);
+    // No Resources or Terrain setting has a tip yet, so Enemy's starting area lends its field.
+    await page.evaluate(() => {
+      const field = document.querySelector("#panel-enemy button.tip")!.closest(".field")!;
+      document.getElementById("large-resources")!.append(field);
+    });
+    const tip = panel(page).locator("button.tip").first();
+    await tabTo(page, tip);
+    await expect(tip).toHaveAttribute("aria-expanded", "true");
+    const text = page.locator(`[id="${await tip.getAttribute("aria-controls")}"]`);
+    await expect(text).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(tip).toHaveAttribute("aria-expanded", "false");
+    await expect(text).toBeHidden();
+    await expect(dialog(page)).toBeVisible();
+    await expect(tip).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toBeHidden();
+  });
 });
 
 test("where the settings and the map do not both fit, the view is map only", async ({ page }) => {
   if (isWide(page)) await page.setViewportSize({ width: 1100, height: 760 });
   await openLarge(page);
   await expect(panel(page)).toBeHidden();
+  // With no settings beside the map, the key help does not speak of them.
+  await expect(page.getByText(keysInSetting)).toBeHidden();
   const d = (await dialog(page).boundingBox())!;
   const f = (await frame(page).boundingBox())!;
   // The frame takes the dialog's width less its padding.

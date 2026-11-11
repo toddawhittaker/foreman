@@ -60,7 +60,7 @@ func exampleFile(t *testing.T, version string) map[string]any {
 	return flatJSON(t, b)
 }
 
-// The file must hold every key the version knows (F3: the game refuses one
+// The file must hold every key the version knows (the game refuses one
 // missing any), and each preset must come out as the game itself makes it
 // with only --preset: its golden parse, for every key the example file has.
 func TestMapSettingsIsTheGamesOwnPresetInFull(t *testing.T) {

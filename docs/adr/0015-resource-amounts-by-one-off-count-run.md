@@ -37,3 +37,11 @@ and 2.1.24), so there is no size cap and no lean run; both were the
 fallbacks. Nauvis at 600% runs out of memory on 2.x and fails safe. The Lua
 is proved only in a real game, against a scan of every tile; the file's map
 colour lets that test check labels against the picture.
+
+Downloads draw only counts already held and never start a run. Their
+labels must read as the page's `Intl.NumberFormat` compact and percent
+output, which Go has no equivalent for, so `internal/web/compact.go` holds
+a table of the CLDR patterns for the eight languages, pinned by a test of
+literals pasted from Node's `Intl` (the same ICU data). A new language needs a row
+there, and a CLDR change in browsers can make the two drift until the
+table is updated.

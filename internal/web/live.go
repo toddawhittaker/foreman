@@ -15,7 +15,7 @@ import (
 // liveRegions are the parts of the server page a live update replaces.
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
-var liveRegions = []string{"active", "facts", "players", "control"}
+var liveRegions = []string{"active", "facts", "loads", "players", "control"}
 
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
@@ -129,6 +129,9 @@ type liveStream struct {
 	moved   bool       // the page was told to follow a switch
 	// doneOp is the ID of the last ended operation the page has seen.
 	doneOp uint64
+	// fix is the path of the main fix of the refusal the page last showed,
+	// or "".
+	fix string
 }
 
 // modsRecheckEvent tells the Server page to load its mods notice again.
@@ -168,16 +171,20 @@ func (l *liveStream) send(p ServerPage) error {
 	if o := p.Status.Operation; o != nil && o.Done && o.ID != l.doneOp {
 		recheck, l.doneOp = true, o.ID
 	}
+	// A refusal that carries the fix for the mods notice's plan takes the
+	// notice's own button away, and a refusal that goes brings it back. The
+	// result may be stored after the operation ends or by another admin's
+	// request, so the notice asks again whenever the refusal's fix changes.
+	fix := ""
+	if f := p.Failure(); f != nil && f.Fix != nil {
+		fix = f.Fix.Path
+	}
+	if fix != l.fix {
+		recheck, l.fix = true, fix
+	}
 	l.started, l.state, l.result = true, p.Status.State, result
 
 	wrote := false
-	if recheck {
-		// An event with no data is never delivered, so it carries a word.
-		if err := l.event(modsRecheckEvent, "ended"); err != nil {
-			return err
-		}
-		wrote = true
-	}
 	for _, region := range liveRegions {
 		var b strings.Builder
 		if err := l.render.Fragment(&b, l.loc, p, "server-"+region); err != nil {
@@ -189,6 +196,15 @@ func (l *liveStream) send(p ServerPage) error {
 		}
 		l.sent[region] = data
 		if err := l.event(region, data); err != nil {
+			return err
+		}
+		wrote = true
+	}
+	// After the regions, so a notice that drops its button finds the
+	// refusal's already on the page to take its focus.
+	if recheck {
+		// An event with no data is never delivered, so it carries a word.
+		if err := l.event(modsRecheckEvent, "ended"); err != nil {
 			return err
 		}
 		wrote = true

@@ -521,7 +521,7 @@ func (s *server) downloadFor(ctx context.Context, worlds map[string]string, by g
 
 // handleImportUpload makes a new world from one uploaded save (SPEC 5.5).
 // A refused upload leaves no world. Syncing the save's mods from the
-// portal comes with Epic 5.
+// portal is a separate step (SPEC 9.8).
 func (s *server) handleImportUpload(w http.ResponseWriter, r *http.Request, u store.User) {
 	id, f, unchecked, err := s.receiveImport(r)
 	switch {

@@ -136,3 +136,32 @@ func TestPortalUncheckedNote(t *testing.T) {
 		t.Errorf("the note is not shown:\n%s", b.String())
 	}
 }
+
+// SPEC 9.3, 7.4: a refusal that arrives, or goes, while the page is open
+// reloads the mods notice, which drops its button for the refusal's fix or
+// takes it back.
+func TestRefusalChangeReloadsTheModsNotice(t *testing.T) {
+	r := newTestRenderer(t)
+	gone := world.Problem{Kind: world.ProblemModGone, Gone: []world.GoneMod{{Name: "visible-planets", Version: "1.5.5", Update: "1.7.2"}}}
+	refused := serverCase(game.StateStopped, func(p *ServerPage) {
+		p.HaveResult = true
+		p.Result = actionResult{Action: game.AuditStart, Err: &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{gone}}}}
+	})
+	calm := serverCase(game.StateStopped, func(*ServerPage) {})
+	event := "event: " + modsRecheckEvent + "\n"
+	l := &liveStream{render: r, sent: map[string]string{}}
+	rec := httptest.NewRecorder()
+	l.w, l.rc = rec, http.NewResponseController(rec)
+	for i, c := range []struct {
+		page ServerPage
+		want int
+	}{{calm, 0}, {calm, 0}, {refused, 1}, {refused, 0}, {calm, 1}} {
+		rec.Body.Reset()
+		if err := l.send(c.page); err != nil {
+			t.Fatal(err)
+		}
+		if got := strings.Count(rec.Body.String(), event); got != c.want {
+			t.Errorf("send %d: %d mods events, want %d", i, got, c.want)
+		}
+	}
+}

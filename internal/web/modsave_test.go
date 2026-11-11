@@ -45,7 +45,7 @@ func TestCompareSave(t *testing.T) {
 	}
 }
 
-// #373: the tab says whether the mods match the save, and offers the
+// SPEC 9.8: the tab says whether the mods match the save, and offers the
 // match only when they differ or the save cannot be read.
 func TestModsTabSaysWhetherTheSaveMatches(t *testing.T) {
 	g := newModsRig(t, true)
@@ -57,7 +57,7 @@ func TestModsTabSaysWhetherTheSaveMatches(t *testing.T) {
 	g.writeMod(id, "foreman-test", "0.1.0")
 	_, body := g.getStatus(modsPath(id))
 	wantIn(t, "matching tab", body, `The mods match the save <code>base.zip</code>.`,
-		// #372: with Space Age on, all built-in mods are on.
+		// SPEC 9.7: with Space Age on, all built-in mods are on.
 		"Space Age is on, so all of them are on.", `id="act-built-in-settings">Change Space Age</a>`)
 	if strings.Contains(body, `id="act-sync"`) {
 		t.Error("the tab offers to match mods that already match")
@@ -79,7 +79,7 @@ func TestModsTabSaysWhetherTheSaveMatches(t *testing.T) {
 	}
 }
 
-// #371: a world with only built-in mods has no Mod settings section; a
+// SPEC 9.6: a world with only built-in mods has no Mod settings section; a
 // refused upload opens its folded form, so the error summary reaches it.
 func TestModsTabFoldsTheRareForms(t *testing.T) {
 	g := newModsRig(t, true)

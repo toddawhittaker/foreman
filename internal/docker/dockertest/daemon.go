@@ -76,6 +76,10 @@ type Daemon struct {
 	failMsg    string
 	callFail   map[string]failure // by "METHOD action", for container calls
 	changed    chan struct{}      // closed and replaced whenever state or a log changes
+	// holdFollow keeps following log streams from sending new lines;
+	// cutReads ends every other log read after that many lines, if above 0.
+	holdFollow bool
+	cutReads   int
 }
 
 // New starts a fake daemon that speaks API version docker.MaxAPIVersion and
@@ -135,6 +139,24 @@ func (d *Daemon) SetCallFailure(method, action string, status int, message strin
 		return
 	}
 	d.callFail[method+" "+action] = failure{status, message}
+}
+
+// HoldFollowers makes following log streams send nothing new until it is
+// called again with false, as a slow or stalled stream would. Reads that do
+// not follow are not held.
+func (d *Daemon) HoldFollowers(on bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.holdFollow = on
+	d.broadcast()
+}
+
+// CutLogReads ends every log read that does not follow after n lines, as a
+// dropped connection would, until it is called again with 0.
+func (d *Daemon) CutLogReads(n int) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.cutReads = n
 }
 
 // DropLog forgets a container's output so far, as Docker's log rotation

@@ -207,6 +207,6 @@ func TestLimitsAreTheRulings(t *testing.T) {
 		c.downloadTimeout != 5*time.Minute || c.maxDownload != 200<<20 ||
 		maxList != 16<<20 || maxFull != 2<<20 || cacheLifetime != 15*time.Minute ||
 		maxRedirects != 2 || cap(c.full) != 4 {
-		t.Errorf("a limit differs from the rulings: %+v", c)
+		t.Errorf("a limit differs from the documented limits: %+v", c)
 	}
 }

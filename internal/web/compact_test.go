@@ -1,0 +1,393 @@
+package web
+
+import (
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+
+	"golang.org/x/image/font/gofont/gobold"
+	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/font/sfnt"
+
+	"github.com/toddawhittaker/foreman/internal/i18n"
+)
+
+// The expected strings are the browser's own: each was made once with Node
+// 26.13 by
+//
+//	new Intl.NumberFormat(locale, {notation: "compact", maximumFractionDigits: 1}).format(n)
+//	new Intl.NumberFormat(locale, {style: "percent", maximumFractionDigits: 0}).format(v)
+//
+// the formats preview.js writes the page's labels with, and pasted here,
+// so a downloaded picture's labels read as the page's (SPEC 5.6).
+var browserAmounts = map[i18n.Locale][]struct {
+	n    int64
+	want string
+}{
+	"en": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1K"},
+		{1049, "1K"},
+		{1050, "1.1K"},
+		{1250, "1.3K"},
+		{9999, "10K"},
+		{12345, "12.3K"},
+		{99949, "99.9K"},
+		{99950, "100K"},
+		{123456, "123.5K"},
+		{999949, "999.9K"},
+		{999950, "1M"},
+		{1000000, "1M"},
+		{1234567, "1.2M"},
+		{12345678, "12.3M"},
+		{123456789, "123.5M"},
+		{987654321, "987.7M"},
+		{999950000, "1B"},
+		{1000000000, "1B"},
+		{2500000000, "2.5B"},
+		{12345678901, "12.3B"},
+		{1234567890123, "1.2T"},
+	},
+	"cs": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1\u00a0tis."},
+		{1049, "1\u00a0tis."},
+		{1050, "1,1\u00a0tis."},
+		{1250, "1,3\u00a0tis."},
+		{9999, "10\u00a0tis."},
+		{12345, "12,3\u00a0tis."},
+		{99949, "99,9\u00a0tis."},
+		{99950, "100\u00a0tis."},
+		{123456, "123,5\u00a0tis."},
+		{999949, "999,9\u00a0tis."},
+		{999950, "1\u00a0mil."},
+		{1000000, "1\u00a0mil."},
+		{1234567, "1,2\u00a0mil."},
+		{12345678, "12,3\u00a0mil."},
+		{123456789, "123,5\u00a0mil."},
+		{987654321, "987,7\u00a0mil."},
+		{999950000, "1\u00a0mld."},
+		{1000000000, "1\u00a0mld."},
+		{2500000000, "2,5\u00a0mld."},
+		{12345678901, "12,3\u00a0mld."},
+		{1234567890123, "1,2\u00a0bil."},
+	},
+	"de": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1000"},
+		{1049, "1049"},
+		{1050, "1050"},
+		{1250, "1250"},
+		{9999, "9999"},
+		{12345, "12.345"},
+		{99949, "99.949"},
+		{99950, "99.950"},
+		{123456, "123.456"},
+		{999949, "999.949"},
+		{999950, "999.950"},
+		{1000000, "1\u00a0Mio."},
+		{1234567, "1,2\u00a0Mio."},
+		{12345678, "12,3\u00a0Mio."},
+		{123456789, "123,5\u00a0Mio."},
+		{987654321, "987,7\u00a0Mio."},
+		{999950000, "1\u00a0Mrd."},
+		{1000000000, "1\u00a0Mrd."},
+		{2500000000, "2,5\u00a0Mrd."},
+		{12345678901, "12,3\u00a0Mrd."},
+		{1234567890123, "1,2\u00a0Bio."},
+	},
+	"es": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1\u00a0mil"},
+		{1049, "1\u00a0mil"},
+		{1050, "1,1\u00a0mil"},
+		{1250, "1,3\u00a0mil"},
+		{9999, "10\u00a0mil"},
+		{12345, "12,3\u00a0mil"},
+		{99949, "99,9\u00a0mil"},
+		{99950, "100\u00a0mil"},
+		{123456, "123,5\u00a0mil"},
+		{999949, "999,9\u00a0mil"},
+		{999950, "1\u00a0M"},
+		{1000000, "1\u00a0M"},
+		{1234567, "1,2\u00a0M"},
+		{12345678, "12,3\u00a0M"},
+		{123456789, "123,5\u00a0M"},
+		{987654321, "987,7\u00a0M"},
+		{999950000, "1000\u00a0M"},
+		{1000000000, "1000\u00a0M"},
+		{2500000000, "2500\u00a0M"},
+		{12345678901, "12,3\u00a0mil\u00a0M"},
+		{1234567890123, "1,2\u00a0B"},
+	},
+	"fr": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1\u00a0k"},
+		{1049, "1\u00a0k"},
+		{1050, "1,1\u00a0k"},
+		{1250, "1,3\u00a0k"},
+		{9999, "10\u00a0k"},
+		{12345, "12,3\u00a0k"},
+		{99949, "99,9\u00a0k"},
+		{99950, "100\u00a0k"},
+		{123456, "123,5\u00a0k"},
+		{999949, "999,9\u00a0k"},
+		{999950, "1\u00a0M"},
+		{1000000, "1\u00a0M"},
+		{1234567, "1,2\u00a0M"},
+		{12345678, "12,3\u00a0M"},
+		{123456789, "123,5\u00a0M"},
+		{987654321, "987,7\u00a0M"},
+		{999950000, "1\u00a0Md"},
+		{1000000000, "1\u00a0Md"},
+		{2500000000, "2,5\u00a0Md"},
+		{12345678901, "12,3\u00a0Md"},
+		{1234567890123, "1,2\u00a0Bn"},
+	},
+	"pl": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1\u00a0tys."},
+		{1049, "1\u00a0tys."},
+		{1050, "1,1\u00a0tys."},
+		{1250, "1,3\u00a0tys."},
+		{9999, "10\u00a0tys."},
+		{12345, "12,3\u00a0tys."},
+		{99949, "99,9\u00a0tys."},
+		{99950, "100\u00a0tys."},
+		{123456, "123,5\u00a0tys."},
+		{999949, "999,9\u00a0tys."},
+		{999950, "1\u00a0mln"},
+		{1000000, "1\u00a0mln"},
+		{1234567, "1,2\u00a0mln"},
+		{12345678, "12,3\u00a0mln"},
+		{123456789, "123,5\u00a0mln"},
+		{987654321, "987,7\u00a0mln"},
+		{999950000, "1\u00a0mld"},
+		{1000000000, "1\u00a0mld"},
+		{2500000000, "2,5\u00a0mld"},
+		{12345678901, "12,3\u00a0mld"},
+		{1234567890123, "1,2\u00a0bln"},
+	},
+	"ru": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1\u00a0тыс."},
+		{1049, "1\u00a0тыс."},
+		{1050, "1,1\u00a0тыс."},
+		{1250, "1,3\u00a0тыс."},
+		{9999, "10\u00a0тыс."},
+		{12345, "12,3\u00a0тыс."},
+		{99949, "99,9\u00a0тыс."},
+		{99950, "100\u00a0тыс."},
+		{123456, "123,5\u00a0тыс."},
+		{999949, "999,9\u00a0тыс."},
+		{999950, "1\u00a0млн"},
+		{1000000, "1\u00a0млн"},
+		{1234567, "1,2\u00a0млн"},
+		{12345678, "12,3\u00a0млн"},
+		{123456789, "123,5\u00a0млн"},
+		{987654321, "987,7\u00a0млн"},
+		{999950000, "1\u00a0млрд"},
+		{1000000000, "1\u00a0млрд"},
+		{2500000000, "2,5\u00a0млрд"},
+		{12345678901, "12,3\u00a0млрд"},
+		{1234567890123, "1,2\u00a0трлн"},
+	},
+	"zh-Hans": {
+		{0, "0"},
+		{7, "7"},
+		{950, "950"},
+		{999, "999"},
+		{1000, "1000"},
+		{1049, "1049"},
+		{1050, "1050"},
+		{1250, "1250"},
+		{9999, "9999"},
+		{12345, "1.2万"},
+		{99949, "10万"},
+		{99950, "10万"},
+		{123456, "12.3万"},
+		{999949, "100万"},
+		{999950, "100万"},
+		{1000000, "100万"},
+		{1234567, "123.5万"},
+		{12345678, "1234.6万"},
+		{123456789, "1.2亿"},
+		{987654321, "9.9亿"},
+		{999950000, "10亿"},
+		{1000000000, "10亿"},
+		{2500000000, "25亿"},
+		{12345678901, "123.5亿"},
+		{1234567890123, "1.2万亿"},
+	},
+}
+
+var browserYields = map[i18n.Locale][]struct {
+	value string
+	want  string
+}{
+	"en": {
+		{"0.5", "50%"},
+		{"1", "100%"},
+		{"3", "300%"},
+		{"3.5", "350%"},
+		{"12.345", "1,235%"},
+		{"0.004", "0%"},
+	},
+	"cs": {
+		{"0.5", "50\u00a0%"},
+		{"1", "100\u00a0%"},
+		{"3", "300\u00a0%"},
+		{"3.5", "350\u00a0%"},
+		{"12.345", "1\u00a0235\u00a0%"},
+		{"0.004", "0\u00a0%"},
+	},
+	"de": {
+		{"0.5", "50\u00a0%"},
+		{"1", "100\u00a0%"},
+		{"3", "300\u00a0%"},
+		{"3.5", "350\u00a0%"},
+		{"12.345", "1.235\u00a0%"},
+		{"0.004", "0\u00a0%"},
+	},
+	"es": {
+		{"0.5", "50\u00a0%"},
+		{"1", "100\u00a0%"},
+		{"3", "300\u00a0%"},
+		{"3.5", "350\u00a0%"},
+		{"12.345", "1235\u00a0%"},
+		{"0.004", "0\u00a0%"},
+	},
+	"fr": {
+		{"0.5", "50\u00a0%"},
+		{"1", "100\u00a0%"},
+		{"3", "300\u00a0%"},
+		{"3.5", "350\u00a0%"},
+		{"12.345", "1\u202f235\u00a0%"},
+		{"0.004", "0\u00a0%"},
+	},
+	"pl": {
+		{"0.5", "50%"},
+		{"1", "100%"},
+		{"3", "300%"},
+		{"3.5", "350%"},
+		{"12.345", "1235%"},
+		{"0.004", "0%"},
+	},
+	"ru": {
+		{"0.5", "50\u00a0%"},
+		{"1", "100\u00a0%"},
+		{"3", "300\u00a0%"},
+		{"3.5", "350\u00a0%"},
+		{"12.345", "1\u00a0235\u00a0%"},
+		{"0.004", "0\u00a0%"},
+	},
+	"zh-Hans": {
+		{"0.5", "50%"},
+		{"1", "100%"},
+		{"3", "300%"},
+		{"3.5", "350%"},
+		{"12.345", "1,235%"},
+		{"0.004", "0%"},
+	},
+}
+
+func TestLabelTextIsTheBrowsers(t *testing.T) {
+	for _, lang := range i18n.Languages {
+		if len(browserAmounts[lang.Tag]) == 0 || len(browserYields[lang.Tag]) == 0 {
+			t.Errorf("%s: no browser strings to compare with", lang.Tag)
+		}
+		for _, c := range browserAmounts[lang.Tag] {
+			if got := labelText(lang.Tag, ResourceLabel{Kind: resourceKindAmount, Value: strconv.FormatInt(c.n, 10)}); got != c.want {
+				t.Errorf("%s: %d is %q, want %q", lang.Tag, c.n, got, c.want)
+			}
+		}
+		for _, c := range browserYields[lang.Tag] {
+			if got := labelText(lang.Tag, ResourceLabel{Kind: resourceKindYield, Value: c.value}); got != c.want {
+				t.Errorf("%s: yield %s is %q, want %q", lang.Tag, c.value, got, c.want)
+			}
+		}
+	}
+}
+
+// Every label of every language draws without boxes (SPEC 22.5);
+// internal/territory/fonts/NOTICE says how to add a glyph.
+func TestLabelTextGlyphsInFonts(t *testing.T) {
+	for _, lang := range i18n.Languages {
+		for _, c := range browserAmounts[lang.Tag] {
+			if text := labelText(lang.Tag, ResourceLabel{Kind: resourceKindAmount, Value: strconv.FormatInt(c.n, 10)}); !covered(t, text) {
+				t.Errorf("%s: no font has every glyph of %q", lang.Tag, text)
+			}
+		}
+		for _, c := range browserYields[lang.Tag] {
+			if text := labelText(lang.Tag, ResourceLabel{Kind: resourceKindYield, Value: c.value}); !covered(t, text) {
+				t.Errorf("%s: no font has every glyph of %q", lang.Tag, text)
+			}
+		}
+	}
+}
+
+// labelFonts are the fonts internal/territory draws labels with, in its
+// order: Go Bold, then the committed Chinese subset.
+var labelFonts = sync.OnceValues(func() ([]*sfnt.Font, error) {
+	cjk, err := os.ReadFile("../territory/fonts/NotoSansCJKsc-Bold-labels.otf")
+	if err != nil {
+		return nil, err
+	}
+	var out []*sfnt.Font
+	for _, b := range [][]byte{gobold.TTF, cjk} {
+		f, err := opentype.Parse(b)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, nil
+})
+
+// covered is true when one label font has every glyph of text as it is
+// drawn, a narrow no-break space as a no-break space.
+func covered(t *testing.T, text string) bool {
+	t.Helper()
+	fs, err := labelFonts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	text = strings.ReplaceAll(text, "\u202f", "\u00a0")
+	var buf sfnt.Buffer
+	for _, f := range fs {
+		all := true
+		for _, r := range text {
+			if g, err := f.GlyphIndex(&buf, r); err != nil || g == 0 {
+				all = false
+				break
+			}
+		}
+		if all {
+			return true
+		}
+	}
+	return false
+}

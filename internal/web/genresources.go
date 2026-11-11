@@ -14,15 +14,20 @@ import (
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/resource"
 	"github.com/toddawhittaker/foreman/internal/store"
+	"github.com/toddawhittaker/foreman/internal/territory"
 )
 
 // The resource amounts of one planet's map (SPEC 5.6): counted in a headless
-// game on request from the large view, kept with the pictures, and shown as
-// labels over the large view's map with the same amounts as text.
+// game on request from the large view or the One planet picture, kept with
+// the pictures, shown as labels over the map with the same amounts as text,
+// and drawn into a download from what is kept, never counted for it.
 
-// pathResources answers the large view's request for the resource amounts
-// of one planet of the settings in the form, after its picture has arrived.
+// pathResources answers the page's request for the resource amounts of one
+// planet of the settings in the form, after its picture has arrived.
 const pathResources = PathGeneratePreview + "/resources"
+
+// amountsQuery on a download draws in the amounts held for each planet.
+const amountsQuery = "amounts"
 
 // Label kinds: an ore's amount, or an infinite resource's yield.
 const (
@@ -61,17 +66,9 @@ type ResourceList struct {
 // resourceView turns the amounts counted on planet for a picture of size
 // tiles into what the large view shows, worded in loc.
 func resourceView(loc i18n.Locale, line, planet string, res resource.Result, size int) *ResourceView {
-	v := &ResourceView{Patches: len(res.Patches)}
-	half := float64(size / 2)
-	// The middle of a tile, as a percent of the picture, which spans [-size/2, size/2).
-	pct := func(t int) float64 { return math.Round((float64(t)+half+0.5)/float64(size)*1e5) / 1e3 }
+	v := &ResourceView{Patches: len(res.Patches), Labels: resourceLabels(res, size)}
 	byName := map[string][]resource.Patch{}
 	for _, p := range res.Patches {
-		l := ResourceLabel{Left: pct(p.X), Top: pct(p.Y), Kind: resourceKindAmount, Value: strconv.FormatInt(p.Amount, 10)}
-		if y, ok := resource.Yield(p); ok {
-			l.Kind, l.Value = resourceKindYield, strconv.FormatFloat(y/100, 'f', -1, 64)
-		}
-		v.Labels = append(v.Labels, l)
 		byName[p.Name] = append(byName[p.Name], p)
 	}
 	names := make([]string, 0, len(byName))
@@ -103,6 +100,33 @@ func resourceView(loc i18n.Locale, line, planet string, res resource.Result, siz
 		v.Lists = append(v.Lists, list)
 	}
 	return v
+}
+
+// resourceLabels are the labels of the amounts counted for a picture of size
+// tiles, in the server's order.
+func resourceLabels(res resource.Result, size int) []ResourceLabel {
+	half := float64(size / 2)
+	// The middle of a tile, as a percent of the picture, which spans [-size/2, size/2).
+	pct := func(t int) float64 { return math.Round((float64(t)+half+0.5)/float64(size)*1e5) / 1e3 }
+	var out []ResourceLabel
+	for _, p := range res.Patches {
+		l := ResourceLabel{Left: pct(p.X), Top: pct(p.Y), Kind: resourceKindAmount, Value: strconv.FormatInt(p.Amount, 10)}
+		if y, ok := resource.Yield(p); ok {
+			l.Kind, l.Value = resourceKindYield, strconv.FormatFloat(y/100, 'f', -1, 64)
+		}
+		out = append(out, l)
+	}
+	return out
+}
+
+// amountCaptions are the labels a download draws from amounts already
+// counted, for a picture of size pixels, worded in loc as the page words them.
+func amountCaptions(loc i18n.Locale, res resource.Result, size int) []territory.Caption {
+	var caps []territory.Caption
+	for _, l := range resourceLabels(res, size) {
+		caps = append(caps, territory.Caption{Text: labelText(loc, l), U: l.Left / 100, V: l.Top / 100})
+	}
+	return caps
 }
 
 // totalYield is an infinite resource's total as a yield, by the rule
@@ -253,6 +277,25 @@ func (p *previewStore) resourcesOf(user int64, key, planet string) (resource.Res
 	}
 	e.expires = p.now().Add(previewTTL)
 	return *e.resources[planet], true
+}
+
+// countedPlanets are the planets the user's preview holds amounts for with
+// these settings, so their downloads can draw them.
+func (p *previewStore) countedPlanets(user int64, key string) map[string]bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.sweepLocked()
+	e, ok := p.byUser[user]
+	if !ok || e.key != key {
+		return nil
+	}
+	out := map[string]bool{}
+	for planet, res := range e.resources {
+		if res != nil {
+			out[planet] = true
+		}
+	}
+	return out
 }
 
 // resourceBytes is about what a count holds in memory: a patch's numbers

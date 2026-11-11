@@ -13,7 +13,8 @@ import (
 
 const (
 	// loadFailureReadLimit bounds the one-shot log read made after a game
-	// stopped while loading, in time, lines and bytes.
+	// stopped while loading, in time and in lines; the newest lines are
+	// read, and of those only the newest maxLoadFailureBytes are kept.
 	loadFailureReadLimit = 5 * time.Second
 	maxLoadFailureLines  = 20000
 	maxLoadFailureBytes  = 4 << 20
@@ -50,10 +51,34 @@ type loadFailure struct {
 	current string
 	// byRequired lists the mods by the version they were made for.
 	byRequired map[string][]string
-	errLine    string
+	// errLine is the last error line of the run being read, and lastErr
+	// that of the run before it, for when this one has said none yet.
+	errLine, lastErr string
+	// runError is the reason the run being read gave for a failed load.
+	runError string
+	// failed is whether the newest run to finish loading failed to, and
+	// failError the reason that run gave (SPEC 8.7).
+	failed    bool
+	failError string
 }
 
+// Lines are not cut before they are masked, so a cut cannot leave part of
+// a secret; Docker's reader already bounds a line's length.
 func (f *loadFailure) add(raw string) {
+	switch ev := ParseLine(raw); ev.Kind {
+	case KindLoadStarted:
+		// Every run begins here, so an older run's words are not its reason.
+		if f.errLine != "" {
+			f.lastErr = f.errLine
+		}
+		f.errLine, f.runError = "", ""
+	case KindInGame:
+		f.failed, f.failError = false, ""
+	case KindLoadError:
+		f.runError = ev.Detail
+	case KindLoadFailed:
+		f.failed, f.failError = true, f.runError
+	}
 	line := strings.TrimSpace(secondsPrefix.ReplaceAllString(strings.TrimSuffix(raw, "\r"), ""))
 	if m := modBullet.FindStringSubmatch(line); m != nil {
 		f.mod = cut(m[1], maxKeptText)
@@ -64,7 +89,7 @@ func (f *loadFailure) add(raw string) {
 		return
 	}
 	if m := errorLine.FindStringSubmatch(line); m != nil {
-		f.errLine = cut(m[1], maxKeptText)
+		f.errLine = m[1]
 	}
 }
 
@@ -107,10 +132,21 @@ func (f *loadFailure) reason(redact func(string) string) LoadReason {
 		r.Shown, r.More = shownNames(names, redact)
 		return r
 	}
-	if f.errLine == "" {
+	said := f.errLine
+	if said == "" {
+		said = f.lastErr
+	}
+	if said == "" {
 		return LoadReason{}
 	}
-	return LoadReason{Said: strings.TrimSpace(cut(redact(f.errLine), maxErrorLine))}
+	return LoadReason{Said: shownText(redact, said)}
+}
+
+// shownText is the game's words from its log as a page may show them:
+// masked first, so the cut cannot leave part of a secret, then cut to
+// maxErrorLine (SPEC 8.6, 14.8).
+func shownText(redact func(string) string, s string) string {
+	return strings.TrimSpace(cut(redact(s), maxErrorLine))
 }
 
 // LoadReason is the game's own reason it stopped while loading, from its
@@ -177,30 +213,57 @@ func cut(s string, n int) string {
 	return s
 }
 
-// loadFailureReason reads the log of the container's run and returns the
-// game's own reason it stopped while loading, as the end of the start
-// failure's message, or "" when the log gives none or cannot be read. Every
-// start makes a fresh container (ADR 0003), so its log holds every run of
-// this start, Docker's restarts after a crash included, and nothing older.
-func (c *Controller) loadFailureReason(ctx context.Context, w *worldRun, cid string) LoadReason {
-	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
-	defer cancel()
-	s, err := c.docker.Logs(ctx, cid, docker.LogOptions{})
-	if err != nil {
-		return LoadReason{}
-	}
-	defer func() { _ = s.Close() }()
-	var f loadFailure
-	read := 0
-	for lines := 0; lines < maxLoadFailureLines && read < maxLoadFailureBytes; lines++ {
-		l, err := s.Next()
-		if err != nil {
-			break
-		}
-		read += len(l.Text) + 1
-		f.add(l.Text)
-	}
+// stoppedWhileLoading reads the log of the container's run after the game
+// stopped while loading and words why (SPEC 7.3, 8.7). The log decides,
+// not what the follower has read so far: the container can stop, and
+// Docker restart it, before the follower reaches the failure line, and a
+// restart's first line begins a new run. Every start makes a fresh
+// container (ADR 0003), so its log holds every run of this start, Docker's
+// restarts after a crash included, and nothing older. A failed load is
+// also marked on the run, as the follower would, so the world's state
+// agrees with the error.
+func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid string) *StartError {
+	f := c.readLoadLog(ctx, cid)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return f.reason(w.redact)
+	if !f.failed {
+		return &StartError{Kind: StartStopped, Reason: f.reason(w.redact)}
+	}
+	detail := shownText(w.redact, f.failError)
+	if w.containerID == cid && !w.run.loadFailed {
+		w.run.loadFailed, w.run.inGame, w.run.loadError = true, false, detail
+		c.changedLocked(w, true)
+	}
+	return &StartError{Kind: StartLoadFailed, Detail: detail}
+}
+
+// readLoadLog reads the newest lines of the container's log once, within
+// the limits above, and keeps the newest of them, so the last run's lines
+// are never the ones left out. A read that fails or ends early gives what
+// was read before it.
+func (c *Controller) readLoadLog(ctx context.Context, cid string) loadFailure {
+	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
+	defer cancel()
+	var kept []string
+	if s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Tail: maxLoadFailureLines}); err == nil {
+		size := 0
+		for range maxLoadFailureLines {
+			l, err := s.Next()
+			if err != nil {
+				break
+			}
+			kept = append(kept, l.Text)
+			size += len(l.Text) + 1
+			for size > maxLoadFailureBytes {
+				size -= len(kept[0]) + 1
+				kept = kept[1:]
+			}
+		}
+		_ = s.Close()
+	}
+	var f loadFailure
+	for _, l := range kept {
+		f.add(l)
+	}
+	return f
 }

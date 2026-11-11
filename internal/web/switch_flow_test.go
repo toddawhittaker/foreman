@@ -46,7 +46,7 @@ func (g *gameRig) oldWorld(name string) string {
 // SPEC 3.7, 7.9, 17.10: a switch to a world whose image is missing is one
 // confirmation and one run. The page lists the download as its first step,
 // naming the image; confirming downloads it, switches and starts. The
-// active world's download is never offered (the bug in #129).
+// active world's download is never offered.
 func TestSwitchDownloadsTheNewWorldsImage(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
@@ -88,7 +88,7 @@ func TestSwitchPostAsksNoSize(t *testing.T) {
 	}
 }
 
-// SPEC 7.9 (fail safe), regression for #129: a download that fails leaves
+// SPEC 7.9 (fail safe): a download that fails leaves
 // the old world active and running, says so, and offers no download of the
 // old world's image.
 func TestSwitchFailedDownloadOffersNoWrongDownload(t *testing.T) {
@@ -150,7 +150,7 @@ func TestDownloadFailureWords(t *testing.T) {
 	}
 }
 
-// Regression for #129: a switch result that names a missing image never
+// SPEC 7.9: a switch result that names a missing image never
 // offers the page's own world's download, which is the wrong image.
 func TestSwitchImageRefusalNeverOffersTheActiveWorldsDownload(t *testing.T) {
 	p := serverCase(game.StateStopped, func(p *ServerPage) {
@@ -162,7 +162,7 @@ func TestSwitchImageRefusalNeverOffersTheActiveWorldsDownload(t *testing.T) {
 	}
 }
 
-// SPEC 3.7, #125: the Server page says the image is missing before Start,
+// SPEC 7.4: the Server page says the image is missing before Start,
 // names it, and offers the download in place of Start; once downloaded it
 // says the world is ready, and Start is back.
 func TestServerPageSaysTheImageIsMissingBeforeStart(t *testing.T) {
@@ -179,7 +179,7 @@ func TestServerPageSaysTheImageIsMissingBeforeStart(t *testing.T) {
 	g.wantMissing("server page", body, "which is not on this host", `id="act-pull"`)
 }
 
-// #136: after a switch the checks refused, the Start button names the old
+// SPEC 7.3: after a switch the checks refused, the Start button names the old
 // world it starts, and the page says that world is still active.
 func TestRefusedSwitchNamesTheWorldOnStart(t *testing.T) {
 	p := serverCase(game.StateStopped, func(p *ServerPage) {
@@ -197,7 +197,7 @@ func TestRefusedSwitchNamesTheWorldOnStart(t *testing.T) {
 	}
 }
 
-// #142: a start the pre-start check refused is titled "Start refused" and
+// SPEC 7.3: a start the pre-start check refused is titled "Start refused" and
 // lists only the step that ran, not the ones skipped.
 func TestStartRefusedListsNoSkippedSteps(t *testing.T) {
 	pe := &game.PrecheckError{Check: world.PreCheck{Problems: []world.Problem{{Text: "The save is from a newer game."}}}}

@@ -56,6 +56,31 @@ func TestLogsHistory(t *testing.T) {
 	}
 }
 
+// Tail asks Docker for only the newest lines.
+func TestLogsTail(t *testing.T) {
+	c, d := newClient(t)
+	d.AddImage(testImage)
+	ctx := context.Background()
+	id, _ := c.CreateContainer(ctx, "foreman-w1", fullSpec())
+	for i := 1; i <= 5; i++ {
+		d.EmitLog(id, docker.Stdout, "line "+strconv.Itoa(i))
+	}
+	s, err := c.Logs(ctx, id, docker.LogOptions{Tail: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	if a, b := nextLine(t, s), nextLine(t, s); a.Text != "line 4" || b.Text != "line 5" {
+		t.Errorf("got %q, %q, want the last two lines", a.Text, b.Text)
+	}
+	if _, err := s.Next(); !errors.Is(err, io.EOF) {
+		t.Errorf("after the tail: %v", err)
+	}
+	if last := d.Calls()[len(d.Calls())-1]; last.Query.Get("tail") != "2" {
+		t.Errorf("logs query = %v", last.Query)
+	}
+}
+
 // Docker's own timestamps let a broken stream resume where it stopped,
 // whatever Foreman's clock says.
 func TestLogsTimestampsAndSince(t *testing.T) {

@@ -122,7 +122,7 @@ func TestRealClientReadsTheFakeThroughTheProxy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The case of issue 131: 1.5.5 is installed in a world but the portal lacks it.
+	// The case of a mod the portal lacks: 1.5.5 is installed in a world but the portal lacks it.
 	for _, r := range m.Releases {
 		if r.Version == "1.5.5" {
 			t.Fatal("visible-planets 1.5.5 must be absent from the fake portal")

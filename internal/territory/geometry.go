@@ -15,6 +15,17 @@ type Overlay struct {
 	// Counts holds the number of territories of each size, in Sizes order,
 	// leaving out sizes with none.
 	Counts []Count
+	// Captions are drawn after the shapes' labels, in order; one that would
+	// meet a label already drawn is left out, as the page hides it.
+	Captions []Caption
+}
+
+// Caption is a label of any text at U, V across the picture, each from 0 to 1. It is pulled
+// in by as much of its own size as its spot is across the picture, as the
+// page places it, so a label at an edge stays inside.
+type Caption struct {
+	Text string
+	U, V float64
 }
 
 // Shape is one territory: its cells as rectangles, one per run of chunks in

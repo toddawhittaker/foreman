@@ -238,7 +238,8 @@ func isSaveFormatError(err error) bool {
 }
 
 // modListSpaceAge checks that mod-list.json enables the Space Age mods
-// exactly when the world's flag is on (SPEC 7.4). With no mod-list.json the
+// exactly when the world's flag is on (SPEC 7.4). A mod the file lists as
+// disabled or leaves out counts as not enabled; with no mod-list.json the
 // game enables every built-in mod.
 func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 	dlc := SpaceAgeMods(meta.GameVersion)
@@ -253,10 +254,10 @@ func modListSpaceAge(meta Meta, mods modList) (Problem, bool) {
 	switch {
 	case meta.SpaceAge && len(off) > 0:
 		return Problem{Kind: ProblemModListSpaceAge, SpaceAge: true, Names: off,
-			Text: fmt.Sprintf("Space Age is on for this world, but mod-list.json has %s turned off. Fix the mod list before starting.", strings.Join(off, ", "))}, true
+			Text: fmt.Sprintf("Space Age is on for this world, but mod-list.json does not enable %s: it lists them as disabled or leaves them out. Fix the mod list before starting.", strings.Join(off, ", "))}, true
 	case !meta.SpaceAge && len(on) > 0:
 		return Problem{Kind: ProblemModListSpaceAge, Names: on,
-			Text: fmt.Sprintf("Space Age is off for this world, but mod-list.json has %s turned on (or is missing, so the game turns them on). Fix the mod list before starting.", strings.Join(on, ", "))}, true
+			Text: fmt.Sprintf("Space Age is off for this world, but mod-list.json enables %s (or the file is missing, so the game enables them). Fix the mod list before starting.", strings.Join(on, ", "))}, true
 	}
 	return Problem{}, false
 }
