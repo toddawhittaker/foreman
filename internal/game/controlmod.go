@@ -1,9 +1,12 @@
 package game
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"strconv"
@@ -50,6 +53,9 @@ type controlMod struct {
 	output string
 	// maxOutput is the most bytes of output that are read.
 	maxOutput int64
+	// memory is the container's memory limit in bytes; zero means
+	// previewMemory.
+	memory int64
 }
 
 // script makes the params file, creates a map from the same seed, preset and
@@ -97,7 +103,7 @@ func modFile(dir, file string) string {
 func (c *Controller) runControlMod(ctx context.Context, req PreviewRequest, m controlMod, info []byte, env []string) ([]byte, error) {
 	var out []byte
 	err := c.previewRun(ctx, req, m.kind, func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error {
-		if err := addControlMod(base, name, req, m, info); err != nil {
+		if err := addControlMod(base, name, m, info); err != nil {
 			return err
 		}
 		if err := container(c.controlModSpec(ref, name, req, m, env)); err != nil {
@@ -119,22 +125,31 @@ type modEntry struct {
 	Enabled bool   `json:"enabled"`
 }
 
+// errControlModTaken means the work folder already holds a mod with the
+// control mod's name, a mod of the world's that would stand in for Foreman's
+// reader.
+var errControlModTaken = errors.New("the world has a mod with the name of a mod Foreman adds to read it")
+
 // addControlMod puts the control-only mod in the work folder and enables it
-// in the mod list that makePreviewDir wrote.
-func addControlMod(base *os.Root, name string, req PreviewRequest, m controlMod, info []byte) error {
+// in the mod list that is already in the work folder's mods folder
+// (makePreviewDir writes one, and so does Manager.LinkModsInto). A work
+// folder that holds a mod of that name, as a zip, a folder or a list entry,
+// is errControlModTaken.
+func addControlMod(base *os.Root, name string, m controlMod, info []byte) error {
 	dir, err := base.OpenRoot(name)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = dir.Close() }()
-	var list struct {
-		Mods []modEntry `json:"mods"`
-	}
-	if err := json.Unmarshal(world.DefaultModList(req.GameVersion, req.SpaceAge), &list); err != nil {
+	if err := checkControlModFree(dir, m.name); err != nil {
 		return err
 	}
-	list.Mods = append(list.Mods, modEntry{m.name, true})
-	modList, err := json.MarshalIndent(list, "", "  ")
+	listPath := path.Join(world.ModsDir, world.ModListFile)
+	current, err := world.ReadSmallFile(dir, listPath, world.MaxModList)
+	if err != nil {
+		return fmt.Errorf("could not read the mod list: %w", err)
+	}
+	modList, err := withControlMod(current, m.name)
 	if err != nil {
 		return err
 	}
@@ -143,15 +158,63 @@ func addControlMod(base *os.Root, name string, req PreviewRequest, m controlMod,
 		return err
 	}
 	for file, data := range map[string][]byte{
-		path.Join(world.ModsDir, world.ModListFile): append(modList, '\n'),
-		path.Join(modDir, "info.json"):              info,
-		path.Join(modDir, "control.lua"):            m.control,
+		path.Join(modDir, "info.json"):   info,
+		path.Join(modDir, "control.lua"): m.control,
 	} {
 		if err := dir.WriteFile(file, data, world.FileMode); err != nil {
 			return err
 		}
 	}
+	return world.WriteFileAtomic(dir, listPath, append(modList, '\n'))
+}
+
+// checkControlModFree refuses a mods folder that holds a mod called name: a
+// zip or folder "<name>_<version>" or "<name>", or an entry in mod-list.json.
+func checkControlModFree(dir *os.Root, name string) error {
+	entries, err := fs.ReadDir(dir.FS(), world.ModsDir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		mod := strings.TrimSuffix(e.Name(), ".zip")
+		if mod == name || strings.HasPrefix(mod, name+"_") {
+			return fmt.Errorf("%w: %s", errControlModTaken, name)
+		}
+	}
 	return nil
+}
+
+// withControlMod adds an enabled entry for the mod called name to the mod
+// list JSON, keeping every other entry and field of the list as it is.
+func withControlMod(list []byte, name string) ([]byte, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(list, &top); err != nil {
+		return nil, fmt.Errorf("the mod list is not JSON: %w", err)
+	}
+	var mods []json.RawMessage
+	if raw, ok := top["mods"]; ok {
+		if err := json.Unmarshal(raw, &mods); err != nil {
+			return nil, fmt.Errorf("the mod list has no list of mods: %w", err)
+		}
+	}
+	for _, raw := range mods {
+		var e modEntry
+		if json.Unmarshal(raw, &e) == nil && e.Name == name {
+			return nil, fmt.Errorf("%w: %s", errControlModTaken, name)
+		}
+	}
+	entry, err := json.Marshal(modEntry{name, true})
+	if err != nil {
+		return nil, err
+	}
+	mods = append(mods, entry)
+	if top == nil {
+		top = map[string]json.RawMessage{}
+	}
+	if top["mods"], err = json.Marshal(mods); err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(top, "", "  ")
 }
 
 // controlModSpec is a control mod's container: a preview container with its
@@ -169,7 +232,7 @@ func (c *Controller) controlModSpec(image, dir string, req PreviewRequest, m con
 		Entrypoint: []string{"/bin/sh"},
 		Cmd:        []string{"-c", m.script()},
 		User:       c.user,
-		HostConfig: c.oneOffHostConfig(dir),
+		HostConfig: c.oneOffHostConfigMem(dir, cmp.Or(m.memory, previewMemory)),
 	}
 }
 

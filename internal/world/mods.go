@@ -49,7 +49,7 @@ func ModListStates(root *os.Root) (map[string]bool, error) {
 // readModList reads mods/mod-list.json from a world's root.
 func readModList(root *os.Root) (modList, error) {
 	p := path.Join(ModsDir, ModListFile)
-	b, err := ReadSmallFile(root, p, maxModList)
+	b, err := ReadSmallFile(root, p, MaxModList)
 	if errors.Is(err, fs.ErrNotExist) {
 		return modList{enabled: map[string]bool{}, disabled: map[string]bool{}}, nil
 	}
@@ -284,7 +284,7 @@ func fingerprintMods(root *os.Root, withoutSettings bool) (string, error) {
 		}
 		_, _ = fmt.Fprintf(h, "%q %v %d %d\n", e.Name(), info.Mode().Type(), info.Size(), info.ModTime().UnixNano())
 	}
-	b, err := ReadSmallFile(root, path.Join(ModsDir, ModListFile), maxModList)
+	b, err := ReadSmallFile(root, path.Join(ModsDir, ModListFile), MaxModList)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		_, _ = fmt.Fprintf(h, "no %s\n", ModListFile)

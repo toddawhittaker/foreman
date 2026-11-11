@@ -33,6 +33,16 @@ var (
 	linkLimitBytes = int64(maxLinkBytes)
 )
 
+// SetLinkLimitsForTest sets the most files and bytes one LinkModsInto call
+// places, for a test that must not make a real mods folder of that size. It
+// returns a function that puts the limits back. Never call it outside tests,
+// or while a LinkModsInto call runs.
+func SetLinkLimitsForTest(files int, bytes int64) (restore func()) {
+	oldFiles, oldBytes := linkLimitFiles, linkLimitBytes
+	linkLimitFiles, linkLimitBytes = files, bytes
+	return func() { linkLimitFiles, linkLimitBytes = oldFiles, oldBytes }
+}
+
 // ErrModsTooBig is returned by LinkModsInto for a mods folder with more
 // files, or more bytes to copy, than a definitions run takes.
 var ErrModsTooBig = errors.New("the world's mods folder is too big to read its settings")
@@ -154,7 +164,7 @@ func (m *Manager) LinkModsInto(id, dst string) error {
 			switch {
 			case name == ModListFile:
 				haveList = true
-				b, err := ReadSmallFile(src, p, maxModList)
+				b, err := ReadSmallFile(src, p, MaxModList)
 				if err != nil {
 					return err
 				}
