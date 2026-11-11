@@ -11,8 +11,10 @@ below uses the new numbers.
 
 Epics 1 to 8, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
-the Resource amounts epic and fixes batches 5 and 6 are done. Gate A (SPEC 19.1)
-passed on 2026-11-05. Gate B (SPEC 19.2) follows fixes batch 6.
+the Resource amounts epic, fixes batches 5 and 6 and the Mod settings epic
+are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was
+skipped for now, at Todd's choice, when the Mod settings epic started; it is
+still owed before Gate C.
 
 Each section describes the game images pinned at its time. Since fixes
 batch 6 the real-game tests pin only 1.1.110, 2.0.77 and 2.1.24: older
@@ -2436,3 +2438,81 @@ failed on the epic head passed after.
 - No real-game check of time and memory for five counts in a row.
 - DESIGN.md does not yet describe the preparation block.
 - Still deferred: as listed under fixes batch 5.
+
+## Mod settings epic
+
+Serves SPEC 9.6, with 9.13, 9.15, 14.3, 14.6, 17.10 and 22.3, and ADR 0017.
+Issue closed: #339. The pull requests were #479 (contract), #478 (test
+data), #480 and #483 (fake game), #482 and #488 (codec and bounds), #481
+(world layer), #485 (definitions run), #486 (page) and #484 (real-game
+tests).
+
+Rulings (Todd, 2026-11-11): Foreman does not change map settings on a world
+that has a save, and runs no Lua or RCON for them; editing is P1; the
+definitions run has a 4 GiB memory limit and a 5-minute time limit.
+
+### Delivered
+
+- **Codec (`internal/modsettings`).** Reads and writes `mod-settings.dat`
+  byte for byte: any file it accepts encodes back to the same bytes, on the
+  files written by 1.1.110, 2.0.77 and 2.1.24. An edit changes only the
+  edited value nodes; a missing entry is copied from the game's defaults
+  file. Reads are bounds-checked, nesting is capped at 32 levels and memory
+  follows the entries actually read. Fuzzed (decode, definitions and locale
+  parsers, 10 to 30 s each) with no findings.
+- **Definitions and locale parsing.** The definitions parser streams the
+  settings, stops past 10,000, and marks a setting that does not fit its
+  type, or has an unknown type, as not editable instead of failing the file.
+  An int bound at or past the 64-bit range, which is how the game writes
+  "no limit", means no limit (#488). The `.cfg` parser keeps values as
+  written; the eight Foreman languages map to Factorio's locale codes.
+- **Value checks.** Every changed value is checked by Foreman (SPEC 9.6):
+  setting type, hidden, locked, bool, whole or finite numbers within
+  limits, allowed values, strings (UTF-8, no NUL, 10,000 bytes, `auto_trim`
+  first, blank only when allowed) and colors. An untouched value is never
+  checked or rewritten.
+- **World layer (`internal/world`).** `ModSettingsKey` (game version, Space
+  Age flag and the mods fingerprint without `mod-settings.dat`),
+  `LinkModsInto` (hard links, copies when linking fails, at most 100,000
+  files and 4 GiB, symlinks and odd file types refused), `ModLocaleFiles`
+  (newest zip or folder mod, 1 MiB per file, 8 MiB per language), and the
+  `SettingsSeen` guard in `ApplyModsHeld` and `CheckModChange`.
+- **Definitions run (`internal/game`).** `Controller.ModSettingDefs` runs
+  the world's own image with a control-only mod as a fourth kind of preview
+  container (SPEC 14.3), reads the definitions, the defaults file and the
+  locale text from regular files only, and keeps them in memory per world
+  (at most 8 worlds), keyed by `ModSettingsKey` and read before and after
+  the run. Callers for one world share one run. Failures are four typed
+  errors the page maps to messages.
+- **Fake game.** The fake game runs the same kind with canned definitions
+  (the `fmtest` mod's settings, a hidden one, a forced one and one of an
+  unknown type, 18 in all, all matching the embedded defaults file), and
+  `POST /preview-mode` accepts `oom` and `broken` beside `fail` and `hang`.
+- **Page (SPEC 9.6, 9.13, 17.10, 22.3).** `GET /worlds/{id}/mods/settings`,
+  linked first in the Mods tab's Mod settings panel; the form loads after
+  the page, with a progress line, because a cache miss runs the game.
+  Settings are grouped by mod; controls fit the type; labels come from the
+  mod's locale in the page language, else English (marked `lang="en"`),
+  else the setting name. Saving goes through the mod change (9.13); a refused
+  value comes back in its field; a stale file gives 409 with the fresh
+  form. Map settings are editable only with no save, and otherwise read-only
+  with the line about the game's Map tab. Run failures show a message with
+  retry, the file download and the upload. Eight languages; a click-budget
+  row of 4.
+- **Real-game tests.** `TestRealGameModSettings{Definitions,File,Apply}` on
+  1.1.110, 2.0.77 and 2.1.24, using the extended `fmtest` mod: definitions
+  match, a game-written file round-trips, a startup edit takes effect with
+  per-player bytes and a 300-byte string intact, and the game's own rules
+  (the save's map value wins, no rewrite at exit, a bad value is reset).
+
+### Gaps
+
+- The definitions container can write the world's hard-linked mod zips, as
+  the main game container already can.
+- Editing files inside an unpacked folder mod does not change the cache key.
+- Copying a folder mod, or a zip when linking fails, reserves no disk space
+  (it is capped at 4 GiB and 100,000 files).
+- In the error summary at the top of the page, an English setting name is
+  not marked `lang="en"`; the summary is in the shared layout template.
+- The file name `mod-settings.dat` may wrap at its hyphen at 320 px.
+- Gate B (SPEC 19.2) is still owed.
