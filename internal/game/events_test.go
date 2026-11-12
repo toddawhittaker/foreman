@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/notify"
@@ -375,5 +376,99 @@ func TestEventsNoStartForGameLoadingAtRestart(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 	if got := n.events(); len(got) != 0 {
 		t.Fatalf("sent %v for a game that began before this Foreman", got)
+	}
+}
+
+// SPEC 8.13: the disk is shared, so low disk is one condition: starting
+// another world, or restarting Foreman, while it stays low sends nothing
+// more, and the status still shows it.
+func TestLowDiskOncePerCrossingAcrossWorldsAndRestart(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	var free atomic.Uint64
+	free.Store(LowDiskClear + 1)
+	reading := func(string) (uint64, error) { return free.Load(), nil }
+	r.c.freeBytes = reading
+	n := &recNotifier{}
+	r.c.SetNotifier(n)
+	r.stop = r.run(r.c)
+	a, b := r.newWorld("Disk A"), r.newWorld("Disk B")
+	r.startAsActive(a)
+	time.Sleep(100 * time.Millisecond) // the first reading, which is only noted
+	free.Store(LowDiskBelow - 1)
+	eventually(t, func() bool { return n.count(notify.LowDisk) == 1 }, "low disk sent")
+	if err := r.c.Stop(context.Background(), a, admin, StopOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	r.startAsActive(b)
+	eventually(t, func() bool { return r.c.Status(b).LowDisk }, "low disk shown on the other world")
+	time.Sleep(150 * time.Millisecond)
+	if got := n.count(notify.LowDisk); got != 1 {
+		t.Fatalf("%d low-disk events for one crossing across two worlds", got)
+	}
+
+	r.stop()
+	n2 := &recNotifier{}
+	c2 := r.newController(rigOptions{})
+	c2.freeBytes = reading
+	c2.SetNotifier(n2)
+	r.run(c2)
+	eventually(t, func() bool { return c2.Status(b).LowDisk }, "low disk shown after the restart")
+	time.Sleep(150 * time.Millisecond)
+	if got := n2.count(notify.LowDisk); got != 0 {
+		t.Fatalf("the restarted Foreman sent low disk again (%d)", got)
+	}
+	free.Store(LowDiskClear + 1)
+	eventually(t, func() bool { return !c2.Status(b).LowDisk }, "low disk cleared")
+	free.Store(LowDiskBelow - 1)
+	eventually(t, func() bool { return n2.count(notify.LowDisk) == 1 }, "a new crossing sent")
+}
+
+// ADR 0016, SPEC 8.7: a crash the poll sees before the log's failure line
+// arrives is sent with the reason once the line is read.
+func TestCrashEventWaitsForTheReason(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.crashSettle = 5 * time.Second
+	n := &recNotifier{}
+	r.c.SetNotifier(n)
+	r.stop = r.run(r.c)
+	id := r.newWorld("Late line")
+	r.start(id)
+	waitEvents(t, n, notify.Start)
+	d := r.game.Daemon()
+	d.HoldFollowers(true)
+	t.Cleanup(func() { d.HoldFollowers(false) })
+	d.EmitLog(ContainerName(id), docker.Stdout,
+		`   9.000 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "Opening zip /factorio/saves/base.zip failed: I/O error"`)
+	if err := r.game.Crash(ContainerName(id), 1, false); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() bool { return r.crashCount(id) == 1 }, "the poll to see the crash")
+	time.Sleep(200 * time.Millisecond)
+	if got := n.events(); len(got) != 1 {
+		t.Fatalf("sent %v before the reason was read", got)
+	}
+	d.HoldFollowers(false)
+	eventually(t, func() bool { return n.count(notify.Crash) == 1 }, "the crash sent")
+	if m := n.all()[1]; m.Event != notify.Crash || m.Reason != crashreasons.SaveUnreadable {
+		t.Fatalf("second event %+v, want a crash naming %s", m, crashreasons.SaveUnreadable)
+	}
+}
+
+// A crash whose log never names a reason is still sent, as unknown, within
+// the bound, and before the start that follows it.
+func TestCrashEventSentUnknownWithinBound(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.crashSettle = 300 * time.Millisecond
+	n := &recNotifier{}
+	r.c.SetNotifier(n)
+	r.stop = r.run(r.c)
+	id := r.newWorld("No reason")
+	r.start(id)
+	if err := r.game.Crash(ContainerName(id), 1, false); err != nil {
+		t.Fatal(err)
+	}
+	waitEvents(t, n, notify.Start, notify.Crash, notify.Start)
+	if m := n.all()[1]; m.Reason != "" {
+		t.Errorf("reason %q for a crash the log does not explain", m.Reason)
 	}
 }

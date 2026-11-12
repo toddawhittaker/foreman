@@ -243,9 +243,20 @@ type Controller struct {
 	eventsFrom time.Time
 	// freeBytes reads the free space on a folder's filesystem; tests change it.
 	freeBytes func(dir string) (uint64, error)
+	// crashSettle is how long a crash event waits for its reason to reach
+	// the log; zero means two polls.
+	crashSettle time.Duration
 
-	mu         sync.Mutex // guards the fields below; never held while taking a worldRun's mu
-	notifier   Notifier
+	mu       sync.Mutex // guards the fields below; never held while taking a worldRun's mu
+	notifier Notifier
+	// The disk every world is on (SPEC 8.13): lowDisk is set below
+	// LowDiskBelow and cleared above LowDiskClear, diskFree is the last
+	// reading, diskRead says there has been one, and diskErr is set while
+	// reading fails, so the fault is logged once.
+	lowDisk    bool
+	diskFree   uint64
+	diskRead   bool
+	diskErr    bool
 	modFetcher ModFetcher
 	modCheck   ModAvailability
 	runs       map[string]*worldRun
@@ -385,12 +396,10 @@ type worldRun struct {
 	evState  State
 	evQuiet  bool
 	eventsAt time.Time
-	// lowDisk is set below LowDiskBelow and cleared above LowDiskClear;
-	// diskFree is the last reading (SPEC 8.13). diskErr is set while the
-	// reading fails, so the fault is logged once.
-	lowDisk  bool
-	diskFree uint64
-	diskErr  bool
+	// crashEvent is a crash or crash loop waiting for its reason to reach
+	// the log, so it names the reason whichever check saw it first
+	// (ADR 0016); nil when none waits.
+	crashEvent *pendingCrash
 }
 
 // runState is what the log said about the current run of the game.
@@ -762,8 +771,8 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	if w.dockerStatus == "running" && w.usage.ok {
 		st.HaveUsage, st.CPUPercent, st.MemoryBytes = true, w.usage.cpu, w.usage.memory
 	}
-	if w.lowDisk && w.dockerStatus == "running" {
-		st.LowDisk, st.FreeBytes = true, w.diskFree
+	if w.dockerStatus == "running" {
+		st.LowDisk, st.FreeBytes = c.diskLow()
 	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
 		st.Crash = c.crashLocked(w)

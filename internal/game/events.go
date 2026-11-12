@@ -94,8 +94,11 @@ func (c *Controller) noteEventsLocked(w *worldRun) {
 	prev := w.evState
 	w.evState = st
 	if prev == "" || prev == st || w.evQuiet {
+		c.flushCrashLocked(w, false)
 		return
 	}
+	// Whatever happens next follows the crash, so the crash goes first.
+	c.flushCrashLocked(w, true)
 	switch st {
 	case StateRunning:
 		// A game that began before this Foreman did was reported by the
@@ -108,16 +111,47 @@ func (c *Controller) noteEventsLocked(w *worldRun) {
 			c.emitLocked(w, notify.Message{Event: notify.Stop})
 		}
 	case StateCrashed:
-		c.emitLocked(w, notify.Message{Event: notify.Crash, Reason: c.crashLocked(w).Kind})
+		w.crashEvent = &pendingCrash{event: notify.Crash, at: c.now()}
+		c.flushCrashLocked(w, false)
 	case StateCrashLooping:
-		c.emitLocked(w, notify.Message{Event: notify.CrashLoop, Reason: c.crashLocked(w).Kind})
+		w.crashEvent = &pendingCrash{event: notify.CrashLoop, at: c.now()}
+		c.flushCrashLocked(w, false)
 	}
+}
+
+// pendingCrash is a crash event seen at at, waiting for its reason.
+type pendingCrash struct {
+	event notify.Event
+	at    time.Time
+}
+
+// flushCrashLocked sends the waiting crash event once the log names its
+// reason, once it has waited crashSettle, or at once when force is set.
+// The poll looks again within crashSettle, so the event is never lost
+// while Foreman runs. w.mu is held.
+func (c *Controller) flushCrashLocked(w *worldRun, force bool) {
+	p := w.crashEvent
+	if p == nil {
+		return
+	}
+	reason := c.crashLocked(w).Kind
+	settle := c.crashSettle
+	if settle == 0 {
+		settle = 2 * c.pollInterval
+	}
+	if reason == "" && !force && c.now().Before(p.at.Add(settle)) {
+		return
+	}
+	w.crashEvent = nil
+	c.emitLocked(w, notify.Message{Event: p.event, Time: p.at, Reason: reason})
 }
 
 // liveLineLocked reports whether a log line Docker stamped at is newer than
 // any line seen before it and than this Foreman, so what it says may be
 // reported. A re-attach replays the run's log, which must not report
-// again. w.mu is held.
+// again. Docker's time is compared with Foreman's own clock, so this
+// assumes both run on one host's clock: a remote Docker ahead in time
+// could repeat a join or leave. w.mu is held.
 func (w *worldRun) liveLineLocked(at time.Time) bool {
 	if at.IsZero() || !at.After(w.eventsAt) {
 		return false
@@ -141,31 +175,50 @@ func (c *Controller) crashLocked(w *worldRun) LoadReason {
 	return r
 }
 
-// checkDisk reads the free space where worlds are kept while the game runs,
-// and warns once each time it falls below LowDiskBelow (SPEC 8.13).
+// checkDisk reads the free space where worlds are kept while a game runs,
+// and warns once each time it falls below LowDiskBelow (SPEC 8.13). The
+// disk is shared, so the warning is Foreman's, not the world's; the first
+// reading after Foreman starts is only noted, like the first look at a game.
 func (c *Controller) checkDisk(w *worldRun, cid string) {
 	free, err := c.freeBytes(c.worlds.Dirs().Worlds)
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.containerID != cid {
-		return
-	}
+	c.mu.Lock()
 	if err != nil {
-		if !w.diskErr {
-			c.log.Warn("cannot read the free disk space", "world", w.id, "error", err)
+		logIt := !c.diskErr
+		c.diskErr = true
+		c.mu.Unlock()
+		if logIt {
+			c.log.Warn("cannot read the free disk space", "error", err)
 		}
-		w.diskErr = true
 		return
 	}
-	w.diskErr = false
-	w.diskFree = free
+	first := !c.diskRead
+	c.diskRead, c.diskErr, c.diskFree = true, false, free
+	var changed, send bool
 	switch {
-	case !w.lowDisk && free < LowDiskBelow:
-		w.lowDisk = true
-		c.emitLocked(w, notify.Message{Event: notify.LowDisk, FreeBytes: free})
-		c.changedLocked(w, true)
-	case w.lowDisk && free > LowDiskClear:
-		w.lowDisk = false
-		c.changedLocked(w, true)
+	case !c.lowDisk && free < LowDiskBelow:
+		c.lowDisk, changed, send = true, true, !first
+	case c.lowDisk && free > LowDiskClear:
+		c.lowDisk, changed = false, true
 	}
+	c.mu.Unlock()
+	if send {
+		c.Emit(notify.Message{Event: notify.LowDisk, World: notify.World{ID: w.id}, FreeBytes: free})
+	}
+	if changed {
+		w.mu.Lock()
+		if w.containerID == cid {
+			c.changedLocked(w, true)
+		}
+		w.mu.Unlock()
+	}
+}
+
+// diskLow reports whether free space is low, and the last reading then.
+func (c *Controller) diskLow() (bool, uint64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.lowDisk {
+		return false, 0
+	}
+	return true, c.diskFree
 }
