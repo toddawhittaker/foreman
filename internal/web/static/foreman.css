@@ -3604,6 +3604,24 @@ form:has(#mode-exchange:checked) .achievements {
   margin-inline-start: auto;
 }
 
+/* The large view's "Show demolisher territories" box and its hint, on one line while they fit
+   and the hint under the box when they do not (DESIGN 8.8). */
+.large-view__territories {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+}
+
+.large-view__territories[hidden] {
+  display: none;
+}
+
+.large-view__territories > .hint {
+  margin: 0;
+}
+
 /* The One planet box, and beside it, while it counts, a short word that it does. */
 .resource-box {
   display: flex;

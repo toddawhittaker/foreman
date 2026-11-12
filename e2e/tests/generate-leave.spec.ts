@@ -224,7 +224,7 @@ test("the preview size and the territory box are views: changing them leaves wit
   await expect(pictures(page)).toHaveAttribute("width", "2048");
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
-  await page.getByLabel("Show demolisher territories").check();
+  await page.locator("#preview").getByLabel("Show demolisher territories").check();
   await cancel(page).click();
   await expect(page).toHaveURL("/worlds");
   expect(asked).toEqual([]);
