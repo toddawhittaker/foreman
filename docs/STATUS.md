@@ -2824,9 +2824,8 @@ commit, Go version, licence and a project link, and no game versions.
 - **Two navigation links named "Snapshots" on a world's pages (#531).** The
   main tab and the world's tab share a name with different targets. It
   predates this batch; user-menu.spec.ts excludes that one name.
-- **DESIGN 8.11 to 8.13 still say "the Settings tab"** for the world's tab
-  in a few places, and the component page (`design.html`) still shows a
-  three-tab navigation.
 - **Spain's flag is 81 KB** (the coat of arms); every other flag is under
-  1 KB.
+  1 KB. The seven flags in the language list load lazily, so the file is
+  fetched only when the list opens, or at once when Spanish is the current
+  language.
 - Still deferred: as listed under fixes batch 6 and Epic 9.
