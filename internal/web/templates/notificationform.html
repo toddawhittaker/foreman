@@ -1,0 +1,64 @@
+{{define "title"}}{{if .Page.Edit}}{{t "notify.edit.named" "preset" (msg .Page.Kept.Preset) "host" .Page.Kept.Host}}{{else}}{{t "notify.add"}}{{end}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
+{{template "summary" .Problems}}
+{{- /* The address is write-only: it is never put back in a value attribute (DESIGN 8.16). */}}
+<form method="post" action="{{.Path}}" class="panel" novalidate>
+  {{- if .URLRequired}}
+  {{template "required-note"}}
+  {{- end}}
+  <fieldset{{if not .PresetError.IsZero}} aria-describedby="webhook-preset-error"{{end}}>
+    <legend>{{t "notify.form.service"}}</legend>
+    {{- if not .PresetError.IsZero}}
+    <p class="error" id="webhook-preset-error"><strong>{{t "common.error.label"}}</strong> {{msg .PresetError}}</p>
+    {{- end}}
+    {{- range .Presets}}
+    <label class="check"><input type="radio" name="preset" value="{{.Value}}" id="preset-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="preset-{{.Value}}-hint"> {{msg .Name}}</label>
+    <p class="hint" id="preset-{{.Value}}-hint">{{msgHTML .Hint}}</p>
+    {{- end}}
+  </fieldset>
+  <div class="field">
+    <label for="webhook-url"{{if .URLRequired}} class="required"{{end}}>{{t "notify.url.label"}}</label>
+    {{- if .Edit}}
+    <p class="hint" id="webhook-url-hint">{{if .Kept.Unreadable}}{{t "notify.url.unreadable"}}{{else}}{{t "notify.url.kept" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{end}}</p>
+    {{- end}}
+    <input id="webhook-url" name="url" type="url"{{if .URLRequired}} required{{end}} autocomplete="off" autocapitalize="off" spellcheck="false"
+      {{- if not .URLError.IsZero}} aria-invalid="true"{{end}}
+      {{- with .URLDescribedBy}} aria-describedby="{{.}}"{{end}}>
+    {{- /* notifyurl.js shows this while the typed address starts with http://. */}}
+    <p class="hint" id="webhook-url-plain"{{if not .PlainNote}} hidden{{end}}>{{t "notify.url.plain"}}</p>
+    {{- if not .URLError.IsZero}}
+    <p class="error" id="webhook-url-error"><strong>{{t "common.error.label"}}</strong> {{msg .URLError}}</p>
+    {{- end}}
+  </div>
+  <fieldset{{if not .EventsError.IsZero}} aria-describedby="webhook-events-error"{{end}}>
+    <legend>{{t "notify.form.events"}}</legend>
+    {{- if not .EventsError.IsZero}}
+    <p class="error" id="webhook-events-error"><strong>{{t "common.error.label"}}</strong> {{msg .EventsError}}</p>
+    {{- end}}
+    {{- range .Events}}
+    <label class="check"><input type="checkbox" name="events" value="{{.Value}}" id="webhook-event-{{.Value}}"{{if .Checked}} checked{{end}}> {{msg .Label}}</label>
+    {{- end}}
+  </fieldset>
+  <div class="field">
+    <label for="webhook-lang">{{t "notify.lang.label"}}</label>
+    <p class="hint" id="webhook-lang-hint">{{t "notify.lang.hint"}}</p>
+    <select id="webhook-lang" name="lang" aria-describedby="webhook-lang-hint{{if not .LangError.IsZero}} webhook-lang-error{{end}}"{{if not .LangError.IsZero}} aria-invalid="true"{{end}}>
+      {{- range .Langs}}
+      <option value="{{.Tag}}" lang="{{.Tag}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+    {{- if not .LangError.IsZero}}
+    <p class="error" id="webhook-lang-error"><strong>{{t "common.error.label"}}</strong> {{msg .LangError}}</p>
+    {{- end}}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-webhook-save">{{if .Edit}}{{t "notify.form.save"}}{{else}}{{t "notify.form.add"}}{{end}}</button>
+    <a href="{{.BackPath}}">{{t "worlds.cancel"}}</a>
+  </div>
+</form>
+<script src="{{static "notifyurl.js"}}" defer></script>
+{{- end}}
+{{- end}}

@@ -1,5 +1,48 @@
 {{define "title"}}{{t "common.menu.notifications"}}{{end}}
 
 {{define "content" -}}
+{{with .Page}}
 <h1>{{t "common.menu.notifications"}}</h1>
+{{- if .NoKey}}
+{{- /* Without the key no address can be sealed or read, so a note stands in for the list and form (DESIGN 8.16). */}}
+<div class="message message--note" id="notify-nokey">
+  <p><strong>{{t "common.label.note"}}</strong> {{tHTML "notify.nokey" "key" (code "FOREMAN_SECRET_KEY")}}</p>
+</div>
+<div class="actions"><a href="{{serverPath}}" id="act-back">{{t "notify.back"}}</a></div>
+{{- else}}
+{{- if not .Done.IsZero}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+</div>
+{{- end}}
+{{- with .Hooks}}
+<p id="notify-state">{{t "notify.state" "count" $.Page.Sending}}</p>
+<ul class="worlds webhook-list" role="list">
+  {{- range .}}
+  <li id="webhook-{{.ID}}">
+    <h2 class="webhook-list__title">{{msg .Preset}} <span class="ident" translate="no">{{.Host}}</span></h2>
+    <dl class="facts facts--inline">
+      <div><dt>{{t "notify.fact.language"}}</dt><dd lang="{{.LangTag}}">{{.LangName}}</dd></div>
+      <div><dt>{{t "notify.fact.events"}}</dt><dd>{{if .AllOn}}{{t "notify.events.all"}}{{else}}{{.Events}}{{end}}</dd></div>
+    </dl>
+    {{- if .Unreadable}}
+    <div class="message message--warning" id="webhook-{{.ID}}-unreadable">
+      <p><strong>{{t "common.label.warning"}}</strong> {{t "notify.unreadable"}}</p>
+    </div>
+    {{- end}}
+    <div class="actions">
+      <a href="{{.EditPath}}" class="button" id="act-webhook-edit-{{.ID}}"><span aria-hidden="true">{{t "notify.edit"}}</span><span class="visually-hidden">{{t "notify.edit.named" "preset" (msg .Preset) "host" .Host}}</span></a>
+      <a href="{{.DeletePath}}" class="button button--risky button--icon" id="act-webhook-delete-{{.ID}}"><span class="visually-hidden">{{t "notify.delete.named" "preset" (msg .Preset) "host" .Host}}</span></a>
+    </div>
+  </li>
+  {{- end}}
+</ul>
+{{- else}}
+<p class="empty empty--art empty--settings empty--notify" id="notify-empty">{{t "notify.empty"}}</p>
+{{- end}}
+<div class="actions">
+  <a href="{{.AddPath}}" class="button button--primary" id="act-webhook-add">{{t "notify.add"}}</a>
+</div>
+{{- end}}
+{{- end}}
 {{- end}}
