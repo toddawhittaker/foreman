@@ -19,9 +19,11 @@ func TestWarnEmptyCountsDownOnAnEmptyServer(t *testing.T) {
 	done := r.inCountdown(id, func() error {
 		return r.c.Restart(context.Background(), id, admin, StopOptions{Countdown: MaxStopCountdown, WarnEmpty: true}, StartOptions{})
 	})
-	if !slices.Contains(r.commands(id), warningText(MaxStopCountdown)) {
-		t.Errorf("no warning sent; commands %q", r.commands(id))
-	}
+	// The countdown shows in the status just before its first warning goes
+	// out, so wait for the warning rather than look once.
+	eventually(t, func() bool {
+		return slices.Contains(r.commands(id), warningText(MaxStopCountdown))
+	}, "the warning; commands %q", func() any { return r.commands(id) })
 	// A player joins during the countdown, and Cancel stop ends it.
 	r.joinBob(id)
 	if err := r.c.CancelStop(context.Background(), id, admin); err != nil {

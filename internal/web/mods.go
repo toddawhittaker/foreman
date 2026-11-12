@@ -299,6 +299,15 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	if !ok {
 		return
 	}
+	// The result is read before modsPage reads whether an action runs. An
+	// action that ends between the two reads then still shows as running, so
+	// the page reloads to its result; read the other way round, the page
+	// showed the result and then refreshed itself away from it.
+	var res actionResult
+	var ended bool
+	if followsOwnAction(r) {
+		res, ended = s.runs.result(sum.ID)
+	}
 	p, err := s.modsPage(r.Context(), sum)
 	if err != nil {
 		s.notFoundOrFail(w, r, u, "list mods", err)
@@ -309,8 +318,8 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 	if r.Header.Get("HX-Request") != "" && !p.Working {
 		w.Header().Set("HX-Refresh", "true")
 	}
-	if followsOwnAction(r) {
-		s.modsOutcome(&p)
+	if ended {
+		s.modsOutcome(&p, res)
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
@@ -354,12 +363,8 @@ func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, err
 
 // modsOutcome says how the last mod change of a world that is not active
 // ended; the Server page says it for the active world (SPEC 17.9).
-func (s *server) modsOutcome(p *ModsPage) {
-	if p.World.Active {
-		return
-	}
-	res, ok := s.runs.result(p.World.ID)
-	if !ok || res.Action != game.AuditMods {
+func (s *server) modsOutcome(p *ModsPage, res actionResult) {
+	if p.World.Active || res.Action != game.AuditMods {
 		return
 	}
 	p.Undo = modsUndo(p.World.ID, res)
