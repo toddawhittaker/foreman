@@ -206,10 +206,23 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64) bo
 		w.lastCrash = now
 		w.crashedRun = true
 		w.run = runState{}
+		if w.dockerStatus == "running" {
+			// The exit was not seen, and Docker clears the flag when it
+			// restarts the game, so whether it ran out of memory is lost.
+			w.oomKilled = false
+		}
 	}
 	w.seenRestarts = cont.RestartCount
 	w.crashes = keepSince(w.crashes, now.Add(-c.crashWindow))
 	w.dockerStatus = cont.State.Status
+	switch {
+	case cont.State.OOMKilled:
+		w.oomKilled = true
+	case w.dockerStatus != "running" && !w.stopping:
+		// The newest exit was not an out-of-memory kill. Foreman's own
+		// stop, of a crash loop say, is not the exit the flag describes.
+		w.oomKilled = false
+	}
 	if !cont.State.StartedAt.Equal(w.startedAt) {
 		if w.stopping && w.dockerStatus == "running" {
 			// The same container runs a new run, so a stop asked for
@@ -403,6 +416,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false
+	w.oomKilled = false
 	return rc
 }
 
