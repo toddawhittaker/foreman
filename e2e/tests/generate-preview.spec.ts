@@ -250,6 +250,10 @@ test.describe("with script", () => {
   // pause; the picture is drawn at the size; and the size survives a form
   // that comes back with an error.
   test("the preview size redraws once after the pause and is kept over an error", async ({ page }) => {
+    // From 68.75rem the preview is a narrow column beside the settings, and
+    // a narrow column has the select (DESIGN 8.6, 8.7); below it the preview
+    // spans the panel, which is the wide panel this test means.
+    if ((page.viewportSize()?.width ?? 1280) > 600) await page.setViewportSize({ width: 1024, height: 768 });
     await page.goto("/generate");
     await expect(pictures(page)).toHaveCount(1);
     const select = page.locator("#generate-preview-size");
@@ -445,6 +449,9 @@ test.describe("without script", () => {
 // one line on a desktop, and nothing says "centre".
 test("the preview's words are short and spelled the American way", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
+  // The one-line check is where the preview spans the panel; from 68.75rem it
+  // is a narrow column beside the settings, where no sentence this long fits.
+  if ((page.viewportSize()?.width ?? 0) > 320) await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("/generate");
   await expect(pictures(page)).toHaveCount(1);
   const hint = page.locator("#generate-preview-size-hint");

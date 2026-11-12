@@ -131,8 +131,11 @@
       <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     </div>
     {{- if .Form.SpaceAge}}
-    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    {{- /* "Download all", in words, as it wraps on a narrow column. */}}
+    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true">{{t "worlds.generate.preview.download_all"}}</span>
     {{- end}}
+    {{- /* The amounts' bar, empty until a count, still takes a gap in the grid. */}}
+    <span class="preview-placeholder__hold" aria-hidden="true"></span>
     <p class="hint preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.kept"}}</p>
   </section>
   {{- end}}

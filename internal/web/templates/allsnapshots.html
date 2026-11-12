@@ -24,6 +24,10 @@
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
   <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
+  {{- /* Every world's automatic snapshots at once; each world's heading has its own (SPEC 6.12). */}}
+  <div class="actions">
+    <button type="submit" class="button button--quiet" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
+  </div>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}

@@ -590,3 +590,12 @@ export async function tabTo(page: Page, target: Locator, limit = 150) {
   }
   throw new Error(`tabTo: not reached in ${limit} Tab presses`);
 }
+
+// On a phone Generate's planet rows start closed, so the preview sits near
+// the top (DESIGN 8.6); this opens a planet's row, in every tab, where it is
+// closed. It sends no preview for the planet already shown.
+export async function openPlanetRow(page: Page, planet = "nauvis") {
+  const row = page.locator(`#mg-resources-${planet}`);
+  if (!(await row.evaluate((d) => (d as HTMLDetailsElement).open))) await row.locator("summary").click();
+  await expect(row).toHaveJSProperty("open", true);
+}

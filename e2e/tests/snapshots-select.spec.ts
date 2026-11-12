@@ -20,7 +20,7 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
   await takeSnapshot(page, "Only a manual one");
 
   await page.goto("/snapshots");
-  await page.getByRole("button", { name: "Select all automatic of Family base" }).click();
+  await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await expect(page.locator("#tick-note")).toHaveText("There are no automatic snapshots to tick.");
   await expect(page.locator("#tick-note")).toBeFocused();
 

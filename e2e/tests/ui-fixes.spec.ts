@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, openMenu } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, seedSecond, image21, openMenu, openPlanetRow } from "./foreman.js";
 import type { Page, Request } from "@playwright/test";
 
 // Fixes from the UI batch's reviews: the map preview's large view and its
@@ -34,6 +34,7 @@ test.describe("Generate", () => {
   test("unticking a resource turns its fields off and ticking it turns them on", async ({ page }) => {
     await page.goto("/generate");
     await tab(page, "Resources").click();
+    await openPlanetRow(page);
     const iron = page.getByRole("checkbox", { name: "Iron ore", exact: true });
     const group = page.locator("#mg-nauvis-iron-ore");
     const fields = group.locator("select, input[type=range]");

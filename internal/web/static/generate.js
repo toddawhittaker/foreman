@@ -70,15 +70,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!(d instanceof HTMLDetailsElement) || !d.dataset.planet || !d.closest("#generate-form")) return;
     if (byScript.delete(d) || !d.open) return;
     const field = openPlanet();
-    // A row opened to follow the choice already made says and sends nothing.
-    if (!field || field.value === d.dataset.planet) return;
+    if (!field) return;
+    // A row opened to follow the choice already made says and sends nothing, but
+    // still opens in every tab, as on a phone the rows start closed (DESIGN 8.7).
+    if (field.value === d.dataset.planet) {
+      openRow(d.dataset.planet);
+      return;
+    }
     openRow(d.dataset.planet);
     // The preview shows the planet whose settings are open; it cancels the event when it switches, which is said.
     const told = new CustomEvent("settings:planet", { detail: { planet: d.dataset.planet }, cancelable: true });
     if (!document.dispatchEvent(told)) announce(d.dataset.said);
   }, true);
   // On a phone the planets' rows start closed, so the preview sits near the top; closing one changes nothing else.
-  if (window.matchMedia("(max-width: 30rem)").matches) {
+  // A form back with its errors keeps the open planet, as it is the one with the first error or the one being changed (SPEC 5.6).
+  if (window.matchMedia("(max-width: 30rem)").matches && !document.getElementById("error-summary")) {
     for (const d of document.querySelectorAll("#generate-form details[data-planet][open]")) d.open = false;
   }
   // A planet shown in the large view opens its row, and focus stays where it is.

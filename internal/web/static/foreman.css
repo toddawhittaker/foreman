@@ -3063,6 +3063,14 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: 1lh;
 }
 
+/* The note stays one line in a narrow column too, so a redraw never moves
+   what sits under the preview; the faded picture says the rest (DESIGN 8.8). */
+.preview-status {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* 8.8 The large view: the whole screen, the picture fitted, zoomed and
    panned in a scrolling frame with sharp pixels (one tile is one pixel on
    2.x). The controls sit over the picture. */
@@ -4338,7 +4346,12 @@ form:has(#mode-exchange:checked) .achievements {
 }
 
 /* Generate: the settings beside a preview that stays in view while they
-   change (DESIGN 8.6). One column below 68.75rem. */
+   change (DESIGN 8.6). One column below 68.75rem. The preview sizes its
+   controls from its own column, as the settings do from theirs (8.7). */
+.gen-preview {
+  container: map-section / inline-size;
+}
+
 .gen-grid,
 .gen-settings {
   display: grid;
@@ -4371,6 +4384,11 @@ form:has(#mode-exchange:checked) .achievements {
 
   .gen-preview .pictures {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* All planets are thumbnails, two to a row, so they read as small beside One planet's picture (DESIGN 8.8). */
+  .gen-preview .pictures:has(> li + li) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -4433,6 +4451,13 @@ form:has(#mode-exchange:checked) .achievements {
 
   .generate > .gen-actions > .button {
     padding-inline: var(--space-2);
+  }
+
+  /* At 200% text the three no longer fit side by side, so they stack (SPEC 17.2). */
+  @container (max-width: 14em) {
+    .generate > .gen-actions {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   /* On a phone the preview comes straight after the preset and seed. */

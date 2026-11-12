@@ -480,7 +480,9 @@ test.describe("the planet viewed", () => {
 });
 
 // The preview picture fills its column, capped by the window's height and centred.
-for (const [w, h] of [[1280, 1600], [1920, 900], [320, 640]]) {
+// At 1920 the preview is a column beside the settings, so a short window is
+// what caps it there.
+for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
   test(`the preview picture fills its column at ${w} by ${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto("/generate");
@@ -493,7 +495,7 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [320, 640]]) {
     expect(box.height).toBeCloseTo(box.width, 0);
     expect(box.x + box.width / 2).toBeCloseTo(column.x + column.width / 2, 0);
     if (w === 1280) expect(box.width).toBeCloseTo(column.width, 0);
-    if (w === 1920) expect(box.width).toBeLessThan(column.width);
+    if (w === 1920 && h === 400) expect(box.width).toBeLessThan(column.width);
     expect(await img.evaluate((i) => getComputedStyle(i).imageRendering)).toBe("pixelated");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(w);
   });
