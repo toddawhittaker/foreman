@@ -1,0 +1,21 @@
+{
+  "chat.none": "Zatím není aktivní žádný svět, takže není žádný chat ke čtení ani k odeslání zprávy. Naimportujte svět nebo nahrajte uloženou hru na stránce Světy; první svět se stane aktivním.",
+  "chat.history_label": "Zprávy chatu",
+  "chat.name.server": "Server",
+  "chat.empty": "Od spuštění serveru nebyl žádný chat.",
+  "chat.not_running": "Server neběží, takže nikdo nemůže číst chat. Je třeba ho spustit na stránce Server.",
+  "chat.go_server": "Přejít na stránku Server",
+  "chat.message.label": "Zpráva",
+  "chat.message.hint": "Hráči to ve hře uvidí jako zprávu od serveru. Zpráva se zapisuje do protokolu auditu.",
+  "chat.send": "Odeslat",
+  "chat.error.empty": "Je třeba zadat zprávu k odeslání",
+  "chat.error.control": "Zpráva nesmí obsahovat řídicí znak, například tabulátor",
+  "chat.error.long": "Je třeba zadat zprávu dlouhou nejvýše {max} znaků",
+  "chat.error.nul": "Zpráva nesmí obsahovat znak NUL",
+  "chat.error.lines": "Zpráva musí být na jednom řádku",
+  "chat.error.slash": "Zpráva chatu nesmí začínat znakem /. Příkaz se spouští v konzoli.",
+  "chat.go_console": "Přejít do konzole",
+  "chat.failure.not_running": "Hra neběží, takže zpráva nebyla odeslána. Je třeba ji spustit na stránce Server.",
+  "chat.failure.unreachable": "Hra neodpověděla přes RCON, takže zpráva nebyla odeslána.",
+  "chat.announce.sent": "Zpráva odeslána"
+}

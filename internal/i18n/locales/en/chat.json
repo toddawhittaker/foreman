@@ -1,0 +1,21 @@
+{
+  "chat.none": "No world is active yet, so there is no chat to read or send. Import a world or upload a save on the Worlds page; the first world becomes the active one.",
+  "chat.history_label": "Chat messages",
+  "chat.name.server": "Server",
+  "chat.empty": "No chat since the server started.",
+  "chat.not_running": "The server is not running, so no one can read chat. Start it from the Server page.",
+  "chat.go_server": "Go to the Server page",
+  "chat.message.label": "Message",
+  "chat.message.hint": "Players see this in the game as a message from the server. It is recorded in the audit log.",
+  "chat.send": "Send",
+  "chat.error.empty": "Enter a message to send",
+  "chat.error.control": "A message cannot contain a control character, such as a tab",
+  "chat.error.long": "Enter a message of at most {max} characters",
+  "chat.error.nul": "A message cannot contain a NUL character",
+  "chat.error.lines": "A message must be on one line",
+  "chat.error.slash": "A chat message cannot start with /. To run a command, use the Console.",
+  "chat.go_console": "Go to the Console",
+  "chat.failure.not_running": "The game is not running, so the message was not sent. Start it from the Server page.",
+  "chat.failure.unreachable": "The game did not answer over RCON, so the message was not sent.",
+  "chat.announce.sent": "Message sent"
+}

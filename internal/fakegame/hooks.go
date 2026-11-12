@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -102,6 +103,52 @@ func (g *Game) movePlayer(name, player string, join bool) error {
 	return nil
 }
 
+// Chat makes a player who is on say text, with the [CHAT] line the server
+// prints. The line's format was not captured from a client: no headless
+// server can join as one. It is the captured server line with the player's
+// name in place of <server>.
+func (g *Game) Chat(name, player, text string) error {
+	if player == "" || text == "" || strings.ContainsAny(text, "\r\n\x00") {
+		return errors.New("chat needs a player and one line of text")
+	}
+	in, err := g.running(name)
+	if err != nil {
+		return err
+	}
+	in.mu.Lock()
+	on := slices.Contains(in.players, player)
+	in.mu.Unlock()
+	if !on {
+		return fmt.Errorf("%s is not on", player)
+	}
+	in.emitText(stamp("[CHAT] " + player + ": " + text))
+	return nil
+}
+
+// SetOOM makes every start of the named container end as the out-of-memory
+// killer ends it: the log stops while mods load, and the container exits 137
+// with OOMKilled set. Docker's restart policy then applies. Turning it on
+// kills a running game the same way; turning it off lets the next start load.
+func (g *Game) SetOOM(name string, on bool) {
+	g.mu.Lock()
+	b := g.behave[name]
+	b.oom = on
+	g.behave[name] = b
+	g.mu.Unlock()
+	if !on {
+		return
+	}
+	if in, err := g.running(name); err == nil {
+		g.died(in, 137, true)
+	}
+}
+
+// FailStartPortInUse makes the next start of the named container fail as
+// Docker does when the host port is taken (see dockertest.PortInUseMessage).
+func (g *Game) FailStartPortInUse(name, hostPort string) {
+	g.daemon.FailStartPortInUse(name, hostPort)
+}
+
 // SetRCONRefuse makes RCON refuse every login, now and in later containers
 // of that name, or accept them again.
 func (g *Game) SetRCONRefuse(name string, on bool) {
@@ -177,6 +224,10 @@ type ContainerState struct {
 	CrashLoop    bool     `json:"crash_loop"`
 	RCONRefuse   bool     `json:"rcon_refuse"`
 	SaveHangs    bool     `json:"save_hangs"`
+	OOM          bool     `json:"oom"`
+	// AchievementsDisabled is true once a Lua console command has run in this
+	// world (the first one only warns).
+	AchievementsDisabled bool `json:"achievements_disabled"`
 }
 
 // State is the whole fake, for tests to read.
@@ -200,6 +251,7 @@ func (g *Game) State() State {
 		g.mu.Lock()
 		b := g.behave[c.Name]
 		cs.CrashLoop, cs.RCONRefuse, cs.SaveHangs = b.crashLoop, b.rconRefuse, b.saveHangs
+		cs.OOM, cs.AchievementsDisabled = b.oom, b.luaCommands >= 2
 		cs.Commands = append(cs.Commands, g.commands[c.Name]...)
 		in := g.insts[c.ID]
 		if in != nil {
@@ -229,6 +281,8 @@ type hookRequest struct {
 	OOM    bool   `json:"oom"`    // crash: the out-of-memory killer did it
 	On     bool   `json:"on"`     // crash-loop, rcon-refuse, save-hangs, image
 	Mode   string `json:"mode"`   // preview-mode
+	Text   string `json:"text"`   // chat
+	Port   string `json:"port"`   // port-in-use: the host port that is taken
 }
 
 // HookHandler serves the test hooks over HTTP. Every hook is a POST with a
@@ -242,6 +296,9 @@ type hookRequest struct {
 //	POST /rcon-refuse   name, on
 //	POST /save-hangs    name, on
 //	POST /image         ref, on (the image is present)
+//	POST /chat          name, player, text
+//	POST /oom           name, on
+//	POST /port-in-use   name, port (the next start of that name fails)
 //	POST /preview-mode  mode ("ok", "fail", "hang", "slow" or "oom")
 func (g *Game) HookHandler() http.Handler {
 	mux := http.NewServeMux()
@@ -276,6 +333,15 @@ func (g *Game) HookHandler() http.Handler {
 	hook("/crash-loop", func(q hookRequest) error { g.SetCrashLoop(q.Name, q.On); return nil })
 	hook("/join", func(q hookRequest) error { return g.Join(q.Name, q.Player) })
 	hook("/leave", func(q hookRequest) error { return g.Leave(q.Name, q.Player) })
+	hook("/chat", func(q hookRequest) error { return g.Chat(q.Name, q.Player, q.Text) })
+	hook("/oom", func(q hookRequest) error { g.SetOOM(q.Name, q.On); return nil })
+	hook("/port-in-use", func(q hookRequest) error {
+		if q.Name == "" || q.Port == "" {
+			return errors.New("a port-in-use failure needs a name and a port")
+		}
+		g.FailStartPortInUse(q.Name, q.Port)
+		return nil
+	})
 	hook("/rcon-refuse", func(q hookRequest) error { g.SetRCONRefuse(q.Name, q.On); return nil })
 	hook("/save-hangs", func(q hookRequest) error { g.SetSaveHangs(q.Name, q.On); return nil })
 	hook("/preview-mode", func(q hookRequest) error { return g.SetPreviewMode(PreviewMode(q.Mode)) })

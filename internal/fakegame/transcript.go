@@ -35,6 +35,12 @@ type version struct {
 	save     []line // the two lines a /server-save writes
 	shutdown []line // SIGTERM, save, "Goodbye"
 	failed   []line // one start that fails to load the save
+	// oom is the log of a start killed for memory: it stops while mods load.
+	oom []line
+	// whitelistFail is the end of a start given --server-whitelist without
+	// --use-server-whitelist: the error, then the shutdown. It follows the
+	// "Factorio initialised" line.
+	whitelistFail []line
 }
 
 // The save names in the transcripts, replaced by the name the container loads.
@@ -89,6 +95,11 @@ func loadVersion(name string) *version {
 	v.conn = run[find(run, rconAt, "New RCON connection")]
 	v.save = run[saveAt : saveAt+2]
 	v.shutdown = run[stopAt : find(run, stopAt, "Goodbye")+1]
+	// The captured out-of-memory logs end while mods load, before any checksum.
+	v.oom = v.head[:find(v.head, 0, "Checksum for core")]
+	flagMissing := readLines(name, "run-whitelist-flag-missing.log")
+	errAt := find(flagMissing, 0, "Error CommandLineMultiplayer.cpp:")
+	v.whitelistFail = flagMissing[errAt : find(flagMissing, errAt, "Goodbye")+1]
 	return v
 }
 

@@ -28,7 +28,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test test-shards typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
-	test-game test-game-resources game-images e2e-game vuln ci tidy i18n-hash deploy design-export
+	test-game test-game-resources test-catalogue game-images e2e-game vuln ci tidy i18n-hash deploy design-export
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -293,6 +293,15 @@ test-game: game-images
 
 test-game-resources: game-images
 	$(GAME_RESOURCES_RUN)
+
+# The crash catalogue's scenarios on one pinned image (SPEC 8.7, 8.8):
+# make test-catalogue VERSION=2.1.24. Each must be named by its reason.
+CATALOGUE_IMAGE = $(firstword $(foreach i,$(GAME_IMAGE_1_1) $(GAME_IMAGE_2_0) $(GAME_IMAGE_2_1),$(if $(findstring :$(VERSION)@,$(i)),$(i))))
+
+test-catalogue:
+	@[ -n "$(CATALOGUE_IMAGE)" ] || { echo "VERSION must be a pinned game version: 1.1.110, 2.0.77 or 2.1.24."; exit 1; }
+	$(call CHECK_GAME_IMAGE,$(CATALOGUE_IMAGE))
+	FOREMAN_TEST_CATALOGUE_VERSION=$(VERSION) $(GAME_GO_TEST) -timeout 20m -run '^TestRealGameCatalogue$$' ./internal/game/
 
 # The phone scenario against the real game: Playwright in its pinned image,
 # with the host's Docker socket, starts bin/foreman, which starts the pinned

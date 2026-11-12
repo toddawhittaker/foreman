@@ -97,7 +97,15 @@
   // to the new element with the same id; when there is none, focus goes to
   // the page's heading, which names the world and its state, instead of the
   // top of the page (DESIGN 5).
+  //
+  // A player's actions are a details element in the players region. Its
+  // open state and the button inside it that had focus are copied to the
+  // new row with the same id, so an update to the list does not close the
+  // row in the admin's hands. A player who left takes their row with them;
+  // focus then goes to the players heading (DESIGN 8.12).
   let held = null;
+  let heldFocus = "";
+  let openRows = [];
   document.addEventListener("htmx:sseBeforeMessage", (e) => {
     // The server's sentence is read out here rather than swapped in, so it
     // can be emptied first.
@@ -108,12 +116,22 @@
       return;
     }
     held = e.target.contains(document.activeElement) ? e.target : null;
+    heldFocus = held ? document.activeElement.id : "";
+    openRows = Array.from(e.target.querySelectorAll("details[open][id]"), (d) => d.id);
   });
   document.addEventListener("htmx:sseMessage", (e) => {
+    for (const id of openRows) {
+      const row = document.getElementById(id);
+      if (row && e.target.contains(row)) row.open = true;
+    }
+    openRows = [];
     if (held !== e.target) return;
     held = null;
+    const again = heldFocus && document.getElementById(heldFocus);
+    if (again && e.target.contains(again)) again.focus({ preventScroll: true });
     if (e.target.contains(document.activeElement)) return;
-    document.getElementById("control-heading")?.focus();
+    const heading = e.target.getAttribute("sse-swap") === "players" ? "players-heading" : "control-heading";
+    document.getElementById(heading)?.focus();
   });
 
   // After the admin's own cancel stop or snapshot, the Done message takes

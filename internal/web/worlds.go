@@ -356,16 +356,23 @@ func (s *server) handleWorld(w http.ResponseWriter, r *http.Request, u store.Use
 	if !ok {
 		return
 	}
+	// The result is read before worldPage reads whether an action runs. An
+	// action that ends between the two reads then still shows as running, so
+	// the page reloads to its result; read the other way round, the page
+	// showed the result and then refreshed itself away from it.
+	var done i18n.Msg
+	var failure *Failure
+	if followsOwnAction(r) {
+		done, failure = s.updateOutcome(sum)
+	}
 	p := s.worldPage(r.Context(), sum, sum.Name, i18n.Msg{})
+	p.UpdateDone, p.UpdateFailure = done, failure
 	// The page reloads its activity block while an action runs; when the
 	// action has ended, it reloads whole, so the version and the rollback
 	// offer are current.
 	// Only the activity block sends htmx requests for this page.
 	if r.Header.Get("HX-Request") != "" && !p.Working {
 		w.Header().Set("HX-Refresh", "true")
-	}
-	if followsOwnAction(r) {
-		p.UpdateDone, p.UpdateFailure = s.updateOutcome(sum)
 	}
 	p.Done = renameDone(r.URL.Query().Get("renamed"), sum.Name)
 	s.importFacts(&p, r)

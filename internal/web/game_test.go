@@ -181,7 +181,8 @@ func TestServerPageStartsAndStops(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage(`<td role="cell">bob</td>`)
+	// An online player's name opens their actions (DESIGN 8.12).
+	g.waitPage(`<summary id="ps-bob"><span class="player-actions__name">bob</span>`)
 
 	form := g.get(gamePath(id, "stop"))
 	// One control for the warning: the seconds field, where 0 means none

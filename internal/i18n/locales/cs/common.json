@@ -6,6 +6,7 @@
   "common.nav.console": "Konzole",
   "common.nav.worlds": "Světy",
   "common.nav.snapshots": "Snímky",
+  "common.nav.chat": "Chat",
   "common.signedin": "Přihlášen jako {user}",
   "common.signout": "Odhlásit",
   "common.language.label": "Jazyk",
@@ -78,5 +79,8 @@
   "common.link.new_tab": "(otevře se na nové kartě)",
   "common.menu.account": "{user}, {language}: nabídka účtu a jazyka",
   "common.menu.language": "{language}: nabídka jazyka",
+  "common.menu.notifications": "Oznámení",
+  "common.menu.schedule": "Plán restartů",
+  "common.settings.label": "Nastavení Foremanu",
   "common.countdown.none_name": "Bez upozornění: nastavit odpočet na 0 sekund"
 }

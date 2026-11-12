@@ -52,6 +52,7 @@ func (s *server) settingsRoutes() {
 	// A running game saves before its snapshot (SPEC 6.10), which can outlast
 	// the usual deadlines.
 	s.handleLong("POST "+PathSettingsConfirm, s.requireUser(h.handleConfirm))
+	s.mux.HandleFunc("POST "+PathSettingsWhitelist, s.requireUser(h.handleWhitelistSwitch))
 }
 
 // settingsWorld is a world and its settings files as they are on disk now.
@@ -64,6 +65,7 @@ type settingsWorld struct {
 	admins        []string
 	adminsBroken  bool
 	running       bool
+	lists         settingsLists
 	// readOnly says why the world cannot be changed; zero when it can.
 	readOnly i18n.Msg
 }
@@ -117,6 +119,10 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 			sw.running = true
 		}
 	}
+	if sw.lists, err = h.loadLists(r.Context(), sum, sw.running); err != nil {
+		s.notFoundOrFail(w, r, u, "read player lists", err)
+		return settingsWorld{}, false
+	}
 	switch {
 	case sum.Newer:
 		sw.readOnly = i18n.M("worlds.error.newer_format")
@@ -133,6 +139,7 @@ func (sw settingsWorld) formPage(text []byte, names []string) SettingsPage {
 		Running: sw.running, AdminsBroken: sw.adminsBroken,
 		Admins: strings.Join(names, "\n"),
 	}
+	sw.lists.fill(&p)
 	cur, ok := readServerValues(text)
 	if !ok {
 		p.Broken = true
@@ -189,7 +196,8 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	text, names, edit := sw.formText(), sw.admins, ""
-	if c, ok := h.fromEdit(r.URL.Query().Get("edit"), u, sw.sum.ID, false); ok {
+	c, fromEdit := h.fromEdit(r.URL.Query().Get("edit"), u, sw.sum.ID, false)
+	if fromEdit {
 		edit = r.URL.Query().Get("edit")
 		if f, ok := c.file(world.ServerSettingsFile); ok {
 			text = f.New
@@ -201,10 +209,14 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 		}
 	}
 	p := sw.formPage(text, names)
+	if fromEdit {
+		refillLists(&p, c)
+	}
 	p.Edit = edit
 	p.Connected = h.connected(r.Context(), sw, p.Admins)
 	p.PasswordPending = p.PasswordSet && !bytes.Equal(carriedPassword(sw.formText()), carriedPassword(text))
 	h.fillDone(&p, sw, r)
+	p.Player = h.s.playerResults.take(u.ID, sw.sum.ID, settingsPath(sw.sum.ID))
 	h.s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -223,6 +235,9 @@ func (h *settingsHandlers) connected(ctx context.Context, sw settingsWorld, admi
 // crafted link cannot put other words on the page.
 func (h *settingsHandlers) fillDone(p *SettingsPage, sw settingsWorld, r *http.Request) {
 	q := r.URL.Query()
+	if fillSwitchDone(p, sw, q.Get(switchQuery)) {
+		return
+	}
 	if q.Get("saved") != "1" {
 		return
 	}
@@ -284,6 +299,8 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 		}
 	}
 	edit2 := formEdit{BaseText: text, BaseAdmins: sw.admins, In: in, Carried: carried, Names: names}
+	edit2.Bans = postedList(in.Bans, in.BansPosted && sw.lists.bansEditable(), sw.lists.banNames())
+	edit2.Whitelist = postedList(in.Whitelist, in.WhitelistPosted && sw.lists.whitelistEditable(), sw.lists.whitelist)
 	files, errs, err := buildFiles(sw, edit2)
 	if err != nil {
 		s.fail(w, r, "apply settings form", err)
@@ -292,11 +309,13 @@ func (h *settingsHandlers) handlePreview(w http.ResponseWriter, r *http.Request,
 	if !adminErr.IsZero() {
 		errs.AdminsError = adminErr
 	}
+	errs.BansError, errs.WhitelistError = edit2.Bans.err, edit2.Whitelist.err
 	if errs.has() {
 		p := sw.formPage(text, sw.admins)
 		p.Name, p.Description, p.MaxPlayers = in.Name, in.Description, in.MaxPlayers
 		p.Interval, p.Slots, p.Verify, p.AutoPause = in.Interval, in.Slots, in.Verify, in.AutoPause
 		p.Admins, p.Edit, p.formErrors = in.Admins, edit, errs
+		p.Bans, p.Whitelist = in.Bans, in.Whitelist
 		p.Connected = h.connected(r.Context(), sw, in.Admins)
 		p.PasswordDropped = in.Password != ""
 		if v := gamesettings.Visibility(in.Visibility); slices.Contains(gamesettings.FormVisibilities, v) {
@@ -319,6 +338,8 @@ type formEdit struct {
 	Carried    []byte
 	// Names are the admins as posted; used only when In.AdminsPosted.
 	Names []string
+	// Bans and Whitelist are the lists' boxes as posted.
+	Bans, Whitelist listEdit
 }
 
 // buildFiles works out the files a form edit changes, applied to the files as
@@ -345,6 +366,7 @@ func buildFiles(sw settingsWorld, e formEdit) ([]pendingFile, formErrors, error)
 			files = append(files, pendingFile{File: world.ServerAdminListFile, Hash: sw.adminCfg.Hash, New: adminListJSON(target)})
 		}
 	}
+	files = append(files, sw.lists.files(e)...)
 	return files, errs, nil
 }
 
@@ -437,11 +459,7 @@ func (h *settingsHandlers) handleConfirm(w http.ResponseWriter, r *http.Request,
 func (h *settingsHandlers) moved(sw settingsWorld, c *pendingChange) bool {
 	moved := false
 	for _, f := range c.Files {
-		now := sw.cfg
-		if f.File == world.ServerAdminListFile {
-			now = sw.adminCfg
-		}
-		moved = moved || now.Hash != f.Hash
+		moved = moved || sw.config(f.File).Hash != f.Hash
 	}
 	if !moved {
 		return false
@@ -453,13 +471,22 @@ func (h *settingsHandlers) moved(sw settingsWorld, c *pendingChange) bool {
 		}
 	}
 	for i, f := range c.Files {
-		now := sw.cfg
-		if f.File == world.ServerAdminListFile {
-			now = sw.adminCfg
-		}
-		c.Files[i].Hash = now.Hash
+		c.Files[i].Hash = sw.config(f.File).Hash
 	}
 	return true
+}
+
+// config is the file of the world named, as read when the page loaded.
+func (sw settingsWorld) config(file string) world.ConfigRead {
+	switch file {
+	case world.ServerAdminListFile:
+		return sw.adminCfg
+	case world.ServerBanListFile:
+		return sw.lists.banCfg
+	case world.ServerWhiteListFile:
+		return sw.lists.wlCfg
+	}
+	return sw.cfg
 }
 
 // saveFailed answers a confirmation that did not complete. A file that
@@ -472,9 +499,9 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 	if !ok {
 		return
 	}
-	var saved []string
+	var saved, failed []string
 	if pe, ok := errors.AsType[*game.PartialSaveError](err); ok {
-		saved = pe.Saved
+		saved, failed = pe.Saved, pe.Failed
 	}
 	rest := &pendingChange{UserID: c.UserID, WorldID: c.WorldID, Raw: c.Raw, Form: c.Form}
 	for _, f := range c.Files {
@@ -499,7 +526,7 @@ func (h *settingsHandlers) saveFailed(w http.ResponseWriter, r *http.Request, u 
 	p := sw.formPage(sw.formText(), sw.admins)
 	p.Error = msg
 	if len(saved) > 0 {
-		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", world.ServerAdminListFile, "reason", msg)
+		p.Error = i18n.M("settings.error.partial", "saved", strings.Join(saved, ", "), "failed", strings.Join(failed, ", "), "reason", msg)
 	}
 	s.page(w, r, status, u.Username, p)
 }
@@ -563,7 +590,14 @@ type SettingsPreviewPage struct {
 	Settings []ChangeRow
 	// Promote and Demote are the admins to add and remove.
 	Promote, Demote []string
-	Running         bool
+	// Banned and Unbanned, WhitelistAdded and WhitelistRemoved are the
+	// changes to the other two player lists.
+	Banned, Unbanned                 []string
+	WhitelistAdded, WhitelistRemoved []string
+	// BansLive and WhitelistLive are true when the running game keeps the
+	// list, so its change is sent over RCON.
+	BansLive, WhitelistLive bool
+	Running                 bool
 	// FileChanged is true when the file moved on since the preview, so these
 	// are the changes against the file as it is now.
 	FileChanged bool
@@ -610,8 +644,19 @@ func (p SettingsPreviewPage) BackPath() string {
 
 // Nothing is true when the change holds no difference.
 func (p SettingsPreviewPage) Nothing() bool {
-	return len(p.Settings) == 0 && len(p.Promote)+len(p.Demote) == 0
+	return len(p.Settings) == 0 && len(p.Promote)+len(p.Demote) == 0 && !p.Bans() && !p.WhitelistChanged()
 }
+
+// Bans is true when the ban list changes.
+func (p SettingsPreviewPage) Bans() bool { return len(p.Banned)+len(p.Unbanned) > 0 }
+
+// WhitelistChanged is true when the whitelist changes.
+func (p SettingsPreviewPage) WhitelistChanged() bool {
+	return len(p.WhitelistAdded)+len(p.WhitelistRemoved) > 0
+}
+
+func (SettingsPreviewPage) BanFile() string       { return world.ServerBanListFile }
+func (SettingsPreviewPage) WhitelistFile() string { return world.ServerWhiteListFile }
 
 // Admins is true when the admin list changes.
 func (p SettingsPreviewPage) Admins() bool { return len(p.Promote)+len(p.Demote) > 0 }
@@ -635,8 +680,17 @@ func (h *settingsHandlers) previewPage(sw settingsWorld, change pendingChange) S
 			if next, err := gamesettings.ParseAdminList(f.New); err == nil {
 				p.Promote, p.Demote = gamesettings.AdminDiff(sw.admins, next)
 			}
+		case world.ServerBanListFile:
+			if next, err := gamesettings.ParseBanList(f.New); err == nil {
+				p.Banned, p.Unbanned = gamesettings.AdminDiff(sw.lists.banNames(), gamesettings.BanNames(next))
+			}
+		case world.ServerWhiteListFile:
+			if next, err := gamesettings.ParseWhitelist(f.New); err == nil {
+				p.WhitelistAdded, p.WhitelistRemoved = gamesettings.AdminDiff(sw.lists.whitelist, next)
+			}
 		}
 	}
+	p.BansLive, p.WhitelistLive = sw.running, sw.running && sw.lists.kept
 	return p
 }
 

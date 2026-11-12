@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "event": "start",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: the server started."
+}
+{
+  "version": 1,
+  "event": "stop",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: the server stopped."
+}
+{
+  "version": 1,
+  "event": "crash",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: the server crashed.",
+  "reason": "save-unreadable"
+}
+{
+  "version": 1,
+  "event": "crash-loop",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: the server keeps crashing, so Foreman stopped it. Start it again by hand."
+}
+{
+  "version": 1,
+  "event": "player-join",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: ann joined.",
+  "player": "ann"
+}
+{
+  "version": 1,
+  "event": "player-leave",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: ann left.",
+  "player": "ann"
+}
+{
+  "version": 1,
+  "event": "scheduled-restart",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: the scheduled restart ran.",
+  "skipped": false
+}
+{
+  "version": 1,
+  "event": "scheduled-restart",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: the scheduled restart was skipped because players stayed online.",
+  "skipped": true
+}
+{
+  "version": 1,
+  "event": "low-disk",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: only 3.5 GB of disk space is free. Autosaves can fail when it runs out.",
+  "free_bytes": 3500000000
+}

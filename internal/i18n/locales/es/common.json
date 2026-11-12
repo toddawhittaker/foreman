@@ -6,6 +6,7 @@
   "common.nav.console": "Consola",
   "common.nav.worlds": "Mundos",
   "common.nav.snapshots": "Instantáneas",
+  "common.nav.chat": "Chat",
   "common.signedin": "Sesión iniciada como {user}",
   "common.signout": "Cerrar sesión",
   "common.language.label": "Idioma",
@@ -74,5 +75,8 @@
   "common.link.new_tab": "(se abre en una pestaña nueva)",
   "common.menu.account": "{user}, {language}: menú de cuenta e idioma",
   "common.menu.language": "{language}: menú de idioma",
+  "common.menu.notifications": "Notificaciones",
+  "common.menu.schedule": "Programación de reinicios",
+  "common.settings.label": "Ajustes de Foreman",
   "common.countdown.none_name": "Sin aviso: pon la cuenta atrás en 0 segundos"
 }

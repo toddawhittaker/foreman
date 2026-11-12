@@ -1,0 +1,25 @@
+2026-11-12T14:59:42.839062410Z    0.000 2026-11-12 14:59:42; Factorio 2.0.77 (build 84539, linux64, headless, space-age)
+2026-11-12T14:59:42.839103919Z    0.000 Operating system: Linux
+2026-11-12T14:59:42.839112095Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> "--server-adminlist" "/factorio/config/server-adminlist.json" "--server-banlist" "/factorio/config/server-banlist.json" "--server-settings" "/factorio/config/server-settings.json" 
+2026-11-12T14:59:42.839124650Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-12T14:59:42.839130038Z    0.000 Read data path: /opt/factorio/data
+2026-11-12T14:59:42.839135087Z    0.000 Write data path: /opt/factorio [111785/131072MB]
+2026-11-12T14:59:42.839144566Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-12T14:59:42.850237665Z    0.011 System info: [CPU: Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, 48 cores, RAM: 257804 MB]
+2026-11-12T14:59:42.850267929Z    0.011 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEODRIVER=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-12T14:59:42.850911467Z    0.012 Running in headless mode
+2026-11-12T14:59:42.850944840Z    0.012 Audio is disabled
+2026-11-12T14:59:42.852283730Z    0.013 Info ModManager.cpp:449: FeatureFlag expansion-shaders = true
+2026-11-12T14:59:42.852308492Z    0.013 Info ModManager.cpp:449: FeatureFlag freezing = true
+2026-11-12T14:59:42.852315580Z    0.013 Info ModManager.cpp:449: FeatureFlag quality = true
+2026-11-12T14:59:42.852320988Z    0.013 Info ModManager.cpp:449: FeatureFlag rail-bridges = true
+2026-11-12T14:59:42.852329559Z    0.013 Info ModManager.cpp:449: FeatureFlag segmented-units = true
+2026-11-12T14:59:42.852334785Z    0.013 Info ModManager.cpp:449: FeatureFlag space-travel = true
+2026-11-12T14:59:42.852339746Z    0.013 Info ModManager.cpp:449: FeatureFlag spoiling = true
+2026-11-12T14:59:42.855812547Z    0.017 Loading mod core 0.0.0 (data.lua)
+2026-11-12T14:59:42.873721708Z    0.034 Loading mod base 2.0.77 (data.lua)
+2026-11-12T14:59:43.047679735Z    0.208 Loading mod brokenlua 1.0.0 (data.lua)
+2026-11-12T14:59:43.069485046Z    0.230 Error Util.cpp:81: Failed to load mod "brokenlua": __brokenlua__/data.lua:1: deliberate failure for capture
+2026-11-12T14:59:43.069522787Z stack traceback:
+2026-11-12T14:59:43.069540993Z 	[C]: in function 'error'
+2026-11-12T14:59:43.069546871Z 	__brokenlua__/data.lua:1: in main chunk

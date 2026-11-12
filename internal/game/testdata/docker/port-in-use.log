@@ -1,0 +1,33 @@
+== 2026-11-12T15:01:24Z Docker server 29.1.3, API 1.52
+== holder: docker run -d -p 44199:34197/udp (game image, sleep 120)
+started
+== second: docker create -p 44199:34197/udp, then docker start (CLI stderr verbatim)
+created
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint t1cap-port-second (f0245c47c3491eab9efa315c37483dc689279785b658477000ebc68b66487b90): Bind for 0.0.0.0:44199 failed: port is already allocated
+failed to start containers: t1cap-port-second
+exit=1
+== the same start through the Engine API: POST /v1.44/containers/t1cap-port-second/start
+
+HTTP 204
+== state of second after the failed start
+status=running exit=0 error=
+== third: 127.0.0.1:44199:34197/udp while the holder has 0.0.0.0:44199
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint t1cap-port-third (9175e148f360b1468fe1905eede56cf25ea96dfb492574a78fb671bece144d20): Bind for 0.0.0.0:44199 failed: port is already allocated
+failed to start containers: t1cap-port-third
+exit=1
+
+== 2026-11-12T15:01:40Z second round: fresh holder on 44198/udp, fresh container started through the Engine API first
+holder started
+created
+== POST /v1.44/containers/t1cap-port-api/start (first start attempt of this container)
+{"message":"failed to set up container networking: driver failed programming external connectivity on endpoint t1cap-port-api (9a2183934d9f86749ddd3ccd0d0d3e7eb6f4b6ffc112f46ef6e282cc791e054e): Bind for 0.0.0.0:44198 failed: port is already allocated"}
+
+HTTP 500
+status=created exit=128 error=failed to set up container networking: driver failed programming external connectivity on endpoint t1cap-port-api (9a2183934d9f86749ddd3ccd0d0d3e7eb6f4b6ffc112f46ef6e282cc791e054e): Bind for 0.0.0.0:44198 failed: port is already allocated
+== the same POST again (second attempt)
+
+HTTP 204
+status=running exit=0 error=
+== docker port of each
+34197/udp -> 0.0.0.0:44198
+34197/udp -> [::]:44198

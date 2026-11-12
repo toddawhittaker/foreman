@@ -1,0 +1,260 @@
+== 14:59:10 start (Foreman command, no server-whitelist.json)
+-- files in config/ (mtime UTC):
+server-adminlist.json absent
+server-banlist.json absent
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+== 14:59:10 kick offline/unknown
+> "/kick alice griefing"
+< "Player alice doesn't exist.\n"
+> "/kick alice"
+< "Player alice doesn't exist.\n"
+> "/kick"
+< "Player  doesn't exist.\n"
+> "/players"
+< "Players (0):\n"
+== 14:59:10 ban
+> "/ban bob griefing"
+< "Added bob to the banlist.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json absent
+server-banlist.json 14:59:10
+    
+    [
+      
+      {
+        "username": "bob",
+        "reason": "griefing"
+      }
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+> "/ban bob again"
+< "bob is already banned.\n"
+> "/ban carl"
+< "Added carl to the banlist.\n"
+> "/ban"
+< "Invalid parameter\n<add/remove/get/clear> <player> - Adds or removes a player from the banlist. Same as /ban or /unban.\n"
+> "/bans"
+< "Banned players: bob and carl\n"
+> "/banlist get"
+< "Banned players: bob and carl\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json absent
+server-banlist.json 14:59:10
+    
+    [
+      
+      {
+        "username": "bob",
+        "reason": "griefing"
+      },
+      "carl"
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+== 14:59:10 unban
+> "/unban bob"
+< "Unbanned bob.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json absent
+server-banlist.json 14:59:10
+    
+    [
+      "carl"
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+> "/unban bob"
+< "bob wasn't banned.\n"
+> "/unban"
+< " wasn't banned.\n"
+> "/bans"
+< "Banned players: carl\n"
+== 14:59:10 promote
+> "/promote carol"
+< ""
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:10
+    
+    [
+      "carol"
+    ]
+server-banlist.json 14:59:10
+    
+    [
+      "carl"
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+> "/promote carol"
+< "carol is already in the admin list and will be promoted upon joining the game.\n"
+> "/promote"
+< ""
+> "/admins"
+< ""
+== 14:59:11 demote
+> "/demote carol"
+< ""
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:11
+    
+    []
+server-banlist.json 14:59:10
+    
+    [
+      "carl"
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+> "/demote carol"
+< "carol is not in the admin list.\n"
+> "/demote"
+< ""
+> "/admins"
+< ""
+== 14:59:11 whitelist (no --server-whitelist)
+> "/whitelist add dave"
+< "Added dave to the whitelist.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:11
+    
+    []
+server-banlist.json 14:59:10
+    
+    [
+      "carl"
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+> "/whitelist add dave"
+< "dave is already whitelisted.\n"
+> "/whitelist get"
+< "Whitelisted players: dave\n"
+> "/whitelist remove dave"
+< "Removed dave from the whitelist.\n"
+> "/whitelist remove dave"
+< "dave wasn't in the whitelist.\n"
+> "/whitelist enable"
+< ""
+> "/whitelist enable"
+< ""
+> "/whitelist disable"
+< ""
+> "/whitelist add erin"
+< "Added erin to the whitelist.\n"
+> "/whitelist get"
+< "Whitelisted players: erin\n"
+> "/whitelist clear"
+< "The whitelist has been cleared and disabled.\n"
+> "/whitelist clear"
+< "The whitelist is already empty.\n"
+> "/whitelist"
+< "Invalid parameter\n<enable/disable/add/remove/get/clear> <player> - Enables, disables, adds or removes a player from the whitelist, where only whitelisted players can join the game. Enter nothing for 'player' when using 'get' to print a list of all whitelisted players.\n"
+> "/whitelist add"
+< "Invalid parameter\n<enable/disable/add/remove/get/clear> <player> - Enables, disables, adds or removes a player from the whitelist, where only whitelisted players can join the game. Enter nothing for 'player' when using 'get' to print a list of all whitelisted players.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:11
+    
+    []
+server-banlist.json 14:59:10
+    
+    [
+      "carl"
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+== 14:59:11 invalid names
+> "/ban nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn long-name"
+< "Added nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn to the banlist.\n"
+> "/kick nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn long-name"
+< "Player nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn doesn't exist.\n"
+> "/promote nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+< ""
+> "/whitelist add nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+< "Added nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn to the whitelist.\n"
+> "/ban \"quoted name\" x"
+< "Added \"quoted to the banlist.\n"
+> "/promote ü-name"
+< ""
+> "/unban nobody"
+< "nobody wasn't banned.\n"
+> "/demote nobody"
+< "nobody is not in the admin list.\n"
+> "/kick nobody"
+< "Player nobody doesn't exist.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:11
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "ü-name"
+    ]
+server-banlist.json 14:59:11
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      }
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+== 14:59:11 chat: plain text, then slash-led text with leading spaces (run before any real /c)
+> "hello from rcon"
+< ""
+> "   /c rcon.print(\"RAN-leading-3-spaces\")"
+< ""
+> " /c rcon.print(\"RAN-leading-1-space\")"
+< "RAN-leading-1-space\n"
+> "  /ban zed via-leading-space"
+< "Added zed to the banlist.\n"
+> "/bans"
+< "Banned players: \"quoted, carl, nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn and zed\n"
+> " /silent-command rcon.print(\"RAN-silent\")"
+< "RAN-silent\n"
+== 14:59:11 then a real /c twice (achievement warning shows on the first if no earlier /c ran)
+> "/c rcon.print(\"RAN-real-1\")"
+< "RAN-real-1\n"
+> "/c rcon.print(\"RAN-real-2\")"
+< "RAN-real-2\n"
+== 14:59:12 server-save then stop
+> "/server-save"
+< "Saving the map\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:11
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "ü-name"
+    ]
+server-banlist.json 14:59:11
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+/opt/factorio/player-data.json

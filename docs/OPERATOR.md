@@ -5,7 +5,8 @@ players can join. It covers the new-user path: install Foreman, create the
 first admin, generate a Space Age world, install mods from the mod portal,
 start the server and join it. It also covers the security advice every
 operator needs, running behind a reverse proxy, importing and switching
-worlds, and what to do when something fails.
+worlds, webhook notifications, the low-disk warning, and what to do when
+something fails.
 
 The rest of the guide comes later, with Epic 11 (docs/SPEC.md, section
 18): signing in with OpenID Connect, the archive, Foreman's settings page
@@ -353,7 +354,186 @@ confirmation says which world stops. Both worlds get a "Before switch"
 snapshot, and the game starts again on the new world, with that world's
 game version, if it was running.
 
-## 12. When something fails
+## 12. Webhooks
+
+A webhook is a web address that Foreman posts a short message to when
+something happens on a server, so a chat channel or phone hears about it
+without anyone watching Foreman. Admins manage them on the Notifications
+page, `/settings/notifications` (SPEC 8.10 to 8.12).
+
+**What it needs.** Webhook addresses are stored encrypted with
+`FOREMAN_SECRET_KEY` (section 5). Without the key, webhooks are
+unavailable and the page says so. If you change the key, the stored
+webhooks show as unreadable and nothing is sent to them; type each address
+again.
+
+**Presets.** Each webhook has a preset, which sets the shape of the
+message:
+
+- **Discord**: a Discord webhook address (`https://discord.com/api/webhooks/...`).
+  Mentions are turned off, so a world or player name cannot ping anyone.
+- **ntfy**: the address of an ntfy topic. The message is plain text. Crash,
+  crash loop and low disk are sent at high priority.
+- **Generic JSON**: any address. Foreman posts the JSON body described
+  below.
+
+**http:// and secrets in addresses.** `https://` is best. `http://` is
+allowed, but the message and the address then travel unencrypted. After
+you save, the page shows only the service and the host name, never the
+rest of the address, and the address is never logged. A few services put
+the secret in the host name itself; for those the secret is shown.
+
+**Events.** Each webhook has its own list of events, all on by default.
+Each event has a stable id, which the generic body uses:
+
+| Id | Sent when |
+| --- | --- |
+| `start` | the server started |
+| `stop` | the server stopped |
+| `crash` | the server crashed |
+| `crash-loop` | the server kept crashing, so Foreman stopped restarting it |
+| `player-join` | a player joined |
+| `player-leave` | a player left |
+| `scheduled-restart` | a scheduled restart ran, or was skipped |
+| `low-disk` | free disk space fell too low (section 13) |
+
+**Language.** The message text is in the language chosen for that webhook.
+It starts as the language of the admin who adds it.
+
+**Delivery.** Each attempt times out after 5 seconds. A failed delivery is
+retried at most twice, after 1 and 5 seconds. A refusal that would not
+change, such as a 404, is not retried. Foreman does not follow redirects.
+Sending never delays the server or any action on it. Events wait in a
+short queue in memory, one per webhook; if a target is so slow that its
+queue fills, the extra events are dropped and one line is logged. Events
+are not kept across a Foreman restart. Failures are logged without the
+address.
+
+A `docker restart` run outside Foreman sends a `start` webhook with no
+`stop` before it, because Foreman sees the game running again.
+
+A scheduled restart sends both a `scheduled-restart` and a `start`
+webhook. A restart from the Server page sends only `start`.
+
+### The generic JSON body
+
+Foreman sends a `POST` with `Content-Type: application/json`. Example:
+
+```json
+{
+  "version": 1,
+  "event": "player-join",
+  "time": "2026-11-12T23:30:05Z",
+  "world": {
+    "id": "main-base",
+    "name": "Main base"
+  },
+  "text": "Main base: ann joined.",
+  "player": "ann"
+}
+```
+
+Fields in every body:
+
+- `version`: the body format, `1`.
+- `event`: one of the ids above.
+- `time`: when it happened, UTC, in RFC 3339.
+- `world`: `id` (the world's folder name) and `name` (as shown in Foreman).
+- `text`: a sentence in the webhook's language, ready to show.
+
+Fields that appear only for some events:
+
+- `player`: the player's name, for `player-join` and `player-leave`.
+- `reason`: why the server crashed, for `crash` and `crash-loop`, only when
+  Foreman could tell. One of `mod-missing-dependency`, `mod-error`,
+  `save-unreadable`, `port-in-use`, `out-of-memory` or
+  `mods-for-other-version`. Leave room for others: treat an unknown value
+  as "unknown".
+- `skipped`: `true` or `false`, for `scheduled-restart`. `true` means the
+  restart did not run.
+- `free_bytes`: free disk space in bytes, for `low-disk`.
+
+A field that does not apply is left out, not sent empty. Within version 1,
+new fields may be added, but none is removed or renamed, and no meaning
+changes. Ignore fields you do not know. A change that breaks this raises
+`version`.
+
+## 13. Low disk
+
+While a game runs, Foreman checks the free space on the disk that holds the
+worlds. It warns when free space falls below 4 GB, and shows the warning on
+the status page and sends the `low-disk` event (section 12). The warning
+clears only once free space is above 4.5 GB, so it does not flip back and
+forth near the line. Each fall below 4 GB sends one event. These numbers
+are fixed; they are not a setting (SPEC 8.13).
+
+The reason: the game's autosaves can fail when the disk fills, and
+Foreman itself refuses to write a world's files unless 2 GB stay free
+(SPEC 6.11). The warning comes at twice that reserve, early enough for you
+to free space or add disk before saves are at risk. Foreman checks only
+while the game runs.
+
+## 14. Restart schedule
+
+Foreman can restart the game every day, for example to free memory. There
+is one schedule for all of Foreman, and it restarts whichever world is
+active. Set it on the Restart schedule page, `/settings/restart-schedule`,
+which is in the user menu and in the Foreman settings sub-navigation
+(SPEC 7.12).
+
+**Settings.** A switch (off until you save it on), a time of day, a time
+zone and a wait limit. The time is a daily time in the zone you choose,
+from the standard IANA list of names such as `America/New_York`; the zone
+starts as UTC and the time as 04:00. The wait limit is a whole number of
+hours from 0 to 12, and starts at 1.
+
+**What happens at the set time.**
+
+1. If the game is running, Foreman waits until nobody is online. It asks
+   the game over RCON (section 4) about every 30 seconds. If it cannot
+   get an answer, or the game is busy with another action, it counts that
+   as someone being online.
+2. When nobody is online, Foreman restarts the game after a countdown of
+   60 seconds, announced in the game's chat. The countdown always runs,
+   even on an empty server, so a player who joins during it is told.
+3. If someone is online during the countdown, or joins during it, the
+   countdown is cancelled, the game tells them in chat, and the wait in
+   step 1 starts again. The countdown is cancelled the same way if Foreman
+   cannot tell who is online.
+4. The wait limit is counted from the set time. When it runs out with
+   players still online, that day's restart is skipped, and the
+   `scheduled-restart` webhook is sent with `skipped` set to `true`
+   (section 12). A limit of 0 skips at once if anyone is online. A restart
+   that runs sends the same event with `skipped` set to `false`.
+5. An admin who presses **Cancel stop** during the countdown skips that
+   day's restart. No webhook is sent for that.
+
+The Server page shows where today's restart stands.
+
+**What it never does.**
+
+- It never starts a game that is stopped, starting, crashed or crash
+  looping. If the game is not running at the set time, or stops, crashes
+  or is restarted by hand during the wait, nothing more happens that day.
+- It does not make up a restart that was missed while Foreman or its host
+  was not running, or while the host was suspended. A restart reached up
+  to 10 minutes late still runs. Later than that it is counted as missed,
+  and the next one is the next set time after now. A wait that Foreman
+  wakes into more than 10 minutes past its limit is skipped the same way,
+  and shown as missed. No webhook is sent for a missed restart.
+- It never starts a game. The restart refuses if the game stopped or
+  crashed after the schedule looked, and does nothing.
+- A scheduled restart that fails sends no webhook. The Server page shows
+  the failure.
+
+**Daylight saving time.** If the clocks skip the set time, the restart
+runs at the next valid minute. If the clocks pass the set time twice, it
+runs once, the first time.
+
+Saving the schedule is recorded in the audit log, and the restarts it
+makes are recorded under the name "restart schedule".
+
+## 15. When something fails
 
 - **Foreman's own log.** Run `docker compose logs -f foreman`. Every error
   page that says "the details are in Foreman's log" means this log. It

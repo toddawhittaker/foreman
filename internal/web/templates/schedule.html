@@ -1,0 +1,72 @@
+{{define "title"}}{{t "common.menu.schedule"}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{t "common.menu.schedule"}}</h1>
+{{template "settings-tabs" "schedule"}}
+{{- if .Saved}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{if .On}}{{tHTML "schedule.done.next" "next" (momentUTC .Next)}}{{else}}{{t "schedule.done.off"}}{{end}}</p>
+</div>
+{{- end}}
+{{template "summary" .Problems}}
+{{- /* The state leads, as on the account page (DESIGN 8.15). */}}
+{{- if .On}}
+<p id="schedule-state">{{tHTML "schedule.state.on" "time" .SavedClock "zone" (ident .SavedZone) "next" (momentUTC .Next)}}</p>
+{{- else}}
+<p id="schedule-state">{{t "schedule.state.off"}}</p>
+{{- end}}
+<section aria-labelledby="schedule-how-heading">
+  <h2 id="schedule-how-heading">{{t "schedule.how.heading"}}</h2>
+  <ol>
+    <li>{{t "schedule.how.wait"}}</li>
+    <li>{{t "schedule.how.warn" "seconds" .WarningSeconds}}</li>
+    <li>{{t "schedule.how.join"}}</li>
+    <li>{{t "schedule.how.skip"}}</li>
+    <li>{{t "schedule.how.never"}}</li>
+  </ol>
+</section>
+<form method="post" action="{{.Path}}" class="panel" novalidate>
+  {{template "required-note"}}
+  <label class="check"><input type="checkbox" id="schedule-on" name="enabled" value="on"{{if .Enabled}} checked{{end}}> {{t "schedule.enabled.label"}}</label>
+  <div class="field">
+    <label for="schedule-time" class="required">{{t "schedule.time.label"}}</label>
+    <input id="schedule-time" name="time" type="time" value="{{.Clock}}" required
+      {{- if not .ClockError.IsZero}} aria-invalid="true" aria-describedby="schedule-time-error"{{end}}>
+    {{- if not .ClockError.IsZero}}
+    <p class="error" id="schedule-time-error"><strong>{{t "common.error.label"}}</strong> {{msg .ClockError}}</p>
+    {{- end}}
+  </div>
+  <div class="field">
+    <label for="schedule-zone" class="required">{{t "schedule.zone.label"}}</label>
+    <select id="schedule-zone" name="zone" required translate="no"
+      {{- if not .ZoneError.IsZero}} aria-invalid="true" aria-describedby="schedule-zone-error"{{end}}>
+      <option value="{{.UTC}}"{{if .UTCSelected}} selected{{end}}>{{.UTC}}</option>
+      {{- range .Regions}}
+      <optgroup label="{{.Region}}">
+        {{- range .Zones}}
+        <option value="{{.Name}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>
+        {{- end}}
+      </optgroup>
+      {{- end}}
+    </select>
+    {{- if not .ZoneError.IsZero}}
+    <p class="error" id="schedule-zone-error"><strong>{{t "common.error.label"}}</strong> {{msg .ZoneError}}</p>
+    {{- end}}
+  </div>
+  <div class="field">
+    <label for="schedule-limit" class="required">{{t "schedule.limit.label"}}</label>
+    <p class="hint" id="schedule-limit-hint">{{t "schedule.limit.hint" "max" .MaxLimit}}</p>
+    <input id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="{{.Limit}}" required autocomplete="off"
+      {{- if not .LimitError.IsZero}} aria-invalid="true"{{end}} aria-describedby="schedule-limit-hint{{if not .LimitError.IsZero}} schedule-limit-error{{end}}">
+    {{- if not .LimitError.IsZero}}
+    <p class="error" id="schedule-limit-error"><strong>{{t "common.error.label"}}</strong> {{msg .LimitError}}</p>
+    {{- end}}
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-schedule-save">{{t "schedule.save"}}</button>
+    <a href="{{serverPath}}">{{t "worlds.cancel"}}</a>
+  </div>
+</form>
+{{- end}}
+{{- end}}

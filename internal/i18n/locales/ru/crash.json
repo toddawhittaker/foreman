@@ -1,0 +1,8 @@
+{
+  "crash.kind.mod_error": "Мод не удалось загрузить.",
+  "crash.kind.mod_missing_dependency": "Моду нужен другой мод, который не установлен.",
+  "crash.kind.mods_for_other_version": "Некоторые моды сделаны для другой версии Factorio.",
+  "crash.kind.out_of_memory": "Игре не хватило памяти, и система её остановила.",
+  "crash.kind.port_in_use": "Порт игры на этом хосте уже занят другой программой.",
+  "crash.kind.save_unreadable": "Сохранение не удалось прочитать. Возможно, оно повреждено или неполное."
+}

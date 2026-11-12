@@ -324,7 +324,11 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 		defer cancel()
 		players, err := s.game.Players(ctx, sum.ID)
 		p.Players, p.PlayersKnown, p.PlayersError = players, err == nil, err != nil
+		if len(p.Players) > 0 {
+			p.Lists = s.readPlayerLists(ctx, sum.ID)
+		}
 	}
+	p.Schedule = s.scheduleState()
 	return p
 }
 
@@ -372,6 +376,7 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
 	p.FocusResult = followsOwnAction(r)
+	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 

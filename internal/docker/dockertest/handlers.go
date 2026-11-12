@@ -1,7 +1,9 @@
 package dockertest
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,6 +25,22 @@ func reply(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"message": message})
+}
+
+// PortInUseMessage is Docker's start error when a published host port is
+// already bound (internal/game/testdata/docker/port-in-use.log): name is
+// the container, endpoint the 64-digit ID of its network endpoint, port the
+// host port.
+func PortInUseMessage(name, endpoint, port string) string {
+	return "failed to set up container networking: driver failed programming external connectivity on endpoint " +
+		name + " (" + endpoint + "): Bind for 0.0.0.0:" + port + " failed: port is already allocated"
+}
+
+// endpointID is the fake's network endpoint ID for a container: 64 hex
+// digits, as Docker's are.
+func endpointID(containerID string) string {
+	sum := sha256.Sum256([]byte("endpoint/" + containerID))
+	return hex.EncodeToString(sum[:])
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
@@ -62,7 +80,7 @@ func (d *Daemon) ipFor(c *Container) string {
 
 func (d *Daemon) markRunning(c *Container) {
 	c.Status = "running"
-	c.ExitCode, c.OOMKilled = 0, false
+	c.ExitCode, c.OOMKilled, c.Error = 0, false, ""
 	c.StartedAt, c.FinishedAt = time.Now().UTC(), time.Time{}
 	if len(c.Networks) == 0 {
 		mode := c.Spec.HostConfig.NetworkMode
@@ -263,6 +281,14 @@ func (d *Daemon) containerCall(w http.ResponseWriter, r *http.Request, ref, acti
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
+		if port, armed := d.portInUse[c.Name]; armed {
+			delete(d.portInUse, c.Name)
+			c.Error = PortInUseMessage(c.Name, endpointID(c.ID), port)
+			c.ExitCode = 128
+			d.broadcast()
+			reply(w, http.StatusInternalServerError, c.Error)
+			return
+		}
 		d.markRunning(c)
 		w.WriteHeader(http.StatusNoContent)
 	case "stop":
@@ -308,7 +334,7 @@ func inspectBody(c *Container) map[string]any {
 		"RestartCount": c.RestartCount,
 		"State": map[string]any{
 			"Status": c.Status, "Running": c.Status == "running",
-			"ExitCode": c.ExitCode, "OOMKilled": c.OOMKilled, "Error": "",
+			"ExitCode": c.ExitCode, "OOMKilled": c.OOMKilled, "Error": c.Error,
 			"StartedAt": c.StartedAt, "FinishedAt": c.FinishedAt,
 		},
 		"Config":          map[string]any{"Image": c.Spec.Image, "Labels": c.Spec.Labels},

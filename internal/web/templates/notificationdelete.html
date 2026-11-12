@@ -1,0 +1,21 @@
+{{define "title"}}{{t "notify.delete.question" "preset" (msg .Page.Hook.Preset) "host" .Page.Hook.Host}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1 id="confirm-heading">{{t "notify.delete.question" "preset" (msg .Hook.Preset) "host" .Hook.Host}}</h1>
+{{template "settings-tabs" "notification"}}
+<section class="confirm">
+  <p>{{t "common.confirm.will"}}</p>
+  <ul>
+    <li>{{t "notify.delete.stops"}}</li>
+    <li>{{t "notify.delete.readd"}}</li>
+  </ul>
+  <form method="post" action="{{.Hook.DeletePath}}" novalidate>
+    <div class="actions">
+      <button type="submit" class="button button--danger" id="act-webhook-delete">{{t "notify.delete.button"}}</button>
+      <a href="{{.BackPath}}">{{t "notify.delete.cancel"}}</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}

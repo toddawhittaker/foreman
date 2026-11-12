@@ -70,7 +70,7 @@ func TestWorldsShowARunningSwitch(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(a), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage(`<td role="cell">bob</td>`)
+	g.waitPage(`<tr role="row" id="pr-bob">`)
 	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"600"}}))
 	g.waitPage("Switching from Alpha to Bravo", "Cancel stop")
 	t.Cleanup(func() { _ = g.ctrl.CancelStop(context.Background(), a, game.Actor{Username: "alice"}) })

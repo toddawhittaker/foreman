@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -234,7 +235,28 @@ type Controller struct {
 	closed  bool          // Run has returned; no goroutine may start
 	poke    chan struct{} // asks the monitor to look now
 
-	mu         sync.Mutex // guards the fields below; never held while taking a worldRun's mu
+	// events wait here for the notifier (SPEC 8.12); eventsFull is set once
+	// an event was dropped, so the drop is logged once. eventsFrom is when
+	// this controller began: a log line older than it was reported before.
+	events     chan notify.Message
+	eventsFull atomic.Bool
+	eventsFrom time.Time
+	// freeBytes reads the free space on a folder's filesystem; tests change it.
+	freeBytes func(dir string) (uint64, error)
+	// crashSettle is how long a crash event waits for its reason to reach
+	// the log; zero means two polls.
+	crashSettle time.Duration
+
+	mu       sync.Mutex // guards the fields below; never held while taking a worldRun's mu
+	notifier Notifier
+	// The disk every world is on (SPEC 8.13): lowDisk is set below
+	// LowDiskBelow and cleared above LowDiskClear, diskFree is the last
+	// reading, diskRead says there has been one, and diskErr is set while
+	// reading fails, so the fault is logged once.
+	lowDisk    bool
+	diskFree   uint64
+	diskRead   bool
+	diskErr    bool
 	modFetcher ModFetcher
 	modCheck   ModAvailability
 	runs       map[string]*worldRun
@@ -289,6 +311,10 @@ func New(cfg Config) (*Controller, error) {
 		ctx: ctx, cancel: cancel,
 		poke: make(chan struct{}, 1),
 		runs: map[string]*worldRun{},
+		// Docker's clock, not the injected one, stamps the log lines this
+		// is compared with.
+		events: make(chan notify.Message, eventBuffer), eventsFrom: time.Now(),
+		freeBytes: world.FreeBytes,
 	}, nil
 }
 
@@ -324,6 +350,7 @@ type worldRun struct {
 	crashes       []time.Time // crashes seen within the crash-loop window
 	lastCrash     time.Time
 	crashedRun    bool // Docker restarted the game after a crash and it is not back in game
+	oomKilled     bool // Docker said the newest crash was an out-of-memory kill (SPEC 8.7)
 	run           runState
 	saves         int           // "Saving finished" lines seen
 	changed       chan struct{} // closed and replaced whenever the game's state moves
@@ -361,6 +388,18 @@ type worldRun struct {
 
 	attachFailed string // a container whose world's secrets could not be read, warned about once
 	attachErr    error  // why that container could not be taken on
+
+	// evState is the state events were last reported from; "" until the
+	// first look, which reports nothing (SPEC 3.8, 8.10). evQuiet is set
+	// while a replayed log line moves the state. eventsAt is the newest log
+	// line time reported from.
+	evState  State
+	evQuiet  bool
+	eventsAt time.Time
+	// crashEvent is a crash or crash loop waiting for its reason to reach
+	// the log, so it names the reason whichever check saw it first
+	// (ADR 0016); nil when none waits.
+	crashEvent *pendingCrash
 }
 
 // runState is what the log said about the current run of the game.
@@ -385,7 +424,7 @@ func (c *Controller) world(id string) *worldRun {
 	if w == nil {
 		w = &worldRun{
 			id: id, hub: NewHub[Update](hubBuffer), logs: NewLogBuffer(), joins: NewJoinTimes(),
-			changed: make(chan struct{}),
+			changed: make(chan struct{}), eventsAt: c.eventsFrom,
 		}
 		c.runs[id] = w
 	}
@@ -671,6 +710,11 @@ type Status struct {
 	// Notice reports an unfinished switch found at startup, on the world
 	// that is active after it (SPEC 7.10); nil when there is none.
 	Notice *SwitchNotice
+	// LowDisk is set while the game runs with less than LowDiskBelow free
+	// where worlds are kept, until it rises above LowDiskClear; FreeBytes
+	// is the free space then (SPEC 8.13).
+	LowDisk   bool
+	FreeBytes uint64
 }
 
 // View is what a page shows when it opens: the status and the log so far.
@@ -727,12 +771,11 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 	if w.dockerStatus == "running" && w.usage.ok {
 		st.HaveUsage, st.CPUPercent, st.MemoryBytes = true, w.usage.cpu, w.usage.memory
 	}
+	if w.dockerStatus == "running" {
+		st.LowDisk, st.FreeBytes = c.diskLow()
+	}
 	if st.State == StateCrashed || st.State == StateCrashLooping {
-		var f loadFailure
-		for _, l := range w.logs.LinesSince(w.logMark) {
-			f.add(l)
-		}
-		st.Crash = f.reason(w.redact)
+		st.Crash = c.crashLocked(w)
 		st.CrashReason = strings.TrimSuffix(st.Crash.text(), ".")
 	}
 	return st
@@ -745,8 +788,15 @@ func (c *Controller) stateLocked(w *worldRun) (State, UnknownReason) {
 	if w.opDone != nil && w.opState != "" {
 		return w.opState, UnknownReason{}
 	}
+	return c.gameStateLocked(w, w.opDone == nil)
+}
+
+// gameStateLocked is the state of the game itself, whatever an operation
+// shows. Docker faults make it Unknown only when askDocker is set. w.mu
+// is held.
+func (c *Controller) gameStateLocked(w *worldRun, askDocker bool) (State, UnknownReason) {
 	listed, dockerErr := c.dockerState()
-	if w.opDone == nil {
+	if askDocker {
 		if dockerErr != nil {
 			return StateUnknown, dockerFault(UnknownDocker, dockerErr)
 		}
@@ -869,6 +919,7 @@ func (c *Controller) logFault(msg string, before, err error, args ...any) {
 // changedLocked wakes anything waiting on the game's state and, when
 // publish is set, sends the status to watching pages. w.mu is held.
 func (c *Controller) changedLocked(w *worldRun, publish bool) {
+	c.noteEventsLocked(w)
 	close(w.changed)
 	w.changed = make(chan struct{})
 	if publish {

@@ -20,6 +20,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mods"
+	"github.com/toddawhittaker/foreman/internal/notify"
+	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -56,6 +58,10 @@ type Deps struct {
 	// Portal is the Factorio mod portal (SPEC 9); nil means the mods pages
 	// are off.
 	Portal ModPortal
+	// Notifier and Scheduler are the webhook sender and the restart schedule;
+	// both do nothing yet.
+	Notifier  *notify.Notifier
+	Scheduler *schedule.Scheduler
 	// HostDataDir is the data directory's path on the Docker host (SPEC
 	// 3.5), so a page can name a folder the admin reaches there.
 	HostDataDir string
@@ -75,17 +81,21 @@ type server struct {
 	previews  *previewStore
 	account   *factorioaccount.Service
 	// portal and planner: the mod portal and the plans made from it (SPEC 9).
-	portal   ModPortal
-	planner  *mods.Planner
-	hostData string
-	runs     *gameRuns
-	console  *consoleHistory
-	log      *slog.Logger
-	now      func() time.Time
-	render   *Renderer
-	sessions *auth.SessionManager
-	limiter  *auth.Limiter
-	headers  auth.HeaderConfig
+	portal    ModPortal
+	planner   *mods.Planner
+	hostData  string
+	notifier  *notify.Notifier
+	scheduler *schedule.Scheduler
+	runs      *gameRuns
+	console   *consoleHistory
+	// playerResults holds each user's last player action result (DESIGN 8.12).
+	playerResults *playerResults
+	log           *slog.Logger
+	now           func() time.Time
+	render        *Renderer
+	sessions      *auth.SessionManager
+	limiter       *auth.Limiter
+	headers       auth.HeaderConfig
 	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
 	gameNets GameSubnetter
@@ -135,6 +145,8 @@ func NewHandler(d Deps) (*Handler, error) {
 		previews:  newPreviewStore(now),
 		account:   account,
 		hostData:  d.HostDataDir,
+		notifier:  d.Notifier,
+		scheduler: d.Scheduler,
 		runs:      newGameRuns(),
 		gameNets:  d.GameNets,
 		console:   newConsoleHistory(),
@@ -197,6 +209,10 @@ func (s *server) routes() {
 	s.mux.HandleFunc("POST "+PathTheme, s.handleTheme)
 	s.gameRoutes()
 	s.consoleRoutes()
+	s.chatRoutes()
+	s.playersRoutes()
+	s.notifyRoutes()
+	s.scheduleRoutes()
 	s.worldRoutes()
 	s.saveRoutes()
 	s.snapshotRoutes()

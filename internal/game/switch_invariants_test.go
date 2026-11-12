@@ -56,6 +56,10 @@ func newInvRig(t *testing.T, names ...string) *invRig {
 		v.addSave(id, "extra.zip", "extra save of "+id, 2*time.Hour)
 	}
 	v.openDB()
+	// Until the monitor's first look at Docker, a world's state is unknown
+	// and a switch is refused as unsettled (SPEC 7.9). Wait for that look,
+	// as an admin waits for the page to show the state, so no test races it.
+	v.settle(v.c)
 	return v
 }
 
@@ -569,8 +573,8 @@ func crashAndRecover(t *testing.T, running bool, at int) {
 		}
 	})
 	v.c.switches = tr
-	if _, crashed := runSwitch(context.Background(), v.c, a, b); !crashed {
-		t.Fatal("the switch ended before the crash point")
+	if err, crashed := runSwitch(context.Background(), v.c, a, b); !crashed {
+		t.Fatalf("the switch ended before the crash point: %v", err)
 	}
 	v.stop() // the dead process's monitor goes with it; the games keep running
 	tr.assertNoBreach(t)

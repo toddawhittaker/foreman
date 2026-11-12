@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -69,7 +70,7 @@ func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, er
 	if err != nil {
 		return launch{}, err
 	}
-	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network, meta.NewMap))
+	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network, meta))
 	if errors.Is(err, docker.ErrConflict) {
 		return launch{}, ErrForeign
 	}
@@ -103,7 +104,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	o.show(StateStarting)
 	c.noteSelfGameSubnet(ctx)
 	if err := c.docker.StartContainer(ctx, cid); err != nil {
-		return err
+		return startRefused(err)
 	}
 	cont, err := c.docker.InspectContainer(ctx, cid)
 	if err != nil {
@@ -256,7 +257,21 @@ const (
 	StartRCONTimeout = "rcon-timeout"
 	// StartRCONRefused: the game refused Foreman's RCON password.
 	StartRCONRefused = "rcon-refused"
+	// StartDockerRefused: Docker would not start the container for a reason
+	// the catalogue names in Reason.Kind, such as a port in use; Detail is
+	// Docker's words (SPEC 8.7).
+	StartDockerRefused = "docker-refused"
 )
+
+// startRefused names the reason Docker refused to start the container,
+// when the catalogue knows it (SPEC 8.7); otherwise err is returned as is.
+func startRefused(err error) error {
+	kind := crashreasons.DockerStart(err.Error())
+	if kind == "" {
+		return err
+	}
+	return &StartError{Kind: StartDockerRefused, Detail: err.Error(), Reason: LoadReason{Kind: kind}}
+}
 
 // StartError is ErrStartFailed with the reason, so a page can word it in
 // any language (SPEC 22.3). Its text is the log's.
@@ -286,6 +301,11 @@ func (e *StartError) Error() string {
 		return head + ": it is in game but did not answer over RCON within " + durationWords(e.Timeout)
 	case StartRCONRefused:
 		return head + ": the game is in game, but it refused Foreman's RCON password"
+	case StartDockerRefused:
+		if e.Reason.Kind == crashreasons.PortInUse {
+			return head + ": another program already uses the game's port (" + e.Detail + ")"
+		}
+		return head + ": Docker refused to start it (" + e.Detail + ")"
 	}
 	return head
 }

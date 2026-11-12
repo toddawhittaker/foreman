@@ -305,7 +305,7 @@ func addKey(t *testing.T, keys map[string]bool, n parse.Node) {
 func goKeys(t *testing.T) map[string]bool {
 	t.Helper()
 	keys := map[string]bool{}
-	for _, dir := range []string{".", "../i18n", "../territory"} {
+	for _, dir := range []string{".", "../i18n", "../territory", "../notify"} {
 		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
 		if err != nil {
 			t.Fatal(err)

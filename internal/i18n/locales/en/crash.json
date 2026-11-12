@@ -1,0 +1,8 @@
+{
+  "crash.kind.mod_error": "A mod failed to load.",
+  "crash.kind.mod_missing_dependency": "A mod needs another mod that is not installed.",
+  "crash.kind.mods_for_other_version": "Some mods were made for another version of Factorio.",
+  "crash.kind.out_of_memory": "The game ran out of memory, so the system stopped it.",
+  "crash.kind.port_in_use": "Another program on this host already uses the game's port.",
+  "crash.kind.save_unreadable": "The save could not be read. It may be damaged or incomplete."
+}

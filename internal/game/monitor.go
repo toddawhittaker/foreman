@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -22,6 +23,9 @@ import (
 // stops (SPEC 3.8). Call it once.
 func (c *Controller) Run(ctx context.Context) {
 	defer c.shutdown()
+	// Not waited for at shutdown: a notifier that hangs must not hold
+	// Foreman up (SPEC 8.12).
+	go c.deliverEvents()
 	t := time.NewTicker(c.pollInterval)
 	defer t.Stop()
 	for {
@@ -141,6 +145,7 @@ func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docke
 		}
 		if cont.State.Status == "running" {
 			c.readUsage(ctx, w, cont.ID)
+			c.checkDisk(w, cont.ID)
 		}
 	}
 }
@@ -206,10 +211,23 @@ func (c *Controller) observe(w *worldRun, cont *docker.Container, ops uint64) bo
 		w.lastCrash = now
 		w.crashedRun = true
 		w.run = runState{}
+		if w.dockerStatus == "running" {
+			// The exit was not seen, and Docker clears the flag when it
+			// restarts the game, so whether it ran out of memory is lost.
+			w.oomKilled = false
+		}
 	}
 	w.seenRestarts = cont.RestartCount
 	w.crashes = keepSince(w.crashes, now.Add(-c.crashWindow))
 	w.dockerStatus = cont.State.Status
+	switch {
+	case cont.State.OOMKilled:
+		w.oomKilled = true
+	case w.dockerStatus != "running" && !w.stopping:
+		// The newest exit was not an out-of-memory kill. Foreman's own
+		// stop, of a crash loop say, is not the exit the flag describes.
+		w.oomKilled = false
+	}
 	if !cont.State.StartedAt.Equal(w.startedAt) {
 		if w.stopping && w.dockerStatus == "running" {
 			// The same container runs a new run, so a stop asked for
@@ -356,6 +374,9 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	w.crashes = nil
 	w.run = runState{}
 	w.joins.Reset()
+	// A container taken on is looked at afresh: what it did before was
+	// reported by whoever saw it happen (SPEC 3.8).
+	w.evState = ""
 	w.secrets = secrets
 	w.gameVersion = meta.GameVersion
 	w.image = cont.Image
@@ -403,6 +424,7 @@ func (c *Controller) dropContainerLocked(w *worldRun) *rcon.Client {
 	w.startedAt = time.Time{}
 	w.usage = usage{}
 	w.expectRunning = false
+	w.oomKilled = false
 	return rc
 }
 
@@ -526,6 +548,7 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	if !at.IsZero() {
 		w.lastLineAt = at
 	}
+	live := w.liveLineLocked(at)
 	line := w.redact(raw)
 	w.logs.Add(line)
 	w.hub.Publish(Update{Kind: UpdateLine, Line: line})
@@ -561,10 +584,20 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindPlayerJoined, KindPlayerLeft:
 		w.joins.Observe(ev)
 		publish = false
+		if live {
+			e := notify.PlayerJoin
+			if ev.Kind == KindPlayerLeft {
+				e = notify.PlayerLeave
+			}
+			c.emitLocked(w, notify.Message{Event: e, Player: ev.Player})
+		}
 	default:
 		publish = false
 	}
+	// A replayed line updates what is known without reporting it again.
+	w.evQuiet = !live
 	c.changedLocked(w, publish)
+	w.evQuiet = false
 }
 
 // redact hides the world's secrets and any secret a printed command set,

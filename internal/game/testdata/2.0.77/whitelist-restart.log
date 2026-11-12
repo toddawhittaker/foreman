@@ -1,0 +1,295 @@
+== 14:59:19 run 2a: Foreman command, no server-whitelist.json; enable and add
+> "/whitelist enable"
+< ""
+> "/whitelist add dave"
+< "Added dave to the whitelist.\n"
+> "/whitelist get"
+< "Whitelisted players: dave\n"
+== 14:59:19 docker stop, docker start (same container, same save and config)
+> "/whitelist get"
+< "The whitelist is empty.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json absent
+-- write-data (/opt/factorio) json:
+/opt/factorio/player-data.json
+-- docker diff (write-data, excluding temp/):
+C /opt
+C /opt/factorio
+A /opt/factorio/factorio-current.log
+A /opt/factorio/factorio-previous.log
+A /opt/factorio/player-data.json
+A /opt/factorio/.lock
+== 14:59:35 run 3: Foreman command with config/server-whitelist.json = []
+status=exited exit=1
+== 14:59:38 run 4: Foreman command plus --use-server-whitelist, config/server-whitelist.json = []
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:35
+    []
+-- write-data (/opt/factorio) json:
+> "/whitelist get"
+< "The whitelist is empty.\n"
+> "/whitelist add hank"
+< "Added hank to the whitelist.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:38
+    
+    [
+      "hank"
+    ]
+-- write-data (/opt/factorio) json:
+> "/whitelist remove hank"
+< "Removed hank from the whitelist.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:38
+    
+    []
+-- write-data (/opt/factorio) json:
+> "/whitelist add hank"
+< "Added hank to the whitelist.\n"
+> "/whitelist add ivy"
+< "Added ivy to the whitelist.\n"
+> "/whitelist disable"
+< ""
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:38
+    
+    [
+      "hank",
+      "ivy"
+    ]
+-- write-data (/opt/factorio) json:
+== 14:59:38 docker stop, docker start
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:38
+    
+    [
+      "hank",
+      "ivy"
+    ]
+-- write-data (/opt/factorio) json:
+Error response from daemon: container 9ac4c9534c6bb17f88a356fdd1cff87a4ae86ae1bb834a209e652a28fb2f414c is not running
+> "/whitelist get"
+< "Whitelisted players: hank and ivy\n"
+> "/whitelist clear"
+< "The whitelist has been cleared and disabled.\n"
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:41
+    
+    []
+-- write-data (/opt/factorio) json:
+/opt/factorio/player-data.json
+== 14:59:42 after stop following clear
+-- files in config/ (mtime UTC):
+server-adminlist.json 14:59:13
+    
+    [
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+      "u-name"
+    ]
+server-banlist.json 14:59:13
+    
+    [
+      
+      {
+        "username": "\"quoted",
+        "reason": "name\" x"
+      },
+      "carl",
+      
+      {
+        "username": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "reason": "long-name"
+      },
+      
+      {
+        "username": "zed",
+        "reason": "via-leading-space"
+      }
+    ]
+server-whitelist.json 14:59:41
+    
+    []
+-- write-data (/opt/factorio) json:
+Error response from daemon: container 9ac4c9534c6bb17f88a356fdd1cff87a4ae86ae1bb834a209e652a28fb2f414c is not running

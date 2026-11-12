@@ -1,0 +1,21 @@
+{
+  "schedule.done.next": "Guardado. El próximo reinicio es {next}.",
+  "schedule.done.off": "Guardado. No hay ningún reinicio programado.",
+  "schedule.enabled.label": "Reiniciar el mundo activo cada día",
+  "schedule.how.heading": "Cómo funciona",
+  "schedule.how.join": "Si alguien entra durante el aviso, el reinicio se detiene, se le avisa en el juego y Foreman vuelve a esperar.",
+  "schedule.how.never": "La programación nunca inicia un servidor detenido o caído, y un reinicio perdido mientras Foreman no estaba en marcha no se recupera.",
+  "schedule.how.skip": "Si aún hay jugadores conectados cuando se agota el tiempo de espera, el reinicio de ese día se omite.",
+  "schedule.how.wait": "A la hora fijada, Foreman espera hasta que no haya nadie conectado.",
+  "schedule.how.warn": "Después reinicia el servidor tras avisar a los jugadores en el juego durante {seconds} segundos.",
+  "schedule.limit.error": "Escribe un número entero de horas de 0 a {max}.",
+  "schedule.limit.hint": "Horas, de 0 a {max}. Con 0, el reinicio se omite al instante si hay alguien conectado.",
+  "schedule.limit.label": "Esperar a que los jugadores salgan como máximo",
+  "schedule.save": "Guardar programación",
+  "schedule.state.off": "No hay ningún reinicio programado.",
+  "schedule.state.on": "Foreman reinicia el mundo activo cada día a las {time} ({zone}). Próximo reinicio: {next}.",
+  "schedule.time.error": "Escribe una hora como 04:00.",
+  "schedule.time.label": "Hora",
+  "schedule.zone.error": "Elige una zona horaria de la lista.",
+  "schedule.zone.label": "Zona horaria"
+}

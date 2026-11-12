@@ -93,6 +93,9 @@ type postedForm struct {
 	Verify, AutoPause bool
 	Admins            string
 	AdminsPosted      bool
+	Bans, Whitelist   string
+	BansPosted        bool
+	WhitelistPosted   bool
 	// MakeAdmin is a connected player the Make admin button chose.
 	MakeAdmin string
 }
@@ -105,6 +108,8 @@ func readPostedForm(get func(string) string, has func(string) bool) postedForm {
 		Verify: has("require_user_verification"), AutoPause: has("auto_pause"),
 		Admins: strings.ReplaceAll(get("admins"), "\r\n", "\n"), AdminsPosted: has("admins"),
 		MakeAdmin: strings.TrimSpace(get("make_admin")),
+		Bans:      strings.ReplaceAll(get("bans"), "\r\n", "\n"), BansPosted: has("bans"),
+		Whitelist: strings.ReplaceAll(get("whitelist"), "\r\n", "\n"), WhitelistPosted: has("whitelist"),
 	}
 }
 
@@ -141,11 +146,13 @@ func connected(names []string, adminsText string) []string {
 // formErrors are the form's field errors.
 type formErrors struct {
 	NameError, PasswordError, MaxPlayersError, IntervalError, SlotsError, AdminsError i18n.Msg
+	BansError, WhitelistError                                                         i18n.Msg
 }
 
 func (e formErrors) has() bool {
 	return !e.NameError.IsZero() || !e.PasswordError.IsZero() || !e.MaxPlayersError.IsZero() ||
-		!e.IntervalError.IsZero() || !e.SlotsError.IsZero() || !e.AdminsError.IsZero()
+		!e.IntervalError.IsZero() || !e.SlotsError.IsZero() || !e.AdminsError.IsZero() ||
+		!e.BansError.IsZero() || !e.WhitelistError.IsZero()
 }
 
 func wholeError() i18n.Msg { return i18n.M("settings.error.whole", "max", maxWhole) }
@@ -299,13 +306,7 @@ func adminLines(text string) (names []string, bad int) {
 }
 
 // adminListJSON is the text of server-adminlist.json for names.
-func adminListJSON(names []string) []byte {
-	if len(names) == 0 {
-		return []byte("[]\n")
-	}
-	b, _ := json.MarshalIndent(names, "", "  ") // strings always encode
-	return append(b, '\n')
-}
+func adminListJSON(names []string) []byte { return gamesettings.NameListJSON(names) }
 
 // SettingsPage is the server-settings form of a world (SPEC 11.1, DESIGN
 // 8.10).
@@ -346,6 +347,20 @@ type SettingsPage struct {
 	// Connected are the players in the running game who are not admins.
 	Connected []string
 
+	// Bans and Whitelist are the lists' boxes, used while Foreman writes the
+	// file. BanList and WhitelistNames are the lists for the cards shown
+	// while the game keeps them, which LiveBans and LiveWhitelist say.
+	Bans, Whitelist             string
+	BansBroken, WhitelistBroken bool
+	BanList                     []gamesettings.Ban
+	WhitelistNames              []string
+	LiveBans, LiveWhitelist     bool
+	// UseWhitelist is the world's switch; WhitelistRestart is true when the
+	// running game was started with it the other way.
+	UseWhitelist, WhitelistRestart bool
+	// Player is the result of a player action sent from this page.
+	Player *PlayerResult
+
 	formErrors
 	Error i18n.Msg
 	Done  i18n.Msg
@@ -377,8 +392,17 @@ func (p SettingsPage) RestartPath() string {
 	return gamePath(p.WorldID, "restart") + "?" + fromQuery + "=" + url.QueryEscape(p.Path())
 }
 
-func (SettingsPage) File() string      { return gamesettings.FileServerSettings }
-func (SettingsPage) AdminFile() string { return world.ServerAdminListFile }
+func (SettingsPage) File() string          { return gamesettings.FileServerSettings }
+func (SettingsPage) AdminFile() string     { return world.ServerAdminListFile }
+func (SettingsPage) BanFile() string       { return world.ServerBanListFile }
+func (SettingsPage) WhitelistFile() string { return world.ServerWhiteListFile }
+
+// WhitelistPath is where the whitelist switch posts.
+func (p SettingsPage) WhitelistPath() string { return settingsWhitelistPath(p.WorldID) }
+
+// PlayerPath is a player action's path on this world: where it posts, and
+// for kick and ban the confirmation.
+func (p SettingsPage) PlayerPath(action string) string { return playerPath(p.WorldID, action) }
 
 // Editable is true when the form can be used.
 func (p SettingsPage) Editable() bool { return p.ReadOnly.IsZero() && !p.Broken }
@@ -392,5 +416,9 @@ func (p SettingsPage) Problems() []Problem {
 		Problem{"autosave-interval", p.IntervalError},
 		Problem{"autosave-slots", p.SlotsError},
 		Problem{"admins", p.AdminsError},
+		Problem{"bans", p.BansError},
+		Problem{"whitelist", p.WhitelistError},
+		Problem{"ban-name", p.BanNameError()},
+		Problem{"whitelist-name", p.WhitelistNameError()},
 	)
 }

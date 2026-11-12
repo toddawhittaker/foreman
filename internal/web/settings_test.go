@@ -863,9 +863,11 @@ func TestSettingsRunningWorld(t *testing.T) {
 	if settingsSavedAudits(g) != 1 {
 		t.Errorf("audit entries: %d, want one for the whole change", settingsSavedAudits(g))
 	}
-	// The game writes the admin list, not Foreman.
-	if cfg, err := g.worlds.ReadConfig(id, world.ServerAdminListFile); err != nil || cfg.Found {
-		t.Errorf("Foreman wrote the admin list of a running game: %v %v", cfg.Found, err)
+	// The game writes the admin list at once on /promote, in its own layout.
+	// That Foreman writes nothing itself is proved by
+	// TestSettingsRunningAdminChangeIsNotWrittenByForeman.
+	if cfg, err := g.worlds.ReadConfig(id, world.ServerAdminListFile); err != nil || string(cfg.Data) != "\n[\n  \"carol\"\n]" {
+		t.Errorf("admin list is %q %v, want what the game writes after /promote carol", cfg.Data, err)
 	}
 	// The page the redirect names, built from the known path rather than the header.
 	done := g.get(path + "?saved=1&restart=1&live=1")
@@ -873,6 +875,37 @@ func TestSettingsRunningWorld(t *testing.T) {
 		if !strings.Contains(done, want) {
 			t.Errorf("done page lacks %q:\n%s", want, done)
 		}
+	}
+}
+
+// SPEC 8.3: Foreman never writes the admin list of a running game. The fake
+// game rewrites the file on every command that changes its list, which would
+// hide a write by Foreman; so this save leaves the game nothing to write. The
+// file holds a name the game never loaded, and the save removes it: the game
+// answers /demote without writing. If Foreman wrote the file, ghost would go.
+func TestSettingsRunningAdminChangeIsNotWrittenByForeman(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	g.writeConfig(id, world.ServerAdminListFile, `["ghost"]`)
+	path := settingsPath(id)
+	rep := g.post(path, url.Values{"name": {"Live"}, "description": {""}, "max_players": {""}, "autosave_interval": {""}, "autosave_slots": {""}, "admins": {""}})
+	if rep.StatusCode != http.StatusOK {
+		t.Fatalf("preview %d:\n%s", rep.StatusCode, rep.body)
+	}
+	if conf := g.post(path+"/confirm", url.Values{"token": {tokenOf(t, rep.body)}}); conf.StatusCode != http.StatusSeeOther {
+		t.Fatalf("confirm %d:\n%s", conf.StatusCode, conf.body)
+	}
+	var sent []string
+	for _, c := range g.commands(id) {
+		if strings.HasPrefix(c, "/promote") || strings.HasPrefix(c, "/demote") {
+			sent = append(sent, c)
+		}
+	}
+	if !slices.Equal(sent, []string{"/demote ghost"}) {
+		t.Fatalf("commands %q, want only a demotion of ghost", sent)
+	}
+	if cfg, err := g.worlds.ReadConfig(id, world.ServerAdminListFile); err != nil || string(cfg.Data) != `["ghost"]` {
+		t.Errorf("admin list is %q %v, want it unchanged: Foreman must not write it", cfg.Data, err)
 	}
 }
 

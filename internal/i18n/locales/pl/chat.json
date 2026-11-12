@@ -1,0 +1,21 @@
+{
+  "chat.none": "Nie ma jeszcze aktywnego świata, więc nie ma czatu do czytania ani do wysyłania wiadomości. Zaimportuj świat lub prześlij zapis na stronie Światy; pierwszy świat staje się aktywnym.",
+  "chat.history_label": "Wiadomości czatu",
+  "chat.name.server": "Serwer",
+  "chat.empty": "Od uruchomienia serwera nie było czatu.",
+  "chat.not_running": "Serwer nie działa, więc nikt nie może czytać czatu. Należy go uruchomić na stronie Serwer.",
+  "chat.go_server": "Przejdź do strony Serwer",
+  "chat.message.label": "Wiadomość",
+  "chat.message.hint": "Gracze widzą to w grze jako wiadomość od serwera. Wiadomość jest zapisywana w dzienniku audytu.",
+  "chat.send": "Wyślij",
+  "chat.error.empty": "Należy wpisać wiadomość do wysłania",
+  "chat.error.control": "Wiadomość nie może zawierać znaku sterującego, na przykład tabulatora",
+  "chat.error.long": "Należy wpisać wiadomość o długości najwyżej {max} znaków",
+  "chat.error.nul": "Wiadomość nie może zawierać znaku NUL",
+  "chat.error.lines": "Wiadomość musi mieścić się w jednym wierszu",
+  "chat.error.slash": "Wiadomość czatu nie może zaczynać się od /. Aby wykonać polecenie, należy użyć konsoli.",
+  "chat.go_console": "Przejdź do konsoli",
+  "chat.failure.not_running": "Gra nie działa, więc wiadomość nie została wysłana. Należy ją uruchomić na stronie Serwer.",
+  "chat.failure.unreachable": "Gra nie odpowiedziała przez RCON, więc wiadomość nie została wysłana.",
+  "chat.announce.sent": "Wiadomość wysłana"
+}

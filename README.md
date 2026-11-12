@@ -15,7 +15,8 @@ a save is never lost.
 Early development; no image is published yet, so you build it yourself
 (`make image`). Built so far: sign-in, worlds and snapshots, server
 control, switching worlds and game versions, generating worlds, game
-settings, languages and mods. See [docs/STATUS.md](docs/STATUS.md)
+settings, languages and mods, and webhook notifications (Discord, ntfy or
+any web address) with a low-disk warning. See [docs/STATUS.md](docs/STATUS.md)
 for what each epic has delivered, and [docs/SPEC.md](docs/SPEC.md),
 section 18, for the epic order.
 
@@ -32,8 +33,8 @@ directory owned by 845:845, and start it with Docker Compose.
 The [operator guide](docs/OPERATOR.md) covers everything else: what you
 need, the compose file, the security advice (Docker access is root on the
 host), running behind a reverse proxy, first sign-in, generating a world,
-installing mods, joining the game, importing and switching worlds, and
-what to do when something fails.
+installing mods, joining the game, importing and switching worlds,
+webhooks, the low-disk warning, and what to do when something fails.
 
 ## Documentation
 

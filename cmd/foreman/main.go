@@ -24,6 +24,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/notify"
+	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/web"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -125,7 +127,28 @@ func serve(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), HostDataDir: hostDir, Log: slog.Default()})
+	// The notifier reads the store, so it stops before the store closes.
+	// Events still queued then are not sent (SPEC 8.12).
+	notifier, err := notify.New(st, cfg.SecretKey, slog.Default())
+	if err != nil {
+		return err
+	}
+	notifyCtx, stopNotify := context.WithCancel(context.Background())
+	var notifying sync.WaitGroup
+	notifying.Go(func() { notifier.Run(notifyCtx) })
+	defer func() { stopNotify(); notifying.Wait() }()
+	games.SetNotifier(notifier)
+	// The schedule uses the controller, the notifier and the store, so it
+	// stops first; a restart it began ends before Run returns.
+	scheduler, err := schedule.New(ctx, schedule.Config{Game: games, Store: st, Active: activeWorld(st, worlds), Notifier: notifier, Log: slog.Default()})
+	if err != nil {
+		return err
+	}
+	scheduleCtx, stopSchedule := context.WithCancel(context.Background())
+	var scheduling sync.WaitGroup
+	scheduling.Go(func() { scheduler.Run(scheduleCtx) })
+	defer func() { stopSchedule(); scheduling.Wait() }()
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: scheduler, HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}
@@ -174,6 +197,21 @@ func listen(addr string) (net.Listener, error) {
 	}
 	slog.Info("listening", "addr", ln.Addr().String())
 	return ln, nil
+}
+
+// activeWorld names the active world for the restart schedule.
+func activeWorld(st *store.Store, worlds *world.Manager) schedule.ActiveWorld {
+	return func(ctx context.Context) (string, string, bool, error) {
+		id, ok, err := st.ActiveWorld(ctx)
+		if err != nil || !ok {
+			return "", "", false, err
+		}
+		w, err := worlds.Get(ctx, id)
+		if err != nil {
+			return "", "", false, err
+		}
+		return id, w.Name, true, nil
+	}
 }
 
 // gameConfig fills the controller's settings.

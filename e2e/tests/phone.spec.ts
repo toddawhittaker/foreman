@@ -22,7 +22,7 @@ async function running(page: Page, f: Foreman, g: FakeGame) {
   await page.getByRole("button", { name: "Start server" }).click();
   await expect(badge(page)).toHaveText("Running", live);
   await g.call("/join", { name: container, player: "alice" });
-  await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+  await expect(page.locator("#pr-alice")).toBeVisible(live);
 }
 
 test("the header keeps every tab on one row and the menu beside the logo", async ({ page }) => {

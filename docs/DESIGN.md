@@ -384,6 +384,7 @@ Other fixed values, also tokens:
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
+| `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 70ch | Maximum line length of prose |
 | `--page-max` | 76rem | Maximum width of `main` |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
@@ -560,7 +561,8 @@ frame (7.4).
   way (3, "How themes work");
   then a "factorio.com account" link to `/settings/factorio-account`
   (`aria-current="page"` there, and a divider line above it), the only
-  account link Foreman has, then Sign out, still a `POST` form with a
+  account link Foreman has, then "Restart schedule" and "Notifications",
+  Foreman's other settings pages (8.15, 8.16), then Sign out, still a `POST` form with a
   button, never a link, so a crawler or prefetch cannot sign anyone out.
   Each item is a 44 px target. It opens and closes with Enter or Space and
   works without script; `menu.js` also closes it on Escape (focus returns
@@ -585,7 +587,9 @@ frame (7.4).
   rename forms, the factorio.com account page, and Generate's settings and
   preview (8.6).
 - **Sub-navigation.** The tabs' look, under the page's `h1`, with a 1 px
-  `line` under the row: the Server view has Overview and Console; a world
+  `line` under the row: the Server view has Overview, Console and Chat
+(8.14); Foreman's own settings pages have the factorio.com account, Restart
+schedule and Notifications (8.15); a world
   has Overview, Saves, Snapshots, Mods and Settings. Each is a `nav` with its
   own name ("Server pages", "World pages") holding a list of links; the
   current page's link has `aria-current="page"` and is weight 600. The row
@@ -668,7 +672,7 @@ order and the picture agree.
   button; the line is not there when the variable is blank, because
   Foreman never guesses the address. `copy.js` shows the button only where
   the Clipboard API works (HTTPS or localhost) and says "Address copied"
-  beside it and through `#announcer`. Then the Overview and Console tabs,
+  beside it and through `#announcer`. Then the Overview, Console and Chat tabs,
   then the **status card** (7.8): the controls (and while an operation
   runs, its step list and "Cancel stop"), then, under a 1 px `line` rule,
   the facts. The card's leading edge is 4 px and takes the server's state
@@ -713,7 +717,7 @@ order and the picture agree.
   card on a row of its own below a gap, so it is set apart from Stop and
   Restart. It leads to its own confirmation (7.4).
 - **Console page.** The same `h1` and live badge as the Server page, then
-  the Overview and Console tabs. The "Console" section, with the command
+  the Overview, Console and Chat tabs. The "Console" section, with the command
   field (its heading is visually hidden, because the page and tab already
   name it), comes before "Game log". The history box under the field is only as tall as
   what it holds (`block-size: auto`), up to `min(40vh, 20rem)`, so the
@@ -936,7 +940,8 @@ never depends on colour.
   large line icon (3rem, drawn in `border`, decorative) for the thing that
   is missing: a camera for snapshots, a globe for worlds, a box for mods,
   a terminal for the console, people for players, a clock for saves, a
-  trash can for deleted worlds, sliders for settings. Never a picture:
+  trash can for deleted worlds, sliders for settings, a speech bubble for
+  chat (8.14), a bell for notifications (8.16). Never a picture:
   "No worlds yet. Import a folder of saves or upload a save file to make
   your first world." followed by the action buttons. The empty state always
   names the next step. It is the `empty empty--art empty--<thing>` classes
@@ -1058,8 +1063,9 @@ Rules:
 Which actions need this: every operation SPEC 6.2 counts as risky, plus
 delete (5.10), restore (6.5), forced stop (7.7), "start anyway" after a
 failed pre-start check (7.4, which must name exactly what the game will
-delete), switching worlds (7.9), and in later epics destructive player
-actions (8.2). Start and restart anyway have no page of their
+delete), switching worlds (7.9), and kicking or banning a player (8.12).
+Promote, demote, unban and whitelist changes act at once and offer Undo
+instead (8.12, 8.13). Start and restart anyway have no page of their
 own: the Warning that reports the refusal on the Server page is the
 confirmation (SPEC 7.4). It states the problem (one problem is a
 sentence after the lead; several are a list), then a row with the main fix
@@ -1346,7 +1352,8 @@ on its background instead of one long list.
 A small set of line icons helps a person scan tabs, headings and controls.
 Words stay first (1).
 
-- **Source.** A subset of 30 icons from Lucide, under the ISC licence.
+- **Source.** A subset of 30 icons from Lucide (32 once Epic 9 adds
+  `bell` and `message-square`, 8.19), under the ISC licence.
   `internal/web/static/vendor/LUCIDE-LICENSE.txt` holds the licence, with
   the notice for the icons Lucide derived from Feather, and `SHA256SUMS`
   lists it with the fonts.
@@ -2467,6 +2474,661 @@ disabled form. A `return` parameter, checked as in SPEC 14.17, sends the
 browser back to the page that asked after a save, and Cancel goes there
 too.
 
+### 8.12 Player actions (SPEC 8.2, Epic 9)
+
+The task is "do something to a player who is in the game", and it starts
+where the player is listed: the "Players online" card on the Server page.
+Kick and ban go through a confirmation step (7.4); promote, demote, unban
+and the whitelist act at once and offer Undo (17.9). A change sent to a
+running game takes no snapshot, because the game writes its own list
+file; the result says so in the confirmation, not in a warning.
+
+**The player row.** The players table (8.3) keeps its two columns. The
+player's name becomes the summary of a `details` in its cell, so opening a
+player's actions is one click on the thing the admin is looking at:
+
+```html
+<tr role="row" id="pr-Alice">
+  <td role="cell">
+    <details class="player-actions disclosure" name="player-actions" id="pd-Alice">
+      <summary id="ps-Alice">Alice<span class="visually-hidden">, actions</span>
+        <span class="badge">Admin</span></summary>
+      <div class="actions">
+        <form method="post" action="/worlds/family-base-2025/players/demote">
+          <input type="hidden" name="name" value="Alice">
+          <input type="hidden" name="return" value="/">
+          <button type="submit" class="button" id="pa-demote-Alice">Remove admin<span class="visually-hidden"> Alice</span></button>
+        </form>
+        <form method="post" action="/worlds/family-base-2025/players/whitelist-add">…<button … id="pa-wl-add-Alice">Add to whitelist…</button></form>
+        <a href="/worlds/family-base-2025/players/kick?name=Alice" class="button button--risky" id="pa-kick-Alice">Kick<span class="visually-hidden"> Alice</span></a>
+        <a href="/worlds/family-base-2025/players/ban?name=Alice" class="button button--risky" id="pa-ban-Alice">Ban<span class="visually-hidden"> Alice</span></a>
+      </div>
+    </details>
+  </td>
+  <td class="num" role="cell" data-label="Online for">1 h 4 min</td>
+</tr>
+```
+
+- **Order of the buttons**: the change that acts at once first ("Make
+  admin" or "Remove admin", then "Add to whitelist" or "Remove from
+  whitelist"), then the two risky ones, Kick then Ban, drawn risky (7.1),
+  since each opens a confirmation. Every button names the player in hidden
+  text after its visible word, so the label is in the name (SPEC 22.7) and
+  a screen reader's list of buttons tells the rows apart.
+- **The admin mark** is the existing neutral `badge` (8.2's pill without
+  the `--active` tint) with the word "Admin", after the name. It is read
+  from the world's admin list, so the row offers "Make admin" or "Remove
+  admin" and never both.
+- **The whitelist buttons** show only while the running game keeps the
+  whitelist, that is, when it was started with "Only whitelisted players
+  can join" on (8.13), and when the list can be read.
+- **The ids** are a prefix and the player's name: `pr-` (the row), `pd-`
+  (the `details`), `ps-` (the summary) and `pa-<action>-` for each button
+  (`promote`, `demote`, `wl-add`, `wl-remove`, `kick`, `ban`). No prefix
+  begins another or any fixed id on the page, so no name can make one id
+  into another.
+- `details[name="player-actions"]` makes the rows an exclusive group: one
+  player's actions are open at a time. Without support for `name`, several
+  may be open, which is harmless. The summary is a full-row target at least
+  `--target-min` tall with the disclosure chevron at its end (7.8); the
+  name wraps with `overflow-wrap: anywhere`; the `badge` never wraps inside
+  itself. Open, the buttons wrap under the name inside the first cell, and
+  on a phone each takes the cell's full width (6, rule 5).
+- **Live updates.** The players region is swapped when the list changes.
+  An open row must stay open and keep focus across a swap: every summary
+  and button has an id built from the player's name, and the script that
+  swaps the region copies `open` from the old `details` to the new one with
+  the same id before swapping (htmx already returns focus by id). A player
+  who left takes their row, open or not, with them; focus then goes to the
+  players heading (`#players-heading`, given `tabindex="-1"`).
+- Rows show actions only while the game runs and the list is known. A name
+  the game reports that fails the name check (SPEC 14.9: a space, a control
+  or invisible character, over 64 bytes) is shown as plain text with no
+  summary: Foreman never escapes a name to act on it.
+
+**One URL scheme.** Every player action posts to
+`POST /worlds/{id}/players/{action}` with the name in a `name` field
+(`kick`, `ban`, `unban`, `promote`, `demote`, `whitelist-add`,
+`whitelist-remove`), plus `reason` for kick and ban and a `return` path
+(SPEC 14.17). The name never goes in the path, so it needs no escaping
+there. Element ids carry the name as it is, which is safe because a name
+that passed the check has no spaces.
+
+**Kick and ban confirm** (7.4), at `GET /worlds/{id}/players/kick?name=`
+and `…/ban?name=`, in `playeraction.html`. Like the stop form, the page has no
+tabs; its `h1` is the question and Cancel is the way out.
+
+```html
+<h1 id="confirm-heading">Ban Alice from Family base 2025?</h1>
+<section class="confirm">
+  <p>This will:</p>
+  <ul>
+    <li>Disconnect Alice now, if they are in the game.</li>
+    <li>Add Alice to the ban list, so they cannot join again until unbanned.
+        The ban list is on the world's Settings tab.</li>
+    <li>Take no snapshot. The game records the ban in its own ban list.</li>
+  </ul>
+  <form method="post" action="/worlds/family-base-2025/players/ban">
+    <input type="hidden" name="name" value="Alice">
+    <input type="hidden" name="return" value="/">
+    <div class="field">
+      <label for="player-reason">Reason</label>
+      <p class="hint" id="player-reason-hint">Optional. Alice sees it. One line, up to 200 characters.</p>
+      <input id="player-reason" name="reason" type="text" maxlength="200" autocomplete="off" aria-describedby="player-reason-hint">
+    </div>
+    <div class="actions">
+      <button type="submit" class="button button--danger" id="act-confirm-ban">Ban Alice</button>
+      <a href="/">Cancel, keep Alice in the game</a>
+    </div>
+  </form>
+</section>
+```
+
+- Kick reads "Kick Alice from Family base 2025?" with one list item,
+  "Disconnect Alice now. They can join again at once.", then the
+  snapshot line. Its button is "Kick Alice". Ban's list is as above.
+- The reason is optional, one line (no NUL, CR or LF; the server refuses
+  them with a field error, never strips them) and at most 200 characters.
+  It is player-facing text, sent as typed.
+- If the player left between the row and the confirmation, the kick page
+  says so in a Note ("Alice is no longer in the game, so there is no one
+  to kick.") with a link back to the Server page and no button (SPEC
+  17.8). A ban still works on a name that is not online, so the ban page
+  keeps its button and drops "Disconnect Alice now".
+- Cancel returns to the page the admin came from (the `return` parameter,
+  checked as in SPEC 14.17): the Server page, or the Settings tab when the
+  ban started from the ban list (8.13).
+
+**The result** shows in the players card, at its top, above the table,
+not in the status card: the result belongs beside the thing that changed
+(7.3). It is a Done message (`#player-done`, `tabindex="-1"`), and focus
+moves to it after the redirect, as the Server page's other results do.
+
+```html
+<div class="message message--success" id="player-done" tabindex="-1">
+  <p><strong>Done:</strong> Alice is now an admin of Family base 2025.</p>
+  <div class="actions">
+    <form method="post" action="/worlds/family-base-2025/players/demote">
+      <input type="hidden" name="name" value="Alice">
+      <input type="hidden" name="undo" value="1">
+      <button type="submit" class="button" id="act-player-undo">Undo<span class="visually-hidden">: remove Alice as admin</span></button>
+    </form>
+  </div>
+</div>
+```
+
+- Each change that acts at once offers Undo, which posts the opposite
+  change at once: Make admin and Remove admin undo each other, as do Add to
+  and Remove from the whitelist. A ban's result offers "Unban Alice" in the
+  same place (it acts at once). A kick has nothing to undo, so its Done
+  message stands alone.
+- The result is one-shot: it shows on the page the action redirected to,
+  and a reload drops it. The Undo button needs no state, since it is only
+  the opposite action.
+- A failure is an Error in the same place: "The game did not answer over
+  RCON, so Foreman cannot tell whether Alice was kicked. Check the players
+  list, then try again." The game's own reply to a refused command (for
+  example a name it does not know) is shown after the sentence, marked
+  `lang="en"`, as console replies are (SPEC 22.3).
+- With htmx, the action may swap only the players card and send the Done
+  sentence to `#announcer`; without script the redirect does the same.
+
+Strings: the row buttons, the kick and ban pages and the results go in
+the `players` area (`players.kick.heading`, `players.ban.button`,
+`players.done.promoted`, `players.undo.demote` and so on); the "Admin"
+badge word too.
+
+### 8.13 The ban list and whitelist (SPEC 8.3, Epic 9)
+
+The world's Settings tab (8.10) gains "Ban list" (`#settings-bans`) and
+"Whitelist" (`#settings-whitelist`) after "Admins", and the rail gains
+their two links in that order, before the raw editor's link.
+How a list is edited depends on whether the game runs, because that
+decides who writes the file.
+
+**While the game runs**, a list is sent to the game over RCON and the
+game writes its own file, so no snapshot is taken (SPEC 8.2) and each
+change acts at once (SPEC 8.2). The two lists are then not fieldsets of
+the settings form but two cards of their own, right after it (before the
+raw editor's link), with their own small forms. A button inside the
+settings form would post the whole form and lose whatever the admin had
+typed in its other fields; cards of their own cannot. The rail's links
+reach them all the same. The name rows are the `ul.changes` list that the
+settings preview uses (8.10); no style of their own is added.
+
+```html
+<section class="panel" id="settings-bans" aria-labelledby="bans-heading">
+  <h2 id="bans-heading">Ban list</h2>
+  <p class="hint">The server is running, so changes here go to the game at once. No snapshot is taken.</p>
+  <ul class="changes" role="list" aria-labelledby="bans-heading">
+    <li><span>Bob</span> <span class="hint">griefing</span>
+      <form method="post" action="/worlds/family-base-2025/players/unban">
+        <input type="hidden" name="name" value="Bob">
+        <input type="hidden" name="return" value="/worlds/family-base-2025/settings">
+        <button type="submit" class="button" id="act-unban-Bob">Unban<span class="visually-hidden"> Bob</span></button>
+      </form></li>
+  </ul>
+  <form method="get" action="/worlds/family-base-2025/players/ban" class="field">
+    <label for="ban-name">Ban a player</label>
+    <p class="hint" id="ban-name-hint">The player's name. You can give a reason on the next page.</p>
+    <input type="hidden" name="return" value="/worlds/family-base-2025/settings">
+    <div class="console-row">
+      <input id="ban-name" name="name" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="ban-name-hint">
+      <button type="submit" class="button button--risky" id="act-ban-name">Ban</button>
+    </div>
+  </form>
+</section>
+```
+
+- "Unban" acts at once and the Settings tab returns with a Done message
+  at its top (the existing `#done-message`), "Bob is unbanned from Family
+  base 2025.", with "Undo" (it bans Bob again at once, with the reason the
+  file had). "Ban" goes to the ban confirmation (8.12) with the name
+  filled in and `return` set to the Settings tab, because a ban always
+  confirms. A name that fails the check (SPEC 14.9) is a field error on
+  the confirmation page's return, never sent.
+- A ban list entry shows its reason after the name, in `hint` style, when
+  the file has one. Names and reasons are shown as written (SPEC 22.3).
+- The whitelist card (`#settings-whitelist`) is the same: one `li` per
+  name with "Remove from whitelist" (acts at once; Undo adds the name
+  back), then "Add a player" with "Add to whitelist" (acts at once; Undo
+  removes it).
+- An empty list is one `p.empty` line: "Nobody is banned." / "Nobody is
+  on the whitelist."
+- The Admins fieldset is unchanged by this epic: it stays in the form, as
+  8.10 describes.
+
+**While the game is stopped** (or the world is not the active one), the
+game is not there to write its files, so Foreman writes them, and the
+change takes the usual settings snapshot (SPEC 11.3). Each list is then a
+fieldset of the settings form after Admins, holding a `textarea` like
+Admins (8.10): one name per line, `rows="5"`, with
+`autocapitalize="off"` and `spellcheck="false"`, saved through "Preview
+changes" with the rest of the form.
+
+- Hints: "One player name per line. Reasons already in the file are kept;
+  a name added here has no reason." (ban list) and "One player name per
+  line." (whitelist).
+- The preview of changes (8.10) lists them as it lists admins: "Banned
+  Bob", "Unbanned Carl", "Added Dana to the whitelist", "Removed Eve from
+  the whitelist", under "Changes to the ban list" and "Changes to the
+  whitelist". The steps write `server-banlist.json` and
+  `server-whitelist.json` after the one snapshot.
+- A list file that is not a list of names is read-only, as Admins is,
+  with the same "Fix the file in the world's config folder" hint.
+- Each bad line is a field error naming the line, as Admins does.
+
+**Whitelist enforcement.** A whitelist only keeps players out when the
+game enforces it, and an in-game `/whitelist enable` is lost when the game
+restarts. So enforcement is a per-world switch, "Only whitelisted players
+can join", at the end of the whitelist section, with the Note (7.3):
+
+> **Note:** The game checks this list only while "Only whitelisted players
+> can join" is on.
+
+The switch is a checkbox and a "Save whitelist choice" button that post
+their own small form (`form` attribute), so they can sit inside the
+settings form's whitelist fieldset. On, the game starts with
+`--use-server-whitelist --server-whitelist <file>`; off, with neither.
+The game reads it only at start, so on a running world the hint says a
+change takes effect after a restart, and while the running game was
+started the other way a hint and a Restart server button follow it, as
+the settings page does for other settings that need a restart. The
+whitelist is edited live (the card above) only while the running game
+was started with the switch on, since only then does the game keep the
+file; otherwise Foreman writes it through the settings form.
+
+Strings: legends, hints, list labels, empty lines and the preview lines go
+in `settings`; the live actions' results and Undo labels in `players`.
+
+### 8.14 Chat (SPEC 8.5, Epic 9)
+
+Chat is the third tab of the Server view: Overview, Console, Chat
+(`GET /chat`, `chat.html`). It is a tab of its own
+because reading and answering players is a task of its own; it is apart
+from the Console because a chat line is never a command. The page has
+the Server page's `h1` and live badge, then the Server tabs with Chat
+current.
+
+```html
+<section class="panel" aria-labelledby="chat-heading">
+  <h2 id="chat-heading" class="visually-hidden">Chat</h2>
+  <div class="log-frame">
+    <div class="log" tabindex="0" role="log" aria-label="Chat messages"><ol class="chat-lines">
+      <li><time datetime="2026-11-12T19:04:11Z">19:04</time>
+        <span class="chat-name">Alice</span> <span class="chat-text" dir="auto">is anyone near the oil field?</span></li>
+      <li class="chat-line--server"><time …>19:04</time>
+        <span class="chat-name">Server</span> <span class="chat-text" dir="auto">todd: on my way</span></li>
+    </ol></div>
+    <button type="button" class="button" id="chat-jump" hidden>Jump to newest</button>
+  </div>
+  <form method="post" action="/worlds/family-base-2025/chat" id="chat-form" novalidate>
+    <div class="field">
+      <label for="chat-message" class="required">Message</label>
+      <p class="hint" id="chat-hint">Players see this in the game as a message from the server.</p>
+      <div class="console-row">
+        <input id="chat-message" name="message" type="text" maxlength="500" autocomplete="off" aria-describedby="chat-hint">
+        <button type="submit" class="button button--primary" id="act-chat-send">Send</button>
+      </div>
+    </div>
+  </form>
+</section>
+```
+
+- **History above, field below**, newest last, as in any chat. The box is
+  `min(50vh, 24rem)` tall, so at 320 by 640 the field is on the first
+  screen under it. It follows new lines while at the bottom and offers
+  "Jump to newest" otherwise, exactly as the game log does (8.5,
+  `log-frame`).
+- **The lines** are the game's `[CHAT]` lines since the container
+  started (the same history the game log keeps, SPEC 8.6), at most the
+  last 200 in the page; older ones drop from the top. Each line is the
+  time (clock only, from `time.js`; the title gives the full time), the
+  name in weight 600, and the message as written, with `dir="auto"` and
+  `overflow-wrap: anywhere`. A message the server sent shows the name
+  "Server"; the game's own prefix is not shown. Player text is never made
+  into a link.
+- **Live.** New lines are appended, never re-rendered. The list is
+  `role="log"`, a polite live region, because chat is written at human
+  speed and someone following it by ear needs to hear new lines. (The game
+  log is not one, 8.5.)
+- **Sending.** One line of 1 to 500 characters, with no NUL, CR or LF.
+  With htmx the form posts in place; on success the field empties and
+  keeps focus, and the message arrives in the list from the game's own
+  echo, so it is never shown twice. Without script the post redirects
+  back to the Chat tab.
+- **A message that starts with `/`** (after any spaces) is refused, never
+  sent: a field error reads "A chat message cannot start with /. To run a
+  command, use the Console." with "Console" a link to the Console tab. So
+  a typed command never runs, and the admin is pointed at the place that
+  does run it.
+- **Not running.** When the game is not running there is no chat to show
+  or send: the section shows the history it still has, if any, then
+  `p.empty empty--art empty--chat`: "The server is not running, so no one
+  can read chat. Start it from the Server page." with "Server page" a link.
+  With no history and the game running: "No chat since the server
+  started."
+- RCON failure: an Error above the form, "The game did not answer over
+  RCON, so the message was not sent.", and the field keeps the text.
+
+Strings: all in the `chat` area (`chat.tab`, `chat.message.label`,
+`chat.error.slash`, …), plus the jump button and the "Message sent"
+announcement in `js.json` under `chat.`. The tab's word goes in `common`
+with the other tab words.
+
+### 8.15 Foreman settings: the restart schedule (SPEC 7.12, Epic 9)
+
+Foreman has three pages that belong to Foreman, not a world: the
+factorio.com account (8.11), the restart schedule, and notifications
+(8.16). The user menu lists them in that order after its divider line,
+each `aria-current="page"` on its own page. Each of the three carries a
+sub-navigation under its `h1` (6, "Sub-navigation"), named "Foreman
+settings", with the same three links, so moving between them is one click.
+
+**The schedule page** (`GET /settings/restart-schedule`,
+`schedule.html`). One schedule restarts whichever world is active
+(SPEC 7.12). The page leads with its state in one sentence, as the account
+page does:
+
+- On: "Foreman restarts the active world every day at 04:00
+  (Europe/London). Next restart: `<time>`." The `time` is local to the
+  viewer, as everywhere (SPEC 17.11), while the set time is shown in the
+  schedule's own zone, named.
+- Off: "No restart is scheduled."
+
+Then a short "How it works" list, in plain words, before the form, because
+the behaviour is the thing an admin must trust:
+
+1. At the set time, Foreman waits until nobody is online.
+2. Then it restarts the server after a 60-second warning in the game.
+3. If someone joins during the warning, the restart stops, they are told
+   in the game, and Foreman waits again.
+4. If players are still online when the wait limit runs out, that day's
+   restart is skipped.
+5. A stopped or crashed server is never started by the schedule, and a
+   restart missed while Foreman was not running is not made up.
+
+The form is a `form.panel`:
+
+```html
+<form method="post" action="/settings/restart-schedule" class="panel" novalidate>
+  <label class="check"><input type="checkbox" id="schedule-on" name="enabled" checked> Restart the active world every day</label>
+  <div class="field">
+    <label for="schedule-time" class="required">Time</label>
+    <input id="schedule-time" name="time" type="time" value="04:00" required>
+  </div>
+  <div class="field">
+    <label for="schedule-zone" class="required">Time zone</label>
+    <select id="schedule-zone" name="zone" required>
+      <optgroup label="Europe"><option value="Europe/London" selected>Europe/London</option>…</optgroup>
+      …
+    </select>
+  </div>
+  <div class="field">
+    <label for="schedule-limit" class="required">Wait for players to leave for up to</label>
+    <p class="hint" id="schedule-limit-hint">Hours, 0 to 12. 0 skips the restart at once if anyone is online.</p>
+    <input id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="1" autocomplete="off" aria-describedby="schedule-limit-hint">
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-schedule-save">Save schedule</button>
+    <a href="/">Cancel</a>
+  </div>
+</form>
+```
+
+- **Time** is the native `input type="time"`, in steps of one minute. The
+  browser shows it in the viewer's 12- or 24-hour style; the value is
+  always `HH:MM`.
+- **Time zone** is a native `select` of the IANA zones, grouped by region
+  in `optgroup`s, each shown as its id (`translate="no"`). A new schedule
+  starts with the viewer's own zone selected, set by a small script from
+  `Intl.DateTimeFormat().resolvedOptions().timeZone`; without script, UTC.
+- **Wait limit** is whole hours, 0 to 12, default 1 (SPEC 7.12).
+- **Turning it off** is unticking and saving. The fields stay, with their
+  values, so turning it back on is one tick. While unticked the fields are
+  not required, and the server ignores them.
+- The countdown is fixed at 60 seconds and is not a field (SPEC 7.12).
+- After saving, the page returns with a Done message (`#done-message`)
+  naming the next restart time: "Saved. The next restart is `<time>`." or
+  "Saved. No restart is scheduled."
+- Field errors follow 7.2: "Enter a time such as 04:00.", "Choose a time
+  zone from the list.", "Enter a whole number of hours from 0 to 12."
+
+**On the Server page.** The schedule shows in the status card in three
+ways, none of them a new component:
+
+- **Next restart.** While the schedule is on and the game runs, a fact
+  "Next restart" sits under the facts, in a region of its own
+  (`sse-swap="schedule"`, `div.schedule-next`), like "Loads next" (6):
+  its value is a quiet button-faced link, the `time` as its text, to the
+  schedule page (`#act-schedule`), named "`<time>`, change the restart
+  schedule". It is its own region because the facts region holds nothing
+  focusable. When the game is stopped the fact is not shown, since a
+  stopped game is never restarted.
+- **Waiting for nobody online.** From the set time until the restart or
+  the skip, the control region shows a Note (7.3, `#schedule-waiting`):
+  "Note: A scheduled restart is waiting for nobody to be online. If players
+  are still on at `<time>`, it is skipped today." with a link "Restart
+  schedule" to the page (17.9). When `/players online` cannot be asked,
+  Foreman counts that as someone online (SPEC 7.12) and the note
+  says: "Foreman cannot ask the game who is online, so it waits as if
+  someone were." Restart, Stop and the other controls stay as they are:
+  the admin can still restart by hand (that ends the wait).
+- **The 60-second countdown** is the restart operation's own step list
+  (7.6), under the heading "Scheduled restart" instead of "Restarting",
+  with "Warn players: 40 seconds left" and "Cancel stop", exactly as a
+  restart the admin started. If a player joins, Foreman presses Cancel
+  stop itself, and the card goes back to the waiting note with one more
+  sentence: "Alice joined during the warning, so the restart waits again."
+  If an admin presses Cancel stop, that day's scheduled restart is
+  skipped, and the note below says so.
+- **Skipped.** A Note in the control region (`#schedule-skipped`):
+  "Note: Today's scheduled restart was skipped at `<time>` because players
+  were still online. The next is `<time>`." (or "…because an admin
+  cancelled it."), with the "Restart schedule" link. It stays until the
+  next scheduled time or until another operation's result takes the card.
+- A completed scheduled restart ends like any restart: the Done message
+  "Restarted Family base 2025 on schedule."
+
+Strings: the page, its fields and errors go in `schedule`; the Server
+page's fact, notes and the operation heading in `server`; the menu and
+sub-navigation link words in `common`.
+
+### 8.16 Notifications (SPEC 8.10 to 8.12, Epic 9)
+
+`GET /settings/notifications` (`notifications.html`), under the
+"Foreman settings" sub-navigation (8.15). Webhooks belong to Foreman as a
+whole, and every message names its world.
+
+**Without `FOREMAN_SECRET_KEY`** the page is a Note and a link back, with
+no disabled form, as the account page is (8.11): "Note: Notifications
+need `FOREMAN_SECRET_KEY`, because Foreman keeps webhook addresses sealed
+with it. The operator guide says how to set it." Existing webhooks, if the
+key was removed, are not listed, since their addresses cannot be read.
+
+**With the key**, the page leads with one sentence of state: "2 webhooks
+get messages." or "No webhooks yet.", then the list, then "Add a webhook"
+(primary, `#act-webhook-add`), which is the page's main action.
+
+```html
+<ul class="webhook-list" role="list">
+  <li id="webhook-3">
+    <h2 class="webhook-list__title">Discord <span class="ident" translate="no">discord.com</span></h2>
+    <dl class="facts facts--inline">
+      <div><dt>Language</dt><dd>English</dd></div>
+      <div><dt>Events</dt><dd>Start, stop, crash, crash loop, low disk, scheduled restart</dd></div>
+    </dl>
+    <div class="actions">
+      <a href="/settings/notifications/3" class="button" id="act-webhook-edit-3">Edit<span class="visually-hidden"> the Discord webhook to discord.com</span></a>
+      <a href="/settings/notifications/3/delete" class="button button--risky button--icon" id="act-webhook-delete-3">
+        <span class="visually-hidden">Delete the Discord webhook to discord.com</span></a>
+    </div>
+  </li>
+</ul>
+```
+
+- **Only the preset and the host** are shown, never the address, its path,
+  query or token (SPEC 14.8): not in the page, a value
+  attribute, a title, a log line or an error. Two webhooks to the same
+  host look alike; their events and languages tell them apart.
+- The list is the world list's shape (8.2): rows separated by a 1 px
+  `line`, the title as the row's heading, `facts--inline` for the facts,
+  and the actions after them. With every event on, Events reads "All
+  events".
+- **The empty state** is `p.empty empty--art empty--notify`: "No webhooks
+  yet. Add one to hear about crashes, restarts and players in Discord, ntfy
+  or your own service." followed by "Add a webhook".
+- **Delete** opens a confirmation step (7.4) without a snapshot line:
+  "Delete the Discord webhook to discord.com?", "This will: Stop sending
+  messages to it. To add it again you need its address.", a danger button
+  "Delete webhook", and "Cancel, keep the webhook".
+
+**The add and edit form** (`/settings/notifications/new`,
+`/settings/notifications/{id}`), a `form.panel`:
+
+```html
+<form method="post" action="/settings/notifications/new" class="panel" novalidate>
+  <fieldset>
+    <legend>Service</legend>
+    <label class="check"><input type="radio" name="preset" value="discord" checked aria-describedby="preset-discord-hint"> Discord</label>
+    <p class="hint" id="preset-discord-hint">In Discord: Server settings, Integrations, Webhooks, then Copy webhook URL.</p>
+    <label class="check"><input type="radio" name="preset" value="ntfy" aria-describedby="preset-ntfy-hint"> ntfy</label>
+    <p class="hint" id="preset-ntfy-hint">The topic's full address, such as https://ntfy.sh/your-topic.</p>
+    <label class="check"><input type="radio" name="preset" value="generic" aria-describedby="preset-generic-hint"> Generic JSON</label>
+    <p class="hint" id="preset-generic-hint">Foreman posts a JSON body to the address. The operator guide describes it.</p>
+  </fieldset>
+  <div class="field">
+    <label for="webhook-url" class="required">Webhook address</label>
+    <input id="webhook-url" name="url" type="url" required autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <fieldset>
+    <legend>Send a message when</legend>
+    <label class="check"><input type="checkbox" name="events" value="start" checked> The server starts</label>
+    …
+  </fieldset>
+  <div class="field">
+    <label for="webhook-lang">Language of the messages</label>
+    <select id="webhook-lang" name="lang">…</select>
+  </div>
+  <div class="actions">
+    <button type="submit" class="button button--primary" id="act-webhook-save">Add webhook</button>
+    <a href="/settings/notifications">Cancel</a>
+  </div>
+</form>
+```
+
+- **Service** defaults to Discord, the most common, so adding a Discord
+  webhook takes no choice. Each preset's hint says where its address
+  comes from.
+- **The address** is write-only, as the game password is (8.10). It is
+  never put back in a value attribute: after a refused form the field is
+  empty and its error asks for it again ("Type the address again. Foreman
+  does not keep an address it refused."). On the edit page the field is
+  optional, and a hint above it gives the state: "The address is kept:
+  Discord, discord.com. Type a new address to change it." Address errors
+  say what to fix without echoing it: "Enter an address that starts with
+  https://." and the other URL checks, each in this form.
+- **Events**, all ticked by default, in this order, each a checkbox:
+  "The server starts", "The server stops", "The server crashes", "The
+  server crash-loops", "A player joins", "A player leaves", "A scheduled
+  restart runs or is skipped", "Disk space runs low". At least one must
+  be ticked ("Choose at least one event.").
+- **Language** is a `select` of the eight languages, each named in its own
+  language with its `lang`, defaulting to the language of the admin who
+  adds it (SPEC 8.11). Hint: "Names from the game and the world's name are
+  sent as written."
+- The edit page's button is "Save webhook"; its `h1` is "Edit the Discord
+  webhook to discord.com".
+- After add, edit or delete, the list returns with a Done message
+  (`#done-message`), "Added the Discord webhook to discord.com."
+- There is no "send a test" button. A delivery that fails is
+  logged (SPEC 8.12); the page does not show delivery history.
+
+Strings: all in the `notify` area, including the event names and the
+message bodies the webhooks carry; the menu and sub-navigation words in
+`common`.
+
+### 8.17 Low disk space (SPEC 8.13, Epic 9)
+
+While the game runs and the disk that holds Foreman's data has less than
+4 GB free (twice the 6.11 reserve), the Server page's status card shows a
+Warning with the facts, where the game-network warning sits (7.3). It
+clears only once more than 4.5 GB is free, so it does not flicker on and
+off around one figure (SPEC 8.13). The thresholds are fixed.
+
+```html
+<div id="disk-notice" class="disk-notice" sse-swap="disk">
+  <div class="message message--warning">
+    <p><strong>Warning:</strong> Only 3.1 GB of disk space is free. Autosaves
+    can fail below 2 GB, and snapshots stop below it. Delete snapshots or
+    worlds you no longer need.</p>
+    <div class="actions"><a href="/snapshots" class="button" id="act-disk-snapshots">Snapshots</a></div>
+  </div>
+</div>
+```
+
+- It is a region of its own, sent only when the warning appears, clears
+  or its figure changes by 0.1 GB, because it holds a link and the facts
+  region is replaced every few seconds. Empty, it takes no room.
+- The next step is a control (17.9): "Snapshots" goes to the all-worlds
+  Snapshots page, where the disk strip and "Delete selected" are.
+- The figures come from the same reading as the disk strip, formatted
+  with one decimal and the language's number rules (SPEC 22.4). The
+  reserve figure is read from the code, not written into the string.
+- It is not announced: it is a fact about the page, not a result. The
+  webhook message for it is 8.16's "Disk space runs low".
+
+Strings: `server.disk.low`, `server.disk.snapshots` in the `server` area.
+
+### 8.18 Click budgets for Epic 9 (SPEC 17.10)
+
+Counted from the Server page, defaults accepted, as SPEC 17.10 counts.
+SPEC 17.10 holds these rows; each one has an end-to-end test that counts
+its clicks.
+
+| Task | Clicks |
+|---|---|
+| See why the server crashed | 0 |
+| See that a scheduled restart is waiting, and when the next one is | 0 |
+| Make an online player admin, or remove one (the player, Make admin) | 2 |
+| Make a player admin, then undo it (the player, Make admin, Undo) | 3 |
+| Add an online player to the whitelist (the player, Add to whitelist) | 2 |
+| Kick a player (the player, Kick, Kick *player*) | 3 |
+| Ban a player (the player, Ban, Ban *player*) | 3 |
+| Unban a player while the game runs (Settings, Unban) | 2 |
+| Edit the ban list or whitelist of a stopped world (Settings, Preview changes, Save settings) | 3 |
+| Read the chat (Chat) | 1 |
+| Send a chat message (Chat, Send) | 2 |
+| Set a nightly restart (the user menu, Restart schedule, Save schedule) | 3 |
+| Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
+| Add a Discord webhook (the user menu, Notifications, Add a webhook, Add webhook) | 4 |
+| Act on the low-disk warning (Snapshots, tick a snapshot, Delete selected, Delete) | 4 |
+
+### 8.19 New CSS for Epic 9
+
+The rules the Epic 9 pages add to `foreman.css`.
+
+- `.player-actions`: the `details` in a player cell. Summary is a full-cell
+  target (`--target-min`), with the disclosure chevron (7.8) but no
+  raised face or border, so the table still reads as a table; open, the
+  `.actions` row sits under the name with `gap: var(--space-2)`.
+  `.player-actions .badge` sits on the name's line and never wraps.
+- `.chat-lines`: in the `log` box but in `--font-body` at `--text-md`, not
+  mono; `li` a block with a hanging indent of `2ch`; `time` in
+  `text-muted` with `font-variant-numeric: tabular-nums`; `.chat-name`
+  weight 600 in `heading`; `.chat-line--server .chat-name` in `link`
+  colour, so a server line reads as one, with the word "Server" carrying
+  it. Block size `min(50vh, 24rem)`.
+- `.schedule-next`: as `.loads-next` (the selector is added to that rule).
+- `.disk-notice`: as `.mods-notice` (takes no room when empty).
+- `.webhook-list`: the world list's row rules (8.2) without the active
+  edge: rows separated by a 1 px `line`, `.webhook-list__title` in
+  `heading` at `--text-md` with the host in `text-muted`.
+- Two icons for 7.9: `--i-bell` (Lucide `bell`) for `empty--notify` and
+  `--i-chat` (Lucide `message-square`) for `empty--chat`, added to the set,
+  the licence's list and the empty-state rule.
+- The Foreman settings sub-navigation reuses `.subnav`; no new rule.
+
 ## 9. Writing
 
 - Plain words, sentence case, no exclamation marks, no "Oops".
@@ -2528,5 +3190,4 @@ screen does, in this document first.
   SPEC 7.2.
 - Pagination. See 8.4.
 - The world-switch progress screen beyond the step list in 7.6 (Epic 4).
-- Chat (Epic 9).
 - A print stylesheet.

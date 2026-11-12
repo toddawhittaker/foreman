@@ -1,0 +1,8 @@
+{
+  "crash.kind.mod_error": "Nie udało się wczytać modyfikacji.",
+  "crash.kind.mod_missing_dependency": "Modyfikacja wymaga innej modyfikacji, która nie jest zainstalowana.",
+  "crash.kind.mods_for_other_version": "Niektóre modyfikacje powstały dla innej wersji Factorio.",
+  "crash.kind.out_of_memory": "Grze zabrakło pamięci, więc system ją zatrzymał.",
+  "crash.kind.port_in_use": "Inny program na tym hoście już używa portu gry.",
+  "crash.kind.save_unreadable": "Nie udało się odczytać zapisu. Może być uszkodzony lub niekompletny."
+}

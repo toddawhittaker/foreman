@@ -83,22 +83,23 @@ for (const lang of ["en", "de", "ru"]) {
 }
 
 // The rows size themselves from the map settings' own width (DESIGN 8.7),
-// so every width of that box keeps them still, not only the window widths above.
+// so every width of that box keeps them still, not only the window widths
+// above. One test per language and width: stepping every slider of the three
+// tabs takes seconds, and all the widths together outran one test's limit.
 for (const lang of ["de", "ru"]) {
-  test(`no slider moves while it is stepped, in ${lang} at any width of the map settings`, async ({ page }) => {
-    test.setTimeout(90_000);
-    await page.setViewportSize({ width: 1920, height: 900 });
-    await page.goto("/generate");
-    await pickLanguage(page, lang);
-    await page.goto("/generate");
-    for (let width = 560; width <= 1400; width += 40) {
+  for (let width = 560; width <= 1400; width += 40) {
+    test(`no slider moves while it is stepped, in ${lang} with the map settings ${width} px wide`, async ({ page }) => {
+      await page.setViewportSize({ width: 1920, height: 900 });
+      await page.goto("/generate");
+      await pickLanguage(page, lang);
+      await page.goto("/generate");
       await page.locator("#map-section").evaluate((el, w) => { el.style.inlineSize = `${w}px`; }, width);
       for (const name of tabNames[lang]) {
         await tab(page, name).click();
         expect(await movedWhileStepping(page), `${width} px`).toEqual([]);
       }
-    }
-  });
+    });
+  }
 }
 
 // DESIGN 8.6: "[modified]" and the reset button appear by the preset as soon

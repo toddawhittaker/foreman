@@ -1,0 +1,21 @@
+{
+  "chat.none": "Aucun monde n'est encore actif, il n'y a donc pas de discussion à lire ou à envoyer. Importez un monde ou envoyez une sauvegarde sur la page Mondes ; le premier monde devient le monde actif.",
+  "chat.history_label": "Messages de la discussion",
+  "chat.name.server": "Serveur",
+  "chat.empty": "Aucun message depuis le démarrage du serveur.",
+  "chat.not_running": "Le serveur ne fonctionne pas, donc personne ne peut lire la discussion. Démarrez-le depuis la page Serveur.",
+  "chat.go_server": "Aller à la page Serveur",
+  "chat.message.label": "Message",
+  "chat.message.hint": "Les joueurs le voient dans le jeu comme un message du serveur. Il est consigné dans le journal d'audit.",
+  "chat.send": "Envoyer",
+  "chat.error.empty": "Saisissez un message à envoyer",
+  "chat.error.control": "Un message ne peut pas contenir de caractère de contrôle, comme une tabulation",
+  "chat.error.long": "Saisissez un message d'au plus {max} caractères",
+  "chat.error.nul": "Un message ne peut pas contenir de caractère NUL",
+  "chat.error.lines": "Un message doit tenir sur une seule ligne",
+  "chat.error.slash": "Un message de la discussion ne peut pas commencer par /. Pour exécuter une commande, utilisez la console.",
+  "chat.go_console": "Aller à la console",
+  "chat.failure.not_running": "Le jeu ne fonctionne pas, donc le message n'a pas été envoyé. Démarrez-le depuis la page Serveur.",
+  "chat.failure.unreachable": "Le jeu n'a pas répondu via RCON, donc le message n'a pas été envoyé.",
+  "chat.announce.sent": "Message envoyé"
+}
