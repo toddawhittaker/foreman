@@ -9,7 +9,7 @@
   function followLog(frame) {
     const box = frame.querySelector(".log");
     // The game log's lines are spans in a pre; chat's are list items.
-    const pre = box.querySelector("pre, ol");
+    const pre = (box.querySelector("pre") || box.querySelector("ol"));
     const jump = frame.querySelector("button");
     const max = Number(frame.dataset.maxLines);
 
