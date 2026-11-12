@@ -87,6 +87,30 @@ func TestScheduleDefaults(t *testing.T) {
 	}
 }
 
+// DESIGN 8.15: only a never-saved schedule asks the browser for its zone, and
+// only that page loads the script that does. A saved schedule, and a refused
+// form for a schedule never saved, keep the zone they show.
+func TestScheduleOffersViewerZoneOnlyBeforeFirstSave(t *testing.T) {
+	hn, _ := newScheduleHarness(t)
+	c := hn.signIn()
+	const marker = `data-viewer-zone`
+	body := hn.get(PathSchedule, withCookie(c)).Body.String()
+	if !strings.Contains(body, marker) || !strings.Contains(body, "schedule.js") {
+		t.Errorf("a never-saved schedule is not marked or loads no script\n%s", body)
+	}
+	if strings.Contains(hn.get(PathNotifications, withCookie(c)).Body.String(), "schedule.js") {
+		t.Error("another page loads the schedule script")
+	}
+	refused := hn.post(PathSchedule, scheduleForm(true, "04:00", "Local", "1"), withCookie(c)).Body.String()
+	if strings.Contains(refused, marker) {
+		t.Error("a refused form is marked for the viewer's zone")
+	}
+	hn.post(PathSchedule, scheduleForm(true, "04:00", "Europe/London", "1"), withCookie(c))
+	if strings.Contains(hn.get(PathSchedule, withCookie(c)).Body.String(), marker) {
+		t.Error("a saved schedule is marked for the viewer's zone")
+	}
+}
+
 // SPEC 7.12: saving turns the schedule on, names the next restart, and is
 // audited.
 func TestScheduleSave(t *testing.T) {
