@@ -418,5 +418,7 @@ func (p SettingsPage) Problems() []Problem {
 		Problem{"admins", p.AdminsError},
 		Problem{"bans", p.BansError},
 		Problem{"whitelist", p.WhitelistError},
+		Problem{"ban-name", p.BanNameError()},
+		Problem{"whitelist-name", p.WhitelistNameError()},
 	)
 }

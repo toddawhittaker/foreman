@@ -78,13 +78,13 @@ test("the whitelist switch is saved per world, and the next start enforces the w
   await expect(card.getByText("Nobody is on the whitelist.")).toBeVisible();
   await card.getByLabel("Add a player").fill("hank");
   await card.getByRole("button", { name: "Add to whitelist" }).click();
-  await expect(page.locator("#done-message")).toContainText("hank is on the whitelist of Base.");
+  await expect(page.locator("#player-done")).toContainText("hank is on the whitelist of Base.");
   expect(JSON.parse(readConfig(foreman, "server-whitelist.json"))).toEqual(["hank"]);
   await checkPage(page);
 
   // Undo removes the name at once.
   await page.getByRole("button", { name: "Undo: remove hank from the whitelist" }).click();
-  await expect(page.locator("#done-message")).toContainText("hank is no longer on the whitelist of Base.");
+  await expect(page.locator("#player-done")).toContainText("hank is no longer on the whitelist of Base.");
   expect(JSON.parse(readConfig(foreman, "server-whitelist.json"))).toEqual([]);
 
   // Turning it off while running needs a restart, and says so with the button.
@@ -118,17 +118,17 @@ test("on a running world a ban confirms with a reason, and unban acts at once wi
   await page.getByRole("button", { name: "Ban bob" }).click();
 
   await expect(page).toHaveURL(/\/worlds\/base\/settings$/);
-  await expect(page.locator("#done-message")).toContainText("bob is banned from Base.");
+  await expect(page.locator("#player-done")).toContainText("bob is banned from Base.");
   expect(await commands(fakeGame!)).toContain("/ban bob griefing");
   expect(readConfig(foreman, "server-banlist.json")).toContain('"reason": "griefing"');
   await expect(card.getByText("griefing")).toBeVisible();
 
   await card.getByRole("button", { name: "Unban bob" }).click();
-  await expect(page.locator("#done-message")).toContainText("bob is unbanned from Base.");
+  await expect(page.locator("#player-done")).toContainText("bob is unbanned from Base.");
   await checkPage(page);
   // Undo bans again with the reason the ban had.
   await page.getByRole("button", { name: "Undo: ban bob again" }).click();
-  await expect(page.locator("#done-message")).toContainText("bob is banned from Base.");
+  await expect(page.locator("#player-done")).toContainText("bob is banned from Base.");
   expect((await commands(fakeGame!)).filter((c) => c.startsWith("/ban"))).toEqual(["/ban bob griefing", "/ban bob griefing"]);
 });
 

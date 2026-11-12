@@ -4,7 +4,9 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/gamesettings"
@@ -25,7 +27,7 @@ const returnField = "return"
 func playerPath(id, action string) string { return worldPath(id) + "/players/" + action }
 
 func (s *server) playersRoutes() {
-	s.playerResults = &playerResults{byUser: map[int64]PlayerResult{}}
+	s.playerResults = &playerResults{byUser: map[int64]PlayerResult{}, now: s.now}
 	s.mux.HandleFunc("GET "+PathPlayerAction, s.requireUser(s.handlePlayerConfirm))
 	s.mux.HandleFunc("POST "+PathPlayerAction, s.requireUser(s.handlePlayerAction))
 }
@@ -41,11 +43,15 @@ type PlayerResult struct {
 	Reason string
 	// Error is zero when the action was done.
 	Error i18n.Msg
-	// Reply is the game's own answer to a command it refused, in English.
+	// Reply is the game's own answer, in English: why it refused, or what it
+	// said when it did the action (often nothing).
 	Reply string
 	// NameError is true when the name failed the check of SPEC 14.9, so the
-	// page shows it as a field error.
+	// page shows it as a field error where it has the field.
 	NameError bool
+	// Return is the page the result is for; only that page shows it.
+	Return string
+	at     time.Time
 }
 
 // Done is the result sentence of a done action.
@@ -108,28 +114,38 @@ func (p PlayerResult) UndoPath() string { return playerPath(p.WorldID, p.UndoAct
 // IsBan is true for a ban, whose undo is shown as "Unban" rather than Undo.
 func (p PlayerResult) IsBan() bool { return p.Action == game.PlayerBan }
 
-// playerResults keeps each user's last player action result until a page
-// shows it, so a reload drops it.
+// resultLife is how long a player action result waits to be shown, so a
+// result never shown cannot appear with a live Undo much later.
+const resultLife = time.Minute
+
+// playerResults keeps each user's last player action result until the page
+// it went back to shows it, so a reload drops it.
 type playerResults struct {
 	mu     sync.Mutex
 	byUser map[int64]PlayerResult
+	now    func() time.Time
 }
 
 func (p *playerResults) put(userID int64, r PlayerResult) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	r.at = p.now()
 	p.byUser[userID] = r
 }
 
-// take returns and forgets the user's result for the world, or nil.
-func (p *playerResults) take(userID int64, worldID string) *PlayerResult {
+// take returns and forgets the user's result for the world when it went back
+// to path and is under a minute old, or returns nil.
+func (p *playerResults) take(userID int64, worldID, path string) *PlayerResult {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	r, ok := p.byUser[userID]
-	if !ok || r.WorldID != worldID {
+	if !ok || r.WorldID != worldID || r.Return != path {
 		return nil
 	}
 	delete(p.byUser, userID)
+	if p.now().Sub(r.at) > resultLife {
+		return nil
+	}
 	return &r
 }
 
@@ -202,14 +218,14 @@ func (s *server) handlePlayerConfirm(w http.ResponseWriter, r *http.Request, u s
 	p := PlayerActionPage{World: sum, Action: action, Name: q.Get("name"), Return: returnPath(q.Get(returnField))}
 	if err := game.CheckPlayerAction(action, p.Name, ""); err != nil {
 		s.playerResults.put(u.ID, PlayerResult{WorldID: sum.ID, WorldName: sum.Name, Action: action, Name: p.Name,
-			Error: i18n.M("players.error.name", "max", gamesettings.MaxNameBytes), NameError: true})
+			Error: i18n.M("players.error.name", "max", gamesettings.MaxNameBytes), NameError: true, Return: p.Back()})
 		http.Redirect(w, r, p.Back(), http.StatusSeeOther)
 		return
 	}
 	if s.game.Status(sum.ID).State != game.StateRunning {
 		p.Error = i18n.M("players.error.not_running", "world", sum.Name)
 	} else if o := s.online(r.Context(), sum.ID); o.Asked && !o.Failed {
-		p.Online = slices.Contains(o.Names, p.Name)
+		p.Online = slices.ContainsFunc(o.Names, func(n string) bool { return strings.EqualFold(n, p.Name) })
 		p.Gone = !p.Online
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
@@ -236,7 +252,8 @@ func (s *server) handlePlayerAction(w http.ResponseWriter, r *http.Request, u st
 	if action == game.PlayerUnban {
 		res.Reason = s.banReason(sum.ID, name)
 	}
-	err := s.game.Player(r.Context(), sum.ID, actor(u), action, name, reason)
+	reply, err := s.game.Player(r.Context(), sum.ID, actor(u), action, name, reason)
+	res.Reply = reply
 	if errors.Is(err, game.ErrPlayerReason) && action.TakesReason() {
 		p := PlayerActionPage{World: sum, Action: action, Name: name, Reason: reason, Return: back,
 			ReasonError: i18n.M("players.error.reason", "max", gamesettings.MaxReasonChars)}
@@ -246,10 +263,11 @@ func (s *server) handlePlayerAction(w http.ResponseWriter, r *http.Request, u st
 	if err != nil {
 		res.Error, res.Reply, res.NameError = s.playerError(r, sum, name, err)
 	}
-	s.playerResults.put(u.ID, res)
 	if back == "" {
 		back = PathServer
 	}
+	res.Return = back
+	s.playerResults.put(u.ID, res)
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
@@ -260,12 +278,18 @@ func (s *server) banReason(id, name string) string {
 	if err != nil || !read.Found {
 		return ""
 	}
-	bans, err := gamesettings.ParseBanList(read.Data)
+	return banReasonIn(read.Data, name)
+}
+
+// banReasonIn finds name's reason in the text of a ban list, comparing names
+// without regard to case, as the game does.
+func banReasonIn(data []byte, name string) string {
+	bans, err := gamesettings.ParseBanList(data)
 	if err != nil {
 		return ""
 	}
 	for _, b := range bans {
-		if b.Name == name && gamesettings.ValidateReason(b.Reason) == nil {
+		if strings.EqualFold(b.Name, name) && gamesettings.ValidateReason(b.Reason) == nil {
 			return b.Reason
 		}
 	}

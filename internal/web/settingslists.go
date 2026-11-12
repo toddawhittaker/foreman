@@ -228,17 +228,31 @@ func (p SettingsPage) PlayerDone() *PlayerResult {
 }
 
 // PlayerFailed is the player action result to show as an error at the top,
-// or nil. A name refused by the check is a field error instead.
+// or nil. A refused name typed in a field of this page is a field error
+// instead.
 func (p SettingsPage) PlayerFailed() *PlayerResult {
-	if p.Player == nil || p.Player.Error.IsZero() || p.Player.NameError {
+	if p.Player == nil || p.Player.Error.IsZero() || (p.Player.NameError && p.nameField(p.Player.Action)) {
 		return nil
 	}
 	return p.Player
 }
 
+// nameField is true when the page has the field a name for action was typed
+// in: the ban and whitelist boxes of the cards shown while the game keeps the
+// list.
+func (p SettingsPage) nameField(action game.PlayerAction) bool {
+	switch action {
+	case game.PlayerBan:
+		return p.LiveBans && !p.BansBroken && p.Editable()
+	case game.PlayerWhitelistAdd:
+		return p.LiveWhitelist && !p.WhitelistBroken && p.Editable()
+	}
+	return false
+}
+
 // nameError is the field error of a name typed for action, and the name.
 func (p SettingsPage) nameError(action game.PlayerAction) (i18n.Msg, string) {
-	if p.Player == nil || !p.Player.NameError || p.Player.Action != action {
+	if p.Player == nil || !p.Player.NameError || p.Player.Action != action || !p.nameField(action) {
 		return i18n.Msg{}, ""
 	}
 	return p.Player.Error, p.Player.Name

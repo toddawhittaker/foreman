@@ -27,8 +27,8 @@
 </div>
 {{- end}}
 {{- with .PlayerDone}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+<div class="message message--success" id="player-done" tabindex="-1"{{if $page.Done.IsZero}} autofocus{{end}}>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}{{if .Reply}} <span lang="en">{{.Reply}}</span>{{end}}</p>
   {{- if .UndoAction}}
   <div class="actions">
     <form method="post" action="{{.UndoPath}}">
@@ -37,7 +37,6 @@
       <input type="hidden" name="reason" value="{{.Reason}}">
       {{- end}}
       <input type="hidden" name="return" value="{{$page.Path}}">
-      <input type="hidden" name="undo" value="1">
       {{- if .IsBan}}
       <button type="submit" class="button" id="act-player-undo">{{t "players.undo.unban_button" "name" .Name}}</button>
       {{- else}}
@@ -49,12 +48,12 @@
 </div>
 {{- end}}
 {{- with .PlayerFailed}}
-<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+<div class="message message--error" id="player-error" tabindex="-1"{{if and $page.Done.IsZero (not $page.Problems)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}{{if .Reply}} <span lang="en">{{.Reply}}</span>{{end}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
+<div class="message message--error" id="action-error" tabindex="-1"{{if and (not .Problems) .Done.IsZero (not .PlayerDone) (not .PlayerFailed)}} autofocus{{end}}>
   <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
 </div>
 {{- end}}

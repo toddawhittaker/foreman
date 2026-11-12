@@ -28,27 +28,38 @@ const (
 	PlayerWhitelistRemove PlayerAction = "whitelist-remove"
 )
 
-// playerCommands are the console commands of each action, and whether a reply
-// says the game did it. The game has no quoting: the name is the first word.
-var playerCommands = map[PlayerAction]struct {
-	command string
-	done    func(reply string) bool
-}{
-	PlayerKick: {"/kick", func(r string) bool { return r == "" }},
-	PlayerBan: {"/ban", func(r string) bool {
-		return strings.HasPrefix(r, "Added ") && strings.HasSuffix(r, " to the banlist.") || strings.HasSuffix(r, " is already banned.")
-	}},
-	PlayerUnban: {"/unban", func(r string) bool { return strings.HasPrefix(r, "Unbanned ") }},
-	PlayerPromote: {"/promote", func(r string) bool {
-		return r == "" || strings.Contains(r, " is already in the admin list")
-	}},
-	PlayerDemote: {"/demote", func(r string) bool { return r == "" }},
-	PlayerWhitelistAdd: {"/whitelist add", func(r string) bool {
-		return strings.HasPrefix(r, "Added ") && strings.HasSuffix(r, " to the whitelist.") || strings.HasSuffix(r, " is already whitelisted.")
-	}},
-	PlayerWhitelistRemove: {"/whitelist remove", func(r string) bool {
-		return strings.HasPrefix(r, "Removed ") && strings.HasSuffix(r, " from the whitelist.")
-	}},
+// playerCommands are the console commands of each action. The game has no
+// quoting: the name is the first word.
+var playerCommands = map[PlayerAction]string{
+	PlayerKick:            "/kick",
+	PlayerBan:             "/ban",
+	PlayerUnban:           "/unban",
+	PlayerPromote:         "/promote",
+	PlayerDemote:          "/demote",
+	PlayerWhitelistAdd:    "/whitelist add",
+	PlayerWhitelistRemove: "/whitelist remove",
+}
+
+// playerRefused reports whether reply is one the game was seen to give when
+// it did not do the action (internal/game/testdata/*/rcon-players.log). The
+// success replies of several actions, a kick of a player who is on among
+// them, could not be captured, since no client can join; so any reply not
+// known as a refusal counts as done.
+func playerRefused(action PlayerAction, reply string) bool {
+	if strings.HasPrefix(reply, "Invalid parameter") {
+		return true
+	}
+	switch action {
+	case PlayerKick:
+		return strings.HasPrefix(reply, "Player ") && strings.HasSuffix(reply, " doesn't exist.")
+	case PlayerUnban:
+		return strings.HasSuffix(reply, " wasn't banned.")
+	case PlayerDemote:
+		return strings.HasSuffix(reply, " is not in the admin list.")
+	case PlayerWhitelistRemove:
+		return strings.HasSuffix(reply, " wasn't in the whitelist.")
+	}
+	return false
 }
 
 // Known reports whether a is one of the player actions.
@@ -100,7 +111,7 @@ func CheckPlayerAction(action PlayerAction, name, reason string) error {
 
 // playerCommand is the console command for a checked action.
 func playerCommand(action PlayerAction, name, reason string) string {
-	cmd := playerCommands[action].command + " " + name
+	cmd := playerCommands[action] + " " + name
 	if reason != "" {
 		cmd += " " + reason
 	}
@@ -110,23 +121,24 @@ func playerCommand(action PlayerAction, name, reason string) string {
 // Player sends one player action to the world's running game (SPEC 8.2).
 // The game writes its own list file, so no snapshot is taken. The action is
 // recorded in the audit log before it is sent, and is not sent if it cannot
-// be recorded (SPEC 12.9). A reply that does not say the game did it is a
-// *PlayerRefusedError.
-func (c *Controller) Player(ctx context.Context, id string, by Actor, action PlayerAction, name, reason string) error {
+// be recorded (SPEC 12.9). A reply known to mean the game did not do it is a
+// *PlayerRefusedError; otherwise the game's reply, which may be empty, is
+// returned with the world's secrets removed.
+func (c *Controller) Player(ctx context.Context, id string, by Actor, action PlayerAction, name, reason string) (string, error) {
 	if err := CheckPlayerAction(action, name, reason); err != nil {
-		return err
+		return "", err
 	}
 	rc, secrets, err := c.liveRCON(c.world(id))
 	if err != nil {
-		return err
+		return "", err
 	}
 	if action == PlayerWhitelistAdd || action == PlayerWhitelistRemove {
 		kept, err := c.WhitelistKept(ctx, id)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if !kept {
-			return ErrWhitelistOff
+			return "", ErrWhitelistOff
 		}
 	}
 	detail := string(action) + " " + name
@@ -134,16 +146,17 @@ func (c *Controller) Player(ctx context.Context, id string, by Actor, action Pla
 		detail += ": " + reason
 	}
 	if err := c.audit(ctx, by, AuditPlayer, id, Redact(detail, secrets...)); err != nil {
-		return err
+		return "", err
 	}
 	reply, err := c.execReply(ctx, rc, playerCommand(action, name, reason))
 	if err != nil {
-		return err
+		return "", err
 	}
-	if reply = strings.TrimSpace(reply); !playerCommands[action].done(reply) {
-		return &PlayerRefusedError{Reply: Redact(reply, secrets...)}
+	reply = Redact(strings.TrimSpace(reply), secrets...)
+	if playerRefused(action, reply) {
+		return "", &PlayerRefusedError{Reply: reply}
 	}
-	return nil
+	return reply, nil
 }
 
 // WhitelistKept reports whether the world's game runs with its whitelist

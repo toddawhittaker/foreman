@@ -97,7 +97,7 @@ func (e *gameEnv) runWhitelist(t *testing.T, tag, fixture, version string) {
 		if got := get(t, id); got != "Whitelisted players: hank" {
 			t.Errorf("before: /whitelist get replied %q", got)
 		}
-		if err := c.Player(ctx, id, admin, PlayerWhitelistAdd, "ivy", ""); err != nil {
+		if _, err := c.Player(ctx, id, admin, PlayerWhitelistAdd, "ivy", ""); err != nil {
 			t.Fatalf("whitelist add: %v", err)
 		}
 		stop(t, id)

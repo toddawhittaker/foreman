@@ -13,7 +13,8 @@ import (
 
 func (r *rig) player(id string, action PlayerAction, name, reason string) error {
 	r.t.Helper()
-	return r.c.Player(context.Background(), id, admin, action, name, reason)
+	_, err := r.c.Player(context.Background(), id, admin, action, name, reason)
+	return err
 }
 
 // playerCommandsSent are the player commands the game was sent, ignoring
@@ -22,7 +23,7 @@ func (r *rig) playerCommandsSent(id string) []string {
 	var out []string
 	for _, c := range r.commands(id) {
 		for _, a := range playerCommands {
-			if strings.HasPrefix(c, a.command+" ") {
+			if strings.HasPrefix(c, a+" ") {
 				out = append(out, c)
 				break
 			}
@@ -267,5 +268,54 @@ func TestSaveListsOnAStoppedWorld(t *testing.T) {
 	}
 	if _, err := r.saveSettings(id, world.ServerBanListFile, `["a b"]`); !errors.Is(err, ErrSettingsInvalid) {
 		t.Errorf("a name with a space: %v", err)
+	}
+}
+
+// SPEC 8.2: the success replies of a kick of a player who is on, and of
+// several other actions, were never captured, since no client can join. So
+// only a reply captured as a refusal counts as refused; any other reply,
+// empty or not, means the game did it.
+func TestPlayerRefusedMatchesOnlyCapturedRefusals(t *testing.T) {
+	refused := map[PlayerAction][]string{
+		PlayerKick:            {"Player alice doesn't exist.", "Player  doesn't exist."},
+		PlayerBan:             {"Invalid parameter\n<add/remove/get/clear> <player> - Adds or removes ..."},
+		PlayerUnban:           {"bob wasn't banned.", " wasn't banned."},
+		PlayerDemote:          {"carol is not in the admin list."},
+		PlayerWhitelistAdd:    {"Invalid parameter\n<enable/disable/add/remove/get/clear> <player> - ..."},
+		PlayerWhitelistRemove: {"dave wasn't in the whitelist."},
+	}
+	for a, replies := range refused {
+		for _, r := range replies {
+			if !playerRefused(a, r) {
+				t.Errorf("%s %q counted as done", a, r)
+			}
+		}
+	}
+	done := map[PlayerAction][]string{
+		PlayerKick:            {"", "alice was kicked.", "something never seen"},
+		PlayerBan:             {"Added bob to the banlist.", "bob is already banned.", ""},
+		PlayerUnban:           {"Unbanned bob."},
+		PlayerPromote:         {"", "carol is already in the admin list and will be promoted upon joining the game."},
+		PlayerDemote:          {"", "carol was demoted."},
+		PlayerWhitelistAdd:    {"Added dave to the whitelist.", "dave is already whitelisted."},
+		PlayerWhitelistRemove: {"Removed dave from the whitelist."},
+	}
+	for a, replies := range done {
+		for _, r := range replies {
+			if playerRefused(a, r) {
+				t.Errorf("%s %q counted as refused", a, r)
+			}
+		}
+	}
+}
+
+// A reply the game gave for a done action is returned, so the page can show it.
+func TestPlayerActionReturnsTheReply(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Reply")
+	r.start(id)
+	reply, err := r.c.Player(context.Background(), id, admin, PlayerBan, "bob", "")
+	if err != nil || reply != "Added bob to the banlist." {
+		t.Errorf("reply %q, error %v", reply, err)
 	}
 }

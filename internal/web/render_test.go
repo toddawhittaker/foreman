@@ -279,6 +279,14 @@ func pageCases() []pageCase {
 		{"settings raw errors", "todd", 400, settingsRawCase(true)},
 		{"settings preview", "todd", 200, settingsPreviewCase()},
 		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
+		{"settings promoted with undo", "todd", 200, settingsPlayerCase(game.PlayerPromote, false)},
+		{"settings demoted with undo", "todd", 200, settingsPlayerCase(game.PlayerDemote, false)},
+		{"settings banned with unban", "todd", 200, settingsPlayerCase(game.PlayerBan, false)},
+		{"settings unbanned with undo", "todd", 200, settingsPlayerCase(game.PlayerUnban, false)},
+		{"settings whitelist added", "todd", 200, settingsPlayerCase(game.PlayerWhitelistAdd, false)},
+		{"settings whitelist removed", "todd", 200, settingsPlayerCase(game.PlayerWhitelistRemove, false)},
+		{"settings kicked", "todd", 200, settingsPlayerCase(game.PlayerKick, false)},
+		{"settings unban refused", "todd", 200, settingsPlayerCase(game.PlayerUnban, true)},
 	}, append(modPageCases(), modSettingsPageCases()...)...)
 }
 

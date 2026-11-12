@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -14,17 +15,17 @@ import (
 const MaxReasonChars = 200
 
 // ValidateReason refuses a kick or ban reason that is not one line of at
-// most MaxReasonChars characters: it must be UTF-8 and hold no NUL, CR or
-// LF, so it cannot end the console command it is sent in (SPEC 14.9). An
-// empty reason passes.
+// most MaxReasonChars characters: it must be UTF-8 and hold no control
+// character or line or paragraph separator, so it cannot end the console
+// command it is sent in (SPEC 14.9), as names cannot. An empty reason passes.
 func ValidateReason(reason string) error {
 	switch {
 	case !utf8.ValidString(reason):
 		return errors.New("reason is not valid UTF-8")
 	case utf8.RuneCountInString(reason) > MaxReasonChars:
 		return fmt.Errorf("reason is longer than %d characters", MaxReasonChars)
-	case strings.ContainsAny(reason, "\x00\r\n"):
-		return errors.New("reason is more than one line")
+	case strings.IndexFunc(reason, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' }) >= 0:
+		return errors.New("reason is more than one line or holds a control character")
 	}
 	return nil
 }

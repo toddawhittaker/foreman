@@ -7,12 +7,12 @@ import (
 )
 
 func TestValidateReason(t *testing.T) {
-	for _, ok := range []string{"", "griefing", "a \"quoted\" /reason", strings.Repeat("ü", MaxReasonChars), "\ttab"} {
+	for _, ok := range []string{"", "griefing", "a \"quoted\" /reason", strings.Repeat("ü", MaxReasonChars)} {
 		if err := ValidateReason(ok); err != nil {
 			t.Errorf("%q: %v", ok, err)
 		}
 	}
-	for _, bad := range []string{"a\nb", "a\rb", "a\x00b", "\xff", strings.Repeat("a", MaxReasonChars+1), "x\n/ban other"} {
+	for _, bad := range []string{"a\nb", "a\rb", "a\x00b", "\xff", strings.Repeat("a", MaxReasonChars+1), "x\n/ban other", "\ttab", "a\u0085b", "a\u2028b", "a\u2029b", "a\x1bb", "a\u007fb"} {
 		if err := ValidateReason(bad); err == nil {
 			t.Errorf("%q accepted", bad)
 		}

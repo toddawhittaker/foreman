@@ -5,8 +5,11 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
 func (g *gameRig) playerCommands(id string) []string {
@@ -107,4 +110,89 @@ func TestWhitelistSwitch(t *testing.T) {
 	if cmd := strings.Join(g.container(id).Cmd, " "); !strings.Contains(cmd, "--use-server-whitelist --server-whitelist ") {
 		t.Errorf("the start script lacks the whitelist flags: %s", cmd)
 	}
+}
+
+// DESIGN 8.12: a result shows once, only on the page the action went back
+// to, and not at all after about a minute, so a stale Undo never appears.
+func TestPlayerResultShowsOnlyOnItsPage(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	set := settingsPath(id)
+	g.wantRedirectHome(g.post(playerPath(id, "promote"), url.Values{"name": {"carol"}}))
+	if page := g.get(set); strings.Contains(page, "carol is now an admin") {
+		t.Error("a result meant for the Server page showed on the Settings tab")
+	}
+	g.wantRedirectTo(set, g.post(playerPath(id, "demote"), url.Values{"name": {"carol"}, "return": {set}}))
+	g.clock.Advance(2 * time.Minute)
+	if page := g.get(set); strings.Contains(page, "carol is no longer an admin") {
+		t.Error("a result two minutes old was shown")
+	}
+	g.wantRedirectTo(set, g.post(playerPath(id, "promote"), url.Values{"name": {"carol"}, "return": {set}}))
+	page := g.get(set)
+	if !strings.Contains(page, `id="player-done"`) || !strings.Contains(page, "carol is now an admin of Base.") {
+		t.Fatalf("the result is missing:\n%s", page)
+	}
+	if strings.Count(page, "autofocus") != 1 {
+		t.Errorf("%d autofocus attributes, want one", strings.Count(page, "autofocus"))
+	}
+}
+
+// A done action shows the game's reply, which may be text the captures
+// never saw (SPEC 22.3: marked as English).
+func TestPlayerResultShowsTheGamesReply(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	set := settingsPath(id)
+	g.wantRedirectTo(set, g.post(playerPath(id, "ban"), url.Values{"name": {"bob"}, "return": {set}}))
+	if page := g.get(set); !strings.Contains(page, `<span lang="en">Added bob to the banlist.</span>`) {
+		t.Errorf("the reply is missing:\n%s", page)
+	}
+}
+
+// SPEC 17.1: a refused name is in the error summary and focused, both for a
+// name typed in a field and for one with no field, which is a page error.
+func TestPlayerNameErrorsAreSummarised(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	set := settingsPath(id)
+	rep := g.do(http.MethodGet, playerPath(id, "ban")+"?name=a+b&return="+url.QueryEscape(set), nil, http.Header{"Cookie": {g.cookie.String()}})
+	g.wantRedirectTo(set, rep)
+	page := g.get(set)
+	if !strings.Contains(page, `id="error-summary"`) || !strings.Contains(page, `href="#ban-name"`) {
+		t.Errorf("no summary for the ban name:\n%s", page)
+	}
+	g.wantRedirectTo(set, g.post(playerPath(id, "unban"), url.Values{"name": {"a b"}, "return": {set}}))
+	page = g.get(set)
+	if !strings.Contains(page, `id="player-error"`) || !strings.Contains(page, "This is not a usable player name.") {
+		t.Errorf("a refused name with no field showed nothing:\n%s", page)
+	}
+}
+
+// The game compares player names without regard to case.
+func TestPlayerNamesIgnoreCase(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	if err := g.fake.Join(game.ContainerName(id), "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if page := g.get(playerPath(id, "kick") + "?name=ALICE"); strings.Contains(page, `id="player-gone"`) || !strings.Contains(page, `id="act-confirm-kick"`) {
+		t.Errorf("ALICE was taken as gone while alice is on:\n%s", page)
+	}
+	if got := banReasonIn([]byte(`[{"username": "Bob", "reason": "griefing"}]`), "bob"); got != "griefing" {
+		t.Errorf("reason %q", got)
+	}
+}
+
+// settingsPlayerCase is the Settings tab of a running world whose game keeps
+// both lists, showing the result of action.
+func settingsPlayerCase(action game.PlayerAction, failed bool) SettingsPage {
+	p := settingsFormCase(false)
+	p.Running, p.LiveBans, p.LiveWhitelist, p.UseWhitelist = true, true, true, true
+	p.BanList = []gamesettings.Ban{{Name: "bob", Reason: "griefing"}, {Name: "carl"}}
+	p.WhitelistNames = []string{"hank"}
+	p.Player = &PlayerResult{WorldID: "base", WorldName: longName, Action: action, Name: "carol", Reason: "spam", Reply: "Added carol to the banlist."}
+	if failed {
+		p.Player.Error, p.Player.Reply = i18n.M("players.error.refused", "name", "carol", "world", longName), "carol wasn't banned."
+	}
+	return p
 }

@@ -216,7 +216,7 @@ func (h *settingsHandlers) handleForm(w http.ResponseWriter, r *http.Request, u 
 	p.Connected = h.connected(r.Context(), sw, p.Admins)
 	p.PasswordPending = p.PasswordSet && !bytes.Equal(carriedPassword(sw.formText()), carriedPassword(text))
 	h.fillDone(&p, sw, r)
-	p.Player = h.s.playerResults.take(u.ID, sw.sum.ID)
+	p.Player = h.s.playerResults.take(u.ID, sw.sum.ID, settingsPath(sw.sum.ID))
 	h.s.page(w, r, http.StatusOK, u.Username, p)
 }
 
