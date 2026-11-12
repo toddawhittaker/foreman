@@ -82,7 +82,7 @@ func (p NotificationsPage) Sending() int {
 }
 
 func (NotificationsPage) templateName() string { return "notifications" }
-func (NotificationsPage) navItem() string      { return PathNotifications }
+func (NotificationsPage) navItem() string      { return PathSettingsTab }
 
 // AddPath is the add form.
 func (NotificationsPage) AddPath() string { return PathNotifications + "/new" }
@@ -125,7 +125,7 @@ type WebhookFormPage struct {
 }
 
 func (WebhookFormPage) templateName() string { return "notificationform" }
-func (WebhookFormPage) navItem() string      { return PathNotifications }
+func (WebhookFormPage) navItem() string      { return PathSettingsTab }
 func (p WebhookFormPage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
 // Path is where the form posts.
@@ -177,7 +177,7 @@ type WebhookDeletePage struct {
 }
 
 func (WebhookDeletePage) templateName() string { return "notificationdelete" }
-func (WebhookDeletePage) navItem() string      { return PathNotifications }
+func (WebhookDeletePage) navItem() string      { return PathSettingsTab }
 
 // BackPath is the list.
 func (WebhookDeletePage) BackPath() string { return PathNotifications }

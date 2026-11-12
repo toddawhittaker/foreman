@@ -1,5 +1,5 @@
 {
-  "settings.link": "Nastavení",
+  "settings.link": "Nastavení hry",
   "settings.title": "Nastavení světa {world}",
   "settings.readonly.unreadable": "Soubor world.json tohoto světa nelze přečíst, proto zde nelze měnit jeho nastavení.",
   "settings.broken": "Foreman nemůže přečíst {file} jako objekt JSON, proto ho formulář nemůže zobrazit. Soubor je třeba nahradit v editoru JSON níže.",

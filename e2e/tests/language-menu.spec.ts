@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, openMenu, pickLanguage, signOut } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, openLanguages, pickLanguage, signOut } from "./foreman.js";
 
 // SPEC 22.2: the menu on the sign-in page switches the language, the html
 // lang follows, and the choice holds on the next pages.
@@ -13,10 +13,13 @@ test("the language menu switches to German and the choice persists", async ({ pa
   await expect(page).toHaveURL("/signin");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Anmelden");
-  // The menu's summary names the language shown, and its list marks it.
+  // The menu's summary names the language shown, and so does its language
+  // row, which lists the seven others.
   await expect(page.locator("details.menu > summary .menu__lang")).toHaveText("Deutsch");
-  await openMenu(page);
-  await expect(page.getByRole("group", { name: "Sprache (Language)" }).getByRole("button", { name: "Deutsch" })).toHaveAttribute("aria-current", "true");
+  await openLanguages(page);
+  await expect(page.locator("details.menu__langs > summary")).toHaveAccessibleName("Sprache (Language) Deutsch");
+  await expect(page.locator("details.menu__langs").getByRole("button")).toHaveCount(7);
+  await expect(page.getByRole("button", { name: "Deutsch" })).toHaveCount(0);
   await checkPage(page);
 
   await page.goto("/no-such-page");
@@ -27,7 +30,8 @@ test("the language menu switches to German and the choice persists", async ({ pa
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Du bist abgemeldet");
 });
 
-// The menu is a details element and plain buttons: it works by keyboard alone.
+// The menu and its language row are details elements and the languages
+// plain buttons: it works by keyboard alone.
 test("the language menu works from the keyboard", async ({ page }) => {
   await createAdmin(page);
   await signOut(page);
@@ -35,7 +39,11 @@ test("the language menu works from the keyboard", async ({ page }) => {
   await page.locator("details.menu > summary").focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("details.menu")).toHaveAttribute("open", "");
-  for (let i = 0; i < 8; i++) await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("details.menu__langs > summary")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("details.menu__langs")).toHaveAttribute("open", "");
+  for (let i = 0; i < 7; i++) await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Čeština" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("html")).toHaveAttribute("lang", "cs");

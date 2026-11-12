@@ -53,7 +53,7 @@ type AccountPage struct {
 }
 
 func (AccountPage) templateName() string { return "account" }
-func (AccountPage) navItem() string      { return PathAccount }
+func (AccountPage) navItem() string      { return PathSettingsTab }
 func (p AccountPage) hasErrors() bool    { return len(p.Problems()) > 0 || !p.Error.IsZero() }
 
 // Path is where the forms post.

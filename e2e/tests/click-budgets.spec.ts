@@ -51,6 +51,28 @@ test.describe("click budgets, with the fake game", () => {
     await expectWithin(clicks, 0, "see who is online");
   });
 
+  // SPEC 17.10: Foreman's settings are a main tab, so from the Server page
+  // changing the restart schedule is Settings, Save schedule.
+  test("change the restart schedule: 2 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart schedule");
+    await page.getByLabel("Time", { exact: true }).fill("03:15");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#schedule-state")).toContainText("every day at 03:15");
+    await expectWithin(clicks, 2, "Change the restart schedule");
+  });
+
+  // SPEC 17.10: Settings, then Notifications in the Foreman settings tabs.
+  test("open Notifications: 2 clicks", async ({ page, foreman, fakeGame }) => {
+    const clicks = await setUp(page, foreman, fakeGame!);
+    await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "Notifications" }).click();
+    await expect(page).toHaveURL("/settings/notifications");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Notifications");
+    await expectWithin(clicks, 2, "Open Notifications");
+  });
+
   // SPEC 17.10 (Generate row): from the Server page, Worlds, "Generate a
   // world", then "Generate world" with every default kept but the name.
   test("generate a world with the defaults: 3 clicks", async ({ page, foreman, fakeGame }) => {

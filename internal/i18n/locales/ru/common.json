@@ -6,6 +6,7 @@
   "common.nav.console": "Консоль",
   "common.nav.worlds": "Миры",
   "common.nav.snapshots": "Снимки",
+  "common.nav.settings": "Настройки",
   "common.nav.chat": "Чат",
   "common.signedin": "Вы вошли как {user}",
   "common.signout": "Выйти",

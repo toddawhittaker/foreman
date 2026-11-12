@@ -247,6 +247,35 @@ var staticTypes = map[string]string{
 	".png":   "image/png",
 	".ico":   "image/x-icon",
 	".woff2": "font/woff2",
+	".svg":   "image/svg+xml",
+}
+
+// PathSettingsTab is where the main Settings tab leads: the restart schedule,
+// the most used of Foreman's own settings pages (DESIGN 6, 8.15).
+const PathSettingsTab = PathSchedule
+
+// flags are the languages' flag pictures under static/flags, by language
+// (DESIGN 6, "User menu"). They stand beside the language's own name, so
+// they are decorative.
+var flags = map[string]string{
+	"en":      "flags/gb.svg",
+	"de":      "flags/de.svg",
+	"ru":      "flags/ru.svg",
+	"zh-Hans": "flags/cn.svg",
+	"fr":      "flags/fr.svg",
+	"es":      "flags/es.svg",
+	"pl":      "flags/pl.svg",
+	"cs":      "flags/cz.svg",
+}
+
+// flagURL is the static URL of a language's flag. The tag is a Locale or
+// the string lang gives, so the template can pass either.
+func (r *Renderer) flagURL(tag any) (string, error) {
+	f, ok := flags[fmt.Sprint(tag)]
+	if !ok {
+		return "", fmt.Errorf("no flag for language %q", tag)
+	}
+	return r.staticURL(f)
 }
 
 // Renderer holds the parsed templates, once per language, and the
@@ -267,6 +296,8 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"accountPath":       func() string { return PathAccount },
 		"notificationsPath": func() string { return PathNotifications },
 		"schedulePath":      func() string { return PathSchedule },
+		"settingsTabPath":   func() string { return PathSettingsTab },
+		"flag":              r.flagURL,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
@@ -523,6 +554,10 @@ func (r *Renderer) serveStatic(w http.ResponseWriter, req *http.Request, name st
 	h := w.Header()
 	h.Set("Content-Type", f.contentType)
 	h.Set("X-Content-Type-Options", "nosniff")
+	if f.contentType == staticTypes[".svg"] {
+		// A picture opened on its own runs nothing (the flags hold no script).
+		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+	}
 	h.Set("ETag", `"`+f.hash+`"`)
 	if req.URL.Query().Get("v") == f.hash {
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")

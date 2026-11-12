@@ -6,7 +6,7 @@
   "players.kick.gone": "{name} ist nicht mehr im Spiel, es gibt also niemanden zu kicken.",
   "players.ban.heading": "{name} aus {world} bannen?",
   "players.ban.will_disconnect": "{name} jetzt trennen, falls der Spieler im Spiel ist.",
-  "players.ban.will_list": "{name} zur Bannliste hinzufügen, sodass der Spieler erst nach dem Entbannen wieder beitreten kann. Die Bannliste steht im Tab „Einstellungen“ der Welt.",
+  "players.ban.will_list": "{name} zur Bannliste hinzufügen, sodass der Spieler erst nach dem Entbannen wieder beitreten kann. Die Bannliste steht im Tab „Spieleinstellungen“ der Welt.",
   "players.ban.no_snapshot": "Keinen Snapshot erstellen. Das Spiel trägt den Bann in seine eigene Bannliste ein.",
   "players.ban.button": "{name} bannen",
   "players.reason.label": "Grund",
@@ -32,6 +32,6 @@
   "players.error.refused": "Das Spiel von {world} hat die Änderung an {name} nicht vorgenommen. Seine Antwort:",
   "players.error.rcon": "Das Spiel von {world} hat über RCON nicht geantwortet, daher kann Foreman nicht sagen, ob die Änderung an {name} vorgenommen wurde. Prüfe die Liste und versuche es dann erneut.",
   "players.error.not_running": "Der Server von {world} läuft nicht, daher kann nichts an das Spiel gesendet werden.",
-  "players.error.whitelist_off": "Der Server von {world} wurde mit ausgeschalteter Whitelist gestartet, daher würde das Spiel diese Änderung nicht behalten. Bearbeite die Whitelist stattdessen im Tab „Einstellungen“.",
+  "players.error.whitelist_off": "Der Server von {world} wurde mit ausgeschalteter Whitelist gestartet, daher würde das Spiel diese Änderung nicht behalten. Bearbeite die Whitelist stattdessen im Tab „Spieleinstellungen“.",
   "players.error.failed": "Die Änderung konnte nicht an das Spiel von {world} gesendet werden. Versuche es erneut."
 }

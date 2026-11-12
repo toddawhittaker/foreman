@@ -1,5 +1,5 @@
 {
-  "settings.link": "Настройки",
+  "settings.link": "Настройки игры",
   "settings.title": "Настройки мира {world}",
   "settings.readonly.unreadable": "Файл world.json этого мира не читается, поэтому его настройки здесь изменить нельзя.",
   "settings.broken": "Foreman не может прочитать {file} как JSON-объект, поэтому форма не может его показать. Замените файл в редакторе JSON ниже.",

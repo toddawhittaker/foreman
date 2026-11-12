@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, openMenu, pickLanguage } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, mainNav, pickLanguage } from "./foreman.js";
 
 // The Chat tab and the links to the Notifications and Restart schedule pages.
 // This checks they are reachable the way a person reaches them and load.
@@ -14,23 +14,16 @@ test("the Chat tab sits beside Overview and Console and opens the Chat page", as
   await checkPage(page);
 });
 
-test("the user menu links to the Notifications and Restart schedule pages", async ({ page }) => {
+test("the Settings tab leads to the Restart schedule and Notifications pages", async ({ page }) => {
   await createAdmin(page);
-  const menu = page.locator("details.menu");
-  for (const [name, path] of [
-    ["Restart schedule", "/settings/restart-schedule"],
-    ["Notifications", "/settings/notifications"],
-  ]) {
-    await openMenu(page);
-    // Beside the factorio.com account link.
-    await expect(menu.getByRole("link", { name: "factorio.com account" })).toBeVisible();
-    await menu.getByRole("link", { name }).click();
-    await expect(page).toHaveURL(path);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-    await openMenu(page);
-    await expect(menu.getByRole("link", { name })).toHaveAttribute("aria-current", "page");
-    await checkPage(page);
-  }
+  await mainNav(page).getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL("/settings/restart-schedule");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart schedule");
+  await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "Notifications" }).click();
+  await expect(page).toHaveURL("/settings/notifications");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Notifications");
+  await expect(mainNav(page).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "true");
+  await checkPage(page);
 });
 
 test("the tab and links are translated", async ({ page }) => {
@@ -38,9 +31,11 @@ test("the tab and links are translated", async ({ page }) => {
   await pickLanguage(page, "de");
   await page.goto("/chat");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Chat");
-  await openMenu(page);
-  await expect(page.locator("details.menu").getByRole("link", { name: "Benachrichtigungen" })).toBeVisible();
-  await expect(page.locator("details.menu").getByRole("link", { name: "Neustart-Zeitplan" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Hauptmenü" }).getByRole("link", { name: "Einstellungen" })).toBeVisible();
+  await page.goto("/settings/restart-schedule");
+  const nav = page.getByRole("navigation", { name: "Foreman-Einstellungen" });
+  await expect(nav.getByRole("link", { name: "Benachrichtigungen" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Neustart-Zeitplan" })).toBeVisible();
 });
 
 test("the new pages need a signed-in user", async ({ page }) => {

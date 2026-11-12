@@ -349,11 +349,11 @@ export async function createAdmin(page: Page) {
   await expect(page).toHaveURL("/");
 }
 
-// Opens the user menu at the top right, which holds the languages and Sign
-// out (DESIGN 6, "User menu").
+// Opens the user menu at the top right, which holds the language row, the
+// theme row and Sign out (DESIGN 6, "User menu").
 export async function openMenu(page: Page) {
   const menu = page.locator("details.menu");
-  if (!(await menu.evaluate((el: HTMLDetailsElement) => el.open))) await menu.locator("summary").click();
+  if (!(await menu.evaluate((el: HTMLDetailsElement) => el.open))) await menu.locator(":scope > summary").click();
 }
 
 // Signs out through the user menu: two clicks (DESIGN 6).
@@ -362,11 +362,24 @@ export async function signOut(page: Page, name = "Sign out") {
   await page.getByRole("button", { name }).click();
 }
 
-// Picks a language in the user menu by its tag, such as "de": one of the
-// eight submit buttons to POST /language (SPEC 22.2).
-export async function pickLanguage(page: Page, tag: string) {
+// Opens the user menu's language row, which lists the other seven languages
+// (DESIGN 6, "User menu").
+export async function openLanguages(page: Page) {
   await openMenu(page);
+  const langs = page.locator("details.menu__langs");
+  if (!(await langs.evaluate((el: HTMLDetailsElement) => el.open))) await langs.locator("summary").click();
+}
+
+// Picks a language in the user menu by its tag, such as "de": one of the
+// seven submit buttons to POST /language under the language row (SPEC 22.2).
+export async function pickLanguage(page: Page, tag: string) {
+  await openLanguages(page);
   await page.locator(`details.menu button[name="lang"][value="${tag}"]`).click();
+}
+
+// The main navigation's tabs (DESIGN 6).
+export function mainNav(page: Page) {
+  return page.getByRole("navigation", { name: "Main" });
 }
 
 // A zip of stored (uncompressed) entries, enough for Foreman to read its directory.

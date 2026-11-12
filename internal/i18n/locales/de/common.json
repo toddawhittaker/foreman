@@ -6,6 +6,7 @@
   "common.nav.console": "Konsole",
   "common.nav.worlds": "Welten",
   "common.nav.snapshots": "Snapshots",
+  "common.nav.settings": "Einstellungen",
   "common.nav.chat": "Chat",
   "common.signedin": "Angemeldet als {user}",
   "common.signout": "Abmelden",

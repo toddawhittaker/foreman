@@ -478,8 +478,8 @@ while the game runs.
 Foreman can restart the game every day, for example to free memory. There
 is one schedule for all of Foreman, and it restarts whichever world is
 active. Set it on the Restart schedule page, `/settings/restart-schedule`,
-which is in the user menu and in the Foreman settings sub-navigation
-(SPEC 7.12).
+which the main Settings tab opens; it is also in the Foreman settings
+sub-navigation (SPEC 7.12).
 
 **Settings.** A switch (off until you save it on), a time of day, a time
 zone and a wait limit. The time is a daily time in the zone you choose,

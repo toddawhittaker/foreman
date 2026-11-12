@@ -111,9 +111,10 @@ func TestThemeMenu(t *testing.T) {
 	for _, want := range []string{
 		`<form method="post" action="/theme">`,
 		`<legend>Theme</legend>`,
-		`<button type="submit" name="theme" value="auto" class="menu__item">Auto</button>`,
-		`<button type="submit" name="theme" value="light" class="menu__item" aria-current="true">Light</button>`,
-		`<button type="submit" name="theme" value="dark" class="menu__item">Dark</button>`,
+		// Icon buttons: each named in words and in its hover text (DESIGN 6).
+		`<button type="submit" name="theme" value="auto" class="menu__icon" title="Auto"><span class="visually-hidden">Auto</span></button>`,
+		`<button type="submit" name="theme" value="light" class="menu__icon" title="Light" aria-current="true"><span class="visually-hidden">Light</span></button>`,
+		`<button type="submit" name="theme" value="dark" class="menu__icon" title="Dark"><span class="visually-hidden">Dark</span></button>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
@@ -125,7 +126,7 @@ func TestThemeMenu(t *testing.T) {
 		t.Errorf("theme form lacks %s", want)
 	}
 
-	if auto := hn.get(PathSignIn).Body.String(); !strings.Contains(auto, `value="auto" class="menu__item" aria-current="true"`) {
+	if auto := hn.get(PathSignIn).Body.String(); !strings.Contains(auto, `value="auto" class="menu__icon" title="Auto" aria-current="true"`) {
 		t.Error("with no cookie, Auto is not marked as the current choice")
 	}
 }

@@ -55,7 +55,7 @@ test("tabbing out of the user menu closes it and leaves the focus visible", asyn
   seedWorld(foreman);
   await page.goto("/");
   const menu = page.locator("details.menu");
-  await menu.locator("summary").focus();
+  await menu.locator(":scope > summary").focus();
   await page.keyboard.press("Enter");
   await expect(menu).toHaveAttribute("open", "");
   await page.getByRole("button", { name: "Sign out" }).focus();
@@ -76,12 +76,12 @@ test("Escape returns focus to the menu button and a click outside closes the men
   seedWorld(foreman);
   await page.goto("/");
   const menu = page.locator("details.menu");
-  await menu.locator("summary").focus();
+  await menu.locator(":scope > summary").focus();
   await page.keyboard.press("Enter");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Escape");
   await expect(menu).not.toHaveAttribute("open", "");
-  await expect(menu.locator("summary")).toBeFocused();
+  await expect(menu.locator(":scope > summary")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(menu).toHaveAttribute("open", "");
   await page.mouse.click(5, 600);

@@ -361,7 +361,7 @@
   "worlds.world.generated": "{name} a été généré. Sa carte est créée au premier démarrage.",
   "worlds.world.cloned": "{from} a été cloné sous le nom {name}.",
   "worlds.world.clone": "Cloner le monde",
-  "worlds.world.settings": "Paramètres",
+  "worlds.world.settings": "Paramètres du jeu",
   "worlds.snapshot.label.before_settings": "Avant la modification des paramètres",
   "worlds.clone.title": "Cloner {name}",
   "worlds.clone.heading": "Nouveau monde à partir de celui-ci",

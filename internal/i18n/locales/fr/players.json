@@ -6,7 +6,7 @@
   "players.kick.gone": "{name} n’est plus dans la partie, il n’y a donc personne à expulser.",
   "players.ban.heading": "Bannir {name} de {world} ?",
   "players.ban.will_disconnect": "Déconnecter {name} maintenant, si ce joueur est dans la partie.",
-  "players.ban.will_list": "Ajouter {name} à la liste des bannis, pour qu’il ne puisse plus revenir avant d’être débanni. La liste des bannis se trouve dans l’onglet Paramètres du monde.",
+  "players.ban.will_list": "Ajouter {name} à la liste des bannis, pour qu’il ne puisse plus revenir avant d’être débanni. La liste des bannis se trouve dans l’onglet Paramètres du jeu du monde.",
   "players.ban.no_snapshot": "Ne prendre aucun instantané. Le jeu enregistre le bannissement dans sa propre liste des bannis.",
   "players.ban.button": "Bannir {name}",
   "players.reason.label": "Motif",
@@ -32,6 +32,6 @@
   "players.error.refused": "Le jeu de {world} n’a pas appliqué la modification pour {name}. Sa réponse :",
   "players.error.rcon": "Le jeu de {world} n’a pas répondu par RCON, donc Foreman ne peut pas savoir si la modification pour {name} a été faite. Vérifiez la liste, puis réessayez.",
   "players.error.not_running": "Le serveur de {world} n’est pas en cours d’exécution, donc rien ne peut être envoyé au jeu.",
-  "players.error.whitelist_off": "Le serveur de {world} a été démarré avec la liste blanche désactivée, donc le jeu ne garderait pas cette modification. Modifiez plutôt la liste blanche dans l’onglet Paramètres.",
+  "players.error.whitelist_off": "Le serveur de {world} a été démarré avec la liste blanche désactivée, donc le jeu ne garderait pas cette modification. Modifiez plutôt la liste blanche dans l’onglet Paramètres du jeu.",
   "players.error.failed": "La modification n’a pas pu être envoyée au jeu de {world}. Réessayez."
 }

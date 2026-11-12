@@ -6,7 +6,7 @@
   "players.kick.gone": "Gracza {name} nie ma już w grze, więc nie ma kogo wyrzucić.",
   "players.ban.heading": "Zbanować gracza {name} w świecie {world}?",
   "players.ban.will_disconnect": "Rozłączy gracza {name} teraz, jeśli jest w grze.",
-  "players.ban.will_list": "Doda gracza {name} do listy banów, więc nie dołączy ponownie, dopóki nie zostanie odbanowany. Lista banów jest na karcie Ustawienia świata.",
+  "players.ban.will_list": "Doda gracza {name} do listy banów, więc nie dołączy ponownie, dopóki nie zostanie odbanowany. Lista banów jest na karcie Ustawienia gry tego świata.",
   "players.ban.no_snapshot": "Nie zostanie wykonana migawka. Gra zapisze ban na własnej liście banów.",
   "players.ban.button": "Zbanuj gracza {name}",
   "players.reason.label": "Powód",
@@ -32,6 +32,6 @@
   "players.error.refused": "Gra świata {world} nie wprowadziła zmiany dla gracza {name}. Jej odpowiedź:",
   "players.error.rcon": "Gra świata {world} nie odpowiedziała przez RCON, więc Foreman nie wie, czy zmiana dla gracza {name} została wprowadzona. Należy sprawdzić listę i spróbować ponownie.",
   "players.error.not_running": "Serwer świata {world} nie działa, więc nie można nic wysłać do gry.",
-  "players.error.whitelist_off": "Serwer świata {world} został uruchomiony z wyłączoną białą listą, więc gra nie zachowałaby tej zmiany. Białą listę należy zmienić na karcie Ustawienia.",
+  "players.error.whitelist_off": "Serwer świata {world} został uruchomiony z wyłączoną białą listą, więc gra nie zachowałaby tej zmiany. Białą listę należy zmienić na karcie Ustawienia gry.",
   "players.error.failed": "Nie udało się wysłać zmiany do gry świata {world}. Należy spróbować ponownie."
 }
