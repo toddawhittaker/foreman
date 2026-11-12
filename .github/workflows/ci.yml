@@ -201,11 +201,28 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      # The whole history and the tags, so `git describe` below can find the release.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Read the build image from the Makefile
         id: go
         run: echo "image=$(sed -n 's/^GO_IMAGE *:= *//p' Makefile)" >> "$GITHUB_OUTPUT"
+
+      # What About shows (internal/version): the same two values `make image`
+      # passes, from the Makefile's FOREMAN_VERSION and FOREMAN_COMMIT, so the
+      # image reads the same wherever it is built. Asking make keeps one rule
+      # (release tags only, only the characters of a version), since a tag
+      # name is text anyone who can push may choose. The Docker build cannot
+      # ask git, so they go in as build arguments.
+      - name: Name the build
+        id: build
+        run: |
+          {
+            echo "version=$(make --no-print-directory -s foreman-version)"
+            echo "commit=$(make --no-print-directory -s foreman-commit)"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -213,7 +230,10 @@ jobs:
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          build-args: GO_IMAGE=${{ steps.go.outputs.image }}
+          build-args: |
+            GO_IMAGE=${{ steps.go.outputs.image }}
+            VERSION=${{ steps.build.outputs.version }}
+            COMMIT=${{ steps.build.outputs.commit }}
           tags: foreman:ci
           load: true
           cache-from: type=gha
