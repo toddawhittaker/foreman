@@ -5,6 +5,7 @@
   "about.go": "Go 版本",
   "about.heading": "关于 Foreman",
   "about.licence": "许可证",
+  "about.modified": "已修改",
   "about.source": "源代码和问题跟踪器在 {link} 上。",
   "about.source.link": "GitHub",
   "about.title": "关于",

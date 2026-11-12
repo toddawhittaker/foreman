@@ -2,8 +2,8 @@
 // is a link to the About page. With it, the item opens the same content in
 // the page's native modal dialog: the browser moves focus into it, keeps it
 // inside and closes the dialog on Escape. When it closes, focus goes back to
-// the menu's About item, or to the menu's button when the menu has closed
-// meanwhile (a closed menu hides its items).
+// the menu's button: the menu closes as focus moves into the dialog, and a
+// closed menu hides its items.
 (() => {
   "use strict";
   const dialog = document.getElementById("about-dialog");
@@ -11,9 +11,10 @@
   const close = document.getElementById("about-close");
   if (!dialog || !link || !close || typeof dialog.showModal !== "function") return;
 
-  // In the capture phase and ahead of a page's own link handlers (Generate asks
+  // On the window in the capture phase, so it runs ahead of any page's own
+  // document-level link handlers whatever the script order (Generate asks
   // before leaving the page): opening the dialog leaves nothing.
-  document.addEventListener("click", (e) => {
+  window.addEventListener("click", (e) => {
     if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     if (!e.target.closest || e.target.closest("a[data-about]") !== link) return;
     e.preventDefault();
@@ -45,8 +46,6 @@
     }
   });
   dialog.addEventListener("close", () => {
-    const menu = link.closest("details");
-    const to = menu && !menu.open ? menu.querySelector(":scope > summary") : link;
-    to.focus();
+    link.closest("details").querySelector(":scope > summary").focus();
   });
 })();

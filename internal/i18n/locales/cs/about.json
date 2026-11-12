@@ -5,6 +5,7 @@
   "about.go": "Verze Go",
   "about.heading": "O Foremanu",
   "about.licence": "Licence",
+  "about.modified": "změněno",
   "about.source": "Zdrojový kód a sledování problémů najdete na {link}.",
   "about.source.link": "GitHub",
   "about.title": "O aplikaci",

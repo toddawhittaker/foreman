@@ -23,7 +23,7 @@ func setBuild(t *testing.T, ver, commit string) {
 // product, the build's version and commit, the Go version, the licence and
 // the project's address, and nothing about game versions.
 func TestAboutPageShowsTheBuild(t *testing.T) {
-	setBuild(t, "v1.4.0-3-gabcdef1", "0123456789abcdef0123456789abcdef01234567")
+	setBuild(t, "v1.4.0-3-gabcdef1", "0123456789abcdef0123456789abcdef01234567-dirty")
 	hn := newHarness(t, nil)
 	c := hn.signIn()
 	rec := hn.get(PathAbout, withCookie(c))
@@ -34,7 +34,7 @@ func TestAboutPageShowsTheBuild(t *testing.T) {
 	for _, want := range []string{
 		`<h1 class="about__heading">`, "About Foreman",
 		"<dt>Version</dt><dd>v1.4.0-3-gabcdef1</dd>",
-		"<dt>Commit</dt><dd>0123456789ab</dd>",
+		"<dt>Commit</dt><dd>0123456789ab (modified)</dd>",
 		"<dt>Go version</dt><dd>" + runtime.Version() + "</dd>",
 		"<dt>Licence</dt><dd>MIT</dd>",
 		`<a href="https://github.com/toddawhittaker/foreman" target="_blank" rel="noopener noreferrer">GitHub`,
@@ -51,6 +51,22 @@ func TestAboutPageShowsTheBuild(t *testing.T) {
 	// and its ids are not repeated.
 	if strings.Contains(body, `<dialog id="about-dialog"`) || strings.Count(body, `id="about-title"`) != 0 {
 		t.Error("the About page carries the dialog too")
+	}
+}
+
+// A build from an untagged commit has no release version: the page shows the
+// commit alone, clean or modified, and does not call it a development build.
+func TestAboutPageOfAnUntaggedBuildShowsOnlyTheCommit(t *testing.T) {
+	setBuild(t, "", "0123456789abcdef0123456789abcdef01234567")
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	body := hn.get(PathAbout, withCookie(c)).Body.String()
+	main := body[strings.Index(body, "<main"):strings.Index(body, "</main>")]
+	if !strings.Contains(main, "<dt>Commit</dt><dd>0123456789ab</dd>") {
+		t.Errorf("no clean commit row\n%s", main)
+	}
+	if strings.Contains(main, "<dt>Version</dt>") || strings.Contains(main, "development build") || strings.Contains(main, "modified") {
+		t.Errorf("a version row, a development build or a modified mark\n%s", main)
 	}
 }
 

@@ -5,6 +5,7 @@
   "about.go": "Go-Version",
   "about.heading": "Über Foreman",
   "about.licence": "Lizenz",
+  "about.modified": "geändert",
   "about.source": "Den Quellcode und den Issue-Tracker findest du auf {link}.",
   "about.source.link": "GitHub",
   "about.title": "Info",

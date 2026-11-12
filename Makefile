@@ -20,17 +20,19 @@ export GOTOOLCHAIN := local
 
 IMAGE ?= foreman:dev
 
-# What About shows (internal/version): the version from git describe and the
-# commit hash. The image build cannot ask git (.dockerignore leaves .git out),
-# so they go in as build arguments. A tag or a ref name is text anyone who can
+# What About shows (internal/version): the nearest release tag (empty when the
+# history has none) and the commit hash, with "-dirty" after it when tracked
+# files have changes. The image build cannot ask git (.dockerignore leaves .git
+# out), so they go in as build arguments. A tag name is text anyone who can
 # push may choose, so only release tags (v1.2.3) are matched and only the
 # characters of a version are kept: the values are safe to put in a command.
 # Both stay empty outside a checkout. (VERSION itself names a game version in
-# make test-catalogue, so these have their own names.)
-BUILD_VERSION := $(shell git describe --tags --always --dirty --match 'v[0-9]*' 2>/dev/null | tr -cd 'A-Za-z0-9._+-')
-BUILD_COMMIT  := $(shell git rev-parse HEAD 2>/dev/null | tr -cd 'A-Za-z0-9')
+# make test-catalogue, so these have their own names, and := keeps a stray
+# VERSION in the environment out.)
+FOREMAN_VERSION := $(shell git describe --tags --match 'v[0-9]*' 2>/dev/null | tr -cd 'A-Za-z0-9._+-')
+FOREMAN_COMMIT  := $(shell sh -c 'c=$$(git rev-parse HEAD 2>/dev/null) || exit 0; git diff-index --quiet HEAD -- 2>/dev/null || c="$$c-dirty"; printf %s "$$c"' | tr -cd 'A-Za-z0-9-')
 VERSION_PKG := github.com/toddawhittaker/foreman/internal/version
-LDFLAGS := -X $(VERSION_PKG).Version=$(BUILD_VERSION) -X $(VERSION_PKG).Commit=$(BUILD_COMMIT)
+LDFLAGS := -X $(VERSION_PKG).Version=$(FOREMAN_VERSION) -X $(VERSION_PKG).Commit=$(FOREMAN_COMMIT)
 
 CACHE := $(CURDIR)/.cache
 # Tool containers see the repository at its own path and keep caches in .cache/.
@@ -239,7 +241,7 @@ build-fakeportal:
 	CGO_ENABLED=0 go build -trimpath -o bin/fakeportal ./cmd/fakeportal
 
 image:
-	docker build --build-arg GO_IMAGE=$(GO_IMAGE) --build-arg 'VERSION=$(BUILD_VERSION)' --build-arg 'COMMIT=$(BUILD_COMMIT)' -t $(IMAGE) .
+	docker build --build-arg GO_IMAGE=$(GO_IMAGE) --build-arg 'VERSION=$(FOREMAN_VERSION)' --build-arg 'COMMIT=$(FOREMAN_COMMIT)' -t $(IMAGE) .
 
 run:
 	@mkdir -p .dev-data

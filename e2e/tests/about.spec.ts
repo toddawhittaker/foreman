@@ -39,7 +39,7 @@ test("About opens by keyboard, shows the build, and Escape closes it with focus 
   await expect(dialog(page).getByRole("heading", { name: "About Foreman" })).toBeVisible();
   // A screen reader hears the facts when it opens, not only the heading and Close.
   await expect(dialog(page)).toHaveAttribute("aria-describedby", "about-facts");
-  await expect(dialog(page)).toHaveAccessibleDescription(/Version.*Go version.*Licence/);
+  await expect(dialog(page)).toHaveAccessibleDescription(/Go version.*Licence/);
   await expect(dialog(page).locator("#about-facts")).toBeVisible();
   // The browser moved focus in, to Close.
   await expect(dialog(page).getByRole("button", { name: "Close" })).toBeFocused();
@@ -47,13 +47,14 @@ test("About opens by keyboard, shows the build, and Escape closes it with focus 
   await expect(dialog(page).locator("img")).toHaveAttribute("alt", "");
 
   const got = await facts(page, dialog(page));
-  expect(Object.keys(got)).toEqual(expect.arrayContaining(["Version", "Go version", "Licence"]));
-  expect(got["Version"]).toMatch(/\S/);
+  expect(Object.keys(got)).toEqual(expect.arrayContaining(["Go version", "Licence"]));
   expect(got["Go version"]).toMatch(/^go1\.\d+/);
   expect(got["Licence"]).toBe("MIT");
-  // A build with a recorded commit shows its first twelve characters.
-  if ("Commit" in got) expect(got["Commit"]).toMatch(/^[0-9a-f]{12}(-dirty)?$/);
-  else expect(got["Version"]).toBe("development build");
+  // A release version when a tag reaches the build, the commit (twelve characters, marked
+  // when the tree had changes) when known, and "development build" only with neither.
+  if ("Commit" in got) expect(got["Commit"]).toMatch(/^[0-9a-f]{12}( \(modified\))?$/);
+  if ("Version" in got) expect(got["Version"]).toMatch(/^v\d/);
+  if (!("Commit" in got) && !("Version" in got)) throw new Error("no version and no commit");
 
   const link = dialog(page).getByRole("link", { name: /GitHub/ });
   await expect(link).toHaveAttribute("href", project);
@@ -173,7 +174,7 @@ test.describe("without JavaScript", () => {
     await expect(page).toHaveURL("/about");
     await expect(page.getByRole("heading", { level: 1, name: "About Foreman" })).toBeVisible();
     const got = await facts(page, page.locator("main"));
-    expect(got["Version"]).toMatch(/\S/);
+    expect("Version" in got || "Commit" in got).toBe(true);
     expect(got["Go version"]).toMatch(/^go1\.\d+/);
     expect(got["Licence"]).toBe("MIT");
     await expect(page.locator("main").getByRole("link", { name: /GitHub/ })).toHaveAttribute("href", project);

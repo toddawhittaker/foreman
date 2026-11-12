@@ -6,6 +6,7 @@
 package version
 
 import (
+	"regexp"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -13,12 +14,14 @@ import (
 )
 
 // Version and Commit are set at build time by the Makefile and the
-// Dockerfile, from `git describe --tags --always --dirty` and the commit
-// hash:
+// Dockerfile:
 //
 //	-ldflags "-X github.com/toddawhittaker/foreman/internal/version.Version=... -X .../version.Commit=..."
 //
-// Either may stay empty, and then Go's build info is read.
+// Version is the nearest release tag from `git describe --tags --match
+// 'v[0-9]*'` (empty when the history has none). Commit is the commit hash,
+// with "-dirty" after it when the tree had uncommitted changes. Either may
+// stay empty, and then Go's build info is read.
 var (
 	Version string
 	Commit  string
@@ -33,22 +36,24 @@ const (
 // shortCommit is how many characters of a commit hash are shown.
 const shortCommit = 12
 
+// dirtySuffix is what a build puts after a commit hash for a tree with
+// uncommitted changes.
+const dirtySuffix = "-dirty"
+
 // Info is what About shows.
 type Info struct {
-	// Version is empty when the build did not record one.
+	// Version is a release version, or empty when the build has none: a
+	// build from a commit that no release tag reaches is named by its commit.
 	Version string
-	// Commit is the first twelve characters of the commit hash, with
-	// "-dirty" after it when the tree had uncommitted changes (only the
-	// build info says so). Empty when unknown.
-	Commit     string
+	// Commit is the first twelve characters of the commit hash, or empty
+	// when unknown.
+	Commit string
+	// Modified is true when the tree had uncommitted changes.
+	Modified   bool
 	Go         string
 	Licence    string
 	Repository string
 }
-
-// Development is true when the build recorded neither a version nor a
-// commit: a build the page calls a development build.
-func (i Info) Development() bool { return i.Version == "" && i.Commit == "" }
 
 // buildInfo reads Go's build info once.
 var buildInfo = sync.OnceValue(func() *debug.BuildInfo {
@@ -70,19 +75,28 @@ func Get() Info {
 	return i
 }
 
+// pseudoVersion matches the version Go makes up for a module built from an
+// untagged commit, such as v0.0.0-20261112173800-0fe3bb26e6e1.
+var pseudoVersion = regexp.MustCompile(`[-.]\d{14}-[0-9a-f]{12}(\+dirty)?$`)
+
 // resolve picks the version and commit from the build variables, then from
-// build info (which may be nil).
+// build info (which may be nil). A module version of "(devel)" or a
+// pseudo-version is not a release, so it gives no version.
 func resolve(version, commit string, bi *debug.BuildInfo) Info {
 	var i Info
 	i.Version = strings.TrimSpace(version)
-	if commit = strings.TrimSpace(commit); commit != "" {
+	commit = strings.TrimSpace(commit)
+	if c, ok := strings.CutSuffix(commit, dirtySuffix); ok {
+		commit, i.Modified = c, true
+	}
+	if commit != "" {
 		i.Commit = abbreviate(commit)
 	}
 	if bi == nil {
 		return i
 	}
-	if i.Version == "" && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
-		i.Version = bi.Main.Version
+	if v := bi.Main.Version; i.Version == "" && v != "" && v != "(devel)" && !pseudoVersion.MatchString(v) {
+		i.Version = v
 	}
 	if i.Commit == "" {
 		var rev, modified string
@@ -96,9 +110,7 @@ func resolve(version, commit string, bi *debug.BuildInfo) Info {
 		}
 		if rev != "" {
 			i.Commit = abbreviate(rev)
-			if modified == "true" {
-				i.Commit += "-dirty"
-			}
+			i.Modified = modified == "true"
 		}
 	}
 	return i

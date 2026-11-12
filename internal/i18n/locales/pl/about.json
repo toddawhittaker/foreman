@@ -5,6 +5,7 @@
   "about.go": "Wersja Go",
   "about.heading": "O Foremanie",
   "about.licence": "Licencja",
+  "about.modified": "zmodyfikowano",
   "about.source": "Kod źródłowy i zgłoszenia znajdują się na {link}.",
   "about.source.link": "GitHub",
   "about.title": "O programie",

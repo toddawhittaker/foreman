@@ -585,15 +585,16 @@ frame (7.4).
      With script (`about.js`) it opens the same content in a native modal
      `dialog` (the leave box's look, `surface` on a dimmed page, 32rem at
      most): the logo (40 px, decorative) and "About Foreman" as its
-     heading, a row of facts, the **Version** and **Commit** of the build
-     (twelve characters of the hash, with "-dirty" after it when the tree
-     had changes), the **Go version** it was built with and the
-     **Licence** (MIT), then a line that sends the person to GitHub, and a
-     Close button that takes focus. A build that recorded neither version
-     nor commit reads "development build". The browser keeps focus inside,
-     Escape and Close shut it, and focus goes back to the About item, or to
-     the menu's button when the menu has closed. The names Foreman and MIT
-     are not translated, and no game versions are listed.
+     heading, a row of facts: the **Version**, a release tag, shown only
+     when one reaches the build; the **Commit** (twelve characters of the
+     hash, with "(modified)" after it when the tree had changes); the
+     **Go version** it was built with; and the **Licence** (MIT). Then a
+     line that sends the person to GitHub, and a Close button that takes
+     focus. A build with neither version nor commit shows "development
+     build" as its version. The browser keeps focus inside, Escape and
+     Close shut it, and focus goes back to the menu's button (the menu
+     closes as focus enters the dialog). The names Foreman and MIT are not
+     translated, and no game versions are listed.
   4. **Sign out**, still a `POST` form with a button, never a link, so a
      crawler or prefetch cannot sign anyone out.
   The menu holds no links to Foreman's settings pages (the Settings tab is

@@ -13,7 +13,7 @@ COPY internal ./internal
 # values are only ever expanded inside double quotes, never as commands.
 ARG VERSION=
 ARG COMMIT=
-RUN v="$(printf '%s' "${VERSION}" | tr -cd 'A-Za-z0-9._+-')" && c="$(printf '%s' "${COMMIT}" | tr -cd 'A-Za-z0-9')" && \
+RUN v="$(printf '%s' "${VERSION}" | tr -cd 'A-Za-z0-9._+-')" && c="$(printf '%s' "${COMMIT}" | tr -cd 'A-Za-z0-9-')" && \
     CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath \
     -ldflags="-s -w -X github.com/toddawhittaker/foreman/internal/version.Version=${v} -X github.com/toddawhittaker/foreman/internal/version.Commit=${c}" \
     -o /out/foreman ./cmd/foreman

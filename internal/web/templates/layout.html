@@ -118,9 +118,14 @@
      names Foreman and MIT are never translated. */}}
 {{define "about-details" -}}
 <dl class="facts facts--inline about__facts" id="about-facts">
-  <div><dt>{{t "about.version"}}</dt><dd>{{if .Version}}{{.Version}}{{else}}{{t "about.development"}}{{end}}</dd></div>
+  {{- /* A release version, else the commit names the build; a build with neither is a development build. */}}
+  {{- if .Version}}
+  <div><dt>{{t "about.version"}}</dt><dd>{{.Version}}</dd></div>
+  {{- else if not .Commit}}
+  <div><dt>{{t "about.version"}}</dt><dd>{{t "about.development"}}</dd></div>
+  {{- end}}
   {{- if .Commit}}
-  <div><dt>{{t "about.commit"}}</dt><dd>{{.Commit}}</dd></div>
+  <div><dt>{{t "about.commit"}}</dt><dd>{{.Commit}}{{if .Modified}} ({{t "about.modified"}}){{end}}</dd></div>
   {{- end}}
   <div><dt>{{t "about.go"}}</dt><dd>{{.Go}}</dd></div>
   <div><dt>{{t "about.licence"}}</dt><dd>{{.Licence}}</dd></div>
