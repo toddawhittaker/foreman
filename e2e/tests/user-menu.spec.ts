@@ -36,6 +36,16 @@ test("the menu holds the language row, the theme row and Sign out, and no settin
 
 test("flags are present and decorative; screen readers hear the language names", async ({ page }) => {
   await createAdmin(page);
+  // The seven listed flags load lazily: while the list is shut, none is
+  // fetched (Spain's is 81 KB). The row's own flag loads at once.
+  await openMenu(page);
+  await expect(langRow(page).locator("img")).not.toHaveAttribute("loading");
+  const listed = page.locator("details.menu__langs > form img");
+  await expect(listed).toHaveCount(7);
+  for (const img of await listed.all()) {
+    await expect(img).toHaveAttribute("loading", "lazy");
+    expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(0);
+  }
   await openLanguages(page);
   const imgs = page.locator("details.menu img");
   await expect(imgs).toHaveCount(8);
