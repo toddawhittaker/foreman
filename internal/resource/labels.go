@@ -4,7 +4,7 @@ package resource
 // times richer, within this many tiles (SPEC 5.6, "Resource amounts").
 const (
 	hideRatio = 4
-	hideReach = 64
+	hideReach = 32
 )
 
 // HiddenLabels says, for each patch, whether its label is left off the
