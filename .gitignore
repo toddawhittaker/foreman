@@ -28,3 +28,6 @@ screenshots/
 e2e/node_modules/
 e2e/test-results/
 e2e/playwright-report/
+
+# Claude Design upload layout (built by .design-sync/build-bundle.py)
+/ds-bundle/
