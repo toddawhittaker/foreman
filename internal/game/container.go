@@ -29,6 +29,9 @@ const (
 	labelPrefix  = "io.github.toddawhittaker.foreman."
 	LabelWorld   = labelPrefix + "world"   // the world id
 	LabelInstall = labelPrefix + "install" // the host data path, so two installs never share a container
+	// LabelWhitelist is "1" on a container started with the whitelist
+	// enforced, so the game keeps the whitelist file (SPEC 8.3).
+	LabelWhitelist = labelPrefix + "whitelist"
 )
 
 // The container's fixed parts (SPEC 4.3 to 4.6).
@@ -57,8 +60,13 @@ func passIfPresent(flag, file string) string {
 // never in the container's settings (SPEC 4.5). The admin and ban lists are
 // always passed: the game makes them when missing, so /promote and /ban
 // made in game persist in the world's folder (SPEC 5.1). Server settings
-// and the whitelist are passed when the world has them. The whitelist is
-// not enforced here: that is a game setting (SPEC 11).
+// are passed when the world has them.
+//
+// The whitelist is passed only when useWhitelist is set, and then with
+// --use-server-whitelist too: the game refuses --server-whitelist alone, and
+// an in-game /whitelist enable is lost on restart, so enforcement comes from
+// the world's switch (SPEC 8.3). Without the switch the whitelist file is
+// left alone for when it is turned on.
 //
 // A world made by Generate has no save. When the container is told so
 // (gameenv.NewMap) and the folder holds no save, the script first makes
@@ -67,28 +75,33 @@ func passIfPresent(flag, file string) string {
 // variable can never overwrite a save. A failed create exits the container,
 // which is how a failed start is reported. Values reach the script by
 // environment variables, never through its text.
-var startScript = strings.Join([]string{
-	`pw=$(cat ` + gameMount + "/" + world.RCONPasswordFile + `) || exit 1`,
-	`if [ -n "$` + gameenv.NewMap + `" ]; then`,
-	`have=`,
-	`for f in ` + gameMount + "/" + world.SavesDir + `/*.zip; do [ -f "$f" ] && have=1; done`,
-	`if [ -z "$have" ]; then`,
-	`set -- --create ` + gameMount + "/" + world.SavesDir + `/"$` + gameenv.WorldID + `".zip --mod-directory ` + gameMount + "/" + world.ModsDir,
-	`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
-	`if [ -n "$` + gameenv.Seed + `" ]; then set -- "$@" --map-gen-seed "$` + gameenv.Seed + `"; fi`,
-	passIfPresent("--map-gen-settings", world.MapGenSettingsFile),
-	passIfPresent("--map-settings", world.MapSettingsFile),
-	gameBinary + ` "$@" || exit 1`,
-	`fi`,
-	`fi`,
-	`set -- --start-server-load-latest --mod-directory ` + gameMount + "/" + world.ModsDir +
+func startScript(useWhitelist bool) string {
+	server := `set -- --start-server-load-latest --mod-directory ` + gameMount + "/" + world.ModsDir +
 		` --rcon-port ` + RCONPort + ` --rcon-password "$pw"` +
 		` --server-adminlist ` + configPath(world.ServerAdminListFile) +
-		` --server-banlist ` + configPath(world.ServerBanListFile),
-	passIfPresent("--server-settings", world.ServerSettingsFile),
-	passIfPresent("--server-whitelist", world.ServerWhiteListFile),
-	`exec ` + gameBinary + ` "$@"`,
-}, "\n")
+		` --server-banlist ` + configPath(world.ServerBanListFile)
+	if useWhitelist {
+		server += ` --use-server-whitelist --server-whitelist ` + configPath(world.ServerWhiteListFile)
+	}
+	return strings.Join([]string{
+		`pw=$(cat ` + gameMount + "/" + world.RCONPasswordFile + `) || exit 1`,
+		`if [ -n "$` + gameenv.NewMap + `" ]; then`,
+		`have=`,
+		`for f in ` + gameMount + "/" + world.SavesDir + `/*.zip; do [ -f "$f" ] && have=1; done`,
+		`if [ -z "$have" ]; then`,
+		`set -- --create ` + gameMount + "/" + world.SavesDir + `/"$` + gameenv.WorldID + `".zip --mod-directory ` + gameMount + "/" + world.ModsDir,
+		`if [ -n "$` + gameenv.Preset + `" ]; then set -- "$@" --preset "$` + gameenv.Preset + `"; fi`,
+		`if [ -n "$` + gameenv.Seed + `" ]; then set -- "$@" --map-gen-seed "$` + gameenv.Seed + `"; fi`,
+		passIfPresent("--map-gen-settings", world.MapGenSettingsFile),
+		passIfPresent("--map-settings", world.MapSettingsFile),
+		gameBinary + ` "$@" || exit 1`,
+		`fi`,
+		`fi`,
+		server,
+		passIfPresent("--server-settings", world.ServerSettingsFile),
+		`exec ` + gameBinary + ` "$@"`,
+	}, "\n")
+}
 
 // ContainerName is the name of a world's game container (SPEC 4.3).
 func ContainerName(id string) string { return "foreman-" + id }
@@ -97,16 +110,20 @@ func ContainerName(id string) string { return "foreman-" + id }
 // Nothing in it comes from what an admin types, apart from the world id,
 // which world.ValidID has checked.
 //
-// newMap is the world's new_map, or nil; it adds the create step's
-// environment (SPEC 4.3).
-func (c *Controller) containerSpec(id, image, network string, newMap *world.NewMap) docker.ContainerSpec {
+// meta's new_map, when set, adds the create step's environment (SPEC 4.3);
+// its whitelist switch decides the whitelist flags (SPEC 8.3).
+func (c *Controller) containerSpec(id, image, network string, meta world.Meta) docker.ContainerSpec {
 	grace := StopGraceSeconds
+	labels := map[string]string{LabelWorld: id, LabelInstall: c.hostData}
+	if meta.UseWhitelist {
+		labels[LabelWhitelist] = "1"
+	}
 	return docker.ContainerSpec{
 		Image:        image,
-		Labels:       map[string]string{LabelWorld: id, LabelInstall: c.hostData},
-		Env:          createEnv(id, newMap),
+		Labels:       labels,
+		Env:          createEnv(id, meta.NewMap),
 		Entrypoint:   []string{"/bin/sh"},
-		Cmd:          []string{"-c", startScript},
+		Cmd:          []string{"-c", startScript(meta.UseWhitelist)},
 		User:         c.user,
 		OpenStdin:    true,
 		StopTimeout:  &grace,
