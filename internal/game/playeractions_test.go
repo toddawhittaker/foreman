@@ -49,7 +49,7 @@ func TestPlayerActionRefusesUnsafeNames(t *testing.T) {
 	r := newRig(t, rigOptions{})
 	id := r.newWorld("Names")
 	r.start(id)
-	bad := []string{"", "bob smith", " bob", "bob x", "bob　x", "a\x00b", "a\rb", "a\nb", "x​", "a‮b", "a b",
+	bad := []string{"", "bob smith", " bob", "bob\u00a0x", "bob\u3000x", "a\x00b", "a\rb", "a\nb", "x\u200b", "a\u202eb", "a\u2028b",
 		strings.Repeat("a", 65), "\xff"}
 	for _, action := range []PlayerAction{PlayerKick, PlayerBan, PlayerUnban, PlayerPromote, PlayerDemote, PlayerWhitelistAdd, PlayerWhitelistRemove} {
 		for _, name := range bad {

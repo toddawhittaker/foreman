@@ -2,6 +2,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+{{- $page := .}}
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -23,6 +24,33 @@
   {{- if .DoneRestart}}
   <p>{{t "settings.done.restart"}}</p>
   {{- end}}
+</div>
+{{- end}}
+{{- with .PlayerDone}}
+<div class="message message--success" id="done-message" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
+  {{- if .UndoAction}}
+  <div class="actions">
+    <form method="post" action="{{.UndoPath}}">
+      <input type="hidden" name="name" value="{{.Name}}">
+      {{- if .Reason}}
+      <input type="hidden" name="reason" value="{{.Reason}}">
+      {{- end}}
+      <input type="hidden" name="return" value="{{$page.Path}}">
+      <input type="hidden" name="undo" value="1">
+      {{- if .IsBan}}
+      <button type="submit" class="button" id="act-player-undo">{{t "players.undo.unban_button" "name" .Name}}</button>
+      {{- else}}
+      <button type="submit" class="button" id="act-player-undo"><span aria-hidden="true">{{t "players.undo.button"}}</span><span class="visually-hidden">{{msg .UndoHidden}}</span></button>
+      {{- end}}
+    </form>
+  </div>
+  {{- end}}
+</div>
+{{- end}}
+{{- with .PlayerFailed}}
+<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}{{if .Reply}} <span lang="en">{{.Reply}}</span>{{end}}</p>
 </div>
 {{- end}}
 {{- if not .Error.IsZero}}
@@ -54,6 +82,8 @@
     <li><a href="#settings-joining">{{t "settings.joining"}}</a></li>
     <li><a href="#settings-saving">{{t "settings.saving"}}</a></li>
     <li><a href="#settings-admins">{{t "settings.admins.legend"}}</a></li>
+    <li><a href="#settings-bans">{{t "settings.bans.legend"}}</a></li>
+    <li><a href="#settings-whitelist">{{t "settings.whitelist.legend"}}</a></li>
     <li><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></li>
   </ul>
 </nav>
@@ -177,6 +207,47 @@
     {{- end}}
     {{- end}}
   </fieldset>
+  {{- if not .LiveBans}}
+
+  <fieldset id="settings-bans">
+    <legend>{{t "settings.bans.legend"}}</legend>
+    {{- if .BansBroken}}
+    <p class="hint">{{t "settings.bans.broken" "file" .BanFile}}</p>
+    {{- else}}
+    <div class="field">
+      <label for="bans">{{t "settings.bans.label"}}</label>
+      <p class="hint" id="bans-hint">{{t "settings.bans.hint"}}</p>
+      <textarea id="bans" name="bans" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false"{{if not .Editable}} readonly{{end}}
+        aria-describedby="bans-hint{{if not .BansError.IsZero}} bans-error{{end}}"
+        {{- if not .BansError.IsZero}} aria-invalid="true"{{end}}>{{.Bans}}</textarea>
+      {{- if not .BansError.IsZero}}
+      <p class="error" id="bans-error"><strong>{{t "common.error.label"}}</strong> {{msg .BansError}}</p>
+      {{- end}}
+    </div>
+    {{- end}}
+  </fieldset>
+  {{- end}}
+  {{- if not .LiveWhitelist}}
+
+  <fieldset id="settings-whitelist">
+    <legend>{{t "settings.whitelist.legend"}}</legend>
+    {{- if .WhitelistBroken}}
+    <p class="hint">{{t "settings.whitelist.broken" "file" .WhitelistFile}}</p>
+    {{- else}}
+    <div class="field">
+      <label for="whitelist">{{t "settings.whitelist.label"}}</label>
+      <p class="hint" id="whitelist-hint">{{t "settings.whitelist.hint"}}</p>
+      <textarea id="whitelist" name="whitelist" rows="5" autocomplete="off" autocapitalize="off" spellcheck="false"{{if not .Editable}} readonly{{end}}
+        aria-describedby="whitelist-hint{{if not .WhitelistError.IsZero}} whitelist-error{{end}}"
+        {{- if not .WhitelistError.IsZero}} aria-invalid="true"{{end}}>{{.Whitelist}}</textarea>
+      {{- if not .WhitelistError.IsZero}}
+      <p class="error" id="whitelist-error"><strong>{{t "common.error.label"}}</strong> {{msg .WhitelistError}}</p>
+      {{- end}}
+    </div>
+    {{- end}}
+    {{template "whitelist-switch" .}}
+  </fieldset>
+  {{- end}}
 
   {{- if .Editable}}
   <div class="actions">
@@ -185,10 +256,112 @@
   </div>
   {{- end}}
 </form>
+{{- if .Editable}}
+<form method="post" action="{{.WhitelistPath}}" id="whitelist-switch-form" hidden></form>
+{{- end}}
+{{- if and .LiveBans .Editable}}
+<section class="panel" id="settings-bans" aria-labelledby="bans-heading">
+  <h2 id="bans-heading">{{t "settings.bans.legend"}}</h2>
+  <p class="hint">{{t "settings.lists.live"}}</p>
+  {{- if .BansBroken}}
+  <p class="hint">{{t "settings.bans.broken" "file" .BanFile}}</p>
+  {{- else}}
+  {{- if .BanList}}
+  <ul class="changes" role="list" aria-labelledby="bans-heading">
+    {{- range .BanList}}
+    <li><span>{{.Name}}</span>{{if .Reason}} <span class="hint">{{.Reason}}</span>{{end}}
+      <form method="post" action="{{$page.PlayerPath "unban"}}">
+        <input type="hidden" name="name" value="{{.Name}}">
+        <input type="hidden" name="return" value="{{$page.Path}}">
+        <button type="submit" class="button" id="act-unban-{{.Name}}">{{t "settings.bans.unban"}}<span class="visually-hidden"> {{.Name}}</span></button>
+      </form></li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty">{{t "settings.bans.empty"}}</p>
+  {{- end}}
+  <form method="get" action="{{.PlayerPath "ban"}}" class="field" novalidate>
+    <label for="ban-name">{{t "settings.bans.add_label"}}</label>
+    <p class="hint" id="ban-name-hint">{{t "settings.bans.add_hint"}}</p>
+    <input type="hidden" name="return" value="{{.Path}}">
+    <div class="console-row">
+      <input id="ban-name" name="name" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="{{.BanNameTyped}}"
+        aria-describedby="ban-name-hint{{if not .BanNameError.IsZero}} ban-name-error{{end}}"
+        {{- if not .BanNameError.IsZero}} aria-invalid="true"{{end}}>
+      <button type="submit" class="button button--risky" id="act-ban-name">{{t "settings.bans.add_button"}}</button>
+    </div>
+    {{- if not .BanNameError.IsZero}}
+    <p class="error" id="ban-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .BanNameError}}</p>
+    {{- end}}
+  </form>
+  {{- end}}
+</section>
+{{- end}}
+{{- if and .LiveWhitelist .Editable}}
+<section class="panel" id="settings-whitelist" aria-labelledby="whitelist-heading">
+  <h2 id="whitelist-heading">{{t "settings.whitelist.legend"}}</h2>
+  <p class="hint">{{t "settings.lists.live"}}</p>
+  {{- if .WhitelistBroken}}
+  <p class="hint">{{t "settings.whitelist.broken" "file" .WhitelistFile}}</p>
+  {{- else}}
+  {{- if .WhitelistNames}}
+  <ul class="changes" role="list" aria-labelledby="whitelist-heading">
+    {{- range .WhitelistNames}}
+    <li><span>{{.}}</span>
+      <form method="post" action="{{$page.PlayerPath "whitelist-remove"}}">
+        <input type="hidden" name="name" value="{{.}}">
+        <input type="hidden" name="return" value="{{$page.Path}}">
+        <button type="submit" class="button" id="act-whitelist-remove-{{.}}">{{t "settings.whitelist.remove"}}<span class="visually-hidden"> {{.}}</span></button>
+      </form></li>
+    {{- end}}
+  </ul>
+  {{- else}}
+  <p class="empty">{{t "settings.whitelist.empty"}}</p>
+  {{- end}}
+  <form method="post" action="{{.PlayerPath "whitelist-add"}}" class="field" novalidate>
+    <label for="whitelist-name">{{t "settings.whitelist.add_label"}}</label>
+    <input type="hidden" name="return" value="{{.Path}}">
+    <div class="console-row">
+      <input id="whitelist-name" name="name" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="{{.WhitelistNameTyped}}"
+        {{- if not .WhitelistNameError.IsZero}} aria-invalid="true" aria-describedby="whitelist-name-error"{{end}}>
+      <button type="submit" class="button" id="act-whitelist-add">{{t "settings.whitelist.add_button"}}</button>
+    </div>
+    {{- if not .WhitelistNameError.IsZero}}
+    <p class="error" id="whitelist-name-error"><strong>{{t "common.error.label"}}</strong> {{msg .WhitelistNameError}}</p>
+    {{- end}}
+  </form>
+  {{- end}}
+  {{template "whitelist-switch" .}}
+</section>
+{{- end}}
 {{- end}}
 <div class="actions settings-raw-link"><a href="{{.RawPath}}">{{t "settings.raw_link" "file" .File}}</a></div>
 </div>
 </div>
 </div>
+{{- end}}
+{{- end}}
+
+
+{{/* The switch posts its own form, named by the form attribute, so it can sit
+     inside the settings form's whitelist fieldset (DESIGN 8.13). */}}
+{{define "whitelist-switch" -}}
+{{- if .Editable}}
+    <div class="message message--note">
+      <p><strong>{{t "common.label.note"}}</strong> {{t "settings.whitelist.note"}}</p>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="use-whitelist" name="use_whitelist" value="on" form="whitelist-switch-form"{{if .UseWhitelist}} checked{{end}} aria-describedby="use-whitelist-hint"> {{t "settings.whitelist.switch_label"}}</label>
+      <p class="hint" id="use-whitelist-hint">{{if .Running}}{{t "settings.whitelist.switch_running"}}{{else}}{{t "settings.whitelist.switch_hint"}}{{end}}</p>
+      <div class="actions">
+        <button type="submit" class="button" form="whitelist-switch-form" id="act-whitelist-switch">{{t "settings.whitelist.switch_save"}}</button>
+        {{- if .WhitelistRestart}}
+        <a href="{{.RestartPath}}" class="button" id="act-whitelist-restart">{{t "server.action.restart"}}</a>
+        {{- end}}
+      </div>
+      {{- if .WhitelistRestart}}
+      <p class="hint" id="whitelist-restart-hint">{{if .UseWhitelist}}{{t "settings.whitelist.restart_on"}}{{else}}{{t "settings.whitelist.restart_off"}}{{end}}</p>
+      {{- end}}
+    </div>
 {{- end}}
 {{- end}}
