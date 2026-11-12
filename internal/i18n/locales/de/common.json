@@ -6,6 +6,7 @@
   "common.nav.console": "Konsole",
   "common.nav.worlds": "Welten",
   "common.nav.snapshots": "Snapshots",
+  "common.nav.chat": "Chat",
   "common.signedin": "Angemeldet als {user}",
   "common.signout": "Abmelden",
   "common.language.label": "Sprache",
@@ -74,5 +75,7 @@
   "common.link.new_tab": "(öffnet in einem neuen Tab)",
   "common.menu.account": "{user}, {language}: Konto- und Sprachmenü",
   "common.menu.language": "{language}: Sprachmenü",
+  "common.menu.notifications": "Benachrichtigungen",
+  "common.menu.schedule": "Neustart-Zeitplan",
   "common.countdown.none_name": "Keine Warnung: Countdown auf 0 Sekunden setzen"
 }

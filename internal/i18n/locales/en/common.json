@@ -6,6 +6,7 @@
   "common.nav.console": "Console",
   "common.nav.worlds": "Worlds",
   "common.nav.snapshots": "Snapshots",
+  "common.nav.chat": "Chat",
   "common.signedin": "Signed in as {user}",
   "common.signout": "Sign out",
   "common.language.label": "Language",
@@ -74,5 +75,7 @@
   "common.link.new_tab": "(opens in a new tab)",
   "common.menu.account": "{user}, {language}: account and language menu",
   "common.menu.language": "{language}: language menu",
+  "common.menu.notifications": "Notifications",
+  "common.menu.schedule": "Restart schedule",
   "common.countdown.none_name": "No warning: set the countdown to 0 seconds"
 }

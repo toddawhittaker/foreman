@@ -70,6 +70,8 @@
       </form>
       {{- if .User}}
       <a href="{{accountPath}}" class="menu__item"{{if .Current accountPath}} aria-current="page"{{end}}>{{t "account.title"}}</a>
+      <a href="{{notificationsPath}}" class="menu__item"{{if .Current notificationsPath}} aria-current="page"{{end}}>{{t "common.menu.notifications"}}</a>
+      <a href="{{schedulePath}}" class="menu__item"{{if .Current schedulePath}} aria-current="page"{{end}}>{{t "common.menu.schedule"}}</a>
       <form method="post" action="{{signOutPath}}">
         <button type="submit" class="menu__item">{{t "common.signout"}}</button>
       </form>
@@ -143,12 +145,13 @@
 {{- end}}
 
 {{/* The tabs of the server view (DESIGN 6, "Sub-navigation"). Takes
-     "overview" or "console". */}}
+     "overview", "console" or "chat". */}}
 {{define "server-tabs" -}}
 <nav class="subnav" aria-label="{{t "server.tabs.label"}}">
   <ul role="list">
     <li><a href="{{serverPath}}"{{if eq . "overview"}} aria-current="page"{{end}}>{{t "server.tabs.overview"}}</a></li>
     <li><a href="{{consolePath}}"{{if eq . "console"}} aria-current="page"{{end}}>{{t "common.nav.console"}}</a></li>
+    <li><a href="{{chatPath}}"{{if eq . "chat"}} aria-current="page"{{end}}>{{t "common.nav.chat"}}</a></li>
   </ul>
 </nav>
 {{- end}}
