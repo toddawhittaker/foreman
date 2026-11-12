@@ -36,6 +36,11 @@ type scriptRun struct {
 // env is added to the script's environment.
 func runScriptEnv(t *testing.T, env []string, saves []string, files ...string) scriptRun {
 	t.Helper()
+	return runScriptWith(t, startScript(false), env, saves, files...)
+}
+
+func runScriptWith(t *testing.T, text string, env []string, saves []string, files ...string) scriptRun {
+	t.Helper()
 	dir := t.TempDir()
 	for _, d := range []string{world.ConfigDir, world.SavesDir, world.ModsDir} {
 		if err := os.MkdirAll(filepath.Join(dir, d), 0o750); err != nil {
@@ -57,7 +62,7 @@ func runScriptEnv(t *testing.T, env []string, saves []string, files ...string) s
 		t.Fatal(err)
 	}
 	// The binary replaces its path first, since that path holds the mount's.
-	script := strings.ReplaceAll(startScript, gameBinary, bin)
+	script := strings.ReplaceAll(text, gameBinary, bin)
 	script = strings.ReplaceAll(script, gameMount, dir)
 	cmd := exec.Command("/bin/sh", "-c", script) //nolint:gosec // a fixed script in a test
 	cmd.Env = append([]string{"PATH=/usr/bin:/bin"}, env...)
@@ -111,8 +116,9 @@ func hasArg(args []string, flag string) bool {
 
 // SPEC 5.1, 5.5: the game is told where the admin and ban lists live
 // whether or not they exist yet, so /promote and /ban persist in the
-// world's folder. Settings and the whitelist are passed only when present,
-// and the whitelist is never enforced (SPEC 11).
+// world's folder. Settings are passed only when present. With the world's
+// whitelist switch off, neither whitelist flag is passed, even when the file
+// exists: the game exits at once on --server-whitelist alone (SPEC 8.3).
 func TestStartScriptFlagsForConfigFiles(t *testing.T) {
 	cfg := func(dir, f string) string { return filepath.Join(dir, world.ConfigDir, f) }
 	t.Run("an empty config folder", func(t *testing.T) {
@@ -126,16 +132,15 @@ func TestStartScriptFlagsForConfigFiles(t *testing.T) {
 			}
 		}
 		for _, flag := range []string{"--server-settings", "--server-whitelist", "--use-server-whitelist"} {
-			if got := flagValue(args, flag); got != "" {
-				t.Errorf("%s passed as %q with no file", flag, got)
+			if hasArg(args, flag) {
+				t.Errorf("%s passed with no file", flag)
 			}
 		}
 	})
-	t.Run("every config file present", func(t *testing.T) {
+	t.Run("every config file present, whitelist switch off", func(t *testing.T) {
 		args := runScript(t, world.ServerSettingsFile, world.ServerWhiteListFile, world.ServerAdminListFile, world.ServerBanListFile)
 		for flag, file := range map[string]string{
 			"--server-settings":  world.ServerSettingsFile,
-			"--server-whitelist": world.ServerWhiteListFile,
 			"--server-adminlist": world.ServerAdminListFile,
 			"--server-banlist":   world.ServerBanListFile,
 		} {
@@ -143,10 +148,43 @@ func TestStartScriptFlagsForConfigFiles(t *testing.T) {
 				t.Errorf("%s is %q, want .../config/%s", flag, got, file)
 			}
 		}
-		if strings.Contains(strings.Join(args, " "), "--use-server-whitelist") {
-			t.Error("the whitelist is enforced; that is a game setting (SPEC 11)")
+		if hasArg(args, "--server-whitelist") || hasArg(args, "--use-server-whitelist") {
+			t.Errorf("a whitelist flag was passed with the switch off: %v", args)
 		}
 	})
+}
+
+// SPEC 8.3: with the world's whitelist switch on, the game gets both
+// --use-server-whitelist and --server-whitelist, whether or not the file
+// exists yet, so the list is enforced and kept in the world's folder.
+func TestStartScriptWhitelistSwitchOn(t *testing.T) {
+	for _, files := range [][]string{nil, {world.ServerWhiteListFile}} {
+		run := runScriptWith(t, startScript(true), nil, nil, files...)
+		if run.err != nil || len(run.calls) != 1 {
+			t.Fatalf("want one clean run, got %v, %v", run.calls, run.err)
+		}
+		args := run.calls[0]
+		if !hasArg(args, "--use-server-whitelist") {
+			t.Errorf("files %v: --use-server-whitelist missing: %v", files, args)
+		}
+		if got := flagValue(args, "--server-whitelist"); got != filepath.Join(run.dir, world.ConfigDir, world.ServerWhiteListFile) {
+			t.Errorf("files %v: --server-whitelist is %q", files, got)
+		}
+	}
+}
+
+// SPEC 8.3: the container records the switch it was started with, so
+// Foreman can tell whether the running game keeps the whitelist.
+func TestContainerSpecWhitelistSwitch(t *testing.T) {
+	c := &Controller{hostData: "/srv/foreman"}
+	off := c.containerSpec("w1", "img", "net", world.Meta{})
+	if _, ok := off.Labels[LabelWhitelist]; ok || strings.Contains(off.Cmd[1], "whitelist") {
+		t.Errorf("switch off: label %v, script mentions the whitelist: %v", off.Labels, strings.Contains(off.Cmd[1], "whitelist"))
+	}
+	on := c.containerSpec("w1", "img", "net", world.Meta{UseWhitelist: true})
+	if on.Labels[LabelWhitelist] != "1" || !strings.Contains(on.Cmd[1], "--use-server-whitelist --server-whitelist ") {
+		t.Errorf("switch on: label %v, script %q", on.Labels, on.Cmd[1])
+	}
 }
 
 // SPEC 4.3: a world with no save and new_map set gets its map made by the

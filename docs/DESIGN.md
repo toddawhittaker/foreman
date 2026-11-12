@@ -2711,16 +2711,24 @@ changes" with the rest of the form.
 - Each bad line is a field error naming the line, as Admins does.
 
 **Whitelist enforcement.** A whitelist only keeps players out when the
-game enforces it. The whitelist fieldset ends with a Note (7.3):
+game enforces it, and an in-game `/whitelist enable` is lost when the game
+restarts. So enforcement is a per-world switch, "Only whitelisted players
+can join", at the end of the whitelist section, with the Note (7.3):
 
-> **Note:** [PLACEHOLDER, ruling 8: replace once task 1 reports whether
-> an in-game `/whitelist enable` survives a restart. If it does: "The game
-> checks this list only after an admin types `/whitelist enable` in the
-> game or the Console. It stays on across restarts." If not, this note
-> waits on Todd's ruling and task 7 does not build the whitelist editor.]
+> **Note:** The game checks this list only while "Only whitelisted players
+> can join" is on.
 
-Until ruling 8 is recorded, neither the whitelist fieldset nor the
-whitelist row buttons (8.12) are built.
+The switch is a checkbox and a "Save whitelist choice" button that post
+their own small form (`form` attribute), so they can sit inside the
+settings form's whitelist fieldset. On, the game starts with
+`--use-server-whitelist --server-whitelist <file>`; off, with neither.
+The game reads it only at start, so on a running world the hint says a
+change takes effect after a restart, and while the running game was
+started the other way a hint and a Restart server button follow it, as
+the settings page does for other settings that need a restart. The
+whitelist is edited live (the card above) only while the running game
+was started with the switch on, since only then does the game keep the
+file; otherwise Foreman writes it through the settings form.
 
 Strings: legends, hints, list labels, empty lines and the preview lines go
 in `settings`; the live actions' results and Undo labels in `players`.

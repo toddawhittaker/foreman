@@ -1,0 +1,59 @@
+{{define "title"}}{{if .Page.IsBan}}{{t "players.ban.heading" "name" .Page.Name "world" .Page.World.Name}}{{else}}{{t "players.kick.heading" "name" .Page.Name "world" .Page.World.Name}}{{end}}{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1 id="confirm-heading">{{if .IsBan}}{{t "players.ban.heading" "name" .Name "world" .World.Name}}{{else}}{{t "players.kick.heading" "name" .Name "world" .World.Name}}{{end}}</h1>
+{{template "summary" .Problems}}
+{{- if not .Error.IsZero}}
+<div class="message message--error" id="action-error" tabindex="-1" autofocus>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
+  <div class="actions"><a href="{{.Back}}">{{t "players.back"}}</a></div>
+</div>
+{{- else if and .Gone (not .IsBan)}}
+<div class="message message--note" id="player-gone" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.note"}}</strong> {{t "players.kick.gone" "name" .Name}}</p>
+  <div class="actions"><a href="{{.Back}}">{{t "players.back"}}</a></div>
+</div>
+{{- else}}
+<section class="confirm" aria-labelledby="confirm-heading">
+  <p>{{t "common.confirm.will"}}</p>
+  <ul>
+    {{- if .IsBan}}
+    {{- if not .Gone}}
+    <li>{{t "players.ban.will_disconnect" "name" .Name}}</li>
+    {{- end}}
+    <li>{{t "players.ban.will_list" "name" .Name}}</li>
+    <li>{{t "players.ban.no_snapshot"}}</li>
+    {{- else}}
+    <li>{{t "players.kick.will_disconnect" "name" .Name}}</li>
+    <li>{{t "players.kick.no_snapshot"}}</li>
+    {{- end}}
+  </ul>
+  <form method="post" action="{{.Path}}" novalidate>
+    <input type="hidden" name="name" value="{{.Name}}">
+    {{- if .Return}}
+    <input type="hidden" name="return" value="{{.Return}}">
+    {{- end}}
+    <div class="field">
+      <label for="player-reason">{{t "players.reason.label"}}</label>
+      <p class="hint" id="player-reason-hint">{{t "players.reason.hint" "name" .Name "max" .MaxReason}}</p>
+      <input id="player-reason" name="reason" type="text" maxlength="{{.MaxReason}}" autocomplete="off" value="{{.Reason}}"
+        aria-describedby="player-reason-hint{{if not .ReasonError.IsZero}} player-reason-error{{end}}"
+        {{- if not .ReasonError.IsZero}} aria-invalid="true"{{end}}>
+      {{- if not .ReasonError.IsZero}}
+      <p class="error" id="player-reason-error"><strong>{{t "common.error.label"}}</strong> {{msg .ReasonError}}</p>
+      {{- end}}
+    </div>
+    <div class="actions">
+      {{- if .IsBan}}
+      <button type="submit" class="button button--danger" id="act-confirm-ban">{{t "players.ban.button" "name" .Name}}</button>
+      {{- else}}
+      <button type="submit" class="button button--danger" id="act-confirm-kick">{{t "players.kick.button" "name" .Name}}</button>
+      {{- end}}
+      <a href="{{.Back}}">{{t "players.cancel" "name" .Name}}</a>
+    </div>
+  </form>
+</section>
+{{- end}}
+{{- end}}
+{{- end}}

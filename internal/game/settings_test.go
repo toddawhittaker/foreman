@@ -227,7 +227,8 @@ func TestSaveSettingsRefusesInvalidInput(t *testing.T) {
 		{"not JSON", world.ServerSettingsFile, `{"name": `, ErrSettingsInvalid},
 		{"a wrong type", world.ServerSettingsFile, `{"max_players": "many"}`, ErrSettingsInvalid},
 		{"an admin name with a line break", world.ServerAdminListFile, "[\"a\\nb\"]", ErrSettingsInvalid},
-		{"a file that is not editable here", world.ServerBanListFile, `[]`, world.ErrConfigFile},
+		{"a file that is not editable here", world.MapSettingsFile, `{}`, world.ErrConfigFile},
+		{"a ban list name with a space", world.ServerBanListFile, `["a b"]`, ErrSettingsInvalid},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
