@@ -1,0 +1,12 @@
+{
+  "about.close": "Закрыть",
+  "about.commit": "Коммит",
+  "about.development": "сборка для разработки",
+  "about.go": "Версия Go",
+  "about.heading": "О Foreman",
+  "about.licence": "Лицензия",
+  "about.source": "Исходный код и трекер задач находятся на {link}.",
+  "about.source.link": "GitHub",
+  "about.title": "О программе",
+  "about.version": "Версия"
+}

@@ -559,7 +559,7 @@ frame (7.4).
   CSS that turns over when the menu is open. On the sign-in and setup pages
   it shows only the language. The two words wrap between them, never inside
   one. Inside, on a `surface` panel (1 px `border`, `--radius-lg`,
-  `--shadow-pop`, at most 18rem wide): "Signed in as todd", then three
+  `--shadow-pop`, at most 18rem wide): "Signed in as todd", then four
   rows, each under a divider line after the first:
   1. **Language**, one row: the current language's flag, its own name, and
      an arrow at the end that turns over when open. It is a `details`
@@ -581,11 +581,23 @@ frame (7.4).
      named in visually hidden words and in its `title`, so it has hover
      text; the current one has `aria-current="true"`, an `accent-bg` face
      and a 1 px `selected` edge.
-  3. **Sign out**, still a `POST` form with a button, never a link, so a
+  3. **About**, a link to the `/about` page, so it works without script.
+     With script (`about.js`) it opens the same content in a native modal
+     `dialog` (the leave box's look, `surface` on a dimmed page, 32rem at
+     most): the logo (40 px, decorative) and "About Foreman" as its
+     heading, a row of facts, the **Version** and **Commit** of the build
+     (twelve characters of the hash, with "-dirty" after it when the tree
+     had changes), the **Go version** it was built with and the
+     **Licence** (MIT), then a line that sends the person to GitHub, and a
+     Close button that takes focus. A build that recorded neither version
+     nor commit reads "development build". The browser keeps focus inside,
+     Escape and Close shut it, and focus goes back to the About item, or to
+     the menu's button when the menu has closed. The names Foreman and MIT
+     are not translated, and no game versions are listed.
+  4. **Sign out**, still a `POST` form with a button, never a link, so a
      crawler or prefetch cannot sign anyone out.
-  About (fixes batch 7, task 6) goes between Theme and Sign out. The menu
-  holds no links to Foreman's settings pages: the Settings tab is their one
-  home. An item under the pointer takes `secondary-hover`.
+  The menu holds no links to Foreman's settings pages (the Settings tab is
+  their one home); About is its one link. An item under the pointer takes `secondary-hover`.
   Each item is a 44 px target. It opens and closes with Enter or Space and
   works without script; `menu.js` also closes it on Escape (focus returns
   to the summary) and on a click outside. Escape with focus in the open

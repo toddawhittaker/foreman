@@ -685,7 +685,7 @@ time {
 }
 
 /* Each row after the first (language, theme, Sign out) has a divider line above it. */
-.menu__panel > :is(details, form) + form {
+.menu__panel > :is(details, form, a) + :is(form, a) {
   padding-block-start: var(--space-2);
   border-block-start: var(--border-width) solid var(--color-line);
 }
@@ -4372,6 +4372,50 @@ form:has(#mode-exchange:checked) .achievements {
 
 .leave-dialog::backdrop {
   /* Black dims the page in both themes; a text colour would lighten the dark one. */
+  background: rgb(0 0 0 / 50%);
+}
+
+/* About (DESIGN 6, "User menu"): the product, its version and commit, the Go
+   version, the licence and the project's address, on the About page and in
+   the dialog the user menu opens. The dialog has the look of the leave box. */
+.about__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.about__heading img {
+  flex: none;
+}
+
+/* The link to the project is a sentence's own, and a target of the floor's height (SPEC 17.2). */
+.about__source a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+}
+
+.about__facts {
+  /* The facts stack on a narrow dialog and sit side by side on a wide page. */
+  min-inline-size: 0;
+}
+
+.about-dialog {
+  inline-size: min(32rem, calc(100% - 2 * var(--space-3)));
+  max-inline-size: none;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.about-dialog[open] {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.about-dialog::backdrop {
   background: rgb(0 0 0 / 50%);
 }
 

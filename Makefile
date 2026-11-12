@@ -20,6 +20,14 @@ export GOTOOLCHAIN := local
 
 IMAGE ?= foreman:dev
 
+# What About shows (internal/version): the version from git describe and the
+# commit hash. The image build cannot ask git (.dockerignore leaves .git out),
+# so they go in as build arguments. Both stay empty outside a checkout.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
+COMMIT  ?= $(shell git rev-parse HEAD 2>/dev/null)
+VERSION_PKG := github.com/toddawhittaker/foreman/internal/version
+LDFLAGS := -X $(VERSION_PKG).Version=$(VERSION) -X $(VERSION_PKG).Commit=$(COMMIT)
+
 CACHE := $(CURDIR)/.cache
 # Tool containers see the repository at its own path and keep caches in .cache/.
 DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(shell id -u):$(shell id -g) \
@@ -216,7 +224,7 @@ typecheck: e2e-deps
 	$(DOCKER_RUN) -w $(CURDIR)/e2e $(PLAYWRIGHT_IMAGE) npx --no-install tsc --noEmit
 
 build:
-	CGO_ENABLED=0 go build -trimpath -o bin/foreman ./cmd/foreman
+	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o bin/foreman ./cmd/foreman
 
 # The fake game for the end-to-end tests. It is never copied into the image.
 build-fakegame:
@@ -227,7 +235,7 @@ build-fakeportal:
 	CGO_ENABLED=0 go build -trimpath -o bin/fakeportal ./cmd/fakeportal
 
 image:
-	docker build --build-arg GO_IMAGE=$(GO_IMAGE) -t $(IMAGE) .
+	docker build --build-arg GO_IMAGE=$(GO_IMAGE) --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(IMAGE) .
 
 run:
 	@mkdir -p .dev-data

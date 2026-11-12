@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/version"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -294,6 +295,8 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"worldsPath":        func() string { return PathWorlds },
 		"snapshotsTabPath":  func() string { return PathSnapshots },
 		"accountPath":       func() string { return PathAccount },
+		"aboutPath":         func() string { return PathAbout },
+		"about":             version.Get,
 		"notificationsPath": func() string { return PathNotifications },
 		"schedulePath":      func() string { return PathSchedule },
 		"settingsTabPath":   func() string { return PathSettingsTab },

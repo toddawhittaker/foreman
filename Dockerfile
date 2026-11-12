@@ -7,7 +7,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
-RUN CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath -ldflags='-s -w' -o /out/foreman ./cmd/foreman
+# What About shows (internal/version). The Makefile passes them from git;
+# without them the build reads Go's build info and the page says so.
+ARG VERSION=
+ARG COMMIT=
+RUN CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath \
+    -ldflags="-s -w -X github.com/toddawhittaker/foreman/internal/version.Version=${VERSION} -X github.com/toddawhittaker/foreman/internal/version.Commit=${COMMIT}" \
+    -o /out/foreman ./cmd/foreman
 
 FROM gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f
 COPY --from=build /out/foreman /usr/local/bin/foreman

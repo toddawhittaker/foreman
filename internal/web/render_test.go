@@ -22,6 +22,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/schedule"
+	"github.com/toddawhittaker/foreman/internal/version"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -168,6 +169,7 @@ func pageCases() []pageCase {
 		{"schedule saved off", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1", Saved: true}.withZones()},
 		{"schedule errors", "todd", 400, SchedulePage{Enabled: true, Clock: "25:00", Zone: "Mars", Limit: "x",
 			ClockError: i18n.M("schedule.time.error"), ZoneError: i18n.M("schedule.zone.error"), LimitError: i18n.M("schedule.limit.error", "max", 12)}.withZones()},
+		{"about", "todd", 200, AboutPage{Info: version.Get()}},
 		{"account none", "todd", 200, AccountPage{Source: factorioaccount.None, CanStore: true}},
 		{"account stored", "todd", 200, AccountPage{Source: factorioaccount.Stored, CanStore: true, UpdatedAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC),
 			UpdatedBy: longName, Return: "/worlds/base/mods", Done: i18n.M("account.done.saved")}},
@@ -869,8 +871,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 18 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, the logo at two sizes and eight flags, found %v", found)
+	if len(found) != 20 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, about.js, the logo at two sizes, the logo again in the About dialog and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

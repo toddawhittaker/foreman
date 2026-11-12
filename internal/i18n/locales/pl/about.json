@@ -1,0 +1,12 @@
+{
+  "about.close": "Zamknij",
+  "about.commit": "Commit",
+  "about.development": "wersja deweloperska",
+  "about.go": "Wersja Go",
+  "about.heading": "O Foremanie",
+  "about.licence": "Licencja",
+  "about.source": "Kod źródłowy i zgłoszenia znajdują się na {link}.",
+  "about.source.link": "GitHub",
+  "about.title": "O programie",
+  "about.version": "Wersja"
+}

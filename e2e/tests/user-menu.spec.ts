@@ -20,17 +20,19 @@ async function tabUntil(page: Page, target: ReturnType<Page["locator"]>, limit =
   await expect(target).toBeFocused();
 }
 
-test("the menu holds the language row, the theme row and Sign out, and no settings links", async ({ page }) => {
+test("the menu holds the language row, the theme row, About and Sign out, and no settings links", async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
   await expect(langRow(page)).toHaveAccessibleName("Language English");
   await expect(page.locator("details.menu__langs")).not.toHaveAttribute("open", "");
   await expect(themes(page).getByRole("button")).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
-  await expect(page.locator("details.menu").getByRole("link")).toHaveCount(0);
-  // Theme then Sign out come after the language row, in that order.
-  const order = await page.locator(".menu__panel > :is(details, form)").evaluateAll((els) => els.map((el) => el.className || el.getAttribute("action")));
-  expect(order).toEqual(["menu__langs", "/theme", "/signout"]);
+  // About is the menu's one link (DESIGN 6); the settings pages have the Settings tab.
+  await expect(page.locator("details.menu").getByRole("link")).toHaveCount(1);
+  await expect(page.locator("details.menu").getByRole("link", { name: "About" })).toHaveAttribute("href", "/about");
+  // Theme, About, then Sign out come after the language row, in that order.
+  const order = await page.locator(".menu__panel > :is(details, form, a)").evaluateAll((els) => els.map((el) => el.getAttribute("action") ?? el.className));
+  expect(order).toEqual(["menu__langs", "/theme", "menu__item", "/signout"]);
   await checkPage(page);
 });
 

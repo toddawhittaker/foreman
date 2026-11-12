@@ -15,6 +15,9 @@
 <script src="{{static "vendor/htmx-ext-sse.min.js"}}" defer></script>
 <script src="{{static "time.js"}}" defer></script>
 <script src="{{static "menu.js"}}" defer></script>
+{{- if .User}}
+<script src="{{static "about.js"}}" defer></script>
+{{- end}}
 {{block "scripts" .}}{{end}}
 </head>
 <body>
@@ -74,6 +77,10 @@
         <input type="hidden" name="return" value="{{.}}">
         {{- end}}
       </form>
+      {{- /* About is a link to the page, so it works without script; with script it opens the same content in a dialog (DESIGN 6, "User menu"). */}}
+      {{- if .User}}
+      <a href="{{aboutPath}}" class="menu__item" data-about>{{t "about.title"}}</a>
+      {{- end}}
       {{- if .User}}
       <form method="post" action="{{signOutPath}}">
         <button type="submit" class="menu__item">{{t "common.signout"}}</button>
@@ -82,6 +89,16 @@
     </div>
   </details>
 </header>
+{{- /* The About dialog (about.js opens it). The About page itself has the content already, so it carries no dialog. */}}
+{{- if and .User (not (.Current aboutPath))}}
+<dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title">
+  <h2 id="about-title" class="about__heading">{{template "about-logo"}}{{t "about.heading"}}</h2>
+  {{template "about-details" about}}
+  <div class="actions">
+    <button type="button" class="button button--primary" id="about-close">{{t "about.close"}}</button>
+  </div>
+</dialog>
+{{- end}}
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
 {{template "content" .}}
 </main>
@@ -90,6 +107,26 @@
 </body>
 </html>
 {{end}}
+
+{{/* The product's logo beside the About heading; decorative, as the name is in the heading. */}}
+{{define "about-logo" -}}
+<img src="{{static "icons/logo-64.png"}}" alt="" width="40" height="40">
+{{- end}}
+
+{{/* What About says, in the page and the dialog: the version and commit, the
+     Go version, the licence and the project's address. Takes version.Info. The
+     names Foreman and MIT are never translated. */}}
+{{define "about-details" -}}
+<dl class="facts facts--inline about__facts">
+  <div><dt>{{t "about.version"}}</dt><dd>{{if .Version}}{{.Version}}{{else}}{{t "about.development"}}{{end}}</dd></div>
+  {{- if .Commit}}
+  <div><dt>{{t "about.commit"}}</dt><dd>{{.Commit}}</dd></div>
+  {{- end}}
+  <div><dt>{{t "about.go"}}</dt><dd>{{.Go}}</dd></div>
+  <div><dt>{{t "about.licence"}}</dt><dd>{{.Licence}}</dd></div>
+</dl>
+<p class="about__source">{{tHTML "about.source" "link" (extLink .Repository "about.source.link")}}</p>
+{{- end}}
 
 {{/* A timestamp in a table: the date and the time each stay whole, and it
      breaks only between them (DESIGN 8.3). Takes time.Time. */}}
