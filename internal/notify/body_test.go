@@ -22,7 +22,7 @@ func sample() []Message {
 	return []Message{
 		{Event: Start, Time: at, World: w},
 		{Event: Stop, Time: at, World: w},
-		{Event: Crash, Time: at, World: w, Reason: "corrupt-save"},
+		{Event: Crash, Time: at, World: w, Reason: "save-unreadable"},
 		{Event: CrashLoop, Time: at, World: w},
 		{Event: PlayerJoin, Time: at, World: w, Player: "ann"},
 		{Event: PlayerLeave, Time: at, World: w, Player: "ann"},

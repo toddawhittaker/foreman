@@ -28,6 +28,14 @@ type listFlags struct {
 	useList    bool   // --use-server-whitelist was given
 }
 
+// unquote strips one pair of surrounding single or double quotes.
+func unquote(s string) string {
+	if len(s) >= 2 && (s[0] == '\'' || s[0] == '"') && s[len(s)-1] == s[0] {
+		return s[1 : len(s)-1]
+	}
+	return s
+}
+
 // flagPath finds "flag path" in the container's command and maps the path
 // under /factorio to the host. conditional is true when the command passes
 // the flag only if that file exists (Foreman's start script does this), and
@@ -37,6 +45,7 @@ func flagPath(c dockertest.Container, text, flag string) (host string, condition
 	if m == nil {
 		return "", false
 	}
+	m[1] = unquote(m[1])
 	rest, ok := strings.CutPrefix(m[1], "/factorio/")
 	src := mountSource(c, "/factorio")
 	if !ok || src == "" {
