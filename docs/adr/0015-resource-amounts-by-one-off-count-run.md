@@ -72,11 +72,11 @@ client or exec (14.3), and a 3072 tile Nauvis has very many resource tiles.
 - Labels show the amount only, in compact form; a text list names the
   resource. Rejected: "Iron 1.2M" (twice as wide).
 - A patch's label is left off the picture where a patch of the same
-  resource with at least 4 times its amount lies within 64 tiles on both
+  resource with at least 4 times its amount lies within 32 tiles on both
   axes, box edge to box edge (`resource.HiddenLabels`, Todd's ruling,
   2026-11-10); the text list keeps every patch, and downloads hide the
   same labels as the page. At gap 6 the crumbs left beside large fields
-  still crowded the picture.
+  still crowded the picture. The reach was cut from 64 to 32 tiles (Todd's ruling, 2026-11-11): on a maxed-out Fulgora map (seed 1334392028) reach 64 hid labels of 7.4M and 7.5M scrap patches 42 to 60 tiles from 600M fields, and reach 32 labels 57 of 81 scrap patches instead of 47.
 
 ## Consequences
 

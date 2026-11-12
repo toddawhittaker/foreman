@@ -712,7 +712,7 @@ not) or a map exchange string, with Space Age on or off. (P0)
     demolisher label or the pin; zooming in shows more. A collapsed text
     list gives every patch, by resource, for keyboard and screen-reader
     users (17.15). A patch's label is left off the picture where a patch
-    of the same resource with at least 4 times its amount lies within 64
+    of the same resource with at least 4 times its amount lies within 32
     tiles on both axes, box edge to box edge; the list still gives it.
     - **Patches.** Ores of one resource are one patch where their tiles
       are within 6 tiles of each other. At 3072 tiles on 2.1.24, 2 tiles

@@ -11,7 +11,7 @@ func box(name string, x0, x1 int, amount int64) Patch {
 }
 
 // SPEC 5.6, "Resource amounts": a patch's label is hidden beside a patch of
-// the same resource at least 4 times its amount within 64 tiles.
+// the same resource at least 4 times its amount within 32 tiles.
 func TestHiddenLabels(t *testing.T) {
 	rich := box("iron-ore", 0, 10, 4000)
 	cases := []struct {
@@ -19,11 +19,13 @@ func TestHiddenLabels(t *testing.T) {
 		small Patch
 		want  []bool
 	}{
-		{"4x within 64 tiles", box("iron-ore", 74, 80, 1000), []bool{false, true}},
-		{"65 tiles away", box("iron-ore", 75, 80, 1000), []bool{false, false}},
-		{"3.9x", box("iron-ore", 74, 80, 1026), []bool{false, false}},
-		{"another resource", box("copper-ore", 74, 80, 1000), []bool{false, false}},
-		{"64 tiles on the other axis", Patch{Name: "iron-ore", Amount: 1000, Box: [4]int{0, 64, 3, 70}}, []bool{false, true}},
+		{"4x within 32 tiles", box("iron-ore", 42, 48, 1000), []bool{false, true}},
+		{"33 tiles away", box("iron-ore", 43, 48, 1000), []bool{false, false}},
+		{"80x at 30 tiles", box("iron-ore", 40, 46, 50), []bool{false, true}},
+		{"80x at 40 tiles", box("iron-ore", 50, 56, 50), []bool{false, false}},
+		{"3.9x", box("iron-ore", 42, 48, 1026), []bool{false, false}},
+		{"another resource", box("copper-ore", 42, 48, 1000), []bool{false, false}},
+		{"32 tiles on the other axis", Patch{Name: "iron-ore", Amount: 1000, Box: [4]int{0, 32, 3, 38}}, []bool{false, true}},
 	}
 	for _, c := range cases {
 		if got := HiddenLabels([]Patch{rich, c.small}); !slices.Equal(got, c.want) {
