@@ -1,0 +1,5 @@
+memory_limit=100663296 status=exited running=false oom_killed=true exit=137 restarts=0 error=
+after 5s: status=running oom_killed=false exit=0 restarts=4
+after 15s: status=restarting oom_killed=true exit=137 restarts=7
+after 30s: status=restarting oom_killed=true exit=137 restarts=8
+after docker stop: status=exited oom_killed=true exit=137 restarts=8

@@ -1,0 +1,1 @@
+memory_limit=100663296 status=exited running=false oom_killed=true exit=137 restarts=0 error=

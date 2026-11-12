@@ -1,0 +1,15 @@
+2026-11-12T15:01:50.478275058Z    0.000 2026-11-12 15:01:50; Factorio 1.1.110 (build 62357, linux64, headless)
+2026-11-12T15:01:50.478312847Z    0.000 Operating system: Linux
+2026-11-12T15:01:50.478320736Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> "--server-adminlist" "/factorio/config/server-adminlist.json" "--server-banlist" "/factorio/config/server-banlist.json" "--server-settings" "/factorio/config/server-settings.json" 
+2026-11-12T15:01:50.478332453Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-12T15:01:50.478337960Z    0.000 Read data path: /opt/factorio/data
+2026-11-12T15:01:50.478343033Z    0.000 Write data path: /opt/factorio [111786/131072MB]
+2026-11-12T15:01:50.478351389Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-12T15:01:50.486101983Z    0.008 System info: [CPU: Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, 48 cores, RAM: 257804 MB]
+2026-11-12T15:01:50.486120679Z    0.008 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-12T15:01:50.486135744Z    0.008 Running in headless mode
+2026-11-12T15:01:50.490178140Z    0.012 Loading mod core 0.0.0 (data.lua)
+2026-11-12T15:01:50.515882972Z    0.037 Loading mod base 1.1.110 (data.lua)
+2026-11-12T15:01:50.732392097Z    0.254 Loading mod base 1.1.110 (data-updates.lua)
+2026-11-12T15:01:50.843781526Z    0.365 Checksum for core: 607699937
+2026-11-12T15:01:50.843818304Z    0.365 Checksum of base: 2464433227

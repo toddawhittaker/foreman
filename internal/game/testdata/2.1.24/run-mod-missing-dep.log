@@ -1,0 +1,12 @@
+2026-11-12T15:00:04.076160762Z    0.000 2026-11-12 15:00:04; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+2026-11-12T15:00:04.076214160Z    0.000 Operating system: Linux
+2026-11-12T15:00:04.076221825Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> "--server-adminlist" "/factorio/config/server-adminlist.json" "--server-banlist" "/factorio/config/server-banlist.json" "--server-settings" "/factorio/config/server-settings.json" 
+2026-11-12T15:00:04.076233306Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-12T15:00:04.076238631Z    0.000 Read data path: /opt/factorio/data
+2026-11-12T15:00:04.076243601Z    0.000 Write data path: /opt/factorio [111784/131072MB]
+2026-11-12T15:00:04.076252238Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-12T15:00:04.087543739Z    0.011 System info: [CPU: Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, 48 cores, RAM: 257804 MB]
+2026-11-12T15:00:04.087570891Z    0.011 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-12T15:00:04.088897007Z    0.013 Error Util.cpp:81: Failed to load mod "needsdep": 
+2026-11-12T15:00:04.088924044Z • needsdep
+2026-11-12T15:00:04.088931440Z     • Missing required dependency nonexistent-mod >= 1.0.0

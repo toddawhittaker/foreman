@@ -231,3 +231,211 @@ back to back on one connection.
   whole length the header gives, and must accept large packets.
 - Two real commands sent back to back are answered in order (id 10, then
   id 11).
+
+## 10. Live operations (Epic 9 task 1)
+
+Captured on 2026-11-12 with Docker 29.1.3 (API 1.52) from the same three
+pinned images, on a fresh `--create` map per version. Each container ran
+Foreman's own start script (`internal/game/container.go`, SPEC 4.3):
+`--start-server-load-latest`, `--server-adminlist` and `--server-banlist`
+in `config/`, `--server-settings`, and `--server-whitelist` only when
+`config/server-whitelist.json` exists. RCON replies were read with a small
+Go client, one connection per batch. The RCON password was random per run
+and is absent from every file. Player names (alice, bob, ...) are made up;
+no client was connected, so every player is offline and "not on map".
+
+Files in each version folder:
+
+- `rcon-players.log`: each RCON command and its reply (Go-quoted), with
+  the contents and UTC mtime of the three list files after each step.
+- `run-players.log`: the game's log for the same run (`docker logs -t`):
+  `[BAN]`, `[UNBANNED]`, `[PROMOTE]`, `[DEMOTE]`, `[CHAT]`, `[COMMAND]`,
+  `[WARNING]` lines.
+- `whitelist-restart.log` with `run-whitelist-restart.log`,
+  `run-whitelist-flag-missing.log` and `run-whitelist-use-flag.log`: the
+  whitelist persistence runs. The lines `Error response from daemon: ...
+  is not running` in it are the capture script listing files in a stopped
+  container, not game output.
+- `run-mod-lua-error.log`, `run-mod-missing-dep.log`, `mod-error-state.txt`:
+  a mod whose `data.lua` calls `error(...)`, and a mod depending on a mod
+  that is not installed; the state file is `docker inspect` after 20 s.
+- `run-oom.log`, `oom-state.txt`: the start under `--memory 96m
+  --memory-swap 96m`.
+
+`docker/port-in-use.log` is Docker's own output and the same for every
+image (taken with 2.1.24).
+
+### Chat
+
+A plain RCON command that does not start with `/` is said in chat by the
+server, the same in all three versions:
+
+```
+2026-11-12 14:59:13 [CHAT] <server>: hello from rcon
+```
+
+The RCON reply is empty. **No client `[CHAT]` line was captured**: a
+headless server cannot join another as a client. The only real-client
+transcript is `2.1.24/join-leave.log`, which has no player chat.
+
+### Player commands over RCON (offline players)
+
+Identical text in all three versions (`rcon-players.log`):
+
+| Command | Reply |
+|---|---|
+| `/kick alice griefing` (not on map) | `Player alice doesn't exist.\n` |
+| `/kick` | `Player  doesn't exist.\n` (two spaces) |
+| `/ban bob griefing` | `Added bob to the banlist.\n` |
+| `/ban bob again` | `bob is already banned.\n` |
+| `/ban carl` (no reason) | `Added carl to the banlist.\n` |
+| `/ban` | `Invalid parameter\n<add/remove/get/clear> <player> - Adds or removes ...\n` |
+| `/bans`, `/banlist get` | `Banned players: bob and carl\n`; empty: `The banlist is empty.\n` |
+| `/unban bob` | `Unbanned bob.\n` |
+| `/unban bob` again, `/unban` | `bob wasn't banned.\n`, ` wasn't banned.\n` |
+| `/promote carol` | empty reply |
+| `/promote carol` again | `carol is already in the admin list and will be promoted upon joining the game.\n` |
+| `/demote carol` | empty reply |
+| `/demote carol` again | `carol is not in the admin list.\n` |
+| `/promote`, `/demote`, `/admins` | empty reply (`/admins` too, with carol in the admin list and nobody online) |
+| `/whitelist add dave` | `Added dave to the whitelist.\n` |
+| ... again | `dave is already whitelisted.\n` |
+| `/whitelist get` | `Whitelisted players: dave\n`; two: `... dave and erin\n`; none: `The whitelist is empty.\n` |
+| `/whitelist remove dave` | `Removed dave from the whitelist.\n`; again: `dave wasn't in the whitelist.\n` |
+| `/whitelist enable`, `/whitelist disable` | empty reply, every time; no log line |
+| `/whitelist clear` | `The whitelist has been cleared and disabled.\n`; again: `The whitelist is already empty.\n` |
+| `/whitelist`, `/whitelist add` | `Invalid parameter\n<enable/disable/add/remove/get/clear> <player> - ...\n` |
+
+Lists of three or more read `a, b, c and d`. The game log lines:
+
+```
+[BAN] bob (not on map) was banned by <server>. Reason: griefing.
+[BAN] carl (not on map) was banned by <server>. Reason: unspecified.
+[UNBANNED] bob was unbanned by <server>.
+[PROMOTE] carol was added to the admin list by <server> and will be promoted upon joining the game.
+[DEMOTE] carol was removed from the admin list by <server> and will no longer be promoted upon joining the game.
+```
+
+each prefixed `YYYY-MM-DD HH:MM:SS ` in server time. `[UNBANNED]` is
+logged even when the player was not banned (`/unban nobody`, `/unban`),
+and `[BAN]` even when already banned. Kicks and whitelist changes log
+nothing.
+
+Invalid names: **the game validates nothing**. A 70-character name is
+banned, promoted and whitelisted. The player is the first word, so
+`/ban "quoted name" x` bans `"quoted` with reason `name" x`. `/promote
+ü-name` stores `ü-name` in 1.1.110 but **`u-name` in 2.0.77 and 2.1.24**
+(the 2.x admin list folds the accent; the log line still says `ü-name`).
+That is the one format difference between versions in these runs.
+
+### Which list files the game writes, and when
+
+With `--server-banlist` and `--server-adminlist`, the game writes the file
+**at once**, on the command, in all three versions; it does not wait for
+a save or exit. The files do not exist until the first change. Formats:
+
+- `server-banlist.json`: a JSON array; an entry is `{"username", "reason"}`
+  when a reason was given, a bare string when not. The file starts with an
+  empty line and has blank lines before objects (see the log).
+- `server-adminlist.json`: an array of strings; `[]` when emptied.
+- `server-whitelist.json`: an array of strings, written at once on add,
+  remove and clear, **but only when the game runs with
+  `--use-server-whitelist --server-whitelist <file>`**.
+
+Without `--server-whitelist`, `/whitelist add` writes no file anywhere (not
+in `config/`, not in the write-data folder `/opt/factorio`, checked with
+`docker diff`), and the list is lost when the game stops.
+
+**Foreman's start script cannot pass `--server-whitelist` alone.** With
+`config/server-whitelist.json` present, all three versions exit 1 at once:
+
+```
+Error CommandLineMultiplayer.cpp:NN: use-server-whitelist must be set when server-whitelist is set.
+```
+
+(`run-whitelist-flag-missing.log`). This contradicts SPEC 4.3 ("Foreman
+never passes `--use-server-whitelist`") and is reported for a ruling.
+
+### Ruling 8: does an in-game `/whitelist enable` survive a restart?
+
+**No, in all three versions.** Evidence (`whitelist-restart.log`, run 2):
+on Foreman's command, `/whitelist enable` then `/whitelist add dave` gave
+`Whitelisted players: dave`; after `docker stop` and `docker start` of the
+same container with the same save and config, `/whitelist get` replied
+`The whitelist is empty.` No file holds the list or the enabled state, and
+the save does not either. The enabled state itself cannot be read over
+RCON (enable and disable reply empty and log nothing), so it was not seen
+directly; a client join would show it. Whatever it is, the list it would
+enforce is gone.
+
+With `--use-server-whitelist --server-whitelist config/server-whitelist.json`
+(run 4), the list survives: `/whitelist add hank`, `add ivy`, then
+`/whitelist disable`, stop and start, and `/whitelist get` replied `hank
+and ivy`. Under that flag, enforcement at start comes from the flag, not
+from an in-game enable or disable (not observed directly without a
+client). `/whitelist clear` wrote `[]`.
+
+### A chat message that starts with `/`
+
+**RCON strips leading spaces and runs the command**, all three versions:
+
+- `" /c rcon.print(\"RAN-leading-1-space\")"` replied
+  `RAN-leading-1-space` and logged `[COMMAND] <server> (command): ...`.
+- `"   /c ..."` (three spaces), the first Lua command on the save, logged
+  `[WARNING] Using Lua console commands will disable achievements. Please
+  repeat the command to proceed.` So it was taken as a command.
+- `"  /ban zed via-leading-space"` banned zed (`/bans` lists zed).
+- `" /silent-command rcon.print(...)"` ran too.
+
+So Foreman must refuse, not just prefix, a message whose first non-space
+character is `/`.
+
+### A mod that fails to load
+
+The game exits 1 before loading the map (all three for the Lua error):
+
+```
+Error Util.cpp:NN: Failed to load mod "brokenlua": __brokenlua__/data.lua:1: deliberate failure for capture
+stack traceback:
+	[C]: in function 'error'
+	__brokenlua__/data.lua:1: in main chunk
+```
+
+A missing dependency, 2.0.77 and 2.1.24 (exit 1; the bullets are U+2022):
+
+```
+Error Util.cpp:81: Failed to load mod "needsdep": 
+• needsdep
+    • Missing required dependency nonexistent-mod >= 1.0.0
+```
+
+**1.1.110 differs**: with the same missing dependency it logs nothing about
+the mod and starts the game without it (`mod-error-state.txt`: running).
+The message spans several lines, so a parser must take the lines after
+`Failed to load mod`. The first line has a trailing space.
+
+### Port already in use
+
+`docker/port-in-use.log`. Starting a container whose published host port
+is taken, from the CLI:
+
+```
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint <name> (<endpoint id>): Bind for 0.0.0.0:44199 failed: port is already allocated
+```
+
+From the Engine API (`POST /containers/<id>/start`): HTTP 500 with body
+`{"message":"failed to set up container networking: ... Bind for 0.0.0.0:44198 failed: port is already allocated"}`,
+and the container is left `created`, exit 128, with the same text in
+`State.Error`. Binding `127.0.0.1:<port>` while another container holds
+`0.0.0.0:<port>` fails the same way. **A second start of the same
+container then succeeds (HTTP 204, running) with no port published**
+(`docker port` empty). Foreman must not retry a start after this error.
+
+### Out of memory
+
+Under `--memory 96m --memory-swap 96m` all three are killed while loading
+mods: `State.OOMKilled` true, exit 137, `State.Error` empty. The game log
+just stops; it has no line about memory. Under `--restart unless-stopped`
+(2.1.24, `oom-state.txt`) Docker restarts it (8 restarts in 30 s); while a
+restarted attempt is running, `OOMKilled` reads false again, and it is true
+again after the next kill and after `docker stop`.
