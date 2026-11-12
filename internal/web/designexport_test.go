@@ -16,7 +16,7 @@ func TestExportDesign(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, g := range designGroups {
-		f, err := os.Open(filepath.Join(dir, g.Key+".html"))
+		f, err := os.Open(filepath.Join(dir, g.Key+".html")) //nolint:gosec // a test temp folder
 		if err != nil {
 			t.Fatal(err)
 		}
