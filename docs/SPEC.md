@@ -189,9 +189,12 @@ world's game version (4.2). Its fixed parts are:
   one address with a VPN sidecar, 4.13); `--server-settings` when the
   world has `config/server-settings.json`; `--server-adminlist` and
   `--server-banlist` always, so `/promote` and `/ban` made in game persist
-  in the world's `config/`; and `--server-whitelist` when that file exists.
-  Foreman never passes `--use-server-whitelist`: whether the whitelist is
-  enforced is a game setting (section 11).
+  in the world's `config/`; and, only when the world's switch "Only
+  whitelisted players can join" is on, `--use-server-whitelist` and
+  `--server-whitelist` together. With the switch off Foreman passes
+  neither: the game refuses `--server-whitelist` alone, and an in-game
+  `/whitelist enable` is lost when the game restarts, so the switch is the
+  only thing that makes the whitelist count (8.3).
 - **Create step.** A world made by Generate or a fresh-map Clone has no
   save and carries `new_map` in `world.json` (5.1). While `new_map` is set,
   Foreman gives the container the environment variables `FOREMAN_NEW_MAP`
@@ -306,7 +309,7 @@ another VPN), so that players join through the VPN. This is one choice an
 operator may make, never a requirement. By default, with
 `FOREMAN_GAME_NETWORK_CONTAINER` unset, nothing here applies: Foreman
 publishes the game port on the host (4.3, 4.4) and needs no VPN. Foreman
-must not prevent a sidecar (ADR 0006). Until this is built (Epic 9, 18.9),
+must not prevent a sidecar (ADR 0006). Until this is built (Epic 9b, 18.9b),
 Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set. (P1)
 
 When an operator sets one:
@@ -366,7 +369,8 @@ this accepts.
   `server-whitelist.json`, and `rconpw` (4.5);
 - `world.json`: Foreman's metadata for the world: display name, pinned
   game version, Space Age flag, which save to load (section 7.11; if
-  missing, the newest save), the time it was created, and, for a world
+  missing, the newest save), whether the game enforces the whitelist
+  (`use_whitelist`, 8.3), the time it was created, and, for a world
   imported from an inbox folder, `imported_from`: the folder, the newest
   save's name, size and modification time (to the nanosecond), and the
   time of the import (5.5). A world that has no save yet also holds
@@ -1168,10 +1172,41 @@ uses it, so the check reads the save the game will load. (P0)
 ### Scheduled restarts
 
 7.12. An admin can schedule a restart (for example nightly at 04:00 in a
-chosen time zone). It runs only when nobody is online. If someone joins
-during the countdown, they see an in-game warning, and the restart waits
-until the server is empty again, up to a configurable limit after which it
-is skipped for that day. (P1)
+chosen time zone). It runs only when nobody is online. (P1)
+
+- **One schedule for all of Foreman.** It is on a Foreman settings page
+  (`/settings/restart-schedule`), beside the factorio.com account, and
+  applies to whichever world is active. It holds on or off, a daily time,
+  an IANA time zone (UTC for a new schedule) and a wait limit of 0 to 12
+  whole hours (default 1). Each save is recorded in the audit log. The
+  Server page shows the next restart, and while one is under way, its wait,
+  its countdown or its skip.
+- **It never starts a game.** At the set time the schedule does nothing
+  unless the active world's game is running. A stopped, starting,
+  stopping, crashed or crash-looping game is left alone, and the schedule
+  never uses "start anyway" (7.4).
+- **The wait.** The schedule waits until nobody is online, counted by
+  `/players online` as in 8.1. When the game cannot be asked, someone is
+  counted as online. A restart by hand, a stop or a crash ends
+  the wait, and so does turning the schedule off.
+- **The countdown always runs.** When nobody is online, Foreman restarts
+  with the 60-second in-game warning of 7.6, even on an empty server. The
+  length is fixed. Someone who joins during the countdown triggers Cancel
+  stop (7.6), which tells them in chat that the stop was cancelled, and the
+  wait begins again. The wait limit is still counted from the set time.
+- **Skipping.** A wait that reaches its limit skips that day. A limit of 0
+  skips at once when anyone is online. An admin who presses Cancel stop
+  also skips that day. The Server page says which.
+- **No catch-up.** A restart missed while Foreman or its host was not
+  running is not made up. A set time reached more than ten minutes late
+  does not run, and a wait that the schedule wakes into more than ten
+  minutes past its limit is skipped as "missed". After a long sleep the next
+  restart is the next set time after now.
+- **Daylight saving.** A time that a clock change skips runs at the next
+  valid minute. A time the clocks pass twice runs once, at the first pass.
+- A scheduled restart that ran, or was skipped because players stayed
+  online, sends the scheduled-restart webhook (8.10). The restart's own
+  start sends the start webhook too.
 
 ## 8. Live operations
 
@@ -1183,10 +1218,48 @@ container's log since it started, so a chat line cannot fake a join; a
 player whose join line Foreman did not see is listed without a time. (P0)
 
 8.2. Kick, ban, unban, promote to admin, demote, and add to or remove from
-the whitelist, each with a confirmation for the destructive ones. (P1)
+the whitelist, sent over RCON to the running game. They start from a
+player's row on the Server page, and the ban list and whitelist have
+their own on the Settings tab (8.3).
 
-8.3. View and edit the admin list, ban list and whitelist files of any
-world, including one that is not running. (P1)
+- **Confirm kick and ban only.** Each shows a confirmation page with an
+  optional reason (one line, at most 200 characters, with no NUL, CR or
+  LF). Promote, demote, unban and whitelist changes act at once and offer
+  Undo (17.9).
+- **Refuse, never escape.** A player name with a space, a control or
+  invisible character, or over 64 bytes is refused, and a reason with a
+  line break is refused. Foreman never changes the text to make it pass
+  (14.9).
+- **Audit first.** The action is recorded in the audit log (12.9) before it
+  is sent. If the audit write fails, nothing is sent.
+- **No snapshot.** A live action takes no snapshot, because the game
+  writes its own list file.
+- A reply that does not say the game made the change is shown as a refusal
+  with the game's words. A whitelist change is refused while the running
+  game was started with the whitelist switch off (8.3), because the game
+  would lose it at its next restart. (P1)
+
+8.3. View and edit the admin list, ban list and whitelist of any world,
+including one that is not running, on the world's Settings tab.
+
+- **While the game runs**, a change to a list the game keeps goes to the
+  game as in 8.2 and the game writes its own file, with no snapshot. The
+  game keeps the admin list and the ban list, and the whitelist only when
+  it was started with the switch below on. The ban list and whitelist then
+  change one name at a time, with Undo. Foreman never writes a file the
+  running game keeps.
+- **Otherwise** (the game is stopped, the world is not active, or the
+  running game does not keep the whitelist), Foreman writes the file after
+  the usual settings snapshot (11.3). A ban that stays
+  in the list keeps its reason.
+- **Only whitelisted players can join** is a per-world switch (stored as
+  `use_whitelist`). When on, the game starts with both whitelist flags
+  (4.3); when off, with neither. The game reads it only at start, so on a
+  running world a change shows a restart hint and a Restart server button.
+  The whitelist is edited live only while the running game was started
+  with the switch on. A change to the switch is audited as
+  `whitelist-switch` before it is made; if the audit write fails, it is
+  not made. (P1)
 
 ### Console and chat
 
@@ -1210,8 +1283,22 @@ Server page.
 - The page keeps the last 20 commands per world, in memory only, so they are
   gone when Foreman restarts. (P0)
 
-8.5. In-game chat: see recent chat and send a message as the server.
-(P1)
+8.5. In-game chat: see recent chat and send a message as the server, on a
+Chat tab beside Overview and Console. The tab shows the last 200 `[CHAT]`
+lines of the game's log, live, and marks a line the server itself said.
+A message is 1 to 500 characters on one line.
+
+- **Refused, never escaped.** A message is refused if it is empty, has any
+  control character (a NUL or line break has its own message), or starts
+  with `/` after any blank, control or invisible character. The game
+  strips leading spaces from what RCON sends, so such a message would run
+  as a command. Commands belong to the console (8.4), which is the only
+  way to run one.
+- **Audit first.** The message is recorded in the audit log (action
+  `chat`, secrets masked) before it is sent. If the audit write fails,
+  nothing is sent.
+- The message arrives in the list from the game's own echo, so it is
+  shown once. (P1)
 
 ### Logs and crashes
 
@@ -1237,9 +1324,24 @@ the log stream ends, and compares the container's restart count, start time
 and out-of-memory flag with what it saw last, together with the log's
 failed-load line. It does not use the exit code, because the same failure
 exits with different codes in different game versions (1.1 exits 0 after a
-failed load). It names the reason when it can: a mod that failed to load, a
-corrupt save, a version mismatch, a port in use, or out of memory.
-Otherwise it says the reason is unknown. A save that fails to load is
+failed load). It names the reason when it can, by one of these stable ids, and
+otherwise says the reason is unknown:
+
+- from the game's log: `mod-missing-dependency`, `mod-error` (a mod that
+  failed to load) and `save-unreadable` (a corrupt or unreadable save);
+- from the mods the game lists for another Factorio:
+  `mods-for-other-version`;
+- from Docker's start error: `port-in-use`, only for "port is already
+  allocated". Docker refuses the start, so this is a failed start and not
+  a crash;
+- `out-of-memory`, only from Docker's `OOMKilled` flag, because the game's
+  log just stops when the kernel kills it. The game container has no memory
+  limit, so a kill of the whole host shows as unknown, and so does an
+  out-of-memory kill that Docker restarts before the monitor sees the
+  flag (Docker clears it).
+
+On 1.1 a mod with a missing dependency is skipped and the game starts, so
+there is nothing to name there. A save that fails to load is
 reported as a failed load whichever check sees the stop first, the log or
 the container poll (ADR 0016), and a Docker look taken before or during an
 operation on the world is dropped, so it never overwrites what the
@@ -1250,8 +1352,11 @@ never guesses a reason. (P0 to detect a crash; P1 to name the reason)
 
 8.8. **The reason catalogue** is a data file of log patterns, each
 naming a reason. Patterns match message text, never source file and
-line numbers, which change between game versions. Each entry has a test
-fixture captured from a real game container. The catalogue's scenarios
+line numbers, which change between game versions. The catalogue is
+`internal/game/crashreasons/catalogue.json`, embedded in the binary, in
+priority order: when several entries match, the first wins, and no match
+means unknown. Each entry names its test fixtures, captured from a real
+game container or from Docker's real start error. The catalogue's scenarios
 are re-run against the test image of each supported line (docs/STACK.md,
 section 1) whenever a test image changes, and on demand against any
 version an operator names (`make test-catalogue VERSION=2.1.22`). (P1)
@@ -1265,19 +1370,64 @@ stopped; the crash-loop mark is not remembered. (P0)
 
 ### Notifications
 
-8.10. Webhooks on: start, stop, crash, crash loop, player join, player
-leave, and scheduled restart. Each event can be turned on or off per
-webhook. (P1)
+8.10. Webhooks on these events, each with a stable id: `start`, `stop`,
+`crash` (with the reason id of 8.7 when one is known), `crash-loop`,
+`player-join`, `player-leave`, `scheduled-restart` (it ran, or it was
+skipped because players stayed online, 7.12) and `low-disk` (8.13). Each
+event can be turned on or off per webhook, and an event added later is on by
+default. Webhooks belong to Foreman as a whole, not to a world, and every
+event names its world.
+
+- Start, stop, crash and crash loop come from changes in the game's own
+  state, not from what an operation reports. A crash waits at
+  most two polls for the log to name its reason and is sent as unknown
+  after that. Joins and leaves come from the game's log lines.
+- **Nothing is sent twice.** After Foreman restarts, no event is sent for
+  something that happened before it. The first state Foreman sees is only
+  noted, and a join or leave is sent only for a log line stamped after
+  Foreman started. Events that happen while Foreman is down are not sent. (P1)
 
 8.11. Presets for Discord and ntfy, plus a generic JSON webhook whose body
-format is documented. (P1)
+format is documented in the operator guide. Each webhook has its own
+language for the message, defaulting to the language of the admin who adds
+it.
 
-8.12. A failed webhook delivery is logged and retried at most twice; it
-never blocks or delays a server operation. (P1)
+- **Discord** posts `content` with names shortened and then escaped, and
+  `allowed_mentions` set to none, so no name can ping anyone.
+- **ntfy** posts the message as plain text with a `Title` header, and high
+  priority for a crash, a crash loop and low disk.
+- **Generic** posts JSON, version 1: `{"version":1,"event":"<id>","time":
+  "<RFC 3339, UTC>","world":{"id","name"},"text":"<message>"}`, plus
+  `player` for a join or leave, `reason` for a crash, `skipped` for a
+  scheduled restart and `free_bytes` for low disk. A new optional field
+  keeps the version; any other change to the body raises it. A golden file
+  test pins it.
+- An address starts with `https://`, or with `http://`, which is allowed
+  with a warning that messages then go unencrypted. It has a host, no user
+  name or password, no space or control character, and at most 2,048
+  characters. A Discord address is on discord.com (or discordapp.com) under
+  `/api/webhooks/`; an ntfy address names a topic. Webhook addresses are
+  secrets (14.8). (P1)
 
-8.13. **Low disk space.** While the game runs, the status page and the
-notifications (8.10) warn when free space approaches the reserve in 6.11,
-because the game's autosaves can then fail. (P1)
+8.12. **Delivery.** Emitting an event never blocks or delays a server
+operation, even when a target hangs or a queue is full: the event goes into
+a queue, and a full queue drops it and logs that. Each webhook has
+its own queue and sender, so a slow or dead target delays only itself. Each
+attempt takes at most 5 seconds. A failed delivery is logged and retried at
+most twice, after 1 and then 5 seconds. No redirect is followed, and a
+redirect or a 4xx answer other than 408 and 429 is not retried, because
+trying again would get the same answer. Undelivered events are not kept
+across a Foreman restart. No log line or error holds the address (14.8). (P1)
+
+8.13. **Low disk space.** While the game runs, the Server page and the
+notifications (8.10) warn when free space on the disk that holds the worlds
+falls below 4 GB, twice the reserve in 6.11, because the game's autosaves
+can then fail. The warning clears only when more than 4.5 GB is free, so it
+does not flicker around one figure. Both marks are fixed, not settings.
+All worlds share the disk, so one state covers them: switching worlds or
+restarting Foreman never sends the event twice, and the first reading after
+Foreman starts is shown but not sent. The Server page warning links to the
+Snapshots page, where space can be freed. (P1)
 
 ## 9. Mods (per world)
 
@@ -1747,7 +1897,13 @@ the UI. Never holds a secret. Each entry holds the time, the user (the name stay
 after the user is deleted), the action, the world and a detail. Server
 control records start, stop, restart, forced stop, switch (on the world
 switched from, with both ids), game image download and
-every console command (8.4). (P1, except RCON commands, which are recorded
+every console command (8.4), every player action and chat message (8.2,
+8.5), a change to the whitelist switch (8.3), and a change to the restart
+schedule or to a webhook (7.12, 8.10), never with the webhook's address.
+Player actions, chat messages and the whitelist switch are recorded before
+they take effect and are refused if the record cannot be written. A
+schedule or webhook change is recorded after it, and a failure to record it
+is only logged. (P1, except RCON commands, which are recorded
 from the first version that has a console: P0)
 
 12.10. **API tokens.** A user can create, name, list and revoke their own
@@ -1943,8 +2099,8 @@ the `Host` header. (P0)
 
 14.8. **Secrets** (the RCON password, the portal token, the OIDC client
 secret, the game password, the factorio.com `username`, `password` and
-`token` keys of `server-settings.json`, `FOREMAN_SECRET_KEY`, and session
-tokens) never appear in a log line, an API response, an error message, the
+`token` keys of `server-settings.json`, `FOREMAN_SECRET_KEY`, webhook URLs,
+and session tokens) never appear in a log line, an API response, an error message, the
 audit log, or the UI. This includes game log lines Foreman relays: it
 removes the RCON password, the game password and those factorio.com values
 from every line (8.6), parsing the line before it redacts so a short
@@ -1953,11 +2109,19 @@ console follows one list of commands that carry a secret: `/config set
 password` has its argument masked in the audit log, on the page and in
 relayed log lines, and the reply to `/config get password` is masked. A Lua
 command is recorded as typed (8.4). The one place the RCON password is
-visible is the game process's arguments, an accepted risk (4.5). (P0)
+visible is the game process's arguments, an accepted risk (4.5).
+
+A webhook URL often carries a token in its path, so it is stored sealed
+with `FOREMAN_SECRET_KEY`, as the stored factorio.com account is (ADR 0013,
+ADR 0018). Pages show only the preset and the host, and changing a URL
+means typing it again. Without the key, webhooks are unavailable. (P0)
 
 14.9. **RCON input.** Commands built by Foreman from user text (chat
-messages, player names) are escaped so the text cannot become a different
-command. The raw console (8.4) sends what the admin typed, by design. (P0)
+messages, player names, reasons) are refused, never escaped, when the text
+could become a different command: a name with a space, a control or
+invisible character or over 64 bytes (8.2), a reason or chat message with
+a control character or line break, and a chat message that starts with `/`
+(8.5). The raw console (8.4) sends what the admin typed, by design. (P0)
 
 14.10. **Outbound requests.** Foreman talks only to the mod portal, the
 factorio.com release list, Docker Hub's list of `factoriotools/factorio`
@@ -1968,7 +2132,7 @@ size of a game image is one request for a single tag, read at most 64 KB and
 limited to 3 seconds, made only when the image is missing and a page says
 how big the download is; any failure leaves the size out. Image
 pulls are made by the Docker daemon, not by Foreman. It does not follow
-redirects for webhooks.
+redirects for webhooks, and each try takes at most 5 seconds (8.12).
 The mod portal's base is fixed at `https://mods.factorio.com`; there is no
 setting for it. Its API calls take at most 10 seconds, follow no redirects,
 and read at most 16 MB (the mod list) or 2 MB (one mod's details). At most
@@ -2130,6 +2294,12 @@ with the defaults accepted, these take at most:
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
 | Recover after a failed start or a crash loop | 2 |
+| Make an online player admin (the player, Make admin) | 2 |
+| Make a player admin, then undo it (the player, Make admin, Undo) | 3 |
+| Add an online player to the whitelist (the player, Add to whitelist) | 2 |
+| Kick a player (the player, Kick, Kick *player*) | 3 |
+| Ban a player (the player, Ban, Ban *player*) | 3 |
+| Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
@@ -2239,8 +2409,13 @@ clone (5.7), and section 11.
 18.8. **Epic 8: Mods.** Section 9.
 
 18.9. **Epic 9: Live operations.** Players (8.2, 8.3), chat (8.5), crash
-reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12),
-the low-disk warning (8.13), and VPN sidecars (4.13, ADR 0006).
+reasons (8.7, 8.8), scheduled restarts (7.12), notifications (8.10 to 8.12)
+and the low-disk warning (8.13).
+
+18.9b. **Epic 9b: VPN sidecars.** The optional sidecar (4.13, 14.16, ADR
+0006), split out of Epic 9 so that Epics 10 and 11 keep their numbers.
+Until it is built, Foreman refuses to start when
+`FOREMAN_GAME_NETWORK_CONTAINER` is set.
 
 18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).
