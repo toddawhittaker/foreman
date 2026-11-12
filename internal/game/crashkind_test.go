@@ -72,19 +72,28 @@ func TestLoadReasonKindForModsMadeForAnotherVersion(t *testing.T) {
 	}
 }
 
-// The kind comes from the same run as the error line shown with it: a newer
-// run that says something the catalogue does not know is unknown, and a
-// run that has said nothing yet keeps the run before it.
-func TestLoadReasonKindPairsWithItsRun(t *testing.T) {
+// SPEC 8.7: the kind is the newest run's own. Runs that fail before the
+// load-started line, as a mod's error does, are one run to the reader and
+// keep their kind; a newer run that began loading and names no reason, say
+// one the host's out-of-memory killer ended, is unknown.
+func TestLoadReasonKindIsTheNewestRuns(t *testing.T) {
 	modErr := `   0.2 Error Util.cpp:81: Failed to load mod "x": __x__/data.lua:1: boom`
 	loading := "   0.5 Loading map /factorio/saves/a.zip: 10 bytes."
-	still := readAll([]string{modErr, loading})
-	if got := still.reason(masking()); got.Kind != crashreasons.ModError {
-		t.Errorf("a run still loading lost the run before's kind: %+v", got)
+	looping := readAll([]string{modErr, "   0.0 Factorio 2.1.24", modErr})
+	if got := looping.reason(masking()); got.Kind != crashreasons.ModError {
+		t.Errorf("runs failing before loading lost their kind: %+v", got)
+	}
+	killed := readAll([]string{modErr, loading})
+	got := killed.reason(masking())
+	if got.Kind != "" {
+		t.Errorf("a newer run that named no reason took the run before's kind: %+v", got)
+	}
+	// The run before's words are still shown while the newest says none.
+	if !strings.Contains(got.Said, "boom") {
+		t.Errorf("said %q, want the run before's line", got.Said)
 	}
 	newer := readAll([]string{modErr, loading, "   0.6 Error Foo.cpp:1: something new"})
-	got := newer.reason(masking())
-	if got.Kind != "" || got.Said != "something new" {
+	if got := newer.reason(masking()); got.Kind != "" || got.Said != "something new" {
 		t.Errorf("the newest run's unknown error took an older kind: %+v", got)
 	}
 }

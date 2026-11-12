@@ -55,9 +55,9 @@ type loadFailure struct {
 	// errLine is the last error line of the run being read, and lastErr
 	// that of the run before it, for when this one has said none yet.
 	errLine, lastErr string
-	// kind is the catalogue's name for the run being read, and lastKind
-	// that of the run lastErr came from (SPEC 8.7).
-	kind, lastKind string
+	// kind is the catalogue's name for the run being read; an older run's
+	// is never shown, so no match means unknown (SPEC 8.7).
+	kind string
 	// runError is the reason the run being read gave for a failed load.
 	runError string
 	// failed is whether the newest run to finish loading failed to, and
@@ -72,8 +72,8 @@ func (f *loadFailure) add(raw string) {
 	switch ev := ParseLine(raw); ev.Kind {
 	case KindLoadStarted:
 		// Every run begins here, so an older run's words are not its reason.
-		if f.errLine != "" || f.kind != "" {
-			f.lastErr, f.lastKind = f.errLine, f.kind
+		if f.errLine != "" {
+			f.lastErr = f.errLine
 		}
 		f.errLine, f.runError, f.kind = "", "", ""
 	case KindInGame:
@@ -137,11 +137,11 @@ func (f *loadFailure) reason(redact func(string) string) LoadReason {
 		r.Shown, r.More = shownNames(names, redact)
 		return r
 	}
-	said, kind := f.errLine, f.kind
-	if said == "" && kind == "" {
-		said, kind = f.lastErr, f.lastKind
+	said := f.errLine
+	if said == "" {
+		said = f.lastErr
 	}
-	r := LoadReason{Kind: kind}
+	r := LoadReason{Kind: f.kind}
 	if said != "" {
 		r.Said = shownText(redact, said)
 	}

@@ -77,16 +77,6 @@ func Line(line string) string {
 	return match(SourceGameLog, line)
 }
 
-// Log names the reason a run's game log gives: of the entries any line
-// matches, the first in the catalogue; "" when none does.
-func Log(lines []string) string {
-	best := ""
-	for _, l := range lines {
-		best = Prefer(best, Line(l))
-	}
-	return best
-}
-
 // DockerStart names the reason in Docker's error for a container start
 // that failed, or "".
 func DockerStart(errText string) string {

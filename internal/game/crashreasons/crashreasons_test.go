@@ -25,6 +25,15 @@ func readLines(t *testing.T, rel string) []string {
 	return lines
 }
 
+// logReason folds Line over a log with Prefer, as the game package does.
+func logReason(lines []string) string {
+	best := ""
+	for _, l := range lines {
+		best = Prefer(best, Line(l))
+	}
+	return best
+}
+
 // Every entry has a fixture captured from a real game, and each of its
 // fixtures is named as that entry (SPEC 8.7).
 func TestEveryEntryNamesItsRealFixtures(t *testing.T) {
@@ -40,7 +49,7 @@ func TestEveryEntryNamesItsRealFixtures(t *testing.T) {
 			var got string
 			switch e.Source {
 			case SourceGameLog:
-				got = Log(lines)
+				got = logReason(lines)
 			case SourceDockerStart:
 				for _, l := range lines {
 					if id := DockerStart(l); id != "" {
@@ -94,7 +103,7 @@ func TestOtherRealLogsAreUnknown(t *testing.T) {
 			continue
 		}
 		checked++
-		if got := Log(readLines(t, rel)); got != "" {
+		if got := logReason(readLines(t, rel)); got != "" {
 			t.Errorf("%s: named %q, want unknown", rel, got)
 		}
 	}
@@ -109,10 +118,10 @@ func TestOtherRealLogsAreUnknown(t *testing.T) {
 }
 
 func TestNoMatchIsUnknown(t *testing.T) {
-	if got := Log([]string{"", "   1.000 Goodbye", "Error Util.cpp:81: something new"}); got != "" {
+	if got := logReason([]string{"", "   1.000 Goodbye", "Error Util.cpp:81: something new"}); got != "" {
 		t.Errorf("got %q, want unknown", got)
 	}
-	if got := Log(nil); got != "" {
+	if got := logReason(nil); got != "" {
 		t.Errorf("no lines named %q", got)
 	}
 	if got := DockerStart(""); got != "" {
@@ -129,7 +138,7 @@ func TestCatalogueOrderDecides(t *testing.T) {
 		"• needsdep",
 		"    • Missing required dependency other >= 1.0.0",
 	}
-	if got := Log(lines); got != "mod-missing-dependency" {
+	if got := logReason(lines); got != "mod-missing-dependency" {
 		t.Errorf("got %q", got)
 	}
 	if got := Line(lines[1]); got != "" {
