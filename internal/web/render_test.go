@@ -247,6 +247,12 @@ func pageCases() []pageCase {
 			p.Result, p.HaveResult = actionResult{Action: game.ActionRestore, Restored: "a", Undo: "b"}, true
 		})},
 		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
+		{"kick confirm", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: longName}, Action: game.PlayerKick, Name: "Alice", Online: true}},
+		{"kick player gone", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerKick, Name: "Alice", Gone: true}},
+		{"ban reason error", "todd", 400, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "Alice",
+			Return: "/worlds/base/settings", Reason: "x", ReasonError: i18n.M("players.error.reason", "max", 200)}},
+		{"ban not running", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "Alice",
+			Error: i18n.M("players.error.not_running", "world", "Base")}},
 		{"restart countdown error", "todd", 400, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true,
 			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"switch running", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: longName}, To: world.Summary{ID: "other", Name: longName},
@@ -303,6 +309,14 @@ func pageCases() []pageCase {
 		{"settings raw errors", "todd", 400, settingsRawCase(true)},
 		{"settings preview", "todd", 200, settingsPreviewCase()},
 		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
+		{"settings promoted with undo", "todd", 200, settingsPlayerCase(game.PlayerPromote, false)},
+		{"settings demoted with undo", "todd", 200, settingsPlayerCase(game.PlayerDemote, false)},
+		{"settings banned with unban", "todd", 200, settingsPlayerCase(game.PlayerBan, false)},
+		{"settings unbanned with undo", "todd", 200, settingsPlayerCase(game.PlayerUnban, false)},
+		{"settings whitelist added", "todd", 200, settingsPlayerCase(game.PlayerWhitelistAdd, false)},
+		{"settings whitelist removed", "todd", 200, settingsPlayerCase(game.PlayerWhitelistRemove, false)},
+		{"settings kicked", "todd", 200, settingsPlayerCase(game.PlayerKick, false)},
+		{"settings unban refused", "todd", 200, settingsPlayerCase(game.PlayerUnban, true)},
 	}, append(modPageCases(), modSettingsPageCases()...)...)
 }
 
