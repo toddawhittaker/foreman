@@ -1,6 +1,7 @@
 {{define "title"}}{{t "common.nav.chat"}}{{end}}
 
-{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>
+<script src="{{static "log.js"}}" defer></script>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -16,8 +17,6 @@
 {{- /* The facts event carries the heading's badge and the announce event is read out, so state changes are spoken here too (DESIGN 7.5). */}}
 <div sse-swap="facts" hidden></div>
 <div sse-swap="announce" hidden></div>
-{{- /* The chat has a stream of its own: each event swaps into #chat-lines out of band. */}}
-<div sse-connect="{{.EventsPath}}" hidden><div sse-swap="chat"></div></div>
 <header class="page-head">
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
 </header>
@@ -27,31 +26,23 @@
   {{- if not .Running}}
   <p class="empty empty--art empty--chat" id="chat-not-running">{{t "chat.not_running"}}</p>
   <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
-  {{- else if not .Lines}}
-  <p class="empty empty--art empty--chat" id="chat-empty">{{t "chat.empty"}}</p>
   {{- end}}
-  <div class="log-frame">
+  {{- if not .Rows}}
+  <p class="empty" id="log-empty">{{t "chat.empty"}}</p>
+  {{- end}}
+  {{- /* Followed by log.js as the Console's log is: new lines are appended, never redrawn, so the polite log reads each once. */}}
+  <div class="log-frame" data-log-events="{{.EventsPath}}" data-max-lines="{{.MaxLines}}">
     <div class="log" tabindex="0" role="log" aria-label="{{t "chat.history_label"}}">
-      <ol id="chat-lines" class="chat-lines" role="list">{{template "chat-lines" .}}</ol>
+      <pre>{{range .Rows}}<span>{{.}}
+</span>{{end}}</pre>
     </div>
+    <button type="button" class="button" hidden>{{t "server.console.jump"}}</button>
   </div>
   {{template "chat-panel" .}}
 </section>
 {{- end}}
 {{- end}}
 {{- end}}
-
-{{/* One <li> for each line. The names and messages are players' words: set as
-     text, never made into links, and shown as written (SPEC 22.3). */}}
-{{define "chat-lines"}}{{range .Lines}}<li{{if .Server}} class="chat-line--server"{{end}}>{{if not .Time.IsZero}}<time datetime="{{isoTime .Time}}">{{clock .Time}}</time> {{end}}<strong class="chat-name"{{if not .Server}} translate="no"{{end}}>{{if .Server}}{{t "chat.name.server"}}{{else}}{{.Name}}{{end}}</strong> <span class="chat-text" dir="auto">{{.Text}}</span></li>
-{{end}}{{end}}
-
-{{/* What the chat stream sends: the whole list, then lines to add. */}}
-{{define "chat-reset"}}<div hx-swap-oob="innerHTML:#chat-lines">{{template "chat-lines" .}}</div>
-{{- if .Lines}}<div hx-swap-oob="delete:#chat-empty"></div>{{end}}{{end}}
-
-{{define "chat-add"}}<div hx-swap-oob="beforeend:#chat-lines">{{template "chat-lines" .}}</div>
-<div hx-swap-oob="delete:#chat-empty"></div>{{end}}
 
 {{/* The message field and its refusal (SPEC 8.5). A script swaps the whole
      panel after each message; the list above it is left alone. */}}

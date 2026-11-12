@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -44,8 +45,8 @@ func (g *gameRig) waitChatPage(texts ...string) string {
 	}
 }
 
-// SPEC 8.5: the tab shows the chat the game logged, oldest first, with a
-// player's words as text and the server named "Server".
+// SPEC 8.5: the tab shows the chat the game logged, oldest first, as text
+// the Console's log script can follow; the server is named "Server".
 func TestChatTabShowsHistory(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
@@ -55,11 +56,13 @@ func TestChatTabShowsHistory(t *testing.T) {
 		t.Fatalf("send: %d\n%s", rep.StatusCode, rep.body)
 	}
 	body := g.waitChatPage("on my way", "&lt;b&gt;hi&lt;/b&gt;")
+	last := g.ctrl.ChatLines(id)
 	for _, want := range []string{
-		`role="log"`, `aria-label="Chat messages"`, `<strong class="chat-name" translate="no">alice</strong>`,
-		`<span class="chat-text" dir="auto">&lt;b&gt;hi&lt;/b&gt; &amp; &#34;bye&#34;</span>`,
-		`<li class="chat-line--server">`, `>Server</strong>`, `on my way`,
-		`sse-connect="` + chatPath(id, "/events") + `"`, `<span id="server-title">Base <span class="state state--running">Running</span></span>`,
+		`role="log"`, `aria-label="Chat messages"`, `data-max-lines="200"`, `Jump to newest`, `src="/static/log.js`,
+		`data-log-events="` + chatPath(id, "/events") + `?after=` + strconv.FormatUint(last[len(last)-1].Seq+1, 10) + `"`,
+		` alice: &lt;b&gt;hi&lt;/b&gt; &amp; &#34;bye&#34;
+`, ` Server: on my way
+`, `<span id="server-title">Base <span class="state state--running">Running</span></span>`,
 		`maxlength="500"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -72,15 +75,17 @@ func TestChatTabShowsHistory(t *testing.T) {
 	if strings.Index(body, "bye") > strings.Index(body, "on my way") {
 		t.Error("the history is not oldest first")
 	}
-	if strings.Contains(body, "chat-not-running") {
-		t.Error("a running server shows the not-running note")
+	// The history is never swapped in again by an htmx stream, which would
+	// make the polite log read it all out once more.
+	if strings.Contains(body, "chat-reset") || strings.Contains(body, `sse-swap="chat"`) {
+		t.Error("the page swaps the history in again")
 	}
 }
 
 func TestChatTabEmptyAndStopped(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
-	if body := g.get(PathChat); !strings.Contains(body, `id="chat-empty"`) || !strings.Contains(body, "No chat since the server started.") {
+	if body := g.get(PathChat); !strings.Contains(body, `id="log-empty"`) || !strings.Contains(body, "No chat since the server started.") {
 		t.Errorf("a quiet running server:\n%s", body)
 	}
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
@@ -213,13 +218,74 @@ func (g *gameRig) openChatEvents(id string, cookie bool) *http.Response {
 	return resp
 }
 
-// SPEC 8.5: the stream starts with the chat so far, then adds each new chat
-// line once and only chat lines; player text arrives escaped.
+// readChatEvent reads one event with its id, if it has one.
+func readChatEvent(t *testing.T, r *bufio.Reader) (name, id, data string, err error) {
+	t.Helper()
+	var lines []string
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			return "", "", "", err
+		}
+		line = strings.TrimSuffix(line, "\n")
+		switch {
+		case line == "" && name != "":
+			return name, id, strings.Join(lines, "\n"), nil
+		case strings.HasPrefix(line, "event: "):
+			name = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "id: "):
+			id = strings.TrimPrefix(line, "id: ")
+		case strings.HasPrefix(line, "data: "):
+			lines = append(lines, strings.TrimPrefix(line, "data: "))
+		}
+	}
+}
+
+func (g *gameRig) openChatEventsAfter(id, after, lastEventID string) *http.Response {
+	g.t.Helper()
+	path := chatPath(id, "/events")
+	if after != "" {
+		path += "?after=" + after
+	}
+	req, err := http.NewRequestWithContext(g.t.Context(), http.MethodGet, g.url+path, nil)
+	if err != nil {
+		g.t.Fatal(err)
+	}
+	req.AddCookie(g.cookie)
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
+	resp, err := g.client.Do(req)
+	if err != nil {
+		g.t.Fatal(err)
+	}
+	return resp
+}
+
+func (g *gameRig) waitChatLines(id string, n int) []game.ChatLine {
+	g.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if lines := g.ctrl.ChatLines(id); len(lines) >= n {
+			return lines
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	g.t.Fatalf("fewer than %d chat lines", n)
+	return nil
+}
+
+// SPEC 8.5: the stream sends nothing for what the page already shows (no
+// reset, which a polite log would read out again), then each new chat line
+// once, as the log script's "lines" events, escaped as text and numbered so a
+// reconnect can ask only for what is newer. Joins are not chat.
 func TestChatStream(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
 	g.join(id, "alice")
 	g.say(id, "alice", "before")
+	shown := g.waitChatLines(id, 1)
+	after := strconv.FormatUint(shown[len(shown)-1].Seq+1, 10)
 
 	anon := g.openChatEvents(id, false)
 	_ = anon.Body.Close()
@@ -227,44 +293,64 @@ func TestChatStream(t *testing.T) {
 		t.Errorf("anonymous stream: %d", anon.StatusCode)
 	}
 
-	deadline := time.Now().Add(10 * time.Second)
-	for !slices.ContainsFunc(g.ctrl.ChatLines(id), func(c game.ChatLine) bool { return c.Text == "before" }) && time.Now().Before(deadline) {
-		time.Sleep(20 * time.Millisecond)
-	}
-	resp := g.openChatEvents(id, true)
+	resp := g.openChatEventsAfter(id, after, "")
 	defer func() { _ = resp.Body.Close() }()
 	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
 		t.Fatalf("Content-Type %q", ct)
 	}
 	r := bufio.NewReader(resp.Body)
-	name, data, err := readEvent(t, r)
-	if err != nil || name != "chat" || !strings.Contains(data, `hx-swap-oob="innerHTML:#chat-lines"`) || !strings.Contains(data, ">before</span>") || !strings.Contains(data, `hx-swap-oob="delete:#chat-empty"`) {
-		t.Fatalf("first event %q %q, %v", name, data, err)
-	}
 	if err := g.fake.Join(game.ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
 	g.say(id, "alice", "<script>x</script>")
-	for {
-		name, data, err := readEvent(t, r)
-		if err != nil {
-			t.Fatalf("stream ended before the new line: %v", err)
-		}
-		if name != "chat" {
-			t.Fatalf("event %q", name)
-		}
-		if strings.Contains(data, "bob") {
-			t.Fatalf("a join was sent as chat: %s", data)
-		}
-		if strings.Contains(data, "script") {
-			if !strings.Contains(data, `hx-swap-oob="beforeend:#chat-lines"`) || strings.Contains(data, "<script>") || !strings.Contains(data, "&lt;script&gt;x&lt;/script&gt;") {
-				t.Errorf("new line: %s", data)
+	name, eventID, data, err := readChatEvent(t, r)
+	if err != nil {
+		t.Fatalf("stream ended before the new line: %v", err)
+	}
+	if name != "lines" || !strings.HasPrefix(data, `["`) || !strings.Contains(data, ` alice: \u003cscript\u003ex\u003c/script\u003e`) {
+		t.Errorf("first event %q %q", name, data)
+	}
+	if strings.Contains(data, "bob") || strings.Contains(data, "before") {
+		t.Errorf("the event holds a join or a line the page showed: %s", data)
+	}
+	lines := g.waitChatLines(id, 2)
+	if want := strconv.FormatUint(lines[len(lines)-1].Seq+1, 10); eventID != want {
+		t.Errorf("event id %q, want %q", eventID, want)
+	}
+}
+
+// A browser that reconnects names the last line it saw, and is sent only the
+// lines after it; a stream asked for nothing newer sends nothing.
+func TestChatStreamReconnect(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.startRunning()
+	g.join(id, "alice")
+	g.say(id, "alice", "one")
+	g.say(id, "alice", "two")
+	g.say(id, "alice", "three")
+	lines := g.waitChatLines(id, 3)
+	nano := func(i int) string { return strconv.FormatUint(lines[i].Seq+1, 10) }
+
+	for name, c := range map[string]struct {
+		after, lastID string
+		want, not     string
+	}{
+		"the page showed one":                    {after: nano(0), want: "two", not: "one"},
+		"the page showed nothing":                {after: "0", want: "one"},
+		"a number from before Foreman restarted": {after: "999999", want: "one"},
+		"the header wins over the page":          {after: nano(0), lastID: nano(1), want: "three", not: "two"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			resp := g.openChatEventsAfter(id, c.after, c.lastID)
+			defer func() { _ = resp.Body.Close() }()
+			evName, _, data, err := readChatEvent(t, bufio.NewReader(resp.Body))
+			if err != nil || evName != "lines" || !strings.Contains(data, " alice: "+c.want) {
+				t.Fatalf("event %q %q, %v", evName, data, err)
 			}
-			if strings.Contains(data, ">before<") {
-				t.Errorf("a line was sent twice: %s", data)
+			if c.not != "" && strings.Contains(data, " alice: "+c.not) {
+				t.Errorf("an old line was sent again: %s", data)
 			}
-			break
-		}
+		})
 	}
 }
 

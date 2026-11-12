@@ -101,6 +101,11 @@ func TestCheckChat(t *testing.T) {
 		{"no-break space then slash", " /c 1", ErrChatCommand},
 		{"zero-width space then slash", "\u200b /c 1", ErrChatCommand},
 		{"control character then slash", "\x07/c 1", ErrChatCommand},
+		{"byte order mark then slash", "\ufeff/c 1", ErrChatCommand},
+		{"ideographic space then slash", "\u3000/c 1", ErrChatCommand},
+		{"byte order mark after spaces then slash", " \ufeff /c 1", ErrChatCommand},
+		// A paragraph separator is a line break first, which is refused too.
+		{"paragraph separator then slash", "\u2029/c 1", ErrChatLines},
 		{"too long and a slash", "/" + strings.Repeat("x", MaxChatRunes), ErrChatTooLong},
 	}
 	for _, c := range cases {
@@ -152,6 +157,12 @@ func TestSendChatNeverRunsACommand(t *testing.T) {
 	for _, msg := range []string{"/c rcon.print('ran')", " /c rcon.print('ran')", "   /c rcon.print('ran')", "\t/c rcon.print('ran')", "\u200b/c rcon.print('ran')"} {
 		if err := r.c.SendChat(context.Background(), id, admin, msg); !errors.Is(err, ErrChatCommand) {
 			t.Errorf("SendChat(%q) = %v, want ErrChatCommand", msg, err)
+		}
+	}
+	// Other blanks the game might strip are refused too, whichever way.
+	for _, msg := range []string{"\ufeff/c rcon.print('ran')", "\u3000/c rcon.print('ran')", "\u2029/c rcon.print('ran')", "\u2028 /c rcon.print('ran')"} {
+		if err := r.c.SendChat(context.Background(), id, admin, msg); err == nil {
+			t.Errorf("SendChat(%q) was accepted", msg)
 		}
 	}
 	if got := r.commands(id)[before:]; len(got) != 0 {
@@ -232,4 +243,57 @@ func TestChatLinesFromAClient(t *testing.T) {
 	eventually(t, func() bool {
 		return slices.ContainsFunc(r.c.ChatLines(id), func(c ChatLine) bool { return c.Name == "alice" && c.Text == "anyone near the oil?" && !c.Server })
 	}, "alice's chat line in the history")
+}
+
+// A chat line's number is its place in the log, the same in the history and
+// in the feed after it, so a reader can ask for those after the last it saw.
+func TestChatLinesAreNumbered(t *testing.T) {
+	first := parseChatLines([]string{"x", "2026-11-12 15:00:00 [CHAT] a: one", "y", "2026-11-12 15:00:00 [CHAT] a: two"}, 10)
+	if len(first) != 2 || first[0].Seq != 11 || first[1].Seq != 13 {
+		t.Errorf("parseChatLines = %+v", first)
+	}
+
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Numbers")
+	r.start(id)
+	if err := r.game.Join(ContainerName(id), "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.game.Chat(ContainerName(id), "alice", "one"); err != nil {
+		t.Fatal(err)
+	}
+	var history []ChatLine
+	eventually(t, func() bool { history = r.c.ChatLines(id); return len(history) == 1 }, "the first chat line")
+
+	_, feed, stop := r.c.WatchChat(id)
+	defer stop()
+	next := feed.Next()
+	if next <= history[0].Seq {
+		t.Fatalf("the feed starts at %d, before the history's line %d", next, history[0].Seq)
+	}
+	if err := r.game.Join(ContainerName(id), "bob"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.game.Chat(ContainerName(id), "bob", "two"); err != nil {
+		t.Fatal(err)
+	}
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case up := <-feed.Updates:
+			c, ok := feed.Line(up)
+			if !ok {
+				continue
+			}
+			if c.Text != "two" || c.Seq <= history[0].Seq {
+				t.Errorf("fed %+v after history %+v", c, history[0])
+			}
+			if got := r.c.ChatLines(id); len(got) != 2 || got[1].Seq != c.Seq {
+				t.Errorf("history %+v disagrees with the feed's %d", got, c.Seq)
+			}
+			return
+		case <-timeout:
+			t.Fatal("no chat line in the feed")
+		}
+	}
 }

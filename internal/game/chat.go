@@ -80,6 +80,10 @@ type ChatLine struct {
 	// Server is set for a message the server said, such as one sent from
 	// Foreman or a stop warning.
 	Server bool
+	// Seq numbers the log line it came from, counting every line since the
+	// log began, so no two chat lines share one and a reader can ask for those
+	// after the last it saw. It is zero for a line read from a plain slice.
+	Seq uint64
 }
 
 // serverSpeaker is how the game names the server in a chat line.
@@ -119,10 +123,14 @@ func ParseChat(line string) (ChatLine, bool) {
 
 // ParseChatLines returns the chat in lines, oldest first, at most the
 // last ChatHistoryLines.
-func ParseChatLines(lines []string) []ChatLine {
+func ParseChatLines(lines []string) []ChatLine { return parseChatLines(lines, 0) }
+
+// parseChatLines is ParseChatLines for lines whose first is log line number first.
+func parseChatLines(lines []string, first uint64) []ChatLine {
 	var out []ChatLine
-	for _, l := range lines {
+	for i, l := range lines {
 		if c, ok := ParseChat(l); ok {
+			c.Seq = first + uint64(i)
 			out = append(out, c)
 		}
 	}
@@ -134,8 +142,45 @@ func ParseChatLines(lines []string) []ChatLine {
 
 // ChatLines returns the world's chat since its log began (SPEC 8.5).
 func (c *Controller) ChatLines(id string) []ChatLine {
-	return ParseChatLines(c.world(id).logs.Lines())
+	lines, _, stop := c.WatchChat(id)
+	stop()
+	return lines
 }
+
+// ChatFeed follows a world's log and numbers the chat lines in it.
+type ChatFeed struct {
+	// Updates are the log's changes after the history WatchChat returned.
+	Updates <-chan Update
+	next    uint64
+}
+
+// WatchChat returns the world's chat so far and a feed of the log after it.
+// The two are taken together, so a page sees every line once (see Watch).
+// Call the function to stop watching.
+func (c *Controller) WatchChat(id string) ([]ChatLine, *ChatFeed, func()) {
+	w := c.world(id)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	lines, added := w.logs.Lines(), w.logs.Mark()
+	ch, stop := w.hub.Subscribe()
+	return parseChatLines(lines, added-uint64(len(lines))), &ChatFeed{Updates: ch, next: added}, stop
+}
+
+// Line reads one update from Updates. It must be given every update, in order,
+// since each log line takes the next number.
+func (f *ChatFeed) Line(up Update) (ChatLine, bool) {
+	if up.Kind != UpdateLine {
+		return ChatLine{}, false
+	}
+	seq := f.next
+	f.next++
+	c, ok := ParseChat(up.Line)
+	c.Seq = seq
+	return c, ok
+}
+
+// Next is the number the next log line will take.
+func (f *ChatFeed) Next() uint64 { return f.next }
 
 // SendChat says text in the game's chat as the server (SPEC 8.5). It is
 // recorded in the audit log before it is sent, and not sent if it cannot be

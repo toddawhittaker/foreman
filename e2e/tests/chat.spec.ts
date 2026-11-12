@@ -1,5 +1,5 @@
 import { test, expect, checkPage, createAdmin, seedWorld, live, image21, pickLanguage, type Foreman, type FakeGame } from "./foreman.js";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -35,6 +35,8 @@ async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { running?: bool
 }
 
 const log = (page: Page) => page.getByRole("log", { name: "Chat messages" });
+const rows = (page: Page) => log(page).locator("pre > span");
+const atBottom = (box: Locator) => box.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight <= 4);
 const field = (page: Page) => page.getByLabel("Message", { exact: true });
 
 async function send(page: Page, message: string) {
@@ -54,31 +56,69 @@ test.describe("with the fake game", () => {
     await page.goto("/chat");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base\s+Running$/);
     await expect(page.getByRole("navigation", { name: "Server pages" }).getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
-    await expect(log(page).getByRole("listitem")).toHaveCount(1);
-    await expect(log(page).getByRole("listitem").first()).toContainText("alice");
-    await expect(log(page).getByRole("listitem").first()).toContainText("is anyone near the oil field?");
+    await expect(rows(page)).toHaveCount(1);
+    await expect(rows(page).first()).toContainText("alice: is anyone near the oil field?");
     await expect(page.getByText("No chat since the server started.")).toHaveCount(0);
     await checkPage(page);
 
     // A new line arrives without reloading the page.
-    await page.evaluate(() => ((window as unknown as { marker: number }).marker = 1));
+    // The first line is marked: it must still be the same node afterwards, so
+    // the polite log never reads the history out again (DESIGN 8.14).
+    await page.evaluate(() => {
+      (window as unknown as { marker: number }).marker = 1;
+      (document.querySelector(".log pre > span") as unknown as { marker: number }).marker = 1;
+    });
     await fakeGame!.call("/chat", { name: container, player: "alice", text: "<b>on my way</b>" });
     await expect(log(page)).toContainText("<b>on my way</b>", live);
     await expect(log(page).locator("b")).toHaveCount(0);
+    await expect(rows(page)).toHaveCount(2);
     expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(1);
+    expect(await rows(page).first().evaluate((el) => (el as unknown as { marker?: number }).marker)).toBe(1);
 
     // Sending: the field empties and keeps focus, the message arrives once
     // from the game's own echo, and it is recorded.
     await field(page).focus();
     await send(page, "welcome, all");
-    await expect(log(page).getByRole("listitem").filter({ hasText: "welcome, all" })).toHaveCount(1, live);
-    await expect(log(page).getByRole("listitem").filter({ hasText: "welcome, all" })).toContainText("Server");
+    await expect(rows(page).filter({ hasText: "welcome, all" })).toHaveCount(1, live);
+    await expect(rows(page).filter({ hasText: "welcome, all" })).toContainText("Server: welcome, all");
     await expect(field(page)).toHaveValue("");
     await expect(field(page)).toBeFocused();
     await expect(page.locator("#announcer")).toHaveText("Message sent");
     expect(await commands(fakeGame!)).toContain("welcome, all");
     expect(chatAudit(foreman)).toEqual([{ username: "admin", world_id: "base", detail: "welcome, all" }]);
     await checkPage(page);
+  });
+
+  test("the log follows new lines only while at the bottom, offers Jump to newest, and keeps 200 lines", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await fakeGame!.call("/join", { name: container, player: "alice" });
+    const box = log(page);
+    const jump = page.getByRole("button", { name: "Jump to newest" });
+    for (let i = 0; i < 40; i++) await fakeGame!.call("/chat", { name: container, player: "alice", text: `line ${i}` });
+    await expect(box).toContainText("line 39", live);
+    await expect.poll(() => atBottom(box)).toBe(true);
+    await expect(jump).toBeHidden();
+    await checkPage(page);
+
+    // Reading older lines: new ones arrive but the view stays where it is.
+    await field(page).focus();
+    await box.evaluate((el) => (el.scrollTop = 0));
+    await fakeGame!.call("/chat", { name: container, player: "alice", text: "late line" });
+    await expect(box).toContainText("late line", live);
+    expect(await box.evaluate((el) => el.scrollTop)).toBe(0);
+    await expect(jump).toBeVisible();
+    await expect(field(page)).toBeFocused();
+    await jump.click();
+    await expect.poll(() => atBottom(box)).toBe(true);
+    await expect(jump).toBeHidden();
+
+    // The page keeps at most the last 200 lines.
+    for (let i = 0; i < 205; i += 5) {
+      await Promise.all([0, 1, 2, 3, 4].map((k) => fakeGame!.call("/chat", { name: container, player: "alice", text: `bulk ${i + k}` })));
+    }
+    await expect(box).toContainText("bulk 204", live);
+    await expect(rows(page)).toHaveCount(200);
+    await expect(box).not.toContainText("line 0");
   });
 
   test("a message that starts with / is refused, however it is spaced, and never sent", async ({ page, foreman, fakeGame }) => {

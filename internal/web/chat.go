@@ -1,8 +1,10 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +30,11 @@ type ChatPage struct {
 	// Status is the game's state for the heading's badge, which follows the
 	// Server page's live facts (DESIGN 7.5).
 	Status game.Status
-	Lines  []game.ChatLine
+	// Rows are the chat lines as text, oldest first, for the log script.
+	Rows []string
+	// After numbers the last line in Rows, so the stream sends only what is
+	// newer; zero when there is none.
+	After uint64
 	// Message refills the field after a refusal.
 	Message      string
 	MessageError i18n.Msg
@@ -48,8 +54,36 @@ func (p ChatPage) Problems() []Problem {
 	return problems(Problem{"chat-message", p.MessageError})
 }
 
-func (p ChatPage) SendPath() string   { return chatPath(p.World.ID, "") }
-func (p ChatPage) EventsPath() string { return chatPath(p.World.ID, "/events") }
+func (p ChatPage) SendPath() string { return chatPath(p.World.ID, "") }
+func (p ChatPage) EventsPath() string {
+	return chatPath(p.World.ID, "/events") + "?" + afterParam + "=" + strconv.FormatUint(p.After, 10)
+}
+
+// MaxLines is how many chat lines the page keeps, for the script.
+func (ChatPage) MaxLines() int { return game.ChatHistoryLines }
+
+// afterParam on the stream's address names the last line the page was drawn
+// with.
+const afterParam = "after"
+
+// chatRow is one chat line as the log shows it: its time, who spoke and what
+// was said, all set as text. The server's name is translated; a player's is
+// shown as written.
+func chatRow(loc i18n.Locale, c game.ChatLine) string {
+	who := c.Name
+	if c.Server {
+		who = loc.T("chat.name.server")
+	}
+	row := who + ": " + c.Text
+	if !c.Time.IsZero() {
+		row = c.Time.UTC().Format("15:04 UTC") + " " + row
+	}
+	return row
+}
+
+// chatEventID numbers a line for the browser's Last-Event-ID: one more than
+// its place in the log, so that zero means no line.
+func chatEventID(c game.ChatLine) uint64 { return c.Seq + 1 }
 
 // ChatLimit is the longest message, for the field.
 func (ChatPage) ChatLimit() int { return game.MaxChatRunes }
@@ -82,8 +116,13 @@ func (s *server) chatRoutes() {
 	s.handleLong("GET "+PathChatEvents, s.requireUser(s.handleChatEvents))
 }
 
-func (s *server) chatPage(sum world.Summary) ChatPage {
-	return ChatPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID), Lines: s.game.ChatLines(sum.ID)}
+func (s *server) chatPage(loc i18n.Locale, sum world.Summary) ChatPage {
+	p := ChatPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID)}
+	for _, c := range s.game.ChatLines(sum.ID) {
+		p.Rows = append(p.Rows, chatRow(loc, c))
+		p.After = max(p.After, chatEventID(c))
+	}
+	return p
 }
 
 func (s *server) handleChat(w http.ResponseWriter, r *http.Request, u store.User) {
@@ -96,7 +135,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request, u store.User
 		s.page(w, r, http.StatusOK, u.Username, ChatPage{})
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, s.chatPage(sum))
+	s.page(w, r, http.StatusOK, u.Username, s.chatPage(localeOf(r), sum))
 }
 
 // chatRefusal returns the words for the message field's error when err is
@@ -143,8 +182,9 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 	if !ok {
 		return
 	}
+	loc := localeOf(r)
 	message := r.PostFormValue("message")
-	p := s.chatPage(sum)
+	p := s.chatPage(loc, sum)
 	p.Message = message
 	err := s.game.SendChat(r.Context(), sum.ID, actor(u), message)
 	if msg := chatRefusal(err); !msg.IsZero() {
@@ -175,11 +215,13 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 	s.respondChat(w, r, http.StatusOK, u.Username, p)
 }
 
-// handleChatEvents streams a world's chat as server-sent events (SPEC 8.5):
-// "chat" holds an out-of-band swap that sets the whole list on connecting and
-// appends the lines that follow, so a page that reconnects misses and repeats
-// nothing. The HTML is rendered by the template, which escapes every name and
-// message. The stream ends like the Console's does.
+// handleChatEvents streams a world's chat as server-sent events the Console's
+// log script reads (SPEC 8.5): "lines" holds a JSON array of new chat lines,
+// each set as text by the script. Each event is numbered with its newest
+// line, so a browser that reconnects names it in Last-Event-ID and is sent
+// only what came after. Nothing is sent for lines the page already shows,
+// because the log is a polite live region and would read them out again. The
+// stream ends like the Console's does.
 func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u store.User) {
 	sum, ok := s.findWorld(w, r, u)
 	if !ok {
@@ -190,15 +232,36 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 		return
 	}
 	defer s.runs.wg.Done()
+	// What the browser last saw: its own count after a reconnect, else what
+	// the page was drawn with.
+	after, _ := strconv.ParseUint(r.URL.Query().Get(afterParam), 10, 64)
+	if id, err := strconv.ParseUint(r.Header.Get("Last-Event-ID"), 10, 64); err == nil {
+		after = id
+	}
 	opened := s.now()
-	out, err := s.openStream(w, localeOf(r))
+	loc := localeOf(r)
+	out, err := s.openStream(w, loc)
 	if err != nil {
 		return
 	}
+	// Nothing may be sent at first, but the browser must see the stream open.
+	if out.rc.Flush() != nil {
+		return
+	}
 
-	view, updates, stop := s.game.Watch(sum.ID)
+	history, feed, stop := s.game.WatchChat(sum.ID)
 	defer stop()
-	if out.chat("chat-reset", game.ParseChatLines(view.Lines)) != nil {
+	// A number from before Foreman restarted is beyond the new log: start over.
+	if after > feed.Next() {
+		after = 0
+	}
+	var missed []game.ChatLine
+	for _, c := range history {
+		if chatEventID(c) > after {
+			missed = append(missed, c)
+		}
+	}
+	if len(missed) > 0 && out.chatLines(loc, missed) != nil {
 		return
 	}
 	beat := time.NewTicker(heartbeatEvery)
@@ -206,10 +269,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 	for {
 		var batch []game.ChatLine
 		take := func(up game.Update) {
-			if up.Kind != game.UpdateLine {
-				return
-			}
-			if c, ok := game.ParseChat(up.Line); ok {
+			if c, ok := feed.Line(up); ok {
 				batch = append(batch, c)
 			}
 		}
@@ -218,7 +278,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 			return
 		case <-s.runs.ctx.Done():
 			return
-		case up, open := <-updates:
+		case up, open := <-feed.Updates:
 			if !open {
 				return
 			}
@@ -226,7 +286,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 			// Whatever else is waiting goes in the same event.
 			for drained := false; !drained; {
 				select {
-				case up, open := <-updates:
+				case up, open := <-feed.Updates:
 					if !open {
 						return
 					}
@@ -235,7 +295,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 					drained = true
 				}
 			}
-			if len(batch) > 0 && out.chat("chat-add", batch) != nil {
+			if len(batch) > 0 && out.chatLines(loc, batch) != nil {
 				return
 			}
 		case <-beat.C:
@@ -249,13 +309,24 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 	}
 }
 
-// chat sends chat lines as one event holding a swap of the list.
-func (l *liveStream) chat(fragment string, lines []game.ChatLine) error {
-	var b strings.Builder
-	if err := l.render.Fragment(&b, l.loc, ChatPage{Lines: lines}, fragment); err != nil {
+// chatLines sends chat lines as one "lines" event numbered with the newest.
+func (l *liveStream) chatLines(loc i18n.Locale, lines []game.ChatLine) error {
+	rows := make([]string, len(lines))
+	var id uint64
+	for i, c := range lines {
+		rows[i] = chatRow(loc, c)
+		id = max(id, chatEventID(c))
+	}
+	data, err := json.Marshal(rows)
+	if err != nil {
 		return err
 	}
-	if err := l.event("chat", b.String()); err != nil {
+	if id != 0 {
+		if _, err := l.w.Write([]byte("id: " + strconv.FormatUint(id, 10) + "\n")); err != nil {
+			return err
+		}
+	}
+	if err := l.event("lines", string(data)); err != nil {
 		return err
 	}
 	return l.rc.Flush()
