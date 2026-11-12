@@ -23,6 +23,8 @@
   {{template "server-join" .JoinAddress}}
 </header>
 {{template "server-tabs" "overview"}}
+{{- /* One card holds what the server is doing and what to do about it; its top edge takes the state's colour. */}}
+<div class="card status-card">
 {{/* Controls and progress come first, so a phone shows them without scrolling (DESIGN 6). */}}
 <div sse-swap="control"{{if .FocusResult}} data-focus-result{{end}}>{{template "server-control" .}}</div>
 {{- /* The mods notice sits with the facts, as the game-network warning does (DESIGN 6, 7.3). It asks the mod portal after the page has opened, so it never slows the page (SPEC 9.3, DESIGN 8.11). */}}
@@ -33,11 +35,15 @@
 <div id="mods-notice" class="mods-notice" role="status" hx-get="{{.ModNoticePath}}" hx-trigger="{{.ModNoticeTrigger}}" hx-swap="innerHTML"></div>
 {{- end}}
 </div>
-<section class="panel" aria-labelledby="players-heading">
+</div>
+{{- /* Players, and beside them on a wide screen the live world's own pages. */}}
+<div class="server-grid">
+<section class="panel card" aria-labelledby="players-heading">
   <h2 id="players-heading">{{t "server.players.heading"}}</h2>
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
-<div class="links" sse-swap="active">{{template "server-active" .}}</div>
+<div class="links card shortcuts" sse-swap="active">{{template "server-active" .}}</div>
+</div>
 {{- end}}
 {{- end}}
 {{- end}}
@@ -264,7 +270,7 @@
 </div>
 {{- end}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload .CanSnapshot}}
-<div class="actions">
+<div class="actions server-actions">
   {{- if .OffersDownload}}
   <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary" id="act-pull">{{t "server.action.download"}}</button></form>
   {{- end}}
@@ -284,7 +290,7 @@
   <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanForceStop}}
-  {{- /* A plain link: it weighs less than Stop and Restart (DESIGN 6). */}}
+  {{- /* A link, not a button face: it opens a confirmation, and it is set apart at the row's end in the danger colour (DESIGN 6). */}}
   <a href="{{.ForceStopPath}}" id="act-force-stop">{{t "server.action.force_stop"}}</a>
   {{- end}}
 </div>

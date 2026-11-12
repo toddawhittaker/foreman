@@ -3,7 +3,7 @@
 {{define "content" -}}
 <h1>{{t "accounts.setup.title"}}</h1>
 {{with .Page}}
-<form method="post" action="{{setupPath}}" class="panel" novalidate>
+<form method="post" action="{{setupPath}}" class="panel gate" novalidate>
   {{template "summary" .Problems}}
   <p>{{t "accounts.setup.intro"}}</p>
   {{template "required-note"}}

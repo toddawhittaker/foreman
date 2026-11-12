@@ -133,7 +133,7 @@
     <a href="{{.ClonePath}}" class="button" id="act-clone">{{t "worlds.world.clone"}}</a>
     {{- end}}
     {{- if $refusal.IsZero}}
-    <a href="{{.DeletePath}}" class="button">{{t "worlds.world.delete.button"}}</a>
+    <a href="{{.DeletePath}}" class="button button--risky">{{t "worlds.world.delete.button"}}</a>
     {{- else if $.Page.DeleteWaitsOnServer}}
     <a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a>
     {{- end}}

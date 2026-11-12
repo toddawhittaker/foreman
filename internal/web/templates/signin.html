@@ -3,7 +3,7 @@
 {{define "content" -}}
 <h1>{{t "accounts.signin.title"}}</h1>
 {{with .Page}}
-<form method="post" action="{{signInPath}}" class="panel" novalidate>
+<form method="post" action="{{signInPath}}" class="panel gate" novalidate>
   {{- if .RateLimited}}
   <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
     <p><strong>{{t "common.error.label"}}</strong> {{msg .RateLimitMessage}}</p>

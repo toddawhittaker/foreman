@@ -239,10 +239,11 @@ type staticFile struct {
 
 // Only these types are served, so SHA256SUMS and anything else stays private.
 var staticTypes = map[string]string{
-	".css": "text/css; charset=utf-8",
-	".js":  "text/javascript; charset=utf-8",
-	".png": "image/png",
-	".ico": "image/x-icon",
+	".css":   "text/css; charset=utf-8",
+	".js":    "text/javascript; charset=utf-8",
+	".png":   "image/png",
+	".ico":   "image/x-icon",
+	".woff2": "font/woff2",
 }
 
 // Renderer holds the parsed templates, once per language, and the

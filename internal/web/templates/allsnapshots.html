@@ -23,7 +23,7 @@
   <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
   <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
   <div class="actions">
-    <button type="submit" class="button button--quiet" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
+    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
   </div>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
@@ -46,7 +46,7 @@
           <td role="cell">
             <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span>{{with snapReason .Snapshot}}{{.}}<br>{{end}}{{snapLabel .Snapshot}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
             <p class="hint">{{tHTML "worlds.allsnapshots.frees" "size" (nowrap (bytes .Frees))}}</p>
-            <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.restore_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--quiet" href="{{$.Page.DeletePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.delete_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
+            <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.restore_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky" href="{{$.Page.DeletePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.delete_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
           </td>
           <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}<br>{{if .TakenBy}}{{t "worlds.allsnapshots.by" "user" .TakenBy}}{{else}}{{t "worlds.allsnapshots.by_unknown"}}{{end}}</td>
           <td class="num" role="cell" data-label="{{t "worlds.snapshots.size_label"}}">{{bytes .DiskSize}}</td>
@@ -58,7 +58,7 @@
   {{- end}}
   {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
   <div class="actions">
-    <button type="submit" class="button">{{t "worlds.snapshots.delete_selected"}}</button>
+    <button type="submit" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
   </div>
 </form>
 {{- else}}
