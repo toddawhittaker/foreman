@@ -59,6 +59,32 @@
   </ul>
 </section>
 {{- end}}
+{{- if .Bans}}
+<section class="panel" aria-labelledby="bans-heading">
+  <h2 id="bans-heading">{{t "settings.preview.bans_heading"}}</h2>
+  <ul class="changes" role="list">
+    {{- range .Banned}}
+    <li><p><strong>{{t "settings.diff.banned" "name" .}}</strong></p></li>
+    {{- end}}
+    {{- range .Unbanned}}
+    <li><p><strong>{{t "settings.diff.unbanned" "name" .}}</strong></p></li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+{{- if .WhitelistChanged}}
+<section class="panel" aria-labelledby="whitelist-heading">
+  <h2 id="whitelist-heading">{{t "settings.preview.whitelist_heading"}}</h2>
+  <ul class="changes" role="list">
+    {{- range .WhitelistAdded}}
+    <li><p><strong>{{t "settings.diff.whitelist_added" "name" .}}</strong></p></li>
+    {{- end}}
+    {{- range .WhitelistRemoved}}
+    <li><p><strong>{{t "settings.diff.whitelist_removed" "name" .}}</strong></p></li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
 {{- if .Restart}}
 <div class="message message--note">
   <p><strong>{{t "common.label.note"}}</strong> {{t "settings.preview.restart"}}</p>
@@ -81,6 +107,12 @@
     {{- end}}
     {{- if .Admins}}
     <li>{{if .Running}}{{tHTML "settings.preview.step_admins_live" "file" (code .AdminFile)}}{{else}}{{tHTML "settings.preview.step_write" "file" (code .AdminFile)}}{{end}}</li>
+    {{- end}}
+    {{- if .Bans}}
+    <li>{{if .BansLive}}{{tHTML "settings.preview.step_list_live" "file" (code .BanFile)}}{{else}}{{tHTML "settings.preview.step_write" "file" (code .BanFile)}}{{end}}</li>
+    {{- end}}
+    {{- if .WhitelistChanged}}
+    <li>{{if .WhitelistLive}}{{tHTML "settings.preview.step_list_live" "file" (code .WhitelistFile)}}{{else}}{{tHTML "settings.preview.step_write" "file" (code .WhitelistFile)}}{{end}}</li>
     {{- end}}
   </ol>
   <p>{{t "settings.preview.undo"}}</p>

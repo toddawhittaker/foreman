@@ -70,7 +70,7 @@ func (c *Controller) prepareContainer(ctx context.Context, o *opRun) (launch, er
 	if err != nil {
 		return launch{}, err
 	}
-	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network, meta.NewMap))
+	cid, err := c.docker.CreateContainer(ctx, ContainerName(id), c.containerSpec(id, ref, network, meta))
 	if errors.Is(err, docker.ErrConflict) {
 		return launch{}, ErrForeign
 	}

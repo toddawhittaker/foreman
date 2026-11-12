@@ -1,8 +1,6 @@
 package gamesettings
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -42,30 +40,7 @@ func ValidateAdminName(name string) error {
 // Names are compared without regard to case, as the game does, so a later
 // repeat is dropped. A file that is not an array of valid names is refused
 // whole rather than partly read.
-func ParseAdminList(b []byte) ([]string, error) {
-	if len(b) > MaxBytes {
-		return nil, errors.New("admin list is too large")
-	}
-	if t := bytes.TrimSpace(b); len(t) == 0 || t[0] != '[' {
-		return nil, errors.New("admin list is not an array of names")
-	}
-	var raw []string
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return nil, errors.New("admin list is not an array of names")
-	}
-	seen := map[string]bool{}
-	names := []string{}
-	for _, n := range raw {
-		if err := ValidateAdminName(n); err != nil {
-			return nil, err
-		}
-		if k := strings.ToLower(n); !seen[k] {
-			seen[k] = true
-			names = append(names, n)
-		}
-	}
-	return names, nil
-}
+func ParseAdminList(b []byte) ([]string, error) { return parseNames(b, "admin list") }
 
 // AdminDiff returns who to promote (in next but not in current) and who to
 // demote (in current but not in next), comparing without regard to case.

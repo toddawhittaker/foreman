@@ -81,5 +81,6 @@
   "common.menu.language": "{language}: menu języka",
   "common.menu.notifications": "Powiadomienia",
   "common.menu.schedule": "Harmonogram restartów",
+  "common.settings.label": "Ustawienia Foremana",
   "common.countdown.none_name": "Bez ostrzeżenia: ustaw odliczanie na 0 sekund"
 }

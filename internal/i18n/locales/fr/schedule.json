@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "Enregistré. Le prochain redémarrage est {next}.",
+  "schedule.done.off": "Enregistré. Aucun redémarrage n'est prévu.",
+  "schedule.enabled.label": "Redémarrer le monde actif chaque jour",
+  "schedule.how.heading": "Fonctionnement",
+  "schedule.how.join": "Si quelqu'un se connecte pendant l'avertissement, le redémarrage s'arrête, la personne en est informée dans le jeu et Foreman attend de nouveau.",
+  "schedule.how.never": "Le planning ne démarre jamais un serveur arrêté ou planté, et un redémarrage manqué pendant que Foreman ne tournait pas n'est pas rattrapé.",
+  "schedule.how.skip": "Si des joueurs sont encore en ligne à la fin du délai d'attente, le redémarrage de ce jour est annulé.",
+  "schedule.how.wait": "À l'heure choisie, Foreman attend que plus personne ne soit en ligne.",
+  "schedule.how.warn": "Il redémarre ensuite le serveur après avoir averti les joueurs dans le jeu pendant {seconds} secondes.",
+  "schedule.limit.error": "Saisissez un nombre entier d'heures de 0 à {max}.",
+  "schedule.limit.hint": "En heures, de 0 à {max}. Avec 0, le redémarrage est annulé tout de suite si quelqu'un est en ligne.",
+  "schedule.limit.label": "Attendre le départ des joueurs pendant au plus",
+  "schedule.save": "Enregistrer le planning",
+  "schedule.state.off": "Aucun redémarrage n'est prévu.",
+  "schedule.state.on": "Foreman redémarre le monde actif chaque jour à {time} ({zone}). Prochain redémarrage : {next}.",
+  "schedule.time.error": "Saisissez une heure, par exemple 04:00.",
+  "schedule.time.label": "Heure",
+  "schedule.zone.error": "Choisissez un fuseau horaire dans la liste.",
+  "schedule.zone.label": "Fuseau horaire"
+}

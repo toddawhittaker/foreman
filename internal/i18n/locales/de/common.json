@@ -77,5 +77,6 @@
   "common.menu.language": "{language}: Sprachmenü",
   "common.menu.notifications": "Benachrichtigungen",
   "common.menu.schedule": "Neustart-Zeitplan",
+  "common.settings.label": "Foreman-Einstellungen",
   "common.countdown.none_name": "Keine Warnung: Countdown auf 0 Sekunden setzen"
 }
