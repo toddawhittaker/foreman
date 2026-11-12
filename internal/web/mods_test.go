@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1009,5 +1010,42 @@ func TestModStatusCountsCurrentMods(t *testing.T) {
 	}
 	if n := currentCount(nil, nil); n != 0 {
 		t.Errorf("a status that read nothing counts %d, want 0", n)
+	}
+}
+
+// SPEC 9.4, 10.3: a Mods tab that shows the action's result does not also
+// reload its activity block, which would refresh the page away from the
+// result. The action can end between reading the result and reading whether
+// it runs, so this repeats the race many times.
+func TestModsTabWithTheResultDoesNotReload(t *testing.T) {
+	g := newModsRig(t, true)
+	g.world20("Active")
+	id := g.world20("Other", "alpha_1.0.0")
+	head := http.Header{"Cookie": {g.cookie.String()}}
+	kinds := []mods.Kind{mods.KindDisable, mods.KindEnable}
+	for i := range 100 {
+		_, body := g.getStatus(kindPlanPath(id, kinds[i%2], "alpha"))
+		g.wantRedirectTo(modsPath(id)+ownResultQuery, g.post(modsPath(id)+"/plan", planValues(t, body)))
+		var wg sync.WaitGroup
+		for range 16 {
+			wg.Go(func() {
+				deadline := time.Now().Add(10 * time.Second)
+				for time.Now().Before(deadline) {
+					page := g.do(http.MethodGet, modsPath(id)+ownResultQuery, nil, head).body
+					if !strings.Contains(page, `id="world-result"`) {
+						continue
+					}
+					if strings.Contains(page, `hx-trigger="every`) {
+						t.Errorf("the tab shows the result and also reloads its activity block:\n%s", page)
+					}
+					return
+				}
+				t.Error("the result never showed")
+			})
+		}
+		wg.Wait()
+		if t.Failed() {
+			return
+		}
 	}
 }
