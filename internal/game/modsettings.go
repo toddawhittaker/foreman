@@ -28,9 +28,6 @@ const (
 	// ModSettingsMemory is the container's memory limit in bytes, with no
 	// swap.
 	ModSettingsMemory = 4 << 30
-	// maxDefaultsBytes is the most bytes read of the mod-settings.dat the
-	// run writes (SPEC 14.6).
-	maxDefaultsBytes = 1 << 20
 	// modSettingsSeed is the seed the run's map is created with; the map is
 	// thrown away.
 	modSettingsSeed = 1
@@ -327,7 +324,7 @@ func (c *Controller) makeModSettingsDir(base *os.Root, id, gameVersion string) (
 	if err := c.worlds.LinkModsInto(id, filepath.Join(c.previewPath(), name)); err != nil {
 		return fail(fmt.Errorf("could not put the world's mods in the work folder: %w", err))
 	}
-	locale, err = c.worlds.ModLocaleFiles(id, factorioLocaleCodes())
+	locale, err = c.worlds.ModLocaleFiles(id)
 	if err != nil {
 		// Locale text is decoration: the page shows setting names instead.
 		c.log.Warn("could not read the mods' locale files", "world", id, "error", err)
@@ -354,7 +351,7 @@ func readModSettingsOutput(base *os.Root, dir string) (defs, defaults []byte, er
 	if info, err := root.Lstat(mods); err != nil || !info.IsDir() {
 		return nil, nil, fmt.Errorf("%w: the game left no mods folder", ErrModSettingsBadOutput)
 	}
-	defaults, err = world.ReadSmallFile(root, mods+"/"+gameenv.ModSettingsDefaultsFile, maxDefaultsBytes)
+	defaults, err = world.ReadSmallFile(root, mods+"/"+world.ModSettingsFile, world.MaxModSettings)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%w: no usable defaults file: %w", ErrModSettingsBadOutput, err)
 	}
@@ -379,17 +376,6 @@ func modSettingsError(err error) error {
 		return fmt.Errorf("%w: %w", ErrModSettingsBadOutput, err)
 	}
 	return err
-}
-
-// factorioLocaleCodes is Factorio's locale code of each of Foreman's
-// languages, sorted.
-func factorioLocaleCodes() []string {
-	codes := make([]string, 0, len(modsettings.FactorioLocales))
-	for _, code := range modsettings.FactorioLocales {
-		codes = append(codes, code)
-	}
-	sort.Strings(codes)
-	return codes
 }
 
 // modSettingsLocale builds the settings' names and descriptions in Foreman's

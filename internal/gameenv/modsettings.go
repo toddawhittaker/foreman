@@ -1,5 +1,3 @@
-// Contract stub: task T1 of the mod settings epic owns this file.
-
 package gameenv
 
 // Names a mod settings definitions run shares with the fake game. It is a
@@ -12,7 +10,4 @@ const (
 	// ModSettingsDefsFile is the JSON of definitions the run leaves in the
 	// work folder.
 	ModSettingsDefsFile = "mod-settings-defs.json"
-	// ModSettingsDefaultsFile is the mod-settings.dat holding every default
-	// that the game writes during the run.
-	ModSettingsDefaultsFile = "mod-settings.dat"
 )

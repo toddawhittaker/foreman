@@ -373,9 +373,9 @@ func putZip(t *testing.T, dir, file, content string) {
 	writeFile(t, filepath.Join(dir, ModsDir, file), content)
 }
 
-func localeFiles(t *testing.T, m *Manager, id string, codes ...string) map[string]map[string][][]byte {
+func localeFiles(t *testing.T, m *Manager, id string) map[string]map[string][][]byte {
 	t.Helper()
-	got, err := m.ModLocaleFiles(id, codes)
+	got, err := m.ModLocaleFiles(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,7 +388,7 @@ func TestModLocaleFilesReadsZipsWithEitherTopFolder(t *testing.T) {
 		"info.json":           `{"name":"alpha"}`,
 		"locale/en/alpha.cfg": "en alpha",
 		"locale/de/alpha.cfg": "de alpha",
-		"locale/fr/alpha.cfg": "fr alpha",
+		"locale/ja/alpha.cfg": "ja alpha",
 		"locale/en/notes.txt": "not a cfg",
 		"locale/en/sub/b.cfg": "too deep",
 	}))
@@ -398,7 +398,7 @@ func TestModLocaleFilesReadsZipsWithEitherTopFolder(t *testing.T) {
 	}))
 	putModList(t, dir, "base", "alpha", "beta")
 
-	got := localeFiles(t, m, id, "en", "de")
+	got := localeFiles(t, m, id)
 	if len(got) != 2 {
 		t.Fatalf("got mods %v", got)
 	}
@@ -406,15 +406,15 @@ func TestModLocaleFilesReadsZipsWithEitherTopFolder(t *testing.T) {
 		len(got["alpha"]["de"]) != 1 || string(got["alpha"]["de"][0]) != "de alpha" {
 		t.Fatalf("alpha: %v", got["alpha"])
 	}
-	if _, ok := got["alpha"]["fr"]; ok {
-		t.Fatal("a language that was not asked for was returned")
+	if _, ok := got["alpha"]["ja"]; ok {
+		t.Fatal("a language Foreman does not have was returned")
 	}
 	if len(got["beta"]["en"]) != 2 || string(got["beta"]["en"][0]) != "en beta 1" || string(got["beta"]["en"][1]) != "en beta 2" {
 		t.Fatalf("beta: %q", got["beta"]["en"])
 	}
 }
 
-func TestModLocaleFilesSkipsBuiltinDisabledAndUnsafeCodes(t *testing.T) {
+func TestModLocaleFilesSkipsBuiltinAndDisabled(t *testing.T) {
 	m, id, dir := checkWorld(t, "2.0.77", true)
 	// A zip named like a built-in mod is never read as that mod.
 	putZip(t, dir, "base_2.0.77.zip", cfgZip(t, "base", map[string]string{"locale/en/x.cfg": "base"}))
@@ -422,7 +422,7 @@ func TestModLocaleFilesSkipsBuiltinDisabledAndUnsafeCodes(t *testing.T) {
 	putZip(t, dir, "on_1.0.0.zip", cfgZip(t, "on", map[string]string{"locale/en/x.cfg": "on", "locale/../x.cfg": "bad"}))
 	putModListOff(t, dir, []string{"base", "on"}, "off")
 
-	got := localeFiles(t, m, id, "en", "../en", "", "e/n")
+	got := localeFiles(t, m, id)
 	if len(got) != 1 || len(got["on"]["en"]) != 1 {
 		t.Fatalf("got %v", got)
 	}
@@ -431,7 +431,7 @@ func TestModLocaleFilesSkipsBuiltinDisabledAndUnsafeCodes(t *testing.T) {
 func TestModLocaleFilesMissingModListEnablesEveryMod(t *testing.T) {
 	m, id, dir := checkWorld(t, "2.0.77", false)
 	putZip(t, dir, "on_1.0.0.zip", cfgZip(t, "on", map[string]string{"locale/en/x.cfg": "on"}))
-	if got := localeFiles(t, m, id, "en"); len(got["on"]["en"]) != 1 {
+	if got := localeFiles(t, m, id); len(got["on"]["en"]) != 1 {
 		t.Fatalf("got %v", got)
 	}
 }
@@ -440,7 +440,7 @@ func TestModLocaleFilesTakesTheNewestZipOfAMod(t *testing.T) {
 	m, id, dir := checkWorld(t, "2.0.77", false)
 	putZip(t, dir, "mod_1.0.0.zip", cfgZip(t, "mod_1.0.0", map[string]string{"locale/en/x.cfg": "old"}))
 	putZip(t, dir, "mod_1.10.0.zip", cfgZip(t, "mod_1.10.0", map[string]string{"locale/en/x.cfg": "new"}))
-	got := localeFiles(t, m, id, "en")
+	got := localeFiles(t, m, id)
 	if len(got["mod"]["en"]) != 1 || string(got["mod"]["en"][0]) != "new" {
 		t.Fatalf("got %q", got["mod"]["en"])
 	}
@@ -457,7 +457,7 @@ func TestModLocaleFilesReadsFolderMods(t *testing.T) {
 	if err := os.Symlink("/etc/hostname", filepath.Join(d, "link.cfg")); err != nil {
 		t.Fatal(err)
 	}
-	got := localeFiles(t, m, id, "en")
+	got := localeFiles(t, m, id)
 	if len(got["dev"]["en"]) != 1 || string(got["dev"]["en"][0]) != "folder en" {
 		t.Fatalf("got %q", got["dev"]["en"])
 	}
@@ -477,7 +477,7 @@ func TestModLocaleFilesFolderModLocaleLinkIsNotFollowed(t *testing.T) {
 	if err := os.Symlink(filepath.Join(dir, "elsewhere"), filepath.Join(d, "locale")); err != nil {
 		t.Fatal(err)
 	}
-	if got := localeFiles(t, m, id, "en"); len(got) != 0 {
+	if got := localeFiles(t, m, id); len(got) != 0 {
 		t.Fatalf("followed a link: %v", got)
 	}
 }
@@ -491,7 +491,7 @@ func TestModLocaleFilesLimits(t *testing.T) {
 			"locale/en/b-over.cfg": big(modsettings.MaxCfgFileBytes + 1),
 			"locale/en/c-ok.cfg":   "small",
 		}))
-		got := localeFiles(t, m, id, "en")["mod"]["en"]
+		got := localeFiles(t, m, id)["mod"]["en"]
 		if len(got) != 2 || len(got[0]) != modsettings.MaxCfgFileBytes || string(got[1]) != "small" {
 			t.Fatalf("got %d files", len(got))
 		}
@@ -504,7 +504,7 @@ func TestModLocaleFilesLimits(t *testing.T) {
 		}
 		writeFile(t, filepath.Join(d, "big.cfg"), big(modsettings.MaxCfgFileBytes+1))
 		writeFile(t, filepath.Join(d, "ok.cfg"), "ok")
-		got := localeFiles(t, m, id, "en")["dev"]["en"]
+		got := localeFiles(t, m, id)["dev"]["en"]
 		if len(got) != 1 || string(got[0]) != "ok" {
 			t.Fatalf("got %d files", len(got))
 		}
@@ -521,7 +521,7 @@ func TestModLocaleFilesLimits(t *testing.T) {
 		}
 		putZip(t, dir, "amod_1.0.0.zip", cfgZip(t, "amod", files()))
 		putZip(t, dir, "bmod_1.0.0.zip", cfgZip(t, "bmod", files()))
-		got := localeFiles(t, m, id, "en", "de")
+		got := localeFiles(t, m, id)
 		total := 0
 		for _, files := range got {
 			for _, b := range files["en"] {
@@ -548,7 +548,7 @@ func TestModLocaleFilesLimits(t *testing.T) {
 		f["locale/en/b-over.cfg"] = big(1)
 		f["locale/en/c-more.cfg"] = ""
 		putZip(t, dir, "mod_1.0.0.zip", cfgZip(t, "mod", f))
-		if got := localeFiles(t, m, id, "en")["mod"]["en"]; len(got) != 8 {
+		if got := localeFiles(t, m, id)["mod"]["en"]; len(got) != 8 {
 			t.Fatalf("got %d files", len(got))
 		}
 	})
@@ -559,7 +559,7 @@ func TestModLocaleFilesBrokenZipSkipsOnlyThatMod(t *testing.T) {
 	putZip(t, dir, "broken_1.0.0.zip", "this is not a zip")
 	putZip(t, dir, "empty_1.0.0.zip", "")
 	putZip(t, dir, "good_1.0.0.zip", cfgZip(t, "good", map[string]string{"locale/en/x.cfg": "good"}))
-	got := localeFiles(t, m, id, "en")
+	got := localeFiles(t, m, id)
 	if len(got) != 1 || len(got["good"]["en"]) != 1 {
 		t.Fatalf("got %v", got)
 	}
@@ -572,14 +572,14 @@ func TestModLocaleFilesSkipsAZipWithTooManyEntries(t *testing.T) {
 		files[fmt.Sprintf("pad/%05d", i)] = ""
 	}
 	putZip(t, dir, "many_1.0.0.zip", cfgZip(t, "many", files))
-	if got := localeFiles(t, m, id, "en"); len(got) != 0 {
+	if got := localeFiles(t, m, id); len(got) != 0 {
 		t.Fatalf("read a zip over the entry limit: %v", got)
 	}
 }
 
 func TestModLocaleFilesUnknownWorld(t *testing.T) {
 	m, _ := newTestManager(t)
-	if _, err := m.ModLocaleFiles("nope", []string{"en"}); err == nil {
+	if _, err := m.ModLocaleFiles("nope"); err == nil {
 		t.Fatal("want an error")
 	}
 }
@@ -723,7 +723,7 @@ func TestLinkModsIntoRefusesAModsFolderLinkedToTheWorld(t *testing.T) {
 	if exists(filepath.Join(dst, ModsDir, "config")) || exists(filepath.Join(dst, ModsDir, "world-secret.txt")) {
 		t.Fatal("the world's own files reached the work folder")
 	}
-	if _, err := m.ModLocaleFiles(id, []string{"en"}); err == nil {
+	if _, err := m.ModLocaleFiles(id); err == nil {
 		t.Fatal("want an error from ModLocaleFiles too")
 	}
 }
@@ -792,7 +792,7 @@ func TestModLocaleFilesReadsOnlyFactorioLocales(t *testing.T) {
 		"locale/ja/x.cfg":      "japanese",
 		"locale/zh-Hans/x.cfg": "foreman code, not factorio's",
 	}))
-	got := localeFiles(t, m, id, "ja", "zh-Hans", "zh-CN", "zh-CN", "es-ES")["mod"]
+	got := localeFiles(t, m, id)["mod"]
 	if len(got) != 2 || string(got["zh-CN"][0]) != "chinese" || string(got["es-ES"][0]) != "spanish" {
 		t.Fatalf("got %v", got)
 	}

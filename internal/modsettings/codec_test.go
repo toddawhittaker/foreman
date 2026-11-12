@@ -631,3 +631,70 @@ func FuzzDecode(f *testing.F) {
 		_, _ = a.Encode()
 	})
 }
+
+// worldWithStringValue is a file whose startup fm-sta-bool holds a string, as
+// after a mod changed the setting's type from string to bool (SPEC 9.6).
+func worldWithStringValue() []byte {
+	b := []byte{2, 0, 1, 0, 24, 0, 1, 0, 0}
+	b = append(b, 5, 0, 1, 0, 0, 0) // root dict, one group
+	b = append(b, 0, 7)
+	b = append(b, "startup"...)
+	b = append(b, 5, 0, 1, 0, 0, 0) // group, one entry
+	b = append(b, 0, 11)
+	b = append(b, "fm-sta-bool"...)
+	b = append(b, 5, 0, 1, 0, 0, 0) // entry dict, one key
+	b = append(b, 0, 5)
+	b = append(b, "value"...)
+	b = append(b, 3, 0, 0, 3)
+	b = append(b, "old"...)
+	return b
+}
+
+func TestSetMismatchedStoredValueResetsToDefaultsShape(t *testing.T) {
+	defaults, err := Decode(readGame(t, "game-2.1.24.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := Decode(worldWithStringValue())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Set(Startup, "fm-sta-bool", Value{Type: TypeBool, Bool: true}, defaults); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := f.Encode()
+	g, err := Decode(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok, err := g.Get(Startup, "fm-sta-bool"); err != nil || !ok || v != (Value{Type: TypeBool, Bool: true}) {
+		t.Fatalf("got %+v %v %v", v, ok, err)
+	}
+	// Nothing else was added: still one entry in the one group.
+	if n := len(g.root.child("startup").children("fm-sta-bool")); n != 1 {
+		t.Fatalf("%d entries for the setting", n)
+	}
+	// A value that fits neither the stored node nor the defaults' is refused.
+	h, _ := Decode(worldWithStringValue())
+	in, _ := h.Encode()
+	if err := h.Set(Startup, "fm-sta-bool", Value{Type: TypeInt, Int: 1}, defaults); err == nil {
+		t.Fatal("an int was accepted for a setting stored as string and held as bool")
+	}
+	if out, _ := h.Encode(); !bytes.Equal(in, out) {
+		t.Fatal("a refused Set changed the file")
+	}
+}
+
+func TestSetMismatchedStoredValueNeedsDefaults(t *testing.T) {
+	other, _ := Decode([]byte{2, 0, 1, 0, 24, 0, 1, 0, 0, 5, 0, 0, 0, 0, 0})
+	for name, d := range map[string]*File{"nil defaults": nil, "defaults lacking the entry": other} {
+		f, _ := Decode(worldWithStringValue())
+		before, _ := f.Encode()
+		if err := f.Set(Startup, "fm-sta-bool", Value{Type: TypeBool, Bool: true}, d); err == nil {
+			t.Errorf("%s: a mismatched value was replaced without a defaults node", name)
+		}
+		if after, _ := f.Encode(); !bytes.Equal(before, after) {
+			t.Errorf("%s: failed Set changed the file", name)
+		}
+	}
+}

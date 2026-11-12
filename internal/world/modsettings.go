@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"slices"
@@ -61,17 +62,6 @@ func (b *linkBudget) take(size int64) error {
 		return ErrModsTooBig
 	}
 	return nil
-}
-
-// isFactorioLocale reports whether code is one of the locale folders
-// Foreman reads. Any other code is never used to build a path.
-func isFactorioLocale(code string) bool {
-	for _, c := range modsettings.FactorioLocales {
-		if c == code {
-			return true
-		}
-	}
-	return false
 }
 
 // linkInto hard-links a file between worlds' roots. Tests replace it to fake
@@ -277,11 +267,11 @@ func copyModFolder(src, out *os.Root, dir string, depth int, budget *linkBudget)
 }
 
 // ModLocaleFiles returns the raw locale .cfg files of each enabled mod,
-// keyed by mod name, then Factorio locale code, for the codes given. It
-// enforces the per-file and per-language limits in package modsettings.
+// keyed by mod name, then Factorio locale code, for every language in
+// modsettings.FactorioLocales. It enforces the per-file and per-language limits in package modsettings.
 // Built-in mods have no zip and are skipped. A mod whose zip or folder
 // cannot be read is left out; it never fails the call.
-func (m *Manager) ModLocaleFiles(id string, codes []string) (map[string]map[string][][]byte, error) {
+func (m *Manager) ModLocaleFiles(id string) (map[string]map[string][][]byte, error) {
 	root, err := m.OpenWorld(id)
 	if err != nil {
 		return nil, err
@@ -295,12 +285,8 @@ func (m *Manager) ModLocaleFiles(id string, codes []string) (map[string]map[stri
 	if err != nil {
 		return nil, err
 	}
-	var want []string
-	for _, c := range codes {
-		if isFactorioLocale(c) && !slices.Contains(want, c) {
-			want = append(want, c)
-		}
-	}
+	// Only these codes are ever used to build a path.
+	want := slices.Sorted(maps.Values(modsettings.FactorioLocales))
 
 	entries, err := readModsDir(root)
 	if err != nil {

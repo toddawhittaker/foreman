@@ -1,6 +1,7 @@
 package modsettings
 
 import (
+	"maps"
 	"strings"
 	"testing"
 )
@@ -65,21 +66,10 @@ func TestParseLocaleCfgLimit(t *testing.T) {
 	}
 }
 
-func TestFactorioLocale(t *testing.T) {
+func TestFactorioLocales(t *testing.T) {
 	want := map[string]string{"en": "en", "de": "de", "ru": "ru", "zh-Hans": "zh-CN", "fr": "fr", "es": "es-ES", "pl": "pl", "cs": "cs"}
-	if len(FactorioLocales) != len(want) {
-		t.Errorf("%d locales", len(FactorioLocales))
-	}
-	for lang, code := range want {
-		if got, ok := FactorioLocale(lang); !ok || got != code {
-			t.Errorf("%s: %q %v", lang, got, ok)
-		}
-	}
-	if _, ok := FactorioLocale("it"); ok {
-		t.Error("it is not a Foreman language")
-	}
-	if _, ok := FactorioLocale(""); ok {
-		t.Error("empty language accepted")
+	if !maps.Equal(FactorioLocales, want) {
+		t.Errorf("got %v", FactorioLocales)
 	}
 }
 

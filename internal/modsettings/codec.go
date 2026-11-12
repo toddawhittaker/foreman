@@ -466,16 +466,23 @@ func (f *File) Set(setting SettingType, name string, v Value, defaults *File) er
 		return err
 	}
 	if len(values) > 0 {
-		// Try every copy on a clone first, so a failure leaves them all as they were.
-		for _, val := range values {
-			if err := setNode(val.clone(), v); err != nil {
+		// Build every new node on a clone first, so a failure leaves them all as they were.
+		// A copy of another type than the setting's (a mod changed its type) is
+		// replaced by the defaults file's node, as the game resets it.
+		next := make([]*node, len(values))
+		for i, val := range values {
+			c := val.clone()
+			err := setNode(c, v)
+			if errors.Is(err, errMismatch) {
+				c, err = resetNode(defaults, setting, name, v)
+			}
+			if err != nil {
 				return err
 			}
+			next[i] = c
 		}
-		for _, val := range values {
-			if err := setNode(val, v); err != nil {
-				return err
-			}
+		for i, val := range values {
+			*val = *next[i]
 		}
 		return nil
 	}
@@ -498,6 +505,20 @@ func (f *File) Set(setting SettingType, name string, v Value, defaults *File) er
 	group.keys = append(group.keys, newPstr(name))
 	group.vals = append(group.vals, entry)
 	return nil
+}
+
+// resetNode is the defaults file's value node for a setting with v set, for
+// a stored value of another type than the setting's.
+func resetNode(defaults *File, setting SettingType, name string, v Value) (*node, error) {
+	d := defaults.group(setting).child(name)
+	if d == nil || d.typ != nodeDict || d.child("value") == nil {
+		return nil, errMismatch
+	}
+	c := d.child("value").clone()
+	if err := setNode(c, v); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (f *File) group(setting SettingType) *node {

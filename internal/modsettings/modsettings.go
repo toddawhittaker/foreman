@@ -108,10 +108,3 @@ var FactorioLocales = map[string]string{
 	"pl":      "pl",
 	"cs":      "cs",
 }
-
-// FactorioLocale returns Factorio's locale code for a Foreman language code,
-// and false for a language Foreman does not have.
-func FactorioLocale(lang string) (string, bool) {
-	code, ok := FactorioLocales[lang]
-	return code, ok
-}

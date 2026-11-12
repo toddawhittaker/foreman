@@ -110,11 +110,11 @@ func TestModSettingsRunWritesBothFiles(t *testing.T) {
 		t.Errorf("fm-sta-weird is %v", w)
 	}
 
-	got, err := os.ReadFile(filepath.Join(r.world, world.ModsDir, gameenv.ModSettingsDefaultsFile)) //nolint:gosec // a test's own temp folder
+	got, err := os.ReadFile(filepath.Join(r.world, world.ModsDir, world.ModSettingsFile)) //nolint:gosec // a test's own temp folder
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := os.ReadFile("../modsettings/testdata/game-2.1.24.dat")
+	want, err := os.ReadFile("../modsettings/testdata/game-2.0.77.dat")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,6 @@ func TestModSettingsRunFailureModes(t *testing.T) {
 		{fakegame.PreviewOOM, "exited", 137, true},
 		{fakegame.PreviewHangs, "running", 0, false}, // the run's time limit stops it
 		{fakegame.PreviewFails, "exited", 1, false},
-		{fakegame.PreviewBroken, "exited", 0, false},
 	} {
 		t.Run(string(tc.mode), func(t *testing.T) {
 			r := newRig(t, fakegame.Config{})
@@ -148,29 +147,10 @@ func TestModSettingsRunFailureModes(t *testing.T) {
 			if st.Status != tc.status || st.ExitCode != tc.code || st.OOMKilled != tc.oom {
 				t.Errorf("state %+v, want %s with %d (oom %v)", st, tc.status, tc.code, tc.oom)
 			}
-			b, err := os.ReadFile(filepath.Join(r.world, gameenv.ModSettingsDefsFile)) //nolint:gosec // a test's own temp folder
-			if tc.mode == fakegame.PreviewBroken {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if json.Valid(b) {
-					t.Errorf("the broken definitions are valid JSON: %s", b)
-				}
-			} else if err == nil {
+			if _, err := os.Stat(filepath.Join(r.world, gameenv.ModSettingsDefsFile)); err == nil {
 				t.Errorf("a %s run wrote definitions", tc.mode)
 			}
 		})
-	}
-}
-
-// The broken switch leaves other kinds of preview run alone.
-func TestBrokenModeOnlyBreaksModSettingsRuns(t *testing.T) {
-	r := newRig(t, fakegame.Config{})
-	if err := r.game.SetPreviewMode(fakegame.PreviewBroken); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := resourceRun(t, r, 3, "nauvis"); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -215,7 +195,7 @@ func valueNode(t *testing.T, typ string, v any) []byte {
 func TestCannedDefinitionsMatchTheDefaultsFile(t *testing.T) {
 	r := newRig(t, fakegame.Config{})
 	modSettingsRun(t, r)
-	file, err := os.ReadFile(filepath.Join(r.world, world.ModsDir, gameenv.ModSettingsDefaultsFile)) //nolint:gosec // a test's own temp folder
+	file, err := os.ReadFile(filepath.Join(r.world, world.ModsDir, world.ModSettingsFile)) //nolint:gosec // a test's own temp folder
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -119,7 +119,7 @@ type ModSettingsPage struct {
 	Startup []SettingGroup
 	Map     []SettingGroup
 	// NewMap says the world has no save yet, so its map settings seed the
-	// new map and are edited here (plan R2).
+	// new map and are edited here (SPEC 9.6).
 	NewMap  bool
 	PerUser bool
 	// HasFile says the world has a mod-settings.dat to download.
@@ -291,8 +291,7 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 	if err != nil {
 		return p, st, err
 	}
-	sum256 := sha256.Sum256(current)
-	p.Seen = hex.EncodeToString(sum256[:])
+	p.Seen = world.SettingsHash(current)
 	// Only a missing entry reads the defaults; a bad defaults file leaves
 	// the definition's own default.
 	st.defaults, _ = modsettings.Decode(defs.Defaults)
@@ -311,7 +310,7 @@ func (s *server) modSettingsPage(r *http.Request, sum world.Summary) (ModSetting
 }
 
 // makesNewMap reports whether the world's next start makes its map: it has
-// new_map set and no save (SPEC 5.6, plan R2).
+// new_map set and no save (SPEC 5.6, 9.6).
 func (s *server) makesNewMap(id string) (bool, error) {
 	root, err := s.worlds.OpenWorld(id)
 	if err != nil {
@@ -470,14 +469,23 @@ func localeText(loc modsettings.Locale, lang, name string, pick func(modsettings
 	return "", ""
 }
 
+// fitsDefinition reports whether a stored value is of the setting's type. A
+// mod that changed the type leaves the old value in the file until the world
+// restarts, and the game resets it then. Factorio 1.1 stores an int as a
+// double.
+func fitsDefinition(d modsettings.Definition, v modsettings.Value) bool {
+	return v.Type == d.Type || (d.Type == modsettings.TypeInt && v.Type == modsettings.TypeDouble)
+}
+
 // currentValue is the setting's value in the world's file, else in the
-// defaults file, else the definition's default.
+// defaults file, else the definition's default. A stored value of another
+// type than the definition's counts as missing.
 func currentValue(d modsettings.Definition, file, defaults *modsettings.File) (modsettings.Value, bool) {
 	for _, f := range []*modsettings.File{file, defaults} {
 		if f == nil {
 			continue
 		}
-		if v, ok, err := f.Get(d.Setting, d.Name); err == nil && ok {
+		if v, ok, err := f.Get(d.Setting, d.Name); err == nil && ok && fitsDefinition(d, v) {
 			return v, true
 		}
 	}
@@ -620,16 +628,13 @@ func (s *server) handleModSettingsSave(w http.ResponseWriter, r *http.Request, u
 	for i, c := range changes {
 		names[i] = c.def.Name
 	}
-	summary := "edit mod settings: " + strings.Join(names, ", ")
-	if len(summary) > maxSummary {
-		summary = summary[:maxSummary] + "…"
-	}
+	summary := clipSummary("edit mod settings: " + strings.Join(names, ", "))
 	op := game.ModOp{Change: world.ModChange{Settings: data, SettingsSeen: p.Seen}, Fingerprint: p.Fingerprint, Summary: summary}
 	s.applyMods(w, r, u, sum, op, stop, "", modResult{Retry: p.Path()})
 }
 
 // readField reads one control from the post. A value the same as the
-// form showed is untouched and never checked (plan R9). A refused value
+// form showed is untouched and never checked (SPEC 9.6). A refused value
 // stays in the field with its error.
 func readField(r *http.Request, f *SettingField) (settingChange, bool) {
 	if !f.Editable() {
@@ -739,7 +744,7 @@ func fieldError(f *SettingField, e *modsettings.ValidationError) i18n.Msg {
 }
 
 // encodeChanges sets each change in the world's file, or in the defaults
-// file when the world has none, and keeps every other byte (plan R8).
+// file when the world has none, and keeps every other byte (SPEC 9.6, 14.6).
 func encodeChanges(st settingsState, changes []settingChange) ([]byte, error) {
 	for _, c := range changes {
 		if err := st.file.Set(c.def.Setting, c.def.Name, c.value, st.defaults); err != nil {

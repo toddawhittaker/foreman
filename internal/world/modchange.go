@@ -241,6 +241,14 @@ func (m *Manager) CheckModChange(id string, change ModChange) error {
 // or accepts as an upload. Real files are a few kilobytes.
 const MaxModSettings = 4 << 20
 
+// SettingsHash is the lowercase hex SHA-256 of a mod-settings.dat's bytes (nil
+// for a world with none): what a settings form records as the file it was drawn
+// from, and ModChange.SettingsSeen compares.
+func SettingsHash(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
 // checkSettingsSeen refuses, with ErrModsChanged, a change that carries new
 // settings drawn from a mod-settings.dat the world no longer holds. An empty
 // SettingsSeen skips the check, as an upload does. A missing file counts as
@@ -254,8 +262,7 @@ func checkSettingsSeen(root *os.Root, change ModChange) error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	sum := sha256.Sum256(b)
-	if hex.EncodeToString(sum[:]) != change.SettingsSeen {
+	if SettingsHash(b) != change.SettingsSeen {
 		return ErrModsChanged
 	}
 	return nil

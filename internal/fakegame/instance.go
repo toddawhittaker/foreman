@@ -120,11 +120,6 @@ func (g *Game) bootPreview(c dockertest.Container) {
 		g.daemon.EmitLog(c.ID, docker.Stderr, "Killed")
 		g.daemon.Exit(c.ID, 137, true)
 		return
-	case PreviewBroken:
-		if envValue(c.Spec.Env, gameenv.PreviewKind) == gameenv.KindModSettings {
-			g.endPreview(c, writeModSettings(c, true))
-			return
-		}
 	}
 	g.finishPreview(c)
 }
