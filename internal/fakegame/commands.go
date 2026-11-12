@@ -123,6 +123,8 @@ func nameList(names []string) string {
 	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 }
 
+// Player names match exactly (case-sensitive): how the real game treats
+// upper and lower case in names was not captured.
 func (in *instance) banIndex(name string) int {
 	return slices.IndexFunc(in.bans, func(b banEntry) bool { return b.name == name })
 }
@@ -143,6 +145,7 @@ func (in *instance) kick(player, reason string) (string, []string) {
 		return "Player " + player + " doesn't exist.\n", nil // nothing is logged
 	}
 	if reason == "" {
+		// "unspecified" is a guess, not captured from a real game.
 		reason = "unspecified"
 	}
 	// The kick line for a player who is on was not captured; this follows
@@ -213,6 +216,7 @@ func (in *instance) promote(player string) (string, []string) {
 	if player == "" {
 		return "", nil
 	}
+	// Case handling as in banIndex: not captured from a real game.
 	stored := in.adminName(player)
 	if slices.Contains(in.admins, stored) {
 		return player + " is already in the admin list and will be promoted upon joining the game.\n", nil
@@ -259,6 +263,7 @@ func (in *instance) whitelistCommand(sub, rest string) (string, []string) {
 		if player == "" {
 			return listUsage, nil
 		}
+		// Case-sensitive match; see banIndex.
 		if slices.Contains(in.whitelist, player) {
 			return player + " is already whitelisted.\n", nil
 		}
@@ -269,6 +274,7 @@ func (in *instance) whitelistCommand(sub, rest string) (string, []string) {
 		if player == "" {
 			return listUsage, nil
 		}
+		// Case-sensitive match; see banIndex.
 		i := slices.Index(in.whitelist, player)
 		if i < 0 {
 			return player + " wasn't in the whitelist.\n", nil

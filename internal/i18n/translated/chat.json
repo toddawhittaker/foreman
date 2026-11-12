@@ -1,1 +1,20 @@
-{}
+{
+  "chat.announce.sent": "0a1f2fbc",
+  "chat.empty": "10acd507",
+  "chat.error.empty": "69f51bc7",
+  "chat.error.lines": "eb40586f",
+  "chat.error.long": "afd274f4",
+  "chat.error.nul": "d38528c0",
+  "chat.error.slash": "b3c086f7",
+  "chat.failure.not_running": "fe424794",
+  "chat.failure.unreachable": "c3186074",
+  "chat.go_console": "47b616ca",
+  "chat.go_server": "9247f71d",
+  "chat.history_label": "4165e297",
+  "chat.message.hint": "36f879c7",
+  "chat.message.label": "2f77668a",
+  "chat.name.server": "aef7de28",
+  "chat.none": "1b040ea9",
+  "chat.not_running": "250a95e0",
+  "chat.send": "f6f4688f"
+}

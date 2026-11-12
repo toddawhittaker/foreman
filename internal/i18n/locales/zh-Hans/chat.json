@@ -1,1 +1,20 @@
-{}
+{
+  "chat.none": "目前还没有活动世界，因此没有可读取或发送的聊天。请在“世界”页面导入世界或上传存档；第一个世界会成为活动世界。",
+  "chat.history_label": "聊天消息",
+  "chat.name.server": "服务器",
+  "chat.empty": "服务器启动后还没有聊天消息。",
+  "chat.not_running": "服务器没有在运行，因此无法查看聊天。请在“服务器”页面启动它。",
+  "chat.go_server": "前往“服务器”页面",
+  "chat.message.label": "消息",
+  "chat.message.hint": "玩家会在游戏中看到这条来自服务器的消息。它会记录在审计日志中。",
+  "chat.send": "发送",
+  "chat.error.empty": "请输入要发送的消息",
+  "chat.error.long": "请输入不超过 {max} 个字符的消息",
+  "chat.error.nul": "消息不能包含 NUL 字符",
+  "chat.error.lines": "消息必须在一行内",
+  "chat.error.slash": "聊天消息不能以 / 开头。要执行命令，请使用控制台。",
+  "chat.go_console": "前往控制台",
+  "chat.failure.not_running": "游戏没有在运行，因此消息未发送。请在“服务器”页面启动它。",
+  "chat.failure.unreachable": "游戏没有通过 RCON 响应，因此消息未发送。",
+  "chat.announce.sent": "消息已发送"
+}
