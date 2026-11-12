@@ -1,5 +1,7 @@
 {{define "title"}}{{t "common.menu.schedule"}}{{end}}
 
+{{define "scripts"}}<script src="{{static "schedule.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <h1>{{t "common.menu.schedule"}}</h1>
@@ -39,7 +41,7 @@
   </div>
   <div class="field">
     <label for="schedule-zone" class="required">{{t "schedule.zone.label"}}</label>
-    <select id="schedule-zone" name="zone" required translate="no"
+    <select id="schedule-zone" name="zone" required translate="no"{{if .Fresh}} data-viewer-zone{{end}}
       {{- if not .ZoneError.IsZero}} aria-invalid="true" aria-describedby="schedule-zone-error"{{end}}>
       <option value="{{.UTC}}"{{if .UTCSelected}} selected{{end}}>{{.UTC}}</option>
       {{- range .Regions}}
