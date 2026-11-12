@@ -717,12 +717,6 @@ time {
   background: var(--color-secondary-hover);
 }
 
-.menu__item[aria-current] {
-  background: var(--color-accent-bg);
-  font-weight: 600;
-  border-inline-start-color: var(--color-selected);
-}
-
 /* A language row: its flag, 4 by 3, then its own name. */
 .menu__item > img {
   flex: none;
@@ -3737,10 +3731,6 @@ form:has(#mode-exchange:checked) .achievements {
   .tabs a[aria-current],
   .subnav a[aria-current] {
     border-block-end-color: Highlight;
-  }
-
-  .menu__item[aria-current] {
-    border-inline-start-color: Highlight;
   }
 
   .menu__icon[aria-current] {

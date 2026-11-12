@@ -66,7 +66,7 @@ type SchedulePage struct {
 }
 
 func (SchedulePage) templateName() string { return "schedule" }
-func (SchedulePage) navItem() string      { return PathSettingsTab + navPage }
+func (SchedulePage) navItem() string      { return PathSchedule + navPage }
 func (p SchedulePage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
 // Path is where the form posts.
