@@ -1378,9 +1378,35 @@ every change. (P0)
 9.5. **Upload** a local mod zip. Foreman reads its `info.json` to name and
 version it, and treats it as any other mod afterwards. (P1)
 
-9.6. **Mod settings.** Upload and download `mod-settings.dat`. (P0)
-The page shows where the Factorio client keeps the file and, for a running
-world, says Foreman restarts it. Editing its values in the UI. (P2)
+9.6. **Mod settings.** Upload and download `mod-settings.dat`. The page
+shows where the Factorio client keeps the file and, for a running world,
+says Foreman restarts it. (P0)
+
+Editing the startup settings of the world's mods in the UI, on a page of
+its own linked from the Mods tab. For a world with no save yet, its map
+settings are edited there too. (P1) Foreman learns each setting's type,
+default, limits, allowed values, owner and visibility from a one-off run of
+the world's own game image (14.3), and keeps them in memory per world until
+the mods or the game version change. Names and descriptions come from the
+mods' locale files, in the page's language, else English, else the setting's
+own name. Hidden settings are not shown, and a setting with one allowed
+value is shown locked. Foreman checks each changed value itself, because
+the game silently resets a bad value in the file. An int limit at or past
+the 64-bit range means no limit.
+
+- **Startup settings** are written to `mod-settings.dat` as one mod change
+  (9.13). Only the changed entries are rewritten; the header, per-player
+  settings and entries Foreman does not know keep their bytes. The audit
+  entry names the settings, never their values.
+- **Map settings** live in the save once the map exists, and the save's
+  values win over the file (9.15). A world with no save yet edits them in
+  the same form, as file writes that seed the new map. A world with a save
+  shows them read-only, marked as values for a new map, with one line saying
+  an admin changes them in the game under Settings, Mod settings, Map.
+  Foreman does not change a saved world's map settings, and runs no Lua or
+  RCON command for them.
+- **Per-player settings** are not shown. Each player sets them in the game,
+  and their bytes in the file are kept exactly.
 
 9.7. **Built-in mods** (`base` and the DLC mods for the world's game
 version, section 2) are never offered for download or removal. Their
@@ -1442,7 +1468,8 @@ and version, says whether the world kept running, and offers "Try again"
 
 9.13. **One operation per change.** Every mod change goes through one path:
 install, update, update all, sync from a save, the fix for a flagged mod,
-enable, disable, remove, a mod upload and a `mod-settings.dat` upload. On a
+enable, disable, remove, a mod upload, a `mod-settings.dat` upload and a
+mod settings edit (9.6). On a
 running world it is one operation shaped like a game version update (10.3):
 download every release first, then warn the players and stop the game, take
 the snapshot (6.2), apply the change, run the pre-start check (7.4), and
@@ -1463,7 +1490,9 @@ or off, or removed. After any failed operation, the steps that never ran
 fold into one line (DESIGN 7.6). The audit log records the operation
 as `mods`. A change is refused before anything is touched when the game
 cannot be stopped (paused, not ready, or RCON unreachable) or the mods
-folder no longer matches the plan. (P0)
+folder no longer matches the plan. A mod settings edit also carries a hash
+of the `mod-settings.dat` its form was drawn from, and is refused as
+changed when the file no longer matches. (P0)
 
 9.14. **The plan is carried, not stored.** Foreman keeps no plan on the
 server. The plan page posts the request, a hash of the plan (which covers
@@ -1482,6 +1511,13 @@ with the same meaning but not the same bytes, and adds a mod the list left
 out as on. It writes `mod-settings.dat` at its first start, and only when
 a mod declares settings. A mod change that turns off a mod the save uses
 ends with the pre-start refusal unless the admin confirmed the drop (9.4).
+For mod settings: on a world with a save, the save's map values win over
+the file's, so stopping, editing the file and starting changes nothing
+(2.1.24: file 42, save 4, the mod saw 4). The game rewrites
+`mod-settings.dat` when the server starts, not when it exits. Games before
+2.0 store whole numbers as doubles. The only ways to change a map value in
+a save are a Lua command in the owning mod's context, which ends the save's
+achievements for good, or an admin in the game's Map tab.
 
 ## 10. Game versions
 
@@ -1832,6 +1868,17 @@ from user text, and writes the patches as JSON; Foreman reads that file
 through the work folder and checks every entry under the limits in 14.6.
 No new Docker endpoint is used.
 
+Mod settings (9.6) use a fourth kind, `foreman-modsettings-<folder>`, in
+the same way: the same label, endpoints, host settings, slot and cleanup,
+with a memory limit of 4 GiB and a time limit of 5 minutes. It runs the
+world's own image with a small control-only mod that writes every setting's
+definition as JSON, and the game writes its defaults `mod-settings.dat`
+beside it. Its work folder holds the world's mods by hard link, falling back
+to copies (at most 100,000 files and 4 GiB), and never the world's own
+folder or its `mod-settings.dat`. A world mod named `foreman-modsettings`
+refuses the run. Foreman reads the output through the work folder and checks
+it under the limits in 14.6.
+
 To share a network with the game (4.4), Foreman reads its own container
 with `GET /containers/{id}/json`, which gives the networks it is on and
 their address ranges. It names the game network in the
@@ -1880,7 +1927,11 @@ text from the file. Drawing territories into a download runs one at a time,
 with at most 4 waiting; one more is refused with "busy". A mod zip that
 lists more than 10,000 entries is left unread: the entries are counted from
 the zip's end record before its directory is built, so a crafted zip costs
-almost nothing to refuse. A mod or `mod-settings.dat` upload waits in a
+almost nothing to refuse. The mod settings definitions file (9.6) is at
+most 2 MiB, 10,000 settings and 1,000 allowed values each; unknown fields
+are ignored and an unknown setting type is shown as not editable. A mod's
+`.cfg` locale file is at most 1 MiB, and 8 MiB per language across mods. A
+string setting value is at most 10,000 bytes. A mod or `mod-settings.dat` upload waits in a
 staging file at the top of the worlds folder, and a staged mod nobody
 applied is removed an hour later. (P0)
 
@@ -2073,6 +2124,7 @@ with the defaults accepted, these take at most:
 | Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
 | Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
+| Change a startup mod setting (Mods, Edit mod settings, Save, confirm the restart) | 4 |
 | Change a mod's version (Mods, Change version, choose the version, Change 1 mod) | 4 |
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
@@ -2301,6 +2353,8 @@ written. (P0)
   code, in the page's language. A label a person typed is shown as
   written. No sentence quotes a label; it names the snapshot through the
   label's own message, so a page and the snapshot list always agree.
+- Mod setting names and descriptions are shown as the mod wrote them,
+  marked with the language they are in.
 - Game text (the log pane, console replies, crash reasons) and English
   error details that Foreman cannot translate are marked `lang="en"`.
   The countdown warning sent into the game chat stays English, because

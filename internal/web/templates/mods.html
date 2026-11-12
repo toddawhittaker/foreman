@@ -178,6 +178,7 @@
 <section class="panel" aria-labelledby="settings-heading">
   <h2 id="settings-heading">{{t "mods.settings.heading"}}</h2>
   <p>{{tHTML "mods.settings.text" "file" (code .SettingsFile)}}</p>
+  <div class="actions"><a href="{{.EditSettingsPath}}" class="button" id="act-settings-edit">{{t "mods.settings.edit.link"}}</a></div>
   {{- if .HasSettings}}
   <div class="actions"><a href="{{.SettingsPath}}" download id="act-settings-download">{{t "mods.settings.download"}}</a></div>
   {{- else}}
