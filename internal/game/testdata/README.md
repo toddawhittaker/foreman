@@ -232,7 +232,7 @@ back to back on one connection.
 - Two real commands sent back to back are answered in order (id 10, then
   id 11).
 
-## 10. Live operations (Epic 9 task 1)
+## 10. Live operations
 
 Captured on 2026-11-12 with Docker 29.1.3 (API 1.52) from the same three
 pinned images, on a fresh `--create` map per version. Each container ran
@@ -353,10 +353,10 @@ in `config/`, not in the write-data folder `/opt/factorio`, checked with
 Error CommandLineMultiplayer.cpp:NN: use-server-whitelist must be set when server-whitelist is set.
 ```
 
-(`run-whitelist-flag-missing.log`). This contradicts SPEC 4.3 ("Foreman
-never passes `--use-server-whitelist`") and is reported for a ruling.
+(`run-whitelist-flag-missing.log`). So Foreman passes both flags
+together or neither (SPEC 4.3, 8.3).
 
-### Ruling 8: does an in-game `/whitelist enable` survive a restart?
+### Does an in-game `/whitelist enable` survive a restart?
 
 **No, in all three versions.** Evidence (`whitelist-restart.log`, run 2):
 on Foreman's command, `/whitelist enable` then `/whitelist add dave` gave

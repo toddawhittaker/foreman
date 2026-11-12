@@ -9,7 +9,7 @@ Epics 6 to 10 were renumbered on 2026-11-05 when Languages became Epic 6
 (old 6 Mods is now 8, old 8 is 9, old 9 is 10, old 10 is 11). Older text
 below uses the new numbers.
 
-Epics 1 to 8, the Gate A fixes, the fix batches after Gate A (hub
+Epics 1 to 9, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
 the Resource amounts epic, fixes batches 5 and 6 and the Mod settings epic
 are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was
@@ -2515,4 +2515,209 @@ definitions run has a 4 GiB memory limit and a 5-minute time limit.
 - In the error summary at the top of the page, an English setting name is
   not marked `lang="en"`; the summary is in the shared layout template.
 - The file name `mod-settings.dat` may wrap at its hyphen at 320 px.
+- Gate B (SPEC 19.2) is still owed.
+
+## Epic 9: Live operations
+
+Serves SPEC 7.12, 8.2, 8.3, 8.5, 8.7, 8.8 and 8.10 to 8.13, with 12.9, 14.8
+to 14.10, 17.10 and 22, DESIGN 8.12 to 8.19, and ADR 0018 (webhooks) and ADR
+0019 (the scheduler). Issue closed: #462. The pull requests were #503 to
+#520.
+
+Rulings (Todd, 2026-11-12), now in SPEC: VPN sidecars moved to Epic 9b (4.13,
+18.9b); the restart schedule waits for an empty server, then counts down 60
+seconds (7.12); the skip limit is 0 to 12 hours, default 1; one schedule for
+all of Foreman; webhook addresses are sealed (14.8); low disk warns below 4 GB
+and clears above 4.5 GB (8.13); the language is chosen per webhook; the
+whitelist is enforced by a per-world switch (8.3), because a real game showed
+that an in-game `/whitelist enable` does not survive a restart; a live player
+action takes no snapshot; only kick and ban confirm (8.2); Chat has its own
+tab (8.5); an `http://` webhook address is allowed, with a warning (8.11).
+
+### Delivered
+
+- **Real-game captures (#504).** Transcripts from 1.1.110, 2.0.77 and 2.1.24
+  in `internal/game/testdata` (README section 10): the replies to kick, ban,
+  unban, promote, demote and the whitelist commands, which list files the
+  game writes and when, `[CHAT]` lines from the server, a mod that fails to
+  load, Docker's port-in-use start error, and an out-of-memory start under a
+  memory limit. What they showed: an in-game `/whitelist enable` is lost at
+  restart on all three; RCON strips leading spaces, so `" /c ..."` and `"
+  /ban x"` run as commands; the game checks no player name; 2.x folds
+  accents in the admin list and 1.1 does not; 1.1.110 skips a mod with a
+  missing dependency and starts, where 2.x exits 1; and `--server-whitelist`
+  without `--use-server-whitelist` makes the game exit 1.
+- **Design (#503).** DESIGN 8.12 to 8.19: player row actions, the ban list
+  and whitelist, Chat, the restart schedule, notifications, the low-disk
+  notice, the click budgets and the new CSS.
+- **Scaffold (#505).** The Chat tab, the Notifications and Restart schedule
+  links in the user menu, the route files, the no-op `notify` and
+  `schedule` packages, and the empty `players`, `chat`, `crash`, `notify`
+  and `schedule` locale areas in all eight languages.
+- **Fakes (#506, #515).** The fake game answers the player and whitelist
+  commands byte for byte as captured, strips leading spaces as RCON does,
+  writes the ban and admin lists at once, keeps the whitelist in memory unless
+  both whitelist flags are set, refuses `--server-whitelist` alone, can say
+  a chat line, and can fail with port in use or out of memory. Player names
+  match case-sensitively there (case was not captured).
+- **Notifications (#507, SPEC 8.10 to 8.12, ADR 0018).** `internal/notify`
+  with Discord, ntfy and generic JSON presets (body version 1, pinned by a
+  golden file), eight event ids, a queue that never blocks, a sender and
+  queue of 20 for each webhook, 5-second attempts with two retries, and no
+  redirects. Addresses are sealed with `FOREMAN_SECRET_KEY` in migration
+  0006, written by a page at `/settings/notifications` that shows only the
+  preset and host, and every add, change and delete is audited without the
+  address. An address that cannot be opened shows as unreadable.
+- **Crash catalogue (#508, SPEC 8.7, 8.8).** `internal/game/crashreasons`
+  with an embedded `catalogue.json` (`mod-missing-dependency`, `mod-error`,
+  `save-unreadable`, `port-in-use`), plus `out-of-memory` from Docker's
+  `OOMKilled` flag and `mods-for-other-version`. `LoadReason.Kind` and
+  `Status.Crash` carry the id. `make test-catalogue VERSION=x.y.z` runs four
+  scenarios on one pinned image, and `make test-game` runs it for each line;
+  all four passed on each of 2.1.24, 2.0.77 and 1.1.110.
+- **Players and lists (#510, SPEC 8.2, 8.3).** `Controller.Player` sends kick,
+  ban, unban, promote, demote and whitelist add and remove over RCON. Names
+  and reasons are refused, never escaped; each action is audited before it is
+  sent; no snapshot is taken. `POST /worlds/{id}/players/{action}` and a
+  confirmation page for kick and ban. The ban list and whitelist are on the
+  Settings tab, as live cards while the game keeps the list and as form
+  fields with a snapshot otherwise. The "Only whitelisted players can join"
+  switch is `use_whitelist` in `world.json`; on, the game gets both
+  whitelist flags; off, neither. A container label tells whether the running
+  game keeps the whitelist. A real-game test of the switch
+  (`TestRealGameWhitelistSwitch`) covers a missing file and a file kept
+  across a restart; enforcement itself needs a client.
+- **Chat (#509, #520, SPEC 8.5).** The Chat tab shows the last 200 `[CHAT]`
+  lines live and sends a message as the server. A message is refused if it
+  starts with `/` after any blank, control or invisible character, or has any
+  control character, and it is audited first. Rows are drawn by one
+  template for the page and the stream, with the time, the name and the text,
+  and the server's own lines marked.
+- **Events and low disk (#511, SPEC 8.10, 8.13).** `Controller.SetNotifier`
+  and a non-blocking emit send start, stop, crash (with the reason id),
+  crash loop, join, leave and low disk. After a Foreman restart nothing is
+  sent for something that happened earlier. A port-in-use start names its
+  reason from Docker's error. Real-game test `TestRealGameEvents` on 2.1.24:
+  a start, a stop and a corrupt-save crash each sent one webhook, the crash
+  loop one more, and two Foreman restarts sent no duplicates.
+- **Scheduled restart (#513, SPEC 7.12, ADR 0019).** `internal/schedule` and
+  migration 0007: one schedule on `/settings/restart-schedule`, a wait for
+  nobody online, a 60-second countdown that always runs, a skip at the limit
+  or on an admin's cancel, no catch-up, and the daylight-saving rules. The
+  controller's `StopOptions` gained `WarnEmpty` and `OnlyRunning` for it. The
+  Foreman settings sub-navigation is one shared template.
+- **Server page (#519, SPEC 7.12, 8.2, 8.7, 8.13).** Player row actions with
+  Undo that survive the live updates, the crash reason and port-in-use in
+  plain words (new `crash` area), the low-disk warning with a Snapshots
+  link, and the next restart, the wait, the countdown and the skip, live.
+  The Chat tab's not-running note follows the game. The epic's CSS, and a
+  `--target-inline` token for 24 px links.
+- **Operator guide (#512).** OPERATOR sections 12 to 14: webhooks with the
+  generic body, low disk, and the restart schedule; "When something fails"
+  is section 15.
+- **Click budgets (SPEC 17.10), measured:** make admin 2 (with Undo 3), kick
+  3, ban 3, whitelist add 2, change the schedule 2.
+
+### Fixed on the way
+
+- **#514, `TestInvariantCrashAtEveryPointOfASwitch` and
+  `TestInvariantSwitchKeepsRunState`** (closes #462). The tests started a
+  switch before the monitor's first look, so the switch was rightly refused
+  as unsettled. The rig now waits. Main had the same flaw.
+- **#516, the any-width slider test.** One test walked 22 widths and ran
+  out of its 90 seconds on main as well. It is now one test per language and
+  width. Nothing it checks was removed.
+- **#517, the world page.** It read "is an action running?" and then the
+  update result, so an update that ended between the reads showed the result
+  and also reloaded the page away from it. It reads the result first. Main
+  had this too.
+- **#518, the Mods tab** had the same race and the same fix, and the
+  `WarnEmpty` test waited on the status instead of the warning.
+- **#520, integration review.** Chat rows follow DESIGN 8.14; the dead
+  `.name-list` CSS is gone; `CheckChat` refuses every control character.
+
+### Verified
+
+- Each task ran the Go tests and e2e specs it owns; its pull request body
+  has the commands. The web package takes longer than the tool limit, so it
+  was run in `-run` slices. Mutation and before-and-after checks are recorded in #511
+  and #514 to #518.
+- **Real games.**
+  - `TestRealGameWhitelistSwitch` passed on 2.1.24, 2.0.77 and 1.1.110 when
+    the players task was checked, and again in `make test-game` on the epic
+    head ad4cd32. Phase 1 of that run passed every `TestRealGame*` test,
+    among them `TestRealGameCatalogue`, `TestRealGameWhitelistSwitch` and
+    `TestRealGameEvents`. Phase 2, the older `TestRealGameD2Resources`, was
+    cut off by the harness's 30-minute cap; it predates Epic 9.
+  - `make e2e-game` passed.
+  - `make test-catalogue` passed on 2.1.24, 2.0.77 and 1.1.110.
+  - `TestRealGameEvents` covered a start, a stop and a corrupt-save crash,
+    each sending one webhook, with no duplicates after a controller restart.
+  - Not run on a real game: the scheduled restart, the chat `/` refusal, and
+    anything that needs a client.
+- The scheduler's invariants run against a fake clock, and
+  `TestWithTheController` runs it against the real controller on the fake
+  game.
+
+### Hand checks for Todd after the epic PR
+
+1. A banned player, and a player who is not on the whitelist while the
+   switch is on, are refused.
+2. Joining and leaving each send one webhook.
+3. A client's chat line appears on the Chat tab, and its log becomes
+   `internal/game/testdata/2.1.24/chat-client.log`.
+4. A scheduled restart waits while he is online and runs after he leaves.
+5. A chat message that starts with `/` does not run and leaves achievements
+   enabled.
+
+### Gaps left
+
+- **Real-game gaps.** No `[CHAT]` line from a real client was captured, so
+  the client line is read like the server's. Joins and leaves, and a
+  whitelist refusing a player, were not checked with a real client. Also
+  uncaptured: the log lines when an online player is kicked or banned,
+  `/players` with players listed, and a trailing newline in the list files.
+- **Crash and OOM.** The game container has no memory limit, so a host-wide
+  OOM kill shows as unknown. An OOM kill that Docker restarts before the
+  monitor sees it also shows as unknown, because Docker clears the flag. 1.1
+  gives no reason for a missing dependency, since it starts without the mod.
+- **Events.**
+  - Events that happen while Foreman is down, or before its first look, are
+    not sent. That is deliberate, so nothing is sent twice.
+  - A `docker restart` outside Foreman sends a start with no stop.
+  - "address already in use" is not named port-in-use; only "port is
+    already allocated" is.
+  - A crash whose reason reaches the log more than two polls late is sent as
+    unknown.
+  - Docker's log times are compared with Foreman's clock, which assumes one
+    host; a remote Docker with a fast clock could repeat a join or leave.
+  - A hanging target loses its own events once its queue of 20 is full.
+- **Chat.**
+  - Each Chat tab opens a second live connection, so three Chat tabs use
+    all six HTTP/1.1 connections to one host.
+  - A mod's `print()` can fake a `[CHAT]` line.
+  - Text typed while a chat answer is in flight can be lost.
+- **Schedule.**
+  - The time zone defaults to UTC; DESIGN 8.15 asks for the viewer's zone,
+    which needs a script that was not written.
+  - A scheduled restart that fails sends no webhook; the failure shows only
+    on the Server page and in the log.
+  - An admin's cancel, which skips the day, sends no webhook, and neither
+    does a missed one (the message names players as the reason).
+  - A scheduled restart sends both the scheduled-restart and the start
+    webhooks.
+  - No "restarted on schedule" Done message: the scheduler keeps no
+    field for it.
+- **Audit.** Schedule and webhook saves are audited after the change, and a
+  failure to audit is only logged. Player actions, chat messages and the
+  whitelist switch are audited first and refused if the audit fails.
+- **Server page.** Low disk has no e2e test, since Foreman reads the real
+  disk and `game` has no hook for it; the Go render tests cover it. The
+  player lists are read, one Docker inspect per update, only while someone is
+  online.
+- **Not built (planned).** A test-send button, signed webhook bodies, days of
+  the week for the schedule, "skip tonight", and undelivered events kept
+  across a Foreman restart.
+- Epic 9b (VPN sidecars) is not built; Foreman still refuses to start when
+  `FOREMAN_GAME_NETWORK_CONTAINER` is set.
 - Gate B (SPEC 19.2) is still owed.

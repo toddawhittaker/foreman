@@ -2488,20 +2488,20 @@ player's name becomes the summary of a `details` in its cell, so opening a
 player's actions is one click on the thing the admin is looking at:
 
 ```html
-<tr role="row" id="player-row-Alice">
+<tr role="row" id="pr-Alice">
   <td role="cell">
-    <details class="player-actions disclosure" name="player-actions" id="player-Alice">
-      <summary id="act-player-Alice">Alice<span class="visually-hidden">, actions</span>
+    <details class="player-actions disclosure" name="player-actions" id="pd-Alice">
+      <summary id="ps-Alice">Alice<span class="visually-hidden">, actions</span>
         <span class="badge">Admin</span></summary>
       <div class="actions">
         <form method="post" action="/worlds/family-base-2025/players/demote">
           <input type="hidden" name="name" value="Alice">
           <input type="hidden" name="return" value="/">
-          <button type="submit" class="button" id="act-demote-Alice">Remove admin<span class="visually-hidden"> Alice</span></button>
+          <button type="submit" class="button" id="pa-demote-Alice">Remove admin<span class="visually-hidden"> Alice</span></button>
         </form>
-        <form method="post" action="/worlds/family-base-2025/players/whitelist-add">…Add to whitelist…</form>
-        <a href="/worlds/family-base-2025/players/kick?name=Alice" class="button button--risky" id="act-kick-Alice">Kick<span class="visually-hidden"> Alice</span></a>
-        <a href="/worlds/family-base-2025/players/ban?name=Alice" class="button button--risky" id="act-ban-Alice">Ban<span class="visually-hidden"> Alice</span></a>
+        <form method="post" action="/worlds/family-base-2025/players/whitelist-add">…<button … id="pa-wl-add-Alice">Add to whitelist…</button></form>
+        <a href="/worlds/family-base-2025/players/kick?name=Alice" class="button button--risky" id="pa-kick-Alice">Kick<span class="visually-hidden"> Alice</span></a>
+        <a href="/worlds/family-base-2025/players/ban?name=Alice" class="button button--risky" id="pa-ban-Alice">Ban<span class="visually-hidden"> Alice</span></a>
       </div>
     </details>
   </td>
@@ -2519,8 +2519,14 @@ player's actions is one click on the thing the admin is looking at:
   the `--active` tint) with the word "Admin", after the name. It is read
   from the world's admin list, so the row offers "Make admin" or "Remove
   admin" and never both.
-- **The whitelist buttons** show only once whitelist enforcement is
-  settled (ruling 8, see 8.13). Until then the row has no whitelist button.
+- **The whitelist buttons** show only while the running game keeps the
+  whitelist, that is, when it was started with "Only whitelisted players
+  can join" on (8.13), and when the list can be read.
+- **The ids** are a prefix and the player's name: `pr-` (the row), `pd-`
+  (the `details`), `ps-` (the summary) and `pa-<action>-` for each button
+  (`promote`, `demote`, `wl-add`, `wl-remove`, `kick`, `ban`). No prefix
+  begins another or any fixed id on the page, so no name can make one id
+  into another.
 - `details[name="player-actions"]` makes the rows an exclusive group: one
   player's actions are open at a time. Without support for `name`, several
   may be open, which is harmless. The summary is a full-row target at least
@@ -2641,20 +2647,21 @@ How a list is edited depends on whether the game runs, because that
 decides who writes the file.
 
 **While the game runs**, a list is sent to the game over RCON and the
-game writes its own file, so no snapshot is taken (ruling 9) and each
-change acts at once (ruling 10). The two lists are then not fieldsets of
+game writes its own file, so no snapshot is taken (SPEC 8.2) and each
+change acts at once (SPEC 8.2). The two lists are then not fieldsets of
 the settings form but two cards of their own, right after it (before the
 raw editor's link), with their own small forms. A button inside the
 settings form would post the whole form and lose whatever the admin had
 typed in its other fields; cards of their own cannot. The rail's links
-reach them all the same.
+reach them all the same. The name rows are the `ul.changes` list that the
+settings preview uses (8.10); no style of their own is added.
 
 ```html
 <section class="panel" id="settings-bans" aria-labelledby="bans-heading">
   <h2 id="bans-heading">Ban list</h2>
   <p class="hint">The server is running, so changes here go to the game at once. No snapshot is taken.</p>
-  <ul class="name-list" role="list" aria-labelledby="bans-heading">
-    <li><span class="name-list__name">Bob</span> <span class="hint">griefing</span>
+  <ul class="changes" role="list" aria-labelledby="bans-heading">
+    <li><span>Bob</span> <span class="hint">griefing</span>
       <form method="post" action="/worlds/family-base-2025/players/unban">
         <input type="hidden" name="name" value="Bob">
         <input type="hidden" name="return" value="/worlds/family-base-2025/settings">
@@ -2737,7 +2744,7 @@ in `settings`; the live actions' results and Undo labels in `players`.
 ### 8.14 Chat (SPEC 8.5, Epic 9)
 
 Chat is the third tab of the Server view: Overview, Console, Chat
-(`GET /server/chat`, `chat.html`). It is a tab of its own (ruling 11)
+(`GET /chat`, `chat.html`). It is a tab of its own
 because reading and answering players is a task of its own; it is apart
 from the Console because a chat line is never a command. The page has
 the Server page's `h1` and live badge, then the Server tabs with Chat
@@ -2755,7 +2762,7 @@ current.
     </ol></div>
     <button type="button" class="button" id="chat-jump" hidden>Jump to newest</button>
   </div>
-  <form method="post" action="/server/chat" id="chat-form" novalidate>
+  <form method="post" action="/worlds/family-base-2025/chat" id="chat-form" novalidate>
     <div class="field">
       <label for="chat-message" class="required">Message</label>
       <p class="hint" id="chat-hint">Players see this in the game as a message from the server.</p>
@@ -2820,7 +2827,7 @@ settings", with the same three links, so moving between them is one click.
 
 **The schedule page** (`GET /settings/restart-schedule`,
 `schedule.html`). One schedule restarts whichever world is active
-(ruling 4). The page leads with its state in one sentence, as the account
+(SPEC 7.12). The page leads with its state in one sentence, as the account
 page does:
 
 - On: "Foreman restarts the active world every day at 04:00
@@ -2876,11 +2883,11 @@ The form is a `form.panel`:
   in `optgroup`s, each shown as its id (`translate="no"`). A new schedule
   starts with the viewer's own zone selected, set by a small script from
   `Intl.DateTimeFormat().resolvedOptions().timeZone`; without script, UTC.
-- **Wait limit** is whole hours, 0 to 12, default 1 (ruling 3).
+- **Wait limit** is whole hours, 0 to 12, default 1 (SPEC 7.12).
 - **Turning it off** is unticking and saving. The fields stay, with their
   values, so turning it back on is one tick. While unticked the fields are
   not required, and the server ignores them.
-- The countdown is fixed at 60 seconds and is not a field (ruling 2).
+- The countdown is fixed at 60 seconds and is not a field (SPEC 7.12).
 - After saving, the page returns with a Done message (`#done-message`)
   naming the next restart time: "Saved. The next restart is `<time>`." or
   "Saved. No restart is scheduled."
@@ -2903,7 +2910,7 @@ ways, none of them a new component:
   "Note: A scheduled restart is waiting for nobody to be online. If players
   are still on at `<time>`, it is skipped today." with a link "Restart
   schedule" to the page (17.9). When `/players online` cannot be asked,
-  Foreman counts that as someone online (plan invariant) and the note
+  Foreman counts that as someone online (SPEC 7.12) and the note
   says: "Foreman cannot ask the game who is online, so it waits as if
   someone were." Restart, Stop and the other controls stay as they are:
   the admin can still restart by hand (that ends the wait).
@@ -2961,7 +2968,7 @@ get messages." or "No webhooks yet.", then the list, then "Add a webhook"
 ```
 
 - **Only the preset and the host** are shown, never the address, its path,
-  query or token (ruling 5, SPEC 14.8): not in the page, a value
+  query or token (SPEC 14.8): not in the page, a value
   attribute, a title, a log line or an error. Two webhooks to the same
   host look alike; their events and languages tell them apart.
 - The list is the world list's shape (8.2): rows separated by a 1 px
@@ -3020,7 +3027,7 @@ get messages." or "No webhooks yet.", then the list, then "Add a webhook"
   optional, and a hint above it gives the state: "The address is kept:
   Discord, discord.com. Type a new address to change it." Address errors
   say what to fix without echoing it: "Enter an address that starts with
-  https://." and the other URL checks task 6 makes, each in this form.
+  https://." and the other URL checks, each in this form.
 - **Events**, all ticked by default, in this order, each a checkbox:
   "The server starts", "The server stops", "The server crashes", "The
   server crash-loops", "A player joins", "A player leaves", "A scheduled
@@ -3028,13 +3035,13 @@ get messages." or "No webhooks yet.", then the list, then "Add a webhook"
   be ticked ("Choose at least one event.").
 - **Language** is a `select` of the eight languages, each named in its own
   language with its `lang`, defaulting to the language of the admin who
-  adds it (ruling 7). Hint: "Names from the game and the world's name are
+  adds it (SPEC 8.11). Hint: "Names from the game and the world's name are
   sent as written."
 - The edit page's button is "Save webhook"; its `h1` is "Edit the Discord
   webhook to discord.com".
 - After add, edit or delete, the list returns with a Done message
   (`#done-message`), "Added the Discord webhook to discord.com."
-- No "send a test" button (plan, "Not built"). A delivery that fails is
+- There is no "send a test" button. A delivery that fails is
   logged (SPEC 8.12); the page does not show delivery history.
 
 Strings: all in the `notify` area, including the event names and the
@@ -3047,7 +3054,7 @@ While the game runs and the disk that holds Foreman's data has less than
 4 GB free (twice the 6.11 reserve), the Server page's status card shows a
 Warning with the facts, where the game-network warning sits (7.3). It
 clears only once more than 4.5 GB is free, so it does not flicker on and
-off around one figure (ruling 6). The thresholds are fixed.
+off around one figure (SPEC 8.13). The thresholds are fixed.
 
 ```html
 <div id="disk-notice" class="disk-notice" sse-swap="disk">
@@ -3076,8 +3083,8 @@ Strings: `server.disk.low`, `server.disk.snapshots` in the `server` area.
 ### 8.18 Click budgets for Epic 9 (SPEC 17.10)
 
 Counted from the Server page, defaults accepted, as SPEC 17.10 counts.
-The fold (task 13) adds these rows to SPEC 17.10; each task's end-to-end
-test counts its own.
+SPEC 17.10 holds these rows; each one has an end-to-end test that counts
+its clicks.
 
 | Task | Clicks |
 |---|---|
@@ -3097,23 +3104,15 @@ test counts its own.
 | Add a Discord webhook (the user menu, Notifications, Add a webhook, Add webhook) | 4 |
 | Act on the low-disk warning (Snapshots, tick a snapshot, Delete selected, Delete) | 4 |
 
-### 8.19 New CSS for task 11
+### 8.19 New CSS for Epic 9
 
-Tasks before 11 use existing classes; these rules land in task 11, which
-alone edits `foreman.css`. Until then the markup above renders with the
-existing classes it names.
+The rules the Epic 9 pages add to `foreman.css`.
 
 - `.player-actions`: the `details` in a player cell. Summary is a full-cell
   target (`--target-min`), with the disclosure chevron (7.8) but no
   raised face or border, so the table still reads as a table; open, the
   `.actions` row sits under the name with `gap: var(--space-2)`.
   `.player-actions .badge` sits on the name's line and never wraps.
-- `.name-list`: a plain `ul` of name rows (the live ban list and
-  whitelist cards, 8.13): each `li` a flex row, its `form` `display:
-  contents`, the name (`.name-list__name`, weight
-  500, `overflow-wrap: anywhere`, `min-width: 0`), its reason in `hint`
-  style, the button at the end edge; rows separated by a 1 px `line`. The
-  existing "Make admin" list can take the same class.
 - `.chat-lines`: in the `log` box but in `--font-body` at `--text-md`, not
   mono; `li` a block with a hanging indent of `2ch`; `time` in
   `text-muted` with `font-variant-numeric: tabular-nums`; `.chat-name`
