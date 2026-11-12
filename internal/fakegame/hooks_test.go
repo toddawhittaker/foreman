@@ -77,6 +77,9 @@ func TestHookErrors(t *testing.T) {
 		{"/crash", `{"name":"foreman-nope"}`},
 		{"/image", `{"on":true}`},
 		{"/preview-mode", `{"mode":"sideways"}`},
+		{"/chat", `{"name":"foreman-w1","player":"alice","text":"hi"}`},
+		{"/chat", `{"name":"foreman-nope","player":"alice","text":"hi"}`},
+		{"/port-in-use", `{"name":"foreman-w1"}`},
 		{"/join", `{"name":"x","surprise":1}`},
 		{"/join", `not json`},
 	} {
@@ -129,5 +132,35 @@ func TestTheFakeCountsDockerCalls(t *testing.T) {
 	}
 	if _, err := r.docker.InspectContainer(context.Background(), "foreman-w1"); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestChatOomAndPortInUseHooks(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	h := r.game.HookHandler()
+	id := r.start("foreman-w1", image21, "no")
+	if rec := hook(t, h, "POST", "/join", `{"name":"foreman-w1","player":"alice"}`); rec.Code != http.StatusNoContent {
+		t.Fatalf("join = %d", rec.Code)
+	}
+	if rec := hook(t, h, "POST", "/chat", `{"name":"foreman-w1","player":"alice","text":"hello"}`); rec.Code != http.StatusNoContent {
+		t.Errorf("chat = %d %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(r.log(id), " [CHAT] alice: hello\n") {
+		t.Errorf("log lacks the chat line:\n%s", r.log(id))
+	}
+	if rec := hook(t, h, "POST", "/port-in-use", `{"name":"foreman-w2","port":"34198"}`); rec.Code != http.StatusNoContent {
+		t.Errorf("port-in-use = %d %s", rec.Code, rec.Body)
+	}
+	if rec := hook(t, h, "POST", "/oom", `{"name":"foreman-w1","on":true}`); rec.Code != http.StatusNoContent {
+		t.Errorf("oom = %d %s", rec.Code, rec.Body)
+	}
+	eventually(t, "the game to be killed", func() bool { return r.status(id) == "exited" })
+	var st fakegame.State
+	if err := json.Unmarshal(hook(t, h, "GET", "/state", "").Body.Bytes(), &st); err != nil {
+		t.Fatal(err)
+	}
+	c := st.Containers[0]
+	if !c.OOM || c.ExitCode != 137 {
+		t.Errorf("state = %+v", c)
 	}
 }
