@@ -74,7 +74,7 @@
   "common.confirm.will": "Esto hará lo siguiente:",
   "common.list.sep": ", ",
   "common.link.new_tab": "(se abre en una pestaña nueva)",
-  "common.menu.account": "{user}, {language}: menú de cuenta e idioma",
+  "common.menu.account": "{user}, {language}: menú de usuario",
   "common.menu.language": "{language}: menú de idioma",
   "common.menu.notifications": "Notificaciones",
   "common.menu.schedule": "Programación de reinicios",

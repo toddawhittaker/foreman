@@ -1,0 +1,13 @@
+{
+  "about.close": "Close",
+  "about.commit": "Commit",
+  "about.development": "development build",
+  "about.go": "Go version",
+  "about.heading": "About Foreman",
+  "about.licence": "Licence",
+  "about.modified": "modified",
+  "about.source": "The source code and the issue tracker are on {link}.",
+  "about.source.link": "GitHub",
+  "about.title": "About",
+  "about.version": "Version"
+}

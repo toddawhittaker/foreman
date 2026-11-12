@@ -273,7 +273,7 @@ test("unticking while a picture is drawn wins over the reply", async ({ page }) 
   await expect(section(page).getByRole("link", { name: "Download Vulcanus (PNG)" })).toHaveAttribute("href", /\/vulcanus\/download$/);
 });
 
-// Issue 499, SPEC 5.6: the large view offers the same box, wherever the planet
+// SPEC 5.6: the large view offers the same box, wherever the planet
 // viewed has territories. One choice, held by the form's "territories" field.
 const largeBox = (page: Page) => page.locator("#large-view").getByLabel("Show demolisher territories");
 const largeOverlay = (page: Page) => page.locator("#large-view .territories");
@@ -401,7 +401,25 @@ test("the large view's box is reached and worked by keyboard, with focus shown",
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("dialog", { name: "Gleba" })).toBeVisible();
   await expect(largeBox(page)).toBeHidden();
-  await expect(page.locator("#large-view").locator(":focus")).toHaveCount(1);
+  await expect(page.locator("#large-frame")).toBeFocused();
+});
+
+test("the large view's box is disabled while Vulcanus is drawn, then works", async ({ page }) => {
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+  await openLarge(page);
+  // Hold the draw of the next planet, so the large view shows Vulcanus before its picture exists.
+  const drawn: Route[] = [];
+  const isDraw = (u: URL) => u.pathname.endsWith("/generate/preview");
+  await page.route(isDraw, (r) => { drawn.push(r); });
+  await page.locator("#large-next").click();
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect.poll(() => drawn.length).toBe(1);
+  await expect(largeBox(page)).toBeVisible();
+  await expect(largeBox(page)).toBeDisabled();
+  for (const r of drawn.splice(0)) await r.continue();
+  await page.unroute(isDraw);
+  await expect(largeBox(page)).toBeEnabled();
 });
 
 test("a failed request in the large view is said there", async ({ page }) => {

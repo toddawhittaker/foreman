@@ -539,8 +539,8 @@ frame (7.4).
   border, so it survives forced colours; it is not bolder, so the tabs keep
   their widths from page to page. Hover brightens the text to `heading`;
   nothing else changes. Below 23rem the icons are dropped and the tabs
-  are tighter (`--space-2` side padding), so the four tabs fit one row at
-  320 px in English. The tab of the page itself has
+  are tighter (`--space-1` side padding) and a step smaller (`--text-sm`),
+  so the four tabs fit one row at 320 px in English and German. The tab of the page itself has
   `aria-current="page"`; on a page inside its section (a world's page under
   Worlds, Console under Server) the tab has `aria-current="true"`, which
   looks the same but does not tell a screen reader it is on the list
@@ -559,7 +559,7 @@ frame (7.4).
   CSS that turns over when the menu is open. On the sign-in and setup pages
   it shows only the language. The two words wrap between them, never inside
   one. Inside, on a `surface` panel (1 px `border`, `--radius-lg`,
-  `--shadow-pop`, at most 18rem wide): "Signed in as todd", then three
+  `--shadow-pop`, at most 18rem wide): "Signed in as todd", then four
   rows, each under a divider line after the first:
   1. **Language**, one row: the current language's flag, its own name, and
      an arrow at the end that turns over when open. It is a `details`
@@ -581,11 +581,24 @@ frame (7.4).
      named in visually hidden words and in its `title`, so it has hover
      text; the current one has `aria-current="true"`, an `accent-bg` face
      and a 1 px `selected` edge.
-  3. **Sign out**, still a `POST` form with a button, never a link, so a
+  3. **About**, a link to the `/about` page, so it works without script.
+     With script (`about.js`) it opens the same content in a native modal
+     `dialog` (the leave box's look, `surface` on a dimmed page, 32rem at
+     most): the logo (40 px, decorative) and "About Foreman" as its
+     heading, a row of facts: the **Version**, a release tag, shown only
+     when one reaches the build; the **Commit** (twelve characters of the
+     hash, with "(modified)" after it when the tree had changes); the
+     **Go version** it was built with; and the **Licence** (MIT). Then a
+     line that sends the person to GitHub, and a Close button that takes
+     focus. A build with neither version nor commit shows "development
+     build" as its version. The browser keeps focus inside, Escape and
+     Close shut it, and focus goes back to the menu's button (the menu
+     closes as focus enters the dialog). The names Foreman and MIT are not
+     translated, and no game versions are listed.
+  4. **Sign out**, still a `POST` form with a button, never a link, so a
      crawler or prefetch cannot sign anyone out.
-  About (fixes batch 7, task 6) goes between Theme and Sign out. The menu
-  holds no links to Foreman's settings pages: the Settings tab is their one
-  home. An item under the pointer takes `secondary-hover`.
+  The menu holds no links to Foreman's settings pages (the Settings tab is
+  their one home); About is its one link. An item under the pointer takes `secondary-hover`.
   Each item is a 44 px target. It opens and closes with Enter or Space and
   works without script; `menu.js` also closes it on Escape (focus returns
   to the summary) and on a click outside. Escape with focus in the open
@@ -2013,6 +2026,14 @@ close the view, the tab, the setting, and the picture again).
   drops the one on its way. Meanwhile a line under the picture says
   "Finding the demolisher territories…"; that line's height is held while
   the box is ticked.
+  - The large view's territory box sits in the view's bar, under the
+    status line and above "Show resource amounts", with its hint beside
+    it while they fit and under it when they do not. It has no name; the
+    script keeps it equal to the page's box (or the hidden field that
+    carries the choice) and shows it only while Vulcanus is viewed. It
+    is disabled while Vulcanus is still being drawn. It never moves
+    focus, except that a box going away under focus hands focus to the
+    picture.
   - The overlay is an inline SVG inside the picture's `.map`, in picture
     pixels (`viewBox` of the size, `preserveAspectRatio="none"`), so it
     scales and pans with the picture: each territory's chunk runs as

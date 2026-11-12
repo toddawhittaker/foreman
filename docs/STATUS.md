@@ -11,7 +11,7 @@ below uses the new numbers.
 
 Epics 1 to 9, the Gate A fixes, the fix batches after Gate A (hub
 fixes, polish fixes, UI batch, fixes batch 2, fixes batch 3, fixes batch 4),
-the Resource amounts epic, fixes batches 5 and 6 and the Mod settings epic
+the Resource amounts epic, fixes batches 5, 6 and 7 and the Mod settings epic
 are done. Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was
 skipped for now, at Todd's choice, when the Mod settings epic started; it is
 still owed before Gate C.
@@ -2721,3 +2721,111 @@ tab (8.5); an `http://` webhook address is allowed, with a warning (8.11).
 - Epic 9b (VPN sidecars) is not built; Foreman still refuses to start when
   `FOREMAN_GAME_NETWORK_CONTAINER` is set.
 - Gate B (SPEC 19.2) is still owed.
+
+## Fixes batch 7
+
+Serves SPEC 5.6, 6.11, 7.1, 7.12, 17.1, 17.2, 17.10 and 22, with DESIGN 6,
+8.8, 8.15, 8.16 and 8.18, STACK 3 and ADR 0020. Issues closed: #523 (the
+schedule's time zone), #496 and #487 (the upload reserve test), #495 (the
+Docker outage test), #499 (territories in the large view), #497 (language
+and theme choices, About) and #524 (a Settings tab). The pull requests were
+#526 (#495), #527 (#523), #528 (#496, #487), #529 (#499), #530 (#524 and
+the language and theme rows of #497) and #532 (About).
+
+Rulings (Todd, 2026-11-12): the user menu loses its settings links, since
+the new Settings tab is their one home; the language stays in the user menu
+as one row that expands, with a flag and the language's own name; theme is
+one row of three icon buttons; English shows the United Kingdom's flag and
+Spanish shows Spain's, from bundled flag-icons SVG files (ADR 0020).
+Ruling 2 replaced #497's request for a language picker on the header bar:
+nothing new went on the header. Ruled by the orchestrator: the Settings tab
+is last in the main navigation and opens Restart schedule; the world's
+"Settings" tab is now "Game settings"; About shows the product, version,
+commit, Go version, licence and a project link, and no game versions.
+
+### Delivered
+
+- **The Docker outage test was a race (#495, SPEC 7.1).** A check could list
+  the containers, fail to inspect one, and set the "cannot read the game
+  container" reason; the next check's failed listing then replaced it with
+  "cannot reach Docker". The old test stopped waiting as soon as the state
+  was unknown and so sometimes read the brief inspect reason. The monitor is
+  unchanged. `TestDockerUnreachable` now waits for the SPEC 7.1 reason, and
+  `TestDockerDownAfterInspectFailure` forces the order and proves the
+  outage replaces the inspect reason.
+- **The upload reserve test reads a fixed free-space figure (#496, #487,
+  SPEC 6.11).** `world.SetFreeBytesForTest` fixes the reading at 128 MB for
+  a test and returns a restore function; production reads the disk as
+  before. `TestDiskFullMidUpload` runs on its own tiny mount and was left
+  alone.
+- **A never-saved schedule preselects the browser's time zone (#523, SPEC
+  7.12, DESIGN 8.15).** A small script, `schedule.js`, selects the zone from
+  `Intl.DateTimeFormat().resolvedOptions().timeZone` when the list has it.
+  A saved schedule keeps its zone, a refused form keeps the posted zone, and
+  without script the page offers UTC. This closes the Epic 9 schedule gap.
+- **The large map view has the territories box (#499, SPEC 5.6, DESIGN
+  8.8).** It is the page's box seen from the view, not a second setting, and
+  is shown only while Vulcanus is viewed. It holds across Previous, Next,
+  All planets and closing. It is disabled while Vulcanus is still being
+  drawn, says "Finding the demolisher territories…" while it looks, and says
+  the counts or the failure in the view's status line.
+- **A Settings tab (#524, SPEC 17.10).** It is last in the main navigation,
+  opens Restart schedule and is marked current on the schedule, account and
+  notifications pages and the webhook pages under them. SPEC 17.10 counts
+  "Set a nightly restart" and "Open Notifications" at 2 clicks each, and
+  click-budgets.spec.ts tests both.
+- **"Game settings" (SPEC 22, I18N.md).** The world's tab and the Server
+  page's link to it carry the new name in all eight languages, so no page
+  has two navigation links named "Settings".
+- **The user menu (#497, DESIGN 6, SPEC 22.2).** Rows: "Signed in as", a
+  folded language row (a nested native `details`, the current flag and name;
+  opened, the other seven as submit buttons), the theme row (a `fieldset`
+  of Auto, Light and Dark icon buttons, each with a hidden name and hover
+  text, 44 px targets), About and Sign out. It works without script. Escape
+  inside the open language list folds it first, then closes the menu. The
+  menu's accessible name now says "user menu" in all eight languages.
+- **Flags (STACK 3, ADR 0020).** flag-icons 7.6.0, eight 4x3 SVG files under
+  `internal/web/static/flags/` with their licence and `SHA256SUMS`, checked
+  by `TestFlagChecksums`. The static handler serves `.svg` with a `sandbox`
+  content security policy and does not serve the licence or the sums.
+- **About (#497, DESIGN 6).** An item in the user menu: a link to `/about`,
+  and with script a native modal dialog that traps focus and returns it.
+  `internal/version` reads the version and commit from `-ldflags` (set by
+  the Makefile, the Dockerfile and the CI image build), else Go's build
+  info, else "development build". The Version shows only for a release tag;
+  a commit built from a changed tree is marked "(modified)".
+- **Narrow screens.** At 320 px the four main tabs draw tighter and a step
+  smaller so they keep one row in English and German; under 22rem the open
+  menu takes the window width less 0.5rem each side, so language names keep
+  their line at 200% text.
+- **Spec and process.** SPEC 5.6, 17.10 and 22.2, DESIGN 6 and 8.8, STACK 3
+  and ADR 0020 carry the rules. The plan was deleted.
+
+### Verified
+
+- Each task ran `make check-go fmt-check vet lint typecheck` and the specs
+  it touched in all four projects. The flake tests passed their repeats:
+  `go test -race -count=50` on the two Docker tests, and `-count=20` on the
+  upload reserve test.
+- Task 5 ran the menu, header, settings, i18n and click-budget specs in
+  all four projects (1,314 tests passed) and `go test ./internal/web/`
+  in four parts (678 tests).
+- Real-game checks: none needed; no task touches server control, world
+  switching, snapshots, mods or game versions.
+
+### Gaps left
+
+- **The large map view has no "Try again" for a failed territory request
+  (#499).** Unticking and ticking the box again retries.
+- **The theme buttons' names show only to screen readers and as hover text.**
+  Keyboard and touch users see bare icons (ruling 2a).
+- **The language is in the user menu, not on the header bar.** Ruling 2
+  replaced #497's request for a header picker.
+- **Two navigation links named "Snapshots" on a world's pages (#531).** The
+  main tab and the world's tab share a name with different targets. It
+  predates this batch; user-menu.spec.ts excludes that one name.
+- **Spain's flag is 81 KB** (the coat of arms); every other flag is under
+  1 KB. The seven flags in the language list load lazily, so the file is
+  fetched only when the list opens, or at once when Spanish is the current
+  language.
+- Still deferred: as listed under fixes batch 6 and Epic 9.

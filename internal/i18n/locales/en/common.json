@@ -74,7 +74,7 @@
   "common.confirm.will": "This will:",
   "common.list.sep": ", ",
   "common.link.new_tab": "(opens in a new tab)",
-  "common.menu.account": "{user}, {language}: account and language menu",
+  "common.menu.account": "{user}, {language}: user menu",
   "common.menu.language": "{language}: language menu",
   "common.menu.notifications": "Notifications",
   "common.menu.schedule": "Restart schedule",

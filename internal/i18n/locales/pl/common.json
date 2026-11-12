@@ -78,7 +78,7 @@
   "common.confirm.will": "Co się stanie:",
   "common.list.sep": ", ",
   "common.link.new_tab": "(otwiera się w nowej karcie)",
-  "common.menu.account": "{user}, {language}: menu konta i języka",
+  "common.menu.account": "{user}, {language}: menu użytkownika",
   "common.menu.language": "{language}: menu języka",
   "common.menu.notifications": "Powiadomienia",
   "common.menu.schedule": "Harmonogram restartów",

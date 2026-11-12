@@ -1,5 +1,4 @@
 import { test, expect, checkPage, createAdmin, mainNav, openMenu, pickLanguage } from "./foreman.js";
-import { countClicks, expectWithin } from "./clicks.js";
 
 // SPEC 7.12, DESIGN 8.15: the restart schedule page, the Foreman settings
 // sub-navigation it shares with the account and notifications pages, and
@@ -8,10 +7,12 @@ import { countClicks, expectWithin } from "./clicks.js";
 
 const settingsNav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Foreman settings" });
 
-test("set a nightly restart from the Server page in two clicks", async ({ page }) => {
+// Pin the browser's zone, so no test depends on the host's. The describe
+// blocks below that set another zone override this.
+test.use({ timezoneId: "UTC" });
+
+test("a new schedule is offered at 04:00 UTC and saves", async ({ page }) => {
   await createAdmin(page);
-  const clicks = await countClicks(page);
-  await clicks.reset();
 
   await mainNav(page).getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL("/settings/restart-schedule");
@@ -32,7 +33,6 @@ test("set a nightly restart from the Server page in two clicks", async ({ page }
   await expect(page.locator("#done-message")).toContainText("Saved. The next restart is");
   await expect(page.locator("#schedule-state")).toContainText("Foreman restarts the active world every day at 04:00 (UTC). Next restart:");
   await expect(page.locator("#schedule-state time")).toHaveAttribute("datetime", /T04:00:00Z$/);
-  await expectWithin(clicks, 2, "Set a nightly restart");
   await checkPage(page);
 });
 
@@ -103,7 +103,8 @@ test("the three Foreman settings pages share one sub-navigation", async ({ page 
 test("the user menu holds no settings links: the Settings tab is their home", async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
-  await expect(page.locator("details.menu").getByRole("link")).toHaveCount(0);
+  // About is the menu's one link.
+  await expect(page.locator("details.menu").getByRole("link")).toHaveText(["About"]);
 });
 
 test("the page is translated", async ({ page }) => {
@@ -126,6 +127,16 @@ test.describe("in the viewer's time zone", () => {
     await expect(page.getByLabel("Time zone")).toHaveValue("America/New_York");
     await page.getByRole("button", { name: "Save schedule" }).click();
     await expect(page.locator("#schedule-state")).toContainText("every day at 04:00 (America/New_York)");
+  });
+
+  test.describe("in Asia/Calcutta", () => {
+    test.use({ timezoneId: "Asia/Calcutta" });
+
+    test("a never-saved schedule preselects Asia/Calcutta", async ({ page }) => {
+      await createAdmin(page);
+      await page.goto("/settings/restart-schedule");
+      await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Calcutta");
+    });
   });
 
   test("a saved schedule keeps its saved zone", async ({ page }) => {

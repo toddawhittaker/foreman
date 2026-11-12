@@ -164,7 +164,7 @@ test("the total is what deleting everything frees", async ({ page, foreman }) =>
   await takeSnapshot(page, "New save");
 
   await page.goto("/snapshots");
-  const added = (await page.locator("dd").first().textContent())!;
+  const added = (await page.locator("main dd").first().textContent())!;
   expect(added).not.toBe("0 B");
   await page.locator('input[name="snap"]').first().check();
   await page.locator('input[name="snap"]').last().check();
@@ -172,7 +172,7 @@ test("the total is what deleting everything frees", async ({ page, foreman }) =>
   await expect(page.getByText(`Free ${added} of disk space`)).toBeVisible();
   await page.getByRole("button", { name: "Delete 2 snapshots" }).click();
   await expect(page.getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
-  await expect(page.locator("dd").first()).toHaveText("0 B");
+  await expect(page.locator("main dd").first()).toHaveText("0 B");
 });
 
 // A snapshot that is gone counts as deleted already, and is not posted.
