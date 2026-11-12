@@ -88,9 +88,6 @@ func chatEventID(c game.ChatLine) uint64 { return c.Seq + 1 }
 // ChatLimit is the longest message, for the field.
 func (ChatPage) ChatLimit() int { return game.MaxChatRunes }
 
-// Running is true while the game can take a chat message.
-func (p ChatPage) Running() bool { return p.Status.State == game.StateRunning }
-
 // The heading names the world and its state, as on the Server page.
 func (p ChatPage) ActiveName() string  { return p.World.Name }
 func (p ChatPage) StateWord() i18n.Msg { return stateWord(p.Status.State) }

@@ -182,7 +182,7 @@ func TestServerPageStartsAndStops(t *testing.T) {
 		t.Fatal(err)
 	}
 	// An online player's name opens their actions (DESIGN 8.12).
-	g.waitPage(`<summary id="act-player-bob"><span class="player-actions__name">bob</span>`)
+	g.waitPage(`<summary id="ps-bob"><span class="player-actions__name">bob</span>`)
 
 	form := g.get(gamePath(id, "stop"))
 	// One control for the warning: the seconds field, where 0 means none

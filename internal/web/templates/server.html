@@ -190,8 +190,8 @@
      that confirm, drawn risky. */}}
 {{define "server-player" -}}
 {{if .Actions}}
-<details class="player-actions disclosure" name="player-actions" id="player-{{.Name}}">
-  <summary id="act-player-{{.Name}}"><span class="player-actions__name">{{.Name}}</span><span class="visually-hidden">{{t "server.players.actions_hidden"}}</span>{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}}</summary>
+<details class="player-actions disclosure" name="player-actions" id="{{.DetailsID}}">
+  <summary id="{{.SummaryID}}"><span class="player-actions__name">{{.Name}}</span><span class="visually-hidden">{{t "server.players.actions_hidden"}}</span>{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}}</summary>
   <div class="actions">
     {{- range .AtOnce}}
     <form method="post" action="{{.Path}}">
@@ -200,8 +200,8 @@
       <button type="submit" class="button" id="{{.ID}}">{{msg .Word}}<span class="visually-hidden"> {{.Name}}</span></button>
     </form>
     {{- end}}
-    <a href="{{.KickPath}}" class="button button--risky" id="act-kick-{{.Name}}">{{t "server.players.kick"}}<span class="visually-hidden"> {{.Name}}</span></a>
-    <a href="{{.BanPath}}" class="button button--risky" id="act-ban-{{.Name}}">{{t "server.players.ban"}}<span class="visually-hidden"> {{.Name}}</span></a>
+    <a href="{{.KickPath}}" class="button button--risky" id="{{.KickID}}">{{t "server.players.kick"}}<span class="visually-hidden"> {{.Name}}</span></a>
+    <a href="{{.BanPath}}" class="button button--risky" id="{{.BanID}}">{{t "server.players.ban"}}<span class="visually-hidden"> {{.Name}}</span></a>
   </div>
 </details>
 {{- else}}{{.Name}}{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}}{{end}}
@@ -216,7 +216,7 @@
   <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.online_for"}}</th></tr></thead>
   <tbody role="rowgroup">
     {{- range $.PlayerRows}}
-    <tr role="row" id="player-row-{{.Name}}"><td role="cell">{{template "server-player" .}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
+    <tr role="row" id="{{.RowID}}"><td role="cell">{{template "server-player" .}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
     {{- end}}
   </tbody>
 </table>

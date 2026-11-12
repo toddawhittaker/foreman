@@ -40,7 +40,7 @@ test.describe("with the fake game", () => {
     await expect(page.locator("main").getByText("Nobody is online.")).toBeVisible(live);
     await fakeGame!.call("/join", { name: container, player: "alice" });
     // The list follows the game without a reload (SPEC 8.1, 16.3).
-    await expect(page.locator("#player-row-alice")).toBeVisible(live);
+    await expect(page.locator("#pr-alice")).toBeVisible(live);
     await expect(page.getByRole("table")).toContainText("1 online");
     await checkPage(page);
 

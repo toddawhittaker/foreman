@@ -845,22 +845,22 @@ type PlayerPost struct {
 // read offers neither of its two buttons.
 func (r PlayerRow) AtOnce() []PlayerPost {
 	var out []PlayerPost
-	add := func(a game.PlayerAction, id string, word i18n.Msg) {
-		out = append(out, PlayerPost{Path: playerPath(r.World, string(a)), Name: r.Name, Return: PathServer, ID: id + "-" + r.Name, Word: word})
+	add := func(a game.PlayerAction, prefix string, word i18n.Msg) {
+		out = append(out, PlayerPost{Path: playerPath(r.World, string(a)), Name: r.Name, Return: PathServer, ID: prefix + r.Name, Word: word})
 	}
 	switch {
 	case !r.AdminKnown:
 	case r.Admin:
-		add(game.PlayerDemote, "act-demote", i18n.M("server.players.demote"))
+		add(game.PlayerDemote, idPlayerDemote, i18n.M("server.players.demote"))
 	default:
-		add(game.PlayerPromote, "act-promote", i18n.M("server.players.promote"))
+		add(game.PlayerPromote, idPlayerPromote, i18n.M("server.players.promote"))
 	}
 	switch {
 	case !r.Whitelist:
 	case r.Whitelisted:
-		add(game.PlayerWhitelistRemove, "act-whitelist-remove", i18n.M("server.players.whitelist_remove"))
+		add(game.PlayerWhitelistRemove, idPlayerWLRemove, i18n.M("server.players.whitelist_remove"))
 	default:
-		add(game.PlayerWhitelistAdd, "act-whitelist-add", i18n.M("server.players.whitelist_add"))
+		add(game.PlayerWhitelistAdd, idPlayerWLAdd, i18n.M("server.players.whitelist_add"))
 	}
 	return out
 }
@@ -988,7 +988,9 @@ func (p ServerPage) ScheduleCountdown() bool {
 func (p ServerPage) ScheduleWait() i18n.Msg {
 	msg := i18n.M("server.schedule.waiting", "time", momentUTC(p.Schedule.Until))
 	if p.Schedule.Joined != "" {
-		msg = join(msg, i18n.M("server.schedule.joined", "name", p.Schedule.Joined))
+		// The name is the game's, shown as written and marked English, as
+		// chat and console lines are (SPEC 22.3).
+		msg = join(msg, i18n.M("server.schedule.joined", "name", i18n.Game(p.Schedule.Joined)))
 	}
 	if p.Schedule.Unasked {
 		msg = join(msg, i18n.M("server.schedule.unasked"))
@@ -1035,3 +1037,29 @@ func (p ServerPage) LowDisk() i18n.Msg {
 // SnapshotsAllPath is the all-worlds Snapshots page, where the low-disk
 // warning's next step is.
 func (ServerPage) SnapshotsAllPath() string { return PathSnapshots }
+
+// A player's ids are a prefix and the name. Each prefix begins no other
+// prefix and no fixed id on the page, so no name can make one id into
+// another: a player called "done" never takes #player-done, nor "row-alice"
+// alice's row (DESIGN 8.12). A name that passed the check has no spaces.
+const (
+	idPlayerRow      = "pr-"
+	idPlayerDetails  = "pd-"
+	idPlayerSummary  = "ps-"
+	idPlayerPromote  = "pa-promote-"
+	idPlayerDemote   = "pa-demote-"
+	idPlayerWLAdd    = "pa-wl-add-"
+	idPlayerWLRemove = "pa-wl-remove-"
+	idPlayerKick     = "pa-kick-"
+	idPlayerBan      = "pa-ban-"
+)
+
+// playerIDPrefixes are all of them, for the test that keeps them apart.
+var playerIDPrefixes = []string{idPlayerRow, idPlayerDetails, idPlayerSummary, idPlayerPromote, idPlayerDemote, idPlayerWLAdd, idPlayerWLRemove, idPlayerKick, idPlayerBan}
+
+// The row's own ids.
+func (r PlayerRow) RowID() string     { return idPlayerRow + r.Name }
+func (r PlayerRow) DetailsID() string { return idPlayerDetails + r.Name }
+func (r PlayerRow) SummaryID() string { return idPlayerSummary + r.Name }
+func (r PlayerRow) KickID() string    { return idPlayerKick + r.Name }
+func (r PlayerRow) BanID() string     { return idPlayerBan + r.Name }

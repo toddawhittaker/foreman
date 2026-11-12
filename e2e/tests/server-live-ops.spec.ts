@@ -13,7 +13,7 @@ import type { Page } from "@playwright/test";
 test.use({ fakeGameOn: true });
 
 const container = "foreman-base";
-const row = (page: Page, name: string) => page.locator(`#player-${name}`);
+const row = (page: Page, name: string) => page.locator(`#pd-${name}`);
 
 async function commands(g: FakeGame): Promise<string[]> {
   return (await g.state()).containers.find((c) => c.name === container)?.commands ?? [];
@@ -51,7 +51,7 @@ test("make an online player admin in two clicks, then undo it in one more", asyn
   const clicks = await countClicks(page);
   await clicks.reset();
 
-  await page.locator("#act-player-alice").click();
+  await page.locator("#ps-alice").click();
   await expect(row(page, "alice")).toHaveAttribute("open", "");
   // The order is the design's: the change that acts at once, then the two that confirm.
   await expect(row(page, "alice").locator(".actions").locator("a, button")).toHaveText([
@@ -68,15 +68,15 @@ test("make an online player admin in two clicks, then undo it in one more", asyn
   await expectWithin(clicks, 2, "Make an online player admin");
   expect(await commands(fakeGame!)).toContain("/promote alice");
   // The row reads the admin list the game wrote: the mark, and the opposite change.
-  await expect(page.locator("#act-player-alice .badge")).toHaveText("Admin");
-  await expect(page.locator("#act-demote-alice")).toHaveCount(1);
+  await expect(page.locator("#ps-alice .badge")).toHaveText("Admin");
+  await expect(page.locator("#pa-demote-alice")).toHaveCount(1);
   await checkPage(page);
 
   await page.getByRole("button", { name: "Undo: remove alice as admin" }).click();
   await expect(page.locator("#player-done")).toContainText("alice is no longer an admin of Base.");
   await expectWithin(clicks, 3, "Make a player admin, then undo it");
   expect(await commands(fakeGame!)).toContain("/demote alice");
-  await page.locator("#act-player-alice").click();
+  await page.locator("#ps-alice").click();
   await expect(page.getByRole("button", { name: "Make admin alice" })).toBeVisible();
   await checkPage(page);
   // The result shows once: a reload drops it.
@@ -89,7 +89,7 @@ test("kick and ban confirm and come back to the Server page, three clicks each",
   const clicks = await countClicks(page);
   await clicks.reset();
 
-  await page.locator("#act-player-alice").click();
+  await page.locator("#ps-alice").click();
   await page.getByRole("link", { name: "Kick alice" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Kick alice from Base?");
   await checkPage(page);
@@ -101,7 +101,7 @@ test("kick and ban confirm and come back to the Server page, three clicks each",
   await checkPage(page);
 
   await clicks.reset();
-  await page.locator("#act-player-bob").click();
+  await page.locator("#ps-bob").click();
   await page.getByRole("link", { name: "Ban bob" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ban bob from Base?");
   // Cancel goes back to the Server page.
@@ -120,7 +120,7 @@ test("an open player row stays open and keeps focus while the list updates, and 
   fakeGame,
 }) => {
   await running(page, foreman, fakeGame!, ["alice"]);
-  await page.locator("#act-player-alice").click();
+  await page.locator("#ps-alice").click();
   await page.getByRole("link", { name: "Kick alice" }).focus();
 
   // Another player joins: the players region is swapped.
@@ -139,12 +139,14 @@ test("an open player row stays open and keeps focus while the list updates, and 
 // The longest words are Russian and German (docs/I18N.md): an open row, its
 // admin mark and its buttons still fit 320 px at 200% text.
 for (const lang of ["ru", "de"]) {
-  test(`${lang}: an open player row fits 320 px at 200% text`, async ({ page, foreman, fakeGame }) => {
+  test(`${lang}: an open player row and the next restart fit 320 px at 200% text`, async ({ page, foreman, fakeGame }) => {
     await running(page, foreman, fakeGame!, ["alice"]);
+    // The schedule's fact holds a time with its age inside a button face.
+    await schedule(page, "04:00", 1);
     // A long name and the admin mark, so the summary wraps.
     await fakeGame!.call("/join", { name: container, player: "Maximilian_the_Engineer_of_Nauvis" });
-    await page.locator("#act-player-alice").click();
-    await page.locator("#act-promote-alice").click();
+    await page.locator("#ps-alice").click();
+    await page.locator("#pa-promote-alice").click();
     await expect(page.locator("#player-done")).toBeVisible();
     await pickLanguage(page, lang);
     await expect(page.locator("html")).toHaveAttribute("lang", lang);
@@ -153,8 +155,10 @@ for (const lang of ["ru", "de"]) {
     await page.evaluate(() => {
       document.documentElement.style.fontSize = "200%";
     });
-    await page.locator("#act-player-alice").click();
+    await page.locator("#ps-alice").click();
     await expect(row(page, "alice")).toHaveAttribute("open", "");
+    await expect(page.locator("#act-schedule time")).toHaveAttribute("datetime", /T04:00:00Z$/);
+    await expect(page.locator("#act-schedule")).toBeVisible();
     await checkPage(page);
   });
 }
@@ -176,18 +180,18 @@ test("the whitelist buttons show only while the running game keeps the whitelist
 
   const clicks = await countClicks(page);
   await clicks.reset();
-  await page.locator("#act-player-dave").click();
+  await page.locator("#ps-dave").click();
   await page.getByRole("button", { name: "Add to whitelist dave" }).click();
   await expect(page.locator("#player-done")).toContainText("dave is on the whitelist of Base.");
   await expectWithin(clicks, 2, "Add an online player to the whitelist");
-  await page.locator("#act-player-dave").click();
+  await page.locator("#ps-dave").click();
   await expect(page.getByRole("button", { name: "Remove from whitelist dave" })).toBeVisible();
   await checkPage(page);
 });
 
 test("a game started without the whitelist offers no whitelist button", async ({ page, foreman, fakeGame }) => {
   await running(page, foreman, fakeGame!, ["erin"]);
-  await page.locator("#act-player-erin").click();
+  await page.locator("#ps-erin").click();
   await expect(row(page, "erin").getByRole("button", { name: /whitelist/ })).toHaveCount(0);
 });
 

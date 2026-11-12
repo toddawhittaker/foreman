@@ -891,20 +891,20 @@ func TestFaviconLinksAndFiles(t *testing.T) {
 func TestPlayerRowsOfferTheirActions(t *testing.T) {
 	html := fragmentHTML(t, liveOpsCase(func(*ServerPage) {}), "server-players")
 	wantAll(t, "alice's row", html,
-		`<details class="player-actions disclosure" name="player-actions" id="player-alice">`,
-		`<summary id="act-player-alice"><span class="player-actions__name">alice</span><span class="visually-hidden">, actions</span></summary>`,
+		`<details class="player-actions disclosure" name="player-actions" id="pd-alice">`,
+		`<summary id="ps-alice"><span class="player-actions__name">alice</span><span class="visually-hidden">, actions</span></summary>`,
 		`<form method="post" action="/worlds/base/players/promote">`,
-		`id="act-promote-alice">Make admin<span class="visually-hidden"> alice</span>`,
+		`id="pa-promote-alice">Make admin<span class="visually-hidden"> alice</span>`,
 		`<form method="post" action="/worlds/base/players/whitelist-remove">`,
-		`id="act-whitelist-remove-alice">Remove from whitelist`,
-		`<a href="/worlds/base/players/kick?name=alice&amp;return=%2F" class="button button--risky" id="act-kick-alice">Kick<span class="visually-hidden"> alice</span></a>`,
-		`<a href="/worlds/base/players/ban?name=alice&amp;return=%2F" class="button button--risky" id="act-ban-alice">Ban<span class="visually-hidden"> alice</span></a>`,
+		`id="pa-wl-remove-alice">Remove from whitelist`,
+		`<a href="/worlds/base/players/kick?name=alice&amp;return=%2F" class="button button--risky" id="pa-kick-alice">Kick<span class="visually-hidden"> alice</span></a>`,
+		`<a href="/worlds/base/players/ban?name=alice&amp;return=%2F" class="button button--risky" id="pa-ban-alice">Ban<span class="visually-hidden"> alice</span></a>`,
 		`<input type="hidden" name="return" value="/">`)
 	// The admin list is read without regard to case, as the game reads it.
-	wantAll(t, "Bob's row", html, `id="act-demote-Bob">Remove admin`, `<span class="badge">Admin</span>`, `id="act-whitelist-add-Bob">Add to whitelist`)
-	wantNone(t, "Bob's row", html, `id="act-promote-Bob"`)
+	wantAll(t, "Bob's row", html, `id="pa-demote-Bob">Remove admin`, `<span class="badge">Admin</span>`, `id="pa-wl-add-Bob">Add to whitelist`)
+	wantNone(t, "Bob's row", html, `id="pa-promote-Bob"`)
 	// The order is the design's: the changes that act at once, then Kick, then Ban.
-	if a, w, k, b := strings.Index(html, "act-promote-alice"), strings.Index(html, "act-whitelist-remove-alice"), strings.Index(html, "act-kick-alice"), strings.Index(html, "act-ban-alice"); a >= w || w >= k || k >= b {
+	if a, w, k, b := strings.Index(html, "pa-promote-alice"), strings.Index(html, "pa-wl-remove-alice"), strings.Index(html, "pa-kick-alice"), strings.Index(html, "pa-ban-alice"); a >= w || w >= k || k >= b {
 		t.Errorf("buttons out of order: promote %d, whitelist %d, kick %d, ban %d", a, w, k, b)
 	}
 	// A name with a space is shown as it is, with nothing to act on it.
@@ -913,7 +913,7 @@ func TestPlayerRowsOfferTheirActions(t *testing.T) {
 
 	// Without the whitelist kept, and with the admin list unreadable, only Kick and Ban.
 	html = fragmentHTML(t, liveOpsCase(func(p *ServerPage) { p.Lists = PlayerLists{} }), "server-players")
-	wantAll(t, "rows with no lists", html, `id="act-kick-alice"`, `id="act-ban-alice"`)
+	wantAll(t, "rows with no lists", html, `id="pa-kick-alice"`, `id="pa-ban-alice"`)
 	wantNone(t, "rows with no lists", html, "act-promote", "act-demote", "act-whitelist")
 
 	// The list a stop's warning keeps is who was online then: no actions.
@@ -1008,9 +1008,10 @@ func TestScheduledRestartOnTheServerPage(t *testing.T) {
 	wantAll(t, "the waiting note", html, `id="schedule-waiting"`,
 		"A scheduled restart is waiting for nobody to be online. If players are still on at", "it is skipped today.",
 		`<a href="/settings/restart-schedule" id="act-schedule-note">Restart schedule</a>`)
-	waiting.Schedule.Joined, waiting.Schedule.Unasked = "alice", true
+	// The name is the game's, as a chat line's is: marked English and escaped.
+	waiting.Schedule.Joined, waiting.Schedule.Unasked = "<b>alice</b>", true
 	wantAll(t, "the waiting note after a join", controlHTML(t, waiting),
-		"alice joined during the warning, so the restart waits again.",
+		`<span lang="en">&lt;b&gt;alice&lt;/b&gt;</span> joined during the warning, so the restart waits again.`,
 		"Foreman cannot ask the game who is online, so it waits as if someone were.")
 	// Another world's wait is not this page's.
 	waiting.Schedule.WorldID = "other"
@@ -1061,5 +1062,47 @@ func TestLowDiskNotice(t *testing.T) {
 	}
 	if !slices.Contains(liveRegions, "disk") || !slices.Contains(liveRegions, "schedule") {
 		t.Errorf("live regions %v lack disk or schedule", liveRegions)
+	}
+}
+
+// Every id on the Server page is unique whatever the players are called: a
+// player's ids take prefixes that begin no other id on the page, so a name
+// such as "done", "undo" or "row-alice" cannot take the id of the Done
+// message, its Undo button or another player's row (DESIGN 8.12).
+func TestPlayerIDsAreUniqueWhateverTheName(t *testing.T) {
+	p := liveOpsCase(func(p *ServerPage) {
+		p.Players = []game.Player{{Name: "alice"}, {Name: "done"}, {Name: "undo"}, {Name: "error"}, {Name: "row-alice"}, {Name: "heading"}}
+		p.Lists.Admins = map[string]bool{"done": true}
+		p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: "Base", Action: game.PlayerPromote, Name: "alice", Return: PathServer}
+	})
+	body := pageHTML(t, p)
+	seen := map[string]int{}
+	for _, m := range reID.FindAllStringSubmatch(body, -1) {
+		seen[m[1]]++
+	}
+	for id, n := range seen {
+		if n > 1 {
+			t.Errorf("id %q used %d times", id, n)
+		}
+	}
+	// The fixed ids are the page's own, not a player's.
+	for _, id := range []string{"player-done", "ps-undo", "players-heading"} {
+		if seen[id] != 1 {
+			t.Errorf("id %q appears %d times, want once", id, seen[id])
+		}
+	}
+	// No per-player prefix is the start of another, so no name can make one
+	// kind of id into another.
+	for i, a := range playerIDPrefixes {
+		for j, b := range playerIDPrefixes {
+			if i != j && strings.HasPrefix(b, a) {
+				t.Errorf("prefix %q begins prefix %q", a, b)
+			}
+		}
+		for id := range seen {
+			if strings.HasPrefix(id, a) && !slices.ContainsFunc(p.Players, func(pl game.Player) bool { return id == a+pl.Name }) {
+				t.Errorf("id %q takes the player prefix %q", id, a)
+			}
+		}
 	}
 }
