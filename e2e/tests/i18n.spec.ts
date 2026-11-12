@@ -80,7 +80,7 @@ test("html lang, the menu and the page text agree in every language", async ({ p
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t("accounts.signedout.heading", {}, lang));
     // Off English the label adds the English word, marked lang="en".
     const label = t("common.language.label", {}, lang);
-    await expect(page.locator("details.menu legend")).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
+    await expect(page.locator(`details.menu fieldset:has(button[value="${lang}"]) legend`)).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
     expect(await page.title()).toContain(t("accounts.signedout.title", {}, lang));
   }
 });

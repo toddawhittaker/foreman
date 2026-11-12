@@ -105,6 +105,10 @@ The targets (STACK.md, section 13):
   reason, and the other pages work.
 - `make e2e`: build the binary and the fake game, and run the Playwright
   and axe tests in the Playwright image. No real Docker or game is used.
+- `make design-export`: write the component page (`/design`) as one
+  standalone HTML file per group, with the stylesheet, fonts and a README,
+  to `dist/design/`, which git ignores. It renders the same templates
+  in-process, so no server needs to run.
 - `make image`: build the container image as `foreman:dev`.
 - `make deploy`: build the image from your checkout and restart only the
   Foreman service in a local Docker Compose stack. Nothing in the

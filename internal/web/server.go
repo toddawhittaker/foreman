@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -193,6 +194,7 @@ func (s *server) routes() {
 	s.mux.HandleFunc("GET "+PathSignedOut, s.handleSignedOut)
 	s.mux.HandleFunc("POST "+PathSignOut, s.handleSignOut)
 	s.mux.HandleFunc("POST "+PathLanguage, s.handleLanguage)
+	s.mux.HandleFunc("POST "+PathTheme, s.handleTheme)
 	s.gameRoutes()
 	s.consoleRoutes()
 	s.worldRoutes()
@@ -204,6 +206,7 @@ func (s *server) routes() {
 	s.settingsRoutes()
 	s.accountRoutes()
 	s.modRoutes()
+	s.designRoutes()
 	if s.cfg.AuthLocal {
 		s.mux.HandleFunc("GET "+PathSetup, s.handleSetupForm)
 		s.mux.HandleFunc("POST "+PathSetup, s.handleSetup)
@@ -324,28 +327,63 @@ func (s *server) handleLanguage(w http.ResponseWriter, r *http.Request) {
 		s.page(w, r, http.StatusBadRequest, "", ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
+	s.savePreference(w, r, LangCookie, loc.String())
+}
+
+// ThemeCookie holds the theme the menu chose, one of themes (SPEC 17.3).
+const ThemeCookie = "foreman_theme"
+
+// themes are the choices the menu offers. Auto follows the system setting.
+var themes = []string{"auto", "light", "dark"}
+
+// themeOf is the theme r's page is drawn in: the cookie's when it is one of
+// themes, else auto.
+func themeOf(r *http.Request) string {
+	if c, err := r.Cookie(ThemeCookie); err == nil && slices.Contains(themes, c.Value) {
+		return c.Value
+	}
+	return "auto"
+}
+
+// handleTheme stores the menu's theme in a cookie and goes back to the page
+// the menu was on (SPEC 17.3). Like the language, it needs no sign-in.
+func (s *server) handleTheme(w http.ResponseWriter, r *http.Request) {
+	if !s.readForm(w, r) {
+		return
+	}
+	theme := r.PostFormValue("theme")
+	if !slices.Contains(themes, theme) {
+		s.page(w, r, http.StatusBadRequest, "", ErrorPage{Status: http.StatusBadRequest})
+		return
+	}
+	s.savePreference(w, r, ThemeCookie, theme)
+}
+
+// savePreference keeps a user menu choice in a year-long cookie for this
+// browser and sends it back to the page the menu was on.
+func (s *server) savePreference(w http.ResponseWriter, r *http.Request, name, value string) {
 	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows the configuration, as the session cookie does
-		Name:     LangCookie,
-		Value:    loc.String(),
+		Name:     name,
+		Value:    value,
 		Path:     "/",
 		MaxAge:   365 * 24 * 60 * 60,
 		HttpOnly: true,
 		Secure:   s.cfg.SecureCookies(),
 		SameSite: http.SameSiteLaxMode,
 	})
-	to := languageReturn(r.PostFormValue("return"))
+	to := menuReturnPath(r.PostFormValue("return"))
 	if to == "" {
 		to = "/"
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
 }
 
-// languageReturn is where the language menu sends the browser back to:
+// menuReturnPath is where the user menu sends the browser back to:
 // what returnPath allows (SPEC 14.17), and also the sign-in, setup and
 // signed-out pages, which returnPath refuses only so a sign-in cannot
 // return to itself. For those it returns Foreman's own path, never the
 // input, keeping only a sign-in's next once it passes returnPath.
-func languageReturn(p string) string {
+func menuReturnPath(p string) string {
 	if safe := returnPath(p); safe != "" {
 		return safe
 	}

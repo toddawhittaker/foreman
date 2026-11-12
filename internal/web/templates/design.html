@@ -1,0 +1,253 @@
+{{define "title"}}{{t "common.design.title"}}{{end}}
+
+{{define "scripts"}}<script src="{{static "toggletip.js"}}" defer></script>{{end}}
+
+{{define "content" -}}
+{{with .Page}}
+<h1>{{t "common.design.title"}}</h1>
+{{- range .Groups}}
+{{template "design-section" ($.Page.Section .)}}
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{/* One group of components, drawn once in each theme. The design export
+     writes each one to a file of its own. Takes designSection. */}}
+{{define "design-section" -}}
+<section class="panel" aria-labelledby="design-{{.Group.Key}}">
+  <h2 id="design-{{.Group.Key}}">{{msg .Group.Heading}}</h2>
+  <div class="design-pair">
+    {{template "design-pane" (.Pane "light")}}
+    {{template "design-pane" (.Pane "dark")}}
+  </div>
+</section>
+{{- end}}
+
+{{/* Takes designPane. */}}
+{{define "design-pane" -}}
+<div class="design-pane" data-theme="{{.Theme}}">
+  <h3>{{if eq .Theme "light"}}{{t "common.theme.light"}}{{else}}{{t "common.theme.dark"}}{{end}}</h3>
+  {{- if eq .Group "buttons"}}{{template "design-buttons" .}}
+  {{- else if eq .Group "fields"}}{{template "design-fields" .}}
+  {{- else if eq .Group "messages"}}{{template "design-messages" .}}
+  {{- else if eq .Group "badges"}}{{template "design-badges" .}}
+  {{- else if eq .Group "cards"}}{{template "design-cards" .}}
+  {{- else if eq .Group "navigation"}}{{template "design-navigation" .}}
+  {{- else if eq .Group "tables"}}{{template "design-tables" .}}
+  {{- else if eq .Group "icons"}}{{template "design-icons" .}}
+  {{- else if eq .Group "colours"}}{{template "design-colours" .}}
+  {{- else if eq .Group "type"}}{{template "design-type" .}}
+  {{- else if eq .Group "spacing"}}{{template "design-spacing" .}}
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* DESIGN 7.1. A pseudo-state cannot be forced, so hover and focus are left to the pointer and the keyboard. */}}
+{{define "design-buttons" -}}
+<ul class="design-list" role="list">
+  <li><button type="button" class="button button--primary">{{t "server.action.start"}}</button><code>button--primary</code></li>
+  <li><button type="button" class="button">{{t "worlds.snapshots.take.button"}}</button><code>button</code></li>
+  <li><button type="button" class="button button--quiet">{{t "server.join.copy"}}</button><code>button--quiet</code></li>
+  <li><button type="button" class="button button--danger">{{t "worlds.world.delete.button"}}</button><code>button--danger</code></li>
+  <li><a href="#design-buttons" class="button button--risky">{{t "worlds.world.delete.button"}}</a><code>button--risky</code></li>
+  <li><button type="button" class="button button--icon"><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></button><code>button--icon</code></li>
+  <li><button type="button" class="button" disabled>{{t "worlds.snapshots.take.button"}}</button><code>disabled</code></li>
+  <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.action.start"}}</button><code>aria-busy</code></li>
+</ul>
+<p class="hint">{{t "common.design.hover"}}</p>
+{{- end}}
+
+{{/* DESIGN 7.2 and 7.7. */}}
+{{define "design-fields" -}}
+{{template "required-note"}}
+<div class="field">
+  <label for="{{.Theme}}-name" class="required">{{t "worlds.import.name.label"}}</label>
+  <p class="hint" id="{{.Theme}}-name-hint">{{t "worlds.import.name.hint" "count" 100}}</p>
+  <input id="{{.Theme}}-name" type="text" required autocomplete="off" placeholder="{{t "worlds.name.placeholder"}}" aria-describedby="{{.Theme}}-name-hint">
+</div>
+<div class="field">
+  <label for="{{.Theme}}-rename">{{t "worlds.world.rename.label"}}</label>
+  <input id="{{.Theme}}-rename" type="text" autocomplete="off" aria-invalid="true" aria-describedby="{{.Theme}}-rename-error">
+  <p class="error" id="{{.Theme}}-rename-error"><strong>{{t "common.error.label"}}</strong> {{t "worlds.error.name_empty"}}</p>
+</div>
+<div class="field">
+  <label for="{{.Theme}}-language">{{t "common.language.label"}}</label>
+  <select id="{{.Theme}}-language">
+    {{- range languages}}
+    <option lang="{{.Tag}}">{{.Name}}</option>
+    {{- end}}
+  </select>
+</div>
+<div class="field">
+  <label class="check"><input type="checkbox" checked aria-describedby="{{.Theme}}-space-hint"> {{t "worlds.import.space_age.label"}}</label>
+  <p class="hint" id="{{.Theme}}-space-hint">{{t "worlds.import.space_age.hint"}}</p>
+</div>
+<fieldset>
+  <legend>{{t "common.theme.label"}}</legend>
+  <label class="check"><input type="radio" name="{{.Theme}}-theme" checked> {{t "common.theme.auto"}}</label>
+  <label class="check"><input type="radio" name="{{.Theme}}-theme"> {{t "common.theme.light"}}</label>
+  <label class="check"><input type="radio" name="{{.Theme}}-theme"> {{t "common.theme.dark"}}</label>
+</fieldset>
+{{- with .Tip}}
+<div class="field">
+  <div class="field__head">
+    <label for="{{.ID}}">{{msg .About}}</label>
+    {{- template "tip-button" .}}
+  </div>
+  <input id="{{.ID}}" type="text" inputmode="numeric" autocomplete="off" aria-describedby="{{.ID}}-tip">
+  {{- template "tip-text" .}}
+</div>
+{{- end}}
+{{- end}}
+
+{{/* DESIGN 7.3 and 7.4. */}}
+{{define "design-messages" -}}
+<div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.territories.hint"}}</p></div>
+<div class="message message--success"><p><strong>{{t "common.label.done"}}</strong> {{t "server.done.snapshot_short"}}</p></div>
+<div class="message message--warning"><p><strong>{{t "common.label.warning"}}</strong> {{t "mapgen.achievement.warning"}}</p></div>
+<div class="message message--error"><p><strong>{{t "common.error.label"}}</strong> {{t "server.start.load_failed"}}</p></div>
+<section class="confirm" aria-labelledby="{{.Theme}}-confirm">
+  <p id="{{.Theme}}-confirm">{{t "common.confirm.will"}}</p>
+  <ul>
+    <li>{{t "worlds.delete.keeps"}}</li>
+  </ul>
+  <div class="field">
+    <label for="{{.Theme}}-confirm-name">{{t "worlds.delete.name_label"}}</label>
+    <input id="{{.Theme}}-confirm-name" type="text" autocomplete="off">
+  </div>
+  <div class="actions">
+    <button type="button" class="button button--danger">{{t "worlds.world.delete.button"}}</button>
+    <a href="#design-messages">{{t "worlds.delete.cancel"}}</a>
+  </div>
+</section>
+{{- end}}
+
+{{/* DESIGN 7.5. */}}
+{{define "design-badges" -}}
+<ul class="design-list" role="list">
+  {{- range .Page.States}}
+  <li>{{template "live-state" .}}</li>
+  {{- end}}
+</ul>
+{{- end}}
+
+{{/* DESIGN 7.8: a card, the status card in each state and a disclosure row. */}}
+{{define "design-cards" -}}
+<section class="panel card" aria-labelledby="{{.Theme}}-card">
+  <h4 id="{{.Theme}}-card">{{t "server.players.heading"}}</h4>
+  <p class="empty">{{t "server.online.nobody"}}</p>
+</section>
+{{- range .Page.States}}
+<div class="card status-card status-card--{{.State}}">
+  <p>{{template "live-state" .}}</p>
+  <dl class="facts facts--inline">
+    <div><dt>{{t "server.facts.uptime"}}</dt><dd>{{duration 5400000000000}}</dd></div>
+    <div><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
+  </dl>
+</div>
+{{- end}}
+<details class="disclosure">
+  <summary>{{t "account.form.replace"}}</summary>
+  <p>{{t "account.remove.hint"}}</p>
+</details>
+{{- end}}
+
+{{/* DESIGN 6, "Sub-navigation": the main tabs, then the server's and a world's. */}}
+{{define "design-navigation" -}}
+<nav aria-label="{{t "common.nav.label"}}">
+  <ul class="tabs" role="list">
+    <li><a href="{{serverPath}}" aria-current="true">{{t "common.nav.server"}}</a></li>
+    <li><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></li>
+    <li><a href="{{snapshotsTabPath}}">{{t "common.nav.snapshots"}}</a></li>
+  </ul>
+</nav>
+{{template "server-tabs" "overview"}}
+{{template "world-tabs" .Page.WorldTabs}}
+{{- end}}
+
+{{/* DESIGN 8.3 and the empty states; the table keeps its roles as the Server page's does, because display changes on a phone drop them. */}}
+{{define "design-tables" -}}
+<table role="table">
+  <caption>{{t "server.players.heading"}}</caption>
+  <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.online_for"}}</th></tr></thead>
+  <tbody role="rowgroup">
+    {{- range .Page.Players}}
+    <tr role="row"><td role="cell">{{.Name}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{duration .For}}</td></tr>
+    {{- end}}
+  </tbody>
+</table>
+<p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
+<p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
+<p class="empty">{{t "server.players.cannot_see"}}</p>
+{{- end}}
+
+{{/* DESIGN 7.9: the whole set, named as in foreman.css. */}}
+{{define "design-icons" -}}
+<ul class="design-list" role="list">
+  {{- range .Page.Icons}}
+  <li><span class="design-icon" style="--icon: var(--i-{{.}})"></span><code>{{.}}</code></li>
+  {{- end}}
+</ul>
+{{- end}}
+
+{{/* DESIGN 3: every colour token, with this theme's value. */}}
+{{define "design-colours" -}}
+<ul class="design-swatches" role="list">
+  {{- range .Page.TokensWith "--color-"}}
+  <li><span class="design-chip" style="background: var(--{{.Bare}})"></span><span><code>{{.Name}}</code><br><code>{{$.Value .}}</code></span></li>
+  {{- end}}
+</ul>
+{{- end}}
+
+{{/* DESIGN 2: each step of the scale and both font stacks. */}}
+{{define "design-type" -}}
+<ul class="design-swatches design-scale" role="list">
+  {{- range .Page.TokensWith "--text-"}}
+  <li><code>{{.Name}}</code><span style="font-size: var(--{{.Bare}})">{{t "server.players.heading"}} <code>{{.Light}}</code></span></li>
+  {{- end}}
+</ul>
+<p style="font-family: var(--font-sans)">{{t "server.join.copy"}} <code>--font-sans</code></p>
+<p style="font-family: var(--font-mono)">{{t "server.join.copy"}} <code>--font-mono</code></p>
+{{- end}}
+
+{{/* DESIGN 4: the spacing steps, the other fixed values and the shadows. */}}
+{{define "design-spacing" -}}
+<ul class="design-swatches design-scale" role="list">
+  {{- range .Page.TokensWith "--space-"}}
+  <li><code>{{.Name}}</code><span class="design-bar" style="inline-size: var(--{{.Bare}})"></span></li>
+  {{- end}}
+</ul>
+<ul class="design-list" role="list">
+  {{- range .Page.TokensWith "--radius"}}
+  <li><span class="design-chip" style="inline-size: var(--target-min); border-radius: var(--{{.Bare}})"></span><code>{{.Name}}</code></li>
+  {{- end}}
+  {{- range .Page.TokensWith "--shadow-"}}
+  <li><span class="design-chip" style="inline-size: var(--target-min); background: var(--color-surface); box-shadow: var(--{{.Bare}})"></span><code>{{.Name}}</code></li>
+  {{- end}}
+</ul>
+<ul class="design-swatches design-scale" role="list">
+  {{- range .Page.TokensWith "--"}}{{if $.Page.Other .Name}}
+  <li><code>{{.Name}}</code><code>{{$.Value .}}</code></li>
+  {{- end}}{{end}}
+</ul>
+{{- end}}
+
+{{/* A group as a page of its own, for the design export: its links are
+     relative, so the folder works opened from disk. Takes designSection. */}}
+{{define "design-file" -}}
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>{{msg .Group.Heading}} – Foreman</title>
+<link rel="stylesheet" href="foreman.css">
+</head>
+<body>
+<main id="main">
+{{template "design-section" .}}
+</main>
+</body>
+</html>
+{{- end}}

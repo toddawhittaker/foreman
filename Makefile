@@ -28,7 +28,7 @@ DOCKER_RUN := docker run --rm --init -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(sh
 	-e GOLANGCI_LINT_CACHE=$(CACHE)/golangci -e npm_config_cache=$(CACHE)/npm
 
 .PHONY: verify check-go fmt-check fmt vet lint test test-shards typecheck build build-fakegame build-fakeportal image run e2e e2e-deps \
-	test-game test-game-resources game-images e2e-game vuln ci tidy i18n-hash deploy
+	test-game test-game-resources game-images e2e-game vuln ci tidy i18n-hash deploy design-export
 
 verify: check-go fmt-check vet lint test typecheck
 
@@ -357,6 +357,14 @@ ci: verify e2e image
 
 tidy:
 	go mod tidy
+
+# The component page as a static bundle, one file per group (docs/WORKFLOW.md,
+# "Local development"). The folder is this target's own output.
+DESIGN_EXPORT_DIR := dist/design
+
+design-export:
+	rm -rf $(DESIGN_EXPORT_DIR)
+	go run ./cmd/design-export $(DESIGN_EXPORT_DIR)
 
 # After updating every language for a key, record the English it was
 # translated from (internal/i18n/translated/<area>.json, SPEC 22.5).

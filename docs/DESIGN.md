@@ -146,21 +146,34 @@ Rules:
 
 ### How themes work
 
-Both themes are defined as CSS custom properties. The dark values sit on
-`:root`, because dark is the main look; the light values replace them
-inside `@media (prefers-color-scheme: light)`. Each theme has four depths
-of surface: `bg` (the page), `surface` (cards and bars), `raised` (controls
+Both themes are defined as CSS custom properties on `:root`. Each colour
+token holds both values as `light-dark(light, dark)`, and each shadow token
+holds both themes' layers, the other theme's drawn transparent. So the
+`color-scheme` property alone decides the theme, and native controls
+(checkboxes, scroll bars, the file picker) follow it too. Each theme has
+four depths of surface: `bg` (the page), `surface` (cards and bars), `raised` (controls
 and boxes sitting on a card) and `deep` (fields and the log). In light,
-`surface` and `deep` are both white. `:root` also sets
-`color-scheme: dark light` so native controls (checkboxes, scroll bars,
-the file picker) follow the theme. There is no theme switch in the
-interface; the system setting decides (SPEC 17.3). Both themes must meet
-every ratio below (SPEC 17.1).
+`surface` and `deep` are both white.
+
+The user menu has a Theme choice: Auto, Light or Dark (SPEC 17.3). Auto is
+the default and follows the system setting: `:root` sets
+`color-scheme: dark light` and the page's `color-scheme` meta says the
+same. Light or Dark posts to `POST /theme`, which keeps the choice in a
+`foreman_theme` cookie for this browser and goes back to the page through
+the same return-path check as the language menu. The server then writes
+`data-theme="light"` or `"dark"` on `html` and that one scheme in the
+meta, and `[data-theme]` sets `color-scheme` to it, overriding the
+system. The same attribute on any other element draws that part of the page
+in one theme; such an element sets its own `color` and `background` again,
+because the inherited ones were resolved in the page's theme. The
+component page (`GET /design`, linked from nowhere) uses this to show every
+component in both themes side by side, with the tokens and icons read from
+`foreman.css` itself. The page is drawn in the chosen theme from the first paint, with
+no script. Both themes must meet every ratio below (SPEC 17.1).
 
 Every colour in the CSS comes from a token below. A raw hex value
-anywhere else in the stylesheet is a bug, except the map's own colours
-(the pin and the demolisher territories, 8.8), the dimming behind a dialog
-(black at 50%) and the shadows' own values.
+anywhere else in the stylesheet is a bug, except the dimming behind a
+dialog (black at 50%) and the shadows' own values (4).
 
 ### Tokens
 
@@ -195,6 +208,17 @@ anywhere else in the stylesheet is a bug, except the map's own colours
 | `--color-info` | `#9cc0ff` | `#1d4fa3` | "Note" word |
 | `--color-info-bg` | `#15223a` | `#e5edf9` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |
+
+The map's own colours are tokens too, the same in both themes, because
+they sit on the map's picture, which does not follow the theme (8.8):
+
+| Token | Value | Use |
+|---|---|---|
+| `--color-pin-face` | `#ffffff` | The map pin's face; the text of a territory's size label |
+| `--color-pin-edge` | `#000000` | The map pin's edge and dot |
+| `--color-territory-stripe` | `rgb(200 20 20 / 33.3%)` | A demolisher territory's stripes |
+| `--color-territory-border` | `rgb(255 30 30)` | The border between territories |
+| `--color-territory-outline` | `#101010` | The ring around a territory's size label |
 
 How the colours divide the work:
 
@@ -344,8 +368,8 @@ A 4 px base, in `rem` so it scales with text size.
 
 | Token | Value | Typical use |
 |---|---|---|
-| `--space-1` | 0.25rem (4 px) | The header's block padding; the gap between a sub-navigation's tabs; the gap between a mod's Disable and Remove |
-| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the gap between a badge's shape and its word; the space under a section's `h2` |
+| `--space-1` | 0.25rem (4 px) | The header's block padding; the gap between a sub-navigation's tabs |
+| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the gap between a badge's shape and its word; the space under a section's `h2`; the gap between a mod's Disable and Remove |
 | `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; the gap between a card's parts; message padding; the page's side padding at phone width |
 | `--space-4` | 1rem (16 px) | Gap between form fields; confirmation box padding; card padding below 48rem (capped at 4vw); the gap between sections at phone width |
 | `--space-5` | 1.5rem (24 px) | Gap between sections inside `main` from 40rem; card padding and the page's side padding from 48rem |
@@ -362,9 +386,14 @@ Other fixed values, also tokens:
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--measure` | 70ch | Maximum line length of prose |
 | `--page-max` | 76rem | Maximum width of `main` |
-| `--card-pad` | `min(1rem, 4vw)`, 1.5rem from 48rem, 0 below 22.4rem | A card's padding (7.8) |
-| `--shadow-card` | dark: `inset 0 1px 0` white at 3%; light: a 1 px and a 2 px soft shadow | A card's faint lift |
-| `--shadow-pop` | `0 8px 24px` black at 45% (dark); `0 10px 28px` warm brown at 18% (light) | The user menu's panel |
+| `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
+
+The shadows, each theme's own (the other theme's layers are transparent):
+
+| Token | Dark | Light | Use |
+|---|---|---|---|
+| `--shadow-card` | `inset 0 1px 0 rgb(255 255 255 / 3%)` | `0 1px 2px rgb(60 45 25 / 6%), 0 1px 1px rgb(60 45 25 / 4%)` | A card's faint lift |
+| `--shadow-pop` | `0 8px 24px rgb(0 0 0 / 45%)` | `0 10px 28px rgb(60 45 25 / 18%)` | The user menu's panel |
 
 Badges and the state pill are fully rounded (999px), which is not a token.
 
@@ -460,6 +489,15 @@ frame (7.4).
             </ul>
           </fieldset>
         </form>
+        <form method="post" action="/theme">
+          <fieldset>
+            <legend>Theme</legend>
+            <ul>
+              <li><button type="submit" name="theme" value="auto" class="menu__item" aria-current="true">Auto</button></li>
+              …
+            </ul>
+          </fieldset>
+        </form>
         <form method="post" action="/signout">
           <button type="submit" class="menu__item">Sign out</button>
         </form>
@@ -517,6 +555,9 @@ frame (7.4).
   English off English), each button marked with its `lang`, the current
   one with `aria-current="true"`, an `accent-bg` face and a 3 px `selected`
   mark at its start; an item under the pointer takes `secondary-hover`;
+  then the three themes, Auto, Light and Dark, as three submit buttons to
+  `POST /theme` in a `fieldset` whose legend is "Theme", marked the same
+  way (3, "How themes work");
   then a "factorio.com account" link to `/settings/factorio-account`
   (`aria-current="page"` there, and a divider line above it), the only
   account link Foreman has, then Sign out, still a `POST` form with a
@@ -571,10 +612,14 @@ current language's mark are borders, and that mode draws them in
 keeps its border and its word, and buttons, fields and message boxes keep
 their borders, so they need nothing more. The state badge's shapes (7.5)
 are redrawn in `CanvasText` so their fills survive. The line icons (7.9)
-are decoration drawn as a fill, so they may disappear; each one sits beside
-its words or has a hidden name. Anything new that marks a state with a fill
-alone needs a rule here. Check a screen with
-Playwright's `forcedColors: "active"`.
+are masks painted with a background, which this mode would replace with
+the page colour, so the ones that carry words are repainted in system
+colours: `ButtonText` for icons on buttons, `LinkText` for tab and shortcut
+icons, and `CanvasText` for the icons before section headings. The rest
+(chevrons, empty states, the map preview's held box) may disappear; each
+one sits beside its words or has a hidden name. Anything new that marks a
+state with a fill alone needs a rule here. Check a screen with Playwright's
+`forcedColors: "active"`.
 
 ### The 320 px rules
 
@@ -1323,9 +1368,11 @@ Words stay first (1).
 - **Rules.** An icon never stands alone without a name: it is beside its
   words, or its button holds the words as hidden text. An icon is never the
   only sign of anything. It is decoration, so it carries no meaning of its
-  own and may vanish in forced colours. Adding one means adding it to the
-  set and to the selectors, here first. The map preview's large view and
-  the toggletip keep their own inline SVG icons (8.8, 7.7).
+  own. In forced colours only the button, tab, shortcut and heading icons
+  are repainted (6, "Forced colours"); the rest may vanish. Adding one
+  means adding it to the set and to the selectors, here first. The map
+  preview's large view and the toggletip keep their own inline SVG icons
+  (8.8, 7.7).
 
 ## 8. Patterns for later screens
 
@@ -2460,7 +2507,7 @@ The end-to-end tests for each screen check, in both themes
 ## 11. CSS file layout
 
 One stylesheet, `internal/web/static/foreman.css`, in this order: tokens
-(dark on `:root`, then the light media query), a small reset, base elements
+(both themes on `:root`, then the forced themes), a small reset, base elements
 (`body`, headings, links, `code`, `table`), the shell, then one block per
 component in the order of section 7. No preprocessor, no `@import`.
 
@@ -2469,7 +2516,6 @@ component in the order of section 7. No preprocessor, no `@import`.
 Left out because no Epic 1 to 3 screen needs it. Add each when a real
 screen does, in this document first.
 
-- A manual theme switch. The system setting decides (SPEC 17.3).
 - Icons beyond the set in 7.9, the map preview's pin, the large view's
   controls (8.8) and the toggletip's (i) (7.7). No icon font, and no icon
   that stands without a name.

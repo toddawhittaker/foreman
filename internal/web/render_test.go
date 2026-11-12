@@ -43,6 +43,7 @@ type pageCase struct {
 
 func pageCases() []pageCase {
 	return append([]pageCase{
+		{"design", "todd", 200, testDesignPage()},
 		{"worlds empty", "todd", 200, WorldsPage{}},
 		{"worlds after delete", "todd", 200, WorldsPage{Deleted: longName}},
 		{"worlds long user", longName, 200, WorldsPage{}},

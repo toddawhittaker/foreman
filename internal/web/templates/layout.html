@@ -1,10 +1,10 @@
 {{define "layout" -}}
 <!doctype html>
-<html lang="{{lang}}">
+<html lang="{{lang}}"{{if ne .Theme "auto"}} data-theme="{{.Theme}}"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="{{if eq .Theme "auto"}}dark light{{else}}{{.Theme}}{{end}}">
 <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
 <title>{{if .Failed}}{{t "common.error.label"}} {{end}}{{template "title" .}} – Foreman</title>
 <link rel="icon" href="{{static "icons/icon-16.png"}}" sizes="16x16" type="image/png">
@@ -48,6 +48,20 @@
             {{- range languages}}
             <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"{{if eq .Tag.String lang}} aria-current="true"{{end}}>{{.Name}}</button></li>
             {{- end}}
+          </ul>
+        </fieldset>
+        {{- with .Return}}
+        <input type="hidden" name="return" value="{{.}}">
+        {{- end}}
+      </form>
+      {{- /* Auto follows the system setting; the choice stays in this browser (SPEC 17.3). */}}
+      <form method="post" action="{{themePath}}">
+        <fieldset>
+          <legend>{{t "common.theme.label"}}</legend>
+          <ul role="list">
+            <li><button type="submit" name="theme" value="auto" class="menu__item"{{if eq .Theme "auto"}} aria-current="true"{{end}}>{{t "common.theme.auto"}}</button></li>
+            <li><button type="submit" name="theme" value="light" class="menu__item"{{if eq .Theme "light"}} aria-current="true"{{end}}>{{t "common.theme.light"}}</button></li>
+            <li><button type="submit" name="theme" value="dark" class="menu__item"{{if eq .Theme "dark"}} aria-current="true"{{end}}>{{t "common.theme.dark"}}</button></li>
           </ul>
         </fieldset>
         {{- with .Return}}

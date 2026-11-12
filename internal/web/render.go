@@ -28,6 +28,7 @@ const (
 	PathSignOut   = "/signout"
 	PathSignedOut = "/signed-out"
 	PathLanguage  = "/language"
+	PathTheme     = "/theme"
 	PathStatic    = "/static/"
 	PathFavicon   = "/favicon.ico"
 )
@@ -205,6 +206,8 @@ type view struct {
 	// Return is the page the language menu comes back to, else empty, which
 	// means home (see menuReturn).
 	Return string
+	// Theme is the theme the menu chose: auto, light or dark (themeOf).
+	Theme string
 }
 
 // Current is true when the nav link to path names this page, so it gets
@@ -280,6 +283,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"signOutPath":   func() string { return PathSignOut },
 		"signedOutPath": func() string { return PathSignedOut },
 		"languagePath":  func() string { return PathLanguage },
+		"themePath":     func() string { return PathTheme },
 		"languages":     func() []i18n.Language { return i18n.Languages },
 		// english is a key's English, for a word shown in English beside
 		// the page's language, as the language menu's label is.
@@ -436,19 +440,19 @@ func (r *Renderer) staticURL(name string) (string, error) {
 	return PathStatic + name + "?v=" + f.hash, nil
 }
 
-// menuReturn is the address the language menu goes back to. A GET page is
+// menuReturn is the address the user menu's forms go back to. A GET page is
 // its own address. Any other request came from a form, whose address answers
 // only POST, so it is the page the form was on, from a same-site Referer.
 // Without a usable one it is empty, which means home (SPEC 22.2, 14.17).
 func menuReturn(req *http.Request) string {
 	if req.Method == http.MethodGet || req.Method == http.MethodHead {
-		return languageReturn(req.URL.RequestURI())
+		return menuReturnPath(req.URL.RequestURI())
 	}
 	ref, err := url.Parse(req.Referer())
 	if err != nil || ref.Host == "" || ref.Host != req.Host {
 		return ""
 	}
-	return languageReturn(ref.RequestURI())
+	return menuReturnPath(ref.RequestURI())
 }
 
 // Render writes page p as a complete HTML document with the given status,
@@ -461,7 +465,7 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p, Return: menuReturn(req)}
+	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req)}
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)
