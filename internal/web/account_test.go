@@ -118,7 +118,7 @@ func TestAccountPageWithNoAccountOffersTheForm(t *testing.T) {
 	}
 	// Every page has the Settings tab, whose pages link here (DESIGN 6,
 	// 8.15; TestSettingsSubnav).
-	if !strings.Contains(ah.get(PathWorlds, withCookie(c)).Body.String(), `href="`+PathSettingsTab+`"`) {
+	if !strings.Contains(ah.get(PathWorlds, withCookie(c)).Body.String(), `href="`+PathSchedule+`"`) {
 		t.Error("the world list has no Settings tab")
 	}
 }

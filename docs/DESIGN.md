@@ -2164,12 +2164,12 @@ since nothing is lost. From the Server page: the active world's link,
 ### 8.10 Game settings (SPEC 11)
 
 A world's page and the Server page (for the active world) each have a
-"Settings" link. From the Server page, changing a setting takes three
-clicks: Settings, "Preview changes", "Save settings", plus Restart when
+"Game settings" link. From the Server page, changing a setting takes three
+clicks: Game settings, "Preview changes", "Save settings", plus Restart when
 the game is running.
 
 The settings pages (form, raw editor and preview) carry the world's tabs
-(6) with Settings current, and no "Back to" link. The form's `h1` is the
+(6) with Game settings current, and no "Back to" link. The form's `h1` is the
 world's name. On a container at least 44rem wide a rail of section links
 (Listing, Joining, Saving, Admins, and "Edit server-settings.json as
 JSON") sits beside the form, 12rem wide and sticky, since it never covers
@@ -2268,8 +2268,8 @@ the next step is a control.
 
 ### 8.11 Mods (SPEC 9)
 
-Every world has a Mods tab (6), `GET /worlds/{id}/mods`, between Snapshots and Settings.
-The Server page has a Mods link beside "World page" and "Settings" for the
+Every world has a Mods tab (6), `GET /worlds/{id}/mods`, between Snapshots and Game settings.
+The Server page has a Mods link beside "World page" and "Game settings" for the
 active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
 confirmation step) and 7.6 (the result), and use no new component but the
 small ones below. All counts use plural messages (SPEC 22).
@@ -2316,7 +2316,7 @@ beside it; narrower, it is one column in this order:
   version 2.0.77: base, elevated-rails, quality, space-age. Space Age is
   on, so all of them are on. Change Space Age", or "Built in, version
   2.0.77: base. Space Age is off, so elevated-rails, quality, space-age are
-  off. Turn on Space Age"; both links go to the Settings tab. A game
+  off. Turn on Space Age"; both links go to the Game settings tab. A game
   without Space Age has no last sentence and no link.
 - A table (8.3) of the other mods in two columns, Mod and Actions, at the
   width of its column. The first cell holds the name (the portal
@@ -2601,7 +2601,7 @@ tabs; its `h1` is the question and Cancel is the way out.
   <ul>
     <li>Disconnect Alice now, if they are in the game.</li>
     <li>Add Alice to the ban list, so they cannot join again until unbanned.
-        The ban list is on the world's Settings tab.</li>
+        The ban list is on the world's Game settings tab.</li>
     <li>Take no snapshot. The game records the ban in its own ban list.</li>
   </ul>
   <form method="post" action="/worlds/family-base-2025/players/ban">
@@ -2632,7 +2632,7 @@ tabs; its `h1` is the question and Cancel is the way out.
   17.8). A ban still works on a name that is not online, so the ban page
   keeps its button and drops "Disconnect Alice now".
 - Cancel returns to the page the admin came from (the `return` parameter,
-  checked as in SPEC 14.17): the Server page, or the Settings tab when the
+  checked as in SPEC 14.17): the Server page, or the Game settings tab when the
   ban started from the ban list (8.13).
 
 **The result** shows in the players card, at its top, above the table,
@@ -2676,7 +2676,7 @@ badge word too.
 
 ### 8.13 The ban list and whitelist (SPEC 8.3, Epic 9)
 
-The world's Settings tab (8.10) gains "Ban list" (`#settings-bans`) and
+The world's Game settings tab (8.10) gains "Ban list" (`#settings-bans`) and
 "Whitelist" (`#settings-whitelist`) after "Admins", and the rail gains
 their two links in that order, before the raw editor's link.
 How a list is edited depends on whether the game runs, because that
@@ -2716,11 +2716,11 @@ settings preview uses (8.10); no style of their own is added.
 </section>
 ```
 
-- "Unban" acts at once and the Settings tab returns with a Done message
+- "Unban" acts at once and the Game settings tab returns with a Done message
   at its top (the existing `#done-message`), "Bob is unbanned from Family
   base 2025.", with "Undo" (it bans Bob again at once, with the reason the
   file had). "Ban" goes to the ban confirmation (8.12) with the name
-  filled in and `return` set to the Settings tab, because a ban always
+  filled in and `return` set to the Game settings tab, because a ban always
   confirms. A name that fails the check (SPEC 14.9) is a field error on
   the confirmation page's return, never sent.
 - A ban list entry shows its reason after the name, in `hint` style, when

@@ -735,8 +735,16 @@ func TestVendoredChecksums(t *testing.T) {
 
 // The flags are flag-icons 7.6.0's 4x3 pictures (npm tarball integrity
 // sha512-hir/PsXw...PfC9/BaGSQ==), unchanged, with its MIT licence (STACK 3).
-// They hold no script, since the static handler serves them as images.
+// They hold nothing active (unsafeSVG), since they are served as images.
 func TestFlagChecksums(t *testing.T) {
+	for _, bad := range []string{`<SCRIPT>`, `<g OnLoad ="x">`, `<foreignObject>`, `<!doctype svg>`, `<!ENTITY a "b">`, `<use href="https://x/y"/>`, `<a xlink:href='javascript:x'>`} {
+		if unsafeSVG.FindString(bad) == "" {
+			t.Errorf("unsafeSVG misses %s", bad)
+		}
+	}
+	if m := unsafeSVG.FindString(`<use xlink:href="#cn-a" fill="red" stroke-width="1"/>`); m != "" {
+		t.Errorf("unsafeSVG refuses a fragment link: %q", m)
+	}
 	listed := checkSums(t, "static/flags")
 	if !listed["FLAG-ICONS-LICENSE.txt"] {
 		t.Error("the flag-icons licence is not listed")
@@ -750,11 +758,15 @@ func TestFlagChecksums(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if bytes.Contains(body, []byte("<script")) {
-			t.Errorf("%s holds a script", name)
+		if m := unsafeSVG.Find(body); m != nil {
+			t.Errorf("%s holds %q", name, m)
 		}
 	}
 }
+
+// unsafeSVG is what a static picture must not hold: a script, an event
+// handler, embedded HTML, a DTD or entity, or a link off the file itself.
+var unsafeSVG = regexp.MustCompile(`(?i)<script|\son[a-z]+\s*=|foreignObject|<!DOCTYPE|<!ENTITY|href\s*=\s*["']?[^"'#]`)
 
 // checkSums checks each file in dir against dir's SHA256SUMS, and that every
 // file in dir is listed. It returns the names listed.

@@ -251,10 +251,6 @@ var staticTypes = map[string]string{
 	".svg":   "image/svg+xml",
 }
 
-// PathSettingsTab is where the main Settings tab leads: the restart schedule,
-// the most used of Foreman's own settings pages (DESIGN 6, 8.15).
-const PathSettingsTab = PathSchedule
-
 // flags are the languages' flag pictures under static/flags, by language
 // (DESIGN 6, "User menu"). They stand beside the language's own name, so
 // they are decorative.
@@ -269,10 +265,9 @@ var flags = map[string]string{
 	"cs":      "flags/cz.svg",
 }
 
-// flagURL is the static URL of a language's flag. The tag is a Locale or
-// the string lang gives, so the template can pass either.
-func (r *Renderer) flagURL(tag any) (string, error) {
-	f, ok := flags[fmt.Sprint(tag)]
+// flagURL is the static URL of a language's flag, by its tag.
+func (r *Renderer) flagURL(tag string) (string, error) {
+	f, ok := flags[tag]
 	if !ok {
 		return "", fmt.Errorf("no flag for language %q", tag)
 	}
@@ -299,7 +294,6 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"about":             version.Get,
 		"notificationsPath": func() string { return PathNotifications },
 		"schedulePath":      func() string { return PathSchedule },
-		"settingsTabPath":   func() string { return PathSettingsTab },
 		"flag":              r.flagURL,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },

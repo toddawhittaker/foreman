@@ -211,7 +211,7 @@ test("with territories ticked and none held, the zip reads them before it downlo
   await expect(section(page).locator('a.picture[data-planet="vulcanus"]')).toBeVisible();
   const terrURL = (u: URL) => u.pathname.endsWith("/generate/preview/territories");
   await page.route(terrURL, (r) => r.fulfill({ status: 500, body: "" }));
-  await page.getByLabel("Show demolisher territories").check();
+  await section(page).getByLabel("Show demolisher territories").check();
   await expect(section(page).locator("#territory-result")).toContainText("The request for the demolisher territories failed.");
   await page.unroute(terrURL);
   // The box is ticked, so the zip asks for them though none are held yet.

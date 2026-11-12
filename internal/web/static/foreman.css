@@ -717,12 +717,6 @@ time {
   background: var(--color-secondary-hover);
 }
 
-.menu__item[aria-current] {
-  background: var(--color-accent-bg);
-  font-weight: 600;
-  border-inline-start-color: var(--color-selected);
-}
-
 /* A language row: its flag, 4 by 3, then its own name. */
 .menu__item > img {
   flex: none;
@@ -3604,6 +3598,24 @@ form:has(#mode-exchange:checked) .achievements {
   margin-inline-start: auto;
 }
 
+/* The large view's "Show demolisher territories" box and its hint, on one line while they fit
+   and the hint under the box when they do not (DESIGN 8.8). */
+.large-view__territories {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+  min-inline-size: 0;
+}
+
+.large-view__territories[hidden] {
+  display: none;
+}
+
+.large-view__territories > .hint {
+  margin: 0;
+}
+
 /* The One planet box, and beside it, while it counts, a short word that it does. */
 .resource-box {
   display: flex;
@@ -3719,10 +3731,6 @@ form:has(#mode-exchange:checked) .achievements {
   .tabs a[aria-current],
   .subnav a[aria-current] {
     border-block-end-color: Highlight;
-  }
-
-  .menu__item[aria-current] {
-    border-inline-start-color: Highlight;
   }
 
   .menu__icon[aria-current] {

@@ -33,7 +33,7 @@
       <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
       {{- /* Foreman's own settings (DESIGN 8.15); the tab opens the restart schedule. */}}
-      <li><a href="{{settingsTabPath}}"{{if .Current (print settingsTabPath "#page")}} aria-current="page"{{else if .Current settingsTabPath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
+      <li><a href="{{schedulePath}}"{{if .Current (print schedulePath "#page")}} aria-current="page"{{else if .Current schedulePath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
   {{- end}}
@@ -54,7 +54,7 @@
         <form method="post" action="{{languagePath}}">
           <ul role="list">
             {{- range languages}}{{if ne .Tag.String lang}}
-            <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"><img src="{{flag .Tag}}" alt="" width="20" height="15" loading="lazy"> <span class="menu__name">{{.Name}}</span></button></li>
+            <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"><img src="{{flag .Tag.String}}" alt="" width="20" height="15" loading="lazy"> <span class="menu__name">{{.Name}}</span></button></li>
             {{- end}}{{end}}
           </ul>
           {{- with .Return}}
