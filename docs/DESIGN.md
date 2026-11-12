@@ -167,9 +167,8 @@ system. The page is drawn in the chosen theme from the first paint, with
 no script. Both themes must meet every ratio below (SPEC 17.1).
 
 Every colour in the CSS comes from a token below. A raw hex value
-anywhere else in the stylesheet is a bug, except the map's own colours
-(the pin and the demolisher territories, 8.8), the dimming behind a dialog
-(black at 50%) and the shadows' own values.
+anywhere else in the stylesheet is a bug, except the dimming behind a
+dialog (black at 50%) and the shadows' own values (4).
 
 ### Tokens
 
@@ -204,6 +203,17 @@ anywhere else in the stylesheet is a bug, except the map's own colours
 | `--color-info` | `#9cc0ff` | `#1d4fa3` | "Note" word |
 | `--color-info-bg` | `#15223a` | `#e5edf9` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |
+
+The map's own colours are tokens too, the same in both themes, because
+they sit on the map's picture, which does not follow the theme (8.8):
+
+| Token | Value | Use |
+|---|---|---|
+| `--color-pin-face` | `#ffffff` | The map pin's face; the text of a territory's size label |
+| `--color-pin-edge` | `#000000` | The map pin's edge and dot |
+| `--color-territory-stripe` | `rgb(200 20 20 / 33.3%)` | A demolisher territory's stripes |
+| `--color-territory-border` | `rgb(255 30 30)` | The border between territories |
+| `--color-territory-outline` | `#101010` | The ring around a territory's size label |
 
 How the colours divide the work:
 
@@ -371,9 +381,14 @@ Other fixed values, also tokens:
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--measure` | 70ch | Maximum line length of prose |
 | `--page-max` | 76rem | Maximum width of `main` |
-| `--card-pad` | `min(1rem, 4vw)`, 1.5rem from 48rem, 0 below 22.4rem | A card's padding (7.8) |
-| `--shadow-card` | dark: `inset 0 1px 0` white at 3%; light: a 1 px and a 2 px soft shadow | A card's faint lift |
-| `--shadow-pop` | `0 8px 24px` black at 45% (dark); `0 10px 28px` warm brown at 18% (light) | The user menu's panel |
+| `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
+
+The shadows, each theme's own (the other theme's layers are transparent):
+
+| Token | Dark | Light | Use |
+|---|---|---|---|
+| `--shadow-card` | `inset 0 1px 0 rgb(255 255 255 / 3%)` | `0 1px 2px rgb(60 45 25 / 6%), 0 1px 1px rgb(60 45 25 / 4%)` | A card's faint lift |
+| `--shadow-pop` | `0 8px 24px rgb(0 0 0 / 45%)` | `0 10px 28px rgb(60 45 25 / 18%)` | The user menu's panel |
 
 Badges and the state pill are fully rounded (999px), which is not a token.
 
