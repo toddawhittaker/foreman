@@ -4497,9 +4497,4 @@ main:has(> .gate) > h1 {
   main:has(> section[aria-labelledby="version-heading"]) > :is(section[aria-labelledby="version-heading"], form[aria-labelledby="rename-heading"]) {
     grid-column: auto;
   }
-
-  /* A date and its age stay on one line where there is room. */
-  .facts dd time {
-    white-space: nowrap;
-  }
 }
