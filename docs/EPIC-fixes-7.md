@@ -12,13 +12,18 @@ Todd, 2026-11-12:
 1. **The user menu loses its settings links.** The new Settings tab is
    the one home for factorio.com account, Restart schedule and
    Notifications. The menu keeps the theme choice, About and Sign out.
-2. **Language picker.** A button in the header, between the main
-   navigation and the user menu, shows a globe, the current language's
-   flag and its short code (EN, DE). It opens a list of all eight
-   languages, each with its flag and its own name. Flags are decorative
-   (`alt=""`); screen readers hear the language name, and the button's
-   accessible name says the current language in full. It works without
-   script, as the menu does today.
+2. **Language stays in the user menu, folded to one row.** The menu shows
+   one row with the current language's flag and its own name and an
+   arrow. Activating it expands the other seven, each with its flag and
+   its own name. It is a nested native disclosure, so it works without
+   script, as the menu does today. Flags are decorative (`alt=""`);
+   screen readers hear the language name. This replaces #497's "picker
+   in the header": nothing new goes on the header bar.
+2a. **Theme is one row of three icon buttons** in the user menu: auto,
+   light and dark, the current one marked (`aria-pressed` or
+   `aria-current`, as the theme form allows). Each has a spoken name and
+   hover text, and a 44 px target on a phone. The menu ends up with four
+   rows: language, theme, About, Sign out.
 3. **Flags.** English shows the United Kingdom, Spanish shows Spain.
    German, Russian, Simplified Chinese, French, Polish and Czech show
    Germany, Russia, China, France, Poland and Czechia.
@@ -62,7 +67,10 @@ Orchestrator, from the issues and the spec:
 ## Invariants every task tests
 
 - Every page fits at 320 px with 200% text in German and Russian, with
-  nothing pushed off the header bar (SPEC 17.2).
+  four main tabs and the user menu, nothing pushed off the header bar; the
+  open user menu, with its language list expanded, fits too (SPEC 17.2).
+- The nested language disclosure opens and closes by keyboard, and
+  Escape or closing the user menu leaves focus where the user expects.
 - Every new control is reachable by keyboard, shows focus, and has a 44 px
   target on a phone.
 - Click budgets from the Server page: changing the restart schedule takes
@@ -78,20 +86,22 @@ Orchestrator, from the issues and the spec:
 | 2 | #495 | builder, Opus low | `internal/game/monitor.go`, `internal/game/*_test.go` | Diagnosis in the PR body; ruling 8 applied; the test passes 50 runs in a row under `-race -count=50`. |
 | 3 | #523 | builder, Sonnet high | `internal/web/templates/schedule.html`, new `internal/web/static/schedule.js`, `internal/web/schedule.go` if a flag for "never saved" is needed, its unit test, an e2e spec for the schedule page | e2e with Playwright `timezoneId` shows the preselection; a saved zone is kept; no locale changes. |
 | 4 | #499 | ui-designer, Sonnet high | `internal/web/templates/generatepreview.html`, `generate.html` if the large view lives there, `internal/web/static/preview.js`, `generate.js`, `foreman.css` (map-preview rules only), `e2e/tests/territories.spec.ts` | The issue's e2e cases pass; axe clean; proposed SPEC 5.6 and DESIGN 8.8 text in the PR body. No locale changes. |
-| 5 | #524, #497 (picker) | ui-designer, Opus medium | `internal/web/templates/layout.html`, `internal/web/static/menu.js`, `foreman.css` (header, navigation, menu rules), new `internal/web/static/flags/`, the eight locale files (`common.*`, world tab name), `internal/web/` handlers that set the current tab, `docs/I18N.md` glossary, `docs/DESIGN.md` 6, 8.15, 8.16, `docs/SPEC.md` 17.1, 17.10, `docs/STACK.md` vendored files, e2e specs that name the Settings tab or the user menu, a new header spec | Rulings 1 to 6 built; 320 px checks in de and ru pass; click-budget spec updated. |
+| 5 | #524, #497 (language and theme rows) | ui-designer, Opus medium | `internal/web/templates/layout.html`, `internal/web/static/menu.js`, `foreman.css` (header, navigation, menu rules), new `internal/web/static/flags/`, the eight locale files (`common.*`, world tab name), `internal/web/` handlers that set the current tab, `docs/I18N.md` glossary, `docs/DESIGN.md` 6, 8.15, 8.16, `docs/SPEC.md` 17.1, 17.10, `docs/STACK.md` vendored files, e2e specs that name the Settings tab or the user menu, a new user-menu spec | Rulings 1 to 6 and 2a built; 320 px checks in de and ru pass; language change and theme change each tested by keyboard and without script; click-budget spec updated. |
 | 6 | #497 (About) | builder, Sonnet high | new `internal/version/` package and test, new `internal/web/about.go`, new `templates/about.html`, `layout.html` (menu item and dialog), a small dialog script if needed, `server.go` route, locale files (`about.*`), `Makefile`, `Dockerfile`, `docs/DESIGN.md` 6 user-menu text, a new e2e spec | Ruling 7 built; dialog opens and closes by keyboard and returns focus; `/about` works without script; unit test shows values come from build info. |
-| 7 | fold | builder, Sonnet high | `docs/STATUS.md`, `docs/SPEC.md` 5.6, `docs/DESIGN.md` 8.8, this plan (deleted) | STATUS section written from the task PR bodies; `Fixes` line for every issue. |
+| 7 | fold | builder, Sonnet high | `docs/STATUS.md`, `docs/SPEC.md` 5.6, `docs/DESIGN.md` 8.8, this plan (deleted) | STATUS section written from the task PR bodies, noting that ruling 2 replaced #497's header picker; `Fixes` line for every issue. |
 
 ## Waves
 
 1. Tasks 1 to 5 in parallel, each from b0d0e2e.
-2. Task 6 from task 5's verified head (both edit `layout.html`, the locale
-   files and DESIGN 6).
+2. Task 6 from task 5's verified head (both edit `layout.html`, the user
+   menu, the locale files and DESIGN 6). About goes between the theme row
+   and Sign out.
 3. Task 7 after every task has landed and its reviews are closed.
 
 Reviews: code-reviewer on every task; a11y-reviewer on tasks 3 to 6;
 security-reviewer on task 6 (new route that shows build details). Then
-one integration review of the header and navigation across tasks 5 and 6.
+one integration review of the header, navigation and user menu across
+tasks 5 and 6.
 
 ## Real-game checks
 
