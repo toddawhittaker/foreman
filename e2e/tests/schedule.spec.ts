@@ -114,3 +114,49 @@ test("the page is translated", async ({ page }) => {
   await expect(page.getByRole("navigation", { name: "Foreman-Einstellungen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Zeitplan speichern" })).toBeVisible();
 });
+
+// DESIGN 8.15: a never-saved schedule preselects the viewer's own zone; a
+// saved one keeps its zone; without script the page offers UTC.
+test.describe("in the viewer's time zone", () => {
+  test.use({ timezoneId: "America/New_York" });
+
+  test("a never-saved schedule preselects the browser's zone", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/restart-schedule");
+    await expect(page.getByLabel("Time zone")).toHaveValue("America/New_York");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#schedule-state")).toContainText("every day at 04:00 (America/New_York)");
+  });
+
+  test("a saved schedule keeps its saved zone", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/restart-schedule");
+    await page.getByLabel("Time zone").selectOption("Europe/London");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#schedule-state")).toContainText("(Europe/London)");
+    await page.goto("/settings/restart-schedule");
+    await expect(page.getByLabel("Time zone")).toHaveValue("Europe/London");
+  });
+
+  test("a refused form keeps the zone that was posted", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/restart-schedule");
+    await page.getByLabel("Time zone").selectOption("Asia/Tokyo");
+    await page.getByLabel("Wait for players to leave for up to").fill("13");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#error-summary")).toBeVisible();
+    await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Tokyo");
+  });
+
+  test.describe("without script", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("the zone select offers UTC and the form saves", async ({ page }) => {
+      await createAdmin(page);
+      await page.goto("/settings/restart-schedule");
+      await expect(page.getByLabel("Time zone")).toHaveValue("UTC");
+      await page.getByRole("button", { name: "Save schedule" }).click();
+      await expect(page.locator("#schedule-state")).toContainText("every day at 04:00 (UTC)");
+    });
+  });
+});

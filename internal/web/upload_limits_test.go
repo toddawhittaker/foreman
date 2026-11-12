@@ -114,8 +114,12 @@ func TestStalledUploadEnds(t *testing.T) {
 func TestUploadsHoldTheSpaceReserve(t *testing.T) {
 	sc := newSecCase(t)
 	t.Cleanup(world.SetSpaceReserveForTest(0))
-	before := sc.tree(t)
+	// A fixed reading, so other processes using the disk cannot change
+	// what fits (issues 496 and 487).
 	const declared = 64 << 20
+	const free = 2 * declared
+	t.Cleanup(world.SetFreeBytesForTest(free))
+	before := sc.tree(t)
 	for _, path := range []string{"/worlds/" + sc.id + "/saves", PathImportUpload} {
 		// While a 64 MB upload is in flight, the same space is promised.
 		conn, rest := sc.slowUpload(t, path, "held.zip", bytes.Repeat([]byte("z"), declared))
@@ -124,10 +128,6 @@ func TestUploadsHoldTheSpaceReserve(t *testing.T) {
 		}
 		held := false
 		for range 100 {
-			free, err := world.FreeBytes(sc.data)
-			if err != nil {
-				t.Fatal(err)
-			}
 			if world.CheckSpace(sc.data, free-declared/2) != nil {
 				held = true
 				break
@@ -143,10 +143,7 @@ func TestUploadsHoldTheSpaceReserve(t *testing.T) {
 		// closed upload above gives its reserve back once it notices.
 		var release func()
 		for range 100 {
-			free, err := world.FreeBytes(sc.data)
-			if err != nil {
-				t.Fatal(err)
-			}
+			var err error
 			if release, err = world.Reserve(sc.data, free-(1<<20)); err == nil {
 				break
 			}

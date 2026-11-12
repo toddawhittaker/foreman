@@ -347,6 +347,18 @@ func (r *rig) waitState(id string, want State) Status {
 	return st
 }
 
+// waitReason waits for the world's state to be want with a reason that
+// contains reason.
+func (r *rig) waitReason(id string, want State, reason string) Status {
+	r.t.Helper()
+	var st Status
+	eventually(r.t, func() bool {
+		st = r.c.Status(id)
+		return st.State == want && strings.Contains(st.Reason, reason)
+	}, "state %s with reason %q, last %s (%s)", want, reason, func() any { return st.State }, func() any { return st.Reason })
+	return st
+}
+
 // eventually polls cond for up to five seconds.
 func eventually(t *testing.T, cond func() bool, format string, args ...any) {
 	t.Helper()
