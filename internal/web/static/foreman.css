@@ -268,10 +268,6 @@ select {
   font: inherit;
 }
 
-/* Room for the scrollbar is always kept, so a short page and a long one sit at the same place. */
-html {
-  scrollbar-gutter: stable;
-}
 
 /* Base elements */
 body {
@@ -343,7 +339,7 @@ main h2[id]::before {
 .server-actions :is(#act-start, #act-stop, #act-restart, #act-snapshot, #act-pull)::before,
 #act-force-stop::before,
 .page-head--row .button:is([href$="/generate"], [href$="/import"])::before,
-main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #changes-heading, #admins-heading, #none-heading)::before {
+main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #changes-heading, #admins-heading, #none-heading)::before {
   content: "";
 }
 
@@ -372,6 +368,7 @@ main h2[id]::before {
 .page-head--row .button[href$="/import"] { --icon: var(--i-upload); }
 #players-heading { --icon: var(--i-players); }
 #disk-heading { --icon: var(--i-disk); }
+#take-heading { --icon: var(--i-snapshot); }
 #list-heading,
 #saves-heading { --icon: var(--i-history); }
 #search-heading,
@@ -792,6 +789,7 @@ main > .panels > .panel,
 .mod-settings > .panels > .panel,
 .settings-main > form.panel,
 .card {
+  position: relative;
   padding: var(--card-pad);
   background: var(--color-surface);
   border: var(--border-width) solid var(--color-line);
@@ -863,6 +861,33 @@ fieldset,
 .empty {
   color: var(--color-text-muted);
 }
+
+/* A list with nothing in it yet: a large line icon over its sentence, centred
+   in the panel, so it reads as designed rather than missing. */
+.empty--art {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  text-align: center;
+}
+
+.empty--art::before {
+  content: "";
+  inline-size: 3rem;
+  block-size: 3rem;
+  background: var(--color-border);
+  mask: var(--icon, var(--i-file)) center / contain no-repeat;
+}
+
+.empty--snapshots { --icon: var(--i-snapshot); }
+.empty--worlds { --icon: var(--i-worlds); }
+.empty--mods { --icon: var(--i-mods); }
+.empty--saves { --icon: var(--i-history); }
+.empty--deleted { --icon: var(--i-trash); }
+.empty--players { --icon: var(--i-players); }
+.empty--console { --icon: var(--i-console); }
+.empty--settings { --icon: var(--i-settings); }
 
 /* 7.1 Buttons */
 .button {
@@ -964,16 +989,57 @@ fieldset,
   border-color: currentColor;
 }
 
+/* Icon only: a square target with its name kept for screen readers. A
+   trash icon opens a delete or remove step; it stays red but borderless
+   until pointed at, so it is set apart without weighing on the row. */
+.button--icon,
+.button--icon:hover {
+  flex: none;
+  inline-size: var(--target-min);
+  padding: 0;
+  color: var(--color-danger-text);
+  text-decoration: none;
+}
+
+.button--icon {
+  background: transparent;
+  border-color: transparent;
+}
+
+.button--icon:hover {
+  background: var(--color-danger-bg);
+  border-color: currentColor;
+}
+
+.button--icon::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--icon, var(--i-trash)) center / contain no-repeat;
+}
+
+.button--icon > [aria-hidden="true"] {
+  display: none;
+}
+
+/* A label that is a bare word keeps its name for screen readers but takes no room. */
+.mod-actions .button--icon.mod-remove {
+  gap: 0;
+  padding: 0;
+  font-size: 0;
+}
+
 
 /* Disabled reads as unavailable in both themes; busy keeps the progress cursor. */
 .button:disabled,
 .button[aria-disabled="true"],
 .button:disabled:hover {
-  background: var(--color-raised);
-  color: var(--color-text-muted);
-  border-color: var(--color-line);
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border);
   box-shadow: none;
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
@@ -1688,12 +1754,17 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 .status-card .facts--inline dd {
   color: var(--color-heading);
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Every figure in one face and size, the version included. */
+.facts dd > code:only-child,
 .status-card .facts--inline dd code {
-  font-size: 0.95em;
+  font-family: inherit;
+  font-size: 1em;
 }
 
 /* At 320 px the facts sit two to a row (DESIGN 7.5). */
@@ -1716,8 +1787,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 @container (max-width: 24rem) {
   .server-actions #act-force-stop {
-    flex: 1 1 100%;
-    justify-content: center;
+    flex: none;
     margin-block-start: var(--space-2);
   }
 }
@@ -2714,7 +2784,8 @@ td > .hint {
 .log {
   min-inline-size: 0;
   block-size: min(60vh, 32rem);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  scroll-padding-block: var(--space-3);
   overflow-x: hidden;
   overflow-y: auto;
   background: var(--color-deep);
@@ -3638,10 +3709,20 @@ form:has(#mode-exchange:checked) .achievements {
   min-inline-size: 0;
 }
 
+/* A group's name sits under the group's rule, not in it: a floated legend
+   is laid out as the fieldset's first item. */
 .settings > fieldset > legend {
+  float: inline-start;
+  inline-size: 100%;
   margin-block-end: var(--space-2);
+  padding: 0;
   color: var(--color-heading);
   font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.settings > fieldset > legend + * {
+  clear: both;
 }
 
 /* A group in a long form is set off by a line above it, not a box. */
@@ -3773,15 +3854,14 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
-/* Two groups, each kept on its own line while it fits: what the portal
-   offers (Update, Change version), then Disable and Remove. When the column
-   is too narrow for both, the portal's group goes above, so Remove never
-   ends up alone and Disable keeps its place (DESIGN 8.11). */
+/* A mod's actions keep one order (DESIGN 8.11): what the portal offers,
+   Update as the one bordered button and the version as a quiet chip, then
+   Disable and the Remove icon, which sit in the same place in every row. */
 .mod-actions,
-.mod-actions__portal,
-.mod-actions__fixed {
+.mod-actions__portal {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
   margin-block-start: 0;
@@ -3793,42 +3873,74 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
-/* Disable starts at the same place in every row, a folder mod's too, which
-   has no Remove: the group keeps one width, with Remove at its end. */
+/* A folder mod has no Remove; its column stays, so Disable keeps its place. */
 .mod-actions__fixed {
-  min-inline-size: 12em;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto var(--target-min);
+  align-items: center;
+  gap: var(--space-1);
 }
 
-/* Remove is the one red control: it is the change that destroys something.
-   It wears the risky outline every opener of a destructive step wears. */
-.mod-list .mod-remove,
-.mod-list .mod-remove:hover {
-  color: var(--color-danger-text);
-  border-color: currentColor;
+.mod-actions__fixed > .mod-toggle {
+  grid-column: 1;
+}
+
+.mod-actions .button {
+  padding-inline: var(--space-3);
+  white-space: nowrap;
+}
+
+/* On a wide panel a mod's actions keep one line. */
+@container (min-width: 44rem) {
+  .mod-actions,
+  .mod-actions__portal {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Disable and Enable are quiet: text, with a surface only under the pointer. */
+.mod-list .mod-toggle {
+  color: var(--color-text);
   text-decoration: none;
 }
 
-.mod-list .mod-remove {
-  padding-inline: var(--space-4);
-}
-
-.mod-list .mod-remove:hover {
-  background: var(--color-danger-bg);
-}
-
-/* Change version is a button among buttons, not a link in a row of them. */
-.mod-list .mod-version {
-  padding-inline: var(--space-4);
+.mod-list .mod-toggle:hover {
   background: var(--color-raised);
   color: var(--color-heading);
-  border-color: var(--color-border);
+  border-color: var(--color-line);
+}
+
+/* Change version is the version's own control: a chip with a chevron. */
+.mod-list .mod-version {
+  gap: var(--space-1);
+  padding-inline: var(--space-3) var(--space-2);
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-line);
+  font-weight: 500;
   text-decoration: none;
+}
+
+.mod-list .mod-version::after {
+  content: "";
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-chevron) center / contain no-repeat;
+  transform: rotate(90deg);
 }
 
 .mod-list .mod-version:hover {
-  background: var(--color-secondary-hover);
+  background: var(--color-raised);
   color: var(--color-heading);
+  border-color: var(--color-border);
+}
+
+/* Remove is the one red control: it is the change that destroys something. */
+.mod-list .mod-remove,
+.mod-list .mod-remove:hover {
+  color: var(--color-danger-text);
+  text-decoration: none;
 }
 
 /* What the portal says about one mod, under its name; the leading word
@@ -3883,26 +3995,17 @@ form:has(#mode-exchange:checked) .achievements {
   }
 
   .mod-actions,
-  .mod-actions__portal,
-  .mod-actions__fixed {
+  .mod-actions__portal {
     justify-content: flex-start;
   }
 
-  /* Under the name every group starts at the row's start, so Disable lines
-     up without a set width, which large text could push off the panel. */
+  .mod-actions {
+    padding-block-start: var(--space-1);
+  }
+
+  /* Disable and Remove keep the row's end, on the portal's line when it fits. */
   .mod-actions__fixed {
-    min-inline-size: 0;
-  }
-
-  /* Tighter buttons, so each group keeps one line at 320 px, and a row
-     with no update keeps Change version, Disable and Remove on one. The
-     quiet ones keep a 44 px height and the gap between them. */
-  .mod-actions .button:not(.button--quiet) {
-    padding-inline: var(--space-3);
-  }
-
-  .mod-actions .button--quiet {
-    padding-inline: var(--space-1);
+    margin-inline-start: auto;
   }
 }
 
@@ -4363,35 +4466,30 @@ form:has(#mode-exchange:checked) .achievements {
   }
 }
 
-/* Console on a phone: game log lines keep their own line and scroll
-   sideways so timestamps stay in a column; history entries wrap. */
+/* Console on a phone: each game log line wraps inside the box with a
+   hanging indent, so nothing is cut off and each line's start stands out. */
 @media (max-width: 48rem) {
   .log {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     line-height: 1.5;
   }
 
-  .log-frame > .log {
-    overflow-x: auto;
-  }
-
-  .log-frame > .log pre {
-    inline-size: max-content;
-    min-inline-size: 100%;
-    white-space: pre;
-    overflow-wrap: normal;
+  .log-frame > .log pre > span {
+    display: block;
+    padding-inline-start: 2ch;
+    text-indent: -2ch;
   }
 }
 
-/* On a phone the live world's pages come straight after the tabs, as a
-   two-by-two grid, ahead of the controls and players. */
+/* On a phone the live world's pages follow the controls and facts, as a
+   two-by-two grid, ahead of the players. */
 @media (max-width: 40rem) {
   .server-grid {
     display: contents;
   }
 
   main > .status-card {
-    order: 2;
+    order: 1;
   }
 
   .server-grid > .panel {
@@ -4399,7 +4497,7 @@ form:has(#mode-exchange:checked) .achievements {
   }
 
   .shortcuts.card {
-    order: 1;
+    order: 2;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
     padding: 0;
@@ -4426,35 +4524,6 @@ form:has(#mode-exchange:checked) .achievements {
 
   .shortcuts > #act-switch-world {
     border-color: var(--color-border);
-  }
-}
-
-/* Mods on a phone: each row's buttons in an even two-column grid. */
-@container (max-width: 36rem) {
-  .mod-actions,
-  .mod-actions__portal,
-  .mod-actions__fixed {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mod-actions {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .mod-actions__portal:not(:has(a)) {
-    display: none;
-  }
-
-  .mod-actions__portal > span {
-    display: contents;
-  }
-
-  .mod-actions .button,
-  .mod-list .mod-remove,
-  .mod-list .mod-version {
-    inline-size: 100%;
-    padding-inline: var(--space-2);
   }
 }
 
@@ -4497,4 +4566,403 @@ main:has(> .gate) > h1 {
   main:has(> section[aria-labelledby="version-heading"]) > :is(section[aria-labelledby="version-heading"], form[aria-labelledby="rename-heading"]) {
     grid-column: auto;
   }
+}
+
+/* A snapshot on a wide panel is one row: its box and label, when it was
+   taken, its size, then Restore and Delete at the row's end. Every row shares
+   the table's columns through a subgrid, so the times and sizes line up. */
+@container (min-width: 30.0625rem) {
+  .snapshot-list:has(.row-actions) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    column-gap: var(--space-5);
+  }
+
+  .snapshot-list:has(.row-actions) caption {
+    grid-column: 1 / -1;
+    text-align: start;
+  }
+
+  .snapshot-list:has(.row-actions) :is(thead, tbody) {
+    display: contents;
+  }
+
+  .snapshot-list:has(.row-actions) tr {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    row-gap: var(--space-1);
+    padding-block: var(--space-3);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .snapshot-list:has(.row-actions) thead tr {
+    padding-block: 0 var(--space-2);
+  }
+
+  .snapshot-list:has(.row-actions) tbody tr:last-child {
+    border-block-end: 0;
+  }
+
+  .snapshot-list:has(.row-actions) :is(th, td) {
+    padding: 0;
+    border: 0;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child {
+    display: contents;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .check {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .hint {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    padding-inline-start: calc(1.25rem + var(--space-3));
+  }
+
+  .snapshot-list:has(.row-actions) td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list:has(.row-actions) td:nth-child(3) {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin: 0;
+  }
+}
+
+/* World settings: on a wide panel a text field is as wide as what it holds;
+   on a narrow one the section links become a row of chips above the form. */
+@container settings (min-width: 44rem) {
+  .settings .field input:is([type="text"], [type="password"]):not([inputmode="numeric"]),
+  .settings .field textarea {
+    max-inline-size: 35rem;
+  }
+}
+
+@container settings (max-width: 43.99rem) {
+  .settings-rail {
+    display: block;
+    margin-block-end: var(--space-4);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .settings-rail ul {
+    display: flex;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .settings-rail li:last-child {
+    display: none;
+  }
+
+  .settings-rail a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-4);
+    color: var(--color-heading);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .settings-rail a:hover {
+    border-color: var(--color-border);
+  }
+}
+
+/* factorio.com account on a wide screen: the explanation in a reading
+   column, with the account's state or form beside it. */
+@media (min-width: 64rem) {
+  main:has(> .account-intro) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-5);
+  }
+
+  main:has(> .account-intro) > * {
+    grid-column: 1 / -1;
+  }
+
+  main:has(> .account-intro) > .account-intro {
+    grid-column: 1;
+    max-inline-size: 65ch;
+  }
+
+  main:has(> .account-intro) > .account-intro + * {
+    grid-column: 2;
+    align-self: start;
+  }
+}
+
+.account-intro {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+/* Disk use on a snapshots page is one compact strip under the tabs: its
+   name, the two figures and the one-line explanation, so the forms and the
+   list stay near the top. */
+.panel.disk-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding-block: var(--space-3);
+}
+
+.disk-strip > h2 {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.disk-strip .facts--inline {
+  gap: var(--space-2) var(--space-5);
+}
+
+.disk-strip .facts--inline > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.disk-strip .facts dt {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.disk-strip .facts dd {
+  color: var(--color-heading);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.disk-strip > .hint {
+  flex: 1 1 18rem;
+  margin: 0;
+  font-size: var(--text-xs);
+}
+
+.disk-strip > .message {
+  flex: 1 1 100%;
+}
+
+/* Every slider's first row is the same: its name at the start, the step in
+   words at the end, on one line; the slider takes the row under it. */
+@container map-section (min-width: 34rem) {
+  .js-on .step__value {
+    min-inline-size: 0;
+  }
+
+  .js-on .step > .field__head {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .js-on .step > .field__head > label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* A map picture sits in a framed slot, its name under it inside the frame,
+   so even a one-colour picture reads as a map. */
+.pictures figure {
+  padding: var(--space-2);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 6px;
+}
+
+.pictures figcaption {
+  padding-inline: var(--space-1);
+  font-weight: 600;
+}
+
+/* On a phone the tabs scroll as one strip rather than wrap a tab onto a
+   second line. */
+@media (max-width: 40rem) {
+  .js-on .tablist {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+/* On a phone Generate's actions stack, each full width and on one line:
+   Generate world, then Preview map, then Cancel. */
+@media (max-width: 30rem) {
+  .generate > .gen-actions {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    block-size: auto;
+  }
+
+  .generate > .gen-actions > .button {
+    white-space: nowrap;
+    order: 0;
+  }
+
+  .generate > .gen-actions > #preview-button {
+    order: 1;
+  }
+
+  .generate > .gen-actions > a {
+    order: 2;
+    justify-content: center;
+    margin-inline-end: 0;
+  }
+}
+
+/* Mod settings on a wide panel: each mod's settings in columns of at least
+   18rem, so a panel of short fields is not mostly empty. */
+@container (min-width: 40rem) {
+  .mod-settings-group,
+  .mod-settings-values {
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    column-gap: var(--space-6);
+    align-items: start;
+  }
+
+  .mod-settings-group > legend {
+    grid-column: 1 / -1;
+  }
+}
+
+/* On a wide panel every world's snapshot table shares one set of columns,
+   so times, sizes and actions line up from one world to the next. */
+@container (min-width: 48rem) {
+  .snapshot-list:has(.row-actions) {
+    grid-template-columns: minmax(0, 1fr) 15rem 6rem minmax(9.5rem, auto);
+  }
+
+  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
+    justify-content: flex-start;
+  }
+}
+
+@container (max-width: 30rem) {
+  .snapshot-list:has(.row-actions) .row-actions .button--icon {
+    flex: none;
+  }
+}
+
+/* A world's name over its snapshots is a heading first: text colour, with
+   the link shown by its underline only under the pointer. */
+.group__head h3 a {
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.group__head h3 a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* A disclosure is a full-width row with a chevron at its end, drawn like
+   the account menu's, so it reads as something that opens, not a link. */
+.disclosure:not(.mod-hits__summary) > summary {
+  display: flex;
+  align-items: center;
+  gap: 0 0.3em;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-raised);
+  color: var(--color-heading);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  list-style: none;
+}
+
+.disclosure:not(.mod-hits__summary) > summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure:not(.mod-hits__summary) > summary:hover {
+  border-color: var(--color-border);
+  background: var(--color-secondary-hover);
+}
+
+.disclosure:not(.mod-hits__summary) > summary::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline: auto var(--space-1);
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.disclosure:not(.mod-hits__summary)[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+/* The live world's edge takes the server's state colour, as the Server
+   page's state card does, so both read the same way. */
+.worlds > li:has(.state--running) {
+  border-inline-start-color: var(--color-ok);
+}
+
+.worlds > li:has(:is(.state--starting, .state--stopping)) {
+  border-inline-start-color: var(--color-warn);
+}
+
+.worlds > li:has(:is(.state--crashed, .state--crash-looping)) {
+  border-inline-start-color: var(--color-danger);
+}
+
+/* A world's name is the row's title: text colour, underlined under the pointer. */
+.worlds > li > h2 > a {
+  color: var(--color-heading);
+  text-decoration: none;
+}
+
+.worlds > li > h2 > a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }

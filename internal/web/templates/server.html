@@ -130,7 +130,7 @@
 </table>
 {{- end}}
 {{- else if .PlayersKnown}}
-<p class="empty">{{t "server.online.nobody"}}</p>
+<p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
 {{- else if eq .Status.State "unknown"}}
 <p class="empty">{{t "server.players.cannot_see"}}</p>
 {{- else if .PlayersError}}
@@ -140,7 +140,7 @@
 {{- else if eq .Status.State "stopping"}}
 <p class="empty">{{t "server.players.not_listed_stopping"}}</p>
 {{- else}}
-<p class="empty">{{t "server.players.not_running"}}</p>
+<p class="empty empty--art empty--players">{{t "server.players.not_running"}}</p>
 {{- end}}
 {{- end}}
 

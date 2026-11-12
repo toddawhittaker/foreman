@@ -28,7 +28,7 @@
 </div>
 {{- end}}
 
-<section class="panel" aria-labelledby="disk-heading">
+<section class="panel disk-strip" aria-labelledby="disk-heading">
   <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
   <dl class="facts facts--inline">
     <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
@@ -43,7 +43,7 @@
 </section>
 
 <form method="post" action="{{.Path}}" class="panel" novalidate>
-  <h2>{{t "worlds.snapshots.take.heading"}}</h2>
+  <h2 id="take-heading">{{t "worlds.snapshots.take.heading"}}</h2>
   {{template "summary" .Problems}}
   <div class="field">
     <label for="label">{{t "worlds.snapshots.take.label"}}</label>
@@ -80,7 +80,7 @@
       <tr role="row">
         <td role="cell">
           <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
-          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
+          <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky button--icon" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
         </td>
         <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}</td>
         <td class="num" role="cell" data-label="{{t "worlds.snapshots.size_label"}}">{{bytes .DiskSize}}</td>
@@ -99,7 +99,7 @@
 {{- else}}
 <section class="panel" aria-labelledby="list-heading">
   <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
-  <p class="empty">{{t "worlds.snapshots.empty"}}</p>
+  <p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
 </section>
 {{- end}}
 {{- end}}
