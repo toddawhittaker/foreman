@@ -191,7 +191,7 @@ func TestWebhookFormRefusals(t *testing.T) {
 		want string
 	}{
 		{hookForm("discord", ""), "Enter the webhook address."},
-		{hookForm("discord", "http://discord.com/api/webhooks/1/"+hookToken), "Enter an address that starts with https://."},
+		{hookForm("discord", "ftp://discord.com/api/webhooks/1/"+hookToken), "Enter an address that starts with https:// or http://."},
 		{hookForm("discord", "https://example.com/"+hookToken), "Enter a Discord webhook address."},
 		{hookForm("ntfy", "https://ntfy.sh/"), "Enter the address of an ntfy topic"},
 		{hookForm("generic", "https://u:"+hookToken+"@example.com/"), "without a user name or password"},
@@ -263,4 +263,62 @@ func TestWebhookDoneIgnoresOddLinks(t *testing.T) {
 			t.Errorf("%s: %v", q, m)
 		}
 	}
+}
+
+// Todd's ruling: http:// is allowed, and the form says it is unencrypted.
+func TestWebhookPlainHTTP(t *testing.T) {
+	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
+	c := nh.signIn()
+	add := nh.get(PathNotifications+"/new", withCookie(c)).Body.String()
+	if !strings.Contains(add, `<p class="hint" id="webhook-url-plain" hidden>Messages to an http:// address are sent unencrypted.</p>`) ||
+		!strings.Contains(add, "notifyurl") {
+		t.Errorf("the add form lacks the hidden note and its script\n%s", add)
+	}
+	nh.wantRedirect(nh.post(PathNotifications+"/new", hookForm("ntfy", "http://ntfy.lan:8080/"+hookToken), withCookie(c)),
+		PathNotifications+"?done=added&host=ntfy.lan&preset=ntfy")
+	edit := nh.get(webhookPath(1), withCookie(c)).Body.String()
+	if !strings.Contains(edit, `<p class="hint" id="webhook-url-plain">Messages`) || !strings.Contains(edit, `aria-describedby="webhook-url-hint webhook-url-plain"`) {
+		t.Errorf("the edit page of an http:// webhook does not show the note\n%s", edit)
+	}
+	nh.wantNoAddress("an http:// webhook", edit)
+}
+
+// ADR 0013: after the secret key changes, the list says the address cannot
+// be read instead of showing the webhook as working, and an edit must type
+// the address again.
+func TestWebhookUnreadableAfterKeyChange(t *testing.T) {
+	nh := newNotifyHarness(t, map[string]string{"FOREMAN_SECRET_KEY": acctKey})
+	c := nh.signIn()
+	nh.post(PathNotifications+"/new", hookForm("discord", hookURL), withCookie(c))
+
+	other, err := notify.New(nh.store, loadConfig(t, map[string]string{"FOREMAN_SECRET_KEY": acctOtherKey}).SecretKey, nh.slog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := NewHandler(Deps{Config: nh.cfg, Store: nh.store, Worlds: nh.worlds, Notifier: other, Log: nh.slog, Now: nh.clock.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(h.Close)
+	nh.h = h
+
+	body := nh.get(PathNotifications, withCookie(c)).Body.String()
+	for _, want := range []string{`id="webhook-1-unreadable"`, "Foreman cannot read this webhook’s address", "0 webhooks get messages."} {
+		if !strings.Contains(body, want) {
+			t.Errorf("list lacks %q\n%s", want, body)
+		}
+	}
+	edit := nh.get(webhookPath(1), withCookie(c)).Body.String()
+	if !strings.Contains(edit, "The stored address cannot be read.") || !strings.Contains(edit, `type="url" required`) || strings.Contains(edit, "The address is kept") {
+		t.Errorf("edit page\n%s", edit)
+	}
+	rec := nh.post(webhookPath(1), hookForm("discord", ""), withCookie(c))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Enter the webhook address.") {
+		t.Errorf("an edit kept an unreadable address: %d", rec.Code)
+	}
+	nh.wantRedirect(nh.post(webhookPath(1), hookForm("discord", hookURL), withCookie(c)), PathNotifications+"?done=saved&host=discord.com&preset=discord")
+	if body := nh.get(PathNotifications, withCookie(c)).Body.String(); strings.Contains(body, `id="webhook-1-unreadable"`) || !strings.Contains(body, "1 webhook gets messages.") {
+		t.Errorf("still unreadable after typing it again\n%s", body)
+	}
+	nh.wantNoAddress("a key change", "")
 }

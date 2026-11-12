@@ -6,7 +6,7 @@
 {{template "summary" .Problems}}
 {{- /* The address is write-only: it is never put back in a value attribute (DESIGN 8.16). */}}
 <form method="post" action="{{.Path}}" class="panel" novalidate>
-  {{- if not .Edit}}
+  {{- if .URLRequired}}
   {{template "required-note"}}
   {{- end}}
   <fieldset{{if not .PresetError.IsZero}} aria-describedby="webhook-preset-error"{{end}}>
@@ -20,13 +20,15 @@
     {{- end}}
   </fieldset>
   <div class="field">
-    <label for="webhook-url"{{if not .Edit}} class="required"{{end}}>{{t "notify.url.label"}}</label>
+    <label for="webhook-url"{{if .URLRequired}} class="required"{{end}}>{{t "notify.url.label"}}</label>
     {{- if .Edit}}
-    <p class="hint" id="webhook-url-hint">{{t "notify.url.kept" "preset" (msg .Kept.Preset) "host" .Kept.Host}}</p>
+    <p class="hint" id="webhook-url-hint">{{if .Kept.Unreadable}}{{t "notify.url.unreadable"}}{{else}}{{t "notify.url.kept" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{end}}</p>
     {{- end}}
-    <input id="webhook-url" name="url" type="url"{{if not .Edit}} required{{end}} autocomplete="off" autocapitalize="off" spellcheck="false"
+    <input id="webhook-url" name="url" type="url"{{if .URLRequired}} required{{end}} autocomplete="off" autocapitalize="off" spellcheck="false"
       {{- if not .URLError.IsZero}} aria-invalid="true"{{end}}
-      {{- if or .Edit (not .URLError.IsZero)}} aria-describedby="{{if .Edit}}webhook-url-hint{{end}}{{if and .Edit (not .URLError.IsZero)}} {{end}}{{if not .URLError.IsZero}}webhook-url-error{{end}}"{{end}}>
+      {{- with .URLDescribedBy}} aria-describedby="{{.}}"{{end}}>
+    {{- /* notifyurl.js shows this while the typed address starts with http://. */}}
+    <p class="hint" id="webhook-url-plain"{{if not .PlainNote}} hidden{{end}}>{{t "notify.url.plain"}}</p>
     {{- if not .URLError.IsZero}}
     <p class="error" id="webhook-url-error"><strong>{{t "common.error.label"}}</strong> {{msg .URLError}}</p>
     {{- end}}
@@ -57,5 +59,6 @@
     <a href="{{.BackPath}}">{{t "worlds.cancel"}}</a>
   </div>
 </form>
+<script src="{{static "notifyurl.js"}}" defer></script>
 {{- end}}
 {{- end}}

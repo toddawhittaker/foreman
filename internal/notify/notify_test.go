@@ -232,8 +232,14 @@ func TestEmitNeverBlocks(t *testing.T) {
 	if d := time.Since(start); d > time.Second {
 		t.Errorf("emitting %d events took %v", QueueSize+50, d)
 	}
-	if !strings.Contains(logs.String(), "notification dropped") {
-		t.Errorf("a full queue is not logged:\n%s", logs)
+	waitFor(t, "the webhook's full queue to be logged", func() bool { return strings.Contains(logs.String(), "notifications dropped for one webhook") })
+	time.Sleep(50 * time.Millisecond)
+	// Each full queue logs one line, however many events it drops.
+	if got := strings.Count(logs.String(), `msg="notifications dropped for one webhook`); got != 1 {
+		t.Errorf("webhook drop lines = %d, want 1:\n%s", got, logs)
+	}
+	if got := strings.Count(logs.String(), `msg="notifications dropped: too many`); got > 1 {
+		t.Errorf("queue drop lines = %d, want at most 1:\n%s", got, logs)
 	}
 }
 
@@ -252,8 +258,9 @@ func TestEmitWithoutRunDrops(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Emit blocked on a full queue")
 	}
-	if got := strings.Count(logs.String(), "notification dropped"); got != QueueSize*2 {
-		t.Errorf("dropped lines = %d, want %d", got, QueueSize*2)
+	// One line for the whole burst, not one per event.
+	if got := strings.Count(logs.String(), "notifications dropped"); got != 1 {
+		t.Errorf("dropped lines = %d, want 1", got)
 	}
 	var nilNotifier *Notifier
 	nilNotifier.Emit(Message{Event: Start})
@@ -421,7 +428,7 @@ func TestAddUpdateDelete(t *testing.T) {
 	if got.Preset != Generic || got.Host != "hooks.example.org" {
 		t.Errorf("after a new address: %+v", got)
 	}
-	if _, err := n.Update(ctx, w.ID, Setup{Preset: Discord, URL: secret.New("http://discord.com/api/webhooks/" + token), Events: allEvents(), Lang: "en"}, "ann"); !errors.Is(err, ErrURLNotHTTPS) {
+	if _, err := n.Update(ctx, w.ID, Setup{Preset: Discord, URL: secret.New("ftp://discord.com/api/webhooks/" + token), Events: allEvents(), Lang: "en"}, "ann"); !errors.Is(err, ErrURLScheme) {
 		t.Errorf("bad address on edit: %v", err)
 	} else if strings.Contains(err.Error(), token) {
 		t.Errorf("the error holds the address: %v", err)
@@ -493,9 +500,12 @@ func TestCheckURL(t *testing.T) {
 		{Generic, "", "", ErrURLMissing},
 		{Generic, "   ", "", ErrURLMissing},
 		{Generic, long, "", ErrURLTooLong},
-		{Generic, "http://hooks.example.org/" + token, "", ErrURLNotHTTPS},
-		{Generic, "ftp://hooks.example.org/x", "", ErrURLNotHTTPS},
-		{Generic, "hooks.example.org/x", "", ErrURLNotHTTPS},
+		{Generic, "http://hooks.example.org/" + token, "hooks.example.org", nil},
+		{Ntfy, "HTTP://ntfy.lan:8080/alerts", "ntfy.lan", nil},
+		{Discord, "http://discord.com/api/webhooks/1/x", "discord.com", nil},
+		{Generic, "ftp://hooks.example.org/x", "", ErrURLScheme},
+		{Generic, "hooks.example.org/x", "", ErrURLScheme},
+		{Generic, "http://user:" + token + "@hooks.example.org/x", "", ErrURLHasUser},
 		{Generic, "https://user:" + token + "@hooks.example.org/x", "", ErrURLHasUser},
 		{Generic, "https:///x", "", ErrURLInvalid},
 		{Generic, "https://hooks.example.org/a b", "", ErrURLInvalid},
@@ -510,5 +520,97 @@ func TestCheckURL(t *testing.T) {
 		if err != nil && strings.Contains(err.Error(), token) {
 			t.Errorf("the error for %q holds the address: %v", c.raw, err)
 		}
+	}
+}
+
+// One dead target must not hold up another webhook (SPEC 8.12).
+func TestSlowTargetDoesNotDelayOthers(t *testing.T) {
+	n, st, _ := newTest(t, testKey)
+	n.timeout = time.Hour
+	release := make(chan struct{})
+	hang := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	t.Cleanup(func() { close(release); hang.Close() })
+	var h hits
+	ok := server(t, &h, http.StatusNoContent)
+	addRaw(t, n, st, Generic, hang.URL+"/dead", "en")
+	addRaw(t, n, st, Generic, ok.URL+"/alive", "en")
+	run(t, n)
+	start := time.Now()
+	for i := 0; i < 5; i++ {
+		n.Emit(Message{Event: PlayerJoin, World: world, Player: fmt.Sprint("p", i)})
+	}
+	waitFor(t, "five events at the healthy target", func() bool { return h.n.Load() == 5 })
+	if d := time.Since(start); d > 2*time.Second {
+		t.Errorf("the healthy target waited %v", d)
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for i, b := range h.bodies {
+		if !bytes.Contains(b, []byte(fmt.Sprintf(`"player":"p%d"`, i))) {
+			t.Errorf("event %d out of order: %s", i, b)
+		}
+	}
+}
+
+// A deleted webhook's sender stops, and nothing more is sent to it.
+func TestDeletedWebhookGetsNothing(t *testing.T) {
+	n, st, _ := newTest(t, testKey)
+	var h hits
+	srv := server(t, &h, http.StatusNoContent)
+	id := addRaw(t, n, st, Generic, srv.URL+"/hook", "en")
+	run(t, n)
+	n.Emit(Message{Event: Start, World: world})
+	waitFor(t, "the first event", func() bool { return h.n.Load() == 1 })
+	if err := n.Delete(context.Background(), id); err != nil {
+		t.Fatal(err)
+	}
+	n.Emit(Message{Event: Stop, World: world})
+	time.Sleep(100 * time.Millisecond)
+	if got := h.n.Load(); got != 1 {
+		t.Errorf("requests = %d after delete", got)
+	}
+}
+
+// After FOREMAN_SECRET_KEY changes, every stored address is unreadable:
+// the list says so, nothing is sent, and an edit must type the address again
+// (ADR 0013).
+func TestKeyChangeMakesAddressesUnreadable(t *testing.T) {
+	n, st, logs := newTest(t, testKey)
+	ctx := context.Background()
+	var h hits
+	srv := server(t, &h, http.StatusNoContent)
+	addRaw(t, n, st, Generic, srv.URL+"/hook", "en")
+	if list, _ := n.List(ctx); len(list) != 1 || list[0].Unreadable {
+		t.Fatalf("before the change: %+v", list)
+	}
+
+	other, err := New(st, secret.New("another-key-another-key-another-key"), n.log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.client, other.timeout, other.backoff = n.client, n.timeout, n.backoff
+	list, err := other.List(ctx)
+	if err != nil || len(list) != 1 || !list[0].Unreadable {
+		t.Fatalf("after the change: %+v, %v", list, err)
+	}
+	got, _ := other.Get(ctx, list[0].ID)
+	if !got.Unreadable {
+		t.Error("Get does not say the address is unreadable")
+	}
+	run(t, other)
+	other.Emit(Message{Event: Start, World: world})
+	waitFor(t, "the unreadable address to be logged", func() bool { return strings.Contains(logs.String(), "cannot be read") })
+	if h.n.Load() != 0 {
+		t.Error("an event was sent with an unreadable address")
+	}
+	if _, err := other.Update(ctx, got.ID, Setup{Preset: Generic, Events: allEvents(), Lang: "en"}, "ann"); !errors.Is(err, ErrURLMissing) {
+		t.Errorf("an edit kept an unreadable address: %v", err)
+	}
+	if _, err := other.Update(ctx, got.ID, Setup{Preset: Generic, URL: secret.New("http://hooks.example.org/x"), Events: allEvents(), Lang: "en"}, "ann"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = other.Get(ctx, got.ID)
+	if got.Unreadable || !got.Plain {
+		t.Errorf("after typing it again: %+v", got)
 	}
 }

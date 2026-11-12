@@ -10,12 +10,18 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // maxResponseBytes is as much of a target's reply as is read, so the
 // connection can be reused; the reply itself is not used.
 const maxResponseBytes = 64 << 10
+
+// HookQueueSize is how many events wait for one webhook. Each webhook has
+// its own queue and sender, so a slow or dead target delays only itself
+// (SPEC 8.12).
+const HookQueueSize = 20
 
 // target is one webhook ready to send to. raw is the opened address; it is
 // used only to make the request and never logged.
@@ -24,32 +30,100 @@ type target struct {
 	raw  string
 }
 
-// deliver sends m to every webhook that has its event on, all at once, and
-// returns when each has succeeded or used its retries.
-func (n *Notifier) deliver(ctx context.Context, m Message) {
+type job struct {
+	t target
+	m Message
+}
+
+// sender delivers one webhook's events in order.
+type sender struct {
+	ch chan job
+	// full is set once a drop is logged and cleared when the queue drains.
+	full atomic.Bool
+}
+
+// Run delivers queued events until ctx ends. Events still queued then are
+// not sent, and none is kept across a restart.
+func (n *Notifier) Run(ctx context.Context) {
+	senders := map[int64]*sender{}
+	var wg sync.WaitGroup
+	defer func() {
+		for _, s := range senders {
+			close(s.ch)
+		}
+		wg.Wait()
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-n.queue:
+			if len(n.queue) == 0 {
+				n.full.Store(false)
+			}
+			n.dispatch(ctx, m, senders, &wg)
+		}
+	}
+}
+
+// dispatch hands m to the sender of every webhook that has its event on,
+// without waiting for any of them. Senders of deleted webhooks stop.
+func (n *Notifier) dispatch(ctx context.Context, m Message, senders map[int64]*sender, wg *sync.WaitGroup) {
+	if n.box == nil {
+		return
+	}
 	rows, err := n.rows.ListWebhooks(ctx)
 	if err != nil {
 		n.log.Error("notification not sent: the webhooks could not be read", "event", string(m.Event), "error", err)
 		return
 	}
-	if n.box == nil {
-		return
-	}
-	var wg sync.WaitGroup
+	live := map[int64]bool{}
 	for _, r := range rows {
+		live[r.ID] = true
 		hook := fromRow(r)
 		if !hook.On(m.Event) {
 			continue
 		}
-		plain, err := n.box.Open(rowName(r.ID), r.URL)
-		if err != nil {
+		raw, ok := n.open(r)
+		if !ok {
 			n.log.Warn("notification not sent: the webhook address cannot be read; type it again on the Notifications page",
 				"webhook", r.ID, "preset", r.Preset, "host", r.Host, "event", string(m.Event))
 			continue
 		}
-		wg.Go(func() { n.send(ctx, target{hook: hook, raw: string(plain)}, m) })
+		s := senders[r.ID]
+		if s == nil {
+			s = &sender{ch: make(chan job, HookQueueSize)}
+			senders[r.ID] = s
+			wg.Go(func() { n.drain(ctx, s) })
+		}
+		select {
+		case s.ch <- job{t: target{hook: hook, raw: raw}, m: m}:
+		default:
+			if s.full.CompareAndSwap(false, true) {
+				n.log.Warn("notifications dropped for one webhook: too many are waiting for it; more are dropped without a log line until its queue drains",
+					"webhook", r.ID, "preset", r.Preset, "host", r.Host, "event", string(m.Event))
+			}
+		}
 	}
-	wg.Wait()
+	for id, s := range senders {
+		if !live[id] {
+			close(s.ch)
+			delete(senders, id)
+		}
+	}
+}
+
+// drain sends one webhook's events until its queue is closed. Once ctx ends
+// the rest are skipped.
+func (n *Notifier) drain(ctx context.Context, s *sender) {
+	for j := range s.ch {
+		if len(s.ch) == 0 {
+			s.full.Store(false)
+		}
+		if ctx.Err() == nil {
+			n.send(ctx, j.t, j.m)
+		}
+	}
 }
 
 // send makes the first attempt and at most two retries (SPEC 8.12). A

@@ -31,7 +31,7 @@ var (
 	ErrURLMissing    = errors.New("no webhook address was given")
 	ErrURLTooLong    = errors.New("the webhook address is too long")
 	ErrURLInvalid    = errors.New("the webhook address is not a valid web address")
-	ErrURLNotHTTPS   = errors.New("the webhook address does not start with https://")
+	ErrURLScheme     = errors.New("the webhook address does not start with https:// or http://")
 	ErrURLHasUser    = errors.New("the webhook address holds a user name or password")
 	ErrURLNotDiscord = errors.New("the webhook address is not a Discord webhook address")
 	ErrURLNoTopic    = errors.New("the webhook address names no ntfy topic")
@@ -59,8 +59,9 @@ func CheckURL(p Preset, raw string) (string, error) {
 	if err != nil {
 		return "", ErrURLInvalid
 	}
-	if !strings.EqualFold(u.Scheme, "https") {
-		return "", ErrURLNotHTTPS
+	// http is allowed, and the page warns that it is unencrypted.
+	if !strings.EqualFold(u.Scheme, "https") && !strings.EqualFold(u.Scheme, "http") {
+		return "", ErrURLScheme
 	}
 	if u.User != nil {
 		return "", ErrURLHasUser

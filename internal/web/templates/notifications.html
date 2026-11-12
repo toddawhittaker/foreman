@@ -16,7 +16,7 @@
 </div>
 {{- end}}
 {{- with .Hooks}}
-<p id="notify-state">{{t "notify.state" "count" (len .)}}</p>
+<p id="notify-state">{{t "notify.state" "count" $.Page.Sending}}</p>
 <ul class="worlds webhook-list" role="list">
   {{- range .}}
   <li id="webhook-{{.ID}}">
@@ -25,6 +25,11 @@
       <div><dt>{{t "notify.fact.language"}}</dt><dd lang="{{.LangTag}}">{{.LangName}}</dd></div>
       <div><dt>{{t "notify.fact.events"}}</dt><dd>{{if .AllOn}}{{t "notify.events.all"}}{{else}}{{.Events}}{{end}}</dd></div>
     </dl>
+    {{- if .Unreadable}}
+    <div class="message message--warning" id="webhook-{{.ID}}-unreadable">
+      <p><strong>{{t "common.label.warning"}}</strong> {{t "notify.unreadable"}}</p>
+    </div>
+    {{- end}}
     <div class="actions">
       <a href="{{.EditPath}}" class="button" id="act-webhook-edit-{{.ID}}"><span aria-hidden="true">{{t "notify.edit"}}</span><span class="visually-hidden">{{t "notify.edit.named" "preset" (msg .Preset) "host" .Host}}</span></a>
       <a href="{{.DeletePath}}" class="button button--risky button--icon" id="act-webhook-delete-{{.ID}}"><span class="visually-hidden">{{t "notify.delete.named" "preset" (msg .Preset) "host" .Host}}</span></a>

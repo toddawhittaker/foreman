@@ -10,7 +10,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -47,6 +50,9 @@ type Notifier struct {
 	log   *slog.Logger
 	now   func() time.Time
 	queue chan Message
+	// full is set once a dropped event is logged, and cleared when the
+	// queue drains, so a burst logs one line.
+	full atomic.Bool
 	// client follows no redirect (SPEC 14.10); each attempt has its own
 	// timeout, and backoff holds the wait before each retry.
 	client  *http.Client
@@ -87,7 +93,12 @@ type Webhook struct {
 	Preset Preset
 	Host   string
 	Lang   i18n.Locale
-	off    map[Event]bool
+	// Unreadable is set when the stored address cannot be opened, as after
+	// FOREMAN_SECRET_KEY changes: nothing is sent until it is typed again.
+	Unreadable bool
+	// Plain is set when the address is http://, so messages go unencrypted.
+	Plain bool
+	off   map[Event]bool
 }
 
 // On reports whether the webhook is sent e.
@@ -110,6 +121,33 @@ func (w Webhook) AllOn() bool { return len(w.OnEvents()) == len(Events) }
 func fromRow(r store.Webhook) Webhook {
 	loc, _ := i18n.Parse(r.Lang)
 	return Webhook{ID: r.ID, Preset: Preset(r.Preset), Host: r.Host, Lang: loc, off: parseEventsOff(r.EventsOff)}
+}
+
+// open reads a row's sealed address. ok is false when it cannot be opened.
+func (n *Notifier) open(r store.Webhook) (raw string, ok bool) {
+	if n.box == nil {
+		return "", false
+	}
+	plain, err := n.box.Open(rowName(r.ID), r.URL)
+	if err != nil {
+		return "", false
+	}
+	return string(plain), true
+}
+
+// view is the row as a page may see it, with the address's state.
+func (n *Notifier) view(r store.Webhook) Webhook {
+	w := fromRow(r)
+	raw, ok := n.open(r)
+	w.Unreadable = !ok
+	w.Plain = ok && isPlain(raw)
+	return w
+}
+
+// isPlain reports whether an address sends without encryption.
+func isPlain(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && strings.EqualFold(u.Scheme, "http")
 }
 
 // Setup is what an admin enters for a webhook. On an edit, an empty URL
@@ -155,7 +193,7 @@ func (n *Notifier) List(ctx context.Context) ([]Webhook, error) {
 	}
 	out := make([]Webhook, len(rows))
 	for i, r := range rows {
-		out[i] = fromRow(r)
+		out[i] = n.view(r)
 	}
 	return out, nil
 }
@@ -169,7 +207,7 @@ func (n *Notifier) Get(ctx context.Context, id int64) (Webhook, error) {
 	if err != nil {
 		return Webhook{}, err
 	}
-	return fromRow(r), nil
+	return n.view(r), nil
 }
 
 // Add stores a new webhook with its address sealed. The error is one of
@@ -192,7 +230,9 @@ func (n *Notifier) Add(ctx context.Context, s Setup, by string) (Webhook, error)
 		return Webhook{}, err
 	}
 	row.ID = id
-	return fromRow(row), nil
+	w := fromRow(row)
+	w.Plain = isPlain(raw)
+	return w, nil
 }
 
 // Update changes a webhook. With an empty URL the address, preset and host
@@ -206,8 +246,14 @@ func (n *Notifier) Update(ctx context.Context, id int64, s Setup, by string) (We
 		return Webhook{}, err
 	}
 	row := store.Webhook{ID: id, Preset: old.Preset, Host: old.Host, EventsOff: eventsOff(s.Events), Lang: string(s.Lang), UpdatedBy: by}
+	kept := n.view(old)
+	raw := s.URL.Reveal()
+	// An address that cannot be read cannot be kept: it must be typed again.
+	if raw == "" && kept.Unreadable {
+		return Webhook{}, ErrURLMissing
+	}
 	var sealed []byte
-	if raw := s.URL.Reveal(); raw != "" {
+	if raw != "" {
 		host, err := CheckURL(s.Preset, raw)
 		if err != nil {
 			return Webhook{}, err
@@ -220,7 +266,12 @@ func (n *Notifier) Update(ctx context.Context, id int64, s Setup, by string) (We
 	if err := n.rows.UpdateWebhook(ctx, row, sealed, n.now()); err != nil {
 		return Webhook{}, err
 	}
-	return fromRow(row), nil
+	w := fromRow(row)
+	w.Plain = kept.Plain
+	if raw != "" {
+		w.Plain = isPlain(raw)
+	}
+	return w, nil
 }
 
 // Delete removes a webhook.
@@ -244,19 +295,9 @@ func (n *Notifier) Emit(m Message) {
 	select {
 	case n.queue <- m:
 	default:
-		n.log.Warn("notification dropped: too many are waiting to be sent", "event", string(m.Event), "world", m.World.ID)
-	}
-}
-
-// Run delivers queued events until ctx ends. Events still queued then are
-// not sent, and none is kept across a restart.
-func (n *Notifier) Run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case m := <-n.queue:
-			n.deliver(ctx, m)
+		if n.full.CompareAndSwap(false, true) {
+			n.log.Warn("notifications dropped: too many are waiting to be sent; more are dropped without a log line until the queue drains",
+				"event", string(m.Event), "world", m.World.ID)
 		}
 	}
 }

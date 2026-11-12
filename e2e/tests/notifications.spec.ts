@@ -1,3 +1,5 @@
+import { DatabaseSync } from "node:sqlite";
+import { join } from "node:path";
 import { test, expect, checkPage, createAdmin, openMenu, pickLanguage } from "./foreman.js";
 
 // SPEC 8.10 to 8.12, 14.8, DESIGN 8.16: the notifications page. A webhook's
@@ -82,10 +84,10 @@ test.describe("with a secret key", () => {
   test("a refused address is not shown back and must be typed again", async ({ page, foreman }) => {
     await createAdmin(page);
     await page.goto("/settings/notifications/new");
-    await page.getByLabel("Webhook address").fill(`http://discord.com/api/webhooks/42/${token}`);
+    await page.getByLabel("Webhook address").fill(`ftp://discord.com/api/webhooks/42/${token}`);
     await page.getByRole("button", { name: "Add webhook" }).click();
     await expect(page.locator("#error-summary")).toBeFocused();
-    await expect(page.locator("#webhook-url-error")).toHaveText("Error: Enter an address that starts with https://.");
+    await expect(page.locator("#webhook-url-error")).toHaveText("Error: Enter an address that starts with https:// or http://.");
     await expect(page.locator("#webhook-url")).toHaveAttribute("aria-invalid", "true");
     await expectNoAddress(page);
     await checkPage(page);
@@ -105,6 +107,32 @@ test.describe("with a secret key", () => {
     await page.getByRole("button", { name: "Add webhook" }).click();
     await expect(page.locator("#webhook-url-error")).toContainText("Enter the address of an ntfy topic");
     await expect(page.getByRole("radio", { name: "ntfy" })).toBeChecked();
+    expect(foreman.logs()).not.toContain(token);
+  });
+
+  test("an http:// address is accepted with a note that it is unencrypted", async ({ page, foreman }) => {
+    await createAdmin(page);
+    await page.goto("/settings/notifications/new");
+    const field = page.getByLabel("Webhook address");
+    const note = page.locator("#webhook-url-plain");
+    await expect(note).toBeHidden();
+    await page.getByRole("radio", { name: "ntfy" }).check();
+    await field.fill(`http://ntfy.lan:8080/${token}`);
+    await expect(note).toHaveText("Messages to an http:// address are sent unencrypted.");
+    await expect(field).toHaveAccessibleDescription(/sent unencrypted/);
+    await checkPage(page);
+    await field.fill(`https://ntfy.lan/${token}`);
+    await expect(note).toBeHidden();
+    await expect(field).not.toHaveAccessibleDescription(/sent unencrypted/);
+    await field.fill(`http://ntfy.lan:8080/${token}`);
+    await page.getByRole("button", { name: "Add webhook" }).click();
+    await expect(page.locator("#done-message")).toHaveText("Done: Added the ntfy webhook to ntfy.lan.");
+
+    // The edit page of an http:// webhook shows the note from the start.
+    await page.getByRole("link", { name: "Edit the ntfy webhook to ntfy.lan" }).click();
+    await expect(note).toBeVisible();
+    await expectNoAddress(page);
+    await checkPage(page);
     expect(foreman.logs()).not.toContain(token);
   });
 
@@ -130,4 +158,30 @@ test("without a secret key the page says how to turn webhooks on", async ({ page
   await checkPage(page);
   await page.goto("/settings/notifications/new");
   await expect(page).toHaveURL("/settings/notifications");
+});
+
+test.describe("after the secret key changes", () => {
+  test.use({ foremanEnv: { FOREMAN_SECRET_KEY: "otherotherotherotherotherotherother" } });
+
+  test("a webhook sealed with the old key says its address must be typed again", async ({ page, foreman }) => {
+    await createAdmin(page);
+    // A row sealed with another key, as after FOREMAN_SECRET_KEY changes.
+    const db = new DatabaseSync(join(foreman.dataDir, "foreman.db"));
+    db.prepare(
+      "INSERT INTO webhooks (preset, host, url, events_off, lang, created_at, created_by, updated_at, updated_by) VALUES ('discord', 'discord.com', x'01000000000000000000000000000000000000000000000000000000', '', 'en', 0, 'admin', 0, 'admin')",
+    ).run();
+    db.close();
+    await openNotifications(page);
+    await expect(page.locator("#notify-state")).toHaveText("0 webhooks get messages.");
+    await expect(page.locator("#webhook-1-unreadable")).toContainText("Foreman cannot read this webhook’s address");
+    await checkPage(page);
+    await page.getByRole("link", { name: "Edit the Discord webhook to discord.com" }).click();
+    await expect(page.locator("#webhook-url-hint")).toHaveText("The stored address cannot be read. Type the address again.");
+    await page.getByRole("button", { name: "Save webhook" }).click();
+    await expect(page.locator("#webhook-url-error")).toHaveText("Error: Enter the webhook address.");
+    await page.getByLabel("Webhook address").fill(discordURL);
+    await page.getByRole("button", { name: "Save webhook" }).click();
+    await expect(page.locator("#notify-state")).toHaveText("1 webhook gets messages.");
+    await expect(page.locator("#webhook-1-unreadable")).toHaveCount(0);
+  });
 });

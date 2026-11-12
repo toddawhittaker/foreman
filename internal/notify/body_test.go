@@ -99,8 +99,9 @@ func TestEveryEventHasText(t *testing.T) {
 }
 
 func TestDiscordBody(t *testing.T) {
-	long := strings.Repeat("x", 3000)
-	r, err := build(Discord, i18n.English, Message{Event: PlayerJoin, World: World{Name: long}, Player: "@everyone"})
+	// A name of nothing but markdown doubles when escaped; the message still
+	// fits and no escape is cut in half.
+	r, err := build(Discord, i18n.English, Message{Event: PlayerJoin, World: World{Name: strings.Repeat("*", 3000)}, Player: "@everyone"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,6 +111,9 @@ func TestDiscordBody(t *testing.T) {
 	}
 	if n := len([]rune(body.Content)); n > discordMaxContent {
 		t.Errorf("content is %d characters", n)
+	}
+	if !strings.Contains(body.Content, `\*…:`) || strings.Contains(body.Content, `**`) {
+		t.Errorf("the name is not shortened before escaping: %q", body.Content[len(body.Content)-40:])
 	}
 	if !bytes.Contains(r.body, []byte(`"allowed_mentions":{"parse":[]}`)) {
 		t.Errorf("body %s", r.body)

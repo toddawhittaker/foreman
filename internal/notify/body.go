@@ -12,8 +12,13 @@ import (
 // a new optional field raises it.
 const BodyVersion = 1
 
-// discordMaxContent is the longest message Discord accepts.
-const discordMaxContent = 2000
+// discordMaxContent is the longest message Discord accepts. discordMaxName
+// bounds each name before it is escaped, which at most doubles it, so the
+// longest message stays well under the limit and is never cut.
+const (
+	discordMaxContent = 2000
+	discordMaxName    = 400
+)
 
 // Text is the message for m in loc's language. Names from the game and the
 // world's name are sent as written; esc marks up anything the target would
@@ -45,6 +50,14 @@ func Text(loc i18n.Locale, m Message, esc func(string) string) string {
 }
 
 func plain(s string) string { return s }
+
+// discordName shortens a name, then escapes it, so an escape is never split.
+func discordName(s string) string {
+	if r := []rune(s); len(r) > discordMaxName {
+		s = string(r[:discordMaxName-1]) + "…"
+	}
+	return discordEscaper.Replace(s)
+}
 
 // discordEscaper puts a backslash before each character Discord reads as
 // markdown, so a world or player name cannot format the message.
@@ -93,10 +106,7 @@ type allowedMentions struct {
 func build(p Preset, loc i18n.Locale, m Message) (request, error) {
 	switch p {
 	case Discord:
-		text := Text(loc, m, discordEscaper.Replace)
-		if r := []rune(text); len(r) > discordMaxContent {
-			text = string(r[:discordMaxContent])
-		}
+		text := Text(loc, m, discordName)
 		b, err := json.Marshal(discordBody{Content: text, Username: "Foreman", AllowedMentions: allowedMentions{Parse: []string{}}})
 		return request{contentType: "application/json", body: b}, err
 	case Ntfy:

@@ -48,6 +48,10 @@ type WebhookView struct {
 	LangTag  i18n.Locale
 	LangName string
 	AllOn    bool
+	// Unreadable: the address cannot be opened, so nothing is sent until it
+	// is typed again. Plain: the address is http://.
+	Unreadable bool
+	Plain      bool
 	// Events names the events turned on, as one list in the page's language.
 	Events string
 }
@@ -63,6 +67,18 @@ type NotificationsPage struct {
 	NoKey bool
 	Hooks []WebhookView
 	Done  i18n.Msg
+}
+
+// Sending counts the webhooks whose address can be read, the ones that get
+// messages.
+func (p NotificationsPage) Sending() int {
+	n := 0
+	for _, h := range p.Hooks {
+		if !h.Unreadable {
+			n++
+		}
+	}
+	return n
 }
 
 func (NotificationsPage) templateName() string { return "notifications" }
@@ -122,6 +138,28 @@ func (p WebhookFormPage) Path() string {
 
 // BackPath is the list.
 func (WebhookFormPage) BackPath() string { return PathNotifications }
+
+// URLRequired is true when there is no readable address to keep.
+func (p WebhookFormPage) URLRequired() bool { return !p.Edit || p.Kept.Unreadable }
+
+// PlainNote shows the unencrypted note at first: the stored address is
+// http://. A script shows and hides it as an address is typed.
+func (p WebhookFormPage) PlainNote() bool { return p.Edit && p.Kept.Plain && !p.Kept.Unreadable }
+
+// URLDescribedBy is the address field's aria-describedby.
+func (p WebhookFormPage) URLDescribedBy() string {
+	var ids []string
+	if p.Edit {
+		ids = append(ids, "webhook-url-hint")
+	}
+	if p.PlainNote() {
+		ids = append(ids, "webhook-url-plain")
+	}
+	if !p.URLError.IsZero() {
+		ids = append(ids, "webhook-url-error")
+	}
+	return strings.Join(ids, " ")
+}
 
 // Problems lists the form's errors in the order the fields appear.
 func (p WebhookFormPage) Problems() []Problem {
@@ -225,7 +263,8 @@ func languageName(l i18n.Locale) string {
 
 // webhookView makes the row for w in loc's language.
 func webhookView(loc i18n.Locale, w notify.Webhook) WebhookView {
-	v := WebhookView{ID: w.ID, Preset: presetName(w.Preset), Host: w.Host, LangTag: w.Lang, LangName: languageName(w.Lang), AllOn: w.AllOn()}
+	v := WebhookView{ID: w.ID, Preset: presetName(w.Preset), Host: w.Host, LangTag: w.Lang, LangName: languageName(w.Lang), AllOn: w.AllOn(),
+		Unreadable: w.Unreadable, Plain: w.Plain}
 	var names []string
 	for _, e := range w.OnEvents() {
 		names = append(names, loc.Format(eventShort(e)))
@@ -360,7 +399,7 @@ func checkSetup(st notify.Setup, kept *notify.Webhook) WebhookFormPage {
 				p.URLError = urlProblem(err)
 			}
 		}
-	case kept == nil:
+	case kept == nil || kept.Unreadable:
 		p.URLError = i18n.M("notify.url.missing")
 	case st.Preset.Known() && st.Preset != kept.Preset:
 		p.URLError = i18n.M("notify.url.preset")
@@ -385,8 +424,8 @@ func urlProblem(err error) i18n.Msg {
 		return i18n.M("notify.url.missing")
 	case errors.Is(err, notify.ErrURLTooLong):
 		return i18n.M("notify.url.long", "count", notify.MaxURLLength)
-	case errors.Is(err, notify.ErrURLNotHTTPS):
-		return i18n.M("notify.url.https")
+	case errors.Is(err, notify.ErrURLScheme):
+		return i18n.M("notify.url.scheme")
 	case errors.Is(err, notify.ErrURLHasUser):
 		return i18n.M("notify.url.user")
 	case errors.Is(err, notify.ErrURLNotDiscord):
