@@ -12,9 +12,24 @@
     const jump = frame.querySelector("button");
     const max = Number(frame.dataset.maxLines);
 
+    // Whether the view follows new lines. Only the reader moving up turns it
+    // off and only reaching the end turns it back on, so a rewrap or a late
+    // scroll event from our own jump can never stop the follow (DESIGN 8.5).
+    let following = true;
+    let lastTop = box.scrollTop;
+    const readScroll = () => {
+      if (atEnd(box)) following = true;
+      else if (box.scrollTop < lastTop - 1) following = false;
+      lastTop = box.scrollTop;
+    };
     const toEnd = () => {
       box.scrollTop = box.scrollHeight;
+      lastTop = box.scrollTop;
+      following = true;
       jump.hidden = true;
+    };
+    const keepEnd = () => {
+      if (following) toEnd();
     };
     // The game's own Error and Warning lines are coloured, as console.go does.
     const kind = /^\s*\d+\.\d+ (Error|Warning) /;
@@ -32,34 +47,38 @@
     // New lines are appended, never redrawn, and only a view already at the
     // bottom follows them. Focus is never touched.
     const add = (lines) => {
-      const follow = atEnd(box);
+      readScroll();
       pre.append(...lines.map(span));
       while (pre.childElementCount > max) pre.firstElementChild.remove();
       noEmptyNote(lines);
-      if (follow) toEnd();
+      if (following) toEnd();
       else jump.hidden = false;
     };
 
     // A reconnect starts again from every line so far.
     const reset = (lines) => {
-      const follow = atEnd(box);
+      readScroll();
       const top = box.scrollTop;
       pre.replaceChildren(...lines.slice(-max).map(span));
       noEmptyNote(lines);
-      if (follow) toEnd();
-      else box.scrollTop = top;
+      if (following) toEnd();
+      else {
+        box.scrollTop = top;
+        lastTop = box.scrollTop;
+      }
     };
 
-    // Lines that rewrap (the web font arriving, a turned phone) move the end
-    // without a scroll, so a view that was at the bottom is taken back there.
-    let following = true;
     box.addEventListener("scroll", () => {
-      following = atEnd(box);
+      readScroll();
       if (following) jump.hidden = true;
     });
-    new ResizeObserver(() => {
-      if (following) toEnd();
-    }).observe(pre);
+    // Lines that rewrap (the web font arriving, a turned phone, a resized box)
+    // move the end without any new line, so a following view is taken back.
+    const resized = new ResizeObserver(keepEnd);
+    resized.observe(pre);
+    resized.observe(box);
+    document.fonts?.addEventListener("loadingdone", keepEnd);
+    document.fonts?.ready.then(keepEnd);
     jump.addEventListener("click", () => {
       toEnd();
       // The button is about to disappear; keep the keyboard on the log.
