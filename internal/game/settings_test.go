@@ -273,9 +273,9 @@ func TestSaveAdminListOnARunningWorld(t *testing.T) {
 	id := r.newWorld("Admins running")
 	r.writeFile(id, filepath.Join(world.ConfigDir, world.ServerAdminListFile), []byte(`["alice", "old_admin"]`))
 	r.start(id)
-	before := r.config(id, world.ServerAdminListFile)
 
-	res, err := r.saveSettings(id, world.ServerAdminListFile, `["ALICE", "o\"rly;"]`)
+	submitted := `["ALICE", "o\"rly;"]`
+	res, err := r.saveSettings(id, world.ServerAdminListFile, submitted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,11 +295,47 @@ func TestSaveAdminListOnARunningWorld(t *testing.T) {
 	if !slices.Equal(sent, want) {
 		t.Errorf("commands %q, want %q", sent, want)
 	}
-	if r.config(id, world.ServerAdminListFile) != before {
-		t.Error("Foreman wrote the admin list of a running game")
+	// The fake game writes the file at once on each command, in the game's own
+	// layout. A write by Foreman would leave other bytes (its own text, or the
+	// submitted text), so only the game's result passes.
+	gameWrote := "\n[\n  \"alice\",\n  \"o\\\"rly;\"\n]"
+	if got := r.config(id, world.ServerAdminListFile); got != gameWrote || got == submitted {
+		t.Errorf("admin list is %q, want exactly what the game writes, %q: Foreman must not write it", got, gameWrote)
 	}
 	if len(r.settingsSnapshots(id)) != 1 {
 		t.Error("no snapshot was taken")
+	}
+}
+
+// SPEC 8.3: Foreman never writes the admin list of a running game. The fake
+// game rewrites the file on every command that changes its list, which would
+// hide a write by Foreman. So this change makes the game do nothing: the file
+// holds a name the running game never loaded, and removing it is a demotion
+// the game answers without writing. If Foreman wrote the file, the name would
+// be gone.
+func TestRunningAdminChangeIsNotWrittenByForeman(t *testing.T) {
+	r := newRig(t, rigOptions{})
+	id := r.newWorld("Admins untouched")
+	path := filepath.Join(world.ConfigDir, world.ServerAdminListFile)
+	r.writeFile(id, path, []byte(`["alice"]`))
+	r.start(id)
+	behind := `["alice", "ghost"]`
+	r.writeFile(id, path, []byte(behind))
+
+	if _, err := r.saveSettings(id, world.ServerAdminListFile, `["alice"]`); err != nil {
+		t.Fatal(err)
+	}
+	var sent []string
+	for _, c := range r.commands(id) {
+		if strings.HasPrefix(c, "/promote") || strings.HasPrefix(c, "/demote") {
+			sent = append(sent, c)
+		}
+	}
+	if !slices.Equal(sent, []string{"/demote ghost"}) {
+		t.Fatalf("commands %q, want only a demotion of ghost", sent)
+	}
+	if got := r.config(id, world.ServerAdminListFile); got != behind {
+		t.Errorf("admin list is %q, want %q: Foreman must not write it", got, behind)
 	}
 }
 
