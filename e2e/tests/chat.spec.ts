@@ -39,9 +39,14 @@ const rows = (page: Page) => log(page).locator("pre > span");
 const atBottom = (box: Locator) => box.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight <= 4);
 const field = (page: Page) => page.getByLabel("Message", { exact: true });
 
+// Sends a message and waits until its answer has been swapped in. The panel is
+// replaced whole, field included, so typing the next message before then is
+// lost, and an error left from the last refusal would pass for this one.
 async function send(page: Page, message: string) {
   await field(page).fill(message);
+  await page.locator("#chat-panel").evaluate((el) => el.setAttribute("data-sent", ""));
   await field(page).press("Enter");
+  await expect(page.locator("#chat-panel[data-sent]")).toHaveCount(0);
 }
 
 test.describe("with the fake game", () => {
