@@ -137,6 +137,7 @@ func serve(cfg *config.Config) error {
 	var notifying sync.WaitGroup
 	notifying.Go(func() { notifier.Run(notifyCtx) })
 	defer func() { stopNotify(); notifying.Wait() }()
+	games.SetNotifier(notifier)
 	// The schedule uses the controller, the notifier and the store, so it
 	// stops first; a restart it began ends before Run returns.
 	scheduler, err := schedule.New(ctx, schedule.Config{Game: games, Store: st, Active: activeWorld(st, worlds), Notifier: notifier, Log: slog.Default()})
