@@ -27,6 +27,7 @@ type Container struct {
 	Status       string // created, running or exited
 	ExitCode     int
 	OOMKilled    bool
+	Error        string // State.Error: why the last start failed, "" otherwise
 	RestartCount int
 	StartedAt    time.Time
 	FinishedAt   time.Time
@@ -75,6 +76,7 @@ type Daemon struct {
 	failStatus int
 	failMsg    string
 	callFail   map[string]failure // by "METHOD action", for container calls
+	portInUse  map[string]string  // container name to the host port its next start finds taken
 	changed    chan struct{}      // closed and replaced whenever state or a log changes
 	// holdFollow keeps following log streams from sending new lines;
 	// cutReads ends every other log read after that many lines, if above 0.
@@ -92,6 +94,7 @@ func New(t testing.TB) *Daemon {
 		images:     map[string]bool{},
 		pullFail:   map[string]string{},
 		callFail:   map[string]failure{},
+		portInUse:  map[string]string{},
 		changed:    make(chan struct{}),
 	}
 	d.srv = httptest.NewServer(d)
@@ -139,6 +142,18 @@ func (d *Daemon) SetCallFailure(method, action string, status int, message strin
 		return
 	}
 	d.callFail[method+" "+action] = failure{status, message}
+}
+
+// FailStartPortInUse makes the next start of the container with this name
+// fail the way Docker does when the published host port is taken: HTTP
+// 500 with PortInUseMessage, the container left "created" with exit code 128
+// and the same text in State.Error. Only the next start fails; a second start
+// of the same container succeeds, as on a real daemon. The container may be
+// created after the call.
+func (d *Daemon) FailStartPortInUse(name, hostPort string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.portInUse[name] = hostPort
 }
 
 // HoldFollowers makes following log streams send nothing new until it is

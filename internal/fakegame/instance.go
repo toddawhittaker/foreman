@@ -35,12 +35,17 @@ type instance struct {
 	dead    bool
 	inGame  bool
 	players []string
-	base    float64   // elapsed seconds on the last line written...
-	baseAt  time.Time // ...and when it was written
-	rcon    *rconServer
-	proxy   net.Listener
-	conns   map[net.Conn]struct{}
-	wg      sync.WaitGroup
+	flags   listFlags
+	bans    []banEntry // the lists are in memory; flags say which are also files
+	admins  []string
+	// whitelist is loaded from its file only with --use-server-whitelist.
+	whitelist []string
+	base      float64   // elapsed seconds on the last line written...
+	baseAt    time.Time // ...and when it was written
+	rcon      *rconServer
+	proxy     net.Listener
+	conns     map[net.Conn]struct{}
+	wg        sync.WaitGroup
 }
 
 // rconServer is an rcontest server and the cleanups it registered.
@@ -77,6 +82,7 @@ func (g *Game) boot(id string) {
 	in.ip = g.addrLocked(id)
 	g.insts[id] = in
 	loops := g.behave[c.Name].crashLoop
+	oom := g.behave[c.Name].oom
 	if !loops {
 		delete(g.backoff, id)
 	}
@@ -87,6 +93,20 @@ func (g *Game) boot(id string) {
 		g.died(in, in.v.failExit, false)
 		return
 	}
+	if oom {
+		// The log just stops; the game writes nothing about memory.
+		in.emit(in.v.oom, runSave)
+		g.died(in, 137, true)
+		return
+	}
+	in.flags = listFlagsFor(c)
+	if in.flags.whitelist != "" && !in.flags.useList {
+		in.emit(in.v.head[:find(in.v.head, 0, "Factorio initialised")+1], runSave)
+		in.emit(in.v.whitelistFail, runSave)
+		g.died(in, 1, false)
+		return
+	}
+	in.loadLists()
 	in.emit(in.v.head, runSave)
 	if g.cfg.LoadDelay <= 0 {
 		in.finishLoad()
@@ -276,35 +296,6 @@ func (in *instance) writeLocked(text, saveFrom string) {
 		text = strings.ReplaceAll(text, "/factorio/saves/"+saveFrom, "/factorio/saves/"+in.save)
 	}
 	in.g.daemon.EmitLog(in.id, docker.Stdout, text)
-}
-
-// The join and leave lines follow what a real 2.1.24 server printed
-// (internal/game/testdata/2.1.24/join-leave.log). The reply to
-// "/players online" with players listed has not been seen on a real server.
-func (in *instance) reply(command string) string {
-	in.g.mu.Lock()
-	in.g.commands[in.name] = append(in.g.commands[in.name], command)
-	hangs := in.g.behave[in.name].saveHangs
-	in.g.mu.Unlock()
-
-	switch strings.TrimSpace(command) {
-	case "/players online":
-		in.mu.Lock()
-		defer in.mu.Unlock()
-		out := fmt.Sprintf("Online players (%d):\n", len(in.players))
-		for _, p := range in.players {
-			out += "  " + p + " (online)\n"
-		}
-		return out
-	case "/server-save":
-		// The reply is immediate; the save finishes later, shown in the log.
-		in.emit(in.v.save[:1], runSave)
-		if !hangs {
-			in.g.after(saveTime, func() { in.emit(in.v.save[1:], runSave) })
-		}
-		return "Saving the map\n"
-	}
-	return ""
 }
 
 // startRCON opens the RCON port on the container's address. A forwarder

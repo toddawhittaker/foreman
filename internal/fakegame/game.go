@@ -3,8 +3,9 @@
 // and when a container starts it replays log lines from real transcripts of
 // the pinned game images and serves RCON on the container's own loopback
 // address, port 27015. Test hooks make a game crash, loop on a bad save,
-// gain or lose players, refuse RCON logins, hang on a save, or lose its
-// image.
+// gain or lose players, say things in chat, refuse RCON logins, hang on a
+// save, be killed for memory, or lose its image. The game keeps the ban
+// list, admin list and whitelist as the real one does.
 //
 // Docker's unless-stopped policy is followed: a game that exits by itself
 // is started again after a doubling delay, and one that was stopped or
@@ -63,6 +64,10 @@ type behaviour struct {
 	crashLoop  bool // every start fails to load its save
 	rconRefuse bool // RCON logins are refused
 	saveHangs  bool // /server-save never finishes
+	oom        bool // every start is killed by the out-of-memory killer while loading mods
+	// luaCommands counts Lua console commands sent to a game of this name:
+	// the save remembers them, so a restart does not forget.
+	luaCommands int
 }
 
 // Game is the fake. Create it with Start, or with New in a test.

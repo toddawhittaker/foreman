@@ -1,0 +1,32 @@
+{
+  "reasons": [
+    {
+      "id": "mod-missing-dependency",
+      "source": "game-log",
+      "pattern": "• Missing required dependency ",
+      "fixtures": ["2.0.77/run-mod-missing-dep.log", "2.1.24/run-mod-missing-dep.log"]
+    },
+    {
+      "id": "mod-error",
+      "source": "game-log",
+      "pattern": "Failed to load mod \"[^\"]+\": \\S",
+      "fixtures": ["1.1.110/run-mod-lua-error.log", "2.0.77/run-mod-lua-error.log", "2.1.24/run-mod-lua-error.log"]
+    },
+    {
+      "id": "save-unreadable",
+      "source": "game-log",
+      "pattern": "MultiplayerManager failed: \"Opening zip .* failed: ",
+      "fixtures": [
+        "1.1.110/run-corrupt.log", "1.1.110/run-truncated.log", "1.1.110/run-unreadable.log",
+        "2.0.77/run-corrupt.log", "2.0.77/run-truncated.log", "2.0.77/run-unreadable.log",
+        "2.1.24/run-corrupt.log", "2.1.24/run-truncated.log", "2.1.24/run-unreadable.log"
+      ]
+    },
+    {
+      "id": "port-in-use",
+      "source": "docker-start",
+      "pattern": "Bind for \\S+ failed: port is already allocated",
+      "fixtures": ["docker/port-in-use.log"]
+    }
+  ]
+}

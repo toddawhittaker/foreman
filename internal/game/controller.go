@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/store"
@@ -324,6 +325,7 @@ type worldRun struct {
 	crashes       []time.Time // crashes seen within the crash-loop window
 	lastCrash     time.Time
 	crashedRun    bool // Docker restarted the game after a crash and it is not back in game
+	oomKilled     bool // Docker said the newest crash was an out-of-memory kill (SPEC 8.7)
 	run           runState
 	saves         int           // "Saving finished" lines seen
 	changed       chan struct{} // closed and replaced whenever the game's state moves
@@ -733,6 +735,9 @@ func (c *Controller) statusLocked(w *worldRun) Status {
 			f.add(l)
 		}
 		st.Crash = f.reason(w.redact)
+		if w.oomKilled {
+			st.Crash.Kind = crashreasons.OutOfMemory
+		}
 		st.CrashReason = strings.TrimSuffix(st.Crash.text(), ".")
 	}
 	return st
