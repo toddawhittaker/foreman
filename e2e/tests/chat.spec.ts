@@ -34,8 +34,20 @@ async function setUp(page: Page, f: Foreman, g: FakeGame, opts: { running?: bool
   }
 }
 
+// One chat row: the time in the viewer's zone, clock only, with the full time
+// in its title; the name; and the text as written, in its own direction.
+async function expectRow(row: Locator, name: string, text: string) {
+  const time = row.locator("time");
+  await expect(time).toHaveAttribute("data-local", "true");
+  await expect(time).toHaveText(/^\d{1,2}:\d\d(\s?[AP]M)?$/);
+  await expect(time).toHaveAttribute("title", /\d{1,2}:\d\d/);
+  await expect(row.locator(".chat-name")).toHaveText(name);
+  await expect(row.locator(".chat-text")).toHaveText(text);
+  await expect(row.locator(".chat-text")).toHaveAttribute("dir", "auto");
+}
+
 const log = (page: Page) => page.getByRole("log", { name: "Chat messages" });
-const rows = (page: Page) => log(page).locator("pre > span");
+const rows = (page: Page) => log(page).locator("li");
 const atBottom = (box: Locator) => box.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight <= 4);
 const field = (page: Page) => page.getByLabel("Message", { exact: true });
 
@@ -62,7 +74,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Base\s+Running$/);
     await expect(page.getByRole("navigation", { name: "Server pages" }).getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
     await expect(rows(page)).toHaveCount(1);
-    await expect(rows(page).first()).toContainText("alice: is anyone near the oil field?");
+    await expectRow(rows(page).first(), "alice", "is anyone near the oil field?");
     await expect(page.getByText("No chat since the server started.")).toHaveCount(0);
     await checkPage(page);
 
@@ -71,12 +83,14 @@ test.describe("with the fake game", () => {
     // the polite log never reads the history out again (DESIGN 8.14).
     await page.evaluate(() => {
       (window as unknown as { marker: number }).marker = 1;
-      (document.querySelector(".log pre > span") as unknown as { marker: number }).marker = 1;
+      (document.querySelector(".chat-lines > li") as unknown as { marker: number }).marker = 1;
     });
     await fakeGame!.call("/chat", { name: container, player: "alice", text: "<b>on my way</b>" });
     await expect(log(page)).toContainText("<b>on my way</b>", live);
     await expect(log(page).locator("b")).toHaveCount(0);
     await expect(rows(page)).toHaveCount(2);
+    // A live row has the same markup as the page's own (DESIGN 8.14).
+    await expectRow(rows(page).nth(1), "alice", "<b>on my way</b>");
     expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(1);
     expect(await rows(page).first().evaluate((el) => (el as unknown as { marker?: number }).marker)).toBe(1);
 
@@ -85,7 +99,10 @@ test.describe("with the fake game", () => {
     await field(page).focus();
     await send(page, "welcome, all");
     await expect(rows(page).filter({ hasText: "welcome, all" })).toHaveCount(1, live);
-    await expect(rows(page).filter({ hasText: "welcome, all" })).toContainText("Server: welcome, all");
+    const echo = rows(page).filter({ hasText: "welcome, all" });
+    await expectRow(echo, "Server", "welcome, all");
+    await expect(echo).toHaveClass("chat-line--server");
+    await expect(rows(page).first()).not.toHaveClass(/chat-line--server/);
     await expect(field(page)).toHaveValue("");
     await expect(field(page)).toBeFocused();
     await expect(page.locator("#announcer")).toHaveText("Message sent");
@@ -128,7 +145,7 @@ test.describe("with the fake game", () => {
 
   test("a message that starts with / is refused, however it is spaced, and never sent", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
-    for (const message of ["/c game.print(1)", "  /c rcon.print('ran')", "\t/silent-command x"]) {
+    for (const message of ["/c game.print(1)", "  /c rcon.print('ran')", "\u00a0/silent-command x"]) {
       await send(page, message);
       const error = page.locator("#chat-error");
       await expect(error).toContainText("A chat message cannot start with /. To run a command, use the Console.");
@@ -153,6 +170,7 @@ test.describe("with the fake game", () => {
     for (const [message, words] of [
       ["x".repeat(501), "at most 500 characters"],
       ["a\nb", "one line"],
+      ["a\tb", "control character"],
     ] as const) {
       const res = await page.request.post("/worlds/base/chat", { form: { message } });
       expect(res.status()).toBe(400);

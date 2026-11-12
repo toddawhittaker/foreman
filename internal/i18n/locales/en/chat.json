@@ -9,6 +9,7 @@
   "chat.message.hint": "Players see this in the game as a message from the server. It is recorded in the audit log.",
   "chat.send": "Send",
   "chat.error.empty": "Enter a message to send",
+  "chat.error.control": "A message cannot contain a control character, such as a tab",
   "chat.error.long": "Enter a message of at most {max} characters",
   "chat.error.nul": "A message cannot contain a NUL character",
   "chat.error.lines": "A message must be on one line",

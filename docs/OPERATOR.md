@@ -412,6 +412,9 @@ address.
 A `docker restart` run outside Foreman sends a `start` webhook with no
 `stop` before it, because Foreman sees the game running again.
 
+A scheduled restart sends both a `scheduled-restart` and a `start`
+webhook. A restart from the Server page sends only `start`.
+
 ### The generic JSON body
 
 Foreman sends a `POST` with `Content-Type: application/json`. Example:

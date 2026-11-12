@@ -5140,52 +5140,11 @@ tr:has(> td > .player-actions[open]) > td.num {
   padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
 }
 
-/* 8.13 A plain list of names, each with its button at the end edge. */
-.name-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.name-list > li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  padding-block: var(--space-2);
-  border-block-end: var(--border-width) solid var(--color-line);
-}
-
-.name-list > li:last-child {
-  border-block-end: 0;
-}
-
-.name-list > li > form {
-  display: contents;
-}
-
-.name-list__name {
-  flex: 1 1 auto;
-  min-inline-size: 0;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
-.name-list .hint {
-  flex: 1 1 100%;
-  order: 1;
-}
-
 /* 8.14 Chat: the log box in the body face, a little shorter than the game
    log so the message field is on a phone's first screen. A message wraps
    anywhere, and a line Foreman sent reads as one by its name's colour. */
-.chat-lines.log,
-.panel:has(> #chat-heading) .log {
+.log:has(> .chat-lines) {
   block-size: min(50vh, 24rem);
-}
-
-.chat-lines {
   font-family: var(--font-sans);
   font-size: var(--text-md);
 }

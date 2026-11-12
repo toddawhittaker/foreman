@@ -9,6 +9,7 @@
   "chat.message.hint": "Gracze widzą to w grze jako wiadomość od serwera. Wiadomość jest zapisywana w dzienniku audytu.",
   "chat.send": "Wyślij",
   "chat.error.empty": "Należy wpisać wiadomość do wysłania",
+  "chat.error.control": "Wiadomość nie może zawierać znaku sterującego, na przykład tabulatora",
   "chat.error.long": "Należy wpisać wiadomość o długości najwyżej {max} znaków",
   "chat.error.nul": "Wiadomość nie może zawierać znaku NUL",
   "chat.error.lines": "Wiadomość musi mieścić się w jednym wierszu",

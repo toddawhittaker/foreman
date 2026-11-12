@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -24,7 +23,7 @@ func ValidateReason(reason string) error {
 		return errors.New("reason is not valid UTF-8")
 	case utf8.RuneCountInString(reason) > MaxReasonChars:
 		return fmt.Errorf("reason is longer than %d characters", MaxReasonChars)
-	case strings.IndexFunc(reason, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' }) >= 0:
+	case strings.IndexFunc(reason, EndsCommand) >= 0:
 		return errors.New("reason is more than one line or holds a control character")
 	}
 	return nil

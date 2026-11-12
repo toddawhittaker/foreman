@@ -9,6 +9,7 @@
   "chat.message.hint": "Les joueurs le voient dans le jeu comme un message du serveur. Il est consigné dans le journal d'audit.",
   "chat.send": "Envoyer",
   "chat.error.empty": "Saisissez un message à envoyer",
+  "chat.error.control": "Un message ne peut pas contenir de caractère de contrôle, comme une tabulation",
   "chat.error.long": "Saisissez un message d'au plus {max} caractères",
   "chat.error.nul": "Un message ne peut pas contenir de caractère NUL",
   "chat.error.lines": "Un message doit tenir sur une seule ligne",

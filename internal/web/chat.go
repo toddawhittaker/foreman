@@ -30,8 +30,9 @@ type ChatPage struct {
 	// Status is the game's state for the heading's badge, which follows the
 	// Server page's live facts (DESIGN 7.5).
 	Status game.Status
-	// Rows are the chat lines as text, oldest first, for the log script.
-	Rows []string
+	// Rows are the chat lines, oldest first, drawn by the "chat-rows"
+	// template both in the page and in the stream (DESIGN 8.14).
+	Rows []game.ChatLine
 	// After numbers the last line in Rows, so the stream sends only what is
 	// newer; zero when there is none.
 	After uint64
@@ -66,21 +67,6 @@ func (ChatPage) MaxLines() int { return game.ChatHistoryLines }
 // with.
 const afterParam = "after"
 
-// chatRow is one chat line as the log shows it: its time, who spoke and what
-// was said, all set as text. The server's name is translated; a player's is
-// shown as written.
-func chatRow(loc i18n.Locale, c game.ChatLine) string {
-	who := c.Name
-	if c.Server {
-		who = loc.T("chat.name.server")
-	}
-	row := who + ": " + c.Text
-	if !c.Time.IsZero() {
-		row = c.Time.UTC().Format("15:04 UTC") + " " + row
-	}
-	return row
-}
-
 // chatEventID numbers a line for the browser's Last-Event-ID: one more than
 // its place in the log, so that zero means no line.
 func chatEventID(c game.ChatLine) uint64 { return c.Seq + 1 }
@@ -113,10 +99,10 @@ func (s *server) chatRoutes() {
 	s.handleLong("GET "+PathChatEvents, s.requireUser(s.handleChatEvents))
 }
 
-func (s *server) chatPage(loc i18n.Locale, sum world.Summary) ChatPage {
+func (s *server) chatPage(sum world.Summary) ChatPage {
 	p := ChatPage{World: sum, HasWorld: true, Status: s.game.Status(sum.ID)}
-	for _, c := range s.game.ChatLines(sum.ID) {
-		p.Rows = append(p.Rows, chatRow(loc, c))
+	p.Rows = s.game.ChatLines(sum.ID)
+	for _, c := range p.Rows {
 		p.After = max(p.After, chatEventID(c))
 	}
 	return p
@@ -132,7 +118,7 @@ func (s *server) handleChat(w http.ResponseWriter, r *http.Request, u store.User
 		s.page(w, r, http.StatusOK, u.Username, ChatPage{})
 		return
 	}
-	s.page(w, r, http.StatusOK, u.Username, s.chatPage(localeOf(r), sum))
+	s.page(w, r, http.StatusOK, u.Username, s.chatPage(sum))
 }
 
 // chatRefusal returns the words for the message field's error when err is
@@ -147,6 +133,8 @@ func chatRefusal(err error) i18n.Msg {
 		return i18n.M("chat.error.nul")
 	case errors.Is(err, game.ErrChatLines):
 		return i18n.M("chat.error.lines")
+	case errors.Is(err, game.ErrChatControl):
+		return i18n.M("chat.error.control")
 	case errors.Is(err, game.ErrChatCommand):
 		return i18n.M("chat.error.slash")
 	}
@@ -179,9 +167,8 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 	if !ok {
 		return
 	}
-	loc := localeOf(r)
 	message := r.PostFormValue("message")
-	p := s.chatPage(loc, sum)
+	p := s.chatPage(sum)
 	p.Message = message
 	err := s.game.SendChat(r.Context(), sum.ID, actor(u), message)
 	if msg := chatRefusal(err); !msg.IsZero() {
@@ -213,8 +200,9 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request, u store.
 }
 
 // handleChatEvents streams a world's chat as server-sent events the Console's
-// log script reads (SPEC 8.5): "lines" holds a JSON array of new chat lines,
-// each set as text by the script. Each event is numbered with its newest
+// log script reads (SPEC 8.5): "lines" holds a JSON array of new chat rows,
+// each one list item of HTML drawn and escaped by the same template as the
+// page's rows. Each event is numbered with its newest
 // line, so a browser that reconnects names it in Last-Event-ID and is sent
 // only what came after. Nothing is sent for lines the page already shows,
 // because the log is a polite live region and would read them out again. The
@@ -258,7 +246,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 			missed = append(missed, c)
 		}
 	}
-	if len(missed) > 0 && out.chatLines(loc, missed) != nil {
+	if len(missed) > 0 && out.chatLines(missed) != nil {
 		return
 	}
 	beat := time.NewTicker(heartbeatEvery)
@@ -292,7 +280,7 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 					drained = true
 				}
 			}
-			if len(batch) > 0 && out.chatLines(loc, batch) != nil {
+			if len(batch) > 0 && out.chatLines(batch) != nil {
 				return
 			}
 		case <-beat.C:
@@ -307,11 +295,15 @@ func (s *server) handleChatEvents(w http.ResponseWriter, r *http.Request, u stor
 }
 
 // chatLines sends chat lines as one "lines" event numbered with the newest.
-func (l *liveStream) chatLines(loc i18n.Locale, lines []game.ChatLine) error {
+func (l *liveStream) chatLines(lines []game.ChatLine) error {
 	rows := make([]string, len(lines))
 	var id uint64
 	for i, c := range lines {
-		rows[i] = chatRow(loc, c)
+		var b strings.Builder
+		if err := l.render.Fragment(&b, l.loc, ChatPage{Rows: []game.ChatLine{c}}, "chat-rows"); err != nil {
+			return err
+		}
+		rows[i] = b.String()
 		id = max(id, chatEventID(c))
 	}
 	data, err := json.Marshal(rows)

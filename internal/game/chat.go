@@ -8,6 +8,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
 )
 
 // The chat limits (SPEC 8.5).
@@ -27,6 +29,7 @@ var (
 	ErrChatTooLong = errors.New("a chat message is too long")
 	ErrChatNUL     = errors.New("a chat message cannot contain a NUL character")
 	ErrChatLines   = errors.New("a chat message must be on one line")
+	ErrChatControl = errors.New("a chat message cannot contain a control character")
 	// ErrChatCommand: the game strips leading spaces from what RCON sends,
 	// so a message that starts with "/" after any blank is a command.
 	ErrChatCommand = errors.New("a chat message cannot start with /")
@@ -44,6 +47,8 @@ func CheckChat(text string) error {
 		return ErrChatNUL
 	case strings.ContainsFunc(text, isLineBreak):
 		return ErrChatLines
+	case strings.ContainsFunc(text, gamesettings.EndsCommand):
+		return ErrChatControl
 	case startsWithSlash(text):
 		return ErrChatCommand
 	}
@@ -121,11 +126,8 @@ func ParseChat(line string) (ChatLine, bool) {
 	return c, true
 }
 
-// ParseChatLines returns the chat in lines, oldest first, at most the
-// last ChatHistoryLines.
-func ParseChatLines(lines []string) []ChatLine { return parseChatLines(lines, 0) }
-
-// parseChatLines is ParseChatLines for lines whose first is log line number first.
+// parseChatLines returns the chat in lines, oldest first, at most the last
+// ChatHistoryLines; the first of lines is log line number first.
 func parseChatLines(lines []string, first uint64) []ChatLine {
 	var out []ChatLine
 	for i, l := range lines {

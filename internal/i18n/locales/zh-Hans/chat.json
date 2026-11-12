@@ -9,6 +9,7 @@
   "chat.message.hint": "玩家会在游戏中看到这条来自服务器的消息。它会记录在审计日志中。",
   "chat.send": "发送",
   "chat.error.empty": "请输入要发送的消息",
+  "chat.error.control": "消息不能包含控制字符，例如制表符",
   "chat.error.long": "请输入不超过 {max} 个字符的消息",
   "chat.error.nul": "消息不能包含 NUL 字符",
   "chat.error.lines": "消息必须在一行内",
