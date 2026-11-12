@@ -36,7 +36,7 @@ test.describe("with a secret key", () => {
     // The state leads the page in one sentence, before the intro (SPEC 9.11).
     await expect(page.locator("#account-none")).toHaveText("Mod downloads are off: no account is set.");
     await expect(page.locator("main")).not.toContainText("Searching for mods still works");
-    await expect(page.locator("#account-none + p")).toContainText("Foreman uses this account");
+    await expect(page.locator("#account-none + .account-intro > p").first()).toContainText("Foreman uses this account");
     // With no account the form is open and its button is the primary action.
     await expect(page.getByRole("button", { name: "Save account" })).toHaveClass(/button--primary/);
     await expect(page.locator("main details")).toHaveCount(0);

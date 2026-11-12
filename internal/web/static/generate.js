@@ -166,6 +166,9 @@ document.addEventListener("DOMContentLoaded", () => {
       value.setAttribute("aria-hidden", "true");
       value.id = select.id + "-value";
       value.htmlFor = select.id + "-range";
+      // The style sheet keeps room for the longest step's words, so the
+      // name beside them keeps one width while the slider moves (DESIGN 8.7).
+      value.dataset.longest = [...select.options].reduce((a, o) => (o.text.length > a.length ? o.text : a), "");
       if (label) label.after(value);
       const range = document.createElement("input");
       range.type = "range";

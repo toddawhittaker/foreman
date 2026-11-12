@@ -50,9 +50,16 @@
       else box.scrollTop = top;
     };
 
+    // Lines that rewrap (the web font arriving, a turned phone) move the end
+    // without a scroll, so a view that was at the bottom is taken back there.
+    let following = true;
     box.addEventListener("scroll", () => {
-      if (atEnd(box)) jump.hidden = true;
+      following = atEnd(box);
+      if (following) jump.hidden = true;
     });
+    new ResizeObserver(() => {
+      if (following) toEnd();
+    }).observe(pre);
     jump.addEventListener("click", () => {
       toEnd();
       // The button is about to disappear; keep the keyboard on the log.

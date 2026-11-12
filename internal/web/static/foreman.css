@@ -268,6 +268,11 @@ select {
   font: inherit;
 }
 
+/* Room for the scrollbar is always kept, so a short page and a long one sit
+   at the same place and tabs do not shift sideways (DESIGN 6). */
+html {
+  scrollbar-gutter: stable;
+}
 
 /* Base elements */
 body {
@@ -1110,6 +1115,12 @@ legend {
   line-height: 1.45;
 }
 
+/* A link in a hint's smaller text still makes the 24 px target floor
+   (SPEC 17.2); inline padding grows the box without moving the lines. */
+.hint a {
+  padding-block: 0.25em;
+}
+
 /* Checkboxes and radios keep their own 1.25rem look; the .check label is the
    target. A slider is no box either: padding would stop its knob short of the
    track's ends. */
@@ -1786,8 +1797,10 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 }
 
 @container (max-width: 24rem) {
+  /* As wide as its words, but it wraps rather than push the page wider
+     at large text (SPEC 17.2). */
   .server-actions #act-force-stop {
-    flex: none;
+    flex: 0 1 auto;
     margin-block-start: var(--space-2);
   }
 }
@@ -3895,14 +3908,18 @@ form:has(#mode-exchange:checked) .achievements {
 
 .mod-actions .button {
   padding-inline: var(--space-3);
-  white-space: nowrap;
 }
 
-/* On a wide panel a mod's actions keep one line. */
+/* On a wide panel a mod's actions keep one line; narrower, a label may wrap
+   at large text rather than run past the panel (SPEC 17.2). */
 @container (min-width: 44rem) {
   .mod-actions,
   .mod-actions__portal {
     flex-wrap: nowrap;
+  }
+
+  .mod-actions .button {
+    white-space: nowrap;
   }
 }
 
@@ -4675,52 +4692,12 @@ main:has(> .gate) > h1 {
   }
 }
 
-/* World settings: on a wide panel a text field is as wide as what it holds;
-   on a narrow one the section links become a row of chips above the form. */
+/* World settings: on a wide panel a text field is as wide as what it holds.
+   A narrow panel has no rail; the raw editor's link follows the form (DESIGN 8.10). */
 @container settings (min-width: 44rem) {
   .settings .field input:is([type="text"], [type="password"]):not([inputmode="numeric"]),
   .settings .field textarea {
     max-inline-size: 35rem;
-  }
-}
-
-@container settings (max-width: 43.99rem) {
-  .settings-rail {
-    display: block;
-    margin-block-end: var(--space-4);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .settings-rail ul {
-    display: flex;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .settings-rail li:last-child {
-    display: none;
-  }
-
-  .settings-rail a {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--target-min);
-    padding-inline: var(--space-4);
-    color: var(--color-heading);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: 999px;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  .settings-rail a:hover {
-    border-color: var(--color-border);
   }
 }
 
@@ -4812,7 +4789,18 @@ main:has(> .gate) > h1 {
    words at the end, on one line; the slider takes the row under it. */
 @container map-section (min-width: 34rem) {
   .js-on .step__value {
+    flex: none;
     min-inline-size: 0;
+  }
+
+  /* Unseen, the longest step's words hold the box's width, so the name
+     beside it never changes width while the slider moves (DESIGN 8.7). */
+  .js-on .step__value::after {
+    content: attr(data-longest);
+    display: block;
+    block-size: 0;
+    overflow: hidden;
+    visibility: hidden;
   }
 
   .js-on .step > .field__head {
@@ -4828,8 +4816,16 @@ main:has(> .gate) > h1 {
 }
 
 /* A map picture sits in a framed slot, its name under it inside the frame,
-   so even a one-colour picture reads as a map. */
-.pictures figure {
+   so even a one-colour picture reads as a map. The held box before the first
+   picture wears the same frame, so the picture lands in its place (DESIGN 8.8). */
+.preview-placeholder__frame {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.pictures figure,
+.preview-placeholder__frame {
   padding: var(--space-2);
   background: var(--color-raised);
   border: var(--border-width) solid var(--color-border);
@@ -4856,8 +4852,8 @@ main:has(> .gate) > h1 {
   }
 }
 
-/* On a phone Generate's actions stack, each full width and on one line:
-   Generate world, then Preview map, then Cancel. */
+/* On a phone Generate's actions stack, each full width: Generate world,
+   then Preview map, then Cancel. A label wraps only at large text (SPEC 17.2). */
 @media (max-width: 30rem) {
   .generate > .gen-actions {
     display: flex;
@@ -4868,7 +4864,6 @@ main:has(> .gate) > h1 {
   }
 
   .generate > .gen-actions > .button {
-    white-space: nowrap;
     order: 0;
   }
 
