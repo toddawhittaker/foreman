@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // DESIGN 8.7, SPEC 5.6 and 17: with Space Age each tab shows one row per
@@ -41,7 +41,9 @@ test("one click opens a planet row and it stays open", async ({ page }) => {
 
 test("opening a row closes the other and keeps focus on it", async ({ page }) => {
   await page.goto("/generate");
-  expect(await openRows(page, "resources")).toEqual(["nauvis"]);
+  // On a phone the rows start closed, so the preview sits near the top.
+  const phone = (page.viewportSize()?.width ?? 1280) <= 480;
+  expect(await openRows(page, "resources")).toEqual(phone ? [] : ["nauvis"]);
   const summary = row(page, "resources", "vulcanus").locator("summary");
   await summary.click();
   await expect.poll(() => openRows(page, "resources")).toEqual(["vulcanus"]);
@@ -115,6 +117,7 @@ test("a planet the large view moves to opens its row without moving focus", asyn
 
 test("cliffs can be switched off, which disables their settings and marks the preset modified", async ({ page }) => {
   await page.goto("/generate");
+  await openPlanetRow(page);
   await tab(page, "Terrain").click();
   const box = page.locator("#mg-nauvis-nauvis_cliff-on");
   await expect(box).toBeChecked();
@@ -134,6 +137,7 @@ test("cliffs can be switched off, which disables their settings and marks the pr
 
 test("a needed resource warns while off, under its box and in the summary", async ({ page }) => {
   await page.goto("/generate");
+  await openPlanetRow(page);
   const summary = page.locator("#need-summary");
   await expect(summary).toBeHidden();
   const coal = page.locator("#mg-nauvis-coal-on");
@@ -154,6 +158,7 @@ test("a needed resource warns while off, under its box and in the summary", asyn
 // keep the columns every other resource's row has.
 test("a needed resource's warning leaves its settings in line with the other rows", async ({ page }) => {
   await page.goto("/generate");
+  await openPlanetRow(page);
   const columns = (id: string) =>
     page.locator(`#${id} > .field`).evaluateAll((fs) => fs.map((f) => {
       const r = f.getBoundingClientRect();
@@ -178,6 +183,7 @@ test("a needed resource's warning leaves its settings in line with the other row
 
 test("the server shows the same warning after a round trip", async ({ page }) => {
   await page.goto("/generate");
+  await openPlanetRow(page);
   await page.locator("#mg-nauvis-stone-on").uncheck();
   await page.getByRole("button", { name: "Generate world" }).click();
   await expect(page.locator("#error-summary")).toBeVisible();

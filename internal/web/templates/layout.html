@@ -140,6 +140,11 @@
 {{- end}}
 
 {{/* The tabs of a world's pages (DESIGN 6, "Sub-navigation"). Takes WorldTabs. */}}
+{{/* The server's state beside the active world's name, on each of its pages (DESIGN 7.5). Takes LiveState. */}}
+{{define "live-state" -}}
+{{- if .Have}}<span class="state state--{{.State}}">{{msg .Word}}</span>{{end}}
+{{- end}}
+
 {{define "world-tabs" -}}
 <nav class="subnav" aria-label="{{t "worlds.tabs.label"}}">
   <ul role="list">

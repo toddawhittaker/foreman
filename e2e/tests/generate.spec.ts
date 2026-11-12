@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo, openPlanetRow } from "./foreman.js";
 import { countClicks, expectWithin } from "./clicks.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -526,6 +526,7 @@ test.describe("the map settings tabs", () => {
 test("steps are sliders on a wide panel and selects on a phone", async ({ page, foreman, fakeGame }) => {
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
+  await openPlanetRow(page);
   const select = page.locator("#mg-nauvis-iron-ore-size");
   const slider = page.locator("#mg-nauvis-iron-ore-size-range");
   const value = page.locator("#mg-nauvis-iron-ore-size-value");
@@ -560,6 +561,7 @@ test("a resource switched off, a map type, a scale and a bias reach the file", a
   await setUp(page, foreman, fakeGame!);
   await page.goto("/generate");
   await page.getByLabel("World name").fill("Dry island");
+  await openPlanetRow(page);
   const iron = page.getByRole("checkbox", { name: "Iron ore", exact: true });
   await expect(iron).toBeChecked();
   await iron.uncheck();

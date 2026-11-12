@@ -2,7 +2,10 @@
 
 {{define "content" -}}
 {{with .Page}}
+<div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "live-state" .Live}}
+</div>
 {{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}
 {{- if .Loaded}}
@@ -64,7 +67,7 @@
 {{- else if .Empty}}
 <section class="panel" aria-labelledby="mod-settings-heading">
   <h2 id="mod-settings-heading">{{t "mods.settings.edit.heading"}}</h2>
-  <p class="empty">{{t "mods.settings.edit.none"}}</p>
+  <p class="empty empty--art empty--settings">{{t "mods.settings.edit.none"}}</p>
   <div class="actions"><a href="{{.ModsPath}}">{{t "mods.settings.edit.back"}}</a></div>
 </section>
 {{- else}}

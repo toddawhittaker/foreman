@@ -5,7 +5,7 @@
 <header class="page-head page-head--row">
   <h1>{{t "worlds.title"}}</h1>
   <div class="actions">
-    <a href="{{.Page.GeneratePath}}" class="button">{{t "worlds.list.generate"}}</a>
+    <a href="{{.Page.GeneratePath}}" class="button button--primary">{{t "worlds.list.generate"}}</a>
     <a href="{{.Page.ImportPath}}" class="button">{{t "worlds.list.import"}}</a>
   </div>
 </header>
@@ -53,7 +53,7 @@
     {{- end}}
   </ul>
   {{- else}}
-  <p class="empty">{{t "worlds.list.empty"}}</p>
+  <p class="empty empty--art empty--worlds">{{t "worlds.list.empty"}}</p>
   {{- end}}
 </section>
 <div class="links"><a href="{{deletedPath}}">{{t "worlds.deleted.title"}}</a></div>

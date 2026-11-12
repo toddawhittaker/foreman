@@ -313,6 +313,7 @@ type SettingsPage struct {
 	WorldID, WorldName string
 	// Active marks the active world in the heading, as on its Overview.
 	Active bool
+	Live   LiveState
 	// ReadOnly says why nothing can be changed; zero when the world is open
 	// to editing.
 	ReadOnly i18n.Msg

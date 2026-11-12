@@ -50,6 +50,25 @@ func (p WorldsPage) StateWord() i18n.Msg { return stateWord(p.ActiveState) }
 // SwitchPath is where a world's Switch button goes.
 func (WorldsPage) SwitchPath(id string) string { return switchPath(id) }
 
+// LiveState is the server's state beside the active world's name on each
+// of its pages (DESIGN 7.5). Have is false for any other world, or without
+// server control.
+type LiveState struct {
+	State game.State
+	Have  bool
+}
+
+// Word is the state badge's word.
+func (l LiveState) Word() i18n.Msg { return stateWord(l.State) }
+
+// liveState reads the server's state for the active world.
+func (s *server) liveState(id string, active bool) LiveState {
+	if !active || s.game == nil {
+		return LiveState{}
+	}
+	return LiveState{State: s.game.Status(id).State, Have: true}
+}
+
 func (WorldsPage) templateName() string { return "worlds" }
 
 func (WorldsPage) navItem() string { return PathWorlds + navPage }
@@ -94,6 +113,7 @@ func (s *server) worldRoutes() {
 // WorldPage is one world's page (SPEC 5.4, 5.8; DESIGN 8.2).
 type WorldPage struct {
 	World world.Summary
+	Live  LiveState
 	// Name refills the rename field.
 	Name      string
 	NameError i18n.Msg
@@ -370,6 +390,7 @@ func renameDone(renamed, current string) i18n.Msg {
 func (s *server) worldPage(ctx context.Context, sum world.Summary, name string, nameError i18n.Msg) WorldPage {
 	p := WorldPage{World: sum, Name: name, NameError: nameError}
 	if s.game != nil {
+		p.Live = s.liveState(sum.ID, sum.Active)
 		op := s.game.Status(sum.ID).Operation
 		p.Busy = busyText(op, s.worldName)
 		if !p.Busy.IsZero() {

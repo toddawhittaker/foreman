@@ -126,13 +126,19 @@
     <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     <div class="preview-placeholder__picture">
       {{- /* Says what fills it; the status line above already reads this out, so it is hidden from screen readers. */}}
-      <span class="preview-placeholder__map" aria-hidden="true">{{t "worlds.generate.preview.updating"}}</span>
-      <span class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.view_one"}}</span>
+      {{- /* Framed as the picture and its caption will be, so the box is the picture's own. */}}
+      <span class="preview-placeholder__frame">
+        <span class="preview-placeholder__map" aria-hidden="true">{{t "worlds.generate.preview.updating"}}</span>
+        <span class="preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.view_one"}}</span>
+      </span>
       <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
     </div>
     {{- if .Form.SpaceAge}}
-    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true"></span>
+    {{- /* "Download all", in words, as it wraps on a narrow column. */}}
+    <span class="preview-placeholder__hold preview-placeholder__control" aria-hidden="true">{{t "worlds.generate.preview.download_all"}}</span>
     {{- end}}
+    {{- /* The amounts' bar, empty until a count, still takes a gap in the grid. */}}
+    <span class="preview-placeholder__hold" aria-hidden="true"></span>
     <p class="hint preview-placeholder__hold" aria-hidden="true">{{t "worlds.generate.preview.kept"}}</p>
   </section>
   {{- end}}

@@ -135,6 +135,7 @@ func (s *server) loadingSave(id string) (string, error) {
 // ModsPage is a world's Mods tab (SPEC 9).
 type ModsPage struct {
 	World world.Summary
+	Live  LiveState
 	Mods  []world.InstalledMod
 	// NoAccount says mod downloads are off (SPEC 9.11).
 	NoAccount bool
@@ -316,7 +317,7 @@ func (s *server) handleMods(w http.ResponseWriter, r *http.Request, u store.User
 
 // modsPage reads the world's mods and what the tab offers.
 func (s *server) modsPage(ctx context.Context, sum world.Summary) (ModsPage, error) {
-	p := ModsPage{World: sum, CountdownForm: defaultCountdown()}
+	p := ModsPage{World: sum, Live: s.liveState(sum.ID, sum.Active), CountdownForm: defaultCountdown()}
 	if sum.Newer || sum.Unreadable {
 		return p, nil
 	}

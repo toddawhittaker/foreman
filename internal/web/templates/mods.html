@@ -3,7 +3,10 @@
 
 {{define "content" -}}
 {{with .Page}}
+<div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "live-state" .Live}}
+</div>
 {{template "world-tabs" .Tabs}}
 {{template "summary" .Problems}}
 {{- if or .World.Newer .World.Unreadable}}
@@ -42,6 +45,9 @@
 </div>
 {{- end}}
 
+{{- /* On a wide screen the list and search take the main column; the rarer tools sit in a rail beside them. */}}
+<div class="split">
+<div class="split__main">
 <section class="panel" aria-labelledby="search-heading">
   <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
   <form method="get" action="{{.SearchPath}}" role="search">
@@ -104,13 +110,13 @@
             {{- end}}
             <div class="mod-actions__fixed">
               {{- if .Enabled}}
-              <a href="{{$.Page.RowPath "disable" .Name}}" class="button">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+              <a href="{{$.Page.RowPath "disable" .Name}}" class="button button--quiet mod-toggle">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
               {{- else}}
-              <a href="{{$.Page.RowPath "enable" .Name}}" class="button">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+              <a href="{{$.Page.RowPath "enable" .Name}}" class="button button--quiet mod-toggle">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
               {{- end}}
               {{- if not .Local}}
               {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
-              <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+              <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet button--icon mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
               {{- end}}
             </div>
           </div>
@@ -120,10 +126,12 @@
     </tbody>
   </table>
   {{- else}}
-  <p class="empty">{{t "mods.installed.none"}}</p>
+  <p class="empty empty--art empty--mods">{{t "mods.installed.none"}}</p>
   {{- end}}
 </section>
 
+</div>
+<div class="split__rail">
 <section class="panel" aria-labelledby="sync-heading">
   <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
   {{- if not .LoadSave}}
@@ -226,6 +234,8 @@
   </details>
 </section>
 {{- end}}
+</div>
+</div>
 {{- end}}
 {{end}}
 {{- end}}
