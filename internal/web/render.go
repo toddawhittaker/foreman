@@ -259,14 +259,17 @@ type Renderer struct {
 // sharedFuncs are the template functions that do not depend on the language.
 func (r *Renderer) sharedFuncs() template.FuncMap {
 	return template.FuncMap{
-		"static":           r.staticURL,
-		"serverPath":       func() string { return PathServer },
-		"consolePath":      func() string { return PathConsole },
-		"worldsPath":       func() string { return PathWorlds },
-		"snapshotsTabPath": func() string { return PathSnapshots },
-		"accountPath":      func() string { return PathAccount },
-		"utc":              func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
-		"isoTime":          func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+		"static":            r.staticURL,
+		"serverPath":        func() string { return PathServer },
+		"consolePath":       func() string { return PathConsole },
+		"worldsPath":        func() string { return PathWorlds },
+		"snapshotsTabPath":  func() string { return PathSnapshots },
+		"accountPath":       func() string { return PathAccount },
+		"notificationsPath": func() string { return PathNotifications },
+		"schedulePath":      func() string { return PathSchedule },
+		"chatPath":          func() string { return PathChat },
+		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
+		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 		// day and clock are a table's timestamp in two parts that each
 		// never wrap (DESIGN 8.3).
 		"day":   func(t time.Time) string { return t.UTC().Format("2006-01-02") },

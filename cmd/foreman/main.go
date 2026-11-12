@@ -24,6 +24,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/modportal"
+	"github.com/toddawhittaker/foreman/internal/notify"
+	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/store"
 	"github.com/toddawhittaker/foreman/internal/web"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -125,7 +127,7 @@ func serve(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), HostDataDir: hostDir, Log: slog.Default()})
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notify.New(), Scheduler: schedule.New(), HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}
