@@ -435,8 +435,9 @@ func TestAnAdminsCancelSkipsToday(t *testing.T) {
 	if st.Reason != SkipAdmin {
 		t.Errorf("reason = %q, want admin", st.Reason)
 	}
-	if got := x.emits.all(); len(got) != 1 || !got[0].Skipped {
-		t.Errorf("events = %+v, want one skipped", got)
+	// The skipped message says players stayed online, so none is sent.
+	if got := x.emits.all(); len(got) != 0 {
+		t.Errorf("events = %+v, want none for an admin's cancel", got)
 	}
 	x.stepAt(at(4, 30))
 	if r, _ := x.g.count(); r != 1 {

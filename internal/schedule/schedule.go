@@ -439,10 +439,14 @@ func (s *Scheduler) restartEnded(err error) {
 	s.changedLocked()
 }
 
-// skipLocked ends today's restart without running it, and says so.
+// skipLocked ends today's restart without running it, and says so. Only a
+// skip for players sends an event: its message names that reason, and an
+// admin who cancelled knows already.
 func (s *Scheduler) skipLocked(why SkipReason, now time.Time) {
 	s.cfg.Log.Info("today's scheduled restart was skipped", "world", s.st.WorldID, "reason", string(why))
-	s.emitLocked(true)
+	if why == SkipPlayers {
+		s.emitLocked(true)
+	}
 	s.st = State{Next: s.next, Phase: PhaseSkipped, WorldID: s.st.WorldID, SkippedAt: now, Reason: why}
 	s.changedLocked()
 }
