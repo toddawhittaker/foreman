@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/rcon"
 	"github.com/toddawhittaker/foreman/internal/secret"
 	"github.com/toddawhittaker/foreman/internal/world"
@@ -22,6 +23,9 @@ import (
 // stops (SPEC 3.8). Call it once.
 func (c *Controller) Run(ctx context.Context) {
 	defer c.shutdown()
+	// Not waited for at shutdown: a notifier that hangs must not hold
+	// Foreman up (SPEC 8.12).
+	go c.deliverEvents()
 	t := time.NewTicker(c.pollInterval)
 	defer t.Stop()
 	for {
@@ -141,6 +145,7 @@ func (c *Controller) observeInspect(ctx context.Context, w *worldRun, cont docke
 		}
 		if cont.State.Status == "running" {
 			c.readUsage(ctx, w, cont.ID)
+			c.checkDisk(w, cont.ID)
 		}
 	}
 }
@@ -369,6 +374,9 @@ func (c *Controller) attach(w *worldRun, cont docker.Container, ops uint64) {
 	w.crashes = nil
 	w.run = runState{}
 	w.joins.Reset()
+	// A container taken on is looked at afresh: what it did before was
+	// reported by whoever saw it happen (SPEC 3.8).
+	w.evState = ""
 	w.secrets = secrets
 	w.gameVersion = meta.GameVersion
 	w.image = cont.Image
@@ -540,6 +548,7 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	if !at.IsZero() {
 		w.lastLineAt = at
 	}
+	live := w.liveLineLocked(at)
 	line := w.redact(raw)
 	w.logs.Add(line)
 	w.hub.Publish(Update{Kind: UpdateLine, Line: line})
@@ -575,10 +584,20 @@ func (c *Controller) handleLine(w *worldRun, cid, text string) {
 	case KindPlayerJoined, KindPlayerLeft:
 		w.joins.Observe(ev)
 		publish = false
+		if live {
+			e := notify.PlayerJoin
+			if ev.Kind == KindPlayerLeft {
+				e = notify.PlayerLeave
+			}
+			c.emitLocked(w, notify.Message{Event: e, Player: ev.Player})
+		}
 	default:
 		publish = false
 	}
+	// A replayed line updates what is known without reporting it again.
+	w.evQuiet = !live
 	c.changedLocked(w, publish)
+	w.evQuiet = false
 }
 
 // redact hides the world's secrets and any secret a printed command set,
