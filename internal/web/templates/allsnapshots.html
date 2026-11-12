@@ -1,5 +1,7 @@
 {{define "title"}}{{t "worlds.allsnapshots.title"}}{{end}}
 
+{{define "scripts"}}<script src="{{static "ticks.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
 <h1>{{t "worlds.allsnapshots.title"}}</h1>
@@ -22,9 +24,6 @@
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
   <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
-  <div class="actions">
-    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
-  </div>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
@@ -58,7 +57,7 @@
   {{- end}}
   {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
   <div class="actions">
-    <button type="submit" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
+    <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
   </div>
 </form>
 {{- else}}

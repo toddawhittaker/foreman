@@ -1,8 +1,13 @@
 {{define "title"}}{{t "worlds.snapshots.title" "world" .Page.WorldName}}{{end}}
 
+{{define "scripts"}}<script src="{{static "ticks.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
 {{with .Page}}
+<div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "live-state" .Live}}
+</div>
 {{template "world-tabs" .Tabs}}
 {{- if not .Done.IsZero}}
 <div class="message message--success">
@@ -85,7 +90,7 @@
   </table>
   {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
   <div class="actions">
-    <button type="submit" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
+    <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
   </div>
   {{- if .More}}
   <div class="actions"><a href="{{.AllPath}}">{{t "worlds.snapshots.older"}}</a></div>

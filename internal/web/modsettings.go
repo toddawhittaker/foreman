@@ -113,6 +113,7 @@ type SettingGroup struct {
 // ModSettingsPage edits a world's mod settings (SPEC 9.6).
 type ModSettingsPage struct {
 	World world.Summary
+	Live  LiveState
 	// Loaded says the form part is filled in; until then the page shows a
 	// progress line and fetches it.
 	Loaded  bool
@@ -221,7 +222,7 @@ func (s *server) modSettingsWorld(w http.ResponseWriter, r *http.Request, u stor
 
 func (s *server) handleModSettingsPage(w http.ResponseWriter, r *http.Request, u store.User) {
 	if sum, ok := s.modSettingsWorld(w, r, u); ok {
-		s.page(w, r, http.StatusOK, u.Username, ModSettingsPage{World: sum})
+		s.page(w, r, http.StatusOK, u.Username, ModSettingsPage{World: sum, Live: s.liveState(sum.ID, sum.Active)})
 	}
 }
 

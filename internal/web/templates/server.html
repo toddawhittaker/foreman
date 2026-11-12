@@ -280,14 +280,14 @@
   {{- else if .CanStart}}
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
-  {{- if .CanStop}}
-  <a href="{{.StopPath}}" class="button" id="act-stop">{{t "server.action.stop"}}</a>
+  {{- if .CanSnapshot}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
   {{- end}}
-  {{- if .CanSnapshot}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- if .CanStop}}
+  <a href="{{.StopPath}}" class="button" id="act-stop">{{t "server.action.stop"}}</a>
   {{- end}}
   {{- if .CanForceStop}}
   {{- /* A link, not a button face: it opens a confirmation, and it is set apart at the row's end in the danger colour (DESIGN 6). */}}

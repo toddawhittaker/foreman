@@ -787,6 +787,7 @@ main {
 
 main > .panel,
 main > .panels > .panel,
+.split > * > .panel,
 .mod-settings > .panel,
 .mod-settings > .panels > .panel,
 .settings-main > form.panel,
@@ -807,6 +808,7 @@ main > .panels > .panel,
 
   main > .panel,
   main > .panels > .panel,
+  .split > * > .panel,
   .mod-settings > .panel,
   .mod-settings > .panels > .panel,
   .settings-main > form.panel,
@@ -963,8 +965,21 @@ fieldset,
 }
 
 
+/* Disabled reads as unavailable in both themes; busy keeps the progress cursor. */
 .button:disabled,
-.button[aria-disabled="true"] {
+.button[aria-disabled="true"],
+.button:disabled:hover {
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-line);
+  box-shadow: none;
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button[aria-busy="true"],
+[aria-busy="true"] .button:disabled {
   cursor: progress;
 }
 
@@ -1635,26 +1650,26 @@ main h1:has(> .ident) {
 }
 
 /* The Server page (DESIGN 6, 7.5): the state card, then players beside the
-   live world's own pages. The card's top edge carries the state's colour,
+   live world's own pages. The card's leading edge carries the state's colour,
    so the server's state reads from across the room. */
 .status-card {
   container-type: inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
-  border-block-start: 4px solid var(--color-border);
+  border-inline-start: 4px solid var(--color-border);
 }
 
 main:has(#server-title .state--running) .status-card {
-  border-block-start-color: var(--color-ok);
+  border-inline-start-color: var(--color-ok);
 }
 
 main:has(#server-title :is(.state--starting, .state--stopping)) .status-card {
-  border-block-start-color: var(--color-warn);
+  border-inline-start-color: var(--color-warn);
 }
 
 main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card {
-  border-block-start-color: var(--color-danger);
+  border-inline-start-color: var(--color-danger);
 }
 
 /* The figures sit on a sunken strip under the controls, divided like gauges. */
@@ -2849,13 +2864,6 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
-/* The preview sits full width under the settings, on every width (DESIGN 8.8). */
-.gen-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-}
-
 /* A message's display would otherwise beat the hidden attribute. */
 .message[hidden] {
   display: none;
@@ -2979,7 +2987,7 @@ form:has(#mode-exchange:checked) .achievements {
   display: none;
 }
 
-.gen-layout:has(#preview > *) .preview-status:empty {
+.gen-preview:has(#preview > *) .preview-status:empty {
   display: block;
   min-block-size: 1lh;
 }
@@ -4197,4 +4205,301 @@ form:has(#mode-exchange:checked) .achievements {
 
 .mod-settings-values dd {
   overflow-wrap: anywhere;
+}
+
+/* Two columns for a page with one main list and a few smaller tools: the
+   list and search lead, the rest sit in a rail. One column on a phone. */
+.split,
+.split__main,
+.split__rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+@media (min-width: 40rem) {
+  .split,
+  .split__main,
+  .split__rail {
+    gap: var(--space-5);
+  }
+}
+
+@container (min-width: 60rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
+    align-items: start;
+  }
+}
+
+/* Generate: the settings beside a preview that stays in view while they
+   change (DESIGN 8.6). One column below 68.75rem. */
+.gen-grid,
+.gen-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.gen-settings {
+  gap: var(--space-4);
+}
+
+@media (min-width: 68.75rem) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 22rem);
+    gap: var(--space-6);
+  }
+
+  .gen-preview {
+    position: sticky;
+    inset-block-start: var(--space-5);
+    max-block-size: calc(100dvh - 2 * var(--space-5));
+    overflow-y: auto;
+    padding: var(--space-4);
+    background: var(--color-raised);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: var(--radius-lg);
+  }
+
+  .gen-preview .pictures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The map pictures are framed the same way in both themes. */
+.pictures img,
+.preview-placeholder__map {
+  border-color: var(--color-line);
+  border-radius: var(--radius);
+}
+
+.preview-placeholder__map {
+  align-content: center;
+  gap: var(--space-2);
+  background: var(--color-raised);
+}
+
+.preview-placeholder__map::before {
+  content: "";
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+  mask: var(--i-map) center / contain no-repeat;
+}
+
+/* The actions are one bar at the form's foot: Cancel, Preview map, then
+   Generate world at the end. */
+.generate > .gen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
+  padding: var(--space-3) var(--card-pad);
+  background: var(--color-raised);
+  border-block-start: var(--border-width) solid var(--color-line);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+}
+
+.generate > .gen-actions > a {
+  order: -2;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--target-min);
+  margin-inline-end: auto;
+  padding-inline: var(--space-1);
+}
+
+.generate > .gen-actions > #preview-button {
+  order: -1;
+}
+
+@media (max-width: 30rem) {
+  .generate > .gen-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .generate > .gen-actions > .button {
+    padding-inline: var(--space-2);
+  }
+
+  /* On a phone the preview comes straight after the preset and seed. */
+  .gen-grid,
+  .gen-settings,
+  .gen-settings > .map-section,
+  .gen-settings #line-box {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .gen-grid > .gen-settings,
+  .gen-settings > .map-section,
+  .gen-settings #line-box {
+    display: contents;
+  }
+
+  .gen-grid > * {
+    min-inline-size: 0;
+  }
+
+  .gen-grid > .gen-preview {
+    order: 1;
+  }
+
+  .gen-settings #map-settings,
+  .gen-settings .achievements {
+    order: 2;
+  }
+}
+
+/* Console on a phone: game log lines keep their own line and scroll
+   sideways so timestamps stay in a column; history entries wrap. */
+@media (max-width: 48rem) {
+  .log {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .log-frame > .log {
+    overflow-x: auto;
+  }
+
+  .log-frame > .log pre {
+    inline-size: max-content;
+    min-inline-size: 100%;
+    white-space: pre;
+    overflow-wrap: normal;
+  }
+}
+
+/* On a phone the live world's pages come straight after the tabs, as a
+   two-by-two grid, ahead of the controls and players. */
+@media (max-width: 40rem) {
+  .server-grid {
+    display: contents;
+  }
+
+  main > .status-card {
+    order: 2;
+  }
+
+  .server-grid > .panel {
+    order: 3;
+  }
+
+  .shortcuts.card {
+    order: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .shortcuts > a,
+  .shortcuts > #act-switch-world {
+    justify-content: flex-start;
+    min-block-size: var(--target-min);
+    margin: 0;
+    padding-inline: var(--space-3);
+    background: var(--color-surface);
+    color: var(--color-heading);
+    border: var(--border-width) solid var(--color-line);
+    font-weight: 600;
+  }
+
+  .shortcuts > a::after {
+    content: none;
+  }
+
+  .shortcuts > #act-switch-world {
+    border-color: var(--color-border);
+  }
+}
+
+/* Mods on a phone: each row's buttons in an even two-column grid. */
+@container (max-width: 36rem) {
+  .mod-actions,
+  .mod-actions__portal,
+  .mod-actions__fixed {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mod-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mod-actions__portal:not(:has(a)) {
+    display: none;
+  }
+
+  .mod-actions__portal > span {
+    display: contents;
+  }
+
+  .mod-actions .button,
+  .mod-list .mod-remove,
+  .mod-list .mod-version {
+    inline-size: 100%;
+    padding-inline: var(--space-2);
+  }
+}
+
+/* The sign-in page carries the full-size mark above its heading. */
+.gate-logo {
+  display: block;
+  justify-self: center;
+  inline-size: 4rem;
+  block-size: 4rem;
+}
+
+main:has(> .gate) > h1 {
+  text-align: center;
+  justify-self: center;
+}
+
+/* A world's heading with the live server state beside it. */
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.title-row > .state {
+  font-size: var(--text-md);
+}
+
+/* A world's Overview on a wide screen: the version and rename side by
+   side under the facts, so neither card is mostly empty. */
+@media (min-width: 64rem) {
+  main:has(> form[aria-labelledby="rename-heading"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  main:has(> form[aria-labelledby="rename-heading"]) > * {
+    grid-column: 1 / -1;
+  }
+
+  main:has(> section[aria-labelledby="version-heading"]) > :is(section[aria-labelledby="version-heading"], form[aria-labelledby="rename-heading"]) {
+    grid-column: auto;
+  }
+
+  /* A date and its age stay on one line where there is room. */
+  .facts dd time {
+    white-space: nowrap;
+  }
 }

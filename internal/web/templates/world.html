@@ -3,7 +3,11 @@
 
 {{define "content" -}}
 {{with .Page}}
+{{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
+<div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
+{{template "live-state" .Live}}
+</div>
 {{template "world-tabs" .Tabs}}
 {{- if .World.Unreadable}}
 <p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>

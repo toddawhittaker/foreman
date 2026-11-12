@@ -77,6 +77,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const told = new CustomEvent("settings:planet", { detail: { planet: d.dataset.planet }, cancelable: true });
     if (!document.dispatchEvent(told)) announce(d.dataset.said);
   }, true);
+  // On a phone the planets' rows start closed, so the preview sits near the top; closing one changes nothing else.
+  if (window.matchMedia("(max-width: 30rem)").matches) {
+    for (const d of document.querySelectorAll("#generate-form details[data-planet][open]")) d.open = false;
+  }
   // A planet shown in the large view opens its row, and focus stays where it is.
   document.addEventListener("preview:planet", (e) => {
     if (e.detail && e.detail.planet) openRow(e.detail.planet);

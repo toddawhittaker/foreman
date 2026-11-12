@@ -11,6 +11,9 @@
   {{- /* The first submit button is the one Enter presses; without this it would be the hidden preset reset. */}}
   <button type="submit" id="generate-default" hidden></button>
   {{template "summary" .Problems}}
+  {{- /* On a wide screen the settings sit beside a preview that stays in view (DESIGN 8.6). */}}
+  <div class="gen-grid">
+  <div class="gen-settings">
   {{template "required-note"}}
   {{- with .Form}}
   <div class="field">
@@ -76,8 +79,6 @@
     <p class="error" id="generate-form-error"><strong>{{t "common.error.label"}}</strong> {{msg .FormError}}</p>
     {{- end}}
 
-    {{/* The settings beside the preview on a wide panel, above it on a narrow one (DESIGN 8.6). */}}
-    <div class="gen-layout">
       {{- /* Everything here follows the game line, so a version change redraws it whole. */}}
       <div class="gen-main" id="line-box">
         <div id="map-key-box">
@@ -101,6 +102,10 @@
           </div>
         </div>
       </div>
+  </div>
+  {{template "achievements" .}}
+  {{template "needs" .}}
+  </div>
       <div class="gen-preview">
         {{- if $.Page.CanPreview}}
         {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider and redraws on a change. */}}
@@ -138,12 +143,9 @@
         {{template "generate-large-view"}}
         {{- end}}
       </div>
-    </div>
-  </div>
-  {{template "achievements" .}}
-  {{template "needs" .}}
   {{- end}}
-  <div class="actions">
+  </div>
+  <div class="actions gen-actions">
     <button type="submit" class="button button--primary" id="generate-button">{{t "worlds.generate.button"}}</button>
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"

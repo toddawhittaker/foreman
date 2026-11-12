@@ -34,6 +34,7 @@ type SnapshotsPage struct {
 	WorldName string
 	// Active marks the active world in the heading, as on its Overview.
 	Active    bool
+	Live      LiveState
 	Snapshots []world.Snapshot
 	// More is true when rows past maxListRows are hidden.
 	More bool
@@ -158,7 +159,7 @@ func (s *server) snapshotsPage(r *http.Request, sum world.Summary) (SnapshotsPag
 		return SnapshotsPage{}, err
 	}
 	sel := readSelection(r)
-	p := SnapshotsPage{WorldID: id, WorldName: sum.Name, Active: sum.Active, AddBytes: count.Total(), FreeBytes: free, Ticked: map[string]bool{}}
+	p := SnapshotsPage{WorldID: id, WorldName: sum.Name, Active: sum.Active, Live: s.liveState(sum.ID, sum.Active), AddBytes: count.Total(), FreeBytes: free, Ticked: map[string]bool{}}
 	var list []world.Snapshot
 	automatic := 0
 	for _, u := range count.Snapshots() {

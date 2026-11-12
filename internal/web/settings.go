@@ -57,6 +57,7 @@ func (s *server) settingsRoutes() {
 // settingsWorld is a world and its settings files as they are on disk now.
 type settingsWorld struct {
 	sum  world.Summary
+	live LiveState
 	line string
 	// cfg and adminCfg are server-settings.json and server-adminlist.json.
 	cfg, adminCfg world.ConfigRead
@@ -94,7 +95,7 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 	if !ok {
 		return settingsWorld{}, false
 	}
-	sw := settingsWorld{sum: sum}
+	sw := settingsWorld{sum: sum, live: s.liveState(sum.ID, sum.Active)}
 	sw.line, _ = mapgen.Line(sum.GameVersion)
 	var err error
 	if sw.cfg, err = s.worlds.ReadConfig(sum.ID, world.ServerSettingsFile); err != nil {
@@ -128,7 +129,7 @@ func (h *settingsHandlers) load(w http.ResponseWriter, r *http.Request, u store.
 // formPage fills the form from the settings text and admin names given.
 func (sw settingsWorld) formPage(text []byte, names []string) SettingsPage {
 	p := SettingsPage{
-		WorldID: sw.sum.ID, WorldName: sw.sum.Name, Active: sw.sum.Active, ReadOnly: sw.readOnly,
+		WorldID: sw.sum.ID, WorldName: sw.sum.Name, Active: sw.sum.Active, Live: sw.live, ReadOnly: sw.readOnly,
 		Running: sw.running, AdminsBroken: sw.adminsBroken,
 		Admins: strings.Join(names, "\n"),
 	}
