@@ -1,0 +1,19 @@
+2026-11-12T14:59:43.738987467Z    0.000 2026-11-12 14:59:43; Factorio 2.1.24 (build 87808, linux64, headless, space-age)
+2026-11-12T14:59:43.739025848Z    0.000 Operating system: Linux
+2026-11-12T14:59:43.739033589Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> "--server-adminlist" "/factorio/config/server-adminlist.json" "--server-banlist" "/factorio/config/server-banlist.json" "--server-settings" "/factorio/config/server-settings.json" 
+2026-11-12T14:59:43.739045736Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-12T14:59:43.739050963Z    0.000 Read data path: /opt/factorio/data
+2026-11-12T14:59:43.739055904Z    0.000 Write data path: /opt/factorio [111785/131072MB]
+2026-11-12T14:59:43.739064220Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-12T14:59:43.750432902Z    0.011 System info: [CPU: Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, 48 cores, RAM: 257804 MB]
+2026-11-12T14:59:43.750469671Z    0.011 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> SDL_VIDEO_DRIVER=<unset> SDL_ENABLE_STEAM_SCREEN_KEYBOARD=<unset> SteamDeck=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-12T14:59:43.759945649Z    0.021 Running in headless mode
+2026-11-12T14:59:43.759963834Z    0.021 Audio is disabled
+2026-11-12T14:59:43.761224822Z    0.022 Info ModManager.cpp:455: FeatureFlag: expansion, expansion-shaders, freezing, quality, rail-bridges, segmented-units, space-travel, spoiling
+2026-11-12T14:59:43.764777331Z    0.026 Loading mod core 0.0.0 (data.lua)
+2026-11-12T14:59:43.785092787Z    0.046 Loading mod base 2.1.24 (data.lua)
+2026-11-12T14:59:43.980583247Z    0.241 Loading mod brokenlua 1.0.0 (data.lua)
+2026-11-12T14:59:44.002340134Z    0.263 Error Util.cpp:81: Failed to load mod "brokenlua": __brokenlua__/data.lua:1: deliberate failure for capture
+2026-11-12T14:59:44.002379544Z stack traceback:
+2026-11-12T14:59:44.002386367Z 	[C]: in function 'error'
+2026-11-12T14:59:44.002391992Z 	__brokenlua__/data.lua:1: in main chunk

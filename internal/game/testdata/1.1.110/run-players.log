@@ -1,0 +1,82 @@
+2026-11-12T14:59:09.409421671Z    0.000 2026-11-12 14:59:09; Factorio 1.1.110 (build 62357, linux64, headless)
+2026-11-12T14:59:09.409471283Z    0.000 Operating system: Linux
+2026-11-12T14:59:09.409480869Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> "--server-adminlist" "/factorio/config/server-adminlist.json" "--server-banlist" "/factorio/config/server-banlist.json" "--server-settings" "/factorio/config/server-settings.json" 
+2026-11-12T14:59:09.409495930Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-12T14:59:09.409502375Z    0.000 Read data path: /opt/factorio/data
+2026-11-12T14:59:09.409508028Z    0.000 Write data path: /opt/factorio [111787/131072MB]
+2026-11-12T14:59:09.409517099Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-12T14:59:09.417386355Z    0.008 System info: [CPU: Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, 48 cores, RAM: 257804 MB]
+2026-11-12T14:59:09.417408599Z    0.008 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-12T14:59:09.417423942Z    0.008 Running in headless mode
+2026-11-12T14:59:09.421715738Z    0.012 Loading mod core 0.0.0 (data.lua)
+2026-11-12T14:59:09.448762225Z    0.039 Loading mod base 1.1.110 (data.lua)
+2026-11-12T14:59:09.644339026Z    0.235 Loading mod base 1.1.110 (data-updates.lua)
+2026-11-12T14:59:09.745477472Z    0.336 Checksum for core: 607699937
+2026-11-12T14:59:09.745509794Z    0.336 Checksum of base: 2464433227
+2026-11-12T14:59:09.968432224Z    0.559 Prototype list checksum: 3034860339
+2026-11-12T14:59:10.018130121Z    0.608 Info PlayerData.cpp:78: Local player-data.json unavailable
+2026-11-12T14:59:10.018165703Z    0.609 Info PlayerData.cpp:83: Cloud player-data.json unavailable
+2026-11-12T14:59:10.020291783Z    0.611 Factorio initialised
+2026-11-12T14:59:10.020670944Z    0.611 Info ServerSynchronizer.cpp:29: nextHeartbeatSequenceNumber(0) initialized Synchronizer nextTickClosureTick(0).
+2026-11-12T14:59:10.020692174Z    0.611 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(Ready) to(PreparedToHostGame)
+2026-11-12T14:59:10.020704627Z    0.611 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(PreparedToHostGame) to(CreatingGame)
+2026-11-12T14:59:10.021011518Z    0.611 Loading map /factorio/saves/cap.zip: 699917 bytes.
+2026-11-12T14:59:10.039281732Z    0.630 Loading level.dat: 1141439 bytes.
+2026-11-12T14:59:10.044955870Z    0.635 Info Scenario.cpp:204: Map version 1.1.110-0
+2026-11-12T14:59:10.070459165Z    0.661 Loading script.dat: 1171 bytes.
+2026-11-12T14:59:10.074376370Z    0.665 Checksum for script /opt/factorio/temp/currently-playing/control.lua: 3702463597
+2026-11-12T14:59:10.076057562Z    0.666 Info UDPSocket.cpp:33: Opening socket at (IP ADDR:({0.0.0.0:34197}))
+2026-11-12T14:59:10.076150735Z    0.667 Hosting game at IP ADDR:({0.0.0.0:34197})
+2026-11-12T14:59:10.076163366Z    0.667 Info ServerMultiplayerManager.cpp:814: updateTick(0) changing state from(CreatingGame) to(InGame)
+2026-11-12T14:59:10.076466480Z    0.667 Info RemoteCommandProcessor.cpp:133: Starting RCON interface at IP ADDR:({0.0.0.0:27015})
+2026-11-12T14:59:10.541535765Z    1.132 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42340})
+2026-11-12T14:59:10.601891778Z    1.192 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42354})
+2026-11-12T14:59:10.610158937Z 2026-11-12 14:59:10 [BAN] bob (not on map) was banned by <server>. Reason: griefing.
+2026-11-12T14:59:10.683786537Z    1.274 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42358})
+2026-11-12T14:59:10.693552597Z 2026-11-12 14:59:10 [BAN] bob (not on map) was banned by <server>. Reason: again.
+2026-11-12T14:59:10.710272957Z 2026-11-12 14:59:10 [BAN] carl (not on map) was banned by <server>. Reason: unspecified.
+2026-11-12T14:59:10.856617329Z    1.447 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42368})
+2026-11-12T14:59:10.860166763Z 2026-11-12 14:59:10 [UNBANNED] bob was unbanned by <server>.
+2026-11-12T14:59:10.933048030Z    1.523 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42382})
+2026-11-12T14:59:10.943483025Z 2026-11-12 14:59:10 [UNBANNED] bob was unbanned by <server>.
+2026-11-12T14:59:10.961526195Z 2026-11-12 14:59:10 [UNBANNED]  was unbanned by <server>.
+2026-11-12T14:59:10.986541081Z    1.577 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42398})
+2026-11-12T14:59:10.996503472Z 2026-11-12 14:59:10 [PROMOTE] carol was added to the admin list by <server> and will be promoted upon joining the game.
+2026-11-12T14:59:11.078690119Z    1.669 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42408})
+2026-11-12T14:59:11.135500368Z    1.726 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42418})
+2026-11-12T14:59:11.143571058Z 2026-11-12 14:59:11 [DEMOTE] carol was removed from the admin list by <server> and will no longer be promoted upon joining the game.
+2026-11-12T14:59:11.223485012Z    1.814 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42426})
+2026-11-12T14:59:11.267126406Z    1.858 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42438})
+2026-11-12T14:59:11.356734557Z    1.947 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42442})
+2026-11-12T14:59:11.645231393Z    2.236 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42458})
+2026-11-12T14:59:11.660119763Z 2026-11-12 14:59:11 [BAN] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn (not on map) was banned by <server>. Reason: long-name.
+2026-11-12T14:59:11.693376817Z 2026-11-12 14:59:11 [PROMOTE] nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn was added to the admin list by <server> and will be promoted upon joining the game.
+2026-11-12T14:59:11.726743401Z 2026-11-12 14:59:11 [BAN] "quoted (not on map) was banned by <server>. Reason: name" x.
+2026-11-12T14:59:11.743358414Z 2026-11-12 14:59:11 [PROMOTE] ü-name was added to the admin list by <server> and will be promoted upon joining the game.
+2026-11-12T14:59:11.759993078Z 2026-11-12 14:59:11 [UNBANNED] nobody was unbanned by <server>.
+2026-11-12T14:59:11.877390245Z    2.468 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42474})
+2026-11-12T14:59:11.893348679Z 2026-11-12 14:59:11 [CHAT] <server>: hello from rcon
+2026-11-12T14:59:11.910035416Z 2026-11-12 14:59:11 [WARNING] Player <server> tried using the command "rcon.print("RAN-leading-3-spaces")".
+2026-11-12T14:59:11.910058585Z 2026-11-12 14:59:11 [WARNING] Using Lua console commands will disable achievements. Please repeat the command to proceed.
+2026-11-12T14:59:11.926666189Z 2026-11-12 14:59:11 [COMMAND] <server> (command): rcon.print("RAN-leading-1-space")
+2026-11-12T14:59:11.943479087Z 2026-11-12 14:59:11 [BAN] zed (not on map) was banned by <server>. Reason: via-leading-space.
+2026-11-12T14:59:11.984520036Z    2.575 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42478})
+2026-11-12T14:59:11.993340040Z 2026-11-12 14:59:11 [COMMAND] <server> (command): rcon.print("RAN-real-1")
+2026-11-12T14:59:12.010028727Z 2026-11-12 14:59:12 [COMMAND] <server> (command): rcon.print("RAN-real-2")
+2026-11-12T14:59:12.018132582Z    2.609 Info RemoteCommandProcessor.cpp:252: New RCON connection from IP ADDR:({172.17.0.1:42486})
+2026-11-12T14:59:12.043331985Z    2.634 Info AppManager.cpp:444: Saving game as /factorio/saves/cap.zip
+2026-11-12T14:59:12.126990034Z    2.717 Info AppManagerStates.cpp:2007: Saving finished
+2026-11-12T14:59:14.128799177Z    4.719 Received SIGTERM, shutting down
+2026-11-12T14:59:14.128833420Z    4.719 Quitting: signal.
+2026-11-12T14:59:14.128852980Z    4.719 Info MainLoop.cpp:446: Saving map as /factorio/saves/cap.zip
+2026-11-12T14:59:14.175880951Z    4.766 Info MainLoop.cpp:457: Saving progress: 0.250000%
+2026-11-12T14:59:14.177998945Z    4.768 Info MainLoop.cpp:457: Saving progress: 100.000000%
+2026-11-12T14:59:14.198759750Z    4.789 Info ServerMultiplayerManager.cpp:127: Disconnecting multiplayer connection.
+2026-11-12T14:59:14.198795072Z    4.789 Info ServerMultiplayerManager.cpp:814: updateTick(238) changing state from(InGame) to(DisconnectingScheduled)
+2026-11-12T14:59:14.232275815Z    4.823 Info ServerMultiplayerManager.cpp:814: updateTick(238) changing state from(DisconnectingScheduled) to(Disconnecting)
+2026-11-12T14:59:14.265712886Z    4.856 Info ServerMultiplayerManager.cpp:814: updateTick(238) changing state from(Disconnecting) to(Disconnected)
+2026-11-12T14:59:14.265741676Z    4.856 Info ServerMultiplayerManager.cpp:154: Quitting multiplayer connection.
+2026-11-12T14:59:14.265748495Z    4.856 Info ServerMultiplayerManager.cpp:814: updateTick(238) changing state from(Disconnected) to(Closed)
+2026-11-12T14:59:14.481926273Z    5.072 Info UDPSocket.cpp:233: Closing socket
+2026-11-12T14:59:14.481968899Z    5.072 Info UDPSocket.cpp:263: Socket closed
+2026-11-12T14:59:14.517691938Z    5.108 Goodbye
