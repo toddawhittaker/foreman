@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
+	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 )
 
 const (
@@ -54,6 +55,9 @@ type loadFailure struct {
 	// errLine is the last error line of the run being read, and lastErr
 	// that of the run before it, for when this one has said none yet.
 	errLine, lastErr string
+	// kind is the catalogue's name for the run being read; an older run's
+	// is never shown, so no match means unknown (SPEC 8.7).
+	kind string
 	// runError is the reason the run being read gave for a failed load.
 	runError string
 	// failed is whether the newest run to finish loading failed to, and
@@ -71,7 +75,7 @@ func (f *loadFailure) add(raw string) {
 		if f.errLine != "" {
 			f.lastErr = f.errLine
 		}
-		f.errLine, f.runError = "", ""
+		f.errLine, f.runError, f.kind = "", "", ""
 	case KindInGame:
 		f.failed, f.failError = false, ""
 	case KindLoadError:
@@ -80,6 +84,7 @@ func (f *loadFailure) add(raw string) {
 		f.failed, f.failError = true, f.runError
 	}
 	line := strings.TrimSpace(secondsPrefix.ReplaceAllString(strings.TrimSuffix(raw, "\r"), ""))
+	f.kind = crashreasons.Prefer(f.kind, crashreasons.Line(line))
 	if m := modBullet.FindStringSubmatch(line); m != nil {
 		f.mod = cut(m[1], maxKeptText)
 		return
@@ -128,7 +133,7 @@ func (f *loadFailure) reason(redact func(string) string) LoadReason {
 			}
 		}
 		names := f.byRequired[required]
-		r := LoadReason{Mods: len(names), Required: redact(required), Current: redact(f.current)}
+		r := LoadReason{Kind: crashreasons.ModsForOtherVersion, Mods: len(names), Required: redact(required), Current: redact(f.current)}
 		r.Shown, r.More = shownNames(names, redact)
 		return r
 	}
@@ -136,10 +141,11 @@ func (f *loadFailure) reason(redact func(string) string) LoadReason {
 	if said == "" {
 		said = f.lastErr
 	}
-	if said == "" {
-		return LoadReason{}
+	r := LoadReason{Kind: f.kind}
+	if said != "" {
+		r.Said = shownText(redact, said)
 	}
-	return LoadReason{Said: shownText(redact, said)}
+	return r
 }
 
 // shownText is the game's words from its log as a page may show them:
@@ -154,6 +160,9 @@ func shownText(redact func(string) string, s string) string {
 // line, Said. Every piece is masked like a log line. The zero value means
 // the log said nothing it may show.
 type LoadReason struct {
+	// Kind is the crashreasons id for the reason, "" when unknown. Out of
+	// memory comes from Docker's OOMKilled flag, never from the log.
+	Kind string
 	// Mods were made for Factorio Required; the game runs Current. Shown
 	// names the first few, and More counts the rest.
 	Mods              int
@@ -164,7 +173,7 @@ type LoadReason struct {
 }
 
 // IsZero reports whether the log gave no reason.
-func (r LoadReason) IsZero() bool { return r.Mods == 0 && r.Said == "" }
+func (r LoadReason) IsZero() bool { return r.Mods == 0 && r.Said == "" && r.Kind == "" }
 
 // text is the reason as the end of an English sentence, for the log.
 func (r LoadReason) text() string {
@@ -181,6 +190,9 @@ func (r LoadReason) text() string {
 			}
 		}
 		return out
+	}
+	if r.Kind == crashreasons.OutOfMemory {
+		return ": it ran out of memory"
 	}
 	if r.Said == "" {
 		return ""
@@ -224,17 +236,32 @@ func cut(s string, n int) string {
 // agrees with the error.
 func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid string) *StartError {
 	f := c.readLoadLog(ctx, cid)
+	oom := c.oomKilled(ctx, cid)
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	reason := f.reason(w.redact)
+	if oom {
+		reason.Kind = crashreasons.OutOfMemory
+	}
 	if !f.failed {
-		return &StartError{Kind: StartStopped, Reason: f.reason(w.redact)}
+		return &StartError{Kind: StartStopped, Reason: reason}
 	}
 	detail := shownText(w.redact, f.failError)
 	if w.containerID == cid && !w.run.loadFailed {
 		w.run.loadFailed, w.run.inGame, w.run.loadError = true, false, detail
 		c.changedLocked(w, true)
 	}
-	return &StartError{Kind: StartLoadFailed, Detail: detail}
+	return &StartError{Kind: StartLoadFailed, Detail: detail, Reason: reason}
+}
+
+// oomKilled reports whether Docker says the container's last exit was the
+// kernel's out-of-memory kill. Docker clears the flag when it restarts the
+// container, so a kill it has already restarted reads false.
+func (c *Controller) oomKilled(ctx context.Context, cid string) bool {
+	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
+	defer cancel()
+	cont, err := c.docker.InspectContainer(ctx, cid)
+	return err == nil && cont.State.OOMKilled
 }
 
 // readLoadLog reads the newest lines of the container's log once, within
