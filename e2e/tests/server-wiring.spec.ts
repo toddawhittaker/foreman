@@ -29,7 +29,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(badge(page)).toHaveText("Running", live);
     await g.call("/join", { name: container, player: "alice" });
-    await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+    await expect(page.locator("#player-row-alice")).toBeVisible(live);
     await page.getByRole("link", { name: "Stop server" }).click();
     await page.getByRole("button", { name: "Stop server" }).click();
     await page.getByRole("button", { name: "Cancel stop" }).click();

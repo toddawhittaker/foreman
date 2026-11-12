@@ -31,6 +31,9 @@
 <div class="facts-block">
 <div sse-swap="facts">{{template "server-facts" .}}</div>
 <div sse-swap="loads">{{template "server-loads" .}}</div>
+<div sse-swap="schedule">{{template "server-schedule" .}}</div>
+{{- /* The low-disk warning sits where the game-network warning does (DESIGN 8.17). Empty, it takes no room. */}}
+<div id="disk-notice" class="disk-notice" sse-swap="disk">{{template "server-disk" .}}</div>
 {{- if .ModNoticePath}}
 <div id="mods-notice" class="mods-notice" role="status" hx-get="{{.ModNoticePath}}" hx-trigger="{{.ModNoticeTrigger}}" hx-swap="innerHTML"></div>
 {{- end}}
@@ -39,7 +42,10 @@
 {{- /* Players, and beside them on a wide screen the live world's own pages. */}}
 <div class="server-grid">
 <section class="panel card" aria-labelledby="players-heading">
-  <h2 id="players-heading">{{t "server.players.heading"}}</h2>
+  {{- /* Focus comes here when the player whose row had it leaves (DESIGN 8.12). */}}
+  <h2 id="players-heading" tabindex="-1">{{t "server.players.heading"}}</h2>
+  {{- /* The result of a player action sits beside the list it changed, outside the live region, so the next update keeps it (DESIGN 8.12). */}}
+  {{template "server-player-result" .}}
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
 <div class="links card shortcuts" sse-swap="active">{{template "server-active" .}}</div>
@@ -115,6 +121,92 @@
 </div>
 {{- end}}
 
+{{/* The next scheduled restart, while the schedule is on and the game runs
+     (SPEC 7.12, DESIGN 8.15). A region of its own, like "Loads next",
+     because its link takes focus. Its time says how far off it is, so
+     time.js keeps the age even inside the button's face (data-age). */}}
+{{define "server-schedule" -}}
+<div class="schedule-next">
+  {{- if .ShowNextRestart}}
+  <dl class="facts facts--inline">
+    <div><dt>{{t "server.schedule.next"}}</dt><dd><a class="button button--quiet" href="{{schedulePath}}" id="act-schedule"><time datetime="{{isoTime .Schedule.Next}}" data-age>{{.NextRestartUTC}}</time><span class="visually-hidden">{{t "server.schedule.next_link"}}</span></a></dd></div>
+  </dl>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* The low-disk warning (SPEC 8.13, DESIGN 8.17), with its next step. It
+     is not announced: it is a fact about the page, not a result. The
+     wrapper is always there, so the warning clearing still sends a
+     non-empty event. */}}
+{{define "server-disk" -}}
+<div>
+  {{- if .ShowLowDisk}}
+  <div class="message message--warning">
+    <p><strong>{{t "common.label.warning"}}</strong> {{msg .LowDisk}}</p>
+    <div class="actions"><a href="{{.SnapshotsAllPath}}" class="button" id="act-disk-snapshots">{{t "server.disk.snapshots"}}</a></div>
+  </div>
+  {{- end}}
+</div>
+{{- end}}
+
+{{/* The result of the admin's last player action, once (DESIGN 8.12). It
+     takes focus after the redirect, as the page's other results do. */}}
+{{define "server-player-result" -}}
+{{- $page := .}}
+{{- with .PlayerDone}}
+<div class="message message--success" id="player-done" tabindex="-1" autofocus>
+  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}{{if .Reply}} <span lang="en">{{.Reply}}</span>{{end}}</p>
+  {{- if .UndoAction}}
+  <div class="actions">
+    <form method="post" action="{{.UndoPath}}">
+      <input type="hidden" name="name" value="{{.Name}}">
+      {{- if .Reason}}
+      <input type="hidden" name="reason" value="{{.Reason}}">
+      {{- end}}
+      <input type="hidden" name="return" value="{{$page.PlayerReturn}}">
+      {{- if .IsBan}}
+      <button type="submit" class="button" id="act-player-undo">{{t "players.undo.unban_button" "name" .Name}}</button>
+      {{- else}}
+      <button type="submit" class="button" id="act-player-undo"><span aria-hidden="true">{{t "players.undo.button"}}</span><span class="visually-hidden">{{msg .UndoHidden}}</span></button>
+      {{- end}}
+    </form>
+  </div>
+  {{- end}}
+</div>
+{{- end}}
+{{- with .PlayerFailed}}
+<div class="message message--error" id="player-error" tabindex="-1" autofocus>
+  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}{{if .Reply}} <span lang="en">{{.Reply}}</span>{{end}}</p>
+</div>
+{{- end}}
+{{- end}}
+
+{{/* One player's name and, while the game runs, their actions (SPEC 8.2,
+     DESIGN 8.12). Every summary and button has an id built from the name,
+     so an open row and focus survive a live swap (live.js). A name that
+     fails the check of SPEC 14.9 is plain text: Foreman never escapes a
+     name to act on it. Changes that act at once come first, then the two
+     that confirm, drawn risky. */}}
+{{define "server-player" -}}
+{{if .Actions}}
+<details class="player-actions disclosure" name="player-actions" id="player-{{.Name}}">
+  <summary id="act-player-{{.Name}}"><span class="player-actions__name">{{.Name}}</span><span class="visually-hidden">{{t "server.players.actions_hidden"}}</span>{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}}</summary>
+  <div class="actions">
+    {{- range .AtOnce}}
+    <form method="post" action="{{.Path}}">
+      <input type="hidden" name="name" value="{{.Name}}">
+      <input type="hidden" name="return" value="{{.Return}}">
+      <button type="submit" class="button" id="{{.ID}}">{{msg .Word}}<span class="visually-hidden"> {{.Name}}</span></button>
+    </form>
+    {{- end}}
+    <a href="{{.KickPath}}" class="button button--risky" id="act-kick-{{.Name}}">{{t "server.players.kick"}}<span class="visually-hidden"> {{.Name}}</span></a>
+    <a href="{{.BanPath}}" class="button button--risky" id="act-ban-{{.Name}}">{{t "server.players.ban"}}<span class="visually-hidden"> {{.Name}}</span></a>
+  </div>
+</details>
+{{- else}}{{.Name}}{{if .Admin}} <span class="badge">{{t "server.players.admin"}}</span>{{end}}{{end}}
+{{- end}}
+
 {{/* Who is online now and for how long (SPEC 8.1). While a stop warns
      players, the list is who was online when it began (SPEC 7.6). */}}
 {{define "server-players" -}}
@@ -123,8 +215,8 @@
   <caption>{{msg .Caption}}</caption>
   <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">{{t "server.players.player"}}</th><th scope="col" class="num" role="columnheader">{{t "server.players.online_for"}}</th></tr></thead>
   <tbody role="rowgroup">
-    {{- range .Players}}
-    <tr role="row"><td role="cell">{{.Name}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
+    {{- range $.PlayerRows}}
+    <tr role="row" id="player-row-{{.Name}}"><td role="cell">{{template "server-player" .}}</td><td class="num" role="cell" data-label="{{t "server.players.online_for"}}">{{if .Joined.IsZero}}{{t "server.players.unknown"}}{{else}}{{msg ($.Since .Duration)}}{{end}}</td></tr>
     {{- end}}
   </tbody>
 </table>
@@ -152,6 +244,9 @@
 <div class="message message--warning">
   <p><strong>{{t "common.label.warning"}}</strong> {{msgHTML .CrashMessage}}
     {{- if .Status.Crash.IsZero}} {{t "server.crash.no_reason"}}{{end}}</p>
+  {{- with .CrashCause}}{{if not .IsZero}}
+  <p class="crash-cause">{{msg .}}</p>
+  {{- end}}{{end}}
   {{- if .CrashLooping}}
   <p>{{if or .RecoverRestore .RecoverSwitch}}{{t "server.crash.fix_or" "world" .World.Name}}{{else}}{{t "server.crash.fix" "world" .World.Name}}{{end}}</p>
   {{- if or .RecoverRestore .RecoverSwitch}}
@@ -268,6 +363,19 @@
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Downloaded}}</p>
 </div>
+{{- end}}
+{{- /* The restart schedule's wait and skip are notes with the way to the schedule (DESIGN 8.15, SPEC 17.9). */}}
+{{- if .ScheduleWaiting}}
+<div class="message message--note" id="schedule-waiting">
+  <p><strong>{{t "common.label.note"}}</strong> {{msgHTML .ScheduleWait}}</p>
+  <div class="actions"><a href="{{schedulePath}}" id="act-schedule-note">{{t "common.menu.schedule"}}</a></div>
+</div>
+{{- else}}{{with .ScheduleSkipped}}{{if not .IsZero}}
+<div class="message message--note" id="schedule-skipped">
+  <p><strong>{{t "common.label.note"}}</strong> {{msgHTML .}}</p>
+  <div class="actions"><a href="{{schedulePath}}" id="act-schedule-note">{{t "common.menu.schedule"}}</a></div>
+</div>
+{{- end}}{{end}}
 {{- end}}
 {{- if or .CanStart .CanStop .CanRestart .CanForceStop .OffersDownload .CanSnapshot}}
 <div class="actions server-actions">

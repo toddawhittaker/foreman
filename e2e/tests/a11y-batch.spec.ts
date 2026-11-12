@@ -35,7 +35,7 @@ test.describe("with the fake game", () => {
   test("the headings during an operation do not skip a level", async ({ page, foreman, fakeGame }) => {
     await started(page, foreman, fakeGame!);
     await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
-    await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+    await expect(page.locator("#player-row-alice")).toBeVisible(live);
     await page.getByRole("link", { name: "Stop server" }).click();
     await page.getByRole("button", { name: "Stop server" }).click();
     await expect(page.locator(".steps li").filter({ hasText: "Warn players" })).toBeVisible(live);

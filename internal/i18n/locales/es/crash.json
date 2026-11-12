@@ -1,1 +1,8 @@
-{}
+{
+  "crash.kind.mod_error": "Un mod no se pudo cargar.",
+  "crash.kind.mod_missing_dependency": "Un mod necesita otro mod que no está instalado.",
+  "crash.kind.mods_for_other_version": "Algunos mods se hicieron para otra versión de Factorio.",
+  "crash.kind.out_of_memory": "El juego se quedó sin memoria y el sistema lo detuvo.",
+  "crash.kind.port_in_use": "Otro programa de este equipo ya usa el puerto del juego.",
+  "crash.kind.save_unreadable": "No se pudo leer la partida guardada. Puede estar dañada o incompleta."
+}

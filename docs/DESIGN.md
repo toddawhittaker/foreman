@@ -384,6 +384,7 @@ Other fixed values, also tokens:
 | `--border-width` | 1px | Every border except the ones below |
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
+| `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
 | `--measure` | 70ch | Maximum line length of prose |
 | `--page-max` | 76rem | Maximum width of `main` |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |

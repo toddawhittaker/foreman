@@ -299,7 +299,7 @@ func TestCancelStopOverHTTP(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(id), "alice"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage(`<td role="cell">alice</td>`)
+	g.waitPage(`<tr role="row" id="player-row-alice">`)
 	g.wantContains("force stop form", g.get(gamePath(id, "force-stop")), "These players are disconnected: alice.")
 
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))

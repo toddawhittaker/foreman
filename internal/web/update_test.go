@@ -687,7 +687,7 @@ func TestUpdateRunningWorldRestarts(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(id), "bob"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage(`<td role="cell">bob</td>`)
+	g.waitPage(`<tr role="row" id="player-row-bob">`)
 
 	g.wantRedirectHome(g.post(updateURL(id), url.Values{"game_version": {newVersion}, "countdown": {"1"}}))
 	if err := g.waitResult(id, game.AuditUpdate); err != nil {

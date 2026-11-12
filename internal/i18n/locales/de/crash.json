@@ -1,1 +1,8 @@
-{}
+{
+  "crash.kind.mod_error": "Eine Mod konnte nicht geladen werden.",
+  "crash.kind.mod_missing_dependency": "Eine Mod braucht eine andere Mod, die nicht installiert ist.",
+  "crash.kind.mods_for_other_version": "Einige Mods wurden für eine andere Factorio-Version gemacht.",
+  "crash.kind.out_of_memory": "Dem Spiel ging der Arbeitsspeicher aus, daher hat das System es beendet.",
+  "crash.kind.port_in_use": "Ein anderes Programm auf diesem Host belegt schon den Port des Spiels.",
+  "crash.kind.save_unreadable": "Der Speicherstand konnte nicht gelesen werden. Er ist vielleicht beschädigt oder unvollständig."
+}

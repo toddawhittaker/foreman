@@ -47,7 +47,7 @@ test.describe("click budgets, with the fake game", () => {
     // The Server page, as it loads, answers both questions.
     await expect(badge(page)).toHaveText("Running");
     await expect(page.locator("main [sse-swap=facts]")).toContainText("2.1.24");
-    await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+    await expect(page.locator("#player-row-alice")).toBeVisible(live);
     await expectWithin(clicks, 0, "see who is online");
   });
 
@@ -95,7 +95,7 @@ test.describe("click budgets, with the fake game", () => {
     const clicks = await setUp(page, foreman, g);
     await startGame(page, clicks);
     await g.call("/join", { name: container, player: "alice" });
-    await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+    await expect(page.locator("#player-row-alice")).toBeVisible(live);
 
     await page.getByRole("link", { name: "Stop server" }).click();
     await page.getByRole("button", { name: "Stop server" }).click();

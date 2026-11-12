@@ -1,1 +1,8 @@
-{}
+{
+  "crash.kind.mod_error": "Mod se nepodařilo načíst.",
+  "crash.kind.mod_missing_dependency": "Mod potřebuje jiný mod, který není nainstalovaný.",
+  "crash.kind.mods_for_other_version": "Některé mody byly vytvořeny pro jinou verzi Factorio.",
+  "crash.kind.out_of_memory": "Hře došla paměť, a tak ji systém zastavil.",
+  "crash.kind.port_in_use": "Port hry na tomto hostiteli už používá jiný program.",
+  "crash.kind.save_unreadable": "Uloženou hru se nepodařilo přečíst. Může být poškozená nebo neúplná."
+}

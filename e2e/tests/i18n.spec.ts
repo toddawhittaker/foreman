@@ -399,7 +399,7 @@ test.describe("layout at 320 px in every language", () => {
       await page.getByRole("button", { name: "Start server" }).click();
       await expect(page.locator("main h1 .state")).toHaveText("Running", live);
       await fakeGame!.call("/join", { name: "foreman-base", player: "alice" });
-      await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+      await expect(page.locator("#player-row-alice")).toBeVisible(live);
       await page.goto("/worlds/base/snapshots");
       await page.getByLabel("Label (optional)").fill("Before the big rocket launch rebuild");
       await page.getByRole("button", { name: "Take snapshot" }).click();

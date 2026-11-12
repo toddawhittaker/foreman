@@ -1,15 +1,20 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/gamesettings"
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -59,6 +64,14 @@ type ServerPage struct {
 	// LoadsNext names the save chosen to load at the next start when it is
 	// not the newest; "" when the newest loads (SPEC 7.11, 17.7).
 	LoadsNext string
+	// PlayerResult is the admin's last player action from this page, shown
+	// once (DESIGN 8.12); nil when there is none.
+	PlayerResult *PlayerResult
+	// Lists is what the player rows read from the world's lists while the
+	// game runs (DESIGN 8.12).
+	Lists PlayerLists
+	// Schedule is where the restart schedule stands (DESIGN 8.15).
+	Schedule schedule.State
 }
 
 // navPage marks a nav item as the page itself rather than a page inside its
@@ -307,10 +320,12 @@ func (p ServerPage) CancelStopPath() string {
 	return gamePath(id, "cancel-stop")
 }
 
-// PlayerTable is the player list the page shows.
+// PlayerTable is the player list the page shows. Live is true when it is
+// who is online now, so its rows may offer actions (DESIGN 8.12).
 type PlayerTable struct {
 	Caption i18n.Msg
 	Players []game.Player
+	Live    bool
 }
 
 // PlayerTable returns who is online now, or else, while a stop warns
@@ -321,7 +336,7 @@ func (p ServerPage) PlayerTable() *PlayerTable {
 		if len(p.Players) == 0 {
 			return nil
 		}
-		return &PlayerTable{Caption: i18n.M("server.players.caption", "count", len(p.Players)), Players: p.Players}
+		return &PlayerTable{Caption: i18n.M("server.players.caption", "count", len(p.Players)), Players: p.Players, Live: true}
 	}
 	o := p.Status.Operation
 	if o == nil || o.Done || len(o.Players) == 0 || p.Status.State == game.StateUnknown {
@@ -420,6 +435,9 @@ func (p ServerPage) OperationHeading() i18n.Msg {
 	case game.AuditStop:
 		return choose(failed, i18n.M("server.op.stop_failed"), i18n.M("server.op.stop"))
 	case game.AuditRestart:
+		if p.ScheduleCountdown() {
+			return i18n.M("server.op.scheduled_restart")
+		}
 		return choose(failed, i18n.M("server.op.restart_failed"), i18n.M("server.op.restart"))
 	case game.ActionRestore:
 		return choose(failed, i18n.M("server.op.restore_failed"), i18n.M("server.op.restore"))
@@ -759,3 +777,261 @@ func durationISO(d time.Duration) string {
 	m := int(d / time.Minute)
 	return fmt.Sprintf("PT%dH%dM", m/60, m%60)
 }
+
+// PlayerLists is what a player row reads from the world's lists while the
+// game runs (DESIGN 8.12): the admin list, and the whitelist when the game
+// keeps it. A list that cannot be read offers no button that depends on it.
+type PlayerLists struct {
+	// Admins holds the admin list's names, lower-cased; AdminsKnown is
+	// false when the list could not be read.
+	Admins      map[string]bool
+	AdminsKnown bool
+	// WhitelistKept is true when the running game keeps the whitelist, so
+	// the rows offer its buttons (ruling 8, DESIGN 8.13). Whitelisted holds
+	// its names, lower-cased.
+	WhitelistKept bool
+	Whitelisted   map[string]bool
+}
+
+// PlayerRow is one row of the players table.
+type PlayerRow struct {
+	game.Player
+	// Actions is true when the row offers the player actions: the game runs,
+	// the list is who is online now, and the name passes the check of SPEC
+	// 14.9. Foreman never escapes a name to act on it.
+	Actions bool
+	// Admin marks a name on the admin list; AdminKnown is false when the
+	// list could not be read, so neither admin button shows.
+	Admin, AdminKnown bool
+	// Whitelist is true when the whitelist buttons show, Whitelisted
+	// whether the name is on it.
+	Whitelist, Whitelisted bool
+	// World is the world's id, for the action paths.
+	World string
+}
+
+// Rows are the table's players with what each row offers.
+func (t PlayerTable) rows(p ServerPage) []PlayerRow {
+	actions := t.Live && p.Status.State == game.StateRunning && p.FactsKnown()
+	rows := make([]PlayerRow, 0, len(t.Players))
+	for _, pl := range t.Players {
+		key := strings.ToLower(pl.Name)
+		r := PlayerRow{Player: pl, World: p.World.ID, AdminKnown: p.Lists.AdminsKnown, Admin: p.Lists.Admins[key]}
+		r.Actions = actions && gamesettings.ValidateAdminName(pl.Name) == nil
+		r.Whitelist, r.Whitelisted = p.Lists.WhitelistKept, p.Lists.Whitelisted[key]
+		rows = append(rows, r)
+	}
+	return rows
+}
+
+// PlayerRows are the rows of the table the page shows.
+func (p ServerPage) PlayerRows() []PlayerRow {
+	t := p.PlayerTable()
+	if t == nil {
+		return nil
+	}
+	return t.rows(p)
+}
+
+// PlayerPost is a player action that acts at once, posted from its row
+// (DESIGN 8.12).
+type PlayerPost struct {
+	Path, Name, Return, ID string
+	Word                   i18n.Msg
+}
+
+// AtOnce are the row's actions that act at once, in the design's order:
+// the admin change, then the whitelist change. A list that could not be
+// read offers neither of its two buttons.
+func (r PlayerRow) AtOnce() []PlayerPost {
+	var out []PlayerPost
+	add := func(a game.PlayerAction, id string, word i18n.Msg) {
+		out = append(out, PlayerPost{Path: playerPath(r.World, string(a)), Name: r.Name, Return: PathServer, ID: id + "-" + r.Name, Word: word})
+	}
+	switch {
+	case !r.AdminKnown:
+	case r.Admin:
+		add(game.PlayerDemote, "act-demote", i18n.M("server.players.demote"))
+	default:
+		add(game.PlayerPromote, "act-promote", i18n.M("server.players.promote"))
+	}
+	switch {
+	case !r.Whitelist:
+	case r.Whitelisted:
+		add(game.PlayerWhitelistRemove, "act-whitelist-remove", i18n.M("server.players.whitelist_remove"))
+	default:
+		add(game.PlayerWhitelistAdd, "act-whitelist-add", i18n.M("server.players.whitelist_add"))
+	}
+	return out
+}
+
+// KickPath and BanPath are the confirmations for this player, which return
+// to the Server page.
+func (r PlayerRow) KickPath() string { return r.confirmPath(game.PlayerKick) }
+func (r PlayerRow) BanPath() string  { return r.confirmPath(game.PlayerBan) }
+
+func (r PlayerRow) confirmPath(a game.PlayerAction) string {
+	q := url.Values{"name": {r.Name}, returnField: {PathServer}}
+	return playerPath(r.World, string(a)) + "?" + q.Encode()
+}
+
+// PlayerDone is the player action result to show as Done, or nil.
+func (p ServerPage) PlayerDone() *PlayerResult {
+	if p.PlayerResult == nil || !p.PlayerResult.Error.IsZero() {
+		return nil
+	}
+	return p.PlayerResult
+}
+
+// PlayerFailed is the player action result to show as an error, or nil.
+func (p ServerPage) PlayerFailed() *PlayerResult {
+	if p.PlayerResult == nil || p.PlayerResult.Error.IsZero() {
+		return nil
+	}
+	return p.PlayerResult
+}
+
+// PlayerReturn is the way back every player action from this page names.
+func (ServerPage) PlayerReturn() string { return PathServer }
+
+// readPlayerLists reads the lists the player rows need while the game runs
+// (DESIGN 8.12). Each is read from the world's own files, which the game
+// writes itself while it runs (ruling 9).
+func (s *server) readPlayerLists(ctx context.Context, id string) PlayerLists {
+	var l PlayerLists
+	if names, ok := s.readNameList(id, world.ServerAdminListFile, gamesettings.ParseAdminList); ok {
+		l.Admins, l.AdminsKnown = names, true
+	}
+	kept, err := s.game.WhitelistKept(ctx, id)
+	if err != nil {
+		s.log.Warn("read whitelist switch of the running game", "world", id, "error", err)
+	}
+	if kept {
+		// A whitelist that cannot be read offers no whitelist button: which
+		// of the two to offer is not known.
+		l.Whitelisted, l.WhitelistKept = s.readNameList(id, world.ServerWhiteListFile, gamesettings.ParseWhitelist)
+	}
+	return l
+}
+
+// readNameList reads one of the world's name lists, lower-cased; a missing
+// file is an empty list. It reports false when the file cannot be read.
+func (s *server) readNameList(id, file string, parse func([]byte) ([]string, error)) (map[string]bool, bool) {
+	read, err := s.worlds.ReadConfig(id, file)
+	if err != nil {
+		s.log.Warn("read player list", "world", id, "file", file, "error", err)
+		return nil, false
+	}
+	names := map[string]bool{}
+	if !read.Found {
+		return names, true
+	}
+	list, err := parse(read.Data)
+	if err != nil {
+		return nil, false
+	}
+	for _, n := range list {
+		names[strings.ToLower(n)] = true
+	}
+	return names, true
+}
+
+// scheduleState is where the restart schedule stands, or zero when Foreman
+// runs without one.
+func (s *server) scheduleState() schedule.State {
+	if s.scheduler == nil {
+		return schedule.State{}
+	}
+	return s.scheduler.State()
+}
+
+// scheduleChanged is closed at the schedule's next change; nil, which never
+// fires, without a schedule.
+func (s *server) scheduleChanged() <-chan struct{} {
+	if s.scheduler == nil {
+		return nil
+	}
+	return s.scheduler.Changed()
+}
+
+// ShowNextRestart reports whether the "Next restart" fact shows: while the
+// schedule is on and the game runs, since a stopped game is never restarted
+// (DESIGN 8.15).
+func (p ServerPage) ShowNextRestart() bool {
+	return !p.Schedule.Next.IsZero() && p.Status.State == game.StateRunning && p.FactsKnown()
+}
+
+// NextRestartUTC is the next restart's text before time.js puts it in the
+// viewer's zone.
+func (p ServerPage) NextRestartUTC() string {
+	return p.Schedule.Next.UTC().Format("2006-01-02 15:04 UTC")
+}
+
+// scheduleHere reports whether the schedule's wait, countdown or skip is
+// about this page's world.
+func (p ServerPage) scheduleHere(ph schedule.Phase) bool {
+	return p.Schedule.Phase == ph && p.Schedule.WorldID == p.World.ID
+}
+
+// ScheduleWaiting reports whether a scheduled restart waits for nobody to
+// be online (DESIGN 8.15).
+func (p ServerPage) ScheduleWaiting() bool { return p.scheduleHere(schedule.PhaseWaiting) }
+
+// ScheduleCountdown reports whether the restart running now is the
+// schedule's, so its step list is headed "Scheduled restart".
+func (p ServerPage) ScheduleCountdown() bool {
+	o := p.Status.Operation
+	return p.scheduleHere(schedule.PhaseCountdown) && o != nil && !o.Done && o.Action == game.AuditRestart
+}
+
+// ScheduleWait is the waiting note's sentences.
+func (p ServerPage) ScheduleWait() i18n.Msg {
+	msg := i18n.M("server.schedule.waiting", "time", momentUTC(p.Schedule.Until))
+	if p.Schedule.Joined != "" {
+		msg = join(msg, i18n.M("server.schedule.joined", "name", p.Schedule.Joined))
+	}
+	if p.Schedule.Unasked {
+		msg = join(msg, i18n.M("server.schedule.unasked"))
+	}
+	return msg
+}
+
+// ScheduleSkipped says today's scheduled restart was skipped, and why, or
+// is zero. It stays until another operation or a newer result takes the
+// card (DESIGN 8.15).
+func (p ServerPage) ScheduleSkipped() i18n.Msg {
+	st := p.Schedule
+	if !p.scheduleHere(schedule.PhaseSkipped) || p.Busy() || (p.HaveResult && p.Result.At.After(st.SkippedAt)) {
+		return i18n.Msg{}
+	}
+	at := momentUTC(st.SkippedAt)
+	var msg i18n.Msg
+	switch st.Reason {
+	case schedule.SkipAdmin:
+		msg = i18n.M("server.schedule.skipped_admin", "time", at)
+	case schedule.SkipMissed:
+		msg = i18n.M("server.schedule.skipped_missed", "time", at)
+	default:
+		msg = i18n.M("server.schedule.skipped_players", "time", at)
+	}
+	if !st.Next.IsZero() {
+		msg = join(msg, i18n.M("server.schedule.next_is", "time", momentUTC(st.Next)))
+	}
+	return msg
+}
+
+// ShowLowDisk reports whether the low-disk warning shows: while the game
+// runs and the disk holding Foreman's data is low (SPEC 8.13, DESIGN 8.17).
+func (p ServerPage) ShowLowDisk() bool {
+	return p.Status.LowDisk && game.IsRunning(p.Status.State)
+}
+
+// LowDisk is the low-disk warning's sentence. The reserve comes from the
+// code, never from the string.
+func (p ServerPage) LowDisk() i18n.Msg {
+	return i18n.M("server.disk.low", "free", i18n.Size(p.Status.FreeBytes), "reserve", i18n.Size(world.SpaceReserve))
+}
+
+// SnapshotsAllPath is the all-worlds Snapshots page, where the low-disk
+// warning's next step is.
+func (ServerPage) SnapshotsAllPath() string { return PathSnapshots }

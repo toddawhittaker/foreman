@@ -15,7 +15,7 @@ import (
 // liveRegions are the parts of the server page a live update replaces.
 // Each is sent only when it changed, so an update to one never moves focus
 // out of another.
-var liveRegions = []string{"active", "facts", "loads", "players", "control"}
+var liveRegions = []string{"active", "facts", "loads", "schedule", "disk", "players", "control"}
 
 // reconnectAfter is how soon a browser reconnects after a stream ends, so
 // a stream that ends by design (proxyStreamLimit) is back before the page
@@ -47,6 +47,7 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 	view, updates, stop := s.game.Watch(sum.ID)
 	defer stop()
 	results := s.runs.watch()
+	scheduled := s.scheduleChanged()
 	beat := time.NewTicker(heartbeatEvery)
 	defer beat.Stop()
 	st, changed := view.Status, true
@@ -88,6 +89,10 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request, u store.Us
 		case <-results:
 			results = s.runs.watch()
 			st = s.game.Status(sum.ID)
+		case <-scheduled:
+			// The schedule's wait, countdown, skip or next time changed
+			// (DESIGN 8.15).
+			scheduled = s.scheduleChanged()
 		case <-beat.C:
 			if !s.stillSignedIn(r, opened) {
 				return

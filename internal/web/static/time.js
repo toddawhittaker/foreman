@@ -3,7 +3,10 @@
 // keeps the UTC text the server wrote (DESIGN 9). Durations such as the
 // uptime are left alone. A time inside visually hidden text (part of a
 // control's spoken name) or inside a button's label gets the local time
-// only: relative text there would go stale and make the name long.
+// only: relative text there would go stale and make the name long. A
+// button whose time is the point of it, such as the next scheduled restart,
+// asks for the age with data-age; it is refreshed with the rest. A time
+// still to come reads forward ("in 7 hours").
 (function () {
   "use strict";
 
@@ -84,7 +87,7 @@
     var order = clockParts[0].type === "timeZoneName" ? [dayNode, zone, clockNode] : [dayNode, clockNode, zone];
     el.replaceChildren(order[0], " ", order[1], " ", order[2]);
     el.dataset.local = "true";
-    if (el.closest(".visually-hidden, .button")) {
+    if (el.closest(".visually-hidden") || (el.closest(".button") && !el.hasAttribute("data-age"))) {
       return;
     }
     var age = document.createElement("span");

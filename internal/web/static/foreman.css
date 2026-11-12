@@ -155,6 +155,7 @@
   --border-width: 1px;
   --focus-width: 3px;
   --target-min: 2.75rem;
+  --target-inline: 1.5rem;
   /* The pin sits on the map's own colours, which do not follow the theme. */
   --color-pin-face: #ffffff;
   --color-pin-edge: #000000;
@@ -221,6 +222,8 @@
   --i-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='14' x='8' y='8' rx='2' ry='2'/%3E %3Cpath d='M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'/%3E%3C/svg%3E");
   --i-download: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3'/%3E %3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E %3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
   --i-file: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z'/%3E %3Cpath d='M14 2v5a1 1 0 0 0 1 1h5'/%3E %3Cpath d='M10 9H8'/%3E %3Cpath d='M16 13H8'/%3E %3Cpath d='M16 17H8'/%3E%3C/svg%3E");
+  --i-bell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.268 21a2 2 0 0 0 3.464 0'/%3E %3Cpath d='M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326'/%3E%3C/svg%3E");
+  --i-chat: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
   --i-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z'/%3E %3Ccircle cx='16.5' cy='7.5' r='.5' fill='currentColor'/%3E%3C/svg%3E");
 }
 
@@ -874,6 +877,8 @@ fieldset,
 .empty--players { --icon: var(--i-players); }
 .empty--console { --icon: var(--i-console); }
 .empty--settings { --icon: var(--i-settings); }
+.empty--notify { --icon: var(--i-bell); }
+.empty--chat { --icon: var(--i-chat); }
 
 /* 7.1 Buttons */
 .button {
@@ -4125,7 +4130,8 @@ form:has(#mode-exchange:checked) .achievements {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.mods-notice:has(.message) {
+.mods-notice:has(.message),
+.disk-notice:has(.message) {
   padding-block-start: var(--space-3);
 }
 
@@ -5073,4 +5079,164 @@ main:has(> .gate) > h1 {
 .design-bar {
   block-size: var(--space-3);
   background: var(--color-selected);
+}
+
+/* Epic 9: live operations (DESIGN 8.12 to 8.19). */
+
+/* 8.12 A player's name opens their actions in its own cell. The summary is
+   a full-cell target with the disclosure chevron but no raised face or
+   border, so the table still reads as a table. Open, the actions wrap
+   under the name, each full width of the cell on a phone (.actions). */
+.player-actions.disclosure > summary {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-block-size: var(--target-min);
+  padding: 0;
+  padding-inline-end: var(--space-5);
+  background: none;
+  color: var(--color-heading);
+  border: 0;
+  border-radius: 0;
+  font-weight: 500;
+}
+
+/* The chevron keeps to the end of the name's first line, whatever wraps. */
+.player-actions.disclosure > summary::after {
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  inset-block-start: calc(var(--target-min) / 2 - 0.25rem);
+  margin: 0;
+}
+
+.player-actions.disclosure > summary:hover {
+  background: none;
+  color: var(--color-link);
+}
+
+/* A long name wraps inside itself; the mark takes the next line when it must. */
+.player-actions__name {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.player-actions .badge,
+td > .badge {
+  flex: none;
+  white-space: nowrap;
+}
+
+.player-actions > .actions {
+  gap: var(--space-2);
+  padding-block: var(--space-2) var(--space-3);
+}
+
+/* An open row keeps its time level with the name, not with the buttons. */
+tr:has(> td > .player-actions[open]) > td.num {
+  vertical-align: top;
+  padding-block-start: calc(var(--space-2) + (var(--target-min) - 1lh) / 2);
+}
+
+/* 8.13 A plain list of names, each with its button at the end edge. */
+.name-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.name-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.name-list > li:last-child {
+  border-block-end: 0;
+}
+
+.name-list > li > form {
+  display: contents;
+}
+
+.name-list__name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.name-list .hint {
+  flex: 1 1 100%;
+  order: 1;
+}
+
+/* 8.14 Chat: the log box in the body face, a little shorter than the game
+   log so the message field is on a phone's first screen. A message wraps
+   anywhere, and a line Foreman sent reads as one by its name's colour. */
+.chat-lines.log,
+.panel:has(> #chat-heading) .log {
+  block-size: min(50vh, 24rem);
+}
+
+.chat-lines {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+}
+
+.chat-lines li {
+  display: block;
+  padding-inline-start: 2ch;
+  text-indent: -2ch;
+}
+
+.chat-lines time {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-name {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.chat-line--server .chat-name {
+  color: var(--color-link);
+}
+
+.chat-text {
+  overflow-wrap: anywhere;
+}
+
+/* A link inside an error or an empty state's sentence is at least a 24 px
+   target (WCAG 2.5.8). */
+.error a,
+.empty a {
+  display: inline-block;
+  min-block-size: var(--target-inline);
+}
+
+/* 8.15, 8.17 The next restart and the low-disk warning are regions of the
+   facts block, like "Loads next" and the mods notice: empty, they take no
+   room (see "Live regions with nothing in them"). */
+.crash-cause {
+  font-weight: 600;
+}
+
+/* 8.16 The webhook list takes the world list's rows without the active
+   edge; a row's title is its kind, then its host in the muted colour. */
+.webhook-list .webhook-list__title {
+  font-size: var(--text-md);
+  color: var(--color-heading);
+}
+
+.webhook-list__title .ident {
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
