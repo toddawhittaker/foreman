@@ -240,6 +240,15 @@ build-fakegame:
 build-fakeportal:
 	CGO_ENABLED=0 go build -trimpath -o bin/fakeportal ./cmd/fakeportal
 
+# The two build values on their own, for CI's image build, which calls the
+# docker build action rather than make image and so needs the same rules.
+.PHONY: foreman-version foreman-commit
+foreman-version:
+	@printf '%s\n' '$(FOREMAN_VERSION)'
+
+foreman-commit:
+	@printf '%s\n' '$(FOREMAN_COMMIT)'
+
 image:
 	docker build --build-arg GO_IMAGE=$(GO_IMAGE) --build-arg 'VERSION=$(FOREMAN_VERSION)' --build-arg 'COMMIT=$(FOREMAN_COMMIT)' -t $(IMAGE) .
 
