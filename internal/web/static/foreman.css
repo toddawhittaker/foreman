@@ -5214,6 +5214,17 @@ tr:has(> td > .player-actions[open]) > td.num {
   overflow-wrap: anywhere;
 }
 
+/* "Not running" follows the heading's live badge, so it goes when the game
+   starts and comes back when it stops, with no reload. */
+.chat-not-running {
+  display: grid;
+  gap: var(--space-3);
+}
+
+main:has(#server-title .state--running) .chat-not-running {
+  display: none;
+}
+
 /* A link inside an error or an empty state's sentence is at least a 24 px
    target (WCAG 2.5.8). */
 .error a,

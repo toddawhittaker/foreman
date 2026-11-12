@@ -262,3 +262,16 @@ test("a scheduled restart with no wait is skipped while players are online, and 
   expect((await commands(fakeGame!)).filter((c) => c.startsWith("/quit"))).toEqual([]);
   await checkPage(page);
 });
+
+test("the Chat tab's not-running note follows the game without a reload", async ({ page, foreman, fakeGame }) => {
+  await running(page, foreman, fakeGame!);
+  await page.goto("/chat");
+  const note = page.locator("#chat-not-running");
+  await expect(note).toHaveCount(1);
+  await expect(note).toBeHidden();
+  await checkPage(page);
+  expect((await page.request.post("/worlds/base/stop", { form: { countdown: "0" }, maxRedirects: 0 })).status()).toBe(303);
+  await expect(note).toBeVisible(live);
+  await expect(note).toContainText("The server is not running, so no one can read chat.");
+  await checkPage(page);
+});
