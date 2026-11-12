@@ -162,8 +162,13 @@ same. Light or Dark posts to `POST /theme`, which keeps the choice in a
 `foreman_theme` cookie for this browser and goes back to the page through
 the same return-path check as the language menu. The server then writes
 `data-theme="light"` or `"dark"` on `html` and that one scheme in the
-meta, and `:root[data-theme]` sets `color-scheme` to it, overriding the
-system. The page is drawn in the chosen theme from the first paint, with
+meta, and `[data-theme]` sets `color-scheme` to it, overriding the
+system. The same attribute on any other element draws that part of the page
+in one theme; such an element sets its own `color` and `background` again,
+because the inherited ones were resolved in the page's theme. The
+component page (`GET /design`, linked from nowhere) uses this to show every
+component in both themes side by side, with the tokens and icons read from
+`foreman.css` itself. The page is drawn in the chosen theme from the first paint, with
 no script. Both themes must meet every ratio below (SPEC 17.1).
 
 Every colour in the CSS comes from a token below. A raw hex value

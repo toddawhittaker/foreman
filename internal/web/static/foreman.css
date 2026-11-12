@@ -166,12 +166,13 @@
   --page-max: 76rem;
 }
 
-/* The user menu's theme choice (SPEC 17.3). */
-:root[data-theme="light"] {
+/* The user menu's theme choice (SPEC 17.3) on html; on any other element it
+   draws that part of the page in one theme, as the component page does. */
+[data-theme="light"] {
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
+[data-theme="dark"] {
   color-scheme: dark;
 }
 
@@ -1717,15 +1718,21 @@ main h1:has(> .ident) {
   border-inline-start: 4px solid var(--color-border);
 }
 
-main:has(#server-title .state--running) .status-card {
+/* The modifier classes draw one state's card on its own, on the component page. */
+main:has(#server-title .state--running) .status-card,
+.status-card--running {
   border-inline-start-color: var(--color-ok);
 }
 
-main:has(#server-title :is(.state--starting, .state--stopping)) .status-card {
+main:has(#server-title :is(.state--starting, .state--stopping)) .status-card,
+.status-card--starting,
+.status-card--stopping {
   border-inline-start-color: var(--color-warn);
 }
 
-main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card {
+main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card,
+.status-card--crashed,
+.status-card--crash-looping {
   border-inline-start-color: var(--color-danger);
 }
 
@@ -4982,4 +4989,88 @@ main:has(> .gate) > h1 {
 .worlds > li > h2 > a:hover {
   text-decoration: underline;
   text-underline-offset: 0.2em;
+}
+
+/* The component page (DESIGN 7): each section drawn once in each theme. A
+   pane's colour and background are set again because the inherited ones were
+   resolved in the page's theme, not the pane's. */
+.design-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-4);
+}
+
+.design-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  min-inline-size: 0;
+  padding: var(--space-3);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+.design-pane code {
+  overflow-wrap: anywhere;
+}
+
+.design-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.design-list > li {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.design-icon {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.design-swatches {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.design-swatches > li {
+  display: grid;
+  grid-template-columns: var(--target-min) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.design-scale > li {
+  grid-template-columns: 8rem minmax(0, 1fr);
+}
+
+.design-scale code {
+  overflow-wrap: normal;
+}
+
+.design-chip {
+  block-size: var(--target-min);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.design-bar {
+  block-size: var(--space-3);
+  background: var(--color-selected);
 }
