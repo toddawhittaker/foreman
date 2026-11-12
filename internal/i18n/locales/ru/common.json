@@ -81,5 +81,6 @@
   "common.menu.language": "{language}: меню языка",
   "common.menu.notifications": "Уведомления",
   "common.menu.schedule": "Расписание перезапуска",
+  "common.settings.label": "Настройки Foreman",
   "common.countdown.none_name": "Без предупреждения: установить обратный отсчёт на 0 секунд"
 }

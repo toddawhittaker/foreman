@@ -316,6 +316,14 @@ type StopOptions struct {
 	// Countdown is how long players are warned; zero warns nobody. Callers
 	// pass StopCountdown for the default.
 	Countdown time.Duration
+	// WarnEmpty counts down even with nobody online, so a player who joins
+	// meanwhile is warned and can be waited for. Only Restart honours it,
+	// for the scheduled restart (SPEC 7.12).
+	WarnEmpty bool
+	// OnlyRunning makes Restart refuse with ErrNotRunning, starting nothing,
+	// when there is no game in game to stop: stopped, or crashed even if
+	// the monitor has not seen it yet. For the scheduled restart (SPEC 7.12).
+	OnlyRunning bool
 }
 
 // stopCountdown returns the countdown to use, or ErrCountdown.
@@ -396,6 +404,11 @@ func (c *Controller) planStop(ctx context.Context, w *worldRun) (stopPlan, error
 // stopLocked runs the stop steps. It returns ErrNotRunning, with the steps
 // skipped, when there is no game to stop. The caller holds the world's lock.
 func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Duration) error {
+	return c.stopWarn(ctx, o, countdown, StopOptions{})
+}
+
+// stopWarn is stopLocked that honours opts.WarnEmpty and opts.OnlyRunning.
+func (c *Controller) stopWarn(ctx context.Context, o *opRun, countdown time.Duration, opts StopOptions) error {
 	w := o.w
 	plan, err := c.planStop(ctx, w)
 	switch {
@@ -404,6 +417,9 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 	case err != nil:
 		o.skip(stopSteps...)
 		return err
+	case opts.OnlyRunning && !plan.save:
+		o.skip(stopSteps...)
+		return ErrNotRunning
 	}
 	cont, rc := plan.cont, plan.rc
 	if !plan.save {
@@ -415,7 +431,7 @@ func (c *Controller) stopLocked(ctx context.Context, o *opRun, countdown time.Du
 		if err != nil {
 			return err
 		}
-		if len(names) == 0 || countdown == 0 {
+		if (len(names) == 0 && !opts.WarnEmpty) || countdown == 0 {
 			o.skip(StepWarn)
 		} else {
 			if err := c.countdown(ctx, o, rc, countdown, names); err != nil {
@@ -730,8 +746,8 @@ func (c *Controller) Restart(ctx context.Context, id string, by Actor, stop Stop
 		return err
 	}
 	ctx, o := c.beginOp(ctx, c.world(id), AuditRestart, stopSteps, startSteps(opts))
-	err = c.stopLocked(ctx, o, countdown)
-	if errors.Is(err, ErrNotRunning) {
+	err = c.stopWarn(ctx, o, countdown, stop)
+	if errors.Is(err, ErrNotRunning) && !stop.OnlyRunning {
 		err = nil
 	}
 	if err == nil {

@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "Uloženo. Další restart: {next}.",
+  "schedule.done.off": "Uloženo. Žádný restart není naplánován.",
+  "schedule.enabled.label": "Restartovat aktivní svět každý den",
+  "schedule.how.heading": "Jak to funguje",
+  "schedule.how.join": "Pokud se během varování někdo připojí, restart se zastaví, hráč se to dozví ve hře a Foreman čeká znovu.",
+  "schedule.how.never": "Plán nikdy nespustí zastavený ani spadlý server a restart zmeškaný v době, kdy Foreman neběžel, se nedohání.",
+  "schedule.how.skip": "Pokud jsou hráči po uplynutí limitu čekání stále online, restart se ten den vynechá.",
+  "schedule.how.wait": "V nastavený čas Foreman čeká, dokud nikdo nebude online.",
+  "schedule.how.warn": "Potom server restartuje poté, co hráče ve hře {seconds} sekund varuje.",
+  "schedule.limit.error": "Je třeba zadat celý počet hodin od 0 do {max}.",
+  "schedule.limit.hint": "Hodiny, 0 až {max}. Při 0 se restart hned vynechá, pokud je někdo online.",
+  "schedule.limit.label": "Čekat na odchod hráčů nejvýše",
+  "schedule.save": "Uložit plán",
+  "schedule.state.off": "Žádný restart není naplánován.",
+  "schedule.state.on": "Foreman restartuje aktivní svět každý den v {time} ({zone}). Další restart: {next}.",
+  "schedule.time.error": "Je třeba zadat čas, například 04:00.",
+  "schedule.time.label": "Čas",
+  "schedule.zone.error": "Je třeba vybrat časové pásmo ze seznamu.",
+  "schedule.zone.label": "Časové pásmo"
+}

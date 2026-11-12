@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "Saved. The next restart is {next}.",
+  "schedule.done.off": "Saved. No restart is scheduled.",
+  "schedule.enabled.label": "Restart the active world every day",
+  "schedule.how.heading": "How it works",
+  "schedule.how.join": "If someone joins during the warning, the restart stops, they are told in the game, and Foreman waits again.",
+  "schedule.how.never": "A stopped or crashed server is never started by the schedule, and a restart missed while Foreman was not running is not made up.",
+  "schedule.how.skip": "If players are still online when the wait limit runs out, that day's restart is skipped.",
+  "schedule.how.wait": "At the set time, Foreman waits until nobody is online.",
+  "schedule.how.warn": "Then it restarts the server after warning players in the game for {seconds} seconds.",
+  "schedule.limit.error": "Enter a whole number of hours from 0 to {max}.",
+  "schedule.limit.hint": "Hours, 0 to {max}. 0 skips the restart at once if anyone is online.",
+  "schedule.limit.label": "Wait for players to leave for up to",
+  "schedule.save": "Save schedule",
+  "schedule.state.off": "No restart is scheduled.",
+  "schedule.state.on": "Foreman restarts the active world every day at {time} ({zone}). Next restart: {next}.",
+  "schedule.time.error": "Enter a time such as 04:00.",
+  "schedule.time.label": "Time",
+  "schedule.zone.error": "Choose a time zone from the list.",
+  "schedule.zone.label": "Time zone"
+}

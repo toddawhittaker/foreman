@@ -3,6 +3,7 @@
 {{define "content" -}}
 {{with .Page}}
 <h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
+{{template "settings-tabs" "notification"}}
 {{template "summary" .Problems}}
 {{- /* The address is write-only: it is never put back in a value attribute (DESIGN 8.16). */}}
 <form method="post" action="{{.Path}}" class="panel" novalidate>

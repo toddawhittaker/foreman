@@ -1,8 +1,7 @@
 import { test, expect, checkPage, createAdmin, openMenu, pickLanguage } from "./foreman.js";
 
 // The Chat tab and the links to the Notifications and Restart schedule pages.
-// The pages are empty until their tasks fill them; this checks they are
-// reachable the way a person reaches them and load.
+// This checks they are reachable the way a person reaches them and load.
 
 test("the Chat tab sits beside Overview and Console and opens the Chat page", async ({ page }) => {
   await createAdmin(page);
@@ -19,8 +18,8 @@ test("the user menu links to the Notifications and Restart schedule pages", asyn
   await createAdmin(page);
   const menu = page.locator("details.menu");
   for (const [name, path] of [
+    ["Restart schedule", "/settings/restart-schedule"],
     ["Notifications", "/settings/notifications"],
-    ["Restart schedule", "/settings/schedule"],
   ]) {
     await openMenu(page);
     // Beside the factorio.com account link.
@@ -45,7 +44,7 @@ test("the tab and links are translated", async ({ page }) => {
 });
 
 test("the new pages need a signed-in user", async ({ page }) => {
-  for (const path of ["/chat", "/settings/notifications", "/settings/schedule"]) {
+  for (const path of ["/chat", "/settings/notifications", "/settings/restart-schedule"]) {
     const res = await page.request.get(path, { maxRedirects: 0 });
     expect(res.status(), path).not.toBe(200);
   }

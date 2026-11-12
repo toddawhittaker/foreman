@@ -137,7 +137,17 @@ func serve(cfg *config.Config) error {
 	var notifying sync.WaitGroup
 	notifying.Go(func() { notifier.Run(notifyCtx) })
 	defer func() { stopNotify(); notifying.Wait() }()
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: schedule.New(), HostDataDir: hostDir, Log: slog.Default()})
+	// The schedule uses the controller, the notifier and the store, so it
+	// stops first; a restart it began ends before Run returns.
+	scheduler, err := schedule.New(ctx, schedule.Config{Game: games, Store: st, Active: activeWorld(st, worlds), Notifier: notifier, Log: slog.Default()})
+	if err != nil {
+		return err
+	}
+	scheduleCtx, stopSchedule := context.WithCancel(context.Background())
+	var scheduling sync.WaitGroup
+	scheduling.Go(func() { scheduler.Run(scheduleCtx) })
+	defer func() { stopSchedule(); scheduling.Wait() }()
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: scheduler, HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}
@@ -186,6 +196,21 @@ func listen(addr string) (net.Listener, error) {
 	}
 	slog.Info("listening", "addr", ln.Addr().String())
 	return ln, nil
+}
+
+// activeWorld names the active world for the restart schedule.
+func activeWorld(st *store.Store, worlds *world.Manager) schedule.ActiveWorld {
+	return func(ctx context.Context) (string, string, bool, error) {
+		id, ok, err := st.ActiveWorld(ctx)
+		if err != nil || !ok {
+			return "", "", false, err
+		}
+		w, err := worlds.Get(ctx, id)
+		if err != nil {
+			return "", "", false, err
+		}
+		return id, w.Name, true, nil
+	}
 }
 
 // gameConfig fills the controller's settings.

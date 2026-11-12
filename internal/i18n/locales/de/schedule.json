@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "Gespeichert. Der nächste Neustart ist {next}.",
+  "schedule.done.off": "Gespeichert. Es ist kein Neustart geplant.",
+  "schedule.enabled.label": "Die aktive Welt jeden Tag neu starten",
+  "schedule.how.heading": "So funktioniert es",
+  "schedule.how.join": "Tritt während der Warnung jemand bei, wird der Neustart abgebrochen, die Person erfährt es im Spiel, und Foreman wartet erneut.",
+  "schedule.how.never": "Ein gestoppter oder abgestürzter Server wird vom Zeitplan nie gestartet, und ein Neustart, der verpasst wurde, während Foreman nicht lief, wird nicht nachgeholt.",
+  "schedule.how.skip": "Sind nach Ablauf der Wartezeit noch Spieler online, entfällt der Neustart an diesem Tag.",
+  "schedule.how.wait": "Zur eingestellten Zeit wartet Foreman, bis niemand online ist.",
+  "schedule.how.warn": "Dann startet es den Server neu, nachdem es die Spieler im Spiel {seconds} Sekunden lang gewarnt hat.",
+  "schedule.limit.error": "Gib eine ganze Zahl von Stunden von 0 bis {max} ein.",
+  "schedule.limit.hint": "Stunden, 0 bis {max}. Bei 0 entfällt der Neustart sofort, wenn jemand online ist.",
+  "schedule.limit.label": "Höchstens so lange warten, bis die Spieler gehen",
+  "schedule.save": "Zeitplan speichern",
+  "schedule.state.off": "Es ist kein Neustart geplant.",
+  "schedule.state.on": "Foreman startet die aktive Welt jeden Tag um {time} ({zone}) neu. Nächster Neustart: {next}.",
+  "schedule.time.error": "Gib eine Uhrzeit wie 04:00 ein.",
+  "schedule.time.label": "Uhrzeit",
+  "schedule.zone.error": "Wähle eine Zeitzone aus der Liste.",
+  "schedule.zone.label": "Zeitzone"
+}

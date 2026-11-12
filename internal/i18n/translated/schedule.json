@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "e25a992e",
+  "schedule.done.off": "a7621aaa",
+  "schedule.enabled.label": "66ae259b",
+  "schedule.how.heading": "9c870aa6",
+  "schedule.how.join": "9c4a38aa",
+  "schedule.how.never": "975d1004",
+  "schedule.how.skip": "4e1b5009",
+  "schedule.how.wait": "a8b576d9",
+  "schedule.how.warn": "e48eac7c",
+  "schedule.limit.error": "12d573a8",
+  "schedule.limit.hint": "ce504e28",
+  "schedule.limit.label": "fab4687c",
+  "schedule.save": "387f355f",
+  "schedule.state.off": "17833a68",
+  "schedule.state.on": "c9ed0ca6",
+  "schedule.time.error": "14cd3a6a",
+  "schedule.time.label": "33b93476",
+  "schedule.zone.error": "8c8c343a",
+  "schedule.zone.label": "b9fe1464"
+}

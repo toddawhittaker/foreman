@@ -3,6 +3,7 @@
 {{define "content" -}}
 {{with .Page}}
 <h1>{{t "common.menu.notifications"}}</h1>
+{{template "settings-tabs" "notifications"}}
 {{- if .NoKey}}
 {{- /* Without the key no address can be sealed or read, so a note stands in for the list and form (DESIGN 8.16). */}}
 <div class="message message--note" id="notify-nokey">

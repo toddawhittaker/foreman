@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "已保存。下次重启：{next}。",
+  "schedule.done.off": "已保存。没有计划的重启。",
+  "schedule.enabled.label": "每天重启活动世界",
+  "schedule.how.heading": "工作方式",
+  "schedule.how.join": "如果警告期间有人加入，重启会停止，游戏中会告知该玩家，Foreman 会再次等待。",
+  "schedule.how.never": "计划绝不会启动已停止或已崩溃的服务器；Foreman 未运行期间错过的重启也不会补做。",
+  "schedule.how.skip": "如果等待时限结束时仍有玩家在线，当天的重启会被跳过。",
+  "schedule.how.wait": "到了设定时间，Foreman 会等到没有人在线。",
+  "schedule.how.warn": "然后在游戏中向玩家警告 {seconds} 秒后重启服务器。",
+  "schedule.limit.error": "请输入 0 到 {max} 之间的整数小时数。",
+  "schedule.limit.hint": "小时数，0 到 {max}。为 0 时，只要有人在线就立即跳过重启。",
+  "schedule.limit.label": "等待玩家离开的最长时间",
+  "schedule.save": "保存计划",
+  "schedule.state.off": "没有计划的重启。",
+  "schedule.state.on": "Foreman 每天 {time}（{zone}）重启活动世界。下次重启：{next}。",
+  "schedule.time.error": "请输入时间，例如 04:00。",
+  "schedule.time.label": "时间",
+  "schedule.zone.error": "请从列表中选择时区。",
+  "schedule.zone.label": "时区"
+}
