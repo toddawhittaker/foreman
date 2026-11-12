@@ -8,7 +8,8 @@
 
   function followLog(frame) {
     const box = frame.querySelector(".log");
-    const pre = box.querySelector("pre");
+    // The game log's lines are spans in a pre; chat's are list items.
+    const pre = box.querySelector("pre, ol");
     const jump = frame.querySelector("button");
     const max = Number(frame.dataset.maxLines);
 
@@ -40,6 +41,17 @@
       if (m) el.className = "log-" + m[1].toLowerCase();
       return el;
     };
+    // With data-log-html each line comes as one list item the server drew and
+    // escaped (DESIGN 8.14); its time is put in the viewer's zone before it
+    // is shown, so a screen reader reads the local time.
+    const parsed = (html) => {
+      const t = document.createElement("template");
+      t.innerHTML = html;
+      const el = t.content.firstElementChild;
+      window.foremanTimes?.run(el);
+      return el;
+    };
+    const row = "logHtml" in frame.dataset ? parsed : span;
     const noEmptyNote = (lines) => {
       if (lines.length > 0) document.getElementById("log-empty")?.remove();
     };
@@ -48,7 +60,7 @@
     // bottom follows them. Focus is never touched.
     const add = (lines) => {
       readScroll();
-      pre.append(...lines.map(span));
+      pre.append(...lines.map(row));
       while (pre.childElementCount > max) pre.firstElementChild.remove();
       noEmptyNote(lines);
       if (following) toEnd();
@@ -59,7 +71,7 @@
     const reset = (lines) => {
       readScroll();
       const top = box.scrollTop;
-      pre.replaceChildren(...lines.slice(-max).map(span));
+      pre.replaceChildren(...lines.slice(-max).map(row));
       noEmptyNote(lines);
       if (following) toEnd();
       else {

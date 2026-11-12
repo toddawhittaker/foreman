@@ -1,6 +1,7 @@
 {
   "chat.announce.sent": "0a1f2fbc",
   "chat.empty": "10acd507",
+  "chat.error.control": "a2eb2fb5",
   "chat.error.empty": "69f51bc7",
   "chat.error.lines": "eb40586f",
   "chat.error.long": "afd274f4",

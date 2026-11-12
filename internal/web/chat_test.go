@@ -2,6 +2,7 @@ package web
 
 import (
 	"bufio"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"slices"
@@ -45,24 +46,29 @@ func (g *gameRig) waitChatPage(texts ...string) string {
 	}
 }
 
-// SPEC 8.5: the tab shows the chat the game logged, oldest first, as text
-// the Console's log script can follow; the server is named "Server".
+// SPEC 8.5, DESIGN 8.14: the tab shows the chat the game logged, oldest
+// first, one list item per line with its time, name and text; the server is
+// named "Server" and its lines are marked as its own.
 func TestChatTabShowsHistory(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
 	g.join(id, "alice")
 	g.say(id, "alice", `<b>hi</b> & "bye"`)
+	g.join(id, "Server")
+	g.say(id, "Server", "pretend")
 	if rep := g.post(chatSendPath(id), url.Values{"message": {"on my way"}}); rep.StatusCode != http.StatusSeeOther {
 		t.Fatalf("send: %d\n%s", rep.StatusCode, rep.body)
 	}
-	body := g.waitChatPage("on my way", "&lt;b&gt;hi&lt;/b&gt;")
+	body := g.waitChatPage("on my way", "&lt;b&gt;hi&lt;/b&gt;", "pretend")
 	last := g.ctrl.ChatLines(id)
 	for _, want := range []string{
 		`role="log"`, `aria-label="Chat messages"`, `data-max-lines="200"`, `Jump to newest`, `src="/static/log.js`,
 		`data-log-events="` + chatPath(id, "/events") + `?after=` + strconv.FormatUint(last[len(last)-1].Seq+1, 10) + `"`,
-		` alice: &lt;b&gt;hi&lt;/b&gt; &amp; &#34;bye&#34;
-`, ` Server: on my way
-`, `<span id="server-title">Base <span class="state state--running">Running</span></span>`,
+		`<div class="log" tabindex="0" role="log" aria-label="Chat messages"><ol class="chat-lines">`, `data-log-html`,
+		`<span class="chat-name">alice</span> <span class="chat-text" dir="auto">&lt;b&gt;hi&lt;/b&gt; &amp; &#34;bye&#34;</span></li>`,
+		`<li class="chat-line--server"><time datetime="`,
+		`<span class="chat-name">Server</span> <span class="chat-text" dir="auto">on my way</span></li>`,
+		`<span id="server-title">Base <span class="state state--running">Running</span></span>`,
 		`maxlength="500"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -71,6 +77,11 @@ func TestChatTabShowsHistory(t *testing.T) {
 	}
 	if strings.Contains(body, "<b>hi</b>") {
 		t.Error("a player's markup was not escaped")
+	}
+	// A player who calls themself "Server" is not marked as the server.
+	impostor := body[strings.LastIndex(body[:strings.Index(body, "pretend")], "<li"):]
+	if !strings.HasPrefix(impostor, "<li><time") || !strings.Contains(impostor, `<span class="chat-name">Server</span> <span class="chat-text" dir="auto">pretend</span>`) {
+		t.Errorf("a player named Server: %.200s", impostor)
 	}
 	if strings.Index(body, "bye") > strings.Index(body, "on my way") {
 		t.Error("the history is not oldest first")
@@ -143,13 +154,14 @@ func TestChatRefusesWhatItMust(t *testing.T) {
 		"/c game.print(1)":        `chat-error`,
 		" /c rcon.print('ran')":   `href="/console">Go to the Console</a>`,
 		"   /c rcon.print('ran')": `href="/console">Go to the Console</a>`,
-		"\t/c rcon.print('ran')":  `href="/console">Go to the Console</a>`,
+		"\t/c rcon.print('ran')":  "control character",
 		"":                        "Enter a message to send",
 		"   ":                     "Enter a message to send",
 		strings.Repeat("x", 501):  "at most 500 characters",
 		"a\nb":                    "one line",
 		"a\rb":                    "one line",
 		"a\x00b":                  "NUL",
+		"a\x1bb":                  "control character",
 	}
 	for msg, want := range cases {
 		rep := g.post(chatSendPath(id), url.Values{"message": {msg}})
@@ -286,6 +298,21 @@ func (g *gameRig) waitChatLines(id string, n int) []game.ChatLine {
 	return nil
 }
 
+// chatRows decodes a "lines" event: one list item of HTML per chat line.
+func chatRows(t *testing.T, data string) string {
+	t.Helper()
+	var rows []string
+	if err := json.Unmarshal([]byte(data), &rows); err != nil {
+		t.Fatalf("lines event %q: %v", data, err)
+	}
+	for _, row := range rows {
+		if !strings.HasPrefix(row, "<li") || !strings.HasSuffix(strings.TrimSpace(row), "</li>") {
+			t.Errorf("a row is not one list item: %q", row)
+		}
+	}
+	return strings.Join(rows, "")
+}
+
 // SPEC 8.5: the stream sends nothing for what the page already shows (no
 // reset, which a polite log would read out again), then each new chat line
 // once, as the log script's "lines" events, escaped as text and numbered so a
@@ -318,7 +345,7 @@ func TestChatStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stream ended before the new line: %v", err)
 	}
-	if name != "lines" || !strings.HasPrefix(data, `["`) || !strings.Contains(data, ` alice: \u003cscript\u003ex\u003c/script\u003e`) {
+	if name != "lines" || !strings.Contains(chatRows(t, data), `<span class="chat-name">alice</span> <span class="chat-text" dir="auto">&lt;script&gt;x&lt;/script&gt;</span></li>`) {
 		t.Errorf("first event %q %q", name, data)
 	}
 	if strings.Contains(data, "bob") || strings.Contains(data, "before") {
@@ -355,10 +382,10 @@ func TestChatStreamReconnect(t *testing.T) {
 			resp := g.openChatEventsAfter(id, c.after, c.lastID)
 			defer func() { _ = resp.Body.Close() }()
 			evName, _, data, err := readChatEvent(t, bufio.NewReader(resp.Body))
-			if err != nil || evName != "lines" || !strings.Contains(data, " alice: "+c.want) {
+			if err != nil || evName != "lines" || !strings.Contains(chatRows(t, data), `dir="auto">`+c.want+"<") {
 				t.Fatalf("event %q %q, %v", evName, data, err)
 			}
-			if c.not != "" && strings.Contains(data, " alice: "+c.not) {
+			if c.not != "" && strings.Contains(chatRows(t, data), `dir="auto">`+c.not+"<") {
 				t.Errorf("an old line was sent again: %s", data)
 			}
 		})

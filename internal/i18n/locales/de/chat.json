@@ -9,6 +9,7 @@
   "chat.message.hint": "Die Spieler sehen dies im Spiel als Nachricht vom Server. Sie wird im Protokoll der Aktionen festgehalten.",
   "chat.send": "Senden",
   "chat.error.empty": "Gib eine Nachricht zum Senden ein",
+  "chat.error.control": "Eine Nachricht darf kein Steuerzeichen enthalten, etwa einen Tabulator",
   "chat.error.long": "Gib eine Nachricht mit höchstens {max} Zeichen ein",
   "chat.error.nul": "Eine Nachricht darf kein NUL-Zeichen enthalten",
   "chat.error.lines": "Eine Nachricht muss in einer Zeile stehen",

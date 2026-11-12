@@ -44,7 +44,7 @@ func TestParseChat(t *testing.T) {
 
 // The captured log holds the server's chat lines among everything else.
 func TestParseChatLinesFromTheCapturedLog(t *testing.T) {
-	got := ParseChatLines(transcript(t, "2.1.24", "run-players.log"))
+	got := parseChatLines(transcript(t, "2.1.24", "run-players.log"), 0)
 	if len(got) == 0 {
 		t.Fatal("no chat in the captured log")
 	}
@@ -64,7 +64,7 @@ func TestParseChatLinesKeepsTheLast200(t *testing.T) {
 		lines = append(lines, "2026-11-12 15:00:00 [CHAT] alice: m"+string(rune('a'+i%26))+strings.Repeat("x", i))
 		lines = append(lines, "2026-11-12 15:00:00 [JOIN] bob joined the game")
 	}
-	got := ParseChatLines(lines)
+	got := parseChatLines(lines, 0)
 	if len(got) != ChatHistoryLines {
 		t.Fatalf("%d lines, want %d", len(got), ChatHistoryLines)
 	}
@@ -93,14 +93,18 @@ func TestCheckChat(t *testing.T) {
 		{"CR", "a\rb", ErrChatLines},
 		{"CRLF at the end", "a\r\n", ErrChatLines},
 		{"line separator", "a b", ErrChatLines},
+		{"tab", "a\tb", ErrChatControl},
+		{"escape", "a\x1b[31mb", ErrChatControl},
+		{"backspace", "a\bb", ErrChatControl},
+		{"C1 control", "a\u009bb", ErrChatControl},
 		{"slash", "/c game.print(1)", ErrChatCommand},
 		{"slash alone", "/", ErrChatCommand},
 		{"one space then slash (captured: the game runs it)", " /c rcon.print(1)", ErrChatCommand},
 		{"three spaces then slash", "   /c rcon.print(1)", ErrChatCommand},
-		{"tab then slash", "\t/c 1", ErrChatCommand},
+		{"tab then slash", "\t/c 1", ErrChatControl},
 		{"no-break space then slash", " /c 1", ErrChatCommand},
 		{"zero-width space then slash", "\u200b /c 1", ErrChatCommand},
-		{"control character then slash", "\x07/c 1", ErrChatCommand},
+		{"control character then slash", "\x07/c 1", ErrChatControl},
 		{"byte order mark then slash", "\ufeff/c 1", ErrChatCommand},
 		{"ideographic space then slash", "\u3000/c 1", ErrChatCommand},
 		{"byte order mark after spaces then slash", " \ufeff /c 1", ErrChatCommand},
@@ -154,13 +158,13 @@ func TestSendChatNeverRunsACommand(t *testing.T) {
 	id := r.newWorld("Commands")
 	r.start(id)
 	before := len(r.commands(id))
-	for _, msg := range []string{"/c rcon.print('ran')", " /c rcon.print('ran')", "   /c rcon.print('ran')", "\t/c rcon.print('ran')", "\u200b/c rcon.print('ran')"} {
+	for _, msg := range []string{"/c rcon.print('ran')", " /c rcon.print('ran')", "   /c rcon.print('ran')", "\u200b/c rcon.print('ran')"} {
 		if err := r.c.SendChat(context.Background(), id, admin, msg); !errors.Is(err, ErrChatCommand) {
 			t.Errorf("SendChat(%q) = %v, want ErrChatCommand", msg, err)
 		}
 	}
 	// Other blanks the game might strip are refused too, whichever way.
-	for _, msg := range []string{"\ufeff/c rcon.print('ran')", "\u3000/c rcon.print('ran')", "\u2029/c rcon.print('ran')", "\u2028 /c rcon.print('ran')"} {
+	for _, msg := range []string{"\t/c rcon.print('ran')", "\ufeff/c rcon.print('ran')", "\u3000/c rcon.print('ran')", "\u2029/c rcon.print('ran')", "\u2028 /c rcon.print('ran')"} {
 		if err := r.c.SendChat(context.Background(), id, admin, msg); err == nil {
 			t.Errorf("SendChat(%q) was accepted", msg)
 		}

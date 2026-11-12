@@ -2747,12 +2747,12 @@ current.
 <section class="panel" aria-labelledby="chat-heading">
   <h2 id="chat-heading" class="visually-hidden">Chat</h2>
   <div class="log-frame">
-    <ol class="chat-lines log" tabindex="0" role="log" aria-label="Chat messages">
+    <div class="log" tabindex="0" role="log" aria-label="Chat messages"><ol class="chat-lines">
       <li><time datetime="2026-11-12T19:04:11Z">19:04</time>
         <span class="chat-name">Alice</span> <span class="chat-text" dir="auto">is anyone near the oil field?</span></li>
       <li class="chat-line--server"><time …>19:04</time>
         <span class="chat-name">Server</span> <span class="chat-text" dir="auto">todd: on my way</span></li>
-    </ol>
+    </ol></div>
     <button type="button" class="button" id="chat-jump" hidden>Jump to newest</button>
   </div>
   <form method="post" action="/server/chat" id="chat-form" novalidate>

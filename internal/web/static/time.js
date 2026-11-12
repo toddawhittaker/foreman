@@ -6,7 +6,8 @@
 // only: relative text there would go stale and make the name long. A
 // button whose time is the point of it, such as the next scheduled restart,
 // asks for the age with data-age; it is refreshed with the rest. A time
-// still to come reads forward ("in 7 hours").
+// still to come reads forward ("in 7 hours"). A time marked data-clock shows
+// the clock alone, with the full time in its title.
 (function () {
   "use strict";
 
@@ -70,6 +71,16 @@
     zone.textContent = clockParts.filter(function (p) {
       return p.type === "timeZoneName";
     })[0].value;
+
+    var zoneName = zone.textContent;
+    // A chat line shows its clock alone; the title gives the full time
+    // (DESIGN 8.14).
+    if (el.hasAttribute("data-clock")) {
+      el.textContent = clock;
+      el.title = day + " " + clock + " " + zoneName;
+      el.dataset.local = "true";
+      return;
+    }
 
     // The date, the clock and the zone each stay on one line, and the zone,
     // such as "GMT+5:45", may take a line of its own (DESIGN 8.3). A table
