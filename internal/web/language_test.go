@@ -133,15 +133,38 @@ func TestLanguageMenu(t *testing.T) {
 	body := hn.get(PathSignIn+"?next=%2Fworlds", withHeader("Accept-Language", "de")).Body.String()
 	for _, want := range []string{
 		`<form method="post" action="/language">`,
-		`<legend>Sprache <span lang="en">(Language)</span></legend>`,
-		`<button type="submit" name="lang" value="de" lang="de" class="menu__item" aria-current="true">Deutsch</button>`,
-		`<button type="submit" name="lang" value="zh-Hans" lang="zh-Hans" class="menu__item">简体中文</button>`,
+		// One row: the current language's flag and name, folded over the
+		// other seven (DESIGN 6, "User menu").
+		`<details class="menu__langs">`,
+		`<summary class="menu__item"><img src="/static/flags/de.svg?v=`,
+		`<span class="menu__name">Deutsch</span></summary>`,
+		`<button type="submit" name="lang" value="zh-Hans" lang="zh-Hans" class="menu__item"><img src="/static/flags/cn.svg?v=`,
+		`alt="" width="20" height="15" loading="lazy"> <span class="menu__name">简体中文</span></button>`,
 		`<input type="hidden" name="return" value="/signin?next=%2Fworlds">`,
 		`<script type="application/json" id="i18n">{`,
 		`"common.label.note":"Hinweis:"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
+		}
+	}
+	// The list holds the seven others; the current one is the row itself.
+	list := between(body, `<details class="menu__langs">`, "</details>")
+	if strings.Contains(list, `name="lang" value="de"`) || strings.Count(list, `name="lang"`) != 7 {
+		t.Errorf("language list is not the seven others\n%s", list)
+	}
+	// Every flag is decorative: the language's name is its text.
+	if n := strings.Count(list, `<img `); n != 8 || strings.Count(list, `alt=""`) != n {
+		t.Errorf("%d flags, not all with empty alt\n%s", n, list)
+	}
+}
+
+// Every language has its flag among the vendored pictures (DESIGN 6).
+func TestEveryLanguageHasAFlag(t *testing.T) {
+	r := newTestRenderer(t)
+	for _, l := range i18n.Languages {
+		if _, err := r.flagURL(l.Tag.String()); err != nil {
+			t.Error(err)
 		}
 	}
 }
@@ -153,10 +176,10 @@ func TestLanguageMenuSaysLanguageInEnglishToo(t *testing.T) {
 	hn := newHarness(t, nil)
 	hn.addUser("alice", testPassword)
 	de := hn.get(PathSignIn, withHeader("Accept-Language", "de")).Body.String()
-	if want := `<legend>Sprache <span lang="en">(Language)</span></legend>`; !strings.Contains(de, want) {
+	if want := `<span class="visually-hidden">Sprache <span lang="en">(Language)</span></span> <span class="menu__name">Deutsch</span>`; !strings.Contains(de, want) {
 		t.Errorf("German menu lacks %s", want)
 	}
-	if en := hn.get(PathSignIn).Body.String(); !strings.Contains(en, `<legend>Language</legend>`) {
+	if en := hn.get(PathSignIn).Body.String(); !strings.Contains(en, `<span class="visually-hidden">Language</span> <span class="menu__name">English</span>`) {
 		t.Error("English menu label is not just Language")
 	}
 }

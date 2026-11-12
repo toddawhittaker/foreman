@@ -1,5 +1,5 @@
 {
-  "settings.link": "Paramètres",
+  "settings.link": "Paramètres du jeu",
   "settings.title": "Paramètres de {world}",
   "settings.readonly.unreadable": "Le fichier world.json de ce monde est illisible, donc ses paramètres ne peuvent pas être modifiés ici.",
   "settings.broken": "Foreman ne peut pas lire {file} comme un objet JSON, donc ce formulaire ne peut pas l’afficher. Remplacez le fichier avec l’éditeur JSON ci-dessous.",

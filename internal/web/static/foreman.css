@@ -225,6 +225,9 @@
   --i-bell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.268 21a2 2 0 0 0 3.464 0'/%3E %3Cpath d='M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326'/%3E%3C/svg%3E");
   --i-chat: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
   --i-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z'/%3E %3Ccircle cx='16.5' cy='7.5' r='.5' fill='currentColor'/%3E%3C/svg%3E");
+  --i-theme-auto: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 8a2.83 2.83 0 0 0 4 4 4 4 0 1 1-4-4'/%3E%3Cpath d='M12 2v2M12 20v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4'/%3E%3C/svg%3E");
+  --i-theme-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41'/%3E%3C/svg%3E");
+  --i-theme-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'/%3E%3C/svg%3E");
 }
 
 /* Reset */
@@ -343,6 +346,7 @@ main h2[id]::before {
 .tabs li:nth-child(1) a { --icon: var(--i-server); }
 .tabs li:nth-child(2) a { --icon: var(--i-worlds); }
 .tabs li:nth-child(3) a { --icon: var(--i-snapshot); }
+.tabs li:nth-child(4) a { --icon: var(--i-settings); }
 #act-start { --icon: var(--i-start); }
 #act-stop { --icon: var(--i-stop); }
 #act-restart { --icon: var(--i-restart); }
@@ -558,6 +562,15 @@ time {
   color: var(--color-selected);
 }
 
+/* At 320 px the four main tabs draw tighter and a step smaller, so they
+   keep one row in English (DESIGN 6). */
+@media (max-width: 23rem) {
+  .tabs a {
+    padding-inline: var(--space-1);
+    font-size: var(--text-sm);
+  }
+}
+
 /* Sub-navigation under a page's heading: one row of tabs that scrolls
    sideways on a phone rather than wrapping a tab onto a line of its own. */
 .subnav {
@@ -671,15 +684,10 @@ time {
   gap: var(--space-1);
 }
 
-.menu__panel form + form,
-.menu__panel form + a,
-.menu__panel a + form {
+/* Each row after the first (language, theme, Sign out) has a divider line above it. */
+.menu__panel > :is(details, form) + form {
   padding-block-start: var(--space-2);
   border-block-start: var(--border-width) solid var(--color-line);
-}
-
-.menu__panel legend {
-  margin-block-end: var(--space-1);
 }
 
 .menu__panel ul {
@@ -709,10 +717,110 @@ time {
   background: var(--color-secondary-hover);
 }
 
-.menu__item[aria-current] {
+/* A language row: its flag, 4 by 3, then its own name. */
+.menu__item > img {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 0.9375rem;
+  margin-inline-end: var(--space-2);
+  outline: var(--border-width) solid var(--color-line);
+}
+
+.menu__name {
+  min-inline-size: 0;
+}
+
+/* The language row opens the other seven under it. Its arrow sits at the
+   end and turns over when open, as the menu's own chevron does. */
+.menu__langs > summary {
+  list-style: none;
+}
+
+.menu__langs > summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu__langs > summary::after {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  margin-inline-start: auto;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.menu__langs[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+@media (min-width: 22rem) {
+  .menu__langs > form {
+    padding-inline-start: var(--space-3);
+  }
+}
+
+/* The theme row: its word at the start, three icon buttons at the end. The
+   legend floats, so it lays out as an ordinary item of the row. */
+.menu__themes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding-inline-start: var(--space-3);
+}
+
+.menu__themes legend {
+  float: inline-start;
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Three equal buttons that give up width, never below 44 px, before they
+   leave the panel at large text sizes. */
+.menu__themes ul {
+  display: grid;
+  flex: 0 1 auto;
+  grid-template-columns: repeat(3, minmax(44px, var(--target-min)));
+  gap: var(--space-1);
+  min-inline-size: 0;
+  margin-inline-start: auto;
+}
+
+.menu__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding: 0;
+  background: none;
+  color: var(--color-text);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.menu__icon::before {
+  content: "";
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.menu__icon[value="auto"] { --icon: var(--i-theme-auto); }
+.menu__icon[value="light"] { --icon: var(--i-theme-light); }
+.menu__icon[value="dark"] { --icon: var(--i-theme-dark); }
+
+.menu__icon:hover {
+  background: var(--color-secondary-hover);
+}
+
+/* The theme in use: the accent face and a drawn edge, so forced colours keep it. */
+.menu__icon[aria-current] {
   background: var(--color-accent-bg);
-  font-weight: 600;
-  border-inline-start-color: var(--color-selected);
+  border-color: var(--color-selected);
 }
 
 main {
@@ -751,8 +859,20 @@ main {
   }
 }
 
-/* On a phone only the logo shows, so the menu keeps room for its words (DESIGN 6). */
+/* On a phone only the logo shows, so the menu keeps room for its words, and
+   the open panel takes nearly the window's width so a language's name keeps
+   its line at large text sizes (DESIGN 6). */
 @media (max-width: 22rem) {
+  .menu__panel {
+    inset-inline-end: var(--space-2);
+    inline-size: calc(100% - 2 * var(--space-2));
+    padding: var(--space-2);
+  }
+
+  .menu__panel .menu__item {
+    padding-inline: var(--space-2);
+  }
+
   .product__name {
     position: absolute;
     inline-size: 1px;
@@ -3613,8 +3733,13 @@ form:has(#mode-exchange:checked) .achievements {
     border-block-end-color: Highlight;
   }
 
-  .menu__item[aria-current] {
-    border-inline-start-color: Highlight;
+  .menu__icon[aria-current] {
+    border-color: Highlight;
+  }
+
+  .menu__icon::before {
+    forced-color-adjust: none;
+    background: ButtonText;
   }
 
   .field input[type="file"]::file-selector-button {

@@ -232,10 +232,33 @@ func TestSettingsSubnav(t *testing.T) {
 		if strings.Count(nav, `aria-current="page"`) != 1 || !strings.Contains(nav, `href="`+p.current+`" aria-current="page"`) {
 			t.Errorf("%s: current link\n%s", p.path, nav)
 		}
-		menu := between(body, `<div class="menu__panel">`, PathSignOut)
-		a, s, n = strings.Index(menu, `href="`+PathAccount), strings.Index(menu, `href="`+PathSchedule), strings.Index(menu, `href="`+PathNotifications)
-		if a < 0 || s < a || n < s {
-			t.Errorf("%s: user menu order\n%s", p.path, menu)
+		// The main Settings tab is the one way in (DESIGN 6): the page on the
+		// restart schedule it opens, the section on the other two.
+		main := between(body, `<nav aria-label="Main">`, "</nav>")
+		mark := "true"
+		if p.path == PathSchedule {
+			mark = "page"
 		}
+		if want := `<a href="` + PathSchedule + `" aria-current="` + mark + `">Settings</a>`; !strings.Contains(main, want) {
+			t.Errorf("%s: main nav lacks %s\n%s", p.path, want, main)
+		}
+		if strings.Count(main, "aria-current") != 1 {
+			t.Errorf("%s: %d main tabs marked current", p.path, strings.Count(main, "aria-current"))
+		}
+		menu := between(body, `<div class="menu__panel">`, PathSignOut)
+		for _, link := range []string{PathAccount, PathSchedule, PathNotifications} {
+			if strings.Contains(menu, `href="`+link) {
+				t.Errorf("%s: the user menu still links to %s", p.path, link)
+			}
+		}
+	}
+}
+
+// The Settings tab marks its section on the pages under Notifications too.
+func TestSettingsTabOnWebhookPages(t *testing.T) {
+	r := newTestRenderer(t)
+	for _, p := range []Page{WebhookFormPage{}, WebhookDeletePage{}} {
+		_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+		wantIn(t, p.templateName(), body, `<a href="`+PathSchedule+`" aria-current="true">Settings</a>`)
 	}
 }

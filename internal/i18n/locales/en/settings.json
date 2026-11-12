@@ -1,5 +1,5 @@
 {
-  "settings.link": "Settings",
+  "settings.link": "Game settings",
   "settings.title": "Settings of {world}",
   "settings.readonly.unreadable": "This world's world.json cannot be read, so its settings cannot be changed here.",
   "settings.broken": "Foreman cannot read {file} as a JSON object, so this form cannot show it. Replace the file with the JSON editor below.",

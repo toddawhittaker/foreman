@@ -6,7 +6,7 @@
   "players.kick.gone": "{name} ya no está en la partida, así que no hay nadie a quien expulsar.",
   "players.ban.heading": "¿Banear a {name} de {world}?",
   "players.ban.will_disconnect": "Desconectar a {name} ahora, si está en la partida.",
-  "players.ban.will_list": "Añadir a {name} a la lista de baneados, para que no pueda volver a unirse hasta que lo desbaneen. La lista de baneados está en la pestaña Configuración del mundo.",
+  "players.ban.will_list": "Añadir a {name} a la lista de baneados, para que no pueda volver a unirse hasta que lo desbaneen. La lista de baneados está en la pestaña Configuración del juego del mundo.",
   "players.ban.no_snapshot": "No tomar ninguna instantánea. El juego registra el baneo en su propia lista de baneados.",
   "players.ban.button": "Banear a {name}",
   "players.reason.label": "Motivo",
@@ -32,6 +32,6 @@
   "players.error.refused": "El juego de {world} no hizo el cambio para {name}. Su respuesta:",
   "players.error.rcon": "El juego de {world} no respondió por RCON, así que Foreman no puede saber si se hizo el cambio para {name}. Revisa la lista y vuelve a intentarlo.",
   "players.error.not_running": "El servidor de {world} no está en marcha, así que no se puede enviar nada al juego.",
-  "players.error.whitelist_off": "El servidor de {world} se inició con la lista blanca desactivada, así que el juego no conservaría este cambio. Edita la lista blanca en la pestaña Configuración.",
+  "players.error.whitelist_off": "El servidor de {world} se inició con la lista blanca desactivada, así que el juego no conservaría este cambio. Edita la lista blanca en la pestaña Configuración del juego.",
   "players.error.failed": "No se pudo enviar el cambio al juego de {world}. Vuelve a intentarlo."
 }

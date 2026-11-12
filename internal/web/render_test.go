@@ -712,27 +712,7 @@ func TestErrorPageCopy(t *testing.T) {
 // dist/sse.min.js, tarball integrity sha512-LJmxVhyk...EI8O2wXXn4ZZtBdpEMqmEQ==)
 // are exactly the pinned releases (STACK 3, SPEC 3.7).
 func TestVendoredChecksums(t *testing.T) {
-	sums, err := staticFS.ReadFile("static/vendor/SHA256SUMS")
-	if err != nil {
-		t.Fatal(err)
-	}
-	listed := map[string]bool{}
-	sc := bufio.NewScanner(bytes.NewReader(sums))
-	for sc.Scan() {
-		want, name, ok := strings.Cut(sc.Text(), "  ")
-		if !ok {
-			t.Fatalf("bad SHA256SUMS line %q", sc.Text())
-		}
-		body, err := staticFS.ReadFile("static/vendor/" + name)
-		if err != nil {
-			t.Fatalf("%s listed but missing: %v", name, err)
-		}
-		sum := sha256.Sum256(body)
-		if got := hex.EncodeToString(sum[:]); got != want {
-			t.Errorf("%s: sha256 %s, want %s", name, got, want)
-		}
-		listed[name] = true
-	}
+	listed := checkSums(t, "static/vendor")
 	for name, marker := range map[string]string{
 		"htmx.min.js":         `version:"2.0.11"`,
 		"htmx-ext-sse.min.js": `defineExtension("sse"`,
@@ -749,15 +729,78 @@ func TestVendoredChecksums(t *testing.T) {
 			t.Errorf("%s does not contain %s", name, marker)
 		}
 	}
-	entries, err := fs.ReadDir(staticFS, "static/vendor")
+}
+
+// The flags are flag-icons 7.6.0's 4x3 pictures (npm tarball integrity
+// sha512-hir/PsXw...PfC9/BaGSQ==), unchanged, with its MIT licence (STACK 3).
+// They hold nothing active (unsafeSVG), since they are served as images.
+func TestFlagChecksums(t *testing.T) {
+	for _, bad := range []string{`<SCRIPT>`, `<g OnLoad ="x">`, `<foreignObject>`, `<!doctype svg>`, `<!ENTITY a "b">`, `<use href="https://x/y"/>`, `<a xlink:href='javascript:x'>`} {
+		if unsafeSVG.FindString(bad) == "" {
+			t.Errorf("unsafeSVG misses %s", bad)
+		}
+	}
+	if m := unsafeSVG.FindString(`<use xlink:href="#cn-a" fill="red" stroke-width="1"/>`); m != "" {
+		t.Errorf("unsafeSVG refuses a fragment link: %q", m)
+	}
+	listed := checkSums(t, "static/flags")
+	if !listed["FLAG-ICONS-LICENSE.txt"] {
+		t.Error("the flag-icons licence is not listed")
+	}
+	for _, f := range flags {
+		name := strings.TrimPrefix(f, "flags/")
+		if !listed[name] {
+			t.Errorf("%s is not in SHA256SUMS", name)
+		}
+		body, err := staticFS.ReadFile("static/" + f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m := unsafeSVG.Find(body); m != nil {
+			t.Errorf("%s holds %q", name, m)
+		}
+	}
+}
+
+// unsafeSVG is what a static picture must not hold: a script, an event
+// handler, embedded HTML, a DTD or entity, or a link off the file itself.
+var unsafeSVG = regexp.MustCompile(`(?i)<script|\son[a-z]+\s*=|foreignObject|<!DOCTYPE|<!ENTITY|href\s*=\s*["']?[^"'#]`)
+
+// checkSums checks each file in dir against dir's SHA256SUMS, and that every
+// file in dir is listed. It returns the names listed.
+func checkSums(t *testing.T, dir string) map[string]bool {
+	t.Helper()
+	sums, err := staticFS.ReadFile(dir + "/SHA256SUMS")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := map[string]bool{}
+	sc := bufio.NewScanner(bytes.NewReader(sums))
+	for sc.Scan() {
+		want, name, ok := strings.Cut(sc.Text(), "  ")
+		if !ok {
+			t.Fatalf("bad SHA256SUMS line %q", sc.Text())
+		}
+		body, err := staticFS.ReadFile(dir + "/" + name)
+		if err != nil {
+			t.Fatalf("%s listed but missing: %v", name, err)
+		}
+		sum := sha256.Sum256(body)
+		if got := hex.EncodeToString(sum[:]); got != want {
+			t.Errorf("%s: sha256 %s, want %s", name, got, want)
+		}
+		listed[name] = true
+	}
+	entries, err := fs.ReadDir(staticFS, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
 		if e.Name() != "SHA256SUMS" && !listed[e.Name()] {
-			t.Errorf("vendored file %s has no checksum", e.Name())
+			t.Errorf("file %s in %s has no checksum", e.Name(), dir)
 		}
 	}
+	return listed
 }
 
 func TestStaticHandler(t *testing.T) {
@@ -802,6 +845,22 @@ func TestStaticHandler(t *testing.T) {
 		t.Errorf("js: %d %q", rec.Code, rec.Header().Get("Content-Type"))
 	}
 
+	// A flag is an SVG picture; opened on its own it may run nothing.
+	svg, err := r.staticURL("flags/gb.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec = get(svg)
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/svg+xml" {
+		t.Errorf("svg: %d %q", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if csp := rec.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "default-src 'none'") || !strings.Contains(csp, "sandbox") {
+		t.Errorf("svg Content-Security-Policy %q", csp)
+	}
+	if rec := get(PathStatic + "flags/FLAG-ICONS-LICENSE.txt"); rec.Code != http.StatusNotFound {
+		t.Errorf("licence served: %d", rec.Code)
+	}
+
 	// An old or missing version must not be cached forever.
 	for _, u := range []string{PathStatic + "foreman.css", PathStatic + "foreman.css?v=old"} {
 		if cc := get(u).Header().Get("Cache-Control"); cc != "no-cache" {
@@ -822,8 +881,8 @@ func TestPageAssetsResolve(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, page: WorldsPage{}, user: "todd"})
 	re := regexp.MustCompile(`(?:href|src|srcset)="(` + regexp.QuoteMeta(PathStatic) + `[^" ]+)`)
 	found := re.FindAllStringSubmatch(body, -1)
-	if len(found) != 10 {
-		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js and the logo at two sizes, found %v", found)
+	if len(found) != 18 {
+		t.Fatalf("want three icons, the stylesheet, htmx, its SSE extension, time.js, menu.js, the logo at two sizes and eight flags, found %v", found)
 	}
 	for _, m := range found {
 		u := strings.ReplaceAll(m[1], "&amp;", "&")

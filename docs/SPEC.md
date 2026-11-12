@@ -2300,6 +2300,8 @@ with the defaults accepted, these take at most:
 | Kick a player (the player, Kick, Kick *player*) | 3 |
 | Ban a player (the player, Ban, Ban *player*) | 3 |
 | Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
+| Change the restart schedule (Settings, Save schedule) | 2 |
+| Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |

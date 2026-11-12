@@ -361,7 +361,7 @@
   "worlds.world.generated": "{name} wurde generiert. Die Karte wird beim ersten Start erzeugt.",
   "worlds.world.cloned": "{from} wurde als {name} geklont.",
   "worlds.world.clone": "Welt klonen",
-  "worlds.world.settings": "Einstellungen",
+  "worlds.world.settings": "Spieleinstellungen",
   "worlds.snapshot.label.before_settings": "Vor der Einstellungsänderung",
   "worlds.clone.title": "{name} klonen",
   "worlds.clone.heading": "Neue Welt aus dieser",

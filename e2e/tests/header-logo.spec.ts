@@ -44,25 +44,30 @@ test("at 200% text the header still fits without sideways scroll", async ({ page
   expect(panel!.x + panel!.width).toBeLessThanOrEqual(size.client);
 });
 
-// SPEC 22.2: the menu holds the eight languages and Sign out, and opens and
-// closes from the keyboard.
+// SPEC 22.2, DESIGN 6: the menu holds the language row, the theme row and
+// Sign out, and opens and closes from the keyboard.
 test("the user menu shows who is signed in, the languages and Sign out", async ({ page }) => {
   await createAdmin(page);
   const menu = page.locator("details.menu");
-  await expect(menu.locator("summary")).toHaveText(/admin\s+English/);
+  await expect(menu.locator(":scope > summary")).toHaveText(/admin\s+English/);
   await openMenu(page);
   await expect(page.getByText("Signed in as admin")).toBeVisible();
-  const langs = page.getByRole("group", { name: "Language" }).getByRole("button");
-  await expect(langs).toHaveCount(8);
-  await expect(langs.first()).toHaveAttribute("aria-current", "true");
+  const row = page.locator("details.menu__langs > summary");
+  await expect(row).toHaveAccessibleName("Language English");
+  await row.click();
+  const langs = page.locator("details.menu__langs").getByRole("button");
+  await expect(langs).toHaveCount(7);
   await expect(page.getByRole("button", { name: "Deutsch" })).toHaveAttribute("lang", "de");
   await checkPage(page);
 
-  // Escape closes it and puts focus back on the summary.
+  // Escape folds the open list first, then closes the menu, focus on the summary each time.
   await page.getByRole("button", { name: "Deutsch" }).focus();
   await page.keyboard.press("Escape");
+  await expect(page.locator("details.menu__langs")).not.toHaveAttribute("open", "");
+  await expect(row).toBeFocused();
+  await page.keyboard.press("Escape");
   await expect(menu).not.toHaveAttribute("open", "");
-  await expect(menu.locator("summary")).toBeFocused();
+  await expect(menu.locator(":scope > summary")).toBeFocused();
   // A click outside closes it too.
   await openMenu(page);
   // The panel covers most of a phone, so the click lands at the very edge.
@@ -71,10 +76,11 @@ test("the user menu shows who is signed in, the languages and Sign out", async (
 
   await signOut(page);
   await expect(page).toHaveURL("/signed-out");
-  // Signed out, the menu offers only the languages.
+  // Signed out, the menu offers the languages and the theme, no Sign out.
   await openMenu(page);
   await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
-  await expect(page.getByRole("group", { name: "Language" }).getByRole("button")).toHaveCount(8);
+  await page.locator("details.menu__langs > summary").click();
+  await expect(page.locator("details.menu__langs").getByRole("button")).toHaveCount(7);
 });
 
 test.describe("without JavaScript", () => {
@@ -83,6 +89,7 @@ test.describe("without JavaScript", () => {
   test("the menu opens and changes the language", async ({ page }) => {
     await page.goto("/setup");
     await page.locator("details.menu > summary").click();
+    await page.locator("details.menu__langs > summary").click();
     await page.getByRole("button", { name: "Français" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "fr");
     await expect(page).toHaveURL("/setup");

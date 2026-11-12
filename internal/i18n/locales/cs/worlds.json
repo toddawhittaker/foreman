@@ -373,7 +373,7 @@
   "worlds.world.generated": "Svět {name} byl vygenerován. Jeho mapa se vytvoří při prvním spuštění.",
   "worlds.world.cloned": "Svět {from} byl naklonován jako {name}.",
   "worlds.world.clone": "Naklonovat svět",
-  "worlds.world.settings": "Nastavení",
+  "worlds.world.settings": "Nastavení hry",
   "worlds.snapshot.label.before_settings": "Před změnou nastavení",
   "worlds.clone.title": "Naklonovat svět {name}",
   "worlds.clone.heading": "Nový svět podle tohoto",

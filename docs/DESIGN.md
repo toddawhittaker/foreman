@@ -475,26 +475,27 @@ frame (7.4).
         <li><a href="/" aria-current="page">Server</a></li>
         <li><a href="/worlds">Worlds</a></li>
         <li><a href="/snapshots">Snapshots</a></li>
+        <li><a href="/settings/restart-schedule">Settings</a></li>
       </ul>
     </nav>
     <details class="menu">
       <summary><span class="menu__user">todd</span> <span class="menu__lang">English</span></summary>
       <div class="menu__panel">
         <p class="hint">Signed in as todd</p>
-        <form method="post" action="/language">
-          <fieldset>
-            <legend>Language</legend>
+        <details class="menu__langs">
+          <summary class="menu__item"><img src="flags/gb.svg" alt="" width="20" height="15"><span class="visually-hidden">Language</span> <span class="menu__name">English</span></summary>
+          <form method="post" action="/language">
             <ul>
-              <li><button type="submit" name="lang" value="en" lang="en" class="menu__item" aria-current="true">English</button></li>
+              <li><button type="submit" name="lang" value="de" lang="de" class="menu__item"><img src="flags/de.svg" alt="" width="20" height="15" loading="lazy"> <span class="menu__name">Deutsch</span></button></li>
               …
             </ul>
-          </fieldset>
-        </form>
+          </form>
+        </details>
         <form method="post" action="/theme">
-          <fieldset>
+          <fieldset class="menu__themes">
             <legend>Theme</legend>
             <ul>
-              <li><button type="submit" name="theme" value="auto" class="menu__item" aria-current="true">Auto</button></li>
+              <li><button type="submit" name="theme" value="auto" class="menu__icon" title="Auto" aria-current="true"><span class="visually-hidden">Auto</span></button></li>
               …
             </ul>
           </fieldset>
@@ -520,7 +521,9 @@ frame (7.4).
   is one row: the logo and name at the start, then the nav and the user menu
   at the end. Below 40rem it is two rows, about 100 px at 320 px: the logo
   and the menu, then the nav on a row of its own (`order: 2; flex-basis:
-  100%`), its three tabs sharing the row out between them. The focus
+  100%`), its four tabs sharing the row out between them. At 320 px with
+  200% text in German or Russian the tabs wrap onto a second row of that
+  line rather than widen the page. The focus
   order is the source order (logo, tabs, menu) at every width.
 - **The logo** is the rusty Foreman logo, 32 CSS pixels square, from
   `static/icons/logo-32.png` with `logo-64.png` for 2x screens (both made
@@ -535,13 +538,19 @@ frame (7.4).
   The current one is `heading` with a 3 px `selected` underline drawn as a
   border, so it survives forced colours; it is not bolder, so the tabs keep
   their widths from page to page. Hover brightens the text to `heading`;
-  nothing else changes. Below 23rem the icons are dropped so the three
-  tabs fit one row at 320 px. The tab of the page itself has
+  nothing else changes. Below 23rem the icons are dropped and the tabs
+  are tighter (`--space-2` side padding), so the four tabs fit one row at
+  320 px in English. The tab of the page itself has
   `aria-current="page"`; on a page inside its section (a world's page under
   Worlds, Console under Server) the tab has `aria-current="true"`, which
   looks the same but does not tell a screen reader it is on the list
-  itself. There are three tabs: Server, Worlds and Snapshots. Console is a
-  tab of the Server view (see "Sub-navigation").
+  itself. There are four tabs: Server, Worlds, Snapshots and Settings. Console is a
+  tab of the Server view (see "Sub-navigation"). Settings is Foreman's own
+  settings (8.15): it opens the restart schedule, the one most used, and is
+  marked on all three settings pages and the pages under them, "page" on
+  the restart schedule and "true" on the others. No page shows two
+  navigation links with the same name, so a world's own settings tab is
+  "Game settings".
 - **The user menu** is a native `details` at the end of the header. Its
   summary is a bordered button on `raised` (1 px `border`, `--radius`,
   `--text-sm`) that shows the user's name in weight 600 and the current
@@ -550,23 +559,38 @@ frame (7.4).
   CSS that turns over when the menu is open. On the sign-in and setup pages
   it shows only the language. The two words wrap between them, never inside
   one. Inside, on a `surface` panel (1 px `border`, `--radius-lg`,
-  `--shadow-pop`, at most 18rem wide): "Signed in as todd"; the eight
-  languages as eight submit buttons to the same `POST /language` (SPEC
-  22.2), in a `fieldset` whose legend is "Language" (plus "(Language)" in
-  English off English), each button marked with its `lang`, the current
-  one with `aria-current="true"`, an `accent-bg` face and a 3 px `selected`
-  mark at its start; an item under the pointer takes `secondary-hover`;
-  then the three themes, Auto, Light and Dark, as three submit buttons to
-  `POST /theme` in a `fieldset` whose legend is "Theme", marked the same
-  way (3, "How themes work");
-  then a "factorio.com account" link to `/settings/factorio-account`
-  (`aria-current="page"` there, and a divider line above it), the only
-  account link Foreman has, then "Restart schedule" and "Notifications",
-  Foreman's other settings pages (8.15, 8.16), then Sign out, still a `POST` form with a
-  button, never a link, so a crawler or prefetch cannot sign anyone out.
+  `--shadow-pop`, at most 18rem wide): "Signed in as todd", then three
+  rows, each under a divider line after the first:
+  1. **Language**, one row: the current language's flag, its own name, and
+     an arrow at the end that turns over when open. It is a `details`
+     inside the menu, so it works without script. Opened, it lists the other
+     seven languages under it, each a submit button to the same
+     `POST /language` (SPEC 22.2) with its flag and its own name, marked
+     with its `lang`. The summary's hidden words start with "Language"
+     (plus "(Language)" in English off English), so a screen reader hears
+     "Language English" and a person lost in a language they cannot read
+     still finds the way back. The flags are decorative (`alt=""`): the
+     United Kingdom for English, Spain for Spanish, and Germany, Russia,
+     China, France, Poland and Czechia for the others, from flag-icons
+     (STACK 3), 20 by 15 px with a 1 px `line` outline. The listed ones
+     load lazily, so a closed list costs nothing.
+  2. **Theme**, one row: the word "Theme" in `text-muted` at the start, then
+     three icon buttons, Auto, Light and Dark (sun and moon, sun, moon), to
+     `POST /theme` (3, "How themes work"), in a `fieldset` whose legend is
+     "Theme" (the legend floats so it lays out as part of the row). Each is
+     named in visually hidden words and in its `title`, so it has hover
+     text; the current one has `aria-current="true"`, an `accent-bg` face
+     and a 1 px `selected` edge.
+  3. **Sign out**, still a `POST` form with a button, never a link, so a
+     crawler or prefetch cannot sign anyone out.
+  About (fixes batch 7, task 6) goes between Theme and Sign out. The menu
+  holds no links to Foreman's settings pages: the Settings tab is their one
+  home. An item under the pointer takes `secondary-hover`.
   Each item is a 44 px target. It opens and closes with Enter or Space and
   works without script; `menu.js` also closes it on Escape (focus returns
-  to the summary) and on a click outside. The panel is positioned under the
+  to the summary) and on a click outside. Escape with focus in the open
+  language list folds the list first, focus back on its row; opening the
+  menu folds the list, so the menu always opens with it folded. The panel is positioned under the
   header at the end edge and never wider than the window.
 - The skip link is the first focusable element. It is visually hidden
   until focused, then appears at the top-left of the header.
@@ -590,7 +614,7 @@ frame (7.4).
   `line` under the row: the Server view has Overview, Console and Chat
 (8.14); Foreman's own settings pages have the factorio.com account, Restart
 schedule and Notifications (8.15); a world
-  has Overview, Saves, Snapshots, Mods and Settings. Each is a `nav` with its
+  has Overview, Saves, Snapshots, Mods and Game settings. Each is a `nav` with its
   own name ("Server pages", "World pages") holding a list of links; the
   current page's link has `aria-current="page"` and is weight 600. The row
   is one line: when the tabs do not fit, it scrolls sideways inside itself
@@ -611,7 +635,7 @@ schedule and Notifications (8.15); a world
 
 Windows high contrast (`forced-colors: active`) replaces every fill and
 colour with the user's system colours. The current tab's underline and the
-current language's mark are borders, and that mode draws them in
+current theme's edge are borders, and that mode draws them in
 `Highlight`, so "selected" is still a drawn shape. The "Active" badge
 keeps its border and its word, and buttons, fields and message boxes keep
 their borders, so they need nothing more. The state badge's shapes (7.5)
@@ -678,7 +702,7 @@ order and the picture agree.
   the facts. The card's leading edge is 4 px and takes the server's state
   colour: `ok` while running, `warn` while starting or stopping, `danger`
   when crashed or crash-looping, `border` otherwise. Below the card come
-  "Players online" and the live world's pages (World page, Mods, Settings
+  "Players online" and the live world's pages (World page, Mods, Game settings
   and Switch world). On a phone (to 40rem) the pages come first, as a
   two-by-two grid of 44 px tiles (`surface` face, 1 px `line` edge, icon
   and name), then the players. From 64rem the players card and the pages
@@ -2128,12 +2152,12 @@ since nothing is lost. From the Server page: the active world's link,
 ### 8.10 Game settings (SPEC 11)
 
 A world's page and the Server page (for the active world) each have a
-"Settings" link. From the Server page, changing a setting takes three
-clicks: Settings, "Preview changes", "Save settings", plus Restart when
+"Game settings" link. From the Server page, changing a setting takes three
+clicks: Game settings, "Preview changes", "Save settings", plus Restart when
 the game is running.
 
 The settings pages (form, raw editor and preview) carry the world's tabs
-(6) with Settings current, and no "Back to" link. The form's `h1` is the
+(6) with Game settings current, and no "Back to" link. The form's `h1` is the
 world's name. On a container at least 44rem wide a rail of section links
 (Listing, Joining, Saving, Admins, and "Edit server-settings.json as
 JSON") sits beside the form, 12rem wide and sticky, since it never covers
@@ -2232,8 +2256,8 @@ the next step is a control.
 
 ### 8.11 Mods (SPEC 9)
 
-Every world has a Mods tab (6), `GET /worlds/{id}/mods`, between Snapshots and Settings.
-The Server page has a Mods link beside "World page" and "Settings" for the
+Every world has a Mods tab (6), `GET /worlds/{id}/mods`, between Snapshots and Game settings.
+The Server page has a Mods link beside "World page" and "Game settings" for the
 active world. The pages follow 7.2 (fields), 7.4 (the plan page is a
 confirmation step) and 7.6 (the result), and use no new component but the
 small ones below. All counts use plural messages (SPEC 22).
@@ -2280,7 +2304,7 @@ beside it; narrower, it is one column in this order:
   version 2.0.77: base, elevated-rails, quality, space-age. Space Age is
   on, so all of them are on. Change Space Age", or "Built in, version
   2.0.77: base. Space Age is off, so elevated-rails, quality, space-age are
-  off. Turn on Space Age"; both links go to the Settings tab. A game
+  off. Turn on Space Age"; both links go to the Game settings tab. A game
   without Space Age has no last sentence and no link.
 - A table (8.3) of the other mods in two columns, Mod and Actions, at the
   width of its column. The first cell holds the name (the portal
@@ -2565,7 +2589,7 @@ tabs; its `h1` is the question and Cancel is the way out.
   <ul>
     <li>Disconnect Alice now, if they are in the game.</li>
     <li>Add Alice to the ban list, so they cannot join again until unbanned.
-        The ban list is on the world's Settings tab.</li>
+        The ban list is on the world's Game settings tab.</li>
     <li>Take no snapshot. The game records the ban in its own ban list.</li>
   </ul>
   <form method="post" action="/worlds/family-base-2025/players/ban">
@@ -2596,7 +2620,7 @@ tabs; its `h1` is the question and Cancel is the way out.
   17.8). A ban still works on a name that is not online, so the ban page
   keeps its button and drops "Disconnect Alice now".
 - Cancel returns to the page the admin came from (the `return` parameter,
-  checked as in SPEC 14.17): the Server page, or the Settings tab when the
+  checked as in SPEC 14.17): the Server page, or the Game settings tab when the
   ban started from the ban list (8.13).
 
 **The result** shows in the players card, at its top, above the table,
@@ -2640,7 +2664,7 @@ badge word too.
 
 ### 8.13 The ban list and whitelist (SPEC 8.3, Epic 9)
 
-The world's Settings tab (8.10) gains "Ban list" (`#settings-bans`) and
+The world's Game settings tab (8.10) gains "Ban list" (`#settings-bans`) and
 "Whitelist" (`#settings-whitelist`) after "Admins", and the rail gains
 their two links in that order, before the raw editor's link.
 How a list is edited depends on whether the game runs, because that
@@ -2680,11 +2704,11 @@ settings preview uses (8.10); no style of their own is added.
 </section>
 ```
 
-- "Unban" acts at once and the Settings tab returns with a Done message
+- "Unban" acts at once and the Game settings tab returns with a Done message
   at its top (the existing `#done-message`), "Bob is unbanned from Family
   base 2025.", with "Undo" (it bans Bob again at once, with the reason the
   file had). "Ban" goes to the ban confirmation (8.12) with the name
-  filled in and `return` set to the Settings tab, because a ban always
+  filled in and `return` set to the Game settings tab, because a ban always
   confirms. A name that fails the check (SPEC 14.9) is a field error on
   the confirmation page's return, never sent.
 - A ban list entry shows its reason after the name, in `hint` style, when
@@ -2820,10 +2844,12 @@ with the other tab words.
 
 Foreman has three pages that belong to Foreman, not a world: the
 factorio.com account (8.11), the restart schedule, and notifications
-(8.16). The user menu lists them in that order after its divider line,
-each `aria-current="page"` on its own page. Each of the three carries a
+(8.16). The main navigation's Settings tab (6) is their one home: it
+opens the restart schedule, the page most used, and is marked current on
+all three and the pages under them. Each of the three carries a
 sub-navigation under its `h1` (6, "Sub-navigation"), named "Foreman
-settings", with the same three links, so moving between them is one click.
+settings", with the same three links in that order, so moving between
+them is one click, and reaching any of them from any page is two at most.
 
 **The schedule page** (`GET /settings/restart-schedule`,
 `schedule.html`). One schedule restarts whichever world is active
@@ -3095,13 +3121,14 @@ its clicks.
 | Add an online player to the whitelist (the player, Add to whitelist) | 2 |
 | Kick a player (the player, Kick, Kick *player*) | 3 |
 | Ban a player (the player, Ban, Ban *player*) | 3 |
-| Unban a player while the game runs (Settings, Unban) | 2 |
-| Edit the ban list or whitelist of a stopped world (Settings, Preview changes, Save settings) | 3 |
+| Unban a player while the game runs (Game settings, Unban) | 2 |
+| Edit the ban list or whitelist of a stopped world (Game settings, Preview changes, Save settings) | 3 |
 | Read the chat (Chat) | 1 |
 | Send a chat message (Chat, Send) | 2 |
-| Set a nightly restart (the user menu, Restart schedule, Save schedule) | 3 |
+| Set a nightly restart (Settings, Save schedule) | 2 |
 | Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
-| Add a Discord webhook (the user menu, Notifications, Add a webhook, Add webhook) | 4 |
+| Open Notifications (Settings, Notifications) | 2 |
+| Add a Discord webhook (Settings, Notifications, Add a webhook, Add webhook) | 4 |
 | Act on the low-disk warning (Snapshots, tick a snapshot, Delete selected, Delete) | 4 |
 
 ### 8.19 New CSS for Epic 9

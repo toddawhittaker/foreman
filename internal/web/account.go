@@ -53,8 +53,10 @@ type AccountPage struct {
 }
 
 func (AccountPage) templateName() string { return "account" }
-func (AccountPage) navItem() string      { return PathAccount }
-func (p AccountPage) hasErrors() bool    { return len(p.Problems()) > 0 || !p.Error.IsZero() }
+
+// The Settings tab opens the restart schedule, so it marks this page's section (DESIGN 6).
+func (AccountPage) navItem() string   { return PathSchedule }
+func (p AccountPage) hasErrors() bool { return len(p.Problems()) > 0 || !p.Error.IsZero() }
 
 // Path is where the forms post.
 func (AccountPage) Path() string { return PathAccount }

@@ -373,7 +373,7 @@
   "worlds.world.generated": "Мир {name} создан. Его карта будет создана при первом запуске.",
   "worlds.world.cloned": "Мир {from} клонирован как {name}.",
   "worlds.world.clone": "Клонировать мир",
-  "worlds.world.settings": "Настройки",
+  "worlds.world.settings": "Настройки игры",
   "worlds.snapshot.label.before_settings": "Перед изменением настроек",
   "worlds.clone.title": "Клонирование мира {name}",
   "worlds.clone.heading": "Новый мир на основе этого",

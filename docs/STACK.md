@@ -32,6 +32,16 @@ is a copy and goes stale if they change without it.
 - htmx-ext-sse 2.2.4 (the server-sent events extension for htmx 2.0.x),
   vendored as `internal/web/static/vendor/htmx-ext-sse.min.js`, with its
   SHA-256 in the same `SHA256SUMS`, checked by the same test.
+- flag-icons 7.6.0 (MIT licence, npm tarball integrity
+  `sha512-hir/PsXwr0EESyizKrXJzmkzpLIMf+1vlNKLqAfvdh+bsU94a7LYWTiubkHKqptGoCPzOUGcm6c4PfC9/BaGSQ==`),
+  eight of its 4x3 SVG flags copied unchanged into
+  `internal/web/static/flags/` for the user menu's language row (DESIGN 6):
+  `gb`, `de`, `ru`, `cn`, `fr`, `es`, `pl` and `cz`, with its licence as
+  `FLAG-ICONS-LICENSE.txt`. Each file's SHA-256 is in `SHA256SUMS` beside
+  them, checked by a test. They are copied from the package, not installed
+  as a dependency; nothing is fetched at build or start. The static
+  handler serves `.svg` as `image/svg+xml` with a `sandbox` content
+  security policy, and does not serve the licence or `SHA256SUMS`.
 - Go modules in `go.mod`: `modernc.org/sqlite` v1.61.1,
   `golang.org/x/crypto` v0.58.0 and `golang.org/x/sys` v0.49.0 (direct
   since Epic 2: hardlinks into a snapshot folder, which the standard

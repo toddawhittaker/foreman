@@ -41,9 +41,9 @@ test("change a setting from the Server page in three clicks, and the password ne
   const clicks = await countClicks(page);
   await clicks.reset();
 
-  await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("link", { name: "Game settings" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base Active");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("A password is set.")).toBeVisible();
   await expect(page.getByLabel("New password")).toHaveValue("");
   await expectNoSecret(page);
@@ -165,7 +165,7 @@ test("nothing changed offers no save", async ({ page, foreman }) => {
   await checkPage(page);
   await page.getByRole("link", { name: "Back to the settings" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Base Active");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "page");
 });
 
 test("go back and edit keeps the edits", async ({ page, foreman }) => {
@@ -343,7 +343,7 @@ test.describe("a running world", () => {
     await page.getByRole("button", { name: "Start server" }).click();
     await expect(page.locator("main h1 .state")).toHaveText("Running", live);
 
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("link", { name: "Game settings" }).click();
     await expect(page.getByText("The server is running. Changes to these settings take effect after a restart. Changes to admins apply at once.")).toBeVisible();
     await checkPage(page);
     await page.getByLabel("Maximum players").fill("8");
@@ -528,7 +528,7 @@ test("the settings rail shows on a wide panel only", async ({ page, foreman }) =
   await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
   await page.goto("/worlds/base/settings/raw/server-settings.json");
-  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Game settings" })).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("link", { name: /^Back to/ })).toHaveCount(0);
   await checkPage(page);
 });

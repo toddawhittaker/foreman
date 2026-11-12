@@ -1,5 +1,5 @@
 {
-  "settings.link": "Ustawienia",
+  "settings.link": "Ustawienia gry",
   "settings.title": "Ustawienia świata {world}",
   "settings.readonly.unreadable": "Plik world.json tego świata nie jest czytelny, więc jego ustawień nie można tu zmienić.",
   "settings.broken": "Foreman nie może odczytać {file} jako obiektu JSON, więc formularz nie może go pokazać. Plik należy zastąpić w edytorze JSON poniżej.",

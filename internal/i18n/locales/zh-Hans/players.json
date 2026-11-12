@@ -6,7 +6,7 @@
   "players.kick.gone": "{name} 已不在游戏中，没有可踢出的玩家。",
   "players.ban.heading": "在 {world} 中封禁 {name}？",
   "players.ban.will_disconnect": "如果 {name} 在游戏中，立即断开其连接。",
-  "players.ban.will_list": "将 {name} 加入封禁列表，解封前无法再次加入。封禁列表位于该世界的“设置”标签页。",
+  "players.ban.will_list": "将 {name} 加入封禁列表，解封前无法再次加入。封禁列表位于该世界的“游戏设置”标签页。",
   "players.ban.no_snapshot": "不创建快照。游戏会把封禁记录在自己的封禁列表中。",
   "players.ban.button": "封禁 {name}",
   "players.reason.label": "原因",
@@ -32,6 +32,6 @@
   "players.error.refused": "{world} 的游戏没有对 {name} 进行更改。它的回复：",
   "players.error.rcon": "{world} 的游戏没有通过 RCON 回应，因此 Foreman 无法确定对 {name} 的更改是否已完成。请检查列表后重试。",
   "players.error.not_running": "{world} 的服务器未运行，因此无法向游戏发送任何内容。",
-  "players.error.whitelist_off": "{world} 的服务器启动时白名单开关处于关闭状态，因此游戏不会保留此更改。请改在“设置”标签页中编辑白名单。",
+  "players.error.whitelist_off": "{world} 的服务器启动时白名单开关处于关闭状态，因此游戏不会保留此更改。请改在“游戏设置”标签页中编辑白名单。",
   "players.error.failed": "无法将更改发送到 {world} 的游戏。请重试。"
 }

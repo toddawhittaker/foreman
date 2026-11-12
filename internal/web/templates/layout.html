@@ -29,6 +29,8 @@
       <li><a href="{{serverPath}}"{{if .Current (print serverPath "#page")}} aria-current="page"{{else if .Current serverPath}} aria-current="true"{{end}}>{{t "common.nav.server"}}</a></li>
       <li><a href="{{worldsPath}}"{{if .Current (print worldsPath "#page")}} aria-current="page"{{else if .Current worldsPath}} aria-current="true"{{end}}>{{t "common.nav.worlds"}}</a></li>
       <li><a href="{{snapshotsTabPath}}"{{if .Current (print snapshotsTabPath "#page")}} aria-current="page"{{else if .Current snapshotsTabPath}} aria-current="true"{{end}}>{{t "common.nav.snapshots"}}</a></li>
+      {{- /* Foreman's own settings (DESIGN 8.15); the tab opens the restart schedule. */}}
+      <li><a href="{{schedulePath}}"{{if .Current (print schedulePath "#page")}} aria-current="page"{{else if .Current schedulePath}} aria-current="true"{{end}}>{{t "common.nav.settings"}}</a></li>
     </ul>
   </nav>
   {{- end}}
@@ -41,27 +43,31 @@
       {{- with .User}}
       <p class="hint">{{t "common.signedin" "user" .}}</p>
       {{- end}}
-      <form method="post" action="{{languagePath}}">
-        <fieldset>
-          <legend>{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</legend>
+      {{- /* The language is one row; it opens, as a nested details element, to the
+           other seven, each in its own words. The flags are decorative: a
+           screen reader hears the language's name (DESIGN 6, "User menu"). */}}
+      <details class="menu__langs">
+        <summary class="menu__item"><img src="{{flag lang}}" alt="" width="20" height="15"><span class="visually-hidden">{{t "common.language.label"}}{{if ne lang "en"}} <span lang="en">({{english "common.language.label"}})</span>{{end}}</span> <span class="menu__name">{{$langName}}</span></summary>
+        <form method="post" action="{{languagePath}}">
           <ul role="list">
-            {{- range languages}}
-            <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"{{if eq .Tag.String lang}} aria-current="true"{{end}}>{{.Name}}</button></li>
-            {{- end}}
+            {{- range languages}}{{if ne .Tag.String lang}}
+            <li><button type="submit" name="lang" value="{{.Tag}}" lang="{{.Tag}}" class="menu__item"><img src="{{flag .Tag.String}}" alt="" width="20" height="15" loading="lazy"> <span class="menu__name">{{.Name}}</span></button></li>
+            {{- end}}{{end}}
           </ul>
-        </fieldset>
-        {{- with .Return}}
-        <input type="hidden" name="return" value="{{.}}">
-        {{- end}}
-      </form>
-      {{- /* Auto follows the system setting; the choice stays in this browser (SPEC 17.3). */}}
+          {{- with .Return}}
+          <input type="hidden" name="return" value="{{.}}">
+          {{- end}}
+        </form>
+      </details>
+      {{- /* Auto follows the system setting; the choice stays in this browser (SPEC 17.3).
+           Three icon buttons in one row, each named in words and in its hover text. */}}
       <form method="post" action="{{themePath}}">
-        <fieldset>
+        <fieldset class="menu__themes">
           <legend>{{t "common.theme.label"}}</legend>
           <ul role="list">
-            <li><button type="submit" name="theme" value="auto" class="menu__item"{{if eq .Theme "auto"}} aria-current="true"{{end}}>{{t "common.theme.auto"}}</button></li>
-            <li><button type="submit" name="theme" value="light" class="menu__item"{{if eq .Theme "light"}} aria-current="true"{{end}}>{{t "common.theme.light"}}</button></li>
-            <li><button type="submit" name="theme" value="dark" class="menu__item"{{if eq .Theme "dark"}} aria-current="true"{{end}}>{{t "common.theme.dark"}}</button></li>
+            <li><button type="submit" name="theme" value="auto" class="menu__icon" title="{{t "common.theme.auto"}}"{{if eq .Theme "auto"}} aria-current="true"{{end}}><span class="visually-hidden">{{t "common.theme.auto"}}</span></button></li>
+            <li><button type="submit" name="theme" value="light" class="menu__icon" title="{{t "common.theme.light"}}"{{if eq .Theme "light"}} aria-current="true"{{end}}><span class="visually-hidden">{{t "common.theme.light"}}</span></button></li>
+            <li><button type="submit" name="theme" value="dark" class="menu__icon" title="{{t "common.theme.dark"}}"{{if eq .Theme "dark"}} aria-current="true"{{end}}><span class="visually-hidden">{{t "common.theme.dark"}}</span></button></li>
           </ul>
         </fieldset>
         {{- with .Return}}
@@ -69,9 +75,6 @@
         {{- end}}
       </form>
       {{- if .User}}
-      <a href="{{accountPath}}" class="menu__item"{{if .Current accountPath}} aria-current="page"{{end}}>{{t "account.title"}}</a>
-      <a href="{{schedulePath}}" class="menu__item"{{if .Current schedulePath}} aria-current="page"{{end}}>{{t "common.menu.schedule"}}</a>
-      <a href="{{notificationsPath}}" class="menu__item"{{if .Current notificationsPath}} aria-current="page"{{end}}>{{t "common.menu.notifications"}}</a>
       <form method="post" action="{{signOutPath}}">
         <button type="submit" class="menu__item">{{t "common.signout"}}</button>
       </form>

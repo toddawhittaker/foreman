@@ -1,20 +1,19 @@
-import { test, expect, checkPage, createAdmin, openMenu, pickLanguage } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, mainNav, openMenu, pickLanguage } from "./foreman.js";
 import { countClicks, expectWithin } from "./clicks.js";
 
 // SPEC 7.12, DESIGN 8.15: the restart schedule page, the Foreman settings
 // sub-navigation it shares with the account and notifications pages, and
-// the user menu's order. Every project runs these, so each holds at 320 px
+// the main Settings tab that leads to them. Every project runs these, so each holds at 320 px
 // and at desktop width, in both themes.
 
 const settingsNav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Foreman settings" });
 
-test("set a nightly restart from the Server page in three clicks", async ({ page }) => {
+test("set a nightly restart from the Server page in two clicks", async ({ page }) => {
   await createAdmin(page);
   const clicks = await countClicks(page);
   await clicks.reset();
 
-  await openMenu(page);
-  await page.locator("details.menu").getByRole("link", { name: "Restart schedule" }).click();
+  await mainNav(page).getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL("/settings/restart-schedule");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart schedule");
   await expect(page.locator("#schedule-state")).toHaveText("No restart is scheduled.");
@@ -33,7 +32,7 @@ test("set a nightly restart from the Server page in three clicks", async ({ page
   await expect(page.locator("#done-message")).toContainText("Saved. The next restart is");
   await expect(page.locator("#schedule-state")).toContainText("Foreman restarts the active world every day at 04:00 (UTC). Next restart:");
   await expect(page.locator("#schedule-state time")).toHaveAttribute("datetime", /T04:00:00Z$/);
-  await expectWithin(clicks, 3, "Set a nightly restart");
+  await expectWithin(clicks, 2, "Set a nightly restart");
   await checkPage(page);
 });
 
@@ -101,11 +100,10 @@ test("the three Foreman settings pages share one sub-navigation", async ({ page 
   await checkPage(page);
 });
 
-test("the user menu lists the settings pages in the sub-navigation's order", async ({ page }) => {
+test("the user menu holds no settings links: the Settings tab is their home", async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
-  const links = page.locator("details.menu .menu__panel > a.menu__item");
-  await expect(links).toHaveText(["factorio.com account", "Restart schedule", "Notifications"]);
+  await expect(page.locator("details.menu").getByRole("link")).toHaveCount(0);
 });
 
 test("the page is translated", async ({ page }) => {
