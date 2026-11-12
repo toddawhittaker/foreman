@@ -19,6 +19,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
+	"github.com/toddawhittaker/foreman/internal/notify"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -135,6 +136,30 @@ func pageCases() []pageCase {
 			Error: msgBusy(), ErrorBusy: true}},
 		{"chat", "todd", 200, ChatPage{}},
 		{"notifications", "todd", 200, NotificationsPage{}},
+		{"notifications no key", "todd", 200, NotificationsPage{NoKey: true}},
+		{"notifications list", "todd", 200, NotificationsPage{Done: i18n.M("notify.done.added", "preset", i18n.M("notify.preset.discord"), "host", "discord.com"), Hooks: []WebhookView{
+			{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com", LangTag: "en", LangName: "English", AllOn: true},
+			{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", LangTag: "de", LangName: "Deutsch", Events: "Crash, low disk", Plain: true},
+			{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: "hooks.example.org", LangTag: "fr", LangName: "Français", AllOn: true, Unreadable: true},
+		}}},
+		{"notification add", "todd", 200, formPage(notify.Discord, allEventsOn(), "en")},
+		{"notification add refused", "todd", 400, func() WebhookFormPage {
+			p := formPage("", map[notify.Event]bool{}, "xx")
+			p.PresetError, p.URLError, p.EventsError, p.LangError = i18n.M("notify.preset.invalid"), i18n.M("notify.url.scheme"), i18n.M("notify.events.none"), i18n.M("notify.lang.invalid")
+			return p
+		}()},
+		{"notification edit plain", "todd", 200, func() WebhookFormPage {
+			p := formPage(notify.Ntfy, allEventsOn(), "de")
+			p.Edit, p.ID, p.Kept = true, 2, WebhookView{ID: 2, Preset: i18n.M("notify.preset.ntfy"), Host: "ntfy.lan", Plain: true}
+			return p
+		}()},
+		{"notification edit unreadable", "todd", 400, func() WebhookFormPage {
+			p := formPage(notify.Generic, allEventsOn(), "fr")
+			p.Edit, p.ID, p.Kept = true, 3, WebhookView{ID: 3, Preset: i18n.M("notify.preset.generic"), Host: longName, Unreadable: true}
+			p.URLError = i18n.M("notify.url.missing")
+			return p
+		}()},
+		{"notification delete", "todd", 200, WebhookDeletePage{Hook: WebhookView{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com"}}},
 		{"schedule", "todd", 200, SchedulePage{}},
 		{"account none", "todd", 200, AccountPage{Source: factorioaccount.None, CanStore: true}},
 		{"account stored", "todd", 200, AccountPage{Source: factorioaccount.Stored, CanStore: true, UpdatedAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC),
@@ -217,6 +242,12 @@ func pageCases() []pageCase {
 			p.Result, p.HaveResult = actionResult{Action: game.ActionRestore, Restored: "a", Undo: "b"}, true
 		})},
 		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
+		{"kick confirm", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: longName}, Action: game.PlayerKick, Name: "Alice", Online: true}},
+		{"kick player gone", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerKick, Name: "Alice", Gone: true}},
+		{"ban reason error", "todd", 400, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "Alice",
+			Return: "/worlds/base/settings", Reason: "x", ReasonError: i18n.M("players.error.reason", "max", 200)}},
+		{"ban not running", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerBan, Name: "Alice",
+			Error: i18n.M("players.error.not_running", "world", "Base")}},
 		{"restart countdown error", "todd", 400, StopPage{World: world.Summary{ID: "base", Name: "Base"}, Restart: true,
 			CountdownForm: CountdownForm{Countdown: "-1", CountdownError: i18n.M("server.countdown.invalid", "max", 600)}}},
 		{"switch running", "todd", 200, SwitchPage{From: world.Summary{ID: "base", Name: longName}, To: world.Summary{ID: "other", Name: longName},
@@ -273,6 +304,14 @@ func pageCases() []pageCase {
 		{"settings raw errors", "todd", 400, settingsRawCase(true)},
 		{"settings preview", "todd", 200, settingsPreviewCase()},
 		{"settings nothing changed", "todd", 200, SettingsPreviewPage{WorldID: "base", WorldName: longName}},
+		{"settings promoted with undo", "todd", 200, settingsPlayerCase(game.PlayerPromote, false)},
+		{"settings demoted with undo", "todd", 200, settingsPlayerCase(game.PlayerDemote, false)},
+		{"settings banned with unban", "todd", 200, settingsPlayerCase(game.PlayerBan, false)},
+		{"settings unbanned with undo", "todd", 200, settingsPlayerCase(game.PlayerUnban, false)},
+		{"settings whitelist added", "todd", 200, settingsPlayerCase(game.PlayerWhitelistAdd, false)},
+		{"settings whitelist removed", "todd", 200, settingsPlayerCase(game.PlayerWhitelistRemove, false)},
+		{"settings kicked", "todd", 200, settingsPlayerCase(game.PlayerKick, false)},
+		{"settings unban refused", "todd", 200, settingsPlayerCase(game.PlayerUnban, true)},
 	}, append(modPageCases(), modSettingsPageCases()...)...)
 }
 

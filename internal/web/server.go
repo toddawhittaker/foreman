@@ -88,12 +88,14 @@ type server struct {
 	scheduler *schedule.Scheduler
 	runs      *gameRuns
 	console   *consoleHistory
-	log       *slog.Logger
-	now       func() time.Time
-	render    *Renderer
-	sessions  *auth.SessionManager
-	limiter   *auth.Limiter
-	headers   auth.HeaderConfig
+	// playerResults holds each user's last player action result (DESIGN 8.12).
+	playerResults *playerResults
+	log           *slog.Logger
+	now           func() time.Time
+	render        *Renderer
+	sessions      *auth.SessionManager
+	limiter       *auth.Limiter
+	headers       auth.HeaderConfig
 	// gameNets and gameSeen: the ranges to refuse headers from, and the
 	// ones already logged.
 	gameNets GameSubnetter
