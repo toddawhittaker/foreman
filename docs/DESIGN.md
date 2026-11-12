@@ -353,8 +353,8 @@ A 4 px base, in `rem` so it scales with text size.
 
 | Token | Value | Typical use |
 |---|---|---|
-| `--space-1` | 0.25rem (4 px) | The header's block padding; the gap between a sub-navigation's tabs; the gap between a mod's Disable and Remove |
-| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the gap between a badge's shape and its word; the space under a section's `h2` |
+| `--space-1` | 0.25rem (4 px) | The header's block padding; the gap between a sub-navigation's tabs |
+| `--space-2` | 0.5rem (8 px) | Gap between a label, its hint and its field; table cell padding block; the gap between a badge's shape and its word; the space under a section's `h2`; the gap between a mod's Disable and Remove |
 | `--space-3` | 0.75rem (12 px) | Gap between buttons in a row; table cell padding inline; the gap between a card's parts; message padding; the page's side padding at phone width |
 | `--space-4` | 1rem (16 px) | Gap between form fields; confirmation box padding; card padding below 48rem (capped at 4vw); the gap between sections at phone width |
 | `--space-5` | 1.5rem (24 px) | Gap between sections inside `main` from 40rem; card padding and the page's side padding from 48rem |
@@ -592,10 +592,14 @@ current language's mark are borders, and that mode draws them in
 keeps its border and its word, and buttons, fields and message boxes keep
 their borders, so they need nothing more. The state badge's shapes (7.5)
 are redrawn in `CanvasText` so their fills survive. The line icons (7.9)
-are decoration drawn as a fill, so they may disappear; each one sits beside
-its words or has a hidden name. Anything new that marks a state with a fill
-alone needs a rule here. Check a screen with
-Playwright's `forcedColors: "active"`.
+are masks painted with a background, which this mode would replace with
+the page colour, so the ones that carry words are repainted in system
+colours: `ButtonText` for icons on buttons, `LinkText` for tab and shortcut
+icons, and `CanvasText` for the icons before section headings. The rest
+(chevrons, empty states, the map preview's held box) may disappear; each
+one sits beside its words or has a hidden name. Anything new that marks a
+state with a fill alone needs a rule here. Check a screen with Playwright's
+`forcedColors: "active"`.
 
 ### The 320 px rules
 
@@ -1344,9 +1348,11 @@ Words stay first (1).
 - **Rules.** An icon never stands alone without a name: it is beside its
   words, or its button holds the words as hidden text. An icon is never the
   only sign of anything. It is decoration, so it carries no meaning of its
-  own and may vanish in forced colours. Adding one means adding it to the
-  set and to the selectors, here first. The map preview's large view and
-  the toggletip keep their own inline SVG icons (8.8, 7.7).
+  own. In forced colours only the button, tab, shortcut and heading icons
+  are repainted (6, "Forced colours"); the rest may vanish. Adding one
+  means adding it to the set and to the selectors, here first. The map
+  preview's large view and the toggletip keep their own inline SVG icons
+  (8.8, 7.7).
 
 ## 8. Patterns for later screens
 
