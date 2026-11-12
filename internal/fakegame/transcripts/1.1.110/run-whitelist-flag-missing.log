@@ -1,0 +1,23 @@
+2026-11-12T14:59:20.047398070Z    0.000 2026-11-12 14:59:20; Factorio 1.1.110 (build 62357, linux64, headless)
+2026-11-12T14:59:20.047440790Z    0.000 Operating system: Linux
+2026-11-12T14:59:20.047460439Z    0.000 Program arguments: "/opt/factorio/bin/x64/factorio" "--start-server-load-latest" "--mod-directory" "/factorio/mods" "--rcon-port" "27015" "--rcon-password" <private> "--server-adminlist" "/factorio/config/server-adminlist.json" "--server-banlist" "/factorio/config/server-banlist.json" "--server-settings" "/factorio/config/server-settings.json" "--server-whitelist" "/factorio/config/server-whitelist.json" 
+2026-11-12T14:59:20.047475487Z    0.000 Config path: /opt/factorio/config/config.ini
+2026-11-12T14:59:20.047482738Z    0.000 Read data path: /opt/factorio/data
+2026-11-12T14:59:20.047487766Z    0.000 Write data path: /opt/factorio [111786/131072MB]
+2026-11-12T14:59:20.047503465Z    0.000 Binaries path: /opt/factorio/bin
+2026-11-12T14:59:20.055543180Z    0.008 System info: [CPU: Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, 48 cores, RAM: 257804 MB]
+2026-11-12T14:59:20.055565427Z    0.008 Environment: DISPLAY=<unset> WAYLAND_DISPLAY=<unset> DESKTOP_SESSION=<unset> XDG_SESSION_DESKTOP=<unset> XDG_CURRENT_DESKTOP=<unset> __GL_FSAA_MODE=<unset> __GL_LOG_MAX_ANISO=<unset> __GL_SYNC_TO_VBLANK=<unset> __GL_SORT_FBCONFIGS=<unset> __GL_YIELD=<unset>
+2026-11-12T14:59:20.055581567Z    0.008 Running in headless mode
+2026-11-12T14:59:20.059812321Z    0.012 Loading mod core 0.0.0 (data.lua)
+2026-11-12T14:59:20.084896816Z    0.037 Loading mod base 1.1.110 (data.lua)
+2026-11-12T14:59:20.295547379Z    0.248 Loading mod base 1.1.110 (data-updates.lua)
+2026-11-12T14:59:20.421441605Z    0.374 Checksum for core: 607699937
+2026-11-12T14:59:20.421493963Z    0.374 Checksum of base: 2464433227
+2026-11-12T14:59:20.632503408Z    0.585 Prototype list checksum: 3034860339
+2026-11-12T14:59:20.675082183Z    0.627 Info PlayerData.cpp:78: Local player-data.json unavailable
+2026-11-12T14:59:20.675114644Z    0.627 Info PlayerData.cpp:83: Cloud player-data.json unavailable
+2026-11-12T14:59:20.677129825Z    0.629 Factorio initialised
+2026-11-12T14:59:20.677188265Z    0.630 Error CommandLineMultiplayer.cpp:56: use-server-whitelist must be set when server-whitelist is set.
+2026-11-12T14:59:20.680176335Z    0.632 Info ServerMultiplayerManager.cpp:154: Quitting multiplayer connection.
+2026-11-12T14:59:20.680195057Z    0.632 Info ServerMultiplayerManager.cpp:814: updateTick(4294967295) changing state from(Ready) to(Closed)
+2026-11-12T14:59:20.711905753Z    0.664 Goodbye
