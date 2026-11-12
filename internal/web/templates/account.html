@@ -24,6 +24,7 @@
 {{define "content" -}}
 {{with .Page}}
 <h1>{{t "account.title"}}</h1>
+{{template "settings-tabs" "account"}}
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>

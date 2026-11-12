@@ -160,7 +160,12 @@ func pageCases() []pageCase {
 			return p
 		}()},
 		{"notification delete", "todd", 200, WebhookDeletePage{Hook: WebhookView{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com"}}},
-		{"schedule", "todd", 200, SchedulePage{}},
+		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1", UTCSelected: true}.withZones()},
+		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
+			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
+		{"schedule saved off", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1", Saved: true}.withZones()},
+		{"schedule errors", "todd", 400, SchedulePage{Enabled: true, Clock: "25:00", Zone: "Mars", Limit: "x",
+			ClockError: i18n.M("schedule.time.error"), ZoneError: i18n.M("schedule.zone.error"), LimitError: i18n.M("schedule.limit.error", "max", 12)}.withZones()},
 		{"account none", "todd", 200, AccountPage{Source: factorioaccount.None, CanStore: true}},
 		{"account stored", "todd", 200, AccountPage{Source: factorioaccount.Stored, CanStore: true, UpdatedAt: time.Date(2026, 11, 3, 14, 25, 0, 0, time.UTC),
 			UpdatedBy: longName, Return: "/worlds/base/mods", Done: i18n.M("account.done.saved")}},

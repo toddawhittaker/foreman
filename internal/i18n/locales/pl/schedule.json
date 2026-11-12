@@ -1,1 +1,21 @@
-{}
+{
+  "schedule.done.next": "Zapisano. Następny restart: {next}.",
+  "schedule.done.off": "Zapisano. Nie zaplanowano restartu.",
+  "schedule.enabled.label": "Restartuj aktywny świat codziennie",
+  "schedule.how.heading": "Jak to działa",
+  "schedule.how.join": "Jeśli ktoś dołączy w trakcie ostrzeżenia, restart zostaje przerwany, gracz dostaje informację w grze, a Foreman czeka ponownie.",
+  "schedule.how.never": "Harmonogram nigdy nie uruchamia zatrzymanego ani uszkodzonego serwera, a restart pominięty, gdy Foreman nie działał, nie jest nadrabiany.",
+  "schedule.how.skip": "Jeśli po upływie limitu czekania gracze nadal są w grze, restart w tym dniu zostaje pominięty.",
+  "schedule.how.wait": "O ustalonej porze Foreman czeka, aż nikt nie będzie w grze.",
+  "schedule.how.warn": "Następnie restartuje serwer po ostrzeganiu graczy w grze przez {seconds} sekund.",
+  "schedule.limit.error": "Należy podać całkowitą liczbę godzin od 0 do {max}.",
+  "schedule.limit.hint": "Godziny, od 0 do {max}. Przy 0 restart jest od razu pomijany, jeśli ktoś jest w grze.",
+  "schedule.limit.label": "Czekaj na wyjście graczy maksymalnie",
+  "schedule.save": "Zapisz harmonogram",
+  "schedule.state.off": "Nie zaplanowano restartu.",
+  "schedule.state.on": "Foreman restartuje aktywny świat codziennie o {time} ({zone}). Następny restart: {next}.",
+  "schedule.time.error": "Należy podać godzinę, na przykład 04:00.",
+  "schedule.time.label": "Godzina",
+  "schedule.zone.error": "Należy wybrać strefę czasową z listy.",
+  "schedule.zone.label": "Strefa czasowa"
+}

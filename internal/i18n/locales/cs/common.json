@@ -81,5 +81,6 @@
   "common.menu.language": "{language}: nabídka jazyka",
   "common.menu.notifications": "Oznámení",
   "common.menu.schedule": "Plán restartů",
+  "common.settings.label": "Nastavení Foremanu",
   "common.countdown.none_name": "Bez upozornění: nastavit odpočet na 0 sekund"
 }

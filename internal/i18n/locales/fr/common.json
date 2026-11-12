@@ -77,5 +77,6 @@
   "common.menu.language": "{language} : menu de la langue",
   "common.menu.notifications": "Notifications",
   "common.menu.schedule": "Planification des redémarrages",
+  "common.settings.label": "Paramètres de Foreman",
   "common.countdown.none_name": "Sans avertissement : régler le compte à rebours sur 0 seconde"
 }

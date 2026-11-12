@@ -77,5 +77,6 @@
   "common.menu.language": "{language}: menú de idioma",
   "common.menu.notifications": "Notificaciones",
   "common.menu.schedule": "Programación de reinicios",
+  "common.settings.label": "Ajustes de Foreman",
   "common.countdown.none_name": "Sin aviso: pon la cuenta atrás en 0 segundos"
 }
