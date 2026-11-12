@@ -27,7 +27,7 @@
     "name": "Main base"
   },
   "text": "Main base: the server crashed.",
-  "reason": "corrupt-save"
+  "reason": "save-unreadable"
 }
 {
   "version": 1,
