@@ -26,7 +26,7 @@ async function startWithAlice(page: Page, g: FakeGame) {
   await page.getByRole("button", { name: "Start server" }).click();
   await expect(badge(page)).toHaveText("Running", live);
   await g.call("/join", { name: container, player: "alice" });
-  await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+  await expect(page.locator("#pr-alice")).toBeVisible(live);
 }
 
 async function commands(g: FakeGame): Promise<string[]> {
@@ -59,7 +59,7 @@ test.describe("with the fake game", () => {
     await expect(warn).not.toHaveText(first, { timeout: 5000 });
     // Who is being warned stays listed while the game stops.
     await expect(page.getByRole("table")).toContainText("1 online when the stop began");
-    await expect(page.getByRole("cell", { name: "alice" })).toBeVisible();
+    await expect(page.locator("#pr-alice")).toBeVisible();
     await checkPage(page);
 
     await page.getByRole("button", { name: "Cancel stop" }).click();

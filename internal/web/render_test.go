@@ -17,9 +17,11 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/factorioaccount"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/mapgen"
 	"github.com/toddawhittaker/foreman/internal/notify"
+	"github.com/toddawhittaker/foreman/internal/schedule"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
@@ -246,6 +248,29 @@ func pageCases() []pageCase {
 		{"server restored", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
 			p.Result, p.HaveResult = actionResult{Action: game.ActionRestore, Restored: "a", Undo: "b"}, true
 		})},
+		{"server players with actions", "todd", 200, liveOpsCase(func(p *ServerPage) {
+			p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: longName, Action: game.PlayerPromote, Name: "alice", Return: PathServer}
+		})},
+		{"server player action failed", "todd", 200, liveOpsCase(func(p *ServerPage) {
+			p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: longName, Action: game.PlayerKick, Name: "alice",
+				Error: i18n.M("players.error.refused", "name", "alice", "world", longName), Reply: "Player not found."}
+		})},
+		{"server scheduled restart waiting", "todd", 200, liveOpsCase(func(p *ServerPage) {
+			p.Schedule.Phase, p.Schedule.WorldID, p.Schedule.Until = schedule.PhaseWaiting, "base", scheduleNow.Add(time.Hour)
+			p.Schedule.Joined, p.Schedule.Unasked = "alice", true
+		})},
+		{"server scheduled restart skipped", "todd", 200, serverCase(game.StateRunning, func(p *ServerPage) {
+			p.Schedule = schedule.State{Next: scheduleNow.Add(24 * time.Hour), Phase: schedule.PhaseSkipped, WorldID: "base", SkippedAt: scheduleNow, Reason: schedule.SkipAdmin}
+		})},
+		{"server scheduled restart countdown", "todd", 200, serverCase(game.StateStopping, func(p *ServerPage) {
+			p.Schedule = schedule.State{Next: scheduleNow.Add(24 * time.Hour), Phase: schedule.PhaseCountdown, WorldID: "base", CountdownEnds: scheduleNow.Add(time.Minute)}
+			p.Status.Operation = &game.Operation{Action: game.AuditRestart, Steps: []game.Step{
+				{Name: game.StepWarn, State: game.StepProgress, Until: scheduleNow.Add(time.Minute)}, {Name: game.StepSave, State: game.StepWaiting}}}
+		})},
+		{"server crashed out of memory", "todd", 200, serverCase(game.StateCrashed, func(p *ServerPage) {
+			p.Status.LastCrash, p.Status.Crash = scheduleNow, game.LoadReason{Kind: crashreasons.OutOfMemory}
+			p.Status.LowDisk, p.Status.FreeBytes = true, 3_140_000_000
+		})},
 		{"stop", "todd", 200, StopPage{World: world.Summary{ID: "base", Name: longName}, CountdownForm: defaultCountdown()}},
 		{"kick confirm", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: longName}, Action: game.PlayerKick, Name: "Alice", Online: true}},
 		{"kick player gone", "todd", 200, PlayerActionPage{World: world.Summary{ID: "base", Name: "Base"}, Action: game.PlayerKick, Name: "Alice", Gone: true}},
@@ -376,6 +401,23 @@ func serverCase(s game.State, edit func(*ServerPage)) ServerPage {
 		Status: game.Status{World: "base", State: s}}
 	edit(&p)
 	return p
+}
+
+// scheduleNow is a fixed time for the restart schedule's cases.
+var scheduleNow = time.Date(2026, 11, 12, 4, 0, 0, 0, time.UTC)
+
+// liveOpsCase is a running server page with players on, the lists known,
+// the whitelist kept, the schedule on and the disk low (Epic 9).
+func liveOpsCase(edit func(*ServerPage)) ServerPage {
+	return serverCase(game.StateRunning, func(p *ServerPage) {
+		p.Status.StartedAt, p.Status.Uptime = scheduleNow.Add(-time.Hour), time.Hour
+		p.Status.LowDisk, p.Status.FreeBytes = true, 3_140_000_000
+		p.PlayersKnown = true
+		p.Players = []game.Player{{Name: "alice", Duration: time.Minute}, {Name: "Bob"}, {Name: longName}, {Name: "two words"}}
+		p.Lists = PlayerLists{Admins: map[string]bool{"bob": true}, AdminsKnown: true, WhitelistKept: true, Whitelisted: map[string]bool{"alice": true}}
+		p.Schedule = schedule.State{Next: scheduleNow.Add(7 * time.Hour)}
+		edit(p)
+	})
 }
 
 func render(t *testing.T, r *Renderer, c pageCase) (*httptest.ResponseRecorder, string) {
@@ -838,6 +880,229 @@ func TestFaviconLinksAndFiles(t *testing.T) {
 		}
 		if rec.Body.Len() == 0 {
 			t.Errorf("%s: empty body", c.path)
+		}
+	}
+}
+
+// The players table offers each online player's actions from their name
+// (SPEC 8.2, DESIGN 8.12): the admin change the list allows, the whitelist
+// change only while the game keeps the whitelist, then Kick and Ban, which
+// confirm. A name that fails the check of SPEC 14.9 is never acted on.
+func TestPlayerRowsOfferTheirActions(t *testing.T) {
+	html := fragmentHTML(t, liveOpsCase(func(*ServerPage) {}), "server-players")
+	wantAll(t, "alice's row", html,
+		`<details class="player-actions disclosure" name="player-actions" id="pd-alice">`,
+		`<summary id="ps-alice"><span class="player-actions__name">alice</span><span class="visually-hidden">, actions</span></summary>`,
+		`<form method="post" action="/worlds/base/players/promote">`,
+		`id="pa-promote-alice">Make admin<span class="visually-hidden"> alice</span>`,
+		`<form method="post" action="/worlds/base/players/whitelist-remove">`,
+		`id="pa-wl-remove-alice">Remove from whitelist`,
+		`<a href="/worlds/base/players/kick?name=alice&amp;return=%2F" class="button button--risky" id="pa-kick-alice">Kick<span class="visually-hidden"> alice</span></a>`,
+		`<a href="/worlds/base/players/ban?name=alice&amp;return=%2F" class="button button--risky" id="pa-ban-alice">Ban<span class="visually-hidden"> alice</span></a>`,
+		`<input type="hidden" name="return" value="/">`)
+	// The admin list is read without regard to case, as the game reads it.
+	wantAll(t, "Bob's row", html, `id="pa-demote-Bob">Remove admin`, `<span class="badge">Admin</span>`, `id="pa-wl-add-Bob">Add to whitelist`)
+	wantNone(t, "Bob's row", html, `id="pa-promote-Bob"`)
+	// The order is the design's: the changes that act at once, then Kick, then Ban.
+	if a, w, k, b := strings.Index(html, "pa-promote-alice"), strings.Index(html, "pa-wl-remove-alice"), strings.Index(html, "pa-kick-alice"), strings.Index(html, "pa-ban-alice"); a >= w || w >= k || k >= b {
+		t.Errorf("buttons out of order: promote %d, whitelist %d, kick %d, ban %d", a, w, k, b)
+	}
+	// A name with a space is shown as it is, with nothing to act on it.
+	wantAll(t, "the unusable name", html, `<td role="cell">two words</td>`)
+	wantNone(t, "the unusable name", html, `player-two words`, `name=two`)
+
+	// Without the whitelist kept, and with the admin list unreadable, only Kick and Ban.
+	html = fragmentHTML(t, liveOpsCase(func(p *ServerPage) { p.Lists = PlayerLists{} }), "server-players")
+	wantAll(t, "rows with no lists", html, `id="pa-kick-alice"`, `id="pa-ban-alice"`)
+	wantNone(t, "rows with no lists", html, "act-promote", "act-demote", "act-whitelist")
+
+	// The list a stop's warning keeps is who was online then: no actions.
+	stopping := serverCase(game.StateStopping, func(p *ServerPage) {
+		p.Status.Operation = &game.Operation{Action: game.AuditStop, Players: []game.Player{{Name: "alice"}}}
+	})
+	html = fragmentHTML(t, stopping, "server-players")
+	wantAll(t, "the stop's list", html, `<td role="cell">alice</td>`)
+	wantNone(t, "the stop's list", html, "<details", "act-kick")
+}
+
+// The result of a player action shows once in the players card, above the
+// table and outside its live region, with Undo posting the opposite change
+// back to the Server page (DESIGN 8.12).
+func TestPlayerResultOnTheServerPage(t *testing.T) {
+	body := pageHTML(t, liveOpsCase(func(p *ServerPage) {
+		p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: "Base", Action: game.PlayerPromote, Name: "alice", Return: PathServer}
+	}))
+	wantAll(t, "the Server page", body,
+		`<div class="message message--success" id="player-done" tabindex="-1" autofocus>`,
+		"alice is now an admin of Base.",
+		`<form method="post" action="/worlds/base/players/demote">`,
+		`Undo: remove alice as admin`)
+	done, region := strings.Index(body, `id="player-done"`), strings.Index(body, `sse-swap="players"`)
+	if done < 0 || region < 0 || done > region {
+		t.Errorf("the result must come before the players region: result at %d, region at %d", done, region)
+	}
+	undo := body[strings.Index(body, `action="/worlds/base/players/demote"`):]
+	wantAll(t, "the Undo form", undo[:strings.Index(undo, "</form>")], `<input type="hidden" name="return" value="/">`)
+
+	body = pageHTML(t, liveOpsCase(func(p *ServerPage) {
+		p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: "Base", Action: game.PlayerKick, Name: "alice",
+			Error: i18n.M("players.error.refused", "name", "alice", "world", "Base"), Reply: "Player not found."}
+	}))
+	wantAll(t, "a refused kick", body, `id="player-error"`, `<span lang="en">Player not found.</span>`)
+	wantNone(t, "a refused kick", body, `id="player-done"`)
+}
+
+// The crash notice names the catalogue's reason in plain words, and a
+// crash Foreman cannot name says so (SPEC 8.7, 8.8).
+func TestCrashReasonInPlainWords(t *testing.T) {
+	for kind, want := range map[string]string{
+		crashreasons.ModMissingDependency: "A mod needs another mod that is not installed.",
+		crashreasons.ModError:             "A mod failed to load.",
+		crashreasons.SaveUnreadable:       "The save could not be read. It may be damaged or incomplete.",
+		crashreasons.PortInUse:            "Another program on this host already uses the game&#39;s port.",
+		crashreasons.OutOfMemory:          "The game ran out of memory, so the system stopped it.",
+		crashreasons.ModsForOtherVersion:  "Some mods were made for another version of Factorio.",
+	} {
+		for _, st := range []game.State{game.StateCrashed, game.StateCrashLooping} {
+			html := controlHTML(t, serverCase(st, func(p *ServerPage) { p.Status.Crash = game.LoadReason{Kind: kind} }))
+			wantAll(t, kind+" "+string(st), html, `<p class="crash-cause">`+want+`</p>`)
+			wantNone(t, kind, html, "could not tell why")
+		}
+	}
+	html := controlHTML(t, serverCase(game.StateCrashed, func(*ServerPage) {}))
+	wantAll(t, "an unknown crash", html, "Foreman could not tell why from the log.")
+	wantNone(t, "an unknown crash", html, "crash-cause")
+
+	// Mods made for another Factorio are already named in the sentence.
+	html = controlHTML(t, serverCase(game.StateCrashed, func(p *ServerPage) {
+		p.Status.Crash = game.LoadReason{Kind: crashreasons.ModsForOtherVersion, Mods: 2, Required: "2.0", Current: "2.1"}
+	}))
+	wantNone(t, "a crash for mods of another version", html, "crash-cause")
+
+	// A start Docker refused for the port names it too, in the step list's error.
+	err := &game.StartError{Kind: game.StartDockerRefused, Detail: "Bind for 0.0.0.0:34197 failed: port is already allocated", Reason: game.LoadReason{Kind: crashreasons.PortInUse}}
+	got := i18n.English.Format(failureText(err))
+	if want := "The game did not start. Another program on this host already uses the game's port."; got != want {
+		t.Errorf("port in use: got %q, want %q", got, want)
+	}
+}
+
+// The restart schedule on the Server page (SPEC 7.12, DESIGN 8.15): the
+// next time while the game runs, the waiting note, the countdown's heading
+// and the skip.
+func TestScheduledRestartOnTheServerPage(t *testing.T) {
+	next := liveOpsCase(func(*ServerPage) {})
+	html := fragmentHTML(t, next, "server-schedule")
+	wantAll(t, "the next restart", html, "Next restart", `<a class="button button--quiet" href="/settings/restart-schedule" id="act-schedule">`,
+		`<time datetime="2026-11-12T11:00:00Z" data-age>2026-11-12 11:00 UTC</time>`, ", change the restart schedule")
+	for _, st := range []game.State{game.StateStopped, game.StateCrashed, game.StateStarting} {
+		p := next
+		p.Status.State = st
+		wantNone(t, "the next restart while "+string(st), fragmentHTML(t, p, "server-schedule"), "Next restart")
+	}
+
+	waiting := liveOpsCase(func(p *ServerPage) {
+		p.Schedule.Phase, p.Schedule.WorldID, p.Schedule.Until = schedule.PhaseWaiting, "base", scheduleNow.Add(time.Hour)
+	})
+	html = controlHTML(t, waiting)
+	wantAll(t, "the waiting note", html, `id="schedule-waiting"`,
+		"A scheduled restart is waiting for nobody to be online. If players are still on at", "it is skipped today.",
+		`<a href="/settings/restart-schedule" id="act-schedule-note">Restart schedule</a>`)
+	// The name is the game's, as a chat line's is: marked English and escaped.
+	waiting.Schedule.Joined, waiting.Schedule.Unasked = "<b>alice</b>", true
+	wantAll(t, "the waiting note after a join", controlHTML(t, waiting),
+		`<span lang="en">&lt;b&gt;alice&lt;/b&gt;</span> joined during the warning, so the restart waits again.`,
+		"Foreman cannot ask the game who is online, so it waits as if someone were.")
+	// Another world's wait is not this page's.
+	waiting.Schedule.WorldID = "other"
+	wantNone(t, "another world's wait", controlHTML(t, waiting), "schedule-waiting")
+
+	countdown := serverCase(game.StateStopping, func(p *ServerPage) {
+		p.Schedule = schedule.State{Phase: schedule.PhaseCountdown, WorldID: "base"}
+		p.Status.Operation = &game.Operation{Action: game.AuditRestart, Steps: []game.Step{{Name: game.StepWarn, State: game.StepProgress, Until: scheduleNow.Add(time.Minute)}}}
+		p.Now = scheduleNow
+	})
+	wantAll(t, "the countdown", controlHTML(t, countdown), `<h2 class="op-heading">Scheduled restart</h2>`, `id="act-cancel-stop"`)
+	countdown.Schedule.Phase = schedule.PhaseNone
+	wantAll(t, "a restart by hand", controlHTML(t, countdown), `<h2 class="op-heading">Restarting the server</h2>`)
+
+	for reason, want := range map[schedule.SkipReason]string{
+		schedule.SkipPlayers: "because players were still online.",
+		schedule.SkipAdmin:   "because an admin canceled it.",
+		schedule.SkipMissed:  "Today&#39;s scheduled restart was skipped because Foreman was not running at the time.",
+	} {
+		skipped := serverCase(game.StateRunning, func(p *ServerPage) {
+			p.Schedule = schedule.State{Next: scheduleNow.Add(24 * time.Hour), Phase: schedule.PhaseSkipped, WorldID: "base", SkippedAt: scheduleNow, Reason: reason}
+		})
+		wantAll(t, "the skip for "+string(reason), controlHTML(t, skipped), `id="schedule-skipped"`, want, "The next restart is", `act-schedule-note`)
+		// A later result takes the card.
+		skipped.Result, skipped.HaveResult = actionResult{Action: actionSnapshot, At: scheduleNow.Add(time.Minute)}, true
+		wantNone(t, "the skip after a later result", controlHTML(t, skipped), "schedule-skipped")
+	}
+}
+
+// Low disk space warns while the game runs, in its own region, with the
+// way to free space (SPEC 8.13, DESIGN 8.17).
+func TestLowDiskNotice(t *testing.T) {
+	low := liveOpsCase(func(*ServerPage) {})
+	html := fragmentHTML(t, low, "server-disk")
+	wantAll(t, "the low-disk warning", html, `<div class="message message--warning">`,
+		"Only 3.1 GB of disk space is free. Autosaves can fail below 2.0 GB",
+		`<a href="/snapshots" class="button" id="act-disk-snapshots">Snapshots</a>`)
+	for _, edit := range []func(*ServerPage){
+		func(p *ServerPage) { p.Status.LowDisk = false },
+		func(p *ServerPage) { p.Status.State = game.StateStopped },
+	} {
+		p := low
+		edit(&p)
+		// The wrapper stays, so the clearing is still sent (an empty event is never delivered).
+		if got := strings.Join(strings.Fields(fragmentHTML(t, p, "server-disk")), ""); got != "<div></div>" {
+			t.Errorf("want an empty wrapper, got %q", got)
+		}
+	}
+	if !slices.Contains(liveRegions, "disk") || !slices.Contains(liveRegions, "schedule") {
+		t.Errorf("live regions %v lack disk or schedule", liveRegions)
+	}
+}
+
+// Every id on the Server page is unique whatever the players are called: a
+// player's ids take prefixes that begin no other id on the page, so a name
+// such as "done", "undo" or "row-alice" cannot take the id of the Done
+// message, its Undo button or another player's row (DESIGN 8.12).
+func TestPlayerIDsAreUniqueWhateverTheName(t *testing.T) {
+	p := liveOpsCase(func(p *ServerPage) {
+		p.Players = []game.Player{{Name: "alice"}, {Name: "done"}, {Name: "undo"}, {Name: "error"}, {Name: "row-alice"}, {Name: "heading"}}
+		p.Lists.Admins = map[string]bool{"done": true}
+		p.PlayerResult = &PlayerResult{WorldID: "base", WorldName: "Base", Action: game.PlayerPromote, Name: "alice", Return: PathServer}
+	})
+	body := pageHTML(t, p)
+	seen := map[string]int{}
+	for _, m := range reID.FindAllStringSubmatch(body, -1) {
+		seen[m[1]]++
+	}
+	for id, n := range seen {
+		if n > 1 {
+			t.Errorf("id %q used %d times", id, n)
+		}
+	}
+	// The fixed ids are the page's own, not a player's.
+	for _, id := range []string{"player-done", "ps-undo", "players-heading"} {
+		if seen[id] != 1 {
+			t.Errorf("id %q appears %d times, want once", id, seen[id])
+		}
+	}
+	// No per-player prefix is the start of another, so no name can make one
+	// kind of id into another.
+	for i, a := range playerIDPrefixes {
+		for j, b := range playerIDPrefixes {
+			if i != j && strings.HasPrefix(b, a) {
+				t.Errorf("prefix %q begins prefix %q", a, b)
+			}
+		}
+		for id := range seen {
+			if strings.HasPrefix(id, a) && !slices.ContainsFunc(p.Players, func(pl game.Player) bool { return id == a+pl.Name }) {
+				t.Errorf("id %q takes the player prefix %q", id, a)
+			}
 		}
 	}
 }

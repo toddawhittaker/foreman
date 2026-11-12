@@ -85,14 +85,25 @@ func TestChatTabShowsHistory(t *testing.T) {
 func TestChatTabEmptyAndStopped(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.startRunning()
-	if body := g.get(PathChat); !strings.Contains(body, `id="log-empty"`) || !strings.Contains(body, "No chat since the server started.") {
+	body := g.get(PathChat)
+	if !strings.Contains(body, `id="log-empty"`) || !strings.Contains(body, "No chat since the server started.") {
 		t.Errorf("a quiet running server:\n%s", body)
+	}
+	// The not-running note is always in the page, and the style sheet shows
+	// it by the heading's state badge, which live updates replace (DESIGN
+	// 8.14); the e2e test sees it come and go. What differs here is the badge.
+	notRunning := `main:has(#server-title .state--running) .chat-not-running`
+	if !strings.Contains(body, `id="chat-not-running"`) || !strings.Contains(body, `<span id="server-title">`) || !strings.Contains(body, "state--running") {
+		t.Errorf("a running server's page lacks the note or its running badge:\n%s", body)
+	}
+	if css, err := staticFS.ReadFile("static/foreman.css"); err != nil || !strings.Contains(string(css), notRunning) {
+		t.Errorf("the style sheet does not hide the note while running (%v)", err)
 	}
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"0"}}))
 	g.waitPage("state--stopped")
-	body := g.get(PathChat)
-	if !strings.Contains(body, `id="chat-not-running"`) || !strings.Contains(body, `href="/">Go to the Server page</a>`) {
-		t.Errorf("a stopped server:\n%s", body)
+	body = g.get(PathChat)
+	if !strings.Contains(body, "state--stopped") || strings.Contains(body, "state--running") || !strings.Contains(body, `href="/">Go to the Server page</a>`) {
+		t.Errorf("a stopped server's page must carry the stopped badge, not the running one:\n%s", body)
 	}
 }
 

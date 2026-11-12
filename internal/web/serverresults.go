@@ -41,6 +41,10 @@ func (p ServerPage) CrashMessage() i18n.Msg {
 	return crashMsg(p.Status.State == game.StateCrashLooping, !p.CrashLeads(), p.Status.LastCrash, p.Status.Crash)
 }
 
+// CrashCause names the crash's reason in plain words, or is zero when
+// Foreman cannot name it (SPEC 8.7).
+func (p ServerPage) CrashCause() i18n.Msg { return crashCause(p.Status.Crash) }
+
 // switchBackOffer is the way back from the last switch: from a failed or
 // unfinished one (SwitchBack), or else from one that worked, while Foreman
 // still holds its result. A restart of Foreman forgets the latter

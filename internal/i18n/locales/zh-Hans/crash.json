@@ -1,1 +1,8 @@
-{}
+{
+  "crash.kind.mod_error": "某个模组加载失败。",
+  "crash.kind.mod_missing_dependency": "某个模组需要另一个未安装的模组。",
+  "crash.kind.mods_for_other_version": "部分模组是为其他 Factorio 版本制作的。",
+  "crash.kind.out_of_memory": "游戏内存不足，已被系统停止。",
+  "crash.kind.port_in_use": "此主机上的另一个程序已占用游戏端口。",
+  "crash.kind.save_unreadable": "无法读取存档。存档可能已损坏或不完整。"
+}

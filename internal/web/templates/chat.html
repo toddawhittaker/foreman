@@ -23,10 +23,11 @@
 {{template "server-tabs" "chat"}}
 <section class="panel" aria-labelledby="chat-heading">
   <h2 id="chat-heading" class="visually-hidden">{{t "common.nav.chat"}}</h2>
-  {{- if not .Running}}
-  <p class="empty empty--art empty--chat" id="chat-not-running">{{t "chat.not_running"}}</p>
-  <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
-  {{- end}}
+  {{- /* Always there, and hidden by the style sheet while the heading's live badge says the game runs, so it follows the game without a reload (DESIGN 8.14). */}}
+  <div class="chat-not-running">
+    <p class="empty empty--art empty--chat" id="chat-not-running">{{t "chat.not_running"}}</p>
+    <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
+  </div>
   {{- if not .Rows}}
   <p class="empty" id="log-empty">{{t "chat.empty"}}</p>
   {{- end}}

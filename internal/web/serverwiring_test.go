@@ -68,7 +68,7 @@ func TestSnapshotAfterCancelNeverShowsTheCancelledMessage(t *testing.T) {
 	if err := g.fake.Join(game.ContainerName(id), "alice"); err != nil {
 		t.Fatal(err)
 	}
-	g.waitPage(`<td role="cell">alice</td>`)
+	g.waitPage(`<tr role="row" id="pr-alice">`)
 	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))
 	g.waitPage("Cancel stop")
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))

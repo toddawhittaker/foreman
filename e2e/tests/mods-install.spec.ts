@@ -21,7 +21,7 @@ test("search, install and confirm: progress, then Done on the Server page, the g
   // A player online makes the stop count down, which holds the install while the page shows its steps;
   // with nobody online the fake game restarts so fast that the steps can be gone before the page loads.
   await g.call("/join", { name: "foreman-base", player: "alice" });
-  await expect(page.getByRole("cell", { name: "alice" })).toBeVisible(live);
+  await expect(page.locator("#pr-alice")).toBeVisible(live);
 
   await page.getByRole("link", { name: "Mods", exact: true }).click();
   await expect(page).toHaveURL("/worlds/base/mods");

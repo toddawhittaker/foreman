@@ -1,1 +1,8 @@
-{}
+{
+  "crash.kind.mod_error": "38384c32",
+  "crash.kind.mod_missing_dependency": "45df8216",
+  "crash.kind.mods_for_other_version": "e5ee5c5a",
+  "crash.kind.out_of_memory": "2755a8b1",
+  "crash.kind.port_in_use": "f32dcf1a",
+  "crash.kind.save_unreadable": "a5db0722"
+}

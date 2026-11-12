@@ -9,6 +9,7 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/game/crashreasons"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/modportal"
 	"github.com/toddawhittaker/foreman/internal/savefile"
@@ -133,18 +134,24 @@ func startErrorMsg(e *game.StartError) i18n.Msg {
 	switch e.Kind {
 	case game.StartLoadFailed:
 		if e.Detail != "" {
-			return i18n.M("server.start.load_failed_said", "said", i18n.Game(e.Detail))
+			return withCause(i18n.M("server.start.load_failed_said", "said", i18n.Game(e.Detail)), e.Reason)
 		}
-		return i18n.M("server.start.load_failed")
+		return withCause(i18n.M("server.start.load_failed"), e.Reason)
 	case game.StartStopped:
 		r := e.Reason
 		switch {
 		case r.Mods > 0:
 			return i18n.M("server.start.mods", "reason", loadModsMsg(r))
 		case r.Said != "":
-			return i18n.M("server.start.said", "said", i18n.Game(strings.TrimSuffix(r.Said, ".")))
+			return withCause(i18n.M("server.start.said", "said", i18n.Game(strings.TrimSuffix(r.Said, "."))), r)
+		case r.Kind != "":
+			return withCause(i18n.M("server.error.start_failed"), r)
 		}
 		return i18n.M("server.start.stopped_loading")
+	case game.StartDockerRefused:
+		// Docker's own words are on the Console's log; the page names the
+		// catalogue's reason (SPEC 8.7).
+		return withCause(i18n.M("server.error.start_failed"), e.Reason)
 	case game.StartLoadTimeout:
 		return i18n.M("server.start.load_timeout", "wait", waitWords(e.Timeout))
 	case game.StartRCONTimeout:
@@ -201,6 +208,38 @@ func crashMsg(looping, earlier bool, at time.Time, r game.LoadReason) i18n.Msg {
 	}
 	return pick(i18n.M("server.crash.once_earlier.none"), i18n.M("server.crash.once_earlier.mods", "reason", mods),
 		i18n.M("server.crash.once_earlier.said", "said", said))
+}
+
+// crashCause names the catalogue's reason for a crash or a failed start in
+// plain words (SPEC 8.7, 8.8), or is zero when the reason is unknown or the
+// sentence already names it: mods made for another Factorio are listed by
+// name.
+func crashCause(r game.LoadReason) i18n.Msg {
+	switch r.Kind {
+	case crashreasons.ModMissingDependency:
+		return i18n.M("crash.kind.mod_missing_dependency")
+	case crashreasons.ModError:
+		return i18n.M("crash.kind.mod_error")
+	case crashreasons.SaveUnreadable:
+		return i18n.M("crash.kind.save_unreadable")
+	case crashreasons.PortInUse:
+		return i18n.M("crash.kind.port_in_use")
+	case crashreasons.OutOfMemory:
+		return i18n.M("crash.kind.out_of_memory")
+	case crashreasons.ModsForOtherVersion:
+		if r.Mods == 0 {
+			return i18n.M("crash.kind.mods_for_other_version")
+		}
+	}
+	return i18n.Msg{}
+}
+
+// withCause follows msg with the reason's plain words, when it has any.
+func withCause(msg i18n.Msg, r game.LoadReason) i18n.Msg {
+	if c := crashCause(r); !c.IsZero() {
+		return join(msg, c)
+	}
+	return msg
 }
 
 // modNames lists mod names, and how many more there are.
