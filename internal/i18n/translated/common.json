@@ -45,5 +45,9 @@
   "common.signedin": "75e63715",
   "common.signout": "48f0d3d3",
   "common.skip": "ac576a66",
-  "common.summary.heading": "122574b5"
+  "common.summary.heading": "122574b5",
+  "common.theme.auto": "02862497",
+  "common.theme.dark": "60acc53f",
+  "common.theme.label": "efb52e71",
+  "common.theme.light": "dbcd5e7b"
 }

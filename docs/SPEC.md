@@ -2067,7 +2067,8 @@ automated accessibility scan in its end-to-end tests. (P0)
 scrolling, with touch targets at least 24 by 24 CSS pixels. The success
 scenarios in docs/VISION.md are tested at phone width. (P0)
 
-17.3. Light and dark themes, following the system setting. (P1)
+17.3. Light and dark themes, following the system setting, with an Auto /
+Light / Dark choice in the user menu, remembered per browser. (P1)
 
 17.4. State is never shown by colour alone: running, stopped, crashed and
 crash-looping each have a word. (P0)

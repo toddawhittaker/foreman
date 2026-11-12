@@ -146,16 +146,25 @@ Rules:
 
 ### How themes work
 
-Both themes are defined as CSS custom properties. The dark values sit on
-`:root`, because dark is the main look; the light values replace them
-inside `@media (prefers-color-scheme: light)`. Each theme has four depths
-of surface: `bg` (the page), `surface` (cards and bars), `raised` (controls
+Both themes are defined as CSS custom properties on `:root`. Each colour
+token holds both values as `light-dark(light, dark)`, and each shadow token
+holds both themes' layers, the other theme's drawn transparent. So the
+`color-scheme` property alone decides the theme, and native controls
+(checkboxes, scroll bars, the file picker) follow it too. Each theme has
+four depths of surface: `bg` (the page), `surface` (cards and bars), `raised` (controls
 and boxes sitting on a card) and `deep` (fields and the log). In light,
-`surface` and `deep` are both white. `:root` also sets
-`color-scheme: dark light` so native controls (checkboxes, scroll bars,
-the file picker) follow the theme. There is no theme switch in the
-interface; the system setting decides (SPEC 17.3). Both themes must meet
-every ratio below (SPEC 17.1).
+`surface` and `deep` are both white.
+
+The user menu has a Theme choice: Auto, Light or Dark (SPEC 17.3). Auto is
+the default and follows the system setting: `:root` sets
+`color-scheme: dark light` and the page's `color-scheme` meta says the
+same. Light or Dark posts to `POST /theme`, which keeps the choice in a
+`foreman_theme` cookie for this browser and goes back to the page through
+the same return-path check as the language menu. The server then writes
+`data-theme="light"` or `"dark"` on `html` and that one scheme in the
+meta, and `:root[data-theme]` sets `color-scheme` to it, overriding the
+system. The page is drawn in the chosen theme from the first paint, with
+no script. Both themes must meet every ratio below (SPEC 17.1).
 
 Every colour in the CSS comes from a token below. A raw hex value
 anywhere else in the stylesheet is a bug, except the map's own colours
@@ -460,6 +469,15 @@ frame (7.4).
             </ul>
           </fieldset>
         </form>
+        <form method="post" action="/theme">
+          <fieldset>
+            <legend>Theme</legend>
+            <ul>
+              <li><button type="submit" name="theme" value="auto" class="menu__item" aria-current="true">Auto</button></li>
+              …
+            </ul>
+          </fieldset>
+        </form>
         <form method="post" action="/signout">
           <button type="submit" class="menu__item">Sign out</button>
         </form>
@@ -517,6 +535,9 @@ frame (7.4).
   English off English), each button marked with its `lang`, the current
   one with `aria-current="true"`, an `accent-bg` face and a 3 px `selected`
   mark at its start; an item under the pointer takes `secondary-hover`;
+  then the three themes, Auto, Light and Dark, as three submit buttons to
+  `POST /theme` in a `fieldset` whose legend is "Theme", marked the same
+  way (3, "How themes work");
   then a "factorio.com account" link to `/settings/factorio-account`
   (`aria-current="page"` there, and a divider line above it), the only
   account link Foreman has, then Sign out, still a `POST` form with a
@@ -2460,7 +2481,7 @@ The end-to-end tests for each screen check, in both themes
 ## 11. CSS file layout
 
 One stylesheet, `internal/web/static/foreman.css`, in this order: tokens
-(dark on `:root`, then the light media query), a small reset, base elements
+(both themes on `:root`, then the forced themes), a small reset, base elements
 (`body`, headings, links, `code`, `table`), the shell, then one block per
 component in the order of section 7. No preprocessor, no `@import`.
 
@@ -2469,7 +2490,6 @@ component in the order of section 7. No preprocessor, no `@import`.
 Left out because no Epic 1 to 3 screen needs it. Add each when a real
 screen does, in this document first.
 
-- A manual theme switch. The system setting decides (SPEC 17.3).
 - Icons beyond the set in 7.9, the map preview's pin, the large view's
   controls (8.8) and the toggletip's (i) (7.7). No icon font, and no icon
   that stands without a name.

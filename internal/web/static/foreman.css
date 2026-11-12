@@ -84,7 +84,9 @@
 }
 
 /* Tokens: dark is the main look (DESIGN 3). Neutrals are warm, so the orange
-   sits in them rather than on them; each theme has three depths of surface. */
+   sits in them rather than on them; each theme has three depths of surface.
+   A colour token is light-dark(light, dark), so color-scheme alone picks the
+   theme: the system's by default, or the one the user menu forced. */
 :root {
   color-scheme: dark light;
 
@@ -103,37 +105,42 @@
   --text-xl: 1.25rem;
   --text-2xl: 1.75rem;
 
-  --color-bg: #121110;
-  --color-surface: #1b1a18;
-  --color-raised: #24221f;
-  --color-deep: #0d0c0b;
-  --color-line: #2f2c28;
-  --color-border: #7a7369;
-  --color-text: #ece8e1;
-  --color-heading: #f7f4ee;
-  --color-text-muted: #a8a095;
-  --color-link: #ffb357;
-  --color-selected: #f39a2a;
-  --color-accent-bg: #33220e;
+  --color-bg: light-dark(#f1efeb, #121110);
+  --color-surface: light-dark(#ffffff, #1b1a18);
+  --color-raised: light-dark(#f8f7f4, #24221f);
+  --color-deep: light-dark(#ffffff, #0d0c0b);
+  --color-line: light-dark(#e2ded7, #2f2c28);
+  --color-border: light-dark(#8a8278, #7a7369);
+  --color-text: light-dark(#1b1916, #ece8e1);
+  --color-heading: light-dark(#12100e, #f7f4ee);
+  --color-text-muted: light-dark(#5d574f, #a8a095);
+  --color-link: light-dark(#9a4800, #ffb357);
+  --color-selected: light-dark(#c96d00, #f39a2a);
+  --color-accent-bg: light-dark(#fdecd5, #33220e);
   --color-primary: #f39a2a;
-  --color-primary-hover: #f7ae4f;
-  --color-primary-edge: #f39a2a;
+  --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
+  --color-primary-edge: light-dark(#a35200, #f39a2a);
   --color-on-primary: #1a1004;
-  --color-secondary-hover: #2a2825;
-  --color-danger: #e5553c;
-  --color-danger-hover: #ef7560;
-  --color-on-danger: #1a0503;
-  --color-danger-text: #ff978a;
-  --color-danger-bg: #3a1913;
-  --color-ok: #86d672;
-  --color-ok-bg: #172a12;
-  --color-warn: #f2c14e;
-  --color-warn-bg: #33280c;
-  --color-info: #9cc0ff;
-  --color-info-bg: #15223a;
-  --color-focus: #f7ae4f;
-  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 3%);
-  --shadow-pop: 0 8px 24px rgb(0 0 0 / 45%);
+  --color-secondary-hover: light-dark(#f1eee9, #2a2825);
+  --color-danger: light-dark(#b3301d, #e5553c);
+  --color-danger-hover: light-dark(#932616, #ef7560);
+  --color-on-danger: light-dark(#ffffff, #1a0503);
+  --color-danger-text: light-dark(#a32a18, #ff978a);
+  --color-danger-bg: light-dark(#fbe6e1, #3a1913);
+  --color-ok: light-dark(#1f6a2a, #86d672);
+  --color-ok-bg: light-dark(#e3f1de, #172a12);
+  --color-warn: light-dark(#7a5000, #f2c14e);
+  --color-warn-bg: light-dark(#f8edcf, #33280c);
+  --color-info: light-dark(#1d4fa3, #9cc0ff);
+  --color-info-bg: light-dark(#e5edf9, #15223a);
+  --color-focus: light-dark(#b35c00, #f7ae4f);
+  /* Each theme's shadow is its own layers; the other theme's layers are
+     transparent, because light-dark() takes only colours. */
+  --shadow-card: inset 0 1px 0 light-dark(transparent, rgb(255 255 255 / 3%)),
+    0 1px 2px light-dark(rgb(60 45 25 / 6%), transparent),
+    0 1px 1px light-dark(rgb(60 45 25 / 4%), transparent);
+  --shadow-pop: 0 8px 24px light-dark(transparent, rgb(0 0 0 / 45%)),
+    0 10px 28px light-dark(rgb(60 45 25 / 18%), transparent);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -159,40 +166,13 @@
   --page-max: 76rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --color-bg: #f1efeb;
-    --color-surface: #ffffff;
-    --color-raised: #f8f7f4;
-    --color-deep: #ffffff;
-    --color-line: #e2ded7;
-    --color-border: #8a8278;
-    --color-text: #1b1916;
-    --color-heading: #12100e;
-    --color-text-muted: #5d574f;
-    --color-link: #9a4800;
-    --color-selected: #c96d00;
-    --color-accent-bg: #fdecd5;
-    --color-primary: #f39a2a;
-    --color-primary-hover: #f6ad52;
-    --color-primary-edge: #a35200;
-    --color-on-primary: #1a1004;
-    --color-secondary-hover: #f1eee9;
-    --color-danger: #b3301d;
-    --color-danger-hover: #932616;
-    --color-on-danger: #ffffff;
-    --color-danger-text: #a32a18;
-    --color-danger-bg: #fbe6e1;
-    --color-ok: #1f6a2a;
-    --color-ok-bg: #e3f1de;
-    --color-warn: #7a5000;
-    --color-warn-bg: #f8edcf;
-    --color-info: #1d4fa3;
-    --color-info-bg: #e5edf9;
-    --color-focus: #b35c00;
-    --shadow-card: 0 1px 2px rgb(60 45 25 / 6%), 0 1px 1px rgb(60 45 25 / 4%);
-    --shadow-pop: 0 10px 28px rgb(60 45 25 / 18%);
-  }
+/* The user menu's theme choice (SPEC 17.3). */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* A card's padding follows the window, not the text size, so at 200% text
