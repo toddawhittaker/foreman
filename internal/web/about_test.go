@@ -108,8 +108,8 @@ func TestUserMenuHasAboutAndItsDialog(t *testing.T) {
 	if theme < 0 || theme >= about || about >= signout {
 		t.Errorf("order: theme %d, About %d, sign out %d", theme, about, signout)
 	}
-	dlg := regexp.MustCompile(`(?s)<dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title">.*?</dialog>`).FindString(body)
-	for _, want := range []string{`id="about-title"`, "<dd>v2.0.0</dd>", "<dd>MIT</dd>", `id="about-close"`, "github.com/toddawhittaker/foreman"} {
+	dlg := regexp.MustCompile(`(?s)<dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title" aria-describedby="about-facts">.*?</dialog>`).FindString(body)
+	for _, want := range []string{`id="about-title"`, `id="about-facts"`, "<dd>v2.0.0</dd>", "<dd>MIT</dd>", `id="about-close"`, "github.com/toddawhittaker/foreman"} {
 		if !strings.Contains(dlg, want) {
 			t.Errorf("dialog lacks %q: %s", want, dlg)
 		}

@@ -8,11 +8,14 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 # What About shows (internal/version). The Makefile passes them from git;
-# without them the build reads Go's build info and the page says so.
+# without them the build reads Go's build info and the page says so. Only the
+# characters of a version are kept, whatever the arguments hold, and the
+# values are only ever expanded inside double quotes, never as commands.
 ARG VERSION=
 ARG COMMIT=
-RUN CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath \
-    -ldflags="-s -w -X github.com/toddawhittaker/foreman/internal/version.Version=${VERSION} -X github.com/toddawhittaker/foreman/internal/version.Commit=${COMMIT}" \
+RUN v="$(printf '%s' "${VERSION}" | tr -cd 'A-Za-z0-9._+-')" && c="$(printf '%s' "${COMMIT}" | tr -cd 'A-Za-z0-9')" && \
+    CGO_ENABLED=0 GOTOOLCHAIN=local go build -trimpath \
+    -ldflags="-s -w -X github.com/toddawhittaker/foreman/internal/version.Version=${v} -X github.com/toddawhittaker/foreman/internal/version.Commit=${c}" \
     -o /out/foreman ./cmd/foreman
 
 FROM gcr.io/distroless/static-debian13@sha256:448810357cc8e67b7208988abdba0f5ec3d3aebee0a5b13eb624979792cffc0f

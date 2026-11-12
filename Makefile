@@ -22,11 +22,15 @@ IMAGE ?= foreman:dev
 
 # What About shows (internal/version): the version from git describe and the
 # commit hash. The image build cannot ask git (.dockerignore leaves .git out),
-# so they go in as build arguments. Both stay empty outside a checkout.
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
-COMMIT  ?= $(shell git rev-parse HEAD 2>/dev/null)
+# so they go in as build arguments. A tag or a ref name is text anyone who can
+# push may choose, so only release tags (v1.2.3) are matched and only the
+# characters of a version are kept: the values are safe to put in a command.
+# Both stay empty outside a checkout. (VERSION itself names a game version in
+# make test-catalogue, so these have their own names.)
+BUILD_VERSION := $(shell git describe --tags --always --dirty --match 'v[0-9]*' 2>/dev/null | tr -cd 'A-Za-z0-9._+-')
+BUILD_COMMIT  := $(shell git rev-parse HEAD 2>/dev/null | tr -cd 'A-Za-z0-9')
 VERSION_PKG := github.com/toddawhittaker/foreman/internal/version
-LDFLAGS := -X $(VERSION_PKG).Version=$(VERSION) -X $(VERSION_PKG).Commit=$(COMMIT)
+LDFLAGS := -X $(VERSION_PKG).Version=$(BUILD_VERSION) -X $(VERSION_PKG).Commit=$(BUILD_COMMIT)
 
 CACHE := $(CURDIR)/.cache
 # Tool containers see the repository at its own path and keep caches in .cache/.
@@ -235,7 +239,7 @@ build-fakeportal:
 	CGO_ENABLED=0 go build -trimpath -o bin/fakeportal ./cmd/fakeportal
 
 image:
-	docker build --build-arg GO_IMAGE=$(GO_IMAGE) --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(IMAGE) .
+	docker build --build-arg GO_IMAGE=$(GO_IMAGE) --build-arg 'VERSION=$(BUILD_VERSION)' --build-arg 'COMMIT=$(BUILD_COMMIT)' -t $(IMAGE) .
 
 run:
 	@mkdir -p .dev-data

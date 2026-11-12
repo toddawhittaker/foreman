@@ -37,6 +37,10 @@ test("About opens by keyboard, shows the build, and Escape closes it with focus 
 
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page).getByRole("heading", { name: "About Foreman" })).toBeVisible();
+  // A screen reader hears the facts when it opens, not only the heading and Close.
+  await expect(dialog(page)).toHaveAttribute("aria-describedby", "about-facts");
+  await expect(dialog(page)).toHaveAccessibleDescription(/Version.*Go version.*Licence/);
+  await expect(dialog(page).locator("#about-facts")).toBeVisible();
   // The browser moved focus in, to Close.
   await expect(dialog(page).getByRole("button", { name: "Close" })).toBeFocused();
   // The logo is decorative and the name stays English.
