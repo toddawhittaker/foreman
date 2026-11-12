@@ -160,7 +160,7 @@ test.describe("with the fake game", () => {
     await start(page);
     await fakeGame!.call("/crash-loop", { name: container, on: true });
     await expect(badge(page)).toHaveText("Crash-looping", { timeout: 40_000 });
-    await expect(page.locator(".button--primary")).toHaveCount(0);
+    await expect(page.locator("main .button--primary")).toHaveCount(0);
     await checkPage(page);
     await fakeGame!.call("/crash-loop", { name: container, on: false });
     await page.getByRole("button", { name: "Try to start again" }).click();

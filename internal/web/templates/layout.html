@@ -117,7 +117,7 @@
      Go version, the licence and the project's address. Takes version.Info. The
      names Foreman and MIT are never translated. */}}
 {{define "about-details" -}}
-<dl class="facts facts--inline about__facts" id="about-facts">
+<dl class="about__facts" id="about-facts">
   {{- /* A release version, else the commit names the build; a build with neither is a development build. */}}
   {{- if .Version}}
   <div><dt>{{t "about.version"}}</dt><dd>{{.Version}}</dd></div>

@@ -442,6 +442,7 @@ code {
 /* Figures line up in every table, fact and log (DESIGN 8.3). */
 table,
 .facts,
+.about__facts,
 .log,
 time {
   font-variant-numeric: tabular-nums;
@@ -4403,9 +4404,30 @@ form:has(#mode-exchange:checked) .achievements {
   min-block-size: var(--target-min);
 }
 
+/* The About list looks like the page facts but is its own class, so a page's
+   own `dl.facts` stays the only one on the page. */
 .about__facts {
-  /* The facts stack on a narrow dialog and sit side by side on a wide page. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
   min-inline-size: 0;
+}
+
+.about__facts > div {
+  min-inline-size: 0;
+}
+
+.about__facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.about__facts dd {
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .about-dialog {

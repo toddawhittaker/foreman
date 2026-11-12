@@ -130,6 +130,11 @@ func TestUserMenuHasAboutAndItsDialog(t *testing.T) {
 			t.Errorf("dialog lacks %q: %s", want, dlg)
 		}
 	}
+	// Every page carries the dialog, so its list must not be a `dl.facts`: a
+	// page's own facts list has to be the only one.
+	if strings.Contains(dlg, `class="facts`) {
+		t.Error("the About dialog's list uses the page facts class")
+	}
 	if !strings.Contains(body, "/static/about.js") {
 		t.Error("signed-in pages do not load about.js")
 	}
