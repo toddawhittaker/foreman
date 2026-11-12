@@ -1,6 +1,93 @@
 {{define "title"}}{{t "common.nav.chat"}}{{end}}
 
+{{define "scripts"}}<script src="{{static "live.js"}}" defer></script>{{end}}
+
 {{define "content" -}}
+{{with .Page}}
+{{- if not .HasWorld}}
 <h1>{{t "common.nav.chat"}}</h1>
 {{template "server-tabs" "chat"}}
+<section class="panel" aria-labelledby="none-heading">
+  <h2 id="none-heading">{{t "server.none.heading"}}</h2>
+  <p class="empty">{{t "chat.none"}}</p>
+  <div class="actions"><a href="{{worldsPath}}" class="button">{{t "server.none.go"}}</a></div>
+</section>
+{{- else}}
+{{- /* The facts event carries the heading's badge and the announce event is read out, so state changes are spoken here too (DESIGN 7.5). */}}
+<div sse-swap="facts" hidden></div>
+<div sse-swap="announce" hidden></div>
+{{- /* The chat has a stream of its own: each event swaps into #chat-lines out of band. */}}
+<div sse-connect="{{.EventsPath}}" hidden><div sse-swap="chat"></div></div>
+<header class="page-head">
+  <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
+</header>
+{{template "server-tabs" "chat"}}
+<section class="panel" aria-labelledby="chat-heading">
+  <h2 id="chat-heading" class="visually-hidden">{{t "common.nav.chat"}}</h2>
+  {{- if not .Running}}
+  <p class="empty empty--art empty--chat" id="chat-not-running">{{t "chat.not_running"}}</p>
+  <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
+  {{- else if not .Lines}}
+  <p class="empty empty--art empty--chat" id="chat-empty">{{t "chat.empty"}}</p>
+  {{- end}}
+  <div class="log-frame">
+    <div class="log" tabindex="0" role="log" aria-label="{{t "chat.history_label"}}">
+      <ol id="chat-lines" class="chat-lines" role="list">{{template "chat-lines" .}}</ol>
+    </div>
+  </div>
+  {{template "chat-panel" .}}
+</section>
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{/* One <li> for each line. The names and messages are players' words: set as
+     text, never made into links, and shown as written (SPEC 22.3). */}}
+{{define "chat-lines"}}{{range .Lines}}<li{{if .Server}} class="chat-line--server"{{end}}>{{if not .Time.IsZero}}<time datetime="{{isoTime .Time}}">{{clock .Time}}</time> {{end}}<strong class="chat-name"{{if not .Server}} translate="no"{{end}}>{{if .Server}}{{t "chat.name.server"}}{{else}}{{.Name}}{{end}}</strong> <span class="chat-text" dir="auto">{{.Text}}</span></li>
+{{end}}{{end}}
+
+{{/* What the chat stream sends: the whole list, then lines to add. */}}
+{{define "chat-reset"}}<div hx-swap-oob="innerHTML:#chat-lines">{{template "chat-lines" .}}</div>
+{{- if .Lines}}<div hx-swap-oob="delete:#chat-empty"></div>{{end}}{{end}}
+
+{{define "chat-add"}}<div hx-swap-oob="beforeend:#chat-lines">{{template "chat-lines" .}}</div>
+<div hx-swap-oob="delete:#chat-empty"></div>{{end}}
+
+{{/* The message field and its refusal (SPEC 8.5). A script swaps the whole
+     panel after each message; the list above it is left alone. */}}
+{{define "chat-panel" -}}
+<div id="chat-panel">
+  {{template "summary" .Problems}}
+  {{- if not .Failure.IsZero}}
+  <div class="message message--error">
+    <p><strong>{{t "common.error.label"}}</strong> {{msg .Failure}}</p>
+    {{- if .GoServer}}
+    <div class="actions"><a href="{{serverPath}}">{{t "chat.go_server"}}</a></div>
+    {{- end}}
+  </div>
+  {{- end}}
+  <form class="field" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#chat-panel" hx-swap="outerHTML" novalidate>
+    {{template "required-note"}}
+    <label for="chat-message" class="required">{{t "chat.message.label"}}</label>
+    <p class="hint" id="chat-hint">{{t "chat.message.hint"}}</p>
+    <div class="console-row">
+      <input id="chat-message" name="message" type="text" value="{{.Message}}" maxlength="{{.ChatLimit}}" required autocomplete="off"
+        {{- if not .MessageError.IsZero}} aria-invalid="true" aria-describedby="chat-hint chat-error"{{else}} aria-describedby="chat-hint"{{end}}>
+      <button id="act-chat-send" type="submit" class="button button--primary">{{t "chat.send"}}</button>
+    </div>
+    {{- if not .MessageError.IsZero}}
+    <p class="error" id="chat-error"><strong>{{t "common.error.label"}}</strong> {{msg .MessageError}}</p>
+    {{- if .GoConsole}}
+    <div class="actions"><a href="{{consolePath}}">{{t "chat.go_console"}}</a></div>
+    {{- end}}
+    {{- end}}
+  </form>
+</div>
+{{- end}}
+
+{{define "chat-response" -}}
+{{template "chat-panel" .}}
+{{- if not .Announce.IsZero}}
+<div hx-swap-oob="innerHTML:#announcer">{{msg .Announce}}</div>
+{{- end}}
 {{- end}}
