@@ -6,6 +6,7 @@
   "common.nav.console": "Console",
   "common.nav.worlds": "Mondes",
   "common.nav.snapshots": "Instantanés",
+  "common.nav.chat": "Discussion",
   "common.signedin": "Connecté en tant que {user}",
   "common.signout": "Se déconnecter",
   "common.language.label": "Langue",
@@ -74,5 +75,7 @@
   "common.link.new_tab": "(s’ouvre dans un nouvel onglet)",
   "common.menu.account": "{user}, {language} : menu du compte et de la langue",
   "common.menu.language": "{language} : menu de la langue",
+  "common.menu.notifications": "Notifications",
+  "common.menu.schedule": "Planification des redémarrages",
   "common.countdown.none_name": "Sans avertissement : régler le compte à rebours sur 0 seconde"
 }

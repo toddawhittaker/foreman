@@ -6,6 +6,7 @@
   "common.nav.console": "Konsola",
   "common.nav.worlds": "Światy",
   "common.nav.snapshots": "Migawki",
+  "common.nav.chat": "Czat",
   "common.signedin": "Zalogowano jako {user}",
   "common.signout": "Wyloguj",
   "common.language.label": "Język",
@@ -78,5 +79,7 @@
   "common.link.new_tab": "(otwiera się w nowej karcie)",
   "common.menu.account": "{user}, {language}: menu konta i języka",
   "common.menu.language": "{language}: menu języka",
+  "common.menu.notifications": "Powiadomienia",
+  "common.menu.schedule": "Harmonogram restartów",
   "common.countdown.none_name": "Bez ostrzeżenia: ustaw odliczanie na 0 sekund"
 }

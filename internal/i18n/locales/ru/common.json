@@ -6,6 +6,7 @@
   "common.nav.console": "Консоль",
   "common.nav.worlds": "Миры",
   "common.nav.snapshots": "Снимки",
+  "common.nav.chat": "Чат",
   "common.signedin": "Вы вошли как {user}",
   "common.signout": "Выйти",
   "common.language.label": "Язык",
@@ -78,5 +79,7 @@
   "common.link.new_tab": "(открывается в новой вкладке)",
   "common.menu.account": "{user}, {language}: меню учётной записи и языка",
   "common.menu.language": "{language}: меню языка",
+  "common.menu.notifications": "Уведомления",
+  "common.menu.schedule": "Расписание перезапуска",
   "common.countdown.none_name": "Без предупреждения: установить обратный отсчёт на 0 секунд"
 }
