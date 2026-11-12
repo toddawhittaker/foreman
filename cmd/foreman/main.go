@@ -127,7 +127,17 @@ func serve(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notify.New(), Scheduler: schedule.New(), HostDataDir: hostDir, Log: slog.Default()})
+	// The notifier reads the store, so it stops before the store closes.
+	// Events still queued then are not sent (SPEC 8.12).
+	notifier, err := notify.New(st, cfg.SecretKey, slog.Default())
+	if err != nil {
+		return err
+	}
+	notifyCtx, stopNotify := context.WithCancel(context.Background())
+	var notifying sync.WaitGroup
+	notifying.Go(func() { notifier.Run(notifyCtx) })
+	defer func() { stopNotify(); notifying.Wait() }()
+	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: schedule.New(), HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
 	}
