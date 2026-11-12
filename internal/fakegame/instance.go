@@ -116,6 +116,10 @@ func (g *Game) bootPreview(c dockertest.Container) {
 		g.daemon.EmitLog(c.ID, docker.Stderr, "Error Util.cpp:81: the fake game was told to fail")
 		g.daemon.Exit(c.ID, 1, false)
 		return
+	case PreviewOOM:
+		g.daemon.EmitLog(c.ID, docker.Stderr, "Killed")
+		g.daemon.Exit(c.ID, 137, true)
+		return
 	}
 	g.finishPreview(c)
 }
@@ -125,7 +129,13 @@ const PreviewSlowDelay = 500 * time.Millisecond
 
 // finishPreview makes what the preview container is for, and exits.
 func (g *Game) finishPreview(c dockertest.Container) {
-	if err := makePreview(c); err != nil {
+	g.endPreview(c, makePreview(c))
+}
+
+// endPreview exits the container with 0, or with 1 when making its output
+// failed.
+func (g *Game) endPreview(c dockertest.Container, err error) {
+	if err != nil {
 		g.report(err.Error())
 		g.daemon.Exit(c.ID, 1, false)
 		return

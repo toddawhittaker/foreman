@@ -186,12 +186,35 @@ func (c *Controller) Preview(ctx context.Context, req PreviewRequest) ([]PNG, er
 // until run returns, so run may read the folder.
 func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind string,
 	run func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error) error {
+	return c.previewRunIn(ctx, previewPlan{
+		gameVersion: req.GameVersion, kind: kind, limit: c.previewLimit,
+		fill: func(base *os.Root) (string, error) { return makePreviewDir(base, req) },
+	}, run)
+}
+
+// previewPlan is what differs between the kinds of preview run.
+type previewPlan struct {
+	// gameVersion picks the image.
+	gameVersion string
+	// kind names the container.
+	kind string
+	// limit is how long the container may run.
+	limit time.Duration
+	// fill makes the run's work folder in base and returns its name.
+	fill func(base *os.Root) (string, error)
+}
+
+// previewRunIn is previewRun for a plan of its own: the same slot, image
+// check, stale sweep and clean-up.
+func (c *Controller) previewRunIn(ctx context.Context, plan previewPlan,
+	run func(base *os.Root, ref, name string, container func(docker.ContainerSpec) error) error) error {
+	kind := plan.kind
 	if err := c.takePreviewSlot(ctx); err != nil {
 		return err
 	}
 	defer func() { <-c.previewSlot }()
 
-	ref, err := c.imageFor(req.GameVersion)
+	ref, err := c.imageFor(plan.gameVersion)
 	if err != nil {
 		return err
 	}
@@ -207,7 +230,7 @@ func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind st
 	defer func() { _ = base.Close() }()
 	c.removeStalePreviews(ctx, base)
 
-	name, err := makePreviewDir(base, req)
+	name, err := plan.fill(base)
 	if err != nil {
 		return err
 	}
@@ -217,7 +240,7 @@ func (c *Controller) previewRun(ctx context.Context, req PreviewRequest, kind st
 		}
 	}()
 	return run(base, ref, name, func(spec docker.ContainerSpec) error {
-		runCtx, cancel := context.WithTimeout(ctx, c.previewLimit)
+		runCtx, cancel := context.WithTimeout(ctx, plan.limit)
 		defer cancel()
 		return c.runOneOff(runCtx, "foreman-"+kind+"-"+name, spec)
 	})
@@ -279,23 +302,37 @@ func checkPreview(req PreviewRequest) (line string, err error) {
 	return line, nil
 }
 
+// previewPath is the folder that holds work folders, on this machine.
+func (c *Controller) previewPath() string {
+	return filepath.Join(filepath.Dir(c.worlds.Dirs().Worlds), previewDir)
+}
+
 // previewBase opens the folder that holds work folders, making it first.
 func (c *Controller) previewBase() (*os.Root, error) {
-	dir := filepath.Join(filepath.Dir(c.worlds.Dirs().Worlds), previewDir)
+	dir := c.previewPath()
 	if err := os.MkdirAll(dir, world.DirMode); err != nil {
 		return nil, err
 	}
 	return os.OpenRoot(dir)
 }
 
-// makePreviewDir makes a fresh work folder in base and fills it with what the
-// game reads: its config, a mod list that matches Space Age, and the settings
-// files. The game's group can write the folder, as it can a world's.
-func makePreviewDir(base *os.Root, req PreviewRequest) (string, error) {
+// newWorkDir makes an empty work folder with a random name in base.
+func newWorkDir(base *os.Root) (string, error) {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
 	name := "p-" + hex.EncodeToString(b[:])
 	if err := world.Mkdir(base, name); err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+// makePreviewDir makes a fresh work folder in base and fills it with what the
+// game reads: its config, a mod list that matches Space Age, and the settings
+// files. The game's group can write the folder, as it can a world's.
+func makePreviewDir(base *os.Root, req PreviewRequest) (string, error) {
+	name, err := newWorkDir(base)
+	if err != nil {
 		return "", err
 	}
 	dir, err := base.OpenRoot(name)
@@ -403,6 +440,12 @@ func (c *Controller) previewSpec(image, dir, line string, req PreviewRequest) do
 // shares: no network, a read-only root, no capabilities, a memory limit, no
 // restart, a tmpfs write folder and one bind mount, dir under previewDir.
 func (c *Controller) oneOffHostConfig(dir string) docker.HostConfig {
+	return c.oneOffHostConfigMem(dir, previewMemory)
+}
+
+// oneOffHostConfigMem is oneOffHostConfig with a memory limit of memory
+// bytes, which also bounds swap to none.
+func (c *Controller) oneOffHostConfigMem(dir string, memory int64) docker.HostConfig {
 	return docker.HostConfig{
 		Binds:          []string{filepath.Join(c.hostData, previewDir, dir) + ":" + gameenv.PreviewMount},
 		CapDrop:        []string{"ALL"},
@@ -410,8 +453,8 @@ func (c *Controller) oneOffHostConfig(dir string) docker.HostConfig {
 		RestartPolicy:  docker.RestartPolicy{Name: "no"},
 		NetworkMode:    "none",
 		ReadonlyRootfs: true,
-		Memory:         previewMemory,
-		MemorySwap:     previewMemory,
+		Memory:         memory,
+		MemorySwap:     memory,
 		Tmpfs:          map[string]string{previewWrite: "rw,noexec,nosuid,size=64m,mode=1777"},
 	}
 }
