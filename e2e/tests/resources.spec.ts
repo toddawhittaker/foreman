@@ -240,7 +240,7 @@ test("another planet drops the count and counts the planet shown, around its dem
   await expect(section(page).getByRole("img")).toHaveCount(1);
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
-  await page.getByLabel("Show demolisher territories").check();
+  await section(page).getByLabel("Show demolisher territories").check();
   await expect(section(page).locator(".territory-counts")).toHaveText(/^Demolisher territories in this picture/);
   await page.locator("#mg-resources-nauvis summary").click();
   await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
@@ -656,7 +656,7 @@ test.describe("on the One planet picture", () => {
     await onePlanet(page);
     await page.locator("#mg-resources-vulcanus summary").click();
     await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
-    await page.getByLabel("Show demolisher territories").check();
+    await section(page).getByLabel("Show demolisher territories").check();
     await expect(section(page).locator(".territory-counts")).toHaveText(/^Demolisher territories in this picture/);
     await pageBox(page).check();
     await expect(pageLabels(page)).toHaveCount(4);
@@ -664,7 +664,7 @@ test.describe("on the One planet picture", () => {
     await expect(one).toHaveText("Download Vulcanus with territories and resource amounts (PNG)");
     const res = await page.request.get(await one.getAttribute("href") ?? "");
     expect(res.headers()["content-disposition"]).toContain("-vulcanus-territories-amounts.png");
-    await page.getByLabel("Show demolisher territories").uncheck();
+    await section(page).getByLabel("Show demolisher territories").uncheck();
     await expect(one).toHaveText("Download Vulcanus with resource amounts (PNG)");
   });
 });
