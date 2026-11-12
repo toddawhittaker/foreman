@@ -137,6 +137,7 @@ func serve(cfg *config.Config) error {
 	var notifying sync.WaitGroup
 	notifying.Go(func() { notifier.Run(notifyCtx) })
 	defer func() { stopNotify(); notifying.Wait() }()
+	games.SetNotifier(notifier)
 	handler, err := web.NewHandler(web.Deps{Config: cfg, Store: st, Worlds: worlds, Game: games, Releases: releases.New(), Previewer: games, Account: portalAccount, Portal: modportal.New(), Notifier: notifier, Scheduler: schedule.New(), HostDataDir: hostDir, Log: slog.Default()})
 	if err != nil {
 		return err
