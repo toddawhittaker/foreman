@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/game"
@@ -473,6 +474,44 @@ func TestUpdateOfAnInactiveWorldOffersUpdateAnyway(t *testing.T) {
 	}
 	if got := g.version(b); got != newVersion {
 		t.Errorf("version %s, want %s", got, newVersion)
+	}
+}
+
+// SPEC 10.3, 17.9: a world page that shows the update's result does not also
+// reload its activity block, because that reload ends in a whole-page refresh
+// that would throw away the result the admin is reading. The page once read
+// "is an action running" and "what was its result" at two moments, so an
+// update that ended between them gave both. Pages are asked for while
+// updates end, many times over.
+func TestWorldPageWithTheResultDoesNotReload(t *testing.T) {
+	g := newUpdateRig(t, &fakeReleases{})
+	g.newWorld("Alpha", fixtureNoSA, false)
+	b := g.newWorld("Bravo", "2.1.24-space-age.zip", false)
+	g.addImage(newVersion)
+	head := http.Header{"Cookie": {g.cookie.String()}}
+	for range 100 {
+		g.wantRedirectTo(worldPath(b)+ownResultQuery, g.post(updateURL(b), url.Values{"game_version": {newVersion}}))
+		var wg sync.WaitGroup
+		for range 4 {
+			wg.Go(func() {
+				deadline := time.Now().Add(10 * time.Second)
+				for time.Now().Before(deadline) {
+					page := g.do(http.MethodGet, worldPath(b)+ownResultQuery, nil, head).body
+					if !strings.Contains(page, `id="world-result"`) {
+						continue
+					}
+					if strings.Contains(page, `hx-trigger="every`) {
+						t.Errorf("the page shows the result and also reloads its activity block:\n%s", page)
+					}
+					return
+				}
+				t.Error("the result never showed")
+			})
+		}
+		wg.Wait()
+		if t.Failed() {
+			return
+		}
 	}
 }
 
