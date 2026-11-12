@@ -78,7 +78,7 @@
   "common.confirm.will": "Что произойдёт:",
   "common.list.sep": ", ",
   "common.link.new_tab": "(открывается в новой вкладке)",
-  "common.menu.account": "{user}, {language}: меню учётной записи и языка",
+  "common.menu.account": "{user}, {language}: меню пользователя",
   "common.menu.language": "{language}: меню языка",
   "common.menu.notifications": "Уведомления",
   "common.menu.schedule": "Расписание перезапуска",

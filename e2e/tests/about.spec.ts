@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect, checkPage, createAdmin, image21, openMenu, seedWorld, pickLanguage } from "./foreman.js";
 
-// DESIGN 6 ("User menu"), SPEC 17.1, 17.2, 22; epic fixes 7 ruling 7. The
+// DESIGN 6 ("User menu"), SPEC 17.1, 17.2, 22. The
 // user menu's About item opens a modal dialog with the product, the build's
 // version and commit, the Go version, the licence and the project's address.
 // Without script the item is a link to /about with the same content.

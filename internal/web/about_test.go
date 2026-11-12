@@ -19,7 +19,7 @@ func setBuild(t *testing.T, ver, commit string) {
 	version.Version, version.Commit = ver, commit
 }
 
-// DESIGN 6 (User menu), epic fixes 7 ruling 7: the About page shows the
+// DESIGN 6 (User menu): the About page shows the
 // product, the build's version and commit, the Go version, the licence and
 // the project's address, and nothing about game versions.
 func TestAboutPageShowsTheBuild(t *testing.T) {

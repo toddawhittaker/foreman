@@ -1,6 +1,6 @@
 // Package version says which build of Foreman is running: its version and
 // commit, the Go version it was built with, its licence and its home
-// (docs/EPIC-fixes-7.md, ruling 7; SPEC 17). The About dialog and page show
+// (DESIGN 6 "User menu"; SPEC 17). The About dialog and page show
 // it. Nothing here is spelled out in the code: the build sets the first two,
 // and the rest come from the toolchain.
 package version

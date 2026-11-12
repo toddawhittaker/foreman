@@ -115,7 +115,7 @@ func TestUploadsHoldTheSpaceReserve(t *testing.T) {
 	sc := newSecCase(t)
 	t.Cleanup(world.SetSpaceReserveForTest(0))
 	// A fixed reading, so other processes using the disk cannot change
-	// what fits (issues 496 and 487).
+	// what fits (SPEC 6.11).
 	const declared = 64 << 20
 	const free = 2 * declared
 	t.Cleanup(world.SetFreeBytesForTest(free))

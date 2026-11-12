@@ -195,7 +195,7 @@ func TestDockerUnreachable(t *testing.T) {
 
 // SPEC 7.1: when a check lists the containers and then fails to inspect
 // one, and Docker then stays down, the next check gives the reason that
-// Docker cannot be reached, not the inspect reason (issue #495).
+// Docker cannot be reached, not the inspect reason.
 func TestDockerDownAfterInspectFailure(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})
 	r.c.pollInterval = time.Hour // only pokes make the monitor look

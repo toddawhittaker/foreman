@@ -539,8 +539,8 @@ frame (7.4).
   border, so it survives forced colours; it is not bolder, so the tabs keep
   their widths from page to page. Hover brightens the text to `heading`;
   nothing else changes. Below 23rem the icons are dropped and the tabs
-  are tighter (`--space-2` side padding), so the four tabs fit one row at
-  320 px in English. The tab of the page itself has
+  are tighter (`--space-1` side padding) and a step smaller (`--text-sm`),
+  so the four tabs fit one row at 320 px in English and German. The tab of the page itself has
   `aria-current="page"`; on a page inside its section (a world's page under
   Worlds, Console under Server) the tab has `aria-current="true"`, which
   looks the same but does not tell a screen reader it is on the list
@@ -2026,6 +2026,14 @@ close the view, the tab, the setting, and the picture again).
   drops the one on its way. Meanwhile a line under the picture says
   "Finding the demolisher territories…"; that line's height is held while
   the box is ticked.
+  - The large view's territory box sits in the view's bar, under the
+    status line and above "Show resource amounts", with its hint beside
+    it while they fit and under it when they do not. It has no name; the
+    script keeps it equal to the page's box (or the hidden field that
+    carries the choice) and shows it only while Vulcanus is viewed. It
+    is disabled while Vulcanus is still being drawn. It never moves
+    focus, except that a box going away under focus hands focus to the
+    picture.
   - The overlay is an inline SVG inside the picture's `.map`, in picture
     pixels (`viewBox` of the size, `preserveAspectRatio="none"`), so it
     scales and pans with the picture: each territory's chunk runs as
