@@ -75,7 +75,7 @@ func TestScheduleDefaults(t *testing.T) {
 		`<input type="checkbox" id="schedule-on" name="enabled" value="on" checked>`,
 		`value="04:00"`, `<option value="UTC" selected>UTC</option>`, `<optgroup label="Europe">`,
 		`<option value="Europe/London">Europe/London</option>`,
-		`id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="1"`,
+		`id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="1" required`,
 		`Then it restarts the server after warning players in the game for 60 seconds.`,
 		`Hours, 0 to 12.`,
 		`<nav class="subnav" aria-label="Foreman settings">`,
@@ -171,6 +171,10 @@ func TestScheduleRefusesBadFields(t *testing.T) {
 		}
 		if !strings.Contains(body, `id="error-summary"`) || !strings.Contains(body, `aria-invalid="true"`) {
 			t.Errorf("%v: no summary or invalid field", f)
+		}
+		// A refused zone is never shown as UTC chosen (DESIGN 8.15).
+		if f.zone != "UTC" && strings.Contains(body, `<option value="UTC" selected>`) {
+			t.Errorf("%v: a refused zone shows UTC selected", f)
 		}
 	}
 	if _, found := sc.Settings(); found {

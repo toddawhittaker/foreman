@@ -57,7 +57,7 @@
   <div class="field">
     <label for="schedule-limit" class="required">{{t "schedule.limit.label"}}</label>
     <p class="hint" id="schedule-limit-hint">{{t "schedule.limit.hint" "max" .MaxLimit}}</p>
-    <input id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="{{.Limit}}" autocomplete="off"
+    <input id="schedule-limit" name="limit_hours" type="text" inputmode="numeric" value="{{.Limit}}" required autocomplete="off"
       {{- if not .LimitError.IsZero}} aria-invalid="true"{{end}} aria-describedby="schedule-limit-hint{{if not .LimitError.IsZero}} schedule-limit-error{{end}}">
     {{- if not .LimitError.IsZero}}
     <p class="error" id="schedule-limit-error"><strong>{{t "common.error.label"}}</strong> {{msg .LimitError}}</p>

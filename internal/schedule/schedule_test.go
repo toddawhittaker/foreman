@@ -239,8 +239,8 @@ func TestRunsWhenNobodyIsOnline(t *testing.T) {
 	}
 	x.g.waitEntered(t)
 	x.g.set(func(f *fakeGame) {
-		if f.stops[0].Countdown != 60*time.Second {
-			t.Errorf("countdown = %v, want 60 s", f.stops[0].Countdown)
+		if f.stops[0] != (game.StopOptions{Countdown: 60 * time.Second, WarnEmpty: true, OnlyRunning: true}) {
+			t.Errorf("stop = %+v, want a 60 s warning even with nobody online", f.stops[0])
 		}
 		if f.starts[0].Anyway {
 			t.Error("a scheduled restart used start anyway")
@@ -594,5 +594,50 @@ func TestRunStopsWithItsContext(t *testing.T) {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("Run did not return")
+	}
+}
+
+// A wait the loop wakes into long after its limit is not made up, even
+// with nobody online: the host slept, or the game was busy, past it.
+func TestAWaitPastItsLimitIsNotMadeUp(t *testing.T) {
+	x := newRig(t, at(3, 0), nightly(1))
+	x.g.setPlayers("alice")
+	x.stepAt(at(4, 0))
+	x.g.setPlayers()
+	x.stepAt(at(5, 0).Add(5 * time.Hour))
+	if r, _ := x.g.count(); r != 0 {
+		t.Fatal("restarted on waking hours after the limit")
+	}
+	if st := x.s.State(); st.Phase != PhaseSkipped || st.Reason != SkipMissed {
+		t.Errorf("state = %+v, want skipped as missed", st)
+	}
+	if len(x.emits.all()) != 0 {
+		t.Error("an event was sent for a missed wait; its message names players")
+	}
+}
+
+// A zero limit still restarts an empty server when the loop is a little
+// late, as it always is by a moment.
+func TestLimitZeroRunsWhenALittleLate(t *testing.T) {
+	x := newRig(t, at(3, 0), nightly(0))
+	x.stepAt(at(4, 0).Add(30 * time.Second))
+	if x.s.State().Phase != PhaseCountdown {
+		t.Fatal("a zero limit did not restart an empty server")
+	}
+	x.g.waitEntered(t)
+	x.g.finish(nil)
+	x.waitPhase(PhaseNone)
+}
+
+// After a long suspend the next restart is the next one after now, not a
+// past one a day after the missed time.
+func TestNextAfterALongSuspendIsInTheFuture(t *testing.T) {
+	x := newRig(t, at(3, 0), nightly(1))
+	x.stepAt(at(4, 0).AddDate(0, 0, 3).Add(time.Hour))
+	if got := x.s.State().Next; !got.Equal(at(4, 0).AddDate(0, 0, 4)) {
+		t.Errorf("next = %v, want the day after the wake", got)
+	}
+	if r, _ := x.g.count(); r != 0 {
+		t.Error("made up a missed restart")
 	}
 }

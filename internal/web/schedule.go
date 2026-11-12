@@ -105,10 +105,10 @@ func (s *server) schedulePage() SchedulePage {
 }
 
 // withZones fills the zone select, grouped by region, with the page's zone
-// selected, or UTC when the zone is not in the list.
+// selected. A refused zone selects none, so the page never shows UTC as
+// chosen when it was not.
 func (p SchedulePage) withZones() SchedulePage {
 	p.UTCSelected = p.Zone == schedule.UTC
-	found := p.UTCSelected
 	var groups []ZoneGroup
 	for _, z := range schedule.Zones()[1:] {
 		region, _, _ := strings.Cut(z, "/")
@@ -117,9 +117,7 @@ func (p SchedulePage) withZones() SchedulePage {
 		}
 		g := &groups[len(groups)-1]
 		g.Zones = append(g.Zones, ZoneOption{Name: z, Selected: z == p.Zone})
-		found = found || z == p.Zone
 	}
-	p.UTCSelected = p.UTCSelected || !found
 	p.Regions = groups
 	return p
 }

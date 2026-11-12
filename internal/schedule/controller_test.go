@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -18,7 +19,8 @@ import (
 
 // The schedule against the real controller on the fake game: players are
 // counted with /players online, a refused RCON login counts as someone
-// online, and an empty server is restarted.
+// online, and the warning runs on an empty server, so a join during it is
+// cancelled through the game's own Cancel stop and the wait begins again.
 func TestWithTheController(t *testing.T) {
 	fake := fakegame.New(t, fakegame.Config{Images: []string{game.ImageRef("2.1.24")}})
 	ctx := context.Background()
@@ -83,7 +85,10 @@ func TestWithTheController(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	x := &rig{t: t, s: s, clock: clk, ctx: ctx}
+	// The last countdown ends with the test, before the game and store close.
+	stepCtx, stopSteps := context.WithCancel(ctx)
+	t.Cleanup(func() { stopSteps(); s.restarts.Wait() })
+	x := &rig{t: t, s: s, clock: clk, ctx: stepCtx}
 	name := game.ContainerName(id)
 
 	if err := fake.Join(name, "alice"); err != nil {
@@ -107,15 +112,51 @@ func TestWithTheController(t *testing.T) {
 	before := c.Status(id).StartedAt
 	x.stepAt(at(4, 2))
 	if s.State().Phase != PhaseCountdown {
-		t.Fatalf("with nobody online: %+v, want the restart begun", s.State())
+		t.Fatalf("with nobody online: %+v, want the countdown", s.State())
 	}
-	// With nobody online the controller restarts without a warning.
-	x.waitPhase(PhaseNone)
+	// The warning runs although nobody is online.
+	waitWarning(t, c, id)
+
+	// Bob joins during it: the schedule presses Cancel stop and waits again.
+	if err := fake.Join(name, "bob"); err != nil {
+		t.Fatal(err)
+	}
+	x.stepAt(at(4, 3))
+	if st := x.waitPhase(PhaseWaiting); st.Joined != "bob" || !st.Until.Equal(at(5, 0)) {
+		t.Errorf("after bob joined: %+v, want waiting until 05:00", st)
+	}
 	got := c.Status(id)
-	if got.State != game.StateRunning || !got.StartedAt.After(before) {
-		t.Errorf("after the restart: state %s, started %v (before %v)", got.State, got.StartedAt, before)
+	if got.State != game.StateRunning || !got.StartedAt.Equal(before) {
+		t.Errorf("after the cancel: state %s, started %v, want the same run going on", got.State, got.StartedAt)
 	}
-	if op := got.Operation; op == nil || op.Action != game.AuditRestart || op.Err != nil {
-		t.Errorf("operation = %+v, want a restart that succeeded", op)
+	if op := got.Operation; op == nil || !errors.Is(op.Err, game.ErrStopCancelled) {
+		t.Errorf("operation = %+v, want the restart cancelled", op)
+	}
+
+	// Bob leaves: the countdown begins again.
+	if err := fake.Leave(name, "bob"); err != nil {
+		t.Fatal(err)
+	}
+	x.stepAt(at(4, 10))
+	if s.State().Phase != PhaseCountdown {
+		t.Fatalf("after bob left: %+v, want the countdown again", s.State())
+	}
+	waitWarning(t, c, id)
+}
+
+// waitWarning waits until the game's restart counts down.
+func waitWarning(t *testing.T, c *game.Controller, id string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if op := c.Status(id).Operation; op != nil && !op.Done {
+			if _, ok := op.CountdownEnds(); ok {
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the restart's countdown never began: %+v", c.Status(id).Operation)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }

@@ -98,6 +98,9 @@ type SkipReason string
 const (
 	SkipPlayers SkipReason = "players"
 	SkipAdmin   SkipReason = "admin"
+	// SkipMissed: the loop woke long after the wait limit, as after the
+	// host slept, so the restart is not made up.
+	SkipMissed SkipReason = "missed"
 )
 
 // State is what the Server page shows about the schedule (DESIGN 8.15).
@@ -284,13 +287,18 @@ func (s *Scheduler) step(ctx context.Context) time.Duration {
 		return min(s.next.Sub(now), pollIdle)
 	}
 	due := s.next
+	missed := now.Sub(due) > missedAfter
 	s.next = nextAfter(due, s.settings.Minute, s.loc)
+	if missed {
+		// After a long sleep the next is the next after now, never a past one.
+		s.next = nextAfter(now, s.settings.Minute, s.loc)
+	}
 	limit := time.Duration(s.settings.LimitHours) * time.Hour
 	// A new set time ends yesterday's skipped note.
 	s.st = State{Next: s.next}
 	s.changedLocked()
 	s.mu.Unlock()
-	if now.Sub(due) > missedAfter {
+	if missed {
 		s.cfg.Log.Info("a scheduled restart was missed while Foreman was not running, and is not made up", "time", due)
 		return pollIdle
 	}
@@ -336,6 +344,14 @@ func (s *Scheduler) wait(ctx context.Context) time.Duration {
 		s.endToday()
 		return pollIdle
 	}
+	// Woken long after the limit, as after the host slept or a long
+	// operation: a restart then would be a catch-up (SPEC 7.12).
+	if now := s.cfg.Now(); now.Sub(until) > missedAfter {
+		s.mu.Lock()
+		s.skipLocked(SkipMissed, now)
+		s.mu.Unlock()
+		return pollIdle
+	}
 	busy := st.Operation != nil && !st.Operation.Done
 	names, err := s.online(ctx, id)
 	now := s.cfg.Now()
@@ -365,9 +381,10 @@ func (s *Scheduler) online(ctx context.Context, id string) ([]game.Player, error
 	return s.cfg.Game.Players(ctx, id)
 }
 
-// startCountdown restarts the game with the fixed warning. The restart
-// never asks to start anyway, so a start the pre-start check would refuse
-// never happens, and the game is left as it is.
+// startCountdown restarts the game with the fixed warning, given even
+// with nobody online so a player who joins can be waited for. The restart
+// never asks to start anyway, and refuses when the game stopped or crashed
+// since it was looked at, so the schedule never starts a game.
 func (s *Scheduler) startCountdown(ctx context.Context, id string, now time.Time) {
 	s.mu.Lock()
 	s.st.Phase, s.st.CountdownEnds, s.st.Unasked, s.st.Joined = PhaseCountdown, now.Add(Warning), false, ""
@@ -375,7 +392,7 @@ func (s *Scheduler) startCountdown(ctx context.Context, id string, now time.Time
 	s.changedLocked()
 	s.mu.Unlock()
 	s.restarts.Go(func() {
-		err := s.cfg.Game.Restart(ctx, id, Actor, game.StopOptions{Countdown: Warning}, game.StartOptions{})
+		err := s.cfg.Game.Restart(ctx, id, Actor, game.StopOptions{Countdown: Warning, WarnEmpty: true, OnlyRunning: true}, game.StartOptions{})
 		s.restartEnded(err)
 	})
 }

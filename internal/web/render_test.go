@@ -160,7 +160,7 @@ func pageCases() []pageCase {
 			return p
 		}()},
 		{"notification delete", "todd", 200, WebhookDeletePage{Hook: WebhookView{ID: 1, Preset: i18n.M("notify.preset.discord"), Host: "discord.com"}}},
-		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1", UTCSelected: true}.withZones()},
+		{"schedule", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1"}.withZones()},
 		{"schedule on", "todd", 200, SchedulePage{On: true, Next: time.Date(2026, 11, 13, 4, 0, 0, 0, time.UTC), SavedClock: "04:00", SavedZone: "Europe/London",
 			Enabled: true, Clock: "04:00", Zone: "Europe/London", Limit: "1", Saved: true}.withZones()},
 		{"schedule saved off", "todd", 200, SchedulePage{Clock: "04:00", Zone: "UTC", Limit: "1", Saved: true}.withZones()},
