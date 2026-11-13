@@ -38,7 +38,7 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
 
   await page.goto("/snapshots");
   await expect(page.locator("#tick-note")).toHaveCount(0);
-  await page.getByRole("button", { name: "Select all automatic of Second" }).click();
+  await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await expect(page.locator("#tick-note")).toHaveText("Select all automatic ticked 1 snapshot.");
   await expect(page.locator("#tick-note")).toBeFocused();
   await checkPage(page);

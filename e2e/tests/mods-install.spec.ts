@@ -244,6 +244,7 @@ test("an incompatibility is a conflict whose fix removes the other mod in the sa
 test("removing a needed mod offers to disable the one that needs it, in one change", async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { ...world, mods: { "fp-lib": "2.0", "fp-needer": { factorio: "2.0", deps: ["fp-lib"] } } });
   await page.goto("/worlds/base/mods");
+  await modsTable(page).getByRole("row", { name: /fp-lib/ }).locator("details.row-menu > summary").click();
   await modsTable(page).getByRole("row", { name: /fp-lib/ }).getByRole("link", { name: "Remove" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Remove fp-lib from Base?" })).toBeVisible();
   const conflicts = page.locator("#plan-conflicts");

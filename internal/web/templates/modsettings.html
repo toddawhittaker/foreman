@@ -113,8 +113,10 @@
   {{- if .Running}}
   {{template "countdown" .CountdownForm}}
   {{- end}}
-  <div class="mod-settings-will">
-    <p>{{t "common.confirm.will"}}</p>
+  {{- /* Two lines say what saving does; the full list folds under them, so the form stays short (DESIGN 7.4). */}}
+  <p>{{if .Running}}{{t "mods.settings.edit.summary_running"}}{{else}}{{t "mods.settings.edit.summary"}}{{end}}</p>
+  <details class="disclosure mod-settings-will">
+    <summary>{{t "mods.settings.edit.details"}}</summary>
     <ul>
       {{- if .Running}}
       <li>{{t "mods.plan.warn_stop"}}</li>
@@ -126,12 +128,14 @@
       {{- end}}
       <li>{{t "mods.plan.undo"}}</li>
     </ul>
-  </div>
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
-  </div>
+  </details>
   </div>
 </section>
+{{- /* The save bar stays at the window's foot while the form is in view, so the action is always in reach. */}}
+<div class="actions form-foot">
+  <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
+  <a href="{{.ModsPath}}">{{t "settings.cancel"}}</a>
+</div>
 </form>
 {{- end}}
 {{- if and (not .NewMap) .Map}}

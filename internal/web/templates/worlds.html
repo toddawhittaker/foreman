@@ -3,7 +3,7 @@
 {{define "content" -}}
 {{- /* The two ways to make a world sit by the heading; the list is the page (DESIGN 8.2). */}}
 <header class="page-head page-head--row">
-  <p class="eyebrow" translate="no">Foreman</p>
+  <p class="eyebrow">{{t "common.nav.worlds"}}</p>
   <h1>{{t "worlds.title"}}</h1>
   <div class="actions">
     <a href="{{.Page.GeneratePath}}" class="button button--primary">{{t "worlds.list.generate"}}</a>

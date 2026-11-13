@@ -75,36 +75,37 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
   const plain = ["fp-mod-01", "fp-mod-03", "fp-mod-20", "fp-mod-40"];
   const heights = await Promise.all(plain.map(async (n) => Math.round((await box(row(n))).height)));
   expect(new Set(heights).size).toBe(1);
-  const removeEnds = await Promise.all([...plain, ...updated].map(async (n) => {
-    const b = await box(row(n).getByRole("link", { name: `Remove ${n}` }));
-    return Math.round(phone ? b.x : b.x + b.width);
+  // Each row's More actions menu keeps one place at the row's end, a folder
+  // mod's too (the departure that moved Disable and Remove into it).
+  const menu = (n: string) => row(n).locator("details.row-menu > summary");
+  const menuEnds = await Promise.all([...plain, ...updated, "my-local-tweaks"].map(async (n) => {
+    const b = await box(menu(n));
+    return Math.round(b.x + b.width);
   }));
-  if (!phone) expect(new Set(removeEnds).size).toBe(1);
+  expect(new Set(menuEnds).size).toBe(1);
   // Change version only where the portal has another release on the line
   // (SPEC 9.3): the updated mods and the gone version, not a mod with one.
-  for (const n of [...updated, "visible-planets"]) await expect(row(n).getByRole("link", { name: `Change version ${n}`, exact: true })).toBeVisible();
+  for (const n of [...updated, "visible-planets"]) {
+    await menu(n).click();
+    await expect(row(n).getByRole("link", { name: `Change version ${n}`, exact: true })).toBeVisible();
+  }
   for (const n of [...plain, "zz-private-tweaks", "my-local-tweaks"]) await expect(row(n).getByRole("link", { name: /^Change version/ })).toHaveCount(0);
-  // With Update and Change version, Remove still shares Disable's line, and
-  // a folder mod's Disable sits where the other rows' Disable sits (DESIGN 8.11).
+  // Disable and Remove are in every portal mod's menu; a folder mod's has Disable only.
   for (const n of updated) {
-    const dis = await box(row(n).getByRole("link", { name: `Disable ${n}` }));
-    const rem = await box(row(n).getByRole("link", { name: `Remove ${n}` }));
-    expect(Math.abs(rem.y - dis.y)).toBeLessThan(2);
+    await menu(n).click();
+    await expect(row(n).getByRole("link", { name: `Disable ${n}` })).toBeVisible();
+    await expect(row(n).getByRole("link", { name: `Remove ${n}` })).toBeVisible();
   }
-  const disableAt = async (n: string) => {
-    const b = await box(row(n).getByRole("link", { name: `Disable ${n}` }));
-    return Math.round(phone ? b.x : b.x + b.width);
-  };
-  expect(await disableAt("my-local-tweaks")).toBe(await disableAt("fp-mod-01"));
-  // On a phone the actions drop under the name, so the name keeps the width.
-  const name = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").locator(".mod-name"));
-  const disable = await box(row("a-mod-with-a-rather-long-name-for-a-phone-screen").getByRole("link", { name: /^Disable/ }));
-  if (phone) {
-    expect(disable.y).toBeGreaterThan(name.y + name.height - 1);
-    expect(name.height).toBeLessThan(80);
-  } else {
-    expect(Math.abs(disable.y - name.y)).toBeLessThan(10);
-  }
+  await menu("my-local-tweaks").click();
+  await expect(row("my-local-tweaks").getByRole("link", { name: "Disable my-local-tweaks" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // On a phone the menu stays on the name's line and the name keeps its width.
+  const longName = "a-mod-with-a-rather-long-name-for-a-phone-screen";
+  const name = await box(row(longName).locator(".mod-name"));
+  const toggle = await box(menu(longName));
+  expect(toggle.y).toBeLessThan(name.y + name.height);
+  if (phone) expect(name.height).toBeLessThan(80);
+  else expect(Math.abs(toggle.y - name.y)).toBeLessThan(10);
 
   // Issue 372: the built-in line says which are off and why.
   await expect(page.locator("#mods-built-in")).toContainText("Built in, version 2.0.77: base. Space Age is off, so elevated-rails, quality, space-age are off.");

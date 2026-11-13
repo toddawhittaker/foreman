@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Beim Löschen werden {size} frei",
   "worlds.allsnapshots.list": "Jeder Snapshot",
   "worlds.allsnapshots.restore_named": "{label} von {world} wiederherstellen, erstellt am {when}",
-  "worlds.allsnapshots.select_of": "Alle automatischen auswählen: {world}",
   "worlds.allsnapshots.title": "Snapshots",
   "worlds.allsnapshots.world_adds": "Die Snapshots dieser Welt belegen zusätzlich {size}.",
   "worlds.back.world": "Zurück zu {world}",

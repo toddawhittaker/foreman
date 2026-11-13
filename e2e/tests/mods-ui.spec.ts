@@ -24,6 +24,7 @@ test.describe("mods tab", () => {
     await expect(page.locator("#mods-built-in")).toContainText("Space Age is off, so elevated-rails, quality, space-age are off.");
     await expect(page.getByRole("link", { name: "Turn on Space Age", exact: true })).toHaveAttribute("href", "/worlds/base/settings");
     // Each row's buttons name their mod for a screen reader.
+    await table.getByRole("row", { name: /other/ }).locator("details.row-menu > summary").click();
     await expect(table.getByRole("link", { name: "Disable other" })).toBeVisible();
     await expect(table.getByRole("link", { name: "Remove other" })).toBeVisible();
     // The portal cannot be reached here, and the tab says so in words, in a live region.

@@ -477,7 +477,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
 
   // Choosing from the list takes a click in a browser; selectOption makes none,
   // so the count here is 3, and the budget still covers the real 4.
-  test("change a mod's version: 4 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
+  test("change a mod's version: 5 clicks", async ({ page, foreman, fakeGame, fakePortal }) => {
     const portal = fakePortal!;
     await portal.add("fp-back", "1.0.0", ["base >= 2.0"]);
     await portal.add("fp-back", "1.1.0", ["base >= 2.0"]);
@@ -486,6 +486,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await startGame(page, clicks);
 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
+    await page.getByRole("row", { name: /fp-back/ }).locator("details.row-menu > summary").click();
     await page.getByRole("link", { name: "Change version fp-back", exact: true }).click();
     await page.getByLabel("Version of fp-back").selectOption("1.0.0");
     await expect(page.locator("#mod-plan .plan-groups")).toContainText("fp-back 1.1.0 to 1.0.0");
@@ -493,6 +494,6 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await expect(done(page)).toContainText(/ Base\. Foreman took the snapshot "Before mod change" first\./, live);
     await expect(badge(page)).toHaveText("Running", live);
     expect(existsSync(join(foreman.dataDir, "worlds", "base", "mods", "fp-back_1.0.0.zip"))).toBe(true);
-    await expectWithin(clicks, 4, "change a mod's version");
+    await expectWithin(clicks, 5, "change a mod's version");
   });
 });

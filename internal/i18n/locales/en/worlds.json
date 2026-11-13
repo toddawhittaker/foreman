@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Deleting it frees {size}",
   "worlds.allsnapshots.list": "Every snapshot",
   "worlds.allsnapshots.restore_named": "Restore {label} of {world}, taken {when}",
-  "worlds.allsnapshots.select_of": "Select all automatic of {world}",
   "worlds.allsnapshots.title": "Snapshots",
   "worlds.allsnapshots.world_adds": "Snapshots of this world add {size}.",
   "worlds.back.world": "Back to {world}",

@@ -103,11 +103,13 @@ test("Change version goes back after a bad update, with a snapshot first", async
   const row = table.getByRole("row", { name: /fp-back/ });
   await expect(table.getByRole("row", { name: new RegExp(long) }).getByRole("link", { name: "Update to 1.10.0" })).toBeVisible(live);
   const longRow = table.getByRole("row", { name: new RegExp(long) });
+  await longRow.locator("details.row-menu > summary").click();
   await expect(longRow.getByRole("link", { name: "Change version " + long, exact: true })).toBeVisible();
-  // It is one of the row's actions, after Update and before Disable (DESIGN 8.11).
+  // Update stays on the row; Change version leads the row's menu, before Disable and Remove.
   await expect(longRow.locator(".mod-actions a")).toHaveText([`Update to 1.10.0 ${long}`, `Change version ${long}`, `Disable ${long}`, `Remove ${long}`]);
   await checkPage(page);
   await shot(page, "mods-version-tab");
+  await row.locator("details.row-menu > summary").click();
   await row.getByRole("link", { name: "Change version fp-back", exact: true }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Change the version of fp-back in Base?" })).toBeVisible();
@@ -172,7 +174,9 @@ test("Change version appears with the status, only for a mod with another releas
   await expect(page.getByRole("row", { name: /fp-two/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /^Change version/ })).toHaveCount(0);
   release();
-  await expect(change("fp-two")).toBeVisible(live);
+  await expect(change("fp-two")).toHaveCount(1, live);
+  await page.getByRole("row", { name: /fp-two/ }).locator("details.row-menu > summary").click();
+  await expect(change("fp-two")).toBeVisible();
   await expect(change("fp-solo")).toHaveCount(0);
   await expect(change("zz-private")).toHaveCount(0);
   await checkPage(page);
@@ -192,6 +196,7 @@ test("a row with every action fits at large text", async ({ page, foreman, fakeG
   const row = page.getByRole("row", { name: new RegExp(long) });
   await expect(row.getByRole("link", { name: "Update to 1.10.0 " + long })).toBeVisible(live);
   const panel = (await page.locator("section.panel").filter({ has: row }).boundingBox())!;
+  await row.locator("details.row-menu > summary").click();
   for (const name of ["Update to 1.10.0 ", "Change version ", "Disable ", "Remove "]) {
     const b = (await row.getByRole("link", { name: name + long, exact: true }).boundingBox())!;
     expect(b.x).toBeGreaterThanOrEqual(panel.x - 0.5);

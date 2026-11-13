@@ -649,7 +649,7 @@ func (c *Controller) readUsage(ctx context.Context, w *worldRun, cid string) {
 }
 
 func usageFrom(s docker.Stats) usage {
-	u := usage{ok: true, memory: s.MemoryUsage}
+	u := usage{ok: true, memory: s.MemoryUsage, limit: s.MemoryLimit}
 	if s.MemoryInactive < s.MemoryUsage {
 		u.memory = s.MemoryUsage - s.MemoryInactive
 	}

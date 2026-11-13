@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Smazáním se uvolní {size}",
   "worlds.allsnapshots.list": "Každý snímek",
   "worlds.allsnapshots.restore_named": "Obnovit {label} ze světa {world}, pořízeno {when}",
-  "worlds.allsnapshots.select_of": "Vybrat všechny automatické snímky světa {world}",
   "worlds.allsnapshots.title": "Snímky",
   "worlds.allsnapshots.world_adds": "Snímky tohoto světa přidávají {size}.",
   "worlds.back.world": "Zpět na {world}",

@@ -7,7 +7,10 @@
 {{define "content" -}}
 {{with .Page}}
 {{- if not .HasWorld}}
-<h1>{{t "server.title"}}</h1>
+<header class="page-head">
+  <p class="eyebrow">{{t "common.nav.server"}}</p>
+  <h1>{{t "server.title"}}</h1>
+</header>
 {{template "server-tabs" "overview"}}
 <section class="panel" aria-labelledby="none-heading">
   <h2 id="none-heading">{{t "server.none.heading"}}</h2>
@@ -103,25 +106,23 @@
 <div id="plate-band" hx-swap-oob="innerHTML">{{template "server-band" .}}</div>
 <span id="nav-lamp" hx-swap-oob="innerHTML">{{template "nav-lamp" .Lamp}}</span>
 {{- end}}
-<dl class="facts facts--inline">
+{{- /* The run's facts and its live load as one row of equal cells that share a label line; each load has a bar coloured by how full it is, beside its figure (DESIGN 7.5). */}}
+<dl class="facts stat-grid">
   {{- if not .Switching.IsZero}}
-  <div><dt>{{t "server.facts.switching"}}</dt><dd>{{msg .Switching}}</dd></div>
+  <div class="stat"><dt>{{t "server.facts.switching"}}</dt><dd>{{msg .Switching}}</dd></div>
   {{- end}}
   {{- if .FactsKnown}}
-  <div><dt>{{t "server.facts.game_version"}}</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}{{t "server.facts.unknown"}}{{end}}</dd></div>
+  <div class="stat"><dt>{{t "server.facts.game_version"}}</dt><dd>{{with .GameVersion}}<code>{{.}}</code>{{else}}{{t "server.facts.unknown"}}{{end}}</dd></div>
   {{- with .Status.Save}}
-  <div><dt>{{t "server.facts.save"}}</dt><dd><code>{{.}}</code></dd></div>
+  <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>{{.}}</code></dd></div>
+  {{- end}}
+  {{- if .Status.HaveUsage}}
+  {{- /* The meters are decorative: the figures say the same. */}}
+  <div class="stat gauge gauge--{{or .CPULevel "ok"}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
+  <div class="stat{{if .HaveMemoryMeter}} gauge gauge--{{or .MemoryLevel "ok"}}{{end}}"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}{{if .HaveMemoryMeter}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.MemoryMeter}}%"></span></span>{{end}}</dd></div>
   {{- end}}
   {{- end}}
 </dl>
-{{- /* Live load reads as its own row of two tiles, apart from the facts about the run (DESIGN 7.5). */}}
-{{- if and .FactsKnown .Status.HaveUsage}}
-<dl class="facts stats">
-  {{- /* The meter is decorative: the figure says the same. */}}
-  <div class="stat gauge{{with .CPULevel}} gauge--{{.}}{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
-  <div class="stat"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}</dd></div>
-</dl>
-{{- end}}
 {{- if not .Reason.IsZero}}
 <p>{{msgHTML .Reason}}</p>
 {{- end}}

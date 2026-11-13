@@ -63,8 +63,10 @@ test.describe("updates", () => {
     await expect(row).toBeVisible();
     await expect(page.locator("#mod-status")).toContainText("Checking the mod portal for updates");
     await expect(row.getByRole("link", { name: "Update to 1.1.0" })).toHaveCount(0);
-    // The other buttons are there at once.
+    // The other actions are there at once, in the row's menu.
+    await row.locator("details.row-menu > summary").click();
     await expect(row.getByRole("link", { name: "Disable" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
     release();
     await expect(row.getByRole("link", { name: "Update to 1.1.0" })).toBeVisible(live);

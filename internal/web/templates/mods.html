@@ -65,14 +65,6 @@
     </div>
   </form>
 </section>
-{{- /* Below the two-column width the rail's tools come after the list, so their
-     openers also follow the search (DESIGN 8.11). */}}
-<p class="mod-tools">
-  {{- if and .LoadSave (not (and .SaveDiff .SaveDiff.Matches))}}<a href="{{.SyncPath}}" class="button">{{t "mods.sync.button"}}</a>{{end}}
-  <a href="#mod-file" class="button">{{t "mods.upload.heading"}}</a>
-  {{- if .ShowSettings}}<a href="{{.EditSettingsPath}}" class="button">{{t "mods.settings.edit.link"}}</a>{{end}}
-</p>
-
 <section class="panel" aria-labelledby="installed-heading">
   <div class="group__head">
     <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
@@ -107,25 +99,31 @@
           {{- if not .Local}}<div id="{{$.Page.NoteSlot .Name}}" hidden></div>{{end}}
         </td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
-          {{- /* Two groups that each keep their line: what the portal offers, filled in by the status, then Disable and Remove, which sit in the same place in every row (DESIGN 8.11). */}}
+          {{- /* One visible action per row: the update the portal offers (filled in by the status), or Enable for a mod that is off. The rarer actions, Change version, Disable and Remove, sit in the row's More actions menu, in the same place in every row (DESIGN 8.11). */}}
           <div class="row-actions mod-actions">
             {{- if not .Local}}
-            <div class="mod-actions__portal">
-              <span id="{{$.Page.UpdateSlot .Name}}" hidden></span>
-              <span id="{{$.Page.VersionSlot .Name}}" hidden></span>
-            </div>
+            <span id="{{$.Page.UpdateSlot .Name}}" hidden></span>
             {{- end}}
-            <div class="mod-actions__fixed">
-              {{- if .Enabled}}
-              <a href="{{$.Page.RowPath "disable" .Name}}" class="button button--quiet mod-toggle">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-              {{- else}}
-              <a href="{{$.Page.RowPath "enable" .Name}}" class="button button--quiet mod-toggle">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-              {{- end}}
-              {{- if not .Local}}
-              {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
-              <a href="{{$.Page.RowPath "remove" .Name}}" class="button button--quiet button--icon mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-              {{- end}}
-            </div>
+            {{- if not .Enabled}}
+            <a href="{{$.Page.RowPath "enable" .Name}}" class="button mod-toggle">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            {{- end}}
+            {{- if or .Enabled (not .Local)}}
+            <details class="row-menu" name="mod-menu">
+              <summary class="button button--quiet row-menu__toggle"><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
+              <div class="row-menu__panel">
+                {{- if not .Local}}
+                <span id="{{$.Page.VersionSlot .Name}}" hidden></span>
+                {{- end}}
+                {{- if .Enabled}}
+                <a href="{{$.Page.RowPath "disable" .Name}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+                {{- end}}
+                {{- if not .Local}}
+                {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
+                <a href="{{$.Page.RowPath "remove" .Name}}" class="row-menu__item row-menu__item--danger mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+                {{- end}}
+              </div>
+            </details>
+            {{- end}}
           </div>
         </td>
       </tr>
@@ -292,7 +290,7 @@
 {{- end}}
 {{- if .Installed}}
 {{- /* Any release on the world's line, older too, so it also goes back after a bad update (SPEC 9.3). */}}
-<span id="{{$.VersionSlot .Name}}" hx-swap-oob="true"><a href="{{$.VersionPath .Name .Installed}}" class="button button--quiet mod-version">{{t "mods.row.version"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a></span>
+<span id="{{$.VersionSlot .Name}}" hx-swap-oob="true"><a href="{{$.VersionPath .Name .Installed}}" class="row-menu__item mod-version">{{t "mods.row.version"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a></span>
 {{- end}}
 {{- if .NotOnPortal}}
 <span id="{{$.PortalSlot .Name}}" class="mod-name ident" translate="no" tabindex="-1" aria-describedby="{{$.NoteSlot .Name}}" hx-swap-oob="true">{{.Name}}</span>

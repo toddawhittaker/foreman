@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Sa suppression libère {size}",
   "worlds.allsnapshots.list": "Tous les instantanés",
   "worlds.allsnapshots.restore_named": "Restaurer {label} de {world}, créé le {when}",
-  "worlds.allsnapshots.select_of": "Sélectionner tous les instantanés automatiques de {world}",
   "worlds.allsnapshots.title": "Instantanés",
   "worlds.allsnapshots.world_adds": "Les instantanés de ce monde ajoutent {size}.",
   "worlds.back.world": "Retour à {world}",

@@ -34,3 +34,25 @@
     if (menu.open && e.relatedTarget && !menu.contains(e.relatedTarget)) menu.open = false;
   });
 })();
+
+// A row's More actions menu (details.row-menu) works without this script
+// too; the script closes an open one on Escape, returning focus to its
+// button, on a click outside it, and when focus leaves it.
+(() => {
+  "use strict";
+  const open = () => document.querySelectorAll("details.row-menu[open]");
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    for (const m of open()) {
+      m.open = false;
+      if (m.contains(document.activeElement)) m.querySelector("summary").focus();
+    }
+  });
+  document.addEventListener("click", (e) => {
+    for (const m of open()) if (!m.contains(e.target)) m.open = false;
+  });
+  document.addEventListener("focusout", (e) => {
+    const m = e.target.closest && e.target.closest("details.row-menu[open]");
+    if (m && e.relatedTarget && !m.contains(e.relatedTarget)) m.open = false;
+  });
+})();

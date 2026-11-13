@@ -69,7 +69,7 @@ test("snapshot pages keep their tables inside the panel", async ({ page, foreman
   await page.goto("/snapshots");
   await expectTablesFit(page);
   await checkPage(page);
-  await page.getByRole("button", { name: "Select all automatic of Family base" }).click();
+  await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await expectTablesFit(page);
   await page.getByRole("button", { name: "Delete selected" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete 1 snapshot?");
@@ -88,7 +88,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await expect(rowsOf(page)).toHaveCount(3);
   await expect(ticked(page)).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Select all automatic of Family base" }).click();
+  await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await expect(page).toHaveURL(/\/snapshots\?.*select=automatic/);
   await expect(rowsOf(page)).toHaveCount(3);
   await expect(ticked(page)).toHaveCount(2);
@@ -107,7 +107,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await expect(page).toHaveURL("/snapshots");
   await expect(rowsOf(page)).toHaveCount(3);
 
-  await page.getByRole("button", { name: "Select all automatic of Family base" }).click();
+  await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await page.getByRole("button", { name: "Delete selected" }).click();
   await page.getByRole("button", { name: "Delete 2 snapshots" }).click();
   await expect(page).toHaveURL(/\/snapshots\?deleted=.*&deleted=/);

@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Usunięcie zwolni {size}",
   "worlds.allsnapshots.list": "Każda migawka",
   "worlds.allsnapshots.restore_named": "Przywróć: {label} ze świata {world}, utworzono {when}",
-  "worlds.allsnapshots.select_of": "Zaznacz wszystkie automatyczne migawki świata {world}",
   "worlds.allsnapshots.title": "Migawki",
   "worlds.allsnapshots.world_adds": "Migawki tego świata dodają {size}.",
   "worlds.back.world": "Wróć do {world}",

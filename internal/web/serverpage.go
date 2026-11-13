@@ -189,8 +189,26 @@ func (p ServerPage) CPUMeter() string {
 	return strconv.FormatFloat(min(max(p.Status.CPUPercent, 0), 100), 'f', 1, 64)
 }
 
-func (p ServerPage) CPULevel() string {
-	switch v := p.Status.CPUPercent; {
+func (p ServerPage) CPULevel() string { return loadLevel(p.Status.CPUPercent) }
+
+// MemoryMeter is the memory figure as a share of the container's limit, 0
+// to 100, and MemoryLevel names its band as CPULevel does; HaveMemoryMeter
+// is false when Docker gave no limit.
+func (p ServerPage) HaveMemoryMeter() bool { return p.Status.MemoryLimit > 0 }
+
+func (p ServerPage) memoryShare() float64 {
+	if p.Status.MemoryLimit == 0 {
+		return 0
+	}
+	return min(float64(p.Status.MemoryBytes)/float64(p.Status.MemoryLimit)*100, 100)
+}
+
+func (p ServerPage) MemoryMeter() string { return strconv.FormatFloat(p.memoryShare(), 'f', 1, 64) }
+
+func (p ServerPage) MemoryLevel() string { return loadLevel(p.memoryShare()) }
+
+func loadLevel(v float64) string {
+	switch {
 	case v > 95:
 		return "danger"
 	case v > 80:

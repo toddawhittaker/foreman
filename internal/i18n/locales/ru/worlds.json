@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "Удаление освободит {size}",
   "worlds.allsnapshots.list": "Все снимки",
   "worlds.allsnapshots.restore_named": "Восстановить {label} мира {world}, создан {when}",
-  "worlds.allsnapshots.select_of": "Выбрать все автоматические снимки мира {world}",
   "worlds.allsnapshots.title": "Снимки",
   "worlds.allsnapshots.world_adds": "Снимки этого мира добавляют {size}.",
   "worlds.back.world": "Назад к миру {world}",

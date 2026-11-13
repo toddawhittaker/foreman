@@ -8,7 +8,6 @@
   "worlds.allsnapshots.frees": "删除后可释放 {size}",
   "worlds.allsnapshots.list": "全部快照",
   "worlds.allsnapshots.restore_named": "恢复 {world} 的 {label}，创建于 {when}",
-  "worlds.allsnapshots.select_of": "选择所有自动快照（{world}）",
   "worlds.allsnapshots.title": "快照",
   "worlds.allsnapshots.world_adds": "此世界的快照额外占用 {size}。",
   "worlds.back.world": "返回 {world}",

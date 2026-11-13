@@ -5,7 +5,7 @@
 {{define "content" -}}
 {{with .Page}}
 <header class="page-head">
-  <p class="eyebrow" translate="no">Foreman</p>
+  <p class="eyebrow">{{t "common.nav.snapshots"}}</p>
   <h1>{{t "worlds.allsnapshots.title"}}</h1>
 </header>
 {{- if .Deleted}}
@@ -16,7 +16,7 @@
 
 {{- if .Groups}}
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
-  {{- /* Every world's automatic snapshots at once, on the list's heading row as each world's own is on its heading (SPEC 6.12). */}}
+  {{- /* One shortcut ticks every world's automatic snapshots; the world headings carry only the world and its size, so the page has one such button. */}}
   <div class="group__head">
     <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
     <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
@@ -31,7 +31,6 @@
     <div class="group__head">
       <h3 id="world-{{.WorldID}}">{{if .Known}}<a href="{{$.Page.WorldPath .WorldID}}">{{.WorldName}}</a>{{else}}{{t "worlds.allsnapshots.deleted_world" "world" .WorldName}}{{end}}</h3>
       <p class="hint">{{tHTML "worlds.allsnapshots.world_adds" "size" (nowrap (bytes .Adds))}}</p>
-      <button type="submit" class="button button--quiet" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}"><span aria-hidden="true">{{t "worlds.snapshots.select_automatic"}}</span><span class="visually-hidden">{{t "worlds.allsnapshots.select_of" "world" .WorldName}}</span></button>
     </div>
     <table class="snapshot-list" role="table">
       <caption>{{t "worlds.snapshots.caption" "world" .WorldName}}</caption>
