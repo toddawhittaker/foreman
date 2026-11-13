@@ -1022,7 +1022,8 @@ main {
 
 main > .panel,
 main > .panels > .panel,
-.split > * > .panel,
+.split > .panel,
+.split .split__rail > .panel,
 .mod-settings > .panel,
 .mod-settings > .panels > .panel,
 .settings-main > .panel,
@@ -1044,7 +1045,8 @@ main > .panels > .panel,
 
   main > .panel,
   main > .panels > .panel,
-  .split > * > .panel,
+  .split > .panel,
+  .split .split__rail > .panel,
   .mod-settings > .panel,
   .mod-settings > .panels > .panel,
   .settings-main > .panel,
@@ -8477,4 +8479,312 @@ main > .panel.danger-zone.danger-zone--blocked {
   background: none;
   border: 0;
   box-shadow: none;
+}
+
+/* Tabs on a phone: an even grid that shows every label whole, never a
+   scrolling row. Three tabs take three equal cells; five take three over
+   two, so no tab sits alone. Each cell is 44 px with the orange underline
+   when current, and a hairline closes each row. */
+@media (max-width: 39.99rem) {
+  .subnav ul {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    overflow: visible;
+    mask-image: none;
+  }
+
+  .subnav ul::after {
+    content: none;
+  }
+
+  .subnav ul:has(> li:nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subnav ul:has(> li:nth-child(5)) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li {
+    grid-column: span 2;
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+
+  .subnav ul:has(> li:nth-child(4)) > li:not(:nth-last-child(-n + 2)) {
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav ul:has(> li:nth-child(5)) > li:nth-child(3) {
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .subnav li {
+    min-inline-size: 0;
+  }
+
+  .subnav a,
+  .subnav a[aria-current],
+  .subnav li:first-child a,
+  .subnav li:last-child a {
+    padding-inline: var(--space-1);
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 23rem) {
+  .subnav a,
+  .subnav a[aria-current],
+  .subnav li:first-child a,
+  .subnav li:last-child a {
+    font-size: var(--text-xs);
+  }
+}
+
+/* An icon-only button on a phone shows its whole 44 px box, the frame of
+   the secondary button beside it, so the target reads at its true size. */
+@media (max-width: 39.99rem) {
+  .row-actions .button--icon {
+    block-size: var(--target-min);
+    background: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  .row-actions .button--icon:hover {
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-text);
+  }
+}
+
+/* Server on a phone: the four facts as a 2 by 2 grid, 13 px labels over
+   20 px figures, 12 px between the columns. */
+@media (max-width: 39.99rem) {
+  .facts.stat-grid {
+    row-gap: var(--space-3);
+  }
+
+  .facts.stat-grid > .stat {
+    gap: var(--space-1);
+    padding-inline: var(--space-3);
+  }
+
+  .facts.stat-grid > .stat:nth-child(odd) {
+    padding-inline-start: 0;
+  }
+
+  .facts.stat-grid dd {
+    font-size: var(--text-xl);
+    line-height: 1.3;
+  }
+}
+
+/* Mods: search, the tools and the list in that order. On a wide screen the
+   tools are a rail beside both; below it they fold under one 44 px Mod
+   tools disclosure under the search. */
+.split.split--mods {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: none;
+}
+
+@media (min-width: 64rem) {
+  .split.split--mods {
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+  }
+
+  .split--mods > .mod-rail {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .split--mods > .panel {
+    grid-column: 1;
+  }
+}
+
+.mod-rail > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.mod-rail > summary::before {
+  content: "";
+  flex: none;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  background: currentColor;
+  mask: var(--i-settings) center / contain no-repeat;
+}
+
+.mod-rail[open]:not([data-wide]) > .split__rail {
+  margin-block-start: var(--space-3);
+}
+
+.mod-rail[data-wide] > summary {
+  display: none;
+}
+
+/* The portal's summary: one quiet line of counts, each led by its shape,
+   that wraps to a second line on a phone; Update all sits beside the
+   Installed mods heading. */
+.mod-status__line > p {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.mod-count {
+  display: inline-flex;
+  padding: 0;
+  margin-inline-end: var(--space-3);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.group__head > .group__action {
+  margin-inline-start: auto;
+}
+
+.group__head > .group__action:empty {
+  display: none;
+}
+
+/* A mod's version: 13 px muted figures after its name, not a chip. */
+.mod-line > .mod-ver {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row actions are quiet: only a row's own fix (Update to x.y.z) keeps the
+   button's frame. Every target stays 44 px. */
+.mod-list .row-menu > summary.row-menu__toggle,
+.mod-list .button.mod-toggle {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--color-text);
+}
+
+.mod-list .row-menu > summary.row-menu__toggle:hover,
+.mod-list .row-menu[open] > summary.row-menu__toggle,
+.mod-list .button.mod-toggle:hover {
+  background: var(--color-raised);
+  border-color: var(--color-line);
+}
+
+/* The world list on a wide screen is a table: one row of column names over
+   rows of equal height, every value centred on its row with the name. */
+.worlds-head {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .worlds-head {
+    display: grid;
+    grid-template-columns: minmax(0, 19rem) minmax(0, 1fr) 6.5rem;
+    column-gap: var(--space-5);
+    padding-block-end: var(--space-2);
+    border-block-end: var(--border-width) solid var(--color-line);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .worlds-head__facts {
+    display: grid;
+    grid-template-columns: 7rem 6rem minmax(0, 1.75fr) minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .worlds > li {
+    min-block-size: 4.5rem;
+    align-content: center;
+    row-gap: 0;
+  }
+
+  .worlds > li > .facts > div {
+    align-self: center;
+  }
+
+  .worlds > li > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Sign-in: the riveted mark drawn from a 96 px source, 16 px over the
+   heading and the form 24 px under it. */
+.gate-logo {
+  inline-size: 6rem;
+  block-size: 6rem;
+}
+
+main:has(> .gate) > .gate-logo + h1 {
+  margin-block-start: var(--space-4);
+}
+
+main:has(> .gate) > h1 + .gate {
+  margin-block-start: var(--space-5);
+}
+
+main:has(> .gate) {
+  row-gap: 0;
+}
+
+main:has(> .gate) > * + :not(h1, .gate) {
+  margin-block-start: var(--space-4);
+}
+
+/* Generate and Mod settings on a phone: 24 px between field groups, 8 px
+   between a label, its hint and its control, 16 px inside the card. */
+@media (max-width: 39.99rem) {
+  .gen-settings,
+  .version-fields,
+  .mod-settings-group > .setting-row__body {
+    display: grid;
+    row-gap: var(--space-5);
+  }
+
+  :is(.gen-settings, .version-fields, .mod-settings-group > .setting-row__body) > * {
+    margin-block: 0;
+  }
+
+  :is(.generate, .mod-settings-group) .field {
+    gap: var(--space-2);
+  }
+
+  :is(.generate, .mod-settings-group) .field > :is(.hint, label, legend) {
+    margin-block: 0;
+  }
+
+  /* A box's label is a 44 px row; its hint sits 8 px under the words. */
+  :is(.generate, .mod-settings-group) .field > label.check + .hint {
+    margin-block-start: calc(-1 * var(--space-2));
+  }
+
+  .generate.panel,
+  .mod-settings > .panels > .panel,
+  .mod-settings > .panel {
+    --card-pad: var(--space-4);
+  }
 }

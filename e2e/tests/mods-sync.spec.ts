@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, makeZip, version20 } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, doneBox, live, makeZip, version20, openModTools } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,6 +44,7 @@ test.describe("a save's mod the portal does not have", () => {
 
   test("the plan offers upload first, with its zip field, and continue without", async ({ page }) => {
     await page.goto("/worlds/base/mods");
+    await openModTools(page);
     await page.getByRole("link", { name: "Match mods to the save" }).first().click();
     await expect(page).toHaveURL(syncPlan);
     await expect(page.getByRole("heading", { level: 1, name: "Match the mods of Base to the save base.zip?" })).toBeVisible();

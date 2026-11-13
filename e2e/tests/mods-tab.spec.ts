@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod, openModTools } from "./foreman.js";
 import type { Locator } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -33,11 +33,12 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
 
   await page.goto("/worlds/base/mods");
   const status = page.locator("#mod-status");
-  // One summary line: red only because players cannot join, with Update all beside it.
+  // One summary line: red only because players cannot join, with Update all beside the Installed mods heading.
   await expect(status.locator(".message--error")).toContainText("1 mod stops players joining. Its row says how to fix it.", live);
   await expect(status).toContainText("2 mods are not on the mod portal.");
   await expect(status).toContainText("4 mods have an update for this game version.");
-  await expect(status.getByRole("link", { name: "Update all" })).toBeVisible();
+  await expect(page.locator("#mod-update-all").getByRole("link", { name: "Update all" })).toBeVisible();
+  await expect(status.getByRole("link", { name: "Update all" })).toHaveCount(0);
   await expect(status.locator(".message")).toHaveCount(1);
 
   const table = page.getByRole("table", { name: /Mods of Base: 44 mods\. 43 are enabled\./ });
@@ -120,6 +121,7 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
   await page.screenshot({ path: `../screenshots/mods-tab-many-${test.info().project.name}.png`, fullPage: true });
 
   // The folded forms open by keyboard and pass the checks open.
+  await openModTools(page);
   await page.locator("#mod-upload > summary").focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#mod-file")).toBeVisible();
@@ -133,6 +135,7 @@ test("a world of 45 mods reads as even rows with each mod's news in its own row"
 test("a world whose mods match the save says so", async ({ page, foreman, fakeGame }) => {
   await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip" });
   await page.goto("/worlds/base/mods");
+  await openModTools(page);
   await expect(page.locator("#sync-state")).toHaveText("The mods match the save base.zip.");
   await expect(page.getByRole("link", { name: "Match mods to the save" })).toHaveCount(0);
   await checkPage(page);

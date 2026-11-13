@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, openModTools } from "./foreman.js";
 
 // The Mods tab and its pages (SPEC 9, 17). These run with no mod portal at
 // all: the e2e environment points HTTPS_PROXY at a closed port, so every
@@ -31,6 +31,7 @@ test.describe("mods tab", () => {
     await expect(page.locator("#mod-status")).toHaveAttribute("role", "status");
     await expect(page.locator("#mod-status")).toContainText("could not reach the mod portal");
     // Issue 373: the save's mods are read, so the tab says they differ before any click.
+    await openModTools(page);
     await expect(page.locator("#sync-state")).toContainText("The mods differ from the save base.zip:");
     await expect(page.getByRole("link", { name: "Match mods to the save" }).first()).toBeVisible();
     await checkPage(page);

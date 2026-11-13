@@ -469,5 +469,6 @@
   "worlds.generate.resources.request_failed": "La demande des quantités de ressources a échoué. Vérifiez que Foreman est joignable et que vous êtes toujours connecté, puis réessayez.",
   "worlds.generate.resources.retry": "Réessayer",
   "worlds.generate.resources.not_counted": "Ce téléchargement demande des quantités de ressources ou des territoires des démolisseurs qui ne sont pas encore disponibles. Relancez-le depuis la page « Générer un monde », qui les obtient d’abord.",
-  "worlds.generate.resources.not_kept": "Les paramètres ont changé pendant le comptage des ressources, les quantités n’ont donc pas été conservées. Réessayez."
+  "worlds.generate.resources.not_kept": "Les paramètres ont changé pendant le comptage des ressources, les quantités n’ont donc pas été conservées. Réessayez.",
+  "worlds.list.col.world": "Lorem"
 }

@@ -27,6 +27,8 @@
 {{- end}}
 <section class="panel" aria-label="{{t "worlds.list.all"}}">
   {{- with .Page.Worlds}}
+  {{- /* On a wide screen the list is a table: the fact names head the columns once, and each row keeps its own for screen readers. */}}
+  <div class="worlds-head" aria-hidden="true"><span>{{t "worlds.list.col.world"}}</span><span class="worlds-head__facts"><span>{{t "worlds.fact.game_version"}}</span><span>{{t "worlds.fact.space_age"}}</span><span>{{t "worlds.fact.last_played"}}</span><span>{{t "worlds.fact.disk_use"}}</span></span></div>
   <ul class="worlds" role="list">
     {{- range .}}
     <li>

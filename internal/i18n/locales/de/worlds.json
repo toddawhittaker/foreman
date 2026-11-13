@@ -469,5 +469,6 @@
   "worlds.generate.resources.request_failed": "Die Anfrage für die Ressourcenmengen ist fehlgeschlagen. Prüfe, ob Foreman erreichbar ist und du noch angemeldet bist, und versuche es dann erneut.",
   "worlds.generate.resources.retry": "Erneut versuchen",
   "worlds.generate.resources.not_counted": "Dieser Download verlangt Ressourcenmengen oder Zertrümmerer-Territorien, die noch nicht vorliegen. Lade ihn erneut über die Seite „Welt generieren“ herunter, die sie zuerst ermittelt.",
-  "worlds.generate.resources.not_kept": "Die Einstellungen haben sich beim Zählen der Ressourcen geändert, daher wurden die Mengen nicht gespeichert. Versuche es erneut."
+  "worlds.generate.resources.not_kept": "Die Einstellungen haben sich beim Zählen der Ressourcen geändert, daher wurden die Mengen nicht gespeichert. Versuche es erneut.",
+  "worlds.list.col.world": "Lorem"
 }

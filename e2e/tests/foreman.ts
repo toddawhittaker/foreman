@@ -612,3 +612,14 @@ export async function openPlanetRow(page: Page, planet = "nauvis") {
   if (!(await row.evaluate((d) => (d as HTMLDetailsElement).open))) await row.locator("summary").click();
   await expect(row).toHaveJSProperty("open", true);
 }
+
+// The rarer Mods tools (match to the save, upload, mod settings) sit in a
+// disclosure that is closed on a phone and always open on a wide window.
+export async function openModTools(page: Page) {
+  const tools = page.locator("#mod-tools");
+  // A wide window opens it by script, so wait for that instead of clicking.
+  if ((page.viewportSize()?.width ?? 1280) >= 1024) return expect(tools).toHaveJSProperty("open", true);
+  if (await tools.evaluate((el) => (el as HTMLDetailsElement).open)) return;
+  await page.locator("#mod-tools > summary").click();
+  await expect(tools).toHaveJSProperty("open", true);
+}

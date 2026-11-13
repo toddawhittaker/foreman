@@ -47,8 +47,7 @@
 {{- end}}
 
 {{- /* On a wide screen the list and search take the main column; the rarer tools sit in a rail beside them. */}}
-<div class="split">
-<div class="split__main">
+<div class="split split--mods">
 {{- /* Finding a mod is one row above the list: what it searches in the first column, the field in the second (DESIGN 4). */}}
 <section class="panel setting-row" aria-labelledby="search-heading">
   <div class="setting-row__head">
@@ -65,91 +64,9 @@
     </div>
   </form>
 </section>
-{{- /* Below the two-column width the rail's tools come after the list, so a short row of links to them follows the search. */}}
-<nav class="mod-tools" aria-label="{{t "mods.tools.label"}}">
-  {{- if and .LoadSave (not (and .SaveDiff .SaveDiff.Matches))}}<a href="{{.SyncPath}}" class="mod-tools__link mod-tools__link--sync">{{t "mods.sync.button"}}</a>{{end}}
-  <a href="#mod-file" class="mod-tools__link mod-tools__link--upload">{{t "mods.upload.heading"}}</a>
-  {{- if .ShowSettings}}<a href="{{.EditSettingsPath}}" class="mod-tools__link mod-tools__link--settings">{{t "mods.settings.edit.link"}}</a>{{end}}
-</nav>
-<section class="panel" aria-labelledby="installed-heading">
-  <div class="group__head">
-    <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
-    {{- /* The table's caption gives a screen reader the count. */}}
-    {{- with .Rows}}<span class="count" aria-hidden="true">{{len .}}</span>{{end}}
-  </div>
-  {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (SPEC 9.3). */}}
-  <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
-    <p class="empty">{{t "mods.status.loading"}}</p>
-  </div>
-  {{- with .Rows}}
-  {{- /* Two columns, so a name keeps its room on a phone (DESIGN 8.11). The state is a word only when a mod is off. */}}
-  <table role="table" class="mod-list">
-    <caption>{{t "mods.installed.caption" "world" $.Page.World.Name "count" (len .)}} {{t "mods.installed.enabled" "count" $.Page.Enabled}}</caption>
-    <thead role="rowgroup">
-      <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.col.actions"}}</th></tr>
-    </thead>
-    <tbody role="rowgroup">
-      {{- range .}}
-      <tr role="row">
-        <td role="cell">
-          <div class="mod-line">
-            {{- if .Local}}<span class="mod-name ident" translate="no">{{.Name}}</span>
-            {{- else}}
-            {{- /* The name is the portal link; the status swaps it for plain text when the portal lacks the mod. */}}
-            <a href="{{portalPath .Name}}" id="{{$.Page.PortalSlot .Name}}" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">{{.Name}}</span><span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>
-            {{- end}}
-            <code>{{.Version}}</code>
-            {{- if not .Enabled}}<span class="badge">{{t "mods.state.off"}}</span>{{end}}
-            {{- if .Local}}<span class="badge">{{t "mods.badge.local"}}</span>{{end}}
-          </div>
-          {{- if not .Local}}<div id="{{$.Page.NoteSlot .Name}}" hidden></div>{{end}}
-        </td>
-        <td role="cell" data-label="{{t "mods.col.actions"}}">
-          {{- /* One visible action per row: the update the portal offers (filled in by the status), or Enable for a mod that is off. The rarer actions, Change version, Disable and Remove, sit in the row's More actions menu, in the same place in every row (DESIGN 8.11). */}}
-          <div class="row-actions mod-actions">
-            {{- if not .Local}}
-            <span id="{{$.Page.UpdateSlot .Name}}" hidden></span>
-            {{- end}}
-            {{- if not .Enabled}}
-            <a href="{{$.Page.RowPath "enable" .Name}}" class="button mod-toggle">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-            {{- end}}
-            {{- if or .Enabled (not .Local)}}
-            <details class="row-menu" name="mod-menu">
-              <summary class="button row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
-              <div class="row-menu__panel">
-                {{- if not .Local}}
-                <span id="{{$.Page.VersionSlot .Name}}" hidden></span>
-                {{- end}}
-                {{- if .Enabled}}
-                <a href="{{$.Page.RowPath "disable" .Name}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-                {{- end}}
-                {{- if not .Local}}
-                {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
-                <a href="{{$.Page.RowPath "remove" .Name}}" class="row-menu__item row-menu__item--danger mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
-                {{- end}}
-              </div>
-            </details>
-            {{- end}}
-          </div>
-        </td>
-      </tr>
-      {{- end}}
-    </tbody>
-  </table>
-  {{- else}}
-  <p class="empty empty--art empty--mods">{{t "mods.installed.none"}}</p>
-  {{- end}}
-  {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
-  {{- with .BuiltIns}}
-  <p id="mods-built-in" class="mods-built-in">
-    {{- if not $.Page.HasSpaceAge}}{{tHTML "mods.built_in.line" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}}
-    {{- else if $.Page.BuiltInsOff}}{{tHTML "mods.built_in.line_off" "version" (code $.Page.BuiltInVersion) "mods" (idents .) "off" (idents $.Page.BuiltInsOff)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.turn_on"}}</a>
-    {{- else}}{{tHTML "mods.built_in.line_on" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.change"}}</a>
-    {{- end}}</p>
-  {{- end}}
-</section>
-
-</div>
+{{- /* The rarer tools: a rail beside the list on a wide screen; on a phone one 44 px Mod tools disclosure under the search, so each tool appears once. A refused file opens it, so the error summary's link reaches the field. */}}
+<details class="disclosure mod-rail" id="mod-tools" data-open-wide="64rem"{{if or (not .UploadError.IsZero) (not .SettingsError.IsZero) (not .CountdownError.IsZero)}} open{{end}}>
+<summary class="mod-rail__toggle" id="mod-tools-summary">{{t "mods.tools.label"}}</summary>
 <div class="split__rail">
 <section class="panel" aria-labelledby="sync-heading">
   <h2 id="sync-heading">{{t "mods.sync.heading"}}</h2>
@@ -254,6 +171,86 @@
 </section>
 {{- end}}
 </div>
+</details>
+<section class="panel" aria-labelledby="installed-heading">
+  <div class="group__head">
+    <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
+    {{- /* The table's caption gives a screen reader the count. */}}
+    {{- with .Rows}}<span class="count" aria-hidden="true">{{len .}}</span>{{end}}
+    {{- /* Update all sits beside the heading; the portal's answer fills it in. */}}
+    <span id="mod-update-all" class="group__action"></span>
+  </div>
+  {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (SPEC 9.3). */}}
+  <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
+    <p class="empty">{{t "mods.status.loading"}}</p>
+  </div>
+  {{- with .Rows}}
+  {{- /* Two columns, so a name keeps its room on a phone (DESIGN 8.11). The state is a word only when a mod is off. */}}
+  <table role="table" class="mod-list">
+    <caption>{{t "mods.installed.caption" "world" $.Page.World.Name "count" (len .)}} {{t "mods.installed.enabled" "count" $.Page.Enabled}}</caption>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.col.actions"}}</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+      {{- range .}}
+      <tr role="row">
+        <td role="cell">
+          <div class="mod-line">
+            {{- if .Local}}<span class="mod-name ident" translate="no">{{.Name}}</span>
+            {{- else}}
+            {{- /* The name is the portal link; the status swaps it for plain text when the portal lacks the mod. */}}
+            <a href="{{portalPath .Name}}" id="{{$.Page.PortalSlot .Name}}" class="mod-name" target="_blank" rel="noopener noreferrer"><span class="ident" translate="no">{{.Name}}</span><span class="visually-hidden"> {{t "mods.installed.portal"}}</span></a>
+            {{- end}}
+            <span class="mod-ver">{{.Version}}</span>
+            {{- if not .Enabled}}<span class="badge">{{t "mods.state.off"}}</span>{{end}}
+            {{- if .Local}}<span class="badge">{{t "mods.badge.local"}}</span>{{end}}
+          </div>
+          {{- if not .Local}}<div id="{{$.Page.NoteSlot .Name}}" hidden></div>{{end}}
+        </td>
+        <td role="cell" data-label="{{t "mods.col.actions"}}">
+          {{- /* One visible action per row: the update the portal offers (filled in by the status), or Enable for a mod that is off. The rarer actions, Change version, Disable and Remove, sit in the row's More actions menu, in the same place in every row (DESIGN 8.11). */}}
+          <div class="row-actions mod-actions">
+            {{- if not .Local}}
+            <span id="{{$.Page.UpdateSlot .Name}}" hidden></span>
+            {{- end}}
+            {{- if not .Enabled}}
+            <a href="{{$.Page.RowPath "enable" .Name}}" class="button mod-toggle">{{t "mods.row.enable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+            {{- end}}
+            {{- if or .Enabled (not .Local)}}
+            <details class="row-menu" name="mod-menu">
+              <summary class="button row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
+              <div class="row-menu__panel">
+                {{- if not .Local}}
+                <span id="{{$.Page.VersionSlot .Name}}" hidden></span>
+                {{- end}}
+                {{- if .Enabled}}
+                <a href="{{$.Page.RowPath "disable" .Name}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+                {{- end}}
+                {{- if not .Local}}
+                {{- /* Red only for what destroys something: removing takes the mod's content out of the world. */}}
+                <a href="{{$.Page.RowPath "remove" .Name}}" class="row-menu__item row-menu__item--danger mod-remove">{{t "mods.row.remove"}}<span class="visually-hidden"> <span translate="no">{{.Name}}</span></span></a>
+                {{- end}}
+              </div>
+            </details>
+            {{- end}}
+          </div>
+        </td>
+      </tr>
+      {{- end}}
+    </tbody>
+  </table>
+  {{- else}}
+  <p class="empty empty--art empty--mods">{{t "mods.installed.none"}}</p>
+  {{- end}}
+  {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
+  {{- with .BuiltIns}}
+  <p id="mods-built-in" class="mods-built-in">
+    {{- if not $.Page.HasSpaceAge}}{{tHTML "mods.built_in.line" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}}
+    {{- else if $.Page.BuiltInsOff}}{{tHTML "mods.built_in.line_off" "version" (code $.Page.BuiltInVersion) "mods" (idents .) "off" (idents $.Page.BuiltInsOff)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.turn_on"}}</a>
+    {{- else}}{{tHTML "mods.built_in.line_on" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.change"}}</a>
+    {{- end}}</p>
+  {{- end}}
+</section>
 </div>
 {{- end}}
 {{end}}
@@ -278,10 +275,10 @@
     {{- with .Count "note"}} <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" .}}</span>{{end}}
     {{- if .Updates}} <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" (len .Updates)}}</span>
     {{- else if .Current}} <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" .Current}}</span>{{end}}</p>
-  {{- if .Updates}}
-  <a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a>
-  {{- end}}
 </div>
+{{- end}}
+{{- if .Updates}}
+<span id="mod-update-all" class="group__action" hx-swap-oob="true"><a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a></span>
 {{- end}}
 {{- range .Rows}}
 {{- if .UpdateTo}}

@@ -1,7 +1,7 @@
 {{define "title"}}{{t "accounts.signin.title"}}{{end}}
 
 {{define "content" -}}
-<img class="gate-logo" src="{{static "icons/logo-64.png"}}" alt="" width="64" height="64">
+<img class="gate-logo" src="{{static "icons/logo-96.png"}}" srcset="{{static "icons/logo-192.png"}} 2x" alt="" width="96" height="96">
 <h1>{{t "accounts.signin.title"}}</h1>
 {{with .Page}}
 <form method="post" action="{{signInPath}}" class="panel gate" novalidate>
