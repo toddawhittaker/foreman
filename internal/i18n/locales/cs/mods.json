@@ -62,7 +62,7 @@
   "mods.state.off": "Vypnutý",
   "mods.row.update": "Aktualizovat na {version}",
   "mods.row.version": "Změnit verzi",
-  "mods.row.more": "Lorem ipsum dolor {name}",
+  "mods.row.more": "Další akce pro {name}",
   "mods.row.enable": "Zapnout",
   "mods.row.disable": "Vypnout",
   "mods.row.remove": "Odebrat",
@@ -152,7 +152,7 @@
   "mods.upload.bad_name": "info.json modu uvádí název nebo verzi, které Foreman nemůže použít jako název souboru. Je třeba zvolit jiný soubor.",
   "mods.upload.wrong_mod": "Tento zip obsahuje {got}, ne {mod}. Je třeba zvolit zip s modem {mod}.",
   "mods.settings.heading": "Nastavení modů",
-  "mods.settings.text": "Lorem ipsum dolor {file}",
+  "mods.settings.text": "Hodnoty nastavení modů jsou uloženy v {file}; pro uchování kopie lze soubor stáhnout.",
   "mods.settings.download": "Stáhnout mod-settings.dat",
   "mods.settings.none": "Tento svět zatím nemá soubor {file}. Hra ho zapíše při prvním spuštění s mody.",
   "mods.settings.summary": "Nahradit {file}",
@@ -184,9 +184,9 @@
   "mods.settings.edit.no_change": "Žádné nastavení se nezměnilo, proto se nic neuložilo.",
   "mods.settings.edit.none": "Zapnuté mody nemají žádné nastavení k zobrazení.",
   "mods.settings.edit.back": "Zpět na mody",
-  "mods.settings.edit.summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor.",
-  "mods.settings.edit.summary_running": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod. Tempor incididunt.",
-  "mods.settings.edit.details": "Lorem ipsum dolor",
+  "mods.settings.edit.summary": "Při uložení se nejprve pořídí snímek a potom se zapíší změněná nastavení. Vrácení změny tento snímek obnoví.",
+  "mods.settings.edit.summary_running": "Při uložení se hráči upozorní a server se restartuje, předtím se pořídí snímek. Vrácení změny tento snímek obnoví.",
+  "mods.settings.edit.details": "Co se při uložení stane",
   "mods.settings.edit.fixed": "Foreman tento druh nastavení upravit nemůže.",
   "mods.settings.edit.locked": "Mod povoluje jen tuto hodnotu.",
   "mods.settings.edit.on": "Zapnuto",
@@ -437,6 +437,6 @@
     "other": "Smazat, co postavilo těchto {count} modů: {mods}. Kopii uchovává snímek „{label}“."
   },
   "mods.drops.confirm_missing_one": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co {mod} postavil, nebo zrušit.",
-  "mods.tools.label": "Lorem ipsum dolor",
-  "mods.row.more_word": "Lorem ipsum dolor"
+  "mods.tools.label": "Nástroje modů",
+  "mods.row.more_word": "Další"
 }

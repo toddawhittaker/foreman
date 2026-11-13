@@ -235,7 +235,7 @@
   "worlds.snapshots.delete.title": "Snapshot von {world} löschen",
   "worlds.snapshots.delete_named": "{label} löschen, erstellt am {when}",
   "worlds.snapshots.delete_selected": "Ausgewählte löschen",
-  "worlds.snapshots.details": "Lorem",
+  "worlds.snapshots.details": "Details",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman hat {count} Snapshot gelöscht.",
     "other": "Foreman hat {count} Snapshots gelöscht."
@@ -326,8 +326,8 @@
   "worlds.generate.intro": "Erstelle eine neue Welt ohne Speicherstand. Ihre Karte wird beim ersten Start der Welt erzeugt.",
   "worlds.generate.version.same": "{version}, wie bei der aktiven Welt",
   "worlds.generate.version.choose": "Version wählen",
-  "worlds.generate.space_age.hint": "Lorem ipsum dolor",
-  "worlds.generate.download.hint": "Lorem ipsum dolor {image}",
+  "worlds.generate.space_age.hint": "Ab Factorio 2.0. Ändert, welche Planeten die Karte hat.",
+  "worlds.generate.download.hint": "Lädt {image} in dieser Version von Docker Hub herunter, nachdem die Welt erstellt ist, falls dieser Host es nicht hat.",
   "worlds.generate.reset_note": "Spielversion oder Space Age wurden geändert, daher wurden die Kartenoptionen unten auf die Standardwerte dieser Version zurückgesetzt. Prüfe sie und mach dann weiter.",
   "worlds.generate.mode.legend": "So wird die Karte erstellt",
   "worlds.generate.mode.exchange": "Code zum Kartenaustausch",
@@ -471,5 +471,5 @@
   "worlds.generate.resources.retry": "Erneut versuchen",
   "worlds.generate.resources.not_counted": "Dieser Download verlangt Ressourcenmengen oder Zertrümmerer-Territorien, die noch nicht vorliegen. Lade ihn erneut über die Seite „Welt generieren“ herunter, die sie zuerst ermittelt.",
   "worlds.generate.resources.not_kept": "Die Einstellungen haben sich beim Zählen der Ressourcen geändert, daher wurden die Mengen nicht gespeichert. Versuche es erneut.",
-  "worlds.list.col.world": "Lorem"
+  "worlds.list.col.world": "Welt"
 }

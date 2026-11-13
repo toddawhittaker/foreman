@@ -235,7 +235,7 @@
   "worlds.snapshots.delete.title": "Borrar una instantánea de {world}",
   "worlds.snapshots.delete_named": "Borrar {label}, tomada el {when}",
   "worlds.snapshots.delete_selected": "Borrar seleccionadas",
-  "worlds.snapshots.details": "Lorem",
+  "worlds.snapshots.details": "Detalles",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman borró {count} instantánea.",
     "other": "Foreman borró {count} instantáneas."
@@ -326,8 +326,8 @@
   "worlds.generate.intro": "Crea un mundo nuevo sin partida guardada. Su mapa se genera la primera vez que se inicia el mundo.",
   "worlds.generate.version.same": "{version}, igual que el mundo activo",
   "worlds.generate.version.choose": "Elige una versión",
-  "worlds.generate.space_age.hint": "Lorem ipsum dolor",
-  "worlds.generate.download.hint": "Lorem ipsum dolor {image}",
+  "worlds.generate.space_age.hint": "Factorio 2.0 y posteriores. Cambia qué planetas tiene el mapa.",
+  "worlds.generate.download.hint": "Descarga {image} en esta versión desde Docker Hub después de crear el mundo, si este host no la tiene.",
   "worlds.generate.reset_note": "Cambió la versión del juego o Space Age, así que las opciones del mapa de abajo volvieron a los valores por defecto de esa versión. Revísalas y continúa.",
   "worlds.generate.mode.legend": "Cómo crear el mapa",
   "worlds.generate.mode.exchange": "Cadena de intercambio de mapa",
@@ -471,5 +471,5 @@
   "worlds.generate.resources.retry": "Reintentar",
   "worlds.generate.resources.not_counted": "Esta descarga pide cantidades de recursos o territorios de los demoledores que aún no están disponibles. Vuelve a descargarla desde la página «Generar un mundo», que los obtiene primero.",
   "worlds.generate.resources.not_kept": "La configuración cambió mientras se contaban los recursos, así que las cantidades no se guardaron. Inténtalo de nuevo.",
-  "worlds.list.col.world": "Lorem"
+  "worlds.list.col.world": "Mundo"
 }

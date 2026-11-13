@@ -62,7 +62,7 @@
   "mods.state.off": "Отключён",
   "mods.row.update": "Обновить до {version}",
   "mods.row.version": "Сменить версию",
-  "mods.row.more": "Lorem ipsum dolor {name}",
+  "mods.row.more": "Другие действия для {name}",
   "mods.row.enable": "Включить",
   "mods.row.disable": "Отключить",
   "mods.row.remove": "Удалить",
@@ -152,7 +152,7 @@
   "mods.upload.bad_name": "В info.json мода указаны название или версия, которые Foreman не может использовать как имя файла. Выберите другой файл.",
   "mods.upload.wrong_mod": "В этом zip-файле {got}, а не {mod}. Выберите zip-файл мода {mod}.",
   "mods.settings.heading": "Настройки модов",
-  "mods.settings.text": "Lorem ipsum dolor {file}",
+  "mods.settings.text": "Значения настроек модов хранятся в {file}; скачайте этот файл, чтобы сохранить копию.",
   "mods.settings.download": "Скачать mod-settings.dat",
   "mods.settings.none": "В этом мире ещё нет {file}. Игра создаёт его при первом запуске с модами.",
   "mods.settings.summary": "Заменить {file}",
@@ -184,9 +184,9 @@
   "mods.settings.edit.no_change": "Вы не изменили ни одной настройки, поэтому ничего не сохранено.",
   "mods.settings.edit.none": "У включённых модов нет настроек для показа.",
   "mods.settings.edit.back": "Назад к модам",
-  "mods.settings.edit.summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor.",
-  "mods.settings.edit.summary_running": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod. Tempor incididunt.",
-  "mods.settings.edit.details": "Lorem ipsum dolor",
+  "mods.settings.edit.summary": "При сохранении сначала делается снимок, затем записываются изменённые вами настройки. Отмена восстанавливает этот снимок.",
+  "mods.settings.edit.summary_running": "При сохранении игроки получают предупреждение и сервер перезапускается, а перед этим делается снимок. Отмена восстанавливает этот снимок.",
+  "mods.settings.edit.details": "Что происходит при сохранении",
   "mods.settings.edit.fixed": "Foreman не может изменять настройки такого вида.",
   "mods.settings.edit.locked": "Мод разрешает только это значение.",
   "mods.settings.edit.on": "Вкл.",
@@ -437,6 +437,6 @@
     "many": "Удалить то, что построили {count} модов: {mods}. Копия остаётся в снимке «{label}»."
   },
   "mods.drops.confirm_missing_one": "Отметьте флажок, подтвердив, что игра удалит то, что построил {mod}, или отмените.",
-  "mods.tools.label": "Lorem ipsum dolor",
-  "mods.row.more_word": "Lorem ipsum dolor"
+  "mods.tools.label": "Инструменты модов",
+  "mods.row.more_word": "Ещё"
 }

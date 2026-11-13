@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "Solo pueden unirse los jugadores de la lista blanca",
   "settings.whitelist.switch_hint": "El servidor lo lee al iniciarse.",
   "settings.whitelist.switch_running": "El servidor está en marcha, así que un cambio aquí surte efecto tras reiniciar.",
-  "settings.whitelist.switch_save": "Lorem ipsum dolor",
+  "settings.whitelist.switch_save": "Guardar la aplicación de la lista blanca",
   "settings.whitelist.restart_on": "El servidor sigue en marcha sin comprobar la lista blanca. Reinícialo para que solo puedan unirse los jugadores de la lista blanca.",
   "settings.whitelist.restart_off": "El servidor sigue en marcha comprobando la lista blanca. Reinícialo para que pueda unirse cualquiera.",
   "settings.whitelist.done_on": "Desde su próximo inicio, solo los jugadores de la lista blanca pueden unirse a {world}.",
@@ -139,7 +139,7 @@
   "settings.diff.unbanned": "{name} desbaneado",
   "settings.diff.whitelist_added": "{name} añadido a la lista blanca",
   "settings.diff.whitelist_removed": "{name} quitado de la lista blanca",
-  "settings.jump.label": "Lorem ipsum dolor",
-  "settings.whitelist.enforce_heading": "Lorem ipsum",
-  "settings.whitelist.list_note": "Lorem ipsum dolor sit amet consectetur."
+  "settings.jump.label": "Ir a la sección",
+  "settings.whitelist.enforce_heading": "Aplicación de la lista blanca",
+  "settings.whitelist.list_note": "Los cambios de la lista se incluyen en «Previsualizar cambios»."
 }

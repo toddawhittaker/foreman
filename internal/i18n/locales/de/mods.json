@@ -58,7 +58,7 @@
   "mods.state.off": "Deaktiviert",
   "mods.row.update": "Auf {version} aktualisieren",
   "mods.row.version": "Version ändern",
-  "mods.row.more": "Lorem ipsum dolor {name}",
+  "mods.row.more": "Weitere Aktionen für {name}",
   "mods.row.enable": "Aktivieren",
   "mods.row.disable": "Deaktivieren",
   "mods.row.remove": "Entfernen",
@@ -137,7 +137,7 @@
   "mods.upload.bad_name": "Die info.json der Mod nennt einen Namen oder eine Version, die Foreman nicht als Dateinamen verwenden kann. Wähle eine andere Datei.",
   "mods.upload.wrong_mod": "Diese Zip-Datei enthält {got}, nicht {mod}. Wähle die Zip-Datei von {mod}.",
   "mods.settings.heading": "Mod-Einstellungen",
-  "mods.settings.text": "Lorem ipsum dolor {file}",
+  "mods.settings.text": "Die Werte der Mod-Einstellungen stehen in {file}; lade die Datei herunter, um eine Kopie zu behalten.",
   "mods.settings.download": "mod-settings.dat herunterladen",
   "mods.settings.none": "Diese Welt hat noch keine {file}. Das Spiel schreibt eine, wenn es zum ersten Mal mit Mods läuft.",
   "mods.settings.summary": "{file} ersetzen",
@@ -169,9 +169,9 @@
   "mods.settings.edit.no_change": "Du hast keine Einstellung geändert, daher wurde nichts gespeichert.",
   "mods.settings.edit.none": "Die aktivierten Mods haben keine Einstellungen zum Anzeigen.",
   "mods.settings.edit.back": "Zurück zu den Mods",
-  "mods.settings.edit.summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor.",
-  "mods.settings.edit.summary_running": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod. Tempor incididunt.",
-  "mods.settings.edit.details": "Lorem ipsum dolor",
+  "mods.settings.edit.summary": "Beim Speichern wird zuerst ein Snapshot erstellt, dann werden die geänderten Einstellungen geschrieben. Rückgängig machen stellt diesen Snapshot wieder her.",
+  "mods.settings.edit.summary_running": "Beim Speichern werden die Spieler gewarnt und der Server wird neu gestartet, zuvor wird ein Snapshot erstellt. Rückgängig machen stellt diesen Snapshot wieder her.",
+  "mods.settings.edit.details": "Was beim Speichern passiert",
   "mods.settings.edit.fixed": "Foreman kann diese Art von Einstellung nicht bearbeiten.",
   "mods.settings.edit.locked": "Die Mod erlaubt nur diesen Wert.",
   "mods.settings.edit.on": "An",
@@ -402,6 +402,6 @@
     "other": "Löschen, was diese {count} Mods gebaut haben: {mods}. Der Snapshot „{label}“ behält eine Kopie."
   },
   "mods.drops.confirm_missing_one": "Hake das Kästchen an, um zu bestätigen, dass das Spiel löscht, was {mod} gebaut hat, oder brich ab.",
-  "mods.tools.label": "Lorem ipsum dolor",
-  "mods.row.more_word": "Lorem ipsum dolor"
+  "mods.tools.label": "Mod-Werkzeuge",
+  "mods.row.more_word": "Mehr"
 }

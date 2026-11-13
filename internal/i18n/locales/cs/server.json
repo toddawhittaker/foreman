@@ -607,5 +607,5 @@
   "server.op.scheduled_restart": "Plánovaný restart",
   "server.disk.low": "Volné je jen {free} místa na disku. Pod {reserve} mohou automatická uložení selhat a snímky se přestanou pořizovat. Smažte nepotřebné snímky nebo světy.",
   "server.disk.snapshots": "Snímky",
-  "server.force.group": "Lorem ipsum dolor"
+  "server.force.group": "Nouzové akce"
 }

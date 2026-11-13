@@ -54,7 +54,7 @@
   "mods.state.off": "已禁用",
   "mods.row.update": "更新到 {version}",
   "mods.row.version": "更改版本",
-  "mods.row.more": "Lorem ipsum dolor {name}",
+  "mods.row.more": "{name} 的更多操作",
   "mods.row.enable": "启用",
   "mods.row.disable": "禁用",
   "mods.row.remove": "移除",
@@ -122,7 +122,7 @@
   "mods.upload.bad_name": "模组的 info.json 给出的名称或版本无法被 Foreman 用作文件名。请选择其他文件。",
   "mods.upload.wrong_mod": "此 zip 文件包含的是 {got}，而不是 {mod}。请选择 {mod} 的 zip 文件。",
   "mods.settings.heading": "模组设置",
-  "mods.settings.text": "Lorem ipsum dolor {file}",
+  "mods.settings.text": "模组设置的值保存在 {file} 中；下载该文件即可保留一份副本。",
   "mods.settings.download": "下载 mod-settings.dat",
   "mods.settings.none": "此世界还没有 {file}。游戏首次带模组运行时会写入一个。",
   "mods.settings.summary": "替换 {file}",
@@ -154,9 +154,9 @@
   "mods.settings.edit.no_change": "没有更改任何设置，因此未保存任何内容。",
   "mods.settings.edit.none": "已启用的模组没有可显示的设置。",
   "mods.settings.edit.back": "返回模组",
-  "mods.settings.edit.summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor.",
-  "mods.settings.edit.summary_running": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod. Tempor incididunt.",
-  "mods.settings.edit.details": "Lorem ipsum dolor",
+  "mods.settings.edit.summary": "保存时会先创建快照，再写入更改过的设置。撤销会恢复该快照。",
+  "mods.settings.edit.summary_running": "保存时会先创建快照，然后提醒玩家并重启服务器。撤销会恢复该快照。",
+  "mods.settings.edit.details": "保存时会发生什么",
   "mods.settings.edit.fixed": "Foreman 无法编辑此类设置。",
   "mods.settings.edit.locked": "该模组只允许此值。",
   "mods.settings.edit.on": "开",
@@ -367,6 +367,6 @@
     "other": "删除这 {count} 个模组建造的内容：{mods}。快照“{label}”保留一份副本。"
   },
   "mods.drops.confirm_missing_one": "请勾选复选框，确认游戏会删除 {mod} 建造的内容，或取消。",
-  "mods.tools.label": "Lorem ipsum dolor",
-  "mods.row.more_word": "Lorem ipsum dolor"
+  "mods.tools.label": "模组工具",
+  "mods.row.more_word": "更多"
 }

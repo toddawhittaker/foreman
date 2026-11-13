@@ -243,7 +243,7 @@
   "worlds.snapshots.delete.title": "Usuwanie migawki świata {world}",
   "worlds.snapshots.delete_named": "Usuń: {label}, utworzono {when}",
   "worlds.snapshots.delete_selected": "Usuń zaznaczone",
-  "worlds.snapshots.details": "Lorem",
+  "worlds.snapshots.details": "Szczegóły",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman usunął {count} migawkę.",
     "few": "Foreman usunął {count} migawki.",
@@ -338,8 +338,8 @@
   "worlds.generate.intro": "Utworzenie nowego świata bez zapisu. Jego mapa jest generowana przy pierwszym uruchomieniu świata.",
   "worlds.generate.version.same": "{version}, jak w aktywnym świecie",
   "worlds.generate.version.choose": "Wybierz wersję",
-  "worlds.generate.space_age.hint": "Lorem ipsum dolor",
-  "worlds.generate.download.hint": "Lorem ipsum dolor {image}",
+  "worlds.generate.space_age.hint": "Factorio 2.0 i nowsze. Zmienia zestaw planet na mapie.",
+  "worlds.generate.download.hint": "Pobiera {image} w tej wersji z Docker Hub po utworzeniu świata, jeśli nie ma go na tym hoście.",
   "worlds.generate.reset_note": "Zmieniła się wersja gry lub Era Kosmosu, dlatego opcje mapy poniżej przywrócono do wartości domyślnych tej wersji. Należy je sprawdzić i kontynuować.",
   "worlds.generate.mode.legend": "Sposób utworzenia mapy",
   "worlds.generate.mode.exchange": "Kod wymiany mapy",
@@ -488,5 +488,5 @@
   "worlds.generate.resources.retry": "Spróbuj ponownie",
   "worlds.generate.resources.not_counted": "To pobieranie wymaga ilości zasobów lub terytoriów dewastatorów, których jeszcze nie ma. Należy pobrać ponownie ze strony „Wygeneruj świat”, która najpierw je ustali.",
   "worlds.generate.resources.not_kept": "Ustawienia zmieniły się podczas liczenia zasobów, więc ilości nie zostały zapisane. Należy spróbować ponownie.",
-  "worlds.list.col.world": "Lorem"
+  "worlds.list.col.world": "Świat"
 }

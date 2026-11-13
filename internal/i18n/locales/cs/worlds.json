@@ -243,7 +243,7 @@
   "worlds.snapshots.delete.title": "Smazání snímku světa {world}",
   "worlds.snapshots.delete_named": "Smazat {label}, pořízeno {when}",
   "worlds.snapshots.delete_selected": "Smazat vybrané",
-  "worlds.snapshots.details": "Lorem",
+  "worlds.snapshots.details": "Podrobnosti",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman smazal {count} snímek.",
     "few": "Foreman smazal {count} snímky.",
@@ -338,8 +338,8 @@
   "worlds.generate.intro": "Vytvoření nového světa bez uložené hry. Jeho mapa se vytvoří při prvním spuštění světa.",
   "worlds.generate.version.same": "{version}, stejná jako u aktivního světa",
   "worlds.generate.version.choose": "Vybrat verzi",
-  "worlds.generate.space_age.hint": "Lorem ipsum dolor",
-  "worlds.generate.download.hint": "Lorem ipsum dolor {image}",
+  "worlds.generate.space_age.hint": "Factorio 2.0 a novější. Mění, které planety mapa obsahuje.",
+  "worlds.generate.download.hint": "Po vytvoření světa stáhne {image} v této verzi z Docker Hubu, pokud ho tento hostitel nemá.",
   "worlds.generate.reset_note": "Změnila se verze hry nebo Space Age, a proto byly níže uvedené možnosti mapy vráceny na výchozí hodnoty této verze. Je třeba je zkontrolovat a pokračovat.",
   "worlds.generate.mode.legend": "Způsob vytvoření mapy",
   "worlds.generate.mode.exchange": "Řetězec pro výměnu map",
@@ -488,5 +488,5 @@
   "worlds.generate.resources.retry": "Zkusit znovu",
   "worlds.generate.resources.not_counted": "Toto stažení vyžaduje množství surovin nebo teritoria ničitelů, která zatím nejsou k dispozici. Je třeba stáhnout znovu ze stránky „Vygenerovat svět“, která je nejprve zjistí.",
   "worlds.generate.resources.not_kept": "Nastavení se během počítání surovin změnilo, takže množství nebylo uloženo. Je třeba to zkusit znovu.",
-  "worlds.list.col.world": "Lorem"
+  "worlds.list.col.world": "Svět"
 }

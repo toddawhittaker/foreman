@@ -587,5 +587,5 @@
   "server.op.scheduled_restart": "Geplanter Neustart",
   "server.disk.low": "Nur noch {free} Speicherplatz ist frei. Unter {reserve} können automatische Speicherungen scheitern, und Snapshots werden nicht mehr erstellt. Lösche Snapshots oder Welten, die du nicht mehr brauchst.",
   "server.disk.snapshots": "Snapshots",
-  "server.force.group": "Lorem ipsum dolor"
+  "server.force.group": "Notfallaktionen"
 }

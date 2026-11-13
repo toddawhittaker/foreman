@@ -235,7 +235,7 @@
   "worlds.snapshots.delete.title": "Supprimer un instantané de {world}",
   "worlds.snapshots.delete_named": "Supprimer {label}, créé le {when}",
   "worlds.snapshots.delete_selected": "Supprimer la sélection",
-  "worlds.snapshots.details": "Lorem",
+  "worlds.snapshots.details": "Détails",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman a supprimé {count} instantané.",
     "other": "Foreman a supprimé {count} instantanés."
@@ -326,8 +326,8 @@
   "worlds.generate.intro": "Créez un nouveau monde sans sauvegarde. Sa carte est générée au premier démarrage du monde.",
   "worlds.generate.version.same": "{version}, comme le monde actif",
   "worlds.generate.version.choose": "Choisir une version",
-  "worlds.generate.space_age.hint": "Lorem ipsum dolor",
-  "worlds.generate.download.hint": "Lorem ipsum dolor {image}",
+  "worlds.generate.space_age.hint": "Factorio 2.0 et versions ultérieures. Change les planètes que contient la carte.",
+  "worlds.generate.download.hint": "Télécharge {image} dans cette version depuis Docker Hub une fois le monde créé, si cet hôte ne l’a pas.",
   "worlds.generate.reset_note": "La version du jeu ou l’Ère spatiale a changé : les options de la carte ci-dessous reviennent aux valeurs par défaut de cette version. Vérifiez-les, puis continuez.",
   "worlds.generate.mode.legend": "Comment créer la carte",
   "worlds.generate.mode.exchange": "Chaîne d’échange de carte",
@@ -471,5 +471,5 @@
   "worlds.generate.resources.retry": "Réessayer",
   "worlds.generate.resources.not_counted": "Ce téléchargement demande des quantités de ressources ou des territoires des démolisseurs qui ne sont pas encore disponibles. Relancez-le depuis la page « Générer un monde », qui les obtient d’abord.",
   "worlds.generate.resources.not_kept": "Les paramètres ont changé pendant le comptage des ressources, les quantités n’ont donc pas été conservées. Réessayez.",
-  "worlds.list.col.world": "Lorem"
+  "worlds.list.col.world": "Monde"
 }

@@ -243,7 +243,7 @@
   "worlds.snapshots.delete.title": "Удаление снимка мира {world}",
   "worlds.snapshots.delete_named": "Удалить {label}, создан {when}",
   "worlds.snapshots.delete_selected": "Удалить выбранные",
-  "worlds.snapshots.details": "Lorem",
+  "worlds.snapshots.details": "Подробности",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman удалил {count} снимок.",
     "few": "Foreman удалил {count} снимка.",
@@ -338,8 +338,8 @@
   "worlds.generate.intro": "Создайте новый мир без сохранения. Его карта создаётся при первом запуске мира.",
   "worlds.generate.version.same": "{version}, как у активного мира",
   "worlds.generate.version.choose": "Выберите версию",
-  "worlds.generate.space_age.hint": "Lorem ipsum dolor",
-  "worlds.generate.download.hint": "Lorem ipsum dolor {image}",
+  "worlds.generate.space_age.hint": "Factorio 2.0 и новее. Меняет набор планет на карте.",
+  "worlds.generate.download.hint": "Скачивает {image} этой версии с Docker Hub после создания мира, если его нет на этом хосте.",
   "worlds.generate.reset_note": "Версия игры или Space Age изменились, поэтому параметры карты ниже сброшены к значениям по умолчанию для этой версии. Проверьте их и продолжайте.",
   "worlds.generate.mode.legend": "Как создать карту",
   "worlds.generate.mode.exchange": "Строка обмена карты",
@@ -488,5 +488,5 @@
   "worlds.generate.resources.retry": "Повторить",
   "worlds.generate.resources.not_counted": "Это скачивание запрашивает количество ресурсов или территории разрушителей, которых ещё нет. Скачайте снова со страницы «Создать мир», она сначала определит их.",
   "worlds.generate.resources.not_kept": "Настройки изменились во время подсчёта ресурсов, поэтому количество не сохранено. Попробуйте ещё раз.",
-  "worlds.list.col.world": "Lorem"
+  "worlds.list.col.world": "Мир"
 }

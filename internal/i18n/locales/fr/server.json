@@ -587,5 +587,5 @@
   "server.op.scheduled_restart": "Redémarrage planifié",
   "server.disk.low": "Il ne reste que {free} d’espace disque libre. En dessous de {reserve}, les sauvegardes automatiques peuvent échouer et les instantanés s’arrêtent. Supprimez les instantanés ou les mondes dont vous n’avez plus besoin.",
   "server.disk.snapshots": "Instantanés",
-  "server.force.group": "Lorem ipsum dolor"
+  "server.force.group": "Actions d’urgence"
 }
