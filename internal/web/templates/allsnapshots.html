@@ -5,7 +5,6 @@
 {{define "content" -}}
 {{with .Page}}
 <header class="page-head">
-  <p class="eyebrow">{{t "common.nav.snapshots"}}</p>
   <h1>{{t "worlds.allsnapshots.title"}}</h1>
 </header>
 {{- if .Deleted}}
@@ -43,6 +42,14 @@
           <td role="cell">
             <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span class="snap-name">{{with snapReason .Snapshot}}<span class="snap-kind">{{.}}</span><br>{{end}}{{snapLabel .Snapshot}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
             <p class="hint">{{tHTML "worlds.allsnapshots.frees" "size" (nowrap (bytes .Frees))}}</p>
+            {{- /* On a phone: the age and size on one line, the rest folded under Details (DESIGN 8.3). */}}
+            <p class="snap-meta"><time datetime="{{isoTime .TakenAt}}" data-age-only>{{utc .TakenAt}}</time><span>{{bytes .DiskSize}}</span></p>
+            <details class="disclosure snap-details">
+              <summary>{{t "worlds.snapshots.details"}}</summary>
+              <p>{{template "when" .TakenAt}}</p>
+              <p>{{if .TakenBy}}{{t "worlds.allsnapshots.by" "user" .TakenBy}}{{else}}{{t "worlds.allsnapshots.by_unknown"}}{{end}}</p>
+              <p>{{tHTML "worlds.allsnapshots.frees" "size" (nowrap (bytes .Frees))}}</p>
+            </details>
             <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.restore_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky button--icon" href="{{$.Page.DeletePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.delete_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
           </td>
           <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}<br>{{if .TakenBy}}{{t "worlds.allsnapshots.by" "user" .TakenBy}}{{else}}{{t "worlds.allsnapshots.by_unknown"}}{{end}}</td>

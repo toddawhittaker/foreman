@@ -21,7 +21,9 @@
 <div sse-swap="announce" hidden></div>
 <div sse-swap="moved" hidden></div>
 {{/* The world's name and its state lead the page; focus comes here after an operation (DESIGN 6, 7.5). */}}
-<header class="page-head">
+{{- /* The plate's band below states the server's state large, so here the
+     heading's badge is kept for screen readers only. */}}
+<header class="page-head page-head--plate">
   <p class="eyebrow">{{t "common.nav.server"}}</p>
   <h1 id="control-heading" tabindex="-1"><span id="server-title">{{template "server-title" .}}</span></h1>
   {{template "server-join" .JoinAddress}}

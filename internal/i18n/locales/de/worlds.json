@@ -235,6 +235,7 @@
   "worlds.snapshots.delete.title": "Snapshot von {world} löschen",
   "worlds.snapshots.delete_named": "{label} löschen, erstellt am {when}",
   "worlds.snapshots.delete_selected": "Ausgewählte löschen",
+  "worlds.snapshots.details": "Lorem",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman hat {count} Snapshot gelöscht.",
     "other": "Foreman hat {count} Snapshots gelöscht."

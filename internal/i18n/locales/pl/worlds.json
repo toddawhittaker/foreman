@@ -243,6 +243,7 @@
   "worlds.snapshots.delete.title": "Usuwanie migawki świata {world}",
   "worlds.snapshots.delete_named": "Usuń: {label}, utworzono {when}",
   "worlds.snapshots.delete_selected": "Usuń zaznaczone",
+  "worlds.snapshots.details": "Lorem",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman usunął {count} migawkę.",
     "few": "Foreman usunął {count} migawki.",

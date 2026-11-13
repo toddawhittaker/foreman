@@ -51,7 +51,7 @@
 {{- end}}
 {{- /* One card of rows, as on a world's settings: what the account is for in the first column, its state or form in the second (DESIGN 4). */}}
 {{- if .FromEnv}}
-<div class="panel setting-rows setting-rows--narrow">
+<div class="panel setting-rows">
 <section class="setting-row" aria-labelledby="account-env-heading">
   <div class="setting-row__head">
     <h2 id="account-env-heading">{{t "account.env.state"}}</h2>
@@ -76,7 +76,7 @@
 <div class="actions"><a href="{{.}}" id="act-back">{{t "account.back"}}</a></div>
 {{- end}}
 {{- else if .Stored}}
-<div class="panel setting-rows setting-rows--narrow">
+<div class="panel setting-rows">
 <section class="setting-row" aria-label="{{t "account.title"}}">
   <div class="setting-row__head">
     <p class="hint">{{t "account.intro"}}</p>
@@ -122,7 +122,7 @@
 </form>
 </div>
 {{- else}}
-<div class="panel setting-rows setting-rows--narrow">
+<div class="panel setting-rows">
 <form method="post" action="{{.Path}}" class="setting-row" novalidate aria-labelledby="account-form-heading">
   <div class="setting-row__head">
     <h2 id="account-form-heading">{{t "account.form.enter"}}</h2>

@@ -108,14 +108,14 @@
   --text-3xl: 1.875rem;
 
   --color-bg: light-dark(#ece9e3, #14110e);
-  --color-surface: light-dark(#fffdfa, #211d19);
-  --color-raised: light-dark(#f4f0e9, #2c2722);
+  --color-surface: light-dark(#fffdfa, #26211c);
+  --color-raised: light-dark(#f4f0e9, #332c25);
   --color-deep: light-dark(#ffffff, #0e0c0a);
-  --color-line: light-dark(#d9d4cb, #3d362f);
-  --color-border: light-dark(#857c70, #857d72);
+  --color-line: light-dark(#d9d4cb, #4a4239);
+  --color-border: light-dark(#857c70, #8a8073);
   --color-text: light-dark(#1c1915, #ede7de);
   --color-heading: light-dark(#13110e, #f9f5ee);
-  --color-text-muted: light-dark(#58524a, #aca397);
+  --color-text-muted: light-dark(#58524a, #b3a99c);
   --color-link: light-dark(#9a4800, #ffb357);
   --color-selected: light-dark(#bd6500, #f39a2a);
   --color-accent-bg: light-dark(#fdecd5, #33220e);
@@ -123,7 +123,7 @@
   --color-primary-hover: light-dark(#f6ad52, #f7ae4f);
   --color-primary-edge: light-dark(#a35200, #f39a2a);
   --color-on-primary: #1a1004;
-  --color-secondary-hover: light-dark(#ede8e0, #36302a);
+  --color-secondary-hover: light-dark(#ede8e0, #3d352d);
   --color-danger: light-dark(#b3301d, #e5553c);
   --color-danger-hover: light-dark(#932616, #ef7560);
   --color-on-danger: light-dark(#ffffff, #1a0503);
@@ -354,6 +354,35 @@ h2.op-heading {
 .eyebrow a:hover {
   color: var(--color-heading);
   text-decoration-color: currentColor;
+}
+
+/* On a page inside a section, the overline is the way back to the section's
+   list: a link with a slash after it, ahead of the page's own title. */
+.crumb a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 1.5rem;
+  color: var(--color-link);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+.crumb::after {
+  content: "/" / "";
+  margin-inline-start: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+/* The Server overview's plate states the server's state large, so the
+   heading's badge is there for screen readers only. */
+.page-head--plate h1 .state {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Line icons: one set (Lucide, ISC licence, vendor/LUCIDE-LICENSE.txt), one
@@ -2420,11 +2449,18 @@ td > .hint {
   }
 }
 
+/* The phone's own lines for a snapshot; a wide table has columns for them. */
+.snap-meta,
+.snap-details {
+  display: none;
+}
+
 /* On a phone a snapshot is a stacked row rather than three squeezed
-   columns: its label, then when it was taken and its size on one muted line,
-   then its actions. The first cell spans the row's lines as a subgrid, so the
-   time and size can sit between its label and its buttons. Lists without
-   row actions, such as deleted worlds, keep their columns. */
+   columns: its name at 16/600, one muted 14 px line with its age and size,
+   a 44 px Details disclosure with the exact time, who took it and what
+   deleting it frees, then Restore and Delete together. The table's other
+   cells give way to those lines. Lists without row actions, such as
+   deleted worlds, keep their columns. */
 @container (max-width: 30rem) {
   .snapshot-list:has(.row-actions) thead {
     position: absolute;
@@ -2436,16 +2472,13 @@ td > .hint {
 
   .snapshot-list:has(.row-actions),
   .snapshot-list:has(.row-actions) caption,
-  .snapshot-list:has(.row-actions) tbody {
+  .snapshot-list:has(.row-actions) tbody,
+  .snapshot-list:has(.row-actions) tr {
     display: block;
   }
 
   .snapshot-list:has(.row-actions) tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto auto auto;
-    column-gap: var(--space-3);
-    padding-block: var(--space-3);
+    padding-block: var(--space-4);
     border-block-end: var(--border-width) solid var(--color-line);
   }
 
@@ -2453,56 +2486,107 @@ td > .hint {
     border-block-end: 0;
   }
 
-  .snapshot-list:has(.row-actions) td,
-  .snapshot-list:has(.row-actions) td.num {
-    padding: 0;
-    border: 0;
-    font-size: var(--text-sm);
-    text-align: start;
+  .snapshot-list:has(.row-actions) td:not(:first-child),
+  .snapshot-list:has(.row-actions) td:first-child > .hint {
+    display: none;
   }
 
   .snapshot-list:has(.row-actions) td:first-child {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: subgrid;
-    grid-column: 1 / -1;
-    grid-row: 1 / -1;
+    gap: var(--space-1);
+    padding: 0;
+    border: 0;
     font-size: var(--text-md);
+    text-align: start;
   }
 
   .snapshot-list:has(.row-actions) td:first-child > .check {
-    grid-row: 1;
     gap: var(--space-3);
   }
 
-  .snapshot-list:has(.row-actions) td:first-child > .hint {
-    grid-row: 3;
+  .snapshot-list:has(.row-actions) .snap-name {
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-2);
     margin: 0;
     padding-inline-start: calc(1.25rem + var(--space-3));
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
   }
 
-  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
-    grid-row: 4;
-    margin-block-start: var(--space-2);
+  .snapshot-list:has(.row-actions) .snap-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
-  .snapshot-list:has(.row-actions) td:not(:first-child) {
-    grid-row: 2;
+  .snapshot-list:has(.row-actions) .snap-meta > span::before {
+    content: "";
+    inline-size: 3px;
+    block-size: 3px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta time .time-full {
+    display: none;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-meta time .time-short {
+    display: inline;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details {
+    display: block;
+    margin: 0;
+    margin-inline-start: calc(1.25rem + var(--space-3));
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details > summary {
+    display: inline-flex;
+    inline-size: fit-content;
+    padding: 0 var(--space-2);
+    margin-inline-start: calc(-1 * var(--space-2));
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--color-link);
+    font-size: var(--text-sm);
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details > summary::after {
+    margin-inline: var(--space-1) 0;
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details > summary:hover {
+    background: var(--color-raised);
+    border-color: var(--color-line);
+  }
+
+  .snapshot-list:has(.row-actions) .snap-details > p {
+    margin: var(--space-1) 0 0;
     color: var(--color-text-muted);
   }
 
-  .snapshot-list:has(.row-actions) td:nth-child(2) {
-    grid-column: 1;
-    padding-inline-start: calc(1.25rem + var(--space-3));
-  }
-
-  .snapshot-list:has(.row-actions) td:nth-child(3) {
-    grid-column: 2;
-    text-align: end;
+  .snapshot-list:has(.row-actions) td:first-child > .row-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-block-start: var(--space-2);
   }
 
   .snapshot-list:has(.row-actions) .row-actions .button {
     flex: 1 1 auto;
+  }
+
+  .snapshot-list:has(.row-actions) .row-actions .button--icon {
+    flex: 0 0 var(--target-min);
   }
 }
 
@@ -8342,10 +8426,6 @@ main > .panel.danger-zone.danger-zone--blocked {
 }
 
 /* A settings page of one card keeps the card to a readable width. */
-.panel.setting-rows--narrow {
-  max-inline-size: 60rem;
-}
-
 @media (max-width: 39.99rem) {
   /* Tabs on a phone: the desktop's underline row at 44 px, each tab with
      12 px sides and 14 px semibold words; the row scrolls sideways with a
@@ -8669,21 +8749,28 @@ main > .panel.danger-zone.danger-zone--blocked {
   font-variant-numeric: tabular-nums;
 }
 
-/* Row actions are quiet: only a row's own fix (Update to x.y.z) keeps the
-   button's frame. Every target stays 44 px. */
-.mod-list .row-menu > summary.row-menu__toggle,
-.mod-list .button.mod-toggle {
-  background: transparent;
-  border-color: transparent;
+/* A row's one action (Update to x.y.z, or Enable for a mod that is off) is
+   a framed secondary button. More is framed too on phones and touch
+   screens, where no pointer reveals a frame; on a wide screen with a fine
+   pointer it rests quiet and takes its frame under the pointer. Every target stays 44 px. */
+.mod-list .row-menu > summary.row-menu__toggle {
+  background: var(--color-raised);
+  border-color: var(--color-line);
   box-shadow: none;
   color: var(--color-text);
 }
 
+@media (hover: hover) and (pointer: fine) and (min-width: 40rem) {
+  .mod-list .row-menu > summary.row-menu__toggle {
+    background: transparent;
+    border-color: transparent;
+  }
+}
+
 .mod-list .row-menu > summary.row-menu__toggle:hover,
-.mod-list .row-menu[open] > summary.row-menu__toggle,
-.mod-list .button.mod-toggle:hover {
-  background: var(--color-raised);
-  border-color: var(--color-line);
+.mod-list .row-menu[open] > summary.row-menu__toggle {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-border);
 }
 
 /* The world list on a wide screen is a table: one row of column names over

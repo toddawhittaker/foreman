@@ -243,6 +243,7 @@
   "worlds.snapshots.delete.title": "Удаление снимка мира {world}",
   "worlds.snapshots.delete_named": "Удалить {label}, создан {when}",
   "worlds.snapshots.delete_selected": "Удалить выбранные",
+  "worlds.snapshots.details": "Lorem",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman удалил {count} снимок.",
     "few": "Foreman удалил {count} снимка.",

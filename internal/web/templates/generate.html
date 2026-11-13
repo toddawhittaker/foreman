@@ -5,7 +5,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.worlds"}}</p>
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <h1>{{t "worlds.generate.title"}}</h1>
 <p class="hint">{{t "worlds.generate.intro"}}</p>
 <form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate data-tab="{{.Form.Tab}}" data-ach-word="{{t "mapgen.achievement.warning"}}">

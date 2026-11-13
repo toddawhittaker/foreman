@@ -235,6 +235,7 @@
   "worlds.snapshots.delete.title": "Borrar una instantánea de {world}",
   "worlds.snapshots.delete_named": "Borrar {label}, tomada el {when}",
   "worlds.snapshots.delete_selected": "Borrar seleccionadas",
+  "worlds.snapshots.details": "Lorem",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman borró {count} instantánea.",
     "other": "Foreman borró {count} instantáneas."

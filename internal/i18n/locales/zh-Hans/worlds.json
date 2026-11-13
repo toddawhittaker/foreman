@@ -227,6 +227,7 @@
   "worlds.snapshots.delete.title": "删除 {world} 的快照",
   "worlds.snapshots.delete_named": "删除 {label}，创建于 {when}",
   "worlds.snapshots.delete_selected": "删除所选",
+  "worlds.snapshots.details": "Lorem",
   "worlds.snapshots.deleted_many": {
     "other": "Foreman 已删除 {count} 个快照。"
   },

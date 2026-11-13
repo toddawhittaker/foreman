@@ -4,7 +4,7 @@
 
 {{define "content" -}}
 {{with .Page}}
-<p class="eyebrow">{{t "common.nav.worlds"}}</p>
+<p class="eyebrow crumb"><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></p>
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -72,6 +72,13 @@
       <tr role="row">
         <td role="cell">
           <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span class="snap-name">{{with snapReason .}}<span class="snap-kind">{{.}}</span><br>{{end}}{{snapLabel .}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
+          {{- /* On a phone: the age and size on one line, the rest folded under Details (DESIGN 8.3). */}}
+          <p class="snap-meta"><time datetime="{{isoTime .TakenAt}}" data-age-only>{{utc .TakenAt}}</time><span>{{bytes .DiskSize}}</span></p>
+          <details class="disclosure snap-details">
+            <summary>{{t "worlds.snapshots.details"}}</summary>
+            <p>{{template "when" .TakenAt}}</p>
+            <p>{{if .TakenBy}}{{t "worlds.allsnapshots.by" "user" .TakenBy}}{{else}}{{t "worlds.allsnapshots.by_unknown"}}{{end}}</p>
+          </details>
           <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky button--icon" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
         </td>
         <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}</td>

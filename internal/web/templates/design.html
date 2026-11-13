@@ -278,6 +278,21 @@
           </div>
         </td>
       </tr>
+      {{- /* A mod that is off: Enable is the row's one framed action. */}}
+      <tr role="row">
+        <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <span class="mod-ver">3.2.2</span><span class="badge">{{t "mods.state.off"}}</span></div></td>
+        <td role="cell" data-label="{{t "mods.col.actions"}}">
+          <div class="row-actions mod-actions">
+            <a href="{{worldsPath}}" class="button mod-toggle">{{t "mods.row.enable"}}</a>
+            <details class="row-menu">
+              <summary class="button row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
+              <div class="row-menu__panel">
+                <a href="{{worldsPath}}" class="row-menu__item row-menu__item--danger mod-remove">{{t "mods.row.remove"}}</a>
+              </div>
+            </details>
+          </div>
+        </td>
+      </tr>
       {{- /* The same row with its menu open, as it shows after a click. */}}
       <tr role="row" class="design-menu-open">
         <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <span class="mod-ver">3.2.3</span></div></td>

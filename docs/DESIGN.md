@@ -181,14 +181,14 @@ dialog (black at 50%) and the shadows' own values (4).
 | Token | Dark | Light | Use |
 |---|---|---|---|
 | `--color-bg` | `#14110e` | `#ece9e3` | The page |
-| `--color-surface` | `#211d19` | `#fffdfa` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#2c2722` | `#f4f0e9` | The secondary button's face, the user menu's button, disclosure rows, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-surface` | `#26211c` | `#fffdfa` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#332c25` | `#f4f0e9` | The secondary button's face, the user menu's button, disclosure rows, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
 | `--color-deep` | `#0e0c0a` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#3d362f` | `#d9d4cb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-line` | `#4a4239` | `#d9d4cb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
 | `--color-text` | `#ede7de` | `#1c1915` | Body text, field text |
 | `--color-heading` | `#f9f5ee` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
-| `--color-text-muted` | `#aca397` | `#58524a` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
-| `--color-border` | `#857d72` | `#857c70` | Edge of fields, secondary buttons and the menu |
+| `--color-text-muted` | `#b3a99c` | `#58524a` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
+| `--color-border` | `#8a8073` | `#857c70` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
 | `--color-selected` | `#f39a2a` | `#bd6500` | The current tab's underline, the current item in the menu, the live world's edge, checked boxes, progress bars |
 | `--color-accent-bg` | `#33220e` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
@@ -196,7 +196,7 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |
 | `--color-primary-edge` | `#f39a2a` | `#a35200` | Primary button edge (the face is too pale to carry it in light) |
 | `--color-on-primary` | `#1a1004` | `#1a1004` | Primary button text |
-| `--color-secondary-hover` | `#36302a` | `#ede8e0` | Secondary button, menu item and menu button face under the pointer |
+| `--color-secondary-hover` | `#3d352d` | `#ede8e0` | Secondary button, menu item and menu button face under the pointer |
 | `--color-danger` | `#e5553c` | `#b3301d` | Danger button face, "crash-looping" badge background, the confirmation box's edge, the Server card's edge when the game has crashed |
 | `--color-danger-hover` | `#ef7560` | `#932616` | Danger button hover |
 | `--color-on-danger` | `#1a0503` | `#ffffff` | Danger button text, "crash-looping" badge text |

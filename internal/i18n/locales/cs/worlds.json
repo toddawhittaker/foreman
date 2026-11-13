@@ -243,6 +243,7 @@
   "worlds.snapshots.delete.title": "Smazání snímku světa {world}",
   "worlds.snapshots.delete_named": "Smazat {label}, pořízeno {when}",
   "worlds.snapshots.delete_selected": "Smazat vybrané",
+  "worlds.snapshots.details": "Lorem",
   "worlds.snapshots.deleted_many": {
     "one": "Foreman smazal {count} snímek.",
     "few": "Foreman smazal {count} snímky.",
