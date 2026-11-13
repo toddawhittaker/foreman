@@ -29,6 +29,13 @@ async function startWithAlice(page: Page, g: FakeGame) {
   await expect(page.locator("#pr-alice")).toBeVisible(live);
 }
 
+// On a phone Force stop folds under the closed "Emergency actions" disclosure;
+// on a wide screen the script has already opened it (DESIGN 7.5).
+async function openEmergency(page: Page) {
+  const emergency = page.locator("details.emergency");
+  if (!(await emergency.evaluate((d) => (d as HTMLDetailsElement).open))) await emergency.locator("summary").click();
+}
+
 async function commands(g: FakeGame): Promise<string[]> {
   return (await g.state()).containers.find((c) => c.name === container)?.commands ?? [];
 }
@@ -41,6 +48,7 @@ test.describe("with the fake game", () => {
     await setUp(page, foreman, g);
     await startWithAlice(page, g);
 
+    await openEmergency(page);
     await page.getByRole("link", { name: "Force stop" }).click();
     await expect(page.locator("section.confirm")).toContainText("These players are disconnected: alice.");
     await page.goto("/");

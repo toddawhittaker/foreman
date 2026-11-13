@@ -114,10 +114,21 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Send" }).click();
     const reply = page.locator("#last-reply");
     await expect(reply).toContainText("alice", live);
-    // The newest reply is right under the field, after the log, and the history box fits it.
+    // The newest reply is right under the field, after the log. The history box is only as
+    // tall as what it holds, up to min(40vh, 20rem), then scrolls (DESIGN 6, 8.5).
     const history = page.getByRole("region", { name: "Console history" });
     expect((await box(history)).y).toBeGreaterThan((await box(field)).y);
-    expect((await box(history)).height).toBeLessThan((await box(log)).height);
+    const cap = Math.min(0.4 * page.viewportSize()!.height, 320);
+    expect((await box(history)).height).toBeLessThanOrEqual(cap + 1);
+    // When what it holds is shorter than the cap, the box ends under the newest entry, with no empty band.
+    const { band, held } = await history.evaluate((el) => {
+      const s = getComputedStyle(el);
+      const first = el.querySelector("li")!.getBoundingClientRect();
+      const last = el.querySelector("li:last-child")!.getBoundingClientRect();
+      const frame = parseFloat(s.paddingBlockStart) + parseFloat(s.paddingBlockEnd) + parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth);
+      return { held: last.bottom - first.top + frame, band: el.getBoundingClientRect().bottom - last.bottom - parseFloat(s.paddingBlockEnd) - parseFloat(s.borderBottomWidth) };
+    });
+    if (held < cap - 4) expect(band, "empty space under the newest entry, in px").toBeLessThanOrEqual(4);
     await expect(reply).toBeInViewport();
     await checkPage(page);
   });

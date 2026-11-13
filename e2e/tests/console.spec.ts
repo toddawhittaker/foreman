@@ -64,22 +64,28 @@ test.describe("with the fake game", () => {
     await expect.poll(() => atBottom(log)).toBe(true);
     const jump = page.getByRole("button", { name: "Jump to newest" });
     await expect(jump).toBeHidden();
-    // Its row is kept while hidden, so showing it moves nothing below the log.
+    // It floats over the log and keeps no row of its own, so showing it moves nothing below the log.
+    // On a phone the command row is a sticky bar, so it is measured once focusing it has scrolled the page.
     const consoleTop = () => page.locator("#console-panel").evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
-    const topBefore = await consoleTop();
 
     // Reading older lines: new ones arrive but the view stays where it is.
     const command = page.getByLabel("Command");
     await command.focus();
+    const topBefore = await consoleTop();
     await log.evaluate((el) => (el.scrollTop = 0));
     await fakeGame!.call("/join", { name: container, player: "late" });
     await expect(log).toContainText("late joined the game", live);
     expect(await log.evaluate((el) => el.scrollTop)).toBe(0);
     await expect(jump).toBeVisible();
-    // The button sits under the box and covers no line (DESIGN 8.5).
+    // The button floats over the log's bottom end corner, inside its box (DESIGN 8.5).
     const logRect = (await log.boundingBox())!;
     const jumpBox = (await jump.boundingBox())!;
-    expect(jumpBox.y).toBeGreaterThanOrEqual(logRect.y + logRect.height);
+    expect(jumpBox.y).toBeGreaterThan(logRect.y + logRect.height / 2);
+    expect(jumpBox.y + jumpBox.height).toBeLessThanOrEqual(logRect.y + logRect.height);
+    expect(jumpBox.x).toBeGreaterThanOrEqual(logRect.x);
+    expect(jumpBox.x + jumpBox.width).toBeLessThanOrEqual(logRect.x + logRect.width);
+    // Nearer the end edge than the start edge.
+    expect(logRect.x + logRect.width - (jumpBox.x + jumpBox.width)).toBeLessThan(jumpBox.x - logRect.x);
     expect(await consoleTop()).toBe(topBefore);
     await expect(command).toBeFocused();
     await checkPage(page);
