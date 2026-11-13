@@ -105,7 +105,7 @@
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
+  --text-3xl: 1.75rem;
 
   --color-bg: light-dark(#ece9e3, #14110e);
   --color-surface: light-dark(#fffdfa, #26211c);
@@ -171,7 +171,7 @@
   --color-territory-border: rgb(255 30 30);
   --color-territory-outline: #101010;
   --measure: 68ch;
-  --page-max: 80rem;
+  --page-max: 78rem;
 }
 
 /* The user menu's theme choice (SPEC 17.3) on html; on any other element it
@@ -293,7 +293,7 @@ h3 {
   line-height: 1.2;
 }
 
-/* Page title 30/36, 26/32 on a phone. */
+/* Page title 28/34, 26/32 on a phone. */
 h1 {
   font-size: var(--text-3xl);
   font-weight: 700;
@@ -8873,5 +8873,171 @@ main:has(> .gate) > * + :not(h1, .gate) {
   .mod-settings > .panels > .panel,
   .mod-settings > .panel {
     --card-pad: var(--space-4);
+  }
+}
+
+/* The breadcrumb looks like an overline but is a full 44 px target: an
+   invisible hit area reaches 10 px above and below the 24 px link. */
+.crumb a {
+  position: relative;
+}
+
+.crumb a::before {
+  content: "";
+  position: absolute;
+  inset: -0.625rem -0.5rem;
+}
+
+/* The world list on a wide screen: rows of 56 px, the name column and the
+   facts spread across the whole content width. */
+@media (min-width: 64rem) {
+  .worlds-head,
+  .worlds > li {
+    grid-template-columns: 20rem minmax(0, 1fr) 6rem;
+  }
+
+  .worlds-head__facts,
+  .worlds > li > .facts {
+    grid-template-columns: 8rem 6.5rem minmax(15.5rem, 1.4fr) minmax(0, 1fr);
+    column-gap: 1.25rem;
+  }
+
+  .worlds > li {
+    min-block-size: 3.5rem;
+    padding-block: var(--space-2);
+  }
+
+  .worlds > li:first-child {
+    padding-block-start: var(--space-2);
+  }
+}
+
+/* Mods: Update all is a secondary button that carries its count; the rail's
+   tools are buttons as wide as their words, 40 px under a fine pointer. */
+#act-update-all > .count {
+  padding: 0 var(--space-2);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.54;
+}
+
+@media (min-width: 64rem) {
+  .mod-rail .split__rail .actions > .button {
+    flex: none;
+    inline-size: auto;
+  }
+
+  .mod-rail #mod-upload > summary {
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    gap: var(--space-3);
+  }
+}
+
+@media (min-width: 64rem) and (pointer: fine) {
+  .mod-rail .split__rail .actions > .button,
+  .mod-rail #mod-upload > summary {
+    min-block-size: 2.5rem;
+    padding-block: var(--space-1);
+  }
+}
+
+/* The game log: a player leaving is quiet, joining takes the running
+   colour; each keeps its [JOIN] or [LEAVE] word. */
+.log .log-join.log-leave {
+  color: var(--color-text-muted);
+}
+
+/* The game log on one grid at every width: the date once, as a divider over
+   the day's first line; then each line's clock or elapsed seconds in one
+   column, right-aligned, and its words beside it. A line with no time
+   starts in the words' column, so nothing is indented on its own. */
+.terminal .log-frame > .log pre > span:has(> .log-msg) {
+  display: grid;
+  grid-template-columns: 9ch minmax(0, 1fr);
+  column-gap: 2ch;
+  padding-inline-start: 0;
+}
+
+.terminal .log-frame > .log pre > span > .log-time {
+  display: contents;
+}
+
+.terminal .log-frame > .log pre > span > .log-msg {
+  grid-column: 2;
+  min-inline-size: 0;
+}
+
+.terminal .log-frame > .log .log-clock {
+  grid-column: 1;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.terminal .log-frame > .log .log-date {
+  display: none;
+}
+
+.terminal .log-frame > .log pre > [data-day] > .log-time > .log-date {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-2) var(--space-1);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.terminal .log-frame > .log pre > [data-day] > .log-time > .log-date::after {
+  content: "";
+  flex: 1;
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.terminal .log-frame > .log pre > [data-day]:first-child > .log-time > .log-date {
+  margin-block-start: 0;
+}
+
+/* On a phone each line's time sits above its words in 12 px quiet type,
+   and the words take the full width: 13 px mono on 20 px lines, 8 px
+   between entries. */
+@media (max-width: 39.99rem) {
+  .terminal .log-frame > .log {
+    line-height: 1.25rem;
+  }
+
+  .terminal .log-frame > .log pre > span:has(> .log-msg),
+  .terminal .log-frame > .log pre > span.log-join:has(> .log-msg) {
+    display: block;
+    padding-inline-start: 0;
+  }
+
+  .terminal .log-frame > .log pre > span + span {
+    margin-block-start: var(--space-2);
+  }
+
+  .terminal .log-frame > .log pre > span > .log-msg {
+    display: block;
+  }
+
+  .terminal .log-frame > .log .log-clock {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-align: start;
+  }
+
+  .terminal .log-frame > .log pre > [data-day] > .log-time > .log-date {
+    margin-block: var(--space-3) var(--space-2);
   }
 }

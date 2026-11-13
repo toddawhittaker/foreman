@@ -84,7 +84,7 @@
     // The game's own Error and Warning lines, and players joining or
     // leaving, are coloured, and the time is set apart, as console.go does.
     const kind = /^\s*\d+\.\d+ (Error|Warning) /;
-    const player = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[(?:JOIN|LEAVE)\] /;
+    const player = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[(JOIN|LEAVE)\] /;
     const stamp = /^\s*(?:\d+\.\d+|\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) /;
     const span = (text) => {
       const el = document.createElement("span");
@@ -98,7 +98,10 @@
       el.append(text.slice(s ? s[0].length : 0) + "\n");
       const m = kind.exec(text);
       if (m) el.className = "log-" + m[1].toLowerCase();
-      else if (player.test(text)) el.className = "log-join";
+      else {
+        const p = player.exec(text);
+        if (p) el.className = p[1] === "LEAVE" ? "log-join log-leave" : "log-join";
+      }
       return dress(el);
     };
     // With data-log-html each line comes as one list item the server drew and

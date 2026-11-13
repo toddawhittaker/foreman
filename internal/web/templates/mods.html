@@ -278,7 +278,7 @@
 </div>
 {{- end}}
 {{- if .Updates}}
-<span id="mod-update-all" class="group__action" hx-swap-oob="true"><a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a></span>
+<span id="mod-update-all" class="group__action" hx-swap-oob="true"><a href="{{.UpdateAllPath}}" class="button" id="act-update-all">{{t "mods.status.update_all"}} <span class="count" aria-hidden="true">{{len .Updates}}</span></a></span>
 {{- end}}
 {{- range .Rows}}
 {{- if .UpdateTo}}

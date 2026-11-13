@@ -188,9 +188,9 @@ func (p ConsolePage) liveURL() string {
 // pattern for lines that arrive live.
 var gameLineKind = regexp.MustCompile(`^\s*\d+\.\d+ (Error|Warning) `)
 
-// gameLinePlayer is a player joining or leaving, which the page sets in the
-// running colour; the line keeps its [JOIN] or [LEAVE] word.
-var gameLinePlayer = regexp.MustCompile(`^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[(?:JOIN|LEAVE)\] `)
+// gameLinePlayer is a player joining or leaving: joining takes the running
+// colour, leaving the quiet one; the line keeps its [JOIN] or [LEAVE] word.
+var gameLinePlayer = regexp.MustCompile(`^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[(JOIN|LEAVE)\] `)
 
 // LineClass is the class that colours a game Error or Warning line, or "".
 // The line keeps its own word, so the colour is never the only sign (SPEC 17.4).
@@ -198,7 +198,10 @@ func (ConsolePage) LineClass(line string) string {
 	if m := gameLineKind.FindStringSubmatch(line); m != nil {
 		return "log-" + strings.ToLower(m[1])
 	}
-	if gameLinePlayer.MatchString(line) {
+	if m := gameLinePlayer.FindStringSubmatch(line); m != nil {
+		if m[1] == "LEAVE" {
+			return "log-join log-leave"
+		}
 		return "log-join"
 	}
 	return ""

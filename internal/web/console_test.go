@@ -175,7 +175,7 @@ func TestLogLineClass(t *testing.T) {
 		"   1.000 Info Server started":                         "",
 		"2026-11-06 12:00:00 [CHAT] alice: Error here":         "",
 		"2026-11-06 12:00:00 [JOIN] alice joined the game":     "log-join",
-		"2026-11-06 12:00:00 [LEAVE] alice left the game":      "log-join",
+		"2026-11-06 12:00:00 [LEAVE] alice left the game":      "log-join log-leave",
 		"Error without a time":                                 "",
 	} {
 		if got := p.LineClass(line); got != want {
