@@ -152,7 +152,7 @@
   "mods.upload.bad_name": "info.json modu uvádí název nebo verzi, které Foreman nemůže použít jako název souboru. Je třeba zvolit jiný soubor.",
   "mods.upload.wrong_mod": "Tento zip obsahuje {got}, ne {mod}. Je třeba zvolit zip s modem {mod}.",
   "mods.settings.heading": "Nastavení modů",
-  "mods.settings.text": "Hodnoty nastavení modů jsou v souboru {file}. Lze si ho stáhnout, aby se zachovala kopie nebo aby se použil v jiném světě.",
+  "mods.settings.text": "Lorem ipsum dolor {file}",
   "mods.settings.download": "Stáhnout mod-settings.dat",
   "mods.settings.none": "Tento svět zatím nemá soubor {file}. Hra ho zapíše při prvním spuštění s mody.",
   "mods.settings.summary": "Nahradit {file}",
@@ -436,5 +436,7 @@
     "few": "Smazat, co postavily tyto {count} mody: {mods}. Kopii uchovává snímek „{label}“.",
     "other": "Smazat, co postavilo těchto {count} modů: {mods}. Kopii uchovává snímek „{label}“."
   },
-  "mods.drops.confirm_missing_one": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co {mod} postavil, nebo zrušit."
+  "mods.drops.confirm_missing_one": "Zaškrtnutím pole je třeba potvrdit, že hra smaže, co {mod} postavil, nebo zrušit.",
+  "mods.tools.label": "Lorem ipsum dolor",
+  "mods.row.more_word": "Lorem ipsum dolor"
 }

@@ -138,5 +138,6 @@
   "settings.diff.banned": "Заблокирован {name}",
   "settings.diff.unbanned": "Разблокирован {name}",
   "settings.diff.whitelist_added": "{name} добавлен в белый список",
-  "settings.diff.whitelist_removed": "{name} убран из белого списка"
+  "settings.diff.whitelist_removed": "{name} убран из белого списка",
+  "settings.jump.label": "Lorem ipsum dolor"
 }

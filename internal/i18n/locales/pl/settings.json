@@ -138,5 +138,6 @@
   "settings.diff.banned": "Zbanowano gracza {name}",
   "settings.diff.unbanned": "Odbanowano gracza {name}",
   "settings.diff.whitelist_added": "Dodano gracza {name} do białej listy",
-  "settings.diff.whitelist_removed": "Usunięto gracza {name} z białej listy"
+  "settings.diff.whitelist_removed": "Usunięto gracza {name} z białej listy",
+  "settings.jump.label": "Lorem ipsum dolor"
 }

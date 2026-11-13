@@ -137,7 +137,7 @@
   "mods.upload.bad_name": "The mod's info.json gives a name or version Foreman cannot use as a file name. Choose another file.",
   "mods.upload.wrong_mod": "This zip holds {got}, not {mod}. Choose the zip of {mod}.",
   "mods.settings.heading": "Mod settings",
-  "mods.settings.text": "The values of the mods' settings live in {file}. Download it to keep a copy or to use it in another world.",
+  "mods.settings.text": "Mod setting values live in {file}; download it to keep a copy.",
   "mods.settings.download": "Download mod-settings.dat",
   "mods.settings.none": "This world has no {file} yet. The game writes one when it first runs with mods.",
   "mods.settings.summary": "Replace {file}",
@@ -401,5 +401,7 @@
     "one": "Delete what {mods} built. The snapshot \"{label}\" keeps a copy.",
     "other": "Delete what these {count} mods built: {mods}. The snapshot \"{label}\" keeps a copy."
   },
-  "mods.drops.confirm_missing_one": "Tick the box to confirm that the game deletes what {mod} built, or cancel."
+  "mods.drops.confirm_missing_one": "Tick the box to confirm that the game deletes what {mod} built, or cancel.",
+  "mods.tools.label": "Mod tools",
+  "mods.row.more_word": "More"
 }

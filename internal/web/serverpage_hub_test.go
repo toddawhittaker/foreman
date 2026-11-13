@@ -254,13 +254,13 @@ func TestTakeSnapshotOffered(t *testing.T) {
 		game.StateStarting: false, game.StateStopping: false, game.StateCrashed: false, game.StateUnknown: false,
 	} {
 		html := controlHTML(t, serverCase(state, func(*ServerPage) {}))
-		// While the game runs, Take snapshot is the page's one primary action.
+		// Take snapshot is always secondary: while the game runs, Stop server is the page's one primary action.
 		face := `class="button"`
-		if state == game.StateRunning {
-			face = `class="button button--primary"`
-		}
 		if got := strings.Contains(html, `<form method="post" action="/worlds/base/take-snapshot"><button type="submit" `+face+` id="act-snapshot">Take snapshot</button></form>`); got != want {
 			t.Errorf("%s: offered %v, want %v", state, got, want)
+		}
+		if primary := strings.Contains(html, `class="button button--primary" id="act-stop"`); primary != (state == game.StateRunning) {
+			t.Errorf("%s: Stop server primary %v", state, primary)
 		}
 	}
 	busy := serverCase(game.StateRunning, func(p *ServerPage) {

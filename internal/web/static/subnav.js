@@ -25,3 +25,20 @@
     window.addEventListener("resize", mark);
   }
 })();
+
+// A select that jumps to a section of the page (Game settings on a phone):
+// script shows it, and choosing a section scrolls there and moves focus to it.
+(() => {
+  "use strict";
+  for (const select of document.querySelectorAll("select[data-jump]")) {
+    const wrap = select.closest("[hidden]");
+    if (wrap) wrap.hidden = false;
+    select.addEventListener("change", () => {
+      const target = document.getElementById(select.value);
+      if (!target) return;
+      if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+      target.scrollIntoView({ block: "start" });
+      target.focus({ preventScroll: true });
+    });
+  }
+})();

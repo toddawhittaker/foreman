@@ -86,6 +86,7 @@
      heading's badge names the state, so the band does not repeat it. Like
      the facts, it leaves out what cannot be known now (SPEC 7.1). */}}
 {{define "server-band" -}}
+<span class="plate__state plate__state--{{.Status.State}}">{{msg .StateWord}}</span>
 {{- if and .FactsKnown .Running}}
 <span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> <time datetime="{{.UptimeISO}}">{{msg .Uptime}}</time></span>
 {{- else if .FactsKnown}}
@@ -412,22 +413,22 @@
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
   {{- if .CanSnapshot}}
-  {{- /* While the game runs, a snapshot is the everyday safe step, so it is the page's one primary (DESIGN 6). */}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if eq .Status.State "running"}} button--primary{{end}}" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
   {{- end}}
   {{- if .CanStop}}
-  <a href="{{.StopPath}}" class="button" id="act-stop">{{t "server.action.stop"}}</a>
+  {{- /* The state-changing action is the page's one primary: Start while stopped, Stop while running. */}}
+  <a href="{{.StopPath}}" class="button{{if eq .Status.State "running"}} button--primary{{end}}" id="act-stop">{{t "server.action.stop"}}</a>
   {{- end}}
 </div>
 {{- end}}
 {{- if .CanForceStop}}
-{{- /* The emergency stop is not a peer of the routine controls: it sits on a row of its own under them, with what it does (DESIGN 6). */}}
+{{- /* The emergency stop is not a peer of the routine controls: it sits at the plate's foot under a danger rule, with what it does in one line. */}}
 <div class="danger-row">
-  <p class="hint">{{t "server.force.at_once"}}</p>
   <a href="{{.ForceStopPath}}" id="act-force-stop" class="button">{{t "server.action.force_stop"}}</a>
+  <p class="hint">{{t "server.force.at_once"}}</p>
 </div>
 {{- end}}
 {{- if not .ActionsNote.IsZero}}

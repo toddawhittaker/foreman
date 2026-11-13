@@ -138,5 +138,6 @@
   "settings.diff.banned": "已封禁 {name}",
   "settings.diff.unbanned": "已解封 {name}",
   "settings.diff.whitelist_added": "已将 {name} 加入白名单",
-  "settings.diff.whitelist_removed": "已将 {name} 移出白名单"
+  "settings.diff.whitelist_removed": "已将 {name} 移出白名单",
+  "settings.jump.label": "Lorem ipsum dolor"
 }

@@ -362,7 +362,7 @@ h2.op-heading {
 .tabs a::before,
 .shortcuts > a::before,
 .server-actions :is(a, button)::before,
-#act-force-stop::before,
+:is(#act-force-stop, .design-force-stop)::before,
 .page-head--row .button::before,
 main h2[id]::before {
   flex: none;
@@ -374,8 +374,8 @@ main h2[id]::before {
 
 .tabs a::before,
 .shortcuts > a::before,
-.server-actions :is(#act-start, #act-stop, #act-restart, #act-snapshot, #act-pull)::before,
-#act-force-stop::before,
+.server-actions :is(#act-start, #act-stop, #act-restart, #act-snapshot, #act-pull, [data-design-icon])::before,
+:is(#act-force-stop, .design-force-stop)::before,
 .page-head--row .button:is([href$="/generate"], [href$="/import"])::before,
 main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #changes-heading, #admins-heading, #none-heading)::before {
   content: "";
@@ -398,7 +398,7 @@ main h2[id]::before {
 #act-restart { --icon: var(--i-restart); }
 #act-snapshot { --icon: var(--i-snapshot); }
 #act-pull { --icon: var(--i-download); }
-#act-force-stop { --icon: var(--i-force); }
+:is(#act-force-stop, .design-force-stop) { --icon: var(--i-force); }
 #act-world { --icon: var(--i-map); }
 #act-mods { --icon: var(--i-mods); }
 #act-settings { --icon: var(--i-settings); }
@@ -2114,14 +2114,14 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 /* The everyday actions lead the row; Force stop is set apart at its end,
    and on a phone on a full-width row of its own below a gap. */
-.server-actions #act-force-stop {
+.server-actions :is(#act-force-stop, .design-force-stop) {
   margin-inline-start: auto;
 }
 
 @container (max-width: 24rem) {
   /* As wide as its words, but it wraps rather than push the page wider
      at large text (SPEC 17.2). */
-  .server-actions #act-force-stop {
+  .server-actions :is(#act-force-stop, .design-force-stop) {
     flex: 0 1 auto;
     margin-block-start: var(--space-2);
   }
@@ -2129,7 +2129,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 
 /* Force stop is a link, not a button face, drawn with .button--risky's
    colours and size so every opener of a destructive step looks alike. */
-#act-force-stop {
+:is(#act-force-stop, .design-force-stop) {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -2142,7 +2142,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   text-decoration: none;
 }
 
-#act-force-stop:hover {
+:is(#act-force-stop, .design-force-stop):hover {
   background: var(--color-danger-bg);
 }
 
@@ -3927,7 +3927,7 @@ form:has(#mode-exchange:checked) .achievements {
 @media (forced-colors: active) {
   /* Line icons are masks painted with a background, which forced colours
      replace with the page colour; paint them in the system colours instead. */
-  :is(.button--icon, .server-actions :is(a, button), #act-force-stop, .page-head--row .button)::before {
+  :is(.button--icon, .server-actions :is(a, button), :is(#act-force-stop, .design-force-stop), .page-head--row .button)::before {
     forced-color-adjust: none;
     background: ButtonText;
   }
@@ -5902,7 +5902,7 @@ tr:has(> td > .player-actions) > td.num {
 /* On a phone Force stop ends the actions on a row of its own, under a
    hairline, so it is set apart from the everyday ones. */
 @container (max-width: 24rem) {
-  .server-actions:has(#act-force-stop)::after {
+  .server-actions:has(:is(#act-force-stop, .design-force-stop))::after {
     content: "";
     order: 1;
     flex: 1 1 100%;
@@ -5911,7 +5911,7 @@ tr:has(> td > .player-actions) > td.num {
     background: var(--color-line);
   }
 
-  .server-actions #act-force-stop {
+  .server-actions :is(#act-force-stop, .design-force-stop) {
     order: 2;
     flex: 1 1 100%;
     justify-content: center;
@@ -7006,7 +7006,7 @@ main:has(> .gate) > .gate {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .server-actions:has(> #act-restart):has(> #act-stop) :is(.button, #act-force-stop),
+  .server-actions:has(> #act-restart):has(> #act-stop) :is(.button, :is(#act-force-stop, .design-force-stop)),
   .server-actions:has(> #act-restart):has(> #act-stop)::after {
     grid-column: 1 / -1;
   }
@@ -7196,7 +7196,7 @@ main > h1 + p.hint {
   max-inline-size: var(--measure);
 }
 
-.danger-row > #act-force-stop {
+.danger-row > :is(#act-force-stop, .design-force-stop) {
   flex: 0 1 auto;
   margin: 0;
   background: transparent;
@@ -7837,4 +7837,302 @@ main:has(> .gate)::before {
 .terminal > .terminal__console {
   padding-block: var(--space-4);
   background: transparent;
+}
+
+/* Server plate, round 2: the band leads with the state, large and in its
+   colour, behind a 6 px rule of the same colour, so it reads from across
+   the room. The state word carries a shape too (the badge's square). */
+.plate__band {
+  min-block-size: 3.5rem;
+  gap: var(--space-1) var(--space-5);
+  padding-inline-start: var(--card-pad);
+  border-inline-start: 6px solid var(--plate-state, var(--color-border));
+  font-size: var(--text-md);
+}
+
+.plate__band:has(.plate__state--running) { --plate-state: var(--color-ok); }
+.plate__band:has(.plate__state--starting) { --plate-state: var(--color-info); }
+.plate__band:has(.plate__state--stopping) { --plate-state: var(--color-warn); }
+.plate__band:has(.plate__state--crashed),
+.plate__band:has(.plate__state--crash-looping) { --plate-state: var(--color-danger); }
+
+.plate__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--plate-state-text, var(--color-heading));
+  font-size: var(--text-xl);
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.plate__state::before {
+  content: "";
+  flex: none;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+}
+
+.plate__state--running { --plate-state-text: var(--color-ok); }
+.plate__state--running::before { background-image: linear-gradient(currentColor, currentColor); }
+.plate__state--starting { --plate-state-text: var(--color-info); }
+.plate__state--starting::before {
+  border-color: currentColor currentColor currentColor transparent;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.plate__state--stopping { --plate-state-text: var(--color-warn); }
+.plate__state--stopping::before { background-image: linear-gradient(to left, currentColor 50%, transparent 50%); }
+.plate__state--crashed,
+.plate__state--crash-looping { --plate-state-text: var(--color-danger-text); }
+.plate__state--crashed::before { background-image: linear-gradient(currentColor, currentColor); transform: rotate(45deg); }
+.plate__state--crash-looping::before { background-image: linear-gradient(currentColor, currentColor); }
+.plate__state--unknown::before { border-radius: 50%; border-style: dashed; }
+
+/* The rule between facts follows the state word too. */
+.plate__state + .plate__fact::before {
+  content: "";
+  align-self: center;
+  inline-size: var(--border-width);
+  block-size: 1rem;
+  margin-inline-end: var(--space-2);
+  background: currentColor;
+  opacity: 0.35;
+}
+
+/* The plate's rivets: four deliberate 6 px rivets, 10 px in from each
+   corner, each with a small highlight, on this one plate only. */
+.plate::before {
+  inset: 10px;
+  --rivet: radial-gradient(circle at 38% 34%, light-dark(rgb(255 255 255 / 85%), rgb(255 255 255 / 30%)) 0 0.8px, var(--color-border) 1.2px 2.6px, light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 50%)) 2.7px 3px, transparent 3.2px);
+  background:
+    var(--rivet) left top / 6px 6px no-repeat,
+    var(--rivet) right top / 6px 6px no-repeat,
+    var(--rivet) left bottom / 6px 6px no-repeat,
+    var(--rivet) right bottom / 6px 6px no-repeat;
+}
+
+/* Force stop: at the controls' foot under a dashed danger rule, the link
+   first and what it does in one muted line beside it. */
+.danger-row {
+  justify-content: flex-start;
+  gap: var(--space-2) var(--space-4);
+  margin-block-start: 0;
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) dashed color-mix(in srgb, var(--color-danger-text) 55%, transparent);
+}
+
+.danger-row > .hint {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+
+.danger-row > :is(#act-force-stop, .design-force-stop) {
+  order: -1;
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+}
+
+/* Stat values: one role, sans 24 px, weight 600, tabular figures; the
+   version and save are values, not code. */
+.facts.stat-grid dd code {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-sans);
+  font-size: 1em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 39.99rem) {
+  .facts.stat-grid dd {
+    font-size: var(--text-xl);
+  }
+}
+
+/* Console, round 2: the game log first and the command row under it at
+   every width, as on a terminal. The light log sits on a warm paper
+   surface with full-strength text; times stay quieter but above 7:1. */
+@media (max-width: 39.99rem) {
+  .terminal__console {
+    order: 0;
+    border-block-end: 0;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  .terminal .log-frame > .log pre {
+    overflow-wrap: break-word;
+  }
+}
+
+.terminal .log-frame > .log {
+  background: light-dark(var(--color-raised), var(--color-deep));
+  color: light-dark(var(--color-heading), var(--color-text));
+}
+
+.terminal .log-frame > .log .log-time {
+  color: var(--color-text-muted);
+}
+
+/* A mod row's menu button says "More" beside its dots, so the way to
+   Change version, Disable and Remove reads at a glance. */
+.row-menu > summary.row-menu__toggle {
+  inline-size: auto;
+  min-inline-size: var(--target-min);
+  gap: var(--space-1);
+  padding: 0 var(--space-3) 0 var(--space-2);
+}
+
+.row-menu__word {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Mods: below the two-column width, the rail's tools as a short row of
+   44 px links under the search, each with its icon. */
+.mod-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  margin: 0;
+}
+
+.mod-tools__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.mod-tools__link::before {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.mod-tools__link--sync { --icon: var(--i-sync); }
+.mod-tools__link--upload { --icon: var(--i-upload); }
+.mod-tools__link--settings { --icon: var(--i-settings); }
+
+/* Game settings on a phone: one 44 px select jumps to a section; it goes
+   when the rail of section links shows beside the form. */
+.settings-jump {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-end: var(--space-4);
+}
+
+.settings-jump[hidden] {
+  display: none;
+}
+
+.settings-jump select {
+  min-block-size: var(--target-min);
+}
+
+#settings-listing, #settings-joining, #settings-saving, #settings-admins,
+#settings-whitelist, #settings-bans {
+  scroll-margin-block-start: var(--space-4);
+}
+
+@container settings (min-width: 44rem) {
+  .settings-jump {
+    display: none;
+  }
+}
+
+/* A disclosure that adds an optional field (Generate's typed version) is a
+   quiet text button with a plus, not a box that looks like a second select. */
+.disclosure.disclosure--add > summary {
+  display: inline-flex;
+  inline-size: fit-content;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+  padding: 0 var(--space-1);
+  background: transparent;
+  color: var(--color-link);
+  border: 0;
+  box-shadow: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.disclosure.disclosure--add > summary:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.disclosure.disclosure--add > summary::before {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  background: currentColor;
+  mask: var(--i-plus) center / contain no-repeat;
+  transition: transform var(--dur-2) var(--ease);
+}
+
+.disclosure.disclosure--add[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.disclosure.disclosure--add > summary::after {
+  content: none;
+}
+
+.version-fields > .disclosure--add {
+  margin-block-start: calc(-1 * var(--space-2));
+}
+
+/* Helper text: 14 px at a 1.5 line height, held to about 60 characters, so
+   it reads as help under its field and never competes with content. */
+.hint,
+.panel > :is(h2, .section-head) + :is(p.hint, p:not([class])),
+.panel > :is(h2, .section-head) + .hint,
+main > h1 + p.hint {
+  max-inline-size: 60ch;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* The component page's Server controls carry the same icons as the page's. */
+[data-design-icon="snapshot"] { --icon: var(--i-snapshot); }
+[data-design-icon="restart"] { --icon: var(--i-restart); }
+[data-design-icon="stop"] { --icon: var(--i-stop); }
+
+/* On the component page the open menu's panel sits in the flow, so the
+   row shows it without covering the next specimen. */
+.design-menu-open .row-menu__panel {
+  position: static;
+  margin-block-start: var(--space-1);
+}
+
+.plate > .plate__controls {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--card-pad);
+  padding-block-end: var(--space-4);
+}
+
+/* The plate needs no corner marks: its state rule is its identity. */
+.plate::before {
+  content: none;
+}
+
+/* On a phone the state word takes the band's first line, its facts the next. */
+@media (max-width: 39.99rem) {
+  .plate__state {
+    flex-basis: 100%;
+  }
+
+  .plate__state + .plate__fact::before {
+    content: none;
+  }
 }

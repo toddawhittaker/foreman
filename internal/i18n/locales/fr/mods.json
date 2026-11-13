@@ -137,7 +137,7 @@
   "mods.upload.bad_name": "Le fichier info.json du mod donne un nom ou une version que Foreman ne peut pas utiliser comme nom de fichier. Choisissez un autre fichier.",
   "mods.upload.wrong_mod": "Ce zip contient {got}, et non {mod}. Choisissez le zip de {mod}.",
   "mods.settings.heading": "Paramètres des mods",
-  "mods.settings.text": "Les valeurs des paramètres des mods se trouvent dans {file}. Téléchargez-le pour en garder une copie ou pour l’utiliser dans un autre monde.",
+  "mods.settings.text": "Lorem ipsum dolor {file}",
   "mods.settings.download": "Télécharger mod-settings.dat",
   "mods.settings.none": "Ce monde n’a pas encore de {file}. Le jeu en écrit un lors de sa première exécution avec des mods.",
   "mods.settings.summary": "Remplacer {file}",
@@ -401,5 +401,7 @@
     "one": "Supprimer ce que {mods} a construit. L’instantané « {label} » en garde une copie.",
     "other": "Supprimer ce que ces {count} mods ont construit : {mods}. L’instantané « {label} » en garde une copie."
   },
-  "mods.drops.confirm_missing_one": "Cochez la case pour confirmer que le jeu supprime ce que {mod} a construit, ou annulez."
+  "mods.drops.confirm_missing_one": "Cochez la case pour confirmer que le jeu supprime ce que {mod} a construit, ou annulez.",
+  "mods.tools.label": "Lorem ipsum dolor",
+  "mods.row.more_word": "Lorem ipsum dolor"
 }

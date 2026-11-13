@@ -152,7 +152,7 @@
   "mods.upload.bad_name": "W pliku info.json modyfikacji podano nazwę lub wersję, której Foreman nie może użyć jako nazwy pliku. Należy wybrać inny plik.",
   "mods.upload.wrong_mod": "W tym pliku zip jest {got}, a nie {mod}. Należy wybrać plik zip modyfikacji {mod}.",
   "mods.settings.heading": "Ustawienia modyfikacji",
-  "mods.settings.text": "Wartości ustawień modyfikacji znajdują się w pliku {file}. Można go pobrać, aby zachować kopię lub użyć go w innym świecie.",
+  "mods.settings.text": "Lorem ipsum dolor {file}",
   "mods.settings.download": "Pobierz mod-settings.dat",
   "mods.settings.none": "Ten świat nie ma jeszcze pliku {file}. Gra tworzy go przy pierwszym uruchomieniu z modyfikacjami.",
   "mods.settings.summary": "Zastąp {file}",
@@ -436,5 +436,7 @@
     "few": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacje: {mods}. Kopię zachowuje migawka „{label}”.",
     "many": "Usunięcie tego, co zostało zbudowane przez te {count} modyfikacji: {mods}. Kopię zachowuje migawka „{label}”."
   },
-  "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować."
+  "mods.drops.confirm_missing_one": "Należy zaznaczyć pole, aby potwierdzić, że gra usunie to, co zostało zbudowane przez {mod}, albo anulować.",
+  "mods.tools.label": "Lorem ipsum dolor",
+  "mods.row.more_word": "Lorem ipsum dolor"
 }

@@ -122,7 +122,7 @@
   "mods.upload.bad_name": "模组的 info.json 给出的名称或版本无法被 Foreman 用作文件名。请选择其他文件。",
   "mods.upload.wrong_mod": "此 zip 文件包含的是 {got}，而不是 {mod}。请选择 {mod} 的 zip 文件。",
   "mods.settings.heading": "模组设置",
-  "mods.settings.text": "模组设置的值保存在 {file} 中。可下载该文件以保留副本，或在其他世界中使用。",
+  "mods.settings.text": "Lorem ipsum dolor {file}",
   "mods.settings.download": "下载 mod-settings.dat",
   "mods.settings.none": "此世界还没有 {file}。游戏首次带模组运行时会写入一个。",
   "mods.settings.summary": "替换 {file}",
@@ -366,5 +366,7 @@
   "mods.drops.confirm": {
     "other": "删除这 {count} 个模组建造的内容：{mods}。快照“{label}”保留一份副本。"
   },
-  "mods.drops.confirm_missing_one": "请勾选复选框，确认游戏会删除 {mod} 建造的内容，或取消。"
+  "mods.drops.confirm_missing_one": "请勾选复选框，确认游戏会删除 {mod} 建造的内容，或取消。",
+  "mods.tools.label": "Lorem ipsum dolor",
+  "mods.row.more_word": "Lorem ipsum dolor"
 }

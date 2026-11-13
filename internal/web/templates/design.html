@@ -148,17 +148,32 @@
   <h4 id="{{.Theme}}-card">{{t "server.players.heading"}}</h4>
   <p class="empty">{{t "server.online.nobody"}}</p>
 </section>
-{{- /* The Server plate in each state: its band, then its gauges, CPU's meter in its three bands. */}}
+{{- /* The Server plate in each state, as the Server page draws it: the band
+     with the state word and its rule, then the stat grid, CPU's meter at
+     rest, above 80% and above 95%. The running plate also shows the
+     controls, with Stop as the one primary, and Force stop at the foot. */}}
 {{- range $i, $st := .Page.States}}
 <div class="card status-card plate status-card--{{.State}}">
-  <div class="plate__band">{{template "live-state" .}}<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
+  <div class="plate__band"><span class="plate__state plate__state--{{.State}}">{{msg .Word}}</span><span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
+  {{- if eq (print .State) "running"}}
+  <div class="plate__controls">
+    <div class="actions server-actions">
+      <form><button type="button" class="button" data-design-icon="snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+      <a href="{{serverPath}}" class="button" data-design-icon="restart">{{t "server.action.restart"}}</a>
+      <a href="{{serverPath}}" class="button button--primary" data-design-icon="stop">{{t "server.action.stop"}}</a>
+    </div>
+    <div class="danger-row">
+      <a href="{{serverPath}}" class="button design-force-stop">{{t "server.action.force_stop"}}</a>
+      <p class="hint">{{t "server.force.at_once"}}</p>
+    </div>
+  </div>
+  {{- end}}
   <div class="facts-block"><div>
-    <dl class="facts facts--inline">
-      <div><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
-    </dl>
-    <dl class="facts stats">
-      <div class="stat gauge{{if eq $i 1}} gauge--warn{{else if eq $i 3}} gauge--danger{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
-      <div class="stat"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}</dd></div>
+    <dl class="facts stat-grid">
+      <div class="stat"><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
+      <div class="stat"><dt>{{t "server.facts.save"}}</dt><dd><code>save.zip</code></dd></div>
+      <div class="stat gauge gauge--{{if eq $i 1}}warn{{else if eq $i 3}}danger{{else}}ok{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
+      <div class="stat gauge gauge--ok"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}<span class="meter" aria-hidden="true"><span style="inline-size: 38%"></span></span></dd></div>
     </dl>
   </div></div>
 </div>
@@ -230,7 +245,7 @@
   <span class="select-bar__count" aria-hidden="true">2</span>
   <button type="button" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
 </div>
-{{- /* A list's heading with its count, and a mod's row: its version tag, then the one secondary button on each action. */}}
+{{- /* A list's heading with its count, and mod rows as the Mods page draws them: one visible action, then the More menu, closed and open. */}}
 <section class="panel card" aria-labelledby="{{.Theme}}-mods">
   <div class="group__head">
     <h4 id="{{.Theme}}-mods">{{t "mods.installed.heading"}}</h4>
@@ -246,14 +261,31 @@
         <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <code>3.2.2</code></div></td>
         <td role="cell" data-label="{{t "mods.col.actions"}}">
           <div class="row-actions mod-actions">
-            <div class="mod-actions__portal">
-              <span><a href="{{worldsPath}}" class="button">{{t "mods.row.update" "version" "3.2.3"}}</a></span>
-              <span><a href="{{worldsPath}}" class="button button--quiet mod-version">{{t "mods.row.version"}}</a></span>
-            </div>
-            <div class="mod-actions__fixed">
-              <a href="{{worldsPath}}" class="button button--quiet mod-toggle">{{t "mods.row.disable"}}</a>
-              <a href="{{worldsPath}}" class="button button--quiet button--icon mod-remove">{{t "mods.row.remove"}}</a>
-            </div>
+            <span><a href="{{worldsPath}}" class="button">{{t "mods.row.update" "version" "3.2.3"}}</a></span>
+            <details class="row-menu">
+              <summary class="button button--quiet row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
+              <div class="row-menu__panel">
+                <a href="{{worldsPath}}" class="row-menu__item mod-version">{{t "mods.row.version"}}</a>
+                <a href="{{worldsPath}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}</a>
+                <a href="{{worldsPath}}" class="row-menu__item row-menu__item--danger mod-remove">{{t "mods.row.remove"}}</a>
+              </div>
+            </details>
+          </div>
+        </td>
+      </tr>
+      {{- /* The same row with its menu open, as it shows after a click. */}}
+      <tr role="row" class="design-menu-open">
+        <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <code>3.2.3</code></div></td>
+        <td role="cell" data-label="{{t "mods.col.actions"}}">
+          <div class="row-actions mod-actions">
+            <details class="row-menu" open>
+              <summary class="button button--quiet row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
+              <div class="row-menu__panel">
+                <a href="{{worldsPath}}" class="row-menu__item mod-version">{{t "mods.row.version"}}</a>
+                <a href="{{worldsPath}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}</a>
+                <a href="{{worldsPath}}" class="row-menu__item row-menu__item--danger mod-remove">{{t "mods.row.remove"}}</a>
+              </div>
+            </details>
           </div>
         </td>
       </tr>

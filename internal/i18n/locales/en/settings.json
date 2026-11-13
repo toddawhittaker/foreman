@@ -138,5 +138,6 @@
   "settings.diff.banned": "Banned {name}",
   "settings.diff.unbanned": "Unbanned {name}",
   "settings.diff.whitelist_added": "Added {name} to the whitelist",
-  "settings.diff.whitelist_removed": "Removed {name} from the whitelist"
+  "settings.diff.whitelist_removed": "Removed {name} from the whitelist",
+  "settings.jump.label": "Jump to section"
 }

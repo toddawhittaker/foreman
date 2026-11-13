@@ -138,5 +138,6 @@
   "settings.diff.banned": "{name} baneado",
   "settings.diff.unbanned": "{name} desbaneado",
   "settings.diff.whitelist_added": "{name} añadido a la lista blanca",
-  "settings.diff.whitelist_removed": "{name} quitado de la lista blanca"
+  "settings.diff.whitelist_removed": "{name} quitado de la lista blanca",
+  "settings.jump.label": "Lorem ipsum dolor"
 }

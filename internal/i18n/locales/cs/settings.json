@@ -138,5 +138,6 @@
   "settings.diff.banned": "Zabanován hráč {name}",
   "settings.diff.unbanned": "Odbanován hráč {name}",
   "settings.diff.whitelist_added": "Hráč {name} přidán na seznam povolených",
-  "settings.diff.whitelist_removed": "Hráč {name} odebrán ze seznamu povolených"
+  "settings.diff.whitelist_removed": "Hráč {name} odebrán ze seznamu povolených",
+  "settings.jump.label": "Lorem ipsum dolor"
 }

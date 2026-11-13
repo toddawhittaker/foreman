@@ -34,7 +34,7 @@
         <option value="">{{if .DefaultVersion}}{{t "worlds.generate.version.same" "version" .DefaultVersion}}{{else}}{{t "worlds.generate.version.choose"}}{{end}}</option>
       </select>
     </div>
-    <details class="disclosure"{{if or .Typed (not .VersionError.IsZero)}} open{{end}}>
+    <details class="disclosure disclosure--add"{{if or .Typed (not .VersionError.IsZero)}} open{{end}}>
       <summary>{{t "worlds.generate.version.other"}}</summary>
       <div class="field">
         <label for="generate-version">{{t "worlds.import.version.typed"}}</label>

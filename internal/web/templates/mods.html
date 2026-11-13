@@ -65,6 +65,12 @@
     </div>
   </form>
 </section>
+{{- /* Below the two-column width the rail's tools come after the list, so a short row of links to them follows the search. */}}
+<nav class="mod-tools" aria-label="{{t "mods.tools.label"}}">
+  {{- if and .LoadSave (not (and .SaveDiff .SaveDiff.Matches))}}<a href="{{.SyncPath}}" class="mod-tools__link mod-tools__link--sync">{{t "mods.sync.button"}}</a>{{end}}
+  <a href="#mod-file" class="mod-tools__link mod-tools__link--upload">{{t "mods.upload.heading"}}</a>
+  {{- if .ShowSettings}}<a href="{{.EditSettingsPath}}" class="mod-tools__link mod-tools__link--settings">{{t "mods.settings.edit.link"}}</a>{{end}}
+</nav>
 <section class="panel" aria-labelledby="installed-heading">
   <div class="group__head">
     <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
@@ -109,7 +115,7 @@
             {{- end}}
             {{- if or .Enabled (not .Local)}}
             <details class="row-menu" name="mod-menu">
-              <summary class="button button--quiet row-menu__toggle"><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
+              <summary class="button button--quiet row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
               <div class="row-menu__panel">
                 {{- if not .Local}}
                 <span id="{{$.Page.VersionSlot .Name}}" hidden></span>
