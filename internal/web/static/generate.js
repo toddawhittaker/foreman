@@ -129,6 +129,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (range) {
       range.value = String(track(select).at(Math.max(select.selectedIndex, 0)));
       range.setAttribute("aria-valuetext", text);
+      const span = Number(range.max) - Number(range.min);
+      range.style.setProperty("--fill", (span > 0 ? ((Number(range.value) - Number(range.min)) / span) * 100 : 0) + "%");
     }
     if (value) value.textContent = text;
   }
