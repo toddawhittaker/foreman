@@ -49,12 +49,15 @@
 {{- /* On a wide screen the list and search take the main column; the rarer tools sit in a rail beside them. */}}
 <div class="split">
 <div class="split__main">
-<section class="panel" aria-labelledby="search-heading">
-  <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
-  <form method="get" action="{{.SearchPath}}" role="search">
+{{- /* Finding a mod is one row above the list: what it searches in the first column, the field in the second (DESIGN 4). */}}
+<section class="panel setting-row" aria-labelledby="search-heading">
+  <div class="setting-row__head">
+    <h2 id="search-heading">{{t "mods.search.heading"}}</h2>
+    <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
+  </div>
+  <form method="get" action="{{.SearchPath}}" role="search" class="setting-row__body">
     <div class="field">
       <label for="mod-search">{{t "mods.search.label"}}</label>
-      <p class="hint" id="mod-search-hint">{{t "mods.search.hint" "line" .Line}}</p>
       <div class="inline-row">
         <input id="mod-search" name="q" type="search" autocomplete="off" spellcheck="false" maxlength="100" aria-describedby="mod-search-hint">
         <button type="submit" class="button">{{t "mods.search.button"}}</button>
@@ -71,19 +74,15 @@
 </p>
 
 <section class="panel" aria-labelledby="installed-heading">
-  <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
+  <div class="group__head">
+    <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>
+    {{- /* The table's caption gives a screen reader the count. */}}
+    {{- with .Rows}}<span class="count" aria-hidden="true">{{len .}}</span>{{end}}
+  </div>
   {{- /* The portal's answer loads after the page, so a slow portal never holds up the list (SPEC 9.3). */}}
   <div id="mod-status" class="mod-status" role="status" hx-get="{{.StatusPath}}" hx-trigger="load" hx-swap="innerHTML">
     <p class="empty">{{t "mods.status.loading"}}</p>
   </div>
-  {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
-  {{- with .BuiltIns}}
-  <p id="mods-built-in" class="mods-built-in">
-    {{- if not $.Page.HasSpaceAge}}{{tHTML "mods.built_in.line" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}}
-    {{- else if $.Page.BuiltInsOff}}{{tHTML "mods.built_in.line_off" "version" (code $.Page.BuiltInVersion) "mods" (idents .) "off" (idents $.Page.BuiltInsOff)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.turn_on"}}</a>
-    {{- else}}{{tHTML "mods.built_in.line_on" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.change"}}</a>
-    {{- end}}</p>
-  {{- end}}
   {{- with .Rows}}
   {{- /* Two columns, so a name keeps its room on a phone (DESIGN 8.11). The state is a word only when a mod is off. */}}
   <table role="table" class="mod-list">
@@ -135,6 +134,14 @@
   </table>
   {{- else}}
   <p class="empty empty--art empty--mods">{{t "mods.installed.none"}}</p>
+  {{- end}}
+  {{- /* Built-in mods are one line, not rows: nothing about them is changed here (SPEC 9.7). */}}
+  {{- with .BuiltIns}}
+  <p id="mods-built-in" class="mods-built-in">
+    {{- if not $.Page.HasSpaceAge}}{{tHTML "mods.built_in.line" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}}
+    {{- else if $.Page.BuiltInsOff}}{{tHTML "mods.built_in.line_off" "version" (code $.Page.BuiltInVersion) "mods" (idents .) "off" (idents $.Page.BuiltInsOff)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.turn_on"}}</a>
+    {{- else}}{{tHTML "mods.built_in.line_on" "version" (code $.Page.BuiltInVersion) "mods" (idents .)}} <a href="{{$.Page.SettingsTabPath}}" id="act-built-in-settings">{{t "mods.built_in.change"}}</a>
+    {{- end}}</p>
   {{- end}}
 </section>
 
@@ -263,10 +270,10 @@
 <div class="mod-status__line{{if $errors}} message message--error{{end}}">
   <p>
     {{- if $errors}}<strong>{{t "common.error.label"}}</strong> {{t "mods.status.errors" "count" $errors}}{{end}}
-    {{- with .Count "warning"}} {{t "mods.status.warnings" "count" .}}{{end}}
-    {{- with .Count "note"}} {{t "mods.status.notes" "count" .}}{{end}}
-    {{- if .Updates}} {{t "mods.status.updates" "count" (len .Updates)}}
-    {{- else if .Current}} {{t "mods.status.current" "count" .Current}}{{end}}</p>
+    {{- with .Count "warning"}} <span class="mod-count mod-count--warning">{{t "mods.status.warnings" "count" .}}</span>{{end}}
+    {{- with .Count "note"}} <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" .}}</span>{{end}}
+    {{- if .Updates}} <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" (len .Updates)}}</span>
+    {{- else if .Current}} <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" .Current}}</span>{{end}}</p>
   {{- if .Updates}}
   <a href="{{.UpdateAllPath}}" class="button button--primary" id="act-update-all">{{t "mods.status.update_all"}}</a>
   {{- end}}

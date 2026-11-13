@@ -19,3 +19,24 @@ func TestFigureSplitsValueFromUnit(t *testing.T) {
 		}
 	}
 }
+
+// A bar's width is a whole percent; a part that is not zero still shows,
+// and two sizes near the top of the range do not overflow.
+func TestShareIsAWholePercentThatStillShows(t *testing.T) {
+	cases := []struct {
+		part, rest uint64
+		want       int
+	}{
+		{0, 0, 0},
+		{0, 500, 0},
+		{1, 1 << 40, 1},
+		{25, 75, 25},
+		{500, 0, 100},
+		{1 << 63, 1 << 63, 50},
+	}
+	for _, c := range cases {
+		if got := share(c.part, c.rest); got != c.want {
+			t.Errorf("share(%d, %d) = %d, want %d", c.part, c.rest, got, c.want)
+		}
+	}
+}

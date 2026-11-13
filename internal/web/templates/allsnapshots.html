@@ -11,15 +11,6 @@
 </div>
 {{- end}}
 
-<section class="panel disk-strip" aria-labelledby="disk-heading">
-  <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
-  <dl class="facts facts--inline">
-    <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
-    <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
-  </dl>
-  <p class="hint">{{t "worlds.allsnapshots.adds_hint"}}</p>
-</section>
-
 {{- if .Groups}}
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   {{- /* Every world's automatic snapshots at once, on the list's heading row as each world's own is on its heading (SPEC 6.12). */}}
@@ -27,7 +18,8 @@
     <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
     <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
   </div>
-  <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
+  {{- /* The selection bar shows the next step to the eye; this says it to a screen reader. */}}
+  <p class="visually-hidden">{{t "worlds.snapshots.select_hint"}}</p>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
@@ -35,9 +27,9 @@
   <section class="group" aria-labelledby="world-{{.WorldID}}">
     <div class="group__head">
       <h3 id="world-{{.WorldID}}">{{if .Known}}<a href="{{$.Page.WorldPath .WorldID}}">{{.WorldName}}</a>{{else}}{{t "worlds.allsnapshots.deleted_world" "world" .WorldName}}{{end}}</h3>
+      <p class="hint">{{tHTML "worlds.allsnapshots.world_adds" "size" (nowrap (bytes .Adds))}}</p>
       <button type="submit" class="button" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}"><span aria-hidden="true">{{t "worlds.snapshots.select_automatic"}}</span><span class="visually-hidden">{{t "worlds.allsnapshots.select_of" "world" .WorldName}}</span></button>
     </div>
-    <p class="hint">{{tHTML "worlds.allsnapshots.world_adds" "size" (nowrap (bytes .Adds))}}</p>
     <table class="snapshot-list" role="table">
       <caption>{{t "worlds.snapshots.caption" "world" .WorldName}}</caption>
       <thead role="rowgroup">
@@ -59,8 +51,9 @@
     </table>
   </section>
   {{- end}}
-  {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
-  <div class="actions">
+  {{- /* Delete selected acts on the boxes above, so it comes after them; with script it is a bar that shows once a box is ticked. */}}
+  <div class="actions select-bar" data-select-bar>
+    <span class="select-bar__count" data-tick-count aria-hidden="true"></span>
     <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
   </div>
 </form>
@@ -70,5 +63,20 @@
   <p class="empty empty--art empty--snapshots">{{t "worlds.allsnapshots.empty"}}</p>
 </section>
 {{- end}}
+
+<section class="panel setting-row disk-use" aria-labelledby="disk-heading">
+  <div class="setting-row__head">
+    <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
+    <p class="hint">{{t "worlds.allsnapshots.adds_hint"}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{- /* The bar is decorative: the two figures under it say the same. */}}
+    <span class="meter disk-bar" aria-hidden="true"><span style="inline-size: {{share .AddBytes .FreeBytes}}%"></span></span>
+    <dl class="facts facts--inline disk-key">
+      <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
+      <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
+    </dl>
+  </div>
+</section>
 {{- end}}
 {{- end}}

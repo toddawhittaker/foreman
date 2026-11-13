@@ -143,7 +143,7 @@
 {{- /* The Server plate in each state: its band, then its gauges, CPU's meter in its three bands. */}}
 {{- range $i, $st := .Page.States}}
 <div class="card status-card plate status-card--{{.State}}">
-  <div class="plate__band"><span class="lamp lamp--{{.State}}" aria-hidden="true"></span>{{template "live-state" .}}<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
+  <div class="plate__band">{{template "live-state" .}}<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
   <div class="facts-block"><div>
     <dl class="facts facts--inline">
       <div><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
@@ -157,6 +157,37 @@
   <summary>{{t "account.form.replace"}}</summary>
   <p>{{t "account.remove.hint"}}</p>
 </details>
+{{- /* The settings layout (DESIGN 4): a row's title and helper, then its fields; the disk bar with its key. */}}
+<div class="panel card setting-rows">
+  <section class="setting-row" aria-labelledby="{{.Theme}}-row-rename">
+    <div class="setting-row__head">
+      <h4 id="{{.Theme}}-row-rename">{{t "worlds.world.rename.heading"}}</h4>
+      <p class="hint" id="{{.Theme}}-row-name-hint">{{t "worlds.world.rename.text"}}</p>
+    </div>
+    <div class="setting-row__body">
+      <div class="field">
+        <label for="{{.Theme}}-row-name">{{t "worlds.world.rename.label"}}</label>
+        <div class="inline-row">
+          <input id="{{.Theme}}-row-name" type="text" value="Nauvis Prime" aria-describedby="{{.Theme}}-row-name-hint">
+          <button type="button" class="button">{{t "worlds.world.rename.button"}}</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="setting-row disk-use" aria-labelledby="{{.Theme}}-row-disk">
+    <div class="setting-row__head">
+      <h4 id="{{.Theme}}-row-disk">{{t "worlds.fact.disk_use"}}</h4>
+      <p class="hint">{{t "worlds.snapshots.adds_hint"}}</p>
+    </div>
+    <div class="setting-row__body">
+      <span class="meter disk-bar" aria-hidden="true"><span style="inline-size: 12%"></span></span>
+      <dl class="facts facts--inline disk-key">
+        <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes 5368709120}}</dd></div>
+        <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes 39370534912}}</dd></div>
+      </dl>
+    </div>
+  </section>
+</div>
 {{- end}}
 
 {{/* DESIGN 6, "Sub-navigation": the main tabs, then the server's and a world's. */}}
@@ -184,6 +215,14 @@
     {{- end}}
   </tbody>
 </table>
+{{- /* A list's summary tags, and the bar that shows once a row is ticked. */}}
+<div class="mod-status__line">
+  <p><span class="mod-count mod-count--warning">{{t "mods.status.warnings" "count" 1}}</span> <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" 1}}</span> <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" 2}}</span> <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" 3}}</span></p>
+</div>
+<div class="actions select-bar">
+  <span class="select-bar__count" aria-hidden="true">2</span>
+  <button type="button" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
+</div>
 <p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
 <p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
 <p class="empty">{{t "server.players.cannot_see"}}</p>

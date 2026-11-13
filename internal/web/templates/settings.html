@@ -102,6 +102,7 @@
   {{- end}}
   <fieldset id="settings-listing"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.listing"}}</legend>
+    <div class="setting-row__body">
     <div class="field">
       <label for="name" class="required">{{t "settings.name.label"}}</label>
       <input id="name" name="name" type="text" value="{{.Name}}" autocomplete="off" required placeholder="{{t "worlds.name.placeholder"}}"
@@ -122,10 +123,12 @@
       <label class="check"><input type="radio" id="visibility-lan" name="visibility" value="lan"{{if eq .Visibility "lan"}} checked{{end}}{{if not .VisibilityHint.IsZero}} aria-describedby="visibility-hint"{{end}}> {{t "settings.visibility.lan"}}</label>
       <label class="check"><input type="radio" id="visibility-hidden" name="visibility" value="hidden"{{if eq .Visibility "hidden"}} checked{{end}}{{if not .VisibilityHint.IsZero}} aria-describedby="visibility-hint"{{end}}> {{t "settings.visibility.hidden"}}</label>
     </fieldset>
+    </div>
   </fieldset>
 
   <fieldset id="settings-joining"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.joining"}}</legend>
+    <div class="setting-row__body">
     <fieldset>
       <legend>{{t "settings.password.legend"}}</legend>
       <p class="hint" id="pw-state">{{if .PasswordSet}}{{t "settings.password.set"}}{{else}}{{t "settings.password.unset"}}{{end}}</p>
@@ -157,10 +160,12 @@
       {{- end}}
     </div>
     <label class="check"><input type="checkbox" name="require_user_verification"{{if .Verify}} checked{{end}}> {{t "settings.verify.label"}}</label>
+    </div>
   </fieldset>
 
   <fieldset id="settings-saving"{{if not .Editable}} disabled{{end}}>
     <legend>{{t "settings.saving"}}</legend>
+    <div class="setting-row__body">
     <div class="field field--short">
       <label for="autosave-interval">{{t "settings.interval.label"}}</label>
       <input id="autosave-interval" name="autosave_interval" type="text" inputmode="numeric" value="{{.Interval}}" autocomplete="off"
@@ -178,11 +183,13 @@
       {{- end}}
     </div>
     <label class="check"><input type="checkbox" name="auto_pause"{{if .AutoPause}} checked{{end}}> {{t "settings.auto_pause.label"}}</label>
+    </div>
   </fieldset>
 
   {{/* readonly, not disabled: the list can still be focused and scrolled on a world that cannot be changed. */}}
   <fieldset id="settings-admins">
     <legend>{{t "settings.admins.legend"}}</legend>
+    <div class="setting-row__body">
     {{- if .AdminsBroken}}
     <p class="hint">{{t "settings.admins.broken" "file" .AdminFile}}</p>
     {{- else}}
@@ -206,11 +213,13 @@
     </ul>
     {{- end}}
     {{- end}}
+    </div>
   </fieldset>
   {{- if not .LiveBans}}
 
   <fieldset id="settings-bans">
     <legend>{{t "settings.bans.legend"}}</legend>
+    <div class="setting-row__body">
     {{- if .BansBroken}}
     <p class="hint">{{t "settings.bans.broken" "file" .BanFile}}</p>
     {{- else}}
@@ -225,12 +234,14 @@
       {{- end}}
     </div>
     {{- end}}
+    </div>
   </fieldset>
   {{- end}}
   {{- if not .LiveWhitelist}}
 
   <fieldset id="settings-whitelist">
     <legend>{{t "settings.whitelist.legend"}}</legend>
+    <div class="setting-row__body">
     {{- if .WhitelistBroken}}
     <p class="hint">{{t "settings.whitelist.broken" "file" .WhitelistFile}}</p>
     {{- else}}
@@ -246,6 +257,7 @@
     </div>
     {{- end}}
     {{template "whitelist-switch" .}}
+    </div>
   </fieldset>
   {{- end}}
 
@@ -260,9 +272,12 @@
 <form method="post" action="{{.WhitelistPath}}" id="whitelist-switch-form" hidden></form>
 {{- end}}
 {{- if and .LiveBans .Editable}}
-<section class="panel" id="settings-bans" aria-labelledby="bans-heading">
+<section class="panel setting-row" id="settings-bans" aria-labelledby="bans-heading">
+  <div class="setting-row__head">
   <h2 id="bans-heading">{{t "settings.bans.legend"}}</h2>
   <p class="hint">{{t "settings.lists.live"}}</p>
+  </div>
+  <div class="setting-row__body">
   {{- if .BansBroken}}
   <p class="hint">{{t "settings.bans.broken" "file" .BanFile}}</p>
   {{- else}}
@@ -295,12 +310,16 @@
     {{- end}}
   </form>
   {{- end}}
+  </div>
 </section>
 {{- end}}
 {{- if and .LiveWhitelist .Editable}}
-<section class="panel" id="settings-whitelist" aria-labelledby="whitelist-heading">
+<section class="panel setting-row" id="settings-whitelist" aria-labelledby="whitelist-heading">
+  <div class="setting-row__head">
   <h2 id="whitelist-heading">{{t "settings.whitelist.legend"}}</h2>
   <p class="hint">{{t "settings.lists.live"}}</p>
+  </div>
+  <div class="setting-row__body">
   {{- if .WhitelistBroken}}
   <p class="hint">{{t "settings.whitelist.broken" "file" .WhitelistFile}}</p>
   {{- else}}
@@ -332,6 +351,7 @@
   </form>
   {{- end}}
   {{template "whitelist-switch" .}}
+  </div>
 </section>
 {{- end}}
 {{- end}}

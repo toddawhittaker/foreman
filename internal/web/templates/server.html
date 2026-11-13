@@ -79,11 +79,10 @@
 <a href="{{worldsPath}}" id="act-switch-world">{{t "server.links.switch"}}</a>
 {{- end}}
 
-{{/* The plate's band: the state's lamp, how long the game has run and who
-     is online. The lamp is decorative: the heading's badge names the state.
-     Like the facts, it leaves out what cannot be known now (SPEC 7.1). */}}
+{{/* The plate's band: how long the game has run and who is online. The
+     heading's badge names the state, so the band does not repeat it. Like
+     the facts, it leaves out what cannot be known now (SPEC 7.1). */}}
 {{define "server-band" -}}
-<span class="lamp lamp--{{.Status.State}}" aria-hidden="true"></span>
 {{- if and .FactsKnown .Running}}
 <span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> <time datetime="{{.UptimeISO}}">{{msg .Uptime}}</time></span>
 {{- else if .FactsKnown}}

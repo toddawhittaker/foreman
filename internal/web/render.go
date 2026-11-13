@@ -298,6 +298,16 @@ func figure(v string) template.HTML {
 	return template.HTML(out) //nolint:gosec // every part of v is escaped above
 }
 
+// share is part as a whole percent of part and rest together, for a bar's
+// width. A part that is not zero is at least 1, so it still shows.
+func share(part, rest uint64) int {
+	if part == 0 {
+		return 0
+	}
+	// Floats, so two sizes near the top of uint64 cannot overflow.
+	return max(1, int(float64(part)/(float64(part)+float64(rest))*100))
+}
+
 // Renderer holds the parsed templates, once per language, and the
 // embedded static files.
 type Renderer struct {
@@ -320,6 +330,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"schedulePath":      func() string { return PathSchedule },
 		"flag":              r.flagURL,
 		"figure":            figure,
+		"share":             share,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },

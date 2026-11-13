@@ -1025,7 +1025,7 @@ main > .panels > .panel,
 .split > * > .panel,
 .mod-settings > .panel,
 .mod-settings > .panels > .panel,
-.settings-main > form.panel,
+.settings-main > .panel,
 .card {
   position: relative;
   padding: var(--card-pad);
@@ -1047,7 +1047,7 @@ main > .panels > .panel,
   .split > * > .panel,
   .mod-settings > .panel,
   .mod-settings > .panels > .panel,
-  .settings-main > form.panel,
+  .settings-main > .panel,
   .card {
     padding: var(--space-4) 0 0;
     background: none;
@@ -2127,18 +2127,6 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
   }
 }
 
-/* While the game runs, Take snapshot is the safe everyday action, so it takes
-   the primary fill; Stop and Restart stay secondary. */
-main:has(#server-title .state--running) #act-snapshot {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-color: var(--color-primary-edge);
-}
-
-main:has(#server-title .state--running) #act-snapshot:hover {
-  background: var(--color-primary-hover);
-}
-
 /* Force stop is a link, not a button face, drawn with .button--risky's
    colours and size so every opener of a destructive step looks alike. */
 #act-force-stop {
@@ -2882,7 +2870,7 @@ td > .hint {
     inline-size: 100%;
     min-block-size: 2rem;
     margin: 0;
-    accent-color: var(--color-selected);
+    accent-color: var(--color-text-muted);
     cursor: pointer;
   }
 }
@@ -4301,27 +4289,24 @@ form:has(#mode-exchange:checked) .achievements {
   }
 }
 
-/* Disable and Enable are quiet: text, with a surface only under the pointer. */
-.mod-list .mod-toggle {
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.mod-list .mod-toggle:hover {
+/* Update, Change version and Disable are the one secondary button; Change
+   version ends in a chevron, as a control that opens a choice does. */
+.mod-list :is(.mod-toggle, .mod-version) {
+  padding-inline: var(--space-3);
   background: var(--color-raised);
   color: var(--color-heading);
-  border-color: var(--color-line);
+  border-color: var(--color-border);
+  text-decoration: none;
 }
 
-/* Change version is the version's own control: a chip with a chevron. */
+.mod-list :is(.mod-toggle, .mod-version):hover {
+  background: var(--color-secondary-hover);
+  border-color: var(--color-text-muted);
+}
+
 .mod-list .mod-version {
   gap: var(--space-1);
-  padding-inline: var(--space-3) var(--space-2);
-  background: transparent;
-  color: var(--color-text);
-  border-color: var(--color-line);
-  font-weight: 500;
-  text-decoration: none;
+  padding-inline-end: var(--space-2);
 }
 
 .mod-list .mod-version::after {
@@ -4333,10 +4318,30 @@ form:has(#mode-exchange:checked) .achievements {
   transform: rotate(90deg);
 }
 
-.mod-list .mod-version:hover {
-  background: var(--color-raised);
-  color: var(--color-heading);
-  border-color: var(--color-border);
+/* On a wide panel each action has a track of its own, so Update, Change
+   version, Disable and Remove line up from row to row whether or not a mod
+   has an update. */
+@container (min-width: 44rem) {
+  .mod-list .mod-actions__portal {
+    display: grid;
+    grid-template-columns: minmax(10.5rem, auto) minmax(10rem, auto);
+  }
+
+  .mod-list .mod-actions__portal > span:first-child {
+    grid-column: 1;
+  }
+
+  .mod-list .mod-actions__portal > span:last-child {
+    grid-column: 2;
+  }
+
+  .mod-list .mod-actions__fixed {
+    grid-template-columns: minmax(6rem, auto) var(--target-min);
+  }
+
+  .mod-list :is(.mod-actions__portal > span, .mod-actions__fixed) > .button:not(.button--icon) {
+    inline-size: 100%;
+  }
 }
 
 /* Remove is the one red control: it is the change that destroys something. */
@@ -4397,25 +4402,45 @@ form:has(#mode-exchange:checked) .achievements {
     text-align: start;
   }
 
-  /* Name and version, then Update and Change version, then Disable and
-     Remove: three lines on one start edge, so each action has one place. */
-  .mod-actions {
+  /* Two lines: the name and version with Disable and Remove at the line's
+     end, then what the portal offers, Update and Change version, side by
+     side. The cells lend their boxes to the row, which lays the parts out. */
+  .mod-list tr {
     display: grid;
-    justify-content: start;
-    justify-items: start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: var(--space-2);
-    padding-block-start: var(--space-1);
   }
 
-  .mod-actions__portal {
-    justify-content: flex-start;
+  .mod-list td,
+  .mod-list .mod-actions {
+    display: contents;
   }
 
-  /* Disable is drawn with its target's edge here, so its start lines up
-     with the buttons above it rather than floating as a bare word. */
-  .mod-list .mod-toggle {
-    padding-inline: var(--space-3);
-    border-color: var(--color-line);
+  .mod-list .mod-line {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .mod-list .mod-actions__fixed {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mod-list td > div:not(.mod-line, .mod-actions),
+  .mod-list .mod-actions__portal {
+    grid-column: 1 / -1;
+  }
+
+  .mod-list .mod-actions__portal {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .mod-list .mod-actions__portal > span > .button {
+    inline-size: 100%;
+    font-size: var(--text-sm);
   }
 }
 
@@ -4835,7 +4860,7 @@ form:has(#mode-exchange:checked) .achievements {
 
 @media (min-width: 68.75rem) {
   .gen-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(20rem, 22rem);
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 26rem);
     gap: var(--space-6);
   }
 
@@ -4950,7 +4975,7 @@ form:has(#mode-exchange:checked) .achievements {
 @media (max-width: 30rem) {
   .generate > .gen-actions {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: auto auto minmax(0, 1fr);
     gap: var(--space-2);
   }
 
@@ -4991,6 +5016,7 @@ form:has(#mode-exchange:checked) .achievements {
   }
 
   .gen-settings #map-settings,
+  .gen-settings > .field:has(#generate-download),
   .gen-settings .achievements {
     order: 2;
   }
@@ -5234,22 +5260,6 @@ main:has(> .gate) > h1 {
   font-size: var(--text-md);
 }
 
-/* A world's Overview on a wide screen: the version and rename side by
-   side under the facts, so neither card is mostly empty. */
-@media (min-width: 64rem) {
-  main:has(> form[aria-labelledby="rename-heading"]) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  main:has(> form[aria-labelledby="rename-heading"]) > * {
-    grid-column: 1 / -1;
-  }
-
-  main:has(> section[aria-labelledby="version-heading"]) > :is(section[aria-labelledby="version-heading"], form[aria-labelledby="rename-heading"]) {
-    grid-column: auto;
-  }
-}
-
 /* A snapshot on a wide panel is one row: its box and label, when it was
    taken, its size, then Restore and Delete at the row's end. Every row shares
    the table's columns through a subgrid, so the times and sizes line up. */
@@ -5341,90 +5351,6 @@ main:has(> .gate) > h1 {
   }
 }
 
-/* factorio.com account on a wide screen: the explanation in a reading
-   column, with the account's state or form beside it. */
-@media (min-width: 64rem) {
-  main:has(> .account-intro) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    column-gap: var(--space-5);
-  }
-
-  main:has(> .account-intro) > * {
-    grid-column: 1 / -1;
-  }
-
-  main:has(> .account-intro) > .account-intro {
-    grid-column: 1;
-    max-inline-size: 65ch;
-  }
-
-  main:has(> .account-intro) > .account-intro + * {
-    grid-column: 2;
-    align-self: start;
-  }
-}
-
-.account-intro {
-  display: grid;
-  gap: var(--space-4);
-  align-content: start;
-}
-
-/* Disk use on a snapshots page is one compact strip under the tabs: its
-   name, the two figures and the one-line explanation, so the forms and the
-   list stay near the top. */
-.panel.disk-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-5);
-  padding-block: var(--space-3);
-}
-
-.disk-strip > h2 {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.disk-strip .facts--inline {
-  gap: var(--space-2) var(--space-5);
-}
-
-.disk-strip .facts--inline > div {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.disk-strip .facts dt {
-  font-size: var(--text-sm);
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.disk-strip .facts dd {
-  color: var(--color-heading);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.disk-strip > .hint {
-  flex: 1 1 18rem;
-  margin: 0;
-  font-size: var(--text-xs);
-}
-
-.disk-strip > .message {
-  flex: 1 1 100%;
-}
-
 /* Every slider's first row is the same: its name at the start, the step in
    words at the end, on one line; the slider takes the row under it. */
 @container map-section (min-width: 34rem) {
@@ -5498,21 +5424,6 @@ main:has(> .gate) > h1 {
 @media (max-width: 30rem) {
   .generate > .gen-actions > a {
     margin-inline-end: 0;
-  }
-}
-
-/* Mod settings on a wide panel: each mod's settings in columns of at least
-   18rem, so a panel of short fields is not mostly empty. */
-@container (min-width: 40rem) {
-  .mod-settings-group,
-  .mod-settings-values {
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    column-gap: var(--space-6);
-    align-items: start;
-  }
-
-  .mod-settings-group > legend {
-    grid-column: 1 / -1;
   }
 }
 
@@ -6091,22 +6002,6 @@ main > .panel > .facts > div {
   }
 }
 
-/* factorio.com account: the explanation sits in a card too, the two cards
-   level, so the page reads as one row of panels. */
-@media (min-width: 64rem) {
-  main:has(> .account-intro) > .account-intro {
-    padding: var(--card-pad);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-  }
-
-  main:has(> .account-intro) > .account-intro + * {
-    align-self: stretch;
-  }
-}
-
 /* World tabs on a phone: every tab in view, as a segmented control of two
    rows at most, three to a row; a label wraps between words, never clips. */
 @media (max-width: 39.99rem) {
@@ -6366,9 +6261,11 @@ main > .panel > .facts > div {
   }
 }
 
-/* The Server plate (DESIGN 7.5): a band tinted by the state, the actions,
-   then the gauges. Four rivets mark its corners; it is the only riveted
-   card, so it reads as the product's control panel, not a theme. */
+/* The Server plate (DESIGN 7.5): a band of how long the game has run and
+   who is online, the actions, then the gauges. The heading's badge is the
+   page's one state signal, so the band stays neutral. Four rivets mark its
+   corners; it is the only riveted card, so it reads as the product's
+   control panel, not a theme. */
 .status-card.plate {
   gap: 0;
   padding: 0;
@@ -6377,7 +6274,7 @@ main > .panel > .facts > div {
   border-color: var(--color-line);
 }
 
-/* The state's colour is the band's; the plate's own edge stays a hairline. */
+/* The plate's own edge stays a hairline. */
 #main > .status-card.plate.card {
   border-inline-start-color: var(--color-line);
 }
@@ -6387,12 +6284,12 @@ main > .panel > .facts > div {
   position: absolute;
   inset: 0.5rem;
   pointer-events: none;
-  --rivet: radial-gradient(circle at 38% 34%, var(--color-raised) 0 12%, var(--color-border) 42%, var(--color-text-muted) 62%, transparent 70%);
+  --rivet: radial-gradient(circle, var(--color-border) 0 2.5px, transparent 3px);
   background:
-    var(--rivet) left top / 8px 8px no-repeat,
-    var(--rivet) right top / 8px 8px no-repeat,
-    var(--rivet) left bottom / 8px 8px no-repeat,
-    var(--rivet) right bottom / 8px 8px no-repeat;
+    var(--rivet) left top / 6px 6px no-repeat,
+    var(--rivet) right top / 6px 6px no-repeat,
+    var(--rivet) left bottom / 6px 6px no-repeat,
+    var(--rivet) right bottom / 6px 6px no-repeat;
 }
 
 .plate__band {
@@ -6408,11 +6305,6 @@ main > .panel > .facts > div {
   border-block-end: var(--border-width) solid var(--color-line);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-.plate__band > .lamp {
-  inline-size: 0.875rem;
-  block-size: 0.875rem;
 }
 
 .plate__fact {
@@ -6438,31 +6330,6 @@ main > .panel > .facts > div {
   font-weight: 500;
 }
 
-main:has(#server-title .state--running) .plate__band,
-.status-card--running .plate__band {
-  background: var(--color-ok-bg);
-}
-
-main:has(#server-title :is(.state--starting)) .plate__band,
-.status-card--starting .plate__band {
-  background: var(--color-info-bg);
-}
-
-main:has(#server-title .state--stopping) .plate__band,
-.status-card--stopping .plate__band {
-  background: var(--color-warn-bg);
-}
-
-main:has(#server-title :is(.state--crashed, .state--crash-looping)) .plate__band,
-:is(.status-card--crashed, .status-card--crash-looping) .plate__band {
-  background: var(--color-danger-bg);
-}
-
-main:has(#server-title .state--running) .plate__band > .lamp,
-.status-card--running .plate__band > .lamp {
-  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
-}
-
 .plate > [sse-swap="control"] {
   display: grid;
   gap: var(--space-4);
@@ -6477,13 +6344,6 @@ main:has(#server-title .state--running) .plate__band > .lamp,
 .status-card.plate .facts-block {
   padding: var(--space-4) var(--card-pad) var(--card-pad);
   background: light-dark(var(--color-surface), color-mix(in srgb, var(--color-deep) 35%, var(--color-surface)));
-}
-
-/* Dark is a lit instrument panel: the band glows faintly inward. Light is a
-   printed sheet, so it keeps the flat tint. */
-.plate__band {
-  box-shadow: inset 0 -1px 0 light-dark(transparent, rgb(255 255 255 / 4%)),
-    inset 0 12px 24px -16px light-dark(transparent, color-mix(in srgb, currentColor 18%, transparent));
 }
 
 /* Gauges: a 24/28 tabular figure with its unit quieter, and under CPU a
@@ -6637,7 +6497,8 @@ select.select {
 }
 
 /* Checkboxes and radios are drawn, so an empty one never reads as disabled
-   in dark: a sunk 20 px box, the accent fill and a tick when chosen. */
+   in dark: a sunk 20 px box; chosen, the heading colour fills it under a
+   tick. The fill is neutral, so orange stays the primary action's. */
 .check > input:is([type="checkbox"], [type="radio"]),
 label > input[type="checkbox"]:only-child,
 td > input[type="checkbox"] {
@@ -6666,7 +6527,7 @@ td > input[type="checkbox"]::before {
   content: "";
   inline-size: 0.875rem;
   block-size: 0.875rem;
-  background: var(--color-on-primary);
+  background: var(--color-surface);
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
   transform: scale(0);
   transition: transform var(--dur-1) var(--ease);
@@ -6688,8 +6549,8 @@ td > input[type="checkbox"]:hover {
 .check > input:is([type="checkbox"], [type="radio"]):checked,
 label > input[type="checkbox"]:only-child:checked,
 td > input[type="checkbox"]:checked {
-  background: var(--color-primary);
-  border-color: var(--color-primary-edge);
+  background: var(--color-heading);
+  border-color: var(--color-heading);
   box-shadow: none;
 }
 
@@ -6839,29 +6700,9 @@ details > summary::after {
   border-radius: 50%;
 }
 
-/* A ticked row is tinted, so a selection reads at a glance. */
+/* A ticked row takes the raised face, so a selection reads at a glance. */
 tbody tr:has(> td > .check > input:checked) {
-  background: var(--color-accent-bg);
-}
-
-/* Disable is a button like Update; every row's actions keep one track, so
-   the buttons line up whether or not a mod has an update. */
-.mod-actions__fixed > .mod-toggle {
   background: var(--color-raised);
-  color: var(--color-heading);
-  border: var(--border-width) solid var(--color-border);
-  text-decoration: none;
-}
-
-.mod-actions__fixed > .mod-toggle:hover {
-  background: var(--color-secondary-hover);
-}
-
-@media (min-width: 64rem) {
-  .mod-actions__fixed {
-    min-inline-size: 9.5rem;
-    justify-content: flex-end;
-  }
 }
 
 /* Sign-in introduces the product: the header's logo and name step aside for
@@ -6904,5 +6745,423 @@ main:has(> .gate) > .gate {
 @media (forced-colors: active) {
   main:has(> .gate)::before {
     display: none;
+  }
+}
+
+/* The settings layout (DESIGN 4): a section's title and its helper text in
+   a 240 px column, its fields beside them in a column capped at 480 px,
+   24 px between fields and a hairline between sections; one column on a
+   phone. A world's settings, mod settings, a world's overview, the
+   factorio.com account and the one-field forms over a list all use it. */
+.account-intro {
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: var(--measure);
+}
+
+.panel.setting-rows {
+  gap: 0;
+}
+
+:is(.setting-row, .settings > fieldset) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3) var(--space-6);
+  min-inline-size: 0;
+}
+
+.setting-rows > .setting-row + .setting-row,
+.settings > fieldset + fieldset,
+.mod-settings-group.setting-row {
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-5);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.setting-rows > .setting-row + .setting-row {
+  margin-block-start: var(--space-5);
+}
+
+.setting-row__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.setting-row__head > :is(h2, h3, h4),
+.setting-row > h3 {
+  margin: 0;
+}
+
+/* A fieldset's floated legend is laid out as its first item, so it takes
+   the title's column. */
+.setting-row > legend,
+.settings > fieldset > legend {
+  float: inline-start;
+  inline-size: auto;
+  margin: 0;
+}
+
+.settings > fieldset > legend {
+  font-size: var(--text-xl);
+  line-height: 1.3;
+}
+
+.mod-settings-group.setting-row > :is(legend, h3) {
+  color: var(--color-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.33;
+}
+
+.setting-row__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+  min-inline-size: 0;
+}
+
+/* In the fields' column a text field is as wide as the column. */
+.setting-row__body .field :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [inputmode="numeric"], .mod-settings-number), select, textarea) {
+  max-inline-size: none;
+}
+
+.setting-row__body .inline-row > input:not([type="color"], .mod-settings-number, [inputmode="numeric"]) {
+  flex: 1 1 12rem;
+}
+
+.setting-row__body > .actions {
+  margin: 0;
+}
+
+@container (min-width: 46rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 15rem minmax(0, 30rem);
+  }
+
+  /* A one-row card on a narrower column, such as beside the Mods rail, gives the title less. */
+  .split .setting-row {
+    grid-template-columns: 12.5rem minmax(0, 30rem);
+  }
+}
+
+/* Mod settings: a card's heading and description, then one row per mod. */
+.mod-settings-values.setting-row__body {
+  gap: var(--space-4);
+}
+
+/* Disk use: one bar, the snapshots' share of the space they could free and
+   what is free, then the two figures as its key. */
+.meter.disk-bar {
+  block-size: 8px;
+  max-inline-size: none;
+  margin: 0;
+  border-radius: 4px;
+}
+
+.meter.disk-bar > span {
+  min-inline-size: 4px;
+}
+
+.disk-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: calc(var(--space-3) - var(--space-5)) 0 0;
+}
+
+.disk-key > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.disk-key dt {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.disk-key dt::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  background: var(--color-text-muted);
+  border-radius: 2px;
+}
+
+.disk-key > div:last-child dt::before {
+  background: var(--color-line);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border);
+}
+
+.disk-key dd {
+  color: var(--color-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The selection bar: Delete selected and the number ticked float over the
+   list's foot once a box is ticked, so the next step is always in view. */
+.select-bar {
+  position: sticky;
+  inset-block-end: var(--space-4);
+  z-index: 2;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.select-bar[hidden] {
+  display: none;
+}
+
+.select-bar__count {
+  margin-inline-end: auto;
+  color: var(--color-heading);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.select-bar__count:empty {
+  display: none;
+}
+
+/* A list's count sits after its heading as a quiet tag. */
+.group__head > .count {
+  margin-inline-end: auto;
+  padding: 0 var(--space-2);
+  background: var(--color-raised);
+  color: var(--color-text-muted);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.54;
+}
+
+.group__head:has(> .count) {
+  justify-content: flex-start;
+}
+
+/* A mod's version sits after its name as a quiet mono tag. */
+.mod-line > code {
+  padding: 0 var(--space-2);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  line-height: 1.54;
+}
+
+/* The portal's summary: each count a tag of its own, Update all at the end. */
+.mod-status__line > p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.mod-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-raised);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: 999px;
+  line-height: 1.43;
+}
+
+.mod-count::before {
+  content: "";
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  background: var(--color-text-muted);
+  border-radius: 2px;
+}
+
+.mod-count--warning::before {
+  background: var(--color-warn);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border-radius: 0;
+}
+
+.mod-count--note::before {
+  background: var(--color-info);
+  border-radius: 50%;
+}
+
+.mod-count--ok::before {
+  background: var(--color-ok);
+}
+
+/* The built-in mods close the list as one quiet line. */
+.mods-built-in {
+  max-inline-size: none;
+  padding-block-start: var(--space-3);
+  color: var(--color-text-muted);
+  border-block-start: var(--border-width) solid var(--color-line);
+  font-size: var(--text-sm);
+  line-height: 1.43;
+}
+
+/* On a phone with room for two, the Server page's everyday pair, Restart
+   and Stop, share a row under Take snapshot; narrower, every button keeps
+   the full width. A form lends its box, so its button is the row's item. */
+@container (min-width: 19rem) and (max-width: 24rem) {
+  .server-actions:has(> #act-restart):has(> #act-stop) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .server-actions:has(> #act-restart):has(> #act-stop) :is(.button, #act-force-stop),
+  .server-actions:has(> #act-restart):has(> #act-stop)::after {
+    grid-column: 1 / -1;
+  }
+
+  .server-actions:has(> #act-restart):has(> #act-stop) > :is(#act-restart, #act-stop) {
+    grid-column: auto;
+    padding-inline: var(--space-2);
+  }
+}
+
+/* A world's settings: the form leads from the page's start edge, and the
+   section links sit after it as a list of what is on the page. */
+@container settings (min-width: 44rem) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr) 11rem;
+  }
+
+  .settings-rail {
+    order: 1;
+  }
+
+  /* The note on the asterisk starts the fields' column. */
+  .settings > .required-note {
+    padding-inline-start: calc(15rem + var(--space-6));
+  }
+}
+
+/* A page's own message spans the page's column; its words keep the reading width. */
+main > .message {
+  max-inline-size: none;
+}
+
+main > .message > :is(p, ul) {
+  max-inline-size: var(--measure);
+}
+
+/* Mods: Update all ends the summary's row. */
+.mod-status__line > p {
+  max-inline-size: none;
+}
+
+/* In the rail beside a list, a card's sentences are hints: the list is the page's subject. */
+.split__rail > .panel > p,
+.split__rail > .panel > ul {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.43;
+}
+
+/* A disclosure's summary is the secondary button with a chevron at its end. */
+.disclosure:not(.mod-hits__summary, .player-actions, .resource-text) > summary {
+  min-block-size: var(--target-min);
+  border-color: var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 light-dark(rgb(255 255 255 / 70%), rgb(255 255 255 / 7%)),
+    0 1px 0 light-dark(rgb(60 45 25 / 10%), rgb(0 0 0 / 40%));
+}
+
+.disclosure:not(.mod-hits__summary, .player-actions, .resource-text) > summary:hover {
+  border-color: var(--color-text-muted);
+}
+
+/* All snapshots: a world's name, what its snapshots add and its shortcut
+   share one raised band, so each button's reach is plain. */
+.group > .group__head {
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-raised);
+  border-radius: var(--radius);
+}
+
+.group > .group__head > .hint {
+  margin-inline-end: auto;
+}
+
+.group + .group {
+  margin-block-start: var(--space-4);
+}
+
+/* A page's description sits 8 px under its title, whatever the page's gap. */
+main > h1 + p.hint {
+  margin-block-start: calc(var(--space-2) - var(--space-4));
+}
+
+@media (min-width: 40rem) {
+  main > h1 + p.hint {
+    margin-block-start: calc(var(--space-2) - var(--space-5));
+  }
+}
+
+/* The world list on a wide screen is one table: the first row's fact names
+   head the columns, so later rows keep theirs for screen readers only. */
+@media (min-width: 64rem) {
+  .worlds > li + li > .facts > div {
+    align-self: center;
+  }
+
+  .worlds > li + li > .facts dt {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* The game log shows whole lines: a 20 px line, and a pane that is a whole
+   number of lines tall over its foot padding, so the top line is never cut
+   in half when the view follows the newest. */
+.terminal .log-frame > .log {
+  line-height: 1.25rem;
+  block-size: calc(round(down, min(55vh, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
+}
+
+@media (max-width: 39.99rem) {
+  /* On a phone the pane is shorter, so the command row stays near. */
+  .terminal .log-frame > .log {
+    block-size: calc(round(down, 40vh, 1.25rem) + var(--space-3) + 2 * var(--border-width));
+  }
+
+  /* A line with a full date puts it on a line of its own, so the words keep the pane's width. */
+  .terminal .log-frame > .log pre > .log-join:has(> .log-time) {
+    display: block;
+  }
+
+  .terminal .log-frame > .log pre > .log-join > .log-time {
+    display: block;
+    font-size: 0.75rem;
   }
 }

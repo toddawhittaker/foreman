@@ -29,45 +29,36 @@
 </div>
 {{- end}}
 
-<section class="panel disk-strip" aria-labelledby="disk-heading">
-  <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
-  <dl class="facts facts--inline">
-    <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
-    <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
-  </dl>
-  <p class="hint">{{t "worlds.snapshots.adds_hint"}}</p>
-  {{- if .Copied}}
-  <div class="message message--note">
-    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.snapshots.copied"}}</p>
-  </div>
-  {{- end}}
-</section>
-
-<form method="post" action="{{.Path}}" class="panel" novalidate>
-  <h2 id="take-heading">{{t "worlds.snapshots.take.heading"}}</h2>
-  {{template "summary" .Problems}}
-  <div class="field">
-    <label for="label">{{t "worlds.snapshots.take.label"}}</label>
+<form method="post" action="{{.Path}}" class="panel setting-row" novalidate>
+  <div class="setting-row__head">
+    <h2 id="take-heading">{{t "worlds.snapshots.take.heading"}}</h2>
     <p class="hint" id="label-hint">{{t "worlds.snapshots.take.hint" "count" 100}}</p>
-    <div class="inline-row">
-      <input id="label" name="label" type="text" value="{{.Label}}" maxlength="100" autocomplete="off"
-        {{- if not .LabelError.IsZero}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
-      <button type="submit" class="button button--primary">{{t "worlds.snapshots.take.button"}}</button>
+  </div>
+  <div class="setting-row__body">
+    {{template "summary" .Problems}}
+    <div class="field">
+      <label for="label">{{t "worlds.snapshots.take.label"}}</label>
+      <div class="inline-row">
+        <input id="label" name="label" type="text" value="{{.Label}}" maxlength="100" autocomplete="off"
+          {{- if not .LabelError.IsZero}} aria-invalid="true" aria-describedby="label-hint label-error"{{else}} aria-describedby="label-hint"{{end}}>
+        <button type="submit" class="button button--primary">{{t "worlds.snapshots.take.button"}}</button>
+      </div>
+      {{- if not .LabelError.IsZero}}
+      <p class="error" id="label-error"><strong>{{t "common.error.label"}}</strong> {{msg .LabelError}}</p>
+      {{- end}}
     </div>
-    {{- if not .LabelError.IsZero}}
-    <p class="error" id="label-error"><strong>{{t "common.error.label"}}</strong> {{msg .LabelError}}</p>
-    {{- end}}
   </div>
 </form>
 
 {{- if .Snapshots}}
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
   <input type="hidden" name="world" value="{{.WorldID}}">
-  <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
-  <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
-  <div class="actions">
+  <div class="group__head">
+    <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
     <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
   </div>
+  {{- /* The selection bar shows the next step to the eye; this says it to a screen reader. */}}
+  <p class="visually-hidden">{{t "worlds.snapshots.select_hint"}}</p>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
@@ -89,8 +80,9 @@
       {{- end}}
     </tbody>
   </table>
-  {{- /* Delete selected acts on the boxes above, so it comes after them. */}}
-  <div class="actions">
+  {{- /* Delete selected acts on the boxes above, so it comes after them; with script it is a bar that shows once a box is ticked. */}}
+  <div class="actions select-bar" data-select-bar>
+    <span class="select-bar__count" data-tick-count aria-hidden="true"></span>
     <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
   </div>
   {{- if .More}}
@@ -103,5 +95,25 @@
   <p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
 </section>
 {{- end}}
+
+<section class="panel setting-row disk-use" aria-labelledby="disk-heading">
+  <div class="setting-row__head">
+    <h2 id="disk-heading">{{t "worlds.fact.disk_use"}}</h2>
+    <p class="hint">{{t "worlds.snapshots.adds_hint"}}</p>
+  </div>
+  <div class="setting-row__body">
+    {{- /* The bar is decorative: the two figures under it say the same. */}}
+    <span class="meter disk-bar" aria-hidden="true"><span style="inline-size: {{share .AddBytes .FreeBytes}}%"></span></span>
+    <dl class="facts facts--inline disk-key">
+      <div><dt>{{t "worlds.snapshots.adds"}}</dt><dd>{{bytes .AddBytes}}</dd></div>
+      <div><dt>{{t "worlds.snapshots.free"}}</dt><dd>{{bytes .FreeBytes}}</dd></div>
+    </dl>
+    {{- if .Copied}}
+    <div class="message message--note">
+      <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.snapshots.copied"}}</p>
+    </div>
+    {{- end}}
+  </div>
+</section>
 {{- end}}
 {{- end}}

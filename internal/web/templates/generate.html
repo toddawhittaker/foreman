@@ -5,6 +5,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow">{{t "common.nav.worlds"}}</p>
 <h1>{{t "worlds.generate.title"}}</h1>
 <p class="hint">{{t "worlds.generate.intro"}}</p>
 <form method="post" action="{{.Path}}" class="panel generate" id="generate-form" novalidate data-tab="{{.Form.Tab}}" data-ach-word="{{t "mapgen.achievement.warning"}}">
@@ -55,12 +56,6 @@
       {{- end}}
     </div>
   </div>
-  {{- if .CanDownload}}
-  <div class="field">
-    <label class="check"><input type="checkbox" id="generate-download" name="download" aria-describedby="generate-download-hint"{{if .Download}} checked{{end}}> {{t "worlds.import.download.label"}}</label>
-    <p class="hint" id="generate-download-hint">{{tHTML "worlds.generate.download.hint" "image" (code "factoriotools/factorio")}}</p>
-  </div>
-  {{- end}}
 
   <div id="map-section" class="map-section">
     <fieldset class="modes">
@@ -103,28 +98,17 @@
         </div>
       </div>
   </div>
+  {{- /* The download is about the host, not the map, so it follows the map's settings. */}}
+  {{- if .CanDownload}}
+  <div class="field">
+    <label class="check"><input type="checkbox" id="generate-download" name="download" aria-describedby="generate-download-hint"{{if .Download}} checked{{end}}> {{t "worlds.import.download.label"}}</label>
+    <p class="hint" id="generate-download-hint">{{tHTML "worlds.generate.download.hint" "image" (code "factoriotools/factorio")}}</p>
+  </div>
+  {{- end}}
   {{template "achievements" .}}
   {{template "needs" .}}
   </div>
       <div class="gen-preview">
-        {{- if $.Page.CanPreview}}
-        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider and redraws on a change. */}}
-        <div class="field step">
-          <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
-          <select id="generate-preview-size" name="preview_size"
-            {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>
-            {{- range .PreviewSizes}}
-            <option value="{{.Size}}"{{if .Chosen}} selected{{end}}>{{if .Default}}{{t "worlds.generate.preview.size_default" "size" (print .Size)}}{{else}}{{t "worlds.generate.preview.size_option" "size" (print .Size)}}{{end}}</option>
-            {{- end}}
-          </select>
-          <p class="hint" id="generate-preview-size-hint">{{t "worlds.generate.preview.size_hint"}}</p>
-          {{- if not .PreviewSizeError.IsZero}}
-          <p class="error" id="generate-preview-size-error"><strong>{{t "common.error.label"}}</strong> {{msg .PreviewSizeError}}</p>
-          {{- end}}
-        </div>
-        {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
-        <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
-        {{- end}}
         {{template "generate-preview" $.Page}}
         <div id="preview-wait" class="wait" role="status">
           <p>{{t "worlds.generate.preview.wait"}}</p>
@@ -140,6 +124,22 @@
           </section>
         </template>
         {{- if $.Page.CanPreview}}
+        {{/* Says a new preview is being drawn as the settings change; the script fills it. */}}
+        <p class="hint preview-status" id="preview-status" data-text="{{t "worlds.generate.preview.updating"}}"></p>
+        {{/* Outside #preview, so a reply never replaces it mid-drag; the script makes the slider and redraws on a change. */}}
+        <div class="field step">
+          <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
+          <select id="generate-preview-size" name="preview_size"
+            {{- if not .PreviewSizeError.IsZero}} aria-invalid="true" aria-describedby="generate-preview-size-hint generate-preview-size-error"{{else}} aria-describedby="generate-preview-size-hint"{{end}}>
+            {{- range .PreviewSizes}}
+            <option value="{{.Size}}"{{if .Chosen}} selected{{end}}>{{if .Default}}{{t "worlds.generate.preview.size_default" "size" (print .Size)}}{{else}}{{t "worlds.generate.preview.size_option" "size" (print .Size)}}{{end}}</option>
+            {{- end}}
+          </select>
+          <p class="hint" id="generate-preview-size-hint">{{t "worlds.generate.preview.size_hint"}}</p>
+          {{- if not .PreviewSizeError.IsZero}}
+          <p class="error" id="generate-preview-size-error"><strong>{{t "common.error.label"}}</strong> {{msg .PreviewSizeError}}</p>
+          {{- end}}
+        </div>
         {{template "generate-large-view"}}
         {{- end}}
       </div>
