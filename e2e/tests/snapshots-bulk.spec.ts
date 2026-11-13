@@ -119,7 +119,10 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   // From a world's page, with one box ticked by hand.
   await page.goto(`${world}/snapshots`);
   await expect(ticked(page)).toHaveCount(0);
+  // The selection bar shows only once a box is ticked, with the number ticked.
+  await expect(page.getByRole("button", { name: "Delete selected" })).toBeHidden();
   await page.locator('input[name="snap"]').first().check();
+  await expect(page.locator(".select-bar__count")).toHaveText("1");
   await page.getByRole("button", { name: "Delete selected" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Delete 1 snapshot?");
   await page.getByRole("link", { name: "Cancel, keep the snapshots" }).click();

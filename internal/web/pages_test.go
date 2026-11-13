@@ -169,6 +169,21 @@ func TestSnapshotTables(t *testing.T) {
 		`<span class="nowrap">14:25 UTC</span>`, `taken <time datetime="2026-11-03T14:25:30Z">2026-11-03 14:25:30 UTC</time>`)
 }
 
+// The disk bar is as wide as the snapshots' share of the space they add
+// to, and shows a sliver for a share under one percent; Delete selected
+// sits in the bar the script shows once a box is ticked, with the place for
+// the number ticked.
+func TestSnapshotDiskBarAndSelectionBar(t *testing.T) {
+	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 200, user: "todd", page: snapshotsCase()})
+	wantIn(t, "snapshots page", body,
+		`<span class="meter disk-bar" aria-hidden="true"><span style="inline-size: 1%"></span></span>`,
+		"<dt>Snapshots add</dt><dd>", "<dt>Free space</dt><dd>",
+		`<div class="actions select-bar" data-select-bar>`,
+		`<span class="select-bar__count" data-tick-count aria-hidden="true"></span>`,
+		`<button type="submit" class="button button--risky" data-needs-tick>Delete selected</button>`)
+}
+
 // DESIGN 7.2: an error on the load choice says what to do in a full
 // sentence, above the saves, and the summary sends focus to it.
 func TestLoadChoiceError(t *testing.T) {
