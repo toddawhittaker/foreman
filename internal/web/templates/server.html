@@ -86,7 +86,7 @@
 {{- if and .FactsKnown .Running}}
 <span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> <time datetime="{{.UptimeISO}}">{{msg .Uptime}}</time></span>
 {{- else if .FactsKnown}}
-<span class="plate__fact">{{t "server.facts.not_running"}}</span>
+<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{t "server.facts.not_running"}}</span>
 {{- end}}
 {{- with .PlayerTable}}{{if .Live}}
 <span class="plate__fact">{{msg .Caption}}</span>

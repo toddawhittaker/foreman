@@ -370,7 +370,8 @@
     <div class="message message--note">
       <p><strong>{{t "common.label.note"}}</strong> {{t "settings.whitelist.note"}}</p>
     </div>
-    <div class="field">
+    {{- /* The switch saves on its own, apart from the form around it, so it is boxed with its own button. */}}
+    <div class="field own-save">
       <label class="check"><input type="checkbox" id="use-whitelist" name="use_whitelist" value="on" form="whitelist-switch-form"{{if .UseWhitelist}} checked{{end}} aria-describedby="use-whitelist-hint"> {{t "settings.whitelist.switch_label"}}</label>
       <p class="hint" id="use-whitelist-hint">{{if .Running}}{{t "settings.whitelist.switch_running"}}{{else}}{{t "settings.whitelist.switch_hint"}}{{end}}</p>
       <div class="actions">

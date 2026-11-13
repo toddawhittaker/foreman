@@ -85,6 +85,9 @@ func (DesignPage) States() []LiveState {
 	return out
 }
 
+// Mod is a sample mod's name, for the mod row.
+func (DesignPage) Mod() string { return "flow-control" }
+
 // Loads are sample CPU figures, one per state, so the plates show the
 // meter at rest, above 80% and above 95%.
 func (DesignPage) Loads() []float64 {

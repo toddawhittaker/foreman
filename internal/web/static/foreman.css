@@ -940,9 +940,9 @@ main {
   }
 }
 
-/* On a phone the header is two rows: the logo and the user menu on a
-   56 px bar, then the four sections as equal 48 px targets edge to edge,
-   so no section is ever left on a row of its own. */
+/* On a phone the header is two rows within 100 px: the logo and the user
+   menu on a 52 px bar, then the four sections as equal 46 px targets edge
+   to edge, so no section is ever left on a row of its own. */
 @media (max-width: 39.99rem) {
   .site {
     padding-block: 0;
@@ -950,7 +950,7 @@ main {
 
   .site > .product,
   .site > .menu {
-    min-block-size: 3.5rem;
+    min-block-size: 3.25rem;
   }
 
   .site > .menu {
@@ -969,7 +969,7 @@ main {
   }
 
   .tabs a {
-    min-block-size: 3rem;
+    min-block-size: 2.875rem;
     padding-inline: var(--space-1);
     font-size: 0.9375rem;
     font-weight: 600;
@@ -2870,7 +2870,7 @@ td > .hint {
     inline-size: 100%;
     min-block-size: 2rem;
     margin: 0;
-    accent-color: var(--color-text-muted);
+    accent-color: var(--color-selected);
     cursor: pointer;
   }
 }
@@ -5012,6 +5012,7 @@ form:has(#mode-exchange:checked) .achievements {
 .terminal {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   padding: 0;
   overflow: hidden;
 }
@@ -5056,25 +5057,19 @@ form:has(#mode-exchange:checked) .achievements {
   overflow-wrap: normal;
 }
 
-/* The "jump to the newest" button floats over the pane's foot instead of
-   holding a row under it. */
+/* "Jump to the newest" sits under the pane, at its end, so it covers no
+   line; its row is kept while it is hidden, so showing it moves nothing.
+   The row takes the command strip's face, so it reads as the strip's head. */
 .terminal .log-frame {
-  position: relative;
+  background: var(--color-raised);
 }
 
 .terminal .log-frame > .button {
-  position: absolute;
-  inset-block-end: var(--space-3);
-  inset-inline-end: var(--card-pad);
-  box-shadow: var(--shadow-pop);
-}
-
-.terminal .log-frame > .button[hidden] {
-  display: none;
+  margin: var(--space-2) var(--card-pad) 0;
 }
 
 .terminal__console {
-  padding-block: var(--space-4);
+  padding-block: var(--space-2) var(--space-4);
   background: var(--color-raised);
 }
 
@@ -6513,7 +6508,6 @@ td > input[type="checkbox"] {
   background: var(--color-deep);
   border: var(--border-width) solid var(--color-border);
   border-radius: 4px;
-  box-shadow: inset 0 1px 2px light-dark(rgb(60 45 25 / 8%), rgb(0 0 0 / 50%));
   cursor: pointer;
   transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
@@ -6552,7 +6546,6 @@ label > input[type="checkbox"]:only-child:checked,
 td > input[type="checkbox"]:checked {
   background: var(--color-heading);
   border-color: var(--color-heading);
-  box-shadow: none;
 }
 
 .check > input:is([type="checkbox"], [type="radio"]):checked::before,
@@ -6934,17 +6927,21 @@ main:has(> .gate) > .gate {
   font-variant-numeric: tabular-nums;
 }
 
-/* The selection bar: Delete selected and the number ticked float over the
-   list's foot once a box is ticked, so the next step is always in view. */
+/* The selection bar: the number ticked and Delete selected float over the
+   list's foot, at its end, once a box is ticked, so the next step is always
+   in view. */
 .select-bar {
   position: sticky;
   inset-block-end: var(--space-4);
   z-index: 2;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
   gap: var(--space-3);
+  inline-size: fit-content;
+  max-inline-size: 100%;
   margin: 0;
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  margin-inline-start: auto;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   background: var(--color-raised);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -6955,20 +6952,29 @@ main:has(> .gate) > .gate {
   display: none;
 }
 
-/* On the component page the bar is a specimen, so it stays in its place. */
-.design-pane .select-bar {
-  position: static;
-}
-
+/* The number ticked is a round tag before the button it counts for. */
 .select-bar__count {
-  margin-inline-end: auto;
-  color: var(--color-heading);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-inline-size: 1.75rem;
+  block-size: 1.75rem;
+  padding-inline: var(--space-2);
+  background: var(--color-heading);
+  color: var(--color-surface);
+  border-radius: 999px;
+  font-size: var(--text-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .select-bar__count:empty {
   display: none;
+}
+
+/* On the component page the bar is a specimen, so it stays in its place. */
+.design-pane .select-bar {
+  position: static;
 }
 
 /* A list's count sits after its heading as a quiet tag. */
@@ -7199,4 +7205,19 @@ main > h1 + p.hint {
     display: block;
     font-size: 0.75rem;
   }
+}
+
+/* A control that saves on its own inside a larger form sits in a box with
+   its own button, so what each button saves is plain. */
+.own-save {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+/* The connected players' heading, its hint and the list read as one block. */
+#connected-heading + .hint,
+#connected-hint + ul {
+  margin-block-start: calc(var(--space-2) - var(--space-5));
 }

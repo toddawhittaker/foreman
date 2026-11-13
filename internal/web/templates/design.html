@@ -215,13 +215,44 @@
     {{- end}}
   </tbody>
 </table>
-{{- /* A list's summary tags, and the bar that shows once a row is ticked. */}}
-<div class="mod-status__line">
-  <p><span class="mod-count mod-count--warning">{{t "mods.status.warnings" "count" 1}}</span> <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" 1}}</span> <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" 2}}</span> <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" 3}}</span></p>
-</div>
+{{- /* The bar that shows over a list's foot once a row is ticked. */}}
 <div class="actions select-bar">
   <span class="select-bar__count" aria-hidden="true">2</span>
   <button type="button" class="button button--risky">{{t "worlds.snapshots.delete_selected"}}</button>
+</div>
+{{- /* A list's heading with its count, and a mod's row: its version tag, then the one secondary button on each action. */}}
+<section class="panel card" aria-labelledby="{{.Theme}}-mods">
+  <div class="group__head">
+    <h4 id="{{.Theme}}-mods">{{t "mods.installed.heading"}}</h4>
+    <span class="count" aria-hidden="true">1</span>
+  </div>
+  <table role="table" class="mod-list">
+    <caption>{{t "mods.installed.caption" "world" "Nauvis Prime" "count" 1}}</caption>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">{{t "mods.col.mod"}}</th><th scope="col" role="columnheader">{{t "mods.col.actions"}}</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+      <tr role="row">
+        <td role="cell"><div class="mod-line"><span class="mod-name ident" translate="no">{{$.Page.Mod}}</span> <code>3.2.2</code></div></td>
+        <td role="cell" data-label="{{t "mods.col.actions"}}">
+          <div class="row-actions mod-actions">
+            <div class="mod-actions__portal">
+              <span><a href="{{worldsPath}}" class="button">{{t "mods.row.update" "version" "3.2.3"}}</a></span>
+              <span><a href="{{worldsPath}}" class="button button--quiet mod-version">{{t "mods.row.version"}}</a></span>
+            </div>
+            <div class="mod-actions__fixed">
+              <a href="{{worldsPath}}" class="button button--quiet mod-toggle">{{t "mods.row.disable"}}</a>
+              <a href="{{worldsPath}}" class="button button--quiet button--icon mod-remove">{{t "mods.row.remove"}}</a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+{{- /* A list's summary tags. */}}
+<div class="mod-status__line">
+  <p><span class="mod-count mod-count--warning">{{t "mods.status.warnings" "count" 1}}</span> <span class="mod-count mod-count--note">{{t "mods.status.notes" "count" 1}}</span> <span class="mod-count mod-count--update">{{t "mods.status.updates" "count" 2}}</span> <span class="mod-count mod-count--ok">{{t "mods.status.current" "count" 3}}</span></p>
 </div>
 <p class="empty empty--art empty--players">{{t "server.online.nobody"}}</p>
 <p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
