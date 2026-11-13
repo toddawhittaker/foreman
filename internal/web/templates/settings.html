@@ -266,9 +266,11 @@
       {{- if not .WhitelistError.IsZero}}
       <p class="error" id="whitelist-error"><strong>{{t "common.error.label"}}</strong> {{msg .WhitelistError}}</p>
       {{- end}}
+      {{- if .Editable}}
+      <p class="hint">{{t "settings.whitelist.list_note"}}</p>
+      {{- end}}
     </div>
     {{- end}}
-    {{template "whitelist-switch" .}}
     </div>
   </fieldset>
   {{- end}}
@@ -282,6 +284,19 @@
 </form>
 {{- if .Editable}}
 <form method="post" action="{{.WhitelistPath}}" id="whitelist-switch-form" hidden></form>
+{{- end}}
+{{- /* Whether the game enforces the whitelist saves on its own, so it sits in
+     its own card after the form rather than inside it, and the form's
+     Preview changes covers only the list (DESIGN 8.13). */}}
+{{- if and .Editable (not .LiveWhitelist)}}
+<section class="panel setting-row" id="settings-whitelist-enforce" aria-labelledby="whitelist-enforce-heading">
+  <div class="setting-row__head">
+  <h2 id="whitelist-enforce-heading">{{t "settings.whitelist.enforce_heading"}}</h2>
+  </div>
+  <div class="setting-row__body">
+  {{template "whitelist-switch" .}}
+  </div>
+</section>
 {{- end}}
 {{- if and .LiveBans .Editable}}
 <section class="panel setting-row" id="settings-bans" aria-labelledby="bans-heading">

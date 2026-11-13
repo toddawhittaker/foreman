@@ -65,7 +65,7 @@ test("the whitelist switch is saved per world, and the next start enforces the w
   const box = page.getByLabel("Only whitelisted players can join");
   await expect(box).not.toBeChecked();
   await box.check();
-  await page.getByRole("button", { name: "Save whitelist choice" }).click();
+  await page.getByRole("button", { name: "Save whitelist enforcement" }).click();
   await expect(page.locator("#done-message")).toContainText("From its next start, only whitelisted players can join Base.");
   await expect(page.getByLabel("Only whitelisted players can join")).toBeChecked();
   expect(JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "world.json"), "utf8")).use_whitelist).toBe(true);
@@ -89,7 +89,7 @@ test("the whitelist switch is saved per world, and the next start enforces the w
 
   // Turning it off while running needs a restart, and says so with the button.
   await page.getByLabel("Only whitelisted players can join").uncheck();
-  await page.getByRole("button", { name: "Save whitelist choice" }).click();
+  await page.getByRole("button", { name: "Save whitelist enforcement" }).click();
   await expect(page.locator("#done-message")).toContainText("From its next start, anyone can join Base.");
   await expect(page.locator("#whitelist-restart-hint")).toContainText("Restart it so anyone can join.");
   await expect(page.locator("#act-whitelist-restart")).toBeVisible();

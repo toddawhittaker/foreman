@@ -135,9 +135,10 @@
 {{define "design-badges" -}}
 <ul class="design-list" role="list">
   {{- range .Page.States}}
-  <li>{{template "live-state" .}}</li>
+  <li><span class="state state--{{.State}}">{{msg .Word}}</span></li>
   {{- end}}
   <li><span class="badge badge--active">{{t "worlds.badge.active"}}</span></li>
+  <li>{{template "live-state" (index .Page.States 2)}}</li>
   <li><span class="badge">{{t "mods.state.off"}}</span></li>
 </ul>
 {{- end}}

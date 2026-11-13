@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "Заходить могут только игроки из белого списка",
   "settings.whitelist.switch_hint": "Сервер читает это при запуске.",
   "settings.whitelist.switch_running": "Сервер запущен, поэтому изменение здесь вступит в силу после перезапуска.",
-  "settings.whitelist.switch_save": "Сохранить выбор белого списка",
+  "settings.whitelist.switch_save": "Lorem ipsum dolor",
   "settings.whitelist.restart_on": "Сервер всё ещё работает без проверки белого списка. Перезапустите его, чтобы заходить могли только игроки из белого списка.",
   "settings.whitelist.restart_off": "Сервер всё ещё работает с проверкой белого списка. Перезапустите его, чтобы заходить могли все.",
   "settings.whitelist.done_on": "Со следующего запуска в мир {world} смогут заходить только игроки из белого списка.",
@@ -139,5 +139,7 @@
   "settings.diff.unbanned": "Разблокирован {name}",
   "settings.diff.whitelist_added": "{name} добавлен в белый список",
   "settings.diff.whitelist_removed": "{name} убран из белого списка",
-  "settings.jump.label": "Lorem ipsum dolor"
+  "settings.jump.label": "Lorem ipsum dolor",
+  "settings.whitelist.enforce_heading": "Lorem ipsum",
+  "settings.whitelist.list_note": "Lorem ipsum dolor sit amet consectetur."
 }

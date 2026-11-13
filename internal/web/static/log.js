@@ -32,6 +32,55 @@
     const keepEnd = () => {
       if (following) toEnd();
     };
+    // Each line is split into its parts, so a phone can set the clock in a
+    // column of its own and the date once above the day's first line: the
+    // time's date and clock, and the words, where a path may break only
+    // after a slash. The text itself is unchanged.
+    const dateClock = /^(\s*)(\d{4}-\d\d-\d\d) (.*)$/s;
+    const dress = (el) => {
+      if (el.querySelector(":scope > .log-msg")) return el;
+      const time = el.querySelector(":scope > .log-time");
+      const words = [...el.childNodes].filter((n) => n !== time).map((n) => n.textContent).join("");
+      const msg = document.createElement("span");
+      msg.className = "log-msg";
+      words.split("/").forEach((part, i, all) => {
+        if (i < all.length - 1) msg.append(part + "/", document.createElement("wbr"));
+        else msg.append(part);
+      });
+      if (time) {
+        const m = dateClock.exec(time.textContent);
+        const clock = document.createElement("span");
+        clock.className = "log-clock";
+        if (m) {
+          const date = document.createElement("span");
+          date.className = "log-date";
+          date.textContent = m[1] + m[2] + " ";
+          clock.textContent = m[3];
+          time.replaceChildren(date, clock);
+        } else {
+          clock.textContent = time.textContent;
+          time.replaceChildren(clock);
+        }
+      }
+      el.replaceChildren(...(time ? [time] : []), msg);
+      return el;
+    };
+    // The first line of each day carries data-day, which shows its date.
+    const markDays = () => {
+      let day = "";
+      for (const line of pre.children) {
+        const date = line.querySelector(":scope > .log-time > .log-date")?.textContent.trim();
+        if (date && date !== day) {
+          line.dataset.day = "";
+          day = date;
+        } else delete line.dataset.day;
+      }
+    };
+    if (pre.tagName === "PRE") {
+      for (const line of pre.children) dress(line);
+      markDays();
+    }
+
     // The game's own Error and Warning lines, and players joining or
     // leaving, are coloured, and the time is set apart, as console.go does.
     const kind = /^\s*\d+\.\d+ (Error|Warning) /;
@@ -50,7 +99,7 @@
       const m = kind.exec(text);
       if (m) el.className = "log-" + m[1].toLowerCase();
       else if (player.test(text)) el.className = "log-join";
-      return el;
+      return dress(el);
     };
     // With data-log-html each line comes as one list item the server drew and
     // escaped (DESIGN 8.14); its time is put in the viewer's zone before it
@@ -73,6 +122,7 @@
       readScroll();
       pre.append(...lines.map(row));
       while (pre.childElementCount > max) pre.firstElementChild.remove();
+      if (row === span) markDays();
       noEmptyNote(lines);
       if (following) toEnd();
       else jump.hidden = false;
@@ -83,6 +133,7 @@
       readScroll();
       const top = box.scrollTop;
       pre.replaceChildren(...lines.slice(-max).map(row));
+      if (row === span) markDays();
       noEmptyNote(lines);
       if (following) toEnd();
       else {

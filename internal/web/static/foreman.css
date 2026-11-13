@@ -8158,20 +8158,6 @@ main > h1 + p.hint {
   margin-block-start: 0;
 }
 
-/* The Server page's heading drops its state badge: the plate's band says
-   the state once, large, in its colour. Other pages keep the badge. */
-main:has(.plate) #server-title .state {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
 /* Mods: the tool links under the search show only while the page is one
    column; once the rail sits beside the list its cards are the one copy. */
 @container (min-width: 60rem) {
@@ -8247,4 +8233,248 @@ main:has(.plate) #server-title .state {
     clip-path: inset(50%);
     white-space: nowrap;
   }
+}
+
+/* Round 4. The Server tabs share one heading: the world's name and its
+   state badge on Overview, Console and Chat alike. */
+
+/* Stop server is set apart from Restart: still a secondary button, with
+   its stop icon, danger-coloured words and edge. */
+#act-stop,
+.plate__controls [data-design-icon="stop"] {
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+#act-stop:hover,
+.plate__controls [data-design-icon="stop"]:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border-color: var(--color-danger);
+}
+
+/* The live world's mark and the server's state as one chip: the pin and
+   Active, a hairline, then the state's shape and word in its colour. */
+.live-chip {
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+  overflow: hidden;
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.live-chip > .badge,
+.title-row > .live-chip > .badge {
+  padding: 0.125rem 0.625rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: inherit;
+  letter-spacing: 0;
+}
+
+.live-chip > .state,
+.title-row > .live-chip > .state {
+  padding: 0.125rem 0.75rem 0.125rem 0.5rem;
+  border: 0;
+  border-inline-start: var(--border-width) solid var(--color-border);
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Where the chip stands by a world's heading, the heading's own Active badge
+   is kept for screen readers only. */
+.title-row:has(> .live-chip) > h1 > .badge--active {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A world that cannot be deleted now gets a neutral note, not a hazard
+   panel: the red stripe and edge appear only when Delete is offered. */
+main > .panel.danger-zone.danger-zone--blocked {
+  padding-block-start: var(--card-pad);
+  background: var(--color-raised);
+  border-color: var(--color-line);
+}
+
+.danger-zone--blocked::before {
+  content: none;
+}
+
+.danger-zone.danger-zone--blocked > h2 {
+  color: var(--color-heading);
+}
+
+/* Version numbers in facts are values like their neighbours: the sans at
+   the same size and weight, with tabular figures. Mono stays for the log,
+   commands, file names and code chips. */
+.facts dd > .ver > code,
+.facts.stat-grid dd .ver > code {
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-sans);
+  font-size: 1em;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The second figure under a value is metadata: 13 px, regular, muted. */
+.facts .fact-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+/* A settings page of one card keeps the card to a readable width. */
+.panel.setting-rows--narrow {
+  max-inline-size: 60rem;
+}
+
+@media (max-width: 39.99rem) {
+  /* Tabs on a phone: the desktop's underline row at 44 px, each tab with
+     12 px sides and 14 px semibold words; the row scrolls sideways with a
+     24 px fade at the edge that has more, and the current tab is brought
+     fully into view (subnav.js). */
+  .subnav ul {
+    gap: 0;
+    scroll-padding-inline: 1.5rem;
+  }
+
+  .subnav a,
+  .subnav a[aria-current],
+  .subnav li:first-child a,
+  .subnav li:last-child a {
+    padding-inline: 0.75rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .subnav ul::after {
+    content: "";
+    flex: none;
+    inline-size: var(--space-3);
+  }
+
+  /* The world's pages as a two-column grid of 48 px tiles, so the players
+     start sooner. */
+  .shortcuts.card,
+  .server-grid > .shortcuts.card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    gap: var(--space-2);
+    padding: 0;
+    overflow: visible;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .shortcuts > a,
+  .shortcuts > #act-switch-world,
+  .shortcuts > :not(:last-child) {
+    justify-content: flex-start;
+    min-block-size: 3rem;
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: none;
+  }
+
+  .shortcuts > a:hover,
+  .shortcuts > #act-switch-world:hover {
+    background: var(--color-secondary-hover);
+  }
+
+  .shortcuts > a::after,
+  .shortcuts > #act-switch-world::after {
+    content: none;
+  }
+
+  /* The phone game log: the date once, as a divider over the day's first
+     line; then each line's clock in an 8ch column and its words beside it,
+     wrapped words hanging under the words. A line with no time starts in
+     the words' column. */
+  .terminal .log-frame > .log {
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
+
+  .terminal .log-frame > .log pre > span:has(> .log-msg),
+  .terminal .log-frame > .log pre > span.log-join:has(> .log-msg) {
+    display: grid;
+    grid-template-columns: 8ch minmax(0, 1fr);
+    column-gap: 0.625rem;
+    padding-inline-start: 0;
+  }
+
+  .terminal .log-frame > .log pre > span > .log-time,
+  .terminal .log-frame > .log pre > .log-join > .log-time {
+    display: contents;
+  }
+
+  .terminal .log-frame > .log pre > span > .log-msg {
+    grid-column: 2;
+    min-inline-size: 0;
+    overflow-wrap: break-word;
+  }
+
+  .terminal .log-frame > .log .log-clock {
+    grid-column: 1;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    line-height: 1.625;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .terminal .log-frame > .log .log-date {
+    display: none;
+  }
+
+  .terminal .log-frame > .log pre > [data-day] > .log-time > .log-date {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block: var(--space-2) var(--space-1);
+    color: var(--color-text-muted);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .terminal .log-frame > .log pre > [data-day] > .log-time > .log-date::after {
+    content: "";
+    flex: 1;
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  .terminal .log-frame > .log pre > [data-day]:first-child > .log-time > .log-date {
+    margin-block-start: 0;
+  }
+}
+
+/* In its own card the whitelist switch needs no inner box of its own. */
+#settings-whitelist-enforce .own-save {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
 }

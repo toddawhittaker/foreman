@@ -78,7 +78,7 @@
   <h2 id="facts-heading" class="visually-hidden">{{t "worlds.world.about"}}</h2>
   <dl class="facts">
     <div><dt>{{t "worlds.world.folder"}}</dt><dd><code>{{.World.ID}}</code></dd></div>
-    <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .World.GameVersion}}<code>{{.World.GameVersion}}</code>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
+    <div><dt>{{t "worlds.fact.game_version"}}</dt><dd>{{if .World.GameVersion}}<span class="ver"><code>{{.World.GameVersion}}</code></span>{{else}}{{t "worlds.unknown"}}{{end}}</dd></div>
     <div><dt>{{t "worlds.fact.space_age"}}</dt><dd>{{if .World.SpaceAge}}{{t "worlds.on"}}{{else}}{{t "worlds.off"}}{{end}}</dd></div>
     <div><dt>{{t "worlds.fact.last_played"}}</dt><dd>{{if .World.LastPlayedUnknown}}{{t "worlds.unknown_lower"}}{{else if .World.LastPlayed.IsZero}}{{t "worlds.never"}}{{else}}<time datetime="{{isoTime .World.LastPlayed}}">{{utc .World.LastPlayed}}</time>{{end}}</dd></div>
     {{- with .World.ImportedFrom}}
@@ -145,7 +145,7 @@
 </div>
 {{- end}}
 {{- /* What destroys the world sits last, in the Danger zone, apart from the safe copy above (DESIGN 7.4). */}}
-<section class="panel danger-zone" aria-labelledby="delete-heading">
+<section class="panel danger-zone{{if not .DeleteRefusal.IsZero}} danger-zone--blocked{{end}}" aria-labelledby="delete-heading">
   <h2 id="delete-heading">{{t "worlds.world.delete.button"}}</h2>
   {{- $refusal := .DeleteRefusal}}
   {{- if not $refusal.IsZero}}

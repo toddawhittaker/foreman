@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "Nur Spieler auf der Whitelist können beitreten",
   "settings.whitelist.switch_hint": "Der Server liest das beim Start.",
   "settings.whitelist.switch_running": "Der Server läuft, daher gilt eine Änderung hier erst nach einem Neustart.",
-  "settings.whitelist.switch_save": "Whitelist-Wahl speichern",
+  "settings.whitelist.switch_save": "Lorem ipsum dolor",
   "settings.whitelist.restart_on": "Der Server läuft noch ohne Whitelist-Prüfung. Starte ihn neu, damit nur Spieler auf der Whitelist beitreten können.",
   "settings.whitelist.restart_off": "Der Server läuft noch mit Whitelist-Prüfung. Starte ihn neu, damit alle beitreten können.",
   "settings.whitelist.done_on": "Ab dem nächsten Start können nur Spieler auf der Whitelist {world} beitreten.",
@@ -139,5 +139,7 @@
   "settings.diff.unbanned": "{name} entbannt",
   "settings.diff.whitelist_added": "{name} zur Whitelist hinzugefügt",
   "settings.diff.whitelist_removed": "{name} von der Whitelist entfernt",
-  "settings.jump.label": "Lorem ipsum dolor"
+  "settings.jump.label": "Lorem ipsum dolor",
+  "settings.whitelist.enforce_heading": "Lorem ipsum",
+  "settings.whitelist.list_note": "Lorem ipsum dolor sit amet consectetur."
 }

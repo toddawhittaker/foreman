@@ -170,7 +170,7 @@ test("the whitelist buttons show only while the running game keeps the whitelist
   // The switch is read at the start, so it is set before.
   await page.goto("/worlds/base/settings");
   await page.getByLabel("Only whitelisted players can join").check();
-  await page.getByRole("button", { name: "Save whitelist choice" }).click();
+  await page.getByRole("button", { name: "Save whitelist enforcement" }).click();
   await expect(page.locator("#done-message")).toBeVisible();
   expect((await page.request.post("/worlds/base/start", { form: {}, maxRedirects: 0 })).status()).toBe(303);
   await expect.poll(async () => (await page.request.get("/")).text(), live).toContain("state--running");

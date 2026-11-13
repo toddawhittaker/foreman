@@ -126,7 +126,7 @@
   "settings.whitelist.switch_label": "Připojit se mohou jen hráči ze seznamu povolených",
   "settings.whitelist.switch_hint": "Server to čte při spuštění.",
   "settings.whitelist.switch_running": "Server běží, takže se změna zde projeví po restartu.",
-  "settings.whitelist.switch_save": "Uložit volbu seznamu povolených",
+  "settings.whitelist.switch_save": "Lorem ipsum dolor",
   "settings.whitelist.restart_on": "Server stále běží bez kontroly seznamu povolených. Po restartu se budou moci připojit jen hráči ze seznamu povolených.",
   "settings.whitelist.restart_off": "Server stále běží s kontrolou seznamu povolených. Po restartu se bude moci připojit kdokoli.",
   "settings.whitelist.done_on": "Od příštího spuštění se ke světu {world} mohou připojit jen hráči ze seznamu povolených.",
@@ -139,5 +139,7 @@
   "settings.diff.unbanned": "Odbanován hráč {name}",
   "settings.diff.whitelist_added": "Hráč {name} přidán na seznam povolených",
   "settings.diff.whitelist_removed": "Hráč {name} odebrán ze seznamu povolených",
-  "settings.jump.label": "Lorem ipsum dolor"
+  "settings.jump.label": "Lorem ipsum dolor",
+  "settings.whitelist.enforce_heading": "Lorem ipsum",
+  "settings.whitelist.list_note": "Lorem ipsum dolor sit amet consectetur."
 }
