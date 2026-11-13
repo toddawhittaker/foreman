@@ -5138,11 +5138,12 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 @media (max-width: 30rem) {
-  /* Cancel keeps its word; the two buttons share what is left evenly, and
-     a long label (German, Spanish, Polish) wraps inside its button. */
+  /* Cancel keeps its word; Preview map takes its own width up to half the
+     bar, so a long label (German, Spanish, Polish) wraps inside it and
+     Generate world keeps room for its words. */
   .generate > .gen-actions {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: auto fit-content(50%) minmax(0, 1fr);
     gap: var(--space-2);
   }
 
