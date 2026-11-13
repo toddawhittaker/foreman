@@ -946,10 +946,11 @@ page. A row's Delete link opens a confirmation page that names the world,
 label and time and says how much space it frees. Each row also has a
 checkbox, and "Delete selected" opens one confirmation page for the whole
 selection, which lists every snapshot with its world, label and time and
-says how much space the selection frees. "Select all automatic" ticks
-every automatic snapshot (6.6) on the page, and on the tab each world has
-one for its own. It keeps any hand ticks and never ticks a manual or
-"Before delete" snapshot. After it, the page says how many snapshots it
+says how much space the selection frees. One "Select all automatic"
+button, on the list's heading row, ticks every automatic snapshot (6.6)
+on the page; on the tab that is every world's, and the world headings
+carry only the world's name and what its snapshots add. It keeps any hand
+ticks and never ticks a manual or "Before delete" snapshot. After it, the page says how many snapshots it
 ticked, also to a screen reader, and moves focus to that note.
 
 When a snapshot is the one rollback restores (10.4), its confirmation
@@ -1493,9 +1494,10 @@ snapshotted operation. Nothing updates by itself: Foreman checks for
 updates when a Mods tab opens, after the page has loaded, and never on a
 timer. A mod that is turned off is not updated by "update all". The tab
 says what the portal answered in one summary line above the installed mods,
-with "Update all", and each mod's update and flags in that mod's own row,
-with the fix there. "Up to date" counts only the mods the portal has at
-their installed version. A row also offers "Change version" when the portal
+with "Update all" beside the list's heading, and each mod's update and
+flags in that mod's own row, with the fix there. "Up to date" counts only
+the mods the portal has at their installed version. A row's More actions
+menu also offers "Change version" when the portal
 lists a release of the mod for the world's game line other than the
 installed one; the portal status fills it in, so it is never shown and then
 taken away, and a folder mod or a portal that cannot be reached shows none.
@@ -2299,8 +2301,8 @@ with the defaults accepted, these take at most:
 | Search for a mod and install it (Mods, Search, Add to plan, Install 1 mod) | 4 |
 | Install a second mod in the same change (one more Add to plan, on the plan page) | 5 |
 | Update all mods (Mods, Update all, Update N mods) | 3 |
-| Change a startup mod setting (Mods, Edit mod settings, Save, confirm the restart) | 4 |
-| Change a mod's version (Mods, Change version, choose the version, Change 1 mod) | 4 |
+| Change a startup mod setting (Mods, Edit mod settings, tick the setting, Save and restart; on a phone, Mod tools before Edit mod settings) | 4 (5 on a phone) |
+| Change a mod's version (Mods, the row's More actions, Change version, choose the version, Change 1 mod; when the portal has an update, the row's Update to *x.y.z* opens the same version choice, so Mods, Update to *x.y.z*, choose, Change 1 mod) | 5 (4 with an update) |
 | Fix a mod the Server page flags (Fix, Update N mods) | 2 |
 | Fix and start a world refused for a mod players cannot download (Start server, Update *mod*, Update 1 mod, Start server) | 4 |
 | Recover after a failed start or a crash loop | 2 |
@@ -2317,7 +2319,9 @@ with the defaults accepted, these take at most:
 | Clone the active world (World page, Clone world, Clone world) | 3 |
 
 A click is one activation of a button, link or choice in a list. Typing
-in a field doesn't count. Each task's end-to-end test counts its clicks
+in a field doesn't count; ticking a box does. A phone is a window narrower
+than 64rem, where the Mods tab's rarer tools fold under one "Mod tools"
+disclosure (DESIGN 8.11). Each task's end-to-end test counts its clicks
 and fails when a task goes over budget. (P1)
 
 17.11. **Times show in the viewer's time zone.** A time on a page is a
@@ -2337,7 +2341,10 @@ content may overflow its panel. (P1)
 17.13. **Required fields are marked.** Every field the server refuses
 when empty has an asterisk after its label, drawn by CSS so the label's
 accessible name does not change, and each form with such a field has one
-"* Required" note. An optional field has no mark. A placeholder, where
+"* Required" note. The one exception is the Console's command field, the
+only field of a form that exists only to send it: it has no asterisk and
+no note, and keeps its `required` attribute so assistive technology still
+announces it. An optional field has no mark. A placeholder, where
 there is one, is an example and never repeats the label. (P1)
 
 17.14. **Toggletips and the picture viewer.** A setting may explain

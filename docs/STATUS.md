@@ -385,7 +385,8 @@ world (6.5, 6.10). Everything below is built and tested. Coverage across
   The log history is the container's log and is lost when the container is
   recreated at the next start.
 - The "Jump to newest" row keeps its space while the button is hidden, which
-  leaves a blank strip under the log.
+  leaves a blank strip under the log. (Closed by the third design climb:
+  the button now floats over the log's foot and keeps no row, DESIGN 8.5.)
 - A stop's time on a large map is unmeasured. On the small test map
   `docker stop` took under a second; the 120-second timeout is a generous
   guess for big worlds.
