@@ -1125,6 +1125,9 @@ document.addEventListener("DOMContentLoaded", () => {
     f.toggleAttribute("data-zoomed", zoom > 1);
     el("large-out").setAttribute("aria-disabled", String(zoom <= 1));
     el("large-in").setAttribute("aria-disabled", String(zoom >= most * 0.9999));
+    // The labels are placed for the new size now, not a frame later, so no
+    // label is ever seen where it meets another at the size shown.
+    placeAll();
   }
 
   // A zoom from a key or a button is said as text; a wheel or a pinch is seen.
