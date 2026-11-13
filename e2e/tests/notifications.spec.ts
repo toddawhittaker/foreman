@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { test, expect, checkPage, createAdmin, openMenu, pickLanguage } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, mainNav, pickLanguage } from "./foreman.js";
 
 // SPEC 8.10 to 8.12, 14.8, DESIGN 8.16: the notifications page. A webhook's
 // address is written once and never shown back: only its preset and host.
@@ -11,8 +11,8 @@ const token = "hook-token-e2e-6612";
 const discordURL = `https://discord.com/api/webhooks/42/${token}`;
 
 async function openNotifications(page: import("@playwright/test").Page) {
-  await openMenu(page);
-  await page.locator("details.menu").getByRole("link", { name: "Notifications" }).click();
+  await mainNav(page).getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "Notifications" }).click();
   await expect(page).toHaveURL("/settings/notifications");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Notifications");
 }

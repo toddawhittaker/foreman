@@ -1,0 +1,13 @@
+{
+  "about.close": "Zavřít",
+  "about.commit": "Commit",
+  "about.development": "vývojová verze",
+  "about.go": "Verze Go",
+  "about.heading": "O Foremanu",
+  "about.licence": "Licence",
+  "about.modified": "změněno",
+  "about.source": "Zdrojový kód a sledování problémů najdete na {link}.",
+  "about.source.link": "GitHub",
+  "about.title": "O aplikaci",
+  "about.version": "Verze"
+}

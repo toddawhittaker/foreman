@@ -6,7 +6,7 @@
   "players.kick.gone": "{name} is no longer in the game, so there is no one to kick.",
   "players.ban.heading": "Ban {name} from {world}?",
   "players.ban.will_disconnect": "Disconnect {name} now, if they are in the game.",
-  "players.ban.will_list": "Add {name} to the ban list, so they cannot join again until unbanned. The ban list is on the world's Settings tab.",
+  "players.ban.will_list": "Add {name} to the ban list, so they cannot join again until unbanned. The ban list is on the world's Game settings tab.",
   "players.ban.no_snapshot": "Take no snapshot. The game records the ban in its own ban list.",
   "players.ban.button": "Ban {name}",
   "players.reason.label": "Reason",
@@ -32,6 +32,6 @@
   "players.error.refused": "The game of {world} did not make the change to {name}. It answered:",
   "players.error.rcon": "The game of {world} did not answer over RCON, so Foreman cannot tell whether the change to {name} was made. Check the list, then try again.",
   "players.error.not_running": "The server of {world} is not running, so nothing can be sent to the game.",
-  "players.error.whitelist_off": "The server of {world} was started with the whitelist switch off, so the game would not keep this change. Edit the whitelist on the Settings tab instead.",
+  "players.error.whitelist_off": "The server of {world} was started with the whitelist switch off, so the game would not keep this change. Edit the whitelist on the Game settings tab instead.",
   "players.error.failed": "The change could not be sent to the game of {world}. Try again."
 }

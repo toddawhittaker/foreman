@@ -53,7 +53,8 @@ test("the cookie overrides Accept-Language for every language", async ({ request
     const { lang, body } = await pageLang(request, { "Accept-Language": "de", Cookie: `${langCookie}=${want}` });
     expect(lang, `cookie ${want}`).toBe(want);
     expect(body, `cookie ${want}`).toContain(`<h1>${t("accounts.signedout.heading", {}, want)}</h1>`);
-    expect(body, `cookie ${want}`).toMatch(new RegExp(`name="lang" value="${want}"[^>]*aria-current="true"`));
+    // The language shown is the menu row itself, not one of the seven listed under it.
+    expect(body, `cookie ${want}`).not.toContain(`name="lang" value="${want}"`);
   }
 });
 
@@ -76,11 +77,13 @@ test("html lang, the menu and the page text agree in every language", async ({ p
     await chooseLanguage(page.context(), lang, foreman.url);
     await page.goto("/signed-out");
     await expect(page.locator("html")).toHaveAttribute("lang", lang);
-    await expect(page.locator(`details.menu button[value="${lang}"]`)).toHaveAttribute("aria-current", "true");
+    // The language shown is the row itself, not one of the seven listed under it.
+    await expect(page.locator(`details.menu button[value="${lang}"]`)).toHaveCount(0);
+    await expect(page.locator("details.menu button[name=lang]")).toHaveCount(7);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(t("accounts.signedout.heading", {}, lang));
     // Off English the label adds the English word, marked lang="en".
     const label = t("common.language.label", {}, lang);
-    await expect(page.locator(`details.menu fieldset:has(button[value="${lang}"]) legend`)).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
+    await expect(page.locator("details.menu__langs > summary > .visually-hidden")).toHaveText(lang === "en" ? label : `${label} (${t("common.language.label")})`);
     expect(await page.title()).toContain(t("accounts.signedout.title", {}, lang));
   }
 });

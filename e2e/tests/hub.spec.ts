@@ -50,7 +50,7 @@ test.describe("with the fake game", () => {
     await running(page, foreman, fakeGame!);
     await expect(page.getByRole("link", { name: "Switch to Second" })).toHaveCount(0);
     const links = page.locator("main .links a");
-    await expect(links).toHaveText(["World page", "Mods", "Settings", "Switch world"]);
+    await expect(links).toHaveText(["World page", "Mods", "Game settings", "Switch world"]);
     await page.getByRole("link", { name: "Switch world" }).click();
     await expect(page).toHaveURL("/worlds");
     await expect(page.getByRole("link", { name: "Switch to Second" })).toBeVisible();

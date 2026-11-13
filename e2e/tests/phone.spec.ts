@@ -28,7 +28,7 @@ async function running(page: Page, f: Foreman, g: FakeGame) {
 test("the header keeps every tab on one row and the menu beside the logo", async ({ page }) => {
   await createAdmin(page);
   const tabs = page.getByRole("navigation", { name: "Main" }).getByRole("link");
-  await expect(tabs).toHaveCount(3);
+  await expect(tabs).toHaveCount(4);
   const tops = new Set<number>();
   for (const tab of await tabs.all()) tops.add(Math.round((await box(tab)).y));
   expect(tops.size, "tabs on one row").toBe(1);

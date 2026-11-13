@@ -87,6 +87,30 @@ func TestScheduleDefaults(t *testing.T) {
 	}
 }
 
+// DESIGN 8.15: only a never-saved schedule asks the browser for its zone, and
+// only that page loads the script that does. A saved schedule, and a refused
+// form for a schedule never saved, keep the zone they show.
+func TestScheduleOffersViewerZoneOnlyBeforeFirstSave(t *testing.T) {
+	hn, _ := newScheduleHarness(t)
+	c := hn.signIn()
+	const marker = `data-viewer-zone`
+	body := hn.get(PathSchedule, withCookie(c)).Body.String()
+	if !strings.Contains(body, marker) || !strings.Contains(body, "schedule.js") {
+		t.Errorf("a never-saved schedule is not marked or loads no script\n%s", body)
+	}
+	if strings.Contains(hn.get(PathNotifications, withCookie(c)).Body.String(), "schedule.js") {
+		t.Error("another page loads the schedule script")
+	}
+	refused := hn.post(PathSchedule, scheduleForm(true, "04:00", "Local", "1"), withCookie(c)).Body.String()
+	if strings.Contains(refused, marker) {
+		t.Error("a refused form is marked for the viewer's zone")
+	}
+	hn.post(PathSchedule, scheduleForm(true, "04:00", "Europe/London", "1"), withCookie(c))
+	if strings.Contains(hn.get(PathSchedule, withCookie(c)).Body.String(), marker) {
+		t.Error("a saved schedule is marked for the viewer's zone")
+	}
+}
+
 // SPEC 7.12: saving turns the schedule on, names the next restart, and is
 // audited.
 func TestScheduleSave(t *testing.T) {
@@ -208,10 +232,33 @@ func TestSettingsSubnav(t *testing.T) {
 		if strings.Count(nav, `aria-current="page"`) != 1 || !strings.Contains(nav, `href="`+p.current+`" aria-current="page"`) {
 			t.Errorf("%s: current link\n%s", p.path, nav)
 		}
-		menu := between(body, `<div class="menu__panel">`, PathSignOut)
-		a, s, n = strings.Index(menu, `href="`+PathAccount), strings.Index(menu, `href="`+PathSchedule), strings.Index(menu, `href="`+PathNotifications)
-		if a < 0 || s < a || n < s {
-			t.Errorf("%s: user menu order\n%s", p.path, menu)
+		// The main Settings tab is the one way in (DESIGN 6): the page on the
+		// restart schedule it opens, the section on the other two.
+		main := between(body, `<nav aria-label="Main">`, "</nav>")
+		mark := "true"
+		if p.path == PathSchedule {
+			mark = "page"
 		}
+		if want := `<a href="` + PathSchedule + `" aria-current="` + mark + `">Settings</a>`; !strings.Contains(main, want) {
+			t.Errorf("%s: main nav lacks %s\n%s", p.path, want, main)
+		}
+		if strings.Count(main, "aria-current") != 1 {
+			t.Errorf("%s: %d main tabs marked current", p.path, strings.Count(main, "aria-current"))
+		}
+		menu := between(body, `<div class="menu__panel">`, PathSignOut)
+		for _, link := range []string{PathAccount, PathSchedule, PathNotifications} {
+			if strings.Contains(menu, `href="`+link) {
+				t.Errorf("%s: the user menu still links to %s", p.path, link)
+			}
+		}
+	}
+}
+
+// The Settings tab marks its section on the pages under Notifications too.
+func TestSettingsTabOnWebhookPages(t *testing.T) {
+	r := newTestRenderer(t)
+	for _, p := range []Page{WebhookFormPage{}, WebhookDeletePage{}} {
+		_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
+		wantIn(t, p.templateName(), body, `<a href="`+PathSchedule+`" aria-current="true">Settings</a>`)
 	}
 }

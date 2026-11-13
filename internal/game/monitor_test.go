@@ -185,11 +185,33 @@ func TestDockerUnreachable(t *testing.T) {
 	id := r.newWorld("Lost")
 	r.start(id)
 	r.game.Daemon().SetFailure(500, "daemon on fire")
-	st := r.waitState(id, StateUnknown)
-	if !strings.Contains(st.Reason, "cannot reach Docker") {
-		t.Errorf("reason %q", st.Reason)
-	}
+	// A check already past its listing may first fail to inspect the
+	// container and give the inspect reason; the next check replaces it
+	// (TestDockerDownAfterInspectFailure), so wait for the SPEC 7.1 reason.
+	r.waitReason(id, StateUnknown, "cannot reach Docker")
 	r.game.Daemon().SetFailure(0, "")
+	r.waitState(id, StateRunning)
+}
+
+// SPEC 7.1: when a check lists the containers and then fails to inspect
+// one, and Docker then stays down, the next check gives the reason that
+// Docker cannot be reached, not the inspect reason.
+func TestDockerDownAfterInspectFailure(t *testing.T) {
+	r := newRig(t, rigOptions{noRun: true})
+	r.c.pollInterval = time.Hour // only pokes make the monitor look
+	r.run(r.c)
+	id := r.newWorld("Lost")
+	r.start(id)
+	d := r.game.Daemon()
+	d.SetCallFailure("GET", "json", 500, "inspect on fire")
+	r.c.pokeMonitor()
+	r.waitReason(id, StateUnknown, "cannot read the game container")
+	d.SetFailure(500, "daemon on fire")
+	r.c.pokeMonitor()
+	r.waitReason(id, StateUnknown, "cannot reach Docker")
+	d.SetFailure(0, "")
+	d.SetCallFailure("GET", "json", 0, "")
+	r.c.pokeMonitor()
 	r.waitState(id, StateRunning)
 }
 

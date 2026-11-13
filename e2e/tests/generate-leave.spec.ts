@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21, openMenu, tabTo } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, openLanguages, openMenu, tabTo } from "./foreman.js";
 import type { Page } from "@playwright/test";
 
 // SPEC 5.6: leaving Generate with settings that differ from what was loaded
@@ -105,7 +105,7 @@ test("a header link asks too, and staying returns focus to it", async ({ page })
 test("the language menu and Sign out ask, and leaving carries them out", async ({ page }) => {
   const asked = browserQuestions(page);
   await edit(page);
-  await openMenu(page);
+  await openLanguages(page);
   const german = page.locator('details.menu button[name="lang"][value="de"]');
   await german.click();
   await expect(leaveDialog(page)).toBeVisible();
@@ -114,7 +114,7 @@ test("the language menu and Sign out ask, and leaving carries them out", async (
   await expect(page.getByLabel("World name")).toHaveValue("Half done");
   // Focus is back in the menu: on the button used, or on the menu's own button if the menu closed meanwhile.
   await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest("details.menu")))).toBe(true);
-  await openMenu(page);
+  await openLanguages(page);
   await german.click();
   await leave(page).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
@@ -224,7 +224,7 @@ test("the preview size and the territory box are views: changing them leaves wit
   await expect(pictures(page)).toHaveAttribute("width", "2048");
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(pictures(page)).toHaveAccessibleName(/^Map preview of Vulcanus/);
-  await page.getByLabel("Show demolisher territories").check();
+  await page.locator("#preview").getByLabel("Show demolisher territories").check();
   await cancel(page).click();
   await expect(page).toHaveURL("/worlds");
   expect(asked).toEqual([]);

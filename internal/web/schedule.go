@@ -56,6 +56,9 @@ type SchedulePage struct {
 	Regions     []ZoneGroup
 	Limit       string
 	Saved       bool
+	// Fresh is whether no schedule was ever saved and the form shows the
+	// defaults, so a script may preselect the viewer's own zone.
+	Fresh bool
 
 	ClockError i18n.Msg
 	ZoneError  i18n.Msg
@@ -63,7 +66,7 @@ type SchedulePage struct {
 }
 
 func (SchedulePage) templateName() string { return "schedule" }
-func (SchedulePage) navItem() string      { return PathSchedule }
+func (SchedulePage) navItem() string      { return PathSchedule + navPage }
 func (p SchedulePage) hasErrors() bool    { return len(p.Problems()) > 0 }
 
 // Path is where the form posts.
@@ -99,6 +102,7 @@ func (s *server) schedulePage() SchedulePage {
 		SavedClock: clockText(r.Minute), SavedZone: r.Zone,
 		// A new schedule's box starts ticked, so setting one is one save (DESIGN 8.15).
 		Enabled: r.Enabled || !found, Clock: clockText(r.Minute), Zone: r.Zone, Limit: strconv.Itoa(r.LimitHours),
+		Fresh: !found,
 	}
 	p.On = p.On && !p.Next.IsZero()
 	return p
@@ -158,6 +162,8 @@ func (s *server) handleScheduleSave(w http.ResponseWriter, r *http.Request, u st
 	p := s.schedulePage()
 	p.Enabled = next.Enabled
 	p.Clock, p.Zone, p.Limit = r.PostFormValue("time"), r.PostFormValue("zone"), r.PostFormValue("limit_hours")
+	// A refused form shows what was posted, never a zone chosen for the viewer.
+	p.Fresh = false
 
 	minute, clockOK := parseClock(p.Clock)
 	zoneOK := schedule.ValidZone(p.Zone)

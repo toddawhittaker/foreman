@@ -1,20 +1,20 @@
-import { test, expect, checkPage, createAdmin, openMenu, pickLanguage } from "./foreman.js";
-import { countClicks, expectWithin } from "./clicks.js";
+import { test, expect, checkPage, createAdmin, mainNav, openMenu, pickLanguage } from "./foreman.js";
 
 // SPEC 7.12, DESIGN 8.15: the restart schedule page, the Foreman settings
 // sub-navigation it shares with the account and notifications pages, and
-// the user menu's order. Every project runs these, so each holds at 320 px
+// the main Settings tab that leads to them. Every project runs these, so each holds at 320 px
 // and at desktop width, in both themes.
 
 const settingsNav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Foreman settings" });
 
-test("set a nightly restart from the Server page in three clicks", async ({ page }) => {
-  await createAdmin(page);
-  const clicks = await countClicks(page);
-  await clicks.reset();
+// Pin the browser's zone, so no test depends on the host's. The describe
+// blocks below that set another zone override this.
+test.use({ timezoneId: "UTC" });
 
-  await openMenu(page);
-  await page.locator("details.menu").getByRole("link", { name: "Restart schedule" }).click();
+test("a new schedule is offered at 04:00 UTC and saves", async ({ page }) => {
+  await createAdmin(page);
+
+  await mainNav(page).getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL("/settings/restart-schedule");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Restart schedule");
   await expect(page.locator("#schedule-state")).toHaveText("No restart is scheduled.");
@@ -33,7 +33,6 @@ test("set a nightly restart from the Server page in three clicks", async ({ page
   await expect(page.locator("#done-message")).toContainText("Saved. The next restart is");
   await expect(page.locator("#schedule-state")).toContainText("Foreman restarts the active world every day at 04:00 (UTC). Next restart:");
   await expect(page.locator("#schedule-state time")).toHaveAttribute("datetime", /T04:00:00Z$/);
-  await expectWithin(clicks, 3, "Set a nightly restart");
   await checkPage(page);
 });
 
@@ -101,11 +100,11 @@ test("the three Foreman settings pages share one sub-navigation", async ({ page 
   await checkPage(page);
 });
 
-test("the user menu lists the settings pages in the sub-navigation's order", async ({ page }) => {
+test("the user menu holds no settings links: the Settings tab is their home", async ({ page }) => {
   await createAdmin(page);
   await openMenu(page);
-  const links = page.locator("details.menu .menu__panel > a.menu__item");
-  await expect(links).toHaveText(["factorio.com account", "Restart schedule", "Notifications"]);
+  // About is the menu's one link.
+  await expect(page.locator("details.menu").getByRole("link")).toHaveText(["About"]);
 });
 
 test("the page is translated", async ({ page }) => {
@@ -115,4 +114,60 @@ test("the page is translated", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Neustart-Zeitplan");
   await expect(page.getByRole("navigation", { name: "Foreman-Einstellungen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Zeitplan speichern" })).toBeVisible();
+});
+
+// DESIGN 8.15: a never-saved schedule preselects the viewer's own zone; a
+// saved one keeps its zone; without script the page offers UTC.
+test.describe("in the viewer's time zone", () => {
+  test.use({ timezoneId: "America/New_York" });
+
+  test("a never-saved schedule preselects the browser's zone", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/restart-schedule");
+    await expect(page.getByLabel("Time zone")).toHaveValue("America/New_York");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#schedule-state")).toContainText("every day at 04:00 (America/New_York)");
+  });
+
+  test.describe("in Asia/Calcutta", () => {
+    test.use({ timezoneId: "Asia/Calcutta" });
+
+    test("a never-saved schedule preselects Asia/Calcutta", async ({ page }) => {
+      await createAdmin(page);
+      await page.goto("/settings/restart-schedule");
+      await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Calcutta");
+    });
+  });
+
+  test("a saved schedule keeps its saved zone", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/restart-schedule");
+    await page.getByLabel("Time zone").selectOption("Europe/London");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#schedule-state")).toContainText("(Europe/London)");
+    await page.goto("/settings/restart-schedule");
+    await expect(page.getByLabel("Time zone")).toHaveValue("Europe/London");
+  });
+
+  test("a refused form keeps the zone that was posted", async ({ page }) => {
+    await createAdmin(page);
+    await page.goto("/settings/restart-schedule");
+    await page.getByLabel("Time zone").selectOption("Asia/Tokyo");
+    await page.getByLabel("Wait for players to leave for up to").fill("13");
+    await page.getByRole("button", { name: "Save schedule" }).click();
+    await expect(page.locator("#error-summary")).toBeVisible();
+    await expect(page.getByLabel("Time zone")).toHaveValue("Asia/Tokyo");
+  });
+
+  test.describe("without script", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("the zone select offers UTC and the form saves", async ({ page }) => {
+      await createAdmin(page);
+      await page.goto("/settings/restart-schedule");
+      await expect(page.getByLabel("Time zone")).toHaveValue("UTC");
+      await page.getByRole("button", { name: "Save schedule" }).click();
+      await expect(page.locator("#schedule-state")).toContainText("every day at 04:00 (UTC)");
+    });
+  });
 });

@@ -566,12 +566,12 @@ test.describe("world pages", () => {
   for (const [path, current] of [
     ["/worlds/second/clone", "Overview"],
     ["/worlds/second/delete", "Overview"],
-    ["/worlds/base/settings/raw/server-settings.json", "Settings"],
+    ["/worlds/base/settings/raw/server-settings.json", "Game settings"],
   ]) {
     test(`${path} shows the world's tabs with ${current} marked`, async ({ page }) => {
       await page.goto(path);
       const tabs = page.getByRole("navigation", { name: "World pages" });
-      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Mods", "Settings"]);
+      await expect(tabs.getByRole("link")).toHaveText(["Overview", "Saves", "Snapshots", "Mods", "Game settings"]);
       await expect(tabs.getByRole("link", { name: current })).toHaveAttribute("aria-current", "true");
       await expect(tabs.locator("[aria-current=page]")).toHaveCount(0);
       await checkPage(page);
@@ -661,7 +661,7 @@ test.describe("names", () => {
     seedWorld(foreman);
     await page.goto("/worlds");
     const summary = page.locator("details.menu > summary");
-    await expect(summary).toHaveAccessibleName("admin, English: account and language menu");
+    await expect(summary).toHaveAccessibleName("admin, English: user menu");
     await expect(summary).toHaveText(/admin\s+English/);
     await openMenu(page);
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();

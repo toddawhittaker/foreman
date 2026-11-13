@@ -1,4 +1,4 @@
-import { test, expect, checkPage, createAdmin, seedWorld, image21 } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, tabTo } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
 
 // SPEC 5.6, DESIGN 8.8: Vulcanus's demolisher territories on the map preview.
@@ -12,7 +12,10 @@ import type { Page, Route } from "@playwright/test";
 test.use({ fakeGameOn: true });
 
 const section = (page: Page) => page.getByRole("region", { name: "Map preview" });
-const box = (page: Page) => page.getByLabel("Show demolisher territories");
+// The page's box; the large view has its own, found by largeBox.
+const box = (page: Page) => section(page).getByLabel("Show demolisher territories");
+// The same box by id, for while the large view is open and makes the page inert.
+const pageBox = (page: Page) => page.locator("#preview-territories");
 const overlay = (page: Page) => section(page).locator("a.picture .territories");
 const list = (page: Page) => section(page).locator(".territory-counts");
 // The words a label shows, not the other length kept for the other view.
@@ -268,6 +271,202 @@ test("unticking while a picture is drawn wins over the reply", async ({ page }) 
   await expect(overlay(page)).toHaveCount(0);
   await expect(list(page)).toHaveCount(0);
   await expect(section(page).getByRole("link", { name: "Download Vulcanus (PNG)" })).toHaveAttribute("href", /\/vulcanus\/download$/);
+});
+
+// SPEC 5.6: the large view offers the same box, wherever the planet
+// viewed has territories. One choice, held by the form's "territories" field.
+const largeBox = (page: Page) => page.locator("#large-view").getByLabel("Show demolisher territories");
+const largeOverlay = (page: Page) => page.locator("#large-view .territories");
+
+async function openLarge(page: Page) {
+  await section(page).getByRole("link", { name: /opens the large view/ }).click();
+  await expect(page.locator("#large-view")).toBeVisible();
+}
+
+test("the large view's box unticks and ticks the overlay, and the page's box matches", async ({ page }) => {
+  await vulcanus(page);
+  await box(page).check();
+  await expect(list(page)).toHaveText(counts);
+  await openLarge(page);
+  const dialog = page.locator("#large-view");
+  await expect(largeBox(page)).toBeVisible();
+  await expect(largeBox(page)).toBeChecked();
+  await expect(largeBox(page)).toHaveAccessibleDescription("Finding them takes a few seconds more.");
+  await expect(largeOverlay(page)).toHaveCount(1);
+  // Off: the overlay, its words and the download's territories go, and the page's box follows.
+  await largeBox(page).uncheck();
+  await expect(largeOverlay(page)).toHaveCount(0);
+  await expect(dialog.locator("#large-territory-counts")).toBeEmpty();
+  await expect(dialog.locator("#large-download")).toHaveAttribute("href", /\/vulcanus\/download$/);
+  await expect(pageBox(page)).not.toBeChecked();
+  // On: the box says it is looking, then the overlay and its words return.
+  const hold = holdTerritories(page);
+  await hold.start();
+  await largeBox(page).check();
+  await expect.poll(() => hold.held.length).toBe(1);
+  await expect(dialog.locator("#large-status")).toHaveText("Finding the demolisher territories…");
+  await expect(largeOverlay(page)).toHaveCount(0);
+  await hold.release();
+  await expect(largeOverlay(page)).toHaveCount(1);
+  await expect(dialog.locator("#large-territory-counts")).toHaveText(counts);
+  await expect(dialog.locator("#large-status")).toHaveText(counts);
+  await expect(largeBox(page)).toBeChecked();
+  await expect(dialog.locator("#large-download")).toHaveAttribute("href", /territories=1$/);
+  await expect(pageBox(page)).toBeChecked();
+  await checkPage(page);
+  // Closing leaves the page as the large view had it.
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(box(page)).toBeChecked();
+  await expect(overlay(page)).toHaveCount(1);
+});
+
+test("a choice made in the large view holds after Previous and Next, and the box is only on Vulcanus", async ({ page }) => {
+  await vulcanus(page);
+  await openLarge(page);
+  const dialog = page.locator("#large-view");
+  await expect(largeBox(page)).not.toBeChecked();
+  await largeBox(page).check();
+  await expect(largeOverlay(page)).toHaveCount(1);
+  // Another planet has no territories, so no box; the choice is not lost.
+  await dialog.locator("#large-next").click();
+  await expect(page.getByRole("dialog", { name: "Gleba" })).toBeVisible();
+  await expect(dialog.getByRole("img", { name: /^Map preview of Gleba/ })).toBeVisible();
+  await expect(largeBox(page)).toBeHidden();
+  await expect(dialog.locator(".territories")).toHaveCount(0);
+  await dialog.locator("#large-prev").click();
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect(largeBox(page)).toBeVisible();
+  await expect(largeBox(page)).toBeChecked();
+  await expect(largeOverlay(page)).toHaveCount(1);
+  // Off, it stays off the same way.
+  await largeBox(page).uncheck();
+  await expect(largeOverlay(page)).toHaveCount(0);
+  await dialog.locator("#large-next").click();
+  await expect(page.getByRole("dialog", { name: "Gleba" })).toBeVisible();
+  await expect(largeBox(page)).toBeHidden();
+  await dialog.locator("#large-prev").click();
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect(largeBox(page)).toBeVisible();
+  await expect(largeBox(page)).not.toBeChecked();
+  await expect(largeOverlay(page)).toHaveCount(0);
+  // Closing, the page's box is the same choice, and ticking it there shows in the view again.
+  await dialog.locator("#large-close").click();
+  await expect(box(page)).not.toBeChecked();
+  await box(page).check();
+  await expect(list(page)).toHaveText(counts);
+  await openLarge(page);
+  await expect(largeBox(page)).toBeChecked();
+  await expect(largeOverlay(page)).toHaveCount(1);
+});
+
+test("with every planet shown, the large view's box follows the planet viewed", async ({ page }) => {
+  await vulcanus(page);
+  await section(page).locator("label.tab", { hasText: "All planets" }).click();
+  await expect(section(page).getByRole("img")).toHaveCount(5);
+  await box(page).check();
+  await expect(list(page)).toHaveText(counts);
+  await section(page).locator('a.picture[data-planet="nauvis"]').click();
+  const dialog = page.locator("#large-view");
+  await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
+  await expect(largeBox(page)).toBeHidden();
+  await dialog.locator("#large-next").click();
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect(largeBox(page)).toBeChecked();
+  await expect(largeOverlay(page)).toHaveCount(1);
+  await largeBox(page).uncheck();
+  await expect(largeOverlay(page)).toHaveCount(0);
+  await expect(pageBox(page)).not.toBeChecked();
+  await dialog.locator("#large-close").click();
+  await expect(overlay(page)).toHaveCount(0);
+});
+
+test("the large view's box is reached and worked by keyboard, with focus shown", async ({ page }) => {
+  await vulcanus(page);
+  await section(page).getByRole("link", { name: /opens the large view/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#large-view")).toBeVisible();
+  await tabTo(page, largeBox(page));
+  await expect(largeBox(page)).toBeFocused();
+  expect(await largeBox(page).evaluate((b) => getComputedStyle(b).outlineStyle)).not.toBe("none");
+  await page.keyboard.press("Space");
+  await expect(largeBox(page)).toBeChecked();
+  await expect(largeOverlay(page)).toHaveCount(1);
+  await expect(page.locator("#large-view #large-status")).toHaveText(counts);
+  await expect(largeBox(page)).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(largeBox(page)).not.toBeChecked();
+  await expect(largeOverlay(page)).toHaveCount(0);
+  // Stepping to a planet without territories takes the box away; focus is not lost.
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("dialog", { name: "Gleba" })).toBeVisible();
+  await expect(largeBox(page)).toBeHidden();
+  await expect(page.locator("#large-frame")).toBeFocused();
+});
+
+test("the large view's box is disabled while Vulcanus is drawn, then works", async ({ page }) => {
+  await page.goto("/generate");
+  await expect(section(page).getByRole("img", { name: /^Map preview of Nauvis/ })).toBeVisible();
+  await openLarge(page);
+  // Hold the draw of the next planet, so the large view shows Vulcanus before its picture exists.
+  const drawn: Route[] = [];
+  const isDraw = (u: URL) => u.pathname.endsWith("/generate/preview");
+  await page.route(isDraw, (r) => { drawn.push(r); });
+  await page.locator("#large-next").click();
+  await expect(page.getByRole("dialog", { name: "Vulcanus" })).toBeVisible();
+  await expect.poll(() => drawn.length).toBe(1);
+  await expect(largeBox(page)).toBeVisible();
+  await expect(largeBox(page)).toBeDisabled();
+  for (const r of drawn.splice(0)) await r.continue();
+  await page.unroute(isDraw);
+  await expect(largeBox(page)).toBeEnabled();
+});
+
+test("a failed request in the large view is said there", async ({ page }) => {
+  await vulcanus(page);
+  await openLarge(page);
+  await page.route(territoryURL, (r) => r.fulfill({ status: 500, body: "" }));
+  await largeBox(page).check();
+  await expect(page.locator("#large-view #large-status")).toContainText("The request for the demolisher territories failed.");
+  await expect(largeOverlay(page)).toHaveCount(0);
+  await page.unroute(territoryURL);
+  // Off and on again asks once more.
+  await largeBox(page).uncheck();
+  await largeBox(page).check();
+  await expect(largeOverlay(page)).toHaveCount(1);
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 320, height: 640 }, hasTouch: true });
+
+  test("the large view's box is a 44 px target and fits at 320 px, at 200% text too", async ({ page }) => {
+    await page.goto("/generate");
+    await expect(section(page).getByRole("img")).toHaveCount(1);
+    await page.locator("#mg-resources-vulcanus").evaluate((d) => ((d as HTMLDetailsElement).open = true));
+    await expect(section(page).getByRole("img", { name: /^Map preview of Vulcanus/ })).toBeVisible();
+    await section(page).getByRole("link", { name: /opens the large view/ }).tap();
+    const dialog = page.locator("#large-view");
+    await expect(largeBox(page)).toBeVisible();
+    const fits = async () => {
+      const size = await dialog.evaluate((d) => ({ scroll: d.scrollWidth, client: d.clientWidth }));
+      expect(size.scroll).toBeLessThanOrEqual(size.client);
+      const row = (await dialog.locator("#large-territories-box").boundingBox())!;
+      expect(row.x).toBeGreaterThanOrEqual(0);
+      expect(row.x + row.width).toBeLessThanOrEqual(320);
+    };
+    const target = (await largeBox(page).locator("xpath=ancestor::label").boundingBox())!;
+    expect(target.height).toBeGreaterThanOrEqual(44);
+    await fits();
+    await checkPage(page);
+    await largeBox(page).tap();
+    await expect(largeBox(page)).toBeChecked();
+    await expect(largeOverlay(page)).toHaveCount(1);
+    // The picture keeps a usable height beside it.
+    expect((await dialog.locator("#large-frame").boundingBox())!.height).toBeGreaterThan(150);
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    await fits();
+    await checkPage(page);
+  });
 });
 
 test.describe("without script", () => {

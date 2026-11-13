@@ -116,9 +116,10 @@ func TestAccountPageWithNoAccountOffersTheForm(t *testing.T) {
 	if regexp.MustCompile(`<input id="account-[^>]*value=`).MatchString(body) {
 		t.Errorf("a field has a value attribute\n%s", body)
 	}
-	// The user menu links to the page from every page.
-	if !strings.Contains(ah.get(PathWorlds, withCookie(c)).Body.String(), `href="`+PathAccount+`"`) {
-		t.Error("the user menu does not link to the account page")
+	// Every page has the Settings tab, whose pages link here (DESIGN 6,
+	// 8.15; TestSettingsSubnav).
+	if !strings.Contains(ah.get(PathWorlds, withCookie(c)).Body.String(), `href="`+PathSchedule+`"`) {
+		t.Error("the world list has no Settings tab")
 	}
 }
 

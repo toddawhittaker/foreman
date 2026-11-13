@@ -1,5 +1,5 @@
 {
-  "settings.link": "设置",
+  "settings.link": "游戏设置",
   "settings.title": "{world} 的设置",
   "settings.readonly.unreadable": "此世界的 world.json 无法读取，因此无法在此更改其设置。",
   "settings.broken": "Foreman 无法将 {file} 作为 JSON 对象读取，因此此表单无法显示它。请在下方的 JSON 编辑器中替换该文件。",

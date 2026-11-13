@@ -6,7 +6,7 @@
   "players.kick.gone": "Hráč {name} už ve hře není, takže není koho vyhodit.",
   "players.ban.heading": "Zabanovat hráče {name} ve světě {world}?",
   "players.ban.will_disconnect": "Odpojí hráče {name} hned teď, pokud je ve hře.",
-  "players.ban.will_list": "Přidá hráče {name} na seznam zabanovaných, takže se nepřipojí, dokud nebude odbanován. Seznam zabanovaných je na kartě Nastavení světa.",
+  "players.ban.will_list": "Přidá hráče {name} na seznam zabanovaných, takže se nepřipojí, dokud nebude odbanován. Seznam zabanovaných je na kartě Nastavení hry daného světa.",
   "players.ban.no_snapshot": "Nepořídí se žádný snímek. Hra zapíše ban do vlastního seznamu zabanovaných.",
   "players.ban.button": "Zabanovat hráče {name}",
   "players.reason.label": "Důvod",
@@ -32,6 +32,6 @@
   "players.error.refused": "Hra světa {world} neprovedla změnu u hráče {name}. Její odpověď:",
   "players.error.rcon": "Hra světa {world} neodpověděla přes RCON, takže Foreman nemůže zjistit, zda byla změna u hráče {name} provedena. Je třeba zkontrolovat seznam a zkusit to znovu.",
   "players.error.not_running": "Server světa {world} neběží, takže do hry nelze nic odeslat.",
-  "players.error.whitelist_off": "Server světa {world} byl spuštěn s vypnutým seznamem povolených hráčů, takže hra by tuto změnu nezachovala. Seznam povolených hráčů je třeba upravit na kartě Nastavení.",
+  "players.error.whitelist_off": "Server světa {world} byl spuštěn s vypnutým seznamem povolených hráčů, takže hra by tuto změnu nezachovala. Seznam povolených hráčů je třeba upravit na kartě Nastavení hry.",
   "players.error.failed": "Změnu se nepodařilo odeslat do hry světa {world}. Je třeba to zkusit znovu."
 }

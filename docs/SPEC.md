@@ -698,6 +698,16 @@ not) or a map exchange string, with Space Age on or off. (P0)
     into Vulcanus's PNG, and into Vulcanus's file in the zip, named with
     `-territories`; the overlay PNG is drawn per request, one at a time,
     and not stored.
+    The large view offers the same "Show demolisher territories" box,
+    with the same hint, while the planet viewed is one that has
+    territories (Vulcanus) and not otherwise. It is the page's box, not a
+    second setting: ticking it in either place changes both, the choice
+    holds as the person steps between planets and when the view closes,
+    and the form field `territories` carries it. Ticked, the view says it
+    is looking and then says the counts; a failed request is said in the
+    view, and unticking and ticking again tries again. The box is a 44 px
+    target, keyboard reachable with visible focus, and fits at 320 px and
+    200% text (17.2).
   - **Resource amounts** (every planet). A "Show resource amounts" box in
     the large view's bar, and one on the One planet picture, each its own
     choice, off when the page loads and kept while the page lives; one
@@ -2300,6 +2310,8 @@ with the defaults accepted, these take at most:
 | Kick a player (the player, Kick, Kick *player*) | 3 |
 | Ban a player (the player, Ban, Ban *player*) | 3 |
 | Change the restart schedule while one is set (Next restart, Save schedule) | 2 |
+| Set a nightly restart (Settings, Save schedule) | 2 |
+| Open Notifications (Settings, Notifications) | 2 |
 | Try a failed mod change again (Try again, Install N mods) | 2 |
 | Generate a world with the defaults (Worlds, Generate a world, Generate world) | 3 |
 | Clone the active world (World page, Clone world, Clone world) | 3 |
@@ -2513,6 +2525,12 @@ language shown. (P0)
 - Off English, the menu's label adds "(Language)" in English, marked
   `lang="en"`, so a person who landed in a language they cannot read can
   still find it.
+- The menu is one row showing the current language's flag and its own
+  name; opened, it lists the other seven the same way (DESIGN 6). Each
+  language has one flag: the United Kingdom for English, Spain for
+  Spanish, and Germany, Russia, China, France, Poland and Czechia for the
+  others. The flags are decorative, so the language name carries the
+  meaning, and they are bundled files, never fetched (ADR 0020).
 
 22.3. Everything the web UI shows is translated, including problems,
 refusals, failures and results built by the server, and text shown by

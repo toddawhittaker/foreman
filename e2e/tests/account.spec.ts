@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { test, expect, checkPage, createAdmin, openMenu, seedWorld, tabTo } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, mainNav, seedWorld, tabTo } from "./foreman.js";
 
 // SPEC 9.11, 11.4: the factorio.com account page. The username and token are
 // written once and never shown back. Every project runs these, so each holds
@@ -10,10 +10,10 @@ const key = "keykeykeykeykeykeykeykeykeykeykey";
 const username = "portal-user-7731";
 const token = "portal-token-5509";
 
-// Reaches the page the way a person does: the user menu, then the link.
+// Reaches the page the way a person does: the Settings tab, then the link.
 async function openAccountPage(page: import("@playwright/test").Page) {
-  await openMenu(page);
-  await page.locator("details.menu").getByRole("link", { name: "factorio.com account" }).click();
+  await mainNav(page).getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "factorio.com account" }).click();
   await expect(page).toHaveURL("/settings/factorio-account");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("factorio.com account");
 }
@@ -91,11 +91,12 @@ test.describe("with a secret key", () => {
     await checkPage(page);
   });
 
-  test("works by keyboard alone, from the menu to the saved line", async ({ page }) => {
+  test("works by keyboard alone, from the Settings tab to the saved line", async ({ page }) => {
     await createAdmin(page);
-    await page.locator("details.menu > summary").focus();
+    await mainNav(page).getByRole("link", { name: "Settings" }).focus();
     await page.keyboard.press("Enter");
-    await tabTo(page, page.locator("details.menu").getByRole("link", { name: "factorio.com account" }));
+    await expect(page).toHaveURL("/settings/restart-schedule");
+    await tabTo(page, page.getByRole("navigation", { name: "Foreman settings" }).getByRole("link", { name: "factorio.com account" }));
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL("/settings/factorio-account");
 

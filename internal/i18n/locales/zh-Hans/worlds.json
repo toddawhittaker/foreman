@@ -349,7 +349,7 @@
   "worlds.world.generated": "已生成 {name}。它的地图会在首次启动时生成。",
   "worlds.world.cloned": "已将 {from} 克隆为 {name}。",
   "worlds.world.clone": "克隆世界",
-  "worlds.world.settings": "设置",
+  "worlds.world.settings": "游戏设置",
   "worlds.snapshot.label.before_settings": "更改设置前",
   "worlds.clone.title": "克隆 {name}",
   "worlds.clone.heading": "基于此世界的新世界",

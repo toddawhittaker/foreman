@@ -1,5 +1,5 @@
 {
-  "settings.link": "Configuración",
+  "settings.link": "Configuración del juego",
   "settings.title": "Configuración de {world}",
   "settings.readonly.unreadable": "El world.json de este mundo no se puede leer, así que su configuración no se puede cambiar aquí.",
   "settings.broken": "Foreman no puede leer {file} como un objeto JSON, así que este formulario no puede mostrarlo. Sustituye el archivo con el editor JSON de abajo.",

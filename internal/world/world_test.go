@@ -409,6 +409,27 @@ func TestCheckSpace(t *testing.T) {
 	}
 }
 
+// The free-space hook gives a test a fixed reading that the disk cannot
+// change, and gives the real reading back when restored.
+func TestSetFreeBytesForTest(t *testing.T) {
+	dir := t.TempDir()
+	t.Cleanup(SetSpaceReserveForTest(0))
+	restore := SetFreeBytesForTest(1000)
+	if free, err := FreeBytes(dir); err != nil || free != 1000 {
+		t.Errorf("faked reading = %d, %v; want 1000", free, err)
+	}
+	if err := CheckSpace(dir, 1000); err != nil {
+		t.Errorf("a write that fits the faked space: %v", err)
+	}
+	if err := CheckSpace(dir, 1001); !errors.Is(err, ErrNoSpace) {
+		t.Errorf("a write over the faked space: %v, want ErrNoSpace", err)
+	}
+	restore()
+	if free, err := FreeBytes(dir); err != nil || free == 1000 {
+		t.Errorf("restored reading = %d, %v; want the disk's", free, err)
+	}
+}
+
 func TestFormatBytes(t *testing.T) {
 	cases := map[uint64]string{0: "0 B", 999: "999 B", 1000: "1.0 kB", 2_100_000_000: "2.1 GB", 1_550_000: "1.6 MB"}
 	for n, want := range cases {

@@ -49,3 +49,4 @@ record has four parts:
 | [0017](0017-mod-settings.md) | Mod setting definitions come from a one-off control-mod run of the world's own image, cached in memory; map settings on a world with a save are changed in the game, not by Foreman. |
 | [0018](0018-webhook-storage-and-body.md) | Webhook addresses are sealed like the factorio.com account, the generic body is versioned from the start, and every target has its own queue so a hung one delays only itself; `http://` is allowed with a warning. |
 | [0019](0019-the-scheduler.md) | The restart scheduler is a leaf package that waits for an empty server, then runs a 60-second countdown that always runs and never starts a stopped game; a missed restart is not made up. |
+| [0020](0020-language-flags.md) | Each language shows one country's flag in the user menu (the United Kingdom for English, Spain for Spanish), as bundled flag-icons SVG files rather than emoji, decorative with the language's own name as the label. |

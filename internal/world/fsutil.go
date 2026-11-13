@@ -151,11 +151,26 @@ func syncDir(root *os.Root, dir string) error {
 // FreeBytes returns the space an unprivileged process can still use on the
 // filesystem holding dir.
 func FreeBytes(dir string) (uint64, error) {
+	if n := fakeFree.Load(); n != nil {
+		return *n, nil
+	}
 	var st syscall.Statfs_t
 	if err := syscall.Statfs(dir, &st); err != nil {
 		return 0, fmt.Errorf("read free space: %w", err)
 	}
 	return st.Bavail * uint64(st.Bsize), nil //nolint:gosec // Bsize is a positive block size
+}
+
+// fakeFree, when set, is what FreeBytes reports instead of the disk.
+var fakeFree atomic.Pointer[uint64]
+
+// SetFreeBytesForTest makes FreeBytes report n whatever the disk holds, for
+// a test that must not change with other processes using the same disk. It
+// returns a function that puts the real reading back. Never call it outside
+// tests.
+func SetFreeBytesForTest(n uint64) (restore func()) {
+	fakeFree.Store(&n)
+	return func() { fakeFree.Store(nil) }
 }
 
 // SpaceReserve is the free space every write must leave for the game's

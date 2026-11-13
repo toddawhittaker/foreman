@@ -221,6 +221,7 @@ func (s *server) routes() {
 	s.cloneRoutes()
 	s.settingsRoutes()
 	s.accountRoutes()
+	s.aboutRoutes()
 	s.modRoutes()
 	s.designRoutes()
 	if s.cfg.AuthLocal {

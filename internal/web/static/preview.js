@@ -269,6 +269,35 @@ document.addEventListener("DOMContentLoaded", () => {
     placeLabels(places.large);
   }
 
+  // The large view's own box (SPEC 5.6): shown while Vulcanus is the planet viewed, and the same
+  // choice as the page's, which is the one the form sends, or the hidden field that carries it
+  // while another planet is shown. It waits, unticked or not, while Vulcanus is drawn or the
+  // page's box is not there to take the choice.
+  function syncTerritoryBox(planet) {
+    const wrap = el("large-territories-box");
+    const largeBox = el("large-territories");
+    if (!wrap || !largeBox) return;
+    const here = planet === terrPlanet;
+    largeBox.checked = new FormData(formEl()).has("territories");
+    largeBox.disabled = !(here && pictureLink(terrPlanet) && terrBox());
+    // A box going away under the focus hands it to the picture, as the settings do.
+    const lost = wrap.contains(document.activeElement) && !here;
+    wrap.hidden = !here;
+    if (lost) frame().focus();
+  }
+
+  // Ticking it ticks the page's box and goes the way that box does, so the territories are
+  // asked for or dropped, the downloads follow, and the view shows the result when it lands.
+  document.addEventListener("change", (e) => {
+    if (e.target.id !== "large-territories") return;
+    const box = terrBox();
+    if (!box) return;
+    box.checked = e.target.checked;
+    const slot = terrSlot();
+    largeStatus(box.checked && slot ? slot.dataset.finding : "");
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
   document.addEventListener("click", (e) => {
     if (!e.target.closest("[data-territory-retry]")) return;
     // The button goes with the message, so focus goes back to the box.
@@ -1125,6 +1154,7 @@ document.addEventListener("DOMContentLoaded", () => {
     view(planet);
     nameArrows();
     fillPanel(planet);
+    syncTerritoryBox(planet);
     if (!link) {
       // The dialog names the planet at once and shows no other planet's picture meanwhile.
       const name = nameOf(planet);
