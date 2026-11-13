@@ -4,7 +4,10 @@
 
 {{define "content" -}}
 {{with .Page}}
-<h1>{{t "common.design.title"}}</h1>
+<header class="page-head">
+  <p class="eyebrow" translate="no">Foreman</p>
+  <h1>{{t "common.design.title"}}</h1>
+</header>
 {{- range .Groups}}
 {{template "design-section" ($.Page.Section .)}}
 {{- end}}
@@ -55,6 +58,11 @@
   <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.state.starting"}}</button><code>aria-busy</code></li>
   <li><button type="button" class="button" disabled aria-busy="true">{{t "worlds.snapshots.take.button"}}</button><code>aria-busy</code></li>
 </ul>
+{{- /* The Server page's emergency stop, on its own row under the everyday controls. */}}
+<div class="danger-row">
+  <p class="hint">{{t "server.force.at_once"}}</p>
+  <a href="#design-buttons" class="button button--risky">{{t "server.action.force_stop"}}</a>
+</div>
 <p class="hint">{{t "common.design.hover"}}</p>
 {{- end}}
 
@@ -147,8 +155,10 @@
   <div class="facts-block"><div>
     <dl class="facts facts--inline">
       <div><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
-      <div class="gauge{{if eq $i 1}} gauge--warn{{else if eq $i 3}} gauge--danger{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
-      <div><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}</dd></div>
+    </dl>
+    <dl class="facts stats">
+      <div class="stat gauge{{if eq $i 1}} gauge--warn{{else if eq $i 3}} gauge--danger{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
+      <div class="stat"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}</dd></div>
     </dl>
   </div></div>
 </div>

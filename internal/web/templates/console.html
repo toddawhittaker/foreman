@@ -63,7 +63,23 @@
     <div class="actions"><a href="{{serverPath}}">{{t "server.console.go_server"}}</a></div>
   </div>
   {{- end}}
+  <form class="field console-form" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML" novalidate>
+    {{template "required-note"}}
+    <label for="command" class="required">{{t "server.console.command"}}</label>
+    <p class="hint" id="command-hint">{{t "server.console.command_hint"}}</p>
+    <div class="console-row">
+      <input id="command" name="command" type="text" value="{{.Command}}" required autocomplete="off" autocapitalize="off" spellcheck="false"
+        {{- if not .CommandError.IsZero}} aria-invalid="true" aria-describedby="command-hint command-error"{{else}} aria-describedby="command-hint"{{end}}>
+      <button id="send" type="submit" class="button button--primary">{{t "server.console.send"}}</button>
+    </div>
+    {{- if not .CommandError.IsZero}}
+    <p class="error" id="command-error"><strong>{{t "common.error.label"}}</strong> {{msg .CommandError}}</p>
+    {{- end}}
+  </form>
+  {{- /* Past commands fold under the field, so the field stays on the first screen; a reply just sent opens them (DESIGN 8.5). */}}
   {{- if .History}}
+  <details class="disclosure console-past"{{if not .Announce.IsZero}} open{{end}}>
+    <summary id="console-past">{{t "server.console.history_label"}} <span class="count">{{len .History}}</span></summary>
   <div class="log" tabindex="0" role="region" aria-label="{{t "server.console.history_label"}}" data-follow-end>
     <ol class="console-history" role="list">
       {{- range .History}}
@@ -81,22 +97,10 @@
       {{- end}}
     </ol>
   </div>
+  </details>
   {{- else}}
   <p class="empty empty--art empty--console">{{t "server.console.no_history"}}</p>
   {{- end}}
-  <form class="field console-form" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML" novalidate>
-    {{template "required-note"}}
-    <label for="command" class="required">{{t "server.console.command"}}</label>
-    <p class="hint" id="command-hint">{{t "server.console.command_hint"}}</p>
-    <div class="console-row">
-      <input id="command" name="command" type="text" value="{{.Command}}" required autocomplete="off" autocapitalize="off" spellcheck="false"
-        {{- if not .CommandError.IsZero}} aria-invalid="true" aria-describedby="command-hint command-error"{{else}} aria-describedby="command-hint"{{end}}>
-      <button id="send" type="submit" class="button button--primary">{{t "server.console.send"}}</button>
-    </div>
-    {{- if not .CommandError.IsZero}}
-    <p class="error" id="command-error"><strong>{{t "common.error.label"}}</strong> {{msg .CommandError}}</p>
-    {{- end}}
-  </form>
 </div>
 {{- end}}
 

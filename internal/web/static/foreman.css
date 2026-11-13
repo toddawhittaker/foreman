@@ -171,7 +171,7 @@
   --color-territory-border: rgb(255 30 30);
   --color-territory-outline: #101010;
   --measure: 68ch;
-  --page-max: 76rem;
+  --page-max: 80rem;
 }
 
 /* The user menu's theme choice (SPEC 17.3) on html; on any other element it
@@ -5992,68 +5992,6 @@ main > .panel > .facts > div {
   }
 }
 
-/* World tabs on a phone: every tab in view, as a segmented control of two
-   rows at most, three to a row; a label wraps between words, never clips. */
-@media (max-width: 39.99rem) {
-  .subnav {
-    border-block-end: 0;
-  }
-
-  .subnav ul {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: var(--space-1);
-    padding: var(--space-1);
-    overflow: visible;
-    background: var(--color-raised);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: var(--radius-lg);
-    mask-image: none;
-  }
-
-  .subnav ul::after {
-    content: none;
-  }
-
-  .subnav li {
-    grid-column: span 2;
-    min-inline-size: 0;
-  }
-
-  .subnav li:nth-child(4):nth-last-child(2),
-  .subnav li:nth-child(5):last-child {
-    grid-column: span 3;
-  }
-
-  .subnav a {
-    min-block-size: var(--target-min);
-    margin: 0;
-    padding: var(--space-1);
-    border: 0;
-    border-radius: var(--radius);
-    font-size: var(--text-sm);
-    line-height: 1.2;
-    text-align: center;
-    white-space: normal;
-  }
-
-  .subnav a:hover {
-    background: var(--color-secondary-hover);
-  }
-
-  .subnav a[aria-current] {
-    background: var(--color-surface);
-    color: var(--color-heading);
-    box-shadow: inset 0 -3px 0 var(--color-selected), var(--shadow-card);
-  }
-
-  @media (forced-colors: active) {
-    .subnav a[aria-current] {
-      outline: 2px solid CanvasText;
-    }
-  }
-}
-
 /* The game log on a phone wraps, each line's words hanging after its time;
    a wide screen keeps one line per entry and scrolls sideways. */
 .terminal .log-frame > .log {
@@ -7220,4 +7158,316 @@ main > h1 + p.hint {
 #connected-heading + .hint,
 #connected-hint + ul {
   margin-block-start: calc(var(--space-2) - var(--space-5));
+}
+
+/* A page head with its own buttons keeps the overline on a line of its own. */
+.page-head--row > .eyebrow {
+  flex: 1 1 100%;
+  margin-block-end: calc(var(--space-1) - var(--space-3));
+}
+
+/* The required note is one quiet line at the top end of its form. */
+.required-note {
+  justify-self: end;
+  font-size: var(--text-xs);
+  text-align: end;
+}
+
+.settings > .required-note {
+  padding-inline-start: 0;
+}
+
+/* Server page: the emergency stop on a row of its own under the everyday
+   controls, a hairline above it, its consequence beside it (DESIGN 6). */
+.danger-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-line);
+}
+
+.danger-row > .hint {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+  max-inline-size: var(--measure);
+}
+
+.danger-row > #act-force-stop {
+  flex: 0 1 auto;
+  margin: 0;
+  background: transparent;
+}
+
+/* Live load: two tiles, each a 28 px tabular figure over its meter, apart
+   from the facts about the run. */
+.status-card.plate .facts-block {
+  container: plate-facts / inline-size;
+}
+
+.status-card.plate .facts-block > :has(> .facts.stats) {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@container plate-facts (min-width: 48rem) {
+  .status-card.plate .facts-block > :has(> .facts.stats) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+.facts.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.facts.stats > .stat {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-raised);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius);
+}
+
+.facts.stats dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.facts.stats dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts.stats dd .unit {
+  font-size: var(--text-sm);
+}
+
+.facts.stats .meter {
+  block-size: 6px;
+  max-inline-size: none;
+  border-radius: 3px;
+}
+
+.facts.stats .gauge:not(.gauge--warn, .gauge--danger) .meter > span {
+  background: var(--color-primary);
+}
+
+/* The world's pages beside the players are quiet links, not a second set of controls. */
+.shortcuts > a,
+.shortcuts > #act-switch-world {
+  font-weight: 500;
+}
+
+/* Console: on a wide screen the log, then the command row at once under it,
+   the pane sized so the field is on the first screen; on a phone the command
+   row and its replies come first, over the log (DESIGN 8.5). */
+.terminal .log-frame > .log {
+  block-size: calc(round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
+}
+
+.terminal .log-frame > .button {
+  margin-block: var(--space-1) 0;
+}
+
+.terminal__log > .hint {
+  margin-block-start: calc(-1 * var(--space-2));
+}
+
+@media (max-width: 39.99rem) {
+  .terminal__console {
+    order: -1;
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+}
+
+.console-past > summary .count {
+  margin-inline-start: var(--space-1);
+}
+
+.console-past[open] > summary {
+  margin-block-end: var(--space-3);
+}
+
+.console-past > .log {
+  max-block-size: 16rem;
+  border-color: var(--color-line);
+}
+
+/* World tabs on a phone: the desktop's underline row, scrolling sideways,
+   16 px in from the edge, the current tab brought into view (subnav.js). */
+@media (max-width: 39.99rem) {
+  .subnav ul {
+    scroll-padding-inline: var(--space-4);
+  }
+
+  .subnav a {
+    min-block-size: var(--target-min);
+  }
+}
+
+/* Settings: a narrow column for each section's name, the fields beside it
+   up to 640 px, and short figures paired two to a row (DESIGN 4). */
+@container (min-width: 46rem) {
+  :is(.setting-row, .settings > fieldset) {
+    grid-template-columns: 13.75rem minmax(0, 1fr);
+  }
+
+  .setting-row__body > * {
+    max-inline-size: 40rem;
+  }
+
+  .setting-row__body:has(> .field--short + .field--short) {
+    grid-template-columns: repeat(2, minmax(0, 19rem));
+  }
+
+  .setting-row__body:has(> .field--short + .field--short) > :not(.field--short) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* On a phone the section links lead the form as one scrolling row of chips. */
+@container settings (max-width: 43.99rem) {
+  .settings-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .settings-rail {
+    display: block;
+    min-inline-size: 0;
+  }
+
+  .settings-rail ul {
+    display: flex;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    list-style: none;
+  }
+
+  .settings-rail li {
+    flex: none;
+  }
+
+  /* The raw editor's own link follows the form on a phone. */
+  .settings-rail li:last-child {
+    display: none;
+  }
+
+  .settings-rail a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min);
+    padding-inline: var(--space-4);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .settings-rail a:hover {
+    border-color: var(--color-border);
+  }
+}
+
+/* Mods on a wide panel: each mod is two lines, its name and actions on the
+   first and what the portal says about it under them at the full width. */
+@container (min-width: 36.01rem) {
+  .mod-list tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+    border-block-end: var(--border-width) solid var(--color-line);
+  }
+
+  .mod-list thead tr {
+    align-items: end;
+  }
+
+  .mod-list :is(td, th) {
+    border-block-end: 0;
+  }
+
+  .mod-list tbody td:first-child {
+    display: contents;
+  }
+
+  .mod-list .mod-line {
+    grid-column: 1;
+    grid-row: 1;
+    padding-block: var(--space-2);
+  }
+
+  .mod-list tbody td:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mod-list tbody td:first-child > div:not(.mod-line) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-block-end: var(--space-2);
+  }
+
+  .mod-list .mod-flags {
+    max-inline-size: var(--measure);
+  }
+}
+
+/* Sign-in: the blueprint grid covers the whole window and fades out at
+   every edge, so it has no hard side. */
+main:has(> .gate)::before {
+  position: fixed;
+  inset: 0;
+  mask-image: radial-gradient(ellipse 70% 65% at 50% 35%, currentColor 20%, transparent 100%);
+  opacity: 0.55;
+}
+
+/* An empty list: a 32 px line icon over one plain sentence. */
+.empty--art {
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-md);
+}
+
+.empty--art::before {
+  inline-size: 2rem;
+  block-size: 2rem;
+  background: var(--color-text-muted);
+}
+
+/* Generate: the other-version opener is as wide as the select above it. */
+.version-fields > .disclosure {
+  max-inline-size: 25rem;
+}
+
+/* The built-in line draws the list's last rule. */
+@container (min-width: 36.01rem) {
+  .mod-list tbody tr:last-child {
+    border-block-end: 0;
+  }
 }

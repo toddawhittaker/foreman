@@ -112,13 +112,16 @@
   {{- with .Status.Save}}
   <div><dt>{{t "server.facts.save"}}</dt><dd><code>{{.}}</code></dd></div>
   {{- end}}
-  {{- if .Status.HaveUsage}}
-  {{- /* The meter is decorative: the figure says the same. */}}
-  <div class="gauge{{with .CPULevel}} gauge--{{.}}{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
-  <div><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}</dd></div>
-  {{- end}}
   {{- end}}
 </dl>
+{{- /* Live load reads as its own row of two tiles, apart from the facts about the run (DESIGN 7.5). */}}
+{{- if and .FactsKnown .Status.HaveUsage}}
+<dl class="facts stats">
+  {{- /* The meter is decorative: the figure says the same. */}}
+  <div class="stat gauge{{with .CPULevel}} gauge--{{.}}{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 .Status.CPUPercent))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{.CPUMeter}}%"></span></span></dd></div>
+  <div class="stat"><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes .Status.MemoryBytes)}}</dd></div>
+</dl>
+{{- end}}
 {{- if not .Reason.IsZero}}
 <p>{{msgHTML .Reason}}</p>
 {{- end}}
@@ -408,7 +411,8 @@
   <form method="post" action="{{.StartPath}}"><button type="submit" class="button{{if not (or .OffersAnyway .OffersDownload)}} button--primary{{end}}" id="act-start">{{msg .StartLabel}}</button></form>
   {{- end}}
   {{- if .CanSnapshot}}
-  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- /* While the game runs, a snapshot is the everyday safe step, so it is the page's one primary (DESIGN 6). */}}
+  <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if eq .Status.State "running"}} button--primary{{end}}" id="act-snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
   {{- end}}
   {{- if .CanRestart}}
   <a href="{{.RestartPath}}" class="button" id="act-restart">{{t "server.action.restart"}}</a>
@@ -416,10 +420,13 @@
   {{- if .CanStop}}
   <a href="{{.StopPath}}" class="button" id="act-stop">{{t "server.action.stop"}}</a>
   {{- end}}
-  {{- if .CanForceStop}}
-  {{- /* A link, not a button face: it opens a confirmation, and it is set apart at the row's end in the danger colour (DESIGN 6). */}}
-  <a href="{{.ForceStopPath}}" id="act-force-stop">{{t "server.action.force_stop"}}</a>
-  {{- end}}
+</div>
+{{- end}}
+{{- if .CanForceStop}}
+{{- /* The emergency stop is not a peer of the routine controls: it sits on a row of its own under them, with what it does (DESIGN 6). */}}
+<div class="danger-row">
+  <p class="hint">{{t "server.force.at_once"}}</p>
+  <a href="{{.ForceStopPath}}" id="act-force-stop" class="button">{{t "server.action.force_stop"}}</a>
 </div>
 {{- end}}
 {{- if not .ActionsNote.IsZero}}

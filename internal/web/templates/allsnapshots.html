@@ -4,7 +4,10 @@
 
 {{define "content" -}}
 {{with .Page}}
-<h1>{{t "worlds.allsnapshots.title"}}</h1>
+<header class="page-head">
+  <p class="eyebrow" translate="no">Foreman</p>
+  <h1>{{t "worlds.allsnapshots.title"}}</h1>
+</header>
 {{- if .Deleted}}
 <div class="message message--success">
   <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
@@ -28,7 +31,7 @@
     <div class="group__head">
       <h3 id="world-{{.WorldID}}">{{if .Known}}<a href="{{$.Page.WorldPath .WorldID}}">{{.WorldName}}</a>{{else}}{{t "worlds.allsnapshots.deleted_world" "world" .WorldName}}{{end}}</h3>
       <p class="hint">{{tHTML "worlds.allsnapshots.world_adds" "size" (nowrap (bytes .Adds))}}</p>
-      <button type="submit" class="button" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}"><span aria-hidden="true">{{t "worlds.snapshots.select_automatic"}}</span><span class="visually-hidden">{{t "worlds.allsnapshots.select_of" "world" .WorldName}}</span></button>
+      <button type="submit" class="button button--quiet" name="select" value="{{$.Page.SelectWorld .WorldID}}" formaction="{{$.Page.SelectPath}}"><span aria-hidden="true">{{t "worlds.snapshots.select_automatic"}}</span><span class="visually-hidden">{{t "worlds.allsnapshots.select_of" "world" .WorldName}}</span></button>
     </div>
     <table class="snapshot-list" role="table">
       <caption>{{t "worlds.snapshots.caption" "world" .WorldName}}</caption>
