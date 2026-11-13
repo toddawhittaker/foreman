@@ -293,7 +293,6 @@
   "worlds.tabs.overview": "Resumen",
   "worlds.world.checking_release": "Buscando una versión más reciente de Factorio.",
   "worlds.world.delete.button": "Borrar mundo",
-  "worlds.world.more.heading": "Copiar o borrar",
   "worlds.world.delete.text": "Al borrar se elimina la carpeta del mundo. Sus instantáneas se conservan, así que se puede restaurar.",
   "worlds.world.download_failed": "No se pudo descargar la imagen del juego para Factorio {version}. Los detalles están en el registro de Foreman. Al cambiar a este mundo se vuelve a intentar la descarga.",
   "worlds.world.download_running": "Se está descargando de Docker Hub la imagen del juego para Factorio {version}. Recarga esta página para ver cuándo termina.",

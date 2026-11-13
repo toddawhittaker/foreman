@@ -293,7 +293,6 @@
   "worlds.tabs.overview": "Übersicht",
   "worlds.world.checking_release": "Es wird nach einer neueren Factorio-Version gesucht.",
   "worlds.world.delete.button": "Welt löschen",
-  "worlds.world.more.heading": "Kopieren oder löschen",
   "worlds.world.delete.text": "Beim Löschen wird der Ordner der Welt entfernt. Ihre Snapshots bleiben erhalten, sodass sie wiederhergestellt werden kann.",
   "worlds.world.download_failed": "Das Spiel-Image für Factorio {version} konnte nicht heruntergeladen werden. Details stehen im Protokoll von Foreman. Beim Wechsel zu dieser Welt wird der Download erneut versucht.",
   "worlds.world.download_running": "Das Spiel-Image für Factorio {version} wird von Docker Hub heruntergeladen. Lade diese Seite neu, um zu sehen, wann es fertig ist.",

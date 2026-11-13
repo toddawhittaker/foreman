@@ -293,7 +293,6 @@
   "worlds.tabs.overview": "Overview",
   "worlds.world.checking_release": "Checking for a newer Factorio release.",
   "worlds.world.delete.button": "Delete world",
-  "worlds.world.more.heading": "Copy or delete",
   "worlds.world.delete.text": "Deleting removes the world's folder. Its snapshots stay, so it can be restored.",
   "worlds.world.download_failed": "The game image for Factorio {version} could not be downloaded. The details are in Foreman's log. A switch to this world tries the download again.",
   "worlds.world.download_running": "Downloading the game image for Factorio {version} from Docker Hub. Reload this page to see when it ends.",

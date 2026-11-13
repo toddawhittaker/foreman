@@ -4,6 +4,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "common.menu.schedule"}}</h1>
 {{template "settings-tabs" "schedule"}}
 {{- if .Saved}}

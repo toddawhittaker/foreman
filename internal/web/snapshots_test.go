@@ -53,7 +53,7 @@ func TestSnapshotTakeListAndRestore(t *testing.T) {
 	}
 	loc := rec.Header.Get("Location")
 	body := hn.get(loc, withCookie(c)).Body.String()
-	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, "<span>Manual<br>First<span class=") {
+	if !strings.Contains(body, `Foreman took the snapshot &#34;First&#34;.`) || !strings.Contains(body, `<span class="snap-name"><span class="snap-kind">Manual</span><br>First<span class="`) {
 		t.Errorf("list after take:\n%s", body)
 	}
 	list, _ := hn.worlds.Snapshots(id)

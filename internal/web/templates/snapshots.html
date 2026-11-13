@@ -4,6 +4,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow">{{t "common.nav.worlds"}}</p>
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -79,7 +80,7 @@
       {{- range .Snapshots}}
       <tr role="row">
         <td role="cell">
-          <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span>{{with snapReason .}}{{.}}<br>{{end}}{{snapLabel .}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
+          <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .Name}}"{{if index $.Page.Ticked .Name}} checked{{end}}><span class="snap-name">{{with snapReason .}}<span class="snap-kind">{{.}}</span><br>{{end}}{{snapLabel .}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
           <div class="row-actions"><a class="button" id="restore-{{.Name}}" href="{{$.Page.RestorePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.restore_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky button--icon" href="{{$.Page.DeletePath .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.snapshots.delete_named" "label" (snapLabel .) "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
         </td>
         <td role="cell" data-label="{{t "worlds.snapshots.taken_label"}}">{{template "when" .TakenAt}}</td>

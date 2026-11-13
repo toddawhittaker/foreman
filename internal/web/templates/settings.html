@@ -3,6 +3,7 @@
 {{define "content" -}}
 {{with .Page}}
 {{- $page := .}}
+<p class="eyebrow">{{t "common.nav.worlds"}}</p>
 <div class="title-row">
 <h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -249,7 +250,7 @@
   {{- end}}
 
   {{- if .Editable}}
-  <div class="actions">
+  <div class="actions form-foot">
     <button type="submit" class="button button--primary">{{t "settings.preview.button"}}</button>
     <a href="{{.WorldPath}}">{{t "settings.cancel"}}</a>
   </div>

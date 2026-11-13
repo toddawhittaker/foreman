@@ -383,7 +383,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await startGame(page, clicks);
 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
-    await page.getByRole("link", { name: "Edit mod settings" }).click();
+    await page.getByRole("link", { name: "Edit mod settings" }).first().click();
     // The form loads after the page, from a definitions run that is a container of its own; waiting is not a click.
     const box = page.getByRole("checkbox", { name: "fm-sta-bool" });
     await expect(box).toBeVisible(live);

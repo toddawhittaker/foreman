@@ -305,7 +305,6 @@
   "worlds.tabs.overview": "Přehled",
   "worlds.world.checking_release": "Probíhá kontrola novějšího vydání Factorio.",
   "worlds.world.delete.button": "Smazat svět",
-  "worlds.world.more.heading": "Kopírovat nebo smazat",
   "worlds.world.delete.text": "Smazáním se odstraní složka světa. Jeho snímky zůstanou, takže ho lze obnovit.",
   "worlds.world.download_failed": "Obraz hry pro Factorio {version} se nepodařilo stáhnout. Podrobnosti jsou v protokolu Foremanu. Přepnutí na tento svět stažení zopakuje.",
   "worlds.world.download_running": "Probíhá stahování obrazu hry pro Factorio {version} z Docker Hubu. Po opětovném načtení stránky bude vidět, kdy stahování skončí.",

@@ -85,6 +85,17 @@ func (DesignPage) States() []LiveState {
 	return out
 }
 
+// Loads are sample CPU figures, one per state, so the plates show the
+// meter at rest, above 80% and above 95%.
+func (DesignPage) Loads() []float64 {
+	out := make([]float64, len(designStates))
+	for i := range out {
+		out[i] = 24.5
+	}
+	out[1], out[3] = 86.0, 97.5
+	return out
+}
+
 // WorldTabs is a world's sub-navigation, on a world that does not exist.
 func (DesignPage) WorldTabs() WorldTabs {
 	return WorldTabs{Path: PathWorlds + "/example", Current: "saves", Settings: true}

@@ -23,6 +23,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow">{{t "common.nav.settings"}}</p>
 <h1>{{t "account.title"}}</h1>
 {{template "settings-tabs" "account"}}
 {{- if not .Done.IsZero}}

@@ -15,6 +15,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/version"
@@ -209,6 +211,9 @@ type view struct {
 	Return string
 	// Theme is the theme the menu chose: auto, light or dark (themeOf).
 	Theme string
+	// Lamp is the server's state for the lamp beside Server in the main
+	// navigation, on every page (DESIGN 7.5).
+	Lamp LiveState
 }
 
 // Current is true when the nav link to path names this page, so it gets
@@ -274,6 +279,25 @@ func (r *Renderer) flagURL(tag string) (string, error) {
 	return r.staticURL(f)
 }
 
+// figure sets a formatted value such as "40.0%" or "1.5 MB" as a figure and
+// its unit, so the unit can be drawn quieter. The split is at the last
+// space, else where the trailing non-digits begin; a value with neither is
+// all figure.
+func figure(v string) template.HTML {
+	num, unit, sep := v, "", ""
+	if i := strings.LastIndexAny(v, " \u00a0\u202f"); i > 0 {
+		_, size := utf8.DecodeRuneInString(v[i:])
+		num, sep, unit = v[:i], v[i:i+size], v[i+size:]
+	} else if i := strings.LastIndexFunc(v, unicode.IsDigit); i >= 0 && i < len(v)-1 {
+		num, unit = v[:i+1], v[i+1:]
+	}
+	out := `<span class="fig">` + template.HTMLEscapeString(num) + `</span>`
+	if unit != "" {
+		out += template.HTMLEscapeString(sep) + `<span class="unit">` + template.HTMLEscapeString(unit) + `</span>`
+	}
+	return template.HTML(out) //nolint:gosec // every part of v is escaped above
+}
+
 // Renderer holds the parsed templates, once per language, and the
 // embedded static files.
 type Renderer struct {
@@ -295,6 +319,7 @@ func (r *Renderer) sharedFuncs() template.FuncMap {
 		"notificationsPath": func() string { return PathNotifications },
 		"schedulePath":      func() string { return PathSchedule },
 		"flag":              r.flagURL,
+		"figure":            figure,
 		"chatPath":          func() string { return PathChat },
 		"utc":               func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") },
 		"isoTime":           func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
@@ -488,15 +513,16 @@ func menuReturn(req *http.Request) string {
 
 // Render writes page p as a complete HTML document with the given status,
 // in the language of req (localeOf). user is the signed-in username, or
-// empty to hide the sign-out form. The page is rendered in full before
+// empty to hide the sign-out form. lamp is the server's state for the
+// main navigation, unset to show none. The page is rendered in full before
 // anything is written, so on error the response is untouched and the
 // caller can still send an ErrorPage.
-func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, p Page) error {
+func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, user string, lamp LiveState, p Page) error {
 	t, err := r.template(localeOf(req), p)
 	if err != nil {
 		return err
 	}
-	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req)}
+	v := view{User: user, Page: p, Return: menuReturn(req), Theme: themeOf(req), Lamp: lamp}
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
 		return fmt.Errorf("render %s: %w", p.templateName(), err)

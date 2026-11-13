@@ -44,7 +44,7 @@ test.describe("a save's mod the portal does not have", () => {
 
   test("the plan offers upload first, with its zip field, and continue without", async ({ page }) => {
     await page.goto("/worlds/base/mods");
-    await page.getByRole("link", { name: "Match mods to the save" }).click();
+    await page.getByRole("link", { name: "Match mods to the save" }).first().click();
     await expect(page).toHaveURL(syncPlan);
     await expect(page.getByRole("heading", { level: 1, name: "Match the mods of Base to the save base.zip?" })).toBeVisible();
     const choices = page.getByRole("group", { name: "The mod portal does not have foreman-test 0.1.0" });

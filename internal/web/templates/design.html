@@ -52,7 +52,8 @@
   <li><a href="#design-buttons" class="button button--risky">{{t "worlds.world.delete.button"}}</a><code>button--risky</code></li>
   <li><button type="button" class="button button--icon"><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></button><code>button--icon</code></li>
   <li><button type="button" class="button" disabled>{{t "worlds.snapshots.take.button"}}</button><code>disabled</code></li>
-  <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.action.start"}}</button><code>aria-busy</code></li>
+  <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.state.starting"}}</button><code>aria-busy</code></li>
+  <li><button type="button" class="button" disabled aria-busy="true">{{t "worlds.snapshots.take.button"}}</button><code>aria-busy</code></li>
 </ul>
 <p class="hint">{{t "common.design.hover"}}</p>
 {{- end}}
@@ -128,6 +129,8 @@
   {{- range .Page.States}}
   <li>{{template "live-state" .}}</li>
   {{- end}}
+  <li><span class="badge badge--active">{{t "worlds.badge.active"}}</span></li>
+  <li><span class="badge">{{t "mods.state.off"}}</span></li>
 </ul>
 {{- end}}
 
@@ -137,13 +140,17 @@
   <h4 id="{{.Theme}}-card">{{t "server.players.heading"}}</h4>
   <p class="empty">{{t "server.online.nobody"}}</p>
 </section>
-{{- range .Page.States}}
-<div class="card status-card status-card--{{.State}}">
-  <p>{{template "live-state" .}}</p>
-  <dl class="facts facts--inline">
-    <div><dt>{{t "server.facts.uptime"}}</dt><dd>{{duration 5400000000000}}</dd></div>
-    <div><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
-  </dl>
+{{- /* The Server plate in each state: its band, then its gauges, CPU's meter in its three bands. */}}
+{{- range $i, $st := .Page.States}}
+<div class="card status-card plate status-card--{{.State}}">
+  <div class="plate__band"><span class="lamp lamp--{{.State}}" aria-hidden="true"></span>{{template "live-state" .}}<span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
+  <div class="facts-block"><div>
+    <dl class="facts facts--inline">
+      <div><dt>{{t "server.facts.game_version"}}</dt><dd><code>2.1.24</code></dd></div>
+      <div class="gauge{{if eq $i 1}} gauge--warn{{else if eq $i 3}} gauge--danger{{end}}"><dt>{{t "server.facts.cpu"}}</dt><dd>{{figure (t "server.facts.cpu_value" "percent" (decimal1 (index $.Page.Loads $i)))}}<span class="meter" aria-hidden="true"><span style="inline-size: {{index $.Page.Loads $i}}%"></span></span></dd></div>
+      <div><dt>{{t "server.facts.memory"}}</dt><dd>{{figure (bytes 1610612736)}}</dd></div>
+    </dl>
+  </div></div>
 </div>
 {{- end}}
 <details class="disclosure">
@@ -156,7 +163,7 @@
 {{define "design-navigation" -}}
 <nav aria-label="{{t "common.nav.label"}}">
   <ul class="tabs" role="list">
-    <li><a href="{{serverPath}}" aria-current="true">{{t "common.nav.server"}}</a></li>
+    <li><a href="{{serverPath}}" aria-current="true">{{t "common.nav.server"}}<span id="{{.Theme}}-lamp" class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></a></li>
     <li><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></li>
     <li><a href="{{snapshotsTabPath}}">{{t "common.nav.snapshots"}}</a></li>
     <li><a href="{{schedulePath}}">{{t "common.nav.settings"}}</a></li>

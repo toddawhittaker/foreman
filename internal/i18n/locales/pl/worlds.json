@@ -305,7 +305,6 @@
   "worlds.tabs.overview": "Przegląd",
   "worlds.world.checking_release": "Sprawdzanie, czy jest nowsze wydanie Factorio.",
   "worlds.world.delete.button": "Usuń świat",
-  "worlds.world.more.heading": "Kopiuj lub usuń",
   "worlds.world.delete.text": "Usunięcie kasuje folder świata. Jego migawki pozostają, więc świat można przywrócić.",
   "worlds.world.download_failed": "Nie udało się pobrać obrazu gry dla Factorio {version}. Szczegóły są w dzienniku Foremana. Przełączenie na ten świat ponowi pobieranie.",
   "worlds.world.download_running": "Trwa pobieranie obrazu gry dla Factorio {version} z Docker Hub. Po odświeżeniu strony widać, kiedy pobieranie się skończy.",

@@ -3,6 +3,7 @@
 
 {{define "content" -}}
 {{with .Page}}
+<p class="eyebrow">{{t "common.nav.worlds"}}</p>
 <div class="title-row">
 <h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
 {{template "live-state" .Live}}
@@ -61,6 +62,13 @@
     </div>
   </form>
 </section>
+{{- /* Below the two-column width the rail's tools come after the list, so their
+     openers also follow the search (DESIGN 8.11). */}}
+<p class="mod-tools">
+  {{- if and .LoadSave (not (and .SaveDiff .SaveDiff.Matches))}}<a href="{{.SyncPath}}" class="button">{{t "mods.sync.button"}}</a>{{end}}
+  <a href="#mod-file" class="button">{{t "mods.upload.heading"}}</a>
+  {{- if .ShowSettings}}<a href="{{.EditSettingsPath}}" class="button">{{t "mods.settings.edit.link"}}</a>{{end}}
+</p>
 
 <section class="panel" aria-labelledby="installed-heading">
   <h2 id="installed-heading">{{t "mods.installed.heading"}}</h2>

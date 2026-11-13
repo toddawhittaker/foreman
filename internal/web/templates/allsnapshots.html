@@ -22,12 +22,12 @@
 
 {{- if .Groups}}
 <form method="get" action="{{.BulkPath}}" class="panel" aria-labelledby="list-heading">
-  <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
-  <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
-  {{- /* Every world's automatic snapshots at once; each world's heading has its own (SPEC 6.12). */}}
-  <div class="actions">
-    <button type="submit" class="button button--quiet" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
+  {{- /* Every world's automatic snapshots at once, on the list's heading row as each world's own is on its heading (SPEC 6.12). */}}
+  <div class="group__head">
+    <h2 id="list-heading">{{t "worlds.allsnapshots.list"}}</h2>
+    <button type="submit" class="button" name="select" value="{{.SelectAll}}" formaction="{{.SelectPath}}">{{t "worlds.snapshots.select_automatic"}}</button>
   </div>
+  <p class="hint">{{t "worlds.snapshots.select_hint"}}</p>
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
@@ -47,7 +47,7 @@
         {{- range .Rows}}
         <tr role="row">
           <td role="cell">
-            <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span>{{with snapReason .Snapshot}}{{.}}<br>{{end}}{{snapLabel .Snapshot}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
+            <label class="check"><input type="checkbox" name="snap" value="{{$.Page.BulkValue .WorldID .Name}}"{{if .Ticked}} checked{{end}}><span class="snap-name">{{with snapReason .Snapshot}}<span class="snap-kind">{{.}}</span><br>{{end}}{{snapLabel .Snapshot}}<span class="visually-hidden"> {{tHTML "worlds.snapshots.taken_note" "when" (momentUTCSeconds .TakenAt)}}</span></span></label>
             <p class="hint">{{tHTML "worlds.allsnapshots.frees" "size" (nowrap (bytes .Frees))}}</p>
             <div class="row-actions"><a class="button" href="{{$.Page.RestorePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.restore"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.restore_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a> <a class="button button--risky button--icon" href="{{$.Page.DeletePath .WorldID .Name}}"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{tHTML "worlds.allsnapshots.delete_named" "label" (snapLabel .Snapshot) "world" $name "when" (momentUTCSeconds .TakenAt)}}</span></a></div>
           </td>

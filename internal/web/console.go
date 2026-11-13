@@ -188,14 +188,32 @@ func (p ConsolePage) liveURL() string {
 // pattern for lines that arrive live.
 var gameLineKind = regexp.MustCompile(`^\s*\d+\.\d+ (Error|Warning) `)
 
+// gameLinePlayer is a player joining or leaving, which the page sets in the
+// running colour; the line keeps its [JOIN] or [LEAVE] word.
+var gameLinePlayer = regexp.MustCompile(`^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[(?:JOIN|LEAVE)\] `)
+
 // LineClass is the class that colours a game Error or Warning line, or "".
 // The line keeps its own word, so the colour is never the only sign (SPEC 17.4).
 func (ConsolePage) LineClass(line string) string {
 	if m := gameLineKind.FindStringSubmatch(line); m != nil {
 		return "log-" + strings.ToLower(m[1])
 	}
+	if gameLinePlayer.MatchString(line) {
+		return "log-join"
+	}
 	return ""
 }
+
+// gameLineStamp is the time a game log line starts with: seconds since the
+// game started, or a date and clock on chat, join and leave lines.
+var gameLineStamp = regexp.MustCompile(`^\s*(?:\d+\.\d+|\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) `)
+
+// LineStamp is the time at the start of a game log line, or "", so the page
+// can set it in the quiet colour (DESIGN 8.5).
+func (ConsolePage) LineStamp(line string) string { return gameLineStamp.FindString(line) }
+
+// LineText is the rest of the line after LineStamp.
+func (ConsolePage) LineText(line string) string { return line[len(gameLineStamp.FindString(line)):] }
 
 // CommandLimit is the longest command, for the hint.
 func (ConsolePage) CommandLimit() int { return maxCommandLength }

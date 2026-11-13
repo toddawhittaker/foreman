@@ -61,10 +61,10 @@ test("on a world page Switch is the main action, Rename is plain and Delete come
   await expect(page.getByRole("link", { name: "Switch to this world" })).toHaveClass(/button--primary/);
   await expect(page.getByRole("button", { name: "Rename world" })).not.toHaveClass(/button--primary/);
   await expect(page.locator("main .button--primary")).toHaveCount(1);
-  // Switch leads, right under the tabs; Copy or delete is last.
+  // Switch leads, right under the tabs; the Danger zone, Delete world, is last.
   const regions = await page.locator("main > section").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? el.querySelector("h2")?.textContent));
   expect(regions[0]).toBe("Switch");
-  expect(regions.at(-1)).toBe("Copy or delete");
+  expect(regions.at(-1)).toBe("Delete world");
   await checkPage(page);
 });
 

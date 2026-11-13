@@ -305,7 +305,6 @@
   "worlds.tabs.overview": "Обзор",
   "worlds.world.checking_release": "Проверяется наличие более нового выпуска Factorio.",
   "worlds.world.delete.button": "Удалить мир",
-  "worlds.world.more.heading": "Копировать или удалить",
   "worlds.world.delete.text": "При удалении папка мира стирается. Снимки мира остаются, поэтому его можно восстановить.",
   "worlds.world.download_failed": "Не удалось скачать образ игры для Factorio {version}. Подробности есть в журнале Foreman. При переключении на этот мир скачивание будет повторено.",
   "worlds.world.download_running": "Образ игры для Factorio {version} скачивается из Docker Hub. Обновите страницу, чтобы узнать, когда скачивание закончится.",

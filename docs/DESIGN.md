@@ -103,12 +103,13 @@ a phone can find where a page and a section start.
 
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
-| `--text-xs` | 0.8125rem (13 px) | 1.5 | 600 | Fact names (set in capitals by CSS), the "Active" badge, the disk strip's title and hint, the resource box's busy word; the game log at 48rem and narrower |
-| `--text-sm` | 0.875rem (14 px) | 1.45 | 400 | Hints, table captions and headers, timestamps, the log and console, state badges (600) |
-| `--text-md` | 1rem (16 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells |
-| `--text-lg` | 1.125rem (18 px) | 1.2 | 600 | The world name in a list item, the product name (700), the Server page's state badge (650), a map-settings tab's own heading |
-| `--text-xl` | 1.25rem (20 px) | 1.2 | 600 | `h2`, section headings; the figures in the Server page's status card |
-| `--text-2xl` | 1.75rem (28 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.01em` |
+| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | The overline: a page's eyebrow and fact names (capitals, `0.06em`), badges; the game log at 48rem and narrower |
+| `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | Hints and card descriptions, table captions and headers, timestamps, the log and console, labels (600), state badges (600), units beside a figure |
+| `--text-md` | 1rem (16 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
+| `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
+| `--text-xl` | 1.25rem (20 px) | 1.3 | 650 | `h2`, section headings; the Server plate's figures on a phone |
+| `--text-2xl` | 1.5rem (24 px) | 1.167 | 600 | Stat figures: the Server plate's gauges, tabular |
+| `--text-3xl` | 1.875rem (30 px) | 1.2 | 700 | `h1`, one per page, with `letter-spacing: -0.015em`; 26/32 below 40rem |
 
 `h3` is 1.0625rem (17 px, no token) at weight 600. So is an operation's
 heading (`h2.op-heading`) and the connected-players heading in the
@@ -179,23 +180,23 @@ dialog (black at 50%) and the shadows' own values (4).
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--color-bg` | `#121110` | `#f1efeb` | The page |
-| `--color-surface` | `#1b1a18` | `#ffffff` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
-| `--color-raised` | `#24221f` | `#f8f7f4` | The secondary button's face, the user menu's button, disclosure rows, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
-| `--color-deep` | `#0d0c0b` | `#ffffff` | Form fields, the log and console |
-| `--color-line` | `#2f2c28` | `#e2ded7` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
-| `--color-text` | `#ece8e1` | `#1b1916` | Body text, field text |
-| `--color-heading` | `#f7f4ee` | `#12100e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
-| `--color-text-muted` | `#a8a095` | `#5d574f` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
-| `--color-border` | `#7a7369` | `#8a8278` | Edge of fields, secondary buttons and the menu |
+| `--color-bg` | `#14110e` | `#ece9e3` | The page |
+| `--color-surface` | `#211d19` | `#fffdfa` | The header bar, cards, the user menu panel, the confirmation box, dialogs |
+| `--color-raised` | `#2c2722` | `#f4f0e9` | The secondary button's face, the user menu's button, disclosure rows, the Generate preview column and picture frames, the bar under the Generate form, the "stopped" and "unknown" badges, a table row under the pointer (60% of it) |
+| `--color-deep` | `#0e0c0a` | `#ffffff` | Form fields, the log and console |
+| `--color-line` | `#3d362f` | `#d9d4cb` | Decorative dividers and card edges: under the header and the tabs, between rows; never the only edge of a control |
+| `--color-text` | `#ede7de` | `#1c1915` | Body text, field text |
+| `--color-heading` | `#f9f5ee` | `#13110e` | Headings, the product name, secondary button text, nav links when current or under the pointer, the figures in the status card; a touch stronger than `text` |
+| `--color-text-muted` | `#aca397` | `#58524a` | Hints, placeholders, timestamps, table captions and headers, fact names, empty states, idle tabs, the icons before section headings |
+| `--color-border` | `#857d72` | `#857c70` | Edge of fields, secondary buttons and the menu |
 | `--color-link` | `#ffb357` | `#9a4800` | Links (always underlined), quiet buttons, the "Active" badge |
-| `--color-selected` | `#f39a2a` | `#c96d00` | The current tab's underline, the current item in the menu, the live world's edge, checked boxes, progress bars |
+| `--color-selected` | `#f39a2a` | `#bd6500` | The current tab's underline, the current item in the menu, the live world's edge, checked boxes, progress bars |
 | `--color-accent-bg` | `#33220e` | `#fdecd5` | A pale orange tint: the current item in the menu, the "Active" badge |
 | `--color-primary` | `#f39a2a` | `#f39a2a` | Primary button face, the line across the top of the header |
 | `--color-primary-hover` | `#f7ae4f` | `#f6ad52` | Primary button hover |
 | `--color-primary-edge` | `#f39a2a` | `#a35200` | Primary button edge (the face is too pale to carry it in light) |
 | `--color-on-primary` | `#1a1004` | `#1a1004` | Primary button text |
-| `--color-secondary-hover` | `#2a2825` | `#f1eee9` | Secondary button, menu item and menu button face under the pointer |
+| `--color-secondary-hover` | `#36302a` | `#ede8e0` | Secondary button, menu item and menu button face under the pointer |
 | `--color-danger` | `#e5553c` | `#b3301d` | Danger button face, "crash-looping" badge background, the confirmation box's edge, the Server card's edge when the game has crashed |
 | `--color-danger-hover` | `#ef7560` | `#932616` | Danger button hover |
 | `--color-on-danger` | `#1a0503` | `#ffffff` | Danger button text, "crash-looping" badge text |
@@ -205,8 +206,8 @@ dialog (black at 50%) and the shadows' own values (4).
 | `--color-ok-bg` | `#172a12` | `#e3f1de` | Success message and "running" badge background |
 | `--color-warn` | `#f2c14e` | `#7a5000` | "Warning" word, "starting" and "stopping" badges, the Server card's edge while starting or stopping |
 | `--color-warn-bg` | `#33280c` | `#f8edcf` | Warning message and "starting"/"stopping" badge background |
-| `--color-info` | `#9cc0ff` | `#1d4fa3` | "Note" word |
-| `--color-info-bg` | `#15223a` | `#e5edf9` | Notice background |
+| `--color-info` | `#9fc3e6` | `#2a567f` | "Note" word |
+| `--color-info-bg` | `#18232e` | `#e8eef4` | Notice background |
 | `--color-focus` | `#f7ae4f` | `#b35c00` | Focus outline |
 
 The map's own colours are tokens too, the same in both themes, because
@@ -385,9 +386,12 @@ Other fixed values, also tokens:
 | `--focus-width` | 3px | Focus outline |
 | `--target-min` | 2.75rem (44 px) | Minimum block size of buttons and fields |
 | `--target-inline` | 1.5rem (24 px) | Minimum block size of a link inside an error or an empty state's sentence (WCAG 2.5.8) |
-| `--measure` | 70ch | Maximum line length of prose |
+| `--measure` | 68ch | Maximum line length of prose |
 | `--page-max` | 76rem | Maximum width of `main` |
 | `--card-pad` | `var(--space-4)`; `min(var(--space-4), 4vw)` below 48rem, `var(--space-5)` from 48rem, `0px` below 22.4rem | A card's padding (7.8) |
+| `--dur-1` | 120ms | Hover and pressed fills easing in |
+| `--dur-2` | 200ms | A chevron turning, a meter moving |
+| `--ease` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | The one easing curve; all motion is off under reduced motion |
 
 The shadows, each theme's own (the other theme's layers are transparent):
 

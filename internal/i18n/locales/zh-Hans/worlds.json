@@ -281,7 +281,6 @@
   "worlds.tabs.overview": "概览",
   "worlds.world.checking_release": "正在检查是否有更新的 Factorio 版本。",
   "worlds.world.delete.button": "删除世界",
-  "worlds.world.more.heading": "复制或删除",
   "worlds.world.delete.text": "删除会移除世界的文件夹。其快照会保留，因此之后可以恢复。",
   "worlds.world.download_failed": "无法下载 Factorio {version} 的游戏镜像。详情见 Foreman 的日志。切换到此世界时会再次尝试下载。",
   "worlds.world.download_running": "正在从 Docker Hub 下载 Factorio {version} 的游戏镜像。刷新此页面可查看下载何时结束。",

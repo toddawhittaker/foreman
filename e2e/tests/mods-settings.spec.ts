@@ -35,7 +35,7 @@ const form = (page: Page) => page.locator("#mod-settings-form form");
 
 async function openEditor(page: Page) {
   await page.goto("/worlds/base/mods");
-  await page.getByRole("link", { name: "Edit mod settings" }).click();
+  await page.getByRole("link", { name: "Edit mod settings" }).first().click();
   await expect(page.getByLabel("Startup integer")).toBeVisible(live);
 }
 
