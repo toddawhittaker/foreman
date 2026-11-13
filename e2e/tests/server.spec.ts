@@ -24,6 +24,13 @@ async function start(page: Page) {
   await expect(badge(page)).toHaveText("Running", live);
 }
 
+// On a phone Force stop folds under the closed "Emergency actions" disclosure;
+// on a wide screen the script has already opened it (DESIGN 7.5).
+async function openEmergency(page: Page) {
+  const emergency = page.locator("details.emergency");
+  if (!(await emergency.evaluate((d) => (d as HTMLDetailsElement).open))) await emergency.locator("summary").click();
+}
+
 async function commands(g: FakeGame): Promise<string[]> {
   return (await g.state()).containers.find((c) => c.name === container)?.commands ?? [];
 }
@@ -107,6 +114,7 @@ test.describe("with the fake game", () => {
   test("forced stop has its own confirmation", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await start(page);
+    await openEmergency(page);
     await page.getByRole("link", { name: "Force stop" }).click();
     const confirm = page.locator("section.confirm");
     await expect(confirm).toContainText("Lose all progress since the last save");
@@ -248,6 +256,7 @@ test.describe("with the fake game", () => {
     expect(await focused()).toBe("act-stop");
 
     // Force stop goes away with the game: focus moves to the section's heading.
+    await openEmergency(page);
     await page.getByRole("link", { name: "Force stop" }).focus();
     expect((await page.request.post("/worlds/base/force-stop", { form: {}, maxRedirects: 0 })).status()).toBe(303);
     await expect(badge(page)).toHaveText("Stopped", live);
@@ -295,6 +304,7 @@ test.describe("with the fake game", () => {
     // The countdown ends and the save hangs: still in progress.
     await expect(steps.locator("[aria-current=step]")).toContainText("Save the game", live);
     await checkPage(page);
+    await openEmergency(page);
     await page.getByRole("link", { name: "Force stop" }).click();
     await page.locator("section.confirm").getByRole("button", { name: "Force stop" }).click();
     await expect(badge(page)).toHaveText("Stopped", live);

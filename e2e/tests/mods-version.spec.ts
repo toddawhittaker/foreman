@@ -109,6 +109,9 @@ test("Change version goes back after a bad update, with a snapshot first", async
   await expect(longRow.locator(".mod-actions a")).toHaveText([`Update to 1.10.0 ${long}`, `Change version ${long}`, `Disable ${long}`, `Remove ${long}`]);
   await checkPage(page);
   await shot(page, "mods-version-tab");
+  // Escape closes the open menu, which floats over the rows below it.
+  await page.keyboard.press("Escape");
+  await expect(longRow.locator("details.row-menu")).not.toHaveAttribute("open", "");
   await row.locator("details.row-menu > summary").click();
   await row.getByRole("link", { name: "Change version fp-back", exact: true }).click();
 
@@ -170,9 +173,10 @@ test("Change version appears with the status, only for a mod with another releas
     await route.continue();
   });
   await page.goto("/worlds/base/mods");
-  const change = (n: string) => page.getByRole("link", { name: "Change version " + n, exact: true });
+  // The link lives in the row's closed More menu, so the counts include hidden links.
+  const change = (n: string) => page.getByRole("link", { name: "Change version " + n, exact: true, includeHidden: true });
   await expect(page.getByRole("row", { name: /fp-two/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Change version/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Change version/, includeHidden: true })).toHaveCount(0);
   release();
   await expect(change("fp-two")).toHaveCount(1, live);
   await page.getByRole("row", { name: /fp-two/ }).locator("details.row-menu > summary").click();
