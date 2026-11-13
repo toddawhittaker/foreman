@@ -7520,39 +7520,32 @@ main:has(> .gate)::before {
   }
 }
 
-/* World tabs on a phone: 44 px pills that wrap onto a second line rather
-   than scroll, so every tab shows whole and none is cut at an edge. */
+/* World tabs on a phone: the desktop's underline row, 44 px tall, drawn
+   tighter so all five fit on one row at 390 px; a narrower phone scrolls the
+   row with a faded edge and the current tab brought into view (subnav.js). */
 @media (max-width: 39.99rem) {
-  .subnav {
-    border-block-end: 0;
-  }
-
   .subnav ul {
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    overflow: visible;
-    mask-image: none;
-  }
-
-  .subnav ul::after {
-    content: none;
+    flex-wrap: nowrap;
+    gap: 0;
   }
 
   .subnav a,
   .subnav a[aria-current] {
     min-block-size: var(--target-min);
-    margin: 0;
-    padding-inline: var(--space-4);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-line);
-    border-radius: 999px;
+    padding-inline: 0.4375rem;
     font-size: var(--text-sm);
   }
 
-  .subnav a[aria-current] {
-    background: var(--color-accent-bg);
-    color: var(--color-heading);
-    border-color: var(--color-selected);
+  .subnav li:first-child a {
+    padding-inline-start: 0;
+  }
+
+  .subnav li:last-child a {
+    padding-inline-end: 0;
+  }
+
+  .subnav ul::after {
+    content: none;
   }
 
   /* One sideways scroller per page: on a phone the settings' section links
@@ -8134,5 +8127,124 @@ main > h1 + p.hint {
 
   .plate__state + .plate__fact::before {
     content: none;
+  }
+}
+
+/* Round 3: the Server page's Emergency actions. On a phone Force stop folds
+   under a 44 px disclosure below the routine controls, in the danger
+   colour; on a wide screen subnav.js opens it and the summary goes, so
+   Force stop sits under its dashed rule as before. */
+.emergency {
+  margin-block-start: var(--space-2);
+}
+
+.disclosure.emergency > summary {
+  color: var(--color-danger-text);
+}
+
+.emergency[open] > .danger-row {
+  margin-block-start: var(--space-3);
+}
+
+.emergency[data-wide] {
+  margin-block-start: var(--space-4);
+}
+
+.emergency[data-wide] > summary {
+  display: none;
+}
+
+.emergency[data-wide] > .danger-row {
+  margin-block-start: 0;
+}
+
+/* The Server page's heading drops its state badge: the plate's band says
+   the state once, large, in its colour. Other pages keep the badge. */
+main:has(.plate) #server-title .state {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Mods: the tool links under the search show only while the page is one
+   column; once the rail sits beside the list its cards are the one copy. */
+@container (min-width: 60rem) {
+  .mod-tools {
+    display: none;
+  }
+}
+
+/* A mod row's More toggle is a bordered secondary button, the height,
+   radius and border of the row's Update button beside it. */
+.row-menu > summary.row-menu__toggle {
+  text-decoration: none;
+}
+
+/* Console on a phone, round 3: each log line is two columns, its time in a
+   fixed 10ch mono column (the date over the clock) and the words beside it;
+   wrapped words hang under the words, never under the time. A line with no
+   time starts in the words' column. */
+@media (max-width: 39.99rem) {
+  .terminal .log-frame > .log pre > span,
+  .terminal .log-frame > .log pre > span.log-join:has(> .log-time) {
+    display: block;
+    padding-inline-start: 11ch;
+  }
+
+  .terminal .log-frame > .log pre > span:has(> .log-time),
+  .terminal .log-frame > .log pre > span.log-join:has(> .log-time) {
+    display: grid;
+    grid-template-columns: 10ch minmax(0, 1fr);
+    column-gap: 1ch;
+    padding-inline-start: 0;
+  }
+
+  .terminal .log-frame > .log pre > span > .log-time,
+  .terminal .log-frame > .log pre > .log-join > .log-time {
+    display: block;
+    font-size: inherit;
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+
+  /* The command row is a bar at the card's foot that stays in view while
+     the page scrolls the log: the panel's boxes give way, so the form's
+     sticky room is the whole card. */
+  .terminal > .terminal__console,
+  .terminal #console-panel {
+    display: contents;
+  }
+
+  .terminal #console-panel > * {
+    margin-inline: var(--card-pad);
+  }
+
+  .terminal #console-panel > :last-child {
+    margin-block-end: var(--space-4);
+  }
+
+  .terminal #console-panel > .console-form {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 2;
+    margin: 0;
+    padding: var(--space-3) var(--card-pad);
+    background: var(--color-surface);
+    border-block-start: var(--border-width) solid var(--color-line);
+  }
+
+  .terminal #console-panel > .console-form > .hint {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

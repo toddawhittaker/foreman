@@ -63,6 +63,8 @@ test.describe("with the fake game", () => {
     if (phone(page)) expect((await box(snapshot)).width).toBe((await box(stop)).width);
 
     // Force stop is a plain link after the buttons, not a button face of its own.
+    // On a phone it folds under the Emergency actions disclosure, so it is opened first.
+    if (phone(page)) await page.locator("details.emergency > summary").click();
     const force = page.getByRole("link", { name: "Force stop" });
     await expect(force).not.toHaveClass(/button/);
     expect((await box(force)).height).toBeGreaterThanOrEqual(44);

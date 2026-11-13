@@ -566,5 +566,6 @@
   "server.schedule.next_is": "下次重启时间：{time}。",
   "server.op.scheduled_restart": "计划重启",
   "server.disk.low": "磁盘空间仅剩 {free}。低于 {reserve} 时自动存档可能失败，快照也将停止。请删除不再需要的快照或世界。",
-  "server.disk.snapshots": "快照"
+  "server.disk.snapshots": "快照",
+  "server.force.group": "Lorem ipsum dolor"
 }

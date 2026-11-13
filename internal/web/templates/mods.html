@@ -115,7 +115,7 @@
             {{- end}}
             {{- if or .Enabled (not .Local)}}
             <details class="row-menu" name="mod-menu">
-              <summary class="button button--quiet row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
+              <summary class="button row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" .Name}}</span></summary>
               <div class="row-menu__panel">
                 {{- if not .Local}}
                 <span id="{{$.Page.VersionSlot .Name}}" hidden></span>

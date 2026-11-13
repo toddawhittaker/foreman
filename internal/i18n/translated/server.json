@@ -186,6 +186,7 @@
   "server.failure.undo_text": "c7cd387d",
   "server.force.at_once": "6067986c",
   "server.force.cancel": "0b886bae",
+  "server.force.group": "01af28d2",
   "server.force.heading": "f59942fb",
   "server.force.interrupt": "9229c0b1",
   "server.force.lose": "51e5afc7",

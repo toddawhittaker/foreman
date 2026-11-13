@@ -42,3 +42,25 @@
     });
   }
 })();
+
+// A disclosure that is folded only on a phone (the Server page's Emergency
+// actions): on a wide screen the script opens it and marks it, so the style
+// sheet hides its summary. Without the script it stays a working disclosure.
+(() => {
+  "use strict";
+  const wide = window.matchMedia("(min-width: 40rem)");
+  const apply = () => {
+    for (const el of document.querySelectorAll("details[data-open-wide]")) {
+      if (wide.matches) {
+        el.open = true;
+        el.setAttribute("data-wide", "");
+      } else if (el.hasAttribute("data-wide")) {
+        el.open = false;
+        el.removeAttribute("data-wide");
+      }
+    }
+  };
+  apply();
+  wide.addEventListener("change", apply);
+  document.addEventListener("htmx:afterSwap", apply);
+})();

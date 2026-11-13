@@ -64,8 +64,7 @@
   </div>
   {{- end}}
   <form class="field console-form" method="post" action="{{.SendPath}}" hx-post="{{.SendPath}}" hx-target="#console-panel" hx-swap="outerHTML" novalidate>
-    {{template "required-note"}}
-    <label for="command" class="required">{{t "server.console.command"}}</label>
+    <label for="command">{{t "server.console.command"}}</label>
     <p class="hint" id="command-hint">{{t "server.console.command_hint"}}</p>
     <div class="console-row">
       <input id="command" name="command" type="text" value="{{.Command}}" required autocomplete="off" autocapitalize="off" spellcheck="false"

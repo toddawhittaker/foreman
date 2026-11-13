@@ -151,21 +151,25 @@
 {{- /* The Server plate in each state, as the Server page draws it: the band
      with the state word and its rule, then the stat grid, CPU's meter at
      rest, above 80% and above 95%. The running plate also shows the
-     controls, with Stop as the one primary, and Force stop at the foot. */}}
+     controls, with Take snapshot as the one primary, and Force stop at the
+     foot under its Emergency actions disclosure (folded on a phone). */}}
 {{- range $i, $st := .Page.States}}
 <div class="card status-card plate status-card--{{.State}}">
   <div class="plate__band"><span class="plate__state plate__state--{{.State}}">{{msg .Word}}</span><span class="plate__fact"><span class="plate__label">{{t "server.facts.uptime"}}</span> {{duration 5400000000000}}</span></div>
   {{- if eq (print .State) "running"}}
   <div class="plate__controls">
     <div class="actions server-actions">
-      <form><button type="button" class="button" data-design-icon="snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
+      <form><button type="button" class="button button--primary" data-design-icon="snapshot">{{t "worlds.snapshots.take.button"}}</button></form>
       <a href="{{serverPath}}" class="button" data-design-icon="restart">{{t "server.action.restart"}}</a>
-      <a href="{{serverPath}}" class="button button--primary" data-design-icon="stop">{{t "server.action.stop"}}</a>
+      <a href="{{serverPath}}" class="button" data-design-icon="stop">{{t "server.action.stop"}}</a>
     </div>
-    <div class="danger-row">
-      <a href="{{serverPath}}" class="button design-force-stop">{{t "server.action.force_stop"}}</a>
-      <p class="hint">{{t "server.force.at_once"}}</p>
-    </div>
+    <details class="disclosure emergency" data-open-wide>
+      <summary>{{t "server.force.group"}}</summary>
+      <div class="danger-row">
+        <a href="{{serverPath}}" class="design-force-stop">{{t "server.action.force_stop"}}</a>
+        <p class="hint">{{t "server.force.at_once"}}</p>
+      </div>
+    </details>
   </div>
   {{- end}}
   <div class="facts-block"><div>
@@ -263,7 +267,7 @@
           <div class="row-actions mod-actions">
             <span><a href="{{worldsPath}}" class="button">{{t "mods.row.update" "version" "3.2.3"}}</a></span>
             <details class="row-menu">
-              <summary class="button button--quiet row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
+              <summary class="button row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
               <div class="row-menu__panel">
                 <a href="{{worldsPath}}" class="row-menu__item mod-version">{{t "mods.row.version"}}</a>
                 <a href="{{worldsPath}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}</a>
@@ -279,7 +283,7 @@
         <td role="cell" data-label="{{t "mods.col.actions"}}">
           <div class="row-actions mod-actions">
             <details class="row-menu" open>
-              <summary class="button button--quiet row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
+              <summary class="button row-menu__toggle"><span class="row-menu__word" aria-hidden="true">{{t "mods.row.more_word"}}</span><span class="visually-hidden">{{t "mods.row.more" "name" $.Page.Mod}}</span></summary>
               <div class="row-menu__panel">
                 <a href="{{worldsPath}}" class="row-menu__item mod-version">{{t "mods.row.version"}}</a>
                 <a href="{{worldsPath}}" class="row-menu__item mod-toggle">{{t "mods.row.disable"}}</a>

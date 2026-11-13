@@ -606,5 +606,6 @@
   "server.schedule.next_is": "Следующий перезапуск: {time}.",
   "server.op.scheduled_restart": "Плановый перезапуск",
   "server.disk.low": "Свободно только {free} места на диске. Ниже {reserve} автосохранения могут не удаться, а снимки перестают создаваться. Удалите ненужные снимки или миры.",
-  "server.disk.snapshots": "Снимки"
+  "server.disk.snapshots": "Снимки",
+  "server.force.group": "Lorem ipsum dolor"
 }
