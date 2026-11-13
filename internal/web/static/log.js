@@ -180,4 +180,13 @@
   if (frame) followLog(frame);
   historyToEnd();
   document.addEventListener("htmx:afterSettle", historyToEnd);
+
+  // After a command is sent, the newest reply is brought onto the screen (on
+  // a phone it would land just below it). Focus stays where it was.
+  document.addEventListener("htmx:afterSettle", (e) => {
+    const form = e.detail && e.detail.requestConfig && e.detail.requestConfig.elt;
+    if (!form || !form.matches || !form.matches(".console-form")) return;
+    const reply = document.getElementById("last-reply");
+    if (reply) reply.scrollIntoView({ block: "nearest" });
+  });
 })();

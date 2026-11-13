@@ -2194,6 +2194,9 @@ main:has(> .gate) {
 
 .gate .actions > .button {
   flex: 1 1 100%;
+  /* At 320 px and 200% text one long word ("administratora") is wider than
+     the column; it breaks rather than run past the button's edge. */
+  overflow-wrap: anywhere;
 }
 
 /* The live world leads the list with an accent edge (DESIGN 8.2). */
@@ -3960,6 +3963,12 @@ form:has(#mode-exchange:checked) .achievements {
 
 .large-view__head > .large-view__keys {
   margin-inline-start: auto;
+}
+
+/* The key help is one line on a desktop (DESIGN 8.8), so the hint's 60ch
+   measure does not apply; it still wraps rather than widen a phone. */
+.large-view__head > .hint.large-view__keys {
+  max-inline-size: 100%;
 }
 
 /* The large view's "Show demolisher territories" box and its hint, on one line while they fit
@@ -7482,8 +7491,11 @@ main > h1 + p.hint {
   margin-block-end: var(--space-3);
 }
 
+/* Only as tall as what it holds, up to min(40vh, 20rem), then it scrolls
+   (DESIGN 6, 8.5); not the game log's fixed height. */
 .console-past > .log {
-  max-block-size: 16rem;
+  block-size: auto;
+  max-block-size: min(40vh, 20rem);
   border-color: var(--color-line);
 }
 
