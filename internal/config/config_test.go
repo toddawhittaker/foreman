@@ -335,6 +335,24 @@ func TestPublicAddress(t *testing.T) {
 	}
 }
 
+// The refusal stands even when the sidecar setting is otherwise valid, until
+// the game can use it (SPEC 4.13).
+func TestGameNetworkContainerIsRefusedWithGameNetwork(t *testing.T) {
+	_, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn", "FOREMAN_GAME_NETWORK": "games"})
+	if err == nil || !strings.Contains(err.Error(), "not built yet") {
+		t.Errorf("error = %v, want the not-built refusal", err)
+	}
+}
+
+// A sidecar without the game network reports the missing network, and the
+// ordinary start (no sidecar) is untouched by it.
+func TestGameNetworkContainerNeedsGameNetwork(t *testing.T) {
+	_, err := load(map[string]string{"FOREMAN_GAME_NETWORK_CONTAINER": "vpn"})
+	if err == nil || !strings.Contains(err.Error(), "FOREMAN_GAME_NETWORK must be set") {
+		t.Errorf("error = %v, want one naming FOREMAN_GAME_NETWORK", err)
+	}
+}
+
 func TestGameNetworkContainerEmptyOrUnsetStarts(t *testing.T) {
 	for name, vars := range map[string]map[string]string{
 		"empty": {"FOREMAN_GAME_NETWORK_CONTAINER": ""},
