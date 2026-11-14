@@ -105,6 +105,36 @@ func TestEventsRestartAndForceStop(t *testing.T) {
 	waitEvents(t, n, notify.Start, notify.Stop, notify.Start, notify.Stop)
 }
 
+// SPEC 7.7, 8.10: a monitor look read before a forced stop's kill and taken
+// in after it is dropped. Taken in, it showed the stopped game running
+// again, as stopping, and the next look reported a second stop.
+func TestEventsForceStopDropsLookFromBeforeKill(t *testing.T) {
+	r, n := notifiedRig(t)
+	id := r.newWorld("Forced")
+	r.start(id)
+	waitEvents(t, n, notify.Start)
+	w := r.c.world(id)
+	w.mu.Lock()
+	ops, cid := w.ops, w.containerID
+	w.mu.Unlock()
+	ctx := context.Background()
+	before, err := r.docker.InspectContainer(ctx, cid)
+	if err != nil || before.State.Status != "running" {
+		t.Fatalf("inspect before the kill = %+v, %v", before.State, err)
+	}
+	if err := r.c.ForceStop(ctx, id, admin); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.c.Status(id).State; st != StateStopped {
+		t.Fatalf("state after the forced stop = %s", st)
+	}
+	if r.c.observe(w, &before, ops) {
+		t.Error("the look from before the kill was taken in")
+	}
+	r.c.pokeMonitor()
+	waitEvents(t, n, notify.Start, notify.Stop)
+}
+
 // SPEC 7.6: a stop canceled during its countdown reports nothing.
 func TestEventsCanceledStopReportsNothing(t *testing.T) {
 	r, n := notifiedRig(t)

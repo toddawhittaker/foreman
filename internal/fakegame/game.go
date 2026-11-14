@@ -7,6 +7,12 @@
 // save, be killed for memory, or lose its image. The game keeps the ban
 // list, admin list and whitelist as the real one does.
 //
+// Config.Sidecar seeds an operator's VPN sidecar (SPEC 4.13) on the game
+// network. A game created with NetworkMode "container:<sidecar ID>" has no
+// network of its own, and its RCON listens only on the endpoint in
+// gameenv.RCONBind; the hooks change the sidecar's published port and restart
+// it (see sidecar.go).
+//
 // Docker's unless-stopped policy is followed: a game that exits by itself
 // is started again after a doubling delay, and one that was stopped or
 // killed through the API stays stopped.
@@ -52,6 +58,15 @@ type Config struct {
 	// so a Foreman started beside the fake finds its own container in it.
 	// State leaves it out: it is not a game.
 	SelfNetwork string
+	// Sidecar, when set, seeds a running container of this name on
+	// SelfNetwork, standing for the operator's VPN sidecar (SPEC 4.13), at an
+	// address on the fake's loopback range. A game created with NetworkMode
+	// "container:<its ID>" shares its namespace. State reports it apart from
+	// the games. It needs SelfNetwork, the game network it joins.
+	Sidecar string
+	// SidecarPort is the host port the sidecar publishes 34197/udp on, "" for
+	// none, which is what the missing-publication warning is about.
+	SidecarPort string
 }
 
 // SelfAddress is the seeded self container's address on SelfNetwork, in a
@@ -83,6 +98,12 @@ type Game struct {
 	prefix string       // "127.A.B.": containers get the addresses after it
 	selfID string       // the seeded self container, "" without one
 
+	// The seeded sidecar, all "" without one; guarded by mu.
+	sidecar     string // its container ID
+	sidecarName string
+	sidecarAddr string // its address on the game network, the shared games' RCON host
+	sidecarPort string // the host port 34197/udp is published on, "" for none
+
 	mu       sync.Mutex
 	closed   bool
 	behave   map[string]behaviour     // by container name
@@ -91,6 +112,7 @@ type Game struct {
 	manual   map[string]bool          // container IDs a person stopped
 	backoff  map[string]time.Duration // container ID to its next restart delay
 	commands map[string][]string      // RCON commands received, by container name
+	logins   map[string]int           // RCON login attempts received, by container name
 	preview  PreviewMode              // how preview containers end
 	done     chan struct{}
 	wg       sync.WaitGroup
@@ -115,6 +137,9 @@ func New(t testing.TB, cfg Config) *Game {
 }
 
 func start(cfg Config, report func(string)) (*Game, error) {
+	if err := checkSidecarConfig(cfg); err != nil {
+		return nil, err
+	}
 	g := &Game{
 		cfg:      cfg,
 		behave:   map[string]behaviour{},
@@ -123,6 +148,7 @@ func start(cfg Config, report func(string)) (*Game, error) {
 		manual:   map[string]bool{},
 		backoff:  map[string]time.Duration{},
 		commands: map[string][]string{},
+		logins:   map[string]int{},
 		done:     make(chan struct{}),
 	}
 	// Nothing is reported once the game is closed: a test may have ended.
@@ -170,6 +196,9 @@ func start(cfg Config, report func(string)) (*Game, error) {
 	}
 	if cfg.SelfNetwork != "" {
 		g.seedSelf(cfg.SelfNetwork)
+	}
+	if cfg.Sidecar != "" {
+		g.seedSidecar(cfg.Sidecar, cfg.SelfNetwork, cfg.SidecarPort)
 	}
 	g.srv = &http.Server{Handler: http.HandlerFunc(g.serveDocker), ReadHeaderTimeout: 10 * time.Second}
 	g.spawn(func() { _ = g.srv.Serve(ln) })
