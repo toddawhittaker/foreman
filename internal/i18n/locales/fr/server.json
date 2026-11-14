@@ -419,6 +419,14 @@
   "server.network.host_outside": "DOCKER_HOST atteint Docker à l’adresse {address}, qui ne se trouve sur aucun des réseaux de Foreman autre que le réseau du jeu « {network} », donc un jeu pourrait l’atteindre par la passerelle de ce réseau. Atteignez Docker par un réseau où le jeu ne se trouve pas, comme un proxy de socket sur un réseau que Foreman partage avec lui.",
   "server.network.self_file": "Foreman semble fonctionner dans un conteneur ({file} existe), mais Docker n’a aucun conteneur avec l’identifiant ou le nom d’hôte de Foreman, donc Foreman ne peut pas savoir sur quels réseaux il se trouve. Gardez le nom d’hôte que Docker a donné au conteneur de Foreman, et assurez-vous que DOCKER_HOST atteint le Docker qui exécute Foreman.",
   "server.network.self_tcp": "Foreman semble fonctionner dans un conteneur (DOCKER_HOST utilise tcp://), mais Docker n’a aucun conteneur avec l’identifiant ou le nom d’hôte de Foreman, donc Foreman ne peut pas savoir sur quels réseaux il se trouve. Gardez le nom d’hôte que Docker a donné au conteneur de Foreman, et assurez-vous que DOCKER_HOST atteint le Docker qui exécute Foreman.",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER nomme « {container} », mais Docker n’a aucun conteneur de ce nom, donc le jeu n’a pas de sidecar VPN avec lequel partager un réseau. Démarrez le sidecar, ou retirez FOREMAN_GAME_NETWORK_CONTAINER.",
+  "server.network.sidecar_stopped": "Le sidecar VPN « {container} » ne tourne pas, donc le jeu ne peut pas partager son réseau. Démarrez le sidecar, puis réessayez.",
+  "server.network.sidecar_host": "Le sidecar VPN « {container} » utilise le réseau de l’hôte, donc un jeu qui le partage serait aussi sur le réseau de l’hôte. Donnez au sidecar un réseau Docker à lui et placez-le sur « {network} ».",
+  "server.network.sidecar_nested": "Le sidecar VPN « {container} » utilise le réseau d’un autre conteneur, donc Foreman ne peut pas savoir ce que le jeu partagerait. Nommez plutôt le conteneur qui possède le réseau.",
+  "server.network.sidecar_off_network": "Le sidecar VPN « {container} » n’est pas sur le réseau du jeu « {network} », donc Foreman n’a pas pu joindre le jeu par RCON. Connectez le sidecar à ce réseau, puis réessayez.",
+  "server.network.sidecar_no_range": "Impossible de lire depuis Docker la plage d’adresses du réseau « {network} » sur lequel se trouve le sidecar VPN « {container} », donc Foreman ne peut pas vérifier qu’un jeu qui le partage reste à l’écart du proxy de socket Docker et de FOREMAN_TRUSTED_PROXIES. Vérifiez que Docker répond, puis réessayez.",
+  "server.network.sidecar_proxy_overlap": "Le sidecar VPN « {container} » est sur le réseau « {network} » ({subnet}), qui chevauche FOREMAN_TRUSTED_PROXIES ({proxies}), donc un jeu qui partage le réseau du sidecar pourrait se faire passer pour le proxy qui connecte les utilisateurs. Retirez le sidecar de ce réseau, ou réduisez FOREMAN_TRUSTED_PROXIES.",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST atteint le proxy de socket Docker à l’adresse {address}, qui se trouve sur le réseau « {network} » ({subnet}) où est aussi le sidecar VPN « {container} », donc un jeu qui partage le réseau du sidecar pourrait l’atteindre. Retirez le sidecar ou le proxy de ce réseau.",
   "server.download.failed": "Foreman n’a pas pu télécharger {image}. Les détails figurent dans le journal de Foreman. Réessayez.",
   "server.download.failed_switch": "Foreman n’a pas pu télécharger {image}. Les détails figurent dans le journal de Foreman. Réessayez le basculement.",
   "server.download.no_image": "Foreman n’a pas pu télécharger {image} : Docker Hub n’a aucune image de cette version.",
@@ -588,5 +596,6 @@
   "server.op.scheduled_restart": "Redémarrage planifié",
   "server.disk.low": "Il ne reste que {free} d’espace disque libre. En dessous de {reserve}, les sauvegardes automatiques peuvent échouer et les instantanés s’arrêtent. Supprimez les instantanés ou les mondes dont vous n’avez plus besoin.",
   "server.disk.snapshots": "Instantanés",
+  "server.lan.unpublished": "Les joueurs du réseau local ne peuvent pas rejoindre le jeu : {sidecar} ne publie pas UDP 34197 sur l’hôte.",
   "server.force.group": "Actions d’urgence"
 }

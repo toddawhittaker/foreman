@@ -435,6 +435,14 @@
   "server.network.host_outside": "DOCKER_HOST łączy się z Dockerem pod adresem {address}, który nie należy do żadnej sieci Foremana poza siecią gry „{network}”, więc gra mogłaby go dosięgnąć przez bramę tej sieci. Z Dockerem należy łączyć się przez sieć, w której nie ma gry, na przykład przez proxy gniazda w sieci wspólnej z Foremanem.",
   "server.network.self_file": "Wygląda na to, że Foreman działa w kontenerze (istnieje {file}), ale Docker nie ma kontenera o identyfikatorze ani nazwie hosta Foremana, więc Foreman nie może ustalić, w jakich sieciach jest. Należy zachować nazwę hosta nadaną przez Dockera kontenerowi Foremana i upewnić się, że DOCKER_HOST wskazuje Dockera, na którym działa Foreman.",
   "server.network.self_tcp": "Wygląda na to, że Foreman działa w kontenerze (DOCKER_HOST używa tcp://), ale Docker nie ma kontenera o identyfikatorze ani nazwie hosta Foremana, więc Foreman nie może ustalić, w jakich sieciach jest. Należy zachować nazwę hosta nadaną przez Dockera kontenerowi Foremana i upewnić się, że DOCKER_HOST wskazuje Dockera, na którym działa Foreman.",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER wskazuje „{container}”, ale Docker nie ma kontenera o tej nazwie, więc gra nie ma sidecara VPN, z którym mogłaby dzielić sieć. Należy uruchomić sidecara albo usunąć FOREMAN_GAME_NETWORK_CONTAINER.",
+  "server.network.sidecar_stopped": "Sidecar VPN „{container}” nie działa, więc gra nie może dzielić jego sieci. Należy uruchomić sidecara, a potem spróbować ponownie.",
+  "server.network.sidecar_host": "Sidecar VPN „{container}” używa sieci hosta, więc gra dzieląca ją byłaby także w sieci hosta. Należy dać sidecarowi własną sieć Dockera i umieścić go w „{network}”.",
+  "server.network.sidecar_nested": "Sidecar VPN „{container}” używa sieci innego kontenera, więc Foreman nie może stwierdzić, co gra by dzieliła. Należy wskazać zamiast niego kontener, do którego należy ta sieć.",
+  "server.network.sidecar_off_network": "Sidecar VPN „{container}” nie jest w sieci gry „{network}”, więc Foreman nie mógł połączyć się z grą przez RCON. Należy podłączyć sidecara do tej sieci, a potem spróbować ponownie.",
+  "server.network.sidecar_no_range": "Nie można odczytać z Dockera zakresu adresów sieci „{network}”, w której jest sidecar VPN „{container}”, więc Foreman nie może sprawdzić, czy gra dzieląca ją nie dosięgnie proxy gniazda Dockera ani FOREMAN_TRUSTED_PROXIES. Należy sprawdzić, czy Docker odpowiada, a potem spróbować ponownie.",
+  "server.network.sidecar_proxy_overlap": "Sidecar VPN „{container}” jest w sieci „{network}” ({subnet}), która pokrywa się z FOREMAN_TRUSTED_PROXIES ({proxies}), więc gra dzieląca sieć sidecara mogłaby podszyć się pod proxy, które loguje użytkowników. Należy wyłączyć sidecara z tej sieci albo zawęzić FOREMAN_TRUSTED_PROXIES.",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST łączy się z proxy gniazda Dockera pod adresem {address}, który leży w sieci „{network}” ({subnet}), a w niej jest też sidecar VPN „{container}”, więc gra dzieląca sieć sidecara mogłaby go dosięgnąć. Należy wyłączyć sidecara albo proxy z tej sieci.",
   "server.download.failed": "Foreman nie zdołał pobrać {image}. Szczegóły są w dzienniku Foremana. Należy spróbować ponownie.",
   "server.download.failed_switch": "Foreman nie zdołał pobrać {image}. Szczegóły są w dzienniku Foremana. Należy spróbować przełączyć ponownie.",
   "server.download.no_image": "Foreman nie zdołał pobrać {image}: Docker Hub nie ma obrazu z tą wersją.",
@@ -608,5 +616,6 @@
   "server.op.scheduled_restart": "Zaplanowany restart",
   "server.disk.low": "Wolne jest tylko {free} miejsca na dysku. Poniżej {reserve} automatyczne zapisy mogą się nie udać, a migawki przestają być wykonywane. Należy usunąć niepotrzebne migawki lub światy.",
   "server.disk.snapshots": "Migawki",
+  "server.lan.unpublished": "Gracze w sieci lokalnej nie mogą dotrzeć do gry: {sidecar} nie publikuje UDP 34197 na hoście.",
   "server.force.group": "Działania awaryjne"
 }

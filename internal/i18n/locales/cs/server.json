@@ -435,6 +435,14 @@
   "server.network.host_outside": "DOCKER_HOST se připojuje k Dockeru na adrese {address}, která není v žádné síti Foremanu kromě sítě hry „{network}“, takže by na ni hra mohla dosáhnout přes bránu té sítě. K Dockeru je třeba přistupovat přes síť, ve které hra není, například přes proxy soketu v síti sdílené s Foremanem.",
   "server.network.self_file": "Zdá se, že Foreman běží v kontejneru (existuje {file}), ale Docker nemá kontejner s ID ani názvem hostitele Foremanu, takže Foreman nemůže zjistit, ve kterých sítích je. Je třeba ponechat název hostitele, který Docker kontejneru Foremanu dal, a ujistit se, že DOCKER_HOST ukazuje na Docker, na kterém Foreman běží.",
   "server.network.self_tcp": "Zdá se, že Foreman běží v kontejneru (DOCKER_HOST používá tcp://), ale Docker nemá kontejner s ID ani názvem hostitele Foremanu, takže Foreman nemůže zjistit, ve kterých sítích je. Je třeba ponechat název hostitele, který Docker kontejneru Foremanu dal, a ujistit se, že DOCKER_HOST ukazuje na Docker, na kterém Foreman běží.",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER určuje „{container}“, ale Docker nemá kontejner s tímto názvem, takže hra nemá sidecar VPN, se kterým by sdílela síť. Je třeba sidecar spustit nebo odebrat FOREMAN_GAME_NETWORK_CONTAINER.",
+  "server.network.sidecar_stopped": "Sidecar VPN „{container}“ neběží, takže hra nemůže sdílet jeho síť. Je třeba sidecar spustit a zkusit to znovu.",
+  "server.network.sidecar_host": "Sidecar VPN „{container}“ používá síť hostitele, takže by hra, která ji sdílí, byla také v síti hostitele. Je třeba dát sidecaru vlastní síť Dockeru a umístit ho do „{network}“.",
+  "server.network.sidecar_nested": "Sidecar VPN „{container}“ používá síť jiného kontejneru, takže Foreman nemůže určit, co by hra sdílela. Je třeba místo něj určit kontejner, kterému síť patří.",
+  "server.network.sidecar_off_network": "Sidecar VPN „{container}“ není v síti hry „{network}“, takže se Foreman nemohl ke hře připojit přes RCON. Je třeba připojit sidecar k té síti a zkusit to znovu.",
+  "server.network.sidecar_no_range": "Z Dockeru nelze přečíst rozsah adres sítě „{network}“, ve které je sidecar VPN „{container}“, takže Foreman nemůže ověřit, že hra, která ji sdílí, nedosáhne na proxy soketu Dockeru a na FOREMAN_TRUSTED_PROXIES. Je třeba zkontrolovat, zda Docker odpovídá, a zkusit to znovu.",
+  "server.network.sidecar_proxy_overlap": "Sidecar VPN „{container}“ je v síti „{network}“ ({subnet}), která se překrývá s FOREMAN_TRUSTED_PROXIES ({proxies}), takže by se hra sdílející síť sidecaru mohla vydávat za proxy, které přihlašuje uživatele. Je třeba sidecar z té sítě odebrat nebo zúžit FOREMAN_TRUSTED_PROXIES.",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST se připojuje k proxy soketu Dockeru na adrese {address}, která leží v síti „{network}“ ({subnet}), v níž je také sidecar VPN „{container}“, takže by na ni hra sdílející síť sidecaru mohla dosáhnout. Je třeba sidecar nebo proxy z té sítě odebrat.",
   "server.download.failed": "Foreman nemohl stáhnout {image}. Podrobnosti jsou v protokolu Foremanu. Je třeba zkusit to znovu.",
   "server.download.failed_switch": "Foreman nemohl stáhnout {image}. Podrobnosti jsou v protokolu Foremanu. Je třeba zkusit přepnutí znovu.",
   "server.download.no_image": "Foreman nemohl stáhnout {image}: Docker Hub nemá obraz s touto verzí.",
@@ -608,5 +616,6 @@
   "server.op.scheduled_restart": "Plánovaný restart",
   "server.disk.low": "Volné je jen {free} místa na disku. Pod {reserve} mohou automatická uložení selhat a snímky se přestanou pořizovat. Smažte nepotřebné snímky nebo světy.",
   "server.disk.snapshots": "Snímky",
+  "server.lan.unpublished": "Hráči v místní síti se ke hře nemohou připojit: {sidecar} nepublikuje UDP 34197 na hostiteli.",
   "server.force.group": "Nouzové akce"
 }

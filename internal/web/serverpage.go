@@ -1072,6 +1072,20 @@ func (p ServerPage) LowDisk() i18n.Msg {
 	return i18n.M("server.disk.low", "free", i18n.Size(p.Status.FreeBytes), "reserve", i18n.Size(world.SpaceReserve))
 }
 
+// ShowLANUnpublished reports whether the LAN warning shows: while the game
+// runs in a VPN sidecar's network and the sidecar published no host port for
+// UDP 34197 (SPEC 4.13). It never blocks a start, and a published port is
+// no proof that LAN players can reach it.
+func (p ServerPage) ShowLANUnpublished() bool {
+	return p.Status.LANUnpublished != "" && game.IsRunning(p.Status.State)
+}
+
+// LANUnpublished is the LAN warning's sentence. The sidecar's name is the
+// configured one.
+func (p ServerPage) LANUnpublished() i18n.Msg {
+	return i18n.M("server.lan.unpublished", "sidecar", p.Status.LANUnpublished)
+}
+
 // SnapshotsAllPath is the all-worlds Snapshots page, where the low-disk
 // warning's next step is.
 func (ServerPage) SnapshotsAllPath() string { return PathSnapshots }

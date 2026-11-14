@@ -419,6 +419,14 @@
   "server.network.host_outside": "DOCKER_HOST llega a Docker en {address}, que no está en ninguna de las redes de Foreman salvo la red del juego «{network}», así que un juego podría alcanzarlo por la puerta de enlace de esa red. Llega a Docker por una red en la que no esté el juego, como un proxy de socket en una red que Foreman comparta con él.",
   "server.network.self_file": "Parece que Foreman se ejecuta en un contenedor ({file} existe), pero Docker no tiene ningún contenedor con el ID o el nombre de host de Foreman, así que Foreman no puede saber en qué redes está. Conserva el nombre de host que Docker dio al contenedor de Foreman, y asegúrate de que DOCKER_HOST llega al Docker que ejecuta Foreman.",
   "server.network.self_tcp": "Parece que Foreman se ejecuta en un contenedor (DOCKER_HOST usa tcp://), pero Docker no tiene ningún contenedor con el ID o el nombre de host de Foreman, así que Foreman no puede saber en qué redes está. Conserva el nombre de host que Docker dio al contenedor de Foreman, y asegúrate de que DOCKER_HOST llega al Docker que ejecuta Foreman.",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER nombra «{container}», pero Docker no tiene ningún contenedor con ese nombre, así que el juego no tiene un sidecar de VPN con el que compartir red. Inicia el sidecar, o quita FOREMAN_GAME_NETWORK_CONTAINER.",
+  "server.network.sidecar_stopped": "El sidecar de VPN «{container}» no está en ejecución, así que el juego no puede compartir su red. Inicia el sidecar y vuelve a intentarlo.",
+  "server.network.sidecar_host": "El sidecar de VPN «{container}» usa la red del host, así que un juego que la compartiera estaría también en la red del host. Dale al sidecar una red de Docker propia y ponlo en «{network}».",
+  "server.network.sidecar_nested": "El sidecar de VPN «{container}» usa la red de otro contenedor, así que Foreman no puede saber qué compartiría el juego. Nombra en su lugar el contenedor que es dueño de la red.",
+  "server.network.sidecar_off_network": "El sidecar de VPN «{container}» no está en la red del juego «{network}», así que Foreman no pudo conectar con el juego por RCON. Conecta el sidecar a esa red y vuelve a intentarlo.",
+  "server.network.sidecar_no_range": "No se puede leer de Docker el rango de direcciones de la red «{network}» en la que está el sidecar de VPN «{container}», así que Foreman no puede comprobar que un juego que la comparte se mantiene alejado del proxy de socket de Docker y de FOREMAN_TRUSTED_PROXIES. Comprueba que Docker responde y vuelve a intentarlo.",
+  "server.network.sidecar_proxy_overlap": "El sidecar de VPN «{container}» está en la red «{network}» ({subnet}), que se solapa con FOREMAN_TRUSTED_PROXIES ({proxies}), así que un juego que comparta la red del sidecar podría hacerse pasar por el proxy que inicia la sesión de los usuarios. Saca el sidecar de esa red, o reduce FOREMAN_TRUSTED_PROXIES.",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST llega al proxy de socket de Docker en {address}, que está en la red «{network}» ({subnet}) donde también está el sidecar de VPN «{container}», así que un juego que comparta la red del sidecar podría alcanzarlo. Saca el sidecar o el proxy de esa red.",
   "server.download.failed": "Foreman no pudo descargar {image}. Los detalles están en el registro de Foreman. Vuelve a intentarlo.",
   "server.download.failed_switch": "Foreman no pudo descargar {image}. Los detalles están en el registro de Foreman. Vuelve a intentar el cambio.",
   "server.download.no_image": "Foreman no pudo descargar {image}: Docker Hub no tiene ninguna imagen con esa versión.",
@@ -588,5 +596,6 @@
   "server.op.scheduled_restart": "Reinicio programado",
   "server.disk.low": "Solo quedan {free} de espacio en disco. Por debajo de {reserve} los guardados automáticos pueden fallar y las instantáneas se detienen. Borra las instantáneas o los mundos que ya no necesites.",
   "server.disk.snapshots": "Instantáneas",
+  "server.lan.unpublished": "Los jugadores de la red local no pueden llegar al juego: {sidecar} no publica UDP 34197 en el host.",
   "server.force.group": "Acciones de emergencia"
 }
