@@ -140,8 +140,8 @@ func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("rcon: connect: %w", err)
 	}
-	// Checked once connected, so whatever the check sees was there when the
-	// connection was made.
+	// Check after connecting and before sending credentials. This reads
+	// current state; it cannot prove which container accepted the connection.
 	if c.check != nil {
 		if err := c.check(ctx); err != nil {
 			_ = conn.Close()

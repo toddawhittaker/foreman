@@ -193,8 +193,8 @@ func (c *Controller) gameEndpoint(ctx context.Context, cont docker.Container) (e
 // (SPEC 4.13, 14.16). For a game in a sidecar's network, each new
 // connection is checked again with gameEndpoint before the login: the
 // sidecar the game joined must still exist, under its ID, at addr on the
-// game network. So a dropped connection is never made again, with the
-// world's password, to a replacement that took the sidecar's address. The
+// game network. When Docker reports that holder gone or replaced, no
+// login is sent through the new connection at the cached address. The
 // check is Docker's word at one moment, not proof that nothing changed
 // between it and the login. It uses Docker only, never a world's lock, so
 // holding the client while it runs cannot deadlock with w.mu.
