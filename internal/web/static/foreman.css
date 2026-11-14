@@ -2224,66 +2224,6 @@ main:has(> .gate) {
   }
 }
 
-.server-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: inherit;
-  align-items: start;
-}
-
-
-/* The live world's pages as a short menu: icon, name, and a chevron, with
-   Switch world as a button at its foot. */
-.shortcuts {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-  padding-block: var(--space-2);
-}
-
-.shortcuts > a {
-  padding-inline: var(--space-2);
-  color: var(--color-heading);
-  border-radius: var(--radius);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.shortcuts > a::before {
-  color: var(--color-text-muted);
-  background: var(--color-text-muted);
-}
-
-.shortcuts > a::after {
-  content: "";
-  inline-size: 1rem;
-  block-size: 1rem;
-  margin-inline-start: auto;
-  background: var(--color-text-muted);
-  mask: var(--i-chevron) center / contain no-repeat;
-}
-
-.shortcuts > a:hover {
-  background: var(--color-secondary-hover);
-}
-
-.shortcuts > #act-switch-world {
-  justify-content: center;
-  margin-block-start: var(--space-2);
-  padding-inline: var(--space-4);
-  background: var(--color-raised);
-  border: var(--border-width) solid var(--color-border);
-  font-weight: 600;
-}
-
-.shortcuts > #act-switch-world::before {
-  background: currentColor;
-}
-
-.shortcuts > #act-switch-world::after {
-  content: none;
-}
-
 /* The "Active" badge: the state badge's shape, without the drawn square. */
 .badge {
   display: inline-flex;
@@ -2400,12 +2340,14 @@ td:last-child {
   min-inline-size: 0;
 }
 
+/* A heading row with its one action at the end: each world's snapshots, and
+   the whole list's, take the same row. */
 .group__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-4);
 }
 
 .group__head h3 a {
@@ -4384,32 +4326,13 @@ form:has(#mode-exchange:checked) .achievements {
 /* A mod's actions keep one order (DESIGN 8.11): what the portal offers,
    Update as the one bordered button and the version as a quiet chip, then
    Disable and the Remove icon, which sit in the same place in every row. */
-.mod-actions,
-.mod-actions__portal {
+.mod-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
   margin-block-start: 0;
-}
-
-/* Empty until the status fills it, and empty again for a mod with nothing
-   to offer, so it takes no gap. */
-.mod-actions__portal:not(:has(a)) {
-  display: none;
-}
-
-/* A folder mod has no Remove; its column stays, so Disable keeps its place. */
-.mod-actions__fixed {
-  display: grid;
-  grid-template-columns: auto var(--target-min);
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.mod-actions__fixed > .mod-toggle {
-  grid-column: 1;
 }
 
 .mod-actions .button {
@@ -4419,8 +4342,7 @@ form:has(#mode-exchange:checked) .achievements {
 /* On a wide panel a mod's actions keep one line; narrower, a label may wrap
    at large text rather than run past the panel (SPEC 17.2). */
 @container (min-width: 44rem) {
-  .mod-actions,
-  .mod-actions__portal {
+  .mod-actions {
     flex-wrap: nowrap;
   }
 
@@ -4456,32 +4378,6 @@ form:has(#mode-exchange:checked) .achievements {
   background: currentColor;
   mask: var(--i-chevron) center / contain no-repeat;
   transform: rotate(90deg);
-}
-
-/* On a wide panel each action has a track of its own, so Update, Change
-   version, Disable and Remove line up from row to row whether or not a mod
-   has an update. */
-@container (min-width: 44rem) {
-  .mod-list .mod-actions__portal {
-    display: grid;
-    grid-template-columns: minmax(10.5rem, auto) minmax(10rem, auto);
-  }
-
-  .mod-list .mod-actions__portal > span:first-child {
-    grid-column: 1;
-  }
-
-  .mod-list .mod-actions__portal > span:last-child {
-    grid-column: 2;
-  }
-
-  .mod-list .mod-actions__fixed {
-    grid-template-columns: minmax(6rem, auto) var(--target-min);
-  }
-
-  .mod-list :is(.mod-actions__portal > span, .mod-actions__fixed) > .button:not(.button--icon) {
-    inline-size: 100%;
-  }
 }
 
 /* Remove is the one red control: it is the change that destroys something. */
@@ -4552,10 +4448,6 @@ form:has(#mode-exchange:checked) .achievements {
     gap: var(--space-2);
     padding-block-start: var(--space-1);
   }
-
-  .mod-actions__portal {
-    justify-content: flex-start;
-  }
 }
 
 /* On a phone with room for it, a mod is two lines: the name and version
@@ -4580,25 +4472,8 @@ form:has(#mode-exchange:checked) .achievements {
     grid-row: 1;
   }
 
-  .mod-list .mod-actions__fixed {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .mod-list td > div:not(.mod-line, .mod-actions),
-  .mod-list .mod-actions__portal {
+  .mod-list td > div:not(.mod-line, .mod-actions) {
     grid-column: 1 / -1;
-  }
-
-  .mod-list .mod-actions__portal {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
-  .mod-list .mod-actions__portal > span > .button {
-    inline-size: 100%;
-    font-size: var(--text-sm);
   }
 }
 
@@ -4960,7 +4835,6 @@ form:has(#mode-exchange:checked) .achievements {
 /* Two columns for a page with one main list and a few smaller tools: the
    list and search lead, the rest sit in a rail. One column on a phone. */
 .split,
-.split__main,
 .split__rail {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -4971,7 +4845,6 @@ form:has(#mode-exchange:checked) .achievements {
 
 @media (min-width: 40rem) {
   .split,
-  .split__main,
   .split__rail {
     gap: var(--space-5);
   }
@@ -5100,6 +4973,7 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   }
 }
 
+/* A form's action bar at the card's foot, its actions on one line at the end. */
 .form-foot {
   min-block-size: 4rem;
   margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
@@ -5108,15 +4982,12 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   border-block-start: var(--border-width) solid var(--color-line);
   border-end-start-radius: var(--radius-lg);
   border-end-end-radius: var(--radius-lg);
-}
-
-/* Cancel leads the bar and the primary action ends it, in code order too,
-   so the keyboard meets them as the eye does. */
-.form-foot {
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
+/* Cancel leads the bar and the primary action ends it, in code order too,
+   so the keyboard meets them as the eye does. */
 .form-foot > a {
   margin-inline-end: auto;
 }
@@ -5229,19 +5100,26 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 /* The log pane runs to the card's edges; long lines scroll sideways rather
-   than wrap inside a word, and the top line fades as it scrolls away. */
+   than wrap inside a word. */
 .terminal .log-frame {
   gap: 0;
   margin-inline: calc(-1 * var(--card-pad));
 }
 
+/* The game log shows whole lines on a warm paper surface: 20 px lines in a
+   pane a whole number of lines tall over its foot padding, sized so the
+   command field is on the first screen, and the top line never cut in half
+   when the view follows the newest. */
 .terminal .log-frame > .log {
-  block-size: min(55vh, 34rem);
+  block-size: calc(round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
   padding: var(--space-3) var(--card-pad);
   overflow: auto;
+  background: light-dark(var(--color-raised), var(--color-deep));
+  color: light-dark(var(--color-heading), var(--color-text));
   border-inline: 0;
+  border-block-end: var(--border-width) solid var(--color-line);
   border-radius: 0;
-  mask-image: linear-gradient(to bottom, transparent, currentColor var(--space-5));
+  line-height: 1.25rem;
 }
 
 .terminal .log-frame > .log pre {
@@ -5339,11 +5217,14 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   padding-inline-start: 2.5rem;
 }
 
-/* The live world's pages follow the controls and facts as a row of tiles,
-   two by two on a phone and four across from 40rem, ahead of the players,
-   so the page reads top to bottom with no empty column beside a short list. */
+/* The Server page: the state card, then players beside the live world's
+   pages on a wide screen; on a phone the pages come first, as tiles. */
 .server-grid {
-  display: contents;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  order: 2;
 }
 
 main > .status-card {
@@ -5351,60 +5232,137 @@ main > .status-card {
 }
 
 .server-grid > .panel {
-  order: 3;
+  order: 1;
 }
 
-.shortcuts.card {
-  order: 2;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+/* The world's pages beside the players: one list of 56 px rows divided by
+   hairlines, with the players card's side padding. */
+.shortcuts.card,
+.server-grid > .shortcuts.card {
+  order: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  align-self: start;
+  gap: 0;
   padding: 0;
-  background: none;
-  border: 0;
-  box-shadow: none;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-line);
+  box-shadow: var(--shadow-card);
 }
 
+/* Each page is a quiet link, not a second set of controls: icon, name and
+   a chevron at the row's end. */
 .shortcuts > a,
 .shortcuts > #act-switch-world {
+  display: flex;
+  align-items: center;
   justify-content: flex-start;
-  min-block-size: var(--target-min);
+  gap: var(--space-2);
+  min-block-size: 3.5rem;
   margin: 0;
-  padding-inline: var(--space-3);
-  background: var(--color-surface);
+  padding: 0 var(--card-pad);
+  background: none;
   color: var(--color-heading);
-  border: var(--border-width) solid var(--color-line);
-  font-weight: 600;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: 500;
+  line-height: 1.25;
+  text-decoration: none;
 }
 
-.shortcuts > a::after {
-  content: none;
+.shortcuts > :not(:last-child) {
+  box-shadow: none;
+  border-block-end: var(--border-width) solid var(--color-line);
 }
 
-.shortcuts > #act-switch-world {
-  border-color: var(--color-border);
+.shortcuts > a::before,
+.shortcuts > #act-switch-world::before {
+  background: var(--color-text-muted);
 }
 
-@media (min-width: 40rem) {
+.shortcuts > a::after,
+.shortcuts > #act-switch-world::after {
+  content: "";
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  margin-inline-start: auto;
+  background: var(--color-text-muted);
+  mask: var(--i-chevron) center / contain no-repeat;
+}
+
+.shortcuts > a:hover {
+  background: var(--color-secondary-hover);
+}
+
+:dir(rtl) .shortcuts > a::after {
+  transform: scaleX(-1);
+}
+
+/* On a wide screen the players take two columns of three and the world's
+   pages the third; the pages card runs down to the players card's foot, so
+   both columns end on one line, its rows staying at the top. */
+@media (min-width: 64rem) {
+  .server-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .server-grid > .panel {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
   .shortcuts.card {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-3);
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .server-grid > .shortcuts.card {
+    align-self: stretch;
+    align-content: start;
+  }
+}
+
+/* On a phone the world's pages are a two-column grid of 48 px tiles, so
+   the players start sooner. */
+@media (max-width: 39.99rem) {
+  .shortcuts.card,
+  .server-grid > .shortcuts.card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    gap: var(--space-2);
+    padding: 0;
+    overflow: visible;
+    background: none;
+    border: 0;
+    box-shadow: none;
   }
 
   .shortcuts > a,
-  .shortcuts > #act-switch-world {
-    min-block-size: 3.5rem;
-    padding-inline: var(--space-4);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
+  .shortcuts > #act-switch-world,
+  .shortcuts > :not(:last-child) {
+    justify-content: flex-start;
+    min-block-size: 3rem;
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: none;
   }
 
-  .shortcuts > a::after {
-    content: "";
+  .shortcuts > a:hover,
+  .shortcuts > #act-switch-world:hover {
+    background: var(--color-secondary-hover);
   }
 
-  .shortcuts > a:hover {
-    background: var(--color-raised);
-    border-color: var(--color-border);
+  .shortcuts > a::after,
+  .shortcuts > #act-switch-world::after {
+    content: none;
   }
 }
 
@@ -5956,16 +5914,6 @@ table:not(.mod-hits) > caption {
   white-space: nowrap;
 }
 
-/* A heading row with its one action at the end: each world's snapshots, and
-   the whole list's, take the same row. */
-.group__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-}
-
 .group__head > :is(h2, h3) {
   margin: 0;
 }
@@ -5977,102 +5925,6 @@ form.panel > .group__head:has(> h2) {
 /* The sign-in page has no sections, so the language menu still ends the bar. */
 .site:not(:has(> nav)) > .menu {
   margin-inline-start: auto;
-}
-
-/* The Server page: the state card, then players beside the live world's
-   pages on a wide screen; on a phone the pages come first, as tiles. */
-.server-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
-  order: 2;
-}
-
-.server-grid > .panel {
-  order: 1;
-}
-
-.shortcuts.card {
-  order: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-  padding: var(--space-1) var(--space-2);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-line);
-  box-shadow: var(--shadow-card);
-}
-
-/* One card of four equal rows, divided by hairlines, at every width. */
-.shortcuts > a,
-.shortcuts > #act-switch-world {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-2);
-  min-block-size: 3rem;
-  margin: 0;
-  padding: var(--space-1) var(--space-3);
-  background: none;
-  color: var(--color-heading);
-  border: 0;
-  border-radius: var(--radius);
-  box-shadow: none;
-  font-weight: 600;
-  line-height: 1.25;
-  text-decoration: none;
-}
-
-.shortcuts > :not(:last-child) {
-  box-shadow: 0 1px 0 var(--color-line);
-}
-
-.shortcuts > a::before,
-.shortcuts > #act-switch-world::before {
-  background: var(--color-text-muted);
-}
-
-.shortcuts > a::after,
-.shortcuts > #act-switch-world::after {
-  content: "";
-  flex: none;
-  inline-size: 1rem;
-  block-size: 1rem;
-  margin-inline-start: auto;
-  background: var(--color-text-muted);
-  mask: var(--i-chevron) center / contain no-repeat;
-}
-
-.shortcuts > a:hover {
-  background: var(--color-secondary-hover);
-}
-
-:dir(rtl) .shortcuts > a::after {
-  transform: scaleX(-1);
-}
-
-@media (min-width: 64rem) {
-  .server-grid {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: var(--space-5);
-  }
-
-  .server-grid > .panel {
-    grid-row: 1;
-    grid-column: 1;
-  }
-
-  .shortcuts.card {
-    grid-row: 1;
-    grid-column: 2;
-    padding: var(--space-2);
-  }
-
-  .shortcuts > a,
-  .shortcuts > #act-switch-world {
-    min-block-size: 3.5rem;
-  }
 }
 
 /* A player's chevron keeps a 44 px column at the row's end at every width,
@@ -6188,48 +6040,6 @@ main > .panel > .facts > div {
   main > .panel > .facts time,
   .worlds .facts time {
     white-space: nowrap;
-  }
-}
-
-/* The game log on a phone wraps, each line's words hanging after its time;
-   a wide screen keeps one line per entry and scrolls sideways. */
-.terminal .log-frame > .log {
-  mask-image: none;
-}
-
-@media (max-width: 39.99rem) {
-  .terminal .log-frame > .log pre {
-    inline-size: auto;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-
-  .terminal .log-frame > .log pre > span {
-    display: block;
-  }
-
-  .terminal .log-frame > .log pre > span:has(> .log-time) {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-  }
-}
-
-/* Mods: the rail's tools as one row of buttons under the search, until the
-   rail sits beside the list. */
-.mod-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  max-inline-size: none;
-}
-
-.mod-tools > .button {
-  flex: 1 1 auto;
-}
-
-@container (min-width: 60rem) {
-  .mod-tools {
-    display: none;
   }
 }
 
@@ -6404,30 +6214,20 @@ main > .panel > .facts > div {
   border-inline-start-color: var(--color-line);
 }
 
-.plate::before {
-  content: "";
-  position: absolute;
-  inset: 0.5rem;
-  pointer-events: none;
-  --rivet: radial-gradient(circle, var(--color-border) 0 2.5px, transparent 3px);
-  background:
-    var(--rivet) left top / 6px 6px no-repeat,
-    var(--rivet) right top / 6px 6px no-repeat,
-    var(--rivet) left bottom / 6px 6px no-repeat,
-    var(--rivet) right bottom / 6px 6px no-repeat;
-}
-
+/* The plate's band leads with the state, behind a 6 px rule in the
+   state's colour, so it reads from across the room. */
 .plate__band {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1) var(--space-4);
-  min-block-size: 3rem;
+  gap: var(--space-1) var(--space-5);
+  min-block-size: 3.5rem;
   padding: var(--space-2) var(--card-pad);
-  padding-inline-start: calc(var(--card-pad) + var(--space-2));
   background: var(--color-raised);
   color: var(--color-heading);
+  border-inline-start: 6px solid var(--plate-state, var(--color-border));
   border-block-end: var(--border-width) solid var(--color-line);
+  font-size: var(--text-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -6532,26 +6332,8 @@ main > .panel > .facts > div {
 }
 
 @media (forced-colors: active) {
-  .plate::before {
-    display: none;
-  }
-
   .meter > span {
     background: CanvasText;
-  }
-}
-
-/* The wide Server page uses its width: players take two columns of three,
-   the world's pages the third. */
-@media (min-width: 64rem) {
-  .server-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  }
-
-  /* Both columns end level: the world's pages share the players card's height. */
-  .server-grid > .shortcuts {
-    align-self: stretch;
-    grid-auto-rows: minmax(3rem, 1fr);
   }
 }
 
@@ -7317,31 +7099,6 @@ main > h1 + p.hint {
   }
 }
 
-/* The game log shows whole lines: a 20 px line, and a pane that is a whole
-   number of lines tall over its foot padding, so the top line is never cut
-   in half when the view follows the newest. */
-.terminal .log-frame > .log {
-  line-height: 1.25rem;
-  block-size: calc(round(down, min(55vh, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
-}
-
-@media (max-width: 39.99rem) {
-  /* On a phone the pane is shorter, so the command row stays near. */
-  .terminal .log-frame > .log {
-    block-size: calc(round(down, 40vh, 1.25rem) + var(--space-3) + 2 * var(--border-width));
-  }
-
-  /* A line with a full date puts it on a line of its own, so the words keep the pane's width. */
-  .terminal .log-frame > .log pre > .log-join:has(> .log-time) {
-    display: block;
-  }
-
-  .terminal .log-frame > .log pre > .log-join > .log-time {
-    display: block;
-    font-size: 0.75rem;
-  }
-}
-
 /* A control that saves on its own inside a larger form sits in a box with
    its own button, so what each button saves is plain. */
 .own-save {
@@ -7374,29 +7131,33 @@ main > h1 + p.hint {
   padding-inline-start: 0;
 }
 
-/* Server page: the emergency stop on a row of its own under the everyday
-   controls, a hairline above it, its consequence beside it (DESIGN 6). */
+/* Server page: Force stop at the controls' foot under a dashed danger
+   rule, the link first and what it does in one muted line beside it
+   (DESIGN 6). */
 .danger-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-2) var(--space-4);
-  margin-block-start: var(--space-2);
+  margin-block-start: 0;
   padding-block-start: var(--space-4);
-  border-block-start: var(--border-width) solid var(--color-line);
+  border-block-start: var(--border-width) dashed color-mix(in srgb, var(--color-danger-text) 55%, transparent);
 }
 
 .danger-row > .hint {
-  flex: 1 1 16rem;
+  flex: 1 1 14rem;
   min-inline-size: 0;
   max-inline-size: var(--measure);
+  margin: 0;
 }
 
 .danger-row > :is(#act-force-stop, .design-force-stop) {
+  order: -1;
   flex: 0 1 auto;
   margin: 0;
   background: transparent;
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
 }
 
 /* Live load: two tiles, each a 28 px tabular figure over its meter, apart
@@ -7465,19 +7226,8 @@ main > h1 + p.hint {
   background: var(--color-primary);
 }
 
-/* The world's pages beside the players are quiet links, not a second set of controls. */
-.shortcuts > a,
-.shortcuts > #act-switch-world {
-  font-weight: 500;
-}
-
-/* Console: the log, then the command row under it, the pane sized so the
-   field is on the first screen; on a phone the row is a bar stuck to the
-   card's foot (DESIGN 8.5). */
-.terminal .log-frame > .log {
-  block-size: calc(round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
-}
-
+/* Console: the log, then the command row under it; on a phone the row is a
+   bar stuck to the card's foot (DESIGN 8.5). */
 .terminal .log-frame > .button {
   margin-block: var(--space-1) 0;
 }
@@ -8016,29 +7766,6 @@ main:has(> .gate)::before {
   background: var(--color-ok);
 }
 
-/* The world's pages beside the players: one list of 56 px rows divided by
-   hairlines, with the players card's side padding. */
-.shortcuts.card,
-.server-grid > .shortcuts.card {
-  align-self: start;
-  grid-auto-rows: auto;
-  padding: 0;
-  overflow: hidden;
-}
-
-.shortcuts > a,
-.shortcuts > #act-switch-world {
-  min-block-size: 3.5rem;
-  padding: 0 var(--card-pad);
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.shortcuts > :not(:last-child) {
-  box-shadow: none;
-  border-block-end: var(--border-width) solid var(--color-line);
-}
-
 /* Console: the command row sits in the log's card, 16 px under the log,
    with no strip between. "Jump to the newest" floats over the log's foot
    only while there is something newer, so it keeps no empty row. */
@@ -8059,26 +7786,13 @@ main:has(> .gate)::before {
   display: none;
 }
 
-.terminal .log-frame > .log {
-  border-block-end: var(--border-width) solid var(--color-line);
-}
-
 .terminal > .terminal__console {
   padding-block: var(--space-4);
   background: transparent;
 }
 
-/* Server plate, round 2: the band leads with the state, large and in its
-   colour, behind a 6 px rule of the same colour, so it reads from across
-   the room. The state word carries a shape too (the badge's square). */
-.plate__band {
-  min-block-size: 3.5rem;
-  gap: var(--space-1) var(--space-5);
-  padding-inline-start: var(--card-pad);
-  border-inline-start: 6px solid var(--plate-state, var(--color-border));
-  font-size: var(--text-md);
-}
-
+/* The band's rule and state word take the state's colour; the state word
+   carries a shape too (the badge's square). */
 .plate__band:has(.plate__state--running) { --plate-state: var(--color-ok); }
 .plate__band:has(.plate__state--starting) { --plate-state: var(--color-info); }
 .plate__band:has(.plate__state--stopping) { --plate-state: var(--color-warn); }
@@ -8131,38 +7845,6 @@ main:has(> .gate)::before {
   opacity: 0.35;
 }
 
-/* The plate's rivets: four deliberate 6 px rivets, 10 px in from each
-   corner, each with a small highlight, on this one plate only. */
-.plate::before {
-  inset: 10px;
-  --rivet: radial-gradient(circle at 38% 34%, light-dark(rgb(255 255 255 / 85%), rgb(255 255 255 / 30%)) 0 0.8px, var(--color-border) 1.2px 2.6px, light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 50%)) 2.7px 3px, transparent 3.2px);
-  background:
-    var(--rivet) left top / 6px 6px no-repeat,
-    var(--rivet) right top / 6px 6px no-repeat,
-    var(--rivet) left bottom / 6px 6px no-repeat,
-    var(--rivet) right bottom / 6px 6px no-repeat;
-}
-
-/* Force stop: at the controls' foot under a dashed danger rule, the link
-   first and what it does in one muted line beside it. */
-.danger-row {
-  justify-content: flex-start;
-  gap: var(--space-2) var(--space-4);
-  margin-block-start: 0;
-  padding-block-start: var(--space-4);
-  border-block-start: var(--border-width) dashed color-mix(in srgb, var(--color-danger-text) 55%, transparent);
-}
-
-.danger-row > .hint {
-  flex: 1 1 14rem;
-  margin: 0;
-}
-
-.danger-row > :is(#act-force-stop, .design-force-stop) {
-  order: -1;
-  border-color: color-mix(in srgb, currentColor 60%, transparent);
-}
-
 /* Stat values: one role, sans 24 px, weight 600, tabular figures; the
    version and save are values, not code. */
 .facts.stat-grid dd code {
@@ -8181,26 +7863,17 @@ main:has(> .gate)::before {
   }
 }
 
-/* Console, round 2: the game log first and the command row under it at
-   every width, as on a terminal. The light log sits on a warm paper
-   surface with full-strength text; times stay quieter but above 7:1. */
+/* On a phone too the game log comes first and the command row under it,
+   as on a terminal. */
 @media (max-width: 39.99rem) {
   .terminal__console {
     order: 0;
     border-block-end: 0;
     border-block-start: var(--border-width) solid var(--color-line);
   }
-
-  .terminal .log-frame > .log pre {
-    overflow-wrap: break-word;
-  }
 }
 
-.terminal .log-frame > .log {
-  background: light-dark(var(--color-raised), var(--color-deep));
-  color: light-dark(var(--color-heading), var(--color-text));
-}
-
+/* A log line's time is quieter than its words, but above 7:1. */
 .terminal .log-frame > .log .log-time {
   color: var(--color-text-muted);
 }
@@ -8218,37 +7891,6 @@ main:has(> .gate)::before {
   font-size: var(--text-sm);
   font-weight: 600;
 }
-
-/* Mods: below the two-column width, the rail's tools as a short row of
-   44 px links under the search, each with its icon. */
-.mod-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-4);
-  margin: 0;
-}
-
-.mod-tools__link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-block-size: var(--target-min);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.mod-tools__link::before {
-  content: "";
-  flex: none;
-  inline-size: 1rem;
-  block-size: 1rem;
-  background: currentColor;
-  mask: var(--icon) center / contain no-repeat;
-}
-
-.mod-tools__link--sync { --icon: var(--i-sync); }
-.mod-tools__link--upload { --icon: var(--i-upload); }
-.mod-tools__link--settings { --icon: var(--i-settings); }
 
 /* Game settings on a phone: a disclosure of links jumps to a section; it
    goes when the rail of section links shows beside the form. */
@@ -8352,11 +7994,6 @@ main > h1 + p.hint {
   padding-block-end: var(--space-4);
 }
 
-/* The plate needs no corner marks: its state rule is its identity. */
-.plate::before {
-  content: none;
-}
-
 /* On a phone the state word takes the band's first line, its facts the next. */
 @media (max-width: 39.99rem) {
   .plate__state {
@@ -8368,7 +8005,7 @@ main > h1 + p.hint {
   }
 }
 
-/* Round 3: the Server page's Emergency actions. On a phone Force stop folds
+/* The Server page's Emergency actions. On a phone Force stop folds
    under a 44 px disclosure below the routine controls, in the danger
    colour; on a wide screen subnav.js opens it and the summary goes, so
    Force stop sits under its dashed rule as before. */
@@ -8396,47 +8033,13 @@ main > h1 + p.hint {
   margin-block-start: 0;
 }
 
-/* Mods: the tool links under the search show only while the page is one
-   column; once the rail sits beside the list its cards are the one copy. */
-@container (min-width: 60rem) {
-  .mod-tools {
-    display: none;
-  }
-}
-
 /* A mod row's More toggle is a bordered secondary button, the height,
    radius and border of the row's Update button beside it. */
 .row-menu > summary.row-menu__toggle {
   text-decoration: none;
 }
 
-/* Console on a phone, round 3: each log line is two columns, its time in a
-   fixed 10ch mono column (the date over the clock) and the words beside it;
-   wrapped words hang under the words, never under the time. A line with no
-   time starts in the words' column. */
 @media (max-width: 39.99rem) {
-  .terminal .log-frame > .log pre > span,
-  .terminal .log-frame > .log pre > span.log-join:has(> .log-time) {
-    display: block;
-    padding-inline-start: 11ch;
-  }
-
-  .terminal .log-frame > .log pre > span:has(> .log-time),
-  .terminal .log-frame > .log pre > span.log-join:has(> .log-time) {
-    display: grid;
-    grid-template-columns: 10ch minmax(0, 1fr);
-    column-gap: 1ch;
-    padding-inline-start: 0;
-  }
-
-  .terminal .log-frame > .log pre > span > .log-time,
-  .terminal .log-frame > .log pre > .log-join > .log-time {
-    display: block;
-    font-size: inherit;
-    white-space: normal;
-    overflow-wrap: normal;
-  }
-
   /* The command row is a bar at the card's foot that stays in view while
      the page scrolls the log: the panel's boxes give way, so the form's
      sticky room is the whole card. */
@@ -8601,107 +8204,6 @@ main > .panel.danger-zone.danger-zone--blocked {
     content: "";
     flex: none;
     inline-size: var(--space-3);
-  }
-
-  /* The world's pages as a two-column grid of 48 px tiles, so the players
-     start sooner. */
-  .shortcuts.card,
-  .server-grid > .shortcuts.card {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: auto;
-    gap: var(--space-2);
-    padding: 0;
-    overflow: visible;
-    background: none;
-    border: 0;
-    box-shadow: none;
-  }
-
-  .shortcuts > a,
-  .shortcuts > #act-switch-world,
-  .shortcuts > :not(:last-child) {
-    justify-content: flex-start;
-    min-block-size: 3rem;
-    margin: 0;
-    padding: var(--space-1) var(--space-3);
-    background: var(--color-surface);
-    border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius);
-    box-shadow: none;
-  }
-
-  .shortcuts > a:hover,
-  .shortcuts > #act-switch-world:hover {
-    background: var(--color-secondary-hover);
-  }
-
-  .shortcuts > a::after,
-  .shortcuts > #act-switch-world::after {
-    content: none;
-  }
-
-  /* The phone game log: the date once, as a divider over the day's first
-     line; then each line's clock in an 8ch column and its words beside it,
-     wrapped words hanging under the words. A line with no time starts in
-     the words' column. */
-  .terminal .log-frame > .log {
-    font-size: var(--text-xs);
-    line-height: 1.5;
-  }
-
-  .terminal .log-frame > .log pre > span:has(> .log-msg),
-  .terminal .log-frame > .log pre > span.log-join:has(> .log-msg) {
-    display: grid;
-    grid-template-columns: 8ch minmax(0, 1fr);
-    column-gap: 0.625rem;
-    padding-inline-start: 0;
-  }
-
-  .terminal .log-frame > .log pre > span > .log-time,
-  .terminal .log-frame > .log pre > .log-join > .log-time {
-    display: contents;
-  }
-
-  .terminal .log-frame > .log pre > span > .log-msg {
-    grid-column: 2;
-    min-inline-size: 0;
-    overflow-wrap: break-word;
-  }
-
-  .terminal .log-frame > .log .log-clock {
-    grid-column: 1;
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-    line-height: 1.625;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .terminal .log-frame > .log .log-date {
-    display: none;
-  }
-
-  .terminal .log-frame > .log pre > [data-day] > .log-time > .log-date {
-    display: flex;
-    grid-column: 1 / -1;
-    align-items: center;
-    gap: var(--space-2);
-    margin-block: var(--space-2) var(--space-1);
-    color: var(--color-text-muted);
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .terminal .log-frame > .log pre > [data-day] > .log-time > .log-date::after {
-    content: "";
-    flex: 1;
-    border-block-start: var(--border-width) solid var(--color-line);
-  }
-
-  .terminal .log-frame > .log pre > [data-day]:first-child > .log-time > .log-date {
-    margin-block-start: 0;
   }
 }
 
@@ -9180,12 +8682,39 @@ main:has(> .gate) > * + :not(h1, .gate) {
   margin-block-start: 0;
 }
 
-/* On a phone each line's time sits above its words in 12 px quiet type,
-   and the words take the full width: 13 px mono on 20 px lines, 8 px
-   between entries. */
+/* On a phone the game log wraps, and each line's time sits above its words
+   in 12 px quiet type, the words taking the full width: small mono on
+   20 px lines, 8 px between entries. Before the log script splits a line,
+   its time and words share a 10ch and a 1fr column. */
 @media (max-width: 39.99rem) {
   .terminal .log-frame > .log {
-    line-height: 1.25rem;
+    font-size: var(--text-xs);
+  }
+
+  .terminal .log-frame > .log pre {
+    inline-size: auto;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+
+  .terminal .log-frame > .log pre > span {
+    display: block;
+    padding-inline-start: 11ch;
+  }
+
+  .terminal .log-frame > .log pre > span:has(> .log-time),
+  .terminal .log-frame > .log pre > span.log-join:has(> .log-time) {
+    display: grid;
+    grid-template-columns: 10ch minmax(0, 1fr);
+    column-gap: 1ch;
+    padding-inline-start: 0;
+  }
+
+  .terminal .log-frame > .log pre > span > .log-time,
+  .terminal .log-frame > .log pre > .log-join > .log-time {
+    font-size: inherit;
+    white-space: normal;
+    overflow-wrap: normal;
   }
 
   .terminal .log-frame > .log pre > span:has(> .log-msg),
@@ -9200,6 +8729,7 @@ main:has(> .gate) > * + :not(h1, .gate) {
 
   .terminal .log-frame > .log pre > span > .log-msg {
     display: block;
+    overflow-wrap: break-word;
   }
 
   .terminal .log-frame > .log .log-clock {
@@ -9243,11 +8773,3 @@ main:has(> .gate) > * + :not(h1, .gate) {
   }
 }
 
-/* On a wide screen the world's pages card runs down to the players card's
-   foot, so both columns end on one line; its 56 px rows stay at the top. */
-@media (min-width: 64rem) {
-  .server-grid > .shortcuts.card {
-    align-self: stretch;
-    align-content: start;
-  }
-}
