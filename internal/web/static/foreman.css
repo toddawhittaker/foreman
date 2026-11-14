@@ -7471,9 +7471,9 @@ main > h1 + p.hint {
   font-weight: 500;
 }
 
-/* Console: on a wide screen the log, then the command row at once under it,
-   the pane sized so the field is on the first screen; on a phone the command
-   row and its replies come first, over the log (DESIGN 8.5). */
+/* Console: the log, then the command row under it, the pane sized so the
+   field is on the first screen; on a phone the row is a bar stuck to the
+   card's foot (DESIGN 8.5). */
 .terminal .log-frame > .log {
   block-size: calc(round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
 }

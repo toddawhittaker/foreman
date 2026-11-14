@@ -109,6 +109,9 @@ test.describe("with the fake game", () => {
     const field = page.getByLabel("Command");
     const log = page.getByRole("region", { name: "Game log lines" });
     expect((await box(field)).y).toBeGreaterThan((await box(log)).y);
+    // Once its card is reached, the command field is on that first screen (DESIGN 8.5).
+    await page.locator(".terminal").evaluate((el) => el.scrollIntoView({ block: "start" }));
+    await expect(field).toBeInViewport({ ratio: 1 });
 
     await field.fill("/players online");
     await page.getByRole("button", { name: "Send" }).click();

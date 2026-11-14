@@ -33,7 +33,7 @@ test.describe("mods tab", () => {
     // Issue 373: the save's mods are read, so the tab says they differ before any click.
     await openModTools(page);
     await expect(page.locator("#sync-state")).toContainText("The mods differ from the save base.zip:");
-    await expect(page.getByRole("link", { name: "Match mods to the save" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Match mods to the save" })).toBeVisible();
     await checkPage(page);
     await page.screenshot({ path: `../screenshots/mods-tab-${test.info().project.name}.png`, fullPage: true });
   });

@@ -385,7 +385,7 @@ test.describe("click budgets for mods, with the fake game and the fake portal", 
     await page.getByRole("link", { name: "Mods", exact: true }).click();
     // On a phone the rarer tools are in a closed disclosure, so opening it is one more click.
     await openModTools(page);
-    await page.getByRole("link", { name: "Edit mod settings" }).first().click();
+    await page.getByRole("link", { name: "Edit mod settings" }).click();
     // The form loads after the page, from a definitions run that is a container of its own; waiting is not a click.
     const box = page.getByRole("checkbox", { name: "fm-sta-bool" });
     await expect(box).toBeVisible(live);
