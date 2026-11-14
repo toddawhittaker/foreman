@@ -1812,10 +1812,13 @@ row. Below 68.75rem it is one column in source order, and on a phone (30rem
 and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start
 closed. **The action bar** is one bar at the foot of the card, `raised`
-with a 1 px `line` rule above it, running to the card's edges: Cancel at the
-start, then "Preview map", then "Generate world" at the end. On a phone the
-three stack full width, "Generate world" first, then "Preview map", then
-Cancel; at 200% text a label wraps rather than push the page wider.
+with a 1 px `line` rule above it, running to the card's edges. It shows
+"Generate world" (primary), "Preview map", then the Cancel link, in that
+order at every width, so the screen order, the keyboard order and the code
+order agree (WCAG 1.3.2, 2.4.3). On a wide screen they run left to right
+from the start of the bar; on a phone (30rem and narrower) they stack full
+width, top to bottom. At 200% text a label wraps rather than push the page
+wider.
 
 **Preset, "[modified]" and reset.** Choosing a preset fills every tab with
 its values (htmx redraws `#map-settings`; the preset and the seed are

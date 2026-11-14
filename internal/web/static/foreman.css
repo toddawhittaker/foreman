@@ -4925,13 +4925,12 @@ form:has(#mode-exchange:checked) .achievements {
   mask: var(--i-map) center / contain no-repeat;
 }
 
-/* The actions are one bar at the form's foot: Cancel, Preview map, then
-   Generate world at the end. */
+/* The actions are one bar at the form's foot, in code order at every width:
+   Generate world, Preview map, then Cancel (DESIGN 8.6). */
 .generate > .gen-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: var(--space-2) var(--space-3);
   margin: 0 calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad));
   padding: var(--space-3) var(--card-pad);
@@ -4999,16 +4998,10 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 .generate > .gen-actions > a {
-  order: -2;
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
-  margin-inline-end: auto;
   padding-inline: var(--space-1);
-}
-
-.generate > .gen-actions > #preview-button {
-  order: -1;
 }
 
 @media (max-width: 30rem) {
@@ -5019,10 +5012,6 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
-  }
-
-  .generate > .gen-actions > * {
-    order: 0;
   }
 
   .generate > .gen-actions > a {
@@ -5548,12 +5537,6 @@ main:has(> .gate) > h1 {
   .tab {
     flex: none;
     white-space: nowrap;
-  }
-}
-
-@media (max-width: 30rem) {
-  .generate > .gen-actions > a {
-    margin-inline-end: 0;
   }
 }
 
