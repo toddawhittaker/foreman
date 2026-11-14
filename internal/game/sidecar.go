@@ -257,7 +257,7 @@ func (e *NetworkError) sidecarText() string {
 	case NetworkSidecarNested:
 		return fmt.Sprintf("the VPN sidecar %q uses another container's network, so Foreman cannot tell what the game would share. Name the container that owns the network instead", e.Container)
 	case NetworkSidecarOffNetwork:
-		return fmt.Sprintf("the VPN sidecar %q is not on the game network %q, so Foreman could not reach the game over RCON. Connect the sidecar to that network, then try again", e.Container, e.Network)
+		return fmt.Sprintf("the VPN sidecar %q is not on the game network %q, so Foreman would not be able to reach the game over RCON. Connect the sidecar to that network, then try again", e.Container, e.Network)
 	case NetworkSidecarNoRange:
 		return fmt.Sprintf("cannot read the address range of the %q network that the VPN sidecar %q is on, so Foreman cannot check that a game sharing it stays away from the Docker socket proxy and FOREMAN_TRUSTED_PROXIES. Check that Docker answers, then try again", e.Network, e.Container)
 	case NetworkSidecarProxyOverlap:
