@@ -74,7 +74,7 @@ as unset. Foreman reports every problem with them at once, in plain words.
 | `FOREMAN_HOST_DATA_DIR` | discovered | The same directory's path on the host (3.5) |
 | `FOREMAN_GAME_UID`, `FOREMAN_GAME_GID` | `845` | The game's user and group (3.6). Never 0 (14.11) |
 | `FOREMAN_GAME_NETWORK` | none | The Docker network the game joins (4.4). Required when Foreman runs in a container, or when `FOREMAN_GAME_NETWORK_CONTAINER` is set |
-| `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Not built yet: Foreman refuses to start when it is set |
+| `FOREMAN_GAME_NETWORK_CONTAINER` | none | A VPN sidecar container whose network the game shares (4.13). Optional. Needs `FOREMAN_GAME_NETWORK` |
 | `FOREMAN_LISTEN` | `:8080` | The address Foreman listens on |
 | `FOREMAN_PUBLIC_URL` | none | The URL people use to reach Foreman. `https://` makes session cookies `Secure` (12.8), and its origin is accepted for form posts (14.7) |
 | `FOREMAN_PUBLIC_ADDRESS` | none | The host name or IP address players type into Factorio, with an optional port (34197 when none is given). The Server page shows it as a join line (7.1). When it is blank the line is hidden: Foreman never guesses the address |
@@ -309,8 +309,7 @@ another VPN), so that players join through the VPN. This is one choice an
 operator may make, never a requirement. By default, with
 `FOREMAN_GAME_NETWORK_CONTAINER` unset, nothing here applies: Foreman
 publishes the game port on the host (4.3, 4.4) and needs no VPN. Foreman
-must not prevent a sidecar (ADR 0006). Until this is built (Epic 9b, 18.9b),
-Foreman refuses to start when `FOREMAN_GAME_NETWORK_CONTAINER` is set. (P1)
+must not prevent a sidecar (ADR 0006). Built in Epic 9b (18.9b). (P1)
 
 When an operator sets one:
 
@@ -318,8 +317,13 @@ When an operator sets one:
   container, the sidecar, which the operator defines and runs. When it is
   set, Foreman creates the game container with Docker network mode
   `container:<verified container ID>`, so the game shares the inspected
-  sidecar's network, and publishes no port itself. A replacement between
-  inspection and creation must not silently become the game's sidecar.
+  sidecar's network. A replacement between inspection and creation must not
+  silently become the game's sidecar, and a failed create or start reports
+  its failure and never falls back to another network. The game container
+  declares neither exposed nor published ports in this mode (Docker refuses
+  them), so Foreman never publishes the game port itself. Every path that
+  starts a game runs the sidecar checks first, before any world change:
+  start, restart, world switch, version change and mod changes.
 - The game listens on UDP 34197 on every interface of the shared network;
   only RCON is bound to one address (below). LAN players and VPN players
   can play at the same time: VPN players reach the game through the VPN,
@@ -327,11 +331,16 @@ When an operator sets one:
   The operator sets that port in the sidecar's own definition, because
   Docker lets only the container that owns a network publish its ports,
   so Foreman cannot publish it.
-- At every start Foreman inspects the sidecar. When UDP 34197 is not
-  published on the host, the Server page shows a warning, "LAN players
-  cannot reach the game: <sidecar> does not publish UDP 34197 on the
-  host.", and the start goes ahead, because VPN-only play can be a
-  deliberate choice.
+- At every start, and when Foreman takes on a game that is already running,
+  Foreman inspects the sidecar. When UDP 34197 has no host binding, the
+  Server page shows, while the game runs, a warning, "LAN players cannot
+  reach the game: <sidecar> does not publish UDP 34197 on the host.", and
+  the start goes ahead, because VPN-only play can be a deliberate choice.
+  The warning is evidence from inspection, not a connectivity probe, and it
+  is not refreshed while the game runs: a published port does not prove LAN
+  players can reach it (the host address it is bound to, a changed host
+  port and the firewall are outside what Docker reports). It is worded in
+  all eight languages and is not announced to screen readers.
 - The sidecar must be on `FOREMAN_GAME_NETWORK`, which is then required
   even outside a container. The sidecar is the one container other than
   Foreman and its games allowed on the game network (4.4). Foreman reaches
@@ -339,28 +348,62 @@ When an operator sets one:
   attach the sidecar to other Docker networks, including shared networks;
   those attachments and unrelated services there are not refusal reasons.
   The game inherits access to those networks (14.16).
-- RCON is bound only to that address, with Factorio's
-  `--rcon-bind <address>:27015`, never to `0.0.0.0`. This keeps RCON off
-  the VPN interface; it does not prevent access through an operator's
+- RCON is bound only to the sidecar's IPv4 address on the game network,
+  with Factorio's `--rcon-bind <address>:27015`, never to `0.0.0.0`. The
+  address reaches the game as the environment variable `FOREMAN_RCON_BIND`
+  and is a value the start script passes as one argument, never shell text.
+  This keeps RCON off the VPN interface, the sidecar's other Docker
+  interfaces and loopback; it does not prevent access through an operator's
   subnet route or forwarding rule to that private address (14.16).
+- One path finds the RCON address: the first connection, every reconnect,
+  and taking on a running game after a Foreman restart. It reads the bind
+  address from the game container Foreman created, and trusts it only
+  when the container the game's network mode names, looked up by that ID
+  and never by the configured name, still exists and has exactly that
+  address on the game network, with port 27015. A forged value, a network
+  mode that names a container instead of an ID, or a holder that is gone or
+  replaced means no RCON connection. The same check runs on every new
+  connection after it is made and before the RCON password is sent, so a
+  replacement sidecar that took over the old address is not sent the
+  password through a cached client. This is Docker's word at one moment:
+  it narrows, but cannot close, the time between the check and the login.
 - Every address range of every Docker network the sidecar is on counts as a game
   range for trusted-header sign-in (12.5, 12.6). A start is refused when
   any of them overlaps `FOREMAN_TRUSTED_PROXIES`, as for the game network
   (4.4). Check every attached Docker network for exposure of the configured
-  Docker API/socket proxy too. Unknown ranges fail closed. Learn the
-  sidecar's ranges before accepting trusted headers, including when Foreman
-  runs on the host; an empty network list on the game is not evidence that
-  its ranges are known.
+  Docker API/socket proxy too (a range that holds the address a `tcp://`
+  `DOCKER_HOST` reaches). Unknown ranges fail closed: a range Docker does
+  not report refuses the start. Foreman reads the sidecar's ranges before
+  accepting trusted headers, on every monitor look, whether Foreman runs in
+  a container or on the host, and they count as known only when the
+  sidecar and every game container were read in full. An empty network list
+  on the game is not evidence that its ranges are known. Ranges learned
+  earlier are kept when a later read fails; a game still running in a
+  since-replaced sidecar's old namespace keeps that namespace's ranges, and
+  stays unknown while they cannot be read.
 - A start is refused, with a plain reason, when the sidecar does not
   exist, is not running, uses the host or another container's network,
-  or is not on the game network. Foreman recreates the game container at every start (4.3), so it
-  looks the sidecar up by name at every start and attaches the game to the
-  sidecar as it is then.
-- Known limit: when the sidecar is restarted or recreated while the game
-  runs, the game may lose its network until Foreman starts it again.
-  Foreman does not watch the sidecar for this. The README and the operator
-  guide say to restart the game from Foreman after restarting the
+  is not on the game network, or has an address range Foreman cannot read,
+  that overlaps the trusted proxies or that holds the Docker API's address.
+  The reasons are worded in all eight languages and name only the configured
+  container, never anything read from its inspection. Foreman recreates the
+  game container at every start (4.3), so it looks the sidecar up by name at
+  every start and attaches the game to the sidecar as it is then.
+- Known limit: Foreman has no sidecar watcher, warning or automatic
+  recovery. The sidecar is the operator's, and so is its lifecycle. When it
+  is restarted (same ID, same address) or replaced (new ID) while the game
+  runs, the game stays running in a namespace that no longer has its RCON
+  listener, or in the old orphaned one, and the monitor keeps showing it
+  running. Console, players, chat and stop then say Foreman cannot reach the
+  game over RCON, and a graceful stop or restart refuses and never claims
+  the world was saved. The operator uses Force stop, which stops the game
+  without saving, then starts it from Foreman, which joins the sidecar as it
+  is then. This applies after a Foreman restart too. The README and the
+  operator guide say to restart the game from Foreman after restarting the
   sidecar.
+- Not measured: recovery after a host reboot or a Docker restart, with
+  Docker restarting the game (4.3) and the sidecar in no guaranteed order.
+  Operators check it on their own host (STATUS, Epic 9b).
 
 The sidecar is a container Foreman did not create; 14.16 states the risk
 this accepts.
@@ -2459,8 +2502,7 @@ and the low-disk warning (8.13).
 
 18.9b. **Epic 9b: VPN sidecars.** The optional sidecar (4.13, 14.16, ADR
 0006), split out of Epic 9 so that Epics 10 and 11 keep their numbers.
-Until it is built, Foreman refuses to start when
-`FOREMAN_GAME_NETWORK_CONTAINER` is set.
+Built; what is still unproven is in STATUS.md, Epic 9b.
 
 18.10. **Epic 10: AI access.** API tokens (12.10) and the MCP endpoint
 (section 21).
