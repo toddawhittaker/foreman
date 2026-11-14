@@ -974,8 +974,7 @@ main {
 }
 
 /* On a phone the header is two rows within 100 px: the logo and the user
-   menu on a 52 px bar, then the four sections as equal 46 px targets edge
-   to edge, so no section is ever left on a row of its own. */
+   menu on a 52 px bar, then the four sections as 46 px targets edge to edge. */
 @media (max-width: 39.99rem) {
   .site {
     padding-block: 0;
@@ -996,9 +995,11 @@ main {
     border-block-start: var(--border-width) solid var(--color-line);
   }
 
-  .tabs {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Each tab is as wide as its word and the four share what is left, so
+     "Einstellungen" keeps its letters together; at 200% text a tab wraps
+     onto a second row rather than break a word (DESIGN 6). */
+  .tabs li {
+    flex: 1 1 auto;
   }
 
   .tabs a {
@@ -1008,8 +1009,9 @@ main {
     font-weight: 600;
     line-height: 1.15;
     text-align: center;
-    white-space: normal;
-    hyphens: auto;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    hyphens: manual;
   }
 }
 
@@ -5138,23 +5140,28 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
 }
 
 @media (max-width: 30rem) {
-  /* Cancel keeps its word; Preview map takes its own width up to half the
-     bar, so a long label (German, Spanish, Polish) wraps inside it and
-     Generate world keeps room for its words. */
+  /* On a phone the three stack full width in source order, Generate world
+     first, so no language's long label is squeezed into a third of the bar
+     (DESIGN 8.6). */
   .generate > .gen-actions {
     display: grid;
-    grid-template-columns: auto fit-content(50%) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
   }
 
-  .generate > .gen-actions > .button {
-    padding-inline: var(--space-2);
+  .generate > .gen-actions > * {
+    order: 0;
   }
 
-  /* At 200% text the three no longer fit side by side, so they stack (SPEC 17.2). */
-  @container (max-width: 14em) {
+  .generate > .gen-actions > a {
+    justify-content: center;
+  }
+
+  /* Stacked, the bar would cover most of a short window (a phone on its
+     side, 400% zoom), so there it stays at the form's end (WCAG 1.4.10). */
+  @media (max-height: 30rem) {
     .generate > .gen-actions {
-      grid-template-columns: minmax(0, 1fr);
+      position: static;
     }
   }
 
@@ -5537,10 +5544,12 @@ main:has(> .gate) > h1 {
     justify-content: space-between;
   }
 
+  /* The name wraps between words rather than lose letters; a single word
+     such as "Reichhaltigkeit" is never cut. */
   .js-on .step > .field__head > label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-inline-size: min-content;
+    overflow-wrap: normal;
+    hyphens: manual;
   }
 }
 
@@ -5581,9 +5590,6 @@ main:has(> .gate) > h1 {
   }
 }
 
-/* On a phone Generate's actions are one sticky row: Cancel as a word at
-   the start, then Preview map and Generate world sharing the rest. A label
-   wraps only at large text (SPEC 17.2). */
 @media (max-width: 30rem) {
   .generate > .gen-actions > a {
     margin-inline-end: 0;
