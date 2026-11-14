@@ -310,7 +310,7 @@ func TestSharedGameWithAnAddressOfItsOwnKeepsOrdinaryRCON(t *testing.T) {
 		t.Fatalf("ordinary game address %q beside sidecar %q", ip, r.game.SidecarAddress())
 	}
 	eventually(t, "ordinary RCON", func() bool { return rconAnswers(ip + ":27015") })
-	if doc := r.rawInspect(id); at(doc, "HostConfig", "NetworkMode") != "" {
+	if doc := r.rawInspect(id); at(doc, "HostConfig", "NetworkMode") != "default" {
 		t.Errorf("an ordinary game reports NetworkMode %v", at(doc, "HostConfig", "NetworkMode"))
 	}
 }
@@ -406,5 +406,49 @@ func TestSidecarConfigIsChecked(t *testing.T) {
 				t.Fatal("Start accepted it")
 			}
 		})
+	}
+}
+
+func TestSharedGameCannotBindInAnotherContainersNamespace(t *testing.T) {
+	r := sidecarRig(t, "")
+	holder := r.start("other", image21, "no")
+	bind := net.JoinHostPort(r.game.SidecarAddress(), "27015")
+	id := r.startShared("foreman-w1", holder, bind, "no")
+	eventually(t, "wrong-namespace game to exit", func() bool { return r.status(id) == "exited" })
+	if rconAnswers(bind) {
+		t.Fatal("RCON answered from the wrong namespace")
+	}
+}
+
+func TestStartingSidecarDoesNotBootAGame(t *testing.T) {
+	r := sidecarRig(t, "34197")
+	ctx := context.Background()
+	if err := r.docker.StopContainer(ctx, r.sidecarID(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.docker.StartContainer(ctx, r.sidecarID()); err != nil {
+		t.Fatal(err)
+	}
+	bind := net.JoinHostPort(r.game.SidecarAddress(), "27015")
+	if rconAnswers(bind) {
+		t.Fatal("sidecar booted an RCON server")
+	}
+	id := r.startShared("foreman-w1", r.sidecarID(), bind, "no")
+	eventually(t, "shared game RCON", func() bool { return rconAnswers(bind) })
+	if r.status(id) != "running" {
+		t.Fatal("shared game did not remain running")
+	}
+}
+
+func TestSidecarRestartDuringLoadKeepsRCONClosed(t *testing.T) {
+	r := newRig(t, fakegame.Config{SelfNetwork: gameNet, Sidecar: vpnName, LoadDelay: 100 * time.Millisecond})
+	bind := net.JoinHostPort(r.game.SidecarAddress(), "27015")
+	r.startShared("foreman-w1", r.sidecarID(), bind, "no")
+	if err := r.game.RestartSidecar(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(250 * time.Millisecond)
+	if rconAnswers(bind) {
+		t.Fatal("delayed load reopened RCON in the old namespace")
 	}
 }

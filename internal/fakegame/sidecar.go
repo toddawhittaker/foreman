@@ -38,10 +38,6 @@ const SidecarSecret = "canary-sidecar-credential-0000"
 // fake picks its loopback one; inspect never reports it.
 const sidecarPlaceholder = "10.250.0.3/24"
 
-// sidecarPrefixLen is the prefix length inspect reports for the sidecar's
-// loopback address: a /24, as the self container's range is.
-const sidecarPrefixLen = 24
-
 var (
 	sidecarName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$`)
 	networkName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
@@ -189,7 +185,7 @@ func (in *instance) bindFails() string {
 	}
 	in.g.mu.Lock()
 	defer in.g.mu.Unlock()
-	if in.g.isSidecarLocked(in.shared) && in.ip != in.g.sidecarAddr {
+	if !in.g.isSidecarLocked(in.shared) || in.ip != in.g.sidecarAddr {
 		return "Cannot assign requested address"
 	}
 	return ""
@@ -199,6 +195,7 @@ func (in *instance) bindFails() string {
 // game running: what the namespace's end does to a game that still runs.
 func (in *instance) cutRCON() {
 	in.mu.Lock()
+	in.networkLost = true
 	proxy, rcon := in.proxy, in.rcon
 	in.proxy, in.rcon = nil, nil
 	conns := make([]net.Conn, 0, len(in.conns))
@@ -250,40 +247,16 @@ func (g *Game) sidecarState() *SidecarState {
 	return s
 }
 
-// fillInspect adds the fields Foreman reads from an inspect (SPEC 4.13) that
-// the daemon's body does not carry: the environment, the network mode, and
-// for the sidecar the published ports. A shared-namespace container, which
-// has no network of its own, lists none.
+// fillInspect supplies the publication state controlled by the sidecar hook.
+// Other inspect fields come from dockertest, including shared namespaces.
 func (g *Game) fillInspect(doc map[string]any, c dockertest.Container) {
-	cfg, _ := doc["Config"].(map[string]any)
-	if cfg == nil {
-		cfg = map[string]any{}
-		doc["Config"] = cfg
-	}
-	if _, ok := cfg["Env"]; !ok {
-		cfg["Env"] = c.Spec.Env
-	}
-	host, _ := doc["HostConfig"].(map[string]any)
-	if host == nil {
-		host = map[string]any{}
-		doc["HostConfig"] = host
-	}
-	if _, ok := host["NetworkMode"]; !ok {
-		host["NetworkMode"] = c.Spec.HostConfig.NetworkMode
-	}
-	settings, _ := doc["NetworkSettings"].(map[string]any)
-	if settings == nil {
-		settings = map[string]any{}
-		doc["NetworkSettings"] = settings
-	}
-	if _, shared := sidecarHolder(c); shared {
-		settings["Networks"] = map[string]any{}
-	}
 	g.mu.Lock()
 	isSidecar, port := c.ID == g.sidecar, g.sidecarPort
 	g.mu.Unlock()
 	if isSidecar {
-		settings["Ports"] = sidecarPorts(c.Status == "running", port)
+		if settings, ok := doc["NetworkSettings"].(map[string]any); ok {
+			settings["Ports"] = sidecarPorts(c.Status == "running", port)
+		}
 	}
 }
 
@@ -298,14 +271,4 @@ func sidecarPorts(running bool, port string) map[string]any {
 		{"HostIp": "0.0.0.0", "HostPort": port},
 		{"HostIp": "::", "HostPort": port},
 	}}
-}
-
-// setPrefixLen gives the sidecar's networks the prefix length of its
-// loopback range, which is what Foreman reads its address ranges from.
-func setPrefixLen(nets map[string]any) {
-	for _, n := range nets {
-		if nw, ok := n.(map[string]any); ok && nw["IPAddress"] != "" {
-			nw["IPPrefixLen"] = sidecarPrefixLen
-		}
-	}
 }

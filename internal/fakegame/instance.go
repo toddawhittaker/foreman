@@ -33,13 +33,14 @@ type instance struct {
 	password string
 	v        *version
 
-	mu      sync.Mutex
-	dead    bool
-	inGame  bool
-	players []string
-	flags   listFlags
-	bans    []banEntry // the lists are in memory; flags say which are also files
-	admins  []string
+	mu          sync.Mutex
+	dead        bool
+	networkLost bool // the shared namespace no longer has a working network
+	inGame      bool
+	players     []string
+	flags       listFlags
+	bans        []banEntry // the lists are in memory; flags say which are also files
+	admins      []string
 	// whitelist is loaded from its file only with --use-server-whitelist.
 	whitelist []string
 	base      float64   // elapsed seconds on the last line written...
@@ -58,6 +59,12 @@ type rconServer struct {
 
 // boot runs the game for a container that Docker has just started.
 func (g *Game) boot(id string) {
+	g.mu.Lock()
+	operatorContainer := id == g.sidecar || id == g.selfID
+	g.mu.Unlock()
+	if operatorContainer {
+		return
+	}
 	c, ok := g.daemon.Container(id)
 	if !ok || c.Status != "running" {
 		return
@@ -191,7 +198,9 @@ func (in *instance) finishLoad() {
 	}
 	in.emit(in.v.tail, runSave)
 	in.mu.Lock()
-	in.inGame = true
+	if !in.dead {
+		in.inGame = true
+	}
 	in.mu.Unlock()
 }
 
@@ -312,6 +321,12 @@ func (in *instance) writeLocked(text, saveFrom string) {
 // sits in front of an rcontest server, because rcontest only listens on
 // 127.0.0.1.
 func (in *instance) startRCON() error {
+	in.mu.Lock()
+	unavailable := in.dead || in.networkLost
+	in.mu.Unlock()
+	if unavailable {
+		return nil
+	}
 	addr := net.JoinHostPort(in.ip, rconPort)
 	if in.shared != "" {
 		// A game in a shared namespace listens on the endpoint it was told
@@ -336,7 +351,7 @@ func (in *instance) startRCON() error {
 	rcon := in.newRCON(refuse)
 
 	in.mu.Lock()
-	if in.dead {
+	if in.dead || in.networkLost {
 		in.mu.Unlock()
 		_ = ln.Close()
 		rcon.tb.runCleanups()

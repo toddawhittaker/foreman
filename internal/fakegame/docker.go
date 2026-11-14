@@ -151,8 +151,8 @@ func (in *instance) shutdownLog() {
 }
 
 // rewriteInspect replaces the address Docker's fake reports with the
-// loopback address the container's RCON listens on, and adds the fields of
-// SPEC 4.13 the daemon's body may lack (see fillInspect). A container the
+// loopback address the container's RCON listens on and applies the sidecar's
+// publication hook. A container the
 // fake never ran a game in, such as one a test seeded, keeps its own address;
 // the seeded sidecar has a loopback address of its own.
 func (g *Game) rewriteInspect(body []byte) []byte {
@@ -170,7 +170,6 @@ func (g *Game) rewriteInspect(body []byte) []byte {
 	g.fillInspect(doc, c)
 	g.mu.Lock()
 	_, ran := g.addrs[id]
-	sidecar := id == g.sidecar
 	g.mu.Unlock()
 	if ran {
 		settings, _ := doc["NetworkSettings"].(map[string]any)
@@ -182,9 +181,6 @@ func (g *Game) rewriteInspect(body []byte) []byte {
 				nw["IPAddress"] = g.addrLocked(id)
 				g.mu.Unlock()
 			}
-		}
-		if sidecar {
-			setPrefixLen(nets)
 		}
 	}
 	out, err := json.Marshal(doc)
