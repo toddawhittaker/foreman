@@ -5110,14 +5110,14 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   border-end-end-radius: var(--radius-lg);
 }
 
-/* Cancel leads the bar and the primary action ends it, as on Generate. */
+/* Cancel leads the bar and the primary action ends it, in code order too,
+   so the keyboard meets them as the eye does. */
 .form-foot {
   flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
 .form-foot > a {
-  order: -1;
   margin-inline-end: auto;
 }
 

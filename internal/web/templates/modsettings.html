@@ -133,8 +133,8 @@
 </section>
 {{- /* The save bar stays at the window's foot while the form is in view, so the action is always in reach. */}}
 <div class="actions form-foot">
-  <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
   <a href="{{.ModsPath}}">{{t "settings.cancel"}}</a>
+  <button type="submit" class="button button--primary">{{if .Running}}{{t "mods.settings.edit.save_restart"}}{{else}}{{t "mods.settings.edit.save"}}{{end}}</button>
 </div>
 </form>
 {{- end}}
