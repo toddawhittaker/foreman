@@ -443,11 +443,11 @@ func TestStartingSidecarDoesNotBootAGame(t *testing.T) {
 func TestSidecarRestartDuringLoadKeepsRCONClosed(t *testing.T) {
 	r := newRig(t, fakegame.Config{SelfNetwork: gameNet, Sidecar: vpnName, LoadDelay: 100 * time.Millisecond})
 	bind := net.JoinHostPort(r.game.SidecarAddress(), "27015")
-	r.startShared("foreman-w1", r.sidecarID(), bind, "no")
+	id := r.startShared("foreman-w1", r.sidecarID(), bind, "no")
 	if err := r.game.RestartSidecar(); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(250 * time.Millisecond)
+	eventually(t, "delayed load to finish", func() bool { return strings.Contains(r.log(id), "to(InGame)") })
 	if rconAnswers(bind) {
 		t.Fatal("delayed load reopened RCON in the old namespace")
 	}
