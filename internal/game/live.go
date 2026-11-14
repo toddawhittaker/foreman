@@ -41,13 +41,19 @@ func (c *Controller) online(ctx context.Context, rc *rcon.Client) ([]string, err
 	return ParseOnline(reply)
 }
 
-// liveRCON returns the RCON client of a game that is in game, or
-// ErrNotRunning.
+// liveRCON returns the RCON client of a game that is in game. A game that
+// is not running, or not yet in game, is ErrNotRunning. A game that is in
+// game but has no RCON client, such as after Foreman restarted and the
+// sidecar's network is gone (SPEC 4.13), is ErrRCONUnreachable: it runs, so
+// "not running" would be wrong (SPEC 8.4).
 func (c *Controller) liveRCON(w *worldRun) (*rcon.Client, []secret.Secret, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.rc == nil || w.dockerStatus != "running" || !w.run.inGame {
+	if w.dockerStatus != "running" || !w.run.inGame {
 		return nil, nil, ErrNotRunning
+	}
+	if w.rc == nil {
+		return nil, nil, ErrRCONUnreachable
 	}
 	return w.rc, w.secrets, nil
 }
