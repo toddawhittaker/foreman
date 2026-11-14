@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test";
 
 // SPEC 17.4, DESIGN 7.5: the server's state beside Server in the main
 // navigation is said in words on every page, not by the lamp's shape alone.
-// On a wide screen the word sits under Server in its tab; on a phone it sits
-// beside the logo, and the tab says it to screen readers.
+// At every width the word sits beside the logo, after the product name; the
+// Server tab shows only "Server" and says the state to screen readers.
 
 test.use({ fakeGameOn: true });
 
@@ -19,7 +19,7 @@ const drawnWord = (el: Element) => {
   return range.getBoundingClientRect().width;
 };
 
-// The state word a sighted person reads in the header, wherever it is shown.
+// The state word a sighted person reads in the header: beside the logo, once.
 async function expectStateWord(page: Page, word: string) {
   const tab = mainNav(page).getByRole("link", { name: new RegExp(`^Server\\s+${word}$`) });
   await expect(tab).toBeVisible(live);
@@ -28,10 +28,19 @@ async function expectStateWord(page: Page, word: string) {
   // The copy beside the logo is for the eye only; the tab's name carries the word.
   await expect(beside).toHaveAttribute("aria-hidden", "true");
   await expect(beside).toContainText(word);
-  const [shown, hidden] = isPhone(page) ? [beside, inTab] : [inTab, beside];
-  await expect(shown).toBeVisible();
-  expect(await shown.evaluate(drawnWord), "the word is drawn").toBeGreaterThan(20);
-  expect(await hidden.evaluate(drawnWord), "the word is drawn once").toBe(0);
+  await expect(beside).toBeVisible();
+  expect(await beside.evaluate(drawnWord), "the word is drawn").toBeGreaterThan(20);
+  expect(await inTab.evaluate(drawnWord), "the word is drawn once").toBe(0);
+  // The tab itself reads as plain "Server".
+  const box = (await tab.boundingBox())!;
+  expect(box.height, "the tab is one line").toBeLessThanOrEqual(48);
+  // After the logo's name, and before the tabs on a wide screen or the menu on a phone.
+  const logo = (await page.locator("header.site .product").boundingBox())!;
+  const shown = (await beside.boundingBox())!;
+  const next = (await (isPhone(page) ? page.locator("details.menu > summary") : mainNav(page)).boundingBox())!;
+  expect(shown.x).toBeGreaterThanOrEqual(logo.x + logo.width);
+  expect(shown.x + shown.width).toBeLessThanOrEqual(next.x + 1);
+  expect(Math.abs(shown.y + shown.height / 2 - (logo.y + logo.height / 2)), "level with the logo").toBeLessThan(6);
 }
 
 test("the header says the server's state in words, and follows it live", async ({ page, foreman, fakeGame }) => {
@@ -56,8 +65,8 @@ test("the header says the server's state in words, and follows it live", async (
   await checkPage(page);
 });
 
-// SPEC 17.2, 22.7: in German, at 320 px, the word fits beside the logo and
-// the menu, and the four tabs keep one row.
+// SPEC 17.2, 22.7: in German the word fits between the logo and the menu or
+// tabs, and the four tabs keep one row.
 test("in German the state word fits the header", async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
@@ -74,15 +83,14 @@ test("in German the state word fits the header", async ({ page, foreman, fakeGam
   expect(menu.x + menu.width).toBeLessThanOrEqual(width);
   const tops = await page.locator("header.site nav a").evaluateAll((els) => new Set(els.map((a) => Math.round(a.getBoundingClientRect().top))).size);
   expect(tops).toBe(1);
-  if (isPhone(page)) {
-    const state = await box("header.site #site-state");
-    expect(state.x).toBeGreaterThanOrEqual(logo.x + logo.width);
-    expect(state.x + state.width).toBeLessThanOrEqual(menu.x);
-  }
+  const state = await box("header.site #site-state");
+  const nav = await box("header.site nav");
+  expect(state.x).toBeGreaterThanOrEqual(logo.x + logo.width);
+  expect(state.x + state.width).toBeLessThanOrEqual((isPhone(page) ? menu.x : nav.x) + 1);
   await checkPage(page);
 });
 
-// DESIGN 7.5: a long state wraps inside Server's tab rather than widen it,
+// DESIGN 7.5: a long state wraps beside the logo rather than widen the header,
 // so the header keeps its height when the state changes live, at any width,
 // in the languages with the longest words.
 for (const [lang, short, long] of [
@@ -108,6 +116,9 @@ for (const [lang, short, long] of [
       const before = await show("running", short);
       const after = await show("crash-looping", long);
       expect(after, `${width} px`).toBe(before);
+      // On the logo's row, the longest word stays clear of the tabs.
+      const [state, nav, logo] = await Promise.all(["#site-state", "header.site nav", "header.site .product"].map((q) => page.locator(q).boundingBox()));
+      if (nav!.y < logo!.y + logo!.height) expect(state!.x + state!.width, `${width} px`).toBeLessThanOrEqual(nav!.x + 1);
     }
   });
 }

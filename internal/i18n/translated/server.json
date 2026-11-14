@@ -118,6 +118,7 @@
   "server.disk.low": "bb1ceb0e",
   "server.disk.snapshots": "f187f78e",
   "server.done.box": "d23d7225",
+  "server.done.close": "7a8bead4",
   "server.done.mods_short": "7263e6e3",
   "server.done.restore": "069489ae",
   "server.done.restore_short": "ade7548c",

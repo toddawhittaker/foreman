@@ -261,6 +261,7 @@
   "server.done.snapshot": "Foreman a pris l’instantané « {label} » de {world}.",
   "server.done.restore_short": "Le monde est restauré.",
   "server.done.switch_short": "Les mondes ont basculé.",
+  "server.done.close": "Fermer ce message",
   "server.done.update_short": "La version du jeu est mise à jour.",
   "server.done.mods_short": "Les mods sont modifiés.",
   "server.done.rollback_short": "Le monde est revenu en arrière.",
