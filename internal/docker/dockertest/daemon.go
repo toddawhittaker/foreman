@@ -34,8 +34,16 @@ type Container struct {
 	Mounts       []docker.Mount
 	// Networks maps a network name to the address on it, set while running.
 	// "172.18.0.5/24" also gives the prefix length; a bare address has 16.
+	// A network that has IPv6 too lists both, separated by a comma:
+	// "172.18.0.5/24,fd00:18::5/64". A container seeded with several
+	// networks keeps its addresses across stops and restarts. A container
+	// created in another container's network (mode "container:x") has no
+	// networks of its own, as on Docker.
 	Networks map[string]string
 	Log      []LogEntry
+
+	// seeded is the addresses a Seed call gave, restored when it runs again.
+	seeded map[string]string
 }
 
 // clone copies the parts a later call could change under the caller.
@@ -233,6 +241,14 @@ func (d *Daemon) Seed(c Container) {
 	if c.Status == "" {
 		c.Status = "created"
 	}
+	for name, addr := range c.Networks {
+		if addr != "" {
+			if c.seeded == nil {
+				c.seeded = map[string]string{}
+			}
+			c.seeded[name] = addr
+		}
+	}
 	d.containers = append(d.containers, &c)
 	d.broadcast()
 }
@@ -300,6 +316,11 @@ func (d *Daemon) Restart(ref string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if c := d.find(ref); c != nil && c.Status != "running" {
+		if _, msg := d.joinFailure(c); msg != "" {
+			c.Error = msg
+			d.broadcast()
+			return
+		}
 		c.RestartCount++
 		d.markRunning(c)
 	}
@@ -312,6 +333,11 @@ func (d *Daemon) RestartByHand(ref string) {
 	defer d.mu.Unlock()
 	if c := d.find(ref); c != nil && c.Status == "running" {
 		d.markExited(c, 0)
+		if _, msg := d.joinFailure(c); msg != "" {
+			c.Error = msg
+			d.broadcast()
+			return
+		}
 		d.markRunning(c)
 	}
 }
