@@ -634,6 +634,8 @@ The sidecar's part of it:
       TS_STATE_DIR: /var/lib/tailscale
       TS_AUTH_ONCE: "true"
       TS_HOSTNAME: factorio
+      TS_EXTRA_ARGS: --advertise-tags=tag:factorio
+      TS_BOOT_TIMEOUT: "5m"
     volumes:
       - tailscale-state:/var/lib/tailscale
     devices:
@@ -663,8 +665,11 @@ What each part does:
   that must be signed in again.
 - **`TS_AUTH_ONCE: "true"`** signs in only when the saved state is not
   already signed in.
-- **`TS_HOSTNAME`** is the machine's name in your tailnet. VPN players type
-  it into Factorio.
+- **`TS_HOSTNAME`** names the machine in your tailnet.
+- **`TS_EXTRA_ARGS`** requests `tag:factorio` at sign-in. Define its owners
+  in your tailnet policy before starting the sidecar.
+- **`TS_BOOT_TIMEOUT`** gives initial sign-in five minutes in this pinned
+  release; its default is one minute.
 - **`devices` and `cap_add`** are what Tailscale's documentation asks for
   in kernel mode: the TUN device, `NET_ADMIN` and `NET_RAW`. They are the
   sidecar's own. The game container still runs with every capability
@@ -673,10 +678,14 @@ What each part does:
 - **`networks: [game]`** puts the sidecar on `FOREMAN_GAME_NETWORK`, which
   Foreman requires. See "What the game can reach" before adding others.
 
-Leave these Tailscale settings out: `TS_ROUTES`, `TS_DEST_IP`,
-`TS_SERVE_CONFIG`, and `--advertise-routes` or `--advertise-exit-node` in
-`TS_EXTRA_ARGS`. Each one can forward VPN traffic beyond the game's UDP
-port, into the Docker network where RCON listens.
+Keep routing and forwarding features out of this example: `TS_ROUTES`,
+`TS_DEST_IP`, `TS_SERVE_CONFIG`, `TS_TAILNET_TARGET_IP`,
+`TS_TAILNET_TARGET_FQDN`, `--advertise-routes`, `--advertise-exit-node`,
+and `--accept-routes`. They can widen what reaches the game network or
+what the game reaches. Also leave `TS_SOCKS5_SERVER`,
+`TS_OUTBOUND_HTTP_PROXY_LISTEN`, `TS_ENABLE_METRICS` and
+`TS_ENABLE_HEALTH_CHECK` unset: they add listeners this setup does not need.
+See [Tailscale's Docker parameters](https://tailscale.com/docs/features/containers/docker/docker-params).
 
 The host must have the TUN device. Check with `ls -l /dev/net/tun`; if it
 is missing, load the module with `sudo modprobe tun`. When the host is
@@ -689,40 +698,66 @@ below: replacing the sidecar cuts the running game off.
 
 ### Sign the sidecar in
 
-There is no key to put in a file. The sidecar asks you to sign in once,
-in its log:
+First configure `tag:factorio` and its owners as shown under "Limit who
+can join" below. Sign in as an owner of that tag. A tagged device uses its
+tag's identity instead of the signer's personal access; leave the tag
+without outbound grants and remove broader rules that would grant it
+unwanted access. Verify the tag in the admin console before starting a
+game, especially when reusing an existing state volume. See
+[Tailscale tags](https://tailscale.com/docs/features/tags).
+
+The example uses interactive sign-in, without an auth key:
 
 1. Start everything with `docker compose up -d`.
 2. Run `docker compose logs -f tailscale` and wait for the line
    `To authenticate, visit:` followed by a link.
 3. Open the link, sign in to your tailnet, and approve the machine. Keep
    the link to yourself: whoever opens it can add this machine to their
-   own tailnet. Tailscale waits about a minute by default; if you take
-   longer, the sidecar exits and Docker starts it again with a new link.
-   Use the newest link in the log.
+   own tailnet. This example allows five minutes for startup and sign-in;
+   the pinned release defaults to one minute. If it expires, Docker
+   restarts the sidecar with a new link. Use the newest link in the log.
+   The setting is defined in the pinned release's
+   [container startup source](https://github.com/tailscale/tailscale/blob/v1.104.7/cmd/containerboot/settings.go).
 4. Check it: `docker exec foreman-tailscale tailscale status` lists the
    machine, and `docker exec foreman-tailscale tailscale ip -4` shows its
    tailnet address.
 
-The state volume keeps the sign-in across restarts. By default a
-machine's sign-in expires after a time set in your tailnet, and the game
-then drops off the VPN until you sign in again from the log. To avoid
-that, tag the machine on the Machines page of the Tailscale admin console
-(a tagged machine's key expiry is off by default), or turn its key expiry
-off there.
+The state volume keeps the sign-in across restarts. Tagged devices have
+key expiry disabled by default; check your device's actual expiry setting
+in the admin console.
 
-If you prefer an auth key, keep it out of the compose file and out of
-git, for example in an `env_file:` you do not commit, and never give it
-to Foreman.
+If you prefer an auth key, mount it only into the sidecar as a Compose
+secret and set `TS_AUTHKEY: file:/run/secrets/ts_authkey`. Keep the source
+file outside git, readable only by its owner. Do not pass the key itself
+in `environment` or `env_file`: Docker includes those values in inspect
+responses, which Foreman reads. The pinned release supports the
+[file-based key form](https://github.com/tailscale/tailscale/blob/v1.104.7/cmd/tailscale/cli/up.go).
+For example, add to your local compose file:
+
+```yaml
+services:
+  tailscale:
+    environment:
+      TS_AUTHKEY: file:/run/secrets/ts_authkey
+    secrets:
+      - ts_authkey
+secrets:
+  ts_authkey:
+    file: /absolute/private/path/ts_authkey
+```
+
+This keeps key contents out of the inspect environment, not out of reach
+of the host or someone with unrestricted Docker administration.
 
 ### Join the game
 
 Start the server from Foreman as in section 10. Then:
 
 - **LAN players** connect to the host's address, as before.
-- **VPN players** connect to the sidecar's tailnet name (`factorio` in the
-  example, with MagicDNS) or its tailnet address from
-  `tailscale ip -4`. The port is 34197; they can leave it out.
+- **VPN players** use the IPv4 address from
+  `docker exec foreman-tailscale tailscale ip -4`. The port is 34197;
+  they can leave it out. MagicDNS names such as `factorio` may resolve to
+  IPv6 too; use the name only after testing it with your game clients.
 
 `FOREMAN_PUBLIC_ADDRESS` shows one join line on the Server page. Choose
 the address most of your players use.
@@ -817,7 +852,7 @@ With a sidecar, Foreman counts every Docker network the sidecar is on as a
 game network, and ignores sign-in headers from those addresses (section
 6). Docker cannot tell Foreman the VPN's addresses. So never put the
 sidecar's tailnet address, or a VPN range such as Tailscale's
-`100.64.0.0/10`, in `FOREMAN_TRUSTED_PROXIES`: the game, or anything
+`100.64.0.0/10` or `fd7a:115c:a1e0::/48`, in `FOREMAN_TRUSTED_PROXIES`: the game, or anything
 else that reaches Foreman through the sidecar, could then pose as the
 proxy and sign in as anyone. Use only the single address of a separate reverse proxy, or
 local accounts.
@@ -841,7 +876,10 @@ Afterwards, restart the game from Foreman:
 
 Change the sidecar when nobody is playing.
 
-After a host reboot or a Docker restart, Docker starts the sidecar and
-the game again by itself, but not in the order Compose uses. If the game
-is not running, start it from the Server page; if it runs but players
-cannot join, restart it.
+After a host reboot or Docker restart, check both player connectivity
+and a Console command through Foreman. Docker restart policies do not
+provide Compose's startup ordering, and a game may run while its saved
+RCON bind address is no longer usable. If stopped, start it from Foreman;
+if either player connectivity or RCON fails, follow the restart and
+force-stop recovery steps above. Reboot recovery still needs to be
+verified on the deployment; this example does not guarantee ordering.
