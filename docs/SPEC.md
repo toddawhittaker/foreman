@@ -339,7 +339,7 @@ When an operator sets one:
   The warning is evidence from inspection, not a connectivity probe, and it
   is not refreshed while the game runs: a published port does not prove LAN
   players can reach it (the host address it is bound to, a changed host
-  port and the firewall are outside what Docker reports). It is worded in
+  port and the firewall are outside this publication check). It is worded in
   all eight languages and is not announced to screen readers.
 - The sidecar must be on `FOREMAN_GAME_NETWORK`, which is then required
   even outside a container. The sidecar is the one container other than
@@ -362,10 +362,10 @@ When an operator sets one:
   and never by the configured name, still exists and has exactly that
   address on the game network, with port 27015. A forged value, a network
   mode that names a container instead of an ID, or a holder that is gone or
-  replaced means no RCON connection. The same check runs on every new
-  connection after it is made and before the RCON password is sent, so a
-  replacement sidecar that took over the old address is not sent the
-  password through a cached client. This is Docker's word at one moment:
+  replaced prevents an RCON login. The same check runs on every new
+  connection after it is made and before the RCON password is sent. When
+  Docker reports the original holder gone or its address changed, the login
+  is refused. This is Docker's word at one moment:
   it narrows, but cannot close, the time between the check and the login.
 - Every address range of every Docker network the sidecar is on counts as a game
   range for trusted-header sign-in (12.5, 12.6). A start is refused when
@@ -379,14 +379,16 @@ When an operator sets one:
   sidecar and every game container were read in full. An empty network list
   on the game is not evidence that its ranges are known. Ranges learned
   earlier are kept when a later read fails; a game still running in a
-  since-replaced sidecar's old namespace keeps that namespace's ranges, and
-  stays unknown while they cannot be read.
+  since-replaced sidecar's old namespace contributes its ranges too. Before
+  the first complete discovery, unreadable ranges keep trusted-header sign-in
+  refused. Later read failures retain previously learned ranges and knowledge.
 - A start is refused, with a plain reason, when the sidecar does not
   exist, is not running, uses the host or another container's network,
   is not on the game network, or has an address range Foreman cannot read,
   that overlaps the trusted proxies or that holds the Docker API's address.
-  The reasons are worded in all eight languages and name only the configured
-  container, never anything read from its inspection. Foreman recreates the
+  The reasons are worded in all eight languages and identify the configured
+  container. Network diagnostics may include inspected addresses and ranges,
+  but never the sidecar environment or an inspect dump. Foreman recreates the
   game container at every start (4.3), so it looks the sidecar up by name at
   every start and attaches the game to the sidecar as it is then.
 - Known limit: Foreman has no sidecar watcher, warning or automatic

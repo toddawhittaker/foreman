@@ -2927,8 +2927,8 @@ being waived or fixed by auto-start.
   change, so a refused start writes no mod list and takes no snapshot. The
   sidecar must be running, on `FOREMAN_GAME_NETWORK`, and not on the host
   network or inside another container's. The old startup refusal is gone.
-  Container inspect gained the environment, network mode and ports, none of
-  which is ever put in an error or log. No database, API, endpoint or
+  Container inspect gained the environment, network mode and ports. The
+  environment and full inspect result are never put in an error or log. No database, API, endpoint or
   dependency changed.
 - **Shared sidecars (SPEC 4.13).** Every network the sidecar is on has its
   IPv4 and IPv6 ranges checked: an unreadable range, an overlap with
@@ -2942,17 +2942,18 @@ being waived or fixed by auto-start.
   restart. It inspects the container the game's network mode names, by
   ID, and trusts the bind only when it is that container's exact address
   on the game network and port 27015. Each new RCON connection runs the
-  check again after it is made and before the login, so a cached client
-  never sends the RCON password to a replacement sidecar that took the old
-  address (`rcon.NewChecked`). Ordinary mode is unchanged.
+  check again after it is made and before the login (`rcon.NewChecked`).
+  When Docker reports the original holder gone or its address changed, the
+  login is refused; this remains a point-in-time check. Ordinary mode is unchanged.
 - **The sidecar's ranges protect trusted-header sign-in (SPEC 12.6;
   #563).** They are read before the first game starts and on every monitor
   look, with Foreman in or out of a container, and again after a Foreman
   restart. They count as known only when the sidecar and every game
   container were read in full, an empty network list on a game proves
   nothing, ranges learned earlier survive a failed read, and a game in a
-  since-replaced sidecar's old namespace keeps its ranges unknown until
-  they can be read.
+  since-replaced sidecar's old namespace contributes its ranges too. Before
+  the first complete discovery, unreadable ranges keep sign-in refused;
+  later read failures retain previously learned ranges and knowledge.
 - **The Server page warns, without blocking, when LAN players cannot join
   (SPEC 4.13; #563, #564).** When the sidecar has no host binding for
   `34197/udp`, the start goes ahead and the page warns while the game
@@ -3009,18 +3010,23 @@ being waived or fixed by auto-start.
   started.
 - **Failure diagnostics for browser tests (#567).** A failing e2e test keeps
   a Playwright trace and the last 256 KiB of Foreman's output with secret
-  values redacted, and CI uploads them for seven days. This explains
+  literal credential values of at least four characters redacted, and CI
+  uploads them for seven days. Browser traces are not redacted and must
+  contain only the test fixtures' synthetic credentials. This explains
   failures; it fixes none.
 
 ### Evidence
 
-On the final epic head `712f786` (tree
+On epic head `712f786` (tree
 `34fc8636c545c387796de2e5f44f95b0e8a13c38`), identical to the consolidated
 tree that was verified:
 
 - Full `make verify`: passed, 90.9% coverage across `internal/`.
   Test counts: game 400, world 304 and web 694.
 - Full fake-browser suite: 3078 passed, 254 skipped, 0 failed.
+On combined real-game candidate `e08f002` (the feature changes plus the
+OOM test-trigger correction in #569):
+
 - Real-game sidecar tests: 52 passes across 1.1.110, 2.0.77 and 2.1.24,
   including the same-address trap.
 - Full `make e2e-game`: 2 passed.

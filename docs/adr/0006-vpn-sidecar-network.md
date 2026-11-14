@@ -10,7 +10,9 @@ Some operators want players to join through Tailscale, Netbird or another
 VPN sidecar container. It is optional: by default the game port is published
 on the host and no VPN is needed. Foreman must not prevent a sidecar.
 The sidecar is the operator's: Foreman never installs, signs in, configures,
-restarts or removes it, and no VPN credential ever enters Foreman.
+restarts or removes it. Foreman has no VPN credential setting, but Docker
+inspect exposes sidecar environment values to Foreman; the example therefore
+uses interactive sign-in or a file-mounted auth key.
 
 ## Decision
 
@@ -36,8 +38,8 @@ restarts or removes it, and no VPN credential ever enters Foreman.
   container and trusts it only when the container the game's network mode
   names, inspected by that ID and never by the configured name, still has
   exactly that address on the game network. Each new RCON connection is
-  checked again before the password is sent, so a replacement sidecar at
-  the same address never receives it from a cached client. The check is
+  checked again before the password is sent. When Docker reports the original
+  holder gone or its address changed, the login is refused. The check is
   Docker's word at one moment and cannot close the gap before the login.
 - Additional Docker networks, including shared networks, are allowed.
   Their unrelated services are not refusal reasons. Check every attached
