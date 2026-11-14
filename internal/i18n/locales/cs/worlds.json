@@ -324,6 +324,7 @@
   "worlds.world.updating": "Aktualizace na Factorio {version}…",
   "worlds.world.server_page": "stránku serveru",
   "worlds.world.snapshots": "Snímky",
+  "worlds.world.snapshots_name": "Snímky tohoto světa",
   "worlds.world.switch.busy": "Na serveru probíhá operace, například přepnutí. Viz {link}.",
   "worlds.world.switch.button": "Přepnout na tento svět",
   "worlds.world.switch.heading": "Přepnutí",

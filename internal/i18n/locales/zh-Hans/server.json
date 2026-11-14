@@ -254,6 +254,7 @@
   "server.done.snapshot": "Foreman 已为 {world} 创建快照“{label}”。",
   "server.done.restore_short": "世界已恢复。",
   "server.done.switch_short": "世界已切换。",
+  "server.done.close": "关闭此消息",
   "server.done.update_short": "游戏版本已更新。",
   "server.done.mods_short": "模组已更改。",
   "server.done.rollback_short": "世界已回滚。",

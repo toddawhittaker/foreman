@@ -2237,7 +2237,8 @@ and tells the user to reload. (P0)
 
 17.1. Controls Foreman owns meet WCAG 2.2 AA (the Web Content
 Accessibility Guidelines, level AA). Every UI change ships with an
-automated accessibility scan in its end-to-end tests. (P0)
+automated accessibility scan in its end-to-end tests. No two links on one
+page share a name unless they go to the same place. (P0)
 
 17.2. Every page works at 320 CSS pixels wide without horizontal
 scrolling, with touch targets at least 24 by 24 CSS pixels. The success
@@ -2283,7 +2284,11 @@ as a button or link on the same page. That includes undo after a change
 (VISION principle 1, "undone in one click"), the download after a missing
 image, and switch back or restore after a failed switch or a crash loop.
 Text that tells the admin to go somewhere else and do something, without
-a link that does it, does not meet this. (P1)
+a link that does it, does not meet this. The Server page's "Done" box,
+which reports a success or a cancelled stop, may be closed by the person
+(a close button that works without script); closing it also drops the
+undo or Switch back offer it carried, and forgets that result on the
+server. A failure's box has no close button. (P1)
 
 17.10. **Click budgets for common tasks.** Starting on the Server page,
 with the defaults accepted, these take at most:

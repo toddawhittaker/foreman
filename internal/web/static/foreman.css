@@ -225,6 +225,7 @@
   --i-account: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='5'/%3E %3Cpath d='M20 21a8 8 0 0 0-16 0'/%3E%3C/svg%3E");
   --i-sync: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2 9 3-3 3 3'/%3E %3Cpath d='M13 18H7a2 2 0 0 1-2-2V6'/%3E %3Cpath d='m22 15-3 3-3-3'/%3E %3Cpath d='M11 6h6a2 2 0 0 1 2 2v10'/%3E%3C/svg%3E");
   --i-folder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2'/%3E%3C/svg%3E");
+  --i-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E %3Cpath d='m6 6 12 12'/%3E%3C/svg%3E");
   --i-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
   --i-list: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h.01'/%3E %3Cpath d='M3 12h.01'/%3E %3Cpath d='M3 19h.01'/%3E %3Cpath d='M8 5h13'/%3E %3Cpath d='M8 12h13'/%3E %3Cpath d='M8 19h13'/%3E%3C/svg%3E");
   --i-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='14' x='8' y='8' rx='2' ry='2'/%3E %3Cpath d='M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'/%3E%3C/svg%3E");
@@ -1593,6 +1594,29 @@ legend {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--target-min);
+}
+
+/* The Done message's close button sits at its top end corner, in a 44 px
+   target; the text keeps clear of it (DESIGN 7.3). */
+.message--closable {
+  position: relative;
+  padding-inline-end: calc(var(--target-min) + var(--space-1));
+}
+
+.message__dismiss {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+}
+
+.message__close,
+.message__close:hover {
+  --icon: var(--i-close);
+  color: var(--color-text);
+}
+
+.message__close:hover {
+  background: var(--color-secondary-hover);
 }
 
 .message--error {
@@ -4677,14 +4701,17 @@ form:has(#mode-exchange:checked) .achievements {
 /* About (DESIGN 6, "User menu"): the product, its version and commit, the Go
    version, the licence and the project's address, on the About page and in
    the dialog the user menu opens. The dialog has the look of the leave box. */
+/* The wordmark stands above the heading's words, at most the width it is
+   drawn for, and shrinks with a narrow dialog. */
 .about__heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
 }
 
 .about__heading img {
-  flex: none;
+  inline-size: min(15rem, 100%);
+  block-size: auto;
 }
 
 /* The link to the project is a sentence's own, and a target of the floor's height (SPEC 17.2). */
@@ -5206,29 +5233,19 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   padding-inline-start: 2.5rem;
 }
 
-/* The Server page: the state card, then players beside the live world's
-   pages on a wide screen; on a phone the pages come first, as tiles. */
+/* The Server page: the state card, then the live world's pages and the
+   players, in the code's order; on a phone the pages are tiles. */
 .server-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-  order: 2;
-}
-
-main > .status-card {
-  order: 1;
-}
-
-.server-grid > .panel {
-  order: 1;
 }
 
 /* The world's pages beside the players: one list of 56 px rows divided by
    hairlines, with the players card's side padding. */
 .shortcuts.card,
 .server-grid > .shortcuts.card {
-  order: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-auto-rows: auto;
@@ -6053,8 +6070,25 @@ main > .panel > .facts > div {
   font-size: var(--text-xs);
 }
 
-/* The status lamp (DESIGN 7.5): the state badge's shape, small, after Server
-   in the main navigation and at the start of the Server plate's band. A
+/* A planet's "All resources" row sets the rows under it, so it needs script
+   and a rule under it sets it apart (DESIGN 8.7). */
+.autoplace--all {
+  display: none;
+}
+
+.js-on .autoplace--all {
+  display: grid;
+  padding-block-end: var(--space-4);
+  border-block-end: var(--border-width) solid var(--color-line);
+}
+
+.autoplace--all > .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* The status lamp (DESIGN 7.5): the state badge's shape, small, before the
+   state's word in the header and at the start of the Server plate's band. A
    filled square runs, a half-filled one starts or stops, a diamond has
    crashed, a hollow square is stopped, a hollow circle is unknown. */
 .lamp {
@@ -6093,9 +6127,41 @@ main > .panel > .facts > div {
   border-radius: 50%;
 }
 
-.tabs :is(#nav-lamp, .nav-lamp) {
+/* Every state is said in words (SPEC 17.4). The lamp and the state's word sit
+   beside the logo on every width, in the first row; Server's tab keeps the
+   word for screen readers only (DESIGN 7.5). */
+.site-state {
+  display: none;
+}
+
+.site-state:not(:empty) {
   display: inline-flex;
-  margin-inline-start: calc(var(--space-2) - var(--space-1));
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  hyphens: auto;
+}
+
+/* On a wide screen the word keeps room for the longest state in any language
+   (two lines at most), so the header's rows do not change when the state does. */
+@media (min-width: 40rem) {
+  .site-state:not(:empty) {
+    min-inline-size: 9rem;
+  }
+}
+
+.tabs :is(#nav-lamp, .nav-lamp) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .tabs :is(#nav-lamp, .nav-lamp):empty {
@@ -6829,8 +6895,10 @@ main:has(> .gate) > .gate {
 
 /* The selection bar: the number ticked and Delete selected float over the
    list's foot, at its end, once a box is ticked, so the next step is always
-   in view. */
+   in view. It comes before the list in the code, so the keyboard reaches it
+   from the first box; `order` draws it last in its form, where it sticks. */
 .select-bar {
+  order: 1;
   position: sticky;
   inset-block-end: var(--space-4);
   z-index: 2;
@@ -6850,6 +6918,11 @@ main:has(> .gate) > .gate {
 
 .select-bar[hidden] {
   display: none;
+}
+
+/* The link to older snapshots after the list stays after the bar too. */
+.select-bar ~ .actions {
+  order: 2;
 }
 
 /* The number ticked is a round tag before the button it counts for. */
@@ -6874,6 +6947,7 @@ main:has(> .gate) > .gate {
 
 /* On the component page the bar is a specimen, so it stays in its place. */
 .design-pane .select-bar {
+  order: 0;
   position: static;
 }
 

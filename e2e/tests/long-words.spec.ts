@@ -15,8 +15,10 @@ async function layoutProblems(page: Page) {
     }
     for (const a of document.querySelectorAll<HTMLElement>(".tabs a")) {
       const lineHeight = parseFloat(getComputedStyle(a).lineHeight);
+      // The tab's own word, its first text; Server's state word sits on a line of its own under it.
+      const walker = document.createTreeWalker(a, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent!.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
       const range = document.createRange();
-      range.selectNodeContents(a.firstChild!);
+      range.selectNodeContents(walker.nextNode()!);
       if (range.getBoundingClientRect().height > lineHeight * 1.5) problems.push(`tab "${a.textContent?.trim()}" takes more than one line`);
     }
     return problems;

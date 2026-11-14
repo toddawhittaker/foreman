@@ -24,7 +24,14 @@ async function tabsClearOf(page: Page, bar: Locator, tallBox = false) {
       return false;
     };
     const room = barEl.getBoundingClientRect().height - 8;
-    const before = tabbable.filter((el) => (el.compareDocumentPosition(barEl) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 && !inSticky(el));
+    // The controls drawn above the bar's own place, in the order they are
+    // drawn. The Snapshots bar comes first in the code but is drawn last.
+    const top = (el: Element) => el.getBoundingClientRect().top + window.scrollY;
+    const stuck = (barEl as HTMLElement).style.position;
+    (barEl as HTMLElement).style.position = "static";
+    const barTop = top(barEl);
+    (barEl as HTMLElement).style.position = stuck;
+    const before = tabbable.filter((el) => top(el) < barTop && !inSticky(el)).sort((a, b) => top(a) - top(b));
     const fits = before.filter((el) => el.getBoundingClientRect().height <= room);
     const target = tallBox ? before[before.length - 1] : fits[fits.length - 1];
     if (!target) return { sticky: false, under: false, found: false };

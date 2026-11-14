@@ -324,6 +324,7 @@
   "worlds.world.updating": "Обновление до Factorio {version}…",
   "worlds.world.server_page": "страницу сервера",
   "worlds.world.snapshots": "Снимки",
+  "worlds.world.snapshots_name": "Снимки этого мира",
   "worlds.world.switch.busy": "На сервере выполняется операция, например переключение. Откройте {link}.",
   "worlds.world.switch.button": "Переключиться на этот мир",
   "worlds.world.switch.heading": "Переключение",

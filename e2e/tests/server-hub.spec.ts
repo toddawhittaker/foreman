@@ -43,6 +43,28 @@ async function commands(g: FakeGame): Promise<string[]> {
 test.describe("with the fake game", () => {
   test.use({ fakeGameOn: true });
 
+  // DESIGN 6, "What a phone shows first": the world's pages come before the
+  // players on a phone, and the code has them in that order, so Tab meets
+  // them in the order they are drawn. On a wide screen the players sit on
+  // the left and the pages on the right (SPEC 17.1, WCAG 2.4.3).
+  test("the world's pages come before the players, in the code and on a phone", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    const pages = page.locator(".server-grid > .shortcuts");
+    const players = page.locator(".server-grid > section:has(#players-heading)");
+    const order = await page.locator(".server-grid > *").evaluateAll((els) => els.map((el) => (el.classList.contains("shortcuts") ? "pages" : "players")));
+    expect(order).toEqual(["pages", "players"]);
+    const p = (await pages.boundingBox())!;
+    const q = (await players.boundingBox())!;
+    const wide = page.viewportSize()!.width >= 1024;
+    if (wide) {
+      expect(q.x + q.width, "players on the left").toBeLessThanOrEqual(p.x);
+      expect(Math.abs(q.y - p.y), "side by side").toBeLessThan(1);
+    } else {
+      expect(p.y + p.height, "pages above the players").toBeLessThanOrEqual(q.y);
+    }
+    await checkPage(page);
+  });
+
   test("a stop names who is online, counts down, and can be cancelled", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);

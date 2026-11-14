@@ -62,6 +62,13 @@
   {{- if not .TickNote.IsZero}}
   <p class="hint" id="tick-note" tabindex="-1" autofocus>{{msg .TickNote}}</p>
   {{- end}}
+  {{- /* Delete selected comes before the list in the code, one Shift+Tab from the
+       first box, and floats at the window's foot on screen (DESIGN 8.3). With
+       script it shows once a box is ticked. */}}
+  <div class="actions select-bar" data-select-bar>
+    <span class="select-bar__count" data-tick-count aria-hidden="true"></span>
+    <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
+  </div>
   <table class="snapshot-list" role="table">
     <caption>{{t "worlds.snapshots.caption" "world" .WorldName}}</caption>
     <thead role="rowgroup">
@@ -87,11 +94,6 @@
       {{- end}}
     </tbody>
   </table>
-  {{- /* Delete selected acts on the boxes above, so it comes after them; with script it is a bar that shows once a box is ticked. */}}
-  <div class="actions select-bar" data-select-bar>
-    <span class="select-bar__count" data-tick-count aria-hidden="true"></span>
-    <button type="submit" class="button button--risky" data-needs-tick>{{t "worlds.snapshots.delete_selected"}}</button>
-  </div>
   {{- if .More}}
   <div class="actions"><a href="{{.AllPath}}">{{t "worlds.snapshots.older"}}</a></div>
   {{- end}}

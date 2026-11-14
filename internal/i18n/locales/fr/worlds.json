@@ -312,6 +312,7 @@
   "worlds.world.updating": "Mise à jour vers Factorio {version}…",
   "worlds.world.server_page": "la page du serveur",
   "worlds.world.snapshots": "Instantanés",
+  "worlds.world.snapshots_name": "Instantanés de ce monde",
   "worlds.world.switch.busy": "Une opération est en cours sur le serveur, par exemple un basculement. Voir {link}.",
   "worlds.world.switch.button": "Basculer vers ce monde",
   "worlds.world.switch.heading": "Basculer",

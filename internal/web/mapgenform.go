@@ -248,6 +248,28 @@ type MapGenPlanet struct {
 	Summary i18n.Msg
 	Open    bool
 	Groups  []MapGenGroup
+	// All is the row that sets every resource of the planet at once; nil
+	// unless the planet has two or more (DESIGN 8.7).
+	All *MapGenAll
+}
+
+// MapGenAll is the "All resources" row of a planet's Resources tab. Its
+// selects have no name, so the script reads them and nothing is posted.
+type MapGenAll struct {
+	ID string
+	// Groups lists the ids of the resource fieldsets the row sets.
+	Groups  string
+	Selects []MapGenAllSelect
+}
+
+// MapGenAllSelect is one setting of the All row: the same steps as the
+// resources' own select of that key.
+type MapGenAllSelect struct {
+	ID, Key string
+	Label   i18n.Msg
+	// Value is the step the row starts on; the script then shows what the resources hold.
+	Value   string
+	Options []MapGenOption
 }
 
 // MapGenForm is the map-gen part of Generate's form and what a post is read
@@ -761,6 +783,7 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 				terrainGroup("moisture", i18n.M("mapgen.moisture.legend"), posted),
 				terrainGroup("aux", i18n.M("mapgen.aux.legend"), posted))
 		}
+		res.All = allResources(p.name, res.Groups)
 		if len(res.Groups) > 0 {
 			f.Resources = append(f.Resources, res)
 		}
@@ -770,6 +793,48 @@ func buildMapGenForm(line string, spaceAge bool, posted func(name string) (strin
 	}
 	f.setOpen("")
 	return f
+}
+
+// allResources is the All row for a planet's resource groups, or nil when
+// there are fewer than two. A setting offers "None" only if every resource
+// that has it does, so every step it offers can be set on all of them.
+func allResources(planet string, groups []MapGenGroup) *MapGenAll {
+	if len(groups) < 2 {
+		return nil
+	}
+	all := &MapGenAll{ID: "mg-" + planet + "-all"}
+	ids := make([]string, 0, len(groups))
+	for _, g := range groups {
+		ids = append(ids, g.ID)
+	}
+	all.Groups = strings.Join(ids, " ")
+	for _, key := range []string{"frequency", "size", "richness"} {
+		var label i18n.Msg
+		none, found := true, false
+		for _, g := range groups {
+			for _, s := range g.Selects {
+				if !strings.HasSuffix(s.Name, "."+key) {
+					continue
+				}
+				if !found {
+					label = s.Label
+				}
+				found = true
+				if !slices.ContainsFunc(s.Options, func(o MapGenOption) bool { return o.Value == mgNone }) {
+					none = false
+				}
+			}
+		}
+		if !found {
+			continue
+		}
+		options := optionsFrequency
+		if none {
+			options = optionsWithNone
+		}
+		all.Selects = append(all.Selects, MapGenAllSelect{ID: all.ID + "-" + key, Key: key, Label: label, Value: mgDefaultStep, Options: options})
+	}
+	return all
 }
 
 // ParseMapGenForm reads the post into the form and the text of

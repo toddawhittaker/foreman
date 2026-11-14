@@ -569,6 +569,17 @@ async function withoutTargetsUnderStickyBars<V extends AxeViolation>(page: Page,
 
 // Every page visited passes these (SPEC 17.1 and 17.2, DESIGN 10).
 export async function checkPage(page: Page) {
+  // Let colour transitions end first, so axe never measures a button halfway
+  // between two looks (a hover or a state change just made). Endless
+  // animations, such as the starting lamp's sweep, are left running.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
   const violations = await withoutTargetsUnderStickyBars(page, results.violations);
   expect(violations, `axe on ${page.url()}`).toEqual([]);
