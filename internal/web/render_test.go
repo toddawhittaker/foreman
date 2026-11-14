@@ -1127,6 +1127,40 @@ func TestLowDiskNotice(t *testing.T) {
 	}
 }
 
+// A VPN sidecar that publishes no LAN port warns while the game runs, in the
+// same region as the low-disk warning, and never blocks anything (SPEC 4.13).
+// It is worded in every language and names the configured sidecar.
+func TestLANUnpublishedWarning(t *testing.T) {
+	quiet := liveOpsCase(func(p *ServerPage) { p.Status.LowDisk = false })
+	if got := strings.Join(strings.Fields(fragmentHTML(t, quiet, "server-disk")), ""); got != "<div></div>" {
+		t.Errorf("no sidecar: want an empty wrapper, got %q", got)
+	}
+	warn := liveOpsCase(func(p *ServerPage) { p.Status.LANUnpublished = "vpn" })
+	html := fragmentHTML(t, warn, "server-disk")
+	wantAll(t, "the LAN warning", html, `<div class="message message--warning" id="lan-unpublished">`,
+		"Warning:", "LAN players cannot reach the game: vpn does not publish UDP 34197 on the host.",
+		"Only 3.1 GB of disk space is free.") // both warnings can show together
+	for _, edit := range []func(*ServerPage){
+		func(p *ServerPage) { p.Status.LANUnpublished = "" },
+		func(p *ServerPage) { p.Status.State = game.StateStopped },
+	} {
+		p := warn
+		p.Status.LowDisk = false
+		edit(&p)
+		if got := strings.Join(strings.Fields(fragmentHTML(t, p, "server-disk")), ""); got != "<div></div>" {
+			t.Errorf("want an empty wrapper so the clearing is sent, got %q", got)
+		}
+	}
+	// Every language words it with the sidecar's name and no English left.
+	for _, lang := range []string{"de", "ru", "zh-Hans", "fr", "es", "pl", "cs"} {
+		got := warn.LANUnpublished()
+		text := i18n.Locale(lang).Format(got)
+		if !strings.Contains(text, "vpn") || !strings.Contains(text, "34197") || text == english(got) {
+			t.Errorf("%s: %q", lang, text)
+		}
+	}
+}
+
 // Every id on the Server page is unique whatever the players are called: a
 // player's ids take prefixes that begin no other id on the page, so a name
 // such as "done", "undo" or "row-alice" cannot take the id of the Done

@@ -8830,3 +8830,9 @@ main:has(> .gate) > * + :not(h1, .gate) {
   }
 }
 
+
+/* Keep simultaneous server warnings visually separate. */
+.disk-notice > div {
+  display: grid;
+  gap: var(--space-3);
+}

@@ -135,16 +135,31 @@ export interface FakeGame {
   state: () => Promise<{
     containers: { name: string; image: string; status: string; ip: string; players: string[]; commands: string[]; restart_count: number }[];
     calls: string[];
+    // The seeded VPN sidecar, null without one (internal/fakegame/sidecar.go). Port is the host port
+    // 34197/udp is published on, "" when it is not.
+    sidecar: { name: string; id: string; status: string; ip: string; port: string } | null;
   }>;
 }
+
+// An operator's VPN sidecar for the fake (SPEC 4.13): its container name, and the host port it publishes
+// 34197/udp on, left out for none. Foreman is given the name as FOREMAN_GAME_NETWORK_CONTAINER.
+export interface SidecarSeed {
+  name: string;
+  port?: string;
+}
+
+// The credential the fake puts in the sidecar's environment (internal/fakegame.SidecarSecret). It must never
+// reach a page, a refusal or a log.
+export const sidecarSecret = "canary-sidecar-credential-0000";
 
 // The fake seeds a container for the one Foreman runs in, on this network,
 // so Foreman can check the game network as it does in a real install (SPEC 14.4).
 const fakeGameNetwork = "foreman-games";
 
-async function startFakeGame(): Promise<FakeGame & { stop: () => Promise<void> }> {
+async function startFakeGame(sidecar?: SidecarSeed): Promise<FakeGame & { stop: () => Promise<void> }> {
   const dir = mkdtempSync(join(tmpdir(), "fakegame-e2e-"));
-  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork], { stdio: ["ignore", "pipe", "pipe"] });
+  const sidecarArgs = sidecar ? ["-sidecar", sidecar.name, ...(sidecar.port ? ["-sidecar-port", sidecar.port] : [])] : [];
+  const proc = spawn(fakeGameBinary, ["-dir", dir, "-self-network", fakeGameNetwork, ...sidecarArgs], { stdio: ["ignore", "pipe", "pipe"] });
   let err = "";
   proc.stderr.on("data", (d) => (err += d));
   const lines = createInterface({ input: proc.stdout })[Symbol.asyncIterator]();
@@ -258,6 +273,10 @@ export const test = base.extend<{
   // Opt in with test.use({ fakeGameOn: true }): Foreman then gets the fake as its Docker host.
   fakeGameOn: boolean;
   fakeGame: FakeGame | undefined;
+  // Opt in with test.use({ fakeGameOn: true, sidecar: { name: "vpn", port: "34197" } }): the fake then seeds a running
+  // VPN sidecar on the game network, and Foreman is told its name (SPEC 4.13). To refuse a sidecar the fake does not
+  // have, set FOREMAN_GAME_NETWORK_CONTAINER in foremanEnv instead.
+  sidecar: SidecarSeed | undefined;
   // Opt in with test.use({ fakePortalOn: true }): Foreman then reaches the fake mod portal through its proxy.
   fakePortalOn: boolean;
   fakePortal: FakePortal | undefined;
@@ -267,6 +286,7 @@ export const test = base.extend<{
 }>({
   foremanEnv: [{}, { option: true }],
   fakeGameOn: [false, { option: true }],
+  sidecar: [undefined, { option: true }],
   fakePortalOn: [false, { option: true }],
   portalAccountOn: [false, { option: true }],
   fakePortal: async ({ fakePortalOn }, use) => {
@@ -278,18 +298,19 @@ export const test = base.extend<{
     await use(p);
     await p.stop();
   },
-  fakeGame: async ({ fakeGameOn }, use) => {
+  fakeGame: async ({ fakeGameOn, sidecar }, use) => {
     if (!fakeGameOn) {
       await use(undefined);
       return;
     }
-    const g = await startFakeGame();
+    const g = await startFakeGame(sidecar);
     await use(g);
     await g.stop();
   },
-  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn }, use, testInfo) => {
+  foreman: async ({ foremanEnv, fakeGame, fakePortal, portalAccountOn, sidecar }, use, testInfo) => {
     const env = {
       ...(fakeGame ? { DOCKER_HOST: "unix://" + fakeGame.socket, FOREMAN_GAME_NETWORK: fakeGameNetwork } : {}),
+      ...(fakeGame && sidecar ? { FOREMAN_GAME_NETWORK_CONTAINER: sidecar.name } : {}),
       // Loopback addresses are never proxied, so only the portal's hosts go through.
       ...(fakePortal ? { HTTPS_PROXY: fakePortal.proxy, SSL_CERT_FILE: fakePortal.caFile } : {}),
       ...(fakePortal && portalAccountOn ? { FOREMAN_FACTORIO_USERNAME: fakePortal.username, FOREMAN_FACTORIO_TOKEN: fakePortal.token } : {}),

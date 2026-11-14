@@ -299,6 +299,24 @@ func networkMsg(e *game.NetworkError) i18n.Msg {
 		return i18n.M("server.network.self_file", "file", e.File)
 	case game.NetworkSelfTCP:
 		return i18n.M("server.network.self_tcp")
+	// The VPN sidecar's refusals (SPEC 4.13). Container is its configured
+	// name, never anything read from its inspection.
+	case game.NetworkSidecarMissing:
+		return i18n.M("server.network.sidecar_missing", "container", e.Container)
+	case game.NetworkSidecarStopped:
+		return i18n.M("server.network.sidecar_stopped", "container", e.Container)
+	case game.NetworkSidecarHost:
+		return i18n.M("server.network.sidecar_host", "container", e.Container, "network", e.Network)
+	case game.NetworkSidecarNested:
+		return i18n.M("server.network.sidecar_nested", "container", e.Container)
+	case game.NetworkSidecarOffNetwork:
+		return i18n.M("server.network.sidecar_off_network", "container", e.Container, "network", e.Network)
+	case game.NetworkSidecarNoRange:
+		return i18n.M("server.network.sidecar_no_range", "container", e.Container, "network", e.Network)
+	case game.NetworkSidecarProxyOverlap:
+		return i18n.M("server.network.sidecar_proxy_overlap", "container", e.Container, "network", e.Network, "subnet", e.Subnet, "proxies", e.Proxies)
+	case game.NetworkSidecarHostOnNetwork:
+		return i18n.M("server.network.sidecar_host_on_network", "container", e.Container, "network", e.Network, "subnet", e.Subnet, "address", e.Address)
 	}
 	return i18n.M("server.error.network")
 }

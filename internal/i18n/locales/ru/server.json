@@ -435,6 +435,14 @@
   "server.network.host_outside": "DOCKER_HOST обращается к Docker по адресу {address}, который не принадлежит ни одной сети Foreman, кроме игровой сети «{network}», поэтому игра могла бы достать до него через шлюз этой сети. Обращайтесь к Docker через сеть, в которой нет игры, например через прокси сокета в сети, общей с Foreman.",
   "server.network.self_file": "Похоже, Foreman работает в контейнере (есть {file}), но в Docker нет контейнера с идентификатором или именем хоста Foreman, поэтому Foreman не может определить, в каких сетях он находится. Оставьте имя хоста, которое Docker дал контейнеру Foreman, и убедитесь, что DOCKER_HOST ведёт к тому Docker, где работает Foreman.",
   "server.network.self_tcp": "Похоже, Foreman работает в контейнере (DOCKER_HOST использует tcp://), но в Docker нет контейнера с идентификатором или именем хоста Foreman, поэтому Foreman не может определить, в каких сетях он находится. Оставьте имя хоста, которое Docker дал контейнеру Foreman, и убедитесь, что DOCKER_HOST ведёт к тому Docker, где работает Foreman.",
+  "server.network.sidecar_missing": "FOREMAN_GAME_NETWORK_CONTAINER называет «{container}», но в Docker нет контейнера с таким именем, поэтому у игры нет VPN-sidecar, с которым можно делить сеть. Запустите sidecar или уберите FOREMAN_GAME_NETWORK_CONTAINER.",
+  "server.network.sidecar_stopped": "VPN-sidecar «{container}» не запущен, поэтому игра не может делить его сеть. Запустите sidecar и повторите попытку.",
+  "server.network.sidecar_host": "VPN-sidecar «{container}» использует сеть хоста, поэтому игра, делящая её, оказалась бы и в сети хоста. Дайте sidecar отдельную сеть Docker и подключите его к «{network}».",
+  "server.network.sidecar_nested": "VPN-sidecar «{container}» использует сеть другого контейнера, поэтому Foreman не может определить, что именно разделила бы игра. Назовите вместо него контейнер, которому принадлежит сеть.",
+  "server.network.sidecar_off_network": "VPN-sidecar «{container}» не входит в игровую сеть «{network}», поэтому Foreman не смог бы подключиться к игре по RCON. Подключите sidecar к этой сети и повторите попытку.",
+  "server.network.sidecar_no_range": "Не удаётся прочитать из Docker диапазон адресов сети «{network}», в которой находится VPN-sidecar «{container}», поэтому Foreman не может проверить, что игра, делящая её, не достанет до прокси сокета Docker и FOREMAN_TRUSTED_PROXIES. Проверьте, что Docker отвечает, и повторите попытку.",
+  "server.network.sidecar_proxy_overlap": "VPN-sidecar «{container}» находится в сети «{network}» ({subnet}), которая пересекается с FOREMAN_TRUSTED_PROXIES ({proxies}), поэтому игра в сети sidecar могла бы выдать себя за прокси, который выполняет вход пользователей. Уберите sidecar из этой сети или сузьте FOREMAN_TRUSTED_PROXIES.",
+  "server.network.sidecar_host_on_network": "DOCKER_HOST обращается к прокси сокета Docker по адресу {address}, который находится в сети «{network}» ({subnet}), где есть и VPN-sidecar «{container}», поэтому игра в сети sidecar могла бы до него добраться. Уберите sidecar или прокси из этой сети.",
   "server.download.failed": "Foreman не смог скачать {image}. Подробности есть в журнале Foreman. Повторите попытку.",
   "server.download.failed_switch": "Foreman не смог скачать {image}. Подробности есть в журнале Foreman. Повторите переключение.",
   "server.download.no_image": "Foreman не смог скачать {image}: в Docker Hub нет образа с такой версией.",
@@ -608,5 +616,6 @@
   "server.op.scheduled_restart": "Плановый перезапуск",
   "server.disk.low": "Свободно только {free} места на диске. Ниже {reserve} автосохранения могут не удаться, а снимки перестают создаваться. Удалите ненужные снимки или миры.",
   "server.disk.snapshots": "Снимки",
+  "server.lan.unpublished": "Игроки из локальной сети не могут подключиться к игре: {sidecar} не публикует UDP 34197 на хосте.",
   "server.force.group": "Экстренные действия"
 }

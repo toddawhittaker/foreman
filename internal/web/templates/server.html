@@ -163,12 +163,18 @@
 </div>
 {{- end}}
 
-{{/* The low-disk warning (SPEC 8.13, DESIGN 8.17), with its next step. It
-     is not announced: it is a fact about the page, not a result. The
-     wrapper is always there, so the warning clearing still sends a
-     non-empty event. */}}
+{{/* The page's warnings: low disk space (SPEC 8.13, DESIGN 8.17), with its
+     next step, and a VPN sidecar that publishes no LAN port (SPEC 4.13).
+     Neither is announced: they are facts about the page, not results. The
+     wrapper is always there, so a warning clearing still sends a non-empty
+     event. */}}
 {{define "server-disk" -}}
 <div>
+  {{- if .ShowLANUnpublished}}
+  <div class="message message--warning" id="lan-unpublished">
+    <p><strong>{{t "common.label.warning"}}</strong> {{msg .LANUnpublished}}</p>
+  </div>
+  {{- end}}
   {{- if .ShowLowDisk}}
   <div class="message message--warning">
     <p><strong>{{t "common.label.warning"}}</strong> {{msg .LowDisk}}</p>
