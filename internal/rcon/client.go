@@ -26,12 +26,13 @@ var ErrLogin = errors.New("rcon: the server refused the login")
 // ErrBadCommand is returned for a command that cannot be framed.
 var ErrBadCommand = errors.New("rcon: a command cannot contain a zero byte")
 
-// Client talks to one RCON server. Create it with New. It dials on the first
-// command and keeps the connection until a call fails; the next call then
-// dials again.
+// Client talks to one RCON server. Create it with New or NewChecked. It
+// dials on the first command and keeps the connection until a call fails;
+// the next call then dials again.
 type Client struct {
 	addr     string
 	password secret.Secret
+	check    func(context.Context) error // nil: none
 
 	mu     sync.Mutex // held for a whole command, so only one runs at a time
 	conn   net.Conn
@@ -41,6 +42,17 @@ type Client struct {
 // New returns a client for host:port. It does not connect.
 func New(addr string, password secret.Secret) *Client {
 	return &Client{addr: addr, password: password}
+}
+
+// NewChecked is New with a check run on each new connection after it is
+// made and before the login is sent, within the call's context. When the
+// check fails the connection is closed unused, the call fails with the
+// check's error, and the next call dials and checks again. check runs while
+// the client is held, so it must not wait for anything that waits for this
+// client. It narrows, but cannot close, the time between the check and the
+// login in which the server at addr could change.
+func NewChecked(addr string, password secret.Secret, check func(context.Context) error) *Client {
+	return &Client{addr: addr, password: password, check: check}
 }
 
 // Close drops the connection, if any.
@@ -120,13 +132,21 @@ func (c *Client) exec(ctx context.Context, command string) (string, error) {
 	}
 }
 
-// connect dials and logs in, within ctx. The password is sent but never
-// placed in an error.
+// connect dials, runs the check, and logs in, within ctx. The password is
+// sent but never placed in an error.
 func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", c.addr)
 	if err != nil {
 		return nil, fmt.Errorf("rcon: connect: %w", err)
+	}
+	// Check after connecting and before sending credentials. This reads
+	// current state; it cannot prove which container accepted the connection.
+	if c.check != nil {
+		if err := c.check(ctx); err != nil {
+			_ = conn.Close()
+			return nil, fmt.Errorf("rcon: check before login: %w", err)
+		}
 	}
 	stop := limit(ctx, conn)
 	defer stop()

@@ -13,6 +13,8 @@ import (
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
+	"github.com/toddawhittaker/foreman/internal/rcon"
+	"github.com/toddawhittaker/foreman/internal/secret"
 )
 
 // gameNet is where a start puts the game (SPEC 4.4, 4.13).
@@ -185,6 +187,31 @@ func (c *Controller) gameEndpoint(ctx context.Context, cont docker.Container) (e
 		out.lanUnpublished = ns.Name
 	}
 	return out, nil
+}
+
+// rconClient returns the RCON client for the game in cont, reached at addr
+// (SPEC 4.13, 14.16). For a game in a sidecar's network, each new
+// connection is checked again with gameEndpoint before the login: the
+// sidecar the game joined must still exist, under its ID, at addr on the
+// game network. When Docker reports that holder gone or replaced, no
+// login is sent through the new connection at the cached address. The
+// check is Docker's word at one moment, not proof that nothing changed
+// between it and the login. It uses Docker only, never a world's lock, so
+// holding the client while it runs cannot deadlock with w.mu.
+func (c *Controller) rconClient(cont docker.Container, addr string, pw secret.Secret) *rcon.Client {
+	if !strings.HasPrefix(cont.NetworkMode, "container:") {
+		return rcon.New(addr, pw)
+	}
+	return rcon.NewChecked(addr, pw, func(ctx context.Context) error {
+		ep, err := c.gameEndpoint(ctx, cont)
+		if err != nil {
+			return err
+		}
+		if ep.rcon != addr {
+			return errBindMismatch
+		}
+		return nil
+	})
 }
 
 // sharedRCON checks the RCON endpoint in the game's environment against the
