@@ -393,6 +393,9 @@ func modsFailure(err error, res modResult, world string, state game.State, back 
 // DoneAt is when the action in the Done message ended.
 func (p ServerPage) DoneAt() time.Time { return p.Result.At }
 
+// DismissPath is where the Done message's close button posts.
+func (p ServerPage) DismissPath() string { return gamePath(p.World.ID, "dismiss-result") }
+
 // Undo offers to undo the change the Done message reports, at its own
 // confirmation page (VISION principle 1, SPEC 17.9), or is nil.
 func (p ServerPage) Undo() *Offer {

@@ -261,6 +261,7 @@
   "server.done.snapshot": "Foreman hat den Snapshot „{label}“ von {world} erstellt.",
   "server.done.restore_short": "Die Welt ist wiederhergestellt.",
   "server.done.switch_short": "Der Wechsel ist abgeschlossen.",
+  "server.done.close": "Diese Meldung schließen",
   "server.done.update_short": "Die Spielversion ist aktualisiert.",
   "server.done.mods_short": "Die Mods wurden geändert.",
   "server.done.rollback_short": "Die Welt ist zurückgerollt.",

@@ -2863,6 +2863,13 @@ independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
 - **The crash-loop retry test flake is fixed (#475).** It was a race in the
   fake Docker (`internal/fakegame`), not in Foreman: a game that died during
   a refused stop was never restarted. The fake now schedules the restart.
+- **The Server page's Done box has a close button (SPEC 17.9, DESIGN 7.3).**
+  It shows after a success or a cancelled stop, never after a failure.
+  Closing forgets that world's held result on the server (only when it is
+  still the result the page showed), which also drops its Undo or Switch
+  back offer; the switch record is untouched. It works without script (a
+  form that posts and redirects) and with script removes the box and moves
+  focus to the first control of the panel.
 
 ### Gaps left
 

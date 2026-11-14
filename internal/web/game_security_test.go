@@ -175,6 +175,7 @@ func serverActionRoutes(snap string) []actionRoute {
 		{http.MethodPost, p("switch")},
 		{http.MethodPost, p("cancel-stop")},
 		{http.MethodPost, p("take-snapshot")},
+		{http.MethodPost, p("dismiss-result")},
 		{http.MethodGet, p("events")},
 		{http.MethodPost, snapshotsPath},
 		{http.MethodPost, func(id string) string { return restorePath(id, snap) }},

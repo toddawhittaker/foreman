@@ -1027,7 +1027,14 @@ never depends on colour.
   `max-inline-size: var(--measure)`. The border is 1 px all round and 4 px
   at the start, in the kind's colour; it is a border, so it survives forced
   colours. A message has no shadow, so it never looks like a control. No
-  icon, no close button: a message stays until the page changes.
+  icon, no close button: a message stays until the page changes. The one
+  exception is the Server page's Done box after a success or a cancelled
+  stop (SPEC 17.9). It carries Undo or Switch back, which can stay on the
+  page for hours, so the person may close it once read. It has an icon-only
+  close button ("×", named "Close this message", a 44 px target) at the
+  box's top end corner, and the text keeps clear of it. A failure's box never
+  has one: it stays until the next action, so a problem is not hidden by
+  accident.
 - `role="alert"` only on an error that appears after an action without a
   page load. A message that is part of a freshly loaded page has no role.
   Success messages from htmx go to `#announcer` instead (section 6), with
