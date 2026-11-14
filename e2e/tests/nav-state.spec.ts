@@ -81,3 +81,33 @@ test("in German the state word fits the header", async ({ page, foreman, fakeGam
   }
   await checkPage(page);
 });
+
+// DESIGN 7.5: a long state wraps inside Server's tab rather than widen it,
+// so the header keeps its height when the state changes live, at any width,
+// in the languages with the longest words.
+for (const [lang, short, long] of [
+  ["de", "Läuft", "Stürzt wiederholt ab"],
+  ["ru", "Работает", "Циклические сбои"],
+  ["ru", "Работает", "Останавливается"],
+] as const) {
+  test(`in ${lang} the header keeps its height from "${short}" to "${long}"`, async ({ page, foreman, fakeGame }) => {
+    test.skip(isPhone(page), "the widths are set here");
+    await createAdmin(page);
+    seedWorld(foreman);
+    await fakeGame!.call("/image", { ref: image21, on: true });
+    await pickLanguage(page, lang);
+    await page.goto("/worlds");
+    // The words a live update would put in both copies (server.html, "server-facts").
+    const show = (state: string, word: string) =>
+      page.evaluate(([s, w]) => {
+        for (const el of document.querySelectorAll("#nav-lamp, #site-state")) el.innerHTML = `<span class="lamp lamp--${s}"></span>&nbsp;${w}`;
+        return document.querySelector("header.site")!.getBoundingClientRect().height;
+      }, [state, word]);
+    for (const width of [320, 660, 900, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      const before = await show("running", short);
+      const after = await show("crash-looping", long);
+      expect(after, `${width} px`).toBe(before);
+    }
+  });
+}

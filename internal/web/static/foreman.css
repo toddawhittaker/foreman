@@ -6090,21 +6090,33 @@ main > .panel > .facts > div {
    the state's word sit small under Server in its tab; a long word wraps
    between words rather than widen the header. */
 .tabs__stack {
-  display: grid;
-  justify-items: start;
-  min-inline-size: 0;
+  display: contents;
 }
 
+@media (min-width: 40rem) {
+  .tabs a:has(> .tabs__stack) {
+    display: grid;
+    grid-template-columns: auto auto;
+    place-content: center;
+    align-items: center;
+    gap: 0 var(--space-2);
+    line-height: 1;
+  }
+}
+
+/* The state's line spans the tab under the icon and the word, and is sized
+   by the tab rather than sizing it, so a long state wraps there instead of
+   widening the header; two lines of it still fit the 44 px tab. */
 .tabs :is(#nav-lamp, .nav-lamp) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  max-inline-size: 10rem;
+  display: block;
+  grid-column: 1 / -1;
+  contain: inline-size;
+  margin-inline: calc(var(--space-1) - var(--space-3));
   font-size: var(--text-xs);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1;
   white-space: normal;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
 }
 
 /* On a phone the four tabs fill their row, so the lamp and word move up
@@ -6140,6 +6152,10 @@ main > .panel > .facts > div {
 
 .tabs :is(#nav-lamp, .nav-lamp):empty {
   display: none;
+}
+
+.tabs :is(#nav-lamp, .nav-lamp) .lamp {
+  vertical-align: -0.0625rem;
 }
 
 /* While starting, the lamp's fill sweeps; it rests under reduced motion. */
@@ -6892,6 +6908,11 @@ main:has(> .gate) > .gate {
 
 .select-bar[hidden] {
   display: none;
+}
+
+/* The link to older snapshots after the list stays after the bar too. */
+.select-bar ~ .actions {
+  order: 2;
 }
 
 /* The number ticked is a round tag before the button it counts for. */

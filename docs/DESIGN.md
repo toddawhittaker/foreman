@@ -1288,8 +1288,11 @@ holds only the word. A template always writes the modifier, even for
   words, with the badge's shape as a small lamp (a 0.625rem square in the
   state's colour) before the word, so no state is told by shape or colour
   alone. On a wide screen (from 40rem) the lamp and word sit on a second
-  line under "Server" in its tab, `--text-xs`, weight 500, wrapping
-  between words past 10rem so a long state never widens the header. On a
+  line under the tab's icon and "Server", `--text-xs`, weight 500, line
+  height 1. That line takes the tab's width and never sets it
+  (`contain: inline-size`), so a long state wraps there, to two lines at
+  most within the 44 px tab, and the header keeps its height when the
+  state changes; the lamp stays with its word (a no-break space). On a
   phone the four tabs fill their row, so the lamp and word sit beside the
   logo in the first row instead (`site-state`, `--text-sm`, weight 600,
   `text-muted`), taking the room between the logo and the menu and
@@ -1647,7 +1650,8 @@ for a ticked box (7.1). Its selection bar comes before the list in the
 code, after "Select all automatic", so a keyboard user reaches it with one
 Shift+Tab from the first box (two on the Snapshots tab, past the first
 world's name) instead of passing every row; `order: 1` draws it at the
-end of its form, where it sticks to the window's foot (6, rule 7). A list without row actions, such as the deleted
+end of its form, where it sticks to the window's foot (6, rule 7), and
+"Show older" after the list keeps its place after the bar (`order: 2`). A list without row actions, such as the deleted
 worlds, keeps its columns. A snapshot table also stacks each cell (snapshot,
 then "Taken:", then "Size:") when its panel is narrower than 14rem, which is
 200% text on a 320 px phone. Changing `display` can drop table semantics in some browsers, so

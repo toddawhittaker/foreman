@@ -197,7 +197,7 @@
      by shape alone (SPEC 17.4, DESIGN 7.5); the link is named "Server Running".
      The Server page's live facts replace it. Takes LiveState. */}}
 {{define "nav-lamp" -}}
-{{- if .Have}}<span class="lamp lamp--{{.State}}"></span>{{msg .Word}}{{end}}
+{{- if .Have}}<span class="lamp lamp--{{.State}}"></span>&nbsp;{{msg .Word}}{{end}}
 {{- end}}
 
 {{/* The tabs of the server view (DESIGN 6, "Sub-navigation"). Takes
