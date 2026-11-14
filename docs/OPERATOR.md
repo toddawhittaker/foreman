@@ -818,8 +818,13 @@ tailnet, a connection to TCP 27015 must fail.
 
 ```sh
 nc -vz -w 3 192.168.1.20 27015   # from the LAN: must fail
-nc -vz -w 3 factorio 27015       # from the tailnet: must fail
+nc -vz -w 3 100.101.102.103 27015 # from the tailnet: must fail
 ```
+
+Replace `100.101.102.103` with the actual address from
+`docker exec foreman-tailscale tailscale ip -4`; a DNS lookup failure is
+not a successful isolation check. Confirm the game is running and its
+Console works before testing these connections.
 
 That address is private, not firewalled. A subnet route, exit node or
 forwarding rule that carries VPN traffic into the game network can reach
@@ -882,4 +887,6 @@ provide Compose's startup ordering, and a game may run while its saved
 RCON bind address is no longer usable. If stopped, start it from Foreman;
 if either player connectivity or RCON fails, follow the restart and
 force-stop recovery steps above. Reboot recovery still needs to be
-verified on the deployment; this example does not guarantee ordering.
+checked by you after restarting your test host: join with a game client
+and send a Console command before relying on unattended recovery. This
+example does not guarantee ordering.

@@ -22,8 +22,8 @@ services:
       FOREMAN_GAME_NETWORK_CONTAINER: foreman-tailscale
       DOCKER_HOST: tcp://socket-proxy:2375
       # The join line on the Server page: one address, for LAN players or
-      # for VPN players. Use your host's LAN address or the sidecar's
-      # tailnet name.
+      # for VPN players. Use your host's LAN address or the sidecar IPv4
+      # address from `docker exec foreman-tailscale tailscale ip -4`.
       FOREMAN_PUBLIC_ADDRESS: 192.168.1.20
       # At least 32 random characters, for example from: openssl rand -hex 32
       FOREMAN_SECRET_KEY: replace-with-at-least-32-random-characters
@@ -68,7 +68,7 @@ services:
       TS_STATE_DIR: /var/lib/tailscale
       # Sign in only when not already signed in.
       TS_AUTH_ONCE: "true"
-      # The machine's name in your tailnet; VPN players join this name.
+      # The machine's name in your tailnet; test MagicDNS before using it to join.
       TS_HOSTNAME: factorio
       # Define tag ownership first; the signer must be permitted to use it.
       # Verify the tag before starting the game, including reused state.
