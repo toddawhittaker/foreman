@@ -2,7 +2,9 @@ package game
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"slices"
 	"strings"
@@ -64,6 +66,12 @@ type loadFailure struct {
 	// failError the reason that run gave (SPEC 8.7).
 	failed    bool
 	failError string
+	// finished is whether the run being read has said how its load ended:
+	// in game, or failed. prevKind is the kind of the newest run before it
+	// that said anything: a run that ended without a word, or one Foreman
+	// stopped while it loaded, leaves it as it was (see crashReason).
+	finished bool
+	prevKind string
 }
 
 // Lines are not cut before they are masked, so a cut cannot leave part of
@@ -75,13 +83,16 @@ func (f *loadFailure) add(raw string) {
 		if f.errLine != "" {
 			f.lastErr = f.errLine
 		}
-		f.errLine, f.runError, f.kind = "", "", ""
+		if f.kind != "" || f.finished {
+			f.prevKind = f.kind
+		}
+		f.errLine, f.runError, f.kind, f.finished = "", "", "", false
 	case KindInGame:
-		f.failed, f.failError = false, ""
+		f.failed, f.failError, f.finished = false, "", true
 	case KindLoadError:
 		f.runError = ev.Detail
 	case KindLoadFailed:
-		f.failed, f.failError = true, f.runError
+		f.failed, f.failError, f.finished = true, f.runError, true
 	}
 	line := strings.TrimSpace(secondsPrefix.ReplaceAllString(strings.TrimSuffix(raw, "\r"), ""))
 	f.kind = crashreasons.Prefer(f.kind, crashreasons.Line(line))
@@ -146,6 +157,32 @@ func (f *loadFailure) reason(redact func(string) string) LoadReason {
 		r.Said = shownText(redact, said)
 	}
 	return r
+}
+
+// crashReason is reason for a crash the monitor found (SPEC 8.7, 8.9). A
+// crash is the end of a run before the newest: Docker has started the
+// newest again, and Foreman may stop it in a crash loop while it loads. So
+// while the newest run has named no reason and not said how its load
+// ended, the kind is that of the newest run before it that said anything.
+// A run that reached the game, or failed for no known reason, did say, and
+// then no older kind is shown. reason itself is for a start, whose newest
+// run has ended, so its silence means unknown.
+func (f *loadFailure) crashReason(redact func(string) string) LoadReason {
+	r := f.reason(redact)
+	if r.Kind == "" && !f.finished {
+		r.Kind = f.prevKind
+	}
+	return r
+}
+
+// clone copies f, so lines added to the copy leave f as it was.
+func (f *loadFailure) clone() loadFailure {
+	c := *f
+	c.byRequired = make(map[string][]string, len(f.byRequired))
+	for v, names := range f.byRequired {
+		c.byRequired[v] = slices.Clone(names)
+	}
+	return c
 }
 
 // shownText is the game's words from its log as a page may show them:
@@ -235,7 +272,7 @@ func cut(s string, n int) string {
 // also marked on the run, as the follower would, so the world's state
 // agrees with the error.
 func (c *Controller) stoppedWhileLoading(ctx context.Context, w *worldRun, cid string) *StartError {
-	f := c.readLoadLog(ctx, cid)
+	f, _ := c.readLoadLog(ctx, cid)
 	oom := c.oomKilled(ctx, cid)
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -267,16 +304,19 @@ func (c *Controller) oomKilled(ctx context.Context, cid string) bool {
 // readLoadLog reads the newest lines of the container's log once, within
 // the limits above, and keeps the newest of them, so the last run's lines
 // are never the ones left out. A read that fails or ends early gives what
-// was read before it.
-func (c *Controller) readLoadLog(ctx context.Context, cid string) loadFailure {
+// was read before it, and reports false: it may lack the newest lines.
+func (c *Controller) readLoadLog(ctx context.Context, cid string) (loadFailure, bool) {
 	ctx, cancel := context.WithTimeout(ctx, loadFailureReadLimit)
 	defer cancel()
 	var kept []string
+	whole := false
 	if s, err := c.docker.Logs(ctx, cid, docker.LogOptions{Tail: maxLoadFailureLines}); err == nil {
 		size := 0
+		whole = true
 		for range maxLoadFailureLines {
 			l, err := s.Next()
 			if err != nil {
+				whole = errors.Is(err, io.EOF)
 				break
 			}
 			kept = append(kept, l.Text)
@@ -292,5 +332,5 @@ func (c *Controller) readLoadLog(ctx context.Context, cid string) loadFailure {
 	for _, l := range kept {
 		f.add(l)
 	}
-	return f
+	return f, whole
 }

@@ -358,8 +358,16 @@ type worldRun struct {
 	crashes       []time.Time // crashes seen within the crash-loop window
 	lastCrash     time.Time
 	crashedRun    bool // Docker restarted the game after a crash and it is not back in game
-	oomKilled     bool // Docker said the newest crash was an out-of-memory kill (SPEC 8.7)
-	run           runState
+	// oomKilled is whether Docker said the newest exit it was seen at was an
+	// out-of-memory kill (SPEC 8.7). An exit no look saw changes nothing;
+	// reaching the game again clears it.
+	oomKilled bool
+	// crashLog is the container's log as read when a look found Docker had
+	// restarted the game: the runs between two looks can end before the
+	// follower reads them (SPEC 8.7, ADR 0016). nil until then, and after
+	// the game reaches the game again.
+	crashLog *crashLog
+	run      runState
 	saves         int           // "Saving finished" lines seen
 	changed       chan struct{} // closed and replaced whenever the game's state moves
 	rc            *rcon.Client
@@ -410,6 +418,13 @@ type worldRun struct {
 	// the log, so it names the reason whichever check saw it first
 	// (ADR 0016); nil when none waits.
 	crashEvent *pendingCrash
+}
+
+// crashLog is one read of the container's log; mark is where the lines
+// the follower added after it began in logs.
+type crashLog struct {
+	f    loadFailure
+	mark uint64
 }
 
 // runState is what the log said about the current run of the game.

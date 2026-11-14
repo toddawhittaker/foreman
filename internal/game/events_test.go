@@ -128,7 +128,7 @@ func TestEventsForceStopDropsLookFromBeforeKill(t *testing.T) {
 	if st := r.c.Status(id).State; st != StateStopped {
 		t.Fatalf("state after the forced stop = %s", st)
 	}
-	if r.c.observe(w, &before, ops) {
+	if r.c.observe(w, &before, ops, nil) {
 		t.Error("the look from before the kill was taken in")
 	}
 	r.c.pokeMonitor()

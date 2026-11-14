@@ -161,14 +161,19 @@ func (w *worldRun) liveLineLocked(at time.Time) bool {
 }
 
 // crashLocked is the reason for the current crash, from the log of the
-// current container and Docker's out-of-memory flag (SPEC 8.7). w.mu is
-// held.
+// current container and Docker's out-of-memory flag (SPEC 8.7): the read
+// taken when a look found the crash, if any, then the lines the follower
+// added since. w.mu is held.
 func (c *Controller) crashLocked(w *worldRun) LoadReason {
 	var f loadFailure
-	for _, l := range w.logs.LinesSince(w.logMark) {
+	from := w.logMark
+	if w.crashLog != nil {
+		f, from = w.crashLog.f.clone(), w.crashLog.mark
+	}
+	for _, l := range w.logs.LinesSince(from) {
 		f.add(l)
 	}
-	r := f.reason(w.redact)
+	r := f.crashReason(w.redact)
 	if w.oomKilled {
 		r.Kind = crashreasons.OutOfMemory
 	}
