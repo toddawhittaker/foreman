@@ -66,7 +66,7 @@ test.describe("a sidecar that publishes the game port", () => {
 test.describe("a sidecar that publishes no port", () => {
   test.use({ fakeGameOn: true, sidecar: { name: "vpn" } });
 
-  test("starts with a warning that is not an alert, then follows the sidecar's publication live", async ({ page, foreman, fakeGame }) => {
+  test("starts with a warning that is not an alert, updates at each start", async ({ page, foreman, fakeGame }) => {
     const g = fakeGame!;
     await setUp(page, foreman, g);
     // A second tab of the same session watches the page; it is never reloaded, so every change it

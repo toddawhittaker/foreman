@@ -1080,8 +1080,8 @@ func (p ServerPage) ShowLANUnpublished() bool {
 	return p.Status.LANUnpublished != "" && game.IsRunning(p.Status.State)
 }
 
-// LANUnpublished is the LAN warning's sentence. The sidecar's name is the
-// configured one.
+// LANUnpublished is the LAN warning's sentence. The name is Docker's name
+// for the sidecar the game joined.
 func (p ServerPage) LANUnpublished() i18n.Msg {
 	return i18n.M("server.lan.unpublished", "sidecar", p.Status.LANUnpublished)
 }
