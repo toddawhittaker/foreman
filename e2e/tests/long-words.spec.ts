@@ -37,7 +37,11 @@ test.describe("long words at 320 px", () => {
         await page.goto("/generate");
         await expect(page.locator("html")).toHaveAttribute("lang", lang);
         await page.evaluate((p) => (document.documentElement.style.fontSize = `${p}%`), size);
-        expect(await layoutProblems(page), `${lang} at ${size}%`).toEqual([]);
+        // Under load the web fonts and the scripts' own layout can land after
+        // the first read, so wait for the fonts and then for a settled page.
+        // A real overflow stays and still fails once the poll times out.
+        await page.evaluate(() => document.fonts.ready);
+        await expect.poll(() => layoutProblems(page), { message: `${lang} at ${size}%` }).toEqual([]);
       }
     });
   }
