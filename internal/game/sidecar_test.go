@@ -609,3 +609,18 @@ func TestStartScriptRCONBind(t *testing.T) {
 		t.Errorf("without one: %v", args)
 	}
 }
+
+// SPEC 12.6: an older running namespace must be read completely even
+// when the configured replacement has readable ranges.
+func TestSidecarOldNamespaceIncompleteRanges(t *testing.T) {
+	r, _ := sidecarRig(t, false)
+	d := r.game.Daemon()
+	seedSidecar(d, "tailscale", sidecarOpts{ip: "172.30.0.5"})
+	old := seedSidecar(d, "old-sidecar", sidecarOpts{networks: map[string]string{"games": "172.30.0.6/24", "unreadable": "10.8.0.2/0"}})
+	ctx := context.Background()
+	complete := r.c.noteGameSubnets(ctx, docker.Container{NetworkMode: "container:" + old.ID})
+	r.c.refreshSubnets(ctx, complete)
+	if _, known := r.c.GameSubnets(); known {
+		t.Fatal("ranges known despite an unreadable old running namespace")
+	}
+}

@@ -94,9 +94,9 @@ func (c *Controller) noteGameSubnets(ctx context.Context, cont docker.Container)
 		if err != nil {
 			return errors.Is(err, docker.ErrNotFound)
 		}
-		subnets, _ := sidecarSubnets(ns)
+		subnets, complete := sidecarSubnets(ns)
 		c.addSubnets(subnets, false)
-		return true
+		return complete || ns.State.Status != "running"
 	}
 	var add []netip.Prefix
 	for _, n := range cont.Networks {
