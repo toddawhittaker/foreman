@@ -517,15 +517,29 @@ export async function expectFollowed(page: Page, sentence: string) {
   expect(await page.evaluate(() => document.activeElement?.id)).toBe("control-heading");
 }
 
-// The floating Delete selected bar and Generate's action bar stick to the
-// window's foot (DESIGN 8.3, 8.6), so at some scroll positions they lie over a
-// row's control. axe's target-size rule then counts that control as covered.
-// Focus is never hidden there: the page's scroll-padding scrolls a focused
-// control clear of the bar (WCAG 2.4.11). So target-size findings for controls
-// under one of those bars are dropped. Every other finding still fails.
+// The Snapshots selection bar and Generate's action bar stick to the window's
+// foot (DESIGN 8.3, 8.6), so at some scroll positions one lies over a row's
+// control and axe's target-size rule counts that control as partly covered.
+// That is not a barrier: a pointer user scrolls the control out from under the
+// bar, and the page's scroll-padding keeps a focused control clear of it
+// (WCAG 2.4.11, tested per bar in sticky-bars.spec.ts). So a target-size
+// finding is dropped only when axe says the control is obscured rather than
+// small, the control's own box is at least 24 by 24 px, and it lies under one
+// of those bars while the bar is sticky. Every other finding still fails.
 // Todd approved this exception on 2026-11-13.
 const stickyBars = ".select-bar, .generate > .gen-actions";
-type AxeViolation = { id: string; nodes: { target: unknown[] }[] };
+type AxeCheck = { id: string; data?: unknown };
+type AxeNode = { target: unknown[]; any?: AxeCheck[]; all?: AxeCheck[]; none?: AxeCheck[] };
+type AxeViolation = { id: string; nodes: AxeNode[] };
+
+// axe-core 4.14 marks a target that is big enough but partly covered with
+// this key; a target that is simply too small has none.
+function onlyObscured(n: AxeNode): boolean {
+  const checks = [...(n.any ?? []), ...(n.all ?? []), ...(n.none ?? [])];
+  return checks.length > 0 && checks.every((c) =>
+    typeof c.data === "object" && c.data !== null && (c.data as { messageKey?: unknown }).messageKey === "partiallyObscured");
+}
+
 async function withoutTargetsUnderStickyBars<V extends AxeViolation>(page: Page, violations: V[]): Promise<V[]> {
   const kept: V[] = [];
   for (const v of violations) {
@@ -533,11 +547,13 @@ async function withoutTargetsUnderStickyBars<V extends AxeViolation>(page: Page,
     const nodes = [];
     for (const n of v.nodes) {
       const selector = n.target.length === 1 && typeof n.target[0] === "string" ? n.target[0] : null;
-      const covered = selector !== null && await page.evaluate(([sel, bars]) => {
+      const covered = selector !== null && onlyObscured(n) && await page.evaluate(([sel, bars]) => {
         const el = document.querySelector(sel);
         if (!el || el.closest(bars)) return false;
         const r = el.getBoundingClientRect();
+        if (r.width < 24 || r.height < 24) return false;
         return [...document.querySelectorAll(bars)].some((bar) => {
+          if (getComputedStyle(bar).position !== "sticky") return false;
           const b = bar.getBoundingClientRect();
           return b.width > 0 && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top;
         });

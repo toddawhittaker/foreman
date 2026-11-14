@@ -5093,9 +5093,10 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   }
 }
 
+/* The phone's command bar: its label, a 44 px row, 12 px padding each side. */
 @media (max-width: 39.99rem) {
   html:has(.terminal .console-form) {
-    scroll-padding-block-end: 6rem;
+    scroll-padding-block-end: 6.5rem;
   }
 }
 
@@ -5205,7 +5206,9 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
   padding: 0;
-  overflow: hidden;
+  /* clip, not hidden: hidden would make the card a scroll box, and the
+     phone's command bar would stick to the card instead of the window. */
+  overflow: clip;
 }
 
 .terminal > .panel {
