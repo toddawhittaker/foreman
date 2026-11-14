@@ -123,8 +123,14 @@ func (e *gameEnv) runCatalogue(t *testing.T, tag, fixture, version string) {
 		}
 		// Foreman sets no memory limit, so the test lowers it under the
 		// running game, as the captures did (testdata README, 10). The
-		// kernel kills the game, and each restart, while it loads.
+		// kernel kills each restart while it loads.
 		e.dockerCLI(t, "update", "--memory", "96m", "--memory-swap", "96m", ContainerName(id))
+		// Docker sets the memory limit before the swap limit, so on a host
+		// with swap the running game can move to swap and live on. Ending
+		// it makes Docker restart it under both limits. The kind below is
+		// named only from Docker's OOMKilled flag, which this exit never
+		// sets.
+		e.dockerCLI(t, "exec", ContainerName(id), "sh", "-c", "kill -TERM 1")
 		st := waitCrashLoop(t, c, id)
 		if st.Crash.Kind != crashreasons.OutOfMemory {
 			t.Errorf("kind %q (%s), want %q; OOMKilled %v", st.Crash.Kind, st.CrashReason, crashreasons.OutOfMemory, e.inspect(t, id).State.OOMKilled)
