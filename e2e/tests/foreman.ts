@@ -517,10 +517,43 @@ export async function expectFollowed(page: Page, sentence: string) {
   expect(await page.evaluate(() => document.activeElement?.id)).toBe("control-heading");
 }
 
+// The floating Delete selected bar and Generate's action bar stick to the
+// window's foot (DESIGN 8.3, 8.6), so at some scroll positions they lie over a
+// row's control. axe's target-size rule then counts that control as covered.
+// Focus is never hidden there: the page's scroll-padding scrolls a focused
+// control clear of the bar (WCAG 2.4.11). So target-size findings for controls
+// under one of those bars are dropped. Every other finding still fails.
+// Todd approved this exception on 2026-11-13.
+const stickyBars = ".select-bar, .generate > .gen-actions";
+type AxeViolation = { id: string; nodes: { target: unknown[] }[] };
+async function withoutTargetsUnderStickyBars<V extends AxeViolation>(page: Page, violations: V[]): Promise<V[]> {
+  const kept: V[] = [];
+  for (const v of violations) {
+    if (v.id !== "target-size") { kept.push(v); continue; }
+    const nodes = [];
+    for (const n of v.nodes) {
+      const selector = n.target.length === 1 && typeof n.target[0] === "string" ? n.target[0] : null;
+      const covered = selector !== null && await page.evaluate(([sel, bars]) => {
+        const el = document.querySelector(sel);
+        if (!el || el.closest(bars)) return false;
+        const r = el.getBoundingClientRect();
+        return [...document.querySelectorAll(bars)].some((bar) => {
+          const b = bar.getBoundingClientRect();
+          return b.width > 0 && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top;
+        });
+      }, [selector, stickyBars] as const);
+      if (!covered) nodes.push(n);
+    }
+    if (nodes.length) kept.push({ ...v, nodes });
+  }
+  return kept;
+}
+
 // Every page visited passes these (SPEC 17.1 and 17.2, DESIGN 10).
 export async function checkPage(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
-  expect(results.violations, `axe on ${page.url()}`).toEqual([]);
+  const violations = await withoutTargetsUnderStickyBars(page, results.violations);
+  expect(violations, `axe on ${page.url()}`).toEqual([]);
   if ((page.viewportSize()?.width ?? 1000) > 320) return;
 
   const size = await page.evaluate(() => ({
