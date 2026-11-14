@@ -431,7 +431,20 @@ func (in *instance) pipe(client net.Conn, target string) {
 	closeBoth := func() { _ = client.Close(); _ = server.Close() }
 	done := make(chan struct{})
 	go func() {
-		_, _ = io.Copy(server, client)
+		// The first packet a client sends is its login (internal/rcon).
+		buf := make([]byte, 4096)
+		n, err := client.Read(buf)
+		if n > 0 {
+			in.g.mu.Lock()
+			in.g.logins[in.name]++
+			in.g.mu.Unlock()
+			if _, werr := server.Write(buf[:n]); werr != nil {
+				err = werr
+			}
+		}
+		if err == nil {
+			_, _ = io.Copy(server, client)
+		}
 		closeBoth()
 		close(done)
 	}()

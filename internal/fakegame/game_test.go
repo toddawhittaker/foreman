@@ -3,6 +3,7 @@ package fakegame_test
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -429,6 +430,59 @@ func TestRCONRefusesLoginsOnRequest(t *testing.T) {
 	defer func() { _ = c2.Close() }()
 	if _, err := c2.Exec(context.Background(), "/players online"); !errors.Is(err, rcon.ErrLogin) {
 		t.Errorf("new container: %v, want ErrLogin", err)
+	}
+}
+
+// A test can count the logins a game's RCON received, a connection that
+// sends nothing not among them, and drop open connections so the client
+// must log in again.
+func TestRCONLoginsAndDrop(t *testing.T) {
+	r := newRig(t, fakegame.Config{})
+	id := r.start("foreman-w1", image21, "unless-stopped")
+	logins := func() int {
+		for _, cs := range r.game.State().Containers {
+			if cs.Name == "foreman-w1" {
+				return cs.RCONLogins
+			}
+		}
+		return -1
+	}
+	eventually(t, "RCON", func() bool {
+		conn, err := net.Dial("tcp", r.rconAddr(id))
+		if err == nil {
+			_ = conn.Close()
+		}
+		return err == nil
+	})
+	if got := logins(); got != 0 {
+		t.Errorf("%d logins from a connection that sent nothing", got)
+	}
+
+	c := r.rcon(id)
+	ctx := context.Background()
+	for range 2 {
+		if _, err := c.Exec(ctx, "/players online"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := logins(); got != 1 {
+		t.Errorf("%d logins for one connection", got)
+	}
+
+	if err := r.game.DropRCON("foreman-w1"); err != nil {
+		t.Fatal(err)
+	}
+	var err error
+	for range 2 { // the first may only find the dropped connection
+		if _, err = c.Exec(ctx, "/players online"); err == nil {
+			break
+		}
+	}
+	if err != nil || logins() != 2 {
+		t.Errorf("after the drop: %v, %d logins; want a new login", err, logins())
+	}
+	if err := r.game.DropRCON("foreman-w2"); err == nil {
+		t.Error("DropRCON accepted a container with no game")
 	}
 }
 

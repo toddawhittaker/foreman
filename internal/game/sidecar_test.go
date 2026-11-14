@@ -4,20 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"math/rand/v2"
 	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/docker"
 	"github.com/toddawhittaker/foreman/internal/docker/dockertest"
+	"github.com/toddawhittaker/foreman/internal/fakegame"
 	"github.com/toddawhittaker/foreman/internal/gameenv"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -32,11 +29,10 @@ const sharedNet = "10.9.0.7/16"
 
 // sidecarOpts shapes a seeded sidecar.
 type sidecarOpts struct {
-	ip          string            // its IPv4 address on the game network
-	unpublished bool              // it publishes no host port for UDP 34197
-	networks    map[string]string // replaces its networks when set
-	status      string            // replaces "running" when set
-	mode        string            // replaces its network mode when set
+	ip       string            // its IPv4 address on the game network
+	networks map[string]string // replaces its networks when set
+	status   string            // replaces "running" when set
+	mode     string            // replaces its network mode when set
 }
 
 // seedSidecar adds a sidecar named name on the game network, with IPv6, and
@@ -60,97 +56,56 @@ func seedSidecar(d *dockertest.Daemon, name string, o sidecarOpts) dockertest.Co
 			NetworkMode: mode,
 		},
 	}
-	if !o.unpublished {
-		spec.ExposedPorts = map[string]struct{}{gamePort: {}}
-		spec.HostConfig.PortBindings = map[string][]docker.PortBinding{gamePort: {{HostPort: "34197"}}}
-	}
+	spec.ExposedPorts = map[string]struct{}{gamePort: {}}
+	spec.HostConfig.PortBindings = map[string][]docker.PortBinding{gamePort: {{HostPort: "34197"}}}
 	d.Seed(dockertest.Container{Name: name, Status: status, Networks: nets, Spec: spec})
 	got, _ := d.Container(name)
 	return got
 }
 
-// sidecarRCON stands for the sidecar's network: a listener on a free
-// loopback address, the sidecar's address on the game network, that passes
-// each connection to the RCON of the world's fake game. It returns the
-// address and the listener, whose Load is the count of connections made.
-func (r *rig) sidecarRCON(id string) (string, *sidecarServer) {
+// liveSidecarRig is a rig whose fake seeds the sidecar "tailscale" itself
+// (fakegame.Config.Sidecar), on the game network at an address of its
+// own. A game that joins that namespace binds RCON there and nowhere else,
+// so the tests that run a game use this rig; a game in any other
+// container's namespace cannot bind the address and exits. published makes
+// the sidecar publish UDP 34197 on a host port. inContainer makes the
+// fake's self container Foreman's own. It returns the sidecar's address on
+// the game network.
+func liveSidecarRig(t *testing.T, inContainer, published bool) (*rig, rigOptions, string) {
+	t.Helper()
+	fake := fakegame.Config{SelfNetwork: "games", Sidecar: "tailscale"}
+	if published {
+		fake.SidecarPort = "34197"
+	}
+	r := newRig(t, rigOptions{noRun: true, fake: fake})
+	opts := rigOptions{network: "games", sidecar: "tailscale"}
+	if inContainer {
+		// The fake names its self container after this host.
+		hostname, _ := os.Hostname()
+		self, ok := r.game.Daemon().Container(hostname)
+		if !ok {
+			t.Fatal("the fake seeded no self container")
+		}
+		opts.selfID = self.ID
+	}
+	r.c = r.newController(opts)
+	return r, opts, r.game.SidecarAddress()
+}
+
+// rconLogins is how many RCON logins the world's game received, over all
+// its containers: the connections on which Foreman sent anything, since
+// its first packet is the login with the world's password.
+func (r *rig) rconLogins(id string) int {
 	r.t.Helper()
-	srv := &sidecarServer{}
-	target := func() string {
-		for _, cs := range r.game.State().Containers {
-			if cs.Name == ContainerName(id) && cs.IP != "" {
-				return net.JoinHostPort(cs.IP, RCONPort)
-			}
-		}
-		return ""
-	}
-	for range 50 {
-		ip := fmt.Sprintf("127.%d.%d.%d", 100+rand.IntN(100), rand.IntN(256), 2+rand.IntN(250)) //nolint:gosec // spreads test addresses, not a secret
-		ln, err := net.Listen("tcp", net.JoinHostPort(ip, RCONPort))
-		if err != nil {
-			continue
-		}
-		r.t.Cleanup(func() { _ = ln.Close(); srv.dropAll() })
-		go srv.forward(ln, target)
-		return ip, srv
-	}
-	r.t.Fatal("no free loopback address for the sidecar's RCON")
-	return "", nil
+	return r.container(id).RCONLogins
 }
 
-// sidecarServer is the listener of sidecarRCON. Its Load is how many
-// connections were made to it.
-type sidecarServer struct {
-	atomic.Int64
-	// spoke counts the connections Foreman sent anything on: a login, at
-	// least, since a login is the first thing sent.
-	spoke atomic.Int64
-
-	mu   sync.Mutex
-	open []net.Conn
-}
-
-// dropAll closes every connection made so far, as when the network they
-// ran in goes away.
-func (s *sidecarServer) dropAll() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, c := range s.open {
-		_ = c.Close()
-	}
-	s.open = nil
-}
-
-func (s *sidecarServer) forward(ln net.Listener, target func() string) {
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			return
-		}
-		s.Add(1)
-		s.mu.Lock()
-		s.open = append(s.open, conn)
-		s.mu.Unlock()
-		go func() {
-			defer func() { _ = conn.Close() }()
-			up, err := net.Dial("tcp", target())
-			if err != nil {
-				return
-			}
-			defer func() { _ = up.Close() }()
-			go func() {
-				buf := make([]byte, 4096)
-				n, err := conn.Read(buf)
-				if n > 0 {
-					s.spoke.Add(1)
-					_, _ = up.Write(buf[:n])
-				}
-				if err == nil {
-					_, _ = io.Copy(up, conn)
-				}
-			}()
-			_, _ = io.Copy(conn, up)
-		}()
+// dropRCON closes Foreman's open RCON connections to the world's game, as a
+// broken network would, and leaves the game's RCON listening.
+func (r *rig) dropRCON(id string) {
+	r.t.Helper()
+	if err := r.game.DropRCON(ContainerName(id)); err != nil {
+		r.t.Fatal(err)
 	}
 }
 
@@ -184,17 +139,13 @@ func (r *rig) created(id string) docker.ContainerSpec {
 // SPEC 4.13: the game joins the sidecar's network by the inspected ID,
 // declares no port, binds RCON to the sidecar's game-network address, and
 // Foreman reaches it there, whether Foreman runs in a container or on the
-// host. The sidecar's other network, with an unrelated service on it, is
-// allowed.
+// host. (The sidecar's other networks are TestSidecarRangesChecked's.)
 func TestSidecarStartJoinsCheckedSidecar(t *testing.T) {
 	for _, inContainer := range []bool{true, false} {
 		t.Run(fmt.Sprintf("in container %v", inContainer), func(t *testing.T) {
-			r, _ := sidecarRig(t, inContainer)
-			d := r.game.Daemon()
+			r, _, ip := liveSidecarRig(t, inContainer, true)
 			id := r.newWorld("Base")
-			ip, srv := r.sidecarRCON(id)
-			sc := seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
-			d.Seed(dockertest.Container{Name: "unrelated-db", Status: "running", Networks: map[string]string{"shared": "10.9.0.8/16"}})
+			sc := r.game.State().Sidecar
 			r.stop = r.run(r.c)
 
 			r.start(id)
@@ -208,7 +159,7 @@ func TestSidecarStartJoinsCheckedSidecar(t *testing.T) {
 			if want := gameenv.RCONBind + "=" + ip + ":27015"; !slices.Contains(spec.Env, want) {
 				t.Errorf("env %v lacks %s", spec.Env, want)
 			}
-			if srv.Load() == 0 {
+			if r.rconLogins(id) == 0 {
 				t.Error("Foreman never logged in to RCON at the sidecar's address")
 			}
 			st := r.c.Status(id)
@@ -219,7 +170,7 @@ func TestSidecarStartJoinsCheckedSidecar(t *testing.T) {
 				t.Errorf("console: %v", err)
 			}
 			subnets, known := r.c.GameSubnets()
-			for _, want := range prefixes(ip+"/24", "fd00:30::/64", "10.9.0.0/16", "fe80::/10") {
+			for _, want := range prefixes(ip + "/24") {
 				want = want.Masked()
 				if !known || !slices.Contains(subnets, want) {
 					t.Errorf("ranges %v (known %v) lack %s", subnets, known, want)
@@ -275,7 +226,8 @@ func checkNetworkKind(t *testing.T, err error, kind string) {
 
 // SPEC 4.13, 12.6: every network the sidecar is on, IPv4 and IPv6, is
 // checked against FOREMAN_TRUSTED_PROXIES, and against the address
-// DOCKER_HOST reaches; additional networks alone pass.
+// DOCKER_HOST reaches; additional networks alone pass, with an unrelated
+// service on them.
 func TestSidecarRangesChecked(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -299,6 +251,7 @@ func TestSidecarRangesChecked(t *testing.T) {
 			self, _ := d.Container("foreman-self")
 			r.c.selfID = self.ID
 			seedSidecar(d, "tailscale", sidecarOpts{ip: "172.30.0.5"})
+			d.Seed(dockertest.Container{Name: "unrelated-db", Status: "running", Networks: map[string]string{"shared": "10.9.0.8/16"}})
 			if tc.proxies != "" {
 				r.c.proxies = prefixes(tc.proxies)
 			}
@@ -339,11 +292,9 @@ func TestSidecarGameNetworkMembers(t *testing.T) {
 // SPEC 4.13, 7.4: a refused sidecar refuses a start and a restart before
 // anything is written to the world or stopped.
 func TestSidecarRefusalChangesNothing(t *testing.T) {
-	r, _ := sidecarRig(t, false)
+	r, _, _ := liveSidecarRig(t, false, true)
 	d := r.game.Daemon()
 	id := r.newWorld("Base")
-	ip, _ := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
 	r.stop = r.run(r.c)
 	r.start(id)
 
@@ -436,11 +387,8 @@ func TestSidecarReplacementIsNotFollowed(t *testing.T) {
 // the sidecar it joined, and the sidecar's ranges are known again before
 // trusted headers are accepted.
 func TestSidecarForemanRestart(t *testing.T) {
-	r, opts := sidecarRig(t, false)
-	d := r.game.Daemon()
+	r, opts, ip := liveSidecarRig(t, false, false)
 	id := r.newWorld("Base")
-	ip, srv := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip, unpublished: true})
 	r.stop = r.run(r.c)
 	r.start(id)
 	r.stop()
@@ -449,15 +397,15 @@ func TestSidecarForemanRestart(t *testing.T) {
 	if _, known := c2.GameSubnets(); known {
 		t.Error("ranges known before the first look")
 	}
-	logins := srv.Load()
+	logins := r.rconLogins(id)
 	r.run(c2)
 	eventually(t, func() bool { return c2.Status(id).State == StateRunning }, "re-attach")
-	eventually(t, func() bool { return srv.Load() > logins }, "RCON login after re-attach")
+	eventually(t, func() bool { return r.rconLogins(id) > logins }, "RCON login after re-attach")
 	if st := c2.Status(id); st.LANUnpublished != "tailscale" {
 		t.Errorf("LAN warning %q after re-attach", st.LANUnpublished)
 	}
 	subnets, known := c2.GameSubnets()
-	if !known || !slices.Contains(subnets, netip.MustParsePrefix(sharedNet).Masked()) {
+	if !known || !slices.Contains(subnets, netip.MustParsePrefix(ip+"/24").Masked()) {
 		t.Errorf("ranges %v, known %v", subnets, known)
 	}
 	if err := c2.Stop(context.Background(), id, admin, StopOptions{}); err != nil {
@@ -469,18 +417,18 @@ func TestSidecarForemanRestart(t *testing.T) {
 // name, at the same address, is never reached through the replacement.
 // Without RCON its stop needs Force stop (SPEC 7.6).
 func TestSidecarStaleGameDoesNotFollowName(t *testing.T) {
-	r, opts := sidecarRig(t, false)
+	r, opts, ip := liveSidecarRig(t, false, true)
 	d := r.game.Daemon()
 	id := r.newWorld("Base")
-	ip, srv := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
 	r.stop = r.run(r.c)
 	r.start(id)
 	r.stop()
 
+	// The game keeps listening at the address, so a login sent there would
+	// reach it.
 	removeSidecar(t, r, "tailscale")
 	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
-	logins := srv.Load()
+	logins := r.rconLogins(id)
 	c2 := r.newController(opts)
 	r.run(c2)
 	eventually(t, func() bool { return c2.Status(id).State == StateRunning }, "re-attach")
@@ -488,7 +436,7 @@ func TestSidecarStaleGameDoesNotFollowName(t *testing.T) {
 	if !errors.Is(err, ErrRCONUnreachable) {
 		t.Errorf("stop: %v, want ErrRCONUnreachable", err)
 	}
-	if srv.Load() != logins {
+	if r.rconLogins(id) != logins {
 		t.Error("Foreman logged in through the replacement sidecar")
 	}
 	if err := c2.ForceStop(context.Background(), id, admin); err != nil {
@@ -548,11 +496,8 @@ func TestGameEndpointNeedsTheJoinedID(t *testing.T) {
 // without refusing the start, and a fresh start after it publishes one
 // clears the warning.
 func TestSidecarLANWarning(t *testing.T) {
-	r, _ := sidecarRig(t, false)
-	d := r.game.Daemon()
+	r, _, _ := liveSidecarRig(t, false, false)
 	id := r.newWorld("Base")
-	ip, _ := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip, unpublished: true})
 	r.stop = r.run(r.c)
 	r.start(id)
 	if st := r.c.Status(id); st.LANUnpublished != "tailscale" {
@@ -564,8 +509,10 @@ func TestSidecarLANWarning(t *testing.T) {
 	if st := r.c.Status(id); st.LANUnpublished != "" {
 		t.Errorf("LAN warning %q on a stopped game", st.LANUnpublished)
 	}
-	removeSidecar(t, r, "tailscale")
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
+	// The operator recreates the sidecar with the port published.
+	if err := r.game.SetSidecarPort("34197"); err != nil {
+		t.Fatal(err)
+	}
 	r.start(id)
 	if st := r.c.Status(id); st.LANUnpublished != "" {
 		t.Errorf("LAN warning %q after publishing", st.LANUnpublished)
@@ -669,11 +616,9 @@ func TestSidecarOldNamespaceIncompleteRanges(t *testing.T) {
 // connection is checked against the container the game joined before the
 // login. The game then needs Force stop (SPEC 7.6).
 func TestSidecarCachedRCONDoesNotFollowReplacement(t *testing.T) {
-	r, _ := sidecarRig(t, false)
+	r, _, ip := liveSidecarRig(t, false, true)
 	d := r.game.Daemon()
 	id := r.newWorld("Base")
-	ip, srv := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
 	r.stop = r.run(r.c)
 	r.start(id)
 	ctx := context.Background()
@@ -681,10 +626,12 @@ func TestSidecarCachedRCONDoesNotFollowReplacement(t *testing.T) {
 		t.Fatalf("console before the replacement: %v", err)
 	}
 
+	// The game keeps listening at the address, so a login sent there would
+	// reach it.
 	removeSidecar(t, r, "tailscale")
 	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
-	srv.dropAll()
-	spoke := srv.spoke.Load()
+	r.dropRCON(id)
+	spoke := r.rconLogins(id)
 	for range 2 { // the first may only find the dropped connection
 		if _, _, err := r.c.Console(ctx, id, admin, "/players", ""); !errors.Is(err, ErrRCONUnreachable) {
 			t.Errorf("console: %v, want ErrRCONUnreachable", err)
@@ -693,7 +640,7 @@ func TestSidecarCachedRCONDoesNotFollowReplacement(t *testing.T) {
 	if err := r.c.Stop(ctx, id, admin, StopOptions{}); !errors.Is(err, ErrRCONUnreachable) {
 		t.Errorf("stop: %v, want ErrRCONUnreachable", err)
 	}
-	if got := srv.spoke.Load(); got != spoke {
+	if got := r.rconLogins(id); got != spoke {
 		t.Errorf("Foreman sent %d logins through the replacement sidecar", got-spoke)
 	}
 	if err := r.c.ForceStop(ctx, id, admin); err != nil {
@@ -704,17 +651,14 @@ func TestSidecarCachedRCONDoesNotFollowReplacement(t *testing.T) {
 // SPEC 4.13: while the sidecar the game joined is unchanged, a dropped
 // RCON connection is made again, with a new login, and a stop is graceful.
 func TestSidecarCachedRCONReconnects(t *testing.T) {
-	r, _ := sidecarRig(t, false)
-	d := r.game.Daemon()
+	r, _, _ := liveSidecarRig(t, false, true)
 	id := r.newWorld("Base")
-	ip, srv := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
 	r.stop = r.run(r.c)
 	r.start(id)
 	ctx := context.Background()
 
-	srv.dropAll()
-	spoke := srv.spoke.Load()
+	r.dropRCON(id)
+	spoke := r.rconLogins(id)
 	var err error
 	for range 2 { // the first may only find the dropped connection
 		if _, _, err = r.c.Console(ctx, id, admin, "/players", ""); err == nil {
@@ -724,7 +668,7 @@ func TestSidecarCachedRCONReconnects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("console after the drop: %v", err)
 	}
-	if srv.spoke.Load() <= spoke {
+	if r.rconLogins(id) <= spoke {
 		t.Error("the console answered without a new login")
 	}
 	if err := r.c.Stop(ctx, id, admin, StopOptions{}); err != nil {
@@ -736,11 +680,9 @@ func TestSidecarCachedRCONReconnects(t *testing.T) {
 // does not answer, no login is sent, and the next connection checks again
 // and logs in. Foreman's own run is stopped so nothing else connects.
 func TestSidecarRCONCheckFailureIsRetried(t *testing.T) {
-	r, _ := sidecarRig(t, false)
+	r, _, ip := liveSidecarRig(t, false, true)
 	d := r.game.Daemon()
 	id := r.newWorld("Base")
-	ip, srv := r.sidecarRCON(id)
-	seedSidecar(d, "tailscale", sidecarOpts{ip: ip})
 	r.stop = r.run(r.c)
 	r.start(id)
 	r.stop()
@@ -756,7 +698,7 @@ func TestSidecarRCONCheckFailureIsRetried(t *testing.T) {
 	rc := r.c.rconClient(cont, net.JoinHostPort(ip, RCONPort), pw)
 	defer closeRCON(rc)
 
-	spoke := srv.spoke.Load()
+	spoke := r.rconLogins(id)
 	d.SetFailure(500, "the daemon is busy")
 	_, err = rc.Exec(ctx, "/players online")
 	d.SetFailure(0, "")
@@ -766,13 +708,13 @@ func TestSidecarRCONCheckFailureIsRetried(t *testing.T) {
 	if strings.Contains(err.Error(), pw.Reveal()) {
 		t.Errorf("error %q shows the RCON password", err)
 	}
-	if srv.spoke.Load() != spoke {
+	if r.rconLogins(id) != spoke {
 		t.Error("a login was sent before the sidecar was checked")
 	}
 	if _, err := rc.Exec(ctx, "/players online"); err != nil {
 		t.Fatalf("after Docker answers again: %v", err)
 	}
-	if got := srv.spoke.Load(); got != spoke+1 {
+	if got := r.rconLogins(id); got != spoke+1 {
 		t.Errorf("%d logins after the retry, want 1", got-spoke)
 	}
 }
