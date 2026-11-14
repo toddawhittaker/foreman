@@ -54,7 +54,7 @@
   "mods.state.off": "已禁用",
   "mods.row.update": "更新到 {version}",
   "mods.row.version": "更改版本",
-  "mods.row.more": "{name} 的更多操作",
+  "mods.row.more": "更多操作：{name}",
   "mods.row.enable": "启用",
   "mods.row.disable": "禁用",
   "mods.row.remove": "移除",

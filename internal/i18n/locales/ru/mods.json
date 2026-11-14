@@ -62,7 +62,7 @@
   "mods.state.off": "Отключён",
   "mods.row.update": "Обновить до {version}",
   "mods.row.version": "Сменить версию",
-  "mods.row.more": "Другие действия для {name}",
+  "mods.row.more": "Ещё действия для {name}",
   "mods.row.enable": "Включить",
   "mods.row.disable": "Отключить",
   "mods.row.remove": "Удалить",

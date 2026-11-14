@@ -58,7 +58,7 @@
   "mods.state.off": "Désactivé",
   "mods.row.update": "Mettre à jour vers {version}",
   "mods.row.version": "Changer de version",
-  "mods.row.more": "Autres actions pour {name}",
+  "mods.row.more": "Plus d'actions pour {name}",
   "mods.row.enable": "Activer",
   "mods.row.disable": "Désactiver",
   "mods.row.remove": "Retirer",

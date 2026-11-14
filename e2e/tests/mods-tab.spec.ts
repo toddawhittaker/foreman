@@ -1,4 +1,5 @@
 import { test, expect, checkPage, setUpModsWorld, live, version20, type SeedMod, openModTools } from "./foreman.js";
+import { languages, t } from "./i18n.js";
 import type { Locator } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -139,4 +140,20 @@ test("a world whose mods match the save says so", async ({ page, foreman, fakeGa
   await expect(page.locator("#sync-state")).toHaveText("The mods match the save base.zip.");
   await expect(page.getByRole("link", { name: "Match mods to the save" })).toHaveCount(0);
   await checkPage(page);
+});
+
+// WCAG 2.5.3: the row's More button says its word and its name starts with
+// that word, in every language, so a person who says what they see reaches it.
+test("each language names a row's More button starting with its visible word", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-mod-01", "1.0.0", ["base >= 2.0"]);
+  await setUpModsWorld(page, foreman, fakeGame!, { version: version20, fixture: "2.0.77-no-space-age.zip", mods: { "fp-mod-01": { factorio: "2.0" } } });
+  for (const lang of languages) {
+    await page.context().addCookies([{ name: "foreman_lang", value: lang, url: foreman.url }]);
+    await page.goto("/worlds/base/mods");
+    const toggle = page.locator("details.row-menu > summary").first();
+    const word = (await toggle.locator(".row-menu__word").innerText()).trim();
+    expect(word, lang).toBe(t("mods.row.more_word", {}, lang));
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await expect(toggle, lang).toHaveAccessibleName(new RegExp(`^${escaped}`));
+  }
 });
