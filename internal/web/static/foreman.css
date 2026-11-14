@@ -6053,8 +6053,8 @@ main > .panel > .facts > div {
   font-size: var(--text-xs);
 }
 
-/* The status lamp (DESIGN 7.5): the state badge's shape, small, after Server
-   in the main navigation and at the start of the Server plate's band. A
+/* The status lamp (DESIGN 7.5): the state badge's shape, small, before the
+   state's word in the header and at the start of the Server plate's band. A
    filled square runs, a half-filled one starts or stops, a diamond has
    crashed, a hollow square is stopped, a hollow circle is unknown. */
 .lamp {
@@ -6093,9 +6093,56 @@ main > .panel > .facts > div {
   border-radius: 50%;
 }
 
+/* Every state is said in words (SPEC 17.4). On a wide screen the lamp and
+   the state's word sit small under Server in its tab; a long word wraps
+   between words rather than widen the header. */
+.tabs__stack {
+  display: grid;
+  justify-items: start;
+  min-inline-size: 0;
+}
+
 .tabs :is(#nav-lamp, .nav-lamp) {
   display: inline-flex;
-  margin-inline-start: calc(var(--space-2) - var(--space-1));
+  align-items: center;
+  gap: var(--space-1);
+  max-inline-size: 10rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+/* On a phone the four tabs fill their row, so the lamp and word move up
+   beside the logo, where the first row has room; the tab keeps the word for
+   screen readers. */
+.site-state {
+  display: none;
+}
+
+@media (max-width: 39.99rem) {
+  .site-state:not(:empty) {
+    display: inline-flex;
+    flex: 1 1 0;
+    align-items: center;
+    gap: var(--space-2);
+    min-inline-size: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.2;
+    hyphens: auto;
+  }
+
+  .tabs #nav-lamp {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .tabs :is(#nav-lamp, .nav-lamp):empty {
