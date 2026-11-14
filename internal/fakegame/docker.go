@@ -151,8 +151,10 @@ func (in *instance) shutdownLog() {
 }
 
 // rewriteInspect replaces the address Docker's fake reports with the
-// loopback address the container's RCON listens on. A container the fake
-// never ran a game in, such as one a test seeded, keeps its own address.
+// loopback address the container's RCON listens on and applies the sidecar's
+// publication hook. A container the
+// fake never ran a game in, such as one a test seeded, keeps its own address;
+// the seeded sidecar has a loopback address of its own.
 func (g *Game) rewriteInspect(body []byte) []byte {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
@@ -161,20 +163,24 @@ func (g *Game) rewriteInspect(body []byte) []byte {
 		return body
 	}
 	id, _ := doc["Id"].(string)
+	c, known := g.daemon.Container(id)
+	if !known {
+		return body
+	}
+	g.fillInspect(doc, c)
 	g.mu.Lock()
 	_, ran := g.addrs[id]
 	g.mu.Unlock()
-	if !ran {
-		return body
-	}
-	settings, _ := doc["NetworkSettings"].(map[string]any)
-	nets, _ := settings["Networks"].(map[string]any)
-	for _, n := range nets {
-		// An empty address means the container is not running.
-		if nw, ok := n.(map[string]any); ok && nw["IPAddress"] != "" {
-			g.mu.Lock()
-			nw["IPAddress"] = g.addrLocked(id)
-			g.mu.Unlock()
+	if ran {
+		settings, _ := doc["NetworkSettings"].(map[string]any)
+		nets, _ := settings["Networks"].(map[string]any)
+		for _, n := range nets {
+			// An empty address means the container is not running.
+			if nw, ok := n.(map[string]any); ok && nw["IPAddress"] != "" {
+				g.mu.Lock()
+				nw["IPAddress"] = g.addrLocked(id)
+				g.mu.Unlock()
+			}
 		}
 	}
 	out, err := json.Marshal(doc)
