@@ -422,7 +422,10 @@ test.describe("the planet viewed", () => {
 
   test("the preview starts from the planet open in the settings", async ({ page }) => {
     const seen = await recordEvents(page);
-    // Stands in for the settings' hidden field where the server does not write it.
+    // Makes the page as the server draws it with Gleba open: the hidden field
+    // says gleba and Gleba's rows are the open ones. Setting only the field
+    // left Nauvis's rows open, and their late toggle event, under load, read
+    // as the person choosing Nauvis (#550).
     await page.addInitScript(() => {
       document.addEventListener("DOMContentLoaded", () => {
         let open = document.getElementById("open-planet") as HTMLInputElement | null;
@@ -433,6 +436,9 @@ test.describe("the planet viewed", () => {
           document.getElementById("generate-form")!.append(open);
         }
         open.value = "gleba";
+        for (const d of document.querySelectorAll<HTMLDetailsElement>("#generate-form details[data-planet]")) {
+          d.open = d.dataset.planet === "gleba";
+        }
       });
     });
     await page.goto("/generate");
