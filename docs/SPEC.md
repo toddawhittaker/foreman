@@ -2237,7 +2237,8 @@ and tells the user to reload. (P0)
 
 17.1. Controls Foreman owns meet WCAG 2.2 AA (the Web Content
 Accessibility Guidelines, level AA). Every UI change ships with an
-automated accessibility scan in its end-to-end tests. (P0)
+automated accessibility scan in its end-to-end tests. No two links on one
+page share a name unless they go to the same place. (P0)
 
 17.2. Every page works at 320 CSS pixels wide without horizontal
 scrolling, with touch targets at least 24 by 24 CSS pixels. The success
