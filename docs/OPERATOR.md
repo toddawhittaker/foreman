@@ -868,7 +868,9 @@ Foreman does not watch the sidecar. When the sidecar is restarted or
 recreated while the game runs (after a change to its definition, a new
 image, or `docker compose up -d` that replaces it), the game can lose its
 network. Players drop, nobody new can join, and Foreman may lose its RCON
-connection, so the Console and Players pages stop updating.
+connection, so the Console and Players pages stop updating. The Server page
+can keep showing the game as running, because Foreman does not watch the
+sidecar; the Console then says it cannot reach the game over RCON.
 
 Afterwards, restart the game from Foreman:
 
