@@ -80,6 +80,16 @@ func (d *Daemon) find(ref string) *Container {
 	return match
 }
 
+// findName checks the name reservation used by container creation.
+func (d *Daemon) findName(name string) *Container {
+	for _, c := range d.containers {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
+}
+
 // joinedContainer returns the target of a "container:<ref>" network mode.
 func joinedContainer(mode string) (string, bool) {
 	return strings.CutPrefix(mode, "container:")
@@ -198,7 +208,7 @@ func (d *Daemon) create(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = fmt.Sprintf("fake_%d", d.serial+1)
 	}
-	if other := d.find(name); other != nil {
+	if other := d.findName(name); other != nil {
 		reply(w, http.StatusConflict, fmt.Sprintf(
 			"Conflict. The container name \"/%s\" is already in use by container \"%s\". "+
 				"You have to remove (or rename) that container to be able to reuse that name.", name, other.ID))

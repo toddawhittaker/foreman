@@ -316,6 +316,11 @@ func (d *Daemon) Restart(ref string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if c := d.find(ref); c != nil && c.Status != "running" {
+		if _, msg := d.joinFailure(c); msg != "" {
+			c.Error = msg
+			d.broadcast()
+			return
+		}
 		c.RestartCount++
 		d.markRunning(c)
 	}
@@ -328,6 +333,11 @@ func (d *Daemon) RestartByHand(ref string) {
 	defer d.mu.Unlock()
 	if c := d.find(ref); c != nil && c.Status == "running" {
 		d.markExited(c, 0)
+		if _, msg := d.joinFailure(c); msg != "" {
+			c.Error = msg
+			d.broadcast()
+			return
+		}
 		d.markRunning(c)
 	}
 }

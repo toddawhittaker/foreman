@@ -3,6 +3,7 @@ package dockertest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -296,5 +297,53 @@ func TestSharedNamespaceByIDIgnoresAReplacement(t *testing.T) {
 	}
 	if err := c.StartContainer(ctx, byName); err != nil {
 		t.Errorf("start by name: %v", err)
+	}
+}
+
+// A restart cannot join a namespace whose owner has stopped or disappeared.
+func TestSharedNamespaceRestartNeedsRunningHolder(t *testing.T) {
+	for _, manual := range []bool{false, true} {
+		for _, remove := range []bool{false, true} {
+			t.Run(fmt.Sprintf("manual=%t/remove=%t", manual, remove), func(t *testing.T) {
+				c, d := sidecarClient(t)
+				sc := seedSidecar(d, "tailscale")
+				ctx := context.Background()
+				id, err := c.CreateContainer(ctx, "game", gameSpec("container:"+sc.ID))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := c.StartContainer(ctx, id); err != nil {
+					t.Fatal(err)
+				}
+				d.Exit(sc.ID, 0, false)
+				if remove {
+					if err := c.RemoveContainer(ctx, sc.ID, false); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if manual {
+					d.RestartByHand(id)
+				} else {
+					d.Exit(id, 1, false)
+					d.Restart(id)
+				}
+				got, err := c.InspectContainer(ctx, id)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got.State.Running || got.State.Error == "" {
+					t.Fatalf("restart without holder: state %+v", got.State)
+				}
+			})
+		}
+	}
+}
+
+// Container creation reserves names, not references that happen to match IDs.
+func TestCreateNameMayMatchExistingIDPrefix(t *testing.T) {
+	c, d := sidecarClient(t)
+	seedSidecarWithID(d, "holder", "feed01"+strings.Repeat("0", 58))
+	if _, err := c.CreateContainer(context.Background(), "feed01", gameSpec("bridge")); err != nil {
+		t.Fatalf("name matching another container's ID prefix: %v", err)
 	}
 }
