@@ -112,6 +112,7 @@ type Game struct {
 	manual   map[string]bool          // container IDs a person stopped
 	backoff  map[string]time.Duration // container ID to its next restart delay
 	commands map[string][]string      // RCON commands received, by container name
+	logins   map[string]int           // RCON login attempts received, by container name
 	preview  PreviewMode              // how preview containers end
 	done     chan struct{}
 	wg       sync.WaitGroup
@@ -147,6 +148,7 @@ func start(cfg Config, report func(string)) (*Game, error) {
 		manual:   map[string]bool{},
 		backoff:  map[string]time.Duration{},
 		commands: map[string][]string{},
+		logins:   map[string]int{},
 		done:     make(chan struct{}),
 	}
 	// Nothing is reported once the game is closed: a test may have ended.

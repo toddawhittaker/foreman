@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -162,6 +163,26 @@ func (g *Game) SetRCONRefuse(name string, on bool) {
 	}
 }
 
+// DropRCON closes the open RCON connections of the game in the named
+// container, as a broken network would, and leaves its RCON listening: a
+// client must connect, and log in, again.
+func (g *Game) DropRCON(name string) error {
+	in, err := g.running(name)
+	if err != nil {
+		return err
+	}
+	in.mu.Lock()
+	conns := make([]net.Conn, 0, len(in.conns))
+	for c := range in.conns {
+		conns = append(conns, c)
+	}
+	in.mu.Unlock()
+	for _, c := range conns {
+		_ = c.Close()
+	}
+	return nil
+}
+
 // SetSaveHangs makes /server-save answer as usual but never log that the
 // save finished.
 func (g *Game) SetSaveHangs(name string, on bool) {
@@ -221,10 +242,15 @@ type ContainerState struct {
 	IP           string   `json:"ip"` // where RCON listens, while running
 	Players      []string `json:"players"`
 	Commands     []string `json:"commands"` // RCON commands received, over all containers of this name
-	CrashLoop    bool     `json:"crash_loop"`
-	RCONRefuse   bool     `json:"rcon_refuse"`
-	SaveHangs    bool     `json:"save_hangs"`
-	OOM          bool     `json:"oom"`
+	// RCONLogins counts the RCON connections on which a client sent
+	// anything, over all containers of this name. An RCON client's first
+	// packet is its login, so this is the login attempts, refused ones too:
+	// a test can tell that no password was sent.
+	RCONLogins int  `json:"rcon_logins"`
+	CrashLoop  bool `json:"crash_loop"`
+	RCONRefuse bool `json:"rcon_refuse"`
+	SaveHangs  bool `json:"save_hangs"`
+	OOM        bool `json:"oom"`
 	// AchievementsDisabled is true once a Lua console command has run in this
 	// world (the first one only warns).
 	AchievementsDisabled bool `json:"achievements_disabled"`
@@ -256,6 +282,7 @@ func (g *Game) State() State {
 		cs.CrashLoop, cs.RCONRefuse, cs.SaveHangs = b.crashLoop, b.rconRefuse, b.saveHangs
 		cs.OOM, cs.AchievementsDisabled = b.oom, b.luaCommands >= 2
 		cs.Commands = append(cs.Commands, g.commands[c.Name]...)
+		cs.RCONLogins = g.logins[c.Name]
 		in := g.insts[c.ID]
 		if in != nil {
 			cs.IP = in.ip
