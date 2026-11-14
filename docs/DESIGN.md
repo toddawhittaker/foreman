@@ -751,12 +751,14 @@ order and the picture agree.
   then the **Server plate** (7.5, the status card of 7.8): its band, which
   states the server's state large, then the controls (and while an
   operation runs, its step list and "Cancel stop"), then the facts. Below
-  the plate come "Players online" and the live world's pages (World page,
-  Mods, Game settings and Switch world). On a phone (to 40rem) the pages
-  come first, as a two-column grid of 48 px tiles with 8 px gaps (`surface`
+  the plate come the live world's pages (World page, Mods, Game settings
+  and Switch world), then "Players online", in that order in the code too,
+  so Tab meets them as they are drawn. On a phone (to 40rem) the pages are
+  a two-column grid of 48 px tiles with 8 px gaps (`surface`
   face, 1 px `border` edge, `--radius`, icon and name, no chevron), so the
-  players start on the first screen; then the players. From 64rem the
-  players card and the pages card sit side by side (two parts to one), and
+  players start on the first screen. From 64rem the grid places the
+  players card on the left and the pages card on the right (`grid-row`
+  and `grid-column`, not `order`), side by side (two parts to one), and
   the pages are one card of four 56 px rows divided by hairlines (icon,
   name and a chevron), the card running down to the players card's foot
   with its rows at the top. There is no list of other worlds: "Switch world"

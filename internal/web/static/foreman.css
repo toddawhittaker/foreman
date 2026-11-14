@@ -5209,29 +5209,19 @@ html:has(.generate > .gen-actions, .form-foot, .select-bar) {
   padding-inline-start: 2.5rem;
 }
 
-/* The Server page: the state card, then players beside the live world's
-   pages on a wide screen; on a phone the pages come first, as tiles. */
+/* The Server page: the state card, then the live world's pages and the
+   players, in the code's order; on a phone the pages are tiles. */
 .server-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-  order: 2;
-}
-
-main > .status-card {
-  order: 1;
-}
-
-.server-grid > .panel {
-  order: 1;
 }
 
 /* The world's pages beside the players: one list of 56 px rows divided by
    hairlines, with the players card's side padding. */
 .shortcuts.card,
 .server-grid > .shortcuts.card {
-  order: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-auto-rows: auto;
