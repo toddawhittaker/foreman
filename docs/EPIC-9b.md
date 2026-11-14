@@ -1,6 +1,7 @@
 # Epic 9b: VPN sidecars
 
-Planning draft, 2026-11-14. Implementation is not approved or started.
+Approved by Todd, 2026-11-14. Build across all three available machines,
+as parallel as dependencies allow.
 Epic branch: `epic/9b-vpn-sidecars`. Base:
 `fae69ca4aa5d37c96a697d5e7db7ef583eafc3fd` (`origin/main`).
 Serves SPEC 3.8, 4.3, 4.4, 4.13, 12.5, 12.6, 14.3, 14.16, 18.9b,
@@ -200,7 +201,21 @@ any unavailable check as outstanding. Todd merges the final epic PR.
 
 2026-11-14: architecture pass completed; plan drafted. Todd revised the
 network decision: shared sidecars and additional Docker networks are allowed.
-The earlier dedicated-only restriction is superseded. Overall plan approval remains
-pending. No implementation or live Tailscale test has run. Keep this
-progress record on the epic branch;
+The earlier dedicated-only restriction is superseded. Todd approved execution
+on all three machines. T0 records the contract; implementation is starting.
+Live Tailscale acceptance has not run. Keep this progress record on the epic branch;
 the fold moves lasting evidence into STATUS and removes the plan.
+
+
+### Execution contracts and parallelism
+
+To overlap T1 and T3 without overlapping files, use these field names:
+`config.Config.GameNetworkContainer` (string), `docker.Container.Env`
+([]string), `docker.Container.NetworkMode` (string),
+`docker.Container.Ports` (map[string][]docker.PortBinding), and
+`gameenv.RCONBind` = `FOREMAN_RCON_BIND`. The value is an IP:port endpoint,
+with brackets for IPv6 when needed. T1 owns the definitions and inspect
+parsing. T3 can build fakegame support against that contract in parallel;
+its PR may depend on T1 until combined checks pass. T2 owns the controller
+wiring and final removal of the startup refusal. T5's independent operator
+recipe can begin immediately; its real-game implementation follows T2.
