@@ -224,7 +224,7 @@
 {{define "design-navigation" -}}
 <nav aria-label="{{t "common.nav.label"}}">
   <ul class="tabs" role="list">
-    <li><a href="{{serverPath}}" aria-current="true"><span class="tabs__stack">{{t "common.nav.server"}}<span id="{{.Theme}}-lamp" class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></span></a></li>
+    <li><a href="{{serverPath}}" aria-current="true">{{t "common.nav.server"}}<span id="{{.Theme}}-lamp" class="nav-lamp">{{template "nav-lamp" (index .Page.States 2)}}</span></a></li>
     <li><a href="{{worldsPath}}">{{t "common.nav.worlds"}}</a></li>
     <li><a href="{{snapshotsTabPath}}">{{t "common.nav.snapshots"}}</a></li>
     <li><a href="{{schedulePath}}">{{t "common.nav.settings"}}</a></li>

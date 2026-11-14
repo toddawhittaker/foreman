@@ -2848,9 +2848,10 @@ independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
   all eight languages. No page now has two links with one name, and
   user-menu.spec.ts no longer excludes it.
 - **The header says the server's state in words at every width (#537, SPEC
-  17.4, DESIGN 7.5).** From 40rem the word sits under "Server" in its tab.
-  On a phone it sits beside the logo and is hidden from screen readers,
-  since the Server link already carries "Server Running". The header height
+  17.4, DESIGN 7.5).** First built under "Server" in its tab on wide
+  screens; the fixes batch moved it beside the logo on every width. It is
+  hidden from screen readers there, since the Server link already carries
+  "Server Running". The header height
   does not change with the state; German and Russian were checked from 320
   to 1440 px.
 - **Delete selected is one Shift+Tab from the first snapshot box (#536,
@@ -2868,8 +2869,7 @@ independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
 
 - On wide screens (64rem and up) Tab reaches the pages card (drawn right)
   before the players (drawn left). Ruled acceptable.
-- At about 660 px in Russian, "Останавливается" is hyphenated over two lines
-  in the tab. At 320 px the Russian word beside the logo breaks inside the
+- At 320 px the Russian word beside the logo breaks inside the
   word, since the browser has no Russian hyphenation.
 - Between 40 and 50rem in German the header wraps to a second row, as it did
   before.
