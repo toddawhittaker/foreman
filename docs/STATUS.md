@@ -2830,3 +2830,50 @@ commit, Go version, licence and a project link, and no game versions.
   fetched only when the list opens, or at once when Spanish is the current
   language.
 - Still deferred: as listed under fixes batch 6 and Epic 9.
+
+## Fixes batch 8
+
+Serves SPEC 17.1 and 17.4, with DESIGN 6, 7.4, 7.5 and 8.3. Issues closed:
+#531, #537, #536, #535 and #475. The pull requests were #540 (#475) and #541
+(#531, #537, #536, #535 and the Server page order).
+
+Rulings: a wide-screen Tab order that differs from the drawn order of two
+independent cards is acceptable (WCAG 2.4.3 passes). The fold changed DESIGN
+7.4 to match the CSS and added a sentence to SPEC 17.1.
+
+### Delivered
+
+- **A world's Snapshots tab is named "Snapshots of this world" (#531, SPEC
+  17.1).** The visible word stays "Snapshots"; the name starts with it, in
+  all eight languages. No page now has two links with one name, and
+  user-menu.spec.ts no longer excludes it.
+- **The header says the server's state in words at every width (#537, SPEC
+  17.4, DESIGN 7.5).** From 40rem the word sits under "Server" in its tab.
+  On a phone it sits beside the logo and is hidden from screen readers,
+  since the Server link already carries "Server Running". The header height
+  does not change with the state; German and Russian were checked from 320
+  to 1440 px.
+- **Delete selected is one Shift+Tab from the first snapshot box (#536,
+  DESIGN 8.3).** The selection bar comes first in the code and is drawn at
+  the foot with CSS `order`. "Show older" stays below it.
+- **About shows the rusty wordmark (#535).** Dialog and `/about` use
+  `wordmark-480.webp`; Foreman now serves `.webp`.
+- **Server page order.** The pages card comes before the players in the
+  code; the CSS order rules are gone.
+- **The crash-loop retry test flake is fixed (#475).** It was a race in the
+  fake Docker (`internal/fakegame`), not in Foreman: a game that died during
+  a refused stop was never restarted. The fake now schedules the restart.
+
+### Gaps left
+
+- On wide screens (64rem and up) Tab reaches the pages card (drawn right)
+  before the players (drawn left). Ruled acceptable.
+- At about 660 px in Russian, "Останавливается" is hyphenated over two lines
+  in the tab. At 320 px the Russian word beside the logo breaks inside the
+  word, since the browser has no Russian hyphenation.
+- Between 40 and 50rem in German the header wraps to a second row, as it did
+  before.
+- The Generate phone map disclosure is still unbuilt. There is no issue; it
+  awaits Todd.
+- Five translations still need a native check: French and Spanish whitelist
+  enforcement, Czech Undo, Chinese Jump to section, Polish More actions.

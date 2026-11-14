@@ -1116,7 +1116,8 @@ Cancel are the ways out.
 Rules:
 
 - The box is a section drawn as a card with a red frame: background
-  `surface`, a 1px `danger` border with a 4 px top edge, `--radius-lg`,
+  `surface`, a 1px `danger` border, a 6 px hazard stripe of `danger` and `danger-bg`
+  across its top (in forced colours a 4 px top border instead), `--radius-lg`,
   `--shadow-card`, padding `max(var(--space-4), var(--card-pad))`, a grid
   with `gap: var(--space-3)`. It carries no landmark name of its own, so it
   does not repeat the `h1`. It is the only place where danger colour frames
