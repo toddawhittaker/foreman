@@ -7,8 +7,9 @@ package game
 // stands in for the sidecar: it owns the network namespace the game joins,
 // on a temporary game network and a second, shared network. No VPN runs, so
 // these prove the Docker integration and RCON's binding, not live VPN play.
-// Run by `make test-game`; every network and container they make is named
-// foreman-e3test-* and removed at the end, whatever the result.
+// Run by `make test-game`; temporary networks have foreman-e3test-* names,
+// and helper containers carry the foreman-e3test label. All resources are
+// removed by test cleanup; killing the test process can leave leftovers.
 
 import (
 	"context"
@@ -607,6 +608,11 @@ func TestRealGameSidecarRestartAndReplace(t *testing.T) {
 			// address records every connection: the stale game's RCON
 			// login, with that world's password, must never reach it.
 			newIP := sc.Networks[l.gameNet].IPAddress
+			if newIP == old.Networks[l.gameNet].IPAddress {
+				t.Log("COVERAGE: same-address replacement tests cached-address redial and name-following")
+			} else {
+				t.Log("COVERAGE LIMIT: replacement address changed; this run tests name-following only, cached-address redial is covered by the unit regression")
+			}
 			stopTrap := startTrap(t, sc.ID, newIP)
 			if p := hostDial(t, newIP); p != probeOpen {
 				t.Fatalf("the trap at %s is %s, want open", newIP, p)
