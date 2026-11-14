@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { test as base, expect, type Locator, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { spawn, type ChildProcess } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
@@ -267,6 +267,27 @@ async function startFakePortal(): Promise<FakePortal & { stop: () => Promise<voi
   };
 }
 
+// True when the test body failed or timed out and the test was not declared with test.fail(), which expects
+// exactly that. Skips and interruptions (another test's failure under --max-failures) are not failures.
+function failedUnexpectedly(testInfo: TestInfo): boolean {
+  return testInfo.expectedStatus !== "failed" && (testInfo.status === "failed" || testInfo.status === "timedOut");
+}
+
+// What a failed test's report may carry of Foreman's output (SPEC 14.8: Foreman never logs a secret, so this
+// is defence in depth). It is a bounded tail, with the value of every environment variable that looks like a
+// credential (at least four characters) replaced before truncation. This covers literal values only. Only the output is read;
+// the environment is never written out.
+const attachedLogLimit = 256 * 1024;
+function attachableLogs(out: string, env: [string, string][]): string {
+  const credentials = env
+    .filter(([name, value]) => /TOKEN|PASSWORD|SECRET|KEY|CREDENTIAL/i.test(name) && value.length >= 4)
+    .map(([, value]) => value)
+    .sort((a, b) => b.length - a.length);
+  let text = out;
+  for (const value of credentials) text = text.split(value).join("[redacted]");
+  return text.length > attachedLogLimit ? `[earlier output cut]\n${text.slice(-attachedLogLimit)}` : text;
+}
+
 export const test = base.extend<{
   foreman: Foreman;
   foremanEnv: Record<string, string>;
@@ -321,17 +342,36 @@ export const test = base.extend<{
     f.expectError = (match) => expected.push(match);
     await use(f);
     const { exitedEarly } = await f.stop();
-    expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
-    // docs/WORKFLOW.md: a test fails on any ERROR line it did not declare, and on a
-    // declaration that matched nothing. This process belongs to this test alone.
-    const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
-    const lines = f.errorLines();
-    const unexpected = lines.filter((line) => !expected.some((m) => matches(line, m)));
-    expect(unexpected, "Foreman wrote ERROR log lines the test did not declare with foreman.expectError").toEqual([]);
-    // A test that already failed may have stopped before the error came, so only a passing test must show it.
-    if (testInfo.status === "passed") {
-      const missing = expected.filter((m) => !lines.some((line) => matches(line, m))).map(String);
-      expect(missing, "foreman.expectError declared lines Foreman never wrote").toEqual([]);
+    // The checks below may themselves fail the test, which testInfo does not show yet, so this stays true until they pass.
+    let teardownFailed = true;
+    try {
+      expect(exitedEarly, `Foreman exited before the test ended. Last output:\n${f.logs().slice(-2000)}`).toBe(false);
+      // docs/WORKFLOW.md: a test fails on any ERROR line it did not declare, and on a
+      // declaration that matched nothing. This process belongs to this test alone.
+      const matches = (line: string, m: string | RegExp) => (typeof m === "string" ? line.includes(m) : m.test(line));
+      const lines = f.errorLines();
+      const unexpected = lines.filter((line) => !expected.some((m) => matches(line, m)));
+      expect(unexpected, "Foreman wrote ERROR log lines the test did not declare with foreman.expectError").toEqual([]);
+      // A test that already failed may have stopped before the error came, so only a passing test must show it.
+      if (testInfo.status === "passed") {
+        const missing = expected.filter((m) => !lines.some((line) => matches(line, m))).map(String);
+        expect(missing, "foreman.expectError declared lines Foreman never wrote").toEqual([]);
+      }
+      teardownFailed = false;
+    } finally {
+      // The process and its data directory are gone now, so this is the last chance to keep its output.
+      if (failedUnexpectedly(testInfo) || (teardownFailed && testInfo.expectedStatus !== "failed")) {
+        // A file, not a body: the list reporter writes no body attachment to disk. Playwright copies the
+        // file into the test's output folder, so the temporary one goes at once.
+        const dir = mkdtempSync(join(tmpdir(), "foreman-e2e-log-"));
+        try {
+          const path = join(dir, "foreman-output.log");
+          writeFileSync(path, attachableLogs(f.logs(), Object.entries(env)));
+          await testInfo.attach("foreman-output.log", { path, contentType: "text/plain" });
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      }
     }
   },
   baseURL: async ({ foreman }, use) => use(foreman.url),
