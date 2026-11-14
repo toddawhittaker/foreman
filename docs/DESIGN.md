@@ -1956,6 +1956,27 @@ starts."
   summary beside the achievements summary lists each one. It is a
   warning, not a block. The live region says it once when the box goes
   off and once when it comes back on.
+- **All resources.** A planet with two or more resources (counted, not
+  named: Gleba and Fulgora have one each on 2.x) has, at the top of its
+  Resources list, a fieldset with the legend "All resources", a one-line
+  hint under it ("Sets every resource of this planet that is on."), and the
+  same three settings as a resource: Frequency, Size and Richness, with the
+  same steps (and "None" where the resources offer it), as selects or
+  sliders like theirs. Only the Resources tab has it; cliffs and terrain are
+  never touched. It is for script: the server draws it, the style sheet
+  shows it under `js-on`, and its selects have no `name`, so the form sends
+  nothing for it and the server's reading of the form is unchanged. A
+  rule under it, a little more room than between resources, sets it apart.
+  Moving a setting sets that value on each resource whose on/off box is
+  ticked (or that has none) and leaves the others alone, by setting the
+  resource's select and firing the events a person's change fires, so its
+  slider, the achievement and needed-resource warnings, "[modified]" and
+  the preview follow. The row shows the value every such resource holds, or
+  "Mixed" when they differ: an entry the script selects, never one to
+  choose (it is `hidden` and `disabled`), over a slider that stands at the
+  default step with "Mixed" for its words. It is worked out again when a
+  resource, a box or a preset or reset changes the values. The on/off boxes
+  are as before.
 - **One fieldset per control**, its legend the game's name, small and
   muted so the groups read as one list. Its settings sit in a grid
   `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`, 13rem with sliders.

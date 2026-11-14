@@ -97,9 +97,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // steps below it and above it each take half of the track, whatever their
   // number. With no default, or one at an end, the track is the plain index.
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  // The steps of a select. The All row's "Mixed" entry is a word, not a step.
+  const stepsOf = (select) => [...select.options].filter((o) => !o.hasAttribute("data-mixed"));
+  // The step a select stands on; while it says "Mixed" the slider stands at the default step.
+  function stepIndex(select) {
+    const steps = stepsOf(select);
+    const at = steps.indexOf(select.options[select.selectedIndex]);
+    return at >= 0 ? at : Math.max(steps.findIndex((o) => o.value === "100"), 0);
+  }
   function track(select) {
-    const last = select.options.length - 1;
-    const values = [...select.options].map((o) => o.value);
+    const values = stepsOf(select).map((o) => o.value);
+    const last = values.length - 1;
     let d = values.indexOf("100");
     if (d < 0) d = values.indexOf("0");
     if (d <= 0 || d >= last) return { last, max: last, at: (i) => i };
@@ -127,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const value = document.getElementById(select.id + "-value");
     const text = select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : "";
     if (range) {
-      range.value = String(track(select).at(Math.max(select.selectedIndex, 0)));
+      range.value = String(track(select).at(stepIndex(select)));
       range.setAttribute("aria-valuetext", text);
       const span = Number(range.max) - Number(range.min);
       range.style.setProperty("--fill", (span > 0 ? ((Number(range.value) - Number(range.min)) / span) * 100 : 0) + "%");
@@ -149,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function stepOfSlider(range, select) {
     const t = track(select);
     const value = Number(range.value);
-    const now = Math.max(select.selectedIndex, 0);
+    const now = stepIndex(select);
     const near = nearestStep(t, value);
     if (pointerOnRange || near !== now) return near;
     const way = Math.sign(value - t.at(now));
@@ -201,6 +209,56 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.matches && e.target.matches("#generate-form input[type=checkbox][data-disables]")) applyDisables();
   });
   document.body.addEventListener("htmx:afterSwap", applyDisables);
+
+  // A planet's "All resources" row (DESIGN 8.7) sets one setting on every
+  // resource of the planet that is on. It goes through each resource's own
+  // select and the events a person's change fires, so sliders, warnings,
+  // "[modified]" and the preview follow; the row's selects have no name and
+  // send nothing. Its own selects show the value the resources share, or "Mixed".
+  let applyingAll = false;
+  // The select of one setting in each resource of the row that is on (or has no box).
+  function allTargets(row, key) {
+    return row.dataset.allGroups.split(" ").flatMap((id) => {
+      const group = document.getElementById(id);
+      const box = group && group.querySelector(":scope > legend input[type=checkbox]");
+      const select = group && (!box || box.checked) ? group.querySelector(`select[name$=".${key}"]`) : null;
+      return select ? [select] : [];
+    });
+  }
+  function applyAll(all) {
+    const row = all.closest("[data-all-groups]");
+    if (!row) return;
+    applyingAll = true;
+    for (const select of allTargets(row, all.dataset.allKey)) {
+      if (select.value === all.value || ![...select.options].some((o) => o.value === all.value)) continue;
+      select.value = all.value;
+      select.dispatchEvent(new Event("input", { bubbles: true }));
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    applyingAll = false;
+  }
+  function syncAll() {
+    document.querySelectorAll("#generate-form [data-all-groups]").forEach((row) => {
+      row.querySelectorAll("select[data-all-key]").forEach((all) => {
+        const values = new Set(allTargets(row, all.dataset.allKey).map((s) => s.value));
+        // No resource on: the default step. Resources that differ, or hold a step the row lacks: Mixed.
+        const common = values.size === 0 ? "100" : values.size === 1 ? [...values][0] : null;
+        const option = [...all.options].find((o) => o.value === common);
+        all.selectedIndex = option ? option.index : [...all.options].find((o) => o.hasAttribute("data-mixed")).index;
+        syncSlider(all);
+      });
+    });
+  }
+  function onAllEvent(e) {
+    const t = e.target;
+    if (applyingAll || !t.closest || !t.closest("#generate-form")) return;
+    // A select's change is a choice; a slider sends no change, so its input is.
+    const range = t.classList.contains("step__range");
+    if (e.type === "input" && !range) return;
+    const select = range ? document.getElementById(t.dataset.for) : t;
+    if (select && select.matches && select.matches("select[data-all-key]")) applyAll(select);
+    syncAll();
+  }
 
   // The achievement line of one field, in the units it shows.
   function crosses(el) {
@@ -312,7 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (t.classList.contains("step__range")) {
       const select = document.getElementById(t.dataset.for);
       if (select) {
-        select.selectedIndex = stepOfSlider(t, select);
+        select.value = stepsOf(select)[stepOfSlider(t, select)].value;
         syncSlider(select);
       }
     }
@@ -333,6 +391,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (t.closest(settingsIn)) changed(t);
   });
+
+  // After the handlers above have moved a slider or synced a select to its slider.
+  document.addEventListener("input", onAllEvent);
+  document.addEventListener("change", onAllEvent);
+  syncAll();
 
   // A minimum and its maximum keep at least their gap apart, as the game's
   // own form does: the field not changed moves, within its own limits, and
@@ -619,6 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
         again.classList.add("js-on");
         showTab(again.dataset.tab || "resources");
         addSliders(again);
+        syncAll();
         if (openPlanet()) openRow(openPlanet().value);
       }
       if (summary) summary.focus();
@@ -634,6 +698,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const tab = formEl().querySelector("input[name='tab']:checked");
       if (tab) formEl().dataset.tab = tab.value;
       addSliders(document);
+      syncAll();
       blockedBefore = refresh();
       // Choosing a preset redraws what the person is looking at; nothing more is read out.
       const sender = e.detail.requestConfig && e.detail.requestConfig.elt;

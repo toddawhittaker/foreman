@@ -53,8 +53,9 @@ async function movedWhileStepping(page: Page) {
         const now = where(range) + " " + where(label);
         if (now !== before) moved.push(`${range.id} at step ${i}: ${before} became ${now}`);
       }
-      // Every option is a step the slider can reach: the selects have no hidden or disabled options.
-      if (seen.size !== select.options.length) moved.push(`${range.id} reached ${seen.size} of ${select.options.length} steps`);
+      // Every option is a step the slider can reach, except the All row's "Mixed", which is a word and not a step.
+      const steps = [...select.options].filter((o) => !o.hasAttribute("data-mixed")).length;
+      if (seen.size !== steps) moved.push(`${range.id} reached ${seen.size} of ${steps} steps`);
       range.value = start;
       range.dispatchEvent(new Event("input", { bubbles: true }));
     }
