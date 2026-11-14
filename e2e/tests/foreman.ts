@@ -260,15 +260,17 @@ function failedUnexpectedly(testInfo: TestInfo): boolean {
 
 // What a failed test's report may carry of Foreman's output (SPEC 14.8: Foreman never logs a secret, so this
 // is defence in depth). It is a bounded tail, with the value of every environment variable that looks like a
-// credential replaced, so a fake or a real one cannot reach a CI artifact through it. Only the output is read;
+// credential (at least four characters) replaced before truncation. This covers literal values only. Only the output is read;
 // the environment is never written out.
 const attachedLogLimit = 256 * 1024;
 function attachableLogs(out: string, env: [string, string][]): string {
-  let text = out.length > attachedLogLimit ? `[earlier output cut]\n${out.slice(-attachedLogLimit)}` : out;
-  for (const [name, value] of env) {
-    if (/TOKEN|PASSWORD|SECRET|KEY|CREDENTIAL/i.test(name) && value.length >= 4) text = text.split(value).join("[redacted]");
-  }
-  return text;
+  const credentials = env
+    .filter(([name, value]) => /TOKEN|PASSWORD|SECRET|KEY|CREDENTIAL/i.test(name) && value.length >= 4)
+    .map(([, value]) => value)
+    .sort((a, b) => b.length - a.length);
+  let text = out;
+  for (const value of credentials) text = text.split(value).join("[redacted]");
+  return text.length > attachedLogLimit ? `[earlier output cut]\n${text.slice(-attachedLogLimit)}` : text;
 }
 
 export const test = base.extend<{
