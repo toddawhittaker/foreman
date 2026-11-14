@@ -140,8 +140,13 @@ func (e *gameEnv) runCatalogue(t *testing.T, tag, fixture, version string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			out, err := exec.CommandContext(ctx, "docker", "exec", before.ID, "sh", "-c", "kill -TERM 1").CombinedOutput() //nolint:gosec // fixed arguments on the test's own container
 			cancel()
-			if err != nil && sameRun() {
-				t.Fatalf("end the run after applying memory limits: %v: %s", err, out)
+			if err != nil {
+				// The runtime can lose the process's namespaces before Docker
+				// records its exit. Accept the failed exec only after inspect
+				// confirms that this run ended; a still-running run fails.
+				waitFor(t, 5*time.Second, "the original run to end after docker exec failed: "+err.Error()+": "+string(out), func() bool {
+					return !sameRun()
+				})
 			}
 		}
 		st := waitCrashLoop(t, c, id)
