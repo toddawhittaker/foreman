@@ -109,7 +109,7 @@ a phone can find where a page and a section start.
 
 | Token | Size | Line height | Weight | Use |
 |---|---|---|---|---|
-| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | The overline: a page's eyebrow and fact names (capitals, `0.06em`), badges; the game log at 48rem and narrower |
+| `--text-xs` | 0.8125rem (13 px) | 1.23 | 600 | The overline: a page's eyebrow and fact names (capitals, `0.06em`), badges; the game log below 40rem |
 | `--text-sm` | 0.875rem (14 px) | 1.43 | 400 | Hints and card descriptions (these at a 1.5 line height, 60ch), table captions and headers, timestamps, the log and console, labels (600), state badges (600), units beside a figure |
 | `--text-md` | 1rem (16 px) | 1.5 | 400 | Body, form controls, buttons (600), table cells, row titles (600) |
 | `--text-lg` | 1.125rem (18 px) | 1.333 | 650 | Group headings (`h3`, an operation's heading), the product name (700), the Server page's state badge |
@@ -721,6 +721,9 @@ These hold for every page (SPEC 17.2), checked in end-to-end tests at a
    save bars of long forms (Game settings, Mod settings and Generate) and
    the Snapshots selection bar. (The settings rail and Generate's preview
    column are sticky too, but only on wide screens, beside the form.)
+   On a phone (30rem and narrower) Generate's stacked action bar stops
+   sticking when the window is also 30rem tall or less, such as a phone on
+   its side, so it never covers most of the page (WCAG 1.4.10).
 
 ### What a phone shows first
 
@@ -1732,8 +1735,11 @@ Classes and their contract:
   12 px `text-muted` type, and the words take the full width at 13 px on
   20 px lines, with 8 px between entries. Without script the lines keep the
   time as the server wrote it.
-- The game log's box has a fixed `block-size: min(60vh, 32rem)` and scrolls
-  vertically. The console's history box is only as tall as what it holds,
+- The game log's box has a fixed height and scrolls vertically. Its lines
+  take the window's height less 34rem, but never less than 15rem or more
+  than 34rem, rounded down to whole 1.25rem lines
+  (`round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem)`), plus the
+  box's padding and border. The same height holds on a phone. The console's history box is only as tall as what it holds,
   up to `min(40vh, 20rem)`, then scrolls (section 6). Both are focusable so
   keyboard users can scroll them.
 - **The game's own Error and Warning lines** (a line whose message, after
