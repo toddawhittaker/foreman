@@ -38,7 +38,7 @@ func (g *Game) serveDocker(w http.ResponseWriter, r *http.Request) {
 	g.daemon.ServeHTTP(rec, r)
 	body := rec.Body.Bytes()
 	if found {
-		body = g.afterCall(action, c.ID, rec.Code, body)
+		body = g.afterCall(action, c.ID, c.Status, rec.Code, body)
 	}
 	for k, v := range rec.Header() {
 		w.Header()[k] = v
@@ -63,7 +63,8 @@ func (g *Game) beforeCall(r *http.Request, action, id string, running bool) {
 }
 
 // afterCall runs once the daemon has answered, and returns the body to send.
-func (g *Game) afterCall(action, id string, code int, body []byte) []byte {
+// before is the container's status when the call came in.
+func (g *Game) afterCall(action, id, before string, code int, body []byte) []byte {
 	switch action {
 	case "start":
 		if code == http.StatusNoContent {
@@ -75,13 +76,13 @@ func (g *Game) afterCall(action, id string, code int, body []byte) []byte {
 			g.endInstance(id)
 		} else if code >= 400 {
 			// Docker refused the stop, so its restart policy still applies.
-			g.setManual(id, false)
+			g.refused(id, before)
 		}
 	case "kill":
 		if code == http.StatusNoContent {
 			g.endInstance(id)
 		} else if code >= 400 {
-			g.setManual(id, false)
+			g.refused(id, before)
 		}
 	case "remove":
 		if code == http.StatusNoContent {
@@ -94,6 +95,16 @@ func (g *Game) afterCall(action, id string, code int, body []byte) []byte {
 		}
 	}
 	return body
+}
+
+// refused undoes the no-restart mark of a stop or kill Docker refused. A game
+// that died while the call was in flight skipped its restart under that mark,
+// so it is restarted now, as Docker's restart policy would have done.
+func (g *Game) refused(id, before string) {
+	g.setManual(id, false)
+	if c, ok := g.daemon.Container(id); ok && before != "exited" && c.Status == "exited" {
+		g.scheduleRestart(id)
+	}
 }
 
 func (g *Game) setManual(id string, on bool) {
