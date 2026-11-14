@@ -70,8 +70,12 @@ func TestWorldTabs(t *testing.T) {
 		tabs := between(body, `<nav class="subnav" aria-label="World pages">`, `</nav>`)
 		for tab, href := range map[string]string{"overview": "/worlds/base", "saves": "/worlds/base/saves", "snapshots": "/worlds/base/snapshots", "settings": "/worlds/base/settings"} {
 			mark := ""
+			// The main nav has a Snapshots tab too, so this one is named for the world (SPEC 17.1).
+			if tab == "snapshots" {
+				mark = ` aria-label="Snapshots of this world"`
+			}
 			if tab == current {
-				mark = ` aria-current="page"`
+				mark += ` aria-current="page"`
 			}
 			wantIn(t, current, tabs, `<a href="`+href+`"`+mark+`>`)
 		}

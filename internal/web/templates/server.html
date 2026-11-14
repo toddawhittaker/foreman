@@ -47,8 +47,10 @@
 {{- end}}
 </div>
 </div>
-{{- /* Players, and beside them on a wide screen the live world's own pages. */}}
+{{- /* The live world's own pages, then the players: the order a phone shows
+     them in. On a wide screen the grid puts the players on the left (DESIGN 6). */}}
 <div class="server-grid">
+<div class="links card shortcuts" sse-swap="active">{{template "server-active" .}}</div>
 <section class="panel card" aria-labelledby="players-heading">
   {{- /* Focus comes here when the player whose row had it leaves (DESIGN 8.12). */}}
   <h2 id="players-heading" tabindex="-1">{{t "server.players.heading"}}</h2>
@@ -56,7 +58,6 @@
   {{template "server-player-result" .}}
   <div sse-swap="players">{{template "server-players" .}}</div>
 </section>
-<div class="links card shortcuts" sse-swap="active">{{template "server-active" .}}</div>
 </div>
 {{- end}}
 {{- end}}
@@ -108,6 +109,7 @@
 <span id="server-title" hx-swap-oob="innerHTML">{{template "server-title" .}}</span>
 <div id="plate-band" hx-swap-oob="innerHTML">{{template "server-band" .}}</div>
 <span id="nav-lamp" hx-swap-oob="innerHTML">{{template "nav-lamp" .Lamp}}</span>
+<span id="site-state" hx-swap-oob="innerHTML">{{template "nav-lamp" .Lamp}}</span>
 {{- end}}
 {{- /* The run's facts and its live load as one row of equal cells that share a label line; each load has a bar coloured by how full it is, beside its figure (DESIGN 7.5). */}}
 <dl class="facts stat-grid">
