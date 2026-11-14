@@ -127,7 +127,7 @@ func (c *Controller) runContainer(ctx context.Context, o *opRun, p launch) error
 	w.dockerStatus, w.startedAt, w.seenRestarts = cont.State.Status, cont.State.StartedAt, cont.RestartCount
 	w.lanUnpublished = ep.lanUnpublished
 	if ep.rcon != "" {
-		w.rc = rcon.New(ep.rcon, p.rconPW)
+		w.rc = c.rconClient(cont, ep.rcon, p.rconPW)
 	}
 	c.followLocked(w, cid, time.Time{})
 	c.changedLocked(w, true)
@@ -243,7 +243,7 @@ func (c *Controller) connectRCON(ctx context.Context, w *worldRun, cid string) e
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.containerID == cid && w.rc == nil {
-		w.rc = rcon.New(ep.rcon, pw)
+		w.rc = c.rconClient(cont, ep.rcon, pw)
 	}
 	return nil
 }
