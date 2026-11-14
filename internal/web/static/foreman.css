@@ -6876,8 +6876,10 @@ main:has(> .gate) > .gate {
 
 /* The selection bar: the number ticked and Delete selected float over the
    list's foot, at its end, once a box is ticked, so the next step is always
-   in view. */
+   in view. It comes before the list in the code, so the keyboard reaches it
+   from the first box; `order` draws it last in its form, where it sticks. */
 .select-bar {
+  order: 1;
   position: sticky;
   inset-block-end: var(--space-4);
   z-index: 2;
@@ -6921,6 +6923,7 @@ main:has(> .gate) > .gate {
 
 /* On the component page the bar is a specimen, so it stays in its place. */
 .design-pane .select-bar {
+  order: 0;
   position: static;
 }
 

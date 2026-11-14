@@ -44,6 +44,45 @@ test("Select all automatic says what it ticked and moves focus to it", async ({ 
   await checkPage(page);
 });
 
+// DESIGN 8.3, WCAG 2.4.3: Delete selected is one Shift+Tab from the first box,
+// however long the list, and is still drawn at the list's foot, after its rows.
+test("Delete selected is one Shift+Tab from the first box", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  for (const label of ["First", "Second", "Third"]) await takeSnapshot(page, label);
+
+  await page.goto("/worlds/second/snapshots");
+  const first = page.locator('input[name="snap"]').first();
+  await first.focus();
+  await page.keyboard.press("Space");
+  await expect(first).toBeChecked();
+  await page.keyboard.press("Shift+Tab");
+  const button = page.getByRole("button", { name: "Delete selected" });
+  await expect(button).toBeFocused();
+  await expect(page.locator(".select-bar__count")).toHaveText("1");
+  // On screen the bar comes after the last row, never above the list.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const bar = (await page.locator(".select-bar").boundingBox())!;
+  const lastRow = (await page.locator("table.snapshot-list tbody tr").last().boundingBox())!;
+  expect(bar.y).toBeGreaterThanOrEqual(lastRow.y + lastRow.height - 0.5);
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/snapshots\/delete\?/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Delete");
+
+  // On the Snapshots tab the bar comes just before the first world's list:
+  // Shift+Tab passes the world's name and then reaches it.
+  await page.goto("/snapshots");
+  const firstAll = page.locator('input[name="snap"]').first();
+  await firstAll.focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("link", { name: "Second", exact: true })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Delete selected" })).toBeFocused();
+  await checkPage(page);
+});
+
 // WCAG 1.4.4: at 200% text on a phone the tables stay inside their panel and
 // a button label breaks only between words.
 test.describe("at 320 px and 200% text", () => {

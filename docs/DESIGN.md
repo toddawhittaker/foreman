@@ -1638,7 +1638,11 @@ what an operator scans for: the label with its box at `--text-md`, weight
 44 px "Details" disclosure holding the exact time, who took it and, on
 the main Snapshots page, what deleting it frees; then Restore and the 44 by
 44 px Delete together, 12 px apart. The header row is visually hidden. "Delete selected" (risky) waits
-for a ticked box (7.1). A list without row actions, such as the deleted
+for a ticked box (7.1). Its selection bar comes before the list in the
+code, after "Select all automatic", so a keyboard user reaches it with one
+Shift+Tab from the first box (two on the Snapshots tab, past the first
+world's name) instead of passing every row; `order: 1` draws it at the
+end of its form, where it sticks to the window's foot (6, rule 7). A list without row actions, such as the deleted
 worlds, keeps its columns. A snapshot table also stacks each cell (snapshot,
 then "Taken:", then "Size:") when its panel is narrower than 14rem, which is
 200% text on a 320 px phone. Changing `display` can drop table semantics in some browsers, so
