@@ -157,12 +157,31 @@
   // script). The server answers with no body, so the box is removed here, and
   // focus goes to the first control of the panel, not to the top of the page
   // (DESIGN 7.3, SPEC 17.9). The next live update brings the page in line.
-  document.addEventListener("htmx:afterRequest", (e) => {
-    const form = e.target;
-    if (!form.hasAttribute?.("data-dismiss-result") || !e.detail.successful) return;
-    form.closest(".message")?.remove();
+  // That update can come first: it redraws the panel, the form that sent the
+  // close is gone, and its answer never reaches this page. So the close is
+  // remembered when it is sent, and whichever comes first, the answer or the
+  // update, moves focus.
+  let closing = false;
+  function focusFirstControl() {
+    closing = false;
     const first = document.querySelector(".server-actions :is(a, button)");
     (first ?? document.getElementById("control-heading"))?.focus();
+  }
+  document.addEventListener("htmx:beforeRequest", (e) => {
+    if (e.target.hasAttribute?.("data-dismiss-result")) closing = true;
+  });
+  document.addEventListener("htmx:afterRequest", (e) => {
+    const form = e.target;
+    if (!form.hasAttribute?.("data-dismiss-result")) return;
+    if (!e.detail.successful) {
+      closing = false;
+      return;
+    }
+    form.closest(".message")?.remove();
+    if (closing) focusFirstControl();
+  });
+  document.addEventListener("htmx:sseMessage", (e) => {
+    if (closing && !document.getElementById("done-message") && e.target.querySelector(".server-actions")) focusFirstControl();
   });
 
   // The mods notice is a status region and loads again after each operation
