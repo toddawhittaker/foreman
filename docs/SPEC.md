@@ -317,8 +317,9 @@ When an operator sets one:
 - The optional setting `FOREMAN_GAME_NETWORK_CONTAINER` names a running
   container, the sidecar, which the operator defines and runs. When it is
   set, Foreman creates the game container with Docker network mode
-  `container:<that container>`, so the game shares the sidecar's network,
-  and publishes no port itself.
+  `container:<verified container ID>`, so the game shares the inspected
+  sidecar's network, and publishes no port itself. A replacement between
+  inspection and creation must not silently become the game's sidecar.
 - The game listens on UDP 34197 on every interface of the shared network;
   only RCON is bound to one address (below). LAN players and VPN players
   can play at the same time: VPN players reach the game through the VPN,
@@ -334,17 +335,25 @@ When an operator sets one:
 - The sidecar must be on `FOREMAN_GAME_NETWORK`, which is then required
   even outside a container. The sidecar is the one container other than
   Foreman and its games allowed on the game network (4.4). Foreman reaches
-  RCON at the sidecar's address on the game network.
+  RCON at the sidecar's address on the game network. The operator may also
+  attach the sidecar to other Docker networks, including shared networks;
+  those attachments and unrelated services there are not refusal reasons.
+  The game inherits access to those networks (14.16).
 - RCON is bound only to that address, with Factorio's
-  `--rcon-bind <address>:27015`, never to `0.0.0.0`, so VPN peers cannot
-  reach RCON.
-- Every address range of every network the sidecar is on counts as a game
+  `--rcon-bind <address>:27015`, never to `0.0.0.0`. This keeps RCON off
+  the VPN interface; it does not prevent access through an operator's
+  subnet route or forwarding rule to that private address (14.16).
+- Every address range of every Docker network the sidecar is on counts as a game
   range for trusted-header sign-in (12.5, 12.6). A start is refused when
   any of them overlaps `FOREMAN_TRUSTED_PROXIES`, as for the game network
-  (4.4).
+  (4.4). Check every attached Docker network for exposure of the configured
+  Docker API/socket proxy too. Unknown ranges fail closed. Learn the
+  sidecar's ranges before accepting trusted headers, including when Foreman
+  runs on the host; an empty network list on the game is not evidence that
+  its ranges are known.
 - A start is refused, with a plain reason, when the sidecar does not
-  exist, is not running, uses the host network, or is not on the game
-  network. Foreman recreates the game container at every start (4.3), so it
+  exist, is not running, uses the host or another container's network,
+  or is not on the game network. Foreman recreates the game container at every start (4.3), so it
   looks the sidecar up by name at every start and attaches the game to the
   sidecar as it is then.
 - Known limit: when the sidecar is restarted or recreated while the game
@@ -1881,9 +1890,14 @@ Foreman refuses to start. (P0)
 Trusted-header sign-in also ignores the headers when the direct peer is
 inside the address range of a game network, IPv4 or IPv6, because a game
 is never the proxy. The ranges are the game network's (4.4) and, with a
-VPN sidecar, those of every network the sidecar is on (4.13). Foreman
+VPN sidecar, those of every Docker network the sidecar is on (4.13). Foreman
 in a container records that range before the first start; outside a
-container it learns a game's range right after the game starts.
+container it learns a game's range right after the game starts. With a
+sidecar, in either mode it reads the sidecar's Docker ranges before the
+first game starts and restores that knowledge on Foreman restart. Docker
+cannot reveal the VPN interface's ranges: operators must not trust the
+sidecar's VPN address or a broad VPN range as a sign-in proxy. Use only
+an individual address of a separate trusted proxy, or local sign-in.
 `fe80::/10` counts as a game range
 whenever a game network has IPv6. While those ranges are not yet known
 (Docker unreachable, the container missing, or not yet inspected),
@@ -2187,13 +2201,20 @@ because people sometimes type a password into the username field. (P0)
 14.15. (Removed: adopted mode was dropped; ADR 0005.)
 
 14.16. **The VPN sidecar.** **Accepted risk:** the sidecar (4.13) is a
-container Foreman did not create. It sees all of the game's traffic and
-usually holds `NET_ADMIN`, and Foreman does not police its capabilities.
-The defences: RCON is bound only to the sidecar's game-network address,
-so VPN peers cannot reach it; every range of the sidecar's networks counts
-as a game range for trusted-header sign-in (12.6); and a start is refused
-when the sidecar is missing, not running, on the host network, or not on
-the game network (4.13). The game container itself keeps the shape in
+container Foreman did not create. It sees all game traffic and usually
+holds `NET_ADMIN`; Foreman does not police its capabilities. The game
+inherits access to its additional Docker networks, reachable VPN peers
+and loopback services. The sidecar and any namespace peers are trusted.
+Operators own the sidecar's routes, forwarding, services and VPN access
+rules, and must not expose the Docker API/socket proxy through it.
+RCON binds only the game-network address, not the VPN interface; routing
+VPN traffic to that address can still expose RCON, which remains password
+protected. All attached Docker ranges count as game ranges for trusted
+headers and are checked for proxy overlap and configured Docker API/socket
+proxy exposure. VPN ranges are not discoverable through Docker (12.6).
+A start is refused when the sidecar is missing, not running, on the host
+or another container's network, or off the game network (4.13). Additional
+Docker networks alone do not cause refusal. The game keeps the shape in
 4.6. (P1)
 
 14.17. **Return after sign-in.** A signed-out visit to a page goes to the
