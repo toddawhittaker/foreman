@@ -5,8 +5,9 @@ players can join. It covers the new-user path: install Foreman, create the
 first admin, generate a Space Age world, install mods from the mod portal,
 start the server and join it. It also covers the security advice every
 operator needs, running behind a reverse proxy, importing and switching
-worlds, webhook notifications, the low-disk warning, and what to do when
-something fails.
+worlds, webhook notifications, the low-disk warning, what to do when
+something fails, and, optionally, letting players join through a VPN
+sidecar such as Tailscale.
 
 The rest of the guide comes later, with Epic 11 (docs/SPEC.md, section
 18): signing in with OpenID Connect, the archive, Foreman's settings page
@@ -103,7 +104,9 @@ makes the RCON password itself, keeps it in the world's `config/rconpw`,
 and never shows it. RCON is never published on the host. The game sits on
 its own network, which holds only Foreman and the game, and Foreman
 refuses to create a game when anything else is on that network. Keep your
-reverse proxy and the socket proxy off it.
+reverse proxy and the socket proxy off it. The one exception is a VPN
+sidecar (section 16), whose own address there is the only one RCON
+listens on.
 
 ### Hide process details on the host
 
@@ -193,8 +196,8 @@ Notes:
   page only says where the account comes from.
 - Do not set `hostname:` on Foreman; it finds its own container by its
   default hostname.
-- Leave `FOREMAN_GAME_NETWORK_CONTAINER` unset. VPN sidecars are not built
-  yet, and Foreman refuses to start when it is set.
+- Leave `FOREMAN_GAME_NETWORK_CONTAINER` unset unless you want players to
+  join through a VPN sidecar (section 16).
 
 Start it:
 
@@ -227,6 +230,8 @@ Add these settings to Foreman's `environment`, with your own names:
 - Foreman honours the headers only from addresses in
   `FOREMAN_TRUSTED_PROXIES`, and never from the game network. Make it the
   proxy's own single address, as a `/32`.
+- With a VPN sidecar (section 16), never put the sidecar's VPN address or
+  a VPN range in `FOREMAN_TRUSTED_PROXIES`.
 
 The best layout runs the proxy in a container on a network that Foreman
 shares and the game does not, with Foreman's port not published at all.
@@ -334,7 +339,8 @@ changes the mods.
 Foreman publishes UDP port 34197 on every address of the host. Open that
 port in the host's firewall, and forward it on your router for players
 outside your network. Foreman's web port (8080) does not need to be open
-to players.
+to players. With a VPN sidecar the sidecar publishes the port instead
+(section 16).
 
 ## 11. Import a world you already have
 
@@ -546,6 +552,8 @@ makes are recorded under the name "restart schedule".
 - **Foreman will not start.** The log names the setting that is wrong.
   Common causes: the data directory is not owned by 845:845, the socket
   proxy is not running, or a required setting is missing.
+- **A VPN sidecar.** When a start is refused because of the sidecar, or
+  players cannot join through it, see section 16.
 - **Snapshots.** Choose **Snapshots** in the menu to see and restore them.
   Foreman takes one before every risky change, and restoring one puts the
   world back exactly as it was.
@@ -571,3 +579,314 @@ lists its files. If Foreman cannot restore it for you:
 
 3. Start Foreman again with `docker compose start foreman`, check the
    world, and then delete the `.old` folder.
+
+## 16. Optional: players join through a VPN sidecar
+
+You do not need a VPN. Without one, Foreman publishes the game's port on
+the host (section 10) and players join that. This section is for when you
+also want players outside your network to join through a VPN, such as
+Tailscale, without opening a port on your router.
+
+A VPN sidecar is a container you define and run next to Foreman. When you
+name it in `FOREMAN_GAME_NETWORK_CONTAINER`, Foreman runs the game inside
+the sidecar's network. Players on the VPN then join the sidecar's VPN
+address, and players on your LAN join the port the sidecar publishes on
+the host. Both can play at the same time.
+
+Foreman never installs, signs in, configures, restarts or removes the
+sidecar, and it never holds a VPN credential. The setup below uses
+Tailscale; any VPN that runs in a container works the same way.
+
+### How it fits together
+
+- At every start Foreman looks the sidecar up by name, checks it, and
+  creates the game in that exact container's network. If the sidecar is
+  missing, not running, on the host's network, inside another container's
+  network, or not on `FOREMAN_GAME_NETWORK`, the Server page says so and
+  the game does not start. Nothing in the world is changed first.
+- The game listens on UDP 34197 on every interface it shares with the
+  sidecar: the VPN's, and the Docker networks'.
+- Foreman publishes no port for the game. Docker lets only the container
+  that owns a network publish its ports, so the sidecar publishes UDP
+  34197 for LAN players, in its own definition.
+- RCON listens only on the sidecar's address on `FOREMAN_GAME_NETWORK`, and
+  Foreman reaches it there. It is not on the VPN interface.
+- `FOREMAN_GAME_NETWORK` is required with a sidecar, even when Foreman runs
+  outside a container, and the sidecar must be on it.
+
+### The compose file
+
+[docs/examples/tailscale-sidecar/compose.yaml](examples/tailscale-sidecar/compose.yaml)
+is the compose file from section 5 with a Tailscale sidecar added. Copy it
+next to `data/` as `compose.yaml` and replace the example values. It holds
+no Tailscale key. It defines Foreman, the socket proxy and the sidecar,
+never the game: Foreman creates the game's container itself at every start.
+
+The sidecar's part of it:
+
+```yaml
+  tailscale:
+    image: tailscale/tailscale:v1.104.7@sha256:72c1e19e0aedca96b8533bbb0b4368564410ff20b17e53b804eb6c1f04a31be4
+    container_name: foreman-tailscale
+    restart: unless-stopped
+    environment:
+      TS_USERSPACE: "false"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTH_ONCE: "true"
+      TS_HOSTNAME: factorio
+      TS_EXTRA_ARGS: --advertise-tags=tag:factorio
+      TS_BOOT_TIMEOUT: "5m"
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add: [NET_ADMIN, NET_RAW]
+    ports:
+      - "34197:34197/udp"
+    networks: [game]
+```
+
+and in Foreman's `environment`:
+
+```yaml
+      FOREMAN_GAME_NETWORK_CONTAINER: foreman-tailscale
+```
+
+What each part does:
+
+- **`container_name`** gives the sidecar the fixed name Foreman looks for.
+  Without it, Compose names the container after the project.
+- **`TS_USERSPACE: "false"`** turns on Tailscale's kernel networking: a
+  real `tailscale0` interface inside the sidecar's network, which the game
+  listens on. This guide supports kernel networking only. Tailscale's
+  userspace mode works differently and is not tested with Foreman.
+- **`TS_STATE_DIR` and the `tailscale-state` volume** keep the sidecar's
+  identity in your tailnet. Without them, every restart is a new machine
+  that must be signed in again.
+- **`TS_AUTH_ONCE: "true"`** signs in only when the saved state is not
+  already signed in.
+- **`TS_HOSTNAME`** names the machine in your tailnet.
+- **`TS_EXTRA_ARGS`** requests `tag:factorio` at sign-in. Define its owners
+  in your tailnet policy before starting the sidecar.
+- **`TS_BOOT_TIMEOUT`** gives initial sign-in five minutes in this pinned
+  release; its default is one minute.
+- **`devices` and `cap_add`** are what Tailscale's documentation asks for
+  in kernel mode: the TUN device, `NET_ADMIN` and `NET_RAW`. They are the
+  sidecar's own. The game container still runs with every capability
+  dropped (SPEC 4.6).
+- **`ports`** publishes UDP 34197 on the host for LAN players.
+- **`networks: [game]`** puts the sidecar on `FOREMAN_GAME_NETWORK`, which
+  Foreman requires. See "What the game can reach" before adding others.
+
+Keep routing and forwarding features out of this example: `TS_ROUTES`,
+`TS_DEST_IP`, `TS_SERVE_CONFIG`, `TS_TAILNET_TARGET_IP`,
+`TS_TAILNET_TARGET_FQDN`, `--advertise-routes`, `--advertise-exit-node`,
+and `--accept-routes`. They can widen what reaches the game network or
+what the game reaches. Also leave `TS_SOCKS5_SERVER`,
+`TS_OUTBOUND_HTTP_PROXY_LISTEN`, `TS_ENABLE_METRICS` and
+`TS_ENABLE_HEALTH_CHECK` unset: they add listeners this setup does not need.
+See [Tailscale's Docker parameters](https://tailscale.com/docs/features/containers/docker/docker-params).
+
+The host must have the TUN device. Check with `ls -l /dev/net/tun`; if it
+is missing, load the module with `sudo modprobe tun`. When the host is
+itself a container, such as a Proxmox LXC container, pass `/dev/net/tun`
+through to it first.
+
+To use a newer Tailscale release, take its exact tag and digest from
+Docker Hub, change the `image:` line, and see "When the sidecar restarts"
+below: replacing the sidecar cuts the running game off.
+
+### Sign the sidecar in
+
+First configure `tag:factorio` and its owners as shown under "Limit who can
+reach the game over the VPN" below. Sign in as an owner of that tag. A tagged device uses its
+tag's identity instead of the signer's personal access; leave the tag
+without outbound grants and remove broader rules that would grant it
+unwanted access. Verify the tag in the admin console before starting a
+game, especially when reusing an existing state volume. See
+[Tailscale tags](https://tailscale.com/docs/features/tags).
+
+The example uses interactive sign-in, without an auth key:
+
+1. Start everything with `docker compose up -d`.
+2. Run `docker compose logs -f tailscale` and wait for the line
+   `To authenticate, visit:` followed by a link.
+3. Open the link, sign in to your tailnet, and approve the machine. Keep
+   the link to yourself: whoever opens it can add this machine to their
+   own tailnet. This example allows five minutes for startup and sign-in;
+   the pinned release defaults to one minute. If it expires, Docker
+   restarts the sidecar with a new link. Use the newest link in the log.
+   The setting is defined in the pinned release's
+   [container startup source](https://github.com/tailscale/tailscale/blob/v1.104.7/cmd/containerboot/settings.go).
+4. Check it: `docker exec foreman-tailscale tailscale status` lists the
+   machine, and `docker exec foreman-tailscale tailscale ip -4` shows its
+   tailnet address.
+
+The state volume keeps the sign-in across restarts. Tagged devices have
+key expiry disabled by default; check your device's actual expiry setting
+in the admin console.
+
+If you prefer an auth key, mount it only into the sidecar as a Compose
+secret and set `TS_AUTHKEY: file:/run/secrets/ts_authkey`. Keep the source
+file outside git, readable only by its owner. Do not pass the key itself
+in `environment` or `env_file`: Docker includes those values in inspect
+responses, which Foreman reads. The pinned release supports the
+[file-based key form](https://github.com/tailscale/tailscale/blob/v1.104.7/cmd/tailscale/cli/up.go).
+For example, add to your local compose file:
+
+```yaml
+services:
+  tailscale:
+    environment:
+      TS_AUTHKEY: file:/run/secrets/ts_authkey
+    secrets:
+      - ts_authkey
+secrets:
+  ts_authkey:
+    file: /absolute/private/path/ts_authkey
+```
+
+This keeps key contents out of the inspect environment, not out of reach
+of the host or someone with unrestricted Docker administration.
+
+### Join the game
+
+Start the server from Foreman as in section 10. Then:
+
+- **LAN players** connect to the host's address, as before.
+- **VPN players** use the IPv4 address from
+  `docker exec foreman-tailscale tailscale ip -4`. The port is 34197;
+  they can leave it out. MagicDNS names such as `factorio` may resolve to
+  IPv6 too; use the name only after testing it with your game clients.
+
+`FOREMAN_PUBLIC_ADDRESS` shows one join line on the Server page. Choose
+the address most of your players use.
+
+If the sidecar does not publish UDP 34197 on the host, the Server page
+warns "LAN players cannot reach the game: foreman-tailscale does not
+publish UDP 34197 on the host." The game still starts, because VPN-only
+play can be what you want. The warning is checked when the game starts,
+so after you change the sidecar's ports, restart the game.
+
+A published port does not prove LAN players can reach the game. Foreman
+reads only what Docker reports, and cannot see:
+
+- **the host address the port is published on.** `"34197:34197/udp"`
+  publishes on every address of the host. A line such as
+  `"192.168.1.20:34197:34197/udp"` publishes on that one address, and LAN
+  players must use it.
+- **a different host port.** With `"34200:34197/udp"`, LAN players use
+  port 34200; put it in `FOREMAN_PUBLIC_ADDRESS` too, as
+  `192.168.1.20:34200`.
+- **the host's firewall.** Open the UDP port there, as in section 10.
+
+### Limit who can reach the game over the VPN
+
+Tailscale's access rules decide which people and machines in your tailnet
+can reach the sidecar. They are your configuration; Foreman cannot see or
+enforce them. Allow only UDP 34197 to the game, for only the people who
+play. For example, in the tailnet policy file, with the machine tagged
+`tag:factorio`:
+
+```json
+{
+  "groups": {
+    "group:factorio-players": ["alice@example.com", "bob@example.com"]
+  },
+  "tagOwners": {
+    "tag:factorio": ["you@example.com"]
+  },
+  "grants": [
+    {
+      "src": ["group:factorio-players"],
+      "dst": ["tag:factorio"],
+      "ip": ["udp:34197"]
+    }
+  ]
+}
+```
+
+This narrows access only if no other rule in the file allows more, such
+as a default rule that allows everything.
+
+### RCON stays private
+
+RCON listens on TCP 27015 only at the sidecar's address on
+`FOREMAN_GAME_NETWORK`, never on every address. Check it once the game is
+running: from another machine on your LAN, and from a device on your
+tailnet, a connection to TCP 27015 must fail.
+
+```sh
+nc -vz -w 3 192.168.1.20 27015   # from the LAN: must fail
+nc -vz -w 3 100.101.102.103 27015 # from the tailnet: must fail
+```
+
+Replace `100.101.102.103` with the actual address from
+`docker exec foreman-tailscale tailscale ip -4`; a DNS lookup failure is
+not a successful isolation check. Confirm the game is running and its
+Console works before testing these connections.
+
+That address is private, not firewalled. A subnet route, exit node or
+forwarding rule that carries VPN traffic into the game network can reach
+it, which is why the settings listed above stay out. RCON still needs its
+password, which Foreman keeps and never shows.
+
+### What the game can reach
+
+The game shares the sidecar's whole network, so it can reach everything
+the sidecar can:
+
+- every Docker network the sidecar is on, and the services there;
+- every VPN peer your tailnet rules let the sidecar reach;
+- anything listening on the sidecar's own loopback address.
+
+You may put the sidecar on other Docker networks, including networks
+other services share. Foreman allows that, but the choice and what it
+exposes are yours. Foreman refuses to start the game when any network the
+sidecar is on overlaps `FOREMAN_TRUSTED_PROXIES`, or exposes the socket
+proxy Foreman uses. Never put the sidecar on the socket proxy's network
+(`foreman-docker`) or the reverse proxy's network (`foreman-front`).
+
+The sidecar sees all of the game's traffic and holds `NET_ADMIN`. Foreman
+does not check what the sidecar does; trust its image as you trust
+Foreman's (SPEC 14.16).
+
+### Sign-in through a reverse proxy
+
+With a sidecar, Foreman counts every Docker network the sidecar is on as a
+game network, and ignores sign-in headers from those addresses (section
+6). Docker cannot tell Foreman the VPN's addresses. So never put the
+sidecar's tailnet address, or a VPN range such as Tailscale's
+`100.64.0.0/10` or `fd7a:115c:a1e0::/48`, in `FOREMAN_TRUSTED_PROXIES`: the game, or anything
+else that reaches Foreman through the sidecar, could then pose as the
+proxy and sign in as anyone. Use only the single address of a separate reverse proxy, or
+local accounts.
+
+### When the sidecar restarts
+
+Foreman does not watch the sidecar. When the sidecar is restarted or
+recreated while the game runs (after a change to its definition, a new
+image, or `docker compose up -d` that replaces it), the game can lose its
+network. Players drop, nobody new can join, and Foreman may lose its RCON
+connection, so the Console and Players pages stop updating.
+
+Afterwards, restart the game from Foreman:
+
+1. Choose **Server**, then **Restart server**. Foreman saves, stops, and
+   starts the game in the sidecar's current network.
+2. If the page says "Cannot reach the game over RCON, so it cannot warn
+   players or save first", Foreman cannot save it. Choose **Force stop**,
+   which stops the game without saving: progress since the last autosave
+   is lost. Then choose **Start server**.
+
+Change the sidecar when nobody is playing.
+
+After a host reboot or Docker restart, check both player connectivity
+and a Console command through Foreman. Docker restart policies do not
+provide Compose's startup ordering, and a game may run while its saved
+RCON bind address is no longer usable. If stopped, start it from Foreman;
+if either player connectivity or RCON fails, follow the restart and
+force-stop recovery steps above. Reboot recovery still needs to be
+checked by you after restarting your test host: join with a game client
+and send a Console command before relying on unattended recovery. This
+example does not guarantee ordering.
